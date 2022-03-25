@@ -95,7 +95,7 @@ var _ bool = Describe("PrivateData", func() {
 					// collections_config1.json defines the access as follows:
 					// 1. collectionMarbles - Org1, Org2 have access to this collection
 					// 2. collectionMarblePrivateDetails - Org2 and Org3 have access to this collection
-					CollectionsConfig: collectionConfig("collections_config1.json"),
+					CollectionsConfig: CollectionConfig("collections_config1.json"),
 				},
 				isLegacy: true,
 			}
@@ -115,7 +115,7 @@ var _ bool = Describe("PrivateData", func() {
 					Path:              "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
 					Ctor:              `{"Args":["init"]}`,
 					Policy:            `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
-					CollectionsConfig: collectionConfig("collections_config8_high_requiredPeerCount.json"),
+					CollectionsConfig: CollectionConfig("collections_config8_high_requiredPeerCount.json"),
 				},
 				isLegacy: true,
 			}
@@ -152,7 +152,7 @@ var _ bool = Describe("PrivateData", func() {
 						// collections_config1.json defines the access as follows:
 						// 1. collectionMarbles - Org1, Org2 have access to this collection
 						// 2. collectionMarblePrivateDetails - Org2 and Org3 have access to this collection
-						CollectionsConfig: collectionConfig("collections_config7.json"),
+						CollectionsConfig: CollectionConfig("collections_config7.json"),
 					},
 					isLegacy: true,
 				}
@@ -411,7 +411,7 @@ var _ bool = Describe("PrivateData", func() {
 				// collections_config1.json defines the access as follows:
 				// 1. collectionMarbles - Org1, Org2 have access to this collection
 				// 2. collectionMarblePrivateDetails - Org2 and Org3 have access to this collection
-				CollectionsConfig: collectionConfig("collections_config1.json"),
+				CollectionsConfig: CollectionConfig("collections_config1.json"),
 			}
 
 			newLifecycleChaincode = nwo.Chaincode{
@@ -422,7 +422,7 @@ var _ bool = Describe("PrivateData", func() {
 				PackageFile:       filepath.Join(network.RootDir, "marbles-pvtdata.tar.gz"),
 				Label:             "marbles-private-20",
 				SignaturePolicy:   `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
-				CollectionsConfig: collectionConfig("collections_config1.json"),
+				CollectionsConfig: CollectionConfig("collections_config1.json"),
 				Sequence:          "1",
 			}
 			org1Peer1 = &nwo.Peer{
@@ -479,7 +479,7 @@ var _ bool = Describe("PrivateData", func() {
 						// 2. collectionMarblePrivateDetails - Org2 and Org3 have access to this collection
 						// the change from collections_config1 - org3 was added to collectionMarbles
 						testChaincode.Version = "1.1"
-						testChaincode.CollectionsConfig = collectionConfig("collections_config2.json")
+						testChaincode.CollectionsConfig = CollectionConfig("collections_config2.json")
 						if !testChaincode.isLegacy {
 							testChaincode.Sequence = "2"
 						}
@@ -536,7 +536,7 @@ var _ bool = Describe("PrivateData", func() {
 				}
 				nwo.EnableCapabilities(network, channelID, "Application", "V2_0", orderer, network.Peers...)
 
-				testChaincode.CollectionsConfig = collectionConfig("short_btl_config.json")
+				testChaincode.CollectionsConfig = CollectionConfig("short_btl_config.json")
 				deployChaincode(network, orderer, testChaincode)
 				marblechaincodeutil.AddMarble(network, orderer, channelID, testChaincode.Name, `{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`, network.Peer("Org2", "peer0"))
 
@@ -571,7 +571,7 @@ var _ bool = Describe("PrivateData", func() {
 		Describe("Org removal from collection", func() {
 			assertOrgRemovalBehavior := func() {
 				By("upgrading chaincode to remove org3 from collectionMarbles")
-				testChaincode.CollectionsConfig = collectionConfig("collections_config1.json")
+				testChaincode.CollectionsConfig = CollectionConfig("collections_config1.json")
 				testChaincode.Version = "1.1"
 				if !testChaincode.isLegacy {
 					testChaincode.Sequence = "2"
@@ -588,7 +588,7 @@ var _ bool = Describe("PrivateData", func() {
 					isLegacy:  false,
 				}
 				nwo.EnableCapabilities(network, channelID, "Application", "V2_0", orderer, network.Peers...)
-				testChaincode.CollectionsConfig = collectionConfig("collections_config2.json")
+				testChaincode.CollectionsConfig = CollectionConfig("collections_config2.json")
 				deployChaincode(network, orderer, testChaincode)
 				marblechaincodeutil.AddMarble(network, orderer, channelID, testChaincode.Name, `{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`, network.Peer("Org2", "peer0"))
 				assertPvtdataPresencePerCollectionConfig2(network, testChaincode.Name, "marble1")
@@ -607,7 +607,7 @@ var _ bool = Describe("PrivateData", func() {
 				deployChaincode(network, orderer, testChaincode)
 				nwo.EnableCapabilities(network, channelID, "Application", "V2_0", orderer, network.Peers...)
 
-				newLifecycleChaincode.CollectionsConfig = collectionConfig("short_btl_config.json")
+				newLifecycleChaincode.CollectionsConfig = CollectionConfig("short_btl_config.json")
 				newLifecycleChaincode.PackageID = "test-package-id"
 
 				approveChaincodeForMyOrgExpectErr(
@@ -627,7 +627,7 @@ var _ bool = Describe("PrivateData", func() {
 						isLegacy:  true,
 					}
 					By("setting the collection config endorsement policy to org2 or org3 peers")
-					testChaincode.CollectionsConfig = collectionConfig("collections_config4.json")
+					testChaincode.CollectionsConfig = CollectionConfig("collections_config4.json")
 
 					By("deploying legacy chaincode")
 					deployChaincode(network, orderer, testChaincode)
@@ -651,7 +651,7 @@ var _ bool = Describe("PrivateData", func() {
 				When("a peer specified in the chaincode endorsement policy but not in the collection config endorsement policy is used to invoke the chaincode", func() {
 					It("fails validation", func() {
 						By("setting the collection config endorsement policy to org2 or org3 peers")
-						testChaincode.CollectionsConfig = collectionConfig("collections_config4.json")
+						testChaincode.CollectionsConfig = CollectionConfig("collections_config4.json")
 
 						By("deploying new lifecycle chaincode")
 						// set collection endorsement policy to org2 or org3
@@ -686,7 +686,7 @@ var _ bool = Describe("PrivateData", func() {
 						It("successfully invokes the chaincode", func() {
 							// collection config endorsement policy specifies org2 or org3 peers for endorsement
 							By("setting the collection config endorsement policy to use a signature policy")
-							testChaincode.CollectionsConfig = collectionConfig("collections_config4.json")
+							testChaincode.CollectionsConfig = CollectionConfig("collections_config4.json")
 
 							By("setting the chaincode endorsement policy to org1 or org2 peers")
 							testChaincode.SignaturePolicy = `OR ('Org1MSP.member','Org2MSP.member')`
@@ -706,7 +706,7 @@ var _ bool = Describe("PrivateData", func() {
 						It("successfully invokes the chaincode", func() {
 							// collection config endorsement policy specifies channel config policy reference /Channel/Application/Readers
 							By("setting the collection config endorsement policy to use a channel config policy reference")
-							testChaincode.CollectionsConfig = collectionConfig("collections_config5.json")
+							testChaincode.CollectionsConfig = CollectionConfig("collections_config5.json")
 
 							By("setting the channel endorsement policy to org1 or org2 peers")
 							testChaincode.SignaturePolicy = `OR ('Org1MSP.member','Org2MSP.member')`
@@ -725,7 +725,7 @@ var _ bool = Describe("PrivateData", func() {
 				When("the collection config endorsement policy specifies a semantically wrong, but well formed signature policy", func() {
 					It("fails to invoke the chaincode with an endorsement policy failure", func() {
 						By("setting the collection config endorsement policy to non existent org4 peers")
-						testChaincode.CollectionsConfig = collectionConfig("collections_config6.json")
+						testChaincode.CollectionsConfig = CollectionConfig("collections_config6.json")
 
 						By("deploying new lifecycle chaincode")
 						deployChaincode(network, orderer, testChaincode)
@@ -775,7 +775,7 @@ var _ bool = Describe("PrivateData", func() {
 				PackageFile:       filepath.Join(network.RootDir, "marbles-pvtdata.tar.gz"),
 				Label:             "marbles-private-20",
 				SignaturePolicy:   `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
-				CollectionsConfig: collectionConfig("collections_config1.json"),
+				CollectionsConfig: CollectionConfig("collections_config1.json"),
 				Sequence:          "1",
 			}
 
@@ -870,7 +870,7 @@ var _ bool = Describe("PrivateData", func() {
 			assertPrivateDataAsExpected(event.BlockAndPvtData.PrivateDataMap, expectedKVWritesMap)
 
 			By("upgrading chaincode with collections_config1.json where isMemberOnlyRead is false")
-			testChaincode.CollectionsConfig = collectionConfig("collections_config1.json")
+			testChaincode.CollectionsConfig = CollectionConfig("collections_config1.json")
 			testChaincode.Version = "1.1"
 			if !testChaincode.isLegacy {
 				testChaincode.Sequence = "2"
@@ -912,7 +912,7 @@ var _ bool = Describe("PrivateData", func() {
 				isLegacy:  false,
 			}
 			nwo.EnableCapabilities(network, channelID, "Application", "V2_0", orderer, network.Peers...)
-			testChaincode.CollectionsConfig = collectionConfig("collections_config3.json")
+			testChaincode.CollectionsConfig = CollectionConfig("collections_config3.json")
 			deployChaincode(network, orderer, testChaincode)
 
 			By("attempting to invoke chaincode from a user (org1) not in any collection member orgs (org2 and org3)")
@@ -1013,10 +1013,6 @@ func testCleanup(network *nwo.Network, process ifrit.Process) {
 		network.Cleanup()
 	}
 	os.RemoveAll(network.RootDir)
-}
-
-func collectionConfig(collConfigFile string) string {
-	return filepath.Join("testdata", "collection_configs", collConfigFile)
 }
 
 type chaincode struct {
