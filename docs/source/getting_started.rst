@@ -12,11 +12,9 @@ Getting Started - Install
 
 The Fabric application stack has five layers:
 
-.. image:: ./getting_started_image2.png
-   :width: 300px
+.. image:: ./getting_started_stack.png
    :align: right
-   :height: 100px
-   :alt: Fabric Application Stack
+   :alt: Hyperledger Fabric software stack
 
 * :doc:`Prerequisite software <prereqs>`: the base layer needed to run the software, for example, Docker.
 * :doc:`Fabric and Fabric samples <install>`: the Fabric executables to run a Fabric network along with sample code.
