@@ -1139,9 +1139,10 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 		}
 	}
 
-	if c.accDataSize >= c.sizeLimit {
+	// at postion==0, ents[position].Type is ambiguous, it can be either of {raftpb.EntryNormal, raftpb.EntryConfChange}
+	// take a snapshot only for ents[position].Type == raftpb.EntryNormal
+	if c.accDataSize >= c.sizeLimit && ents[position].Type == raftpb.EntryNormal && len(ents[position].Data) > 0 {
 		b := protoutil.UnmarshalBlockOrPanic(ents[position].Data)
-
 		select {
 		case c.gcC <- &gc{index: c.appliedIndex, state: c.confState, data: ents[position].Data}:
 			c.logger.Infof("Accumulated %d bytes since last snapshot, exceeding size limit (%d bytes), "+
