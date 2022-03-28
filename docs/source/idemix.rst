@@ -290,7 +290,7 @@ This would allow multiple Idemix-based MSPs to coexist in the same channel.
 
 In principal, a channel can be configured to have a single Idemix-based MSP and multiple
 X.509-based MSPs. Of course, the interaction between these MSP can potential
-leak information. An assessment of the leaked information need to be done case by case.wq
+leak information. An assessment of the leaked information need to be done case by case.
 
 Underlying cryptographic protocols
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
