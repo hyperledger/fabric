@@ -466,7 +466,7 @@ var _ = Describe("Handler", func() {
 						msg := fakeChatStream.SendArgsForCall(0)
 						Expect(msg.Type).To(Equal(pb.ChaincodeMessage_ERROR))
 						Expect(msg.Txid).To(Equal("tx-id"))
-						Expect(string(msg.Payload)).To(HavePrefix("INVOKE_CHAINCODE failed: transaction ID: tx-id: unmarshal failed: proto: "))
+						Expect(string(msg.Payload)).To(HavePrefix("INVOKE_CHAINCODE failed: transaction ID: tx-id"))
 					})
 				})
 			})
