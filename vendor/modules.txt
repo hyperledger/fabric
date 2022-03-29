@@ -450,8 +450,8 @@ github.com/stretchr/objx
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/mock
 github.com/stretchr/testify/require
-# github.com/sykesm/zap-logfmt v0.0.2
-## explicit
+# github.com/sykesm/zap-logfmt v0.0.4
+## explicit; go 1.13
 github.com/sykesm/zap-logfmt
 # github.com/syndtr/goleveldb v1.0.1-0.20210305035536-64b5b1c73954
 ## explicit; go 1.14
