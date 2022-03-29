@@ -252,6 +252,9 @@ chaincode is ready to be used.
 
 After you have used the `network.sh` to create a channel, you can start a
 chaincode on the channel using the following command:
+
+Before installing the Go, typescript or javascript version of the chaincode make sure that the required language compiler is installed on your local enviroment. For using Java chaincode requires gradle and Java.
+
 ```
 ./network.sh deployCC -ccn basic -ccp ../asset-transfer-basic/chaincode-go -ccl go
 ```
@@ -261,6 +264,9 @@ the chaincode on the channel specified using the channel flag (or `mychannel`
 if no channel is specified).  If you are deploying a chaincode for the first
 time, the script will install the chaincode dependencies. You can use the
 language flag, `-l`, to install the Go, typescript or javascript versions of the chaincode.
+
+Before installing the Go, typescript or javascript version of the chaincode make sure that
+the required language compiler is installed on you local enviroment.
 You can find the asset-transfer (basic) chaincode in the `asset-transfer-basic` folder of the `fabric-samples`
 directory. This folder contains sample chaincode that are provided as examples and
 used by tutorials to highlight Fabric features.
