@@ -10,11 +10,12 @@ import (
 
 	peerproto "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/peer"
-	"github.com/hyperledger/fabric/gossip/common"
+	gdiscovery "github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/commit"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/config"
+	"github.com/hyperledger/fabric/internal/pkg/gateway/ledger"
 	"google.golang.org/grpc"
 )
 
@@ -27,7 +28,7 @@ type Server struct {
 	policy         ACLChecker
 	options        config.Options
 	logger         *flogging.FabricLogger
-	ledgerProvider LedgerProvider
+	ledgerProvider ledger.Provider
 }
 
 type EndorserServerAdapter struct {
@@ -46,13 +47,9 @@ type ACLChecker interface {
 	CheckACL(policyName string, channelName string, data interface{}) error
 }
 
-type LedgerProvider interface {
-	Ledger(channelName string) (ledger.Ledger, error)
-}
-
 // CreateServer creates an embedded instance of the Gateway.
-func CreateServer(localEndorser peerproto.EndorserServer, discovery Discovery, peerInstance *peer.Peer, policy ACLChecker, localMSPID string, options config.Options) *Server {
-	adapter := &peerAdapter{
+func CreateServer(localEndorser peerproto.EndorserServer, discovery Discovery, peerInstance *peer.Peer, secureOptions *comm.SecureOptions, policy ACLChecker, localMSPID string, options config.Options) *Server {
+	adapter := &ledger.PeerAdapter{
 		Peer: peerInstance,
 	}
 	notifier := commit.NewNotifier(adapter)
@@ -65,9 +62,9 @@ func CreateServer(localEndorser peerproto.EndorserServer, discovery Discovery, p
 		commit.NewFinder(adapter, notifier),
 		policy,
 		adapter,
-		peerInstance.GossipService.SelfMembershipInfo().PKIid,
-		peerInstance.GossipService.SelfMembershipInfo().Endpoint,
+		peerInstance.GossipService.SelfMembershipInfo(),
 		localMSPID,
+		secureOptions,
 		options,
 	)
 
@@ -76,13 +73,13 @@ func CreateServer(localEndorser peerproto.EndorserServer, discovery Discovery, p
 	return server
 }
 
-func newServer(localEndorser peerproto.EndorserClient, discovery Discovery, finder CommitFinder, policy ACLChecker, ledgerProvider LedgerProvider, localPKIID common.PKIidType, localEndpoint, localMSPID string, options config.Options) *Server {
+func newServer(localEndorser peerproto.EndorserClient, discovery Discovery, finder CommitFinder, policy ACLChecker, ledgerProvider ledger.Provider, localInfo gdiscovery.NetworkMember, localMSPID string, secureOptions *comm.SecureOptions, options config.Options) *Server {
 	return &Server{
 		registry: &registry{
-			localEndorser:      &endorser{client: localEndorser, endpointConfig: &endpointConfig{pkiid: localPKIID, address: localEndpoint, mspid: localMSPID}},
+			localEndorser:      &endorser{client: localEndorser, endpointConfig: &endpointConfig{pkiid: localInfo.PKIid, address: localInfo.Endpoint, mspid: localMSPID}},
 			discovery:          discovery,
 			logger:             logger,
-			endpointFactory:    &endpointFactory{timeout: options.DialTimeout},
+			endpointFactory:    &endpointFactory{timeout: options.DialTimeout, clientCert: secureOptions.Certificate, clientKey: secureOptions.Key},
 			remoteEndorsers:    map[string]*endorser{},
 			channelInitialized: map[string]bool{},
 		},

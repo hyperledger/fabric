@@ -47,6 +47,14 @@ Args:
   <snapshotPath2>  Second ledger snapshot directory.
 ```
 
+## Exit Status
+
+### ledgerutil compare
+
+- `0` if the snapshots are identical
+- `2` if the snapshots are not identical
+- `1` if an error occurs
+
 ## Example Usage
 
 ### ledgerutil compare example

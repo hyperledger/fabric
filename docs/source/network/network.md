@@ -96,8 +96,6 @@ We can see that our peer organizations, R1 and R2, are fully participating in th
 
 Note: Fabric v2.3 SDKs embed the logic of the v2.4 Fabric Gateway service in the client application --- refer to the [v2.3 Applications and Peers](https://hyperledger-fabric.readthedocs.io/en/release-2.3/peers/peers.html#applications-and-peers) topic for details.
 
-We can see that our peer organizations, R1 and R2, are fully participating in the channel. Their applications can access the ledger L1 via smart contract S5 to generate transactions that will be endorsed by the organizations specified in the endorsement policy and written to the ledger.
-
 For more information about how to develop an application, check out [Developing applications](../developapps/developing_applications.html).
 
 ## Joining components to multiple channels

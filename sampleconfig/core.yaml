@@ -178,7 +178,7 @@ peer:
         # Message expiration factor for alive messages
         msgExpirationFactor: 20
         # This is an endpoint that is published to peers outside of the organization.
-        # If this isn't set, the peer will not be known to other organizations.
+        # If this isn't set, the peer will not be known to other organizations and will not be exposed via service discovery.
         externalEndpoint:
         # Leader election service configuration
         election:

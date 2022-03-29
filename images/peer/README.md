@@ -160,4 +160,4 @@ to your own `core.yaml` file within the image.
 
 # License
 
-Hyperledger Fabric is licensed under the [Apache License](https://github.com/hyperledger/fabric/blob/main/LICENSE).
+Hyperledger Fabric is licensed under the [Apache License, version 2.0](https://github.com/hyperledger/fabric/blob/main/LICENSE).

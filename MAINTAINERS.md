@@ -13,10 +13,7 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 | Senthilnathan Natarajan | [cendhu][cendhu] | Senthil1 | <cendhu@gmail.com>
 | Dave Enyeart | [denyeart][denyeart] | dave.enyeart | <enyeart@us.ibm.com>
 | Jay Guo | [guoger][guoger] | guoger | <guojiannan1101@gmail.com>
-| Jason Yellick | [jyellick][jyellick] | jyellick | <jason-github@unaddressable.org>
 | Manish Sethi | [manish-sethi][manish-sethi] | manish-sethi | <manish.sethi@gmail.com>
-| Gari Singh | [mastersingh24][mastersingh24] | mastersingh24 | <gari.r.singh@gmail.com>
-| Matthew Sykes | [sykesm][sykesm] | sykesm | <matthew.sykes@gmail.com>
 | Yacov Manevich | [yacovm][yacovm] | yacovm | <yacovm@il.ibm.com>
 
 **Documentation Maintainers**
@@ -33,29 +30,30 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 
 | Name | GitHub | Chat | email
 |------|--------|------|----------------------
-| Chris Ferris | [christo4ferris][christo4ferris] | cbf | <chris.ferris@gmail.com>
 | Dave Enyeart | [denyeart][denyeart] | dave.enyeart | <enyeart@us.ibm.com>
-| Gari Singh | [mastersingh24][mastersingh24] | mastersingh24 | <gari.r.singh@gmail.com>
 
 **Retired Maintainers**
 
 | Name | GitHub | Chat | email
 |------|--------|------|----------------------
 | Binh Nguyen | [binhn][binhn] | binhn | <binh1010010110@gmail.com>
+| Brett Logan | [lindluni][lindluni] | BrettLogan | <development.brett@gmail.com>
 | Chris Ferris | [christo4ferris][christo4ferris] | cbf | <chris.ferris@gmail.com>
 | Danny Cao | [caod123][caod123] | caod | <caoxiaohua@gmail.com>
 | Gabor Hosszu | [gabre][gabre] | hgabor | <gabor@digitalasset.com>
+| Gari Singh | [mastersingh24][mastersingh24] | mastersingh24 | <gari.r.singh@gmail.com>
 | Greg Haskins | [ghaskins][ghaskins] | ghaskins | <gregory.haskins@gmail.com>
-| Jonathan Levi | [hacera][hacera] |JonathanLevi | <jonathan@hacera.com>
-| Yaoguo Jiang | [jiangyaoguo][jiangyaoguo] | jiangyaoguo | <jiangyaoguo@gmail.com>
+| Jason Yellick | [jyellick][jyellick] | jyellick | <jason-github@unaddressable.org>
 | Jim Zhang | [jimthematrix][jimthematrix] | jimthematrix | <jim_the_matrix@hotmail.com>
-| Kostas Christidis | [kchristidis][kchristidis] | kostas | <kostas@gmail.com>
-| Srinivasan Muralidharan | [muralisrini][muralisrini] | muralisr | <srinivasan.muralidharan99@gmail.com>
+| Jonathan Levi | [hacera][hacera] |JonathanLevi | <jonathan@hacera.com>
 | Keith Smith | [smithbk][smithbk] | smithbk | <bksmith@us.ibm.com>
+| Kostas Christidis | [kchristidis][kchristidis] | kostas | <kostas@gmail.com>
+| Matthew Sykes | [sykesm][sykesm] | sykesm | <matthew.sykes@gmail.com>
 | Sheehan Anderson | [srderson][srderson] | sheehan | <sranderson@gmail.com>
+| Srinivasan Muralidharan | [muralisrini][muralisrini] | muralisr | <srinivasan.muralidharan99@gmail.com>
 | Tamas Blummer | [tamasblummer][tamasblummer] | tamas | <tamas@digitalasset.com>
-| Brett Logan | [lindluni][lindluni] | BrettLogan | <development.brett@gmail.com>
 | Will Lahti | [wlahti][wlahti] | wlahti | <will.lahti@gmail.com>
+| Yaoguo Jiang | [jiangyaoguo][jiangyaoguo] | jiangyaoguo | <jiangyaoguo@gmail.com>
 
 [ale-linux]: https://github.com/ale-linux
 [andrew-coleman]: https://github.com/andrew-coleman

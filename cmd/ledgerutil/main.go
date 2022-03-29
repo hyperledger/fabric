@@ -53,14 +53,14 @@ func main() {
 			*outputDir, err = os.Getwd()
 			if err != nil {
 				fmt.Printf("%s%s\n", compareErrorMessage, err)
-				return
+				os.Exit(1)
 			}
 		}
 
 		count, outputDirPath, err := ledgerutil.Compare(*snapshotPath1, *snapshotPath2, *outputDir, *firstDiffs)
 		if err != nil {
 			fmt.Printf("%s%s\n", compareErrorMessage, err)
-			return
+			os.Exit(1)
 		}
 
 		fmt.Print("\nSuccessfully compared snapshots. ")
@@ -68,6 +68,7 @@ func main() {
 			fmt.Println("Both snapshot public state and private state hashes were the same. No results were generated.")
 		} else {
 			fmt.Printf("Results saved to %s. Total differences found: %d\n", outputDirPath, count)
+			os.Exit(2)
 		}
 	}
 }

@@ -12,26 +12,31 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/internal/pkg/gateway/commit/mocks"
+	"github.com/hyperledger/fabric/internal/pkg/gateway/ledger/mocks"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
-//go:generate counterfeiter -o mocks/notificationsupplier.go --fake-name NotificationSupplier . notificationSupplier
-type notificationSupplier interface { // Mimic NotificationSupplier to avoid circular import with generated mock
-	NotificationSupplier
+func newLedgerMocks() (*mocks.Provider, *mocks.Ledger) {
+	ledger := &mocks.Ledger{}
+
+	provider := &mocks.Provider{}
+	provider.LedgerReturns(ledger, nil)
+
+	return provider, ledger
 }
 
-func newNotificationSupplier(commitSends ...<-chan *ledger.CommitNotification) *mocks.NotificationSupplier {
-	supplier := &mocks.NotificationSupplier{}
+func newNotifierProvider(commitSends ...<-chan *ledger.CommitNotification) *mocks.Provider {
+	provider, ledger := newLedgerMocks()
 	for i, commitSend := range commitSends {
-		supplier.CommitNotificationsReturnsOnCall(i, commitSend, nil)
+		ledger.CommitNotificationsChannelReturnsOnCall(i, commitSend, nil)
 	}
-	return supplier
+
+	return provider
 }
 
 func newTestNotifier(commitSends ...<-chan *ledger.CommitNotification) *Notifier {
-	supplier := newNotificationSupplier(commitSends...)
+	supplier := newNotifierProvider(commitSends...)
 	return NewNotifier(supplier)
 }
 
@@ -60,9 +65,9 @@ func newTestChaincodeEvent(chaincodeName string) *peer.ChaincodeEvent {
 func TestNotifier(t *testing.T) {
 	t.Run("notifyStatus", func(t *testing.T) {
 		t.Run("returns error from notification supplier", func(t *testing.T) {
-			supplier := &mocks.NotificationSupplier{}
-			supplier.CommitNotificationsReturns(nil, errors.New("MY_ERROR"))
-			notifier := NewNotifier(supplier)
+			provider, ledger := newLedgerMocks()
+			ledger.CommitNotificationsChannelReturns(nil, errors.New("MY_ERROR"))
+			notifier := NewNotifier(provider)
 			defer notifier.close()
 
 			_, err := notifier.notifyStatus(nil, "CHANNEL_NAME", "TX_ID")
@@ -318,18 +323,18 @@ func TestNotifier(t *testing.T) {
 		})
 
 		t.Run("passes open done channel to notification supplier", func(t *testing.T) {
-			supplier := &mocks.NotificationSupplier{}
-			supplier.CommitNotificationsReturns(nil, nil)
+			provider, ledger := newLedgerMocks()
+			ledger.CommitNotificationsChannelReturns(nil, nil)
 
-			notifier := NewNotifier(supplier)
+			notifier := NewNotifier(provider)
 			defer notifier.close()
 
 			_, err := notifier.notifyStatus(nil, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
 
-			require.Equal(t, 1, supplier.CommitNotificationsCallCount())
+			require.Equal(t, 1, ledger.CommitNotificationsChannelCallCount())
 
-			done, _ := supplier.CommitNotificationsArgsForCall(0)
+			done := ledger.CommitNotificationsChannelArgsForCall(0)
 			select {
 			case <-done:
 				require.FailNow(t, "Expected done channel to be open but was closed")
@@ -338,18 +343,17 @@ func TestNotifier(t *testing.T) {
 		})
 
 		t.Run("passes channel name to notification supplier", func(t *testing.T) {
-			supplier := &mocks.NotificationSupplier{}
-			supplier.CommitNotificationsReturns(nil, nil)
+			provider, _ := newLedgerMocks()
 
-			notifier := NewNotifier(supplier)
+			notifier := NewNotifier(provider)
 			defer notifier.close()
 
 			_, err := notifier.notifyStatus(nil, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
 
-			require.Equal(t, 1, supplier.CommitNotificationsCallCount())
+			require.Equal(t, 1, provider.LedgerCallCount())
 
-			_, actual := supplier.CommitNotificationsArgsForCall(0)
+			actual := provider.LedgerArgsForCall(0)
 			require.Equal(t, "CHANNEL_NAME", actual)
 		})
 
@@ -431,18 +435,17 @@ func TestNotifier(t *testing.T) {
 		})
 
 		t.Run("stops notification supplier", func(t *testing.T) {
-			supplier := &mocks.NotificationSupplier{}
-			supplier.CommitNotificationsReturns(nil, nil)
+			provider, ledger := newLedgerMocks()
 
-			notifier := NewNotifier(supplier)
+			notifier := NewNotifier(provider)
 
 			_, err := notifier.notifyStatus(nil, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
 			notifier.close()
 
-			require.Equal(t, 1, supplier.CommitNotificationsCallCount())
+			require.Equal(t, 1, ledger.CommitNotificationsChannelCallCount())
 
-			done, _ := supplier.CommitNotificationsArgsForCall(0)
+			done := ledger.CommitNotificationsChannelArgsForCall(0)
 			_, ok := <-done
 			require.False(t, ok, "Expected notification supplier done channel to be closed but receive was successful")
 		})
