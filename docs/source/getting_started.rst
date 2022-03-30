@@ -14,7 +14,7 @@ The Hyperledger Fabric stack has five layers:
 .. image:: images/software_stack_image.png
    :width: 350px
    :align: right
-   :height: 300px
+   :height: 275px
    :alt: Hyperledger Fabric stack
 
 :doc:`Application <write_first_app>`: develop an app.
