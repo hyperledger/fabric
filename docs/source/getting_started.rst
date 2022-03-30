@@ -9,19 +9,17 @@ Getting Started - Install
    install
    sdk_chaincode
 
+The Hyperledger Fabric stack has five layers:
 
-The Fabric application stack has five layers:
-
-.. image:: ./getting_started_stack.png
+.. image:: ./getting_started_image2.png
    :align: right
-   :alt: Hyperledger Fabric software stack
+   :alt: Fabric stack
 
-* :doc:`Prerequisite software <prereqs>`: the base layer needed to run the software, for example, Docker.
-* :doc:`Fabric and Fabric samples <install>`: the Fabric executables to run a Fabric network along with sample code.
-* :doc:`Contract APIs <sdk_chaincode>`: to develop smart contracts executed on a Fabric Network.
-* :doc:`Application APIs <sdk_chaincode>`: to develop your blockchain application.
-* The Application: your blockchain application will utilize the Application SDKs to call smart contracts running on a Fabric network.
-
+* :doc:`Application <write_first_app>`: code your first app.
+* :doc:`Application APIs <sdk_chaincode>`: develop apps.
+* :doc:`Smart contract APIs <sdk_chaincode>`: develop chaincode.
+* :doc:`Hyperledger Fabric <install>`: install network executables.
+* :doc:`Prerequisite base software <prereqs>`: understand the base layer.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
