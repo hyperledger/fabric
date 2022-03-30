@@ -11,7 +11,7 @@ Getting Started - Install
 
 The Hyperledger Fabric stack has five layers:
 
-.. image:: images/getting_started_stack.png
+.. image: images/getting_started_stack.png
    :width: 300px
    :align: right
    :height: 100px
