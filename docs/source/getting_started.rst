@@ -12,9 +12,9 @@ Getting Started - Install
 The Hyperledger Fabric stack has five layers:
 
 .. image:: images/software_stack_image.png
-   :width: 400px
+   :width: 350px
    :align: right
-   :height: 300px
+   :height: 250px
    :alt: Hyperledger Fabric stack
 
 * :doc:`Application <write_first_app>`: develop an app.
