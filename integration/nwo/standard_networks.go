@@ -227,6 +227,24 @@ func MinimalRaft() *Config {
 	return config
 }
 
+// Like FullSolo, FullEtcdRaft is a configuration with two organizations and two peers per org.
+func FullEtcdRaft() *Config {
+	config := FullSolo()
+
+	config.Consensus.Type = "etcdraft"
+	config.Profiles = []*Profile{{
+		Name:     "SampleDevModeEtcdRaft",
+		Orderers: []string{"orderer"},
+	}, {
+		Name:          "TwoOrgsChannel",
+		Consortium:    "SampleConsortium",
+		Organizations: []string{"Org1", "Org2"},
+	}}
+	config.SystemChannel.Profile = "SampleDevModeEtcdRaft"
+
+	return config
+}
+
 func ThreeOrgRaft() *Config {
 	config := BasicEtcdRaft()
 
