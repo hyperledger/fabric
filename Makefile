@@ -230,7 +230,7 @@ $(BUILD_DIR)/bin/%:
 	@touch $@
 
 .PHONY: docker
-docker: $(RELEASE_IMAGES:%=%-docker)
+docker: $(RELEASE_IMAGES:%=%-docker) ccaasbuilder
 
 .PHONY: $(RELEASE_IMAGES:%=%-docker)
 $(RELEASE_IMAGES:%=%-docker): %-docker: $(BUILD_DIR)/images/%/$(DUMMY)
@@ -265,7 +265,7 @@ release-all: check-go-version $(RELEASE_PLATFORMS:%=release/%)
 .PHONY: $(RELEASE_PLATFORMS:%=release/%)
 $(RELEASE_PLATFORMS:%=release/%): GO_LDFLAGS = $(METADATA_VAR:%=-X $(PKGNAME)/common/metadata.%)
 $(RELEASE_PLATFORMS:%=release/%): release/%: $(foreach exe,$(RELEASE_EXES),release/%/bin/$(exe))
-$(RELEASE_PLATFORMS:%=release/%): ccaasbuilder
+$(RELEASE_PLATFORMS:%=release/%): release/%: ccaasbuilder/%
 
 # explicit targets for all platform executables
 $(foreach platform, $(RELEASE_PLATFORMS), $(RELEASE_EXES:%=release/$(platform)/bin/%)):
@@ -347,11 +347,18 @@ docs:
 	@docker run --rm -v $$(pwd):/docs n42org/tox:3.4.0 sh -c 'cd /docs && tox -e docs'
 
 .PHONY: ccaasbuilder-clean
-ccaasbuilder-clean:
-	rm -rf $(MARCH:%=release/%)/bin/ccaas_builder
+ccaasbuilder-clean/%:
+	$(eval platform = $(patsubst ccaasbuilder/%,%,$@) )
+	cd ccaas_builder &&	rm -rf $(strip $(platform))
 
 .PHONY: ccaasbuilder
-ccaasbuilder: ccaasbuilder-clean
-	cd ccaas_builder && go test -v ./cmd/detect && go build -o ../$(MARCH:%=release/%)/bin/ccaas_builder/bin/ -buildvcs=false ./cmd/detect/
-	cd ccaas_builder && go test -v ./cmd/build && go build -o ../$(MARCH:%=release/%)/bin/ccaas_builder/bin/ -buildvcs=false ./cmd/build/
-	cd ccaas_builder && go test -v ./cmd/release && go build -o ../$(MARCH:%=release/%)/bin/ccaas_builder/bin/ -buildvcs=false ./cmd/release/
+ccaasbuilder/%: ccaasbuilder-clean
+	$(eval platform = $(patsubst ccaasbuilder/%,%,$@) ) 
+	$(eval GOOS = $(word 1,$(subst -, ,$(platform))))
+	$(eval GOARCH = $(word 2,$(subst -, ,$(platform))))
+	@mkdir -p ../release/$(strip $(platform))/builders/ccaas/bin
+	cd ccaas_builder && go test -v ./cmd/detect && GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o ../release/$(strip $(platform))/builders/ccaas/bin/ ./cmd/detect/
+	cd ccaas_builder && go test -v ./cmd/build && GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o ../release/$(strip $(platform))/builders/ccaas/bin/ ./cmd/build/
+	cd ccaas_builder && go test -v ./cmd/release && GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o ../release/$(strip $(platform))/builders/ccaas/bin/ ./cmd/release/
+
+ccaasbuilder: ccaasbuilder/$(MARCH)
