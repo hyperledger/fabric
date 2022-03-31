@@ -212,7 +212,7 @@ func New(c *Config, rootDir string, dockerClient *docker.Client, startPort int, 
 		Name:                 "binary",
 		PropagateEnvironment: []string{"GOPROXY"},
 	}, {
-		Path:                 filepath.Join(cwd, "..", "..", "release", fmt.Sprintf("%s-%s", runtime.GOOS, runtime.GOARCH), "bin", "ccaas_builder"),
+		Path:                 filepath.Join(cwd, "..", "..", "release", fmt.Sprintf("%s-%s", runtime.GOOS, runtime.GOARCH), "builders", "ccaas"),
 		Name:                 "ccaas",
 		PropagateEnvironment: []string{"CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG"},
 	}}

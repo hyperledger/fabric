@@ -18,5 +18,7 @@ if [ "$(jq -r .type "$META/metadata.json")" == "binary" ]; then
     exit 0
 fi
 
+>&2 cat $META/metadata.json
 >&2 echo "binary is the only supported type"
+
 exit 1
