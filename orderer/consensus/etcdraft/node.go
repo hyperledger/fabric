@@ -206,7 +206,7 @@ func (n *node) send(msgs []raftpb.Message) {
 		if msg.Type == raftpb.MsgSnap {
 			state := n.confState.Load()
 			if state != nil {
-				msg.Snapshot.Metadata.ConfState.Voters = state.(*raftpb.ConfState).Voters
+				msg.Snapshot.Metadata.ConfState = *state.(*raftpb.ConfState)
 			}
 		}
 
