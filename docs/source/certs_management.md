@@ -21,7 +21,7 @@ The following Fabric documentation resources on identities, Managed Service Prov
 
 **Enrollment** – An identity based on the registration username and password. The enrollment contains a public/private key pair and an X.509 certificate issued by the organization Certificate Authority (CA). The certificate encodes roles and attributes from the registration.
 
-**Identity** - A public certificate and its private key used for . The public certificate is the X.509 certificate from the CA, while the private key is issued and stored by the MSP.
+**Identity** - A public certificate and its private key used for encryption. The public certificate is the X.509 certificate from the CA, while the private key is issued and stored by the MSP.
 
 
 ### Certificate Types
@@ -50,12 +50,12 @@ Each enrollment certificate type has a specific role:
 
 #### TLS Certificates
 
-TLS Certificates allow Fabric nodes and clients to sign and encrypt communications. A valid TLS Certificate is required for any channel communication.
+TLS certificates allow Fabric nodes and clients to sign and encrypt communications. A valid TLS Certificate is required for any channel communication.
 
 
 ### Enrollment Certificate Expiration
 
-All Enrollment Certificates are assigned an expiration date by the issuing Certificate Authority (CA).  Expiration dates must be monitored, and certificates must be re-enrolled before expiration. The most important Enrollment Certificate parameter is the **Not After** element, which indicates its expiration date.
+All Enrollment certificates are assigned an expiration date by the issuing Certificate Authority (CA).  Expiration dates must be monitored, and certificates must be re-enrolled before expiration. The most important Enrollment Certificate parameter is the **Not After** element, which indicates its expiration date.
 
 ## Certificates and Locations
 
@@ -64,7 +64,7 @@ Organization CAs supply X.509 Enrollment Certificates for identities and the TLS
 
 ### Organization CA Certificates
 
-Organization CA Root Certificates and Organization CA Admin Certificates are issued for each organization.
+Organization CA Root certificates and Organization CA Admin certificates are issued for each organization.
 
 #### Organization CA Root Certificate
 
@@ -81,6 +81,7 @@ Organization CA Root Certificates and Organization CA Admin Certificates are iss
 
 **Location**: Dependent on implementation:
 
+`
 msp
  ├── IssuerPublicKey
  ├── IssuerRevocationPublicKey
@@ -91,6 +92,7 @@ msp
  ├── signcerts
  │   └── cert.pem
  └── user
+ `
 
 **Impact if expired**: Cannot register or enroll new identities, but transaction traffic does not stop.
 
@@ -99,7 +101,7 @@ msp
 
 ### TLS CA Certificates
 
-TLS CA Root Certificates and TLS CA Admin Certificates are issued for each organization.
+TLS CA Root certificates and TLS CA Admin Certificates are issued for each organization.
 
 
 #### TLS CA Root Certificate
@@ -117,6 +119,7 @@ TLS CA Root Certificates and TLS CA Admin Certificates are issued for each organ
 
 **Location**: Dependent on implementation:
 
+`
 msp
  ├── IssuerPublicKey
  ├── IssuerRevocationPublicKey
@@ -127,6 +130,7 @@ msp
  ├── signcerts
  │   └── cert.pem
  └── user
+`
 
 **Impact if expired**: Cannot register or enroll new identities, but transaction traffic does not stop.
 
@@ -136,7 +140,7 @@ msp
 
 ### Peer Certificates
 
-Peer Enrollment Certificates and Peer TLS Certificates are issued for each organization.
+Peer Enrollment certificates and Peer TLS certificates are issued for each organization.
 
 #### Peer Enrollment Certificate
 
@@ -144,6 +148,7 @@ Peer Enrollment Certificates and Peer TLS Certificates are issued for each organ
 
 **Location**: Dependent on implementation:
 
+`
 org1ca
 ├── msp
 │    ├── cacerts <br /
@@ -154,9 +159,9 @@ org1ca
 │    │   └── cert.pem
 │    |── user
 |    |   └── tls
+`
 
-
-**Impact if expired**: Production outage. Peers do not start without a valid Enrollment Certificate.
+**Impact if expired**: Production outage. Peers do not start without a valid Enrollment certificate.
 
 [Reference](https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#enroll-peer1)
 
@@ -167,6 +172,7 @@ org1ca
 
 **Location**: Dependent on implementation:
 
+`
 org1ca/
 └── peer1
 ├── msp
@@ -179,6 +185,7 @@ org1ca/
 ├── tlscacerts
 │   └── tls-localhost-7053.pem
     └── user
+`
 
 **Impact if expired**: Production outage. No communication to the peer is possible.
 
@@ -187,7 +194,7 @@ org1ca/
 
 ### Orderer Certificates
 
-Orderer Enrollment Certificates and Orderer TLS Certificates are issued for each organization.
+Orderer Enrollment certificates and Orderer TLS certificates are issued for each organization.
 
 #### Orderer Enrollment Certificate
 
@@ -195,6 +202,7 @@ Orderer Enrollment Certificates and Orderer TLS Certificates are issued for each
 
 **Location**: Dependent on implementation:
 
+`
 ordererca/
 └── orderer1
 ├── msp
@@ -206,9 +214,9 @@ ordererca/
 │   │   └── cert.pem
 │   |── user
 |   |    └── tls
+`
 
-
-**Impact if expired**: Production outage. Orderers do not start without a valid enrollment certificate.
+**Impact if expired**: Production outage. Orderers do not start without a valid Enrollment certificate.
 
 [Reference](https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#enroll-orderer)
 
@@ -219,6 +227,7 @@ ordererca/
 
 **Location**: Dependent on implementation:
 
+`
 ordererca/
 └── orderer1
 ├── msp
@@ -231,6 +240,7 @@ ordererca/
     ├── tlscacerts
     │   └── tls-localhost-7053.pem
     └── user
+  `
 
 **Impact if expired**: Production outage. Ordering nodes are no longer allowed to participate in cluster.
 
@@ -239,7 +249,7 @@ ordererca/
 
 ### Admin Certificates
 
-Ordering Service Organization Channel Admin Certificates and Peer Service Organization Channel Admin Certificates are issued for each organization.
+Ordering Service Organization Channel Admin certificates and Peer Service Organization Channel Admin certificates are issued for each organization.
 
 #### Ordering Service Organization Channel Admin Certificate
 
@@ -247,6 +257,7 @@ Ordering Service Organization Channel Admin Certificates and Peer Service Organi
 
 **Location**: Dependent on implementation:
 
+`
 ordererca/
 └── ordereradmin
 └── msp
@@ -259,11 +270,11 @@ ordererca/
     ├── signcerts
     │   └── cert.pem
     └── user
+`
 
 **Impact if expired**: Transactions can continue to work successfully. Cannot modify channels from a client application or manage the orderer from the console.
 
 [Reference](https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#enroll-org0-s-admin)
-
 
 
 #### Peer Service Organization Channel Admin Certificate
@@ -272,6 +283,7 @@ ordererca/
 
 **Location** - Dependent on implementation:
 
+`
 org1ca/
 └── org1admin
 └── msp
@@ -284,6 +296,7 @@ org1ca/
 ├── signcerts
 │     └── cert.pem
 └── user
+`
 
 **Impact if expired**: Transactions can continue to work successfully. Cannot install new smart contracts from a client application or manage the peer from the console.
 
@@ -293,7 +306,7 @@ org1ca/
 
 ### Client Certificates
 
-**Description**: Three types of Client Certificates are issued for each organization:
+**Description**: Three types of Client certificates are issued for each organization:
 
 1. Certificates used to authenticate an identity to the Gateway when submitting transactions
 2. Client-side TLS certificates used to establish a secure network link to a Gateway peer
