@@ -82,15 +82,15 @@ Organization CA Root certificates and Organization CA Admin certificates are iss
 **Location**: Dependent on implementation:
 
 <pre>
-msp <br>
- ├── IssuerPublicKey <br>
- ├── IssuerRevocationPublicKey <br>
- ├── cacerts <br>
- │   └── localhost-7053.pem <br>
- ├── keystore <br>
- │   └── key.pem <br>
- ├── signcerts <br>
- │   └── cert.pem <br>
+msp
+ ├── IssuerPublicKey
+ ├── IssuerRevocationPublicKey
+ ├── cacerts
+ │   └── localhost-7053.pem
+ ├── keystore
+ │   └── key.pem
+ ├── signcerts
+ │   └── cert.pem 
  └── user
 </pre>
 
