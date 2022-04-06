@@ -82,15 +82,15 @@ Organization CA Root certificates and Organization CA Admin certificates are iss
 **Location**: Dependent on implementation:
 
 `
-msp
- ├── IssuerPublicKey
- ├── IssuerRevocationPublicKey
- ├── cacerts
- │   └── localhost-7053.pem
- ├── keystore
- │   └── key.pem
- ├── signcerts
- │   └── cert.pem
+msp <br>
+ ├── IssuerPublicKey <br>
+ ├── IssuerRevocationPublicKey <br>
+ ├── cacerts <br>
+ │   └── localhost-7053.pem <br>
+ ├── keystore <br>
+ │   └── key.pem <br>
+ ├── signcerts <br>
+ │   └── cert.pem <br>
  └── user
  `
 
@@ -295,7 +295,7 @@ org1ca/
 │     └── key.pem
 ├── signcerts
 │     └── cert.pem
-└── user 
+└── user
 `
 
 **Impact if expired**: Transactions can continue to work successfully. Cannot install new smart contracts from a client application or manage the peer from the console.
