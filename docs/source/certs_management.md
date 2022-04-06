@@ -90,7 +90,7 @@ msp
  ├── keystore
  │   └── key.pem
  ├── signcerts
- │   └── cert.pem 
+ │   └── cert.pem
  └── user
 </pre>
 
@@ -119,7 +119,7 @@ TLS CA Root certificates and TLS CA Admin Certificates are issued for each organ
 
 **Location**: Dependent on implementation:
 
-`
+<pre>
 msp
  ├── IssuerPublicKey
  ├── IssuerRevocationPublicKey
@@ -130,7 +130,7 @@ msp
  ├── signcerts
  │   └── cert.pem
  └── user
-`
+</pre>
 
 **Impact if expired**: Cannot register or enroll new identities, but transaction traffic does not stop.
 
@@ -148,7 +148,7 @@ Peer Enrollment certificates and Peer TLS certificates are issued for each organ
 
 **Location**: Dependent on implementation:
 
-`
+<pre>
 org1ca
 ├── msp
 │    ├── cacerts
@@ -159,7 +159,7 @@ org1ca
 │    │   └── cert.pem
 │    |── user
 |    |   └── tls
-`
+</pre>
 
 **Impact if expired**: Production outage. Peers do not start without a valid Enrollment certificate.
 
@@ -172,7 +172,7 @@ org1ca
 
 **Location**: Dependent on implementation:
 
-`
+<pre>
 org1ca/
 └── peer1
 ├── msp
@@ -185,7 +185,7 @@ org1ca/
 ├── tlscacerts
 │   └── tls-localhost-7053.pem
     └── user
-`
+</pre>
 
 **Impact if expired**: Production outage. No communication to the peer is possible.
 
@@ -202,7 +202,7 @@ Orderer Enrollment certificates and Orderer TLS certificates are issued for each
 
 **Location**: Dependent on implementation:
 
-`
+<pre>
 ordererca/
 └── orderer1
 ├── msp
@@ -214,7 +214,7 @@ ordererca/
 │   │   └── cert.pem
 │   |── user
 |   |    └── tls
-`
+</pre>
 
 **Impact if expired**: Production outage. Orderers do not start without a valid Enrollment certificate.
 
@@ -227,7 +227,7 @@ ordererca/
 
 **Location**: Dependent on implementation:
 
-`
+<pre>
 ordererca/
 └── orderer1
 ├── msp
@@ -240,7 +240,7 @@ ordererca/
     ├── tlscacerts
     │   └── tls-localhost-7053.pem
     └── user
-  `
+  </pre>
 
 **Impact if expired**: Production outage. Ordering nodes are no longer allowed to participate in cluster.
 
@@ -257,7 +257,7 @@ Ordering Service Organization Channel Admin certificates and Peer Service Organi
 
 **Location**: Dependent on implementation:
 
-`
+<pre>
 ordererca/
 └── ordereradmin
 └── msp
@@ -270,7 +270,7 @@ ordererca/
     ├── signcerts
     │   └── cert.pem
     └── user
-`
+</pre>
 
 **Impact if expired**: Transactions can continue to work successfully. Cannot modify channels from a client application or manage the orderer from the console.
 
@@ -283,7 +283,7 @@ ordererca/
 
 **Location** - Dependent on implementation:
 
-`
+<pre>
 org1ca/
 └── org1admin
 └── msp
@@ -296,7 +296,7 @@ org1ca/
 ├── signcerts
 │     └── cert.pem
 └── user
-`
+</pre>
 
 **Impact if expired**: Transactions can continue to work successfully. Cannot install new smart contracts from a client application or manage the peer from the console.
 
