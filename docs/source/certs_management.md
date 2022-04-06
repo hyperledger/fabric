@@ -151,7 +151,7 @@ Peer Enrollment certificates and Peer TLS certificates are issued for each organ
 `
 org1ca
 ├── msp
-│    ├── cacerts <br /
+│    ├── cacerts
 │    │   └── localhost-7053.pem
 │    ├── keystore
 │    │   └── key.pem
@@ -295,7 +295,7 @@ org1ca/
 │     └── key.pem
 ├── signcerts
 │     └── cert.pem
-└── user
+└── user 
 `
 
 **Impact if expired**: Transactions can continue to work successfully. Cannot install new smart contracts from a client application or manage the peer from the console.
