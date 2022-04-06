@@ -21,7 +21,7 @@ The following Fabric documentation resources on identities, Managed Service Prov
 
 **Enrollment** – An identity based on the registration username and password. The enrollment contains a public/private key pair and an X.509 certificate issued by the organization Certificate Authority (CA). The certificate encodes roles and attributes from the registration.
 
-**Identity** - A public certificate and its private key used for encryption. The public certificate is the X.509 certificate from the CA, while the private key is issued and stored by the MSP.
+**Identity** - A public certificate and its private key used for . The public certificate is the X.509 certificate from the CA, while the private key is issued and stored by the MSP.
 
 
 ### Certificate Types
@@ -81,7 +81,6 @@ Organization CA Root Certificates and Organization CA Admin Certificates are iss
 
 **Location**: Dependent on implementation:
 
-<code>
 msp
  ├── IssuerPublicKey
  ├── IssuerRevocationPublicKey
@@ -92,7 +91,6 @@ msp
  ├── signcerts
  │   └── cert.pem
  └── user
-</code>
 
 **Impact if expired**: Cannot register or enroll new identities, but transaction traffic does not stop.
 
@@ -119,7 +117,6 @@ TLS CA Root Certificates and TLS CA Admin Certificates are issued for each organ
 
 **Location**: Dependent on implementation:
 
-<code>
 msp
  ├── IssuerPublicKey
  ├── IssuerRevocationPublicKey
@@ -130,7 +127,6 @@ msp
  ├── signcerts
  │   └── cert.pem
  └── user
-</code>
 
 **Impact if expired**: Cannot register or enroll new identities, but transaction traffic does not stop.
 
@@ -148,7 +144,6 @@ Peer Enrollment Certificates and Peer TLS Certificates are issued for each organ
 
 **Location**: Dependent on implementation:
 
-<code>
 org1ca
 ├── msp
 │    ├── cacerts <br /
@@ -157,9 +152,9 @@ org1ca
 │    │   └── key.pem
 │    ├── signcerts
 │    │   └── cert.pem
-│    └── user
-         └── tls
-</code>
+│    |── user
+|    |   └── tls
+
 
 **Impact if expired**: Production outage. Peers do not start without a valid Enrollment Certificate.
 
@@ -172,7 +167,6 @@ org1ca
 
 **Location**: Dependent on implementation:
 
-<code>
 org1ca/
 └── peer1
 ├── msp
@@ -185,7 +179,6 @@ org1ca/
 ├── tlscacerts
 │   └── tls-localhost-7053.pem
     └── user
-</code>
 
 **Impact if expired**: Production outage. No communication to the peer is possible.
 
@@ -202,7 +195,6 @@ Orderer Enrollment Certificates and Orderer TLS Certificates are issued for each
 
 **Location**: Dependent on implementation:
 
-<code>
 ordererca/
 └── orderer1
 ├── msp
@@ -212,9 +204,8 @@ ordererca/
 │   │   └── key.pem
 │   ├── signcerts
 │   │   └── cert.pem
-│   └── user
-        └── tls
-</code>
+│   |── user
+|   |    └── tls
 
 
 **Impact if expired**: Production outage. Orderers do not start without a valid enrollment certificate.
@@ -228,7 +219,6 @@ ordererca/
 
 **Location**: Dependent on implementation:
 
-<code>
 ordererca/
 └── orderer1
 ├── msp
@@ -241,7 +231,6 @@ ordererca/
     ├── tlscacerts
     │   └── tls-localhost-7053.pem
     └── user
-</code>
 
 **Impact if expired**: Production outage. Ordering nodes are no longer allowed to participate in cluster.
 
@@ -258,7 +247,6 @@ Ordering Service Organization Channel Admin Certificates and Peer Service Organi
 
 **Location**: Dependent on implementation:
 
-<code>
 ordererca/
 └── ordereradmin
 └── msp
@@ -271,7 +259,6 @@ ordererca/
     ├── signcerts
     │   └── cert.pem
     └── user
-</code>
 
 **Impact if expired**: Transactions can continue to work successfully. Cannot modify channels from a client application or manage the orderer from the console.
 
@@ -285,7 +272,6 @@ ordererca/
 
 **Location** - Dependent on implementation:
 
-<code>
 org1ca/
 └── org1admin
 └── msp
@@ -298,7 +284,6 @@ org1ca/
 ├── signcerts
 │     └── cert.pem
 └── user
-</code>
 
 **Impact if expired**: Transactions can continue to work successfully. Cannot install new smart contracts from a client application or manage the peer from the console.
 
@@ -308,7 +293,7 @@ org1ca/
 
 ### Client Certificates
 
-Three types of Client Certificates are issued for each organization:
+**Description**: Three types of Client Certificates are issued for each organization:
 
 1. Certificates used to authenticate an identity to the Gateway when submitting transactions
 2. Client-side TLS certificates used to establish a secure network link to a Gateway peer
@@ -323,17 +308,17 @@ Client certificates expire after one year, using the Hyperledger Fabric CA defau
 [Reference](https://hyperledger.github.io/fabric-sdk-node/release-2.2/FabricCAClient.html#reenroll__anchor)
 
 
-### Certificate Decryption
+### Certificate Decoding
 
-X.509 certificates are distinct from registrations, which do not have an expiration. X.509 certificates are created based on the registration and contain information from the CA. This information includes metadata indicating the parent CA and encrypted information describing the purpose of the certificate.
+X.509 certificates are distinct from registrations, which do not have an expiration. X.509 certificates are created based on the registration and contain information from the CA. This information includes metadata indicating the parent CA and encoded information describing the purpose of the certificate.
 
-Certificate details can be decrypted using the OpenSSL utility:
+Certificate details can be decoded using the OpenSSL utility:
 
 ```
 # openssl x509 -in cert.pem -text -noout
 ```
 
-The following example shows a decrypted certificate:
+The following example shows a decoded certificate:
 
 ```
 Certificate:
