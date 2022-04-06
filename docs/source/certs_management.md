@@ -81,7 +81,7 @@ Organization CA Root certificates and Organization CA Admin certificates are iss
 
 **Location**: Dependent on implementation:
 
-
+<pre>
 msp <br>
  ├── IssuerPublicKey <br>
  ├── IssuerRevocationPublicKey <br>
@@ -92,7 +92,7 @@ msp <br>
  ├── signcerts <br>
  │   └── cert.pem <br>
  └── user
-
+</pre>
 
 **Impact if expired**: Cannot register or enroll new identities, but transaction traffic does not stop.
 
