@@ -21,7 +21,7 @@ The following Fabric documentation resources on identities, Managed Service Prov
 
 **Enrollment** – An identity based on the registration username and password. The enrollment contains a public/private key pair and an X.509 certificate issued by the organization Certificate Authority (CA). The certificate encodes roles and attributes from the registration.
 
-**Identity** - A public certificate and its private key used for encryption. The public certificate is the X.509 certificate from the CA, while the private key is issued and stored by the MSP.
+**Identity** - A public certificate and its private key used for encryption. The public certificate is the X.509 certificate issued by the CA, while the private key is stored out of band, on a secure storage.
 
 
 ### Certificate Types
@@ -30,7 +30,7 @@ Hyperledger Fabric implements two types of certificates: 1) **Enrollment** certi
 
 #### Enrollment Certificates
 
-Enrollment certificates are classed into fours types:
+Enrollment certificates are classed into four types:
 
 * **Admin**
 * **Peer**
@@ -150,15 +150,18 @@ Peer Enrollment certificates and Peer TLS certificates are issued for each organ
 
 <pre>
 org1ca
-├── msp
-│    ├── cacerts
-│    │   └── localhost-7053.pem
-│    ├── keystore
-│    │   └── key.pem
-│    ├── signcerts
-│    │   └── cert.pem
-│    |── user
-|    |   └── tls
+└── peer1
+    ├── msp
+    │    ├── admincerts
+    │    │   └── cert.pem
+    │    ├── cacerts
+    │    │   └── localhost-7053.pem
+    │    ├── keystore
+    │    │   └── key.pem
+    │    ├── signcerts
+    │    │   └── cert.pem
+    │    └── user
+    |── tls
 </pre>
 
 **Impact if expired**: Production outage. Peers do not start without a valid Enrollment certificate.
@@ -175,16 +178,16 @@ org1ca
 <pre>
 org1ca/
 └── peer1
-├── msp
+    ├── msp
     └── tls
-├── cacerts
-├── keystore
-│   └── key.pem
-├── signcerts
-│   └── cert.pem
-├── tlscacerts
-│   └── tls-localhost-7053.pem
-    └── user
+        ├── cacerts
+        ├── keystore
+        │   └── key.pem
+        ├── signcerts
+        │   └── cert.pem
+        ├── tlscacerts
+        │   └── tls-localhost-7053.pem
+        └── user
 </pre>
 
 **Impact if expired**: Production outage. No communication to the peer is possible.
@@ -203,17 +206,18 @@ Orderer Enrollment certificates and Orderer TLS certificates are issued for each
 **Location**: Dependent on implementation:
 
 <pre>
-ordererca/
-└── orderer1
-├── msp
-│   ├── cacerts
-│   │   └── localhost-7053.pem
-│   ├── keystore
-│   │   └── key.pem
-│   ├── signcerts
-│   │   └── cert.pem
-│   |── user
-|   |    └── tls
+ └── orderer1
+     ├── msp
+     │   ├── admincerts
+     │   │   └── cert.pem
+     │   ├── cacerts
+     │   │   └── localhost-7053.pem
+     │   ├── keystore
+     │   │   └── key.pem
+     │   ├── signcerts
+     │   │   └── cert.pem
+     │   |── user
+     └── tls
 </pre>
 
 **Impact if expired**: Production outage. Orderers do not start without a valid Enrollment certificate.
@@ -230,16 +234,16 @@ ordererca/
 <pre>
 ordererca/
 └── orderer1
-├── msp
-└── tls
-    ├── cacerts
-    ├── keystore
-        └── key.pem
-    ├── signcerts
-    │   └── cert.pem
-    ├── tlscacerts
-    │   └── tls-localhost-7053.pem
-    └── user
+    ├── msp
+    └── tls
+        ├── cacerts
+        ├── keystore
+        |   └── key.pem
+        ├── signcerts
+        │   └── cert.pem
+        ├── tlscacerts
+        │   └── tls-localhost-7053.pem
+        └── user
   </pre>
 
 **Impact if expired**: Production outage. Ordering nodes are no longer allowed to participate in cluster.
