@@ -11,9 +11,9 @@ The following Fabric documentation resources on identities, Membership Service P
 * [Identity](./identity/identity.html#identity)
 * [MSP Overview](./membership/membership.html)
 * [MSP Configuration](./msp.html)
-* [Registration and Enrollment](./deployguide/use_CA.html#overview-of-registration-and-enrollment)
-* [Registering an Identity](./deployguide/use_CA.html#register-an-identity)
-* [Enrolling an Identity](./deployguide/use_CA.html#enroll-an-identity)
+* [Registration and Enrollment](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html#overview-of-registration-and-enrollment)
+* [Registering an Identity](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html#register-an-identity)
+* [Enrolling an Identity](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html#enroll-an-identity)
 
 
 ## Key Concepts
