@@ -1,21 +1,22 @@
-## Certificate Management Guide
+# Certificate Management Guide
 
 **Audience**: Hyperledger Fabric network admins
 
-This guide provides overview information and details for a network admin to manage certificates (certs) in Hyperledger Fabric.
+This guide provides overview information and details for a network administrator to manage certificates (certs) in Hyperledger Fabric.
 
-### Prerequisites and Resources
+## Prerequisites and Resources
 
-The following Fabric documentation resources on identities, Managed Service Providers (MSPs) and Certificate Authorities (CAs) provide context for understanding certificate management:
+The following Fabric documentation resources on identities, Membership Service Providers (MSPs) and Certificate Authorities (CAs) provide context for understanding certificate management:
 
-* [Identity in Hyperledger Fabric](https://hyperledger-fabric.readthedocs.io/en/latest/identity/identity.html#identity)
-* [MSPs in Hyperledger Fabric](https://hyperledger-fabric.readthedocs.io/en/latest/membership/membership.html#membership-service-provider-msp)
-* [Registration and Enrollment](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html#overview-of-registration-and-enrollment)
-* [Registering an Identity](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html#register-an-identity)
-* [Enrolling an Identity](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html#enroll-an-identity)
+* [Identity](./identity/identity.html#identity)
+* [MSP Overview](./membership/membership.html)
+* [MSP Configuration](./msp.html)
+* [Registration and Enrollment](./deployguide/use_CA.html#overview-of-registration-and-enrollment)
+* [Registering an Identity](./deployguide/use_CA.html#register-an-identity)
+* [Enrolling an Identity](./deployguide/use_CA.html#enroll-an-identity)
 
 
-### Key Concepts
+## Key Concepts
 
 **Registration** – A username (enrollment ID) and password pair, stored in the Certificate Authority (CA). This registration is created by a CA admin user, has no expiration, and contains any required roles and attributes.
 
@@ -24,11 +25,11 @@ The following Fabric documentation resources on identities, Managed Service Prov
 **Identity** - A public certificate and its private key used for encryption. The public certificate is the X.509 certificate issued by the CA, while the private key is stored out of band, on a secure storage.
 
 
-### Certificate Types
+## Certificate Types
 
 Hyperledger Fabric implements two types of certificates: 1) **Enrollment** certificates for identities and 2) **TLS** certificates for node and client communications.
 
-#### Enrollment Certificates
+### Enrollment Certificates
 
 Enrollment certificates are classed into four types:
 
@@ -37,25 +38,25 @@ Enrollment certificates are classed into four types:
 * **Orderer**
 * **Client**
 
-Each enrollment certificate type has a specific role:
+Each Enrollment certificate type has a specific role:
 
 **Admin:** X.509 certificates used to authenticate admin identities, which are required to make changes to  Fabric configurations.
 
-**Peer:** X.509 certificates used to enroll peer nodes, located physically on the node or mapped to the node. For a Fabric peer node to start, it must have a valid enrollment certificate with the required attributes.
+**Peer:** X.509 certificates used to enroll peer nodes, located physically on the node or mapped to the node. For a Fabric peer node to start, it must have a valid Enrollment certificate with the required attributes.
 
-**Orderer:** X.509 certificates used to enroll orderer nodes, located physically on the node or mapped to the node. For a Fabric orderer node to start, it must have a valid enrollment certificate with the required attributes.
+**Orderer:** X.509 certificates used to enroll orderer nodes, located physically on the node or mapped to the node. For a Fabric orderer node to start, it must have a valid Enrollment certificate with the required attributes.
 
 **Client:** X.509 certificates that allow signed requests to be passed from clients to Fabric nodes. These requests require a signature for admin level certificates.
 
+#### Enrollment Certificate Expiration
 
-#### TLS Certificates
+All Enrollment certificates are assigned an expiration date by the issuing Certificate Authority (CA).  Expiration dates must be monitored, and certificates must be re-enrolled before expiration. The most important Enrollment Certificate parameter is the **Not After** element, which indicates its expiration date.
+
+
+### TLS Certificates
 
 TLS certificates allow Fabric nodes and clients to sign and encrypt communications. A valid TLS Certificate is required for any channel communication.
 
-
-### Enrollment Certificate Expiration
-
-All Enrollment certificates are assigned an expiration date by the issuing Certificate Authority (CA).  Expiration dates must be monitored, and certificates must be re-enrolled before expiration. The most important Enrollment Certificate parameter is the **Not After** element, which indicates its expiration date.
 
 ## Certificates and Locations
 
@@ -257,7 +258,7 @@ Ordering Service Organization Channel Admin certificates and Peer Service Organi
 
 #### Ordering Service Organization Channel Admin Certificate
 
-**Description**: Admin certificate used to administer the ordering service and submit or approve channel updates. The associated admin identity is enrolled with the Organization CA before the node and Organization MSP are created.
+**Description**: Certificate for an organization administrator to manage ordering service and channel updates.
 
 **Location**: Dependent on implementation:
 
@@ -283,7 +284,7 @@ ordererca/
 
 #### Peer Service Organization Channel Admin Certificate
 
-**Description** - Admin certificate used to administer the peer and install smart contracts on the peer. Can also be configured to manage the application channel that the peer belongs to. The associated admin user is registered with the Organization CA before the peer and Organization MSP are created.
+**Description** - Certificate for an organization administrator to manage a peer, including channel and chaincode services.
 
 **Location** - Dependent on implementation:
 
@@ -310,13 +311,10 @@ org1ca/
 
 ### Client Certificates
 
-**Description**: Three types of Client certificates are issued for each organization:
+**Description**: Two types of Client certificates are issued for each organization:
 
-1. Certificates used to authenticate an identity to the Gateway when submitting transactions
-2. Client-side TLS certificates used to establish a secure network link to a Gateway peer
-3. Certificate for a client SDK user if no gateway is accessed.
-
-Both the client and the CA have to sign a client certificate for it to be valid.
+1. **Organization Enrollment Certificate** - Authenticates the client identity for communication with peers and orderers.
+2. **TLS Certificate** - Authenticates client communications, and only required if mutual TLS is configured.
 
 Client certificates expire after one year, using the Hyperledger Fabric CA default settings. Client certificates can be re-enrolled using either command line Hyperledger Fabric CA utilities or the Fabric CA client SDK.
 
@@ -327,9 +325,9 @@ Client certificates expire after one year, using the Hyperledger Fabric CA defau
 
 ### Certificate Decoding
 
-X.509 certificates are distinct from registrations, which do not have an expiration. X.509 certificates are created based on the registration and contain information from the CA. This information includes metadata indicating the parent CA and encoded information describing the purpose of the certificate.
+X.509 certificates are created by an enrollment of the certificate, based on its registration. The X.509 certificate contains metadata describing its purpose and identifying the parent CA. The cert expiration is specified in the **Not After** field.
 
-Certificate details can be decoded using the OpenSSL utility:
+The certificate details can be decoded using the OpenSSL utility:
 
 ```
 # openssl x509 -in cert.pem -text -noout
