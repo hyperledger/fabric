@@ -134,12 +134,15 @@ consistent across organizations:
 - **Name:** The name that applications will use when invoking the chaincode.
 - **Version:** A version number or value associated with a given chaincodes
   package. If you upgrade the chaincode binaries, you need to change your
-  chaincode version as well.
-- **Sequence:** The number of times the chaincode has been defined. This value
+  chaincode version as well. Versions may contain any characters,
+  but it is typical to use a format such as `v1.2.3`. The version is not checked by the peer,
+  it is only an indicator intended to help organizations coordinate as they update their chaincode logic.
+- **Sequence:** The number of times the chaincode has been defined on a channel. This value
   is an integer, and is used to keep track of chaincode upgrades. For example,
-  when you first install and approve a chaincode definition, the sequence number
-  will be 1. When you next upgrade the chaincode, the sequence number will be
-  incremented to 2.
+  when you first approve and commit a chaincode definition on a channel, the sequence number
+  must be set to 1. When you next upgrade the chaincode or update the chaincode definition,
+  increment the sequence number to 2. The sequence number is used by the peer to
+  ensure that all organizations stay in sync regarding the chaincode definitions that they approve and commit.
 - **Endorsement Policy:** Which organizations need to execute and validate the
   transaction output. The endorsement policy can be expressed as a string passed
   to the CLI, or it can reference a policy in the channel config. By
