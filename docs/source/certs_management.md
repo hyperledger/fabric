@@ -20,42 +20,44 @@ The following Fabric documentation resources on identities, Membership Service P
 
 **Registration** – A username (enrollment ID) and password pair, stored in the Certificate Authority (CA). This registration is created by a CA admin user, has no expiration, and contains any required roles and attributes.
 
-**Enrollment** – An identity based on the registration username and password. The enrollment contains a public/private key pair and an X.509 certificate issued by the organization Certificate Authority (CA). The certificate encodes roles and attributes from the registration.
+**Enrollment** – An identity based on the registration username and password. The enrollment contains a public/private key pair and an X.509 Certificate issued by the organization Certificate Authority (CA). The certificate encodes roles and attributes from the registration.
 
 **Identity** - A public certificate and its private key used for encryption. The public certificate is the X.509 certificate issued by the CA, while the private key is stored out of band, on a secure storage.
+
+**TLS** - A public Transport Layer Security (TLS) Certificate that authorizes client and node communications. On Fabric, registration and enrollment are the same for X.509 Certificates and TLS Certificates.
 
 
 ## Certificate Types
 
-Hyperledger Fabric implements two types of certificates: 1) **Enrollment** certificates for identities and 2) **TLS** certificates for node and client communications.
+Hyperledger Fabric implements two types of certificates: 1) **Enrollment** Certificates for identities and 2) **TLS** Certificates for node and client communications.
 
 ### Enrollment Certificates
 
-Enrollment certificates are classed into four types:
+Enrollment Certificates are classed into four types:
 
 * **Admin**
 * **Peer**
 * **Orderer**
 * **Client**
 
-Each Enrollment certificate type has a specific role:
+Each Enrollment Certificate type has a specific role:
 
-**Admin:** X.509 certificates used to authenticate admin identities, which are required to make changes to  Fabric configurations.
+**Admin:** X.509 Certificates used to authenticate admin identities, which are required to make changes to  Fabric configurations.
 
-**Peer:** X.509 certificates used to enroll peer nodes, located physically on the node or mapped to the node. For a Fabric peer node to start, it must have a valid Enrollment certificate with the required attributes.
+**Peer:** X.509 Certificates used to enroll peer nodes, located physically on the node or mapped to the node. For a Fabric peer node to start, it must have a valid Enrollment Certificate with the required attributes.
 
-**Orderer:** X.509 certificates used to enroll orderer nodes, located physically on the node or mapped to the node. For a Fabric orderer node to start, it must have a valid Enrollment certificate with the required attributes.
+**Orderer:** X.509 Certificates used to enroll orderer nodes, located physically on the node or mapped to the node. For a Fabric orderer node to start, it must have a valid Enrollment Certificate with the required attributes.
 
-**Client:** X.509 certificates that allow signed requests to be passed from clients to Fabric nodes. These requests require a signature for admin level certificates.
-
-#### Enrollment Certificate Expiration
-
-All Enrollment certificates are assigned an expiration date by the issuing Certificate Authority (CA).  Expiration dates must be monitored, and certificates must be re-enrolled before expiration. The most important Enrollment Certificate parameter is the **Not After** element, which indicates its expiration date.
+**Client:** X.509 Certificates that allow signed requests to be passed from clients to Fabric nodes. These requests require a signature for admin level certificates.
 
 
 ### TLS Certificates
 
-TLS certificates allow Fabric nodes and clients to sign and encrypt communications. A valid TLS Certificate is required for any channel communication.
+TLS Certificates allow Fabric nodes and clients to sign and encrypt communications. A valid TLS Certificate is required for any channel communication.
+
+### Certificate Expiration
+
+Enrollment and TLS Certificates are assigned an expiration date by the issuing Certificate Authority (CA).  Expiration dates must be monitored, and certificates must be re-enrolled before expiration. The most important certificate parameter is the **Not After** element, which indicates its expiration date.
 
 
 ## Certificates and Locations
@@ -65,15 +67,15 @@ Organization CAs supply X.509 Enrollment Certificates for identities and the TLS
 
 ### Organization CA Certificates
 
-Organization CA Root certificates and Organization CA Admin certificates are issued for each organization.
+Organization CA Root Certificates and Organization CA Admin Certificates are self-signed certificates if creating a new Certificate Authority (CA), or provided by an external CA.
 
 #### Organization CA Root Certificate
 
-**Description**: Public certificate that permits verification of all certificates issued by the Organization CA.
+**Description**: Public Certificate that permits verification of all certificates issued by the Organization CA.
 
-**Location**: Stored on disk in the Organization CA directory, or in the channel configuration (ca-cert.pem).
+**Location**: Stored on disk in the Organization CA directory (ca-cert.pem), and copied into the channel configuration to verify identifies for the organization.
 
-**Impact if expired**: A new Organization CA Root certificate must be issued. Organization CA Root certificates are valid for 15 years.
+**Impact if expired**: A new Organization CA Root Certificate must be issued. Organization CA Root Certificates are valid for 15 years.
 
 
 #### Organization CA Admin Certificate
@@ -81,6 +83,8 @@ Organization CA Root certificates and Organization CA Admin certificates are iss
 **Description**: Certificate used when making admin requests to the Organization CA.
 
 **Location**: Dependent on implementation:
+
+**Note**: Each identity has a local **msp** directory structure which contains its certificate in the **signcerts** directory and its private key in the **keystore** directory. For details on the **msp** directory, refer to [MSP Structure](https://hyperledger-fabric.readthedocs.io/en/latest/membership/membership.html#msp-structure).
 
 <pre>
 msp
@@ -97,21 +101,21 @@ msp
 
 **Impact if expired**: Cannot register or enroll new identities, but transaction traffic does not stop.
 
-[Reference](https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#enroll-orderer-org-s-ca-admin)
+[Reference - Enroll Orderer Org’s CA Admin](https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#enroll-orderer-org-s-ca-admin)
 
 
 ### TLS CA Certificates
 
-TLS CA Root certificates and TLS CA Admin Certificates are issued for each organization.
+TLS CA Root Certificates and TLS CA Admin Certificates are self-signed certificates if creating a new Certificate Authority (CA), or provided by an external CA.
 
 
 #### TLS CA Root Certificate
 
 **Description**: Certificate used when making admin requests to the TLS CA.
 
-**Location**: Stored on disk in the TLS CA directory or in the channel configuration (ca-cert.pem).
+**Location**: Stored on disk in the TLS CA directory (ca-cert.pem), and copied into the channel configuration to verify identifies for the organization.
 
-**Impact if expired**: A new TLS CA Root certificate must be issued. TLS CA Root certificates are valid for 15 years.
+**Impact if expired**: A new TLS CA Root Certificate must be issued. TLS CA Root Certificates are valid for 15 years.
 
 
 #### TLS CA Admin Certificate
@@ -133,15 +137,14 @@ msp
  └── user
 </pre>
 
-**Impact if expired**: Cannot register or enroll new identities, but transaction traffic does not stop.
+**Impact if expired**: All communication between the node and its clients and channels stops.
 
 [Reference](https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#enroll-tls-ca-s-admin)
 
 
-
 ### Peer Certificates
 
-Peer Enrollment certificates and Peer TLS certificates are issued for each organization.
+Peer Enrollment Certificates and Peer TLS Certificates are issued for each organization.
 
 #### Peer Enrollment Certificate
 
@@ -165,7 +168,7 @@ org1ca
     |── tls
 </pre>
 
-**Impact if expired**: Production outage. Peers do not start without a valid Enrollment certificate.
+**Impact if expired**: Production outage. Peers do not start without a valid Enrollment Certificate.
 
 [Reference](https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#enroll-peer1)
 
@@ -198,11 +201,11 @@ org1ca/
 
 ### Orderer Certificates
 
-Orderer Enrollment certificates and Orderer TLS certificates are issued for each organization.
+Orderer Enrollment Certificates and Orderer TLS Certificates are issued for each organization.
 
 #### Orderer Enrollment Certificate
 
-**Description**: The public key that the orderer uses to sign transactions.
+**Description**: The public key that the orderer uses to sign blocks.
 
 **Location**: Dependent on implementation:
 
@@ -221,14 +224,14 @@ Orderer Enrollment certificates and Orderer TLS certificates are issued for each
      └── tls
 </pre>
 
-**Impact if expired**: Production outage. Orderers do not start without a valid Enrollment certificate.
+**Impact if expired**: Production outage. Orderers do not start without a valid Enrollment Certificate.
 
 [Reference](https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#enroll-orderer)
 
 
 #### Orderer TLS Certificate
 
-**Description**: TLS certificate for the ordering node.
+**Description**: TLS Certificate for the ordering node communication.
 
 **Location**: Dependent on implementation:
 
@@ -254,7 +257,7 @@ ordererca/
 
 ### Admin Certificates
 
-Ordering Service Organization Channel Admin certificates and Peer Service Organization Channel Admin certificates are issued for each organization.
+Ordering Service Organization Channel Admin Certificates and Peer Service Organization Channel Admin Certificates are issued for each organization.
 
 #### Ordering Service Organization Channel Admin Certificate
 
@@ -311,21 +314,21 @@ org1ca/
 
 ### Client Certificates
 
-**Description**: Two types of Client certificates are issued for each organization:
+**Description**: Two types of Client Certificates are issued for each organization:
 
 1. **Organization Enrollment Certificate** - Authenticates the client identity for communication with peers and orderers.
 2. **TLS Certificate** - Authenticates client communications, and only required if mutual TLS is configured.
 
-Client certificates expire after one year, using the Hyperledger Fabric CA default settings. Client certificates can be re-enrolled using either command line Hyperledger Fabric CA utilities or the Fabric CA client SDK.
+Client Certificates expire after one year, using the Hyperledger Fabric CA default settings. Client Certificates can be re-enrolled using either command line Hyperledger Fabric CA utilities or the Fabric CA client SDK.
 
-**Impact if expired**: Client certificates must be re-enrolled before expiration or the client application will not be able to connect to the Fabric nodes.
+**Impact if expired**: Client Certificates must be re-enrolled before expiration or the client application will not be able to connect to the Fabric nodes.
 
 [Reference](https://hyperledger.github.io/fabric-sdk-node/release-2.2/FabricCAClient.html#reenroll__anchor)
 
 
 ### Certificate Decoding
 
-X.509 certificates are created by an enrollment of the certificate, based on its registration. The X.509 certificate contains metadata describing its purpose and identifying the parent CA. The cert expiration is specified in the **Not After** field.
+X.509 Certificates are created by an enrollment of the certificate, based on its registration. The X.509 Certificate contains metadata describing its purpose and identifying the parent CA. The cert expiration is specified in the **Not After** field.
 
 The certificate details can be decoded using the OpenSSL utility:
 
