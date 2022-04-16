@@ -34,6 +34,7 @@ Finally, we provide an introduction to how to write a basic smart contract,
    :caption: Tutorials
 
    test_network
+   cc_basic.md
    deploy_chaincode.md
    write_first_app
    private_data_tutorial
