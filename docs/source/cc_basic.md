@@ -4,7 +4,7 @@ The Fabric v2.4.1 chaincode-as-a-service feature is a novel, practical approach 
 
 As a result, the earlier method made it challenging to deploy chaincode into Kubernetes (K8s) style environments, and to run chaincode in any form of debug mode. Additionally, the code was rebuilt by the peer, introducing a degree of uncertainty about which dependencies had been installed.
 
-The new chaincode-as-service method requires an administrator to orchestrate the chaincode build and deployment phase. Although this creates an additional step, it provides administrators with control over the process. The peer still requires a 'chaincode package' to be installed, but with no code&mdash;only information about where the chaincode is hosted is installed (such as Hostname, Port, and TLS configuration).
+The new chaincode-as-service method requires an administrator to orchestrate the chaincode build and deployment phase. Although this creates an additional step, it provides administrators with control over the process. The peer still requires a 'chaincode package' to be installed, but with no code - only information about where the chaincode is hosted is installed (such as Hostname, Port, and TLS configuration).
 
 ## Fabric v2.4.1 Improvements
 
@@ -50,7 +50,7 @@ This sequence can be run as follows:
 ./network.sh deployCCAAS  -ccn basicts -ccp ../asset-transfer-basic/chaincode-typescript
 ```
 
-This is similar to the `deployCC` command&mdash;it specifies the name and path. But it also requires the port for the chaincode container to use. Because each container is on the `fabric-test` network, changing the port can avoid collisions with other chaincode containers.
+This is similar to the `deployCC` command in that it specifies the name and path. But it also requires the port for the chaincode container to use. Because each container is on the `fabric-test` network, changing the port can avoid collisions with other chaincode containers.
 
 If successful to this point, the smart contract (chaincode) should be starting in the monitoring window. There should be two containers running, one for `org1` and one for `org2`. The container names contain the organization, peer, and chaincode name.
 
@@ -202,7 +202,7 @@ The external builder will then resolve this address to be `org1peer1_assettransf
 
 Each peer can have its own separate configuration, and therefore a unique address. The JSON string that is set can have any structure, as long as the templates (in golang template syntax) match.
 
-Any value in `connection.json` can be templated&mdash;but only the values and not the keys.
+Any value in `connection.json` can be templated, but only the values and not the keys.
 
 <!---
 Licensed under Creative Commons Attribution 4.0 International License https://creativecommons.org/licenses/by/4.0/
