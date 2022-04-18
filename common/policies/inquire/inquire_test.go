@@ -11,10 +11,13 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type testCase struct {
@@ -105,6 +108,30 @@ func TestSatisfiedBy(t *testing.T) {
 			require.Equal(t, test.expected, actual)
 		})
 	}
+}
+
+func TestSatisfiedByEmptyPolicy(t *testing.T) {
+	backupLogger := logger
+	defer func() {
+		logger = backupLogger
+	}()
+
+	logged := make(map[string]struct{})
+
+	logger = logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
+		logged[entry.Message] = struct{}{}
+		return nil
+	}))
+
+	ip := NewInquireableSignaturePolicy(&common.SignaturePolicyEnvelope{
+		Identities: []*msp.MSPPrincipal{{}},
+	})
+
+	require.Nil(t, ip.SatisfiedBy())
+
+	require.Equal(t, map[string]struct{}{
+		"Malformed policy, it is either not composed of signature policy envelopes or is missing some": {},
+	}, logged)
 }
 
 func TestSatisfiedByTooManyCombinations(t *testing.T) {
