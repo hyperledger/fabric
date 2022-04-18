@@ -286,6 +286,7 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 	for {
 		if seekInfo.Behavior == ab.SeekInfo_FAIL_IF_NOT_READY {
 			if number > chain.Reader().Height()-1 {
+				logger.Warningf("[channel: %s] Block %d not found, block number greater than chain length bounds", chdr.ChannelId, number)
 				return cb.Status_NOT_FOUND, nil
 			}
 		}
@@ -313,7 +314,7 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 		}
 
 		if status != cb.Status_SUCCESS {
-			logger.Errorf("[channel: %s] Error reading from channel, cause was: %v", chdr.ChannelId, status)
+			logger.Warningf("[channel: %s] Error reading from channel, cause was: %v", chdr.ChannelId, status)
 			return status, nil
 		}
 
