@@ -62,6 +62,10 @@ func principalsOfTree(tree *graph.Tree, principals policies.PrincipalSet) polici
 			continue
 		}
 		pol := v.Data.(*common.SignaturePolicy)
+		if pol == nil {
+			logger.Warnf("Malformed policy, it is either not composed of signature policy envelopes or is missing some")
+			return nil
+		}
 		switch principalIndex := pol.Type.(type) {
 		case *common.SignaturePolicy_SignedBy:
 			if len(principals) <= int(principalIndex.SignedBy) {
