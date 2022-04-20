@@ -8,6 +8,7 @@ package ca
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
@@ -49,6 +50,7 @@ func NewCA(
 	orgUnit,
 	streetAddress,
 	postalCode string,
+	keyAlg string,
 ) (*CA, error) {
 	var ca *CA
 
@@ -57,7 +59,7 @@ func NewCA(
 		return nil, err
 	}
 
-	priv, err := csp.GeneratePrivateKey(baseDir)
+	priv, err := csp.GeneratePrivateKey(baseDir, keyAlg)
 	if err != nil {
 		return nil, err
 	}
@@ -81,22 +83,20 @@ func NewCA(
 	template.Subject = subject
 	template.SubjectKeyId = computeSKI(priv)
 
-	x509Cert, err := genCertificateECDSA(
+	x509Cert, err := genCertificate(
 		baseDir,
 		name,
 		&template,
 		&template,
-		&priv.PublicKey,
+		getPublicKey(priv),
 		priv,
 	)
 	if err != nil {
 		return nil, err
 	}
 	ca = &CA{
-		Name: name,
-		Signer: &csp.ECDSASigner{
-			PrivateKey: priv,
-		},
+		Name:               name,
+		Signer:             GetSignerFromPrivateKey(priv),
 		SignCert:           x509Cert,
 		Country:            country,
 		Province:           province,
@@ -116,7 +116,7 @@ func (ca *CA) SignCertificate(
 	name string,
 	orgUnits,
 	alternateNames []string,
-	pub *ecdsa.PublicKey,
+	pub crypto.PublicKey,
 	ku x509.KeyUsage,
 	eku []x509.ExtKeyUsage,
 ) (*x509.Certificate, error) {
@@ -148,7 +148,7 @@ func (ca *CA) SignCertificate(
 		}
 	}
 
-	cert, err := genCertificateECDSA(
+	cert, err := genCertificate(
 		baseDir,
 		name,
 		&template,
@@ -164,9 +164,17 @@ func (ca *CA) SignCertificate(
 }
 
 // compute Subject Key Identifier using RFC 7093, Section 2, Method 4
-func computeSKI(privKey *ecdsa.PrivateKey) []byte {
+func computeSKI(privKey crypto.PrivateKey) []byte {
+	var raw []byte
+
 	// Marshall the public key
-	raw := elliptic.Marshal(privKey.Curve, privKey.PublicKey.X, privKey.PublicKey.Y)
+	switch kk := privKey.(type) {
+	case *ecdsa.PrivateKey:
+		raw = elliptic.Marshal(kk.Curve, kk.PublicKey.X, kk.PublicKey.Y)
+	case ed25519.PrivateKey:
+		raw = kk.Public().(ed25519.PublicKey)
+	default:
+	}
 
 	// Hash it
 	hash := sha256.Sum256(raw)
@@ -236,12 +244,12 @@ func x509Template() x509.Certificate {
 }
 
 // generate a signed X509 certificate using ECDSA
-func genCertificateECDSA(
+func genCertificate(
 	baseDir,
 	name string,
 	template,
 	parent *x509.Certificate,
-	pub *ecdsa.PublicKey,
+	pub crypto.PublicKey,
 	priv interface{},
 ) (*x509.Certificate, error) {
 	// create the x509 public cert
@@ -270,8 +278,34 @@ func genCertificateECDSA(
 	return x509Cert, nil
 }
 
-// LoadCertificateECDSA load a ecdsa cert from a file in cert path
-func LoadCertificateECDSA(certPath string) (*x509.Certificate, error) {
+func getPublicKey(priv crypto.PrivateKey) crypto.PublicKey {
+	switch kk := priv.(type) {
+	case *ecdsa.PrivateKey:
+		return &(kk.PublicKey)
+	case ed25519.PrivateKey:
+		return kk.Public()
+	default:
+		panic("unsupported key algorithm")
+	}
+}
+
+func GetSignerFromPrivateKey(priv crypto.PrivateKey) crypto.Signer {
+	switch kk := priv.(type) {
+	case *ecdsa.PrivateKey:
+		return &csp.ECDSASigner{
+			PrivateKey: kk,
+		}
+	case ed25519.PrivateKey:
+		return &csp.ED25519Signer{
+			PrivateKey: kk,
+		}
+	default:
+		panic("unsupported key algorithm")
+	}
+}
+
+// LoadCertificate load a ecdsa cert from a file in cert path
+func LoadCertificate(certPath string) (*x509.Certificate, error) {
 	var cert *x509.Certificate
 	var err error
 

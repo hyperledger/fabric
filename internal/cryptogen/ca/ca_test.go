@@ -32,6 +32,8 @@ const (
 	testOrganizationalUnit = "Hyperledger Fabric"
 	testStreetAddress      = "testStreetAddress"
 	testPostalCode         = "123456"
+	ECDSA                  = "ecdsa"
+	ED25519                = "ed25519"
 )
 
 func TestLoadCertificateECDSA(t *testing.T) {
@@ -42,7 +44,7 @@ func TestLoadCertificateECDSA(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create certs directory: %s", err)
 	}
-	priv, err := csp.GeneratePrivateKey(certDir)
+	priv, err := csp.GeneratePrivateKey(certDir, ECDSA)
 	require.NoError(t, err, "Failed to generate signed certificate")
 
 	// create our CA
@@ -57,6 +59,7 @@ func TestLoadCertificateECDSA(t *testing.T) {
 		testOrganizationalUnit,
 		testStreetAddress,
 		testPostalCode,
+		ECDSA,
 	)
 	require.NoError(t, err, "Error generating CA")
 
@@ -65,7 +68,7 @@ func TestLoadCertificateECDSA(t *testing.T) {
 		testName3,
 		nil,
 		nil,
-		&priv.PublicKey,
+		&priv.(*ecdsa.PrivateKey).PublicKey,
 		x509.KeyUsageDigitalSignature|x509.KeyUsageKeyEncipherment,
 		[]x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	)
@@ -75,7 +78,7 @@ func TestLoadCertificateECDSA(t *testing.T) {
 		cert.KeyUsage)
 	require.Contains(t, cert.ExtKeyUsage, x509.ExtKeyUsageAny)
 
-	loadedCert, err := ca.LoadCertificateECDSA(certDir)
+	loadedCert, err := ca.LoadCertificate(certDir)
 	require.NoError(t, err)
 	require.NotNil(t, loadedCert, "Should load cert")
 	require.Equal(t, cert.SerialNumber, loadedCert.SerialNumber, "Should have same serial number")
@@ -89,7 +92,7 @@ func TestLoadCertificateECDSA_wrongEncoding(t *testing.T) {
 	err := os.WriteFile(filename, []byte("wrong_encoding"), 0o644) // Wrong encoded cert
 	require.NoErrorf(t, err, "failed to create file %s", filename)
 
-	_, err = ca.LoadCertificateECDSA(testDir)
+	_, err = ca.LoadCertificate(testDir)
 	require.NotNil(t, err)
 	require.EqualError(t, err, filename+": wrong PEM encoding")
 }
@@ -102,7 +105,7 @@ func TestLoadCertificateECDSA_empty_DER_cert(t *testing.T) {
 	err := os.WriteFile(filename, []byte(empty_cert), 0o644)
 	require.NoErrorf(t, err, "failed to create file %s", filename)
 
-	cert, err := ca.LoadCertificateECDSA(testDir)
+	cert, err := ca.LoadCertificate(testDir)
 	require.Nil(t, cert)
 	require.NotNil(t, err)
 	require.EqualError(t, err, filename+": wrong DER encoding")
@@ -122,6 +125,7 @@ func TestNewCA(t *testing.T) {
 		testOrganizationalUnit,
 		testStreetAddress,
 		testPostalCode,
+		ECDSA,
 	)
 	require.NoError(t, err, "Error generating CA")
 	require.NotNil(t, rootCA, "Failed to return CA")
@@ -157,8 +161,9 @@ func TestGenerateSignCertificate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create certs directory: %s", err)
 	}
-	priv, err := csp.GeneratePrivateKey(certDir)
+	privGeneric, err := csp.GeneratePrivateKey(certDir, ECDSA)
 	require.NoError(t, err, "Failed to generate signed certificate")
+	priv := privGeneric.(*ecdsa.PrivateKey)
 
 	// create our CA
 	caDir := filepath.Join(testDir, "ca")
@@ -172,6 +177,7 @@ func TestGenerateSignCertificate(t *testing.T) {
 		testOrganizationalUnit,
 		testStreetAddress,
 		testPostalCode,
+		ECDSA,
 	)
 	require.NoError(t, err, "Error generating CA")
 

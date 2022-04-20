@@ -27,6 +27,8 @@ const (
 	testOrganizationalUnit = "Hyperledger Fabric"
 	testStreetAddress      = "testStreetAddress"
 	testPostalCode         = "123456"
+	ECDSA                  = "ecdsa"
+	ED25519                = "ed25519"
 )
 
 var testDir = filepath.Join(os.TempDir(), "msp-test")
@@ -34,7 +36,7 @@ var testDir = filepath.Join(os.TempDir(), "msp-test")
 func testGenerateLocalMSP(t *testing.T, nodeOUs bool) {
 	cleanup(testDir)
 
-	err := msp.GenerateLocalMSP(testDir, testName, nil, &ca.CA{}, &ca.CA{}, msp.PEER, nodeOUs)
+	err := msp.GenerateLocalMSP(testDir, testName, nil, &ca.CA{}, &ca.CA{}, msp.PEER, nodeOUs, ECDSA)
 	require.Error(t, err, "Empty CA should have failed")
 
 	caDir := filepath.Join(testDir, "ca")
@@ -43,10 +45,10 @@ func testGenerateLocalMSP(t *testing.T, nodeOUs bool) {
 	tlsDir := filepath.Join(testDir, "tls")
 
 	// generate signing CA
-	signCA, err := ca.NewCA(caDir, testCAOrg, testCAName, testCountry, testProvince, testLocality, testOrganizationalUnit, testStreetAddress, testPostalCode)
+	signCA, err := ca.NewCA(caDir, testCAOrg, testCAName, testCountry, testProvince, testLocality, testOrganizationalUnit, testStreetAddress, testPostalCode, ECDSA)
 	require.NoError(t, err, "Error generating CA")
 	// generate TLS CA
-	tlsCA, err := ca.NewCA(tlsCADir, testCAOrg, testCAName, testCountry, testProvince, testLocality, testOrganizationalUnit, testStreetAddress, testPostalCode)
+	tlsCA, err := ca.NewCA(tlsCADir, testCAOrg, testCAName, testCountry, testProvince, testLocality, testOrganizationalUnit, testStreetAddress, testPostalCode, ECDSA)
 	require.NoError(t, err, "Error generating CA")
 
 	require.NotEmpty(t, signCA.SignCert.Subject.Country, "country cannot be empty.")
@@ -63,7 +65,7 @@ func testGenerateLocalMSP(t *testing.T, nodeOUs bool) {
 	require.Equal(t, testPostalCode, signCA.SignCert.Subject.PostalCode[0], "Failed to match postalCode")
 
 	// generate local MSP for nodeType=PEER
-	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA, msp.PEER, nodeOUs)
+	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA, msp.PEER, nodeOUs, ECDSA)
 	require.NoError(t, err, "Failed to generate local MSP")
 
 	// check to see that the right files were generated/saved
@@ -95,7 +97,7 @@ func testGenerateLocalMSP(t *testing.T, nodeOUs bool) {
 	}
 
 	// generate local MSP for nodeType=CLIENT
-	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA, msp.CLIENT, nodeOUs)
+	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA, msp.CLIENT, nodeOUs, ECDSA)
 	require.NoError(t, err, "Failed to generate local MSP")
 	// check all
 	for _, file := range mspFiles {
@@ -109,10 +111,10 @@ func testGenerateLocalMSP(t *testing.T, nodeOUs bool) {
 	}
 
 	tlsCA.Name = "test/fail"
-	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA, msp.CLIENT, nodeOUs)
+	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA, msp.CLIENT, nodeOUs, ECDSA)
 	require.Error(t, err, "Should have failed with CA name 'test/fail'")
 	signCA.Name = "test/fail"
-	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA, msp.ORDERER, nodeOUs)
+	err = msp.GenerateLocalMSP(testDir, testName, nil, signCA, tlsCA, msp.ORDERER, nodeOUs, ECDSA)
 	require.Error(t, err, "Should have failed with CA name 'test/fail'")
 	t.Log(err)
 	cleanup(testDir)
@@ -131,13 +133,13 @@ func testGenerateVerifyingMSP(t *testing.T, nodeOUs bool) {
 	tlsCADir := filepath.Join(testDir, "tlsca")
 	mspDir := filepath.Join(testDir, "msp")
 	// generate signing CA
-	signCA, err := ca.NewCA(caDir, testCAOrg, testCAName, testCountry, testProvince, testLocality, testOrganizationalUnit, testStreetAddress, testPostalCode)
+	signCA, err := ca.NewCA(caDir, testCAOrg, testCAName, testCountry, testProvince, testLocality, testOrganizationalUnit, testStreetAddress, testPostalCode, ECDSA)
 	require.NoError(t, err, "Error generating CA")
 	// generate TLS CA
-	tlsCA, err := ca.NewCA(tlsCADir, testCAOrg, testCAName, testCountry, testProvince, testLocality, testOrganizationalUnit, testStreetAddress, testPostalCode)
+	tlsCA, err := ca.NewCA(tlsCADir, testCAOrg, testCAName, testCountry, testProvince, testLocality, testOrganizationalUnit, testStreetAddress, testPostalCode, ECDSA)
 	require.NoError(t, err, "Error generating CA")
 
-	err = msp.GenerateVerifyingMSP(mspDir, signCA, tlsCA, nodeOUs)
+	err = msp.GenerateVerifyingMSP(mspDir, signCA, tlsCA, nodeOUs, ECDSA)
 	require.NoError(t, err, "Failed to generate verifying MSP")
 
 	// check to see that the right files were generated/saved
@@ -158,10 +160,10 @@ func testGenerateVerifyingMSP(t *testing.T, nodeOUs bool) {
 	}
 
 	tlsCA.Name = "test/fail"
-	err = msp.GenerateVerifyingMSP(mspDir, signCA, tlsCA, nodeOUs)
+	err = msp.GenerateVerifyingMSP(mspDir, signCA, tlsCA, nodeOUs, ECDSA)
 	require.Error(t, err, "Should have failed with CA name 'test/fail'")
 	signCA.Name = "test/fail"
-	err = msp.GenerateVerifyingMSP(mspDir, signCA, tlsCA, nodeOUs)
+	err = msp.GenerateVerifyingMSP(mspDir, signCA, tlsCA, nodeOUs, ECDSA)
 	require.Error(t, err, "Should have failed with CA name 'test/fail'")
 	t.Log(err)
 	cleanup(testDir)
