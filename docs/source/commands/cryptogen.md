@@ -26,7 +26,9 @@ usage: cryptogen [<flags>] <command> [<args> ...]
 Utility for generating Hyperledger Fabric key material
 
 Flags:
-  --help  Show context-sensitive help (also try --help-long and --help-man).
+  --help            Show context-sensitive help (also try --help-long and
+                    --help-man).
+  --keyalg="ecdsa"  The generated keys' algorithm (ecdsa or ed25519)
 
 Commands:
   help [<command>...]
@@ -55,6 +57,7 @@ Generate key material
 Flags:
   --help                    Show context-sensitive help (also try --help-long
                             and --help-man).
+  --keyalg="ecdsa"          The generated keys' algorithm (ecdsa or ed25519)
   --output="crypto-config"  The output directory in which to place artifacts
   --config=CONFIG           The configuration template to use
 ```
@@ -67,7 +70,9 @@ usage: cryptogen showtemplate
 Show the default configuration template
 
 Flags:
-  --help  Show context-sensitive help (also try --help-long and --help-man).
+  --help            Show context-sensitive help (also try --help-long and
+                    --help-man).
+  --keyalg="ecdsa"  The generated keys' algorithm (ecdsa or ed25519)
 ```
 
 
@@ -80,6 +85,7 @@ Extend existing network
 Flags:
   --help                   Show context-sensitive help (also try --help-long and
                            --help-man).
+  --keyalg="ecdsa"         The generated keys' algorithm (ecdsa or ed25519)
   --input="crypto-config"  The input directory in which existing network place
   --config=CONFIG          The configuration template to use
 ```
@@ -92,7 +98,9 @@ usage: cryptogen version
 Show version information
 
 Flags:
-  --help  Show context-sensitive help (also try --help-long and --help-man).
+  --help            Show context-sensitive help (also try --help-long and
+                    --help-man).
+  --keyalg="ecdsa"  The generated keys' algorithm (ecdsa or ed25519)
 ```
 
 ## Usage

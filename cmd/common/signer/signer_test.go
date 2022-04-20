@@ -35,7 +35,7 @@ func TestSigner(t *testing.T) {
 
 	r, s, err := utils.UnmarshalECDSASignature(sig)
 	require.NoError(t, err)
-	ecdsa.Verify(&signer.key.PublicKey, util.ComputeSHA256(msg), r, s)
+	ecdsa.Verify(&signer.key.(*ecdsa.PrivateKey).PublicKey, util.ComputeSHA256(msg), r, s)
 }
 
 func TestSignerDifferentFormats(t *testing.T) {
