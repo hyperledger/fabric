@@ -22,6 +22,9 @@ const (
 	// ECDSAReRand ECDSA key re-randomization
 	ECDSAReRand = "ECDSA_RERAND"
 
+	// ED25519 Algorithm
+	ED25519 = "ED25519"
+
 	// RSA at the default security level.
 	// Each BCCSP may or may not support default security level. If not supported than
 	// an error will be returned.
@@ -90,6 +93,21 @@ func (opts *ECDSAKeyGenOpts) Ephemeral() bool {
 	return opts.Temporary
 }
 
+type ED25519KeyGenOpts struct {
+	Temporary bool
+}
+
+// Algorithm returns the key generation algorithm identifier (to be used).
+func (opts *ED25519KeyGenOpts) Algorithm() string {
+	return ED25519
+}
+
+// Ephemeral returns true if the key to generate has to be ephemeral,
+// false otherwise.
+func (opts *ED25519KeyGenOpts) Ephemeral() bool {
+	return opts.Temporary
+}
+
 // ECDSAPKIXPublicKeyImportOpts contains options for ECDSA public key importation in PKIX format
 type ECDSAPKIXPublicKeyImportOpts struct {
 	Temporary bool
@@ -136,6 +154,38 @@ func (opts *ECDSAGoPublicKeyImportOpts) Algorithm() string {
 // Ephemeral returns true if the key to generate has to be ephemeral,
 // false otherwise.
 func (opts *ECDSAGoPublicKeyImportOpts) Ephemeral() bool {
+	return opts.Temporary
+}
+
+// ED25519PrivateKeyImportOpts contains options for ED25519 key importation from ed25519.PublicKey
+type ED25519PrivateKeyImportOpts struct {
+	Temporary bool
+}
+
+// Algorithm returns the key importation algorithm identifier (to be used).
+func (opts *ED25519PrivateKeyImportOpts) Algorithm() string {
+	return ED25519
+}
+
+// Ephemeral returns true if the key to generate has to be ephemeral,
+// false otherwise.
+func (opts *ED25519PrivateKeyImportOpts) Ephemeral() bool {
+	return opts.Temporary
+}
+
+// ED25519GoPublicKeyImportOpts contains options for ED25519 key importation from ed25519.PublicKey
+type ED25519GoPublicKeyImportOpts struct {
+	Temporary bool
+}
+
+// Algorithm returns the key importation algorithm identifier (to be used).
+func (opts *ED25519GoPublicKeyImportOpts) Algorithm() string {
+	return ED25519
+}
+
+// Ephemeral returns true if the key to generate has to be ephemeral,
+// false otherwise.
+func (opts *ED25519GoPublicKeyImportOpts) Ephemeral() bool {
 	return opts.Temporary
 }
 

@@ -45,6 +45,31 @@ func TestClientStub(t *testing.T) {
 	require.Contains(t, err.Error(), "Unimplemented desc = unknown service discovery.Discovery")
 }
 
+func TestClientStubEd25519(t *testing.T) {
+	srv, err := corecomm.NewGRPCServer("127.0.0.1:", corecomm.ServerConfig{
+		SecOpts: corecomm.SecureOptions{},
+	})
+	require.NoError(t, err)
+	go srv.Start()
+	defer srv.Stop()
+
+	_, portStr, _ := net.SplitHostPort(srv.Address())
+	endpoint := fmt.Sprintf("localhost:%s", portStr)
+	stub := &ClientStub{}
+
+	req := discovery.NewRequest()
+
+	_, err = stub.Send(endpoint, common.Config{
+		SignerConfig: signer.Config{
+			MSPID:        "Org1MSP",
+			KeyPath:      filepath.Join("testdata", "ed25519_sk"),
+			IdentityPath: filepath.Join("testdata", "ed25519.pem"),
+		},
+		TLSConfig: comm.Config{},
+	}, req)
+	require.Contains(t, err.Error(), "Unimplemented desc = unknown service discovery.Discovery")
+}
+
 func TestRawStub(t *testing.T) {
 	srv, err := corecomm.NewGRPCServer("127.0.0.1:", corecomm.ServerConfig{
 		SecOpts: corecomm.SecureOptions{},
