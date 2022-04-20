@@ -399,3 +399,21 @@ func (h *Handler) validateChannelHeader(ctx context.Context, chdr *cb.ChannelHea
 func noExpiration(_ []byte) time.Time {
 	return time.Time{}
 }
+
+func (h *Handler) HandleAttestation(ctx context.Context, srv *Server, env *cb.Envelope) error {
+	status, err := h.deliverBlocks(ctx, srv, env)
+	if err != nil {
+		return err
+	}
+
+	err = srv.SendStatusResponse(status)
+	if status != cb.Status_SUCCESS {
+		return err
+	}
+	if err != nil {
+		addr := util.ExtractRemoteAddress(ctx)
+		logger.Warningf("Error sending to %s: %s", addr, err)
+		return err
+	}
+	return nil
+}
