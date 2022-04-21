@@ -1,4 +1,4 @@
-# Certificate Management Guide
+# Certificates Management Guide
 
 **Audience**: Hyperledger Fabric network admins
 
@@ -18,9 +18,9 @@ The following Fabric documentation resources on identities, Membership Service P
 
 ## Key Concepts
 
-**Registration** – A username (enrollment ID) and password pair, stored in the Certificate Authority (CA). This registration is created by a CA admin user, has no expiration, and contains any required roles and attributes.
+**Registration** – A username and password pair, stored in the Certificate Authority (CA). This registration is created by a CA admin user, has no expiration, and contains any required roles and attributes.
 
-**Enrollment** – An identity based on the registration username and password. The enrollment contains a public/private key pair and an X.509 Certificate issued by the organization Certificate Authority (CA). The certificate encodes roles and attributes from the registration.
+**Enrollment** – A public/private key pair and an X.509 certificate issued by the organization's Certificate Authority (CA). The certificate encodes roles, attributes, and metadata, which represent an identity in a Fabric network. An enrollment is associated with a CA registration by username and password.
 
 **Identity** - A public certificate and its private key used for encryption. The public certificate is the X.509 certificate issued by the CA, while the private key is stored out of band, on a secure storage.
 
@@ -48,7 +48,7 @@ Each Enrollment Certificate type has a specific role:
 
 **Orderer:** X.509 Certificates used to enroll orderer nodes, located physically on the node or mapped to the node. For a Fabric orderer node to start, it must have a valid Enrollment Certificate with the required attributes.
 
-**Client:** X.509 Certificates that allow signed requests to be passed from clients to Fabric nodes. These requests require a signature for admin level certificates.
+**Client:** X.509 Certificates that allow signed requests to be passed from clients to Fabric nodes. Client certs define the identities of client applications submitting transactions to a Fabric network.
 
 
 ### TLS Certificates
@@ -99,7 +99,7 @@ msp
  └── user
 </pre>
 
-**Impact if expired**: Cannot register or enroll new identities, but transaction traffic does not stop.
+**Impact if expired**: The Organization Administrator cannot register or enroll new identities with the CA, but transaction traffic does not stop.
 
 [Reference - Enroll Orderer Org’s CA Admin](https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#enroll-orderer-org-s-ca-admin)
 
@@ -137,7 +137,7 @@ msp
  └── user
 </pre>
 
-**Impact if expired**: All communication between the node and its clients and channels stops.
+**Impact if expired**: The Fabric Administrator will no longer be able to issue or renew TLS certificates for nodes in the network.
 
 [Reference](https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#enroll-tls-ca-s-admin)
 
