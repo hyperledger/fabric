@@ -121,11 +121,13 @@ as well:
 Debugging TLS issues
 --------------------
 
-Before debugging TLS issues, it is advisable to enable ``GRPC debug`` on both the TLS client
-and the server side to get additional information. To enable ``GRPC debug``, set the
-environment variable ``FABRIC_LOGGING_SPEC`` to include ``grpc=debug``. For example, to
-set the default logging level to ``INFO`` and the GRPC logging level to ``DEBUG``, set
-the logging specification to ``grpc=debug:info``.
+If you see the error message ``remote error: tls: bad certificate`` on the server side
+(for example on the peer node or ordering service node when making requests from a client),
+it usually means that the client is not configured to trust the signer of the server's TLS certificate.
+Check the client's ``CORE_PEER_TLS_ROOTCERT_FILE`` (for connections to peer nodes)
+or ``--cafile`` (for connections to orderer nodes).
+The corresponding error on the client side in these cases is the handshake error ``x509: certificate signed by unknown authority``
+and ultimately connection failure with ``context deadline exceeded``.
 
 If you see the error message ``remote error: tls: bad certificate`` on the client side, it
 usually means that the TLS server has enabled client authentication and the server either did
@@ -133,9 +135,13 @@ not receive the correct client certificate or it received a client certificate t
 not trust. Make sure the client is sending its certificate and that it has been signed by one
 of the CA certificates trusted by the peer or orderer node.
 
-If you see the error message ``remote error: tls: bad certificate`` in your chaincode logs,
-ensure that your chaincode has been built using the chaincode shim provided with Fabric v1.1
-or newer.
+To receive additional debug information, enable ``GRPC debug`` on both the TLS client
+and the server side to get additional information. To enable ``GRPC debug``, set the
+environment variable ``FABRIC_LOGGING_SPEC`` to include ``grpc=debug``. For example, to
+set the default logging level to ``INFO`` and the GRPC logging level to ``DEBUG``, set
+the logging specification to ``grpc=debug:info``.
+
+You can check a TLS certificate against a trusted CA certificate by using the "openssl verify" command.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
