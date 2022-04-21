@@ -12,11 +12,24 @@ While this style guide will also refer to best practices using ReStructured Text
 
 If you just want to look at how things are formatted, you can navigate to the Fabric repo to look at the raw file by clicking on `Edit on Github` link in the upper right hand corner of the page. Then click the `Raw` tab. This will show you the formatting of the doc. **Do not attempt to edit the file on Github.** If you want to make a change, clone the repo and follow the instructions in [Contributing](./CONTRIBUTING.html) for creating pull requests.
 
+## Inclusive language
+
+Please adhere to the inclusive language guidelines that the project has adopted as you make documentation updates.
+
+- Consider that users who will read the docs are from different backgrounds and
+cultures and that they have different preferences.
+- Avoid potential offensive terms and, for instance, prefer "allow list and
+deny list" to "white list and black list".
+- We believe that we all have a role to play to improve our world, and even if
+writing inclusive documentation might not look like a huge improvement, it's a
+first step in the right direction.
+- We suggest to refer to
+[Microsoft bias free writing guidelines](https://docs.microsoft.com/en-us/style-guide/bias-free-communication)
+and
+[Google inclusive doc writing guide](https://developers.google.com/style/inclusive-documentation)
+as starting points.
+
 ## Word choices
-
-**Avoid the use of the words "whitelist", "blacklist", "master", or "slave".**
-
-Unless the use of these words is absolutely necessary (for example, when quoting a section of code that uses them), do not use these words. Either be more explicit (for example, describing what "whitelisting" actually does) or find alternate words such as "allowlist" or "blocklist".
 
 **Tutorials should have a list of steps at the top.**
 
