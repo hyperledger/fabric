@@ -108,10 +108,12 @@ msp
 
 TLS CA Root Certificates and TLS CA Admin Certificates are self-signed certificates if creating a new Certificate Authority (CA), or provided by an external CA.
 
+TLS CA Root Certificates and TLS CA Admin Certificates provide authorization to interact with the certificate authority for the TLS, as described below.
+
 
 #### TLS CA Root Certificate
 
-**Description**: Public certificate that permits verification of all certificates issued by the TLS CA.
+**Description**: Public certificate that permits verification of all certificates issued by the TLS CA. TLS CA Root Certificates are self-signed certificates if creating a new Certificate Authority (CA), or provided by an external CA.
 
 **Location**: Stored on disk in the TLS CA directory (ca-cert.pem), and copied into the channel configuration to verify identifies for the organization.
 
@@ -201,7 +203,7 @@ org1ca/
 
 ### Orderer Certificates
 
-Orderer Enrollment Certificates and Orderer TLS Certificates are issued for each organization.
+Orderer Enrollment Certificates and Orderer TLS Certificates are issued for each ordering service node in an organization.
 
 #### Orderer Enrollment Certificate
 
