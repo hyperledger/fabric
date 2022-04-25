@@ -99,14 +99,12 @@ msp
  └── user
 </pre>
 
-**Impact if expired**: The Organization Administrator cannot register or enroll new identities with the CA, but transaction traffic does not stop.
+**Impact if expired**: The Organization Administrator cannot register new identities with the CA, but transaction traffic does not stop.
 
 [Reference - Enroll Orderer Org CA Admin](https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#enroll-orderer-org-s-ca-admin)
 
 
 ### TLS CA Certificates
-
-TLS CA Root Certificates and TLS CA Admin Certificates are self-signed certificates if creating a new Certificate Authority (CA), or provided by an external CA.
 
 TLS CA Root Certificates and TLS CA Admin Certificates provide authorization to interact with the certificate authority for the TLS, as described below.
 
@@ -115,7 +113,7 @@ TLS CA Root Certificates and TLS CA Admin Certificates provide authorization to 
 
 **Description**: Public certificate that permits verification of all certificates issued by the TLS CA. TLS CA Root Certificates are self-signed certificates if creating a new Certificate Authority (CA), or provided by an external CA.
 
-**Location**: Stored on disk in the TLS CA directory (ca-cert.pem), and copied into the channel configuration to verify identifies for the organization.
+**Location**: Stored on disk in the TLS CA directory (ca-cert.pem), and copied into the channel configuration to verify TLS Certificates for the organization.
 
 **Impact if expired**: A new TLS CA Root Certificate must be issued. TLS CA Root Certificates are valid for 15 years.
 
@@ -139,7 +137,7 @@ msp
  └── user
 </pre>
 
-**Impact if expired**: The Fabric Administrator will no longer be able to issue or renew TLS certificates for nodes in the network.
+**Impact if expired**: The Fabric Administrator will no longer be able to register TLS certificates in the TLS CA for nodes in the network.
 
 [Reference - Enroll TLS CA Admin](https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#enroll-tls-ca-s-admin)
 
