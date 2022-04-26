@@ -6,6 +6,7 @@ Operations Guides
 
    orderer_deploy
    msp
+   certs_management.md
    hsm.md
    configtx
    endorsement-policies
