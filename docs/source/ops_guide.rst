@@ -5,6 +5,7 @@ Operations Guides
    :maxdepth: 1
 
    msp
+   certs_management.md
    peer_ledger_snapshot
    hsm.md
    configtx
