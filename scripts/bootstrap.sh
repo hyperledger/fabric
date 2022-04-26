@@ -6,9 +6,9 @@
 #
 
 # if version not passed in, default to latest released version
-VERSION=2.4.2
+VERSION=2.4.3
 # if ca version not passed in, default to latest released version
-CA_VERSION=1.5.2
+CA_VERSION=1.5.3
 ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m |sed 's/x86_64/amd64/g')" |sed 's/darwin-arm64/darwin-amd64/g')
 MARCH=$(uname -m)
 
@@ -21,8 +21,8 @@ printHelp() {
     echo "-s : bypass fabric-samples repo clone"
     echo "-b : bypass download of platform-specific binaries"
     echo
-    echo "e.g. bootstrap.sh 2.4.2 1.5.2 -s"
-    echo "will download docker images and binaries for Fabric v2.4.2 and Fabric CA v1.5.2"
+    echo "e.g. bootstrap.sh 2.4.3 1.5.3 -s"
+    echo "will download docker images and binaries for Fabric v2.4.3 and Fabric CA v1.5.3"
 }
 
 # dockerPull() pulls docker images from fabric and chaincode repositories
