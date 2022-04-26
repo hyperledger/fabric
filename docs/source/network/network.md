@@ -166,7 +166,7 @@ has limited rights to create new consortia.
 In its simplest form, the ordering service is a single node in the network, and
 that's what you can see in the example. Ordering services are usually
 multi-node, and can be configured to have different nodes in different
-organizations. For example, we might run O4 in R4 and connect it to O2, a
+organizations. For example, we might run O4 in R4 and connect it to O1, a
 separate orderer node in organization R1.  In this way, we would have a
 multi-site, multi-organization administration structure.
 
@@ -223,7 +223,7 @@ Let's see how the first channel has been added to the network:
 
 *A channel C1 has been created for R1 and R2 using the consortium definition X1.
 The channel is governed by a channel configuration CC1, completely separate to
-the network configuration.  CC1 is managed by R1 and R2 who have equal rights
+the network configuration NC4. CC1 is managed by R1 and R2 who have equal rights
 over C1. R4 has no rights in CC1 whatsoever.*
 
 The channel C1 provides a private communications mechanism for the consortium
@@ -243,12 +243,12 @@ shown two as it's the simplest configuration.
 
 Again, notice how channel C1 has a completely separate configuration, CC1, to
 the network configuration NC4. CC1 contains the policies that govern the
-rights that R1 and R2 have over the channel C1 -- and as we've seen, R3 and
-R4 have no permissions in this channel. R3 and R4 can only interact with C1 if
-they are added by R1 or R2 to the appropriate policy in the channel
-configuration CC1. An example is defining who can add a new organization to the
-channel. Specifically, note that R4 cannot add itself to the channel C1 -- it
-must, and can only, be authorized by R1 or R2.
+rights that R1 and R2 have over the channel C1. An example of these policies
+is defining who can add a new organization to the channel. In our example,
+organizations other than R1 and R2 have no permissions over the channel C1
+and can only interact with it if they are added by R1 or R2 to the appropriate
+policy in the channel configuration CC1. Specifically, note that R4 cannot add
+itself to the channel C1. It must, and can only, be authorized by R1 or R2.
 
 Why are channels so important? Channels are useful because they provide a
 mechanism for private communications and private data between the members of a
@@ -410,13 +410,12 @@ You can read more about endorsement policies in the [transaction flow topic](../
 
 ### Invoking a smart contract
 
-Once a smart contract has been installed on a peer node and defined on a
-channel it can be [invoked](../glossary.html#invoke) by a client application.
-Client applications do this by sending transaction proposals to peers owned by
-the organizations specified by the smart contract endorsement policy. The
-transaction proposal serves as input to the smart contract, which uses it to
-generate an endorsed transaction response, which is returned by the peer node to
-the client application.
+Once a smart contract has been committed to a channel, it can be
+[invoked](../glossary.html#invoke) by a client application. Client applications
+do this by sending transaction proposals to peers owned by the organizations
+specified by the smart contract endorsement policy. The transaction proposal
+serves as input to the smart contract, which uses it to generate an endorsed
+transaction response, which is returned by the peer node to the client application.
 
 It's these transactions responses that are packaged together with the
 transaction proposal to form a fully endorsed transaction, which can be
@@ -494,12 +493,11 @@ understanding of a typical network topology to describe these roles.
     which are subsequently validated before they are committed to the peer
     node's copy of the ledger as an append operation.
 
-  * [*Endorsing peer*](../glossary.html#endorsement). Every peer with a smart
-    contract *can* be an endorsing peer if it has a smart contract installed.
-    However, to actually *be* an endorsing peer, the smart contract on the peer
-    must be used by a client application to generate a digitally signed
-    transaction response. The term *endorsing peer* is an explicit reference to
-    this fact.
+  * [*Endorsing peer*](../glossary.html#endorsement). Every peer *can* be an
+    endorsing peer if it has a smart contract installed. However, to actually
+    *be* an endorsing peer, the smart contract on the peer must be used by a
+    client application to generate a digitally signed transaction response.
+    The term *endorsing peer* is an explicit reference to this fact.
 
     An endorsement policy for a smart contract identifies the
     organizations whose peer should digitally sign a generated transaction
@@ -752,7 +750,7 @@ appropriate policy as being responsible for configuration change. This policy is
 called the **mod_policy** and we'll [discuss it later](#changing-policy).
 
 Indeed, the ordering service nodes operate a mini-blockchain, connected via the
-**system channel** we mentioned earlier. Using the system channel ordering
+**system channel** we mentioned earlier. Using the system channel, ordering
 service nodes distribute network configuration transactions. These transactions
 are used to co-operatively maintain a consistent copy of the network
 configuration at each ordering service node. In a similar way, peer nodes in an
@@ -795,8 +793,8 @@ separate; it is scoped to channel C1.  This makes sense -- the purpose of the
 channel C2 is to provide private communications between the members of the
 consortium X2, and the ledger L2 is the private store for their transactions.
 
-In a similar way, the smart contract S6, installed on peer node P3, and defined
-on channel C2, is used to provide controlled access to ledger L2. Application A3
+In a similar way, the smart contract S6, installed on peer node P3, and committed
+to channel C2, is used to provide controlled access to ledger L2. Application A3
 can now use channel C2 to invoke the services provided by smart contract S6 to
 generate transactions that can be accepted onto every copy of the ledger L2 in
 the network.
