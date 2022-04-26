@@ -33,6 +33,13 @@ Support for user chaincodes to utilize the chaincode shim's logger via `NewLogge
 
 For more information, check out [Logging control](./logging-control.html#chaincode).
 
+#### Nodejs v1.4 Chaincode
+
+For v1.4 Nodejs chaincode libraries, the supported node runtime is v8. Though not formally supported, the v1.4 libraries can work on later versions. For example the Node12 runtime that was used with Fabric v2.2.  Fabric v2.4 has upgraded to Node16. It is _not possible_ to run the v1.4 libraries on Node 16.  Therefore any chaincode written with the v1.4 libraries will need to be updated. Typically this will be before upgrading to a Fabric 2.4 peer.
+
+Also please note that the v1.4 libraries themselves are not supported, and will no longer get updates. Please migrate to a v2 Node chaincode library.
+
+For detailed information please refer to the [compatibility](https://github.com/hyperledger/fabric-chaincode-node/blob/main/COMPATIBILITY.md) document in the `fabric-chaincode-node` repository.
 ### While upgrading peer nodes
 
 #### Peer databases upgrade
