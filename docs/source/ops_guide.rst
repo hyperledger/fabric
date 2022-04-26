@@ -6,6 +6,11 @@ Operations Guides
 
    orderer_deploy
    msp
+<<<<<<< HEAD
+=======
+   certs_management.md
+   peer_ledger_snapshot
+>>>>>>> 85c7a5e06 (certs mgmt guide (#3307))
    hsm.md
    configtx
    endorsement-policies
