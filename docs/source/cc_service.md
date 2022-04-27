@@ -27,7 +27,7 @@ code.tar.gz
 
 The chaincode package should be used to provide two pieces of information to the external builder and launcher process
 * identify if the chaincode is an external service. The `bin/detect` section describes an approach using the `metadata.json` file
-* provide chaincode endpoint information in a `connection.json` file placed in the release directory. The `bin/run` section describes the `connection.json` file
+* provide chaincode endpoint information in a `connection.json` file placed in the release directory. 
 
 There is plenty of flexibility to gathering the above information. The sample scripts in the [External builder and launcher sample scripts](#external-builder-and-launcher-sample-scripts) illustrate a simple approach to providing the information.
 As an example of flexibility, consider packaging couchdb index files (see [Add the index to your chaincode folder](couchdb_tutorial.html#add-the-index-to-your-chaincode-folder)). Sample scripts below describe an approach to packaging the files into myccpackage.tar.gz.
@@ -64,7 +64,7 @@ externalBuilders:
 
 ### External builder and launcher sample scripts
 
-To help understand what each script needs to contain to work with the chaincode as an external service, this section contains samples of  `bin/detect` `bin/build`, `bin/release`, and `bin/run` scripts.
+To help understand what each script needs to contain to work with the chaincode as an external service, this section contains samples of  `bin/detect` `bin/build` and `bin/release` scripts.
 
 **Note:** These samples use the `jq` command to parse json. You can run `jq --version` to check if you have it installed. Otherwise, install `jq` or suitably modify the scripts.
 
