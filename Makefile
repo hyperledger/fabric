@@ -49,7 +49,11 @@ BASE_VERSION = 2.2.5
 
 # 3rd party image version
 # These versions are also set in the runners in ./integration/runners/
+<<<<<<< HEAD
 COUCHDB_VER ?= 3.1
+=======
+COUCHDB_VER ?= 3.2.2
+>>>>>>> 3a55a5652 (Bump CouchDB to 3.2.2 (#3369))
 KAFKA_VER ?= 5.3.1
 ZOOKEEPER_VER ?= 5.3.1
 
