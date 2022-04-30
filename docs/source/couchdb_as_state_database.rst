@@ -67,7 +67,7 @@ can be utilized with either LevelDB or CouchDB state database, e.g. ``GetState``
 ``GetStateByRange``, ``GetStateByPartialCompositeKey``. Additionally when you utilize CouchDB as
 the state database and model assets as JSON in chaincode, you can perform JSON queries against
 the data in the state database by using the ``GetQueryResult`` API and passing a CouchDB query string.
-The query string follows the `CouchDB JSON query syntax <http://docs.couchdb.org/en/2.1.1/api/database/find.html>`__.
+The query string follows the `CouchDB JSON query syntax <http://docs.couchdb.org/en/3.2.2/api/database/find.html>`__.
 
 The `asset transfer Fabric sample <https://github.com/hyperledger/fabric-samples/blob/main/asset-transfer-ledger-queries/chaincode-go/asset_transfer_ledger_chaincode.go>`__
 demonstrates use of CouchDB queries from chaincode. It includes a ``queryAssetsByOwner()`` function
@@ -132,7 +132,7 @@ any JSON query with a sort. Indexes enable you to query data from chaincode when
 a large amount of data on your ledger. Indexes can be packaged alongside chaincode
 in a ``/META-INF/statedb/couchdb/indexes`` directory. Each index must be defined in
 its own text file with extension ``*.json`` with the index definition formatted in JSON
-following the `CouchDB index JSON syntax <http://docs.couchdb.org/en/3.1.1/api/database/find.html#db-index>`__.
+following the `CouchDB index JSON syntax <http://docs.couchdb.org/en/3.2.2/api/database/find.html#db-index>`__.
 For example, to support the above marble query, a sample index on the ``docType`` and ``owner``
 fields is provided:
 
@@ -227,7 +227,7 @@ variables using Docker Compose scripting.
 For CouchDB installations outside of the docker images supplied with Fabric,
 the
 `local.ini file of that installation
-<http://docs.couchdb.org/en/3.1.1/config/intro.html#configuration-files>`__
+<http://docs.couchdb.org/en/3.2.2/config/intro.html#configuration-files>`__
 must be edited to set the admin username and password.
 
 Docker compose scripts only set the username and password at the creation of
