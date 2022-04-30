@@ -23,9 +23,17 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
+<<<<<<< HEAD:integration/runner/couchdb.go
 const CouchDBDefaultImage = "couchdb:3.1.1"
 const CouchDBUsername = "admin"
 const CouchDBPassword = "adminpw"
+=======
+const (
+	CouchDBDefaultImage = "couchdb:3.2.2"
+	CouchDBUsername     = "admin"
+	CouchDBPassword     = "adminpw"
+)
+>>>>>>> 3a55a5652 (Bump CouchDB to 3.2.2 (#3369)):integration/nwo/runner/couchdb.go
 
 // CouchDB manages the execution of an instance of a dockerized CounchDB
 // for tests.
