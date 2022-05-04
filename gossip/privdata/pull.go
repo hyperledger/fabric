@@ -283,7 +283,7 @@ func (p *puller) fetchPrivateData(dig2Filter digestToFilterMapping) (*privdataco
 
 		peer2digests, members = p.assignDigestsToPeers(members, dig2Filter)
 		if len(peer2digests) == 0 {
-			p.logger.Warning("No available peers for digests request, "+
+			p.logger.Warningf("No available peers for digests request, "+
 				"cannot pull missing private data for following digests [%+v], peer membership: [%+v]",
 				dig2Filter.digests(), members)
 			return res, nil
