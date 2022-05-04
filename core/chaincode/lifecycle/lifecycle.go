@@ -309,7 +309,8 @@ type ExternalFunctions struct {
 	ChaincodeBuilder          ChaincodeBuilder
 	BuildRegistry             *container.BuildRegistry
 	mutex                     sync.Mutex
-	BuildLocks                map[string]sync.Mutex
+	BuildLocks                map[string]*sync.Mutex
+	concurrentInstalls        uint32
 }
 
 // CheckCommitReadiness takes a chaincode definition, checks that
@@ -675,7 +676,9 @@ func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (*
 		return nil, errors.WithMessage(err, "could not save cc install package")
 	}
 
-	buildLock := ef.getBuildLock(packageID)
+	buildLock, cleanupBuildLocks := ef.getBuildLock(packageID)
+	defer cleanupBuildLocks()
+
 	buildLock.Lock()
 	defer buildLock.Unlock()
 
@@ -709,20 +712,34 @@ func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (*
 	}, nil
 }
 
-func (ef *ExternalFunctions) getBuildLock(packageID string) *sync.Mutex {
+func (ef *ExternalFunctions) getBuildLock(packageID string) (*sync.Mutex, func()) {
 	ef.mutex.Lock()
 	defer ef.mutex.Unlock()
 
+	ef.concurrentInstalls++
+
+	cleanup := func() {
+		ef.mutex.Lock()
+		defer ef.mutex.Unlock()
+
+		ef.concurrentInstalls--
+		// If there are no other concurrent installs happening in parallel,
+		// cleanup the build lock mapping to release memory
+		if ef.concurrentInstalls == 0 {
+			ef.BuildLocks = nil
+		}
+	}
+
 	if ef.BuildLocks == nil {
-		ef.BuildLocks = map[string]sync.Mutex{}
+		ef.BuildLocks = map[string]*sync.Mutex{}
 	}
 
-	buildLock, ok := ef.BuildLocks[packageID]
+	_, ok := ef.BuildLocks[packageID]
 	if !ok {
-		ef.BuildLocks[packageID] = sync.Mutex{}
+		ef.BuildLocks[packageID] = &sync.Mutex{}
 	}
 
-	return &buildLock
+	return ef.BuildLocks[packageID], cleanup
 }
 
 // GetInstalledChaincodePackage retrieves the installed chaincode with the given package ID
