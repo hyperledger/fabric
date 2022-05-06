@@ -260,7 +260,7 @@ The `deployCC` subcommand will install the **asset-transfer (basic)** chaincode 
 the chaincode on the channel specified using the channel flag (or `mychannel`
 if no channel is specified).  If you are deploying a chaincode for the first
 time, the script will install the chaincode dependencies. You can use the
-language flag, `-l`, to install the Go, typescript or javascript versions of the chaincode.
+language flag, `-ccl`, to install the Go, typescript or javascript versions of the chaincode.
 You can find the asset-transfer (basic) chaincode in the `asset-transfer-basic` folder of the `fabric-samples`
 directory. This folder contains sample chaincode that are provided as examples and
 used by tutorials to highlight Fabric features.
