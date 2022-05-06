@@ -228,7 +228,7 @@ sections
 
   This section contains a list of transactions arranged in order. It is written
   when the block is created by the ordering service. These transactions have a
-  rich but straightforward structure, which we describe [later](#Transactions)
+  rich but straightforward structure, which we describe [later](#transactions)
   in this topic.
 
 
