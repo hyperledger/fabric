@@ -13,6 +13,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"go.uber.org/zap/zapcore"
 )
 
 type layout struct {
@@ -114,6 +115,17 @@ func (p *plan) processEndorsement(endorser *endorser, response *peer.ProposalRes
 	} else {
 		if !bytes.Equal(p.responsePayload, response.GetPayload()) {
 			logger.Warnw("ProposalResponsePayloads do not match (base64)", "payload1", b64.StdEncoding.EncodeToString(p.responsePayload), "payload2", b64.StdEncoding.EncodeToString(response.GetPayload()))
+			if logger.IsEnabledFor(zapcore.DebugLevel) {
+				diff, err := payloadDifference(p.responsePayload, response.GetPayload())
+				if err != nil {
+					logger.Debugf("Failed to analyse response mismatch: %s", err)
+				} else {
+					logger.Debugw("Compared to the initial endorser's response, the following debug log entries detail the differences in this endorser's response.", "address", endorser.address, "mspid", endorser.mspid)
+					for _, d := range diff.details() {
+						logger.Debugw("Proposal response mismatch:", d...)
+					}
+				}
+			}
 			p.errorDetails = append(p.errorDetails, errorDetail(endorser.endpointConfig, "ProposalResponsePayloads do not match"))
 			return false
 		}
