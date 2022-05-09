@@ -267,7 +267,7 @@ You can use the GitHub cherry-pick command, or an easier option is to paste the 
 
 .. code::
 
-   @Mergifyio backport release-2.0
+   @Mergifyio backport release-2.2
 
 Replace ``2.0`` with the branch that you want to backport to. If there are no merge conflicts,
 a new PR is automatically generated in that branch that still requires the normal approval process to be merged.
@@ -275,18 +275,18 @@ Remember to add a comment to the original PR for each branch that you want to ba
 
 If there are merge conflicts, use the GitHub ``cherry-pick`` command instead, by providing the ``SHA`` from the commit in the main branch.
 
-- The following example shows how to cherry-pick a commit from the main branch into the release-2.0 branch:
+- The following example shows how to cherry-pick a commit from the main branch into the release-2.2 branch:
 
 .. code::
 
-  git checkout release-2.0
+  git checkout release-2.2
 
 - If your branch is behind, run the following command to pull in the latest changes and push them to your local branch:
 
 .. code::
 
-  git pull upstream release-2.0
-  git push origin release-2.0
+  git pull upstream release-2.2
+  git push origin release-2.2
 
 - Create a new local branch to cherry-pick the content to and then cherry-pick the content by providing the SHA from the main branch.
 
@@ -301,9 +301,9 @@ If there are merge conflicts, use the GitHub ``cherry-pick`` command instead, by
 
   git push origin <my2.0branch> 
 
-- Now go to your browser and create a PR off of your local branch to the release-2.0 branch.
+- Now go to your browser and create a PR off of your local branch to the release-2.2 branch.
 
-Your change has been cherry-picked back to the release-2.0 branch and can be approved and merged following the normal process.
+Your change has been cherry-picked back to the release-2.2 branch and can be approved and merged following the normal process.
 
 
 Cleaning Up Local And Remote Feature branches
