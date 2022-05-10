@@ -33,6 +33,8 @@ operating, or developing on (or for), Hyperledger Fabric:
   - Older versions of Windows: `Docker
     Toolbox <https://docs.docker.com/toolbox/toolbox_install_windows/>`__ -
     again, Docker version Docker 17.06.2-ce or greater is required.
+    
+    Note: Docker Tool Box has been depreciated so we need to install docker desktop for windows <https://docs.docker.com/desktop/windows/> ___ Or Mac <https://docs.docker.com/desktop/mac/> ___ . Unfortunately, I have not found it for linux.
 
 You can check the version of Docker you have installed with the following
 command from a terminal prompt:
