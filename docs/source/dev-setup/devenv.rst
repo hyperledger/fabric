@@ -109,7 +109,7 @@ SoftHSM generally requires additional configuration before it can be used. For
 example, the default configuration will attempt to store token data in a system
 directory that unprivileged users are unable to write to.
 
-SoftHSM configuration typically involves copying ``/etc/softhsm2.conf`` to
+SoftHSM configuration typically involves copying ``/etc/softhsm/softhsm2.conf`` to
 ``$HOME/.config/softhsm2/softhsm2.conf`` and changing ``directories.tokendir``
 to an appropriate location. Please see the man page for ``softhsm2.conf`` for
 details.
@@ -119,7 +119,7 @@ initialize the token required by the unit tests:
 
 ::
 
-    softhsm2-util --init-token --slot 0 --label "ForFabric" --so-pin 1234 --pin 98765432
+    softhsm2-util --init-token --slot 0 --label ForFabric --so-pin 1234 --pin 98765432
 
 If tests are unable to locate the libsofthsm2.so library in your environment,
 specify the library path, the PIN, and the label of your token in the
@@ -130,6 +130,33 @@ appropriate environment variables. For example, on macOS:
     export PKCS11_LIB="/usr/local/Cellar/softhsm/2.6.1/lib/softhsm/libsofthsm2.so"
     export PKCS11_PIN=98765432
     export PKCS11_LABEL="ForFabric"
+
+The tests don't always clean up after themselves and, over time, this causes
+the PKCS #11 tests to take a long time to run. The easiest way to recover from
+this is to delete and recreate the token.
+
+::
+
+    softhsm2-util --init-token --slot 0 --label ForFabric --so-pin 1234 --pin 98765432
+    softhsm2-util --delete-token --token ForFabric
+
+Debugging with ``pkcs11-spy``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The `OpenSC Project <https://github.com/OpenSC/OpenSC>`__ provides a shared
+library called ``pkcs11-spy`` that logs all interactions between an application
+and a PKCS #11 module. This library can be very useful when troubleshooting
+interactions with a cryptographic token device or service.
+
+Once the library has been installed, configure Fabric to use ``pkcs11-spy`` as
+the PKCS #11 library and set the ``PKCS11SPY`` environment variable to the real
+library. For example:
+
+::
+
+    export PKCS11_LIB="/usr/lib/softhsm/libsofthsm2.so"
+    export PKCS11SPY="/usr/lib/x86_64-linux-gnu/pkcs11/pkcs11-spy.so"
+
 
 Install the development tools
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
