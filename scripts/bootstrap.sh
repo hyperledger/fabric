@@ -49,7 +49,7 @@ dockerPull() {
 cloneSamplesRepo() {
     # clone (if needed) hyperledger/fabric-samples and checkout corresponding
     # version to the binaries and docker images to be downloaded
-    if [ -d first-network ]; then
+    if [ -d test-network ]; then
         # if we are in the fabric-samples repo, checkout corresponding version
         echo "===> Checking out v${VERSION} of hyperledger/fabric-samples"
         git checkout v${VERSION}
