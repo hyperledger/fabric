@@ -85,7 +85,7 @@ var _ = Describe("Server", func() {
 
 			addApiURL := fmt.Sprintf("https://%s%s", server.Addr(), AdditionalTestApiPath)
 			_, err = client.Get(addApiURL)
-			Expect(err.Error()).To(ContainSubstring("tls: protocol version not supported"))
+			Expect(err.Error()).To(ContainSubstring("tls: no supported versions satisfy MinVersion and MaxVersion"))
 		})
 	})
 

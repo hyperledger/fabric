@@ -263,7 +263,7 @@ func (r *Registrar) initSystemChannel(existingChannels []string) {
 		logger.Infof(
 			"Starting system channel '%s' with genesis block hash %x and orderer type %s",
 			channelID,
-			protoutil.BlockHeaderHash(genesisBlock.Header), //lint:ignore SA5011 logs and panics above
+			protoutil.BlockHeaderHash(genesisBlock.Header),
 			chain.SharedConfig().ConsensusType(),
 		)
 
