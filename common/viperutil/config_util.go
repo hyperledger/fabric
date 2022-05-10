@@ -81,7 +81,7 @@ func (c *ConfigParser) ConfigFileUsed() string {
 
 // Search for the existence of filename for all supported extensions
 func (c *ConfigParser) searchInPath(in string) (filename string) {
-	var supportedExts []string = []string{"yaml", "yml"}
+	supportedExts := []string{"yaml", "yml"}
 	for _, ext := range supportedExts {
 		fullPath := filepath.Join(in, c.configName+"."+ext)
 		_, err := os.Stat(fullPath)
