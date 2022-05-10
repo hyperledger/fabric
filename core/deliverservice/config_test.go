@@ -86,8 +86,6 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.deliveryclient.reConnectBackoffThreshold", "25s")
 	viper.Set("peer.deliveryclient.reconnectTotalTimeThreshold", "20s")
 	viper.Set("peer.deliveryclient.connTimeout", "10s")
-	viper.Set("peer.keepalive.deliveryClient.interval", "5s")
-	viper.Set("peer.keepalive.deliveryClient.timeout", "2s")
 
 	coreConfig := deliverservice.GlobalConfig()
 
@@ -98,8 +96,8 @@ func TestGlobalConfig(t *testing.T) {
 		ReconnectTotalTimeThreshold: 20 * time.Second,
 		ConnectionTimeout:           10 * time.Second,
 		KeepaliveOptions: comm.KeepaliveOptions{
-			ClientInterval:    time.Second * 5,
-			ClientTimeout:     time.Second * 2,
+			ClientInterval:    time.Second * 60,
+			ClientTimeout:     time.Second * 20,
 			ServerInterval:    time.Hour * 2,
 			ServerTimeout:     time.Second * 20,
 			ServerMinInterval: time.Minute,
