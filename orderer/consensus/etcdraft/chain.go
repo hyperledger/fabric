@@ -340,6 +340,7 @@ func NewChain(
 			logger: c.logger,
 		},
 	}
+	c.Node.confState.Store(cc)
 
 	return c, nil
 }
