@@ -65,7 +65,7 @@ To pull the Docker containers and clone the samples repo, run one of these comma
 
 If no arguments are supplied, then the arguments `docker binary samples` are assumed.
 
-## Chosing which version
+## Choosing which version
 
 By default the latest version of the components are used; these can be altered by using the options `--fabric-version` and `-ca-version`.  `-f` and `-c` are the respective short forms.
 
