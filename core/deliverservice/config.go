@@ -142,12 +142,6 @@ func (c *DeliverServiceConfig) loadDeliverServiceConfig() {
 	}
 
 	c.KeepaliveOptions = comm.DefaultKeepaliveOptions
-	if viper.IsSet("peer.keepalive.deliveryClient.interval") {
-		c.KeepaliveOptions.ClientInterval = viper.GetDuration("peer.keepalive.deliveryClient.interval")
-	}
-	if viper.IsSet("peer.keepalive.deliveryClient.timeout") {
-		c.KeepaliveOptions.ClientTimeout = viper.GetDuration("peer.keepalive.deliveryClient.timeout")
-	}
 
 	c.SecOpts = comm.SecureOptions{
 		UseTLS:            viper.GetBool("peer.tls.enabled"),

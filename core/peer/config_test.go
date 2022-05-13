@@ -346,7 +346,6 @@ func TestGlobalConfig(t *testing.T) {
 		ChaincodeListenAddress:                "0.0.0.0:7052",
 		ChaincodeAddress:                      "0.0.0.0:7052",
 		ValidatorPoolSize:                     1,
-		DeliverClientKeepaliveOptions:         comm.DefaultKeepaliveOptions,
 
 		VMEndpoint:           "unix:///var/run/docker.sock",
 		VMDockerTLSEnabled:   false,
@@ -402,12 +401,11 @@ func TestGlobalConfigDefault(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedConfig := &Config{
-		AuthenticationTimeWindow:      15 * time.Minute,
-		PeerAddress:                   "localhost:8080",
-		ValidatorPoolSize:             runtime.NumCPU(),
-		VMNetworkMode:                 "host",
-		DeliverClientKeepaliveOptions: comm.DefaultKeepaliveOptions,
-		GatewayOptions:                config.GetOptions(viper.GetViper()),
+		AuthenticationTimeWindow: 15 * time.Minute,
+		PeerAddress:              "localhost:8080",
+		ValidatorPoolSize:        runtime.NumCPU(),
+		VMNetworkMode:            "host",
+		GatewayOptions:           config.GetOptions(viper.GetViper()),
 	}
 
 	require.Equal(t, expectedConfig, coreConfig)
@@ -438,11 +436,10 @@ func TestPropagateEnvironment(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedConfig := &Config{
-		AuthenticationTimeWindow:      15 * time.Minute,
-		PeerAddress:                   "localhost:8080",
-		ValidatorPoolSize:             runtime.NumCPU(),
-		VMNetworkMode:                 "host",
-		DeliverClientKeepaliveOptions: comm.DefaultKeepaliveOptions,
+		AuthenticationTimeWindow: 15 * time.Minute,
+		PeerAddress:              "localhost:8080",
+		ValidatorPoolSize:        runtime.NumCPU(),
+		VMNetworkMode:            "host",
 		ExternalBuilders: []ExternalBuilder{
 			{
 				Name:                 "testName",

@@ -87,7 +87,9 @@ var _ = Describe("Fields", func() {
 			field := grpclogging.Error(err)
 			Expect(field.Key).To(Equal("error"))
 			Expect(field.Type).To(Equal(zapcore.ErrorType))
-			Expect(field.Interface).To(Equal(struct{ error }{err}))
+			// assert that field Interface is of type error
+			_, ok := field.Interface.(error)
+			Expect(ok).To(BeTrue())
 		})
 
 		Context("when the error is nil", func() {

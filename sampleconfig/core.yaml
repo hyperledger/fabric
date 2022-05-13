@@ -79,16 +79,6 @@ peer:
             # Timeout is the duration the client waits for a response from
             # peer nodes before closing the connection
             timeout: 20s
-        # DeliveryClient keepalive settings for communication with ordering
-        # nodes.
-        deliveryClient:
-            # Interval is the time between pings to ordering nodes.  This must
-            # greater than or equal to the minInterval specified by ordering
-            # nodes.
-            interval: 60s
-            # Timeout is the duration the client waits for a response from
-            # ordering nodes before closing the connection
-            timeout: 20s
 
 
     # Gossip related configuration
