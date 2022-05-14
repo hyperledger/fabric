@@ -206,7 +206,7 @@ sufficient information for someone else to reproduce the
 issue. One of the project's maintainers should respond to your issue within 24
 hours. If not, please bump the issue with a comment and request that it be
 reviewed. You can also post to the relevant Hyperledger Fabric channel in
-`Hyperledger Chat <https://chat.hyperledger.org>`__.  For example, a doc bug should
+`Hyperledger Discord <https://discord.com/servers/hyperledger-foundation-905194001349627914>`__.  For example, a doc bug should
 be broadcast to ``#fabric-documentation``, a database bug to ``#fabric-ledger``,
 and so on...
 

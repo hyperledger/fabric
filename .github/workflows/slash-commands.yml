@@ -23,7 +23,7 @@ jobs:
 
             GitHub Issues is a tool for tracking bugs, feature requests, and work in general that relates directly to the Fabric codebase. It is not for general help requests. Please use one of the following forums to request help for your issue:
 
-            - RocketChat: https://chat.hyperledger.org
+            - Discord: https://discord.com/servers/hyperledger-foundation-905194001349627914
             - Fabric Mailing List: fabric@lists.hyperledger.org
       - name: Close Issue
         uses: lindluni/issue-manager@v1.0.0

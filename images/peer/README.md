@@ -10,7 +10,7 @@
 -	**Where to get Hyperledger Fabric help**:  
 	[Fabric documentation](https://hyperledger-fabric.readthedocs.io/en/latest/),
 	[Stackoverflow](https://stackoverflow.com/questions/tagged/hyperledger-fabric),
-	or [Chat](https://chat.hyperledger.org/channel/fabric) ([Chat login help](https://wiki.hyperledger.org/display/CA/Logging+in+to+chat))
+	or [Discord](https://discord.com/servers/hyperledger-foundation-905194001349627914)
 
 -	**Where to get support**:
 	The Fabric images are provided for development and test purposes. Various vendors provide
