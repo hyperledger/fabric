@@ -9,15 +9,14 @@ Install Git
 -----------
 Download the latest version of `git
 <https://git-scm.com/downloads>`_ if it is not already installed,
-or if you have problems running the curl commands.
+or if you have problems running the git commands.
 
 Install cURL
 ------------
 
 Download the latest version of the `cURL
 <https://curl.haxx.se/download.html>`__ tool if it is not already
-installed or if you get errors running the curl commands from the
-documentation.
+installed or if you get errors running the curl commands. 
 
 .. note:: If you're on Windows please see the specific note on `Windows
    extras`_ below.
