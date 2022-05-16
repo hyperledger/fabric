@@ -30,7 +30,7 @@ var signer msp.SigningIdentity
 
 func init() {
 	// setup the MSP manager so that we can sign/verify
-	var err error = msptesttools.LoadMSPSetupForTesting()
+	err := msptesttools.LoadMSPSetupForTesting()
 	if err != nil {
 		panic(fmt.Errorf("Could not load msp config, err %s", err))
 	}

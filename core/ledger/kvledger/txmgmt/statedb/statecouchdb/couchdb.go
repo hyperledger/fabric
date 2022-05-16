@@ -1147,7 +1147,7 @@ func (dbclient *couchDatabase) listIndex() ([]*indexResult, error) {
 			designDoc = s[1]
 
 			//Add the index definition to the results
-			var addIndexResult = &indexResult{DesignDocument: designDoc, Name: row.Name, Definition: fmt.Sprintf("%s", row.Definition)}
+			var addIndexResult = &indexResult{DesignDocument: designDoc, Name: row.Name, Definition: string(row.Definition)}
 			results = append(results, addIndexResult)
 		}
 

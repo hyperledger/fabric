@@ -7,6 +7,7 @@ package docker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -46,7 +47,7 @@ func (c *Client) CreateSecret(opts CreateSecretOptions) (*swarm.Secret, error) {
 		return nil, err
 	}
 	path := "/secrets/create?" + queryString(opts)
-	resp, err := c.do("POST", path, doOptions{
+	resp, err := c.do(http.MethodPost, path, doOptions{
 		headers:   headers,
 		data:      opts.SecretSpec,
 		forceJSON: true,
@@ -76,9 +77,10 @@ type RemoveSecretOptions struct {
 // See https://goo.gl/Tqrtya for more details.
 func (c *Client) RemoveSecret(opts RemoveSecretOptions) error {
 	path := "/secrets/" + opts.ID
-	resp, err := c.do("DELETE", path, doOptions{context: opts.Context})
+	resp, err := c.do(http.MethodDelete, path, doOptions{context: opts.Context})
 	if err != nil {
-		if e, ok := err.(*Error); ok && e.Status == http.StatusNotFound {
+		var e *Error
+		if errors.As(err, &e) && e.Status == http.StatusNotFound {
 			return &NoSuchSecret{ID: opts.ID}
 		}
 		return err
@@ -109,14 +111,15 @@ func (c *Client) UpdateSecret(id string, opts UpdateSecretOptions) error {
 	}
 	params := make(url.Values)
 	params.Set("version", strconv.FormatUint(opts.Version, 10))
-	resp, err := c.do("POST", "/secrets/"+id+"/update?"+params.Encode(), doOptions{
+	resp, err := c.do(http.MethodPost, "/secrets/"+id+"/update?"+params.Encode(), doOptions{
 		headers:   headers,
 		data:      opts.SecretSpec,
 		forceJSON: true,
 		context:   opts.Context,
 	})
 	if err != nil {
-		if e, ok := err.(*Error); ok && e.Status == http.StatusNotFound {
+		var e *Error
+		if errors.As(err, &e) && e.Status == http.StatusNotFound {
 			return &NoSuchSecret{ID: id}
 		}
 		return err
@@ -130,9 +133,10 @@ func (c *Client) UpdateSecret(id string, opts UpdateSecretOptions) error {
 // See https://goo.gl/dHmr75 for more details.
 func (c *Client) InspectSecret(id string) (*swarm.Secret, error) {
 	path := "/secrets/" + id
-	resp, err := c.do("GET", path, doOptions{})
+	resp, err := c.do(http.MethodGet, path, doOptions{})
 	if err != nil {
-		if e, ok := err.(*Error); ok && e.Status == http.StatusNotFound {
+		var e *Error
+		if errors.As(err, &e) && e.Status == http.StatusNotFound {
 			return nil, &NoSuchSecret{ID: id}
 		}
 		return nil, err
@@ -158,7 +162,7 @@ type ListSecretsOptions struct {
 // See https://goo.gl/DwvNMd for more details.
 func (c *Client) ListSecrets(opts ListSecretsOptions) ([]swarm.Secret, error) {
 	path := "/secrets?" + queryString(opts)
-	resp, err := c.do("GET", path, doOptions{context: opts.Context})
+	resp, err := c.do(http.MethodGet, path, doOptions{context: opts.Context})
 	if err != nil {
 		return nil, err
 	}
