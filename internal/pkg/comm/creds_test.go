@@ -94,7 +94,7 @@ func TestCreds(t *testing.T) {
 		MaxVersion: tls.VersionTLS10,
 	})
 	wg.Wait()
-	require.Contains(t, err.Error(), "protocol version not supported")
+	require.Contains(t, err.Error(), "tls: no supported versions satisfy MinVersion and MaxVersion")
 	require.Contains(t, recorder.Messages()[1], "TLS handshake failed")
 }
 

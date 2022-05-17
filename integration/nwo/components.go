@@ -62,7 +62,7 @@ func (c *Components) Build(path string) string {
 	Expect(err).NotTo(HaveOccurred())
 
 	if resp.StatusCode != http.StatusOK {
-		Expect(resp.StatusCode).To(Equal(http.StatusOK), fmt.Sprintf("%s", body))
+		Expect(resp.StatusCode).To(Equal(http.StatusOK), string(body))
 	}
 
 	return string(body)
