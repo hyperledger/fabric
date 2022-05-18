@@ -222,7 +222,7 @@ the CouchDB recommended practice.
 
 In general, you should model index fields to match the fields that will be used
 in query filters and sorts. For more details on building an index in JSON
-format refer to the `CouchDB documentation <http://docs.couchdb.org/en/latest/api/database/find.html#db-index>`__.
+format refer to the `CouchDB documentation <http://docs.couchdb.org/en/3.2.2/api/database/find.html#db-index>`__.
 
 .. _cdb-add-index:
 
@@ -369,7 +369,7 @@ includes two JSON query functions:
       where a selector JSON query string can be passed into the function. This query
       would be useful to client applications that need to dynamically build
       their own queries at runtime. For more information on query selectors refer
-      to `CouchDB selector syntax <http://docs.couchdb.org/en/latest/api/database/find.html#find-selectors>`__.
+      to `CouchDB selector syntax <http://docs.couchdb.org/en/3.2.2/api/database/find.html#find-selectors>`__.
 
 
   * **QueryAssetsByOwner**
@@ -728,7 +728,7 @@ Iterating on your index definition
 If you have access to your peer's CouchDB state database in a development
 environment, you can iteratively test various indexes in support of
 your chaincode queries. Any changes to chaincode though would require
-redeployment. Use the `CouchDB Fauxton interface <http://docs.couchdb.org/en/latest/fauxton/index.html>`__ or a command
+redeployment. Use the `CouchDB Fauxton interface <http://docs.couchdb.org/en/3.2.2/fauxton/index.html>`__ or a command
 line curl utility to create and update indexes.
 
 .. note:: The Fauxton interface is a web UI for the creation, update, and
