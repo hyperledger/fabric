@@ -87,7 +87,7 @@ func TestPayloadDifferenceReadVersion(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := [][]interface{}{
-		{"type", "read value mismatch", "namespace", "ns1", "key", "key2", "expected value", "4", "actual value", "5"},
+		{"type", "read value mismatch", "namespace", "ns1", "key", "key2", "initial-endorser-value", "4", "invoked-endorser-value", "5"},
 	}
 	require.ElementsMatch(t, expected, diff.details())
 }
@@ -123,7 +123,7 @@ func TestPayloadDifferenceReadMissing(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := [][]interface{}{
-		{"type", "missing read", "namespace", "ns1", "key", "key2", "expected value", "4", "actual value", "0"},
+		{"type", "missing read", "namespace", "ns1", "key", "key2", "initial-endorser-value", "4", "invoked-endorser-value", "0"},
 	}
 	require.ElementsMatch(t, expected, diff.details())
 }
@@ -166,8 +166,8 @@ func TestPayloadDifferenceReadExtra(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := [][]interface{}{
-		{"type", "extraneous read", "namespace", "ns1", "key", "key3", "expected value", "0", "actual value", "3"},
-		{"type", "extraneous read", "namespace", "ns2", "key", "key3b", "expected value", "0", "actual value", "5"},
+		{"type", "extraneous read", "namespace", "ns1", "key", "key3", "initial-endorser-value", "0", "invoked-endorser-value", "3"},
+		{"type", "extraneous read", "namespace", "ns2", "key", "key3b", "initial-endorser-value", "0", "invoked-endorser-value", "5"},
 	}
 	require.ElementsMatch(t, expected, diff.details())
 }
@@ -206,9 +206,9 @@ func TestPayloadDifferenceWriteValue(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := [][]interface{}{
-		{"type", "write value mismatch", "namespace", "ns1", "key", "key2", "expected value", "value2", "actual value", "value3"},
-		{"type", "missing write", "namespace", "ns1", "key", "key3", "expected value", "value3", "actual value", ""},
-		{"type", "extraneous write", "namespace", "ns1", "key", "key4", "expected value", "", "actual value", "value4"},
+		{"type", "write value mismatch", "namespace", "ns1", "key", "key2", "initial-endorser-value", "value2", "invoked-endorser-value", "value3"},
+		{"type", "missing write", "namespace", "ns1", "key", "key3", "initial-endorser-value", "value3", "invoked-endorser-value", ""},
+		{"type", "extraneous write", "namespace", "ns1", "key", "key4", "initial-endorser-value", "", "invoked-endorser-value", "value4"},
 	}
 	require.ElementsMatch(t, expected, diff.details())
 }
@@ -245,9 +245,9 @@ func TestPayloadDifferenceMetadata(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := [][]interface{}{
-		{"type", "write metadata mismatch", "namespace", "ns1", "key", "key1", "name", "meta1", "expected value", "value1", "actual value", "value2"},
-		{"type", "missing metadata write", "namespace", "ns2", "key", "key2", "name", "meta2", "expected value", "mv1", "actual value", ""},
-		{"type", "extraneous metadata write", "namespace", "ns3", "key", "key2", "name", "meta2", "expected value", "", "actual value", "mv1"},
+		{"type", "write metadata mismatch", "namespace", "ns1", "key", "key1", "name", "meta1", "initial-endorser-value", "value1", "invoked-endorser-value", "value2"},
+		{"type", "missing metadata write", "namespace", "ns2", "key", "key2", "name", "meta2", "initial-endorser-value", "mv1", "invoked-endorser-value", ""},
+		{"type", "extraneous metadata write", "namespace", "ns3", "key", "key2", "name", "meta2", "initial-endorser-value", "", "invoked-endorser-value", "mv1"},
 	}
 	require.ElementsMatch(t, expected, diff.details())
 }
@@ -315,8 +315,8 @@ func TestPayloadDifferenceSBEPolicy(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := [][]interface{}{
-		{"type", "write metadata mismatch (SBE policy)", "namespace", "ns1", "key", "key1", "name", "VALIDATION_PARAMETER", "expected value", "rule:<n_out_of:<n:1 rules:<signed_by:0 > > > identities:<principal:\"orgA\" > ", "actual value", "rule:<n_out_of:<n:1 rules:<signed_by:0 > > > identities:<principal:\"orgB\" > "},
-		{"type", "missing metadata write (SBE policy)", "namespace", "ns1", "key", "key2", "name", "VALIDATION_PARAMETER", "expected value", "rule:<n_out_of:<n:1 rules:<signed_by:0 > > > identities:<principal:\"orgA\" > ", "actual value", ""},
+		{"type", "write metadata mismatch (SBE policy)", "namespace", "ns1", "key", "key1", "name", "VALIDATION_PARAMETER", "initial-endorser-value", "rule:<n_out_of:<n:1 rules:<signed_by:0 > > > identities:<principal:\"orgA\" > ", "invoked-endorser-value", "rule:<n_out_of:<n:1 rules:<signed_by:0 > > > identities:<principal:\"orgB\" > "},
+		{"type", "missing metadata write (SBE policy)", "namespace", "ns1", "key", "key2", "name", "VALIDATION_PARAMETER", "initial-endorser-value", "rule:<n_out_of:<n:1 rules:<signed_by:0 > > > identities:<principal:\"orgA\" > ", "invoked-endorser-value", ""},
 	}
 	require.ElementsMatch(t, expected, diff.details())
 }
@@ -347,7 +347,7 @@ func TestPayloadDifferenceChaincodeResponse(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := [][]interface{}{
-		{"type", "chaincode response mismatch", "expected", "status: 200, message: no error, payload: my_value1", "actual", "status: 200, message: no error, payload: my_value2"},
+		{"type", "chaincode response mismatch", "initial-endorser-response", "status: 200, message: no error, payload: my_value1", "invoked-endorser-response", "status: 200, message: no error, payload: my_value2"},
 	}
 	require.ElementsMatch(t, expected, diff.details())
 }
@@ -386,7 +386,7 @@ func TestPayloadDifferencePrivateData(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := [][]interface{}{
-		{"type", "private collection hash mismatch", "namespace", "ns1", "collection", "collection1", "expected hash", "010203", "actual hash", "040506"},
+		{"type", "private collection hash mismatch", "namespace", "ns1", "collection", "collection1", "initial-endorser-hash", "010203", "invoked-endorser-hash", "040506"},
 	}
 	require.ElementsMatch(t, expected, diff.details())
 }
@@ -417,7 +417,7 @@ func TestPayloadDifferenceEvent(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := [][]interface{}{
-		{"type", "chaincode event mismatch", "expected", "chaincodeId: ns1, name: my_event, value: my event payload 1", "actual", "chaincodeId: ns1, name: my_event, value: my event payload 2"},
+		{"type", "chaincode event mismatch", "initial-endorser-event", "chaincodeId: ns1, name: my_event, value: my event payload 1", "invoked-endorser-event", "chaincodeId: ns1, name: my_event, value: my event payload 2"},
 	}
 	require.ElementsMatch(t, expected, diff.details())
 }
