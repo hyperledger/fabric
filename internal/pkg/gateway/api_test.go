@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,7 +24,13 @@ import (
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+<<<<<<< HEAD
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+=======
+	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/flogging/mock"
+	"github.com/hyperledger/fabric/common/ledger"
+>>>>>>> 863cdd788 (Log proposal response differences (#3420))
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	gdiscovery "github.com/hyperledger/fabric/gossip/discovery"
@@ -36,6 +43,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -167,6 +175,8 @@ type preparedTest struct {
 	ledgerProvider *mocks.LedgerProvider
 	ledger         *mocks.Ledger
 	blockIterator  *mocks.ResultsIterator
+	logLevel       string
+	logFields      []string
 }
 
 type contextKey string
@@ -770,6 +780,26 @@ func TestEndorse(t *testing.T) {
 					Message: "ProposalResponsePayloads do not match",
 				},
 			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				def.logLevel = flogging.LoggerLevel("gateway")
+				flogging.ActivateSpec("debug")
+				logObserver := &mock.Observer{}
+				logObserver.WriteEntryStub = func(entry zapcore.Entry, fields []zapcore.Field) {
+					if strings.HasPrefix(entry.Message, "Proposal response mismatch") {
+						for _, field := range fields {
+							def.logFields = append(def.logFields, field.String)
+						}
+					}
+				}
+				flogging.SetObserver(logObserver)
+			},
+			postTest: func(t *testing.T, def *preparedTest) {
+				require.Equal(t, "chaincode response mismatch", def.logFields[0])
+				require.Equal(t, "status: 200, message: , payload: different_response", def.logFields[1])
+				require.Equal(t, "status: 200, message: , payload: mock_response", def.logFields[2])
+				flogging.ActivateSpec(def.logLevel)
+				flogging.SetObserver(nil)
+			},
 		},
 		{
 			name: "discovery fails",
@@ -963,6 +993,9 @@ func TestEndorse(t *testing.T) {
 
 			if checkError(t, &tt, err) {
 				require.Nil(t, response, "response on error")
+				if tt.postTest != nil {
+					tt.postTest(t, test)
+				}
 				return
 			}
 
@@ -979,6 +1012,10 @@ func TestEndorse(t *testing.T) {
 
 			// check the correct endorsers (mocks) were called with the right parameters
 			checkEndorsers(t, tt.expectedEndorsers, test)
+
+			if tt.postTest != nil {
+				tt.postTest(t, test)
+			}
 		})
 	}
 }
