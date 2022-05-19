@@ -651,6 +651,16 @@ var _ = Describe("Deliver", func() {
 			Expect(resp).To(Equal(cb.Status_SUCCESS))
 		})
 
+		It("HandleAttestation sends requested block", func() {
+			err := handler.HandleAttestation(context.Background(), server, envelope)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(1))
+			b, _, _, _ := fakeResponseSender.SendBlockResponseArgsForCall(0)
+			Expect(b).To(Equal(&cb.Block{
+				Header: &cb.BlockHeader{Number: 100},
+			}))
+		})
+
 		Context("when sending the success status fails", func() {
 			BeforeEach(func() {
 				fakeResponseSender.SendStatusResponseReturns(errors.New("send-success-fails"))
@@ -658,6 +668,11 @@ var _ = Describe("Deliver", func() {
 
 			It("returns the error", func() {
 				err := handler.Handle(context.Background(), server)
+				Expect(err).To(MatchError("send-success-fails"))
+			})
+
+			It("HandleAttestation returns the error", func() {
+				err := handler.HandleAttestation(context.Background(), server, envelope)
 				Expect(err).To(MatchError("send-success-fails"))
 			})
 		})
@@ -697,6 +712,15 @@ var _ = Describe("Deliver", func() {
 
 			It("sends a bad request message", func() {
 				err := handler.Handle(context.Background(), server)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeResponseSender.SendStatusResponseCallCount()).To(Equal(1))
+				resp := fakeResponseSender.SendStatusResponseArgsForCall(0)
+				Expect(resp).To(Equal(cb.Status_BAD_REQUEST))
+			})
+
+			It("sends a bad envelope to HandleAttestation", func() {
+				err := handler.HandleAttestation(context.Background(), server, envelope)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(fakeResponseSender.SendStatusResponseCallCount()).To(Equal(1))
