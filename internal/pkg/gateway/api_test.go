@@ -777,8 +777,6 @@ func TestEndorse(t *testing.T) {
 				},
 			},
 			postSetup: func(t *testing.T, def *preparedTest) {
-				def.logLevel = flogging.LoggerLevel("gateway")
-				flogging.ActivateSpec("debug")
 				logObserver := &mock.Observer{}
 				logObserver.WriteEntryStub = func(entry zapcore.Entry, fields []zapcore.Field) {
 					if strings.HasPrefix(entry.Message, "Proposal response mismatch") {
@@ -793,6 +791,40 @@ func TestEndorse(t *testing.T) {
 				require.Equal(t, "chaincode response mismatch", def.logFields[0])
 				require.Equal(t, "status: 200, message: , payload: different_response", def.logFields[1])
 				require.Equal(t, "status: 200, message: , payload: mock_response", def.logFields[2])
+				flogging.SetObserver(nil)
+			},
+		},
+		{
+			name: "non-matching response logging suppressed",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 4}}, // msp1
+				"g2": {{endorser: peer2Mock, height: 5}},     // msp2
+			},
+			localResponse: "different_response",
+			errCode:       codes.Aborted,
+			errString:     "failed to collect enough transaction endorsements",
+			errDetails: []*pb.ErrorDetail{
+				{
+					Address: "peer2:9051",
+					MspId:   "msp2",
+					Message: "ProposalResponsePayloads do not match",
+				},
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				def.logLevel = flogging.LoggerLevel("gateway.responsechecker")
+				flogging.ActivateSpec("error")
+				logObserver := &mock.Observer{}
+				logObserver.WriteEntryStub = func(entry zapcore.Entry, fields []zapcore.Field) {
+					if strings.HasPrefix(entry.Message, "Proposal response mismatch") {
+						for _, field := range fields {
+							def.logFields = append(def.logFields, field.String)
+						}
+					}
+				}
+				flogging.SetObserver(logObserver)
+			},
+			postTest: func(t *testing.T, def *preparedTest) {
+				require.Empty(t, def.logFields)
 				flogging.ActivateSpec(def.logLevel)
 				flogging.SetObserver(nil)
 			},
