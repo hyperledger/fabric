@@ -455,8 +455,8 @@ func (rd *readDifference) info() []interface{} {
 		"type", description,
 		"namespace", rd.namespace,
 		"key", rd.key,
-		"expected value", fmt.Sprintf("%d", rd.expected),
-		"actual value", fmt.Sprintf("%d", rd.actual),
+		"initial-endorser-value", fmt.Sprintf("%d", rd.expected),
+		"invoked-endorser-value", fmt.Sprintf("%d", rd.actual),
 	}
 }
 
@@ -471,8 +471,8 @@ func (wd *writeDifference) info() []interface{} {
 		"type", description,
 		"namespace", wd.namespace,
 		"key", wd.key,
-		"expected value", string(wd.expected),
-		"actual value", string(wd.actual),
+		"initial-endorser-value", string(wd.expected),
+		"invoked-endorser-value", string(wd.actual),
 	}
 }
 
@@ -481,8 +481,8 @@ func (wd *pvtHashDifference) info() []interface{} {
 		"type", "private collection hash mismatch",
 		"namespace", wd.namespace,
 		"collection", wd.key,
-		"expected hash", hex.EncodeToString(wd.expected),
-		"actual hash", hex.EncodeToString(wd.actual),
+		"initial-endorser-hash", hex.EncodeToString(wd.expected),
+		"invoked-endorser-hash", hex.EncodeToString(wd.actual),
 	}
 }
 
@@ -519,24 +519,24 @@ func (md *metadataDifference) info() []interface{} {
 		"namespace", md.namespace,
 		"key", md.key,
 		"name", md.name,
-		"expected value", expected,
-		"actual value", actual,
+		"initial-endorser-value", expected,
+		"invoked-endorser-value", actual,
 	}
 }
 
 func (ev *eventDifference) info() []interface{} {
 	return []interface{}{
 		"type", "chaincode event mismatch",
-		"expected", fmt.Sprintf("chaincodeId: %s, name: %s, value: %s", ev.expected.chaincodeId, ev.expected.name, ev.expected.payload),
-		"actual", fmt.Sprintf("chaincodeId: %s, name: %s, value: %s", ev.actual.chaincodeId, ev.actual.name, ev.actual.payload),
+		"initial-endorser-event", fmt.Sprintf("chaincodeId: %s, name: %s, value: %s", ev.expected.chaincodeId, ev.expected.name, ev.expected.payload),
+		"invoked-endorser-event", fmt.Sprintf("chaincodeId: %s, name: %s, value: %s", ev.actual.chaincodeId, ev.actual.name, ev.actual.payload),
 	}
 }
 
 func (resp *responseDifference) info() []interface{} {
 	return []interface{}{
 		"type", "chaincode response mismatch",
-		"expected", fmt.Sprintf("status: %d, message: %s, payload: %s", resp.expected.status, resp.expected.message, resp.expected.payload),
-		"actual", fmt.Sprintf("status: %d, message: %s, payload: %s", resp.actual.status, resp.actual.message, resp.actual.payload),
+		"initial-endorser-response", fmt.Sprintf("status: %d, message: %s, payload: %s", resp.expected.status, resp.expected.message, resp.expected.payload),
+		"invoked-endorser-response", fmt.Sprintf("status: %d, message: %s, payload: %s", resp.actual.status, resp.actual.message, resp.actual.payload),
 	}
 }
 

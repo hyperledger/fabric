@@ -8,11 +8,12 @@ package gateway
 
 import (
 	"bytes"
-	b64 "encoding/base64"
+	"fmt"
 	"sync"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/common/flogging"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -36,6 +37,7 @@ type plan struct {
 	completedLayout *layout
 	errorDetails    []proto.Message
 	planLock        sync.Mutex
+	mismatchLogger  *flogging.FabricLogger
 }
 
 // construct and initialise an endorsement plan
@@ -112,17 +114,19 @@ func (p *plan) processEndorsement(endorser *endorser, response *peer.ProposalRes
 	// check the proposal responses are the same
 	if p.responsePayload == nil {
 		p.responsePayload = response.GetPayload()
+		p.mismatchLogger = flogging.MustGetLogger("gateway.responsechecker").With("initial-endorser", fmt.Sprintf("%s (%s)", endorser.address, endorser.mspid))
 	} else {
 		if !bytes.Equal(p.responsePayload, response.GetPayload()) {
-			logger.Warnw("ProposalResponsePayloads do not match (base64)", "payload1", b64.StdEncoding.EncodeToString(p.responsePayload), "payload2", b64.StdEncoding.EncodeToString(response.GetPayload()))
-			if logger.IsEnabledFor(zapcore.DebugLevel) {
+			logger.Warn("ProposalResponsePayloads do not match. See [gateway.responsechecker] log warnings for details.")
+			if p.mismatchLogger.IsEnabledFor(zapcore.WarnLevel) {
+				mismatchLogger := p.mismatchLogger.With("invoked-endorser", fmt.Sprintf("%s (%s)", endorser.address, endorser.mspid))
 				diff, err := payloadDifference(p.responsePayload, response.GetPayload())
 				if err != nil {
-					logger.Debugf("Failed to analyse response mismatch: %s", err)
+					mismatchLogger.Warnf("Failed to analyse response mismatch: %s", err)
 				} else {
-					logger.Debugw("Compared to the initial endorser's response, the following debug log entries detail the differences in this endorser's response.", "address", endorser.address, "mspid", endorser.mspid)
+					mismatchLogger.Warn("Compared to the initial endorser's response, the following log entries detail the differences in this invoked endorser's response.")
 					for _, d := range diff.details() {
-						logger.Debugw("Proposal response mismatch:", d...)
+						mismatchLogger.Warnw("Proposal response mismatch:", d...)
 					}
 				}
 			}
