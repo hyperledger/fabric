@@ -24,7 +24,7 @@ The cURL command in the instructions below sets up your environment so that you 
 
 ## Download Fabric samples, Docker images, and binaries
 
-A working directory is required - for example, Go Developers use the `$HOME/go/src/github.com/<your_github_userid>` directory.  This is a Golang Community recommendation for Go projects. If you are using a different directory or Windows, see the [Notes](https://hyperledger-fabric.readthedocs.io/en/latest/install.html#notes) below.
+A working directory is required - for example, Go Developers use the `$HOME/go/src/github.com/<your_github_userid>` directory.  This is a Golang Community recommendation for Go projects.
 
 ```shell
 mkdir -p $HOME/go/src/github.com/<your_github_userid>
@@ -60,7 +60,7 @@ To pull the Docker containers and clone the samples repo, run one of these comma
 
 ```bash
 ./install-fabric.sh docker samples
-./install-fabric.sh d s 
+./install-fabric.sh d s
 ```
 
 If no arguments are supplied, then the arguments `docker binary samples` are assumed.
