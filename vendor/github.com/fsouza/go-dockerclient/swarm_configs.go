@@ -7,6 +7,7 @@ package docker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -46,7 +47,7 @@ func (c *Client) CreateConfig(opts CreateConfigOptions) (*swarm.Config, error) {
 		return nil, err
 	}
 	path := "/configs/create?" + queryString(opts)
-	resp, err := c.do("POST", path, doOptions{
+	resp, err := c.do(http.MethodPost, path, doOptions{
 		headers:   headers,
 		data:      opts.ConfigSpec,
 		forceJSON: true,
@@ -76,9 +77,10 @@ type RemoveConfigOptions struct {
 // See https://goo.gl/Tqrtya for more details.
 func (c *Client) RemoveConfig(opts RemoveConfigOptions) error {
 	path := "/configs/" + opts.ID
-	resp, err := c.do("DELETE", path, doOptions{context: opts.Context})
+	resp, err := c.do(http.MethodDelete, path, doOptions{context: opts.Context})
 	if err != nil {
-		if e, ok := err.(*Error); ok && e.Status == http.StatusNotFound {
+		var e *Error
+		if errors.As(err, &e) && e.Status == http.StatusNotFound {
 			return &NoSuchConfig{ID: opts.ID}
 		}
 		return err
@@ -109,14 +111,15 @@ func (c *Client) UpdateConfig(id string, opts UpdateConfigOptions) error {
 	}
 	params := make(url.Values)
 	params.Set("version", strconv.FormatUint(opts.Version, 10))
-	resp, err := c.do("POST", "/configs/"+id+"/update?"+params.Encode(), doOptions{
+	resp, err := c.do(http.MethodPost, "/configs/"+id+"/update?"+params.Encode(), doOptions{
 		headers:   headers,
 		data:      opts.ConfigSpec,
 		forceJSON: true,
 		context:   opts.Context,
 	})
 	if err != nil {
-		if e, ok := err.(*Error); ok && e.Status == http.StatusNotFound {
+		var e *Error
+		if errors.As(err, &e) && e.Status == http.StatusNotFound {
 			return &NoSuchConfig{ID: id}
 		}
 		return err
@@ -130,9 +133,10 @@ func (c *Client) UpdateConfig(id string, opts UpdateConfigOptions) error {
 // See https://goo.gl/dHmr75 for more details.
 func (c *Client) InspectConfig(id string) (*swarm.Config, error) {
 	path := "/configs/" + id
-	resp, err := c.do("GET", path, doOptions{})
+	resp, err := c.do(http.MethodGet, path, doOptions{})
 	if err != nil {
-		if e, ok := err.(*Error); ok && e.Status == http.StatusNotFound {
+		var e *Error
+		if errors.As(err, &e) && e.Status == http.StatusNotFound {
 			return nil, &NoSuchConfig{ID: id}
 		}
 		return nil, err
@@ -158,7 +162,7 @@ type ListConfigsOptions struct {
 // See https://goo.gl/DwvNMd for more details.
 func (c *Client) ListConfigs(opts ListConfigsOptions) ([]swarm.Config, error) {
 	path := "/configs?" + queryString(opts)
-	resp, err := c.do("GET", path, doOptions{context: opts.Context})
+	resp, err := c.do(http.MethodGet, path, doOptions{context: opts.Context})
 	if err != nil {
 		return nil, err
 	}
