@@ -141,7 +141,7 @@ func secondPass(args ...interface{}) (interface{}, error) {
 	}
 
 	/* get the n in the t out of n */
-	var n int = len(args) - 2
+	n := len(args) - 2
 
 	/* sanity check - t should be positive, permit equal to n+1, but disallow over n+1 */
 	if t < 0 || t > n+1 {

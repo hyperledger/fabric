@@ -1338,7 +1338,7 @@ func TestSendByCriteria(t *testing.T) {
 		if msg == nil {
 			return
 		}
-		t.Fatalf("%d got a message, but shouldn't have!", peerId)
+		t.Errorf("%d got a message, but shouldn't have!", peerId)
 	}
 	g2Endpoint := fmt.Sprintf("127.0.0.1:%d", port1)
 	g3Endpoint := fmt.Sprintf("127.0.0.1:%d", port2)
