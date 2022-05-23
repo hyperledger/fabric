@@ -396,6 +396,7 @@ command as Org1 to create an asset owned by "tom":
 
 .. code:: bash
 
+    export CORE_PEER_TLS_ENABLED=true
     export CORE_PEER_LOCALMSPID="Org1MSP"
     export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
     export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
@@ -746,14 +747,14 @@ of a curl command which can be used to create the index on the database
 
   // Index for docType, owner.
   // Example curl command line to define index in the CouchDB channel_chaincode database
-   curl -i -X POST -H "Content-Type: application/json" -d
-          "{\"index\":{\"fields\":[\"docType\",\"owner\"]},
-            \"name\":\"indexOwner\",
-            \"ddoc\":\"indexOwnerDoc\",
-            \"type\":\"json\"}" http://hostname:port/mychannel_ledger/_index
+   curl -i -X POST -H "Content-Type: application/json" -d \
+          "{\"index\":{\"fields\":[\"docType\",\"owner\"]}, \
+            \"name\":\"indexOwner\", \
+            \"ddoc\":\"indexOwnerDoc\", \
+            \"type\":\"json\"}" http://username:password@hostname:port/mychannel_ledger/_index
 
 .. note:: If you are using the test network configured with CouchDB, replace
-    hostname:port with ``localhost:5984``.
+    hostname:port with ``localhost:5984`` and username:password with ``admin:adminpw``.
 
 .. _cdb-delete-index:
 
@@ -768,14 +769,14 @@ The format of the curl command to delete an index would be:
 
 .. code:: bash
 
-   curl -X DELETE http://localhost:5984/{database_name}/_index/{design_doc}/json/{index_name} -H  "accept: */*" -H  "Host: localhost:5984"
+   curl -X DELETE http://admin:adminpw@localhost:5984/{database_name}/_index/{design_doc}/json/{index_name} -H  "accept: */*" -H  "Host: localhost:5984"
 
 
 To delete the index used in this tutorial, the curl command would be:
 
 .. code:: bash
 
-   curl -X DELETE http://localhost:5984/mychannel_ledger/_index/indexOwnerDoc/json/indexOwner -H  "accept: */*" -H  "Host: localhost:5984"
+   curl -X DELETE http://admin:adminpw@localhost:5984/mychannel_ledger/_index/indexOwnerDoc/json/indexOwner -H  "accept: */*" -H  "Host: localhost:5984"
 
 
 Clean up
