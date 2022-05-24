@@ -713,6 +713,33 @@ func TestEndorse(t *testing.T) {
 			errString:     "no endorsers found in the gateway's organization; retry specifying endorsing organization(s) to protect transient data",
 		},
 		{
+			name: "local and non-local endorsers with transient data will fail",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 3}}, // msp1
+				"g2": {{endorser: peer3Mock, height: 4}},     // msp2
+			},
+			layouts: []endorsementLayout{
+				{"g1": 1, "g2": 1},
+			},
+			members: []networkMember{
+				{"id1", "localhost:7051", "msp1", 3},
+				{"id3", "peer3:10051", "msp2", 4},
+			},
+			interest: &peer.ChaincodeInterest{
+				Chaincodes: []*peer.ChaincodeCall{{
+					Name:            testChaincode,
+					CollectionNames: []string{"mycollection1", "mycollection2"},
+					NoPrivateReads:  true,
+				}},
+			},
+			transientData: map[string][]byte{"transient-key": []byte("transient-value")},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				def.discovery.PeersForEndorsementReturnsOnCall(0, nil, errors.New("protect-transient"))
+			},
+			errCode:   codes.FailedPrecondition,
+			errString: "requires endorsement from organisation(s) that are not in the distribution policy of the private data collection(s): [mycollection1 mycollection2]; retry specifying trusted endorsing organizations to protect transient data",
+		},
+		{
 			name: "extra endorsers with transient data",
 			plan: endorsementPlan{
 				"g1": {{endorser: localhostMock, height: 4}, {endorser: peer1Mock, height: 4}}, // msp1
