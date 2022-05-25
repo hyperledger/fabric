@@ -11,6 +11,7 @@ import (
 	peerproto "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/scc"
 	gdiscovery "github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/commit"
@@ -48,7 +49,16 @@ type ACLChecker interface {
 }
 
 // CreateServer creates an embedded instance of the Gateway.
-func CreateServer(localEndorser peerproto.EndorserServer, discovery Discovery, peerInstance *peer.Peer, secureOptions *comm.SecureOptions, policy ACLChecker, localMSPID string, options config.Options) *Server {
+func CreateServer(
+	localEndorser peerproto.EndorserServer,
+	discovery Discovery,
+	peerInstance *peer.Peer,
+	secureOptions *comm.SecureOptions,
+	policy ACLChecker,
+	localMSPID string,
+	options config.Options,
+	systemChaincodes scc.BuiltinSCCs,
+) *Server {
 	adapter := &ledger.PeerAdapter{
 		Peer: peerInstance,
 	}
@@ -66,6 +76,7 @@ func CreateServer(localEndorser peerproto.EndorserServer, discovery Discovery, p
 		localMSPID,
 		secureOptions,
 		options,
+		systemChaincodes,
 	)
 
 	peerInstance.AddConfigCallbacks(server.registry.configUpdate)
@@ -73,7 +84,17 @@ func CreateServer(localEndorser peerproto.EndorserServer, discovery Discovery, p
 	return server
 }
 
-func newServer(localEndorser peerproto.EndorserClient, discovery Discovery, finder CommitFinder, policy ACLChecker, ledgerProvider ledger.Provider, localInfo gdiscovery.NetworkMember, localMSPID string, secureOptions *comm.SecureOptions, options config.Options) *Server {
+func newServer(localEndorser peerproto.EndorserClient,
+	discovery Discovery,
+	finder CommitFinder,
+	policy ACLChecker,
+	ledgerProvider ledger.Provider,
+	localInfo gdiscovery.NetworkMember,
+	localMSPID string,
+	secureOptions *comm.SecureOptions,
+	options config.Options,
+	systemChaincodes scc.BuiltinSCCs,
+) *Server {
 	return &Server{
 		registry: &registry{
 			localEndorser:      &endorser{client: localEndorser, endpointConfig: &endpointConfig{pkiid: localInfo.PKIid, address: localInfo.Endpoint, mspid: localMSPID}},
@@ -82,6 +103,7 @@ func newServer(localEndorser peerproto.EndorserClient, discovery Discovery, find
 			endpointFactory:    &endpointFactory{timeout: options.DialTimeout, clientCert: secureOptions.Certificate, clientKey: secureOptions.Key},
 			remoteEndorsers:    map[string]*endorser{},
 			channelInitialized: map[string]bool{},
+			systemChaincodes:   systemChaincodes,
 		},
 		commitFinder:   finder,
 		policy:         policy,
