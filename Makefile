@@ -206,7 +206,7 @@ $(BUILD_DIR)/bin/%: GO_LDFLAGS = $(METADATA_VAR:%=-X $(PKGNAME)/common/metadata.
 $(BUILD_DIR)/bin/%:
 	@echo "Building $@"
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) go install -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
+	GOBIN=$(abspath $(@D)) go install -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" -buildvcs=false $(pkgmap.$(@F))
 	@touch $@
 
 .PHONY: docker
@@ -252,7 +252,7 @@ $(foreach platform, $(RELEASE_PLATFORMS), $(RELEASE_EXES:%=release/$(platform)/b
 	$(eval GOARCH = $(word 2,$(subst -, ,$(platform))))
 	@echo "Building $@ for $(GOOS)-$(GOARCH)"
 	mkdir -p $(@D)
-	GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $@ -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
+	GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $@ -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" -buildvcs=false $(pkgmap.$(@F))
 
 .PHONY: dist
 dist: dist-clean dist/$(MARCH)
@@ -319,3 +319,20 @@ unit-test-clean:
 .PHONY: filename-spaces
 spaces:
 	@scripts/check_file_name_spaces.sh
+<<<<<<< HEAD
+=======
+
+.PHONY: docs
+docs:
+	@docker run --rm -v $$(pwd):/docs n42org/tox:3.4.0 sh -c 'cd /docs && tox -e docs'
+
+.PHONY: ccaasbuilder-clean
+ccaasbuilder-clean:
+	rm -rf $(MARCH:%=release/%)/bin/ccaas_builder
+
+.PHONY: ccaasbuilder
+ccaasbuilder: ccaasbuilder-clean
+	cd ccaas_builder && go test -v ./cmd/detect && go build -o ../$(MARCH:%=release/%)/bin/ccaas_builder/bin/ -buildvcs=false ./cmd/detect/
+	cd ccaas_builder && go test -v ./cmd/build && go build -o ../$(MARCH:%=release/%)/bin/ccaas_builder/bin/ -buildvcs=false ./cmd/build/
+	cd ccaas_builder && go test -v ./cmd/release && go build -o ../$(MARCH:%=release/%)/bin/ccaas_builder/bin/ -buildvcs=false ./cmd/release/
+>>>>>>> 86a04d019 (Add -buildvcs=false for building binaries)
