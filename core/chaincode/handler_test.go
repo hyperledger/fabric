@@ -1988,6 +1988,117 @@ var _ = Describe("Handler", func() {
 		})
 	})
 
+	Describe("HandlePurgePrivateData", func() {
+		var incomingMessage *pb.ChaincodeMessage
+		var request *pb.PurgePrivateState
+
+		BeforeEach(func() {
+			request = &pb.PurgePrivateState{
+				Key: "purge-state-key",
+			}
+			payload, err := proto.Marshal(request)
+			Expect(err).NotTo(HaveOccurred())
+
+			incomingMessage = &pb.ChaincodeMessage{
+				Type:      pb.ChaincodeMessage_PURGE_PRIVATE_DATA,
+				Payload:   payload,
+				Txid:      "tx-id",
+				ChannelId: "channel-id",
+			}
+		})
+
+		Context("when unmarshalling the request fails", func() {
+			BeforeEach(func() {
+				incomingMessage.Payload = []byte("this-is-a-bogus-payload")
+			})
+
+			It("returns an error", func() {
+				_, err := handler.HandlePurgePrivateData(incomingMessage, txContext)
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("unmarshal failed"))
+			})
+		})
+
+		Context("when collection is not set", func() {
+			It("calls PurgePrivateState on the transaction simulator", func() {
+				_, err := handler.HandlePurgePrivateData(incomingMessage, txContext)
+				Expect(err).To(MatchError("only applicable for private data"))
+			})
+
+			Context("when PurgePrivateState returns an error", func() {
+				BeforeEach(func() {
+					fakeTxSimulator.PurgePrivateDataReturns(errors.New("orange"))
+					request.Collection = "collection-name"
+					payload, err := proto.Marshal(request)
+					Expect(err).NotTo(HaveOccurred())
+					incomingMessage.Payload = payload
+					fakeCollectionStore.RetrieveReadWritePermissionReturns(false, true, nil) // to
+				})
+
+				It("return an error", func() {
+					_, err := handler.HandlePurgePrivateData(incomingMessage, txContext)
+					Expect(err).To(MatchError("orange"))
+				})
+			})
+		})
+
+		Context("when collection is set", func() {
+			BeforeEach(func() {
+				request.Collection = "collection-name"
+				payload, err := proto.Marshal(request)
+				Expect(err).NotTo(HaveOccurred())
+				incomingMessage.Payload = payload
+				fakeCollectionStore.RetrieveReadWritePermissionReturns(false, true, nil) // to
+			})
+
+			It("calls PurgePrivateData on the transaction simulator", func() {
+				_, err := handler.HandlePurgePrivateData(incomingMessage, txContext)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeTxSimulator.PurgePrivateDataCallCount()).To(Equal(1))
+				ccname, collection, key := fakeTxSimulator.PurgePrivateDataArgsForCall(0)
+				Expect(ccname).To(Equal("cc-instance-name"))
+				Expect(collection).To(Equal("collection-name"))
+				Expect(key).To(Equal("purge-state-key"))
+			})
+
+			Context("when PurgePrivateData fails due to ledger error", func() {
+				BeforeEach(func() {
+					fakeTxSimulator.PurgePrivateDataReturns(errors.New("mango"))
+				})
+
+				It("returns an error", func() {
+					_, err := handler.HandlePurgePrivateData(incomingMessage, txContext)
+					Expect(err).To(MatchError("mango"))
+				})
+			})
+
+			Context("when PurgePrivateData fails due to Init transaction", func() {
+				BeforeEach(func() {
+					txContext.IsInitTransaction = true
+				})
+
+				It("returns the error from errorIfInitTransaction", func() {
+					_, err := handler.HandlePurgePrivateData(incomingMessage, txContext)
+					Expect(err).To(MatchError("private data APIs are not allowed in chaincode Init()"))
+				})
+			})
+
+			Context("when PurgePrivateData fails due to no write access permission", func() {
+				BeforeEach(func() {
+					fakeCollectionStore.RetrieveReadWritePermissionReturns(false, false, nil)
+				})
+
+				It("returns the error from errorIfCreatorHasNoWriteAccess", func() {
+					_, err := handler.HandlePurgePrivateData(incomingMessage, txContext)
+					Expect(err).To(MatchError("tx creator does not have write access" +
+						" permission on privatedata in chaincodeName:cc-instance-name" +
+						" collectionName: collection-name"))
+				})
+			})
+		})
+	})
+
 	Describe("HandleGetHistoryForKey", func() {
 		var (
 			request               *pb.GetHistoryForKey

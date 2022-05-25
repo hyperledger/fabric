@@ -207,6 +207,8 @@ func (h *Handler) handleMessageReadyState(msg *pb.ChaincodeMessage) error {
 		go h.HandleTransaction(msg, h.HandleGetStateMetadata)
 	case pb.ChaincodeMessage_PUT_STATE_METADATA:
 		go h.HandleTransaction(msg, h.HandlePutStateMetadata)
+	case pb.ChaincodeMessage_PURGE_PRIVATE_DATA:
+		go h.HandleTransaction(msg, h.HandlePurgePrivateData)
 	default:
 		return fmt.Errorf("[%s] Fabric side handler cannot handle message (%s) while in ready state", msg.Txid, msg.Type)
 	}
@@ -1070,6 +1072,34 @@ func (h *Handler) HandleDelState(msg *pb.ChaincodeMessage, txContext *Transactio
 		err = txContext.TXSimulator.DeleteState(namespaceID, delState.Key)
 	}
 	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	// Send response msg back to chaincode.
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+}
+
+func (h *Handler) HandlePurgePrivateData(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
+	delState := &pb.DelState{}
+	if err := proto.Unmarshal(msg.Payload, delState); err != nil {
+		return nil, errors.Wrap(err, "unmarshal failed")
+	}
+
+	namespaceID := txContext.NamespaceID
+	collection := delState.Collection
+	if collection == "" {
+		return nil, errors.New("only applicable for private data")
+	}
+
+	if txContext.IsInitTransaction {
+		return nil, errors.New("private data APIs are not allowed in chaincode Init()")
+	}
+
+	if err := errorIfCreatorHasNoWritePermission(namespaceID, collection, txContext); err != nil {
+		return nil, err
+	}
+
+	if err := txContext.TXSimulator.PurgePrivateData(namespaceID, collection, delState.Key); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
