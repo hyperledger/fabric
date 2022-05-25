@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/gateway"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
@@ -262,6 +263,25 @@ var _ = Describe("GatewayService", func() {
 			Expect(response.Result.Payload).To(Equal(expectedResponse.Result.Payload))
 			Expect(proto.Equal(response, expectedResponse)).To(BeTrue(), "Expected\n\t%#v\nto proto.Equal\n\t%#v", response, expectedResponse)
 		})
+
+		It("should responsd with system chaincode result", func() {
+			proposedTransaction, transactionID := NewProposedTransaction(signingIdentity, "testchannel", "qscc", "GetChainInfo", nil, []byte("testchannel"))
+
+			request := &gateway.EvaluateRequest{
+				TransactionId:       transactionID,
+				ChannelId:           "testchannel",
+				ProposedTransaction: proposedTransaction,
+			}
+
+			response, err := gatewayClient.Evaluate(ctx, request)
+			Expect(err).NotTo(HaveOccurred())
+
+			status := common.Status(response.GetResult().GetStatus())
+			Expect(status).To(Equal(common.Status_SUCCESS))
+
+			blockchainInfo := new(common.BlockchainInfo)
+			Expect(proto.Unmarshal(response.GetResult().GetPayload(), blockchainInfo)).NotTo(HaveOccurred())
+		})
 	})
 
 	Describe("Submit", func() {
@@ -274,6 +294,29 @@ var _ = Describe("GatewayService", func() {
 			}
 			Expect(result.Payload).To(Equal(expectedResult.Payload))
 			Expect(proto.Equal(result, expectedResult)).To(BeTrue(), "Expected\n\t%#v\nto proto.Equal\n\t%#v", result, expectedResult)
+		})
+
+		It("should endorse a system chaincode transaction", func() {
+			arg, err := proto.Marshal(&lifecycle.QueryInstalledChaincodesArgs{})
+			Expect(err).NotTo(HaveOccurred())
+			adminSigner := network.PeerUserSigner(org1Peer0, "Admin")
+			proposedTransaction, transactionID := NewProposedTransaction(adminSigner, "testchannel", "_lifecycle", "QueryInstalledChaincodes", nil, arg)
+
+			request := &gateway.EndorseRequest{
+				TransactionId:          transactionID,
+				ChannelId:              "testchannel",
+				ProposedTransaction:    proposedTransaction,
+				EndorsingOrganizations: []string{adminSigner.MSPID}, // Only use peers for our admin ID org
+			}
+
+			response, err := gatewayClient.Endorse(ctx, request)
+			Expect(err).NotTo(HaveOccurred())
+
+			chaincodeAction, err := protoutil.GetActionFromEnvelopeMsg(response.GetPreparedTransaction())
+			Expect(err).NotTo(HaveOccurred())
+
+			queryResult := new(lifecycle.QueryInstalledChaincodesResult)
+			Expect(proto.Unmarshal(chaincodeAction.GetResponse().GetPayload(), queryResult)).NotTo(HaveOccurred())
 		})
 	})
 

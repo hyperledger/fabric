@@ -1837,6 +1837,7 @@ func TestNilArgs(t *testing.T) {
 		"msp1",
 		&comm.SecureOptions{},
 		config.GetOptions(viper.New()),
+		nil,
 	)
 	ctx := context.Background()
 
@@ -1979,7 +1980,7 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		Endpoint: "localhost:7051",
 	}
 
-	server := newServer(localEndorser, disc, mockFinder, mockPolicy, mockLedgerProvider, member, "msp1", &comm.SecureOptions{}, options)
+	server := newServer(localEndorser, disc, mockFinder, mockPolicy, mockLedgerProvider, member, "msp1", &comm.SecureOptions{}, options, nil)
 
 	dialer := &mocks.Dialer{}
 	dialer.Returns(nil, nil)

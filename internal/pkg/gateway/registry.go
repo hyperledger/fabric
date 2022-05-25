@@ -20,9 +20,11 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/scc"
 	gossipapi "github.com/hyperledger/fabric/gossip/api"
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	gossipdiscovery "github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/pkg/errors"
 )
 
 type Discovery interface {
@@ -42,6 +44,7 @@ type registry struct {
 	channelInitialized map[string]bool
 	configLock         sync.RWMutex
 	channelOrderers    sync.Map // channel (string) -> orderer addresses (endpointConfig)
+	systemChaincodes   scc.BuiltinSCCs
 }
 
 type endorserState struct {
@@ -55,7 +58,7 @@ func (reg *registry) endorsementPlan(channel string, interest *peer.ChaincodeInt
 	descriptor, err := reg.discovery.PeersForEndorsement(gossipcommon.ChannelID(channel), interest)
 	if err != nil {
 		logger.Errorw("PeersForEndorsement failed.", "error", err, "channel", channel, "ChaincodeInterest", proto.MarshalTextString(interest))
-		return nil, fmt.Errorf("no combination of peers can be derived which satisfy the endorsement policy: %s", err)
+		return nil, errors.Wrap(err, "no combination of peers can be derived which satisfy the endorsement policy")
 	}
 
 	// There are two parts to an endorsement plan:
@@ -186,17 +189,16 @@ func (reg *registry) endorsersByOrg(channel string, chaincode string) map[string
 		if endorser == nil {
 			continue
 		}
-		for _, installedChaincode := range member.Properties.GetChaincodes() {
-			// only consider the peers that have our chaincode installed
-			if installedChaincode.GetName() == chaincode {
-				endorsersByOrg[endorser.mspid] = append(endorsersByOrg[endorser.mspid], &endorserState{endorser: endorser, height: member.Properties.GetLedgerHeight()})
-			}
-		}
-		for _, es := range endorsersByOrg {
-			// sort by decreasing height in each org
-			sort.Slice(es, sorter(es, reg.localEndorser.address))
+		if reg.hasChaincode(member, chaincode) {
+			endorsersByOrg[endorser.mspid] = append(endorsersByOrg[endorser.mspid], &endorserState{endorser: endorser, height: member.Properties.GetLedgerHeight()})
 		}
 	}
+
+	// sort by decreasing height in each org
+	for _, es := range endorsersByOrg {
+		sort.Slice(es, sorter(es, reg.localEndorser.address))
+	}
+
 	return endorsersByOrg
 }
 
@@ -464,4 +466,14 @@ func (reg *registry) closeStaleOrdererConnections(channel string, channelOrderer
 			}
 		}
 	}
+}
+
+func (reg *registry) hasChaincode(member gossipdiscovery.NetworkMember, chaincodeName string) bool {
+	for _, installedChaincode := range member.Properties.GetChaincodes() {
+		if installedChaincode.GetName() == chaincodeName {
+			return true
+		}
+	}
+
+	return reg.systemChaincodes.IsSysCC(chaincodeName)
 }
