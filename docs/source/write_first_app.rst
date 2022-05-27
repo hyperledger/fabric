@@ -170,7 +170,7 @@ Open a new terminal, and navigate to the ``application-javascript`` folder.
 
 .. code:: bash
 
-  cd asset-transfer-basic/application-javascript
+  cd ../asset-transfer-basic/application-javascript
 
 This directory contains sample programs that were developed using the Fabric
 SDK for Node.js. Run the following command to install the application dependencies.
