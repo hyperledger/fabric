@@ -260,7 +260,7 @@ twice in the chaincode (in this scenario acting as Org1).
    ``Org1MSPPrivateCollection``.
 
 If we were acting as Org2, we would replace ``Org1MSPPrivateCollection`` with
-````Org2MSPPrivateCollection``.
+``Org2MSPPrivateCollection``.
 
 For example, in the following snippet of the ``CreateAsset`` function,
 ``PutPrivateData()`` is called twice, once for each set of private data.
