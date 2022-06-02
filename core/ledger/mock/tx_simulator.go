@@ -295,6 +295,19 @@ type TxSimulator struct {
 		result1 *ledger.TxSimulationResults
 		result2 error
 	}
+	PurgePrivateDataStub        func(string, string, string) error
+	purgePrivateDataMutex       sync.RWMutex
+	purgePrivateDataArgsForCall []struct {
+		arg1 string
+		arg2 string
+		arg3 string
+	}
+	purgePrivateDataReturns struct {
+		result1 error
+	}
+	purgePrivateDataReturnsOnCall map[int]struct {
+		result1 error
+	}
 	SetPrivateDataStub        func(string, string, string, []byte) error
 	setPrivateDataMutex       sync.RWMutex
 	setPrivateDataArgsForCall []struct {
@@ -1686,6 +1699,68 @@ func (fake *TxSimulator) GetTxSimulationResultsReturnsOnCall(i int, result1 *led
 	}{result1, result2}
 }
 
+func (fake *TxSimulator) PurgePrivateData(arg1 string, arg2 string, arg3 string) error {
+	fake.purgePrivateDataMutex.Lock()
+	ret, specificReturn := fake.purgePrivateDataReturnsOnCall[len(fake.purgePrivateDataArgsForCall)]
+	fake.purgePrivateDataArgsForCall = append(fake.purgePrivateDataArgsForCall, struct {
+		arg1 string
+		arg2 string
+		arg3 string
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("PurgePrivateData", []interface{}{arg1, arg2, arg3})
+	fake.purgePrivateDataMutex.Unlock()
+	if fake.PurgePrivateDataStub != nil {
+		return fake.PurgePrivateDataStub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.purgePrivateDataReturns
+	return fakeReturns.result1
+}
+
+func (fake *TxSimulator) PurgePrivateDataCallCount() int {
+	fake.purgePrivateDataMutex.RLock()
+	defer fake.purgePrivateDataMutex.RUnlock()
+	return len(fake.purgePrivateDataArgsForCall)
+}
+
+func (fake *TxSimulator) PurgePrivateDataCalls(stub func(string, string, string) error) {
+	fake.purgePrivateDataMutex.Lock()
+	defer fake.purgePrivateDataMutex.Unlock()
+	fake.PurgePrivateDataStub = stub
+}
+
+func (fake *TxSimulator) PurgePrivateDataArgsForCall(i int) (string, string, string) {
+	fake.purgePrivateDataMutex.RLock()
+	defer fake.purgePrivateDataMutex.RUnlock()
+	argsForCall := fake.purgePrivateDataArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *TxSimulator) PurgePrivateDataReturns(result1 error) {
+	fake.purgePrivateDataMutex.Lock()
+	defer fake.purgePrivateDataMutex.Unlock()
+	fake.PurgePrivateDataStub = nil
+	fake.purgePrivateDataReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *TxSimulator) PurgePrivateDataReturnsOnCall(i int, result1 error) {
+	fake.purgePrivateDataMutex.Lock()
+	defer fake.purgePrivateDataMutex.Unlock()
+	fake.PurgePrivateDataStub = nil
+	if fake.purgePrivateDataReturnsOnCall == nil {
+		fake.purgePrivateDataReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.purgePrivateDataReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *TxSimulator) SetPrivateData(arg1 string, arg2 string, arg3 string, arg4 []byte) error {
 	var arg4Copy []byte
 	if arg4 != nil {
@@ -2114,6 +2189,8 @@ func (fake *TxSimulator) Invocations() map[string][][]interface{} {
 	defer fake.getStateRangeScanIteratorWithPaginationMutex.RUnlock()
 	fake.getTxSimulationResultsMutex.RLock()
 	defer fake.getTxSimulationResultsMutex.RUnlock()
+	fake.purgePrivateDataMutex.RLock()
+	defer fake.purgePrivateDataMutex.RUnlock()
 	fake.setPrivateDataMutex.RLock()
 	defer fake.setPrivateDataMutex.RUnlock()
 	fake.setPrivateDataMetadataMutex.RLock()

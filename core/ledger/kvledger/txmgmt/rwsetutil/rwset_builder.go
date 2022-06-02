@@ -116,6 +116,12 @@ func (b *RWSetBuilder) AddToPvtAndHashedWriteSet(ns string, coll string, key str
 	b.getOrCreateCollHashedRwBuilder(ns, coll).writeMap[key] = kvWriteHash
 }
 
+// AddToHashedWriteSetPurge adds a purge key to the hashed write-set
+func (b *RWSetBuilder) AddToHashedWriteSetPurge(ns string, coll string, key string) {
+	kvWriteHashPurge := newKVWriteHashPurge(key)
+	b.getOrCreateCollHashedRwBuilder(ns, coll).writeMap[key] = kvWriteHashPurge
+}
+
 // AddToHashedMetadataWriteSet adds a metadata to a key in the hashed write-set
 func (b *RWSetBuilder) AddToHashedMetadataWriteSet(ns, coll, key string, metadata map[string][]byte) {
 	// pvt write set just need the key; not the entire metadata. The metadata is stored only
