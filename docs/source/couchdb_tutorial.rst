@@ -699,7 +699,19 @@ no more results will get returned.
     peer chaincode query -C $CHANNEL_NAME -n ledger -c '{"Args":["QueryAssetsWithPagination", "{\"selector\":{\"docType\":\"asset\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}","3","g1AAAABJeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqzJRYXp5aYgmQ5YLI5IPUgSVawJIjFXJKfm5UFANqBE80"]}'
 
 For an example of how a client application can iterate over
-the result sets using pagination, search for the ``getQueryResultForQueryStringWithPagination``
+JSON query result sets using pagination, search for the ``getQueryResultForQueryStringWithPagination``
+function in the `Asset transfer ledger queries sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-transfer-ledger-queries/chaincode-go/asset_transfer_ledger_chaincode.go>`__.
+
+Range Query Pagination
+----------------------
+
+Bookmarks are also returned by the ``GetStateByRangeWithPagination`` shim API so that applications can page through range query results when using either LevelDB or CouchDB state database.
+The returned bookmark represents the next ``startKey`` that can be used to retrieve the next page of range query results.
+Once the results are exhausted the returned bookmark will be an empty string.
+If an ``endKey`` was specified in the range query and the results are exhausted, the returned bookmark will be the passed endKey when using CouchDB, and will be an empty string when using LevelDB.
+
+For an example of how a client application can iterate over
+range query result sets using pagination, search for the ``GetAssetsByRangeWithPagination``
 function in the `Asset transfer ledger queries sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-transfer-ledger-queries/chaincode-go/asset_transfer_ledger_chaincode.go>`__.
 
 .. _cdb-update-index:
