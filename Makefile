@@ -46,8 +46,13 @@
 #   - unit-test - runs the go-test based unit tests
 #   - verify - runs unit tests for only the changed package tree
 
+<<<<<<< HEAD
 ALPINE_VER ?= 3.14
 BASE_VERSION = 2.4.3
+=======
+ALPINE_VER ?= 3.16
+BASE_VERSION = 2.5.0
+>>>>>>> 8e85690d2 (Bump Alpine to 3.16 (#3469))
 
 # 3rd party image version
 # These versions are also set in the runners in ./integration/runners/
