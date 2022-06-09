@@ -46,7 +46,7 @@
 #   - unit-test - runs the go-test based unit tests
 #   - verify - runs unit tests for only the changed package tree
 
-ALPINE_VER ?= 3.14
+ALPINE_VER ?= 3.16
 BASE_VERSION = 2.4.3
 
 # 3rd party image version
@@ -265,7 +265,7 @@ release-all: check-go-version $(RELEASE_PLATFORMS:%=release/%)
 .PHONY: $(RELEASE_PLATFORMS:%=release/%)
 $(RELEASE_PLATFORMS:%=release/%): GO_LDFLAGS = $(METADATA_VAR:%=-X $(PKGNAME)/common/metadata.%)
 $(RELEASE_PLATFORMS:%=release/%): release/%: $(foreach exe,$(RELEASE_EXES),release/%/bin/$(exe))
-$(RELEASE_PLATFORMS:%=release/%): ccaasbuilder 
+$(RELEASE_PLATFORMS:%=release/%): ccaasbuilder
 
 # explicit targets for all platform executables
 $(foreach platform, $(RELEASE_PLATFORMS), $(RELEASE_EXES:%=release/$(platform)/bin/%)):
