@@ -325,7 +325,7 @@ To add a new CLI command, perform the following steps:
   associated help text. See `internal/peer/version` for a simple example to get
   started.
 - Add a section for your CLI command in
-  `src/github.com/hyperledger/fabric/scripts/generateHelpDoc.sh`.
+  `src/github.com/hyperledger/fabric/scripts/help_docs.sh`.
 - Create two new files under `/src/github.com/hyperledger/fabric/docs/wrappers`
   with the associated content:
   - `<command>_preamble.md` (Command name and syntax)
