@@ -8,11 +8,17 @@ package protoutil_test
 
 import (
 	"bytes"
+	"encoding/pem"
+	"io/ioutil"
+	"path/filepath"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 )
 
 // More duplicate utility which should go away, but the utils are a bit of a mess right now with import cycles
@@ -114,4 +120,64 @@ func TestEnvelopeAsSignedData(t *testing.T) {
 	if !bytes.Equal(signedData[0].Signature, sig) {
 		t.Errorf("Wrong data bytes")
 	}
+}
+
+func TestLogMessageForSerializedIdentity(t *testing.T) {
+	pem, err := readPemFile(filepath.Join("testdata", "peer-expired.pem"))
+	require.NoError(t, err, "Unexpected error reading pem file")
+
+	serializedIdentity := &msp.SerializedIdentity{
+		Mspid:   "MyMSP",
+		IdBytes: pem,
+	}
+
+	serializedIdentityBytes, err := proto.Marshal(serializedIdentity)
+	require.NoError(t, err, "Unexpected error marshaling")
+
+	identityLogMessage := protoutil.LogMessageForSerializedIdentity(serializedIdentityBytes)
+
+	expected := "(mspid=MyMSP subject=CN=peer0.org1.example.com,L=San Francisco,ST=California,C=US issuer=CN=ca.org1.example.com,O=org1.example.com,L=San Francisco,ST=California,C=US serialnumber=216422593083731187380743188920914963441)"
+	require.Equal(t, expected, identityLogMessage)
+
+	signedDatas := []*protoutil.SignedData{
+		{
+			Data:      nil,
+			Identity:  serializedIdentityBytes,
+			Signature: nil,
+		},
+		{
+			Data:      nil,
+			Identity:  serializedIdentityBytes,
+			Signature: nil,
+		},
+	}
+
+	identitiesLogMessage := protoutil.LogMessageForSerializedIdentities(signedDatas)
+
+	expected =
+		"(mspid=MyMSP subject=CN=peer0.org1.example.com,L=San Francisco,ST=California,C=US issuer=CN=ca.org1.example.com,O=org1.example.com,L=San Francisco,ST=California,C=US serialnumber=216422593083731187380743188920914963441), " +
+			"(mspid=MyMSP subject=CN=peer0.org1.example.com,L=San Francisco,ST=California,C=US issuer=CN=ca.org1.example.com,O=org1.example.com,L=San Francisco,ST=California,C=US serialnumber=216422593083731187380743188920914963441)"
+	require.Equal(t, expected, identitiesLogMessage)
+}
+
+func readFile(file string) ([]byte, error) {
+	fileCont, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not read file %s", file)
+	}
+	return fileCont, nil
+}
+
+func readPemFile(file string) ([]byte, error) {
+	bytes, err := readFile(file)
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading from file %s failed", file)
+	}
+
+	b, _ := pem.Decode(bytes)
+	if b == nil {
+		return nil, errors.Errorf("no pem content for file %s", file)
+	}
+
+	return bytes, nil
 }

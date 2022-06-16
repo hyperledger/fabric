@@ -181,8 +181,9 @@ func (id *identity) Verify(msg []byte, sig []byte) error {
 	}
 
 	if mspIdentityLogger.IsEnabledFor(zapcore.DebugLevel) {
-		mspIdentityLogger.Debugf("Verify: digest = %s", hex.Dump(digest))
-		mspIdentityLogger.Debugf("Verify: sig = %s", hex.Dump(sig))
+		mspIdentityLogger.Debugf("Verify: signer identity (certificate subject=%s issuer=%s serialnumber=%d)", id.cert.Subject, id.cert.Issuer, id.cert.SerialNumber)
+		//mspIdentityLogger.Debugf("Verify: digest = %s", hex.Dump(digest))
+		//mspIdentityLogger.Debugf("Verify: sig = %s", hex.Dump(sig))
 	}
 
 	valid, err := id.msp.bccsp.Verify(id.pk, sig, digest, nil)

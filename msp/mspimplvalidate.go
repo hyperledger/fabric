@@ -32,18 +32,21 @@ func (msp *bccspmsp) validateIdentity(id *identity) error {
 	validationChain, err := msp.getCertificationChainForBCCSPIdentity(id)
 	if err != nil {
 		id.validationErr = errors.WithMessage(err, "could not obtain certification chain")
+		mspLogger.Warnf("Could not validate identity: %s (certificate subject=%s issuer=%s serialnumber=%d)", id.validationErr, id.cert.Subject, id.cert.Issuer, id.cert.SerialNumber)
 		return id.validationErr
 	}
 
 	err = msp.validateIdentityAgainstChain(id, validationChain)
 	if err != nil {
 		id.validationErr = errors.WithMessage(err, "could not validate identity against certification chain")
+		mspLogger.Warnf("Could not validate identity: %s (certificate subject=%s issuer=%s serialnumber=%d)", id.validationErr, id.cert.Subject, id.cert.Issuer, id.cert.SerialNumber)
 		return id.validationErr
 	}
 
 	err = msp.internalValidateIdentityOusFunc(id)
 	if err != nil {
 		id.validationErr = errors.WithMessage(err, "could not validate identity's OUs")
+		mspLogger.Warnf("Could not validate identity: %s (certificate subject=%s issuer=%s serialnumber=%d)", id.validationErr, id.cert.Subject, id.cert.Issuer, id.cert.SerialNumber)
 		return id.validationErr
 	}
 
