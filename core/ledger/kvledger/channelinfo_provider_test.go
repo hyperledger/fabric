@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -30,9 +29,7 @@ import (
 
 func TestNamespacesAndCollections(t *testing.T) {
 	channelName := "testnamespacesandcollections"
-	basePath, err := ioutil.TempDir("", "testchannelinfoprovider")
-	require.NoError(t, err)
-	defer os.RemoveAll(basePath)
+	basePath := t.TempDir()
 	blkStoreProvider, blkStore := openBlockStorage(t, channelName, basePath)
 	defer blkStoreProvider.Close()
 
@@ -92,9 +89,7 @@ func TestNamespacesAndCollections(t *testing.T) {
 // TestGetAllMSPIDs verifies getAllMSPIDs by adding and removing organizations to the channel config.
 func TestGetAllMSPIDs(t *testing.T) {
 	channelName := "testgetallmspids"
-	basePath, err := ioutil.TempDir("", "testchannelinfoprovider")
-	require.NoError(t, err)
-	defer os.RemoveAll(basePath)
+	basePath := t.TempDir()
 
 	blkStoreProvider, blkStore := openBlockStorage(t, channelName, basePath)
 	defer blkStoreProvider.Close()
@@ -110,7 +105,7 @@ func TestGetAllMSPIDs(t *testing.T) {
 
 	// add genesis block and verify GetAllMSPIDs when the channel has only genesis block
 	// the genesis block is created for org "SampleOrg" with MSPID "SampleOrg"
-	configBlock, err = test.MakeGenesisBlock(channelName)
+	configBlock, err := test.MakeGenesisBlock(channelName)
 	require.NoError(t, err)
 	require.NoError(t, blkStore.AddBlock(configBlock))
 	verifyGetAllMSPIDs(t, channelInfoProvider, []string{"SampleOrg"})
@@ -170,9 +165,7 @@ func TestGetAllMSPIDs(t *testing.T) {
 
 func TestGetAllMSPIDs_NegativeTests(t *testing.T) {
 	channelName := "testgetallmspidsnegativetests"
-	basePath, err := ioutil.TempDir("", "testchannelinfoprovider_negativetests")
-	require.NoError(t, err)
-	defer os.RemoveAll(basePath)
+	basePath := t.TempDir()
 
 	blkStoreProvider, blkStore := openBlockStorage(t, channelName, basePath)
 	defer blkStoreProvider.Close()
@@ -183,7 +176,7 @@ func TestGetAllMSPIDs_NegativeTests(t *testing.T) {
 	lastConfigBlockNum := uint64(0)
 
 	// add genesis block
-	configBlock, err = test.MakeGenesisBlock(channelName)
+	configBlock, err := test.MakeGenesisBlock(channelName)
 	require.NoError(t, err)
 	require.NoError(t, blkStore.AddBlock(configBlock))
 

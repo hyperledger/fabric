@@ -17,7 +17,7 @@ import (
 )
 
 func TestBlockFileScanSmallTxOnly(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	ledgerid := "testLedger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
@@ -44,7 +44,7 @@ func TestBlockFileScanSmallTxOnly(t *testing.T) {
 }
 
 func TestBlockFileScanSmallTxLastTxIncomplete(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	ledgerid := "testLedger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)

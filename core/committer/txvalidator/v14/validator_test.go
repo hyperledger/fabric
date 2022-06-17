@@ -9,7 +9,6 @@ package txvalidator_test
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"testing"
@@ -117,7 +116,7 @@ func setupLedgerAndValidatorWithCapabilities(t *testing.T, c *tmocks.Application
 }
 
 func setupLedgerAndValidatorExplicitWithMSP(t *testing.T, cpb *tmocks.ApplicationCapabilities, plugin validation.Plugin, mspMgr msp.MSPManager) (ledger.PeerLedger, txvalidator.Validator, func()) {
-	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t, "txvalidator")
+	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t)
 	gb, err := ctxt.MakeGenesisBlock("TestLedger")
 	require.NoError(t, err)
 	theLedger, err := ledgerMgr.CreateLedger("TestLedger", gb)
@@ -1631,7 +1630,7 @@ func (exec *mockQueryExecutor) GetPrivateDataMetadata(namespace, collection, key
 }
 
 func createCustomSupportAndLedger(t *testing.T) (*mocktxvalidator.Support, ledger.PeerLedger, func()) {
-	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t, "txvalidator")
+	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t)
 	gb, err := ctxt.MakeGenesisBlock("TestLedger")
 	require.NoError(t, err)
 	l, err := ledgerMgr.CreateLedger("TestLedger", gb)
@@ -1949,16 +1948,12 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func constructLedgerMgrWithTestDefaults(t *testing.T, testDir string) (*ledgermgmt.LedgerMgr, func()) {
-	testDir, err := ioutil.TempDir("", testDir)
-	if err != nil {
-		t.Fatalf("Failed to create ledger directory: %s", err)
-	}
+func constructLedgerMgrWithTestDefaults(t *testing.T) (*ledgermgmt.LedgerMgr, func()) {
+	testDir := t.TempDir()
 	initializer := ledgermgmttest.NewInitializer(testDir)
 	ledgerMgr := ledgermgmt.NewLedgerMgr(initializer)
 	cleanup := func() {
 		ledgerMgr.Close()
-		os.RemoveAll(testDir)
 	}
 	return ledgerMgr, cleanup
 }

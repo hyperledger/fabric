@@ -8,8 +8,6 @@ package server
 
 import (
 	"context"
-	"io/ioutil"
-	"os"
 	"testing"
 	"time"
 
@@ -225,9 +223,7 @@ func Test_attestationserver_BlockAttestations(t *testing.T) {
 		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		require.NoError(t, err)
 
-		tmpdir, err := ioutil.TempDir("", "attestation_test-")
-		require.NoError(t, err)
-		defer os.RemoveAll(tmpdir)
+		tmpdir := t.TempDir()
 
 		lf, _ := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
 

@@ -39,8 +39,7 @@ func TestBackwardCompatibilityRWSetV21(t *testing.T) {
 // }
 
 func testGenerateSampleRWSet(t *testing.T) []byte {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 

@@ -25,10 +25,9 @@ import (
 
 func initPeerTestEnv(t *testing.T) (cfgPath string, cleanup func()) {
 	t.Helper()
-	cfgPath, err := ioutil.TempDir("", "peerTestEnv")
-	require.NoError(t, err)
+	cfgPath = t.TempDir()
 	certsDir := filepath.Join(cfgPath, "certs")
-	err = os.Mkdir(certsDir, 0o755)
+	err := os.Mkdir(certsDir, 0o755)
 	require.NoError(t, err)
 
 	configFile, err := os.Create(filepath.Join(cfgPath, "test.yaml"))
@@ -105,7 +104,6 @@ QjUeWEu3crkxMvjq4vYh3LaDREuhRANCAAR+FujNKcGQW/CEpMU6Yp45ye2cbOwJ
 	return cfgPath, func() {
 		err := os.Unsetenv("FABRIC_CFG_PATH")
 		require.NoError(t, err)
-		defer os.RemoveAll(cfgPath)
 		viper.Reset()
 	}
 }

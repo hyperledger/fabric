@@ -63,8 +63,7 @@ func TestKVLedgerNilHistoryDBProvider(t *testing.T) {
 
 func TestKVLedgerBlockStorage(t *testing.T) {
 	t.Run("green-path", func(t *testing.T) {
-		conf, cleanup := testConfig(t)
-		defer cleanup()
+		conf := testConfig(t)
 		provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 		defer provider.Close()
 
@@ -161,8 +160,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	})
 
 	t.Run("error-path", func(t *testing.T) {
-		conf, cleanup := testConfig(t)
-		defer cleanup()
+		conf := testConfig(t)
 		provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 		defer provider.Close()
 
@@ -179,8 +177,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 }
 
 func TestAddCommitHash(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
@@ -232,8 +229,7 @@ func TestAddCommitHash(t *testing.T) {
 
 func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 	t.Skip()
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
@@ -298,8 +294,7 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 }
 
 func TestKVLedgerDBRecovery(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	nsCollBtlConfs := []*nsCollBtlConfig{
 		{
 			namespace: "ns",
@@ -517,8 +512,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 }
 
 func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
@@ -629,8 +623,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 }
 
 func TestPvtDataAPIs(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
@@ -715,8 +708,7 @@ func TestPvtDataAPIs(t *testing.T) {
 }
 
 func TestCrashAfterPvtdataStoreCommit(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	ccInfoProvider := &mock.DeployedChaincodeInfoProvider{}
 	ccInfoProvider.CollectionInfoReturns(&peer.StaticCollectionConfig{BlockToLive: 0}, nil)
 	provider := testutilNewProvider(conf, t, ccInfoProvider)
@@ -816,8 +808,7 @@ func testVerifyPvtData(t *testing.T, lgr ledger.PeerLedger, blockNum uint64, exp
 }
 
 func TestPvtStoreAheadOfBlockStore(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	ccInfoProvider := &mock.DeployedChaincodeInfoProvider{}
 	ccInfoProvider.CollectionInfoReturns(&peer.StaticCollectionConfig{BlockToLive: 0}, nil)
 	provider := testutilNewProvider(conf, t, ccInfoProvider)
@@ -915,8 +906,7 @@ func TestPvtStoreAheadOfBlockStore(t *testing.T) {
 }
 
 func TestCommitToPvtAndBlockstoreError(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	ccInfoProvider := &mock.DeployedChaincodeInfoProvider{}
 	ccInfoProvider.CollectionInfoReturns(&peer.StaticCollectionConfig{BlockToLive: 0}, nil)
 	provider1 := testutilNewProvider(conf, t, ccInfoProvider)
@@ -968,7 +958,7 @@ func TestCollectionConfigHistoryRetriever(t *testing.T) {
 
 	init := func() {
 		var err error
-		conf, cleanupFunc := testConfig(t)
+		conf := testConfig(t)
 		mockDeployedCCInfoProvider = &mock.DeployedChaincodeInfoProvider{}
 		provider = testutilNewProvider(conf, t, mockDeployedCCInfoProvider)
 		ledgerID := "testLedger"
@@ -978,7 +968,6 @@ func TestCollectionConfigHistoryRetriever(t *testing.T) {
 		cleanup = func() {
 			lgr.Close()
 			provider.Close()
-			cleanupFunc()
 		}
 	}
 
@@ -1228,8 +1217,7 @@ func TestCommitNotifications(t *testing.T) {
 }
 
 func TestCommitNotificationsOnBlockCommit(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 

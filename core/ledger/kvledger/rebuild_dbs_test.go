@@ -17,8 +17,7 @@ import (
 )
 
 func TestRebuildDBs(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 
 	numLedgers := 3

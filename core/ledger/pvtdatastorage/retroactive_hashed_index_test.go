@@ -8,8 +8,6 @@ package pvtdatastorage
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -29,9 +27,7 @@ import (
 // a pvtdata from peer v1.1. Block 11 - 13 has not pvt data. Block 14 has pvt data from peer v1.2
 
 func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
-	testWorkingDir, err := ioutil.TempDir("", "pdstore")
-	require.NoError(t, err)
-	defer os.RemoveAll(testWorkingDir)
+	testWorkingDir := t.TempDir()
 
 	require.NoError(t, testutil.CopyDir("testdata/v11_v12/ledgersData/pvtdataStore", testWorkingDir, false))
 	storePath := filepath.Join(testWorkingDir, "pvtdataStore")

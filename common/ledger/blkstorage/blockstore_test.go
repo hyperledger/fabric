@@ -15,7 +15,7 @@ import (
 )
 
 func TestWrongBlockNumber(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 
 	provider := env.provider
@@ -32,7 +32,7 @@ func TestWrongBlockNumber(t *testing.T) {
 }
 
 func TestTxIDIndexErrorPropagations(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 
 	provider := env.provider

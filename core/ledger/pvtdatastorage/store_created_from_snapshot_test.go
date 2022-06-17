@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package pvtdatastorage
 
 import (
-	"os"
 	"path"
 	"testing"
 
@@ -27,10 +26,9 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 	}
 
 	setup := func(snapshotData []*snapshotData) *Store {
-		testDir := testDir(t)
+		testDir := t.TempDir()
 		conf := pvtDataConf()
 		conf.StorePath = testDir
-		t.Cleanup(func() { os.RemoveAll(testDir) })
 
 		p, err := NewProvider(conf)
 		require.NoError(t, err)
@@ -310,10 +308,9 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 }
 
 func TestStoreCreationErrorPath(t *testing.T) {
-	testDir := testDir(t)
+	testDir := t.TempDir()
 	conf := pvtDataConf()
 	conf.StorePath = testDir
-	defer os.RemoveAll(testDir)
 
 	p, err := NewProvider(conf)
 	require.NoError(t, err)

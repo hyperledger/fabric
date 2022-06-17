@@ -8,7 +8,6 @@ package ccprovider
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -18,11 +17,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setupccdir() string {
-	tempDir, err := ioutil.TempDir("/tmp", "ccprovidertest")
-	if err != nil {
-		panic(err)
-	}
+func setupccdir(t *testing.T) string {
+	tempDir := t.TempDir()
 	SetChaincodesPath(tempDir)
 	return tempDir
 }
@@ -50,8 +46,7 @@ func processCDS(cds *pb.ChaincodeDeploymentSpec, tofs bool) (*CDSPackage, []byte
 }
 
 func TestPutCDSCC(t *testing.T) {
-	ccdir := setupccdir()
-	defer os.RemoveAll(ccdir)
+	_ = setupccdir(t)
 
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
 
@@ -68,8 +63,7 @@ func TestPutCDSCC(t *testing.T) {
 }
 
 func TestPutCDSErrorPaths(t *testing.T) {
-	ccdir := setupccdir()
-	defer os.RemoveAll(ccdir)
+	ccdir := setupccdir(t)
 
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{
 		Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
@@ -148,8 +142,7 @@ func TestCDSGetCCPackage(t *testing.T) {
 
 // switch the chaincodes on the FS and validate
 func TestCDSSwitchChaincodes(t *testing.T) {
-	ccdir := setupccdir()
-	defer os.RemoveAll(ccdir)
+	_ = setupccdir(t)
 
 	// someone modified the code on the FS with "badcode"
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("badcode")}

@@ -8,7 +8,6 @@ package peer
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -52,8 +51,7 @@ func TestMain(m *testing.M) {
 }
 
 func NewTestPeer(t *testing.T) (*Peer, func()) {
-	tempdir, err := ioutil.TempDir("", "peer-test")
-	require.NoError(t, err, "failed to create temporary directory")
+	tempdir := t.TempDir()
 
 	// Initialize gossip service
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
@@ -111,7 +109,6 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 
 	cleanup := func() {
 		ledgerMgr.Close()
-		os.RemoveAll(tempdir)
 	}
 	return peerInstance, cleanup
 }
@@ -237,12 +234,10 @@ func TestCreateChannelBySnapshot(t *testing.T) {
 	testChannelID := "createchannelbysnapshot"
 
 	// create a temp dir to store snapshot
-	tempdir, err := ioutil.TempDir("", testChannelID)
-	require.NoError(t, err)
-	defer os.Remove(tempdir)
+	tempdir := t.TempDir()
 
 	snapshotDir := ledgermgmttest.CreateSnapshotWithGenesisBlock(t, tempdir, testChannelID, &ConfigTxProcessor{})
-	err = peerInstance.CreateChannelFromSnapshot(snapshotDir, &ledgermocks.DeployedChaincodeInfoProvider{}, nil, nil)
+	err := peerInstance.CreateChannelFromSnapshot(snapshotDir, &ledgermocks.DeployedChaincodeInfoProvider{}, nil, nil)
 	require.NoError(t, err)
 
 	expectedStatus := &pb.JoinBySnapshotStatus{InProgress: true, BootstrappingSnapshotDir: snapshotDir}

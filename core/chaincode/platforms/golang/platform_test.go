@@ -12,7 +12,6 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -96,9 +95,7 @@ func TestValidatePath(t *testing.T) {
 }
 
 func TestNormalizePath(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "normalize-path")
-	require.NoError(t, err, "failed to create temporary directory")
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 
 	tests := []struct {
 		path   string

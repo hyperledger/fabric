@@ -11,7 +11,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -150,9 +149,7 @@ func getMSPManager(cid string) msp.MSPManager { return mspmgmt.GetManagerForChai
 // TestInstall tests the install function with various inputs
 func TestInstall(t *testing.T) {
 	// Initialize ledgermgmt that inturn initializes internal components (such as cceventmgmt on which this test depends)
-	tempdir, err := ioutil.TempDir("", "lscc-test")
-	require.NoError(t, err, "failed to create temporary directory")
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 
 	initializer := ledgermgmttest.NewInitializer(tempdir)
 

@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package jsonrw
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -78,7 +77,7 @@ type sampleObject struct {
 }
 
 func TestLoadRecords(t *testing.T) {
-	fp, err := createTestJSONInput(inputJSON)
+	fp, err := createTestJSONInput(t, inputJSON)
 	require.NoError(t, err)
 
 	expectedDiffRec1 := models.DiffRecord{
@@ -131,12 +130,9 @@ func TestLoadRecords(t *testing.T) {
 }
 
 // Turns input string into json file, returns filepath
-func createTestJSONInput(input string) (string, error) {
+func createTestJSONInput(t *testing.T, input string) (string, error) {
 	// Temp directory and file for input json
-	inputDir, err := ioutil.TempDir("", "input")
-	if err != nil {
-		return "", err
-	}
+	inputDir := t.TempDir()
 	fp := filepath.Join(inputDir, "testInput.json")
 	f, err := os.Create(fp)
 	if err != nil {
@@ -153,8 +149,7 @@ func createTestJSONInput(input string) (string, error) {
 
 func TestJSONFileWriter(t *testing.T) {
 	// Temp directory and file for output json
-	outputDir, err := ioutil.TempDir("", "output")
-	require.NoError(t, err)
+	outputDir := t.TempDir()
 	fp := filepath.Join(outputDir, "testOutput.json")
 	// New JSONFileWriter
 	jsonFileWriter, err := NewJSONFileWriter(fp)

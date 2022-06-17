@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package jsonrw
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -34,11 +32,6 @@ func TestOutputFileToString(t *testing.T) {
 
 	for testName, testCase := range testCases {
 		t.Run(testName, func(t *testing.T) {
-			// Temporary directory
-			outputDir, err := ioutil.TempDir("", "result")
-			require.NoError(t, err)
-			defer os.RemoveAll(outputDir)
-
 			actual, err := OutputFileToString(testCase.filename, testCase.path)
 			require.NoError(t, err)
 			require.Equal(t, testCase.expected, actual)

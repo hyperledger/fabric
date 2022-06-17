@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"hash"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -597,18 +596,12 @@ func TestCompare(t *testing.T) {
 	for testName, testCase := range testCases {
 		t.Run(testName, func(t *testing.T) {
 			// Create temporary directories for the sample snapshots and comparison results
-			snapshotDir1, err := ioutil.TempDir("", "sample-snapshot-dir1")
-			require.NoError(t, err)
-			defer os.RemoveAll(snapshotDir1)
-			snapshotDir2, err := ioutil.TempDir("", "sample-snapshot-dir2")
-			require.NoError(t, err)
-			defer os.RemoveAll(snapshotDir2)
-			resultsDir, err := ioutil.TempDir("", "results")
-			require.NoError(t, err)
-			defer os.RemoveAll(resultsDir)
+			snapshotDir1 := t.TempDir()
+			snapshotDir2 := t.TempDir()
+			resultsDir := t.TempDir()
 
 			// Populate temporary directories with sample snapshot data
-			err = createSnapshot(snapshotDir1, testCase.inputTestRecords1, testCase.inputTestPvtRecords1, testCase.inputSignableMetadata1)
+			err := createSnapshot(snapshotDir1, testCase.inputTestRecords1, testCase.inputTestPvtRecords1, testCase.inputSignableMetadata1)
 			require.NoError(t, err)
 			err = createSnapshot(snapshotDir2, testCase.inputTestRecords2, testCase.inputTestPvtRecords2, testCase.inputSignableMetadata2)
 			require.NoError(t, err)
@@ -834,9 +827,7 @@ func TestJSONArrayFileWriter(t *testing.T) {
 	}`
 
 	// Create temporary directory for output
-	resultDir, err := ioutil.TempDir("", "result")
-	require.NoError(t, err)
-	defer os.RemoveAll(resultDir)
+	resultDir := t.TempDir()
 	// Create the output file
 	jsonResultFile, err := newJSONFileWriter(filepath.Join(resultDir, "result.json"), "testchannel")
 	require.NoError(t, err)

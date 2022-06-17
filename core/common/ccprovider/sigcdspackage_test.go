@@ -47,8 +47,7 @@ func processSignedCDS(cds *pb.ChaincodeDeploymentSpec, policy *common.SignatureP
 }
 
 func TestPutSigCDSCC(t *testing.T) {
-	ccdir := setupccdir()
-	defer os.RemoveAll(ccdir)
+	_ = setupccdir(t)
 
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
 
@@ -65,8 +64,7 @@ func TestPutSigCDSCC(t *testing.T) {
 }
 
 func TestPutSignedCDSErrorPaths(t *testing.T) {
-	ccdir := setupccdir()
-	defer os.RemoveAll(ccdir)
+	ccdir := setupccdir(t)
 
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{
 		Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
@@ -162,8 +160,7 @@ func TestPutSignedCDSErrorPaths(t *testing.T) {
 }
 
 func TestGetCDSDataErrorPaths(t *testing.T) {
-	ccdir := setupccdir()
-	defer os.RemoveAll(ccdir)
+	_ = setupccdir(t)
 
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{
 		Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
@@ -201,8 +198,7 @@ func TestGetCDSDataErrorPaths(t *testing.T) {
 }
 
 func TestInitFromBufferErrorPaths(t *testing.T) {
-	ccdir := setupccdir()
-	defer os.RemoveAll(ccdir)
+	_ = setupccdir(t)
 
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{
 		Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
@@ -221,8 +217,7 @@ func TestInitFromBufferErrorPaths(t *testing.T) {
 }
 
 func TestValidateSignedCCErrorPaths(t *testing.T) {
-	ccdir := setupccdir()
-	defer os.RemoveAll(ccdir)
+	_ = setupccdir(t)
 
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{
 		Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
@@ -331,8 +326,7 @@ func TestInvalidSigCDSGetCCPackage(t *testing.T) {
 
 // switch the chaincodes on the FS and validate
 func TestSignedCDSSwitchChaincodes(t *testing.T) {
-	ccdir := setupccdir()
-	defer os.RemoveAll(ccdir)
+	_ = setupccdir(t)
 
 	// someone modifyed the code on the FS with "badcode"
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("badcode")}

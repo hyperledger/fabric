@@ -8,7 +8,6 @@ package blkstorage
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -34,8 +33,7 @@ func TestIndexConfig(t *testing.T) {
 }
 
 func TestMultipleBlockStores(t *testing.T) {
-	tempdir := testPath()
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 
 	env := newTestEnv(t, NewConf(tempdir, 0))
 	provider := env.provider
@@ -162,7 +160,7 @@ func checkWithWrongInputs(t *testing.T, store *BlockStore, numBlocks int) {
 }
 
 func TestBlockStoreProvider(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 
 	provider := env.provider
@@ -195,7 +193,7 @@ func TestBlockStoreProvider(t *testing.T) {
 }
 
 func TestDrop(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 
 	provider := env.provider
