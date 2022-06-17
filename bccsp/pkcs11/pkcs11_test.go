@@ -14,7 +14,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/asn1"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -41,17 +40,16 @@ func defaultOptions() PKCS11Opts {
 	}
 }
 
-func newKeyStore(t *testing.T) (bccsp.KeyStore, func()) {
-	tempDir, err := ioutil.TempDir("", "pkcs11_ks")
-	require.NoError(t, err)
+func newKeyStore(t *testing.T) bccsp.KeyStore {
+	tempDir := t.TempDir()
 	ks, err := sw.NewFileBasedKeyStore(nil, tempDir, false)
 	require.NoError(t, err)
 
-	return ks, func() { os.RemoveAll(tempDir) }
+	return ks
 }
 
 func newSWProvider(t *testing.T) bccsp.BCCSP {
-	ks, _ := newKeyStore(t)
+	ks := newKeyStore(t)
 	swCsp, err := sw.NewDefaultSecurityLevelWithKeystore(ks)
 	require.NoError(t, err)
 
@@ -59,20 +57,18 @@ func newSWProvider(t *testing.T) bccsp.BCCSP {
 }
 
 func newProvider(t *testing.T, opts PKCS11Opts, options ...Option) (*Provider, func()) {
-	ks, ksCleanup := newKeyStore(t)
+	ks := newKeyStore(t)
 	csp, err := New(opts, ks, options...)
 	require.NoError(t, err)
 
 	cleanup := func() {
 		csp.ctx.Destroy()
-		ksCleanup()
 	}
 	return csp, cleanup
 }
 
 func TestNew(t *testing.T) {
-	ks, cleanup := newKeyStore(t)
-	defer cleanup()
+	ks := newKeyStore(t)
 
 	t.Run("DefaultConfig", func(t *testing.T) {
 		opts := defaultOptions()
@@ -113,8 +109,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestInvalidNewParameter(t *testing.T) {
-	ks, cleanup := newKeyStore(t)
-	defer cleanup()
+	ks := newKeyStore(t)
 
 	t.Run("BadSecurityLevel", func(t *testing.T) {
 		opts := defaultOptions()

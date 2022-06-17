@@ -9,8 +9,6 @@ package fileledger
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"testing"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -40,8 +38,7 @@ type testEnv struct {
 }
 
 func initialize(t *testing.T) (*testEnv, *FileLedger) {
-	name, err := ioutil.TempDir("", "hyperledger_fabric")
-	require.NoError(t, err, "Error creating temp dir: %s", err)
+	name := t.TempDir()
 
 	p, err := New(name, &disabled.Provider{})
 	require.NoError(t, err)
@@ -54,10 +51,6 @@ func initialize(t *testing.T) (*testEnv, *FileLedger) {
 
 func (tev *testEnv) tearDown() {
 	tev.shutDown()
-	err := os.RemoveAll(tev.location)
-	if err != nil {
-		tev.t.Fatalf("Error tearing down env: %s", err)
-	}
 }
 
 func (tev *testEnv) shutDown() {

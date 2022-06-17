@@ -8,8 +8,6 @@ package privdata
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"sort"
 	"testing"
 	"time"
@@ -923,15 +921,13 @@ func TestRetryFetchFromPeer(t *testing.T) {
 	ns1c1 := collectionPvtdataInfoFromTemplate("ns1", "c1", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
 	ns1c2 := collectionPvtdataInfoFromTemplate("ns1", "c2", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
 
-	tempdir, err := ioutil.TempDir("", "ts")
-	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
+	tempdir := t.TempDir()
 	storeProvider, err := transientstore.NewStoreProvider(tempdir)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
 	store, err := storeProvider.OpenStore(ts.channelID)
 	require.NoError(t, err, fmt.Sprintf("Failed to open store, got err %s", err))
 
 	defer storeProvider.Close()
-	defer os.RemoveAll(tempdir)
 
 	storePvtdataOfInvalidTx := true
 	skipPullingInvalidTransactions := false
@@ -1018,15 +1014,13 @@ func TestSkipPullingAllInvalidTransactions(t *testing.T) {
 	ns1c1 := collectionPvtdataInfoFromTemplate("ns1", "c1", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
 	ns1c2 := collectionPvtdataInfoFromTemplate("ns1", "c2", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
 
-	tempdir, err := ioutil.TempDir("", "ts")
-	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
+	tempdir := t.TempDir()
 	storeProvider, err := transientstore.NewStoreProvider(tempdir)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
 	store, err := storeProvider.OpenStore(ts.channelID)
 	require.NoError(t, err, fmt.Sprintf("Failed to open store, got err %s", err))
 
 	defer storeProvider.Close()
-	defer os.RemoveAll(tempdir)
 
 	storePvtdataOfInvalidTx := true
 	skipPullingInvalidTransactions := true
@@ -1119,15 +1113,13 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 
 	ns1c1 := collectionPvtdataInfoFromTemplate("ns1", "c1", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
 
-	tempdir, err := ioutil.TempDir("", "ts")
-	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
+	tempdir := t.TempDir()
 	storeProvider, err := transientstore.NewStoreProvider(tempdir)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
 	store, err := storeProvider.OpenStore(ts.channelID)
 	require.NoError(t, err, fmt.Sprintf("Failed to open store, got err %s", err))
 
 	defer storeProvider.Close()
-	defer os.RemoveAll(tempdir)
 
 	// set up store with 9 existing private data write sets
 	for i := 0; i < 9; i++ {
@@ -1260,14 +1252,12 @@ func testRetrievePvtdataSuccess(t *testing.T,
 	expectedBlockPvtdata *ledger.BlockPvtdata) {
 	fmt.Println("\n" + scenario)
 
-	tempdir, err := ioutil.TempDir("", "ts")
-	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
+	tempdir := t.TempDir()
 	storeProvider, err := transientstore.NewStoreProvider(tempdir)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
 	store, err := storeProvider.OpenStore(ts.channelID)
 	require.NoError(t, err, fmt.Sprintf("Failed to open store, got err %s", err))
 	defer storeProvider.Close()
-	defer os.RemoveAll(tempdir)
 
 	pdp := setupPrivateDataProvider(t, ts, testConfig,
 		storePvtdataOfInvalidTx, skipPullingInvalidTransactions, store,
@@ -1298,14 +1288,12 @@ func testRetrievePvtdataFailure(t *testing.T,
 	expectedErr string) {
 	fmt.Println("\n" + scenario)
 
-	tempdir, err := ioutil.TempDir("", "ts")
-	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
+	tempdir := t.TempDir()
 	storeProvider, err := transientstore.NewStoreProvider(tempdir)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
 	store, err := storeProvider.OpenStore(ts.channelID)
 	require.NoError(t, err, fmt.Sprintf("Failed to open store, got err %s", err))
 	defer storeProvider.Close()
-	defer os.RemoveAll(tempdir)
 
 	pdp := setupPrivateDataProvider(t, ts, testConfig,
 		storePvtdataOfInvalidTx, skipPullingInvalidTransactions, store,

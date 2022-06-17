@@ -8,8 +8,6 @@ package library
 
 import (
 	"context"
-	"io/ioutil"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -52,9 +50,7 @@ func TestLoadAuthPlugin(t *testing.T) {
 		t.Skip("plugins disabled")
 	}
 
-	testDir, err := ioutil.TempDir("", "")
-	require.NoError(t, err, "Could not create temp directory for plugins")
-	defer os.Remove(testDir)
+	testDir := t.TempDir()
 
 	pluginPath := filepath.Join(testDir, "authplugin.so")
 	buildPlugin(t, pluginPath, authPluginPackage)
@@ -77,9 +73,7 @@ func TestLoadDecoratorPlugin(t *testing.T) {
 	testProposal := &peer.Proposal{Payload: []byte("test")}
 	testInput := &peer.ChaincodeInput{Args: [][]byte{[]byte("test")}}
 
-	testDir, err := ioutil.TempDir("", "")
-	require.NoError(t, err, "Could not create temp directory for plugins")
-	defer os.Remove(testDir)
+	testDir := t.TempDir()
 
 	pluginPath := filepath.Join(testDir, "decoratorplugin.so")
 	buildPlugin(t, pluginPath, decoratorPluginPackage)
@@ -97,9 +91,7 @@ func TestEndorsementPlugin(t *testing.T) {
 		t.Skip("plugins disabled")
 	}
 
-	testDir, err := ioutil.TempDir("", "")
-	require.NoError(t, err, "Could not create temp directory for plugins")
-	defer os.Remove(testDir)
+	testDir := t.TempDir()
 
 	pluginPath := filepath.Join(testDir, "endorsementplugin.so")
 	buildPlugin(t, pluginPath, endorsementTestPlugin)
@@ -122,9 +114,7 @@ func TestValidationPlugin(t *testing.T) {
 		t.Skip("plugins disabled")
 	}
 
-	testDir, err := ioutil.TempDir("", "")
-	require.NoError(t, err, "Could not create temp directory for plugins")
-	defer os.Remove(testDir)
+	testDir := t.TempDir()
 
 	pluginPath := filepath.Join(testDir, "validationplugin.so")
 	buildPlugin(t, pluginPath, validationTestPlugin)
@@ -137,7 +127,7 @@ func TestValidationPlugin(t *testing.T) {
 	instance := factory.New()
 	require.NotNil(t, instance)
 	require.NoError(t, instance.Init())
-	err = instance.Validate(nil, "", 0, 0)
+	err := instance.Validate(nil, "", 0, 0)
 	require.NoError(t, err)
 }
 

@@ -23,10 +23,9 @@ import (
 
 func initOrdererTestEnv(t *testing.T) (cleanup func()) {
 	t.Helper()
-	cfgPath, err := ioutil.TempDir("", "ordererTestEnv")
-	require.NoError(t, err)
+	cfgPath := t.TempDir()
 	certsDir := filepath.Join(cfgPath, "certs")
-	err = os.Mkdir(certsDir, 0o755)
+	err := os.Mkdir(certsDir, 0o755)
 	require.NoError(t, err)
 
 	configFile, err := os.Create(filepath.Join(cfgPath, "test.yaml"))
@@ -103,7 +102,6 @@ QjUeWEu3crkxMvjq4vYh3LaDREuhRANCAAR+FujNKcGQW/CEpMU6Yp45ye2cbOwJ
 	return func() {
 		err := os.Unsetenv("FABRIC_CFG_PATH")
 		require.NoError(t, err)
-		defer os.RemoveAll(cfgPath)
 		viper.Reset()
 	}
 }

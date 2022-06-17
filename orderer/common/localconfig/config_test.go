@@ -5,7 +5,6 @@ package localconfig
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -83,12 +82,7 @@ func TestLoadMissingConfigFile(t *testing.T) {
 }
 
 func TestLoadMalformedConfigFile(t *testing.T) {
-	name, err := ioutil.TempDir("", "hyperledger_fabric")
-	require.Nil(t, err, "Error creating temp dir: %s", err)
-	defer func() {
-		err = os.RemoveAll(name)
-		require.Nil(t, os.RemoveAll(name), "Error removing temp dir: %s", err)
-	}()
+	name := t.TempDir()
 
 	// Create a malformed orderer.yaml file in temp dir
 	f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
@@ -188,12 +182,7 @@ func TestClusterDefaults(t *testing.T) {
 }
 
 func TestConsensusConfig(t *testing.T) {
-	name, err := ioutil.TempDir("", "hyperledger_fabric")
-	require.Nil(t, err, "Error creating temp dir: %s", err)
-	defer func() {
-		err = os.RemoveAll(name)
-		require.Nil(t, os.RemoveAll(name), "Error removing temp dir: %s", err)
-	}()
+	name := t.TempDir()
 
 	content := `---
 Consensus:

@@ -333,21 +333,14 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
 
-	tmpDir, err := ioutil.TempDir("", "main-test-init-registrar")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create temporary directory: %v", err)
-		os.Exit(-1)
-	}
-	defer os.RemoveAll(tmpDir)
-
+	tmpDir := t.TempDir()
 	copyYamlFiles("testdata", tmpDir)
 
 	cryptoPath := generateCryptoMaterials(t, cryptogen, tmpDir)
 	t.Logf("Generated crypto material to: %s", cryptoPath)
 	genesisFile, _ := produceGenesisFileEtcdRaft(t, "testchannelid", tmpDir)
 
-	fileLedgerLocation, _ := ioutil.TempDir("", "main_test-")
-	defer os.RemoveAll(fileLedgerLocation)
+	fileLedgerLocation := t.TempDir()
 
 	ledgerFactory, err := createLedgerFactory(
 		&localconfig.TopLevel{
@@ -377,13 +370,7 @@ func TestExtractBootstrapBlock(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
 
-	tmpDir, err := ioutil.TempDir("", "main-test-init-registrar")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create temporary directory: %v", err)
-		os.Exit(-1)
-	}
-	defer os.RemoveAll(tmpDir)
-
+	tmpDir := t.TempDir()
 	copyYamlFiles("testdata", tmpDir)
 
 	cryptoPath := generateCryptoMaterials(t, cryptogen, tmpDir)
@@ -417,13 +404,7 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 	configPathCleanup := configtest.SetDevFabricConfigPath(t)
 	defer configPathCleanup()
 
-	tmpDir, err := ioutil.TempDir("", "main-test-init-registrar")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create temporary directory: %v", err)
-		os.Exit(-1)
-	}
-	defer os.RemoveAll(tmpDir)
-
+	tmpDir := t.TempDir()
 	copyYamlFiles("testdata", tmpDir)
 
 	cryptoPath := generateCryptoMaterials(t, cryptogen, tmpDir)
@@ -438,9 +419,9 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 		genesisBytes   []byte
 	)
 
-	setup := func() func() {
-		fileLedgerLocation, err := ioutil.TempDir("", "main_test-")
-		require.NoError(t, err)
+	setup := func() {
+		var err error
+		fileLedgerLocation := t.TempDir()
 
 		config = &localconfig.TopLevel{
 			General: localconfig.General{
@@ -465,15 +446,10 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 		genesisBytes, err = ioutil.ReadFile(genesisFile)
 		require.NoError(t, err)
 		require.NotNil(t, genesisBytes)
-
-		return func() {
-			os.RemoveAll(fileLedgerLocation)
-		}
 	}
 
 	t.Run("No join-block", func(t *testing.T) {
-		cleanup := setup()
-		defer cleanup()
+		setup()
 
 		bootstrapBlock := initSystemChannelWithJoinBlock(config, cryptoProvider, ledgerFactory)
 		require.Nil(t, bootstrapBlock)
@@ -483,8 +459,7 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 	})
 
 	t.Run("With genesis join-block", func(t *testing.T) {
-		cleanup := setup()
-		defer cleanup()
+		setup()
 
 		err := fileRepo.Save("testchannelid", genesisBytes)
 		require.NoError(t, err)
@@ -502,8 +477,7 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 	})
 
 	t.Run("With non-genesis join-block", func(t *testing.T) {
-		cleanup := setup()
-		defer cleanup()
+		setup()
 
 		block := protoutil.UnmarshalBlockOrPanic(genesisBytes)
 		block.Header.Number = 7
@@ -521,9 +495,7 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 func TestExtractSystemChannel(t *testing.T) {
 	cryptoProvider, _ := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 
-	tmpdir, err := ioutil.TempDir("", "main_test-")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpdir)
+	tmpdir := t.TempDir()
 
 	rlf, err := fileledger.New(tmpdir, &disabled.Provider{})
 	require.NoError(t, err)
@@ -652,13 +624,7 @@ func TestInitializeMultichannelRegistrar(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
 
-	tmpDir, err := ioutil.TempDir("", "main-test-init-registrar")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create temporary directory: %v", err)
-		os.Exit(-1)
-	}
-	defer os.RemoveAll(tmpDir)
-
+	tmpDir := t.TempDir()
 	copyYamlFiles("testdata", tmpDir)
 
 	cryptoPath := generateCryptoMaterials(t, cryptogen, tmpDir)
@@ -671,8 +637,7 @@ func TestInitializeMultichannelRegistrar(t *testing.T) {
 	signer := &server_mocks.SignerSerializer{}
 
 	t.Run("registrar with a system channel", func(t *testing.T) {
-		conf, ledgerDir := genesisConfig(t, genesisFile)
-		defer os.RemoveAll(ledgerDir)
+		conf := genesisConfig(t, genesisFile)
 
 		srv, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{})
 		require.NoError(t, err)
@@ -702,8 +667,7 @@ func TestInitializeMultichannelRegistrar(t *testing.T) {
 	})
 
 	t.Run("registrar without a system channel", func(t *testing.T) {
-		conf, ledgerDir := genesisConfig(t, genesisFile)
-		defer os.RemoveAll(ledgerDir)
+		conf := genesisConfig(t, genesisFile)
 		conf.General.BootstrapMethod = "none"
 		conf.General.GenesisFile = ""
 		srv, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{})
@@ -776,13 +740,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
 
-	tmpDir, err := ioutil.TempDir("", "main-test-trusted-roots")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create temporary directory: %v", err)
-		os.Exit(-1)
-	}
-	defer os.RemoveAll(tmpDir)
-
+	tmpDir := t.TempDir()
 	copyYamlFiles("testdata", tmpDir)
 
 	cryptoPath := generateCryptoMaterials(t, cryptogen, tmpDir)
@@ -1181,9 +1139,7 @@ func TestReuseListener(t *testing.T) {
 func TestInitializeEtcdraftConsenter(t *testing.T) {
 	consenters := make(map[string]consensus.Consenter)
 
-	tmpdir, err := ioutil.TempDir("", "main_test-")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpdir)
+	tmpdir := t.TempDir()
 	rlf, err := fileledger.New(tmpdir, &disabled.Provider{})
 	require.NoError(t, err)
 
@@ -1221,11 +1177,10 @@ func TestInitializeEtcdraftConsenter(t *testing.T) {
 	require.NotNil(t, consenters["etcdraft"])
 }
 
-func genesisConfig(t *testing.T, genesisFile string) (*localconfig.TopLevel, string) {
+func genesisConfig(t *testing.T, genesisFile string) *localconfig.TopLevel {
 	t.Helper()
 	localMSPDir := configtest.GetDevMspDir()
-	ledgerDir, err := ioutil.TempDir("", "genesis-config")
-	require.NoError(t, err)
+	ledgerDir := t.TempDir()
 
 	return &localconfig.TopLevel{
 		General: localconfig.General{
@@ -1244,7 +1199,7 @@ func genesisConfig(t *testing.T, genesisFile string) (*localconfig.TopLevel, str
 		FileLedger: localconfig.FileLedger{
 			Location: ledgerDir,
 		},
-	}, ledgerDir
+	}
 }
 
 func panicMsg(f func()) string {

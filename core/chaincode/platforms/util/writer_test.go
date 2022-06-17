@@ -24,9 +24,7 @@ import (
 )
 
 func TestWriteFileToPackage(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "utiltest")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	buf := bytes.NewBuffer(nil)
 	gw := gzip.NewWriter(buf)
@@ -36,7 +34,7 @@ func TestWriteFileToPackage(t *testing.T) {
 	filename := "test.txt"
 	filecontent := "hello"
 	filePath := filepath.Join(tempDir, filename)
-	err = ioutil.WriteFile(filePath, bytes.NewBufferString(filecontent).Bytes(), 0o600)
+	err := ioutil.WriteFile(filePath, bytes.NewBufferString(filecontent).Bytes(), 0o600)
 	require.NoError(t, err, "Error creating file %s", filePath)
 
 	err = WriteFileToPackage(filePath, filename, tw)
@@ -169,14 +167,12 @@ func TestWriteFolderToTarPackage5(t *testing.T) {
 
 // Failure case 1: no files in directory
 func TestWriteFolderToTarPackageFailure1(t *testing.T) {
-	srcPath, err := ioutil.TempDir("", "utiltest")
-	require.NoError(t, err)
-	defer os.RemoveAll(srcPath)
+	srcPath := t.TempDir()
 
 	tw := tar.NewWriter(bytes.NewBuffer(nil))
 	defer tw.Close()
 
-	err = WriteFolderToTarPackage(tw, srcPath, []string{}, nil, nil)
+	err := WriteFolderToTarPackage(tw, srcPath, []string{}, nil, nil)
 	require.Contains(t, err.Error(), "no source files found")
 }
 
@@ -216,11 +212,9 @@ func Test_WriteFolderToTarPackageFailure4(t *testing.T) {
 		t.Skip("unable to chmod execute permission on windows directory")
 	}
 
-	tempDir, err := ioutil.TempDir("", "WriteFolderToTarPackageFailure4BadFileMode")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 	testFile := filepath.Join(tempDir, "test.java")
-	err = ioutil.WriteFile(testFile, []byte("Content"), 0o644)
+	err := ioutil.WriteFile(testFile, []byte("Content"), 0o644)
 	require.NoError(t, err, "Error creating file", testFile)
 	err = os.Chmod(tempDir, 0o644)
 	require.NoError(t, err)

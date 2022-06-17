@@ -22,8 +22,7 @@ import (
 )
 
 func TestSnapshotRequestBookKeeper(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
@@ -87,8 +86,7 @@ func TestSnapshotRequestBookKeeper(t *testing.T) {
 }
 
 func TestSnapshotRequestBookKeeperErrorPaths(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
@@ -119,8 +117,7 @@ func TestSnapshotRequestBookKeeperErrorPaths(t *testing.T) {
 }
 
 func TestSnapshotRequests(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
@@ -231,8 +228,7 @@ func TestSnapshotRequests(t *testing.T) {
 }
 
 func TestSnapshotMgmtConcurrency(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
@@ -263,8 +259,7 @@ func TestSnapshotMgmtConcurrency(t *testing.T) {
 }
 
 func TestSnapshotMgrShutdown(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
@@ -300,8 +295,7 @@ func TestSnapshotMgrShutdown(t *testing.T) {
 }
 
 func TestSnapshotRequestsErrorPaths(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 
 	// create a ledger with genesis block

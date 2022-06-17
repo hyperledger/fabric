@@ -8,7 +8,6 @@ package pvtdatastorage
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -181,8 +180,7 @@ func TestStoreIteratorError(t *testing.T) {
 	})
 
 	t.Run("processCollElgEvents", func(t *testing.T) {
-		storeDir, err := ioutil.TempDir("", "pdstore")
-		require.NoError(t, err)
+		storeDir := t.TempDir()
 		s := &Store{}
 		dbProvider, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: storeDir})
 		require.NoError(t, err)

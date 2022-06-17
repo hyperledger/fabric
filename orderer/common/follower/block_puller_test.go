@@ -9,7 +9,6 @@ package follower_test
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path"
 	"sync/atomic"
 	"testing"
@@ -181,9 +180,7 @@ func TestBlockPullerFactory_VerifyBlockSequence(t *testing.T) {
 }
 
 func generateJoinBlock(t *testing.T, tlsCA tlsgen.CA, channelID string, number uint64) *cb.Block {
-	tmpdir, err := ioutil.TempDir("", "block-puller-test-")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpdir)
+	tmpdir := t.TempDir()
 
 	confAppRaft := genesisconfig.Load(genesisconfig.SampleDevModeEtcdRaftProfile, configtest.GetDevConfigDir())
 	confAppRaft.Consortiums = nil

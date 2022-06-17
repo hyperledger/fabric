@@ -17,9 +17,8 @@ import (
 )
 
 func TestPauseAndResume(t *testing.T) {
-	conf, cleanup := testConfig(t)
+	conf := testConfig(t)
 	conf.HistoryDBConfig.Enabled = false
-	defer cleanup()
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 
 	numLedgers := 10
@@ -73,9 +72,8 @@ func TestPauseAndResume(t *testing.T) {
 }
 
 func TestPauseAndResumeErrors(t *testing.T) {
-	conf, cleanup := testConfig(t)
+	conf := testConfig(t)
 	conf.HistoryDBConfig.Enabled = false
-	defer cleanup()
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 
 	ledgerID := constructTestLedgerID(0)

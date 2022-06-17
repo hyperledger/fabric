@@ -355,9 +355,7 @@ func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
 }
 
 func TestConfigFromEnv(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "peer-clientcert")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 
 	// peer client config
 	address, clientConfig, err := common.ConfigFromEnv("peer")

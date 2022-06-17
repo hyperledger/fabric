@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package txvalidator
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -107,7 +105,7 @@ func TestDetectTXIdDuplicates(t *testing.T) {
 }
 
 func TestBlockValidationDuplicateTXId(t *testing.T) {
-	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t, "txvalidator")
+	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t)
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
@@ -171,7 +169,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 }
 
 func TestBlockValidation(t *testing.T) {
-	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t, "txvalidator")
+	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t)
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
@@ -184,7 +182,7 @@ func TestBlockValidation(t *testing.T) {
 }
 
 func TestParallelBlockValidation(t *testing.T) {
-	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t, "txvalidator")
+	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t)
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
@@ -197,7 +195,7 @@ func TestParallelBlockValidation(t *testing.T) {
 }
 
 func TestVeryLargeParallelBlockValidation(t *testing.T) {
-	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t, "txvalidator")
+	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t)
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
@@ -212,7 +210,7 @@ func TestVeryLargeParallelBlockValidation(t *testing.T) {
 }
 
 func TestTxValidationFailure_InvalidTxid(t *testing.T) {
-	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t, "txvalidator")
+	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t)
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
@@ -423,16 +421,12 @@ func TestInvalidTXsForUpgradeCC(t *testing.T) {
 	require.EqualValues(t, expectTxsFltr, txsfltr)
 }
 
-func constructLedgerMgrWithTestDefaults(t *testing.T, testDir string) (*ledgermgmt.LedgerMgr, func()) {
-	testDir, err := ioutil.TempDir("", testDir)
-	if err != nil {
-		t.Fatalf("Failed to create ledger directory: %s", err)
-	}
+func constructLedgerMgrWithTestDefaults(t *testing.T) (*ledgermgmt.LedgerMgr, func()) {
+	testDir := t.TempDir()
 	initializer := ledgermgmttest.NewInitializer(testDir)
 	ledgerMgr := ledgermgmt.NewLedgerMgr(initializer)
 	cleanup := func() {
 		ledgerMgr.Close()
-		os.RemoveAll(testDir)
 	}
 	return ledgerMgr, cleanup
 }

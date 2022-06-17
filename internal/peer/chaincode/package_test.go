@@ -31,14 +31,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func newTempDir() string {
-	tempDir, err := ioutil.TempDir("/tmp", "packagetest-")
-	if err != nil {
-		panic(err)
-	}
-	return tempDir
-}
-
 func mockCDSFactory(spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, error) {
 	return &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: []byte("somecode")}, nil
 }
@@ -67,8 +59,7 @@ func extractSignedCCDepSpec(env *pcommon.Envelope) (*pcommon.ChannelHeader, *pb.
 // TestCDSPackage tests generation of the old ChaincodeDeploymentSpec install
 // which we will presumably continue to support at least for a bit
 func TestCDSPackage(t *testing.T) {
-	pdir := newTempDir()
-	defer os.RemoveAll(pdir)
+	pdir := t.TempDir()
 
 	ccpackfile := pdir + "/ccpack.file"
 	err := createSignedCDSPackage(t, []string{"-n", "somecc", "-p", "some/go/package", "-v", "0", ccpackfile}, false)
@@ -122,8 +113,7 @@ func mockChaincodeCmdFactoryForTest(sign bool) (*ChaincodeCmdFactory, error) {
 // TestSignedCDSPackage generates the new envelope encapsulating
 // CDS, policy
 func TestSignedCDSPackage(t *testing.T) {
-	pdir := newTempDir()
-	defer os.RemoveAll(pdir)
+	pdir := t.TempDir()
 
 	ccpackfile := pdir + "/ccpack.file"
 	err := createSignedCDSPackage(t, []string{"-n", "somecc", "-p", "some/go/package", "-v", "0", "-s", ccpackfile}, false)
@@ -155,8 +145,7 @@ func TestSignedCDSPackage(t *testing.T) {
 // TestSignedCDSPackageWithSignature generates the new envelope encapsulating
 // CDS, policy and signs the package with local MSP
 func TestSignedCDSPackageWithSignature(t *testing.T) {
-	pdir := newTempDir()
-	defer os.RemoveAll(pdir)
+	pdir := t.TempDir()
 
 	ccpackfile := pdir + "/ccpack.file"
 	err := createSignedCDSPackage(t, []string{"-n", "somecc", "-p", "some/go/package", "-v", "0", "-s", "-S", ccpackfile}, true)
@@ -185,8 +174,7 @@ func TestSignedCDSPackageWithSignature(t *testing.T) {
 }
 
 func TestNoOwnerToSign(t *testing.T) {
-	pdir := newTempDir()
-	defer os.RemoveAll(pdir)
+	pdir := t.TempDir()
 
 	ccpackfile := pdir + "/ccpack.file"
 	// note "-S" requires signer but we are passing fase
@@ -198,8 +186,7 @@ func TestNoOwnerToSign(t *testing.T) {
 }
 
 func TestInvalidPolicy(t *testing.T) {
-	pdir := newTempDir()
-	defer os.RemoveAll(pdir)
+	pdir := t.TempDir()
 
 	ccpackfile := pdir + "/ccpack.file"
 	err := createSignedCDSPackage(t, []string{"-n", "somecc", "-p", "some/go/package", "-v", "0", "-s", "-i", "AND('a bad policy')", ccpackfile}, false)

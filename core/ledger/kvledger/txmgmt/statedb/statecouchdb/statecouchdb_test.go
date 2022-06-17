@@ -9,7 +9,6 @@ package statecouchdb
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -46,10 +45,7 @@ func (env *testVDBEnv) init(t *testing.T, sysNamespaces []string) {
 		env.couchDBEnv = couchDBEnv
 	}
 
-	redoPath, err := ioutil.TempDir("", "cvdbenv")
-	if err != nil {
-		t.Fatalf("Failed to create redo log directory: %s", err)
-	}
+	redoPath := t.TempDir()
 	config := &ledger.CouchDBConfig{
 		Address:             env.couchDBEnv.couchAddress,
 		Username:            "admin",
@@ -91,7 +87,6 @@ func (env *testVDBEnv) cleanup() {
 		env.DBProvider.Close()
 	}
 	env.couchDBEnv.cleanup(env.config)
-	require.NoError(env.t, os.RemoveAll(env.config.RedoLogPath))
 }
 
 // testVDBEnv provides a couch db for testing
@@ -1119,9 +1114,7 @@ func TestFormatCheck(t *testing.T) {
 }
 
 func testFormatCheck(t *testing.T, dataFormat string, dataExists bool, expectedErr *dataformat.ErrFormatMismatch, expectedFormat string, vdbEnv *testVDBEnv) {
-	redoPath, err := ioutil.TempDir("", "redoPath")
-	require.NoError(t, err)
-	defer os.RemoveAll(redoPath)
+	redoPath := t.TempDir()
 	config := &ledger.CouchDBConfig{
 		Address:             vdbEnv.couchDBEnv.couchAddress,
 		Username:            "admin",

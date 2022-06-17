@@ -19,7 +19,7 @@ import (
 )
 
 func TestRollback(t *testing.T) {
-	path := testPath()
+	path := t.TempDir()
 	blocks := testutil.ConstructTestBlocks(t, 50) // 50 blocks persisted in ~5 block files
 	blocksPerFile := 50 / 5
 	env := newTestEnv(t, NewConf(path, 0))
@@ -108,7 +108,7 @@ func TestRollback(t *testing.T) {
 // TestRollbackWithOnlyBlockIndexAttributes mimics the scenario when ledger is used for orderer
 // i.e., only block is index and transancations are not indexed
 func TestRollbackWithOnlyBlockIndexAttributes(t *testing.T) {
-	path := testPath()
+	path := t.TempDir()
 	blocks := testutil.ConstructTestBlocks(t, 50) // 50 blocks persisted in ~5 block files
 	blocksPerFile := 50 / 5
 	onlyBlockNumIndex := []IndexableAttr{
@@ -160,7 +160,7 @@ func TestRollbackWithOnlyBlockIndexAttributes(t *testing.T) {
 }
 
 func TestRollbackWithNoIndexDir(t *testing.T) {
-	path := testPath()
+	path := t.TempDir()
 	blocks := testutil.ConstructTestBlocks(t, 50)
 	blocksPerFile := 50 / 5
 	conf := NewConf(path, 0)
@@ -213,7 +213,7 @@ func TestRollbackWithNoIndexDir(t *testing.T) {
 }
 
 func TestValidateRollbackParams(t *testing.T) {
-	path := testPath()
+	path := t.TempDir()
 	env := newTestEnv(t, NewConf(path, 1024*24))
 	defer env.Cleanup()
 
@@ -236,7 +236,7 @@ func TestValidateRollbackParams(t *testing.T) {
 }
 
 func TestDuplicateTxIDDuringRollback(t *testing.T) {
-	path := testPath()
+	path := t.TempDir()
 	blocks := testutil.ConstructTestBlocks(t, 4)
 	maxFileSize := 1024 * 1024 * 4
 	env := newTestEnv(t, NewConf(path, maxFileSize))

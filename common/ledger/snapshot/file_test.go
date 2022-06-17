@@ -26,8 +26,7 @@ var testNewHashFunc = func() (hash.Hash, error) {
 }
 
 func TestFileCreateAndRead(t *testing.T) {
-	testDir := testPath(t)
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	// create file and encode some data
 	fileCreator, err := CreateFile(path.Join(testDir, "dataFile"), byte(5), testNewHashFunc)
@@ -99,8 +98,7 @@ func TestFileCreateAndRead(t *testing.T) {
 }
 
 func TestFileCreateAndLargeValue(t *testing.T) {
-	testDir := testPath(t)
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	// create file and encode some data
 	fileWriter, err := CreateFile(path.Join(testDir, "dataFile"), byte(5), testNewHashFunc)
@@ -126,8 +124,7 @@ func TestFileCreateAndLargeValue(t *testing.T) {
 }
 
 func TestFileCreatorErrorPropagation(t *testing.T) {
-	testPath := testPath(t)
-	defer os.RemoveAll(testPath)
+	testPath := t.TempDir()
 
 	// error propagation from CreateFile function when file already exists
 	existingFilePath := path.Join(testPath, "an-existing-file")
@@ -167,8 +164,7 @@ func TestFileCreatorErrorPropagation(t *testing.T) {
 }
 
 func TestFileReaderErrorPropagation(t *testing.T) {
-	testPath := testPath(t)
-	defer os.RemoveAll(testPath)
+	testPath := t.TempDir()
 
 	// non-existent-file cuases an error
 	nonExistentFile := path.Join(testPath, "non-existent-file")
@@ -222,12 +218,6 @@ func computeSha256(t *testing.T, file string) []byte {
 	require.NoError(t, err)
 	sha := sha256.Sum256(data)
 	return sha[:]
-}
-
-func testPath(t *testing.T) string {
-	path, err := ioutil.TempDir("", "test-file-encoder-")
-	require.NoError(t, err)
-	return path
 }
 
 type errorCausingWriter struct {

@@ -23,8 +23,7 @@ import (
 )
 
 func TestStatsBlockCommit(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	testMetricProvider := testutilConstructMetricProvider()
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())

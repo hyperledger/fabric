@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -37,8 +36,7 @@ var (
 func setup(t *testing.T) {
 	logger = flogging.NewFabricLogger(zap.NewExample())
 	ram = raft.NewMemoryStorage()
-	dataDir, err = ioutil.TempDir("", "etcdraft-")
-	require.NoError(t, err)
+	dataDir = t.TempDir()
 	walDir, snapDir = path.Join(dataDir, "wal"), path.Join(dataDir, "snapshot")
 	store, err = CreateStorage(logger, walDir, snapDir, ram)
 	require.NoError(t, err)
@@ -46,8 +44,6 @@ func setup(t *testing.T) {
 
 func clean(t *testing.T) {
 	err = store.Close()
-	require.NoError(t, err)
-	err = os.RemoveAll(dataDir)
 	require.NoError(t, err)
 }
 
