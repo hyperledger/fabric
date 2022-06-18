@@ -275,21 +275,21 @@ fi
 
 # Process samples first then the binaries. So if the fabric-samples dir is present
 # the binaries will go there
-if [[ "${_arg_comp[@]}" =~ ^s(amples)? ]]; then
+if [[ "${_arg_comp[@]}" =~ (^| |,)s(amples)? ]]; then
         echo
         echo "Clone hyperledger/fabric-samples repo"
         echo
         cloneSamplesRepo
 fi
 
-if [[ "${_arg_comp[@]}" =~ ^b(inary)? ]]; then
+if [[ "${_arg_comp[@]}" =~ (^| |,)b(inary)? ]]; then
         echo
         echo "Pull Hyperledger Fabric binaries"
         echo
         pullBinaries
 fi
 
-if [[ "${_arg_comp[@]}" =~ ^p(odman)? ]]; then
+if [[ "${_arg_comp[@]}" =~ (^| |,)p(odman)? ]]; then
         echo
         echo "Pull Hyperledger Fabric podman images"
         echo
@@ -297,7 +297,7 @@ if [[ "${_arg_comp[@]}" =~ ^p(odman)? ]]; then
         pullImages
 fi
 
-if [[ "${_arg_comp[@]}" =~ ^d(ocker)? ]]; then
+if [[ "${_arg_comp[@]}" =~ (^| |,)d(ocker)? ]]; then
         echo
         echo "Pull Hyperledger Fabric docker images"
         echo
