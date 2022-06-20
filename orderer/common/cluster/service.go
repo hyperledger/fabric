@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -90,10 +91,11 @@ func (s *Service) handleMessage(stream StepStream, addr string, exp *certificate
 		nodeName := commonNameFromContext(stream.Context())
 		s.Logger.Debugf("Received message from %s(%s): %v", nodeName, addr, requestAsString(request))
 		return s.handleSubmit(submitReq, stream, addr)
+	} else if consensusReq := request.GetConsensusRequest(); consensusReq != nil {
+		return s.Dispatcher.DispatchConsensus(stream.Context(), request.GetConsensusRequest())
 	}
 
-	// Else, it's a consensus message.
-	return s.Dispatcher.DispatchConsensus(stream.Context(), request.GetConsensusRequest())
+	return errors.Errorf("message is neither a Submit nor a Consensus request")
 }
 
 func (s *Service) handleSubmit(request *orderer.SubmitRequest, stream StepStream, addr string) error {
