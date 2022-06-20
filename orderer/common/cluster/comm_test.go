@@ -120,6 +120,11 @@ func (*mockChannelExtractor) TargetChannel(msg proto.Message) string {
 	}
 }
 
+type clusterServer interface {
+	// Step passes an implementation-specific message to another cluster member.
+	Step(server orderer.Cluster_StepServer) error
+}
+
 type clusterNode struct {
 	lock         sync.Mutex
 	frozen       bool
@@ -132,6 +137,7 @@ type clusterNode struct {
 	clientConfig comm_utils.ClientConfig
 	serverConfig comm_utils.ServerConfig
 	c            *cluster.Comm
+	dispatcher   clusterServer
 }
 
 func (cn *clusterNode) Step(stream orderer.Cluster_StepServer) error {
@@ -179,7 +185,7 @@ func (cn *clusterNode) resurrect() {
 		panic(fmt.Errorf("failed starting gRPC server: %v", err))
 	}
 	cn.srv = gRPCServer
-	orderer.RegisterClusterServer(gRPCServer.Server(), cn)
+	orderer.RegisterClusterServer(gRPCServer.Server(), cn.dispatcher)
 	go cn.srv.Start()
 }
 
@@ -257,6 +263,10 @@ func newTestNodeWithMetrics(t *testing.T, metrics cluster.MetricsProvider, tlsCo
 		srv: gRPCServer,
 	}
 
+	if tstSrv.dispatcher == nil {
+		tstSrv.dispatcher = tstSrv
+	}
+
 	tstSrv.freezeCond.L = &tstSrv.lock
 
 	compareCert := cluster.CachePublicKeyComparisons(func(a, b []byte) bool {
@@ -275,7 +285,7 @@ func newTestNodeWithMetrics(t *testing.T, metrics cluster.MetricsProvider, tlsCo
 		CompareCertificate:      compareCert,
 	}
 
-	orderer.RegisterClusterServer(gRPCServer.Server(), tstSrv)
+	orderer.RegisterClusterServer(gRPCServer.Server(), tstSrv.dispatcher)
 	go gRPCServer.Start()
 	return tstSrv
 }
@@ -479,6 +489,52 @@ func TestBlockingSend(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEmptyRequest(t *testing.T) {
+	// Scenario: Ensures empty messages are discarded and an error is returned
+	// back to the sender.
+
+	node1 := newTestNode(t)
+	node2 := newTestNode(t)
+
+	node2.srv.Stop()
+	svc := &cluster.Service{
+		StepLogger: flogging.MustGetLogger("test"),
+		Logger:     flogging.MustGetLogger("test"),
+		StreamCountReporter: &cluster.StreamCountReporter{
+			Metrics: cluster.NewMetrics(&disabled.Provider{}),
+		},
+		Dispatcher: node2.c,
+	}
+	node2.dispatcher = svc
+
+	// Sleep to let the gRPC service be closed
+	time.Sleep(time.Second)
+
+	// Resurrect the node with the new dispatcher
+	node2.resurrect()
+
+	defer node1.stop()
+	defer node2.stop()
+
+	config := []cluster.RemoteNode{node1.nodeInfo, node2.nodeInfo}
+	node1.c.Configure(testChannel, config)
+	node2.c.Configure(testChannel, config)
+
+	assertBiDiCommunication(t, node1, node2, testReq)
+
+	rm, err := node1.c.Remote(testChannel, node2.nodeInfo.ID)
+	require.NoError(t, err)
+
+	stream, err := rm.NewStream(time.Second * 10)
+	require.NoError(t, err)
+
+	err = stream.Send(&orderer.StepRequest{})
+	require.NoError(t, err)
+
+	_, err = stream.Recv()
+	require.Error(t, err, "message is neither a Submit nor a Consensus request")
 }
 
 func TestBasic(t *testing.T) {
