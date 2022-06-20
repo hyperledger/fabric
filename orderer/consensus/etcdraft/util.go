@@ -23,8 +23,8 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"go.etcd.io/etcd/raft"
-	"go.etcd.io/etcd/raft/raftpb"
+	raft "go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
 // RaftPeers maps consenters to slice of raft.Peer
@@ -434,11 +434,11 @@ func ConfChange(blockMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfSta
 	raftConfChange := &raftpb.ConfChange{}
 
 	// need to compute conf changes to propose
-	if len(confState.Nodes) < len(blockMetadata.ConsenterIds) {
+	if len(confState.Voters) < len(blockMetadata.ConsenterIds) {
 		// adding new node
 		raftConfChange.Type = raftpb.ConfChangeAddNode
 		for _, consenterID := range blockMetadata.ConsenterIds {
-			if NodeExists(consenterID, confState.Nodes) {
+			if NodeExists(consenterID, confState.Voters) {
 				continue
 			}
 			raftConfChange.NodeID = consenterID
@@ -446,7 +446,7 @@ func ConfChange(blockMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfSta
 	} else {
 		// removing node
 		raftConfChange.Type = raftpb.ConfChangeRemoveNode
-		for _, nodeID := range confState.Nodes {
+		for _, nodeID := range confState.Voters {
 			if NodeExists(nodeID, blockMetadata.ConsenterIds) {
 				continue
 			}

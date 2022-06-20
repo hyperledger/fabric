@@ -466,7 +466,7 @@ var _ = Describe("Handler", func() {
 						msg := fakeChatStream.SendArgsForCall(0)
 						Expect(msg.Type).To(Equal(pb.ChaincodeMessage_ERROR))
 						Expect(msg.Txid).To(Equal("tx-id"))
-						Expect(string(msg.Payload)).To(HavePrefix("INVOKE_CHAINCODE failed: transaction ID: tx-id: unmarshal failed: proto: "))
+						Expect(string(msg.Payload)).To(HavePrefix("INVOKE_CHAINCODE failed: transaction ID: tx-id"))
 					})
 				})
 			})
@@ -529,7 +529,8 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandlePutState(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("unmarshal failed:"))
 			})
 		})
 
@@ -687,7 +688,8 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("unmarshal failed:"))
 			})
 		})
 
@@ -813,7 +815,8 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleDelState(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("unmarshal failed:"))
 			})
 		})
 
@@ -932,7 +935,8 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleGetState(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("unmarshal failed:"))
 			})
 		})
 
@@ -1138,7 +1142,8 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleGetPrivateDataHash(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("unmarshal failed:"))
 			})
 		})
 
@@ -1231,7 +1236,8 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("unmarshal failed:"))
 			})
 		})
 
@@ -1537,7 +1543,8 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleGetStateByRange(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("unmarshal failed:"))
 			})
 		})
 
@@ -1649,7 +1656,8 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleQueryStateNext(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("unmarshal failed:"))
 			})
 		})
 
@@ -1760,7 +1768,8 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleQueryStateClose(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("unmarshal failed:"))
 			})
 		})
 
@@ -1951,7 +1960,8 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleGetQueryResult(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("unmarshal failed:"))
 			})
 		})
 
@@ -1962,7 +1972,8 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleGetQueryResult(incomingMessage, txContext)
-				Expect(err).To(MatchError("marshal failed: proto: Marshal called with nil"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("marshal failed:"))
 			})
 
 			It("cleans up the query context", func() {
@@ -2049,7 +2060,8 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleGetHistoryForKey(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("unmarshal failed:"))
 			})
 		})
 
@@ -2093,7 +2105,8 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleGetHistoryForKey(incomingMessage, txContext)
-				Expect(err).To(MatchError("marshal failed: proto: Marshal called with nil"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("marshal failed:"))
 			})
 
 			It("cleans up the query context", func() {
@@ -2348,7 +2361,8 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("unmarshal failed"))
 			})
 		})
 
@@ -2359,7 +2373,8 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
-				Expect(err).To(MatchError("marshal failed: proto: Marshal called with nil"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("marshal failed:"))
 			})
 		})
 	})

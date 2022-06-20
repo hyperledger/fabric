@@ -230,7 +230,7 @@ func TestToApplicationPolicyTranslator_Translate(t *testing.T) {
 
 	res, err = tr.Translate([]byte("barf"))
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "could not unmarshal signature policy envelope: unexpected EOF")
+	require.Contains(t, err.Error(), "could not unmarshal signature policy envelope")
 	require.Nil(t, res)
 
 	res, err = tr.Translate(protoutil.MarshalOrPanic(policydsl.SignedByMspMember("the right honourable member for Ipswich")))

@@ -27,9 +27,9 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"go.etcd.io/etcd/raft"
-	"go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/wal"
+	"go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/etcd/server/v3/wal"
 )
 
 const (
@@ -340,6 +340,7 @@ func NewChain(
 			logger: c.logger,
 		},
 	}
+	c.Node.confState.Store(&cc)
 
 	return c, nil
 }
@@ -1088,9 +1089,9 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 
 			switch cc.Type {
 			case raftpb.ConfChangeAddNode:
-				c.logger.Infof("Applied config change to add node %d, current nodes in channel: %+v", cc.NodeID, c.confState.Nodes)
+				c.logger.Infof("Applied config change to add node %d, current nodes in channel: %+v", cc.NodeID, c.confState.Voters)
 			case raftpb.ConfChangeRemoveNode:
-				c.logger.Infof("Applied config change to remove node %d, current nodes in channel: %+v", cc.NodeID, c.confState.Nodes)
+				c.logger.Infof("Applied config change to remove node %d, current nodes in channel: %+v", cc.NodeID, c.confState.Voters)
 			default:
 				c.logger.Panic("Programming error, encountered unsupported raft config change")
 			}
@@ -1147,7 +1148,7 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 		case c.gcC <- &gc{index: c.appliedIndex, state: c.confState, data: ents[position].Data}:
 			c.logger.Infof("Accumulated %d bytes since last snapshot, exceeding size limit (%d bytes), "+
 				"taking snapshot at block [%d] (index: %d), last snapshotted block number is %d, current nodes: %+v",
-				c.accDataSize, c.sizeLimit, b.Header.Number, c.appliedIndex, c.lastSnapBlockNum, c.confState.Nodes)
+				c.accDataSize, c.sizeLimit, b.Header.Number, c.appliedIndex, c.lastSnapBlockNum, c.confState.Voters)
 			c.accDataSize = 0
 			c.lastSnapBlockNum = b.Header.Number
 			c.Metrics.SnapshotBlockNumber.Set(float64(b.Header.Number))
@@ -1338,7 +1339,7 @@ func (c *Chain) getInFlightConfChange() *raftpb.ConfChange {
 	// extracting current Raft configuration state
 	confState := c.Node.ApplyConfChange(raftpb.ConfChange{})
 
-	if len(confState.Nodes) == len(c.opts.BlockMetadata.ConsenterIds) {
+	if len(confState.Voters) == len(c.opts.BlockMetadata.ConsenterIds) {
 		// Raft configuration change could only add one node or
 		// remove one node at a time, if raft conf state size is
 		// equal to membership stored in block metadata field,

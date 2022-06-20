@@ -19,8 +19,8 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/protoutil"
-	"go.etcd.io/etcd/raft"
-	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
 type node struct {
@@ -33,8 +33,9 @@ type node struct {
 
 	tracker *Tracker
 
-	storage *RaftStorage
-	config  *raft.Config
+	storage   *RaftStorage
+	config    *raft.Config
+	confState atomic.Value // stores raft ConfState
 
 	rpc RPC
 
@@ -57,8 +58,8 @@ func (n *node) start(fresh, join bool) {
 	var campaign bool
 	if fresh {
 		if join {
-			raftPeers = nil
 			n.logger.Info("Starting raft node to join an existing channel")
+			n.Node = raft.RestartNode(n.config)
 		} else {
 			n.logger.Info("Starting raft node as part of a new channel")
 
@@ -69,8 +70,8 @@ func (n *node) start(fresh, join bool) {
 			if n.config.ID == number%uint64(len(raftPeers))+1 {
 				campaign = true
 			}
+			n.Node = raft.StartNode(n.config, raftPeers)
 		}
-		n.Node = raft.StartNode(n.config, raftPeers)
 	} else {
 		n.logger.Info("Restarting raft node")
 		n.Node = raft.RestartNode(n.config)
@@ -201,6 +202,14 @@ func (n *node) send(msgs []raftpb.Message) {
 
 		status := raft.SnapshotFinish
 
+		// Replace node list in snapshot with CURRENT node list in cluster.
+		if msg.Type == raftpb.MsgSnap {
+			state := n.confState.Load()
+			if state != nil {
+				msg.Snapshot.Metadata.ConfState = *state.(*raftpb.ConfState)
+			}
+		}
+
 		msgBytes := protoutil.MarshalOrPanic(&msg)
 		err := n.rpc.SendConsensus(msg.To, &orderer.ConsensusRequest{Channel: n.chainID, Payload: msgBytes})
 		if err != nil {
@@ -247,7 +256,7 @@ func (n *node) abdicateLeader(currentLead uint64) {
 				continue // skip self
 			}
 
-			if pr.RecentActive && !pr.Paused {
+			if pr.RecentActive && !pr.IsPaused() {
 				transferee = id
 				break
 			}
@@ -295,4 +304,10 @@ func (n *node) takeSnapshot(index uint64, cs raftpb.ConfState, data []byte) {
 func (n *node) lastIndex() uint64 {
 	i, _ := n.storage.ram.LastIndex()
 	return i
+}
+
+func (n *node) ApplyConfChange(cc raftpb.ConfChange) *raftpb.ConfState {
+	state := n.Node.ApplyConfChange(cc)
+	n.confState.Store(state)
+	return state
 }

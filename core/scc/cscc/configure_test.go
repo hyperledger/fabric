@@ -149,11 +149,7 @@ func TestConfigerInvokeInvalidParameters(t *testing.T) {
 		res.Status,
 		"invoke expected to fail in ccc2cc context",
 	)
-	require.Equal(
-		t,
-		"Failed to identify the called chaincode: could not unmarshal proposal: proto: can't skip unknown wire type 7",
-		res.Message,
-	)
+	require.Contains(t, res.Message, "Failed to identify the called chaincode: could not unmarshal proposal")
 
 	mockACLProvider.CheckACLReturns(nil)
 	args = [][]byte{[]byte("GetConfigBlock"), []byte("testChannelID")}

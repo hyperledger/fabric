@@ -38,8 +38,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
 	"github.com/pkg/errors"
-	"go.etcd.io/etcd/raft"
-	"go.etcd.io/etcd/raft/raftpb"
+	raft "go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.uber.org/zap"
 )
 
@@ -212,7 +212,8 @@ var _ = Describe("Chain", func() {
 		}
 
 		JustBeforeEach(func() {
-			chain, err = etcdraft.NewChain(support, opts, configurator, nil, cryptoProvider, noOpBlockPuller, fakeHaltCallbacker.HaltCallback, observeC)
+			rpc := &mocks.FakeRPC{}
+			chain, err = etcdraft.NewChain(support, opts, configurator, rpc, cryptoProvider, noOpBlockPuller, fakeHaltCallbacker.HaltCallback, observeC)
 			Expect(err).NotTo(HaveOccurred())
 
 			chain.Start()
