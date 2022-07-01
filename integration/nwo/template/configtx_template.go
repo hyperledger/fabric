@@ -150,7 +150,21 @@ Profiles:{{ range .Profiles }}
         AbsoluteMaxBytes: 98 MB
         PreferredMaxBytes: 512 KB
       Capabilities:
+        {{- if eq $w.Consensus.Type "BFT" }}
+        V3_0: true
+        {{- else }}
         V2_0: true
+        {{- end }}
+      {{- if eq $w.Consensus.Type "BFT" }}
+      ConsenterMapping:{{ range $index, $orderer := .Orderers }}{{ with $w.Orderer . }}
+      - ID: {{ $index }}
+        Host: 127.0.0.1
+        Port: {{ $w.OrdererPort . "Cluster" }}
+        MSPID: {{ .Organization }}
+        ClientTLSCert: {{ $w.OrdererLocalCryptoDir . "tls" }}/server.crt
+        ServerTLSCert: {{ $w.OrdererLocalCryptoDir . "tls" }}/server.crt
+        {{- end }}{{- end }}
+      {{- end }}
       {{- if eq $w.Consensus.Type "etcdraft" }}
       EtcdRaft:
         Options:

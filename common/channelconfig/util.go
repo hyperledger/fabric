@@ -193,6 +193,16 @@ func CapabilitiesValue(capabilities map[string]bool) *StandardConfigValue {
 	}
 }
 
+func OrderersValue(consenters []*cb.Consenter) *StandardConfigValue {
+	o := &cb.Orderers{
+		ConsenterMapping: consenters,
+	}
+	return &StandardConfigValue{
+		key:   OrderersKey,
+		value: o,
+	}
+}
+
 // EndpointsValue returns the config definition for the orderer addresses at an org scoped level.
 // It is a value for the /Channel/Orderer/<OrgName> group.
 func EndpointsValue(addresses []string) *StandardConfigValue {

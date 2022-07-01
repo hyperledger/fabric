@@ -4,6 +4,7 @@ package mocks
 import (
 	"sync"
 
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/channelconfig"
 )
 
@@ -47,6 +48,16 @@ type ChannelConfig struct {
 	}
 	ordererAddressesReturnsOnCall map[int]struct {
 		result1 []string
+	}
+	OrderersStub        func() []*common.Consenter
+	orderersMutex       sync.RWMutex
+	orderersArgsForCall []struct {
+	}
+	orderersReturns struct {
+		result1 []*common.Consenter
+	}
+	orderersReturnsOnCall map[int]struct {
+		result1 []*common.Consenter
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -260,6 +271,58 @@ func (fake *ChannelConfig) OrdererAddressesReturnsOnCall(i int, result1 []string
 	}{result1}
 }
 
+func (fake *ChannelConfig) Orderers() []*common.Consenter {
+	fake.orderersMutex.Lock()
+	ret, specificReturn := fake.orderersReturnsOnCall[len(fake.orderersArgsForCall)]
+	fake.orderersArgsForCall = append(fake.orderersArgsForCall, struct {
+	}{})
+	fake.recordInvocation("Orderers", []interface{}{})
+	fake.orderersMutex.Unlock()
+	if fake.OrderersStub != nil {
+		return fake.OrderersStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.orderersReturns
+	return fakeReturns.result1
+}
+
+func (fake *ChannelConfig) OrderersCallCount() int {
+	fake.orderersMutex.RLock()
+	defer fake.orderersMutex.RUnlock()
+	return len(fake.orderersArgsForCall)
+}
+
+func (fake *ChannelConfig) OrderersCalls(stub func() []*common.Consenter) {
+	fake.orderersMutex.Lock()
+	defer fake.orderersMutex.Unlock()
+	fake.OrderersStub = stub
+}
+
+func (fake *ChannelConfig) OrderersReturns(result1 []*common.Consenter) {
+	fake.orderersMutex.Lock()
+	defer fake.orderersMutex.Unlock()
+	fake.OrderersStub = nil
+	fake.orderersReturns = struct {
+		result1 []*common.Consenter
+	}{result1}
+}
+
+func (fake *ChannelConfig) OrderersReturnsOnCall(i int, result1 []*common.Consenter) {
+	fake.orderersMutex.Lock()
+	defer fake.orderersMutex.Unlock()
+	fake.OrderersStub = nil
+	if fake.orderersReturnsOnCall == nil {
+		fake.orderersReturnsOnCall = make(map[int]struct {
+			result1 []*common.Consenter
+		})
+	}
+	fake.orderersReturnsOnCall[i] = struct {
+		result1 []*common.Consenter
+	}{result1}
+}
+
 func (fake *ChannelConfig) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -271,6 +334,8 @@ func (fake *ChannelConfig) Invocations() map[string][][]interface{} {
 	defer fake.hashingAlgorithmMutex.RUnlock()
 	fake.ordererAddressesMutex.RLock()
 	defer fake.ordererAddressesMutex.RUnlock()
+	fake.orderersMutex.RLock()
+	defer fake.orderersMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

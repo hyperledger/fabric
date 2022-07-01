@@ -88,6 +88,13 @@ func UnmarshalHeader(bytes []byte) (*common.Header, error) {
 	return hdr, errors.Wrap(err, "error unmarshalling Header")
 }
 
+// UnmarshalConfigEnvelope unmarshals bytes to a ConfigEnvelope
+func UnmarshalConfigEnvelope(bytes []byte) (*common.ConfigEnvelope, error) {
+	cfg := &common.ConfigEnvelope{}
+	err := proto.Unmarshal(bytes, cfg)
+	return cfg, errors.Wrap(err, "error unmarshalling ConfigEnvelope")
+}
+
 // UnmarshalChaincodeHeaderExtension unmarshals bytes to a ChaincodeHeaderExtension
 func UnmarshalChaincodeHeaderExtension(hdrExtension []byte) (*peer.ChaincodeHeaderExtension, error) {
 	chaincodeHdrExt := &peer.ChaincodeHeaderExtension{}
