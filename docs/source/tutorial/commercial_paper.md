@@ -752,14 +752,14 @@ The MagnetoCorp Certificate Authority running on PaperNet, `ca_org2`, has an
 application user that was registered when the network was deployed. Isabella
 can use the identity name and secret to generate the X.509 cryptographic material
 for the `issue.js` application. The process of using a CA to generate client side
-cryptographic material is referred to as **enrollment**. In a real word scenario,
+cryptographic material is referred to as **enrollment**. In a real world scenario,
 a network operator would provide the name and secret of a client identity that
 was registered with the CA to an application developer. The developer would then
 use the credentials to enroll their application and interact with the network.
 
 The `enrollUser.js` program uses the `fabric-ca-client` class to generate a private
 and public key pair, and then issues a **Certificate Signing Request** to the CA.
-If the identiy name and secret submitted by Isabella match the credentials
+If the identity name and secret submitted by Isabella match the credentials
 registered with the CA, the CA will issue and sign a certificate that encodes the
 public key, establishing that Isabella belongs to MagnetoCorp. When the signing
 request is complete, `enrollUser.js` stores the private key and signing certificate
