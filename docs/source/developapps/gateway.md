@@ -120,8 +120,8 @@ used in subsequent SDK processing:
 
 Static gateways define a fixed view of a network. In the MagnetoCorp
 [scenario](#scenario), a gateway might identify a single peer from MagnetoCorp,
-a single peer from DigiBank, and a MagentoCorp orderer. Alternatively, a gateway
-might define *all* peers and orderers from MagnetCorp and DigiBank. In both
+a single peer from DigiBank, and a MagnetoCorp orderer. Alternatively, a gateway
+might define *all* peers and orderers from MagnetoCorp and DigiBank. In both
 cases, a gateway must define a view of the network sufficient to get commercial
 paper transactions endorsed and distributed.
 
