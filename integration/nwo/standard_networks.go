@@ -181,16 +181,6 @@ func MultiChannelBasicSolo() *Config {
 	return config
 }
 
-func BasicKafka() *Config {
-	config := BasicSolo()
-
-	config.Consensus.Type = "kafka"
-	config.Consensus.ZooKeepers = 1
-	config.Consensus.Brokers = 1
-
-	return config
-}
-
 func BasicEtcdRaft() *Config {
 	config := BasicSolo()
 

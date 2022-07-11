@@ -53,38 +53,6 @@ General:
     TimeWindow: 15m
 FileLedger:
   Location: {{ .OrdererDir Orderer }}/system
-{{ if eq .Consensus.Type "kafka" -}}
-Kafka:
-  Retry:
-    ShortInterval: 5s
-    ShortTotal: 10m
-    LongInterval: 5m
-    LongTotal: 12h
-    NetworkTimeouts:
-      DialTimeout: 10s
-      ReadTimeout: 10s
-      WriteTimeout: 10s
-    Metadata:
-      RetryBackoff: 250ms
-      RetryMax: 3
-    Producer:
-      RetryBackoff: 100ms
-      RetryMax: 3
-    Consumer:
-      RetryBackoff: 2s
-  Topic:
-    ReplicationFactor: 1
-  Verbose: false
-  TLS:
-    Enabled: false
-    PrivateKey:
-    Certificate:
-    RootCAs:
-  SASLPlain:
-    Enabled: false
-    User:
-    Password:
-  Version:{{ end }}
 Debug:
   BroadcastTraceDir:
   DeliverTraceDir:
