@@ -209,6 +209,11 @@ func (stub *MockStub) DelPrivateData(collection string, key string) error {
 	return errors.New("Not Implemented")
 }
 
+// PurgePrivateData ...
+func (stub *MockStub) PurgePrivateData(collection string, key string) error {
+	return errors.New("Not Implemented")
+}
+
 // GetPrivateDataByRange ...
 func (stub *MockStub) GetPrivateDataByRange(collection, startKey, endKey string) (shim.StateQueryIteratorInterface, error) {
 	return nil, errors.New("Not Implemented")

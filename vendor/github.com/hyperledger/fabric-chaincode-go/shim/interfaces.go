@@ -229,6 +229,11 @@ type ChaincodeStubInterface interface {
 	// detected at validation/commit time. Applications susceptible to this
 	// should therefore not use GetHistoryForKey as part of transactions that
 	// update ledger, and should limit use to read-only chaincode operations.
+	// Starting in Fabric v2.0, the GetHistoryForKey chaincode API
+	// will return results from newest to oldest in terms of ordered transaction
+	// height (block height and transaction height within block).
+	// This will allow applications to efficiently iterate through the top results
+	// to understand recent changes to a key.
 	GetHistoryForKey(key string) (HistoryQueryIteratorInterface, error)
 
 	// GetPrivateData returns the value of the specified `key` from the specified
@@ -262,6 +267,16 @@ type ChaincodeStubInterface interface {
 	// transient store. The `key` and its value will be deleted from the collection
 	// when the transaction is validated and successfully committed.
 	DelPrivateData(collection, key string) error
+
+	// PurgePrivateData records the specified `key` to be purged in the private writeset
+	// of the transaction. Note that only hash of the private writeset goes into the
+	// transaction proposal response (which is sent to the client who issued the
+	// transaction) and the actual private writeset gets temporarily stored in a
+	// transient store. The `key` and its value will be deleted from the collection
+	// when the transaction is validated and successfully committed, and will
+	// subsequently be completely removed from the private data store (that maintains
+	// the historical versions of private writesets) as a background operation.
+	PurgePrivateData(collection, key string) error
 
 	// SetPrivateDataValidationParameter sets the key-level endorsement policy
 	// for the private data specified by `key`.
