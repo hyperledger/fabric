@@ -158,7 +158,7 @@ var _ = Describe("EndToEnd", func() {
 
 			By("setting up the channel")
 			network.CreateAndJoinChannel(orderer, "testchannel")
-			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_5", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 			By("listing channels with osnadmin")
 			tlsdir := network.OrdererLocalTLSDir(orderer)
@@ -285,7 +285,7 @@ var _ = Describe("EndToEnd", func() {
 			cl := channelparticipation.List(network, orderer)
 			channelparticipation.ChannelListMatcher(cl, []string{"testchannel"}, []string{"systemchannel"}...)
 
-			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_5", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 			// package, install, and approve by org1 - module chaincode
 			packageInstallApproveChaincode(network, "testchannel", orderer, chaincode, network.Peer("Org1", "peer0"))
@@ -415,7 +415,7 @@ var _ = Describe("EndToEnd", func() {
 
 			By("Create first channel and deploy the chaincode")
 			network.CreateAndJoinChannel(orderer, "testchannel")
-			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_5", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
 
@@ -425,7 +425,7 @@ var _ = Describe("EndToEnd", func() {
 			channelparticipation.ChannelListMatcher(cl, []string{"testchannel", "testchannel2"}, []string{"systemchannel"}...)
 
 			peers := network.PeersWithChannel("testchannel2")
-			nwo.EnableCapabilities(network, "testchannel2", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+			nwo.EnableCapabilities(network, "testchannel2", "Application", "V2_5", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 			nwo.ApproveChaincodeForMyOrg(network, "testchannel2", orderer, chaincode, peers...)
 			nwo.CheckCommitReadinessUntilReady(network, "testchannel2", chaincode, network.PeerOrgs(), peers...)
 			nwo.CommitChaincode(network, "testchannel2", orderer, chaincode, peers[0], peers...)
@@ -503,7 +503,7 @@ var _ = Describe("EndToEnd", func() {
 
 			// The below call waits for the config update to commit on the peer, so
 			// it will fail if the orderer addresses are wrong.
-			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_5", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 		})
 	})
 
@@ -540,7 +540,7 @@ var _ = Describe("EndToEnd", func() {
 			network.CreateAndJoinChannels(orderer)
 
 			By("enabling new lifecycle capabilities")
-			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_5", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 			By("deploying the chaincode")
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
