@@ -100,7 +100,9 @@ func (b *buildHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "%s", a.output)
+	reader := strings.WriteHeader(content)
+	io.Copy(w, a.output)
+	return
 }
 
 func (b *buildHandler) artifact(input string) *artifact {
