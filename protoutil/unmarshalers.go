@@ -75,6 +75,13 @@ func UnmarshalSignatureHeader(bytes []byte) (*common.SignatureHeader, error) {
 	return sh, errors.Wrap(err, "error unmarshalling SignatureHeader")
 }
 
+// UnmarshalIdentifierHeader unmarshals bytes to an IdentifierHeader
+func UnmarshalIdentifierHeader(bytes []byte) (*common.IdentifierHeader, error) {
+	ih := &common.IdentifierHeader{}
+	err := proto.Unmarshal(bytes, ih)
+	return ih, errors.Wrap(err, "error unmarshalling IdentifierHeader")
+}
+
 func UnmarshalSerializedIdentity(bytes []byte) (*msp.SerializedIdentity, error) {
 	sid := &msp.SerializedIdentity{}
 	err := proto.Unmarshal(bytes, sid)

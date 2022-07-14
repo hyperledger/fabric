@@ -70,9 +70,6 @@ type Channel interface {
 	// OrdererAddresses returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
 	OrdererAddresses() []string
 
-	// Orderers returns the list of consenters
-	Orderers() []*cb.Consenter
-
 	// Capabilities defines the capabilities for a channel
 	Capabilities() ChannelCapabilities
 }

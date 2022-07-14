@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"strings"
 	"sync"
 	"testing"
@@ -21,6 +22,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -1225,5 +1228,249 @@ func TestComparisonMemoizer(t *testing.T) {
 		odd := m.Compare([]byte{byte(1)}, []byte{byte(i % 2)})
 		require.Equal(t, i%2 != 0, odd)
 		require.LessOrEqual(t, m.Size(), int(m.MaxEntries))
+	}
+}
+
+//go:generate counterfeiter -o mocks/bccsp.go --fake-name BCCSP . iBCCSP
+
+type iBCCSP interface {
+	bccsp.BCCSP
+}
+
+func TestBlockVerifierBuilderEmptyBlock(t *testing.T) {
+	bvfunc := cluster.BlockVerifierBuilder(&mocks.BCCSP{})
+	block := &common.Block{}
+	verifier := bvfunc(block)
+	require.ErrorContains(t, verifier(nil, nil), "initialized with an invalid config block: block contains no data")
+}
+
+func TestBlockVerifierBuilderNoConfigBlock(t *testing.T) {
+	bvfunc := cluster.BlockVerifierBuilder(&mocks.BCCSP{})
+	block := createBlockChain(3, 3)[0]
+	verifier := bvfunc(block)
+	md := &common.BlockMetadata{}
+	require.ErrorContains(t, verifier(nil, md), "initialized with an invalid config block: channelconfig Config cannot be nil")
+}
+
+func TestBlockVerifierFunc(t *testing.T) {
+	block := sampleConfigBlock()
+	bvfunc := cluster.BlockVerifierBuilder(&mocks.BCCSP{})
+
+	verifier := bvfunc(block)
+
+	header := &common.BlockHeader{}
+	md := &common.BlockMetadata{
+		Metadata: [][]byte{
+			protoutil.MarshalOrPanic(&common.Metadata{Signatures: []*common.MetadataSignature{
+				{
+					Signature:        []byte{},
+					IdentifierHeader: protoutil.MarshalOrPanic(&common.IdentifierHeader{Identifier: 1}),
+				},
+			}}),
+		},
+	}
+
+	err := verifier(header, md)
+	require.NoError(t, err)
+}
+
+func TestBlockSignatureVerifierEmptyMetadata(t *testing.T) {
+	policies := mocks.Policy{}
+
+	verify := cluster.BlockSignatureVerifier(true, nil, &policies)
+
+	header := &common.BlockHeader{}
+	md := &common.BlockMetadata{}
+
+	err := verify(header, md)
+	require.ErrorContains(t, err, "no signatures in block metadata")
+}
+
+func TestBlockSignatureVerifierByIdentifier(t *testing.T) {
+	consenters := []*common.Consenter{
+		{
+			Id:       1,
+			Host:     "host1",
+			Port:     8001,
+			MspId:    "msp1",
+			Identity: []byte("identity1"),
+		},
+		{
+			Id:       2,
+			Host:     "host2",
+			Port:     8002,
+			MspId:    "msp2",
+			Identity: []byte("identity2"),
+		},
+		{
+			Id:       3,
+			Host:     "host3",
+			Port:     8003,
+			MspId:    "msp3",
+			Identity: []byte("identity3"),
+		},
+	}
+
+	policies := mocks.Policy{}
+
+	verify := cluster.BlockSignatureVerifier(true, consenters, &policies)
+
+	header := &common.BlockHeader{}
+	md := &common.BlockMetadata{
+		Metadata: [][]byte{
+			protoutil.MarshalOrPanic(&common.Metadata{Signatures: []*common.MetadataSignature{
+				{
+					Signature:        []byte{},
+					IdentifierHeader: protoutil.MarshalOrPanic(&common.IdentifierHeader{Identifier: 1}),
+				},
+				{
+					Signature:        []byte{},
+					IdentifierHeader: protoutil.MarshalOrPanic(&common.IdentifierHeader{Identifier: 3}),
+				},
+			}}),
+		},
+	}
+
+	err := verify(header, md)
+	require.NoError(t, err)
+	signatureSet := policies.EvaluateSignedDataArgsForCall(0)
+	require.Len(t, signatureSet, 2)
+	require.Equal(t, protoutil.MarshalOrPanic(&msp.SerializedIdentity{Mspid: "msp1", IdBytes: []byte("identity1")}), signatureSet[0].Identity)
+	require.Equal(t, protoutil.MarshalOrPanic(&msp.SerializedIdentity{Mspid: "msp3", IdBytes: []byte("identity3")}), signatureSet[1].Identity)
+}
+
+func TestBlockSignatureVerifierByCreator(t *testing.T) {
+	consenters := []*common.Consenter{
+		{
+			Id:       1,
+			Host:     "host1",
+			Port:     8001,
+			MspId:    "msp1",
+			Identity: []byte("identity1"),
+		},
+		{
+			Id:       2,
+			Host:     "host2",
+			Port:     8002,
+			MspId:    "msp2",
+			Identity: []byte("identity2"),
+		},
+		{
+			Id:       3,
+			Host:     "host3",
+			Port:     8003,
+			MspId:    "msp3",
+			Identity: []byte("identity3"),
+		},
+	}
+
+	policies := mocks.Policy{}
+
+	verify := cluster.BlockSignatureVerifier(true, consenters, &policies)
+
+	header := &common.BlockHeader{}
+	md := &common.BlockMetadata{
+		Metadata: [][]byte{
+			protoutil.MarshalOrPanic(&common.Metadata{Signatures: []*common.MetadataSignature{
+				{
+					Signature:       []byte{},
+					SignatureHeader: protoutil.MarshalOrPanic(&common.SignatureHeader{Creator: []byte("creator1")}),
+				},
+			}}),
+		},
+	}
+
+	err := verify(header, md)
+	require.NoError(t, err)
+	signatureSet := policies.EvaluateSignedDataArgsForCall(0)
+	require.Len(t, signatureSet, 1)
+	require.Equal(t, []byte("creator1"), signatureSet[0].Identity)
+}
+
+func sampleConfigBlock() *common.Block {
+	return &common.Block{
+		Header: &common.BlockHeader{
+			PreviousHash: []byte("foo"),
+		},
+		Data: &common.BlockData{
+			Data: [][]byte{
+				protoutil.MarshalOrPanic(&common.Envelope{
+					Payload: protoutil.MarshalOrPanic(&common.Payload{
+						Header: &common.Header{
+							ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
+								Type:      int32(common.HeaderType_CONFIG),
+								ChannelId: "mychannel",
+							}),
+						},
+						Data: protoutil.MarshalOrPanic(&common.ConfigEnvelope{
+							Config: &common.Config{
+								ChannelGroup: &common.ConfigGroup{
+									Values: map[string]*common.ConfigValue{
+										"Capabilities": {
+											Value: protoutil.MarshalOrPanic(&common.Capabilities{
+												Capabilities: map[string]*common.Capability{"V3_0": {}},
+											}),
+										},
+										"HashingAlgorithm": {
+											Value: protoutil.MarshalOrPanic(&common.HashingAlgorithm{Name: "SHA256"}),
+										},
+										"BlockDataHashingStructure": {
+											Value: protoutil.MarshalOrPanic(&common.BlockDataHashingStructure{Width: math.MaxUint32}),
+										},
+									},
+									Groups: map[string]*common.ConfigGroup{
+										"Orderer": {
+											Policies: map[string]*common.ConfigPolicy{
+												"BlockValidation": {
+													Policy: &common.Policy{
+														Type: 3,
+													},
+												},
+											},
+											Values: map[string]*common.ConfigValue{
+												"BatchSize": {
+													Value: protoutil.MarshalOrPanic(&orderer.BatchSize{
+														MaxMessageCount:   500,
+														AbsoluteMaxBytes:  10485760,
+														PreferredMaxBytes: 2097152,
+													}),
+												},
+												"BatchTimeout": {
+													Value: protoutil.MarshalOrPanic(&orderer.BatchTimeout{
+														Timeout: "2s",
+													}),
+												},
+												"Capabilities": {
+													Value: protoutil.MarshalOrPanic(&common.Capabilities{
+														Capabilities: map[string]*common.Capability{"V3_0": {}},
+													}),
+												},
+												"ConsensusType": {
+													Value: protoutil.MarshalOrPanic(&common.BlockData{Data: [][]byte{[]byte("BFT")}}),
+												},
+												"Orderers": {
+													Value: protoutil.MarshalOrPanic(&common.Orderers{
+														ConsenterMapping: []*common.Consenter{
+															{
+																Id:       1,
+																Host:     "host1",
+																Port:     8001,
+																MspId:    "msp1",
+																Identity: []byte("identity1"),
+															},
+														},
+													}),
+												},
+											},
+										},
+									},
+								},
+							},
+						}),
+					}),
+					Signature: []byte("bar"),
+				}),
+			},
+		},
 	}
 }
