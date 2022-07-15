@@ -98,6 +98,9 @@ func (msp *bccspmsp) setupCrypto(conf *m.FabricMSPConfig) error {
 		mspLogger.Debugf("CryptoConfig.IdentityIdentifierHashFunction was nil. Move to defaults.")
 	}
 
+	msp.supportedPublicKeyAlgorithms = make(map[x509.PublicKeyAlgorithm]bool)
+	msp.supportedPublicKeyAlgorithms[x509.ECDSA] = true
+
 	return nil
 }
 
@@ -647,6 +650,22 @@ func (msp *bccspmsp) setupV142(conf *m.FabricMSPConfig) error {
 	if err != nil {
 		return err
 	}
+
+	err = msp.postSetupV142(conf)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (msp *bccspmsp) setupV144(conf *m.FabricMSPConfig) error {
+	err := msp.preSetupV142(conf)
+	if err != nil {
+		return err
+	}
+
+	msp.supportedPublicKeyAlgorithms[x509.Ed25519] = true
 
 	err = msp.postSetupV142(conf)
 	if err != nil {
