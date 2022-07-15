@@ -99,6 +99,9 @@ type bccspmsp struct {
 	// cryptoConfig contains
 	cryptoConfig *m.FabricCryptoConfig
 
+	// supportedPublicKeyAlgorithms supported by this msp
+	supportedPublicKeyAlgorithms map[x509.PublicKeyAlgorithm]bool
+
 	// NodeOUs configuration
 	ouEnforcement bool
 	// These are the OUIdentifiers of the clients, peers, admins and orderers.
@@ -134,6 +137,11 @@ func newBccspMsp(version MSPVersion, defaultBCCSP bccsp.BCCSP) (MSP, error) {
 		theMsp.internalSetupAdmin = theMsp.setupAdminsPreV142
 	case MSPv1_4_3:
 		theMsp.internalSetupFunc = theMsp.setupV142
+		theMsp.internalValidateIdentityOusFunc = theMsp.validateIdentityOUsV142
+		theMsp.internalSatisfiesPrincipalInternalFunc = theMsp.satisfiesPrincipalInternalV142
+		theMsp.internalSetupAdmin = theMsp.setupAdminsV142
+	case MSPv1_4_4:
+		theMsp.internalSetupFunc = theMsp.setupV144
 		theMsp.internalValidateIdentityOusFunc = theMsp.validateIdentityOUsV142
 		theMsp.internalSatisfiesPrincipalInternalFunc = theMsp.satisfiesPrincipalInternalV142
 		theMsp.internalSetupAdmin = theMsp.setupAdminsV142
