@@ -22,31 +22,31 @@ import (
 )
 
 func getChannelAndChaincodeFromSignedProposal(signedProposal *peer.SignedProposal) (string, string, bool, error) {
-	if signedProposal == nil {
+	if len(signedProposal.GetProposalBytes()) == 0 {
 		return "", "", false, fmt.Errorf("a signed proposal is required")
 	}
-	proposal, err := protoutil.UnmarshalProposal(signedProposal.ProposalBytes)
+	proposal, err := protoutil.UnmarshalProposal(signedProposal.GetProposalBytes())
 	if err != nil {
 		return "", "", false, err
 	}
-	header, err := protoutil.UnmarshalHeader(proposal.Header)
+	header, err := protoutil.UnmarshalHeader(proposal.GetHeader())
 	if err != nil {
 		return "", "", false, err
 	}
-	channelHeader, err := protoutil.UnmarshalChannelHeader(header.ChannelHeader)
+	channelHeader, err := protoutil.UnmarshalChannelHeader(header.GetChannelHeader())
 	if err != nil {
 		return "", "", false, err
 	}
-	payload, err := protoutil.UnmarshalChaincodeProposalPayload(proposal.Payload)
+	payload, err := protoutil.UnmarshalChaincodeProposalPayload(proposal.GetPayload())
 	if err != nil {
 		return "", "", false, err
 	}
-	spec, err := protoutil.UnmarshalChaincodeInvocationSpec(payload.Input)
+	spec, err := protoutil.UnmarshalChaincodeInvocationSpec(payload.GetInput())
 	if err != nil {
 		return "", "", false, err
 	}
 
-	return channelHeader.ChannelId, spec.ChaincodeSpec.ChaincodeId.Name, len(payload.TransientMap) > 0, nil
+	return channelHeader.GetChannelId(), spec.GetChaincodeSpec().GetChaincodeId().GetName(), len(payload.GetTransientMap()) > 0, nil
 }
 
 func newRpcError(code codes.Code, message string, details ...proto.Message) error {
