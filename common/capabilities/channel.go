@@ -86,7 +86,9 @@ func (cp *ChannelProvider) HasCapability(capability string) bool {
 // MSPVersion returns the level of MSP support required by this channel.
 func (cp *ChannelProvider) MSPVersion() msp.MSPVersion {
 	switch {
-	case cp.v143 || cp.v20 || cp.v30:
+	case cp.v30:
+		return msp.MSPv3_0
+	case cp.v143 || cp.v20:
 		return msp.MSPv1_4_3
 	case cp.v13 || cp.v142:
 		return msp.MSPv1_3
