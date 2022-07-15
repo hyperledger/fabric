@@ -33,7 +33,7 @@ as starting points.
 
 **Tutorials should have a list of steps at the top.**
 
-A list of steps (with links to the corresponding sections) at the beginning of a tutorial helps users find particular steps they're interested in. For an example, check out [Use private data in Fabric](./private-data/private-data.html).
+A list of steps (with links to the corresponding sections) at the beginning of a tutorial helps users find particular steps they're interested in. For an example, check out [Using Private Data in Fabric](./private_data_tutorial.html).
 
 **"Fabric", "Hyperledger Fabric" or "HLF"?**
 
