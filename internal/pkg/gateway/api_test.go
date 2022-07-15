@@ -1967,10 +1967,19 @@ func TestNilArgs(t *testing.T) {
 	_, err = server.Evaluate(ctx, &pb.EvaluateRequest{ProposedTransaction: nil})
 	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "failed to unpack transaction proposal: a signed proposal is required"))
 
+	_, err = server.Evaluate(ctx, &pb.EvaluateRequest{ProposedTransaction: &peer.SignedProposal{}})
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "failed to unpack transaction proposal: a signed proposal is required"))
+
+	_, err = server.Evaluate(ctx, &pb.EvaluateRequest{ProposedTransaction: &peer.SignedProposal{ProposalBytes: []byte("jibberish")}})
+	require.ErrorContains(t, err, "failed to unpack transaction proposal: error unmarshalling Proposal")
+
 	_, err = server.Endorse(ctx, nil)
 	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "an endorse request is required"))
 
 	_, err = server.Endorse(ctx, &pb.EndorseRequest{ProposedTransaction: nil})
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "the proposed transaction must contain a signed proposal"))
+
+	_, err = server.Endorse(ctx, &pb.EndorseRequest{ProposedTransaction: &peer.SignedProposal{}})
 	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "the proposed transaction must contain a signed proposal"))
 
 	_, err = server.Endorse(ctx, &pb.EndorseRequest{ProposedTransaction: &peer.SignedProposal{ProposalBytes: []byte("jibberish")}})
@@ -1979,8 +1988,20 @@ func TestNilArgs(t *testing.T) {
 	_, err = server.Submit(ctx, nil)
 	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a submit request is required"))
 
+	_, err = server.Submit(ctx, &pb.SubmitRequest{})
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a prepared transaction is required"))
+
 	_, err = server.CommitStatus(ctx, nil)
 	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a commit status request is required"))
+
+	_, err = server.CommitStatus(ctx, &pb.SignedCommitStatusRequest{})
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a commit status request is required"))
+
+	err = server.ChaincodeEvents(nil, &mocks.ChaincodeEventsServer{})
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a chaincode events request is required"))
+
+	err = server.ChaincodeEvents(&pb.SignedChaincodeEventsRequest{}, &mocks.ChaincodeEventsServer{})
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a chaincode events request is required"))
 }
 
 func TestRpcErrorWithBadDetails(t *testing.T) {
