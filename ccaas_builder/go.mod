@@ -1,6 +1,6 @@
-module github.com/hyperledger/fabric/ccaas_builder
+module github.com/hyperledger/fabric/v2/ccaas_builder
 
-go 1.16
+go 1.18
 
 require (
 	github.com/onsi/gomega v1.17.0
