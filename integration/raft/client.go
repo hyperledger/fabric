@@ -9,9 +9,9 @@ package raft
 import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/integration/ordererclient"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v2/integration/nwo"
+	"github.com/hyperledger/fabric/v2/integration/ordererclient"
+	"github.com/hyperledger/fabric/v2/protoutil"
 	. "github.com/onsi/gomega"
 )
 

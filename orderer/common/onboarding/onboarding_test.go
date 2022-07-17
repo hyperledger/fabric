@@ -22,22 +22,22 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/configtx"
-	deliver_mocks "github.com/hyperledger/fabric/common/deliver/mock"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
-	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
-	"github.com/hyperledger/fabric/internal/pkg/identity"
-	"github.com/hyperledger/fabric/orderer/common/cluster"
-	cluster_mocks "github.com/hyperledger/fabric/orderer/common/cluster/mocks"
-	"github.com/hyperledger/fabric/orderer/common/localconfig"
-	onboarding_mocks "github.com/hyperledger/fabric/orderer/common/onboarding/mocks"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v2/bccsp/sw"
+	"github.com/hyperledger/fabric/v2/common/channelconfig"
+	"github.com/hyperledger/fabric/v2/common/configtx"
+	deliver_mocks "github.com/hyperledger/fabric/v2/common/deliver/mock"
+	"github.com/hyperledger/fabric/v2/common/flogging"
+	"github.com/hyperledger/fabric/v2/common/ledger/blockledger"
+	"github.com/hyperledger/fabric/v2/core/config/configtest"
+	"github.com/hyperledger/fabric/v2/internal/configtxgen/encoder"
+	"github.com/hyperledger/fabric/v2/internal/configtxgen/genesisconfig"
+	"github.com/hyperledger/fabric/v2/internal/pkg/comm"
+	"github.com/hyperledger/fabric/v2/internal/pkg/identity"
+	"github.com/hyperledger/fabric/v2/orderer/common/cluster"
+	cluster_mocks "github.com/hyperledger/fabric/v2/orderer/common/cluster/mocks"
+	"github.com/hyperledger/fabric/v2/orderer/common/localconfig"
+	onboarding_mocks "github.com/hyperledger/fabric/v2/orderer/common/onboarding/mocks"
+	"github.com/hyperledger/fabric/v2/protoutil"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
@@ -54,12 +54,12 @@ var configtxgen, cryptogen, tempDir string
 
 func TestMain(m *testing.M) {
 	var err error
-	configtxgen, err = gexec.Build("github.com/hyperledger/fabric/cmd/configtxgen")
+	configtxgen, err = gexec.Build("github.com/hyperledger/fabric/v2/cmd/configtxgen")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "configtxgen build failed: %v", err)
 		os.Exit(-1)
 	}
-	cryptogen, err = gexec.Build("github.com/hyperledger/fabric/cmd/cryptogen")
+	cryptogen, err = gexec.Build("github.com/hyperledger/fabric/v2/cmd/cryptogen")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "cryptogen build failed: %v", err)
 		os.Exit(-1)

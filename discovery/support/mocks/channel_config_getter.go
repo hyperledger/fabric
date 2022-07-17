@@ -4,7 +4,7 @@ package mocks
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/v2/common/channelconfig"
 )
 
 type ChannelConfigGetter struct {

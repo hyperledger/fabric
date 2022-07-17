@@ -15,8 +15,8 @@ import (
 	"github.com/IBM/idemix"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/v2/bccsp"
+	"github.com/hyperledger/fabric/v2/bccsp/factory"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )

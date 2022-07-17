@@ -10,7 +10,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/chaincode/persistence"
+	"github.com/hyperledger/fabric/v2/core/chaincode/persistence"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

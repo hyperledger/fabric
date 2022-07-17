@@ -11,8 +11,8 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/pkg/tx"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v2/pkg/tx"
+	"github.com/hyperledger/fabric/v2/protoutil"
 )
 
 // ProcessorFactory maintains a mapping between transaction type and associate `ProcessorCreator`

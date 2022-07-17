@@ -15,9 +15,9 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/policydsl"
-	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v2/common/policydsl"
+	"github.com/hyperledger/fabric/v2/msp"
+	"github.com/hyperledger/fabric/v2/protoutil"
 	"github.com/stretchr/testify/require"
 )
 

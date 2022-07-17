@@ -9,7 +9,7 @@ package validation
 import (
 	"strings"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/hyperledger/fabric/v2/core/ledger/kvledger/txmgmt/statedb"
 )
 
 // combinedIterator implements the interface statedb.ResultsIterator.

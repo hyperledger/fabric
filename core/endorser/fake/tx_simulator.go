@@ -4,8 +4,8 @@ package fake
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/common/ledger"
-	ledgera "github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/v2/common/ledger"
+	ledgera "github.com/hyperledger/fabric/v2/core/ledger"
 )
 
 type TxSimulator struct {

@@ -14,8 +14,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hyperledger/fabric/internal/cryptogen/ca"
-	"github.com/hyperledger/fabric/internal/cryptogen/csp"
+	"github.com/hyperledger/fabric/v2/internal/cryptogen/ca"
+	"github.com/hyperledger/fabric/v2/internal/cryptogen/csp"
 	"github.com/stretchr/testify/require"
 )
 

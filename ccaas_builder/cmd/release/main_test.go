@@ -36,7 +36,7 @@ func TestArugments(t *testing.T) {
 
 	// Build ledger binary
 	gt := NewWithT(t)
-	releaseCmd, err := gexec.Build("github.com/hyperledger/fabric/ccaas_builder/cmd/release")
+	releaseCmd, err := gexec.Build("github.com/hyperledger/fabric/v2/ccaas_builder/cmd/release")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 
@@ -53,7 +53,7 @@ func TestArugments(t *testing.T) {
 func TestGoodPath(t *testing.T) {
 	gt := NewWithT(t)
 
-	releaseCmd, err := gexec.Build("github.com/hyperledger/fabric/ccaas_builder/cmd/release")
+	releaseCmd, err := gexec.Build("github.com/hyperledger/fabric/v2/ccaas_builder/cmd/release")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 
@@ -92,7 +92,7 @@ func TestGoodPath(t *testing.T) {
 func TestMissingConnection(t *testing.T) {
 	gt := NewWithT(t)
 
-	releaseCmd, err := gexec.Build("github.com/hyperledger/fabric/ccaas_builder/cmd/release")
+	releaseCmd, err := gexec.Build("github.com/hyperledger/fabric/v2/ccaas_builder/cmd/release")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 

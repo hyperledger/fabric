@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v2/core/ledger"
+	"github.com/hyperledger/fabric/v2/protoutil"
 )
 
 // Collection defines a common interface for collections

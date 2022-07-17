@@ -12,8 +12,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/v2/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/v2/core/ledger/util"
 	"github.com/stretchr/testify/require"
 )
 

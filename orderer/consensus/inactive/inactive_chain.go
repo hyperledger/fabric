@@ -8,7 +8,7 @@ package inactive
 
 import (
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/orderer/common/types"
+	"github.com/hyperledger/fabric/v2/orderer/common/types"
 )
 
 // Chain implements an inactive consenter.Chain

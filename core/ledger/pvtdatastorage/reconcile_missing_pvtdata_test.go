@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/bits-and-blooms/bitset"
-	"github.com/hyperledger/fabric/core/ledger"
-	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
+	"github.com/hyperledger/fabric/v2/core/ledger"
+	btltestutil "github.com/hyperledger/fabric/v2/core/ledger/pvtdatapolicy/testutil"
 	"github.com/stretchr/testify/require"
 )
 

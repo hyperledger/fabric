@@ -12,13 +12,13 @@ import (
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/common/deliver"
-	"github.com/hyperledger/fabric/common/metrics"
-	"github.com/hyperledger/fabric/common/policies"
-	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
-	"github.com/hyperledger/fabric/orderer/common/multichannel"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v2/common/deliver"
+	"github.com/hyperledger/fabric/v2/common/metrics"
+	"github.com/hyperledger/fabric/v2/common/policies"
+	localconfig "github.com/hyperledger/fabric/v2/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/v2/orderer/common/msgprocessor"
+	"github.com/hyperledger/fabric/v2/orderer/common/multichannel"
+	"github.com/hyperledger/fabric/v2/protoutil"
 	"github.com/pkg/errors"
 )
 

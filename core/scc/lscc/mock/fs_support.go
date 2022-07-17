@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/v2/core/common/ccprovider"
 )
 
 type FileSystemSupport struct {

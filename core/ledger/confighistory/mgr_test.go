@@ -18,10 +18,10 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/ledger/snapshot"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/v2/common/flogging"
+	"github.com/hyperledger/fabric/v2/common/ledger/snapshot"
+	"github.com/hyperledger/fabric/v2/core/ledger"
+	"github.com/hyperledger/fabric/v2/core/ledger/mock"
 	"github.com/stretchr/testify/require"
 )
 

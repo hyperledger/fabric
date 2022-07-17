@@ -9,7 +9,7 @@ package blkstorage
 import (
 	"time"
 
-	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/v2/common/metrics"
 )
 
 type stats struct {

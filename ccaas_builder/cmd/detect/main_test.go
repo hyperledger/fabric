@@ -44,7 +44,7 @@ func TestArugments(t *testing.T) {
 
 	// Build ledger binary
 	gt := NewWithT(t)
-	detectCmd, err := gexec.Build("github.com/hyperledger/fabric/ccaas_builder/cmd/detect")
+	detectCmd, err := gexec.Build("github.com/hyperledger/fabric/v2/ccaas_builder/cmd/detect")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 
@@ -65,7 +65,7 @@ func TestMissingFile(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(testPath)
 
-	detectCmd, err := gexec.Build("github.com/hyperledger/fabric/ccaas_builder/cmd/detect")
+	detectCmd, err := gexec.Build("github.com/hyperledger/fabric/v2/ccaas_builder/cmd/detect")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 

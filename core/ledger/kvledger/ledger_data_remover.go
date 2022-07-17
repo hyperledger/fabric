@@ -7,12 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
-	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	"github.com/hyperledger/fabric/core/ledger/confighistory"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/history"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
-	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
+	"github.com/hyperledger/fabric/v2/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/v2/core/ledger/confighistory"
+	"github.com/hyperledger/fabric/v2/core/ledger/kvledger/bookkeeping"
+	"github.com/hyperledger/fabric/v2/core/ledger/kvledger/history"
+	"github.com/hyperledger/fabric/v2/core/ledger/kvledger/txmgmt/privacyenabledstate"
+	"github.com/hyperledger/fabric/v2/core/ledger/pvtdatastorage"
 )
 
 type ledgerDataRemover struct {

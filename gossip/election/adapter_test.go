@@ -15,13 +15,13 @@ import (
 	"time"
 
 	proto "github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/gossip/common"
-	"github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/gossip/metrics"
-	"github.com/hyperledger/fabric/gossip/metrics/mocks"
-	"github.com/hyperledger/fabric/gossip/protoext"
-	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/v2/common/metrics/disabled"
+	"github.com/hyperledger/fabric/v2/gossip/common"
+	"github.com/hyperledger/fabric/v2/gossip/discovery"
+	"github.com/hyperledger/fabric/v2/gossip/metrics"
+	"github.com/hyperledger/fabric/v2/gossip/metrics/mocks"
+	"github.com/hyperledger/fabric/v2/gossip/protoext"
+	"github.com/hyperledger/fabric/v2/gossip/util"
 	"github.com/stretchr/testify/require"
 )
 

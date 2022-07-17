@@ -9,8 +9,8 @@ package pvtdatastorage
 import (
 	"github.com/bits-and-blooms/bitset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
-	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/v2/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/v2/core/ledger"
 	"github.com/pkg/errors"
 )
 

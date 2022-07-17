@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/gossip/state"
+	"github.com/hyperledger/fabric/v2/gossip/state"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )

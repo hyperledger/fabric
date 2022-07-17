@@ -12,8 +12,8 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
+	"github.com/hyperledger/fabric/v2/common/metrics/disabled"
+	"github.com/hyperledger/fabric/v2/common/metrics/metricsfakes"
 	. "github.com/onsi/gomega"
 )
 

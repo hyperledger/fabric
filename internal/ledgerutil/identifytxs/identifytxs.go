@@ -14,14 +14,14 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/internal/fileutil"
-	"github.com/hyperledger/fabric/internal/ledgerutil/jsonrw"
-	"github.com/hyperledger/fabric/internal/ledgerutil/models"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v2/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/v2/common/metrics/disabled"
+	"github.com/hyperledger/fabric/v2/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/v2/core/ledger/kvledger/txmgmt/rwsetutil"
+	"github.com/hyperledger/fabric/v2/internal/fileutil"
+	"github.com/hyperledger/fabric/v2/internal/ledgerutil/jsonrw"
+	"github.com/hyperledger/fabric/v2/internal/ledgerutil/models"
+	"github.com/hyperledger/fabric/v2/protoutil"
 
 	"github.com/pkg/errors"
 )

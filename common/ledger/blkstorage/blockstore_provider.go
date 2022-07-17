@@ -9,11 +9,11 @@ package blkstorage
 import (
 	"os"
 
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/ledger/dataformat"
-	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
-	"github.com/hyperledger/fabric/common/metrics"
-	"github.com/hyperledger/fabric/internal/fileutil"
+	"github.com/hyperledger/fabric/v2/common/flogging"
+	"github.com/hyperledger/fabric/v2/common/ledger/dataformat"
+	"github.com/hyperledger/fabric/v2/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/v2/common/metrics"
+	"github.com/hyperledger/fabric/v2/internal/fileutil"
 	"github.com/pkg/errors"
 )
 

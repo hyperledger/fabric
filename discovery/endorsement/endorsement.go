@@ -13,14 +13,14 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/common/chaincode"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/graph"
-	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/common/policies/inquire"
-	"github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/gossip/common"
-	gossipdiscovery "github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/v2/common/chaincode"
+	"github.com/hyperledger/fabric/v2/common/flogging"
+	"github.com/hyperledger/fabric/v2/common/graph"
+	"github.com/hyperledger/fabric/v2/common/policies"
+	"github.com/hyperledger/fabric/v2/common/policies/inquire"
+	"github.com/hyperledger/fabric/v2/gossip/api"
+	"github.com/hyperledger/fabric/v2/gossip/common"
+	gossipdiscovery "github.com/hyperledger/fabric/v2/gossip/discovery"
 	"github.com/pkg/errors"
 )
 

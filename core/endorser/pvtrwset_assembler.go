@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric-protos-go/transientstore"
-	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/v2/core/ledger"
 	"github.com/pkg/errors"
 )
 

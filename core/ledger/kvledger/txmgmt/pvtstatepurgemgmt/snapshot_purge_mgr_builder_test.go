@@ -11,10 +11,10 @@ import (
 	"math"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
-	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
-	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
+	"github.com/hyperledger/fabric/v2/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/v2/core/ledger/kvledger/bookkeeping"
+	"github.com/hyperledger/fabric/v2/core/ledger/pvtdatapolicy"
+	btltestutil "github.com/hyperledger/fabric/v2/core/ledger/pvtdatapolicy/testutil"
 	"github.com/stretchr/testify/require"
 )
 

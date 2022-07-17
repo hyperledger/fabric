@@ -8,7 +8,7 @@ package msp
 
 import (
 	"github.com/IBM/idemix"
-	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/v2/bccsp"
 	"github.com/pkg/errors"
 )
 

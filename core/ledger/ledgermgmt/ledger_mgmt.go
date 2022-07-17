@@ -13,13 +13,13 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/metrics"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
-	"github.com/hyperledger/fabric/internal/fileutil"
+	"github.com/hyperledger/fabric/v2/common/flogging"
+	"github.com/hyperledger/fabric/v2/common/metrics"
+	"github.com/hyperledger/fabric/v2/core/common/ccprovider"
+	"github.com/hyperledger/fabric/v2/core/ledger"
+	"github.com/hyperledger/fabric/v2/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/v2/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/v2/internal/fileutil"
 	"github.com/pkg/errors"
 )
 

@@ -4,8 +4,8 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/v2/core/ledger"
+	"github.com/hyperledger/fabric/v2/core/ledger/cceventmgmt"
 )
 
 type ChaincodeInfoProvider struct {

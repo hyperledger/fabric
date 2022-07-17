@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/discovery"
-	"github.com/hyperledger/fabric/discovery/protoext"
+	"github.com/hyperledger/fabric/v2/discovery/protoext"
 	"github.com/stretchr/testify/require"
 )
 

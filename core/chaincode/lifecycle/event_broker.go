@@ -9,8 +9,8 @@ package lifecycle
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/core/container/externalbuilder"
-	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/v2/core/container/externalbuilder"
+	"github.com/hyperledger/fabric/v2/core/ledger"
 	"github.com/pkg/errors"
 )
 

@@ -13,7 +13,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/hyperledger/fabric/core/container/externalbuilder"
+	"github.com/hyperledger/fabric/v2/core/container/externalbuilder"
 )
 
 var _ = Describe("Tar", func() {
@@ -54,7 +54,7 @@ var _ = Describe("Tar", func() {
 				Expect(err).NotTo(HaveOccurred())
 				defer file.Close()
 				err = externalbuilder.Untar(file, dst)
-				Expect(err).To(MatchError("tar contains the absolute or escaping path '/home/yellickj/go/src/github.com/hyperledger/fabric/core/chaincode/externalbuilders/testdata/a/test.file'"))
+				Expect(err).To(MatchError("tar contains the absolute or escaping path '/home/yellickj/go/src/github.com/hyperledger/fabric/v2/core/chaincode/externalbuilders/testdata/a/test.file'"))
 			})
 		})
 

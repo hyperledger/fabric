@@ -23,7 +23,7 @@ import (
 
 func TestPluginLoadingFailure(t *testing.T) {
 	gt := NewGomegaWithT(t)
-	peer, err := gexec.Build("github.com/hyperledger/fabric/cmd/peer")
+	peer, err := gexec.Build("github.com/hyperledger/fabric/v2/cmd/peer")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 

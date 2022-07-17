@@ -21,8 +21,8 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric-protos-go/peer/lifecycle"
-	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v2/integration/nwo"
+	"github.com/hyperledger/fabric/v2/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
@@ -121,7 +121,7 @@ var _ = Describe("GatewayService", func() {
 		chaincode := nwo.Chaincode{
 			Name:            "gatewaycc",
 			Version:         "0.0",
-			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd"),
+			Path:            components.Build("github.com/hyperledger/fabric/v2/integration/chaincode/simple/cmd"),
 			Lang:            "binary",
 			PackageFile:     filepath.Join(testDir, "gatewaycc.tar.gz"),
 			Ctor:            `{"Args":[]}`,

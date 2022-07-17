@@ -40,7 +40,7 @@ func TestArguements(t *testing.T) {
 
 	// Build ledger binary
 	gt := NewWithT(t)
-	buildCmd, err := gexec.Build("github.com/hyperledger/fabric/ccaas_builder/cmd/build")
+	buildCmd, err := gexec.Build("github.com/hyperledger/fabric/v2/ccaas_builder/cmd/build")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 
@@ -57,7 +57,7 @@ func TestArguements(t *testing.T) {
 func TestGoodPath(t *testing.T) {
 	gt := NewWithT(t)
 
-	releaseCmd, err := gexec.Build("github.com/hyperledger/fabric/ccaas_builder/cmd/build")
+	releaseCmd, err := gexec.Build("github.com/hyperledger/fabric/v2/ccaas_builder/cmd/build")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 
@@ -117,7 +117,7 @@ func TestGoodPath(t *testing.T) {
 func TestTemplating(t *testing.T) {
 	gt := NewWithT(t)
 
-	releaseCmd, err := gexec.Build("github.com/hyperledger/fabric/ccaas_builder/cmd/build")
+	releaseCmd, err := gexec.Build("github.com/hyperledger/fabric/v2/ccaas_builder/cmd/build")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 
@@ -191,7 +191,7 @@ func TestTemplating(t *testing.T) {
 func TestTemplatingFailure(t *testing.T) {
 	gt := NewWithT(t)
 
-	releaseCmd, err := gexec.Build("github.com/hyperledger/fabric/ccaas_builder/cmd/build")
+	releaseCmd, err := gexec.Build("github.com/hyperledger/fabric/v2/ccaas_builder/cmd/build")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 
@@ -245,7 +245,7 @@ func TestTemplatingFailure(t *testing.T) {
 func TestMissingConnection(t *testing.T) {
 	gt := NewWithT(t)
 
-	releaseCmd, err := gexec.Build("github.com/hyperledger/fabric/ccaas_builder/cmd/build")
+	releaseCmd, err := gexec.Build("github.com/hyperledger/fabric/v2/ccaas_builder/cmd/build")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 
@@ -288,7 +288,7 @@ func TestMissingConnection(t *testing.T) {
 func TestMissingMetadata(t *testing.T) {
 	gt := NewWithT(t)
 
-	releaseCmd, err := gexec.Build("github.com/hyperledger/fabric/ccaas_builder/cmd/build")
+	releaseCmd, err := gexec.Build("github.com/hyperledger/fabric/v2/ccaas_builder/cmd/build")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 

@@ -62,7 +62,7 @@ func gopathDevConfigDir() (string, error) {
 
 	gopath := strings.TrimSpace(buf.String())
 	for _, p := range filepath.SplitList(gopath) {
-		devPath := filepath.Join(p, "src/github.com/hyperledger/fabric/sampleconfig")
+		devPath := filepath.Join(p, "src/github.com/hyperledger/fabric/v2/sampleconfig")
 		if dirExists(devPath) {
 			return devPath, nil
 		}

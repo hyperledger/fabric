@@ -15,9 +15,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/hyperledger/fabric/common/chaincode"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/v2/common/chaincode"
+	"github.com/hyperledger/fabric/v2/common/flogging"
+	"github.com/hyperledger/fabric/v2/common/util"
 
 	"github.com/pkg/errors"
 )

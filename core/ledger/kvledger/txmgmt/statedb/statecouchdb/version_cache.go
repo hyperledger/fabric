@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package statecouchdb
 
 import (
-	"github.com/hyperledger/fabric/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/v2/core/ledger/internal/version"
 )
 
 type (

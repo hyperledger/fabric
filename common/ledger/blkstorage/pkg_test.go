@@ -16,10 +16,10 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/metrics"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v2/common/flogging"
+	"github.com/hyperledger/fabric/v2/common/metrics"
+	"github.com/hyperledger/fabric/v2/common/metrics/disabled"
+	"github.com/hyperledger/fabric/v2/protoutil"
 	"github.com/stretchr/testify/require"
 )
 

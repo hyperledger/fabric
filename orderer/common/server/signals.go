@@ -13,7 +13,7 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/hyperledger/fabric/common/diag"
+	"github.com/hyperledger/fabric/v2/common/diag"
 )
 
 func addPlatformSignals(sigs map[os.Signal]func()) map[os.Signal]func() {

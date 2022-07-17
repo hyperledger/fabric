@@ -9,10 +9,10 @@ package mgmt
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/msp/cache"
+	"github.com/hyperledger/fabric/v2/bccsp"
+	"github.com/hyperledger/fabric/v2/common/flogging"
+	"github.com/hyperledger/fabric/v2/msp"
+	"github.com/hyperledger/fabric/v2/msp/cache"
 	"github.com/spf13/viper"
 )
 

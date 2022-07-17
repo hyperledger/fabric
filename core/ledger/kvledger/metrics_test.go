@@ -12,13 +12,13 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/common/metrics"
-	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
-	lgr "github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validation"
-	"github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/v2/bccsp/sw"
+	"github.com/hyperledger/fabric/v2/common/ledger/testutil"
+	"github.com/hyperledger/fabric/v2/common/metrics"
+	"github.com/hyperledger/fabric/v2/common/metrics/metricsfakes"
+	lgr "github.com/hyperledger/fabric/v2/core/ledger"
+	"github.com/hyperledger/fabric/v2/core/ledger/kvledger/txmgmt/validation"
+	"github.com/hyperledger/fabric/v2/core/ledger/mock"
 	"github.com/stretchr/testify/require"
 )
 

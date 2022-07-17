@@ -18,10 +18,10 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/mux"
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/orderer/common/localconfig"
-	"github.com/hyperledger/fabric/orderer/common/types"
+	"github.com/hyperledger/fabric/v2/common/configtx"
+	"github.com/hyperledger/fabric/v2/common/flogging"
+	"github.com/hyperledger/fabric/v2/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/v2/orderer/common/types"
 	"github.com/pkg/errors"
 )
 

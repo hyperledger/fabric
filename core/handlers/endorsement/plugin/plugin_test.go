@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/core/endorser/mocks"
-	mocks2 "github.com/hyperledger/fabric/core/handlers/endorsement/builtin/mocks"
-	plgn "github.com/hyperledger/fabric/core/handlers/endorsement/plugin"
+	"github.com/hyperledger/fabric/v2/core/endorser/mocks"
+	mocks2 "github.com/hyperledger/fabric/v2/core/handlers/endorsement/builtin/mocks"
+	plgn "github.com/hyperledger/fabric/v2/core/handlers/endorsement/plugin"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )

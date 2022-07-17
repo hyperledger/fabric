@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package aclmgmt
 
-import "github.com/hyperledger/fabric/core/policy"
+import "github.com/hyperledger/fabric/v2/core/policy"
 
 // implementation of aclMgmt. CheckACL calls in fabric result in the following flow
 //    if resourceProvider[resourceName]

@@ -16,14 +16,14 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/ledger/dataformat"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/commontests"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/mock"
+	"github.com/hyperledger/fabric/v2/common/flogging"
+	"github.com/hyperledger/fabric/v2/common/ledger/dataformat"
+	"github.com/hyperledger/fabric/v2/common/metrics/disabled"
+	"github.com/hyperledger/fabric/v2/core/ledger"
+	"github.com/hyperledger/fabric/v2/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/v2/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/hyperledger/fabric/v2/core/ledger/kvledger/txmgmt/statedb/commontests"
+	"github.com/hyperledger/fabric/v2/core/ledger/kvledger/txmgmt/statedb/mock"
 	"github.com/stretchr/testify/require"
 )
 

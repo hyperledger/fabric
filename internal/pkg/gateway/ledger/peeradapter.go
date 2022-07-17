@@ -9,9 +9,9 @@ package ledger
 import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	peerproto "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/ledger"
-	peerledger "github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/v2/common/ledger"
+	peerledger "github.com/hyperledger/fabric/v2/core/ledger"
+	"github.com/hyperledger/fabric/v2/core/peer"
 	"github.com/pkg/errors"
 )
 

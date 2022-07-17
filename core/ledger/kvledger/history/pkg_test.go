@@ -12,12 +12,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
-	"github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/v2/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/v2/common/metrics/disabled"
+	"github.com/hyperledger/fabric/v2/core/ledger/kvledger/bookkeeping"
+	"github.com/hyperledger/fabric/v2/core/ledger/kvledger/txmgmt/privacyenabledstate"
+	"github.com/hyperledger/fabric/v2/core/ledger/kvledger/txmgmt/txmgr"
+	"github.com/hyperledger/fabric/v2/core/ledger/mock"
 	"github.com/stretchr/testify/require"
 )
 

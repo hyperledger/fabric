@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	"github.com/hyperledger/fabric/core/container/ccintf"
+	"github.com/hyperledger/fabric/v2/common/flogging"
+	"github.com/hyperledger/fabric/v2/core/chaincode/persistence"
+	"github.com/hyperledger/fabric/v2/core/container/ccintf"
 
 	"github.com/pkg/errors"
 )

@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package plugin
 
-import validation "github.com/hyperledger/fabric/core/handlers/validation/api"
+import validation "github.com/hyperledger/fabric/v2/core/handlers/validation/api"
 
 // Name defines the name of the plugin as it appears in the configuration
 type Name string

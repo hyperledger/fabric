@@ -18,9 +18,9 @@ import (
 	"time"
 
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
-	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/hyperledger/fabric/v2/core/chaincode/platforms/java"
+	"github.com/hyperledger/fabric/v2/core/chaincode/platforms/util"
+	"github.com/hyperledger/fabric/v2/core/config/configtest"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )

@@ -8,9 +8,9 @@ package privdata
 
 import (
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v2/common/policies"
+	"github.com/hyperledger/fabric/v2/msp"
+	"github.com/hyperledger/fabric/v2/protoutil"
 	"github.com/pkg/errors"
 )
 

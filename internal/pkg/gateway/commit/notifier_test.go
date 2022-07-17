@@ -11,8 +11,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/internal/pkg/gateway/ledger/mocks"
+	"github.com/hyperledger/fabric/v2/core/ledger"
+	"github.com/hyperledger/fabric/v2/internal/pkg/gateway/ledger/mocks"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )

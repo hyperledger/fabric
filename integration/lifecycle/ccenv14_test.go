@@ -14,7 +14,7 @@ import (
 	"syscall"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric/integration/nwo"
+	"github.com/hyperledger/fabric/v2/integration/nwo"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"

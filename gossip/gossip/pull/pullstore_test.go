@@ -16,11 +16,11 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric/gossip/comm"
-	"github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/gossip/gossip/algo"
-	"github.com/hyperledger/fabric/gossip/protoext"
-	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/v2/gossip/comm"
+	"github.com/hyperledger/fabric/v2/gossip/discovery"
+	"github.com/hyperledger/fabric/v2/gossip/gossip/algo"
+	"github.com/hyperledger/fabric/v2/gossip/protoext"
+	"github.com/hyperledger/fabric/v2/gossip/util"
 	"github.com/stretchr/testify/require"
 )
 

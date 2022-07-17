@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package privdata
 
-import "github.com/hyperledger/fabric/common/channelconfig"
+import "github.com/hyperledger/fabric/v2/common/channelconfig"
 
 //go:generate mockery -dir ./ -name AppCapabilities -case underscore -output mocks/
 // appCapabilities local interface used to generate mock for foreign interface.

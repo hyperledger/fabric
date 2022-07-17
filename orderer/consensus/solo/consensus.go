@@ -11,8 +11,8 @@ import (
 	"time"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/v2/common/flogging"
+	"github.com/hyperledger/fabric/v2/orderer/consensus"
 )
 
 var logger = flogging.MustGetLogger("orderer.consensus.solo")

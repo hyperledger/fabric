@@ -12,9 +12,9 @@ import (
 	"testing"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	mockpolicies "github.com/hyperledger/fabric/common/configtx/mock"
-	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/protoutil"
+	mockpolicies "github.com/hyperledger/fabric/v2/common/configtx/mock"
+	"github.com/hyperledger/fabric/v2/common/policies"
+	"github.com/hyperledger/fabric/v2/protoutil"
 	"github.com/stretchr/testify/require"
 )
 

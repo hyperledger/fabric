@@ -13,8 +13,8 @@ import (
 	"syscall"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/v2/integration/nwo"
+	"github.com/hyperledger/fabric/v2/integration/nwo/commands"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -42,7 +42,7 @@ var _ = Describe("EndToEnd", func() {
 		chaincode = nwo.Chaincode{
 			Name:            "mycc",
 			Version:         "0.0",
-			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd"),
+			Path:            components.Build("github.com/hyperledger/fabric/v2/integration/chaincode/simple/cmd"),
 			Lang:            "binary",
 			PackageFile:     filepath.Join(testDir, "simplecc.tar.gz"),
 			Ctor:            `{"Args":["init","a","100","b","200"]}`,

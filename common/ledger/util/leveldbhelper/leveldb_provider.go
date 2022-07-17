@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/hyperledger/fabric/common/ledger/dataformat"
+	"github.com/hyperledger/fabric/v2/common/ledger/dataformat"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"

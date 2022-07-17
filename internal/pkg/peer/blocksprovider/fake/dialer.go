@@ -4,7 +4,7 @@ package fake
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider"
+	"github.com/hyperledger/fabric/v2/internal/pkg/peer/blocksprovider"
 	"google.golang.org/grpc"
 )
 

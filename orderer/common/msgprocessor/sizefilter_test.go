@@ -12,7 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor/mocks"
+	"github.com/hyperledger/fabric/v2/orderer/common/msgprocessor/mocks"
 	"github.com/stretchr/testify/require"
 )
 

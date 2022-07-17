@@ -11,7 +11,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	bootfile "github.com/hyperledger/fabric/orderer/common/bootstrap/file"
+	bootfile "github.com/hyperledger/fabric/v2/orderer/common/bootstrap/file"
 	"github.com/stretchr/testify/require"
 )
 

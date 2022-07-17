@@ -20,11 +20,11 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/discovery"
 	pm "github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/common/policydsl"
-	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/integration/nwo/commands"
-	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v2/common/policydsl"
+	"github.com/hyperledger/fabric/v2/integration/nwo"
+	"github.com/hyperledger/fabric/v2/integration/nwo/commands"
+	"github.com/hyperledger/fabric/v2/msp"
+	"github.com/hyperledger/fabric/v2/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -118,7 +118,7 @@ var _ = Describe("DiscoveryService", func() {
 		chaincodeWhenNoAnchorPeers := nwo.Chaincode{
 			Name:    "noanchorpeersjustyet",
 			Version: "1.0",
-			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+			Path:    "github.com/hyperledger/fabric/v2/integration/chaincode/simple/cmd",
 			Ctor:    `{"Args":["init","a","100","b","200"]}`,
 			Policy:  `OR ('Org1MSP.member')`,
 		}
@@ -253,7 +253,7 @@ var _ = Describe("DiscoveryService", func() {
 		chaincode := nwo.Chaincode{
 			Name:    "mycc",
 			Version: "1.0",
-			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+			Path:    "github.com/hyperledger/fabric/v2/integration/chaincode/simple/cmd",
 			Ctor:    `{"Args":["init","a","100","b","200"]}`,
 			Policy:  `OR (AND ('Org1MSP.member','Org2MSP.member'), AND ('Org1MSP.member','Org3MSP.member'), AND ('Org2MSP.member','Org3MSP.member'))`,
 		}
@@ -476,7 +476,7 @@ var _ = Describe("DiscoveryService", func() {
 		Expect(sess.Err).To(gbytes.Say(`failed constructing descriptor for chaincodes:<name:"mycc-lifecycle"`))
 
 		By("deploying chaincode using org1 and org2")
-		chaincodePath := components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd")
+		chaincodePath := components.Build("github.com/hyperledger/fabric/v2/integration/chaincode/simple/cmd")
 		chaincode = nwo.Chaincode{
 			Name:                "mycc-lifecycle",
 			Version:             "1.0",

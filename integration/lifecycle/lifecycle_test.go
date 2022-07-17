@@ -18,10 +18,10 @@ import (
 	"github.com/hyperledger/fabric-config/protolator"
 	"github.com/hyperledger/fabric-config/protolator/protoext/ordererext"
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/integration/nwo/commands"
-	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
-	"github.com/hyperledger/fabric/integration/nwo/runner"
+	"github.com/hyperledger/fabric/v2/integration/nwo"
+	"github.com/hyperledger/fabric/v2/integration/nwo/commands"
+	"github.com/hyperledger/fabric/v2/integration/nwo/fabricconfig"
+	"github.com/hyperledger/fabric/v2/integration/nwo/runner"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
@@ -123,7 +123,7 @@ var _ = Describe("Lifecycle", func() {
 		testPeers := network.PeersWithChannel("testchannel")
 		org1peer0 := network.Peer("Org1", "peer0")
 
-		chaincodePath := components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd")
+		chaincodePath := components.Build("github.com/hyperledger/fabric/v2/integration/chaincode/simple/cmd")
 		chaincode := nwo.Chaincode{
 			Name:                "My_1st-Chaincode",
 			Version:             "Version-0.0",

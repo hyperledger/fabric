@@ -8,16 +8,16 @@ package multichannel
 
 import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	"github.com/hyperledger/fabric/internal/pkg/identity"
-	"github.com/hyperledger/fabric/orderer/common/blockcutter"
-	"github.com/hyperledger/fabric/orderer/common/localconfig"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
-	"github.com/hyperledger/fabric/orderer/common/types"
-	"github.com/hyperledger/fabric/orderer/consensus"
-	"github.com/hyperledger/fabric/orderer/consensus/inactive"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v2/bccsp"
+	"github.com/hyperledger/fabric/v2/common/ledger/blockledger"
+	"github.com/hyperledger/fabric/v2/internal/pkg/identity"
+	"github.com/hyperledger/fabric/v2/orderer/common/blockcutter"
+	"github.com/hyperledger/fabric/v2/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/v2/orderer/common/msgprocessor"
+	"github.com/hyperledger/fabric/v2/orderer/common/types"
+	"github.com/hyperledger/fabric/v2/orderer/consensus"
+	"github.com/hyperledger/fabric/v2/orderer/consensus/inactive"
+	"github.com/hyperledger/fabric/v2/protoutil"
 	"github.com/pkg/errors"
 )
 

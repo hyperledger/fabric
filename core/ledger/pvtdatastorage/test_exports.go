@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
+	"github.com/hyperledger/fabric/v2/core/ledger"
+	"github.com/hyperledger/fabric/v2/core/ledger/pvtdatapolicy"
 	"github.com/stretchr/testify/require"
 )
 

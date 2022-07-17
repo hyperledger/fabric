@@ -10,11 +10,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/hyperledger/fabric/common/crypto/tlsgen"
-	"github.com/hyperledger/fabric/core/chaincode/extcc"
-	"github.com/hyperledger/fabric/core/chaincode/extcc/mock"
-	"github.com/hyperledger/fabric/core/container/ccintf"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
+	"github.com/hyperledger/fabric/v2/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/v2/core/chaincode/extcc"
+	"github.com/hyperledger/fabric/v2/core/chaincode/extcc/mock"
+	"github.com/hyperledger/fabric/v2/core/container/ccintf"
+	"github.com/hyperledger/fabric/v2/internal/pkg/comm"
 
 	"google.golang.org/grpc"
 
