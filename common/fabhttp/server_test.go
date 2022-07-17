@@ -71,7 +71,7 @@ var _ = Describe("Server", func() {
 	When("trying to connect with an old TLS version", func() {
 		BeforeEach(func() {
 			tlsOpts := []func(config *tls.Config){func(config *tls.Config) {
-				config.MaxVersion = tls.VersionTLS11
+				config.MaxVersion = tls.VersionTLS12
 				config.ClientAuth = tls.RequireAndVerifyClientCert
 			}}
 
