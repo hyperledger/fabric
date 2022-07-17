@@ -113,7 +113,7 @@ func LoadTLSConfig(isserver bool, key, cert, root []byte) (*tls.Config, error) {
 
 	cccert, err := tls.X509KeyPair(cert, key)
 	if err != nil {
-		return nil, errors.New("failed to parse client key pair")
+		return nil, fmt.Errorf("failed to parse client key pair: %s", err)
 	}
 
 	var rootCertPool *x509.CertPool

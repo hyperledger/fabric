@@ -386,6 +386,29 @@ func (h *Handler) handleDelState(collection string, key string, channelID string
 	return fmt.Errorf("[%s] incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
 }
 
+// handlerPurgeState communicates with the peer to purge a state from private data
+func (h *Handler) handlePurgeState(collection string, key string, channelID string, txid string) error {
+	payloadBytes := marshalOrPanic(&pb.DelState{Collection: collection, Key: key})
+	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PURGE_PRIVATE_DATA, Payload: payloadBytes, Txid: txid, ChannelId: channelID}
+	// Execute the request and get response
+	responseMsg, err := h.callPeerWithChaincodeMsg(msg, channelID, txid)
+	if err != nil {
+		return fmt.Errorf("[%s] error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_DEL_STATE)
+	}
+
+	if responseMsg.Type == pb.ChaincodeMessage_RESPONSE {
+		// Success response
+		return nil
+	}
+	if responseMsg.Type == pb.ChaincodeMessage_ERROR {
+		// Error response
+		return fmt.Errorf("%s", responseMsg.Payload[:])
+	}
+
+	// Incorrect chaincode message received
+	return fmt.Errorf("[%s] incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
+}
+
 func (h *Handler) handleGetStateByRange(collection, startKey, endKey string, metadata []byte,
 	channelID string, txid string) (*pb.QueryResponse, error) {
 	// Send GET_STATE_BY_RANGE message to peer chaincode support
