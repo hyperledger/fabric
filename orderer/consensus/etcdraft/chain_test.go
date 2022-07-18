@@ -2375,21 +2375,26 @@ var _ = Describe("Chain", func() {
 					close(c1.stopped)
 
 					var newLeader, remainingFollower *chain
+					var c2state raft.SoftState
+					var c3state raft.SoftState
 					for newLeader == nil || remainingFollower == nil {
-						var state raft.SoftState
 						select {
-						case state = <-c2.observe:
-						case state = <-c3.observe:
+						case c2state = <-c2.observe:
+						case c3state = <-c3.observe:
 						case <-time.After(LongEventualTimeout):
 							Fail("Expected a new leader to present")
 						}
 
-						if state.RaftState == raft.StateLeader && state.Lead != raft.None {
-							newLeader = network.chains[state.Lead]
-						}
-
-						if state.RaftState == raft.StateFollower && state.Lead != raft.None {
-							remainingFollower = network.chains[state.Lead]
+						// an agreed leader among the two, which is one of the two remaining nodes
+						if ((c2state.RaftState == raft.StateFollower && c3state.RaftState == raft.StateLeader) ||
+							(c2state.RaftState == raft.StateLeader && c3state.RaftState == raft.StateFollower)) &&
+							c2state.Lead == c3state.Lead && c2state.Lead != raft.None {
+							newLeader = network.chains[c2state.Lead]
+							if c2state.RaftState == raft.StateFollower {
+								remainingFollower = c2
+							} else {
+								remainingFollower = c3
+							}
 						}
 					}
 
