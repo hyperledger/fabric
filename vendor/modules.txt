@@ -62,7 +62,6 @@ github.com/Microsoft/hcsshim/osversion
 # github.com/Shopify/sarama v1.20.1
 ## explicit
 github.com/Shopify/sarama
-github.com/Shopify/sarama/mocks
 # github.com/VictoriaMetrics/fastcache v1.9.0
 ## explicit; go 1.13
 github.com/VictoriaMetrics/fastcache
