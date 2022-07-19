@@ -659,7 +659,7 @@ func (msp *bccspmsp) setupV142(conf *m.FabricMSPConfig) error {
 	return nil
 }
 
-func (msp *bccspmsp) setupV144(conf *m.FabricMSPConfig) error {
+func (msp *bccspmsp) setupV24(conf *m.FabricMSPConfig) error {
 	err := msp.preSetupV142(conf)
 	if err != nil {
 		return err
