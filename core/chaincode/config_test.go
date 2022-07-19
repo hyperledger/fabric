@@ -36,6 +36,7 @@ var _ = Describe("Config", func() {
 			viper.Set("chaincode.logging.format", "test-chaincode-logging-format")
 			viper.Set("chaincode.logging.level", "warning")
 			viper.Set("chaincode.logging.shim", "warning")
+			viper.Set("chaincode.system", `{"lscc": "true", "escc": "true", "vscc": "true", "cscc": "true", "somecc": "enabled"}`)
 
 			config := chaincode.GlobalConfig()
 			Expect(config.TLSEnabled).To(BeTrue())
@@ -46,6 +47,13 @@ var _ = Describe("Config", func() {
 			Expect(config.LogFormat).To(Equal("test-chaincode-logging-format"))
 			Expect(config.LogLevel).To(Equal("warn"))
 			Expect(config.ShimLogLevel).To(Equal("warn"))
+			Expect(config.SCCAllowlist).To(Equal(map[string]bool{
+				"somecc": true,
+				"lscc":   true,
+				"escc":   true,
+				"vscc":   true,
+				"cscc":   true,
+			}))
 		})
 
 		Context("when an invalid keepalive is configured", func() {

@@ -22,6 +22,7 @@ package peer
 import (
 	"crypto/tls"
 	"fmt"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net"
 	"path/filepath"
@@ -276,10 +277,11 @@ func (c *Config) load() error {
 
 	c.ChaincodePull = viper.GetBool("chaincode.pull")
 	var externalBuilders []ExternalBuilder
-	err = viper.UnmarshalKey("chaincode.externalBuilders", &externalBuilders)
-	if err != nil {
-		return err
+
+	if err := yaml.UnmarshalStrict([]byte(viper.GetString("chaincode.externalBuilders")), &externalBuilders); err != nil {
+		return errors.Wrap(err, "unmarshalling 'chaincode.externalBuilders' into yaml")
 	}
+
 	c.ExternalBuilders = externalBuilders
 	for builderIndex, builder := range c.ExternalBuilders {
 		if builder.Path == "" {
