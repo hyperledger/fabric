@@ -308,16 +308,7 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("metrics.statsd.prefix", "testPrefix")
 
 	viper.Set("chaincode.pull", false)
-	viper.Set("chaincode.externalBuilders", &[]ExternalBuilder{
-		{
-			Path: "relative/plugin_dir",
-			Name: "relative",
-		},
-		{
-			Path: "/absolute/plugin_dir",
-			Name: "absolute",
-		},
-	})
+	viper.Set("chaincode.externalBuilders", "[{name: relative, path: relative/plugin_dir}, {name: absolute, path: /absolute/plugin_dir}]")
 
 	coreConfig, err := GlobalConfig()
 	assert.NoError(t, err)
@@ -405,24 +396,7 @@ func TestGlobalConfigDefault(t *testing.T) {
 func TestPropagateEnvironment(t *testing.T) {
 	defer viper.Reset()
 	viper.Set("peer.address", "localhost:8080")
-	viper.Set("chaincode.externalBuilders", &[]ExternalBuilder{
-		{
-			Name:        "testName",
-			Environment: []string{"KEY=VALUE"},
-			Path:        "/testPath",
-		},
-		{
-			Name:                 "testName",
-			PropagateEnvironment: []string{"KEY=VALUE"},
-			Path:                 "/testPath",
-		},
-		{
-			Name:                 "testName",
-			Environment:          []string{"KEY=VALUE"},
-			PropagateEnvironment: []string{"KEY=VALUE2"},
-			Path:                 "/testPath",
-		},
-	})
+	viper.Set("chaincode.externalBuilders", "[{name: testName, environmentWhitelist: [KEY=VALUE], path: /testPath}, {name: testName, propagateEnvironment: [KEY=VALUE], path: /testPath}, {name: testName, environmentWhitelist: [KEY=VALUE], propagateEnvironment: [KEY=VALUE2], path: /testPath}]")
 	coreConfig, err := GlobalConfig()
 	assert.NoError(t, err)
 
@@ -478,11 +452,7 @@ func TestExternalBuilderConfigAsEnvVar(t *testing.T) {
 func TestMissingExternalBuilderPath(t *testing.T) {
 	defer viper.Reset()
 	viper.Set("peer.address", "localhost:8080")
-	viper.Set("chaincode.externalBuilders", &[]ExternalBuilder{
-		{
-			Name: "testName",
-		},
-	})
+	viper.Set("chaincode.externalBuilders", "[{name: testName}]")
 	_, err := GlobalConfig()
 	assert.EqualError(t, err, "invalid external builder configuration, path attribute missing in one or more builders")
 }
@@ -490,11 +460,7 @@ func TestMissingExternalBuilderPath(t *testing.T) {
 func TestMissingExternalBuilderName(t *testing.T) {
 	defer viper.Reset()
 	viper.Set("peer.address", "localhost:8080")
-	viper.Set("chaincode.externalBuilders", &[]ExternalBuilder{
-		{
-			Path: "relative/plugin_dir",
-		},
-	})
+	viper.Set("chaincode.externalBuilders", "[{path: relative/plugin_dir}]")
 	_, err := GlobalConfig()
 	assert.EqualError(t, err, "external builder at path relative/plugin_dir has no name attribute")
 }
