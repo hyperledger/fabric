@@ -276,13 +276,12 @@ func (c *Config) load() error {
 	}
 
 	c.ChaincodePull = viper.GetBool("chaincode.pull")
-	var externalBuilders []ExternalBuilder
 
-	if err := yaml.UnmarshalStrict([]byte(viper.GetString("chaincode.externalBuilders")), &externalBuilders); err != nil {
-		return errors.Wrap(err, "unmarshalling 'chaincode.externalBuilders' into yaml")
+	c.ExternalBuilders, err = getExternalBuildersConfig()
+	if err != nil {
+		return errors.Wrap(err, "getting external builders config")
 	}
 
-	c.ExternalBuilders = externalBuilders
 	for builderIndex, builder := range c.ExternalBuilders {
 		if builder.Path == "" {
 			return fmt.Errorf("invalid external builder configuration, path attribute missing in one or more builders")
@@ -290,7 +289,7 @@ func (c *Config) load() error {
 		if builder.Name == "" {
 			return fmt.Errorf("external builder at path %s has no name attribute", builder.Path)
 		}
-		if builder.Environment != nil && builder.PropagateEnvironment == nil {
+		if builder.Environment != nil && len(builder.PropagateEnvironment) == 0 {
 			c.ExternalBuilders[builderIndex].PropagateEnvironment = builder.Environment
 		}
 	}
@@ -476,4 +475,25 @@ func GetClientCertificate() (tls.Certificate, error) {
 			"error parsing client TLS key pair")
 	}
 	return cert, nil
+}
+
+// this method is needed because old viper (< 1.1.0) has bugs in automatic env option
+func getExternalBuildersConfig() ([]ExternalBuilder, error) {
+	var externalBuilders []ExternalBuilder
+
+	if viper.IsSet("chaincode.externalBuilders") {
+		// when defined as an env var the value is string, then we need to parse it as a yaml string
+		if extBuildersString := viper.GetString("chaincode.externalBuilders"); extBuildersString != "" {
+			if err := yaml.UnmarshalStrict([]byte(extBuildersString), &externalBuilders); err != nil {
+				return nil, errors.Wrap(err, "unmarshalling 'chaincode.externalBuilders' into yaml")
+			}
+		} else {
+			// otherwise we expect it to be a map, core.yaml is unmarshalled into a generic struct map[string]interface and then mapstructure.Decode has to be used.
+			if err := viper.UnmarshalKey("chaincode.externalBuilders", &externalBuilders); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return externalBuilders, nil
 }
