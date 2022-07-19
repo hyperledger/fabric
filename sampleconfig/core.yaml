@@ -602,6 +602,7 @@ chaincode:
     keepalive: 0
 
     # enabled system chaincodes
+    # To override this property via env variable use CORE_CHAINCODE_SYSTEM: {"xxx:": "enable"}
     system:
         _lifecycle: enable
         cscc: enable
