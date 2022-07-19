@@ -7,6 +7,7 @@ package peer
 
 import (
 	"crypto/tls"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net"
 	"os"
@@ -308,7 +309,19 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("metrics.statsd.prefix", "testPrefix")
 
 	viper.Set("chaincode.pull", false)
-	viper.Set("chaincode.externalBuilders", "[{name: relative, path: relative/plugin_dir}, {name: absolute, path: /absolute/plugin_dir}]")
+
+	extBuildersConfig, err := yaml.Marshal([]ExternalBuilder{
+		{
+			Path: "relative/plugin_dir",
+			Name: "relative",
+		},
+		{
+			Path: "/absolute/plugin_dir",
+			Name: "absolute",
+		},
+	})
+	require.NoError(t, err)
+	viper.Set("chaincode.externalBuilders", extBuildersConfig)
 
 	coreConfig, err := GlobalConfig()
 	assert.NoError(t, err)
@@ -343,12 +356,16 @@ func TestGlobalConfig(t *testing.T) {
 		ChaincodePull: false,
 		ExternalBuilders: []ExternalBuilder{
 			{
-				Path: "relative/plugin_dir",
-				Name: "relative",
+				Path:                 "relative/plugin_dir",
+				Name:                 "relative",
+				PropagateEnvironment: []string{},
+				Environment:          []string{},
 			},
 			{
-				Path: "/absolute/plugin_dir",
-				Name: "absolute",
+				Path:                 "/absolute/plugin_dir",
+				Name:                 "absolute",
+				PropagateEnvironment: []string{},
+				Environment:          []string{},
 			},
 		},
 		OperationsListenAddress:         "127.0.0.1:9443",
@@ -396,7 +413,26 @@ func TestGlobalConfigDefault(t *testing.T) {
 func TestPropagateEnvironment(t *testing.T) {
 	defer viper.Reset()
 	viper.Set("peer.address", "localhost:8080")
-	viper.Set("chaincode.externalBuilders", "[{name: testName, environmentWhitelist: [KEY=VALUE], path: /testPath}, {name: testName, propagateEnvironment: [KEY=VALUE], path: /testPath}, {name: testName, environmentWhitelist: [KEY=VALUE], propagateEnvironment: [KEY=VALUE2], path: /testPath}]")
+	viper.Set("chaincode.externalBuilders", []ExternalBuilder{
+		{
+			Name:                 "testName",
+			Environment:          []string{"KEY=VALUE"},
+			PropagateEnvironment: []string{},
+			Path:                 "/testPath",
+		},
+		{
+			Name:                 "testName",
+			PropagateEnvironment: []string{"KEY=VALUE"},
+			Environment:          []string{},
+			Path:                 "/testPath",
+		},
+		{
+			Name:                 "testName",
+			Environment:          []string{"KEY=VALUE"},
+			PropagateEnvironment: []string{"KEY=VALUE2"},
+			Path:                 "/testPath",
+		},
+	})
 	coreConfig, err := GlobalConfig()
 	assert.NoError(t, err)
 
@@ -416,6 +452,7 @@ func TestPropagateEnvironment(t *testing.T) {
 			{
 				Name:                 "testName",
 				PropagateEnvironment: []string{"KEY=VALUE"},
+				Environment:          []string{},
 				Path:                 "/testPath",
 			},
 			{
@@ -432,7 +469,22 @@ func TestPropagateEnvironment(t *testing.T) {
 func TestExternalBuilderConfigAsEnvVar(t *testing.T) {
 	defer viper.Reset()
 	viper.Set("peer.address", "localhost:8080")
-	viper.Set("chaincode.externalBuilders", "[{name: relative, path: relative/plugin_dir, propagateEnvironment: [ENVVAR_NAME_TO_PROPAGATE_FROM_PEER, GOPROXY]}, {name: absolute, path: /absolute/plugin_dir}]")
+	extBuildersConfig, err := yaml.Marshal([]ExternalBuilder{
+		{
+			Path:                 "relative/plugin_dir",
+			Name:                 "relative",
+			PropagateEnvironment: []string{"ENVVAR_NAME_TO_PROPAGATE_FROM_PEER", "GOPROXY"},
+		},
+		{
+			Path:                 "/absolute/plugin_dir",
+			Name:                 "absolute",
+			PropagateEnvironment: nil,
+		},
+	})
+	require.NoError(t, err)
+
+	viper.Set("chaincode.externalBuilders", extBuildersConfig)
+
 	coreConfig, err := GlobalConfig()
 	require.NoError(t, err)
 
@@ -441,10 +493,13 @@ func TestExternalBuilderConfigAsEnvVar(t *testing.T) {
 			Path:                 "relative/plugin_dir",
 			Name:                 "relative",
 			PropagateEnvironment: []string{"ENVVAR_NAME_TO_PROPAGATE_FROM_PEER", "GOPROXY"},
+			Environment:          []string{},
 		},
 		{
-			Path: "/absolute/plugin_dir",
-			Name: "absolute",
+			Path:                 "/absolute/plugin_dir",
+			Name:                 "absolute",
+			PropagateEnvironment: []string{},
+			Environment:          []string{},
 		},
 	}, coreConfig.ExternalBuilders)
 }
@@ -452,7 +507,12 @@ func TestExternalBuilderConfigAsEnvVar(t *testing.T) {
 func TestMissingExternalBuilderPath(t *testing.T) {
 	defer viper.Reset()
 	viper.Set("peer.address", "localhost:8080")
-	viper.Set("chaincode.externalBuilders", "[{name: testName}]")
+
+	viper.Set("chaincode.externalBuilders", []ExternalBuilder{
+		{
+			Name: "testName",
+		},
+	})
 	_, err := GlobalConfig()
 	assert.EqualError(t, err, "invalid external builder configuration, path attribute missing in one or more builders")
 }
@@ -460,7 +520,13 @@ func TestMissingExternalBuilderPath(t *testing.T) {
 func TestMissingExternalBuilderName(t *testing.T) {
 	defer viper.Reset()
 	viper.Set("peer.address", "localhost:8080")
-	viper.Set("chaincode.externalBuilders", "[{path: relative/plugin_dir}]")
+
+	viper.Set("chaincode.externalBuilders", []ExternalBuilder{
+		{
+			Path: "relative/plugin_dir",
+		},
+	})
+
 	_, err := GlobalConfig()
 	assert.EqualError(t, err, "external builder at path relative/plugin_dir has no name attribute")
 }
