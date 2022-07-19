@@ -467,7 +467,7 @@ func SetACLPolicy(network *nwo.Network, channel, policyName, policy string, orde
 		}),
 	}
 
-	nwo.UpdateConfig(network, orderer, channel, config, updatedConfig, true, submitter, signer)
+	nwo.UpdateConfig(network, orderer, channel, config, updatedConfig, true, submitter, nil, signer)
 }
 
 // GetTxIDFromBlock gets a transaction id from a block that has been

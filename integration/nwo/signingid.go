@@ -8,6 +8,7 @@ package nwo
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
@@ -55,17 +56,20 @@ func (s *SigningIdentity) Sign(msg []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	eckey, ok := key.(*ecdsa.PrivateKey)
-	if !ok {
+	switch k := key.(type) {
+	case *ecdsa.PrivateKey:
+		r, _s, err := ecdsa.Sign(rand.Reader, k, digest[:])
+		if err != nil {
+			return nil, err
+		}
+		sig, err := utils.MarshalECDSASignature(r, _s)
+		if err != nil {
+			return nil, err
+		}
+		return utils.SignatureToLowS(&k.PublicKey, sig)
+	case ed25519.PrivateKey:
+		return ed25519.Sign(k, digest[:]), nil
+	default:
 		return nil, fmt.Errorf("unexpected key type: %T", key)
 	}
-	r, _s, err := ecdsa.Sign(rand.Reader, eckey, digest[:])
-	if err != nil {
-		return nil, err
-	}
-	sig, err := utils.MarshalECDSASignature(r, _s)
-	if err != nil {
-		return nil, err
-	}
-	return utils.SignatureToLowS(&eckey.PublicKey, sig)
 }
