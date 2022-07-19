@@ -416,9 +416,10 @@ func TestPropagateEnvironment(t *testing.T) {
 	viper.Set("peer.address", "localhost:8080")
 	viper.Set("chaincode.externalBuilders", &[]ExternalBuilder{
 		{
-			Name:        "testName",
-			Environment: []string{"KEY=VALUE"},
-			Path:        "/testPath",
+			Name:                 "testName",
+			Environment:          []string{"KEY=VALUE"},
+			PropagateEnvironment: []string{},
+			Path:                 "/testPath",
 		},
 		{
 			Name:                 "testName",
