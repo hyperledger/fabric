@@ -140,8 +140,8 @@ func newBccspMsp(version MSPVersion, defaultBCCSP bccsp.BCCSP) (MSP, error) {
 		theMsp.internalValidateIdentityOusFunc = theMsp.validateIdentityOUsV142
 		theMsp.internalSatisfiesPrincipalInternalFunc = theMsp.satisfiesPrincipalInternalV142
 		theMsp.internalSetupAdmin = theMsp.setupAdminsV142
-	case MSPv1_4_4:
-		theMsp.internalSetupFunc = theMsp.setupV144
+	case MSPv2_4:
+		theMsp.internalSetupFunc = theMsp.setupV24
 		theMsp.internalValidateIdentityOusFunc = theMsp.validateIdentityOUsV142
 		theMsp.internalSatisfiesPrincipalInternalFunc = theMsp.satisfiesPrincipalInternalV142
 		theMsp.internalSetupAdmin = theMsp.setupAdminsV142

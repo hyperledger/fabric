@@ -310,7 +310,7 @@ var _ = Describe("Lifecycle", func() {
 
 		// update the channel config to include org3
 		updatedConfig.ChannelGroup.Groups["Application"].Groups["Org3"] = org3Group.ConfigGroup
-		nwo.UpdateConfig(network, orderer, "testchannel", currentConfig, updatedConfig, true, testPeers[0], testPeers...)
+		nwo.UpdateConfig(network, orderer, "testchannel", currentConfig, updatedConfig, true, testPeers[0], nil, testPeers...)
 
 		By("joining the org3 peers to the channel")
 		network.JoinChannel("testchannel", orderer, org3peer0)
