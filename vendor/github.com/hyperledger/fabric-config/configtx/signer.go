@@ -9,7 +9,6 @@ package configtx
 import (
 	"crypto"
 	"crypto/ecdsa"
-	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
@@ -48,12 +47,11 @@ func (s *SigningIdentity) Public() crypto.PublicKey {
 // See https://github.com/bitcoin/bips/blob/master/bip-0146.mediawiki#low_s
 // for more detail.
 func (s *SigningIdentity) Sign(reader io.Reader, msg []byte, opts crypto.SignerOpts) (signature []byte, err error) {
-	hasher := sha256.New()
-	hasher.Write(msg)
-	digest := hasher.Sum(nil)
-
 	switch pk := s.PrivateKey.(type) {
 	case *ecdsa.PrivateKey:
+		hasher := sha256.New()
+		hasher.Write(msg)
+		digest := hasher.Sum(nil)
 
 		rr, ss, err := ecdsa.Sign(reader, pk, digest)
 		if err != nil {
@@ -70,8 +68,6 @@ func (s *SigningIdentity) Sign(reader io.Reader, msg []byte, opts crypto.SignerO
 		)
 
 		return asn1.Marshal(sig)
-	case ed25519.PrivateKey:
-		return ed25519.Sign(pk, digest), nil
 	default:
 		return nil, fmt.Errorf("signing with private key of type %T not supported", pk)
 	}
