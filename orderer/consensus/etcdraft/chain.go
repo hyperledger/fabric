@@ -469,6 +469,9 @@ func (c *Chain) halt() {
 		// StatusReport.
 		c.consensusRelation = types.ConsensusRelationConfigTracker
 	}
+
+	// active nodes metric shouldn't be frozen once a channel is stopped.
+	c.Metrics.ActiveNodes.Set(float64(0))
 }
 
 func (c *Chain) isRunning() error {
