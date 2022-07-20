@@ -1430,6 +1430,7 @@ var _ = Describe("Chain", func() {
 				c1.clock.Increment(interval)
 				return c2.fakeFields.fakeActiveNodes.SetCallCount()
 			}, LongEventualTimeout).Should(Equal(2))
+			Expect(c1.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
 			Expect(c2.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
 
 			By("Configuring cluster to remove node")
@@ -1458,6 +1459,8 @@ var _ = Describe("Chain", func() {
 			c2.cutter.CutNext = true
 			Expect(c2.Order(env, 0)).To(Succeed())
 			Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+			Expect(c1.fakeFields.fakeActiveNodes.SetArgsForCall(2)).To(Equal(float64(0))) // was halted
+			Expect(c2.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
 		})
 
 		It("remove leader by reconfiguring cluster, but Halt before eviction", func() {
@@ -1468,6 +1471,7 @@ var _ = Describe("Chain", func() {
 				c1.clock.Increment(interval)
 				return c2.fakeFields.fakeActiveNodes.SetCallCount()
 			}, LongEventualTimeout).Should(Equal(2))
+			Expect(c1.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
 			Expect(c2.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
 
 			By("Configuring cluster to remove node")
@@ -1498,6 +1502,10 @@ var _ = Describe("Chain", func() {
 			).Should(Equal(orderer_types.StatusInactive))
 			cRel, _ := c1.StatusReport()
 			Expect(cRel).To(Equal(orderer_types.ConsensusRelationConsenter))
+
+			// active nodes metric hasn't changed because c.halt() wasn't called
+			Expect(c1.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
+			Expect(c2.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
 		})
 
 		It("can remove leader by reconfiguring cluster even if leadership transfer fails", func() {
