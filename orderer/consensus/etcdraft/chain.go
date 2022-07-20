@@ -435,6 +435,9 @@ func (c *Chain) Halt() {
 	if c.haltCallback != nil {
 		c.haltCallback()
 	}
+
+	// active nodes metric shouldn't be frozen once a channel is stopped.
+	c.Metrics.ActiveNodes.Set(float64(0))
 }
 
 func (c *Chain) isRunning() error {

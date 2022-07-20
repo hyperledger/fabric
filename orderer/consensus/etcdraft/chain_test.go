@@ -1420,6 +1420,7 @@ var _ = Describe("Chain", func() {
 				c1.clock.Increment(interval)
 				return c2.fakeFields.fakeActiveNodes.SetCallCount()
 			}, LongEventualTimeout).Should(Equal(2))
+			Expect(c1.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
 			Expect(c2.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
 
 			By("Configuring cluster to remove node")
@@ -1432,10 +1433,75 @@ var _ = Describe("Chain", func() {
 				return c2.observe
 			}, LongEventualTimeout).Should(Receive(StateEqual(2, raft.StateLeader)))
 
+<<<<<<< HEAD
+=======
+			By("Asserting the haltCallback is called when the node is removed from the replica set")
+			Eventually(fakeHaltCallbacker.HaltCallbackCallCount).Should(Equal(1))
+			By("Asserting the StatusReport responds correctly after eviction")
+			Eventually(
+				func() orderer_types.ConsensusRelation {
+					cRel, _ := c1.StatusReport()
+					return cRel
+				},
+			).Should(Equal(orderer_types.ConsensusRelationConfigTracker))
+			_, status := c1.StatusReport()
+			Expect(status).To(Equal(orderer_types.StatusInactive))
+
 			By("Asserting leader can still serve requests as single-node cluster")
 			c2.cutter.CutNext = true
 			Expect(c2.Order(env, 0)).To(Succeed())
 			Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+			Expect(c1.fakeFields.fakeActiveNodes.SetArgsForCall(2)).To(Equal(float64(0))) // was halted
+			Expect(c2.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
+		})
+
+		It("remove leader by reconfiguring cluster, but Halt before eviction", func() {
+			network.elect(1)
+
+			// trigger status dissemination
+			Eventually(func() int {
+				c1.clock.Increment(interval)
+				return c2.fakeFields.fakeActiveNodes.SetCallCount()
+			}, LongEventualTimeout).Should(Equal(2))
+			Expect(c1.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
+			Expect(c2.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
+
+			By("Configuring cluster to remove node")
+			Expect(c1.Configure(configEnv, 0)).To(Succeed())
+			Eventually(c2.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+			c1.clock.WaitForNWatchersAndIncrement((ELECTION_TICK-1)*interval, 2)
+			c1.Halt()
+
+			Eventually(func() <-chan raft.SoftState {
+				c2.clock.Increment(interval)
+				return c2.observe
+			}, LongEventualTimeout).Should(Receive(StateEqual(2, raft.StateLeader)))
+
+>>>>>>> ba61a1be9 (Fixed active nodes metrics for etcdraft when a node is evicted. Instead of being frozen we set it to 0 once halt is called. Tests. (#3536))
+			By("Asserting leader can still serve requests as single-node cluster")
+			c2.cutter.CutNext = true
+			Expect(c2.Order(env, 0)).To(Succeed())
+			Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+<<<<<<< HEAD
+=======
+
+			By("Asserting the haltCallback is not called when Halt is called before eviction")
+			c1.clock.Increment(interval)
+			Eventually(fakeHaltCallbacker.HaltCallbackCallCount).Should(Equal(0))
+			By("Asserting the StatusReport responds correctly if the haltCallback is not called")
+			Eventually(
+				func() orderer_types.Status {
+					_, status := c1.StatusReport()
+					return status
+				},
+			).Should(Equal(orderer_types.StatusInactive))
+			cRel, _ := c1.StatusReport()
+			Expect(cRel).To(Equal(orderer_types.ConsensusRelationConsenter))
+
+			// active nodes metric hasn't changed because c.halt() wasn't called
+			Expect(c1.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
+			Expect(c2.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
+>>>>>>> ba61a1be9 (Fixed active nodes metrics for etcdraft when a node is evicted. Instead of being frozen we set it to 0 once halt is called. Tests. (#3536))
 		})
 
 		It("can remove leader by reconfiguring cluster even if leadership transfer fails", func() {
