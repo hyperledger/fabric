@@ -43,7 +43,7 @@ const (
 	// The orderer is NOT in the consenters set of the channel, and is just tracking (polling) the last config block
 	// of the channel in order to detect when it is added to the channel.
 	ConsensusRelationConfigTracker ConsensusRelation = "config-tracker"
-	// The orderer runs a non-cluster consensus type, solo or kafka.
+	// The orderer runs a non-cluster consensus type, i.e. solo.
 	ConsensusRelationOther ConsensusRelation = "other"
 )
 
@@ -74,11 +74,11 @@ type ChannelInfo struct {
 	URL string `json:"url"`
 	// Whether the orderer is a “consenter”, ”follower”, or "config-tracker" of
 	// the cluster for this channel.
-	// For non cluster consensus types (solo, kafka) it is "other".
+	// For non cluster consensus types (solo) it is "other".
 	// Possible values:  “consenter”, ”follower”, "config-tracker", "other".
 	ConsensusRelation ConsensusRelation `json:"consensusRelation"`
 	// Whether the orderer is ”onboarding”, ”active”, or "inactive", for this channel.
-	// For non cluster consensus types (solo, kafka) it is "active".
+	// For non cluster consensus types (solo) it is "active".
 	// Possible values:  “onboarding”, ”active”, "inactive".
 	Status Status `json:"status"`
 	// Current block height.

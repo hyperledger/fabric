@@ -1504,32 +1504,6 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 		os.RemoveAll(tmpdir)
 	}
 
-	t.Run("kafka system channel exists", func(t *testing.T) {
-		setup(t)
-		defer cleanup()
-
-		confSysKafka := genesisconfig.Load(genesisconfig.SampleInsecureKafkaProfile, configtest.GetDevConfigDir())
-		genesisBlockSysKafka := encoder.New(confSysKafka).GenesisBlockForChannel("kafka-sys-channel")
-		newLedger(ledgerFactory, "kafka-sys-channel", genesisBlockSysKafka)
-
-		kafkaConsenter := &mocks.Consenter{}
-		kafkaConsenter.HandleChainCalls(handleChain)
-		mockConsenters["kafka"] = kafkaConsenter
-
-		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
-		registrar.Initialize(mockConsenters)
-
-		t.Run("reject removal of app channel", func(t *testing.T) {
-			err := registrar.RemoveChannel("some-app-channel")
-			require.EqualError(t, err, "system channel exists")
-		})
-
-		t.Run("reject removal of kafka system channel", func(t *testing.T) {
-			err := registrar.RemoveChannel("kafka-sys-channel")
-			require.EqualError(t, err, "cannot remove kafka system channel: kafka-sys-channel")
-		})
-	})
-
 	t.Run("without a system channel failures", func(t *testing.T) {
 		setup(t)
 		defer cleanup()
