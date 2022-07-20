@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1272,26 +1271,6 @@ func (n *Network) PeerRunner(p *Peer, env ...string) *ginkgomon.Runner {
 	})
 }
 
-func (n *Network) OldPeerRunner(p *Peer, fabricVersion string, env ...string) *ginkgomon.Runner {
-	cmd := n.oldPeerCommand(
-		commands.NodeStart{PeerID: p.ID(), DevMode: p.DevMode},
-		fabricVersion,
-		"",
-		"FABRIC_CFG_PATH="+n.PeerDir(p),
-		"CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin",
-		"CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw",
-	)
-	cmd.Env = append(cmd.Env, env...)
-
-	return ginkgomon.New(ginkgomon.Config{
-		AnsiColorCode:     n.nextColor(),
-		Name:              p.ID(),
-		Command:           cmd,
-		StartCheck:        `Started peer with ID=.*, .*, address=`,
-		StartCheckTimeout: 15 * time.Second,
-	})
-}
-
 // PeerGroupRunner returns a runner that can be used to start and stop all
 // peers in a network.
 func (n *Network) PeerGroupRunner() ifrit.Runner {
@@ -1314,79 +1293,6 @@ func (n *Network) NetworkGroupRunner() ifrit.Runner {
 
 func (n *Network) peerCommand(command Command, tlsDir string, env ...string) *exec.Cmd {
 	cmd := NewCommand(n.Components.Peer(), command)
-	cmd.Env = append(cmd.Env, env...)
-
-	if connectsToOrderer(command) && n.TLSEnabled {
-		cmd.Args = append(cmd.Args, "--tls")
-		cmd.Args = append(cmd.Args, "--cafile", n.CACertsBundlePath())
-	}
-
-	if clientAuthEnabled(command) {
-		certfilePath := filepath.Join(tlsDir, "client.crt")
-		keyfilePath := filepath.Join(tlsDir, "client.key")
-
-		cmd.Args = append(cmd.Args, "--certfile", certfilePath)
-		cmd.Args = append(cmd.Args, "--keyfile", keyfilePath)
-	}
-
-	// In case we have a peer invoke with multiple certificates, we need to mimic
-	// the correct peer CLI usage, so we count the number of --peerAddresses
-	// usages we have, and add the same (concatenated TLS CA certificates file)
-	// the same number of times to bypass the peer CLI sanity checks
-	requiredPeerAddresses := flagCount("--peerAddresses", cmd.Args)
-	for i := 0; i < requiredPeerAddresses; i++ {
-		cmd.Args = append(cmd.Args, "--tlsRootCertFiles")
-		cmd.Args = append(cmd.Args, n.CACertsBundlePath())
-	}
-
-	// If there is --peerAddress, add --tlsRootCertFile parameter
-	requiredPeerAddress := flagCount("--peerAddress", cmd.Args)
-	if requiredPeerAddress > 0 {
-		cmd.Args = append(cmd.Args, "--tlsRootCertFile")
-		cmd.Args = append(cmd.Args, n.CACertsBundlePath())
-	}
-	return cmd
-}
-
-func (n *Network) downloadOldBinaries(fabricVersion string) error {
-	if _, err := os.Stat(filepath.Join(n.RootDir, "bin")); errors.Is(err, os.ErrNotExist) {
-		resp, err := http.Get(
-			fmt.Sprintf("https://github.com/hyperledger/fabric/releases/download/v%s/hyperledger-fabric-%s-amd64-%s.tar.gz", fabricVersion, runtime.GOOS, fabricVersion))
-		defer resp.Body.Close()
-
-		if err != nil {
-			return fmt.Errorf("could not dowload fabric binaries")
-		}
-
-		// Create the file
-		out, err := os.Create(n.RootDir + "/binaries.tar.gz")
-		if err != nil {
-			return fmt.Errorf("could not create destination dowload file for fabric binaries")
-		}
-		defer out.Close()
-
-		// Write the body to file
-		_, err = io.Copy(out, resp.Body)
-		if err != nil {
-			return fmt.Errorf("could not dowload fabric binaries")
-		}
-
-		tarCmd := exec.Command("tar", "-xf", out.Name(), "--directory", n.RootDir)
-		err = tarCmd.Run()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (n *Network) oldPeerCommand(command Command, fabricVersion string, tlsDir string, env ...string) *exec.Cmd {
-	err := n.downloadOldBinaries(fabricVersion)
-	if err != nil {
-		panic(err)
-	}
-
-	cmd := NewCommand(filepath.Join(n.RootDir, "bin", "peer"), command)
 	cmd.Env = append(cmd.Env, env...)
 
 	if connectsToOrderer(command) && n.TLSEnabled {
