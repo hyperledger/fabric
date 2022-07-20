@@ -19,7 +19,7 @@ const (
 	MSPv1_1
 	MSPv1_3
 	MSPv1_4_3
-	MSPv2_4
+	MSPv3_0
 )
 
 // NewOpts represent
