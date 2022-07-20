@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle
 
 import (
-	"fmt"
-	"io"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -22,16 +20,15 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
 	"gopkg.in/yaml.v2"
 )
 
-var _ = Describe("Lifecycle with Channel V2_4 capabilities and ed25519 identities", func() {
+var _ = Describe("Lifecycle with Channel v3_0 capabilities and ed25519 identities", func() {
 	var (
-		client    *docker.Client
-		testDir   string
-		network   *nwo.Network
-		processes = []ifrit.Process{}
+		client  *docker.Client
+		testDir string
+		network *nwo.Network
+		process ifrit.Process
 	)
 
 	BeforeEach(func() {
@@ -42,15 +39,22 @@ var _ = Describe("Lifecycle with Channel V2_4 capabilities and ed25519 identitie
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.Ed25519Solo(), testDir, client, StartPort(), components)
+		networkConfig := nwo.MultiNodeEtcdRaft()
+		networkConfig.Peers = append(
+			networkConfig.Peers,
+			&nwo.Peer{
+				Name:         "peer1",
+				Organization: "Org1",
+			},
+		)
+
+		network = nwo.New(networkConfig, testDir, client, StartPort(), components)
 	})
 
 	AfterEach(func() {
 		// Shutdown processes and cleanup
-		for _, p := range processes {
-			p.Signal(syscall.SIGTERM)
-			Eventually(p.Wait(), network.EventuallyTimeout).Should(Receive())
-		}
+		process.Signal(syscall.SIGTERM)
+		Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
 
 		if network != nil {
 			network.Cleanup()
@@ -58,32 +62,20 @@ var _ = Describe("Lifecycle with Channel V2_4 capabilities and ed25519 identitie
 		os.RemoveAll(testDir)
 	})
 
-	It("invoke chaincode with an endorser without the binaries for Channel V2_4 capabilities", func() {
+	It("invoke chaincode after upgrading Channel to V3_0 and add ed25519 peer", func() {
 		network.GenerateConfigTree()
-		changeOnePeerToEd25519(network)
+		changePeerOrOrdererToEd25519(network, "OrdererOrg", "orderer3")
+		changePeerOrOrdererToEd25519(network, "Org1", "peer1")
 		network.Bootstrap()
 
-		By("getting default runners for the orderers and peers except Org1.peer0")
-		runners := []*ginkgomon.Runner{
-			network.OrdererRunner(network.Orderer("orderer")),
-			network.PeerRunner(network.Peer("Org1", "peer1")),
-			network.PeerRunner(network.Peer("Org1", "peer2")),
-			network.PeerRunner(network.Peer("Org2", "peer0")),
-		}
-
-		By("getting fabric v2.4.5 peer binary for peer Org1.peer0")
-		runners = append(runners, network.OldPeerRunner(network.Peer("Org1", "peer0"), "2.4.5"))
-
-		By("starting the runners")
-		for _, runner := range runners {
-			p := ifrit.Invoke(runner)
-			processes = append(processes, p)
-			Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
-		}
+		By("starting peers' and orderers' runners")
+		networkRunner := network.NetworkGroupRunner()
+		process = ifrit.Invoke(networkRunner)
+		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 		org1Peer0 := network.Peer("Org1", "peer0")
 		org2Peer0 := network.Peer("Org2", "peer0")
-		orderer := network.Orderer("orderer")
+		orderer := network.Orderer("orderer1")
 
 		By("creating and joining channels")
 		network.CreateAndJoinChannels(orderer)
@@ -111,20 +103,11 @@ var _ = Describe("Lifecycle with Channel V2_4 capabilities and ed25519 identitie
 		By("querying and invoking chaincode")
 		RunQueryInvokeQuery(network, orderer, "mycc", 100, org1Peer0, org2Peer0)
 
-		By("setting up the channel with v2_4 capabilities and without the ed25519 peer")
-		nwo.EnableChannelCapabilities(network, "testchannel", "V2_4", true, orderer, []*nwo.Orderer{orderer},
+		By("setting up the channel with v3_0 capabilities and without the ed25519 peer")
+		nwo.EnableChannelCapabilities(network, "testchannel", "V3_0", true, orderer, []*nwo.Orderer{orderer},
 			network.Peer("Org1", "peer0"),
 			network.Peer("Org2", "peer0"),
 		)
-
-		By("failing to invoke chaincode with Org1.peer0's endorsement and expecting listening port shutdown")
-		endorsers := []*nwo.Peer{
-			network.Peer("Org1", "peer0"),
-			network.Peer("Org2", "peer0"),
-		}
-		errorMessage := fmt.Sprintf("transport: error while dialing: dial tcp %s: connect: connection refused",
-			network.PeerAddress(endorsers[0], nwo.ListenPort))
-		RunInvokeAndExpectFailure(network, orderer, "mycc", errorMessage, endorsers...)
 
 		By("joining the ed25519 peer to the channel")
 		ed25519Peer := network.Peer("Org1", "peer1")
@@ -136,36 +119,26 @@ var _ = Describe("Lifecycle with Channel V2_4 capabilities and ed25519 identitie
 		By("installing chaincode mycc on ed25519 peer")
 		nwo.PackageAndInstallChaincode(network, chaincode, ed25519Peer)
 
-		By("invoking the chaincode with the ed25519 endorser")
-		endorsers = []*nwo.Peer{
+		By("invoking the chaincode with the ed25519 endorser and send the transaction to the ed25519 orderer")
+		endorsers := []*nwo.Peer{
 			ed25519Peer,
 			network.Peer("Org2", "peer0"),
 		}
-		RunQueryInvokeQuery(network, orderer, "mycc", 90, endorsers...)
+		ed25519Orderer := network.Orderer("orderer3")
+		RunQueryInvokeQuery(network, ed25519Orderer, "mycc", 90, endorsers...)
 	})
 
-	It("deploys and executes chaincode using _lifecycle with Channel v2_4 capabilities", func() {
+	It("deploy chaincode in a Channel V3_0 and downgrade Channel to V2_0", func() {
 		network.GenerateConfigTree()
-		changeOnePeerToEd25519(network)
+		changePeerOrOrdererToEd25519(network, "Org1", "peer1")
 		network.Bootstrap()
 
-		By("getting default runners for the orderers and peers except Org1.peer0")
-		runners := []*ginkgomon.Runner{
-			network.OrdererRunner(network.Orderer("orderer")),
-			network.PeerRunner(network.Peer("Org1", "peer0")),
-			network.PeerRunner(network.Peer("Org1", "peer1")),
-			network.PeerRunner(network.Peer("Org1", "peer2")),
-			network.PeerRunner(network.Peer("Org2", "peer0")),
-		}
+		By("starting peers' and orderers' runners")
+		networkRunner := network.NetworkGroupRunner()
+		process = ifrit.Invoke(networkRunner)
+		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
-		By("starting the runners")
-		for _, runner := range runners {
-			p := ifrit.Invoke(runner)
-			processes = append(processes, p)
-			Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
-		}
-
-		orderer := network.Orderer("orderer")
+		orderer := network.Orderer("orderer1")
 		testPeers := network.PeersWithChannel("testchannel")
 
 		chaincodePath := components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd")
@@ -182,12 +155,12 @@ var _ = Describe("Lifecycle with Channel V2_4 capabilities and ed25519 identitie
 			Label:               "my_simple_chaincode",
 		}
 
-		By("setting up the channel with v2_4 capabilities and without the ed25519 peer")
+		By("setting up the channel with v3_0 capabilities and without the ed25519 peer")
 		network.CreateAndJoinChannels(orderer)
 		network.UpdateChannelAnchors(orderer, "testchannel")
 		network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
 		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
-		nwo.EnableChannelCapabilities(network, "testchannel", "V2_4", false, orderer, []*nwo.Orderer{orderer},
+		nwo.EnableChannelCapabilities(network, "testchannel", "V3_0", false, orderer, []*nwo.Orderer{orderer},
 			network.Peer("Org1", "peer0"),
 			network.Peer("Org2", "peer0"),
 		)
@@ -232,7 +205,7 @@ var _ = Describe("Lifecycle with Channel V2_4 capabilities and ed25519 identitie
 		}
 		RunQueryInvokeQuery(network, orderer, "My_1st-Chaincode", 100, endorsers...)
 
-		By("setting the channel capabilities back to v2_0")
+		By("downgrading the channel capabilities back to v2_0")
 		nwo.EnableChannelCapabilities(network, "testchannel", "V2_0", false, orderer, []*nwo.Orderer{orderer},
 			network.Peer("Org1", "peer0"),
 			network.Peer("Org2", "peer0"),
@@ -243,27 +216,7 @@ var _ = Describe("Lifecycle with Channel V2_4 capabilities and ed25519 identitie
 	})
 })
 
-func copyFile(src, dst string) (int64, error) {
-	source, err := os.Open(src)
-	if err != nil {
-		return 0, err
-	}
-	defer source.Close()
-
-	err = os.Remove(dst)
-	if err != nil {
-		return 0, err
-	}
-	destination, err := os.Create(dst)
-	if err != nil {
-		return 0, err
-	}
-	defer destination.Close()
-	nBytes, err := io.Copy(destination, source)
-	return nBytes, err
-}
-
-func changeOnePeerToEd25519(network *nwo.Network) {
+func changePeerOrOrdererToEd25519(network *nwo.Network, orgName, entityname string) {
 	genConfigFile, _ := os.Open(network.CryptoConfigPath())
 	defer genConfigFile.Close()
 
@@ -277,9 +230,27 @@ func changeOnePeerToEd25519(network *nwo.Network) {
 
 	err = yaml.Unmarshal([]byte(configData), &config)
 
-	for i, spec := range config.PeerOrgs[0].Specs {
-		if spec.Hostname == "peer1" {
-			config.PeerOrgs[0].Specs[i].PublicKeyAlgorithm = "ed25519"
+	var orgSpecRef *nwo.OrgSpec = nil
+
+	for i, orgSpec := range config.OrdererOrgs {
+		if orgSpec.Name == orgName {
+			orgSpecRef = &config.OrdererOrgs[i]
+			break
+		}
+	}
+
+	if orgSpecRef == nil {
+		for i, orgSpec := range config.PeerOrgs {
+			if orgSpec.Name == orgName {
+				orgSpecRef = &config.PeerOrgs[i]
+				break
+			}
+		}
+	}
+
+	for i, spec := range orgSpecRef.Specs {
+		if spec.Hostname == entityname {
+			orgSpecRef.Specs[i].PublicKeyAlgorithm = "ed25519"
 			break
 		}
 	}
