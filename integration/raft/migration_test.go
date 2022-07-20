@@ -40,7 +40,6 @@ var _ = Describe("Solo2RaftMigration", func() {
 		network *nwo.Network
 
 		process                ifrit.Process
-		brokerProc             ifrit.Process
 		o1Proc, o2Proc, o3Proc ifrit.Process
 
 		o1Runner, o2Runner *ginkgomon.Runner
@@ -66,11 +65,6 @@ var _ = Describe("Solo2RaftMigration", func() {
 				oProc.Signal(syscall.SIGTERM)
 				Eventually(oProc.Wait(), network.EventuallyTimeout).Should(Receive())
 			}
-		}
-
-		if brokerProc != nil {
-			brokerProc.Signal(syscall.SIGTERM)
-			Eventually(brokerProc.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
 
 		if network != nil {

@@ -182,7 +182,6 @@ var _ bool = Describe("PrivateData", func() {
 			network.Bootstrap()
 
 			members := grouper.Members{
-				{Name: "brokers", Runner: network.BrokerGroupRunner()},
 				{Name: "orderers", Runner: network.OrdererGroupRunner()},
 			}
 			networkRunner := grouper.NewOrdered(syscall.SIGTERM, members)

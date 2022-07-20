@@ -636,8 +636,8 @@ func initAndStartFourOrgsNetwork() *setup {
 	}
 	Expect(setup.testDir).To(Equal(setup.network.RootDir))
 
-	By("starting broker and orderer")
-	setup.startBrokerAndOrderer()
+	By("starting orderer")
+	setup.startOrderer()
 
 	By("starting peers")
 	setup.startPeers()

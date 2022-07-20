@@ -151,12 +151,6 @@ Profiles:{{ range .Profiles }}
         PreferredMaxBytes: 512 KB
       Capabilities:
         V2_0: true
-      {{- if eq $w.Consensus.Type "kafka" }}
-      Kafka:
-        Brokers:{{ range $w.BrokerAddresses "HostPort" }}
-        - {{ . }}
-        {{- end }}
-      {{- end }}
       {{- if eq $w.Consensus.Type "etcdraft" }}
       EtcdRaft:
         Options:

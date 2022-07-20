@@ -18,7 +18,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -65,13 +64,10 @@ type Consortium struct {
 	Organizations []string `yaml:"organizations,omitempty"`
 }
 
-// Consensus indicates the orderer types and how many broker and zookeeper
-// instances.
+// Consensus indicates the orderer types.
 type Consensus struct {
 	Type                        string `yaml:"type,omitempty"`
 	BootstrapMethod             string `yaml:"bootstrap_method,omitempty"`
-	Brokers                     int    `yaml:"brokers,omitempty"`
-	ZooKeepers                  int    `yaml:"zookeepers,omitempty"`
 	ChannelParticipationEnabled bool   `yaml:"channel_participation_enabled,omitempty"`
 }
 
@@ -157,7 +153,6 @@ type Network struct {
 	TLSEnabled            bool
 	GatewayEnabled        bool
 
-	PortsByBrokerID  map[string]Ports
 	PortsByOrdererID map[string]Ports
 	PortsByPeerID    map[string]Ports
 	Organizations    []*Organization
@@ -188,7 +183,6 @@ func New(c *Config, rootDir string, dockerClient *docker.Client, startPort int, 
 		NetworkID:         runner.UniqueName(),
 		EventuallyTimeout: time.Minute,
 		MetricsProvider:   "prometheus",
-		PortsByBrokerID:   map[string]Ports{},
 		PortsByOrdererID:  map[string]Ports{},
 		PortsByPeerID:     map[string]Ports{},
 
@@ -228,14 +222,6 @@ func New(c *Config, rootDir string, dockerClient *docker.Client, startPort int, 
 	}
 	if network.SessionCreateInterval == 0 {
 		network.SessionCreateInterval = time.Second
-	}
-
-	for i := 0; i < network.Consensus.Brokers; i++ {
-		ports := Ports{}
-		for _, portName := range BrokerPortNames() {
-			ports[portName] = network.ReservePort()
-		}
-		network.PortsByBrokerID[strconv.Itoa(i)] = ports
 	}
 
 	for _, o := range c.Orderers {
@@ -1245,87 +1231,6 @@ func (n *Network) Osnadmin(command Command) (*gexec.Session, error) {
 	return n.StartSession(cmd, command.SessionName())
 }
 
-// ZooKeeperRunner returns a runner for a ZooKeeper instance.
-func (n *Network) ZooKeeperRunner(idx int) *runner.ZooKeeper {
-	colorCode := n.nextColor()
-	name := fmt.Sprintf("zookeeper-%d-%s", idx, n.NetworkID)
-
-	return &runner.ZooKeeper{
-		ZooMyID:     idx + 1, //  IDs must be between 1 and 255
-		Client:      n.DockerClient,
-		Name:        name,
-		NetworkName: n.NetworkID,
-		OutputStream: gexec.NewPrefixedWriter(
-			fmt.Sprintf("\x1b[32m[o]\x1b[%s[%s]\x1b[0m ", colorCode, name),
-			ginkgo.GinkgoWriter,
-		),
-		ErrorStream: gexec.NewPrefixedWriter(
-			fmt.Sprintf("\x1b[91m[e]\x1b[%s[%s]\x1b[0m ", colorCode, name),
-			ginkgo.GinkgoWriter,
-		),
-	}
-}
-
-func (n *Network) minBrokersInSync() int {
-	if n.Consensus.Brokers < 2 {
-		return n.Consensus.Brokers
-	}
-	return 2
-}
-
-func (n *Network) defaultBrokerReplication() int {
-	if n.Consensus.Brokers < 3 {
-		return n.Consensus.Brokers
-	}
-	return 3
-}
-
-// BrokerRunner returns a runner for a Kafka broker instance.
-func (n *Network) BrokerRunner(id int, zookeepers []string) *runner.Kafka {
-	colorCode := n.nextColor()
-	name := fmt.Sprintf("kafka-%d-%s", id, n.NetworkID)
-
-	return &runner.Kafka{
-		BrokerID:                 id + 1,
-		Client:                   n.DockerClient,
-		AdvertisedListeners:      "127.0.0.1",
-		HostPort:                 int(n.PortsByBrokerID[strconv.Itoa(id)][HostPort]),
-		Name:                     name,
-		NetworkName:              n.NetworkID,
-		MinInsyncReplicas:        n.minBrokersInSync(),
-		DefaultReplicationFactor: n.defaultBrokerReplication(),
-		ZooKeeperConnect:         strings.Join(zookeepers, ","),
-		OutputStream: gexec.NewPrefixedWriter(
-			fmt.Sprintf("\x1b[32m[o]\x1b[%s[%s]\x1b[0m ", colorCode, name),
-			ginkgo.GinkgoWriter,
-		),
-		ErrorStream: gexec.NewPrefixedWriter(
-			fmt.Sprintf("\x1b[91m[e]\x1b[%s[%s]\x1b[0m ", colorCode, name),
-			ginkgo.GinkgoWriter,
-		),
-	}
-}
-
-// BrokerGroupRunner returns a runner that manages the processes that make up
-// the Kafka broker network for fabric.
-func (n *Network) BrokerGroupRunner() ifrit.Runner {
-	members := grouper.Members{}
-	zookeepers := []string{}
-
-	for i := 0; i < n.Consensus.ZooKeepers; i++ {
-		zk := n.ZooKeeperRunner(i)
-		zookeepers = append(zookeepers, fmt.Sprintf("%s:2181", zk.Name))
-		members = append(members, grouper.Member{Name: zk.Name, Runner: zk})
-	}
-
-	for i := 0; i < n.Consensus.Brokers; i++ {
-		kafka := n.BrokerRunner(i, zookeepers)
-		members = append(members, grouper.Member{Name: kafka.Name, Runner: kafka})
-	}
-
-	return grouper.NewOrdered(syscall.SIGTERM, members)
-}
-
 // OrdererRunner returns an ifrit.Runner for the specified orderer. The runner
 // can be used to start and manage an orderer process.
 func (n *Network) OrdererRunner(o *Orderer, env ...string) *ginkgomon.Runner {
@@ -1340,12 +1245,6 @@ func (n *Network) OrdererRunner(o *Orderer, env ...string) *ginkgomon.Runner {
 		Command:           cmd,
 		StartCheck:        "Beginning to serve requests",
 		StartCheckTimeout: 15 * time.Second,
-	}
-
-	// After consensus-type migration, the #brokers is >0, but the type is etcdraft
-	if n.Consensus.Type == "kafka" && n.Consensus.Brokers != 0 {
-		config.StartCheck = "Start phase completed successfully"
-		config.StartCheckTimeout = 30 * time.Second
 	}
 
 	return ginkgomon.New(config)
@@ -1396,7 +1295,6 @@ func (n *Network) PeerGroupRunner() ifrit.Runner {
 // entire fabric network.
 func (n *Network) NetworkGroupRunner() ifrit.Runner {
 	members := grouper.Members{
-		{Name: "brokers", Runner: n.BrokerGroupRunner()},
 		{Name: "orderers", Runner: n.OrdererGroupRunner()},
 		{Name: "peers", Runner: n.PeerGroupRunner()},
 	}
@@ -1784,21 +1682,6 @@ func PeerPortNames() []PortName {
 // Orderer.
 func OrdererPortNames() []PortName {
 	return []PortName{ListenPort, ProfilePort, OperationsPort, ClusterPort, AdminPort}
-}
-
-// BrokerPortNames returns the list of ports that need to be reserved for a
-// Kafka broker.
-func BrokerPortNames() []PortName {
-	return []PortName{HostPort}
-}
-
-// BrokerAddresses returns the list of broker addresses for the network.
-func (n *Network) BrokerAddresses(portName PortName) []string {
-	addresses := []string{}
-	for _, ports := range n.PortsByBrokerID {
-		addresses = append(addresses, fmt.Sprintf("127.0.0.1:%d", ports[portName]))
-	}
-	return addresses
 }
 
 // OrdererAddress returns the address (host and port) exposed by the Orderer

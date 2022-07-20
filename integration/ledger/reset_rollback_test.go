@@ -137,7 +137,7 @@ var _ = Describe("rollback, reset, pause, resume, and unjoin peer node commands"
 		helper.assertPausedChannel(org3peer0)
 
 		By("Checking preResetHeightFile exists for a paused channel that is also rolled back or reset")
-		setup.startBrokerAndOrderer()
+		setup.startOrderer()
 		preResetHeightFile := filepath.Join(setup.network.PeerLedgerDir(org3peer0), "chains/chains", helper.channelID, "__preResetHeight")
 		Expect(preResetHeightFile).To(BeARegularFile())
 
@@ -153,7 +153,7 @@ var _ = Describe("rollback, reset, pause, resume, and unjoin peer node commands"
 		}
 
 		By("Bringing the peers to recent height by starting the orderer")
-		setup.startBrokerAndOrderer()
+		setup.startOrderer()
 		for _, peer := range setup.peers {
 			By("Verifying endorsement is enabled and preResetHeightFile is removed on peer " + peer.ID())
 			helper.waitUntilEndorserEnabled(peer)
@@ -263,7 +263,6 @@ type setup struct {
 	peerProcess    []ifrit.Process
 	orderer        *nwo.Orderer
 	ordererProcess ifrit.Process
-	brokerProcess  ifrit.Process
 }
 
 func initThreeOrgsSetup() *setup {
@@ -291,7 +290,7 @@ func initThreeOrgsSetup() *setup {
 		channelID: "testchannel",
 	}
 
-	setup.startBrokerAndOrderer()
+	setup.startOrderer()
 
 	setup.startPeer(peers[0])
 	setup.startPeer(peers[1])
@@ -318,10 +317,6 @@ func (s *setup) terminateAllProcess() {
 	s.ordererProcess.Signal(syscall.SIGTERM)
 	Eventually(s.ordererProcess.Wait(), s.network.EventuallyTimeout).Should(Receive())
 	s.ordererProcess = nil
-
-	s.brokerProcess.Signal(syscall.SIGTERM)
-	Eventually(s.brokerProcess.Wait(), s.network.EventuallyTimeout).Should(Receive())
-	s.brokerProcess = nil
 
 	for _, p := range s.peerProcess {
 		p.Signal(syscall.SIGTERM)
@@ -351,12 +346,7 @@ func (s *setup) startPeer(peer *nwo.Peer) {
 	s.peerProcess = append(s.peerProcess, peerProcess)
 }
 
-func (s *setup) startBrokerAndOrderer() {
-	brokerRunner := s.network.BrokerGroupRunner()
-	brokerProcess := ifrit.Invoke(brokerRunner)
-	Eventually(brokerProcess.Ready(), s.network.EventuallyTimeout).Should(BeClosed())
-	s.brokerProcess = brokerProcess
-
+func (s *setup) startOrderer() {
 	ordererRunner := s.network.OrdererGroupRunner()
 	ordererProcess := ifrit.Invoke(ordererRunner)
 	Eventually(ordererProcess.Ready(), s.network.EventuallyTimeout).Should(BeClosed())

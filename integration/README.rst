@@ -44,8 +44,7 @@ your machine.
 Caveats, Gotchas, and Good-To-Knows
 -----------------------------------
 * The tests in this repository only exercise components that originate in the Fabric repository.
-* Currently, docker is only used in the ginkgo tests when using chaincode, kafka, zookeeper,
-  or couchdb images.
+* Currently, docker is only used in the ginkgo tests when using chaincode or couchdb images.
 
 
 Getting Started
