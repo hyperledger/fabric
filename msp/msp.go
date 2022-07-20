@@ -209,7 +209,7 @@ var mspTypeStrings = map[ProviderType]string{
 }
 
 var Options = map[string]NewOpts{
-	ProviderTypeToString(FABRIC): &BCCSPNewOpts{NewBaseOpts: NewBaseOpts{Version: MSPv2_4}},
+	ProviderTypeToString(FABRIC): &BCCSPNewOpts{NewBaseOpts: NewBaseOpts{Version: MSPv3_0}},
 	ProviderTypeToString(IDEMIX): &IdemixNewOpts{NewBaseOpts: NewBaseOpts{Version: MSPv1_1}},
 }
 
