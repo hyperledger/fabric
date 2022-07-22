@@ -55,7 +55,10 @@ func (k *ed25519PrivateKey) Private() bool {
 // PublicKey returns the corresponding public key part of an asymmetric public/private key pair.
 // This method returns an error in symmetric key schemes.
 func (k *ed25519PrivateKey) PublicKey() (bccsp.Key, error) {
-	castedKey, _ := k.privKey.Public().(ed25519.PublicKey)
+	castedKey, ok := k.privKey.Public().(ed25519.PublicKey)
+	if !ok {
+		return nil, errors.New("Error casting ed25519 public key")
+	}
 	return &ed25519PublicKey{&castedKey}, nil
 }
 
