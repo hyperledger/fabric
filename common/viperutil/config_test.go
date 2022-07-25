@@ -14,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Shopify/sarama"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/orderer/mocks/util"
 	"github.com/stretchr/testify/require"
@@ -49,67 +48,6 @@ func TestEnvSlice(t *testing.T) {
 
 	expected := []string{"a", "b", "c"}
 	require.Exactly(t, expected, uconf.Inner.Slice, "did not get the expected slice")
-}
-
-func TestKafkaVersionDecode(t *testing.T) {
-	type testKafkaVersion struct {
-		Inner struct {
-			Version sarama.KafkaVersion
-		}
-	}
-
-	testCases := []struct {
-		data        string
-		expected    sarama.KafkaVersion
-		errExpected bool
-	}{
-		{"0.8", sarama.KafkaVersion{}, true},
-		{"0.8.2.0", sarama.V0_8_2_0, false},
-		{"0.8.2.1", sarama.V0_8_2_1, false},
-		{"0.8.2.2", sarama.V0_8_2_2, false},
-		{"0.9.0.0", sarama.V0_9_0_0, false},
-		{"0.9", sarama.V0_9_0_0, false},
-		{"0.9.0", sarama.V0_9_0_0, false},
-		{"0.9.0.1", sarama.V0_9_0_1, false},
-		{"0.9.0.3", sarama.V0_9_0_1, false},
-		{"0.10.0.0", sarama.V0_10_0_0, false},
-		{"0.10", sarama.V0_10_0_0, false},
-		{"0.10.0", sarama.V0_10_0_0, false},
-		{"0.10.0.1", sarama.V0_10_0_1, false},
-		{"0.10.1.0", sarama.V0_10_1_0, false},
-		{"0.10.2.0", sarama.V0_10_2_0, false},
-		{"0.10.2.1", sarama.V0_10_2_0, false},
-		{"0.10.2.2", sarama.V0_10_2_0, false},
-		{"0.10.2.3", sarama.V0_10_2_0, false},
-		{"0.11", sarama.V0_11_0_0, false},
-		{"0.11.0", sarama.V0_11_0_0, false},
-		{"0.11.0.0", sarama.V0_11_0_0, false},
-		{"1", sarama.V1_0_0_0, false},
-		{"1.0", sarama.V1_0_0_0, false},
-		{"1.0.0", sarama.V1_0_0_0, false},
-		{"1.0.1", sarama.V1_0_0_0, false},
-		{"2.0.0", sarama.V1_0_0_0, false},
-		{"Malformed", sarama.KafkaVersion{}, true},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.data, func(t *testing.T) {
-			data := fmt.Sprintf("---\nInner:\n    Version: '%s'", tc.data)
-
-			config := New()
-			err := config.ReadConfig(strings.NewReader(data))
-			require.NoError(t, err, "error reading config")
-
-			var uconf testKafkaVersion
-			err = config.EnhancedExactUnmarshal(&uconf)
-			if tc.errExpected {
-				require.Error(t, err, "unmarshal did not fail")
-			} else {
-				require.NoError(t, err, "unmarshal failed")
-				require.Exactly(t, tc.expected, uconf.Inner.Version, "incorrect kafka version")
-			}
-		})
-	}
 }
 
 type testByteSize struct {
