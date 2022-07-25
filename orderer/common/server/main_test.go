@@ -120,7 +120,6 @@ func TestInitializeProfilingService(t *testing.T) {
 					Address: listenAddr,
 				},
 			},
-			Kafka: localconfig.Kafka{Verbose: true},
 		},
 	)
 	time.Sleep(500 * time.Millisecond)
