@@ -11,6 +11,7 @@ VERSION=2.4.4
 CA_VERSION=1.5.5
 ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m |sed 's/x86_64/amd64/g')" |sed 's/darwin-arm64/darwin-amd64/g')
 MARCH=$(uname -m)
+: ${CONTAINER_CLI:="docker"}
 
 printHelp() {
     echo "Usage: bootstrap.sh [version [ca_version]] [options]"
@@ -39,9 +40,9 @@ dockerPull() {
     do
         image_name="$1"
         echo "====> hyperledger/fabric-$image_name:$three_digit_image_tag"
-        docker pull "hyperledger/fabric-$image_name:$three_digit_image_tag"
-        docker tag "hyperledger/fabric-$image_name:$three_digit_image_tag" "hyperledger/fabric-$image_name"
-        docker tag "hyperledger/fabric-$image_name:$three_digit_image_tag" "hyperledger/fabric-$image_name:$two_digit_image_tag"
+        ${CONTAINER_CLI} pull "hyperledger/fabric-$image_name:$three_digit_image_tag"
+        ${CONTAINER_CLI} tag "hyperledger/fabric-$image_name:$three_digit_image_tag" "hyperledger/fabric-$image_name"
+        ${CONTAINER_CLI} tag "hyperledger/fabric-$image_name:$three_digit_image_tag" "hyperledger/fabric-$image_name:$two_digit_image_tag"
         shift
     done
 }
@@ -106,7 +107,7 @@ pullBinaries() {
 }
 
 pullDockerImages() {
-    command -v docker >& /dev/null
+    command -v ${CONTAINER_CLI} >& /dev/null
     NODOCKER=$?
     if [ "${NODOCKER}" == 0 ]; then
         FABRIC_IMAGES=(peer orderer ccenv tools)
@@ -123,10 +124,10 @@ pullDockerImages() {
         CA_IMAGE=(ca)
         dockerPull "${CA_TAG}" "${CA_IMAGE[@]}"
         echo "===> List out hyperledger docker images"
-        docker images | grep hyperledger
+        ${CONTAINER_CLI} images | grep hyperledger
     else
         echo "========================================================="
-        echo "Docker not installed, bypassing download of Fabric images"
+        echo "${CONTAINER_CLI} not installed, bypassing download of Fabric images"
         echo "========================================================="
     fi
 }
