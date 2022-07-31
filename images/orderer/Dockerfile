@@ -24,7 +24,7 @@ WORKDIR $GOPATH/src/github.com/hyperledger/fabric
 
 FROM golang as orderer
 ARG GO_TAGS
-RUN make orderer GO_TAGS=${GO_TAGS}
+RUN CGO_ENABLED=0 make orderer GO_TAGS=${GO_TAGS}
 
 FROM base
 ENV FABRIC_CFG_PATH /etc/hyperledger/fabric
