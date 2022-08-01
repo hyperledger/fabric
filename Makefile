@@ -357,8 +357,8 @@ ccaasbuilder/%: ccaasbuilder-clean
 	$(eval GOOS = $(word 1,$(subst -, ,$(platform))))
 	$(eval GOARCH = $(word 2,$(subst -, ,$(platform))))
 	@mkdir -p ../release/$(strip $(platform))/builders/ccaas/bin
-	cd ccaas_builder && go test -v ./cmd/detect && GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o ../release/$(strip $(platform))/builders/ccaas/bin/ ./cmd/detect/
-	cd ccaas_builder && go test -v ./cmd/build && GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o ../release/$(strip $(platform))/builders/ccaas/bin/ ./cmd/build/
-	cd ccaas_builder && go test -v ./cmd/release && GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o ../release/$(strip $(platform))/builders/ccaas/bin/ ./cmd/release/
+	cd ccaas_builder && go test -v ./cmd/detect && GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildvcs=false -o ../release/$(strip $(platform))/builders/ccaas/bin/ ./cmd/detect/
+	cd ccaas_builder && go test -v ./cmd/build && GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildvcs=false -o ../release/$(strip $(platform))/builders/ccaas/bin/ ./cmd/build/
+	cd ccaas_builder && go test -v ./cmd/release && GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildvcs=false -o ../release/$(strip $(platform))/builders/ccaas/bin/ ./cmd/release/
 
 ccaasbuilder: ccaasbuilder/$(MARCH)
