@@ -14,11 +14,16 @@ fabric_dir="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$fabric_dir"
 
 declare -a test_dirs
-while IFS='' read -r line; do test_dirs+=("$line"); done < <(
-  go list -f '{{ if or (len .TestGoFiles | ne 0) (len .XTestGoFiles | ne 0) }}{{ println .Dir }}{{ end }}' ./... | \
-    grep integration | \
-    sed s,"${fabric_dir}",.,g
-)
+if [ $# -eq 0 ]
+  then
+    while IFS='' read -r line; do test_dirs+=("$line"); done < <(
+      go list -f '{{ if or (len .TestGoFiles | ne 0) (len .XTestGoFiles | ne 0) }}{{ println .Dir }}{{ end }}' ./... | \
+        grep integration | \
+        sed s,"${fabric_dir}",.,g
+    )
+else
+  for arg in "$@"; do test_dirs+=("./integration/$arg"); done
+fi
 
 total_agents=${SYSTEM_TOTALJOBSINPHASE:-1}   # standard VSTS variables available using parallel execution; total number of parallel jobs running
 agent_number=${SYSTEM_JOBPOSITIONINPHASE:-1} # current job position
