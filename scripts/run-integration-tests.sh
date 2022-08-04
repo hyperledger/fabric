@@ -30,4 +30,5 @@ for ((i = "$agent_number"; i <= "${#test_dirs[@]}"; )); do
 done
 
 printf "\nRunning the following test suites:\n\n%s\n\nStarting tests...\n\n" "$(echo "${dirs[@]}" | tr -s ' ' '\n')"
+
 ginkgo --keep-going --slow-spec-threshold 60s --timeout 24h "${dirs[@]}"
