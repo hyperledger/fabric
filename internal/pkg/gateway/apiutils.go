@@ -46,7 +46,23 @@ func getChannelAndChaincodeFromSignedProposal(signedProposal *peer.SignedProposa
 		return "", "", false, err
 	}
 
-	return channelHeader.GetChannelId(), spec.GetChaincodeSpec().GetChaincodeId().GetName(), len(payload.GetTransientMap()) > 0, nil
+	if len(channelHeader.GetChannelId()) == 0 {
+		return "", "", false, fmt.Errorf("no channel id provided")
+	}
+
+	if spec.GetChaincodeSpec() == nil {
+		return "", "", false, fmt.Errorf("no chaincode spec is provided, channel id [%s]", channelHeader.GetChannelId())
+	}
+
+	if spec.GetChaincodeSpec().GetChaincodeId() == nil {
+		return "", "", false, fmt.Errorf("no chaincode id is provided, channel id [%s]", channelHeader.GetChannelId())
+	}
+
+	if len(spec.GetChaincodeSpec().GetChaincodeId().GetName()) == 0 {
+		return "", "", false, fmt.Errorf("no chaincode name is provided, channel id [%s]", channelHeader.GetChannelId())
+	}
+
+	return channelHeader.GetChannelId(), spec.GetChaincodeSpec().GetChaincodeId().GetName(), len(payload.TransientMap) > 0, nil
 }
 
 func newRpcError(code codes.Code, message string, details ...proto.Message) error {
