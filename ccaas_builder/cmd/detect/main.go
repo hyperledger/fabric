@@ -53,7 +53,7 @@ func run() error {
 		return errors.WithMessagef(err, "%s not found ", metadataFile)
 	}
 
-	mdbytes, cause := ioutil.ReadFile(metadataFile)
+	mdbytes, cause := ioutil.ReadFile(*metadataFile)
 	if cause != nil {
 		err := errors.WithMessagef(cause, "%s not readable", metadataFile)
 		return err
