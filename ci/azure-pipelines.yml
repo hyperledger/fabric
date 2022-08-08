@@ -19,7 +19,7 @@ stages:
     jobs:
       - job: Checks
         pool:
-          vmImage: ubuntu-18.04
+          vmImage: ubuntu-20.04
         steps:
           - template: install_deps.yml
           - checkout: self
@@ -36,7 +36,7 @@ stages:
       - job: UnitTests
         condition: eq(stageDependencies.VerifyBuild.Checks.outputs['SetJobTriggers.runTests'], 'true')
         pool:
-          vmImage: ubuntu-18.04
+          vmImage: ubuntu-20.04
         steps:
           - template: install_deps.yml
           - checkout: self
@@ -53,7 +53,7 @@ stages:
       - job: IntegrationTests
         condition: eq(stageDependencies.VerifyBuild.Checks.outputs['SetJobTriggers.runTests'], 'true')
         pool:
-          vmImage: ubuntu-18.04
+          vmImage: ubuntu-20.04
         strategy:
           parallel: 5
         timeoutInMinutes: 90
