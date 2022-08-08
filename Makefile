@@ -47,7 +47,7 @@
 #   - verify - runs unit tests for only the changed package tree
 
 ALPINE_VER ?= 3.16
-BASE_VERSION = 2.4.5
+BASE_VERSION = 2.4.6
 
 # 3rd party image version
 # These versions are also set in the runners in ./integration/runners/
@@ -353,7 +353,7 @@ ccaasbuilder-clean/%:
 
 .PHONY: ccaasbuilder
 ccaasbuilder/%: ccaasbuilder-clean
-	$(eval platform = $(patsubst ccaasbuilder/%,%,$@) ) 
+	$(eval platform = $(patsubst ccaasbuilder/%,%,$@) )
 	$(eval GOOS = $(word 1,$(subst -, ,$(platform))))
 	$(eval GOARCH = $(word 2,$(subst -, ,$(platform))))
 	@mkdir -p release/$(strip $(platform))/builders/ccaas/bin
