@@ -1767,9 +1767,8 @@ func waitUntilTrueOrTimeout(t *testing.T, predicate func() bool, timeout time.Du
 		t.Log("Done.")
 		break
 	case <-time.After(timeout):
-		t.Fatal("Timeout has expired")
 		close(ch)
-		break
+		t.Fatal("Timeout has expired")
 	}
 	t.Log("Stop waiting until timeout or true")
 }

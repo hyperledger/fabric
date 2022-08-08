@@ -607,14 +607,10 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 			iterator, err := store.GetTxPvtRWSetByTxid(txn, nil)
 			if err != nil {
 				t.Fatalf("Failed iterating, got err %s", err)
-				iterator.Close()
-				return
 			}
 			res, err := iterator.Next()
 			if err != nil {
 				t.Fatalf("Failed iterating, got err %s", err)
-				iterator.Close()
-				return
 			}
 			require.Nil(t, res)
 			iterator.Close()
@@ -928,14 +924,10 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 			iterator, err := store.GetTxPvtRWSetByTxid(txn, nil)
 			if err != nil {
 				t.Fatalf("Failed iterating, got err %s", err)
-				iterator.Close()
-				return
 			}
 			res, err := iterator.Next()
 			if err != nil {
 				t.Fatalf("Failed iterating, got err %s", err)
-				iterator.Close()
-				return
 			}
 			require.Nil(t, res)
 			iterator.Close()
@@ -1433,14 +1425,10 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 			iterator, err := store.GetTxPvtRWSetByTxid(txn, nil)
 			if err != nil {
 				t.Fatalf("Failed iterating, got err %s", err)
-				iterator.Close()
-				return
 			}
 			res, err := iterator.Next()
 			if err != nil {
 				t.Fatalf("Failed iterating, got err %s", err)
-				iterator.Close()
-				return
 			}
 			require.Nil(t, res)
 			iterator.Close()
