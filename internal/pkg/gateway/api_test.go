@@ -1967,10 +1967,75 @@ func TestNilArgs(t *testing.T) {
 	_, err = server.Evaluate(ctx, &pb.EvaluateRequest{ProposedTransaction: nil})
 	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "failed to unpack transaction proposal: a signed proposal is required"))
 
+	_, err = server.Evaluate(ctx, &pb.EvaluateRequest{ProposedTransaction: &peer.SignedProposal{}})
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "failed to unpack transaction proposal: a signed proposal is required"))
+
+	_, err = server.Evaluate(ctx, &pb.EvaluateRequest{ProposedTransaction: &peer.SignedProposal{ProposalBytes: []byte("jibberish")}})
+	require.ErrorContains(t, err, "failed to unpack transaction proposal: error unmarshalling Proposal")
+
+	request := &pb.EvaluateRequest{ProposedTransaction: &peer.SignedProposal{
+		ProposalBytes: protoutil.MarshalOrPanic(&peer.Proposal{
+			Header: protoutil.MarshalOrPanic(&cp.Header{}),
+			Payload: protoutil.MarshalOrPanic(&peer.ChaincodeActionPayload{
+				ChaincodeProposalPayload: protoutil.MarshalOrPanic(&peer.ChaincodeProposalPayload{
+					Input: protoutil.MarshalOrPanic(&peer.ChaincodeInvocationSpec{
+						ChaincodeSpec: &peer.ChaincodeSpec{
+							ChaincodeId: &peer.ChaincodeID{
+								Name: "testChaincode",
+							},
+						},
+					}),
+				}),
+			}),
+		}),
+	}}
+	require.True(t, len(request.GetProposedTransaction().GetProposalBytes()) != 0)
+	_, err = server.Evaluate(ctx, request)
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "failed to unpack transaction proposal: no channel id provided"))
+
+	_, err = server.Evaluate(ctx, &pb.EvaluateRequest{ProposedTransaction: &peer.SignedProposal{
+		ProposalBytes: protoutil.MarshalOrPanic(&peer.Proposal{
+			Header: protoutil.MarshalOrPanic(&cp.Header{
+				ChannelHeader: protoutil.MarshalOrPanic(&cp.ChannelHeader{
+					ChannelId: "test",
+				}),
+			}),
+			Payload: protoutil.MarshalOrPanic(&peer.ChaincodeActionPayload{
+				ChaincodeProposalPayload: protoutil.MarshalOrPanic(&peer.ChaincodeProposalPayload{
+					Input: nil,
+				}),
+			}),
+		}),
+	}})
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "failed to unpack transaction proposal: no chaincode spec is provided, channel id [test]"))
+
+	_, err = server.Evaluate(ctx, &pb.EvaluateRequest{ProposedTransaction: &peer.SignedProposal{
+		ProposalBytes: protoutil.MarshalOrPanic(&peer.Proposal{
+			Header: protoutil.MarshalOrPanic(&cp.Header{
+				ChannelHeader: protoutil.MarshalOrPanic(&cp.ChannelHeader{
+					ChannelId: "test",
+				}),
+			}),
+			Payload: protoutil.MarshalOrPanic(&peer.ChaincodeActionPayload{
+				ChaincodeProposalPayload: protoutil.MarshalOrPanic(&peer.ChaincodeProposalPayload{
+					Input: protoutil.MarshalOrPanic(&peer.ChaincodeSpec{
+						ChaincodeId: &peer.ChaincodeID{
+							Name: "",
+						},
+					}),
+				}),
+			}),
+		}),
+	}})
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "failed to unpack transaction proposal: no chaincode name is provided, channel id [test]"))
+
 	_, err = server.Endorse(ctx, nil)
 	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "an endorse request is required"))
 
 	_, err = server.Endorse(ctx, &pb.EndorseRequest{ProposedTransaction: nil})
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "the proposed transaction must contain a signed proposal"))
+
+	_, err = server.Endorse(ctx, &pb.EndorseRequest{ProposedTransaction: &peer.SignedProposal{}})
 	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "the proposed transaction must contain a signed proposal"))
 
 	_, err = server.Endorse(ctx, &pb.EndorseRequest{ProposedTransaction: &peer.SignedProposal{ProposalBytes: []byte("jibberish")}})
@@ -1979,8 +2044,20 @@ func TestNilArgs(t *testing.T) {
 	_, err = server.Submit(ctx, nil)
 	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a submit request is required"))
 
+	_, err = server.Submit(ctx, &pb.SubmitRequest{})
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a prepared transaction is required"))
+
 	_, err = server.CommitStatus(ctx, nil)
 	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a commit status request is required"))
+
+	_, err = server.CommitStatus(ctx, &pb.SignedCommitStatusRequest{})
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a commit status request is required"))
+
+	err = server.ChaincodeEvents(nil, &mocks.ChaincodeEventsServer{})
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a chaincode events request is required"))
+
+	err = server.ChaincodeEvents(&pb.SignedChaincodeEventsRequest{}, &mocks.ChaincodeEventsServer{})
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a chaincode events request is required"))
 }
 
 func TestRpcErrorWithBadDetails(t *testing.T) {

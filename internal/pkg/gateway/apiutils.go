@@ -22,31 +22,47 @@ import (
 )
 
 func getChannelAndChaincodeFromSignedProposal(signedProposal *peer.SignedProposal) (string, string, bool, error) {
-	if signedProposal == nil {
+	if len(signedProposal.GetProposalBytes()) == 0 {
 		return "", "", false, fmt.Errorf("a signed proposal is required")
 	}
-	proposal, err := protoutil.UnmarshalProposal(signedProposal.ProposalBytes)
+	proposal, err := protoutil.UnmarshalProposal(signedProposal.GetProposalBytes())
 	if err != nil {
 		return "", "", false, err
 	}
-	header, err := protoutil.UnmarshalHeader(proposal.Header)
+	header, err := protoutil.UnmarshalHeader(proposal.GetHeader())
 	if err != nil {
 		return "", "", false, err
 	}
-	channelHeader, err := protoutil.UnmarshalChannelHeader(header.ChannelHeader)
+	channelHeader, err := protoutil.UnmarshalChannelHeader(header.GetChannelHeader())
 	if err != nil {
 		return "", "", false, err
 	}
-	payload, err := protoutil.UnmarshalChaincodeProposalPayload(proposal.Payload)
+	payload, err := protoutil.UnmarshalChaincodeProposalPayload(proposal.GetPayload())
 	if err != nil {
 		return "", "", false, err
 	}
-	spec, err := protoutil.UnmarshalChaincodeInvocationSpec(payload.Input)
+	spec, err := protoutil.UnmarshalChaincodeInvocationSpec(payload.GetInput())
 	if err != nil {
 		return "", "", false, err
 	}
 
-	return channelHeader.ChannelId, spec.ChaincodeSpec.ChaincodeId.Name, len(payload.TransientMap) > 0, nil
+	if len(channelHeader.GetChannelId()) == 0 {
+		return "", "", false, fmt.Errorf("no channel id provided")
+	}
+
+	if spec.GetChaincodeSpec() == nil {
+		return "", "", false, fmt.Errorf("no chaincode spec is provided, channel id [%s]", channelHeader.GetChannelId())
+	}
+
+	if spec.GetChaincodeSpec().GetChaincodeId() == nil {
+		return "", "", false, fmt.Errorf("no chaincode id is provided, channel id [%s]", channelHeader.GetChannelId())
+	}
+
+	if len(spec.GetChaincodeSpec().GetChaincodeId().GetName()) == 0 {
+		return "", "", false, fmt.Errorf("no chaincode name is provided, channel id [%s]", channelHeader.GetChannelId())
+	}
+
+	return channelHeader.GetChannelId(), spec.GetChaincodeSpec().GetChaincodeId().GetName(), len(payload.TransientMap) > 0, nil
 }
 
 func newRpcError(code codes.Code, message string, details ...proto.Message) error {
