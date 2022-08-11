@@ -80,7 +80,7 @@ func TestOpenWAL(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			store.Store(
 				[]raftpb.Entry{{Index: uint64(i), Data: make([]byte, 10)}},
-				raftpb.HardState{},
+				raftpb.HardState{Commit: uint64(i)},
 				raftpb.Snapshot{},
 			)
 		}
@@ -155,7 +155,7 @@ func TestTakeSnapshot(t *testing.T) {
 			for i := 0; i < 10; i++ {
 				store.Store(
 					[]raftpb.Entry{{Index: uint64(i), Data: make([]byte, 100)}},
-					raftpb.HardState{},
+					raftpb.HardState{Commit: uint64(i)},
 					raftpb.Snapshot{},
 				)
 			}
@@ -216,7 +216,7 @@ func TestTakeSnapshot(t *testing.T) {
 			for i := 0; i < 10; i++ {
 				store.Store(
 					[]raftpb.Entry{{Index: uint64(i), Data: make([]byte, 100)}},
-					raftpb.HardState{},
+					raftpb.HardState{Commit: uint64(i)},
 					raftpb.Snapshot{},
 				)
 			}
@@ -282,7 +282,7 @@ func TestTakeSnapshot(t *testing.T) {
 			for i := 0; i < 10; i++ {
 				store.Store(
 					[]raftpb.Entry{{Index: uint64(i), Data: make([]byte, 100)}},
-					raftpb.HardState{},
+					raftpb.HardState{Commit: uint64(i)},
 					raftpb.Snapshot{},
 				)
 			}
@@ -369,7 +369,7 @@ func TestApplyOutOfDateSnapshot(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			store.Store(
 				[]raftpb.Entry{{Index: uint64(i), Data: make([]byte, 100)}},
-				raftpb.HardState{},
+				raftpb.HardState{Commit: uint64(i)},
 				raftpb.Snapshot{},
 			)
 		}
