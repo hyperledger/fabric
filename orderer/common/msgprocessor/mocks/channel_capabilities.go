@@ -8,6 +8,16 @@ import (
 )
 
 type ChannelCapabilities struct {
+	ConsensusTypeBFTStub        func() bool
+	consensusTypeBFTMutex       sync.RWMutex
+	consensusTypeBFTArgsForCall []struct {
+	}
+	consensusTypeBFTReturns struct {
+		result1 bool
+	}
+	consensusTypeBFTReturnsOnCall map[int]struct {
+		result1 bool
+	}
 	ConsensusTypeMigrationStub        func() bool
 	consensusTypeMigrationMutex       sync.RWMutex
 	consensusTypeMigrationArgsForCall []struct {
@@ -50,6 +60,58 @@ type ChannelCapabilities struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *ChannelCapabilities) ConsensusTypeBFT() bool {
+	fake.consensusTypeBFTMutex.Lock()
+	ret, specificReturn := fake.consensusTypeBFTReturnsOnCall[len(fake.consensusTypeBFTArgsForCall)]
+	fake.consensusTypeBFTArgsForCall = append(fake.consensusTypeBFTArgsForCall, struct {
+	}{})
+	fake.recordInvocation("ConsensusTypeBFT", []interface{}{})
+	fake.consensusTypeBFTMutex.Unlock()
+	if fake.ConsensusTypeBFTStub != nil {
+		return fake.ConsensusTypeBFTStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.consensusTypeBFTReturns
+	return fakeReturns.result1
+}
+
+func (fake *ChannelCapabilities) ConsensusTypeBFTCallCount() int {
+	fake.consensusTypeBFTMutex.RLock()
+	defer fake.consensusTypeBFTMutex.RUnlock()
+	return len(fake.consensusTypeBFTArgsForCall)
+}
+
+func (fake *ChannelCapabilities) ConsensusTypeBFTCalls(stub func() bool) {
+	fake.consensusTypeBFTMutex.Lock()
+	defer fake.consensusTypeBFTMutex.Unlock()
+	fake.ConsensusTypeBFTStub = stub
+}
+
+func (fake *ChannelCapabilities) ConsensusTypeBFTReturns(result1 bool) {
+	fake.consensusTypeBFTMutex.Lock()
+	defer fake.consensusTypeBFTMutex.Unlock()
+	fake.ConsensusTypeBFTStub = nil
+	fake.consensusTypeBFTReturns = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *ChannelCapabilities) ConsensusTypeBFTReturnsOnCall(i int, result1 bool) {
+	fake.consensusTypeBFTMutex.Lock()
+	defer fake.consensusTypeBFTMutex.Unlock()
+	fake.ConsensusTypeBFTStub = nil
+	if fake.consensusTypeBFTReturnsOnCall == nil {
+		fake.consensusTypeBFTReturnsOnCall = make(map[int]struct {
+			result1 bool
+		})
+	}
+	fake.consensusTypeBFTReturnsOnCall[i] = struct {
+		result1 bool
+	}{result1}
 }
 
 func (fake *ChannelCapabilities) ConsensusTypeMigration() bool {
@@ -263,6 +325,8 @@ func (fake *ChannelCapabilities) SupportedReturnsOnCall(i int, result1 error) {
 func (fake *ChannelCapabilities) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.consensusTypeBFTMutex.RLock()
+	defer fake.consensusTypeBFTMutex.RUnlock()
 	fake.consensusTypeMigrationMutex.RLock()
 	defer fake.consensusTypeMigrationMutex.RUnlock()
 	fake.mSPVersionMutex.RLock()

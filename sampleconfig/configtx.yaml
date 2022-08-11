@@ -100,13 +100,13 @@ Capabilities:
     # supported by both.
     # Set the value of the capability to true to require it.
     Channel: &ChannelCapabilities
-        # V2.0 for Channel is a catchall flag for behavior which has been
-        # determined to be desired for all orderers and peers running at the v2.0.0
+        # V3.0 for Channel is a catchall flag for behavior which has been
+        # determined to be desired for all orderers and peers running at the v3.0.0
         # level, but which would be incompatible with orderers and peers from
         # prior releases.
-        # Prior to enabling V2.0 channel capabilities, ensure that all
-        # orderers and peers on a channel are at v2.0.0 or later.
-        V2_0: true
+        # Prior to enabling V3.0 channel capabilities, ensure that all
+        # orderers and peers on a channel are at v3.0.0 or later.
+        V3_0: true
 
     # Orderer capabilities apply only to the orderers, and may be safely
     # used with prior release peers.

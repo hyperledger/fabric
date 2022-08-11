@@ -28,6 +28,9 @@ const (
 
 	// ChannelV2_0 is the capabilities string for standard new non-backwards compatible fabric v2.0 channel capabilities.
 	ChannelV2_0 = "V2_0"
+
+	// ChannelV3_0 is the capabilities string for standard new non-backwards compatible fabric v3.0 channel capabilities.
+	ChannelV3_0 = "V3_0"
 )
 
 // ChannelProvider provides capabilities information for channel level config.
@@ -38,6 +41,7 @@ type ChannelProvider struct {
 	v142 bool
 	v143 bool
 	v20  bool
+	v30  bool
 }
 
 // NewChannelProvider creates a channel capabilities provider.
@@ -49,6 +53,7 @@ func NewChannelProvider(capabilities map[string]*cb.Capability) *ChannelProvider
 	_, cp.v142 = capabilities[ChannelV1_4_2]
 	_, cp.v143 = capabilities[ChannelV1_4_3]
 	_, cp.v20 = capabilities[ChannelV2_0]
+	_, cp.v30 = capabilities[ChannelV3_0]
 	return cp
 }
 
@@ -61,6 +66,8 @@ func (cp *ChannelProvider) Type() string {
 func (cp *ChannelProvider) HasCapability(capability string) bool {
 	switch capability {
 	// Add new capability names here
+	case ChannelV3_0:
+		return true
 	case ChannelV2_0:
 		return true
 	case ChannelV1_4_3:
@@ -79,7 +86,7 @@ func (cp *ChannelProvider) HasCapability(capability string) bool {
 // MSPVersion returns the level of MSP support required by this channel.
 func (cp *ChannelProvider) MSPVersion() msp.MSPVersion {
 	switch {
-	case cp.v143 || cp.v20:
+	case cp.v143 || cp.v20 || cp.v30:
 		return msp.MSPv1_4_3
 	case cp.v13 || cp.v142:
 		return msp.MSPv1_3
@@ -92,10 +99,15 @@ func (cp *ChannelProvider) MSPVersion() msp.MSPVersion {
 
 // ConsensusTypeMigration return true if consensus-type migration is supported and permitted in both orderer and peer.
 func (cp *ChannelProvider) ConsensusTypeMigration() bool {
-	return cp.v142 || cp.v143 || cp.v20
+	return cp.v142 || cp.v143 || cp.v20 || cp.v30
 }
 
 // OrgSpecificOrdererEndpoints allows for individual orderer orgs to specify their external addresses for their OSNs.
 func (cp *ChannelProvider) OrgSpecificOrdererEndpoints() bool {
-	return cp.v142 || cp.v143 || cp.v20
+	return cp.v142 || cp.v143 || cp.v20 || cp.v30
+}
+
+// ConsensusTypeBFT return true if the channel supports BFT consensus.
+func (cp *ChannelProvider) ConsensusTypeBFT() bool {
+	return cp.v30
 }
