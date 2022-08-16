@@ -475,10 +475,10 @@ var _ = Describe("Encoder", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(orderersType.ConsenterMapping)).To(Equal(2))
 				consenter1 := orderersType.ConsenterMapping[0]
-				Expect(consenter1.Id).To(Equal(uint64(1)))
+				Expect(consenter1.Id).To(Equal(uint32(1)))
 				Expect(consenter1.ClientTlsCert).To(BeNil())
 				consenter2 := orderersType.ConsenterMapping[1]
-				Expect(consenter2.Id).To(Equal(uint64(2)))
+				Expect(consenter2.Id).To(Equal(uint32(2)))
 				Expect(consenter2.ClientTlsCert).ToNot(BeNil())
 			})
 		})

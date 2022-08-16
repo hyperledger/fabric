@@ -171,7 +171,7 @@ type BatchSize struct {
 }
 
 type Consenter struct {
-	ID            uint64 `yaml:"ID"`
+	ID            uint32 `yaml:"ID"`
 	Host          string `yaml:"Host"`
 	Port          uint32 `yaml:"Port"`
 	MSPID         string `yaml:"MSPID"`
