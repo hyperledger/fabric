@@ -443,6 +443,46 @@ var _ = Describe("Encoder", func() {
 			})
 		})
 
+		Context("when the consensus type is BFT", func() {
+			BeforeEach(func() {
+				conf.OrdererType = "BFT"
+				conf.ConsenterMapping = []*genesisconfig.Consenter{
+					{
+						ID:    1,
+						Host:  "host1",
+						Port:  1001,
+						MSPID: "MSP1",
+					},
+					{
+						ID:            2,
+						Host:          "host2",
+						Port:          1002,
+						MSPID:         "MSP2",
+						ClientTLSCert: "../../../sampleconfig/msp/admincerts/admincert.pem",
+						ServerTLSCert: "../../../sampleconfig/msp/admincerts/admincert.pem",
+						Identity:      "../../../sampleconfig/msp/admincerts/admincert.pem",
+					},
+				}
+			})
+
+			It("adds the Orderers key", func() {
+				cg, err := encoder.NewOrdererGroup(conf)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(cg.Values)).To(Equal(6))
+				Expect(cg.Values["Orderers"]).NotTo(BeNil())
+				orderersType := &cb.Orderers{}
+				err = proto.Unmarshal(cg.Values["Orderers"].Value, orderersType)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(orderersType.ConsenterMapping)).To(Equal(2))
+				consenter1 := orderersType.ConsenterMapping[0]
+				Expect(consenter1.Id).To(Equal(uint64(1)))
+				Expect(consenter1.ClientTlsCert).To(BeNil())
+				consenter2 := orderersType.ConsenterMapping[1]
+				Expect(consenter2.Id).To(Equal(uint64(2)))
+				Expect(consenter2.ClientTlsCert).ToNot(BeNil())
+			})
+		})
+
 		Context("when the consensus type is unknown", func() {
 			BeforeEach(func() {
 				conf.OrdererType = "bad-type"

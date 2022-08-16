@@ -310,6 +310,28 @@ Orderer: &OrdererDefaults
     # network. When set to 0, this implies no maximum number of channels.
     MaxChannels: 0
 
+    ConsenterMapping:
+    - ID: 1
+      Host: bft0.example.com
+      Port: 7050
+      MSPID: OrdererOrg1
+      Identity: /path/to/identity
+    - ID: 2
+      Host: bft1.example.com
+      Port: 7050
+      MSPID: OrdererOrg2
+      Identity: /path/to/identity
+    - ID: 3
+      Host: bft2.example.com
+      Port: 7050
+      MSPID: OrdererOrg3
+      Identity: /path/to/identity
+    - ID: 4
+      Host: bft3.example.com
+      Port: 7050
+      MSPID: OrdererOrg4
+      Identity: /path/to/identity
+
     Kafka:
         # Brokers: A list of Kafka brokers to which the orderer connects. Edit
         # this list to identify the brokers of the ordering service.

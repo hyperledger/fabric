@@ -70,6 +70,9 @@ type Channel interface {
 	// OrdererAddresses returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
 	OrdererAddresses() []string
 
+	// Orderers returns the list of consenters
+	Orderers() []*cb.Consenter
+
 	// Capabilities defines the capabilities for a channel
 	Capabilities() ChannelCapabilities
 }
@@ -113,6 +116,8 @@ type Orderer interface {
 	// Kafka brokers, i.e. this is not necessarily the entire set of Kafka brokers
 	// used for ordering
 	KafkaBrokers() []string
+
+	Consenters() []*cb.Consenter
 
 	// Organizations returns the organizations for the ordering service
 	Organizations() map[string]OrdererOrg
