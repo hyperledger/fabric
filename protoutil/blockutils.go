@@ -10,10 +10,13 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/asn1"
+	"fmt"
 	"math/big"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/pkg/errors"
 )
 
@@ -217,4 +220,79 @@ func InitBlockMetadata(block *cb.Block) {
 			block.Metadata.Metadata = append(block.Metadata.Metadata, []byte{})
 		}
 	}
+}
+
+type BlockVerifierFunc func(header *cb.BlockHeader, metadata *cb.BlockMetadata) error
+
+//go:generate counterfeiter -o mocks/policy.go --fake-name Policy . policy
+type policy interface { // copied from common.policies to avoid circular import.
+	// EvaluateSignedData takes a set of SignedData and evaluates whether
+	// 1) the signatures are valid over the related message
+	// 2) the signing identities satisfy the policy
+	EvaluateSignedData(signatureSet []*SignedData) error
+}
+
+func BlockSignatureVerifier(bftEnabled bool, consenters []*cb.Consenter, policy policy) BlockVerifierFunc {
+	return func(header *cb.BlockHeader, metadata *cb.BlockMetadata) error {
+		if len(metadata.Metadata) < int(cb.BlockMetadataIndex_SIGNATURES)+1 {
+			return errors.Errorf("no signatures in block metadata")
+		}
+
+		md := &cb.Metadata{}
+		if err := proto.Unmarshal(metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES], md); err != nil {
+			return errors.Wrapf(err, "error unmarshalling signatures from metadata: %v", err)
+		}
+
+		var signatureSet []*SignedData
+		for _, metadataSignature := range md.Signatures {
+			var signerIdentity []byte
+			var signedPayload []byte
+			// if the SignatureHeader is empty and the IdentifierHeader is present, then  the consenter expects us to fetch its identity by its numeric identifier
+			if bftEnabled && len(metadataSignature.GetSignatureHeader()) == 0 && len(metadataSignature.GetIdentifierHeader()) > 0 {
+				identifierHeader, err := UnmarshalIdentifierHeader(metadataSignature.IdentifierHeader)
+				if err != nil {
+					return fmt.Errorf("failed unmarshalling identifier header for block %d: %v", header.Number, err)
+				}
+				identifier := identifierHeader.GetIdentifier()
+				signerIdentity = searchConsenterIdentityByID(consenters, identifier)
+				if len(signerIdentity) == 0 {
+					// The identifier is not within the consenter set
+					continue
+				}
+				signedPayload = util.ConcatenateBytes(md.Value, metadataSignature.IdentifierHeader, BlockHeaderBytes(header))
+			} else {
+				signatureHeader, err := UnmarshalSignatureHeader(metadataSignature.GetSignatureHeader())
+				if err != nil {
+					return fmt.Errorf("failed unmarshalling signature header for block %d: %v", header.Number, err)
+				}
+
+				signedPayload = util.ConcatenateBytes(md.Value, metadataSignature.SignatureHeader, BlockHeaderBytes(header))
+
+				signerIdentity = signatureHeader.Creator
+			}
+
+			signatureSet = append(
+				signatureSet,
+				&SignedData{
+					Identity:  signerIdentity,
+					Data:      signedPayload,
+					Signature: metadataSignature.Signature,
+				},
+			)
+		}
+
+		return policy.EvaluateSignedData(signatureSet)
+	}
+}
+
+func searchConsenterIdentityByID(consenters []*cb.Consenter, identifier uint32) []byte {
+	for _, consenter := range consenters {
+		if consenter.Id == identifier {
+			return MarshalOrPanic(&msp.SerializedIdentity{
+				Mspid:   consenter.MspId,
+				IdBytes: consenter.Identity,
+			})
+		}
+	}
+	return nil
 }
