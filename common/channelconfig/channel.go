@@ -156,11 +156,6 @@ func (cc *ChannelConfig) OrdererAddresses() []string {
 	return cc.protos.OrdererAddresses.Addresses
 }
 
-// Orderers returns the list of consenters
-func (cc *ChannelConfig) Orderers() []*cb.Consenter {
-	return cc.protos.Orderers.ConsenterMapping
-}
-
 // ConsortiumName returns the name of the consortium this channel was created under
 func (cc *ChannelConfig) ConsortiumName() string {
 	return cc.protos.Consortium.Name

@@ -123,6 +123,7 @@ func TestInitGossipService(t *testing.T) {
 		signer,
 		deserManager,
 		cryptoProvider,
+		nil,
 	)
 	secAdv := peergossip.NewSecurityAdvisor(deserManager)
 	gossipConfig, err := gossip.GlobalConfig(endpoint, nil)

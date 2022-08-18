@@ -18,8 +18,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/protolator"
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -485,6 +487,124 @@ func globalEndpointsFromConfig(aggregatedTLSCerts [][]byte, bundle *channelconfi
 		})
 	}
 	return globalEndpoints
+}
+
+type BlockVerifierFunc func(header *common.BlockHeader, metadata *common.BlockMetadata) error
+
+func BlockVerifierBuilder(bccsp bccsp.BCCSP) func(block *common.Block) BlockVerifierFunc {
+	return func(block *common.Block) BlockVerifierFunc {
+		bundle, failed := bundleFromConfigBlock(block, bccsp)
+		if failed != nil {
+			return failed
+		}
+
+		policy, exists := bundle.PolicyManager().GetPolicy(policies.BlockValidation)
+		if !exists {
+			return createErrorFunc(errors.New("no policies in config block"))
+		}
+
+		bftEnabled := bundle.ChannelConfig().Capabilities().ConsensusTypeBFT()
+
+		var consenters []*common.Consenter
+		if bftEnabled {
+			cfg, ok := bundle.OrdererConfig()
+			if !ok {
+				return createErrorFunc(errors.New("no orderer section in config block"))
+			}
+			consenters = cfg.Consenters()
+		}
+
+		return blockSignatureVerifier(bftEnabled, consenters, policy)
+	}
+}
+
+func blockSignatureVerifier(bftEnabled bool, consenters []*common.Consenter, policy policies.Policy) BlockVerifierFunc {
+	return func(header *common.BlockHeader, metadata *common.BlockMetadata) error {
+		if len(metadata.Metadata) < int(common.BlockMetadataIndex_SIGNATURES)+1 {
+			return errors.Errorf("no signatures in block metadata")
+		}
+
+		md := &common.Metadata{}
+		if err := proto.Unmarshal(metadata.Metadata[common.BlockMetadataIndex_SIGNATURES], md); err != nil {
+			return errors.Wrapf(err, "error unmarshalling signatures from metadata: %v", err)
+		}
+
+		var signatureSet []*protoutil.SignedData
+		for _, metadataSignature := range md.Signatures {
+			var signerIdentity []byte
+			var signedPayload []byte
+			// if the SignatureHeader is empty and the IdentifierHeader is present, then  the consenter expects us to fetch its identity by its numeric identifier
+			if bftEnabled && len(metadataSignature.GetSignatureHeader()) == 0 && len(metadataSignature.GetIdentifierHeader()) > 0 {
+				identifierHeader, err := protoutil.UnmarshalIdentifierHeader(metadataSignature.IdentifierHeader)
+				if err != nil {
+					return fmt.Errorf("failed unmarshalling identifier header for block %d: %v", header.Number, err)
+				}
+				identifier := identifierHeader.GetIdentifier()
+				signerIdentity = searchConsenterIdentityByID(consenters, identifier)
+				if len(signerIdentity) == 0 {
+					// The identifier is not within the consenter set
+					continue
+				}
+				signedPayload = util.ConcatenateBytes(md.Value, metadataSignature.IdentifierHeader, protoutil.BlockHeaderBytes(header))
+			} else {
+				signatureHeader, err := protoutil.UnmarshalSignatureHeader(metadataSignature.GetSignatureHeader())
+				if err != nil {
+					return fmt.Errorf("failed unmarshalling signature header for block %d: %v", header.Number, err)
+				}
+
+				signedPayload = util.ConcatenateBytes(md.Value, metadataSignature.SignatureHeader, protoutil.BlockHeaderBytes(header))
+
+				signerIdentity = signatureHeader.Creator
+			}
+
+			signatureSet = append(
+				signatureSet,
+				&protoutil.SignedData{
+					Identity:  signerIdentity,
+					Data:      signedPayload,
+					Signature: metadataSignature.Signature,
+				},
+			)
+		}
+
+		return policy.EvaluateSignedData(signatureSet)
+	}
+}
+
+func searchConsenterIdentityByID(consenters []*common.Consenter, identifier uint32) []byte {
+	for _, consenter := range consenters {
+		if consenter.Id == identifier {
+			return protoutil.MarshalOrPanic(&msp.SerializedIdentity{
+				Mspid:   consenter.MspId,
+				IdBytes: consenter.Identity,
+			})
+		}
+	}
+	return nil
+}
+
+func bundleFromConfigBlock(block *common.Block, bccsp bccsp.BCCSP) (*channelconfig.Bundle, BlockVerifierFunc) {
+	if block.Data == nil || len(block.Data.Data) == 0 {
+		return nil, createErrorFunc(errors.New("block contains no data"))
+	}
+
+	env := &common.Envelope{}
+	if err := proto.Unmarshal(block.Data.Data[0], env); err != nil {
+		return nil, createErrorFunc(err)
+	}
+
+	bundle, err := channelconfig.NewBundleFromEnvelope(env, bccsp)
+	if err != nil {
+		return nil, createErrorFunc(err)
+	}
+
+	return bundle, nil
+}
+
+func createErrorFunc(err error) BlockVerifierFunc {
+	return func(_ *common.BlockHeader, _ *common.BlockMetadata) error {
+		return errors.Wrap(err, "initialized with an invalid config block")
+	}
 }
 
 //go:generate mockery -dir . -name VerifierFactory -case underscore -output ./mocks/

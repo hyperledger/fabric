@@ -11,8 +11,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	pcommon "github.com/hyperledger/fabric-protos-go/common"
+	pmsp "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
@@ -31,6 +34,8 @@ type Hasher interface {
 	Hash(msg []byte, opts bccsp.HashOpts) (hash []byte, err error)
 }
 
+type ChannelConfigGetter func(cid string) channelconfig.Resources
+
 // MSPMessageCryptoService implements the MessageCryptoService interface
 // using the peer MSPs (local and channel-related)
 //
@@ -45,6 +50,7 @@ type MSPMessageCryptoService struct {
 	localSigner                identity.SignerSerializer
 	deserializer               DeserializersManager
 	hasher                     Hasher
+	channelConfigGetter        ChannelConfigGetter
 }
 
 // NewMCS creates a new instance of MSPMessageCryptoService
@@ -58,12 +64,14 @@ func NewMCS(
 	localSigner identity.SignerSerializer,
 	deserializer DeserializersManager,
 	hasher Hasher,
+	channelConfigGetter ChannelConfigGetter,
 ) *MSPMessageCryptoService {
 	return &MSPMessageCryptoService{
 		channelPolicyManagerGetter: channelPolicyManagerGetter,
 		localSigner:                localSigner,
 		deserializer:               deserializer,
 		hasher:                     hasher,
+		channelConfigGetter:        channelConfigGetter,
 	}
 }
 
@@ -145,18 +153,20 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum u
 		return fmt.Errorf("Block with id [%d] on channel [%s] does not have metadata. Block not valid.", block.Header.Number, chainID)
 	}
 
-	metadata, err := protoutil.GetMetadataFromBlock(block, pcommon.BlockMetadataIndex_SIGNATURES)
-	if err != nil {
-		return fmt.Errorf("Failed unmarshalling medatata for signatures [%s]", err)
-	}
-
 	// - Verify that Header.DataHash is equal to the hash of block.Data
 	// This is to ensure that the header is consistent with the data carried by this block
 	if !bytes.Equal(protoutil.BlockDataHash(block.Data), block.Header.DataHash) {
 		return fmt.Errorf("Header.DataHash is different from Hash(block.Data) for block with id [%d] on channel [%s]", block.Header.Number, chainID)
 	}
 
-	// - Get Policy for block validation
+	if len(block.Metadata.Metadata) < int(pcommon.BlockMetadataIndex_SIGNATURES)+1 {
+		return errors.Errorf("no signatures in block metadata")
+	}
+
+	md := &pcommon.Metadata{}
+	if err := proto.Unmarshal(block.Metadata.Metadata[pcommon.BlockMetadataIndex_SIGNATURES], md); err != nil {
+		return errors.Wrapf(err, "error unmarshalling signatures from metadata: %v", err)
+	}
 
 	// Get the policy manager for channelID
 	cpm := s.channelPolicyManagerGetter.Manager(channelID)
@@ -170,25 +180,69 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum u
 	// ok is true if it was the policy requested, or false if it is the default policy
 	mcsLogger.Debugf("Got block validation policy for channel [%s] with flag [%t]", channelID, ok)
 
-	// - Prepare SignedData
-	signatureSet := []*protoutil.SignedData{}
-	for _, metadataSignature := range metadata.Signatures {
-		shdr, err := protoutil.UnmarshalSignatureHeader(metadataSignature.SignatureHeader)
-		if err != nil {
-			return fmt.Errorf("Failed unmarshalling signature header for block with id [%d] on channel [%s]: [%s]", block.Header.Number, chainID, err)
+	chConfig := s.channelConfigGetter(channelID)
+	bftEnabled := chConfig.ChannelConfig().Capabilities().ConsensusTypeBFT()
+
+	var consenters []*pcommon.Consenter
+	if bftEnabled {
+		cfg, ok := chConfig.OrdererConfig()
+		if !ok {
+			return fmt.Errorf("no orderer section in channel config for channel [%s].", channelID)
 		}
+		consenters = cfg.Consenters()
+	}
+
+	var signatureSet []*protoutil.SignedData
+	for _, metadataSignature := range md.Signatures {
+		var signerIdentity []byte
+		var signedPayload []byte
+		// if the SignatureHeader is empty and the IdentifierHeader is present, then  the consenter expects us to fetch its identity by its numeric identifier
+		if bftEnabled && len(metadataSignature.GetSignatureHeader()) == 0 && len(metadataSignature.GetIdentifierHeader()) > 0 {
+			identifierHeader, err := protoutil.UnmarshalIdentifierHeader(metadataSignature.IdentifierHeader)
+			if err != nil {
+				return fmt.Errorf("failed unmarshalling identifier header for block %d: %v", block.Header.Number, err)
+			}
+			identifier := identifierHeader.GetIdentifier()
+			signerIdentity = searchConsenterIdentityByID(consenters, identifier)
+			if len(signerIdentity) == 0 {
+				// The identifier is not within the consenter set
+				continue
+			}
+			signedPayload = util.ConcatenateBytes(md.Value, metadataSignature.IdentifierHeader, protoutil.BlockHeaderBytes(block.Header))
+		} else {
+			signatureHeader, err := protoutil.UnmarshalSignatureHeader(metadataSignature.GetSignatureHeader())
+			if err != nil {
+				return fmt.Errorf("failed unmarshalling signature header for block %d: %v", block.Header.Number, err)
+			}
+
+			signedPayload = util.ConcatenateBytes(md.Value, metadataSignature.SignatureHeader, protoutil.BlockHeaderBytes(block.Header))
+
+			signerIdentity = signatureHeader.Creator
+		}
+
 		signatureSet = append(
 			signatureSet,
 			&protoutil.SignedData{
-				Identity:  shdr.Creator,
-				Data:      util.ConcatenateBytes(metadata.Value, metadataSignature.SignatureHeader, protoutil.BlockHeaderBytes(block.Header)),
+				Identity:  signerIdentity,
+				Data:      signedPayload,
 				Signature: metadataSignature.Signature,
 			},
 		)
 	}
 
-	// - Evaluate policy
 	return policy.EvaluateSignedData(signatureSet)
+}
+
+func searchConsenterIdentityByID(consenters []*pcommon.Consenter, identifier uint32) []byte {
+	for _, consenter := range consenters {
+		if consenter.Id == identifier {
+			return protoutil.MarshalOrPanic(&pmsp.SerializedIdentity{
+				Mspid:   consenter.MspId,
+				IdBytes: consenter.Identity,
+			})
+		}
+	}
+	return nil
 }
 
 // Sign signs msg with this peer's signing key and outputs
