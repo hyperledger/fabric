@@ -161,14 +161,14 @@ func TestED25519Signer(t *testing.T) {
 		PrivateKey: priv,
 	}
 	require.Equal(t, priv.Public(), signer.Public().(ed25519.PublicKey))
-	digest := []byte{1}
-	sig, err := signer.Sign(rand.Reader, digest, nil)
+	msg := []byte{1}
+	sig, err := signer.Sign(rand.Reader, msg, nil)
 	if err != nil {
 		t.Fatalf("Failed to create signature: %s", err)
 	}
 
 	// ensure signature is valid by using standard verify function
-	ok := ed25519.Verify(pub, digest, sig)
+	ok := ed25519.Verify(pub, msg, sig)
 	require.True(t, ok, "Expected valid signature")
 }
 
