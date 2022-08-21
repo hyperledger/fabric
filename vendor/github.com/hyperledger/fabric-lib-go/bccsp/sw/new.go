@@ -97,7 +97,7 @@ func NewWithParams(securityLevel int, hashFamily string, keyStore bccsp.KeyStore
 	swbccsp.AddWrapper(reflect.TypeOf(&ecdsaPrivateKey{}), &ecdsaPrivateKeyKeyDeriver{})
 	swbccsp.AddWrapper(reflect.TypeOf(&ecdsaPublicKey{}), &ecdsaPublicKeyKeyDeriver{})
 	swbccsp.AddWrapper(reflect.TypeOf(&aesPrivateKey{}), &aesPrivateKeyKeyDeriver{conf: conf})
-	// TODO: Ed255 KeyDeriver
+	// TODO: Ed25519 KeyDeriver
 	// swbccsp.AddWrapper(reflect.TypeOf(&ed25519PrivateKey{}), &ed25519PrivateKeyKeyDeriver{})
 
 	// Set the key importers
