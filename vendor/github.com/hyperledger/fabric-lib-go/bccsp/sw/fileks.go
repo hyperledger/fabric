@@ -196,13 +196,13 @@ func (ks *fileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
 		}
 
 	case *ed25519PrivateKey:
-		err = ks.storePrivateKey(hex.EncodeToString(k.SKI()), *kk.privKey)
+		err = ks.storePrivateKey(hex.EncodeToString(k.SKI()), kk.privKey)
 		if err != nil {
 			return fmt.Errorf("failed storing ED25519 private key [%s]", err)
 		}
 
 	case *ed25519PublicKey:
-		err = ks.storePublicKey(hex.EncodeToString(k.SKI()), *kk.pubKey)
+		err = ks.storePublicKey(hex.EncodeToString(k.SKI()), kk.pubKey)
 		if err != nil {
 			return fmt.Errorf("failed storing ED25519 public key [%s]", err)
 		}
