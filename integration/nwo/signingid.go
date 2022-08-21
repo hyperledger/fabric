@@ -40,8 +40,9 @@ func (s *SigningIdentity) Serialize() ([]byte, error) {
 	})
 }
 
-// Sign computes a SHA256 message digest, signs it with the associated private
-// key, and returns the signature after low-S normlization.
+// Sign computes a SHA256 message digest if key is ECDSA,
+// signs it with the associated private key, and returns the
+// signature. Low-S normlization is applied for ECDSA signatures.
 func (s *SigningIdentity) Sign(msg []byte) ([]byte, error) {
 	digest := sha256.Sum256(msg)
 	pemKey, err := os.ReadFile(s.KeyPath)
@@ -68,7 +69,7 @@ func (s *SigningIdentity) Sign(msg []byte) ([]byte, error) {
 		}
 		return utils.SignatureToLowS(&k.PublicKey, sig)
 	case ed25519.PrivateKey:
-		return ed25519.Sign(k, digest[:]), nil
+		return ed25519.Sign(k, msg), nil
 	default:
 		return nil, fmt.Errorf("unexpected key type: %T", key)
 	}

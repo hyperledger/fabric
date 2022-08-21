@@ -100,7 +100,7 @@ func (si *Signer) Sign(msg []byte) ([]byte, error) {
 	case *ecdsa.PrivateKey:
 		return signECDSA(si.key.(*ecdsa.PrivateKey), digest)
 	case ed25519.PrivateKey:
-		return ed25519.Sign(si.key.(ed25519.PrivateKey), digest), nil
+		return ed25519.Sign(si.key.(ed25519.PrivateKey), msg), nil
 	default:
 		return nil, errors.Errorf("found unknown private key type (%T) in msg signing", key)
 	}
