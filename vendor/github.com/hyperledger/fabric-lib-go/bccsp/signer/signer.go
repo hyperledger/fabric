@@ -61,9 +61,16 @@ func (s *bccspCryptoSigner) Public() crypto.PublicKey {
 	return s.pk
 }
 
-// Sign signs digest with the private key, possibly using entropy from rand.
+// Sign signs digest or the full message with the private key,
+// possibly using entropy from rand.
 // For an (EC)DSA key, it should be a DER-serialised, ASN.1 signature
-// structure.
+// structure.For an ED25519 key, it should be a signature compatible
+// to the with the RFC 8032.
+//
+// If (EC)DSA signature, the hash must be passed as the "digestOrMsg"
+// parameter. Golang requires the full message to sign with the
+// built-in ED25519 library. Therefore, the full message must be
+// passed as the "digestOrMsg" parameter.
 //
 // Hash implements the SignerOpts interface and, in most cases, one can
 // simply pass in the hash function used as opts. Sign may also attempt
@@ -73,6 +80,6 @@ func (s *bccspCryptoSigner) Public() crypto.PublicKey {
 // Note that when a signature of a hash of a larger message is needed,
 // the caller is responsible for hashing the larger message and passing
 // the hash (as digest) and the hash function (as opts) to Sign.
-func (s *bccspCryptoSigner) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
-	return s.csp.Sign(s.key, digest, opts)
+func (s *bccspCryptoSigner) Sign(rand io.Reader, digestOrMsg []byte, opts crypto.SignerOpts) ([]byte, error) {
+	return s.csp.Sign(s.key, digestOrMsg, opts)
 }
