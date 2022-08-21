@@ -86,6 +86,7 @@ func GeneratePrivateKey(keystorePath string, keyAlg string) (crypto.PrivateKey, 
 	case "ed25519":
 		_, priv, err = ed25519.GenerateKey(rand.Reader)
 	default:
+		err = errors.WithMessagef(err, "Unsupported key algorithm: %s", keyAlg)
 	}
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to generate private key")
@@ -177,8 +178,8 @@ func (e *ED25519Signer) Public() crypto.PublicKey {
 }
 
 // Sign signs the digest
-func (e *ED25519Signer) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
-	sig := ed25519.Sign(e.PrivateKey, digest)
+func (e *ED25519Signer) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) ([]byte, error) {
+	sig := ed25519.Sign(e.PrivateKey, msg)
 
 	return sig, nil
 }
