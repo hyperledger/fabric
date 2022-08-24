@@ -11,7 +11,6 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -21,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 )
@@ -37,54 +35,6 @@ var (
 	errAborted  = errors.New("aborted")
 	errTimeout  = errors.New("rpc timeout expired")
 )
-
-// ChannelExtractor extracts the channel of a given message,
-// or returns an empty string if that's not possible
-type ChannelExtractor interface {
-	TargetChannel(message proto.Message) string
-}
-
-//go:generate mockery -dir . -name Handler -case underscore -output ./mocks/
-
-// Handler handles Step() and Submit() requests and returns a corresponding response
-type Handler interface {
-	OnConsensus(channel string, sender uint64, req *orderer.ConsensusRequest) error
-	OnSubmit(channel string, sender uint64, req *orderer.SubmitRequest) error
-}
-
-// RemoteNode represents a cluster member
-type RemoteNode struct {
-	// ID is unique among all members, and cannot be 0.
-	ID uint64
-	// Endpoint is the endpoint of the node, denoted in %s:%d format
-	Endpoint string
-	// ServerTLSCert is the DER encoded TLS server certificate of the node
-	ServerTLSCert []byte
-	// ClientTLSCert is the DER encoded TLS client certificate of the node
-	ClientTLSCert []byte
-}
-
-// String returns a string representation of this RemoteNode
-func (rm RemoteNode) String() string {
-	return fmt.Sprintf("ID: %d,\nEndpoint: %s,\nServerTLSCert:%s, ClientTLSCert:%s",
-		rm.ID, rm.Endpoint, DERtoPEM(rm.ServerTLSCert), DERtoPEM(rm.ClientTLSCert))
-}
-
-//go:generate mockery -dir . -name Communicator -case underscore -output ./mocks/
-
-// Communicator defines communication for a consenter
-type Communicator interface {
-	// Remote returns a RemoteContext for the given RemoteNode ID in the context
-	// of the given channel, or error if connection cannot be established, or
-	// the channel wasn't configured
-	Remote(channel string, id uint64) (*RemoteContext, error)
-	// Configure configures the communication to connect to all
-	// given members, and disconnect from any members not among the given
-	// members.
-	Configure(channel string, members []RemoteNode)
-	// Shutdown shuts down the communicator
-	Shutdown()
-}
 
 // MembersByChannel is a mapping from channel name
 // to MemberMapping
@@ -384,372 +334,6 @@ func (c *Comm) getOrCreateMapping(channel string) MemberMapping {
 	return mapping
 }
 
-// Stub holds all information about the remote node,
-// including the RemoteContext for it, and serializes
-// some operations on it.
-type Stub struct {
-	lock sync.RWMutex
-	RemoteNode
-	*RemoteContext
-}
-
-// Active returns whether the Stub
-// is active or not
-func (stub *Stub) Active() bool {
-	stub.lock.RLock()
-	defer stub.lock.RUnlock()
-	return stub.isActive()
-}
-
-// Active returns whether the Stub
-// is active or not.
-func (stub *Stub) isActive() bool {
-	return stub.RemoteContext != nil
-}
-
-// Deactivate deactivates the Stub and
-// ceases all communication operations
-// invoked on it.
-func (stub *Stub) Deactivate() {
-	stub.lock.Lock()
-	defer stub.lock.Unlock()
-	if !stub.isActive() {
-		return
-	}
-	stub.RemoteContext.Abort()
-	stub.RemoteContext = nil
-}
-
-// Activate creates a remote context with the given function callback
-// in an atomic manner - if two parallel invocations are invoked on this Stub,
-// only a single invocation of createRemoteStub takes place.
-func (stub *Stub) Activate(createRemoteContext func() (*RemoteContext, error)) error {
-	stub.lock.Lock()
-	defer stub.lock.Unlock()
-	// Check if the stub has already been activated while we were waiting for the lock
-	if stub.isActive() {
-		return nil
-	}
-	remoteStub, err := createRemoteContext()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	stub.RemoteContext = remoteStub
-	return nil
-}
-
-// RemoteContext interacts with remote cluster
-// nodes. Every call can be aborted via call to Abort()
-type RemoteContext struct {
-	expiresAt                        time.Time
-	minimumExpirationWarningInterval time.Duration
-	certExpWarningThreshold          time.Duration
-	Metrics                          *Metrics
-	Channel                          string
-	SendBuffSize                     int
-	shutdownSignal                   chan struct{}
-	Logger                           *flogging.FabricLogger
-	endpoint                         string
-	Client                           orderer.ClusterClient
-	ProbeConn                        func(conn *grpc.ClientConn) error
-	conn                             *grpc.ClientConn
-	nextStreamID                     uint64
-	streamsByID                      streamsMapperReporter
-	workerCountReporter              workerCountReporter
-}
-
-// Stream is used to send/receive messages to/from the remote cluster member.
-type Stream struct {
-	abortChan <-chan struct{}
-	sendBuff  chan struct {
-		request *orderer.StepRequest
-		report  func(error)
-	}
-	commShutdown chan struct{}
-	abortReason  *atomic.Value
-	metrics      *Metrics
-	ID           uint64
-	Channel      string
-	NodeName     string
-	Endpoint     string
-	Logger       *flogging.FabricLogger
-	Timeout      time.Duration
-	orderer.Cluster_StepClient
-	Cancel   func(error)
-	canceled *uint32
-	expCheck *certificateExpirationCheck
-}
-
-// StreamOperation denotes an operation done by a stream, such a Send or Receive.
-type StreamOperation func() (*orderer.StepResponse, error)
-
-// Canceled returns whether the stream was canceled.
-func (stream *Stream) Canceled() bool {
-	return atomic.LoadUint32(stream.canceled) == uint32(1)
-}
-
-// Send sends the given request to the remote cluster member.
-func (stream *Stream) Send(request *orderer.StepRequest) error {
-	return stream.SendWithReport(request, func(_ error) {})
-}
-
-// SendWithReport sends the given request to the remote cluster member and invokes report on the send result.
-func (stream *Stream) SendWithReport(request *orderer.StepRequest, report func(error)) error {
-	if stream.Canceled() {
-		return errors.New(stream.abortReason.Load().(string))
-	}
-	var allowDrop bool
-	// We want to drop consensus transactions if the remote node cannot keep up with us,
-	// otherwise we'll slow down the entire FSM.
-	if request.GetConsensusRequest() != nil {
-		allowDrop = true
-	}
-
-	return stream.sendOrDrop(request, allowDrop, report)
-}
-
-// sendOrDrop sends the given request to the remote cluster member, or drops it
-// if it is a consensus request and the queue is full.
-func (stream *Stream) sendOrDrop(request *orderer.StepRequest, allowDrop bool, report func(error)) error {
-	msgType := "transaction"
-	if allowDrop {
-		msgType = "consensus"
-	}
-
-	stream.metrics.reportQueueOccupancy(stream.Endpoint, msgType, stream.Channel, len(stream.sendBuff), cap(stream.sendBuff))
-
-	if allowDrop && len(stream.sendBuff) == cap(stream.sendBuff) {
-		stream.Cancel(errOverflow)
-		stream.metrics.reportMessagesDropped(stream.Endpoint, stream.Channel)
-		return errOverflow
-	}
-
-	select {
-	case <-stream.abortChan:
-		return errors.Errorf("stream %d aborted", stream.ID)
-	case stream.sendBuff <- struct {
-		request *orderer.StepRequest
-		report  func(error)
-	}{request: request, report: report}:
-		return nil
-	case <-stream.commShutdown:
-		return nil
-	}
-}
-
-// sendMessage sends the request down the stream
-func (stream *Stream) sendMessage(request *orderer.StepRequest, report func(error)) {
-	start := time.Now()
-	var err error
-	defer func() {
-		message := fmt.Sprintf("Send of %s to %s(%s) took %v",
-			requestAsString(request), stream.NodeName, stream.Endpoint, time.Since(start))
-		if err != nil {
-			stream.Logger.Warnf("%s but failed due to %s", message, err.Error())
-		} else {
-			stream.Logger.Debug(message)
-		}
-	}()
-
-	f := func() (*orderer.StepResponse, error) {
-		startSend := time.Now()
-		stream.expCheck.checkExpiration(startSend, stream.Channel)
-		err := stream.Cluster_StepClient.Send(request)
-		stream.metrics.reportMsgSendTime(stream.Endpoint, stream.Channel, time.Since(startSend))
-		return nil, err
-	}
-
-	_, err = stream.operateWithTimeout(f, report)
-}
-
-func (stream *Stream) serviceStream() {
-	streamStartTime := time.Now()
-	defer func() {
-		stream.Cancel(errAborted)
-		stream.Logger.Debugf("Stream %d to (%s) terminated with total lifetime of %s",
-			stream.ID, stream.Endpoint, time.Since(streamStartTime))
-	}()
-
-	for {
-		select {
-		case reqReport := <-stream.sendBuff:
-			stream.sendMessage(reqReport.request, reqReport.report)
-		case <-stream.abortChan:
-			return
-		case <-stream.commShutdown:
-			return
-		}
-	}
-}
-
-// Recv receives a message from a remote cluster member.
-func (stream *Stream) Recv() (*orderer.StepResponse, error) {
-	start := time.Now()
-	defer func() {
-		if !stream.Logger.IsEnabledFor(zap.DebugLevel) {
-			return
-		}
-		stream.Logger.Debugf("Receive from %s(%s) took %v", stream.NodeName, stream.Endpoint, time.Since(start))
-	}()
-
-	f := func() (*orderer.StepResponse, error) {
-		return stream.Cluster_StepClient.Recv()
-	}
-
-	return stream.operateWithTimeout(f, func(_ error) {})
-}
-
-// operateWithTimeout performs the given operation on the stream, and blocks until the timeout expires.
-func (stream *Stream) operateWithTimeout(invoke StreamOperation, report func(error)) (*orderer.StepResponse, error) {
-	timer := time.NewTimer(stream.Timeout)
-	defer timer.Stop()
-
-	var operationEnded sync.WaitGroup
-	operationEnded.Add(1)
-
-	responseChan := make(chan struct {
-		res *orderer.StepResponse
-		err error
-	}, 1)
-
-	go func() {
-		defer operationEnded.Done()
-		res, err := invoke()
-		responseChan <- struct {
-			res *orderer.StepResponse
-			err error
-		}{res: res, err: err}
-	}()
-
-	select {
-	case r := <-responseChan:
-		report(r.err)
-		if r.err != nil {
-			stream.Cancel(r.err)
-		}
-		return r.res, r.err
-	case <-timer.C:
-		report(errTimeout)
-		stream.Logger.Warningf("Stream %d to %s(%s) was forcibly terminated because timeout (%v) expired",
-			stream.ID, stream.NodeName, stream.Endpoint, stream.Timeout)
-		stream.Cancel(errTimeout)
-		// Wait for the operation goroutine to end
-		operationEnded.Wait()
-		return nil, errTimeout
-	}
-}
-
-func requestAsString(request *orderer.StepRequest) string {
-	switch t := request.GetPayload().(type) {
-	case *orderer.StepRequest_SubmitRequest:
-		if t.SubmitRequest == nil || t.SubmitRequest.Payload == nil {
-			return fmt.Sprintf("Empty SubmitRequest: %v", t.SubmitRequest)
-		}
-		return fmt.Sprintf("SubmitRequest for channel %s with payload of size %d",
-			t.SubmitRequest.Channel, len(t.SubmitRequest.Payload.Payload))
-	case *orderer.StepRequest_ConsensusRequest:
-		return fmt.Sprintf("ConsensusRequest for channel %s with payload of size %d",
-			t.ConsensusRequest.Channel, len(t.ConsensusRequest.Payload))
-	default:
-		return fmt.Sprintf("unknown type: %v", request)
-	}
-}
-
-// NewStream creates a new stream.
-// It is not thread safe, and Send() or Recv() block only until the timeout expires.
-func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
-	if err := rc.ProbeConn(rc.conn); err != nil {
-		return nil, err
-	}
-
-	ctx, cancel := context.WithCancel(context.TODO())
-	stream, err := rc.Client.Step(ctx)
-	if err != nil {
-		cancel()
-		return nil, errors.WithStack(err)
-	}
-
-	streamID := atomic.AddUint64(&rc.nextStreamID, 1)
-	nodeName := commonNameFromContext(stream.Context())
-
-	var canceled uint32
-
-	abortChan := make(chan struct{})
-	abortReason := &atomic.Value{}
-
-	once := &sync.Once{}
-
-	cancelWithReason := func(err error) {
-		once.Do(func() {
-			abortReason.Store(err.Error())
-			cancel()
-			rc.streamsByID.Delete(streamID)
-			rc.Metrics.reportEgressStreamCount(rc.Channel, atomic.LoadUint32(&rc.streamsByID.size))
-			rc.Logger.Debugf("Stream %d to %s(%s) is aborted", streamID, nodeName, rc.endpoint)
-			atomic.StoreUint32(&canceled, 1)
-			close(abortChan)
-		})
-	}
-
-	logger := flogging.MustGetLogger("orderer.common.cluster.step")
-	stepLogger := logger.WithOptions(zap.AddCallerSkip(1))
-
-	s := &Stream{
-		Channel:     rc.Channel,
-		metrics:     rc.Metrics,
-		abortReason: abortReason,
-		abortChan:   abortChan,
-		sendBuff: make(chan struct {
-			request *orderer.StepRequest
-			report  func(error)
-		}, rc.SendBuffSize),
-		commShutdown:       rc.shutdownSignal,
-		NodeName:           nodeName,
-		Logger:             stepLogger,
-		ID:                 streamID,
-		Endpoint:           rc.endpoint,
-		Timeout:            timeout,
-		Cluster_StepClient: stream,
-		Cancel:             cancelWithReason,
-		canceled:           &canceled,
-	}
-
-	s.expCheck = &certificateExpirationCheck{
-		minimumExpirationWarningInterval: rc.minimumExpirationWarningInterval,
-		expirationWarningThreshold:       rc.certExpWarningThreshold,
-		expiresAt:                        rc.expiresAt,
-		endpoint:                         s.Endpoint,
-		nodeName:                         s.NodeName,
-		alert: func(template string, args ...interface{}) {
-			s.Logger.Warningf(template, args...)
-		},
-	}
-
-	rc.Logger.Debugf("Created new stream to %s with ID of %d and buffer size of %d",
-		rc.endpoint, streamID, cap(s.sendBuff))
-
-	rc.streamsByID.Store(streamID, s)
-	rc.Metrics.reportEgressStreamCount(rc.Channel, atomic.LoadUint32(&rc.streamsByID.size))
-
-	go func() {
-		rc.workerCountReporter.increment(s.metrics)
-		s.serviceStream()
-		rc.workerCountReporter.decrement(s.metrics)
-	}()
-
-	return s, nil
-}
-
-// Abort aborts the contexts the RemoteContext uses, thus effectively
-// causes all operations that use this RemoteContext to terminate.
-func (rc *RemoteContext) Abort() {
-	rc.streamsByID.Range(func(_, value interface{}) bool {
-		value.(*Stream).Cancel(errAborted)
-		return false
-	})
-}
-
 func commonNameFromContext(ctx context.Context) string {
 	cert := util.ExtractCertificateFromContext(ctx)
 	if cert == nil {
@@ -791,4 +375,24 @@ func (wcr *workerCountReporter) decrement(m *Metrics) {
 	// which is just wcr.workerCount - 1.
 	count := atomic.AddUint32(&wcr.workerCount, ^uint32(0))
 	m.reportWorkerCount(wcr.channel, count)
+}
+
+type CommClientStream struct {
+	StepClient orderer.Cluster_StepClient
+}
+
+func (cs *CommClientStream) Send(request *orderer.StepRequest) error {
+	return cs.StepClient.Send(request)
+}
+
+func (cs *CommClientStream) Recv() (*orderer.StepResponse, error) {
+	return cs.StepClient.Recv()
+}
+
+func (cs *CommClientStream) Auth() error {
+	return nil
+}
+
+func (cs *CommClientStream) Context() context.Context {
+	return cs.StepClient.Context()
 }
