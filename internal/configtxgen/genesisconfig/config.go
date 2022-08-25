@@ -150,16 +150,17 @@ type AnchorPeer struct {
 
 // Orderer contains configuration associated to a channel.
 type Orderer struct {
-	OrdererType   string                   `yaml:"OrdererType"`
-	Addresses     []string                 `yaml:"Addresses"`
-	BatchTimeout  time.Duration            `yaml:"BatchTimeout"`
-	BatchSize     BatchSize                `yaml:"BatchSize"`
-	Kafka         Kafka                    `yaml:"Kafka"`
-	EtcdRaft      *etcdraft.ConfigMetadata `yaml:"EtcdRaft"`
-	Organizations []*Organization          `yaml:"Organizations"`
-	MaxChannels   uint64                   `yaml:"MaxChannels"`
-	Capabilities  map[string]bool          `yaml:"Capabilities"`
-	Policies      map[string]*Policy       `yaml:"Policies"`
+	OrdererType      string                   `yaml:"OrdererType"`
+	Addresses        []string                 `yaml:"Addresses"`
+	BatchTimeout     time.Duration            `yaml:"BatchTimeout"`
+	BatchSize        BatchSize                `yaml:"BatchSize"`
+	ConsenterMapping []*Consenter             `yaml:"ConsenterMapping"`
+	Kafka            Kafka                    `yaml:"Kafka"`
+	EtcdRaft         *etcdraft.ConfigMetadata `yaml:"EtcdRaft"`
+	Organizations    []*Organization          `yaml:"Organizations"`
+	MaxChannels      uint64                   `yaml:"MaxChannels"`
+	Capabilities     map[string]bool          `yaml:"Capabilities"`
+	Policies         map[string]*Policy       `yaml:"Policies"`
 }
 
 // BatchSize contains configuration affecting the size of batches.
@@ -167,6 +168,16 @@ type BatchSize struct {
 	MaxMessageCount   uint32 `yaml:"MaxMessageCount"`
 	AbsoluteMaxBytes  uint32 `yaml:"AbsoluteMaxBytes"`
 	PreferredMaxBytes uint32 `yaml:"PreferredMaxBytes"`
+}
+
+type Consenter struct {
+	ID            uint32 `yaml:"ID"`
+	Host          string `yaml:"Host"`
+	Port          uint32 `yaml:"Port"`
+	MSPID         string `yaml:"MSPID"`
+	Identity      string `yaml:"Identity"`
+	ClientTLSCert string `yaml:"ClientTLSCert"`
+	ServerTLSCert string `yaml:"ServerTLSCert"`
 }
 
 // Kafka contains configuration for the Kafka-based orderer.
@@ -405,6 +416,11 @@ loop:
 			cf.TranslatePathInPlace(configDir, &serverCertPath)
 			c.ServerTlsCert = []byte(serverCertPath)
 		}
+	case "BFT":
+		if len(ord.ConsenterMapping) == 0 {
+			logger.Panic("Orderer.Orderers.ConsenterMapping missing")
+		}
+
 	default:
 		logger.Panicf("unknown orderer type: %s", ord.OrdererType)
 	}

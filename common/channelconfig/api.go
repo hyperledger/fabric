@@ -114,6 +114,8 @@ type Orderer interface {
 	// used for ordering
 	KafkaBrokers() []string
 
+	Consenters() []*cb.Consenter
+
 	// Organizations returns the organizations for the ordering service
 	Organizations() map[string]OrdererOrg
 
@@ -135,6 +137,9 @@ type ChannelCapabilities interface {
 
 	// OrgSpecificOrdererEndpoints return true if the channel config processing allows orderer orgs to specify their own endpoints
 	OrgSpecificOrdererEndpoints() bool
+
+	// ConsensusTypeBFT returns true if the channel must support BFT consensus
+	ConsensusTypeBFT() bool
 }
 
 // ApplicationCapabilities defines the capabilities for the application portion of a channel

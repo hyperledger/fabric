@@ -8,7 +8,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 )
 
-type ChannelConfig struct {
+type Channel struct {
 	BlockDataHashingStructureWidthStub        func() uint32
 	blockDataHashingStructureWidthMutex       sync.RWMutex
 	blockDataHashingStructureWidthArgsForCall []struct {
@@ -63,36 +63,37 @@ type ChannelConfig struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ChannelConfig) BlockDataHashingStructureWidth() uint32 {
+func (fake *Channel) BlockDataHashingStructureWidth() uint32 {
 	fake.blockDataHashingStructureWidthMutex.Lock()
 	ret, specificReturn := fake.blockDataHashingStructureWidthReturnsOnCall[len(fake.blockDataHashingStructureWidthArgsForCall)]
 	fake.blockDataHashingStructureWidthArgsForCall = append(fake.blockDataHashingStructureWidthArgsForCall, struct {
 	}{})
+	stub := fake.BlockDataHashingStructureWidthStub
+	fakeReturns := fake.blockDataHashingStructureWidthReturns
 	fake.recordInvocation("BlockDataHashingStructureWidth", []interface{}{})
 	fake.blockDataHashingStructureWidthMutex.Unlock()
-	if fake.BlockDataHashingStructureWidthStub != nil {
-		return fake.BlockDataHashingStructureWidthStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.blockDataHashingStructureWidthReturns
 	return fakeReturns.result1
 }
 
-func (fake *ChannelConfig) BlockDataHashingStructureWidthCallCount() int {
+func (fake *Channel) BlockDataHashingStructureWidthCallCount() int {
 	fake.blockDataHashingStructureWidthMutex.RLock()
 	defer fake.blockDataHashingStructureWidthMutex.RUnlock()
 	return len(fake.blockDataHashingStructureWidthArgsForCall)
 }
 
-func (fake *ChannelConfig) BlockDataHashingStructureWidthCalls(stub func() uint32) {
+func (fake *Channel) BlockDataHashingStructureWidthCalls(stub func() uint32) {
 	fake.blockDataHashingStructureWidthMutex.Lock()
 	defer fake.blockDataHashingStructureWidthMutex.Unlock()
 	fake.BlockDataHashingStructureWidthStub = stub
 }
 
-func (fake *ChannelConfig) BlockDataHashingStructureWidthReturns(result1 uint32) {
+func (fake *Channel) BlockDataHashingStructureWidthReturns(result1 uint32) {
 	fake.blockDataHashingStructureWidthMutex.Lock()
 	defer fake.blockDataHashingStructureWidthMutex.Unlock()
 	fake.BlockDataHashingStructureWidthStub = nil
@@ -101,7 +102,7 @@ func (fake *ChannelConfig) BlockDataHashingStructureWidthReturns(result1 uint32)
 	}{result1}
 }
 
-func (fake *ChannelConfig) BlockDataHashingStructureWidthReturnsOnCall(i int, result1 uint32) {
+func (fake *Channel) BlockDataHashingStructureWidthReturnsOnCall(i int, result1 uint32) {
 	fake.blockDataHashingStructureWidthMutex.Lock()
 	defer fake.blockDataHashingStructureWidthMutex.Unlock()
 	fake.BlockDataHashingStructureWidthStub = nil
@@ -115,36 +116,37 @@ func (fake *ChannelConfig) BlockDataHashingStructureWidthReturnsOnCall(i int, re
 	}{result1}
 }
 
-func (fake *ChannelConfig) Capabilities() channelconfig.ChannelCapabilities {
+func (fake *Channel) Capabilities() channelconfig.ChannelCapabilities {
 	fake.capabilitiesMutex.Lock()
 	ret, specificReturn := fake.capabilitiesReturnsOnCall[len(fake.capabilitiesArgsForCall)]
 	fake.capabilitiesArgsForCall = append(fake.capabilitiesArgsForCall, struct {
 	}{})
+	stub := fake.CapabilitiesStub
+	fakeReturns := fake.capabilitiesReturns
 	fake.recordInvocation("Capabilities", []interface{}{})
 	fake.capabilitiesMutex.Unlock()
-	if fake.CapabilitiesStub != nil {
-		return fake.CapabilitiesStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.capabilitiesReturns
 	return fakeReturns.result1
 }
 
-func (fake *ChannelConfig) CapabilitiesCallCount() int {
+func (fake *Channel) CapabilitiesCallCount() int {
 	fake.capabilitiesMutex.RLock()
 	defer fake.capabilitiesMutex.RUnlock()
 	return len(fake.capabilitiesArgsForCall)
 }
 
-func (fake *ChannelConfig) CapabilitiesCalls(stub func() channelconfig.ChannelCapabilities) {
+func (fake *Channel) CapabilitiesCalls(stub func() channelconfig.ChannelCapabilities) {
 	fake.capabilitiesMutex.Lock()
 	defer fake.capabilitiesMutex.Unlock()
 	fake.CapabilitiesStub = stub
 }
 
-func (fake *ChannelConfig) CapabilitiesReturns(result1 channelconfig.ChannelCapabilities) {
+func (fake *Channel) CapabilitiesReturns(result1 channelconfig.ChannelCapabilities) {
 	fake.capabilitiesMutex.Lock()
 	defer fake.capabilitiesMutex.Unlock()
 	fake.CapabilitiesStub = nil
@@ -153,7 +155,7 @@ func (fake *ChannelConfig) CapabilitiesReturns(result1 channelconfig.ChannelCapa
 	}{result1}
 }
 
-func (fake *ChannelConfig) CapabilitiesReturnsOnCall(i int, result1 channelconfig.ChannelCapabilities) {
+func (fake *Channel) CapabilitiesReturnsOnCall(i int, result1 channelconfig.ChannelCapabilities) {
 	fake.capabilitiesMutex.Lock()
 	defer fake.capabilitiesMutex.Unlock()
 	fake.CapabilitiesStub = nil
@@ -167,36 +169,37 @@ func (fake *ChannelConfig) CapabilitiesReturnsOnCall(i int, result1 channelconfi
 	}{result1}
 }
 
-func (fake *ChannelConfig) HashingAlgorithm() func(input []byte) []byte {
+func (fake *Channel) HashingAlgorithm() func(input []byte) []byte {
 	fake.hashingAlgorithmMutex.Lock()
 	ret, specificReturn := fake.hashingAlgorithmReturnsOnCall[len(fake.hashingAlgorithmArgsForCall)]
 	fake.hashingAlgorithmArgsForCall = append(fake.hashingAlgorithmArgsForCall, struct {
 	}{})
+	stub := fake.HashingAlgorithmStub
+	fakeReturns := fake.hashingAlgorithmReturns
 	fake.recordInvocation("HashingAlgorithm", []interface{}{})
 	fake.hashingAlgorithmMutex.Unlock()
-	if fake.HashingAlgorithmStub != nil {
-		return fake.HashingAlgorithmStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.hashingAlgorithmReturns
 	return fakeReturns.result1
 }
 
-func (fake *ChannelConfig) HashingAlgorithmCallCount() int {
+func (fake *Channel) HashingAlgorithmCallCount() int {
 	fake.hashingAlgorithmMutex.RLock()
 	defer fake.hashingAlgorithmMutex.RUnlock()
 	return len(fake.hashingAlgorithmArgsForCall)
 }
 
-func (fake *ChannelConfig) HashingAlgorithmCalls(stub func() func(input []byte) []byte) {
+func (fake *Channel) HashingAlgorithmCalls(stub func() func(input []byte) []byte) {
 	fake.hashingAlgorithmMutex.Lock()
 	defer fake.hashingAlgorithmMutex.Unlock()
 	fake.HashingAlgorithmStub = stub
 }
 
-func (fake *ChannelConfig) HashingAlgorithmReturns(result1 func(input []byte) []byte) {
+func (fake *Channel) HashingAlgorithmReturns(result1 func(input []byte) []byte) {
 	fake.hashingAlgorithmMutex.Lock()
 	defer fake.hashingAlgorithmMutex.Unlock()
 	fake.HashingAlgorithmStub = nil
@@ -205,7 +208,7 @@ func (fake *ChannelConfig) HashingAlgorithmReturns(result1 func(input []byte) []
 	}{result1}
 }
 
-func (fake *ChannelConfig) HashingAlgorithmReturnsOnCall(i int, result1 func(input []byte) []byte) {
+func (fake *Channel) HashingAlgorithmReturnsOnCall(i int, result1 func(input []byte) []byte) {
 	fake.hashingAlgorithmMutex.Lock()
 	defer fake.hashingAlgorithmMutex.Unlock()
 	fake.HashingAlgorithmStub = nil
@@ -219,36 +222,37 @@ func (fake *ChannelConfig) HashingAlgorithmReturnsOnCall(i int, result1 func(inp
 	}{result1}
 }
 
-func (fake *ChannelConfig) OrdererAddresses() []string {
+func (fake *Channel) OrdererAddresses() []string {
 	fake.ordererAddressesMutex.Lock()
 	ret, specificReturn := fake.ordererAddressesReturnsOnCall[len(fake.ordererAddressesArgsForCall)]
 	fake.ordererAddressesArgsForCall = append(fake.ordererAddressesArgsForCall, struct {
 	}{})
+	stub := fake.OrdererAddressesStub
+	fakeReturns := fake.ordererAddressesReturns
 	fake.recordInvocation("OrdererAddresses", []interface{}{})
 	fake.ordererAddressesMutex.Unlock()
-	if fake.OrdererAddressesStub != nil {
-		return fake.OrdererAddressesStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.ordererAddressesReturns
 	return fakeReturns.result1
 }
 
-func (fake *ChannelConfig) OrdererAddressesCallCount() int {
+func (fake *Channel) OrdererAddressesCallCount() int {
 	fake.ordererAddressesMutex.RLock()
 	defer fake.ordererAddressesMutex.RUnlock()
 	return len(fake.ordererAddressesArgsForCall)
 }
 
-func (fake *ChannelConfig) OrdererAddressesCalls(stub func() []string) {
+func (fake *Channel) OrdererAddressesCalls(stub func() []string) {
 	fake.ordererAddressesMutex.Lock()
 	defer fake.ordererAddressesMutex.Unlock()
 	fake.OrdererAddressesStub = stub
 }
 
-func (fake *ChannelConfig) OrdererAddressesReturns(result1 []string) {
+func (fake *Channel) OrdererAddressesReturns(result1 []string) {
 	fake.ordererAddressesMutex.Lock()
 	defer fake.ordererAddressesMutex.Unlock()
 	fake.OrdererAddressesStub = nil
@@ -257,7 +261,7 @@ func (fake *ChannelConfig) OrdererAddressesReturns(result1 []string) {
 	}{result1}
 }
 
-func (fake *ChannelConfig) OrdererAddressesReturnsOnCall(i int, result1 []string) {
+func (fake *Channel) OrdererAddressesReturnsOnCall(i int, result1 []string) {
 	fake.ordererAddressesMutex.Lock()
 	defer fake.ordererAddressesMutex.Unlock()
 	fake.OrdererAddressesStub = nil
@@ -271,36 +275,37 @@ func (fake *ChannelConfig) OrdererAddressesReturnsOnCall(i int, result1 []string
 	}{result1}
 }
 
-func (fake *ChannelConfig) Orderers() []*common.Consenter {
+func (fake *Channel) Orderers() []*common.Consenter {
 	fake.orderersMutex.Lock()
 	ret, specificReturn := fake.orderersReturnsOnCall[len(fake.orderersArgsForCall)]
 	fake.orderersArgsForCall = append(fake.orderersArgsForCall, struct {
 	}{})
+	stub := fake.OrderersStub
+	fakeReturns := fake.orderersReturns
 	fake.recordInvocation("Orderers", []interface{}{})
 	fake.orderersMutex.Unlock()
-	if fake.OrderersStub != nil {
-		return fake.OrderersStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.orderersReturns
 	return fakeReturns.result1
 }
 
-func (fake *ChannelConfig) OrderersCallCount() int {
+func (fake *Channel) OrderersCallCount() int {
 	fake.orderersMutex.RLock()
 	defer fake.orderersMutex.RUnlock()
 	return len(fake.orderersArgsForCall)
 }
 
-func (fake *ChannelConfig) OrderersCalls(stub func() []*common.Consenter) {
+func (fake *Channel) OrderersCalls(stub func() []*common.Consenter) {
 	fake.orderersMutex.Lock()
 	defer fake.orderersMutex.Unlock()
 	fake.OrderersStub = stub
 }
 
-func (fake *ChannelConfig) OrderersReturns(result1 []*common.Consenter) {
+func (fake *Channel) OrderersReturns(result1 []*common.Consenter) {
 	fake.orderersMutex.Lock()
 	defer fake.orderersMutex.Unlock()
 	fake.OrderersStub = nil
@@ -309,7 +314,7 @@ func (fake *ChannelConfig) OrderersReturns(result1 []*common.Consenter) {
 	}{result1}
 }
 
-func (fake *ChannelConfig) OrderersReturnsOnCall(i int, result1 []*common.Consenter) {
+func (fake *Channel) OrderersReturnsOnCall(i int, result1 []*common.Consenter) {
 	fake.orderersMutex.Lock()
 	defer fake.orderersMutex.Unlock()
 	fake.OrderersStub = nil
@@ -323,7 +328,7 @@ func (fake *ChannelConfig) OrderersReturnsOnCall(i int, result1 []*common.Consen
 	}{result1}
 }
 
-func (fake *ChannelConfig) Invocations() map[string][][]interface{} {
+func (fake *Channel) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.blockDataHashingStructureWidthMutex.RLock()
@@ -343,7 +348,7 @@ func (fake *ChannelConfig) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *ChannelConfig) recordInvocation(key string, args []interface{}) {
+func (fake *Channel) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {

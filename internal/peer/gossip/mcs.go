@@ -13,9 +13,9 @@ import (
 
 	pcommon "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -31,6 +31,8 @@ type Hasher interface {
 	Hash(msg []byte, opts bccsp.HashOpts) (hash []byte, err error)
 }
 
+type ChannelConfigGetter func(cid string) channelconfig.Resources
+
 // MSPMessageCryptoService implements the MessageCryptoService interface
 // using the peer MSPs (local and channel-related)
 //
@@ -45,6 +47,7 @@ type MSPMessageCryptoService struct {
 	localSigner                identity.SignerSerializer
 	deserializer               DeserializersManager
 	hasher                     Hasher
+	channelConfigGetter        ChannelConfigGetter
 }
 
 // NewMCS creates a new instance of MSPMessageCryptoService
@@ -58,12 +61,14 @@ func NewMCS(
 	localSigner identity.SignerSerializer,
 	deserializer DeserializersManager,
 	hasher Hasher,
+	channelConfigGetter ChannelConfigGetter,
 ) *MSPMessageCryptoService {
 	return &MSPMessageCryptoService{
 		channelPolicyManagerGetter: channelPolicyManagerGetter,
 		localSigner:                localSigner,
 		deserializer:               deserializer,
 		hasher:                     hasher,
+		channelConfigGetter:        channelConfigGetter,
 	}
 }
 
@@ -145,18 +150,11 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum u
 		return fmt.Errorf("Block with id [%d] on channel [%s] does not have metadata. Block not valid.", block.Header.Number, chainID)
 	}
 
-	metadata, err := protoutil.GetMetadataFromBlock(block, pcommon.BlockMetadataIndex_SIGNATURES)
-	if err != nil {
-		return fmt.Errorf("Failed unmarshalling medatata for signatures [%s]", err)
-	}
-
 	// - Verify that Header.DataHash is equal to the hash of block.Data
 	// This is to ensure that the header is consistent with the data carried by this block
 	if !bytes.Equal(protoutil.BlockDataHash(block.Data), block.Header.DataHash) {
 		return fmt.Errorf("Header.DataHash is different from Hash(block.Data) for block with id [%d] on channel [%s]", block.Header.Number, chainID)
 	}
-
-	// - Get Policy for block validation
 
 	// Get the policy manager for channelID
 	cpm := s.channelPolicyManagerGetter.Manager(channelID)
@@ -170,25 +168,20 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum u
 	// ok is true if it was the policy requested, or false if it is the default policy
 	mcsLogger.Debugf("Got block validation policy for channel [%s] with flag [%t]", channelID, ok)
 
-	// - Prepare SignedData
-	signatureSet := []*protoutil.SignedData{}
-	for _, metadataSignature := range metadata.Signatures {
-		shdr, err := protoutil.UnmarshalSignatureHeader(metadataSignature.SignatureHeader)
-		if err != nil {
-			return fmt.Errorf("Failed unmarshalling signature header for block with id [%d] on channel [%s]: [%s]", block.Header.Number, chainID, err)
+	chConfig := s.channelConfigGetter(channelID)
+	bftEnabled := chConfig.ChannelConfig().Capabilities().ConsensusTypeBFT()
+
+	var consenters []*pcommon.Consenter
+	if bftEnabled {
+		cfg, ok := chConfig.OrdererConfig()
+		if !ok {
+			return fmt.Errorf("no orderer section in channel config for channel [%s].", channelID)
 		}
-		signatureSet = append(
-			signatureSet,
-			&protoutil.SignedData{
-				Identity:  shdr.Creator,
-				Data:      util.ConcatenateBytes(metadata.Value, metadataSignature.SignatureHeader, protoutil.BlockHeaderBytes(block.Header)),
-				Signature: metadataSignature.Signature,
-			},
-		)
+		consenters = cfg.Consenters()
 	}
 
-	// - Evaluate policy
-	return policy.EvaluateSignedData(signatureSet)
+	verifier := protoutil.BlockSignatureVerifier(bftEnabled, consenters, policy)
+	return verifier(block.Header, block.Metadata)
 }
 
 // Sign signs msg with this peer's signing key and outputs

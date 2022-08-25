@@ -571,6 +571,7 @@ func newPeerConfiger(t *testing.T, ledgerMgr *ledgermgmt.LedgerMgr, grpcServer *
 		signer,
 		deserManager,
 		cryptoProvider,
+		nil,
 	)
 	secAdv := peergossip.NewSecurityAdvisor(deserManager)
 	defaultSecureDialOpts := func() []grpc.DialOption {

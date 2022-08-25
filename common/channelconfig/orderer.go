@@ -51,6 +51,7 @@ type OrdererProtos struct {
 	BatchTimeout        *ab.BatchTimeout
 	KafkaBrokers        *ab.KafkaBrokers
 	ChannelRestrictions *ab.ChannelRestrictions
+	Orderers            *cb.Orderers
 	Capabilities        *cb.Capabilities
 }
 
@@ -183,6 +184,10 @@ func (oc *OrdererConfig) MaxChannelsCount() uint64 {
 // Organizations returns a map of the orgs in the channel.
 func (oc *OrdererConfig) Organizations() map[string]OrdererOrg {
 	return oc.orgs
+}
+
+func (oc *OrdererConfig) Consenters() []*cb.Consenter {
+	return oc.protos.Orderers.ConsenterMapping
 }
 
 // Capabilities returns the capabilities the ordering network has for this channel.

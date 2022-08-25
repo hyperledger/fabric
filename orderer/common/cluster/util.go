@@ -18,8 +18,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/protolator"
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -487,6 +489,57 @@ func globalEndpointsFromConfig(aggregatedTLSCerts [][]byte, bundle *channelconfi
 	return globalEndpoints
 }
 
+func BlockVerifierBuilder(bccsp bccsp.BCCSP) func(block *common.Block) protoutil.BlockVerifierFunc {
+	return func(block *common.Block) protoutil.BlockVerifierFunc {
+		bundle, failed := bundleFromConfigBlock(block, bccsp)
+		if failed != nil {
+			return failed
+		}
+
+		policy, exists := bundle.PolicyManager().GetPolicy(policies.BlockValidation)
+		if !exists {
+			return createErrorFunc(errors.New("no policies in config block"))
+		}
+
+		bftEnabled := bundle.ChannelConfig().Capabilities().ConsensusTypeBFT()
+
+		var consenters []*common.Consenter
+		if bftEnabled {
+			cfg, ok := bundle.OrdererConfig()
+			if !ok {
+				return createErrorFunc(errors.New("no orderer section in config block"))
+			}
+			consenters = cfg.Consenters()
+		}
+
+		return protoutil.BlockSignatureVerifier(bftEnabled, consenters, policy)
+	}
+}
+
+func bundleFromConfigBlock(block *common.Block, bccsp bccsp.BCCSP) (*channelconfig.Bundle, protoutil.BlockVerifierFunc) {
+	if block.Data == nil || len(block.Data.Data) == 0 {
+		return nil, createErrorFunc(errors.New("block contains no data"))
+	}
+
+	env := &common.Envelope{}
+	if err := proto.Unmarshal(block.Data.Data[0], env); err != nil {
+		return nil, createErrorFunc(err)
+	}
+
+	bundle, err := channelconfig.NewBundleFromEnvelope(env, bccsp)
+	if err != nil {
+		return nil, createErrorFunc(err)
+	}
+
+	return bundle, nil
+}
+
+func createErrorFunc(err error) protoutil.BlockVerifierFunc {
+	return func(_ *common.BlockHeader, _ *common.BlockMetadata) error {
+		return errors.Wrap(err, "initialized with an invalid config block")
+	}
+}
+
 //go:generate mockery -dir . -name VerifierFactory -case underscore -output ./mocks/
 
 // VerifierFactory creates BlockVerifiers.
@@ -792,4 +845,20 @@ func (cm *ComparisonMemoizer) setup() {
 	defer cm.lock.Unlock()
 	cm.rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 	cm.cache = make(map[arguments]bool)
+}
+
+func requestAsString(request *orderer.StepRequest) string {
+	switch t := request.GetPayload().(type) {
+	case *orderer.StepRequest_SubmitRequest:
+		if t.SubmitRequest == nil || t.SubmitRequest.Payload == nil {
+			return fmt.Sprintf("Empty SubmitRequest: %v", t.SubmitRequest)
+		}
+		return fmt.Sprintf("SubmitRequest for channel %s with payload of size %d",
+			t.SubmitRequest.Channel, len(t.SubmitRequest.Payload.Payload))
+	case *orderer.StepRequest_ConsensusRequest:
+		return fmt.Sprintf("ConsensusRequest for channel %s with payload of size %d",
+			t.ConsensusRequest.Channel, len(t.ConsensusRequest.Payload))
+	default:
+		return fmt.Sprintf("unknown type: %v", request)
+	}
 }

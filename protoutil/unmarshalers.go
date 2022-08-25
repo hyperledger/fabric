@@ -75,6 +75,13 @@ func UnmarshalSignatureHeader(bytes []byte) (*common.SignatureHeader, error) {
 	return sh, errors.Wrap(err, "error unmarshalling SignatureHeader")
 }
 
+// UnmarshalIdentifierHeader unmarshals bytes to an IdentifierHeader
+func UnmarshalIdentifierHeader(bytes []byte) (*common.IdentifierHeader, error) {
+	ih := &common.IdentifierHeader{}
+	err := proto.Unmarshal(bytes, ih)
+	return ih, errors.Wrap(err, "error unmarshalling IdentifierHeader")
+}
+
 func UnmarshalSerializedIdentity(bytes []byte) (*msp.SerializedIdentity, error) {
 	sid := &msp.SerializedIdentity{}
 	err := proto.Unmarshal(bytes, sid)
@@ -86,6 +93,13 @@ func UnmarshalHeader(bytes []byte) (*common.Header, error) {
 	hdr := &common.Header{}
 	err := proto.Unmarshal(bytes, hdr)
 	return hdr, errors.Wrap(err, "error unmarshalling Header")
+}
+
+// UnmarshalConfigEnvelope unmarshals bytes to a ConfigEnvelope
+func UnmarshalConfigEnvelope(bytes []byte) (*common.ConfigEnvelope, error) {
+	cfg := &common.ConfigEnvelope{}
+	err := proto.Unmarshal(bytes, cfg)
+	return cfg, errors.Wrap(err, "error unmarshalling ConfigEnvelope")
 }
 
 // UnmarshalChaincodeHeaderExtension unmarshals bytes to a ChaincodeHeaderExtension

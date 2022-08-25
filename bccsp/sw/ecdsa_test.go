@@ -23,6 +23,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"math/big"
+	"runtime"
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp/utils"
@@ -176,7 +177,14 @@ func TestEcdsaPublicKey(t *testing.T) {
 	invalidCurve := &elliptic.CurveParams{Name: "P-Invalid"}
 	invalidCurve.BitSize = 1024
 	k.pubKey = &ecdsa.PublicKey{Curve: invalidCurve, X: big.NewInt(1), Y: big.NewInt(1)}
-	_, err = k.Bytes()
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "Failed marshalling key [")
+
+	if runtime.Version() < "go1.19" {
+		_, err = k.Bytes()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "Failed marshalling key [")
+	} else {
+		require.Panics(t, func() {
+			_, err = k.Bytes()
+		})
+	}
 }

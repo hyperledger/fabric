@@ -1,0 +1,165 @@
+# Copyright the Hyperledger Fabric contributors. All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: Verify Build
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch:
+
+env:
+  GOPATH: /opt/go
+  PATH: /opt/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+  GO_VER: 1.18.2
+
+jobs:
+  basic-checks:
+    name: Basic Checks
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/setup-go@v3
+        name: Install Go
+        with:
+          go-version: ${{ env.GO_VER }}
+      - uses: actions/checkout@v3
+        name: Checkout Fabric Code
+      - run: make basic-checks
+        name: Run Basic Checks
+  unit-tests:
+    name: Unit Tests
+    needs: basic-checks
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/setup-go@v3
+        name: Install Go
+        with:
+          go-version: ${{ env.GO_VER }}
+      - uses: actions/checkout@v3
+        name: Checkout Fabric Code
+      - run: ci/scripts/setup_hsm.sh
+        name: Install SoftHSM
+      - run: make unit-test
+        name: Run Unit Tests
+  integration-tests-1:
+    name: Integration Tests 1
+    needs: basic-checks
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/setup-go@v3
+        name: Install Go
+        with:
+          go-version: ${{ env.GO_VER }}
+      - uses: actions/checkout@v3
+        name: Checkout Fabric Code
+      - run: ci/scripts/setup_hsm.sh
+        name: Install SoftHSM
+      - run: make integration-test INTEGRATION_TEST_SUITE="raft"
+        name: Run Integration Tests 1
+  integration-tests-2:
+    name: Integration Tests 2
+    needs: basic-checks
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/setup-go@v3
+        name: Install Go
+        with:
+          go-version: ${{ env.GO_VER }}
+      - uses: actions/checkout@v3
+        name: Checkout Fabric Code
+      - run: ci/scripts/setup_hsm.sh
+        name: Install SoftHSM
+      - run: make integration-test INTEGRATION_TEST_SUITE="pvtdata"
+        name: Run Integration Tests 2
+  integration-tests-3:
+    name: Integration Tests 3
+    needs: basic-checks
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/setup-go@v3
+        name: Install Go
+        with:
+          go-version: ${{ env.GO_VER }}
+      - uses: actions/checkout@v3
+        name: Checkout Fabric Code
+      - run: ci/scripts/setup_hsm.sh
+        name: Install SoftHSM
+      - run: make integration-test INTEGRATION_TEST_SUITE="ledger"
+        name: Run Integration Tests 3
+  integration-tests-4:
+    name: Integration Tests 4
+    needs: basic-checks
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/setup-go@v3
+        name: Install Go
+        with:
+          go-version: ${{ env.GO_VER }}
+      - uses: actions/checkout@v3
+        name: Checkout Fabric Code
+      - run: ci/scripts/setup_hsm.sh
+        name: Install SoftHSM
+      - run: make integration-test INTEGRATION_TEST_SUITE="lifecycle"
+        name: Run Integration Tests 4
+  integration-tests-5:
+    name: Integration Tests 5
+    needs: basic-checks
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/setup-go@v3
+        name: Install Go
+        with:
+          go-version: ${{ env.GO_VER }}
+      - uses: actions/checkout@v3
+        name: Checkout Fabric Code
+      - run: ci/scripts/setup_hsm.sh
+        name: Install SoftHSM
+      - run: make integration-test INTEGRATION_TEST_SUITE="e2e"
+        name: Run Integration Tests 5
+  integration-tests-6:
+    name: Integration Tests 6
+    needs: basic-checks
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/setup-go@v3
+        name: Install Go
+        with:
+          go-version: ${{ env.GO_VER }}
+      - uses: actions/checkout@v3
+        name: Checkout Fabric Code
+      - run: ci/scripts/setup_hsm.sh
+        name: Install SoftHSM
+      - run: make integration-test INTEGRATION_TEST_SUITE="gateway idemix pkcs11 configtx configtxlator"
+        name: Run Integration Tests 6
+  integration-tests-7:
+    name: Integration Tests 7
+    needs: basic-checks
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/setup-go@v3
+        name: Install Go
+        with:
+          go-version: ${{ env.GO_VER }}
+      - uses: actions/checkout@v3
+        name: Checkout Fabric Code
+      - run: ci/scripts/setup_hsm.sh
+        name: Install SoftHSM
+      - run: make integration-test INTEGRATION_TEST_SUITE="sbe nwo msp"
+        name: Run Integration Tests 7
+  integration-tests-8:
+    name: Integration Tests 8
+    needs: basic-checks
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/setup-go@v3
+        name: Install Go
+        with:
+          go-version: ${{ env.GO_VER }}
+      - uses: actions/checkout@v3
+        name: Checkout Fabric Code
+      - run: ci/scripts/setup_hsm.sh
+        name: Install SoftHSM
+      - run: make integration-test INTEGRATION_TEST_SUITE="discovery gossip devmode pluggable"
+        name: Run Integration Tests 8

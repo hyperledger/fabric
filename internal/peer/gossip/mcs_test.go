@@ -19,6 +19,7 @@ import (
 	pmsp "github.com/hyperledger/fabric-protos-go/msp"
 	protospeer "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -43,6 +44,30 @@ type signerSerializer interface {
 	identity.SignerSerializer
 }
 
+//go:generate counterfeiter -o mocks/resources.go --fake-name Resources . resources
+
+type resources interface {
+	channelconfig.Resources
+}
+
+//go:generate counterfeiter -o mocks/orderer.go --fake-name Orderer . orderer
+
+type orderer interface {
+	channelconfig.Orderer
+}
+
+//go:generate counterfeiter -o mocks/channel.go --fake-name Channel . channel
+
+type channel interface {
+	channelconfig.Channel
+}
+
+//go:generate counterfeiter -o mocks/channel_capabilities.go --fake-name ChannelCapabilities . channelCapabilities
+
+type channelCapabilities interface {
+	channelconfig.ChannelCapabilities
+}
+
 func TestPKIidOfCert(t *testing.T) {
 	deserializersManager := &mocks.DeserializersManager{
 		LocalDeserializer: &mocks.IdentityDeserializer{Identity: []byte("Alice"), Msg: []byte("msg1"), Mock: mock.Mock{}},
@@ -56,6 +81,7 @@ func TestPKIidOfCert(t *testing.T) {
 		signer,
 		deserializersManager,
 		cryptoProvider,
+		mockChannelConfigGetter,
 	)
 
 	peerIdentity := []byte("Alice")
@@ -95,6 +121,7 @@ func TestPKIidOfNil(t *testing.T) {
 		signer,
 		NewDeserializersManager(localMSP),
 		cryptoProvider,
+		mockChannelConfigGetter,
 	)
 
 	pkid := msgCryptoService.GetPKIidOfCert(nil)
@@ -118,6 +145,7 @@ func TestValidateIdentity(t *testing.T) {
 		signer,
 		deserializersManager,
 		cryptoProvider,
+		mockChannelConfigGetter,
 	)
 
 	err = msgCryptoService.ValidateIdentity([]byte("Alice"))
@@ -156,6 +184,7 @@ func TestSign(t *testing.T) {
 		signer,
 		NewDeserializersManager(localMSP),
 		cryptoProvider,
+		mockChannelConfigGetter,
 	)
 
 	msg := []byte("Hello World!!!")
@@ -192,6 +221,7 @@ func TestVerify(t *testing.T) {
 			},
 		},
 		cryptoProvider,
+		mockChannelConfigGetter,
 	)
 
 	msg := []byte("msg1")
@@ -250,6 +280,7 @@ func TestVerifyBlock(t *testing.T) {
 			},
 		},
 		cryptoProvider,
+		mockChannelConfigGetter,
 	)
 
 	// - Prepare testing valid block, Alice signs it.
@@ -273,6 +304,85 @@ func TestVerifyBlock(t *testing.T) {
 
 	// - Prepare testing invalid block (wrong data has), Alice signs it.
 	blockRaw, msg = mockBlock(t, "C", 42, aliceSigner, []byte{0})
+	policyManagerGetter.Managers["C"].(*mocks.ChannelPolicyManager).Policy.(*mocks.Policy).Deserializer.(*mocks.IdentityDeserializer).Msg = msg
+
+	// - Verify block
+	require.Error(t, msgCryptoService.VerifyBlock([]byte("C"), 42, blockRaw))
+
+	// Check invalid args
+	require.Error(t, msgCryptoService.VerifyBlock([]byte("C"), 42, &common.Block{}))
+}
+
+func TestVerifyBlockBFT(t *testing.T) {
+	aliceSigner := &mocks.SignerSerializer{}
+	consenters := mockConsenters()
+	aliceID := protoutil.MarshalOrPanic(&pmsp.SerializedIdentity{
+		Mspid:   consenters[0].MspId,
+		IdBytes: consenters[0].Identity,
+	})
+	bobID := protoutil.MarshalOrPanic(&pmsp.SerializedIdentity{
+		Mspid:   consenters[1].MspId,
+		IdBytes: consenters[1].Identity,
+	})
+	charlieID := protoutil.MarshalOrPanic(&pmsp.SerializedIdentity{
+		Mspid:   consenters[2].MspId,
+		IdBytes: consenters[2].Identity,
+	})
+	aliceSigner.SerializeReturns(aliceID, nil)
+	policyManagerGetter := &mocks.ChannelPolicyManagerGetterWithManager{
+		Managers: map[string]policies.Manager{
+			"A": &mocks.ChannelPolicyManager{
+				Policy: &mocks.Policy{Deserializer: &mocks.IdentityDeserializer{Identity: bobID, Msg: []byte("msg2"), Mock: mock.Mock{}}},
+			},
+			"B": &mocks.ChannelPolicyManager{
+				Policy: &mocks.Policy{Deserializer: &mocks.IdentityDeserializer{Identity: charlieID, Msg: []byte("msg3"), Mock: mock.Mock{}}},
+			},
+			"C": &mocks.ChannelPolicyManager{
+				Policy: &mocks.Policy{Deserializer: &mocks.IdentityDeserializer{Identity: aliceID, Msg: []byte("msg1"), Mock: mock.Mock{}}},
+			},
+			"D": &mocks.ChannelPolicyManager{
+				Policy: &mocks.Policy{Deserializer: &mocks.IdentityDeserializer{Identity: aliceID, Msg: []byte("msg1"), Mock: mock.Mock{}}},
+			},
+		},
+	}
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	require.NoError(t, err)
+	msgCryptoService := NewMCS(
+		policyManagerGetter,
+		aliceSigner,
+		&mocks.DeserializersManager{
+			LocalDeserializer: &mocks.IdentityDeserializer{Identity: aliceID, Msg: []byte("msg1"), Mock: mock.Mock{}},
+			ChannelDeserializers: map[string]msp.IdentityDeserializer{
+				"A": &mocks.IdentityDeserializer{Identity: bobID, Msg: []byte("msg2"), Mock: mock.Mock{}},
+				"B": &mocks.IdentityDeserializer{Identity: charlieID, Msg: []byte("msg3"), Mock: mock.Mock{}},
+			},
+		},
+		cryptoProvider,
+		mockChannelConfigGetterBFT,
+	)
+
+	// - Prepare testing valid block, Alice signs it.
+	blockRaw, msg := mockBlockBFT(t, "C", 42, aliceSigner, nil)
+	policyManagerGetter.Managers["C"].(*mocks.ChannelPolicyManager).Policy.(*mocks.Policy).Deserializer.(*mocks.IdentityDeserializer).Msg = msg
+	blockRaw2, msg2 := mockBlockBFT(t, "D", 42, aliceSigner, nil)
+	policyManagerGetter.Managers["D"].(*mocks.ChannelPolicyManager).Policy.(*mocks.Policy).Deserializer.(*mocks.IdentityDeserializer).Msg = msg2
+
+	// - Verify block
+	require.NoError(t, msgCryptoService.VerifyBlock([]byte("C"), 42, blockRaw))
+	// Wrong sequence number claimed
+	err = msgCryptoService.VerifyBlock([]byte("C"), 43, blockRaw)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "but actual seqNum inside block is")
+	delete(policyManagerGetter.Managers, "D")
+	nilPolMgrErr := msgCryptoService.VerifyBlock([]byte("D"), 42, blockRaw2)
+	require.Contains(t, nilPolMgrErr.Error(), "Could not acquire policy manager")
+	require.Error(t, nilPolMgrErr)
+	require.Error(t, msgCryptoService.VerifyBlock([]byte("A"), 42, blockRaw))
+	require.Error(t, msgCryptoService.VerifyBlock([]byte("B"), 42, blockRaw))
+
+	// - Prepare testing invalid block (wrong data has), Alice signs it.
+	blockRaw, msg = mockBlockBFT(t, "C", 42, aliceSigner, []byte{0})
 	policyManagerGetter.Managers["C"].(*mocks.ChannelPolicyManager).Policy.(*mocks.Policy).Deserializer.(*mocks.IdentityDeserializer).Msg = msg
 
 	// - Verify block
@@ -311,6 +421,49 @@ func mockBlock(t *testing.T, channel string, seqNum uint64, localSigner *mocks.S
 	blockSignatureValue := []byte(nil)
 
 	msg := util.ConcatenateBytes(blockSignatureValue, blockSignature.SignatureHeader, protoutil.BlockHeaderBytes(block.Header))
+	localSigner.SignReturns(msg, nil)
+	blockSignature.Signature, err = localSigner.Sign(msg)
+	require.NoError(t, err, "Failed signing block")
+
+	block.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&common.Metadata{
+		Value: blockSignatureValue,
+		Signatures: []*common.MetadataSignature{
+			blockSignature,
+		},
+	})
+
+	return block, msg
+}
+
+func mockBlockBFT(t *testing.T, channel string, seqNum uint64, localSigner *mocks.SignerSerializer, dataHash []byte) (*common.Block, []byte) {
+	block := protoutil.NewBlock(seqNum, nil)
+
+	// Add a fake transaction to the block referring channel "C"
+	sProp, _ := protoutil.MockSignedEndorserProposalOrPanic(channel, &protospeer.ChaincodeSpec{}, []byte("transactor"), []byte("transactor's signature"))
+	sPropRaw, err := protoutil.Marshal(sProp)
+	require.NoError(t, err, "Failed marshalling signed proposal")
+	block.Data.Data = [][]byte{sPropRaw}
+
+	// Compute hash of block.Data and put into the Header
+	if len(dataHash) != 0 {
+		block.Header.DataHash = dataHash
+	} else {
+		block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+	}
+
+	ihdr := &common.IdentifierHeader{
+		Identifier: 1,
+	}
+
+	blockSignature := &common.MetadataSignature{
+		IdentifierHeader: protoutil.MarshalOrPanic(ihdr),
+	}
+
+	// Note, this value is intentionally nil, as this metadata is only about the signature, there is no additional metadata
+	// information required beyond the fact that the metadata item is signed.
+	blockSignatureValue := []byte(nil)
+
+	msg := util.ConcatenateBytes(blockSignatureValue, blockSignature.IdentifierHeader, protoutil.BlockHeaderBytes(block.Header))
 	localSigner.SignReturns(msg, nil)
 	blockSignature.Signature, err = localSigner.Sign(msg)
 	require.NoError(t, err, "Failed signing block")
@@ -367,6 +520,7 @@ func TestExpiration(t *testing.T) {
 		&mocks.SignerSerializer{},
 		deserializersManager,
 		cryptoProvider,
+		mockChannelConfigGetter,
 	)
 
 	// Green path I check the expiration date is as expected
@@ -385,4 +539,56 @@ func TestExpiration(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "No MSP found able to do that")
 	require.Zero(t, exp)
+}
+
+func mockChannelConfigGetter(cid string) channelconfig.Resources {
+	o := &mocks.Orderer{}
+	o.ConsentersReturns([]*common.Consenter{})
+	cap := &mocks.ChannelCapabilities{}
+	cap.ConsensusTypeBFTReturns(false)
+	c := &mocks.Channel{}
+	c.CapabilitiesReturns(cap)
+	res := &mocks.Resources{}
+	res.OrdererConfigReturns(o, false)
+	res.ChannelConfigReturns(c)
+	return res
+}
+
+func mockChannelConfigGetterBFT(cid string) channelconfig.Resources {
+	o := &mocks.Orderer{}
+	o.ConsentersReturns(mockConsenters())
+	cap := &mocks.ChannelCapabilities{}
+	cap.ConsensusTypeBFTReturns(true)
+	c := &mocks.Channel{}
+	c.CapabilitiesReturns(cap)
+	res := &mocks.Resources{}
+	res.OrdererConfigReturns(o, true)
+	res.ChannelConfigReturns(c)
+	return res
+}
+
+func mockConsenters() []*common.Consenter {
+	return []*common.Consenter{
+		{
+			Id:       1,
+			Host:     "host1",
+			Port:     8001,
+			MspId:    "msp1",
+			Identity: []byte("identity1"),
+		},
+		{
+			Id:       2,
+			Host:     "host2",
+			Port:     8002,
+			MspId:    "msp2",
+			Identity: []byte("identity2"),
+		},
+		{
+			Id:       3,
+			Host:     "host3",
+			Port:     8003,
+			MspId:    "msp3",
+			Identity: []byte("identity3"),
+		},
+	}
 }

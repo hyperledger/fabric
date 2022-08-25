@@ -68,6 +68,7 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 		signer,
 		deserManager,
 		cryptoProvider,
+		nil,
 	)
 	secAdv := peergossip.NewSecurityAdvisor(deserManager)
 	defaultSecureDialOpts := func() []grpc.DialOption { return []grpc.DialOption{grpc.WithInsecure()} }

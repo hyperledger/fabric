@@ -35,6 +35,8 @@ const (
 	// ChannelGroupKey is the name of the channel group
 	ChannelGroupKey = "Channel"
 
+	OrderersKey = "Orderers"
+
 	// CapabilitiesKey is the name of the key which refers to capabilities, it appears at the channel,
 	// application, and orderer levels and this constant is used for all three.
 	CapabilitiesKey = "Capabilities"
@@ -59,6 +61,7 @@ type ChannelProtos struct {
 	HashingAlgorithm          *cb.HashingAlgorithm
 	BlockDataHashingStructure *cb.BlockDataHashingStructure
 	OrdererAddresses          *cb.OrdererAddresses
+	Orderers                  *cb.Orderers
 	Consortium                *cb.Consortium
 	Capabilities              *cb.Capabilities
 }

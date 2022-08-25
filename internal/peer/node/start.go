@@ -457,6 +457,7 @@ func serve(args []string) error {
 		coreConfig.PeerAddress,
 		deliverServiceConfig,
 		privdataConfig,
+		peerInstance,
 	)
 	if err != nil {
 		return errors.WithMessage(err, "failed to initialize gossip service")
@@ -1195,6 +1196,7 @@ func initGossipService(
 	peerAddress string,
 	deliverServiceConfig *deliverservice.DeliverServiceConfig,
 	privdataConfig *gossipprivdata.PrivdataConfig,
+	peerInstance *peer.Peer,
 ) (*gossipservice.GossipService, error) {
 	var certs *gossipcommon.TLSCertificates
 	if peerServer.TLSEnabled() {
@@ -1215,6 +1217,7 @@ func initGossipService(
 		signer,
 		deserManager,
 		factory.GetDefault(),
+		peerInstance.GetChannelConfig,
 	)
 	secAdv := peergossip.NewSecurityAdvisor(deserManager)
 	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")

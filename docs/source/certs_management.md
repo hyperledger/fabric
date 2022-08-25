@@ -379,3 +379,76 @@ Certificate:
          9c:02:20:51:33:42:5e:a0:8a:2a:ec:f5:83:46:f0:99:6a:7e:
          eb:a8:97:1f:30:99:9d:ae:8d:ef:36:07:da:bb:67:ed:80
 ```
+
+## Certificate Renewal
+
+All nodes and clients should have their enrollment and TLS certificates renewed before expiring to avoid disruption of service.
+Use the Fabric CA enroll or reenroll function to get updated certificates from the issuing Fabric Certificate Authority (CA).
+The reenroll function allows the reuse of an existing private key, which is especially important for orderer TLS certificates.
+
+### Renewal of Expired Certificates
+
+Certificates can still be renewed by using the reenroll function after they expire, but Fabric CA must be at version v1.5.5 or above, and must be configured to allow it.
+Enable the `reenrollignorecertexpiry` option on the Fabric CA server prior to reenrollment by adding the `reenrollignorecertexpiry` parameter to the fabric-ca-server-config.yaml, as follows:
+
+```
+ca:
+  certfile: /crypto/tlsca/cert.pem
+  chainfile: /crypto/tlsca/chain.pem
+  keyfile: /crypto/tlsca/key.pem
+  name: tlsca
+  reenrollignorecertexpiry: true
+```
+
+Alternatively, `reenrollignorecertexpiry` can be also be set with an environment variable or Fabric CA server startup flag:
+
+* Set the FABRIC_CA_SERVER_CA_REENROLLIGNORECERTEXPIRY environment variable to true at CA startup
+* Start the CA with the flag --ca.reenrollignorecertexpiry=true
+
+Restart the Fabric CA servers.
+
+### Renew Peer Certificates
+
+For peer enrollment certificates and TLS certificates you can use either the `enroll` or `reenroll` function from the Fabric CA client. Use `reenroll` if you would like to reuse a private key by passing the `csr.keyrequest.reusekey` option and indicating the `mspdir` location of the existing private key (the private key is found in the <mspdir>/keystore directory):
+
+```
+fabric-ca-client enroll --<OTHER-OPTIONS>
+
+fabric-ca-client reenroll --csr.keyrequest.reusekey --mspdir <LOCATION-OF-IDENTITY'S-MSP-DIRECTORY-THAT-CONTAINS-THE-EXISTING-PRIVATE-KEY> --<OTHER-OPTIONS>
+```
+
+Replace the peer's enrollment certificate or TLS certificate.
+
+The peer's enrollment certificate is configured to be in the peer's `<peer.mspConfigPath>/signcerts` directory (if private key was not reused the new private key should also be updated in the `<peer.mspConfigPath>/keystore` directory).
+
+The peer's TLS certificate is configured to be in the peer's `<peer.tls.cert.file>` directory/file (if private key was not reused the new private key should also be updated in the `<peer.tls.key.file>`).
+
+Restart the peer.
+
+### Renew Orderer Certificates
+
+For orderer enrollment certificates you can also use the `enroll` or `reenroll` function, using the steps described above for peers.
+
+Orderer TLS certificates must be reenrolled with the option to reuse the private key. This is due to the orderer TLS certificates being configured in the system and application channels (orderer to orderer communication is verified using the public key in the configured TLS certificate). As of v1.4.9 and v2.2.1, orderer nodes verify a matching key rather than the entire configured TLS certificate, enabling orderer TLS certificate renewal without requiring a channel configuration update to update the certificate.
+
+Use `reenroll` and reuse the TLS certificate's private key by passing the `csr.keyrequest.reusekey` option and indicating the `mspdir` location of the existing private key (the private key is found in the `<mspdir>/keystore` directory):
+
+```
+fabric-ca-client reenroll --csr.keyrequest.reusekey --mspdir <LOCATION-OF-IDENTITY'S-MSP-DIRECTORY-THAT-CONTAINS-THE-EXISTING-PRIVATE-KEY> --<OTHER-OPTIONS>`
+```
+
+Replace the orderer's enrollment certificate or TLS certificate.
+
+The orderer's enrollment certificate is configured to be in the orderer's `<General.LocalMSPDir>/signcerts` directory (if private key was not reused the new private key should also be updated in the `<General.LocalMSPDir>/keystore` directory).
+
+The orderer's TLS certificate is configured to be in the orderer's `<General.TLS.Certificate>` directory/file (don't update the private key since it was reused).
+
+Restart the orderer node.
+
+### Renew Orderer TLS Certificates Without Reusing the Private Key
+
+While it is recommended to reuse the private key for orderer TLS certificate renewal, this may not be possible in all situations. Additional steps and planning are required since each ordering service channel (including the system channel, if used) must be updated for the new orderer TLS certificate.
+
+Suppose you do not reuse the orderer TLS private key during re-enrollment, and the original orderer TLS certificates have not yet expired. In that case, you must update the orderer TLS certificates one at a time on each node and in each channel configuration and then verify the orderer function before moving on to other orderer node TLS certificate updates.
+
+If you do not reuse the orderer TLS private key and the original orderer TLS certificates have expired, the ordering service will not be able to form consensus and will therefore not be able to process transactions including channel configuration updates. The ordering service recovery process is complicated as you must temporarily utilize the orderer `TLSHandshakeTimeShift` property on all nodes and restart them in order to form consensus with the expired certificates so that channel configuration updates can be processed to update the TLS certificates. Update a majority of the orderer TLS certificates (e.g. 3 out of 5) one at a time on each node and in the channel configuration. Once a majority have been updated the new certificate expiration dates will no longer fall within the `TLSHandshakeTimeShift` and therefore the updated ordering nodes will fall out of the consenter set causing loss of consensus again. Next, remove the `TLSHandshakeTimeShift` setting from all nodes. Upon restart the majority of updated orderer nodes will now form consensus and you can then update the remaining orderer TLS certificates (e.g. 2 out of 5) one at a time on each node and in the channel configuration.
