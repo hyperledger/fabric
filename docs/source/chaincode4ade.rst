@@ -599,7 +599,7 @@ Being able to predictably handle data formats is critical, and also the ability 
 
 Technical Problem
 ^^^^^^^^^^^^^^^^^
-The format of the data that is stored in Fabric is at the discretion of the user. 
+The format of the data that is stored in Fabric is at the discretion of the user.
 The lowest level API accepts a byte array and stores that - what this represents is not a concern to Fabric.
 The important thing is when simulating transactions, given the same inputs chaincode gives the same byte array.
 Otherwise, the endorsements may not all match and the transaction will either not be submitted or will be invalidated.
@@ -626,18 +626,18 @@ Node.js
 ^^^^^^^
 In Javascript, when serialising object into JSON, the function ``JSON.stringify()`` is commonly used.
 However, to achieve consistent results, a deterministic version of JSON.stringify() is needed; in this way it is possible to get a consistent hash from stringified results.
-``json-stringify-deterministic`` is a good library to do so and can be used combined with ``sort-keys-recursive`` to attain alphabetic order too. 
+``json-stringify-deterministic`` is a good library to do so and can be used combined with ``sort-keys-recursive`` to attain alphabetic order too.
 `Here <https://www.npmjs.com/package/json-stringify-deterministic>`_ for a more in-depth tutorial.
 
 Java
 ^^^^
 Java provides several libraries to serialize an object into a JSON string. However not all of them provide consistency and ordering.
 The ``Gson`` library, for example, does not provide any consistency and should therefore be avoided for this application. On the other hand,
-the ``Genson`` library is a good fit for our purpose as it produces consistent JSON in alphabetic oreder.
+the ``Genson`` library is a good fit for our purpose as it produces consistent JSON in alphabetic order.
 
 You can find a good exemplification of this practise on the `asset-transfer-basic <https://github.com/hyperledger/fabric-samples/tree/main/asset-transfer-basic>`_ chaincodes.
 
-.. Note:: 
+.. Note::
         This is only one of the many approaches which we think can be effective.
         When serialising you can utilise various methods to achieve consistency; nevertheless,
         considering the different characteristics of the programming languages used in Fabric,
