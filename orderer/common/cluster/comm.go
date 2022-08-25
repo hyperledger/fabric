@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -55,6 +56,8 @@ type Comm struct {
 	Chan2Members                     MembersByChannel
 	Metrics                          *Metrics
 	CompareCertificate               CertificateComparator
+	NodeID                           uint64
+	Signer                           identity.Signer
 }
 
 type requestContext struct {
@@ -295,6 +298,16 @@ func (c *Comm) createRemoteContext(stub *Stub, channel string) func() (*RemoteCo
 		}
 
 		clusterClient := orderer.NewClusterClient(conn)
+		getStream := func(ctx context.Context) (StepClientStream, error) {
+			stream, err := clusterClient.Step(ctx)
+			if err != nil {
+				return nil, err
+			}
+			stepClientStream := &CommClientStream{
+				StepClient: stream,
+			}
+			return stepClientStream, nil
+		}
 
 		workerCountReporter := workerCountReporter{
 			channel: channel,
@@ -313,7 +326,7 @@ func (c *Comm) createRemoteContext(stub *Stub, channel string) func() (*RemoteCo
 			Logger:                           c.Logger,
 			ProbeConn:                        probeConnection,
 			conn:                             conn,
-			Client:                           clusterClient,
+			GetStreamFunc:                    getStream,
 		}
 		return rc, nil
 	}

@@ -1217,10 +1217,14 @@ func (c *Chain) remotePeers() ([]cluster.RemoteNode, error) {
 			return nil, errors.WithStack(err)
 		}
 		nodes = append(nodes, cluster.RemoteNode{
-			ID:            raftID,
-			Endpoint:      fmt.Sprintf("%s:%d", consenter.Host, consenter.Port),
-			ServerTLSCert: serverCertAsDER,
-			ClientTLSCert: clientCertAsDER,
+			NodeAddress: cluster.NodeAddress{
+				ID:       raftID,
+				Endpoint: fmt.Sprintf("%s:%d", consenter.Host, consenter.Port),
+			},
+			NodeCerts: cluster.NodeCerts{
+				ServerTLSCert: serverCertAsDER,
+				ClientTLSCert: clientCertAsDER,
+			},
 		})
 	}
 	return nodes, nil

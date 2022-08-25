@@ -8,6 +8,7 @@ package cluster_test
 
 import (
 	"bytes"
+	"context"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
@@ -31,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
@@ -1360,4 +1362,53 @@ func sampleConfigBlock() *common.Block {
 			},
 		},
 	}
+}
+
+func TestGetTLSSessionBinding(t *testing.T) {
+	serverCert, err := ca.NewServerCertKeyPair("127.0.0.1")
+	require.NoError(t, err)
+
+	srv, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{
+		SecOpts: comm.SecureOptions{
+			Certificate: serverCert.Cert,
+			Key:         serverCert.Key,
+			UseTLS:      true,
+		},
+	})
+	require.NoError(t, err)
+
+	handler := &mocks.Handler{}
+
+	svc := &cluster.ClusterService{
+		MinimumExpirationWarningInterval: time.Second * 2,
+		StreamCountReporter: &cluster.StreamCountReporter{
+			Metrics: cluster.NewMetrics(&disabled.Provider{}),
+		},
+		Logger:              flogging.MustGetLogger("test"),
+		StepLogger:          flogging.MustGetLogger("test"),
+		RequestHandler:      handler,
+		MembershipByChannel: make(map[string]*cluster.ChannelMembersConfig),
+	}
+
+	orderer.RegisterClusterNodeServiceServer(srv.Server(), svc)
+	go srv.Start()
+	defer srv.Stop()
+
+	clientConf := comm.ClientConfig{
+		DialTimeout: time.Second * 3,
+		SecOpts: comm.SecureOptions{
+			ServerRootCAs: [][]byte{ca.CertBytes()},
+			UseTLS:        true,
+		},
+	}
+	conn, err := clientConf.Dial(srv.Address())
+	require.NoError(t, err)
+
+	cl := orderer.NewClusterNodeServiceClient(conn)
+	stream, err := cl.Step(context.Background())
+	require.NoError(t, err)
+
+	binding, err := cluster.GetTLSSessionBinding(stream.Context(), []byte{1, 2, 3, 4, 5})
+	require.NoError(t, err)
+	require.Len(t, binding, 32)
 }

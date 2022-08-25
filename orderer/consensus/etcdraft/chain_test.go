@@ -3370,10 +3370,14 @@ func nodeConfigFromMetadata(consenterMetadata *raftprotos.ConfigMetadata) []clus
 		serverDER, _ := pem.Decode(consenter.ServerTlsCert)
 		clientDER, _ := pem.Decode(consenter.ClientTlsCert)
 		node := cluster.RemoteNode{
-			ID:            uint64(i + 1),
-			Endpoint:      "localhost:7050",
-			ServerTLSCert: serverDER.Bytes,
-			ClientTLSCert: clientDER.Bytes,
+			NodeAddress: cluster.NodeAddress{
+				ID:       uint64(i + 1),
+				Endpoint: "localhost:7050",
+			},
+			NodeCerts: cluster.NodeCerts{
+				ServerTLSCert: serverDER.Bytes,
+				ClientTLSCert: clientDER.Bytes,
+			},
 		}
 		nodes = append(nodes, node)
 	}

@@ -25,19 +25,19 @@ type Stream struct {
 		request *orderer.StepRequest
 		report  func(error)
 	}
-	commShutdown chan struct{}
-	abortReason  *atomic.Value
-	metrics      *Metrics
-	ID           uint64
-	Channel      string
-	NodeName     string
-	Endpoint     string
-	Logger       *flogging.FabricLogger
-	Timeout      time.Duration
-	orderer.Cluster_StepClient
-	Cancel   func(error)
-	canceled *uint32
-	expCheck *certificateExpirationCheck
+	commShutdown       chan struct{}
+	abortReason        *atomic.Value
+	metrics            *Metrics
+	ID                 uint64
+	Channel            string
+	NodeName           string
+	Endpoint           string
+	Logger             *flogging.FabricLogger
+	Timeout            time.Duration
+	Cluster_StepClient StepClientStream
+	Cancel             func(error)
+	canceled           *uint32
+	expCheck           *certificateExpirationCheck
 }
 
 // StreamOperation denotes an operation done by a stream, such a Send or Receive.
