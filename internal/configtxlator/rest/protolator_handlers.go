@@ -8,7 +8,9 @@ package rest
 
 import (
 	"bytes"
+	"io"
 	"fmt"
+	"strings"
 	"io/ioutil"
 	"net/http"
 	"reflect"
