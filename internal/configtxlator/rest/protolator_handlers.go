@@ -33,7 +33,8 @@ func Decode(w http.ResponseWriter, r *http.Request) {
 	msg, err := getMsgType(r)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintln(w, err)
+		reader := strings.NewReader(err)
+  		io.Copy(w, reader)
 		return
 	}
 
