@@ -104,7 +104,7 @@ func run() error {
 		return errors.WithMessagef(err, "%s not found ", connectionSrcFile)
 	}
 
-	connectionFileContents, err := ioutil.ReadFile(connectionSrcFile)
+	connectionFileContents, err := ioutil.ReadFile(*connectionSrcFile)
 	if err != nil {
 		return err
 	}
