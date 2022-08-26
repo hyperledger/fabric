@@ -93,11 +93,14 @@ func (s *ClusterService) Step(stream orderer.ClusterNodeService_StepServer) erro
 		return status.Errorf(codes.Unauthenticated, "access denied")
 	}
 
-	defer s.Logger.Debugf("Closing connection from %s(%s)", commonName, addr)
-
 	streamID := atomic.AddUint64(&s.MembershipByChannel[authReq.Channel].nextStreamID, 1)
 	s.MembershipByChannel[authReq.Channel].AuthorizedStreams.Store(streamID, authReq.FromId)
 	s.Lock.RUnlock()
+
+	defer s.Logger.Debugf("Closing connection from %s(%s)", commonName, addr)
+	defer func() {
+		s.MembershipByChannel[authReq.Channel].AuthorizedStreams.Delete(streamID)
+	}()
 
 	for {
 		err := s.handleMessage(stream, addr, exp, authReq.Channel, authReq.FromId, streamID)
@@ -151,7 +154,7 @@ func (s *ClusterService) VerifyAuthRequest(stream orderer.ClusterNodeService_Ste
 		return nil, errors.Errorf("node %d is not member of channel %s", authReq.FromId, authReq.Channel)
 	}
 
-	err = VerifySignature(identity, msg, authReq.Signature)
+	err = VerifySignature(identity, SHA256Digest(msg), authReq.Signature)
 	if err != nil {
 		return nil, errors.Wrap(err, "signature mismatch")
 	}

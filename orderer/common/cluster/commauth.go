@@ -272,7 +272,7 @@ func (cs *NodeClientStream) Auth() error {
 		SessionBinding: payload.SessionBinding,
 		Channel:        payload.Channel,
 	})
-	sig, err := cs.Signer.Sign(asnSignFields)
+	sig, err := cs.Signer.Sign(SHA256Digest(asnSignFields))
 	if err != nil {
 		return errors.Wrap(err, "signing failed")
 	}

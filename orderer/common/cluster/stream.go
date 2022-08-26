@@ -25,19 +25,19 @@ type Stream struct {
 		request *orderer.StepRequest
 		report  func(error)
 	}
-	commShutdown       chan struct{}
-	abortReason        *atomic.Value
-	metrics            *Metrics
-	ID                 uint64
-	Channel            string
-	NodeName           string
-	Endpoint           string
-	Logger             *flogging.FabricLogger
-	Timeout            time.Duration
-	Cluster_StepClient StepClientStream
-	Cancel             func(error)
-	canceled           *uint32
-	expCheck           *certificateExpirationCheck
+	commShutdown chan struct{}
+	abortReason  *atomic.Value
+	metrics      *Metrics
+	ID           uint64
+	Channel      string
+	NodeName     string
+	Endpoint     string
+	Logger       *flogging.FabricLogger
+	Timeout      time.Duration
+	StepClient   StepClientStream
+	Cancel       func(error)
+	canceled     *uint32
+	expCheck     *certificateExpirationCheck
 }
 
 // StreamOperation denotes an operation done by a stream, such a Send or Receive.
@@ -114,7 +114,7 @@ func (stream *Stream) sendMessage(request *orderer.StepRequest, report func(erro
 	f := func() (*orderer.StepResponse, error) {
 		startSend := time.Now()
 		stream.expCheck.checkExpiration(startSend, stream.Channel)
-		err := stream.Cluster_StepClient.Send(request)
+		err := stream.StepClient.Send(request)
 		stream.metrics.reportMsgSendTime(stream.Endpoint, stream.Channel, time.Since(startSend))
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func (stream *Stream) Recv() (*orderer.StepResponse, error) {
 	}()
 
 	f := func() (*orderer.StepResponse, error) {
-		return stream.Cluster_StepClient.Recv()
+		return stream.StepClient.Recv()
 	}
 
 	return stream.operateWithTimeout(f, func(_ error) {})

@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdsa"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
@@ -927,4 +928,9 @@ func VerifySignature(identity, msgHash, signature []byte) error {
 		return errors.New("signature invalid")
 	}
 	return nil
+}
+
+func SHA256Digest(data []byte) []byte {
+	hash := sha256.Sum256(data)
+	return hash[:]
 }

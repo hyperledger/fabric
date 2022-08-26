@@ -154,7 +154,7 @@ func TestClusterServiceStep(t *testing.T) {
 			Channel:        authRequest.Channel,
 		})
 
-		sig1, err := signer.Sign(asnSignFields)
+		sig1, err := signer.Sign(cluster.SHA256Digest(asnSignFields))
 		require.NoError(t, err)
 
 		authRequest.SessionBinding = sessionBinding
@@ -271,7 +271,7 @@ func TestClusterServiceStep(t *testing.T) {
 
 		clientKeyPair, _ := ca.NewClientCertKeyPair()
 		signer := signingIdentity{clientKeyPair.Signer}
-		sig, err := signer.Sign(asnSignFields)
+		sig, err := signer.Sign(cluster.SHA256Digest(asnSignFields))
 		require.NoError(t, err)
 
 		authRequest.Signature = sig
@@ -330,7 +330,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 
 		clientKeyPair1, _ := ca.NewClientCertKeyPair()
 		signer := signingIdentity{clientKeyPair1.Signer}
-		sig, err := signer.Sign(asnSignFields)
+		sig, err := signer.Sign(cluster.SHA256Digest(asnSignFields))
 		require.NoError(t, err)
 
 		authRequest.Signature = sig
@@ -407,7 +407,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 
 		clientKeyPair1, _ := ca.NewClientCertKeyPair()
 		signer := signingIdentity{clientKeyPair1.Signer}
-		sig, err := signer.Sign(asnSignFields)
+		sig, err := signer.Sign(cluster.SHA256Digest(asnSignFields))
 		require.NoError(t, err)
 
 		authRequest.Signature = sig
@@ -447,7 +447,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 
 		clientKeyPair1, _ := ca.NewClientCertKeyPair()
 		signer := signingIdentity{clientKeyPair1.Signer}
-		sig, err := signer.Sign(asnSignFields)
+		sig, err := signer.Sign(cluster.SHA256Digest(asnSignFields))
 		require.NoError(t, err)
 
 		authRequest.Signature = sig
@@ -498,7 +498,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 
 		clientKeyPair1, _ := ca.NewClientCertKeyPair()
 		signer := signingIdentity{clientKeyPair1.Signer}
-		sig, err := signer.Sign(asnSignFields)
+		sig, err := signer.Sign(cluster.SHA256Digest(asnSignFields))
 		require.NoError(t, err)
 
 		authRequest.Signature = sig
@@ -541,7 +541,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 
 		clientKeyPair1, _ := ca.NewClientCertKeyPair()
 		signer := signingIdentity{clientKeyPair1.Signer}
-		sig, err := signer.Sign(asnSignFields)
+		sig, err := signer.Sign(cluster.SHA256Digest(asnSignFields))
 		require.NoError(t, err)
 
 		authRequest.Signature = sig
@@ -627,7 +627,7 @@ func TestExpirationWarning(t *testing.T) {
 
 	clientKeyPair1, _ := ca.NewClientCertKeyPair()
 	signer := signingIdentity{clientKeyPair1.Signer}
-	sig, err := signer.Sign(asnSignFields)
+	sig, err := signer.Sign(cluster.SHA256Digest(asnSignFields))
 	require.NoError(t, err)
 
 	authRequest.Signature = sig

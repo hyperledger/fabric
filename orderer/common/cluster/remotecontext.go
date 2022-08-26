@@ -87,15 +87,15 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 			request *orderer.StepRequest
 			report  func(error)
 		}, rc.SendBuffSize),
-		commShutdown:       rc.shutdownSignal,
-		NodeName:           nodeName,
-		Logger:             stepLogger,
-		ID:                 streamID,
-		Endpoint:           rc.endpoint,
-		Timeout:            timeout,
-		Cluster_StepClient: stream,
-		Cancel:             cancelWithReason,
-		canceled:           &canceled,
+		commShutdown: rc.shutdownSignal,
+		NodeName:     nodeName,
+		Logger:       stepLogger,
+		ID:           streamID,
+		Endpoint:     rc.endpoint,
+		Timeout:      timeout,
+		StepClient:   stream,
+		Cancel:       cancelWithReason,
+		canceled:     &canceled,
 	}
 
 	s.expCheck = &certificateExpirationCheck{
