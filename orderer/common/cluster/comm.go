@@ -19,7 +19,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -56,8 +55,6 @@ type Comm struct {
 	Chan2Members                     MembersByChannel
 	Metrics                          *Metrics
 	CompareCertificate               CertificateComparator
-	NodeID                           uint64
-	Signer                           identity.Signer
 }
 
 type requestContext struct {

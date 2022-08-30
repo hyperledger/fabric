@@ -37,7 +37,7 @@ type AuthCommMgr struct {
 	Connections  *ConnectionsMgr
 
 	SendBufferSize int
-	NodeID         uint64
+	NodeIdentity   []byte
 	Signer         identity.Signer
 }
 
@@ -182,10 +182,20 @@ func (ac *AuthCommMgr) createRemoteContext(stub *Stub, channel string) func() (*
 			if err != nil {
 				return nil, err
 			}
+
+			membersMapping, exists := ac.Chan2Members[channel]
+			if !exists {
+				return nil, errors.Errorf("channel members not initialized")
+			}
+			nodeStub := membersMapping.LookupByIdentity(ac.NodeIdentity)
+			if nodeStub == nil {
+				return nil, errors.Errorf("node identity is missing in channel")
+			}
+
 			stepClientStream := &NodeClientStream{
 				Version:           0,
 				StepClient:        stream,
-				SourceNodeID:      ac.NodeID,
+				SourceNodeID:      nodeStub.ID,
 				DestinationNodeID: stub.ID,
 				Signer:            ac.Signer,
 				Channel:           channel,

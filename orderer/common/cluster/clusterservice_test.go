@@ -126,6 +126,7 @@ func TestClusterServiceStep(t *testing.T) {
 
 		stream := &mocks.ClusterStepStream{}
 		handler := &mocks.Handler{}
+		serverKeyPair, _ := ca.NewServerCertKeyPair()
 
 		svc := &cluster.ClusterService{
 			StreamCountReporter: &cluster.StreamCountReporter{
@@ -135,6 +136,7 @@ func TestClusterServiceStep(t *testing.T) {
 			StepLogger:          flogging.MustGetLogger("test"),
 			MembershipByChannel: make(map[string]*cluster.ChannelMembersConfig),
 			RequestHandler:      handler,
+			NodeIdentity:        serverKeyPair.Cert,
 		}
 
 		authRequest := nodeAuthRequest
@@ -173,7 +175,7 @@ func TestClusterServiceStep(t *testing.T) {
 
 		handler.On("OnConsensus", authRequest.Channel, authRequest.FromId, mock.Anything).Return(nil).Once()
 
-		svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair.Cert}})
+		svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair.Cert}, {Id: uint32(authRequest.ToId), Identity: svc.NodeIdentity}})
 		err = svc.Step(stream)
 		require.NoError(t, err)
 	})
@@ -243,6 +245,7 @@ func TestClusterServiceStep(t *testing.T) {
 
 		stream := &mocks.ClusterStepStream{}
 		handler := &mocks.Handler{}
+		serverKeyPair, _ := ca.NewServerCertKeyPair()
 
 		svc := &cluster.ClusterService{
 			StreamCountReporter: &cluster.StreamCountReporter{
@@ -252,6 +255,7 @@ func TestClusterServiceStep(t *testing.T) {
 			StepLogger:          flogging.MustGetLogger("test"),
 			MembershipByChannel: make(map[string]*cluster.ChannelMembersConfig),
 			RequestHandler:      handler,
+			NodeIdentity:        serverKeyPair.Cert,
 		}
 
 		authRequest := nodeAuthRequest
@@ -288,7 +292,7 @@ func TestClusterServiceStep(t *testing.T) {
 		stream.On("Recv").Return(nodeInvalidRequest, nil).Once()
 		stream.On("Recv").Return(nil, io.EOF).Once()
 
-		svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair.Cert}})
+		svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair.Cert}, {Id: uint32(authRequest.ToId), Identity: svc.NodeIdentity}})
 		err = svc.Step(stream)
 		require.EqualError(t, err, "Message is neither a Submit nor Consensus request")
 	})
@@ -304,6 +308,8 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		authRequest := nodeAuthRequest
 
 		handler := &mocks.Handler{}
+		serverKeyPair, _ := ca.NewServerCertKeyPair()
+
 		svc := &cluster.ClusterService{
 			StreamCountReporter: &cluster.StreamCountReporter{
 				Metrics: cluster.NewMetrics(&disabled.Provider{}),
@@ -311,6 +317,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 			Logger:              flogging.MustGetLogger("TestClusterServiceVerifyAuthRequest1"),
 			MembershipByChannel: make(map[string]*cluster.ChannelMembersConfig),
 			RequestHandler:      handler,
+			NodeIdentity:        serverKeyPair.Cert,
 		}
 
 		stream := &mocks.ClusterStepStream{}
@@ -340,7 +347,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 				NodeAuthrequest: &authRequest,
 			},
 		}
-		svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}})
+		svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}, {Id: uint32(authRequest.ToId), Identity: svc.NodeIdentity}})
 		_, err = svc.VerifyAuthRequest(stream, stepRequest)
 		require.NoError(t, err)
 	})
@@ -515,6 +522,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		authRequest := nodeAuthRequest
 
 		handler := &mocks.Handler{}
+		serverKeyPair, _ := ca.NewServerCertKeyPair()
 		svc := &cluster.ClusterService{
 			StreamCountReporter: &cluster.StreamCountReporter{
 				Metrics: cluster.NewMetrics(&disabled.Provider{}),
@@ -522,6 +530,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 			Logger:              flogging.MustGetLogger("TestClusterServiceVerifyAuthRequest6"),
 			MembershipByChannel: make(map[string]*cluster.ChannelMembersConfig),
 			RequestHandler:      handler,
+			NodeIdentity:        serverKeyPair.Cert,
 		}
 
 		stream := &mocks.ClusterStepStream{}
@@ -552,7 +561,56 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		}
 
 		clientKeyPair2, _ := ca.NewClientCertKeyPair()
-		svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair2.Cert}})
+		svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair2.Cert}, {Id: uint32(authRequest.ToId), Identity: clientKeyPair2.Cert}})
+		_, err = svc.VerifyAuthRequest(stream, stepRequest)
+		require.EqualError(t, err, "node id mismatch")
+	})
+
+	t.Run("Verify auth request fails with signature mismatch", func(t *testing.T) {
+		t.Parallel()
+		authRequest := nodeAuthRequest
+
+		handler := &mocks.Handler{}
+		serverKeyPair, _ := ca.NewServerCertKeyPair()
+		svc := &cluster.ClusterService{
+			StreamCountReporter: &cluster.StreamCountReporter{
+				Metrics: cluster.NewMetrics(&disabled.Provider{}),
+			},
+			Logger:              flogging.MustGetLogger("TestClusterServiceVerifyAuthRequest7"),
+			MembershipByChannel: make(map[string]*cluster.ChannelMembersConfig),
+			RequestHandler:      handler,
+			NodeIdentity:        serverKeyPair.Cert,
+		}
+
+		stream := &mocks.ClusterStepStream{}
+
+		stream.On("Context").Return(stepStream.Context())
+		bindingHash := cluster.GetSessionBindingHash(&authRequest)
+		authRequest.SessionBinding, _ = cluster.GetTLSSessionBinding(stepStream.Context(), bindingHash)
+
+		asnSignFields, _ := asn1.Marshal(cluster.AuthRequestSignature{
+			Version:        int64(authRequest.Version),
+			Timestamp:      authRequest.Timestamp.String(),
+			FromId:         strconv.FormatUint(authRequest.FromId, 10),
+			ToId:           strconv.FormatUint(authRequest.ToId, 10),
+			SessionBinding: authRequest.SessionBinding,
+			Channel:        authRequest.Channel,
+		})
+
+		clientKeyPair1, _ := ca.NewClientCertKeyPair()
+		signer := signingIdentity{clientKeyPair1.Signer}
+		sig, err := signer.Sign(cluster.SHA256Digest(asnSignFields))
+		require.NoError(t, err)
+
+		authRequest.Signature = sig
+		stepRequest := &orderer.ClusterNodeServiceStepRequest{
+			Payload: &orderer.ClusterNodeServiceStepRequest_NodeAuthrequest{
+				NodeAuthrequest: &authRequest,
+			},
+		}
+
+		clientKeyPair2, _ := ca.NewClientCertKeyPair()
+		svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair2.Cert}, {Id: uint32(authRequest.ToId), Identity: svc.NodeIdentity}})
 		_, err = svc.VerifyAuthRequest(stream, stepRequest)
 		require.EqualError(t, err, "signature mismatch: signature invalid")
 	})
@@ -598,6 +656,7 @@ func TestExpirationWarning(t *testing.T) {
 
 	handler := &mocks.Handler{}
 	stream := &mocks.ClusterStepStream{}
+	serverKeyPair, _ := ca.NewServerCertKeyPair()
 
 	cert := util.ExtractCertificateFromContext(stepStream.Context())
 
@@ -611,6 +670,7 @@ func TestExpirationWarning(t *testing.T) {
 		StepLogger:          flogging.MustGetLogger("test"),
 		RequestHandler:      handler,
 		MembershipByChannel: make(map[string]*cluster.ChannelMembersConfig),
+		NodeIdentity:        serverKeyPair.Cert,
 	}
 
 	bindingHash := cluster.GetSessionBindingHash(&authRequest)
@@ -644,7 +704,7 @@ func TestExpirationWarning(t *testing.T) {
 
 	handler.On("OnConsensus", authRequest.Channel, authRequest.FromId, mock.Anything).Return(nil).Once()
 
-	svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}})
+	svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}, {Id: uint32(authRequest.ToId), Identity: svc.NodeIdentity}})
 
 	alerts := make(chan struct{}, 10)
 	svc.Logger = svc.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {

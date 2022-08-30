@@ -53,6 +53,7 @@ type ClusterService struct {
 	CertExpWarningThreshold          time.Duration
 	MembershipByChannel              map[string]*ChannelMembersConfig
 	Lock                             sync.RWMutex
+	NodeIdentity                     []byte
 }
 
 type AuthRequestSignature struct {
@@ -99,7 +100,9 @@ func (s *ClusterService) Step(stream orderer.ClusterNodeService_StepServer) erro
 
 	defer s.Logger.Debugf("Closing connection from %s(%s)", commonName, addr)
 	defer func() {
+		s.Lock.RLock()
 		s.MembershipByChannel[authReq.Channel].AuthorizedStreams.Delete(streamID)
+		s.Lock.RUnlock()
 	}()
 
 	for {
@@ -149,12 +152,21 @@ func (s *ClusterService) VerifyAuthRequest(stream orderer.ClusterNodeService_Ste
 		return nil, errors.Errorf("channel %s not found in config", authReq.Channel)
 	}
 
-	identity := membership.MemberMapping[authReq.FromId]
-	if identity == nil {
+	fromIdentity := membership.MemberMapping[authReq.FromId]
+	if fromIdentity == nil {
 		return nil, errors.Errorf("node %d is not member of channel %s", authReq.FromId, authReq.Channel)
 	}
 
-	err = VerifySignature(identity, SHA256Digest(msg), authReq.Signature)
+	toIdentity := membership.MemberMapping[authReq.ToId]
+	if toIdentity == nil {
+		return nil, errors.Errorf("node %d is not member of channel %s", authReq.ToId, authReq.Channel)
+	}
+
+	if !bytes.Equal(toIdentity, s.NodeIdentity) {
+		return nil, errors.Errorf("node id mismatch")
+	}
+
+	err = VerifySignature(fromIdentity, SHA256Digest(msg), authReq.Signature)
 	if err != nil {
 		return nil, errors.Wrap(err, "signature mismatch")
 	}

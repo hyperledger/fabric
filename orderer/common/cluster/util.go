@@ -112,6 +112,16 @@ func (mp MemberMapping) LookupByClientCert(cert []byte) *Stub {
 	return nil
 }
 
+// LookupByIdentity retrieves a Stub by Identity
+func (mp MemberMapping) LookupByIdentity(identity []byte) *Stub {
+	for _, stub := range mp.id2stub {
+		if bytes.Equal(identity, stub.Identity) {
+			return stub
+		}
+	}
+	return nil
+}
+
 // ServerCertificates returns a set of the server certificates
 // represented as strings
 func (mp MemberMapping) ServerCertificates() StringSet {

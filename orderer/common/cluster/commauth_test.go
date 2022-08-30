@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	comm_utils "github.com/hyperledger/fabric/internal/pkg/comm"
-	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/onsi/gomega"
@@ -57,7 +56,7 @@ func (si *signingIdentity) Sign(msg []byte) ([]byte, error) {
 	return si.Signer.Sign(rand.Reader, msg, nil)
 }
 
-func newClusterServiceNode(t *testing.T, signer identity.Signer) *clusterServiceNode {
+func newClusterServiceNode(t *testing.T) *clusterServiceNode {
 	serverKeyPair, err := ca.NewServerCertKeyPair("127.0.0.1")
 	require.NoError(t, err)
 
@@ -81,6 +80,7 @@ func newClusterServiceNode(t *testing.T, signer identity.Signer) *clusterService
 		StepLogger:          flogging.MustGetLogger("test"),
 		RequestHandler:      handler,
 		MembershipByChannel: make(map[string]*cluster.ChannelMembersConfig),
+		NodeIdentity:        serverKeyPair.Cert,
 	}
 
 	orderer.RegisterClusterNodeServiceServer(gRPCServer.Server(), tstSrv)
@@ -96,14 +96,18 @@ func newClusterServiceNode(t *testing.T, signer identity.Signer) *clusterService
 		},
 	}
 
+	clientKeyPair, err := ca.NewClientCertKeyPair()
+	if err != nil {
+		panic(fmt.Errorf("failed creating client certificate %v", err))
+	}
 	cli := &cluster.AuthCommMgr{
 		SendBufferSize: 1,
 		Logger:         flogging.MustGetLogger("test"),
 		Chan2Members:   make(cluster.MembersByChannel),
 		Connections:    cluster.NewConnectionMgr(clientConfig),
 		Metrics:        cluster.NewMetrics(&disabled.Provider{}),
-		Signer:         signer,
-		NodeID:         nextUnusedID(),
+		Signer:         &signingIdentity{serverKeyPair.Signer},
+		NodeIdentity:   clientKeyPair.Cert,
 	}
 
 	node := &clusterServiceNode{
@@ -113,10 +117,11 @@ func newClusterServiceNode(t *testing.T, signer identity.Signer) *clusterService
 		nodeInfo: cluster.RemoteNode{
 			NodeAddress: cluster.NodeAddress{
 				Endpoint: gRPCServer.Address(),
-				ID:       cli.NodeID,
+				ID:       nextUnusedID(),
 			},
 			NodeCerts: cluster.NodeCerts{
 				ServerRootCA: ca.CertBytes(),
+				Identity:     clientKeyPair.Cert,
 			},
 		},
 		handler:      handler,
@@ -132,13 +137,11 @@ func TestCommServiceBasicAuthentication(t *testing.T) {
 	// messages that are expected to be echoed back
 	t.Parallel()
 
-	clientKeyPair1, _ := ca.NewClientCertKeyPair()
-	node1 := newClusterServiceNode(t, &signingIdentity{clientKeyPair1.Signer})
+	node1 := newClusterServiceNode(t)
 	defer node1.server.Stop()
 	defer node1.cli.Shutdown()
 
-	clientKeyPair2, _ := ca.NewClientCertKeyPair()
-	node2 := newClusterServiceNode(t, &signingIdentity{clientKeyPair2.Signer})
+	node2 := newClusterServiceNode(t)
 	defer node2.server.Stop()
 	defer node2.cli.Shutdown()
 
@@ -147,8 +150,8 @@ func TestCommServiceBasicAuthentication(t *testing.T) {
 	node1.cli.Configure(testChannel, config)
 	node2.cli.Configure(testChannel, config)
 
-	node1.service.ConfigureNodeCerts(testChannel, []common.Consenter{{Id: uint32(node2.nodeInfo.ID), Identity: clientKeyPair2.Cert}})
-	node2.service.ConfigureNodeCerts(testChannel, []common.Consenter{{Id: uint32(node1.nodeInfo.ID), Identity: clientKeyPair1.Cert}})
+	node1.service.ConfigureNodeCerts(testChannel, []common.Consenter{{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity}, {Id: uint32(node2.nodeInfo.ID), Identity: node2.service.NodeIdentity}})
+	node2.service.ConfigureNodeCerts(testChannel, []common.Consenter{{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity}, {Id: uint32(node2.nodeInfo.ID), Identity: node2.service.NodeIdentity}})
 
 	assertBiDiCommunicationForChannelWithSigner(t, node1, node2, testReq, testChannel)
 }
@@ -159,12 +162,9 @@ func TestCommServiceMultiChannelAuth(t *testing.T) {
 	// Messages that are received, are routed according to their corresponding channels
 	t.Parallel()
 
-	clientKeyPair1, _ := ca.NewClientCertKeyPair()
-	node1 := newClusterServiceNode(t, &signingIdentity{clientKeyPair1.Signer})
-	clientKeyPair2, _ := ca.NewClientCertKeyPair()
-	node2 := newClusterServiceNode(t, &signingIdentity{clientKeyPair2.Signer})
-	clientKeyPair3, _ := ca.NewClientCertKeyPair()
-	node3 := newClusterServiceNode(t, &signingIdentity{clientKeyPair3.Signer})
+	node1 := newClusterServiceNode(t)
+	node2 := newClusterServiceNode(t)
+	node3 := newClusterServiceNode(t)
 
 	defer node1.server.Stop()
 	defer node2.server.Stop()
@@ -173,10 +173,13 @@ func TestCommServiceMultiChannelAuth(t *testing.T) {
 	defer node2.cli.Shutdown()
 	defer node3.cli.Shutdown()
 
-	node1.cli.Configure("foo", []cluster.RemoteNode{node2.nodeInfo})
-	node1.cli.Configure("bar", []cluster.RemoteNode{node3.nodeInfo})
-	node2.cli.Configure("foo", []cluster.RemoteNode{node1.nodeInfo})
-	node3.cli.Configure("bar", []cluster.RemoteNode{node1.nodeInfo})
+	consenterSet1 := []cluster.RemoteNode{node1.nodeInfo, node2.nodeInfo}
+	consenterSet2 := []cluster.RemoteNode{node1.nodeInfo, node3.nodeInfo}
+
+	node1.cli.Configure("foo", consenterSet1)
+	node1.cli.Configure("bar", consenterSet2)
+	node2.cli.Configure("foo", consenterSet1)
+	node3.cli.Configure("bar", consenterSet2)
 
 	var fromNode2 sync.WaitGroup
 	fromNode2.Add(1)
@@ -190,8 +193,8 @@ func TestCommServiceMultiChannelAuth(t *testing.T) {
 		fromNode3.Done()
 	}).Once()
 
-	node1.service.ConfigureNodeCerts("foo", []common.Consenter{{Id: uint32(node2.nodeInfo.ID), Identity: clientKeyPair2.Cert}})
-	node1.service.ConfigureNodeCerts("bar", []common.Consenter{{Id: uint32(node3.nodeInfo.ID), Identity: clientKeyPair3.Cert}})
+	node1.service.ConfigureNodeCerts("foo", []common.Consenter{{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity}, {Id: uint32(node2.nodeInfo.ID), Identity: node2.service.NodeIdentity}})
+	node1.service.ConfigureNodeCerts("bar", []common.Consenter{{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity}, {Id: uint32(node3.nodeInfo.ID), Identity: node3.service.NodeIdentity}})
 
 	node2toNode1, err := node2.cli.Remote("foo", node1.nodeInfo.ID)
 	require.NoError(t, err)
@@ -220,10 +223,8 @@ func TestCommServiceMembershipReconfigurationAuth(t *testing.T) {
 	// after node 1 is configured to know about node 2.
 	t.Parallel()
 
-	clientKeyPair1, _ := ca.NewClientCertKeyPair()
-	node1 := newClusterServiceNode(t, &signingIdentity{clientKeyPair1.Signer})
-	clientKeyPair2, _ := ca.NewClientCertKeyPair()
-	node2 := newClusterServiceNode(t, &signingIdentity{clientKeyPair2.Signer})
+	node1 := newClusterServiceNode(t)
+	node2 := newClusterServiceNode(t)
 
 	defer node1.server.Stop()
 	defer node2.server.Stop()
@@ -235,9 +236,11 @@ func TestCommServiceMembershipReconfigurationAuth(t *testing.T) {
 	node1.cli.Configure(testChannel, []cluster.RemoteNode{})
 	node1.service.ConfigureNodeCerts(testChannel, []common.Consenter{})
 
-	node2.cli.Configure(testChannel, []cluster.RemoteNode{node1.nodeInfo})
+	consenterSet1 := []cluster.RemoteNode{node1.nodeInfo, node2.nodeInfo}
+	node2.cli.Configure(testChannel, consenterSet1)
 	node2.service.ConfigureNodeCerts(testChannel, []common.Consenter{
-		{Id: uint32(node1.nodeInfo.ID), Identity: clientKeyPair1.Cert},
+		{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity},
+		{Id: uint32(node2.nodeInfo.ID), Identity: node2.service.NodeIdentity},
 	})
 
 	// Node 1 can't connect to node 2 because it doesn't know its TLS certificate yet
@@ -265,9 +268,10 @@ func TestCommServiceMembershipReconfigurationAuth(t *testing.T) {
 	require.EqualError(t, err, "rpc error: code = Unauthenticated desc = access denied")
 
 	// Next, configure node 1 to know about node 2
-	node1.cli.Configure(testChannel, []cluster.RemoteNode{node2.nodeInfo})
+	node1.cli.Configure(testChannel, consenterSet1)
 	node1.service.ConfigureNodeCerts(testChannel, []common.Consenter{
-		{Id: uint32(node2.nodeInfo.ID), Identity: clientKeyPair2.Cert},
+		{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity},
+		{Id: uint32(node2.nodeInfo.ID), Identity: node2.service.NodeIdentity},
 	})
 
 	// Check that the communication works correctly between both nodes
@@ -290,9 +294,10 @@ func TestCommServiceMembershipReconfigurationAuth(t *testing.T) {
 	require.EqualError(t, err, "rpc error: code = Unauthenticated desc = access denied")
 
 	// Reconfigure node 2 to know about node 1
-	node2.cli.Configure(testChannel, []cluster.RemoteNode{node1.nodeInfo})
+	node2.cli.Configure(testChannel, consenterSet1)
 	node2.service.ConfigureNodeCerts(testChannel, []common.Consenter{
-		{Id: uint32(node1.nodeInfo.ID), Identity: clientKeyPair1.Cert},
+		{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity},
+		{Id: uint32(node2.nodeInfo.ID), Identity: node2.service.NodeIdentity},
 	})
 
 	// Node 1 can still connect to node 2
@@ -316,8 +321,8 @@ func TestCommServiceMembershipReconfigurationAuth(t *testing.T) {
 	// Reconfigure the node 2 consenters set while the stream is active
 	// stream should not be affected as the node 1 still part of the consenter set
 	node2.service.ConfigureNodeCerts(testChannel, []common.Consenter{
-		{Id: uint32(node1.nodeInfo.ID), Identity: clientKeyPair1.Cert},
-		{Id: uint32(node2.nodeInfo.ID), Identity: clientKeyPair2.Cert},
+		{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity},
+		{Id: uint32(node2.nodeInfo.ID), Identity: node2.service.NodeIdentity},
 	})
 
 	wg.Add(1)
@@ -333,7 +338,7 @@ func TestCommServiceMembershipReconfigurationAuth(t *testing.T) {
 	// Reconfigure the node 2 consenters set removing the node1
 	// now the stream marked as stale
 	node2.service.ConfigureNodeCerts(testChannel, []common.Consenter{
-		{Id: uint32(node2.nodeInfo.ID), Identity: clientKeyPair2.Cert},
+		{Id: uint32(node2.nodeInfo.ID), Identity: node2.service.NodeIdentity},
 	})
 
 	err = stream.Send(wrapSubmitReq(testSubReq))
@@ -352,10 +357,8 @@ func TestCommServiceReconnectAuth(t *testing.T) {
 	// sending a message to node 2 eventually.
 	t.Parallel()
 
-	clientKeyPair1, _ := ca.NewClientCertKeyPair()
-	node1 := newClusterServiceNode(t, &signingIdentity{clientKeyPair1.Signer})
-	clientKeyPair2, _ := ca.NewClientCertKeyPair()
-	node2 := newClusterServiceNode(t, &signingIdentity{clientKeyPair2.Signer})
+	node1 := newClusterServiceNode(t)
+	node2 := newClusterServiceNode(t)
 
 	defer node1.server.Stop()
 	defer node2.server.Stop()

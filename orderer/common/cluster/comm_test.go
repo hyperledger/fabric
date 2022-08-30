@@ -287,7 +287,6 @@ func newTestNodeWithMetrics(t *testing.T, metrics cluster.MetricsProvider, tlsCo
 		Connections:             cluster.NewConnectionStore(dialer, tlsConnGauge),
 		Metrics:                 cluster.NewMetrics(metrics),
 		CompareCertificate:      compareCert,
-		NodeID:                  tstSrv.nodeInfo.ID,
 	}
 
 	orderer.RegisterClusterServer(gRPCServer.Server(), tstSrv.dispatcher)

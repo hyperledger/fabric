@@ -51,6 +51,8 @@ type NodeCerts struct {
 	ClientTLSCert []byte
 	// PEM-encoded X509 certificate authority to verify server certificates
 	ServerRootCA []byte
+	// PEM-encoded X509 certificate
+	Identity []byte
 }
 
 type NodeAddress struct {
