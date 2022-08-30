@@ -305,8 +305,8 @@ github.com/hyperledger/fabric-lib-go v1.0.0/go.mod h1:H362nMlunurmHwkYqR5uHL2UDW
 github.com/hyperledger/fabric-protos-go v0.0.0-20200424173316-dd554ba3746e/go.mod h1:xVYTjK4DtZRBxZ2D9aE4y6AbLaPwue2o/criQyQbVD0=
 github.com/hyperledger/fabric-protos-go v0.0.0-20210911123859-041d13f0980c/go.mod h1:xVYTjK4DtZRBxZ2D9aE4y6AbLaPwue2o/criQyQbVD0=
 github.com/hyperledger/fabric-protos-go v0.0.0-20220516090339-9685156fada6/go.mod h1:xVYTjK4DtZRBxZ2D9aE4y6AbLaPwue2o/criQyQbVD0=
-github.com/hyperledger/fabric-protos-go v0.0.0-20220824074248-b7427ff685a5 h1:3jaCYEyq498B2WDc40tukvUlinRiz1l5AnRmanA3ukE=
-github.com/hyperledger/fabric-protos-go v0.0.0-20220824074248-b7427ff685a5/go.mod h1:xVYTjK4DtZRBxZ2D9aE4y6AbLaPwue2o/criQyQbVD0=
+github.com/hyperledger/fabric-protos-go v0.0.0-20220827195505-ce4c067a561d h1:Dk7Z9MjzZmz+pkpC7KbH6c3A9PEN9youAIjlMJw58ro=
+github.com/hyperledger/fabric-protos-go v0.0.0-20220827195505-ce4c067a561d/go.mod h1:xVYTjK4DtZRBxZ2D9aE4y6AbLaPwue2o/criQyQbVD0=
 github.com/ianlancetaylor/demangle v0.0.0-20200824232613-28f6c0f3b639/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
 github.com/inconshreveable/mousetrap v1.0.0 h1:Z8tu5sraLXCXIcARxBp/8cbvlwVa7Z1NHg9XEKhtSvM=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=

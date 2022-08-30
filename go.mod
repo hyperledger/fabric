@@ -19,7 +19,7 @@ require (
 	github.com/hyperledger/fabric-chaincode-go v0.0.0-20220713164125-8f0791c989d7
 	github.com/hyperledger/fabric-config v0.1.0
 	github.com/hyperledger/fabric-lib-go v1.0.0
-	github.com/hyperledger/fabric-protos-go v0.0.0-20220824074248-b7427ff685a5
+	github.com/hyperledger/fabric-protos-go v0.0.0-20220827195505-ce4c067a561d
 	github.com/kr/pretty v0.3.0
 	github.com/miekg/pkcs11 v1.1.1
 	github.com/mitchellh/mapstructure v1.4.3
