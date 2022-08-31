@@ -31,7 +31,7 @@ type RemoteContext struct {
 	shutdownSignal                   chan struct{}
 	Logger                           *flogging.FabricLogger
 	endpoint                         string
-	Client                           orderer.ClusterClient
+	GetStreamFunc                    func(context.Context) (StepClientStream, error) // interface{}
 	ProbeConn                        func(conn *grpc.ClientConn) error
 	conn                             *grpc.ClientConn
 	nextStreamID                     uint64
@@ -47,7 +47,7 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 	}
 
 	ctx, cancel := context.WithCancel(context.TODO())
-	stream, err := rc.Client.Step(ctx)
+	stream, err := rc.GetStreamFunc(ctx)
 	if err != nil {
 		cancel()
 		return nil, errors.WithStack(err)
@@ -87,15 +87,15 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 			request *orderer.StepRequest
 			report  func(error)
 		}, rc.SendBuffSize),
-		commShutdown:       rc.shutdownSignal,
-		NodeName:           nodeName,
-		Logger:             stepLogger,
-		ID:                 streamID,
-		Endpoint:           rc.endpoint,
-		Timeout:            timeout,
-		Cluster_StepClient: stream,
-		Cancel:             cancelWithReason,
-		canceled:           &canceled,
+		commShutdown: rc.shutdownSignal,
+		NodeName:     nodeName,
+		Logger:       stepLogger,
+		ID:           streamID,
+		Endpoint:     rc.endpoint,
+		Timeout:      timeout,
+		StepClient:   stream,
+		Cancel:       cancelWithReason,
+		canceled:     &canceled,
 	}
 
 	s.expCheck = &certificateExpirationCheck{
@@ -107,6 +107,11 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 		alert: func(template string, args ...interface{}) {
 			s.Logger.Warningf(template, args...)
 		},
+	}
+
+	err = stream.Auth()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create new stream")
 	}
 
 	rc.Logger.Debugf("Created new stream to %s with ID of %d and buffer size of %d",

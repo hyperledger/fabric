@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package cluster
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
@@ -43,20 +44,41 @@ type Handler interface {
 	OnSubmit(channel string, sender uint64, req *orderer.SubmitRequest) error
 }
 
-// RemoteNode represents a cluster member
-type RemoteNode struct {
-	// ID is unique among all members, and cannot be 0.
-	ID uint64
-	// Endpoint is the endpoint of the node, denoted in %s:%d format
-	Endpoint string
+type NodeCerts struct {
 	// ServerTLSCert is the DER encoded TLS server certificate of the node
 	ServerTLSCert []byte
 	// ClientTLSCert is the DER encoded TLS client certificate of the node
 	ClientTLSCert []byte
+	// PEM-encoded X509 certificate authority to verify server certificates
+	ServerRootCA []byte
+	// PEM-encoded X509 certificate
+	Identity []byte
+}
+
+type NodeAddress struct {
+	// ID is unique among all members, and cannot be 0.
+	ID uint64
+	// Endpoint is the endpoint of the node, denoted in %s:%d format
+	Endpoint string
+}
+
+// RemoteNode represents a cluster member
+type RemoteNode struct {
+	NodeAddress
+	NodeCerts
 }
 
 // String returns a string representation of this RemoteNode
 func (rm RemoteNode) String() string {
-	return fmt.Sprintf("ID: %d,\nEndpoint: %s,\nServerTLSCert:%s, ClientTLSCert:%s",
-		rm.ID, rm.Endpoint, DERtoPEM(rm.ServerTLSCert), DERtoPEM(rm.ClientTLSCert))
+	return fmt.Sprintf("ID: %d,\nEndpoint: %s,\nServerTLSCert:%s,\nClientTLSCert:%s, ServerRootCA: %s",
+		rm.ID, rm.Endpoint, DERtoPEM(rm.ServerTLSCert), DERtoPEM(rm.ClientTLSCert), rm.ServerRootCA)
+}
+
+// go:generate mockery -dir . -name StepClientStream -case underscore -output ./mocks/
+// StepClientStream
+type StepClientStream interface {
+	Send(request *orderer.StepRequest) error
+	Recv() (*orderer.StepResponse, error)
+	Auth() error
+	Context() context.Context
 }

@@ -295,6 +295,16 @@ func (c *Comm) createRemoteContext(stub *Stub, channel string) func() (*RemoteCo
 		}
 
 		clusterClient := orderer.NewClusterClient(conn)
+		getStream := func(ctx context.Context) (StepClientStream, error) {
+			stream, err := clusterClient.Step(ctx)
+			if err != nil {
+				return nil, err
+			}
+			stepClientStream := &CommClientStream{
+				StepClient: stream,
+			}
+			return stepClientStream, nil
+		}
 
 		workerCountReporter := workerCountReporter{
 			channel: channel,
@@ -313,7 +323,7 @@ func (c *Comm) createRemoteContext(stub *Stub, channel string) func() (*RemoteCo
 			Logger:                           c.Logger,
 			ProbeConn:                        probeConnection,
 			conn:                             conn,
-			Client:                           clusterClient,
+			GetStreamFunc:                    getStream,
 		}
 		return rc, nil
 	}
