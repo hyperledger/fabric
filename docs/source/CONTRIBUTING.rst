@@ -116,7 +116,7 @@ and reviews (a month or more) demonstrating a renewed commitment to the project.
 Releases
 ~~~~~~~~
 
-Fabric provides a release approximately once every four months with new features and improvements.
+Fabric provides periodic releases with new features and improvements.
 New feature work is merged to the Fabric main branch on `GitHub <https://github.com/hyperledger/fabric>`__.
 Releases branches are created prior to each release so that the code can stabilize while
 new features continue to get merged to the main branch.
