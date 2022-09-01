@@ -8,6 +8,7 @@ package encoder_test
 
 import (
 	"fmt"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -387,19 +388,6 @@ var _ = Describe("Encoder", func() {
 			It("wraps and returns the error", func() {
 				_, err := encoder.NewOrdererGroup(conf)
 				Expect(err).To(MatchError("error adding policies to orderer group: invalid implicit meta policy rule 'garbage': expected two space separated tokens, but got 1"))
-			})
-		})
-
-		Context("when the consensus type is Kafka", func() {
-			BeforeEach(func() {
-				conf.OrdererType = "kafka"
-			})
-
-			It("adds the kafka brokers key", func() {
-				cg, err := encoder.NewOrdererGroup(conf)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(len(cg.Values)).To(Equal(6))
-				Expect(cg.Values["KafkaBrokers"]).NotTo(BeNil())
 			})
 		})
 
@@ -1124,8 +1112,9 @@ var _ = Describe("Encoder", func() {
 				sysChannelConf = &genesisconfig.Profile{
 					Policies: CreateStandardPolicies(),
 					Orderer: &genesisconfig.Orderer{
-						OrdererType: "kafka",
-						Policies:    CreateStandardOrdererPolicies(),
+						OrdererType:  "solo",
+						BatchTimeout: time.Hour,
+						Policies:     CreateStandardOrdererPolicies(),
 					},
 					Consortiums: map[string]*genesisconfig.Consortium{
 						"SampleConsortium": {
@@ -1167,7 +1156,7 @@ var _ = Describe("Encoder", func() {
 				Expect(configUpdate.WriteSet.Groups["Application"].Groups["Org1"].Version).To(Equal(uint64(1)))
 				Expect(configUpdate.WriteSet.Groups["Application"].Groups["Org1"].Values["AnchorPeers"]).NotTo(BeNil())
 				Expect(configUpdate.WriteSet.Groups["Application"].Groups["Org2"].Version).To(Equal(uint64(0)))
-				Expect(configUpdate.WriteSet.Groups["Orderer"].Values["ConsensusType"].Version).To(Equal(uint64(1)))
+				Expect(configUpdate.WriteSet.Groups["Orderer"].Values["BatchTimeout"].Version).To(Equal(uint64(1)))
 			})
 
 			Context("when the system channel config is bad", func() {
@@ -1285,7 +1274,7 @@ var _ = Describe("Encoder", func() {
 				sysChannelGroup, err = encoder.NewChannelGroup(&genesisconfig.Profile{
 					Policies: CreateStandardPolicies(),
 					Orderer: &genesisconfig.Orderer{
-						OrdererType: "kafka",
+						OrdererType: "solo",
 						Policies:    CreateStandardOrdererPolicies(),
 					},
 					Consortiums: map[string]*genesisconfig.Consortium{

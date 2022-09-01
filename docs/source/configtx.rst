@@ -311,7 +311,6 @@ with different names.
                     "ConsensusType":orderer.ConsensusType,
                     "BatchSize":orderer.BatchSize,
                     "BatchTimeout":orderer.BatchTimeout,
-                    "KafkaBrokers":orderer.KafkaBrokers,
                 },
             },
             "Consortiums":&ConfigGroup{

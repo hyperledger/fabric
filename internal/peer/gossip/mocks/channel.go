@@ -4,7 +4,6 @@ package mocks
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/channelconfig"
 )
 
@@ -49,16 +48,6 @@ type Channel struct {
 	ordererAddressesReturnsOnCall map[int]struct {
 		result1 []string
 	}
-	OrderersStub        func() []*common.Consenter
-	orderersMutex       sync.RWMutex
-	orderersArgsForCall []struct {
-	}
-	orderersReturns struct {
-		result1 []*common.Consenter
-	}
-	orderersReturnsOnCall map[int]struct {
-		result1 []*common.Consenter
-	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -68,16 +57,15 @@ func (fake *Channel) BlockDataHashingStructureWidth() uint32 {
 	ret, specificReturn := fake.blockDataHashingStructureWidthReturnsOnCall[len(fake.blockDataHashingStructureWidthArgsForCall)]
 	fake.blockDataHashingStructureWidthArgsForCall = append(fake.blockDataHashingStructureWidthArgsForCall, struct {
 	}{})
-	stub := fake.BlockDataHashingStructureWidthStub
-	fakeReturns := fake.blockDataHashingStructureWidthReturns
 	fake.recordInvocation("BlockDataHashingStructureWidth", []interface{}{})
 	fake.blockDataHashingStructureWidthMutex.Unlock()
-	if stub != nil {
-		return stub()
+	if fake.BlockDataHashingStructureWidthStub != nil {
+		return fake.BlockDataHashingStructureWidthStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
+	fakeReturns := fake.blockDataHashingStructureWidthReturns
 	return fakeReturns.result1
 }
 
@@ -121,16 +109,15 @@ func (fake *Channel) Capabilities() channelconfig.ChannelCapabilities {
 	ret, specificReturn := fake.capabilitiesReturnsOnCall[len(fake.capabilitiesArgsForCall)]
 	fake.capabilitiesArgsForCall = append(fake.capabilitiesArgsForCall, struct {
 	}{})
-	stub := fake.CapabilitiesStub
-	fakeReturns := fake.capabilitiesReturns
 	fake.recordInvocation("Capabilities", []interface{}{})
 	fake.capabilitiesMutex.Unlock()
-	if stub != nil {
-		return stub()
+	if fake.CapabilitiesStub != nil {
+		return fake.CapabilitiesStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
+	fakeReturns := fake.capabilitiesReturns
 	return fakeReturns.result1
 }
 
@@ -174,16 +161,15 @@ func (fake *Channel) HashingAlgorithm() func(input []byte) []byte {
 	ret, specificReturn := fake.hashingAlgorithmReturnsOnCall[len(fake.hashingAlgorithmArgsForCall)]
 	fake.hashingAlgorithmArgsForCall = append(fake.hashingAlgorithmArgsForCall, struct {
 	}{})
-	stub := fake.HashingAlgorithmStub
-	fakeReturns := fake.hashingAlgorithmReturns
 	fake.recordInvocation("HashingAlgorithm", []interface{}{})
 	fake.hashingAlgorithmMutex.Unlock()
-	if stub != nil {
-		return stub()
+	if fake.HashingAlgorithmStub != nil {
+		return fake.HashingAlgorithmStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
+	fakeReturns := fake.hashingAlgorithmReturns
 	return fakeReturns.result1
 }
 
@@ -227,16 +213,15 @@ func (fake *Channel) OrdererAddresses() []string {
 	ret, specificReturn := fake.ordererAddressesReturnsOnCall[len(fake.ordererAddressesArgsForCall)]
 	fake.ordererAddressesArgsForCall = append(fake.ordererAddressesArgsForCall, struct {
 	}{})
-	stub := fake.OrdererAddressesStub
-	fakeReturns := fake.ordererAddressesReturns
 	fake.recordInvocation("OrdererAddresses", []interface{}{})
 	fake.ordererAddressesMutex.Unlock()
-	if stub != nil {
-		return stub()
+	if fake.OrdererAddressesStub != nil {
+		return fake.OrdererAddressesStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
+	fakeReturns := fake.ordererAddressesReturns
 	return fakeReturns.result1
 }
 
@@ -275,59 +260,6 @@ func (fake *Channel) OrdererAddressesReturnsOnCall(i int, result1 []string) {
 	}{result1}
 }
 
-func (fake *Channel) Orderers() []*common.Consenter {
-	fake.orderersMutex.Lock()
-	ret, specificReturn := fake.orderersReturnsOnCall[len(fake.orderersArgsForCall)]
-	fake.orderersArgsForCall = append(fake.orderersArgsForCall, struct {
-	}{})
-	stub := fake.OrderersStub
-	fakeReturns := fake.orderersReturns
-	fake.recordInvocation("Orderers", []interface{}{})
-	fake.orderersMutex.Unlock()
-	if stub != nil {
-		return stub()
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fakeReturns.result1
-}
-
-func (fake *Channel) OrderersCallCount() int {
-	fake.orderersMutex.RLock()
-	defer fake.orderersMutex.RUnlock()
-	return len(fake.orderersArgsForCall)
-}
-
-func (fake *Channel) OrderersCalls(stub func() []*common.Consenter) {
-	fake.orderersMutex.Lock()
-	defer fake.orderersMutex.Unlock()
-	fake.OrderersStub = stub
-}
-
-func (fake *Channel) OrderersReturns(result1 []*common.Consenter) {
-	fake.orderersMutex.Lock()
-	defer fake.orderersMutex.Unlock()
-	fake.OrderersStub = nil
-	fake.orderersReturns = struct {
-		result1 []*common.Consenter
-	}{result1}
-}
-
-func (fake *Channel) OrderersReturnsOnCall(i int, result1 []*common.Consenter) {
-	fake.orderersMutex.Lock()
-	defer fake.orderersMutex.Unlock()
-	fake.OrderersStub = nil
-	if fake.orderersReturnsOnCall == nil {
-		fake.orderersReturnsOnCall = make(map[int]struct {
-			result1 []*common.Consenter
-		})
-	}
-	fake.orderersReturnsOnCall[i] = struct {
-		result1 []*common.Consenter
-	}{result1}
-}
-
 func (fake *Channel) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -339,8 +271,6 @@ func (fake *Channel) Invocations() map[string][][]interface{} {
 	defer fake.hashingAlgorithmMutex.RUnlock()
 	fake.ordererAddressesMutex.RLock()
 	defer fake.ordererAddressesMutex.RUnlock()
-	fake.orderersMutex.RLock()
-	defer fake.orderersMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

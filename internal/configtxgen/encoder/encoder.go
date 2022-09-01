@@ -39,8 +39,6 @@ var logger = flogging.MustGetLogger("common.tools.configtxgen.encoder")
 const (
 	// ConsensusTypeSolo identifies the solo consensus implementation.
 	ConsensusTypeSolo = "solo"
-	// ConsensusTypeKafka identifies the Kafka-based consensus implementation.
-	ConsensusTypeKafka = "kafka"
 	// ConsensusTypeEtcdRaft identifies the Raft-based consensus implementation.
 	ConsensusTypeEtcdRaft = "etcdraft"
 	// ConsensusTypeBFT identifies the BFT-based consensus implementation.
@@ -205,8 +203,6 @@ func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
 
 	switch conf.OrdererType {
 	case ConsensusTypeSolo:
-	case ConsensusTypeKafka:
-		addValue(ordererGroup, channelconfig.KafkaBrokersValue(conf.Kafka.Brokers), channelconfig.AdminsPolicyKey)
 	case ConsensusTypeEtcdRaft:
 		if consensusMetadata, err = channelconfig.MarshalEtcdRaftMetadata(conf.EtcdRaft); err != nil {
 			return nil, errors.Errorf("cannot marshal metadata for orderer type %s: %s", ConsensusTypeEtcdRaft, err)
