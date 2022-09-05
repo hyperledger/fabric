@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package genesisconfig
 
 import (
-	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
@@ -21,11 +20,11 @@ func TestLoadProfile(t *testing.T) {
 	defer cleanup()
 
 	pNames := []string{
-		SampleDevModeKafkaProfile,
 		SampleDevModeSoloProfile,
 		SampleSingleMSPChannelProfile,
-		SampleSingleMSPKafkaProfile,
 		SampleSingleMSPSoloProfile,
+		SampleDevModeEtcdRaftProfile,
+		SampleAppChannelEtcdRaftProfile,
 	}
 	for _, pName := range pNames {
 		t.Run(pName, func(t *testing.T) {
@@ -39,11 +38,11 @@ func TestLoadProfileWithPath(t *testing.T) {
 	devConfigDir := configtest.GetDevConfigDir()
 
 	pNames := []string{
-		SampleDevModeKafkaProfile,
 		SampleDevModeSoloProfile,
 		SampleSingleMSPChannelProfile,
-		SampleSingleMSPKafkaProfile,
 		SampleSingleMSPSoloProfile,
+		SampleDevModeEtcdRaftProfile,
+		SampleAppChannelEtcdRaftProfile,
 	}
 	for _, pName := range pNames {
 		t.Run(pName, func(t *testing.T) {
@@ -112,17 +111,7 @@ func TestConsensusSpecificInit(t *testing.T) {
 			},
 		}
 		profile.completeInitialization(devConfigDir)
-		require.Nil(t, profile.Orderer.Kafka.Brokers, "Kafka config settings should not be set")
-	})
-
-	t.Run("kafka", func(t *testing.T) {
-		profile := &Profile{
-			Orderer: &Orderer{
-				OrdererType: "kafka",
-			},
-		}
-		profile.completeInitialization(devConfigDir)
-		require.NotNil(t, profile.Orderer.Kafka.Brokers, "Kafka config settings should be set")
+		require.NotNil(t, profile.Orderer.BatchSize)
 	})
 
 	t.Run("raft", func(t *testing.T) {
@@ -290,7 +279,6 @@ func TestLoadConfigCache(t *testing.T) {
 	// With the caching behavior, the update should not be reflected.
 	initial, err := c.load(cfg, configPath)
 	require.NoError(t, err)
-	os.Setenv("ORDERER_KAFKA_RETRY_SHORTINTERVAL", "120s")
 	updated, err := c.load(cfg, configPath)
 	require.NoError(t, err)
 	require.Equal(t, initial, updated, "expected %#v to equal %#v", updated, initial)
