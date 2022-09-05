@@ -332,15 +332,6 @@ Orderer: &OrdererDefaults
       MSPID: OrdererOrg4
       Identity: /path/to/identity
 
-    Kafka:
-        # Brokers: A list of Kafka brokers to which the orderer connects. Edit
-        # this list to identify the brokers of the ordering service.
-        # NOTE: Use IP:port notation.
-        Brokers:
-            - kafka0:9092
-            - kafka1:9092
-            - kafka2:9092
-
     # EtcdRaft defines configuration which must be set when the "etcdraft"
     # orderertype is chosen.
     EtcdRaft:
