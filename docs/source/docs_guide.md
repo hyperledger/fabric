@@ -74,7 +74,7 @@ fabric/docs
 └── wrappers
 ```
 
-The most important folders is `source/` because it holds the source language
+The most important folder is `source/` because it holds the source language
 files. The documentation build process uses the `make` command to convert these
 source files to HTML, which are stored in the dynamically created `build/html/`
 folder:
@@ -167,7 +167,7 @@ maintainers for the language, it will be merged into the repository and become
 part of the published documentation. It really is that easy!
 
 As well as being polite, it's a really good idea to test any documentation
-changes before you request to include it in a repository. The following sections
+changes before you request to include them in a repository. The following sections
 show you how to:
 
 * Build and review a documentation change on your own machine.
@@ -293,7 +293,7 @@ Both language repositories have a GitHub webhook defined so that, once approved,
 your newly merged content in the `docs/` folder will trigger an automatic build
 and publication of the updated documentation.  
 
-**Note:** Documentation maintainers are not able to to merge documentation PRs by clicking the `Merge pull request` button. Instead, if you are a documentation maintainer and have approved the PR, simply add the label `doc-merge` to the PR and a `Mergify` bot that runs every minute will merge the PR.
+**Note:** Documentation maintainers are not able to merge documentation PRs by clicking the `Merge pull request` button. Instead, if you are a documentation maintainer and have approved the PR, simply add the label `doc-merge` to the PR and a `Mergify` bot that runs every minute will merge the PR.
 
 
 ## Commands Reference updates
