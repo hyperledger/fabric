@@ -21,7 +21,7 @@
 #   - docker-list - generates a list of docker images that 'make docker' produces
 #   - docker-tag-latest - re-tags the images made by 'make docker' with the :latest tag
 #   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
-#   - docker-thirdparty - pulls thirdparty images (kafka,zookeeper,couchdb)
+#   - docker-thirdparty - pulls thirdparty images (couchdb, etc)
 #   - docs - builds the documentation in html format
 #   - gotools - installs go tools like golint
 #   - help-docs - generate the command reference docs
@@ -52,8 +52,6 @@ BASE_VERSION = 2.5.0
 # 3rd party image version
 # These versions are also set in the runners in ./integration/runners/
 COUCHDB_VER ?= 3.2.2
-KAFKA_VER ?= 5.3.1
-ZOOKEEPER_VER ?= 5.3.1
 
 # Disable implicit rules
 .SUFFIXES:
@@ -162,8 +160,6 @@ unit-tests: unit-test
 # can be built by a peer configured to use the ccenv-1.4 as the builder image.
 .PHONY: docker-thirdparty
 docker-thirdparty: docker-thirdparty-couchdb
-	docker pull confluentinc/cp-zookeeper:${ZOOKEEPER_VER}
-	docker pull confluentinc/cp-kafka:${KAFKA_VER}
 	docker pull hyperledger/fabric-ccenv:1.4
 
 .PHONY: docker-thirdparty-couchdb
