@@ -153,17 +153,6 @@ func ChannelRestrictionsValue(maxChannelCount uint64) *StandardConfigValue {
 	}
 }
 
-// KafkaBrokersValue returns the config definition for the addresses of the ordering service's Kafka brokers.
-// It is a value for the /Channel/Orderer group.
-func KafkaBrokersValue(brokers []string) *StandardConfigValue {
-	return &StandardConfigValue{
-		key: KafkaBrokersKey,
-		value: &ab.KafkaBrokers{
-			Brokers: brokers,
-		},
-	}
-}
-
 // MSPValue returns the config definition for an MSP.
 // It is a value for the /Channel/Orderer/*, /Channel/Application/*, and /Channel/Consortiums/*/*/* groups.
 func MSPValue(mspDef *mspprotos.MSPConfig) *StandardConfigValue {

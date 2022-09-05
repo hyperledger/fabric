@@ -109,11 +109,6 @@ type Orderer interface {
 	// MaxChannelsCount returns the maximum count of channels to allow for an ordering network
 	MaxChannelsCount() uint64
 
-	// KafkaBrokers returns the addresses (IP:port notation) of a set of "bootstrap"
-	// Kafka brokers, i.e. this is not necessarily the entire set of Kafka brokers
-	// used for ordering
-	KafkaBrokers() []string
-
 	Consenters() []*cb.Consenter
 
 	// Organizations returns the organizations for the ordering service

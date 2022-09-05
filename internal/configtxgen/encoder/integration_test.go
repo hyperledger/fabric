@@ -67,8 +67,5 @@ var _ = Describe("Integration", func() {
 		Entry("Sample Insecure Solo Profile", genesisconfig.SampleInsecureSoloProfile),
 		Entry("Sample Single MSP Solo Profile", genesisconfig.SampleSingleMSPSoloProfile),
 		Entry("Sample DevMode Solo Profile", genesisconfig.SampleDevModeSoloProfile),
-		Entry("Sample Insecure Kafka Profile", genesisconfig.SampleInsecureKafkaProfile),
-		Entry("Sample Single MSP Kafka Profile", genesisconfig.SampleSingleMSPKafkaProfile),
-		Entry("Sample DevMode Kafka Profile", genesisconfig.SampleDevModeKafkaProfile),
 	)
 })
