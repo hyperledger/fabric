@@ -64,7 +64,16 @@ Add your user to the docker group.
           install Docker Compose. If you already had Docker installed, you
           should check that you have Docker Compose version 1.14.0 or greater
           installed. If not, we recommend that you install a more recent
-          version of Docker.
+          version of Docker. If we include the use of format like <>, '' or $ 
+          in our documentation then it will be greatful. It will help common 
+          people to understand it properly.
+          
+ .. note:: Also in the command above sudo usermod -a -G docker <username> , we must define what
+         do we meant by usermod , why are we usind -a, why are we making it global and which username
+         to be placed here. Is it a docker username or system username and in which format
+         like I mentioned previously we need to define the format. I have used my docker username with both formats
+         <aliakbarch98> and 'aliakbarch98' none of them is working. Kindly make these changes, if you explain them to me
+         I will be better able to do it and edit myself.
 
 You can check the version of Docker Compose you have installed with the
 following command from a terminal prompt:
