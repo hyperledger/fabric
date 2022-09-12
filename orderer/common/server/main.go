@@ -815,6 +815,7 @@ func initializeMultichannelRegistrar(
 		}
 	}
 
+	// TODO Orderer v3: remove once all tests stop using solo https://github.com/hyperledger/fabric/issues/3514
 	consenters["solo"] = solo.New()
 
 	registrar.Initialize(consenters)
