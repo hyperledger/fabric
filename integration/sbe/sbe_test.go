@@ -67,9 +67,9 @@ var _ = Describe("SBE_E2E", func() {
 		os.RemoveAll(testDir)
 	})
 
-	Describe("basic solo network with 2 orgs", func() {
+	Describe("basic etcdraft network with 2 orgs", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicSolo(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -78,7 +78,7 @@ var _ = Describe("SBE_E2E", func() {
 			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 		})
 
-		It("executes a basic solo network with 2 orgs and SBE checks", func() {
+		It("executes a basic etcdraft network with 2 orgs and SBE checks", func() {
 			By("getting the orderer by name")
 			orderer := network.Orderer("orderer")
 
@@ -99,7 +99,7 @@ var _ = Describe("SBE_E2E", func() {
 			RunSBE(network, orderer, "priv")
 		})
 
-		It("executes a basic solo network with 2 orgs and SBE checks with _lifecycle", func() {
+		It("executes a basic etcdraft network with 2 orgs and SBE checks with _lifecycle", func() {
 			chaincode = nwo.Chaincode{
 				Name:              "mycc",
 				Version:           "0.0",

@@ -46,7 +46,7 @@ var _ = Describe("PKCS11 enabled network", func() {
 		tempDir, err = ioutil.TempDir("", "p11")
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.BasicSolo(), tempDir, nil, StartPort(), components)
+		network = nwo.New(nwo.BasicEtcdRaft(), tempDir, nil, StartPort(), components)
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
@@ -84,7 +84,7 @@ var _ = Describe("PKCS11 enabled network", func() {
 			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 		})
 
-		It("executes transactions against a basic solo network", func() {
+		It("executes transactions against a basic etcdraft network", func() {
 			orderer := network.Orderer("orderer")
 			network.CreateAndJoinChannels(orderer)
 
@@ -105,7 +105,7 @@ var _ = Describe("PKCS11 enabled network", func() {
 			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 		})
 
-		It("executes transactions against a basic solo network", func() {
+		It("executes transactions against a basic etcdraft network", func() {
 			orderer := network.Orderer("orderer")
 			network.CreateAndJoinChannels(orderer)
 

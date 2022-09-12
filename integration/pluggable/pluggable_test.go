@@ -59,7 +59,7 @@ var _ = Describe("EndToEnd", func() {
 		SetValidationPluginActivationFolder(dir)
 
 		// Speed up test by reducing the number of peers we bring up
-		soloConfig := nwo.BasicSolo()
+		soloConfig := nwo.BasicEtcdRaft()
 		soloConfig.RemovePeer("Org1", "peer1")
 		soloConfig.RemovePeer("Org2", "peer1")
 		Expect(soloConfig.Peers).To(HaveLen(2))

@@ -43,12 +43,12 @@ var _ = Describe("Network", func() {
 		os.RemoveAll(tempDir)
 	})
 
-	Describe("solo network", func() {
+	Describe("etcdraft network", func() {
 		var network *nwo.Network
 		var process ifrit.Process
 
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicSolo(), tempDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaft(), tempDir, client, StartPort(), components)
 
 			// Generate config and bootstrap the network
 			network.GenerateConfigTree()

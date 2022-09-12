@@ -52,7 +52,7 @@ var _ = Describe("DiscoveryService", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		config := nwo.BasicSolo()
+		config := nwo.BasicEtcdRaft()
 		config.RemovePeer("Org1", "peer1")
 		config.RemovePeer("Org2", "peer1")
 		Expect(config.Peers).To(HaveLen(2))
