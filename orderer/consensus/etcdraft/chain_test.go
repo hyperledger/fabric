@@ -2385,11 +2385,21 @@ var _ = Describe("Chain", func() {
 					var newLeader, remainingFollower *chain
 					var c2state raft.SoftState
 					var c3state raft.SoftState
+					retry := 1
 					for newLeader == nil || remainingFollower == nil {
 						select {
 						case c2state = <-c2.observe:
 						case c3state = <-c3.observe:
 						case <-time.After(LongEventualTimeout):
+							// abdicateleader might fail to transfer the leadership when the next candidate
+							// busy with applying committed entries; in that case,
+							// send an artificial MsgTimeoutNow to node to pick next leader
+							if retry > 0 {
+								retry -= 1
+								By("leadership transfer not complete, hence retrying")
+								c2.Consensus(&orderer.ConsensusRequest{Payload: protoutil.MarshalOrPanic(&raftpb.Message{Type: raftpb.MsgTimeoutNow, To: 2})}, 0)
+								continue
+							}
 							Fail("Expected a new leader to present")
 						}
 
