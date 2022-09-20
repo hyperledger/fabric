@@ -276,6 +276,16 @@ func (n *node) abdicateLeader(currentLead uint64) {
 	timer := n.clock.NewTimer(time.Duration(n.config.ElectionTick) * n.tickInterval)
 	defer timer.Stop() // prevent timer leak
 
+	// Revalidate the status before waiting on notifyc channel as Ready go routine
+	// well passed the channel notification before establishing the channel
+	if status.ID != currentLead {
+		status = n.Status()
+		if status.Lead != raft.None && status.Lead != currentLead {
+			n.logger.Infof("Leadership transfer completed from %d to %d", currentLead, status.Lead)
+			return
+		}
+	}
+
 	select {
 	case <-timer.C():
 		n.logger.Warn("Leader transfer timeout")
