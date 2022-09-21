@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -42,6 +43,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/onboarding"
 	server_mocks "github.com/hyperledger/fabric/orderer/common/server/mocks"
 	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -69,14 +71,7 @@ func TestMain(m *testing.M) {
 	}
 	defer gexec.CleanupBuildArtifacts()
 
-	tempDir, err = ioutil.TempDir("", "main-test")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create temporary directory: %v", err)
-		os.Exit(-1)
-	}
-	defer os.RemoveAll(tempDir)
-
-	copyYamlFiles("testdata", tempDir)
+	fmt.Println("TestMain built cryptogen")
 
 	os.Exit(m.Run())
 }
@@ -338,8 +333,18 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
 
-	genesisFile := produceGenesisFile(t, genesisconfig.SampleSingleMSPSoloProfile, "testchannelid")
-	defer os.Remove(genesisFile)
+	tmpDir, err := ioutil.TempDir("", "main-test-init-registrar")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create temporary directory: %v", err)
+		os.Exit(-1)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	copyYamlFiles("testdata", tmpDir)
+
+	cryptoPath := generateCryptoMaterials(t, cryptogen, tmpDir)
+	t.Logf("Generated crypto material to: %s", cryptoPath)
+	genesisFile, _ := produceGenesisFileEtcdRaft(t, "testchannelid", tmpDir)
 
 	fileLedgerLocation, _ := ioutil.TempDir("", "main_test-")
 	defer os.RemoveAll(fileLedgerLocation)
@@ -372,8 +377,18 @@ func TestExtractBootstrapBlock(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
 
-	genesisFile := produceGenesisFile(t, genesisconfig.SampleSingleMSPSoloProfile, "testchannelid")
-	defer os.Remove(genesisFile)
+	tmpDir, err := ioutil.TempDir("", "main-test-init-registrar")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create temporary directory: %v", err)
+		os.Exit(-1)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	copyYamlFiles("testdata", tmpDir)
+
+	cryptoPath := generateCryptoMaterials(t, cryptogen, tmpDir)
+	t.Logf("Generated crypto material to: %s", cryptoPath)
+	genesisFile, _ := produceGenesisFileEtcdRaft(t, "testchannelid", tmpDir)
 
 	tests := []struct {
 		config *localconfig.TopLevel
@@ -401,8 +416,19 @@ func TestExtractBootstrapBlock(t *testing.T) {
 func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 	configPathCleanup := configtest.SetDevFabricConfigPath(t)
 	defer configPathCleanup()
-	genesisFile := produceGenesisFile(t, genesisconfig.SampleSingleMSPSoloProfile, "testchannelid")
-	defer os.Remove(genesisFile)
+
+	tmpDir, err := ioutil.TempDir("", "main-test-init-registrar")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create temporary directory: %v", err)
+		os.Exit(-1)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	copyYamlFiles("testdata", tmpDir)
+
+	cryptoPath := generateCryptoMaterials(t, cryptogen, tmpDir)
+	t.Logf("Generated crypto material to: %s", cryptoPath)
+	genesisFile, _ := produceGenesisFileEtcdRaft(t, "testchannelid", tmpDir)
 
 	var (
 		config         *localconfig.TopLevel
@@ -625,8 +651,19 @@ func TestLoadLocalMSP(t *testing.T) {
 func TestInitializeMultichannelRegistrar(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
-	genesisFile := produceGenesisFile(t, genesisconfig.SampleDevModeSoloProfile, "testchannelid")
-	defer os.Remove(genesisFile)
+
+	tmpDir, err := ioutil.TempDir("", "main-test-init-registrar")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create temporary directory: %v", err)
+		os.Exit(-1)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	copyYamlFiles("testdata", tmpDir)
+
+	cryptoPath := generateCryptoMaterials(t, cryptogen, tmpDir)
+	t.Logf("Generated crypto material to: %s", cryptoPath)
+	genesisFile, _ := produceGenesisFileEtcdRaft(t, "testchannelid", tmpDir)
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
@@ -636,16 +673,21 @@ func TestInitializeMultichannelRegistrar(t *testing.T) {
 	t.Run("registrar with a system channel", func(t *testing.T) {
 		conf, ledgerDir := genesisConfig(t, genesisFile)
 		defer os.RemoveAll(ledgerDir)
+
+		srv, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{})
+		require.NoError(t, err)
 		lf, err := createLedgerFactory(conf, &disabled.Provider{})
 		require.NoError(t, err)
 		bootBlock := file.New(genesisFile).GenesisBlock()
 		initializeBootstrapChannel(bootBlock, lf)
+		repInit := onboarding.NewReplicationInitiator(lf, bootBlock, conf, comm.SecureOptions{}, signer, cryptoProvider)
+
 		registrar := initializeMultichannelRegistrar(
 			bootBlock,
-			onboarding.NewReplicationInitiator(lf, bootBlock, conf, comm.SecureOptions{}, signer, cryptoProvider),
+			repInit,
 			&cluster.PredicateDialer{},
 			comm.ServerConfig{},
-			nil,
+			srv,
 			conf,
 			signer,
 			&disabled.Provider{},
@@ -655,6 +697,8 @@ func TestInitializeMultichannelRegistrar(t *testing.T) {
 		)
 		require.NotNil(t, registrar)
 		require.Equal(t, "testchannelid", registrar.SystemChannelID())
+		require.NotNil(t, repInit.ChannelLister)
+		repInit.ChannelLister.(*onboarding.InactiveChainReplicator).Stop()
 	})
 
 	t.Run("registrar without a system channel", func(t *testing.T) {
@@ -711,14 +755,14 @@ func TestInitializeGrpcServer(t *testing.T) {
 
 // generateCryptoMaterials uses cryptogen to generate the necessary
 // MSP files and TLS certificates
-func generateCryptoMaterials(t *testing.T, cryptogen string) string {
+func generateCryptoMaterials(t *testing.T, cryptogen, tmpDir string) string {
 	gt := NewGomegaWithT(t)
-	cryptoPath := filepath.Join(tempDir, "crypto")
+	cryptoPath := filepath.Join(tmpDir, "crypto")
 
 	cmd := exec.Command(
 		cryptogen,
 		"generate",
-		"--config", filepath.Join(tempDir, "examplecom-config.yaml"),
+		"--config", filepath.Join(tmpDir, "examplecom-config.yaml"),
 		"--output", cryptoPath,
 	)
 	cryptogenProcess, err := gexec.Start(cmd, nil, nil)
@@ -732,11 +776,18 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
 
-	genesisFile := produceGenesisFile(t, genesisconfig.SampleDevModeSoloProfile, "testchannelid")
-	defer os.Remove(genesisFile)
+	tmpDir, err := ioutil.TempDir("", "main-test-trusted-roots")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create temporary directory: %v", err)
+		os.Exit(-1)
+	}
+	defer os.RemoveAll(tmpDir)
 
-	cryptoPath := generateCryptoMaterials(t, cryptogen)
-	defer os.RemoveAll(cryptoPath)
+	copyYamlFiles("testdata", tmpDir)
+
+	cryptoPath := generateCryptoMaterials(t, cryptogen, tmpDir)
+	t.Logf("Generated crypto material to: %s", cryptoPath)
+	genesisFile, serverCert := produceGenesisFileEtcdRaft(t, "testchannelid", tmpDir)
 
 	// get a free random port
 	listenAddr := func() string {
@@ -745,8 +796,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		return l.Addr().String()
 	}()
 	port, _ := strconv.ParseUint(strings.Split(listenAddr, ":")[1], 10, 16)
-	tempDir, err := ioutil.TempDir("", "ledger-dir")
-	require.NoError(t, err)
+	ledgerDir := path.Join(tmpDir, "ledger-dir")
 	conf := &localconfig.TopLevel{
 		General: localconfig.General{
 			BootstrapMethod: "file",
@@ -759,10 +809,15 @@ func TestUpdateTrustedRoots(t *testing.T) {
 			},
 		},
 		FileLedger: localconfig.FileLedger{
-			Location: tempDir,
+			Location: ledgerDir,
+		},
+		Consensus: etcdraft.Config{
+			WALDir:  path.Join(tmpDir, "etcdraft", "wal"),
+			SnapDir: path.Join(tmpDir, "etcdraft", "snap"),
 		},
 	}
 	grpcServer := initializeGrpcServer(conf, initializeServerConfig(conf, nil))
+
 	caMgr := &caManager{
 		appRootCAsByChain:     make(map[string][][]byte),
 		ordererRootCAsByChain: make(map[string][][]byte),
@@ -782,16 +837,19 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 
-	genConfig, ledgerDir := genesisConfig(t, genesisFile)
-	defer os.RemoveAll(ledgerDir)
+	srvConf := comm.ServerConfig{
+		SecOpts: comm.SecureOptions{
+			Certificate: serverCert,
+		},
+	}
 
-	initializeMultichannelRegistrar(
+	r := initializeMultichannelRegistrar(
 		bootBlock,
 		onboarding.NewReplicationInitiator(lf, bootBlock, conf, comm.SecureOptions{}, signer, cryptoProvider),
 		&cluster.PredicateDialer{},
-		comm.ServerConfig{},
-		nil,
-		genConfig,
+		srvConf,
+		grpcServer,
+		conf,
 		signer,
 		&disabled.Provider{},
 		&server_mocks.HealthChecker{},
@@ -799,17 +857,23 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		cryptoProvider,
 		callback,
 	)
+
 	t.Logf("# app CAs: %d", len(caMgr.appRootCAsByChain["testchannelid"]))
 	t.Logf("# orderer CAs: %d", len(caMgr.ordererRootCAsByChain["testchannelid"]))
 	// mutual TLS not required so no updates should have occurred
 	require.Equal(t, 0, len(caMgr.appRootCAsByChain["testchannelid"]))
 	require.Equal(t, 0, len(caMgr.ordererRootCAsByChain["testchannelid"]))
+
 	grpcServer.Listener().Close()
+	cs := r.GetChain("testchannelid")
+	cs.Halt()
 
 	conf = &localconfig.TopLevel{
 		General: localconfig.General{
-			ListenAddress: "localhost",
-			ListenPort:    uint16(port),
+			BootstrapMethod: "file",
+			BootstrapFile:   genesisFile,
+			ListenAddress:   "localhost",
+			ListenPort:      uint16(port),
 			TLS: localconfig.TLS{
 				Enabled:            true,
 				ClientAuthRequired: true,
@@ -817,8 +881,16 @@ func TestUpdateTrustedRoots(t *testing.T) {
 				Certificate:        filepath.Join(cryptoPath, "ordererOrganizations", "example.com", "orderers", "127.0.0.1.example.com", "tls", "server.crt"),
 			},
 		},
+		FileLedger: localconfig.FileLedger{
+			Location: ledgerDir,
+		},
+		Consensus: etcdraft.Config{
+			WALDir:  path.Join(tmpDir, "etcdraft", "wal"),
+			SnapDir: path.Join(tmpDir, "etcdraft", "snap"),
+		},
 	}
 	grpcServer = initializeGrpcServer(conf, initializeServerConfig(conf, nil))
+
 	caMgr = &caManager{
 		appRootCAsByChain:     make(map[string][][]byte),
 		ordererRootCAsByChain: make(map[string][][]byte),
@@ -836,16 +908,14 @@ func TestUpdateTrustedRoots(t *testing.T) {
 			caMgr.updateClusterDialer(predDialer, clusterConf.SecOpts.ServerRootCAs)
 		}
 	}
-	genConfig2, ledgerDir2 := genesisConfig(t, genesisFile)
-	defer os.RemoveAll(ledgerDir2)
 
-	initializeMultichannelRegistrar(
+	r = initializeMultichannelRegistrar(
 		bootBlock,
 		onboarding.NewReplicationInitiator(lf, bootBlock, conf, comm.SecureOptions{}, signer, cryptoProvider),
 		predDialer,
-		comm.ServerConfig{},
-		nil,
-		genConfig2,
+		srvConf,
+		grpcServer,
+		conf,
 		signer,
 		&disabled.Provider{},
 		&server_mocks.HealthChecker{},
@@ -856,11 +926,13 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	t.Logf("# app CAs: %d", len(caMgr.appRootCAsByChain["testchannelid"]))
 	t.Logf("# orderer CAs: %d", len(caMgr.ordererRootCAsByChain["testchannelid"]))
 	// mutual TLS is required so updates should have occurred
-	// we expect an intermediate and root CA for apps and orderers
-	require.Equal(t, 2, len(caMgr.appRootCAsByChain["testchannelid"]))
-	require.Equal(t, 2, len(caMgr.ordererRootCAsByChain["testchannelid"]))
-	require.Len(t, predDialer.Config.SecOpts.ServerRootCAs, 2)
+	// we do not expect an intermediate CA, only root CA for apps and orderers
+	require.Equal(t, 1, len(caMgr.appRootCAsByChain["testchannelid"]))
+	require.Equal(t, 1, len(caMgr.ordererRootCAsByChain["testchannelid"]))
+	require.Len(t, predDialer.Config.SecOpts.ServerRootCAs, 1)
 	grpcServer.Listener().Close()
+	cs = r.GetChain("testchannelid")
+	cs.Halt()
 }
 
 func TestRootServerCertAggregation(t *testing.T) {
@@ -1188,13 +1260,18 @@ func panicMsg(f func()) string {
 	return message.(string)
 }
 
-func produceGenesisFile(t *testing.T, profile, channelID string) string {
-	conf := genesisconfig.Load(profile, configtest.GetDevConfigDir())
-	f, err := ioutil.TempFile("", fmt.Sprintf("%s-genesis_block-", t.Name()))
+func produceGenesisFileEtcdRaft(t *testing.T, channelID string, tmpDir string) (string, []byte) {
+	confRaft := genesisconfig.Load("SampleEtcdRaftSystemChannel", tmpDir)
+
+	serverCert, err := ioutil.ReadFile(string(confRaft.Orderer.EtcdRaft.Consenters[0].ServerTlsCert))
 	require.NoError(t, err)
-	_, err = f.Write(protoutil.MarshalOrPanic(encoder.New(conf).GenesisBlockForChannel(channelID)))
+
+	bootstrapper, err := encoder.NewBootstrapper(confRaft)
+	require.NoError(t, err, "cannot create bootstrapper")
+
+	joinBlockAppRaft := bootstrapper.GenesisBlockForChannel(channelID)
+	f := path.Join(tmpDir, channelID+".block")
+	err = os.WriteFile(f, protoutil.MarshalOrPanic(joinBlockAppRaft), 0o644)
 	require.NoError(t, err)
-	err = f.Close()
-	require.NoError(t, err)
-	return f.Name()
+	return f, serverCert
 }
