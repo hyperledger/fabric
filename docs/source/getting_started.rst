@@ -15,7 +15,6 @@ The Fabric application stack has five layers:
 .. image:: ./getting_started_image2.png
    :width: 300px
    :align: right
-   :height: 100px
    :alt: Fabric Application Stack
 
 * :doc:`Prerequisite software <prereqs>`: the base layer needed to run the software, for example, Docker.
