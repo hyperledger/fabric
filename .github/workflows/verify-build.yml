@@ -15,6 +15,9 @@ env:
   PATH: /opt/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
   GO_VER: 1.18.2
 
+permissions:
+  contents: read # to fetch code (actions/checkout)
+
 jobs:
   basic-checks:
     name: Basic Checks
