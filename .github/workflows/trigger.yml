@@ -6,8 +6,12 @@ on:
   issue_comment:
     types: [created]
 name: Automatically Trigger Azure Pipeline
+permissions: {}
 jobs:
   trigger:
+    permissions:
+      pull-requests: write # to comment on pull request
+
     name: TriggerAZP
     if: github.event.issue.pull_request != '' && contains(github.event.comment.body, '/ci-run')
     runs-on: ubuntu-latest
