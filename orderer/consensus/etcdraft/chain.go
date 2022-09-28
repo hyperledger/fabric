@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/pem"
 	"fmt"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -21,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/types"
@@ -394,6 +396,37 @@ func (c *Chain) Order(env *common.Envelope, configSeq uint64) error {
 // Configure submits config type transactions for ordering.
 func (c *Chain) Configure(env *common.Envelope, configSeq uint64) error {
 	c.Metrics.ConfigProposalsReceived.Add(1)
+
+	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	if err != nil {
+		return errors.Wrap(err, "failed to extract payload from config envelope")
+	}
+	// get config update
+	configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
+	if err != nil {
+		return errors.Wrap(err, "could not read config update")
+	}
+
+	configMeta, err := MetadataFromConfigUpdate(configUpdate)
+	if err != nil {
+		return errors.Wrap(err, "could not read config metadata")
+	}
+
+	membershipUpdates, err := ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, configMeta.Consenters)
+	if err != nil {
+		c.logger.Panicf("illegal configuration change detected: %s", err)
+	}
+
+	if membershipUpdates.Rotated() {
+		lead := atomic.LoadUint64(&c.lastKnownLeader)
+		fmt.Printf("My raftID: %d Leader raftID: %d rotatedNode raftID: %d\n", c.raftID, lead, membershipUpdates.RotatedNode)
+		if membershipUpdates.RotatedNode == lead {
+			c.logger.Infof("Certificate of Raft leader is being rotated, attempt leader transfer before reconfiguring communication")
+			debug.PrintStack()
+			c.Node.abdicateLeader(lead)
+		}
+	}
+
 	return c.Submit(&orderer.SubmitRequest{LastValidationSeq: configSeq, Payload: env, Channel: c.channelID}, 0)
 }
 
@@ -708,7 +741,7 @@ func (c *Chain) run() {
 				continue
 			}
 
-			batches, pending, err := c.ordered(s.req)
+			batches, pending, err := c.ordered(s.req, bc)
 			if err != nil {
 				c.logger.Errorf("Failed to order message: %s", err)
 				continue
@@ -892,7 +925,7 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 //   -- pending bool; if there are envelopes pending to be ordered,
 //   -- err error; the error encountered, if any.
 // It takes care of config messages as well as the revalidation of messages if the config sequence has advanced.
-func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelope, pending bool, err error) {
+func (c *Chain) ordered(msg *orderer.SubmitRequest, bc *blockCreator) (batches [][]*common.Envelope, pending bool, err error) {
 	seq := c.support.Sequence()
 
 	isconfig, err := c.isConfig(msg.Payload)
@@ -917,6 +950,7 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 			batches = append(batches, batch)
 		}
 		batches = append(batches, []*common.Envelope{msg.Payload})
+
 		return batches, false, nil
 	}
 	// it is a normal message
@@ -1297,20 +1331,21 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 
 			c.configInflight = true
 		} else if configMembership.Rotated() {
-			lead := atomic.LoadUint64(&c.lastKnownLeader)
-			if configMembership.RotatedNode == lead {
-				c.logger.Infof("Certificate of Raft leader is being rotated, attempt leader transfer before reconfiguring communication")
-				go func() {
-					c.Node.abdicateLeader(lead)
-					if err := c.configureComm(); err != nil {
-						c.logger.Panicf("Failed to configure communication: %s", err)
-					}
-				}()
-			} else {
-				if err := c.configureComm(); err != nil {
-					c.logger.Panicf("Failed to configure communication: %s", err)
-				}
+			/* 			lead := atomic.LoadUint64(&c.lastKnownLeader)
+			   			if configMembership.RotatedNode == lead {
+			   				c.logger.Infof("Certificate of Raft leader is being rotated, attempt leader transfer before reconfiguring communication")
+			   				debug.PrintStack()
+			   				go func() {
+			   					c.Node.abdicateLeader(lead)
+			   					if err := c.configureComm(); err != nil {
+			   						c.logger.Panicf("Failed to configure communication: %s", err)
+			   					}
+			   				}()
+			   			} else { */
+			if err := c.configureComm(); err != nil {
+				c.logger.Panicf("Failed to configure communication: %s", err)
 			}
+			//}
 		}
 
 	case common.HeaderType_ORDERER_TRANSACTION:
