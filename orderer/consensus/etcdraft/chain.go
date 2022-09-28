@@ -394,6 +394,7 @@ func (c *Chain) Order(env *common.Envelope, configSeq uint64) error {
 // Configure submits config type transactions for ordering.
 func (c *Chain) Configure(env *common.Envelope, configSeq uint64) error {
 	c.Metrics.ConfigProposalsReceived.Add(1)
+
 	return c.Submit(&orderer.SubmitRequest{LastValidationSeq: configSeq, Payload: env, Channel: c.channelID}, 0)
 }
 
@@ -530,7 +531,7 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 // - the local run goroutine if this is leader
 // - the actual leader via the transport mechanism
 // The call fails if there's no leader elected yet.
-func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
+func (c *Chain) Submit(req *orderer.SubmitRequest, _ uint64) error {
 	if err := c.isRunning(); err != nil {
 		c.Metrics.ProposalFailures.Add(1)
 		return err
@@ -708,11 +709,16 @@ func (c *Chain) run() {
 				continue
 			}
 
-			batches, pending, err := c.ordered(s.req)
+			batches, pending, err := c.ordered(s.req, bc)
 			if err != nil {
 				c.logger.Errorf("Failed to order message: %s", err)
 				continue
 			}
+
+			if len(batches) == 0 {
+				continue
+			}
+
 			if pending {
 				startTimer() // no-op if timer is already started
 			} else {
@@ -892,7 +898,7 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 //   -- pending bool; if there are envelopes pending to be ordered,
 //   -- err error; the error encountered, if any.
 // It takes care of config messages as well as the revalidation of messages if the config sequence has advanced.
-func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelope, pending bool, err error) {
+func (c *Chain) ordered(msg *orderer.SubmitRequest, _ *blockCreator) (batches [][]*common.Envelope, pending bool, err error) {
 	seq := c.support.Sequence()
 
 	isconfig, err := c.isConfig(msg.Payload)
@@ -911,12 +917,48 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 			}
 		}
 
+		// Before we cut the envelope, we check that it's not a config update that removes ourselves from the quorum.
+		// In which case, we abdicate leadership to a new leader and forward the request to it.
+		if c.areWeEvictedFromConfigOrIsOurCertRotated(msg.Payload) {
+			go func() {
+				c.Node.abdicateLeader(c.raftID)
+				c.Submit(msg, 0)
+			}()
+			/*			var max uint64
+						var nextLeader uint64
+						// Pick a new node that is:
+						for candidate, progress := range c.Node.Status().Progress {
+							// Not ourselves
+							if candidate == c.raftID {
+								continue
+							}
+							// Is most up to date
+							if max < progress.Next {
+								max = progress.Next
+								nextLeader = candidate
+							}
+						}
+
+						if nextLeader != 0 {
+							c.logger.Infof("Abdicating leadership in favor of %d", nextLeader)
+							go func() {
+								c.Node.abdicateLeader(nextLeader)
+								c.forwardToLeader(nextLeader, msg)
+							}()
+						} else {
+							c.logger.Errorf("Could not find any node to abdicate leadership to")
+							return nil, false, errors.Errorf("could not find a node to abdicate leadership to")
+						}*/
+			return nil, false, nil
+		}
+
 		batch := c.support.BlockCutter().Cut()
 		batches = [][]*common.Envelope{}
 		if len(batch) != 0 {
 			batches = append(batches, batch)
 		}
 		batches = append(batches, []*common.Envelope{msg.Payload})
+
 		return batches, false, nil
 	}
 	// it is a normal message
@@ -929,6 +971,54 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 	}
 	batches, pending = c.support.BlockCutter().Ordered(msg.Payload)
 	return batches, pending, nil
+}
+
+func (c *Chain) areWeEvictedFromConfigOrIsOurCertRotated(env *common.Envelope) bool {
+	h, err := protoutil.ChannelHeader(env)
+	if err != nil {
+		c.logger.Warnw("Failed processing channel header: %v", err)
+		return false
+	}
+
+	if common.HeaderType(h.Type) != common.HeaderType_CONFIG {
+		return false
+	}
+
+	configEnvelope := &common.ConfigEnvelope{}
+	_, err = protoutil.UnmarshalEnvelopeOfType(env, common.HeaderType_CONFIG, configEnvelope)
+	if err != nil {
+		c.logger.Warnw("Unmarshaling envelope failed: %v", err)
+		return false
+	}
+
+	bundle, err := channelconfig.NewBundle(c.channelID, configEnvelope.Config, c.CryptoProvider)
+	if err != nil {
+		c.logger.Warnw("Failed creating bundle: %v", err)
+		return false
+	}
+
+	oc, _ := bundle.OrdererConfig()
+	md := &etcdraft.ConfigMetadata{}
+	if err := proto.Unmarshal(oc.ConsensusMetadata(), md); err != nil {
+		c.logger.Warnw("Failed unmarshaling consensus metadata: %v", err)
+		return false
+	}
+
+	membershipUpdates, err := ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, md.Consenters)
+	if err != nil {
+		c.logger.Panicf("Illegal configuration change detected: %s", err)
+	}
+
+	if membershipUpdates.RotatedNode == c.raftID {
+		c.logger.Infof("Detected certificate rotation of our node")
+		return true
+	}
+
+	if _, exists := membershipUpdates.NewConsenters[c.raftID]; !exists {
+		c.logger.Infof("Detected eviction of ourselves from the configuration")
+		return true
+	}
+	return false
 }
 
 func (c *Chain) propose(ch chan<- *common.Block, bc *blockCreator, batches ...[]*common.Envelope) {
@@ -1113,17 +1203,10 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 				c.Metrics.ClusterSize.Set(float64(len(c.opts.BlockMetadata.ConsenterIds)))
 			}
 
-			lead := atomic.LoadUint64(&c.lastKnownLeader)
-			removeLeader := cc.Type == raftpb.ConfChangeRemoveNode && cc.NodeID == lead
 			shouldHalt := cc.Type == raftpb.ConfChangeRemoveNode && cc.NodeID == c.raftID
 
 			// unblock `run` go routine so it can still consume Raft messages
 			go func() {
-				if removeLeader {
-					c.logger.Infof("Current leader is being removed from channel, attempt leadership transfer")
-					c.Node.abdicateLeader(lead)
-				}
-
 				if configureComm && !shouldHalt { // no need to configure comm if this node is going to halt
 					if err := c.configureComm(); err != nil {
 						c.logger.Panicf("Failed to configure communication: %s", err)
@@ -1296,20 +1379,9 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 			}
 
 			c.configInflight = true
-		} else if configMembership.Rotated() {
-			lead := atomic.LoadUint64(&c.lastKnownLeader)
-			if configMembership.RotatedNode == lead {
-				c.logger.Infof("Certificate of Raft leader is being rotated, attempt leader transfer before reconfiguring communication")
-				go func() {
-					c.Node.abdicateLeader(lead)
-					if err := c.configureComm(); err != nil {
-						c.logger.Panicf("Failed to configure communication: %s", err)
-					}
-				}()
-			} else {
-				if err := c.configureComm(); err != nil {
-					c.logger.Panicf("Failed to configure communication: %s", err)
-				}
+		} else {
+			if err := c.configureComm(); err != nil {
+				c.logger.Panicf("Failed to configure communication: %s", err)
 			}
 		}
 
