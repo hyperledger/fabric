@@ -156,11 +156,13 @@ Bring up Org3 components
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 After we have created the Org3 certificate material, we can now bring up the
-Org3 peer. From the ``addOrg3`` directory, issue the following command:
+Org3 peer. From the ``addOrg3`` directory, issue the following command if you are using docker:
 
 .. code:: bash
 
-  docker-compose -f docker/docker-compose-org3.yaml up -d
+   docker-compose -f compose/compose-org3.yaml -f compose/docker/docker-compose-org3.yaml up -d
+
+If you are using podman change the second file argument to `compose/podman/docker-compose-org3.yaml`
 
 If the command is successful, you will see the creation of the Org3 peer:
 
