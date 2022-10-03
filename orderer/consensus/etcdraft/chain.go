@@ -401,6 +401,7 @@ func (c *Chain) Configure(env *common.Envelope, configSeq uint64) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to extract payload from config envelope")
 	}
+
 	// get config update
 	configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
 	if err != nil {
@@ -412,18 +413,20 @@ func (c *Chain) Configure(env *common.Envelope, configSeq uint64) error {
 		return errors.Wrap(err, "could not read config metadata")
 	}
 
-	membershipUpdates, err := ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, configMeta.Consenters)
-	if err != nil {
-		c.logger.Panicf("illegal configuration change detected: %s", err)
-	}
+	if configMeta != nil {
+		membershipUpdates, err := ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, configMeta.Consenters)
+		if err != nil {
+			c.logger.Panicf("illegal configuration change detected: %s", err)
+		}
 
-	if membershipUpdates.Rotated() {
-		lead := atomic.LoadUint64(&c.lastKnownLeader)
-		fmt.Printf("My raftID: %d Leader raftID: %d rotatedNode raftID: %d\n", c.raftID, lead, membershipUpdates.RotatedNode)
-		if membershipUpdates.RotatedNode == lead {
-			c.logger.Infof("Certificate of Raft leader is being rotated, attempt leader transfer before reconfiguring communication")
-			debug.PrintStack()
-			c.Node.abdicateLeader(lead)
+		if membershipUpdates.Rotated() {
+			lead := atomic.LoadUint64(&c.lastKnownLeader)
+			fmt.Printf("My raftID: %d Leader raftID: %d rotatedNode raftID: %d\n", c.raftID, lead, membershipUpdates.RotatedNode)
+			if membershipUpdates.RotatedNode == lead && lead == c.raftID {
+				c.logger.Infof("Certificate of Raft leader is being rotated, attempt leader transfer before reconfiguring communication")
+				debug.PrintStack()
+				c.Node.abdicateLeader(lead)
+			}
 		}
 	}
 
