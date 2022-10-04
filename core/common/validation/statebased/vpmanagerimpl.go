@@ -38,9 +38,12 @@ func newLedgerKeyID(cc, coll, key string) *ledgerKeyID {
 // dependencies at a vscc scope, where transactions are validated on a per-
 // namespace basis:
 // -) the pair waitForDepInserted() / signalDepInserted() is used to sync on
-//    insertion of dependencies
+//
+//	insertion of dependencies
+//
 // -) the pair waitForAndRetrieveValidationResult() / signalValidationResult()
-//    is used to sync on the validation results for a given namespace
+//
+//	is used to sync on the validation results for a given namespace
 type txDependency struct {
 	mutex               sync.Mutex
 	cond                *sync.Cond

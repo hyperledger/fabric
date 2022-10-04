@@ -447,7 +447,8 @@ func TestIterator(t *testing.T) {
 }
 
 // The following tests are unique to couchdb, they are not used in leveldb
-//  query test
+//
+//	query test
 func TestQuery(t *testing.T) {
 	vdbEnv.init(t, nil)
 	defer vdbEnv.cleanup()

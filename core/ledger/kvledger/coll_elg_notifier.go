@@ -38,9 +38,10 @@ func (n *collElgNotifier) InterestedInNamespaces() []string {
 // HandleStateUpdates implements function in interface ledger.StateListener
 // This function gets invoked when one or more chaincodes are deployed or upgraded by a block.
 // This function, for each upgraded chaincode, performs the following
-// 1) Retrieves the existing collection configurations and new collection configurations
-// 2) Computes the collections for which the peer is not eligible as per the existing collection configuration
-//    but is eligible as per the new collection configuration
+//  1. Retrieves the existing collection configurations and new collection configurations
+//  2. Computes the collections for which the peer is not eligible as per the existing collection configuration
+//     but is eligible as per the new collection configuration
+//
 // Finally, it causes an invocation to function 'ProcessCollsEligibilityEnabled' on ledger store with a map {ns:colls}
 // that contains the details of <ns, coll> combination for which the eligibility of the peer is switched on.
 func (n *collElgNotifier) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {

@@ -47,6 +47,7 @@ import (
 )
 
 // The following private interfaces are here purely to prevent counterfeiter creating an import cycle in the unit test
+//
 //go:generate counterfeiter -o mocks/endorserclient.go --fake-name EndorserClient . endorserClient
 type endorserClient interface {
 	peer.EndorserClient
