@@ -331,8 +331,8 @@ func (l *kvLedger) filterYetToCommitBlocks(blocksPvtData map[uint64][]*ledger.Tx
 	return nil
 }
 
-//recommitLostBlocks retrieves blocks in specified range and commit the write set to either
-//state DB or history DB or both
+// recommitLostBlocks retrieves blocks in specified range and commit the write set to either
+// state DB or history DB or both
 func (l *kvLedger) recommitLostBlocks(firstBlockNum uint64, lastBlockNum uint64, recoverables ...recoverable) error {
 	logger.Infof("Recommitting lost blocks - firstBlockNum=%d, lastBlockNum=%d, recoverables=%#v", firstBlockNum, lastBlockNum, recoverables)
 	var err error
@@ -654,9 +654,12 @@ func (l *kvLedger) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilte
 // DoesPvtDataInfoExist returns true when
 // (1) the ledger has pvtdata associated with the given block number (or)
 // (2) a few or all pvtdata associated with the given block number is missing but the
-//     missing info is recorded in the ledger (or)
+//
+//	missing info is recorded in the ledger (or)
+//
 // (3) the block is committed but it does not contain even a single
-//     transaction with pvtData.
+//
+//	transaction with pvtData.
 func (l *kvLedger) DoesPvtDataInfoExist(blockNum uint64) (bool, error) {
 	pvtStoreHt, err := l.pvtdataStore.LastCommittedBlockHeight()
 	if err != nil {

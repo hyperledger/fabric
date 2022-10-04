@@ -53,7 +53,7 @@ func upgradeCmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) *cobra.Comm
 	return chaincodeUpgradeCmd
 }
 
-//upgrade the command via Endorser
+// upgrade the command via Endorser
 func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope, error) {
 	spec, err := getChaincodeSpec(cmd)
 	if err != nil {

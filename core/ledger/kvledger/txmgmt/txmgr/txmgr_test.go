@@ -646,7 +646,7 @@ func createTestValue(i int) []byte {
 	return []byte(fmt.Sprintf("value_%03d", i))
 }
 
-//TestExecuteQueryQuery is only tested on the CouchDB testEnv
+// TestExecuteQueryQuery is only tested on the CouchDB testEnv
 func TestExecuteQuery(t *testing.T) {
 	for _, testEnv := range testEnvs {
 		// Query is only supported and tested on the CouchDB testEnv

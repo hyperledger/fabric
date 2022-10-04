@@ -455,10 +455,10 @@ func (itr *resultsItr) GetBookmarkAndClose() string {
 }
 
 // updateRangeQueryInfo updates two attributes of the rangeQueryInfo
-// 1) The EndKey - set to either a) latest key that is to be returned to the caller (if the iterator is not exhausted)
-//                                  because, we do not know if the caller is again going to invoke Next() or not.
-//                            or b) the last key that was supplied in the original query (if the iterator is exhausted)
-// 2) The ItrExhausted - set to true if the iterator is going to return nil as a result of the Next() call
+//  1. The EndKey - set to either a) latest key that is to be returned to the caller (if the iterator is not exhausted)
+//     because, we do not know if the caller is again going to invoke Next() or not.
+//     or b) the last key that was supplied in the original query (if the iterator is exhausted)
+//  2. The ItrExhausted - set to true if the iterator is going to return nil as a result of the Next() call
 func (itr *resultsItr) updateRangeQueryInfo(queryResult statedb.QueryResult) {
 	if itr.rwSetBuilder == nil {
 		return

@@ -111,7 +111,7 @@ func SignedByMspAdmin(mspId string) *cb.SignaturePolicyEnvelope {
 	return p
 }
 
-//wrapper for generating "any of a given role" type policies
+// wrapper for generating "any of a given role" type policies
 func signedByAnyOfGivenRole(role mb.MSPRole_MSPRoleType, ids []string) *cb.SignaturePolicyEnvelope {
 	return SignedByNOutOfGivenRole(1, role, ids)
 }

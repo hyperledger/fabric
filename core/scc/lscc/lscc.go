@@ -340,7 +340,7 @@ func (lscc *SCC) ValidationInfo(channelID, chaincodeName string, qe ledger.Simpl
 	return
 }
 
-//create the chaincode on the given chain
+// create the chaincode on the given chain
 func (lscc *SCC) putChaincodeData(stub shim.ChaincodeStubInterface, cd *ccprovider.ChaincodeData) error {
 	cdbytes, err := proto.Marshal(cd)
 	if err != nil {
@@ -500,7 +500,7 @@ func (lscc *SCC) getChaincodeCollectionData(stub shim.ChaincodeStubInterface, ch
 	return shim.Success(collectionsConfigBytes)
 }
 
-//checks for existence of chaincode on the given channel
+// checks for existence of chaincode on the given channel
 func (lscc *SCC) getCCInstance(stub shim.ChaincodeStubInterface, ccname string) ([]byte, error) {
 	cdbytes, err := stub.GetState(ccname)
 	if err != nil {
@@ -513,7 +513,7 @@ func (lscc *SCC) getCCInstance(stub shim.ChaincodeStubInterface, ccname string) 
 	return cdbytes, nil
 }
 
-//gets the cd out of the bytes
+// gets the cd out of the bytes
 func (lscc *SCC) getChaincodeData(ccname string, cdbytes []byte) (*ccprovider.ChaincodeData, error) {
 	cd := &ccprovider.ChaincodeData{}
 	err := proto.Unmarshal(cdbytes, cd)
@@ -529,7 +529,7 @@ func (lscc *SCC) getChaincodeData(ccname string, cdbytes []byte) (*ccprovider.Ch
 	return cd, nil
 }
 
-//checks for existence of chaincode on the given chain
+// checks for existence of chaincode on the given chain
 func (lscc *SCC) getCCCode(ccname string, cdbytes []byte) (*pb.ChaincodeDeploymentSpec, []byte, error) {
 	cd, err := lscc.getChaincodeData(ccname, cdbytes)
 	if err != nil {
@@ -937,7 +937,7 @@ func (lscc *SCC) executeUpgrade(stub shim.ChaincodeStubInterface, chainName stri
 
 //-------------- the chaincode stub interface implementation ----------
 
-//Init is mostly useless for SCC
+// Init is mostly useless for SCC
 func (lscc *SCC) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	return shim.Success(nil)
 }

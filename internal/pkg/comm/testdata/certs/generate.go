@@ -27,7 +27,7 @@ import (
 	"time"
 )
 
-//command line flags
+// command line flags
 var (
 	numOrgs        = flag.Int("orgs", 2, "number of unique organizations")
 	numChildOrgs   = flag.Int("child-orgs", 2, "number of intermediaries per organization")
@@ -35,7 +35,7 @@ var (
 	numServerCerts = flag.Int("servers", 1, "number of server certificates per organization")
 )
 
-//default template for X509 subject
+// default template for X509 subject
 func subjectTemplate() pkix.Name {
 	return pkix.Name{
 		Country:  []string{"US"},
@@ -44,7 +44,7 @@ func subjectTemplate() pkix.Name {
 	}
 }
 
-//default template for X509 certificates
+// default template for X509 certificates
 func x509Template() (x509.Certificate, error) {
 
 	//generate a serial number
@@ -67,7 +67,7 @@ func x509Template() (x509.Certificate, error) {
 
 }
 
-//generate an EC private key (P256 curve)
+// generate an EC private key (P256 curve)
 func genKeyECDSA(name string) (*ecdsa.PrivateKey, error) {
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -84,7 +84,7 @@ func genKeyECDSA(name string) (*ecdsa.PrivateKey, error) {
 	return priv, nil
 }
 
-//generate a signed X509 certficate using ECDSA
+// generate a signed X509 certficate using ECDSA
 func genCertificateECDSA(name string, template, parent *x509.Certificate, pub *ecdsa.PublicKey,
 	priv *ecdsa.PrivateKey) (*x509.Certificate, error) {
 
@@ -110,7 +110,7 @@ func genCertificateECDSA(name string, template, parent *x509.Certificate, pub *e
 	return x509Cert, nil
 }
 
-//generate an EC certificate appropriate for use by a TLS server
+// generate an EC certificate appropriate for use by a TLS server
 func genServerCertificateECDSA(name string, signKey *ecdsa.PrivateKey, signCert *x509.Certificate) error {
 	fmt.Println(name)
 	key, err := genKeyECDSA(name)
@@ -141,7 +141,7 @@ func genServerCertificateECDSA(name string, signKey *ecdsa.PrivateKey, signCert 
 	return nil
 }
 
-//generate an EC certificate appropriate for use by a TLS server
+// generate an EC certificate appropriate for use by a TLS server
 func genClientCertificateECDSA(name string, signKey *ecdsa.PrivateKey, signCert *x509.Certificate) error {
 	fmt.Println(name)
 	key, err := genKeyECDSA(name)
@@ -169,8 +169,8 @@ func genClientCertificateECDSA(name string, signKey *ecdsa.PrivateKey, signCert 
 	return nil
 }
 
-//generate an EC certificate signing(CA) key pair and output as
-//PEM-encoded files
+// generate an EC certificate signing(CA) key pair and output as
+// PEM-encoded files
 func genCertificateAuthorityECDSA(name string) (*ecdsa.PrivateKey, *x509.Certificate, error) {
 
 	key, err := genKeyECDSA(name)
@@ -201,7 +201,7 @@ func genCertificateAuthorityECDSA(name string) (*ecdsa.PrivateKey, *x509.Certifi
 	return key, x509Cert, nil
 }
 
-//generate an EC certificate appropriate for use by a TLS server
+// generate an EC certificate appropriate for use by a TLS server
 func genIntermediateCertificateAuthorityECDSA(name string, signKey *ecdsa.PrivateKey,
 	signCert *x509.Certificate) (*ecdsa.PrivateKey, *x509.Certificate, error) {
 

@@ -304,7 +304,7 @@ func (vdb *VersionedDB) addMissingRevisionsFromDB(ns string, missingKeys []strin
 	return nil
 }
 
-//batchableDocument defines a document for a batch
+// batchableDocument defines a document for a batch
 type batchableDocument struct {
 	CouchDoc couchDoc
 	Deleted  bool

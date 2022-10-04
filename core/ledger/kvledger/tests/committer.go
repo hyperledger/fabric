@@ -58,7 +58,7 @@ func (c *committer) copyOfBlockAndPvtdata(blk *ledger.BlockAndPvtData) *ledger.B
 		MissingPvtData: blk.MissingPvtData}
 }
 
-/////////////////   block generation code  ///////////////////////////////////////////
+// ///////////////   block generation code  ///////////////////////////////////////////
 // blkGenerator helps creating the next block for the ledger
 type blkGenerator struct {
 	lastNum  uint64

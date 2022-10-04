@@ -1538,7 +1538,7 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 
 }
 
-//addRevisionAndDeleteStatus adds keys for version and chaincodeID to the JSON value
+// addRevisionAndDeleteStatus adds keys for version and chaincodeID to the JSON value
 func addRevisionAndDeleteStatus(revision string, value []byte, deleted bool) []byte {
 
 	//create a version mapping

@@ -321,7 +321,7 @@ func TestInvalidSigCDSGetCCPackage(t *testing.T) {
 	}
 }
 
-//switch the chaincodes on the FS and validate
+// switch the chaincodes on the FS and validate
 func TestSignedCDSSwitchChaincodes(t *testing.T) {
 	ccdir := setupccdir()
 	defer os.RemoveAll(ccdir)

@@ -104,7 +104,7 @@ func (o *timeoutOrderer) timeoutIncrement() {
 
 var once sync.Once
 
-/// mock deliver client for UT
+// / mock deliver client for UT
 type mockDeliverClient struct {
 	err error
 }

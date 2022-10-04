@@ -137,7 +137,7 @@ func (c *client) currentCommitHash() []byte {
 	return commitHash.Value
 }
 
-///////////////////////   simulator wrapper functions  ///////////////////////
+// /////////////////////   simulator wrapper functions  ///////////////////////
 type simulator struct {
 	ledger.TxSimulator
 	txid   string

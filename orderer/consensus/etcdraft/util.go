@@ -320,7 +320,7 @@ func createX509VerifyOptions(ordererConfig channelconfig.Orderer) (x509.VerifyOp
 	}, nil
 }
 
-//validateConsenterTLSCerts decodes PEM cert, parses and validates it.
+// validateConsenterTLSCerts decodes PEM cert, parses and validates it.
 func validateConsenterTLSCerts(c *etcdraft.Consenter, opts x509.VerifyOptions, ignoreExpiration bool) error {
 	clientCert, err := parseCertificateFromBytes(c.ClientTlsCert)
 	if err != nil {

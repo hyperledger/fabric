@@ -49,7 +49,7 @@ var owners = []string{
 	"john",
 }
 
-//TestValue is a struct for holding the test value
+// TestValue is a struct for holding the test value
 type TestValue struct {
 	Value string
 }

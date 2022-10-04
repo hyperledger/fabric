@@ -14,10 +14,10 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 )
 
-//MockResponseSet is used for processing CC to Peer comm
-//such as GET/PUT/DEL state. The MockResponse contains the
-//response to be returned for each input received.from the
-//CC. Every stub call will generate a response
+// MockResponseSet is used for processing CC to Peer comm
+// such as GET/PUT/DEL state. The MockResponse contains the
+// response to be returned for each input received.from the
+// CC. Every stub call will generate a response
 type MockResponseSet struct {
 	//DoneFunc is invoked when all I/O is done for this
 	//response set
@@ -32,8 +32,8 @@ type MockResponseSet struct {
 	Responses []*MockResponse
 }
 
-//MockResponse contains the expected received message (optional)
-//and response to send (optional)
+// MockResponse contains the expected received message (optional)
+// and response to send (optional)
 type MockResponse struct {
 	RecvMsg *pb.ChaincodeMessage
 	RespMsg interface{}
@@ -59,34 +59,34 @@ func (s *MockCCComm) SetName(newname string) {
 	s.name = newname
 }
 
-//Send sends a message
+// Send sends a message
 func (s *MockCCComm) Send(msg *pb.ChaincodeMessage) error {
 	s.sendStream <- msg
 	return nil
 }
 
-//Recv receives a message
+// Recv receives a message
 func (s *MockCCComm) Recv() (*pb.ChaincodeMessage, error) {
 	msg := <-s.recvStream
 	return msg, nil
 }
 
-//CloseSend closes send
+// CloseSend closes send
 func (s *MockCCComm) CloseSend() error {
 	return nil
 }
 
-//GetRecvStream returns the recvStream
+// GetRecvStream returns the recvStream
 func (s *MockCCComm) GetRecvStream() chan *pb.ChaincodeMessage {
 	return s.recvStream
 }
 
-//GetSendStream returns the sendStream
+// GetSendStream returns the sendStream
 func (s *MockCCComm) GetSendStream() chan *pb.ChaincodeMessage {
 	return s.sendStream
 }
 
-//Quit closes the channels...
+// Quit closes the channels...
 func (s *MockCCComm) Quit() {
 	if !s.skipClose {
 		close(s.recvStream)
@@ -94,22 +94,22 @@ func (s *MockCCComm) Quit() {
 	}
 }
 
-//SetBailOnError will cause Run to return on any error
+// SetBailOnError will cause Run to return on any error
 func (s *MockCCComm) SetBailOnError(b bool) {
 	s.bailOnError = b
 }
 
-//SetPong pongs received keepalive. This mut be done on the chaincode only
+// SetPong pongs received keepalive. This mut be done on the chaincode only
 func (s *MockCCComm) SetPong(val bool) {
 	s.pong = val
 }
 
-//SetKeepAlive sets keepalive. This mut be done on the server only
+// SetKeepAlive sets keepalive. This mut be done on the server only
 func (s *MockCCComm) SetKeepAlive(ka *pb.ChaincodeMessage) {
 	s.keepAlive = ka
 }
 
-//SetResponses sets responses for an Init or Invoke
+// SetResponses sets responses for an Init or Invoke
 func (s *MockCCComm) SetResponses(respSet *MockResponseSet) {
 	s.respLock.Lock()
 	s.respSet = respSet
@@ -117,7 +117,7 @@ func (s *MockCCComm) SetResponses(respSet *MockResponseSet) {
 	s.respLock.Unlock()
 }
 
-//keepAlive
+// keepAlive
 func (s *MockCCComm) ka(done <-chan struct{}) {
 	for {
 		if s.keepAlive == nil {
@@ -132,7 +132,7 @@ func (s *MockCCComm) ka(done <-chan struct{}) {
 	}
 }
 
-//Run receives and sends indefinitely
+// Run receives and sends indefinitely
 func (s *MockCCComm) Run(done <-chan struct{}) error {
 	//start the keepalive
 	go s.ka(done)

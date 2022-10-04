@@ -14,7 +14,7 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 )
 
-//SendPanicFailure
+// SendPanicFailure
 type SendPanicFailure string
 
 func (e SendPanicFailure) Error() string {

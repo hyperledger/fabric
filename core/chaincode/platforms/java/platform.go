@@ -32,7 +32,7 @@ func (p *Platform) Name() string {
 	return pb.ChaincodeSpec_JAVA.String()
 }
 
-//ValidatePath validates the java chaincode paths
+// ValidatePath validates the java chaincode paths
 func (p *Platform) ValidatePath(rawPath string) error {
 	path, err := url.Parse(rawPath)
 	if err != nil || path == nil {
