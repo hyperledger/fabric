@@ -181,9 +181,9 @@ func UnmarshalEndorserTxAndValidate(txenv *tx.Envelope) (*EndorserTx, error) {
 
 // ValidateChannelID makes sure that proposed channel IDs comply with the
 // following restrictions:
-//      1. Contain only lower case ASCII alphanumerics, dots '.', and dashes '-'
-//      2. Are shorter than 250 characters.
-//      3. Start with a letter
+//  1. Contain only lower case ASCII alphanumerics, dots '.', and dashes '-'
+//  2. Are shorter than 250 characters.
+//  3. Start with a letter
 //
 // This is the intersection of the Kafka restrictions and CouchDB restrictions
 // with the following exception: '.' is converted to '_' in the CouchDB naming
@@ -191,7 +191,6 @@ func UnmarshalEndorserTxAndValidate(txenv *tx.Envelope) (*EndorserTx, error) {
 // behave tests which rely on the dot notation for their sluggification.
 //
 // note: this function is a copy of the same in common/configtx/validator.go
-//
 func ValidateChannelID(channelID string) error {
 	re, _ := regexp.Compile(ChannelAllowedChars)
 	// Length

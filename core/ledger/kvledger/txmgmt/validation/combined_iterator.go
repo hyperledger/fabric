@@ -14,10 +14,10 @@ import (
 
 // combinedIterator implements the interface statedb.ResultsIterator.
 // Internally, it maintains two iterators
-// - (1) dbItr - an iterator that iterates over keys present in the db
-// - (2) updatesItr - an iterator that iterates over keys present in the update batch
-//       (i.e, the keys that are inserted/updated/deleted by preceding valid transactions
-//        in the block and to be committed to the db as a part of block commit operation)
+//   - (1) dbItr - an iterator that iterates over keys present in the db
+//   - (2) updatesItr - an iterator that iterates over keys present in the update batch
+//     (i.e, the keys that are inserted/updated/deleted by preceding valid transactions
+//     in the block and to be committed to the db as a part of block commit operation)
 //
 // This can be used where the caller wants to see what would be the final results of
 // iterating over a key range if the modifications of the preceding valid transactions

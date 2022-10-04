@@ -44,6 +44,7 @@ func (s sleeper) Sleep(d time.Duration, doneC chan struct{}) {
 
 // LedgerInfo an adapter to provide the interface to query
 // the ledger committer for current ledger height
+//
 //go:generate counterfeiter -o fake/ledger_info.go --fake-name LedgerInfo . LedgerInfo
 type LedgerInfo interface {
 	// LedgerHeight returns current local ledger height
@@ -52,6 +53,7 @@ type LedgerInfo interface {
 
 // GossipServiceAdapter serves to provide basic functionality
 // required from gossip service by delivery service
+//
 //go:generate counterfeiter -o fake/gossip_service_adapter.go --fake-name GossipServiceAdapter . GossipServiceAdapter
 type GossipServiceAdapter interface {
 	// AddPayload adds payload to the local state sync buffer

@@ -156,9 +156,9 @@ func (v *validator) validateTx(txRWSet *rwsetutil.TxRwSet, updates *publicAndHas
 	return peer.TxValidationCode_VALID, nil
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/////                 Validation of public read-set
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// ///                 Validation of public read-set
+// //////////////////////////////////////////////////////////////////////////////
 func (v *validator) validateReadSet(ns string, kvReads []*kvrwset.KVRead, updates *privacyenabledstate.PubUpdateBatch) (bool, error) {
 	for _, kvRead := range kvReads {
 		if valid, err := v.validateKVRead(ns, kvRead, updates); !valid || err != nil {
@@ -194,9 +194,9 @@ func (v *validator) validateKVRead(ns string, kvRead *kvrwset.KVRead, updates *p
 	return true, nil
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/////                 Validation of range queries
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// ///                 Validation of range queries
+// //////////////////////////////////////////////////////////////////////////////
 func (v *validator) validateRangeQueries(ns string, rangeQueriesInfo []*kvrwset.RangeQueryInfo, updates *privacyenabledstate.PubUpdateBatch) (bool, error) {
 	for _, rqi := range rangeQueriesInfo {
 		if valid, err := v.validateRangeQuery(ns, rqi, updates); !valid || err != nil {
@@ -238,9 +238,9 @@ func (v *validator) validateRangeQuery(ns string, rangeQueryInfo *kvrwset.RangeQ
 	return qv.validate()
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/////                 Validation of hashed read-set
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// ///                 Validation of hashed read-set
+// //////////////////////////////////////////////////////////////////////////////
 func (v *validator) validateNsHashedReadSets(ns string, collHashedRWSets []*rwsetutil.CollHashedRwSet,
 	updates *privacyenabledstate.HashedUpdateBatch) (bool, error) {
 	for _, collHashedRWSet := range collHashedRWSets {

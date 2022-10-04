@@ -19,7 +19,9 @@ import (
 // Given a list of old block's pvtData, `CommitPvtDataOfOldBlocks` performs the following three
 // operations
 // (1) construct update entries (i.e., dataEntries, expiryEntries, missingDataEntries)
-//     from the above created data entries
+//
+//	from the above created data entries
+//
 // (2) create a db update batch from the update entries
 // (3) commit the update batch to the pvtStore
 func (s *Store) CommitPvtDataOfOldBlocks(
