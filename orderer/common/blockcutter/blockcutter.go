@@ -54,14 +54,19 @@ func NewReceiverImpl(channelID string, sharedConfigFetcher OrdererConfigFetcher,
 //
 // messageBatches length: 0, pending: false
 //   - impossible, as we have just received a message
+//
 // messageBatches length: 0, pending: true
 //   - no batch is cut and there are messages pending
+//
 // messageBatches length: 1, pending: false
 //   - the message count reaches BatchSize.MaxMessageCount
+//
 // messageBatches length: 1, pending: true
 //   - the current message will cause the pending batch size in bytes to exceed BatchSize.PreferredMaxBytes.
+//
 // messageBatches length: 2, pending: false
 //   - the current message size in bytes exceeds BatchSize.PreferredMaxBytes, therefore isolated in its own batch.
+//
 // messageBatches length: 2, pending: true
 //   - impossible
 //

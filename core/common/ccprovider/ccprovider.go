@@ -30,8 +30,10 @@ var ccproviderLogger = flogging.MustGetLogger("ccprovider")
 var chaincodeInstallPath string
 
 // CCPackage encapsulates a chaincode package which can be
-//    raw ChaincodeDeploymentSpec
-//    SignedChaincodeDeploymentSpec
+//
+//	raw ChaincodeDeploymentSpec
+//	SignedChaincodeDeploymentSpec
+//
 // Attempt to keep the interface at a level with minimal
 // interface for possible generalization.
 type CCPackage interface {

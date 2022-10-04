@@ -819,9 +819,12 @@ func (l *kvLedger) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilte
 // DoesPvtDataInfoExist returns true when
 // (1) the ledger has pvtdata associated with the given block number (or)
 // (2) a few or all pvtdata associated with the given block number is missing but the
-//     missing info is recorded in the ledger (or)
+//
+//	missing info is recorded in the ledger (or)
+//
 // (3) the block is committed but it does not contain even a single
-//     transaction with pvtData.
+//
+//	transaction with pvtData.
 func (l *kvLedger) DoesPvtDataInfoExist(blockNum uint64) (bool, error) {
 	pvtStoreHt, err := l.pvtdataStore.LastCommittedBlockHeight()
 	if err != nil {

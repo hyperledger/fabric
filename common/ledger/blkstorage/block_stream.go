@@ -48,9 +48,9 @@ type blockPlacementInfo struct {
 	blockBytesOffset int64
 }
 
-///////////////////////////////////
+// /////////////////////////////////
 // blockfileStream functions
-////////////////////////////////////
+// //////////////////////////////////
 func newBlockfileStream(rootDir string, fileNum int, startOffset int64) (*blockfileStream, error) {
 	filePath := deriveBlockfilePath(rootDir, fileNum)
 	logger.Debugf("newBlockfileStream(): filePath=[%s], startOffset=[%d]", filePath, startOffset)
@@ -143,9 +143,9 @@ func (s *blockfileStream) close() error {
 	return errors.WithStack(s.file.Close())
 }
 
-///////////////////////////////////
+// /////////////////////////////////
 // blockStream functions
-////////////////////////////////////
+// //////////////////////////////////
 func newBlockStream(rootDir string, startFileNum int, startOffset int64, endFileNum int) (*blockStream, error) {
 	startFileStream, err := newBlockfileStream(rootDir, startFileNum, startOffset)
 	if err != nil {

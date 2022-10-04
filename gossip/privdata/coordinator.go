@@ -364,7 +364,8 @@ type seqAndDataModel struct {
 }
 
 // map from seqAndDataModel to:
-//     map from namespace to []*rwset.CollectionPvtReadWriteSet
+//
+//	map from namespace to []*rwset.CollectionPvtReadWriteSet
 type aggregatedCollections map[seqAndDataModel]map[string][]*rwset.CollectionPvtReadWriteSet
 
 func (ac aggregatedCollections) addCollection(seqInBlock uint64, dm rwset.TxReadWriteSet_DataModel, namespace string, col *rwset.CollectionPvtReadWriteSet) {

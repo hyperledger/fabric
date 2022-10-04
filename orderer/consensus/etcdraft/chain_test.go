@@ -3819,9 +3819,9 @@ func (n *network) exec(f func(c *chain), ids ...uint64) {
 //
 // expectLeaderChange controls whether leader change should
 // be observed on newly joined node.
-// - it should be true if newly joined node was leader
-// - it should be false if newly joined node was follower, and
-//   already knows the leader.
+//   - it should be true if newly joined node was leader
+//   - it should be false if newly joined node was follower, and
+//     already knows the leader.
 func (n *network) join(id uint64, expectLeaderChange bool) {
 	n.connect(id)
 

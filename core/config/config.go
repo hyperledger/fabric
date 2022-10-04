@@ -31,12 +31,12 @@ func AddConfigPath(v *viper.Viper, p string) {
 	}
 }
 
-//----------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------
 // TranslatePath()
-//----------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------
 // Translates a relative path into a fully qualified path relative to the config
 // file that specified it.  Absolute paths are passed unscathed.
-//----------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------
 func TranslatePath(base, p string) string {
 	if filepath.IsAbs(p) {
 		return p
@@ -45,29 +45,30 @@ func TranslatePath(base, p string) string {
 	return filepath.Join(base, p)
 }
 
-//----------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------
 // TranslatePathInPlace()
-//----------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------
 // Translates a relative path into a fully qualified path in-place (updating the
 // pointer) relative to the config file that specified it.  Absolute paths are
 // passed unscathed.
-//----------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------
 func TranslatePathInPlace(base string, p *string) {
 	*p = TranslatePath(base, *p)
 }
 
-//----------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------
 // GetPath()
-//----------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------
 // GetPath allows configuration strings that specify a (config-file) relative path
 //
 // For example: Assume our config is located in /etc/hyperledger/fabric/core.yaml with
 // a key "msp.configPath" = "msp/config.yaml".
 //
 // This function will return:
-//      GetPath("msp.configPath") -> /etc/hyperledger/fabric/msp/config.yaml
 //
-//----------------------------------------------------------------------------------
+//	GetPath("msp.configPath") -> /etc/hyperledger/fabric/msp/config.yaml
+//
+// ----------------------------------------------------------------------------------
 func GetPath(key string) string {
 	p := viper.GetString(key)
 	if p == "" {
@@ -79,14 +80,14 @@ func GetPath(key string) string {
 
 const OfficialPath = "/etc/hyperledger/fabric"
 
-//----------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------
 // InitViper()
-//----------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------
 // Performs basic initialization of our viper-based configuration layer.
 // Primary thrust is to establish the paths that should be consulted to find
 // the configuration we need.  If v == nil, we will initialize the global
 // Viper instance
-//----------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------
 func InitViper(v *viper.Viper, configName string) error {
 	altPath := os.Getenv("FABRIC_CFG_PATH")
 	if altPath != "" {

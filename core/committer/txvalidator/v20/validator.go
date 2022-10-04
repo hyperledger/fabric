@@ -166,17 +166,17 @@ func (v *TxValidator) chainExists(chain string) bool {
 // of the goroutines) from the results channel. The goroutines
 // perform the validation of the txs in the block and enqueue the
 // validation result in the results channel. A few note-worthy facts:
-// 1) to keep the approach simple, the committer thread enqueues
-//    all transactions in the block and then moves on to reading the
-//    results.
-// 2) for parallel validation to work, it is important that the
-//    validation function does not change the state of the system.
-//    Otherwise the order in which validation is perform matters
-//    and we have to resort to sequential validation (or some locking).
-//    This is currently true, because the only function that affects
-//    state is when a config transaction is received, but they are
-//    guaranteed to be alone in the block. If/when this assumption
-//    is violated, this code must be changed.
+//  1. to keep the approach simple, the committer thread enqueues
+//     all transactions in the block and then moves on to reading the
+//     results.
+//  2. for parallel validation to work, it is important that the
+//     validation function does not change the state of the system.
+//     Otherwise the order in which validation is perform matters
+//     and we have to resort to sequential validation (or some locking).
+//     This is currently true, because the only function that affects
+//     state is when a config transaction is received, but they are
+//     guaranteed to be alone in the block. If/when this assumption
+//     is violated, this code must be changed.
 func (v *TxValidator) Validate(block *common.Block) error {
 	var err error
 	var errPos int

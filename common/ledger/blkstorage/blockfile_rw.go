@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-////  WRITER ////
+// //  WRITER ////
 type blockfileWriter struct {
 	filePath string
 	file     *os.File
@@ -62,7 +62,7 @@ func (w *blockfileWriter) close() error {
 	return errors.WithStack(w.file.Close())
 }
 
-////  READER ////
+// //  READER ////
 type blockfileReader struct {
 	file *os.File
 }
