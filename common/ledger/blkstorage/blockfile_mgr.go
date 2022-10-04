@@ -46,10 +46,12 @@ type blockfileMgr struct {
 /*
 Creates a new manager that will manage the files used for block persistence.
 This manager manages the file system FS including
-  -- the directory where the files are stored
-  -- the individual files where the blocks are stored
-  -- the blockfilesInfo which tracks the latest file being persisted to
-  -- the index which tracks what block and transaction is in what file
+
+	-- the directory where the files are stored
+	-- the individual files where the blocks are stored
+	-- the blockfilesInfo which tracks the latest file being persisted to
+	-- the index which tracks what block and transaction is in what file
+
 When a new blockfile manager is started (i.e. only on start-up), it checks
 if this start-up is the first time the system is coming up or is this a restart
 of the system.
@@ -60,29 +62,32 @@ i.e blockfile_000000, blockfile_000001, etc..
 
 Each transaction in a block is stored with information about the number of
 bytes in that transaction
- Adding txLoc [fileSuffixNum=0, offset=3, bytesLength=104] for tx [1:0] to index
- Adding txLoc [fileSuffixNum=0, offset=107, bytesLength=104] for tx [1:1] to index
+
+	Adding txLoc [fileSuffixNum=0, offset=3, bytesLength=104] for tx [1:0] to index
+	Adding txLoc [fileSuffixNum=0, offset=107, bytesLength=104] for tx [1:1] to index
+
 Each block is stored with the total encoded length of that block as well as the
 tx location offsets.
 
 Remember that these steps are only done once at start-up of the system.
 At start up a new manager:
-  *) Checks if the directory for storing files exists, if not creates the dir
-  *) Checks if the key value database exists, if not creates one
-       (will create a db dir)
-  *) Determines the blockfilesInfo used for storage
-		-- Loads from db if exist, if not instantiate a new blockfilesInfo
-		-- If blockfilesInfo was loaded from db, compares to FS
-		-- If blockfilesInfo and file system are not in sync, syncs blockfilesInfo from FS
-  *) Starts a new file writer
-		-- truncates file per blockfilesInfo to remove any excess past last block
-  *) Determines the index information used to find tx and blocks in
-  the file blkstorage
-		-- Instantiates a new blockIdxInfo
-		-- Loads the index from the db if exists
-		-- syncIndex comparing the last block indexed to what is in the FS
-		-- If index and file system are not in sync, syncs index from the FS
-  *)  Updates blockchain info used by the APIs
+
+	  *) Checks if the directory for storing files exists, if not creates the dir
+	  *) Checks if the key value database exists, if not creates one
+	       (will create a db dir)
+	  *) Determines the blockfilesInfo used for storage
+			-- Loads from db if exist, if not instantiate a new blockfilesInfo
+			-- If blockfilesInfo was loaded from db, compares to FS
+			-- If blockfilesInfo and file system are not in sync, syncs blockfilesInfo from FS
+	  *) Starts a new file writer
+			-- truncates file per blockfilesInfo to remove any excess past last block
+	  *) Determines the index information used to find tx and blocks in
+	  the file blkstorage
+			-- Instantiates a new blockIdxInfo
+			-- Loads the index from the db if exists
+			-- syncIndex comparing the last block indexed to what is in the FS
+			-- If index and file system are not in sync, syncs index from the FS
+	  *)  Updates blockchain info used by the APIs
 */
 func newBlockfileMgr(id string, conf *Conf, indexConfig *IndexConfig, indexStore *leveldbhelper.DBHandle) (*blockfileMgr, error) {
 	logger.Debugf("newBlockfileMgr() initializing file-based block storage for ledger: %s ", id)

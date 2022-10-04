@@ -70,9 +70,10 @@ func newMsgStore(pol common.MessageReplacingPolicy, trigger invalidationTrigger)
 
 // MessageStore adds messages to an internal buffer.
 // When a message is received, it might:
-// 	- Be added to the buffer
-// 	- Discarded because of some message already in the buffer (invalidated)
-// 	- Make a message already in the buffer to be discarded (invalidates)
+//   - Be added to the buffer
+//   - Discarded because of some message already in the buffer (invalidated)
+//   - Make a message already in the buffer to be discarded (invalidates)
+//
 // When a message is invalidated, the invalidationTrigger is invoked on that message.
 type MessageStore interface {
 	// add adds a message to the store

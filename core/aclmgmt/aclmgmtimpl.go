@@ -9,10 +9,12 @@ package aclmgmt
 import "github.com/hyperledger/fabric/core/policy"
 
 // implementation of aclMgmt. CheckACL calls in fabric result in the following flow
-//    if resourceProvider[resourceName]
-//       return resourceProvider[resourceName].CheckACL(...)
-//    else
-//       return defaultProvider[resourceName].CheckACL(...)
+//
+//	if resourceProvider[resourceName]
+//	   return resourceProvider[resourceName].CheckACL(...)
+//	else
+//	   return defaultProvider[resourceName].CheckACL(...)
+//
 // with rescfgProvider encapsulating resourceProvider and defaultProvider
 type aclMgmtImpl struct {
 	// resource provider gets resource information from config

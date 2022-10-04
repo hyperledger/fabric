@@ -887,9 +887,11 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 
 // Orders the envelope in the `msg` content. SubmitRequest.
 // Returns
-//   -- batches [][]*common.Envelope; the batches cut,
-//   -- pending bool; if there are envelopes pending to be ordered,
-//   -- err error; the error encountered, if any.
+//
+//	-- batches [][]*common.Envelope; the batches cut,
+//	-- pending bool; if there are envelopes pending to be ordered,
+//	-- err error; the error encountered, if any.
+//
 // It takes care of config messages as well as the revalidation of messages if the config sequence has advanced.
 func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelope, pending bool, err error) {
 	seq := c.support.Sequence()

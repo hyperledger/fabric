@@ -438,19 +438,18 @@ func (csp *Provider) getECKey(ski []byte) (pubKey *ecdsa.PublicKey, isPriv bool,
 
 // RFC 5480, 2.1.1.1. Named Curve
 //
-// secp224r1 OBJECT IDENTIFIER ::= {
-//   iso(1) identified-organization(3) certicom(132) curve(0) 33 }
+//	secp224r1 OBJECT IDENTIFIER ::= {
+//	  iso(1) identified-organization(3) certicom(132) curve(0) 33 }
 //
-// secp256r1 OBJECT IDENTIFIER ::= {
-//   iso(1) member-body(2) us(840) ansi-X9-62(10045) curves(3)
-//   prime(1) 7 }
+//	secp256r1 OBJECT IDENTIFIER ::= {
+//	  iso(1) member-body(2) us(840) ansi-X9-62(10045) curves(3)
+//	  prime(1) 7 }
 //
-// secp384r1 OBJECT IDENTIFIER ::= {
-//   iso(1) identified-organization(3) certicom(132) curve(0) 34 }
+//	secp384r1 OBJECT IDENTIFIER ::= {
+//	  iso(1) identified-organization(3) certicom(132) curve(0) 34 }
 //
-// secp521r1 OBJECT IDENTIFIER ::= {
-//   iso(1) identified-organization(3) certicom(132) curve(0) 35 }
-//
+//	secp521r1 OBJECT IDENTIFIER ::= {
+//	  iso(1) identified-organization(3) certicom(132) curve(0) 35 }
 var (
 	oidNamedCurveP224 = asn1.ObjectIdentifier{1, 3, 132, 0, 33}
 	oidNamedCurveP256 = asn1.ObjectIdentifier{1, 2, 840, 10045, 3, 1, 7}
@@ -755,18 +754,19 @@ func (csp *Provider) findKeyPairFromSKI(session pkcs11.SessionHandle, ski []byte
 // 00000040  06 04
 //
 // cf. correct field:
-//   0  89: SEQUENCE {
-//   2  19:   SEQUENCE {
-//   4   7:     OBJECT IDENTIFIER ecPublicKey (1 2 840 10045 2 1)
-//  13   8:     OBJECT IDENTIFIER prime256v1 (1 2 840 10045 3 1 7)
-//        :     }
-//  23  66:   BIT STRING
-//        :     04 CE 30 31 6D 5A FD D3 53 2D 54 9A 27 54 D8 7C
-//        :     D9 80 35 91 09 2D 6F 06 5A 8E E3 CB C0 01 B7 C9
-//        :     13 5D 70 D4 E5 62 F2 1B 10 93 F7 D5 77 41 BA 9D
-//        :     93 3E 18 3E 00 C6 0A 0E D2 36 CC 7F BE 50 16 EF
-//        :     06
-//        :   }
+//
+//	 0  89: SEQUENCE {
+//	 2  19:   SEQUENCE {
+//	 4   7:     OBJECT IDENTIFIER ecPublicKey (1 2 840 10045 2 1)
+//	13   8:     OBJECT IDENTIFIER prime256v1 (1 2 840 10045 3 1 7)
+//	      :     }
+//	23  66:   BIT STRING
+//	      :     04 CE 30 31 6D 5A FD D3 53 2D 54 9A 27 54 D8 7C
+//	      :     D9 80 35 91 09 2D 6F 06 5A 8E E3 CB C0 01 B7 C9
+//	      :     13 5D 70 D4 E5 62 F2 1B 10 93 F7 D5 77 41 BA 9D
+//	      :     93 3E 18 3E 00 C6 0A 0E D2 36 CC 7F BE 50 16 EF
+//	      :     06
+//	      :   }
 //
 // as a short-term workaround, remove the trailing byte if:
 //   - receiving an even number of bytes == 2*prime-coordinate +2 bytes
@@ -777,7 +777,9 @@ func (csp *Provider) findKeyPairFromSKI(session pkcs11.SessionHandle, ski []byte
 //
 // SoftHSM reports extra two bytes before the uncompressed point
 // 0x04 || <Length*2+1>
-//                 VV< Actual start of point
+//
+//	VV< Actual start of point
+//
 // 00000000  04 41 04 6c c8 57 32 13  02 12 6a 19 23 1d 5a 64  |.A.l.W2...j.#.Zd|
 // 00000010  33 0c eb 75 4d e8 99 22  92 35 96 b2 39 58 14 1e  |3..uM..".5..9X..|
 // 00000020  19 de ef 32 46 50 68 02  24 62 36 db ed b1 84 7b  |...2FPh.$b6....{|

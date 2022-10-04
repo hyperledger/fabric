@@ -17,7 +17,8 @@ import (
 // numParallelTxsPerChain specifies the parallel transactions on each of the chains
 // numWritesPerTx specifies the number of keys to write in each transaction
 // numReadsPerTx specifies the number of keys to read in each transaction, Note:  this parameters
-//   match the numWritesPerTx for normal benchmarks.  This can be set to zero to make batch update measurements.
+//
+//	match the numWritesPerTx for normal benchmarks.  This can be set to zero to make batch update measurements.
 type txConf struct {
 	numTotalTxs            int
 	numParallelTxsPerChain int
