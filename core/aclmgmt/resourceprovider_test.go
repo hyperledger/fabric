@@ -27,7 +27,7 @@ func newPolicyProvider(pEvaluator policyEvaluator) aclmgmtPolicyProvider {
 
 // ------- mocks ---------
 
-//mockPolicyEvaluatorImpl implements policyEvaluator
+// mockPolicyEvaluatorImpl implements policyEvaluator
 type mockPolicyEvaluatorImpl struct {
 	pmap  map[string]string
 	peval map[string]error

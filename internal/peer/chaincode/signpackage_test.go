@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-//helper to sign an existing package
+// helper to sign an existing package
 func signExistingPackage(env *pcommon.Envelope, infile, outfile string, cryptoProvider bccsp.BCCSP) error {
 	signer, err := common.GetDefaultSigner()
 	if err != nil {

@@ -41,7 +41,7 @@ func (q *QueryExecutor) GetHistoryForKey(namespace string, key string) (commonle
 	return &historyScanner{rangeScan, namespace, key, dbItr, q.blockStore}, nil
 }
 
-//historyScanner implements ResultsIterator for iterating through history results
+// historyScanner implements ResultsIterator for iterating through history results
 type historyScanner struct {
 	rangeScan  *rangeScan
 	namespace  string

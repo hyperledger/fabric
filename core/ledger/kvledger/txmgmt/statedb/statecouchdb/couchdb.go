@@ -36,7 +36,7 @@ import (
 
 var couchdbLogger = flogging.MustGetLogger("couchdb")
 
-//time between retry attempts in milliseconds
+// time between retry attempts in milliseconds
 const retryWaitTime = 125
 
 // dbOperationResponse is body for successful database calls.
@@ -64,7 +64,7 @@ type dbInfo struct {
 	InstanceStartTime string `json:"instance_start_time"`
 }
 
-//connectionInfo is a structure for capturing the database info and version
+// connectionInfo is a structure for capturing the database info and version
 type connectionInfo struct {
 	Couchdb string `json:"couchdb"`
 	Version string `json:"version"`
@@ -73,7 +73,7 @@ type connectionInfo struct {
 	} `json:"vendor"`
 }
 
-//rangeQueryResponse is used for processing REST range query responses from CouchDB
+// rangeQueryResponse is used for processing REST range query responses from CouchDB
 type rangeQueryResponse struct {
 	TotalRows int32 `json:"total_rows"`
 	Offset    int32 `json:"offset"`
@@ -87,7 +87,7 @@ type rangeQueryResponse struct {
 	} `json:"rows"`
 }
 
-//queryResponse is used for processing REST query responses from CouchDB
+// queryResponse is used for processing REST query responses from CouchDB
 type queryResponse struct {
 	Warning  string            `json:"warning"`
 	Docs     []json.RawMessage `json:"docs"`
@@ -103,42 +103,42 @@ type docMetadata struct {
 	AttachmentsInfo map[string]*attachmentInfo `json:"_attachments"`
 }
 
-//queryResult is used for returning query results from CouchDB
+// queryResult is used for returning query results from CouchDB
 type queryResult struct {
 	id          string
 	value       []byte
 	attachments []*attachmentInfo
 }
 
-//couchInstance represents a CouchDB instance
+// couchInstance represents a CouchDB instance
 type couchInstance struct {
 	conf   *ledger.CouchDBConfig
 	client *http.Client // a client to connect to this instance
 	stats  *stats
 }
 
-//couchDatabase represents a database within a CouchDB instance
+// couchDatabase represents a database within a CouchDB instance
 type couchDatabase struct {
 	couchInstance    *couchInstance //connection configuration
 	dbName           string
 	indexWarmCounter int
 }
 
-//dbReturn contains an error reported by CouchDB
+// dbReturn contains an error reported by CouchDB
 type dbReturn struct {
 	StatusCode int    `json:"status_code"`
 	Error      string `json:"error"`
 	Reason     string `json:"reason"`
 }
 
-//createIndexResponse contains an the index creation response from CouchDB
+// createIndexResponse contains an the index creation response from CouchDB
 type createIndexResponse struct {
 	Result string `json:"result"`
 	ID     string `json:"id"`
 	Name   string `json:"name"`
 }
 
-//attachmentInfo contains the definition for an attached file for couchdb
+// attachmentInfo contains the definition for an attached file for couchdb
 type attachmentInfo struct {
 	Name            string
 	ContentType     string `json:"content_type"`
@@ -146,14 +146,14 @@ type attachmentInfo struct {
 	AttachmentBytes []byte `json:"data"`
 }
 
-//fileDetails defines the structure needed to send an attachment to couchdb
+// fileDetails defines the structure needed to send an attachment to couchdb
 type fileDetails struct {
 	Follows     bool   `json:"follows"`
 	ContentType string `json:"content_type"`
 	Length      int    `json:"length"`
 }
 
-//batchRetrieveDocMetadataResponse is used for processing REST batch responses from CouchDB
+// batchRetrieveDocMetadataResponse is used for processing REST batch responses from CouchDB
 type batchRetrieveDocMetadataResponse struct {
 	Rows []struct {
 		ID          string `json:"id"`
@@ -165,7 +165,7 @@ type batchRetrieveDocMetadataResponse struct {
 	} `json:"rows"`
 }
 
-//batchUpdateResponse defines a structure for batch update response
+// batchUpdateResponse defines a structure for batch update response
 type batchUpdateResponse struct {
 	ID     string `json:"id"`
 	Error  string `json:"error"`
@@ -174,20 +174,20 @@ type batchUpdateResponse struct {
 	Rev    string `json:"rev"`
 }
 
-//base64Attachment contains the definition for an attached file for couchdb
+// base64Attachment contains the definition for an attached file for couchdb
 type base64Attachment struct {
 	ContentType    string `json:"content_type"`
 	AttachmentData string `json:"data"`
 }
 
-//indexResult contains the definition for a couchdb index
+// indexResult contains the definition for a couchdb index
 type indexResult struct {
 	DesignDocument string `json:"designdoc"`
 	Name           string `json:"name"`
 	Definition     string `json:"definition"`
 }
 
-//databaseSecurity contains the definition for CouchDB database security
+// databaseSecurity contains the definition for CouchDB database security
 type databaseSecurity struct {
 	Admins struct {
 		Names []string `json:"names"`
@@ -199,7 +199,7 @@ type databaseSecurity struct {
 	} `json:"members"`
 }
 
-//couchDoc defines the structure for a JSON document value
+// couchDoc defines the structure for a JSON document value
 type couchDoc struct {
 	jsonValue   []byte
 	attachments []*attachmentInfo
@@ -223,7 +223,7 @@ func closeResponseBody(resp *http.Response) {
 	}
 }
 
-//createDatabaseIfNotExist method provides function to create database
+// createDatabaseIfNotExist method provides function to create database
 func (dbclient *couchDatabase) createDatabaseIfNotExist() error {
 	couchdbLogger.Debugf("[%s] Entering CreateDatabaseIfNotExist()", dbclient.dbName)
 
@@ -296,7 +296,7 @@ func (dbclient *couchDatabase) applyDatabasePermissions() error {
 	return nil
 }
 
-//getDatabaseInfo method provides function to retrieve database information
+// getDatabaseInfo method provides function to retrieve database information
 func (dbclient *couchDatabase) getDatabaseInfo() (*dbInfo, *dbReturn, error) {
 
 	connectURL, err := url.Parse(dbclient.couchInstance.url())
@@ -327,7 +327,7 @@ func (dbclient *couchDatabase) getDatabaseInfo() (*dbInfo, *dbReturn, error) {
 
 }
 
-//verifyCouchConfig method provides function to verify the connection information
+// verifyCouchConfig method provides function to verify the connection information
 func (couchInstance *couchInstance) verifyCouchConfig() (*connectionInfo, *dbReturn, error) {
 
 	couchdbLogger.Debugf("Entering VerifyCouchConfig()")
@@ -473,7 +473,7 @@ func (couchInstance *couchInstance) url() string {
 	return URL.String()
 }
 
-//dropDatabase provides method to drop an existing database
+// dropDatabase provides method to drop an existing database
 func (dbclient *couchDatabase) dropDatabase() (*dbOperationResponse, error) {
 	dbName := dbclient.dbName
 
@@ -513,7 +513,7 @@ func (dbclient *couchDatabase) dropDatabase() (*dbOperationResponse, error) {
 	return dbResponse, errors.New("error dropping database")
 }
 
-//saveDoc method provides a function to save a document, id and byte array
+// saveDoc method provides a function to save a document, id and byte array
 func (dbclient *couchDatabase) saveDoc(id string, rev string, couchDoc *couchDoc) (string, error) {
 	dbName := dbclient.dbName
 
@@ -595,7 +595,7 @@ func (dbclient *couchDatabase) saveDoc(id string, rev string, couchDoc *couchDoc
 
 }
 
-//getDocumentRevision will return the revision if the document exists, otherwise it will return ""
+// getDocumentRevision will return the revision if the document exists, otherwise it will return ""
 func (dbclient *couchDatabase) getDocumentRevision(id string) string {
 
 	var rev = ""
@@ -707,8 +707,8 @@ func getRevisionHeader(resp *http.Response) (string, error) {
 
 }
 
-//readDoc method provides function to retrieve a document and its revision
-//from the database by id
+// readDoc method provides function to retrieve a document and its revision
+// from the database by id
 func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 	var couchDoc couchDoc
 	attachments := []*attachmentInfo{}
@@ -839,10 +839,10 @@ func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 	return &couchDoc, revision, nil
 }
 
-//readDocRange method provides function to a range of documents based on the start and end keys
-//startKey and endKey can also be empty strings.  If startKey and endKey are empty, all documents are returned
-//This function provides a limit option to specify the max number of entries and is supplied by config.
-//Skip is reserved for possible future future use.
+// readDocRange method provides function to a range of documents based on the start and end keys
+// startKey and endKey can also be empty strings.  If startKey and endKey are empty, all documents are returned
+// This function provides a limit option to specify the max number of entries and is supplied by config.
+// Skip is reserved for possible future future use.
 func (dbclient *couchDatabase) readDocRange(startKey, endKey string, limit int32) ([]*queryResult, string, error) {
 	dbName := dbclient.dbName
 	couchdbLogger.Debugf("[%s] Entering ReadDocRange()  startKey=%s, endKey=%s", dbName, startKey, endKey)
@@ -966,7 +966,7 @@ func (dbclient *couchDatabase) readDocRange(startKey, endKey string, limit int32
 
 }
 
-//deleteDoc method provides function to delete a document from the database by id
+// deleteDoc method provides function to delete a document from the database by id
 func (dbclient *couchDatabase) deleteDoc(id, rev string) error {
 	dbName := dbclient.dbName
 
@@ -1002,7 +1002,7 @@ func (dbclient *couchDatabase) deleteDoc(id, rev string) error {
 
 }
 
-//queryDocuments method provides function for processing a query
+// queryDocuments method provides function for processing a query
 func (dbclient *couchDatabase) queryDocuments(query string) ([]*queryResult, string, error) {
 	dbName := dbclient.dbName
 
@@ -1243,7 +1243,7 @@ func (dbclient *couchDatabase) deleteIndex(designdoc, indexname string) error {
 
 }
 
-//warmIndex method provides a function for warming a single index
+// warmIndex method provides a function for warming a single index
 func (dbclient *couchDatabase) warmIndex(designdoc, indexname string) error {
 	dbName := dbclient.dbName
 
@@ -1273,7 +1273,7 @@ func (dbclient *couchDatabase) warmIndex(designdoc, indexname string) error {
 
 }
 
-//runWarmIndexAllIndexes is a wrapper for WarmIndexAllIndexes to catch and report any errors
+// runWarmIndexAllIndexes is a wrapper for WarmIndexAllIndexes to catch and report any errors
 func (dbclient *couchDatabase) runWarmIndexAllIndexes() {
 
 	err := dbclient.warmIndexAllIndexes()
@@ -1283,7 +1283,7 @@ func (dbclient *couchDatabase) runWarmIndexAllIndexes() {
 
 }
 
-//warmIndexAllIndexes method provides a function for warming all indexes for a database
+// warmIndexAllIndexes method provides a function for warming all indexes for a database
 func (dbclient *couchDatabase) warmIndexAllIndexes() error {
 
 	couchdbLogger.Debugf("[%s] Entering WarmIndexAllIndexes()", dbclient.dbName)
@@ -1310,7 +1310,7 @@ func (dbclient *couchDatabase) warmIndexAllIndexes() error {
 
 }
 
-//getDatabaseSecurity method provides function to retrieve the security config for a database
+// getDatabaseSecurity method provides function to retrieve the security config for a database
 func (dbclient *couchDatabase) getDatabaseSecurity() (*databaseSecurity, error) {
 	dbName := dbclient.dbName
 
@@ -1351,7 +1351,7 @@ func (dbclient *couchDatabase) getDatabaseSecurity() (*databaseSecurity, error) 
 
 }
 
-//applyDatabaseSecurity method provides function to update the security config for a database
+// applyDatabaseSecurity method provides function to update the security config for a database
 func (dbclient *couchDatabase) applyDatabaseSecurity(databaseSecurity *databaseSecurity) error {
 	dbName := dbclient.dbName
 
@@ -1400,8 +1400,8 @@ func (dbclient *couchDatabase) applyDatabaseSecurity(databaseSecurity *databaseS
 
 }
 
-//batchRetrieveDocumentMetadata - batch method to retrieve document metadata for  a set of keys,
-//including ID, couchdb revision number, and ledger version
+// batchRetrieveDocumentMetadata - batch method to retrieve document metadata for  a set of keys,
+// including ID, couchdb revision number, and ledger version
 func (dbclient *couchDatabase) batchRetrieveDocumentMetadata(keys []string) ([]*docMetadata, error) {
 
 	couchdbLogger.Debugf("[%s] Entering BatchRetrieveDocumentMetadata()  keys=%s", dbclient.dbName, keys)
@@ -1472,7 +1472,7 @@ func (dbclient *couchDatabase) batchRetrieveDocumentMetadata(keys []string) ([]*
 
 }
 
-//batchUpdateDocuments - batch method to batch update documents
+// batchUpdateDocuments - batch method to batch update documents
 func (dbclient *couchDatabase) batchUpdateDocuments(documents []*couchDoc) ([]*batchUpdateResponse, error) {
 	dbName := dbclient.dbName
 
@@ -1570,10 +1570,10 @@ func (dbclient *couchDatabase) batchUpdateDocuments(documents []*couchDoc) ([]*b
 
 }
 
-//handleRequestWithRevisionRetry method is a generic http request handler with
-//a retry for document revision conflict errors,
-//which may be detected during saves or deletes that timed out from client http perspective,
-//but which eventually succeeded in couchdb
+// handleRequestWithRevisionRetry method is a generic http request handler with
+// a retry for document revision conflict errors,
+// which may be detected during saves or deletes that timed out from client http perspective,
+// but which eventually succeeded in couchdb
 func (dbclient *couchDatabase) handleRequestWithRevisionRetry(id, method, dbName, functionName string, connectURL *url.URL, data []byte, rev string,
 	multipartBoundary string, maxRetries int, keepConnectionOpen bool, queryParms *url.Values) (*http.Response, *dbReturn, error) {
 
@@ -1621,7 +1621,7 @@ func (dbclient *couchDatabase) handleRequest(method, functionName string, connec
 	)
 }
 
-//handleRequest method is a generic http request handler.
+// handleRequest method is a generic http request handler.
 // If it returns an error, it ensures that the response body is closed, else it is the
 // callee's responsibility to close response correctly.
 // Any http error or CouchDB error (4XX or 500) will result in a golang error getting returned
@@ -1826,7 +1826,7 @@ func (couchInstance *couchInstance) recordMetric(startTime time.Time, dbName, ap
 	couchInstance.stats.observeProcessingTime(startTime, dbName, api, strconv.Itoa(couchDBReturn.StatusCode))
 }
 
-//invalidCouchDBResponse checks to make sure either a valid response or error is returned
+// invalidCouchDBResponse checks to make sure either a valid response or error is returned
 func invalidCouchDBReturn(resp *http.Response, errResp error) bool {
 	if resp == nil && errResp == nil {
 		return true
@@ -1834,7 +1834,7 @@ func invalidCouchDBReturn(resp *http.Response, errResp error) bool {
 	return false
 }
 
-//isJSON tests a string to determine if a valid JSON
+// isJSON tests a string to determine if a valid JSON
 func isJSON(s string) bool {
 	var js map[string]interface{}
 	return json.Unmarshal([]byte(s), &js) == nil

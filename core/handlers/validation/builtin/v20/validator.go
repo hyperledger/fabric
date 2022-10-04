@@ -16,12 +16,12 @@ import (
 // KVS keys that use key-level endorsement policies. This interface is supposed to be called
 // by any validator plugin (including the default validator plugin). The functions of this
 // interface are to be called as follows:
-// 1) the validator plugin calls PreValidate (even before determining whether the transaction is
-//    valid)
-// 2) the validator plugin calls Validate before or after having determined the validity of the
-//    transaction based on other considerations
-// 3) the validator plugin determines the overall validity of the transaction and then calls
-//    PostValidate
+//  1. the validator plugin calls PreValidate (even before determining whether the transaction is
+//     valid)
+//  2. the validator plugin calls Validate before or after having determined the validity of the
+//     transaction based on other considerations
+//  3. the validator plugin determines the overall validity of the transaction and then calls
+//     PostValidate
 type StateBasedValidator interface {
 	// PreValidate sets the internal data structures of the validator needed before validation
 	// of transaction `txNum` in the specified block can proceed

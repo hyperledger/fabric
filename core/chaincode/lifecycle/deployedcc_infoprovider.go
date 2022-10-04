@@ -207,7 +207,7 @@ func (vc *ValidatorCommitter) CollectionInfo(channelName, chaincodeName, collect
 }
 
 // ImplicitCollections implements function in interface ledger.DeployedChaincodeInfoProvider.  It returns
-//a slice that contains one proto msg for each of the implicit collections
+// a slice that contains one proto msg for each of the implicit collections
 func (vc *ValidatorCommitter) ImplicitCollections(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) ([]*pb.StaticCollectionConfig, error) {
 	exists, _, err := vc.Resources.ChaincodeDefinitionIfDefined(chaincodeName, &SimpleQueryExecutorShim{
 		Namespace:           LifecycleNamespace,

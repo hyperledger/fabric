@@ -26,7 +26,7 @@ func TestPanic(t *testing.T) {
 	batch.Put("ns1", "key1", nil, nil)
 }
 
-//Test Put(), Get(), and Delete()
+// Test Put(), Get(), and Delete()
 func TestPutGetDeleteExistsGetUpdates(t *testing.T) {
 	batch := NewUpdateBatch()
 	batch.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))

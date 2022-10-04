@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//Unit test of couch db util functionality
+// Unit test of couch db util functionality
 func TestCreateCouchDBConnectionAndDB(t *testing.T) {
 	config := testConfig()
 	couchDBEnv.startCouchDB(t)
@@ -32,7 +32,7 @@ func TestCreateCouchDBConnectionAndDB(t *testing.T) {
 
 }
 
-//Unit test of couch db util functionality
+// Unit test of couch db util functionality
 func TestNotCreateCouchGlobalChangesDB(t *testing.T) {
 	config := testConfig()
 	couchDBEnv.startCouchDB(t)
@@ -52,7 +52,7 @@ func TestNotCreateCouchGlobalChangesDB(t *testing.T) {
 	require.NotNil(t, errdb)
 }
 
-//Unit test of couch db util functionality
+// Unit test of couch db util functionality
 func TestCreateCouchDBSystemDBs(t *testing.T) {
 	config := testConfig()
 	couchDBEnv.startCouchDB(t)

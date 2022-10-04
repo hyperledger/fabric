@@ -199,7 +199,7 @@ PeerOrgs:
       Count: 1
 `
 
-//command line flags
+// command line flags
 var (
 	app = kingpin.New("cryptogen", "Utility for generating Hyperledger Fabric key material")
 

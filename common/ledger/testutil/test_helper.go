@@ -44,7 +44,7 @@ func init() {
 	}
 }
 
-//BlockGenerator generates a series of blocks for testing
+// BlockGenerator generates a series of blocks for testing
 type BlockGenerator struct {
 	blockNum     uint64
 	previousHash []byte
@@ -266,7 +266,7 @@ func ConstructBlock(
 	return NewBlock(envs, blockNum, previousHash)
 }
 
-//ConstructTestBlock constructs a single block with random contents
+// ConstructTestBlock constructs a single block with random contents
 func ConstructTestBlock(t *testing.T, blockNum uint64, numTx int, txSize int) *common.Block {
 	simulationResults := [][]byte{}
 	for i := 0; i < numTx; i++ {

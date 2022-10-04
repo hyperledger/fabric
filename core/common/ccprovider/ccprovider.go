@@ -30,8 +30,10 @@ var ccproviderLogger = flogging.MustGetLogger("ccprovider")
 var chaincodeInstallPath string
 
 // CCPackage encapsulates a chaincode package which can be
-//    raw ChaincodeDeploymentSpec
-//    SignedChaincodeDeploymentSpec
+//
+//	raw ChaincodeDeploymentSpec
+//	SignedChaincodeDeploymentSpec
+//
 // Attempt to keep the interface at a level with minimal
 // interface for possible generalization.
 type CCPackage interface {
@@ -167,7 +169,7 @@ func (*CCInfoFSImpl) GetChaincodeInstallPath() string {
 }
 
 // PutChaincode is a wrapper for putting raw ChaincodeDeploymentSpec
-//using CDSPackage. This is only used in UTs
+// using CDSPackage. This is only used in UTs
 func (cifs *CCInfoFSImpl) PutChaincode(depSpec *pb.ChaincodeDeploymentSpec) (CCPackage, error) {
 	buf, err := proto.Marshal(depSpec)
 	if err != nil {

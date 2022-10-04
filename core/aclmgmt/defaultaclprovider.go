@@ -28,8 +28,8 @@ type defaultACLProvider interface {
 	IsPtypePolicy(resName string) bool
 }
 
-//defaultACLProvider used if resource-based ACL Provider is not provided or
-//if it does not contain a policy for the named resource
+// defaultACLProvider used if resource-based ACL Provider is not provided or
+// if it does not contain a policy for the named resource
 type defaultACLProviderImpl struct {
 	policyChecker policy.PolicyChecker
 

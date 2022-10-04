@@ -144,7 +144,7 @@ func TestCDSGetCCPackage(t *testing.T) {
 	}
 }
 
-//switch the chaincodes on the FS and validate
+// switch the chaincodes on the FS and validate
 func TestCDSSwitchChaincodes(t *testing.T) {
 	ccdir := setupccdir()
 	defer os.RemoveAll(ccdir)

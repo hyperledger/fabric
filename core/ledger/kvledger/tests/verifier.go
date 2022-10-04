@@ -162,7 +162,7 @@ func (v *verifier) verifyCommitHashNotExists() {
 	r.notContainCommitHash()
 }
 
-////////////  structs used by verifier  //////////////////////////////////////////////////////////////
+// //////////  structs used by verifier  //////////////////////////////////////////////////////////////
 type expectedCollConfInfo struct {
 	committingBlockNum uint64
 	collConfs          []*collConf

@@ -24,14 +24,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//ConfigTxFileNotFound channel create configuration tx file not found
+// ConfigTxFileNotFound channel create configuration tx file not found
 type ConfigTxFileNotFound string
 
 func (e ConfigTxFileNotFound) Error() string {
 	return fmt.Sprintf("channel create configuration tx file not found %s", string(e))
 }
 
-//InvalidCreateTx invalid channel create transaction
+// InvalidCreateTx invalid channel create transaction
 type InvalidCreateTx string
 
 func (e InvalidCreateTx) Error() string {

@@ -161,7 +161,7 @@ func (meqe *mockExecQuerySimulator) GetTxSimulationResults() ([]byte, error) {
 	return simRes.GetPubSimulationBytes()
 }
 
-//initialize peer and start up. If security==enabled, login as vp
+// initialize peer and start up. If security==enabled, login as vp
 func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), error) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	if err != nil {
@@ -313,7 +313,7 @@ func finitMockPeer(peerInstance *peer.Peer, channelIDs ...string) {
 	os.RemoveAll(filepath.Join(os.TempDir(), "hyperledger"))
 }
 
-//store the stream CC mappings here
+// store the stream CC mappings here
 var mockPeerCCSupport = mock.NewMockPeerSupport()
 
 func setupcc(name string) (*mock.MockCCComm, *mock.MockCCComm) {
@@ -326,7 +326,7 @@ func setupcc(name string) (*mock.MockCCComm, *mock.MockCCComm) {
 	return peerSide, ccSide
 }
 
-//assign this to done and failNow and keep using them
+// assign this to done and failNow and keep using them
 func setuperror() chan error {
 	return make(chan error)
 }
@@ -392,7 +392,7 @@ func execCC(t *testing.T, txParams *ccprovider.TransactionParams, ccSide *mock.M
 	return nil
 }
 
-//initialize cc support env and startup the chaincode
+// initialize cc support env and startup the chaincode
 func startCC(t *testing.T, channelID string, ccname string, chaincodeSupport *ChaincodeSupport) (*mock.MockCCComm, *mock.MockCCComm) {
 	peerSide, ccSide := setupcc(ccname)
 	defer mockPeerCCSupport.RemoveCC(ccname)
@@ -916,7 +916,7 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mock.MockCCComm, c
 	return nil
 }
 
-//success case
+// success case
 func TestStartAndWaitSuccess(t *testing.T) {
 	handlerRegistry := NewHandlerRegistry(false)
 	fakeRuntime := &mock.Runtime{}
@@ -940,7 +940,7 @@ func TestStartAndWaitSuccess(t *testing.T) {
 	}
 }
 
-//test timeout error
+// test timeout error
 func TestStartAndWaitTimeout(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
 	fakeRuntime.StartStub = func(_ string, _ *ccintf.PeerConnection) error {
@@ -963,7 +963,7 @@ func TestStartAndWaitTimeout(t *testing.T) {
 	}
 }
 
-//test container return error
+// test container return error
 func TestStartAndWaitLaunchError(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
 	fakeRuntime.StartStub = func(_ string, _ *ccintf.PeerConnection) error {
@@ -1345,14 +1345,14 @@ func endTxSimulationCIS(peerInstance *peer.Peer, channelID string, ccid *pb.Chai
 	return endTxSimulation(peerInstance, channelID, ccid, txsim, payload, commit, prop, blockNumber)
 }
 
-//getting a crash from ledger.Commit when doing concurrent invokes
-//It is likely intentional that ledger.Commit is serial (ie, the real
-//Committer will invoke this serially on each block). Mimic that here
-//by forcing serialization of the ledger.Commit call.
+// getting a crash from ledger.Commit when doing concurrent invokes
+// It is likely intentional that ledger.Commit is serial (ie, the real
+// Committer will invoke this serially on each block). Mimic that here
+// by forcing serialization of the ledger.Commit call.
 //
-//NOTE-this should NOT have any effect on the older serial tests.
-//This affects only the tests in concurrent_test.go which call these
-//concurrently (100 concurrent invokes followed by 100 concurrent queries)
+// NOTE-this should NOT have any effect on the older serial tests.
+// This affects only the tests in concurrent_test.go which call these
+// concurrently (100 concurrent invokes followed by 100 concurrent queries)
 var _commitLock_ sync.Mutex
 
 func endTxSimulation(peerInstance *peer.Peer, channelID string, ccid *pb.ChaincodeID, txsim ledger.TxSimulator, _ []byte, commit bool, prop *pb.Proposal, blockNumber uint64) error {

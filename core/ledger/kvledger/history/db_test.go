@@ -34,7 +34,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-//TestSavepoint tests that save points get written after each block and get returned via GetBlockNumfromSavepoint
+// TestSavepoint tests that save points get written after each block and get returned via GetBlockNumfromSavepoint
 func TestSavepoint(t *testing.T) {
 	env := newTestHistoryEnv(t)
 	defer env.cleanup()
@@ -254,7 +254,7 @@ func TestHistoryForInvalidTran(t *testing.T) {
 	assert.Nil(t, kmod)
 }
 
-//TestGenesisBlockNoError tests that Genesis blocks are ignored by history processing
+// TestGenesisBlockNoError tests that Genesis blocks are ignored by history processing
 // since we only persist history of chaincode key writes
 func TestGenesisBlockNoError(t *testing.T) {
 	env := newTestHistoryEnv(t)

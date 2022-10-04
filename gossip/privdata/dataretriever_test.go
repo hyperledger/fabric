@@ -22,9 +22,9 @@ import (
 )
 
 /*
-	Test checks following scenario, it tries to obtain private data for
-	given block sequence which is greater than available ledger height,
-	hence data should be looked up directly from transient store
+Test checks following scenario, it tries to obtain private data for
+given block sequence which is greater than available ledger height,
+hence data should be looked up directly from transient store
 */
 func TestNewDataRetriever_GetDataFromTransientStore(t *testing.T) {
 	committer := &mocks.Committer{}
@@ -96,9 +96,9 @@ func TestNewDataRetriever_GetDataFromTransientStore(t *testing.T) {
 }
 
 /*
-	Simple test case where available ledger height is greater than
-	requested block sequence and therefore private data will be retrieved
-	from the ledger rather than transient store as data being committed
+Simple test case where available ledger height is greater than
+requested block sequence and therefore private data will be retrieved
+from the ledger rather than transient store as data being committed
 */
 func TestNewDataRetriever_GetDataFromLedger(t *testing.T) {
 	committer := &mocks.Committer{}

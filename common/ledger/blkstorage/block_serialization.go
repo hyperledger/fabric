@@ -19,7 +19,7 @@ type serializedBlockInfo struct {
 	metadata    *common.BlockMetadata
 }
 
-//The order of the transactions must be maintained for history
+// The order of the transactions must be maintained for history
 type txindexInfo struct {
 	txID string
 	loc  *locPointer
