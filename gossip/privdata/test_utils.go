@@ -8,8 +8,9 @@ package privdata
 
 import "github.com/hyperledger/fabric/common/channelconfig"
 
-//go:generate mockery -dir ./ -name AppCapabilities -case underscore -output mocks/
 // appCapabilities local interface used to generate mock for foreign interface.
+//
+//go:generate mockery -dir ./ -name AppCapabilities -case underscore -output mocks/
 type AppCapabilities interface {
 	channelconfig.ApplicationCapabilities
 }

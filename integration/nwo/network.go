@@ -726,14 +726,13 @@ func (n *Network) CACertsBundlePath() string {
 // When this method completes, the resulting tree will look something like
 // this:
 //
-//    ${rootDir}/configtx.yaml
-//    ${rootDir}/crypto-config.yaml
-//    ${rootDir}/orderers/orderer0.orderer-org/orderer.yaml
-//    ${rootDir}/peers/peer0.org1/core.yaml
-//    ${rootDir}/peers/peer0.org2/core.yaml
-//    ${rootDir}/peers/peer1.org1/core.yaml
-//    ${rootDir}/peers/peer1.org2/core.yaml
-//
+//	${rootDir}/configtx.yaml
+//	${rootDir}/crypto-config.yaml
+//	${rootDir}/orderers/orderer0.orderer-org/orderer.yaml
+//	${rootDir}/peers/peer0.org1/core.yaml
+//	${rootDir}/peers/peer0.org2/core.yaml
+//	${rootDir}/peers/peer1.org1/core.yaml
+//	${rootDir}/peers/peer1.org2/core.yaml
 func (n *Network) GenerateConfigTree() {
 	n.GenerateCryptoConfig()
 	n.GenerateConfigTxConfig()
@@ -824,10 +823,11 @@ func (n *Network) CreateDockerNetwork() {
 // appropriate default-address-pools configuration element to "daemon.json".
 //
 // For example:
-//   "default-address-pools":[
-//       {"base":"172.30.0.0/16","size":24},
-//       {"base":"172.31.0.0/16","size":24}
-//   ]
+//
+//	"default-address-pools":[
+//	    {"base":"172.30.0.0/16","size":24},
+//	    {"base":"172.31.0.0/16","size":24}
+//	]
 func (n *Network) checkDockerNetworks() {
 	hostAddrs := hostIPv4Addrs()
 	for _, nw := range n.dockerIPNets() {

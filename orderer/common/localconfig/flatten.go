@@ -24,18 +24,22 @@ func Flatten(i interface{}) []string {
 // in the order of definition. Root name is ignored in the path. This helper function is
 // useful to pretty-print a struct, such as configs.
 // for example, given data structure:
-// A{
-//   B{
-//     C: "foo",
-//     D: 42,
-//   },
-//   E: nil,
-// }
+//
+//	A{
+//	  B{
+//	    C: "foo",
+//	    D: 42,
+//	  },
+//	  E: nil,
+//	}
+//
 // it should yield a slice of string containing following items:
 // [
-//   "B.C = \"foo\"",
-//   "B.D = 42",
-//   "E =",
+//
+//	"B.C = \"foo\"",
+//	"B.D = 42",
+//	"E =",
+//
 // ]
 func flatten(k string, m *[]string, v reflect.Value) {
 	delimiter := "."
