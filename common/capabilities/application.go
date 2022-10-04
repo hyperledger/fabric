@@ -113,8 +113,8 @@ func (ap *ApplicationProvider) V1_3Validation() bool {
 
 // V2_0Validation returns true if this channel supports transaction validation
 // as introduced in v2.0. This includes:
-//  - new chaincode lifecycle
-//  - implicit per-org collections
+//   - new chaincode lifecycle
+//   - implicit per-org collections
 func (ap *ApplicationProvider) V2_0Validation() bool {
 	return ap.v20 || ap.v25
 }

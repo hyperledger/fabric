@@ -28,11 +28,11 @@ func (f *ValidationParameterUpdatedError) Error() string {
 // KeyLevelValidationParameterManager is used by validation plugins in order
 // to retrieve validation parameters for individual KVS keys.
 // The functions are supposed to be called in the following order:
-// 1) the validation plugin called to validate a certain tx calls ExtractValidationParameterDependency
-//    in order for the manager to be able to determine whether validation parameters from the ledger
-//    can be used or whether they are being updated by a transaction in this block.
-// 2) the validation plugin issues 0 or more calls to GetValidationParameterForKey.
-// 3) the validation plugin determines the validation code for the tx and calls SetTxValidationCode.
+//  1. the validation plugin called to validate a certain tx calls ExtractValidationParameterDependency
+//     in order for the manager to be able to determine whether validation parameters from the ledger
+//     can be used or whether they are being updated by a transaction in this block.
+//  2. the validation plugin issues 0 or more calls to GetValidationParameterForKey.
+//  3. the validation plugin determines the validation code for the tx and calls SetTxValidationCode.
 type KeyLevelValidationParameterManager interface {
 	// GetValidationParameterForKey returns the validation parameter for the
 	// supplied KVS key identified by (cc, coll, key) at the specified block

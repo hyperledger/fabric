@@ -1345,14 +1345,14 @@ func endTxSimulationCIS(peerInstance *peer.Peer, channelID string, ccid *pb.Chai
 	return endTxSimulation(peerInstance, channelID, ccid, txsim, payload, commit, prop, blockNumber)
 }
 
-//getting a crash from ledger.Commit when doing concurrent invokes
-//It is likely intentional that ledger.Commit is serial (ie, the real
-//Committer will invoke this serially on each block). Mimic that here
-//by forcing serialization of the ledger.Commit call.
+// getting a crash from ledger.Commit when doing concurrent invokes
+// It is likely intentional that ledger.Commit is serial (ie, the real
+// Committer will invoke this serially on each block). Mimic that here
+// by forcing serialization of the ledger.Commit call.
 //
-//NOTE-this should NOT have any effect on the older serial tests.
-//This affects only the tests in concurrent_test.go which call these
-//concurrently (100 concurrent invokes followed by 100 concurrent queries)
+// NOTE-this should NOT have any effect on the older serial tests.
+// This affects only the tests in concurrent_test.go which call these
+// concurrently (100 concurrent invokes followed by 100 concurrent queries)
 var _commitLock_ sync.Mutex
 
 func endTxSimulation(peerInstance *peer.Peer, channelID string, ccid *pb.ChaincodeID, txsim ledger.TxSimulator, _ []byte, commit bool, prop *pb.Proposal, blockNumber uint64) error {

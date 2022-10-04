@@ -40,7 +40,8 @@ type ClusterConsenter interface {
 
 // MetadataValidator performs the validation of updates to ConsensusMetadata during config updates to the channel.
 // NOTE: We expect the MetadataValidator interface to be optionally implemented by the Consenter implementation.
-//       If a Consenter does not implement MetadataValidator, we default to using a no-op MetadataValidator.
+//
+//	If a Consenter does not implement MetadataValidator, we default to using a no-op MetadataValidator.
 type MetadataValidator interface {
 	// ValidateConsensusMetadata determines the validity of a ConsensusMetadata update during config
 	// updates on the channel.

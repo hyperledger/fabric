@@ -49,7 +49,7 @@ type ProcessorCreator interface {
 //
 // Below is the detail description of the semantics of the function `Process`
 // In order to process a transaction on a committing peer, we first evaluate the simulated readwrite set of the transaction
-//(returned by the function `NewProcessor` on the corresponding `ProcessorCreator`).
+// (returned by the function `NewProcessor` on the corresponding `ProcessorCreator`).
 // If the simulated part is found to have a concurrency conflict with one or more preceding valid transactions
 // (either a preceding transaction in the same block or in a preceding block), we mark the transaction invalid.
 // However, if simulated part of the transaction is found to be conflict free,
@@ -60,12 +60,11 @@ type ProcessorCreator interface {
 // state passed to this function.
 //
 // Following is an illustration how the Processor is potentially expected be implemented for the transaction type "ENDORSER_TRANSACTION".
-// 1) Preprocess function - Verifies the signatures and keeps the identities in internal state
-// 2) Process function - Reads and evaluates endorsement policies that are applicable to the transactions writes.
-//    The parameter "proposedWrites" to the Process function, contains the data items are intended writes by the processing of
-//    the simulatedRWSet. The endorser transaction processor can load the applicable endorsement policies (such as chaincode or key-based)
-//    and returns an error of type InvalidErr if the endorsement policy is not satisfied.
-//
+//  1. Preprocess function - Verifies the signatures and keeps the identities in internal state
+//  2. Process function - Reads and evaluates endorsement policies that are applicable to the transactions writes.
+//     The parameter "proposedWrites" to the Process function, contains the data items are intended writes by the processing of
+//     the simulatedRWSet. The endorser transaction processor can load the applicable endorsement policies (such as chaincode or key-based)
+//     and returns an error of type InvalidErr if the endorsement policy is not satisfied.
 type Processor interface {
 	Preprocess(latestChannelConfig *ChannelConfig) error
 	Process(state *State, proposedWrites *statedata.ProposedWrites) error
@@ -237,7 +236,7 @@ type Envelope struct {
 	SignatureHeader *common.SignatureHeader
 }
 
-//**********************    Unexported types ***********************************************//
+// **********************    Unexported types ***********************************************//
 // state represents the latest state that is passed to the "Process" function of the TxProcessor
 type state interface {
 	GetState(ns, key string) ([]byte, error)

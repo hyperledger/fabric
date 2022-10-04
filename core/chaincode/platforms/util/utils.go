@@ -33,9 +33,9 @@ func (dbo DockerBuildOptions) String() string {
 	return fmt.Sprintf("Image=%s Env=%s Cmd=%s)", dbo.Image, dbo.Env, dbo.Cmd)
 }
 
-//-------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------
 // DockerBuild
-//-------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------
 // This function allows a "pass-through" build of chaincode within a docker container as
 // an alternative to using standard "docker build" + Dockerfile mechanisms.  The plain docker
 // build is somewhat limiting due to the resulting image that is a superset composition of
@@ -50,12 +50,13 @@ func (dbo DockerBuildOptions) String() string {
 // an appropriate minimal image.
 //
 // The input parameters are fairly simple:
-//      - Image:        (optional) The builder image to use or "chaincode.builder"
-//      - Cmd:          The command to execute inside the container.
-//      - InputStream:  A tarball of files that will be expanded into /chaincode/input.
-//      - OutputStream: A tarball of files that will be gathered from /chaincode/output
-//                      after successful execution of Cmd.
-//-------------------------------------------------------------------------------------------
+//   - Image:        (optional) The builder image to use or "chaincode.builder"
+//   - Cmd:          The command to execute inside the container.
+//   - InputStream:  A tarball of files that will be expanded into /chaincode/input.
+//   - OutputStream: A tarball of files that will be gathered from /chaincode/output
+//     after successful execution of Cmd.
+//
+// -------------------------------------------------------------------------------------------
 func DockerBuild(opts DockerBuildOptions, client *docker.Client) error {
 	if opts.Image == "" {
 		opts.Image = GetDockerImageFromConfig("chaincode.builder")

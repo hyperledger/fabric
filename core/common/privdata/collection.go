@@ -72,21 +72,27 @@ type CollectionPersistenceConfigs interface {
 // The Data is a message the peer signed, and the Signature is the corresponding
 // Signature on that Data.
 // Returns: True, if the policy holds for the given signed data.
-//          False otherwise
+//
+//	False otherwise
 type Filter func(protoutil.SignedData) bool
 
 // CollectionStore provides various APIs to retrieves stored collections and perform
 // membership check & read permission check based on the collection's properties.
 // TODO: Refactor CollectionStore - FAB-13082
 // (1) function such as RetrieveCollection() and RetrieveCollectionConfigPackage() are
-//     never used except in mocks and test files.
+//
+//	never used except in mocks and test files.
+//
 // (2) in gossip, at least in 7 different places, the following 3 operations
-//     are repeated which can be avoided by introducing a API called IsAMemberOf().
-//         (i)   retrieves collection access policy by calling RetrieveCollectionAccessPolicy()
-//         (ii)  get the access filter func from the collection access policy
-//         (iii) create the evaluation policy and check for membership
+//
+//	are repeated which can be avoided by introducing a API called IsAMemberOf().
+//	    (i)   retrieves collection access policy by calling RetrieveCollectionAccessPolicy()
+//	    (ii)  get the access filter func from the collection access policy
+//	    (iii) create the evaluation policy and check for membership
+//
 // (3) we would need a cache in collection store to avoid repeated crypto operation.
-//     This would be simple to implement when we introduce IsAMemberOf() APIs.
+//
+//	This would be simple to implement when we introduce IsAMemberOf() APIs.
 type CollectionStore interface {
 	// RetrieveCollection retrieves the collection in the following way:
 	// If the TxID exists in the ledger, the collection that is returned has the

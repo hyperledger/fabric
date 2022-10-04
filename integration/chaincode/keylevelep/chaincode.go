@@ -22,9 +22,13 @@ can then be modified through chaincode functions that use the state-based
 endorsement chaincode convenience layer. The following chaincode functions
 are provided:
 -) "addorgs": supply a list of MSP IDs that will be added to the
-   state's endorsement policy
+
+	state's endorsement policy
+
 -) "delorgs": supply a list of MSP IDs that will be removed from
-   the state's endorsement policy
+
+	the state's endorsement policy
+
 -) "delep": delete the key-level endorsement policy for the state altogether
 -) "listorgs": list the orgs included in the state's endorsement policy
 */
