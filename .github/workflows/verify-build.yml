@@ -48,7 +48,7 @@ jobs:
     needs: basic-checks
     strategy:
       matrix:
-        INTEGRATION_TEST_SUITE: [raft,pvtdata,ledger,lifecycle,e2e,gateway,idemix,pkcs11,configtx,configtxlator,sbe,nwo,msp,discovery,gossip,devmode,pluggable]
+        INTEGRATION_TEST_SUITE: ["raft","pvtdata","ledger","lifecycle","e2e","gateway idemix pkcs11 configtx configtxlator","sbe nwo msp","discovery gossip devmode pluggable"]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/setup-go@v3
