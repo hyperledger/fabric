@@ -13,12 +13,12 @@ on:
 env:
   GOPATH: /opt/go
   PATH: /opt/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
-  GO_VER: 1.18.2
+  GO_VER: 1.18
 
 jobs:
   basic-checks:
     name: Basic Checks
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/setup-go@v3
         name: Install Go
@@ -31,7 +31,7 @@ jobs:
   unit-tests:
     name: Unit Tests
     needs: basic-checks
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/setup-go@v3
         name: Install Go
