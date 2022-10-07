@@ -66,7 +66,7 @@ func TestTxSimulatorGetResults(t *testing.T) {
 	testEnv.init(t, "testLedger", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr()
-	populateCollConfigForTest(t, txMgr,
+	populateCollConfigForTest(txMgr,
 		[]collConfigkey{
 			{"ns1", "coll1"},
 			{"ns1", "coll3"},
@@ -854,7 +854,7 @@ func TestTxSimulatorUnsupportedTx(t *testing.T) {
 	testEnv.init(t, "testtxsimulatorunsupportedtx", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr()
-	populateCollConfigForTest(t, txMgr,
+	populateCollConfigForTest(txMgr,
 		[]collConfigkey{
 			{"ns1", "coll1"},
 			{"ns1", "coll2"},
@@ -1092,7 +1092,7 @@ func testValidationAndCommitOfOldPvtData(t *testing.T, env testEnv) {
 	env.init(t, ledgerid, btlPolicy)
 	defer env.cleanup()
 	txMgr := env.getTxMgr()
-	populateCollConfigForTest(t, txMgr,
+	populateCollConfigForTest(txMgr,
 		[]collConfigkey{
 			{"ns1", "coll1"},
 			{"ns1", "coll2"},
@@ -1186,7 +1186,7 @@ func TestTxSimulatorMissingPvtdata(t *testing.T) {
 	defer testEnv.cleanup()
 
 	txMgr := testEnv.getTxMgr()
-	populateCollConfigForTest(t, txMgr,
+	populateCollConfigForTest(txMgr,
 		[]collConfigkey{
 			{"ns1", "coll1"},
 			{"ns1", "coll2"},
@@ -1229,7 +1229,7 @@ func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
 	defer testEnv.cleanup()
 
 	txMgr := testEnv.getTxMgr()
-	populateCollConfigForTest(t, txMgr,
+	populateCollConfigForTest(txMgr,
 		[]collConfigkey{
 			{"ns", "coll"},
 		},
@@ -1385,7 +1385,7 @@ func TestTxSimulatorMissingPvtdataExpiry(t *testing.T) {
 	defer testEnv.cleanup()
 
 	txMgr := testEnv.getTxMgr()
-	populateCollConfigForTest(t, txMgr, []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
+	populateCollConfigForTest(txMgr, []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
 
 	bg, _ := testutil.NewBlockGenerator(t, ledgerid, false)
 
@@ -1485,7 +1485,7 @@ func testTxWithPvtdataMetadata(t *testing.T, env testEnv, ns, coll string) {
 	txMgr := env.getTxMgr()
 	bg, _ := testutil.NewBlockGenerator(t, ledgerid, false)
 
-	populateCollConfigForTest(t, txMgr, []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
+	populateCollConfigForTest(txMgr, []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
 
 	// Simulate and commit tx1 - set val and metadata for key1 and key2. Set only metadata for key3
 	s1, _ := txMgr.NewTxSimulator("test_tx1")
@@ -1688,7 +1688,7 @@ func testTxSimulatorWithPrivateDataStateBasedEndorsement(t *testing.T, env testE
 	txMgr := env.getTxMgr()
 	bg, _ := testutil.NewBlockGenerator(t, ledgerid, false)
 
-	populateCollConfigForTest(t, txMgr, []collConfigkey{{ns, coll}}, version.NewHeight(1, 1))
+	populateCollConfigForTest(txMgr, []collConfigkey{{ns, coll}}, version.NewHeight(1, 1))
 
 	sbe1 := map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): []byte("SBE1")}
 	sbe2 := map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): []byte("SBE2")}

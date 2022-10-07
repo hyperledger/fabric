@@ -46,7 +46,7 @@ type testEnv interface {
 	getName() string
 	getTxMgr() *LockBasedTxMgr
 	getVDB() *privacyenabledstate.DB
-	init(t *testing.T, testLedgerID string, btlPolicy pvtdatapolicy.BTLPolicy)
+	init(t testing.TB, testLedgerID string, btlPolicy pvtdatapolicy.BTLPolicy)
 	stopExternalResource()
 }
 
@@ -72,7 +72,7 @@ var testEnvsMap = map[string]testEnv{
 type lockBasedEnv struct {
 	dbInitialized      bool
 	name               string
-	t                  testing.TB
+	t                  *testing.TB
 	testBookkeepingEnv *bookkeeping.TestEnv
 	testDB             *privacyenabledstate.DB
 	testDBEnv          privacyenabledstate.TestEnv
@@ -83,9 +83,9 @@ func (env *lockBasedEnv) getName() string {
 	return env.name
 }
 
-func (env *lockBasedEnv) init(t *testing.T, testLedgerID string, btlPolicy pvtdatapolicy.BTLPolicy) {
+func (env *lockBasedEnv) init(t testing.TB, testLedgerID string, btlPolicy pvtdatapolicy.BTLPolicy) {
 	var err error
-	env.t = t
+	env.t = &t
 	if env.dbInitialized == false {
 		env.testDBEnv.Init(t)
 		env.dbInitialized = true
@@ -179,7 +179,7 @@ func (h *txMgrTestHelper) checkRWsetInvalid(txRWSet *rwset.TxReadWriteSet) {
 	require.Equal(h.t, 1, invalidTxNum)
 }
 
-func populateCollConfigForTest(t *testing.T, txMgr *LockBasedTxMgr, nsColls []collConfigkey, ht *version.Height) {
+func populateCollConfigForTest(txMgr *LockBasedTxMgr, nsColls []collConfigkey, ht *version.Height) {
 	m := map[string]*peer.CollectionConfigPackage{}
 	for _, nsColl := range nsColls {
 		ns, coll := nsColl.ns, nsColl.coll

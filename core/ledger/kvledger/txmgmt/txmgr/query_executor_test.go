@@ -43,7 +43,7 @@ func TestPvtdataResultsItr(t *testing.T) {
 	defer testEnv.cleanup()
 
 	txMgr := testEnv.getTxMgr()
-	populateCollConfigForTest(t, txMgr, []collConfigkey{
+	populateCollConfigForTest(txMgr, []collConfigkey{
 		{"ns1", "coll1"}, {"ns2", "coll1"}, {"ns3", "coll1"}, {"ns4", "coll1"},
 	},
 		version.NewHeight(1, 0),
@@ -103,7 +103,7 @@ func testPrivateDataMetadataRetrievalByHash(t *testing.T, env testEnv) {
 
 	txMgr := env.getTxMgr()
 	bg, _ := testutil.NewBlockGenerator(t, ledgerid, false)
-	populateCollConfigForTest(t, txMgr, []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
+	populateCollConfigForTest(txMgr, []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
 	// Simulate and commit tx1 - set val and metadata for key1
 	key1, value1, metadata1 := "key1", []byte("value1"), map[string][]byte{"entry1": []byte("meatadata1-entry1")}
 	s1, _ := txMgr.NewTxSimulator("test_tx1")
@@ -145,7 +145,7 @@ func testGetPvtdataHash(t *testing.T, env testEnv) {
 	env.init(t, ledgerid, btlPolicy)
 	defer env.cleanup()
 	txMgr := env.getTxMgr()
-	populateCollConfigForTest(t, txMgr, []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
+	populateCollConfigForTest(txMgr, []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
 
 	batch := privacyenabledstate.NewUpdateBatch()
 	batch.HashUpdates.Put(

@@ -140,7 +140,7 @@ func TestStateListenerQueryExecutor(t *testing.T) {
 	txMgr := testEnv.getTxMgr()
 
 	namespace := "ns"
-	populateCollConfigForTest(t, txMgr,
+	populateCollConfigForTest(txMgr,
 		[]collConfigkey{
 			{"ns", "coll"},
 		},
