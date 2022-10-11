@@ -145,6 +145,16 @@ func InitConfig(cmdRoot string) error {
 	return nil
 }
 
+// InitBCCSPConfig initializes BCCSP config
+func InitBCCSPConfig(bccspConfig *factory.FactoryOpts) error {
+	SetBCCSPKeystorePath()
+	SetBCCSPPKCS11Keys()
+	if err := viper.UnmarshalKey("peer.BCCSP", &bccspConfig); err != nil {
+		return errors.WithMessage(err, "could not decode peer BCCSP configuration")
+	}
+	return nil
+}
+
 // InitCrypto initializes crypto for this peer
 func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 	// Check whether msp folder exists
@@ -160,10 +170,10 @@ func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 	}
 
 	// Init the BCCSP
-	SetBCCSPKeystorePath()
 	bccspConfig := factory.GetDefaultOpts()
-	if err := viper.UnmarshalKey("peer.BCCSP", &bccspConfig); err != nil {
-		return errors.WithMessage(err, "could not decode peer BCCSP configuration")
+	err = InitBCCSPConfig(bccspConfig)
+	if err != nil {
+		return err
 	}
 
 	conf, err := msp.GetLocalMspConfigWithType(mspMgrConfigDir, bccspConfig, localMSPID, localMSPType)
@@ -184,6 +194,17 @@ func SetBCCSPKeystorePath() {
 	key := "peer.BCCSP.SW.FileKeyStore.KeyStore"
 	if ksPath := config.GetPath(key); ksPath != "" {
 		viper.Set(key, ksPath)
+	}
+}
+
+// SetBCCSPPKCS11Keys sets all of the keys for the PKCS11 BCCSP provider
+func SetBCCSPPKCS11Keys() {
+	val := viper.GetStringMap("peer.BCCSP.PKCS11")
+	viper.Set("peer.BCCSP.PKCS11", val)
+	keys := []string{"peer.BCCSP.Default", "peer.BCCSP.PKCS11.Hash", "peer.BCCSP.PKCS11.Security", "peer.BCCSP.PKCS11.Library", "peer.BCCSP.PKCS11.Label", "peer.BCCSP.PKCS11.Pin", "peer.BCCSP.PKCS11.SoftwareVerify", "peer.BCCSP.PKCS11.Immutable", "peer.BCCSP.PKCS11.AltID"}
+	for i := 0; i < len(keys); i++ {
+		val := viper.Get(keys[i])
+		viper.Set(keys[i], val)
 	}
 }
 
