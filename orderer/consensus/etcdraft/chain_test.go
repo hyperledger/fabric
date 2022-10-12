@@ -1437,7 +1437,6 @@ var _ = Describe("Chain", func() {
 			By("Configuring cluster to remove node")
 			Expect(c1.Configure(configEnv, 0)).To(Succeed())
 			Eventually(c2.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-			c1.clock.WaitForNWatchersAndIncrement(ELECTION_TICK*interval, 2)
 
 			Eventually(func() <-chan raft.SoftState {
 				c2.clock.Increment(interval)

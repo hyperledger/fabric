@@ -10,7 +10,6 @@ import (
 	"context"
 	"encoding/pem"
 	"fmt"
-	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -396,40 +395,6 @@ func (c *Chain) Order(env *common.Envelope, configSeq uint64) error {
 // Configure submits config type transactions for ordering.
 func (c *Chain) Configure(env *common.Envelope, configSeq uint64) error {
 	c.Metrics.ConfigProposalsReceived.Add(1)
-
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
-	if err != nil {
-		return errors.Wrap(err, "failed to extract payload from config envelope")
-	}
-
-	// get config update
-	configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
-	if err != nil {
-		return errors.Wrap(err, "could not read config update")
-	}
-
-	configMeta, err := MetadataFromConfigUpdate(configUpdate)
-	if err != nil {
-		return errors.Wrap(err, "could not read config metadata")
-	}
-
-	if configMeta != nil {
-		membershipUpdates, err := ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, configMeta.Consenters)
-		if err != nil {
-			c.logger.Panicf("illegal configuration change detected: %s", err)
-		}
-
-		if membershipUpdates.Rotated() {
-			lead := atomic.LoadUint64(&c.lastKnownLeader)
-			fmt.Printf("My raftID: %d Leader raftID: %d rotatedNode raftID: %d\n", c.raftID, lead, membershipUpdates.RotatedNode)
-			if membershipUpdates.RotatedNode == lead && lead == c.raftID {
-				c.logger.Infof("Certificate of Raft leader is being rotated, attempt leader transfer before reconfiguring communication")
-				debug.PrintStack()
-				c.Node.abdicateLeader(lead)
-			}
-		}
-	}
-
 	return c.Submit(&orderer.SubmitRequest{LastValidationSeq: configSeq, Payload: env, Channel: c.channelID}, 0)
 }
 
@@ -744,11 +709,16 @@ func (c *Chain) run() {
 				continue
 			}
 
-			batches, pending, err := c.ordered(s.req, bc)
+			batches, pending, err := c.ordered(s.req)
 			if err != nil {
 				c.logger.Errorf("Failed to order message: %s", err)
 				continue
 			}
+
+			if !pending && len(batches) == 0 {
+				continue
+			}
+
 			if pending {
 				startTimer() // no-op if timer is already started
 			} else {
@@ -924,11 +894,13 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 
 // Orders the envelope in the `msg` content. SubmitRequest.
 // Returns
-//   -- batches [][]*common.Envelope; the batches cut,
-//   -- pending bool; if there are envelopes pending to be ordered,
-//   -- err error; the error encountered, if any.
+//
+//	-- batches [][]*common.Envelope; the batches cut,
+//	-- pending bool; if there are envelopes pending to be ordered,
+//	-- err error; the error encountered, if any.
+//
 // It takes care of config messages as well as the revalidation of messages if the config sequence has advanced.
-func (c *Chain) ordered(msg *orderer.SubmitRequest, bc *blockCreator) (batches [][]*common.Envelope, pending bool, err error) {
+func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelope, pending bool, err error) {
 	seq := c.support.Sequence()
 
 	isconfig, err := c.isConfig(msg.Payload)
@@ -947,13 +919,20 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest, bc *blockCreator) (batches [
 			}
 		}
 
+		if c.checkForEvictionNCertRotation(msg.Payload) {
+			go func() {
+				c.Node.abdicateLeader(c.raftID)
+				c.Submit(msg, 0)
+			}()
+			return nil, false, nil
+		}
+
 		batch := c.support.BlockCutter().Cut()
 		batches = [][]*common.Envelope{}
 		if len(batch) != 0 {
 			batches = append(batches, batch)
 		}
 		batches = append(batches, []*common.Envelope{msg.Payload})
-
 		return batches, false, nil
 	}
 	// it is a normal message
@@ -1125,6 +1104,10 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 				continue
 			}
 
+			if err := c.Node.storage.Sync(); err != nil {
+				c.logger.Debugf("Failed to sync raft log, error: %s", err)
+			}
+
 			c.confState = *c.Node.ApplyConfChange(cc)
 
 			switch cc.Type {
@@ -1150,17 +1133,9 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 				c.Metrics.ClusterSize.Set(float64(len(c.opts.BlockMetadata.ConsenterIds)))
 			}
 
-			lead := atomic.LoadUint64(&c.lastKnownLeader)
-			removeLeader := cc.Type == raftpb.ConfChangeRemoveNode && cc.NodeID == lead
 			shouldHalt := cc.Type == raftpb.ConfChangeRemoveNode && cc.NodeID == c.raftID
-
 			// unblock `run` go routine so it can still consume Raft messages
 			go func() {
-				if removeLeader {
-					c.logger.Infof("Current leader is being removed from channel, attempt leadership transfer")
-					c.Node.abdicateLeader(lead)
-				}
-
 				if configureComm && !shouldHalt { // no need to configure comm if this node is going to halt
 					if err := c.configureComm(); err != nil {
 						c.logger.Panicf("Failed to configure communication: %s", err)
@@ -1333,22 +1308,10 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 			}
 
 			c.configInflight = true
-		} else if configMembership.Rotated() {
-			/* 			lead := atomic.LoadUint64(&c.lastKnownLeader)
-			   			if configMembership.RotatedNode == lead {
-			   				c.logger.Infof("Certificate of Raft leader is being rotated, attempt leader transfer before reconfiguring communication")
-			   				debug.PrintStack()
-			   				go func() {
-			   					c.Node.abdicateLeader(lead)
-			   					if err := c.configureComm(); err != nil {
-			   						c.logger.Panicf("Failed to configure communication: %s", err)
-			   					}
-			   				}()
-			   			} else { */
+		} else {
 			if err := c.configureComm(); err != nil {
 				c.logger.Panicf("Failed to configure communication: %s", err)
 			}
-			//}
 		}
 
 	case common.HeaderType_ORDERER_TRANSACTION:
@@ -1526,4 +1489,46 @@ func (c *Chain) triggerCatchup(sn *raftpb.Snapshot) {
 	case c.snapC <- sn:
 	case <-c.doneC:
 	}
+}
+
+// checkForEvictionNCertRotation checks for node eviction and
+// certificate rotation, return true if request includes it
+// otherwise returns false
+func (c *Chain) checkForEvictionNCertRotation(env *common.Envelope) bool {
+	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	if err != nil {
+		c.logger.Warnf("failed to extract payload from config envelope: %s", err)
+		return false
+	}
+
+	configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
+	if err != nil {
+		c.logger.Warnf("could not read config update: %s", err)
+		return false
+	}
+
+	configMeta, err := MetadataFromConfigUpdate(configUpdate)
+	if err != nil || configMeta == nil {
+		c.logger.Warnf("could not read config metadata: %s", err)
+		return false
+	}
+
+	membershipUpdates, err := ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, configMeta.Consenters)
+	if err != nil {
+		c.logger.Warnf("illegal configuration change detected: %s", err)
+		return false
+	}
+
+	if membershipUpdates.RotatedNode == c.raftID {
+		c.logger.Infof("Detected certificate rotation of our node")
+		return true
+	}
+
+	if _, exists := membershipUpdates.NewConsenters[c.raftID]; !exists {
+		c.logger.Infof("Detected eviction of ourselves from the configuration")
+		return true
+	}
+
+	c.logger.Debugf("Node %d is still part of the consenters set", c.raftID)
+	return false
 }
