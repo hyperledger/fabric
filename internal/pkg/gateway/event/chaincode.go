@@ -19,15 +19,15 @@ func (event *ChaincodeEvent) Transaction() *Transaction {
 }
 
 func (event *ChaincodeEvent) ChaincodeID() string {
-	return event.message.ChaincodeId
+	return event.message.GetChaincodeId()
 }
 
 func (event *ChaincodeEvent) EventName() string {
-	return event.message.EventName
+	return event.message.GetEventName()
 }
 
 func (event *ChaincodeEvent) Payload() []byte {
-	return event.message.Payload
+	return event.message.GetPayload()
 }
 
 func (event *ChaincodeEvent) ProtoMessage() *peer.ChaincodeEvent {
