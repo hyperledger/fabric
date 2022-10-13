@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package gateway
 
 import (
+	"math"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -168,6 +169,41 @@ func TestPayloadDifferenceReadExtra(t *testing.T) {
 	expected := [][]interface{}{
 		{"type", "extraneous read", "namespace", "ns1", "key", "key3", "initial-endorser-value", "0", "invoked-endorser-value", "3"},
 		{"type", "extraneous read", "namespace", "ns2", "key", "key3b", "initial-endorser-value", "0", "invoked-endorser-value", "5"},
+	}
+	require.ElementsMatch(t, expected, diff.details())
+}
+
+func TestPayloadDifferenceReadMissingProtos(t *testing.T) {
+	rpl1 := createProposalResponsePayload(
+		t, &responseT{payload: []byte("my_value"), status: 200, message: "no error"},
+		[]*readT{
+			{namespace: "ns1", key: "key1", block: math.MaxInt64},
+		},
+		[]*writeT{},
+		[]*metaWriteT{},
+		[]*pvtCollectionT{},
+		nil,
+	)
+
+	rpl2 := createProposalResponsePayload(
+		t, &responseT{payload: []byte("my_value"), status: 200, message: "no error"},
+		[]*readT{
+			{namespace: "ns1", key: "key1", block: 4},
+		},
+		[]*writeT{},
+		[]*metaWriteT{},
+		[]*pvtCollectionT{},
+		nil,
+	)
+
+	rpl1Bytes := marshal(rpl1, t)
+	rpl2Bytes := marshal(rpl2, t)
+
+	diff, err := payloadDifference(rpl1Bytes, rpl2Bytes)
+	require.NoError(t, err)
+
+	expected := [][]interface{}{
+		{"type", "extraneous read", "namespace", "ns1", "key", "key1", "initial-endorser-value", "0", "invoked-endorser-value", "4"},
 	}
 	require.ElementsMatch(t, expected, diff.details())
 }
@@ -468,9 +504,13 @@ func collateReadWriteSets(t *testing.T, reads []*readT, writes []*writeT, metaWr
 			rwset = &kvrwset.KVRWSet{}
 			grouped[r.namespace] = rwset
 		}
+		var version *kvrwset.Version
+		if r.block != math.MaxInt64 { // signifies missing version in these tests
+			version = &kvrwset.Version{BlockNum: r.block}
+		}
 		rwset.Reads = append(rwset.Reads, &kvrwset.KVRead{
 			Key:     r.key,
-			Version: &kvrwset.Version{BlockNum: r.block},
+			Version: version,
 		})
 	}
 	for _, w := range writes {
