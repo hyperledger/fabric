@@ -312,7 +312,7 @@ func rwsetDifference(rwset1, rwset2 []byte) (*resultDifference, error) {
 	summarySet := nsRWsets{}
 	rwDiff := &resultDifference{}
 
-	for _, txrw := range txrw1.NsRwset {
+	for _, txrw := range txrw1.GetNsRwset() {
 		reads := readset{}
 		writes := writeset{}
 		pvtHashes := writeset{}
@@ -321,72 +321,72 @@ func rwsetDifference(rwset1, rwset2 []byte) (*resultDifference, error) {
 		if err != nil {
 			return nil, err
 		}
-		for _, r := range kvrws.Reads {
-			reads[r.Key] = r.Version.BlockNum
+		for _, r := range kvrws.GetReads() {
+			reads[r.GetKey()] = r.GetVersion().GetBlockNum()
 		}
-		for _, w := range kvrws.Writes {
-			writes[w.Key] = w.Value
+		for _, w := range kvrws.GetWrites() {
+			writes[w.GetKey()] = w.GetValue()
 		}
-		for _, mw := range kvrws.MetadataWrites {
+		for _, mw := range kvrws.GetMetadataWrites() {
 			entryset := writeset{}
-			for _, me := range mw.Entries {
-				entryset[me.Name] = me.Value
+			for _, me := range mw.GetEntries() {
+				entryset[me.GetName()] = me.GetValue()
 			}
-			metadata[mw.Key] = entryset
+			metadata[mw.GetKey()] = entryset
 		}
 		for _, chrws := range txrw.GetCollectionHashedRwset() {
-			pvtHashes[chrws.CollectionName] = chrws.PvtRwsetHash
+			pvtHashes[chrws.GetCollectionName()] = chrws.GetPvtRwsetHash()
 		}
-		summarySet[txrw.Namespace] = readwriteset{r: reads, w: writes, m: metadata, p: pvtHashes}
+		summarySet[txrw.GetNamespace()] = readwriteset{r: reads, w: writes, m: metadata, p: pvtHashes}
 	}
-	for _, txrw := range txrw2.NsRwset {
+	for _, txrw := range txrw2.GetNsRwset() {
 		var reads readset
 		var writes writeset
 		var pvtHashes writeset
 		var metadata metaset
-		if rw, ok := summarySet[txrw.Namespace]; ok {
+		if rw, ok := summarySet[txrw.GetNamespace()]; ok {
 			reads = rw.r
 			writes = rw.w
 			metadata = rw.m
 			pvtHashes = rw.p
 		}
-		kvrws, err := protoutil.UnmarshalKVRWSet(txrw.Rwset)
+		kvrws, err := protoutil.UnmarshalKVRWSet(txrw.GetRwset())
 		if err != nil {
 			return nil, err
 		}
-		for _, r := range kvrws.Reads {
-			block := reads[r.Key] // missing entry will be represented by the zero value
-			if block != r.Version.BlockNum {
+		for _, r := range kvrws.GetReads() {
+			block := reads[r.GetKey()] // missing entry will be represented by the zero value
+			if block != r.GetVersion().GetBlockNum() {
 				// state is at different version (or not present in rwset1 if block is zero)
-				rwDiff.addReadDiff(txrw.Namespace, r.Key, block, r.Version.BlockNum)
+				rwDiff.addReadDiff(txrw.GetNamespace(), r.GetKey(), block, r.GetVersion().GetBlockNum())
 			}
-			delete(reads, r.Key)
+			delete(reads, r.GetKey())
 		}
-		for _, w := range kvrws.Writes {
-			value := writes[w.Key]
-			if !bytes.Equal(value, w.Value) {
+		for _, w := range kvrws.GetWrites() {
+			value := writes[w.GetKey()]
+			if !bytes.Equal(value, w.GetValue()) {
 				// state writes different value (or not present in rwset1 if value is nil)
-				rwDiff.addWriteDiff(txrw.Namespace, w.Key, value, w.Value)
+				rwDiff.addWriteDiff(txrw.GetNamespace(), w.GetKey(), value, w.GetValue())
 			}
-			delete(writes, w.Key)
+			delete(writes, w.GetKey())
 		}
-		for _, mw := range kvrws.MetadataWrites {
-			expected := metadata[mw.Key]
-			for _, e := range mw.Entries {
-				value := expected[e.Name]
-				if !bytes.Equal(value, e.Value) {
-					rwDiff.addMetadataWriteDiff(txrw.Namespace, mw.Key, e.Name, value, e.Value)
+		for _, mw := range kvrws.GetMetadataWrites() {
+			expected := metadata[mw.GetKey()]
+			for _, e := range mw.GetEntries() {
+				value := expected[e.GetName()]
+				if !bytes.Equal(value, e.GetValue()) {
+					rwDiff.addMetadataWriteDiff(txrw.GetNamespace(), mw.GetKey(), e.GetName(), value, e.GetValue())
 				}
-				delete(expected, e.Name)
+				delete(expected, e.GetName())
 			}
 		}
 		for _, chrws := range txrw.GetCollectionHashedRwset() {
-			hash := pvtHashes[chrws.CollectionName]
-			if !bytes.Equal(hash, chrws.PvtRwsetHash) {
+			hash := pvtHashes[chrws.GetCollectionName()]
+			if !bytes.Equal(hash, chrws.GetPvtRwsetHash()) {
 				// state writes different value (or not present in rwset1 if value is nil)
-				rwDiff.addPvtHashDiff(txrw.Namespace, chrws.CollectionName, hash, chrws.PvtRwsetHash)
+				rwDiff.addPvtHashDiff(txrw.GetNamespace(), chrws.GetCollectionName(), hash, chrws.GetPvtRwsetHash())
 			}
-			delete(pvtHashes, chrws.CollectionName)
+			delete(pvtHashes, chrws.GetCollectionName())
 		}
 	}
 	// whatever is left in the summary set is present in rwset1 but not rwset2
