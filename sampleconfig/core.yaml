@@ -341,6 +341,9 @@ peer:
             Pin:
             Hash:
             Security:
+            SoftwareVerify:
+            Immutable:
+            AltID:
 
     # Path on the file system where peer will find MSP local configurations
     # The path may be relative to FABRIC_CFG_PATH or an absolute path.

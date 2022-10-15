@@ -38,6 +38,7 @@ import (
 const (
 	UndefinedParamValue = ""
 	CmdRoot             = "core"
+	CmdRootPeerBCCSP    = "CORE_PEER_BCCSP"
 )
 
 var (
@@ -162,7 +163,17 @@ func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 	// Init the BCCSP
 	SetBCCSPKeystorePath()
 	bccspConfig := factory.GetDefaultOpts()
-	if err := viper.UnmarshalKey("peer.BCCSP", &bccspConfig); err != nil {
+
+	subv := viper.Sub("peer.BCCSP")
+	if subv == nil {
+		return errors.WithMessage(err, "could not get peer BCCSP configuration")
+	}
+	subv.SetEnvPrefix(CmdRootPeerBCCSP)
+	subv.AutomaticEnv()
+	subv.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	subv.SetTypeByDefaultValue(true)
+
+	if err = subv.Unmarshal(&bccspConfig); err != nil {
 		return errors.WithMessage(err, "could not decode peer BCCSP configuration")
 	}
 
