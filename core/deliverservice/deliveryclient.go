@@ -118,7 +118,6 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 		logger.Errorf(errMsg)
 		return errors.New(errMsg)
 	}
-	logger.Info("This peer will retrieve blocks from ordering service and disseminate to other peers in the organization for channel", chainID)
 
 	dc := &blocksprovider.Deliverer{
 		ChannelID:     chainID,
@@ -140,8 +139,23 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 		YieldLeadership:     !d.conf.IsStaticLeader,
 	}
 
+<<<<<<< HEAD
 	if d.conf.DeliverGRPCClient.MutualTLSRequired() {
 		dc.TLSCertHash = util.ComputeSHA256(d.conf.DeliverGRPCClient.Certificate().Certificate[0])
+=======
+	if dc.BlockGossipDisabled {
+		logger.Infow("This peer will retrieve blocks from ordering service (will not disseminate them to other peers in the organization)", "channel", chainID)
+	} else {
+		logger.Infow("This peer will retrieve blocks from ordering service and disseminate to other peers in the organization", "channel", chainID)
+	}
+
+	if d.conf.DeliverServiceConfig.SecOpts.RequireClientCert {
+		cert, err := d.conf.DeliverServiceConfig.SecOpts.ClientCertificate()
+		if err != nil {
+			return fmt.Errorf("failed to access client TLS configuration: %w", err)
+		}
+		dc.TLSCertHash = util.ComputeSHA256(cert.Certificate[0])
+>>>>>>> 051b818b7 (Add delivery client logging (#3692))
 	}
 
 	d.blockProviders[chainID] = dc
