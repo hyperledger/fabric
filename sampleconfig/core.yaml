@@ -340,6 +340,9 @@ peer:
             Pin:
             Hash:
             Security:
+            SoftwareVerify:
+            Immutable:
+            AltID:
 
     # Path on the file system where peer will find MSP local configurations
     mspConfigPath: msp
