@@ -358,13 +358,15 @@ peer:
         # of blocks committed in the past.
         blockGossipEnabled: true
         # It sets the total time the delivery service may spend in reconnection
-        # attempts until its retry logic gives up and returns an error
+        # attempts until its retry logic gives up and returns an error,
+        # ignored if peer is a static leader
         reconnectTotalTimeThreshold: 3600s
 
         # It sets the delivery service <-> ordering service node connection timeout
         connTimeout: 3s
 
-        # It sets the delivery service maximal delay between consecutive retries
+        # It sets the delivery service maximal delay between consecutive retries.
+        # Time between retries will have exponential backoff until hitting this threshold.
         reConnectBackoffThreshold: 3600s
 
         # A list of orderer endpoint addresses which should be overridden
