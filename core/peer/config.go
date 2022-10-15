@@ -79,6 +79,10 @@ type Config struct {
 	// hardware threads on the machine.
 	ValidatorPoolSize int
 
+	// ----- Peer Delivery Client Keepalive -----
+	// DeliveryClient Keepalive settings for communication with ordering nodes.
+	DeliverClientKeepaliveOptions comm.KeepaliveOptions
+
 	// ----- Profile -----
 	// TODO: create separate sub-struct for Profile config.
 
@@ -265,6 +269,14 @@ func (c *Config) load() error {
 	c.ValidatorPoolSize = viper.GetInt("peer.validatorPoolSize")
 	if c.ValidatorPoolSize <= 0 {
 		c.ValidatorPoolSize = runtime.NumCPU()
+	}
+
+	c.DeliverClientKeepaliveOptions = comm.DefaultKeepaliveOptions
+	if viper.IsSet("peer.keepalive.deliveryClient.interval") {
+		c.DeliverClientKeepaliveOptions.ClientInterval = viper.GetDuration("peer.keepalive.deliveryClient.interval")
+	}
+	if viper.IsSet("peer.keepalive.deliveryClient.timeout") {
+		c.DeliverClientKeepaliveOptions.ClientTimeout = viper.GetDuration("peer.keepalive.deliveryClient.timeout")
 	}
 
 	c.GatewayOptions = gatewayconfig.GetOptions(viper.GetViper())
