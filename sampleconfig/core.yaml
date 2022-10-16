@@ -343,6 +343,7 @@ peer:
             SoftwareVerify:
             Immutable:
             AltID:
+            KeyIds:
 
     # Path on the file system where peer will find MSP local configurations
     mspConfigPath: msp
