@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp/pkcs11"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/config"
@@ -28,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -173,7 +176,13 @@ func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 	subv.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	subv.SetTypeByDefaultValue(true)
 
-	if err = subv.Unmarshal(&bccspConfig); err != nil {
+	opts := viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
+		mapstructure.StringToTimeDurationHookFunc(),
+		mapstructure.StringToSliceHookFunc(","),
+		StringToKeyIds(),
+	))
+
+	if err = subv.Unmarshal(&bccspConfig, opts); err != nil {
 		return errors.WithMessage(err, "could not decode peer BCCSP configuration")
 	}
 
@@ -187,6 +196,38 @@ func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 	}
 
 	return nil
+}
+
+// StringToKeyIds returns a DecodeHookFunc that converts
+// strings to pkcs11.KeyIDMapping.
+func StringToKeyIds() mapstructure.DecodeHookFunc {
+	return func(
+		f reflect.Type,
+		t reflect.Type,
+		data interface{}) (interface{}, error) {
+		if f.Kind() != reflect.String {
+			return data, nil
+		}
+
+		if t != reflect.TypeOf(pkcs11.KeyIDMapping{}) {
+			return data, nil
+		}
+
+		res := pkcs11.KeyIDMapping{}
+		raw := data.(string)
+		if raw == "" {
+			return res, nil
+		}
+
+		rec := strings.Fields(raw)
+		if len(rec) != 2 {
+			return res, nil
+		}
+		res.SKI = rec[0]
+		res.ID = rec[1]
+
+		return res, nil
+	}
 }
 
 // SetBCCSPKeystorePath sets the file keystore path for the SW BCCSP provider
