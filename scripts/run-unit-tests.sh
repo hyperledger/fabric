@@ -22,6 +22,7 @@ serial_packages=(
 pkcs11_packages=(
     "github.com/hyperledger/fabric/bccsp/factory"
     "github.com/hyperledger/fabric/bccsp/pkcs11"
+    "github.com/hyperledger/fabric/internal/peer/common"
 )
 
 # packages that are only tested when they (or their deps) change
