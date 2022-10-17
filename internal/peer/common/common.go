@@ -34,7 +34,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	grpc "google.golang.org/grpc"
+	"google.golang.org/grpc"
 )
 
 // UndefinedParamValue defines what undefined parameters in the command line will initialise to
@@ -149,6 +149,32 @@ func InitConfig(cmdRoot string) error {
 	return nil
 }
 
+// InitBCCSPConfig initializes BCCSP config
+func InitBCCSPConfig(bccspConfig *factory.FactoryOpts) error {
+	SetBCCSPKeystorePath()
+
+	subv := viper.Sub("peer.BCCSP")
+	if subv == nil {
+		return fmt.Errorf("could not get peer BCCSP configuration")
+	}
+	subv.SetEnvPrefix(CmdRootPeerBCCSP)
+	subv.AutomaticEnv()
+	subv.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	subv.SetTypeByDefaultValue(true)
+
+	opts := viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
+		mapstructure.StringToTimeDurationHookFunc(),
+		mapstructure.StringToSliceHookFunc(","),
+		StringToKeyIds(),
+	))
+
+	if err := subv.Unmarshal(&bccspConfig, opts); err != nil {
+		return errors.WithMessage(err, "could not decode peer BCCSP configuration")
+	}
+
+	return nil
+}
+
 // InitCrypto initializes crypto for this peer
 func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 	// Check whether msp folder exists
@@ -164,26 +190,10 @@ func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 	}
 
 	// Init the BCCSP
-	SetBCCSPKeystorePath()
 	bccspConfig := factory.GetDefaultOpts()
-
-	subv := viper.Sub("peer.BCCSP")
-	if subv == nil {
-		return errors.WithMessage(err, "could not get peer BCCSP configuration")
-	}
-	subv.SetEnvPrefix(CmdRootPeerBCCSP)
-	subv.AutomaticEnv()
-	subv.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	subv.SetTypeByDefaultValue(true)
-
-	opts := viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
-		mapstructure.StringToTimeDurationHookFunc(),
-		mapstructure.StringToSliceHookFunc(","),
-		StringToKeyIds(),
-	))
-
-	if err = subv.Unmarshal(&bccspConfig, opts); err != nil {
-		return errors.WithMessage(err, "could not decode peer BCCSP configuration")
+	err = InitBCCSPConfig(bccspConfig)
+	if err != nil {
+		return err
 	}
 
 	conf, err := msp.GetLocalMspConfigWithType(mspMgrConfigDir, bccspConfig, localMSPID, localMSPType)
