@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/peer/common"
-	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
@@ -45,21 +44,7 @@ func TestBCCSPPKCS11EnvVars(t *testing.T) {
 	}
 
 	bccspConfig := factory.GetDefaultOpts()
-	subv := viper.Sub("peer.BCCSP")
-	require.NotNil(t, subv)
-
-	subv.SetEnvPrefix(common.CmdRootPeerBCCSP)
-	subv.AutomaticEnv()
-	subv.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	subv.SetTypeByDefaultValue(true)
-
-	opts := viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
-		mapstructure.StringToTimeDurationHookFunc(),
-		mapstructure.StringToSliceHookFunc(","),
-		common.StringToKeyIds(),
-	))
-
-	err := subv.Unmarshal(&bccspConfig, opts)
+	err := common.InitBCCSPConfig(bccspConfig)
 	require.NoError(t, err)
 
 	require.Equal(t, "PKCS11", bccspConfig.Default)
