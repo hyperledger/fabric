@@ -204,7 +204,9 @@ type Chain struct {
 	status            types.Status
 
 	// BCCSP instance
-	CryptoProvider bccsp.BCCSP
+	CryptoProvider              bccsp.BCCSP
+	leadershipTransferCandidate uint64
+	leaderTransferFailed        uint32
 }
 
 // NewChain constructs a chain object.
@@ -919,12 +921,37 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 			}
 		}
 
-		if c.checkForEvictionNCertRotation(msg.Payload) {
-			go func() {
-				c.Node.abdicateLeader(c.raftID)
-				c.Submit(msg, 0)
-			}()
-			return nil, false, nil
+		if !atomic.CompareAndSwapUint32(&c.leaderTransferFailed, 1, 0) {
+			if c.checkForEvictionNCertRotation(msg.Payload) {
+				go func() {
+					if transferee, err := c.Node.abdicateLeader(c.raftID); err != nil {
+						if err.Error() == LEADERTRANSFERTIMEOUT.Error() && transferee != raft.None {
+							oldTransferee := atomic.LoadUint64(&c.leadershipTransferCandidate)
+							if !atomic.CompareAndSwapUint64(&c.leadershipTransferCandidate, oldTransferee, transferee) {
+								atomic.StoreUint32(&c.leaderTransferFailed, 1)
+							}
+							// sleep for tick time & reattempt
+							timer := c.Node.clock.NewTimer(time.Duration(c.Node.config.ElectionTick) * c.Node.tickInterval)
+							defer timer.Stop()
+
+							select {
+							case <-timer.C():
+							case <-c.Node.chain.doneC:
+							}
+						} else if err.Error() == LEADERTRNSFERCALLEDBYFOLLOWER.Error() {
+							c.logger.Debugf("Leadership transfer completed")
+						} else {
+							atomic.StoreUint32(&c.leaderTransferFailed, 1)
+						}
+					}
+					if err := c.Submit(msg, 0); err != nil {
+						c.logger.Errorf("Transaction proposal failed with error: %v", err)
+					}
+				}()
+				return nil, false, nil
+			}
+		} else {
+			atomic.StoreUint64(&c.leadershipTransferCandidate, raft.None)
 		}
 
 		batch := c.support.BlockCutter().Cut()
