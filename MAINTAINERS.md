@@ -21,10 +21,7 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 | Name | GitHub | Chat | email
 |------|--------|------|----------------------
 | Chris Gabriel  | [denali49][denali49] | cmgabriel | <alaskadd@gmail.com>
-| Joe Alewine | [joealewine][joealewine] | joe-alewine | <joe.alewine@ibm.com>
 | Nikhil Gupta | [nikhil550][nikhil550] | nikhilgupta | <nikhilg550@gmail.com>
-| Anthony O'Dowd | [odowdaibm][odowdaibm] | odowdaibm | <a_o-dowd@uk.ibm.com>
-| Pam Andrejko | [pamandrejko][pamandrejko] | pandrejko | <pama@ibm.com>
 
 **Release Managers**
 
@@ -36,6 +33,8 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 
 | Name | GitHub | Chat | email
 |------|--------|------|----------------------
+
+| Anthony O'Dowd | [odowdaibm][odowdaibm] | odowdaibm | <a_o-dowd@uk.ibm.com>
 | Binh Nguyen | [binhn][binhn] | binhn | <binh1010010110@gmail.com>
 | Brett Logan | [lindluni][lindluni] | BrettLogan | <development.brett@gmail.com>
 | Chris Ferris | [christo4ferris][christo4ferris] | cbf | <chris.ferris@gmail.com>
@@ -45,10 +44,12 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 | Greg Haskins | [ghaskins][ghaskins] | ghaskins | <gregory.haskins@gmail.com>
 | Jason Yellick | [jyellick][jyellick] | jyellick | <jason-github@unaddressable.org>
 | Jim Zhang | [jimthematrix][jimthematrix] | jimthematrix | <jim_the_matrix@hotmail.com>
+| Joe Alewine | [joealewine][joealewine] | joe-alewine | <joe.alewine@ibm.com>
 | Jonathan Levi | [hacera][hacera] |JonathanLevi | <jonathan@hacera.com>
 | Keith Smith | [smithbk][smithbk] | smithbk | <bksmith@us.ibm.com>
 | Kostas Christidis | [kchristidis][kchristidis] | kostas | <kostas@gmail.com>
 | Matthew Sykes | [sykesm][sykesm] | sykesm | <matthew.sykes@gmail.com>
+| Pam Andrejko | [pamandrejko][pamandrejko] | pandrejko | <pama@ibm.com>
 | Sheehan Anderson | [srderson][srderson] | sheehan | <sranderson@gmail.com>
 | Srinivasan Muralidharan | [muralisrini][muralisrini] | muralisr | <srinivasan.muralidharan99@gmail.com>
 | Tamas Blummer | [tamasblummer][tamasblummer] | tamas | <tamas@digitalasset.com>
