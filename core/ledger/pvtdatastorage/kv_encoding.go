@@ -314,6 +314,26 @@ func driveHashedIndexKeyRangeFromPurgeMarker(purgeMarkerKey, purgeMarkerVal []by
 	return startKey, endKey
 }
 
+func rangeScanKeysForHashedIndexKey(ns, coll string, keyHash []byte) ([]byte, []byte) {
+	startKey := encodeHashedIndexKey(
+		&hashedIndexKey{
+			ns:         ns,
+			coll:       coll,
+			pvtkeyHash: keyHash,
+		},
+	)
+	endKey := encodeHashedIndexKey(
+		&hashedIndexKey{
+			ns:         ns,
+			coll:       coll,
+			pvtkeyHash: keyHash,
+			blkNum:     math.MaxUint64,
+			txNum:      math.MaxUint64,
+		},
+	)
+	return startKey, endKey
+}
+
 func encodePurgeMarkerVal(v *purgeMarkerVal) []byte {
 	return version.NewHeight(v.blkNum, v.txNum).ToBytes()
 }

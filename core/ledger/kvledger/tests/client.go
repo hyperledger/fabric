@@ -166,6 +166,12 @@ func (s *simulator) setPvtdata(ns, coll, key string, val string) {
 	)
 }
 
+func (s *simulator) purgePvtdata(ns, coll, key string) {
+	s.assert.NoError(
+		s.PurgePrivateData(ns, coll, key),
+	)
+}
+
 func (s *simulator) done() *txAndPvtdata {
 	s.Done()
 	simRes, err := s.GetTxSimulationResults()

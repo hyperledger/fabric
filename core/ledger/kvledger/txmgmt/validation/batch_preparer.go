@@ -70,13 +70,14 @@ func NewCommitBatchPreparer(
 
 // ValidateAndPrepareBatch performs validation of transactions in the block and prepares the batch of final writes
 func (p *CommitBatchPreparer) ValidateAndPrepareBatch(blockAndPvtdata *ledger.BlockAndPvtData,
-	doMVCCValidation bool) (*privacyenabledstate.UpdateBatch, []*TxStatInfo, error) {
+	doMVCCValidation bool) (*privacyenabledstate.UpdateBatch, []*AppInitiatedPurgeUpdate, []*TxStatInfo, error) {
 	blk := blockAndPvtdata.Block
 	logger.Debugf("ValidateAndPrepareBatch() for block number = [%d]", blk.Header.Number)
 	var internalBlock *block
 	var txsStatInfo []*TxStatInfo
 	var pubAndHashUpdates *publicAndHashUpdates
 	var pvtUpdates *privacyenabledstate.PvtUpdateBatch
+	var purgeUpdates []*AppInitiatedPurgeUpdate
 	var err error
 
 	logger.Debug("preprocessing ProtoBlock...")
@@ -87,11 +88,11 @@ func (p *CommitBatchPreparer) ValidateAndPrepareBatch(blockAndPvtdata *ledger.Bl
 		doMVCCValidation,
 		p.customTxProcessors,
 	); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	if pubAndHashUpdates, err = p.validator.validateAndPrepareBatch(internalBlock, doMVCCValidation); err != nil {
-		return nil, nil, err
+	if pubAndHashUpdates, purgeUpdates, err = p.validator.validateAndPrepareBatch(internalBlock, doMVCCValidation); err != nil {
+		return nil, nil, nil, err
 	}
 	logger.Debug("validating rwset...")
 	if pvtUpdates, err = validateAndPreparePvtBatch(
@@ -100,7 +101,7 @@ func (p *CommitBatchPreparer) ValidateAndPrepareBatch(blockAndPvtdata *ledger.Bl
 		pubAndHashUpdates,
 		blockAndPvtdata.PvtData,
 	); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	logger.Debug("postprocessing ProtoBlock...")
 	postprocessProtoBlock(blk, internalBlock)
@@ -114,7 +115,7 @@ func (p *CommitBatchPreparer) ValidateAndPrepareBatch(blockAndPvtdata *ledger.Bl
 		PubUpdates:  pubAndHashUpdates.publicUpdates,
 		HashUpdates: pubAndHashUpdates.hashUpdates,
 		PvtUpdates:  pvtUpdates,
-	}, txsStatInfo, nil
+	}, purgeUpdates, txsStatInfo, nil
 }
 
 // validateAndPreparePvtBatch pulls out the private write-set for the transactions that are marked as valid

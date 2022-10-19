@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/confighistory"
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
@@ -631,7 +632,7 @@ func (l *kvLedger) commit(pvtdataAndBlock *ledger.BlockAndPvtData, commitOpts *l
 	}
 
 	logger.Debugf("[%s] Validating state for block [%d]", l.ledgerID, blockNo)
-	txstatsInfo, updateBatchBytes, err := l.txmgr.ValidateAndPrepare(pvtdataAndBlock, true)
+	appInitiatedPurgeUpdates, txstatsInfo, updateBatchBytes, err := l.txmgr.ValidateAndPrepare(pvtdataAndBlock, true)
 	if err != nil {
 		return err
 	}
@@ -649,12 +650,46 @@ func (l *kvLedger) commit(pvtdataAndBlock *ledger.BlockAndPvtData, commitOpts *l
 	logger.Debugf("[%s] Committing pvtdata and block [%d] to storage", l.ledgerID, blockNo)
 	l.blockAPIsRWLock.Lock()
 	defer l.blockAPIsRWLock.Unlock()
-	if err = l.commitToPvtAndBlockStore(pvtdataAndBlock); err != nil {
+
+	purgeMarkers := []*pvtdatastorage.PurgeMarker{}
+	for _, u := range appInitiatedPurgeUpdates {
+		purgeMarkers = append(purgeMarkers,
+			&pvtdatastorage.PurgeMarker{
+				Ns:         u.CompositeKey.Namespace,
+				Coll:       u.CompositeKey.CollectionName,
+				PvtkeyHash: []byte(u.CompositeKey.KeyHash),
+				TxNum:      u.Version.TxNum,
+			},
+		)
+	}
+	if err = l.commitToPvtAndBlockStore(pvtdataAndBlock, purgeMarkers); err != nil {
 		return err
 	}
 	elapsedBlockstorageAndPvtdataCommit := time.Since(startBlockstorageAndPvtdataCommit)
 
 	startCommitState := time.Now()
+
+	pvtKeysToDelete := map[privacyenabledstate.PvtdataCompositeKey]*version.Height{}
+	for _, u := range appInitiatedPurgeUpdates {
+		if !u.DeletePrivateKeyFromState {
+			continue
+		}
+		pvtKey, err := l.pvtdataStore.FetchPrivateDataRawKey(
+			u.CompositeKey.Namespace, u.CompositeKey.CollectionName, []byte(u.CompositeKey.KeyHash),
+		)
+		if err != nil {
+			return err
+		}
+		if pvtKey == "" {
+			continue
+		}
+		pvtKeysToDelete[privacyenabledstate.PvtdataCompositeKey{
+			Namespace:      u.CompositeKey.Namespace,
+			CollectionName: u.CompositeKey.CollectionName,
+			Key:            pvtKey,
+		}] = u.Version
+	}
+	l.txmgr.UpdateBatchWithAppInitiatedPvtKeysToPurge(pvtKeysToDelete)
 	logger.Debugf("[%s] Committing block [%d] transactions to state database", l.ledgerID, blockNo)
 	if err = l.txmgr.Commit(); err != nil {
 		panic(errors.WithMessage(err, "error during commit to txmgr"))
@@ -691,7 +726,10 @@ func (l *kvLedger) commit(pvtdataAndBlock *ledger.BlockAndPvtData, commitOpts *l
 	return nil
 }
 
-func (l *kvLedger) commitToPvtAndBlockStore(blockAndPvtdata *ledger.BlockAndPvtData) error {
+func (l *kvLedger) commitToPvtAndBlockStore(
+	blockAndPvtdata *ledger.BlockAndPvtData,
+	appInitiatedPurgeMarkers []*pvtdatastorage.PurgeMarker,
+) error {
 	pvtdataStoreHt, err := l.pvtdataStore.LastCommittedBlockHeight()
 	if err != nil {
 		return err
@@ -710,7 +748,7 @@ func (l *kvLedger) commitToPvtAndBlockStore(blockAndPvtdata *ledger.BlockAndPvtD
 		// too in the pvtdataStore as we do for the publicdata in the case of blockStore.
 		// Hence, we pass all pvtData present in the block to the pvtdataStore committer.
 		pvtData, missingPvtData := constructPvtDataAndMissingData(blockAndPvtdata)
-		if err := l.pvtdataStore.Commit(blockNum, pvtData, missingPvtData); err != nil {
+		if err := l.pvtdataStore.Commit(blockNum, pvtData, missingPvtData, appInitiatedPurgeMarkers); err != nil {
 			return err
 		}
 	} else {
