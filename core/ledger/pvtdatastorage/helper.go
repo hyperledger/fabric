@@ -17,8 +17,12 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/util"
 )
 
-func prepareStoreEntries(blockNum uint64, pvtData []*ledger.TxPvtData, btlPolicy pvtdatapolicy.BTLPolicy,
-	missingPvtData ledger.TxMissingPvtData) (*storeEntries, error) {
+func prepareStoreEntries(blockNum uint64,
+	pvtData []*ledger.TxPvtData,
+	btlPolicy pvtdatapolicy.BTLPolicy,
+	missingPvtData ledger.TxMissingPvtData,
+	purgeMarkers []*PurgeMarker,
+) (*storeEntries, error) {
 	dataEntries := prepareDataEntries(blockNum, pvtData)
 
 	hashedIndexEntries, err := prepareHashedIndexEntries(dataEntries)
@@ -32,9 +36,13 @@ func prepareStoreEntries(blockNum uint64, pvtData []*ledger.TxPvtData, btlPolicy
 		return nil, err
 	}
 
+	purgeMarkerEntries, purgeMarkerCollEntries := preparePurgerMarkerEntries(blockNum, purgeMarkers)
+
 	return &storeEntries{
 		dataEntries:             dataEntries,
 		hashedIndexEntries:      hashedIndexEntries,
+		purgeMarkerEntries:      purgeMarkerEntries,
+		purgeMarkerCollEntries:  purgeMarkerCollEntries,
 		expiryEntries:           expiryEntries,
 		elgMissingDataEntries:   elgMissingDataEntries,
 		inelgMissingDataEntries: inelgMissingDataEntries,
@@ -179,6 +187,41 @@ func prepareHashedIndexEntries(dataEntires []*dataEntry) ([]*hashedIndexEntry, e
 		}
 	}
 	return hashedIndexEntries, nil
+}
+
+func preparePurgerMarkerEntries(blkNum uint64, purgeMarkers []*PurgeMarker) ([]*purgeMarkerEntry, []*purgeMarkerCollEntry) {
+	purgeMarkersEntries := []*purgeMarkerEntry{}
+	purgeMarkersCollEntries := []*purgeMarkerCollEntry{}
+
+	for _, m := range purgeMarkers {
+		purgeMarkersEntries = append(purgeMarkersEntries,
+			&purgeMarkerEntry{
+				key: &purgeMarkerKey{
+					ns:         m.Ns,
+					coll:       m.Coll,
+					pvtkeyHash: m.PvtkeyHash,
+				},
+				value: &purgeMarkerVal{
+					blkNum: blkNum,
+					txNum:  m.TxNum,
+				},
+			},
+		)
+
+		purgeMarkersCollEntries = append(purgeMarkersCollEntries,
+			&purgeMarkerCollEntry{
+				key: &purgeMarkerCollKey{
+					ns:   m.Ns,
+					coll: m.Coll,
+				},
+				value: &purgeMarkerVal{
+					blkNum: blkNum,
+					txNum:  m.TxNum,
+				},
+			},
+		)
+	}
+	return purgeMarkersEntries, purgeMarkersCollEntries
 }
 
 func getOrCreateExpiryData(mapByExpiringBlk map[uint64]*ExpiryData, expiringBlk uint64) *ExpiryData {
