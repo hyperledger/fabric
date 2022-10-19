@@ -185,3 +185,52 @@ func TestBTL(t *testing.T) {
 		r.pvtdataShouldNotContain("cc1", "coll2")                   // <cc1, coll2> shold have been purged from the pvtdata storage
 	})
 }
+
+func TestAppInitiatedPrivateDataPurge(t *testing.T) {
+	env := newEnv(t)
+	defer env.cleanup()
+	env.initLedgerMgmt()
+	l := env.createTestLedgerFromGenesisBlk("ledger1")
+	collConf := []*collConf{{name: "coll1", btl: 0}, {name: "coll2", btl: 0}}
+
+	// deploy cc1 with 'collConf'
+	l.simulateDeployTx("cc1", collConf)
+	l.cutBlockAndCommitLegacy()
+
+	// commit pvtdata writes in block 2.
+	l.simulateDataTx("", func(s *simulator) {
+		s.setPvtdata("cc1", "coll1", "key1", "value1")
+		s.setPvtdata("cc1", "coll2", "key2", "value2")
+		s.setPvtdata("cc1", "coll2", "key3", "value3")
+	})
+	l.cutBlockAndCommitLegacy()
+
+	// Two transactions in block 3
+	l.simulateDataTx("", func(s *simulator) {
+		// purge key1 and key2
+		s.purgePvtdata("cc1", "coll1", "key1")
+		s.purgePvtdata("cc1", "coll2", "key2")
+	})
+
+	l.simulateDataTx("", func(s *simulator) {
+		// set key2 to a new value, after purge
+		s.setPvtdata("cc1", "coll2", "key2", "value2_new")
+	})
+	l.cutBlockAndCommitLegacy()
+
+	l.verifyPvtState("cc1", "coll1", "key1", "")           // key1 should have been purged from the state
+	l.verifyPvtState("cc1", "coll2", "key2", "value2_new") // key2 should be present with new value
+	l.verifyPvtState("cc1", "coll2", "key3", "value3")
+
+	l.verifyBlockAndPvtData(2, nil, func(r *retrievedBlockAndPvtdata) { // retrieve the pvtdata for block 2 from pvtdata storage
+		r.pvtdataShouldNotContainKey("cc1", "coll1", "key1")
+		r.pvtdataShouldNotContainKey("cc1", "coll2", "key2")
+		r.pvtdataShouldContain(0, "cc1", "coll2", "key3", "value3")
+	})
+
+	l.verifyBlockAndPvtData(3, nil, func(r *retrievedBlockAndPvtdata) { // retrieve the pvtdata for block 3 from pvtdata storage
+		r.pvtdataShouldNotContainKey("cc1", "coll1", "key1")
+		r.pvtdataShouldContain(1, "cc1", "coll2", "key2", "value2_new")
+		r.pvtdataShouldNotContainKey("cc1", "coll2", "key3")
+	})
+}

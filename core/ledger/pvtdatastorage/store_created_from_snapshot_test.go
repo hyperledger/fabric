@@ -105,9 +105,9 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 		require.False(t, isEmpty)
 		require.Equal(t, uint64(25), lastBlkNum)
 
-		err = store.Commit(25, nil, nil)
+		err = store.Commit(25, nil, nil, nil)
 		require.EqualError(t, err, "expected block number=26, received block number=25")
-		require.NoError(t, store.Commit(26, nil, nil))
+		require.NoError(t, store.Commit(26, nil, nil, nil))
 	})
 
 	t.Run("fetch-bootkv-hashes", func(t *testing.T) {
@@ -296,7 +296,7 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 		// commit 100 blocks and the bootkvhashes should expire
 		store.purgeInterval = 10
 		for i := 0; i < 100; i++ {
-			require.NoError(t, store.Commit(uint64(26+i), nil, nil))
+			require.NoError(t, store.Commit(uint64(26+i), nil, nil, nil))
 		}
 
 		m, err = store.FetchBootKVHashes(20, 200, "ns", "eligible-coll")

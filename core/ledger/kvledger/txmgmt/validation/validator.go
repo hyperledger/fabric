@@ -78,38 +78,43 @@ func (v *validator) preLoadCommittedVersionOfRSet(blk *block) error {
 }
 
 // validateAndPrepareBatch performs validation and prepares the batch for final writes
-func (v *validator) validateAndPrepareBatch(blk *block, doMVCCValidation bool) (*publicAndHashUpdates, error) {
+func (v *validator) validateAndPrepareBatch(blk *block, doMVCCValidation bool) (*publicAndHashUpdates, []*AppInitiatedPurgeUpdate, error) {
 	// Check whether statedb implements BulkOptimizable interface. For now,
 	// only CouchDB implements BulkOptimizable to reduce the number of REST
 	// API calls from peer to CouchDB instance.
 	if v.db.IsBulkOptimizable() {
 		err := v.preLoadCommittedVersionOfRSet(blk)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	updates := newPubAndHashUpdates()
+	purgeTracker := newPvtdataPurgeTracker()
+
 	for _, tx := range blk.txs {
 		var validationCode peer.TxValidationCode
 		var err error
 		if validationCode, err = v.validateEndorserTX(tx.rwset, doMVCCValidation, updates); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		tx.validationCode = validationCode
 		if validationCode == peer.TxValidationCode_VALID {
 			logger.Debugf("Block [%d] Transaction index [%d] TxId [%s] marked as valid by state validator. ContainsPostOrderWrites [%t]", blk.num, tx.indexInBlock, tx.id, tx.containsPostOrderWrites)
+
 			committingTxHeight := version.NewHeight(blk.num, uint64(tx.indexInBlock))
 			if err := updates.applyWriteSet(tx.rwset, committingTxHeight, v.db, tx.containsPostOrderWrites); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
+
+			purgeTracker.update(tx.rwset, committingTxHeight)
 		} else {
 			logger.Warningf("Block [%d] Transaction index [%d] TxId [%s] marked as invalid by state validator. Reason code [%s]",
 				blk.num, tx.indexInBlock, tx.id, validationCode.String())
 		}
 	}
-	return updates, nil
+	return updates, purgeTracker.getUpdates(), nil
 }
 
 // validateEndorserTX validates endorser transaction
@@ -285,4 +290,59 @@ func (v *validator) validateKVReadHash(ns, coll string, kvReadHash *kvrwset.KVRe
 		return false, nil
 	}
 	return true, nil
+}
+
+type AppInitiatedPurgeUpdate struct {
+	CompositeKey              *privacyenabledstate.HashedCompositeKey
+	Version                   *version.Height
+	DeletePrivateKeyFromState bool
+}
+
+type pvtdataPurgeTracker struct {
+	m map[privacyenabledstate.HashedCompositeKey]*AppInitiatedPurgeUpdate
+}
+
+func newPvtdataPurgeTracker() *pvtdataPurgeTracker {
+	return &pvtdataPurgeTracker{
+		m: map[privacyenabledstate.HashedCompositeKey]*AppInitiatedPurgeUpdate{},
+	}
+}
+
+func (p *pvtdataPurgeTracker) update(rwset *rwsetutil.TxRwSet, version *version.Height) {
+	for _, nsRwSets := range rwset.NsRwSets {
+		for _, collHashedRwSet := range nsRwSets.CollHashedRwSets {
+			for _, hashedWrite := range collHashedRwSet.HashedRwSet.GetHashedWrites() {
+
+				ck := privacyenabledstate.HashedCompositeKey{
+					Namespace:      nsRwSets.NameSpace,
+					CollectionName: collHashedRwSet.CollectionName,
+					KeyHash:        string(hashedWrite.GetKeyHash()),
+				}
+
+				if hashedWrite.IsPurge {
+					p.m[ck] = &AppInitiatedPurgeUpdate{
+						CompositeKey:              &ck,
+						Version:                   version,
+						DeletePrivateKeyFromState: true,
+					}
+					continue
+				}
+
+				existingUpdate, ok := p.m[ck]
+				if !ok {
+					continue
+				}
+				// the hash of a key that was purged in a previous transaction, got overwritten by this transaction
+				existingUpdate.DeletePrivateKeyFromState = false
+			}
+		}
+	}
+}
+
+func (p *pvtdataPurgeTracker) getUpdates() []*AppInitiatedPurgeUpdate {
+	updates := []*AppInitiatedPurgeUpdate{}
+	for _, update := range p.m {
+		updates = append(updates, update)
+	}
+	return updates
 }
