@@ -1242,7 +1242,7 @@ func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
 	// stored pvt key would get expired and purged while committing block 3
 	blkAndPvtdata := prepareNextBlockForTest(t, txMgr, bg, "txid-1",
 		map[string]string{"pubkey1": "pub-value1"}, map[string]string{"pvtkey1": "pvt-value1"}, true)
-	_, _, err := txMgr.ValidateAndPrepare(blkAndPvtdata, true)
+	_, _, _, err := txMgr.ValidateAndPrepare(blkAndPvtdata, true)
 	require.NoError(t, err)
 	// committing block 1
 	require.NoError(t, txMgr.Commit())
@@ -1268,7 +1268,7 @@ func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
 	// stored pvt key would get expired and purged while committing block 4
 	blkAndPvtdata = prepareNextBlockForTest(t, txMgr, bg, "txid-2",
 		map[string]string{"pubkey2": "pub-value2"}, map[string]string{"pvtkey2": "pvt-value2"}, true)
-	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata, true)
+	_, _, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata, true)
 	require.NoError(t, err)
 	// committing block 2
 	require.NoError(t, txMgr.Commit())
@@ -1278,7 +1278,7 @@ func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
 
 	blkAndPvtdata = prepareNextBlockForTest(t, txMgr, bg, "txid-3",
 		map[string]string{"pubkey3": "pub-value3"}, nil, false)
-	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata, true)
+	_, _, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata, true)
 	require.NoError(t, err)
 	// committing block 3
 	require.NoError(t, txMgr.Commit())
@@ -1303,7 +1303,7 @@ func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
 
 	blkAndPvtdata = prepareNextBlockForTest(t, txMgr, bg, "txid-4",
 		map[string]string{"pubkey4": "pub-value4"}, nil, false)
-	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata, true)
+	_, _, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata, true)
 	require.NoError(t, err)
 	// committing block 4 and should purge pvtkey2
 	require.NoError(t, txMgr.Commit())
@@ -1391,7 +1391,7 @@ func TestTxSimulatorMissingPvtdataExpiry(t *testing.T) {
 
 	blkAndPvtdata := prepareNextBlockForTest(t, txMgr, bg, "txid-1",
 		map[string]string{"pubkey1": "pub-value1"}, map[string]string{"pvtkey1": "pvt-value1"}, false)
-	_, _, err := txMgr.ValidateAndPrepare(blkAndPvtdata, true)
+	_, _, _, err := txMgr.ValidateAndPrepare(blkAndPvtdata, true)
 	require.NoError(t, err)
 	require.NoError(t, txMgr.Commit())
 
@@ -1399,14 +1399,14 @@ func TestTxSimulatorMissingPvtdataExpiry(t *testing.T) {
 
 	blkAndPvtdata = prepareNextBlockForTest(t, txMgr, bg, "txid-2",
 		map[string]string{"pubkey1": "pub-value2"}, map[string]string{"pvtkey2": "pvt-value2"}, false)
-	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata, true)
+	_, _, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata, true)
 	require.NoError(t, err)
 	require.NoError(t, txMgr.Commit())
 	verifyPvtKeyValue(t, txMgr, "ns", "coll", "pvtkey1", []byte("pvt-value1"))
 
 	blkAndPvtdata = prepareNextBlockForTest(t, txMgr, bg, "txid-2",
 		map[string]string{"pubkey1": "pub-value3"}, map[string]string{"pvtkey3": "pvt-value3"}, false)
-	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata, true)
+	_, _, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata, true)
 	require.NoError(t, err)
 	require.NoError(t, txMgr.Commit())
 	verifyPvtKeyValue(t, txMgr, "ns", "coll", "pvtkey1", nil)
@@ -1500,7 +1500,7 @@ func testTxWithPvtdataMetadata(t *testing.T, env testEnv, ns, coll string) {
 	s1.Done()
 
 	blkAndPvtdata1, _ := prepareNextBlockForTestFromSimulator(t, bg, s1)
-	_, _, err := txMgr.ValidateAndPrepare(blkAndPvtdata1, true)
+	_, _, _, err := txMgr.ValidateAndPrepare(blkAndPvtdata1, true)
 	require.NoError(t, err)
 	require.NoError(t, txMgr.Commit())
 
@@ -1519,7 +1519,7 @@ func testTxWithPvtdataMetadata(t *testing.T, env testEnv, ns, coll string) {
 	s2.Done()
 
 	blkAndPvtdata2, _ := prepareNextBlockForTestFromSimulator(t, bg, s2)
-	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata2, true)
+	_, _, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata2, true)
 	require.NoError(t, err)
 	require.NoError(t, txMgr.Commit())
 
@@ -1700,7 +1700,7 @@ func testTxSimulatorWithPrivateDataStateBasedEndorsement(t *testing.T, env testE
 	s1.Done()
 
 	blkAndPvtdata1, _ := prepareNextBlockForTestFromSimulator(t, bg, s1)
-	_, _, err := txMgr.ValidateAndPrepare(blkAndPvtdata1, true)
+	_, _, _, err := txMgr.ValidateAndPrepare(blkAndPvtdata1, true)
 	require.NoError(t, err)
 	require.NoError(t, txMgr.Commit())
 
@@ -1711,7 +1711,7 @@ func testTxSimulatorWithPrivateDataStateBasedEndorsement(t *testing.T, env testE
 	s2.Done()
 
 	blkAndPvtdata2, simRes2 := prepareNextBlockForTestFromSimulator(t, bg, s2)
-	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata2, true)
+	_, _, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata2, true)
 	require.NoError(t, err)
 	require.NoError(t, txMgr.Commit())
 	// check the metadata are captured
@@ -1725,7 +1725,7 @@ func testTxSimulatorWithPrivateDataStateBasedEndorsement(t *testing.T, env testE
 	s3.Done()
 
 	blkAndPvtdata3, simRes3 := prepareNextBlockForTestFromSimulator(t, bg, s3)
-	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata3, true)
+	_, _, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata3, true)
 	require.NoError(t, err)
 	require.NoError(t, txMgr.Commit())
 	// check the metadata are captured

@@ -111,7 +111,7 @@ func testPrivateDataMetadataRetrievalByHash(t *testing.T, env testEnv) {
 	require.NoError(t, s1.SetPrivateDataMetadata("ns", "coll", key1, metadata1))
 	s1.Done()
 	blkAndPvtdata1, _ := prepareNextBlockForTestFromSimulator(t, bg, s1)
-	_, _, err := txMgr.ValidateAndPrepare(blkAndPvtdata1, true)
+	_, _, _, err := txMgr.ValidateAndPrepare(blkAndPvtdata1, true)
 	require.NoError(t, err)
 	require.NoError(t, txMgr.Commit())
 

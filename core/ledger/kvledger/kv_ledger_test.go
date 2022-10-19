@@ -349,9 +349,9 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		map[string]string{"key1": "value1.2", "key2": "value2.2", "key3": "value3.2"},
 		map[string]string{"key1": "pvtValue1.2", "key2": "pvtValue2.2", "key3": "pvtValue3.2"})
 
-	_, _, err = ledger1.(*kvLedger).txmgr.ValidateAndPrepare(blockAndPvtdata2, true)
+	_, _, _, err = ledger1.(*kvLedger).txmgr.ValidateAndPrepare(blockAndPvtdata2, true)
 	require.NoError(t, err)
-	require.NoError(t, ledger1.(*kvLedger).commitToPvtAndBlockStore(blockAndPvtdata2))
+	require.NoError(t, ledger1.(*kvLedger).commitToPvtAndBlockStore(blockAndPvtdata2, nil))
 
 	// block storage should be as of block-2 but the state and history db should be as of block-1
 	checkBCSummaryForTest(t, ledger1,
@@ -406,9 +406,9 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
 		map[string]string{"key1": "pvtValue1.3", "key2": "pvtValue2.3", "key3": "pvtValue3.3"},
 	)
-	_, _, err = ledger2.(*kvLedger).txmgr.ValidateAndPrepare(blockAndPvtdata3, true)
+	_, _, _, err = ledger2.(*kvLedger).txmgr.ValidateAndPrepare(blockAndPvtdata3, true)
 	require.NoError(t, err)
-	require.NoError(t, ledger2.(*kvLedger).commitToPvtAndBlockStore(blockAndPvtdata3))
+	require.NoError(t, ledger2.(*kvLedger).commitToPvtAndBlockStore(blockAndPvtdata3, nil))
 	// committing the transaction to state DB
 	require.NoError(t, ledger2.(*kvLedger).txmgr.Commit())
 
@@ -467,9 +467,9 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		map[string]string{"key1": "pvtValue1.4", "key2": "pvtValue2.4", "key3": "pvtValue3.4"},
 	)
 
-	_, _, err = ledger3.(*kvLedger).txmgr.ValidateAndPrepare(blockAndPvtdata4, true)
+	_, _, _, err = ledger3.(*kvLedger).txmgr.ValidateAndPrepare(blockAndPvtdata4, true)
 	require.NoError(t, err)
-	require.NoError(t, ledger3.(*kvLedger).commitToPvtAndBlockStore(blockAndPvtdata4))
+	require.NoError(t, ledger3.(*kvLedger).commitToPvtAndBlockStore(blockAndPvtdata4, nil))
 	require.NoError(t, ledger3.(*kvLedger).historyDB.Commit(blockAndPvtdata4.Block))
 
 	checkBCSummaryForTest(t, ledger3,
@@ -651,7 +651,7 @@ func TestPvtDataAPIs(t *testing.T) {
 
 	sampleData := sampleDataWithPvtdataForSelectiveTx(t, bg)
 	for _, sampleDatum := range sampleData {
-		require.NoError(t, kvlgr.commitToPvtAndBlockStore(sampleDatum))
+		require.NoError(t, kvlgr.commitToPvtAndBlockStore(sampleDatum, nil))
 	}
 
 	// block 2 has no pvt data
@@ -739,7 +739,7 @@ func TestCrashAfterPvtdataStoreCommit(t *testing.T) {
 	dataAtCrash := sampleData[3]
 
 	for _, sampleDatum := range dataBeforeCrash {
-		require.NoError(t, lgr.(*kvLedger).commitToPvtAndBlockStore(sampleDatum))
+		require.NoError(t, lgr.(*kvLedger).commitToPvtAndBlockStore(sampleDatum, nil))
 	}
 	blockNumAtCrash := dataAtCrash.Block.Header.Number
 	var pvtdataAtCrash []*ledger.TxPvtData
@@ -747,7 +747,7 @@ func TestCrashAfterPvtdataStoreCommit(t *testing.T) {
 		pvtdataAtCrash = append(pvtdataAtCrash, p)
 	}
 	// call Commit on pvt data store and mimic a crash before committing the block to block store
-	require.NoError(t, lgr.(*kvLedger).pvtdataStore.Commit(blockNumAtCrash, pvtdataAtCrash, nil))
+	require.NoError(t, lgr.(*kvLedger).pvtdataStore.Commit(blockNumAtCrash, pvtdataAtCrash, nil, nil))
 
 	// Now, assume that peer fails here before committing the block to blockstore.
 	lgr.Close()
@@ -791,7 +791,7 @@ func TestCrashAfterPvtdataStoreCommit(t *testing.T) {
 			},
 		},
 	}
-	require.NoError(t, lgr1.(*kvLedger).commitToPvtAndBlockStore(dataAtCrash))
+	require.NoError(t, lgr1.(*kvLedger).commitToPvtAndBlockStore(dataAtCrash, nil))
 	testVerifyPvtData(t, lgr1, blockNumAtCrash, expectedPvtData)
 	bcInfo, err = lgr1.GetBlockchainInfo()
 	require.NoError(t, err)
@@ -843,7 +843,7 @@ func TestPvtStoreAheadOfBlockStore(t *testing.T) {
 
 	sampleData := sampleDataWithPvtdataForSelectiveTx(t, bg)
 	for _, d := range sampleData[0:9] { // commit block number 0 to 8
-		require.NoError(t, kvlgr.commitToPvtAndBlockStore(d))
+		require.NoError(t, kvlgr.commitToPvtAndBlockStore(d, nil))
 	}
 
 	isPvtStoreAhead, err = kvlgr.isPvtDataStoreAheadOfBlockStore()
@@ -876,7 +876,7 @@ func TestPvtStoreAheadOfBlockStore(t *testing.T) {
 	// Add the last block directly to the pvtdataStore but not to blockstore. This would make
 	// the pvtdatastore height greater than the block store height.
 	validTxPvtData, validTxMissingPvtData := constructPvtDataAndMissingData(lastBlkAndPvtData)
-	err = kvlgr.pvtdataStore.Commit(lastBlkAndPvtData.Block.Header.Number, validTxPvtData, validTxMissingPvtData)
+	err = kvlgr.pvtdataStore.Commit(lastBlkAndPvtData.Block.Header.Number, validTxPvtData, validTxMissingPvtData, nil)
 	require.NoError(t, err)
 
 	// close and reopen.
@@ -902,7 +902,7 @@ func TestPvtStoreAheadOfBlockStore(t *testing.T) {
 	require.True(t, isPvtStoreAhead)
 
 	// bring the height of BlockStore equal to pvtdataStore
-	require.NoError(t, kvlgr.commitToPvtAndBlockStore(lastBlkAndPvtData))
+	require.NoError(t, kvlgr.commitToPvtAndBlockStore(lastBlkAndPvtData, nil))
 	info, err = lgr2.GetBlockchainInfo()
 	require.NoError(t, err)
 	require.Equal(t, uint64(11), info.Height)
@@ -937,19 +937,19 @@ func TestCommitToPvtAndBlockstoreError(t *testing.T) {
 	kvlgr := lgr1.(*kvLedger)
 	sampleData := sampleDataWithPvtdataForSelectiveTx(t, bg)
 	for _, d := range sampleData[0:9] { // commit block number 1 to 9
-		require.NoError(t, kvlgr.commitToPvtAndBlockStore(d))
+		require.NoError(t, kvlgr.commitToPvtAndBlockStore(d, nil))
 	}
 
 	// try to write the last block again. The function should return an
 	// error from the private data store.
-	err = kvlgr.commitToPvtAndBlockStore(sampleData[8]) // block 9
+	err = kvlgr.commitToPvtAndBlockStore(sampleData[8], nil) // block 9
 	require.EqualError(t, err, "expected block number=10, received block number=9")
 
 	lastBlkAndPvtData := sampleData[9] // block 10
 	// Add the block directly to blockstore
 	require.NoError(t, kvlgr.blockStore.AddBlock(lastBlkAndPvtData.Block))
 	// Adding the same block should cause passing on the error caused by the block storgae
-	err = kvlgr.commitToPvtAndBlockStore(lastBlkAndPvtData)
+	err = kvlgr.commitToPvtAndBlockStore(lastBlkAndPvtData, nil)
 	require.EqualError(t, err, "block number should have been 11 but was 10")
 	// At the end, the pvt store status should be changed
 	pvtStoreCommitHt, err := kvlgr.pvtdataStore.LastCommittedBlockHeight()

@@ -300,7 +300,7 @@ func TestTxStatsInfoWithConfigTx(t *testing.T) {
 	v := NewCommitBatchPreparer(nil, testDB, nil, testHashFunc)
 
 	gb := testutil.ConstructTestBlocks(t, 1)[0]
-	_, txStatsInfo, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: gb}, true)
+	_, _, txStatsInfo, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: gb}, true)
 	require.NoError(t, err)
 	txID, err := protoutil.GetOrComputeTxIDFromEnvelope(gb.Data.Data[0])
 	require.NoError(t, err)
@@ -343,12 +343,12 @@ func TestTXMgrContainsPostOrderWrites(t *testing.T) {
 				rwSetBuilder.GetTxSimulationResults())
 			return nil
 		}
-	batch, _, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blocks[0]}, true)
+	batch, _, _, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blocks[0]}, true)
 	require.NoError(t, err)
 	require.True(t, batch.PubUpdates.ContainsPostOrderWrites)
 
 	// block with endorser txs
-	batch, _, err = v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blocks[1]}, true)
+	batch, _, _, err = v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blocks[1]}, true)
 	require.NoError(t, err)
 	require.False(t, batch.PubUpdates.ContainsPostOrderWrites)
 
@@ -358,7 +358,7 @@ func TestTXMgrContainsPostOrderWrites(t *testing.T) {
 			s.(*mocklgr.TxSimulator).GetTxSimulationResultsReturns(nil, nil)
 			return &ledger.InvalidTxError{Msg: "fake-message"}
 		}
-	batch, _, err = v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blocks[0]}, true)
+	batch, _, _, err = v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blocks[0]}, true)
 	require.NoError(t, err)
 	require.False(t, batch.PubUpdates.ContainsPostOrderWrites)
 }
@@ -448,7 +448,7 @@ func TestTxStatsInfo(t *testing.T) {
 	blk.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 
 	// collect the validation stats for the block and check against the expected stats
-	_, txStatsInfo, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blk}, true)
+	_, _, txStatsInfo, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blk}, true)
 	require.NoError(t, err)
 	expectedTxStatInfo := []*TxStatInfo{
 		{
