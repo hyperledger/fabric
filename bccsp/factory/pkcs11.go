@@ -10,8 +10,12 @@ SPDX-License-Identifier: Apache-2.0
 package factory
 
 import (
+	"reflect"
+	"strings"
+
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/pkcs11"
+	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
 
@@ -94,4 +98,36 @@ func GetBCCSPFromOpts(config *FactoryOpts) (bccsp.BCCSP, error) {
 		return nil, errors.Wrapf(err, "Could not initialize BCCSP %s", f.Name())
 	}
 	return csp, nil
+}
+
+// StringToKeyIds returns a DecodeHookFunc that converts
+// strings to pkcs11.KeyIDMapping.
+func StringToKeyIds() mapstructure.DecodeHookFunc {
+	return func(
+		f reflect.Type,
+		t reflect.Type,
+		data interface{}) (interface{}, error) {
+		if f.Kind() != reflect.String {
+			return data, nil
+		}
+
+		if t != reflect.TypeOf(pkcs11.KeyIDMapping{}) {
+			return data, nil
+		}
+
+		res := pkcs11.KeyIDMapping{}
+		raw := data.(string)
+		if raw == "" {
+			return res, nil
+		}
+
+		rec := strings.Fields(raw)
+		if len(rec) != 2 {
+			return res, nil
+		}
+		res.SKI = rec[0]
+		res.ID = rec[1]
+
+		return res, nil
+	}
 }
