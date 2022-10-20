@@ -1,0 +1,98 @@
+# Copyright the Hyperledger Fabric contributors. All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Fabric Release'
+        required: true
+        type: string
+      two_digit_release:
+        description: 'Fabric Two Digit Release'
+        required: true
+        type: string
+
+env:
+  GO_VER: 1.18.7
+
+permissions:
+  contents: read
+
+jobs:
+  build-binaries:
+    name: Build Fabric Binaries
+    strategy:
+      matrix:
+        include:
+        - image: ubuntu-22.04
+          target: linux
+          arch: amd64
+        - image: macos-11
+          target: darwin
+          arch: amd64
+        - image: windows-2022
+          target: windows
+          arch: amd64
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.GO_VER }}
+      - name: Checkout Fabric Code
+        uses: actions/checkout@v3
+      - name: Compile Binary and Create Tarball
+        run: ./ci/scripts/create_binary_package.sh
+        env:
+          TARGET: ${{ matrix.target }}-${{ matrix.arch }}
+          RELEASE: ${{ inputs.release }}
+      - name: Publish Release Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: hyperledger-fabric-${{ matrix.target }}-${{ matrix.arch }}-${{ inputs.release }}.tar.gz
+          path: release/${{ matrix.target }}-${{ matrix.arch }}/hyperledger-fabric-${{ matrix.target }}-${{ matrix.arch }}-${{ inputs.release }}.tar.gz
+  build-and-push-docker-images:
+    name: Build and Push Fabric Docker Images
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Run APT Clean
+        run: sudo apt clean
+      - name: Run Apt Update
+        run: sudo apt update
+      - name: Install Dependencies
+        run: sudo apt install -y gcc haveged libtool make
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.GO_VER }}
+      - name: Checkout Fabric Code
+        uses: actions/checkout@v3
+      - name: Publish Docker Images
+        run: ./ci/scripts/publish_docker.sh
+        env:
+          RELEASE: ${{ inputs.release }}
+          TWO_DIGIT_RELEASE: ${{ inputs.two_digit_release }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+          DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  create-release:
+    name: Create GitHub Release
+    needs: [ build-binaries, build-and-push-docker-images ]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Fabric Code
+        uses: actions/checkout@v3
+      - name: Download Artifacts
+        id: download
+        uses: actions/download-artifact@v3
+      - name: Release Fabric Version
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "*.tar.gz/*.tar.gz"
+          bodyFile: release_notes/v${{ inputs.release }}.md
+          tag: v${{ inputs.release }}
+          token: ${{ secrets.GITHUB_TOKEN }}
