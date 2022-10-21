@@ -99,7 +99,7 @@ jq-1.6
 ```
 </div>
 
-## **Linux**
+## **Linux (Ubuntu/Debian based distro)**
 
 <!--- Indent entire section -->
 <div style="margin-left: 1.5em;">
