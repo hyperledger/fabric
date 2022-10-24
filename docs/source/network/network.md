@@ -52,7 +52,7 @@ Secondly, we'll see later how certificates issued by CAs are at the heart of the
 
 ## Join nodes to the channel
 
-Peers are a fundamental element of the network because they host ledgers and chaincode (which contain smart contracts) and are therefore one of the physical points at which organizations that transact on a channel connect to the channel (the other being an application). A peer can belong to as many channels as an organizations deems appropriate (depending on factors like the processing limitations of the peer pod and data residency rules that exist in a particular country). For more information about peers, check out [Peers](../peers/peers.html).
+Peers are a fundamental element of the network because they host ledgers and chaincode (which contain smart contracts) and are therefore one of the physical points at which organizations that transact on a channel connect to the channel (the other being an application). A peer can belong to as many channels as an organization deems appropriate (depending on factors like the processing limitations of the peer pod and data residency rules that exist in a particular country). For more information about peers, check out [Peers](../peers/peers.html).
 
 The ordering service, on the other hand, gathers endorsed transactions from applications and orders them into transaction blocks, which are subsequently distributed to every peer node in the channel. At each of these committing peers, transactions are recorded and the local copy of the ledger updated appropriately. An ordering service is unique to a particular channel, with the nodes servicing that channel also known as a "consenter set". Even if a node (or group of nodes) services multiple channels, each channel's ordering service is considered to be a distinct instance of the ordering service. For more information about the ordering service, check out [The Ordering Service](../orderer/ordering_service.html).
 
@@ -66,7 +66,7 @@ R1's peer, P1, and R2's peer, P2, along with R0's ordering service, O, join the 
 
 Every node in the channel stores a copy of the ledger of the channel, L1, which will be updated with each new block (note that the ordering service only contains the blockchain portion of a ledger and not the [state database](../glossary.html#state-database)). Because of this, we can think of L1 as being **physically hosted** on P1, but **logically hosted** on the channel C1. The best practice is for R1 and R2 to make their peers, P1 and P2, [anchor peers](../glossary.html#anchor-peer), as this will bootstrap communication on the network between R1 and R2.
 
-After the ordering service has been joined to the channel, it is possible to propose and commit updates to the channel configuration, but little else. Next, you must install, approve, and commit a chaincode on a channel.
+After the ordering service has been added to the channel, it is possible to propose and commit updates to the channel configuration, but little else. Next, you must install, approve, and commit a chaincode on a channel.
 
 ## Install, approve, and commit a chaincode
 
@@ -100,7 +100,7 @@ For more information about how to develop an application, check out [Developing 
 
 ## Joining components to multiple channels
 
-Now that we have showed the process for how a channel is created, as well as the nature of the high level interactions between organizations, nodes, policies, chaincodes, and applications, let's expand our view by adding a new organization and a new channel to our scenario. To show how Fabric components can be joined to multiple channels, we'll join R2 and its peer, P2, to the new channel, while R1 and P1 will not be joined.
+Now that we have shown the process for how a channel is created, as well as the nature of the high level interactions between organizations, nodes, policies, chaincodes, and applications, let's expand our view by adding a new organization and a new channel to our scenario. To show how Fabric components can be joined to multiple channels, we'll join R2 and its peer, P2, to the new channel, while R1 and P1 will not be joined.
 
 ### Creating the new channel configuration
 
@@ -110,17 +110,17 @@ As we've seen, the first step in creating a channel is to create its configurati
 
 As before, now that the channel configuration, CC2, has been created, the channel can be said to **logically** exist, even though no components are joined to it.
 
-So let's join some components to it!
+So let's add some components to it!
 
-### Join components to the new channel
+### Add components to the new channel
 
-Just as we did with C1, let's join our components to C2. Because we already showed how all channels have a ledger and how chaincodes are installed on peers and committed to a channel (in this case, the chaincode is called S6), we'll skip those steps for now to show the end state of C2. Note that this channel has its own ledger, L2, which is completely separate from the ledger of C1. That's because even though R2 (and its peer, P2) are joined to both channels, the two channels are entirely separate administrative domains.
+Just as we did with C1, let's have our components join C2. Because we already showed how all channels have a ledger and how chaincodes are installed on peers and committed to a channel (in this case, the chaincode is called S6), we'll skip those steps for now to show the end state of C2. Note that this channel has its own ledger, L2, which is completely separate from the ledger of C1. That's because even though R2 (and its peer, P2) are joined to both channels, the two channels are entirely separate administrative domains.
 
 ![network.6](./network.diagram.6.png)
 
 Note that while both C1 and C2 both have the same orderer organization joined to it, R0, different ordering nodes are servicing each channel. This is not a mandatory configuration because even if the same ordering nodes are joined to multiple channels, each channel has a separate instance of the ordering service, and is more common in channels in which multiple orderer organizations come together to contribute nodes to an ordering service. Note that only the ordering node joined to a particular channel has the ledger of that channel.
 
-While it would also be possible for R2 to deploy a new peer to join to channel C2, in this case they have chosen to deploy the P2 to C2. Note that P2 has both the ledger of C1 (called L1) and the ledger of C2 (called L2) on its file system. Similarly, R2 has chosen to modify its application, A2, to be able to be used with C2, while R3's application, A3, is being used with C2.
+While it would also be possible for R2 to deploy a new peer to join channel C2, in this case they have chosen to deploy the P2 to C2. Note that P2 has both the ledger of C1 (called L1) and the ledger of C2 (called L2) on its file system. Similarly, R2 has chosen to modify its application, A2, to be able to be used with C2, while R3's application, A3, is being used with C2.
 
 Logically, this is all very similar to the creation of C1. Two peer organizations come together with an ordering organization to create a channel and join components and a chaincode to it.
 
@@ -130,7 +130,7 @@ Now that we have shown how organizations and their components can be joined to m
 
 ## Adding an organization to an existing channel
 
-As channels mature, it is natural that its configuration will also mature, reflecting changes in the world that must be reflected in the channel. One of the more common ways a channel will be modified is to add new organizations to it. While it also possible to add more orderer organizations (who may or may not contribute their own nodes), in this example we'll describe the process of how a peer organization, R3, is added to the channel configuration CC1 of channel C1.
+As channels mature, it is natural that its configuration will also mature, reflecting changes in the world that must be reflected in the channel. One of the more common ways a channel will be modified is to add new organizations to it. While it is also possible to add more orderer organizations (who may or may not contribute their own nodes), in this example we'll describe the process of how a peer organization, R3, is added to the channel configuration CC1 of channel C1.
 
 **Note that rights and permissions are defined at a channel level. Just because an organization is an administrator of one channel does not mean it will be an administrator of a different channel. Each channel is a distinct administrative zone and fully customizable to the use case it's serving.**
 
@@ -158,7 +158,7 @@ Now that R3 is able to fully participate in channel C1, it can add its component
 
 ![network.8](./network.diagram.8.png)
 
-In this example, R3 adds P3, which was previously joined to C2, to C1. When it does this, P3 pulls C1's ledger, L1. As we mentioned in the previous section, R3 has been added to C1 with equivalent rights as R1 and R2. Similarly, because the chaincode S5 was redefined and reapproved on the channel to include R3, R3 can now install S5 and begin transacting. Just as R2 modified its application A2 to be able to be used with channel C2, A3 is also now able to invoke transactions on C1.
+In this example, R3 adds P3, which was previously joined to C2, to C1. When it does this, P3 pulls C1's ledger, L1. As we mentioned in the previous section, R3 has been added to C1 with equivalent rights as R1 and R2. Similarly, because the chaincode S5 was redefined and reapproved on the channel to include R3, R3 can now install S5 and start transactions. Just as R2 modified its application A2 to be able to be used with channel C2, A3 is also now able to invoke transactions on C1.
 
 ## Network recap
 
