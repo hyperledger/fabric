@@ -47,15 +47,16 @@ func (fake *ApplicationConfig) APIPolicyMapper() channelconfig.PolicyMapper {
 	ret, specificReturn := fake.aPIPolicyMapperReturnsOnCall[len(fake.aPIPolicyMapperArgsForCall)]
 	fake.aPIPolicyMapperArgsForCall = append(fake.aPIPolicyMapperArgsForCall, struct {
 	}{})
+	stub := fake.APIPolicyMapperStub
+	fakeReturns := fake.aPIPolicyMapperReturns
 	fake.recordInvocation("APIPolicyMapper", []interface{}{})
 	fake.aPIPolicyMapperMutex.Unlock()
-	if fake.APIPolicyMapperStub != nil {
-		return fake.APIPolicyMapperStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.aPIPolicyMapperReturns
 	return fakeReturns.result1
 }
 
@@ -99,15 +100,16 @@ func (fake *ApplicationConfig) Capabilities() channelconfig.ApplicationCapabilit
 	ret, specificReturn := fake.capabilitiesReturnsOnCall[len(fake.capabilitiesArgsForCall)]
 	fake.capabilitiesArgsForCall = append(fake.capabilitiesArgsForCall, struct {
 	}{})
+	stub := fake.CapabilitiesStub
+	fakeReturns := fake.capabilitiesReturns
 	fake.recordInvocation("Capabilities", []interface{}{})
 	fake.capabilitiesMutex.Unlock()
-	if fake.CapabilitiesStub != nil {
-		return fake.CapabilitiesStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.capabilitiesReturns
 	return fakeReturns.result1
 }
 
@@ -151,15 +153,16 @@ func (fake *ApplicationConfig) Organizations() map[string]channelconfig.Applicat
 	ret, specificReturn := fake.organizationsReturnsOnCall[len(fake.organizationsArgsForCall)]
 	fake.organizationsArgsForCall = append(fake.organizationsArgsForCall, struct {
 	}{})
+	stub := fake.OrganizationsStub
+	fakeReturns := fake.organizationsReturns
 	fake.recordInvocation("Organizations", []interface{}{})
 	fake.organizationsMutex.Unlock()
-	if fake.OrganizationsStub != nil {
-		return fake.OrganizationsStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.organizationsReturns
 	return fakeReturns.result1
 }
 

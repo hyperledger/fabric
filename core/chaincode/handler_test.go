@@ -87,6 +87,7 @@ var _ = Describe("Handler", func() {
 		fakeApplicationConfig := &mock.ApplicationConfig{}
 		fakeCapabilites = &mock.ApplicationCapabilities{}
 		fakeCapabilites.KeyLevelEndorsementReturns(true)
+		fakeCapabilites.PurgePvtDataReturns(true)
 		fakeApplicationConfig.CapabilitiesReturns(fakeCapabilites)
 		fakeApplicationConfigRetriever = &fake.ApplicationConfigRetriever{}
 		fakeApplicationConfigRetriever.GetApplicationConfigReturns(fakeApplicationConfig, true)
@@ -677,6 +678,17 @@ var _ = Describe("Handler", func() {
 			It("returns an error", func() {
 				_, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
 				Expect(err).To(MatchError("key level endorsement is not enabled, channel application capability of V1_3 or later is required"))
+			})
+		})
+
+		Context("when purge private data is not supported", func() {
+			BeforeEach(func() {
+				fakeCapabilites.PurgePvtDataReturns(false)
+			})
+
+			It("returns an error", func() {
+				_, err := handler.HandlePurgePrivateData(incomingMessage, txContext)
+				Expect(err).To(MatchError("purge private data is not enabled, channel application capability of V2_5 or later is required"))
 			})
 		})
 
