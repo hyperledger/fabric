@@ -553,6 +553,18 @@ func (h *Handler) checkMetadataCap(msg *pb.ChaincodeMessage) error {
 	return nil
 }
 
+func (h *Handler) checkPurgePrivateDataCap(msg *pb.ChaincodeMessage) error {
+	ac, exists := h.AppConfig.GetApplicationConfig(msg.ChannelId)
+	if !exists {
+		return errors.Errorf("application config does not exist for %s", msg.ChannelId)
+	}
+
+	if !ac.Capabilities().PurgePvtData() {
+		return errors.New("purge private data is not enabled, channel application capability of V2_5 or later is required")
+	}
+	return nil
+}
+
 func errorIfCreatorHasNoReadPermission(chaincodeName, collection string, txContext *TransactionContext) error {
 	rwPermission, err := getReadWritePermission(chaincodeName, collection, txContext)
 	if err != nil {
@@ -1080,6 +1092,10 @@ func (h *Handler) HandleDelState(msg *pb.ChaincodeMessage, txContext *Transactio
 }
 
 func (h *Handler) HandlePurgePrivateData(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
+	err := h.checkPurgePrivateDataCap(msg)
+	if err != nil {
+		return nil, err
+	}
 	delState := &pb.DelState{}
 	if err := proto.Unmarshal(msg.Payload, delState); err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")

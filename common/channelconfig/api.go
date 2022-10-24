@@ -194,6 +194,10 @@ type ApplicationCapabilities interface {
 	// KeyLevelEndorsement returns true if this channel supports endorsement
 	// policies expressible at a ledger key granularity, as described in FAB-8812
 	KeyLevelEndorsement() bool
+
+	// PurgePvtData returns true if this channel supports purging of private
+	// data entries
+	PurgePvtData() bool
 }
 
 // OrdererCapabilities defines the capabilities for the orderer portion of a channel
