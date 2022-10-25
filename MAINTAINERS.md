@@ -33,7 +33,6 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 
 | Name | GitHub | Chat | email
 |------|--------|------|----------------------
-
 | Anthony O'Dowd | [odowdaibm][odowdaibm] | odowdaibm | <a_o-dowd@uk.ibm.com>
 | Binh Nguyen | [binhn][binhn] | binhn | <binh1010010110@gmail.com>
 | Brett Logan | [lindluni][lindluni] | BrettLogan | <development.brett@gmail.com>
