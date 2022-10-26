@@ -60,6 +60,10 @@ const (
 	// DefaultLeaderlessCheckInterval is the interval that a chain checks
 	// its own leadership status.
 	DefaultLeaderlessCheckInterval = time.Second * 10
+
+	// AbdicationMaxAttempts determines how many retries of leadership abdication we do
+	// for a transaction that removes ourselves from reconfiguration.
+	AbdicationMaxAttempts = 2
 )
 
 //go:generate counterfeiter -o mocks/configurator.go . Configurator
@@ -204,9 +208,9 @@ type Chain struct {
 	status            types.Status
 
 	// BCCSP instance
-	CryptoProvider              bccsp.BCCSP
-	leadershipTransferCandidate uint64
-	leaderTransferFailed        uint32
+	CryptoProvider bccsp.BCCSP
+
+	leadershipTransferInProgress uint32
 }
 
 // NewChain constructs a chain object.
@@ -921,37 +925,43 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 			}
 		}
 
-		if !atomic.CompareAndSwapUint32(&c.leaderTransferFailed, 1, 0) {
-			if c.checkForEvictionNCertRotation(msg.Payload) {
-				go func() {
-					if transferee, err := c.Node.abdicateLeader(c.raftID); err != nil {
-						if err.Error() == LEADERTRANSFERTIMEOUT.Error() && transferee != raft.None {
-							oldTransferee := atomic.LoadUint64(&c.leadershipTransferCandidate)
-							if !atomic.CompareAndSwapUint64(&c.leadershipTransferCandidate, oldTransferee, transferee) {
-								atomic.StoreUint32(&c.leaderTransferFailed, 1)
-							}
-							// sleep for tick time & reattempt
-							timer := c.Node.clock.NewTimer(time.Duration(c.Node.config.ElectionTick) * c.Node.tickInterval)
-							defer timer.Stop()
+		if c.checkForEvictionNCertRotation(msg.Payload) {
 
-							select {
-							case <-timer.C():
-							case <-c.Node.chain.doneC:
-							}
-						} else if err.Error() == LEADERTRNSFERCALLEDBYFOLLOWER.Error() {
-							c.logger.Debugf("Leadership transfer completed")
-						} else {
-							atomic.StoreUint32(&c.leaderTransferFailed, 1)
-						}
-					}
-					if err := c.Submit(msg, 0); err != nil {
-						c.logger.Errorf("Transaction proposal failed with error: %v", err)
-					}
-				}()
-				return nil, false, nil
+			if !atomic.CompareAndSwapUint32(&c.leadershipTransferInProgress, 0, 1) {
+				c.logger.Warnf("A reconfiguration transaction is already in progress, ignoring a subsequent transaction")
+				return
 			}
-		} else {
-			atomic.StoreUint64(&c.leadershipTransferCandidate, raft.None)
+
+			go func() {
+				defer atomic.StoreUint32(&c.leadershipTransferInProgress, 0)
+
+				for attempt := 1; attempt <= AbdicationMaxAttempts; attempt++ {
+					if err := c.Node.abdicateLeader(c.raftID); err != nil {
+						// If there is no leader, abort and do not retry.
+						// Return early to prevent re-submission of the transaction
+						if err == ErrNoLeader || err == ErrChainHalting {
+							return
+						}
+
+						// If the error isn't any of the below, it's a programming error, so panic.
+						if err != ErrNoAvailableLeaderCandidate && err != ErrNotALeader && err != ErrTimedOutLeaderTransfer {
+							c.logger.Panicf("Programming error, abdicateLeader() returned with an unexpected error: %v", err)
+						}
+
+						// Else, it's one of the errors above, so we retry.
+						continue
+					} else {
+						// Else, abdication succeeded, so we submit the transaction (which forwards to the leader)
+						if err := c.Submit(msg, 0); err != nil {
+							c.logger.Warnf("Reconfiguration transaction forwarding failed with error: %v", err)
+						}
+						return
+					}
+				}
+
+				c.logger.Warnf("Abdication failed too many times consecutively (%d), aborting retries", AbdicationMaxAttempts)
+			}()
+			return nil, false, nil
 		}
 
 		batch := c.support.BlockCutter().Cut()

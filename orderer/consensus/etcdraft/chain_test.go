@@ -14,6 +14,7 @@ import (
 	"os/user"
 	"path"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
@@ -1504,8 +1505,10 @@ var _ = Describe("Chain", func() {
 			Expect(c2.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
 		})
 
-		It("can remove leader by reconfiguring cluster even if leadership transfer fails", func() {
+		It("can remove leader by retrying even if leadership transfer fails at first", func() {
 			network.elect(1)
+
+			var messageOmission uint32
 
 			step1 := c1.getStepFunc()
 			c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
@@ -1514,7 +1517,7 @@ var _ = Describe("Chain", func() {
 					return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %s", err)
 				}
 
-				if stepMsg.Type == raftpb.MsgTimeoutNow {
+				if stepMsg.Type == raftpb.MsgTimeoutNow && atomic.CompareAndSwapUint32(&messageOmission, 0, 1) {
 					return nil
 				}
 
@@ -1523,22 +1526,37 @@ var _ = Describe("Chain", func() {
 
 			By("Configuring cluster to remove node")
 			Expect(c1.Configure(configEnv, 0)).To(Succeed())
-			c1.clock.WaitForNWatchersAndIncrement(time.Duration(ELECTION_TICK)*interval, 2)
-			c2.Consensus(&orderer.ConsensusRequest{Payload: protoutil.MarshalOrPanic(&raftpb.Message{Type: raftpb.MsgTimeoutNow, To: 2})}, 0)
-			time.Sleep(time.Duration(ELECTION_TICK) * interval)
-			c1.clock.WaitForNWatchersAndIncrement(time.Duration(ELECTION_TICK)*interval, 2)
+
+			Eventually(func() <-chan raft.SoftState {
+				c1.clock.Increment(interval)
+				return c1.observe
+			}, LongEventualTimeout).Should(Receive())
+
 			Eventually(c2.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-			Eventually(c2.configurator.ConfigureCallCount, LongEventualTimeout).Should(Equal(2))
+			Eventually(func() <-chan raft.SoftState {
+				c2.clock.Increment(interval)
+				return c2.observe
+			}, LongEventualTimeout).Should(Receive(StateEqual(2, raft.StateLeader)))
 
-			Eventually(c1.Chain.Errored, LongEventualTimeout).Should(BeClosed())
-			close(c1.stopped) // mark c1 stopped in network
-
-			network.elect(2)
+			By("Asserting the haltCallback is called when the node is removed from the replica set")
+			Eventually(fakeHaltCallbacker.HaltCallbackCallCount).Should(Equal(1))
+			By("Asserting the StatusReport responds correctly after eviction")
+			Eventually(
+				func() orderer_types.ConsensusRelation {
+					cRel, _ := c1.StatusReport()
+					return cRel
+				},
+			).Should(Equal(orderer_types.ConsensusRelationConfigTracker))
+			_, status := c1.StatusReport()
+			Expect(status).To(Equal(orderer_types.StatusInactive))
 
 			By("Asserting leader can still serve requests as single-node cluster")
 			c2.cutter.CutNext = true
 			Expect(c2.Order(env, 0)).To(Succeed())
 			Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+			lastSetActiveNodes := c1.fakeFields.fakeActiveNodes.SetCallCount() - 1
+			Expect(c1.fakeFields.fakeActiveNodes.SetArgsForCall(lastSetActiveNodes)).To(Equal(float64(0))) // was halted
+			Expect(c2.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
 		})
 
 		It("can remove follower by reconfiguring cluster", func() {

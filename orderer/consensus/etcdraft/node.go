@@ -25,9 +25,11 @@ import (
 )
 
 var (
-	LEADERTRANSFERNOTRANSFEREE    = errors.New("leadership transfer failed to identify transferee")
-	LEADERTRANSFERTIMEOUT         = errors.New("leadership transfer timed out")
-	LEADERTRNSFERCALLEDBYFOLLOWER = errors.New("leadership transfer initiated by follower")
+	ErrChainHalting               = errors.New("chain halting is in progress")
+	ErrNoAvailableLeaderCandidate = errors.New("leadership transfer failed to identify transferee")
+	ErrTimedOutLeaderTransfer     = errors.New("leadership transfer timed out")
+	ErrNotALeader                 = errors.New("not a leader")
+	ErrNoLeader                   = errors.New("no leader")
 )
 
 type node struct {
@@ -235,16 +237,25 @@ func (n *node) send(msgs []raftpb.Message) {
 	}
 }
 
-// If this is called on leader, it picks a node that is
-// recently active, and attempt to transfer leadership to it.
-// If this is called on follower, it simply waits for a
-// leader change till timeout (ElectionTimeout).
-func (n *node) abdicateLeader(currentLead uint64) (uint64, error) {
+// abdicateLeader picks a node that is recently active, and attempts to transfer leadership to it.
+// Receives the current leader (our id) as input.
+// Returns error upon failure.
+func (n *node) abdicateLeader(selfID uint64) error {
+	start := time.Now()
+	defer func() {
+		n.logger.Infof("abdicateLeader took %v", time.Since(start))
+	}()
+
 	status := n.Status()
 
-	if status.Lead != raft.None && status.Lead != currentLead {
+	if status.Lead == raft.None {
+		n.logger.Warn("No leader, cannot transfer leadership")
+		return ErrNoLeader
+	}
+
+	if status.Lead != raft.None && status.Lead != selfID {
 		n.logger.Warn("Leader has changed since asked to transfer leadership")
-		return raft.None, nil
+		return ErrNotALeader
 	}
 
 	// register a leader subscriberC
@@ -252,49 +263,56 @@ func (n *node) abdicateLeader(currentLead uint64) (uint64, error) {
 	select {
 	case n.subscriberC <- notifyc:
 	case <-n.chain.doneC:
-		return raft.None, nil
+		return ErrChainHalting
 	}
 
-	// Leader initiates leader transfer
-	if status.RaftState == raft.StateLeader {
-		var transferee uint64
-		for id, pr := range status.Progress {
-			if id == status.ID {
-				continue // skip self
-			}
-
-			if pr.RecentActive && !pr.IsPaused() {
-				transferee = id
-				break
-			}
-
-			n.logger.Debugf("Node %d is not qualified as transferee because it's either paused or not active", id)
+	var transferee uint64
+	for id, pr := range status.Progress {
+		if id == status.ID {
+			continue // skip self
 		}
 
-		if transferee == raft.None {
-			n.logger.Errorf("No follower is qualified as transferee, abort leader transfer")
-			return raft.None, LEADERTRANSFERNOTRANSFEREE
+		if pr.RecentActive && !pr.IsPaused() {
+			transferee = id
+			break
 		}
 
-		n.logger.Infof("Transferring leadership to %d", transferee)
-		n.TransferLeadership(context.TODO(), status.ID, transferee)
+		n.logger.Debugf("Node %d is not qualified as transferee because it's either paused or not active", id)
+	}
 
-		timer := n.clock.NewTimer(time.Duration(n.config.ElectionTick) * n.tickInterval)
-		defer timer.Stop() // prevent timer leak
+	if transferee == raft.None {
+		n.logger.Errorf("No follower is qualified as transferee, abort leader transfer")
+		return ErrNoAvailableLeaderCandidate
+	}
 
+	n.logger.Infof("Transferring leadership to %d", transferee)
+
+	timeToWait := time.Duration(n.config.ElectionTick) * n.tickInterval
+	n.logger.Infof("Will wait %v time to abdicate", timeToWait)
+	ctx, cancel := context.WithTimeout(context.TODO(), timeToWait)
+	defer cancel()
+
+	n.TransferLeadership(ctx, status.ID, transferee)
+
+	timer := n.clock.NewTimer(timeToWait)
+	defer timer.Stop()
+
+	for {
 		select {
 		case <-timer.C():
-			n.logger.Warn("Leader transfer timeout")
-			return transferee, LEADERTRANSFERTIMEOUT
+			n.logger.Warn("Leader transfer timed out")
+			return ErrTimedOutLeaderTransfer
 		case l := <-notifyc:
-			n.logger.Infof("Leader has been transferred from %d to %d", currentLead, l)
+			if l != selfID {
+				n.logger.Infof("Leader has been transferred from %d to %d", selfID, l)
+				return nil
+			}
+			n.logger.Infof("Notified about leader being %d but we expect someone else to be the leader", l)
 		case <-n.chain.doneC:
-			return raft.None, nil
+			n.logger.Infof("Returning early because chain is halting")
+			return ErrChainHalting
 		}
-
-		return transferee, nil
 	}
-	return raft.None, LEADERTRNSFERCALLEDBYFOLLOWER
 }
 
 func (n *node) logSendFailure(dest uint64, err error) {
