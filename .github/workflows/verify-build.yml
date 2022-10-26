@@ -18,7 +18,7 @@ env:
 jobs:
   basic-checks:
     name: Basic Checks
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/setup-go@v3
         name: Install Go
@@ -31,7 +31,7 @@ jobs:
   unit-tests:
     name: Unit Tests
     needs: basic-checks
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/setup-go@v3
         name: Install Go
@@ -49,7 +49,7 @@ jobs:
     strategy:
       matrix:
         INTEGRATION_TEST_SUITE: ["raft","pvtdata","ledger","lifecycle","e2e","discovery gossip devmode pluggable","gateway idemix pkcs11 configtx configtxlator","sbe nwo msp"]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/setup-go@v3
         name: Install Go
