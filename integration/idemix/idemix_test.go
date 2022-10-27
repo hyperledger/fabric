@@ -66,7 +66,7 @@ var _ = Describe("EndToEnd", func() {
 
 	Describe("basic solo network with 2 orgs", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicSoloWithIdemix(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaftWithIdemix(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 

@@ -24,6 +24,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"google.golang.org/grpc"
 )
 
@@ -32,8 +33,11 @@ var _ = Describe("Release interoperability", func() {
 		client  *docker.Client
 		testDir string
 
-		network   *nwo.Network
-		process   ifrit.Process
+		network                     *nwo.Network
+		ordererRunner               *ginkgomon.Runner
+		peerGroupRunner             ifrit.Runner
+		ordererProcess, peerProcess ifrit.Process
+
 		orderer   *nwo.Orderer
 		endorsers []*nwo.Peer
 	)
@@ -46,14 +50,18 @@ var _ = Describe("Release interoperability", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.MultiChannelBasicSolo(), testDir, client, StartPort(), components)
+		network = nwo.New(nwo.MultiChannelEtcdRaft(), testDir, client, StartPort(), components)
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
 		// Start all of the fabric processes
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		ordererRunner = network.OrdererRunner(network.Orderer("orderer"))
+		ordererProcess = ifrit.Invoke(ordererRunner)
+		Eventually(ordererProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+		peerGroupRunner = network.PeerGroupRunner()
+		peerProcess = ifrit.Invoke(peerGroupRunner)
+		Eventually(peerProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 		orderer = network.Orderer("orderer")
 		endorsers = []*nwo.Peer{
@@ -63,9 +71,20 @@ var _ = Describe("Release interoperability", func() {
 	})
 
 	AfterEach(func() {
-		process.Signal(syscall.SIGTERM)
-		Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
-		network.Cleanup()
+		if ordererProcess != nil {
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
+		if peerProcess != nil {
+			peerProcess.Signal(syscall.SIGTERM)
+			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
+		if network != nil {
+			network.Cleanup()
+		}
+
 		os.RemoveAll(testDir)
 	})
 
@@ -89,8 +108,8 @@ var _ = Describe("Release interoperability", func() {
 		By("ensuring that the chaincode is still operational after the upgrade")
 		RunQueryInvokeQuery(network, orderer, "mycc", 90, endorsers...)
 
-		By("restarting the network from persistence")
-		process = RestartNetwork(process, network)
+		By("restarting the network from persistence (1)")
+		ordererRunner, ordererProcess, peerGroupRunner, peerProcess = RestartNetwork(ordererProcess, peerProcess, network)
 
 		By("ensuring that the chaincode is still operational after the upgrade and restart")
 		RunQueryInvokeQuery(network, orderer, "mycc", 80, endorsers...)
@@ -127,8 +146,8 @@ var _ = Describe("Release interoperability", func() {
 		By("querying/invoking/querying the chaincode with the new definition")
 		RunQueryInvokeQuery(network, orderer, "mycc", 70, endorsers[0])
 
-		By("restarting the network from persistence")
-		process = RestartNetwork(process, network)
+		By("restarting the network from persistence (2)")
+		ordererRunner, ordererProcess, peerGroupRunner, peerProcess = RestartNetwork(ordererProcess, peerProcess, network)
 
 		By("querying/invoking/querying the chaincode with the new definition again")
 		RunQueryInvokeQuery(network, orderer, "mycc", 60, endorsers[1])
