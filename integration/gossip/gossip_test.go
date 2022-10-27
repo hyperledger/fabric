@@ -42,7 +42,7 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		channelName = "testchannel"
-		network = nwo.New(nwo.FullSolo(), testDir, dockerClient, StartPort(), components)
+		network = nwo.New(nwo.FullEtcdRaft(), testDir, dockerClient, StartPort(), components)
 		network.GenerateConfigTree()
 
 		nwprocs = &networkProcesses{

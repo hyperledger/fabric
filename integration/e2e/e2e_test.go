@@ -81,7 +81,7 @@ var _ = Describe("EndToEnd", func() {
 		os.RemoveAll(testDir)
 	})
 
-	Describe("basic solo network with 2 orgs and no docker", func() {
+	Describe("basic etcdraft network with 2 orgs and no docker", func() {
 		var (
 			metricsReader        *MetricsReader
 			runArtifactsFilePath string
@@ -91,7 +91,7 @@ var _ = Describe("EndToEnd", func() {
 			metricsReader = NewMetricsReader()
 			go metricsReader.Start()
 
-			network = nwo.New(nwo.BasicSolo(), testDir, nil, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, nil, StartPort(), components)
 			network.MetricsProvider = "statsd"
 			network.StatsdEndpoint = metricsReader.Address()
 			network.Consensus.ChannelParticipationEnabled = true
@@ -104,7 +104,7 @@ var _ = Describe("EndToEnd", func() {
 			network.Channels = append(network.Channels, &nwo.Channel{
 				Name:        "baseprofilechannel",
 				Profile:     "TwoOrgsBaseProfileChannel",
-				BaseProfile: "TwoOrgsOrdererGenesis",
+				BaseProfile: "SampleDevModeEtcdRaft",
 			})
 
 			runArtifactsFilePath = filepath.Join(testDir, "run-artifacts.txt")
@@ -152,7 +152,7 @@ var _ = Describe("EndToEnd", func() {
 			}
 		})
 
-		It("executes a basic solo network with 2 orgs and no docker", func() {
+		It("executes a basic etcdraft network with 2 orgs and no docker", func() {
 			By("getting the orderer by name")
 			orderer := network.Orderer("orderer")
 
@@ -507,9 +507,9 @@ var _ = Describe("EndToEnd", func() {
 		})
 	})
 
-	Describe("basic solo network with containers being interrupted", func() {
+	Describe("basic etcdraft network with containers being interrupted", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.FullSolo(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.FullEtcdRaft(), testDir, client, StartPort(), components)
 
 			network.GenerateConfigTree()
 			network.Bootstrap()
