@@ -7,11 +7,15 @@ on:
   workflow_dispatch:
     inputs:
       release:
-        description: 'Fabric Release'
+        description: 'Fabric Release, e.g. 2.4.7'
         required: true
         type: string
       two_digit_release:
-        description: 'Fabric Two Digit Release'
+        description: 'Fabric Two Digit Release, e.g. 2.4'
+        required: true
+        type: string
+      commit_hash:
+        description: 'Commit hash, e.g. df9c661a192f8cf11376d9d643a0021f1a76c34b'
         required: true
         type: string
 
@@ -94,5 +98,6 @@ jobs:
         with:
           artifacts: "*.tar.gz/*.tar.gz"
           bodyFile: release_notes/v${{ inputs.release }}.md
+          commit: ${{ inputs.commit_hash }}
           tag: v${{ inputs.release }}
           token: ${{ secrets.GITHUB_TOKEN }}
