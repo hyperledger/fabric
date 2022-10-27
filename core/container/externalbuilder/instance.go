@@ -66,6 +66,7 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 // ChaincodeServerUserData holds "connection.json" information
 type ChaincodeServerUserData struct {
 	Address            string   `json:"address"`
+	Domain             string   `json:"domain"`
 	DialTimeout        Duration `json:"dial_timeout"`
 	TLSRequired        bool     `json:"tls_required"`
 	ClientAuthRequired bool     `json:"client_auth_required"`
@@ -108,6 +109,7 @@ func (c *ChaincodeServerUserData) ChaincodeServerInfo(cryptoDir string) (*ccintf
 		connInfo.ClientConfig.SecOpts.RequireClientCert = true
 		connInfo.ClientConfig.SecOpts.Certificate = []byte(c.ClientCert)
 		connInfo.ClientConfig.SecOpts.Key = []byte(c.ClientKey)
+		connInfo.ClientConfig.SecOpts.ServerNameOverride = c.Domain
 	}
 
 	connInfo.ClientConfig.SecOpts.ServerRootCAs = [][]byte{[]byte(c.RootCert)}
