@@ -49,7 +49,7 @@ var _ = Describe("Devmode", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(devModeSolo, testDir, client, StartPort(), components)
+		network = nwo.New(devModeEtcdraft, testDir, client, StartPort(), components)
 
 		network.TLSEnabled = false
 		network.Peer("Org1", "peer0").DevMode = true
@@ -286,7 +286,7 @@ func ApproveChaincodeForMyOrg(n *nwo.Network, channel string, orderer *nwo.Order
 	}
 }
 
-var devModeSolo = &nwo.Config{
+var devModeEtcdraft = &nwo.Config{
 	Organizations: []*nwo.Organization{{
 		Name:          "OrdererOrg",
 		MSPID:         "OrdererMSP",
@@ -309,12 +309,12 @@ var devModeSolo = &nwo.Config{
 		},
 	}},
 	Consensus: &nwo.Consensus{
-		Type:            "solo",
+		Type:            "etcdraft",
 		BootstrapMethod: "file",
 	},
 	SystemChannel: &nwo.SystemChannel{
 		Name:    "systemchannel",
-		Profile: "OneOrgOrdererGenesis",
+		Profile: "SampleDevModeEtcdRaft",
 	},
 	Orderers: []*nwo.Orderer{
 		{Name: "orderer", Organization: "OrdererOrg"},
@@ -330,7 +330,7 @@ var devModeSolo = &nwo.Config{
 		},
 	}},
 	Profiles: []*nwo.Profile{{
-		Name:     "OneOrgOrdererGenesis",
+		Name:     "SampleDevModeEtcdRaft",
 		Orderers: []string{"orderer"},
 	}, {
 		Name:          "OneOrgChannel",

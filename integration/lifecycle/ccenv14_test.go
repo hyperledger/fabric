@@ -20,7 +20,7 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
-var _ = Describe("solo network using ccenv-1.4", func() {
+var _ = Describe("etcdraft network using ccenv-1.4", func() {
 	var (
 		client  *docker.Client
 		testDir string
