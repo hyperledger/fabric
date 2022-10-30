@@ -48,7 +48,7 @@ var _ = Describe("Lifecycle", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.BasicSolo(), testDir, client, StartPort(), components)
+		network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
 
 		// Generate config
 		network.GenerateConfigTree()
