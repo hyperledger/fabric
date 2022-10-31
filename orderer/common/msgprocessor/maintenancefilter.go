@@ -46,7 +46,9 @@ func NewMaintenanceFilter(support MaintenanceFilterSupport, bccsp bccsp.BCCSP) *
 		bccsp:                         bccsp,
 	}
 	mf.permittedTargetConsensusTypes["etcdraft"] = true
-	mf.permittedTargetConsensusTypes["solo"] = true
+	// Until we have a BFT consensus type, we use this for integration testing of consensus-type migration.
+	// Caution: proposing a config block with this type will cause panic.
+	mf.permittedTargetConsensusTypes["testing-only"] = true
 	return mf
 }
 
