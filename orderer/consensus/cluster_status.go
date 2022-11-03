@@ -13,7 +13,7 @@ import "github.com/hyperledger/fabric/orderer/common/types"
 // This information is used to generate the channelparticipation.ChannelInfo in response
 // to a "List" request on a particular channel.
 //
-// Not all chains must implement this, in particular non-cluster-type (solo) are
+// Not all chains must implement this, in particular non-cluster-type (e.g. inactive) are
 // assigned a StaticStatusReporter at construction time.
 type StatusReporter interface {
 	// StatusReport provides the cluster relation and status.
