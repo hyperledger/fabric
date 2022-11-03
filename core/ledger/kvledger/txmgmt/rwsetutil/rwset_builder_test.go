@@ -100,7 +100,7 @@ func TestTxSimulationResultWithPvtData(t *testing.T) {
 	rwSetBuilder.AddToPvtAndHashedWriteSet("ns2", "coll2", "key1", []byte("pvt-ns2-coll2-key1-value"))
 
 	// pvt rwset ns3
-	rwSetBuilder.AddToHashedWriteSetPurge("ns3", "coll1", "key1")
+	rwSetBuilder.AddToPvtAndHashedWriteSetForPurge("ns3", "coll1", "key1")
 
 	actualSimRes, err := rwSetBuilder.GetTxSimulationResults()
 	require.NoError(t, err)
@@ -114,6 +114,15 @@ func TestTxSimulationResultWithPvtData(t *testing.T) {
 
 	pvtNs2Coll2 := &kvrwset.KVRWSet{
 		Writes: []*kvrwset.KVWrite{newKVWrite("key1", []byte("pvt-ns2-coll2-key1-value"))},
+	}
+
+	pvtNs3Coll1 := &kvrwset.KVRWSet{
+		Writes: []*kvrwset.KVWrite{
+			{
+				Key:      "key1",
+				IsDelete: true,
+			},
+		},
 	}
 
 	expectedPvtRWSet := &rwset.TxPvtReadWriteSet{
@@ -135,6 +144,15 @@ func TestTxSimulationResultWithPvtData(t *testing.T) {
 					{
 						CollectionName: "coll2",
 						Rwset:          serializeTestProtoMsg(t, pvtNs2Coll2),
+					},
+				},
+			},
+			{
+				Namespace: "ns3",
+				CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+					{
+						CollectionName: "coll1",
+						Rwset:          serializeTestProtoMsg(t, pvtNs3Coll1),
 					},
 				},
 			},
@@ -186,7 +204,11 @@ func TestTxSimulationResultWithPvtData(t *testing.T) {
 
 	hashedNs3Coll1 := &kvrwset.HashedRWSet{
 		HashedWrites: []*kvrwset.KVWriteHash{
-			constructTestKVWriteHashPurge(t, "key1"),
+			{
+				KeyHash:  util.ComputeStringHash("key1"),
+				IsDelete: true,
+				IsPurge:  true,
+			},
 		},
 	}
 
@@ -231,6 +253,7 @@ func TestTxSimulationResultWithPvtData(t *testing.T) {
 			{
 				CollectionName: "coll1",
 				HashedRwset:    serializeTestProtoMsg(t, hashedNs3Coll1),
+				PvtRwsetHash:   util.ComputeHash(serializeTestProtoMsg(t, pvtNs3Coll1)),
 			},
 		},
 	}
@@ -378,10 +401,6 @@ func constructTestPvtKVReadHash(t *testing.T, key string, version *version.Heigh
 func constructTestPvtKVWriteHash(t *testing.T, key string, value []byte) *kvrwset.KVWriteHash {
 	_, kvWriteHash := newPvtKVWriteAndHash(key, value)
 	return kvWriteHash
-}
-
-func constructTestKVWriteHashPurge(t *testing.T, key string) *kvrwset.KVWriteHash {
-	return newKVWriteHashPurge(key)
 }
 
 func serializeTestProtoMsg(t *testing.T, protoMsg proto.Message) []byte {

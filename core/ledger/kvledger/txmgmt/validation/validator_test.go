@@ -376,8 +376,8 @@ func TestPrvtdataPurgeUpdates(t *testing.T) {
 
 	rwsetBuilder1 := rwsetutil.NewRWSetBuilder()
 	// key1 and key2 are purged, and key3 is written
-	rwsetBuilder1.AddToHashedWriteSetPurge("ns1", "coll1", "key1")
-	rwsetBuilder1.AddToHashedWriteSetPurge("ns1", "coll1", "key2")
+	rwsetBuilder1.AddToPvtAndHashedWriteSetForPurge("ns1", "coll1", "key1")
+	rwsetBuilder1.AddToPvtAndHashedWriteSetForPurge("ns1", "coll1", "key2")
 	rwsetBuilder1.AddToPvtAndHashedWriteSet("ns1", "coll1", "key3", []byte("value3"))
 	txRWset1 := rwsetBuilder1.GetTxReadWriteSet()
 

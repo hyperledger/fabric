@@ -12,6 +12,7 @@ import (
 	"github.com/bits-and-blooms/bitset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/core/ledger/util"
@@ -192,6 +193,7 @@ func prepareHashedIndexEntries(dataEntires []*dataEntry) ([]*hashedIndexEntry, e
 func preparePurgerMarkerEntries(blkNum uint64, purgeMarkers []*PurgeMarker) ([]*purgeMarkerEntry, []*purgeMarkerCollEntry) {
 	purgeMarkersEntries := []*purgeMarkerEntry{}
 	purgeMarkersCollEntries := []*purgeMarkerCollEntry{}
+	nsCollVisitedMap := map[nsColl]*version.Height{}
 
 	for _, m := range purgeMarkers {
 		purgeMarkersEntries = append(purgeMarkersEntries,
@@ -208,6 +210,13 @@ func preparePurgerMarkerEntries(blkNum uint64, purgeMarkers []*PurgeMarker) ([]*
 			},
 		)
 
+		nsColl := nsColl{ns: m.Ns, coll: m.Coll}
+		version := version.NewHeight(blkNum, m.TxNum)
+		visitedVersion, ok := nsCollVisitedMap[nsColl]
+		if ok && visitedVersion.Compare(version) > 0 {
+			// a key in the same collection with higher version already caused adding of collection level purge mearker entry
+			continue
+		}
 		purgeMarkersCollEntries = append(purgeMarkersCollEntries,
 			&purgeMarkerCollEntry{
 				key: &purgeMarkerCollKey{
@@ -220,6 +229,7 @@ func preparePurgerMarkerEntries(blkNum uint64, purgeMarkers []*PurgeMarker) ([]*
 				},
 			},
 		)
+		nsCollVisitedMap[nsColl] = version
 	}
 	return purgeMarkersEntries, purgeMarkersCollEntries
 }
