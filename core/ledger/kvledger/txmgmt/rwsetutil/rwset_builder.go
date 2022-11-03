@@ -116,10 +116,12 @@ func (b *RWSetBuilder) AddToPvtAndHashedWriteSet(ns string, coll string, key str
 	b.getOrCreateCollHashedRwBuilder(ns, coll).writeMap[key] = kvWriteHash
 }
 
-// AddToHashedWriteSetPurge adds a purge key to the hashed write-set
-func (b *RWSetBuilder) AddToHashedWriteSetPurge(ns string, coll string, key string) {
-	kvWriteHashPurge := newKVWriteHashPurge(key)
-	b.getOrCreateCollHashedRwBuilder(ns, coll).writeMap[key] = kvWriteHashPurge
+// AddToPvtAndHashedWriteSetForPurge adds a purge key to the hashed write-set
+func (b *RWSetBuilder) AddToPvtAndHashedWriteSetForPurge(ns string, coll string, key string) {
+	kvWrite, kvWriteHash := newPvtKVWriteAndHash(key, nil)
+	kvWriteHash.IsPurge = true
+	b.getOrCreateCollPvtRwBuilder(ns, coll).writeMap[key] = kvWrite
+	b.getOrCreateCollHashedRwBuilder(ns, coll).writeMap[key] = kvWriteHash
 }
 
 // AddToHashedMetadataWriteSet adds a metadata to a key in the hashed write-set

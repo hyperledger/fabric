@@ -599,7 +599,7 @@ func (s *Store) removePurgedDataFromCollPvtRWset(k *dataKey, v *rwset.Collection
 			return err
 		}
 
-		if keyHt.Compare(purgeMarkerHt) >= 0 {
+		if keyHt.Compare(purgeMarkerHt) > 0 {
 			filterInKVWrites = append(filterInKVWrites, w)
 			continue
 		}
@@ -840,7 +840,10 @@ func (s *Store) deleteDataMarkedForPurge() error {
 		if err := purgeMarkerIter.Error(); err != nil {
 			return err
 		}
-		hStart, hEnd := driveHashedIndexKeyRangeFromPurgeMarker(purgeMarkerIter.Key(), purgeMarkerIter.Value())
+		hStart, hEnd, err := driveHashedIndexKeyRangeFromPurgeMarker(purgeMarkerIter.Key(), purgeMarkerIter.Value())
+		if err != nil {
+			return err
+		}
 		hashedIndexIter, err := s.db.GetIterator(hStart, hEnd)
 		if err != nil {
 			return err

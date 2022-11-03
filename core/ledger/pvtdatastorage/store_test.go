@@ -842,6 +842,12 @@ func TestStoreFilterPurgedKeys(t *testing.T) {
 					Ns:         "ns-1",
 					Coll:       "coll-1",
 					PvtkeyHash: util.ComputeStringHash("key-1"),
+					TxNum:      2,
+				},
+				{
+					Ns:         "ns-1",
+					Coll:       "coll-1",
+					PvtkeyHash: util.ComputeStringHash("key-2"),
 					TxNum:      1,
 				},
 			},
@@ -897,39 +903,12 @@ func TestStoreFilterPurgedKeys(t *testing.T) {
 	require.True(t, testHashedIndexExists(t, s, hashedIndexKey2))
 	require.True(t, testHashedIndexExists(t, s, hashedIndexKey3))
 
+	// This this should filter out the pvt data for key-1 as the purge marker height is the same as the commit height of the data
+	// However, this should not cause filtering of pvt data for key-2 as the purge marker height is lower than the commit height of the data
 	pvtdata, err := s.GetPvtDataByBlockNum(1, nil)
 	require.NoError(t, err)
 	require.Len(t, pvtdata, 1)
 	require.Equal(t, uint64(2), pvtdata[0].SeqInBlock)
-	verifyRetrievedPvtData(txWriteSet, pvtdata[0].WriteSet)
-
-	// this should not cause any filtering of pvt data as the purge marker height is lower than the commit height of the data
-	pvtdata, err = s.GetPvtDataByBlockNum(1, nil)
-	require.NoError(t, err)
-	require.Len(t, pvtdata, 1)
-	require.Equal(t, uint64(2), pvtdata[0].SeqInBlock)
-	require.True(t, proto.Equal(txWriteSetProto, pvtdata[0].WriteSet))
-
-	// Add a purge marker for key-1 at block-2
-	require.NoError(
-		t,
-		s.Commit(2, nil, nil,
-			[]*PurgeMarker{
-				{
-					Ns:         "ns-1",
-					Coll:       "coll-1",
-					PvtkeyHash: util.ComputeStringHash("key-1"),
-					TxNum:      1,
-				},
-			},
-		),
-	)
-
-	pvtdata, err = s.GetPvtDataByBlockNum(1, nil)
-	require.NoError(t, err)
-	require.Len(t, pvtdata, 1)
-	require.Equal(t, uint64(2), pvtdata[0].SeqInBlock)
-	// this should cause removal of "key-1" from the pvt data
 	verifyRetrievedPvtData(
 		&rwsetutil.TxPvtRwSet{
 			NsPvtRwSet: []*rwsetutil.NsPvtRwSet{
@@ -965,10 +944,10 @@ func TestStoreFilterPurgedKeys(t *testing.T) {
 		pvtdata[0].WriteSet,
 	)
 
-	// Add a purge marker for key-2 at block-3
+	// Add a purge marker again for key-2 at block-2
 	require.NoError(
 		t,
-		s.Commit(3, nil, nil,
+		s.Commit(2, nil, nil,
 			[]*PurgeMarker{
 				{
 					Ns:         "ns-1",
@@ -980,12 +959,11 @@ func TestStoreFilterPurgedKeys(t *testing.T) {
 		),
 	)
 
+	// Now, key-2 should have been removed
 	pvtdata, err = s.GetPvtDataByBlockNum(1, nil)
 	require.NoError(t, err)
 	require.Len(t, pvtdata, 1)
 	require.Equal(t, uint64(2), pvtdata[0].SeqInBlock)
-
-	// this should cause removal of "key-2", in addition to the "key-1" from the pvt data
 	verifyRetrievedPvtData(
 		&rwsetutil.TxPvtRwSet{
 			NsPvtRwSet: []*rwsetutil.NsPvtRwSet{
@@ -1007,6 +985,51 @@ func TestStoreFilterPurgedKeys(t *testing.T) {
 										Value: []byte("value-3"),
 									},
 								},
+							},
+						},
+					},
+				},
+			},
+		},
+		pvtdata[0].WriteSet,
+	)
+
+	// Add a purge marker for key-3 at block-3
+	require.NoError(
+		t,
+		s.Commit(3, nil, nil,
+			[]*PurgeMarker{
+				{
+					Ns:         "ns-1",
+					Coll:       "coll-2",
+					PvtkeyHash: util.ComputeStringHash("key-3"),
+					TxNum:      1,
+				},
+			},
+		),
+	)
+
+	// This should cause removal of "key-3", in addition to the "key-1", and "key-2" from the pvt data
+	pvtdata, err = s.GetPvtDataByBlockNum(1, nil)
+	require.NoError(t, err)
+	require.Len(t, pvtdata, 1)
+	require.Equal(t, uint64(2), pvtdata[0].SeqInBlock)
+	verifyRetrievedPvtData(
+		&rwsetutil.TxPvtRwSet{
+			NsPvtRwSet: []*rwsetutil.NsPvtRwSet{
+				{
+					NameSpace: "ns-1",
+					CollPvtRwSets: []*rwsetutil.CollPvtRwSet{
+						{
+							CollectionName: "coll-1",
+							KvRwSet: &kvrwset.KVRWSet{
+								Writes: []*kvrwset.KVWrite{},
+							},
+						},
+						{
+							CollectionName: "coll-2",
+							KvRwSet: &kvrwset.KVRWSet{
+								Writes: []*kvrwset.KVWrite{},
 							},
 						},
 					},
@@ -1178,9 +1201,50 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 	require.True(t, proto.Equal(txWriteSetProto, pvtdata[0].WriteSet))
 
 	// Add a purge marker for key-1 at block-3
+	txWriteSetWithDelete := &rwsetutil.TxPvtRwSet{
+		NsPvtRwSet: []*rwsetutil.NsPvtRwSet{
+			{
+				NameSpace: "ns-1",
+				CollPvtRwSets: []*rwsetutil.CollPvtRwSet{
+					{
+						CollectionName: "coll-1",
+						KvRwSet: &kvrwset.KVRWSet{
+							Writes: []*kvrwset.KVWrite{
+								{
+									Key:      "key-1",
+									IsDelete: true,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	txWriteSetWithDeleteProto, err := txWriteSetWithDelete.ToProtoMsg()
+	require.NoError(t, err)
+
+	hashedIndexDeleteKey1 := &hashedIndexKey{
+		ns:         "ns-1",
+		coll:       "coll-1",
+		pvtkeyHash: util.ComputeStringHash("key-1"),
+		blkNum:     3,
+		txNum:      1,
+	}
+
 	require.NoError(
 		t,
-		s.Commit(3, nil, nil,
+		s.Commit(3,
+			// Add a delete for the private key to simulate the situation where this key
+			// is added along with the purge marker at the same transaction height
+			[]*ledger.TxPvtData{
+				{
+					SeqInBlock: 1,
+					WriteSet:   txWriteSetWithDeleteProto,
+				},
+			},
+			nil,
 			[]*PurgeMarker{
 				{
 					Ns:         "ns-1",
@@ -1191,6 +1255,8 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 			},
 		),
 	)
+
+	require.True(t, testHashedIndexExists(t, s, hashedIndexDeleteKey1))
 
 	// commit block 4 to kick off the background purger goroutine
 	require.NoError(t, s.Commit(4, nil, nil, nil))
@@ -1214,6 +1280,7 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 	)
 	require.True(t, testDataKeyExists(t, s, dataKeyColl2))
 	require.False(t, testHashedIndexExists(t, s, hashedIndexKey1))
+	require.False(t, testHashedIndexExists(t, s, hashedIndexDeleteKey1))
 	require.True(t, testHashedIndexExists(t, s, hashedIndexKey2))
 	require.True(t, testHashedIndexExists(t, s, hashedIndexKey3))
 
@@ -1249,6 +1316,27 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 									},
 								},
 							},
+						},
+					},
+				},
+			},
+		},
+		pvtdata[0].WriteSet,
+	)
+
+	pvtdata, err = s.GetPvtDataByBlockNum(3, nil)
+	require.NoError(t, err)
+	require.Len(t, pvtdata, 1)
+	require.Equal(t, uint64(1), pvtdata[0].SeqInBlock)
+	verifyRetrievedPvtData(
+		&rwsetutil.TxPvtRwSet{
+			NsPvtRwSet: []*rwsetutil.NsPvtRwSet{
+				{
+					NameSpace: "ns-1",
+					CollPvtRwSets: []*rwsetutil.CollPvtRwSet{
+						{
+							CollectionName: "coll-1",
+							KvRwSet:        &kvrwset.KVRWSet{},
 						},
 					},
 				},
