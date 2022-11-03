@@ -127,7 +127,7 @@ func (s *txSimulator) PurgePrivateData(ns, coll, key string) error {
 		return err
 	}
 	s.writePerformed = true
-	s.rwsetBuilder.AddToHashedWriteSetPurge(ns, coll, key)
+	s.rwsetBuilder.AddToPvtAndHashedWriteSetForPurge(ns, coll, key)
 	return nil
 }
 
