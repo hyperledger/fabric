@@ -63,7 +63,7 @@ const (
 
 	// AbdicationMaxAttempts determines how many retries of leadership abdication we do
 	// for a transaction that removes ourselves from reconfiguration.
-	AbdicationMaxAttempts = 2
+	AbdicationMaxAttempts = 5
 )
 
 //go:generate counterfeiter -o mocks/configurator.go . Configurator
@@ -936,7 +936,7 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 				defer atomic.StoreUint32(&c.leadershipTransferInProgress, 0)
 
 				for attempt := 1; attempt <= AbdicationMaxAttempts; attempt++ {
-					if err := c.Node.abdicateLeader(c.raftID); err != nil {
+					if err := c.Node.abdicateLeadership(); err != nil {
 						// If there is no leader, abort and do not retry.
 						// Return early to prevent re-submission of the transaction
 						if err == ErrNoLeader || err == ErrChainHalting {
@@ -944,7 +944,7 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 						}
 
 						// If the error isn't any of the below, it's a programming error, so panic.
-						if err != ErrNoAvailableLeaderCandidate && err != ErrNotALeader && err != ErrTimedOutLeaderTransfer {
+						if err != ErrNoAvailableLeaderCandidate && err != ErrTimedOutLeaderTransfer {
 							c.logger.Panicf("Programming error, abdicateLeader() returned with an unexpected error: %v", err)
 						}
 

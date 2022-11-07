@@ -28,7 +28,6 @@ var (
 	ErrChainHalting               = errors.New("chain halting is in progress")
 	ErrNoAvailableLeaderCandidate = errors.New("leadership transfer failed to identify transferee")
 	ErrTimedOutLeaderTransfer     = errors.New("leadership transfer timed out")
-	ErrNotALeader                 = errors.New("not a leader")
 	ErrNoLeader                   = errors.New("no leader")
 )
 
@@ -55,7 +54,7 @@ type node struct {
 
 	metadata *etcdraft.BlockMetadata
 
-	subscriberC chan chan uint64
+	leaderChangeSubscription atomic.Value
 
 	raft.Node
 }
@@ -85,8 +84,6 @@ func (n *node) start(fresh, join bool) {
 		n.logger.Info("Restarting raft node")
 		n.Node = raft.RestartNode(n.config)
 	}
-
-	n.subscriberC = make(chan chan uint64)
 
 	go n.run(campaign)
 }
@@ -129,8 +126,6 @@ func (n *node) run(campaign bool) {
 		}()
 	}
 
-	var notifyLeaderChangeC chan uint64
-
 	for {
 		select {
 		case <-raftTicker.C():
@@ -156,14 +151,12 @@ func (n *node) run(campaign bool) {
 				n.chain.snapC <- &rd.Snapshot
 			}
 
-			if notifyLeaderChangeC != nil && rd.SoftState != nil {
-				if l := atomic.LoadUint64(&rd.SoftState.Lead); l != raft.None {
-					select {
-					case notifyLeaderChangeC <- l:
-					default:
-					}
+			lcs := n.leaderChangeSubscription.Load()
 
-					notifyLeaderChangeC = nil
+			if lcs != nil && rd.SoftState != nil {
+				if l := atomic.LoadUint64(&rd.SoftState.Lead); l != raft.None {
+					subscription := lcs.(func(uint64))
+					subscription(l)
 				}
 			}
 
@@ -186,8 +179,6 @@ func (n *node) run(campaign bool) {
 			// TODO(jay_guo) leader can write to disk in parallel with replicating
 			// to the followers and them writing to their disks. Check 10.2.1 in thesis
 			n.send(rd.Messages)
-
-		case notifyLeaderChangeC = <-n.subscriberC:
 
 		case <-n.chain.haltC:
 			raftTicker.Stop()
@@ -237,10 +228,10 @@ func (n *node) send(msgs []raftpb.Message) {
 	}
 }
 
-// abdicateLeader picks a node that is recently active, and attempts to transfer leadership to it.
-// Receives the current leader (our id) as input.
+// abdicateLeadership picks a node that is recently active, and attempts to transfer leadership to it.
+// Blocks until leadership transfer happens or when a timeout expires.
 // Returns error upon failure.
-func (n *node) abdicateLeader(selfID uint64) error {
+func (n *node) abdicateLeadership() error {
 	start := time.Now()
 	defer func() {
 		n.logger.Infof("abdicateLeader took %v", time.Since(start))
@@ -253,18 +244,14 @@ func (n *node) abdicateLeader(selfID uint64) error {
 		return ErrNoLeader
 	}
 
-	if status.Lead != raft.None && status.Lead != selfID {
+	if status.Lead != n.config.ID {
 		n.logger.Warn("Leader has changed since asked to transfer leadership")
-		return ErrNotALeader
+		return nil
 	}
 
-	// register a leader subscriberC
-	notifyc := make(chan uint64, 1)
-	select {
-	case n.subscriberC <- notifyc:
-	case <-n.chain.doneC:
-		return ErrChainHalting
-	}
+	// register to leader changes
+	notifyC, unsubscribe := n.subscribeToLeaderChange()
+	defer unsubscribe()
 
 	var transferee uint64
 	for id, pr := range status.Progress {
@@ -302,17 +289,36 @@ func (n *node) abdicateLeader(selfID uint64) error {
 		case <-timer.C():
 			n.logger.Warn("Leader transfer timed out")
 			return ErrTimedOutLeaderTransfer
-		case l := <-notifyc:
-			if l != selfID {
-				n.logger.Infof("Leader has been transferred from %d to %d", selfID, l)
-				return nil
-			}
-			n.logger.Infof("Notified about leader being %d but we expect someone else to be the leader", l)
+		case l := <-notifyC:
+			n.logger.Infof("Leader has been transferred from %d to %d", n.config.ID, l)
+			return nil
 		case <-n.chain.doneC:
 			n.logger.Infof("Returning early because chain is halting")
 			return ErrChainHalting
 		}
 	}
+}
+
+func (n *node) subscribeToLeaderChange() (chan uint64, func()) {
+	notifyC := make(chan uint64, 1)
+	subscriptionActive := uint32(1)
+	unsubscribe := func() {
+		atomic.StoreUint32(&subscriptionActive, 0)
+	}
+	subscription := func(leader uint64) {
+		if atomic.LoadUint32(&subscriptionActive) == 0 {
+			return
+		}
+		if leader != n.config.ID {
+			select {
+			case notifyC <- leader:
+			default:
+				// In case notifyC is full
+			}
+		}
+	}
+	n.leaderChangeSubscription.Store(subscription)
+	return notifyC, unsubscribe
 }
 
 func (n *node) logSendFailure(dest uint64, err error) {
