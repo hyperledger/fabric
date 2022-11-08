@@ -179,7 +179,9 @@ Let's run the application and then step through each of the interactions with th
 ``asset-transfer-basic/application-gateway-typescript`` directory, run the following command:
 
 .. code-block:: bash
-
+  
+  npm run build
+  
   npm start
 
 
