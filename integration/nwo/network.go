@@ -41,6 +41,14 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// Blocks defines block cutting config.
+type Blocks struct {
+	BatchTimeout      int `yaml:"batch_timeout,omitempty"`
+	MaxMessageCount   int `yaml:"max_message_count,omitempty"`
+	AbsoluteMaxBytes  int `yaml:"absolute_max_bytes,omitempty"`
+	PreferredMaxBytes int `yaml:"preferred_max_bytes,omitempty"`
+}
+
 // Organization models information about an Organization. It includes
 // the information needed to populate an MSP with cryptogen.
 type Organization struct {
@@ -135,6 +143,7 @@ type Profile struct {
 	Organizations       []string `yaml:"organizations,omitempty"`
 	AppCapabilities     []string `yaml:"app_capabilities,omitempty"`
 	ChannelCapabilities []string `yaml:"channel_capabilities,omitempty"`
+	Blocks              *Blocks  `yaml:"blocks,omitempty"`
 }
 
 // Network holds information about a fabric network.
