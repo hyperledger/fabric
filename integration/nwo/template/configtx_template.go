@@ -144,11 +144,19 @@ Profiles:{{ range .Profiles }}
       Addresses:{{ range .Orderers }}{{ with $w.Orderer . }}
       - 127.0.0.1:{{ $w.OrdererPort . "Listen" }}
       {{- end }}{{ end }}
+      {{- if .Blocks}}
+      BatchTimeout: {{ .Blocks.BatchTimeout }}s
+      BatchSize:
+        MaxMessageCount: {{ .Blocks.MaxMessageCount }}
+        AbsoluteMaxBytes: {{ .Blocks.AbsoluteMaxBytes }} MB
+        PreferredMaxBytes: {{ .Blocks.PreferredMaxBytes }} KB
+      {{- else }}
       BatchTimeout: 1s
       BatchSize:
         MaxMessageCount: 1
         AbsoluteMaxBytes: 98 MB
         PreferredMaxBytes: 512 KB
+      {{- end}}
       Capabilities:
         V2_0: true
       {{- if eq $w.Consensus.Type "kafka" }}
