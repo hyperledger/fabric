@@ -33,6 +33,7 @@ var (
 	hashedIndexKeyPrefix             = []byte{'b'}
 	purgeMarkerKeyPrefix             = []byte{'c'}
 	purgeMarkerCollKeyPrefix         = []byte{'d'}
+	purgeMarkerForReconKeyPrefix     = []byte{'e'}
 
 	nilByte    = byte(0)
 	emptyValue = []byte{}
@@ -295,6 +296,15 @@ func encodePurgeMarkerCollKey(k *purgeMarkerCollKey) []byte {
 
 func encodePurgeMarkerKey(k *purgeMarkerKey) []byte {
 	encKey := append(purgeMarkerKeyPrefix, []byte(k.ns)...)
+	encKey = append(encKey, nilByte)
+	encKey = append(encKey, []byte(k.coll)...)
+	encKey = append(encKey, nilByte)
+	encKey = append(encKey, k.pvtkeyHash...)
+	return encKey
+}
+
+func encodePurgeMarkerForReconKey(k *purgeMarkerKey) []byte {
+	encKey := append(purgeMarkerForReconKeyPrefix, []byte(k.ns)...)
 	encKey = append(encKey, nilByte)
 	encKey = append(encKey, []byte(k.coll)...)
 	encKey = append(encKey, nilByte)
