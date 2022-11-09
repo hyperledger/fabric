@@ -339,6 +339,10 @@ func (s *Store) Commit(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtD
 			encodePurgeMarkerKey(purgeMarkerEntry.key),
 			encodePurgeMarkerVal(purgeMarkerEntry.value),
 		)
+		batch.Put(
+			encodePurgeMarkerForReconKey(purgeMarkerEntry.key),
+			encodePurgeMarkerVal(purgeMarkerEntry.value),
+		)
 	}
 
 	for _, purgeMarkerCollEntry := range storeEntries.purgeMarkerCollEntries {
@@ -840,7 +844,11 @@ func (s *Store) deleteDataMarkedForPurge() error {
 		if err := purgeMarkerIter.Error(); err != nil {
 			return err
 		}
-		hStart, hEnd, err := driveHashedIndexKeyRangeFromPurgeMarker(purgeMarkerIter.Key(), purgeMarkerIter.Value())
+
+		encPurgeMarkerKey := purgeMarkerIter.Key()
+		encPurgeMarkerVal := purgeMarkerIter.Value()
+
+		hStart, hEnd, err := driveHashedIndexKeyRangeFromPurgeMarker(encPurgeMarkerKey, encPurgeMarkerVal)
 		if err != nil {
 			return err
 		}
@@ -856,6 +864,7 @@ func (s *Store) deleteDataMarkedForPurge() error {
 				return err
 			}
 		}
+		p.addProcessedPurgeMarkerForDeletion(encPurgeMarkerKey)
 	}
 	return p.commitPendingChanges()
 }
@@ -1166,6 +1175,10 @@ func (p *purgeUpdatesProcessor) process(hashedIndexKey, hashedIndexVal []byte) e
 		}
 	}
 	return nil
+}
+
+func (p *purgeUpdatesProcessor) addProcessedPurgeMarkerForDeletion(purgeMarkerKey []byte) {
+	p.batch.Delete(purgeMarkerKey)
 }
 
 func (p *purgeUpdatesProcessor) commitPendingChanges() error {

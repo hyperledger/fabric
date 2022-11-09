@@ -1169,6 +1169,20 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 		txNum:      2,
 	}
 
+	purgeMarkerForKey1 := &purgeMarkerKey{
+		ns:         "ns-1",
+		coll:       "coll-1",
+		pvtkeyHash: util.ComputeStringHash("key-1"),
+	}
+
+	purgeMarkerForKey2 := &purgeMarkerKey{
+		ns:         "ns-1",
+		coll:       "coll-1",
+		pvtkeyHash: util.ComputeStringHash("key-2"),
+	}
+
+	require.True(t, testPurgeMarkerExists(t, s, purgeMarkerForKey1))
+	require.True(t, testPurgeMarkerForReconExists(t, s, purgeMarkerForKey1))
 	require.True(t, testDataKeyExists(t, s, dataKeyColl1))
 	require.True(t, testDataKeyExists(t, s, dataKeyColl2))
 	require.True(t, testHashedIndexExists(t, s, hashedIndexKey1))
@@ -1184,6 +1198,8 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 	// commit block 2 to kick off the background purger goroutine
 	require.NoError(t, s.Commit(2, nil, nil, nil))
 	testWaitForPurgerRoutineToFinish(s)
+	require.False(t, testPurgeMarkerExists(t, s, purgeMarkerForKey1))
+	require.True(t, testPurgeMarkerForReconExists(t, s, purgeMarkerForKey1))
 
 	// this should not cause any purging of pvt data as the purge marker height is lower than the commit height of the data
 	require.True(t, testDataKeyExists(t, s, dataKeyColl1))
@@ -1254,11 +1270,15 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 		),
 	)
 
+	require.True(t, testPurgeMarkerExists(t, s, purgeMarkerForKey1))
+	require.True(t, testPurgeMarkerForReconExists(t, s, purgeMarkerForKey1))
 	require.True(t, testHashedIndexExists(t, s, hashedIndexDeleteKey1))
 
 	// commit block 4 to kick off the background purger goroutine
 	require.NoError(t, s.Commit(4, nil, nil, nil))
 	testWaitForPurgerRoutineToFinish(s)
+	require.False(t, testPurgeMarkerExists(t, s, purgeMarkerForKey1))
+	require.True(t, testPurgeMarkerForReconExists(t, s, purgeMarkerForKey1))
 
 	// this should cause purging key-1 from data
 	require.True(t, testDataKeyExists(t, s, dataKeyColl1))
@@ -1358,9 +1378,13 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 		),
 	)
 
+	require.True(t, testPurgeMarkerExists(t, s, purgeMarkerForKey2))
+	require.True(t, testPurgeMarkerForReconExists(t, s, purgeMarkerForKey2))
 	// commit block 6 to kick off the background purger goroutine
 	require.NoError(t, s.Commit(6, nil, nil, nil))
 	testWaitForPurgerRoutineToFinish(s)
+	require.False(t, testPurgeMarkerExists(t, s, purgeMarkerForKey2))
+	require.True(t, testPurgeMarkerForReconExists(t, s, purgeMarkerForKey2))
 
 	// this should cause purging key-2 (e.g., all keys) from data
 	require.True(t, testDataKeyExists(t, s, dataKeyColl1))
@@ -1637,6 +1661,18 @@ func testHashedIndexExists(t *testing.T, s *Store, h *hashedIndexKey) bool {
 	}
 	require.Equal(t, h.pvtkeyHash, util.ComputeHash(val))
 	return true
+}
+
+func testPurgeMarkerExists(t *testing.T, s *Store, p *purgeMarkerKey) bool {
+	val, err := s.db.Get(encodePurgeMarkerKey(p))
+	require.NoError(t, err)
+	return len(val) > 0
+}
+
+func testPurgeMarkerForReconExists(t *testing.T, s *Store, p *purgeMarkerKey) bool {
+	val, err := s.db.Get(encodePurgeMarkerForReconKey(p))
+	require.NoError(t, err)
+	return len(val) > 0
 }
 
 func testWaitForPurgerRoutineToFinish(s *Store) {
