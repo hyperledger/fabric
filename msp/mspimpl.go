@@ -890,9 +890,13 @@ func (msp *bccspmsp) getCertificationChainIdentifierFromChain(chain []*x509.Cert
 // is regenerated to have a Low-S signature.
 func (msp *bccspmsp) sanitizeCert(cert *x509.Certificate) (*x509.Certificate, error) {
 	if isECDSASignedCert(cert) {
+		validityOpts := msp.getValidityOptsForCert(cert)
+		if bytes.Equal(cert.RawSubject, cert.RawIssuer) && cert.IsCA {
+			return sanitizeECDSASignedCert(cert, cert)
+		}
 		// Lookup for a parent certificate to perform the sanitization
 		var parentCert *x509.Certificate
-		chain, err := msp.getUniqueValidationChain(cert, msp.getValidityOptsForCert(cert))
+		chain, err := msp.getUniqueValidationChain(cert, validityOpts)
 		if err != nil {
 			return nil, err
 		}
