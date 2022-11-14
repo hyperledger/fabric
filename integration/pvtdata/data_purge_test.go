@@ -8,12 +8,15 @@ package pvtdata
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
 
 	"github.com/hyperledger/fabric/integration/nwo"
+	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/pvtdata/marblechaincodeutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -22,16 +25,17 @@ import (
 
 var _ = Describe("Pvtdata purge", func() {
 	var (
-		testDir   string
-		network   *nwo.Network
-		orderer   *nwo.Orderer
-		org2Peer0 *nwo.Peer
-		process   ifrit.Process
-		cancel    context.CancelFunc
-		chaincode *nwo.Chaincode
+		applicationCapabilitiesVersion string
+		testDir                        string
+		network                        *nwo.Network
+		orderer                        *nwo.Orderer
+		org2Peer0                      *nwo.Peer
+		process                        ifrit.Process
+		cancel                         context.CancelFunc
+		chaincode                      *nwo.Chaincode
 	)
 
-	BeforeEach(func() {
+	JustBeforeEach(func() {
 		var err error
 		testDir, err = ioutil.TempDir("", "purgedata")
 		Expect(err).NotTo(HaveOccurred())
@@ -47,18 +51,19 @@ var _ = Describe("Pvtdata purge", func() {
 		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 		orderer = network.Orderer("orderer")
-		network.CreateAndJoinChannel(orderer, "testchannel")
-		network.UpdateChannelAnchors(orderer, "testchannel")
+
+		network.CreateAndJoinChannel(orderer, channelID)
+		network.UpdateChannelAnchors(orderer, channelID)
 		network.VerifyMembership(
-			network.PeersWithChannel("testchannel"),
-			"testchannel",
+			network.PeersWithChannel(channelID),
+			channelID,
 		)
 		nwo.EnableCapabilities(
 			network,
-			"testchannel",
-			"Application", "V2_5",
+			channelID,
+			"Application", applicationCapabilitiesVersion,
 			orderer,
-			network.PeersWithChannel("testchannel")...,
+			network.PeersWithChannel(channelID)...,
 		)
 
 		chaincode = &nwo.Chaincode{
@@ -75,7 +80,7 @@ var _ = Describe("Pvtdata purge", func() {
 			Label:             "purgecc_label",
 		}
 
-		nwo.DeployChaincode(network, "testchannel", orderer, *chaincode)
+		nwo.DeployChaincode(network, channelID, orderer, *chaincode)
 
 		org2Peer0 = network.Peer("Org2", "peer0")
 
@@ -97,62 +102,86 @@ var _ = Describe("Pvtdata purge", func() {
 		os.RemoveAll(testDir)
 	})
 
-	// 6. The purge transaction takes effect only if the corresponding capability is set
-	//    - Add a few keys into a collection
-	//    - Issue a purge transaction without setting the new capability
-	//    - [Verify that the purge fails]
-	PIt("should fail with an error if the purge capability has not been enabled on the channel")
+	When("the purge private data capability is not enabled", func() {
+		BeforeEach(func() {
+			applicationCapabilitiesVersion = "V2_0"
+		})
 
-	It("should prevent purged data being included in responses after the purge transaction has been committed", func() {
-		marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, `test-marble-0`, org2Peer0)
-		marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
+		It("should fail with an error if the purge capability has not been enabled on the channel", func() {
+			marblePurgeBase64 := base64.StdEncoding.EncodeToString([]byte(`{"name":"test-marble-0"}`))
 
-		marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-0"}`, org2Peer0)
+			purgeCommand := commands.ChaincodeInvoke{
+				ChannelID: channelID,
+				Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
+				Name:      chaincode.Name,
+				Ctor:      `{"Args":["purge"]}`,
+				Transient: fmt.Sprintf(`{"marble_purge":"%s"}`, marblePurgeBase64),
+				PeerAddresses: []string{
+					network.PeerAddress(org2Peer0, nwo.ListenPort),
+				},
+				WaitForEvent: true,
+			}
 
-		marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, `test-marble-0`, org2Peer0)
-		marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, `test-marble-0`, org2Peer0)
+			marblechaincodeutil.AssertInvokeChaincodeFails(network, org2Peer0, purgeCommand, "Failed to purge state:PURGE_PRIVATE_DATA failed: transaction ID: [a-f0-9]{64}: purge private data is not enabled, channel application capability of V2_5 or later is required")
+		})
 	})
 
-	PIt("should prevent purged data being included block event replays after the purge transaction has been committed")
+	When("the purge private data capability is enabled", func() {
+		BeforeEach(func() {
+			applicationCapabilitiesVersion = "V2_5"
+		})
 
-	// 1. User is able to submit a purge transaction that involves more than one keys
-	PIt("should accept multiple keys for purging in the same transaction")
+		It("should prevent purged data being included in responses after the purge transaction has been committed", func() {
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, `test-marble-0`, org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
 
-	// 2. The endorsement policy is evaluated correctly for a purge transaction under
-	//    different endorsement policy settings (e.g., collection level/ key-hash based)
-	//    Note: The endorsement policy level tests need not to be prioritized over other
-	//    behaviour, and they need not to be very exhaustive since they should be covered
-	//    by existing write/delete operations
-	PIt("should correctly enforce collection level endorsement policies")
-	PIt("should correctly enforce key-hash based endorsement policies")
-	PIt("should correctly enforce other endorsement policies (TBC)")
+			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-0"}`, org2Peer0)
 
-	// 3. Data is purged on an eligible peer
-	//    - Add a few keys into a collection
-	//    - Issue a purge transaction for some of the keys
-	//    - Verify that all the versions of the intended keys are purged while the remaining keys still exist
-	//    - Repeat above to purge all keys to test the corner case
-	PIt("should remove all purged data from an eligible peer")
+			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, `test-marble-0`, org2Peer0)
+			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, `test-marble-0`, org2Peer0)
+		})
 
-	// 4.	Data is purged on previously eligible but now ineligible peer
-	//    - Add a few keys into a collection
-	//    - Submit a collection config update to remove an org
-	//    - Issue a purge transaction to delete few keys
-	//    - The removed orgs peer should have purged the historical versions of intended key
-	PIt("should remove all purged data from a previously eligible peer")
+		PIt("should prevent purged data being included block event replays after the purge transaction has been committed")
 
-	// 5. A new peer able to reconcile from a purged peer
-	//    - Stop one of the peers of an eligible org
-	//    - Add a few keys into a collection
-	//    - Issue a purge transaction for some of the keys
-	//    - Start the stopped peer and the peer should reconcile the partial available data
-	PIt("should enable successful peer reconciliation with partial write-sets")
+		// 1. User is able to submit a purge transaction that involves more than one keys
+		PIt("should accept multiple keys for purging in the same transaction")
 
-	// 7. Further writes to private data after a purge operation are not purged
-	//    - Add a few keys into a collection
-	//    - Issue a purge transaction
-	//    - Add the purged data back
-	//    - The subsequently added data should not be purged as a
-	//      side-effect of the previous purge operation
-	PIt("should not remove new data after a previous purge operation")
+		// 2. The endorsement policy is evaluated correctly for a purge transaction under
+		//    different endorsement policy settings (e.g., collection level/ key-hash based)
+		//    Note: The endorsement policy level tests need not to be prioritized over other
+		//    behaviour, and they need not to be very exhaustive since they should be covered
+		//    by existing write/delete operations
+		PIt("should correctly enforce collection level endorsement policies")
+		PIt("should correctly enforce key-hash based endorsement policies")
+		PIt("should correctly enforce other endorsement policies (TBC)")
+
+		// 3. Data is purged on an eligible peer
+		//    - Add a few keys into a collection
+		//    - Issue a purge transaction for some of the keys
+		//    - Verify that all the versions of the intended keys are purged while the remaining keys still exist
+		//    - Repeat above to purge all keys to test the corner case
+		PIt("should remove all purged data from an eligible peer")
+
+		// 4.	Data is purged on previously eligible but now ineligible peer
+		//    - Add a few keys into a collection
+		//    - Submit a collection config update to remove an org
+		//    - Issue a purge transaction to delete few keys
+		//    - The removed orgs peer should have purged the historical versions of intended key
+		PIt("should remove all purged data from a previously eligible peer")
+
+		// 5. A new peer able to reconcile from a purged peer
+		//    - Stop one of the peers of an eligible org
+		//    - Add a few keys into a collection
+		//    - Issue a purge transaction for some of the keys
+		//    - Start the stopped peer and the peer should reconcile the partial available data
+		PIt("should enable successful peer reconciliation with partial write-sets")
+
+		// 7. Further writes to private data after a purge operation are not purged
+		//    - Add a few keys into a collection
+		//    - Issue a purge transaction
+		//    - Add the purged data back
+		//    - The subsequently added data should not be purged as a
+		//      side-effect of the previous purge operation
+		PIt("should not remove new data after a previous purge operation")
+	})
 })
