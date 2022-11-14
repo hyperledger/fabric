@@ -944,3 +944,55 @@ func SHA256Digest(data []byte) []byte {
 	hash := sha256.Sum256(data)
 	return hash[:]
 }
+
+// VerifyBlocksBFT verifies the given consecutive sequence of blocks is valid, always verifies signature,
+// and returns nil if it's valid, else an error.
+func VerifyBlocksBFT(blockBuff []*common.Block, signatureVerifier BlockVerifier) error {
+	return verifyBlockSequence(blockBuff, signatureVerifier, true)
+}
+
+func verifyBlockSequence(blockBuff []*common.Block, signatureVerifier BlockVerifier, alwaysCheckSig bool) error {
+	if len(blockBuff) == 0 {
+		return errors.New("buffer is empty")
+	}
+	// First, we verify that the block hash in every block is:
+	// Equal to the hash in the header
+	// Equal to the previous hash in the succeeding block
+	for i := range blockBuff {
+		if err := VerifyBlockHash(i, blockBuff); err != nil {
+			return err
+		}
+	}
+
+	var config *common.ConfigEnvelope
+	var isLastBlockConfigBlock bool
+	// Verify all configuration blocks that are found inside the block batch,
+	// with the configuration that was committed (nil) or with one that is picked up
+	// during iteration over the block batch.
+	for _, block := range blockBuff {
+		configFromBlock, err := ConfigFromBlock(block)
+		if err == errNotAConfig && !alwaysCheckSig {
+			isLastBlockConfigBlock = false
+			continue
+		}
+		if err != nil && !alwaysCheckSig {
+			return err
+		}
+		// The block is a configuration block, so verify it
+		if err := VerifyBlockSignature(block, signatureVerifier, config); err != nil {
+			return err
+		}
+		config = configFromBlock
+		isLastBlockConfigBlock = true
+	}
+
+	// Verify the last block's signature
+	lastBlock := blockBuff[len(blockBuff)-1]
+
+	// If last block is a config block, we verified it using the policy of the previous block, so it's valid.
+	if isLastBlockConfigBlock {
+		return nil
+	}
+
+	return VerifyBlockSignature(lastBlock, signatureVerifier, config)
+}

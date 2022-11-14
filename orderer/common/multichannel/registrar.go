@@ -1149,3 +1149,28 @@ func channelNameFromConfigTx(configtx *cb.Envelope) (string, error) {
 
 	return chdr.ChannelId, nil
 }
+
+func (r *Registrar) ApplyFilters(channel string, env *cb.Envelope) error {
+	r.lock.RLock()
+	cs, exists := r.chains[channel]
+	r.lock.RUnlock()
+
+	if !exists {
+		// This is for the system channel
+		return msgprocessor.CreateSystemChannelFilters(r.config, r, r.systemChannel, r.systemChannel.MetadataValidator).Apply(env)
+	}
+
+	return msgprocessor.CreateStandardChannelFilters(cs, r.config).Apply(env)
+}
+
+func (r *Registrar) ProposeConfigUpdate(channel string, configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
+	r.lock.RLock()
+	cs, exists := r.chains[channel]
+	r.lock.RUnlock()
+
+	if !exists {
+		return nil, errors.Errorf("channel %s doesn't exist", channel)
+	}
+
+	return cs.ProposeConfigUpdate(configtx)
+}

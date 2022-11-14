@@ -153,6 +153,12 @@ func (cc ClientConfig) Dial(address string) (*grpc.ClientConn, error) {
 	return conn, nil
 }
 
+// Clone clones this ClientConfig
+func (cc ClientConfig) Clone() ClientConfig {
+	shallowClone := cc
+	return shallowClone
+}
+
 // SecureOptions defines the TLS security parameters for a GRPCServer or
 // GRPCClient instance.
 type SecureOptions struct {

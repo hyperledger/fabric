@@ -435,3 +435,23 @@ func ValidateBootstrapBlock(block *common.Block, bccsp bccsp.BCCSP) error {
 	}
 	return nil
 }
+
+// ConsensusType returns the consensus type from the given genesis block.
+func ConsensusType(genesisBlock *common.Block, bccsp bccsp.BCCSP) string {
+	if genesisBlock == nil || genesisBlock.Data == nil || len(genesisBlock.Data.Data) == 0 {
+		logger.Fatalf("Empty genesis block")
+	}
+	env := &common.Envelope{}
+	if err := proto.Unmarshal(genesisBlock.Data.Data[0], env); err != nil {
+		logger.Fatalf("Failed to unmarshal the genesis block's envelope: %v", err)
+	}
+	bundle, err := channelconfig.NewBundleFromEnvelope(env, bccsp)
+	if err != nil {
+		logger.Fatalf("Failed creating bundle from the genesis block: %v", err)
+	}
+	ordConf, exists := bundle.OrdererConfig()
+	if !exists {
+		logger.Fatalf("Orderer config doesn't exist in bundle derived from genesis block")
+	}
+	return ordConf.ConsensusType()
+}
