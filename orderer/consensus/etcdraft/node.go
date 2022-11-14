@@ -19,8 +19,16 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft"
 	"go.etcd.io/etcd/raft/raftpb"
+)
+
+var (
+	ErrChainHalting               = errors.New("chain halting is in progress")
+	ErrNoAvailableLeaderCandidate = errors.New("leadership transfer failed to identify transferee")
+	ErrTimedOutLeaderTransfer     = errors.New("leadership transfer timed out")
+	ErrNoLeader                   = errors.New("no leader")
 )
 
 type node struct {
@@ -45,7 +53,7 @@ type node struct {
 
 	metadata *etcdraft.BlockMetadata
 
-	subscriberC chan chan uint64
+	leaderChangeSubscription atomic.Value
 
 	raft.Node
 }
@@ -75,8 +83,6 @@ func (n *node) start(fresh, join bool) {
 		n.logger.Info("Restarting raft node")
 		n.Node = raft.RestartNode(n.config)
 	}
-
-	n.subscriberC = make(chan chan uint64)
 
 	go n.run(campaign)
 }
@@ -119,8 +125,6 @@ func (n *node) run(campaign bool) {
 		}()
 	}
 
-	var notifyLeaderChangeC chan uint64
-
 	for {
 		select {
 		case <-raftTicker.C():
@@ -146,14 +150,12 @@ func (n *node) run(campaign bool) {
 				n.chain.snapC <- &rd.Snapshot
 			}
 
-			if notifyLeaderChangeC != nil && rd.SoftState != nil {
-				if l := atomic.LoadUint64(&rd.SoftState.Lead); l != raft.None {
-					select {
-					case notifyLeaderChangeC <- l:
-					default:
-					}
+			lcs := n.leaderChangeSubscription.Load()
 
-					notifyLeaderChangeC = nil
+			if lcs != nil && rd.SoftState != nil {
+				if l := atomic.LoadUint64(&rd.SoftState.Lead); l != raft.None {
+					subscription := lcs.(func(uint64))
+					subscription(l)
 				}
 			}
 
@@ -176,8 +178,6 @@ func (n *node) run(campaign bool) {
 			// TODO(jay_guo) leader can write to disk in parallel with replicating
 			// to the followers and them writing to their disks. Check 10.2.1 in thesis
 			n.send(rd.Messages)
-
-		case notifyLeaderChangeC = <-n.subscriberC:
 
 		case <-n.chain.haltC:
 			raftTicker.Stop()
@@ -219,61 +219,97 @@ func (n *node) send(msgs []raftpb.Message) {
 	}
 }
 
-// If this is called on leader, it picks a node that is
-// recently active, and attempt to transfer leadership to it.
-// If this is called on follower, it simply waits for a
-// leader change till timeout (ElectionTimeout).
-func (n *node) abdicateLeader(currentLead uint64) {
+// abdicateLeadership picks a node that is recently active, and attempts to transfer leadership to it.
+// Blocks until leadership transfer happens or when a timeout expires.
+// Returns error upon failure.
+func (n *node) abdicateLeadership() error {
+	start := time.Now()
+	defer func() {
+		n.logger.Infof("abdicateLeader took %v", time.Since(start))
+	}()
+
 	status := n.Status()
 
-	if status.Lead != raft.None && status.Lead != currentLead {
+	if status.Lead == raft.None {
+		n.logger.Warn("No leader, cannot transfer leadership")
+		return ErrNoLeader
+	}
+
+	if status.Lead != n.config.ID {
 		n.logger.Warn("Leader has changed since asked to transfer leadership")
-		return
+		return nil
 	}
 
-	// register a leader subscriberC
-	notifyc := make(chan uint64, 1)
-	select {
-	case n.subscriberC <- notifyc:
-	case <-n.chain.doneC:
-		return
-	}
+	// register to leader changes
+	notifyC, unsubscribe := n.subscribeToLeaderChange()
+	defer unsubscribe()
 
-	// Leader initiates leader transfer
-	if status.RaftState == raft.StateLeader {
-		var transferee uint64
-		for id, pr := range status.Progress {
-			if id == status.ID {
-				continue // skip self
-			}
-
-			if pr.RecentActive && !pr.Paused {
-				transferee = id
-				break
-			}
-
-			n.logger.Debugf("Node %d is not qualified as transferee because it's either paused or not active", id)
+	var transferee uint64
+	for id, pr := range status.Progress {
+		if id == status.ID {
+			continue // skip self
 		}
 
-		if transferee == raft.None {
-			n.logger.Errorf("No follower is qualified as transferee, abort leader transfer")
+		if pr.RecentActive && !pr.IsPaused() {
+			transferee = id
+			break
+		}
+
+		n.logger.Debugf("Node %d is not qualified as transferee because it's either paused or not active", id)
+	}
+
+	if transferee == raft.None {
+		n.logger.Errorf("No follower is qualified as transferee, abort leader transfer")
+		return ErrNoAvailableLeaderCandidate
+	}
+
+	n.logger.Infof("Transferring leadership to %d", transferee)
+
+	timeToWait := time.Duration(n.config.ElectionTick) * n.tickInterval
+	n.logger.Infof("Will wait %v time to abdicate", timeToWait)
+	ctx, cancel := context.WithTimeout(context.TODO(), timeToWait)
+	defer cancel()
+
+	n.TransferLeadership(ctx, status.ID, transferee)
+
+	timer := n.clock.NewTimer(timeToWait)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-timer.C():
+			n.logger.Warn("Leader transfer timed out")
+			return ErrTimedOutLeaderTransfer
+		case l := <-notifyC:
+			n.logger.Infof("Leader has been transferred from %d to %d", n.config.ID, l)
+			return nil
+		case <-n.chain.doneC:
+			n.logger.Infof("Returning early because chain is halting")
+			return ErrChainHalting
+		}
+	}
+}
+
+func (n *node) subscribeToLeaderChange() (chan uint64, func()) {
+	notifyC := make(chan uint64, 1)
+	subscriptionActive := uint32(1)
+	unsubscribe := func() {
+		atomic.StoreUint32(&subscriptionActive, 0)
+	}
+	subscription := func(leader uint64) {
+		if atomic.LoadUint32(&subscriptionActive) == 0 {
 			return
 		}
-
-		n.logger.Infof("Transferring leadership to %d", transferee)
-		n.TransferLeadership(context.TODO(), status.ID, transferee)
+		if leader != n.config.ID {
+			select {
+			case notifyC <- leader:
+			default:
+				// In case notifyC is full
+			}
+		}
 	}
-
-	timer := n.clock.NewTimer(time.Duration(n.config.ElectionTick) * n.tickInterval)
-	defer timer.Stop() // prevent timer leak
-
-	select {
-	case <-timer.C():
-		n.logger.Warn("Leader transfer timeout")
-	case l := <-notifyc:
-		n.logger.Infof("Leader has been transferred from %d to %d", currentLead, l)
-	case <-n.chain.doneC:
-	}
+	n.leaderChangeSubscription.Store(subscription)
+	return notifyC, unsubscribe
 }
 
 func (n *node) logSendFailure(dest uint64, err error) {
