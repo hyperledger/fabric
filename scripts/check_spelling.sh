@@ -5,6 +5,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+set -euo pipefail
+
 filter() {
     while read -r data; do
         grep -Ev '^CHANGELOG|\.git|\.png$|^vendor/' <<< "$data"

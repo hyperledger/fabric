@@ -1145,7 +1145,7 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 		}
 	}
 
-	// at postion==0, ents[position].Type is ambiguous, it can be either of {raftpb.EntryNormal, raftpb.EntryConfChange}
+	// at position==0, ents[position].Type is ambiguous, it can be either of {raftpb.EntryNormal, raftpb.EntryConfChange}
 	// take a snapshot only for ents[position].Type == raftpb.EntryNormal
 	if c.accDataSize >= c.sizeLimit && ents[position].Type == raftpb.EntryNormal && len(ents[position].Data) > 0 {
 		b := protoutil.UnmarshalBlockOrPanic(ents[position].Data)
