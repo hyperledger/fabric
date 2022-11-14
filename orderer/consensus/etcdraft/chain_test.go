@@ -14,6 +14,7 @@ import (
 	"os/user"
 	"path"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
@@ -1436,9 +1437,14 @@ var _ = Describe("Chain", func() {
 
 			By("Configuring cluster to remove node")
 			Expect(c1.Configure(configEnv, 0)).To(Succeed())
+			select {
+			case <-c1.observe:
+			case <-time.After(LongEventualTimeout):
+				// abdicateleader might fail to transfer the leadership when the next candidate
+				// busy with applying committed entries
+				Fail("Expected a new leader to present")
+			}
 			Eventually(c2.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-			c1.clock.WaitForNWatchersAndIncrement(ELECTION_TICK*interval, 2)
-
 			Eventually(func() <-chan raft.SoftState {
 				c2.clock.Increment(interval)
 				return c2.observe
@@ -1464,7 +1470,7 @@ var _ = Describe("Chain", func() {
 			Expect(c2.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
 		})
 
-		It("remove leader by reconfiguring cluster, but Halt before eviction", func() {
+		It("remove leader by reconfiguring cluster, check haltCallback is called", func() {
 			network.elect(1)
 
 			// trigger status dissemination
@@ -1477,9 +1483,12 @@ var _ = Describe("Chain", func() {
 
 			By("Configuring cluster to remove node")
 			Expect(c1.Configure(configEnv, 0)).To(Succeed())
-			Eventually(c2.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 			c1.clock.WaitForNWatchersAndIncrement((ELECTION_TICK-1)*interval, 2)
-			c1.Halt()
+			Eventually(c2.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+
+			By("Asserting the haltCallback is called when Halt is called before eviction")
+			c1.clock.Increment(interval)
+			Eventually(fakeHaltCallbacker.HaltCallbackCallCount).Should(Equal(1))
 
 			Eventually(func() <-chan raft.SoftState {
 				c2.clock.Increment(interval)
@@ -1491,26 +1500,15 @@ var _ = Describe("Chain", func() {
 			Expect(c2.Order(env, 0)).To(Succeed())
 			Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 
-			By("Asserting the haltCallback is not called when Halt is called before eviction")
-			c1.clock.Increment(interval)
-			Eventually(fakeHaltCallbacker.HaltCallbackCallCount).Should(Equal(0))
-			By("Asserting the StatusReport responds correctly if the haltCallback is not called")
-			Eventually(
-				func() orderer_types.Status {
-					_, status := c1.StatusReport()
-					return status
-				},
-			).Should(Equal(orderer_types.StatusInactive))
-			cRel, _ := c1.StatusReport()
-			Expect(cRel).To(Equal(orderer_types.ConsensusRelationConsenter))
-
 			// active nodes metric hasn't changed because c.halt() wasn't called
 			Expect(c1.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
 			Expect(c2.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
 		})
 
-		It("can remove leader by reconfiguring cluster even if leadership transfer fails", func() {
+		It("can remove leader by retrying even if leadership transfer fails at first", func() {
 			network.elect(1)
+
+			var messageOmission uint32
 
 			step1 := c1.getStepFunc()
 			c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
@@ -1519,7 +1517,7 @@ var _ = Describe("Chain", func() {
 					return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %s", err)
 				}
 
-				if stepMsg.Type == raftpb.MsgTimeoutNow {
+				if stepMsg.Type == raftpb.MsgTimeoutNow && atomic.CompareAndSwapUint32(&messageOmission, 0, 1) {
 					return nil
 				}
 
@@ -1528,20 +1526,37 @@ var _ = Describe("Chain", func() {
 
 			By("Configuring cluster to remove node")
 			Expect(c1.Configure(configEnv, 0)).To(Succeed())
+
+			Eventually(func() <-chan raft.SoftState {
+				c1.clock.Increment(interval)
+				return c1.observe
+			}, LongEventualTimeout).Should(Receive())
+
 			Eventually(c2.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-			c2.clock.WaitForNWatchersAndIncrement(time.Duration(ELECTION_TICK)*interval, 2)
-			Eventually(c2.configurator.ConfigureCallCount, LongEventualTimeout).Should(Equal(2))
+			Eventually(func() <-chan raft.SoftState {
+				c2.clock.Increment(interval)
+				return c2.observe
+			}, LongEventualTimeout).Should(Receive(StateEqual(2, raft.StateLeader)))
 
-			c1.clock.WaitForNWatchersAndIncrement(time.Duration(ELECTION_TICK)*interval, 2)
-			Eventually(c1.Chain.Errored, LongEventualTimeout).Should(BeClosed())
-			close(c1.stopped) // mark c1 stopped in network
-
-			network.elect(2)
+			By("Asserting the haltCallback is called when the node is removed from the replica set")
+			Eventually(fakeHaltCallbacker.HaltCallbackCallCount).Should(Equal(1))
+			By("Asserting the StatusReport responds correctly after eviction")
+			Eventually(
+				func() orderer_types.ConsensusRelation {
+					cRel, _ := c1.StatusReport()
+					return cRel
+				},
+			).Should(Equal(orderer_types.ConsensusRelationConfigTracker))
+			_, status := c1.StatusReport()
+			Expect(status).To(Equal(orderer_types.StatusInactive))
 
 			By("Asserting leader can still serve requests as single-node cluster")
 			c2.cutter.CutNext = true
 			Expect(c2.Order(env, 0)).To(Succeed())
 			Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+			lastSetActiveNodes := c1.fakeFields.fakeActiveNodes.SetCallCount() - 1
+			Expect(c1.fakeFields.fakeActiveNodes.SetArgsForCall(lastSetActiveNodes)).To(Equal(float64(0))) // was halted
+			Expect(c2.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
 		})
 
 		It("can remove follower by reconfiguring cluster", func() {
@@ -1954,84 +1969,7 @@ var _ = Describe("Chain", func() {
 
 						By("sending config transaction")
 						Expect(c1.Configure(configEnv, 0)).To(Succeed())
-
-						Consistently(c1.observe).ShouldNot(Receive())
-						network.exec(func(c *chain) {
-							// wait for timeout timer to start
-							c.clock.WaitForNWatchersAndIncrement(time.Duration(ELECTION_TICK)*interval, 2)
-							Eventually(c.configurator.ConfigureCallCount, LongEventualTimeout).Should(Equal(2))
-						})
-					})
-				})
-
-				When("Follower is disconnected while leader cert is being rotated", func() {
-					It("still configures communication and transfer leader", func() {
-						metadata := &raftprotos.ConfigMetadata{Options: options}
-						for id, consenter := range consenters {
-							if id == 1 {
-								// remove second consenter
-								continue
-							}
-							metadata.Consenters = append(metadata.Consenters, consenter)
-						}
-
-						// add new consenter
-						newConsenter := &raftprotos.Consenter{
-							Host:          "localhost",
-							Port:          7050,
-							ServerTlsCert: serverTLSCert(tlsCA),
-							ClientTlsCert: clientTLSCert(tlsCA),
-						}
-						metadata.Consenters = append(metadata.Consenters, newConsenter)
-
-						value := map[string]*common.ConfigValue{
-							"ConsensusType": {
-								Version: 1,
-								Value: marshalOrPanic(&orderer.ConsensusType{
-									Metadata: marshalOrPanic(metadata),
-								}),
-							},
-						}
-
-						cnt := c1.rpc.SendConsensusCallCount()
-						network.disconnect(3)
-
-						// Trigger some heartbeats to be sent so that leader notices
-						// failed message delivery to 3, and mark it as Paused.
-						// This is to ensure leadership is transferred to 2.
-						Eventually(func() int {
-							c1.clock.Increment(interval)
-							return c1.rpc.SendConsensusCallCount()
-						}, LongEventualTimeout).Should(BeNumerically(">=", cnt+5))
-
-						By("creating new configuration with removed node and new one")
-						configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, value))
-						c1.cutter.CutNext = true
-
-						By("sending config transaction")
-						Expect(c1.Configure(configEnv, 0)).To(Succeed())
-
-						Eventually(c1.observe, LongEventualTimeout).Should(Receive(StateEqual(2, raft.StateFollower)))
-						network.Lock()
-						network.leader = 2 // manually set network leader
-						network.Unlock()
-						network.disconnect(1)
-
-						network.exec(func(c *chain) {
-							Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-							Eventually(c.configurator.ConfigureCallCount, LongEventualTimeout).Should(Equal(2))
-						}, 1, 2)
-
-						network.join(3, true)
-						Eventually(c3.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-						Eventually(c3.configurator.ConfigureCallCount, LongEventualTimeout).Should(Equal(2))
-
-						By("Ordering normal transaction")
-						c2.cutter.CutNext = true
-						Expect(c3.Order(env, 0)).To(Succeed())
-						network.exec(func(c *chain) {
-							Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
-						}, 2, 3)
+						c1.clock.WaitForNWatchersAndIncrement(time.Duration(ELECTION_TICK)*interval, 2)
 					})
 				})
 
@@ -2297,60 +2235,6 @@ var _ = Describe("Chain", func() {
 					Eventually(c4.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 				})
 
-				It("ensures that despite leader failure cluster continue to process configuration to remove the leader", func() {
-					// Scenario: Starting replica set of 3 nodes, electing nodeID = 1 to be the leader.
-					// Prepare config update transaction which removes leader (nodeID = 1), then leader
-					// fails right after it commits configuration block.
-
-					configEnv := newConfigEnv(channelID,
-						common.HeaderType_CONFIG,
-						newConfigUpdateEnv(channelID, nil, removeConsenterConfigValue(1))) // remove nodeID == 1
-
-					c1.cutter.CutNext = true
-
-					step1 := c1.getStepFunc()
-					count := c1.rpc.SendConsensusCallCount() // record current step call count
-					c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
-						// disconnect network after 4 MsgApp are sent by c1:
-						// - 2 MsgApp to c2 & c3 that replicate data to raft followers
-						// - 2 MsgApp to c2 & c3 that instructs followers to commit data
-						if c1.rpc.SendConsensusCallCount() == count+4 {
-							defer network.disconnect(1)
-						}
-
-						return step1(dest, msg)
-					})
-
-					By("sending config transaction")
-					err := c1.Configure(configEnv, 0)
-					Expect(err).NotTo(HaveOccurred())
-
-					network.exec(func(c *chain) {
-						Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-					})
-
-					Eventually(c1.rpc.SendConsensusCallCount, LongEventualTimeout).Should(Equal(count + 6))
-					c1.setStepFunc(step1)
-
-					// elect node with higher index
-					i2, _ := c2.storage.LastIndex() // err is always nil
-					i3, _ := c3.storage.LastIndex()
-					candidate := uint64(2)
-					if i3 > i2 {
-						candidate = 3
-					}
-					network.chains[candidate].cutter.CutNext = true
-					network.elect(candidate)
-
-					By("submitting new transaction to follower")
-					err = c3.Order(env, 0)
-					Expect(err).NotTo(HaveOccurred())
-
-					// rest nodes are alive include a newly added, hence should write 2 blocks
-					Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
-					Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
-				})
-
 				It("removes leader from replica set", func() {
 					// Scenario: Starting replica set of 3 nodes, electing nodeID = 1 to be the leader.
 					// Prepare config update transaction which removes leader (nodeID = 1), this to
@@ -2369,18 +2253,13 @@ var _ = Describe("Chain", func() {
 					err := c1.Configure(configEnv, 0)
 					Expect(err).NotTo(HaveOccurred())
 
-					// every node has written config block to the OSN ledger
-					network.exec(
-						func(c *chain) {
-							Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-							Eventually(c.fakeFields.fakeClusterSize.SetCallCount, LongEventualTimeout).Should(Equal(2))
-							Expect(c.fakeFields.fakeClusterSize.SetArgsForCall(1)).To(Equal(float64(2)))
-						})
+					time.Sleep(time.Duration(ELECTION_TICK) * interval)
+
+					Eventually(c2.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+					Eventually(c2.fakeFields.fakeClusterSize.SetCallCount, LongEventualTimeout).Should(Equal(2))
 
 					// Assert c1 has exited
-					c1.clock.WaitForNWatchersAndIncrement(ELECTION_TICK*interval, 2)
 					Eventually(c1.Errored, LongEventualTimeout).Should(BeClosed())
-					close(c1.stopped)
 
 					var newLeader, remainingFollower *chain
 					var c2state raft.SoftState
@@ -2413,8 +2292,6 @@ var _ = Describe("Chain", func() {
 
 					Eventually(newLeader.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 					Eventually(remainingFollower.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
-					// node 1 has been stopped should not write any block
-					Consistently(c1.support.WriteBlockCallCount).Should(Equal(1))
 
 					By("trying to submit to new node, expected to fail")
 					c1.cutter.CutNext = true
