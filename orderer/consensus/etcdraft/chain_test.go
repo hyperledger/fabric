@@ -2957,8 +2957,8 @@ var _ = Describe("Chain", func() {
 					countSnapShotsForc1 := func() int { return countSnapShotsForChain(c1) }
 					Eventually(countSnapShotsForc1, LongEventualTimeout).Should(Equal(3))
 					// No snapshot would be taken for node 3 after this orrderer request
-					addtional_snapshots_for_node3 := countSnapShotsForChain(c3) - snapshots_on_node3
-					Expect(addtional_snapshots_for_node3).Should(Equal(0))
+					additional_snapshots_for_node3 := countSnapShotsForChain(c3) - snapshots_on_node3
+					Expect(additional_snapshots_for_node3).Should(Equal(0))
 				})
 
 				It("keeps running if some entries in memory are purged", func() {

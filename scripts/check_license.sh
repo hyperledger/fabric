@@ -5,6 +5,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+set -euo pipefail
+
 # shellcheck source=/dev/null
 source "$(cd "$(dirname "$0")" && pwd)/functions.sh"
 
@@ -19,7 +21,7 @@ if [[ -z "$FILTERED" ]]; then
     exit 0
 fi
 
-missing=$(echo "$FILTERED" | sort -u |  xargs ls -d 2>/dev/null | xargs grep -L "SPDX-License-Identifier")
+missing=$(echo "$FILTERED" | sort -u |  xargs ls -d 2>/dev/null | xargs grep -L "SPDX-License-Identifier") || true
 if [[ -z "$missing" ]]; then
     echo "All files have SPDX-License-Identifier headers"
     exit 0
@@ -32,7 +34,7 @@ echo "SPDX-License-Identifier: Apache-2.0"
 
 echo
 echo "Checking committed files for traditional Apache License headers ..."
-missing=$(echo "$missing" | xargs ls -d 2>/dev/null | xargs grep -L "http://www.apache.org/licenses/LICENSE-2.0")
+missing=$(echo "$missing" | xargs ls -d 2>/dev/null | xargs grep -L "http://www.apache.org/licenses/LICENSE-2.0") || true
 if [[ -z "$missing" ]]; then
     echo "All remaining files have Apache 2.0 headers"
     exit 0
