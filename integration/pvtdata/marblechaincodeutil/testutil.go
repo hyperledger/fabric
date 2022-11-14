@@ -232,6 +232,14 @@ func AssertMarblesPrivateDetailsHashMPD(n *nwo.Network, channelID, chaincodeName
 	verifyPvtdataHash(n, query, channelID, chaincodeName, peerList, expectedBytes)
 }
 
+// AssertInvokeChaincodeFails asserts that a chaincode invoke fails with a specified error message
+func AssertInvokeChaincodeFails(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeInvoke, expectedMessage string) {
+	sess, err := n.PeerUserSession(peer, "User1", command)
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit())
+	Expect(sess.Err).To(gbytes.Say(expectedMessage))
+}
+
 func invokeChaincode(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeInvoke) {
 	sess, err := n.PeerUserSession(peer, "User1", command)
 	Expect(err).NotTo(HaveOccurred())
