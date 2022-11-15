@@ -1404,7 +1404,7 @@ func validateUpgradeWithCollection(t *testing.T, V1_2Validation bool) {
 
 		ccver = "3"
 
-		// Test 4: valid collection config config and peer in V1_2Validation mode --> success
+		// Test 4: valid collection config and peer in V1_2Validation mode --> success
 		ccp = &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1, coll2, coll3}}
 		ccpBytes, err = proto.Marshal(ccp)
 		require.NoError(t, err)

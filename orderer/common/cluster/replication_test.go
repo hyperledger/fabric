@@ -935,7 +935,7 @@ func testBlockPullerFromConfig(t *testing.T, blockVerifiers []cluster.BlockVerif
 	validBlock := &common.Block{}
 	require.NoError(t, proto.Unmarshal(blockBytes, validBlock))
 
-	// And inject into it a 127.0.0.1 orderer endpoint endpoint and a new TLS CA certificate.
+	// And inject into it a 127.0.0.1 orderer endpoint and a new TLS CA certificate.
 	injectTLSCACert(t, validBlock, caCert)
 	injectGlobalOrdererEndpoint(t, validBlock, osn.srv.Address())
 	validBlock.Header.DataHash = protoutil.BlockDataHash(validBlock.Data)

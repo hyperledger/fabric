@@ -17,7 +17,7 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-// Gendoc can be used used to discover the metrics options declared at the
+// Gendoc can be used to discover the metrics options declared at the
 // package level in the fabric tree and output a table that can be used in the
 // documentation.
 

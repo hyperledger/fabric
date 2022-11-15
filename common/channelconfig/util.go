@@ -162,7 +162,7 @@ func MSPValue(mspDef *mspprotos.MSPConfig) *StandardConfigValue {
 	}
 }
 
-// CapabilitiesValue returns the config definition for a a set of capabilities.
+// CapabilitiesValue returns the config definition for a set of capabilities.
 // It is a value for the /Channel/Orderer, Channel/Application/, and /Channel groups.
 func CapabilitiesValue(capabilities map[string]bool) *StandardConfigValue {
 	c := &cb.Capabilities{

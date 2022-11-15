@@ -677,7 +677,7 @@ var _ = Describe("osnadmin", func() {
 			ordererCACert = filepath.Join(tempDir, "server-ca+intermediate-ca.pem")
 		})
 
-		It("uses the channel participation API to list all application and and the system channel (when it exists)", func() {
+		It("uses the channel participation API to list all application and the system channel (when it exists)", func() {
 			args := []string{
 				"channel",
 				"list",

@@ -316,9 +316,9 @@ func TestLoad142MSPWithInvalidAdminConfiguration(t *testing.T) {
 
 func TestAdminInAdmincertsWith143MSP(t *testing.T) {
 	// testdata/nodeouadminclient enables NodeOU classification and contains in the admincerts folder
-	// a certificate classified as client. This test checks that that identity is considered an admin anyway.
+	// a certificate classified as client. This test checks that identity is considered an admin anyway.
 	// testdata/nodeouadminclient2 enables NodeOU classification and contains in the admincerts folder
-	// a certificate classified as client. This test checks that that identity is considered an admin anyway.
+	// a certificate classified as client. This test checks that identity is considered an admin anyway.
 	// Notice that the configuration used is one that is usually expected for MSP version < 1.4.3 which
 	// only define peer and client OU.
 	testFolders := []string{"testdata/nodeouadminclient", "testdata/nodeouadminclient2"}

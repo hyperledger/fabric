@@ -200,7 +200,7 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 // (1) constructs the unique pvt data from the passed reconciledPvtdata
 // (2) acquire a lock on oldBlockCommit
 // (3) checks for stale pvtData by comparing [version, valueHash] and removes stale data
-// (4) creates update batch from the the non-stale pvtData
+// (4) creates update batch from the non-stale pvtData
 // (5) update the BTL bookkeeping managed by the purge manager and update expiring keys.
 // (6) commit the non-stale pvt data to the stateDB
 // This function assumes that the passed input contains only transactions that had been

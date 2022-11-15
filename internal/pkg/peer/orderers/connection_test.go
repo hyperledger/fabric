@@ -318,7 +318,7 @@ var _ = Describe("Connection", func() {
 		})
 	})
 
-	When("an update modifies the global endpoints but does does not affect the org endpoints", func() {
+	When("an update modifies the global endpoints but does not affect the org endpoints", func() {
 		BeforeEach(func() {
 			cs.Update(nil, map[string]orderers.OrdererOrg{
 				"org1": org1,

@@ -1027,7 +1027,7 @@ var _ = Describe("Handler", func() {
 					// ensure that the access cache is used
 				})
 
-				It("returns the the response message from GetPrivateData", func() {
+				It("returns the response message from GetPrivateData", func() {
 					fakeCollectionStore.RetrieveReadWritePermissionReturns(true, false, nil) // to
 					resp, err := handler.HandleGetState(incomingMessage, txContext)
 					Expect(err).NotTo(HaveOccurred())

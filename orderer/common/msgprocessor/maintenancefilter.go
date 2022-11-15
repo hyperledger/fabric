@@ -154,7 +154,7 @@ func (mf *MaintenanceFilter) inspect(configEnvelope *cb.ConfigEnvelope, ordererC
 	return nil
 }
 
-// ensureConsensusTypeChangeOnly checks that the only change is the the Channel/Orderer group, and within that,
+// ensureConsensusTypeChangeOnly checks that the only change is the Channel/Orderer group, and within that,
 // only to the ConsensusType value.
 func (mf *MaintenanceFilter) ensureConsensusTypeChangeOnly(configEnvelope *cb.ConfigEnvelope) error {
 	configUpdateEnv, err := protoutil.EnvelopeToConfigUpdate(configEnvelope.LastUpdate)

@@ -17,7 +17,7 @@ import (
 )
 
 // KVExecutor is a chaincode implementation that takes a KVData array as read parameter
-// and a a KVData array as write parameter, and then calls GetXXX/PutXXX methods to read and write
+// and a KVData array as write parameter, and then calls GetXXX/PutXXX methods to read and write
 // state/collection data. Both input params should be marshalled json data and then base64 encoded.
 type KVExecutor struct{}
 

@@ -37,7 +37,7 @@ func (up *UnpackedProposal) TxID() string {
 	return up.ChannelHeader.TxId
 }
 
-// UnpackProposal creates an an *UnpackedProposal which is guaranteed to have
+// UnpackProposal creates an *UnpackedProposal which is guaranteed to have
 // no zero-ed fields or it returns an error.
 func UnpackProposal(signedProp *peer.SignedProposal) (*UnpackedProposal, error) {
 	prop, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)

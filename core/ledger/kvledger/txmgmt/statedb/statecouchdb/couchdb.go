@@ -831,7 +831,7 @@ func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 // readDocRange method provides function to a range of documents based on the start and end keys
 // startKey and endKey can also be empty strings.  If startKey and endKey are empty, all documents are returned
 // This function provides a limit option to specify the max number of entries and is supplied by config.
-// Skip is reserved for possible future future use.
+// Skip is reserved for possible future use.
 func (dbclient *couchDatabase) readDocRange(startKey, endKey string, limit int32) ([]*queryResult, string, error) {
 	dbName := dbclient.dbName
 	couchdbLogger.Debugf("[%s] Entering ReadDocRange()  startKey=%s, endKey=%s", dbName, startKey, endKey)
