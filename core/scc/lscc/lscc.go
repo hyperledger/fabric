@@ -542,7 +542,7 @@ func (lscc *SCC) getCCCode(ccname string, cdbytes []byte) (*pb.ChaincodeDeployme
 
 	// this is the big test and the reason every launch should go through
 	// getChaincode call. We validate the chaincode entry against the
-	// the chaincode in FS
+	// chaincode in FS
 	if err = ccpack.ValidateCC(cd); err != nil {
 		return nil, nil, InvalidCCOnFSError(err.Error())
 	}

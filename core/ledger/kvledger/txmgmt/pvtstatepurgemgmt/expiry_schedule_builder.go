@@ -65,7 +65,7 @@ func buildExpirySchedule(
 	// i.e., when these private data key and it's hashed-keys are going to be expired
 	// Note that the 'hashedUpdateKeys'  may be superset of the pvtUpdates. This is because,
 	// the peer may not receive all the private data either because the peer is not eligible for certain private data
-	// or because we allow proceeding with the missing private data data
+	// or because we allow proceeding with the missing private data
 	for pvtUpdateKey, vv := range pvtUpdates.ToCompositeKeyMap() {
 		keyHash := util.ComputeStringHash(pvtUpdateKey.Key)
 		hashedCompisiteKey := privacyenabledstate.HashedCompositeKey{

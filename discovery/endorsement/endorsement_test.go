@@ -453,7 +453,7 @@ func TestPeersForEndorsement(t *testing.T) {
 		// 2 principal combinations: p0 and p6, or p12 alone.
 		// The collection has p0, p6, and p12 in it.
 		// The chaincode EP is (p0 and p6) or p12.
-		// However, the the chaincode has a collection level EP that requires p6 and p12.
+		// However, the chaincode has a collection level EP that requires p6 and p12.
 		// Thus, the only combination that can satisfy would be p6 and p12.
 		collectionOrgs := []*msp.MSPPrincipal{
 			peerRole("p0"),
