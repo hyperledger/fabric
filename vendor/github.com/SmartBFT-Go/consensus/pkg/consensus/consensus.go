@@ -134,6 +134,8 @@ func (c *Consensus) Start() error {
 		ForwardTimeout:    c.Config.RequestForwardTimeout,
 		ComplainTimeout:   c.Config.RequestComplainTimeout,
 		AutoRemoveTimeout: c.Config.RequestAutoRemoveTimeout,
+		RequestMaxBytes:   c.Config.RequestMaxBytes,
+		SubmitTimeout:     c.Config.RequestPoolSubmitTimeout,
 	}
 	c.submittedChan = make(chan struct{}, 1)
 	c.Pool = algorithm.NewPool(c.Logger, c.RequestInspector, c.controller, opts, c.submittedChan)
@@ -214,6 +216,8 @@ func (c *Consensus) reconfig(reconfig types.Reconfig) {
 		ForwardTimeout:    c.Config.RequestForwardTimeout,
 		ComplainTimeout:   c.Config.RequestComplainTimeout,
 		AutoRemoveTimeout: c.Config.RequestAutoRemoveTimeout,
+		RequestMaxBytes:   c.Config.RequestMaxBytes,
+		SubmitTimeout:     c.Config.RequestPoolSubmitTimeout,
 	}
 	c.Pool.ChangeTimeouts(c.controller, opts) // TODO handle reconfiguration of queue size in the pool
 	c.continueCreateComponents()
@@ -361,7 +365,6 @@ func (c *Consensus) createComponents() {
 		Logger:             c.Logger,
 		Signer:             c.Signer,
 		Verifier:           c.Verifier,
-		Application:        c,
 		Checkpoint:         c.checkpoint,
 		InFlight:           c.inFlight,
 		State:              c.state,
@@ -401,8 +404,9 @@ func (c *Consensus) createComponents() {
 		ViewSequences:      &atomic.Value{},
 		Collector:          c.collector,
 		State:              c.state,
+		InFlight:           c.inFlight,
 	}
-
+	c.viewChanger.Application = &algorithm.MutuallyExclusiveDeliver{C: c.controller}
 	c.viewChanger.Comm = c.controller
 	c.viewChanger.Synchronizer = c.controller
 

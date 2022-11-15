@@ -171,7 +171,7 @@ func (v *View) HandleMessage(sender uint64, m *protos.Message) {
 }
 
 func (v *View) processMsg(sender uint64, m *protos.Message) {
-	if v.stopped() {
+	if v.Stopped() {
 		return
 	}
 	// Ensure view number is equal to our view
@@ -637,7 +637,7 @@ func (v *View) verifyBlacklist(prevCommitSignatures []*protos.Signature, currVer
 		return nil
 	}
 
-	if v.MembershipNotifier.MembershipChange() {
+	if v.MembershipNotifier != nil && v.MembershipNotifier.MembershipChange() {
 		// If there has been a membership change, black list should remain the same
 		if !equalIntLists(prevProposalMetadata.BlackList, pendingBlacklist) {
 			return errors.Errorf("blacklist changed (%v --> %v) during membership change", prevProposalMetadata.BlackList, pendingBlacklist)
@@ -881,7 +881,11 @@ func (v *View) GetMetadata() []byte {
 }
 
 func (v *View) metadataWithUpdatedBlacklist(metadata *protos.ViewMetadata, verificationSeq uint64, prevProp protos.Proposal, prevSigs []*protos.Signature) *protos.ViewMetadata {
-	membershipChange := v.MembershipNotifier.MembershipChange()
+	var membershipChange bool
+	if v.MembershipNotifier != nil {
+		membershipChange = v.MembershipNotifier.MembershipChange()
+	}
+
 	if verificationSeq == prevProp.VerificationSequence && !membershipChange {
 		v.Logger.Debugf("Proposing proposal %d with verification sequence of %d and %d commit signatures",
 			v.ProposalSequence, verificationSeq, len(prevSigs))
@@ -955,13 +959,17 @@ func (v *View) Abort() {
 	v.viewEnded.Wait()
 }
 
-func (v *View) stopped() bool {
+func (v *View) Stopped() bool {
 	select {
 	case <-v.abortChan:
 		return true
 	default:
 		return false
 	}
+}
+
+func (v *View) GetLeaderID() uint64 {
+	return v.LeaderID
 }
 
 func (v *View) updateBlacklistMetadata(metadata *protos.ViewMetadata, prevSigs []*protos.Signature, prevMetadata []byte) *protos.ViewMetadata {

@@ -77,6 +77,13 @@ type Configuration struct {
 	LeaderRotation bool
 	// DecisionsPerLeader is the number of decisions reached by a leader before there is a leader rotation.
 	DecisionsPerLeader uint64
+
+	// RequestMaxBytes total allowed size of the single request
+	RequestMaxBytes uint64
+
+	// RequestPoolSubmitTimeout the total amount of time client can wait for submission of single
+	// request into request pool
+	RequestPoolSubmitTimeout time.Duration
 }
 
 // DefaultConfig contains reasonable values for a small cluster that resides on the same geography (or "Region"), but
@@ -102,6 +109,8 @@ var DefaultConfig = Configuration{
 	SpeedUpViewChange:             false,
 	LeaderRotation:                true,
 	DecisionsPerLeader:            3,
+	RequestMaxBytes:               10 * 1024,
+	RequestPoolSubmitTimeout:      5 * time.Second,
 }
 
 func (c Configuration) Validate() error {
@@ -165,6 +174,14 @@ func (c Configuration) Validate() error {
 	}
 	if c.LeaderRotation && c.DecisionsPerLeader <= 0 {
 		return errors.Errorf("DecisionsPerLeader should be greater than zero when leader rotation is active")
+	}
+
+	if !(c.RequestMaxBytes > 0) {
+		return errors.Errorf("RequestMaxBytes should be greater than zero")
+	}
+
+	if !(c.RequestPoolSubmitTimeout > 0) {
+		return errors.Errorf("RequestPoolSubmitTimeout should be greater than zero")
 	}
 
 	return nil

@@ -42,9 +42,12 @@ func dirCreate(dirPath string) error {
 		if os.IsNotExist(err) {
 			err = os.MkdirAll(dirPath, walDirPermPrivateRWX)
 		}
+
 		return err
 	}
+
 	defer dirFile.Close()
+
 	return err
 }
 
@@ -62,13 +65,16 @@ func dirReadWalNames(dirPath string) ([]string, error) {
 	}
 
 	walNames := make([]string, 0)
+
 	for _, name := range names {
 		if strings.HasSuffix(name, walFileSuffix) {
 			var index uint64
+
 			n, err := fmt.Sscanf(name, walFileTemplate, &index)
 			if n != 1 || err != nil {
 				continue
 			}
+
 			walNames = append(walNames, name)
 		}
 	}
@@ -82,13 +88,17 @@ func dirReadWalNames(dirPath string) ([]string, error) {
 // If the the last file cannot be read, it may be ignored,  (or repaired).
 func checkWalFiles(logger api.Logger, dirName string, walNames []string) ([]uint64, error) {
 	sort.Strings(walNames)
-	var indexes = make([]uint64, 0)
+
+	indexes := make([]uint64, 0)
+
 	for i, name := range walNames {
 		index, err := parseWalFileName(name)
 		if err != nil {
 			logger.Errorf("wal: failed to parse file name: %s; error: %s", name, err)
+
 			return nil, err
 		}
+
 		indexes = append(indexes, index)
 
 		// verify we have CRC-Anchor.
@@ -96,20 +106,28 @@ func checkWalFiles(logger api.Logger, dirName string, walNames []string) ([]uint
 		if err != nil {
 			// check if it is the last file and return a special error that allows a repair.
 			if i == len(walNames)-1 {
-				logger.Errorf("wal: failed to create reader for last file: %s; error: %s; this may possibly be repaired.", name, err)
+				logger.Errorf(
+					"wal: failed to create reader for last file: %s; error: %s; this may possibly be repaired.",
+					name,
+					err,
+				)
+
 				return nil, io.ErrUnexpectedEOF
 			}
-			return nil, fmt.Errorf("wal: failed to create reader for file: %s; error: %s", name, err)
-		}
-		err = r.Close()
-		if err != nil {
-			return nil, fmt.Errorf("wal: failed to close reader for file: %s; error: %s", name, err)
+
+			return nil, fmt.Errorf("wal: failed to create reader for file: %s; error: %w", name, err)
 		}
 
-		//verify no gaps
+		err = r.Close()
+		if err != nil {
+			return nil, fmt.Errorf("wal: failed to close reader for file: %s; error: %w", name, err)
+		}
+
+		// verify no gaps
 		if i == 0 {
 			continue
 		}
+
 		if index != (indexes[i-1] + 1) {
 			return nil, errors.New("wal: files not in sequence")
 		}
@@ -130,41 +148,17 @@ func getPadSize(recordLength int) int {
 
 func getPadBytes(recordLength int) (int, []byte) {
 	i := getPadSize(recordLength)
+
 	return i, padTable[i]
 }
 
 func parseWalFileName(fileName string) (index uint64, err error) {
 	n, err := fmt.Sscanf(fileName, walFileTemplate, &index)
 	if n != 1 || err != nil {
-		return 0, fmt.Errorf("failed to parse wal file name: %s; error: %s", fileName, err)
+		return 0, fmt.Errorf("failed to parse wal file name: %s; error: %w", fileName, err)
 	}
+
 	return index, nil
-}
-
-// renameResetWalFile reset anchor on a temporary file, and then rename to next file name.
-func renameResetWalFile(recycleFile, nextFile string) (err error) {
-	tmpFilePath := recycleFile + ".tmp"
-	if err = os.Rename(recycleFile, tmpFilePath); err != nil {
-		return err
-	}
-	tmpF, err := os.OpenFile(tmpFilePath, os.O_RDWR, walFilePermPrivateRW)
-	if err != nil {
-		return err
-	}
-	if _, err = tmpF.Seek(0, io.SeekStart); err != nil {
-		return err
-	}
-	if _, err = tmpF.Write(make([]byte, 1024)); err != nil { // overwrite the CRC-Anchor
-		return err
-	}
-	if err = tmpF.Close(); err != nil {
-		return err
-	}
-	if err = os.Rename(tmpFilePath, nextFile); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func copyFile(source, target string) error {
@@ -172,33 +166,36 @@ func copyFile(source, target string) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(target, input, 0644)
-	return err
+
+	return ioutil.WriteFile(target, input, 0644)
 }
 
 func truncateCloseFile(f *os.File, offset int64) error {
 	if err := f.Truncate(offset); err != nil {
-		return fmt.Errorf("Failed to truncate at: %d; log file: %s; error: %s", offset, f.Name(), err)
+		return fmt.Errorf("failed to truncate at: %d; log file: %s; error: %w", offset, f.Name(), err)
 	}
 
 	if err := f.Sync(); err != nil {
-		return fmt.Errorf("Failed to sync log file: %s; error: %s", f.Name(), err)
-
+		return fmt.Errorf("failed to sync log file: %s; error: %w", f.Name(), err)
 	}
 
 	if err := f.Close(); err != nil {
-		return fmt.Errorf("Failed to close log file: %s; error: %s", f.Name(), err)
+		return fmt.Errorf("failed to close log file: %s; error: %w", f.Name(), err)
 	}
 
 	return nil
 }
 
-// scanVerifyFiles
+// scanVerifyFiles.
 func scanVerifyFiles(logger api.Logger, dirPath string, files []string) error {
-	var crc uint32
-	var num, numTotal int
+	var (
+		crc           uint32
+		num, numTotal int
+	)
+
 	for i, name := range files {
 		fullName := filepath.Join(dirPath, name)
+
 		r, err := NewLogRecordReader(logger, fullName)
 		if err != nil {
 			return err
@@ -213,6 +210,7 @@ func scanVerifyFiles(logger api.Logger, dirPath string, files []string) error {
 	}
 
 	logger.Debugf("Scanned %d records in %d files", numTotal, len(files))
+
 	return nil
 }
 
@@ -221,15 +219,18 @@ func scanVerify1(logger api.Logger, r *LogRecordReader, i int, crc uint32) (num 
 
 	if i > 0 && crc != r.crc {
 		logger.Errorf("Anchor-CRC %08X of file: %s, does not match previous: %08X", r.crc, r.logFile.Name(), crc)
+
 		return 0, ErrCRC
 	}
 
 	var readErr error
 	for readErr == nil {
 		num++
+
 		_, readErr = r.Read()
 	}
-	if readErr != io.EOF {
+
+	if !errors.Is(readErr, io.EOF) {
 		return num - 1, readErr
 	}
 
@@ -244,10 +245,13 @@ func scanRepairFile(logger api.Logger, lastFile string) error {
 	r, err := NewLogRecordReader(logger, lastFile)
 	if err != nil {
 		logger.Warnf("Write-Ahead-Log could not open the last file, due to error: %s", err)
+
 		if err = os.Remove(lastFile); err != nil {
 			return err
 		}
+
 		logger.Warnf("Write-Ahead-Log DELETED the last file (a copy was saved): %s", lastFile)
+
 		return nil
 	}
 
@@ -255,10 +259,12 @@ func scanRepairFile(logger api.Logger, lastFile string) error {
 	offset, err := r.logFile.Seek(0, io.SeekCurrent)
 	if err != nil {
 		_ = r.Close()
+
 		return err
 	}
 
 	num := 0
+
 	for {
 		_, readErr := r.Read()
 		if readErr != nil {
@@ -268,14 +274,17 @@ func scanRepairFile(logger api.Logger, lastFile string) error {
 				return closeErr
 			}
 
-			if readErr == io.EOF {
+			if errors.Is(readErr, io.EOF) {
 				logger.Debugf("Read %d good records till EOF, no need to repair", num)
+
 				return nil // no need to repair
 			}
+
 			break
 		}
 		// keep the end offset of a good record
 		num++
+
 		offset, err = r.logFile.Seek(0, io.SeekCurrent)
 		if err != nil {
 			return err
@@ -287,11 +296,13 @@ func scanRepairFile(logger api.Logger, lastFile string) error {
 	f, err := os.OpenFile(lastFile, os.O_RDWR, walFilePermPrivateRW)
 	if err != nil {
 		logger.Errorf("Failed to open log file: %s; error: %s", lastFile, err)
+
 		return err
 	}
 
 	if err = truncateCloseFile(f, offset); err != nil {
 		logger.Errorf("Failed to truncateCloseFile: error: %s", err)
+
 		return err
 	}
 

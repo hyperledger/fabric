@@ -6,6 +6,7 @@
 package bft
 
 import (
+	"errors"
 	"sync"
 	"sync/atomic"
 
@@ -64,6 +65,8 @@ type Proposer interface {
 	Propose(proposal types.Proposal)
 	Start()
 	Abort()
+	Stopped() bool
+	GetLeaderID() uint64
 	GetMetadata() []byte
 	HandleMessage(sender uint64, m *protos.Message)
 }
@@ -100,8 +103,8 @@ type Controller struct {
 	ViewChanger        *ViewChanger
 	Collector          *StateCollector
 	State              State
-
-	quorum int
+	InFlight           *InFlightData
+	quorum             int
 
 	currView Proposer
 
@@ -128,6 +131,7 @@ type Controller struct {
 	ViewSequences *atomic.Value
 
 	StartedWG *sync.WaitGroup
+	syncLock  sync.Mutex
 }
 
 func (c *Controller) blacklist() []uint64 {
@@ -138,6 +142,32 @@ func (c *Controller) blacklist() []uint64 {
 	}
 
 	return md.BlackList
+}
+
+func (c *Controller) latestSeq() uint64 {
+	prop, _ := c.Checkpoint.Get()
+	md := &protos.ViewMetadata{}
+	if err := proto.Unmarshal(prop.Metadata, md); err != nil {
+		c.Logger.Panicf("Failed unmarshalling metadata: %v", err)
+	}
+
+	return md.LatestSequence
+}
+
+func (c *Controller) currentViewStopped() bool {
+	c.currViewLock.RLock()
+	view := c.currView
+	c.currViewLock.RUnlock()
+
+	return view.Stopped()
+}
+
+func (c *Controller) currentViewLeader() uint64 {
+	c.currViewLock.RLock()
+	view := c.currView
+	c.currViewLock.RUnlock()
+
+	return view.GetLeaderID()
 }
 
 func (c *Controller) getCurrentViewNumber() uint64 {
@@ -354,10 +384,17 @@ func (c *Controller) startView(proposalSequence uint64) {
 }
 
 func (c *Controller) changeView(newViewNumber uint64, newProposalSequence uint64, newDecisionsInView uint64) {
-
 	latestView := c.getCurrentViewNumber()
 	if latestView > newViewNumber {
 		c.Logger.Debugf("Got view change to %d but already at %d", newViewNumber, latestView)
+		return
+	}
+
+	leader := c.currentViewLeader()
+	stopped := c.currentViewStopped()
+
+	if !stopped && latestView == newViewNumber && c.leaderID() == leader {
+		c.Logger.Debugf("Got view change to %d but view is already running", newViewNumber)
 		return
 	}
 
@@ -508,6 +545,8 @@ func (c *Controller) decide(d decision) {
 	if c.checkIfRotate(md.BlackList) {
 		c.Logger.Debugf("Restarting view to rotate the leader")
 		c.changeView(c.getCurrentViewNumber(), md.LatestSequence+1, c.getCurrentDecisionsInView())
+		c.Logger.Debugf("Restarting timers in request pool due to leader rotation")
+		c.RequestPool.RestartTimers()
 	}
 	c.MaybePruneRevokedRequests()
 	if iAm, _ := c.iAmTheLeader(); iAm {
@@ -539,11 +578,25 @@ func (c *Controller) sync() (viewNum uint64, seq uint64, decisions uint64) {
 	// we were syncing.
 	defer c.relinquishSyncToken()
 
+	c.syncLock.Lock()
+	defer c.syncLock.Unlock()
+
 	syncResponse := c.Synchronizer.Sync()
 	if syncResponse.Reconfig.InReplicatedDecisions {
 		c.close()
 		c.ViewChanger.close()
 	}
+
+	if len(syncResponse.RequestDel) != 0 {
+		c.RequestPool.Prune(func(bytes []byte) error {
+			return errors.New("Need all delete")
+		})
+
+		for i := range syncResponse.RequestDel {
+			_ = c.RequestPool.RemoveRequest(syncResponse.RequestDel[i])
+		}
+	}
+
 	decision := syncResponse.Latest
 	if decision.Proposal.Metadata == nil {
 		c.Logger.Infof("Synchronizer returned with proposal metadata nil")
@@ -574,11 +627,18 @@ func (c *Controller) sync() (viewNum uint64, seq uint64, decisions uint64) {
 	if err := proto.Unmarshal(decision.Proposal.Metadata, md); err != nil {
 		c.Logger.Panicf("Controller was unable to unmarshal the proposal metadata returned by the Synchronizer")
 	}
+
+	latestSequence := c.latestSeq()
+
 	if md.ViewId < c.currViewNumber {
 		c.Logger.Infof("Synchronizer returned with view number %d but the controller is at view number %d", md.ViewId, c.currViewNumber)
 		return 0, 0, 0
 	}
-	c.Logger.Infof("Synchronized to view %d and sequence %d with verification sequence %d", md.ViewId, md.LatestSequence, decision.Proposal.VerificationSequence)
+
+	c.Logger.Infof("Replicated decisions from view %d and seq %d up to view %d and sequence %d with verification sequence %d",
+		c.currViewNumber, latestSequence, md.ViewId, md.LatestSequence, decision.Proposal.VerificationSequence)
+
+	c.maybePruneInFlight(*md)
 
 	view := md.ViewId
 	newView := false
@@ -586,7 +646,7 @@ func (c *Controller) sync() (viewNum uint64, seq uint64, decisions uint64) {
 	response := c.fetchState()
 	if response != nil {
 		if response.View > md.ViewId && response.Seq == md.LatestSequence+1 {
-			c.Logger.Infof("The collected state is with view %d and sequence %d", response.View, response.Seq)
+			c.Logger.Infof("Node %d collected state with view %d and sequence %d", c.ID, response.View, response.Seq)
 			view = response.View
 			newViewToSave := &protos.SavedMessage{
 				Content: &protos.SavedMessage_NewView{
@@ -613,6 +673,31 @@ func (c *Controller) sync() (viewNum uint64, seq uint64, decisions uint64) {
 		return view, md.LatestSequence + 1, 0
 	}
 	return view, md.LatestSequence + 1, md.DecisionsInView + 1
+}
+
+func (c *Controller) maybePruneInFlight(syncResultViewMD protos.ViewMetadata) {
+	inFlight := c.InFlight.InFlightProposal()
+	if inFlight == nil {
+		c.Logger.Debugf("No in-flight proposal to prune")
+		return
+	}
+	inFlightMD := &protos.ViewMetadata{}
+	if err := proto.Unmarshal(inFlight.Metadata, inFlightMD); err != nil {
+		c.Logger.Panicf("In-flight proposal was malformed: %v", err)
+	}
+	c.Logger.Debugf("In-flight proposal: view: %d, seq: %d", inFlightMD.ViewId, inFlightMD.LatestSequence)
+	c.Logger.Debugf("Sync result: view: %d, seq: %d", syncResultViewMD.ViewId, syncResultViewMD.LatestSequence)
+
+	// If in-flight sequence is higher than latest committed sequence then in-flight might still be relevant
+	if syncResultViewMD.LatestSequence < inFlightMD.LatestSequence {
+		c.Logger.Infof("In-flight sequence is %d but latest committed sequence is %d, will not delete in-flight", inFlightMD.LatestSequence, syncResultViewMD.LatestSequence)
+		return
+	}
+	// Else we have replicated the in-flight proposal from another node or have committed it in the past,
+	// so we whenever we participate in a view change there will be no need to present this in-flight
+	// as we have corresponding signatures on the proposal.
+	c.Logger.Infof("Synced to sequence %d, deleting in-flight as it is stale", syncResultViewMD.LatestSequence)
+	c.InFlight.clear()
 }
 
 func (c *Controller) fetchState() *types.ViewAndSeq {
@@ -824,7 +909,7 @@ type decision struct {
 	requests   []types.RequestInfo
 }
 
-//BroadcastConsensus broadcasts the message and informs the heartbeat monitor if necessary
+// BroadcastConsensus broadcasts the message and informs the heartbeat monitor if necessary
 func (c *Controller) BroadcastConsensus(m *protos.Message) {
 	for _, node := range c.NodesList {
 		// Do not send to yourself
@@ -839,4 +924,36 @@ func (c *Controller) BroadcastConsensus(m *protos.Message) {
 			c.LeaderMonitor.HeartbeatWasSent()
 		}
 	}
+}
+
+type MutuallyExclusiveDeliver struct {
+	C *Controller
+}
+
+func (med *MutuallyExclusiveDeliver) Deliver(proposal types.Proposal, signature []types.Signature) types.Reconfig {
+	pendingProposalMetadata := &protos.ViewMetadata{}
+	if err := proto.Unmarshal(proposal.Metadata, pendingProposalMetadata); err != nil {
+		med.C.Logger.Panicf("Failed unmarshalling metadata of pending proposal: %v", err)
+	}
+	med.C.syncLock.Lock()
+	defer med.C.syncLock.Unlock()
+
+	// Fetch latest sequence from the latest checkpoint and compare it to the proposal that is about to be committed (pending).
+	// If the pending proposal's sequence has already been committed in the past,
+	// do not proceed to commit the proposal, but instead invoke a sync and update the checkpoint once more
+	// to match the sync result.
+	latest := med.C.latestSeq()
+	if latest >= pendingProposalMetadata.LatestSequence {
+		med.C.Logger.Infof("Attempted to deliver block %d via view change but meanwhile view change already synced to seq %d, "+
+			"returning result from sync", pendingProposalMetadata.LatestSequence, latest)
+		syncResult := med.C.Synchronizer.Sync()
+		med.C.Checkpoint.Set(syncResult.Latest.Proposal, syncResult.Latest.Signatures)
+		return types.Reconfig{
+			CurrentNodes:     syncResult.Reconfig.CurrentNodes,
+			InLatestDecision: syncResult.Reconfig.InReplicatedDecisions,
+			CurrentConfig:    syncResult.Reconfig.CurrentConfig,
+		}
+	}
+
+	return med.C.Application.Deliver(proposal, signature)
 }

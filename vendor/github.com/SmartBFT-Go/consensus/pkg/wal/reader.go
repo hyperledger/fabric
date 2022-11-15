@@ -36,6 +36,7 @@ func NewLogRecordReader(logger api.Logger, fileName string) (*LogRecordReader, e
 	}
 
 	var err error
+
 	r.logFile, err = os.Open(fileName)
 	if err != nil {
 		return nil, err
@@ -44,32 +45,42 @@ func NewLogRecordReader(logger api.Logger, fileName string) (*LogRecordReader, e
 	_, err = r.logFile.Seek(0, io.SeekStart)
 	if err != nil {
 		_ = r.Close()
+
 		return nil, err
 	}
 
-	//read the CRC-Anchor, the first record of every file
+	// read the CRC-Anchor, the first record of every file
 	recLen, crc, err := r.readHeader()
 	if err != nil {
 		_ = r.Close()
+
 		return nil, err
 	}
+
 	padSize := getPadSize(int(recLen))
+
 	payload, err := r.readPayload(int(recLen) + padSize)
 	if err != nil {
 		_ = r.Close()
+
 		return nil, err
 	}
-	var record = &protos.LogRecord{}
+
+	record := &protos.LogRecord{}
+
 	err = proto.Unmarshal(payload[:recLen], record)
 	if err != nil {
 		_ = r.Close()
+
 		return nil, err
 	}
 
 	if record.Type != protos.LogRecord_CRC_ANCHOR {
 		_ = r.Close()
+
 		return nil, fmt.Errorf("failed reading CRC-Anchor from log file: %s", fileName)
 	}
+
 	r.crc = crc
 
 	r.logger.Debugf("Initialized reader: CRC-Anchor: %08X, file: %s", r.crc, r.fileName)
@@ -100,15 +111,19 @@ func (r *LogRecordReader) Read() (*protos.LogRecord, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	padSize := getPadSize(int(recLen))
+
 	payload, err := r.readPayload(int(recLen) + padSize)
 	if err != nil {
 		return nil, err
 	}
-	var record = &protos.LogRecord{}
+
+	record := &protos.LogRecord{}
+
 	err = proto.Unmarshal(payload[:recLen], record)
 	if err != nil {
-		return nil, fmt.Errorf("wal: failed to unmarshal payload: %s", err)
+		return nil, ErrWALUnmarshalPayload // fmt.Errorf("wal: failed to unmarshal payload: %w", err)
 	}
 
 	switch record.Type {
@@ -116,6 +131,7 @@ func (r *LogRecordReader) Read() (*protos.LogRecord, error) {
 		if !verifyCRC(r.crc, crc, payload) {
 			return nil, ErrCRC
 		}
+
 		fallthrough
 	case protos.LogRecord_CRC_ANCHOR:
 		r.crc = crc
@@ -130,9 +146,11 @@ func (r *LogRecordReader) Read() (*protos.LogRecord, error) {
 // If it fails, it fails like io.ReadFull().
 func (r *LogRecordReader) readHeader() (length, crc uint32, err error) {
 	buff := make([]byte, recordHeaderSize)
+
 	n, err := io.ReadFull(r.logFile, buff)
 	if err != nil {
 		r.logger.Debugf("Failed to read header in full: expected=%d, actual=%d; error: %s", recordHeaderSize, n, err)
+
 		return 0, 0, err
 	}
 
@@ -147,9 +165,11 @@ func (r *LogRecordReader) readHeader() (length, crc uint32, err error) {
 // If it fails, it fails like io.ReadFull().
 func (r *LogRecordReader) readPayload(len int) (payload []byte, err error) {
 	buff := make([]byte, len)
+
 	n, err := io.ReadFull(r.logFile, buff)
 	if err != nil {
 		r.logger.Debugf("Failed to read payload in full: expected=%d, actual=%d; error: %s", len, n, err)
+
 		return nil, err
 	}
 
@@ -158,5 +178,6 @@ func (r *LogRecordReader) readPayload(len int) (payload []byte, err error) {
 
 func verifyCRC(prevCRC, expectedCRC uint32, data []byte) bool {
 	dataCRC := crc32.Update(prevCRC, crcTable, data)
+
 	return dataCRC == expectedCRC
 }
