@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -177,12 +178,13 @@ func (v *Verifier) verifyRequest(rawRequest []byte, noConfigAllowed bool) (types
 	switch req.chHdr.Type {
 	case int32(cb.HeaderType_CONFIG):
 	case int32(cb.HeaderType_ORDERER_TRANSACTION):
+		return types.RequestInfo{}, fmt.Errorf("orderer transactions are not supported in v3")
 	case int32(cb.HeaderType_ENDORSER_TRANSACTION):
 	default:
 		return types.RequestInfo{}, errors.Errorf("transaction of type %s is not allowed to be included in blocks", cb.HeaderType_name[req.chHdr.Type])
 	}
 
-	if req.chHdr.Type == int32(cb.HeaderType_CONFIG) || req.chHdr.Type == int32(cb.HeaderType_ORDERER_TRANSACTION) {
+	if req.chHdr.Type == int32(cb.HeaderType_CONFIG) {
 		err := v.ConfigValidator.ValidateConfig(req.envelope)
 		if err != nil {
 			v.Logger.Errorf("Error verifying config update: %v", err)

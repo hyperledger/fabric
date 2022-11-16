@@ -8,6 +8,8 @@ package smartbft
 
 import (
 	"fmt"
+	mspa "github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/common/policydsl"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -89,23 +91,54 @@ func (cbv *ConfigBlockValidator) ValidateConfig(envelope *cb.Envelope) error {
 			return fmt.Errorf("data unmarshalling error: %s", err)
 		}
 		return cbv.verifyConfigUpdateMsg(envelope, configEnvelope, chdr)
-
-	case int32(cb.HeaderType_ORDERER_TRANSACTION):
-		env, err := protoutil.UnmarshalEnvelope(payload.Data)
-		if err != nil {
-			return fmt.Errorf("data unmarshalling error: %s", err)
-		}
-
-		configEnvelope := &cb.ConfigEnvelope{}
-		_, err = protoutil.UnmarshalEnvelopeOfType(env, cb.HeaderType_CONFIG, configEnvelope)
-		if err != nil {
-			return fmt.Errorf("data unmarshalling error: %s", err)
-		}
-		return cbv.verifyConfigUpdateMsg(envelope, configEnvelope, chdr)
-
 	default:
 		return errors.Errorf("unexpected envelope type %s", cb.HeaderType_name[chdr.Type])
 	}
+}
+
+func (cbv *ConfigBlockValidator) checkConsentersMatchPolicy(conf *cb.Config) error {
+	// TODO: check nil pointes everywhere
+
+	ords := &cb.Orderers{}
+	if err := proto.Unmarshal(conf.ChannelGroup.Groups["Orderer"].Values["Orderers"].Value, ords); err != nil {
+		return err
+	}
+
+	n := len(ords.ConsenterMapping)
+	f := (n - 1) / 3
+
+	var identities []*mspa.MSPPrincipal
+	var pols []*cb.SignaturePolicy
+	for i, consenter := range ords.ConsenterMapping {
+		pols = append(pols, &cb.SignaturePolicy{
+			Type: &cb.SignaturePolicy_SignedBy{
+				SignedBy: int32(i),
+			},
+		})
+		identities = append(identities, &mspa.MSPPrincipal{
+			PrincipalClassification: mspa.MSPPrincipal_IDENTITY,
+			Principal:               protoutil.MarshalOrPanic(&mspa.SerializedIdentity{Mspid: consenter.MspId, IdBytes: consenter.Identity}),
+		})
+	}
+
+	sp := &cb.SignaturePolicyEnvelope{
+		Rule:       policydsl.NOutOf(int32(2*f+1), pols),
+		Identities: identities,
+	}
+
+	expectedConfigPol := &cb.Policy{
+		Type:  int32(cb.Policy_SIGNATURE),
+		Value: protoutil.MarshalOrPanic(sp),
+	}
+
+
+	actualPolicy := conf.ChannelGroup.Groups["Orderer"].Policies["BlockValidation"].Policy
+
+	if ! proto.Equal(expectedConfigPol, actualPolicy) {
+		return fmt.Errorf("block validation policy should be a signature policy: %v but it is %v instead", expectedConfigPol, actualPolicy)
+	}
+
+	return nil
 }
 
 func (cbv *ConfigBlockValidator) verifyConfigUpdateMsg(outEnv *cb.Envelope, confEnv *cb.ConfigEnvelope, chdr *cb.ChannelHeader) error {
@@ -141,32 +174,17 @@ func (cbv *ConfigBlockValidator) verifyConfigUpdateMsg(outEnv *cb.Envelope, conf
 	}
 
 	if cbv.ValidatingChannel != channelID {
-		if cb.HeaderType(chdr.Type) != cb.HeaderType_ORDERER_TRANSACTION {
-			// If we reached here, then it's a Config transaction to the wrong channel, so abort it.
-			return errors.Errorf("header type is %s but channel is %s", typ, chdr.ChannelId)
-		}
-
-		// Else it's a channel creation transaction to the system channel.
-		bundle, err := cbv.ChannelConfigTemplator.NewChannelConfig(confEnv.LastUpdate)
-		if err != nil {
-			cbv.Logger.Errorf("cannot construct new config from last update: %v", err)
-			return err
-		}
-
-		expectedConfigEnv, err = bundle.ConfigtxValidator().ProposeConfigUpdate(confEnv.LastUpdate)
-		if err != nil {
-			cbv.Logger.Errorf("Rejecting config update due to %v", err)
-			return err
-		}
+		return errors.Errorf("transaction is aimed at channel %s but our channel is %s", channelID, cbv.ValidatingChannel)
 	} else {
-		if cb.HeaderType(chdr.Type) == cb.HeaderType_ORDERER_TRANSACTION {
-			return errors.Errorf("expected config transaction but got orderer transaction")
-		}
 		expectedConfigEnv, err = cbv.ConfigUpdateProposer.ProposeConfigUpdate(chdr.ChannelId, confEnv.LastUpdate)
 		if err != nil {
 			cbv.Logger.Errorf("Rejecting config proposal due to %v", err)
 			return err
 		}
+	}
+
+	if err := cbv.checkConsentersMatchPolicy(confEnv.Config); err != nil {
+		return err
 	}
 
 	// Extract the Config from the result of ProposeConfigUpdate, and compare it
