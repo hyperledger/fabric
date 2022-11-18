@@ -7,11 +7,11 @@ import (
 	context "context"
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
-	empty "github.com/golang/protobuf/ptypes/empty"
 	common "github.com/hyperledger/fabric-protos-go/common"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	math "math"
 )
 
@@ -276,9 +276,9 @@ const _ = grpc.SupportPackageIsVersion4
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type SnapshotClient interface {
 	// Generate a snapshot reqeust. SignedSnapshotRequest contains marshalled bytes for SnaphostRequest
-	Generate(ctx context.Context, in *SignedSnapshotRequest, opts ...grpc.CallOption) (*empty.Empty, error)
+	Generate(ctx context.Context, in *SignedSnapshotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Cancel a snapshot reqeust. SignedSnapshotRequest contains marshalled bytes for SnaphostRequest
-	Cancel(ctx context.Context, in *SignedSnapshotRequest, opts ...grpc.CallOption) (*empty.Empty, error)
+	Cancel(ctx context.Context, in *SignedSnapshotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Query pending snapshots query. SignedSnapshotRequest contains marshalled bytes for SnaphostQuery
 	QueryPendings(ctx context.Context, in *SignedSnapshotRequest, opts ...grpc.CallOption) (*QueryPendingSnapshotsResponse, error)
 }
@@ -291,8 +291,8 @@ func NewSnapshotClient(cc *grpc.ClientConn) SnapshotClient {
 	return &snapshotClient{cc}
 }
 
-func (c *snapshotClient) Generate(ctx context.Context, in *SignedSnapshotRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
+func (c *snapshotClient) Generate(ctx context.Context, in *SignedSnapshotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/protos.Snapshot/Generate", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -300,8 +300,8 @@ func (c *snapshotClient) Generate(ctx context.Context, in *SignedSnapshotRequest
 	return out, nil
 }
 
-func (c *snapshotClient) Cancel(ctx context.Context, in *SignedSnapshotRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
+func (c *snapshotClient) Cancel(ctx context.Context, in *SignedSnapshotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/protos.Snapshot/Cancel", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -321,9 +321,9 @@ func (c *snapshotClient) QueryPendings(ctx context.Context, in *SignedSnapshotRe
 // SnapshotServer is the server API for Snapshot service.
 type SnapshotServer interface {
 	// Generate a snapshot reqeust. SignedSnapshotRequest contains marshalled bytes for SnaphostRequest
-	Generate(context.Context, *SignedSnapshotRequest) (*empty.Empty, error)
+	Generate(context.Context, *SignedSnapshotRequest) (*emptypb.Empty, error)
 	// Cancel a snapshot reqeust. SignedSnapshotRequest contains marshalled bytes for SnaphostRequest
-	Cancel(context.Context, *SignedSnapshotRequest) (*empty.Empty, error)
+	Cancel(context.Context, *SignedSnapshotRequest) (*emptypb.Empty, error)
 	// Query pending snapshots query. SignedSnapshotRequest contains marshalled bytes for SnaphostQuery
 	QueryPendings(context.Context, *SignedSnapshotRequest) (*QueryPendingSnapshotsResponse, error)
 }
@@ -332,10 +332,10 @@ type SnapshotServer interface {
 type UnimplementedSnapshotServer struct {
 }
 
-func (*UnimplementedSnapshotServer) Generate(ctx context.Context, req *SignedSnapshotRequest) (*empty.Empty, error) {
+func (*UnimplementedSnapshotServer) Generate(ctx context.Context, req *SignedSnapshotRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Generate not implemented")
 }
-func (*UnimplementedSnapshotServer) Cancel(ctx context.Context, req *SignedSnapshotRequest) (*empty.Empty, error) {
+func (*UnimplementedSnapshotServer) Cancel(ctx context.Context, req *SignedSnapshotRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
 }
 func (*UnimplementedSnapshotServer) QueryPendings(ctx context.Context, req *SignedSnapshotRequest) (*QueryPendingSnapshotsResponse, error) {

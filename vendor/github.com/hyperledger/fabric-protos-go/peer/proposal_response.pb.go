@@ -6,8 +6,8 @@ package peer
 import (
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
-	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	common "github.com/hyperledger/fabric-protos-go/common"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	math "math"
 )
 
@@ -35,7 +35,7 @@ type ProposalResponse struct {
 	Version int32 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
 	// Timestamp is the time that the message
 	// was created as  defined by the sender
-	Timestamp *timestamp.Timestamp `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Timestamp *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	// A response message indicating whether the
 	// endorsement of the action was successful
 	Response *Response `protobuf:"bytes,4,opt,name=response,proto3" json:"response,omitempty"`
@@ -83,7 +83,7 @@ func (m *ProposalResponse) GetVersion() int32 {
 	return 0
 }
 
-func (m *ProposalResponse) GetTimestamp() *timestamp.Timestamp {
+func (m *ProposalResponse) GetTimestamp() *timestamppb.Timestamp {
 	if m != nil {
 		return m.Timestamp
 	}

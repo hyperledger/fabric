@@ -7,11 +7,11 @@ import (
 	context "context"
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
-	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	common "github.com/hyperledger/fabric-protos-go/common"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	math "math"
 )
 
@@ -364,7 +364,7 @@ type NodeAuthRequest struct {
 	Signature []byte `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"`
 	// timestamp indicates the freshness of the request; expected to be within the margin
 	// of the responsder's local time
-	Timestamp *timestamp.Timestamp `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Timestamp *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	// from_id is the numerical identifier of the initiator of the connection
 	FromId uint64 `protobuf:"varint,4,opt,name=from_id,json=fromId,proto3" json:"from_id,omitempty"`
 	// to_id is the numerical identifier of the node that is being connected to
@@ -416,7 +416,7 @@ func (m *NodeAuthRequest) GetSignature() []byte {
 	return nil
 }
 
-func (m *NodeAuthRequest) GetTimestamp() *timestamp.Timestamp {
+func (m *NodeAuthRequest) GetTimestamp() *timestamppb.Timestamp {
 	if m != nil {
 		return m.Timestamp
 	}
