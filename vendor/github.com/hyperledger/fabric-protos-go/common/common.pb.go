@@ -6,7 +6,7 @@ package common
 import (
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
-	timestamp "github.com/golang/protobuf/ptypes/timestamp"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	math "math"
 )
 
@@ -388,7 +388,7 @@ type ChannelHeader struct {
 	Version int32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
 	// Timestamp is the local time when the message was created
 	// by the sender
-	Timestamp *timestamp.Timestamp `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Timestamp *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	// Identifier of the channel this message is bound for
 	ChannelId string `protobuf:"bytes,4,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
 	// An unique identifier that is used end-to-end.
@@ -455,7 +455,7 @@ func (m *ChannelHeader) GetVersion() int32 {
 	return 0
 }
 
-func (m *ChannelHeader) GetTimestamp() *timestamp.Timestamp {
+func (m *ChannelHeader) GetTimestamp() *timestamppb.Timestamp {
 	if m != nil {
 		return m.Timestamp
 	}
