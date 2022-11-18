@@ -24,7 +24,7 @@ import (
 
 func TestValidateConfig(t *testing.T) {
 	// Config block
-	configBlockBytes, err := ioutil.ReadFile("testdata/mychannel.block")
+	configBlockBytes, err := ioutil.ReadFile("testdata/smartbftorderergenesis.block")
 	require.NoError(t, err)
 
 	configBlock := &cb.Block{}
