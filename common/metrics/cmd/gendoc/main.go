@@ -9,7 +9,6 @@ package main
 import (
 	"bytes"
 	"flag"
-	"io/ioutil"
 	"os"
 	"text/template"
 
@@ -64,7 +63,7 @@ func main() {
 		},
 	}
 
-	docTemplate, err := ioutil.ReadFile(*templatePath)
+	docTemplate, err := os.ReadFile(*templatePath)
 	if err != nil {
 		panic(err)
 	}

@@ -11,8 +11,8 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math"
+	"os"
 	"strings"
 	"sync"
 
@@ -201,7 +201,7 @@ type collectionConfigJson struct {
 // from the supplied file; the supplied file must contain a
 // json-formatted array of collectionConfigJson elements
 func GetCollectionConfigFromFile(ccFile string) (*pb.CollectionConfigPackage, []byte, error) {
-	fileBytes, err := ioutil.ReadFile(ccFile)
+	fileBytes, err := os.ReadFile(ccFile)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "could not read file '%s'", ccFile)
 	}

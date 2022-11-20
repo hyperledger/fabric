@@ -10,7 +10,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"mime/multipart"
 	"net/http"
 
@@ -56,7 +56,7 @@ func doBody(client *http.Client, req *http.Request) []byte {
 	resp, err := client.Do(req)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.StatusCode).To(Equal(http.StatusCreated))
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(resp.Body)
 	Expect(err).NotTo(HaveOccurred())
 	resp.Body.Close()
 
@@ -89,7 +89,7 @@ func getBody(client *http.Client, url string) func() string {
 	return func() string {
 		resp, err := client.Get(url)
 		Expect(err).NotTo(HaveOccurred())
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body)
 		Expect(err).NotTo(HaveOccurred())
 		resp.Body.Close()
 		return string(bodyBytes)

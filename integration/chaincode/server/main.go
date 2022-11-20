@@ -9,7 +9,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/hyperledger/fabric-chaincode-go/shim"
@@ -29,7 +28,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	configData, err := ioutil.ReadFile("config.json")
+	configData, err := os.ReadFile("config.json")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cannot read config file: %s", err)
 		os.Exit(2)

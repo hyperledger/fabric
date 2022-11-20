@@ -13,7 +13,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -200,17 +199,22 @@ func (ks *fileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
 }
 
 func (ks *fileBasedKeyStore) searchKeystoreForSKI(ski []byte) (k bccsp.Key, err error) {
-	files, _ := ioutil.ReadDir(ks.path)
+	files, _ := os.ReadDir(ks.path)
 	for _, f := range files {
 		if f.IsDir() {
 			continue
 		}
 
-		if f.Size() > (1 << 16) { // 64k, somewhat arbitrary limit, considering even large keys
+		fileInfo, err := f.Info()
+		if err != nil {
 			continue
 		}
 
-		raw, err := ioutil.ReadFile(filepath.Join(ks.path, f.Name()))
+		if fileInfo.Size() > (1 << 16) { // 64k, somewhat arbitrary limit, considering even large keys
+			continue
+		}
+
+		raw, err := os.ReadFile(filepath.Join(ks.path, f.Name()))
 		if err != nil {
 			continue
 		}
@@ -237,7 +241,7 @@ func (ks *fileBasedKeyStore) searchKeystoreForSKI(ski []byte) (k bccsp.Key, err 
 }
 
 func (ks *fileBasedKeyStore) getSuffix(alias string) string {
-	files, _ := ioutil.ReadDir(ks.path)
+	files, _ := os.ReadDir(ks.path)
 	for _, f := range files {
 		if strings.HasPrefix(f.Name(), alias) {
 			if strings.HasSuffix(f.Name(), "sk") {
@@ -262,7 +266,7 @@ func (ks *fileBasedKeyStore) storePrivateKey(alias string, privateKey interface{
 		return err
 	}
 
-	err = ioutil.WriteFile(ks.getPathForAlias(alias, "sk"), rawKey, 0o600)
+	err = os.WriteFile(ks.getPathForAlias(alias, "sk"), rawKey, 0o600)
 	if err != nil {
 		logger.Errorf("Failed storing private key [%s]: [%s]", alias, err)
 		return err
@@ -278,7 +282,7 @@ func (ks *fileBasedKeyStore) storePublicKey(alias string, publicKey interface{})
 		return err
 	}
 
-	err = ioutil.WriteFile(ks.getPathForAlias(alias, "pk"), rawKey, 0o600)
+	err = os.WriteFile(ks.getPathForAlias(alias, "pk"), rawKey, 0o600)
 	if err != nil {
 		logger.Errorf("Failed storing private key [%s]: [%s]", alias, err)
 		return err
@@ -294,7 +298,7 @@ func (ks *fileBasedKeyStore) storeKey(alias string, key []byte) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(ks.getPathForAlias(alias, "key"), pem, 0o600)
+	err = os.WriteFile(ks.getPathForAlias(alias, "key"), pem, 0o600)
 	if err != nil {
 		logger.Errorf("Failed storing key [%s]: [%s]", alias, err)
 		return err
@@ -307,7 +311,7 @@ func (ks *fileBasedKeyStore) loadPrivateKey(alias string) (interface{}, error) {
 	path := ks.getPathForAlias(alias, "sk")
 	logger.Debugf("Loading private key [%s] at [%s]...", alias, path)
 
-	raw, err := ioutil.ReadFile(path)
+	raw, err := os.ReadFile(path)
 	if err != nil {
 		logger.Errorf("Failed loading private key [%s]: [%s].", alias, err.Error())
 
@@ -328,7 +332,7 @@ func (ks *fileBasedKeyStore) loadPublicKey(alias string) (interface{}, error) {
 	path := ks.getPathForAlias(alias, "pk")
 	logger.Debugf("Loading public key [%s] at [%s]...", alias, path)
 
-	raw, err := ioutil.ReadFile(path)
+	raw, err := os.ReadFile(path)
 	if err != nil {
 		logger.Errorf("Failed loading public key [%s]: [%s].", alias, err.Error())
 
@@ -349,7 +353,7 @@ func (ks *fileBasedKeyStore) loadKey(alias string) ([]byte, error) {
 	path := ks.getPathForAlias(alias, "key")
 	logger.Debugf("Loading key [%s] at [%s]...", alias, path)
 
-	pem, err := ioutil.ReadFile(path)
+	pem, err := os.ReadFile(path)
 	if err != nil {
 		logger.Errorf("Failed loading key [%s]: [%s].", alias, err.Error())
 
