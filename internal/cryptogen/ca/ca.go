@@ -14,7 +14,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"os"
@@ -278,7 +277,7 @@ func LoadCertificateECDSA(certPath string) (*x509.Certificate, error) {
 
 	walkFunc := func(path string, info os.FileInfo, err error) error {
 		if strings.HasSuffix(path, ".pem") {
-			rawCert, err := ioutil.ReadFile(path)
+			rawCert, err := os.ReadFile(path)
 			if err != nil {
 				return err
 			}

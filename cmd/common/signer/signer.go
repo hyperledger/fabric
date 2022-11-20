@@ -13,8 +13,8 @@ import (
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/pem"
-	"io/ioutil"
 	"math/big"
+	"os"
 	"strings"
 
 	"github.com/hyperledger/fabric-protos-go/msp"
@@ -62,7 +62,7 @@ func NewSigner(conf Config) (*Signer, error) {
 }
 
 func serializeIdentity(clientCert string, mspID string) ([]byte, error) {
-	b, err := ioutil.ReadFile(clientCert)
+	b, err := os.ReadFile(clientCert)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -98,7 +98,7 @@ func (si *Signer) Sign(msg []byte) ([]byte, error) {
 }
 
 func loadPrivateKey(file string) (*ecdsa.PrivateKey, error) {
-	b, err := ioutil.ReadFile(file)
+	b, err := os.ReadFile(file)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

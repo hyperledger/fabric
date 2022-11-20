@@ -8,7 +8,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -156,7 +156,7 @@ func decodeProto(msgName string, input, output *os.File) error {
 	}
 	msg := reflect.New(msgType.Elem()).Interface().(proto.Message)
 
-	in, err := ioutil.ReadAll(input)
+	in, err := io.ReadAll(input)
 	if err != nil {
 		return errors.Wrapf(err, "error reading input")
 	}
@@ -175,7 +175,7 @@ func decodeProto(msgName string, input, output *os.File) error {
 }
 
 func computeUpdt(original, updated, output *os.File, channelID string) error {
-	origIn, err := ioutil.ReadAll(original)
+	origIn, err := io.ReadAll(original)
 	if err != nil {
 		return errors.Wrapf(err, "error reading original config")
 	}
@@ -186,7 +186,7 @@ func computeUpdt(original, updated, output *os.File, channelID string) error {
 		return errors.Wrapf(err, "error unmarshalling original config")
 	}
 
-	updtIn, err := ioutil.ReadAll(updated)
+	updtIn, err := io.ReadAll(updated)
 	if err != nil {
 		return errors.Wrapf(err, "error reading updated config")
 	}
