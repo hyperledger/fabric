@@ -136,7 +136,7 @@ func NewCache(resources *Resources, myOrgMSPID string, metadataManager MetadataH
 }
 
 // InitializeLocalChaincodes should be called once after cache creation (timing doesn't matter,
-// though already installed chaincodes will not be invokable until it it completes).  Ideally,
+// though already installed chaincodes will not be invokable until it completes).  Ideally,
 // this would be part of the constructor, but, we cannot rely on the chaincode store being created
 // before the cache is created.
 func (c *Cache) InitializeLocalChaincodes() error {

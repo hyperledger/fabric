@@ -9,7 +9,6 @@ package main
 import (
 	"bytes"
 	"flag"
-	"io/ioutil"
 	"os"
 	"text/template"
 
@@ -17,7 +16,7 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-// Gendoc can be used used to discover the metrics options declared at the
+// Gendoc can be used to discover the metrics options declared at the
 // package level in the fabric tree and output a table that can be used in the
 // documentation.
 
@@ -64,7 +63,7 @@ func main() {
 		},
 	}
 
-	docTemplate, err := ioutil.ReadFile(*templatePath)
+	docTemplate, err := os.ReadFile(*templatePath)
 	if err != nil {
 		panic(err)
 	}

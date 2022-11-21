@@ -434,7 +434,7 @@ func (g *Node) sendGossipBatch(a []interface{}) {
 // For efficiency, we first isolate all the messages that have the same routing policy
 // and send them together, and only after that move to the next group of messages.
 // i.e: we send all blocks of channel C to the same group of peers,
-// and send all StateInfo messages to the same group of peers, etc. etc.
+// and send all StateInfo messages to the same group of peers, etc.
 // When we send blocks, we send only to peers that advertised themselves in the channel.
 // When we send StateInfo messages, we send to peers in the channel.
 // When we send messages that are marked to be sent only within the org, we send all of these messages

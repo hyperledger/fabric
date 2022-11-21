@@ -49,7 +49,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/onboarding"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
-	"github.com/hyperledger/fabric/orderer/consensus/solo"
 	"github.com/hyperledger/fabric/protoutil"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
@@ -814,9 +813,6 @@ func initializeMultichannelRegistrar(
 			consenters["etcdraft"] = etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, nil, metricsProvider, bccsp)
 		}
 	}
-
-	// TODO Orderer v3: remove once all tests stop using solo https://github.com/hyperledger/fabric/issues/3514
-	consenters["solo"] = solo.New()
 
 	registrar.Initialize(consenters)
 	return registrar

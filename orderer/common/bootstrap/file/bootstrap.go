@@ -5,7 +5,6 @@ package file
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 
 	"github.com/golang/protobuf/proto"
@@ -34,7 +33,7 @@ func NewReplacer(fileName string) bootstrap.Replacer {
 
 // GenesisBlock returns the genesis block to be used for bootstrapping.
 func (b *fileBootstrapper) GenesisBlock() *cb.Block {
-	bootstrapFile, fileErr := ioutil.ReadFile(b.GenesisBlockFile)
+	bootstrapFile, fileErr := os.ReadFile(b.GenesisBlockFile)
 	if fileErr != nil {
 		panic(errors.Errorf("unable to bootstrap orderer. Error reading genesis block file: %v", fileErr))
 	}
@@ -71,7 +70,7 @@ func (b *fileBootstrapper) ReplaceGenesisBlockFile(block *cb.Block) error {
 			b.GenesisBlockFile, backupFile)
 	}
 
-	if err := ioutil.WriteFile(b.GenesisBlockFile, buff, genFileStat.Mode()); err != nil {
+	if err := os.WriteFile(b.GenesisBlockFile, buff, genFileStat.Mode()); err != nil {
 		return errors.Wrapf(err, "could not write new genesis block into file: %s; use backup if necessary: %s",
 			b.GenesisBlockFile, backupFile)
 	}

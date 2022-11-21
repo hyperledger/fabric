@@ -52,12 +52,12 @@ var _ = Describe("EndToEndACL", func() {
 
 		// Speed up test by reducing the number of peers we
 		// bring up and install chaincode to.
-		soloConfig := nwo.BasicSolo()
-		soloConfig.RemovePeer("Org1", "peer1")
-		soloConfig.RemovePeer("Org2", "peer1")
-		Expect(soloConfig.Peers).To(HaveLen(2))
+		etcdRaftConfig := nwo.BasicEtcdRaft()
+		etcdRaftConfig.RemovePeer("Org1", "peer1")
+		etcdRaftConfig.RemovePeer("Org2", "peer1")
+		Expect(etcdRaftConfig.Peers).To(HaveLen(2))
 
-		network = nwo.New(soloConfig, testDir, client, StartPort(), components)
+		network = nwo.New(etcdRaftConfig, testDir, client, StartPort(), components)
 		network.GenerateConfigTree()
 		network.Bootstrap()
 

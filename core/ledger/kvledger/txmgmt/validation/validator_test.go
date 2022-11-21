@@ -367,6 +367,138 @@ func TestPhantomHashBasedValidation(t *testing.T) {
 	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder2), []int{0})
 }
 
+func TestPrvtdataPurgeUpdates(t *testing.T) {
+	testDBEnv := testEnvs[levelDBtestEnvName]
+	testDBEnv.Init(t)
+	defer testDBEnv.Cleanup()
+
+	db := testDBEnv.GetDBHandle("TestDB")
+
+	rwsetBuilder1 := rwsetutil.NewRWSetBuilder()
+	// key1 and key2 are purged, and key3 is written
+	rwsetBuilder1.AddToPvtAndHashedWriteSetForPurge("ns1", "coll1", "key1")
+	rwsetBuilder1.AddToPvtAndHashedWriteSetForPurge("ns1", "coll1", "key2")
+	rwsetBuilder1.AddToPvtAndHashedWriteSet("ns1", "coll1", "key3", []byte("value3"))
+	txRWset1 := rwsetBuilder1.GetTxReadWriteSet()
+
+	rwsetBuilder2 := rwsetutil.NewRWSetBuilder()
+	rwsetBuilder2.AddToPvtAndHashedWriteSet("ns1", "coll1", "key1", []byte("value1"))
+	txRWset2 := rwsetBuilder2.GetTxReadWriteSet()
+
+	createBlock := func(transRWSets []*rwsetutil.TxRwSet) *block {
+		var trans []*transaction
+		for i, tranRWSet := range transRWSets {
+			tx := &transaction{
+				id:             fmt.Sprintf("txid-%d", i),
+				indexInBlock:   i,
+				validationCode: peer.TxValidationCode_VALID,
+				rwset:          tranRWSet,
+			}
+			trans = append(trans, tx)
+		}
+		return &block{num: 1, txs: trans}
+	}
+
+	t.Run("simple-case", func(t *testing.T) {
+		block := createBlock([]*rwsetutil.TxRwSet{
+			txRWset1,
+		})
+		validator := &validator{db: db, hashFunc: testHashFunc}
+		_, appInitiatedPurgeUpdates, err := validator.validateAndPrepareBatch(block, true)
+		require.NoError(t, err)
+		require.ElementsMatch(
+			t,
+			appInitiatedPurgeUpdates,
+			[]*AppInitiatedPurgeUpdate{
+				{
+					CompositeKey: &privacyenabledstate.HashedCompositeKey{
+						Namespace:      "ns1",
+						CollectionName: "coll1",
+						KeyHash:        string(util.ComputeStringHash("key1")),
+					},
+					Version:                   version.NewHeight(1, 0),
+					DeletePrivateKeyFromState: true,
+				},
+				{
+					CompositeKey: &privacyenabledstate.HashedCompositeKey{
+						Namespace:      "ns1",
+						CollectionName: "coll1",
+						KeyHash:        string(util.ComputeStringHash("key2")),
+					},
+					Version:                   version.NewHeight(1, 0),
+					DeletePrivateKeyFromState: true,
+				},
+			},
+		)
+	})
+
+	t.Run("Next transaction in block overwrites new value to a purged key", func(t *testing.T) {
+		block := createBlock([]*rwsetutil.TxRwSet{
+			txRWset1, txRWset2,
+		})
+		validator := &validator{db: db, hashFunc: testHashFunc}
+		_, appInitiatedPurgeUpdates, err := validator.validateAndPrepareBatch(block, true)
+		require.NoError(t, err)
+		require.ElementsMatch(
+			t,
+			appInitiatedPurgeUpdates,
+			[]*AppInitiatedPurgeUpdate{
+				{
+					CompositeKey: &privacyenabledstate.HashedCompositeKey{
+						Namespace:      "ns1",
+						CollectionName: "coll1",
+						KeyHash:        string(util.ComputeStringHash("key1")),
+					},
+					Version:                   version.NewHeight(1, 0),
+					DeletePrivateKeyFromState: false,
+				},
+				{
+					CompositeKey: &privacyenabledstate.HashedCompositeKey{
+						Namespace:      "ns1",
+						CollectionName: "coll1",
+						KeyHash:        string(util.ComputeStringHash("key2")),
+					},
+					Version:                   version.NewHeight(1, 0),
+					DeletePrivateKeyFromState: true,
+				},
+			},
+		)
+	})
+
+	t.Run("Next transaction in block purges a key written in a previous transaction in the block", func(t *testing.T) {
+		block := createBlock([]*rwsetutil.TxRwSet{
+			txRWset2, txRWset1,
+		})
+		validator := &validator{db: db, hashFunc: testHashFunc}
+		_, appInitiatedPurgeUpdates, err := validator.validateAndPrepareBatch(block, true)
+		require.NoError(t, err)
+		require.ElementsMatch(
+			t,
+			appInitiatedPurgeUpdates,
+			[]*AppInitiatedPurgeUpdate{
+				{
+					CompositeKey: &privacyenabledstate.HashedCompositeKey{
+						Namespace:      "ns1",
+						CollectionName: "coll1",
+						KeyHash:        string(util.ComputeStringHash("key1")),
+					},
+					Version:                   version.NewHeight(1, 1),
+					DeletePrivateKeyFromState: true,
+				},
+				{
+					CompositeKey: &privacyenabledstate.HashedCompositeKey{
+						Namespace:      "ns1",
+						CollectionName: "coll1",
+						KeyHash:        string(util.ComputeStringHash("key2")),
+					},
+					Version:                   version.NewHeight(1, 1),
+					DeletePrivateKeyFromState: true,
+				},
+			},
+		)
+	})
+}
+
 func checkValidation(t *testing.T, val *validator, transRWSets []*rwsetutil.TxRwSet, expectedInvalidTxIndexes []int) {
 	var trans []*transaction
 	for i, tranRWSet := range transRWSets {
@@ -379,7 +511,7 @@ func checkValidation(t *testing.T, val *validator, transRWSets []*rwsetutil.TxRw
 		trans = append(trans, tx)
 	}
 	blk := &block{num: 1, txs: trans}
-	_, err := val.validateAndPrepareBatch(blk, true)
+	_, _, err := val.validateAndPrepareBatch(blk, true)
 	require.NoError(t, err)
 	t.Logf("block.Txs[0].ValidationCode = %d", blk.txs[0].validationCode)
 	var invalidTxs []int

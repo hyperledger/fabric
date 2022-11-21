@@ -82,6 +82,12 @@ type bootsnapshotInfo struct {
 
 type blkTranNumKey []byte
 
+type PurgeMarker struct {
+	Ns, Coll   string
+	PvtkeyHash []byte
+	TxNum      uint64
+}
+
 type dataEntry struct {
 	key   *dataKey
 	value *rwset.CollectionPvtReadWriteSet
@@ -90,6 +96,16 @@ type dataEntry struct {
 type hashedIndexEntry struct {
 	key   *hashedIndexKey
 	value string
+}
+
+type purgeMarkerEntry struct {
+	key   *purgeMarkerKey
+	value *purgeMarkerVal
+}
+
+type purgeMarkerCollEntry struct {
+	key   *purgeMarkerCollKey
+	value *purgeMarkerVal
 }
 
 type expiryEntry struct {
@@ -129,12 +145,6 @@ type hashedIndexKey struct {
 	blkNum, txNum uint64
 }
 
-type PurgeMarker struct {
-	Ns, Coll      string
-	PvtkeyHash    []byte
-	BlkNum, TxNum uint64
-}
-
 type purgeMarkerKey struct {
 	ns, coll   string
 	pvtkeyHash []byte
@@ -151,6 +161,8 @@ type purgeMarkerCollKey struct {
 type storeEntries struct {
 	dataEntries             []*dataEntry
 	hashedIndexEntries      []*hashedIndexEntry
+	purgeMarkerEntries      []*purgeMarkerEntry
+	purgeMarkerCollEntries  []*purgeMarkerCollEntry
 	expiryEntries           []*expiryEntry
 	elgMissingDataEntries   map[missingDataKey]*bitset.BitSet
 	inelgMissingDataEntries map[missingDataKey]*bitset.BitSet
@@ -294,7 +306,7 @@ func (s *Store) Init(btlPolicy pvtdatapolicy.BTLPolicy) {
 // missing private data --- `eligible` denotes that the missing private data belongs to a collection
 // for which this peer is a member; `ineligible` denotes that the missing private data belong to a
 // collection for which this peer is not a member.
-func (s *Store) Commit(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtData ledger.TxMissingPvtData) error {
+func (s *Store) Commit(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtData ledger.TxMissingPvtData, purgeMarkers []*PurgeMarker) error {
 	expectedBlockNum := s.nextBlockNum()
 	if expectedBlockNum != blockNum {
 		return errors.Errorf("expected block number=%d, received block number=%d", expectedBlockNum, blockNum)
@@ -304,7 +316,7 @@ func (s *Store) Commit(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtD
 	var err error
 	var key, val []byte
 
-	storeEntries, err := prepareStoreEntries(blockNum, pvtData, s.btlPolicy, missingPvtData)
+	storeEntries, err := prepareStoreEntries(blockNum, pvtData, s.btlPolicy, missingPvtData, purgeMarkers)
 	if err != nil {
 		return err
 	}
@@ -320,6 +332,24 @@ func (s *Store) Commit(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtD
 	for _, hashedIndexEntry := range storeEntries.hashedIndexEntries {
 		key := encodeHashedIndexKey(hashedIndexEntry.key)
 		batch.Put(key, []byte(hashedIndexEntry.value))
+	}
+
+	for _, purgeMarkerEntry := range storeEntries.purgeMarkerEntries {
+		batch.Put(
+			encodePurgeMarkerKey(purgeMarkerEntry.key),
+			encodePurgeMarkerVal(purgeMarkerEntry.value),
+		)
+		batch.Put(
+			encodePurgeMarkerForReconKey(purgeMarkerEntry.key),
+			encodePurgeMarkerVal(purgeMarkerEntry.value),
+		)
+	}
+
+	for _, purgeMarkerCollEntry := range storeEntries.purgeMarkerCollEntries {
+		batch.Put(
+			encodePurgeMarkerCollKey(purgeMarkerCollEntry.key),
+			encodePurgeMarkerVal(purgeMarkerCollEntry.value),
+		)
 	}
 
 	for _, expiryEntry := range storeEntries.expiryEntries {
@@ -427,40 +457,6 @@ func (s *Store) ResetLastUpdatedOldBlocksList() error {
 	}
 	s.isLastUpdatedOldBlocksSet = false
 	return nil
-}
-
-func (s *Store) addPurgeMarkers(p *PurgeMarker) error {
-	b := s.db.NewUpdateBatch()
-	b.Put(
-		encodePurgeMarkerCollKey(
-			&purgeMarkerCollKey{
-				ns:   p.Ns,
-				coll: p.Coll,
-			},
-		),
-		encodePurgeMarkerVal(
-			&purgeMarkerVal{
-				blkNum: p.BlkNum,
-				txNum:  p.TxNum,
-			},
-		),
-	)
-	b.Put(
-		encodePurgeMarkerKey(
-			&purgeMarkerKey{
-				ns:         p.Ns,
-				coll:       p.Coll,
-				pvtkeyHash: p.PvtkeyHash,
-			},
-		),
-		encodePurgeMarkerVal(
-			&purgeMarkerVal{
-				blkNum: p.BlkNum,
-				txNum:  p.TxNum,
-			},
-		),
-	)
-	return s.db.WriteBatch(b, true)
 }
 
 // GetPvtDataByBlockNum returns only the pvt data  corresponding to the given block number
@@ -607,7 +603,7 @@ func (s *Store) removePurgedDataFromCollPvtRWset(k *dataKey, v *rwset.Collection
 			return err
 		}
 
-		if keyHt.Compare(purgeMarkerHt) >= 0 {
+		if keyHt.Compare(purgeMarkerHt) > 0 {
 			filterInKVWrites = append(filterInKVWrites, w)
 			continue
 		}
@@ -848,7 +844,14 @@ func (s *Store) deleteDataMarkedForPurge() error {
 		if err := purgeMarkerIter.Error(); err != nil {
 			return err
 		}
-		hStart, hEnd := driveHashedIndexKeyRangeFromPurgeMarker(purgeMarkerIter.Key(), purgeMarkerIter.Value())
+
+		encPurgeMarkerKey := purgeMarkerIter.Key()
+		encPurgeMarkerVal := purgeMarkerIter.Value()
+
+		hStart, hEnd, err := driveHashedIndexKeyRangeFromPurgeMarker(encPurgeMarkerKey, encPurgeMarkerVal)
+		if err != nil {
+			return err
+		}
 		hashedIndexIter, err := s.db.GetIterator(hStart, hEnd)
 		if err != nil {
 			return err
@@ -861,6 +864,7 @@ func (s *Store) deleteDataMarkedForPurge() error {
 				return err
 			}
 		}
+		p.addProcessedPurgeMarkerForDeletion(encPurgeMarkerKey)
 	}
 	return p.commitPendingChanges()
 }
@@ -1060,6 +1064,22 @@ func (s *Store) fetchBootSnapshotInfo() (*bootsnapshotInfo, error) {
 	}, nil
 }
 
+func (s *Store) FetchPrivateDataRawKey(ns, coll string, keyHash []byte) (string, error) {
+	startKey, endKey := rangeScanKeysForHashedIndexKey(ns, coll, keyHash)
+	dbItr, err := s.db.GetIterator(startKey, endKey)
+	if err != nil {
+		return "", err
+	}
+	defer dbItr.Release()
+
+	if !dbItr.Next() {
+		return "", dbItr.Error()
+	}
+
+	encVal := dbItr.Value()
+	return string(encVal), nil
+}
+
 type collElgProcSync struct {
 	notification, procComplete chan bool
 }
@@ -1155,6 +1175,10 @@ func (p *purgeUpdatesProcessor) process(hashedIndexKey, hashedIndexVal []byte) e
 		}
 	}
 	return nil
+}
+
+func (p *purgeUpdatesProcessor) addProcessedPurgeMarkerForDeletion(purgeMarkerKey []byte) {
+	p.batch.Delete(purgeMarkerKey)
 }
 
 func (p *purgeUpdatesProcessor) commitPendingChanges() error {

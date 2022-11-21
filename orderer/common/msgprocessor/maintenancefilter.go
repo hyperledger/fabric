@@ -46,7 +46,9 @@ func NewMaintenanceFilter(support MaintenanceFilterSupport, bccsp bccsp.BCCSP) *
 		bccsp:                         bccsp,
 	}
 	mf.permittedTargetConsensusTypes["etcdraft"] = true
-	mf.permittedTargetConsensusTypes["solo"] = true
+	// Until we have a BFT consensus type, we use this for integration testing of consensus-type migration.
+	// Caution: proposing a config block with this type will cause panic.
+	mf.permittedTargetConsensusTypes["testing-only"] = true
 	return mf
 }
 
@@ -152,7 +154,7 @@ func (mf *MaintenanceFilter) inspect(configEnvelope *cb.ConfigEnvelope, ordererC
 	return nil
 }
 
-// ensureConsensusTypeChangeOnly checks that the only change is the the Channel/Orderer group, and within that,
+// ensureConsensusTypeChangeOnly checks that the only change is the Channel/Orderer group, and within that,
 // only to the ConsensusType value.
 func (mf *MaintenanceFilter) ensureConsensusTypeChangeOnly(configEnvelope *cb.ConfigEnvelope) error {
 	configUpdateEnv, err := protoutil.EnvelopeToConfigUpdate(configEnvelope.LastUpdate)

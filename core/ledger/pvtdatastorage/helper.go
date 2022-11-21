@@ -12,13 +12,18 @@ import (
 	"github.com/bits-and-blooms/bitset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/core/ledger/util"
 )
 
-func prepareStoreEntries(blockNum uint64, pvtData []*ledger.TxPvtData, btlPolicy pvtdatapolicy.BTLPolicy,
-	missingPvtData ledger.TxMissingPvtData) (*storeEntries, error) {
+func prepareStoreEntries(blockNum uint64,
+	pvtData []*ledger.TxPvtData,
+	btlPolicy pvtdatapolicy.BTLPolicy,
+	missingPvtData ledger.TxMissingPvtData,
+	purgeMarkers []*PurgeMarker,
+) (*storeEntries, error) {
 	dataEntries := prepareDataEntries(blockNum, pvtData)
 
 	hashedIndexEntries, err := prepareHashedIndexEntries(dataEntries)
@@ -32,9 +37,13 @@ func prepareStoreEntries(blockNum uint64, pvtData []*ledger.TxPvtData, btlPolicy
 		return nil, err
 	}
 
+	purgeMarkerEntries, purgeMarkerCollEntries := preparePurgerMarkerEntries(blockNum, purgeMarkers)
+
 	return &storeEntries{
 		dataEntries:             dataEntries,
 		hashedIndexEntries:      hashedIndexEntries,
+		purgeMarkerEntries:      purgeMarkerEntries,
+		purgeMarkerCollEntries:  purgeMarkerCollEntries,
 		expiryEntries:           expiryEntries,
 		elgMissingDataEntries:   elgMissingDataEntries,
 		inelgMissingDataEntries: inelgMissingDataEntries,
@@ -179,6 +188,50 @@ func prepareHashedIndexEntries(dataEntires []*dataEntry) ([]*hashedIndexEntry, e
 		}
 	}
 	return hashedIndexEntries, nil
+}
+
+func preparePurgerMarkerEntries(blkNum uint64, purgeMarkers []*PurgeMarker) ([]*purgeMarkerEntry, []*purgeMarkerCollEntry) {
+	purgeMarkersEntries := []*purgeMarkerEntry{}
+	purgeMarkersCollEntries := []*purgeMarkerCollEntry{}
+	nsCollVisitedMap := map[nsColl]*version.Height{}
+
+	for _, m := range purgeMarkers {
+		purgeMarkersEntries = append(purgeMarkersEntries,
+			&purgeMarkerEntry{
+				key: &purgeMarkerKey{
+					ns:         m.Ns,
+					coll:       m.Coll,
+					pvtkeyHash: m.PvtkeyHash,
+				},
+				value: &purgeMarkerVal{
+					blkNum: blkNum,
+					txNum:  m.TxNum,
+				},
+			},
+		)
+
+		nsColl := nsColl{ns: m.Ns, coll: m.Coll}
+		version := version.NewHeight(blkNum, m.TxNum)
+		visitedVersion, ok := nsCollVisitedMap[nsColl]
+		if ok && visitedVersion.Compare(version) > 0 {
+			// a key in the same collection with higher version already caused adding of collection level purge mearker entry
+			continue
+		}
+		purgeMarkersCollEntries = append(purgeMarkersCollEntries,
+			&purgeMarkerCollEntry{
+				key: &purgeMarkerCollKey{
+					ns:   m.Ns,
+					coll: m.Coll,
+				},
+				value: &purgeMarkerVal{
+					blkNum: blkNum,
+					txNum:  m.TxNum,
+				},
+			},
+		)
+		nsCollVisitedMap[nsColl] = version
+	}
+	return purgeMarkersEntries, purgeMarkersCollEntries
 }
 
 func getOrCreateExpiryData(mapByExpiringBlk map[uint64]*ExpiryData, expiringBlk uint64) *ExpiryData {

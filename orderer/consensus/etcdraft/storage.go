@@ -447,3 +447,8 @@ func (rs *RaftStorage) Close() error {
 
 	return nil
 }
+
+// Sync persists cached entries into disk
+func (rs *RaftStorage) Sync() error {
+	return rs.wal.Sync()
+}

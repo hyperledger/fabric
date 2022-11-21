@@ -87,9 +87,9 @@ func TestCommitPvtDataOfOldBlocks(t *testing.T) {
 
 	blocksPvtData, missingDataSummary := constructPvtDataForTest(t, blockTxPvtDataInfo)
 
-	require.NoError(t, store.Commit(0, nil, nil))
-	require.NoError(t, store.Commit(1, blocksPvtData[1].pvtData, blocksPvtData[1].missingDataInfo))
-	require.NoError(t, store.Commit(2, blocksPvtData[2].pvtData, blocksPvtData[2].missingDataInfo))
+	require.NoError(t, store.Commit(0, nil, nil, nil))
+	require.NoError(t, store.Commit(1, blocksPvtData[1].pvtData, blocksPvtData[1].missingDataInfo, nil))
+	require.NoError(t, store.Commit(2, blocksPvtData[2].pvtData, blocksPvtData[2].missingDataInfo, nil))
 
 	assertMissingDataInfo(t, store, missingDataSummary, 2)
 
@@ -179,14 +179,14 @@ func TestCommitPvtDataOfOldBlocksWithBTL(t *testing.T) {
 
 		blocksPvtData, missingDataSummary := constructPvtDataForTest(t, blockTxPvtDataInfo)
 
-		require.NoError(t, store.Commit(0, nil, nil))
-		require.NoError(t, store.Commit(1, blocksPvtData[1].pvtData, blocksPvtData[1].missingDataInfo))
+		require.NoError(t, store.Commit(0, nil, nil, nil))
+		require.NoError(t, store.Commit(1, blocksPvtData[1].pvtData, blocksPvtData[1].missingDataInfo, nil))
 
 		assertMissingDataInfo(t, store, missingDataSummary, 1)
 
 		// COMMIT BLOCK 2 & 3 WITH NO PVTDATA
-		require.NoError(t, store.Commit(2, nil, nil))
-		require.NoError(t, store.Commit(3, nil, nil))
+		require.NoError(t, store.Commit(2, nil, nil, nil))
+		require.NoError(t, store.Commit(3, nil, nil, nil))
 	}
 
 	t.Run("expired but not purged", func(t *testing.T) {
@@ -290,7 +290,7 @@ func TestCommitPvtDataOfOldBlocksWithBTL(t *testing.T) {
 		store := env.TestStore
 
 		setup(store)
-		require.NoError(t, store.Commit(4, nil, nil))
+		require.NoError(t, store.Commit(4, nil, nil, nil))
 
 		testWaitForPurgerRoutineToFinish(store)
 
@@ -478,9 +478,9 @@ func TestCommitPvtDataOfOldBlocksWithDeprioritization(t *testing.T) {
 			store := env.TestStore
 
 			// COMMIT BLOCK 0 WITH NO DATA
-			require.NoError(t, store.Commit(0, nil, nil))
-			require.NoError(t, store.Commit(1, blocksPvtData[1].pvtData, blocksPvtData[1].missingDataInfo))
-			require.NoError(t, store.Commit(2, blocksPvtData[2].pvtData, blocksPvtData[2].missingDataInfo))
+			require.NoError(t, store.Commit(0, nil, nil, nil))
+			require.NoError(t, store.Commit(1, blocksPvtData[1].pvtData, blocksPvtData[1].missingDataInfo, nil))
+			require.NoError(t, store.Commit(2, blocksPvtData[2].pvtData, blocksPvtData[2].missingDataInfo, nil))
 
 			assertMissingDataInfo(t, store, missingDataSummary, 2)
 

@@ -362,11 +362,6 @@ func newPvtKVWriteAndHash(key string, value []byte) (*kvrwset.KVWrite, *kvrwset.
 	return kvWrite, &kvrwset.KVWriteHash{KeyHash: keyHash, IsDelete: kvWrite.IsDelete, ValueHash: valueHash}
 }
 
-func newKVWriteHashPurge(key string) *kvrwset.KVWriteHash {
-	keyHash := util.ComputeStringHash(key)
-	return &kvrwset.KVWriteHash{KeyHash: keyHash, IsDelete: true, IsPurge: true}
-}
-
 // IsKVWriteDelete returns true if the kvWrite indicates a delete operation. See FAB-18386 for details.
 func IsKVWriteDelete(kvWrite *kvrwset.KVWrite) bool {
 	return kvWrite.IsDelete || len(kvWrite.Value) == 0

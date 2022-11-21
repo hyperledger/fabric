@@ -8,7 +8,7 @@ package chaincode
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -233,7 +233,7 @@ func genChaincodeDeploymentSpec(cmd *cobra.Command, chaincodeName, chaincodeVers
 
 // getPackageFromFile get the chaincode package from file and the extracted ChaincodeDeploymentSpec
 func getPackageFromFile(ccPkgFile string, cryptoProvider bccsp.BCCSP) (proto.Message, *pb.ChaincodeDeploymentSpec, error) {
-	ccPkgBytes, err := ioutil.ReadFile(ccPkgFile)
+	ccPkgBytes, err := os.ReadFile(ccPkgFile)
 	if err != nil {
 		return nil, nil, err
 	}

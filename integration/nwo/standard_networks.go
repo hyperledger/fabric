@@ -6,8 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 
 package nwo
 
-// BasicSolo is a configuration with two organizations and one peer per org.
-func BasicSolo() *Config {
+// BasicConfig is a configuration with two organizations and one peer per org.
+// This configuration does not specify a consensus type.
+func BasicConfig() *Config {
 	return &Config{
 		Organizations: []*Organization{{
 			Name:          "OrdererOrg",
@@ -39,7 +40,6 @@ func BasicSolo() *Config {
 			},
 		}},
 		Consensus: &Consensus{
-			Type:            "solo",
 			BootstrapMethod: "file",
 		},
 		SystemChannel: &SystemChannel{
@@ -65,21 +65,24 @@ func BasicSolo() *Config {
 				{Name: "testchannel", Anchor: true},
 			},
 		}},
-		Profiles: []*Profile{{
-			Name:     "TwoOrgsOrdererGenesis",
-			Orderers: []string{"orderer"},
-		}, {
-			Name:          "TwoOrgsChannel",
-			Consortium:    "SampleConsortium",
-			Organizations: []string{"Org1", "Org2"},
-		}},
+		Profiles: []*Profile{
+			{
+				Name:     "TwoOrgsOrdererGenesis",
+				Orderers: []string{"orderer"},
+			},
+			{
+				Name:          "TwoOrgsChannel",
+				Consortium:    "SampleConsortium",
+				Organizations: []string{"Org1", "Org2"},
+			},
+		},
 	}
 }
 
-// ThreeOrgSolo returns a simple configuration with three organizations instead
+// ThreeOrgEtcdRaft returns a simple configuration with three organizations instead
 // of two.
-func ThreeOrgSolo() *Config {
-	config := BasicSolo()
+func ThreeOrgEtcdRaft() *Config {
+	config := BasicEtcdRaft()
 	config.Organizations = append(
 		config.Organizations,
 		&Organization{
@@ -118,9 +121,9 @@ func ThreeOrgSolo() *Config {
 	return config
 }
 
-// FullSolo is a configuration with two organizations and two peers per org.
-func FullSolo() *Config {
-	config := BasicSolo()
+// FullEtcdRaft is a configuration with two organizations and two peers per org.
+func FullEtcdRaft() *Config {
+	config := BasicEtcdRaft()
 
 	config.Peers = append(
 		config.Peers,
@@ -143,8 +146,8 @@ func FullSolo() *Config {
 	return config
 }
 
-func BasicSoloWithIdemix() *Config {
-	config := BasicSolo()
+func BasicEtcdRaftWithIdemix() *Config {
+	config := BasicEtcdRaft()
 
 	// Add idemix organization
 	config.Organizations = append(config.Organizations, &Organization{
@@ -163,26 +166,8 @@ func BasicSoloWithIdemix() *Config {
 	return config
 }
 
-func MultiChannelBasicSolo() *Config {
-	config := BasicSolo()
-
-	config.Channels = []*Channel{
-		{Name: "testchannel", Profile: "TwoOrgsChannel"},
-		{Name: "testchannel2", Profile: "TwoOrgsChannel"},
-	}
-
-	for _, peer := range config.Peers {
-		peer.Channels = []*PeerChannel{
-			{Name: "testchannel", Anchor: true},
-			{Name: "testchannel2", Anchor: true},
-		}
-	}
-
-	return config
-}
-
 func BasicEtcdRaft() *Config {
-	config := BasicSolo()
+	config := BasicConfig()
 
 	config.Consensus.Type = "etcdraft"
 	config.Profiles = []*Profile{{
@@ -259,9 +244,21 @@ func ThreeOrgRaft() *Config {
 }
 
 func MultiChannelEtcdRaft() *Config {
-	config := MultiChannelBasicSolo()
+	config := BasicConfig()
 
 	config.Consensus.Type = "etcdraft"
+	config.Channels = []*Channel{
+		{Name: "testchannel", Profile: "TwoOrgsChannel"},
+		{Name: "testchannel2", Profile: "TwoOrgsChannel"},
+	}
+
+	for _, peer := range config.Peers {
+		peer.Channels = []*PeerChannel{
+			{Name: "testchannel", Anchor: true},
+			{Name: "testchannel2", Anchor: true},
+		}
+	}
+
 	config.Profiles = []*Profile{{
 		Name:     "SampleDevModeEtcdRaft",
 		Orderers: []string{"orderer"},
@@ -294,7 +291,7 @@ func MultiNodeEtcdRaft() *Config {
 }
 
 func MultiNodeBFT() *Config {
-	config := BasicSolo()
+	config := BasicConfig()
 
 	config.Consensus.Type = "BFT"
 	config.Orderers = []*Orderer{
@@ -302,14 +299,17 @@ func MultiNodeBFT() *Config {
 		{Name: "orderer2", Organization: "OrdererOrg"},
 		{Name: "orderer3", Organization: "OrdererOrg"},
 	}
-	config.Profiles = []*Profile{{
-		Name:     "SampleDevModeBFT",
-		Orderers: []string{"orderer1", "orderer2", "orderer3"},
-	}, {
-		Name:          "TwoOrgsChannel",
-		Consortium:    "SampleConsortium",
-		Organizations: []string{"Org1", "Org2"},
-	}}
+	config.Profiles = []*Profile{
+		{
+			Name:     "SampleDevModeBFT",
+			Orderers: []string{"orderer1", "orderer2", "orderer3"},
+		},
+		{
+			Name:          "TwoOrgsChannel",
+			Consortium:    "SampleConsortium",
+			Organizations: []string{"Org1", "Org2"},
+		},
+	}
 	config.SystemChannel.Profile = "SampleDevModeBFT"
 
 	return config

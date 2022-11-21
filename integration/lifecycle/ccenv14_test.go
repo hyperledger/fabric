@@ -20,7 +20,7 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
-var _ = Describe("solo network using ccenv-1.4", func() {
+var _ = Describe("etcdraft network using ccenv-1.4", func() {
 	var (
 		client  *docker.Client
 		testDir string
@@ -39,7 +39,7 @@ var _ = Describe("solo network using ccenv-1.4", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.BasicSolo(), testDir, client, StartPort(), components)
+		network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
 		network.GenerateConfigTree()
 		for _, peer := range network.PeersWithChannel("testchannel") {
 			core := network.ReadPeerConfig(peer)

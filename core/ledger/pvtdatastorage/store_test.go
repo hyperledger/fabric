@@ -79,10 +79,10 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 	blk2MissingData.Add(3, "ns-1", "coll-1", true)
 
 	// no pvt data with block 0
-	require.NoError(t, store.Commit(0, nil, nil))
+	require.NoError(t, store.Commit(0, nil, nil, nil))
 
 	// pvt data with block 1 - commit
-	require.NoError(t, store.Commit(1, testData, blk1MissingData))
+	require.NoError(t, store.Commit(1, testData, blk1MissingData, nil))
 
 	// pvt data retrieval for block 0 should return nil
 	var nilFilter ledger.PvtNsCollFilter
@@ -119,7 +119,7 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 	require.Nil(t, retrievedData)
 
 	// pvt data with block 2 - commit
-	require.NoError(t, store.Commit(2, testData, blk2MissingData))
+	require.NoError(t, store.Commit(2, testData, blk2MissingData, nil))
 
 	// retrieve the stored missing entries using GetMissingPvtDataInfoForMostRecentBlocks
 	// Only the code path of eligible entries would be covered in this unit-test. For
@@ -157,7 +157,7 @@ func TestStoreIteratorError(t *testing.T) {
 	env := NewTestStoreEnv(t, "TestStoreIteratorError", nil, pvtDataConf())
 	defer env.Cleanup()
 	store := env.TestStore
-	require.NoError(t, store.Commit(0, nil, nil))
+	require.NoError(t, store.Commit(0, nil, nil, nil))
 	env.TestStoreProvider.Close()
 	errStr := "internal leveldb error while obtaining db iterator: leveldb: closed"
 
@@ -212,8 +212,8 @@ func TestGetMissingDataInfo(t *testing.T) {
 		blk1MissingData.Add(1, "ns-1", "coll-1", true)
 		blk1MissingData.Add(1, "ns-1", "coll-2", true)
 
-		require.NoError(t, store.Commit(0, nil, nil))
-		require.NoError(t, store.Commit(1, nil, blk1MissingData))
+		require.NoError(t, store.Commit(0, nil, nil, nil))
+		require.NoError(t, store.Commit(1, nil, blk1MissingData, nil))
 
 		deprioritizedList := ledger.MissingPvtDataInfo{
 			1: ledger.MissingBlockPvtdataInfo{
@@ -327,21 +327,21 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 	blk2MissingData.Add(1, "ns-1", "coll-2", true)
 
 	// no pvt data with block 0
-	require.NoError(t, store.Commit(0, nil, nil))
+	require.NoError(t, store.Commit(0, nil, nil, nil))
 
 	// write pvt data for block 1
 	testDataForBlk1 := []*ledger.TxPvtData{
 		produceSamplePvtdata(t, 2, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 		produceSamplePvtdata(t, 4, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 	}
-	require.NoError(t, store.Commit(1, testDataForBlk1, blk1MissingData))
+	require.NoError(t, store.Commit(1, testDataForBlk1, blk1MissingData, nil))
 
 	// write pvt data for block 2
 	testDataForBlk2 := []*ledger.TxPvtData{
 		produceSamplePvtdata(t, 3, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 		produceSamplePvtdata(t, 5, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 	}
-	require.NoError(t, store.Commit(2, testDataForBlk2, blk2MissingData))
+	require.NoError(t, store.Commit(2, testDataForBlk2, blk2MissingData, nil))
 
 	retrievedData, _ := store.GetPvtDataByBlockNum(1, nil)
 	// block 1 data should still be not expired
@@ -365,7 +365,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 	require.Equal(t, expectedMissingPvtDataInfo, missingPvtDataInfo)
 
 	// Commit block 3 with no pvtdata
-	require.NoError(t, store.Commit(3, nil, nil))
+	require.NoError(t, store.Commit(3, nil, nil, nil))
 
 	// After committing block 3, the data for "ns-1:coll1" of block 1 should have expired and should not be returned by the store
 	expectedPvtdataFromBlock1 := []*ledger.TxPvtData{
@@ -388,7 +388,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 	require.Equal(t, expectedMissingPvtDataInfo, missingPvtDataInfo)
 
 	// Commit block 4 with no pvtdata
-	require.NoError(t, store.Commit(4, nil, nil))
+	require.NoError(t, store.Commit(4, nil, nil, nil))
 
 	// After committing block 4, the data for "ns-2:coll2" of block 1 should also have expired and should not be returned by the store
 	expectedPvtdataFromBlock1 = []*ledger.TxPvtData{
@@ -436,7 +436,7 @@ func TestStorePurge(t *testing.T) {
 	s := env.TestStore
 
 	// no pvt data with block 0
-	require.NoError(t, s.Commit(0, nil, nil))
+	require.NoError(t, s.Commit(0, nil, nil, nil))
 
 	// construct missing data for block 1
 	blk1MissingData := make(ledger.TxMissingPvtData)
@@ -455,10 +455,10 @@ func TestStorePurge(t *testing.T) {
 		produceSamplePvtdata(t, 2, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 		produceSamplePvtdata(t, 4, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 	}
-	require.NoError(t, s.Commit(1, testDataForBlk1, blk1MissingData))
+	require.NoError(t, s.Commit(1, testDataForBlk1, blk1MissingData, nil))
 
 	// write pvt data for block 2
-	require.NoError(t, s.Commit(2, nil, nil))
+	require.NoError(t, s.Commit(2, nil, nil, nil))
 	// data for ns-1:coll-1 and ns-2:coll-2 should exist in store
 	ns1Coll1 := &dataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-1", blkNum: 1}, txNum: 2}
 	ns2Coll2 := &dataKey{nsCollBlk: nsCollBlk{ns: "ns-2", coll: "coll-2", blkNum: 1}, txNum: 2}
@@ -517,7 +517,7 @@ func TestStorePurge(t *testing.T) {
 	require.NoError(t, s.CommitPvtDataOfOldBlocks(nil, deprioritizedList))
 
 	// write pvt data for block 3
-	require.NoError(t, s.Commit(3, nil, nil))
+	require.NoError(t, s.Commit(3, nil, nil, nil))
 	// data for ns-1:coll-1 and ns-2:coll-2 should exist in store (because purger should not be launched at block 3)
 	testWaitForPurgerRoutineToFinish(s)
 	require.True(t, testDataKeyExists(t, s, ns1Coll1))
@@ -537,7 +537,7 @@ func TestStorePurge(t *testing.T) {
 	require.True(t, testInelgMissingDataKeyExists(t, s, ns3Coll2inelgMD))
 
 	// write pvt data for block 4
-	require.NoError(t, s.Commit(4, nil, nil))
+	require.NoError(t, s.Commit(4, nil, nil, nil))
 	// data for ns-1:coll-1 should not exist in store (because purger should be launched at block 4)
 	// but ns-2:coll-2 should exist because it expires at block 5
 	testWaitForPurgerRoutineToFinish(s)
@@ -557,7 +557,7 @@ func TestStorePurge(t *testing.T) {
 	require.True(t, testInelgMissingDataKeyExists(t, s, ns3Coll2inelgMD))
 
 	// write pvt data for block 5
-	require.NoError(t, s.Commit(5, nil, nil))
+	require.NoError(t, s.Commit(5, nil, nil, nil))
 	// ns-2:coll-2 should exist because though the data expires at block 5 but purger is launched every second block
 	testWaitForPurgerRoutineToFinish(s)
 	require.False(t, testDataKeyExists(t, s, ns1Coll1))
@@ -567,7 +567,7 @@ func TestStorePurge(t *testing.T) {
 	require.True(t, testHashedIndexExists(t, s, ns2Coll2Blk1Tx2HI))
 
 	// write pvt data for block 6
-	require.NoError(t, s.Commit(6, nil, nil))
+	require.NoError(t, s.Commit(6, nil, nil, nil))
 	// ns-2:coll-2 should not exists now (because purger should be launched at block 6)
 	testWaitForPurgerRoutineToFinish(s)
 	require.False(t, testDataKeyExists(t, s, ns1Coll1))
@@ -604,7 +604,7 @@ func TestStoreState(t *testing.T) {
 	}
 
 	require.EqualError(t,
-		store.Commit(1, testData, nil),
+		store.Commit(1, testData, nil, nil),
 		"expected block number=0, received block number=1",
 	)
 }
@@ -720,10 +720,10 @@ func TestDrop(t *testing.T) {
 	blk1MissingData.Add(1, "ns-2", "coll-2", true)
 
 	// no pvt data with block 0
-	require.NoError(t, store.Commit(0, nil, nil))
+	require.NoError(t, store.Commit(0, nil, nil, nil))
 
 	// pvt data with block 1 - commit
-	require.NoError(t, store.Commit(1, testData, blk1MissingData))
+	require.NoError(t, store.Commit(1, testData, blk1MissingData, nil))
 
 	// pvt data retrieval for block 0 should return nil
 	var nilFilter ledger.PvtNsCollFilter
@@ -771,7 +771,10 @@ func TestStoreFilterPurgedKeys(t *testing.T) {
 			{"ns-1", "coll-2"}: 0,
 		},
 	)
-	env := NewTestStoreEnv(t, ledgerid, btlPolicy, pvtDataConf())
+	conf := pvtDataConf()
+	conf.PurgeInterval = 100 // set purge interval high so no purging takes place when testing the filter functionality
+
+	env := NewTestStoreEnv(t, ledgerid, btlPolicy, conf)
 	defer env.Cleanup()
 	s := env.TestStore
 
@@ -782,7 +785,7 @@ func TestStoreFilterPurgedKeys(t *testing.T) {
 	}
 
 	// no pvt data with block 0
-	require.NoError(t, s.Commit(0, nil, nil))
+	require.NoError(t, s.Commit(0, nil, nil, nil))
 
 	txWriteSet := &rwsetutil.TxPvtRwSet{
 		NsPvtRwSet: []*rwsetutil.NsPvtRwSet{
@@ -830,7 +833,24 @@ func TestStoreFilterPurgedKeys(t *testing.T) {
 			WriteSet:   txWriteSetProto,
 		},
 	}
-	require.NoError(t, s.Commit(1, testDataForBlk1, nil))
+	require.NoError(t,
+		s.Commit(1, testDataForBlk1, nil,
+			[]*PurgeMarker{
+				{
+					Ns:         "ns-1",
+					Coll:       "coll-1",
+					PvtkeyHash: util.ComputeStringHash("key-1"),
+					TxNum:      2,
+				},
+				{
+					Ns:         "ns-1",
+					Coll:       "coll-1",
+					PvtkeyHash: util.ComputeStringHash("key-2"),
+					TxNum:      1,
+				},
+			},
+		),
+	)
 
 	// following two datakeys and three hashed indexkeys should have been created
 	dataKeyColl1 := &dataKey{
@@ -881,52 +901,12 @@ func TestStoreFilterPurgedKeys(t *testing.T) {
 	require.True(t, testHashedIndexExists(t, s, hashedIndexKey2))
 	require.True(t, testHashedIndexExists(t, s, hashedIndexKey3))
 
+	// This this should filter out the pvt data for key-1 as the purge marker height is the same as the commit height of the data
+	// However, this should not cause filtering of pvt data for key-2 as the purge marker height is lower than the commit height of the data
 	pvtdata, err := s.GetPvtDataByBlockNum(1, nil)
 	require.NoError(t, err)
 	require.Len(t, pvtdata, 1)
 	require.Equal(t, uint64(2), pvtdata[0].SeqInBlock)
-	verifyRetrievedPvtData(txWriteSet, pvtdata[0].WriteSet)
-
-	// Add a purge marker for key-1 at block-1, Tx-1
-	require.NoError(
-		t,
-		s.addPurgeMarkers(
-			&PurgeMarker{
-				Ns:         "ns-1",
-				Coll:       "coll-1",
-				PvtkeyHash: util.ComputeStringHash("key-1"),
-				BlkNum:     1,
-				TxNum:      1,
-			},
-		),
-	)
-
-	// this should not cause any filtering of pvt data as the purge marker height is lower than the commit height of the data
-	pvtdata, err = s.GetPvtDataByBlockNum(1, nil)
-	require.NoError(t, err)
-	require.Len(t, pvtdata, 1)
-	require.Equal(t, uint64(2), pvtdata[0].SeqInBlock)
-	require.True(t, proto.Equal(txWriteSetProto, pvtdata[0].WriteSet))
-
-	// Add a purge marker for key-1 at block-1, Tx-3
-	require.NoError(
-		t,
-		s.addPurgeMarkers(
-			&PurgeMarker{
-				Ns:         "ns-1",
-				Coll:       "coll-1",
-				PvtkeyHash: util.ComputeStringHash("key-1"),
-				BlkNum:     1,
-				TxNum:      3,
-			},
-		),
-	)
-
-	pvtdata, err = s.GetPvtDataByBlockNum(1, nil)
-	require.NoError(t, err)
-	require.Len(t, pvtdata, 1)
-	require.Equal(t, uint64(2), pvtdata[0].SeqInBlock)
-	// this should cause removal of "key-1" from the pvt data
 	verifyRetrievedPvtData(
 		&rwsetutil.TxPvtRwSet{
 			NsPvtRwSet: []*rwsetutil.NsPvtRwSet{
@@ -962,26 +942,26 @@ func TestStoreFilterPurgedKeys(t *testing.T) {
 		pvtdata[0].WriteSet,
 	)
 
-	// Add a purge marker for key-2 at block-1, Tx-3
+	// Add a purge marker again for key-2 at block-2
 	require.NoError(
 		t,
-		s.addPurgeMarkers(
-			&PurgeMarker{
-				Ns:         "ns-1",
-				Coll:       "coll-1",
-				PvtkeyHash: util.ComputeStringHash("key-2"),
-				BlkNum:     1,
-				TxNum:      3,
+		s.Commit(2, nil, nil,
+			[]*PurgeMarker{
+				{
+					Ns:         "ns-1",
+					Coll:       "coll-1",
+					PvtkeyHash: util.ComputeStringHash("key-2"),
+					TxNum:      1,
+				},
 			},
 		),
 	)
 
+	// Now, key-2 should have been removed
 	pvtdata, err = s.GetPvtDataByBlockNum(1, nil)
 	require.NoError(t, err)
 	require.Len(t, pvtdata, 1)
 	require.Equal(t, uint64(2), pvtdata[0].SeqInBlock)
-
-	// this should cause removal of "key-2", in addition to the "key-1" from the pvt data
 	verifyRetrievedPvtData(
 		&rwsetutil.TxPvtRwSet{
 			NsPvtRwSet: []*rwsetutil.NsPvtRwSet{
@@ -1012,6 +992,51 @@ func TestStoreFilterPurgedKeys(t *testing.T) {
 		pvtdata[0].WriteSet,
 	)
 
+	// Add a purge marker for key-3 at block-3
+	require.NoError(
+		t,
+		s.Commit(3, nil, nil,
+			[]*PurgeMarker{
+				{
+					Ns:         "ns-1",
+					Coll:       "coll-2",
+					PvtkeyHash: util.ComputeStringHash("key-3"),
+					TxNum:      1,
+				},
+			},
+		),
+	)
+
+	// This should cause removal of "key-3", in addition to the "key-1", and "key-2" from the pvt data
+	pvtdata, err = s.GetPvtDataByBlockNum(1, nil)
+	require.NoError(t, err)
+	require.Len(t, pvtdata, 1)
+	require.Equal(t, uint64(2), pvtdata[0].SeqInBlock)
+	verifyRetrievedPvtData(
+		&rwsetutil.TxPvtRwSet{
+			NsPvtRwSet: []*rwsetutil.NsPvtRwSet{
+				{
+					NameSpace: "ns-1",
+					CollPvtRwSets: []*rwsetutil.CollPvtRwSet{
+						{
+							CollectionName: "coll-1",
+							KvRwSet: &kvrwset.KVRWSet{
+								Writes: []*kvrwset.KVWrite{},
+							},
+						},
+						{
+							CollectionName: "coll-2",
+							KvRwSet: &kvrwset.KVRWSet{
+								Writes: []*kvrwset.KVWrite{},
+							},
+						},
+					},
+				},
+			},
+		},
+		pvtdata[0].WriteSet,
+	)
+
 	// verify that the dataKeys and hashedIndexes still exists and the data marked for purge was indeed filtered in the above tests
 	require.True(t, testDataKeyExists(t, s, dataKeyColl1))
 	require.True(t, testDataKeyExists(t, s, dataKeyColl2))
@@ -1021,7 +1046,7 @@ func TestStoreFilterPurgedKeys(t *testing.T) {
 }
 
 func TestStoreProcessPurgeMarker(t *testing.T) {
-	ledgerid := "TestStoreFilterPurgedKeys"
+	ledgerid := "TestStoreProcessPurgeMarker"
 	btlPolicy := btltestutil.SampleBTLPolicy(
 		map[[2]string]uint64{
 			{"ns-1", "coll-1"}: 0,
@@ -1039,7 +1064,7 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 	}
 
 	// no pvt data with block 0
-	require.NoError(t, s.Commit(0, nil, nil))
+	require.NoError(t, s.Commit(0, nil, nil, nil))
 
 	txWriteSet := &rwsetutil.TxPvtRwSet{
 		NsPvtRwSet: []*rwsetutil.NsPvtRwSet{
@@ -1087,7 +1112,19 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 			WriteSet:   txWriteSetProto,
 		},
 	}
-	require.NoError(t, s.Commit(1, testDataForBlk1, nil))
+	require.NoError(
+		t,
+		s.Commit(1, testDataForBlk1, nil,
+			[]*PurgeMarker{
+				{
+					Ns:         "ns-1",
+					Coll:       "coll-1",
+					PvtkeyHash: util.ComputeStringHash("key-1"),
+					TxNum:      1,
+				},
+			},
+		),
+	)
 
 	// following two datakeys and three hashed indexkeys should have been created
 	dataKeyColl1 := &dataKey{
@@ -1132,6 +1169,20 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 		txNum:      2,
 	}
 
+	purgeMarkerForKey1 := &purgeMarkerKey{
+		ns:         "ns-1",
+		coll:       "coll-1",
+		pvtkeyHash: util.ComputeStringHash("key-1"),
+	}
+
+	purgeMarkerForKey2 := &purgeMarkerKey{
+		ns:         "ns-1",
+		coll:       "coll-1",
+		pvtkeyHash: util.ComputeStringHash("key-2"),
+	}
+
+	require.True(t, testPurgeMarkerExists(t, s, purgeMarkerForKey1))
+	require.True(t, testPurgeMarkerForReconExists(t, s, purgeMarkerForKey1))
 	require.True(t, testDataKeyExists(t, s, dataKeyColl1))
 	require.True(t, testDataKeyExists(t, s, dataKeyColl2))
 	require.True(t, testHashedIndexExists(t, s, hashedIndexKey1))
@@ -1144,23 +1195,11 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 	require.Equal(t, uint64(2), pvtdata[0].SeqInBlock)
 	verifyRetrievedPvtData(txWriteSet, pvtdata[0].WriteSet)
 
-	// Add a purge marker for key-1 at block-1, Tx-1
-	require.NoError(
-		t,
-		s.addPurgeMarkers(
-			&PurgeMarker{
-				Ns:         "ns-1",
-				Coll:       "coll-1",
-				PvtkeyHash: util.ComputeStringHash("key-1"),
-				BlkNum:     1,
-				TxNum:      1,
-			},
-		),
-	)
-
 	// commit block 2 to kick off the background purger goroutine
-	require.NoError(t, s.Commit(2, nil, nil))
+	require.NoError(t, s.Commit(2, nil, nil, nil))
 	testWaitForPurgerRoutineToFinish(s)
+	require.False(t, testPurgeMarkerExists(t, s, purgeMarkerForKey1))
+	require.True(t, testPurgeMarkerForReconExists(t, s, purgeMarkerForKey1))
 
 	// this should not cause any purging of pvt data as the purge marker height is lower than the commit height of the data
 	require.True(t, testDataKeyExists(t, s, dataKeyColl1))
@@ -1175,24 +1214,71 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 	require.Equal(t, uint64(2), pvtdata[0].SeqInBlock)
 	require.True(t, proto.Equal(txWriteSetProto, pvtdata[0].WriteSet))
 
-	// Add a purge marker for key-1 at block-1, Tx-3
+	// Add a purge marker for key-1 at block-3
+	txWriteSetWithDelete := &rwsetutil.TxPvtRwSet{
+		NsPvtRwSet: []*rwsetutil.NsPvtRwSet{
+			{
+				NameSpace: "ns-1",
+				CollPvtRwSets: []*rwsetutil.CollPvtRwSet{
+					{
+						CollectionName: "coll-1",
+						KvRwSet: &kvrwset.KVRWSet{
+							Writes: []*kvrwset.KVWrite{
+								{
+									Key:      "key-1",
+									IsDelete: true,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	txWriteSetWithDeleteProto, err := txWriteSetWithDelete.ToProtoMsg()
+	require.NoError(t, err)
+
+	hashedIndexDeleteKey1 := &hashedIndexKey{
+		ns:         "ns-1",
+		coll:       "coll-1",
+		pvtkeyHash: util.ComputeStringHash("key-1"),
+		blkNum:     3,
+		txNum:      1,
+	}
+
 	require.NoError(
 		t,
-		s.addPurgeMarkers(
-			&PurgeMarker{
-				Ns:         "ns-1",
-				Coll:       "coll-1",
-				PvtkeyHash: util.ComputeStringHash("key-1"),
-				BlkNum:     1,
-				TxNum:      3,
+		s.Commit(3,
+			// Add a delete for the private key to simulate the situation where this key
+			// is added along with the purge marker at the same transaction height
+			[]*ledger.TxPvtData{
+				{
+					SeqInBlock: 1,
+					WriteSet:   txWriteSetWithDeleteProto,
+				},
+			},
+			nil,
+			[]*PurgeMarker{
+				{
+					Ns:         "ns-1",
+					Coll:       "coll-1",
+					PvtkeyHash: util.ComputeStringHash("key-1"),
+					TxNum:      1,
+				},
 			},
 		),
 	)
 
-	// commit block 3 and 4 to kick off the background purger goroutine
-	require.NoError(t, s.Commit(3, nil, nil))
-	require.NoError(t, s.Commit(4, nil, nil))
+	require.True(t, testPurgeMarkerExists(t, s, purgeMarkerForKey1))
+	require.True(t, testPurgeMarkerForReconExists(t, s, purgeMarkerForKey1))
+	require.True(t, testHashedIndexExists(t, s, hashedIndexDeleteKey1))
+
+	// commit block 4 to kick off the background purger goroutine
+	require.NoError(t, s.Commit(4, nil, nil, nil))
 	testWaitForPurgerRoutineToFinish(s)
+	require.False(t, testPurgeMarkerExists(t, s, purgeMarkerForKey1))
+	require.True(t, testPurgeMarkerForReconExists(t, s, purgeMarkerForKey1))
 
 	// this should cause purging key-1 from data
 	require.True(t, testDataKeyExists(t, s, dataKeyColl1))
@@ -1212,6 +1298,7 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 	)
 	require.True(t, testDataKeyExists(t, s, dataKeyColl2))
 	require.False(t, testHashedIndexExists(t, s, hashedIndexKey1))
+	require.False(t, testHashedIndexExists(t, s, hashedIndexDeleteKey1))
 	require.True(t, testHashedIndexExists(t, s, hashedIndexKey2))
 	require.True(t, testHashedIndexExists(t, s, hashedIndexKey3))
 
@@ -1255,24 +1342,49 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 		pvtdata[0].WriteSet,
 	)
 
-	// Add a purge marker for key-2 at block-2, Tx-3
+	pvtdata, err = s.GetPvtDataByBlockNum(3, nil)
+	require.NoError(t, err)
+	require.Len(t, pvtdata, 1)
+	require.Equal(t, uint64(1), pvtdata[0].SeqInBlock)
+	verifyRetrievedPvtData(
+		&rwsetutil.TxPvtRwSet{
+			NsPvtRwSet: []*rwsetutil.NsPvtRwSet{
+				{
+					NameSpace: "ns-1",
+					CollPvtRwSets: []*rwsetutil.CollPvtRwSet{
+						{
+							CollectionName: "coll-1",
+							KvRwSet:        &kvrwset.KVRWSet{},
+						},
+					},
+				},
+			},
+		},
+		pvtdata[0].WriteSet,
+	)
+
+	// Add a purge marker for key-2 at block-5
 	require.NoError(
 		t,
-		s.addPurgeMarkers(
-			&PurgeMarker{
-				Ns:         "ns-1",
-				Coll:       "coll-1",
-				PvtkeyHash: util.ComputeStringHash("key-2"),
-				BlkNum:     1,
-				TxNum:      3,
+		s.Commit(5, testDataForBlk1, nil,
+			[]*PurgeMarker{
+				{
+					Ns:         "ns-1",
+					Coll:       "coll-1",
+					PvtkeyHash: util.ComputeStringHash("key-2"),
+					TxNum:      1,
+				},
 			},
 		),
 	)
 
-	// commit block 5 and 6 to kick off the background purger goroutine
-	require.NoError(t, s.Commit(5, nil, nil))
-	require.NoError(t, s.Commit(6, nil, nil))
+	require.True(t, testPurgeMarkerExists(t, s, purgeMarkerForKey2))
+	require.True(t, testPurgeMarkerForReconExists(t, s, purgeMarkerForKey2))
+	// commit block 6 to kick off the background purger goroutine
+	require.NoError(t, s.Commit(6, nil, nil, nil))
 	testWaitForPurgerRoutineToFinish(s)
+	require.False(t, testPurgeMarkerExists(t, s, purgeMarkerForKey2))
+	require.True(t, testPurgeMarkerForReconExists(t, s, purgeMarkerForKey2))
 
 	// this should cause purging key-2 (e.g., all keys) from data
 	require.True(t, testDataKeyExists(t, s, dataKeyColl1))
@@ -1322,6 +1434,89 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 	)
 }
 
+func TestFetchPrivateDataRawKey(t *testing.T) {
+	ledgerid := "TestFetchPrivateDataRawKey"
+	btlPolicy := btltestutil.SampleBTLPolicy(
+		map[[2]string]uint64{
+			{"ns-1", "coll-1"}: 0,
+			{"ns-1", "coll-2"}: 0,
+		},
+	)
+	env := NewTestStoreEnv(t, ledgerid, btlPolicy, pvtDataConf())
+	defer env.Cleanup()
+	s := env.TestStore
+
+	// no pvt data with block 0
+	require.NoError(t, s.Commit(0, nil, nil, nil))
+
+	txWriteSet := &rwsetutil.TxPvtRwSet{
+		NsPvtRwSet: []*rwsetutil.NsPvtRwSet{
+			{
+				NameSpace: "ns-1",
+				CollPvtRwSets: []*rwsetutil.CollPvtRwSet{
+					{
+						CollectionName: "coll-1",
+						KvRwSet: &kvrwset.KVRWSet{
+							Writes: []*kvrwset.KVWrite{
+								{
+									Key:   "key-1",
+									Value: []byte("value-1"),
+								},
+								{
+									Key:   "key-2",
+									Value: []byte("value-2"),
+								},
+							},
+						},
+					},
+					{
+						CollectionName: "coll-2",
+						KvRwSet: &kvrwset.KVRWSet{
+							Writes: []*kvrwset.KVWrite{
+								{
+									Key:   "key-3",
+									Value: []byte("value-3"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	txWriteSetProto, err := txWriteSet.ToProtoMsg()
+	require.NoError(t, err)
+
+	// write pvt data for block 1
+	testDataForBlk1 := []*ledger.TxPvtData{
+		{
+			SeqInBlock: 2,
+			WriteSet:   txWriteSetProto,
+		},
+	}
+	require.NoError(
+		t,
+		s.Commit(1, testDataForBlk1, nil, nil),
+	)
+
+	key, err := s.FetchPrivateDataRawKey("ns-1", "coll-1", util.ComputeStringHash("key-1"))
+	require.NoError(t, err)
+	require.Equal(t, "key-1", key)
+
+	key, err = s.FetchPrivateDataRawKey("ns-1", "coll-1", util.ComputeStringHash("key-2"))
+	require.NoError(t, err)
+	require.Equal(t, "key-2", key)
+
+	key, err = s.FetchPrivateDataRawKey("ns-1", "coll-2", util.ComputeStringHash("key-3"))
+	require.NoError(t, err)
+	require.Equal(t, "key-3", key)
+
+	key, err = s.FetchPrivateDataRawKey("ns-1", "coll-2", util.ComputeStringHash("non-existing-key"))
+	require.NoError(t, err)
+	require.Equal(t, "", key)
+}
+
 func testCollElgEnabled(t *testing.T, conf *PrivateDataConfig) {
 	ledgerid := "TestCollElgEnabled"
 	btlPolicy := btltestutil.SampleBTLPolicy(
@@ -1339,7 +1534,7 @@ func testCollElgEnabled(t *testing.T, conf *PrivateDataConfig) {
 	// Initial state: eligible for {ns-1:coll-1 and ns-2:coll-1 }
 
 	// no pvt data with block 0
-	require.NoError(t, testStore.Commit(0, nil, nil))
+	require.NoError(t, testStore.Commit(0, nil, nil, nil))
 
 	// construct and commit block 1
 	blk1MissingData := make(ledger.TxMissingPvtData)
@@ -1350,7 +1545,7 @@ func testCollElgEnabled(t *testing.T, conf *PrivateDataConfig) {
 	testDataForBlk1 := []*ledger.TxPvtData{
 		produceSamplePvtdata(t, 2, []string{"ns-1:coll-1"}),
 	}
-	require.NoError(t, testStore.Commit(1, testDataForBlk1, blk1MissingData))
+	require.NoError(t, testStore.Commit(1, testDataForBlk1, blk1MissingData, nil))
 
 	// construct and commit block 2
 	blk2MissingData := make(ledger.TxMissingPvtData)
@@ -1360,7 +1555,7 @@ func testCollElgEnabled(t *testing.T, conf *PrivateDataConfig) {
 	testDataForBlk2 := []*ledger.TxPvtData{
 		produceSamplePvtdata(t, 3, []string{"ns-1:coll-1"}),
 	}
-	require.NoError(t, testStore.Commit(2, testDataForBlk2, blk2MissingData))
+	require.NoError(t, testStore.Commit(2, testDataForBlk2, blk2MissingData, nil))
 
 	// Retrieve and verify missing data reported
 	// Expected missing data should be only blk1-tx1 (because, the other missing data is marked as ineliigible)
@@ -1466,6 +1661,18 @@ func testHashedIndexExists(t *testing.T, s *Store, h *hashedIndexKey) bool {
 	}
 	require.Equal(t, h.pvtkeyHash, util.ComputeHash(val))
 	return true
+}
+
+func testPurgeMarkerExists(t *testing.T, s *Store, p *purgeMarkerKey) bool {
+	val, err := s.db.Get(encodePurgeMarkerKey(p))
+	require.NoError(t, err)
+	return len(val) > 0
+}
+
+func testPurgeMarkerForReconExists(t *testing.T, s *Store, p *purgeMarkerKey) bool {
+	val, err := s.db.Get(encodePurgeMarkerForReconKey(p))
+	require.NoError(t, err)
+	return len(val) > 0
 }
 
 func testWaitForPurgerRoutineToFinish(s *Store) {

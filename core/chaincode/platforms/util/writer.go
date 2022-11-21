@@ -11,7 +11,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -70,7 +69,7 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDirs []strin
 				return nil
 			}
 
-			fileBytes, err := ioutil.ReadFile(localpath)
+			fileBytes, err := os.ReadFile(localpath)
 			if err != nil {
 				return err
 			}

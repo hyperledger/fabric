@@ -52,7 +52,7 @@ type ChannelValues interface {
 	// Merkle tree to compute the BlockData hash
 	BlockDataHashingStructureWidth() uint32
 
-	// OrdererAddresses returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
+	// OrdererAddresses returns the list of valid orderer addresses to connect to invoke Broadcast/Deliver
 	OrdererAddresses() []string
 }
 
@@ -151,7 +151,7 @@ func (cc *ChannelConfig) BlockDataHashingStructureWidth() uint32 {
 	return cc.protos.BlockDataHashingStructure.Width
 }
 
-// OrdererAddresses returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
+// OrdererAddresses returns the list of valid orderer addresses to connect to invoke Broadcast/Deliver
 func (cc *ChannelConfig) OrdererAddresses() []string {
 	return cc.protos.OrdererAddresses.Addresses
 }

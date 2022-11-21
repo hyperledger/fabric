@@ -522,7 +522,7 @@ func initAndStartFourOrgsNetwork() *setup {
 	client, err := docker.NewClientFromEnv()
 	Expect(err).NotTo(HaveOccurred())
 
-	config := nwo.BasicSolo()
+	config := nwo.BasicEtcdRaft()
 
 	config.Channels = []*nwo.Channel{
 		{Name: testchannelID, Profile: "TwoOrgsChannel"},

@@ -273,7 +273,7 @@ func initThreeOrgsSetup() *setup {
 	client, err := docker.NewClientFromEnv()
 	Expect(err).NotTo(HaveOccurred())
 
-	n := nwo.New(nwo.ThreeOrgSolo(), testDir, client, StartPort(), components)
+	n := nwo.New(nwo.ThreeOrgEtcdRaft(), testDir, client, StartPort(), components)
 	n.GenerateConfigTree()
 	n.Bootstrap()
 

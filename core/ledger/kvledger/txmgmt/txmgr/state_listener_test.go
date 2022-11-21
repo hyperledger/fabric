@@ -46,7 +46,7 @@ func TestStateListener(t *testing.T) {
 	sampleBatch.PubUpdates.Put("ns2", "key2_1", []byte("value2_1"), version.NewHeight(1, 3))
 	sampleBatch.PubUpdates.Put("ns3", "key3_1", []byte("value3_1"), version.NewHeight(1, 4))
 	dummyBlock := protoutil.NewBlock(1, []byte("dummyHash"))
-	txmgr.current = &current{block: dummyBlock, batch: sampleBatch}
+	txmgr.currentUpdates = &currentUpdates{block: dummyBlock, batch: sampleBatch}
 	require.NoError(t, txmgr.invokeNamespaceListeners())
 	require.Equal(t, 1, ml1.HandleStateUpdatesCallCount())
 	require.Equal(t, 1, ml2.HandleStateUpdatesCallCount())
@@ -98,7 +98,7 @@ func TestStateListener(t *testing.T) {
 	sampleBatch.HashUpdates.Put("ns4", "coll2", []byte("key-hash-3"), []byte("value-hash-3"), version.NewHeight(2, 3))
 	sampleBatch.HashUpdates.Delete("ns4", "coll2", []byte("key-hash-4"), version.NewHeight(2, 4))
 
-	txmgr.current = &current{block: protoutil.NewBlock(2, []byte("anotherDummyHash")), batch: sampleBatch}
+	txmgr.currentUpdates = &currentUpdates{block: protoutil.NewBlock(2, []byte("anotherDummyHash")), batch: sampleBatch}
 	require.NoError(t, txmgr.invokeNamespaceListeners())
 	require.Equal(t, 1, ml1.HandleStateUpdatesCallCount())
 	require.Equal(t, 1, ml2.HandleStateUpdatesCallCount())
@@ -179,7 +179,7 @@ func TestStateListenerQueryExecutor(t *testing.T) {
 	block := testutil.ConstructBlock(t, 1, nil, [][]byte{simResBytes}, false)
 
 	// invoke ValidateAndPrepare function
-	_, _, err = txMgr.ValidateAndPrepare(&ledger.BlockAndPvtData{Block: block}, false)
+	_, _, _, err = txMgr.ValidateAndPrepare(&ledger.BlockAndPvtData{Block: block}, false)
 	require.NoError(t, err)
 
 	// validate that the query executors passed to the state listener
