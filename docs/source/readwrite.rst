@@ -88,7 +88,7 @@ during simulation) during validation on the committed-state, it should
 yield the same results that were observed by the transaction at the time
 of simulation. This check ensures that if a transaction observes phantom
 items during commit, the transaction should be marked as invalid. Note
-that the this phantom protection is limited to range queries (i.e.,
+that this phantom protection is limited to range queries (i.e.,
 ``GetStateByRange`` function in the chaincode) and not yet implemented
 for other queries (i.e., ``GetQueryResult`` function in the chaincode).
 Other queries are at risk of phantoms, and should therefore only be used
