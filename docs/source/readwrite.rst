@@ -17,9 +17,9 @@ the place of new value) for the key if the update performed by the
 transaction is to delete the key.
 
 Further, if the transaction writes a value multiple times for a key,
-only the last written value is retained. Also, if a transaction reads a
+only the last written value is retained. Also, if a particular transaction reads a
 value for a key, the value in the committed state is returned even if
-the transaction has updated the value for the key before issuing the
+the same transaction has updated the value for the key before issuing the
 read. In another words, Read-your-writes semantics are not supported.
 
 As noted earlier, the versions of the keys are recorded only in the read
