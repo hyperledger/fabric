@@ -323,14 +323,15 @@ a request to the Fabric Gateway service to evaluate a transaction proposal.
 
 The target peer, selected by the client application, executes the transaction
 by invoking chaincode --- this step can be described as simulating the transaction,
-because it runs the transaction without any effect on the ledger. The peer then
-returns its transaction result to the client.  
+because it runs the transaction without any effect on the ledger. The target peer then
+returns its proposal response to the gateway service.
 
 The gateway service also forwards the transaction proposal to the required
 *endorsing peers* (based on the endorsement policies), which also execute the
-transaction and return their results to the peer. The gateway service collects
-all responses, and if they collectively satisfy the endorsement policies, forwards
-the transaction to the ordering service.
+transaction and return their results to the gateway service. The gateway service collects
+all responses and creates a transaction envelope — which it returns to the client (SDK)
+for signing. After the client sent the signed envelope back to the gateway 
+service, the gateway service forwards the envelope to the ordering service.
 
 If the proposed transaction would write to a private data collection, (as *transient* data)
 the client application must explicitly specify the organizations required for endorsement.
