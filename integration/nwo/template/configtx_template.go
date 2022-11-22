@@ -163,7 +163,7 @@ Profiles:{{ range .Profiles }}
         {{- else }}
         V2_0: true
         {{- end }}
-      {{- if eq $w.Consensus.Type "BFT" }}
+      {{- if eq $w.Consensus.Type "smartbft" }}
       ConsenterMapping:{{ range $index, $orderer := .Orderers }}{{ with $w.Orderer . }}
       - ID: {{ $index }}
         Host: 127.0.0.1
@@ -171,6 +171,7 @@ Profiles:{{ range .Profiles }}
         MSPID: {{ .Organization }}
         ClientTLSCert: {{ $w.OrdererLocalCryptoDir . "tls" }}/server.crt
         ServerTLSCert: {{ $w.OrdererLocalCryptoDir . "tls" }}/server.crt
+        Identity: {{ $w.OrdererLocalCryptoDir . "tls" }}/server.crt
         {{- end }}{{- end }}
       {{- end }}
       {{- if eq $w.Consensus.Type "etcdraft" }}
