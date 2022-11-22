@@ -31,7 +31,6 @@ import (
 	"github.com/hyperledger/fabric-config/configtx"
 	"github.com/hyperledger/fabric-config/configtx/orderer"
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	conftx "github.com/hyperledger/fabric/integration/configtx"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
@@ -111,24 +110,24 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			peer := network.Peer("Org1", "peer0")
 
-			genesisBlock := applicationChannelGenesisBlock(network, network.Orderers, []*nwo.Peer{peer}, "participation-trophy")
-			expectedChannelInfoPT := channelparticipation.ChannelInfo{
-				Name:              "participation-trophy",
-				URL:               "/participation/v1/channels/participation-trophy",
-				Status:            "active",
-				ConsensusRelation: "consenter",
-				Height:            1,
-			}
+			/* 			genesisBlock := applicationChannelGenesisBlock(network, network.Orderers, []*nwo.Peer{peer}, "participation-trophy")
+			   			expectedChannelInfoPT := channelparticipation.ChannelInfo{
+			   				Name:              "participation-trophy",
+			   				URL:               "/participation/v1/channels/participation-trophy",
+			   				Status:            "active",
+			   				ConsensusRelation: "consenter",
+			   				Height:            1,
+			   			}
 
-			for _, o := range network.Orderers {
-				By("joining " + o.Name + " to channel as a consenter")
-				channelparticipation.Join(network, o, "participation-trophy", genesisBlock, expectedChannelInfoPT)
-				channelInfo := channelparticipation.ListOne(network, o, "participation-trophy")
-				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
-			}
+			   			for _, o := range network.Orderers {
+			   				By("joining " + o.Name + " to channel as a consenter")
+			   				channelparticipation.Join(network, o, "participation-trophy", genesisBlock, expectedChannelInfoPT)
+			   				channelInfo := channelparticipation.ListOne(network, o, "participation-trophy")
+			   				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
+			   			}
 
-			Eventually(ordererRunners[1].Err(), 120*time.Second, time.Second).Should(gbytes.Say("Message from 1"))
-			Fail("stop here")
+			   			Eventually(ordererRunners[1].Err(), 120*time.Second, time.Second).Should(gbytes.Say("Message from 1"))
+			   			Fail("stop here") */
 
 			assertBlockReception(map[string]int{"systemchannel": 0}, network.Orderers, peer, network)
 			/* 			By("check block validation policy on system channel")
@@ -199,7 +198,6 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			By("invoking the chaincode, again")
 			invokeQuery(network, peer, network.Orderers[2], channel, 80)
 		})
-
 	})
 })
 
@@ -325,7 +323,7 @@ func extractTarGZ(archive []byte, baseDir string) error {
 		filePath := filepath.Join(baseDir, header.Name)
 		switch header.Typeflag {
 		case tar.TypeDir:
-			if err := os.Mkdir(filePath, 0755); err != nil {
+			if err := os.Mkdir(filePath, 0o755); err != nil {
 				return err
 			}
 		case tar.TypeReg:

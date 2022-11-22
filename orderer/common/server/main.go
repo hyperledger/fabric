@@ -66,7 +66,10 @@ var (
 	_       = app.Command("start", "Start the orderer node").Default() // preserved for cli compatibility
 	version = app.Command("version", "Show version information")
 
-	clusterTypes = map[string]struct{}{"etcdraft": {}}
+	clusterTypes = map[string]struct{}{
+		"etcdraft": {},
+		"smartbft": {},
+	}
 )
 
 // Main is the entry point of orderer process
@@ -811,6 +814,7 @@ func initializeMultichannelRegistrar(
 		if bootstrapBlock != nil && isClusterType(bootstrapBlock, bccsp) {
 			// with a system channel
 			consenterType := onboarding.ConsensusType(bootstrapBlock, bccsp)
+			fmt.Printf("consenterType: %s\n", consenterType)
 			switch consenterType {
 			case "etcdraft":
 				initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, repInitiator, srvConf, srv, registrar, metricsProvider, bccsp)
@@ -824,14 +828,18 @@ func initializeMultichannelRegistrar(
 			consenterType := "smartbft"
 			bootstrapBlock := initSystemChannelWithJoinBlock(conf, bccsp, lf)
 			if bootstrapBlock != nil {
+				fmt.Println("DEBUG_bootstrapBlock is not nil")
 				consenterType = onboarding.ConsensusType(bootstrapBlock, bccsp)
 			} else {
+				fmt.Println("DEBUG_bootstrapBlock is nil")
 				// load consensus type from orderer config
 				var consensusConfig localconfig.Consensus
 				if err := mapstructure.Decode(conf.Consensus, &consensusConfig); err == nil && consensusConfig.Type != "" {
 					consenterType = consensusConfig.Type
 				}
 			}
+
+			fmt.Printf("DEBUG_consenterType:%v\n", consenterType)
 			// the orderer can start without channels at all and have an initialized cluster type consenter
 			switch consenterType {
 			case "etcdraft":
@@ -890,6 +898,7 @@ func initializeSmartBFTConsenter(
 	metricsProvider metrics.Provider,
 	bccsp bccsp.BCCSP,
 ) *smartbft.Consenter {
+	fmt.Println("DEBUG-initializeSmartBFTConsenter called")
 	systemChannelName, err := protoutil.GetChannelIDFromBlock(bootstrapBlock)
 	if err != nil {
 		logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)

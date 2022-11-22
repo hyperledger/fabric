@@ -8,6 +8,7 @@ package smartbft
 
 import (
 	"fmt"
+
 	mspa "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/policydsl"
 
@@ -131,10 +132,9 @@ func (cbv *ConfigBlockValidator) checkConsentersMatchPolicy(conf *cb.Config) err
 		Value: protoutil.MarshalOrPanic(sp),
 	}
 
-
 	actualPolicy := conf.ChannelGroup.Groups["Orderer"].Policies["BlockValidation"].Policy
 
-	if ! proto.Equal(expectedConfigPol, actualPolicy) {
+	if !proto.Equal(expectedConfigPol, actualPolicy) {
 		return fmt.Errorf("block validation policy should be a signature policy: %v but it is %v instead", expectedConfigPol, actualPolicy)
 	}
 
