@@ -356,9 +356,12 @@ func RemoteNodesFromConfigBlock(block *cb.Block, selfID uint64, logger *flogging
 	var remoteNodes []cluster.RemoteNode
 	id2Identies := map[uint64][]byte{}
 	for _, consenter := range oc.Consenters() {
-		sanitizedID, err := crypto.SanitizeIdentity(consenter.Identity)
+		sanitizedID, err := crypto.SanitizeIdentity(protoutil.MarshalOrPanic(&msp.SerializedIdentity{
+			IdBytes: consenter.Identity,
+			Mspid:   consenter.MspId,
+		}))
 		if err != nil {
-			logger.Panicf("Failed to sanitize identity: %v", err)
+			logger.Panicf("Failed to sanitize identity: %v [%s]", err, string(consenter.Identity))
 		}
 		id2Identies[(uint64)(consenter.Id)] = sanitizedID
 		logger.Infof("%s %d ---> %s", bundle.ConfigtxValidator().ChannelID(), consenter.Id, string(consenter.Identity))

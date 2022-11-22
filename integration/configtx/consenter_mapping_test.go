@@ -49,6 +49,6 @@ var _ = Describe("ConfigTx ConsenterMapping", func() {
 		o := &common.Orderers{}
 		err = proto.Unmarshal(group.GetValues()["Orderers"].GetValue(), o)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(len(o.GetConsenterMapping())).To(Equal(3))
+		Expect(len(o.GetConsenterMapping())).To(Equal(4))
 	})
 })

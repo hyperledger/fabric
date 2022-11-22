@@ -103,6 +103,7 @@ type Channel struct {
 type Orderer struct {
 	Name         string `yaml:"name,omitempty"`
 	Organization string `yaml:"organization,omitempty"`
+	Id           int    `yaml:"id,omitempty"`
 }
 
 // ID provides a unique identifier for an orderer instance.
@@ -710,6 +711,12 @@ func (n *Network) OrdererLocalMSPDir(o *Orderer) string {
 	return n.OrdererLocalCryptoDir(o, "msp")
 }
 
+func (n *Network) OrdererSignCert(o *Orderer) string {
+	dirName := filepath.Join(n.OrdererLocalCryptoDir(o, "msp"), "signcerts")
+	fileName := fmt.Sprintf("%s.%s-cert.pem", o.Name, n.Organization(o.Organization).Domain)
+	return filepath.Join(dirName, fileName)
+}
+
 // OrdererLocalTLSDir returns the path to the local TLS directory for the
 // Orderer.
 func (n *Network) OrdererLocalTLSDir(o *Orderer) string {
@@ -792,7 +799,7 @@ func (n *Network) Bootstrap() {
 
 	n.bootstrapIdemix()
 
-	if n.SystemChannel != nil { // TODO this entire block could be removed once we finish using the system channel
+	if n.SystemChannel != nil && n.SystemChannel.Name != "" {
 		sess, err = n.ConfigTxGen(commands.OutputBlock{
 			ChannelID:   n.SystemChannel.Name,
 			Profile:     n.SystemChannel.Profile,

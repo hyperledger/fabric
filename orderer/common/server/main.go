@@ -825,7 +825,7 @@ func initializeMultichannelRegistrar(
 			}
 		} else if bootstrapBlock == nil {
 			// without a system channel: assume cluster type, InactiveChainRegistry == nil, no go-routine.
-			consenterType := "smartbft"
+			consenterType := "BFT"
 			bootstrapBlock := initSystemChannelWithJoinBlock(conf, bccsp, lf)
 			if bootstrapBlock != nil {
 				fmt.Println("DEBUG_bootstrapBlock is not nil")
@@ -844,8 +844,8 @@ func initializeMultichannelRegistrar(
 			switch consenterType {
 			case "etcdraft":
 				consenters["etcdraft"] = etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, nil, metricsProvider, bccsp)
-			case "smartbft":
-				consenters["smartbft"] = smartbft.New(nil, dpmr.Registry(), signer, clusterDialer, conf, srvConf, srv, registrar, metricsProvider, bccsp)
+			case "BFT":
+				consenters["BFT"] = smartbft.New(nil, dpmr.Registry(), signer, clusterDialer, conf, srvConf, srv, registrar, metricsProvider, bccsp)
 			default:
 				logger.Panicf("Unknown cluster type consenter '%s'", consenterType)
 			}

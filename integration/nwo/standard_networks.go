@@ -182,16 +182,21 @@ func FullEtcdRaftNoSysChan() *Config {
 
 func MultiNodeBFTNoSysChan() *Config {
 	config := BasicConfig()
-
+	config.SystemChannel = nil
 	config.Consensus.Type = "BFT"
 	config.Orderers = []*Orderer{
 		{Name: "orderer1", Organization: "OrdererOrg"},
 		{Name: "orderer2", Organization: "OrdererOrg"},
 		{Name: "orderer3", Organization: "OrdererOrg"},
+		{Name: "orderer4", Organization: "OrdererOrg"},
 	}
 	config.Profiles = []*Profile{
 		{
-			Name:          "TwoOrgsAppChannelBFT",
+			Name:     "SampleDevModeBFT",
+			Orderers: []string{"orderer1", "orderer2", "orderer3", "orderer4"},
+		},
+		{
+			Name:          "TwoOrgsChannel",
 			Consortium:    "SampleConsortium",
 			Organizations: []string{"Org1", "Org2"},
 			Orderers:      []string{"orderer1", "orderer2", "orderer3"},

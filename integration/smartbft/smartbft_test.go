@@ -25,6 +25,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/golang/protobuf/proto"
+
+	"github.com/hyperledger/fabric/integration/channelparticipation"
+
 	"github.com/tedsuo/ifrit/grouper"
 
 	docker "github.com/fsouza/go-dockerclient"
@@ -89,7 +93,12 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 	Describe("smartbft network", func() {
 		It("smartbft multiple nodes stop start all nodes", func() {
-			network = nwo.New(nwo.MultiNodeSmartBFT(), testDir, client, StartPort(), components)
+			networkConfig := nwo.MultiNodeSmartBFT()
+			networkConfig.SystemChannel.Name = ""
+			networkConfig.Channels = nil
+
+			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
+			network.Consortiums = nil
 			network.Consensus.ChannelParticipationEnabled = true
 			network.Consensus.BootstrapMethod = "none"
 			network.GenerateConfigTree()
@@ -110,24 +119,39 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			peer := network.Peer("Org1", "peer0")
 
-			/* 			genesisBlock := applicationChannelGenesisBlock(network, network.Orderers, []*nwo.Peer{peer}, "participation-trophy")
-			   			expectedChannelInfoPT := channelparticipation.ChannelInfo{
-			   				Name:              "participation-trophy",
-			   				URL:               "/participation/v1/channels/participation-trophy",
-			   				Status:            "active",
-			   				ConsensusRelation: "consenter",
-			   				Height:            1,
-			   			}
+			sess, err := network.ConfigTxGen(commands.OutputBlock{
+				ChannelID:   "testchannel1",
+				Profile:     network.Profiles[0].Name,
+				ConfigPath:  network.RootDir,
+				OutputBlock: network.OutputBlockPath("testchannel1"),
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 
-			   			for _, o := range network.Orderers {
-			   				By("joining " + o.Name + " to channel as a consenter")
-			   				channelparticipation.Join(network, o, "participation-trophy", genesisBlock, expectedChannelInfoPT)
-			   				channelInfo := channelparticipation.ListOne(network, o, "participation-trophy")
-			   				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
-			   			}
+			genesisBlockBytes, err := os.ReadFile(network.OutputBlockPath("testchannel1"))
+			Expect(err).NotTo(HaveOccurred())
 
-			   			Eventually(ordererRunners[1].Err(), 120*time.Second, time.Second).Should(gbytes.Say("Message from 1"))
-			   			Fail("stop here") */
+			genesisBlock := &common.Block{}
+			err = proto.Unmarshal(genesisBlockBytes, genesisBlock)
+			Expect(err).NotTo(HaveOccurred())
+
+			expectedChannelInfoPT := channelparticipation.ChannelInfo{
+				Name:              "testchannel1",
+				URL:               "/participation/v1/channels/testchannel1",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            1,
+			}
+
+			for _, o := range network.Orderers {
+				By("joining " + o.Name + " to channel as a consenter")
+				channelparticipation.Join(network, o, "testchannel1", genesisBlock, expectedChannelInfoPT)
+				channelInfo := channelparticipation.ListOne(network, o, "testchannel1")
+				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
+			}
+
+			Eventually(ordererRunners[1].Err(), 120*time.Second, time.Second).Should(gbytes.Say("Message from 1"))
+			Fail("stop here")
 
 			assertBlockReception(map[string]int{"systemchannel": 0}, network.Orderers, peer, network)
 			/* 			By("check block validation policy on system channel")
@@ -160,7 +184,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			}
 
 			By("querying the chaincode")
-			sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+			sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
 				ChannelID: channel,
 				Name:      "mycc",
 				Ctor:      `{"Args":["query","a"]}`,
@@ -347,7 +371,7 @@ func applicationChannelGenesisBlock(n *nwo.Network, orderers []*nwo.Orderer, pee
 
 	channelConfig := configtx.Channel{
 		Orderer: configtx.Orderer{
-			OrdererType:   "smartbft",
+			OrdererType:   "etcdraft",
 			Organizations: ordererOrgs,
 			EtcdRaft: orderer.EtcdRaft{
 				Consenters: consenters,

@@ -43,7 +43,7 @@ const (
 	// ConsensusTypeEtcdRaft identifies the Raft-based consensus implementation.
 	ConsensusTypeEtcdRaft = "etcdraft"
 	// ConsensusTypeBFT identifies the BFT-based consensus implementation.
-	ConsensusTypeBFT = "smartbft"
+	ConsensusTypeBFT = "BFT"
 
 	// BlockValidationPolicyKey TODO
 	BlockValidationPolicyKey = "BlockValidation"
@@ -269,7 +269,7 @@ func consenterProtosFromConfig(consenterMapping []*genesisconfig.Consenter) ([]*
 			if err != nil {
 				return nil, fmt.Errorf("cannot load identity for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
 			}
-			c.ServerTlsCert = identity
+			c.Identity = identity
 		}
 
 		consenterProtos = append(consenterProtos, c)

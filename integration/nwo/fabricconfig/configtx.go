@@ -62,15 +62,24 @@ type Application struct {
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }
 
+type ConsenterMapping struct {
+	ID       uint64
+	Host     string
+	Port     int
+	MSPID    string
+	Identity string
+}
+
 type ConfigTxOrderer struct {
-	OrdererType   string             `yaml:"OrdererType,omitempty"`
-	BatchTimeout  time.Duration      `yaml:"BatchTimeout,omitempty"`
-	BatchSize     *BatchSize         `yaml:"BatchSize,omitempty"`
-	Kafka         *ConfigTxKafka     `yaml:"Kafka,omitempty"`
-	EtcdRaft      *ConfigTxEtcdRaft  `yaml:"EtcdRaft,omitempty"`
-	Organizations []*Organization    `yaml:"Organizations,omitempty"`
-	Policies      map[string]*Policy `yaml:"Policies,omitempty"`
-	Capabilities  map[string]bool    `yaml:"Capabilities,omitempty"`
+	OrdererType      string             `yaml:"OrdererType,omitempty"`
+	BatchTimeout     time.Duration      `yaml:"BatchTimeout,omitempty"`
+	BatchSize        *BatchSize         `yaml:"BatchSize,omitempty"`
+	Kafka            *ConfigTxKafka     `yaml:"Kafka,omitempty"`
+	EtcdRaft         *ConfigTxEtcdRaft  `yaml:"EtcdRaft,omitempty"`
+	ConsenterMapping []ConsenterMapping `yaml:"ConsenterMapping,omitempty"`
+	Organizations    []*Organization    `yaml:"Organizations,omitempty"`
+	Policies         map[string]*Policy `yaml:"Policies,omitempty"`
+	Capabilities     map[string]bool    `yaml:"Capabilities,omitempty"`
 
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }
