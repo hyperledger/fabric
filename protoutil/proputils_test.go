@@ -526,14 +526,16 @@ func TestInvokedChaincodeName(t *testing.T) {
 
 	t.Run("BadProposalBytes", func(t *testing.T) {
 		_, err := protoutil.InvokedChaincodeName([]byte("garbage"))
-		require.EqualError(t, err, "could not unmarshal proposal: proto: can't skip unknown wire type 7")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "could not unmarshal proposal")
 	})
 
 	t.Run("BadChaincodeProposalBytes", func(t *testing.T) {
 		_, err := protoutil.InvokedChaincodeName(protoutil.MarshalOrPanic(&pb.Proposal{
 			Payload: []byte("garbage"),
 		}))
-		require.EqualError(t, err, "could not unmarshal chaincode proposal payload: proto: can't skip unknown wire type 7")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "could not unmarshal chaincode proposal payload")
 	})
 
 	t.Run("BadChaincodeInvocationSpec", func(t *testing.T) {
@@ -542,7 +544,8 @@ func TestInvokedChaincodeName(t *testing.T) {
 				Input: []byte("garbage"),
 			}),
 		}))
-		require.EqualError(t, err, "could not unmarshal chaincode invocation spec: proto: can't skip unknown wire type 7")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "could not unmarshal chaincode invocation spec")
 	})
 
 	t.Run("NilChaincodeSpec", func(t *testing.T) {
