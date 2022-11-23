@@ -962,7 +962,7 @@ type GatewayClient interface {
 	// to be committed.
 	Submit(ctx context.Context, in *SubmitRequest, opts ...grpc.CallOption) (*SubmitResponse, error)
 	// The CommitStatus service will indicate whether a prepared transaction previously submitted to
-	// the Submit sevice has been committed. It will wait for the commit to occur if it hasn’t already
+	// the Submit service has been committed. It will wait for the commit to occur if it hasn’t already
 	// committed.
 	CommitStatus(ctx context.Context, in *SignedCommitStatusRequest, opts ...grpc.CallOption) (*CommitStatusResponse, error)
 	// The Evaluate service passes a proposed transaction to the gateway in order to invoke the
@@ -1068,7 +1068,7 @@ type GatewayServer interface {
 	// to be committed.
 	Submit(context.Context, *SubmitRequest) (*SubmitResponse, error)
 	// The CommitStatus service will indicate whether a prepared transaction previously submitted to
-	// the Submit sevice has been committed. It will wait for the commit to occur if it hasn’t already
+	// the Submit service has been committed. It will wait for the commit to occur if it hasn’t already
 	// committed.
 	CommitStatus(context.Context, *SignedCommitStatusRequest) (*CommitStatusResponse, error)
 	// The Evaluate service passes a proposed transaction to the gateway in order to invoke the

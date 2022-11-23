@@ -21,7 +21,7 @@ require (
 	github.com/hyperledger/fabric-chaincode-go v0.0.0-20220713164125-8f0791c989d7
 	github.com/hyperledger/fabric-config v0.1.0
 	github.com/hyperledger/fabric-lib-go v1.0.0
-	github.com/hyperledger/fabric-protos-go v0.0.0-20220516090339-9685156fada6
+	github.com/hyperledger/fabric-protos-go v0.2.0
 	github.com/kr/pretty v0.3.0
 	github.com/miekg/pkcs11 v1.1.1
 	github.com/mitchellh/mapstructure v1.4.3
@@ -48,7 +48,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
-require google.golang.org/protobuf v1.27.1
+require google.golang.org/protobuf v1.28.1
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
