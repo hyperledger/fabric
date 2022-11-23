@@ -7,10 +7,10 @@ import (
 	context "context"
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
-	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	math "math"
 )
 
@@ -114,11 +114,11 @@ func (ChaincodeMessage_Type) EnumDescriptor() ([]byte, []int) {
 }
 
 type ChaincodeMessage struct {
-	Type      ChaincodeMessage_Type `protobuf:"varint,1,opt,name=type,proto3,enum=protos.ChaincodeMessage_Type" json:"type,omitempty"`
-	Timestamp *timestamp.Timestamp  `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	Payload   []byte                `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
-	Txid      string                `protobuf:"bytes,4,opt,name=txid,proto3" json:"txid,omitempty"`
-	Proposal  *SignedProposal       `protobuf:"bytes,5,opt,name=proposal,proto3" json:"proposal,omitempty"`
+	Type      ChaincodeMessage_Type  `protobuf:"varint,1,opt,name=type,proto3,enum=protos.ChaincodeMessage_Type" json:"type,omitempty"`
+	Timestamp *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Payload   []byte                 `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
+	Txid      string                 `protobuf:"bytes,4,opt,name=txid,proto3" json:"txid,omitempty"`
+	Proposal  *SignedProposal        `protobuf:"bytes,5,opt,name=proposal,proto3" json:"proposal,omitempty"`
 	//event emitted by chaincode. Used only with Init or Invoke.
 	// This event is then stored (currently)
 	//with Block.NonHashData.TransactionResult
@@ -162,7 +162,7 @@ func (m *ChaincodeMessage) GetType() ChaincodeMessage_Type {
 	return ChaincodeMessage_UNDEFINED
 }
 
-func (m *ChaincodeMessage) GetTimestamp() *timestamp.Timestamp {
+func (m *ChaincodeMessage) GetTimestamp() *timestamppb.Timestamp {
 	if m != nil {
 		return m.Timestamp
 	}
