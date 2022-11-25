@@ -65,7 +65,8 @@ type NodeSpec struct {
 }
 
 type UsersSpec struct {
-	Count int `yaml:"Count"`
+	Count              int    `yaml:"Count"`
+	PublicKeyAlgorithm string `yaml:"PublicKeyAlgorithm"`
 }
 
 type OrgSpec struct {
@@ -185,9 +186,11 @@ PeerOrgs:
     # "Users"
     # ---------------------------------------------------------------------------
     # Count: The number of user accounts _in addition_ to Admin
+    # PublicKeyAlgorithm: Users' key algorithm ("ecdsa" or "ed25519")
     # ---------------------------------------------------------------------------
     Users:
       Count: 1
+	  PublicKeyAlgorithm: "ecdsa"
 
   # ---------------------------------------------------------------------------
   # Org2: See "Org1" for full specification
@@ -331,12 +334,19 @@ func extendPeerOrg(orgSpec OrgSpec) {
 		}
 	}
 
+	var publicKeyAlg string
+	if orgSpec.Users.PublicKeyAlgorithm == "" {
+		publicKeyAlg = ECDSA
+	} else {
+		publicKeyAlg = orgSpec.Users.PublicKeyAlgorithm
+	}
+
 	// TODO: add ability to specify usernames
 	users := []NodeSpec{}
 	for j := 1; j <= orgSpec.Users.Count; j++ {
 		user := NodeSpec{
 			CommonName:         fmt.Sprintf("%s%d@%s", userBaseName, j, orgName),
-			PublicKeyAlgorithm: ECDSA,
+			PublicKeyAlgorithm: publicKeyAlg,
 		}
 
 		users = append(users, user)
@@ -548,12 +558,19 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 
 	generateNodes(peersDir, orgSpec.Specs, signCA, tlsCA, msp.PEER, orgSpec.EnableNodeOUs)
 
+	var publicKeyAlg string
+	if orgSpec.Users.PublicKeyAlgorithm == "" {
+		publicKeyAlg = ECDSA
+	} else {
+		publicKeyAlg = orgSpec.Users.PublicKeyAlgorithm
+	}
+
 	// TODO: add ability to specify usernames
 	users := []NodeSpec{}
 	for j := 1; j <= orgSpec.Users.Count; j++ {
 		user := NodeSpec{
 			CommonName:         fmt.Sprintf("%s%d@%s", userBaseName, j, orgName),
-			PublicKeyAlgorithm: ECDSA,
+			PublicKeyAlgorithm: publicKeyAlg,
 		}
 
 		users = append(users, user)
