@@ -111,7 +111,8 @@ func TestSignatureAlgorithms(t *testing.T) {
 		mspImpl, _ := newBccspMsp(MSPv3_0, bccspDefault)
 		mspImpl.(*bccspmsp).cryptoConfig = &msp.FabricCryptoConfig{
 			SignatureHashFamily:            "SHA2",
-			IdentityIdentifierHashFunction: "SHA256"}
+			IdentityIdentifierHashFunction: "SHA256",
+		}
 
 		ed25519Der, _ := pem.Decode([]byte(ed25519Pem))
 		ed25519Cert, _ := x509.ParseCertificate(ed25519Der.Bytes)
@@ -163,7 +164,6 @@ func TestSignatureAlgorithms(t *testing.T) {
 		err = ecdsaSigningIdentity.Verify([]byte("TEST"), expectedSig)
 		gt.Expect(err).NotTo(gomega.HaveOccurred())
 	})
-
 }
 
 func TestIdentityValidation(t *testing.T) {
@@ -173,7 +173,8 @@ func TestIdentityValidation(t *testing.T) {
 		mspImpl, _ := newBccspMsp(MSPv1_4_3, bccspDefault)
 		cryptoConfig := &msp.FabricCryptoConfig{
 			SignatureHashFamily:            "SHA2",
-			IdentityIdentifierHashFunction: "SHA256"}
+			IdentityIdentifierHashFunction: "SHA256",
+		}
 
 		mspImpl.(*bccspmsp).cryptoConfig = cryptoConfig
 		mspConfigBytes, _ := proto.Marshal(&msp.FabricMSPConfig{

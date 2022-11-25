@@ -26,8 +26,7 @@ usage: cryptogen [<flags>] <command> [<args> ...]
 Utility for generating Hyperledger Fabric key material
 
 Flags:
-  --help            Show context-sensitive help (also try --help-long and
-                    --help-man).
+  --help  Show context-sensitive help (also try --help-long and --help-man).
 
 Commands:
   help [<command>...]
@@ -68,8 +67,7 @@ usage: cryptogen showtemplate
 Show the default configuration template
 
 Flags:
-  --help            Show context-sensitive help (also try --help-long and
-                    --help-man).
+  --help  Show context-sensitive help (also try --help-long and --help-man).
 ```
 
 
@@ -94,8 +92,7 @@ usage: cryptogen version
 Show version information
 
 Flags:
-  --help            Show context-sensitive help (also try --help-long and
-                    --help-man).
+  --help  Show context-sensitive help (also try --help-long and --help-man).
 ```
 
 ## Usage
