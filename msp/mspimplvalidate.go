@@ -31,8 +31,8 @@ func (msp *bccspmsp) validateIdentity(id *identity) error {
 
 	if !msp.supportedPublicKeyAlgorithms[id.cert.PublicKeyAlgorithm] {
 		err := errors.Errorf("%s is not supported", id.cert.PublicKeyAlgorithm.String())
-		id.validationErr = errors.WithMessage(err, "could not validate identity public key algorithm")
-		mspLogger.Warnf("Could not validate identity: %s (certificate subject=%s issuer=%s serialnumber=%d) Unsupported public key algorithm: %s", id.validationErr, id.cert.Subject, id.cert.Issuer, id.cert.SerialNumber, id.cert.PublicKeyAlgorithm)
+		id.validationErr = errors.WithMessage(err, "could not validate identity's public key algorithm")
+		mspLogger.Warnf("Could not validate identity: %s (certificate subject=%s issuer=%s serialnumber=%d) Unsupported public key algorithm: %s", id.validationErr, id.cert.Subject.CommonName, id.cert.Issuer.CommonName, id.cert.SerialNumber, id.cert.PublicKeyAlgorithm)
 		return id.validationErr
 	}
 
