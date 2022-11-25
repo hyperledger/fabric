@@ -228,7 +228,7 @@ func changePeerOrOrdererToEd25519(network *nwo.Network, orgName, entityname stri
 	configData := string(data)
 	config := &nwo.CryptogenConfig{}
 
-	err = yaml.Unmarshal([]byte(configData), &config)
+	_ = yaml.Unmarshal([]byte(configData), &config)
 
 	var orgSpecRef *nwo.OrgSpec = nil
 
@@ -255,7 +255,7 @@ func changePeerOrOrdererToEd25519(network *nwo.Network, orgName, entityname stri
 		}
 	}
 
-	data, err = yaml.Marshal(config)
+	data, _ = yaml.Marshal(config)
 
 	_ = ioutil.WriteFile(network.CryptoConfigPath(), data, fs.ModeExclusive)
 }
