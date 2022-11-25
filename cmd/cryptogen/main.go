@@ -152,6 +152,7 @@ PeerOrgs:
     #                 NOTE: Two implicit entries are created for you:
     #                     - {{ .CommonName }}
     #                     - {{ .Hostname }}
+	#   PublicKeyAlgorithm: Nodes' key algorithm ("ecdsa" or "ed25519")
     # ---------------------------------------------------------------------------
     # Specs:
     #   - Hostname: foo # implicitly "foo.org1.example.com"
@@ -161,6 +162,7 @@ PeerOrgs:
     #       - "altfoo.{{.Domain}}"
     #       - "{{.Hostname}}.org6.net"
     #       - 172.16.10.31
+	#     PublicKeyAlgorithm: ecdsa
     #   - Hostname: bar
     #   - Hostname: baz
 
