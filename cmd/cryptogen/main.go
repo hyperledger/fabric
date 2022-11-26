@@ -152,7 +152,7 @@ PeerOrgs:
     #                 NOTE: Two implicit entries are created for you:
     #                     - {{ .CommonName }}
     #                     - {{ .Hostname }}
-	#   PublicKeyAlgorithm: Nodes' key algorithm ("ecdsa" or "ed25519")
+    #   PublicKeyAlgorithm: Nodes' key algorithm ("ecdsa" or "ed25519")
     # ---------------------------------------------------------------------------
     # Specs:
     #   - Hostname: foo # implicitly "foo.org1.example.com"
@@ -162,7 +162,7 @@ PeerOrgs:
     #       - "altfoo.{{.Domain}}"
     #       - "{{.Hostname}}.org6.net"
     #       - 172.16.10.31
-	#     PublicKeyAlgorithm: ecdsa
+    #     PublicKeyAlgorithm: ecdsa
     #   - Hostname: bar
     #   - Hostname: baz
 
@@ -175,7 +175,7 @@ PeerOrgs:
     # or the template used to construct the name (Hostname).
     #
     # PublicKeyAlgorithm: Hosts' key algorithm ("ecdsa" or "ed25519")
-	#
+    #
     # Note: Template and Specs are not mutually exclusive.  You may define both
     # sections and the aggregate nodes will be created for you.  Take care with
     # name collisions
@@ -186,7 +186,7 @@ PeerOrgs:
       # Hostname: {{.Prefix}}{{.Index}} # default
       # SANS:
       #   - "{{.Hostname}}.alt.{{.Domain}}"
-	  # PublicKeyAlgorithm: "ecdsa"
+      # PublicKeyAlgorithm: "ecdsa"
 
     # ---------------------------------------------------------------------------
     # "Users"
@@ -196,7 +196,7 @@ PeerOrgs:
     # ---------------------------------------------------------------------------
     Users:
       Count: 1
-	  PublicKeyAlgorithm: "ecdsa"
+      PublicKeyAlgorithm: "ecdsa"
 
   # ---------------------------------------------------------------------------
   # Org2: See "Org1" for full specification
