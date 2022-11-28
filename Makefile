@@ -60,18 +60,20 @@ MAKEFLAGS += --no-builtin-rules
 BUILD_DIR ?= build
 
 EXTRA_VERSION ?= $(shell git rev-parse --short HEAD)
-PROJECT_VERSION=$(BASE_VERSION)-snapshot-$(EXTRA_VERSION)
+PROJECT_VERSION=$(FABRIC_VER)-snapshot-$(EXTRA_VERSION)
 
 # TWO_DIGIT_VERSION is derived, e.g. "2.0", especially useful as a local tag
 # for two digit references to most recent baseos and ccenv patch releases
-TWO_DIGIT_VERSION = $(shell echo $(BASE_VERSION) | cut -d '.' -f 1,2)
+# TWO_DIGIT_VERSION removes the (optional) semrev 'v' character from the git
+# tag triggering a Fabric release.
+TWO_DIGIT_VERSION = $(shell echo $(FABRIC_VER) | sed -e  's/^v\(.*\)/\1/' | cut -d '.' -f 1,2)
 
 PKGNAME = github.com/hyperledger/fabric
 ARCH=$(shell go env GOARCH)
 MARCH=$(shell go env GOOS)-$(shell go env GOARCH)
 
 # defined in common/metadata/metadata.go
-METADATA_VAR = Version=$(BASE_VERSION)
+METADATA_VAR = Version=$(FABRIC_VER)
 METADATA_VAR += CommitSHA=$(EXTRA_VERSION)
 METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 METADATA_VAR += DockerNamespace=$(DOCKER_NS)
@@ -81,7 +83,7 @@ GO_TAGS ?=
 
 RELEASE_EXES = orderer $(TOOLS_EXES)
 RELEASE_IMAGES = baseos ccenv orderer peer tools
-RELEASE_PLATFORMS = darwin-amd64 linux-amd64 windows-amd64
+RELEASE_PLATFORMS = darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64
 TOOLS_EXES = configtxgen configtxlator cryptogen discover ledgerutil osnadmin peer
 
 pkgmap.configtxgen    := $(PKGNAME)/cmd/configtxgen
@@ -219,6 +221,7 @@ tools: $(TOOLS_EXES)
 $(RELEASE_EXES): %: $(BUILD_DIR)/bin/%
 
 $(BUILD_DIR)/bin/%: GO_LDFLAGS = $(METADATA_VAR:%=-X $(PKGNAME)/common/metadata.%)
+$(BUILD_DIR)/bin/%: GO_LDFLAGS += -w -extldflags '-static'
 $(BUILD_DIR)/bin/%:
 	@echo "Building $@"
 	@mkdir -p $(@D)
@@ -243,11 +246,9 @@ $(BUILD_DIR)/images/%/$(DUMMY):
 	$(DBUILD) -f images/$*/Dockerfile \
 		--build-arg GO_VER=$(GO_VER) \
 		--build-arg ALPINE_VER=$(ALPINE_VER) \
+		--build-arg FABRIC_VER=$(FABRIC_VER) \
 		$(BUILD_ARGS) \
 		-t $(DOCKER_NS)/fabric-$* ./$(BUILD_CONTEXT)
-	docker tag $(DOCKER_NS)/fabric-$* $(DOCKER_NS)/fabric-$*:$(BASE_VERSION)
-	docker tag $(DOCKER_NS)/fabric-$* $(DOCKER_NS)/fabric-$*:$(TWO_DIGIT_VERSION)
-	docker tag $(DOCKER_NS)/fabric-$* $(DOCKER_NS)/fabric-$*:$(DOCKER_TAG)
 	@touch $@
 
 # builds release packages for the host platform
