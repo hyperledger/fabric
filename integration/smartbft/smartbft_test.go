@@ -96,6 +96,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			networkConfig := nwo.MultiNodeSmartBFT()
 			networkConfig.SystemChannel.Name = ""
 			networkConfig.Channels = nil
+			channel := "testchannel1"
 
 			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
 			network.Consortiums = nil
@@ -114,7 +115,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			}
 
-			peerGroupRunner, peerRunners := peerGroupRunners(network)
+			peerGroupRunner, _ := peerGroupRunners(network)
 			peerProcesses = ifrit.Invoke(peerGroupRunner)
 			Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			peer := network.Peer("Org1", "peer0")
@@ -150,38 +151,42 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 			}
 
-			Eventually(ordererRunners[1].Err(), 120*time.Second, time.Second).Should(gbytes.Say("Message from 1"))
-			Fail("stop here")
+			// Eventually(ordererRunners[1].Err(), 120*time.Second, time.Second).Should(gbytes.Say("Message from 1"))
+			// Fail("stop here")
 
-			assertBlockReception(map[string]int{"systemchannel": 0}, network.Orderers, peer, network)
-			/* 			By("check block validation policy on system channel")
-			   			assertBlockValidationPolicy(network, peer, network.Orderers[0], "systemchannel", common.Policy_IMPLICIT_ORDERER) */
+			// assertBlockReception(map[string]int{"systemchannel": 0}, network.Orderers, peer, network)
+			// By("check block validation policy on system channel")
+			// assertBlockValidationPolicy(network, peer, network.Orderers[0], channel, common.Policy_IMPLICIT_META)
 
 			By("Waiting for followers to see the leader")
 			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
 			Eventually(ordererRunners[2].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
 			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
 
-			channel := "testchannel1"
-			By("Creating and joining  testchannel1")
-			network.CreateAndJoinChannel(network.Orderers[0], channel)
+			By("Joining peers to testchannel1")
+			network.JoinChannel(channel, network.Orderers[0], network.PeersWithChannel(channel)...)
 
 			By("Deploying chaincode")
-			nwo.DeployChaincodeLegacy(network, channel, network.Orderers[0], nwo.Chaincode{
-				Name:    "mycc",
-				Version: "0.0",
-				Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-				Ctor:    `{"Args":["init","a","100","b","200"]}`,
-				Policy:  `AND ('Org1MSP.member','Org2MSP.member')`,
+			nwo.DeployChaincode(network, channel, network.Orderers[0], nwo.Chaincode{
+				Name:            "mycc",
+				Version:         "0.0",
+				Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd"),
+				Lang:            "binary",
+				PackageFile:     filepath.Join(testDir, "simplecc.tar.gz"),
+				Ctor:            `{"Args":["init","a","100","b","200"]}`,
+				SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
+				Sequence:        "1",
+				InitRequired:    true,
+				Label:           "my_prebuilt_chaincode",
 			})
 
 			/* 			By("check block validation policy on app channel")
 			   			assertBlockValidationPolicy(network, peer, network.Orderers[0], channel, common.Policy_IMPLICIT_ORDERER) */
 
 			By("check peers are using the BFT delivery client")
-			for _, peerRunner := range peerRunners {
-				Eventually(peerRunner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Created BFT Delivery Client"))
-			}
+			// for _, peerRunner := range peerRunners {
+			// 	Eventually(peerRunner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Created BFT Delivery Client"))
+			// }
 
 			By("querying the chaincode")
 			sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{

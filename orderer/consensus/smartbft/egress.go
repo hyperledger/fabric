@@ -68,7 +68,11 @@ func (e *Egress) SendTransaction(targetID uint64, request []byte) {
 		Channel: e.Channel,
 		Payload: env,
 	}
-	e.RPC.SendSubmit(targetID, msg, nil)
+
+	report := func(err error) {
+		// TODO ??
+	}
+	e.RPC.SendSubmit(targetID, msg, report)
 }
 
 func bftMsgToClusterMsg(message *protos.Message, channel string) *ab.ConsensusRequest {

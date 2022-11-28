@@ -164,7 +164,7 @@ Profiles:{{ range .Profiles }}
       - ID: {{ .Id }}
         Host: 127.0.0.1
         Port: {{ $w.OrdererPort . "Cluster" }}
-        MSPID: {{ .Organization }}
+        MSPID: {{ ($w.Organization .Organization).MSPID}}
         ClientTLSCert: {{ $w.OrdererLocalCryptoDir . "tls" }}/server.crt
         ServerTLSCert: {{ $w.OrdererLocalCryptoDir . "tls" }}/server.crt
         Identity: {{ $w.OrdererSignCert .}}

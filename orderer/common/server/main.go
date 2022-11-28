@@ -68,7 +68,7 @@ var (
 
 	clusterTypes = map[string]struct{}{
 		"etcdraft": {},
-		"smartbft": {},
+		"BFT": {},
 	}
 )
 
@@ -806,6 +806,12 @@ func initializeMultichannelRegistrar(
 	callbacks ...channelconfig.BundleActor,
 ) *multichannel.Registrar {
 	dpmr := &DynamicPolicyManagerRegistry{}
+
+	policyManagerCallback := func(bundle *channelconfig.Bundle) {
+		dpmr.Update(bundle)
+	}
+	callbacks = append(callbacks, policyManagerCallback)
+
 	registrar := multichannel.NewRegistrar(*conf, lf, signer, metricsProvider, bccsp, clusterDialer, callbacks...)
 
 	consenters := map[string]consensus.Consenter{}
@@ -818,7 +824,7 @@ func initializeMultichannelRegistrar(
 			switch consenterType {
 			case "etcdraft":
 				initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, repInitiator, srvConf, srv, registrar, metricsProvider, bccsp)
-			case "smartbft":
+			case "BFT":
 				initializeSmartBFTConsenter(signer, dpmr, consenters, conf, lf, clusterDialer, bootstrapBlock, repInitiator, srvConf, srv, registrar, metricsProvider, bccsp)
 			default:
 				logger.Panicf("Unknown cluster type consenter")
@@ -920,7 +926,7 @@ func initializeSmartBFTConsenter(
 
 	go icr.Run()
 	smartBFTConsenter := smartbft.New(icr, dpmr.Registry(), signer, clusterDialer, conf, srvConf, srv, registrar, metricsProvider, bccsp)
-	consenters["smartbft"] = smartBFTConsenter
+	consenters["BFT"] = smartBFTConsenter
 
 	return smartBFTConsenter
 }

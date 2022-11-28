@@ -172,7 +172,7 @@ func bftSmartConsensusBuild(
 
 	rtc := c.RuntimeConfig.Load().(RuntimeConfig)
 
-	// latestMetadata, err := getViewMetadataFromBlock(rtc.LastBlock)
+	latestMetadata, err := getViewMetadataFromBlock(rtc.LastBlock)
 	if err != nil {
 		c.Logger.Panicf("Failed extracting view metadata from ledger: %v", err)
 	}
@@ -231,7 +231,7 @@ func bftSmartConsensusBuild(
 			},
 		},
 		// TODO_PARAM: SHALLOW COPY IS ISSUE HERE
-		// Metadata:          *latestMetadata,
+		Metadata:          *latestMetadata,
 		WAL:               consensusWAL,
 		WALInitialContent: walInitState, // Read from WAL entries
 		Application:       c,

@@ -11,7 +11,7 @@ import "github.com/hyperledger/fabric/common/metrics"
 var (
 	clusterSizeOpts = metrics.GaugeOpts{
 		Namespace:    "consensus",
-		Subsystem:    "smartbft",
+		Subsystem:    "BFT",
 		Name:         "cluster_size",
 		Help:         "Number of nodes in this channel.",
 		LabelNames:   []string{"channel"},
@@ -19,7 +19,7 @@ var (
 	}
 	committedBlockNumberOpts = metrics.GaugeOpts{
 		Namespace:    "consensus",
-		Subsystem:    "smartbft",
+		Subsystem:    "BFT",
 		Name:         "committed_block_number",
 		Help:         "The number of the latest committed block.",
 		LabelNames:   []string{"channel"},
@@ -27,7 +27,7 @@ var (
 	}
 	isLeaderOpts = metrics.GaugeOpts{
 		Namespace:    "consensus",
-		Subsystem:    "smartbft",
+		Subsystem:    "BFT",
 		Name:         "is_leader",
 		Help:         "The leadership status of the current node according to the latest committed block: 1 if it is the leader else 0.",
 		LabelNames:   []string{"channel"},
@@ -35,7 +35,7 @@ var (
 	}
 	leaderIDOpts = metrics.GaugeOpts{
 		Namespace:    "consensus",
-		Subsystem:    "smartbft",
+		Subsystem:    "BFT",
 		Name:         "leader_id",
 		Help:         "The id of the current leader according to the latest committed block.",
 		LabelNames:   []string{"channel"},

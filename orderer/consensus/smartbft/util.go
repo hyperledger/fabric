@@ -444,7 +444,7 @@ func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *cb.Block) 
 	if !exists {
 		return errors.New("no orderer config in bundle")
 	}
-	if oc.ConsensusType() != "smartbft" {
+	if oc.ConsensusType() != "BFT" {
 		return errors.New("not a SmartBFT config block")
 	}
 
