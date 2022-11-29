@@ -128,6 +128,7 @@ PeerOrgs:
     #    OrganizationalUnit: Hyperledger Fabric
     #    StreetAddress: address for org # default nil
     #    PostalCode: postalCode for org # default nil
+    #    PublicKeyAlgorithm: CA's key algorithm ("ecdsa" or "ed25519")
 
     # ---------------------------------------------------------------------------
     # "Specs"
