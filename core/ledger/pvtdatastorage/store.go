@@ -764,7 +764,7 @@ func (s *Store) performPurgeIfScheduled(latestCommittedBlk uint64) {
 	}
 	go func() {
 		s.purgerLock.Lock()
-		logger.Debugf("Purger started: Purging expired private data till block number [%d]", latestCommittedBlk)
+		logger.Debugf("Purger started: Removing expired and purged private data till block number [%d]", latestCommittedBlk)
 		defer s.purgerLock.Unlock()
 
 		if err := s.purgeExpiredData(0, latestCommittedBlk); err != nil {
@@ -827,14 +827,18 @@ func (s *Store) purgeExpiredData(minBlkNum, maxBlkNum uint64) error {
 		batch.Reset()
 	}
 
-	logger.Infof("[%s] - [%d] Entries purged from private data storage till block number [%d]", s.ledgerid, len(expiryEntries), maxBlkNum)
+	logger.Infow("Expired keys removed from private data storage", "channel", s.ledgerid, "numExpired", len(expiryEntries), "blockNum", maxBlkNum)
 	return nil
 }
 
 func (s *Store) deleteDataMarkedForPurge() error {
 	maxBatchSize := 4 * 1024 * 1024 // 4Mb
+	purgeMarkerCounter := 0
+	hashedIndexCounter := 0
 	p := newPurgeUpdatesProcessor(s.db, maxBatchSize)
 	pStart, pEnd := rangeScanKeysForPurgeMarkers()
+
+	// get the purge markers that need to be processed at this block height
 	purgeMarkerIter, err := s.db.GetIterator(pStart, pEnd)
 	if err != nil {
 		return err
@@ -848,6 +852,7 @@ func (s *Store) deleteDataMarkedForPurge() error {
 		encPurgeMarkerKey := purgeMarkerIter.Key()
 		encPurgeMarkerVal := purgeMarkerIter.Value()
 
+		// for each purge marker to be processed, get the hashed index entries that need to be purged on this peer
 		hStart, hEnd, err := driveHashedIndexKeyRangeFromPurgeMarker(encPurgeMarkerKey, encPurgeMarkerVal)
 		if err != nil {
 			return err
@@ -860,12 +865,23 @@ func (s *Store) deleteDataMarkedForPurge() error {
 			if err := hashedIndexIter.Error(); err != nil {
 				return err
 			}
+
+			// for each hashed index entry, process the purge from private data store and delete the hashed index
 			if err := p.process(hashedIndexIter.Key(), hashedIndexIter.Value()); err != nil {
 				return err
 			}
+			hashedIndexCounter++
 		}
+
+		// also delete the purge marker itself
 		p.addProcessedPurgeMarkerForDeletion(encPurgeMarkerKey)
+		purgeMarkerCounter++
 	}
+	if purgeMarkerCounter > 0 {
+		logger.Infow("Processed private data purges from private data storage", "channel", s.ledgerid, "numKeysPurged", purgeMarkerCounter, "numPrivateDataStoreRecordsPurged", hashedIndexCounter)
+	}
+
+	// commit the private data purges and index deletions to the private data store
 	return p.commitPendingChanges()
 }
 
