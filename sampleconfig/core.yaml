@@ -728,6 +728,10 @@ ledger:
     # deprioritizedDataReconcilerInterval (unit: minutes). Note that the
     # interval needs to be greater than the reconcileSleepInterval
     deprioritizedDataReconcilerInterval: 60m
+    # The frequency to purge private data (in number of blocks).
+    # Private data is purged from the peer's private data store based on
+    # the collection property blockToLive or an explicit chaincode call to PurgePrivateData().
+    purgeInterval: 100
 
   snapshots:
     # Path on the file system where peer will store ledger snapshots
