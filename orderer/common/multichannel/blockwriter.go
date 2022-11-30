@@ -197,7 +197,10 @@ func (bw *BlockWriter) WriteBlockSync(block *cb.Block, encodedMetadataValue []by
 // this ensures that the encoded config sequence numbers stay in sync
 func (bw *BlockWriter) commitBlock(encodedMetadataValue []byte) {
 	bw.addLastConfig(bw.lastBlock)
-	bw.addBlockSignature(bw.lastBlock, encodedMetadataValue)
+
+	if len(bw.lastBlock.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES]) == 0 {
+		bw.addBlockSignature(bw.lastBlock, encodedMetadataValue)
+	}
 
 	err := bw.support.Append(bw.lastBlock)
 	if err != nil {
