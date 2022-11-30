@@ -15,9 +15,15 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/golang/protobuf/proto"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/pvtdata/marblechaincodeutil"
+	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
@@ -141,7 +147,25 @@ var _ = Describe("Pvtdata purge", func() {
 			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, `test-marble-0`, org2Peer0)
 		})
 
-		PIt("should prevent purged data being included block event replays after the purge transaction has been committed")
+		It("should prevent purged data being included block event replays after the purge transaction has been committed", func() {
+			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-10", "color":"green", "size":42, "owner":"simon", "price":180}`, org2Peer0)
+			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-100", "color":"red", "size":24, "owner":"heather", "price":635}`, org2Peer0)
+			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-1000", "color":"black", "size":12, "owner":"bob", "price":2}`, org2Peer0)
+
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-10", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-10", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-100", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-100", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-1000", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-1000", org2Peer0)
+
+			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-0"}`, org2Peer0)
+			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-1000"}`, org2Peer0)
+
+			assertBlockEventsOnlyContainUnpurgedPrivateData(network, org2Peer0, chaincode.Name, []string{"test-marble-10", "\x00color~name\x00green\x00test-marble-10\x00", "test-marble-100", "\x00color~name\x00red\x00test-marble-100\x00"})
+		})
 
 		// 1. User is able to submit a purge transaction that involves more than one keys
 		PIt("should accept multiple keys for purging in the same transaction")
@@ -209,3 +233,90 @@ var _ = Describe("Pvtdata purge", func() {
 		PIt("should not remove new data after a previous purge operation")
 	})
 })
+
+func assertBlockEventsOnlyContainUnpurgedPrivateData(network *nwo.Network, peer *nwo.Peer, chaincodeName string, expectedPrivateDataKeys []string) {
+	ledgerHeight := nwo.GetLedgerHeight(network, peer, channelID)
+	conn := network.PeerClientConn(peer)
+
+	ctx, cancel := context.WithTimeout(context.Background(), network.EventuallyTimeout)
+	defer cancel()
+
+	dp, err := pb.NewDeliverClient(conn).DeliverWithPrivateData(ctx)
+	Expect(err).NotTo(HaveOccurred())
+	defer dp.CloseSend()
+
+	signingIdentity := network.PeerUserSigner(peer, "User1")
+
+	deliverEnvelope, err := protoutil.CreateSignedEnvelope(
+		cb.HeaderType_DELIVER_SEEK_INFO,
+		channelID,
+		signingIdentity,
+		&ab.SeekInfo{
+			Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
+			Start: &ab.SeekPosition{
+				Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}},
+			},
+			Stop: &ab.SeekPosition{
+				Type: &ab.SeekPosition_Specified{
+					Specified: &ab.SeekSpecified{Number: uint64(ledgerHeight)},
+				},
+			},
+		},
+		0,
+		0,
+	)
+	Expect(err).NotTo(HaveOccurred())
+	err = dp.Send(deliverEnvelope)
+	Expect(err).NotTo(HaveOccurred())
+
+	privateDataKeys := getPrivateDataKeys(dp, ledgerHeight)
+
+	Expect(privateDataKeys).To(ConsistOf(expectedPrivateDataKeys))
+}
+
+func getPrivateDataKeys(client pb.Deliver_DeliverWithPrivateDataClient, ledgerHeight int) []string {
+	pvtKeys := make(map[string]struct{})
+	blockCount := 0
+
+	for {
+		msg, err := client.Recv()
+		Expect(err).NotTo(HaveOccurred())
+
+		switch t := msg.Type.(type) {
+		case *pb.DeliverResponse_BlockAndPrivateData:
+			for _, txPvtRwset := range t.BlockAndPrivateData.PrivateDataMap {
+				if txPvtRwset == nil {
+					continue
+				}
+
+				for _, nsPvtRwset := range txPvtRwset.NsPvtRwset {
+					if nsPvtRwset.Namespace != "marblesp" {
+						continue
+					}
+
+					for _, col := range nsPvtRwset.CollectionPvtRwset {
+						Expect(col.CollectionName).Should(SatisfyAny(
+							Equal("collectionMarbles"),
+							Equal("collectionMarblePrivateDetails")))
+
+						kvRwset := kvrwset.KVRWSet{}
+						err := proto.Unmarshal(col.GetRwset(), &kvRwset)
+						Expect(err).NotTo(HaveOccurred())
+						for _, kvWrite := range kvRwset.Writes {
+							pvtKeys[kvWrite.Key] = struct{}{}
+						}
+					}
+				}
+			}
+		}
+
+		blockCount++
+		if blockCount == ledgerHeight {
+			var keys []string
+			for key := range pvtKeys {
+				keys = append(keys, key)
+			}
+			return keys
+		}
+	}
+}
