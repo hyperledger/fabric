@@ -123,11 +123,11 @@ Capabilities:
     # used with prior release orderers.
     # Set the value of the capability to true to require it.
     Application: &ApplicationCapabilities
-        # V2.0 for Application enables the new non-backwards compatible
-        # features and fixes of fabric v2.0.
-        # Prior to enabling V2.0 orderer capabilities, ensure that all
-        # orderers on a channel are at v2.0.0 or later.
-        V2_0: true
+        # V2.5 for Application enables the new non-backwards compatible
+        # features of fabric v2.5, namely the ability to purge private data.
+        # Prior to enabling V2.5 application capabilities, ensure that all
+        # peers on a channel are at v2.5.0 or later.
+        V2_5: true
 
 ################################################################################
 #
