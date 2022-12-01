@@ -91,7 +91,7 @@ func (v *Verifier) AuxiliaryData(msg []byte) []byte {
 	if err := sig.Unmarshal(msg); err != nil {
 		v.Logger.Warnf("Failed unmarshalling signature message %s: %v", hex.EncodeToString(msg), err)
 	}
-	return sig.AuxiliaryInput
+	return nil
 }
 
 // VerifyProposal verifies proposal and returns []RequestInfo
@@ -144,10 +144,10 @@ func (v *Verifier) VerifySignature(signature types.Signature) error {
 	id2Identity := v.RuntimeConfig.Load().(RuntimeConfig).ID2Identities
 	identity, exists := id2Identity[signature.ID]
 	if !exists {
-		return errors.Errorf("node with id of %d doesn't exist", signature.ID)
+		return errors.Errorf("node with idignature of %d doesn't exist", signature.ID)
 	}
 
-	return v.AccessController.Evaluate([]*protoutil.SignedData{
+	return v.ConsenterVerifier.Evaluate([]*protoutil.SignedData{
 		{Identity: identity, Data: signature.Msg, Signature: signature.Value},
 	})
 }
@@ -212,24 +212,18 @@ func (v *Verifier) VerifyConsenterSig(signature types.Signature, prop types.Prop
 		return nil, errors.Wrap(err, "malformed signature format")
 	}
 
-	// Reconstruct the signature header
-	sig.SignatureHeader = protoutil.MarshalOrPanic(&cb.SignatureHeader{
-		Nonce:   sig.Nonce,
-		Creator: identity,
-	})
-
-	if err := v.verifySignatureIsBoundToProposal(sig, identity, prop); err != nil {
+	if err := v.verifySignatureIsBoundToProposal(sig, signature.ID, prop); err != nil {
 		return nil, err
 	}
 
-	expectedMsgToBeSigned := util.ConcatenateBytes(sig.OrdererBlockMetadata, sig.SignatureHeader, sig.BlockHeader, sig.AuxiliaryInput)
+	expectedMsgToBeSigned := util.ConcatenateBytes(sig.OrdererBlockMetadata, sig.IdentifierHeader, sig.BlockHeader, nil)
 	signedData := &protoutil.SignedData{
 		Signature: signature.Value,
 		Data:      expectedMsgToBeSigned,
 		Identity:  identity,
 	}
 
-	return sig.AuxiliaryInput, v.ConsenterVerifier.Evaluate([]*protoutil.SignedData{signedData})
+	return nil, v.ConsenterVerifier.Evaluate([]*protoutil.SignedData{signedData})
 }
 
 // VerificationSequence returns verification sequence
@@ -360,7 +354,7 @@ func validateTransactions(blockData [][]byte, verifyReq requestVerifier) ([]type
 	return res, nil
 }
 
-func (v *Verifier) verifySignatureIsBoundToProposal(sig *Signature, identity []byte, prop types.Proposal) error {
+func (v *Verifier) verifySignatureIsBoundToProposal(sig *Signature, identityID uint64, prop types.Proposal) error {
 	// We verify the following fields:
 	// ConsenterMetadata    []byte
 	// SignatureHeader      []byte
@@ -375,13 +369,13 @@ func (v *Verifier) verifySignatureIsBoundToProposal(sig *Signature, identity []b
 	}
 
 	// Ensure signature header matches the identity
-	sigHdr := &cb.SignatureHeader{}
-	if err := proto.Unmarshal(sig.SignatureHeader, sigHdr); err != nil {
+	sigHdr := &cb.IdentifierHeader{}
+	if err := proto.Unmarshal(sig.IdentifierHeader, sigHdr); err != nil {
 		return errors.Wrap(err, "malformed signature header")
 	}
-	if !bytes.Equal(sigHdr.Creator, identity) {
-		v.Logger.Warnf("Expected identity %s but got %s", base64.StdEncoding.EncodeToString(sigHdr.Creator),
-			base64.StdEncoding.EncodeToString(identity))
+	if identityID != uint64(sigHdr.Identifier) {
+		v.Logger.Warnf("Expected identity %d but got %d", identityID,
+			sigHdr.Identifier)
 		return errors.Errorf("identity in signature header does not match expected identity")
 	}
 

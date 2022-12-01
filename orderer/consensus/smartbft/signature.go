@@ -19,11 +19,9 @@ import (
 
 // Signature implementation
 type Signature struct {
-	Nonce                []byte
-	SignatureHeader      []byte
-	BlockHeader          []byte
+	IdentifierHeader []byte
+	BlockHeader      []byte
 	OrdererBlockMetadata []byte
-	AuxiliaryInput       []byte
 }
 
 // Unmarshal the signature
@@ -43,7 +41,7 @@ func (sig *Signature) Marshal() []byte {
 
 // AsBytes returns the message to sign
 func (sig Signature) AsBytes() []byte {
-	msg2Sign := util.ConcatenateBytes(sig.OrdererBlockMetadata, sig.SignatureHeader, sig.BlockHeader, sig.AuxiliaryInput)
+	msg2Sign := util.ConcatenateBytes(sig.OrdererBlockMetadata, sig.IdentifierHeader, sig.BlockHeader)
 	return msg2Sign
 }
 

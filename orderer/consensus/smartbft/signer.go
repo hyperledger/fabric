@@ -39,7 +39,7 @@ func (s *Signer) Sign(msg []byte) []byte {
 }
 
 // SignProposal signs the proposal
-func (s *Signer) SignProposal(proposal types.Proposal, auxiliaryInput []byte) *types.Signature {
+func (s *Signer) SignProposal(proposal types.Proposal, _ []byte) *types.Signature {
 	block, err := ProposalToBlock(proposal)
 	if err != nil {
 		s.Logger.Panicf("Tried to sign bad proposal: %v", err)
@@ -48,10 +48,8 @@ func (s *Signer) SignProposal(proposal types.Proposal, auxiliaryInput []byte) *t
 	nonce := randomNonceOrPanic()
 
 	sig := Signature{
-		AuxiliaryInput:  auxiliaryInput,
-		Nonce:           nonce,
-		BlockHeader:     protoutil.BlockHeaderBytes(block.Header),
-		SignatureHeader: protoutil.MarshalOrPanic(s.newSignatureHeaderOrPanic(nonce)),
+		BlockHeader:      protoutil.BlockHeaderBytes(block.Header),
+		IdentifierHeader: protoutil.MarshalOrPanic(s.newIdentifierHeaderOrPanic(nonce)),
 		OrdererBlockMetadata: protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
 			LastConfig:        &cb.LastConfig{Index: uint64(s.LastConfigBlockNum(block))},
 			ConsenterMetadata: proposal.Metadata,
@@ -60,8 +58,6 @@ func (s *Signer) SignProposal(proposal types.Proposal, auxiliaryInput []byte) *t
 
 	signature := protoutil.SignOrPanic(s.SignerSerializer, sig.AsBytes())
 
-	// Nil out the signature header after creating the signature
-	sig.SignatureHeader = nil
 
 	return &types.Signature{
 		ID:    s.ID,
@@ -71,14 +67,9 @@ func (s *Signer) SignProposal(proposal types.Proposal, auxiliaryInput []byte) *t
 }
 
 // NewSignatureHeader creates a SignatureHeader with the correct signing identity and a valid nonce
-func (s *Signer) newSignatureHeaderOrPanic(nonce []byte) *cb.SignatureHeader {
-	creator, err := s.SignerSerializer.Serialize()
-	if err != nil {
-		panic(err)
-	}
-
-	return &cb.SignatureHeader{
-		Creator: creator,
+func (s *Signer) newIdentifierHeaderOrPanic(nonce []byte) *cb.IdentifierHeader {
+	return &cb.IdentifierHeader{
+		Identifier: uint32(s.ID),
 		Nonce:   nonce,
 	}
 }

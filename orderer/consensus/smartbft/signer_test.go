@@ -97,7 +97,7 @@ func TestSignProposal(t *testing.T) {
 	assert.Equal(t, []byte{1, 2, 3}, sig.Value)
 	assert.Equal(t, prop.Header, signature.BlockHeader)
 	sigHdr := &cb.SignatureHeader{}
-	assert.NoError(t, proto.Unmarshal(signature.SignatureHeader, sigHdr))
+	assert.NoError(t, proto.Unmarshal(signature.IdentifierHeader, sigHdr))
 	assert.Nil(t, sigHdr.Creator)
 	assert.Equal(t, signature.OrdererBlockMetadata, protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
 		LastConfig:        &cb.LastConfig{Index: 10},

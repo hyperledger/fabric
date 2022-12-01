@@ -309,7 +309,6 @@ func (c *BFTChain) Configure(config *cb.Envelope, configSeq uint64) error {
 			return c.submit(configEnv, configSeq)
 		}
 	}
-
 	return c.submit(config, configSeq)
 }
 
@@ -349,6 +348,7 @@ func (c *BFTChain) Deliver(proposal types.Proposal, signatures []types.Signature
 			// SignatureHeader: sig.SignatureHeader,
 			//	Nonce:    sig.Nonce,
 			//	SignerId: s.ID,
+			IdentifierHeader: sig.IdentifierHeader,
 		})
 
 		signers = append(signers, s.ID)
@@ -465,23 +465,19 @@ func (c *BFTChain) blockToDecision(block *cb.Block) *types.Decision {
 
 	var signatures []types.Signature
 	for _, sigMD := range signatureMetadata.Signatures {
-		// id := sigMD.SignerId
+		idHdr := &cb.IdentifierHeader{}
+		if err := proto.Unmarshal(sigMD.IdentifierHeader, idHdr); err != nil {
+			c.Logger.Panicf("Failed unmarshaling identifier header for %s", base64.StdEncoding.EncodeToString(sigMD.IdentifierHeader))
+		}
 		sig := &Signature{
-			// Nonce:                sigMD.Nonce,
+			IdentifierHeader: sigMD.IdentifierHeader,
 			BlockHeader:          protoutil.BlockHeaderBytes(block.Header),
 			OrdererBlockMetadata: signatureMetadata.Value,
-			// AuxiliaryInput:       sigMD.AuxiliaryInput,
 		}
-		/* 		prpf := &smartbftprotos.PreparesFrom{}
-		   		if err := proto.Unmarshal(sigMD.AuxiliaryInput, prpf); err != nil {
-		   			c.Logger.Errorf("Failed unmarshaling auxiliary data")
-		   			continue
-		   		}
-		   		c.Logger.Infof("AuxiliaryInput[%d]: %v", id, prpf) */
 		signatures = append(signatures, types.Signature{
 			Msg:   sig.Marshal(),
 			Value: sigMD.Signature,
-			//	ID:    id,
+			ID:    uint64(idHdr.Identifier),
 		})
 	}
 

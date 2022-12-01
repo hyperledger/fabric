@@ -228,18 +228,8 @@ func configFromMetadataOptions(selfID uint64, options *smartbft.Options) (types.
 	config.SyncOnStart = options.SyncOnStart
 	config.SpeedUpViewChange = options.SpeedUpViewChange
 
-	if options.DecisionsPerLeader == 0 {
-		config.DecisionsPerLeader = 1
-	}
-
-	// Enable rotation by default, but optionally disable it
-	switch options.LeaderRotation {
-	case smartbft.Options_ROTATION_OFF:
-		config.LeaderRotation = false
-		config.DecisionsPerLeader = 0
-	default:
-		config.LeaderRotation = true
-	}
+	config.LeaderRotation = false
+	config.DecisionsPerLeader = 0
 
 	if err = config.Validate(); err != nil {
 		return config, errors.Wrap(err, "config validation failed")
@@ -342,6 +332,7 @@ func RemoteNodesFromConfigBlock(block *cb.Block, selfID uint64, logger *flogging
 	oc, ok := bundle.OrdererConfig()
 	if !ok {
 		return nil, errors.New("no orderer config in config block")
+
 	}
 
 	configOptions := &smartbft.Options{}
