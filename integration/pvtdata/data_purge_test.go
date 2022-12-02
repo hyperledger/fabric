@@ -322,6 +322,29 @@ var _ = Describe("Pvtdata purge", func() {
 			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-9000", org2Peer0)
 			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-9000", org2Peer0)
 		})
+
+		It("should behave the same as delete on a previously eligible peer", func() {
+			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"delete-me", "color":"yellow", "size":53, "owner":"jerry", "price":22}`, org2Peer0)
+			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"purge-me", "color":"yellow", "size":53, "owner":"jerry", "price":22}`, org2Peer0)
+
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "delete-me", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "delete-me", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "purge-me", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "purge-me", org2Peer0)
+
+			chaincode.Version = "1.1"
+			chaincode.CollectionsConfig = CollectionConfig("remove_org2_config.json")
+			chaincode.Sequence = "2"
+			nwo.DeployChaincode(network, channelID, orderer, *chaincode)
+
+			marblechaincodeutil.DeleteMarble(network, orderer, channelID, chaincode.Name, `{"name":"delete-me"}`, org2Peer0)
+			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"purge-me"}`, org2Peer0)
+
+			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "delete-me", org2Peer0)
+			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "delete-me", org2Peer0)
+			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "purge-me", org2Peer0)
+			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "purge-me", org2Peer0)
+		})
 	})
 })
 
