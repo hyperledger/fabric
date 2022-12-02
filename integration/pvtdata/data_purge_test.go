@@ -27,7 +27,9 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
 var _ = Describe("Pvtdata purge", func() {
@@ -37,8 +39,9 @@ var _ = Describe("Pvtdata purge", func() {
 		testDir                        string
 		network                        *nwo.Network
 		orderer                        *nwo.Orderer
-		org2Peer0                      *nwo.Peer
-		process                        ifrit.Process
+		org2Peer0, org3Peer0           *nwo.Peer
+		processes                      map[string]ifrit.Process
+		peerRunners                    map[string]*ginkgomon.Runner
 		cancel                         context.CancelFunc
 		chaincode                      *nwo.Chaincode
 	)
@@ -53,9 +56,17 @@ var _ = Describe("Pvtdata purge", func() {
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
+		processes = map[string]ifrit.Process{}
+		peerRunners = map[string]*ginkgomon.Runner{}
+
+		ordererRunner := network.OrdererGroupRunner()
+		process := ifrit.Invoke(ordererRunner)
 		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		processes["OrdererGroupRunner"] = process
+
+		for _, peer := range network.Peers {
+			startPeer(network, processes, peerRunners, peer)
+		}
 
 		orderer = network.Orderer("orderer")
 
@@ -90,6 +101,7 @@ var _ = Describe("Pvtdata purge", func() {
 		nwo.DeployChaincode(network, channelID, orderer, *chaincode)
 
 		org2Peer0 = network.Peer("Org2", "peer0")
+		org3Peer0 = network.Peer("Org3", "peer0")
 
 		_, cancel = context.WithTimeout(context.Background(), network.EventuallyTimeout)
 
@@ -99,7 +111,7 @@ var _ = Describe("Pvtdata purge", func() {
 	AfterEach(func() {
 		cancel()
 
-		if process != nil {
+		for _, process := range processes {
 			process.Signal(syscall.SIGTERM)
 			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
@@ -272,12 +284,35 @@ var _ = Describe("Pvtdata purge", func() {
 		})
 		PIt("should correctly enforce other endorsement policies (TBC)")
 
-		// 4.	Data is purged on previously eligible but now ineligible peer
-		//    - Add a few keys into a collection
-		//    - Submit a collection config update to remove an org
-		//    - Issue a purge transaction to delete few keys
-		//    - The removed orgs peer should have purged the historical versions of intended key
-		PIt("should remove all purged data from a previously eligible peer")
+		It("should remove all purged data from a previously eligible peer", func() {
+			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-80", "color":"white", "size":4, "owner":"liz", "price":4}`, org2Peer0)
+			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-8080", "color":"orange", "size":80, "owner":"clive", "price":88}`, org2Peer0)
+
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-80", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-80", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-8080", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-8080", org2Peer0)
+
+			chaincode.Version = "1.1"
+			chaincode.CollectionsConfig = CollectionConfig("remove_org3_config.json")
+			chaincode.Sequence = "2"
+			nwo.DeployChaincode(network, channelID, orderer, *chaincode)
+
+			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-0"}`, org2Peer0)
+			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-80"}`, org2Peer0)
+
+			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-0", org3Peer0)
+			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-0", org3Peer0)
+			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-80", org3Peer0)
+			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-80", org3Peer0)
+
+			runner := peerRunners[org3Peer0.ID()]
+			Eventually(runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Purging private data from private data storage channel=testchannel chaincode=marblesp collection=collectionMarblePrivateDetails key=test-marble-0 blockNum=\\d+ tranNum=\\d+"))
+			Eventually(runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Purging private data from private data storage channel=testchannel chaincode=marblesp collection=collectionMarblePrivateDetails key=test-marble-80 blockNum=\\d+ tranNum=\\d+"))
+			Eventually(runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Purged private data from private data storage channel=testchannel numKeysPurged=3 numPrivateDataStoreRecordsPurged=1"))
+		})
 
 		// 5. A new peer able to reconcile from a purged peer
 		//    - Stop one of the peers of an eligible org
@@ -410,4 +445,11 @@ func getPrivateDataKeys(client pb.Deliver_DeliverWithPrivateDataClient, ledgerHe
 			return keys
 		}
 	}
+}
+
+func startPeer(network *nwo.Network, processes map[string]ifrit.Process, runners map[string]*ginkgomon.Runner, peer *nwo.Peer) {
+	runners[peer.ID()] = network.PeerRunner(peer)
+	p := ifrit.Invoke(runners[peer.ID()])
+	processes[peer.ID()] = p
+	Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
 }
