@@ -12,7 +12,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	mspa "github.com/hyperledger/fabric-protos-go/msp"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -218,7 +217,7 @@ func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
 			return nil, errors.Errorf("cannot marshal metadata for orderer type %s: %s", ConsensusTypeBFT, err)
 		}
 		// Overwrite policy manually by computing it from the consenters
-		addBFTBlockPolicy(consenterProtos, ordererGroup)
+		policies.EncodeBFTBlockVerificationPolicy(consenterProtos, ordererGroup)
 	default:
 		return nil, errors.Errorf("unknown orderer type: %s", conf.OrdererType)
 	}
@@ -673,36 +672,4 @@ func (bs *Bootstrapper) GenesisBlock() *cb.Block {
 // GenesisBlockForChannel produces a genesis block for a given channel ID
 func (bs *Bootstrapper) GenesisBlockForChannel(channelID string) *cb.Block {
 	return genesis.NewFactoryImpl(bs.channelGroup).Block(channelID)
-}
-
-func addBFTBlockPolicy(consenterProtos []*cb.Consenter, ordererGroup *cb.ConfigGroup) {
-	n := len(consenterProtos)
-	f := (n - 1) / 3
-
-	var identities []*mspa.MSPPrincipal
-	var pols []*cb.SignaturePolicy
-	for i, consenter := range consenterProtos {
-		pols = append(pols, &cb.SignaturePolicy{
-			Type: &cb.SignaturePolicy_SignedBy{
-				SignedBy: int32(i),
-			},
-		})
-		identities = append(identities, &mspa.MSPPrincipal{
-			PrincipalClassification: mspa.MSPPrincipal_IDENTITY,
-			Principal:               protoutil.MarshalOrPanic(&mspa.SerializedIdentity{Mspid: consenter.MspId, IdBytes: consenter.Identity}),
-		})
-	}
-
-	sp := &cb.SignaturePolicyEnvelope{
-		Rule:       policydsl.NOutOf(int32(2*f+1), pols),
-		Identities: identities,
-	}
-	ordererGroup.Policies[BlockValidationPolicyKey] = &cb.ConfigPolicy{
-		// Inherit modification policy
-		ModPolicy: ordererGroup.Policies[BlockValidationPolicyKey].ModPolicy,
-		Policy: &cb.Policy{
-			Type:  int32(cb.Policy_SIGNATURE),
-			Value: protoutil.MarshalOrPanic(sp),
-		},
-	}
 }

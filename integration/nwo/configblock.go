@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/hyperledger/fabric/common/policies"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
@@ -344,15 +346,14 @@ func UpdateConsenters(network *Network, peer *Peer, orderer *Orderer, channel st
 
 	f(orderersVal)
 
+	policies.EncodeBFTBlockVerificationPolicy(orderersVal.ConsenterMapping, updatedConfig.ChannelGroup.Groups["Orderer"])
+
 	fmt.Printf("ConsentersConfig: %+v\n", orderersVal)
 
 	rawOrderers.Value, err = proto.Marshal(orderersVal)
 	Expect(err).NotTo(HaveOccurred())
 
-	updatedConfig.ChannelGroup.Groups["Orderer"].Values["Orderers"] = &common.ConfigValue{
-		ModPolicy: "Admins",
-		Value:     protoutil.MarshalOrPanic(orderersVal),
-	}
+	updatedConfig.ChannelGroup.Groups["Orderer"].Values["Orderers"].Value = protoutil.MarshalOrPanic(orderersVal)
 
 	UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
 
