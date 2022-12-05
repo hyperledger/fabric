@@ -108,7 +108,7 @@ var _ = Describe("Pvtdata purge", func() {
 		})
 
 		It("should fail with an error if the purge capability has not been enabled on the channel", func() {
-			marblePurgeBase64 := base64.StdEncoding.EncodeToString([]byte(`{"name":"test-marble-0"}`))
+			marblePurgeBase64 := base64.StdEncoding.EncodeToString([]byte(`{"name":"test-marble-0", "color":"blue"}`))
 
 			purgeCommand := commands.ChaincodeInvoke{
 				ChannelID: channelID,
@@ -135,7 +135,7 @@ var _ = Describe("Pvtdata purge", func() {
 			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, `test-marble-0`, org2Peer0)
 			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
 
-			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-0"}`, org2Peer0)
+			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-0", "color":"blue"}`, org2Peer0)
 
 			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, `test-marble-0`, org2Peer0)
 			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, `test-marble-0`, org2Peer0)
@@ -161,6 +161,22 @@ var _ = Describe("Pvtdata purge", func() {
 		//    - Verify that all the versions of the intended keys are purged while the remaining keys still exist
 		//    - Repeat above to purge all keys to test the corner case
 		PIt("should remove all purged data from an eligible peer")
+
+		It("should purge data that has already been deleted", func() {
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, `test-marble-0`, org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
+
+			marblechaincodeutil.DeleteMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-0"}`, org2Peer0)
+
+			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, `test-marble-0`, org2Peer0)
+			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, `test-marble-0`, org2Peer0)
+
+			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-0", "color":"blue"}`, org2Peer0)
+
+			// TODO this doesn't actually verify that the data has been purged which seems problematic
+			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, `test-marble-0`, org2Peer0)
+			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, `test-marble-0`, org2Peer0)
+		})
 
 		// 4.	Data is purged on previously eligible but now ineligible peer
 		//    - Add a few keys into a collection

@@ -388,11 +388,12 @@ func (t *MarblesPrivateChaincode) purge(stub shim.ChaincodeStubInterface, args [
 	fmt.Println("- start purge marble")
 
 	type marblePurgeTransientInput struct {
-		Name string `json:"name"`
+		Name  string `json:"name"`
+		Color string `json:"color"`
 	}
 
 	if len(args) != 0 {
-		return shim.Error("Incorrect number of arguments. Private marble name must be passed in transient map.")
+		return shim.Error("Incorrect number of arguments. Private marble name and color must be passed in transient map.")
 	}
 
 	transMap, err := stub.GetTransient()
@@ -419,18 +420,11 @@ func (t *MarblesPrivateChaincode) purge(stub shim.ChaincodeStubInterface, args [
 		return shim.Error("name field must be a non-empty string")
 	}
 
-	// to maintain the color~name index, we need to read the marble first and get its color
-	valAsbytes, err := stub.GetPrivateData("collectionMarbles", marblePurgeInput.Name) // get the marble from chaincode state
-	if err != nil {
-		return shim.Error("Failed to get state for " + marblePurgeInput.Name)
-	} else if valAsbytes == nil {
-		return shim.Error("Marble does not exist: " + marblePurgeInput.Name)
-	}
-
-	var marbleToPurge marble
-	err = json.Unmarshal([]byte(valAsbytes), &marbleToPurge)
-	if err != nil {
-		return shim.Error("Failed to decode JSON of: " + string(valAsbytes))
+	// to maintain the color~name index, we need the marble's color
+	// the marble may have already been deleted so since there is no way to retrieve private data
+	// history, the color must be provided in the transient map
+	if len(marblePurgeInput.Color) == 0 {
+		return shim.Error("color field must be a non-empty string")
 	}
 
 	// purge the marble from state
@@ -441,7 +435,7 @@ func (t *MarblesPrivateChaincode) purge(stub shim.ChaincodeStubInterface, args [
 
 	// Also purge the marble from the color~name index
 	indexName := "color~name"
-	colorNameIndexKey, err := stub.CreateCompositeKey(indexName, []string{marbleToPurge.Color, marbleToPurge.Name})
+	colorNameIndexKey, err := stub.CreateCompositeKey(indexName, []string{marblePurgeInput.Color, marblePurgeInput.Name})
 	if err != nil {
 		return shim.Error(err.Error())
 	}
