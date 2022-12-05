@@ -20,7 +20,7 @@ import (
 
 const (
 	defaultRequestTimeout    = 10 * time.Second // for unit tests only
-	defaultMaxBytes          = 100 * 1024       // default max request size would be of size 100Kb
+	defaultMaxBytes          = 500 * 1024       // default max request size would be of size 100Kb
 	defaultSizeOfDelElements = 1000             // default size slice of delete elements
 	defaultEraseTimeout      = 5 * time.Second  // for cicle erase silice of delete elements
 )
@@ -100,6 +100,7 @@ func NewPool(log api.Logger, inspector api.RequestInspector, th RequestTimeoutHa
 	if options.RequestMaxBytes == 0 {
 		options.RequestMaxBytes = defaultMaxBytes
 	}
+	options.RequestMaxBytes = defaultMaxBytes
 	if options.SubmitTimeout == 0 {
 		options.SubmitTimeout = defaultRequestTimeout
 	}

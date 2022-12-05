@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package nwo
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -328,4 +329,31 @@ func UpdateOrdererMSP(network *Network, peer *Peer, orderer *Orderer, channel, o
 	rawMSPConfig.Value = protoutil.MarshalOrPanic(mspConfig)
 
 	UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
+}
+
+func UpdateConsenters(network *Network, peer *Peer, orderer *Orderer, channel string, f func(orderers *common.Orderers)) {
+	config := GetConfig(network, peer, orderer, channel)
+
+	updatedConfig := proto.Clone(config).(*common.Config)
+
+	rawOrderers := updatedConfig.ChannelGroup.Groups["Orderer"].Values["Orderers"]
+
+	orderersVal := &common.Orderers{}
+	err := proto.Unmarshal(rawOrderers.Value, orderersVal)
+	Expect(err).NotTo(HaveOccurred())
+
+	f(orderersVal)
+
+	fmt.Printf("ConsentersConfig: %+v\n", orderersVal)
+
+	rawOrderers.Value, err = proto.Marshal(orderersVal)
+	Expect(err).NotTo(HaveOccurred())
+
+	updatedConfig.ChannelGroup.Groups["Orderer"].Values["Orderers"] = &common.ConfigValue{
+		ModPolicy: "Admins",
+		Value:     protoutil.MarshalOrPanic(orderersVal),
+	}
+
+	UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
+
 }

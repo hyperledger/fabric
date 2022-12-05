@@ -2002,3 +2002,15 @@ func (n *Network) StartOrderer(ordererName string) (*ginkgomon.Runner, ifrit.Pro
 
 	return ordererRunner, ordererProcess
 }
+
+// OrdererCert returns the path to the orderer's certificate.
+func (n *Network) OrdererCert(o *Orderer) string {
+	org := n.Organization(o.Organization)
+	Expect(org).NotTo(BeNil())
+
+	return filepath.Join(
+		n.OrdererLocalMSPDir(o),
+		"signcerts",
+		fmt.Sprintf("%s.%s-cert.pem", o.Name, org.Domain),
+	)
+}
