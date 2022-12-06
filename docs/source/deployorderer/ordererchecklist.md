@@ -6,21 +6,23 @@ While in a production environment you could override the environment variables i
 
 This checklist covers key configuration parameters for setting up a production ordering service. Of course, you can always refer to the orderer.yaml file for additional parameters or more information. It also provides guidance on which parameters should be overridden. The list of parameters that you need to understand and that are described in this topic include:
 
-* [General.ListenAddress](#general-listenaddress)
-* [General.ListenPort](#general-listenport)
-* [General.TLS.*](#general-tls)
-* [General.Keepalive.*](#general-keepalive)
-* [General.Cluster.*](#general-cluster)
-* [General.BoostrapMethod](#general-bootstrapmethod)
-* [General.BoostrapFile](#general-bootstrapfile)
-* [General.LocalMSPDir](#general-localmspdir)
-* [General.LocalMSPID](#general-localmspid)
-* [FileLedger.Location](#fileledger-location)
-* [Operations.*](#operations)
-* [Metrics.*](#metrics)
-* [Admin.*](#admin)
-* [ChannelParticipation.*](#channelparticipation)
-* [Consensus.*](#consensus)
+- [Checklist for a production ordering node](#checklist-for-a-production-ordering-node)
+  - [General.ListenAddress](#generallistenaddress)
+  - [General.ListenPort](#generallistenport)
+  - [General.TLS](#generaltls)
+  - [General.KeepAlive](#generalkeepalive)
+  - [General.Cluster](#generalcluster)
+  - [General.BoostrapMethod](#generalboostrapmethod)
+  - [General.BoostrapFile](#generalboostrapfile)
+  - [General.LocalMSPDir](#generallocalmspdir)
+  - [General.LocalMSPID](#generallocalmspid)
+  - [General.BCCSP.\*](#generalbccsp)
+  - [FileLedger.Location](#fileledgerlocation)
+  - [Operations.\*](#operations)
+  - [Metrics.\*](#metrics)
+  - [Admin.\*](#admin)
+  - [ChannelParticipation.\*](#channelparticipation)
+  - [Consensus.\*](#consensus)
 
 ## General.ListenAddress
 
@@ -97,7 +99,7 @@ ServerTimeout: 20s
 # SendBufferSize is the maximum number of messages in the egress buffer.
 # Consensus messages are dropped if the buffer is full, and transaction
 # messages are waiting for space to be freed.
-SendBufferSize: 10
+SendBufferSize: 100
 # ClientCertificate governs the file location of the client TLS certificate
 # If not set, the server General.TLS.Certificate is re-used.
 ClientCertificate:
