@@ -97,7 +97,7 @@ ServerTimeout: 20s
 # SendBufferSize is the maximum number of messages in the egress buffer.
 # Consensus messages are dropped if the buffer is full, and transaction
 # messages are waiting for space to be freed.
-SendBufferSize: 10
+SendBufferSize: 100
 # ClientCertificate governs the file location of the client TLS certificate
 # If not set, the server General.TLS.Certificate is re-used.
 ClientCertificate:

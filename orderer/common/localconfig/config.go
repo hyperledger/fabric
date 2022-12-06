@@ -164,7 +164,7 @@ var Defaults = TopLevel{
 			RPCTimeout:                           time.Second * 7,
 			DialTimeout:                          time.Second * 5,
 			ReplicationBufferSize:                20971520,
-			SendBufferSize:                       10,
+			SendBufferSize:                       100,
 			ReplicationBackgroundRefreshInterval: time.Minute * 5,
 			ReplicationRetryTimeout:              time.Second * 5,
 			ReplicationPullTimeout:               time.Second * 5,
