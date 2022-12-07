@@ -4,7 +4,6 @@
 
 ARG GO_VER
 ARG ALPINE_VER
-
 FROM alpine:${ALPINE_VER} as peer-base
 RUN apk add --no-cache tzdata
 # set up nsswitch.conf for Go's "netgo" implementation
@@ -25,6 +24,8 @@ WORKDIR $GOPATH/src/github.com/hyperledger/fabric
 
 FROM golang as peer
 ARG GO_TAGS
+ARG FABRIC_VER
+ENV FABRIC_VER ${FABRIC_VER}
 RUN make peer GO_TAGS=${GO_TAGS}
 RUN make ccaasbuilder
 
