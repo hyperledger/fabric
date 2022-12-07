@@ -19,6 +19,8 @@ WORKDIR $GOPATH/src/github.com/hyperledger/fabric
 
 FROM golang as tools
 ARG GO_TAGS
+ARG FABRIC_VER
+ENV FABRIC_VER ${FABRIC_VER}
 RUN make tools GO_TAGS=${GO_TAGS}
 
 FROM golang:${GO_VER}-alpine${ALPINE_VER}
