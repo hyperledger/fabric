@@ -152,7 +152,31 @@ var _ = Describe("Pvtdata purge", func() {
 		//    behaviour, and they need not to be very exhaustive since they should be covered
 		//    by existing write/delete operations
 		PIt("should correctly enforce collection level endorsement policies")
-		PIt("should correctly enforce key-hash based endorsement policies")
+		It("should correctly enforce key-hash based endorsement policies", func() {
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
+
+			marblechaincodeutil.SetMarblePolicy(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-0","org":"Org3"}`, org2Peer0)
+
+			marblePurgeBase64 := base64.StdEncoding.EncodeToString([]byte(`{"name":"test-marble-0"}`))
+
+			purgeCommand := commands.ChaincodeInvoke{
+				ChannelID: channelID,
+				Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
+				Name:      chaincode.Name,
+				Ctor:      `{"Args":["purge"]}`,
+				Transient: fmt.Sprintf(`{"marble_purge":"%s"}`, marblePurgeBase64),
+				PeerAddresses: []string{
+					network.PeerAddress(org2Peer0, nwo.ListenPort),
+				},
+				WaitForEvent: true,
+			}
+
+			marblechaincodeutil.AssertInvokeChaincodeFails(network, org2Peer0, purgeCommand, "Error: transaction invalidated with status \\(ENDORSEMENT_POLICY_FAILURE\\) - proposal response: <nil>")
+
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
+		})
 		PIt("should correctly enforce other endorsement policies (TBC)")
 
 		// 3. Data is purged on an eligible peer
