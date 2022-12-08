@@ -66,7 +66,9 @@ PROJECT_VERSION=$(FABRIC_VER)-snapshot-$(EXTRA_VERSION)
 
 # TWO_DIGIT_VERSION is derived, e.g. "2.0", especially useful as a local tag
 # for two digit references to most recent baseos and ccenv patch releases
-TWO_DIGIT_VERSION = $(shell echo $(FABRIC_VER) | cut -d '.' -f 1,2)
+# TWO_DIGIT_VERSION removes the (optional) semrev 'v' character from the git
+# tag triggering a Fabric release.
+TWO_DIGIT_VERSION = $(shell echo $(FABRIC_VER) | sed -e  's/^v\(.*\)/\1/' | cut -d '.' -f 1,2)
 
 PKGNAME = github.com/hyperledger/fabric
 ARCH=$(shell go env GOARCH)
