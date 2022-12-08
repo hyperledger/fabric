@@ -380,10 +380,31 @@ Considerations when using private data
 Private data purging
 ~~~~~~~~~~~~~~~~~~~~
 
-Private data in explicitly defined private data collections can be periodically purged from peers.
+Private data can be purged from peers so that it is not available for chaincode queries, not available in block events, and not available for other peers requesting the private data.
+
+**Purging private data in chaincode**
+
+Private data can be deleted from state just like regular state data so that it is not available for query in chaincode for future transactions.
+However, when private data is simply deleted from state, the history of the private data remains in the peer's private database so that it can be returned in block events and returned to other peers that are catching up to the current block height.
+If you need to completely remove the private data from all peers that have access to it, use the chaincode API ``PurgePrivateData`` instead of the ``DelPrivateData`` API.
+
+The ``PurgePrivateData`` chaincode API is available starting in Fabric v2.5. To ensure that all peers are at v2.5 or later, the application capability ``V2_5`` or higher must be set in the channel's configuration before using the feature.
+
+Private data is purged from a peer's private database at the time of block commit.
+For more efficiency, the purge requests can be processed at certain block intervals based on the ``ledger.pvtdataStore.purgeInterval`` setting in the peer ``core.yaml`` configuration, with a default of purging every 100 blocks.
+To process purge requests every block set ``ledger.pvtdataStore.purgeInterval`` to ``1``.
+Regardless of the ``purgeInterval`` setting, the associated private data state will be deleted from the state database upon every block commit so that it is not available for subsequent transaction endorsements or queries.
+Similarly, any purged private data will not be returned in block events or returned to other peers requesting it.
+Only the historical values in the private database will remain until the next ``purgeInterval``.
+
+**Purging private data automatically**
+
+Private data in explicitly defined private data collections can be periodically purged from peers if it has not been modified for a configurable number of blocks.
 For more details, see the ``blockToLive`` collection definition property above.
 
-Additionally, recall that prior to commit, peers store private data in a local
+**Purging uncommitted private data**
+
+Recall that prior to commit, peers store private data in a local
 transient data store. This data automatically gets purged when the transaction
 commits.  But if a transaction was never submitted to the channel and
 therefore never committed, the private data would remain in each peer’s

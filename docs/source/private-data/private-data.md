@@ -118,16 +118,16 @@ For details on transaction flows that don't use private data refer to our
 documentation on [transaction flow](../txflow.html).
 
 1. The client application submits a proposal request to invoke a chaincode
-   function (reading or writing private data) to a target peer, which will manage 
+   function (reading or writing private data) to a target peer, which will manage
    the transaction submission on behalf of the client. The client application can
    [specify which organizations](../gateway.html#targeting-specific-endorsement-peers)
-   should endorse the proposal request, or it can delegate the 
+   should endorse the proposal request, or it can delegate the
    [endorser selection logic](../gateway.html#how-the-gateway-endorses-your-transaction-proposal)
-   to the gateway service in the target peer.  In the latter case, the gateway will 
-   attempt to select a set of endorsing peers which are part of authorized organizations 
-   of the collection(s) affected by the chaincode. The private data, or data used to 
+   to the gateway service in the target peer.  In the latter case, the gateway will
+   attempt to select a set of endorsing peers which are part of authorized organizations
+   of the collection(s) affected by the chaincode. The private data, or data used to
    generate private data in chaincode, is sent in a `transient` field in the proposal.
-   
+
 2. The endorsing peers simulate the transaction and store the private data in
    a `transient data store` (a temporary storage local to the peer). They
    distribute the private data, based on the collection policy, to authorized peers
@@ -372,14 +372,22 @@ For very sensitive data, even the parties sharing the private data might want
 on their peers, leaving behind a hash of the data on the blockchain
 to serve as immutable evidence of the private data.
 
-In some of these cases, the private data only needs to exist on the peer's private
+In some of these cases, the private data only needs to exist in the peer's private
 database until it can be replicated into a database external to the peer's
 blockchain. The data might also only need to exist on the peers until a chaincode business
 process is done with it (trade settled, contract fulfilled, etc).
 
-To support these use cases, private data can be purged if it has not been modified
-for a configurable number of blocks. Purged private data cannot be queried from chaincode,
-and is not available to other requesting peers.
+To support these use cases, private data can be purged so that it is not available for chaincode queries, not available in block events, and not available for other peers requesting the private data.
+
+### Purging private data in chaincode
+
+Private data can be deleted from state just like regular state data so that it is not available for query in chaincode for future transactions.
+However, when private data is simply deleted from state, the history of the private data remains in the peer's private database so that it can be returned in block events and returned to other peers that are catching up to the current block height.
+If you need to completely remove the private data from all peers that have access to it, use the chaincode API `PurgePrivateData` instead of the `DelPrivateData` API.
+
+### Purging private data automatically
+
+Private data collections can be configured to purge private data automatically if it has not been modified for a configurable number of blocks.
 
 ## How a private data collection is defined
 
