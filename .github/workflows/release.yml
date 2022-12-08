@@ -51,16 +51,17 @@ jobs:
         env:
           TARGET: ${{ matrix.target }}-${{ matrix.arch }}
           RELEASE: ${{ env.FABRIC_VER }}
+
       - name: Publish Release Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: hyperledger-fabric-${{ matrix.target }}-${{ matrix.arch }}-${{ env.FABRIC_VER }}.tar.gz
-          path: release/${{ matrix.target }}-${{ matrix.arch }}/hyperledger-fabric-${{ matrix.target }}-${{ matrix.arch }}-${{ env.FABRIC_VER }}.tar.gz
-
+          # <name> of the artifact must not collide between platform/arch builds
+          name: release-${{ matrix.target }}-${{ matrix.arch }}
+          # <path> of the artifact may include multiple files.
+          path: release/${{ matrix.target }}-${{ matrix.arch }}/*.tar.gz
 
   build-and-push-docker-images:
     name: Build and Push
-
     runs-on: ubuntu-20.04
 
     permissions:
@@ -135,7 +136,9 @@ jobs:
 
   create-release:
     name: Create GitHub Release
-    needs: [ build-binaries, build-and-push-docker-images ]
+    needs:
+      - build-binaries
+      - build-and-push-docker-images
     runs-on: ubuntu-20.04
     permissions:
       contents: write
@@ -149,7 +152,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: "true"
-          artifacts: "*.tar.gz/*.tar.gz"
+          artifacts: "release-*-*/*.tar.gz"
           bodyFile: release_notes/${{ env.FABRIC_VER }}.md
           tag: ${{ env.FABRIC_VER }}
           token: ${{ secrets.GITHUB_TOKEN }}

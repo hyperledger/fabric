@@ -24,7 +24,8 @@ _arg_comp=('' )
 _arg_fabric_version="2.4.4"
 _arg_ca_version="1.5.5"
 
-ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m |sed 's/x86_64/amd64/g')" |sed 's/darwin-arm64/darwin-amd64/g')
+REGISTRY=${FABRIC_DOCKER_REGISTRY:-docker.io/hyperledger}
+ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m |sed 's/x86_64/amd64/g')")
 MARCH=$(uname -m)
 
 die()
@@ -143,10 +144,10 @@ singleImagePull() {
     while [[ $# -gt 0 ]]
     do
         image_name="$1"
-        echo "====>  hyperledger/fabric-$image_name:$three_digit_image_tag"
-        ${CONTAINER_CLI} pull "hyperledger/fabric-$image_name:$three_digit_image_tag"
-        ${CONTAINER_CLI} tag "hyperledger/fabric-$image_name:$three_digit_image_tag" "hyperledger/fabric-$image_name"
-        ${CONTAINER_CLI} tag "hyperledger/fabric-$image_name:$three_digit_image_tag" "hyperledger/fabric-$image_name:$two_digit_image_tag"
+        echo "====>  ${REGISTRY}/fabric-$image_name:$three_digit_image_tag"
+        ${CONTAINER_CLI} pull "${REGISTRY}/fabric-$image_name:$three_digit_image_tag"
+        ${CONTAINER_CLI} tag "${REGISTRY}/fabric-$image_name:$three_digit_image_tag" "${REGISTRY}/fabric-$image_name"
+        ${CONTAINER_CLI} tag "${REGISTRY}/fabric-$image_name:$three_digit_image_tag" "${REGISTRY}/fabric-$image_name:$two_digit_image_tag"
         shift
     done
 }
