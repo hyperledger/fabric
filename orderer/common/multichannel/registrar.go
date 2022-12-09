@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
@@ -519,12 +520,30 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) (*ledgerResources,
 		return nil, errors.WithMessagef(err, "error getting ledger for channel: %s", chdr.ChannelId)
 	}
 
+	policy, exists := bundle.PolicyManager().GetPolicy(policies.BlockValidation)
+	if !exists {
+		return nil, errors.New("no policies in config block")
+	}
+
+	bftEnabled := bundle.ChannelConfig().Capabilities().ConsensusTypeBFT()
+
+	var consenters []*cb.Consenter
+	if bftEnabled {
+		cfg, ok := bundle.OrdererConfig()
+		if !ok {
+			return nil, errors.New("no orderer section in config block")
+		}
+		consenters = cfg.Consenters()
+	}
+	signatureVerifier := protoutil.BlockSignatureVerifier(bftEnabled, consenters, policy)
+
 	return &ledgerResources{
 		configResources: &configResources{
 			mutableResources: channelconfig.NewBundleSource(bundle, r.callbacks...),
 			bccsp:            r.bccsp,
 		},
-		ReadWriter: ledger,
+		ReadWriter:        ledger,
+		signatureVerifier: signatureVerifier,
 	}, nil
 }
 

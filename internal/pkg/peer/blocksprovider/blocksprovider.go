@@ -228,7 +228,7 @@ func (d *Deliverer) processMsg(msg *orderer.DeliverResponse) error {
 	case *orderer.DeliverResponse_Block:
 		blockNum := t.Block.Header.Number
 		if err := d.BlockVerifier.VerifyBlock(gossipcommon.ChannelID(d.ChannelID), blockNum, t.Block); err != nil {
-			//return errors.WithMessage(err, "block from orderer could not be verified")
+			return errors.WithMessage(err, "block from orderer could not be verified")
 		}
 
 		marshaledBlock, err := proto.Marshal(t.Block)

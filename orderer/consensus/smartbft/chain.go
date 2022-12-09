@@ -470,7 +470,7 @@ func (c *BFTChain) blockToDecision(block *cb.Block) *types.Decision {
 			c.Logger.Panicf("Failed unmarshaling identifier header for %s", base64.StdEncoding.EncodeToString(sigMD.IdentifierHeader))
 		}
 		sig := &Signature{
-			IdentifierHeader: sigMD.IdentifierHeader,
+			IdentifierHeader:     sigMD.IdentifierHeader,
 			BlockHeader:          protoutil.BlockHeaderBytes(block.Header),
 			OrdererBlockMetadata: signatureMetadata.Value,
 		}

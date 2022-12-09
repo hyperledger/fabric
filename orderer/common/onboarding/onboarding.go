@@ -74,7 +74,7 @@ func NewReplicationInitiator(
 	// System channel is not verified because we trust the bootstrap block
 	// and use backward hash chain verification.
 	verifiersByChannel := vl.loadVerifiers()
-	verifiersByChannel[systemChannelName] = &cluster.NoopBlockVerifier{}
+	verifiersByChannel[systemChannelName] = func(header *common.BlockHeader, metadata *common.BlockMetadata) error { return nil } // no-op
 
 	vr := &cluster.VerificationRegistry{
 		LoadVerifier:       vl.loadVerifier,
@@ -354,7 +354,7 @@ type verifierLoader struct {
 	onFailure       func(block *common.Block)
 }
 
-type verifiersByChannel map[string]cluster.BlockVerifier
+type verifiersByChannel map[string]protoutil.BlockVerifierFunc
 
 func (vl *verifierLoader) loadVerifiers() verifiersByChannel {
 	res := make(verifiersByChannel)
@@ -370,7 +370,7 @@ func (vl *verifierLoader) loadVerifiers() verifiersByChannel {
 	return res
 }
 
-func (vl *verifierLoader) loadVerifier(chain string) cluster.BlockVerifier {
+func (vl *verifierLoader) loadVerifier(chain string) protoutil.BlockVerifierFunc {
 	ledger, err := vl.ledgerFactory.GetOrCreate(chain)
 	if err != nil {
 		vl.logger.Panicf("Failed obtaining ledger for channel %s", chain)

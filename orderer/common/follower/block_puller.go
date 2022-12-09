@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -35,8 +36,8 @@ type ChannelPuller interface {
 type BlockPullerCreator struct {
 	channelID               string
 	bccsp                   bccsp.BCCSP
-	blockSigVerifierFactory cluster.VerifierFactory // Creates a new block signature verifier
-	blockSigVerifier        cluster.BlockVerifier   // The current block signature verifier, from the latest channel config
+	blockSigVerifierFactory cluster.VerifierFactory     // Creates a new block signature verifier
+	blockSigVerifier        protoutil.BlockVerifierFunc // The current block signature verifier, from the latest channel config
 	clusterConfig           localconfig.Cluster
 	signer                  identity.SignerSerializer
 	der                     *pem.Block
@@ -45,7 +46,7 @@ type BlockPullerCreator struct {
 }
 
 // ClusterVerifyBlocksFunc is a function that matches the signature of cluster.VerifyBlocks, and allows mocks for testing.
-type ClusterVerifyBlocksFunc func(blockBuff []*common.Block, signatureVerifier cluster.BlockVerifier) error
+type ClusterVerifyBlocksFunc func(blockBuff []*common.Block, signatureVerifier protoutil.BlockVerifierFunc) error
 
 // NewBlockPullerCreator creates a new BlockPullerCreator, using the configuration details that do not change during
 // the life cycle of the orderer.

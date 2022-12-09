@@ -129,7 +129,7 @@ func newBlockPuller(
 	clusterConfig localconfig.Cluster,
 	bccsp bccsp.BCCSP) (BlockPuller, error) {
 	verifyBlockSequence := func(blocks []*cb.Block, _ string) error {
-		return cluster.VerifyBlocksBFT(blocks, support)
+		return cluster.VerifyBlocksBFT(blocks, support.SignatureVerifier())
 	}
 
 	stdDialer := &cluster.StandardDialer{

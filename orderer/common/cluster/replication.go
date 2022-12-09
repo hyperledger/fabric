@@ -352,7 +352,7 @@ type PullerConfig struct {
 // VerifierRetriever retrieves BlockVerifiers for channels.
 type VerifierRetriever interface {
 	// RetrieveVerifier retrieves a BlockVerifier for the given channel.
-	RetrieveVerifier(channel string) BlockVerifier
+	RetrieveVerifier(channel string) protoutil.BlockVerifierFunc
 }
 
 // BlockPullerFromConfigBlock returns a BlockPuller that doesn't verify signatures on blocks.
@@ -404,14 +404,6 @@ func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block, verifier
 		Signer:              conf.Signer,
 		StopChannel:         make(chan struct{}),
 	}, nil
-}
-
-// NoopBlockVerifier doesn't verify block signatures
-type NoopBlockVerifier struct{}
-
-// VerifyBlockSignature accepts all signatures over blocks.
-func (*NoopBlockVerifier) VerifyBlockSignature(sd []*protoutil.SignedData, config *common.ConfigEnvelope) error {
-	return nil
 }
 
 //go:generate mockery -dir . -name ChainPuller -case underscore -output mocks/
