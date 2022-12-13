@@ -9,7 +9,7 @@ on:
     tags: [ v2.* ]
 
 env:
-  GO_VER: 1.18.7
+  GO_VER: 1.18.9
   ALPINE_VER: 3.16
   FABRIC_VER: ${{ github.ref_name }}
   DOCKER_REGISTRY: docker.io    # or ghcr.io
