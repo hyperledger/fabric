@@ -80,7 +80,7 @@ METADATA_VAR += CommitSHA=$(EXTRA_VERSION)
 METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 METADATA_VAR += DockerNamespace=$(DOCKER_NS)
 
-GO_VER = 1.18.7
+GO_VER = 1.18.9
 GO_TAGS ?=
 
 RELEASE_EXES = orderer $(TOOLS_EXES)
@@ -354,7 +354,7 @@ ccaasbuilder-clean/%:
 
 .PHONY: ccaasbuilder
 ccaasbuilder/%: ccaasbuilder-clean
-	$(eval platform = $(patsubst ccaasbuilder/%,%,$@) ) 
+	$(eval platform = $(patsubst ccaasbuilder/%,%,$@) )
 	$(eval GOOS = $(word 1,$(subst -, ,$(platform))))
 	$(eval GOARCH = $(word 2,$(subst -, ,$(platform))))
 	@mkdir -p release/$(strip $(platform))/builders/ccaas/bin
