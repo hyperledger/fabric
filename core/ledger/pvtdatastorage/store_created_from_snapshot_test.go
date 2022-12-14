@@ -7,7 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package pvtdatastorage
 
 import (
+<<<<<<< HEAD
 	"os"
+=======
+	"math"
+>>>>>>> e1bc92d05 (Consider purged private data during reconciliation)
 	"path"
 	"testing"
 
@@ -197,7 +201,7 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 			m,
 		)
 
-		missingDataInfo, err := store.GetMissingPvtDataInfoForMostRecentBlocks(4)
+		missingDataInfo, err := store.GetMissingPvtDataInfoForMostRecentBlocks(math.MaxUint64, 4)
 		require.NoError(t, err)
 		require.Equal(
 			t,
@@ -235,7 +239,7 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		missingDataInfo, err = store.GetMissingPvtDataInfoForMostRecentBlocks(4)
+		missingDataInfo, err = store.GetMissingPvtDataInfoForMostRecentBlocks(math.MaxUint64, 4)
 		require.NoError(t, err)
 		require.Len(t, missingDataInfo, 0)
 

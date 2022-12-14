@@ -51,6 +51,10 @@ func (s *Store) CommitPvtDataOfOldBlocks(
 		return err
 	}
 
+	if err := p.prepareHashedIndexEntries(); err != nil {
+		return err
+	}
+
 	if err := p.prepareMissingDataEntriesToReflectReconciledData(); err != nil {
 		return err
 	}
@@ -111,6 +115,28 @@ func (p *oldBlockDataProcessor) prepareDataAndExpiryEntries(blocksPvtData map[ui
 		p.entries.dataEntries[*dataEntry.key] = dataEntry.value
 		p.entries.expiryEntries[expKey] = expData
 	}
+	return nil
+}
+
+func (p *oldBlockDataProcessor) prepareHashedIndexEntries() error {
+	d := []*dataEntry{}
+	for k, v := range p.entries.dataEntries {
+		d = append(d,
+			&dataEntry{
+				key: &dataKey{
+					nsCollBlk: k.nsCollBlk,
+					txNum:     k.txNum,
+				},
+				value: v,
+			},
+		)
+	}
+
+	h, err := prepareHashedIndexEntries(d)
+	if err != nil {
+		return err
+	}
+	p.entries.hashedIndexEntries = h
 	return nil
 }
 
@@ -281,6 +307,10 @@ func (p *oldBlockDataProcessor) constructDBUpdateBatch() (*leveldbhelper.UpdateB
 		return nil, errors.WithMessage(err, "error while adding data entries to the update batch")
 	}
 
+	if err := p.entries.addHashedIndexEntriesTo(batch); err != nil {
+		return nil, errors.WithMessage(err, "error while adding hashed index entries to the update batch")
+	}
+
 	if err := p.entries.addExpiryEntriesTo(batch); err != nil {
 		return nil, errors.WithMessage(err, "error while adding expiry entries to the update batch")
 	}
@@ -300,6 +330,7 @@ func (p *oldBlockDataProcessor) constructDBUpdateBatch() (*leveldbhelper.UpdateB
 
 type entriesForPvtDataOfOldBlocks struct {
 	dataEntries                     map[dataKey]*rwset.CollectionPvtReadWriteSet
+	hashedIndexEntries              []*hashedIndexEntry
 	expiryEntries                   map[expiryKey]*ExpiryData
 	prioritizedMissingDataEntries   map[nsCollBlk]*bitset.BitSet
 	deprioritizedMissingDataEntries map[nsCollBlk]*bitset.BitSet
@@ -316,6 +347,14 @@ func (e *entriesForPvtDataOfOldBlocks) addDataEntriesTo(batch *leveldbhelper.Upd
 			return errors.Wrap(err, "error while encoding data value")
 		}
 		batch.Put(key, val)
+	}
+	return nil
+}
+
+func (e *entriesForPvtDataOfOldBlocks) addHashedIndexEntriesTo(batch *leveldbhelper.UpdateBatch) error {
+	for _, hashedIndexEntry := range e.hashedIndexEntries {
+		key := encodeHashedIndexKey(hashedIndexEntry.key)
+		batch.Put(key, []byte(hashedIndexEntry.value))
 	}
 	return nil
 }
