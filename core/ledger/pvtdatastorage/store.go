@@ -564,6 +564,45 @@ func (s *Store) keyPotentiallyPurged(k *dataKey) (bool, error) {
 	return keyHt.Compare(purgeKeyCollMarkerHt) <= 0, nil
 }
 
+func (s *Store) RemoveAppInitiatedPurgesUsingReconMarker(
+	kvHashes map[string][]byte, ns, coll string, blkNum, txNum uint64,
+) (map[string][]byte, error) {
+	trimmedKVHashes := map[string][]byte{}
+	keyHt := &version.Height{
+		BlockNum: blkNum,
+		TxNum:    txNum,
+	}
+
+	for k, v := range kvHashes {
+		potentialPurgeMarker := encodePurgeMarkerForReconKey(
+			&purgeMarkerKey{
+				ns:         ns,
+				coll:       coll,
+				pvtkeyHash: []byte(k),
+			},
+		)
+
+		encPurgeMarkerVal, err := s.db.Get(potentialPurgeMarker)
+		if err != nil {
+			return nil, err
+		}
+
+		if encPurgeMarkerVal == nil {
+			trimmedKVHashes[k] = v
+			continue
+		}
+
+		purgeMarkerHt, err := decodePurgeMarkerVal(encPurgeMarkerVal)
+		if err != nil {
+			return nil, err
+		}
+		if keyHt.Compare(purgeMarkerHt) > 0 {
+			trimmedKVHashes[k] = v
+		}
+	}
+	return trimmedKVHashes, nil
+}
+
 func (s *Store) removePurgedDataFromCollPvtRWset(k *dataKey, v *rwset.CollectionPvtReadWriteSet) error {
 	purgePossible, err := s.keyPotentiallyPurged(k)
 	if !purgePossible || err != nil {
@@ -618,7 +657,7 @@ func (s *Store) removePurgedDataFromCollPvtRWset(k *dataKey, v *rwset.Collection
 
 // GetMissingPvtDataInfoForMostRecentBlocks returns the missing private data information for the
 // most recent `maxBlock` blocks which miss at least a private data of a eligible collection.
-func (s *Store) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.MissingPvtDataInfo, error) {
+func (s *Store) GetMissingPvtDataInfoForMostRecentBlocks(startingBlockNum uint64, maxBlock int) (ledger.MissingPvtDataInfo, error) {
 	// we assume that this function would be called by the gossip only after processing the
 	// last retrieved missing pvtdata info and committing the same.
 	if maxBlock < 1 {
@@ -628,25 +667,20 @@ func (s *Store) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.M
 	if time.Now().After(s.accessDeprioMissingDataAfter) {
 		s.accessDeprioMissingDataAfter = time.Now().Add(s.deprioritizedDataReconcilerInterval)
 		logger.Debug("fetching missing pvtdata entries from the deprioritized list")
-		return s.getMissingData(elgDeprioritizedMissingDataGroup, maxBlock)
+		return s.getMissingData(elgDeprioritizedMissingDataGroup, startingBlockNum, maxBlock)
 	}
 
 	logger.Debug("fetching missing pvtdata entries from the prioritized list")
-	return s.getMissingData(elgPrioritizedMissingDataGroup, maxBlock)
+	return s.getMissingData(elgPrioritizedMissingDataGroup, startingBlockNum, maxBlock)
 }
 
-func (s *Store) getMissingData(group []byte, maxBlock int) (ledger.MissingPvtDataInfo, error) {
+func (s *Store) getMissingData(group []byte, startingBlockNum uint64, maxBlock int) (ledger.MissingPvtDataInfo, error) {
 	missingPvtDataInfo := make(ledger.MissingPvtDataInfo)
 	numberOfBlockProcessed := 0
 	lastProcessedBlock := uint64(0)
 	isMaxBlockLimitReached := false
 
-	// as we are not acquiring a read lock, new blocks can get committed while we
-	// construct the MissingPvtDataInfo. As a result, lastCommittedBlock can get
-	// changed. To ensure consistency, we atomically load the lastCommittedBlock value
-	lastCommittedBlock := atomic.LoadUint64(&s.lastCommittedBlock)
-
-	startKey, endKey := createRangeScanKeysForElgMissingData(lastCommittedBlock, group)
+	startKey, endKey := createRangeScanKeysForElgMissingData(startingBlockNum, group)
 	dbItr, err := s.db.GetIterator(startKey, endKey)
 	if err != nil {
 		return nil, err
@@ -671,7 +705,7 @@ func (s *Store) getMissingData(group []byte, maxBlock int) (ledger.MissingPvtDat
 		// data (less possibility of expiring now), such scenario would be rare. In the
 		// best case, we can load the latest lastCommittedBlock value here atomically to
 		// make this scenario very rare.
-		lastCommittedBlock = atomic.LoadUint64(&s.lastCommittedBlock)
+		lastCommittedBlock := atomic.LoadUint64(&s.lastCommittedBlock)
 		expired, err := isExpired(missingDataKey.nsCollBlk, s.btlPolicy, lastCommittedBlock)
 		if err != nil {
 			return nil, err
