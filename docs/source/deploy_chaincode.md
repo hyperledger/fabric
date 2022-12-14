@@ -501,7 +501,7 @@ The chaincode definition endorsements by channel members are submitted to the or
 You can use the [peer lifecycle chaincode querycommitted](commands/peerlifecycle.html#peer-lifecycle-chaincode-querycommitted) command to confirm that the chaincode definition has been committed to the channel.
 
 ```
-peer lifecycle chaincode querycommitted --channelID mychannel --name basic --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+peer lifecycle chaincode querycommitted --channelID mychannel --name basic
 ```
 
 If the chaincode was successful committed to the channel, the `querycommitted` command will return the sequence and version of the chaincode definition:
