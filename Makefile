@@ -225,7 +225,6 @@ tools: $(TOOLS_EXES)
 $(RELEASE_EXES): %: $(BUILD_DIR)/bin/%
 
 $(BUILD_DIR)/bin/%: GO_LDFLAGS = $(METADATA_VAR:%=-X $(PKGNAME)/common/metadata.%)
-$(BUILD_DIR)/bin/%: GO_LDFLAGS += -w -extldflags '-static'
 $(BUILD_DIR)/bin/%:
 	@echo "Building $@"
 	@mkdir -p $(@D)
@@ -267,6 +266,7 @@ release-all: check-go-version $(RELEASE_PLATFORMS:%=release/%)
 
 .PHONY: $(RELEASE_PLATFORMS:%=release/%)
 $(RELEASE_PLATFORMS:%=release/%): GO_LDFLAGS = $(METADATA_VAR:%=-X $(PKGNAME)/common/metadata.%)
+$(RELEASE_PLATFORMS:%=release/%): GO_LDFLAGS += -w -extldflags '-static'
 $(RELEASE_PLATFORMS:%=release/%): release/%: $(foreach exe,$(RELEASE_EXES),release/%/bin/$(exe))
 $(RELEASE_PLATFORMS:%=release/%): release/%: ccaasbuilder/%
 
@@ -356,7 +356,7 @@ ccaasbuilder-clean/%:
 
 .PHONY: ccaasbuilder
 ccaasbuilder/%: ccaasbuilder-clean
-	$(eval platform = $(patsubst ccaasbuilder/%,%,$@) ) 
+	$(eval platform = $(patsubst ccaasbuilder/%,%,$@) )
 	$(eval GOOS = $(word 1,$(subst -, ,$(platform))))
 	$(eval GOARCH = $(word 2,$(subst -, ,$(platform))))
 	@mkdir -p release/$(strip $(platform))/builders/ccaas/bin
