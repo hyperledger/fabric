@@ -703,15 +703,26 @@ func TestPvtDataAPIs(t *testing.T) {
 	// any other transaction entry should be nil
 	require.Nil(t, blockAndPvtdata.PvtData[2])
 
-	// test missing data retrieval in the presence of invalid tx. Block 6 had
-	// missing data (for tx4 and tx5). Though tx5 was marked as invalid tx,
-	// both tx4 and tx5 missing data should be returned
-	expectedMissingDataInfo := make(ledger.MissingPvtDataInfo)
-	expectedMissingDataInfo.Add(6, 4, "ns-4", "coll-4")
-	expectedMissingDataInfo.Add(6, 5, "ns-5", "coll-5")
-	missingDataInfo, err := lgr.(*kvLedger).GetMissingPvtDataInfoForMostRecentBlocks(1)
+	// test missing data retrieval in the presence of invalid tx. Block 7 had
+	// the missing data for tx1 and tx2, and Block 6 had missing data (for tx4 and tx5).
+	// Though tx5 was marked as invalid tx, both tx4 and tx5 missing data should be returned
+	missingDataTracker, err := lgr.GetMissingPvtDataTracker()
 	require.NoError(t, err)
-	require.Equal(t, expectedMissingDataInfo, missingDataInfo)
+
+	expectedMissingDataInfoBlk7 := ledger.MissingPvtDataInfo{}
+	expectedMissingDataInfoBlk7.Add(7, 1, "ns-1", "coll-1")
+	expectedMissingDataInfoBlk7.Add(7, 2, "ns-2", "coll-2")
+	missingDataInfo, err := missingDataTracker.GetMissingPvtDataInfoForMostRecentBlocks(1)
+	require.NoError(t, err)
+	require.Equal(t, expectedMissingDataInfoBlk7, missingDataInfo)
+
+	// The usage of the same missing data tracker instance should return next set of missing data now
+	expectedMissingDataInfoBlk6 := make(ledger.MissingPvtDataInfo)
+	expectedMissingDataInfoBlk6.Add(6, 4, "ns-4", "coll-4")
+	expectedMissingDataInfoBlk6.Add(6, 5, "ns-5", "coll-5")
+	missingDataInfo, err = missingDataTracker.GetMissingPvtDataInfoForMostRecentBlocks(1)
+	require.NoError(t, err)
+	require.Equal(t, expectedMissingDataInfoBlk6, missingDataInfo)
 }
 
 func TestCrashAfterPvtdataStoreCommit(t *testing.T) {
@@ -1382,6 +1393,12 @@ func sampleDataWithPvtdataForSelectiveTx(t *testing.T, bg *testutil.BlockGenerat
 	txFilter = txflags.ValidationFlags(blockAndpvtdata[5].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	txFilter.SetFlag(5, peer.TxValidationCode_INVALID_WRITESET)
 	blockAndpvtdata[5].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txFilter
+
+	// add missing data for txNum 1, and 2 in block 6
+	missingData = ledger.TxMissingPvtData{}
+	missingData.Add(1, "ns-1", "coll-1", true)
+	missingData.Add(2, "ns-2", "coll-2", true)
+	blockAndpvtdata[6].MissingPvtData = missingData
 
 	return blockAndpvtdata
 }

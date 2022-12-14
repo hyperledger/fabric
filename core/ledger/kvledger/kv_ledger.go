@@ -9,6 +9,7 @@ package kvledger
 import (
 	"encoding/hex"
 	"fmt"
+	"math"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -47,10 +48,13 @@ var (
 // kvLedger provides an implementation of `ledger.PeerLedger`.
 // This implementation provides a key-value based data model
 type kvLedger struct {
-	ledgerID               string
-	bootSnapshotMetadata   *SnapshotMetadata
-	blockStore             *blkstorage.BlockStore
-	pvtdataStore           *pvtdatastorage.Store
+	ledgerID             string
+	bootSnapshotMetadata *SnapshotMetadata
+	blockStore           *blkstorage.BlockStore
+
+	pvtdataStoreLock sync.Mutex
+	pvtdataStore     *pvtdatastorage.Store
+
 	txmgr                  *txmgr.LockBasedTxMgr
 	historyDB              *history.DB
 	configHistoryRetriever *collectionConfigHistoryRetriever
@@ -748,6 +752,14 @@ func (l *kvLedger) commitToPvtAndBlockStore(
 		// too in the pvtdataStore as we do for the publicdata in the case of blockStore.
 		// Hence, we pass all pvtData present in the block to the pvtdataStore committer.
 		pvtData, missingPvtData := constructPvtDataAndMissingData(blockAndPvtdata)
+
+		// if appInitiatedPurgeMarkers are being added, we need to sync with reconciliation path as the
+		// reconciliation reads these markers from pvtdata store.
+		if len(appInitiatedPurgeMarkers) > 0 {
+			l.pvtdataStoreLock.Lock()
+			defer l.pvtdataStoreLock.Unlock()
+		}
+
 		if err := l.pvtdataStore.Commit(blockNum, pvtData, missingPvtData, appInitiatedPurgeMarkers); err != nil {
 			return err
 		}
@@ -788,23 +800,6 @@ func (l *kvLedger) updateBlockStats(
 	l.stats.updateBlockstorageAndPvtdataCommitTime(blockstorageAndPvtdataCommitTime)
 	l.stats.updateStatedbCommitTime(statedbCommitTime)
 	l.stats.updateTransactionsStats(txstatsInfo)
-}
-
-// GetMissingPvtDataInfoForMostRecentBlocks returns the missing private data information for the
-// most recent `maxBlock` blocks which miss at least a private data of a eligible collection.
-func (l *kvLedger) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.MissingPvtDataInfo, error) {
-	// the missing pvtData info in the pvtdataStore could belong to a block which is yet
-	// to be processed and committed to the blockStore and stateDB (such a scenario is possible
-	// after a peer rollback). In such cases, we cannot return missing pvtData info. Otherwise,
-	// we would end up in an inconsistent state database.
-	if l.isPvtstoreAheadOfBlkstore.Load().(bool) {
-		return nil, nil
-	}
-	// it is safe to not acquire a read lock on l.blockAPIsRWLock. Without a lock, the value of
-	// lastCommittedBlock can change due to a new block commit. As a result, we may not
-	// be able to fetch the missing data info of truly the most recent blocks. This
-	// decision was made to ensure that the regular block commit rate is not affected.
-	return l.pvtdataStore.GetMissingPvtDataInfoForMostRecentBlocks(maxBlock)
 }
 
 func (l *kvLedger) addBlockCommitHash(block *common.Block, updateBatchBytes []byte) {
@@ -879,12 +874,15 @@ func (l *kvLedger) CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.Reconcil
 	logger.Debugf("[%s:] Comparing pvtData of [%d] old blocks against the hashes in transaction's rwset to find valid and invalid data",
 		l.ledgerID, len(reconciledPvtdata))
 
+	l.pvtdataStoreLock.Lock()
+	defer l.pvtdataStoreLock.Unlock()
+
 	lastBlockInBootstrapSnapshot := uint64(0)
 	if l.bootSnapshotMetadata != nil {
 		lastBlockInBootstrapSnapshot = l.bootSnapshotMetadata.LastBlockNumber
 	}
 
-	hashVerifiedPvtData, hashMismatches, err := constructValidAndInvalidPvtData(
+	hashVerifiedPvtData, err := extractValidPvtData(
 		reconciledPvtdata, l.blockStore, l.pvtdataStore, lastBlockInBootstrapSnapshot,
 	)
 	if err != nil {
@@ -902,8 +900,8 @@ func (l *kvLedger) CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.Reconcil
 	if err != nil {
 		return nil, err
 	}
-
-	return hashMismatches, nil
+	// TODO: change the function signature to remove return of []*ledger.PvtdataHashMismatch
+	return nil, nil
 }
 
 func (l *kvLedger) applyValidTxPvtDataOfOldBlocks(hashVerifiedPvtData map[uint64][]*ledger.TxPvtData) error {
@@ -932,7 +930,10 @@ func (l *kvLedger) applyValidTxPvtDataOfOldBlocks(hashVerifiedPvtData map[uint64
 }
 
 func (l *kvLedger) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, error) {
-	return l, nil
+	return &missingPvtdataTracker{
+		kvLedger:             l,
+		nextStartingBlockNum: math.MaxUint64,
+	}, nil
 }
 
 type commitNotifier struct {
