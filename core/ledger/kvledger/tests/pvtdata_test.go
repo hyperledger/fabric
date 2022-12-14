@@ -9,6 +9,7 @@ package tests
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/stretchr/testify/require"
 )
@@ -233,4 +234,79 @@ func TestAppInitiatedPrivateDataPurge(t *testing.T) {
 		r.pvtdataShouldContain(1, "cc1", "coll2", "key2", "value2_new")
 		r.pvtdataShouldNotContainKey("cc1", "coll2", "key3")
 	})
+}
+
+func TestReconciliationAfterKeyPurge(t *testing.T) {
+	env := newEnv(t)
+	defer env.cleanup()
+	env.initLedgerMgmt()
+	l := env.createTestLedgerFromGenesisBlk("ledger1")
+
+	collConf := []*collConf{{name: "coll1", btl: 0}}
+
+	// deploy cc1 with 'collConf'
+	l.simulateDeployTx("cc1", collConf)
+	l.cutBlockAndCommitLegacy()
+
+	// pvtdata simulation
+	l.simulateDataTx("", func(s *simulator) {
+		s.setPvtdata("cc1", "coll1", "key1", "value1")
+	})
+	l.causeMissingPvtData(0)
+	blk2 := l.cutBlockAndCommitLegacy()
+
+	l.simulateDataTx("", func(s *simulator) {
+		_, err := s.GetPrivateData("cc1", "coll1", "key1") // key1 would be stale with respect to hashed version
+		require.EqualError(t, err, "private data matching public hash version is not available. Public hash version = {BlockNum: 2, TxNum: 0}, Private data version = <nil>")
+	})
+
+	// verify missing pvtdata info
+	l.verifyBlockAndPvtDataSameAs(2, blk2)
+	expectedMissingPvtDataInfo := make(ledger.MissingPvtDataInfo)
+	expectedMissingPvtDataInfo.Add(2, 0, "cc1", "coll1")
+	l.verifyMissingPvtDataSameAs(2, expectedMissingPvtDataInfo)
+
+	l.simulateDataTx("", func(s *simulator) {
+		// purge key1, while it's data is missing
+		s.purgePvtdata("cc1", "coll1", "key1")
+	})
+	l.cutBlockAndCommitLegacy()
+	l.verifyPvtState("cc1", "coll1", "key1", "")                // key1 should not have been committed to statedb as it was already purged
+	l.verifyMissingPvtDataSameAs(2, expectedMissingPvtDataInfo) // missing data should still be as is
+
+	// commit via reconciliation after purging, should cause clearing the missing data entry even if the committing data
+	// does not contain the key (perhaps, because the sending peer has also purged it and sent only an empty collection WS)
+	pvtdataWithNoKeys := &ledger.TxPvtData{
+		SeqInBlock: 0,
+		WriteSet: &rwset.TxPvtReadWriteSet{
+			NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+				{
+					Namespace: "cc1",
+					CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+						{
+							CollectionName: "coll1",
+						},
+					},
+				},
+			},
+		},
+	}
+	l.commitPvtDataOfOldBlocks(
+		[]*ledger.ReconciledPvtdata{
+			{
+				BlockNum: 2,
+				WriteSets: ledger.TxPvtDataMap{
+					0: pvtdataWithNoKeys,
+				},
+			},
+		},
+		nil,
+	)
+
+	l.verifyMissingPvtDataSameAs(2, ledger.MissingPvtDataInfo{}) // missing data flag should have been cleared
+	l.verifyInPvtdataStore(2, nil,                               // Now the peer should return the pvtdata with no keys (as all keys are purged)
+		[]*ledger.TxPvtData{
+			pvtdataWithNoKeys,
+		},
+	)
 }

@@ -12,7 +12,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -20,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
+func TestExtractValidPvtData(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
 
@@ -140,7 +139,7 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 			},
 		)
 
-		blocksValidPvtData, hashMismatched, err := constructValidAndInvalidPvtData(
+		blocksValidPvtData, err := extractValidPvtData(
 			[]*ledger.ReconciledPvtdata{
 				{
 					BlockNum:  3,
@@ -160,11 +159,9 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 			},
 			blocksValidPvtData,
 		)
-		// should not include the pvtData passed for the tx1 even in hashmismatched as the collection does not exist in tx1
-		require.Len(t, hashMismatched, 0)
 	})
 
-	t.Run("for-data-after-snapshot:hash-mismatch-is-reported", func(t *testing.T) {
+	t.Run("for-data-after-snapshot:hash-mismatch-is-dropped", func(t *testing.T) {
 		lgr := bootstrappedLedger
 		pvtdata := pvtdataCopy()
 
@@ -174,7 +171,7 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 			},
 		)
 
-		blocksValidPvtData, hashMismatches, err := constructValidAndInvalidPvtData(
+		blocksValidPvtData, err := extractValidPvtData(
 			[]*ledger.ReconciledPvtdata{
 				{
 					BlockNum:  3,
@@ -193,18 +190,6 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 				},
 			},
 			blocksValidPvtData,
-		)
-		require.Equal(
-			t,
-			[]*ledger.PvtdataHashMismatch{
-				{
-					BlockNum:   3,
-					TxNum:      1,
-					Namespace:  "ns-2",
-					Collection: "coll-2",
-				},
-			},
-			hashMismatches,
 		)
 	})
 
@@ -212,7 +197,7 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 		lgr := bootstrappedLedger
 		pvtdata := pvtdataCopy()
 
-		blocksValidPvtData, hashMismatches, err := constructValidAndInvalidPvtData(
+		blocksValidPvtData, err := extractValidPvtData(
 			[]*ledger.ReconciledPvtdata{
 				{
 					BlockNum:  2,
@@ -241,52 +226,9 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 			},
 			blocksValidPvtData,
 		)
-		require.Len(t, hashMismatches, 0)
 	})
 
-	t.Run("for-data-before-snapshot:does-not-trim-the-extra-keys", func(t *testing.T) {
-		lgr := bootstrappedLedger
-		pvtdata := pvtdataCopy()
-		pvtdataWithExtraKey := pvtdataCopy()
-		pvtdataWithExtraKey[0], _ = produceSamplePvtdata(t, 0,
-			[][4]string{
-				{"ns-1", "coll-1", "tx0-key-1", "tx0-val-1"},
-				{"ns-1", "coll-2", "tx0-key-2", "tx0-val-2"},
-				{"ns-1", "coll-2", "extra-key", "extra-val"},
-			},
-		)
-		pvtdataWithExtraKey[2], _ = produceSamplePvtdata(t, 2,
-			[][4]string{
-				{"ns-1", "coll-1", "tx2-key-1", "tx2-val-1"},
-			},
-		)
-
-		blocksValidPvtData, hashMismatches, err := constructValidAndInvalidPvtData(
-			[]*ledger.ReconciledPvtdata{
-				{
-					BlockNum:  2,
-					WriteSets: pvtdataWithExtraKey,
-				},
-			},
-			lgr.blockStore,
-			lgr.pvtdataStore,
-			2,
-		)
-		require.NoError(t, err)
-
-		verifyBlocksPvtdata(t,
-			map[uint64][]*ledger.TxPvtData{
-				2: {
-					pvtdataWithExtraKey[0],
-					pvtdata[1],
-				},
-			},
-			blocksValidPvtData,
-		)
-		require.Len(t, hashMismatches, 0)
-	})
-
-	t.Run("for-data-before-snapshot:reports-hash-mismatch-and-partial-data-supplied", func(t *testing.T) {
+	t.Run("for-data-before-snapshot:excludes-hash-mismatch-and-partial-data-supplied", func(t *testing.T) {
 		lgr := bootstrappedLedger
 		temptered := pvtdataCopy()
 		temptered[0], _ = produceSamplePvtdata(t, 0,
@@ -301,7 +243,7 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 			},
 		)
 
-		blocksValidPvtData, hashMismatches, err := constructValidAndInvalidPvtData(
+		blocksValidPvtData, err := extractValidPvtData(
 			[]*ledger.ReconciledPvtdata{
 				{
 					BlockNum:  2,
@@ -314,95 +256,14 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 		)
 		require.NoError(t, err)
 		require.Len(t, blocksValidPvtData, 0)
-		require.ElementsMatch(t,
-			[]*ledger.PvtdataHashMismatch{
-				{
-					BlockNum:   2,
-					TxNum:      0,
-					Namespace:  "ns-1",
-					Collection: "coll-1",
-				},
-				{
-					BlockNum:   2,
-					TxNum:      1,
-					Namespace:  "ns-2",
-					Collection: "coll-2",
-				},
-			},
-			hashMismatches,
-		)
 	})
 
-	t.Run("for-data-before-snapshot:reports-repeated-key", func(t *testing.T) {
+	t.Run("for-data-before-snapshot:drops-collection-with-corrupted-writeset", func(t *testing.T) {
 		lgr := bootstrappedLedger
-		pvtdata := pvtdataCopy()
-		repeatedKeyInTx0Ns1Coll1 := pvtdataCopy()
-		repeatedKeyWS := &kvrwset.KVRWSet{
-			Writes: []*kvrwset.KVWrite{
-				{
-					Key:   "tx0-key-1",
-					Value: []byte("tx0-val-1"),
-				},
-				{
-					Key:   "tx0-key-1",
-					Value: []byte("tx0-val-1-tempered"),
-				},
-			},
-		}
-
-		repeatedKeyWSBytes, err := proto.Marshal(repeatedKeyWS)
-		require.NoError(t, err)
-		repeatedKeyInTx0Ns1Coll1[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset[0].Rwset = repeatedKeyWSBytes
-
-		expectedPartOfTx0, _ := produceSamplePvtdata(t, 0,
-			[][4]string{
-				{"ns-1", "coll-2", "tx0-key-2", "tx0-val-2"},
-			},
-		)
-
-		blocksValidPvtData, hashMismatches, err := constructValidAndInvalidPvtData(
-			[]*ledger.ReconciledPvtdata{
-				{
-					BlockNum:  2,
-					WriteSets: repeatedKeyInTx0Ns1Coll1,
-				},
-			},
-			lgr.blockStore,
-			lgr.pvtdataStore,
-			2,
-		)
-		require.NoError(t, err)
-
-		verifyBlocksPvtdata(t,
-			map[uint64][]*ledger.TxPvtData{
-				2: {
-					expectedPartOfTx0,
-					pvtdata[1],
-				},
-			},
-			blocksValidPvtData,
-		)
-
-		require.ElementsMatch(t,
-			[]*ledger.PvtdataHashMismatch{
-				{
-					BlockNum:   2,
-					TxNum:      0,
-					Namespace:  "ns-1",
-					Collection: "coll-1",
-				},
-			},
-			hashMismatches,
-		)
-	})
-
-	t.Run("for-data-before-snapshot:ignores-bad-data-corrupted-writeset", func(t *testing.T) {
-		lgr := bootstrappedLedger
-		pvtdata := pvtdataCopy()
 		pvtdataWithBadData := pvtdataCopy()
 		pvtdataWithBadData[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset[0].Rwset = []byte("bad-data")
 
-		blocksValidPvtData, hashMismatches, err := constructValidAndInvalidPvtData(
+		blocksValidPvtData, err := extractValidPvtData(
 			[]*ledger.ReconciledPvtdata{
 				{
 					BlockNum:  2,
@@ -415,18 +276,22 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 		)
 		require.NoError(t, err)
 
+		expectedOutput := pvtdataCopy()
+		expectedOutput[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset =
+			expectedOutput[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset[1:]
+
 		verifyBlocksPvtdata(t,
 			map[uint64][]*ledger.TxPvtData{
 				2: {
-					pvtdata[1],
+					expectedOutput[0],
+					expectedOutput[1],
 				},
 			},
 			blocksValidPvtData,
 		)
-		require.Len(t, hashMismatches, 0)
 	})
 
-	t.Run("for-data-before-snapshot:ignores-bad-data-empty-collections", func(t *testing.T) {
+	t.Run("for-data-before-snapshot:drops-collection-with-empty-writeset", func(t *testing.T) {
 		lgr := bootstrappedLedger
 		pvtdata := pvtdataCopy()
 		pvtdataWithEmptyCollections := pvtdataCopy()
@@ -438,7 +303,7 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 			},
 		)
 
-		blocksValidPvtData, hashMismatches, err := constructValidAndInvalidPvtData(
+		blocksValidPvtData, err := extractValidPvtData(
 			[]*ledger.ReconciledPvtdata{
 				{
 					BlockNum:  2,
@@ -460,7 +325,75 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 			},
 			blocksValidPvtData,
 		)
-		require.Len(t, hashMismatches, 0)
+	})
+
+	t.Run("for-both-before-and-after-snapshot-data:removes-purged-keys", func(t *testing.T) {
+		lgr := bootstrappedLedger
+		// purge all keys committed by tx1 and only one of the keys committed by tx2
+		pvtData, simulationResults := purgeKeyTransaction(t,
+			[][3]string{
+				{"ns-1", "coll-1", "tx0-key-1"},
+				{"ns-1", "coll-2", "tx0-key-2"},
+				{"ns-2", "coll-2", "tx1-key-2"},
+			},
+		)
+
+		blk4 := blocksGenerator.NextBlock([][]byte{simulationResults})
+		require.NoError(t, lgr.commit(
+			&ledger.BlockAndPvtData{
+				Block: blk4,
+				PvtData: map[uint64]*ledger.TxPvtData{
+					0: pvtData,
+				},
+			},
+			&ledger.CommitOptions{},
+		))
+
+		pvtdata := pvtdataCopy()
+		blocksValidPvtData, err := extractValidPvtData(
+			[]*ledger.ReconciledPvtdata{
+				{
+					BlockNum:  2,
+					WriteSets: pvtdata,
+				},
+				{
+					BlockNum:  3,
+					WriteSets: pvtdata,
+				},
+			},
+			lgr.blockStore,
+			lgr.pvtdataStore,
+			2,
+		)
+		require.NoError(t, err)
+
+		// All keys committed by tx1 should be purged and only empty collections should be returned
+		expectedValidDataForTx0 := pvtdataCopy()[0]
+		expectedValidDataForTx0.WriteSet.NsPvtRwset[0].CollectionPvtRwset[0].Rwset = nil
+		expectedValidDataForTx0.WriteSet.NsPvtRwset[0].CollectionPvtRwset[1].Rwset = nil
+
+		// Only one of the keys committed by tx2 should be removed from the trimmed collection writeset
+		expectedValidDataForTx1, _ := produceSamplePvtdata(t, 1,
+			[][4]string{
+				{"ns-1", "coll-1", "tx1-key-1", "tx1-val-1"},
+				{"ns-2", "coll-2", "tx1-key-3", "tx1-val-3"},
+				{"ns-2", "coll-2", "tx1-key-4", "tx1-val-4"},
+				{"ns-2", "coll-2", "tx1-key-5", "tx1-val-5"},
+			},
+		)
+		verifyBlocksPvtdata(t,
+			map[uint64][]*ledger.TxPvtData{
+				2: {
+					expectedValidDataForTx0,
+					expectedValidDataForTx1,
+				},
+				3: {
+					expectedValidDataForTx0,
+					expectedValidDataForTx1,
+				},
+			},
+			blocksValidPvtData,
+		)
 	})
 }
 
@@ -526,60 +459,14 @@ func commitCollectionConfigsHistoryAndDummyBlock(t *testing.T, provider *Provide
 	}
 }
 
-func TestRemoveCollFromTxPvtReadWriteSet(t *testing.T) {
-	txpvtrwset := testutilConstructSampleTxPvtRwset(
-		[]*testNsColls{
-			{ns: "ns-1", colls: []string{"coll-1", "coll-2"}},
-			{ns: "ns-2", colls: []string{"coll-3", "coll-4"}},
-		},
-	)
-
-	removeCollFromTxPvtReadWriteSet(txpvtrwset, "ns-1", "coll-1")
-	require.Equal(
-		t,
-		testutilConstructSampleTxPvtRwset(
-			[]*testNsColls{
-				{ns: "ns-1", colls: []string{"coll-2"}},
-				{ns: "ns-2", colls: []string{"coll-3", "coll-4"}},
-			},
-		),
-		txpvtrwset,
-	)
-
-	removeCollFromTxPvtReadWriteSet(txpvtrwset, "ns-1", "coll-2")
-	require.Equal(
-		t,
-		testutilConstructSampleTxPvtRwset(
-			[]*testNsColls{
-				{ns: "ns-2", colls: []string{"coll-3", "coll-4"}},
-			},
-		),
-		txpvtrwset,
-	)
-}
-
-func testutilConstructSampleTxPvtRwset(nsCollsList []*testNsColls) *rwset.TxPvtReadWriteSet {
-	txPvtRwset := &rwset.TxPvtReadWriteSet{}
-	for _, nsColls := range nsCollsList {
-		ns := nsColls.ns
-		nsdata := &rwset.NsPvtReadWriteSet{
-			Namespace:          ns,
-			CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{},
-		}
-		txPvtRwset.NsPvtRwset = append(txPvtRwset.NsPvtRwset, nsdata)
-		for _, coll := range nsColls.colls {
-			nsdata.CollectionPvtRwset = append(nsdata.CollectionPvtRwset,
-				&rwset.CollectionPvtReadWriteSet{
-					CollectionName: coll,
-					Rwset:          []byte(fmt.Sprintf("pvtrwset-for-%s-%s", ns, coll)),
-				},
-			)
-		}
+func purgeKeyTransaction(t *testing.T, nsCollKeys [][3]string) (*ledger.TxPvtData, []byte) {
+	builder := rwsetutil.NewRWSetBuilder()
+	for _, nsCollKey := range nsCollKeys {
+		builder.AddToPvtAndHashedWriteSetForPurge(nsCollKey[0], nsCollKey[1], nsCollKey[2])
 	}
-	return txPvtRwset
-}
-
-type testNsColls struct {
-	ns    string
-	colls []string
+	simRes, err := builder.GetTxSimulationResults()
+	require.NoError(t, err)
+	pubSimulationResultsBytes, err := proto.Marshal(simRes.PubSimulationResults)
+	require.NoError(t, err)
+	return &ledger.TxPvtData{SeqInBlock: 0, WriteSet: simRes.PvtSimulationResults}, pubSimulationResultsBytes
 }
