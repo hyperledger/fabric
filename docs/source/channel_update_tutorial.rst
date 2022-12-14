@@ -172,11 +172,11 @@ If the command is successful, you will see the creation of the Org3 peer:
 
 This Docker Compose file has been configured to bridge across our initial network,
 so that the Org3 peer resolves with the existing peers and ordering
-node of the test network. 
+node of the test network.
 
-.. note:: the `./addOrg3.sh up` command uses a `fabric-tools` CLI container to perform 
-          the channel configuration update process demonstrated below. This is to avoid the 
-          `jq` dependency requirement for first-time users. However, it is recommended to 
+.. note:: the `./addOrg3.sh up` command uses a `fabric-tools` CLI container to perform
+          the channel configuration update process demonstrated below. This is to avoid the
+          `jq` dependency requirement for first-time users. However, it is recommended to
           follow the process below directly on your local machine instead of using the unnecessary
           CLI container.
 
@@ -292,9 +292,9 @@ We'll use the ``jq`` tool once more to append the Org3 configuration definition
 
   jq -s '.[0] * {"channel_group":{"groups":{"Application":{"groups": {"Org3MSP":.[1]}}}}}' config.json ../organizations/peerOrganizations/org3.example.com/org3.json > modified_config.json
 
-Now we have two JSON files of interest -- ``config.json`` and 
-``modified_config.json``. The initial file contains only Org1 and Org2 
-material, whereas the "modified" file contains all three Orgs. At this 
+Now we have two JSON files of interest -- ``config.json`` and
+``modified_config.json``. The initial file contains only Org1 and Org2
+material, whereas the "modified" file contains all three Orgs. At this
 point it's simply a matter of re-encoding these two JSON files and calculating
 the delta.
 
@@ -561,7 +561,7 @@ on the ledger. The commands below assume that we are still using the channel
 ``channel1``.
 
 After the chaincode has been to deployed we can use the following steps to use
-invoke Basic chaincode as Org3. Copy and paste the following environment 
+invoke Basic chaincode as Org3. Copy and paste the following environment
 variables in your terminal in order to interact with the network as the Org3
 admin:
 
@@ -635,7 +635,7 @@ channel.
 .. code:: bash
 
     # use the --name flag to select the chaincode whose definition you want to query
-    peer lifecycle chaincode querycommitted --channelID channel1 --name basic --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+    peer lifecycle chaincode querycommitted --channelID channel1 --name basic
 
 A successful command will return information about the committed definition:
 
