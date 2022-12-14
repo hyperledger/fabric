@@ -247,6 +247,8 @@ $(BUILD_DIR)/images/%/$(DUMMY):
 		--build-arg GO_VER=$(GO_VER) \
 		--build-arg ALPINE_VER=$(ALPINE_VER) \
 		--build-arg FABRIC_VER=$(FABRIC_VER) \
+		--build-arg TARGETARCH=$(ARCH) \
+		--build-arg TARGETOS=linux \
 		$(BUILD_ARGS) \
 		-t $(DOCKER_NS)/fabric-$* ./$(BUILD_CONTEXT)
 	@touch $@
