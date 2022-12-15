@@ -319,3 +319,10 @@ unit-test-clean:
 .PHONY: filename-spaces
 spaces:
 	@scripts/check_file_name_spaces.sh
+
+.PHONY: scan
+scan: scan-govulncheck
+
+.PHONY: scan-govulncheck
+scan-govulncheck: gotool.govulncheck
+	govulncheck ./...
