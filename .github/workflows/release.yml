@@ -12,7 +12,7 @@ env:
   GO_VER: 1.18.7
   ALPINE_VER: 3.16
   FABRIC_VER: ${{ github.ref_name }}
-  DOCKER_REGISTRY: ghcr.io
+  DOCKER_REGISTRY: docker.io    # or ghcr.io
 
 permissions:
   contents: read
@@ -97,16 +97,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Login to the GitHub Container Registry
+      - name: Login to the ${{ env.DOCKER_REGISTRY }} Container Registry
         uses: docker/login-action@v2
         with:
           registry: ${{ env.DOCKER_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-          # For the docker hub registry:
-          # username: ${{ secrets.DOCKERHUB_USERNAME }}
-          # password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ contains(env.DOCKER_REGISTRY, 'docker.io') && secrets.DOCKERHUB_USERNAME || github.actor }}
+          password: ${{ contains(env.DOCKER_REGISTRY, 'docker.io') && secrets.DOCKERHUB_TOKEN    || secrets.GITHUB_TOKEN }}
 
       - name: Docker meta
         id: meta
