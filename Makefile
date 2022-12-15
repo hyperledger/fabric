@@ -362,3 +362,10 @@ ccaasbuilder/%: ccaasbuilder-clean
 	cd ccaas_builder && go test -v ./cmd/release && GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildvcs=false -o ../release/$(strip $(platform))/builders/ccaas/bin/ ./cmd/release/
 
 ccaasbuilder: ccaasbuilder/$(MARCH)
+
+.PHONY: scan
+scan: scan-govulncheck
+
+.PHONY: scan-govulncheck
+scan-govulncheck: gotool.govulncheck
+	govulncheck ./...
