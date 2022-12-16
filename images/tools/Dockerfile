@@ -22,9 +22,13 @@ ARG GO_TAGS
 ARG FABRIC_VER
 ENV FABRIC_VER ${FABRIC_VER}
 
-# Disable cgo when building in the container.  This will create a static binary, which can be
-# copied and run in the base alpine container without the libc/musl runtime.
-ENV CGO_ENABLED 0
+# When building in docker, the binary must be linked statically with CGO against libmusl
+# in order to avoid SIGSEGV errors when running on alpine.
+# This uses the system CC compiler, which has been installed above with apk as musl-dev.
+# CC=$(uname -m)-alpine-linux-musl-gcc
+#ENV CC         $(uname -m)-alpine-linux-musl-gcc
+ENV CGO_ENABLED 1
+ENV GO_LDFLAGS  -linkmode external -extldflags '-static'
 
 RUN make tools GO_TAGS=${GO_TAGS}
 

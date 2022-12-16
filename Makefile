@@ -224,7 +224,7 @@ tools: $(TOOLS_EXES)
 .PHONY: $(RELEASE_EXES)
 $(RELEASE_EXES): %: $(BUILD_DIR)/bin/%
 
-$(BUILD_DIR)/bin/%: GO_LDFLAGS = $(METADATA_VAR:%=-X $(PKGNAME)/common/metadata.%)
+$(BUILD_DIR)/bin/%: GO_LDFLAGS += $(METADATA_VAR:%=-X $(PKGNAME)/common/metadata.%)
 $(BUILD_DIR)/bin/%:
 	@echo "Building $@"
 	@mkdir -p $(@D)
