@@ -1,48 +1,51 @@
-# Copyright IBM Corp. All Rights Reserved.
+#
+# Copyright contributors to the Hyperledger Fabric project
 #
 # SPDX-License-Identifier: Apache-2.0
-
-ARG GO_VER
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+# 	  http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 ARG ALPINE_VER
-FROM alpine:${ALPINE_VER} as peer-base
-RUN apk add --no-cache tzdata
+FROM alpine:${ALPINE_VER}
+
+RUN apk add --no-cache \
+	bash \
+	curl \
+	tzdata
+
 # set up nsswitch.conf for Go's "netgo" implementation
 # - https://github.com/golang/go/blob/go1.9.1/src/net/conf.go#L194-L275
 # - docker run --rm debian:stretch grep '^hosts:' /etc/nsswitch.conf
 RUN echo 'hosts: files dns' > /etc/nsswitch.conf
 
-FROM golang:${GO_VER}-alpine${ALPINE_VER} as golang
-RUN apk add --no-cache \
-	bash \
-	binutils-gold \
-	gcc \
-	git \
-	make \
-	musl-dev
-ADD . $GOPATH/src/github.com/hyperledger/fabric
-WORKDIR $GOPATH/src/github.com/hyperledger/fabric
-
-FROM golang as peer
-ARG GO_TAGS
-ARG FABRIC_VER
-ENV FABRIC_VER ${FABRIC_VER}
-
-# Disable cgo when building in the container.  This will create a static binary, which can be
-# copied and run in the base alpine container without the libc/musl runtime.
-ENV CGO_ENABLED 0
-
-RUN make peer GO_TAGS=${GO_TAGS}
-RUN make ccaasbuilder
-
-FROM peer-base
-ARG TARGETARCH
 ARG TARGETOS
-ENV FABRIC_CFG_PATH /etc/hyperledger/fabric
+ARG TARGETARCH
+ARG FABRIC_VER
+
+# copy the release build outputs for the target arch
+COPY release/${TARGETOS}-${TARGETARCH}/bin/peer             /usr/local/bin
+COPY release/${TARGETOS}-${TARGETARCH}/builders/ccaas/bin   /opt/hyperledger/ccaas_builder
+
+ENV FABRIC_CFG_PATH         /var/hyperledger/fabric/config
+ENV FABRIC_VER              ${FABRIC_VER}
+
+COPY sampleconfig/msp       ${FABRIC_CFG_PATH}/msp
+COPY sampleconfig/core.yaml ${FABRIC_CFG_PATH}/core.yaml
+
 VOLUME /etc/hyperledger/fabric
 VOLUME /var/hyperledger
-COPY --from=peer /go/src/github.com/hyperledger/fabric/build/bin /usr/local/bin
-COPY --from=peer /go/src/github.com/hyperledger/fabric/sampleconfig/msp ${FABRIC_CFG_PATH}/msp
-COPY --from=peer /go/src/github.com/hyperledger/fabric/sampleconfig/core.yaml ${FABRIC_CFG_PATH}/core.yaml
-COPY --from=peer /go/src/github.com/hyperledger/fabric/release/${TARGETOS}-${TARGETARCH}/builders/ccaas/bin/ /opt/hyperledger/ccaas_builder/bin/
+
 EXPOSE 7051
-CMD ["peer","node","start"]
+
+ENTRYPOINT [ "peer" ]
+CMD [ "node", "start" ]

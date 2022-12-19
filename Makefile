@@ -243,7 +243,7 @@ $(BUILD_DIR)/images/peer/$(DUMMY):    BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
 $(BUILD_DIR)/images/orderer/$(DUMMY): BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
 $(BUILD_DIR)/images/tools/$(DUMMY):   BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
 
-$(BUILD_DIR)/images/%/$(DUMMY):
+$(BUILD_DIR)/images/%/$(DUMMY): release/linux-$(ARCH)
 	@echo "Building Docker image $(DOCKER_NS)/fabric-$*"
 	@mkdir -p $(@D)
 	$(DBUILD) -f images/$*/Dockerfile \

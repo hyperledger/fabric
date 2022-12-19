@@ -11,7 +11,6 @@
 # These are directories created by the make process
 bin
 build
-release
 
 ci
 docs

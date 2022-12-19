@@ -1,41 +1,42 @@
-# Copyright IBM Corp. All Rights Reserved.
+#
+# Copyright contributors to the Hyperledger Fabric project
 #
 # SPDX-License-Identifier: Apache-2.0
-
-ARG GO_VER
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+# 	  http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 ARG ALPINE_VER
-FROM golang:${GO_VER}-alpine${ALPINE_VER} as golang
+FROM alpine:${ALPINE_VER}
 
 RUN apk add --no-cache \
-	bash \
-	binutils-gold \
-	gcc \
-	git \
-	make \
-	musl-dev;
+    bash \
+    curl \
+    jq \
+    tzdata
 
-ADD . $GOPATH/src/github.com/hyperledger/fabric
-WORKDIR $GOPATH/src/github.com/hyperledger/fabric
-
-FROM golang as tools
-ARG GO_TAGS
+ARG TARGETOS
+ARG TARGETARCH
 ARG FABRIC_VER
-ENV FABRIC_VER ${FABRIC_VER}
 
-# Disable cgo when building in the container.  This will create a static binary, which can be
-# copied and run in the base alpine container without the libc/musl runtime.
-ENV CGO_ENABLED 0
+# copy the release build outputs for the target arch
+COPY    release/${TARGETOS}-${TARGETARCH}/bin /usr/local/bin
 
-RUN make tools GO_TAGS=${GO_TAGS}
+ENV     FABRIC_VER          ${FABRIC_VER}
+ENV     FABRIC_CFG_PATH     /var/hyperledger/fabric/config
 
-FROM golang:${GO_VER}-alpine${ALPINE_VER}
-# git is required to support `go list -m`
-RUN apk add --no-cache \
-	bash \
-	git \
-	jq \
-	tzdata;
-ENV FABRIC_CFG_PATH /etc/hyperledger/fabric
-VOLUME /etc/hyperledger/fabric
-COPY --from=tools /go/src/github.com/hyperledger/fabric/build/bin /usr/local/bin
-COPY --from=tools /go/src/github.com/hyperledger/fabric/sampleconfig ${FABRIC_CFG_PATH}
+COPY    sampleconfig        ${FABRIC_CFG_PATH}
+
+VOLUME  /etc/hyperledger/fabric
+VOLUME  /var/hyperledger
+
+ENTRYPOINT [ "bash" ]
