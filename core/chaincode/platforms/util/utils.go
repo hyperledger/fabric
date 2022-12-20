@@ -182,8 +182,10 @@ func GetDockerImageFromConfig(path string) string {
 }
 
 // twoDigitVersion truncates a 3 digit version (e.g. 2.0.0) to a 2 digit version (e.g. 2.0),
-// If version does not include dots (e.g. latest), just return the passed version
+// If version does not include dots (e.g. latest), just return the passed version.
+// If version starts with a semantic rev 'v' character, strip it when computing the docker label.
 func twoDigitVersion(version string) string {
+	version = strings.TrimPrefix(version, "v")
 	if strings.LastIndex(version, ".") < 0 {
 		return version
 	}
