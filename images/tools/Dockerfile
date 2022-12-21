@@ -15,26 +15,59 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-ARG ALPINE_VER
-FROM alpine:${ALPINE_VER}
 
-RUN apk add --no-cache \
-    bash \
-    curl \
-    jq \
-    tzdata
+###############################################################################
+# Build image
+###############################################################################
+
+ARG UBUNTU_VER
+FROM ubuntu:${UBUNTU_VER} as builder
+
+ARG TARGETARCH
+ARG TARGETOS
+ARG GO_VER
+ARG GO_TAGS
+
+RUN apt update
+RUN apt install -y git
+RUN apt install -y gcc
+RUN apt install -y curl
+RUN apt install -y make
+RUN curl -sL https://go.dev/dl/go${GO_VER}.${TARGETOS}-${TARGETARCH}.tar.gz | tar zxvf - -C /usr/local
+ENV PATH="/usr/local/go/bin:$PATH"
+
+ADD . .
+
+RUN make tools GO_TAGS=${GO_TAGS}
+
+
+###############################################################################
+# Runtime image
+###############################################################################
+
+ARG UBUNTU_VER
+FROM ubuntu:${UBUNTU_VER}
 
 ARG TARGETOS
 ARG TARGETARCH
 ARG FABRIC_VER
 
-# copy the release build outputs for the target arch
-COPY    release/${TARGETOS}-${TARGETARCH}/bin /usr/local/bin
+RUN apt update
+RUN apt install -y bash
+RUN apt install -y curl
+RUN apt install -y jq
+RUN apt install -y tzdata
 
-ENV     FABRIC_VER          ${FABRIC_VER}
-ENV     FABRIC_CFG_PATH     /var/hyperledger/fabric/config
+# set up nsswitch.conf for Go's "netgo" implementation
+# - https://github.com/golang/go/blob/go1.9.1/src/net/conf.go#L194-L275
+# - docker run --rm debian:stretch grep '^hosts:' /etc/nsswitch.conf
+RUN echo 'hosts: files dns' > /etc/nsswitch.conf
 
-COPY    sampleconfig        ${FABRIC_CFG_PATH}
+ENV     FABRIC_CFG_PATH /var/hyperledger/fabric/config
+ENV     FABRIC_VER      ${FABRIC_VER}
+
+COPY    --from=builder  sampleconfig    ${FABRIC_CFG_PATH}
+COPY    --from=builder  build/bin       /usr/local/bin
 
 VOLUME  /etc/hyperledger/fabric
 VOLUME  /var/hyperledger

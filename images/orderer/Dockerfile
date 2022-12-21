@@ -15,32 +15,53 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-ARG ALPINE_VER
-FROM alpine:${ALPINE_VER}
 
-RUN apk add --no-cache \
-	bash \
-	curl \
-	tzdata
+###############################################################################
+# Build image
+###############################################################################
+
+ARG UBUNTU_VER
+FROM ubuntu:${UBUNTU_VER} as builder
+
+ARG TARGETARCH
+ARG TARGETOS
+ARG GO_VER
+ARG GO_TAGS
+
+RUN apt update
+RUN apt install -y git
+RUN apt install -y gcc
+RUN apt install -y curl
+RUN apt install -y make
+RUN curl -sL https://go.dev/dl/go${GO_VER}.${TARGETOS}-${TARGETARCH}.tar.gz | tar zxvf - -C /usr/local
+ENV PATH="/usr/local/go/bin:$PATH"
+
+ADD . .
+
+RUN make orderer GO_TAGS=${GO_TAGS}
+
+
+###############################################################################
+# Runtime image
+###############################################################################
+
+ARG UBUNTU_VER
+FROM ubuntu:${UBUNTU_VER}
+
+ARG FABRIC_VER
 
 # set up nsswitch.conf for Go's "netgo" implementation
 # - https://github.com/golang/go/blob/go1.9.1/src/net/conf.go#L194-L275
 # - docker run --rm debian:stretch grep '^hosts:' /etc/nsswitch.conf
 RUN echo 'hosts: files dns' > /etc/nsswitch.conf
 
-ARG TARGETOS
-ARG TARGETARCH
-ARG FABRIC_VER
+ENV     FABRIC_CFG_PATH /var/hyperledger/fabric/config
+ENV     FABRIC_VER      ${FABRIC_VER}
 
-# copy the release build outputs for the target arch
-COPY    release/${TARGETOS}-${TARGETARCH}/bin/orderer /usr/local/bin
-
-ENV     FABRIC_CFG_PATH            /var/hyperledger/fabric/config
-ENV     FABRIC_VER                 ${FABRIC_VER}
-
-COPY    sampleconfig/msp           ${FABRIC_CFG_PATH}/msp
-COPY    sampleconfig/orderer.yaml  ${FABRIC_CFG_PATH}
-COPY    sampleconfig/configtx.yaml ${FABRIC_CFG_PATH}
+COPY    --from=builder  build/bin/orderer           /usr/local/bin
+COPY    --from=builder  sampleconfig/msp            ${FABRIC_CFG_PATH}/msp
+COPY    --from=builder  sampleconfig/orderer.yaml   ${FABRIC_CFG_PATH}
+COPY    --from=builder  sampleconfig/configtx.yaml  ${FABRIC_CFG_PATH}
 
 VOLUME  /etc/hyperledger/fabric
 VOLUME  /var/hyperledger

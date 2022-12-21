@@ -10,7 +10,7 @@ on:
 
 env:
   GO_VER: 1.18.7
-  ALPINE_VER: 3.16
+  UBUNTU_VER: 20.04
   FABRIC_VER: ${{ github.ref_name }}
   DOCKER_REGISTRY: ${{ github.repository_owner == 'hyperledger' && 'docker.io' || 'ghcr.io' }}
 
@@ -64,9 +64,6 @@ jobs:
     name: Build and Push
     runs-on: ubuntu-20.04
 
-    needs:
-      - build-binaries
-
     permissions:
       contents: read
       packages: write
@@ -117,24 +114,6 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}.{{minor}}.{{patch}}
 
-      - name: Download Artifacts
-        id: download
-        uses: actions/download-artifact@v3
-        with:
-          path: release
-
-      - name: Unfurl release artifacts
-        run: |
-          find release 
-          
-          mkdir -p release/linux-arm64
-          mkdir -p release/linux-amd64
-          
-          tar zxvf release/release-linux-arm64/*.tar.gz -C release/linux-arm64
-          tar zxvf release/release-linux-amd64/*.tar.gz -C release/linux-amd64
-
-          find release 
-
       - name: Build and push ${{ matrix.COMPONENT }} Image
         id: push
         uses: docker/build-push-action@v3
@@ -147,7 +126,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             FABRIC_VER=${{ env.FABRIC_VER }}
-            ALPINE_VER=${{ env.ALPINE_VER }}
+            UBUNTU_VER=${{ env.UBUNTU_VER }}
             GO_VER=${{ env.GO_VER }}
             GO_TAGS=
 
