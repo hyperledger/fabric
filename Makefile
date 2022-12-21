@@ -46,7 +46,7 @@
 #   - unit-test - runs the go-test based unit tests
 #   - verify - runs unit tests for only the changed package tree
 
-ALPINE_VER ?= 3.16
+UBUNTU_VER ?= 20.04
 FABRIC_VER ?= 2.5.0
 
 # 3rd party image version
@@ -248,7 +248,7 @@ $(BUILD_DIR)/images/%/$(DUMMY):
 	@mkdir -p $(@D)
 	$(DBUILD) -f images/$*/Dockerfile \
 		--build-arg GO_VER=$(GO_VER) \
-		--build-arg ALPINE_VER=$(ALPINE_VER) \
+		--build-arg UBUNTU_VER=$(UBUNTU_VER) \
 		--build-arg FABRIC_VER=$(FABRIC_VER) \
 		--build-arg TARGETARCH=$(ARCH) \
 		--build-arg TARGETOS=linux \
