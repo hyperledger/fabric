@@ -46,8 +46,13 @@
 #   - unit-test - runs the go-test based unit tests
 #   - verify - runs unit tests for only the changed package tree
 
+<<<<<<< HEAD
 ALPINE_VER ?= 3.16
 BASE_VERSION = 3.0.0
+=======
+UBUNTU_VER ?= 20.04
+FABRIC_VER ?= 2.5.0
+>>>>>>> 114695ab0 (Switch base docker image from golang-alpine to ubuntu:20.04)
 
 # 3rd party image version
 # These versions are also set in the runners in ./integration/runners/
@@ -244,7 +249,7 @@ $(BUILD_DIR)/images/%/$(DUMMY):
 	@mkdir -p $(@D)
 	$(DBUILD) -f images/$*/Dockerfile \
 		--build-arg GO_VER=$(GO_VER) \
-		--build-arg ALPINE_VER=$(ALPINE_VER) \
+		--build-arg UBUNTU_VER=$(UBUNTU_VER) \
 		--build-arg FABRIC_VER=$(FABRIC_VER) \
 		--build-arg TARGETARCH=$(ARCH) \
 		--build-arg TARGETOS=linux \
