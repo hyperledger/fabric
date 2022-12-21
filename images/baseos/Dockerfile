@@ -24,7 +24,7 @@ FROM ubuntu:${UBUNTU_VER} as base
 RUN     apt update
 RUN     apt install -y tzdata
 
-RUN     addgroup -gid 500 chaincode
-RUN     adduser  -u 500 --disabled-password -h /home/chaincode -G chaincode chaincode
+RUN     addgroup --gid 500 chaincode
+RUN     adduser  --disabled-password --gecos "" --uid 500 --gid 500 --home /home/chaincode chaincode
 
 USER    chaincode

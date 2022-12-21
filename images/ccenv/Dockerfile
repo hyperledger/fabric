@@ -34,7 +34,7 @@ RUN curl -sL https://go.dev/dl/go${GO_VER}.${TARGETOS}-${TARGETARCH}.tar.gz | ta
 ENV PATH="/usr/local/go/bin:$PATH"
 
 RUN addgroup --gid 500 chaincode
-RUN adduser  --disabled-password --uid 500 --gid 500 --home /home/chaincode chaincode
+RUN adduser  --disabled-password --gecos "" --uid 500 --gid 500 --home /home/chaincode chaincode
 
 RUN mkdir    -p /chaincode/output /chaincode/input
 RUN chown    -R chaincode:chaincode /chaincode
