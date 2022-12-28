@@ -22,23 +22,25 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/policydsl"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
 var _ = Describe("InstantiationPolicy", func() {
 	var (
-		testDir string
-		client  *docker.Client
-		network *nwo.Network
-		process ifrit.Process
+		testDir                     string
+		client                      *docker.Client
+		network                     *nwo.Network
+		ordererRunner               *ginkgomon.Runner
+		ordererProcess, peerProcess ifrit.Process
 	)
 
 	BeforeEach(func() {
@@ -51,27 +53,33 @@ var _ = Describe("InstantiationPolicy", func() {
 	})
 
 	AfterEach(func() {
-		if process != nil {
-			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+		if ordererProcess != nil {
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
+
+		if peerProcess != nil {
+			peerProcess.Signal(syscall.SIGTERM)
+			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
 		if network != nil {
 			network.Cleanup()
 		}
+
 		os.RemoveAll(testDir)
 	})
 
 	Describe("single node etcdraft network with single peer", func() {
 		BeforeEach(func() {
-			config := nwo.MinimalRaft()
-			config.Profiles[1].Organizations = []string{"Org1", "Org2"}
+			config := nwo.MinimalRaftNoSysChan()
+			config.Profiles[0].Organizations = []string{"Org1", "Org2"}
 			network = nwo.New(config, testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
-			networkRunner := network.NetworkGroupRunner()
-			process = ifrit.Invoke(networkRunner)
-			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			// Start all the fabric processes
+			ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 		})
 
 		It("honors the instantiation policy", func() {
@@ -80,7 +88,7 @@ var _ = Describe("InstantiationPolicy", func() {
 			org1Peer := network.Peer("Org1", "peer0")
 			org2Peer := network.Peer("Org2", "peer0")
 
-			network.CreateAndJoinChannel(orderer, "testchannel")
+			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 			By("attempting to deploy with an unsatisfied instantiation policy")
 

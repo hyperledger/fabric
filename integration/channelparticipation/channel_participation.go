@@ -13,13 +13,17 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/integration/nwo"
+	ginkgo "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
 func Join(n *nwo.Network, o *nwo.Orderer, channel string, block *common.Block, expectedChannelInfo ChannelInfo) {
@@ -157,4 +161,27 @@ func channelInfoShortMatcher(channel string) types.GomegaMatcher {
 		"Name": Equal(channel),
 		"URL":  Equal(fmt.Sprintf("/participation/v1/channels/%s", channel)),
 	})
+}
+
+// JoinOrdererJoinPeersAppChannel Joins an orderer to a channel for which the genesis block was created by the network
+// bootstrap. It assumes a channel with one orderer. It waits for a leader (single orderer, always node=1), and then
+// joins all the peers to the channel.
+func JoinOrdererJoinPeersAppChannel(network *nwo.Network, channelID string, orderer *nwo.Orderer, ordererRunner *ginkgomon.Runner) {
+	appGenesisBlock := network.LoadAppChannelGenesisBlock(channelID)
+	expectedChannelInfo := ChannelInfo{
+		Name:              channelID,
+		URL:               fmt.Sprintf("/participation/v1/channels/%s", channelID),
+		Status:            "active",
+		ConsensusRelation: "consenter",
+		Height:            1,
+	}
+	Join(network, orderer, channelID, appGenesisBlock, expectedChannelInfo)
+
+	ginkgo.By(fmt.Sprintf("waiting for leader on channel %s", channelID))
+	Eventually(ordererRunner.Err(), network.EventuallyTimeout, time.Second).Should(
+		gbytes.Say(fmt.Sprintf("Raft leader changed: 0 -> 1 channel=%s node=1", channelID)))
+
+	ginkgo.By(fmt.Sprintf("joining peers to the channel %s", channelID))
+	peers := network.PeersWithChannel(channelID)
+	network.JoinChannel(channelID, orderer, peers...)
 }

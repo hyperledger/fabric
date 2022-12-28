@@ -24,6 +24,9 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/protoutil"
+
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
@@ -773,22 +776,38 @@ func (n *Network) Bootstrap() {
 
 	n.bootstrapIdemix()
 
-	sess, err = n.ConfigTxGen(commands.OutputBlock{
-		ChannelID:   n.SystemChannel.Name,
-		Profile:     n.SystemChannel.Profile,
-		ConfigPath:  n.RootDir,
-		OutputBlock: n.OutputBlockPath(n.SystemChannel.Name),
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	if n.SystemChannel != nil { // TODO this entire block could be removed once we finish using the system channel
+		sess, err = n.ConfigTxGen(commands.OutputBlock{
+			ChannelID:   n.SystemChannel.Name,
+			Profile:     n.SystemChannel.Profile,
+			ConfigPath:  n.RootDir,
+			OutputBlock: n.OutputBlockPath(n.SystemChannel.Name),
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+
+		for _, c := range n.Channels {
+			sess, err := n.ConfigTxGen(commands.CreateChannelTx{
+				ChannelID:             c.Name,
+				Profile:               c.Profile,
+				BaseProfile:           c.BaseProfile,
+				ConfigPath:            n.RootDir,
+				OutputCreateChannelTx: n.CreateChannelTxPath(c.Name),
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+		}
+
+		n.ConcatenateTLSCACertificates()
+		return
+	}
 
 	for _, c := range n.Channels {
-		sess, err := n.ConfigTxGen(commands.CreateChannelTx{
-			ChannelID:             c.Name,
-			Profile:               c.Profile,
-			BaseProfile:           c.BaseProfile,
-			ConfigPath:            n.RootDir,
-			OutputCreateChannelTx: n.CreateChannelTxPath(c.Name),
+		sess, err := n.ConfigTxGen(commands.OutputBlock{
+			ChannelID:   c.Name,
+			Profile:     c.Profile,
+			ConfigPath:  n.RootDir,
+			OutputBlock: n.OutputBlockPath(c.Name),
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
@@ -1888,4 +1907,26 @@ func (n *Network) GenerateCoreConfig(p *Peer) {
 	pw := gexec.NewPrefixedWriter(fmt.Sprintf("[%s#core.yaml] ", p.ID()), ginkgo.GinkgoWriter)
 	err = t.Execute(io.MultiWriter(core, pw), n)
 	Expect(err).NotTo(HaveOccurred())
+}
+
+func (n *Network) LoadAppChannelGenesisBlock(channelID string) *common.Block {
+	appGenesisPath := n.OutputBlockPath(channelID)
+	appGenesisBytes, err := ioutil.ReadFile(appGenesisPath)
+	Expect(err).NotTo(HaveOccurred())
+	appGenesisBlock, err := protoutil.UnmarshalBlock(appGenesisBytes)
+	Expect(err).NotTo(HaveOccurred())
+	return appGenesisBlock
+}
+
+// StartSingleOrdererNetwork starts the fabric processes assuming a single orderer.
+func (n *Network) StartSingleOrdererNetwork(ordererName string) (*ginkgomon.Runner, ifrit.Process, ifrit.Process) {
+	ordererRunner := n.OrdererRunner(n.Orderer(ordererName))
+	ordererProcess := ifrit.Invoke(ordererRunner)
+	Eventually(ordererProcess.Ready(), n.EventuallyTimeout).Should(BeClosed())
+
+	peerGroupRunner := n.PeerGroupRunner()
+	peerProcess := ifrit.Invoke(peerGroupRunner)
+	Eventually(peerProcess.Ready(), n.EventuallyTimeout).Should(BeClosed())
+
+	return ordererRunner, ordererProcess, peerProcess
 }
