@@ -24,13 +24,14 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/protoutil"
-
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/common"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
 	"github.com/hyperledger/fabric/integration/nwo/runner"
+	"github.com/hyperledger/fabric/protoutil"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -1026,6 +1027,9 @@ func (n *Network) CreateAndJoinChannel(o *Orderer, channelName string) {
 // UpdateChannelAnchors determines the anchor peers for the specified channel,
 // creates an anchor peer update transaction for each organization, and submits
 // the update transactions to the orderer.
+//
+//TODO using configtxgen with -outputAnchorPeersUpdate to update the anchor peers is deprecated and does not work
+// with channel participation API. We'll have to generate the channel update explicitly (see UpdateOrgAnchorPeers).
 func (n *Network) UpdateChannelAnchors(o *Orderer, channelName string) {
 	tempFile, err := ioutil.TempFile("", "update-anchors")
 	Expect(err).NotTo(HaveOccurred())
@@ -1058,6 +1062,34 @@ func (n *Network) UpdateChannelAnchors(o *Orderer, channelName string) {
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	}
+}
+
+// UpdateOrgAnchorPeers sets the anchor peers of an organization on a channel using a config update tx, and waits for
+// the update to be complete.
+func (n *Network) UpdateOrgAnchorPeers(o *Orderer, channelName, orgName string, anchorPeersForOrg []*Peer) {
+	peersInOrg := n.PeersInOrg(orgName)
+	Expect(peersInOrg).ToNot(BeEmpty())
+	currentConfig := GetConfig(n, peersInOrg[0], o, channelName)
+	updatedConfig := proto.Clone(currentConfig).(*common.Config)
+	orgConfigGroup := updatedConfig.ChannelGroup.Groups["Application"].GetGroups()[orgName]
+	Expect(orgConfigGroup).NotTo(BeNil())
+
+	updatedAnchorPeers := &pb.AnchorPeers{}
+	for _, p := range anchorPeersForOrg {
+		updatedAnchorPeers.AnchorPeers = append(updatedAnchorPeers.AnchorPeers, &pb.AnchorPeer{
+			Host: "127.0.0.1",
+			Port: int32(n.PeerPort(p, ListenPort)),
+		})
+	}
+
+	value, err := protoutil.Marshal(updatedAnchorPeers)
+	Expect(err).NotTo(HaveOccurred())
+	updatedConfig.ChannelGroup.Groups["Application"].GetGroups()[orgName].GetValues()["AnchorPeers"] = &common.ConfigValue{
+		Value:     value,
+		ModPolicy: "Admins",
+	}
+
+	UpdateConfig(n, o, channelName, currentConfig, updatedConfig, false, peersInOrg[0], peersInOrg[0])
 }
 
 // VerifyMembership checks that each peer has discovered the expected peers in
@@ -1605,13 +1637,7 @@ func (n *Network) AnchorsInOrg(orgName string) []*Peer {
 	for _, p := range n.PeersInOrg(orgName) {
 		if p.Anchor() {
 			anchors = append(anchors, p)
-			break
 		}
-	}
-
-	// No explicit anchor means all peers are anchors.
-	if len(anchors) == 0 {
-		anchors = n.PeersInOrg(orgName)
 	}
 
 	return anchors
