@@ -180,7 +180,7 @@ Most existing smart-contract capable blockchain platforms follow an
 
 The order-execute architecture can be found in virtually all existing blockchain
 systems, ranging from public/permissionless platforms such as
-[Ethereum](https://ethereum.org/) (with PoW-based consensus) to permissioned
+[Ethereum](https://ethereum.org/) (with PoS-based consensus) to permissioned
 platforms such as [Tendermint](http://tendermint.com/),
 [Chain](http://chain.com/), and [Quorum](http://www.jpmorgan.com/global/Quorum).
 
