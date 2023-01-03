@@ -65,7 +65,7 @@ channel members need to approve a chaincode definition to meet the
 a majority of channel members, before the definition can be committed to the
 channel. Once the definition has been committed, the chaincode is ready to use.
 Any invoke of the chaincode that writes data to the ledger will need to be
-validated by enough channel members to meet the endorsement policy. 
+validated by enough channel members to meet the endorsement policy.
 
 You can create an endorsement policy from
 your CLI when you approve and commit a chaincode definition with the Fabric peer
