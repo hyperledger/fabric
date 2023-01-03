@@ -1880,7 +1880,7 @@ var _ = Describe("Chain", func() {
 					metadata := &raftprotos.ConfigMetadata{Options: options}
 					for id, consenter := range consenters {
 						if id == 1 {
-							// remove second consenter
+							// remove first consenter, which is the leader
 							continue
 						}
 						metadata.Consenters = append(metadata.Consenters, consenter)
