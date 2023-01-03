@@ -137,10 +137,10 @@ represents one of the four accepted roles: ``member``, ``admin``, ``client``, an
 
 Here are a few examples of valid principals:
 
-  - ``'Org0MSP.admin'``: any administrator of the ``Org0MSP``
-  - ``'Org1MSP.member'``: any member of the ``Org1MSP``
-  - ``'Org1MSP.client'``: any client of the ``Org1MSP``
-  - ``'Org1MSP.peer'``: any peer of the ``Org1MSP``
+  - ``'Org0MSP.admin'``: any administrator of the ``Org0MSP`` MSP
+  - ``'Org1MSP.member'``: any member of the ``Org1MSP`` MSP
+  - ``'Org1MSP.client'``: any client of the ``Org1MSP`` MSP
+  - ``'Org1MSP.peer'``: any peer of the ``Org1MSP`` MSP
 
 The syntax of the language is:
 
