@@ -978,7 +978,7 @@ configtxlator proto_decode --input config_block.pb --type common.Block --output 
 Finally, we'll scope out all of the unnecessary metadata from the config, which makes it easier to read. You are free to call this file whatever you want, but in this example we'll call it `config.json`.
 
 ```
-jq .data.data[0].payload.data.config config_block.json > config.json
+jq ".data.data[0].payload.data.config" config_block.json > config.json
 ```
 
 Now let's make a copy of `config.json` called `modified_config.json`. **Do not edit ``config.json`` directly**, as we will be using it to compute the difference between ``config.json`` and ``modified_config.json`` in a later step.
