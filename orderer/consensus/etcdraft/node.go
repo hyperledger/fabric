@@ -151,15 +151,6 @@ func (n *node) run(campaign bool) {
 				n.chain.snapC <- &rd.Snapshot
 			}
 
-			lcs := n.leaderChangeSubscription.Load()
-
-			if lcs != nil && rd.SoftState != nil {
-				if l := atomic.LoadUint64(&rd.SoftState.Lead); l != raft.None {
-					subscription := lcs.(func(uint64))
-					subscription(l)
-				}
-			}
-
 			// skip empty apply
 			if len(rd.CommittedEntries) != 0 || rd.SoftState != nil {
 				n.chain.applyC <- apply{rd.CommittedEntries, rd.SoftState}

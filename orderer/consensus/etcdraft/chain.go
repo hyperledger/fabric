@@ -792,6 +792,14 @@ func (c *Chain) run() {
 				case c.observeC <- soft:
 				default:
 				}
+
+				lcs := c.Node.leaderChangeSubscription.Load()
+				if lcs != nil {
+					if soft.Lead != raft.None {
+						subscription := lcs.(func(uint64))
+						subscription(soft.Lead)
+					}
+				}
 			}
 
 			c.apply(app.entries)
