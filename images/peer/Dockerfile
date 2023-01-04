@@ -74,5 +74,4 @@ VOLUME  /var/hyperledger
 
 EXPOSE  7051
 
-ENTRYPOINT  [ "peer" ]
-CMD         [ "node", "start" ]
+CMD     [ "peer", "node", "start" ]
