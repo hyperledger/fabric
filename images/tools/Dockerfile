@@ -71,5 +71,3 @@ COPY    --from=builder  build/bin       /usr/local/bin
 
 VOLUME  /etc/hyperledger/fabric
 VOLUME  /var/hyperledger
-
-ENTRYPOINT [ "bash" ]
