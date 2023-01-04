@@ -1115,8 +1115,8 @@ func TestSubmit(t *testing.T) {
 				proposalResponseStatus: 200,
 				ordererBroadcastError:  status.Error(codes.FailedPrecondition, "Orderer not listening!"),
 			},
-			errCode:   codes.FailedPrecondition,
-			errString: "Orderer not listening!",
+			errCode:   codes.Unavailable,
+			errString: "no orderers could successfully process transaction",
 			errDetails: []*pb.ErrorDetail{{
 				Address: "orderer:7050",
 				MspId:   "msp1",
@@ -1132,8 +1132,8 @@ func TestSubmit(t *testing.T) {
 				proposalResponseStatus: 200,
 				ordererSendError:       status.Error(codes.Internal, "Orderer says no!"),
 			},
-			errCode:   codes.Internal,
-			errString: "Orderer says no!",
+			errCode:   codes.Unavailable,
+			errString: "no orderers could successfully process transaction",
 			errDetails: []*pb.ErrorDetail{{
 				Address: "orderer:7050",
 				MspId:   "msp1",
@@ -1149,8 +1149,8 @@ func TestSubmit(t *testing.T) {
 				proposalResponseStatus: 200,
 				ordererRecvError:       status.Error(codes.FailedPrecondition, "Orderer not happy!"),
 			},
-			errCode:   codes.FailedPrecondition,
-			errString: "Orderer not happy!",
+			errCode:   codes.Unavailable,
+			errString: "no orderers could successfully process transaction",
 			errDetails: []*pb.ErrorDetail{{
 				Address: "orderer:7050",
 				MspId:   "msp1",
@@ -1158,7 +1158,7 @@ func TestSubmit(t *testing.T) {
 			}},
 		},
 		{
-			name: "orderer Send() returns nil",
+			name: "orderer Recv() returns nil",
 			plan: endorsementPlan{
 				"g1": {{endorser: localhostMock}},
 			},
@@ -1171,13 +1171,8 @@ func TestSubmit(t *testing.T) {
 					return abc
 				}
 			},
-			errCode:   codes.Aborted,
-			errString: "received unsuccessful response from orderer",
-			errDetails: []*pb.ErrorDetail{{
-				Address: "orderer:7050",
-				MspId:   "msp1",
-				Message: "rpc error: code = Aborted desc = received unsuccessful response from orderer: " + cp.Status_name[int32(cp.Status_UNKNOWN)],
-			}},
+			errCode:   codes.Unavailable,
+			errString: "no orderers could successfully process transaction",
 		},
 		{
 			name: "orderer returns unsuccessful response",
@@ -1198,11 +1193,6 @@ func TestSubmit(t *testing.T) {
 			},
 			errCode:   codes.Aborted,
 			errString: "received unsuccessful response from orderer: " + cp.Status_name[int32(cp.Status_BAD_REQUEST)],
-			errDetails: []*pb.ErrorDetail{{
-				Address: "orderer:7050",
-				MspId:   "msp1",
-				Message: "rpc error: code = Aborted desc = received unsuccessful response from orderer: " + cp.Status_name[int32(cp.Status_BAD_REQUEST)],
-			}},
 		},
 		{
 			name: "dialing orderer endpoint fails",
@@ -1248,6 +1238,54 @@ func TestSubmit(t *testing.T) {
 				abbc.SendReturnsOnCall(1, status.Error(codes.Unavailable, "Second orderer error"))
 				abbc.SendReturnsOnCall(2, nil) // third time lucky
 				abbc.RecvReturns(&ab.BroadcastResponse{
+					Info:   "success",
+					Status: cp.Status(200),
+				}, nil)
+				abc.BroadcastReturns(abbc, nil)
+				def.server.registry.endpointFactory = &endpointFactory{
+					timeout: 5 * time.Second,
+					connectEndorser: func(conn *grpc.ClientConn) peer.EndorserClient {
+						return &mocks.EndorserClient{}
+					},
+					connectOrderer: func(_ *grpc.ClientConn) ab.AtomicBroadcastClient {
+						return abc
+					},
+					dialer: func(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+						return nil, nil
+					},
+				}
+			},
+		},
+		{
+			name: "orderer bad response retry",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock}},
+			},
+			config: &dp.ConfigResult{
+				Orderers: map[string]*dp.Endpoints{
+					"msp1": {
+						Endpoint: []*dp.Endpoint{
+							{Host: "orderer1", Port: 7050},
+							{Host: "orderer2", Port: 7050},
+							{Host: "orderer3", Port: 7050},
+						},
+					},
+				},
+				Msps: map[string]*msp.FabricMSPConfig{
+					"msp1": {
+						TlsRootCerts: [][]byte{},
+					},
+				},
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				abc := &mocks.ABClient{}
+				abbc := &mocks.ABBClient{}
+				abbc.SendReturns(nil)
+				abbc.RecvReturnsOnCall(0, &ab.BroadcastResponse{
+					Info:   "internal error",
+					Status: cp.Status(500),
+				}, nil)
+				abbc.RecvReturnsOnCall(1, &ab.BroadcastResponse{
 					Info:   "success",
 					Status: cp.Status(200),
 				}, nil)
