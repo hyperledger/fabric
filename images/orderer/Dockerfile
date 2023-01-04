@@ -67,7 +67,7 @@ COPY    --from=builder  sampleconfig/configtx.yaml  ${FABRIC_CFG_PATH}
 
 VOLUME  /etc/hyperledger/fabric
 VOLUME  /var/hyperledger
+
 EXPOSE  7050
 
-ENTRYPOINT  [ "orderer" ]
-CMD         [ "start" ]
+CMD     [ "orderer", "start" ]
