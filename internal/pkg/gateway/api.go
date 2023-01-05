@@ -435,13 +435,16 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 		response, err := gs.broadcast(ctx, orderer, txn)
 		if err != nil {
 			errDetails = append(errDetails, errorDetail(orderer.endpointConfig, err.Error()))
+			logger.Warnw("Error sending transaction to orderer", "txID", request.TransactionId, "endpoint", orderer.address, "err", err)
+			continue
 		}
+
 		status := response.GetStatus()
 		if status == common.Status_SUCCESS {
 			return &gp.SubmitResponse{}, nil
 		}
 
-		logger.Warnw("Error sending transaction to orderer", "txID", request.TransactionId, "endpoint", orderer.address, "err", err, "status", status, "info", response.GetInfo())
+		logger.Warnw("Unsuccessful response sending transaction to orderer", "txID", request.TransactionId, "endpoint", orderer.address, "status", status, "info", response.GetInfo())
 
 		if status >= 400 && status < 500 {
 			// client error - don't retry
