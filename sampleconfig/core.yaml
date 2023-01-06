@@ -732,6 +732,8 @@ ledger:
     # Private data is purged from the peer's private data store based on
     # the collection property blockToLive or an explicit chaincode call to PurgePrivateData().
     purgeInterval: 100
+    # Whether to log private data keys purged from private data store (INFO level) when explicitly purged via chaincode
+    purgedKeyAuditLogging: true
 
   snapshots:
     # Path on the file system where peer will store ledger snapshots
