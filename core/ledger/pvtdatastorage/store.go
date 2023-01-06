@@ -47,12 +47,13 @@ type PrivateDataConfig struct {
 
 // Store manages the permanent storage of private write sets for a ledger
 type Store struct {
-	db              *leveldbhelper.DBHandle
-	ledgerid        string
-	btlPolicy       pvtdatapolicy.BTLPolicy
-	batchesInterval int
-	maxBatchSize    int
-	purgeInterval   uint64
+	db                    *leveldbhelper.DBHandle
+	ledgerid              string
+	btlPolicy             pvtdatapolicy.BTLPolicy
+	batchesInterval       int
+	maxBatchSize          int
+	purgeInterval         uint64
+	purgedKeyAuditLogging bool
 
 	isEmpty            bool
 	lastCommittedBlock uint64
@@ -227,6 +228,7 @@ func (p *Provider) OpenStore(ledgerid string) (*Store, error) {
 		batchesInterval:                     p.pvtData.BatchesInterval,
 		maxBatchSize:                        p.pvtData.MaxBatchSize,
 		purgeInterval:                       uint64(p.pvtData.PurgeInterval),
+		purgedKeyAuditLogging:               p.pvtData.PurgedKeyAuditLogging,
 		deprioritizedDataReconcilerInterval: p.pvtData.DeprioritizedDataReconcilerInterval,
 		accessDeprioMissingDataAfter:        time.Now().Add(p.pvtData.DeprioritizedDataReconcilerInterval),
 		collElgProcSync: &collElgProcSync{
@@ -869,7 +871,7 @@ func (s *Store) deleteDataMarkedForPurge() error {
 	maxBatchSize := 4 * 1024 * 1024 // 4Mb
 	purgeMarkerCounter := 0
 	hashedIndexCounter := 0
-	p := newPurgeUpdatesProcessor(s.db, maxBatchSize)
+	p := newPurgeUpdatesProcessor(s.ledgerid, s.db, s.purgedKeyAuditLogging, maxBatchSize)
 	pStart, pEnd := rangeScanKeysForPurgeMarkers()
 
 	// get the purge markers that need to be processed at this block height
@@ -911,12 +913,18 @@ func (s *Store) deleteDataMarkedForPurge() error {
 		p.addProcessedPurgeMarkerForDeletion(encPurgeMarkerKey)
 		purgeMarkerCounter++
 	}
-	if purgeMarkerCounter > 0 {
-		logger.Infow("Processed private data purges from private data storage", "channel", s.ledgerid, "numKeysPurged", purgeMarkerCounter, "numPrivateDataStoreRecordsPurged", hashedIndexCounter)
-	}
 
 	// commit the private data purges and index deletions to the private data store
-	return p.commitPendingChanges()
+	err = p.commitPendingChanges()
+	if err != nil {
+		return err
+	}
+
+	if purgeMarkerCounter > 0 {
+		logger.Infow("Purged private data from private data storage", "channel", s.ledgerid, "numKeysPurged", purgeMarkerCounter, "numPrivateDataStoreRecordsPurged", hashedIndexCounter)
+	}
+
+	return nil
 }
 
 func (s *Store) retrieveExpiryEntries(minBlkNum, maxBlkNum uint64) ([]*expiryEntry, error) {
@@ -1159,23 +1167,27 @@ func (c *collElgProcSync) waitForDone() {
 }
 
 type purgeUpdatesProcessor struct {
+	ledgerid     string
 	db           *leveldbhelper.DBHandle
+	batch        *leveldbhelper.UpdateBatch
 	maxBatchSize int
 
 	pvtWrites map[string]*rwsetutil.CollPvtRwSet
-	batch     *leveldbhelper.UpdateBatch
 
-	currentSize int
+	currentSize           int
+	purgedKeyAuditLogging bool
 }
 
 // newPurgeUpdatesProcessor is used for processing the purge markers - i.e., delete the private data versions that are marked for purge from
 // the pvtdata store.
-func newPurgeUpdatesProcessor(db *leveldbhelper.DBHandle, maxBatchSize int) *purgeUpdatesProcessor {
+func newPurgeUpdatesProcessor(ledgerid string, db *leveldbhelper.DBHandle, purgedKeyAuditLogging bool, maxBatchSize int) *purgeUpdatesProcessor {
 	return &purgeUpdatesProcessor{
-		db:           db,
-		maxBatchSize: maxBatchSize,
-		pvtWrites:    map[string]*rwsetutil.CollPvtRwSet{},
-		batch:        db.NewUpdateBatch(),
+		ledgerid:              ledgerid,
+		db:                    db,
+		purgedKeyAuditLogging: purgedKeyAuditLogging,
+		maxBatchSize:          maxBatchSize,
+		pvtWrites:             map[string]*rwsetutil.CollPvtRwSet{},
+		batch:                 db.NewUpdateBatch(),
 	}
 }
 
@@ -1218,6 +1230,16 @@ func (p *purgeUpdatesProcessor) process(hashedIndexKey, hashedIndexVal []byte) e
 			break
 		}
 	}
+
+	// If configured, log the purged key for audit purpose
+	if p.purgedKeyAuditLogging {
+		decodedDataKey, err := decodeDatakey(dataKey)
+		if err != nil {
+			return err
+		}
+		logger.Infow("Purging private data from private data storage", "channel", p.ledgerid, "chaincode", decodedDataKey.nsCollBlk.ns, "collection", decodedDataKey.nsCollBlk.coll, "key", string(hashedIndexVal), "blockNum", decodedDataKey.nsCollBlk.blkNum, "tranNum", decodedDataKey.txNum)
+	}
+
 	p.batch.Delete(hashedIndexKey)
 	if p.currentSize+p.batch.Size() > p.maxBatchSize {
 		if err := p.commitPendingChanges(); err != nil {

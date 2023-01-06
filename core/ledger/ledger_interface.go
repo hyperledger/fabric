@@ -118,6 +118,8 @@ type PrivateDataConfig struct {
 	// from other peers. A chance for eligible deprioritized missing data
 	// would be given after every DeprioritizedDataReconcilerInterval
 	DeprioritizedDataReconcilerInterval time.Duration
+	// PurgedKeyAuditLogging specifies whether to log private data keys purged from private data store (INFO level) when explicitly purged via chaincode
+	PurgedKeyAuditLogging bool
 }
 
 // HistoryDBConfig is a structure used to configure the transaction history database.
