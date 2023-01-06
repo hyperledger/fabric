@@ -52,6 +52,14 @@ func TestArguments(t *testing.T) {
 			exitCode: 1,
 			args:     []string{"identifytxs"},
 		},
+		"verify-help": {
+			exitCode: 0,
+			args:     []string{"verify", "--help"},
+		},
+		"verify": {
+			exitCode: 1,
+			args:     []string{"verify"},
+		},
 	}
 
 	// Build ledger binary

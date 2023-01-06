@@ -1,0 +1,5 @@
+[
+{"blockNum":0,"valid":false,"errors":["DataHash mismatch"]}
+,
+{"blockNum":1,"valid":false,"errors":["PreviousHash mismatch"]}
+]
