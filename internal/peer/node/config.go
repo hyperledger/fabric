@@ -41,6 +41,10 @@ func ledgerConfig() *ledger.Config {
 	if viper.IsSet("ledger.pvtdataStore.deprioritizedDataReconcilerInterval") {
 		deprioritizedDataReconcilerInterval = viper.GetDuration("ledger.pvtdataStore.deprioritizedDataReconcilerInterval")
 	}
+	purgedKeyAuditLogging := true
+	if viper.IsSet("ledger.pvtdataStore.purgedKeyAuditLogging") {
+		purgedKeyAuditLogging = viper.GetBool("ledger.pvtdataStore.purgedKeyAuditLogging")
+	}
 
 	fsPath := coreconfig.GetPath("peer.fileSystemPath")
 	ledgersDataRootDir := filepath.Join(fsPath, "ledgersData")
@@ -59,6 +63,7 @@ func ledgerConfig() *ledger.Config {
 			BatchesInterval:                     collElgProcDbBatchesInterval,
 			PurgeInterval:                       purgeInterval,
 			DeprioritizedDataReconcilerInterval: deprioritizedDataReconcilerInterval,
+			PurgedKeyAuditLogging:               purgedKeyAuditLogging,
 		},
 		HistoryDBConfig: &ledger.HistoryDBConfig{
 			Enabled: viper.GetBool("ledger.history.enableHistoryDatabase"),
