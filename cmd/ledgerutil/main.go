@@ -12,6 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric/internal/ledgerutil/compare"
 	"github.com/hyperledger/fabric/internal/ledgerutil/identifytxs"
+	"github.com/hyperledger/fabric/internal/ledgerutil/verify"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -28,6 +29,8 @@ const (
 		"IMPORTANT: If the configuration for target peer's file system path was changed, the new path MUST be provided."
 	blockStorePathDefault = "/var/hyperledger/production"
 	outputDirIdDesc       = "Location for identified transactions json results output directory. Default is the current directory."
+	verifyErrorMessage    = "Verify Ledger Error:"
+	outputDirVerifyDesc   = "Location for verification result output directory. Default is the current directory."
 )
 
 var (
@@ -43,6 +46,10 @@ var (
 	snapshotDiffsPath = identifytxsApp.Arg("snapshotDiffsPath", snapshotDiffsPathDesc).Required().String()
 	blockStorePath    = identifytxsApp.Arg("blockStorePath", blockStorePathDesc).Default(blockStorePathDefault).String()
 	outputDirId       = identifytxsApp.Flag("outputDir", outputDirIdDesc).Short('o').String()
+
+	verifyApp            = app.Command("verify", "Verify the integrity of a ledger")
+	blockStorePathVerify = verifyApp.Arg("blockStorePath", blockStorePathDesc).Default(blockStorePathDefault).String()
+	outputDirVerify      = verifyApp.Flag("outputDir", outputDirVerifyDesc).Short('o').String()
 
 	args = os.Args[1:]
 )
@@ -104,5 +111,29 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Printf("\nSuccessfully ran identify transactions tool. Transactions were checked between blocks %d and %d.", firstBlock, lastBlock)
+
+	case verifyApp.FullCommand():
+
+		// Determine result json file location
+		if *outputDirVerify == "" {
+			*outputDirVerify, err = os.Getwd()
+			if err != nil {
+				fmt.Printf("%s%s\n", verifyErrorMessage, err)
+				os.Exit(1)
+			}
+		}
+
+		valid, err := verify.VerifyLedger(*blockStorePathVerify, *outputDirVerify)
+		if err != nil {
+			fmt.Printf("%s%s\n", verifyErrorMessage, err)
+			os.Exit(1)
+		}
+
+		if valid {
+			fmt.Printf("\nSuccessfully executed verify tool. No error is found.\n")
+		} else {
+			fmt.Printf("\nSuccessfully executed verify tool. Some error(s) are found.\n")
+			os.Exit(1)
+		}
 	}
 }
