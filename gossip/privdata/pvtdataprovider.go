@@ -8,7 +8,6 @@ package privdata
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -89,6 +88,7 @@ type eligibilityComputer struct {
 // groups all private data as either eligibleMissing or ineligibleMissing prior to fetching
 func (ec *eligibilityComputer) computeEligibility(mspID string, pvtdataToRetrieve []*ledger.TxPvtdataInfo) (*pvtdataRetrievalInfo, error) {
 	sources := make(map[rwSetKey][]*peer.Endorsement)
+	expectedHashes := make(map[rwSetKey][]byte)
 	eligibleMissingKeys := make(rwsetKeys)
 	ineligibleMissingKeys := make(rwsetKeys)
 
@@ -120,7 +120,6 @@ func (ec *eligibilityComputer) computeEligibility(mspID string, pvtdataToRetriev
 			key := rwSetKey{
 				txID:       txID,
 				seqInBlock: seqInBlock,
-				hash:       hex.EncodeToString(hash),
 				namespace:  ns,
 				collection: col,
 			}
@@ -141,13 +140,16 @@ func (ec *eligibilityComputer) computeEligibility(mspID string, pvtdataToRetriev
 				invalid: invalid,
 			}
 			sources[key] = endorsersFromEligibleOrgs(ns, col, endorsers, memberOrgs)
+			expectedHashes[key] = hash
 		}
 	}
 
 	return &pvtdataRetrievalInfo{
 		sources:                      sources,
+		expectedHashes:               expectedHashes,
 		txns:                         txList,
 		remainingEligibleMissingKeys: eligibleMissingKeys,
+		resolvedAsToReconcileLater:   make(rwsetKeys),
 		ineligibleMissingKeys:        ineligibleMissingKeys,
 	}, nil
 }
@@ -219,7 +221,7 @@ func (pdp *PvtdataProvider) RetrievePvtdata(pvtdataToRetrieve []*ledger.TxPvtdat
 	fetchStats.fromLocalCache = totalEligibleMissingKeysToRetrieve - len(pvtdataRetrievalInfo.remainingEligibleMissingKeys)
 
 	if len(pvtdataRetrievalInfo.remainingEligibleMissingKeys) == 0 {
-		pdp.logger.Infof("Successfully fetched all %d eligible collection private write sets for block [%d] %s", totalEligibleMissingKeysToRetrieve, pdp.blockNum, fetchStats)
+		pdp.logger.Infof("Successfully fetched (or marked to reconcile later) all %d eligible collection private write sets for block [%d] %s", totalEligibleMissingKeysToRetrieve, pdp.blockNum, fetchStats)
 		retrievedPvtdata.pvtdataRetrievalInfo = pvtdataRetrievalInfo
 		retrievedPvtdata.blockPvtdata = pdp.prepareBlockPvtdata(pvtdata, pvtdataRetrievalInfo)
 		return retrievedPvtdata, nil
@@ -231,7 +233,7 @@ func (pdp *PvtdataProvider) RetrievePvtdata(pvtdataToRetrieve []*ledger.TxPvtdat
 	fetchStats.fromTransientStore = numRemainingToFetch - len(pvtdataRetrievalInfo.remainingEligibleMissingKeys)
 
 	if len(pvtdataRetrievalInfo.remainingEligibleMissingKeys) == 0 {
-		pdp.logger.Infof("Successfully fetched all %d eligible collection private write sets for block [%d] %s", totalEligibleMissingKeysToRetrieve, pdp.blockNum, fetchStats)
+		pdp.logger.Infof("Successfully fetched (or marked to reconcile later) all %d eligible collection private write sets for block [%d] %s", totalEligibleMissingKeysToRetrieve, pdp.blockNum, fetchStats)
 		retrievedPvtdata.pvtdataRetrievalInfo = pvtdataRetrievalInfo
 		retrievedPvtdata.blockPvtdata = pdp.prepareBlockPvtdata(pvtdata, pvtdataRetrievalInfo)
 		return retrievedPvtdata, nil
@@ -256,10 +258,10 @@ func (pdp *PvtdataProvider) RetrievePvtdata(pvtdataToRetrieve []*ledger.TxPvtdat
 	fetchStats.fromRemotePeer = numRemainingToFetch - len(pvtdataRetrievalInfo.remainingEligibleMissingKeys)
 
 	if len(pvtdataRetrievalInfo.remainingEligibleMissingKeys) == 0 {
-		pdp.logger.Debugf("Fetched all missing collection private write sets from remote peers for block [%d] (%dms)", pdp.blockNum, elapsedPull)
-		pdp.logger.Infof("Successfully fetched all %d eligible collection private write sets for block [%d] %s", totalEligibleMissingKeysToRetrieve, pdp.blockNum, fetchStats)
+		pdp.logger.Debugf("Fetched (or marked to reconcile later) collection private write sets from remote peers for block [%d] (%dms)", pdp.blockNum, elapsedPull)
+		pdp.logger.Infof("Successfully fetched (or marked to reconcile later) all %d eligible collection private write sets for block [%d] %s", totalEligibleMissingKeysToRetrieve, pdp.blockNum, fetchStats)
 	} else {
-		pdp.logger.Warningf("Could not fetch all %d eligible collection private write sets for block [%d] %s. Will commit block with missing private write sets:[%v]",
+		pdp.logger.Warningf("Could not fetch (or mark to reconcile later) %d eligible collection private write sets for block [%d] %s. Will commit block with missing private write sets:[%v]",
 			totalEligibleMissingKeysToRetrieve, pdp.blockNum, fetchStats, pvtdataRetrievalInfo.remainingEligibleMissingKeys)
 	}
 
@@ -287,15 +289,23 @@ func (pdp *PvtdataProvider) populateFromCache(pvtdata rwsetByKeys, pvtdataRetrie
 					seqInBlock: txPvtdata.SeqInBlock,
 					collection: col.CollectionName,
 					namespace:  ns.Namespace,
-					hash:       hex.EncodeToString(commonutil.ComputeSHA256(col.Rwset)),
 				}
 				// skip if key not originally missing
 				if _, missing := pvtdataRetrievalInfo.remainingEligibleMissingKeys[key]; !missing {
 					pdp.logger.Warningf("Found extra data in prefetched:[%v]. Skipping.", key)
 					continue
 				}
-				// populate the pvtdata with the RW set from the cache
-				pvtdata[key] = col.Rwset
+
+				if bytes.Equal(pvtdataRetrievalInfo.expectedHashes[key], commonutil.ComputeSHA256(col.Rwset)) {
+					// populate the pvtdata with the RW set from the cache
+					pvtdata[key] = col.Rwset
+				} else {
+					// the private data was present in the cache but the hash of writeset did not match with what is present in block.
+					// Most likely scenarios for this are when either the sending peer is bootstrapped from a snapshot or it has purged some
+					// of the keys from the private data, based on a user initiated transaction. In this case, we treat this as missing data,
+					// that would be tried later via reconciliation
+					pvtdataRetrievalInfo.resolvedAsToReconcileLater[key] = pvtdataRetrievalInfo.remainingEligibleMissingKeys[key]
+				}
 				// remove key from missing
 				delete(pvtdataRetrievalInfo.remainingEligibleMissingKeys, key)
 			} // iterate over collections in the namespace
@@ -345,10 +355,13 @@ func (pdp *PvtdataProvider) populateFromTransientStore(pvtdata rwsetByKeys, pvtd
 						seqInBlock: k.seqInBlock,
 						collection: col.CollectionName,
 						namespace:  ns.Namespace,
-						hash:       hex.EncodeToString(commonutil.ComputeSHA256(col.Rwset)),
 					}
 					// skip if not missing
 					if _, missing := pvtdataRetrievalInfo.remainingEligibleMissingKeys[key]; !missing {
+						continue
+					}
+
+					if !bytes.Equal(pvtdataRetrievalInfo.expectedHashes[key], commonutil.ComputeSHA256(col.Rwset)) {
 						continue
 					}
 					// populate the pvtdata with the RW set from the transient store
@@ -405,7 +418,6 @@ func (pdp *PvtdataProvider) populateFromRemotePeers(pvtdata rwsetByKeys, pvtdata
 				namespace:  dig.Namespace,
 				collection: dig.Collection,
 				seqInBlock: dig.SeqInBlock,
-				hash:       hex.EncodeToString(commonutil.ComputeSHA256(rws)),
 			}
 			// skip if not missing
 			if _, missing := pvtdataRetrievalInfo.remainingEligibleMissingKeys[key]; !missing {
@@ -415,8 +427,17 @@ func (pdp *PvtdataProvider) populateFromRemotePeers(pvtdata rwsetByKeys, pvtdata
 				}
 				continue
 			}
-			// populate the pvtdata with the RW set from the remote peer
-			pvtdata[key] = rws
+
+			if bytes.Equal(pvtdataRetrievalInfo.expectedHashes[key], commonutil.ComputeSHA256(rws)) {
+				// populate the pvtdata with the RW set from the remote peer
+				pvtdata[key] = rws
+			} else {
+				// the private data was fetched from the remote peer but the hash of writeset did not match with what is present in block.
+				// Most likely scenarios for this are when either the sending peer is bootstrapped from a snapshot or it has purged some
+				// of the keys from the private data, based on a user initiated transaction. In this case, we treat this as missing data,
+				// that would be tried later via reconciliation
+				pvtdataRetrievalInfo.resolvedAsToReconcileLater[key] = pvtdataRetrievalInfo.remainingEligibleMissingKeys[key]
+			}
 			// remove key from missing
 			delete(pvtdataRetrievalInfo.remainingEligibleMissingKeys, key)
 			pdp.logger.Debugf("Fetched [%v]", key)
@@ -456,6 +477,10 @@ func (pdp *PvtdataProvider) prepareBlockPvtdata(pvtdata rwsetByKeys, pvtdataRetr
 		}
 	}
 
+	for key := range pvtdataRetrievalInfo.resolvedAsToReconcileLater {
+		blockPvtdata.MissingPvtData.Add(key.seqInBlock, key.namespace, key.collection, true)
+	}
+
 	for key := range pvtdataRetrievalInfo.remainingEligibleMissingKeys {
 		blockPvtdata.MissingPvtData.Add(key.seqInBlock, key.namespace, key.collection, true)
 	}
@@ -469,8 +494,10 @@ func (pdp *PvtdataProvider) prepareBlockPvtdata(pvtdata rwsetByKeys, pvtdataRetr
 
 type pvtdataRetrievalInfo struct {
 	sources                      map[rwSetKey][]*peer.Endorsement
+	expectedHashes               map[rwSetKey][]byte
 	txns                         []string
 	remainingEligibleMissingKeys rwsetKeys
+	resolvedAsToReconcileLater   rwsetKeys
 	ineligibleMissingKeys        rwsetKeys
 }
 
@@ -543,12 +570,11 @@ type rwSetKey struct {
 	seqInBlock uint64
 	namespace  string
 	collection string
-	hash       string
 }
 
 // String returns a string representation of the rwSetKey
 func (k *rwSetKey) String() string {
-	return fmt.Sprintf("txID: %s, seq: %d, namespace: %s, collection: %s, hash: %s", k.txID, k.seqInBlock, k.namespace, k.collection, k.hash)
+	return fmt.Sprintf("txID: %s, seq: %d, namespace: %s, collection: %s", k.txID, k.seqInBlock, k.namespace, k.collection)
 }
 
 func getTxIDBySeqInBlock(seqInBlock uint64, pvtdataToRetrieve []*ledger.TxPvtdataInfo) string {
