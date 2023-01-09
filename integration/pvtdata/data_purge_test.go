@@ -26,7 +26,9 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
 var _ = Describe("Pvtdata purge", func() {
@@ -35,8 +37,9 @@ var _ = Describe("Pvtdata purge", func() {
 		testDir                        string
 		network                        *nwo.Network
 		orderer                        *nwo.Orderer
-		org2Peer0                      *nwo.Peer
-		process                        ifrit.Process
+		org2Peer0, org3Peer0           *nwo.Peer
+		processes                      map[string]ifrit.Process
+		runners                        map[string]*ginkgomon.Runner
 		cancel                         context.CancelFunc
 		chaincode                      *nwo.Chaincode
 	)
@@ -52,9 +55,17 @@ var _ = Describe("Pvtdata purge", func() {
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
+		processes = map[string]ifrit.Process{}
+		runners = map[string]*ginkgomon.Runner{}
+
+		ordererRunner := network.OrdererGroupRunner()
+		process := ifrit.Invoke(ordererRunner)
 		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		processes["OrdererGroupRunner"] = process
+
+		for _, peer := range network.Peers {
+			startPeer(network, processes, runners, peer)
+		}
 
 		orderer = network.Orderer("orderer")
 
@@ -89,6 +100,7 @@ var _ = Describe("Pvtdata purge", func() {
 		nwo.DeployChaincode(network, channelID, orderer, *chaincode)
 
 		org2Peer0 = network.Peer("Org2", "peer0")
+		org3Peer0 = network.Peer("Org3", "peer0")
 
 		_, cancel = context.WithTimeout(context.Background(), network.EventuallyTimeout)
 
@@ -98,7 +110,7 @@ var _ = Describe("Pvtdata purge", func() {
 	AfterEach(func() {
 		cancel()
 
-		if process != nil {
+		for _, process := range processes {
 			process.Signal(syscall.SIGTERM)
 			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
@@ -231,6 +243,34 @@ var _ = Describe("Pvtdata purge", func() {
 		//    - The subsequently added data should not be purged as a
 		//      side-effect of the previous purge operation
 		PIt("should not remove new data after a previous purge operation")
+
+		// From https://github.com/hyperledger/fabric/issues/3858
+		// Scenario1
+		// Create private data on peer1 and peer2, then stop peer2, purge private data on peer1 (block6), then restart peer2.
+		// Upon restart of peer2, it should receive block 6 and gracefully handle the purge transaction.
+		It("should verify scenario1 TBC", func() {
+			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-88", "color":"green", "size":42, "owner":"simon", "price":180}`, org2Peer0)
+			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-X", "color":"red", "size":24, "owner":"heather", "price":635}`, org3Peer0)
+
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-88", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-88", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-X", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-X", org2Peer0)
+
+			stopPeer(network, processes, org3Peer0)
+
+			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-88"}`, org2Peer0)
+
+			runner := runners[org2Peer0.ID()]
+			Eventually(runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("TBC Purging private data from private data storage channel=testchannel chaincode=marblesp collection=collectionMarblePrivateDetails key=test-marble-88 blockNum=\\d+ tranNum=\\d+"))
+
+			// startPeer(network, processes, org3Peer0)
+
+			// marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-88", org2Peer0)
+			// marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-88", org2Peer0)
+			// marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-X", org3Peer0)
+			// marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-X", org3Peer0)
+		})
 	})
 })
 
@@ -319,4 +359,19 @@ func getPrivateDataKeys(client pb.Deliver_DeliverWithPrivateDataClient, ledgerHe
 			return keys
 		}
 	}
+}
+
+func startPeer(network *nwo.Network, processes map[string]ifrit.Process, runners map[string]*ginkgomon.Runner, peer *nwo.Peer) {
+	runners[peer.ID()] = network.PeerRunner(peer)
+	p := ifrit.Invoke(runners[peer.ID()])
+	processes[peer.ID()] = p
+	Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
+}
+
+func stopPeer(network *nwo.Network, processes map[string]ifrit.Process, peer *nwo.Peer) {
+	id := peer.ID()
+	p := processes[id]
+	p.Signal(syscall.SIGTERM)
+	Eventually(p.Wait(), network.EventuallyTimeout).Should(Receive())
+	delete(processes, id)
 }
