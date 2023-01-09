@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package privdata
 
 import (
-	"encoding/hex"
 	"fmt"
 	"math"
 	"sync"
@@ -15,7 +14,6 @@ import (
 
 	protosgossip "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	commonutil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/gossip/metrics"
@@ -301,13 +299,11 @@ func (r *Reconciler) groupRwsetByBlock(elements []*protosgossip.PvtDataElement) 
 			rwSetByBlockByKeys[dig.BlockSeq] = make(map[rwSetKey][]byte)
 		}
 		for _, rws := range element.Payload {
-			hash := hex.EncodeToString(commonutil.ComputeSHA256(rws))
 			key := rwSetKey{
 				txID:       dig.TxId,
 				namespace:  dig.Namespace,
 				collection: dig.Collection,
 				seqInBlock: dig.SeqInBlock,
-				hash:       hash,
 			}
 			rwSetByBlockByKeys[dig.BlockSeq][key] = rws
 		}
