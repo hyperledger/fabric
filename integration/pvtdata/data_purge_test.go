@@ -46,7 +46,7 @@ var _ = Describe("Pvtdata purge", func() {
 		testDir, err = ioutil.TempDir("", "purgedata")
 		Expect(err).NotTo(HaveOccurred())
 
-		config := nwo.ThreeOrgRaft()
+		config := nwo.ThreeOrgEtcdRaft()
 		network = nwo.New(config, testDir, nil, StartPort(), components)
 
 		network.GenerateConfigTree()

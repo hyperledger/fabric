@@ -227,7 +227,7 @@ func MinimalRaft() *Config {
 	return config
 }
 
-func ThreeOrgRaft() *Config {
+func ThreeOrgEtcdRaft() *Config {
 	config := BasicEtcdRaft()
 
 	config.Organizations = append(
