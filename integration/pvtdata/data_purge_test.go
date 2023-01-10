@@ -145,6 +145,10 @@ var _ = Describe("Pvtdata purge", func() {
 
 			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, `test-marble-0`, org2Peer0)
 			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, `test-marble-0`, org2Peer0)
+
+			// TODO delete me! (Just want some log messages!)
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-99", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-99", org2Peer0)
 		})
 
 		It("should prevent purged data being included block event replays after the purge transaction has been committed", func() {

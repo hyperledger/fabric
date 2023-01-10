@@ -214,6 +214,7 @@ ledger:
     enableHistoryDatabase: true
   pvtdataStore:
     deprioritizedDataReconcilerInterval: 60m
+    purgedKeyAuditLogging: true
 
 operations:
   listenAddress: 127.0.0.1:{{ .PeerPort Peer "Operations" }}
