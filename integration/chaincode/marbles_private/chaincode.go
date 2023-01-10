@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/hyperledger/fabric-chaincode-go/pkg/statebased"
 	"github.com/hyperledger/fabric-chaincode-go/shim"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 )
@@ -73,6 +74,9 @@ func (t *MarblesPrivateChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Re
 	case "getMarblePrivateDetailsHash":
 		// get private data hash for collectionMarblePrivateDetails
 		return t.getMarblePrivateDetailsHash(stub, args)
+	case "setStateBasedEndorsementPolicy":
+		// get private data hash for collectionMarblePrivateDetails
+		return t.setStateBasedEndorsementPolicy(stub, args)
 	case "checkEndorsingOrg":
 		// check mspid of the current peer
 		return t.checkEndorsingOrg(stub)
@@ -578,6 +582,75 @@ func (t *MarblesPrivateChaincode) getMarblesByRange(stub shim.ChaincodeStubInter
 	fmt.Printf("- getMarblesByRange queryResult:\n%s\n", buffer.String())
 
 	return shim.Success(buffer.Bytes())
+}
+
+// ============================================================
+// setStateBasedEndorsementPolicy - set key based endorsement policy
+// ============================================================
+func (t *MarblesPrivateChaincode) setStateBasedEndorsementPolicy(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	fmt.Println("- start set marble endorsement policy")
+
+	type marblePolicyTransientInput struct {
+		Name string `json:"name"`
+		Org  string `json:"org"`
+	}
+
+	if len(args) != 0 {
+		return shim.Error("Incorrect number of arguments. Private marble data must be passed in transient map.")
+	}
+
+	transMap, err := stub.GetTransient()
+	if err != nil {
+		return shim.Error("Error getting transient: " + err.Error())
+	}
+
+	marblePolicyJsonBytes, ok := transMap["marble_ep"]
+	if !ok {
+		return shim.Error("marble_ep must be a key in the transient map")
+	}
+
+	if len(marblePolicyJsonBytes) == 0 {
+		return shim.Error("marble_purge value in the transient map must be a non-empty JSON string")
+	}
+
+	var marblePolicyInput marblePolicyTransientInput
+	err = json.Unmarshal(marblePolicyJsonBytes, &marblePolicyInput)
+	if err != nil {
+		return shim.Error("Failed to decode JSON of: " + string(marblePolicyJsonBytes))
+	}
+
+	if len(marblePolicyInput.Name) == 0 {
+		return shim.Error("name field must be a non-empty string")
+	}
+
+	if len(marblePolicyInput.Org) == 0 {
+		return shim.Error("org field must be a non-empty string")
+	}
+
+	// Set new endorsement policy
+	var epBytes []byte
+	ep, err := statebased.NewStateEP(epBytes)
+	if err != nil {
+		return shim.Error("Error creating state-based endorsement policy: " + err.Error())
+	}
+
+	err = ep.AddOrgs(statebased.RoleTypePeer, marblePolicyInput.Org)
+	if err != nil {
+		return shim.Error("Error updating state-based endorsement policy: " + err.Error())
+	}
+
+	epBytes, err = ep.Policy()
+	if err != nil {
+		return shim.Error("Error encoding state-based endorsement policy: " + err.Error())
+	}
+
+	err = stub.SetPrivateDataValidationParameter("collectionMarbles", marblePolicyInput.Name, epBytes)
+	if err != nil {
+		return shim.Error("Error setting private data key-level endorsement policy: " + err.Error())
+	}
+
+	fmt.Println("- end set marble endorsement policy (success)")
+	return shim.Success(nil)
 }
 
 // CheckEndorsingOrg checks that the peer org is present in the given transient data

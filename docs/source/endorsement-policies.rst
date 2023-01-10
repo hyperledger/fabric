@@ -71,24 +71,24 @@ You can create an endorsement policy from
 your CLI when you approve and commit a chaincode definition with the Fabric peer
 binaries by using the ``--signature-policy`` flag.
 
-.. note:: Don't worry about the policy syntax (``'Org1.member'``, et all) right
+.. note:: Don't worry about the policy syntax (``'Org1MSP.member'``, et all) right
           now. We'll talk more about the syntax in the next section.
 
 For example:
 
 ::
 
-    peer lifecycle chaincode approveformyorg --channelID mychannel --signature-policy "AND('Org1.member', 'Org2.member')" --name mycc --version 1.0 --package-id mycc_1:3a8c52d70c36313cfebbaf09d8616e7a6318ababa01c7cbe40603c373bcfe173 --sequence 1 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent
+    peer lifecycle chaincode approveformyorg --channelID mychannel --signature-policy "AND('Org1MSP.member', 'Org2MSP.member')" --name mycc --version 1.0 --package-id mycc_1:3a8c52d70c36313cfebbaf09d8616e7a6318ababa01c7cbe40603c373bcfe173 --sequence 1 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent
 
 The above command approves the chaincode definition of ``mycc`` with the policy
-``AND('Org1.member', 'Org2.member')`` which would require that a member of both
+``AND('Org1MSP.member', 'Org2MSP.member')`` which would require that a member of both
 Org1 and Org2 sign the transaction. After a sufficient number of channel members
 approve a chaincode definition for ``mycc``, the definition and endorsement
 policy can be committed to the channel using the command below:
 
 ::
 
-    peer lifecycle chaincode commit -o orderer.example.com:7050 --channelID mychannel --signature-policy "AND('Org1.member', 'Org2.member')" --name mycc --version 1.0 --sequence 1 --init-required --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+    peer lifecycle chaincode commit -o orderer.example.com:7050 --channelID mychannel --signature-policy "AND('Org1MSP.member', 'Org2MSP.member')" --name mycc --version 1.0 --sequence 1 --init-required --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
 
 Notice that, if the identity classification is enabled (see :doc:`msp`), one can
 use the ``PEER`` role to restrict endorsement to only peers.
@@ -98,7 +98,7 @@ For example:
 
 ::
 
-    peer lifecycle chaincode approveformyorg --channelID mychannel --signature-policy "AND('Org1.peer', 'Org2.peer')" --name mycc --version 1.0 --package-id mycc_1:3a8c52d70c36313cfebbaf09d8616e7a6318ababa01c7cbe40603c373bcfe173 --sequence 1 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent
+    peer lifecycle chaincode approveformyorg --channelID mychannel --signature-policy "AND('Org1MSP.peer', 'Org2MSP.peer')" --name mycc --version 1.0 --package-id mycc_1:3a8c52d70c36313cfebbaf09d8616e7a6318ababa01c7cbe40603c373bcfe173 --sequence 1 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent
 
 In addition to the specifying an endorsement policy from the CLI or SDK, a
 chaincode can also use policies in the channel configuration as endorsement
@@ -137,10 +137,10 @@ represents one of the four accepted roles: ``member``, ``admin``, ``client``, an
 
 Here are a few examples of valid principals:
 
-  - ``'Org0.admin'``: any administrator of the ``Org0`` MSP
-  - ``'Org1.member'``: any member of the ``Org1`` MSP
-  - ``'Org1.client'``: any client of the ``Org1`` MSP
-  - ``'Org1.peer'``: any peer of the ``Org1`` MSP
+  - ``'Org0MSP.admin'``: any administrator of the ``Org0MSP`` MSP
+  - ``'Org1MSP.member'``: any member of the ``Org1MSP`` MSP
+  - ``'Org1MSP.client'``: any client of the ``Org1MSP`` MSP
+  - ``'Org1MSP.peer'``: any peer of the ``Org1MSP`` MSP
 
 The syntax of the language is:
 
@@ -150,20 +150,20 @@ Where ``EXPR`` is either ``AND``, ``OR``, or ``OutOf``, and ``E`` is either a
 principal (with the syntax described above) or another nested call to ``EXPR``.
 
 For example:
-  - ``AND('Org1.member', 'Org2.member', 'Org3.member')`` requests one signature
+  - ``AND('Org1MSP.member', 'Org2MSP.member', 'Org3MSP.member')`` requests one signature
     from each of the three principals.
-  - ``OR('Org1.member', 'Org2.member')`` requests one signature from either one
+  - ``OR('Org1MSP.member', 'Org2MSP.member')`` requests one signature from either one
     of the two principals.
-  - ``OR('Org1.member', AND('Org2.member', 'Org3.member'))`` requests either one
-    signature from a member of the ``Org1`` MSP or one signature from a member
-    of the ``Org2`` MSP and one signature from a member of the ``Org3`` MSP.
-  - ``OutOf(1, 'Org1.member', 'Org2.member')``, which resolves to the same thing
-    as ``OR('Org1.member', 'Org2.member')``.
-  - Similarly, ``OutOf(2, 'Org1.member', 'Org2.member')`` is equivalent to
-    ``AND('Org1.member', 'Org2.member')``, and ``OutOf(2, 'Org1.member',
-    'Org2.member', 'Org3.member')`` is equivalent to ``OR(AND('Org1.member',
-    'Org2.member'), AND('Org1.member', 'Org3.member'), AND('Org2.member',
-    'Org3.member'))``.
+  - ``OR('Org1MSP.member', AND('Org2MSP.member', 'Org3MSP.member'))`` requests either one
+    signature from a member of the ``Org1MSP`` or one signature from a member
+    of the ``Org2MSP`` and one signature from a member of the ``Org3MSP``.
+  - ``OutOf(1, 'Org1MSP.member', 'Org2MSP.member')``, which resolves to the same thing
+    as ``OR('Org1MSP.member', 'Org2MSP.member')``.
+  - Similarly, ``OutOf(2, 'Org1MSP.member', 'Org2MSP.member')`` is equivalent to
+    ``AND('Org1MSP.member', 'Org2MSP.member')``, and ``OutOf(2, 'Org1MSP.member',
+    'Org2.member', 'Org3.member')`` is equivalent to ``OR(AND('Org1MSP.member',
+    'Org2MSP.member'), AND('Org1MSP.member', 'Org3MSP.member'), AND('Org2MSP.member',
+    'Org3MSP.member'))``.
 
 Setting collection-level endorsement policies
 ---------------------------------------------

@@ -180,7 +180,7 @@ Most existing smart-contract capable blockchain platforms follow an
 
 The order-execute architecture can be found in virtually all existing blockchain
 systems, ranging from public/permissionless platforms such as
-[Ethereum](https://ethereum.org/) (with PoW-based consensus) to permissioned
+[Ethereum](https://ethereum.org/) (with PoS-based consensus) to permissioned
 platforms such as [Tendermint](http://tendermint.com/),
 [Chain](http://chain.com/), and [Quorum](http://www.jpmorgan.com/global/Quorum).
 
@@ -297,12 +297,7 @@ requirements.
 ## Performance and Scalability
 
 Performance of a blockchain platform can be affected by many variables such as
-transaction size, block size, network size, as well as limits of the hardware,
-etc. The Hyperledger Fabric [Performance and Scale working group](https://wiki.hyperledger.org/display/PSWG/Performance+and+Scale+Working+Group)
-currently works on a benchmarking framework called [Hyperledger Caliper](https://wiki.hyperledger.org/display/caliper).
-
-Several research papers have been published studying and testing the performance
-capabilities of Hyperledger Fabric. The latest [scaled Fabric to 20,000 transactions per second](https://arxiv.org/abs/1901.00910).
+transaction size, block size, network size, as well as available hardware resources such as CPU, Memory, Disk Space, Disk and network I/O.
 
 ## Conclusion
 

@@ -8,11 +8,14 @@ package pvtdatastorage
 
 import (
 	"fmt"
+	"math"
 	"testing"
 
 	"github.com/bits-and-blooms/bitset"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,9 +27,10 @@ type blockTxPvtDataInfoForTest struct {
 }
 
 type pvtDataForTest struct {
-	pvtData         []*ledger.TxPvtData
-	dataKeys        []*dataKey
-	missingDataInfo ledger.TxMissingPvtData
+	pvtData            []*ledger.TxPvtData
+	dataKeys           []*dataKey
+	hashedIndexEntries []*hashedIndexEntry
+	missingDataInfo    ledger.TxMissingPvtData
 }
 
 func TestCommitPvtDataOfOldBlocks(t *testing.T) {
@@ -143,6 +147,11 @@ func TestCommitPvtDataOfOldBlocks(t *testing.T) {
 	for _, b := range blocksPvtData {
 		for _, dkey := range b.dataKeys {
 			require.True(t, testDataKeyExists(t, store, dkey))
+		}
+		for _, b := range blocksPvtData {
+			for _, h := range b.hashedIndexEntries {
+				require.True(t, testHashedIndexExists(t, store, h.key))
+			}
 		}
 	}
 	assertMissingDataInfo(t, store, missingDataSummary, 2)
@@ -486,7 +495,7 @@ func TestCommitPvtDataOfOldBlocksWithDeprioritization(t *testing.T) {
 
 			require.NoError(t, store.CommitPvtDataOfOldBlocks(nil, tt.deprioritizedList))
 
-			prioMissingData, err := store.getMissingData(elgPrioritizedMissingDataGroup, 3)
+			prioMissingData, err := store.getMissingData(elgPrioritizedMissingDataGroup, math.MaxUint64, 3)
 			require.NoError(t, err)
 			require.Equal(t, len(tt.expectedPrioMissingDataKeys), len(prioMissingData))
 			for blkNum, txsMissingData := range tt.expectedPrioMissingDataKeys {
@@ -495,7 +504,7 @@ func TestCommitPvtDataOfOldBlocksWithDeprioritization(t *testing.T) {
 				}
 			}
 
-			deprioMissingData, err := store.getMissingData(elgDeprioritizedMissingDataGroup, 3)
+			deprioMissingData, err := store.getMissingData(elgDeprioritizedMissingDataGroup, math.MaxUint64, 3)
 			require.NoError(t, err)
 			require.Equal(t, len(tt.deprioritizedList), len(deprioMissingData))
 			for blkNum, txsMissingData := range tt.deprioritizedList {
@@ -546,11 +555,11 @@ func TestCommitPvtDataOfOldBlocksWithDeprioritization(t *testing.T) {
 			}
 			require.NoError(t, store.CommitPvtDataOfOldBlocks(oldBlocksPvtData, nil))
 
-			prioMissingData, err = store.getMissingData(elgPrioritizedMissingDataGroup, 3)
+			prioMissingData, err = store.getMissingData(elgPrioritizedMissingDataGroup, math.MaxUint64, 3)
 			require.NoError(t, err)
 			require.Equal(t, make(ledger.MissingPvtDataInfo), prioMissingData)
 
-			deprioMissingData, err = store.getMissingData(elgDeprioritizedMissingDataGroup, 3)
+			deprioMissingData, err = store.getMissingData(elgDeprioritizedMissingDataGroup, math.MaxUint64, 3)
 			require.NoError(t, err)
 			require.Equal(t, make(ledger.MissingPvtDataInfo), deprioMissingData)
 		})
@@ -599,13 +608,34 @@ func constructPvtDataForTest(t *testing.T, blockInfo []*blockTxPvtDataInfoForTes
 			p.pvtData,
 			produceSamplePvtdata(t, b.txNum, nsColls),
 		)
+		for _, txPvtdata := range p.pvtData {
+			txPvtWS, err := rwsetutil.TxPvtRwSetFromProtoMsg(txPvtdata.WriteSet)
+			require.NoError(t, err)
+			for _, ns := range txPvtWS.NsPvtRwSet {
+				for _, coll := range ns.CollPvtRwSets {
+					for _, kv := range coll.KvRwSet.Writes {
+						p.hashedIndexEntries = append(p.hashedIndexEntries, &hashedIndexEntry{
+							key: &hashedIndexKey{
+								ns:         ns.NameSpace,
+								coll:       coll.CollectionName,
+								pvtkeyHash: util.ComputeStringHash(kv.Key),
+								blkNum:     b.blkNum,
+								txNum:      b.txNum,
+							},
+							value: kv.Key,
+						})
+					}
+				}
+			}
+
+		}
 	}
 
 	return blocksPvtData, missingPvtDataInfoSummary
 }
 
 func assertMissingDataInfo(t *testing.T, store *Store, expected ledger.MissingPvtDataInfo, numRecentBlocks int) {
-	missingPvtDataInfo, err := store.GetMissingPvtDataInfoForMostRecentBlocks(numRecentBlocks)
+	missingPvtDataInfo, err := store.GetMissingPvtDataInfoForMostRecentBlocks(math.MaxUint64, numRecentBlocks)
 	require.NoError(t, err)
 	require.Equal(t, len(expected), len(missingPvtDataInfo))
 	for blkNum, txsMissingData := range expected {

@@ -39,6 +39,7 @@ func TestLedgerConfig(t *testing.T) {
 					BatchesInterval:                     1000,
 					PurgeInterval:                       100,
 					DeprioritizedDataReconcilerInterval: 60 * time.Minute,
+					PurgedKeyAuditLogging:               true,
 				},
 				HistoryDBConfig: &ledger.HistoryDBConfig{
 					Enabled: false,
@@ -85,6 +86,7 @@ func TestLedgerConfig(t *testing.T) {
 					BatchesInterval:                     1000,
 					PurgeInterval:                       100,
 					DeprioritizedDataReconcilerInterval: 60 * time.Minute,
+					PurgedKeyAuditLogging:               true,
 				},
 				HistoryDBConfig: &ledger.HistoryDBConfig{
 					Enabled: false,
@@ -112,6 +114,7 @@ func TestLedgerConfig(t *testing.T) {
 				"ledger.pvtdataStore.collElgProcMaxDbBatchSize":           50000,
 				"ledger.pvtdataStore.collElgProcDbBatchesInterval":        10000,
 				"ledger.pvtdataStore.purgeInterval":                       1000,
+				"ledger.pvtdataStore.purgedKeyAuditLogging":               false,
 				"ledger.pvtdataStore.deprioritizedDataReconcilerInterval": "180m",
 				"ledger.history.enableHistoryDatabase":                    true,
 				"ledger.snapshots.rootDir":                                "/peerfs/customLocationForsnapshots",
@@ -139,6 +142,7 @@ func TestLedgerConfig(t *testing.T) {
 					BatchesInterval:                     10000,
 					PurgeInterval:                       1000,
 					DeprioritizedDataReconcilerInterval: 180 * time.Minute,
+					PurgedKeyAuditLogging:               false,
 				},
 				HistoryDBConfig: &ledger.HistoryDBConfig{
 					Enabled: true,

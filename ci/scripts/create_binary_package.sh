@@ -14,4 +14,8 @@ cd "release/${TARGET}"
 if [ "$TARGET" == "windows-amd64" ]; then
     for FILE in bin/*; do mv $FILE $FILE.exe; done
 fi
-tar -czvf "hyperledger-fabric-${TARGET}-${RELEASE}.tar.gz" bin config builders
+
+# Trim the semrev 'v' from the start of the RELEASE attribute
+VERSION=$(echo $RELEASE | sed -e  's/^v\(.*\)/\1/')
+
+tar -czvf "hyperledger-fabric-${TARGET}-${VERSION}.tar.gz" bin config builders

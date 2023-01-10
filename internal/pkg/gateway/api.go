@@ -432,43 +432,45 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 	for _, index := range rand.Perm(len(orderers)) {
 		orderer := orderers[index]
 		logger.Infow("Sending transaction to orderer", "txID", request.TransactionId, "endpoint", orderer.address)
-		err := gs.broadcast(ctx, orderer, txn)
-		if err == nil {
+		response, err := gs.broadcast(ctx, orderer, txn)
+		if err != nil {
+			errDetails = append(errDetails, errorDetail(orderer.endpointConfig, err.Error()))
+			logger.Warnw("Error sending transaction to orderer", "txID", request.TransactionId, "endpoint", orderer.address, "err", err)
+			continue
+		}
+
+		status := response.GetStatus()
+		if status == common.Status_SUCCESS {
 			return &gp.SubmitResponse{}, nil
 		}
 
-		logger.Warnw("Error sending transaction to orderer", "txID", request.TransactionId, "endpoint", orderer.address, "err", err)
-		errDetails = append(errDetails, errorDetail(orderer.endpointConfig, err.Error()))
+		logger.Warnw("Unsuccessful response sending transaction to orderer", "txID", request.TransactionId, "endpoint", orderer.address, "status", status, "info", response.GetInfo())
 
-		errStatus := toRpcStatus(err)
-		if errStatus.Code() != codes.Unavailable {
-			return nil, newRpcError(errStatus.Code(), errStatus.Message(), errDetails...)
+		if status >= 400 && status < 500 {
+			// client error - don't retry
+			return nil, newRpcError(codes.Aborted, fmt.Sprintf("received unsuccessful response from orderer: %s", common.Status_name[int32(status)]))
 		}
 	}
 
 	return nil, newRpcError(codes.Unavailable, "no orderers could successfully process transaction", errDetails...)
 }
 
-func (gs *Server) broadcast(ctx context.Context, orderer *orderer, txn *common.Envelope) error {
+func (gs *Server) broadcast(ctx context.Context, orderer *orderer, txn *common.Envelope) (*ab.BroadcastResponse, error) {
 	broadcast, err := orderer.client.Broadcast(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := broadcast.Send(txn); err != nil {
-		return err
+		return nil, err
 	}
 
 	response, err := broadcast.Recv()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if response.GetStatus() != common.Status_SUCCESS {
-		return status.Errorf(codes.Aborted, "received unsuccessful response from orderer: %s", common.Status_name[int32(response.GetStatus())])
-	}
-
-	return nil
+	return response, nil
 }
 
 // CommitStatus returns the validation code for a specific transaction on a specific channel. If the transaction is

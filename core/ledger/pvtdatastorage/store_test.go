@@ -8,6 +8,7 @@ package pvtdatastorage
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"strings"
 	"testing"
@@ -131,7 +132,7 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 	expectedMissingPvtDataInfo.Add(2, 1, "ns-1", "coll-2")
 	expectedMissingPvtDataInfo.Add(2, 3, "ns-1", "coll-1")
 
-	missingPvtDataInfo, err := store.GetMissingPvtDataInfoForMostRecentBlocks(1)
+	missingPvtDataInfo, err := store.GetMissingPvtDataInfoForMostRecentBlocks(math.MaxUint64, 1)
 	require.NoError(t, err)
 	require.Equal(t, expectedMissingPvtDataInfo, missingPvtDataInfo)
 
@@ -144,13 +145,23 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 	// missing data in block1, tx2
 	expectedMissingPvtDataInfo.Add(1, 2, "ns-3", "coll-1")
 
-	missingPvtDataInfo, err = store.GetMissingPvtDataInfoForMostRecentBlocks(2)
+	missingPvtDataInfo, err = store.GetMissingPvtDataInfoForMostRecentBlocks(math.MaxUint64, 2)
 	require.NoError(t, err)
 	require.Equal(t, expectedMissingPvtDataInfo, missingPvtDataInfo)
 
-	missingPvtDataInfo, err = store.GetMissingPvtDataInfoForMostRecentBlocks(10)
+	missingPvtDataInfo, err = store.GetMissingPvtDataInfoForMostRecentBlocks(math.MaxUint64, 10)
 	require.NoError(t, err)
 	require.Equal(t, expectedMissingPvtDataInfo, missingPvtDataInfo)
+
+	expectedMissingPvtDataInfoBlkOneOnly := ledger.MissingPvtDataInfo{}
+	expectedMissingPvtDataInfoBlkOneOnly.Add(1, 1, "ns-1", "coll-1")
+	expectedMissingPvtDataInfoBlkOneOnly.Add(1, 1, "ns-1", "coll-2")
+	expectedMissingPvtDataInfoBlkOneOnly.Add(1, 1, "ns-2", "coll-1")
+	expectedMissingPvtDataInfoBlkOneOnly.Add(1, 1, "ns-2", "coll-2")
+	expectedMissingPvtDataInfoBlkOneOnly.Add(1, 2, "ns-3", "coll-1")
+	missingPvtDataInfo, err = store.GetMissingPvtDataInfoForMostRecentBlocks(1, 10)
+	require.NoError(t, err)
+	require.Equal(t, expectedMissingPvtDataInfoBlkOneOnly, missingPvtDataInfo)
 }
 
 func TestStoreIteratorError(t *testing.T) {
@@ -168,7 +179,7 @@ func TestStoreIteratorError(t *testing.T) {
 	})
 
 	t.Run("GetMissingPvtDataInfoForMostRecentBlocks", func(t *testing.T) {
-		missingPvtDataInfo, err := store.GetMissingPvtDataInfoForMostRecentBlocks(10)
+		missingPvtDataInfo, err := store.GetMissingPvtDataInfoForMostRecentBlocks(math.MaxUint64, 10)
 		require.EqualError(t, err, errStr)
 		require.Nil(t, missingPvtDataInfo)
 	})
@@ -360,7 +371,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 	expectedMissingPvtDataInfo.Add(1, 1, "ns-1", "coll-1")
 	expectedMissingPvtDataInfo.Add(1, 1, "ns-1", "coll-2")
 
-	missingPvtDataInfo, err := store.GetMissingPvtDataInfoForMostRecentBlocks(10)
+	missingPvtDataInfo, err := store.GetMissingPvtDataInfoForMostRecentBlocks(math.MaxUint64, 10)
 	require.NoError(t, err)
 	require.Equal(t, expectedMissingPvtDataInfo, missingPvtDataInfo)
 
@@ -383,7 +394,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 	// missing data in block1, tx1
 	expectedMissingPvtDataInfo.Add(1, 1, "ns-1", "coll-2")
 
-	missingPvtDataInfo, err = store.GetMissingPvtDataInfoForMostRecentBlocks(10)
+	missingPvtDataInfo, err = store.GetMissingPvtDataInfoForMostRecentBlocks(math.MaxUint64, 10)
 	require.NoError(t, err)
 	require.Equal(t, expectedMissingPvtDataInfo, missingPvtDataInfo)
 
@@ -414,7 +425,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 	// missing data in block1, tx1
 	expectedMissingPvtDataInfo.Add(1, 1, "ns-1", "coll-2")
 
-	missingPvtDataInfo, err = store.GetMissingPvtDataInfoForMostRecentBlocks(10)
+	missingPvtDataInfo, err = store.GetMissingPvtDataInfoForMostRecentBlocks(math.MaxUint64, 10)
 	require.NoError(t, err)
 	require.Equal(t, expectedMissingPvtDataInfo, missingPvtDataInfo)
 }
@@ -1517,6 +1528,64 @@ func TestFetchPrivateDataRawKey(t *testing.T) {
 	require.Equal(t, "", key)
 }
 
+func TestRemoveAppInitiatedPurgesUsingReconMarker(t *testing.T) {
+	ledgerid := "TestFetchPrivateDataRawKey"
+	btlPolicy := btltestutil.SampleBTLPolicy(
+		map[[2]string]uint64{
+			{"ns-1", "coll-1"}: 0,
+		},
+	)
+	env := NewTestStoreEnv(t, ledgerid, btlPolicy, pvtDataConf())
+	defer env.Cleanup()
+	s := env.TestStore
+
+	// commit 5 blocks
+	for i := 0; i < 5; i++ {
+		require.NoError(t, s.Commit(uint64(i), nil, nil, nil))
+	}
+
+	kvHahses := map[string][]byte{
+		"key-1-hash": nil,
+		"key-2-hash": nil,
+		"key-3-hash": nil,
+	}
+
+	// when no purge marker is present, the store returns the map as is
+	returnedKVHahes, err := s.RemoveAppInitiatedPurgesUsingReconMarker(kvHahses, "ns-1", "coll-1", 7, 0)
+	require.NoError(t, err)
+	require.Len(t, returnedKVHahes, 3)
+	require.Equal(t, kvHahses, returnedKVHahes)
+
+	// add a marker for one key in a collection
+	require.NoError(t,
+		s.Commit(5, nil, nil, []*PurgeMarker{
+			{
+				Ns:         "ns-1",
+				Coll:       "coll-1",
+				PvtkeyHash: []byte("key-1-hash"),
+				TxNum:      0,
+			},
+		}),
+	)
+
+	// a higher block query should still behave same
+	returnedKVHahes, err = s.RemoveAppInitiatedPurgesUsingReconMarker(kvHahses, "ns-1", "coll-1", 7, 0)
+	require.NoError(t, err)
+	require.Len(t, returnedKVHahes, 3)
+	require.Equal(t, kvHahses, returnedKVHahes)
+
+	// a lower block query should cause trimming
+	returnedKVHahes, err = s.RemoveAppInitiatedPurgesUsingReconMarker(kvHahses, "ns-1", "coll-1", 5, 0)
+	require.NoError(t, err)
+	require.Equal(t,
+		map[string][]byte{
+			"key-2-hash": nil,
+			"key-3-hash": nil,
+		},
+		returnedKVHahes,
+	)
+}
+
 func testCollElgEnabled(t *testing.T, conf *PrivateDataConfig) {
 	ledgerid := "TestCollElgEnabled"
 	btlPolicy := btltestutil.SampleBTLPolicy(
@@ -1562,7 +1631,7 @@ func testCollElgEnabled(t *testing.T, conf *PrivateDataConfig) {
 	expectedMissingPvtDataInfo := make(ledger.MissingPvtDataInfo)
 	expectedMissingPvtDataInfo.Add(1, 1, "ns-1", "coll-1")
 	expectedMissingPvtDataInfo.Add(1, 1, "ns-2", "coll-1")
-	missingPvtDataInfo, err := testStore.GetMissingPvtDataInfoForMostRecentBlocks(10)
+	missingPvtDataInfo, err := testStore.GetMissingPvtDataInfoForMostRecentBlocks(math.MaxUint64, 10)
 	require.NoError(t, err)
 	require.Equal(t, expectedMissingPvtDataInfo, missingPvtDataInfo)
 
@@ -1580,7 +1649,7 @@ func testCollElgEnabled(t *testing.T, conf *PrivateDataConfig) {
 	// Expected missing data should include newly eiligible collections
 	expectedMissingPvtDataInfo.Add(1, 4, "ns-1", "coll-2")
 	expectedMissingPvtDataInfo.Add(2, 1, "ns-1", "coll-2")
-	missingPvtDataInfo, err = testStore.GetMissingPvtDataInfoForMostRecentBlocks(10)
+	missingPvtDataInfo, err = testStore.GetMissingPvtDataInfoForMostRecentBlocks(math.MaxUint64, 10)
 	require.NoError(t, err)
 	require.Equal(t, expectedMissingPvtDataInfo, missingPvtDataInfo)
 
@@ -1597,7 +1666,7 @@ func testCollElgEnabled(t *testing.T, conf *PrivateDataConfig) {
 	// Expected missing data should include newly eiligible collections
 	expectedMissingPvtDataInfo.Add(1, 4, "ns-2", "coll-2")
 	expectedMissingPvtDataInfo.Add(2, 1, "ns-2", "coll-2")
-	missingPvtDataInfo, err = testStore.GetMissingPvtDataInfoForMostRecentBlocks(10)
+	missingPvtDataInfo, err = testStore.GetMissingPvtDataInfoForMostRecentBlocks(math.MaxUint64, 10)
 	require.NoError(t, err)
 	require.Equal(t, expectedMissingPvtDataInfo, missingPvtDataInfo)
 }

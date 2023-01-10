@@ -24,8 +24,15 @@ _arg_comp=('' )
 _arg_fabric_version="2.4.7"
 _arg_ca_version="1.5.5"
 
-ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m |sed 's/x86_64/amd64/g')" |sed 's/darwin-arm64/darwin-amd64/g')
+REGISTRY=${FABRIC_DOCKER_REGISTRY:-docker.io/hyperledger}
+
+OS=$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')
+ARCH=$(uname -m | sed 's/x86_64/amd64/g' | sed 's/aarch64/arm64/g')
+PLATFORM=${OS}-${ARCH}
+
+# Fabric < 1.2 uses uname -m for architecture.
 MARCH=$(uname -m)
+
 
 die()
 {
@@ -42,7 +49,6 @@ begins_with_short_option()
 	first_option="${1:0:1}"
 	test "$all_short_options" = "${all_short_options/$first_option/}" && return 1 || return 0
 }
-
 
 
 print_help()
@@ -143,10 +149,10 @@ singleImagePull() {
     while [[ $# -gt 0 ]]
     do
         image_name="$1"
-        echo "====>  hyperledger/fabric-$image_name:$three_digit_image_tag"
-        ${CONTAINER_CLI} pull "hyperledger/fabric-$image_name:$three_digit_image_tag"
-        ${CONTAINER_CLI} tag "hyperledger/fabric-$image_name:$three_digit_image_tag" "hyperledger/fabric-$image_name"
-        ${CONTAINER_CLI} tag "hyperledger/fabric-$image_name:$three_digit_image_tag" "hyperledger/fabric-$image_name:$two_digit_image_tag"
+        echo "====>  ${REGISTRY}/fabric-$image_name:$three_digit_image_tag"
+        ${CONTAINER_CLI} pull "${REGISTRY}/fabric-$image_name:$three_digit_image_tag"
+        ${CONTAINER_CLI} tag "${REGISTRY}/fabric-$image_name:$three_digit_image_tag" "${REGISTRY}/fabric-$image_name"
+        ${CONTAINER_CLI} tag "${REGISTRY}/fabric-$image_name:$three_digit_image_tag" "${REGISTRY}/fabric-$image_name:$two_digit_image_tag"
         shift
     done
 }
@@ -262,8 +268,13 @@ else
     : "${FABRIC_TAG:="$VERSION"}"
 fi
 
-BINARY_FILE=hyperledger-fabric-${ARCH}-${VERSION}.tar.gz
-CA_BINARY_FILE=hyperledger-fabric-ca-${ARCH}-${CA_VERSION}.tar.gz
+# Prior to fabric 2.5, use amd64 binaries on darwin-arm64
+if [[ $VERSION =~ ^2\.[0-4]\.* ]]; then
+  PLATFORM=$(echo $PLATFORM | sed 's/darwin-arm64/darwin-amd64/g')
+fi
+
+BINARY_FILE=hyperledger-fabric-${PLATFORM}-${VERSION}.tar.gz
+CA_BINARY_FILE=hyperledger-fabric-ca-${PLATFORM}-${CA_VERSION}.tar.gz
 
 # if nothing has been specified, assume everything
 if [[ ${_arg_comp[@]} =~ ^$ ]]; then

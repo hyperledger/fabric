@@ -9,8 +9,16 @@
 VERSION=2.4.7
 # if ca version not passed in, default to latest released version
 CA_VERSION=1.5.5
-ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m |sed 's/x86_64/amd64/g')" |sed 's/darwin-arm64/darwin-amd64/g')
+
+REGISTRY=${FABRIC_DOCKER_REGISTRY:-docker.io/hyperledger}
+
+OS=$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')
+ARCH=$(uname -m | sed 's/x86_64/amd64/g' | sed 's/aarch64/arm64/g')
+PLATFORM=${OS}-${ARCH}
+
+# Fabric < 1.2 uses uname -m for architecture.
 MARCH=$(uname -m)
+
 : ${CONTAINER_CLI:="docker"}
 
 printHelp() {
@@ -39,10 +47,10 @@ dockerPull() {
     while [[ $# -gt 0 ]]
     do
         image_name="$1"
-        echo "====> hyperledger/fabric-$image_name:$three_digit_image_tag"
-        ${CONTAINER_CLI} pull "hyperledger/fabric-$image_name:$three_digit_image_tag"
-        ${CONTAINER_CLI} tag "hyperledger/fabric-$image_name:$three_digit_image_tag" "hyperledger/fabric-$image_name"
-        ${CONTAINER_CLI} tag "hyperledger/fabric-$image_name:$three_digit_image_tag" "hyperledger/fabric-$image_name:$two_digit_image_tag"
+        echo "====>  ${REGISTRY}/fabric-$image_name:$three_digit_image_tag"
+        ${CONTAINER_CLI} pull "${REGISTRY}/fabric-$image_name:$three_digit_image_tag"
+        ${CONTAINER_CLI} tag "${REGISTRY}/fabric-$image_name:$three_digit_image_tag" "${REGISTRY}/fabric-$image_name"
+        ${CONTAINER_CLI} tag "${REGISTRY}/fabric-$image_name:$three_digit_image_tag" "${REGISTRY}/fabric-$image_name:$two_digit_image_tag"
         shift
     done
 }
@@ -160,8 +168,13 @@ else
     : "${THIRDPARTY_TAG:="$THIRDPARTY_IMAGE_VERSION"}"
 fi
 
-BINARY_FILE=hyperledger-fabric-${ARCH}-${VERSION}.tar.gz
-CA_BINARY_FILE=hyperledger-fabric-ca-${ARCH}-${CA_VERSION}.tar.gz
+# Prior to fabric 2.5, use amd64 binaries on darwin-arm64
+if [[ $VERSION =~ ^2\.[0-4]\.* ]]; then
+  PLATFORM=$(echo $PLATFORM | sed 's/darwin-arm64/darwin-amd64/g')
+fi
+
+BINARY_FILE=hyperledger-fabric-${PLATFORM}-${VERSION}.tar.gz
+CA_BINARY_FILE=hyperledger-fabric-ca-${PLATFORM}-${CA_VERSION}.tar.gz
 
 # then parse opts
 while getopts "h?dsb" opt; do

@@ -50,7 +50,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 		client, err := docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		config := nwo.ThreeOrgRaft()
+		config := nwo.ThreeOrgEtcdRaft()
 		network = nwo.New(config, testDir, client, StartPort(), components)
 
 		network.GenerateConfigTree()
