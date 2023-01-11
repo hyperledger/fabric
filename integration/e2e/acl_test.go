@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/protoutil"
@@ -27,15 +28,17 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
 var _ = Describe("EndToEndACL", func() {
 	var (
-		testDir   string
-		client    *docker.Client
-		network   *nwo.Network
-		chaincode nwo.Chaincode
-		process   ifrit.Process
+		testDir                     string
+		client                      *docker.Client
+		network                     *nwo.Network
+		chaincode                   nwo.Chaincode
+		ordererRunner               *ginkgomon.Runner
+		ordererProcess, peerProcess ifrit.Process
 
 		orderer   *nwo.Orderer
 		org1Peer0 *nwo.Peer
@@ -52,7 +55,7 @@ var _ = Describe("EndToEndACL", func() {
 
 		// Speed up test by reducing the number of peers we
 		// bring up and install chaincode to.
-		etcdRaftConfig := nwo.BasicEtcdRaft()
+		etcdRaftConfig := nwo.BasicEtcdRaftNoSysChan()
 		etcdRaftConfig.RemovePeer("Org1", "peer1")
 		etcdRaftConfig.RemovePeer("Org2", "peer1")
 		Expect(etcdRaftConfig.Peers).To(HaveLen(2))
@@ -60,10 +63,8 @@ var _ = Describe("EndToEndACL", func() {
 		network = nwo.New(etcdRaftConfig, testDir, client, StartPort(), components)
 		network.GenerateConfigTree()
 		network.Bootstrap()
-
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		// Start all the fabric processes
+		ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 
 		orderer = network.Orderer("orderer")
 		org1Peer0 = network.Peer("Org1", "peer0")
@@ -76,14 +77,22 @@ var _ = Describe("EndToEndACL", func() {
 			Ctor:    `{"Args":["init","a","100","b","200"]}`,
 			Policy:  `OR ('Org1MSP.member','Org2MSP.member')`,
 		}
-		network.CreateAndJoinChannel(orderer, "testchannel")
+		channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 		nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
 	})
 
 	AfterEach(func() {
-		process.Signal(syscall.SIGTERM)
-		Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
-		network.Cleanup()
+		if ordererProcess != nil {
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+		if peerProcess != nil {
+			peerProcess.Signal(syscall.SIGTERM)
+			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+		if network != nil {
+			network.Cleanup()
+		}
 		os.RemoveAll(testDir)
 	})
 

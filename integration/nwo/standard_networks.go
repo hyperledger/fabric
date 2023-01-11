@@ -183,25 +183,6 @@ func BasicEtcdRaft() *Config {
 	return config
 }
 
-func MinimalRaft() *Config {
-	config := BasicEtcdRaft()
-
-	config.Peers[1].Channels = nil
-	config.Channels = []*Channel{
-		{Name: "testchannel", Profile: "OneOrgChannel"},
-	}
-	config.Profiles = []*Profile{{
-		Name:     "SampleDevModeEtcdRaft",
-		Orderers: []string{"orderer"},
-	}, {
-		Name:          "OneOrgChannel",
-		Consortium:    "SampleConsortium",
-		Organizations: []string{"Org1"},
-	}}
-
-	return config
-}
-
 func MultiChannelEtcdRaft() *Config {
 	config := BasicConfig()
 
@@ -270,6 +251,110 @@ func MultiNodeBFT() *Config {
 		},
 	}
 	config.SystemChannel.Profile = "SampleDevModeBFT"
+
+	return config
+}
+
+// Utility methods for tests without the system channel.
+// These methods start from BasicConfig() and only use each other progressively.
+
+func BasicEtcdRaftNoSysChan() *Config {
+	// TODO after we finish converting all tests to not use the system channel, rename it
+	config := BasicConfig()
+
+	config.Consensus.Type = "etcdraft"
+	config.Profiles = []*Profile{
+		{
+			Name:          "TwoOrgsAppChannelEtcdRaft",
+			Consortium:    "SampleConsortium",
+			Orderers:      []string{"orderer"},
+			Organizations: []string{"Org1", "Org2"},
+		},
+	}
+	config.SystemChannel = nil
+	config.Consensus.ChannelParticipationEnabled = true
+	config.Consensus.BootstrapMethod = "none"
+	config.Channels = []*Channel{{Name: "testchannel", Profile: "TwoOrgsAppChannelEtcdRaft"}}
+
+	return config
+}
+
+func MultiChannelEtcdRaftNoSysChan() *Config {
+	// TODO after we finish converting all tests to not use the system channel, rename it
+	config := BasicConfig()
+
+	config.Consensus.Type = "etcdraft"
+	config.Profiles = []*Profile{
+		{
+			Name:          "TwoOrgsAppChannelEtcdRaft",
+			Consortium:    "SampleConsortium",
+			Orderers:      []string{"orderer"},
+			Organizations: []string{"Org1", "Org2"},
+		},
+	}
+	config.Channels = []*Channel{
+		{Name: "testchannel", Profile: "TwoOrgsAppChannelEtcdRaft"},
+		{Name: "testchannel2", Profile: "TwoOrgsAppChannelEtcdRaft"},
+	}
+
+	for _, peer := range config.Peers {
+		peer.Channels = []*PeerChannel{
+			{Name: "testchannel", Anchor: true},
+			{Name: "testchannel2", Anchor: true},
+		}
+	}
+
+	config.SystemChannel = nil
+	config.Consensus.ChannelParticipationEnabled = true
+	config.Consensus.BootstrapMethod = "none"
+
+	return config
+}
+
+func MinimalRaftNoSysChan() *Config {
+	// TODO after we finish converting all tests to not use the system channel, rename it
+	config := BasicEtcdRaft()
+
+	config.Peers[1].Channels = nil
+	config.Channels = []*Channel{
+		{Name: "testchannel", Profile: "OneOrgChannelEtcdRaft"},
+	}
+	config.Profiles = []*Profile{{
+		Name:          "OneOrgChannelEtcdRaft",
+		Orderers:      []string{"orderer"},
+		Consortium:    "SampleConsortium",
+		Organizations: []string{"Org1"},
+	}}
+
+	config.SystemChannel = nil
+	config.Consensus.ChannelParticipationEnabled = true
+	config.Consensus.BootstrapMethod = "none"
+
+	return config
+}
+
+// FullEtcdRaftNoSysChan is a configuration with two organizations and two peers per org.
+func FullEtcdRaftNoSysChan() *Config {
+	// TODO after we finish converting all tests to not use the system channel, rename it
+	config := BasicEtcdRaftNoSysChan()
+
+	config.Peers = append(
+		config.Peers,
+		&Peer{
+			Name:         "peer1",
+			Organization: "Org1",
+			Channels: []*PeerChannel{
+				{Name: "testchannel", Anchor: false},
+			},
+		},
+		&Peer{
+			Name:         "peer1",
+			Organization: "Org2",
+			Channels: []*PeerChannel{
+				{Name: "testchannel", Anchor: false},
+			},
+		},
+	)
 
 	return config
 }
