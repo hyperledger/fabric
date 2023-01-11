@@ -16,11 +16,11 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
@@ -29,15 +29,16 @@ import (
 
 var _ = Describe("Devmode", func() {
 	var (
-		testDir          string
-		client           *docker.Client
-		network          *nwo.Network
-		process          ifrit.Process
-		chaincode        nwo.Chaincode
-		legacyChaincode  nwo.Chaincode
-		chaincodeRunner  *ginkgomon.Runner
-		chaincodeProcess ifrit.Process
-		channelName      string
+		testDir                     string
+		client                      *docker.Client
+		network                     *nwo.Network
+		ordererRunner               *ginkgomon.Runner
+		ordererProcess, peerProcess ifrit.Process
+		chaincode                   nwo.Chaincode
+		legacyChaincode             nwo.Chaincode
+		chaincodeRunner             *ginkgomon.Runner
+		chaincodeProcess            ifrit.Process
+		channelName                 string
 	)
 
 	BeforeEach(func() {
@@ -57,15 +58,19 @@ var _ = Describe("Devmode", func() {
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		// Start all the fabric processes
+		ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 	})
 
 	AfterEach(func() {
-		if process != nil {
-			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+		if ordererProcess != nil {
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
+		if peerProcess != nil {
+			peerProcess.Signal(syscall.SIGTERM)
+			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
 
 		if chaincodeProcess != nil {
@@ -92,7 +97,7 @@ var _ = Describe("Devmode", func() {
 		orderer := network.Orderer("orderer")
 
 		By("setting up the channel")
-		network.CreateAndJoinChannel(orderer, channelName)
+		channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 		By("building chaincode")
 		chaincodeExecutePath := components.Build(legacyChaincode.Path)
@@ -145,7 +150,7 @@ var _ = Describe("Devmode", func() {
 		orderer := network.Orderer("orderer")
 
 		By("setting up the channel")
-		network.CreateAndJoinChannel(orderer, channelName)
+		channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 		By("enabling V2_0 application capabilities")
 		nwo.EnableCapabilities(network, channelName, "Application", "V2_0", orderer, org1peer0)
@@ -302,25 +307,19 @@ var devModeEtcdraft = &nwo.Config{
 		Users:         2,
 		CA:            &nwo.CA{Hostname: "ca"},
 	}},
-	Consortiums: []*nwo.Consortium{{
-		Name: "SampleConsortium",
-		Organizations: []string{
-			"Org1",
-		},
-	}},
 	Consensus: &nwo.Consensus{
-		Type:            "etcdraft",
-		BootstrapMethod: "file",
-	},
-	SystemChannel: &nwo.SystemChannel{
-		Name:    "systemchannel",
-		Profile: "SampleDevModeEtcdRaft",
+		Type:                        "etcdraft",
+		BootstrapMethod:             "none",
+		ChannelParticipationEnabled: true,
 	},
 	Orderers: []*nwo.Orderer{
 		{Name: "orderer", Organization: "OrdererOrg"},
 	},
 	Channels: []*nwo.Channel{
-		{Name: "testchannel", Profile: "OneOrgChannel"},
+		{
+			Name:    "testchannel",
+			Profile: "OneOrgChannel",
+		},
 	},
 	Peers: []*nwo.Peer{{
 		Name:         "peer0",
@@ -330,11 +329,9 @@ var devModeEtcdraft = &nwo.Config{
 		},
 	}},
 	Profiles: []*nwo.Profile{{
-		Name:     "SampleDevModeEtcdRaft",
-		Orderers: []string{"orderer"},
-	}, {
 		Name:          "OneOrgChannel",
 		Consortium:    "SampleConsortium",
+		Orderers:      []string{"orderer"},
 		Organizations: []string{"Org1"},
 	}},
 }
