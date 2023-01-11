@@ -19,8 +19,8 @@ import (
 
 // Signature implementation
 type Signature struct {
-	IdentifierHeader []byte
-	BlockHeader      []byte
+	IdentifierHeader     []byte
+	BlockHeader          []byte
 	OrdererBlockMetadata []byte
 }
 

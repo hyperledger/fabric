@@ -357,7 +357,6 @@ func UpdateConsenters(network *Network, peer *Peer, orderer *Orderer, channel st
 	updatedConfig.ChannelGroup.Groups["Orderer"].Values["Orderers"].Value = protoutil.MarshalOrPanic(orderersVal)
 
 	UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
-
 }
 
 // UpdateOrdererEndpoints executes a config update that updates the orderer metadata according to the given endpoints

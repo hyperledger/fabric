@@ -35,9 +35,10 @@ type HeartbeatEventHandler interface {
 type Role bool
 
 type roleChange struct {
-	view     uint64
-	leaderID uint64
-	follower Role
+	view                            uint64
+	leaderID                        uint64
+	follower                        Role
+	onlyStopSendHeartbearFromLeader bool
 }
 
 // heartbeatResponseCollector is a map from node ID to view number, and hold the last response from each node.
@@ -58,6 +59,7 @@ type HeartbeatMonitor struct {
 	view                          uint64
 	leaderID                      uint64
 	follower                      Role
+	stopSendHeartbearFromLeader   bool
 	lastHeartbeat                 time.Time
 	lastTick                      time.Time
 	hbRespCollector               heartbeatResponseCollector
@@ -157,6 +159,17 @@ func (hm *HeartbeatMonitor) InjectArtificialHeartbeat(sender uint64, msg *smartb
 	}
 }
 
+func (hm *HeartbeatMonitor) StopLeaderSendMsg() {
+	hm.logger.Infof("Changing role to folower without change current view and current leader")
+	select {
+	case hm.commandChan <- roleChange{
+		onlyStopSendHeartbearFromLeader: true,
+	}:
+	case <-hm.stopChan:
+		return
+	}
+}
+
 // ChangeRole will change the role of this HeartbeatMonitor
 func (hm *HeartbeatMonitor) ChangeRole(follower Role, view uint64, leaderID uint64) {
 	hm.runOnce.Do(func() {
@@ -179,7 +192,6 @@ func (hm *HeartbeatMonitor) ChangeRole(follower Role, view uint64, leaderID uint
 	case <-hm.stopChan:
 		return
 	}
-
 }
 
 func (hm *HeartbeatMonitor) handleMsg(sender uint64, msg *smartbftprotos.Message) {
@@ -208,7 +220,7 @@ func (hm *HeartbeatMonitor) handleHeartBeat(sender uint64, hb *smartbftprotos.He
 		return
 	}
 
-	if sender != hm.leaderID {
+	if !hm.stopSendHeartbearFromLeader && sender != hm.leaderID {
 		hm.logger.Debugf("Heartbeat sender is not leader, ignoring; leader: %d, sender: %d", hm.leaderID, sender)
 		return
 	}
@@ -305,7 +317,7 @@ func (hm *HeartbeatMonitor) tick(now time.Time) {
 	if hm.lastHeartbeat.IsZero() {
 		hm.lastHeartbeat = now
 	}
-	if hm.follower {
+	if bool(hm.follower) || hm.stopSendHeartbearFromLeader {
 		hm.followerTick(now)
 	} else {
 		hm.leaderTick(now)
@@ -322,10 +334,16 @@ func (hm *HeartbeatMonitor) closed() bool {
 }
 
 func (hm *HeartbeatMonitor) handleCommand(cmd roleChange) {
-	hm.timedOut = false
+	if cmd.onlyStopSendHeartbearFromLeader {
+		hm.stopSendHeartbearFromLeader = true
+		return
+	}
+
+	hm.stopSendHeartbearFromLeader = false
 	hm.view = cmd.view
 	hm.leaderID = cmd.leaderID
 	hm.follower = cmd.follower
+	hm.timedOut = false
 	hm.lastHeartbeat = hm.lastTick
 	hm.hbRespCollector = make(heartbeatResponseCollector)
 	hm.syncReq = false

@@ -58,7 +58,6 @@ func (s *Signer) SignProposal(proposal types.Proposal, _ []byte) *types.Signatur
 
 	signature := protoutil.SignOrPanic(s.SignerSerializer, sig.AsBytes())
 
-
 	return &types.Signature{
 		ID:    s.ID,
 		Value: signature,
@@ -70,7 +69,7 @@ func (s *Signer) SignProposal(proposal types.Proposal, _ []byte) *types.Signatur
 func (s *Signer) newIdentifierHeaderOrPanic(nonce []byte) *cb.IdentifierHeader {
 	return &cb.IdentifierHeader{
 		Identifier: uint32(s.ID),
-		Nonce:   nonce,
+		Nonce:      nonce,
 	}
 }
 

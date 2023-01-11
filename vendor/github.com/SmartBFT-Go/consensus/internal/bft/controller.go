@@ -58,6 +58,7 @@ type LeaderMonitor interface {
 	InjectArtificialHeartbeat(sender uint64, msg *protos.Message)
 	HeartbeatWasSent()
 	Close()
+	StopLeaderSendMsg()
 }
 
 // Proposer proposes a new proposal to be agreed on
@@ -265,8 +266,6 @@ func (c *Controller) OnRequestTimeout(request []byte, info types.RequestInfo) {
 
 	c.Logger.Infof("Request %s timeout expired, forwarding request to leader: %d", info, leaderID)
 	c.Comm.SendTransaction(leaderID, request)
-
-	return
 }
 
 // OnLeaderFwdRequestTimeout is called when the leader-forward timeout expires, and complains about the leader.
@@ -274,14 +273,13 @@ func (c *Controller) OnRequestTimeout(request []byte, info types.RequestInfo) {
 func (c *Controller) OnLeaderFwdRequestTimeout(request []byte, info types.RequestInfo) {
 	iAm, leaderID := c.iAmTheLeader()
 	if iAm {
-		c.Logger.Infof("Request %s leader-forwarding timeout expired, this node is the leader, nothing to do", info)
+		c.Logger.Infof("Request %s leader-forwarding timeout expired, this node is the leader, stop send heartbeat message", info)
+		c.LeaderMonitor.StopLeaderSendMsg()
 		return
 	}
 
 	c.Logger.Warnf("Request %s leader-forwarding timeout expired, complaining about leader: %d", info, leaderID)
 	c.FailureDetector.Complain(c.getCurrentViewNumber(), true)
-
-	return
 }
 
 // OnAutoRemoveTimeout is called when the auto-remove timeout expires.

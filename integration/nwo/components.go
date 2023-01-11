@@ -71,5 +71,5 @@ const CCEnvDefaultImage = "hyperledger/fabric-ccenv:latest"
 
 var RequiredImages = []string{
 	CCEnvDefaultImage,
-	//runner.CouchDBDefaultImage,
+	// runner.CouchDBDefaultImage,
 }

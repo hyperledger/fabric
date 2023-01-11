@@ -182,8 +182,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			invokeQuery(network, peer, network.Orderers[2], channel, 80)
 		})
 
-		FIt("smartbft node addition and removal", func() {
-
+		It("smartbft node addition and removal", func() {
 			networkConfig := nwo.MultiNodeSmartBFT()
 			networkConfig.SystemChannel.Name = ""
 			networkConfig.Channels = nil
@@ -596,10 +595,10 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			invokeQuery(network, peer, orderer, channel, 20)
 			time.Sleep(time.Second * 2)
 
-			//assertBlockReception(map[string]int{"testchannel1": 12}, network.Orderers, peer, network)
+			// assertBlockReception(map[string]int{"testchannel1": 12}, network.Orderers, peer, network)
 
 			invokeQuery(network, peer, orderer, channel, 10)
-			//assertBlockReception(map[string]int{"testchannel1": 13}, network.Orderers, peer, network)
+			// assertBlockReception(map[string]int{"testchannel1": 13}, network.Orderers, peer, network)
 
 			By("Submitting to orderer4")
 			invokeQuery(network, peer, network.Orderers[3], channel, 0)
@@ -776,11 +775,9 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			By("Waiting for circulating transaction to be re-proposed")
 			queryExpect(network, peer, channel, "x1", 100)
-
 		})
 
 		It("smartbft iterated addition and iterated removal", func() {
-
 			networkConfig := nwo.MultiNodeSmartBFT()
 			networkConfig.SystemChannel.Name = ""
 			networkConfig.Channels = nil
@@ -969,7 +966,6 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				/* 				By(fmt.Sprintf("Make sure the peers are up to date with the orderers and have height of %d", 8+i))
 				   				waitForBlockReceptionByPeer(peer, network, channel, uint64(8+i)) */
 			}
-
 		})
 
 		It("smartbft reconfiguration prevents blacklisting", func() {
@@ -1124,7 +1120,6 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Skipping verifying prev commits due to verification sequence advancing from 1 to 2 channel=testchannel1"))
 			Eventually(ordererRunners[2].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Skipping verifying prev commits due to verification sequence advancing from 1 to 2 channel=testchannel1"))
 			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Skipping verifying prev commits due to verification sequence advancing from 1 to 2 channel=testchannel1"))
-
 		})
 	})
 })
@@ -1508,5 +1503,4 @@ func deployChaincode(network *nwo.Network, channel string, testDir string) {
 		InitRequired:    true,
 		Label:           "my_prebuilt_chaincode",
 	})
-
 }

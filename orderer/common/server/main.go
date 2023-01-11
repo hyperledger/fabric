@@ -68,7 +68,7 @@ var (
 
 	clusterTypes = map[string]struct{}{
 		"etcdraft": {},
-		"BFT": {},
+		"BFT":      {},
 	}
 )
 

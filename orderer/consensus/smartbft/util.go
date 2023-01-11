@@ -235,6 +235,7 @@ func configFromMetadataOptions(selfID uint64, options *smartbft.Options) (types.
 		return config, errors.Wrap(err, "config validation failed")
 	}
 
+	config.RequestMaxBytes = 500 * 1024
 	return config, nil
 }
 
@@ -332,7 +333,6 @@ func RemoteNodesFromConfigBlock(block *cb.Block, selfID uint64, logger *flogging
 	oc, ok := bundle.OrdererConfig()
 	if !ok {
 		return nil, errors.New("no orderer config in config block")
-
 	}
 
 	configOptions := &smartbft.Options{}
