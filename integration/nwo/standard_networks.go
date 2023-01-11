@@ -230,31 +230,6 @@ func MultiNodeEtcdRaft() *Config {
 	return config
 }
 
-func MultiNodeBFT() *Config {
-	config := BasicConfig()
-
-	config.Consensus.Type = "BFT"
-	config.Orderers = []*Orderer{
-		{Name: "orderer1", Organization: "OrdererOrg"},
-		{Name: "orderer2", Organization: "OrdererOrg"},
-		{Name: "orderer3", Organization: "OrdererOrg"},
-	}
-	config.Profiles = []*Profile{
-		{
-			Name:     "SampleDevModeBFT",
-			Orderers: []string{"orderer1", "orderer2", "orderer3"},
-		},
-		{
-			Name:          "TwoOrgsChannel",
-			Consortium:    "SampleConsortium",
-			Organizations: []string{"Org1", "Org2"},
-		},
-	}
-	config.SystemChannel.Profile = "SampleDevModeBFT"
-
-	return config
-}
-
 // Utility methods for tests without the system channel.
 // These methods start from BasicConfig() and only use each other progressively.
 
@@ -355,6 +330,67 @@ func FullEtcdRaftNoSysChan() *Config {
 			},
 		},
 	)
+
+	return config
+}
+
+func MultiNodeBFTNoSysChan() *Config {
+	config := BasicConfig()
+
+	config.Consensus.Type = "BFT"
+	config.Orderers = []*Orderer{
+		{Name: "orderer1", Organization: "OrdererOrg"},
+		{Name: "orderer2", Organization: "OrdererOrg"},
+		{Name: "orderer3", Organization: "OrdererOrg"},
+	}
+	config.Profiles = []*Profile{
+		{
+			Name:          "TwoOrgsAppChannelBFT",
+			Consortium:    "SampleConsortium",
+			Organizations: []string{"Org1", "Org2"},
+			Orderers:      []string{"orderer1", "orderer2", "orderer3"},
+		},
+	}
+	config.SystemChannel = nil
+	config.Consensus.ChannelParticipationEnabled = true
+	config.Consensus.BootstrapMethod = "none"
+	config.Channels = []*Channel{{Name: "testchannel", Profile: "TwoOrgsAppChannelBFT"}}
+
+	return config
+}
+
+// ThreeOrgEtcdRaft returns a simple configuration with three organizations instead
+// of two.
+func ThreeOrgEtcdRaftNoSysChan() *Config {
+	config := BasicEtcdRaftNoSysChan()
+	config.Organizations = append(
+		config.Organizations,
+		&Organization{
+			Name:   "Org3",
+			MSPID:  "Org3MSP",
+			Domain: "org3.example.com",
+			Users:  2,
+			CA:     &CA{Hostname: "ca"},
+		},
+	)
+
+	config.Channels[0].Profile = "ThreeOrgsAppChannel"
+	config.Peers = append(
+		config.Peers,
+		&Peer{
+			Name:         "peer0",
+			Organization: "Org3",
+			Channels: []*PeerChannel{
+				{Name: "testchannel", Anchor: true},
+			},
+		},
+	)
+	config.Profiles = []*Profile{{
+		Name:          "ThreeOrgsAppChannel",
+		Consortium:    "SampleConsortium",
+		Orderers:      []string{"orderer"},
+		Organizations: []string{"Org1", "Org2", "Org3"},
+	}}
 
 	return config
 }
