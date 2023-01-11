@@ -358,3 +358,39 @@ func MultiNodeBFTNoSysChan() *Config {
 
 	return config
 }
+
+// ThreeOrgEtcdRaft returns a simple configuration with three organizations instead
+// of two.
+func ThreeOrgEtcdRaftNoSysChan() *Config {
+	config := BasicEtcdRaftNoSysChan()
+	config.Organizations = append(
+		config.Organizations,
+		&Organization{
+			Name:   "Org3",
+			MSPID:  "Org3MSP",
+			Domain: "org3.example.com",
+			Users:  2,
+			CA:     &CA{Hostname: "ca"},
+		},
+	)
+
+	config.Channels[0].Profile = "ThreeOrgsAppChannel"
+	config.Peers = append(
+		config.Peers,
+		&Peer{
+			Name:         "peer0",
+			Organization: "Org3",
+			Channels: []*PeerChannel{
+				{Name: "testchannel", Anchor: true},
+			},
+		},
+	)
+	config.Profiles = []*Profile{{
+		Name:          "ThreeOrgsAppChannel",
+		Consortium:    "SampleConsortium",
+		Orderers:      []string{"orderer"},
+		Organizations: []string{"Org1", "Org2", "Org3"},
+	}}
+
+	return config
+}
