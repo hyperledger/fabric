@@ -144,7 +144,7 @@ func (v *Verifier) VerifySignature(signature types.Signature) error {
 	id2Identity := v.RuntimeConfig.Load().(RuntimeConfig).ID2Identities
 	identity, exists := id2Identity[signature.ID]
 	if !exists {
-		return errors.Errorf("node with idignature of %d doesn't exist", signature.ID)
+		return errors.Errorf("node with id of %d doesn't exist", signature.ID)
 	}
 
 	return v.ConsenterVerifier.Evaluate([]*protoutil.SignedData{

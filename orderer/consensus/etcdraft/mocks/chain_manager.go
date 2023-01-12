@@ -47,9 +47,10 @@ func (fake *ChainManager) CreateChain(arg1 string) {
 	fake.createChainArgsForCall = append(fake.createChainArgsForCall, struct {
 		arg1 string
 	}{arg1})
+	stub := fake.CreateChainStub
 	fake.recordInvocation("CreateChain", []interface{}{arg1})
 	fake.createChainMutex.Unlock()
-	if fake.CreateChainStub != nil {
+	if stub != nil {
 		fake.CreateChainStub(arg1)
 	}
 }
@@ -79,15 +80,16 @@ func (fake *ChainManager) GetConsensusChain(arg1 string) consensus.Chain {
 	fake.getConsensusChainArgsForCall = append(fake.getConsensusChainArgsForCall, struct {
 		arg1 string
 	}{arg1})
+	stub := fake.GetConsensusChainStub
+	fakeReturns := fake.getConsensusChainReturns
 	fake.recordInvocation("GetConsensusChain", []interface{}{arg1})
 	fake.getConsensusChainMutex.Unlock()
-	if fake.GetConsensusChainStub != nil {
-		return fake.GetConsensusChainStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.getConsensusChainReturns
 	return fakeReturns.result1
 }
 
@@ -140,9 +142,10 @@ func (fake *ChainManager) ReportConsensusRelationAndStatusMetrics(arg1 string, a
 		arg2 types.ConsensusRelation
 		arg3 types.Status
 	}{arg1, arg2, arg3})
+	stub := fake.ReportConsensusRelationAndStatusMetricsStub
 	fake.recordInvocation("ReportConsensusRelationAndStatusMetrics", []interface{}{arg1, arg2, arg3})
 	fake.reportConsensusRelationAndStatusMetricsMutex.Unlock()
-	if fake.ReportConsensusRelationAndStatusMetricsStub != nil {
+	if stub != nil {
 		fake.ReportConsensusRelationAndStatusMetricsStub(arg1, arg2, arg3)
 	}
 }
@@ -171,9 +174,10 @@ func (fake *ChainManager) SwitchChainToFollower(arg1 string) {
 	fake.switchChainToFollowerArgsForCall = append(fake.switchChainToFollowerArgsForCall, struct {
 		arg1 string
 	}{arg1})
+	stub := fake.SwitchChainToFollowerStub
 	fake.recordInvocation("SwitchChainToFollower", []interface{}{arg1})
 	fake.switchChainToFollowerMutex.Unlock()
-	if fake.SwitchChainToFollowerStub != nil {
+	if stub != nil {
 		fake.SwitchChainToFollowerStub(arg1)
 	}
 }

@@ -165,9 +165,10 @@ func (mcs *ConsenterSupport) Sequence() uint64 {
 	return mcs.SequenceVal
 }
 
-// VerifyBlockSignature verifies a signature of a block
-func (mcs *ConsenterSupport) VerifyBlockSignature(_ []*protoutil.SignedData, _ *cb.ConfigEnvelope) error {
-	return mcs.BlockVerificationErr
+func (mcs *ConsenterSupport) SignatureVerifier() protoutil.BlockVerifierFunc {
+	return func(header *cb.BlockHeader, metadata *cb.BlockMetadata) error {
+		return mcs.BlockVerificationErr
+	}
 }
 
 // Append appends a new block to the ledger in its raw form,

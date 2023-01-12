@@ -56,7 +56,7 @@ func PullerConfigFromTopLevelConfig(
 	}
 }
 
-//go:generate mockery -dir . -name LedgerWriter -case underscore -output mocks/
+//go:generate mockery --dir . --name LedgerWriter --case underscore --output mocks/
 
 // LedgerWriter allows the caller to write blocks and inspect the height
 type LedgerWriter interface {
@@ -67,7 +67,7 @@ type LedgerWriter interface {
 	Height() uint64
 }
 
-//go:generate mockery -dir . -name LedgerFactory -case underscore -output mocks/
+//go:generate mockery --dir . --name LedgerFactory --case underscore --output mocks/
 
 // LedgerFactory retrieves or creates new ledgers by chainID
 type LedgerFactory interface {
@@ -76,7 +76,7 @@ type LedgerFactory interface {
 	GetOrCreate(chainID string) (LedgerWriter, error)
 }
 
-//go:generate mockery -dir . -name ChannelLister -case underscore -output mocks/
+//go:generate mockery --dir . --name ChannelLister --case underscore --output mocks/
 
 // ChannelLister returns a list of channels
 type ChannelLister interface {
@@ -347,7 +347,7 @@ type PullerConfig struct {
 	MaxTotalBufferBytes int
 }
 
-//go:generate mockery -dir . -name VerifierRetriever -case underscore -output mocks/
+//go:generate mockery --dir . --name VerifierRetriever --case underscore --output mocks/
 
 // VerifierRetriever retrieves BlockVerifiers for channels.
 type VerifierRetriever interface {
@@ -406,7 +406,7 @@ func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block, verifier
 	}, nil
 }
 
-//go:generate mockery -dir . -name ChainPuller -case underscore -output mocks/
+//go:generate mockery --dir . --name ChainPuller --case underscore --output mocks/
 
 // ChainPuller pulls blocks from a chain
 type ChainPuller interface {

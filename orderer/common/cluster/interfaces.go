@@ -14,7 +14,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer"
 )
 
-//go:generate mockery -dir . -name Communicator -case underscore -output ./mocks/
+//go:generate mockery --dir . --name Communicator --case underscore --output ./mocks/
 
 // Communicator defines communication for a consenter
 type Communicator interface {
@@ -36,7 +36,7 @@ type ChannelExtractor interface {
 	TargetChannel(message proto.Message) string
 }
 
-//go:generate mockery -dir . -name Handler -case underscore -output ./mocks/
+//go:generate mockery --dir . --name Handler --case underscore --output ./mocks/
 
 // Handler handles Step() and Submit() requests and returns a corresponding response
 type Handler interface {
@@ -74,7 +74,7 @@ func (rm RemoteNode) String() string {
 		rm.ID, rm.Endpoint, DERtoPEM(rm.ServerTLSCert), DERtoPEM(rm.ClientTLSCert), rm.ServerRootCA)
 }
 
-// go:generate mockery -dir . -name StepClientStream -case underscore -output ./mocks/
+// go:generate mockery --dir . --name StepClientStream --case underscore --output ./mocks/
 // StepClientStream
 type StepClientStream interface {
 	Send(request *orderer.StepRequest) error

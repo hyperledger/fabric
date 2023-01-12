@@ -115,7 +115,7 @@ func TestBlockPullerFactory_BlockPuller(t *testing.T) {
 func TestBlockPullerFactory_VerifyBlockSequence(t *testing.T) {
 	// replaces cluster.VerifyBlocks, count blocks
 	var numBlocks int32
-	altVerifyBlocks := func(blockBuff []*cb.Block, signatureVerifier cluster.BlockVerifier) error { // replaces cluster.VerifyBlocks, count invocations
+	altVerifyBlocks := func(blockBuff []*cb.Block, signatureVerifier protoutil.BlockVerifierFunc) error { // replaces cluster.VerifyBlocks, count invocations
 		if len(blockBuff) == 0 {
 			return errors.New("buffer is empty")
 		}

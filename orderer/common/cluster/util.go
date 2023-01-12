@@ -198,20 +198,6 @@ func (dialer *StandardDialer) Dial(endpointCriteria EndpointCriteria) (*grpc.Cli
 	return clientConfigCopy.Dial(endpointCriteria.Endpoint)
 }
 
-//go:generate mockery -dir . -name BlockVerifier -case underscore -output ./mocks/
-
-// TODO - I think this can go
-// BlockVerifier verifies block signatures.
-// type BlockVerifier interface {
-// 	// VerifyBlockSignature verifies a signature of a block.
-// 	// It has an optional argument of a configuration envelope
-// 	// which would make the block verification to use validation rules
-// 	// based on the given configuration in the ConfigEnvelope.
-// 	// If the config envelope passed is nil, then the validation rules used
-// 	// are the ones that were applied at commit of previous blocks.
-// 	VerifyBlockSignature(sd []*protoutil.SignedData, config *common.ConfigEnvelope) error
-// }
-
 // BlockSequenceVerifier verifies that the given consecutive sequence
 // of blocks is valid.
 type BlockSequenceVerifier func(blocks []*common.Block, channel string) error
@@ -541,7 +527,7 @@ func createErrorFunc(err error) protoutil.BlockVerifierFunc {
 	}
 }
 
-//go:generate mockery -dir . -name VerifierFactory -case underscore -output ./mocks/
+//go:generate mockery --dir . --name VerifierFactory --case underscore --output ./mocks/
 
 // VerifierFactory creates BlockVerifiers.
 type VerifierFactory interface {
@@ -700,7 +686,7 @@ func (bv *BlockValidationPolicyVerifier) VerifyBlockSignature(sd []*protoutil.Si
 	return policy.EvaluateSignedData(sd)
 }
 
-//go:generate mockery -dir . -name BlockRetriever -case underscore -output ./mocks/
+//go:generate mockery --dir . --name BlockRetriever --case underscore --output ./mocks/
 
 // BlockRetriever retrieves blocks
 type BlockRetriever interface {

@@ -885,8 +885,11 @@ func TestBlockPullerFromConfigBlockFailures(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
+			verifier := func(header *common.BlockHeader, metadata *common.BlockMetadata) error {
+				return nil
+			}
 			verifierRetriever := &mocks.VerifierRetriever{}
-			verifierRetriever.On("RetrieveVerifier", mock.Anything).Return(&cluster.NoopBlockVerifier{})
+			verifierRetriever.On("RetrieveVerifier", mock.Anything).Return(verifier)
 			bp, err := cluster.BlockPullerFromConfigBlock(testCase.pullerConfig, testCase.block, verifierRetriever, cryptoProvider)
 			require.Error(t, err)
 			require.Contains(t, err.Error(), testCase.expectedErr)
@@ -895,7 +898,7 @@ func TestBlockPullerFromConfigBlockFailures(t *testing.T) {
 	}
 }
 
-func testBlockPullerFromConfig(t *testing.T, blockVerifiers []cluster.BlockVerifier, expectedLogMsg string, iterations int) {
+func testBlockPullerFromConfig(t *testing.T, blockVerifiers []protoutil.BlockVerifierFunc, expectedLogMsg string, iterations int) {
 	verifierRetriever := &mocks.VerifierRetriever{}
 	for _, blockVerifier := range blockVerifiers {
 		verifierRetriever.On("RetrieveVerifier", mock.Anything).Return(blockVerifier).Once()
@@ -1040,15 +1043,18 @@ func TestSkipPullingPulledChannels(t *testing.T) {
 }
 
 func TestBlockPullerFromConfigBlockGreenPath(t *testing.T) {
+	noopVerifier := func(header *common.BlockHeader, metadata *common.BlockMetadata) error {
+		return nil
+	}
 	for _, testCase := range []struct {
 		description        string
-		blockVerifiers     []cluster.BlockVerifier
+		blockVerifiers     []protoutil.BlockVerifierFunc
 		expectedLogMessage string
 		iterations         int
 	}{
 		{
 			description:        "Success",
-			blockVerifiers:     []cluster.BlockVerifier{&cluster.NoopBlockVerifier{}},
+			blockVerifiers:     []protoutil.BlockVerifierFunc{noopVerifier},
 			expectedLogMessage: "Got block [0] of size",
 			iterations:         1,
 		},
@@ -1056,7 +1062,7 @@ func TestBlockPullerFromConfigBlockGreenPath(t *testing.T) {
 			description: "Failure",
 			iterations:  2,
 			// First time it returns nil, second time returns like the success case
-			blockVerifiers: []cluster.BlockVerifier{nil, &cluster.NoopBlockVerifier{}},
+			blockVerifiers: []protoutil.BlockVerifierFunc{nil, noopVerifier},
 			expectedLogMessage: "Failed verifying received blocks: " +
 				"couldn't acquire verifier for channel mychannel",
 		},
@@ -1066,11 +1072,6 @@ func TestBlockPullerFromConfigBlockGreenPath(t *testing.T) {
 				testCase.expectedLogMessage, testCase.iterations)
 		})
 	}
-}
-
-func TestNoopBlockVerifier(t *testing.T) {
-	v := &cluster.NoopBlockVerifier{}
-	require.Nil(t, v.VerifyBlockSignature(nil, nil))
 }
 
 func injectGlobalOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {

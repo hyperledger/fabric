@@ -45,15 +45,16 @@ func (fake *FakeRPC) SendConsensus(arg1 uint64, arg2 *orderer.ConsensusRequest) 
 		arg1 uint64
 		arg2 *orderer.ConsensusRequest
 	}{arg1, arg2})
+	stub := fake.SendConsensusStub
+	fakeReturns := fake.sendConsensusReturns
 	fake.recordInvocation("SendConsensus", []interface{}{arg1, arg2})
 	fake.sendConsensusMutex.Unlock()
-	if fake.SendConsensusStub != nil {
-		return fake.SendConsensusStub(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.sendConsensusReturns
 	return fakeReturns.result1
 }
 
@@ -107,15 +108,16 @@ func (fake *FakeRPC) SendSubmit(arg1 uint64, arg2 *orderer.SubmitRequest, arg3 f
 		arg2 *orderer.SubmitRequest
 		arg3 func(err error)
 	}{arg1, arg2, arg3})
+	stub := fake.SendSubmitStub
+	fakeReturns := fake.sendSubmitReturns
 	fake.recordInvocation("SendSubmit", []interface{}{arg1, arg2, arg3})
 	fake.sendSubmitMutex.Unlock()
-	if fake.SendSubmitStub != nil {
-		return fake.SendSubmitStub(arg1, arg2, arg3)
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.sendSubmitReturns
 	return fakeReturns.result1
 }
 

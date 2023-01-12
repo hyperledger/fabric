@@ -183,71 +183,6 @@ func TestStandardDialer(t *testing.T) {
 	require.ErrorContains(t, err, "error adding root certificate")
 }
 
-func TestVerifyBlockSignature(t *testing.T) {
-	verifier := &mocks.BlockVerifier{}
-	var nilConfigEnvelope *common.ConfigEnvelope
-	verifier.On("VerifyBlockSignature", mock.Anything, nilConfigEnvelope).Return(nil)
-
-	block := createBlockChain(3, 3)[0]
-
-	// The block should have a valid structure
-	err := cluster.VerifyBlockSignature(block, verifier, nil)
-	require.NoError(t, err)
-
-	for _, testCase := range []struct {
-		name          string
-		mutateBlock   func(*common.Block) *common.Block
-		errorContains string
-	}{
-		{
-			name:          "nil metadata",
-			errorContains: "no metadata in block",
-			mutateBlock: func(block *common.Block) *common.Block {
-				block.Metadata = nil
-				return block
-			},
-		},
-		{
-			name:          "zero metadata slice",
-			errorContains: "no metadata in block",
-			mutateBlock: func(block *common.Block) *common.Block {
-				block.Metadata.Metadata = nil
-				return block
-			},
-		},
-		{
-			name:          "nil metadata",
-			errorContains: "failed unmarshalling medatata for signatures",
-			mutateBlock: func(block *common.Block) *common.Block {
-				block.Metadata.Metadata[0] = []byte{1, 2, 3}
-				return block
-			},
-		},
-		{
-			name:          "bad signature header",
-			errorContains: "failed unmarshalling signature header",
-			mutateBlock: func(block *common.Block) *common.Block {
-				metadata := protoutil.GetMetadataFromBlockOrPanic(block, common.BlockMetadataIndex_SIGNATURES)
-				metadata.Signatures[0].SignatureHeader = []byte{1, 2, 3}
-				block.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(metadata)
-				return block
-			},
-		},
-	} {
-		testCase := testCase
-		t.Run(testCase.name, func(t *testing.T) {
-			// Create a copy of the block
-			blockCopy := &common.Block{}
-			err := proto.Unmarshal(protoutil.MarshalOrPanic(block), blockCopy)
-			require.NoError(t, err)
-			// Mutate the block to sabotage it
-			blockCopy = testCase.mutateBlock(blockCopy)
-			err = cluster.VerifyBlockSignature(blockCopy, verifier, nil)
-			require.Contains(t, err.Error(), testCase.errorContains)
-		})
-	}
-}
-
 func TestVerifyBlockHash(t *testing.T) {
 	var start uint64 = 3
 	var end uint64 = 23
@@ -327,9 +262,6 @@ func TestVerifyBlockHash(t *testing.T) {
 }
 
 func TestVerifyBlocks(t *testing.T) {
-	var sigSet1 []*protoutil.SignedData
-	var sigSet2 []*protoutil.SignedData
-
 	configEnvelope1 := &common.ConfigEnvelope{
 		Config: &common.Config{
 			Sequence: 1,
@@ -355,8 +287,8 @@ func TestVerifyBlocks(t *testing.T) {
 
 	for _, testCase := range []struct {
 		name                  string
-		configureVerifier     func(*mocks.BlockVerifier)
 		mutateBlockSequence   func([]*common.Block) []*common.Block
+		blockVerifier         func() protoutil.BlockVerifierFunc
 		expectedError         string
 		verifierExpectedCalls int
 	}{
@@ -382,9 +314,10 @@ func TestVerifyBlocks(t *testing.T) {
 			mutateBlockSequence: func(blockSequence []*common.Block) []*common.Block {
 				return blockSequence
 			},
-			configureVerifier: func(verifier *mocks.BlockVerifier) {
-				var nilEnvelope *common.ConfigEnvelope
-				verifier.On("VerifyBlockSignature", mock.Anything, nilEnvelope).Return(errors.New("bad signature"))
+			blockVerifier: func() protoutil.BlockVerifierFunc {
+				return func(header *common.BlockHeader, metadata *common.BlockMetadata) error {
+					return errors.New("bad signature")
+				}
 			},
 			expectedError:         "bad signature",
 			verifierExpectedCalls: 1,
@@ -404,7 +337,6 @@ func TestVerifyBlocks(t *testing.T) {
 		{
 			name: "config blocks in the sequence need to be verified and one of them is improperly signed",
 			mutateBlockSequence: func(blockSequence []*common.Block) []*common.Block {
-				var err error
 				// Put a config transaction in block n / 4
 				blockSequence[len(blockSequence)/4].Data = &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(configTransaction(configEnvelope1))},
@@ -419,21 +351,21 @@ func TestVerifyBlocks(t *testing.T) {
 
 				assignHashes(blockSequence)
 
-				sigSet1, err = cluster.SignatureSetFromBlock(blockSequence[len(blockSequence)/4])
-				require.NoError(t, err)
-				sigSet2, err = cluster.SignatureSetFromBlock(blockSequence[len(blockSequence)/2])
-				require.NoError(t, err)
-
 				return blockSequence
 			},
-			configureVerifier: func(verifier *mocks.BlockVerifier) {
-				var nilEnvelope *common.ConfigEnvelope
-				// The first config block, validates correctly.
-				verifier.On("VerifyBlockSignature", sigSet1, nilEnvelope).Return(nil).Once()
-				// However, the second config block - validates incorrectly.
-				confEnv1 := &common.ConfigEnvelope{}
-				proto.Unmarshal(protoutil.MarshalOrPanic(configEnvelope1), confEnv1)
-				verifier.On("VerifyBlockSignature", sigSet2, confEnv1).Return(errors.New("bad signature")).Once()
+			blockVerifier: func() protoutil.BlockVerifierFunc {
+				var callCount int
+				return func(header *common.BlockHeader, metadata *common.BlockMetadata) error {
+					callCount++
+					switch callCount {
+					case 0:
+						return nil
+					case 1:
+						return errors.New("bad signature")
+					default:
+						return errors.New("Verifier function invoked too many times")
+					}
+				}
 			},
 			expectedError:         "bad signature",
 			verifierExpectedCalls: 2,
@@ -441,7 +373,6 @@ func TestVerifyBlocks(t *testing.T) {
 		{
 			name: "config block in the sequence needs to be verified, and it is properly signed",
 			mutateBlockSequence: func(blockSequence []*common.Block) []*common.Block {
-				var err error
 				// Put a config transaction in block n / 4
 				blockSequence[len(blockSequence)/4].Data = &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(configTransaction(configEnvelope1))},
@@ -450,20 +381,19 @@ func TestVerifyBlocks(t *testing.T) {
 
 				assignHashes(blockSequence)
 
-				sigSet1, err = cluster.SignatureSetFromBlock(blockSequence[len(blockSequence)/4])
-				require.NoError(t, err)
-
-				sigSet2, err = cluster.SignatureSetFromBlock(blockSequence[len(blockSequence)-1])
-				require.NoError(t, err)
-
 				return blockSequence
 			},
-			configureVerifier: func(verifier *mocks.BlockVerifier) {
-				var nilEnvelope *common.ConfigEnvelope
-				confEnv1 := &common.ConfigEnvelope{}
-				proto.Unmarshal(protoutil.MarshalOrPanic(configEnvelope1), confEnv1)
-				verifier.On("VerifyBlockSignature", sigSet1, nilEnvelope).Return(nil).Once()
-				verifier.On("VerifyBlockSignature", sigSet2, confEnv1).Return(nil).Once()
+			blockVerifier: func() protoutil.BlockVerifierFunc {
+				var callCount int
+				return func(header *common.BlockHeader, metadata *common.BlockMetadata) error {
+					callCount++
+					switch callCount {
+					case 1, 2:
+						return nil
+					default:
+						return errors.New("Verifier function invoked too many times")
+					}
+				}
 			},
 			// We have a single config block in the 'middle' of the chain, so we have 2 verifications total:
 			// The last block, and the config block.
@@ -472,7 +402,6 @@ func TestVerifyBlocks(t *testing.T) {
 		{
 			name: "last two blocks are config blocks, last block only verified once",
 			mutateBlockSequence: func(blockSequence []*common.Block) []*common.Block {
-				var err error
 				// Put a config transaction in block n-2 and in n-1
 				blockSequence[len(blockSequence)-2].Data = &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(configTransaction(configEnvelope1))},
@@ -486,23 +415,19 @@ func TestVerifyBlocks(t *testing.T) {
 
 				assignHashes(blockSequence)
 
-				sigSet1, err = cluster.SignatureSetFromBlock(blockSequence[len(blockSequence)-2])
-				require.NoError(t, err)
-
-				sigSet2, err = cluster.SignatureSetFromBlock(blockSequence[len(blockSequence)-1])
-				require.NoError(t, err)
-
 				return blockSequence
 			},
-			configureVerifier: func(verifier *mocks.BlockVerifier) {
-				var nilEnvelope *common.ConfigEnvelope
-				confEnv1 := &common.ConfigEnvelope{}
-				proto.Unmarshal(protoutil.MarshalOrPanic(configEnvelope1), confEnv1)
-				verifier.On("VerifyBlockSignature", sigSet1, nilEnvelope).Return(nil).Once()
-				// We ensure that the signature set of the last block is verified using the config envelope of the block
-				// before it.
-				verifier.On("VerifyBlockSignature", sigSet2, confEnv1).Return(nil).Once()
-				// Note that we do not record a call to verify the last block, with the config envelope extracted from the block itself.
+			blockVerifier: func() protoutil.BlockVerifierFunc {
+				var callCount int
+				return func(header *common.BlockHeader, metadata *common.BlockMetadata) error {
+					callCount++
+					switch callCount {
+					case 1, 2:
+						return nil
+					default:
+						return errors.New("Verifier function invoked too many times")
+					}
+				}
 			},
 			// We have 2 config blocks, yet we only verify twice- the first config block, and the next config block, but no more,
 			// since the last block is a config block.
@@ -513,9 +438,11 @@ func TestVerifyBlocks(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			blockchain := createBlockChain(50, 100)
 			blockchain = testCase.mutateBlockSequence(blockchain)
-			verifier := &mocks.BlockVerifier{}
-			if testCase.configureVerifier != nil {
-				testCase.configureVerifier(verifier)
+			var verifier protoutil.BlockVerifierFunc
+			if testCase.blockVerifier == nil {
+				verifier = func(header *common.BlockHeader, metadata *common.BlockMetadata) error { return nil }
+			} else {
+				verifier = testCase.blockVerifier()
 			}
 			err := cluster.VerifyBlocks(blockchain, verifier)
 			if testCase.expectedError != "" {
@@ -857,13 +784,13 @@ func TestBlockVerifierAssembler(t *testing.T) {
 		}, "mychannel")
 		require.NoError(t, err)
 
-		require.NoError(t, verifier.VerifyBlockSignature(nil, nil))
+		require.Error(t, verifier(nil, nil))
 	})
 
 	t.Run("Bad config envelope", func(t *testing.T) {
 		bva := &cluster.BlockVerifierAssembler{BCCSP: cryptoProvider}
 		_, err := bva.VerifierFromConfig(&common.ConfigEnvelope{}, "mychannel")
-		require.EqualError(t, err, "failed extracting bundle from envelope: channelconfig Config cannot be nil")
+		require.EqualError(t, err, "channelconfig Config cannot be nil")
 	})
 }
 
@@ -939,7 +866,10 @@ func TestVerificationRegistryRegisterVerifier(t *testing.T) {
 	block := &common.Block{}
 	require.NoError(t, proto.Unmarshal(blockBytes, block))
 
-	verifier := &mocks.BlockVerifier{}
+	mockErr := errors.New("Mock error")
+	verifier := func(header *common.BlockHeader, metadata *common.BlockMetadata) error {
+		return mockErr
+	}
 
 	verifierFactory := &mocks.VerifierFactory{}
 	verifierFactory.On("VerifierFromConfig",
@@ -947,12 +877,12 @@ func TestVerificationRegistryRegisterVerifier(t *testing.T) {
 
 	registry := &cluster.VerificationRegistry{
 		Logger:             flogging.MustGetLogger("test"),
-		VerifiersByChannel: make(map[string]cluster.BlockVerifier),
+		VerifiersByChannel: make(map[string]protoutil.BlockVerifierFunc),
 		VerifierFactory:    verifierFactory,
 	}
 
 	var loadCount int
-	registry.LoadVerifier = func(chain string) cluster.BlockVerifier {
+	registry.LoadVerifier = func(chain string) protoutil.BlockVerifierFunc {
 		require.Equal(t, "mychannel", chain)
 		loadCount++
 		return verifier
@@ -963,7 +893,7 @@ func TestVerificationRegistryRegisterVerifier(t *testing.T) {
 
 	registry.RegisterVerifier("mychannel")
 	v = registry.RetrieveVerifier("mychannel")
-	require.Equal(t, verifier, v)
+	require.Same(t, verifier(nil, nil), v(nil, nil))
 	require.Equal(t, 1, loadCount)
 
 	// If the verifier exists, this is a no-op
@@ -981,16 +911,19 @@ func TestVerificationRegistry(t *testing.T) {
 	flogging.ActivateSpec("test=DEBUG")
 	defer flogging.Reset()
 
-	verifier := &mocks.BlockVerifier{}
+	mockErr := errors.New("Mock error")
+	verifier := func(header *common.BlockHeader, metadata *common.BlockMetadata) error {
+		return mockErr
+	}
 
 	for _, testCase := range []struct {
 		description           string
-		verifiersByChannel    map[string]cluster.BlockVerifier
+		verifiersByChannel    map[string]protoutil.BlockVerifierFunc
 		blockCommitted        *common.Block
 		channelCommitted      string
 		channelRetrieved      string
-		expectedVerifier      cluster.BlockVerifier
-		verifierFromConfig    cluster.BlockVerifier
+		expectedVerifier      protoutil.BlockVerifierFunc
+		verifierFromConfig    protoutil.BlockVerifierFunc
 		verifierFromConfigErr error
 		loggedMessages        map[string]struct{}
 	}{
@@ -1042,7 +975,7 @@ func TestVerificationRegistry(t *testing.T) {
 				"Committed config block [0] for channel bar": {},
 			},
 			expectedVerifier:   nil,
-			verifiersByChannel: make(map[string]cluster.BlockVerifier),
+			verifiersByChannel: make(map[string]protoutil.BlockVerifierFunc),
 		},
 		{
 			description:        "valid block and verifier from config succeeds",
@@ -1054,7 +987,7 @@ func TestVerificationRegistry(t *testing.T) {
 				"Committed config block [0] for channel bar": {},
 			},
 			expectedVerifier:   verifier,
-			verifiersByChannel: make(map[string]cluster.BlockVerifier),
+			verifiersByChannel: make(map[string]protoutil.BlockVerifierFunc),
 		},
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
@@ -1079,7 +1012,12 @@ func TestVerificationRegistry(t *testing.T) {
 			verifier := registry.RetrieveVerifier(testCase.channelRetrieved)
 
 			require.Equal(t, testCase.loggedMessages, loggedEntriesByMethods)
-			require.Equal(t, testCase.expectedVerifier, verifier)
+			if testCase.expectedVerifier == nil {
+				require.Nil(t, verifier)
+			} else {
+				require.NotNil(t, verifier)
+				require.Same(t, testCase.expectedVerifier(nil, nil), verifier(nil, nil))
+			}
 		})
 	}
 }

@@ -107,7 +107,7 @@ type MetricsProvider interface {
 	NewHistogram(opts metrics.HistogramOpts) metrics.Histogram
 }
 
-//go:generate mockery -dir . -name MetricsProvider -case underscore -output ./mocks/
+//go:generate mockery --dir . --name MetricsProvider --case underscore --output ./mocks/
 
 // NewMetrics initializes new metrics for the cluster infrastructure.
 func NewMetrics(provider MetricsProvider) *Metrics {

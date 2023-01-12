@@ -60,13 +60,13 @@ func TestNodeIdentitiesByID(t *testing.T) {
 func TestVerifySignature(t *testing.T) {
 	logger := flogging.MustGetLogger("test")
 
-	ac := &mocks.AccessController{}
-	ac.On("Evaluate", mock.Anything).Return(errors.New("bad signature"))
+	cv := &mocks.ConsenterVerifier{}
+	cv.On("Evaluate", mock.Anything).Return(errors.New("bad signature"))
 
 	v := &smartbft.Verifier{
-		Logger:           logger,
-		AccessController: ac,
-		RuntimeConfig:    &atomic.Value{},
+		Logger:            logger,
+		ConsenterVerifier: cv,
+		RuntimeConfig:     &atomic.Value{},
 	}
 
 	rtc := smartbft.RuntimeConfig{
@@ -194,7 +194,7 @@ func TestVerifyConsenterSig(t *testing.T) {
 			signatureMutator: func(signature types.Signature) types.Signature {
 				sig := smartbft.Signature{}
 				_ = sig.Unmarshal(signature.Msg)
-				sig.Nonce = nil
+				// sig.Nonce = nil
 				return types.Signature{
 					ID:    signature.ID,
 					Value: signature.Value,

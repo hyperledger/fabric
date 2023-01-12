@@ -234,7 +234,7 @@ type policy interface { // copied from common.policies to avoid circular import.
 
 func BlockSignatureVerifier(bftEnabled bool, consenters []*cb.Consenter, policy policy) BlockVerifierFunc {
 	return func(header *cb.BlockHeader, metadata *cb.BlockMetadata) error {
-		if len(metadata.Metadata) < int(cb.BlockMetadataIndex_SIGNATURES)+1 {
+		if len(metadata.GetMetadata()) < int(cb.BlockMetadataIndex_SIGNATURES)+1 {
 			return errors.Errorf("no signatures in block metadata")
 		}
 
@@ -251,7 +251,7 @@ func BlockSignatureVerifier(bftEnabled bool, consenters []*cb.Consenter, policy 
 			if bftEnabled && len(metadataSignature.GetSignatureHeader()) == 0 && len(metadataSignature.GetIdentifierHeader()) > 0 {
 				identifierHeader, err := UnmarshalIdentifierHeader(metadataSignature.IdentifierHeader)
 				if err != nil {
-					return fmt.Errorf("failed unmarshalling identifier header for block %d: %v", header.Number, err)
+					return fmt.Errorf("failed unmarshalling identifier header for block %d: %v", header.GetNumber(), err)
 				}
 				identifier := identifierHeader.GetIdentifier()
 				signerIdentity = searchConsenterIdentityByID(consenters, identifier)
@@ -263,7 +263,7 @@ func BlockSignatureVerifier(bftEnabled bool, consenters []*cb.Consenter, policy 
 			} else {
 				signatureHeader, err := UnmarshalSignatureHeader(metadataSignature.GetSignatureHeader())
 				if err != nil {
-					return fmt.Errorf("failed unmarshalling signature header for block %d: %v", header.Number, err)
+					return fmt.Errorf("failed unmarshalling signature header for block %d: %v", header.GetNumber(), err)
 				}
 
 				signedPayload = util.ConcatenateBytes(md.Value, metadataSignature.SignatureHeader, BlockHeaderBytes(header))

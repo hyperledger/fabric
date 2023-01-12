@@ -110,15 +110,16 @@ func (fake *OrdererConfig) BatchSize() *orderer.BatchSize {
 	ret, specificReturn := fake.batchSizeReturnsOnCall[len(fake.batchSizeArgsForCall)]
 	fake.batchSizeArgsForCall = append(fake.batchSizeArgsForCall, struct {
 	}{})
+	stub := fake.BatchSizeStub
+	fakeReturns := fake.batchSizeReturns
 	fake.recordInvocation("BatchSize", []interface{}{})
 	fake.batchSizeMutex.Unlock()
-	if fake.BatchSizeStub != nil {
-		return fake.BatchSizeStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.batchSizeReturns
 	return fakeReturns.result1
 }
 
@@ -162,15 +163,16 @@ func (fake *OrdererConfig) BatchTimeout() time.Duration {
 	ret, specificReturn := fake.batchTimeoutReturnsOnCall[len(fake.batchTimeoutArgsForCall)]
 	fake.batchTimeoutArgsForCall = append(fake.batchTimeoutArgsForCall, struct {
 	}{})
+	stub := fake.BatchTimeoutStub
+	fakeReturns := fake.batchTimeoutReturns
 	fake.recordInvocation("BatchTimeout", []interface{}{})
 	fake.batchTimeoutMutex.Unlock()
-	if fake.BatchTimeoutStub != nil {
-		return fake.BatchTimeoutStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.batchTimeoutReturns
 	return fakeReturns.result1
 }
 
@@ -214,15 +216,16 @@ func (fake *OrdererConfig) Capabilities() channelconfig.OrdererCapabilities {
 	ret, specificReturn := fake.capabilitiesReturnsOnCall[len(fake.capabilitiesArgsForCall)]
 	fake.capabilitiesArgsForCall = append(fake.capabilitiesArgsForCall, struct {
 	}{})
+	stub := fake.CapabilitiesStub
+	fakeReturns := fake.capabilitiesReturns
 	fake.recordInvocation("Capabilities", []interface{}{})
 	fake.capabilitiesMutex.Unlock()
-	if fake.CapabilitiesStub != nil {
-		return fake.CapabilitiesStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.capabilitiesReturns
 	return fakeReturns.result1
 }
 
@@ -266,15 +269,16 @@ func (fake *OrdererConfig) ConsensusMetadata() []byte {
 	ret, specificReturn := fake.consensusMetadataReturnsOnCall[len(fake.consensusMetadataArgsForCall)]
 	fake.consensusMetadataArgsForCall = append(fake.consensusMetadataArgsForCall, struct {
 	}{})
+	stub := fake.ConsensusMetadataStub
+	fakeReturns := fake.consensusMetadataReturns
 	fake.recordInvocation("ConsensusMetadata", []interface{}{})
 	fake.consensusMetadataMutex.Unlock()
-	if fake.ConsensusMetadataStub != nil {
-		return fake.ConsensusMetadataStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.consensusMetadataReturns
 	return fakeReturns.result1
 }
 
@@ -318,15 +322,16 @@ func (fake *OrdererConfig) ConsensusState() orderer.ConsensusType_State {
 	ret, specificReturn := fake.consensusStateReturnsOnCall[len(fake.consensusStateArgsForCall)]
 	fake.consensusStateArgsForCall = append(fake.consensusStateArgsForCall, struct {
 	}{})
+	stub := fake.ConsensusStateStub
+	fakeReturns := fake.consensusStateReturns
 	fake.recordInvocation("ConsensusState", []interface{}{})
 	fake.consensusStateMutex.Unlock()
-	if fake.ConsensusStateStub != nil {
-		return fake.ConsensusStateStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.consensusStateReturns
 	return fakeReturns.result1
 }
 
@@ -370,15 +375,16 @@ func (fake *OrdererConfig) ConsensusType() string {
 	ret, specificReturn := fake.consensusTypeReturnsOnCall[len(fake.consensusTypeArgsForCall)]
 	fake.consensusTypeArgsForCall = append(fake.consensusTypeArgsForCall, struct {
 	}{})
+	stub := fake.ConsensusTypeStub
+	fakeReturns := fake.consensusTypeReturns
 	fake.recordInvocation("ConsensusType", []interface{}{})
 	fake.consensusTypeMutex.Unlock()
-	if fake.ConsensusTypeStub != nil {
-		return fake.ConsensusTypeStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.consensusTypeReturns
 	return fakeReturns.result1
 }
 
@@ -422,15 +428,16 @@ func (fake *OrdererConfig) Consenters() []*common.Consenter {
 	ret, specificReturn := fake.consentersReturnsOnCall[len(fake.consentersArgsForCall)]
 	fake.consentersArgsForCall = append(fake.consentersArgsForCall, struct {
 	}{})
+	stub := fake.ConsentersStub
+	fakeReturns := fake.consentersReturns
 	fake.recordInvocation("Consenters", []interface{}{})
 	fake.consentersMutex.Unlock()
-	if fake.ConsentersStub != nil {
-		return fake.ConsentersStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.consentersReturns
 	return fakeReturns.result1
 }
 
@@ -474,15 +481,16 @@ func (fake *OrdererConfig) MaxChannelsCount() uint64 {
 	ret, specificReturn := fake.maxChannelsCountReturnsOnCall[len(fake.maxChannelsCountArgsForCall)]
 	fake.maxChannelsCountArgsForCall = append(fake.maxChannelsCountArgsForCall, struct {
 	}{})
+	stub := fake.MaxChannelsCountStub
+	fakeReturns := fake.maxChannelsCountReturns
 	fake.recordInvocation("MaxChannelsCount", []interface{}{})
 	fake.maxChannelsCountMutex.Unlock()
-	if fake.MaxChannelsCountStub != nil {
-		return fake.MaxChannelsCountStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.maxChannelsCountReturns
 	return fakeReturns.result1
 }
 
@@ -526,15 +534,16 @@ func (fake *OrdererConfig) Organizations() map[string]channelconfig.OrdererOrg {
 	ret, specificReturn := fake.organizationsReturnsOnCall[len(fake.organizationsArgsForCall)]
 	fake.organizationsArgsForCall = append(fake.organizationsArgsForCall, struct {
 	}{})
+	stub := fake.OrganizationsStub
+	fakeReturns := fake.organizationsReturns
 	fake.recordInvocation("Organizations", []interface{}{})
 	fake.organizationsMutex.Unlock()
-	if fake.OrganizationsStub != nil {
-		return fake.OrganizationsStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.organizationsReturns
 	return fakeReturns.result1
 }
 
