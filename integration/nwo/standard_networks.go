@@ -146,26 +146,6 @@ func FullEtcdRaft() *Config {
 	return config
 }
 
-func BasicEtcdRaftWithIdemix() *Config {
-	config := BasicEtcdRaft()
-
-	// Add idemix organization
-	config.Organizations = append(config.Organizations, &Organization{
-		Name:          "Org3",
-		MSPID:         "Org3MSP",
-		MSPType:       "idemix",
-		Domain:        "org3.example.com",
-		EnableNodeOUs: false,
-		Users:         0,
-		CA:            &CA{Hostname: "ca"},
-	})
-	// Add idemix organization to consortium
-	config.Consortiums[0].Organizations = append(config.Consortiums[0].Organizations, "Org3")
-	config.Profiles[1].Organizations = append(config.Profiles[1].Organizations, "Org3")
-
-	return config
-}
-
 func BasicEtcdRaft() *Config {
 	config := BasicConfig()
 
@@ -249,6 +229,7 @@ func BasicEtcdRaftNoSysChan() *Config {
 	config.SystemChannel = nil
 	config.Consensus.ChannelParticipationEnabled = true
 	config.Consensus.BootstrapMethod = "none"
+	config.Consortiums = nil
 	config.Channels = []*Channel{{Name: "testchannel", Profile: "TwoOrgsAppChannelEtcdRaft"}}
 
 	return config
@@ -391,6 +372,25 @@ func ThreeOrgEtcdRaftNoSysChan() *Config {
 		Orderers:      []string{"orderer"},
 		Organizations: []string{"Org1", "Org2", "Org3"},
 	}}
+
+	return config
+}
+
+func BasicEtcdRaftWithIdemixNoSysChan() *Config {
+	config := BasicEtcdRaftNoSysChan()
+
+	// Add idemix organization
+	config.Organizations = append(config.Organizations, &Organization{
+		Name:          "Org3",
+		MSPID:         "Org3MSP",
+		MSPType:       "idemix",
+		Domain:        "org3.example.com",
+		EnableNodeOUs: false,
+		Users:         0,
+		CA:            &CA{Hostname: "ca"},
+	})
+	// Add idemix organization to consortium
+	config.Profiles[0].Organizations = append(config.Profiles[0].Organizations, "Org3")
 
 	return config
 }
