@@ -171,6 +171,11 @@ func (n *node) run(campaign bool) {
 			// to the followers and them writing to their disks. Check 10.2.1 in thesis
 			n.send(rd.Messages)
 
+		case <-n.storage.WALSyncC:
+			if err := n.storage.Sync(); err != nil {
+				n.logger.Warnf("Failed to sync raft log, error: %s", err)
+			}
+
 		case <-n.chain.haltC:
 			raftTicker.Stop()
 			n.Stop()
