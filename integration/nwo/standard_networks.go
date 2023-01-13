@@ -202,10 +202,6 @@ func MultiNodeBFTNoSysChan() *Config {
 			Orderers:      []string{"orderer1", "orderer2", "orderer3"},
 		},
 	}
-	config.SystemChannel = nil
-	config.Consensus.ChannelParticipationEnabled = true
-	config.Consensus.BootstrapMethod = "none"
-	config.Channels = []*Channel{{Name: "testchannel", Profile: "TwoOrgsAppChannelBFT"}}
 
 	return config
 }
