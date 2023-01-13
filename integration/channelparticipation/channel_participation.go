@@ -205,3 +205,21 @@ func JoinOrdererJoinPeersAppChannel(network *nwo.Network, channelID string, orde
 	peers := network.PeersWithChannel(channelID)
 	network.JoinChannel(channelID, orderer, peers...)
 }
+
+// JoinOrdererAppChannel Joins an orderer to a channel for which the genesis block was created by the network
+// bootstrap. It assumes a channel with one orderer. It waits for a leader (single orderer, always node=1).
+func JoinOrdererAppChannel(network *nwo.Network, channelID string, orderer *nwo.Orderer, ordererRunner *ginkgomon.Runner) {
+	appGenesisBlock := network.LoadAppChannelGenesisBlock(channelID)
+	expectedChannelInfo := ChannelInfo{
+		Name:              channelID,
+		URL:               fmt.Sprintf("/participation/v1/channels/%s", channelID),
+		Status:            "active",
+		ConsensusRelation: "consenter",
+		Height:            1,
+	}
+	Join(network, orderer, channelID, appGenesisBlock, expectedChannelInfo)
+
+	ginkgo.By(fmt.Sprintf("waiting for leader on channel %s", channelID))
+	Eventually(ordererRunner.Err(), network.EventuallyTimeout, time.Second).Should(
+		gbytes.Say(fmt.Sprintf("Raft leader changed: 0 -> 1 channel=%s node=1", channelID)))
+}

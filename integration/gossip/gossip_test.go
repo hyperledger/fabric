@@ -14,6 +14,7 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/ginkgo/v2"
@@ -42,7 +43,7 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		channelName = "testchannel"
-		network = nwo.New(nwo.FullEtcdRaft(), testDir, dockerClient, StartPort(), components)
+		network = nwo.New(nwo.FullEtcdRaftNoSysChan(), testDir, dockerClient, StartPort(), components)
 		network.GenerateConfigTree()
 
 		nwprocs = &networkProcesses{
@@ -115,11 +116,10 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 		By("bringing up all four peers")
 		startPeers(nwprocs, false, peer0Org1, peer1Org1, peer0Org2, peer1Org2)
 
-		network.CreateChannel(channelName, orderer, peer0Org1)
+		channelparticipation.JoinOrdererAppChannel(network, "testchannel", orderer, nwprocs.ordererRunner)
+
 		By("joining all peers to channel")
 		network.JoinChannel(channelName, orderer, peer0Org1, peer1Org1, peer0Org2, peer1Org2)
-
-		network.UpdateChannelAnchors(orderer, channelName)
 
 		// base peer will be used for chaincode interactions
 		basePeerForTransactions := peer0Org1
@@ -212,9 +212,9 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 			startPeers(nwprocs, false, peer0Org1, peer1Org1)
 
 			By("creating and joining a channel")
-			network.CreateChannel(channelName, orderer, peer0Org1)
+			channelparticipation.JoinOrdererAppChannel(network, "testchannel", orderer, nwprocs.ordererRunner)
+
 			network.JoinChannel(channelName, orderer, peer0Org1, peer1Org1)
-			network.UpdateChannelAnchors(orderer, channelName)
 
 			By("verifying peer1Org1 discovers all the peers before testing membership change on it")
 			Eventually(nwo.DiscoverPeers(network, peer1Org1, "User1", "testchannel"), network.EventuallyTimeout).Should(ConsistOf(
@@ -245,9 +245,8 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 			startPeers(nwprocs, false, peer0Org1, peer1Org1, peer0Org2, peer1Org2)
 
 			By("creating and joining a channel")
-			network.CreateChannel(channelName, orderer, peer0Org1)
+			channelparticipation.JoinOrdererAppChannel(network, "testchannel", orderer, nwprocs.ordererRunner)
 			network.JoinChannel(channelName, orderer, peer0Org1, peer1Org1, peer0Org2, peer1Org2)
-			network.UpdateChannelAnchors(orderer, channelName)
 
 			By("verifying membership on peer1Org1")
 			Eventually(nwo.DiscoverPeers(network, peer1Org1, "User1", "testchannel"), network.EventuallyTimeout).Should(ConsistOf(
