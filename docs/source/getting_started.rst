@@ -10,7 +10,7 @@ Getting Started - Install
    sdk_chaincode
 
 
-The Fabric application stack has five layers:
+The Fabric application stack has five layers!
 
 .. image:: ./getting_started_image2.png
    :width: 300px
