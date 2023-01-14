@@ -293,9 +293,8 @@ func (v *validator) validateKVReadHash(ns, coll string, kvReadHash *kvrwset.KVRe
 }
 
 type AppInitiatedPurgeUpdate struct {
-	CompositeKey              *privacyenabledstate.HashedCompositeKey
-	Version                   *version.Height
-	DeletePrivateKeyFromState bool
+	CompositeKey *privacyenabledstate.HashedCompositeKey
+	Version      *version.Height
 }
 
 type pvtdataPurgeTracker struct {
@@ -321,19 +320,10 @@ func (p *pvtdataPurgeTracker) update(rwset *rwsetutil.TxRwSet, version *version.
 
 				if hashedWrite.IsPurge {
 					p.m[ck] = &AppInitiatedPurgeUpdate{
-						CompositeKey:              &ck,
-						Version:                   version,
-						DeletePrivateKeyFromState: true,
+						CompositeKey: &ck,
+						Version:      version,
 					}
-					continue
 				}
-
-				existingUpdate, ok := p.m[ck]
-				if !ok {
-					continue
-				}
-				// the hash of a key that was purged in a previous transaction, got overwritten by this transaction
-				existingUpdate.DeletePrivateKeyFromState = false
 			}
 		}
 	}

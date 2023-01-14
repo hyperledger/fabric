@@ -416,8 +416,7 @@ func TestPrvtdataPurgeUpdates(t *testing.T) {
 						CollectionName: "coll1",
 						KeyHash:        string(util.ComputeStringHash("key1")),
 					},
-					Version:                   version.NewHeight(1, 0),
-					DeletePrivateKeyFromState: true,
+					Version: version.NewHeight(1, 0),
 				},
 				{
 					CompositeKey: &privacyenabledstate.HashedCompositeKey{
@@ -425,8 +424,7 @@ func TestPrvtdataPurgeUpdates(t *testing.T) {
 						CollectionName: "coll1",
 						KeyHash:        string(util.ComputeStringHash("key2")),
 					},
-					Version:                   version.NewHeight(1, 0),
-					DeletePrivateKeyFromState: true,
+					Version: version.NewHeight(1, 0),
 				},
 			},
 		)
@@ -449,8 +447,7 @@ func TestPrvtdataPurgeUpdates(t *testing.T) {
 						CollectionName: "coll1",
 						KeyHash:        string(util.ComputeStringHash("key1")),
 					},
-					Version:                   version.NewHeight(1, 0),
-					DeletePrivateKeyFromState: false,
+					Version: version.NewHeight(1, 0),
 				},
 				{
 					CompositeKey: &privacyenabledstate.HashedCompositeKey{
@@ -458,8 +455,7 @@ func TestPrvtdataPurgeUpdates(t *testing.T) {
 						CollectionName: "coll1",
 						KeyHash:        string(util.ComputeStringHash("key2")),
 					},
-					Version:                   version.NewHeight(1, 0),
-					DeletePrivateKeyFromState: true,
+					Version: version.NewHeight(1, 0),
 				},
 			},
 		)
@@ -482,8 +478,7 @@ func TestPrvtdataPurgeUpdates(t *testing.T) {
 						CollectionName: "coll1",
 						KeyHash:        string(util.ComputeStringHash("key1")),
 					},
-					Version:                   version.NewHeight(1, 1),
-					DeletePrivateKeyFromState: true,
+					Version: version.NewHeight(1, 1),
 				},
 				{
 					CompositeKey: &privacyenabledstate.HashedCompositeKey{
@@ -491,8 +486,7 @@ func TestPrvtdataPurgeUpdates(t *testing.T) {
 						CollectionName: "coll1",
 						KeyHash:        string(util.ComputeStringHash("key2")),
 					},
-					Version:                   version.NewHeight(1, 1),
-					DeletePrivateKeyFromState: true,
+					Version: version.NewHeight(1, 1),
 				},
 			},
 		)
