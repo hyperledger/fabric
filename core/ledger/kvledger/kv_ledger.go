@@ -666,18 +666,11 @@ func (l *kvLedger) commit(pvtdataAndBlock *ledger.BlockAndPvtData, commitOpts *l
 			},
 		)
 	}
-	if err = l.commitToPvtAndBlockStore(pvtdataAndBlock, purgeMarkers); err != nil {
-		return err
-	}
-	elapsedBlockstorageAndPvtdataCommit := time.Since(startBlockstorageAndPvtdataCommit)
 
-	startCommitState := time.Now()
-
+	// retrieve pvtkeys from pvtdata store prior to committing the purge marker, otherwise, the background deletion process
+	// may purge hashed index entries before we can fetch the corresponding private keys here.
 	pvtKeysToDelete := map[privacyenabledstate.PvtdataCompositeKey]*version.Height{}
 	for _, u := range appInitiatedPurgeUpdates {
-		if !u.DeletePrivateKeyFromState {
-			continue
-		}
 		pvtKey, err := l.pvtdataStore.FetchPrivateDataRawKey(
 			u.CompositeKey.Namespace, u.CompositeKey.CollectionName, []byte(u.CompositeKey.KeyHash),
 		)
@@ -693,6 +686,13 @@ func (l *kvLedger) commit(pvtdataAndBlock *ledger.BlockAndPvtData, commitOpts *l
 			Key:            pvtKey,
 		}] = u.Version
 	}
+
+	if err = l.commitToPvtAndBlockStore(pvtdataAndBlock, purgeMarkers); err != nil {
+		return err
+	}
+	elapsedBlockstorageAndPvtdataCommit := time.Since(startBlockstorageAndPvtdataCommit)
+
+	startCommitState := time.Now()
 	l.txmgr.UpdateBatchWithAppInitiatedPvtKeysToPurge(pvtKeysToDelete)
 	logger.Debugf("[%s] Committing block [%d] transactions to state database", l.ledgerID, blockNo)
 	if err = l.txmgr.Commit(); err != nil {
@@ -754,7 +754,8 @@ func (l *kvLedger) commitToPvtAndBlockStore(
 		pvtData, missingPvtData := constructPvtDataAndMissingData(blockAndPvtdata)
 
 		// if appInitiatedPurgeMarkers are being added, we need to sync with reconciliation path as the
-		// reconciliation reads these markers from pvtdata store.
+		// reconciliation reads these markers from pvtdata store for removing the already marked-for-purged
+		// data from the supplied pvt data in the reconciled batch.
 		if len(appInitiatedPurgeMarkers) > 0 {
 			l.pvtdataStoreLock.Lock()
 			defer l.pvtdataStoreLock.Unlock()

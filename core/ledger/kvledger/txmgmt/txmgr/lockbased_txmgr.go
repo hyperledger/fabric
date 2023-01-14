@@ -69,7 +69,13 @@ func (c *currentUpdates) maxTxNumber() uint64 {
 
 func (c *currentUpdates) purgeAppInitiatedPvtKeys(keys map[privacyenabledstate.PvtdataCompositeKey]*version.Height) {
 	for ck, ver := range keys {
-		c.batch.PvtUpdates.Delete(ck.Namespace, ck.CollectionName, ck.Key, ver)
+		pvtValVer := c.batch.PvtUpdates.Get(ck.Namespace, ck.CollectionName, ck.Key)
+		if pvtValVer == nil || pvtValVer.Version.Compare(ver) < 0 {
+			// delete the purged pvtkey from the statedb if the pvtkey is not present in the private updates
+			// (this could be because, either this peer is ineligible now, or the pvtWS is not supplied with the block)
+			// Don't delete if the pvtkey of higher version is present in the private updates
+			c.batch.PvtUpdates.Delete(ck.Namespace, ck.CollectionName, ck.Key, ver)
+		}
 	}
 }
 
