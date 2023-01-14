@@ -203,36 +203,62 @@ func TestAppInitiatedPrivateDataPurge(t *testing.T) {
 		s.setPvtdata("cc1", "coll1", "key1", "value1")
 		s.setPvtdata("cc1", "coll2", "key2", "value2")
 		s.setPvtdata("cc1", "coll2", "key3", "value3")
+		s.setPvtdata("cc1", "coll2", "key4", "value4")
+		s.setPvtdata("cc1", "coll2", "key5", "value5")
 	})
 	l.cutBlockAndCommitLegacy()
 
-	// Two transactions in block 3
+	// Three transactions in block 3
 	l.simulateDataTx("", func(s *simulator) {
 		// purge key1 and key2
 		s.purgePvtdata("cc1", "coll1", "key1")
 		s.purgePvtdata("cc1", "coll2", "key2")
+		s.setPvtdata("cc1", "coll2", "key3", "value3_new")
+		s.purgePvtdata("cc1", "coll2", "key5")
 	})
 
 	l.simulateDataTx("", func(s *simulator) {
 		// set key2 to a new value, after purge
 		s.setPvtdata("cc1", "coll2", "key2", "value2_new")
+		// purge key3 after having set to new value in previous transaction
+		s.purgePvtdata("cc1", "coll2", "key3")
 	})
+
+	l.simulateDataTx("", func(s *simulator) {
+		// set key5 to a new value, after purge
+		s.setPvtdata("cc1", "coll2", "key5", "value5_new")
+	})
+
+	// cause missing pvt data for new value for key5
+	l.causeMissingPvtData(2)
 	l.cutBlockAndCommitLegacy()
 
 	l.verifyPvtState("cc1", "coll1", "key1", "")           // key1 should have been purged from the state
 	l.verifyPvtState("cc1", "coll2", "key2", "value2_new") // key2 should be present with new value
-	l.verifyPvtState("cc1", "coll2", "key3", "value3")
+	l.verifyPvtState("cc1", "coll2", "key3", "")           // key3 should have been purged from the state
+	l.verifyPvtState("cc1", "coll2", "key4", "value4")     // key4 should be unaffected
+
+	// key5 - though private data set by most recent transaction in the block was missing for key5, still a preceding
+	// purge transaction in the block should cause deletion of old value from state
+	l.simulateDataTx("", func(s *simulator) {
+		_, err := s.GetPrivateData("cc1", "coll2", "key5")
+		require.EqualError(t, err, "private data matching public hash version is not available. Public hash version = {BlockNum: 3, TxNum: 2}, Private data version = <nil>")
+	})
 
 	l.verifyBlockAndPvtData(2, nil, func(r *retrievedBlockAndPvtdata) { // retrieve the pvtdata for block 2 from pvtdata storage
 		r.pvtdataShouldNotContainKey("cc1", "coll1", "key1")
 		r.pvtdataShouldNotContainKey("cc1", "coll2", "key2")
-		r.pvtdataShouldContain(0, "cc1", "coll2", "key3", "value3")
+		r.pvtdataShouldNotContainKey("cc1", "coll2", "key3")
+		r.pvtdataShouldContain(0, "cc1", "coll2", "key4", "value4")
+		r.pvtdataShouldNotContainKey("cc1", "coll2", "key5")
 	})
 
 	l.verifyBlockAndPvtData(3, nil, func(r *retrievedBlockAndPvtdata) { // retrieve the pvtdata for block 3 from pvtdata storage
 		r.pvtdataShouldNotContainKey("cc1", "coll1", "key1")
 		r.pvtdataShouldContain(1, "cc1", "coll2", "key2", "value2_new")
 		r.pvtdataShouldNotContainKey("cc1", "coll2", "key3")
+		r.pvtdataShouldNotContainKey("cc1", "coll2", "key4")
+		r.pvtdataShouldNotContainKey("cc1", "coll2", "key5")
 	})
 }
 
