@@ -1030,6 +1030,12 @@ func (n *Network) CreateAndJoinChannel(o *Orderer, channelName string) {
 // UpdateChannelAnchors determines the anchor peers for the specified channel,
 // creates an anchor peer update transaction for each organization, and submits
 // the update transactions to the orderer.
+<<<<<<< HEAD
+=======
+//
+// TODO using configtxgen with -outputAnchorPeersUpdate to update the anchor peers is deprecated and does not work
+// with channel participation API. We'll have to generate the channel update explicitly (see UpdateOrgAnchorPeers).
+>>>>>>> 8e3992816 (Fix basic checks)
 func (n *Network) UpdateChannelAnchors(o *Orderer, channelName string) {
 	tempFile, err := ioutil.TempFile("", "update-anchors")
 	Expect(err).NotTo(HaveOccurred())
