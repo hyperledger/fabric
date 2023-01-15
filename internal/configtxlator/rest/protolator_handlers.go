@@ -68,21 +68,21 @@ func Encode(w http.ResponseWriter, r *http.Request) {
 	msg, err := getMsgType(r)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintln(w, err)
+		sanitizedFprintln(w, err)
 		return
 	}
 
 	err = protolator.DeepUnmarshalJSON(r.Body, msg)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(w, err)
+		sanitizedFprintln(w, err)
 		return
 	}
 
 	data, err := proto.Marshal(msg)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(w, err)
+		sanitizedFprintln(w, err)
 		return
 	}
 
@@ -90,3 +90,4 @@ func Encode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Write(data)
 }
+
