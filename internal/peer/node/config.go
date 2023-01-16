@@ -78,6 +78,8 @@ func ledgerConfig() *ledger.Config {
 			Address:               viper.GetString("ledger.state.couchDBConfig.couchDBAddress"),
 			Username:              viper.GetString("ledger.state.couchDBConfig.username"),
 			Password:              viper.GetString("ledger.state.couchDBConfig.password"),
+			JwtPrivateKey:         viper.GetString("ledger.state.couchDBConfig.jwtPrivateKey"),
+			JwtUserName:           viper.GetString("ledger.state.couchDBConfig.jwtUserName"),
 			MaxRetries:            viper.GetInt("ledger.state.couchDBConfig.maxRetries"),
 			MaxRetriesOnStartup:   viper.GetInt("ledger.state.couchDBConfig.maxRetriesOnStartup"),
 			RequestTimeout:        viper.GetDuration("ledger.state.couchDBConfig.requestTimeout"),

@@ -28,6 +28,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/pkg/errors"
@@ -198,6 +199,11 @@ type databaseSecurity struct {
 		Names []string `json:"names"`
 		Roles []string `json:"roles"`
 	} `json:"members"`
+}
+
+// JWT contains the definition of a JWT object
+type JWT struct {
+	privateKey []byte
 }
 
 // couchDoc defines the structure for a JSON document value
@@ -1627,12 +1633,14 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 			req.Header.Set("Accept", "multipart/related")
 		}
 
-		// If username and password are set the use basic auth
+		// If username and password are set the use basic auth otherwise if JWT private key and JWT username is set use the jwt token authorization
 		if couchInstance.conf.Username != "" && couchInstance.conf.Password != "" {
 			// req.Header.Set("Authorization", "Basic YWRtaW46YWRtaW5w")
 			req.SetBasicAuth(couchInstance.conf.Username, couchInstance.conf.Password)
+		} else if couchInstance.conf.JwtPrivateKey != "" && couchInstance.conf.JwtUserName != "" {
+			token := generateToken(couchInstance.conf.JwtPrivateKey, couchInstance.conf.JwtUserName)
+			req.Header.Add("Authorization", "Bearer "+token)
 		}
-
 		// Execute http request
 		resp, errResp = couchInstance.client.Do(req)
 
@@ -1802,4 +1810,53 @@ func printDocumentIds(documentPointers []*couchDoc) (string, error) {
 		documentIds = append(documentIds, docMetadata.ID)
 	}
 	return strings.Join(documentIds, ","), nil
+}
+
+func NewJWT(privateKey []byte) JWT {
+	return JWT{
+		privateKey: privateKey,
+	}
+}
+
+// Generate a JWT token for a JWT object
+func (j JWT) Create(ttl time.Duration, jwtUserName string) (string, error) {
+	key, err := jwt.ParseRSAPrivateKeyFromPEM(j.privateKey)
+	if err != nil {
+		return "", fmt.Errorf("Error Parsing RSA Private key from PEM %s", err)
+	}
+
+	now := time.Now().UTC()
+
+	claims := make(jwt.MapClaims)
+	claims["_couchdb.roles"] = []string{"_admin"}
+	claims["exp"] = now.Add(ttl).Unix() // The expiration time after which the token must be disregarded.
+	claims["alg"] = "RS256"
+	claims["sub"] = jwtUserName // Couchdb Server Admin user name
+
+	token, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(key)
+	if err != nil {
+		return "", fmt.Errorf("Error Generating JWT token %s", err)
+	}
+
+	couchdbLogger.Debugf("JWT token generated: %s", token)
+
+	return token, nil
+}
+
+// Generate a new JWT token
+func generateToken(privateKeyPath string, jwtUserName string) string {
+	// Read JWT Private key
+	prvKey, err := ioutil.ReadFile(privateKeyPath)
+	if err != nil {
+		couchdbLogger.Errorf("Error in reading JWT Private key: %s", err)
+	}
+	// Create a new JWT object with private key
+	jwtToken := NewJWT(prvKey)
+
+	// Generate a new JWT token with the object created. For now duration is arbitarly set high to avoid token expiration issue on call
+	token, err := jwtToken.Create(time.Duration(24)*time.Hour, jwtUserName)
+	if err != nil {
+		couchdbLogger.Errorf("Error from jwtToken.create method: %s", err)
+	}
+	return token
 }

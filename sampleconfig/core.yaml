@@ -679,6 +679,10 @@ ledger:
        # If it is stored here, the file must be access control protected
        # to prevent unintended users from discovering the password.
        password:
+       # Path of JWT Private key file 
+       jwtPrivateKey: 
+       # This username must have read and write authority on CouchDB  
+       jwtUserName: 
        # Number of retries for CouchDB errors
        maxRetries: 3
        # Number of retries for CouchDB errors during peer startup.

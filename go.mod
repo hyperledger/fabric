@@ -45,7 +45,10 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
-require google.golang.org/protobuf v1.28.1
+require (
+	github.com/golang-jwt/jwt/v4 v4.4.3
+	google.golang.org/protobuf v1.28.1
+)
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect

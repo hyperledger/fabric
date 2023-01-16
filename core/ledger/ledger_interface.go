@@ -73,6 +73,10 @@ type CouchDBConfig struct {
 	Username string
 	// Password is the password for Username.
 	Password string
+	// Path of JWT Private Key
+	JwtPrivateKey string
+	// Username to authenticate with Couchdb. This username must have read and write access permissions
+	JwtUserName string
 	// MaxRetries is the maximum number of times to retry CouchDB operations on
 	// failure.
 	MaxRetries int
