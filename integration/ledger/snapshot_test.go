@@ -26,6 +26,7 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/integration/chaincode/kvexecutor"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/runner"
@@ -180,7 +181,6 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 				{IsDelete: "false", Value: newMarble(testKey, "blue", 35, "newowner2")},
 			}
 			helper.assertGetHistoryForMarble(legacyChaincode.Name, org3peer0, expectedHistory, testKey)
-
 			verifyQSCC(setup.network, org3peer0, testchannelID, blockNum, txidBeforeSnapshot)
 
 			// verify DUPLICATE_TXID error when resubmitting old tx on a peer bootstrapped from snapshot (v1_4 capability)
@@ -522,11 +522,7 @@ func initAndStartFourOrgsNetwork() *setup {
 	client, err := docker.NewClientFromEnv()
 	Expect(err).NotTo(HaveOccurred())
 
-	config := nwo.BasicEtcdRaft()
-
-	config.Channels = []*nwo.Channel{
-		{Name: testchannelID, Profile: "TwoOrgsChannel"},
-	}
+	config := nwo.BasicEtcdRaftNoSysChan()
 
 	for _, peer := range config.Peers {
 		peer.Channels = []*nwo.PeerChannel{
@@ -568,8 +564,7 @@ func initAndStartFourOrgsNetwork() *setup {
 		Users:         2,
 		CA:            &nwo.CA{Hostname: "ca"},
 	})
-	config.Consortiums[0].Organizations = append(config.Consortiums[0].Organizations, "Org3")
-	config.Profiles[1].Organizations = append(config.Profiles[1].Organizations, "Org3")
+	config.Profiles[0].Organizations = append(config.Profiles[0].Organizations, "Org3")
 	config.Peers = append(config.Peers, &nwo.Peer{
 		Name:         "peer0",
 		Organization: "Org3",
@@ -587,8 +582,7 @@ func initAndStartFourOrgsNetwork() *setup {
 		Users:         2,
 		CA:            &nwo.CA{Hostname: "ca"},
 	})
-	config.Consortiums[0].Organizations = append(config.Consortiums[0].Organizations, "Org4")
-	config.Profiles[1].Organizations = append(config.Profiles[1].Organizations, "Org4")
+	config.Profiles[0].Organizations = append(config.Profiles[0].Organizations, "Org4")
 	config.Peers = append(config.Peers, &nwo.Peer{
 		Name:         "peer0",
 		Organization: "Org4",
@@ -633,6 +627,7 @@ func initAndStartFourOrgsNetwork() *setup {
 		network:   n,
 		peers:     peers,
 		channelID: testchannelID,
+		orderer:   n.Orderer("orderer"),
 	}
 	Expect(setup.testDir).To(Equal(setup.network.RootDir))
 
@@ -642,12 +637,8 @@ func initAndStartFourOrgsNetwork() *setup {
 	By("starting peers")
 	setup.startPeers()
 
-	orderer := n.Orderer("orderer")
-	setup.orderer = orderer
-
 	By("creating and joining testchannel")
-	n.CreateAndJoinChannel(orderer, testchannelID)
-	n.UpdateChannelAnchors(orderer, testchannelID)
+	channelparticipation.JoinOrdererJoinPeersAppChannel(setup.network, "testchannel", setup.orderer, setup.ordererRunner)
 
 	By("verifying membership for testchannel")
 	n.VerifyMembership(n.PeersWithChannel(testchannelID), testchannelID)
