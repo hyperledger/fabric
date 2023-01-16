@@ -111,7 +111,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, chaincodeName str
 	ExpectWithOffset(1, sess).To(gbytes.Say(fmt.Sprint(initialQueryResult - 10)))
 }
 
-func RestartNetwork(ordererProcess, peerProcess ifrit.Process, network *nwo.Network) (*ginkgomon.Runner, ifrit.Process, ifrit.Runner, ifrit.Process) {
+func RestartNetwork(ordererProcess, peerProcess ifrit.Process, network *nwo.Network) (*ginkgomon.Runner, ifrit.Process, ifrit.Process) {
 	peerProcess.Signal(syscall.SIGTERM)
 	Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 	ordererProcess.Signal(syscall.SIGTERM)
@@ -126,7 +126,7 @@ func RestartNetwork(ordererProcess, peerProcess ifrit.Process, network *nwo.Netw
 	peerProcess = ifrit.Invoke(peerGroupRunner)
 	Eventually(peerProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
-	return ordererRunner, ordererProcess, peerGroupRunner, peerProcess
+	return ordererRunner, ordererProcess, peerProcess
 }
 
 func SignedProposal(channel, chaincode string, signer *nwo.SigningIdentity, args ...string) (*pb.SignedProposal, *pb.Proposal, string) {

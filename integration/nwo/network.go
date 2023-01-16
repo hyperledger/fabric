@@ -285,7 +285,9 @@ func (n *Network) AddOrg(o *Organization, peers ...*Peer) {
 	}
 
 	n.Organizations = append(n.Organizations, o)
-	n.Consortiums[0].Organizations = append(n.Consortiums[0].Organizations, o.Name)
+	if n.Consortiums != nil {
+		n.Consortiums[0].Organizations = append(n.Consortiums[0].Organizations, o.Name)
+	}
 }
 
 // ConfigTxPath returns the path to the generated configtxgen configuration
