@@ -632,9 +632,7 @@ var _ = Describe("EndToEnd", func() {
 	})
 
 	Describe("basic lifecycle operations for chaincode install and update", func() {
-		var (
-			process ifrit.Process
-		)
+		var process ifrit.Process
 
 		BeforeEach(func() {
 			network = nwo.New(nwo.FullEtcdRaft(), testDir, client, StartPort(), components)
