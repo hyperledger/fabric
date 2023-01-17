@@ -230,8 +230,13 @@ func bftSmartConsensusBuild(
 				return c.RuntimeConfig.Load().(RuntimeConfig).LastConfigBlock.Header.Number
 			},
 		},
-		// TODO_PARAM: SHALLOW COPY IS ISSUE HERE
-		Metadata:          *latestMetadata,
+		Metadata: smartbftprotos.ViewMetadata{
+			ViewId:                    latestMetadata.ViewId,
+			LatestSequence:            latestMetadata.LatestSequence,
+			DecisionsInView:           latestMetadata.DecisionsInView,
+			BlackList:                 latestMetadata.BlackList,
+			PrevCommitSignatureDigest: latestMetadata.PrevCommitSignatureDigest,
+		},
 		WAL:               consensusWAL,
 		WALInitialContent: walInitState, // Read from WAL entries
 		Application:       c,

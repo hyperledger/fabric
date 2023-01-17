@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package nwo
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -348,8 +347,6 @@ func UpdateConsenters(network *Network, peer *Peer, orderer *Orderer, channel st
 	f(orderersVal)
 
 	policies.EncodeBFTBlockVerificationPolicy(orderersVal.ConsenterMapping, updatedConfig.ChannelGroup.Groups["Orderer"])
-
-	fmt.Printf("ConsentersConfig: %+v\n", orderersVal)
 
 	rawOrderers.Value, err = proto.Marshal(orderersVal)
 	Expect(err).NotTo(HaveOccurred())

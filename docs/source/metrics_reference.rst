@@ -61,6 +61,16 @@ The following orderer metrics are exported for consumption by Prometheus.
 |                                              |           |                                                            +-----------+--------------------------------------------------------------------+
 |                                              |           |                                                            | channel   |                                                                    |
 +----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
+| consensus_BFT_cluster_size                   | gauge     | Number of nodes in this channel.                           | channel   |                                                                    |
++----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
+| consensus_BFT_committed_block_number         | gauge     | The number of the latest committed block.                  | channel   |                                                                    |
++----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
+| consensus_BFT_is_leader                      | gauge     | The leadership status of the current node according to the | channel   |                                                                    |
+|                                              |           | latest committed block: 1 if it is the leader else 0.      |           |                                                                    |
++----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
+| consensus_BFT_leader_id                      | gauge     | The id of the current leader according to the latest       | channel   |                                                                    |
+|                                              |           | committed block.                                           |           |                                                                    |
++----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 | consensus_etcdraft_active_nodes              | gauge     | Number of active nodes in this channel.                    | channel   |                                                                    |
 +----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 | consensus_etcdraft_cluster_size              | gauge     | Number of nodes in this channel.                           | channel   |                                                                    |
@@ -84,16 +94,6 @@ The following orderer metrics are exported for consumption by Prometheus.
 | consensus_etcdraft_proposal_failures         | counter   | The number of proposal failures.                           | channel   |                                                                    |
 +----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 | consensus_etcdraft_snapshot_block_number     | gauge     | The block number of the latest snapshot.                   | channel   |                                                                    |
-+----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
-| consensus_smartbft_cluster_size              | gauge     | Number of nodes in this channel.                           | channel   |                                                                    |
-+----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
-| consensus_smartbft_committed_block_number    | gauge     | The number of the latest committed block.                  | channel   |                                                                    |
-+----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
-| consensus_smartbft_is_leader                 | gauge     | The leadership status of the current node according to the | channel   |                                                                    |
-|                                              |           | latest committed block: 1 if it is the leader else 0.      |           |                                                                    |
-+----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
-| consensus_smartbft_leader_id                 | gauge     | The id of the current leader according to the latest       | channel   |                                                                    |
-|                                              |           | committed block.                                           |           |                                                                    |
 +----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 | deliver_blocks_sent                          | counter   | The number of blocks sent by the deliver service.          | channel   |                                                                    |
 |                                              |           |                                                            +-----------+--------------------------------------------------------------------+
@@ -224,6 +224,16 @@ associated with the metric.
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | cluster.comm.msg_send_time.%{host}.%{channel}                             | histogram | The time it takes to send a message in seconds.            |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.BFT.cluster_size.%{channel}                                     | gauge     | Number of nodes in this channel.                           |
++---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.BFT.committed_block_number.%{channel}                           | gauge     | The number of the latest committed block.                  |
++---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.BFT.is_leader.%{channel}                                        | gauge     | The leadership status of the current node according to the |
+|                                                                           |           | latest committed block: 1 if it is the leader else 0.      |
++---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.BFT.leader_id.%{channel}                                        | gauge     | The id of the current leader according to the latest       |
+|                                                                           |           | committed block.                                           |
++---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.etcdraft.active_nodes.%{channel}                                | gauge     | Number of active nodes in this channel.                    |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.etcdraft.cluster_size.%{channel}                                | gauge     | Number of nodes in this channel.                           |
@@ -247,16 +257,6 @@ associated with the metric.
 | consensus.etcdraft.proposal_failures.%{channel}                           | counter   | The number of proposal failures.                           |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.etcdraft.snapshot_block_number.%{channel}                       | gauge     | The block number of the latest snapshot.                   |
-+---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
-| consensus.smartbft.cluster_size.%{channel}                                | gauge     | Number of nodes in this channel.                           |
-+---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
-| consensus.smartbft.committed_block_number.%{channel}                      | gauge     | The number of the latest committed block.                  |
-+---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
-| consensus.smartbft.is_leader.%{channel}                                   | gauge     | The leadership status of the current node according to the |
-|                                                                           |           | latest committed block: 1 if it is the leader else 0.      |
-+---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
-| consensus.smartbft.leader_id.%{channel}                                   | gauge     | The id of the current leader according to the latest       |
-|                                                                           |           | committed block.                                           |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | deliver.blocks_sent.%{channel}.%{filtered}.%{data_type}                   | counter   | The number of blocks sent by the deliver service.          |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
