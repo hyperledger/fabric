@@ -24,6 +24,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hyperledger/fabric/integration/channelparticipation"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
+
 	bpkcs11 "github.com/hyperledger/fabric/bccsp/pkcs11"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
@@ -35,10 +38,11 @@ import (
 
 var _ = Describe("PKCS11 enabled network", func() {
 	var (
-		tempDir   string
-		network   *nwo.Network
-		chaincode nwo.Chaincode
-		process   ifrit.Process
+		tempDir                     string
+		network                     *nwo.Network
+		chaincode                   nwo.Chaincode
+		ordererRunner               *ginkgomon.Runner
+		ordererProcess, peerProcess ifrit.Process
 	)
 
 	BeforeEach(func() {
@@ -46,7 +50,7 @@ var _ = Describe("PKCS11 enabled network", func() {
 		tempDir, err = ioutil.TempDir("", "p11")
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.BasicEtcdRaft(), tempDir, nil, StartPort(), components)
+		network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), tempDir, nil, StartPort(), components)
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
@@ -65,10 +69,16 @@ var _ = Describe("PKCS11 enabled network", func() {
 	})
 
 	AfterEach(func() {
-		if process != nil {
-			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+		if ordererProcess != nil {
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
+
+		if peerProcess != nil {
+			peerProcess.Signal(syscall.SIGTERM)
+			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
 		network.Cleanup()
 		os.RemoveAll(tempDir)
 	})
@@ -79,14 +89,12 @@ var _ = Describe("PKCS11 enabled network", func() {
 			setupPKCS11(network, noMapping)
 
 			By("starting fabric processes")
-			networkRunner := network.NetworkGroupRunner()
-			process = ifrit.Invoke(networkRunner)
-			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 		})
 
 		It("executes transactions against a basic etcdraft network", func() {
 			orderer := network.Orderer("orderer")
-			network.CreateAndJoinChannels(orderer)
+			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.PeersWithChannel("testchannel")...)
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
@@ -100,14 +108,12 @@ var _ = Describe("PKCS11 enabled network", func() {
 			setupPKCS11(network, mapAll)
 
 			By("starting fabric processes")
-			networkRunner := network.NetworkGroupRunner()
-			process = ifrit.Invoke(networkRunner)
-			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 		})
 
 		It("executes transactions against a basic etcdraft network", func() {
 			orderer := network.Orderer("orderer")
-			network.CreateAndJoinChannels(orderer)
+			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.PeersWithChannel("testchannel")...)
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
