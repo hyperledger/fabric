@@ -54,7 +54,6 @@ var _ = Describe("Release interoperability", func() {
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
-		// Start all of the fabric processes
 		// Start all the fabric processes
 		ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 
@@ -104,7 +103,7 @@ var _ = Describe("Release interoperability", func() {
 		RunQueryInvokeQuery(network, orderer, "mycc", 90, endorsers...)
 
 		By("restarting the network from persistence (1)")
-		ordererRunner, ordererProcess, peerProcess = RestartNetwork(ordererProcess, peerProcess, network)
+		ordererRunner, ordererProcess, _, peerProcess = nwo.RestartSingleOrdererNetwork(ordererProcess, peerProcess, network)
 
 		By("ensuring that the chaincode is still operational after the upgrade and restart")
 		RunQueryInvokeQuery(network, orderer, "mycc", 80, endorsers...)
@@ -142,7 +141,7 @@ var _ = Describe("Release interoperability", func() {
 		RunQueryInvokeQuery(network, orderer, "mycc", 70, endorsers[0])
 
 		By("restarting the network from persistence (2)")
-		ordererRunner, ordererProcess, peerProcess = RestartNetwork(ordererProcess, peerProcess, network)
+		ordererRunner, ordererProcess, _, peerProcess = nwo.RestartSingleOrdererNetwork(ordererProcess, peerProcess, network)
 
 		By("querying/invoking/querying the chaincode with the new definition again")
 		RunQueryInvokeQuery(network, orderer, "mycc", 60, endorsers[1])
