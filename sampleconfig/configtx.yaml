@@ -316,21 +316,29 @@ Orderer: &OrdererDefaults
       Port: 7050
       MSPID: OrdererOrg1
       Identity: /path/to/identity
+      ClientTLSCert: path/to/ClientTLSCert0
+      ServerTLSCert: path/to/ServerTLSCert0
     - ID: 2
       Host: bft1.example.com
       Port: 7050
       MSPID: OrdererOrg2
       Identity: /path/to/identity
+      ClientTLSCert: path/to/ClientTLSCert1
+      ServerTLSCert: path/to/ServerTLSCert1
     - ID: 3
       Host: bft2.example.com
       Port: 7050
       MSPID: OrdererOrg3
       Identity: /path/to/identity
+      ClientTLSCert: path/to/ClientTLSCert2
+      ServerTLSCert: path/to/ServerTLSCert2
     - ID: 4
       Host: bft3.example.com
       Port: 7050
       MSPID: OrdererOrg4
       Identity: /path/to/identity
+      ClientTLSCert: path/to/ClientTLSCert3
+      ServerTLSCert: path/to/ServerTLSCert3
 
     # EtcdRaft defines configuration which must be set when the "etcdraft"
     # orderertype is chosen.
@@ -635,6 +643,30 @@ Profiles:
         Orderer:
             <<: *OrdererDefaults
             OrdererType: etcdraft
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
+
+    # SampleAppChannelEtcdRaft defines an application channel configuration
+    # that uses the etcd/raft-based orderer.
+    SampleAppChannelSmartBft:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            OrdererType: BFT
             Organizations:
                 - <<: *SampleOrg
                   Policies:

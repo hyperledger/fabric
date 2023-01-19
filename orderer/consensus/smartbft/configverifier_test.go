@@ -7,52 +7,34 @@ SPDX-License-Identifier: Apache-2.0
 package smartbft_test
 
 import (
-	"io/ioutil"
+	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/common/capabilities"
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
+	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 )
 
 func TestValidateConfig(t *testing.T) {
-	// Config block
-	configBlockBytes, err := ioutil.ReadFile("testdata/smartbftorderergenesis.block")
-	require.NoError(t, err)
-
-	configBlock := &cb.Block{}
-	require.NoError(t, proto.Unmarshal(configBlockBytes, configBlock))
-
-	configBlockEnvelope := protoutil.UnmarshalEnvelopeOrPanic(configBlock.Data.Data[0])
+	configBlockEnvelope := makeConfigTx("mychannel", 1)
 	configBlockEnvelopePayload := protoutil.UnmarshalPayloadOrPanic(configBlockEnvelope.Payload)
 	configEnvelope := &cb.ConfigEnvelope{}
-	err = proto.Unmarshal(configBlockEnvelopePayload.Data, configEnvelope)
+	err := proto.Unmarshal(configBlockEnvelopePayload.Data, configEnvelope)
 	assert.NoError(t, err)
 
 	lateConfigEnvelope := proto.Clone(configEnvelope).(*cb.ConfigEnvelope)
 	lateConfigEnvelope.Config.Sequence--
-
-	// New channel block
-	newChannelBlockBytes, err := ioutil.ReadFile("testdata/orderertxn.block")
-	require.NoError(t, err)
-
-	newChannelBlock := &cb.Block{}
-	require.NoError(t, proto.Unmarshal(newChannelBlockBytes, newChannelBlock))
-
-	newChannelBlockEnvelope := protoutil.UnmarshalEnvelopeOrPanic(newChannelBlock.Data.Data[0])
-	newChannelBlockPayload := protoutil.UnmarshalPayloadOrPanic(newChannelBlockEnvelope.Payload)
-	newChannelBlockYetAnotherEnvelope := protoutil.UnmarshalEnvelopeOrPanic(newChannelBlockPayload.Data)
-	newChannelBlockYetAnotherPayload := protoutil.UnmarshalPayloadOrPanic(newChannelBlockYetAnotherEnvelope.Payload)
-	newChannelEnvelope := &cb.ConfigEnvelope{}
-	err = proto.Unmarshal(newChannelBlockYetAnotherPayload.Data, newChannelEnvelope)
-	assert.NoError(t, err)
 
 	for _, testCase := range []struct {
 		name                       string
@@ -254,12 +236,6 @@ func TestValidateConfig(t *testing.T) {
 			mutateEnvelope:        func(_ *cb.Envelope) {},
 			expectedError:         "error proposing config update",
 		},
-		{
-			name:                       "green path - new channel block",
-			envelope:                   newChannelBlockEnvelope,
-			proposeConfigUpdateReturns: newChannelEnvelope,
-			mutateEnvelope:             func(_ *cb.Envelope) {},
-		},
 	} {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
@@ -288,8 +264,52 @@ func TestValidateConfig(t *testing.T) {
 			if testCase.expectedError == "" {
 				assert.NoError(t, err)
 			} else {
-				assert.EqualError(t, err, testCase.expectedError)
+				assert.Error(t, err)
+				assert.Equal(t, testCase.expectedError, strings.ReplaceAll(err.Error(), "\u00a0", " "))
 			}
 		})
 	}
+}
+
+func makeConfigTx(chainID string, i int) *cb.Envelope {
+	gConf := genesisconfig.Load(genesisconfig.SampleAppChannelSmartBftProfile, configtest.GetDevConfigDir())
+	gConf.Orderer.Capabilities = map[string]bool{
+		capabilities.OrdererV2_0: true,
+	}
+	for _, cm := range gConf.Orderer.ConsenterMapping {
+		cm.ClientTLSCert = ""
+		cm.ServerTLSCert = ""
+		cm.Identity = ""
+	}
+
+	channelGroup, err := encoder.NewChannelGroup(gConf)
+	if err != nil {
+		panic(err)
+	}
+
+	return makeConfigTxFromConfigUpdateEnvelope(chainID, &cb.ConfigUpdateEnvelope{
+		ConfigUpdate: protoutil.MarshalOrPanic(&cb.ConfigUpdate{
+			WriteSet: channelGroup,
+		}),
+	})
+}
+
+func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.ConfigUpdateEnvelope) *cb.Envelope {
+	signer := &mocks.SignerSerializer{}
+	signer.On("Serialize").Return([]byte{}, nil)
+	signer.On("Sign", mock.Anything).Return([]byte{}, nil)
+
+	configUpdateTx, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, chainID, signer, configUpdateEnv, 0, 0)
+	if err != nil {
+		panic(err)
+	}
+	configTx, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG, chainID, signer, &cb.ConfigEnvelope{
+		Config:     &cb.Config{Sequence: 1, ChannelGroup: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.ConfigUpdate).WriteSet},
+		LastUpdate: configUpdateTx,
+	},
+		0, 0)
+	if err != nil {
+		panic(err)
+	}
+	return configTx
 }

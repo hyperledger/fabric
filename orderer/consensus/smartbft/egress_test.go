@@ -60,7 +60,7 @@ func TestEgressSendTransaction(t *testing.T) {
 		badTransactionAttempt := func() {
 			egress.SendTransaction(42, []byte{1, 2, 3})
 		}
-		expectedErr := "Failed unmarshaling request [1 2 3] to envelope: proto: cannot parse invalid wire-format data"
+		expectedErr := "Failed unmarshaling request [1 2 3] to envelope: proto:\u00a0cannot parse invalid wire-format data"
 		assert.PanicsWithValue(t, expectedErr, badTransactionAttempt)
 	})
 
@@ -75,5 +75,5 @@ func TestEgressSendTransaction(t *testing.T) {
 		Payload: &cb.Envelope{
 			Payload: []byte{1, 2, 3},
 		},
-	}, nil)
+	}, mock.Anything)
 }

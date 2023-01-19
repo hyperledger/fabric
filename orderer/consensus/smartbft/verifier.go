@@ -276,7 +276,10 @@ func (v *Verifier) verifyBlockDataAndMetadata(block *cb.Block, metadata []byte) 
 	}
 
 	if !proto.Equal(metadataInBlock, metadataFromProposal) {
-		return nil, errors.Errorf("expected metadata in block to be %v but got %v", metadataFromProposal, metadataInBlock)
+		return nil, errors.Errorf("expected metadata in block to be [view_id:%d latest_sequence:%d] but got [view_id:%d latest_sequence:%d]",
+			metadataFromProposal.GetViewId(), metadataFromProposal.GetLatestSequence(),
+			metadataInBlock.GetViewId(), metadataInBlock.GetLatestSequence(),
+		)
 	}
 
 	rtc := v.RuntimeConfig.Load().(RuntimeConfig)

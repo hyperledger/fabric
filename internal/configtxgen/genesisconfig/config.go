@@ -48,10 +48,16 @@ const (
 	// SampleAppChannelInsecureSoloProfile references the sample profile which
 	// does not include any MSPs and uses solo for ordering.
 	SampleAppChannelInsecureSoloProfile = "SampleAppChannelInsecureSolo"
+
 	// SampleAppChannelEtcdRaftProfile references the sample profile used for
 	// testing the etcd/raft-based ordering service using the channel
 	// participation API.
 	SampleAppChannelEtcdRaftProfile = "SampleAppChannelEtcdRaft"
+
+	// SampleAppChannelSmartBftProfile references the sample profile used for
+	// testing the smartbft-based ordering service using the channel
+	// participation API.
+	SampleAppChannelSmartBftProfile = "SampleAppChannelSmartBft"
 
 	// SampleSingleMSPChannelProfile references the sample profile which
 	// includes only the sample MSP and is used to create a channel

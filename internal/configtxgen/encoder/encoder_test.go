@@ -17,6 +17,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder/fakes"
@@ -451,6 +452,7 @@ var _ = Describe("Encoder", func() {
 						Identity:      "../../../sampleconfig/msp/admincerts/admincert.pem",
 					},
 				}
+				conf.SmartBFT = &smartbft.Options{}
 			})
 
 			It("adds the Orderers key", func() {

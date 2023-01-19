@@ -10,6 +10,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -385,7 +386,8 @@ func TestVerifyConsenterSig(t *testing.T) {
 
 			_, err := v.VerifyConsenterSig(signature, proposal)
 
-			assert.EqualError(t, err, testCase.expectedErr)
+			assert.Error(t, err)
+			assert.Equal(t, testCase.expectedErr, strings.ReplaceAll(err.Error(), "\u00a0", " "))
 		})
 	}
 }
@@ -483,7 +485,7 @@ func TestVerifyProposal(t *testing.T) {
 				return protoutil.MarshalOrPanic(&smartbftprotos.ViewMetadata{LatestSequence: 100, ViewId: 2})
 			},
 			ordererBlockMetadataMutator: noopOrdererBlockMetadataMutator,
-			expectedErr:                 "expected metadata in block to be view_id:2 latest_sequence:100 but got view_id:2 latest_sequence:1",
+			expectedErr:                 "expected metadata in block to be [view_id:2 latest_sequence:100] but got [view_id:2 latest_sequence:1]",
 		},
 		{
 			description:          "No last config",
@@ -527,7 +529,7 @@ func TestVerifyProposal(t *testing.T) {
 			ordererBlockMetadataMutator: func(metadata *cb.OrdererBlockMetadata) {
 				metadata.ConsenterMetadata = protoutil.MarshalOrPanic(&smartbftprotos.ViewMetadata{LatestSequence: 666})
 			},
-			expectedErr: "expected metadata in block to be view_id:2 latest_sequence:1 but got latest_sequence:666",
+			expectedErr: "expected metadata in block to be [view_id:2 latest_sequence:1] but got [view_id:0 latest_sequence:666]",
 		},
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
@@ -607,7 +609,8 @@ func TestVerifyProposal(t *testing.T) {
 				return
 			}
 
-			assert.EqualError(t, err, testCase.expectedErr)
+			assert.Error(t, err)
+			assert.Equal(t, testCase.expectedErr, strings.ReplaceAll(err.Error(), "\u00a0", " "))
 			assert.Nil(t, reqInfo)
 		})
 	}
