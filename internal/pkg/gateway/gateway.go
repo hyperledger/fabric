@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/gateway/commit"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/config"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/ledger"
+	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 	"google.golang.org/grpc"
 )
 
@@ -77,6 +78,7 @@ func CreateServer(
 		secureOptions,
 		options,
 		systemChaincodes,
+		peerInstance.OrdererEndpointOverrides,
 	)
 
 	peerInstance.AddConfigCallbacks(server.registry.configUpdate)
@@ -94,13 +96,22 @@ func newServer(localEndorser peerproto.EndorserClient,
 	secureOptions *comm.SecureOptions,
 	options config.Options,
 	systemChaincodes scc.BuiltinSCCs,
+	ordererEndpointOverrides map[string]*orderers.Endpoint,
 ) *Server {
 	return &Server{
 		registry: &registry{
-			localEndorser:      &endorser{client: localEndorser, endpointConfig: &endpointConfig{pkiid: localInfo.PKIid, address: localInfo.Endpoint, mspid: localMSPID}},
-			discovery:          discovery,
-			logger:             logger,
-			endpointFactory:    &endpointFactory{timeout: options.DialTimeout, clientCert: secureOptions.Certificate, clientKey: secureOptions.Key},
+			localEndorser: &endorser{
+				client:         localEndorser,
+				endpointConfig: &endpointConfig{pkiid: localInfo.PKIid, address: localInfo.Endpoint, logAddress: localInfo.Endpoint, mspid: localMSPID},
+			},
+			discovery: discovery,
+			logger:    logger,
+			endpointFactory: &endpointFactory{
+				timeout:                  options.DialTimeout,
+				clientCert:               secureOptions.Certificate,
+				clientKey:                secureOptions.Key,
+				ordererEndpointOverrides: ordererEndpointOverrides,
+			},
 			remoteEndorsers:    map[string]*endorser{},
 			channelInitialized: map[string]bool{},
 			systemChaincodes:   systemChaincodes,
