@@ -95,7 +95,7 @@ func toRpcStatus(err error) *status.Status {
 }
 
 func errorDetail(e *endpointConfig, msg string) *gp.ErrorDetail {
-	return &gp.ErrorDetail{Address: e.address, MspId: e.mspid, Message: msg}
+	return &gp.ErrorDetail{Address: e.logAddress, MspId: e.mspid, Message: msg}
 }
 
 func getResultFromProposalResponse(proposalResponse *peer.ProposalResponse) ([]byte, error) {
