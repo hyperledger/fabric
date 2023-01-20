@@ -19,20 +19,14 @@ import (
 )
 
 var _ = Describe("ConfigTx ConsenterMapping", func() {
-	It("generates genesis block and checks it contains the ConsenterMapping", func() {
-		testDir, err := ioutil.TempDir("", "consenter-mapping-test")
+	It("generates an application channel genesis block and checks it contains the ConsenterMapping", func() {
+		testDir, err := ioutil.TempDir("", "configtx")
 		Expect(err).NotTo(HaveOccurred())
 		defer os.RemoveAll(testDir)
 
-		// Generate config
-		networkConfig := nwo.MultiNodeSmartBFT()
-		networkConfig.SystemChannel.Name = ""
-		networkConfig.Channels = nil
+		network := nwo.New(nwo.MultiNodeBFTNoSysChan(), testDir, nil, StartPort(), components)
 
-		network := nwo.New(networkConfig, testDir, nil, StartPort(), components)
-		network.Consortiums = nil
-		network.Consensus.ChannelParticipationEnabled = true
-		network.Consensus.BootstrapMethod = "none"
+		// Generate config
 		network.GenerateConfigTree()
 
 		// bootstrap the network, which generates the genesis block
@@ -55,6 +49,6 @@ var _ = Describe("ConfigTx ConsenterMapping", func() {
 		o := &common.Orderers{}
 		err = proto.Unmarshal(group.GetValues()["Orderers"].GetValue(), o)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(len(o.GetConsenterMapping())).To(Equal(4))
+		Expect(len(o.GetConsenterMapping())).To(Equal(3))
 	})
 })
