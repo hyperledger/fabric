@@ -431,11 +431,11 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 	var errDetails []proto.Message
 	for _, index := range rand.Perm(len(orderers)) {
 		orderer := orderers[index]
-		logger.Infow("Sending transaction to orderer", "txID", request.TransactionId, "endpoint", orderer.address)
+		logger.Infow("Sending transaction to orderer", "txID", request.TransactionId, "endpoint", orderer.logAddress)
 		response, err := gs.broadcast(ctx, orderer, txn)
 		if err != nil {
 			errDetails = append(errDetails, errorDetail(orderer.endpointConfig, err.Error()))
-			logger.Warnw("Error sending transaction to orderer", "txID", request.TransactionId, "endpoint", orderer.address, "err", err)
+			logger.Warnw("Error sending transaction to orderer", "txID", request.TransactionId, "endpoint", orderer.logAddress, "err", err)
 			continue
 		}
 
@@ -444,7 +444,7 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 			return &gp.SubmitResponse{}, nil
 		}
 
-		logger.Warnw("Unsuccessful response sending transaction to orderer", "txID", request.TransactionId, "endpoint", orderer.address, "status", status, "info", response.GetInfo())
+		logger.Warnw("Unsuccessful response sending transaction to orderer", "txID", request.TransactionId, "endpoint", orderer.logAddress, "status", status, "info", response.GetInfo())
 
 		if status >= 400 && status < 500 {
 			// client error - don't retry

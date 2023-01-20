@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
+	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 )
@@ -34,6 +35,7 @@ type orderer struct {
 type endpointConfig struct {
 	pkiid        common.PKIidType
 	address      string
+	logAddress   string
 	mspid        string
 	tlsRootCerts [][]byte
 }
@@ -47,12 +49,13 @@ type (
 type dialer func(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error)
 
 type endpointFactory struct {
-	timeout         time.Duration
-	connectEndorser endorserConnector
-	connectOrderer  ordererConnector
-	dialer          dialer
-	clientCert      []byte
-	clientKey       []byte
+	timeout                  time.Duration
+	connectEndorser          endorserConnector
+	connectOrderer           ordererConnector
+	dialer                   dialer
+	clientCert               []byte
+	clientKey                []byte
+	ordererEndpointOverrides map[string]*orderers.Endpoint
 }
 
 func (ef *endpointFactory) newEndorser(pkiid common.PKIidType, address, mspid string, tlsRootCerts [][]byte) (*endorser, error) {
@@ -74,12 +77,20 @@ func (ef *endpointFactory) newEndorser(pkiid common.PKIidType, address, mspid st
 	return &endorser{
 		client:          connectEndorser(conn),
 		closeConnection: close,
-		endpointConfig:  &endpointConfig{pkiid: pkiid, address: address, mspid: mspid, tlsRootCerts: tlsRootCerts},
+		endpointConfig:  &endpointConfig{pkiid: pkiid, address: address, logAddress: address, mspid: mspid, tlsRootCerts: tlsRootCerts},
 	}, nil
 }
 
 func (ef *endpointFactory) newOrderer(address, mspid string, tlsRootCerts [][]byte) (*orderer, error) {
-	conn, err := ef.newConnection(address, tlsRootCerts)
+	connAddress := address
+	logAddess := address
+	connCerts := tlsRootCerts
+	if override, ok := ef.ordererEndpointOverrides[address]; ok {
+		connAddress = override.Address
+		connCerts = override.RootCerts
+		logAddess = fmt.Sprintf("%s (mapped from %s)", connAddress, address)
+	}
+	conn, err := ef.newConnection(connAddress, connCerts)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +101,7 @@ func (ef *endpointFactory) newOrderer(address, mspid string, tlsRootCerts [][]by
 	return &orderer{
 		client:          connectOrderer(conn),
 		closeConnection: conn.Close,
-		endpointConfig:  &endpointConfig{address: address, mspid: mspid, tlsRootCerts: tlsRootCerts},
+		endpointConfig:  &endpointConfig{address: address, logAddress: logAddess, mspid: mspid, tlsRootCerts: tlsRootCerts},
 	}, nil
 }
 
