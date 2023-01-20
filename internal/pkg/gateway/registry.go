@@ -275,7 +275,7 @@ func (reg *registry) orderers(channel string) ([]*orderer, error) {
 			client, err := reg.endpointFactory.newOrderer(ep.address, ep.mspid, ep.tlsRootCerts)
 			if err != nil {
 				// Failed to connect to this orderer for some reason.  Log the problem and skip to the next one.
-				reg.logger.Warnw("Failed to connect to orderer", "address", ep.address, "err", err)
+				reg.logger.Warnw("Failed to connect to orderer", "address", ep.logAddress, "err", err)
 				continue
 			}
 			var loaded bool
@@ -285,10 +285,10 @@ func (reg *registry) orderers(channel string) ([]*orderer, error) {
 				err = client.closeConnection()
 				if err != nil {
 					// Failed to close this new connection.  Log the problem.
-					reg.logger.Warnw("Failed to close connection to orderer", "address", ep.address, "err", err)
+					reg.logger.Warnw("Failed to close connection to orderer", "address", ep.logAddress, "err", err)
 				}
 			} else {
-				reg.logger.Infow("Added orderer to registry", "address", ep.address)
+				reg.logger.Infow("Added orderer to registry", "address", ep.logAddress)
 			}
 		}
 		orderers = append(orderers, entry.(*orderer))
@@ -460,7 +460,7 @@ func (reg *registry) closeStaleOrdererConnections(channel string, channelOrderer
 				if found {
 					err := client.(*orderer).closeConnection()
 					if err != nil {
-						reg.logger.Errorw("Failed to close connection to orderer", "address", ep.address, "mspid", ep.mspid, "err", err)
+						reg.logger.Errorw("Failed to close connection to orderer", "address", ep.logAddress, "mspid", ep.mspid, "err", err)
 					}
 				}
 			}
