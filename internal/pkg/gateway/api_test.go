@@ -36,6 +36,7 @@ import (
 	ledgermocks "github.com/hyperledger/fabric/internal/pkg/gateway/ledger/mocks"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/mocks"
 	idmocks "github.com/hyperledger/fabric/internal/pkg/identity/mocks"
+	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -123,32 +124,33 @@ const (
 )
 
 type testDef struct {
-	name               string
-	plan               endorsementPlan
-	layouts            []endorsementLayout
-	members            []networkMember
-	config             *dp.ConfigResult
-	identity           []byte
-	localResponse      string
-	errString          string
-	errCode            codes.Code
-	errDetails         []*pb.ErrorDetail
-	endpointDefinition *endpointDef
-	endorsingOrgs      []string
-	postSetup          func(t *testing.T, def *preparedTest)
-	postTest           func(t *testing.T, def *preparedTest)
-	expectedEndorsers  []string
-	finderStatus       *commit.Status
-	finderErr          error
-	eventErr           error
-	policyErr          error
-	expectedResponse   proto.Message
-	expectedResponses  []proto.Message
-	transientData      map[string][]byte
-	interest           *peer.ChaincodeInterest
-	blocks             []*cp.Block
-	startPosition      *ab.SeekPosition
-	afterTxID          string
+	name                     string
+	plan                     endorsementPlan
+	layouts                  []endorsementLayout
+	members                  []networkMember
+	config                   *dp.ConfigResult
+	identity                 []byte
+	localResponse            string
+	errString                string
+	errCode                  codes.Code
+	errDetails               []*pb.ErrorDetail
+	endpointDefinition       *endpointDef
+	endorsingOrgs            []string
+	postSetup                func(t *testing.T, def *preparedTest)
+	postTest                 func(t *testing.T, def *preparedTest)
+	expectedEndorsers        []string
+	finderStatus             *commit.Status
+	finderErr                error
+	eventErr                 error
+	policyErr                error
+	expectedResponse         proto.Message
+	expectedResponses        []proto.Message
+	transientData            map[string][]byte
+	interest                 *peer.ChaincodeInterest
+	blocks                   []*cp.Block
+	startPosition            *ab.SeekPosition
+	afterTxID                string
+	ordererEndpointOverrides map[string]*orderers.Endpoint
 }
 
 type preparedTest struct {
@@ -1349,6 +1351,67 @@ func TestSubmit(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "orderer endpoint overrides",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock}},
+			},
+			ordererEndpointOverrides: map[string]*orderers.Endpoint{
+				"orderer1:7050": {Address: "override1:1234"},
+				"orderer3:7050": {Address: "override3:4321"},
+			},
+			config: &dp.ConfigResult{
+				Orderers: map[string]*dp.Endpoints{
+					"msp1": {
+						Endpoint: []*dp.Endpoint{
+							{Host: "orderer1", Port: 7050},
+							{Host: "orderer2", Port: 7050},
+							{Host: "orderer3", Port: 7050},
+						},
+					},
+				},
+				Msps: map[string]*msp.FabricMSPConfig{
+					"msp1": {
+						TlsRootCerts: [][]byte{},
+					},
+				},
+			},
+			endpointDefinition: &endpointDef{
+				proposalResponseStatus: 200,
+				ordererBroadcastError:  status.Error(codes.Unavailable, "Orderer not listening!"),
+			},
+			errCode:   codes.Unavailable,
+			errString: "no orderers could successfully process transaction",
+			errDetails: []*pb.ErrorDetail{
+				{
+					Address: "override1:1234 (mapped from orderer1:7050)",
+					MspId:   "msp1",
+					Message: "rpc error: code = Unavailable desc = Orderer not listening!",
+				},
+				{
+					Address: "orderer2:7050",
+					MspId:   "msp1",
+					Message: "rpc error: code = Unavailable desc = Orderer not listening!",
+				},
+				{
+					Address: "override3:4321 (mapped from orderer3:7050)",
+					MspId:   "msp1",
+					Message: "rpc error: code = Unavailable desc = Orderer not listening!",
+				},
+			},
+			postTest: func(t *testing.T, def *preparedTest) {
+				var addresses []string
+				for i := 0; i < def.dialer.CallCount(); i++ {
+					_, address, _ := def.dialer.ArgsForCall(i)
+					addresses = append(addresses, address)
+				}
+				require.Contains(t, addresses, "override1:1234")
+				require.NotContains(t, addresses, "orderer1:7050")
+				require.Contains(t, addresses, "orderer2:7050")
+				require.Contains(t, addresses, "override3:4321")
+				require.NotContains(t, addresses, "orderer3:7050")
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1368,11 +1431,18 @@ func TestSubmit(t *testing.T) {
 
 			if checkError(t, &tt, err) {
 				require.Nil(t, submitResponse, "response on error")
+				if tt.postTest != nil {
+					tt.postTest(t, test)
+				}
 				return
 			}
 
 			require.NoError(t, err)
 			require.True(t, proto.Equal(&pb.SubmitResponse{}, submitResponse), "Incorrect response")
+
+			if tt.postTest != nil {
+				tt.postTest(t, test)
+			}
 		})
 	}
 }
@@ -2001,6 +2071,7 @@ func TestNilArgs(t *testing.T) {
 		&comm.SecureOptions{},
 		config.GetOptions(viper.New()),
 		nil,
+		nil,
 	)
 	ctx := context.Background()
 
@@ -2220,11 +2291,11 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		Endpoint: "localhost:7051",
 	}
 
-	server := newServer(localEndorser, disc, mockFinder, mockPolicy, mockLedgerProvider, member, "msp1", &comm.SecureOptions{}, options, nil)
+	server := newServer(localEndorser, disc, mockFinder, mockPolicy, mockLedgerProvider, member, "msp1", &comm.SecureOptions{}, options, nil, tt.ordererEndpointOverrides)
 
 	dialer := &mocks.Dialer{}
 	dialer.Returns(nil, nil)
-	server.registry.endpointFactory = createEndpointFactory(t, epDef, dialer.Spy)
+	server.registry.endpointFactory = createEndpointFactory(t, epDef, dialer.Spy, tt.ordererEndpointOverrides)
 
 	ctx := context.WithValue(context.Background(), contextKey("orange"), "apples")
 
@@ -2413,7 +2484,7 @@ func createMockPeer(t *testing.T, endorser *endorserState) *dp.Peer {
 	}
 }
 
-func createEndpointFactory(t *testing.T, definition *endpointDef, dialer dialer) *endpointFactory {
+func createEndpointFactory(t *testing.T, definition *endpointDef, dialer dialer, ordererEndpointOverrides map[string]*orderers.Endpoint) *endpointFactory {
 	var endpoint string
 	ca, err := tlsgen.NewCA()
 	require.NoError(t, err, "failed to create CA")
@@ -2446,8 +2517,9 @@ func createEndpointFactory(t *testing.T, definition *endpointDef, dialer dialer)
 			endpoint = target
 			return dialer(ctx, target, opts...)
 		},
-		clientKey:  pair.Key,
-		clientCert: pair.Cert,
+		clientKey:                pair.Key,
+		clientCert:               pair.Cert,
+		ordererEndpointOverrides: ordererEndpointOverrides,
 	}
 }
 
