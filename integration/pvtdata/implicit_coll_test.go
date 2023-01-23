@@ -20,16 +20,15 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
-
 	"github.com/tedsuo/ifrit"
 )
 
 var _ bool = Describe("Pvtdata dissemination for implicit collection", func() {
 	var (
-		network       *nwo.Network
-		process       ifrit.Process
-		orderer       *nwo.Orderer
-		testChaincode chaincode
+		network                     *nwo.Network
+		ordererProcess, peerProcess ifrit.Process
+		orderer                     *nwo.Orderer
+		testChaincode               chaincode
 	)
 
 	BeforeEach(func() {
@@ -59,7 +58,7 @@ var _ bool = Describe("Pvtdata dissemination for implicit collection", func() {
 		}
 
 		By("starting the network")
-		process, orderer = startNetwork(network)
+		ordererProcess, peerProcess, orderer = startNetwork(network)
 
 		By("deploying new lifecycle chaincode")
 		testChaincode = chaincode{
@@ -87,7 +86,7 @@ var _ bool = Describe("Pvtdata dissemination for implicit collection", func() {
 	})
 
 	AfterEach(func() {
-		testCleanup(network, process)
+		testCleanup(network, ordererProcess, peerProcess)
 	})
 
 	It("disseminates pvtdata of implicit collection for the peer's own org but not implicit collection for another org", func() {
