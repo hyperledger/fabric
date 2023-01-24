@@ -53,6 +53,9 @@ peer:
         # endorsementTimeout is the duration the gateway waits for a response
         # from other endorsing peers before returning a timeout error to the client.
         endorsementTimeout: 30s
+        # broadcastTimeout is the duration the gateway waits for a response
+        # from ordering nodes before returning a timeout error to the client.
+        broadcastTimeout: 30s
         # dialTimeout is the duration the gateway waits for a connection
         # to other network nodes.
         dialTimeout: 2m
