@@ -121,6 +121,7 @@ const (
 	testChannel        = "test_channel"
 	testChaincode      = "test_chaincode"
 	endorsementTimeout = -1 * time.Second
+	broadcastTimeout   = 100 * time.Millisecond
 )
 
 type testDef struct {
@@ -1307,6 +1308,115 @@ func TestSubmit(t *testing.T) {
 			},
 		},
 		{
+			name: "orderer timeout - retry",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock}},
+			},
+			config: &dp.ConfigResult{
+				Orderers: map[string]*dp.Endpoints{
+					"msp1": {
+						Endpoint: []*dp.Endpoint{
+							{Host: "orderer1", Port: 7050},
+							{Host: "orderer2", Port: 7050},
+							{Host: "orderer3", Port: 7050},
+						},
+					},
+				},
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				def.ctx, def.cancel = context.WithTimeout(def.ctx, 300*time.Millisecond)
+				broadcastTime := 200 * time.Millisecond // first invocation exceeds BroadcastTimeout
+
+				abc := &mocks.ABClient{}
+				abbc := &mocks.ABBClient{}
+				abbc.SendReturns(nil)
+				abbc.RecvReturns(&ab.BroadcastResponse{
+					Info:   "success",
+					Status: cp.Status(200),
+				}, nil)
+				abc.BroadcastStub = func(ctx context.Context, co ...grpc.CallOption) (ab.AtomicBroadcast_BroadcastClient, error) {
+					defer func() {
+						broadcastTime = time.Millisecond // subsequent invocations will not timeout
+					}()
+					select {
+					case <-time.After(broadcastTime):
+						return abbc, nil
+					case <-ctx.Done():
+						return nil, ctx.Err()
+					}
+				}
+				def.server.registry.endpointFactory = &endpointFactory{
+					timeout: 5 * time.Second,
+					connectEndorser: func(conn *grpc.ClientConn) peer.EndorserClient {
+						return &mocks.EndorserClient{}
+					},
+					connectOrderer: func(_ *grpc.ClientConn) ab.AtomicBroadcastClient {
+						return abc
+					},
+					dialer: func(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+						return nil, nil
+					},
+				}
+			},
+			postTest: func(t *testing.T, def *preparedTest) {
+				def.cancel()
+			},
+		},
+		{
+			name: "submit timeout",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock}},
+			},
+			config: &dp.ConfigResult{
+				Orderers: map[string]*dp.Endpoints{
+					"msp1": {
+						Endpoint: []*dp.Endpoint{
+							{Host: "orderer1", Port: 7050},
+							{Host: "orderer2", Port: 7050},
+							{Host: "orderer3", Port: 7050},
+						},
+					},
+				},
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				def.ctx, def.cancel = context.WithTimeout(def.ctx, 50*time.Millisecond)
+				broadcastTime := 200 * time.Millisecond // invocation exceeds BroadcastTimeout
+
+				abc := &mocks.ABClient{}
+				abbc := &mocks.ABBClient{}
+				abbc.SendReturns(nil)
+				abbc.RecvReturns(&ab.BroadcastResponse{
+					Info:   "success",
+					Status: cp.Status(200),
+				}, nil)
+				abc.BroadcastStub = func(ctx context.Context, co ...grpc.CallOption) (ab.AtomicBroadcast_BroadcastClient, error) {
+					select {
+					case <-time.After(broadcastTime):
+						return abbc, nil
+					case <-ctx.Done():
+						return nil, ctx.Err()
+					}
+				}
+				def.server.registry.endpointFactory = &endpointFactory{
+					timeout: 5 * time.Second,
+					connectEndorser: func(conn *grpc.ClientConn) peer.EndorserClient {
+						return &mocks.EndorserClient{}
+					},
+					connectOrderer: func(_ *grpc.ClientConn) ab.AtomicBroadcastClient {
+						return abc
+					},
+					dialer: func(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+						return nil, nil
+					},
+				}
+			},
+			postTest: func(t *testing.T, def *preparedTest) {
+				def.cancel()
+			},
+			errCode:   codes.DeadlineExceeded,
+			errString: "submit timeout expired while broadcasting to ordering service",
+		},
+		{
 			name: "multiple orderers all fail",
 			plan: endorsementPlan{
 				"g1": {{endorser: localhostMock}},
@@ -2284,6 +2394,7 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 	options := config.Options{
 		Enabled:            true,
 		EndorsementTimeout: endorsementTimeout,
+		BroadcastTimeout:   broadcastTimeout,
 	}
 
 	member := gdiscovery.NetworkMember{
