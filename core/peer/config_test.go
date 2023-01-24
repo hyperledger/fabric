@@ -383,6 +383,7 @@ func TestGlobalConfig(t *testing.T) {
 		GatewayOptions: config.Options{
 			Enabled:            true,
 			EndorsementTimeout: 10 * time.Second,
+			BroadcastTimeout:   10 * time.Second,
 			DialTimeout:        60 * time.Second,
 		},
 	}
