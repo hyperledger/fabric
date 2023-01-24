@@ -326,3 +326,15 @@ func BasicEtcdRaftWithIdemixNoSysChan() *Config {
 
 	return config
 }
+
+func MultiNodeEtcdRaftNoSysChan() *Config {
+	config := BasicEtcdRaftNoSysChan()
+	config.Orderers = []*Orderer{
+		{Name: "orderer1", Organization: "OrdererOrg"},
+		{Name: "orderer2", Organization: "OrdererOrg"},
+		{Name: "orderer3", Organization: "OrdererOrg"},
+	}
+	config.Profiles[0].Orderers = []string{"orderer1", "orderer2", "orderer3"}
+	
+	return config
+}

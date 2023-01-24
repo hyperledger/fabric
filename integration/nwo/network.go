@@ -1958,9 +1958,7 @@ func (n *Network) LoadAppChannelGenesisBlock(channelID string) *common.Block {
 
 // StartSingleOrdererNetwork starts the fabric processes assuming a single orderer.
 func (n *Network) StartSingleOrdererNetwork(ordererName string) (*ginkgomon.Runner, ifrit.Process, ifrit.Process) {
-	ordererRunner := n.OrdererRunner(n.Orderer(ordererName))
-	ordererProcess := ifrit.Invoke(ordererRunner)
-	Eventually(ordererProcess.Ready(), n.EventuallyTimeout).Should(BeClosed())
+	ordererRunner, ordererProcess := n.StartOrderer(ordererName)
 
 	peerGroupRunner := n.PeerGroupRunner()
 	peerProcess := ifrit.Invoke(peerGroupRunner)
@@ -1985,4 +1983,12 @@ func RestartSingleOrdererNetwork(ordererProcess, peerProcess ifrit.Process, netw
 	Eventually(peerProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 	return ordererRunner, ordererProcess, peerProcess
+}
+
+func (n *Network) StartOrderer(ordererName string) (*ginkgomon.Runner, ifrit.Process) {
+	ordererRunner := n.OrdererRunner(n.Orderer(ordererName))
+	ordererProcess := ifrit.Invoke(ordererRunner)
+	Eventually(ordererProcess.Ready(), n.EventuallyTimeout).Should(BeClosed())
+
+	return ordererRunner, ordererProcess
 }

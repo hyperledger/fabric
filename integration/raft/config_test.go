@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"io/ioutil"
 	"os"
 	"path"
@@ -81,11 +82,17 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 	Describe("three node etcdraft network with 2 orgs", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.MultiNodeEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
-			networkRunner := network.NetworkGroupRunner()
+			for _, o := range network.Orderers {
+				runner, process := network.StartOrderer(o.Name)
+				ordererRunners = append(ordererRunners, runner)
+				ordererProcesses = append(ordererProcesses, process)
+			}
+
+			networkRunner := network.PeerGroupRunner()
 			networkProcess = ifrit.Invoke(networkRunner)
 			Eventually(networkProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
 		})
@@ -105,11 +112,6 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			blockFile2 := filepath.Join(testDir, "newest_orderer2_block.pb")
 			blockFile3 := filepath.Join(testDir, "newest_orderer3_block.pb")
 
-			By("Ordering service system channel is ready")
-			assertBlockReception(map[string]int{
-				"systemchannel": 0,
-			}, []*nwo.Orderer{orderer1, orderer2, orderer3}, peer, network)
-
 			fetchLatestBlock := func(targetOrderer *nwo.Orderer, blockFile string) {
 				c := commands.ChannelFetch{
 					ChannelID:  "testchannel",
@@ -124,8 +126,12 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 			}
 
-			By("Creating a new channel")
-			network.CreateChannel("testchannel", orderer1, peer)
+			By("Creating a new channel, joining all orderers")
+			for i, o := range network.Orderers {
+				channelparticipation.JoinOrdererAppChannelCluster(network, "testchannel", o, ordererRunners[i])
+			}
+			leader := FindLeader(ordererRunners)
+			Expect(leader).To(BeNumerically(">", 0))
 
 			// the above can work even if the orderer nodes are not in the same Raft
 			// cluster; we need to verify all the three orderer nodes are in sync wrt
