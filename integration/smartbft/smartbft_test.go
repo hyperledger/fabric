@@ -1111,15 +1111,18 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Changing to follower role, current view: 1, current leader: 2 channel=testchannel1"))
 			Eventually(ordererRunners[4].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Changing to follower role, current view: 1, current leader: 2 channel=testchannel1"))
 
+			assertBlockReception(map[string]int{"testchannel1": 7}, network.Orderers[1:], peer, network)
+
 			By("Transacting")
 			invokeQuery(network, peer, network.Orderers[2], channel, 70)
-			assertBlockReception(map[string]int{"testchannel1": 8}, network.Orderers[1:], peer, network)
 
 			By("Ensuring blacklisting is skipped due to reconfig")
-			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Skipping verifying prev commits due to verification sequence advancing from 1 to 2 channel=testchannel1"))
-			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Skipping verifying prev commits due to verification sequence advancing from 1 to 2 channel=testchannel1"))
-			Eventually(ordererRunners[2].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Skipping verifying prev commits due to verification sequence advancing from 1 to 2 channel=testchannel1"))
-			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Skipping verifying prev commits due to verification sequence advancing from 1 to 2 channel=testchannel1"))
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Skipping verifying prev commit signatures due to verification sequence advancing from 0 to 1 channel=testchannel1"))
+			Eventually(ordererRunners[2].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Skipping verifying prev commit signatures due to verification sequence advancing from 0 to 1 channel=testchannel1"))
+			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Skipping verifying prev commit signatures due to verification sequence advancing from 0 to 1 channel=testchannel1"))
+			Eventually(ordererRunners[4].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Skipping verifying prev commit signatures due to verification sequence advancing from 0 to 1 channel=testchannel1"))
+
+			assertBlockReception(map[string]int{"testchannel1": 8}, network.Orderers[1:], peer, network)
 		})
 	})
 })
