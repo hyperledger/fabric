@@ -79,6 +79,8 @@ func BasicConfig() *Config {
 	}
 }
 
+// BasicEtcdRaft
+// Deprecated: BasicEtcdRaft is deprecated and will be removed soon
 func BasicEtcdRaft() *Config {
 	config := BasicConfig()
 
@@ -96,35 +98,8 @@ func BasicEtcdRaft() *Config {
 	return config
 }
 
-func MultiChannelEtcdRaft() *Config {
-	config := BasicConfig()
-
-	config.Consensus.Type = "etcdraft"
-	config.Channels = []*Channel{
-		{Name: "testchannel", Profile: "TwoOrgsChannel"},
-		{Name: "testchannel2", Profile: "TwoOrgsChannel"},
-	}
-
-	for _, peer := range config.Peers {
-		peer.Channels = []*PeerChannel{
-			{Name: "testchannel", Anchor: true},
-			{Name: "testchannel2", Anchor: true},
-		}
-	}
-
-	config.Profiles = []*Profile{{
-		Name:     "SampleDevModeEtcdRaft",
-		Orderers: []string{"orderer"},
-	}, {
-		Name:          "TwoOrgsChannel",
-		Consortium:    "SampleConsortium",
-		Organizations: []string{"Org1", "Org2"},
-	}}
-	config.SystemChannel.Profile = "SampleDevModeEtcdRaft"
-
-	return config
-}
-
+// MultiNodeEtcdRaft
+// Deprecated: MultiNodeEtcdRaft is deprecated and will be removed soon
 func MultiNodeEtcdRaft() *Config {
 	config := BasicEtcdRaft()
 	config.Orderers = []*Orderer{
