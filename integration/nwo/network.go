@@ -1969,7 +1969,7 @@ func (n *Network) StartSingleOrdererNetwork(ordererName string) (*ginkgomon.Runn
 	return ordererRunner, ordererProcess, peerProcess
 }
 
-func RestartSingleOrdererNetwork(ordererProcess, peerProcess ifrit.Process, network *Network) (*ginkgomon.Runner, ifrit.Process, ifrit.Runner, ifrit.Process) {
+func RestartSingleOrdererNetwork(ordererProcess, peerProcess ifrit.Process, network *Network) (*ginkgomon.Runner, ifrit.Process, ifrit.Process) {
 	peerProcess.Signal(syscall.SIGTERM)
 	Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 	ordererProcess.Signal(syscall.SIGTERM)
@@ -1984,5 +1984,5 @@ func RestartSingleOrdererNetwork(ordererProcess, peerProcess ifrit.Process, netw
 	peerProcess = ifrit.Invoke(peerGroupRunner)
 	Eventually(peerProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
-	return ordererRunner, ordererProcess, peerGroupRunner, peerProcess
+	return ordererRunner, ordererProcess, peerProcess
 }

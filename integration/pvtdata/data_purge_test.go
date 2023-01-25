@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/pvtdata/marblechaincodeutil"
@@ -42,6 +43,7 @@ var _ = Describe("Pvtdata purge", func() {
 		org2Peer0, org3Peer0           *nwo.Peer
 		processes                      map[string]ifrit.Process
 		peerRunners                    map[string]*ginkgomon.Runner
+		ordererRunner                  *ginkgomon.Runner
 		cancel                         context.CancelFunc
 		chaincode                      *nwo.Chaincode
 	)
@@ -52,26 +54,24 @@ var _ = Describe("Pvtdata purge", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		network = nwo.New(config, testDir, nil, StartPort(), components)
-
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
 		processes = map[string]ifrit.Process{}
 		peerRunners = map[string]*ginkgomon.Runner{}
 
-		ordererRunner := network.OrdererGroupRunner()
+		orderer = network.Orderer("orderer")
+		ordererRunner = network.OrdererRunner(orderer)
 		process := ifrit.Invoke(ordererRunner)
 		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
-		processes["OrdererGroupRunner"] = process
+		processes[orderer.ID()] = process
 
 		for _, peer := range network.Peers {
 			startPeer(network, processes, peerRunners, peer)
 		}
 
-		orderer = network.Orderer("orderer")
+		channelparticipation.JoinOrdererJoinPeersAppChannel(network, channelID, orderer, ordererRunner)
 
-		network.CreateAndJoinChannel(orderer, channelID)
-		network.UpdateChannelAnchors(orderer, channelID)
 		network.VerifyMembership(
 			network.PeersWithChannel(channelID),
 			channelID,
@@ -123,7 +123,7 @@ var _ = Describe("Pvtdata purge", func() {
 
 	When("the purge private data capability is not enabled", func() {
 		BeforeEach(func() {
-			config = nwo.ThreeOrgEtcdRaft()
+			config = nwo.ThreeOrgEtcdRaftNoSysChan()
 			applicationCapabilitiesVersion = "V2_0"
 		})
 
@@ -148,7 +148,7 @@ var _ = Describe("Pvtdata purge", func() {
 
 	When("the purge private data capability is enabled", func() {
 		BeforeEach(func() {
-			config = nwo.ThreeOrgEtcdRaft()
+			config = nwo.ThreeOrgEtcdRaftNoSysChan()
 			config.Profiles[0].Blocks = &nwo.Blocks{
 				BatchTimeout:      6,
 				MaxMessageCount:   30,
@@ -211,7 +211,7 @@ var _ = Describe("Pvtdata purge", func() {
 				}(fmt.Sprintf(`{"name":"test-marble-%d"}`, i))
 			}
 			wg.Wait()
-			Expect(nwo.GetLedgerHeight(network, org2Peer0, channelID)).To(Equal(19))
+			Expect(nwo.GetLedgerHeight(network, org2Peer0, channelID)).To(Equal(16)) // Anchor peers are in genesis block
 
 			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
 			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)

@@ -159,7 +159,7 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 		Expect(err).NotTo(HaveOccurred())
 
 		By("restarting all fabric processes to reload MSP identities")
-		ordererRunner, ordererProcess, _, peerProcess = nwo.RestartSingleOrdererNetwork(ordererProcess, peerProcess, network)
+		ordererRunner, ordererProcess, peerProcess = nwo.RestartSingleOrdererNetwork(ordererProcess, peerProcess, network)
 
 		By("attempting to invoke chaincode on a peer that does not have a valid endorser identity (endorsing peer has client identity)")
 		sess, err = network.PeerUserSession(org1Peer0, "User1", commands.ChaincodeInvoke{

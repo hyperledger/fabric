@@ -79,73 +79,6 @@ func BasicConfig() *Config {
 	}
 }
 
-// ThreeOrgEtcdRaft returns a simple configuration with three organizations instead
-// of two.
-func ThreeOrgEtcdRaft() *Config {
-	config := BasicEtcdRaft()
-	config.Organizations = append(
-		config.Organizations,
-		&Organization{
-			Name:   "Org3",
-			MSPID:  "Org3MSP",
-			Domain: "org3.example.com",
-			Users:  2,
-			CA:     &CA{Hostname: "ca"},
-		},
-	)
-	config.Consortiums[0].Organizations = append(
-		config.Consortiums[0].Organizations,
-		"Org3",
-	)
-	config.SystemChannel.Profile = "ThreeOrgsOrdererGenesis"
-	config.Channels[0].Profile = "ThreeOrgsChannel"
-	config.Peers = append(
-		config.Peers,
-		&Peer{
-			Name:         "peer0",
-			Organization: "Org3",
-			Channels: []*PeerChannel{
-				{Name: "testchannel", Anchor: true},
-			},
-		},
-	)
-	config.Profiles = []*Profile{{
-		Name:     "ThreeOrgsOrdererGenesis",
-		Orderers: []string{"orderer"},
-	}, {
-		Name:          "ThreeOrgsChannel",
-		Consortium:    "SampleConsortium",
-		Organizations: []string{"Org1", "Org2", "Org3"},
-	}}
-
-	return config
-}
-
-// FullEtcdRaft is a configuration with two organizations and two peers per org.
-func FullEtcdRaft() *Config {
-	config := BasicEtcdRaft()
-
-	config.Peers = append(
-		config.Peers,
-		&Peer{
-			Name:         "peer1",
-			Organization: "Org1",
-			Channels: []*PeerChannel{
-				{Name: "testchannel", Anchor: false},
-			},
-		},
-		&Peer{
-			Name:         "peer1",
-			Organization: "Org2",
-			Channels: []*PeerChannel{
-				{Name: "testchannel", Anchor: false},
-			},
-		},
-	)
-
-	return config
-}
-
 func BasicEtcdRaft() *Config {
 	config := BasicConfig()
 
@@ -340,8 +273,7 @@ func MultiNodeBFTNoSysChan() *Config {
 	return config
 }
 
-// ThreeOrgEtcdRaft returns a simple configuration with three organizations instead
-// of two.
+// ThreeOrgEtcdRaftNoSysChan returns a simple configuration with three organizations instead of two.
 func ThreeOrgEtcdRaftNoSysChan() *Config {
 	config := BasicEtcdRaftNoSysChan()
 	config.Organizations = append(
