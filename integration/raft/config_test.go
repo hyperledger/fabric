@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"io/ioutil"
 	"net/http"
@@ -27,7 +28,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/msp"
 	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
@@ -126,11 +126,10 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}
 
 			By("Creating a new channel, joining all orderers")
-			for i, o := range network.Orderers {
-				channelparticipation.JoinOrdererAppChannelCluster(network, "testchannel", o, ordererRunners[i])
+			for _, o := range network.Orderers {
+				channelparticipation.JoinOrdererAppChannelCluster(network, "testchannel", o)
 			}
-			leader := FindLeader(ordererRunners)
-			Expect(leader).To(BeNumerically(">", 0))
+			FindLeader(ordererRunners)
 
 			// the above can work even if the orderer nodes are not in the same Raft
 			// cluster; we need to verify all the three orderer nodes are in sync wrt
@@ -207,7 +206,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				"cannot join: failed to determine cluster membership from join-block: failed to validate config metadata of ordering config: ElectionTick (10) must be greater than HeartbeatTick (10)")
 		})
 
-		It("rejects config update with malformed EtcdRaft metadata", func() {
+		It("rejects config update", func() {
 			network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
@@ -262,7 +261,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				ordererProcesses = append(ordererProcesses, process)
 			}
 
-			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -271,6 +270,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Launching the orderer")
 			launch(orderer)
+
+			By("Joining the orderer to a channel")
+			channelparticipation.JoinOrdererAppChannelCluster(network, "testchannel", orderer)
 
 			By("Checking that it elected itself as a leader")
 			FindLeader(ordererRunners)
@@ -294,7 +296,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Adding the second orderer")
-			addConsenter(network, peer, orderer, "systemchannel", etcdraft.Consenter{
+			addConsenter(network, peer, orderer, "testchannel", etcdraft.Consenter{
 				ServerTlsCert: secondOrdererCertificate,
 				ClientTlsCert: secondOrdererCertificate,
 				Host:          "127.0.0.1",
@@ -302,17 +304,25 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			})
 
 			By("Obtaining the last config block from the orderer")
-			// Get the last config block of the system channel
-			configBlock := nwo.GetConfigBlock(network, peer, orderer, "systemchannel")
-			// Plant it in the file system of orderer2, the new node to be onboarded.
-			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0o644)
-			Expect(err).NotTo(HaveOccurred())
+			configBlock := nwo.GetConfigBlock(network, peer, orderer, "testchannel")
 
 			By("Waiting for the existing orderer to relinquish its leadership")
 			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout).Should(gbytes.Say("1 stepped down to follower since quorum is not active"))
 			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout).Should(gbytes.Say("No leader is present, cluster size is 2"))
+
 			By("Launching the second orderer")
 			launch(orderer2)
+
+			By("Joining the second orderer to the channel, as consenter")
+			expectedChannelInfo := channelparticipation.ChannelInfo{
+				Name:              "testchannel",
+				URL:               "/participation/v1/channels/testchannel",
+				Status:            "onboarding",
+				ConsensusRelation: "consenter",
+				Height:            0,
+			}
+			channelparticipation.Join(network, orderer2, "testchannel", configBlock, expectedChannelInfo)
+
 			By("Waiting for a leader to be re-elected")
 			FindLeader(ordererRunners)
 
@@ -376,20 +386,29 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			By("Obtaining the last config block from the orderer once more to update the bootstrap file")
-			configBlock = nwo.GetConfigBlock(network, peer, orderer, "systemchannel")
-			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0o644)
-			Expect(err).NotTo(HaveOccurred())
-
 			By("Launching orderer3")
 			launch(orderer3)
 
+			By("Obtaining the last config block from the orderer")
+			configBlock = nwo.GetConfigBlock(network, peer, orderer, "testchannel")
+
+			By("Joining the third orderer to the channel, as follower")
+			expectedChannelInfo = channelparticipation.ChannelInfo{
+				Name:              "testchannel",
+				URL:               "/participation/v1/channels/testchannel",
+				Status:            "onboarding",
+				ConsensusRelation: "follower",
+				Height:            0,
+			}
+			channelparticipation.Join(network, orderer3, "testchannel", configBlock, expectedChannelInfo)
+
 			By("Expanding the TLS root CA certificates and adding orderer3 to the channel")
-			updateOrdererMSPAndConsensusMetadata(network, peer, orderer, "systemchannel", "OrdererOrg", func(config msp.FabricMSPConfig) msp.FabricMSPConfig {
-				config.TlsRootCerts = append(config.TlsRootCerts, caCert)
-				return config
-			},
-				func(metadata *etcdraft.ConfigMetadata) {
+			updateOrdererMSPAndConsensusMetadata(network, peer, orderer, "testchannel", "OrdererOrg",
+				func(config msp.FabricMSPConfig) msp.FabricMSPConfig { //MSP mutator
+					config.TlsRootCerts = append(config.TlsRootCerts, caCert)
+					return config
+				},
+				func(metadata *etcdraft.ConfigMetadata) { //etcdraft mutator
 					metadata.Consenters = append(metadata.Consenters, &etcdraft.Consenter{
 						ServerTlsCert: thirdOrdererCertificate,
 						ClientTlsCert: thirdOrdererCertificate,
@@ -401,6 +420,15 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Waiting for orderer3 to see the leader")
 			FindLeader([]*ginkgomon.Runner{ordererRunners[2]})
+
+			Expect(channelparticipation.ListOne(network, orderer3, "testchannel")).To(Equal(
+				channelparticipation.ChannelInfo{
+					Name:              "testchannel",
+					URL:               "/participation/v1/channels/testchannel",
+					Status:            "active",
+					ConsensusRelation: "consenter",
+					Height:            3,
+				}))
 
 			By("Attemping to add a consenter with invalid certs")
 			// create new certs that are not in the channel config
@@ -420,7 +448,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				network,
 				peer,
 				orderer,
-				"systemchannel",
+				"testchannel",
 				etcdraft.Consenter{
 					ServerTlsCert: client.Cert,
 					ClientTlsCert: client.Cert,
@@ -428,9 +456,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 					Port:          newConsenterPort,
 				},
 			)
-			sess = nwo.UpdateOrdererConfigSession(network, orderer, network.SystemChannel.Name, current, updated, peer, orderer)
+			sess = nwo.UpdateOrdererConfigSession(network, orderer, "testchannel", current, updated, peer, orderer)
 			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-			Expect(sess.Err).To(gbytes.Say(fmt.Sprintf("BAD_REQUEST -- error applying config update to existing channel 'systemchannel': consensus metadata update for channel config update is invalid: invalid new config metadata: consenter %s:%d has invalid certificate: verifying tls client cert with serial number %d: x509: certificate signed by unknown authority", newConsenterHost, newConsenterPort, newConsenterCert.SerialNumber)))
+			Expect(sess.Err).To(gbytes.Say(fmt.Sprintf("BAD_REQUEST -- error applying config update to existing channel 'testchannel': consensus metadata update for channel config update is invalid: invalid new config metadata: consenter %s:%d has invalid certificate: verifying tls client cert with serial number %d: x509: certificate signed by unknown authority", newConsenterHost, newConsenterPort, newConsenterCert.SerialNumber)))
 		})
 	})
 

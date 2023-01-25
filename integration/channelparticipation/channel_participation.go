@@ -226,7 +226,7 @@ func JoinOrdererAppChannel(network *nwo.Network, channelID string, orderer *nwo.
 
 // JoinOrdererAppChannelCluster Joins an orderer to a channel for which the genesis block was created by the network
 // bootstrap. It assumes a channel with more than one orderer (a cluster).
-func JoinOrdererAppChannelCluster(network *nwo.Network, channelID string, orderer *nwo.Orderer, ordererRunner *ginkgomon.Runner) {
+func JoinOrdererAppChannelCluster(network *nwo.Network, channelID string, orderer *nwo.Orderer) {
 	appGenesisBlock := network.LoadAppChannelGenesisBlock(channelID)
 	expectedChannelInfo := ChannelInfo{
 		Name:              channelID,
