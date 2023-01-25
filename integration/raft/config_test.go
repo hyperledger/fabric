@@ -11,8 +11,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"github.com/hyperledger/fabric/common/crypto/tlsgen"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -28,6 +26,8 @@ import (
 	"github.com/hyperledger/fabric-protos-go/msp"
 	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
@@ -126,9 +126,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}
 
 			By("Creating a new channel, joining all orderers")
-			for _, o := range network.Orderers {
-				channelparticipation.JoinOrdererAppChannelCluster(network, "testchannel", o)
-			}
+			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", network.Orderers...)
 			FindLeader(ordererRunners)
 
 			// the above can work even if the orderer nodes are not in the same Raft
@@ -192,6 +190,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			genesisBlock.Data.Data[0], err = protoutil.Marshal(envelope)
 			Expect(err).NotTo(HaveOccurred())
 			genesisBlockBytes, err := protoutil.Marshal(genesisBlock)
+			Expect(err).NotTo(HaveOccurred())
 			err = ioutil.WriteFile(network.OutputBlockPath("testchannel"), genesisBlockBytes, 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -272,7 +271,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			launch(orderer)
 
 			By("Joining the orderer to a channel")
-			channelparticipation.JoinOrdererAppChannelCluster(network, "testchannel", orderer)
+			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", orderer)
 
 			By("Checking that it elected itself as a leader")
 			FindLeader(ordererRunners)
@@ -404,11 +403,11 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Expanding the TLS root CA certificates and adding orderer3 to the channel")
 			updateOrdererMSPAndConsensusMetadata(network, peer, orderer, "testchannel", "OrdererOrg",
-				func(config msp.FabricMSPConfig) msp.FabricMSPConfig { //MSP mutator
+				func(config msp.FabricMSPConfig) msp.FabricMSPConfig { // MSP mutator
 					config.TlsRootCerts = append(config.TlsRootCerts, caCert)
 					return config
 				},
-				func(metadata *etcdraft.ConfigMetadata) { //etcdraft mutator
+				func(metadata *etcdraft.ConfigMetadata) { // etcdraft mutator
 					metadata.Consenters = append(metadata.Consenters, &etcdraft.Consenter{
 						ServerTlsCert: thirdOrdererCertificate,
 						ClientTlsCert: thirdOrdererCertificate,
@@ -464,7 +463,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 	When("a single node cluster has the tick interval overridden", func() {
 		It("reflects this in its startup logs", func() {
-			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -480,6 +479,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			process := ifrit.Invoke(runner)
 			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			ordererProcesses = append(ordererProcesses, process)
+
+			By("Joining the orderer to a channel")
+			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", orderer)
 
 			Eventually(runner.Err()).Should(gbytes.Say("TickIntervalOverride is set, overriding channel configuration tick interval to 642ms"))
 		})

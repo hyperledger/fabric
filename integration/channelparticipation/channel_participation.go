@@ -224,16 +224,18 @@ func JoinOrdererAppChannel(network *nwo.Network, channelID string, orderer *nwo.
 		gbytes.Say(fmt.Sprintf("Raft leader changed: 0 -> 1 channel=%s node=1", channelID)))
 }
 
-// JoinOrdererAppChannelCluster Joins an orderer to a channel for which the genesis block was created by the network
-// bootstrap. It assumes a channel with more than one orderer (a cluster).
-func JoinOrdererAppChannelCluster(network *nwo.Network, channelID string, orderer *nwo.Orderer) {
+// JoinOrderersAppChannelCluster Joins a set of orderers to a channel for which the genesis block was created by the network
+// bootstrap. It assumes a channel with one or more orderers (a cluster).
+func JoinOrderersAppChannelCluster(network *nwo.Network, channelID string, orderers ...*nwo.Orderer) {
 	appGenesisBlock := network.LoadAppChannelGenesisBlock(channelID)
-	expectedChannelInfo := ChannelInfo{
-		Name:              channelID,
-		URL:               fmt.Sprintf("/participation/v1/channels/%s", channelID),
-		Status:            "active",
-		ConsensusRelation: "consenter",
-		Height:            1,
+	for _, orderer := range orderers {
+		expectedChannelInfo := ChannelInfo{
+			Name:              channelID,
+			URL:               fmt.Sprintf("/participation/v1/channels/%s", channelID),
+			Status:            "active",
+			ConsensusRelation: "consenter",
+			Height:            1,
+		}
+		Join(network, orderer, channelID, appGenesisBlock, expectedChannelInfo)
 	}
-	Join(network, orderer, channelID, appGenesisBlock, expectedChannelInfo)
 }

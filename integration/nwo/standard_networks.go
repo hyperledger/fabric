@@ -335,6 +335,6 @@ func MultiNodeEtcdRaftNoSysChan() *Config {
 		{Name: "orderer3", Organization: "OrdererOrg"},
 	}
 	config.Profiles[0].Orderers = []string{"orderer1", "orderer2", "orderer3"}
-	
+
 	return config
 }
