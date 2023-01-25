@@ -652,30 +652,31 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			assertBlockReception(map[string]int{"testchannel1": 4}, network.Orderers, peer, network)
 
-			By("Taking down a follower node")
-			ordererProcesses[3].Signal(syscall.SIGTERM)
-			Eventually(ordererProcesses[3].Wait(), network.EventuallyTimeout).Should(Receive())
+			By("Taking down the leader node")
+			ordererProcesses[0].Signal(syscall.SIGTERM)
+			Eventually(ordererProcesses[0].Wait(), network.EventuallyTimeout).Should(Receive())
 
-			orderer := network.Orderers[0]
+			By("Waiting for a view change to occur")
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Changing to leader role, current view: 1, current leader: 2 channel=testchannel1"))
+			Eventually(ordererRunners[2].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Changing to follower role, current view: 1, current leader: 2 channel=testchannel1"))
+			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Changing to follower role, current view: 1, current leader: 2 channel=testchannel1"))
+
+			orderer := network.Orderers[1]
 
 			By("Invoking once")
 			invokeQuery(network, peer, orderer, channel, 90)
 			By("Invoking twice")
 			invokeQuery(network, peer, orderer, channel, 80)
-			By("Waiting for a view change to occur")
-			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Changing to leader role, current view: 1, current leader: 2 channel=testchannel1"))
-			Eventually(ordererRunners[2].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Changing to follower role, current view: 1, current leader: 2 channel=testchannel1"))
-			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Changing to follower role, current view: 1, current leader: 2 channel=testchannel1"))
 			By("Invoking three times")
 			invokeQuery(network, peer, orderer, channel, 70)
 			By("Invoking four times")
 			invokeQuery(network, peer, orderer, channel, 60)
 
-			By("Bringing up the follower node")
-			runner := network.OrdererRunner(network.Orderers[3])
+			By("Bringing up the leader node")
+			runner := network.OrdererRunner(network.Orderers[0])
 			runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug")
 			proc := ifrit.Invoke(runner)
-			ordererProcesses[3] = proc
+			ordererProcesses[0] = proc
 
 			select {
 			case err := <-proc.Wait():
@@ -683,13 +684,13 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			case <-proc.Ready():
 			}
 			Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
-			Eventually(runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Starting view with number 0, sequence 2"))
+			Eventually(runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Starting view with number 0, sequence 5"))
 
-			By("Waiting for follower to synchronize itself")
+			By("Waiting for node to synchronize itself")
 			Eventually(runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Finished synchronizing with cluster"))
 
-			By("Waiting for follower to understand it synced a view change")
-			Eventually(runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Node 4 was informed of a new view 1 channel=testchannel1"))
+			By("Waiting for node to understand it synced a view change")
+			Eventually(runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Node 1 was informed of a new view 1 channel=testchannel1"))
 
 			By("Waiting for all nodes to have the latest block sequence")
 			assertBlockReception(map[string]int{"testchannel1": 8}, network.Orderers, peer, network)
@@ -697,7 +698,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			By("Ensuring the follower is functioning properly")
 			invokeQuery(network, peer, orderer, channel, 50)
 			invokeQuery(network, peer, orderer, channel, 40)
-			assertBlockReception(map[string]int{"testchannel1": 9}, network.Orderers, peer, network)
+			assertBlockReception(map[string]int{"testchannel1": 10}, network.Orderers, peer, network)
 		})
 
 		It("smartbft multiple nodes view change", func() {
