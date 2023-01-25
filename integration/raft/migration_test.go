@@ -488,55 +488,6 @@ func updateConfigWithBatchTimeout(updatedConfig *common.Config) {
 	}
 }
 
-func raftMultiChannel() *nwo.Config {
-	config := nwo.MultiChannelEtcdRaft()
-	//config.Channels = []*nwo.Channel{
-	//	{Name: "testchannel1", Profile: "TwoOrgsChannel"},
-	//	{Name: "testchannel2", Profile: "TwoOrgsChannel"},
-	//}
-	//
-	//for _, peer := range config.Peers {
-	//	peer.Channels = []*nwo.PeerChannel{
-	//		{Name: "testchannel1", Anchor: true},
-	//		{Name: "testchannel2", Anchor: true},
-	//	}
-	//}
-	return config
-}
-
-func prepareRaftMetadata(network *nwo.Network) []byte {
-	var consenters []*protosraft.Consenter
-	for _, o := range network.Orderers {
-		fullTlsPath := network.OrdererLocalTLSDir(o)
-		certBytes, err := ioutil.ReadFile(filepath.Join(fullTlsPath, "server.crt"))
-		Expect(err).NotTo(HaveOccurred())
-		port := network.OrdererPort(o, nwo.ClusterPort)
-
-		consenter := &protosraft.Consenter{
-			ClientTlsCert: certBytes,
-			ServerTlsCert: certBytes,
-			Host:          "127.0.0.1",
-			Port:          uint32(port),
-		}
-		consenters = append(consenters, consenter)
-	}
-
-	raftMetadata := &protosraft.ConfigMetadata{
-		Consenters: consenters,
-		Options: &protosraft.Options{
-			TickInterval:         "500ms",
-			ElectionTick:         10,
-			HeartbeatTick:        1,
-			MaxInflightBlocks:    5,
-			SnapshotIntervalSize: 10 * 1024 * 1024,
-		},
-	}
-
-	raftMetadataBytes := protoutil.MarshalOrPanic(raftMetadata)
-
-	return raftMetadataBytes
-}
-
 func checkPeerDeliverRequest(o *nwo.Orderer, submitter *nwo.Peer, network *nwo.Network, channelName string) error {
 	c := commands.ChannelFetch{
 		ChannelID:  channelName,

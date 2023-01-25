@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -30,8 +31,6 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
-	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
-	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -149,77 +148,82 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 	})
 
 	Describe("Invalid Raft config metadata", func() {
-		It("refuses to start orderer or rejects config update", func() {
+		It("refuses to join orderer to channel", func() {
 			By("Creating malformed genesis block")
-			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
-			sysProfile := genesisconfig.Load(network.SystemChannel.Profile, network.RootDir)
-			Expect(sysProfile.Orderer).NotTo(BeNil())
-			sysProfile.Orderer.EtcdRaft.Options.ElectionTick = sysProfile.Orderer.EtcdRaft.Options.HeartbeatTick
-			pgen := encoder.New(sysProfile)
-			genesisBlock := pgen.GenesisBlockForChannel(network.SystemChannel.Name)
-			data, err := proto.Marshal(genesisBlock)
+			// Change the genesis block
+			genesisPath := network.OutputBlockPath("testchannel")
+			genesisBlock := nwo.UnmarshalBlockFromFile(genesisPath)
+			envelope, err := protoutil.GetEnvelopeFromBlock(genesisBlock.Data.Data[0])
 			Expect(err).NotTo(HaveOccurred())
-			err = ioutil.WriteFile(network.OutputBlockPath(network.SystemChannel.Name), data, 0o644)
+			payload, err := protoutil.UnmarshalPayload(envelope.Payload)
+			Expect(err).NotTo(HaveOccurred())
+			configEnv := &common.ConfigEnvelope{}
+			err = proto.Unmarshal(payload.Data, configEnv)
+			Expect(err).NotTo(HaveOccurred())
+			genesisConfig := configEnv.GetConfig()
+
+			consensusTypeConfigValue := genesisConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
+			consensusTypeValue := &protosorderer.ConsensusType{}
+			Expect(proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)).To(Succeed())
+
+			metadata := &etcdraft.ConfigMetadata{}
+			Expect(proto.Unmarshal(consensusTypeValue.Metadata, metadata)).To(Succeed())
+
+			metadata.Options.HeartbeatTick = 10
+			metadata.Options.ElectionTick = 10
+
+			newMetadata, err := proto.Marshal(metadata)
+			Expect(err).NotTo(HaveOccurred())
+			consensusTypeValue.Metadata = newMetadata
+
+			genesisConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"] = &common.ConfigValue{
+				ModPolicy: "Admins",
+				Value:     protoutil.MarshalOrPanic(consensusTypeValue),
+			}
+
+			configEnv.Config = genesisConfig
+			payload.Data, err = protoutil.Marshal(configEnv)
+			Expect(err).NotTo(HaveOccurred())
+			envelope.Payload, err = protoutil.Marshal(payload)
+			Expect(err).NotTo(HaveOccurred())
+			genesisBlock.Data.Data[0], err = protoutil.Marshal(envelope)
+			Expect(err).NotTo(HaveOccurred())
+			genesisBlockBytes, err := protoutil.Marshal(genesisBlock)
+			err = ioutil.WriteFile(network.OutputBlockPath("testchannel"), genesisBlockBytes, 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Starting orderer with malformed genesis block")
-			ordererRunner := network.OrdererGroupRunner()
-			process := ifrit.Invoke(ordererRunner)
-			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive()) // orderer process should exit
-			network.Cleanup()
-			os.RemoveAll(testDir)
+			By("Starting orderer")
+			_, ordererProcess, peerProcess := network.StartSingleOrdererNetwork("orderer")
+			ordererProcesses = append(ordererProcesses, ordererProcess)
+			networkProcess = peerProcess
 
-			By("Starting orderer with correct genesis block")
-			testDir, err = ioutil.TempDir("", "e2e")
-			Expect(err).NotTo(HaveOccurred())
-			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
-			network.GenerateConfigTree()
-			network.Bootstrap()
-
+			By("Joining the orderer to a channel with malformed genesis block")
 			orderer := network.Orderer("orderer")
-			runner := network.OrdererRunner(orderer)
-			process = ifrit.Invoke(runner)
-			Eventually(process.Ready, network.EventuallyTimeout).Should(BeClosed())
-			defer func() {
-				process.Signal(syscall.SIGTERM)
-				Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
-			}()
+			channelparticipationJoinFailure(network, orderer, "testchannel", genesisBlock, http.StatusBadRequest,
+				"cannot join: failed to determine cluster membership from join-block: failed to validate config metadata of ordering config: ElectionTick (10) must be greater than HeartbeatTick (10)")
+		})
 
-			By("Waiting for system channel to be ready")
-			FindLeader([]*ginkgomon.Runner{runner})
+		It("rejects config update with malformed EtcdRaft metadata", func() {
+			network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
 
-			By("Creating malformed channel creation config tx")
-			channel := "testchannel"
-			sysProfile = genesisconfig.Load(network.SystemChannel.Profile, network.RootDir)
-			Expect(sysProfile.Orderer).NotTo(BeNil())
-			appProfile := genesisconfig.Load(network.ProfileForChannel(channel), network.RootDir)
-			Expect(appProfile).NotTo(BeNil())
-			o := *sysProfile.Orderer
-			appProfile.Orderer = &o
-			appProfile.Orderer.EtcdRaft = proto.Clone(sysProfile.Orderer.EtcdRaft).(*etcdraft.ConfigMetadata)
-			appProfile.Orderer.EtcdRaft.Options.HeartbeatTick = appProfile.Orderer.EtcdRaft.Options.ElectionTick
-			configtx, err := encoder.MakeChannelCreationTransactionWithSystemChannelContext(channel, nil, appProfile, sysProfile)
-			Expect(err).NotTo(HaveOccurred())
-			data, err = proto.Marshal(configtx)
-			Expect(err).NotTo(HaveOccurred())
-			err = ioutil.WriteFile(network.CreateChannelTxPath(channel), data, 0o644)
-			Expect(err).NotTo(HaveOccurred())
+			By("Starting orderer")
+			odererRunner, ordererProcess, peerProcess := network.StartSingleOrdererNetwork("orderer")
+			ordererProcesses = append(ordererProcesses, ordererProcess)
+			networkProcess = peerProcess
 
-			By("Submitting malformed channel creation config tx to orderer")
-			org1Peer0 := network.Peer("Org1", "peer0")
-			org2Peer0 := network.Peer("Org2", "peer0")
-
-			exitCode := network.CreateChannelExitCode(channel, orderer, org1Peer0, org1Peer0, org2Peer0, orderer)
-			Expect(exitCode).NotTo(Equal(0))
-			Consistently(process.Wait()).ShouldNot(Receive()) // malformed tx should not crash orderer
-			Expect(runner.Err()).To(gbytes.Say(`invalid new config metadata: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
+			By("Joining the orderer to a channel")
+			orderer := network.Orderer("orderer")
+			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, odererRunner)
 
 			By("Submitting channel config update with illegal value")
-			channel = network.SystemChannel.Name
-			config := nwo.GetConfig(network, org1Peer0, orderer, channel)
+			org1Peer0 := network.Peer("Org1", "peer0")
+			config := nwo.GetConfig(network, org1Peer0, orderer, "testchannel")
 			updatedConfig := proto.Clone(config).(*common.Config)
 
 			consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
@@ -241,7 +245,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Value:     protoutil.MarshalOrPanic(consensusTypeValue),
 			}
 
-			sess := nwo.UpdateOrdererConfigSession(network, orderer, channel, config, updatedConfig, org1Peer0, orderer)
+			sess := nwo.UpdateOrdererConfigSession(network, orderer, "testchannel", config, updatedConfig, org1Peer0, orderer)
 			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
 			Expect(sess.Err).To(gbytes.Say(`invalid new config metadata: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
 		})
