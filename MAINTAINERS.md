@@ -5,16 +5,18 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 
 **Active Maintainers**
 
-| Name | GitHub | Chat | email
-|------|--------|------|----------------------
-| Alessandro Sorniotti | [ale-linux][ale-linux] | aso | <ale.linux@sopit.net>
-| Andrew Coleman | [andrew-coleman][andrew-coleman] | andrew-coleman | <andrew_coleman@uk.ibm.com>
-| Artem Barger | [c0rwin][c0rwin] | c0rwin | <artem@bargr.net>
+| Name                    | GitHub | Chat | email
+|-------------------------|--------|------|----------------------
+| Alessandro Sorniotti    | [ale-linux][ale-linux] | aso | <ale.linux@sopit.net>
+| Andrew Coleman          | [andrew-coleman][andrew-coleman] | andrew-coleman | <andrew_coleman@uk.ibm.com>
+| Artem Barger            | [c0rwin][c0rwin] | c0rwin | <artem@bargr.net>
 | Senthilnathan Natarajan | [cendhu][cendhu] | Senthil1 | <cendhu@gmail.com>
-| Dave Enyeart | [denyeart][denyeart] | dave.enyeart | <enyeart@us.ibm.com>
-| Jay Guo | [guoger][guoger] | guoger | <guojiannan1101@gmail.com>
-| Manish Sethi | [manish-sethi][manish-sethi] | manish-sethi | <manish.sethi@gmail.com>
-| Yacov Manevich | [yacovm][yacovm] | yacovm | <yacov.manevich@ibm.com>
+| Dave Enyeart            | [denyeart][denyeart] | dave.enyeart | <enyeart@us.ibm.com>
+| Jay Guo                 | [guoger][guoger] | guoger | <guojiannan1101@gmail.com>
+| Manish Sethi            | [manish-sethi][manish-sethi] | manish-sethi | <manish.sethi@gmail.com>
+| Yacov Manevich          | [yacovm][yacovm] | yacovm | <yacov.manevich@ibm.com>
+| Yoav Tock               | [tock-ibm][tock-ibm] | tock-ibm | <tock@il.ibm.com>
+
 
 **Documentation Maintainers**
 
