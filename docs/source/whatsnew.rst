@@ -341,6 +341,7 @@ announced in each of the v2.x releases.
 * `Fabric v2.4.5 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.4.5>`_.
 * `Fabric v2.4.6 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.4.6>`_.
 * `Fabric v2.4.7 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.4.7>`_.
+* `Fabric v2.4.8 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.4.8>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
