@@ -1,6 +1,35 @@
 What's new in Hyperledger Fabric v2.x
 =====================================
 
+What's New in Hyperledger Fabric v2.5
+-------------------------------------
+
+Purge history of private data
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+While it has always been possible to delete private data from current state, this new feature enables purging the history of private data from a peer while preserving a hash of the private data as immutable evidence on the blockchain.
+
+* Useful for purging private data on demand for privacy reasons or to adhere to government regulations.
+* Deletes private data from state and from peer’s private data history so that it can no longer be queried from block events or from other peers.
+* Available as a new chaincode API `PurgePrivateData()`.
+* Requires setting application capability to `V2_5` in channel configuration
+
+For more details, see the :doc:`private-data/private-data` topic.
+
+Multi-architecture binaries and docker images are now available
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The release binaries and docker images have been updated as follows:
+
+* Support for amd64 and arm64.
+* Release binaries are statically linked for maximum portability.
+* Docker images utilize dynamically linked binaries and are now based on Ubuntu (rather than Alpine) to make them more consistent with typical production runtime environments (production runtime environments are typically based on glibc and often require dynamic linking of HSM modules).
+
+.. note::
+
+   Fabric v2.5.0 is expected to become the next long-term support (LTS) release. A simple in-place upgrade from the prior LTS (Fabric v2.2.x) release is possible.
+
+
 What's New in Hyperledger Fabric v2.4
 -------------------------------------
 
@@ -39,10 +68,6 @@ This command will be useful, for example, in the following scenarios:
 
 For more information, see the `peer lifecycle chaincode calculatepackageid` :doc:`command reference topic<commands/peerlifecycle>`.
 
-
-.. note::
-
-   While Fabric v2.4.0 introduces new features, Fabric v2.2.x remains the current long-term support release until the next LTS release is announced.
 
 What's New in Hyperledger Fabric v2.3
 -------------------------------------
@@ -306,27 +331,9 @@ Release notes
 =============
 
 The release notes provide more details for users moving to the new release.
-Specifically, take a look at the changes and deprecations
-announced in each of the v2.x releases.
+Specifically, take a look at the changes and deprecations.
 
-* `Fabric v2.0.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.0.0>`_.
-* `Fabric v2.0.1 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.0.1>`_.
-* `Fabric v2.1.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.1.0>`_.
-* `Fabric v2.1.1 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.1.1>`_.
-* `Fabric v2.2.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.2.0>`_.
-* `Fabric v2.2.1 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.2.1>`_.
-* `Fabric v2.2.2 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.2.2>`_.
-* `Fabric v2.2.3 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.2.3>`_.
-* `Fabric v2.2.4 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.2.4>`_.
-* `Fabric v2.3.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.3.0>`_.
-* `Fabric v2.3.1 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.3.1>`_.
-* `Fabric v2.3.2 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.3.2>`_.
-* `Fabric v2.3.3 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.3.3>`_.
-* `Fabric v2.4.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.4.0>`_.
-* `Fabric v2.4.1 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.4.1>`_.
-* `Fabric v2.4.2 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.4.2>`_.
-* `Fabric v2.4.3 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.4.3>`_.
-* `Fabric v2.4.4 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.4.4>`_.
+* `Fabric v2.5.0-beta release notes <https://github.com/hyperledger/fabric/releases/tag/v2.5.0-beta>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
