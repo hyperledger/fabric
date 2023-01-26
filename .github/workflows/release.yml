@@ -9,7 +9,7 @@ on:
     tags: [ v2.* ]
 
 env:
-  GO_VER: 1.18.9
+  GO_VER: 1.18.10
   UBUNTU_VER: 20.04
   FABRIC_VER: ${{ github.ref_name }}
   DOCKER_REGISTRY: ${{ github.repository_owner == 'hyperledger' && 'docker.io' || 'ghcr.io' }}
