@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
 //
 //	Schemes: http, https
 //	Version: 2.3
-//	License: Copyright IBM Corp. All Rights Reserved.
+//	License: Apache-2.0
 //
 //	Consumes:
 //	- application/json

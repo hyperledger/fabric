@@ -14,7 +14,7 @@
     "description": "Hyperledger Fabric is an enterprise-grade permissioned distributed ledger framework for developing\nsolutions and applications. Its modular and versatile design satisfies a broad range of industry use\ncases. It offers a unique approach to consensus that enables performance at scale while preserving privacy.",
     "title": "Fabric API",
     "license": {
-      "name": "Copyright IBM Corp. All Rights Reserved."
+      "name": "Apache-2.0"
     },
     "version": "2.3"
   },
