@@ -14,7 +14,7 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 | Dave Enyeart | [denyeart][denyeart] | dave.enyeart | <enyeart@us.ibm.com>
 | Jay Guo | [guoger][guoger] | guoger | <guojiannan1101@gmail.com>
 | Manish Sethi | [manish-sethi][manish-sethi] | manish-sethi | <manish.sethi@gmail.com>
-| Yacov Manevich | [yacovm][yacovm] | yacovm | <yacovm@il.ibm.com>
+| Yacov Manevich | [yacovm][yacovm] | yacovm | <yacov.manevich@ibm.com>
 
 **Documentation Maintainers**
 
