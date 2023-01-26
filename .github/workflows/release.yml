@@ -3,21 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 name: Release
+
 on:
-  workflow_dispatch:
-    inputs:
-      release:
-        description: 'Fabric Release, e.g. 2.4.7'
-        required: true
-        type: string
-      two_digit_release:
-        description: 'Fabric Two Digit Release, e.g. 2.4'
-        required: true
-        type: string
-      commit_hash:
-        description: 'Commit hash, e.g. df9c661a192f8cf11376d9d643a0021f1a76c34b'
-        required: true
-        type: string
+  push:
+    tags: [ v2.* ]
 
 env:
   GO_VER: 1.18.10
@@ -48,16 +37,17 @@ jobs:
           go-version: ${{ env.GO_VER }}
       - name: Checkout Fabric Code
         uses: actions/checkout@v3
+      - name: Set three digit RELEASE (strip leading v)
+        run: echo "RELEASE=$(echo ${{ github.ref_name }} | sed -e 's/^v\(.*\)/\1/')" >> $GITHUB_ENV
       - name: Compile Binary and Create Tarball
         run: ./ci/scripts/create_binary_package.sh
         env:
           TARGET: ${{ matrix.target }}-${{ matrix.arch }}
-          RELEASE: ${{ inputs.release }}
       - name: Publish Release Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: hyperledger-fabric-${{ matrix.target }}-${{ matrix.arch }}-${{ inputs.release }}.tar.gz
-          path: release/${{ matrix.target }}-${{ matrix.arch }}/hyperledger-fabric-${{ matrix.target }}-${{ matrix.arch }}-${{ inputs.release }}.tar.gz
+          name: hyperledger-fabric-${{ matrix.target }}-${{ matrix.arch }}-${{ env.RELEASE }}.tar.gz
+          path: release/${{ matrix.target }}-${{ matrix.arch }}/hyperledger-fabric-${{ matrix.target }}-${{ matrix.arch }}-${{ env.RELEASE }}.tar.gz
   build-and-push-docker-images:
     name: Build and Push Fabric Docker Images
     runs-on: ubuntu-20.04
@@ -74,16 +64,18 @@ jobs:
           go-version: ${{ env.GO_VER }}
       - name: Checkout Fabric Code
         uses: actions/checkout@v3
+      - name: Set three digit RELEASE (strip leading v)
+        run: echo "RELEASE=$(echo ${{ github.ref_name }} | sed -e 's/^v\(.*\)/\1/')" >> $GITHUB_ENV
+      - name: Set TWO_DIGIT_RELEASE (strip leading v and use major.minor)
+        run: echo "TWO_DIGIT_RELEASE=$(echo ${{ github.ref_name }} | sed -e 's/^v\(.*\)/\1/' | cut -d '.' -f 1,2)" >> $GITHUB_ENV
       - name: Publish Docker Images
         run: ./ci/scripts/publish_docker.sh
         env:
-          RELEASE: ${{ inputs.release }}
-          TWO_DIGIT_RELEASE: ${{ inputs.two_digit_release }}
           DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
           DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
   create-release:
     name: Create GitHub Release
-    needs: [ build-binaries, build-and-push-docker-images ]
+    needs: [ build-binaries , build-and-push-docker-images]
     runs-on: ubuntu-20.04
     permissions:
       contents: write
@@ -97,7 +89,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           artifacts: "*.tar.gz/*.tar.gz"
-          bodyFile: release_notes/v${{ inputs.release }}.md
-          commit: ${{ inputs.commit_hash }}
-          tag: v${{ inputs.release }}
+          bodyFile: release_notes/${{ github.ref_name }}.md
+          tag: ${{ github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
+          allowUpdates: true
