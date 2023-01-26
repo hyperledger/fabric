@@ -763,11 +763,31 @@ var _ = Describe("ExternalFunctions", func() {
 					},
 				}, fakePublicState)
 				Expect(err).NotTo(HaveOccurred())
+
+				resources.Serializer.Serialize("namespaces", "cc-name#5", testDefinition.Parameters(), fakeOrgState)
+				resources.Serializer.Serialize("chaincode-sources", "cc-name#5", &lifecycle.ChaincodeLocalPackage{
+					PackageID: "hash",
+				}, fakeOrgState)
 			})
 
-			It("verifies that the definition matches before writing", func() {
+			It("verifies that it should be impossible to approve already committed definition", func() {
 				err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(err).To(MatchError("attempted to redefine the current committed sequence (5) for namespace cc-name"))
+			})
+
+			Context("when the new definition being advanced", func() {
+				BeforeEach(func() {
+					testDefinition.Sequence++
+				})
+
+				AfterEach(func() {
+					testDefinition.Sequence--
+				})
+
+				It("the approve should work without the error", func() {
+					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
+					Expect(err).NotTo(HaveOccurred())
+				})
 			})
 
 			Context("when the current definition is not found", func() {

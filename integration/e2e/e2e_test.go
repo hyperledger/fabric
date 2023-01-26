@@ -630,6 +630,90 @@ var _ = Describe("EndToEnd", func() {
 			}
 		})
 	})
+
+	Describe("basic lifecycle operations for chaincode install and update", func() {
+		var process ifrit.Process
+
+		BeforeEach(func() {
+			network = nwo.New(nwo.FullEtcdRaft(), testDir, client, StartPort(), components)
+
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			networkRunner := network.NetworkGroupRunner()
+			process = ifrit.Invoke(networkRunner)
+			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		})
+
+		AfterEach(func() {
+			process.Signal(syscall.SIGTERM)
+			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+		})
+
+		It("approves chaincode for org and updates chaincode definition", func() {
+			chaincode := nwo.Chaincode{
+				Name:            "mycc",
+				Version:         "0.0",
+				Path:            "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+				Lang:            "golang",
+				PackageFile:     filepath.Join(testDir, "simplecc.tar.gz"),
+				Ctor:            `{"Args":["init","a","100","b","200"]}`,
+				SignaturePolicy: `OR ('Org1MSP.peer', 'Org2MSP.peer')`,
+				Sequence:        "1",
+				InitRequired:    true,
+				Label:           "my_simple_chaincode",
+			}
+
+			orderer := network.Orderer("orderer")
+
+			By("creating and joining channels")
+			network.CreateAndJoinChannels(orderer)
+
+			By("enabling new lifecycle capabilities")
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_5", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+			By("deploying the chaincode")
+			peers := network.PeersWithChannel("testchannel")
+			nwo.PackageAndInstallChaincode(network, chaincode, peers...)
+
+			// approve for each org
+			nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, peers...)
+			// commit definition
+			nwo.CheckCommitReadinessUntilReady(network, "testchannel", chaincode, network.PeerOrgs(), peers...)
+
+			// update chaincode endorsement policy and commit again
+			By("update chaincode's endorsement policy")
+			chaincode.SignaturePolicy = `AND ('Org1MSP.peer', 'Org2MSP.peer')`
+			nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, peers...)
+			nwo.CheckCommitReadinessUntilReady(network, "testchannel", chaincode, network.PeerOrgs(), peers...)
+
+			// finall commit the chaincode
+			By("committing chaincode's definition")
+			nwo.CommitChaincode(network, "testchannel", orderer, chaincode, peers[0], peers...)
+
+			if chaincode.PackageID == "" {
+				chaincode.SetPackageIDFromPackageFile()
+			}
+
+			By("attempting to approve chaincode definition after commit")
+			sess, err := network.PeerAdminSession(peers[0], commands.ChaincodeApproveForMyOrg{
+				ChannelID:           "testchannel",
+				Orderer:             network.OrdererAddress(orderer, nwo.ListenPort),
+				Name:                chaincode.Name,
+				Version:             chaincode.Version,
+				PackageID:           chaincode.PackageID,
+				Sequence:            chaincode.Sequence,
+				EndorsementPlugin:   chaincode.EndorsementPlugin,
+				ValidationPlugin:    chaincode.ValidationPlugin,
+				SignaturePolicy:     chaincode.SignaturePolicy,
+				ChannelConfigPolicy: chaincode.ChannelConfigPolicy,
+				InitRequired:        chaincode.InitRequired,
+				CollectionsConfig:   chaincode.CollectionsConfig,
+				ClientAuth:          network.ClientAuthRequired,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess.Err, network.EventuallyTimeout).Should(gbytes.Say(`Error: proposal failed with status: 500`))
+		})
+	})
 })
 
 func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string) {
