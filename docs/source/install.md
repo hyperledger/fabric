@@ -46,11 +46,11 @@ To view the help and available commands for the download script, please use the 
 curl -sSL https://bit.ly/2ysbOFE | bash -s -- -h
 ```
 
-To download a specific release, pass a version identifier for Fabric and Fabric CA Docker images. The command below demonstrates how to download the latest production releases - `Fabric v2.4.7` and `Fabric CA v1.5.5` 
+To download a specific release, pass a version identifier for Fabric and Fabric CA Docker images. The command below demonstrates how to download the latest production releases - `Fabric v2.4.8` and `Fabric CA v1.5.5` 
 
 ```shell
 curl -sSL https://bit.ly/2ysbOFE | bash -s -- <fabric_version> <fabric-ca_version>
-curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.4.7 1.5.5
+curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.4.8 1.5.5
 ```
 
 ## Notes
