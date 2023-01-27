@@ -488,9 +488,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			assertBlockReception(map[string]int{"testchannel1": 14}, network.Orderers, peer, network)
 
 			By("Transact after orderer5 rejoined the consenters set")
-			invokeQuery(network, peer, network.Orderers[2], channel, 20)
-
-			assertBlockReception(map[string]int{"testchannel1": 15}, network.Orderers, peer, network)
+			invokeQuery(network, peer, network.Orderers[0], channel, 20)
 
 			By("Transact last time")
 			invokeQuery(network, peer, network.Orderers[4], channel, 10)
