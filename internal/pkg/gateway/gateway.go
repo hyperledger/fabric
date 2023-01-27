@@ -9,6 +9,7 @@ import (
 	"context"
 
 	peerproto "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc"
@@ -25,12 +26,13 @@ var logger = flogging.MustGetLogger("gateway")
 
 // Server represents the GRPC server for the Gateway.
 type Server struct {
-	registry       *registry
-	commitFinder   CommitFinder
-	policy         ACLChecker
-	options        config.Options
-	logger         *flogging.FabricLogger
-	ledgerProvider ledger.Provider
+	registry         *registry
+	commitFinder     CommitFinder
+	policy           ACLChecker
+	options          config.Options
+	logger           *flogging.FabricLogger
+	ledgerProvider   ledger.Provider
+	getChannelConfig channelConfigGetter
 }
 
 type EndorserServerAdapter struct {
@@ -48,6 +50,8 @@ type CommitFinder interface {
 type ACLChecker interface {
 	CheckACL(policyName string, channelName string, data interface{}) error
 }
+
+type channelConfigGetter func(cid string) channelconfig.Resources
 
 // CreateServer creates an embedded instance of the Gateway.
 func CreateServer(
@@ -79,6 +83,7 @@ func CreateServer(
 		options,
 		systemChaincodes,
 		peerInstance.OrdererEndpointOverrides,
+		peerInstance.GetChannelConfig,
 	)
 
 	peerInstance.AddConfigCallbacks(server.registry.configUpdate)
@@ -97,6 +102,7 @@ func newServer(localEndorser peerproto.EndorserClient,
 	options config.Options,
 	systemChaincodes scc.BuiltinSCCs,
 	ordererEndpointOverrides map[string]*orderers.Endpoint,
+	getChannelConfig channelConfigGetter,
 ) *Server {
 	return &Server{
 		registry: &registry{
@@ -116,10 +122,11 @@ func newServer(localEndorser peerproto.EndorserClient,
 			channelInitialized: map[string]bool{},
 			systemChaincodes:   systemChaincodes,
 		},
-		commitFinder:   finder,
-		policy:         policy,
-		options:        options,
-		logger:         logger,
-		ledgerProvider: ledgerProvider,
+		commitFinder:     finder,
+		policy:           policy,
+		options:          options,
+		logger:           logger,
+		ledgerProvider:   ledgerProvider,
+		getChannelConfig: getChannelConfig,
 	}
 }

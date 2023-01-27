@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/msp"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/mock"
@@ -84,6 +85,30 @@ type aclChecker interface {
 //go:generate counterfeiter -o mocks/resultsiterator.go --fake-name ResultsIterator . mockResultsIterator
 type mockResultsIterator interface {
 	ledger.ResultsIterator
+}
+
+//go:generate counterfeiter -o mocks/resources.go --fake-name Resources . ccResources
+
+type ccResources interface {
+	channelconfig.Resources
+}
+
+//go:generate counterfeiter -o mocks/orderer.go --fake-name Orderer . ccOrderer
+
+type ccOrderer interface {
+	channelconfig.Orderer
+}
+
+//go:generate counterfeiter -o mocks/channel.go --fake-name Channel . ccChannel
+
+type ccChannel interface {
+	channelconfig.Channel
+}
+
+//go:generate counterfeiter -o mocks/channel_capabilities.go --fake-name ChannelCapabilities . ccChannelCapabilities
+
+type ccChannelCapabilities interface {
+	channelconfig.ChannelCapabilities
 }
 
 type (
@@ -152,6 +177,7 @@ type testDef struct {
 	startPosition            *ab.SeekPosition
 	afterTxID                string
 	ordererEndpointOverrides map[string]*orderers.Endpoint
+	isBFT                    bool
 }
 
 type preparedTest struct {
@@ -189,6 +215,22 @@ var (
 		peer2Mock.address:     peer2Mock,
 		peer3Mock.address:     peer3Mock,
 		peer4Mock.address:     peer4Mock,
+	}
+	orderer1Mock = &orderer{endpointConfig: &endpointConfig{pkiid: []byte("o1"), address: "orderer1:7050", mspid: "msp1"}}
+	orderer2Mock = &orderer{endpointConfig: &endpointConfig{pkiid: []byte("o2"), address: "orderer2:7050", mspid: "msp1"}}
+	orderer3Mock = &orderer{endpointConfig: &endpointConfig{pkiid: []byte("o3"), address: "orderer3:7050", mspid: "msp1"}}
+	orderer4Mock = &orderer{endpointConfig: &endpointConfig{pkiid: []byte("o4"), address: "orderer4:7050", mspid: "msp1"}}
+	orderer5Mock = &orderer{endpointConfig: &endpointConfig{pkiid: []byte("o5"), address: "orderer5:7050", mspid: "msp1"}}
+	orderer6Mock = &orderer{endpointConfig: &endpointConfig{pkiid: []byte("o6"), address: "orderer6:7050", mspid: "msp1"}}
+	orderer7Mock = &orderer{endpointConfig: &endpointConfig{pkiid: []byte("o7"), address: "orderer7:7050", mspid: "msp1"}}
+	ordererMocks = map[string]*orderer{
+		orderer1Mock.address: orderer1Mock,
+		orderer2Mock.address: orderer2Mock,
+		orderer3Mock.address: orderer3Mock,
+		orderer4Mock.address: orderer4Mock,
+		orderer5Mock.address: orderer5Mock,
+		orderer6Mock.address: orderer6Mock,
+		orderer7Mock.address: orderer7Mock,
 	}
 )
 
@@ -1121,7 +1163,7 @@ func TestSubmit(t *testing.T) {
 			errCode:   codes.Unavailable,
 			errString: "no orderers could successfully process transaction",
 			errDetails: []*pb.ErrorDetail{{
-				Address: "orderer:7050",
+				Address: "orderer1:7050",
 				MspId:   "msp1",
 				Message: "rpc error: code = FailedPrecondition desc = Orderer not listening!",
 			}},
@@ -1138,7 +1180,7 @@ func TestSubmit(t *testing.T) {
 			errCode:   codes.Unavailable,
 			errString: "no orderers could successfully process transaction",
 			errDetails: []*pb.ErrorDetail{{
-				Address: "orderer:7050",
+				Address: "orderer1:7050",
 				MspId:   "msp1",
 				Message: "rpc error: code = Internal desc = Orderer says no!",
 			}},
@@ -1155,7 +1197,7 @@ func TestSubmit(t *testing.T) {
 			errCode:   codes.Unavailable,
 			errString: "no orderers could successfully process transaction",
 			errDetails: []*pb.ErrorDetail{{
-				Address: "orderer:7050",
+				Address: "orderer1:7050",
 				MspId:   "msp1",
 				Message: "rpc error: code = FailedPrecondition desc = Orderer not happy!",
 			}},
@@ -1166,13 +1208,9 @@ func TestSubmit(t *testing.T) {
 				"g1": {{endorser: localhostMock}},
 			},
 			postSetup: func(t *testing.T, def *preparedTest) {
-				def.server.registry.endpointFactory.connectOrderer = func(_ *grpc.ClientConn) ab.AtomicBroadcastClient {
-					abc := &mocks.ABClient{}
-					abbc := &mocks.ABBClient{}
-					abbc.RecvReturns(nil, nil)
-					abc.BroadcastReturns(abbc, nil)
-					return abc
-				}
+				abbc := &mocks.ABBClient{}
+				abbc.RecvReturns(nil, nil)
+				orderer1Mock.client.(*mocks.ABClient).BroadcastReturns(abbc, nil)
 			},
 			errCode:   codes.Unavailable,
 			errString: "no orderers could successfully process transaction",
@@ -1183,16 +1221,12 @@ func TestSubmit(t *testing.T) {
 				"g1": {{endorser: localhostMock}},
 			},
 			postSetup: func(t *testing.T, def *preparedTest) {
-				def.server.registry.endpointFactory.connectOrderer = func(_ *grpc.ClientConn) ab.AtomicBroadcastClient {
-					abc := &mocks.ABClient{}
-					abbc := &mocks.ABBClient{}
-					response := &ab.BroadcastResponse{
-						Status: cp.Status_BAD_REQUEST,
-					}
-					abbc.RecvReturns(response, nil)
-					abc.BroadcastReturns(abbc, nil)
-					return abc
+				abbc := &mocks.ABBClient{}
+				response := &ab.BroadcastResponse{
+					Status: cp.Status_BAD_REQUEST,
 				}
+				abbc.RecvReturns(response, nil)
+				orderer1Mock.client.(*mocks.ABClient).BroadcastReturns(abbc, nil)
 			},
 			errCode:   codes.Aborted,
 			errString: "received unsuccessful response from orderer: " + cp.Status_name[int32(cp.Status_BAD_REQUEST)],
@@ -1204,7 +1238,7 @@ func TestSubmit(t *testing.T) {
 			},
 			postSetup: func(t *testing.T, def *preparedTest) {
 				def.dialer.Calls(func(_ context.Context, target string, _ ...grpc.DialOption) (*grpc.ClientConn, error) {
-					if target == "orderer:7050" {
+					if target == "orderer1:7050" {
 						return nil, fmt.Errorf("orderer not answering")
 					}
 					return nil, nil
@@ -1212,6 +1246,36 @@ func TestSubmit(t *testing.T) {
 			},
 			errCode:   codes.Unavailable,
 			errString: "no orderer nodes available",
+		},
+		{
+			name: "multiple non-BFT orderers - only one needs to succeed",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock}},
+			},
+			config: &dp.ConfigResult{
+				Orderers: map[string]*dp.Endpoints{
+					"msp1": {
+						Endpoint: []*dp.Endpoint{
+							{Host: "orderer1", Port: 7050},
+							{Host: "orderer2", Port: 7050},
+							{Host: "orderer3", Port: 7050},
+						},
+					},
+				},
+				Msps: map[string]*msp.FabricMSPConfig{
+					"msp1": {
+						TlsRootCerts: [][]byte{},
+					},
+				},
+			},
+			postTest: func(t *testing.T, def *preparedTest) {
+				// only one orderer is invoked
+				var invoked int
+				for _, o := range ordererMocks {
+					invoked += o.client.(*mocks.ABClient).BroadcastCallCount()
+				}
+				require.Equal(t, invoked, 1)
+			},
 		},
 		{
 			name: "orderer retry",
@@ -1235,7 +1299,6 @@ func TestSubmit(t *testing.T) {
 				},
 			},
 			postSetup: func(t *testing.T, def *preparedTest) {
-				abc := &mocks.ABClient{}
 				abbc := &mocks.ABBClient{}
 				abbc.SendReturnsOnCall(0, status.Error(codes.Unavailable, "First orderer error"))
 				abbc.SendReturnsOnCall(1, status.Error(codes.Unavailable, "Second orderer error"))
@@ -1244,19 +1307,9 @@ func TestSubmit(t *testing.T) {
 					Info:   "success",
 					Status: cp.Status(200),
 				}, nil)
-				abc.BroadcastReturns(abbc, nil)
-				def.server.registry.endpointFactory = &endpointFactory{
-					timeout: 5 * time.Second,
-					connectEndorser: func(conn *grpc.ClientConn) peer.EndorserClient {
-						return &mocks.EndorserClient{}
-					},
-					connectOrderer: func(_ *grpc.ClientConn) ab.AtomicBroadcastClient {
-						return abc
-					},
-					dialer: func(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
-						return nil, nil
-					},
-				}
+				orderer1Mock.client.(*mocks.ABClient).BroadcastReturns(abbc, nil)
+				orderer2Mock.client.(*mocks.ABClient).BroadcastReturns(abbc, nil)
+				orderer3Mock.client.(*mocks.ABClient).BroadcastReturns(abbc, nil)
 			},
 		},
 		{
@@ -1281,7 +1334,6 @@ func TestSubmit(t *testing.T) {
 				},
 			},
 			postSetup: func(t *testing.T, def *preparedTest) {
-				abc := &mocks.ABClient{}
 				abbc := &mocks.ABBClient{}
 				abbc.SendReturns(nil)
 				abbc.RecvReturnsOnCall(0, &ab.BroadcastResponse{
@@ -1292,19 +1344,9 @@ func TestSubmit(t *testing.T) {
 					Info:   "success",
 					Status: cp.Status(200),
 				}, nil)
-				abc.BroadcastReturns(abbc, nil)
-				def.server.registry.endpointFactory = &endpointFactory{
-					timeout: 5 * time.Second,
-					connectEndorser: func(conn *grpc.ClientConn) peer.EndorserClient {
-						return &mocks.EndorserClient{}
-					},
-					connectOrderer: func(_ *grpc.ClientConn) ab.AtomicBroadcastClient {
-						return abc
-					},
-					dialer: func(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
-						return nil, nil
-					},
-				}
+				orderer1Mock.client.(*mocks.ABClient).BroadcastReturns(abbc, nil)
+				orderer2Mock.client.(*mocks.ABClient).BroadcastReturns(abbc, nil)
+				orderer3Mock.client.(*mocks.ABClient).BroadcastReturns(abbc, nil)
 			},
 		},
 		{
@@ -1327,14 +1369,13 @@ func TestSubmit(t *testing.T) {
 				def.ctx, def.cancel = context.WithTimeout(def.ctx, 300*time.Millisecond)
 				broadcastTime := 200 * time.Millisecond // first invocation exceeds BroadcastTimeout
 
-				abc := &mocks.ABClient{}
 				abbc := &mocks.ABBClient{}
 				abbc.SendReturns(nil)
 				abbc.RecvReturns(&ab.BroadcastResponse{
 					Info:   "success",
 					Status: cp.Status(200),
 				}, nil)
-				abc.BroadcastStub = func(ctx context.Context, co ...grpc.CallOption) (ab.AtomicBroadcast_BroadcastClient, error) {
+				bs := func(ctx context.Context, co ...grpc.CallOption) (ab.AtomicBroadcast_BroadcastClient, error) {
 					defer func() {
 						broadcastTime = time.Millisecond // subsequent invocations will not timeout
 					}()
@@ -1345,18 +1386,9 @@ func TestSubmit(t *testing.T) {
 						return nil, ctx.Err()
 					}
 				}
-				def.server.registry.endpointFactory = &endpointFactory{
-					timeout: 5 * time.Second,
-					connectEndorser: func(conn *grpc.ClientConn) peer.EndorserClient {
-						return &mocks.EndorserClient{}
-					},
-					connectOrderer: func(_ *grpc.ClientConn) ab.AtomicBroadcastClient {
-						return abc
-					},
-					dialer: func(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
-						return nil, nil
-					},
-				}
+				orderer1Mock.client.(*mocks.ABClient).BroadcastStub = bs
+				orderer2Mock.client.(*mocks.ABClient).BroadcastStub = bs
+				orderer3Mock.client.(*mocks.ABClient).BroadcastStub = bs
 			},
 			postTest: func(t *testing.T, def *preparedTest) {
 				def.cancel()
@@ -1382,14 +1414,13 @@ func TestSubmit(t *testing.T) {
 				def.ctx, def.cancel = context.WithTimeout(def.ctx, 50*time.Millisecond)
 				broadcastTime := 200 * time.Millisecond // invocation exceeds BroadcastTimeout
 
-				abc := &mocks.ABClient{}
 				abbc := &mocks.ABBClient{}
 				abbc.SendReturns(nil)
 				abbc.RecvReturns(&ab.BroadcastResponse{
 					Info:   "success",
 					Status: cp.Status(200),
 				}, nil)
-				abc.BroadcastStub = func(ctx context.Context, co ...grpc.CallOption) (ab.AtomicBroadcast_BroadcastClient, error) {
+				bs := func(ctx context.Context, co ...grpc.CallOption) (ab.AtomicBroadcast_BroadcastClient, error) {
 					select {
 					case <-time.After(broadcastTime):
 						return abbc, nil
@@ -1397,18 +1428,9 @@ func TestSubmit(t *testing.T) {
 						return nil, ctx.Err()
 					}
 				}
-				def.server.registry.endpointFactory = &endpointFactory{
-					timeout: 5 * time.Second,
-					connectEndorser: func(conn *grpc.ClientConn) peer.EndorserClient {
-						return &mocks.EndorserClient{}
-					},
-					connectOrderer: func(_ *grpc.ClientConn) ab.AtomicBroadcastClient {
-						return abc
-					},
-					dialer: func(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
-						return nil, nil
-					},
-				}
+				orderer1Mock.client.(*mocks.ABClient).BroadcastStub = bs
+				orderer2Mock.client.(*mocks.ABClient).BroadcastStub = bs
+				orderer3Mock.client.(*mocks.ABClient).BroadcastStub = bs
 			},
 			postTest: func(t *testing.T, def *preparedTest) {
 				def.cancel()
@@ -1522,6 +1544,253 @@ func TestSubmit(t *testing.T) {
 				require.NotContains(t, addresses, "orderer3:7050")
 			},
 		},
+		{
+			name:  "multiple BFT orderers are all invoked",
+			isBFT: true,
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock}},
+			},
+			config: &dp.ConfigResult{
+				Orderers: map[string]*dp.Endpoints{
+					"msp1": {
+						Endpoint: []*dp.Endpoint{
+							{Host: "orderer1", Port: 7050},
+							{Host: "orderer2", Port: 7050},
+							{Host: "orderer3", Port: 7050},
+							{Host: "orderer4", Port: 7050},
+						},
+					},
+				},
+				Msps: map[string]*msp.FabricMSPConfig{
+					"msp1": {
+						TlsRootCerts: [][]byte{},
+					},
+				},
+			},
+			endpointDefinition: &endpointDef{
+				proposalResponseStatus: 200,
+				ordererStatus:          200,
+			},
+			postTest: func(t *testing.T, def *preparedTest) {
+				require.Eventually(t, func() bool {
+					return orderer1Mock.client.(*mocks.ABClient).BroadcastCallCount() == 1 &&
+						orderer2Mock.client.(*mocks.ABClient).BroadcastCallCount() == 1 &&
+						orderer3Mock.client.(*mocks.ABClient).BroadcastCallCount() == 1 &&
+						orderer4Mock.client.(*mocks.ABClient).BroadcastCallCount() == 1
+				}, broadcastTimeout, 10*time.Millisecond)
+			},
+		},
+		{
+			name:  "multiple BFT orderers all fail",
+			isBFT: true,
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock}},
+			},
+			config: &dp.ConfigResult{
+				Orderers: map[string]*dp.Endpoints{
+					"msp1": {
+						Endpoint: []*dp.Endpoint{
+							{Host: "orderer1", Port: 7050},
+							{Host: "orderer2", Port: 7050},
+							{Host: "orderer3", Port: 7050},
+						},
+					},
+				},
+				Msps: map[string]*msp.FabricMSPConfig{
+					"msp1": {
+						TlsRootCerts: [][]byte{},
+					},
+				},
+			},
+			endpointDefinition: &endpointDef{
+				proposalResponseStatus: 200,
+				ordererBroadcastError:  status.Error(codes.Unavailable, "Orderer not listening!"),
+			},
+			errCode:   codes.Unavailable,
+			errString: "insufficient number of orderers could successfully process transaction to satisfy quorum requirement",
+		},
+		{
+			name:  "7 BFT orderers can tolerate 2 faults",
+			isBFT: true,
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock}},
+			},
+			config: &dp.ConfigResult{
+				Orderers: map[string]*dp.Endpoints{
+					"msp1": {
+						Endpoint: []*dp.Endpoint{
+							{Host: "orderer1", Port: 7050},
+							{Host: "orderer2", Port: 7050},
+							{Host: "orderer3", Port: 7050},
+							{Host: "orderer4", Port: 7050},
+							{Host: "orderer5", Port: 7050},
+							{Host: "orderer6", Port: 7050},
+							{Host: "orderer7", Port: 7050},
+						},
+					},
+				},
+				Msps: map[string]*msp.FabricMSPConfig{
+					"msp1": {
+						TlsRootCerts: [][]byte{},
+					},
+				},
+			},
+			endpointDefinition: &endpointDef{
+				proposalResponseStatus: 200,
+				ordererStatus:          200,
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				orderer1Mock.client.(*mocks.ABClient).BroadcastReturns(nil, errors.New("orderer1 fails"))
+				orderer4Mock.client.(*mocks.ABClient).BroadcastReturns(nil, errors.New("orderer4 fails"))
+			},
+		},
+		{
+			name:  "7 BFT orderers cannot tolerate 3 faults",
+			isBFT: true,
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock}},
+			},
+			config: &dp.ConfigResult{
+				Orderers: map[string]*dp.Endpoints{
+					"msp1": {
+						Endpoint: []*dp.Endpoint{
+							{Host: "orderer1", Port: 7050},
+							{Host: "orderer2", Port: 7050},
+							{Host: "orderer3", Port: 7050},
+							{Host: "orderer4", Port: 7050},
+							{Host: "orderer5", Port: 7050},
+							{Host: "orderer6", Port: 7050},
+							{Host: "orderer7", Port: 7050},
+						},
+					},
+				},
+				Msps: map[string]*msp.FabricMSPConfig{
+					"msp1": {
+						TlsRootCerts: [][]byte{},
+					},
+				},
+			},
+			endpointDefinition: &endpointDef{
+				proposalResponseStatus: 200,
+				ordererStatus:          200,
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				orderer1Mock.client.(*mocks.ABClient).BroadcastReturns(nil, status.Error(codes.Unavailable, "orderer1 fails"))
+				orderer4Mock.client.(*mocks.ABClient).BroadcastReturns(nil, status.Error(codes.Unavailable, "orderer4 fails"))
+				orderer7Mock.client.(*mocks.ABClient).BroadcastReturns(nil, status.Error(codes.Unavailable, "orderer7 fails"))
+			},
+			errCode:   codes.Unavailable,
+			errString: "insufficient number of orderers could successfully process transaction to satisfy quorum requirement",
+			errDetails: []*pb.ErrorDetail{
+				{
+					Address: "orderer1:7050",
+					MspId:   "msp1",
+					Message: "rpc error: code = Unavailable desc = orderer1 fails",
+				},
+				{
+					Address: "orderer4:7050",
+					MspId:   "msp1",
+					Message: "rpc error: code = Unavailable desc = orderer4 fails",
+				},
+				{
+					Address: "orderer7:7050",
+					MspId:   "msp1",
+					Message: "rpc error: code = Unavailable desc = orderer7 fails",
+				},
+			},
+		},
+		{
+			name:  "all BFT orderers exceed timeout",
+			isBFT: true,
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock}},
+			},
+			config: &dp.ConfigResult{
+				Orderers: map[string]*dp.Endpoints{
+					"msp1": {
+						Endpoint: []*dp.Endpoint{
+							{Host: "orderer1", Port: 7050},
+							{Host: "orderer2", Port: 7050},
+							{Host: "orderer3", Port: 7050},
+						},
+					},
+				},
+				Msps: map[string]*msp.FabricMSPConfig{
+					"msp1": {
+						TlsRootCerts: [][]byte{},
+					},
+				},
+			},
+			endpointDefinition: &endpointDef{
+				proposalResponseStatus: 200,
+				ordererStatus:          200,
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				def.ctx, def.cancel = context.WithTimeout(def.ctx, 50*time.Millisecond)
+				abbc := &mocks.ABBClient{}
+				abbc.SendReturns(nil)
+				abbc.RecvStub = func() (*ab.BroadcastResponse, error) {
+					time.Sleep(100 * time.Millisecond)
+					return nil, nil
+				}
+				orderer1Mock.client.(*mocks.ABClient).BroadcastReturns(abbc, nil)
+				orderer2Mock.client.(*mocks.ABClient).BroadcastReturns(abbc, nil)
+				orderer3Mock.client.(*mocks.ABClient).BroadcastReturns(abbc, nil)
+			},
+			postTest: func(t *testing.T, def *preparedTest) {
+				def.cancel()
+				require.Equal(t, 1, orderer1Mock.client.(*mocks.ABClient).BroadcastCallCount())
+				require.Equal(t, 1, orderer2Mock.client.(*mocks.ABClient).BroadcastCallCount())
+				require.Equal(t, 1, orderer3Mock.client.(*mocks.ABClient).BroadcastCallCount())
+			},
+			errCode:   codes.DeadlineExceeded,
+			errString: "submit timeout expired while broadcasting to ordering service",
+		},
+		{
+			name:  "one BFT orderer exceeds timeout",
+			isBFT: true,
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock}},
+			},
+			config: &dp.ConfigResult{
+				Orderers: map[string]*dp.Endpoints{
+					"msp1": {
+						Endpoint: []*dp.Endpoint{
+							{Host: "orderer1", Port: 7050},
+							{Host: "orderer2", Port: 7050},
+							{Host: "orderer3", Port: 7050},
+							{Host: "orderer4", Port: 7050},
+						},
+					},
+				},
+				Msps: map[string]*msp.FabricMSPConfig{
+					"msp1": {
+						TlsRootCerts: [][]byte{},
+					},
+				},
+			},
+			endpointDefinition: &endpointDef{
+				proposalResponseStatus: 200,
+				ordererStatus:          200,
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				def.ctx, def.cancel = context.WithTimeout(def.ctx, 50*time.Millisecond)
+				abbc := &mocks.ABBClient{}
+				abbc.SendReturns(nil)
+				abbc.RecvStub = func() (*ab.BroadcastResponse, error) {
+					time.Sleep(100 * time.Millisecond)
+					return nil, nil
+				}
+				orderer2Mock.client.(*mocks.ABClient).BroadcastReturns(abbc, nil)
+			},
+			postTest: func(t *testing.T, def *preparedTest) {
+				def.cancel()
+				require.Equal(t, 1, orderer1Mock.client.(*mocks.ABClient).BroadcastCallCount())
+				require.Equal(t, 1, orderer2Mock.client.(*mocks.ABClient).BroadcastCallCount())
+				require.Equal(t, 1, orderer3Mock.client.(*mocks.ABClient).BroadcastCallCount())
+				require.Equal(t, 1, orderer4Mock.client.(*mocks.ABClient).BroadcastCallCount())
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1554,6 +1823,22 @@ func TestSubmit(t *testing.T) {
 				tt.postTest(t, test)
 			}
 		})
+	}
+}
+
+func channelToSlice(ch chan string) []string {
+	slice := []string{}
+	for {
+		select {
+		case value, ok := <-ch:
+			if ok {
+				slice = append(slice, value)
+			} else {
+				return slice
+			}
+		default:
+			return slice
+		}
 	}
 }
 
@@ -2182,6 +2467,7 @@ func TestNilArgs(t *testing.T) {
 		config.GetOptions(viper.New()),
 		nil,
 		nil,
+		nil,
 	)
 	ctx := context.Background()
 
@@ -2314,6 +2600,21 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		}
 	}
 
+	for _, o := range ordererMocks {
+		o.client = &mocks.ABClient{}
+		if epDef.ordererBroadcastError != nil {
+			o.client.(*mocks.ABClient).BroadcastReturns(nil, epDef.ordererBroadcastError)
+			continue
+		}
+		abbc := &mocks.ABBClient{}
+		abbc.SendReturns(epDef.ordererSendError)
+		abbc.RecvReturns(&ab.BroadcastResponse{
+			Info:   epDef.ordererResponse,
+			Status: cp.Status(epDef.ordererStatus),
+		}, epDef.ordererRecvError)
+		o.client.(*mocks.ABClient).BroadcastReturns(abbc, nil)
+	}
+
 	mockSigner := &idmocks.SignerSerializer{}
 	mockSigner.SignReturns([]byte("my_signature"), nil)
 
@@ -2362,7 +2663,7 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		Orderers: map[string]*dp.Endpoints{
 			"msp1": {
 				Endpoint: []*dp.Endpoint{
-					{Host: "orderer", Port: 7050},
+					{Host: "orderer1", Port: 7050},
 				},
 			},
 		},
@@ -2402,7 +2703,17 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		Endpoint: "localhost:7051",
 	}
 
-	server := newServer(localEndorser, disc, mockFinder, mockPolicy, mockLedgerProvider, member, "msp1", &comm.SecureOptions{}, options, nil, tt.ordererEndpointOverrides)
+	getChannelConfig := func(channel string) channelconfig.Resources {
+		cap := &mocks.ChannelCapabilities{}
+		cap.ConsensusTypeBFTReturns(tt.isBFT)
+		c := &mocks.Channel{}
+		c.CapabilitiesReturns(cap)
+		res := &mocks.Resources{}
+		res.ChannelConfigReturns(c)
+		return res
+	}
+
+	server := newServer(localEndorser, disc, mockFinder, mockPolicy, mockLedgerProvider, member, "msp1", &comm.SecureOptions{}, options, nil, tt.ordererEndpointOverrides, getChannelConfig)
 
 	dialer := &mocks.Dialer{}
 	dialer.Returns(nil, nil)
@@ -2609,23 +2920,19 @@ func createEndpointFactory(t *testing.T, definition *endpointDef, dialer dialer,
 			}
 			return nil
 		},
-		connectOrderer: func(_ *grpc.ClientConn) ab.AtomicBroadcastClient {
-			abc := &mocks.ABClient{}
-			if definition.ordererBroadcastError != nil {
-				abc.BroadcastReturns(nil, definition.ordererBroadcastError)
-				return abc
+		connectOrderer: func(conn *grpc.ClientConn) ab.AtomicBroadcastClient {
+			if ep, ok := ordererMocks[endpoint]; ok && ep.client != nil {
+				return ep.client
 			}
-			abbc := &mocks.ABBClient{}
-			abbc.SendReturns(definition.ordererSendError)
-			abbc.RecvReturns(&ab.BroadcastResponse{
-				Info:   definition.ordererResponse,
-				Status: cp.Status(definition.ordererStatus),
-			}, definition.ordererRecvError)
-			abc.BroadcastReturns(abbc, nil)
-			return abc
+			return nil
 		},
 		dialer: func(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 			endpoint = target
+			for from, to := range ordererEndpointOverrides {
+				if to.Address == target {
+					endpoint = from
+				}
+			}
 			return dialer(ctx, target, opts...)
 		},
 		clientKey:                pair.Key,

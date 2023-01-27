@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package gateway
 
 import (
+	"fmt"
 	"math"
 	"testing"
 
@@ -558,4 +559,35 @@ func collateReadWriteSets(t *testing.T, reads []*readT, writes []*writeT, metaWr
 		})
 	}
 	return rwsets
+}
+
+// copied from the smartbft library...
+func TestComputeBFTQuorum(t *testing.T) {
+	// Ensure that quorum size is as expected.
+
+	type quorum struct {
+		N uint64
+		F int
+		Q int
+	}
+
+	quorums := []quorum{
+		{4, 1, 3},
+		{5, 1, 4},
+		{6, 1, 4},
+		{7, 2, 5},
+		{8, 2, 6},
+		{9, 2, 6},
+		{10, 3, 7},
+		{11, 3, 8},
+		{12, 3, 8},
+	}
+
+	for _, testCase := range quorums {
+		t.Run(fmt.Sprintf("%d nodes", testCase.N), func(t *testing.T) {
+			Q, F := computeBFTQuorum(testCase.N)
+			require.Equal(t, testCase.Q, Q)
+			require.Equal(t, testCase.F, F)
+		})
+	}
 }

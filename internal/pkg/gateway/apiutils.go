@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"math"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -579,4 +580,24 @@ func (diff *prpDifference) details() [][]interface{} {
 		details = append(details, diff.response.info())
 	}
 	return details
+}
+
+// copied from the smartbft library...
+// computeBFTQuorum calculates the quorums size Q, given a cluster size N.
+//
+// The calculation satisfies the following:
+// Given a cluster size of N nodes, which tolerates f failures according to:
+//
+//	f = argmax ( N >= 3f+1 )
+//
+// Q is the size of the quorum such that:
+//
+//	any two subsets q1, q2 of size Q, intersect in at least f+1 nodes.
+//
+// Note that this is different from N-f (the number of correct nodes), when N=3f+3. That is, we have two extra nodes
+// above the minimum required to tolerate f failures.
+func computeBFTQuorum(N uint64) (Q int, F int) {
+	F = int((int(N) - 1) / 3)
+	Q = int(math.Ceil((float64(N) + float64(F) + 1) / 2.0))
+	return
 }
