@@ -10,10 +10,9 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 | Alessandro Sorniotti    | [ale-linux][ale-linux] | aso | <ale.linux@sopit.net>
 | Andrew Coleman          | [andrew-coleman][andrew-coleman] | andrew-coleman | <andrew_coleman@uk.ibm.com>
 | Artem Barger            | [c0rwin][c0rwin] | c0rwin | <artem@bargr.net>
-| Senthilnathan Natarajan | [cendhu][cendhu] | Senthil1 | <cendhu@gmail.com>
 | Dave Enyeart            | [denyeart][denyeart] | dave.enyeart | <enyeart@us.ibm.com>
-| Jay Guo                 | [guoger][guoger] | guoger | <guojiannan1101@gmail.com>
 | Manish Sethi            | [manish-sethi][manish-sethi] | manish-sethi | <manish.sethi@gmail.com>
+| Senthilnathan Natarajan | [cendhu][cendhu] | Senthil1 | <cendhu@gmail.com>
 | Yacov Manevich          | [yacovm][yacovm] | yacovm | <yacov.manevich@ibm.com>
 | Yoav Tock               | [tock-ibm][tock-ibm] | tock-ibm | <tock@il.ibm.com>
 
@@ -44,6 +43,7 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 | Gari Singh | [mastersingh24][mastersingh24] | mastersingh24 | <gari.r.singh@gmail.com>
 | Greg Haskins | [ghaskins][ghaskins] | ghaskins | <gregory.haskins@gmail.com>
 | Jason Yellick | [jyellick][jyellick] | jyellick | <jason-github@unaddressable.org>
+| Jay Guo | [guoger][guoger] | guoger | <guojiannan1101@gmail.com>
 | Jim Zhang | [jimthematrix][jimthematrix] | jimthematrix | <jim_the_matrix@hotmail.com>
 | Joe Alewine | [joealewine][joealewine] | joe-alewine | <joe.alewine@ibm.com>
 | Jonathan Levi | [hacera][hacera] |JonathanLevi | <jonathan@hacera.com>
