@@ -635,7 +635,7 @@ var _ = Describe("EndToEnd", func() {
 		var process ifrit.Process
 
 		BeforeEach(func() {
-			network = nwo.New(nwo.FullEtcdRaft(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
 
 			network.GenerateConfigTree()
 			network.Bootstrap()
