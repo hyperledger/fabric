@@ -86,5 +86,6 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 [srderson]: https://github.com/srderson
 [sykesm]: https://github.com/sykesm
 [tamasblummer]: https://github.com/tamasblummer
+[tock-ibm]: https://github.com/tock-ibm
 [wlahti]: https://github.com/wlahti
 [yacovm]: https://github.com/yacovm
