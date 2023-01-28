@@ -30,7 +30,7 @@ In order to tolerate crash faults, orderer uses file-based ledger to persist blo
 
 ## Experimenting with the orderer service
 
-To experiment with the orderer service you may build the orderer binary by simply typing `go build` in the `hyperledger/fabric/orderer` directory. You may then invoke the orderer binary with no parameters, or you can override the bind address and port by setting the environment variables `ORDERER_GENERAL_LISTENADDRESS` and `ORDERER_GENERAL_ LISTENPORT` respectively.
+To experiment with the orderer service you may build the orderer binary by simply typing `go build` in the `hyperledger/fabric/orderer` directory. You may then invoke the orderer binary with no parameters, or you can override the bind address and port by setting the environment variables `ORDERER_GENERAL_LISTENADDRESS` and `ORDERER_GENERAL_LISTENPORT` respectively.
 
 There are sample clients in the `fabric/orderer/sample_clients` directory.
 
