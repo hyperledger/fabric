@@ -4,7 +4,7 @@ Copyright IBM Corp All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package pvtdata
+package pvtdatapurge
 
 import (
 	"context"
@@ -34,6 +34,8 @@ import (
 	"github.com/tedsuo/ifrit"
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
+
+const channelID = "testchannel"
 
 var _ = Describe("Pvtdata purge", func() {
 	var (
@@ -558,4 +560,29 @@ func startNewPeer(network *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, le
 
 	network.Peers = append(network.Peers, peer)
 	nwo.WaitUntilEqualLedgerHeight(network, channelID, ledgerHeight-1, network.Peers...)
+}
+
+func addPeer(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) ifrit.Process {
+	process := ifrit.Invoke(n.PeerRunner(peer))
+	Eventually(process.Ready(), n.EventuallyTimeout).Should(BeClosed())
+
+	n.JoinChannel(channelID, orderer, peer)
+	ledgerHeight := nwo.GetLedgerHeight(n, n.Peers[0], channelID)
+	sess, err := n.PeerAdminSession(
+		peer,
+		commands.ChannelFetch{
+			Block:      "newest",
+			ChannelID:  channelID,
+			Orderer:    n.OrdererAddress(orderer, nwo.ListenPort),
+			OutputFile: filepath.Join(n.RootDir, "newest_block.pb"),
+		},
+	)
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	Expect(sess.Err).To(gbytes.Say(fmt.Sprintf("Received block: %d", ledgerHeight-1)))
+
+	n.Peers = append(n.Peers, peer)
+	nwo.WaitUntilEqualLedgerHeight(n, channelID, nwo.GetLedgerHeight(n, n.Peers[0], channelID), n.Peers...)
+
+	return process
 }
