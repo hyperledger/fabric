@@ -128,7 +128,7 @@ func (s *txSimulator) PurgePrivateData(ns, coll, key string) error {
 	}
 	s.writePerformed = true
 	s.rwsetBuilder.AddToPvtAndHashedWriteSetForPurge(ns, coll, key)
-	return nil
+	return s.checkPrivateStateMetadata(ns, coll, key)
 }
 
 // SetPrivateDataMultipleKeys implements method in interface `ledger.TxSimulator`
