@@ -1732,4 +1732,18 @@ func testTxSimulatorWithPrivateDataStateBasedEndorsement(t *testing.T, env testE
 	metadata = ledger.WritesetMetadata{}
 	metadata.Add(ns, coll, "key1", sbe2)
 	require.Equal(t, metadata, simRes3.WritesetMetadata)
+
+	// simulate tx4 that purges existing private data
+	s4, _ := txMgr.NewTxSimulator("test_tx4")
+	require.NoError(t, s4.PurgePrivateData(ns, coll, "key1"))
+	s4.Done()
+
+	blkAndPvtdata4, simRes4 := prepareNextBlockForTestFromSimulator(t, bg, s4)
+	_, _, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata4, true)
+	require.NoError(t, err)
+	require.NoError(t, txMgr.Commit())
+	// check the metadata are captured
+	metadata = ledger.WritesetMetadata{}
+	metadata.Add(ns, coll, "key1", sbe2)
+	require.Equal(t, metadata, simRes4.WritesetMetadata)
 }
