@@ -38,16 +38,16 @@ const channelID = "testchannel"
 
 var _ = Describe("Pvtdata purge", func() {
 	var (
-		config                          *nwo.Config
-		applicationCapabilitiesVersion  string
-		testDir                         string
-		network                         *nwo.Network
-		orderer                         *nwo.Orderer
-		org2Peer0, org3Peer0, org3Peer1 *nwo.Peer
-		processes                       map[string]ifrit.Process
-		peerRunners                     map[string]*ginkgomon.Runner
-		cancel                          context.CancelFunc
-		chaincode                       *nwo.Chaincode
+		config                                     *nwo.Config
+		applicationCapabilitiesVersion             string
+		testDir                                    string
+		network                                    *nwo.Network
+		orderer                                    *nwo.Orderer
+		org1Peer0, org2Peer0, org3Peer0, org3Peer1 *nwo.Peer
+		processes                                  map[string]ifrit.Process
+		peerRunners                                map[string]*ginkgomon.Runner
+		cancel                                     context.CancelFunc
+		chaincode                                  *nwo.Chaincode
 	)
 
 	JustBeforeEach(func() {
@@ -124,6 +124,7 @@ var _ = Describe("Pvtdata purge", func() {
 
 		nwo.DeployChaincode(network, channelID, orderer, *chaincode)
 
+		org1Peer0 = network.Peer("Org1", "peer0")
 		org2Peer0 = network.Peer("Org2", "peer0")
 		org3Peer0 = network.Peer("Org3", "peer0")
 
@@ -174,7 +175,7 @@ var _ = Describe("Pvtdata purge", func() {
 		BeforeEach(func() {
 			config = nwo.ThreeOrgEtcdRaft()
 			config.Profiles[0].Blocks = &nwo.Blocks{
-				BatchTimeout:      6,
+				BatchTimeout:      1,
 				MaxMessageCount:   30,
 				AbsoluteMaxBytes:  99,
 				PreferredMaxBytes: 512,
@@ -183,12 +184,11 @@ var _ = Describe("Pvtdata purge", func() {
 		})
 
 		It("should prevent purged data being included in responses after the purge transaction has been committed", func() {
+			By("Adding marbles and confirming they exist in private state")
 			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-1", "color":"green", "size":42, "owner":"simon", "price":180}`, org2Peer0)
 			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-2", "color":"red", "size":24, "owner":"heather", "price":635}`, org2Peer0)
 			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-3", "color":"black", "size":12, "owner":"bob", "price":2}`, org2Peer0)
 			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-4", "color":"yellow", "size":180, "owner":"liz", "price":100}`, org2Peer0)
-			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-5", "color":"pink", "size":60, "owner":"joe", "price":999}`, org2Peer0)
-			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-6", "color":"purple", "size":1, "owner":"clive", "price":1984}`, org2Peer0)
 
 			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
 			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
@@ -200,11 +200,8 @@ var _ = Describe("Pvtdata purge", func() {
 			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-3", org2Peer0)
 			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-4", org2Peer0)
 			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-4", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-5", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-5", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-6", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-6", org2Peer0)
 
+			By("Purging 2 marbles in separate blocks and confirming they are longer exist in private state")
 			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-0"}`, org2Peer0)
 			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-1"}`, org2Peer0)
 
@@ -213,21 +210,10 @@ var _ = Describe("Pvtdata purge", func() {
 			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-1", org2Peer0)
 			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-1", org2Peer0)
 
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-2", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-2", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-3", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-3", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-4", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-4", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-5", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-5", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-6", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-6", org2Peer0)
-
-			// Purge multiple marbles in a single block
+			By("Purging 3 more marbles in a single block and confirming they are longer exist in private state")
 			var wg sync.WaitGroup
-			wg.Add(5)
-			for i := 2; i < 7; i++ {
+			wg.Add(3)
+			for i := 2; i < 5; i++ {
 				go func(marblePurge string) {
 					defer GinkgoRecover()
 					defer wg.Done()
@@ -235,59 +221,26 @@ var _ = Describe("Pvtdata purge", func() {
 				}(fmt.Sprintf(`{"name":"test-marble-%d"}`, i))
 			}
 			wg.Wait()
-			Expect(nwo.GetLedgerHeight(network, org2Peer0, channelID)).To(Equal(19))
+			Expect(nwo.GetLedgerHeight(network, org2Peer0, channelID)).To(Equal(17))
 
-			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
-			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
-			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-1", org2Peer0)
-			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-1", org2Peer0)
 			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-2", org2Peer0)
 			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-2", org2Peer0)
 			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-3", org2Peer0)
 			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-3", org2Peer0)
 			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-4", org2Peer0)
 			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-4", org2Peer0)
-			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-5", org2Peer0)
-			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-5", org2Peer0)
-			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-6", org2Peer0)
-			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-6", org2Peer0)
-			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-7", org2Peer0)
-			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-7", org2Peer0)
-		})
 
-		It("should prevent purged data being included block event replays after the purge transaction has been committed", func() {
-			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-10", "color":"green", "size":42, "owner":"simon", "price":180}`, org2Peer0)
-			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-100", "color":"red", "size":24, "owner":"heather", "price":635}`, org2Peer0)
-			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-1000", "color":"black", "size":12, "owner":"bob", "price":2}`, org2Peer0)
+			By("Adding 2 new marbles and confirming only the new marbles exist in block events")
+			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-5", "color":"black", "size":12, "owner":"bob", "price":2}`, org2Peer0)
+			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-6", "color":"yellow", "size":180, "owner":"liz", "price":100}`, org2Peer0)
 
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-10", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-10", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-100", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-100", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-1000", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-1000", org2Peer0)
+			assertBlockEventsOnlyContainUnpurgedPrivateData(network, org2Peer0, chaincode.Name, []string{"test-marble-5", "\x00color~name\x00black\x00test-marble-5\x00", "test-marble-6", "\x00color~name\x00yellow\x00test-marble-6\x00"})
 
-			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-0"}`, org2Peer0)
-			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-1000"}`, org2Peer0)
+			By("Adding a marble and setting state-basedendorsement policy to Org3, future endorsements from Org2 will be invalidated")
+			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-7-sbe", "color":"black", "size":12, "owner":"bob", "price":2}`, org2Peer0)
+			marblechaincodeutil.SetMarblePolicy(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-7-sbe","org":"Org3"}`, org2Peer0)
 
-			assertBlockEventsOnlyContainUnpurgedPrivateData(network, org2Peer0, chaincode.Name, []string{"test-marble-10", "\x00color~name\x00green\x00test-marble-10\x00", "test-marble-100", "\x00color~name\x00red\x00test-marble-100\x00"})
-		})
-
-		// 2. The endorsement policy is evaluated correctly for a purge transaction under
-		//    different endorsement policy settings (e.g., collection level/ key-hash based)
-		//    Note: The endorsement policy level tests need not to be prioritized over other
-		//    behaviour, and they need not to be very exhaustive since they should be covered
-		//    by existing write/delete operations
-		PIt("should correctly enforce collection level endorsement policies")
-		It("should correctly enforce key-hash based endorsement policies", func() {
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
-
-			marblechaincodeutil.SetMarblePolicy(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-0","org":"Org3"}`, org2Peer0)
-
-			marblePurgeBase64 := base64.StdEncoding.EncodeToString([]byte(`{"name":"test-marble-0"}`))
+			marblePurgeBase64 := base64.StdEncoding.EncodeToString([]byte(`{"name":"test-marble-7-sbe"}`))
 
 			purgeCommand := commands.ChaincodeInvoke{
 				ChannelID: channelID,
@@ -303,136 +256,106 @@ var _ = Describe("Pvtdata purge", func() {
 
 			marblechaincodeutil.AssertInvokeChaincodeFails(network, org2Peer0, purgeCommand, "Error: transaction invalidated with status \\(ENDORSEMENT_POLICY_FAILURE\\) - proposal response: <nil>")
 
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
-		})
-		PIt("should correctly enforce other endorsement policies (TBC)")
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-7-sbe", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-7-sbe", org2Peer0)
 
-		It("should remove all purged data from a previously eligible peer", func() {
-			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-80", "color":"white", "size":4, "owner":"liz", "price":4}`, org2Peer0)
-			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-8080", "color":"orange", "size":80, "owner":"clive", "price":88}`, org2Peer0)
-
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-80", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-80", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-8080", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-8080", org2Peer0)
-
-			chaincode.Version = "1.1"
-			chaincode.CollectionsConfig = CollectionConfig("remove_org3_config.json")
-			chaincode.Sequence = "2"
-			nwo.DeployChaincode(network, channelID, orderer, *chaincode)
-
-			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-0"}`, org2Peer0)
-			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-80"}`, org2Peer0)
-
-			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-0", org3Peer0)
-			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-0", org3Peer0)
-			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-80", org3Peer0)
-			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-80", org3Peer0)
-
-			runner := peerRunners[org3Peer0.ID()]
-			Eventually(runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Purging private data from private data storage channel=testchannel chaincode=marblesp collection=collectionMarblePrivateDetails key=test-marble-0 blockNum=\\d+ tranNum=\\d+"))
-			Eventually(runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Purging private data from private data storage channel=testchannel chaincode=marblesp collection=collectionMarblePrivateDetails key=test-marble-80 blockNum=\\d+ tranNum=\\d+"))
-			Eventually(runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Purged private data from private data storage channel=testchannel numKeysPurged=\\d+ numPrivateDataStoreRecordsPurged=\\d+"))
-		})
-
-		It("should enable new peers to start and pull private data from existing peers without errors or warnings", func() {
-			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-1", "color":"green", "size":42, "owner":"simon", "price":180}`, org2Peer0)
-			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-2", "color":"red", "size":24, "owner":"heather", "price":635}`, org2Peer0)
-			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-3", "color":"black", "size":12, "owner":"bob", "price":2}`, org2Peer0)
-
-			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-1"}`, org2Peer0)
-			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-3"}`, org2Peer0)
-
+			By("Starting a new peer, it should pull private data from existing peers without errors or warnings")
 			process := addPeer(network, orderer, org3Peer1)
 			processes[org3Peer1.ID()] = process
 
 			nwo.PackageAndInstallChaincode(network, *chaincode, org3Peer1)
 			network.VerifyMembership(network.Peers, channelID, chaincode.Name)
 
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, `test-marble-0`, org3Peer1)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, `test-marble-0`, org3Peer1)
-			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, `test-marble-1`, org3Peer1)
-			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, `test-marble-1`, org3Peer1)
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, `test-marble-2`, org3Peer1)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, `test-marble-2`, org3Peer1)
-			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, `test-marble-3`, org3Peer1)
-			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, `test-marble-3`, org3Peer1)
-		})
+			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, `test-marble-4`, org3Peer1)
+			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, `test-marble-4`, org3Peer1)
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, `test-marble-5`, org3Peer1)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, `test-marble-5`, org3Peer1)
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, `test-marble-6`, org3Peer1)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, `test-marble-6`, org3Peer1)
 
-		It("should enable successful peer reconciliation with partial write-sets", func() {
-			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-1", "color":"green", "size":42, "owner":"simon", "price":180}`, org2Peer0)
-			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-2", "color":"red", "size":24, "owner":"heather", "price":635}`, org2Peer0)
-			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-3", "color":"black", "size":12, "owner":"bob", "price":2}`, org2Peer0)
+			By("Adding data with new peer down, and then restarting new peer with other peers down to test reconciliation")
 
-			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-1"}`, org2Peer0)
-			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-3"}`, org2Peer0)
+			// stop new peer
+			stopPeer(network, processes, org3Peer1)
+			network.Peers = []*nwo.Peer{org1Peer0, org2Peer0, org3Peer0}
+			network.VerifyMembership(network.Peers, channelID)
 
-			ledgerHeight := nwo.GetLedgerHeight(network, network.Peers[0], channelID)
+			// add two marbles and purge one
+			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-8-keep", "color":"green", "size":42, "owner":"simon", "price":180}`, org2Peer0)
+			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-9-purge", "color":"red", "size":24, "owner":"heather", "price":635}`, org2Peer0)
+			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-9-purge"}`, org2Peer0)
 
-			for _, peer := range network.Peers {
-				stopPeer(network, processes, peer)
-			}
-			stoppedPeers := network.Peers
+			// stop original peers
+			stopPeer(network, processes, org1Peer0)
+			stopPeer(network, processes, org2Peer0)
+			stopPeer(network, processes, org3Peer0)
 			network.Peers = []*nwo.Peer{}
 
-			startNewPeer(network, orderer, org3Peer1, ledgerHeight, processes, peerRunners)
-
-			nwo.PackageAndInstallChaincode(network, *chaincode, org3Peer1)
-			network.VerifyMembership([]*nwo.Peer{org3Peer1}, channelID, chaincode.Name)
-
+			// restart new peer by itself and wait for "Could not fetch" message
+			startPeer(network, processes, peerRunners, org3Peer1)
+			network.Peers = append(network.Peers, org3Peer1)
 			runner := peerRunners[org3Peer1.ID()]
 			Eventually(runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Could not fetch \\(or mark to reconcile later\\) 2 eligible collection private write sets for block \\[\\d+\\] \\(0 from local cache, 0 from transient store, 0 from other peers\\)\\. Will commit block with missing private write sets:\\[txID: [0123456789abcdef]+, seq: \\d+, namespace: marblesp, collection: collectionMarblePrivateDetails"))
 
-			for _, peer := range stoppedPeers {
-				startPeer(network, processes, peerRunners, peer)
-			}
-			network.Peers = append(stoppedPeers, org3Peer1)
+			// restart original peers
+			startPeer(network, processes, peerRunners, org1Peer0)
+			network.Peers = append(network.Peers, org1Peer0)
 
-			// Wait for reconciliation to complete
+			startPeer(network, processes, peerRunners, org2Peer0)
+			network.Peers = append(network.Peers, org2Peer0)
+
+			startPeer(network, processes, peerRunners, org3Peer0)
+			network.Peers = append(network.Peers, org3Peer0)
+
+			// Wait for reconciliation to complete and then check for reconciled data
 			time.Sleep(30 * time.Second)
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, `test-marble-8-keep`, org3Peer1)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, `test-marble-8-keep`, org3Peer1)
+			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, `test-marble-9-purge`, org3Peer1)
+			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, `test-marble-9-purge`, org3Peer1)
 
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, `test-marble-0`, org3Peer1)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, `test-marble-0`, org3Peer1)
-			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, `test-marble-1`, org3Peer1)
-			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, `test-marble-1`, org3Peer1)
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, `test-marble-2`, org3Peer1)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, `test-marble-2`, org3Peer1)
-			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, `test-marble-3`, org3Peer1)
-			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, `test-marble-3`, org3Peer1)
-		})
+			By("Adding two marbles, removing Org3 from the collection, purging the marbles, and confirming that they still got purged from Org3")
+			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-10-purge-after-ineligible", "color":"white", "size":4, "owner":"liz", "price":4}`, org2Peer0)
+			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-11-purge-after-ineligible", "color":"orange", "size":80, "owner":"clive", "price":88}`, org2Peer0)
 
-		It("should not remove new data after a previous purge operation", func() {
-			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-10", "color":"green", "size":42, "owner":"simon", "price":180}`, org2Peer0)
-			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-100", "color":"red", "size":24, "owner":"heather", "price":635}`, org2Peer0)
-			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-1000", "color":"black", "size":12, "owner":"bob", "price":2}`, org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-10-purge-after-ineligible", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-10-purge-after-ineligible", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-11-purge-after-ineligible", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-11-purge-after-ineligible", org2Peer0)
 
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-10", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-10", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-100", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-100", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-1000", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-1000", org2Peer0)
+			chaincode.Version = "1.1"
+			chaincode.CollectionsConfig = CollectionConfig("remove_org3_config.json")
+			chaincode.Sequence = "2"
+			nwo.DeployChaincode(network, channelID, orderer, *chaincode)
 
-			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-0"}`, org2Peer0)
-			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-1000"}`, org2Peer0)
+			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-10-purge-after-ineligible"}`, org2Peer0)
+			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-11-purge-after-ineligible"}`, org2Peer0)
 
-			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
-			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-0", org2Peer0)
-			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-1000", org2Peer0)
-			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-1000", org2Peer0)
+			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-10-purge-after-ineligible", org3Peer0)
+			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-10-purge-after-ineligible", org3Peer0)
+			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-11-purge-after-ineligible", org3Peer0)
+			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-11-purge-after-ineligible", org3Peer0)
 
-			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-1000", "color":"violet", "size":1000, "owner":"siobhán", "price":99}`, org2Peer0)
-			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-9000", "color":"brown", "size":9000, "owner":"charles", "price":9000}`, org2Peer0)
+			runner = peerRunners[org3Peer0.ID()]
+			Eventually(runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Purging private data from private data storage channel=testchannel chaincode=marblesp collection=collectionMarblePrivateDetails key=test-marble-10-purge-after-ineligible blockNum=\\d+ tranNum=\\d+"))
+			Eventually(runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Purging private data from private data storage channel=testchannel chaincode=marblesp collection=collectionMarblePrivateDetails key=test-marble-11-purge-after-ineligible blockNum=\\d+ tranNum=\\d+"))
+			Eventually(runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Purged private data from private data storage channel=testchannel numKeysPurged=\\d+ numPrivateDataStoreRecordsPurged=\\d+"))
 
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-1000", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-1000", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-9000", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-9000", org2Peer0)
+			By("Adding Purging Re-Adding should be possible")
+			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-12-re-add", "color":"black", "size":12, "owner":"bob", "price":2}`, org2Peer0)
+
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-12-re-add", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-12-re-add", org2Peer0)
+
+			marblechaincodeutil.PurgeMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-12-re-add"}`, org2Peer0)
+
+			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, "test-marble-12-re-add", org2Peer0)
+			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, "test-marble-12-re-add", org2Peer0)
+
+			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-12-re-add", "color":"black", "size":12, "owner":"bob", "price":2}`, org2Peer0)
+
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-12-re-add", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-12-re-add", org2Peer0)
 		})
 	})
 })
