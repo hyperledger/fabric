@@ -1,3 +1,6 @@
+//go:build !linux
+// +build !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -15,6 +18,21 @@
 */
 
 package sys
+
+const (
+	// OOMScoreMaxKillable is not implemented on non Linux
+	OOMScoreMaxKillable = 0
+	// OOMScoreAdjMax is not implemented on non Linux
+	OOMScoreAdjMax = 0
+)
+
+// AdjustOOMScore sets the oom score for the provided pid. If the provided score
+// is out of range (-1000 - 1000), it is clipped to the min/max value.
+//
+// Not implemented on Windows
+func AdjustOOMScore(pid, score int) error {
+	return nil
+}
 
 // SetOOMScore sets the oom score for the process
 //
