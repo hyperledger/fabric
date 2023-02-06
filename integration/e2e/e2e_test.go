@@ -632,22 +632,14 @@ var _ = Describe("EndToEnd", func() {
 	})
 
 	Describe("basic lifecycle operations for chaincode install and update", func() {
-		var process ifrit.Process
-
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
 
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
-			networkRunner := network.NetworkGroupRunner()
-			process = ifrit.Invoke(networkRunner)
-			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
-		})
-
-		AfterEach(func() {
-			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+			// Start all the fabric processes
+			ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 		})
 
 		It("approves chaincode for org and updates chaincode definition", func() {
@@ -667,7 +659,7 @@ var _ = Describe("EndToEnd", func() {
 			orderer := network.Orderer("orderer")
 
 			By("creating and joining channels")
-			network.CreateAndJoinChannels(orderer)
+			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 			By("enabling new lifecycle capabilities")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_5", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
