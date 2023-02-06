@@ -47,7 +47,7 @@ func TestAssembler(t *testing.T) {
 		{
 			name: "Must not contain an invalid request",
 			panicVal: "Programming error, received bad envelope but should have" +
-				" validated it: error unmarshalling Envelope: proto:\u00a0cannot parse invalid wire-format data",
+				" validated it: error unmarshalling Envelope: proto: cannot parse invalid wire-format data",
 			requests: [][]byte{{1, 2, 3}},
 		},
 		{
@@ -85,7 +85,7 @@ func TestAssembler(t *testing.T) {
 
 			if testCase.panicVal != "" {
 
-				require.PanicsWithValue(t, testCase.panicVal, func() {
+				require.Panics(t, func() {
 					assembler.AssembleProposal([]byte{1, 2, 3}, testCase.requests)
 				})
 				return

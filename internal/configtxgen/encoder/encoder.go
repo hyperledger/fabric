@@ -214,7 +214,7 @@ func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
 		}
 		addValue(ordererGroup, channelconfig.OrderersValue(consenterProtos), channelconfig.AdminsPolicyKey)
 		if consensusMetadata, err = channelconfig.MarshalBFTOptions(conf.SmartBFT); err != nil {
-			return nil, errors.Errorf("cannot marshal metadata for orderer type %s: %s", ConsensusTypeBFT, err)
+			return nil, errors.Errorf("consenter options read failed with error %s for orderer type %s", err, ConsensusTypeBFT)
 		}
 		// Overwrite policy manually by computing it from the consenters
 		policies.EncodeBFTBlockVerificationPolicy(consenterProtos, ordererGroup)

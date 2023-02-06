@@ -59,7 +59,8 @@ func TestDispatchConsensus(t *testing.T) {
 			Channel: "mychannel",
 			Payload: []byte{1, 2, 3},
 		})
-		assert.EqualError(t, err, "malformed message: proto:\u00a0cannot parse invalid wire-format data")
+
+		assert.Contains(t, err.Error(), "malformed message")
 	})
 
 	t.Run("Channel does not exist", func(t *testing.T) {

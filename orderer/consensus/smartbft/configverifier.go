@@ -8,6 +8,7 @@ package smartbft
 
 import (
 	"fmt"
+	"math"
 
 	mspa "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/policydsl"
@@ -98,7 +99,7 @@ func (cbv *ConfigBlockValidator) ValidateConfig(envelope *cb.Envelope) error {
 }
 
 func (cbv *ConfigBlockValidator) checkConsentersMatchPolicy(conf *cb.Config) error {
-	// TODO: check nil pointes everywhere
+	// TODO: check nil pointers everywhere
 
 	ords := &cb.Orderers{}
 	if err := proto.Unmarshal(conf.ChannelGroup.Groups["Orderer"].Values["Orderers"].Value, ords); err != nil {
@@ -123,7 +124,7 @@ func (cbv *ConfigBlockValidator) checkConsentersMatchPolicy(conf *cb.Config) err
 	}
 
 	sp := &cb.SignaturePolicyEnvelope{
-		Rule:       policydsl.NOutOf(int32(2*f+1), pols),
+		Rule:       policydsl.NOutOf(int32(math.Ceil(float64(n+f+1)/2)), pols),
 		Identities: identities,
 	}
 

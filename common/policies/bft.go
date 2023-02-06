@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package policies
 
 import (
+	"math"
+
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mspa "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/policydsl"
@@ -36,7 +38,7 @@ func EncodeBFTBlockVerificationPolicy(consenterProtos []*cb.Consenter, ordererGr
 	}
 
 	sp := &cb.SignaturePolicyEnvelope{
-		Rule:       policydsl.NOutOf(int32(2*f+1), pols),
+		Rule:       policydsl.NOutOf(int32(math.Ceil(float64(n+f+1)/2)), pols),
 		Identities: identities,
 	}
 	ordererGroup.Policies[BlockValidationPolicyKey] = &cb.ConfigPolicy{

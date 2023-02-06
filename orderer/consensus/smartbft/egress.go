@@ -70,7 +70,9 @@ func (e *Egress) SendTransaction(targetID uint64, request []byte) {
 	}
 
 	report := func(err error) {
-		// TODO ??
+		if err != nil {
+			e.Logger.Warnf("Failed sending transaction to %d: %v", targetID, err)
+		}
 	}
 	e.RPC.SendSubmit(targetID, msg, report)
 }

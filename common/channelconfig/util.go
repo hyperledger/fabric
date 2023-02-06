@@ -331,6 +331,9 @@ func MarshalEtcdRaftMetadata(md *etcdraft.ConfigMetadata) ([]byte, error) {
 
 // MarshalBFTOptions serializes smartbft options.
 func MarshalBFTOptions(op *smartbft.Options) ([]byte, error) {
-	copyMd := proto.Clone(op).(*smartbft.Options)
-	return proto.Marshal(copyMd)
+	if copyMd, ok := proto.Clone(op).(*smartbft.Options); ok {
+		return proto.Marshal(copyMd)
+	} else {
+		return nil, errors.New("consenter options type mismatch")
+	}
 }

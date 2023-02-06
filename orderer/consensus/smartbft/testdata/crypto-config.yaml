@@ -12,19 +12,19 @@ OrdererOrgs:
     EnableNodeOUs: true
 
     Specs:
-      - Hostname: bft0
+      - Hostname: orderer
         SANS:
           - 127.0.0.1
-      - Hostname: bft1
+      - Hostname: orderer2
         SANS:
           - 127.0.0.1
-      - Hostname: bft2
+      - Hostname: orderer3
         SANS:
           - 127.0.0.1
-      - Hostname: bft3
+      - Hostname: orderer4
         SANS:
           - 127.0.0.1
-      - Hostname: bft4
+      - Hostname: orderer5
         SANS:
           - 127.0.0.1
 

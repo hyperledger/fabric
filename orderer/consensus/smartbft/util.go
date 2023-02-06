@@ -339,9 +339,6 @@ func RemoteNodesFromConfigBlock(block *cb.Block, selfID uint64, logger *flogging
 	if err := proto.Unmarshal(oc.ConsensusMetadata(), configOptions); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal consensus metadata")
 	}
-	/* 	if configOptions == nil {
-		return nil, errors.New("failed to retrieve consensus metadata options")
-	} */
 
 	var nodeIDs []uint64
 	var remoteNodes []cluster.RemoteNode

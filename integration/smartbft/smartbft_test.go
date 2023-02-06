@@ -134,14 +134,6 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			By("Deploying chaincode")
 			deployChaincode(network, channel, testDir)
 
-			/* 			By("check block validation policy on app channel")
-			   			assertBlockValidationPolicy(network, peer, network.Orderers[0], channel, common.Policy_IMPLICIT_ORDERER) */
-
-			By("check peers are using the BFT delivery client")
-			// for _, peerRunner := range peerRunners {
-			// 	Eventually(peerRunner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Created BFT Delivery Client"))
-			// }
-
 			By("querying the chaincode")
 			sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
 				ChannelID: channel,
@@ -243,10 +235,6 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 			}
 
-			/* 			assertBlockReception(map[string]int{"systemchannel": 0}, network.Orderers, peer, network)
-			   			By("check block validation policy on sys channel")
-			   			assertBlockValidationPolicy(network, peer, network.Orderers[0], "systemchannel", common.Policy_IMPLICIT_ORDERER) */
-
 			By("Waiting for followers to see the leader")
 			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
 			Eventually(ordererRunners[2].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
@@ -256,8 +244,6 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			By(fmt.Sprintf("Peers with Channel %s are %+v\n", channel, network.PeersWithChannel(channel)))
 			orderer := network.Orderers[0]
 			network.JoinChannel(channel, orderer, network.PeersWithChannel(channel)...)
-
-			// assertBlockReception(map[string]int{"systemchannel": 1}, network.Orderers, peer, network)
 
 			nwo.DeployChaincode(network, channel, network.Orderers[0], nwo.Chaincode{
 				Name:            "mycc",
@@ -275,17 +261,12 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			By("Deployed chaincode successfully")
 			assertBlockReception(map[string]int{"testchannel1": 4}, network.Orderers, peer, network)
 
-			/* 			By("check block validation policy on app channel")
-			   			assertBlockValidationPolicy(network, peer, network.Orderers[0], channel, common.Policy_IMPLICIT_ORDERER)
-			*/
-
 			By("Transacting on testchannel1")
 			invokeQuery(network, peer, orderer, channel, 90)
 			invokeQuery(network, peer, orderer, channel, 80)
 			assertBlockReception(map[string]int{"testchannel1": 6}, network.Orderers, peer, network)
 
 			By("Adding a new consenter")
-
 			orderer5 := &nwo.Orderer{
 				Name:         "orderer5",
 				Organization: "OrdererOrg",
@@ -315,14 +296,6 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			ordererIdentity, err := ioutil.ReadFile(network.OrdererCert(orderer5))
 			Expect(err).NotTo(HaveOccurred())
 
-			/* 			identity := protoutil.MarshalOrPanic(&msp.SerializedIdentity{
-			   				Mspid:   "OrdererMSP",
-			   				IdBytes: ordererIdentity,
-			   			})
-
-			   			sanitizedIdentity, err := crypto.SanitizeIdentity(identity)
-			   			Expect(err).NotTo(HaveOccurred()) */
-
 			nwo.UpdateConsenters(network, peer, orderer, channel, func(orderers *common.Orderers) {
 				orderers.ConsenterMapping = append(orderers.ConsenterMapping, &common.Consenter{
 					MspId:         "OrdererMSP",
@@ -334,7 +307,6 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 					Port:          uint32(network.OrdererPort(orderer5, nwo.ClusterPort)),
 				})
 			})
-
 			assertBlockReception(map[string]int{"testchannel1": 7}, network.Orderers[:4], peer, network)
 
 			By("Waiting for followers to see the leader")
@@ -342,17 +314,17 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 3 channel=testchannel1"))
 			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 3 channel=testchannel1"))
 
-			By("Planting last config block in the orderer's file system")
-			configBlock := nwo.GetConfigBlock(network, peer, orderer, "testchannel1")
-			Expect(configBlock).NotTo(Equal(nil))
-
-			By("Launching the added orderer")
+			By("Launching the added orderer: " + orderer5.Name)
 			orderer5Runner := network.OrdererRunner(orderer5)
 			orderer5Runner.Command.Env = append(orderer5Runner.Command.Env, "FABRIC_LOGGING_SPEC=grpc=debug:orderer.consensus.smartbft=debug:policies.ImplicitOrderer=debug")
 			ordererRunners = append(ordererRunners, orderer5Runner)
 			proc := ifrit.Invoke(orderer5Runner)
 			ordererProcesses = append(ordererProcesses, proc)
 			Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			By("Get latest config block")
+			configBlock := nwo.GetConfigBlock(network, peer, orderer, "testchannel1")
+			Expect(configBlock).NotTo(Equal(nil))
 
 			expectedChannelInfoPT = channelparticipation.ChannelInfo{
 				Name:              "testchannel1",
@@ -362,7 +334,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				Height:            0,
 			}
 
-			By("joining " + orderer5.Name + " to channel as a consenter")
+			By("Joining " + orderer5.Name + " to channel as a consenter")
 			channelparticipation.Join(network, orderer5, "testchannel1", configBlock, expectedChannelInfoPT)
 
 			By("Waiting for the added orderer to see the leader")
@@ -377,7 +349,6 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			}
 
 			channelInfo := channelparticipation.ListOne(network, orderer5, "testchannel1")
-			fmt.Printf("channelInfo: %+v\n", channelInfo)
 			Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 
 			By("Make sure the peers get the config blocks, again")
@@ -404,7 +375,6 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Changing to follower role, current view: 1, current leader: 2 channel=testchannel1"))
 
 			By("Making sure the previous leader synchronizes")
-			// Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Replicated decisions from view 0 and seq 7 up to view 0 and sequence 7 with verification sequence 0 channel=testchannel1"))
 			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Starting view with number 1, sequence 8, and decisions 0 channel=testchannel1"))
 
 			By("Making sure previous leader sees the new leader")
@@ -592,11 +562,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			time.Sleep(time.Second * 2)
 			invokeQuery(network, peer, orderer, channel, 20)
 			time.Sleep(time.Second * 2)
-
-			// assertBlockReception(map[string]int{"testchannel1": 12}, network.Orderers, peer, network)
-
 			invokeQuery(network, peer, orderer, channel, 10)
-			// assertBlockReception(map[string]int{"testchannel1": 13}, network.Orderers, peer, network)
 
 			By("Submitting to orderer4")
 			invokeQuery(network, peer, network.Orderers[3], channel, 0)
@@ -930,7 +896,6 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				}
 
 				channelInfo := channelparticipation.ListOne(network, newOrderer, "testchannel1")
-				fmt.Printf("channelInfo: %+v\n", channelInfo)
 				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 
 				By("Ensure all orderers are in sync")
@@ -961,9 +926,6 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				})
 
 				assertBlockReception(map[string]int{"testchannel1": 8 + i}, network.Orderers[i+1:], peer, network)
-
-				/* 				By(fmt.Sprintf("Make sure the peers are up to date with the orderers and have height of %d", 8+i))
-				   				waitForBlockReceptionByPeer(peer, network, channel, uint64(8+i)) */
 			}
 		})
 

@@ -11,7 +11,6 @@ package smartbft
 
 import (
 	"bytes"
-	"crypto/x509"
 	"encoding/pem"
 	"path"
 	"reflect"
@@ -31,8 +30,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/orderer/consensus"
-	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
-	"github.com/hyperledger/fabric/orderer/consensus/inactive"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -52,39 +49,25 @@ type ChainGetter interface {
 // PolicyManagerRetriever is the policy manager retriever function
 type PolicyManagerRetriever func(channel string) policies.Manager
 
-//go:generate mockery -dir . -name InactiveChainRegistry -case underscore -output mocks
-
-// InactiveChainRegistry registers chains that are inactive
-type InactiveChainRegistry interface {
-	// TrackChain tracks a chain with the given name, and calls the given callback
-	// when this chain should be created.
-	TrackChain(chainName string, genesisBlock *cb.Block, createChain func())
-	// Stop stops the InactiveChainRegistry. This is used when removing the
-	// system channel.
-	Stop()
-}
-
 // Consenter implementation of the BFT smart based consenter
 type Consenter struct {
-	CreateChain           func(chainName string)
-	InactiveChainRegistry InactiveChainRegistry
-	GetPolicyManager      PolicyManagerRetriever
-	Logger                *flogging.FabricLogger
-	Cert                  []byte
-	Comm                  *cluster.Comm
-	Chains                ChainGetter
-	SignerSerializer      SignerSerializer
-	Registrar             *multichannel.Registrar
-	WALBaseDir            string
-	ClusterDialer         *cluster.PredicateDialer
-	Conf                  *localconfig.TopLevel
-	Metrics               *Metrics
-	BCCSP                 bccsp.BCCSP
+	CreateChain      func(chainName string)
+	GetPolicyManager PolicyManagerRetriever
+	Logger           *flogging.FabricLogger
+	Cert             []byte
+	Comm             *cluster.Comm
+	Chains           ChainGetter
+	SignerSerializer SignerSerializer
+	Registrar        *multichannel.Registrar
+	WALBaseDir       string
+	ClusterDialer    *cluster.PredicateDialer
+	Conf             *localconfig.TopLevel
+	Metrics          *Metrics
+	BCCSP            bccsp.BCCSP
 }
 
 // New creates Consenter of type smart bft
 func New(
-	icr InactiveChainRegistry,
 	pmr PolicyManagerRetriever,
 	signerSerializer SignerSerializer,
 	clusterDialer *cluster.PredicateDialer,
@@ -108,19 +91,18 @@ func New(
 	logger.Infof("WAL Directory is %s", walConfig.WALDir)
 
 	consenter := &Consenter{
-		InactiveChainRegistry: icr,
-		Registrar:             r,
-		GetPolicyManager:      pmr,
-		Conf:                  conf,
-		ClusterDialer:         clusterDialer,
-		Logger:                logger,
-		Cert:                  srvConf.SecOpts.Certificate,
-		Chains:                r,
-		SignerSerializer:      signerSerializer,
-		WALBaseDir:            walConfig.WALDir,
-		Metrics:               NewMetrics(metricsProvider),
-		CreateChain:           r.CreateChain,
-		BCCSP:                 BCCSP,
+		Registrar:        r,
+		GetPolicyManager: pmr,
+		Conf:             conf,
+		ClusterDialer:    clusterDialer,
+		Logger:           logger,
+		Cert:             srvConf.SecOpts.Certificate,
+		Chains:           r,
+		SignerSerializer: signerSerializer,
+		WALBaseDir:       walConfig.WALDir,
+		Metrics:          NewMetrics(metricsProvider),
+		CreateChain:      r.CreateChain,
+		BCCSP:            BCCSP,
 	}
 
 	compareCert := cluster.CachePublicKeyComparisons(func(a, b []byte) bool {
@@ -189,14 +171,6 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 
 	selfID, err := c.detectSelfID(consenters)
 	if err != nil {
-		if c.InactiveChainRegistry != nil {
-			c.Logger.Errorf("channel %s is not serviced by me", support.ChannelID())
-			c.InactiveChainRegistry.TrackChain(support.ChannelID(), support.Block(0), func() {
-				c.CreateChain(support.ChannelID())
-			})
-			return &inactive.Chain{Err: errors.Errorf("channel %s is not serviced by me", support.ChannelID())}, nil
-		}
-
 		return nil, errors.Wrap(err, "without a system channel, a follower should have been created")
 	}
 	c.Logger.Infof("Local consenter id is %d", selfID)
@@ -244,20 +218,6 @@ func (c *Consenter) IsChannelMember(joinBlock *cb.Block) (bool, error) {
 	if !exists {
 		return false, errors.New("no orderer config in bundle")
 	}
-	configOptions := &smartbft.Options{}
-	if err := proto.Unmarshal(oc.ConsensusMetadata(), configOptions); err != nil {
-		return false, err
-	}
-
-	verifyOpts, err := etcdraft.CreateX509VerifyOptions(oc)
-	if err != nil {
-		return false, errors.Wrapf(err, "failed to create x509 verify options from orderer config")
-	}
-
-	if err := VerifyConfigMetadata(configOptions, verifyOpts); err != nil {
-		return false, errors.Wrapf(err, "failed to validate config metadata of ordering config")
-	}
-
 	member := false
 	for _, consenter := range oc.Consenters() {
 		if bytes.Equal(c.Cert, consenter.ServerTlsCert) || bytes.Equal(c.Cert, consenter.ClientTlsCert) {
@@ -267,16 +227,6 @@ func (c *Consenter) IsChannelMember(joinBlock *cb.Block) (bool, error) {
 	}
 
 	return member, nil
-}
-
-// RemoveInactiveChainRegistry stops and removes the inactive chain registry.
-// This is used when removing the system channel.
-func (c *Consenter) RemoveInactiveChainRegistry() {
-	if c.InactiveChainRegistry == nil {
-		return
-	}
-	c.InactiveChainRegistry.Stop()
-	c.InactiveChainRegistry = nil
 }
 
 // TargetChannel extracts the channel from the given proto.Message.
@@ -314,16 +264,8 @@ func (c *Consenter) detectSelfID(consenters []*cb.Consenter) (uint32, error) {
 	return 0, cluster.ErrNotInChannel
 }
 
-// VerifyConfigMetadata validates SmartBFT config metadata.
-// Note: ignores certificates expiration.
-func VerifyConfigMetadata(options *smartbft.Options, verifyOpts x509.VerifyOptions) error {
-	if options == nil {
-		// defensive check. this should not happen as CheckConfigMetadata
-		// should always be called with non-nil config metadata
-		return errors.Errorf("nil SmartBFT config options")
-	}
-
-	// todo: check metadata
-
-	return nil
+// RemoveInactiveChainRegistry stops and removes the inactive chain registry.
+// This is used when removing the system channel.
+func (c *Consenter) RemoveInactiveChainRegistry() {
+	// no-op
 }
