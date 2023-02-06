@@ -327,6 +327,9 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 			org3peer0, _ := startPeer(setup, "Org3", "peer0", testchannelID, false)
 			setup.network.JoinChannel(testchannelID, setup.orderer, org3peer0)
 
+			By("ensuring new peer has joined gossip network")
+			setup.network.VerifyMembership(setup.network.PeersWithChannel(testchannelID), testchannelID)
+
 			By("enabling V2_0 capabilities")
 			channelPeers := setup.network.PeersWithChannel(testchannelID)
 			nwo.EnableCapabilities(setup.network, testchannelID, "Application", "V2_0", setup.orderer, channelPeers...)
