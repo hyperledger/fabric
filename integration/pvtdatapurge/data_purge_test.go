@@ -307,8 +307,14 @@ var _ = Describe("Pvtdata purge", func() {
 			startPeer(network, processes, peerRunners, org3Peer0)
 			network.Peers = append(network.Peers, org3Peer0)
 
-			// Wait for reconciliation to complete and then check for reconciled data
-			time.Sleep(30 * time.Second)
+			// Wait for peers to connect and reconciliation on org3Peer1
+			Eventually(runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Reconciliation cycle finished successfully"))
+
+			// We can't rely on a single log message about successful reconciliation, because sometimes the reconciliation completes in one cycle (5s) and sometimes in two cycles (10s), so wait for another potential cycle
+			// Although sleep is generally not a good practice in tests, in this case we can't rely on the Eventually in the query for the private data,
+			// because prior to reconciliation the query will return an error "private data matching public hash version is not available" and will not get re-tried in the Eventually.
+			time.Sleep(10 * time.Second)
+
 			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, `test-marble-8-keep`, org3Peer1)
 			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, `test-marble-8-keep`, org3Peer1)
 			marblechaincodeutil.AssertDoesNotExistInCollectionM(network, channelID, chaincode.Name, `test-marble-9-purge`, org3Peer1)
@@ -318,10 +324,10 @@ var _ = Describe("Pvtdata purge", func() {
 			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-10-purge-after-ineligible", "color":"white", "size":4, "owner":"liz", "price":4}`, org2Peer0)
 			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-11-purge-after-ineligible", "color":"orange", "size":80, "owner":"clive", "price":88}`, org2Peer0)
 
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-10-purge-after-ineligible", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-10-purge-after-ineligible", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-11-purge-after-ineligible", org2Peer0)
-			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-11-purge-after-ineligible", org2Peer0)
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-10-purge-after-ineligible", org3Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-10-purge-after-ineligible", org3Peer0)
+			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-11-purge-after-ineligible", org3Peer0)
+			marblechaincodeutil.AssertPresentInCollectionMPD(network, channelID, chaincode.Name, "test-marble-11-purge-after-ineligible", org3Peer0)
 
 			chaincode.Version = "1.1"
 			chaincode.CollectionsConfig = CollectionConfig("remove_org3_config.json")
@@ -341,7 +347,7 @@ var _ = Describe("Pvtdata purge", func() {
 			Eventually(runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Purging private data from private data storage channel=testchannel chaincode=marblesp collection=collectionMarblePrivateDetails key=test-marble-11-purge-after-ineligible blockNum=\\d+ tranNum=\\d+"))
 			Eventually(runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Purged private data from private data storage channel=testchannel numKeysPurged=\\d+ numPrivateDataStoreRecordsPurged=\\d+"))
 
-			By("Adding Purging Re-Adding should be possible")
+			By("Adding a marble, Purging a marble, and then Re-Adding the same marble should be possible")
 			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-12-re-add", "color":"black", "size":12, "owner":"bob", "price":2}`, org2Peer0)
 
 			marblechaincodeutil.AssertPresentInCollectionM(network, channelID, chaincode.Name, "test-marble-12-re-add", org2Peer0)
