@@ -973,13 +973,6 @@ func TestVerifierLoader(t *testing.T) {
 	cryptoPath := generateCryptoMaterials(t, cryptogen)
 	defer os.RemoveAll(cryptoPath)
 
-	// systemChannelBlockPath := generateBootstrapBlock(t, tempDir, configtxgen, "system", "SampleSoloSystemChannel")
-	// systemChannelBlockBytes, err := ioutil.ReadFile(systemChannelBlockPath)
-	// require.NoError(t, err)
-
-	// configBlock := &common.Block{}
-	// require.NoError(t, proto.Unmarshal(systemChannelBlockBytes, configBlock))
-
 	verifier := func(header *common.BlockHeader, metadata *common.BlockMetadata) error {
 		return nil
 	}
@@ -1034,39 +1027,6 @@ func TestVerifierLoader(t *testing.T) {
 			expectedPanic:    "Failed extracting configuration for channel mychannel from block [21]: empty block",
 			onFailureInvoked: true,
 		},
-		// {
-		// 	description:  "VerifierFromConfig fails",
-		// 	ledgerHeight: 100,
-		// 	lastBlock: &common.Block{
-		// 		Metadata: &common.BlockMetadata{
-		// 			Metadata: [][]byte{{}, protoutil.MarshalOrPanic(&common.Metadata{
-		// 				Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: 21}),
-		// 			}), {}, {}},
-		// 		},
-		// 	},
-		// 	lastConfigBlock:       configBlock,
-		// 	verifierFromConfigErr: errors.New("failed initializing MSP"),
-		// 	expectedPanic:         "Failed creating verifier for channel mychannel from block [99]: failed initializing MSP",
-		// 	onFailureInvoked:      true,
-		// },
-		// {
-		// 	description:  "VerifierFromConfig succeeds",
-		// 	ledgerHeight: 100,
-		// 	lastBlock: &common.Block{
-		// 		Metadata: &common.BlockMetadata{
-		// 			Metadata: [][]byte{{}, protoutil.MarshalOrPanic(&common.Metadata{
-		// 				Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: 21}),
-		// 			}), {}, {}},
-		// 		},
-		// 	},
-		// 	lastConfigBlock: configBlock,
-		// 	expectedLoggedMessages: map[string]struct{}{
-		// 		"Loaded verifier for channel mychannel from config block at index 99": {},
-		// 	},
-		// 	expectedResult: verifiersByChannel{
-		// 		"mychannel": verifier,
-		// 	},
-		// },
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
 			iterator := &deliver_mocks.BlockIterator{}
@@ -1220,33 +1180,3 @@ func generateCryptoMaterials(t *testing.T, cryptogen string) string {
 
 	return cryptoPath
 }
-
-// func TestCreateReplicator(t *testing.T) {
-// 	cleanup := configtest.SetDevFabricConfigPath(t)
-// 	defer cleanup()
-// 	bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
-
-// 	iterator := &deliver_mocks.BlockIterator{}
-// 	iterator.NextReturnsOnCall(0, bootBlock, common.Status_SUCCESS)
-// 	iterator.NextReturnsOnCall(1, bootBlock, common.Status_SUCCESS)
-
-// 	ledger := &onboarding_mocks.ReadWriter{}
-// 	ledger.HeightReturns(1)
-// 	ledger.IteratorReturns(iterator, 1)
-
-// 	ledgerFactory := &onboarding_mocks.Factory{}
-// 	ledgerFactory.GetOrCreateReturns(ledger, nil)
-// 	ledgerFactory.ChannelIDsReturns([]string{"mychannel"})
-
-// 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-// 	require.NoError(t, err)
-
-// 	signer := &onboarding_mocks.SignerSerializer{}
-// 	r := NewReplicationInitiator(ledgerFactory, bootBlock, &localconfig.TopLevel{}, comm.SecureOptions{}, signer, cryptoProvider)
-
-// 	err = r.verifierRetriever.RetrieveVerifier("mychannel")(nil, nil)
-// 	require.EqualError(t, err, "implicit policy evaluation failed - 0 sub-policies were satisfied, but this policy requires 1 of the 'Writers' sub-policies to be satisfied")
-
-// 	err = r.verifierRetriever.RetrieveVerifier("system")(nil, nil)
-// 	require.NoError(t, err)
-// }
