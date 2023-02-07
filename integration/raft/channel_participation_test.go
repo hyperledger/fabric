@@ -1625,11 +1625,34 @@ type errorResponse struct {
 func channelparticipationJoinFailure(n *nwo.Network, o *nwo.Orderer, channel string, block *common.Block, expectedStatus int, expectedError string) {
 	blockBytes, err := proto.Marshal(block)
 	Expect(err).NotTo(HaveOccurred())
-	url := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels", n.OrdererPort(o, nwo.AdminPort))
+
+	protocol := "http"
+	if n.TLSEnabled {
+		protocol = "https"
+	}
+	url := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels", protocol, n.OrdererPort(o, nwo.AdminPort))
 	req := channelparticipation.GenerateJoinRequest(url, channel, blockBytes)
 	authClient, _ := nwo.OrdererOperationalClients(n, o)
 
 	doBodyFailure(authClient, req, expectedStatus, expectedError)
+}
+
+func channelparticipationJoinConnectFailure(n *nwo.Network, o *nwo.Orderer, channel string, block *common.Block, expectedError string) {
+	blockBytes, err := proto.Marshal(block)
+	Expect(err).NotTo(HaveOccurred())
+
+	protocol := "http"
+	if n.TLSEnabled {
+		protocol = "https"
+	}
+	url := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels", protocol, n.OrdererPort(o, nwo.AdminPort))
+
+	req := channelparticipation.GenerateJoinRequest(url, channel, blockBytes)
+	authClient, _ := nwo.OrdererOperationalClients(n, o)
+
+	_, err = authClient.Do(req)
+	Expect(err).To(HaveOccurred())
+	Expect(err.Error()).To(ContainSubstring(expectedError))
 }
 
 func doBodyFailure(client *http.Client, req *http.Request, expectedStatus int, expectedError string) {
