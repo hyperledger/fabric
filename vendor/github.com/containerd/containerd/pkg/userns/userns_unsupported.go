@@ -1,3 +1,4 @@
+//go:build !linux
 // +build !linux
 
 /*
@@ -16,7 +17,7 @@
    limitations under the License.
 */
 
-package sys
+package userns
 
 // RunningInUserNS is a stub for non-Linux systems
 // Always returns false

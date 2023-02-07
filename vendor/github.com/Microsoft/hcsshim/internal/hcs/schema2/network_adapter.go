@@ -9,12 +9,9 @@
 
 package hcsschema
 
-type Processor2 struct {
-	Count int32 `json:"Count,omitempty"`
-
-	Limit int32 `json:"Limit,omitempty"`
-
-	Weight int32 `json:"Weight,omitempty"`
-
-	ExposeVirtualizationExtensions bool `json:"ExposeVirtualizationExtensions,omitempty"`
+type NetworkAdapter struct {
+	EndpointId string `json:"EndpointId,omitempty"`
+	MacAddress string `json:"MacAddress,omitempty"`
+	// The I/O virtualization (IOV) offloading configuration.
+	IovSettings *IovSettings `json:"IovSettings,omitempty"`
 }

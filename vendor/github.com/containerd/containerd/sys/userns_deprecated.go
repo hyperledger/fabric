@@ -16,20 +16,8 @@
 
 package sys
 
-import "os"
+import "github.com/containerd/containerd/pkg/userns"
 
-// IsFifo checks if a file is a (named pipe) fifo
-// if the file does not exist then it returns false
-func IsFifo(path string) (bool, error) {
-	stat, err := os.Stat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return false, err
-	}
-	if stat.Mode()&os.ModeNamedPipe == os.ModeNamedPipe {
-		return true, nil
-	}
-	return false, nil
-}
+// RunningInUserNS detects whether we are currently running in a user namespace.
+// Deprecated: use github.com/containerd/containerd/pkg/userns.RunningInUserNS instead.
+var RunningInUserNS = userns.RunningInUserNS

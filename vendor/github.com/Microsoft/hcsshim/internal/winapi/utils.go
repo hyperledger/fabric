@@ -2,41 +2,61 @@ package winapi
 
 import (
 	"errors"
+	"reflect"
 	"syscall"
-	"unicode/utf16"
 	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
+// Uint16BufferToSlice wraps a uint16 pointer-and-length into a slice
+// for easier interop with Go APIs
+func Uint16BufferToSlice(buffer *uint16, bufferLength int) (result []uint16) {
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&result))
+	hdr.Data = uintptr(unsafe.Pointer(buffer))
+	hdr.Cap = bufferLength
+	hdr.Len = bufferLength
+
+	return
+}
+
+// UnicodeString corresponds to UNICODE_STRING win32 struct defined here
+// https://docs.microsoft.com/en-us/windows/win32/api/ntdef/ns-ntdef-_unicode_string
 type UnicodeString struct {
 	Length        uint16
 	MaximumLength uint16
 	Buffer        *uint16
 }
 
+// NTSTRSAFE_UNICODE_STRING_MAX_CCH is a constant defined in ntstrsafe.h. This value
+// denotes the maximum number of wide chars a path can have.
+const NTSTRSAFE_UNICODE_STRING_MAX_CCH = 32767
+
 //String converts a UnicodeString to a golang string
 func (uni UnicodeString) String() string {
-	p := (*[0xffff]uint16)(unsafe.Pointer(uni.Buffer))
-
 	// UnicodeString is not guaranteed to be null terminated, therefore
 	// use the UnicodeString's Length field
-	lengthInChars := uni.Length / 2
-	return syscall.UTF16ToString(p[:lengthInChars])
+	return windows.UTF16ToString(Uint16BufferToSlice(uni.Buffer, int(uni.Length/2)))
 }
 
 // NewUnicodeString allocates a new UnicodeString and copies `s` into
 // the buffer of the new UnicodeString.
 func NewUnicodeString(s string) (*UnicodeString, error) {
-	ws := utf16.Encode(([]rune)(s))
-	if len(ws) > 32767 {
+	buf, err := windows.UTF16FromString(s)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(buf) > NTSTRSAFE_UNICODE_STRING_MAX_CCH {
 		return nil, syscall.ENAMETOOLONG
 	}
 
 	uni := &UnicodeString{
-		Length:        uint16(len(ws) * 2),
-		MaximumLength: uint16(len(ws) * 2),
-		Buffer:        &make([]uint16, len(ws))[0],
+		// The length is in bytes and should not include the trailing null character.
+		Length:        uint16((len(buf) - 1) * 2),
+		MaximumLength: uint16((len(buf) - 1) * 2),
+		Buffer:        &buf[0],
 	}
-	copy((*[32768]uint16)(unsafe.Pointer(uni.Buffer))[:], ws)
 	return uni, nil
 }
 
