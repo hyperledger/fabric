@@ -20,7 +20,6 @@ import (
 	gp "github.com/hyperledger/fabric-protos-go/gateway"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -421,7 +420,7 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 	if len(txn.Signature) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "prepared transaction must be signed")
 	}
-	orderers, err := gs.registry.orderers(request.ChannelId)
+	orderers, clusterSize, err := gs.registry.orderers(request.ChannelId)
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}
@@ -433,23 +432,18 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 	logger := logger.With("txID", request.TransactionId)
 	config := gs.getChannelConfig(request.ChannelId)
 	if config.ChannelConfig().Capabilities().ConsensusTypeBFT() {
-		return gs.submitBFT(ctx, orderers, txn, config, logger)
+		return gs.submitBFT(ctx, orderers, txn, clusterSize, logger)
 	} else {
 		return gs.submitNonBFT(ctx, orderers, txn, logger)
 	}
 }
 
-func (gs *Server) submitBFT(ctx context.Context, orderers []*orderer, txn *common.Envelope, config channelconfig.Resources, logger *flogging.FabricLogger) (*gp.SubmitResponse, error) {
+func (gs *Server) submitBFT(ctx context.Context, orderers []*orderer, txn *common.Envelope, clusterSize int, logger *flogging.FabricLogger) (*gp.SubmitResponse, error) {
 	// For BFT, we send transaction to ALL orderers
 	waitCh := make(chan *gp.ErrorDetail, len(orderers))
 	go gs.broadcastToAll(orderers, txn, waitCh, logger)
 
-	n := len(orderers)
-	ordererConfig, ok := config.OrdererConfig()
-	if ok {
-		n = len(ordererConfig.Consenters())
-	}
-	quorum, _ := computeBFTQuorum(uint64(n))
+	quorum, _ := computeBFTQuorum(uint64(clusterSize))
 	successes, failures := 0, 0
 	var errDetails []proto.Message
 loop:

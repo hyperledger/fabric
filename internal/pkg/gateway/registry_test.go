@@ -29,19 +29,21 @@ func TestOrdererCache(t *testing.T) {
 	}
 	test := prepareTest(t, def)
 
-	orderers, err := test.server.registry.orderers(channelName)
+	orderers, n, err := test.server.registry.orderers(channelName)
 	require.NoError(t, err)
 	require.Len(t, orderers, 1)
 	require.Len(t, orderers[0].tlsRootCerts, 3) // 1 tlsrootCA + 2 tlsintermediateCAs
+	require.Equal(t, 1, n)
 
 	// trigger the config update callback, updating the orderers
 	bundle, err := createChannelConfigBundle(channelName, []string{"orderer1:7050", "orderer2:7050", "orderer3:7050"})
 	require.NoError(t, err)
 	test.server.registry.configUpdate(bundle)
-	orderers, err = test.server.registry.orderers(channelName)
+	orderers, n, err = test.server.registry.orderers(channelName)
 	require.NoError(t, err)
 	require.Len(t, orderers, 3)
 	require.Len(t, orderers[2].tlsRootCerts, 2) // 1 tlsrootCA + 1 tlsintermediateCA from sampleconfig folder
+	require.Equal(t, 3, n)
 }
 
 func TestStaleOrdererConnections(t *testing.T) {
@@ -50,9 +52,10 @@ func TestStaleOrdererConnections(t *testing.T) {
 	}
 	test := prepareTest(t, def)
 
-	orderers, err := test.server.registry.orderers(channelName)
+	orderers, n, err := test.server.registry.orderers(channelName)
 	require.NoError(t, err)
 	require.Len(t, orderers, 3)
+	require.Equal(t, 3, n)
 
 	closed := make([]bool, len(orderers))
 	for i, o := range orderers {
@@ -67,7 +70,7 @@ func TestStaleOrdererConnections(t *testing.T) {
 	bundle, err := createChannelConfigBundle(channelName, []string{"orderer1:7050", "orderer3:7050"})
 	require.NoError(t, err)
 	test.server.registry.configUpdate(bundle)
-	orderers, err = test.server.registry.orderers(channelName)
+	orderers, _, err = test.server.registry.orderers(channelName)
 	require.NoError(t, err)
 	require.Len(t, orderers, 2)
 	require.False(t, closed[0])
@@ -83,17 +86,19 @@ func TestStaleMultiChannelOrdererConnections(t *testing.T) {
 	}
 	test := prepareTest(t, def)
 
-	orderers, err := test.server.registry.orderers(channelName)
+	orderers, n, err := test.server.registry.orderers(channelName)
 	require.NoError(t, err)
 	require.Len(t, orderers, 2)
+	require.Equal(t, 2, n)
 
 	// trigger the config update callback, updating the orderers
 	bundle, err := createChannelConfigBundle(channel1, []string{"orderer1:7050", "orderer3:7050", "orderer4:7050"})
 	require.NoError(t, err)
 	test.server.registry.configUpdate(bundle)
-	orderers, err = test.server.registry.orderers(channel1)
+	orderers, n, err = test.server.registry.orderers(channel1)
 	require.NoError(t, err)
 	require.Len(t, orderers, 3)
+	require.Equal(t, 3, n)
 
 	closed := make([]bool, len(orderers))
 	for i, o := range orderers {
@@ -109,9 +114,10 @@ func TestStaleMultiChannelOrdererConnections(t *testing.T) {
 	bundle, err = createChannelConfigBundle(channel1, []string{"orderer4:7050"})
 	require.NoError(t, err)
 	test.server.registry.configUpdate(bundle)
-	orderers, err = test.server.registry.orderers(channel1)
+	orderers, n, err = test.server.registry.orderers(channel1)
 	require.NoError(t, err)
 	require.Len(t, orderers, 1)
+	require.Equal(t, 1, n)
 
 	require.False(t, closed[0]) // orderer1
 	require.True(t, closed[1])  // orderer3
