@@ -528,6 +528,8 @@ golang.org/x/tools/internal/gocommand
 golang.org/x/tools/internal/packagesinternal
 golang.org/x/tools/internal/typeparams
 golang.org/x/tools/internal/typesinternal
+# golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
+## explicit; go 1.11
 # google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c
 ## explicit; go 1.11
 google.golang.org/genproto/googleapis/rpc/status
