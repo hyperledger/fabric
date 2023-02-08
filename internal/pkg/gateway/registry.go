@@ -251,7 +251,7 @@ func sorter(e []*endorserState, host string) func(i, j int) bool {
 }
 
 // Returns a set of broadcastClients that can order a transaction for the given channel.
-func (reg *registry) orderers(channel string) ([]*orderer, error) {
+func (reg *registry) orderers(channel string) ([]*orderer, int, error) {
 	var orderers []*orderer
 	var ordererEndpoints []*endpointConfig
 	addr, exists := reg.channelOrderers.Load(channel)
@@ -262,7 +262,7 @@ func (reg *registry) orderers(channel string) ([]*orderer, error) {
 		// no entry in the map - get the orderer config from discovery
 		channelOrderers, err := reg.config(channel)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		// A config update may have saved this first, in which case don't overwrite it.
 		addr, _ = reg.channelOrderers.LoadOrStore(channel, channelOrderers)
@@ -294,7 +294,7 @@ func (reg *registry) orderers(channel string) ([]*orderer, error) {
 		orderers = append(orderers, entry.(*orderer))
 	}
 
-	return orderers, nil
+	return orderers, len(ordererEndpoints), nil
 }
 
 func (reg *registry) lookupEndorser(endpoint string, pkiid gossipcommon.PKIidType, channel string) *endorser {
