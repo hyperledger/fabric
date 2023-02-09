@@ -497,7 +497,7 @@ func (gs *Server) broadcastToAll(orderers []*orderer, txn *common.Envelope, wait
 				waitCh <- nil
 			} else {
 				logger.Warnw("Unsuccessful response sending transaction to orderer", "endpoint", ord.logAddress, "status", status, "info", response.GetInfo())
-				waitCh <- errorDetail(ord.endpointConfig, fmt.Sprintf("received unsuccessful response from orderer: %s", common.Status_name[int32(status)]))
+				waitCh <- errorDetail(ord.endpointConfig, fmt.Sprintf("received unsuccessful response from orderer: status=%s, info=%s", common.Status_name[int32(status)], response.GetInfo()))
 			}
 		}(o)
 	}
@@ -554,7 +554,7 @@ func (gs *Server) submitNonBFT(ctx context.Context, orderers []*orderer, txn *co
 
 		if status >= 400 && status < 500 {
 			// client error - don't retry
-			return nil, newRpcError(codes.Aborted, fmt.Sprintf("received unsuccessful response from orderer: %s", common.Status_name[int32(status)]))
+			return nil, newRpcError(codes.Aborted, fmt.Sprintf("received unsuccessful response from orderer: status=%s, info=%s", common.Status_name[int32(status)], response.GetInfo()))
 		}
 	}
 	return nil, newRpcError(codes.Unavailable, "no orderers could successfully process transaction", errDetails...)
