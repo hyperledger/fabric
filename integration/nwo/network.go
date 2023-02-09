@@ -799,7 +799,7 @@ func (n *Network) Bootstrap() {
 
 	n.bootstrapIdemix()
 
-	if n.SystemChannel != nil && n.SystemChannel.Name != "" {
+	if n.SystemChannel != nil { // TODO this entire block could be removed once we finish using the system channel
 		sess, err = n.ConfigTxGen(commands.OutputBlock{
 			ChannelID:   n.SystemChannel.Name,
 			Profile:     n.SystemChannel.Profile,

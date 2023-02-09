@@ -8,9 +8,9 @@ package smartbft
 
 import (
 	"fmt"
-	"math"
 
 	mspa "github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/policydsl"
 
 	"github.com/golang/protobuf/proto"
@@ -123,8 +123,9 @@ func (cbv *ConfigBlockValidator) checkConsentersMatchPolicy(conf *cb.Config) err
 		})
 	}
 
+	quorumSize := policies.ComputeBFTQuorum(n, f)
 	sp := &cb.SignaturePolicyEnvelope{
-		Rule:       policydsl.NOutOf(int32(math.Ceil(float64(n+f+1)/2)), pols),
+		Rule:       policydsl.NOutOf(int32(quorumSize), pols),
 		Identities: identities,
 	}
 

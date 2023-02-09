@@ -37,8 +37,9 @@ func EncodeBFTBlockVerificationPolicy(consenterProtos []*cb.Consenter, ordererGr
 		})
 	}
 
+	quorumSize := ComputeBFTQuorum(n, f)
 	sp := &cb.SignaturePolicyEnvelope{
-		Rule:       policydsl.NOutOf(int32(math.Ceil(float64(n+f+1)/2)), pols),
+		Rule:       policydsl.NOutOf(int32(quorumSize), pols),
 		Identities: identities,
 	}
 	ordererGroup.Policies[BlockValidationPolicyKey] = &cb.ConfigPolicy{
@@ -49,4 +50,8 @@ func EncodeBFTBlockVerificationPolicy(consenterProtos []*cb.Consenter, ordererGr
 			Value: protoutil.MarshalOrPanic(sp),
 		},
 	}
+}
+
+func ComputeBFTQuorum(totalNodes, faultyNodes int) int {
+	return int(math.Ceil(float64(totalNodes+faultyNodes+1) / 2))
 }

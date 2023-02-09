@@ -26,7 +26,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/protolator"
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -331,18 +330,6 @@ func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
 			actualPrevHash := hex.EncodeToString(protoutil.BlockHeaderHash(prevBlock.Header))
 			return errors.Errorf("block [%d]'s hash (%s) mismatches block [%d]'s prev block hash (%s)",
 				prevSeq, actualPrevHash, currSeq, claimedPrevHash)
-		}
-	}
-	return nil
-}
-
-func searchConsenterIdentityByID(consenters []*common.Consenter, identifier uint32) []byte {
-	for _, consenter := range consenters {
-		if consenter.Id == identifier {
-			return protoutil.MarshalOrPanic(&msp.SerializedIdentity{
-				Mspid:   consenter.MspId,
-				IdBytes: consenter.Identity,
-			})
 		}
 	}
 	return nil

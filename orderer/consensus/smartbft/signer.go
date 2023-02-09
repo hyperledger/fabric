@@ -10,6 +10,7 @@ import (
 	"github.com/SmartBFT-Go/consensus/pkg/types"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protoutil"
 )
 
@@ -17,8 +18,8 @@ import (
 
 // SignerSerializer signs messages and serializes identities
 type SignerSerializer interface {
-	crypto.Signer
-	crypto.IdentitySerializer
+	identity.Signer
+	identity.SignerSerializer
 }
 
 // Signer implementation
