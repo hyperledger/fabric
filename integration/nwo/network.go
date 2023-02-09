@@ -86,6 +86,7 @@ type Consensus struct {
 
 // The SystemChannel declares the name of the network system channel and its
 // associated configtxgen profile name.
+// Deprecated: will be removed soon
 type SystemChannel struct {
 	Name    string `yaml:"name,omitempty"`
 	Profile string `yaml:"profile,omitempty"`
@@ -170,14 +171,16 @@ type Network struct {
 	PortsByOrdererID map[string]Ports
 	PortsByPeerID    map[string]Ports
 	Organizations    []*Organization
-	SystemChannel    *SystemChannel
-	Channels         []*Channel
-	Consensus        *Consensus
-	Orderers         []*Orderer
-	Peers            []*Peer
-	Profiles         []*Profile
-	Consortiums      []*Consortium
-	Templates        *Templates
+	// Deprecated: will soon be removed
+	SystemChannel *SystemChannel
+	Channels      []*Channel
+	Consensus     *Consensus
+	Orderers      []*Orderer
+	Peers         []*Peer
+	Profiles      []*Profile
+	// Deprecated: will soon be removed
+	Consortiums []*Consortium
+	Templates   *Templates
 
 	mutex        sync.Locker
 	colorIndex   uint

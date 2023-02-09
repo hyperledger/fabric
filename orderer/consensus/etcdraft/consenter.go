@@ -291,6 +291,7 @@ func (c *Consenter) IsChannelMember(joinBlock *common.Block) (bool, error) {
 		return false, errors.Wrapf(err, "failed to validate config metadata of ordering config")
 	}
 
+	// TODO https://github.com/hyperledger/fabric/issues/3998
 	member := false
 	for _, consenter := range configMetadata.Consenters {
 		if bytes.Equal(c.Cert, consenter.ServerTlsCert) || bytes.Equal(c.Cert, consenter.ClientTlsCert) {

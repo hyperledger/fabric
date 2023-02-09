@@ -36,9 +36,13 @@ func Join(n *nwo.Network, o *nwo.Orderer, channel string, block *common.Block, e
 	}
 	url := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels", protocol, n.OrdererPort(o, nwo.AdminPort))
 	req := GenerateJoinRequest(url, channel, blockBytes)
-	authClient, _ := nwo.OrdererOperationalClients(n, o)
+	authClient, unauthClient := nwo.OrdererOperationalClients(n, o)
 
-	body := doBody(authClient, req)
+	client := unauthClient
+	if n.TLSEnabled {
+		client = authClient
+	}
+	body := doBody(client, req)
 	c := &ChannelInfo{}
 	err = json.Unmarshal(body, c)
 	Expect(err).NotTo(HaveOccurred())

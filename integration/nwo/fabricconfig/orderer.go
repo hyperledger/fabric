@@ -15,8 +15,14 @@ type Orderer struct {
 	Operations           *OrdererOperations    `yaml:"Operations,omitempty"`
 	ChannelParticipation *ChannelParticipation `yaml:"ChannelParticipation,omitempty"`
 	Consensus            map[string]string     `yaml:"Consensus,omitempty"`
+	Admin                *Admin                `yaml:"Admin,omitempty"`
 
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+}
+
+type Admin struct {
+	TLS           *OrdererTLS `yaml:"TLS,omitempty"`
+	ListenAddress string      `yaml:"ListenAddress,omitempty"`
 }
 
 type General struct {
