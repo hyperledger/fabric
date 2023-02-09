@@ -1224,12 +1224,13 @@ func TestSubmit(t *testing.T) {
 				abbc := &mocks.ABBClient{}
 				response := &ab.BroadcastResponse{
 					Status: cp.Status_BAD_REQUEST,
+					Info:   "err-info",
 				}
 				abbc.RecvReturns(response, nil)
 				orderer1Mock.client.(*mocks.ABClient).BroadcastReturns(abbc, nil)
 			},
 			errCode:   codes.Aborted,
-			errString: "received unsuccessful response from orderer: " + cp.Status_name[int32(cp.Status_BAD_REQUEST)],
+			errString: fmt.Sprintf("received unsuccessful response from orderer: status=%s, info=err-info", cp.Status_name[int32(cp.Status_BAD_REQUEST)]),
 		},
 		{
 			name: "dialing orderer endpoint fails",
@@ -1675,9 +1676,15 @@ func TestSubmit(t *testing.T) {
 				ordererStatus:          200,
 			},
 			postSetup: func(t *testing.T, def *preparedTest) {
+				abbc := &mocks.ABBClient{}
+				response := &ab.BroadcastResponse{
+					Status: cp.Status_BAD_REQUEST,
+					Info:   "extra details",
+				}
+				abbc.RecvReturns(response, nil)
 				orderer1Mock.client.(*mocks.ABClient).BroadcastReturns(nil, status.Error(codes.Unavailable, "orderer1 fails"))
 				orderer4Mock.client.(*mocks.ABClient).BroadcastReturns(nil, status.Error(codes.Unavailable, "orderer4 fails"))
-				orderer7Mock.client.(*mocks.ABClient).BroadcastReturns(nil, status.Error(codes.Unavailable, "orderer7 fails"))
+				orderer7Mock.client.(*mocks.ABClient).BroadcastReturns(abbc, nil)
 			},
 			errCode:   codes.Unavailable,
 			errString: "insufficient number of orderers could successfully process transaction to satisfy quorum requirement",
@@ -1695,7 +1702,7 @@ func TestSubmit(t *testing.T) {
 				{
 					Address: "orderer7:7050",
 					MspId:   "msp1",
-					Message: "rpc error: code = Unavailable desc = orderer7 fails",
+					Message: "received unsuccessful response from orderer: status=BAD_REQUEST, info=extra details",
 				},
 			},
 		},
