@@ -961,11 +961,14 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Creating testchannel, joining all orderers")
 			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", network.Orderers...)
 
-			By("Finding leader")
+			By("Finding leader testchannel")
 			_ = FindLeader(ordererRunners)
 
 			By("Creating mychannel with a subset of orderers")
 			channelparticipation.JoinOrderersAppChannelCluster(network, "mychannel", o1)
+
+			By("Finding leader mychannel")
+			_ = FindLeader(ordererRunners[:1])
 
 			By("Waiting for the channel to be available")
 			assertBlockReception(map[string]int{

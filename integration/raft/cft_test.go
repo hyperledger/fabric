@@ -814,11 +814,10 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			FindLeader([]*ginkgomon.Runner{o1Runner, o2Runner, o3Runner})
 		})
 
-		// TODO https://github.com/hyperledger/fabric/issues/3998
 		It("disregards certificate renewal if only the validity period changed", func() {
-			config := nwo.MultiNodeEtcdRaft()
-			config.Channels = append(config.Channels, &nwo.Channel{Name: "foo", Profile: "TwoOrgsChannel"})
-			config.Channels = append(config.Channels, &nwo.Channel{Name: "bar", Profile: "TwoOrgsChannel"})
+			config := nwo.MultiNodeEtcdRaftNoSysChan()
+			config.Channels = append(config.Channels, &nwo.Channel{Name: "foo", Profile: "TwoOrgsAppChannelEtcdRaft"})
+			config.Channels = append(config.Channels, &nwo.Channel{Name: "bar", Profile: "TwoOrgsAppChannelEtcdRaft"})
 			network = nwo.New(config, testDir, client, StartPort(), components)
 
 			network.GenerateConfigTree()
@@ -846,15 +845,16 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
+			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
 			By("Waiting for them to elect a leader")
 			FindLeader(ordererRunners)
 
 			By("Creating a channel")
-			network.CreateChannel("foo", o1, peer)
+			channelparticipation.JoinOrderersAppChannelCluster(network, "foo", o1, o2, o3)
 
 			assertBlockReception(map[string]int{
-				"foo":           0,
-				"systemchannel": 1,
+				"foo":         0,
+				"testchannel": 0,
 			}, []*nwo.Orderer{o1, o2, o3}, peer, network)
 
 			By("Killing all orderers")
@@ -882,12 +882,12 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			FindLeader(ordererRunners)
 
 			By("Creating a channel again")
-			network.CreateChannel("bar", o1, peer)
+			channelparticipation.JoinOrderersAppChannelCluster(network, "bar", o1, o2, o3)
 
 			assertBlockReception(map[string]int{
-				"foo":           0,
-				"bar":           0,
-				"systemchannel": 2,
+				"foo":         0,
+				"bar":         0,
+				"testchannel": 0,
 			}, []*nwo.Orderer{o1, o2, o3}, peer, network)
 		})
 	})
