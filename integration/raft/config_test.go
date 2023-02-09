@@ -866,8 +866,19 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				"systemchannel": 0,
 			}, orderers, peer, network)
 
+<<<<<<< HEAD
 			By("Creating a channel with a subset of orderers")
 			network.CreateChannel("mychannel", o1, peer, peer, o1)
+=======
+			By("Finding leader testchannel")
+			_ = FindLeader(ordererRunners)
+
+			By("Creating mychannel with a subset of orderers")
+			channelparticipation.JoinOrderersAppChannelCluster(network, "mychannel", o1)
+>>>>>>> d3ea7ac89 (Orderer v3: fix IsChannelMember to match public keys (#4011))
+
+			By("Finding leader mychannel")
+			_ = FindLeader(ordererRunners[:1])
 
 			By("Waiting for the channel to be available")
 			assertBlockReception(map[string]int{

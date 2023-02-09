@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
-	"bytes"
 	"path"
 	"reflect"
 	"time"
@@ -291,15 +290,28 @@ func (c *Consenter) IsChannelMember(joinBlock *common.Block) (bool, error) {
 		return false, errors.Wrapf(err, "failed to validate config metadata of ordering config")
 	}
 
+<<<<<<< HEAD
 	member := false
 	for _, consenter := range configMetadata.Consenters {
 		if bytes.Equal(c.Cert, consenter.ServerTlsCert) || bytes.Equal(c.Cert, consenter.ClientTlsCert) {
 			member = true
 			break
 		}
+=======
+	consenters := make(map[uint64]*etcdraft.Consenter)
+	for i, c := range configMetadata.Consenters {
+		consenters[uint64(i+1)] = c // the IDs don't matter
+>>>>>>> d3ea7ac89 (Orderer v3: fix IsChannelMember to match public keys (#4011))
 	}
 
-	return member, nil
+	if _, err := c.detectSelfID(consenters); err != nil {
+		if err != cluster.ErrNotInChannel {
+			return false, errors.Wrapf(err, "failed to detect self ID by comparing public keys")
+		}
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // RemoveInactiveChainRegistry stops and removes the inactive chain registry.
