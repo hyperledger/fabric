@@ -17,6 +17,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/msp"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
 	"github.com/hyperledger/fabric/bccsp"
@@ -252,15 +253,18 @@ func pemToDER(pemBytes []byte, id uint64, certType string, logger *flogging.Fabr
 }
 
 func (c *Consenter) detectSelfID(consenters []*cb.Consenter) (uint32, error) {
-	var serverCertificates []string
+	identity, _ := c.SignerSerializer.Serialize()
+
 	for _, cst := range consenters {
-		serverCertificates = append(serverCertificates, string(cst.ServerTlsCert))
-		if bytes.Equal(c.Cert, cst.ServerTlsCert) {
+		sId := &msp.SerializedIdentity{
+			Mspid:   cst.MspId,
+			IdBytes: cst.Identity,
+		}
+		if bytes.Equal(identity, protoutil.MarshalOrPanic(sId)) {
 			return cst.Id, nil
 		}
 	}
-
-	c.Logger.Warning("Could not find", string(c.Cert), "among", serverCertificates)
+	c.Logger.Warning("Could not find the node in channel consenters set")
 	return 0, cluster.ErrNotInChannel
 }
 
