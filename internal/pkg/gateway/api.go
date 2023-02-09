@@ -427,6 +427,94 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 		return nil, status.Errorf(codes.Unavailable, "no orderer nodes available")
 	}
 
+<<<<<<< HEAD
+=======
+	logger := logger.With("txID", request.TransactionId)
+	config := gs.getChannelConfig(request.ChannelId)
+	if config.ChannelConfig().Capabilities().ConsensusTypeBFT() {
+		return gs.submitBFT(ctx, orderers, txn, clusterSize, logger)
+	} else {
+		return gs.submitNonBFT(ctx, orderers, txn, logger)
+	}
+}
+
+func (gs *Server) submitBFT(ctx context.Context, orderers []*orderer, txn *common.Envelope, clusterSize int, logger *flogging.FabricLogger) (*gp.SubmitResponse, error) {
+	// For BFT, we send transaction to ALL orderers
+	waitCh := make(chan *gp.ErrorDetail, len(orderers))
+	go gs.broadcastToAll(orderers, txn, waitCh, logger)
+
+	quorum, _ := computeBFTQuorum(uint64(clusterSize))
+	successes, failures := 0, 0
+	var errDetails []proto.Message
+loop:
+	for i, total := 0, len(orderers); i < total; i++ {
+		select {
+		case osnErr := <-waitCh:
+			// Broadcast completed normally
+			if osnErr != nil {
+				errDetails = append(errDetails, osnErr)
+				failures++
+				if failures > total-quorum {
+					break loop
+				}
+			} else {
+				successes++
+				if successes >= quorum {
+					return &gp.SubmitResponse{}, nil
+				}
+			}
+		case <-ctx.Done():
+			// Overall submit timeout expired
+			logger.Warnw("Submit call timed out while broadcasting to ordering service")
+			return nil, newRpcError(codes.DeadlineExceeded, "submit timeout expired while broadcasting to ordering service")
+		}
+	}
+	logger.Warnw("Insufficient number of orderers could successfully process transaction to satisfy quorum requirement", "successes", successes, "quorum", quorum)
+	return nil, newRpcError(codes.Unavailable, "insufficient number of orderers could successfully process transaction to satisfy quorum requirement", errDetails...)
+}
+
+func (gs *Server) broadcastToAll(orderers []*orderer, txn *common.Envelope, waitCh chan<- *gp.ErrorDetail, logger *flogging.FabricLogger) {
+	everyoneSubmitted := make(chan struct{})
+	var numFinishedSend uint32
+
+	broadcastContext, broadcastCancel := context.WithCancel(context.Background())
+	defer broadcastCancel()
+	for _, o := range orderers {
+		go func(ord *orderer) {
+			logger.Infow("Sending transaction to orderer", "endpoint", ord.logAddress)
+			ctx, cancel := context.WithCancel(broadcastContext)
+			defer cancel()
+			response, err := gs.broadcast(ctx, ord, txn)
+			// If I'm the last to submit, notify this
+			if atomic.AddUint32(&numFinishedSend, 1) == uint32(len(orderers)) {
+				close(everyoneSubmitted)
+			}
+			if err != nil {
+				logger.Warnw("Error sending transaction to orderer", "endpoint", ord.logAddress, "err", err)
+				waitCh <- errorDetail(ord.endpointConfig, err.Error())
+			} else if status := response.GetStatus(); status == common.Status_SUCCESS {
+				logger.Infow("Successful response from orderer", "endpoint", ord.logAddress)
+				waitCh <- nil
+			} else {
+				logger.Warnw("Unsuccessful response sending transaction to orderer", "endpoint", ord.logAddress, "status", status, "info", response.GetInfo())
+				waitCh <- errorDetail(ord.endpointConfig, fmt.Sprintf("received unsuccessful response from orderer: status=%s, info=%s", common.Status_name[int32(status)], response.GetInfo()))
+			}
+		}(o)
+	}
+
+	t1 := time.NewTimer(gs.options.BroadcastTimeout)
+	defer t1.Stop()
+	select {
+	case <-everyoneSubmitted:
+		return
+	case <-t1.C:
+		return
+	}
+}
+
+func (gs *Server) submitNonBFT(ctx context.Context, orderers []*orderer, txn *common.Envelope, logger *flogging.FabricLogger) (*gp.SubmitResponse, error) {
+	// non-BFT - only need one successful response
+>>>>>>> 6152d8d8d (Return orderer error text to client (#4010))
 	// try each orderer in random order
 	var errDetails []proto.Message
 	for _, index := range rand.Perm(len(orderers)) {
@@ -467,7 +555,7 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 
 		if status >= 400 && status < 500 {
 			// client error - don't retry
-			return nil, newRpcError(codes.Aborted, fmt.Sprintf("received unsuccessful response from orderer: %s", common.Status_name[int32(status)]))
+			return nil, newRpcError(codes.Aborted, fmt.Sprintf("received unsuccessful response from orderer: status=%s, info=%s", common.Status_name[int32(status)], response.GetInfo()))
 		}
 	}
 
