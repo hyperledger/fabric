@@ -389,11 +389,27 @@ func (reg *registry) removeEndorser(endorser *endorser) {
 	reg.configLock.Lock()
 	defer reg.configLock.Unlock()
 
+	reg.logger.Infow("Closing connection to remote endorser", "address", endorser.address, "mspid", endorser.mspid)
 	err := endorser.closeConnection()
 	if err != nil {
 		reg.logger.Errorw("Failed to close connection to endorser", "address", endorser.address, "mspid", endorser.mspid, "err", err)
 	}
 	delete(reg.remoteEndorsers, endorser.address)
+}
+
+// removeOrderer closes the connection and removes the broadcastfrom the registry, but if the next call to orderers() returns that
+// endpoint, then it will attempt to reconnect and add it back. This could happen if the orderer had gone down,
+// but the channel config still lists it.
+func (reg *registry) removeOrderer(node *orderer) {
+	client, loaded := reg.broadcastClients.LoadAndDelete(node.address)
+	if loaded {
+		orderer := client.(*orderer)
+		reg.logger.Infow("Closing connection to orderer", "address", orderer.logAddress, "mspid", orderer.mspid)
+		err := orderer.closeConnection()
+		if err != nil {
+			reg.logger.Errorw("Failed to close connection to orderer", "address", orderer.logAddress, "mspid", orderer.mspid, "err", err)
+		}
+	}
 }
 
 func (reg *registry) config(channel string) ([]*endpointConfig, error) {

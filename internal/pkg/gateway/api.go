@@ -490,8 +490,12 @@ func (gs *Server) broadcastToAll(orderers []*orderer, txn *common.Envelope, wait
 				close(everyoneSubmitted)
 			}
 			if err != nil {
-				logger.Warnw("Error sending transaction to orderer", "endpoint", ord.logAddress, "err", err)
+				rpcErr := status.Convert(err)
+				logger.Warnw("Error sending transaction to orderer", "endpoint", ord.logAddress, "code", rpcErr.Code(), "message", rpcErr.Message(), "details", rpcErr.Details())
 				waitCh <- errorDetail(ord.endpointConfig, err.Error())
+				if rpcErr.Code() == codes.Unavailable {
+					gs.registry.removeOrderer(ord)
+				}
 			} else if status := response.GetStatus(); status == common.Status_SUCCESS {
 				logger.Infow("Successful response from orderer", "endpoint", ord.logAddress)
 				waitCh <- nil
@@ -540,8 +544,12 @@ func (gs *Server) submitNonBFT(ctx context.Context, orderers []*orderer, txn *co
 		}
 
 		if err != nil {
+			rpcErr := status.Convert(err)
+			logger.Warnw("Error sending transaction to orderer", "endpoint", orderer.logAddress, "code", rpcErr.Code(), "message", rpcErr.Message(), "details", rpcErr.Details())
 			errDetails = append(errDetails, errorDetail(orderer.endpointConfig, err.Error()))
-			logger.Warnw("Error sending transaction to orderer", "endpoint", orderer.logAddress, "err", err)
+			if rpcErr.Code() == codes.Unavailable {
+				gs.registry.removeOrderer(orderer)
+			}
 			continue
 		}
 

@@ -1641,8 +1641,16 @@ func TestSubmit(t *testing.T) {
 				ordererStatus:          200,
 			},
 			postSetup: func(t *testing.T, def *preparedTest) {
-				orderer1Mock.client.(*mocks.ABClient).BroadcastReturns(nil, errors.New("orderer1 fails"))
-				orderer4Mock.client.(*mocks.ABClient).BroadcastReturns(nil, errors.New("orderer4 fails"))
+				orderer1Mock.client.(*mocks.ABClient).BroadcastReturns(nil, status.Error(codes.Aborted, "orderer1 fails"))
+				orderer4Mock.client.(*mocks.ABClient).BroadcastReturns(nil, status.Error(codes.Unavailable, "orderer4 fails"))
+			},
+			postTest: func(t *testing.T, def *preparedTest) {
+				// orderer1 client (aborted) should still be in the registry
+				_, exists := def.server.registry.broadcastClients.Load(orderer1Mock.address)
+				require.True(t, exists)
+				// orderer4 client (unavailable) should have been closed and removed from the registry
+				_, exists = def.server.registry.broadcastClients.Load(orderer4Mock.address)
+				require.False(t, exists)
 			},
 		},
 		{

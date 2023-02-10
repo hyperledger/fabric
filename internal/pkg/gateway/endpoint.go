@@ -59,20 +59,13 @@ type endpointFactory struct {
 }
 
 func (ef *endpointFactory) newEndorser(pkiid common.PKIidType, address, mspid string, tlsRootCerts [][]byte) (*endorser, error) {
-	conn, err := ef.newConnection(address, tlsRootCerts)
+	conn, close, err := ef.newConnection(address, tlsRootCerts)
 	if err != nil {
 		return nil, err
 	}
 	connectEndorser := ef.connectEndorser
 	if connectEndorser == nil {
 		connectEndorser = peer.NewEndorserClient
-	}
-	close := func() error {
-		if conn != nil && conn.GetState() != connectivity.Shutdown {
-			logger.Infow("Closing connection to remote endorser", "address", address, "mspid", mspid)
-			return conn.Close()
-		}
-		return nil
 	}
 	return &endorser{
 		client:          connectEndorser(conn),
@@ -91,7 +84,7 @@ func (ef *endpointFactory) newOrderer(address, mspid string, tlsRootCerts [][]by
 		logAddess = fmt.Sprintf("%s (mapped from %s)", connAddress, address)
 		logger.Debugw("Overriding orderer endpoint address", "from", address, "to", connAddress)
 	}
-	conn, err := ef.newConnection(connAddress, connCerts)
+	conn, close, err := ef.newConnection(connAddress, connCerts)
 	if err != nil {
 		return nil, err
 	}
@@ -101,12 +94,12 @@ func (ef *endpointFactory) newOrderer(address, mspid string, tlsRootCerts [][]by
 	}
 	return &orderer{
 		client:          connectOrderer(conn),
-		closeConnection: conn.Close,
+		closeConnection: close,
 		endpointConfig:  &endpointConfig{address: address, logAddress: logAddess, mspid: mspid, tlsRootCerts: tlsRootCerts},
 	}, nil
 }
 
-func (ef *endpointFactory) newConnection(address string, tlsRootCerts [][]byte) (*grpc.ClientConn, error) {
+func (ef *endpointFactory) newConnection(address string, tlsRootCerts [][]byte) (*grpc.ClientConn, func() error, error) {
 	config := comm.ClientConfig{
 		SecOpts: comm.SecureOptions{
 			UseTLS:            len(tlsRootCerts) > 0,
@@ -119,7 +112,7 @@ func (ef *endpointFactory) newConnection(address string, tlsRootCerts [][]byte) 
 	}
 	dialOpts, err := config.DialOptions()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), ef.timeout)
@@ -131,7 +124,13 @@ func (ef *endpointFactory) newConnection(address string, tlsRootCerts [][]byte) 
 	}
 	conn, err := dialer(ctx, address, dialOpts...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create new connection: %w", err)
+		return nil, nil, fmt.Errorf("failed to create new connection: %w", err)
 	}
-	return conn, nil
+	close := func() error {
+		if conn != nil && conn.GetState() != connectivity.Shutdown {
+			return conn.Close()
+		}
+		return nil
+	}
+	return conn, close, nil
 }
