@@ -438,7 +438,7 @@ func (r *Registrar) BroadcastChannelSupport(msg *cb.Envelope) (*cb.ChannelHeader
 	if cs == nil {
 		sysChan := r.SystemChannel()
 		if sysChan == nil {
-			return nil, false, nil, errors.New("channel creation request not allowed because the orderer system channel is not defined")
+			return chdr, false, nil, errors.New("channel creation request not allowed because the orderer system channel is not defined")
 		}
 		cs = sysChan
 	}
