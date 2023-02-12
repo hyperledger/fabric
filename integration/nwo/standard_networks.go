@@ -79,45 +79,6 @@ func BasicConfig() *Config {
 	}
 }
 
-// BasicEtcdRaft
-// Deprecated: BasicEtcdRaft is deprecated and will be removed soon
-func BasicEtcdRaft() *Config {
-	config := BasicConfig()
-
-	config.Consensus.Type = "etcdraft"
-	config.Profiles = []*Profile{{
-		Name:     "SampleDevModeEtcdRaft",
-		Orderers: []string{"orderer"},
-	}, {
-		Name:          "TwoOrgsChannel",
-		Consortium:    "SampleConsortium",
-		Organizations: []string{"Org1", "Org2"},
-	}}
-	config.SystemChannel.Profile = "SampleDevModeEtcdRaft"
-
-	return config
-}
-
-// MultiNodeEtcdRaft
-// Deprecated: MultiNodeEtcdRaft is deprecated and will be removed soon
-func MultiNodeEtcdRaft() *Config {
-	config := BasicEtcdRaft()
-	config.Orderers = []*Orderer{
-		{Name: "orderer1", Organization: "OrdererOrg"},
-		{Name: "orderer2", Organization: "OrdererOrg"},
-		{Name: "orderer3", Organization: "OrdererOrg"},
-	}
-	config.Profiles = []*Profile{{
-		Name:     "SampleDevModeEtcdRaft",
-		Orderers: []string{"orderer1", "orderer2", "orderer3"},
-	}, {
-		Name:          "TwoOrgsChannel",
-		Consortium:    "SampleConsortium",
-		Organizations: []string{"Org1", "Org2"},
-	}}
-	return config
-}
-
 // Utility methods for tests without the system channel.
 // These methods start from BasicConfig() and only use each other progressively.
 
@@ -177,7 +138,7 @@ func MultiChannelEtcdRaftNoSysChan() *Config {
 
 func MinimalRaftNoSysChan() *Config {
 	// TODO after we finish converting all tests to not use the system channel, rename it
-	config := BasicEtcdRaft()
+	config := BasicEtcdRaftNoSysChan()
 
 	config.Peers[1].Channels = nil
 	config.Channels = []*Channel{
@@ -189,10 +150,6 @@ func MinimalRaftNoSysChan() *Config {
 		Consortium:    "SampleConsortium",
 		Organizations: []string{"Org1"},
 	}}
-
-	config.SystemChannel = nil
-	config.Consensus.ChannelParticipationEnabled = true
-	config.Consensus.BootstrapMethod = "none"
 
 	return config
 }
