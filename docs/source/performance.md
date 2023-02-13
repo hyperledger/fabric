@@ -1,49 +1,46 @@
 # Performance considerations
 
-There are various aspects of a Hyperledger Fabric network that affect the performance of the overall system. Performance in a Hyperledger Fabric network is complex because in an appropriately deployed network there will be many organizations participating, each with their own hardware and networking infrastructure, along with different solution characteristics such as number of channels, chaincode implementations and policies.
+Various Hyperledger Fabric component, configuration, and workflow decisions contribute to the overall performance of your network. Managing these variables, such as the number of channels, chaincode implementations, and transaction policies, can be complex with participating organizations contributing their own hardware and networking infrastructures to the environment. 
 
-This topic will cover some of the considerations that need to be made.
+This topic walks you through the considerations that can help optimize performance for your Hyperledger Fabric network. 
 
 ## Hardware considerations
 
-Each organization may provide its own hardware to host their peer nodes and ordering service nodes. Ordering service nodes may be provided by a single organization, or may be contributed from various organizations. It's important to realise that individual organizations could impact the whole network (depending on policies such as endorsement policies), therefore each organization must ensure that they provide adequate resources for the services they deploy.
+Each participating organization can provide hardware for hosting peer and ordering service nodes. Ordering service nodes can be provided by a single organization or by multiple organizations. Because any organization can impact the performance of the entire network (depending on factors such as transaction endorsement policies), each participating organization must provide adequate resources for network services and applications which they deploy.
 
 ### Persistent storage
 
-As Hyperledger Fabric performs a lot of disk I/O it goes without saying that you should ensure you are using the fastest disk storage available to you. If you are using network attached storage then ensure that you choose the fastest IOPs available.
+Because a Hyperledger Fabric network performs a high volume of disk I/O, you must use the fastest disk storage that is practicable. If you are using network-attached storage, ensure that you choose the fastest IOPs available.
 
 ### Network connectivity
 
-A Hyperledger Fabric network is highly distributed across multiple nodes usually hosted on multiple different clusters, on different clouds and even in different countries, therefore high speed network connectivity between nodes is vital and at least 1Gbs should be deployed between all nodes/organizations.
+A Hyperledger Fabric network is highly-distributed across multiple nodes and is typically hosted on multiple clusters, in different cloud environments, and even across legal and geographic boundaries. Therefore, high-speed network connectivity between nodes is vital, and a minimum of 1 Gbps should be deployed between all nodes and organizations.
 
 ### CPU and memory
 
-The final piece is how much CPU and Memory should be allocated to peer and ordering service nodes, and if used for peer nodes, CouchDB state databases. There is no real answer to this one but it does affect the performance of the network and even the stability of the nodes if not enough resources are allocated. It's vital therefore that you constantly monitor the CPU, Memory, Disk Space, Disk and Network IO to ensure that you are within the limits of your allocated resources. Do not wait until you see these values consistently hitting 99% utilization before deciding to increase the resources.  A threshold of between 70% and 80% is a good starting point for the maximum expected workload.
+The final hardware consideration is the amount of CPU and Memory to allocate to peer and ordering service nodes, and for any CouchDB state databases used for peer nodes. These allocations affect network performance and even node stability, so you must continuously monitor CPU, Memory, Disk Space, and Disk and Network I/O to ensure that you are well within the limits of your allocated resources. Do not wait to approach maximum utilization before increasing node resources - a threshold of  70%-80% usage is a general guideline for maximum workload.
 
-Performance generally scales with CPU allocated to peer nodes. Providing each peer and CouchDB (if used) with the maximum CPU capacity is recommended. For orderer nodes a good starting point may be 1 CPU with 2GB of memory.
+Network performance generally scales with CPU allocated to peer nodes, so providing each peer (and CouchDB if used) with the maximum CPU capacity is recommended. For orderer nodes, a general guideline is 1 CPU with 2 GB of Memory.
 
-As the amount of state data grows the database storage may slow down, especially when using CouchDB as the state database. Therefore you may need to add more compute resource to the environment over the life of your Fabric deployment, which just re-emphasises the point that you must monitor your network components and react to any thresholds being exceeded.
+As the amount of state data grows, database storage performance can slow down, especially when using CouchDB as the state database. Therefore, you should plan to add  compute resources to your environment over time, while continuously monitoring your network components and adjusting to any thresholds being exceeded.
 
 ## Peer considerations
 
-This section highlights some of the considerations for a peer such as the number of active channels and node configuration properties. The default peer and orderer configurations from the peer core.yaml and orderer orderer.yaml are referenced below.
+Peer considerations for overall network performance include the number of active channels and node configuration properties. The default peer and orderer configurations, from the peer **core.yaml** and orderer **orderer.yaml** files, are referenced below.
 
 ### Number of peers
 
-In theory the more peers organizations have, the better the network will perform, since endorsement requests can be load balanced across an organization's peers. That being said, gateway peers select peers for endorsement based on their known current block height so distribution among eligible peers for endorsement is not easily predictable.
-What is predictable is the use of gateway peers. An organization can reduce the work done by a single gateway peer by having more than one gateway peer and then selecting a gateway peer to submit or evaluate a transaction based on some defined policy such as round robin. This selecting of a gateway peer could be done via a load balancer, coded into the client application or maybe use the capabilities of the grpc library used to provide gateway selection.
+The more peers that each organization deploys the better the network should perform, because transaction endorsement requests can be load-balanced across each  organization's peers. However, gateway peers select peers for transaction endorsement based on their current block height, so distribution amongst peers eligible for endorsement is not easily predicted. Work done by a single gateway peer can be predictably reduced by selecting a gateway peer from among multiple gateway peers to submit or evaluate a transaction based on a defined policy such as round robin. This selection of a gateway peer could be done via a load balancer, coded into the client application, or by the grpc library used for gateway selection. (Note: these scenarios have **NOT** been formally benchmarked for any performance gains.)
 
-Neither of these scenarios have been formally benchmarked to see if performance gains can be made.
+### Number of channels per peer
 
-### Number of channels a peer is participating in
+If a peer has ample CPU and is participating in only one channel, it is not possible to drive the peer beyond 65-70% CPU because of how the peer does serialization and locking internally. If a peer is participating in multiple channels, the peer will consume the available resource as it increases parallelism in block processing.
 
-If a peer has ample CPU and is only participating in a single channel then it's not possible to drive the peer beyond around 65-70% CPU. This is due to the way the peer does serialisation and locking internally. Multiple active channels on a peer will use the extra resource as it increases parallelism in block processing.
-
-In general, ensure that there is a CPU core available for each channel that is running at maximum load. It is not a hard limit however, if the load in each channel is not highly correlated (i.e., not every channel is contenting for resources at the same time), the numbers of channels can exceed the number of CPU cores.
+In general, ensure that there is a CPU core available for each channel that is running at maximum load. As a general guideline, if the load in each channel is not highly-correlated (i.e., channels are not all contending for resources simultaneously), the number of channels can exceed the number of CPU cores.
 
 ### Total query limit
 
-A peer limits the total number of records a range or JSON (rich) query will return in order to avoid runaway situations. This is configured in the core.yaml file of a peer:
+A peer limits the total number of records a range or JSON (rich) query will return, in order to avoid runaway situations. This limit is configured in the peer's **core.yaml** file:
 
 ```yaml
 
@@ -53,11 +50,11 @@ ledger:
     totalQueryLimit: 100000
 ```
 
-100000 is the default that Fabric provides in the sample core.yaml and in the test docker images. If you are exceeding this limit, you can increase this value, however you should consider alternative designs that don't require such extensive query scans.
+The Hyperledger Fabric total query limit default is 100000, as set in the sample **core.yaml** file and test docker images. You can increase this default value if necessary, but you should also consider alternative designs that do not require the higher number of query scans.
 
 ### Concurrency limits
 
-The peer has some limits to ensure a peer cannot be overwhelmed by excessive concurrent client requests:
+Each peer node has limits to ensure it is not overwhelmed by excessive concurrent client requests:
 
 ```yaml
 peer:
@@ -76,11 +73,11 @@ peer:
             gatewayService: 500
 ```
 
-The peer gateway service first released in V2.4 of Hyperledger Fabric introduced a limit in the `gatewayService` with a default of 500. However, this may restrict the TPS of a network so you may need to increase this value to allow more concurrent requests. Good results have been seen with 20000 concurrent requests, higher values may be counter-productive.
+The Peer Gateway Service, first released in v2.4 of Hyperledger Fabric, introduced the `gatewayService` limit with a default of 500. However, this default can restrict network TPS, so you may need to increase this value to allow more concurrent requests. The maximum suggested limit is 20000 concurrent requests.
 
 ### CouchDB cache setting
 
-If you are using CouchDB and have a large number of keys being read repeatedly (not via queries) then you may want to increase the peer's CouchDB cache to avoid database lookups:
+If you are using CouchDB and have a large number of keys being read repeatedly (not via queries), you may choose to increase the peer's CouchDB cache to avoid database lookups:
 
 ```yaml
 
