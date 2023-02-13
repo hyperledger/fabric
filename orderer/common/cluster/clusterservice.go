@@ -239,7 +239,7 @@ func (s *ClusterService) initializeExpirationCheck(stream orderer.ClusterNodeSer
 	}
 }
 
-func (c *ClusterService) ConfigureNodeCerts(channel string, newNodes []common.Consenter) error {
+func (c *ClusterService) ConfigureNodeCerts(channel string, newNodes []*common.Consenter) error {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
 

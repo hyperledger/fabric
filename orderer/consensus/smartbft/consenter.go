@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
@@ -56,7 +55,7 @@ type Consenter struct {
 	GetPolicyManager PolicyManagerRetriever
 	Logger           *flogging.FabricLogger
 	Cert             []byte
-	Comm             *cluster.Comm
+	Comm             *cluster.AuthCommMgr
 	Chains           ChainGetter
 	SignerSerializer SignerSerializer
 	Registrar        *multichannel.Registrar
@@ -65,6 +64,7 @@ type Consenter struct {
 	Conf             *localconfig.TopLevel
 	Metrics          *Metrics
 	BCCSP            bccsp.BCCSP
+	ClusterService   *cluster.ClusterService
 }
 
 // New creates Consenter of type smart bft
@@ -106,42 +106,39 @@ func New(
 		BCCSP:            BCCSP,
 	}
 
-	compareCert := cluster.CachePublicKeyComparisons(func(a, b []byte) bool {
-		err := crypto.CertificatesWithSamePublicKey(a, b)
-		if err != nil && err != crypto.ErrPubKeyMismatch {
-			crypto.LogNonPubKeyMismatchErr(logger.Errorf, err, a, b)
-		}
-		return err == nil
-	})
-
-	consenter.Comm = &cluster.Comm{
-		MinimumExpirationWarningInterval: cluster.MinimumExpirationWarningInterval,
-		CertExpWarningThreshold:          conf.General.Cluster.CertExpirationWarningThreshold,
-		SendBufferSize:                   conf.General.Cluster.SendBufferSize,
-		Logger:                           flogging.MustGetLogger("orderer.common.cluster"),
-		Chan2Members:                     make(map[string]cluster.MemberMapping),
-		Connections:                      cluster.NewConnectionStore(clusterDialer, metrics.EgressTLSConnectionCount),
-		Metrics:                          metrics,
-		ChanExt:                          consenter,
-		H: &Ingress{
-			Logger:        logger,
-			ChainSelector: consenter,
-		},
-		CompareCertificate: compareCert,
+	identity, _ := signerSerializer.Serialize()
+	sID := &msp.SerializedIdentity{}
+	if err := proto.Unmarshal(identity, sID); err != nil {
+		logger.Panicf("failed unmarshaling identity: %s", err)
 	}
 
-	svc := &cluster.Service{
-		CertExpWarningThreshold:          conf.General.Cluster.CertExpirationWarningThreshold,
-		MinimumExpirationWarningInterval: cluster.MinimumExpirationWarningInterval,
+	consenter.Comm = &cluster.AuthCommMgr{
+		Logger:         flogging.MustGetLogger("orderer.common.cluster"),
+		Metrics:        metrics,
+		SendBufferSize: conf.General.Cluster.SendBufferSize,
+		Chan2Members:   make(cluster.MembersByChannel),
+		Connections:    cluster.NewConnectionMgr(clusterDialer.Config),
+		Signer:         signerSerializer,
+		NodeIdentity:   sID.IdBytes,
+	}
+
+	consenter.ClusterService = &cluster.ClusterService{
 		StreamCountReporter: &cluster.StreamCountReporter{
 			Metrics: metrics,
 		},
-		StepLogger: flogging.MustGetLogger("orderer.common.cluster.step"),
-		Logger:     flogging.MustGetLogger("orderer.common.cluster"),
-		Dispatcher: consenter.Comm,
+		Logger:                           flogging.MustGetLogger("orderer.common.cluster"),
+		StepLogger:                       flogging.MustGetLogger("orderer.common.cluster.step"),
+		MinimumExpirationWarningInterval: cluster.MinimumExpirationWarningInterval,
+		CertExpWarningThreshold:          conf.General.Cluster.CertExpirationWarningThreshold,
+		MembershipByChannel:              make(map[string]*cluster.ChannelMembersConfig),
+		NodeIdentity:                     sID.IdBytes,
+		RequestHandler: &Ingress{
+			Logger:        logger,
+			ChainSelector: consenter,
+		},
 	}
 
-	ab.RegisterClusterServer(srv.Server(), svc)
+	ab.RegisterClusterNodeServiceServer(srv.Server(), consenter.ClusterService)
 
 	return consenter
 }
@@ -200,6 +197,9 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 		return nil, errors.Wrap(err, "failed creating a new BFTChain")
 	}
 
+	// refresh cluster service with updated consenters
+	c.ClusterService.ConfigureNodeCerts(chain.Channel, consenters)
+
 	return chain, nil
 }
 
@@ -253,14 +253,8 @@ func pemToDER(pemBytes []byte, id uint64, certType string, logger *flogging.Fabr
 }
 
 func (c *Consenter) detectSelfID(consenters []*cb.Consenter) (uint32, error) {
-	identity, _ := c.SignerSerializer.Serialize()
-
 	for _, cst := range consenters {
-		sId := &msp.SerializedIdentity{
-			Mspid:   cst.MspId,
-			IdBytes: cst.Identity,
-		}
-		if bytes.Equal(identity, protoutil.MarshalOrPanic(sId)) {
+		if bytes.Equal(c.Comm.NodeIdentity, cst.Identity) {
 			return cst.Id, nil
 		}
 	}

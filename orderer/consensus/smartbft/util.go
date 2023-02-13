@@ -330,6 +330,11 @@ func RemoteNodesFromConfigBlock(block *cb.Block, selfID uint64, logger *flogging
 		return nil, errors.Wrap(err, "failed getting a new bundle from envelope of config block")
 	}
 
+	channelMSPs, err := bundle.MSPManager().GetMSPs()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed obtaining MSPs from MSPManager")
+	}
+
 	oc, ok := bundle.OrdererConfig()
 	if !ok {
 		return nil, errors.New("no orderer config in config block")
@@ -356,10 +361,6 @@ func RemoteNodesFromConfigBlock(block *cb.Block, selfID uint64, logger *flogging
 
 		nodeIDs = append(nodeIDs, (uint64)(consenter.Id))
 
-		// No need to know yourself
-		if selfID == (uint64)(consenter.Id) {
-			continue
-		}
 		serverCertAsDER, err := pemToDER(consenter.ServerTlsCert, (uint64)(consenter.Id), "server", logger)
 		if err != nil {
 			return nil, errors.WithStack(err)
@@ -378,6 +379,11 @@ func RemoteNodesFromConfigBlock(block *cb.Block, selfID uint64, logger *flogging
 			}
 		}
 
+		nodeMSP, exists := channelMSPs[consenter.MspId]
+		if !exists {
+			return nil, errors.Errorf("no MSP found for MSP with ID of %s", consenter.MspId)
+		}
+
 		remoteNodes = append(remoteNodes, cluster.RemoteNode{
 			NodeAddress: cluster.NodeAddress{
 				ID:       (uint64)(consenter.Id),
@@ -386,6 +392,8 @@ func RemoteNodesFromConfigBlock(block *cb.Block, selfID uint64, logger *flogging
 			NodeCerts: cluster.NodeCerts{
 				ClientTLSCert: clientCertAsDER,
 				ServerTLSCert: serverCertAsDER,
+				ServerRootCA:  nodeMSP.GetTLSRootCerts()[0],
+				Identity:      consenter.Identity,
 			},
 		})
 	}

@@ -175,7 +175,7 @@ func TestClusterServiceStep(t *testing.T) {
 
 		handler.On("OnConsensus", authRequest.Channel, authRequest.FromId, mock.Anything).Return(nil).Once()
 
-		svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair.Cert}, {Id: uint32(authRequest.ToId), Identity: svc.NodeIdentity}})
+		svc.ConfigureNodeCerts(authRequest.Channel, []*common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair.Cert}, {Id: uint32(authRequest.ToId), Identity: svc.NodeIdentity}})
 		err = svc.Step(stream)
 		require.NoError(t, err)
 	})
@@ -292,7 +292,7 @@ func TestClusterServiceStep(t *testing.T) {
 		stream.On("Recv").Return(nodeInvalidRequest, nil).Once()
 		stream.On("Recv").Return(nil, io.EOF).Once()
 
-		svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair.Cert}, {Id: uint32(authRequest.ToId), Identity: svc.NodeIdentity}})
+		svc.ConfigureNodeCerts(authRequest.Channel, []*common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair.Cert}, {Id: uint32(authRequest.ToId), Identity: svc.NodeIdentity}})
 		err = svc.Step(stream)
 		require.EqualError(t, err, "Message is neither a Submit nor Consensus request")
 	})
@@ -347,7 +347,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 				NodeAuthrequest: &authRequest,
 			},
 		}
-		svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}, {Id: uint32(authRequest.ToId), Identity: svc.NodeIdentity}})
+		svc.ConfigureNodeCerts(authRequest.Channel, []*common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}, {Id: uint32(authRequest.ToId), Identity: svc.NodeIdentity}})
 		_, err = svc.VerifyAuthRequest(stream, stepRequest)
 		require.NoError(t, err)
 	})
@@ -369,7 +369,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		stream := &mocks.ClusterStepStream{}
 		stream.On("Context").Return(context.Background())
 		clientKeyPair1, _ := ca.NewClientCertKeyPair()
-		svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}})
+		svc.ConfigureNodeCerts(authRequest.Channel, []*common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}})
 		stepRequest := &orderer.ClusterNodeServiceStepRequest{
 			Payload: &orderer.ClusterNodeServiceStepRequest_NodeAuthrequest{
 				NodeAuthrequest: &authRequest,
@@ -418,7 +418,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		require.NoError(t, err)
 
 		authRequest.Signature = sig
-		svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}})
+		svc.ConfigureNodeCerts(authRequest.Channel, []*common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}})
 
 		_, err = svc.VerifyAuthRequest(stream, stepRequest)
 		require.EqualError(t, err, "session binding mismatch")
@@ -511,7 +511,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		authRequest.Signature = sig
 
 		delete(svc.MembershipByChannel, authRequest.Channel)
-		svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.ToId), Identity: clientKeyPair1.Cert}})
+		svc.ConfigureNodeCerts(authRequest.Channel, []*common.Consenter{{Id: uint32(authRequest.ToId), Identity: clientKeyPair1.Cert}})
 
 		_, err = svc.VerifyAuthRequest(stream, stepRequest)
 		require.EqualError(t, err, "node 1 is not member of channel mychannel")
@@ -561,7 +561,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		}
 
 		clientKeyPair2, _ := ca.NewClientCertKeyPair()
-		svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair2.Cert}, {Id: uint32(authRequest.ToId), Identity: clientKeyPair2.Cert}})
+		svc.ConfigureNodeCerts(authRequest.Channel, []*common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair2.Cert}, {Id: uint32(authRequest.ToId), Identity: clientKeyPair2.Cert}})
 		_, err = svc.VerifyAuthRequest(stream, stepRequest)
 		require.EqualError(t, err, "node id mismatch")
 	})
@@ -610,7 +610,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		}
 
 		clientKeyPair2, _ := ca.NewClientCertKeyPair()
-		svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair2.Cert}, {Id: uint32(authRequest.ToId), Identity: svc.NodeIdentity}})
+		svc.ConfigureNodeCerts(authRequest.Channel, []*common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair2.Cert}, {Id: uint32(authRequest.ToId), Identity: svc.NodeIdentity}})
 		_, err = svc.VerifyAuthRequest(stream, stepRequest)
 		require.EqualError(t, err, "signature mismatch: signature invalid")
 	})
@@ -626,7 +626,7 @@ func TestConfigureNodeCerts(t *testing.T) {
 		svc.Logger = flogging.MustGetLogger("test")
 
 		clientKeyPair1, _ := ca.NewClientCertKeyPair()
-		err := svc.ConfigureNodeCerts("mychannel", []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}})
+		err := svc.ConfigureNodeCerts("mychannel", []*common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}})
 		require.NoError(t, err)
 		require.Equal(t, clientKeyPair1.Cert, svc.MembershipByChannel["mychannel"].MemberMapping[authRequest.FromId])
 	})
@@ -637,11 +637,11 @@ func TestConfigureNodeCerts(t *testing.T) {
 		svc.Logger = flogging.MustGetLogger("test")
 
 		clientKeyPair1, _ := ca.NewClientCertKeyPair()
-		err := svc.ConfigureNodeCerts("mychannel", []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}})
+		err := svc.ConfigureNodeCerts("mychannel", []*common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}})
 		require.NoError(t, err)
 		require.Equal(t, clientKeyPair1.Cert, svc.MembershipByChannel["mychannel"].MemberMapping[authRequest.FromId])
 
-		err = svc.ConfigureNodeCerts("mychannel", []common.Consenter{{Id: uint32(authRequest.FromId)}})
+		err = svc.ConfigureNodeCerts("mychannel", []*common.Consenter{{Id: uint32(authRequest.FromId)}})
 		require.NoError(t, err)
 		require.Equal(t, []byte(nil), svc.MembershipByChannel["mychannel"].MemberMapping[authRequest.FromId])
 	})
@@ -704,7 +704,7 @@ func TestExpirationWarning(t *testing.T) {
 
 	handler.On("OnConsensus", authRequest.Channel, authRequest.FromId, mock.Anything).Return(nil).Once()
 
-	svc.ConfigureNodeCerts(authRequest.Channel, []common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}, {Id: uint32(authRequest.ToId), Identity: svc.NodeIdentity}})
+	svc.ConfigureNodeCerts(authRequest.Channel, []*common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}, {Id: uint32(authRequest.ToId), Identity: svc.NodeIdentity}})
 
 	alerts := make(chan struct{}, 10)
 	svc.Logger = svc.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {

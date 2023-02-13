@@ -150,8 +150,8 @@ func TestCommServiceBasicAuthentication(t *testing.T) {
 	node1.cli.Configure(testChannel, config)
 	node2.cli.Configure(testChannel, config)
 
-	node1.service.ConfigureNodeCerts(testChannel, []common.Consenter{{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity}, {Id: uint32(node2.nodeInfo.ID), Identity: node2.service.NodeIdentity}})
-	node2.service.ConfigureNodeCerts(testChannel, []common.Consenter{{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity}, {Id: uint32(node2.nodeInfo.ID), Identity: node2.service.NodeIdentity}})
+	node1.service.ConfigureNodeCerts(testChannel, []*common.Consenter{{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity}, {Id: uint32(node2.nodeInfo.ID), Identity: node2.service.NodeIdentity}})
+	node2.service.ConfigureNodeCerts(testChannel, []*common.Consenter{{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity}, {Id: uint32(node2.nodeInfo.ID), Identity: node2.service.NodeIdentity}})
 
 	assertBiDiCommunicationForChannelWithSigner(t, node1, node2, testReq, testChannel)
 }
@@ -193,8 +193,8 @@ func TestCommServiceMultiChannelAuth(t *testing.T) {
 		fromNode3.Done()
 	}).Once()
 
-	node1.service.ConfigureNodeCerts("foo", []common.Consenter{{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity}, {Id: uint32(node2.nodeInfo.ID), Identity: node2.service.NodeIdentity}})
-	node1.service.ConfigureNodeCerts("bar", []common.Consenter{{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity}, {Id: uint32(node3.nodeInfo.ID), Identity: node3.service.NodeIdentity}})
+	node1.service.ConfigureNodeCerts("foo", []*common.Consenter{{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity}, {Id: uint32(node2.nodeInfo.ID), Identity: node2.service.NodeIdentity}})
+	node1.service.ConfigureNodeCerts("bar", []*common.Consenter{{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity}, {Id: uint32(node3.nodeInfo.ID), Identity: node3.service.NodeIdentity}})
 
 	node2toNode1, err := node2.cli.Remote("foo", node1.nodeInfo.ID)
 	require.NoError(t, err)
@@ -234,11 +234,11 @@ func TestCommServiceMembershipReconfigurationAuth(t *testing.T) {
 
 	// node2 is not part of the node1's testChannel consenters set
 	node1.cli.Configure(testChannel, []cluster.RemoteNode{})
-	node1.service.ConfigureNodeCerts(testChannel, []common.Consenter{})
+	node1.service.ConfigureNodeCerts(testChannel, []*common.Consenter{})
 
 	consenterSet1 := []cluster.RemoteNode{node1.nodeInfo, node2.nodeInfo}
 	node2.cli.Configure(testChannel, consenterSet1)
-	node2.service.ConfigureNodeCerts(testChannel, []common.Consenter{
+	node2.service.ConfigureNodeCerts(testChannel, []*common.Consenter{
 		{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity},
 		{Id: uint32(node2.nodeInfo.ID), Identity: node2.service.NodeIdentity},
 	})
@@ -269,7 +269,7 @@ func TestCommServiceMembershipReconfigurationAuth(t *testing.T) {
 
 	// Next, configure node 1 to know about node 2
 	node1.cli.Configure(testChannel, consenterSet1)
-	node1.service.ConfigureNodeCerts(testChannel, []common.Consenter{
+	node1.service.ConfigureNodeCerts(testChannel, []*common.Consenter{
 		{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity},
 		{Id: uint32(node2.nodeInfo.ID), Identity: node2.service.NodeIdentity},
 	})
@@ -279,7 +279,7 @@ func TestCommServiceMembershipReconfigurationAuth(t *testing.T) {
 
 	// Reconfigure node 2 to forget about node 1
 	node2.cli.Configure(testChannel, []cluster.RemoteNode{})
-	node2.service.ConfigureNodeCerts(testChannel, []common.Consenter{})
+	node2.service.ConfigureNodeCerts(testChannel, []*common.Consenter{})
 
 	// Node 1 can still connect to node 2
 	stub, err = node1.cli.Remote(testChannel, node2.nodeInfo.ID)
@@ -295,7 +295,7 @@ func TestCommServiceMembershipReconfigurationAuth(t *testing.T) {
 
 	// Reconfigure node 2 to know about node 1
 	node2.cli.Configure(testChannel, consenterSet1)
-	node2.service.ConfigureNodeCerts(testChannel, []common.Consenter{
+	node2.service.ConfigureNodeCerts(testChannel, []*common.Consenter{
 		{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity},
 		{Id: uint32(node2.nodeInfo.ID), Identity: node2.service.NodeIdentity},
 	})
@@ -320,7 +320,7 @@ func TestCommServiceMembershipReconfigurationAuth(t *testing.T) {
 
 	// Reconfigure the node 2 consenters set while the stream is active
 	// stream should not be affected as the node 1 still part of the consenter set
-	node2.service.ConfigureNodeCerts(testChannel, []common.Consenter{
+	node2.service.ConfigureNodeCerts(testChannel, []*common.Consenter{
 		{Id: uint32(node1.nodeInfo.ID), Identity: node1.service.NodeIdentity},
 		{Id: uint32(node2.nodeInfo.ID), Identity: node2.service.NodeIdentity},
 	})
@@ -337,7 +337,7 @@ func TestCommServiceMembershipReconfigurationAuth(t *testing.T) {
 
 	// Reconfigure the node 2 consenters set removing the node1
 	// now the stream marked as stale
-	node2.service.ConfigureNodeCerts(testChannel, []common.Consenter{
+	node2.service.ConfigureNodeCerts(testChannel, []*common.Consenter{
 		{Id: uint32(node2.nodeInfo.ID), Identity: node2.service.NodeIdentity},
 	})
 

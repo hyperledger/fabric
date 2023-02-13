@@ -18,7 +18,6 @@ import (
 
 // SignerSerializer signs messages and serializes identities
 type SignerSerializer interface {
-	identity.Signer
 	identity.SignerSerializer
 }
 
