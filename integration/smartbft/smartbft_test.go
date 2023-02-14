@@ -1171,13 +1171,6 @@ func waitForBlockReceptionByPeer(peer *nwo.Peer, network *nwo.Network, channelNa
 	}, network.EventuallyTimeout, time.Second).Should(BeTrue())
 }
 
-func assertBlockValidationPolicy(network *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channel string, policyType common.Policy_PolicyType) {
-	config := nwo.GetConfig(network, peer, orderer, channel)
-	blockValidationPolicyValue, ok := config.ChannelGroup.Groups["Orderer"].Policies["BlockValidation"]
-	Expect(ok).To(BeTrue())
-	Expect(common.Policy_PolicyType(blockValidationPolicyValue.Policy.Type)).To(Equal(policyType))
-}
-
 func peerGroupRunners(n *nwo.Network) (ifrit.Runner, []*ginkgomon.Runner) {
 	runners := []*ginkgomon.Runner{}
 	members := grouper.Members{}

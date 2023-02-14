@@ -120,7 +120,7 @@ func newClusterServiceNode(t *testing.T) *clusterServiceNode {
 				ID:       nextUnusedID(),
 			},
 			NodeCerts: cluster.NodeCerts{
-				ServerRootCA: ca.CertBytes(),
+				ServerRootCA: [][]byte{ca.CertBytes()},
 				Identity:     clientKeyPair.Cert,
 			},
 		},

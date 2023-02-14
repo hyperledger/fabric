@@ -48,6 +48,7 @@ type RuntimeConfig struct {
 	LastBlock              *cb.Block
 	LastConfigBlock        *cb.Block
 	Nodes                  []uint64
+	consenters             []*cb.Consenter
 }
 
 // BlockCommitted updates the config from the block
@@ -56,6 +57,7 @@ func (rtc RuntimeConfig) BlockCommitted(block *cb.Block, bccsp bccsp.BCCSP) (Run
 		return rtc.configBlockCommitted(block, bccsp)
 	}
 	return RuntimeConfig{
+		consenters:             rtc.consenters,
 		BFTConfig:              rtc.BFTConfig,
 		id:                     rtc.id,
 		logger:                 rtc.logger,
@@ -69,7 +71,7 @@ func (rtc RuntimeConfig) BlockCommitted(block *cb.Block, bccsp bccsp.BCCSP) (Run
 }
 
 func (rtc RuntimeConfig) configBlockCommitted(block *cb.Block, bccsp bccsp.BCCSP) (RuntimeConfig, error) {
-	nodeConf, err := RemoteNodesFromConfigBlock(block, rtc.id, rtc.logger, bccsp)
+	nodeConf, err := RemoteNodesFromConfigBlock(block, rtc.logger, bccsp)
 	if err != nil {
 		return rtc, errors.Wrap(err, "remote nodes cannot be computed, rejecting config block")
 	}
@@ -80,6 +82,7 @@ func (rtc RuntimeConfig) configBlockCommitted(block *cb.Block, bccsp bccsp.BCCSP
 	}
 
 	return RuntimeConfig{
+		consenters:             nodeConf.consenters,
 		BFTConfig:              bftConfig,
 		isConfig:               true,
 		id:                     rtc.id,
@@ -320,7 +323,7 @@ func (ri *RequestInspector) unwrapReq(req []byte) (*request, error) {
 }
 
 // RemoteNodesFromConfigBlock unmarshals the node config from the block metadata
-func RemoteNodesFromConfigBlock(block *cb.Block, selfID uint64, logger *flogging.FabricLogger, bccsp bccsp.BCCSP) (*nodeConfig, error) {
+func RemoteNodesFromConfigBlock(block *cb.Block, logger *flogging.FabricLogger, bccsp bccsp.BCCSP) (*nodeConfig, error) {
 	env := &cb.Envelope{}
 	if err := proto.Unmarshal(block.Data.Data[0], env); err != nil {
 		return nil, errors.Wrap(err, "failed unmarshaling envelope of config block")
@@ -384,15 +387,20 @@ func RemoteNodesFromConfigBlock(block *cb.Block, selfID uint64, logger *flogging
 			return nil, errors.Errorf("no MSP found for MSP with ID of %s", consenter.MspId)
 		}
 
+		var rootCAs [][]byte
+		rootCAs = append(rootCAs, nodeMSP.GetTLSRootCerts()...)
+		rootCAs = append(rootCAs, nodeMSP.GetTLSIntermediateCerts()...)
+
 		remoteNodes = append(remoteNodes, cluster.RemoteNode{
 			NodeAddress: cluster.NodeAddress{
 				ID:       (uint64)(consenter.Id),
 				Endpoint: fmt.Sprintf("%s:%d", consenter.Host, consenter.Port),
 			},
+
 			NodeCerts: cluster.NodeCerts{
 				ClientTLSCert: clientCertAsDER,
 				ServerTLSCert: serverCertAsDER,
-				ServerRootCA:  nodeMSP.GetTLSRootCerts()[0],
+				ServerRootCA:  rootCAs,
 				Identity:      consenter.Identity,
 			},
 		})
@@ -403,6 +411,7 @@ func RemoteNodesFromConfigBlock(block *cb.Block, selfID uint64, logger *flogging
 	})
 
 	return &nodeConfig{
+		consenters:    oc.Consenters(),
 		remoteNodes:   remoteNodes,
 		id2Identities: id2Identies,
 		nodeIDs:       nodeIDs,
@@ -413,6 +422,7 @@ type nodeConfig struct {
 	id2Identities NodeIdentitiesByID
 	remoteNodes   []cluster.RemoteNode
 	nodeIDs       []uint64
+	consenters    []*cb.Consenter
 }
 
 // ConsenterCertificate denotes a TLS certificate of a consenter

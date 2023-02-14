@@ -940,22 +940,22 @@ func verifyBlockSequence(blockBuff []*common.Block, signatureVerifier protoutil.
 			isLastBlockConfigBlock = false
 			continue
 		}
-		if err != nil && !alwaysCheckSig {
+		if err != nil && err != errNotAConfig {
 			return err
 		}
-		// The block is a configuration block, so verify it
+		// The block is a configuration block, or we always check the signature, so verify it.
 		if err := VerifyBlockSignature(block, signatureVerifier, config); err != nil {
 			return err
 		}
 		config = configFromBlock
-		isLastBlockConfigBlock = true
+		isLastBlockConfigBlock = err != errNotAConfig
 	}
 
 	// Verify the last block's signature
 	lastBlock := blockBuff[len(blockBuff)-1]
 
 	// If last block is a config block, we verified it using the policy of the previous block, so it's valid.
-	if isLastBlockConfigBlock {
+	if isLastBlockConfigBlock && !alwaysCheckSig {
 		return nil
 	}
 

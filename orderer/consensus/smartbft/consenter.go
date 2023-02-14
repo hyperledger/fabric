@@ -54,7 +54,7 @@ type Consenter struct {
 	CreateChain      func(chainName string)
 	GetPolicyManager PolicyManagerRetriever
 	Logger           *flogging.FabricLogger
-	Cert             []byte
+	Identity         []byte
 	Comm             *cluster.AuthCommMgr
 	Chains           ChainGetter
 	SignerSerializer SignerSerializer
@@ -97,7 +97,6 @@ func New(
 		Conf:             conf,
 		ClusterDialer:    clusterDialer,
 		Logger:           logger,
-		Cert:             srvConf.SecOpts.Certificate,
 		Chains:           r,
 		SignerSerializer: signerSerializer,
 		WALBaseDir:       walConfig.WALDir,
@@ -111,6 +110,8 @@ func New(
 	if err := proto.Unmarshal(identity, sID); err != nil {
 		logger.Panicf("failed unmarshaling identity: %s", err)
 	}
+
+	consenter.Identity = sID.IdBytes
 
 	consenter.Comm = &cluster.AuthCommMgr{
 		Logger:         flogging.MustGetLogger("orderer.common.cluster"),
@@ -199,6 +200,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 
 	// refresh cluster service with updated consenters
 	c.ClusterService.ConfigureNodeCerts(chain.Channel, consenters)
+	chain.clusterService = c.ClusterService
 
 	return chain, nil
 }
@@ -221,7 +223,7 @@ func (c *Consenter) IsChannelMember(joinBlock *cb.Block) (bool, error) {
 	}
 	member := false
 	for _, consenter := range oc.Consenters() {
-		if bytes.Equal(c.Cert, consenter.ServerTlsCert) || bytes.Equal(c.Cert, consenter.ClientTlsCert) {
+		if bytes.Equal(c.Identity, consenter.Identity) {
 			member = true
 			break
 		}

@@ -50,7 +50,7 @@ type NodeCerts struct {
 	// ClientTLSCert is the DER encoded TLS client certificate of the node
 	ClientTLSCert []byte
 	// PEM-encoded X509 certificate authority to verify server certificates
-	ServerRootCA []byte
+	ServerRootCA [][]byte
 	// PEM-encoded X509 certificate
 	Identity []byte
 }

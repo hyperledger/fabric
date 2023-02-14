@@ -76,6 +76,7 @@ type BFTChain struct {
 	WALDir           string
 	consensus        *smartbft.Consensus
 	support          consensus.ConsenterSupport
+	clusterService   *cluster.ClusterService
 	verifier         *Verifier
 	assembler        *Assembler
 	Metrics          *Metrics
@@ -515,6 +516,7 @@ func (c *BFTChain) updateRuntimeConfig(block *cb.Block) types.Reconfig {
 	c.RuntimeConfig.Store(newRTC)
 	if protoutil.IsConfigBlock(block) {
 		c.Comm.Configure(c.Channel, newRTC.RemoteNodes)
+		c.clusterService.ConfigureNodeCerts(c.Channel, newRTC.consenters)
 	}
 
 	membershipDidNotChange := reflect.DeepEqual(newRTC.Nodes, prevRTC.Nodes)

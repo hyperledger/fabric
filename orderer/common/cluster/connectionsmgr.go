@@ -39,7 +39,7 @@ type ConnectionsMgr struct {
 	dialer      comm.ClientConfig
 }
 
-func (c *ConnectionsMgr) Connect(endpoint string, serverRootCACert []byte) (*grpc.ClientConn, error) {
+func (c *ConnectionsMgr) Connect(endpoint string, serverRootCACert [][]byte) (*grpc.ClientConn, error) {
 	if serverRootCACert == nil {
 		return nil, errors.New("server root CA cert is nil")
 	}
@@ -53,7 +53,7 @@ func (c *ConnectionsMgr) Connect(endpoint string, serverRootCACert []byte) (*grp
 	dialer := c.dialer
 	c.lock.Unlock()
 
-	dialer.SecOpts.ServerRootCAs = [][]byte{serverRootCACert}
+	dialer.SecOpts.ServerRootCAs = serverRootCACert
 	newConn, err := dialer.Dial(endpoint)
 	if err != nil {
 		return nil, err
