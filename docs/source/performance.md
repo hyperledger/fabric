@@ -22,7 +22,7 @@ The final hardware consideration is the amount of CPU and Memory to allocate to 
 
 Network performance generally scales with CPU allocated to peer nodes, so providing each peer (and CouchDB if used) with the maximum CPU capacity is recommended. For orderer nodes, a general guideline is 1 CPU with 2 GB of Memory.
 
-As the amount of state data grows, database storage performance can slow down, especially when using CouchDB as the state database. Therefore, you should plan to add  compute resources to your environment over time, while continuously monitoring your network components and adjusting to any thresholds being exceeded.
+As the amount of state data grows, database storage performance can slow down, especially when using CouchDB as the state database. Therefore, you should plan to add more compute resources to your environment over time, while continuously monitoring your network components and adjusting to any thresholds being exceeded.
 
 ## Peer considerations
 
@@ -73,7 +73,7 @@ peer:
             gatewayService: 500
 ```
 
-The Peer Gateway Service, first released in v2.4 of Hyperledger Fabric, introduced the `gatewayService` limit with a default of 500. However, this default can restrict network TPS, so you may need to increase this value to allow more concurrent requests. The maximum suggested limit is 20000 concurrent requests.
+The Peer Gateway Service, first released in v2.4 of Hyperledger Fabric, introduced the `gatewayService` limit with a default of 500. However, this default can restrict network TPS, so you may need to increase this value to allow more concurrent requests.
 
 ### CouchDB cache setting
 
