@@ -40,7 +40,7 @@ In general, ensure that there is a CPU core available for each channel that is r
 
 ### Total query limit
 
-A peer limits the total number of records a range or JSON (rich) query will return, in order to avoid runaway situations. This limit is configured in the peer's **core.yaml** file:
+A peer limits the total number of records a range or JSON (rich) query will return, in order to avoid larger than expected result sets that could slow down a peer. This limit is configured in the peer's **core.yaml** file:
 
 ```yaml
 
