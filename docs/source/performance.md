@@ -1,8 +1,8 @@
 # Performance considerations
 
-Various Hyperledger Fabric component, configuration, and workflow decisions contribute to the overall performance of your network. Managing these variables, such as the number of channels, chaincode implementations, and transaction policies, can be complex with participating organizations contributing their own hardware and networking infrastructures to the environment. 
+Various Hyperledger Fabric component, configuration, and workflow decisions contribute to the overall performance of your network. Managing these variables, such as the number of channels, chaincode implementations, and transaction policies, can be complex with multiple participating organizations contributing their own hardware and networking infrastructures to the environment. 
 
-This topic walks you through the considerations that can help optimize performance for your Hyperledger Fabric network. 
+This topic walks you through the considerations that can help you optimize performance for your Hyperledger Fabric network. 
 
 ## Hardware considerations
 
@@ -92,15 +92,15 @@ state:
 
 ## Orderer considerations
 
-The ordering service uses raft consensus to cut blocks, factors such as the number of orderers in consensus and block cutting parameters will affect performance.
+The ordering service uses Raft consensus to cut blocks. Factors such as the number of orderers participating in consensus and block cutting parameters will affect overall network performance, as described below.
 
 ### Number of orderers
 
-The number of ordering service nodes you have will impact performance as all orderers are involved in Raft consensus. Five ordering service nodes will provide two orderer crash fault tolerance (a majority must remain available) and is a good starting point. Additional ordering service nodes may reduce performance. You have the option to deploy different sets of ordering service nodes for each channel if you find that a single set of ordering service nodes becomes a bottleneck.
+The number of ordering service nodes will impact performance because all orderers contribute to Raft consensus. Using five ordering service nodes will provide two orderer crash fault tolerance (a required majority of three remain available) and is a good starting point. Additional ordering service nodes may reduce network performance. If a single set of ordering service nodes becomes a network bottleneck, you can try deploying a unique set of ordering service nodes for each channel.
 
 ### SendBufferSize
 
-Prior to Fabric v2.5 the SendBufferSize of the orderer was set to 10 as a default which causes a bottleneck. In Fabric 2.5 this was changed to 100 which provides much better throughput. The configuration for this can be found in orderer.yaml:
+Prior to Hyperledger Fabric v2.5, the default SendBufferSize of each orderer node was set to 10, which causes a bottleneck. In Fabric v2.5, this default was changed to 100, which provides improved throughput. The SendBufferSize parameter is configured in **orderer.yaml**:
 
 ```yaml
 General:
@@ -113,11 +113,9 @@ General:
 
 ### Block cutting parameters in channel configuration
 
-A larger block size and timeout could increase the throughput but latency would increase as well.
+Channel configuration settings can also affect performance of the ordering service. Increasing the channel block size and timeout parameters can increase throughput but can also increase latency. As described below, you can configure the ordering service for increased transactions per block and longer block cutting times to test the performance results. 
 
-You might want to try to configure the ordering service with more transactions per block and longer block cutting times to see if that helps. We have seen this increase the overall throughput at the cost of additional latency.
-
-The following three parameters work together to control when a block is cut, based on a combination of setting the maximum number of transactions in a block as well as the block size itself. These are defined when you create or update a channel configuration. If you use configtxgen and configtx.yaml as a starting point for creating channels then the following section applies in configtx.yaml:
+Three orderer batch size parameters - Max Message Count, Absolute Max Bytes, and Preferred Max Bytes - perform block cutting based on the specified block size and maximum number of transactions. These parameters are set when you create or update a channel configuration. If you use **configtxgen** and **configtx.yaml** as a starting point for creating channels, the following section in **configtx.yaml** applies:
 
 ```yaml
 Orderer: &OrdererDefaults
@@ -126,84 +124,82 @@ Orderer: &OrdererDefaults
 
     # Batch Size: Controls the number of messages batched into a block.
     # The orderer views messages opaquely, but typically, messages may
-    # be considered to be Fabric transactions.  The 'batch' is the group
-    # of messages in the 'data' field of the block.  Blocks will be a few kb
+    # be considered to be Fabric transactions. The 'batch' is the group
+    # of messages in the 'data' field of the block. Blocks will be a few KB 
     # larger than the batch size, when signatures, hashes, and other metadata
     # is applied.
     BatchSize:
 
         # Max Message Count: The maximum number of messages to permit in a
-        # batch.  No block will contain more than this number of messages.
+        # batch. No block will contain more than this number of messages.
         MaxMessageCount: 500
 
         # Absolute Max Bytes: The absolute maximum number of bytes allowed for
         # the serialized messages in a batch. The maximum block size is this value
         # plus the size of the associated metadata (usually a few KB depending
         # upon the size of the signing identities). Any transaction larger than
-        # this value will be rejected by ordering.
-        # It is recommended not to exceed 49 MB, given the default grpc max message size of 100 MB
-        # configured on orderer and peer nodes (and allowing for message expansion during communication).
+        # this value will be rejected by ordering. It is recommended not to exceed 
+        # 49 MB, given the default grpc max message size of 100 MB configured on 
+        # orderer and peer nodes (and allowing for message expansion during communication).
         AbsoluteMaxBytes: 10 MB
 
         # Preferred Max Bytes: The preferred maximum number of bytes allowed
         # for the serialized messages in a batch. Roughly, this field may be considered
         # the best effort maximum size of a batch. A batch will fill with messages
         # until this size is reached (or the max message count, or batch timeout is
-        # exceeded).  If adding a new message to the batch would cause the batch to
+        # exceeded). If adding a new message to the batch would cause the batch to
         # exceed the preferred max bytes, then the current batch is closed and written
-        # to a block, and a new batch containing the new message is created.  If a
+        # to a block, and a new batch containing the new message is created. If a
         # message larger than the preferred max bytes is received, then its batch
-        # will contain only that message.  Because messages may be larger than
+        # will contain only that message. Because messages may be larger than
         # preferred max bytes (up to AbsoluteMaxBytes), some batches may exceed
         # the preferred max bytes, but will always contain exactly one transaction.
         PreferredMaxBytes: 2 MB
 ```
 
-#### Absolute max bytes
+#### Batch timeout
 
-Set this value to the largest block size in bytes that can be cut by the ordering service. No transaction may be larger than the value of Absolute max bytes. Usually, this setting can safely be two to ten times larger than your Preferred max bytes. Note: The maximum recommended size is 49MB based on the headroom needed for the default grpc size limit of 100MB.
+Set the BatchTimeout value to the amount of time, in seconds, to wait after the first transaction arrives before cutting the block. If you set this value too low, you risk preventing the batches from filling to your preferred size. Setting this value too high, however, can cause the orderer to wait for blocks and overall performance and latency to degrade. A general guideline is to set the value of BatchTimeout to be at a minimum the max message count divided by the maximum transactions per second.
 
 #### Max message count
 
-Set this value to the maximum number of transactions that can be included in a single block.
+Set the Max message count value to the maximum number of transactions to include in a single block.
+
+#### Absolute max bytes
+
+Set the Absolute max bytes value to the largest block size in bytes for the ordering service to cut. No transaction can be larger than the value of Absolute max bytes. This setting can typically be 2-10 times larger than the Preferred max bytes value. Note: The maximum recommended size is 49 MB, based on the headroom needed for the default grpc size limit of 100 MB.
 
 #### Preferred max bytes
 
-Set this value to the ideal block size in bytes, but it must be less than Absolute max bytes. A minimum transaction size, one that contains no endorsements, is around 1KB. If you add 1KB per required endorsement, a typical transaction size is approximately 3-4KB. Therefore, it is recommended to set the value of Preferred max bytes to be around Max message count times expected averaged transaction size. At run time, whenever possible, blocks will not exceed this size. If a transaction arrives that causes the block to exceed this size, the block is cut and a new block is created for that transaction. But if a transaction arrives that exceeds this value without exceeding the Absolute max bytes, the transaction will be included. If a transaction arrives that is larger than Preferred max bytes, then a block will be cut with a single transaction, and that transaction size can be no larger than Absolute max bytes.
-
-Together, these parameters can be configured to optimize throughput of your orderer.
-
-#### Batch timeout
-
-Set the BatchTimeout value to the amount of time, in seconds, to wait after the first transaction arrives before cutting the block. If you set this value too low, you risk preventing the batches from filling to your preferred size. Setting this value too high can cause the orderer to wait for blocks and overall performance and latency to degrade. In general, we recommend that you set the value of BatchTimeout to be at least max message count / maximum transactions per second.
+Set the Preferred max bytes value to your ideal block size in bytes, which must be less than the Absolute max bytes. A minimum transaction size, one that contains no endorsements, is around 1 KB. If you add 1 KB per required endorsement, a typical transaction size is approximately 3-4 KB. Therefore, it is recommended to set the value of Preferred max bytes to be close to the Max message count multiplied by the expected average transaction size. At run time, whenever possible, blocks will not exceed this size. If a transaction arrives that causes the block to exceed the Absolute max bytes size, the block will be cut and the transaction included in a new block. The new block will be cut with the single transaction ONLY, which also cannot exceed the Absolute max bytes.
 
 ## Application considerations
 
-When designing the application architecture, decisions can affect the overall performance of the network and the application. Here we cover some of the considerations.
+When designing your application architecture, various choices can affect the overall performance of both the application and the network. These application considerations are described below.
 
-### Avoid CouchDB for high throughput applications
+### Avoid CouchDB for high-throughput applications
 
-CouchDB performance is noticably slower than embedded LevelDB, sometimes by a factor of 2x slower. The only additional capability that a CouchDB state database provides is JSON (rich) queries as stated in the [Fabric state database documentation](./deploypeer/peerplan.html#state-database). You should also never allow direct access to the CouchDB data (for instance via Fauxton UI) to ensure the integrity of the state data.
+CouchDB performance is noticably slower than embedded LevelDB, sometimes by a factor of 2x slower. The only additional capability that a CouchDB state database provides is JSON (rich) queries, as stated in the [Fabric state database documentation](./deploypeer/peerplan.html#state-database). In addition, to ensure the integrity of the state data you must never allow direct access to CouchDB data (for instance via Fauxton UI). 
 
-CouchDB as a state database also has other limitations which will have impacts on performance and requires additional hardware resource (and cost). Additionally, JSON queries are not re-executed at validation time and thus there is no built-in protection from phantom reads as there is with range queries (your application must be designed to tolerate phantom reads when using JSON queries, for example when records are added to state between the time of chaincode execution and block validation). For these reasons, consider using range queries based on additional keys rather than using CouchDB JSON with queries.
+CouchDB as a state database has other limitations which reduce overall network performance and require additional hardware resource (and cost). For one, JSON queries are not re-executed at validation time, so CouchDB does not offer built-in protection from phantom reads. Such protection is provided, however, by range queries. (Your application must be designed to tolerate phantom reads when using JSON queries, such as when records are added to state between the times of chaincode execution and block validation). You should therefore consider using range queries based on additional keys for high-throughput applications, rather than using CouchDB JSON with queries.
 
-Alternatively, consider using an off-chain store to support queries, as seen in the [Off-chain sample](https://github.com/hyperledger/Fabric-samples/tree/main/off_chain_data). Using an off-chain store for queries gives you much more control over the data and query transactions do not affect the Fabric peer and network performance. It also enables you to use a fit-for-purpose data store for off-chain storage, for example you could use a SQL database or an analytics service more aligned with your query needs.
+Alternatively, consider using an off-chain store to support queries, as seen in the [Off-chain sample](https://github.com/hyperledger/Fabric-samples/tree/main/off_chain_data). Using an off-chain store for queries gives you much more control over the data, and query transactions do not affect Hyperledger Fabric peer and network performance. It also enables you to use a fit-for-purpose data store for off-chain storage, such as an SQL database or analytics service more aligned with your query needs.
 
-CouchDB performance degrades more than LevelDB as the amount of state data increases, requiring you to provide adequate resources for CouchDB instances for the life of the application.
+CouchDB performance also degrades more than LevelDB does as the amount of state data increases, requiring you to provide adequate resources for CouchDB instances for the life of the application.
 
 ### General chaincode query considerations
 
-Avoid writing queries that could be unbounded in the amount of data returned, and even if it's bounded if it's likely to return a large amount of data then this will cause a transaction to run for a long time and possibly time out. It's not best practice for fabric transactions to run for a long time, so ensure your queries are optimised to not return large amounts of data. If JSON queries are used ensure they are indexed. See [Good practice for queries](./couchdb_as_state_database.html#good-practices-for-queries) for guidance on JSON queries.
+Avoid writing chaincode queries that could be unbounded in the amount of data returned, or bounded but returning an amount of data large enough to cause a transaction to time out. It is against Fabric best practices for transactions to run for a long time, so ensure that your queries are optimized to limit the amount of data returned. If JSON queries are used, ensure they are indexed. See [Good practice for queries](./couchdb_as_state_database.html#good-practices-for-queries) for guidance on JSON queries.
 
-### Use the new peer gateway service
+### Use the Peer Gateway Service
 
-The peer Gateway Service and the new Fabric-Gateway client SDKs are a substantial improvement over the legacy Go, Java and Node SDKs. Not only do they provide much improved throughput, they also provide better capability reducing the complexity of a client application. For example the Gateway SDKs will automatically collect enough endorsements to satisfy not only the chaincode endorsement policy but also any state-based endorsement policies that get included when the transaction is simulated, something that was not possible with the legacy SDKs.
+The Peer Gateway Service (new in v2.4) and Fabric-Gateway client SDKs offer substantial enhancements over the legacy Go, Java, and Node SDKs. The latest Gateway SDKs  provide much improved throughput, and more capabilities and reduced complexity to client applications. For example, the Gateway SDKs automatically (attempt to) collect the endorsements required to satisfy not only the chaincode endorsement policy, but also any state-based endorsement policies included with transaction simulation (which is not possible using the legacy SDKs).
 
-It also reduces the number of network connections a client needs to maintain in order for a client to submit a transaction. Previously, clients may need to connect to multiple peer and orderer nodes across organizations. The peer Gateway Service service enables an application to target a single trusted peer, then the peer Gateway Service connects to other peer and orderer nodes to gather endorsements and submit the transaction on behalf of the client application. Of course, you may want to target multiple trusted peers for high concurrency and redundancy.
+The Peer Gateway Service also reduces the number of network connections a client needs to maintain to submit a transaction. Using the legacy SDKs, clients may need to connect to multiple peer and orderer nodes across organizations. By contrast, the Peer Gateway Service service enables an application to connect to a single trusted peer, which then collects endorsements from other peer and orderer nodes and submits the transaction on behalf of the client application. However, you can still choose to have your application target multiple trusted peers, for high concurrency and redundancy.
 
-One point to consider is that shifting from legacy SDKs to the new Peer Gateway service reduces the client CPU and memory resource requirements. However, it does increase the peer resource requirements slightly.
+Changing your application development environment from the legacy SDKs to the new Peer Gateway Service also reduces client CPU and memory resource requirements, with a modest increase in peer resource requirements.
 
-See the [Sample gateway application](https://github.com/hyperledger/Fabric-samples/blob/main/full-stack-asset-transfer-guide/docs/ApplicationDev/01-FabricGateway.md) for more details about the new peer Gateway Service.
+See the [Sample gateway application](https://github.com/hyperledger/Fabric-samples/blob/main/full-stack-asset-transfer-guide/docs/ApplicationDev/01-FabricGateway.md) for more details about the Peer Gateway Service.
 
 ### Payload size
 
@@ -213,74 +209,74 @@ Suffice to say large payload sizes are an anti-pattern in any blockchain solutio
 
 ### Chaincode language
 
-Go chaincode performs best, followed by Node chaincode.  Java chaincode performance is the least performant and would not be recommended for high throughput applications.
+Go chaincode has shown the best performance in Hyperledger Fabric environments, followed by Node chaincode. Java chaincode performance is the least performant of the three, and is not recommended for high-throughput applications.
 
 ### Node chaincode
 
-Node is an asynchronous runtime implementation that utilises only a single thread to execute code. It does however run background threads for activities such as garbage collection, however when allocating resources to a Node chaincode, for example in Kubernetes where you are limited to available resources, it doesn't make sense to allocate multiple vCPUs for Node chaincode. The number of vCPUs in a system usually refers to the number of concurrent threads that can be executed. It is worth monitoring performance of Node chaincode to see how much vCPU it uses but it probably doesn't make sense to allocate anything more than a max of 2 vCPUs for Node chaincode. In fact you could not assign any resource restrictions to Node chaincode as it is self limiting.
+Node is an asynchronous runtime implementation that utilizes only a single thread to execute code. Node does run background threads for activities such as garbage collection, but it is against best practices to allocate more than two vCPUs (generally equivalent to the number of concurrent threads which can be executed) to a Node chaincode (for example on Kubernetes which is limited to available resources). It is worth monitoring performance of Node chaincode to see how much vCPU it uses, though you cannot assign resource restrictions to Node chaincode as it is self-limiting.
 
-Prior to Node 12, a Node process was limited to 1.5Gb Memory by default and would require you to pass a parameter to the Node executable in order to increase this when running a node chaincode process. You should not be running Node chaincode processes on anything less than Node 12 now and Hyperledger Fabric 2.5 mandates that Node 16 or later should be used. There are various parameters that can be provided to the Node process when you launch your Node chaincode, however it's unlikely you would ever need to override the defaults of Node so no tuning would be required.
+Prior to Node v12, a Node process was limited to 1.5 GB of Memory by default, which to increase for running Node chaincode required passing a parameter to the Node executable. You should not be running chaincode processes on any version earlier than Node v12, and Hyperledger Fabric v2.5 mandates using Node v16, or later. Various parameters can be provided when launching Node chaincode, but few if any scenarios would require overriding the default values for Node v12 and later.
 
 ### Go chaincode
 
-The Golang runtime provides an excellent implementation for concurrency. It is capable of using all CPUs available to it and thus is only limited by the resources allocated to the chaincode process to use. No tuning is required.
+The Golang runtime implementation is ideal for concurrency. It is capable of using all CPUs available to it, and thus, is only limited by the resources allocated to the chaincode process. No tuning is required.
 
 ### Chaincode processes and channels
 
-Hyperledger Fabric will reuse chaincode processes across channels if the chaincode id and versions match. For example if you have a peer joined to 2 channels (channel_a and channel_b) and you have deployed one chaincode to each channel with the same id and version number, then the peer will only interact with 1 chaincode process for both those channels. It will not try to work with a separate chaincode process for each channel. This means that you may be putting more load on that chaincode process than expected especially if it's node chaincode that is self limiting. If this is a problem you should consider using Go for your chaincode language or you could deploy the same chaincode with a different id or version to the other channel and that will ensure there is a chaincode process per channel.
+Hyperledger Fabric reuses chaincode processes across channels if the chaincode ID and versions match. For example, if a peer is joined to two channels with the same chaincode ID and version deployed, the peer will only interact with one chaincode process for both channels. This can place more load on the chaincode process than expected, especially for Node chaincode which is self-limiting. In this case, you can either use Go chaincode or deploy Node chaincode to each channel using different IDs or version numbers to ensure a distinct chaincode process per channel.
 
 ### Endorsement policies
 
-For a transaction to be committed as valid, it must contain enough signatures to satisfy the chaincode endorsement policy and any state-based endorsement policies. The peer Gateway service will only send requests to enough peers to satisfy this collection of policies (and will also try other peers if the preferred ones are not available). Thus we can see that endorsement policies will affect performance as it dictates how many peers and thus how many signatures are required to ensure that a transaction can be committed.
+For a transaction to be committed as valid, it must contain the signatures required to satisfy the chaincode endorsement policy and any state-based endorsement policies. The Peer Gateway Service (Fabric v2.4 and later) will only send requests to enough peers to satisfy the collection of policies (and will try other peers if the preferred peers are not available). Endorsement policies therefore affect performance because they dictate how many peers (and their signatures) are required for a transaction to be committed as valid.
 
 ### Private Data Collections (PDCs) vs World State
 
-In general the decision whether or not to use Private Data Collections (PDCs) will be an application architecture decision rather than a performance decision but for awareness it should be noted that, for example, using a PDC to store an asset verses using the world state will result in approximately half the TPS.
+In general, the decision of whether to use Private Data Collections (PDCs) is an application architecture decision and not a performance decision. However, it should be noted that, for example, using a PDC to store an asset rather than using the world state results in approximately half the TPS.
 
-### Single channel vs multiple channel architecture
+### Single or multiple channel architecture
 
-When designing your application, consideration should be given to whether a single channel or multiple channels can be utilised. If data silos are not a problem for a given application scenario, the application could be architected to use multiple channels to improve the performance. As previously mentioned it is possible to utilise more of the peer resource if more than one channel is active.
+When designing your application, consider whether a single channel or multiple channels can be utilized. If data silos are not a problem for a given scenario, the application could use multiple channel architecture to improve performance (because multiple channels enable using more of the peer resource).
 
-## Couchdb considerations
+## CouchDB considerations
 
-As mentioned earlier CouchDB is not recommended for high throughput applications, but if you do plan to use it these are the things that need to be considered.
+As mentioned, CouchDB is not recommended for high-throughput applications, and all limitations should be considered, as described below.
 
 ### Resources
 
-Ensure you monitor the resources of the CouchDB instances, as the larger the state database becomes the more resources CouchDB will consume.
+Ensure monitoring of resources used by CouchDB instances, because as the size of the state database increases, CouchDB consumes more resources.
 
 ### CouchDB cache
 
-When using external CouchDB state database, read delays during endorsement and validation phases have historically been a performance bottleneck. In Fabric v2.x, the peer cache replaces many of these expensive lookups with fast local cache reads.
+When using an external CouchDB state database, read delays during the endorsement and validation transaction phases have shown to be a performance bottleneck. In Fabric v2.x, the peer cache replaces many of these expensive lookups with fast local cache reads.
 
 The cache will not improve performance of JSON queries.
 
-See `CouchDB Cache setting` in the Peer Considerations section for information on configuring the cache.
+See the **CouchDB Cache setting** details above (in **Peer Considerations**) for information on configuring the cache.
 
 ### Indexes
 
-Include CouchDB indexes along with any chaincode that utilises CouchDB JSON queries. Test queries to ensure indexes will be utilised, and avoid queries that can't use indexes. For example use of the query operators $or, $in, $regex result in full data scans. See [Hyperledger Fabric Good Practices For Queries](./couchdb_as_state_database.html#good-practices-for-queries).
+Include CouchDB indexes with any chaincode that utilizes CouchDB JSON queries. Test queries to ensure that indexes are utilized, and avoid queries that cannot use indexes. For example, use of the query operators $or, $in, $regex result in full data scans. See details in [Hyperledger Fabric Good Practices For Queries](./couchdb_as_state_database.html#good-practices-for-queries).
 
-Optimise your queries, complex queries will take more time even with indexing. Ensure your queries result in a bounded set of data. Remember Fabric may also limit the total number of results returned.
+Optimize your queries, because complex queries will take more time even with indexing. Ensure that your queries result in a bounded set of data. Hyperledger Fabric may also limit the total number of results returned.
 
-You can check peer and CouchDB logs to see how long queries are taking and also whether a query was unable to use an index from warning log entries stating the query "should be indexed".
+You can check the peer and CouchDB logs to see how long queries are taking, and whether any query was unable to use an index from a warning log entry stating the query "should be indexed".
 
-If queries are taking a long time, you could try to increase CPU/Memory available to CouchDB or use faster storage.
+If queries are taking a long time, you can increase the CPU/Memory available to CouchDB or use faster storage.
 
-Check CouchDB logs for warnings such as "The number of documents examined is high in proportion to the number of results returned. Consider adding a more specific index to improve this." These messages show you that your indexes may not be good enough for the query being performed as it is resulting in too many documents having to be scanned.
+Check CouchDB logs for warnings such as "The number of documents examined is high in proportion to the number of results returned. Consider adding a more specific index to improve this." These messages indicate that your indexes could be improved because a high number of documents are being scanned.
 
 ### Bulk update
 
-Fabric uses bulk update calls to CouchDB to improve CouchDB performance. A bulk update is done at the block level so including more transactions in a block could potentially improve throughput. However increasing the time before a block is cut to include more transactions will have an impact on latency.
+Hyperledger Fabric uses bulk update calls to CouchDB to improve CouchDB performance. A bulk update is done at the block level, so including more transactions in a block can improve throughput. However, increasing the time before a block is cut to include more transactions will also have an impact on latency.
 
 ## HSM
 
-Using HSMs within a Fabric network will have an impact on performance. It's not possible to quantify the impact here but things like the performance of the HSM and the network connection to the HSM will impact the Fabric network.
+Using HSMs in a Fabric network will have an impact on performance. It is not possible to quantify the impact, but variables such as HSM performance and its network connection will impact the overall performance of the network.
 
-If you have configured Peers, Orderers, and Clients to use an HSM then anything that requires signing will utilise the HSM, including creation of blocks by orderers, endorsements and block events by peers, and all client requests.
+If you have configured Peers, Orderers, and Clients to use an HSM, then anything that requires signing will utilize the HSM, including creation of blocks by orderers, endorsements and block events by peers, and all client requests.
 
-HSMs are NOT involved in the verification of signatures. This is still done by the nodes themselves.
+Note that HSMs are NOT involved in the verification of signatures, which is done by each node.
 
-## Other miscellaneous considerations
+## Other performance considerations
 
-Sending single transactions periodically will have a latency correlating to the block cutting parameters. For example if you send a transaction of 100 Bytes and the BatchTimeout is 2 seconds then the time from submission to being committed will be just over 2 seconds. This is not a true benchmark of your Fabric network performance, it's expected that multiple transactions will be submitted simultaneously to gauge the true performance of a Fabric network.
+Sending single transactions periodically has a latency correlating to the block cutting parameters. For example, if you send a transaction of 100 Bytes with a  BatchTimeout of 2 seconds, then the time from transaction submission to commitment will be just over 2 seconds. However, this is not a true benchmark of your Fabric network performance, which should be obtained by submitting multiple transactions simultaneously.
