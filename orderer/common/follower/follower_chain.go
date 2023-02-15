@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/proto"
+
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -343,6 +345,10 @@ func (c *Chain) pull() error {
 			return errors.WithMessage(err, "failed to pull up to join block")
 		}
 		c.logger.Info("Onboarding finished successfully, pulled blocks up to join-block")
+	}
+
+	if c.joinBlock != nil && !proto.Equal(c.ledgerResources.Block(c.joinBlock.Header.Number).Data, c.joinBlock.Data) {
+		c.logger.Panicf("Join block (%d) we pulled mismatches block we joined with", c.joinBlock.Header.Number)
 	}
 
 	err = c.pullAfterJoin()
