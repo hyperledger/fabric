@@ -316,9 +316,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			expectedChannelInfo := channelparticipation.ChannelInfo{
 				Name:              "testchannel",
 				URL:               "/participation/v1/channels/testchannel",
-				Status:            "onboarding",
+				Status:            "active",
 				ConsensusRelation: "consenter",
-				Height:            0,
+				Height:            2,
 			}
 			channelparticipation.Join(network, orderer2, "testchannel", configBlock, expectedChannelInfo)
 
@@ -395,9 +395,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			expectedChannelInfo = channelparticipation.ChannelInfo{
 				Name:              "testchannel",
 				URL:               "/participation/v1/channels/testchannel",
-				Status:            "onboarding",
+				Status:            "active",
 				ConsensusRelation: "follower",
-				Height:            0,
+				Height:            2,
 			}
 			channelparticipation.Join(network, orderer3, "testchannel", configBlock, expectedChannelInfo)
 

@@ -424,9 +424,9 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			expectedChannelInfo := channelparticipation.ChannelInfo{
 				Name:              channel2,
 				URL:               fmt.Sprintf("/participation/v1/channels/%s", channel2),
-				Status:            "onboarding",
+				Status:            "active",
 				ConsensusRelation: "consenter",
-				Height:            0,
+				Height:            4,
 			}
 			channelparticipation.Join(network, orderer2, channel2, configBlock, expectedChannelInfo)
 			Eventually(o2Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
