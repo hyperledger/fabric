@@ -8,7 +8,6 @@ package follower
 
 import (
 	"bytes"
-	"fmt"
 	"sync"
 	"time"
 
@@ -410,7 +409,6 @@ func (c *Chain) pullAfterJoin() error {
 
 	heightPollInterval := c.options.HeightPollMinInterval
 	for {
-		fmt.Println(">>>>")
 		// Check membership
 		isMember, errMem := c.clusterConsenter.IsChannelMember(c.lastConfig)
 		if errMem != nil {
@@ -425,7 +423,6 @@ func (c *Chain) pullAfterJoin() error {
 		var latestNetworkHeight uint64
 	heightPollLoop:
 		for {
-			fmt.Println("****")
 			endpoint, networkHeight, errHeight := cluster.LatestHeightAndEndpoint(c.blockPuller)
 			if errHeight != nil {
 				c.logger.Errorf("Failed to get latest height and endpoint, error: %s", errHeight)
