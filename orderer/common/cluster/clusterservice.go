@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"encoding/asn1"
 	"fmt"
-	"github.com/hyperledger/fabric/common/crypto"
 	"io"
 	"strconv"
 	"sync"
@@ -19,6 +18,7 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/pkg/errors"

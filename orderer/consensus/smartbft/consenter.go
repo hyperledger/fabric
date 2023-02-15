@@ -12,7 +12,6 @@ package smartbft
 import (
 	"bytes"
 	"encoding/pem"
-	"github.com/hyperledger/fabric/common/crypto"
 	"path"
 	"reflect"
 
@@ -23,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"

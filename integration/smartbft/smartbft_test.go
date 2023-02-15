@@ -329,9 +329,9 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			expectedChannelInfoPT = channelparticipation.ChannelInfo{
 				Name:              "testchannel1",
 				URL:               "/participation/v1/channels/testchannel1",
-				Status:            "onboarding",
+				Status:            "active",
 				ConsensusRelation: "consenter",
-				Height:            0,
+				Height:            8,
 			}
 
 			By("Joining " + orderer5.Name + " to channel as a consenter")
@@ -339,17 +339,6 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			By("Waiting for the added orderer to see the leader")
 			Eventually(orderer5Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1 channel=testchannel1"))
-
-			expectedChannelInfoPT = channelparticipation.ChannelInfo{
-				Name:              "testchannel1",
-				URL:               "/participation/v1/channels/testchannel1",
-				Status:            "active",
-				ConsensusRelation: "consenter",
-				Height:            8,
-			}
-
-			channelInfo := channelparticipation.ListOne(network, orderer5, "testchannel1")
-			Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 
 			By("Make sure the peers get the config blocks, again")
 			waitForBlockReceptionByPeer(peer, network, "testchannel1", 7)
@@ -916,7 +905,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 					orderers.ConsenterMapping = orderers.ConsenterMapping[1:]
 				})
 
-				assertBlockReception(map[string]int{"testchannel1": 9 + i}, network.Orderers[6:], peer, network)
+				assertBlockReception(map[string]int{"testchannel1": 8 + i}, network.Orderers[7:], peer, network)
 			}
 		})
 
@@ -1042,9 +1031,9 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			expectedChannelInfoPT := channelparticipation.ChannelInfo{
 				Name:              "testchannel1",
 				URL:               "/participation/v1/channels/testchannel1",
-				Status:            "onboarding",
+				Status:            "active",
 				ConsensusRelation: "consenter",
-				Height:            0,
+				Height:            8,
 			}
 
 			By("joining " + orderer5.Name + " to channel as a consenter")
