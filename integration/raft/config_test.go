@@ -1345,9 +1345,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				expectedInfo := channelparticipation.ChannelInfo{
 					Name:              "testchannel",
 					URL:               "/participation/v1/channels/testchannel",
-					Status:            "onboarding",
+					Status:            "active",
 					ConsensusRelation: "consenter",
-					Height:            0,
+					Height:            5,
 				}
 				channelparticipation.Join(network, o1, "testchannel", configBlock, expectedInfo)
 

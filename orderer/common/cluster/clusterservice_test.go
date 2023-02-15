@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/crypto"
+
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
@@ -123,10 +125,13 @@ func TestClusterServiceStep(t *testing.T) {
 
 	t.Run("Create authenticated stream successfully", func(t *testing.T) {
 		t.Parallel()
-
+		var err error
 		stream := &mocks.ClusterStepStream{}
 		handler := &mocks.Handler{}
 		serverKeyPair, _ := ca.NewServerCertKeyPair()
+
+		serverKeyPair.Cert, err = crypto.SanitizeX509Cert(serverKeyPair.Cert)
+		require.NoError(t, err)
 
 		svc := &cluster.ClusterService{
 			StreamCountReporter: &cluster.StreamCountReporter{
@@ -245,7 +250,11 @@ func TestClusterServiceStep(t *testing.T) {
 
 		stream := &mocks.ClusterStepStream{}
 		handler := &mocks.Handler{}
+
+		var err error
 		serverKeyPair, _ := ca.NewServerCertKeyPair()
+		serverKeyPair.Cert, err = crypto.SanitizeX509Cert(serverKeyPair.Cert)
+		require.NoError(t, err)
 
 		svc := &cluster.ClusterService{
 			StreamCountReporter: &cluster.StreamCountReporter{
@@ -274,6 +283,9 @@ func TestClusterServiceStep(t *testing.T) {
 		})
 
 		clientKeyPair, _ := ca.NewClientCertKeyPair()
+		clientKeyPair.Cert, err = crypto.SanitizeX509Cert(clientKeyPair.Cert)
+		require.NoError(t, err)
+
 		signer := signingIdentity{clientKeyPair.Signer}
 		sig, err := signer.Sign(cluster.SHA256Digest(asnSignFields))
 		require.NoError(t, err)
@@ -307,8 +319,11 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		t.Parallel()
 		authRequest := nodeAuthRequest
 
+		var err error
 		handler := &mocks.Handler{}
 		serverKeyPair, _ := ca.NewServerCertKeyPair()
+		serverKeyPair.Cert, err = crypto.SanitizeX509Cert(serverKeyPair.Cert)
+		require.NoError(t, err)
 
 		svc := &cluster.ClusterService{
 			StreamCountReporter: &cluster.StreamCountReporter{
@@ -597,7 +612,11 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 			Channel:        authRequest.Channel,
 		})
 
+		var err error
 		clientKeyPair1, _ := ca.NewClientCertKeyPair()
+		clientKeyPair1.Cert, err = crypto.SanitizeX509Cert(clientKeyPair1.Cert)
+		require.NoError(t, err)
+
 		signer := signingIdentity{clientKeyPair1.Signer}
 		sig, err := signer.Sign(cluster.SHA256Digest(asnSignFields))
 		require.NoError(t, err)
@@ -626,7 +645,12 @@ func TestConfigureNodeCerts(t *testing.T) {
 		svc.Logger = flogging.MustGetLogger("test")
 
 		clientKeyPair1, _ := ca.NewClientCertKeyPair()
-		err := svc.ConfigureNodeCerts("mychannel", []*common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}})
+
+		var err error
+		clientKeyPair1.Cert, err = crypto.SanitizeX509Cert(clientKeyPair1.Cert)
+		require.NoError(t, err)
+
+		err = svc.ConfigureNodeCerts("mychannel", []*common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}})
 		require.NoError(t, err)
 		require.Equal(t, clientKeyPair1.Cert, svc.MembershipByChannel["mychannel"].MemberMapping[authRequest.FromId])
 	})
@@ -636,14 +660,22 @@ func TestConfigureNodeCerts(t *testing.T) {
 		svc := &cluster.ClusterService{}
 		svc.Logger = flogging.MustGetLogger("test")
 
+		var err error
 		clientKeyPair1, _ := ca.NewClientCertKeyPair()
-		err := svc.ConfigureNodeCerts("mychannel", []*common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}})
+		clientKeyPair1.Cert, err = crypto.SanitizeX509Cert(clientKeyPair1.Cert)
+		require.NoError(t, err)
+
+		err = svc.ConfigureNodeCerts("mychannel", []*common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}})
 		require.NoError(t, err)
 		require.Equal(t, clientKeyPair1.Cert, svc.MembershipByChannel["mychannel"].MemberMapping[authRequest.FromId])
 
-		err = svc.ConfigureNodeCerts("mychannel", []*common.Consenter{{Id: uint32(authRequest.FromId)}})
+		clientKeyPair2, _ := ca.NewClientCertKeyPair()
+		clientKeyPair2.Cert, err = crypto.SanitizeX509Cert(clientKeyPair2.Cert)
 		require.NoError(t, err)
-		require.Equal(t, []byte(nil), svc.MembershipByChannel["mychannel"].MemberMapping[authRequest.FromId])
+
+		err = svc.ConfigureNodeCerts("mychannel", []*common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair2.Cert}})
+		require.NoError(t, err)
+		require.Equal(t, clientKeyPair2.Cert, svc.MembershipByChannel["mychannel"].MemberMapping[authRequest.FromId])
 	})
 }
 
@@ -656,7 +688,11 @@ func TestExpirationWarning(t *testing.T) {
 
 	handler := &mocks.Handler{}
 	stream := &mocks.ClusterStepStream{}
+
+	var err error
 	serverKeyPair, _ := ca.NewServerCertKeyPair()
+	serverKeyPair.Cert, err = crypto.SanitizeX509Cert(serverKeyPair.Cert)
+	require.NoError(t, err)
 
 	cert := util.ExtractCertificateFromContext(stepStream.Context())
 
@@ -686,6 +722,9 @@ func TestExpirationWarning(t *testing.T) {
 	})
 
 	clientKeyPair1, _ := ca.NewClientCertKeyPair()
+	clientKeyPair1.Cert, err = crypto.SanitizeX509Cert(clientKeyPair1.Cert)
+	require.NoError(t, err)
+
 	signer := signingIdentity{clientKeyPair1.Signer}
 	sig, err := signer.Sign(cluster.SHA256Digest(asnSignFields))
 	require.NoError(t, err)
