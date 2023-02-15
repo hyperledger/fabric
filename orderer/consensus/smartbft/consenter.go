@@ -12,6 +12,7 @@ package smartbft
 import (
 	"bytes"
 	"encoding/pem"
+	"github.com/hyperledger/fabric/common/crypto"
 	"path"
 	"reflect"
 
@@ -223,7 +224,11 @@ func (c *Consenter) IsChannelMember(joinBlock *cb.Block) (bool, error) {
 	}
 	member := false
 	for _, consenter := range oc.Consenters() {
-		if bytes.Equal(c.Identity, consenter.Identity) {
+		santizedCert, err := crypto.SanitizeX509Cert(consenter.Identity)
+		if err != nil {
+			return false, err
+		}
+		if bytes.Equal(c.Identity, santizedCert) {
 			member = true
 			break
 		}
@@ -256,7 +261,11 @@ func pemToDER(pemBytes []byte, id uint64, certType string, logger *flogging.Fabr
 
 func (c *Consenter) detectSelfID(consenters []*cb.Consenter) (uint32, error) {
 	for _, cst := range consenters {
-		if bytes.Equal(c.Comm.NodeIdentity, cst.Identity) {
+		santizedCert, err := crypto.SanitizeX509Cert(cst.Identity)
+		if err != nil {
+			return 0, err
+		}
+		if bytes.Equal(c.Comm.NodeIdentity, santizedCert) {
 			return cst.Id, nil
 		}
 	}

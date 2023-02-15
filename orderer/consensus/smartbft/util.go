@@ -391,6 +391,11 @@ func RemoteNodesFromConfigBlock(block *cb.Block, logger *flogging.FabricLogger, 
 		rootCAs = append(rootCAs, nodeMSP.GetTLSRootCerts()...)
 		rootCAs = append(rootCAs, nodeMSP.GetTLSIntermediateCerts()...)
 
+		sanitizedCert, err := crypto.SanitizeX509Cert(consenter.Identity)
+		if err != nil {
+			return nil, err
+		}
+
 		remoteNodes = append(remoteNodes, cluster.RemoteNode{
 			NodeAddress: cluster.NodeAddress{
 				ID:       (uint64)(consenter.Id),
@@ -401,7 +406,7 @@ func RemoteNodesFromConfigBlock(block *cb.Block, logger *flogging.FabricLogger, 
 				ClientTLSCert: clientCertAsDER,
 				ServerTLSCert: serverCertAsDER,
 				ServerRootCA:  rootCAs,
-				Identity:      consenter.Identity,
+				Identity:      sanitizedCert,
 			},
 		})
 	}

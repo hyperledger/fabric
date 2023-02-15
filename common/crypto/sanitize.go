@@ -28,18 +28,29 @@ func SanitizeIdentity(identity []byte) ([]byte, error) {
 		return nil, errors.Wrapf(err, "failed unmarshaling identity %s", string(identity))
 	}
 
-	der, _ := pem.Decode(sID.IdBytes)
+	finalPEM, err := SanitizeX509Cert(sID.IdBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	sID.IdBytes = finalPEM
+
+	return proto.Marshal(sID)
+}
+
+func SanitizeX509Cert(initialPEM []byte) ([]byte, error) {
+	der, _ := pem.Decode(initialPEM)
 	if der == nil {
-		return nil, errors.Errorf("failed to PEM decode identity bytes: %s", string(sID.IdBytes))
+		return nil, errors.Errorf("failed to PEM decode identity bytes: %s", string(initialPEM))
 	}
 	cert, err := x509.ParseCertificate(der.Bytes)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed parsing certificate %s", string(sID.IdBytes))
+		return nil, errors.Wrapf(err, "failed parsing certificate %s", string(initialPEM))
 	}
 
 	r, s, err := utils.UnmarshalECDSASignature(cert.Signature)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed unmarshaling ECDSA signature on identity: %s", string(sID.IdBytes))
+		return nil, errors.Wrapf(err, "failed unmarshaling ECDSA signature on identity: %s", string(initialPEM))
 	}
 
 	// We assume that the consenter and the CA use the same signature scheme.
@@ -47,7 +58,7 @@ func SanitizeIdentity(identity []byte) ([]byte, error) {
 	halfOrder := new(big.Int).Rsh(curveOrderUsedByCryptoGen, 1)
 	// Low S, nothing to do here!
 	if s.Cmp(halfOrder) != 1 {
-		return identity, nil
+		return initialPEM, nil
 	}
 	// Else it's high-S, so shift it below half the order.
 	s.Sub(curveOrderUsedByCryptoGen, s)
@@ -70,8 +81,8 @@ func SanitizeIdentity(identity []byte) ([]byte, error) {
 		return nil, errors.Wrapf(err, "failed marshaling new certificate")
 	}
 
-	sID.IdBytes = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: newRaw})
-	return proto.Marshal(sID)
+	finalPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: newRaw})
+	return finalPEM, nil
 }
 
 type certificate struct {

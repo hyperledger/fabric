@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"encoding/asn1"
 	"fmt"
+	"github.com/hyperledger/fabric/common/crypto"
 	"io"
 	"strconv"
 	"sync"
@@ -258,7 +259,11 @@ func (c *ClusterService) ConfigureNodeCerts(channel string, newNodes []*common.C
 	channelMembership.MemberMapping = make(map[uint64][]byte)
 
 	for _, nodeIdentity := range newNodes {
-		channelMembership.MemberMapping[uint64(nodeIdentity.Id)] = nodeIdentity.Identity
+		sanitizedID, err := crypto.SanitizeX509Cert(nodeIdentity.Identity)
+		if err != nil {
+			return err
+		}
+		channelMembership.MemberMapping[uint64(nodeIdentity.Id)] = sanitizedID
 	}
 
 	// Iterate over existing streams and prune those that should not be there anymore

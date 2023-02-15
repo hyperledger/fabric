@@ -8,6 +8,7 @@ package follower
 
 import (
 	"bytes"
+	"fmt"
 	"sync"
 	"time"
 
@@ -392,6 +393,8 @@ func (c *Chain) pullUpToJoin() error {
 // a config block that indicates the orderer is a member of the cluster. It
 // checks whether the chain was stopped between blocks.
 func (c *Chain) pullAfterJoin() error {
+	c.logger.Infof("Pulling after join")
+	defer c.logger.Infof("Pulled after join")
 	c.setStatus(types.StatusActive)
 
 	err := c.loadLastConfig()
@@ -407,6 +410,7 @@ func (c *Chain) pullAfterJoin() error {
 
 	heightPollInterval := c.options.HeightPollMinInterval
 	for {
+		fmt.Println(">>>>")
 		// Check membership
 		isMember, errMem := c.clusterConsenter.IsChannelMember(c.lastConfig)
 		if errMem != nil {
@@ -421,11 +425,12 @@ func (c *Chain) pullAfterJoin() error {
 		var latestNetworkHeight uint64
 	heightPollLoop:
 		for {
+			fmt.Println("****")
 			endpoint, networkHeight, errHeight := cluster.LatestHeightAndEndpoint(c.blockPuller)
 			if errHeight != nil {
 				c.logger.Errorf("Failed to get latest height and endpoint, error: %s", errHeight)
 			} else {
-				c.logger.Debugf("Orderer endpoint %s has the biggest ledger height: %d", endpoint, networkHeight)
+				c.logger.Infof("Orderer endpoint %s has the biggest ledger height: %d", endpoint, networkHeight)
 			}
 
 			if networkHeight > c.ledgerResources.Height() {
@@ -435,7 +440,7 @@ func (c *Chain) pullAfterJoin() error {
 				break heightPollLoop
 			}
 
-			c.logger.Debugf("My height: %d, latest network height: %d; going to wait %v for latest height to grow",
+			c.logger.Infof("My height: %d, latest network height: %d; going to wait %v for latest height to grow",
 				c.ledgerResources.Height(), networkHeight, heightPollInterval)
 			select {
 			case <-c.stopChan:

@@ -42,11 +42,12 @@ func Join(n *nwo.Network, o *nwo.Orderer, channel string, block *common.Block, e
 	if n.TLSEnabled {
 		client = authClient
 	}
-	body := doBody(client, req)
-	c := &ChannelInfo{}
-	err = json.Unmarshal(body, c)
-	Expect(err).NotTo(HaveOccurred())
-	Expect(*c).To(Equal(expectedChannelInfo))
+
+	doBody(client, req)
+
+	Eventually(func() ChannelInfo {
+		return ListOne(n, o, channel)
+	}, n.EventuallyTimeout).Should(Equal(expectedChannelInfo))
 }
 
 func GenerateJoinRequest(url, channel string, blockBytes []byte) *http.Request {

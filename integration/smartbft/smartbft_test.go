@@ -846,6 +846,8 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				ordererIdentity, err := ioutil.ReadFile(network.OrdererCert(newOrderer))
 				Expect(err).NotTo(HaveOccurred())
 
+				By(fmt.Sprintf("Adding consenter with certificate %s", string(ordererIdentity)))
+
 				nwo.UpdateConsenters(network, peer, orderer, channel, func(orderers *common.Orderers) {
 					orderers.ConsenterMapping = append(orderers.ConsenterMapping, &common.Consenter{
 						MspId:         "OrdererMSP",
@@ -858,7 +860,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 					})
 				})
 
-				assertBlockReception(map[string]int{"testchannel1": 1 + i}, network.Orderers[:4], peer, network)
+				assertBlockReception(map[string]int{"testchannel1": 1 + i}, network.Orderers[:4+i], peer, network)
 
 				By("Planting last config block in the orderer's file system")
 				configBlock := nwo.GetConfigBlock(network, peer, orderer, "testchannel1")
@@ -876,27 +878,16 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				expectedChannelInfoPT = channelparticipation.ChannelInfo{
 					Name:              "testchannel1",
 					URL:               "/participation/v1/channels/testchannel1",
-					Status:            "onboarding",
-					ConsensusRelation: "consenter",
-					Height:            0,
-				}
-
-				By("joining " + newOrderer.Name + " to channel as a consenter")
-				channelparticipation.Join(network, newOrderer, "testchannel1", configBlock, expectedChannelInfoPT)
-
-				By("Waiting for the added orderer to see the leader")
-				Eventually(runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1 channel=testchannel1"))
-
-				expectedChannelInfoPT = channelparticipation.ChannelInfo{
-					Name:              "testchannel1",
-					URL:               "/participation/v1/channels/testchannel1",
 					Status:            "active",
 					ConsensusRelation: "consenter",
 					Height:            uint64(2 + i),
 				}
 
-				channelInfo := channelparticipation.ListOne(network, newOrderer, "testchannel1")
-				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
+				By(">>>> joining " + newOrderer.Name + " to channel as a consenter")
+				channelparticipation.Join(network, newOrderer, "testchannel1", configBlock, expectedChannelInfoPT)
+
+				By("Waiting for the added orderer to see the leader")
+				Eventually(runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1 channel=testchannel1"))
 
 				By("Ensure all orderers are in sync")
 				assertBlockReception(map[string]int{"testchannel1": 1 + i}, network.Orderers, peer, network)
@@ -925,7 +916,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 					orderers.ConsenterMapping = orderers.ConsenterMapping[1:]
 				})
 
-				assertBlockReception(map[string]int{"testchannel1": 8 + i}, network.Orderers[i+1:], peer, network)
+				assertBlockReception(map[string]int{"testchannel1": 9 + i}, network.Orderers[6:], peer, network)
 			}
 		})
 
