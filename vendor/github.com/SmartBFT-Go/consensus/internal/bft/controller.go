@@ -391,7 +391,8 @@ func (c *Controller) changeView(newViewNumber uint64, newProposalSequence uint64
 	leader := c.currentViewLeader()
 	stopped := c.currentViewStopped()
 
-	if !stopped && latestView == newViewNumber && c.leaderID() == leader {
+	if !stopped && latestView == newViewNumber && c.leaderID() == leader &&
+		c.getCurrentDecisionsInView() == newDecisionsInView {
 		c.Logger.Debugf("Got view change to %d but view is already running", newViewNumber)
 		return
 	}
