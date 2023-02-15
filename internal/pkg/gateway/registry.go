@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package gateway
 
 import (
-	"bytes"
 	"fmt"
 	"math/rand"
 	"sort"
@@ -67,7 +66,7 @@ func (reg *registry) endorsementPlan(channel string, interest *peer.ChaincodeInt
 
 	// Firstly, process the endorsers by group
 	// Create a map of groupIds to list of endorsers, sorted by decreasing block height
-	// Also build a map of endorser pkiid to groupId
+	// Also build a map of endorser PKI ID to group ID
 	groupEndorsers := map[string][]*endorser{}
 	var preferredGroup string
 	var unavailableEndorsers []string
@@ -182,9 +181,7 @@ func (reg *registry) planForOrgs(channel string, chaincode string, endorsingOrgs
 func (reg *registry) endorsersByOrg(channel string, chaincode string) map[string][]*endorserState {
 	endorsersByOrg := make(map[string][]*endorserState)
 
-	members := reg.discovery.PeersOfChannel(gossipcommon.ChannelID(channel))
-
-	for _, member := range members {
+	for _, member := range reg.channelMembers(channel) {
 		endorser := reg.lookupEndorser(member.PreferredEndpoint(), member.PKIid, channel)
 		if endorser == nil {
 			continue
@@ -200,6 +197,14 @@ func (reg *registry) endorsersByOrg(channel string, chaincode string) map[string
 	}
 
 	return endorsersByOrg
+}
+
+func (reg *registry) channelMembers(channel string) gossipdiscovery.Members {
+	return reg.discovery.PeersOfChannel(gossipcommon.ChannelID(channel))
+}
+
+func (reg *registry) isLocalEndorserID(pkiID gossipcommon.PKIidType) bool {
+	return !pkiID.IsNotSameFilter(reg.localEndorser.pkiid)
 }
 
 // evaluator returns a plan representing a single endorsement, preferably from local org, if available
@@ -297,18 +302,18 @@ func (reg *registry) orderers(channel string) ([]*orderer, error) {
 	return orderers, nil
 }
 
-func (reg *registry) lookupEndorser(endpoint string, pkiid gossipcommon.PKIidType, channel string) *endorser {
+func (reg *registry) lookupEndorser(endpoint string, pkiID gossipcommon.PKIidType, channel string) *endorser {
 	lookup := func() (*endorser, bool) {
 		reg.configLock.RLock()
 		defer reg.configLock.RUnlock()
 
 		// find the endorser in the registry for this endpoint
-		if bytes.Equal(pkiid, reg.localEndorser.pkiid) {
-			logger.Debugw("Found local endorser", "pkiid", pkiid)
+		if reg.isLocalEndorserID(pkiID) {
+			logger.Debugw("Found local endorser", "pkiID", pkiID)
 			return reg.localEndorser, false
 		}
 		if endpoint == "" {
-			reg.logger.Warnw("No endpoint for endorser with PKI ID %s", "pkiid", pkiid.String())
+			reg.logger.Warnw("No endpoint for endorser with PKI ID %s", "pkiID", pkiID.String())
 			return nil, false
 		}
 		if e, ok := reg.remoteEndorsers[endpoint]; ok {
@@ -343,8 +348,7 @@ func (reg *registry) connectChannelPeers(channel string, force bool) error {
 
 	// get the remoteEndorsers for the channel
 	peers := map[string]string{}
-	members := reg.discovery.PeersOfChannel(gossipcommon.ChannelID(channel))
-	for _, member := range members {
+	for _, member := range reg.channelMembers(channel) {
 		id := member.PKIid.String()
 		peers[id] = member.PreferredEndpoint()
 	}
@@ -359,12 +363,12 @@ func (reg *registry) connectChannelPeers(channel string, force bool) error {
 			tlsRootCerts = append(tlsRootCerts, mspInfo.GetTlsIntermediateCerts()...)
 		}
 		for _, info := range infoset {
-			pkiid := info.PKIId
-			if address, ok := peers[pkiid.String()]; ok {
+			pkiID := info.PKIId
+			if address, ok := peers[pkiID.String()]; ok {
 				// add the peer to the peer map - except the local peer, which seems to have an empty address
 				if _, ok := reg.remoteEndorsers[address]; !ok && len(address) > 0 {
 					// this peer is new - connect to it and add to the remoteEndorsers registry
-					endorser, err := reg.endpointFactory.newEndorser(pkiid, address, mspid, tlsRootCerts)
+					endorser, err := reg.endpointFactory.newEndorser(pkiID, address, mspid, tlsRootCerts)
 					if err != nil {
 						return err
 					}
