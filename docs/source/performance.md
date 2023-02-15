@@ -181,7 +181,7 @@ When designing your application architecture, various choices can affect the ove
 
 CouchDB performance is noticably slower than embedded LevelDB, sometimes by a factor of 2x slower. The only additional capability that a CouchDB state database provides is JSON (rich) queries, as stated in the [Fabric state database documentation](./deploypeer/peerplan.html#state-database). In addition, to ensure the integrity of the state data you must never allow direct access to CouchDB data (for instance via Fauxton UI). 
 
-CouchDB as a state database has other limitations which reduce overall network performance and require additional hardware resource (and cost). For one, JSON queries are not re-executed at validation time, so CouchDB does not offer built-in protection from phantom reads. Such protection is provided, however, by range queries. (Your application must be designed to tolerate phantom reads when using JSON queries, such as when records are added to state between the times of chaincode execution and block validation). You should therefore consider using range queries based on additional keys for high-throughput applications, rather than using CouchDB JSON with queries.
+CouchDB as a state database has other limitations which reduce overall network performance and require additional hardware resource (and cost). For one, JSON queries are not re-executed at validation time, so Fabric does not offer built-in protection from phantom reads. Such protection is provided, however, by range queries. (Your application must be designed to tolerate phantom reads when using JSON queries, such as when records are added to state between the times of chaincode execution and block validation). You should therefore consider using range queries based on additional keys for high-throughput applications, rather than using CouchDB with JSON queries.
 
 Alternatively, consider using an off-chain store to support queries, as seen in the [Off-chain sample](https://github.com/hyperledger/Fabric-samples/tree/main/off_chain_data). Using an off-chain store for queries gives you much more control over the data, and query transactions do not affect Hyperledger Fabric peer and network performance. It also enables you to use a fit-for-purpose data store for off-chain storage, such as an SQL database or analytics service more aligned with your query needs.
 
@@ -195,7 +195,7 @@ Avoid writing chaincode queries that could be unbounded in the amount of data re
 
 The Peer Gateway Service (new in v2.4) and Fabric-Gateway client SDKs offer substantial enhancements over the legacy Go, Java, and Node SDKs. The latest Gateway SDKs  provide much improved throughput, and more capabilities and reduced complexity to client applications. For example, the Gateway SDKs automatically (attempt to) collect the endorsements required to satisfy not only the chaincode endorsement policy, but also any state-based endorsement policies included with transaction simulation (which is not possible using the legacy SDKs).
 
-The Peer Gateway Service also reduces the number of network connections a client needs to maintain to submit a transaction. Using the legacy SDKs, clients may need to connect to multiple peer and orderer nodes across organizations. By contrast, the Peer Gateway Service service enables an application to connect to a single trusted peer, which then collects endorsements from other peer and orderer nodes and submits the transaction on behalf of the client application. However, you can still choose to have your application target multiple trusted peers, for high concurrency and redundancy.
+The Peer Gateway Service also reduces the number of network connections a client needs to maintain to submit a transaction. Using the legacy SDKs, clients may need to connect to multiple peer and orderer nodes across organizations. By contrast, the Peer Gateway Service service enables an application to connect to a single trusted peer, which then collects endorsements from other peer and orderer nodes and submits the transaction on behalf of the client application. Your application can target multiple trusted peers for high concurrency and redundancy, when necessary.
 
 Changing your application development environment from the legacy SDKs to the new Peer Gateway Service also reduces client CPU and memory resource requirements, with a modest increase in peer resource requirements.
 
@@ -213,7 +213,7 @@ Go chaincode has shown the best performance in Hyperledger Fabric environments, 
 
 ### Node chaincode
 
-Node is an asynchronous runtime implementation that utilizes only a single thread to execute code. Node does run background threads for activities such as garbage collection, but it is against best practices to allocate more than two vCPUs (generally equivalent to the number of concurrent threads which can be executed) to a Node chaincode (for example on Kubernetes which is limited to available resources). It is worth monitoring performance of Node chaincode to see how much vCPU it uses, though you cannot assign resource restrictions to Node chaincode as it is self-limiting.
+Node is an asynchronous runtime impluementation that utilizes only a single thread to execute code. Node does run background threads for activities such as garbage collection, but it may not improve performance to allocate more than two vCPUs (generally equivalent to the number of concurrent threads which can be executed) to a Node chaincode (for example on Kubernetes which is limited to available resources). It is worth monitoring performance of Node chaincode to see how much vCPU it uses. Node chaincode is self-limiting and not unbounded, though you could also assign resource restrictions to Node chaincode processes. 
 
 Prior to Node v12, a Node process was limited to 1.5 GB of Memory by default, which to increase for running Node chaincode required passing a parameter to the Node executable. You should not be running chaincode processes on any version earlier than Node v12, and Hyperledger Fabric v2.5 mandates using Node v16, or later. Various parameters can be provided when launching Node chaincode, but few if any scenarios would require overriding the default values for Node v12 and later.
 
@@ -261,7 +261,7 @@ Optimize your queries, because complex queries will take more time even with ind
 
 You can check the peer and CouchDB logs to see how long queries are taking, and whether any query was unable to use an index from a warning log entry stating the query "should be indexed".
 
-If queries are taking a long time, you can increase the CPU/Memory available to CouchDB or use faster storage.
+If queries are taking a long time, increasing the CPU/Memory available to CouchDB or using faster storage may improve their performance.
 
 Check CouchDB logs for warnings such as "The number of documents examined is high in proportion to the number of results returned. Consider adding a more specific index to improve this." These messages indicate that your indexes could be improved because a high number of documents are being scanned.
 
