@@ -319,6 +319,10 @@ var _ = Describe("Pvtdata purge", func() {
 			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(network, channelID, chaincode.Name, `test-marble-9-purge`, org3Peer1)
 
 			By("Adding two marbles, removing Org3 from the collection, purging the marbles, and confirming that they still got purged from Org3")
+
+			// Make sure all peers are up and connected after prior test, before continuing with this test
+			network.VerifyMembership(network.Peers, channelID)
+
 			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-10-purge-after-ineligible", "color":"white", "size":4, "owner":"liz", "price":4}`, org2Peer0)
 			marblechaincodeutil.AddMarble(network, orderer, channelID, chaincode.Name, `{"name":"test-marble-11-purge-after-ineligible", "color":"orange", "size":80, "owner":"clive", "price":88}`, org2Peer0)
 
