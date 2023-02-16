@@ -9,8 +9,8 @@ require (
 	github.com/VictoriaMetrics/fastcache v1.5.7
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fsouza/go-dockerclient v1.7.0
-	github.com/go-kit/kit v0.8.0
-	github.com/golang/protobuf v1.3.3
+	github.com/go-kit/kit v0.9.0
+	github.com/golang/protobuf v1.4.3
 	github.com/gorilla/handlers v1.4.0
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
@@ -26,7 +26,7 @@ require (
 	github.com/onsi/ginkgo v1.14.0
 	github.com/onsi/gomega v1.10.1
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.1.0
+	github.com/prometheus/client_golang v1.11.1
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/pflag v1.0.5
@@ -43,7 +43,7 @@ require (
 	google.golang.org/grpc v1.29.1
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
-	gopkg.in/yaml.v2 v2.2.8
+	gopkg.in/yaml.v2 v2.3.0
 )
 
 require (
@@ -54,8 +54,8 @@ require (
 	github.com/Microsoft/hcsshim v0.8.10 // indirect
 	github.com/Shopify/toxiproxy v2.1.4+incompatible // indirect
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
-	github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc // indirect
-	github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf // indirect
+	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
+	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/containerd/cgroups v0.0.0-20200531161412-0dbf7f05ba59 // indirect
@@ -72,13 +72,12 @@ require (
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/frankban/quicktest v1.9.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
-	github.com/go-logfmt/logfmt v0.4.0 // indirect
+	github.com/go-logfmt/logfmt v0.5.0 // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/snappy v0.0.2 // indirect
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
-	github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515 // indirect
 	github.com/kr/text v0.1.0 // indirect
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect
@@ -93,9 +92,9 @@ require (
 	github.com/opencontainers/runc v1.0.0-rc8 // indirect
 	github.com/pierrec/lz4 v2.5.0+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4 // indirect
-	github.com/prometheus/common v0.6.0 // indirect
-	github.com/prometheus/procfs v0.0.3 // indirect
+	github.com/prometheus/client_model v0.2.0 // indirect
+	github.com/prometheus/common v0.26.0 // indirect
+	github.com/prometheus/procfs v0.6.0 // indirect
 	github.com/sirupsen/logrus v1.6.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
@@ -116,4 +115,6 @@ require (
 
 replace github.com/onsi/gomega => github.com/onsi/gomega v1.9.0
 
-replace github.com/cespare/xxhash/v2 => github.com/cespare/xxhash/v2 v2.1.2 // fix for Go 1.17 in github.com/prometheus/client_golang dependency without updating protobuf
+replace github.com/cespare/xxhash/v2 => github.com/cespare/xxhash/v2 v2.1.2 // fix for Go 1.17 to push github.com/prometheus/client_golang dependency up from v2.1.1 to v2.1.2
+
+replace github.com/golang/protobuf => github.com/golang/protobuf v1.3.3 // update github.com/prometheus/client_golang to v1.11.1 while keeping it's protobuf dependency at v1.3.3, since later protobuf versions are incompatible with etcdraft in v2.2.x.
