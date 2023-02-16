@@ -51,14 +51,14 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/IBM/mathlib v0.0.0-20220112091634-0a7378db6912 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
-	github.com/Microsoft/hcsshim v0.8.24 // indirect
+	github.com/Microsoft/hcsshim v0.8.25 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20210912230133-d1bdfacee922 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/consensys/gnark-crypto v0.6.0 // indirect
 	github.com/containerd/cgroups v1.0.3 // indirect
-	github.com/containerd/containerd v1.5.16 // indirect
+	github.com/containerd/containerd v1.5.18 // indirect
 	github.com/docker/docker v20.10.7+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
