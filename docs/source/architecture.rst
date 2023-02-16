@@ -15,3 +15,4 @@ Architecture Reference
    private-data-arch
    readwrite
    gossip
+   performance
