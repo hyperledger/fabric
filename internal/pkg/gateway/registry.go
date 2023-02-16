@@ -23,6 +23,7 @@ import (
 	gossipapi "github.com/hyperledger/fabric/gossip/api"
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	gossipdiscovery "github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/internal/pkg/gateway/ledger"
 	"github.com/pkg/errors"
 )
 
@@ -44,6 +45,7 @@ type registry struct {
 	configLock         sync.RWMutex
 	channelOrderers    sync.Map // channel (string) -> orderer addresses (endpointConfig)
 	systemChaincodes   scc.BuiltinSCCs
+	localProvider      ledger.Provider
 }
 
 type endorserState struct {
@@ -200,11 +202,40 @@ func (reg *registry) endorsersByOrg(channel string, chaincode string) map[string
 }
 
 func (reg *registry) channelMembers(channel string) gossipdiscovery.Members {
-	return reg.discovery.PeersOfChannel(gossipcommon.ChannelID(channel))
+	members := reg.discovery.PeersOfChannel(gossipcommon.ChannelID(channel))
+
+	// Ensure local endorser ledger height is up-to-date
+	for _, member := range members {
+		if reg.isLocalEndorserID(member.PKIid) {
+			if ledgerHeight, ok := reg.localLedgerHeight(channel); ok {
+				member.Properties.LedgerHeight = ledgerHeight
+			}
+
+			break
+		}
+	}
+
+	return members
 }
 
 func (reg *registry) isLocalEndorserID(pkiID gossipcommon.PKIidType) bool {
 	return !pkiID.IsNotSameFilter(reg.localEndorser.pkiid)
+}
+
+func (reg *registry) localLedgerHeight(channel string) (height uint64, ok bool) {
+	ledger, err := reg.localProvider.Ledger(channel)
+	if err != nil {
+		reg.logger.Warnw("local endorser is not a member of channel", "channel", channel, "err", err)
+		return 0, false
+	}
+
+	info, err := ledger.GetBlockchainInfo()
+	if err != nil {
+		logger.Errorw("failed to get local ledger info", "err", err)
+		return 0, false
+	}
+
+	return info.GetHeight(), true
 }
 
 // evaluator returns a plan representing a single endorsement, preferably from local org, if available
