@@ -119,7 +119,6 @@ func getStepStream(t *testing.T) (*comm_utils.GRPCServer, orderer.ClusterNodeSer
 }
 
 func TestClusterServiceStep(t *testing.T) {
-	t.Parallel()
 	server, stepStream := getStepStream(t)
 	defer server.Stop()
 
@@ -161,7 +160,7 @@ func TestClusterServiceStep(t *testing.T) {
 			Channel:        authRequest.Channel,
 		})
 
-		sig1, err := signer.Sign(cluster.SHA256Digest(asnSignFields))
+		sig1, err := signer.Sign(asnSignFields)
 		require.NoError(t, err)
 
 		authRequest.SessionBinding = sessionBinding
@@ -287,7 +286,7 @@ func TestClusterServiceStep(t *testing.T) {
 		require.NoError(t, err)
 
 		signer := signingIdentity{clientKeyPair.Signer}
-		sig, err := signer.Sign(cluster.SHA256Digest(asnSignFields))
+		sig, err := signer.Sign(asnSignFields)
 		require.NoError(t, err)
 
 		authRequest.Signature = sig
@@ -352,7 +351,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 
 		clientKeyPair1, _ := ca.NewClientCertKeyPair()
 		signer := signingIdentity{clientKeyPair1.Signer}
-		sig, err := signer.Sign(cluster.SHA256Digest(asnSignFields))
+		sig, err := signer.Sign(asnSignFields)
 		require.NoError(t, err)
 
 		authRequest.Signature = sig
@@ -586,7 +585,11 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		authRequest := nodeAuthRequest
 
 		handler := &mocks.Handler{}
+		var err error
 		serverKeyPair, _ := ca.NewServerCertKeyPair()
+		serverKeyPair.Cert, err = crypto.SanitizeX509Cert(serverKeyPair.Cert)
+		require.NoError(t, err)
+
 		svc := &cluster.ClusterService{
 			StreamCountReporter: &cluster.StreamCountReporter{
 				Metrics: cluster.NewMetrics(&disabled.Provider{}),
@@ -612,7 +615,6 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 			Channel:        authRequest.Channel,
 		})
 
-		var err error
 		clientKeyPair1, _ := ca.NewClientCertKeyPair()
 		clientKeyPair1.Cert, err = crypto.SanitizeX509Cert(clientKeyPair1.Cert)
 		require.NoError(t, err)
@@ -726,7 +728,7 @@ func TestExpirationWarning(t *testing.T) {
 	require.NoError(t, err)
 
 	signer := signingIdentity{clientKeyPair1.Signer}
-	sig, err := signer.Sign(cluster.SHA256Digest(asnSignFields))
+	sig, err := signer.Sign(asnSignFields)
 	require.NoError(t, err)
 
 	authRequest.Signature = sig

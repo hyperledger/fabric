@@ -9,11 +9,14 @@ package cluster_test
 import (
 	"crypto"
 	"crypto/rand"
+	"crypto/sha256"
 	"fmt"
 	"net"
 	"sync"
 	"testing"
 	"time"
+
+	crypto2 "github.com/hyperledger/fabric/common/crypto"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -53,11 +56,15 @@ type signingIdentity struct {
 }
 
 func (si *signingIdentity) Sign(msg []byte) ([]byte, error) {
-	return si.Signer.Sign(rand.Reader, msg, nil)
+	digest := sha256.Sum256(msg)
+	return si.Signer.Sign(rand.Reader, digest[:], nil)
 }
 
 func newClusterServiceNode(t *testing.T) *clusterServiceNode {
 	serverKeyPair, err := ca.NewServerCertKeyPair("127.0.0.1")
+	require.NoError(t, err)
+
+	serverKeyPair.Cert, err = crypto2.SanitizeX509Cert(serverKeyPair.Cert)
 	require.NoError(t, err)
 
 	srvConfig := comm_utils.ServerConfig{
@@ -97,6 +104,9 @@ func newClusterServiceNode(t *testing.T) *clusterServiceNode {
 	}
 
 	clientKeyPair, err := ca.NewClientCertKeyPair()
+	clientKeyPair.Cert, err = crypto2.SanitizeX509Cert(clientKeyPair.Cert)
+	require.NoError(t, err)
+
 	if err != nil {
 		panic(fmt.Errorf("failed creating client certificate %v", err))
 	}
