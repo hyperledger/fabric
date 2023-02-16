@@ -104,6 +104,8 @@ func newClusterServiceNode(t *testing.T) *clusterServiceNode {
 	}
 
 	clientKeyPair, err := ca.NewClientCertKeyPair()
+	require.NoError(t, err)
+
 	clientKeyPair.Cert, err = crypto2.SanitizeX509Cert(clientKeyPair.Cert)
 	require.NoError(t, err)
 
