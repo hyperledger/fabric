@@ -5,6 +5,7 @@
 name: Release
 
 on:
+  workflow_dispatch: # workflow_dispatch must be enabled in main branch to support release action on older release branches
   push:
     tags: [ v2.* ]
 
