@@ -5,6 +5,7 @@
 name: Release
 
 on:
+  workflow_dispatch:
   push:
     tags: [ v2.* ]
 
