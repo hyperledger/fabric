@@ -45,7 +45,7 @@
 #   - verify - runs unit tests for only the changed package tree
 
 ALPINE_VER ?= 3.16
-BASE_VERSION = 2.2.9
+BASE_VERSION = 2.2.10
 
 # 3rd party image version
 # These versions are also set in the runners in ./integration/runners/
