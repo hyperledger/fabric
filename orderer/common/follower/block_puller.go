@@ -8,7 +8,6 @@ package follower
 
 import (
 	"encoding/pem"
-	"fmt"
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp"
@@ -168,21 +167,17 @@ func (creator *BlockPullerCreator) VerifyBlockSequence(blocks []*common.Block, _
 			return nil
 		}
 		// TODO: we should revisit this as in theory a malicious node can give an incorrect genesis block.
-		// However, if that happens, then the onboarding node would deviate from the correct nodes.
-		err = creator.ClusterVerifyBlocks(blocksAfterGenesis, creator.blockSigVerifier, creator.vb)
-		if err != nil {
-			fmt.Println(">>>>>")
-		}
-		return err
+		// However, if that happens, then the onboarding node would deviate from the correct nodes and it will be detected by us
+		// due to follower chain comparing the block it is joined with with the block it pulled by doing:
+		// if c.joinBlock != nil && !proto.Equal(c.ledgerResources.Block(c.joinBlock.Header.Number).Data, c.joinBlock.Data) {
+		//	c.logger.Panicf("Join block (%d) we pulled mismatches block we joined with", c.joinBlock.Header.Number)
+		// }
+		return creator.ClusterVerifyBlocks(blocksAfterGenesis, creator.blockSigVerifier, creator.vb)
 	}
 
 	if creator.blockSigVerifier == nil {
 		return errors.New("nil block signature verifier")
 	}
 
-	err := creator.ClusterVerifyBlocks(blocks, creator.blockSigVerifier, creator.vb)
-	if err != nil {
-		fmt.Println("$$$$$$$")
-	}
-	return err
+	return creator.ClusterVerifyBlocks(blocks, creator.blockSigVerifier, creator.vb)
 }
