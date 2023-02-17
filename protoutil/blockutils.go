@@ -222,6 +222,8 @@ func InitBlockMetadata(block *cb.Block) {
 	}
 }
 
+type VerifierBuilder func(block *cb.Block) BlockVerifierFunc
+
 type BlockVerifierFunc func(header *cb.BlockHeader, metadata *cb.BlockMetadata) error
 
 //go:generate counterfeiter -o mocks/policy.go --fake-name Policy . policy

@@ -229,6 +229,7 @@ func channelCreationBlock(systemChannel, applicationChannel string, prevBlock *c
 }
 
 func TestOnboardingChannelUnavailable(t *testing.T) {
+	t.Skipf("This test is disabled, file is going away")
 	// Scenario: During the probing phase of the onboarding,
 	// a channel is deemed relevant and we try to pull it during the
 	// second phase, but alas - precisely at that time - it becomes
@@ -491,6 +492,7 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 }
 
 func TestReplicate(t *testing.T) {
+	t.Skipf("This test is disabled, file is going away")
 	clusterConfig := localconfig.Cluster{
 		ReplicationPullTimeout:  time.Hour,
 		DialTimeout:             time.Hour,

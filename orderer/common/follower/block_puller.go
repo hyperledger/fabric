@@ -8,6 +8,7 @@ package follower
 
 import (
 	"encoding/pem"
+	"fmt"
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp"
@@ -44,10 +45,11 @@ type BlockPullerCreator struct {
 	der                     *pem.Block
 	stdDialer               *cluster.StandardDialer
 	ClusterVerifyBlocks     ClusterVerifyBlocksFunc // Default: cluster.VerifyBlocks, or a mock for testing
+	vb                      protoutil.VerifierBuilder
 }
 
 // ClusterVerifyBlocksFunc is a function that matches the signature of cluster.VerifyBlocks, and allows mocks for testing.
-type ClusterVerifyBlocksFunc func(blockBuff []*common.Block, signatureVerifier protoutil.BlockVerifierFunc) error
+type ClusterVerifyBlocksFunc func(blockBuff []*common.Block, signatureVerifier protoutil.BlockVerifierFunc, vb protoutil.VerifierBuilder) error
 
 // NewBlockPullerCreator creates a new BlockPullerCreator, using the configuration details that do not change during
 // the life cycle of the orderer.
@@ -83,6 +85,7 @@ func NewBlockPullerCreator(
 		stdDialer:           stdDialer,
 		der:                 der,
 		ClusterVerifyBlocks: cluster.VerifyBlocksBFT, // The default block sequence verification method.
+		vb:                  cluster.BlockVerifierBuilder(bccsp),
 	}
 
 	return factory, nil
@@ -166,12 +169,20 @@ func (creator *BlockPullerCreator) VerifyBlockSequence(blocks []*common.Block, _
 		}
 		// TODO: we should revisit this as in theory a malicious node can give an incorrect genesis block.
 		// However, if that happens, then the onboarding node would deviate from the correct nodes.
-		return creator.ClusterVerifyBlocks(blocksAfterGenesis, creator.blockSigVerifier)
+		err = creator.ClusterVerifyBlocks(blocksAfterGenesis, creator.blockSigVerifier, creator.vb)
+		if err != nil {
+			fmt.Println(">>>>>")
+		}
+		return err
 	}
 
 	if creator.blockSigVerifier == nil {
 		return errors.New("nil block signature verifier")
 	}
 
-	return creator.ClusterVerifyBlocks(blocks, creator.blockSigVerifier)
+	err := creator.ClusterVerifyBlocks(blocks, creator.blockSigVerifier, creator.vb)
+	if err != nil {
+		fmt.Println("$$$$$$$")
+	}
+	return err
 }

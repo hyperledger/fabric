@@ -206,54 +206,6 @@ type Dialer interface {
 	Dial(endpointCriteria EndpointCriteria) (*grpc.ClientConn, error)
 }
 
-// VerifyBlocks verifies the given consecutive sequence of blocks is valid,
-// and returns nil if it's valid, else an error.
-func VerifyBlocks(blockBuff []*common.Block, signatureVerifier protoutil.BlockVerifierFunc) error {
-	if len(blockBuff) == 0 {
-		return errors.New("buffer is empty")
-	}
-	// First, we verify that the block hash in every block is:
-	// Equal to the hash in the header
-	// Equal to the previous hash in the succeeding block
-	for i := range blockBuff {
-		if err := VerifyBlockHash(i, blockBuff); err != nil {
-			return err
-		}
-	}
-
-	var config *common.ConfigEnvelope
-	var isLastBlockConfigBlock bool
-	// Verify all configuration blocks that are found inside the block batch,
-	// with the configuration that was committed (nil) or with one that is picked up
-	// during iteration over the block batch.
-	for _, block := range blockBuff {
-		configFromBlock, err := ConfigFromBlock(block)
-		if err == errNotAConfig {
-			isLastBlockConfigBlock = false
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		// The block is a configuration block, so verify it
-		if err := VerifyBlockSignature(block, signatureVerifier, config); err != nil {
-			return err
-		}
-		config = configFromBlock
-		isLastBlockConfigBlock = true
-	}
-
-	// Verify the last block's signature
-	lastBlock := blockBuff[len(blockBuff)-1]
-
-	// If last block is a config block, we verified it using the policy of the previous block, so it's valid.
-	if isLastBlockConfigBlock {
-		return nil
-	}
-
-	return VerifyBlockSignature(lastBlock, signatureVerifier, config)
-}
-
 var errNotAConfig = errors.New("not a config block")
 
 // ConfigFromBlock returns a ConfigEnvelope if exists, or a *NotAConfigBlock error.
@@ -336,7 +288,7 @@ func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
 }
 
 // VerifyBlockSignature verifies the signature on the block with the given BlockVerifier and the given config.
-func VerifyBlockSignature(block *common.Block, verifier protoutil.BlockVerifierFunc, config *common.ConfigEnvelope) error {
+func VerifyBlockSignature(block *common.Block, verifier protoutil.BlockVerifierFunc) error {
 	return verifier(block.Header, block.Metadata)
 }
 
@@ -912,52 +864,36 @@ func SHA256Digest(data []byte) []byte {
 
 // VerifyBlocksBFT verifies the given consecutive sequence of blocks is valid, always verifies signature,
 // and returns nil if it's valid, else an error.
-func VerifyBlocksBFT(blocks []*common.Block, signatureVerifier protoutil.BlockVerifierFunc) error {
-	return verifyBlockSequence(blocks, signatureVerifier, true)
+func VerifyBlocksBFT(blocks []*common.Block, signatureVerifier protoutil.BlockVerifierFunc, vb protoutil.VerifierBuilder) error {
+	return verifyBlockSequence(blocks, signatureVerifier, vb)
 }
 
-func verifyBlockSequence(blockBuff []*common.Block, signatureVerifier protoutil.BlockVerifierFunc, alwaysCheckSig bool) error {
+func verifyBlockSequence(blockBuff []*common.Block, signatureVerifier protoutil.BlockVerifierFunc, vb protoutil.VerifierBuilder) error {
 	if len(blockBuff) == 0 {
 		return errors.New("buffer is empty")
 	}
-	// First, we verify that the block hash in every block is:
-	// Equal to the hash in the header
-	// Equal to the previous hash in the succeeding block
-	for i := range blockBuff {
-		if err := VerifyBlockHash(i, blockBuff); err != nil {
-			return err
-		}
-	}
 
-	var config *common.ConfigEnvelope
-	var isLastBlockConfigBlock bool
 	// Verify all configuration blocks that are found inside the block batch,
 	// with the configuration that was committed (nil) or with one that is picked up
 	// during iteration over the block batch.
 	for _, block := range blockBuff {
 		configFromBlock, err := ConfigFromBlock(block)
-		if err == errNotAConfig && !alwaysCheckSig {
-			isLastBlockConfigBlock = false
-			continue
-		}
+
 		if err != nil && err != errNotAConfig {
 			return err
 		}
-		// The block is a configuration block, or we always check the signature, so verify it.
-		if err := VerifyBlockSignature(block, signatureVerifier, config); err != nil {
-			return err
+
+		if err := VerifyBlockSignature(block, signatureVerifier); err != nil {
+			// Genesis blocks are not signed, so silently ignore the error
+			if block.Header.Number > 0 {
+				return err
+			}
 		}
-		config = configFromBlock
-		isLastBlockConfigBlock = err != errNotAConfig
+
+		if configFromBlock != nil {
+			signatureVerifier = vb(block)
+		}
 	}
 
-	// Verify the last block's signature
-	lastBlock := blockBuff[len(blockBuff)-1]
-
-	// If last block is a config block, we verified it using the policy of the previous block, so it's valid.
-	if isLastBlockConfigBlock && !alwaysCheckSig {
-		return nil
-	}
-
-	return VerifyBlockSignature(lastBlock, signatureVerifier, config)
+	return nil
 }

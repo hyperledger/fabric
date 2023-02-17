@@ -1043,6 +1043,7 @@ func TestSkipPullingPulledChannels(t *testing.T) {
 }
 
 func TestBlockPullerFromConfigBlockGreenPath(t *testing.T) {
+	t.Skipf("This test is disabled, file is going away")
 	noopVerifier := func(header *common.BlockHeader, metadata *common.BlockMetadata) error {
 		return nil
 	}

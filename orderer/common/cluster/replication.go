@@ -385,17 +385,20 @@ func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block, verifier
 		return nil, errors.Errorf("unable to decode TLS certificate PEM: %s", base64.StdEncoding.EncodeToString(conf.TLSCert))
 	}
 
+	// TODO: This code is entire file is going away. I am parking this here for the meantime.
+	verifyBlockSequence := func(blocks []*common.Block, _ string) error {
+		vb := BlockVerifierBuilder(bccsp)
+		verify := func(header *common.BlockHeader, metadata *common.BlockMetadata) error {
+			return verifierRetriever.RetrieveVerifier(conf.Channel)(header, metadata)
+		}
+		return VerifyBlocksBFT(blocks, verify, vb)
+	}
+
 	return &BlockPuller{
-		Logger:  flogging.MustGetLogger("orderer.common.cluster.replication").With("channel", conf.Channel),
-		Dialer:  dialer,
-		TLSCert: tlsCertAsDER.Bytes,
-		VerifyBlockSequence: func(blocks []*common.Block, channel string) error {
-			verifier := verifierRetriever.RetrieveVerifier(channel)
-			if verifier == nil {
-				return errors.Errorf("couldn't acquire verifier for channel %s", channel)
-			}
-			return VerifyBlocks(blocks, verifier)
-		},
+		Logger:              flogging.MustGetLogger("orderer.common.cluster.replication").With("channel", conf.Channel),
+		Dialer:              dialer,
+		TLSCert:             tlsCertAsDER.Bytes,
+		VerifyBlockSequence: verifyBlockSequence,
 		MaxTotalBufferBytes: conf.MaxTotalBufferBytes,
 		Endpoints:           endpoints,
 		RetryTimeout:        RetryTimeout,
