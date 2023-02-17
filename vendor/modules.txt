@@ -56,6 +56,14 @@ github.com/Microsoft/hcsshim/internal/vmcompute
 github.com/Microsoft/hcsshim/internal/wclayer
 github.com/Microsoft/hcsshim/internal/winapi
 github.com/Microsoft/hcsshim/osversion
+# github.com/SmartBFT-Go/consensus v0.0.0-20230212211744-e5a79afcea81
+## explicit; go 1.15
+github.com/SmartBFT-Go/consensus/internal/bft
+github.com/SmartBFT-Go/consensus/pkg/api
+github.com/SmartBFT-Go/consensus/pkg/consensus
+github.com/SmartBFT-Go/consensus/pkg/types
+github.com/SmartBFT-Go/consensus/pkg/wal
+github.com/SmartBFT-Go/consensus/smartbftprotos
 # github.com/VictoriaMetrics/fastcache v1.9.0
 ## explicit; go 1.13
 github.com/VictoriaMetrics/fastcache
@@ -236,6 +244,7 @@ github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset
 github.com/hyperledger/fabric-protos-go/msp
 github.com/hyperledger/fabric-protos-go/orderer
 github.com/hyperledger/fabric-protos-go/orderer/etcdraft
+github.com/hyperledger/fabric-protos-go/orderer/smartbft
 github.com/hyperledger/fabric-protos-go/peer
 github.com/hyperledger/fabric-protos-go/peer/lifecycle
 github.com/hyperledger/fabric-protos-go/transientstore
@@ -457,7 +466,7 @@ go.uber.org/atomic
 # go.uber.org/multierr v1.6.0
 ## explicit; go 1.12
 go.uber.org/multierr
-# go.uber.org/zap v1.17.0
+# go.uber.org/zap v1.19.0
 ## explicit; go 1.13
 go.uber.org/zap
 go.uber.org/zap/buffer
@@ -484,6 +493,9 @@ golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
+# golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
+## explicit
+golang.org/x/sync/semaphore
 # golang.org/x/sys v0.5.0
 ## explicit; go 1.17
 golang.org/x/sys/cpu
