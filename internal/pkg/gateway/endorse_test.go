@@ -56,6 +56,30 @@ func TestEndorse(t *testing.T) {
 			expectedEndorsers: []string{"localhost:7051", "peer2:9051"},
 		},
 		{
+			name: "use highest block height local org peer",
+			plan: endorsementPlan{
+				"g1": {{endorser: peer1Mock, height: 5}, {endorser: localhostMock, height: 4}}, // msp1
+			},
+			members: []networkMember{
+				{string(localhostMock.pkiid), localhostMock.address, localhostMock.mspid, 4},
+				{string(peer1Mock.pkiid), peer1Mock.address, peer1Mock.mspid, 5},
+			},
+			localLedgerHeight: 4,
+			expectedEndorsers: []string{peer1Mock.address},
+		},
+		{
+			name: "use local host ledger height",
+			plan: endorsementPlan{
+				"g1": {{endorser: peer1Mock, height: 5}, {endorser: localhostMock, height: 4}}, // msp1
+			},
+			members: []networkMember{
+				{string(localhostMock.pkiid), localhostMock.address, localhostMock.mspid, 4},
+				{string(peer1Mock.pkiid), peer1Mock.address, peer1Mock.mspid, 5},
+			},
+			localLedgerHeight: 6,
+			expectedEndorsers: []string{localhostMock.address},
+		},
+		{
 			name:              "endorse with specified orgs, despite block height",
 			endorsingOrgs:     []string{"msp1", "msp3"},
 			expectedEndorsers: []string{"localhost:7051", "peer4:11051"},

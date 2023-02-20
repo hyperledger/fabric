@@ -341,6 +341,15 @@ func TestEvaluate(t *testing.T) {
 			errCode:   codes.DeadlineExceeded,
 			errString: "evaluate timeout expired",
 		},
+		{
+			name: "uses local host ledger height",
+			members: []networkMember{
+				{"id2", "peer1:8051", "msp1", 6},
+				{"id1", "localhost:7051", "msp1", 5},
+			},
+			localLedgerHeight: 7,
+			expectedEndorsers: []string{"localhost:7051"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
