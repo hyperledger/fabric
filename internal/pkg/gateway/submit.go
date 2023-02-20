@@ -116,7 +116,12 @@ func (gs *Server) broadcastToAll(orderers []*orderer, txn *common.Envelope, wait
 				waitCh <- nil
 			} else {
 				logger.Warnw("Unsuccessful response sending transaction to orderer", "endpoint", ord.logAddress, "status", status, "info", response.GetInfo())
-				waitCh <- errorDetail(ord.endpointConfig, fmt.Sprintf("received unsuccessful response from orderer: status=%s, info=%s", common.Status_name[int32(status)], response.GetInfo()))
+				if status == common.Status_SERVICE_UNAVAILABLE && response.GetInfo() == "failed to submit request: request already exists" {
+					// the orderer already has this transaction - let it continue
+					waitCh <- nil
+				} else {
+					waitCh <- errorDetail(ord.endpointConfig, fmt.Sprintf("received unsuccessful response from orderer: status=%s, info=%s", common.Status_name[int32(status)], response.GetInfo()))
+				}
 			}
 		}(o)
 	}
