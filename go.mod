@@ -6,6 +6,7 @@ require (
 	code.cloudfoundry.org/clock v1.0.0
 	github.com/IBM/idemix v0.0.0-20220112103229-701e7610d405
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
+	github.com/SmartBFT-Go/consensus v0.0.0-20230212211744-e5a79afcea81
 	github.com/VictoriaMetrics/fastcache v1.9.0
 	github.com/bits-and-blooms/bitset v1.2.1
 	github.com/cheggaaa/pb v1.0.29
@@ -37,7 +38,7 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.5.1
 	go.etcd.io/etcd/raft/v3 v3.5.1
 	go.etcd.io/etcd/server/v3 v3.5.1
-	go.uber.org/zap v1.17.0
+	go.uber.org/zap v1.19.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/tools v0.1.12
 	google.golang.org/grpc v1.47.0
@@ -103,6 +104,7 @@ require (
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
 	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c // indirect

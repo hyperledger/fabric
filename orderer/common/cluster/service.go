@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-//go:generate mockery -dir . -name Dispatcher -case underscore -output ./mocks/
+//go:generate mockery --dir . --name Dispatcher --case underscore --output ./mocks/
 
 // Dispatcher dispatches requests
 type Dispatcher interface {
@@ -27,7 +27,7 @@ type Dispatcher interface {
 	DispatchConsensus(ctx context.Context, request *orderer.ConsensusRequest) error
 }
 
-//go:generate mockery -dir . -name StepStream -case underscore -output ./mocks/
+//go:generate mockery --dir . --name StepStream --case underscore --output ./mocks/
 
 // StepStream defines the gRPC stream for sending
 // transactions, and receiving corresponding responses

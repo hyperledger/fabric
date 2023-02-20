@@ -66,7 +66,8 @@ func NewBlockPuller(support consensus.ConsenterSupport,
 	bccsp bccsp.BCCSP,
 ) (BlockPuller, error) {
 	verifyBlockSequence := func(blocks []*common.Block, _ string) error {
-		return cluster.VerifyBlocks(blocks, support)
+		vb := cluster.BlockVerifierBuilder(bccsp)
+		return cluster.VerifyBlocksBFT(blocks, support.SignatureVerifier(), vb)
 	}
 
 	stdDialer := &cluster.StandardDialer{

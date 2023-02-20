@@ -18,9 +18,10 @@ func (fake *HaltCallbacker) HaltCallback() {
 	fake.haltCallbackMutex.Lock()
 	fake.haltCallbackArgsForCall = append(fake.haltCallbackArgsForCall, struct {
 	}{})
+	stub := fake.HaltCallbackStub
 	fake.recordInvocation("HaltCallback", []interface{}{})
 	fake.haltCallbackMutex.Unlock()
-	if fake.HaltCallbackStub != nil {
+	if stub != nil {
 		fake.HaltCallbackStub()
 	}
 }

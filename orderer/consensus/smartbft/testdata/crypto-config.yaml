@@ -1,0 +1,54 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+# ---------------------------------------------------------------------------
+# "OrdererOrgs" - Definition of organizations managing orderer nodes
+# ---------------------------------------------------------------------------
+OrdererOrgs:
+  - Name: Orderer
+    Domain: example.com
+    EnableNodeOUs: true
+
+    Specs:
+      - Hostname: orderer
+        SANS:
+          - 127.0.0.1
+      - Hostname: orderer2
+        SANS:
+          - 127.0.0.1
+      - Hostname: orderer3
+        SANS:
+          - 127.0.0.1
+      - Hostname: orderer4
+        SANS:
+          - 127.0.0.1
+      - Hostname: orderer5
+        SANS:
+          - 127.0.0.1
+
+# ---------------------------------------------------------------------------
+# "PeerOrgs" - Definition of organizations managing peer nodes
+# ---------------------------------------------------------------------------
+PeerOrgs:
+  - Name: Org1
+    Domain: org1.example.com
+    EnableNodeOUs: true
+
+    Template:
+      Count: 2
+      SANS:
+        - 127.0.0.1
+    Users:
+      Count: 1
+
+  - Name: Org2
+    Domain: org2.example.com
+    EnableNodeOUs: true
+    Template:
+      Count: 2
+      SANS:
+        - 127.0.0.1
+    Users:
+      Count: 1

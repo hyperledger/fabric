@@ -16,6 +16,7 @@ import (
 	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/protoutil"
@@ -326,4 +327,13 @@ func MarshalEtcdRaftMetadata(md *etcdraft.ConfigMetadata) ([]byte, error) {
 		c.ServerTlsCert = serverCert
 	}
 	return proto.Marshal(copyMd)
+}
+
+// MarshalBFTOptions serializes smartbft options.
+func MarshalBFTOptions(op *smartbft.Options) ([]byte, error) {
+	if copyMd, ok := proto.Clone(op).(*smartbft.Options); ok {
+		return proto.Marshal(copyMd)
+	} else {
+		return nil, errors.New("consenter options type mismatch")
+	}
 }

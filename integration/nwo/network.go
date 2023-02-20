@@ -103,6 +103,7 @@ type Channel struct {
 type Orderer struct {
 	Name         string `yaml:"name,omitempty"`
 	Organization string `yaml:"organization,omitempty"`
+	Id           int    `yaml:"id,omitempty"`
 }
 
 // ID provides a unique identifier for an orderer instance.
@@ -708,6 +709,12 @@ func (n *Network) OrdererLocalCryptoDir(o *Orderer, cryptoType string) string {
 // Orderer.
 func (n *Network) OrdererLocalMSPDir(o *Orderer) string {
 	return n.OrdererLocalCryptoDir(o, "msp")
+}
+
+func (n *Network) OrdererSignCert(o *Orderer) string {
+	dirName := filepath.Join(n.OrdererLocalCryptoDir(o, "msp"), "signcerts")
+	fileName := fmt.Sprintf("%s.%s-cert.pem", o.Name, n.Organization(o.Organization).Domain)
+	return filepath.Join(dirName, fileName)
 }
 
 // OrdererLocalTLSDir returns the path to the local TLS directory for the
@@ -1994,4 +2001,16 @@ func (n *Network) StartOrderer(ordererName string) (*ginkgomon.Runner, ifrit.Pro
 	Eventually(ordererProcess.Ready(), n.EventuallyTimeout).Should(BeClosed())
 
 	return ordererRunner, ordererProcess
+}
+
+// OrdererCert returns the path to the orderer's certificate.
+func (n *Network) OrdererCert(o *Orderer) string {
+	org := n.Organization(o.Organization)
+	Expect(org).NotTo(BeNil())
+
+	return filepath.Join(
+		n.OrdererLocalMSPDir(o),
+		"signcerts",
+		fmt.Sprintf("%s.%s-cert.pem", o.Name, org.Domain),
+	)
 }

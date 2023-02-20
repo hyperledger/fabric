@@ -197,19 +197,6 @@ func (dialer *StandardDialer) Dial(endpointCriteria EndpointCriteria) (*grpc.Cli
 	return clientConfigCopy.Dial(endpointCriteria.Endpoint)
 }
 
-//go:generate mockery -dir . -name BlockVerifier -case underscore -output ./mocks/
-
-// BlockVerifier verifies block signatures.
-type BlockVerifier interface {
-	// VerifyBlockSignature verifies a signature of a block.
-	// It has an optional argument of a configuration envelope
-	// which would make the block verification to use validation rules
-	// based on the given configuration in the ConfigEnvelope.
-	// If the config envelope passed is nil, then the validation rules used
-	// are the ones that were applied at commit of previous blocks.
-	VerifyBlockSignature(sd []*protoutil.SignedData, config *common.ConfigEnvelope) error
-}
-
 // BlockSequenceVerifier verifies that the given consecutive sequence
 // of blocks is valid.
 type BlockSequenceVerifier func(blocks []*common.Block, channel string) error
@@ -217,54 +204,6 @@ type BlockSequenceVerifier func(blocks []*common.Block, channel string) error
 // Dialer creates a gRPC connection to a remote address
 type Dialer interface {
 	Dial(endpointCriteria EndpointCriteria) (*grpc.ClientConn, error)
-}
-
-// VerifyBlocks verifies the given consecutive sequence of blocks is valid,
-// and returns nil if it's valid, else an error.
-func VerifyBlocks(blockBuff []*common.Block, signatureVerifier BlockVerifier) error {
-	if len(blockBuff) == 0 {
-		return errors.New("buffer is empty")
-	}
-	// First, we verify that the block hash in every block is:
-	// Equal to the hash in the header
-	// Equal to the previous hash in the succeeding block
-	for i := range blockBuff {
-		if err := VerifyBlockHash(i, blockBuff); err != nil {
-			return err
-		}
-	}
-
-	var config *common.ConfigEnvelope
-	var isLastBlockConfigBlock bool
-	// Verify all configuration blocks that are found inside the block batch,
-	// with the configuration that was committed (nil) or with one that is picked up
-	// during iteration over the block batch.
-	for _, block := range blockBuff {
-		configFromBlock, err := ConfigFromBlock(block)
-		if err == errNotAConfig {
-			isLastBlockConfigBlock = false
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		// The block is a configuration block, so verify it
-		if err := VerifyBlockSignature(block, signatureVerifier, config); err != nil {
-			return err
-		}
-		config = configFromBlock
-		isLastBlockConfigBlock = true
-	}
-
-	// Verify the last block's signature
-	lastBlock := blockBuff[len(blockBuff)-1]
-
-	// If last block is a config block, we verified it using the policy of the previous block, so it's valid.
-	if isLastBlockConfigBlock {
-		return nil
-	}
-
-	return VerifyBlockSignature(lastBlock, signatureVerifier, config)
 }
 
 var errNotAConfig = errors.New("not a config block")
@@ -348,42 +287,9 @@ func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
 	return nil
 }
 
-// SignatureSetFromBlock creates a signature set out of a block.
-func SignatureSetFromBlock(block *common.Block) ([]*protoutil.SignedData, error) {
-	if block.Metadata == nil || len(block.Metadata.Metadata) <= int(common.BlockMetadataIndex_SIGNATURES) {
-		return nil, errors.New("no metadata in block")
-	}
-	metadata, err := protoutil.GetMetadataFromBlock(block, common.BlockMetadataIndex_SIGNATURES)
-	if err != nil {
-		return nil, errors.Errorf("failed unmarshalling medatata for signatures: %v", err)
-	}
-
-	var signatureSet []*protoutil.SignedData
-	for _, metadataSignature := range metadata.Signatures {
-		sigHdr, err := protoutil.UnmarshalSignatureHeader(metadataSignature.SignatureHeader)
-		if err != nil {
-			return nil, errors.Errorf("failed unmarshalling signature header for block with id %d: %v",
-				block.Header.Number, err)
-		}
-		signatureSet = append(signatureSet,
-			&protoutil.SignedData{
-				Identity: sigHdr.Creator,
-				Data: util.ConcatenateBytes(metadata.Value,
-					metadataSignature.SignatureHeader, protoutil.BlockHeaderBytes(block.Header)),
-				Signature: metadataSignature.Signature,
-			},
-		)
-	}
-	return signatureSet, nil
-}
-
 // VerifyBlockSignature verifies the signature on the block with the given BlockVerifier and the given config.
-func VerifyBlockSignature(block *common.Block, verifier BlockVerifier, config *common.ConfigEnvelope) error {
-	signatureSet, err := SignatureSetFromBlock(block)
-	if err != nil {
-		return err
-	}
-	return verifier.VerifyBlockSignature(signatureSet, config)
+func VerifyBlockSignature(block *common.Block, verifier protoutil.BlockVerifierFunc) error {
+	return verifier(block.Header, block.Metadata)
 }
 
 // EndpointCriteria defines criteria of how to connect to a remote orderer node.
@@ -560,20 +466,20 @@ func createErrorFunc(err error) protoutil.BlockVerifierFunc {
 	}
 }
 
-//go:generate mockery -dir . -name VerifierFactory -case underscore -output ./mocks/
+//go:generate mockery --dir . --name VerifierFactory --case underscore --output ./mocks/
 
 // VerifierFactory creates BlockVerifiers.
 type VerifierFactory interface {
 	// VerifierFromConfig creates a BlockVerifier from the given configuration.
-	VerifierFromConfig(configuration *common.ConfigEnvelope, channel string) (BlockVerifier, error)
+	VerifierFromConfig(configuration *common.ConfigEnvelope, channel string) (protoutil.BlockVerifierFunc, error)
 }
 
 // VerificationRegistry registers verifiers and retrieves them.
 type VerificationRegistry struct {
-	LoadVerifier       func(chain string) BlockVerifier
+	LoadVerifier       func(chain string) protoutil.BlockVerifierFunc
 	Logger             *flogging.FabricLogger
 	VerifierFactory    VerifierFactory
-	VerifiersByChannel map[string]BlockVerifier
+	VerifiersByChannel map[string]protoutil.BlockVerifierFunc
 }
 
 // RegisterVerifier adds a verifier into the registry if applicable.
@@ -593,8 +499,8 @@ func (vr *VerificationRegistry) RegisterVerifier(chain string) {
 	vr.Logger.Infof("Registered verifier for chain %s", chain)
 }
 
-// RetrieveVerifier returns a BlockVerifier for the given channel, or nil if not found.
-func (vr *VerificationRegistry) RetrieveVerifier(channel string) BlockVerifier {
+// RetrieveVerifier returns a BlockVerifierFunc for the given channel, or nil if not found.
+func (vr *VerificationRegistry) RetrieveVerifier(channel string) protoutil.BlockVerifierFunc {
 	verifier, exists := vr.VerifiersByChannel[channel]
 	if exists {
 		return verifier
@@ -663,19 +569,30 @@ type BlockVerifierAssembler struct {
 }
 
 // VerifierFromConfig creates a BlockVerifier from the given configuration.
-func (bva *BlockVerifierAssembler) VerifierFromConfig(configuration *common.ConfigEnvelope, channel string) (BlockVerifier, error) {
+func (bva *BlockVerifierAssembler) VerifierFromConfig(configuration *common.ConfigEnvelope, channel string) (protoutil.BlockVerifierFunc, error) {
 	bundle, err := channelconfig.NewBundle(channel, configuration.Config, bva.BCCSP)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed extracting bundle from envelope")
+		return createErrorFunc(err), err
 	}
-	policyMgr := bundle.PolicyManager()
 
-	return &BlockValidationPolicyVerifier{
-		Logger:    bva.Logger,
-		PolicyMgr: policyMgr,
-		Channel:   channel,
-		BCCSP:     bva.BCCSP,
-	}, nil
+	policy, exists := bundle.PolicyManager().GetPolicy(policies.BlockValidation)
+	if !exists {
+		err := errors.New("no policies in config block")
+		return createErrorFunc(err), err
+	}
+
+	bftEnabled := bundle.ChannelConfig().Capabilities().ConsensusTypeBFT()
+
+	var consenters []*common.Consenter
+	if bftEnabled {
+		cfg, ok := bundle.OrdererConfig()
+		if !ok {
+			err := errors.New("no orderer section in config block")
+			return createErrorFunc(err), err
+		}
+		consenters = cfg.Consenters()
+	}
+	return protoutil.BlockSignatureVerifier(bftEnabled, consenters, policy), nil
 }
 
 // BlockValidationPolicyVerifier verifies signatures based on the block validation policy.
@@ -708,7 +625,7 @@ func (bv *BlockValidationPolicyVerifier) VerifyBlockSignature(sd []*protoutil.Si
 	return policy.EvaluateSignedData(sd)
 }
 
-//go:generate mockery -dir . -name BlockRetriever -case underscore -output ./mocks/
+//go:generate mockery --dir . --name BlockRetriever --case underscore --output ./mocks/
 
 // BlockRetriever retrieves blocks
 type BlockRetriever interface {
@@ -943,4 +860,40 @@ func VerifySignature(identity, msgHash, signature []byte) error {
 func SHA256Digest(data []byte) []byte {
 	hash := sha256.Sum256(data)
 	return hash[:]
+}
+
+// VerifyBlocksBFT verifies the given consecutive sequence of blocks is valid, always verifies signature,
+// and returns nil if it's valid, else an error.
+func VerifyBlocksBFT(blocks []*common.Block, signatureVerifier protoutil.BlockVerifierFunc, vb protoutil.VerifierBuilder) error {
+	return verifyBlockSequence(blocks, signatureVerifier, vb)
+}
+
+func verifyBlockSequence(blockBuff []*common.Block, signatureVerifier protoutil.BlockVerifierFunc, vb protoutil.VerifierBuilder) error {
+	if len(blockBuff) == 0 {
+		return errors.New("buffer is empty")
+	}
+
+	// Verify all configuration blocks that are found inside the block batch,
+	// with the configuration that was committed (nil) or with one that is picked up
+	// during iteration over the block batch.
+	for _, block := range blockBuff {
+		configFromBlock, err := ConfigFromBlock(block)
+
+		if err != nil && err != errNotAConfig {
+			return err
+		}
+
+		if err := VerifyBlockSignature(block, signatureVerifier); err != nil {
+			// Genesis blocks are not signed, so silently ignore the error
+			if block.Header.Number > 0 {
+				return err
+			}
+		}
+
+		if configFromBlock != nil {
+			signatureVerifier = vb(block)
+		}
+	}
+
+	return nil
 }

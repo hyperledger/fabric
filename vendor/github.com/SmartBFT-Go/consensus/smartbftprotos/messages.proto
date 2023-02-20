@@ -1,0 +1,129 @@
+// Copyright IBM Corp. All Rights Reserved.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
+syntax = "proto3";
+
+
+option go_package = "github.com/SmartBFT-Go/consensus/smartbftprotos";
+
+
+package smartbftprotos;
+
+message Message {
+    oneof content {
+        PrePrepare pre_prepare = 1;
+        Prepare prepare = 2;
+        Commit commit = 3;
+        ViewChange view_change = 4;
+        SignedViewData view_data = 5;
+        NewView new_view = 6;
+        HeartBeat heart_beat = 7;
+        HeartBeatResponse heart_beat_response = 8;
+        StateTransferRequest state_transfer_request = 9;
+        StateTransferResponse state_transfer_response = 10;
+    }
+}
+
+message PrePrepare {
+    uint64 view = 1;
+    uint64 seq = 2;
+    Proposal proposal = 3;
+    repeated Signature prev_commit_signatures = 4;
+}
+
+message Prepare {
+    uint64 view = 1;
+    uint64 seq = 2;
+    string digest = 3;
+    bool assist = 4;
+}
+
+message ProposedRecord {
+    PrePrepare pre_prepare = 1;
+    Prepare prepare = 2;
+}
+
+message Commit {
+    uint64 view = 1;
+    uint64 seq = 2;
+    string digest = 3;
+    Signature signature = 4;
+    bool assist = 5;
+}
+
+message PreparesFrom {
+    repeated uint64 ids = 1;
+}
+
+message ViewChange {
+    uint64 next_view = 1;
+    string reason = 2;
+}
+
+message ViewData {
+    uint64 next_view = 1;
+    Proposal last_decision = 2;
+    repeated Signature last_decision_signatures = 3;
+    Proposal in_flight_proposal = 4;
+    bool in_flight_prepared = 5;
+}
+
+message SignedViewData {
+   bytes raw_view_data = 1;
+   uint64 signer = 2;
+   bytes signature = 3;
+}
+
+message NewView {
+    repeated SignedViewData signed_view_data = 2;
+}
+
+message HeartBeat {
+    uint64 view = 1;
+    uint64 seq  = 2;
+}
+
+message HeartBeatResponse {
+    uint64 view = 1;
+}
+
+message Signature {
+    uint64 signer = 1;
+    bytes value = 2;
+    bytes msg = 3;
+}
+
+message Proposal {
+    bytes header = 1;
+    bytes payload = 2;
+    bytes metadata = 3;
+    uint64 verification_sequence = 4;
+}
+
+message ViewMetadata {
+    uint64 view_id = 1;
+    uint64 latest_sequence = 2;
+    uint64 decisions_in_view = 3;
+    repeated uint64 black_list = 4;
+    bytes prev_commit_signature_digest = 5;
+}
+
+message SavedMessage {
+    oneof content {
+        ProposedRecord proposed_record = 1;
+        Message commit = 2;
+        ViewMetadata new_view = 3;
+        ViewChange view_change = 4;
+    }
+}
+
+message StateTransferRequest {
+
+}
+
+message StateTransferResponse {
+    uint64 view_num = 1;
+    uint64 sequence = 2;
+}

@@ -270,3 +270,47 @@ func MultiNodeEtcdRaftNoSysChan() *Config {
 
 	return config
 }
+
+func BasicSmartBFT() *Config {
+	config := BasicConfig()
+	config.Consensus.Type = "BFT"
+	config.Profiles = []*Profile{{
+		Name:     "SampleDevModeSmartBFT",
+		Orderers: []string{"orderer"},
+	}, {
+		Name:          "TwoOrgsChannel",
+		Consortium:    "SampleConsortium",
+		Organizations: []string{"Org1", "Org2"},
+	}}
+	return config
+}
+
+func MultiNodeSmartBFT() *Config {
+	config := BasicSmartBFT()
+	config.Orderers = []*Orderer{
+		{Name: "orderer1", Organization: "OrdererOrg", Id: 1},
+		{Name: "orderer2", Organization: "OrdererOrg", Id: 2},
+		{Name: "orderer3", Organization: "OrdererOrg", Id: 3},
+		{Name: "orderer4", Organization: "OrdererOrg", Id: 4},
+	}
+	config.Profiles = []*Profile{{
+		ChannelCapabilities: []string{"V3_0"},
+		Name:                "SampleDevModeSmartBFT",
+		Orderers:            []string{"orderer1", "orderer2", "orderer3", "orderer4"},
+		Organizations:       []string{"Org1", "Org2"},
+		AppCapabilities:     []string{"V2_0"},
+	}}
+
+	config.Channels = []*Channel{
+		{Name: "testchannel1", Profile: "SampleDevModeSmartBFT"},
+		{Name: "testchannel2", Profile: "SampleDevModeSmartBFT"},
+	}
+
+	for _, peer := range config.Peers {
+		peer.Channels = []*PeerChannel{
+			{Name: "testchannel1", Anchor: true},
+			{Name: "testchannel2", Anchor: true},
+		}
+	}
+	return config
+}

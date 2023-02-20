@@ -213,6 +213,11 @@ func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
 			return nil, errors.Errorf("cannot load consenter config for orderer type %s: %s", ConsensusTypeBFT, err)
 		}
 		addValue(ordererGroup, channelconfig.OrderersValue(consenterProtos), channelconfig.AdminsPolicyKey)
+		if consensusMetadata, err = channelconfig.MarshalBFTOptions(conf.SmartBFT); err != nil {
+			return nil, errors.Errorf("consenter options read failed with error %s for orderer type %s", err, ConsensusTypeBFT)
+		}
+		// Overwrite policy manually by computing it from the consenters
+		policies.EncodeBFTBlockVerificationPolicy(consenterProtos, ordererGroup)
 	default:
 		return nil, errors.Errorf("unknown orderer type: %s", conf.OrdererType)
 	}
@@ -263,7 +268,7 @@ func consenterProtosFromConfig(consenterMapping []*genesisconfig.Consenter) ([]*
 			if err != nil {
 				return nil, fmt.Errorf("cannot load identity for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
 			}
-			c.ServerTlsCert = identity
+			c.Identity = identity
 		}
 
 		consenterProtos = append(consenterProtos, c)

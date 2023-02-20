@@ -100,9 +100,8 @@ type ConsenterSupport interface {
 	identity.SignerSerializer
 	msgprocessor.Processor
 
-	// VerifyBlockSignature verifies a signature of a block with a given optional
-	// configuration (can be nil).
-	VerifyBlockSignature([]*protoutil.SignedData, *cb.ConfigEnvelope) error
+	// SignatureVerifier verifies a signature of a block.
+	SignatureVerifier() protoutil.BlockVerifierFunc
 
 	// BlockCutter returns the block cutting helper for this channel.
 	BlockCutter() blockcutter.Receiver

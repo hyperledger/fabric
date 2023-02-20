@@ -28,9 +28,10 @@ func (fake *InactiveChainRegistry) Stop() {
 	fake.stopMutex.Lock()
 	fake.stopArgsForCall = append(fake.stopArgsForCall, struct {
 	}{})
+	stub := fake.StopStub
 	fake.recordInvocation("Stop", []interface{}{})
 	fake.stopMutex.Unlock()
-	if fake.StopStub != nil {
+	if stub != nil {
 		fake.StopStub()
 	}
 }
@@ -54,9 +55,10 @@ func (fake *InactiveChainRegistry) TrackChain(arg1 string, arg2 *common.Block, a
 		arg2 *common.Block
 		arg3 func()
 	}{arg1, arg2, arg3})
+	stub := fake.TrackChainStub
 	fake.recordInvocation("TrackChain", []interface{}{arg1, arg2, arg3})
 	fake.trackChainMutex.Unlock()
-	if fake.TrackChainStub != nil {
+	if stub != nil {
 		fake.TrackChainStub(arg1, arg2, arg3)
 	}
 }

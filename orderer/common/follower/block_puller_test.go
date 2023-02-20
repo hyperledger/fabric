@@ -115,7 +115,7 @@ func TestBlockPullerFactory_BlockPuller(t *testing.T) {
 func TestBlockPullerFactory_VerifyBlockSequence(t *testing.T) {
 	// replaces cluster.VerifyBlocks, count blocks
 	var numBlocks int32
-	altVerifyBlocks := func(blockBuff []*cb.Block, signatureVerifier cluster.BlockVerifier) error { // replaces cluster.VerifyBlocks, count invocations
+	altVerifyBlocks := func(blockBuff []*cb.Block, signatureVerifier protoutil.BlockVerifierFunc, vb protoutil.VerifierBuilder) error { // replaces cluster.VerifyBlocks, count invocations
 		if len(blockBuff) == 0 {
 			return errors.New("buffer is empty")
 		}
@@ -142,17 +142,25 @@ func TestBlockPullerFactory_VerifyBlockSequence(t *testing.T) {
 	})
 
 	t.Run("skip genesis block as part of a slice", func(t *testing.T) {
+		gb := generateJoinBlock(t, tlsCA, channelID, 0)
 		setupBlockPullerTest(t)
 		atomic.StoreInt32(&numBlocks, 0)
 		creator, err := follower.NewBlockPullerCreator(channelID, testLogger, mockSigner, dialer, localconfig.Cluster{}, cryptoProv)
 		require.NotNil(t, creator)
 		require.NoError(t, err)
+		creator.JoinBlock = gb
 		creator.ClusterVerifyBlocks = altVerifyBlocks
 		blocks := []*cb.Block{
-			generateJoinBlock(t, tlsCA, channelID, 0),
-			protoutil.NewBlock(1, []byte{}),
-			protoutil.NewBlock(2, []byte{}),
+			gb,
+			protoutil.NewBlock(1, nil),
+			protoutil.NewBlock(2, nil),
 		}
+
+		tx, err := protoutil.CreateSignedEnvelopeWithTLSBinding(0, "mychannel", nil, &cb.Payload{}, 0, 0, nil)
+		require.NoError(t, err)
+
+		blocks[1].Data.Data = [][]byte{protoutil.MarshalOrPanic(tx)}
+		blocks[2].Data.Data = [][]byte{protoutil.MarshalOrPanic(tx)}
 
 		err = creator.VerifyBlockSequence(blocks, "")
 		require.NoError(t, err)

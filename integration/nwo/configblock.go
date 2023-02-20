@@ -12,6 +12,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/policies"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
@@ -326,6 +329,49 @@ func UpdateOrdererMSP(network *Network, peer *Peer, orderer *Orderer, channel, o
 	// Wrap it back into the config
 	mspConfig.Config = protoutil.MarshalOrPanic(fabricConfig)
 	rawMSPConfig.Value = protoutil.MarshalOrPanic(mspConfig)
+
+	UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
+}
+
+func UpdateConsenters(network *Network, peer *Peer, orderer *Orderer, channel string, f func(orderers *common.Orderers)) {
+	config := GetConfig(network, peer, orderer, channel)
+
+	updatedConfig := proto.Clone(config).(*common.Config)
+
+	rawOrderers := updatedConfig.ChannelGroup.Groups["Orderer"].Values["Orderers"]
+
+	orderersVal := &common.Orderers{}
+	err := proto.Unmarshal(rawOrderers.Value, orderersVal)
+	Expect(err).NotTo(HaveOccurred())
+
+	f(orderersVal)
+
+	policies.EncodeBFTBlockVerificationPolicy(orderersVal.ConsenterMapping, updatedConfig.ChannelGroup.Groups["Orderer"])
+
+	rawOrderers.Value, err = proto.Marshal(orderersVal)
+	Expect(err).NotTo(HaveOccurred())
+
+	updatedConfig.ChannelGroup.Groups["Orderer"].Values["Orderers"].Value = protoutil.MarshalOrPanic(orderersVal)
+
+	UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
+}
+
+// UpdateOrdererEndpoints executes a config update that updates the orderer metadata according to the given endpoints
+func UpdateOrdererEndpoints(network *Network, peer *Peer, orderer *Orderer, channel string, endpoints ...string) {
+	config := GetConfig(network, peer, orderer, channel)
+	updatedConfig := proto.Clone(config).(*common.Config)
+
+	ordererGrp := updatedConfig.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups
+	// Get the first orderer org config
+	var firstOrdererConfig *common.ConfigGroup
+	for _, grp := range ordererGrp {
+		firstOrdererConfig = grp
+		break
+	}
+
+	firstOrdererConfig.Values["Endpoints"].Value = protoutil.MarshalOrPanic(&common.OrdererAddresses{
+		Addresses: endpoints,
+	})
 
 	UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
 }

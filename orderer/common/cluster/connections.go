@@ -19,7 +19,7 @@ import (
 // RemoteVerifier verifies the connection to the remote host
 type RemoteVerifier func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error
 
-//go:generate mockery -dir . -name SecureDialer -case underscore -output ./mocks/
+//go:generate mockery --dir . --name SecureDialer --case underscore --output ./mocks/
 
 // SecureDialer connects to a remote address
 type SecureDialer interface {
