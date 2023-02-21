@@ -115,7 +115,8 @@ func (ef *endpointFactory) newConnection(address string, tlsRootCerts [][]byte) 
 			Certificate:       ef.clientCert,
 			Key:               ef.clientKey,
 		},
-		DialTimeout: ef.timeout,
+		DialTimeout:  ef.timeout,
+		AsyncConnect: true,
 	}
 	dialOpts, err := config.DialOptions()
 	if err != nil {
