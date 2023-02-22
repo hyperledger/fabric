@@ -24,7 +24,7 @@ type TopLevel struct {
 	General              General
 	FileLedger           FileLedger
 	Debug                Debug
-	Consensus            interface{}
+	Consensus            Consensus
 	Operations           Operations
 	Metrics              Metrics
 	ChannelParticipation ChannelParticipation
@@ -199,6 +199,11 @@ var Defaults = TopLevel{
 	Admin: Admin{
 		ListenAddress: "127.0.0.1:0",
 	},
+	Consensus: Consensus{
+		Type:    "etcdraft",
+		WALDir:  "/var/hyperledger/production/orderer/etcdraft/wal",
+		SnapDir: "/var/hyperledger/production/orderer/etcdraft/snapshot",
+	},
 }
 
 // Load parses the orderer YAML file and environment, producing
@@ -345,6 +350,15 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.General.MaxSendMsgSize == 0:
 			logger.Infof("General.MaxSendMsgSize is unset, setting to %v", Defaults.General.MaxSendMsgSize)
 			c.General.MaxSendMsgSize = Defaults.General.MaxSendMsgSize
+		case c.Consensus.Type == "":
+			logger.Infof("Consensus.Type is unset, setting to %v", Defaults.Consensus.Type)
+			c.Consensus.Type = Defaults.Consensus.Type
+		case c.Consensus.WALDir == "":
+			logger.Infof("Consensus.WALDir is unset, setting to %v", Defaults.Consensus.WALDir)
+			c.Consensus.WALDir = Defaults.Consensus.WALDir
+		case c.Consensus.SnapDir == "" && c.Consensus.Type == "etcdraft":
+			logger.Infof("Consensus.Snapdir is unset, setting to %v", Defaults.Consensus.SnapDir)
+			c.Consensus.SnapDir = Defaults.Consensus.SnapDir
 		default:
 			return
 		}
@@ -362,5 +376,7 @@ func translateCAs(configDir string, certificateAuthorities []string) []string {
 
 // Consensus indicates the orderer type.
 type Consensus struct {
-	Type string `yaml:"type,omitempty"`
+	Type    string `yaml:"type,omitempty"`
+	WALDir  string `yaml:"type,omitempty"`
+	SnapDir string `yaml:"type,omitempty"`
 }

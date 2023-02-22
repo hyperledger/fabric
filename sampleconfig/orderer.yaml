@@ -313,6 +313,10 @@ Consensus:
     # The allowed key-value pairs here depend on consensus plugin. For etcd/raft,
     # we use following options:
 
+    # Type specifies the consensus type to run.
+    # Currently supported types are 'etcdraft' and 'BFT'
+    Type: etcdraft
+
     # WALDir specifies the location at which Write Ahead Logs for etcd/raft are
     # stored. Each channel will have its own subdir named after channel ID.
     WALDir: /var/hyperledger/production/orderer/etcdraft/wal
