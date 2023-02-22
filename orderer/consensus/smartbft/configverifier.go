@@ -99,7 +99,29 @@ func (cbv *ConfigBlockValidator) ValidateConfig(envelope *cb.Envelope) error {
 }
 
 func (cbv *ConfigBlockValidator) checkConsentersMatchPolicy(conf *cb.Config) error {
-	// TODO: check nil pointers everywhere
+	if conf == nil {
+		return fmt.Errorf("empty Config")
+	}
+
+	if conf.ChannelGroup == nil {
+		return fmt.Errorf("empty channel group")
+	}
+
+	if len(conf.ChannelGroup.Groups) == 0 {
+		return fmt.Errorf("no groups in channel group")
+	}
+
+	if conf.ChannelGroup.Groups["Orderer"] == nil {
+		return fmt.Errorf("no 'Orderer' group in channel groups")
+	}
+
+	if len(conf.ChannelGroup.Groups["Orderer"].Values) == 0 {
+		return fmt.Errorf("no values in 'Orderer' group")
+	}
+
+	if conf.ChannelGroup.Groups["Orderer"].Values["Orderers"] == nil {
+		return fmt.Errorf("no values in 'Orderer' group")
+	}
 
 	ords := &cb.Orderers{}
 	if err := proto.Unmarshal(conf.ChannelGroup.Groups["Orderer"].Values["Orderers"].Value, ords); err != nil {
@@ -112,6 +134,9 @@ func (cbv *ConfigBlockValidator) checkConsentersMatchPolicy(conf *cb.Config) err
 	var identities []*mspa.MSPPrincipal
 	var pols []*cb.SignaturePolicy
 	for i, consenter := range ords.ConsenterMapping {
+		if consenter == nil {
+			return fmt.Errorf("consenter %d in the mapping is empty", i)
+		}
 		pols = append(pols, &cb.SignaturePolicy{
 			Type: &cb.SignaturePolicy_SignedBy{
 				SignedBy: int32(i),
@@ -132,6 +157,14 @@ func (cbv *ConfigBlockValidator) checkConsentersMatchPolicy(conf *cb.Config) err
 	expectedConfigPol := &cb.Policy{
 		Type:  int32(cb.Policy_SIGNATURE),
 		Value: protoutil.MarshalOrPanic(sp),
+	}
+
+	if conf.ChannelGroup.Groups["Orderer"].Policies == nil || len(conf.ChannelGroup.Groups["Orderer"].Policies) == 0 {
+		return fmt.Errorf("empty policies in 'Orderer' group")
+	}
+
+	if conf.ChannelGroup.Groups["Orderer"].Policies["BlockValidation"] == nil {
+		return fmt.Errorf("block validation policy is not found in the policies of 'Orderer' group")
 	}
 
 	actualPolicy := conf.ChannelGroup.Groups["Orderer"].Policies["BlockValidation"].Policy
