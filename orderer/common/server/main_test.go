@@ -43,7 +43,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/onboarding"
 	server_mocks "github.com/hyperledger/fabric/orderer/common/server/mocks"
 	"github.com/hyperledger/fabric/orderer/consensus"
-	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -769,7 +768,8 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		FileLedger: localconfig.FileLedger{
 			Location: ledgerDir,
 		},
-		Consensus: etcdraft.Config{
+		Consensus: localconfig.Consensus{
+			Type:    "etcdraft",
 			WALDir:  path.Join(tmpDir, "etcdraft", "wal"),
 			SnapDir: path.Join(tmpDir, "etcdraft", "snap"),
 		},
@@ -842,7 +842,8 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		FileLedger: localconfig.FileLedger{
 			Location: ledgerDir,
 		},
-		Consensus: etcdraft.Config{
+		Consensus: localconfig.Consensus{
+			Type:    "etcdraft",
 			WALDir:  path.Join(tmpDir, "etcdraft", "wal"),
 			SnapDir: path.Join(tmpDir, "etcdraft", "snap"),
 		},
