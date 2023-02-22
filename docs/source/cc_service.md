@@ -155,6 +155,7 @@ For example:
 ```json
 {
   "address": "your.chaincode.host.com:9999",
+  "domain": "your.chaincode.host.com",
   "dial_timeout": "10s",
   "tls_required": "true",
   "client_auth_required": "true",
