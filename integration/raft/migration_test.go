@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
 	protosraft "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
@@ -39,7 +40,6 @@ var _ = Describe("ConsensusTypeMigration", func() {
 		client  *docker.Client
 		network *nwo.Network
 
-		process                ifrit.Process
 		o1Proc, o2Proc, o3Proc ifrit.Process
 
 		o1Runner *ginkgomon.Runner
@@ -56,11 +56,6 @@ var _ = Describe("ConsensusTypeMigration", func() {
 	})
 
 	AfterEach(func() {
-		if process != nil {
-			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
-		}
-
 		for _, oProc := range []ifrit.Process{o1Proc, o2Proc, o3Proc} {
 			if oProc != nil {
 				oProc.Signal(syscall.SIGTERM)
@@ -82,146 +77,99 @@ var _ = Describe("ConsensusTypeMigration", func() {
 	// suite will need to be completed and revised.
 	Describe("Raft to future-type migration", func() {
 		var (
-			orderer                        *nwo.Orderer
-			peer                           *nwo.Peer
-			syschannel, channel1, channel2 string
+			orderer            *nwo.Orderer
+			peer               *nwo.Peer
+			channel1, channel2 string
 		)
 
 		BeforeEach(func() {
-			network = nwo.New(raftMultiChannel(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.MultiChannelEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
 			orderer = network.Orderer("orderer")
 			peer = network.Peer("Org1", "peer0")
 
-			syschannel = network.SystemChannel.Name
-			channel1 = "testchannel1"
+			channel1 = "testchannel"
 			channel2 = "testchannel2"
 
 			o1Runner = network.OrdererRunner(orderer)
-
 			o1Proc = ifrit.Invoke(o1Runner)
 			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
-			Eventually(o1Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(
-				fmt.Sprintf("Raft leader changed: 0 -> 1 channel=%s node=1", syschannel)))
 
-			By("Create & join first channel, deploy and invoke chaincode")
-			network.CreateChannel(channel1, orderer, peer)
-			Eventually(o1Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(
-				fmt.Sprintf("Raft leader changed: 0 -> 1 channel=%s node=1", channel1)))
+			By("Create & join first channel")
+			channelparticipation.JoinOrdererAppChannel(network, channel1, orderer, o1Runner)
 		})
 
-		// This test executes the "green path" migration config updates on an etcdraft based system with a system channel
-		// and a standard channel, and verifies that these config updates have the desired effect.
+		// This test executes the "green path" migration config updates on an etcdraft based system, on a standard
+		// channel, and verifies that these config updates have the desired effect.
 		//
 		// The green path is entering maintenance mode, and then changing the consensus type.
-		// In maintenance mode we check that channel creation is blocked and that normal transactions are blocked.
+		// In maintenance mode we check that normal transactions are blocked.
 		//
 		// We also check that after entering maintenance mode, we can exit it without making any changes - the "abort path".
 		It("executes raft2future green path", func() {
 			//=== The abort path ======================================================================================
-			//=== Step 1: Config update on system channel, MAINTENANCE ===
-			By("1) Config update on system channel, State=MAINTENANCE, enter maintenance-mode")
-			config, updatedConfig := prepareTransition(network, peer, orderer, syschannel,
-				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
-				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
-			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
 
-			By("1) Verify: system channel1 config changed")
-			sysStartBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
-			Expect(sysStartBlockNum).ToNot(Equal(0))
-			config = nwo.GetConfig(network, peer, orderer, syschannel)
-			consensusTypeValue := extractOrdererConsensusType(config)
-			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
-
-			By("1) Verify: new channels cannot be created")
-			exitCode := network.CreateChannelExitCode(channel2, orderer, peer)
-			Expect(exitCode).ToNot(Equal(0))
-
-			//=== Step 2: Config update on standard channel, MAINTENANCE ===
-			By("2) Config update on standard channel, State=MAINTENANCE, enter maintenance-mode")
-			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
+			//=== Step 1: Config update on standard channel, MAINTENANCE ===
+			By("1) Config update on standard channel, State=MAINTENANCE, enter maintenance-mode")
+			config, updatedConfig := prepareTransition(network, peer, orderer, channel1,
 				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
 				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
 			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
 
-			By("2) Verify: standard channel config changed")
+			By("1) Verify: standard channel config changed")
 			std1EntryBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
 			Expect(std1EntryBlockNum).ToNot(Equal(0))
 			config = nwo.GetConfig(network, peer, orderer, channel1)
-			consensusTypeValue = extractOrdererConsensusType(config)
+			consensusTypeValue := extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			By("2) Verify: Normal TX's on standard channel are blocked")
+			By("1) Verify: Normal TX's on standard channel are blocked")
 			assertTxFailed(network, orderer, channel1)
 
 			// In maintenance mode deliver requests are open to those entities that satisfy the /Channel/Orderer/Readers policy
-			By("2) Verify: delivery request from peer is blocked")
+			By("1) Verify: delivery request from peer is blocked")
 			err := checkPeerDeliverRequest(orderer, peer, network, channel1)
 			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
 
-			//=== Step 3: config update on system channel, State=NORMAL, abort ===
-			By("3) Config update on system channel, State=NORMAL, exit maintenance-mode - abort path")
-			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
-				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
-				"etcdraft", nil, protosorderer.ConsensusType_STATE_NORMAL)
-			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
-
-			By("3) Verify: system channel config changed")
-			sysBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
-			Expect(sysBlockNum).To(Equal(sysStartBlockNum + 1))
-
-			By("3) Verify: create new channel, executing transaction")
-			network.CreateChannel(channel2, orderer, peer)
-
+			//=== Step 2: Create a new channel
+			By("2) Create & join second channel")
+			channelparticipation.JoinOrdererAppChannel(network, channel2, orderer, o1Runner)
 			assertBlockCreation(network, orderer, peer, channel2, 1)
 
-			By("3) Verify: delivery request from peer is not blocked on new channel")
+			By("2) Verify: delivery request from peer is not blocked on new channel")
 			err = checkPeerDeliverRequest(orderer, peer, network, channel2)
 			Expect(err).NotTo(HaveOccurred())
 
-			//=== Step 4: config update on standard channel, State=NORMAL, abort ===
-			By("4) Config update on standard channel, State=NORMAL, exit maintenance-mode - abort path")
+			//=== Step 3: config update on standard channel, State=NORMAL, abort ===
+			By("3) Config update on standard channel, State=NORMAL, exit maintenance-mode - abort path")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
 				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"etcdraft", nil, protosorderer.ConsensusType_STATE_NORMAL)
 			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
 
-			By("4) Verify: standard channel config changed")
+			By("3) Verify: standard channel config changed")
 			std1BlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
 			Expect(std1BlockNum).To(Equal(std1EntryBlockNum + 1))
 
-			By("4) Verify: standard channel delivery requests from peer unblocked")
+			By("3) Verify: standard channel delivery requests from peer unblocked")
 			err = checkPeerDeliverRequest(orderer, peer, network, channel1)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("4) Verify: Normal TX's on standard channel are permitted again")
+			By("3) Verify: Normal TX's on standard channel are permitted again")
 			assertBlockCreation(network, orderer, nil, channel1, 3)
 
 			//=== The green path ======================================================================================
-			//=== Step 5: Config update on system channel, MAINTENANCE, again ===
-			By("5) Config update on system channel, State=MAINTENANCE, enter maintenance-mode again")
-			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
-				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
-				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
-			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
 
-			By("5) Verify: system channel config changed")
-			sysStartBlockNum = nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
-			Expect(sysStartBlockNum).ToNot(Equal(0))
-			config = nwo.GetConfig(network, peer, orderer, syschannel)
-			consensusTypeValue = extractOrdererConsensusType(config)
-			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
-
-			//=== Step 6: Config update on standard channel1, MAINTENANCE, again ===
-			By("6) Config update on standard channel1, State=MAINTENANCE, enter maintenance-mode again")
+			//=== Step 4: Config update on standard channel1, MAINTENANCE, again ===
+			By("4) Config update on standard channel1, State=MAINTENANCE, enter maintenance-mode again")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
 				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
 				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
 			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
 
-			By("6) Verify: standard channel config changed")
+			By("4) Verify: standard channel config changed")
 			std1EntryBlockNum = nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
 			Expect(std1EntryBlockNum).ToNot(Equal(0))
 
@@ -229,21 +177,21 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			By("6) Verify: delivery request from peer is blocked")
+			By("4) Verify: delivery request from peer is blocked")
 			err = checkPeerDeliverRequest(orderer, peer, network, channel1)
 			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
 
-			By("6) Verify: Normal TX's on standard channel are blocked")
+			By("4) Verify: Normal TX's on standard channel are blocked")
 			assertTxFailed(network, orderer, channel1)
 
-			//=== Step 7: Config update on standard channel2, MAINTENANCE ===
-			By("7) Config update on standard channel2, State=MAINTENANCE, enter maintenance-mode again")
+			//=== Step 5: Config update on standard channel2, MAINTENANCE ===
+			By("5) Config update on standard channel2, State=MAINTENANCE, enter maintenance-mode again")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel2,
 				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
 				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
 			nwo.UpdateOrdererConfig(network, orderer, channel2, config, updatedConfig, peer, orderer)
 
-			By("7) Verify: standard channel config changed")
+			By("5) Verify: standard channel config changed")
 			std2EntryBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel2)
 			Expect(std2EntryBlockNum).ToNot(Equal(0))
 
@@ -251,22 +199,20 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			By("7) Verify: delivery request from peer is blocked")
+			By("5) Verify: delivery request from peer is blocked")
 			err = checkPeerDeliverRequest(orderer, peer, network, channel2)
 			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
 
-			By("7) Verify: Normal TX's on standard channel are blocked")
+			By("5) Verify: Normal TX's on standard channel are blocked")
 			assertTxFailed(network, orderer, channel2)
 
 			// Note:
 			// The following testing steps should be completed once we have a consensus-type ("future-type") that can be
 			// migrated to from etcdraft.
 
-			//=== Step 8: config update on system channel, State=MAINTENANCE, type=future-type ===
+			//=== Step 6: config update on standard channel1, State=MAINTENANCE, type=future-type ===
 
-			//=== Step 9: config update on standard channel1, State=MAINTENANCE, type=future-type ===
-
-			//=== Step 10: config update on standard channel2, State=MAINTENANCE, type=future-type ===
+			//=== Step 7: config update on standard channel2, State=MAINTENANCE, type=future-type ===
 		})
 
 		// This test executes the migration flow and checks that forbidden transitions are rejected.
@@ -277,81 +223,41 @@ var _ = Describe("ConsensusTypeMigration", func() {
 		//   protocol), and only in maintenance mode.
 		It("executes raft2future forbidden transitions", func() {
 			//=== Step 1: ===
-			By("1) Config update on system channel, changing both ConsensusType State & Type is forbidden")
-			assertTransitionFailed(network, peer, orderer, syschannel,
-				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
-				"testing-only", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
-
-			//=== Step 2: ===
-			By("2) Config update on standard channel, changing both ConsensusType State & Type is forbidden")
+			By("1) Config update on standard channel, changing both ConsensusType State & Type is forbidden")
 			assertTransitionFailed(network, peer, orderer, channel1,
 				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
 				"testing-only", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 3: ===
-			By("3) Config update on system channel, changing both ConsensusType State & some other value is forbidden")
-			config, updatedConfig := prepareTransition(network, peer, orderer, syschannel,
-				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
-				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
-			updateConfigWithBatchTimeout(updatedConfig)
-			updateOrdererConfigFailed(network, orderer, syschannel, config, updatedConfig, peer, orderer)
-
-			//=== Step 4: ===
-			By("4) Config update on standard channel, both ConsensusType State & some other value is forbidden")
-			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
+			//=== Step 2: ===
+			By("2) Config update on standard channel, both ConsensusType State & some other value is forbidden")
+			config, updatedConfig := prepareTransition(network, peer, orderer, channel1,
 				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
 				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
 			updateConfigWithBatchTimeout(updatedConfig)
 			updateOrdererConfigFailed(network, orderer, channel1, config, updatedConfig, peer, orderer)
 
-			//=== Step 5: ===
-			By("5) Config update on system channel, State=MAINTENANCE, enter maintenance-mode")
-			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
-				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
-				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
-			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
-
-			By("5) Verify: system channel config changed")
-			sysStartBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
-			Expect(sysStartBlockNum).ToNot(Equal(0))
-			config = nwo.GetConfig(network, peer, orderer, syschannel)
-			consensusTypeValue := extractOrdererConsensusType(config)
-			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
-
-			//=== Step 6: ===
-			By("6) Config update on standard channel, State=MAINTENANCE, enter maintenance-mode")
+			//=== Step 3: ===
+			By("3) Config update on standard channel, State=MAINTENANCE, enter maintenance-mode")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
 				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
 				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
 			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
 
-			By("6) Verify: standard channel config changed")
+			By("3) Verify: standard channel config changed")
 			std1StartBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
 			Expect(std1StartBlockNum).ToNot(Equal(0))
 			config = nwo.GetConfig(network, peer, orderer, channel1)
-			consensusTypeValue = extractOrdererConsensusType(config)
+			consensusTypeValue := extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 7: ===
-			By("7) Config update on system channel, change ConsensusType.Type to unsupported type, forbidden")
-			assertTransitionFailed(network, peer, orderer, syschannel,
-				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
-				"melville", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
-
-			//=== Step 8: ===
-			By("8) Config update on standard channel, change ConsensusType.Type to unsupported type, forbidden")
+			//=== Step 4: ===
+			By("4) Config update on standard channel, change ConsensusType.Type to unsupported type, forbidden")
 			assertTransitionFailed(network, peer, orderer, channel1,
 				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"hesse", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 9: ===
-			By("9) Config update on system channel, change ConsensusType.Type and State, forbidden")
-			assertTransitionFailed(network, peer, orderer, syschannel,
-				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
-				"testing-only", nil, protosorderer.ConsensusType_STATE_NORMAL)
-
-			//=== Step 10: ===
-			By("10) Config update on standard channel, change ConsensusType.Type and State, forbidden")
+			//=== Step 5: ===
+			By("5) Config update on standard channel, change ConsensusType.Type and State, forbidden")
 			assertTransitionFailed(network, peer, orderer, channel1,
 				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"testing-only", nil, protosorderer.ConsensusType_STATE_NORMAL)
@@ -360,27 +266,12 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			// The following testing steps should be completed once we have a consensus-type ("future-type" that can be
 			// migrated to from etcdraft.
 
-			//=== Step 11: Config update on system channel, changing both ConsensusType.Type and other value is permitted ===
-			// Change consensus type and batch-timeout
+			//=== Step 6: Config update on standard channel, changing both ConsensusType.Type and other value is permitted ===
+			By("6) changing both ConsensusType.Type and other value is permitted")
+			// Change consensus type and batch-timeout, for example
 
-			//=== Step 12: Config update on standard channel, changing both ConsensusType.Type and other value is permitted ===
-			// Change consensus type and batch-timeout
-
-			//=== Step 13: ===
-			By("13) Config update on system channel, changing value other than ConsensusType.Type is permitted")
-			config = nwo.GetConfig(network, peer, orderer, syschannel)
-			consensusTypeValue = extractOrdererConsensusType(config)
-			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
-			updatedConfig = proto.Clone(config).(*common.Config)
-			updateConfigWithBatchTimeout(updatedConfig)
-			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
-
-			By("13) Verify: system channel config changed")
-			sysBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
-			Expect(sysBlockNum).To(Equal(sysStartBlockNum + 1))
-
-			//=== Step 14: ===
-			By("14) Config update on standard channel, changing value other than ConsensusType.Type is permitted")
+			//=== Step 7: ===
+			By("7) Config update on standard channel, changing value other than ConsensusType.Type is permitted")
 			config = nwo.GetConfig(network, peer, orderer, channel1)
 			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
@@ -388,20 +279,12 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			updateConfigWithBatchTimeout(updatedConfig)
 			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
 
-			By("14) Verify: standard channel config changed")
+			By("7) Verify: standard channel config changed")
 			std1BlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
 			Expect(std1BlockNum).To(Equal(std1StartBlockNum + 1))
 
-			//=== Step 15: ===
-			By("15) Config update on system channel, changing both ConsensusType State & some other value is forbidden")
-			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
-				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
-				"etcdraft", nil, protosorderer.ConsensusType_STATE_NORMAL)
-			updateConfigWithBatchTimeout(updatedConfig)
-			updateOrdererConfigFailed(network, orderer, syschannel, config, updatedConfig, peer, orderer)
-
-			//=== Step 16: ===
-			By("16) Config update on standard channel, both ConsensusType State & some other value is forbidden")
+			//=== Step 8: ===
+			By("8) Config update on standard channel, both ConsensusType State & some other value is forbidden")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
 				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"etcdraft", nil, protosorderer.ConsensusType_STATE_NORMAL)
@@ -411,66 +294,34 @@ var _ = Describe("ConsensusTypeMigration", func() {
 
 		// Note:
 		// Instead of booting to a future-type which does not exist yet, we change some other config value in
-		// maintenance mode, reboot, and exit maintenance mode. Once we have a future consensus-type that cab be
+		// maintenance mode, reboot, and exit maintenance mode. Once we have a future consensus-type that can be
 		// migrated to from raft is available, this test should be completed.
 		It("executes bootstrap to future-type - single node", func() {
-			//=== Step 1: Config update on system channel, MAINTENANCE ===
-			By("1) Config update on system channel, State=MAINTENANCE")
-			config, updatedConfig := prepareTransition(network, peer, orderer, syschannel,
-				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
-				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
-			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
-
-			By("1) Verify: system channel config changed")
-			sysStartBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
-			Expect(sysStartBlockNum).ToNot(Equal(0))
-
-			config = nwo.GetConfig(network, peer, orderer, syschannel)
-			consensusTypeValue := extractOrdererConsensusType(config)
-			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
-
-			By("1) Verify: new channels cannot be created")
-			exitCode := network.CreateChannelExitCode(channel2, orderer, peer)
-			Expect(exitCode).ToNot(Equal(0))
-
-			//=== Step 2: Config update on standard channel, MAINTENANCE ===
-			By("2) Config update on standard channel, State=MAINTENANCE")
-			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
+			//=== Step 1: Config update on standard channel, MAINTENANCE ===
+			By("1) Config update on standard channel, State=MAINTENANCE")
+			config, updatedConfig := prepareTransition(network, peer, orderer, channel1,
 				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
 				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
 			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
 
-			By("2) Verify: standard channel config changed")
+			By("1) Verify: standard channel config changed")
 			chan1StartBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
 			Expect(chan1StartBlockNum).ToNot(Equal(0))
 
 			config = nwo.GetConfig(network, peer, orderer, channel1)
-			consensusTypeValue = extractOrdererConsensusType(config)
+			consensusTypeValue := extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			By("2) Verify: Normal TX's on standard channel are blocked")
+			By("1) Verify: Normal TX's on standard channel are blocked")
 			assertTxFailed(network, orderer, channel1)
 
 			// In maintenance mode deliver requests are open to those entities that satisfy the /Channel/Orderer/Readers policy
-			By("2) Verify: delivery request from peer is blocked")
+			By("1) Verify: delivery request from peer is blocked")
 			err := checkPeerDeliverRequest(orderer, peer, network, channel1)
 			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
 
-			//=== Step 3: config update on system channel, State=MAINTENANCE, type=etcdraft, (in-lieu of future-type) other value changed ===
-			By("3) Config update on system channel, State=MAINTENANCE, type=etcdraft, (in-lieu of future-type) other value changed")
-			config = nwo.GetConfig(network, peer, orderer, syschannel)
-			consensusTypeValue = extractOrdererConsensusType(config)
-			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
-			updatedConfig = proto.Clone(config).(*common.Config)
-			updateConfigWithBatchTimeout(updatedConfig)
-			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
-
-			By("3) Verify: system channel config changed")
-			sysBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
-			Expect(sysBlockNum).To(Equal(sysStartBlockNum + 1))
-
-			//=== Step 4: config update on standard channel, State=MAINTENANCE, type=etcdraft, (in-lieu of future-type) other value changed ===
-			By("4) Config update on standard channel, State=MAINTENANCE, type=etcdraft, (in-lieu of future-type) other value changed")
+			//=== Step 2: config update on standard channel, State=MAINTENANCE, type=etcdraft, (in-lieu of future-type) other value changed ===
+			By("2) Config update on standard channel, State=MAINTENANCE, type=etcdraft, (in-lieu of future-type) other value changed")
 			config = nwo.GetConfig(network, peer, orderer, channel1)
 			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
@@ -478,17 +329,17 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			updateConfigWithBatchTimeout(updatedConfig)
 			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
 
-			By("4) Verify: standard channel config changed")
+			By("2) Verify: standard channel config changed")
 			chan1BlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
 			Expect(chan1BlockNum).To(Equal(chan1StartBlockNum + 1))
 
-			//=== Step 5: kill ===
-			By("5) killing orderer1")
+			//=== Step 3: kill ===
+			By("3) killing orderer1")
 			o1Proc.Signal(syscall.SIGKILL)
 			Eventually(o1Proc.Wait(), network.EventuallyTimeout).Should(Receive(MatchError("exit status 137")))
 
-			//=== Step 6: restart ===
-			By("6) restarting orderer1")
+			//=== Step 4: restart ===
+			By("4) restarting orderer1")
 			network.Consensus.Type = "etcdraft" // Note: change to future-type
 
 			o1Runner = network.OrdererRunner(orderer)
@@ -498,8 +349,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 
 			assertBlockReception(
 				map[string]int{
-					syschannel: int(sysBlockNum),
-					channel1:   int(chan1BlockNum),
+					channel1: int(chan1BlockNum),
 				},
 				[]*nwo.Orderer{orderer},
 				peer,
@@ -509,47 +359,27 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			Eventually(o1Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
 			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
-			By("7) System channel still in maintenance, State=MAINTENANCE, cannot create new channels")
-			exitCode = network.CreateChannelExitCode(channel2, orderer, peer)
-			Expect(exitCode).ToNot(Equal(0))
-
-			By("8) Standard channel still in maintenance, State=MAINTENANCE, normal TX's blocked, delivery to peers blocked")
-			assertTxFailed(network, orderer, channel1)
-
-			err = checkPeerDeliverRequest(orderer, peer, network, channel1)
-			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
-
-			By("9) Release - executing config transaction on system channel with restarted orderer")
-			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
-				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
-				"etcdraft", nil, protosorderer.ConsensusType_STATE_NORMAL)
-			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
-
-			By("9) Verify: system channel config changed")
-			sysBlockNum = nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
-			Expect(sysBlockNum).To(Equal(sysStartBlockNum + 2))
-
-			By("10) Release - executing config transaction on standard channel with restarted orderer")
+			By("5) Release - executing config transaction on standard channel with restarted orderer")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
 				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"etcdraft", nil, protosorderer.ConsensusType_STATE_NORMAL)
 			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
 
-			By("10) Verify: standard channel config changed")
+			By("6) Verify: standard channel config changed")
 			chan1BlockNum = nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
 			Expect(chan1BlockNum).To(Equal(chan1StartBlockNum + 2))
 
-			By("11) Executing transaction on standard channel with restarted orderer")
+			By("7) Executing transaction on standard channel with restarted orderer")
 			assertBlockCreation(network, orderer, peer, channel1, chan1StartBlockNum+3)
 			assertBlockCreation(network, orderer, nil, channel1, chan1StartBlockNum+4)
 
-			By("12) Create new channel, executing transaction with restarted orderer")
-			network.CreateChannel(channel2, orderer, peer)
+			By("8) Create new channel, executing transaction with restarted orderer")
+			channelparticipation.JoinOrdererAppChannel(network, channel2, orderer, o1Runner)
 
 			assertBlockCreation(network, orderer, peer, channel2, 1)
 			assertBlockCreation(network, orderer, nil, channel2, 2)
 
-			By("13) Extending the network configuration to add a new orderer")
+			By("9) Extending the network configuration to add a new orderer")
 			// Add another orderer
 			orderer2 := &nwo.Orderer{
 				Name:         "orderer2",
@@ -568,30 +398,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			secondOrdererCertificate, err := ioutil.ReadFile(secondOrdererCertificatePath)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("14) Adding the second orderer to system channel")
-			addConsenter(network, peer, orderer, syschannel, protosraft.Consenter{
-				ServerTlsCert: secondOrdererCertificate,
-				ClientTlsCert: secondOrdererCertificate,
-				Host:          "127.0.0.1",
-				Port:          uint32(network.OrdererPort(orderer2, nwo.ClusterPort)),
-			})
-
-			By("15) Obtaining the last config block from the orderer")
-			configBlock := nwo.GetConfigBlock(network, peer, orderer, syschannel)
-			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0o644)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("16) Waiting for the existing orderer to relinquish its leadership")
-			Eventually(o1Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("1 stepped down to follower since quorum is not active"))
-			Eventually(o1Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("No leader is present, cluster size is 2"))
-
-			By("17) Launching the second orderer")
-			o2Runner = network.OrdererRunner(orderer2)
-			o2Proc = ifrit.Invoke(o2Runner)
-			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
-			Eventually(o2Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
-
-			By("18) Adding orderer2 to channel2")
+			By("10) Adding the second orderer to second channel")
 			addConsenter(network, peer, orderer, channel2, protosraft.Consenter{
 				ServerTlsCert: secondOrdererCertificate,
 				ClientTlsCert: secondOrdererCertificate,
@@ -599,12 +406,36 @@ var _ = Describe("ConsensusTypeMigration", func() {
 				Port:          uint32(network.OrdererPort(orderer2, nwo.ClusterPort)),
 			})
 
+			By("11) Obtaining the last config block from the orderer")
+			configBlock := nwo.GetConfigBlock(network, peer, orderer, channel2)
+			err = ioutil.WriteFile(filepath.Join(testDir, "channel2_block.pb"), protoutil.MarshalOrPanic(configBlock), 0o644)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("12) Waiting for the existing orderer to relinquish its leadership")
+			Eventually(o1Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("1 stepped down to follower since quorum is not active"))
+			Eventually(o1Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("No leader is present, cluster size is 2"))
+
+			By("13) Launching the second orderer")
+			o2Runner = network.OrdererRunner(orderer2)
+			o2Proc = ifrit.Invoke(o2Runner)
+			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			By("14) Joining the second orderer to channel2")
+			expectedChannelInfo := channelparticipation.ChannelInfo{
+				Name:              channel2,
+				URL:               fmt.Sprintf("/participation/v1/channels/%s", channel2),
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            4,
+			}
+			channelparticipation.Join(network, orderer2, channel2, configBlock, expectedChannelInfo)
+			Eventually(o2Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
+
 			assertBlockReception(map[string]int{
-				syschannel: int(sysBlockNum + 2),
-				channel2:   int(nwo.CurrentConfigBlockNumber(network, peer, orderer, channel2)),
+				channel2: int(nwo.CurrentConfigBlockNumber(network, peer, orderer, channel2)),
 			}, []*nwo.Orderer{orderer2}, peer, network)
 
-			By("19) Executing transaction against second orderer on channel2")
+			By("15) Executing transaction against second orderer on channel2")
 			assertBlockCreation(network, orderer2, nil, channel2, 3)
 		})
 	})
@@ -655,55 +486,6 @@ func updateConfigWithBatchTimeout(updatedConfig *common.Config) {
 		ModPolicy: "Admins",
 		Value:     protoutil.MarshalOrPanic(batchTimeoutValue),
 	}
-}
-
-func raftMultiChannel() *nwo.Config {
-	config := nwo.MultiChannelEtcdRaft()
-	config.Channels = []*nwo.Channel{
-		{Name: "testchannel1", Profile: "TwoOrgsChannel"},
-		{Name: "testchannel2", Profile: "TwoOrgsChannel"},
-	}
-
-	for _, peer := range config.Peers {
-		peer.Channels = []*nwo.PeerChannel{
-			{Name: "testchannel1", Anchor: true},
-			{Name: "testchannel2", Anchor: true},
-		}
-	}
-	return config
-}
-
-func prepareRaftMetadata(network *nwo.Network) []byte {
-	var consenters []*protosraft.Consenter
-	for _, o := range network.Orderers {
-		fullTlsPath := network.OrdererLocalTLSDir(o)
-		certBytes, err := ioutil.ReadFile(filepath.Join(fullTlsPath, "server.crt"))
-		Expect(err).NotTo(HaveOccurred())
-		port := network.OrdererPort(o, nwo.ClusterPort)
-
-		consenter := &protosraft.Consenter{
-			ClientTlsCert: certBytes,
-			ServerTlsCert: certBytes,
-			Host:          "127.0.0.1",
-			Port:          uint32(port),
-		}
-		consenters = append(consenters, consenter)
-	}
-
-	raftMetadata := &protosraft.ConfigMetadata{
-		Consenters: consenters,
-		Options: &protosraft.Options{
-			TickInterval:         "500ms",
-			ElectionTick:         10,
-			HeartbeatTick:        1,
-			MaxInflightBlocks:    5,
-			SnapshotIntervalSize: 10 * 1024 * 1024,
-		},
-	}
-
-	raftMetadataBytes := protoutil.MarshalOrPanic(raftMetadata)
-
-	return raftMetadataBytes
 }
 
 func checkPeerDeliverRequest(o *nwo.Orderer, submitter *nwo.Peer, network *nwo.Network, channelName string) error {

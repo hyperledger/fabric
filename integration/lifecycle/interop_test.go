@@ -16,6 +16,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/protoutil"
@@ -35,7 +36,6 @@ var _ = Describe("Release interoperability", func() {
 
 		network                     *nwo.Network
 		ordererRunner               *ginkgomon.Runner
-		peerGroupRunner             ifrit.Runner
 		ordererProcess, peerProcess ifrit.Process
 
 		orderer   *nwo.Orderer
@@ -50,18 +50,12 @@ var _ = Describe("Release interoperability", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.MultiChannelEtcdRaft(), testDir, client, StartPort(), components)
+		network = nwo.New(nwo.MultiChannelEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
-		// Start all of the fabric processes
-		ordererRunner = network.OrdererRunner(network.Orderer("orderer"))
-		ordererProcess = ifrit.Invoke(ordererRunner)
-		Eventually(ordererProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
-
-		peerGroupRunner = network.PeerGroupRunner()
-		peerProcess = ifrit.Invoke(peerGroupRunner)
-		Eventually(peerProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		// Start all the fabric processes
+		ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 
 		orderer = network.Orderer("orderer")
 		endorsers = []*nwo.Peer{
@@ -98,7 +92,7 @@ var _ = Describe("Release interoperability", func() {
 			Policy:  `AND ('Org1MSP.member','Org2MSP.member')`,
 		}
 
-		network.CreateAndJoinChannels(orderer)
+		channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 		nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
 		RunQueryInvokeQuery(network, orderer, "mycc", 100, endorsers...)
 
@@ -109,7 +103,7 @@ var _ = Describe("Release interoperability", func() {
 		RunQueryInvokeQuery(network, orderer, "mycc", 90, endorsers...)
 
 		By("restarting the network from persistence (1)")
-		ordererRunner, ordererProcess, peerGroupRunner, peerProcess = RestartNetwork(ordererProcess, peerProcess, network)
+		ordererRunner, ordererProcess, peerProcess = nwo.RestartSingleOrdererNetwork(ordererProcess, peerProcess, network)
 
 		By("ensuring that the chaincode is still operational after the upgrade and restart")
 		RunQueryInvokeQuery(network, orderer, "mycc", 80, endorsers...)
@@ -147,7 +141,7 @@ var _ = Describe("Release interoperability", func() {
 		RunQueryInvokeQuery(network, orderer, "mycc", 70, endorsers[0])
 
 		By("restarting the network from persistence (2)")
-		ordererRunner, ordererProcess, peerGroupRunner, peerProcess = RestartNetwork(ordererProcess, peerProcess, network)
+		ordererRunner, ordererProcess, peerProcess = nwo.RestartSingleOrdererNetwork(ordererProcess, peerProcess, network)
 
 		By("querying/invoking/querying the chaincode with the new definition again")
 		RunQueryInvokeQuery(network, orderer, "mycc", 60, endorsers[1])
@@ -194,7 +188,7 @@ var _ = Describe("Release interoperability", func() {
 				Policy:  `OR ('Org1MSP.member','Org2MSP.member')`,
 			}
 
-			network.CreateAndJoinChannels(orderer)
+			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
 			RunQueryInvokeQuery(network, orderer, "mycc", 100, endorsers...)
 
@@ -242,7 +236,7 @@ var _ = Describe("Release interoperability", func() {
 
 		It("deploys a chaincode with the new lifecycle, invokes it and the tx is committed only after the chaincode is upgraded via _lifecycle", func() {
 			By("enabling V2_0 application capabilities")
-			network.CreateAndJoinChannels(orderer)
+			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 			By("deploying the chaincode definition using _lifecycle")
@@ -338,7 +332,7 @@ var _ = Describe("Release interoperability", func() {
 					Ctor:            `{"Args":[""]}`,
 				}
 				By("Creating and joining the channel")
-				network.CreateAndJoinChannels(orderer)
+				channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 			})
 
 			It("Deploys two chaincodes with the new lifecycle and performs a successful cc2cc invocation", func() {
@@ -392,6 +386,7 @@ var _ = Describe("Release interoperability", func() {
 				Expect(sess).To(gbytes.Say("callee:bar"))
 
 				By("enabling the 2.0 capability on channel2")
+				channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel2", orderer, ordererRunner)
 				nwo.EnableCapabilities(network, "testchannel2", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 				By("deploying the callee chaincode using _lifecycle on channel2")

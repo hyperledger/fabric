@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/proto"
+
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -345,6 +347,10 @@ func (c *Chain) pull() error {
 		c.logger.Info("Onboarding finished successfully, pulled blocks up to join-block")
 	}
 
+	if c.joinBlock != nil && !proto.Equal(c.ledgerResources.Block(c.joinBlock.Header.Number).Data, c.joinBlock.Data) {
+		c.logger.Panicf("Join block (%d) we pulled mismatches block we joined with", c.joinBlock.Header.Number)
+	}
+
 	err = c.pullAfterJoin()
 	if err != nil {
 		return errors.WithMessage(err, "failed to pull after join block")
@@ -392,6 +398,8 @@ func (c *Chain) pullUpToJoin() error {
 // a config block that indicates the orderer is a member of the cluster. It
 // checks whether the chain was stopped between blocks.
 func (c *Chain) pullAfterJoin() error {
+	c.logger.Infof("Pulling after join")
+	defer c.logger.Infof("Pulled after join")
 	c.setStatus(types.StatusActive)
 
 	err := c.loadLastConfig()
@@ -425,7 +433,7 @@ func (c *Chain) pullAfterJoin() error {
 			if errHeight != nil {
 				c.logger.Errorf("Failed to get latest height and endpoint, error: %s", errHeight)
 			} else {
-				c.logger.Debugf("Orderer endpoint %s has the biggest ledger height: %d", endpoint, networkHeight)
+				c.logger.Infof("Orderer endpoint %s has the biggest ledger height: %d", endpoint, networkHeight)
 			}
 
 			if networkHeight > c.ledgerResources.Height() {
@@ -435,7 +443,7 @@ func (c *Chain) pullAfterJoin() error {
 				break heightPollLoop
 			}
 
-			c.logger.Debugf("My height: %d, latest network height: %d; going to wait %v for latest height to grow",
+			c.logger.Infof("My height: %d, latest network height: %d; going to wait %v for latest height to grow",
 				c.ledgerResources.Height(), networkHeight, heightPollInterval)
 			select {
 			case <-c.stopChan:

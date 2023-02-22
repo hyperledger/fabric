@@ -14,14 +14,15 @@ import (
 	"syscall"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
 var _ = Describe("Network", func() {
@@ -45,30 +46,37 @@ var _ = Describe("Network", func() {
 
 	Describe("etcdraft network", func() {
 		var network *nwo.Network
-		var process ifrit.Process
+		var ordererRunner *ginkgomon.Runner
+		var ordererProcess, peerProcess ifrit.Process
 
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicEtcdRaft(), tempDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), tempDir, client, StartPort(), components)
 
 			// Generate config and bootstrap the network
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
 			// Start all of the fabric processes
-			networkRunner := network.NetworkGroupRunner()
-			process = ifrit.Invoke(networkRunner)
-			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 		})
 
 		AfterEach(func() {
-			// Shutdown processes and cleanup
-			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+			if ordererProcess != nil {
+				ordererProcess.Signal(syscall.SIGTERM)
+				Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+			}
+
+			if peerProcess != nil {
+				peerProcess.Signal(syscall.SIGTERM)
+				Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+			}
+
 			network.Cleanup()
 		})
 
 		It("deploys and executes chaincode (simple) using the legacy lifecycle", func() {
 			orderer := network.Orderer("orderer")
+			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 			peer := network.Peer("Org1", "peer0")
 
 			legacyChaincode := nwo.Chaincode{
@@ -79,13 +87,13 @@ var _ = Describe("Network", func() {
 				Policy:  `AND ('Org1MSP.member','Org2MSP.member')`,
 			}
 
-			network.CreateAndJoinChannels(orderer)
 			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, legacyChaincode)
 			RunQueryInvokeQuery(network, orderer, peer, 100)
 		})
 
 		It("deploys and executes chaincode (simple) using _lifecycle", func() {
 			orderer := network.Orderer("orderer")
+			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 			peer := network.Peer("Org1", "peer0")
 
 			chaincode := nwo.Chaincode{
@@ -101,9 +109,6 @@ var _ = Describe("Network", func() {
 				Label:           "my_simple_chaincode",
 			}
 
-			network.CreateAndJoinChannels(orderer)
-
-			network.UpdateChannelAnchors(orderer, "testchannel")
 			network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
 
 			nwo.EnableCapabilities(

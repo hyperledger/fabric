@@ -17,23 +17,26 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/gateway"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
 var _ = Describe("GatewayService with endorser discovery", func() {
 	var (
-		testDir   string
-		network   *nwo.Network
-		orderer   *nwo.Orderer
-		org1Peer0 *nwo.Peer
-		org2Peer0 *nwo.Peer
-		org3Peer0 *nwo.Peer
-		process   ifrit.Process
-		peerCerts map[string]string
+		testDir                     string
+		network                     *nwo.Network
+		orderer                     *nwo.Orderer
+		org1Peer0                   *nwo.Peer
+		org2Peer0                   *nwo.Peer
+		org3Peer0                   *nwo.Peer
+		ordererRunner               *ginkgomon.Runner
+		ordererProcess, peerProcess ifrit.Process
+		peerCerts                   map[string]string
 	)
 
 	loadPeerCert := func(peer *nwo.Peer) string {
@@ -50,19 +53,18 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 		client, err := docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		config := nwo.ThreeOrgEtcdRaft()
+		config := nwo.ThreeOrgEtcdRaftNoSysChan()
 		network = nwo.New(config, testDir, client, StartPort(), components)
 
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		// Start all the fabric processes
+		ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 
 		orderer = network.Orderer("orderer")
-		network.CreateAndJoinChannel(orderer, "testchannel")
-		network.UpdateChannelAnchors(orderer, "testchannel")
+		channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+
 		network.VerifyMembership(
 			network.PeersWithChannel("testchannel"),
 			"testchannel",
@@ -131,10 +133,16 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 	})
 
 	AfterEach(func() {
-		if process != nil {
-			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+		if ordererProcess != nil {
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
+
+		if peerProcess != nil {
+			peerProcess.Signal(syscall.SIGTERM)
+			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
 		if network != nil {
 			network.Cleanup()
 		}

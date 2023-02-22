@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package gateway
 
 import (
-	"bytes"
 	"fmt"
 	"math/rand"
 	"sort"
@@ -24,6 +23,7 @@ import (
 	gossipapi "github.com/hyperledger/fabric/gossip/api"
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	gossipdiscovery "github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/internal/pkg/gateway/ledger"
 	"github.com/pkg/errors"
 )
 
@@ -45,6 +45,7 @@ type registry struct {
 	configLock         sync.RWMutex
 	channelOrderers    sync.Map // channel (string) -> orderer addresses (endpointConfig)
 	systemChaincodes   scc.BuiltinSCCs
+	localProvider      ledger.Provider
 }
 
 type endorserState struct {
@@ -67,7 +68,7 @@ func (reg *registry) endorsementPlan(channel string, interest *peer.ChaincodeInt
 
 	// Firstly, process the endorsers by group
 	// Create a map of groupIds to list of endorsers, sorted by decreasing block height
-	// Also build a map of endorser pkiid to groupId
+	// Also build a map of endorser PKI ID to group ID
 	groupEndorsers := map[string][]*endorser{}
 	var preferredGroup string
 	var unavailableEndorsers []string
@@ -182,9 +183,7 @@ func (reg *registry) planForOrgs(channel string, chaincode string, endorsingOrgs
 func (reg *registry) endorsersByOrg(channel string, chaincode string) map[string][]*endorserState {
 	endorsersByOrg := make(map[string][]*endorserState)
 
-	members := reg.discovery.PeersOfChannel(gossipcommon.ChannelID(channel))
-
-	for _, member := range members {
+	for _, member := range reg.channelMembers(channel) {
 		endorser := reg.lookupEndorser(member.PreferredEndpoint(), member.PKIid, channel)
 		if endorser == nil {
 			continue
@@ -200,6 +199,43 @@ func (reg *registry) endorsersByOrg(channel string, chaincode string) map[string
 	}
 
 	return endorsersByOrg
+}
+
+func (reg *registry) channelMembers(channel string) gossipdiscovery.Members {
+	members := reg.discovery.PeersOfChannel(gossipcommon.ChannelID(channel))
+
+	// Ensure local endorser ledger height is up-to-date
+	for _, member := range members {
+		if reg.isLocalEndorserID(member.PKIid) {
+			if ledgerHeight, ok := reg.localLedgerHeight(channel); ok {
+				member.Properties.LedgerHeight = ledgerHeight
+			}
+
+			break
+		}
+	}
+
+	return members
+}
+
+func (reg *registry) isLocalEndorserID(pkiID gossipcommon.PKIidType) bool {
+	return !pkiID.IsNotSameFilter(reg.localEndorser.pkiid)
+}
+
+func (reg *registry) localLedgerHeight(channel string) (height uint64, ok bool) {
+	ledger, err := reg.localProvider.Ledger(channel)
+	if err != nil {
+		reg.logger.Warnw("local endorser is not a member of channel", "channel", channel, "err", err)
+		return 0, false
+	}
+
+	info, err := ledger.GetBlockchainInfo()
+	if err != nil {
+		logger.Errorw("failed to get local ledger info", "err", err)
+		return 0, false
+	}
+
+	return info.GetHeight(), true
 }
 
 // evaluator returns a plan representing a single endorsement, preferably from local org, if available
@@ -251,7 +287,7 @@ func sorter(e []*endorserState, host string) func(i, j int) bool {
 }
 
 // Returns a set of broadcastClients that can order a transaction for the given channel.
-func (reg *registry) orderers(channel string) ([]*orderer, error) {
+func (reg *registry) orderers(channel string) ([]*orderer, int, error) {
 	var orderers []*orderer
 	var ordererEndpoints []*endpointConfig
 	addr, exists := reg.channelOrderers.Load(channel)
@@ -262,7 +298,7 @@ func (reg *registry) orderers(channel string) ([]*orderer, error) {
 		// no entry in the map - get the orderer config from discovery
 		channelOrderers, err := reg.config(channel)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		// A config update may have saved this first, in which case don't overwrite it.
 		addr, _ = reg.channelOrderers.LoadOrStore(channel, channelOrderers)
@@ -285,30 +321,30 @@ func (reg *registry) orderers(channel string) ([]*orderer, error) {
 				err = client.closeConnection()
 				if err != nil {
 					// Failed to close this new connection.  Log the problem.
-					reg.logger.Warnw("Failed to close connection to orderer", "address", ep.address, "err", err)
+					reg.logger.Warnw("Failed to close connection to orderer", "address", client.endpointConfig.logAddress, "err", err)
 				}
 			} else {
-				reg.logger.Infow("Added orderer to registry", "address", ep.address)
+				reg.logger.Infow("Added orderer to registry", "address", client.endpointConfig.logAddress)
 			}
 		}
 		orderers = append(orderers, entry.(*orderer))
 	}
 
-	return orderers, nil
+	return orderers, len(ordererEndpoints), nil
 }
 
-func (reg *registry) lookupEndorser(endpoint string, pkiid gossipcommon.PKIidType, channel string) *endorser {
+func (reg *registry) lookupEndorser(endpoint string, pkiID gossipcommon.PKIidType, channel string) *endorser {
 	lookup := func() (*endorser, bool) {
 		reg.configLock.RLock()
 		defer reg.configLock.RUnlock()
 
 		// find the endorser in the registry for this endpoint
-		if bytes.Equal(pkiid, reg.localEndorser.pkiid) {
-			logger.Debugw("Found local endorser", "pkiid", pkiid)
+		if reg.isLocalEndorserID(pkiID) {
+			logger.Debugw("Found local endorser", "pkiID", pkiID)
 			return reg.localEndorser, false
 		}
 		if endpoint == "" {
-			reg.logger.Warnw("No endpoint for endorser with PKI ID %s", "pkiid", pkiid.String())
+			reg.logger.Warnw("No endpoint for endorser with PKI ID %s", "pkiID", pkiID.String())
 			return nil, false
 		}
 		if e, ok := reg.remoteEndorsers[endpoint]; ok {
@@ -343,8 +379,7 @@ func (reg *registry) connectChannelPeers(channel string, force bool) error {
 
 	// get the remoteEndorsers for the channel
 	peers := map[string]string{}
-	members := reg.discovery.PeersOfChannel(gossipcommon.ChannelID(channel))
-	for _, member := range members {
+	for _, member := range reg.channelMembers(channel) {
 		id := member.PKIid.String()
 		peers[id] = member.PreferredEndpoint()
 	}
@@ -359,12 +394,12 @@ func (reg *registry) connectChannelPeers(channel string, force bool) error {
 			tlsRootCerts = append(tlsRootCerts, mspInfo.GetTlsIntermediateCerts()...)
 		}
 		for _, info := range infoset {
-			pkiid := info.PKIId
-			if address, ok := peers[pkiid.String()]; ok {
+			pkiID := info.PKIId
+			if address, ok := peers[pkiID.String()]; ok {
 				// add the peer to the peer map - except the local peer, which seems to have an empty address
 				if _, ok := reg.remoteEndorsers[address]; !ok && len(address) > 0 {
 					// this peer is new - connect to it and add to the remoteEndorsers registry
-					endorser, err := reg.endpointFactory.newEndorser(pkiid, address, mspid, tlsRootCerts)
+					endorser, err := reg.endpointFactory.newEndorser(pkiID, address, mspid, tlsRootCerts)
 					if err != nil {
 						return err
 					}
@@ -460,7 +495,7 @@ func (reg *registry) closeStaleOrdererConnections(channel string, channelOrderer
 				if found {
 					err := client.(*orderer).closeConnection()
 					if err != nil {
-						reg.logger.Errorw("Failed to close connection to orderer", "address", ep.address, "mspid", ep.mspid, "err", err)
+						reg.logger.Errorw("Failed to close connection to orderer", "address", ep.logAddress, "mspid", ep.mspid, "err", err)
 					}
 				}
 			}

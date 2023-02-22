@@ -75,15 +75,16 @@ func (fake *OrdererCapabilities) ConsensusTypeMigration() bool {
 	ret, specificReturn := fake.consensusTypeMigrationReturnsOnCall[len(fake.consensusTypeMigrationArgsForCall)]
 	fake.consensusTypeMigrationArgsForCall = append(fake.consensusTypeMigrationArgsForCall, struct {
 	}{})
+	stub := fake.ConsensusTypeMigrationStub
+	fakeReturns := fake.consensusTypeMigrationReturns
 	fake.recordInvocation("ConsensusTypeMigration", []interface{}{})
 	fake.consensusTypeMigrationMutex.Unlock()
-	if fake.ConsensusTypeMigrationStub != nil {
-		return fake.ConsensusTypeMigrationStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.consensusTypeMigrationReturns
 	return fakeReturns.result1
 }
 
@@ -127,15 +128,16 @@ func (fake *OrdererCapabilities) ExpirationCheck() bool {
 	ret, specificReturn := fake.expirationCheckReturnsOnCall[len(fake.expirationCheckArgsForCall)]
 	fake.expirationCheckArgsForCall = append(fake.expirationCheckArgsForCall, struct {
 	}{})
+	stub := fake.ExpirationCheckStub
+	fakeReturns := fake.expirationCheckReturns
 	fake.recordInvocation("ExpirationCheck", []interface{}{})
 	fake.expirationCheckMutex.Unlock()
-	if fake.ExpirationCheckStub != nil {
-		return fake.ExpirationCheckStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.expirationCheckReturns
 	return fakeReturns.result1
 }
 
@@ -179,15 +181,16 @@ func (fake *OrdererCapabilities) PredictableChannelTemplate() bool {
 	ret, specificReturn := fake.predictableChannelTemplateReturnsOnCall[len(fake.predictableChannelTemplateArgsForCall)]
 	fake.predictableChannelTemplateArgsForCall = append(fake.predictableChannelTemplateArgsForCall, struct {
 	}{})
+	stub := fake.PredictableChannelTemplateStub
+	fakeReturns := fake.predictableChannelTemplateReturns
 	fake.recordInvocation("PredictableChannelTemplate", []interface{}{})
 	fake.predictableChannelTemplateMutex.Unlock()
-	if fake.PredictableChannelTemplateStub != nil {
-		return fake.PredictableChannelTemplateStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.predictableChannelTemplateReturns
 	return fakeReturns.result1
 }
 
@@ -231,15 +234,16 @@ func (fake *OrdererCapabilities) Resubmission() bool {
 	ret, specificReturn := fake.resubmissionReturnsOnCall[len(fake.resubmissionArgsForCall)]
 	fake.resubmissionArgsForCall = append(fake.resubmissionArgsForCall, struct {
 	}{})
+	stub := fake.ResubmissionStub
+	fakeReturns := fake.resubmissionReturns
 	fake.recordInvocation("Resubmission", []interface{}{})
 	fake.resubmissionMutex.Unlock()
-	if fake.ResubmissionStub != nil {
-		return fake.ResubmissionStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.resubmissionReturns
 	return fakeReturns.result1
 }
 
@@ -283,15 +287,16 @@ func (fake *OrdererCapabilities) Supported() error {
 	ret, specificReturn := fake.supportedReturnsOnCall[len(fake.supportedArgsForCall)]
 	fake.supportedArgsForCall = append(fake.supportedArgsForCall, struct {
 	}{})
+	stub := fake.SupportedStub
+	fakeReturns := fake.supportedReturns
 	fake.recordInvocation("Supported", []interface{}{})
 	fake.supportedMutex.Unlock()
-	if fake.SupportedStub != nil {
-		return fake.SupportedStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.supportedReturns
 	return fakeReturns.result1
 }
 
@@ -335,15 +340,16 @@ func (fake *OrdererCapabilities) UseChannelCreationPolicyAsAdmins() bool {
 	ret, specificReturn := fake.useChannelCreationPolicyAsAdminsReturnsOnCall[len(fake.useChannelCreationPolicyAsAdminsArgsForCall)]
 	fake.useChannelCreationPolicyAsAdminsArgsForCall = append(fake.useChannelCreationPolicyAsAdminsArgsForCall, struct {
 	}{})
+	stub := fake.UseChannelCreationPolicyAsAdminsStub
+	fakeReturns := fake.useChannelCreationPolicyAsAdminsReturns
 	fake.recordInvocation("UseChannelCreationPolicyAsAdmins", []interface{}{})
 	fake.useChannelCreationPolicyAsAdminsMutex.Unlock()
-	if fake.UseChannelCreationPolicyAsAdminsStub != nil {
-		return fake.UseChannelCreationPolicyAsAdminsStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.useChannelCreationPolicyAsAdminsReturns
 	return fakeReturns.result1
 }
 

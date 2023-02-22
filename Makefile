@@ -78,7 +78,7 @@ METADATA_VAR += CommitSHA=$(EXTRA_VERSION)
 METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 METADATA_VAR += DockerNamespace=$(DOCKER_NS)
 
-GO_VER = 1.18.9
+GO_VER = 1.18.10
 GO_TAGS ?=
 
 RELEASE_EXES = orderer $(TOOLS_EXES)
@@ -250,7 +250,6 @@ $(BUILD_DIR)/images/%/$(DUMMY):
 		--build-arg TARGETOS=linux \
 		$(BUILD_ARGS) \
 		-t $(DOCKER_NS)/fabric-$* ./$(BUILD_CONTEXT)
-	@touch $@
 
 # builds release packages for the host platform
 .PHONY: release
@@ -292,7 +291,7 @@ docker-list: $(RELEASE_IMAGES:%=%-docker-list)
 .PHONY: docker-clean
 docker-clean: $(RELEASE_IMAGES:%=%-docker-clean)
 %-docker-clean:
-	-@for image in "$$(docker images --quiet --filter=reference='$(DOCKER_NS)/fabric-$*:$(DOCKER_TAG)')"; do \
+	-@for image in "$$(docker images --quiet --filter=reference='$(DOCKER_NS)/fabric-$*')"; do \
 		[ -z "$$image" ] || docker rmi -f $$image; \
 	done
 	-@rm -rf $(BUILD_DIR)/images/$* || true

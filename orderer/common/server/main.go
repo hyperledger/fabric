@@ -49,7 +49,9 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/onboarding"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
+	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/mitchellh/mapstructure"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -64,7 +66,10 @@ var (
 	_       = app.Command("start", "Start the orderer node").Default() // preserved for cli compatibility
 	version = app.Command("version", "Show version information")
 
-	clusterTypes = map[string]struct{}{"etcdraft": {}}
+	clusterTypes = map[string]struct{}{
+		"etcdraft": {},
+		"BFT":      {},
+	}
 )
 
 // Main is the entry point of orderer process
@@ -800,6 +805,13 @@ func initializeMultichannelRegistrar(
 	bccsp bccsp.BCCSP,
 	callbacks ...channelconfig.BundleActor,
 ) *multichannel.Registrar {
+	dpmr := &DynamicPolicyManagerRegistry{}
+
+	policyManagerCallback := func(bundle *channelconfig.Bundle) {
+		dpmr.Update(bundle)
+	}
+	callbacks = append(callbacks, policyManagerCallback)
+
 	registrar := multichannel.NewRegistrar(*conf, lf, signer, metricsProvider, bccsp, clusterDialer, callbacks...)
 
 	consenters := map[string]consensus.Consenter{}
@@ -807,10 +819,37 @@ func initializeMultichannelRegistrar(
 	if conf.General.BootstrapMethod == "file" || conf.General.BootstrapMethod == "none" {
 		if bootstrapBlock != nil && isClusterType(bootstrapBlock, bccsp) {
 			// with a system channel
-			initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, repInitiator, srvConf, srv, registrar, metricsProvider, bccsp)
+			consenterType := onboarding.ConsensusType(bootstrapBlock, bccsp)
+			switch consenterType {
+			case "etcdraft":
+				initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, repInitiator, srvConf, srv, registrar, metricsProvider, bccsp)
+			case "BFT":
+				logger.Panicf("Orderer and consensus config conflict. BFT consensus is supported only with channel participation API")
+			default:
+				logger.Panicf("Unknown cluster type consenter")
+			}
 		} else if bootstrapBlock == nil {
 			// without a system channel: assume cluster type, InactiveChainRegistry == nil, no go-routine.
-			consenters["etcdraft"] = etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, nil, metricsProvider, bccsp)
+			consenterType := "BFT"
+			bootstrapBlock := initSystemChannelWithJoinBlock(conf, bccsp, lf)
+			if bootstrapBlock != nil {
+				consenterType = onboarding.ConsensusType(bootstrapBlock, bccsp)
+			} else {
+				// load consensus type from orderer config
+				var consensusConfig localconfig.Consensus
+				if err := mapstructure.Decode(conf.Consensus, &consensusConfig); err == nil && consensusConfig.Type != "" {
+					consenterType = consensusConfig.Type
+				}
+			}
+			// the orderer can start without channels at all and have an initialized cluster type consenter
+			switch consenterType {
+			case "etcdraft":
+				consenters["etcdraft"] = etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, nil, metricsProvider, bccsp)
+			case "BFT":
+				consenters["BFT"] = smartbft.New(dpmr.Registry(), signer, clusterDialer, conf, srvConf, srv, registrar, metricsProvider, bccsp)
+			default:
+				logger.Panicf("Unknown cluster type consenter '%s'", consenterType)
+			}
 		}
 	}
 

@@ -20,14 +20,9 @@ import (
 	"syscall"
 	"time"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
-	"google.golang.org/grpc"
-
-	docker "github.com/fsouza/go-dockerclient"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
@@ -36,15 +31,19 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/pvtdata/marblechaincodeutil"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pkg/errors"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/grouper"
+	"google.golang.org/grpc"
 )
 
 // The chaincode used in these tests has two collections defined:
@@ -56,14 +55,13 @@ const channelID = "testchannel"
 
 var _ bool = Describe("PrivateData", func() {
 	var (
-		network *nwo.Network
-		process ifrit.Process
-
-		orderer *nwo.Orderer
+		network                     *nwo.Network
+		ordererProcess, peerProcess ifrit.Process
+		orderer                     *nwo.Orderer
 	)
 
 	AfterEach(func() {
-		testCleanup(network, process)
+		testCleanup(network, ordererProcess, peerProcess)
 	})
 
 	Describe("Dissemination when pulling and reconciliation are disabled", func() {
@@ -80,7 +78,7 @@ var _ bool = Describe("PrivateData", func() {
 			}
 
 			By("starting the network")
-			process, orderer = startNetwork(network)
+			ordererProcess, peerProcess, orderer = startNetwork(network)
 		})
 
 		It("disseminates private data per collections_config1 (positive test) and collections_config8 (negative test)", func() {
@@ -181,12 +179,10 @@ var _ bool = Describe("PrivateData", func() {
 			peerProcesses = make(map[string]ifrit.Process)
 			network.Bootstrap()
 
-			members := grouper.Members{
-				{Name: "orderers", Runner: network.OrdererGroupRunner()},
-			}
-			networkRunner := grouper.NewOrdered(syscall.SIGTERM, members)
-			process = ifrit.Invoke(networkRunner)
-			Eventually(process.Ready()).Should(BeClosed())
+			orderer = network.Orderer("orderer")
+			ordererRunner := network.OrdererRunner(orderer)
+			ordererProcess = ifrit.Invoke(ordererRunner)
+			Eventually(ordererProcess.Ready()).Should(BeClosed())
 
 			org1peer0 := network.Peer("Org1", "peer0")
 			org2peer0 := network.Peer("Org2", "peer0")
@@ -200,9 +196,7 @@ var _ bool = Describe("PrivateData", func() {
 				Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			}
 
-			orderer = network.Orderer("orderer")
-			network.CreateAndJoinChannel(orderer, channelID)
-			network.UpdateChannelAnchors(orderer, channelID)
+			channelparticipation.JoinOrdererJoinPeersAppChannel(network, channelID, orderer, ordererRunner)
 
 			By("verifying membership")
 			network.VerifyMembership(network.Peers, channelID)
@@ -440,7 +434,7 @@ var _ bool = Describe("PrivateData", func() {
 				},
 			}
 
-			process, orderer = startNetwork(network)
+			ordererProcess, peerProcess, orderer = startNetwork(network)
 		})
 
 		Describe("Reconciliation and pulling", func() {
@@ -788,7 +782,7 @@ var _ bool = Describe("PrivateData", func() {
 				core.Peer.Limits.Concurrency.DeliverService = 1
 				network.WritePeerConfig(p, core)
 			}
-			process, orderer = startNetwork(network)
+			ordererProcess, peerProcess, orderer = startNetwork(network)
 		})
 
 		// call marble APIs: getMarblesByRange, transferMarble, delete, getMarbleHash, getMarblePrivateDetailsHash and verify ACL Behavior
@@ -945,7 +939,7 @@ func initThreeOrgsSetup(removePeer1 bool) *nwo.Network {
 	client, err := docker.NewClientFromEnv()
 	Expect(err).NotTo(HaveOccurred())
 
-	config := nwo.FullEtcdRaft()
+	config := nwo.FullEtcdRaftNoSysChan()
 
 	// add org3 with one peer
 	config.Organizations = append(config.Organizations, &nwo.Organization{
@@ -956,8 +950,7 @@ func initThreeOrgsSetup(removePeer1 bool) *nwo.Network {
 		Users:         2,
 		CA:            &nwo.CA{Hostname: "ca"},
 	})
-	config.Consortiums[0].Organizations = append(config.Consortiums[0].Organizations, "Org3")
-	config.Profiles[1].Organizations = append(config.Profiles[1].Organizations, "Org3")
+	config.Profiles[0].Organizations = append(config.Profiles[0].Organizations, "Org3")
 	config.Peers = append(config.Peers, &nwo.Peer{
 		Name:         "peer0",
 		Organization: "Org3",
@@ -988,27 +981,31 @@ func initThreeOrgsSetup(removePeer1 bool) *nwo.Network {
 	return n
 }
 
-func startNetwork(n *nwo.Network) (ifrit.Process, *nwo.Orderer) {
+func startNetwork(n *nwo.Network) (ifrit.Process, ifrit.Process, *nwo.Orderer) {
 	n.Bootstrap()
-	networkRunner := n.NetworkGroupRunner()
-	process := ifrit.Invoke(networkRunner)
-	Eventually(process.Ready(), n.EventuallyTimeout).Should(BeClosed())
+
+	// Start all the fabric processes
+	ordererRunner, ordererProcess, peerProcess := n.StartSingleOrdererNetwork("orderer")
 
 	orderer := n.Orderer("orderer")
-	n.CreateAndJoinChannel(orderer, channelID)
-	n.UpdateChannelAnchors(orderer, channelID)
+	channelparticipation.JoinOrdererJoinPeersAppChannel(n, channelID, orderer, ordererRunner)
 
 	By("verifying membership")
 	n.VerifyMembership(n.Peers, channelID)
 
-	return process, orderer
+	return ordererProcess, peerProcess, orderer
 }
 
-func testCleanup(network *nwo.Network, process ifrit.Process) {
-	if process != nil {
-		process.Signal(syscall.SIGTERM)
-		Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+func testCleanup(network *nwo.Network, ordererProcess, peerProcess ifrit.Process) {
+	if ordererProcess != nil {
+		ordererProcess.Signal(syscall.SIGTERM)
+		Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 	}
+	if peerProcess != nil {
+		peerProcess.Signal(syscall.SIGTERM)
+		Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+	}
+
 	if network != nil {
 		network.Cleanup()
 	}

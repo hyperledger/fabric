@@ -56,7 +56,7 @@ func PullerConfigFromTopLevelConfig(
 	}
 }
 
-//go:generate mockery -dir . -name LedgerWriter -case underscore -output mocks/
+//go:generate mockery --dir . --name LedgerWriter --case underscore --output mocks/
 
 // LedgerWriter allows the caller to write blocks and inspect the height
 type LedgerWriter interface {
@@ -67,7 +67,7 @@ type LedgerWriter interface {
 	Height() uint64
 }
 
-//go:generate mockery -dir . -name LedgerFactory -case underscore -output mocks/
+//go:generate mockery --dir . --name LedgerFactory --case underscore --output mocks/
 
 // LedgerFactory retrieves or creates new ledgers by chainID
 type LedgerFactory interface {
@@ -76,7 +76,7 @@ type LedgerFactory interface {
 	GetOrCreate(chainID string) (LedgerWriter, error)
 }
 
-//go:generate mockery -dir . -name ChannelLister -case underscore -output mocks/
+//go:generate mockery --dir . --name ChannelLister --case underscore --output mocks/
 
 // ChannelLister returns a list of channels
 type ChannelLister interface {
@@ -347,12 +347,12 @@ type PullerConfig struct {
 	MaxTotalBufferBytes int
 }
 
-//go:generate mockery -dir . -name VerifierRetriever -case underscore -output mocks/
+//go:generate mockery --dir . --name VerifierRetriever --case underscore --output mocks/
 
 // VerifierRetriever retrieves BlockVerifiers for channels.
 type VerifierRetriever interface {
 	// RetrieveVerifier retrieves a BlockVerifier for the given channel.
-	RetrieveVerifier(channel string) BlockVerifier
+	RetrieveVerifier(channel string) protoutil.BlockVerifierFunc
 }
 
 // BlockPullerFromConfigBlock returns a BlockPuller that doesn't verify signatures on blocks.
@@ -385,17 +385,20 @@ func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block, verifier
 		return nil, errors.Errorf("unable to decode TLS certificate PEM: %s", base64.StdEncoding.EncodeToString(conf.TLSCert))
 	}
 
+	// TODO: This code is entire file is going away. I am parking this here for the meantime.
+	verifyBlockSequence := func(blocks []*common.Block, _ string) error {
+		vb := BlockVerifierBuilder(bccsp)
+		verify := func(header *common.BlockHeader, metadata *common.BlockMetadata) error {
+			return verifierRetriever.RetrieveVerifier(conf.Channel)(header, metadata)
+		}
+		return VerifyBlocksBFT(blocks, verify, vb)
+	}
+
 	return &BlockPuller{
-		Logger:  flogging.MustGetLogger("orderer.common.cluster.replication").With("channel", conf.Channel),
-		Dialer:  dialer,
-		TLSCert: tlsCertAsDER.Bytes,
-		VerifyBlockSequence: func(blocks []*common.Block, channel string) error {
-			verifier := verifierRetriever.RetrieveVerifier(channel)
-			if verifier == nil {
-				return errors.Errorf("couldn't acquire verifier for channel %s", channel)
-			}
-			return VerifyBlocks(blocks, verifier)
-		},
+		Logger:              flogging.MustGetLogger("orderer.common.cluster.replication").With("channel", conf.Channel),
+		Dialer:              dialer,
+		TLSCert:             tlsCertAsDER.Bytes,
+		VerifyBlockSequence: verifyBlockSequence,
 		MaxTotalBufferBytes: conf.MaxTotalBufferBytes,
 		Endpoints:           endpoints,
 		RetryTimeout:        RetryTimeout,
@@ -406,15 +409,7 @@ func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block, verifier
 	}, nil
 }
 
-// NoopBlockVerifier doesn't verify block signatures
-type NoopBlockVerifier struct{}
-
-// VerifyBlockSignature accepts all signatures over blocks.
-func (*NoopBlockVerifier) VerifyBlockSignature(sd []*protoutil.SignedData, config *common.ConfigEnvelope) error {
-	return nil
-}
-
-//go:generate mockery -dir . -name ChainPuller -case underscore -output mocks/
+//go:generate mockery --dir . --name ChainPuller --case underscore --output mocks/
 
 // ChainPuller pulls blocks from a chain
 type ChainPuller interface {

@@ -18,25 +18,29 @@ import (
 	"github.com/hyperledger/fabric-config/protolator"
 	"github.com/hyperledger/fabric-config/protolator/protoext/ordererext"
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
 	"github.com/hyperledger/fabric/integration/nwo/runner"
-	"github.com/onsi/gomega/gbytes"
-	"github.com/onsi/gomega/gexec"
-	"github.com/tedsuo/ifrit"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/gexec"
 	. "github.com/onsi/gomega/gstruct"
+	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
 var _ = Describe("Lifecycle", func() {
 	var (
-		client    *docker.Client
-		testDir   string
-		network   *nwo.Network
-		processes = map[string]ifrit.Process{}
+		client                      *docker.Client
+		testDir                     string
+		network                     *nwo.Network
+		processes                   = map[string]ifrit.Process{}
+		ordererRunner               *ginkgomon.Runner
+		ordererProcess, peerProcess ifrit.Process
+
 		termFiles []string
 	)
 
@@ -48,7 +52,7 @@ var _ = Describe("Lifecycle", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
+		network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
 
 		// Generate config
 		network.GenerateConfigTree()
@@ -92,23 +96,21 @@ var _ = Describe("Lifecycle", func() {
 		// bootstrap the network
 		network.Bootstrap()
 
-		for _, o := range network.Orderers {
-			or := network.OrdererRunner(o)
-			p := ifrit.Invoke(or)
-			processes[o.ID()] = p
-			Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
-		}
-
-		for _, peer := range network.Peers {
-			pr := network.PeerRunner(peer)
-			p := ifrit.Invoke(pr)
-			processes[peer.ID()] = p
-			Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
-		}
+		ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 	})
 
 	AfterEach(func() {
 		// Shutdown processes and cleanup
+		if ordererProcess != nil {
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
+		if peerProcess != nil {
+			peerProcess.Signal(syscall.SIGTERM)
+			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
 		for _, p := range processes {
 			p.Signal(syscall.SIGTERM)
 			Eventually(p.Wait(), network.EventuallyTimeout).Should(Receive())
@@ -138,8 +140,7 @@ var _ = Describe("Lifecycle", func() {
 		}
 
 		By("setting up the channel")
-		network.CreateAndJoinChannels(orderer)
-		network.UpdateChannelAnchors(orderer, "testchannel")
+		channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 		network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
 		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 

@@ -16,6 +16,7 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/ginkgo/v2"
@@ -23,16 +24,18 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
 var _ = Describe("SBE_E2E", func() {
 	var (
-		testDir   string
-		client    *docker.Client
-		network   *nwo.Network
-		chaincode nwo.Chaincode
-		process   ifrit.Process
-		tempDir   string
+		testDir                     string
+		client                      *docker.Client
+		network                     *nwo.Network
+		chaincode                   nwo.Chaincode
+		ordererRunner               *ginkgomon.Runner
+		ordererProcess, peerProcess ifrit.Process
+		tempDir                     string
 	)
 
 	BeforeEach(func() {
@@ -56,10 +59,16 @@ var _ = Describe("SBE_E2E", func() {
 	})
 
 	AfterEach(func() {
-		if process != nil {
-			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+		if ordererProcess != nil {
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
+
+		if peerProcess != nil {
+			peerProcess.Signal(syscall.SIGTERM)
+			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
 		if network != nil {
 			network.Cleanup()
 		}
@@ -69,13 +78,11 @@ var _ = Describe("SBE_E2E", func() {
 
 	Describe("basic etcdraft network with 2 orgs", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
-			networkRunner := network.NetworkGroupRunner()
-			process = ifrit.Invoke(networkRunner)
-			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 		})
 
 		It("executes a basic etcdraft network with 2 orgs and SBE checks", func() {
@@ -83,10 +90,7 @@ var _ = Describe("SBE_E2E", func() {
 			orderer := network.Orderer("orderer")
 
 			By("setting up the channel")
-			network.CreateAndJoinChannel(orderer, "testchannel")
-
-			By("updating the anchor peers")
-			network.UpdateChannelAnchors(orderer, "testchannel")
+			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 			By("deploying the chaincode")
 			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
@@ -118,10 +122,7 @@ var _ = Describe("SBE_E2E", func() {
 			orderer := network.Orderer("orderer")
 
 			By("setting up the channel")
-			network.CreateAndJoinChannel(orderer, "testchannel")
-
-			By("updating the anchor peers")
-			network.UpdateChannelAnchors(orderer, "testchannel")
+			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 			network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
 
 			By("enabling 2.0 application capabilities")

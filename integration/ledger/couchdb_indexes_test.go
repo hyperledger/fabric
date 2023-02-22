@@ -14,6 +14,7 @@ import (
 	"syscall"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
@@ -23,6 +24,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
 const (
@@ -44,11 +46,12 @@ var (
 
 var _ = Describe("CouchDB indexes", func() {
 	var (
-		testDir string
-		client  *docker.Client
-		network *nwo.Network
-		orderer *nwo.Orderer
-		process ifrit.Process
+		testDir                     string
+		client                      *docker.Client
+		network                     *nwo.Network
+		orderer                     *nwo.Orderer
+		ordererRunner               *ginkgomon.Runner
+		ordererProcess, peerProcess ifrit.Process
 
 		couchAddr    string
 		couchDB      *runner.CouchDB
@@ -65,7 +68,7 @@ var _ = Describe("CouchDB indexes", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.FullEtcdRaft(), testDir, client, StartPort(), components)
+		network = nwo.New(nwo.FullEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
 
 		cwd, err := os.Getwd()
 		Expect(err).NotTo(HaveOccurred())
@@ -94,12 +97,13 @@ var _ = Describe("CouchDB indexes", func() {
 
 		// start the network
 		network.Bootstrap()
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+		// Start all the fabric processes
+		ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
+
+		By("setting up the channel")
 		orderer = network.Orderer("orderer")
-		network.CreateAndJoinChannel(orderer, "testchannel")
-		network.UpdateChannelAnchors(orderer, "testchannel")
+		channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 		network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
 
 		legacyChaincode = nwo.Chaincode{
@@ -125,8 +129,16 @@ var _ = Describe("CouchDB indexes", func() {
 	})
 
 	AfterEach(func() {
-		process.Signal(syscall.SIGTERM)
-		Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+		if ordererProcess != nil {
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
+		if peerProcess != nil {
+			peerProcess.Signal(syscall.SIGTERM)
+			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
 		couchProcess.Signal(syscall.SIGTERM)
 		Eventually(couchProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 		network.Cleanup()

@@ -465,3 +465,36 @@ func CreateConsentersMap(blockMetadata *etcdraft.BlockMetadata, configMetadata *
 	}
 	return consenters
 }
+
+func CreateX509VerifyOptions(ordererConfig channelconfig.Orderer) (x509.VerifyOptions, error) {
+	tlsRoots := x509.NewCertPool()
+	tlsIntermediates := x509.NewCertPool()
+
+	for _, org := range ordererConfig.Organizations() {
+		rootCerts, err := parseCertificateListFromBytes(org.MSP().GetTLSRootCerts())
+		if err != nil {
+			return x509.VerifyOptions{}, errors.Wrap(err, "parsing tls root certs")
+		}
+		intermediateCerts, err := parseCertificateListFromBytes(org.MSP().GetTLSIntermediateCerts())
+		if err != nil {
+			return x509.VerifyOptions{}, errors.Wrap(err, "parsing tls intermediate certs")
+		}
+
+		for _, cert := range rootCerts {
+			tlsRoots.AddCert(cert)
+		}
+
+		for _, cert := range intermediateCerts {
+			tlsIntermediates.AddCert(cert)
+		}
+	}
+
+	return x509.VerifyOptions{
+		Roots:         tlsRoots,
+		Intermediates: tlsIntermediates,
+		KeyUsages: []x509.ExtKeyUsage{
+			x509.ExtKeyUsageClientAuth,
+			x509.ExtKeyUsageServerAuth,
+		},
+	}, nil
+}

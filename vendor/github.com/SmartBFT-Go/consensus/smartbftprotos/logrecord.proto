@@ -1,0 +1,24 @@
+// Copyright IBM Corp. All Rights Reserved.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
+syntax = "proto3";
+
+option go_package = "github.com/SmartBFT-Go/consensus/smartbftprotos";
+
+package smartbftprotos;
+
+
+message LogRecord {
+
+    enum Type {
+        ENTRY = 0;      // Contains data
+        CONTROL = 1;    // Does not contain data, only control fields
+        CRC_ANCHOR = 2; // A CRC anchor point
+    }
+
+    Type type = 1;
+    bool truncate_to = 2;
+    bytes data = 3;
+}

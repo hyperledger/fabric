@@ -13,7 +13,7 @@ on:
 env:
   GOPATH: /opt/go
   PATH: /opt/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
-  GO_VER: 1.18.9
+  GO_VER: 1.18.10
 
 permissions:
   contents: read # to fetch code (actions/checkout)
@@ -52,8 +52,9 @@ jobs:
     name: Integration Tests
     needs: basic-checks
     strategy:
+      fail-fast: false
       matrix:
-        INTEGRATION_TEST_SUITE: ["raft","pvtdata","ledger","lifecycle","e2e","discovery gossip devmode pluggable","gateway idemix pkcs11 configtx configtxlator","sbe nwo msp"]
+        INTEGRATION_TEST_SUITE: ["raft","pvtdata","pvtdatapurge","ledger","lifecycle","e2e smartbft","discovery gossip devmode pluggable","gateway idemix pkcs11 configtx configtxlator","sbe nwo msp"]
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/setup-go@v3

@@ -74,7 +74,7 @@ func NewReplicationInitiator(
 	// System channel is not verified because we trust the bootstrap block
 	// and use backward hash chain verification.
 	verifiersByChannel := vl.loadVerifiers()
-	verifiersByChannel[systemChannelName] = &cluster.NoopBlockVerifier{}
+	verifiersByChannel[systemChannelName] = func(header *common.BlockHeader, metadata *common.BlockMetadata) error { return nil } // no-op
 
 	vr := &cluster.VerificationRegistry{
 		LoadVerifier:       vl.loadVerifier,
@@ -354,7 +354,7 @@ type verifierLoader struct {
 	onFailure       func(block *common.Block)
 }
 
-type verifiersByChannel map[string]cluster.BlockVerifier
+type verifiersByChannel map[string]protoutil.BlockVerifierFunc
 
 func (vl *verifierLoader) loadVerifiers() verifiersByChannel {
 	res := make(verifiersByChannel)
@@ -370,7 +370,7 @@ func (vl *verifierLoader) loadVerifiers() verifiersByChannel {
 	return res
 }
 
-func (vl *verifierLoader) loadVerifier(chain string) cluster.BlockVerifier {
+func (vl *verifierLoader) loadVerifier(chain string) protoutil.BlockVerifierFunc {
 	ledger, err := vl.ledgerFactory.GetOrCreate(chain)
 	if err != nil {
 		vl.logger.Panicf("Failed obtaining ledger for channel %s", chain)
@@ -434,4 +434,24 @@ func ValidateBootstrapBlock(block *common.Block, bccsp bccsp.BCCSP) error {
 		return errors.New("the block isn't a system channel block because it lacks ConsortiumsConfig")
 	}
 	return nil
+}
+
+// ConsensusType returns the consensus type from the given genesis block.
+func ConsensusType(genesisBlock *common.Block, bccsp bccsp.BCCSP) string {
+	if genesisBlock == nil || genesisBlock.Data == nil || len(genesisBlock.Data.Data) == 0 {
+		logger.Fatalf("Empty genesis block")
+	}
+	env := &common.Envelope{}
+	if err := proto.Unmarshal(genesisBlock.Data.Data[0], env); err != nil {
+		logger.Fatalf("Failed to unmarshal the genesis block's envelope: %v", err)
+	}
+	bundle, err := channelconfig.NewBundleFromEnvelope(env, bccsp)
+	if err != nil {
+		logger.Fatalf("Failed creating bundle from the genesis block: %v", err)
+	}
+	ordConf, exists := bundle.OrdererConfig()
+	if !exists {
+		logger.Fatalf("Orderer config doesn't exist in bundle derived from genesis block")
+	}
+	return ordConf.ConsensusType()
 }

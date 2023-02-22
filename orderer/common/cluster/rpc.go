@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-//go:generate mockery -dir . -name StepClient -case underscore -output ./mocks/
+//go:generate mockery --dir . --name StepClient --case underscore --output ./mocks/
 
 // StepClient defines a client that sends and receives Step requests and responses.
 type StepClient interface {
@@ -28,7 +28,7 @@ type StepClient interface {
 	grpc.ClientStream
 }
 
-//go:generate mockery -dir . -name ClusterClient -case underscore -output ./mocks/
+//go:generate mockery --dir . --name ClusterClient --case underscore --output ./mocks/
 
 // ClusterClient creates streams that point to a remote cluster member.
 type ClusterClient interface {

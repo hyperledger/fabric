@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
@@ -438,7 +439,7 @@ func (r *Registrar) BroadcastChannelSupport(msg *cb.Envelope) (*cb.ChannelHeader
 	if cs == nil {
 		sysChan := r.SystemChannel()
 		if sysChan == nil {
-			return nil, false, nil, errors.New("channel creation request not allowed because the orderer system channel is not defined")
+			return chdr, false, nil, errors.New("channel creation request not allowed because the orderer system channel is not defined")
 		}
 		cs = sysChan
 	}
@@ -519,12 +520,30 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) (*ledgerResources,
 		return nil, errors.WithMessagef(err, "error getting ledger for channel: %s", chdr.ChannelId)
 	}
 
+	policy, exists := bundle.PolicyManager().GetPolicy(policies.BlockValidation)
+	if !exists {
+		return nil, errors.New("no policies in config block")
+	}
+
+	bftEnabled := bundle.ChannelConfig().Capabilities().ConsensusTypeBFT()
+
+	var consenters []*cb.Consenter
+	if bftEnabled {
+		cfg, ok := bundle.OrdererConfig()
+		if !ok {
+			return nil, errors.New("no orderer section in config block")
+		}
+		consenters = cfg.Consenters()
+	}
+	signatureVerifier := protoutil.BlockSignatureVerifier(bftEnabled, consenters, policy)
+
 	return &ledgerResources{
 		configResources: &configResources{
 			mutableResources: channelconfig.NewBundleSource(bundle, r.callbacks...),
 			bccsp:            r.bccsp,
 		},
-		ReadWriter: ledger,
+		ReadWriter:        ledger,
+		signatureVerifier: signatureVerifier,
 	}, nil
 }
 
@@ -1148,4 +1167,29 @@ func channelNameFromConfigTx(configtx *cb.Envelope) (string, error) {
 	}
 
 	return chdr.ChannelId, nil
+}
+
+func (r *Registrar) ApplyFilters(channel string, env *cb.Envelope) error {
+	r.lock.RLock()
+	cs, exists := r.chains[channel]
+	r.lock.RUnlock()
+
+	if !exists {
+		// This is for the system channel
+		return msgprocessor.CreateSystemChannelFilters(r.config, r, r.systemChannel, r.systemChannel.MetadataValidator).Apply(env)
+	}
+
+	return msgprocessor.CreateStandardChannelFilters(cs, r.config).Apply(env)
+}
+
+func (r *Registrar) ProposeConfigUpdate(channel string, configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
+	r.lock.RLock()
+	cs, exists := r.chains[channel]
+	r.lock.RUnlock()
+
+	if !exists {
+		return nil, errors.Errorf("channel %s doesn't exist", channel)
+	}
+
+	return cs.ProposeConfigUpdate(configtx)
 }

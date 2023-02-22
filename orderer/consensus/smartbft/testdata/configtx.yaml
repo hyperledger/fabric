@@ -1,0 +1,424 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+---
+################################################################################
+#
+#   Section: Organizations
+#
+#   - This section defines the different organizational identities which will
+#   be referenced later in the configuration.
+#
+################################################################################
+Organizations:
+
+    # SampleOrg defines an MSP using the sampleconfig.  It should never be used
+    # in production but may be used as a template for other definitions
+    - &OrdererOrg
+        # DefaultOrg defines the organization which is used in the sampleconfig
+        # of the fabric.git development environment
+        Name: OrdererOrg
+
+        # ID to load the MSP definition as
+        ID: OrdererMSP
+
+        # MSPDir is the filesystem path which contains the MSP configuration
+        MSPDir: crypto-config/ordererOrganizations/example.com/msp
+
+        # Policies defines the set of policies at this level of the config tree
+        # For organization policies, their canonical path is usually
+        #   /Channel/<Application|Orderer>/<OrgName>/<PolicyName>
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('OrdererMSP.member')"
+            Writers:
+                Type: Signature
+                Rule: "OR('OrdererMSP.member')"
+            Admins:
+                Type: Signature
+                Rule: "OR('OrdererMSP.admin')"
+
+        OrdererEndpoints:
+            - 127.0.0.1:6050
+            - 127.0.0.1:6051
+            - 127.0.0.1:6052
+
+    - &Org1
+        # DefaultOrg defines the organization which is used in the sampleconfig
+        # of the fabric.git development environment
+        Name: Org1MSP
+
+        # ID to load the MSP definition as
+        ID: Org1MSP
+
+        MSPDir: crypto-config/peerOrganizations/org1.example.com/msp
+
+        # Policies defines the set of policies at this level of the config tree
+        # For organization policies, their canonical path is usually
+        #   /Channel/<Application|Orderer>/<OrgName>/<PolicyName>
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('Org1MSP.admin', 'Org1MSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('Org1MSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('Org1MSP.peer')"
+
+        # leave this flag set to true.
+        AnchorPeers:
+            # AnchorPeers defines the location of peers which can be used
+            # for cross org gossip communication.  Note, this value is only
+            # encoded in the genesis block in the Application section context
+            - Host: 127.0.0.1
+              Port: 7051
+
+    - &Org2
+        # DefaultOrg defines the organization which is used in the sampleconfig
+        # of the fabric.git development environment
+        Name: Org2MSP
+
+        # ID to load the MSP definition as
+        ID: Org2MSP
+
+        MSPDir: crypto-config/peerOrganizations/org2.example.com/msp
+
+        # Policies defines the set of policies at this level of the config tree
+        # For organization policies, their canonical path is usually
+        #   /Channel/<Application|Orderer>/<OrgName>/<PolicyName>
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('Org2MSP.admin', 'Org2MSP.peer', 'Org2MSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('Org2MSP.admin', 'Org2MSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('Org2MSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('Org2MSP.peer')"
+
+        AnchorPeers:
+            # AnchorPeers defines the location of peers which can be used
+            # for cross org gossip communication.  Note, this value is only
+            # encoded in the genesis block in the Application section context
+            - Host: 127.0.0.1
+              Port: 7055
+
+################################################################################
+#
+#   SECTION: Capabilities
+#
+#   - This section defines the capabilities of fabric network. This is a new
+#   concept as of v1.1.0 and should not be utilized in mixed networks with
+#   v1.0.x peers and orderers.  Capabilities define features which must be
+#   present in a fabric binary for that binary to safely participate in the
+#   fabric network.  For instance, if a new MSP type is added, newer binaries
+#   might recognize and validate the signatures from this type, while older
+#   binaries without this support would be unable to validate those
+#   transactions.  This could lead to different versions of the fabric binaries
+#   having different world states.  Instead, defining a capability for a channel
+#   informs those binaries without this capability that they must cease
+#   processing transactions until they have been upgraded.  For v1.0.x if any
+#   capabilities are defined (including a map with all capabilities turned off)
+#   then the v1.0.x peer will deliberately crash.
+#
+################################################################################
+Capabilities:
+    # Channel capabilities apply to both the orderers and the peers and must be
+    # supported by both.
+    # Set the value of the capability to true to require it.
+    Channel: &ChannelCapabilities
+        # V2_0 capability ensures that orderers and peers behave according
+        # to v2.0 channel capabilities. Orderers and peers from
+        # prior releases would behave in an incompatible way, and are therefore
+        # not able to participate in channels at v2.0 capability.
+        # Prior to enabling V2.0 channel capabilities, ensure that all
+        # orderers and peers on a channel are at v2.0.0 or later.
+        V2_0: true
+
+    # Orderer capabilities apply only to the orderers, and may be safely
+    # used with prior release peers.
+    # Set the value of the capability to true to require it.
+    Orderer: &OrdererCapabilities
+        # V2_0 orderer capability ensures that orderers behave according
+        # to v2.0 orderer capabilities. Orderers from
+        # prior releases would behave in an incompatible way, and are therefore
+        # not able to participate in channels at v2.0 orderer capability.
+        # Prior to enabling V2.0 orderer capabilities, ensure that all
+        # orderers on channel are at v2.0.0 or later.
+        V2_0: true
+
+    # Application capabilities apply only to the peer network, and may be safely
+    # used with prior release orderers.
+    # Set the value of the capability to true to require it.
+    Application: &ApplicationCapabilities
+        # V2.5 for Application enables the new non-backwards compatible
+        # features of fabric v2.5, namely the ability to purge private data.
+        # Prior to enabling V2.5 application capabilities, ensure that all
+        # peers on a channel are at v2.5.0 or later.
+        V2_5: true
+
+################################################################################
+#
+#   SECTION: Application
+#
+#   - This section defines the values to encode into a config transaction or
+#   genesis block for application related parameters
+#
+################################################################################
+Application: &ApplicationDefaults
+
+    # Organizations is the list of orgs which are defined as participants on
+    # the application side of the network
+    Organizations:
+
+    # Policies defines the set of policies at this level of the config tree
+    # For Application policies, their canonical path is
+    #   /Channel/Application/<PolicyName>
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        LifecycleEndorsement:
+                Type: Signature
+                Rule: "OR('Org1MSP.peer','Org2MSP.peer')"
+        Endorsement:
+                Type: Signature
+                Rule: "OR('Org1MSP.peer','Org2MSP.peer')"
+
+    Capabilities:
+        <<: *ApplicationCapabilities
+################################################################################
+#
+#   SECTION: Orderer
+#
+#   - This section defines the values to encode into a config transaction or
+#   genesis block for orderer related parameters
+#
+################################################################################
+Orderer: &OrdererDefaults
+
+    # Batch Timeout: The amount of time to wait before creating a batch
+    BatchTimeout: 2s
+
+    # Batch Size: Controls the number of messages batched into a block
+    BatchSize:
+
+        # Max Message Count: The maximum number of messages to permit in a batch
+        MaxMessageCount: 10
+
+        # Absolute Max Bytes: The absolute maximum number of bytes allowed for
+        # the serialized messages in a batch.
+        AbsoluteMaxBytes: 99 MB
+
+        # Preferred Max Bytes: The preferred maximum number of bytes allowed for
+        # the serialized messages in a batch. A message larger than the preferred
+        # max bytes will result in a batch larger than preferred max bytes.
+        PreferredMaxBytes: 512 KB
+
+    # Organizations is the list of orgs which are defined as participants on
+    # the orderer side of the network
+    Organizations:
+
+    # Policies defines the set of policies at this level of the config tree
+    # For Orderer policies, their canonical path is
+    #   /Channel/Orderer/<PolicyName>
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        # BlockValidation specifies what signatures must be included in the block
+        # from the orderer for the peer to validate it.
+        BlockValidation:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+
+################################################################################
+#
+#   CHANNEL
+#
+#   This section defines the values to encode into a config transaction or
+#   genesis block for channel related parameters.
+#
+################################################################################
+Channel: &ChannelDefaults
+    # Policies defines the set of policies at this level of the config tree
+    # For Channel policies, their canonical path is
+    #   /Channel/<PolicyName>
+    Policies:
+        # Who may invoke the 'Deliver' API
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        # Who may invoke the 'Broadcast' API
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        # By default, who may modify elements at this config level
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+
+    # Capabilities describes the channel level capabilities, see the
+    # dedicated Capabilities section elsewhere in this file for a full
+    # description
+    Capabilities:
+        <<: *ChannelCapabilities
+
+################################################################################
+#
+#   Profile
+#
+#   - Different configuration profiles may be encoded here to be specified
+#   as parameters to the configtxgen tool
+#
+################################################################################
+Profiles:
+
+    TwoOrgsOrdererGenesis:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - *OrdererOrg
+            Capabilities:
+                <<: *OrdererCapabilities
+            OrdererType: etcdraft
+            EtcdRaft:
+                Consenters:
+                - Host: 127.0.0.1
+                  Port: 6050
+                  ClientTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+                  ServerTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+                - Host: 127.0.0.1
+                  Port: 6051
+                  ClientTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/server.crt
+                  ServerTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/server.crt
+                - Host: 127.0.0.1
+                  Port: 6052
+                  ClientTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/server.crt
+                  ServerTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/server.crt
+                Options:
+                    TickInterval: 2500ms
+                    ElectionTick: 5
+                    HeartbeatTick: 1
+                    MaxInflightBlocks: 5
+                    SnapshotIntervalSize: 16 MB
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - *Org1
+                    - *Org2
+    TwoOrgsChannel:
+        Consortium: SampleConsortium
+        <<: *ChannelDefaults
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *Org1
+                - *Org2
+            Capabilities:
+                <<: *ApplicationCapabilities
+    Org1Channel:
+        Consortium: SampleConsortium
+        <<: *ChannelDefaults
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *Org1
+            Capabilities:
+                <<: *ApplicationCapabilities
+    Org2Channel:
+        Consortium: SampleConsortium
+        <<: *ChannelDefaults
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *Org2
+            Capabilities:
+                <<: *ApplicationCapabilities
+    BFTTwoOrgsApplicationGenesis:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            Addresses:
+                - 127.0.0.1:6050
+                - 127.0.0.1:6051
+                - 127.0.0.1:6052
+                - 127.0.0.1:6053
+            Organizations:
+                - *OrdererOrg
+            Capabilities: *OrdererCapabilities
+            OrdererType: BFT
+            SmartBFT:
+                RequestBatchMaxCount: 100
+                RequestBatchMaxInterval: 50ms
+                RequestForwardTimeout: 2s
+                RequestComplainTimeout: 20s
+                RequestAutoRemoveTimeout: 3m0s
+                ViewChangeResendInterval: 5s
+                ViewChangeTimeout: 20s
+                LeaderHeartbeatTimeout: 1m0s
+                CollectTimeout: 1s
+                RequestBatchMaxBytes: 10485760
+                IncomingMessageBufferSize: 200
+                RequestPoolSize: 400
+                LeaderHeartbeatCount: 10
+            ConsenterMapping:
+            - ID: 1
+              Host: 127.0.0.1
+              Port: 6050
+              MSPID: OrdererMSP
+              Identity: crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/signcerts/orderer.example.com-cert.pem
+              ClientTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+              ServerTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+            - ID: 2
+              Host: 127.0.0.1
+              Port: 6051
+              MSPID: OrdererMSP
+              Identity: crypto-config/ordererOrganizations/example.com/orderers/orderer2.example.com/msp/signcerts/orderer2.example.com-cert.pem
+              ClientTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/server.crt
+              ServerTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/server.crt
+            - ID: 3
+              Host: 127.0.0.1
+              Port: 6052
+              MSPID: OrdererMSP
+              Identity: crypto-config/ordererOrganizations/example.com/orderers/orderer3.example.com/msp/signcerts/orderer3.example.com-cert.pem
+              ClientTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/server.crt
+              ServerTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/server.crt
+            - ID: 4
+              Host: 127.0.0.1
+              Port: 6053
+              MSPID: OrdererMSP
+              Identity: crypto-config/ordererOrganizations/example.com/orderers/orderer4.example.com/msp/signcerts/orderer4.example.com-cert.pem
+              ClientTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer4.example.com/tls/server.crt
+              ServerTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer4.example.com/tls/server.crt
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *Org1
+                - *Org2
+            Capabilities: *ApplicationCapabilities

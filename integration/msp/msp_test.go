@@ -13,9 +13,9 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
-	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/ginkgo/v2"
@@ -33,7 +33,6 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 		network *nwo.Network
 
 		ordererRunner               *ginkgomon.Runner
-		peerGroupRunner             ifrit.Runner
 		ordererProcess, peerProcess ifrit.Process
 	)
 
@@ -45,7 +44,7 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.BasicEtcdRaft(), tempDir, client, StartPort(), components)
+		network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), tempDir, client, StartPort(), components)
 	})
 
 	AfterEach(func() {
@@ -53,12 +52,10 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 			ordererProcess.Signal(syscall.SIGTERM)
 			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
-
 		if peerProcess != nil {
 			peerProcess.Signal(syscall.SIGTERM)
 			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
-
 		if network != nil {
 			network.Cleanup()
 		}
@@ -79,20 +76,15 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 		network.Bootstrap()
 
 		By("starting all processes for fabric")
-		ordererRunner = network.OrdererRunner(network.Orderer("orderer"))
-		ordererProcess = ifrit.Invoke(ordererRunner)
-		Eventually(ordererProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
-
-		peerGroupRunner = network.PeerGroupRunner()
-		peerProcess = ifrit.Invoke(peerGroupRunner)
-		Eventually(peerProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 
 		org1Peer0 := network.Peer("Org1", "peer0")
 		org2Peer0 := network.Peer("Org2", "peer0")
 		orderer := network.Orderer("orderer")
 
 		By("creating and joining channels")
-		network.CreateAndJoinChannels(orderer)
+		channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+
 		By("enabling new lifecycle capabilities")
 		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
@@ -167,19 +159,7 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 		Expect(err).NotTo(HaveOccurred())
 
 		By("restarting all fabric processes to reload MSP identities")
-		peerProcess.Signal(syscall.SIGTERM)
-		Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
-		ordererProcess.Signal(syscall.SIGTERM)
-		Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
-
-		ordererRunner = network.OrdererRunner(network.Orderer("orderer"))
-		ordererProcess = ifrit.Invoke(ordererRunner)
-		Eventually(ordererProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
-		Eventually(ordererRunner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> 1 channel=testchannel"))
-
-		peerGroupRunner = network.PeerGroupRunner()
-		peerProcess = ifrit.Invoke(peerGroupRunner)
-		Eventually(peerProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		ordererRunner, ordererProcess, peerProcess = nwo.RestartSingleOrdererNetwork(ordererProcess, peerProcess, network)
 
 		By("attempting to invoke chaincode on a peer that does not have a valid endorser identity (endorsing peer has client identity)")
 		sess, err = network.PeerUserSession(org1Peer0, "User1", commands.ChaincodeInvoke{

@@ -88,6 +88,8 @@ The Fabric Gateway manages gRPC connections to network peer and ordering nodes. 
 
 The Fabric Gateway `Evaluate` and `Endorse` methods make gRPC requests to peers external to the gateway. In order to limit the length of time that the client must wait for these collective responses, the `peer.gateway.endorsementTimeout` value can be overridden in the gateway section of the peer `core.yaml` configuration file.
 
+Similarly, the Fabric Gateway `Submit` method makes gRPC connections to ordering service nodes to broadcast endorsed transactions. In order to limit the length of time that the client must wait for individual ordering nodes to respond,  the `peer.gateway.broadcastTimeout` value can be overridden in the gateway section of the peer `core.yaml` configuration file.
+
 The Fabric Gateway client API also provides mechanisms for setting default and per-call timeouts for each gateway method when invoked from the client application.
 
 ## Listening for events

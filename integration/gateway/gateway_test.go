@@ -21,11 +21,13 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric-protos-go/peer/lifecycle"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -72,17 +74,18 @@ func chaincodeArgs(transactionName string, args ...[]byte) [][]byte {
 	return result
 }
 
-var _ = Describe("GatewayService", func() {
+var _ = Describe("GatewayService basic", func() {
 	var (
-		testDir         string
-		network         *nwo.Network
-		org1Peer0       *nwo.Peer
-		process         ifrit.Process
-		conn            *grpc.ClientConn
-		gatewayClient   gateway.GatewayClient
-		ctx             context.Context
-		cancel          context.CancelFunc
-		signingIdentity *nwo.SigningIdentity
+		testDir                     string
+		network                     *nwo.Network
+		org1Peer0                   *nwo.Peer
+		ordererRunner               *ginkgomon.Runner
+		ordererProcess, peerProcess ifrit.Process
+		conn                        *grpc.ClientConn
+		gatewayClient               gateway.GatewayClient
+		ctx                         context.Context
+		cancel                      context.CancelFunc
+		signingIdentity             *nwo.SigningIdentity
 	)
 
 	BeforeEach(func() {
@@ -93,19 +96,19 @@ var _ = Describe("GatewayService", func() {
 		client, err := docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		config := nwo.BasicEtcdRaft()
+		config := nwo.BasicEtcdRaftNoSysChan()
 		network = nwo.New(config, testDir, client, StartPort(), components)
 
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		// Start all the fabric processes
+		ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 
+		By("setting up the channel")
 		orderer := network.Orderer("orderer")
-		network.CreateAndJoinChannel(orderer, "testchannel")
-		network.UpdateChannelAnchors(orderer, "testchannel")
+		channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+
 		network.VerifyMembership(
 			network.PeersWithChannel("testchannel"),
 			"testchannel",
@@ -146,10 +149,16 @@ var _ = Describe("GatewayService", func() {
 		conn.Close()
 		cancel()
 
-		if process != nil {
-			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+		if ordererProcess != nil {
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
+
+		if peerProcess != nil {
+			peerProcess.Signal(syscall.SIGTERM)
+			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
 		if network != nil {
 			network.Cleanup()
 		}
@@ -268,7 +277,7 @@ var _ = Describe("GatewayService", func() {
 			Expect(proto.Equal(response, expectedResponse)).To(BeTrue(), "Expected\n\t%#v\nto proto.Equal\n\t%#v", response, expectedResponse)
 		})
 
-		It("should responsd with system chaincode result", func() {
+		It("should respond with system chaincode result", func() {
 			proposedTransaction, transactionID := NewProposedTransaction(signingIdentity, "testchannel", "qscc", "GetChainInfo", nil, []byte("testchannel"))
 
 			request := &gateway.EvaluateRequest{

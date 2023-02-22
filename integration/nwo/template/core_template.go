@@ -64,7 +64,7 @@ peer:
       pushAckTimeout: 3s
       btlPullMargin: 10
       reconcileBatchSize: 10
-      reconcileSleepInterval: 10s
+      reconcileSleepInterval: 5s
       reconciliationEnabled: true
       skipPullingInvalidTransactionsDuringCommit: false
       implicitCollectionDisseminationPolicy:
@@ -214,6 +214,7 @@ ledger:
     enableHistoryDatabase: true
   pvtdataStore:
     deprioritizedDataReconcilerInterval: 60m
+    purgeInterval: 1
 
 operations:
   listenAddress: 127.0.0.1:{{ .PeerPort Peer "Operations" }}

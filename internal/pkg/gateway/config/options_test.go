@@ -20,6 +20,7 @@ peer:
   gateway:
     enabled: true
     endorsementTimeout: 30s
+    broadcastTimeout: 20s
     dialTimeout: 2m
 `)
 
@@ -44,6 +45,7 @@ func TestOverriddenOptions(t *testing.T) {
 	expectedOptions := Options{
 		Enabled:            true,
 		EndorsementTimeout: 30 * time.Second,
+		BroadcastTimeout:   20 * time.Second,
 		DialTimeout:        2 * time.Minute,
 	}
 	require.Equal(t, expectedOptions, options)
@@ -58,6 +60,7 @@ func TestDisabledGatewayOption(t *testing.T) {
 	expectedOptions := Options{
 		Enabled:            false,
 		EndorsementTimeout: 10 * time.Second,
+		BroadcastTimeout:   10 * time.Second,
 		DialTimeout:        30 * time.Second,
 	}
 	require.Equal(t, expectedOptions, options)

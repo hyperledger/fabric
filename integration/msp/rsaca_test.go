@@ -26,6 +26,7 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	fabricmsp "github.com/hyperledger/fabric/msp"
@@ -33,6 +34,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"gopkg.in/yaml.v2"
 )
 
@@ -41,7 +43,9 @@ var _ = Describe("MSPs with RSA Certificate Authorities", func() {
 		client  *docker.Client
 		testDir string
 		network *nwo.Network
-		process ifrit.Process
+
+		ordererRunner               *ginkgomon.Runner
+		ordererProcess, peerProcess ifrit.Process
 	)
 
 	BeforeEach(func() {
@@ -52,28 +56,19 @@ var _ = Describe("MSPs with RSA Certificate Authorities", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
+		network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
 		network.GenerateConfigTree()
 
 		By("manually bootstrapping MSPs with RSA CAs")
 		generateRSACACrypto(network)
 		network.CreateDockerNetwork()
-		sess, err := network.ConfigTxGen(commands.OutputBlock{
-			ChannelID:   network.SystemChannel.Name,
-			Profile:     network.SystemChannel.Profile,
-			ConfigPath:  network.RootDir,
-			OutputBlock: network.OutputBlockPath(network.SystemChannel.Name),
-		})
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 
 		for _, c := range network.Channels {
-			sess, err := network.ConfigTxGen(commands.CreateChannelTx{
-				ChannelID:             c.Name,
-				Profile:               c.Profile,
-				BaseProfile:           c.BaseProfile,
-				ConfigPath:            network.RootDir,
-				OutputCreateChannelTx: network.CreateChannelTxPath(c.Name),
+			sess, err := network.ConfigTxGen(commands.OutputBlock{
+				ChannelID:   c.Name,
+				Profile:     c.Profile,
+				ConfigPath:  network.RootDir,
+				OutputBlock: network.OutputBlockPath(c.Name),
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
@@ -81,16 +76,20 @@ var _ = Describe("MSPs with RSA Certificate Authorities", func() {
 		network.ConcatenateTLSCACertificates()
 
 		By("starting all processes for fabric")
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 	})
 
 	AfterEach(func() {
-		if process != nil {
-			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+		if ordererProcess != nil {
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
+
+		if peerProcess != nil {
+			peerProcess.Signal(syscall.SIGTERM)
+			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
 		if network != nil {
 			network.Cleanup()
 		}
@@ -114,7 +113,8 @@ var _ = Describe("MSPs with RSA Certificate Authorities", func() {
 			Label:           "my_prebuilt_chaincode",
 		}
 
-		network.CreateAndJoinChannels(orderer)
+		channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+
 		nwo.EnableCapabilities(
 			network,
 			"testchannel",

@@ -359,3 +359,8 @@ func translateCAs(configDir string, certificateAuthorities []string) []string {
 	}
 	return results
 }
+
+// Consensus indicates the orderer type.
+type Consensus struct {
+	Type string `yaml:"type,omitempty"`
+}

@@ -36,7 +36,9 @@ General:
     ServerInterval: 7200s
     ServerTimeout: 20s
   BootstrapMethod: {{ .Consensus.BootstrapMethod }}
+  {{- if eq $w.Consensus.BootstrapMethod "file" }}
   BootstrapFile: {{ .RootDir }}/{{ .SystemChannel.Name }}_block.pb
+  {{- end }}
   LocalMSPDir: {{ $w.OrdererLocalMSPDir Orderer }}
   LocalMSPID: {{ ($w.Organization Orderer.Organization).MSPID }}
   Profile:
@@ -60,6 +62,7 @@ Consensus:
   WALDir: {{ .OrdererDir Orderer }}/etcdraft/wal
   SnapDir: {{ .OrdererDir Orderer }}/etcdraft/snapshot
   EvictionSuspicion: 5s
+  Type: {{ $w.Consensus.Type }}
 Operations:
   ListenAddress: 127.0.0.1:{{ .OrdererPort Orderer "Operations" }}
   TLS:

@@ -81,6 +81,8 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		return t.mspid(args)
 	case "event":
 		return t.event(stub, args)
+	case "issue":
+		return t.issue(stub, args)
 	default:
 		return shim.Error(`Invalid invoke function name. Expecting "invoke", "delete", "query", "respond", "mspid", or "event"`)
 	}
@@ -238,6 +240,35 @@ func (t *SimpleChaincode) event(stub shim.ChaincodeStubInterface, args []string)
 	}
 
 	if err := stub.SetEvent(args[0], []byte(args[1])); err != nil {
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(nil)
+}
+
+// Issue asset holding. Can only be done once.
+func (t *SimpleChaincode) issue(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	fmt.Printf("Entry: issue\n")
+
+	if len(args) != 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
+	}
+
+	A := args[0]
+	val, err := stub.GetState(A)
+	if !(val == nil && err == nil) {
+		return shim.Error(fmt.Sprintf("Asset already exists: %s", A))
+	}
+
+	Aval, err := strconv.Atoi(args[1])
+	if err != nil {
+		return shim.Error("Expecting integer value for asset holding")
+	}
+
+	fmt.Printf("Issue: %s = %d\n", A, Aval)
+
+	err = stub.PutState(A, []byte(strconv.Itoa(Aval)))
+	if err != nil {
 		return shim.Error(err.Error())
 	}
 

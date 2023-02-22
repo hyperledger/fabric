@@ -18,6 +18,8 @@ type Options struct {
 	Enabled bool
 	// EndorsementTimeout is used to specify the maximum time to wait for endorsement responses from external peers.
 	EndorsementTimeout time.Duration
+	// BroadcastTimeout is used to specify the maximum time to wait for responses from ordering nodes.
+	BroadcastTimeout time.Duration
 	// DialTimeout is used to specify the maximum time to wait for connecting to external peers and orderer nodes.
 	DialTimeout time.Duration
 }
@@ -25,6 +27,7 @@ type Options struct {
 var defaultOptions = Options{
 	Enabled:            true,
 	EndorsementTimeout: 10 * time.Second,
+	BroadcastTimeout:   10 * time.Second,
 	DialTimeout:        30 * time.Second,
 }
 
@@ -36,6 +39,9 @@ func GetOptions(v *viper.Viper) Options {
 	}
 	if v.IsSet("peer.gateway.endorsementTimeout") {
 		options.EndorsementTimeout = v.GetDuration("peer.gateway.endorsementTimeout")
+	}
+	if v.IsSet("peer.gateway.broadcastTimeout") {
+		options.BroadcastTimeout = v.GetDuration("peer.gateway.broadcastTimeout")
 	}
 	if v.IsSet("peer.gateway.dialTimeout") {
 		options.DialTimeout = v.GetDuration("peer.gateway.dialTimeout")
