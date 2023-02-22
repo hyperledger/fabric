@@ -320,3 +320,7 @@ Consensus:
     # SnapDir specifies the location at which snapshots for etcd/raft are
     # stored. Each channel will have its own subdir named after channel ID.
     SnapDir: /var/hyperledger/production/orderer/etcdraft/snapshot
+
+    # Type specifies the consensus type to run.
+    # Currently supported types are 'etcdraft' and 'BFT'
+    Type: "etcdraft"
