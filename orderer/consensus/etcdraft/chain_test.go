@@ -110,7 +110,7 @@ var _ = Describe("Chain", func() {
 	BeforeEach(func() {
 		tlsCA, _ = tlsgen.NewCA()
 		channelID = "test-channel"
-		logger = flogging.NewFabricLogger(zap.NewExample())
+		logger = flogging.MustGetLogger("test")
 		env = &common.Envelope{
 			Payload: marshalOrPanic(&common.Payload{
 				Header: &common.Header{ChannelHeader: marshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_MESSAGE), ChannelId: channelID})},
