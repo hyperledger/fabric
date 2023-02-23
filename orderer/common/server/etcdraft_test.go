@@ -50,8 +50,8 @@ func TestSpawnEtcdRaft(t *testing.T) {
 	cryptoPath := generateCryptoMaterials(gt, cryptogen, tempSharedDir)
 
 	t.Run("Bad", func(t *testing.T) {
-		t.Run("Invalid bootstrap block", func(t *testing.T) {
-			testEtcdRaftOSNFailureInvalidBootstrapBlock(NewGomegaWithT(t), tempSharedDir, orderer, configtxgen, cryptoPath)
+		t.Run("Invalid bootstrap method", func(t *testing.T) {
+			testEtcdRaftOSNFailureInvalidBootstrapMethod(NewGomegaWithT(t), tempSharedDir, orderer, configtxgen, cryptoPath)
 		})
 
 		t.Run("TLS disabled single listener", func(t *testing.T) {
@@ -70,12 +70,16 @@ func TestSpawnEtcdRaft(t *testing.T) {
 			testEtcdRaftOSNSuccess(NewGomegaWithT(t), tempSharedDir, configtxgen, orderer, cryptoPath)
 		})
 
-		t.Run("Restart orderer without Genesis Block", func(t *testing.T) {
-			testEtcdRaftOSNRestart(NewGomegaWithT(t), tempSharedDir, configtxgen, orderer, cryptoPath)
+		t.Run("Start orderer without channels", func(t *testing.T) {
+			testEtcdRaftOSNStart(NewGomegaWithT(t), tempSharedDir, configtxgen, orderer, cryptoPath)
 		})
 
-		t.Run("Restart orderer after joining system channel", func(t *testing.T) {
-			testEtcdRaftOSNJoinSysChan(NewGomegaWithT(t), tempSharedDir, configtxgen, orderer, cryptoPath)
+		t.Run("Restart orderer after joining application channel", func(t *testing.T) {
+			testEtcdRaftOSNJoinAppChan(NewGomegaWithT(t), tempSharedDir, configtxgen, orderer, cryptoPath)
+		})
+
+		t.Run("Channel participation disabled is ignored", func(t *testing.T) {
+			testEtcdRaftOSNFailureChannelParticipationDisabled(NewGomegaWithT(t), tempSharedDir, orderer, configtxgen, cryptoPath)
 		})
 	})
 }
@@ -123,24 +127,14 @@ func generateCryptoMaterials(gt *GomegaWithT, cryptogen, path string) string {
 	return cryptoPath
 }
 
-func testEtcdRaftOSNRestart(gt *GomegaWithT, tempDir, configtxgen, orderer, cryptoPath string) {
-	genesisBlockPath := generateBootstrapBlock(gt, tempDir, configtxgen, "system", "SampleEtcdRaftSystemChannel")
-
+func testEtcdRaftOSNStart(gt *GomegaWithT, tempDir, configtxgen, orderer, cryptoPath string) {
 	// Launch the OSN
-	ordererProcess := launchOrderer(gt, orderer, tempDir, tempDir, genesisBlockPath, cryptoPath, "file", "false", "info")
+	ordererProcess := launchOrderer(gt, orderer, tempDir, tempDir, "", cryptoPath, "none", "true", "info")
 	defer func() { gt.Eventually(ordererProcess.Kill(), time.Minute).Should(gexec.Exit()) }()
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("Beginning to serve requests"))
-	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("becomeLeader"))
-
-	// Restart orderer with ORDERER_GENERAL_BOOTSTRAPMETHOD = none
-	gt.Eventually(ordererProcess.Kill(), time.Minute).Should(gexec.Exit())
-	ordererProcess = launchOrderer(gt, orderer, tempDir, tempDir, "", cryptoPath, "none", "true", "info")
-	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("Beginning to serve requests"))
-	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("becomeLeader"))
-	gt.Eventually(ordererProcess.Kill(), time.Minute).Should(gexec.Exit())
 }
 
-func testEtcdRaftOSNJoinSysChan(gt *GomegaWithT, configPath, configtxgen, orderer, cryptoPath string) {
+func testEtcdRaftOSNJoinAppChan(gt *GomegaWithT, configPath, configtxgen, orderer, cryptoPath string) {
 	tempDir, err := ioutil.TempDir("", "etcdraft-test")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
@@ -149,26 +143,18 @@ func testEtcdRaftOSNJoinSysChan(gt *GomegaWithT, configPath, configtxgen, ordere
 	ordererProcess := launchOrderer(gt, orderer, tempDir, configPath, "", cryptoPath, "none", "true", "info:orderer.common.server=debug")
 	defer func() { gt.Eventually(ordererProcess.Kill(), time.Minute).Should(gexec.Exit()) }()
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("Channel Participation API enabled, registrar initializing with file repo"))
-	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("No join-block was found for the system channel"))
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("Beginning to serve requests"))
 
-	// emulate a join-block for the system channel written to the join-block filerepo location
-	genesisBlockPath := generateBootstrapBlock(gt, configPath, configtxgen, "system", "SampleEtcdRaftSystemChannel")
-	genesisBlockBytes, err := ioutil.ReadFile(genesisBlockPath)
-	gt.Expect(err).NotTo(HaveOccurred())
-	fileRepoDir := filepath.Join(tempDir, "ledger", "pendingops", "join")
-	joinBlockPath := filepath.Join(fileRepoDir, "system.join")
-	err = ioutil.WriteFile(joinBlockPath, genesisBlockBytes, 0o644)
-	gt.Expect(err).NotTo(HaveOccurred())
+	joinBlockPath := writeJoinBlock(gt, configPath, configtxgen, tempDir)
 
 	gt.Eventually(ordererProcess.Kill(), time.Minute).Should(gexec.Exit())
 
-	// Restart, should pick up the join-block and bootstrap with it
+	// Restart, should pick up the join-block and start consensus on "mychannel"
 	ordererProcess = launchOrderer(gt, orderer, tempDir, configPath, "", cryptoPath, "none", "true", "info")
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("Channel Participation API enabled, registrar initializing with file repo"))
-	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("Join-block was found for the system channel: system, number: 0"))
+	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("Starting Raft node channel=mychannel node=1"))
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("Beginning to serve requests"))
-	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("becomeLeader"))
+	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("Raft leader changed: 0 -> 1 channel=mychannel node=1"))
 	// File was removed after on-boarding
 	_, err = os.Stat(joinBlockPath)
 	gt.Expect(err).To(HaveOccurred())
@@ -177,15 +163,29 @@ func testEtcdRaftOSNJoinSysChan(gt *GomegaWithT, configPath, configtxgen, ordere
 	gt.Eventually(ordererProcess.Kill(), time.Minute).Should(gexec.Exit())
 }
 
+// emulate a join-block for an application channel written to the join-block filerepo location
+func writeJoinBlock(gt *GomegaWithT, configPath string, configtxgen string, tempDir string) string {
+	genesisBlockPath := generateBootstrapBlock(gt, configPath, configtxgen, "mychannel", "SampleOrgChannel")
+	genesisBlockBytes, err := ioutil.ReadFile(genesisBlockPath)
+	gt.Expect(err).NotTo(HaveOccurred())
+	fileRepoDir := filepath.Join(tempDir, "ledger", "pendingops", "join")
+	err = os.MkdirAll(fileRepoDir, 0o744)
+	gt.Expect(err).NotTo(HaveOccurred())
+	joinBlockPath := filepath.Join(fileRepoDir, "mychannel.join")
+	err = ioutil.WriteFile(joinBlockPath, genesisBlockBytes, 0o644)
+	gt.Expect(err).NotTo(HaveOccurred())
+	return joinBlockPath
+}
+
 func testEtcdRaftOSNSuccess(gt *GomegaWithT, configPath, configtxgen, orderer, cryptoPath string) {
 	tempDir, err := ioutil.TempDir("", "etcdraft-test")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
-	genesisBlockPath := generateBootstrapBlock(gt, configPath, configtxgen, "system", "SampleEtcdRaftSystemChannel")
+	_ = writeJoinBlock(gt, configPath, configtxgen, tempDir)
 
 	// Launch the OSN
-	ordererProcess := launchOrderer(gt, orderer, tempDir, configPath, genesisBlockPath, cryptoPath, "file", "false", "info")
+	ordererProcess := launchOrderer(gt, orderer, tempDir, configPath, "", cryptoPath, "none", "true", "info")
 	defer func() { gt.Eventually(ordererProcess.Kill(), time.Minute).Should(gexec.Exit()) }()
 	// The following configuration parameters are not specified in the orderer.yaml, so let's ensure
 	// they are really configured autonomously via the localconfig code.
@@ -207,27 +207,39 @@ func testEtcdRaftOSNSuccess(gt *GomegaWithT, configPath, configtxgen, orderer, c
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("becomeLeader"))
 }
 
-func testEtcdRaftOSNFailureInvalidBootstrapBlock(gt *GomegaWithT, configPath, orderer, configtxgen, cryptoPath string) {
+// the orderer refuses to launch with the 'file' bootstrap method
+func testEtcdRaftOSNFailureInvalidBootstrapMethod(gt *GomegaWithT, configPath, orderer, configtxgen, cryptoPath string) {
 	tempDir, err := ioutil.TempDir("", "etcdraft-test")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
-	// create an application channel genesis block
-	genesisBlockPath := generateBootstrapBlock(gt, configPath, configtxgen, "mychannel", "SampleOrgChannel")
-	genesisBlockBytes, err := ioutil.ReadFile(genesisBlockPath)
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	// Copy it to the designated location in the temporary folder
-	genesisBlockPath = filepath.Join(tempDir, "genesis.block")
-	err = ioutil.WriteFile(genesisBlockPath, genesisBlockBytes, 0o644)
-	gt.Expect(err).NotTo(HaveOccurred())
+	// genesis block is ignored
+	genesisBlockPath := filepath.Join(tempDir, "does-not-exist", "genesis.block")
 
 	// Launch the OSN
-	ordererProcess := launchOrderer(gt, orderer, tempDir, configPath, genesisBlockPath, cryptoPath, "", "false", "info")
+	ordererProcess := launchOrderer(gt, orderer, tempDir, configPath, genesisBlockPath, cryptoPath, "file", "true", "info")
 	defer func() { gt.Eventually(ordererProcess.Kill(), time.Minute).Should(gexec.Exit()) }()
 
-	expectedErr := "Failed validating bootstrap block: the block isn't a system channel block because it lacks ConsortiumsConfig"
+	expectedErr := "Bootstrap method: 'file' is forbidden, since system channel is no longer supported"
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say(expectedErr))
+}
+
+// the orderer ignores General.ChannelParticipation.Enabled=false
+func testEtcdRaftOSNFailureChannelParticipationDisabled(gt *GomegaWithT, configPath, orderer, configtxgen, cryptoPath string) {
+	tempDir, err := ioutil.TempDir("", "etcdraft-test")
+	gt.Expect(err).NotTo(HaveOccurred())
+	defer os.RemoveAll(tempDir)
+
+	// genesis block is ignored
+	genesisBlockPath := filepath.Join(tempDir, "does-not-exist", "genesis.block")
+
+	// Launch the OSN
+	ordererProcess := launchOrderer(gt, orderer, tempDir, configPath, genesisBlockPath, cryptoPath, "none", "false", "info")
+	defer func() { gt.Eventually(ordererProcess.Kill(), time.Minute).Should(gexec.Exit()) }()
+
+	expectedErr := "General.ChannelParticipation.Enabled was set to false, setting to true"
+	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say(expectedErr))
+	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("Beginning to serve requests"))
 }
 
 func testEtcdRaftOSNNoTLSSingleListener(gt *GomegaWithT, configPath, orderer string, configtxgen, cryptoPath string) {
@@ -235,15 +247,11 @@ func testEtcdRaftOSNNoTLSSingleListener(gt *GomegaWithT, configPath, orderer str
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
-	genesisBlockPath := generateBootstrapBlock(gt, configPath, configtxgen, "system", "SampleEtcdRaftSystemChannel")
-
 	cmd := exec.Command(orderer)
 	cmd.Env = []string{
 		fmt.Sprintf("ORDERER_GENERAL_LISTENPORT=%d", nextPort()),
-		"ORDERER_GENERAL_BOOTSTRAPMETHOD=file",
-		"ORDERER_GENERAL_SYSTEMCHANNEL=system",
+		"ORDERER_GENERAL_BOOTSTRAPMETHOD=none",
 		fmt.Sprintf("ORDERER_FILELEDGER_LOCATION=%s", filepath.Join(tempDir, "ledger")),
-		fmt.Sprintf("ORDERER_GENERAL_BOOTSTRAPFILE=%s", genesisBlockPath),
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", configPath),
 	}
 	ordererProcess, err := gexec.Start(cmd, nil, nil)
@@ -260,17 +268,15 @@ func testEtcdRaftOSNNoTLSDualListener(gt *GomegaWithT, configPath, orderer strin
 	defer os.RemoveAll(tempDir)
 
 	ordererTLSPath := filepath.Join(cryptoPath, "ordererOrganizations", "example.com", "orderers", "127.0.0.1.example.com", "tls")
-	genesisBlockPath := generateBootstrapBlock(gt, configPath, configtxgen, "system", "SampleEtcdRaftSystemChannel")
+	_ = writeJoinBlock(gt, configPath, configtxgen, tempDir)
 
 	cmd := exec.Command(orderer)
 	cmd.Env = []string{
 		fmt.Sprintf("ORDERER_GENERAL_LISTENPORT=%d", nextPort()),
-		"ORDERER_GENERAL_BOOTSTRAPMETHOD=file",
-		"ORDERER_GENERAL_SYSTEMCHANNEL=system",
+		"ORDERER_GENERAL_BOOTSTRAPMETHOD=none",
 		"ORDERER_GENERAL_TLS_ENABLED=false",
 		"ORDERER_OPERATIONS_TLS_ENABLED=false",
 		fmt.Sprintf("ORDERER_FILELEDGER_LOCATION=%s", filepath.Join(tempDir, "ledger")),
-		fmt.Sprintf("ORDERER_GENERAL_BOOTSTRAPFILE=%s", genesisBlockPath),
 		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_LISTENPORT=%d", nextPort()),
 		"ORDERER_GENERAL_CLUSTER_LISTENADDRESS=127.0.0.1",
 		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERCERTIFICATE=%s", filepath.Join(ordererTLSPath, "server.crt")),
@@ -282,6 +288,8 @@ func testEtcdRaftOSNNoTLSDualListener(gt *GomegaWithT, configPath, orderer strin
 		fmt.Sprintf("ORDERER_CONSENSUS_SNAPDIR=%s", filepath.Join(tempDir, "snapshot")),
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", configPath),
 		"ORDERER_OPERATIONS_LISTENADDRESS=127.0.0.1:0",
+		"ORDERER_CHANNELPARTICIPATION_ENABLED=true",
+		"FABRIC_LOGGING_SPEC=info",
 	}
 	ordererProcess, err := gexec.Start(cmd, nil, nil)
 	gt.Expect(err).NotTo(HaveOccurred())

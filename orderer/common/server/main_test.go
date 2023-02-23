@@ -17,7 +17,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
@@ -329,77 +328,6 @@ func TestInitializeServerConfig(t *testing.T) {
 	}
 }
 
-func TestInitializeBootstrapChannel(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
-
-	tmpDir := t.TempDir()
-	copyYamlFiles("testdata", tmpDir)
-
-	cryptoPath := generateCryptoMaterials(t, cryptogen, tmpDir)
-	t.Logf("Generated crypto material to: %s", cryptoPath)
-	genesisFile, _ := produceGenesisFileEtcdRaft(t, "testchannelid", tmpDir)
-
-	fileLedgerLocation := t.TempDir()
-
-	ledgerFactory, err := createLedgerFactory(
-		&localconfig.TopLevel{
-			FileLedger: localconfig.FileLedger{
-				Location: fileLedgerLocation,
-			},
-		},
-		&disabled.Provider{},
-	)
-	require.NoError(t, err)
-	bootstrapConfig := &localconfig.TopLevel{
-		General: localconfig.General{
-			BootstrapMethod: "file",
-			BootstrapFile:   genesisFile,
-		},
-	}
-
-	bootstrapBlock := extractBootstrapBlock(bootstrapConfig)
-	initializeBootstrapChannel(bootstrapBlock, ledgerFactory)
-
-	ledger, err := ledgerFactory.GetOrCreate("testchannelid")
-	require.NoError(t, err)
-	require.Equal(t, uint64(1), ledger.Height())
-}
-
-func TestExtractBootstrapBlock(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
-
-	tmpDir := t.TempDir()
-	copyYamlFiles("testdata", tmpDir)
-
-	cryptoPath := generateCryptoMaterials(t, cryptogen, tmpDir)
-	t.Logf("Generated crypto material to: %s", cryptoPath)
-	genesisFile, _ := produceGenesisFileEtcdRaft(t, "testchannelid", tmpDir)
-
-	tests := []struct {
-		config *localconfig.TopLevel
-		block  *common.Block
-	}{
-		{
-			config: &localconfig.TopLevel{
-				General: localconfig.General{BootstrapMethod: "file", BootstrapFile: genesisFile},
-			},
-			block: file.New(genesisFile).GenesisBlock(),
-		},
-		{
-			config: &localconfig.TopLevel{
-				General: localconfig.General{BootstrapMethod: "none"},
-			},
-			block: nil,
-		},
-	}
-	for _, tt := range tests {
-		b := extractBootstrapBlock(tt.config)
-		require.Truef(t, proto.Equal(tt.block, b), "wanted %v, got %v", tt.block, b)
-	}
-}
-
 func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 	configPathCleanup := configtest.SetDevFabricConfigPath(t)
 	defer configPathCleanup()
@@ -635,36 +563,6 @@ func TestInitializeMultichannelRegistrar(t *testing.T) {
 	require.NoError(t, err)
 
 	signer := &server_mocks.SignerSerializer{}
-
-	t.Run("registrar with a system channel", func(t *testing.T) {
-		conf := genesisConfig(t, genesisFile)
-
-		srv, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{})
-		require.NoError(t, err)
-		lf, err := createLedgerFactory(conf, &disabled.Provider{})
-		require.NoError(t, err)
-		bootBlock := file.New(genesisFile).GenesisBlock()
-		initializeBootstrapChannel(bootBlock, lf)
-		repInit := onboarding.NewReplicationInitiator(lf, bootBlock, conf, comm.SecureOptions{}, signer, cryptoProvider)
-
-		registrar := initializeMultichannelRegistrar(
-			bootBlock,
-			repInit,
-			&cluster.PredicateDialer{},
-			comm.ServerConfig{},
-			srv,
-			conf,
-			signer,
-			&disabled.Provider{},
-			&server_mocks.HealthChecker{},
-			lf,
-			cryptoProvider,
-		)
-		require.NotNil(t, registrar)
-		require.Equal(t, "testchannelid", registrar.SystemChannelID())
-		require.NotNil(t, repInit.ChannelLister)
-		repInit.ChannelLister.(*onboarding.InactiveChainReplicator).Stop()
-	})
 
 	t.Run("registrar without a system channel", func(t *testing.T) {
 		conf := genesisConfig(t, genesisFile)
@@ -1136,6 +1034,7 @@ func TestReuseListener(t *testing.T) {
 	})
 }
 
+// TODO remove
 func TestInitializeEtcdraftConsenter(t *testing.T) {
 	consenters := make(map[string]consensus.Consenter)
 

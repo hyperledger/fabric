@@ -294,8 +294,8 @@ Admin:
 #
 ################################################################################
 ChannelParticipation:
-    # Channel participation API is enabled.
-    Enabled: false
+    # Channel participation API is enabled. Deprecated: must be set to true.
+    Enabled: true
 
     # The maximum size of the request body when joining a channel.
     MaxRequestBodySize: 1 MB
