@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
@@ -461,7 +460,6 @@ func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *cb.Block) 
 	}
 
 	for _, consenter := range oc.Consenters() {
-		fmt.Println(base64.StdEncoding.EncodeToString(consenter.ServerTlsCert))
 		if bytes.Equal(conCert.ConsenterCertificate, consenter.ServerTlsCert) || bytes.Equal(conCert.ConsenterCertificate, consenter.ClientTlsCert) {
 			return nil
 		}
