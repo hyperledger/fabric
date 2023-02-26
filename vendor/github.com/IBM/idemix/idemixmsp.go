@@ -711,10 +711,17 @@ func GetIdemixMspConfig(dir string, ID string) (*msp.MSPConfig, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read issuer public key file")
 	}
+	if len(ipkBytes) == 0 {
+		return nil, errors.Errorf("failed to import an empty issuer public key file")
+	}
 
 	revocationPkBytes, err := readFile(filepath.Join(dir, IdemixConfigDirMsp, IdemixConfigFileRevocationPublicKey))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read revocation public key file")
+	}
+
+	if len(revocationPkBytes) == 0 {
+		return nil, errors.Errorf("failed to import an empty revocation public key file")
 	}
 
 	idemixConfig := &msp.IdemixMSPConfig{
@@ -724,14 +731,20 @@ func GetIdemixMspConfig(dir string, ID string) (*msp.MSPConfig, error) {
 	}
 
 	signerBytes, err := readFile(filepath.Join(dir, IdemixConfigDirUser, IdemixConfigFileSigner))
-	if err == nil {
-		signerConfig := &msp.IdemixMSPSignerConfig{}
-		err = proto.Unmarshal(signerBytes, signerConfig)
-		if err != nil {
-			return nil, err
-		}
-		idemixConfig.Signer = signerConfig
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to read signer file")
 	}
+
+	if len(signerBytes) == 0 {
+		return nil, errors.Errorf("failed to import an empty signer file")
+	}
+
+	signerConfig := &msp.IdemixMSPSignerConfig{}
+	err = proto.Unmarshal(signerBytes, signerConfig)
+	if err != nil {
+		return nil, err
+	}
+	idemixConfig.Signer = signerConfig
 
 	confBytes, err := proto.Marshal(idemixConfig)
 	if err != nil {
