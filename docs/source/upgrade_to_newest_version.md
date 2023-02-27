@@ -82,7 +82,7 @@ It is a best practice to upgrade all of the peers on a channel before enabling t
 
 After the `Application` capability has been updated to `V2_0` on a channel, chaincodes that were deployed using the v1.x chaincode lifecycle will continue to run, and will continue to utilize the same chaincode endorsement policy as before.
 However, the next time that you would like to update these chaincodes, you must utilize the v2.x lifecycle procedures to package, install, approve, and commit chaincodes on the channel. This will effectively shift the chaincode from the v1.x lifecycle framework to the v2.x lifecycle framework.
-Additionally, any new chaincode deployements must also utilize the v2.x lifecycle procedures to package, install, approve, and commit chaincodes on the channel.
+Additionally, any new chaincode deployments must also utilize the v2.x lifecycle procedures to package, install, approve, and commit chaincodes on the channel.
 As a result, make sure to be prepared for the new lifecycle before updating the capability.
 
 The new lifecycle defaults to using the endorsement policy configured in the channel config (e.g., a `MAJORITY` of orgs). Therefore this endorsement policy should be added to the channel configuration when enabling capabilities on the channel.
