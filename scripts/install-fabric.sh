@@ -23,7 +23,7 @@ _arg_comp=('' )
 
 # if version not passed in, default to latest released version
 # if ca version not passed in, default to latest released version
-_arg_fabric_version="2.4.8"
+_arg_fabric_version="2.4.9"
 _arg_ca_version="1.5.5"
 
 ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')")
@@ -51,7 +51,7 @@ print_help()
 {
 	printf 'Usage: %s [-f|--fabric-version <arg>] [-c|--ca-version <arg>] <comp-1> [<comp-2>] ... [<comp-n>] ...\n' "$0"
 	printf '\t%s\n' "<comp>: Component to install one or more of  d[ocker]|b[inary]|s[amples]. If none specified, all will be installed"
-	printf '\t%s\n' "-f, --fabric-version: FabricVersion (default: '2.4.8')"
+	printf '\t%s\n' "-f, --fabric-version: FabricVersion (default: '2.4.9')"
 	printf '\t%s\n' "-c, --ca-version: Fabric CA Version (default: '1.5.5')"
 }
 
