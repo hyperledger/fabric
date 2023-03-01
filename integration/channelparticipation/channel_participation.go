@@ -10,7 +10,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"mime/multipart"
 	"net/http"
 
@@ -25,11 +25,20 @@ import (
 func Join(n *nwo.Network, o *nwo.Orderer, channel string, block *common.Block, expectedChannelInfo ChannelInfo) {
 	blockBytes, err := proto.Marshal(block)
 	Expect(err).NotTo(HaveOccurred())
-	url := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels", n.OrdererPort(o, nwo.AdminPort))
-	req := GenerateJoinRequest(url, channel, blockBytes)
-	authClient, _ := nwo.OrdererOperationalClients(n, o)
 
-	body := doBody(authClient, req)
+	protocol := "http"
+	if n.TLSEnabled {
+		protocol = "https"
+	}
+	url := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels", protocol, n.OrdererPort(o, nwo.AdminPort))
+	req := GenerateJoinRequest(url, channel, blockBytes)
+	authClient, unauthClient := nwo.OrdererOperationalClients(n, o)
+
+	client := unauthClient
+	if n.TLSEnabled {
+		client = authClient
+	}
+	body := doBody(client, req)
 	c := &ChannelInfo{}
 	err = json.Unmarshal(body, c)
 	Expect(err).NotTo(HaveOccurred())
@@ -56,7 +65,7 @@ func doBody(client *http.Client, req *http.Request) []byte {
 	resp, err := client.Do(req)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.StatusCode).To(Equal(http.StatusCreated))
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(resp.Body)
 	Expect(err).NotTo(HaveOccurred())
 	resp.Body.Close()
 
@@ -75,7 +84,12 @@ type ChannelInfoShort struct {
 
 func List(n *nwo.Network, o *nwo.Orderer) ChannelList {
 	authClient, _ := nwo.OrdererOperationalClients(n, o)
-	listChannelsURL := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels", n.OrdererPort(o, nwo.AdminPort))
+
+	protocol := "http"
+	if n.TLSEnabled {
+		protocol = "https"
+	}
+	listChannelsURL := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels", protocol, n.OrdererPort(o, nwo.AdminPort))
 
 	body := getBody(authClient, listChannelsURL)()
 	list := &ChannelList{}
@@ -89,7 +103,7 @@ func getBody(client *http.Client, url string) func() string {
 	return func() string {
 		resp, err := client.Get(url)
 		Expect(err).NotTo(HaveOccurred())
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body)
 		Expect(err).NotTo(HaveOccurred())
 		resp.Body.Close()
 		return string(bodyBytes)
@@ -106,7 +120,12 @@ type ChannelInfo struct {
 
 func ListOne(n *nwo.Network, o *nwo.Orderer, channel string) ChannelInfo {
 	authClient, _ := nwo.OrdererOperationalClients(n, o)
-	listChannelURL := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels/%s", n.OrdererPort(o, nwo.AdminPort), channel)
+
+	protocol := "http"
+	if n.TLSEnabled {
+		protocol = "https"
+	}
+	listChannelURL := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels/%s", protocol, n.OrdererPort(o, nwo.AdminPort), channel)
 
 	body := getBody(authClient, listChannelURL)()
 	c := &ChannelInfo{}
@@ -117,7 +136,12 @@ func ListOne(n *nwo.Network, o *nwo.Orderer, channel string) ChannelInfo {
 
 func Remove(n *nwo.Network, o *nwo.Orderer, channel string) {
 	authClient, _ := nwo.OrdererOperationalClients(n, o)
-	url := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels/%s", n.OrdererPort(o, nwo.AdminPort), channel)
+
+	protocol := "http"
+	if n.TLSEnabled {
+		protocol = "https"
+	}
+	url := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels/%s", protocol, n.OrdererPort(o, nwo.AdminPort), channel)
 
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	Expect(err).NotTo(HaveOccurred())
@@ -157,4 +181,20 @@ func channelInfoShortMatcher(channel string) types.GomegaMatcher {
 		"Name": Equal(channel),
 		"URL":  Equal(fmt.Sprintf("/participation/v1/channels/%s", channel)),
 	})
+}
+
+// JoinOrderersAppChannelCluster Joins a set of orderers to a channel for which the genesis block was created by the network
+// bootstrap. It assumes a channel with one or more orderers (a cluster).
+func JoinOrderersAppChannelCluster(network *nwo.Network, channelID string, orderers ...*nwo.Orderer) {
+	appGenesisBlock := network.LoadAppChannelGenesisBlock(channelID)
+	for _, orderer := range orderers {
+		expectedChannelInfo := ChannelInfo{
+			Name:              channelID,
+			URL:               fmt.Sprintf("/participation/v1/channels/%s", channelID),
+			Status:            "active",
+			ConsensusRelation: "consenter",
+			Height:            1,
+		}
+		Join(network, orderer, channelID, appGenesisBlock, expectedChannelInfo)
+	}
 }

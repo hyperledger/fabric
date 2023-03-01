@@ -22,6 +22,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hyperledger/fabric/integration/channelparticipation"
+
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	conftx "github.com/hyperledger/fabric-config/configtx"
@@ -847,6 +849,83 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 				"foo":           0,
 				"bar":           0,
 				"systemchannel": 2,
+			}, []*nwo.Orderer{o1, o2, o3}, peer, network)
+		})
+
+		It("disregards certificate renewal if only the validity period changed, without system channel", func() {
+			config := nwo.MultiNodeEtcdRaftNoSysChan()
+			config.Channels = append(config.Channels, &nwo.Channel{Name: "foo", Profile: "TwoOrgsAppChannelEtcdRaft"})
+			config.Channels = append(config.Channels, &nwo.Channel{Name: "bar", Profile: "TwoOrgsAppChannelEtcdRaft"})
+			network = nwo.New(config, testDir, client, StartPort(), components)
+
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			peer = network.Peer("Org1", "peer0")
+
+			o1 := network.Orderer("orderer1")
+			o2 := network.Orderer("orderer2")
+			o3 := network.Orderer("orderer3")
+
+			orderers := []*nwo.Orderer{o1, o2, o3}
+
+			o1Runner := network.OrdererRunner(o1)
+			o2Runner := network.OrdererRunner(o2)
+			o3Runner := network.OrdererRunner(o3)
+			ordererRunners := []*ginkgomon.Runner{o1Runner, o2Runner, o3Runner}
+
+			o1Proc = ifrit.Invoke(o1Runner)
+			o2Proc = ifrit.Invoke(o2Runner)
+			o3Proc = ifrit.Invoke(o3Runner)
+			ordererProcesses := []ifrit.Process{o1Proc, o2Proc, o3Proc}
+
+			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
+			By("Waiting for them to elect a leader")
+			findLeader(ordererRunners)
+
+			By("Creating a channel")
+			channelparticipation.JoinOrderersAppChannelCluster(network, "foo", o1, o2, o3)
+
+			assertBlockReception(map[string]int{
+				"foo":         0,
+				"testchannel": 0,
+			}, []*nwo.Orderer{o1, o2, o3}, peer, network)
+
+			By("Killing all orderers")
+			for i := range orderers {
+				ordererProcesses[i].Signal(syscall.SIGTERM)
+				Eventually(ordererProcesses[i].Wait(), network.EventuallyTimeout).Should(Receive())
+			}
+
+			By("Renewing the certificates for all orderers")
+			renewOrdererCertificates(network, o1, o2, o3)
+
+			By("Starting the orderers again")
+			for i := range orderers {
+				ordererRunner := network.OrdererRunner(orderers[i])
+				ordererRunners[i] = ordererRunner
+				ordererProcesses[i] = ifrit.Invoke(ordererRunner)
+				Eventually(ordererProcesses[0].Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			o1Proc = ordererProcesses[0]
+			o2Proc = ordererProcesses[1]
+			o3Proc = ordererProcesses[2]
+
+			By("Waiting for them to elect a leader once again")
+			findLeader(ordererRunners)
+
+			By("Creating a channel again")
+			channelparticipation.JoinOrderersAppChannelCluster(network, "bar", o1, o2, o3)
+
+			assertBlockReception(map[string]int{
+				"foo":         0,
+				"bar":         0,
+				"testchannel": 0,
 			}, []*nwo.Orderer{o1, o2, o3}, peer, network)
 		})
 	})

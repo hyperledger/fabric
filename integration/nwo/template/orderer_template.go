@@ -36,7 +36,9 @@ General:
     ServerInterval: 7200s
     ServerTimeout: 20s
   BootstrapMethod: {{ .Consensus.BootstrapMethod }}
+  {{- if eq $w.Consensus.BootstrapMethod "file" }}
   BootstrapFile: {{ .RootDir }}/{{ .SystemChannel.Name }}_block.pb
+  {{- end }}
   LocalMSPDir: {{ $w.OrdererLocalMSPDir Orderer }}
   LocalMSPID: {{ ($w.Organization Orderer.Organization).MSPID }}
   Profile:
