@@ -25,6 +25,9 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/protoutil"
+
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
@@ -286,7 +289,9 @@ func (n *Network) AddOrg(o *Organization, peers ...*Peer) {
 	}
 
 	n.Organizations = append(n.Organizations, o)
-	n.Consortiums[0].Organizations = append(n.Consortiums[0].Organizations, o.Name)
+	if n.Consortiums != nil {
+		n.Consortiums[0].Organizations = append(n.Consortiums[0].Organizations, o.Name)
+	}
 }
 
 // ConfigTxPath returns the path to the generated configtxgen configuration
@@ -787,22 +792,38 @@ func (n *Network) Bootstrap() {
 
 	n.bootstrapIdemix()
 
-	sess, err = n.ConfigTxGen(commands.OutputBlock{
-		ChannelID:   n.SystemChannel.Name,
-		Profile:     n.SystemChannel.Profile,
-		ConfigPath:  n.RootDir,
-		OutputBlock: n.OutputBlockPath(n.SystemChannel.Name),
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	if n.SystemChannel != nil {
+		sess, err = n.ConfigTxGen(commands.OutputBlock{
+			ChannelID:   n.SystemChannel.Name,
+			Profile:     n.SystemChannel.Profile,
+			ConfigPath:  n.RootDir,
+			OutputBlock: n.OutputBlockPath(n.SystemChannel.Name),
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+
+		for _, c := range n.Channels {
+			sess, err := n.ConfigTxGen(commands.CreateChannelTx{
+				ChannelID:             c.Name,
+				Profile:               c.Profile,
+				BaseProfile:           c.BaseProfile,
+				ConfigPath:            n.RootDir,
+				OutputCreateChannelTx: n.CreateChannelTxPath(c.Name),
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+		}
+
+		n.ConcatenateTLSCACertificates()
+		return
+	}
 
 	for _, c := range n.Channels {
-		sess, err := n.ConfigTxGen(commands.CreateChannelTx{
-			ChannelID:             c.Name,
-			Profile:               c.Profile,
-			BaseProfile:           c.BaseProfile,
-			ConfigPath:            n.RootDir,
-			OutputCreateChannelTx: n.CreateChannelTxPath(c.Name),
+		sess, err := n.ConfigTxGen(commands.OutputBlock{
+			ChannelID:   c.Name,
+			Profile:     c.Profile,
+			ConfigPath:  n.RootDir,
+			OutputBlock: n.OutputBlockPath(c.Name),
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
@@ -2005,4 +2026,13 @@ func (n *Network) GenerateCoreConfig(p *Peer) {
 	pw := gexec.NewPrefixedWriter(fmt.Sprintf("[%s#core.yaml] ", p.ID()), ginkgo.GinkgoWriter)
 	err = t.Execute(io.MultiWriter(core, pw), n)
 	Expect(err).NotTo(HaveOccurred())
+}
+
+func (n *Network) LoadAppChannelGenesisBlock(channelID string) *common.Block {
+	appGenesisPath := n.OutputBlockPath(channelID)
+	appGenesisBytes, err := ioutil.ReadFile(appGenesisPath)
+	Expect(err).NotTo(HaveOccurred())
+	appGenesisBlock, err := protoutil.UnmarshalBlock(appGenesisBytes)
+	Expect(err).NotTo(HaveOccurred())
+	return appGenesisBlock
 }
