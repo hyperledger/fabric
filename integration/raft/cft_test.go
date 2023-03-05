@@ -310,9 +310,9 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			expectedChannelInfo := channelparticipation.ChannelInfo{
 				Name:              "testchannel",
 				URL:               "/participation/v1/channels/testchannel",
-				Status:            "active",
+				Status:            "onboarding",
 				ConsensusRelation: "consenter",
-				Height:            2,
+				Height:            0,
 			}
 			channelparticipation.Join(network, o4, "testchannel", configBlock, expectedChannelInfo)
 

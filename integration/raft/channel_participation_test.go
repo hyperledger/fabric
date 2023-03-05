@@ -140,9 +140,9 @@ var _ = Describe("ChannelParticipation", func() {
 			expectedChannelInfoPTFollower := channelparticipation.ChannelInfo{
 				Name:              "participation-trophy",
 				URL:               "/participation/v1/channels/participation-trophy",
-				Status:            "active",
+				Status:            "onboarding",
 				ConsensusRelation: "follower",
-				Height:            3,
+				Height:            0,
 			}
 			channelparticipation.Join(network, orderer3, "participation-trophy", configBlockPT, expectedChannelInfoPTFollower)
 
@@ -259,9 +259,9 @@ var _ = Describe("ChannelParticipation", func() {
 			expectedChannelInfoPTFollower = channelparticipation.ChannelInfo{
 				Name:              "participation-trophy",
 				URL:               "/participation/v1/channels/participation-trophy",
-				Status:            "active",
+				Status:            "onboarding",
 				ConsensusRelation: "follower",
-				Height:            7,
+				Height:            0,
 			}
 			channelparticipation.Join(network, orderer1, "participation-trophy", configBlockPT, expectedChannelInfoPTFollower)
 
@@ -397,9 +397,9 @@ var _ = Describe("ChannelParticipation", func() {
 			expectedChannelInfoConsenter := channelparticipation.ChannelInfo{
 				Name:              "participation-trophy",
 				URL:               "/participation/v1/channels/participation-trophy",
-				Status:            "active",
+				Status:            "onboarding",
 				ConsensusRelation: "consenter",
-				Height:            5,
+				Height:            0,
 			}
 			channelparticipation.Join(network, orderer3, "participation-trophy", configBlockPT, expectedChannelInfoConsenter)
 

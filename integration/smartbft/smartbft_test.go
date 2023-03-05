@@ -326,6 +326,16 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			configBlock := nwo.GetConfigBlock(network, peer, orderer, "testchannel1")
 			Expect(configBlock).NotTo(Equal(nil))
 
+			By("Joining " + orderer5.Name + " to channel as a consenter")
+			expectedChannelInfoPT = channelparticipation.ChannelInfo{
+				Name:              "testchannel1",
+				URL:               "/participation/v1/channels/testchannel1",
+				Status:            "onboarding",
+				ConsensusRelation: "consenter",
+				Height:            0,
+			}
+			channelparticipation.Join(network, orderer5, "testchannel1", configBlock, expectedChannelInfoPT)
+
 			expectedChannelInfoPT = channelparticipation.ChannelInfo{
 				Name:              "testchannel1",
 				URL:               "/participation/v1/channels/testchannel1",
@@ -333,9 +343,9 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				ConsensusRelation: "consenter",
 				Height:            8,
 			}
-
-			By("Joining " + orderer5.Name + " to channel as a consenter")
-			channelparticipation.Join(network, orderer5, "testchannel1", configBlock, expectedChannelInfoPT)
+			Eventually(func() channelparticipation.ChannelInfo {
+				return channelparticipation.ListOne(network, orderer5, "testchannel1")
+			}, network.EventuallyTimeout).Should(Equal(expectedChannelInfoPT))
 
 			By("Waiting for the added orderer to see the leader")
 			Eventually(orderer5Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1 channel=testchannel1"))
@@ -864,6 +874,16 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				ordererProcesses = append(ordererProcesses, proc)
 				Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
+				By(">>>> joining " + newOrderer.Name + " to channel as a consenter")
+				expectedChannelInfoPT = channelparticipation.ChannelInfo{
+					Name:              "testchannel1",
+					URL:               "/participation/v1/channels/testchannel1",
+					Status:            "onboarding",
+					ConsensusRelation: "consenter",
+					Height:            0,
+				}
+				channelparticipation.Join(network, newOrderer, "testchannel1", configBlock, expectedChannelInfoPT)
+
 				expectedChannelInfoPT = channelparticipation.ChannelInfo{
 					Name:              "testchannel1",
 					URL:               "/participation/v1/channels/testchannel1",
@@ -871,9 +891,9 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 					ConsensusRelation: "consenter",
 					Height:            uint64(2 + i),
 				}
-
-				By(">>>> joining " + newOrderer.Name + " to channel as a consenter")
-				channelparticipation.Join(network, newOrderer, "testchannel1", configBlock, expectedChannelInfoPT)
+				Eventually(func() channelparticipation.ChannelInfo {
+					return channelparticipation.ListOne(network, newOrderer, "testchannel1")
+				}, network.EventuallyTimeout).Should(Equal(expectedChannelInfoPT))
 
 				By("Waiting for the added orderer to see the leader")
 				Eventually(runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1 channel=testchannel1"))
@@ -1028,16 +1048,26 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			}
 			Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
-			expectedChannelInfoPT := channelparticipation.ChannelInfo{
+			By("joining " + orderer5.Name + " to channel as a consenter")
+			expectedChannelInfo := channelparticipation.ChannelInfo{
+				Name:              "testchannel1",
+				URL:               "/participation/v1/channels/testchannel1",
+				Status:            "onboarding",
+				ConsensusRelation: "consenter",
+				Height:            0,
+			}
+			channelparticipation.Join(network, orderer5, "testchannel1", configBlock, expectedChannelInfo)
+
+			expectedChannelInfo = channelparticipation.ChannelInfo{
 				Name:              "testchannel1",
 				URL:               "/participation/v1/channels/testchannel1",
 				Status:            "active",
 				ConsensusRelation: "consenter",
 				Height:            8,
 			}
-
-			By("joining " + orderer5.Name + " to channel as a consenter")
-			channelparticipation.Join(network, orderer5, "testchannel1", configBlock, expectedChannelInfoPT)
+			Eventually(func() channelparticipation.ChannelInfo {
+				return channelparticipation.ListOne(network, orderer5, "testchannel1")
+			}, network.EventuallyTimeout).Should(Equal(expectedChannelInfo))
 
 			By("Waiting for the added orderer to see the leader")
 			Eventually(orderer5Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1 channel=testchannel1"))

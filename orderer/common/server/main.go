@@ -40,7 +40,6 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
 	"github.com/hyperledger/fabric/orderer/common/channelparticipation"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
@@ -123,27 +122,9 @@ func Main() {
 	var bootstrapBlock *cb.Block
 	switch conf.General.BootstrapMethod {
 	case "file":
-		if len(lf.ChannelIDs()) > 0 {
-			logger.Info("Not bootstrapping the system channel because of existing channels")
-			break
-		}
-
-		bootstrapBlock = file.New(conf.General.BootstrapFile).GenesisBlock()
-		if err := onboarding.ValidateBootstrapBlock(bootstrapBlock, cryptoProvider); err != nil {
-			logger.Panicf("Failed validating bootstrap block: %v", err)
-		}
-
-		if bootstrapBlock.Header.Number > 0 {
-			logger.Infof("Not bootstrapping the system channel because the bootstrap block number is %d (>0), replication is needed", bootstrapBlock.Header.Number)
-			break
-		}
-
-		// bootstrapping with a genesis block (i.e. bootstrap block number = 0)
-		// generate the system channel with a genesis block.
-		logger.Info("Bootstrapping the system channel")
-		initializeBootstrapChannel(bootstrapBlock, lf)
+		logger.Panic("Bootstrap method: 'file' is forbidden, since system channel is no longer supported")
 	case "none":
-		bootstrapBlock = initSystemChannelWithJoinBlock(conf, cryptoProvider, lf)
+		// TODO: verify there is no system channel join block
 	default:
 		logger.Panicf("Unknown bootstrap method: %s", conf.General.BootstrapMethod)
 	}
@@ -686,22 +667,6 @@ func grpcLeveler(ctx context.Context, fullMethod string) zapcore.Level {
 	}
 }
 
-func extractBootstrapBlock(conf *localconfig.TopLevel) *cb.Block {
-	var bootstrapBlock *cb.Block
-
-	// Select the bootstrapping mechanism
-	switch conf.General.BootstrapMethod {
-	case "file": // For now, "file" is the only supported genesis method
-		bootstrapBlock = file.New(conf.General.BootstrapFile).GenesisBlock()
-	case "none": // simply honor the configuration value
-		return nil
-	default:
-		logger.Panic("Unknown genesis method:", conf.General.BootstrapMethod)
-	}
-
-	return bootstrapBlock
-}
-
 func initializeBootstrapChannel(genesisBlock *cb.Block, lf blockledger.Factory) {
 	channelID, err := protoutil.GetChannelIDFromBlock(genesisBlock)
 	if err != nil {
@@ -816,41 +781,22 @@ func initializeMultichannelRegistrar(
 
 	consenters := map[string]consensus.Consenter{}
 
-	if conf.General.BootstrapMethod == "file" || conf.General.BootstrapMethod == "none" {
-		if bootstrapBlock != nil && isClusterType(bootstrapBlock, bccsp) {
-			// with a system channel
-			consenterType := onboarding.ConsensusType(bootstrapBlock, bccsp)
-			switch consenterType {
-			case "etcdraft":
-				initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, repInitiator, srvConf, srv, registrar, metricsProvider, bccsp)
-			case "BFT":
-				logger.Panicf("Orderer and consensus config conflict. BFT consensus is supported only with channel participation API")
-			default:
-				logger.Panicf("Unknown cluster type consenter")
-			}
-		} else if bootstrapBlock == nil {
-			// without a system channel: assume cluster type, InactiveChainRegistry == nil, no go-routine.
-			consenterType := "BFT"
-			bootstrapBlock := initSystemChannelWithJoinBlock(conf, bccsp, lf)
-			if bootstrapBlock != nil {
-				consenterType = onboarding.ConsensusType(bootstrapBlock, bccsp)
-			} else {
-				// load consensus type from orderer config
-				var consensusConfig localconfig.Consensus
-				if err := mapstructure.Decode(conf.Consensus, &consensusConfig); err == nil && consensusConfig.Type != "" {
-					consenterType = consensusConfig.Type
-				}
-			}
-			// the orderer can start without channels at all and have an initialized cluster type consenter
-			switch consenterType {
-			case "etcdraft":
-				consenters["etcdraft"] = etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, nil, metricsProvider, bccsp)
-			case "BFT":
-				consenters["BFT"] = smartbft.New(dpmr.Registry(), signer, clusterDialer, conf, srvConf, srv, registrar, metricsProvider, bccsp)
-			default:
-				logger.Panicf("Unknown cluster type consenter '%s'", consenterType)
-			}
-		}
+	// without a system channel: assume cluster type, InactiveChainRegistry == nil, no go-routine.
+	consenterType := "etcdraft"
+	// load consensus type from orderer config
+	var consensusConfig localconfig.Consensus
+	if err := mapstructure.Decode(conf.Consensus, &consensusConfig); err == nil && consensusConfig.Type != "" {
+		consenterType = consensusConfig.Type
+	}
+
+	// the orderer can start without channels at all and have an initialized cluster type consenter
+	switch consenterType {
+	case "etcdraft":
+		consenters["etcdraft"] = etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, nil, metricsProvider, bccsp)
+	case "BFT":
+		consenters["BFT"] = smartbft.New(dpmr.Registry(), signer, clusterDialer, conf, srvConf, srv, registrar, metricsProvider, bccsp)
+	default:
+		logger.Panicf("Unknown cluster type consenter '%s'", consenterType)
 	}
 
 	registrar.Initialize(consenters)
