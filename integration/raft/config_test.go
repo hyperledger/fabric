@@ -316,9 +316,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			expectedChannelInfo := channelparticipation.ChannelInfo{
 				Name:              "testchannel",
 				URL:               "/participation/v1/channels/testchannel",
-				Status:            "active",
+				Status:            "onboarding",
 				ConsensusRelation: "consenter",
-				Height:            2,
+				Height:            0,
 			}
 			channelparticipation.Join(network, orderer2, "testchannel", configBlock, expectedChannelInfo)
 
@@ -395,9 +395,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			expectedChannelInfo = channelparticipation.ChannelInfo{
 				Name:              "testchannel",
 				URL:               "/participation/v1/channels/testchannel",
-				Status:            "active",
+				Status:            "onboarding",
 				ConsensusRelation: "follower",
-				Height:            2,
+				Height:            0,
 			}
 			channelparticipation.Join(network, orderer3, "testchannel", configBlock, expectedChannelInfo)
 
@@ -839,9 +839,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			expectedChannelInfo := channelparticipation.ChannelInfo{
 				Name:              "testchannel",
 				URL:               "/participation/v1/channels/testchannel",
-				Status:            "active",
+				Status:            "onboarding",
 				ConsensusRelation: "consenter",
-				Height:            9,
+				Height:            0,
 			}
 			channelparticipation.Join(network, o4, "testchannel", configBlock, expectedChannelInfo)
 
@@ -876,9 +876,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			expectedChannelInfo = channelparticipation.ChannelInfo{
 				Name:              "testchannel2",
 				URL:               "/participation/v1/channels/testchannel2",
-				Status:            "active",
+				Status:            "onboarding",
 				ConsensusRelation: "consenter",
-				Height:            2,
+				Height:            0,
 			}
 			channelparticipation.Join(network, o4, "testchannel2", configBlock, expectedChannelInfo)
 
@@ -1006,9 +1006,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			expectedChannelInfo := channelparticipation.ChannelInfo{
 				Name:              "mychannel",
 				URL:               "/participation/v1/channels/mychannel",
-				Status:            "active",
+				Status:            "onboarding",
 				ConsensusRelation: "consenter",
-				Height:            2,
+				Height:            0,
 			}
 			channelparticipation.Join(network, o2, "mychannel", configBlock, expectedChannelInfo)
 
@@ -1033,9 +1033,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			expectedChannelInfo = channelparticipation.ChannelInfo{
 				Name:              "mychannel",
 				URL:               "/participation/v1/channels/mychannel",
-				Status:            "active",
+				Status:            "onboarding",
 				ConsensusRelation: "consenter",
-				Height:            3,
+				Height:            0,
 			}
 			channelparticipation.Join(network, o3, "mychannel", configBlock, expectedChannelInfo)
 
@@ -1345,9 +1345,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				expectedInfo := channelparticipation.ChannelInfo{
 					Name:              "testchannel",
 					URL:               "/participation/v1/channels/testchannel",
-					Status:            "active",
+					Status:            "onboarding",
 					ConsensusRelation: "consenter",
-					Height:            5,
+					Height:            0,
 				}
 				channelparticipation.Join(network, o1, "testchannel", configBlock, expectedInfo)
 
@@ -1563,9 +1563,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				expectedInfo := channelparticipation.ChannelInfo{
 					Name:              "testchannel",
 					URL:               "/participation/v1/channels/testchannel",
-					Status:            "active",
+					Status:            "onboarding",
 					ConsensusRelation: "consenter",
-					Height:            uint64(blockNum + 1),
+					Height:            0,
 				}
 				channelparticipation.Join(network, orderers[i], "testchannel", configBlock, expectedInfo)
 

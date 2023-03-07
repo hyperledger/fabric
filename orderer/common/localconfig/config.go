@@ -39,10 +39,10 @@ type General struct {
 	Cluster           Cluster
 	Keepalive         Keepalive
 	ConnectionTimeout time.Duration
-	GenesisMethod     string // For compatibility only, will be replaced by BootstrapMethod
-	GenesisFile       string // For compatibility only, will be replaced by BootstrapFile
-	BootstrapMethod   string
-	BootstrapFile     string
+	GenesisMethod     string // Deprecated: For compatibility only, will be replaced by BootstrapMethod
+	GenesisFile       string // Deprecated: For compatibility only, will be replaced by BootstrapFile
+	BootstrapMethod   string // Deprecated: System channel is no longer supported.
+	BootstrapFile     string // Deprecated: System channel is no longer supported.
 	Profile           Profile
 	LocalMSPDir       string
 	LocalMSPID        string
@@ -144,7 +144,7 @@ type Admin struct {
 // ChannelParticipation provides the channel participation API configuration for the orderer.
 // Channel participation uses the same ListenAddress and TLS settings of the Operations service.
 type ChannelParticipation struct {
-	Enabled            bool
+	Enabled            bool // Deprecated: always overridden to 'true'
 	MaxRequestBodySize uint32
 }
 
@@ -153,8 +153,7 @@ var Defaults = TopLevel{
 	General: General{
 		ListenAddress:   "127.0.0.1",
 		ListenPort:      7050,
-		BootstrapMethod: "file",
-		BootstrapFile:   "genesisblock",
+		BootstrapMethod: "none",
 		Profile: Profile{
 			Enabled: false,
 			Address: "0.0.0.0:6060",
@@ -193,7 +192,7 @@ var Defaults = TopLevel{
 		Provider: "disabled",
 	},
 	ChannelParticipation: ChannelParticipation{
-		Enabled:            false,
+		Enabled:            true,
 		MaxRequestBodySize: 1024 * 1024,
 	},
 	Admin: Admin{
@@ -294,14 +293,6 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			} else {
 				c.General.BootstrapMethod = Defaults.General.BootstrapMethod
 			}
-		case c.General.BootstrapFile == "":
-			if c.General.GenesisFile != "" {
-				// This is to keep the compatibility with old config file that uses genesisfile
-				logger.Warn("General.GenesisFile should be replaced by General.BootstrapFile")
-				c.General.BootstrapFile = c.General.GenesisFile
-			} else {
-				c.General.BootstrapFile = Defaults.General.BootstrapFile
-			}
 		case c.General.Cluster.RPCTimeout == 0:
 			c.General.Cluster.RPCTimeout = Defaults.General.Cluster.RPCTimeout
 		case c.General.Cluster.DialTimeout == 0:
@@ -335,6 +326,10 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.General.Authentication.TimeWindow == 0:
 			logger.Infof("General.Authentication.TimeWindow unset, setting to %s", Defaults.General.Authentication.TimeWindow)
 			c.General.Authentication.TimeWindow = Defaults.General.Authentication.TimeWindow
+
+		case !c.ChannelParticipation.Enabled:
+			logger.Info("General.ChannelParticipation.Enabled was set to false, setting to true")
+			c.ChannelParticipation.Enabled = true
 
 		case c.Admin.TLS.Enabled && !c.Admin.TLS.ClientAuthRequired:
 			logger.Panic("Admin.TLS.ClientAuthRequired must be set to true if Admin.TLS.Enabled is set to true")

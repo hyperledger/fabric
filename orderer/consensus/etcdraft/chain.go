@@ -64,6 +64,10 @@ const (
 	// AbdicationMaxAttempts determines how many retries of leadership abdication we do
 	// for a transaction that removes ourselves from reconfiguration.
 	AbdicationMaxAttempts = 5
+
+	// EvictionConfigTxForwardingTimeOut determines how much time do we spend trying to forward the config-Tx that
+	// evicted the current node when it was a leader, after abdication, to the new leader.
+	EvictionConfigTxForwardingTimeOut = time.Second * 5
 )
 
 //go:generate counterfeiter -o mocks/configurator.go . Configurator
@@ -943,31 +947,57 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 			go func() {
 				defer atomic.StoreUint32(&c.leadershipTransferInProgress, 0)
 
+				abdicated := false
 				for attempt := 1; attempt <= AbdicationMaxAttempts; attempt++ {
 					if err := c.Node.abdicateLeadership(); err != nil {
 						// If there is no leader, abort and do not retry.
 						// Return early to prevent re-submission of the transaction
 						if err == ErrNoLeader || err == ErrChainHalting {
+							c.logger.Warningf("Abdication attempt no.%d failed because there is no leader or chain halting, will not try again, will not submit TX, error: %s", attempt, err)
 							return
 						}
 
 						// If the error isn't any of the below, it's a programming error, so panic.
 						if err != ErrNoAvailableLeaderCandidate && err != ErrTimedOutLeaderTransfer {
-							c.logger.Panicf("Programming error, abdicateLeader() returned with an unexpected error: %v", err)
+							c.logger.Panicf("Programming error, abdicateLeader() returned with an unexpected error: %s", err)
 						}
 
 						// Else, it's one of the errors above, so we retry.
+						c.logger.Warningf("Abdication attempt no.%d failed, will try again, error: %s", attempt, err)
 						continue
 					} else {
-						// Else, abdication succeeded, so we submit the transaction (which forwards to the leader)
-						if err := c.Submit(msg, 0); err != nil {
-							c.logger.Warnf("Reconfiguration transaction forwarding failed with error: %v", err)
-						}
-						return
+						abdicated = true
+						break
 					}
 				}
 
-				c.logger.Warnf("Abdication failed too many times consecutively (%d), aborting retries", AbdicationMaxAttempts)
+				if !abdicated {
+					c.logger.Warnf("Abdication failed too many times consecutively (%d), aborting retries", AbdicationMaxAttempts)
+					return
+				}
+
+				// Abdication succeeded, so we submit the transaction (which forwards to the leader).
+				// We do 7 attempts at increasing intervals (1/2/4/8/16/32) or up to EvictionConfigTxForwardingTimeOut.
+				timeout := time.After(EvictionConfigTxForwardingTimeOut)
+				retryInterval := EvictionConfigTxForwardingTimeOut / 64
+				for {
+					err := c.Submit(msg, 0)
+					if err == nil {
+						c.logger.Warnf("Reconfiguration transaction forwarded successfully")
+						break
+					}
+
+					c.logger.Warnf("Reconfiguration transaction forwarding failed, will try again in %s, error: %s", retryInterval, err)
+
+					select {
+					case <-time.After(retryInterval):
+						retryInterval = 2 * retryInterval
+						continue
+					case <-timeout:
+						c.logger.Warnf("Reconfiguration transaction forwarding failed with timeout after %s", EvictionConfigTxForwardingTimeOut)
+						return
+					}
+				}
 			}()
 			return nil, false, nil
 		}

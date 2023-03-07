@@ -346,7 +346,7 @@ func New(
 	srvConf comm.ServerConfig,
 	srv *comm.GRPCServer,
 	registrar ChainManager,
-	icr InactiveChainRegistry,
+	icr InactiveChainRegistry, // TODO remove
 	metricsProvider metrics.Provider,
 	bccsp bccsp.BCCSP,
 ) *Consenter {
