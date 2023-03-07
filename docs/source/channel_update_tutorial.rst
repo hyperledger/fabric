@@ -624,7 +624,7 @@ for Org3:
 .. code:: bash
 
     # use the --package-id flag to provide the package identifier
-    # use the --init-required flag to request the ``Init`` function be invoked to initialize the chaincode
+    # use the --init-required flag to require the execution of an initialization function before other chaincode functions can be called.
     peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" --channelID channel1 --name basic --version 1.0 --package-id $CC_PACKAGE_ID --sequence 1
 
 

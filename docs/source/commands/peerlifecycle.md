@@ -550,8 +550,8 @@ channel `mychannel`.
 
   * Use the `--package-id` flag to pass in the chaincode package identifier. Use
     the `--signature-policy` flag to define an endorsement policy for the chaincode.
-    Use the `init-required` flag to request the execution of the `Init`
-    function to initialize the chaincode.
+    Use the `init-required` flag to require the execution of an initialization function
+    before other chaincode functions can be called.
 
     ```
     export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
