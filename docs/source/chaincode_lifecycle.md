@@ -181,6 +181,13 @@ consistent across organizations:
   you increment the chaincode version. You can pass `--isInit` and initialize the
   chaincode using any function in your chaincode.
 
+  Note that in most scenarios it is recommended to embed initialization logic into chaincode rather than use the chaincode lifecycle mechanism described above.
+  Chaincode functions often perform checks against existing state, and initialization state can be implemented like any other chaincode state and be checked in subsequent chaincode function calls.
+  Handling initialization state within chaincode logic rather than with the chaincode lifecycle
+  mechanism has the benefit that you are not limited to a single initialization function,
+  rather you are in full control of initialization logic and can call your own
+  functions that initialize state from an application consistent with how all other application functions are called.
+
 The chaincode definition also includes the **Package Identifier**. This is a
 required parameter for each organization that wants to use the chaincode. The
 package ID does not need to be the same for all organizations. An organization
