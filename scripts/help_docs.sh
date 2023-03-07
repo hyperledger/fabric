@@ -54,7 +54,7 @@ checkHelpTextCurrent() {
 
   generateHelpText "$tempfile" "$@"
   if ! diff -u "$doc" "$tempfile"; then
-    echo "The command line help docs are out of date and need to be regenerated"
+    echo "The command line help docs are out of date and need to be regenerated, see docs/source/docs_guide.md for more details."
     exit 2
   fi
 
