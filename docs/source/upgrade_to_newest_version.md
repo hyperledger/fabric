@@ -12,6 +12,9 @@ Before attempting to upgrade from v1.4.x to v2.x, make sure to consider the foll
 
 ### Prior to upgrading peer nodes
 
+It is important to ensure chaincode utilizes good practices consistent with v2.x prior to upgrading nodes and enabling the new chaincode lifecycle.
+Consider updating chaincode based on the below guidelines prior to upgrading nodes.
+
 #### Chaincode shim changes (Go chaincode only)
 
 The v2.x `ccenv` image that is used to build Go chaincodes no longer automatically vendors the Go chaincode shim dependency like the v1.4 `ccenv` image did.
@@ -40,6 +43,19 @@ For v1.4 Nodejs chaincode libraries, the supported node runtime is v8. Though no
 Also please note that the v1.4 libraries themselves are not supported, and will no longer get updates. Please migrate to a v2 Node chaincode library.
 
 For detailed information please refer to the [compatibility](https://github.com/hyperledger/fabric-chaincode-node/blob/main/COMPATIBILITY.md) document in the `fabric-chaincode-node` repository.
+
+#### Chaincode initialization
+
+The new chaincode lifecycle does not have an option to automatically call a chaincode `Init` function upon chaincode deployment.
+Instead, the new chaincode lifecycle has a mechanism to flag that chaincode initialization is required,
+by using the `--init-required` flag, and providing a `--isInit` flag on the `peer chaincode invoke` command.
+However, is most scenarios it is recommended to embed initialization logic into chaincode rather than use the chaincode lifecycle mechanism.
+Chaincode functions often perform checks against existing state, and initialization state can be implemented like any other chaincode state and be checked in subsequent chaincode function calls.
+Handling initialization state within chaincode logic rather than with the chaincode lifecycle
+mechanism has the benefit that you are not limited to a single initialization function,
+rather you are in full control of initialization logic and can call your own
+functions that initialize state from an application consistent with how all other application functions are called.
+
 ### While upgrading peer nodes
 
 #### Peer databases upgrade
