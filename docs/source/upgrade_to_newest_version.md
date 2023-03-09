@@ -49,7 +49,7 @@ For detailed information please refer to the [compatibility](https://github.com/
 The new chaincode lifecycle does not have an option to automatically call a chaincode `Init` function upon chaincode deployment.
 Instead, the new chaincode lifecycle has a mechanism to flag that chaincode initialization is required,
 by using the `--init-required` flag, and providing a `--isInit` flag on the `peer chaincode invoke` command.
-However, is most scenarios it is recommended to embed initialization logic into chaincode rather than use the chaincode lifecycle mechanism.
+However, in most scenarios it is recommended to embed initialization logic into chaincode rather than use the chaincode lifecycle mechanism.
 Chaincode functions often perform checks against existing state, and initialization state can be implemented like any other chaincode state and be checked in subsequent chaincode function calls.
 Handling initialization state within chaincode logic rather than with the chaincode lifecycle
 mechanism has the benefit that you are not limited to a single initialization function,
