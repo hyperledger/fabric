@@ -230,7 +230,7 @@ var _ = Describe("Instance", func() {
 								ServerNameOverride: "",
 							},
 							KaOpts:      comm.DefaultKeepaliveOptions,
-							DialTimeout: 3 * time.Second,
+							DialTimeout: 10 * time.Second,
 						},
 					}))
 				})
