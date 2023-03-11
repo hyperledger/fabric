@@ -94,6 +94,41 @@ a format string, such as the default
 to print the logs in a human-readable console format. It can be also set to
 ``json`` to output logs in JSON format.
 
+Typical debug levels
+--------------------
+
+This section provides some typical log levels to debug various areas of a peer node or ordering service node by setting the ``FABRIC_LOGGING_SPEC`` environment variable.
+
+Peer smart contract debug:
+
+::
+
+    FABRIC_LOGGING_SPEC=info:dockercontroller,endorser,chaincode,chaincode.platform=debug
+
+Peer private data debug:
+
+::
+
+    FABRIC_LOGGING_SPEC=info:kvledger,ledgerstorage,transientstore,pvtdatastorage,gossip.privdata=debug
+
+Peer ledger and state database debug:
+
+::
+
+    FABRIC_LOGGING_SPEC=info:kvledger,lockbasedtxmgr,ledgerstorage,stateleveldb,statecouchdb,couchdb=debug
+
+Peer full debug, with the noisy components set to info:
+
+::
+
+    FABRIC_LOGGING_SPEC=debug:cauthdsl,policies,msp,grpc,peer.gossip.mcs,gossip,leveldbhelper=info
+
+Ordering node full debug, with the noisy components set to info:
+
+::
+
+    FABRIC_LOGGING_SPEC=debug:cauthdsl,policies,msp,grpc,orderer.consensus.etcdraft,orderer.common.cluster,orderer.common.cluster.step,common.configtx,blkstorage=info
+
 
 Chaincode
 ---------
