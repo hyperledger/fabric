@@ -143,6 +143,7 @@ exit 0
 For chaincode as an external service, the `bin/release` script is responsible for providing the `connection.json` to the peer by placing it in the `RELEASE_OUTPUT_DIR`.  The `connection.json` file has the following JSON structure
 
 * **address** - chaincode server endpoint accessible from peer. Must be specified in “<host>:<port>” format.
+* **domain** - chaincode service domain name. If the address is not authorized by the TLS certificate of the chaincode service, you can specify an authorized address through domain.
 * **dial_timeout** - interval to wait for connection to complete. Specified as a string qualified with time units (e.g, "10s", "500ms", "1m"). Default is “3s” if not specified.
 * **tls_required** - true or false. If false, "client_auth_required", "client_key", "client_cert", and "root_cert" are not required. Default is “true”.
 * **client_auth_required** - if true, "client_key" and "client_cert" are required. Default is false. It is ignored if tls_required is false.
@@ -155,6 +156,7 @@ For example:
 ```json
 {
   "address": "your.chaincode.host.com:9999",
+  "domain": "your.chaincode.host.com",
   "dial_timeout": "10s",
   "tls_required": "true",
   "client_auth_required": "true",
