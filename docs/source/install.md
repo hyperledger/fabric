@@ -59,8 +59,9 @@ To specify the components to download add one or more of the following arguments
 To pull the Docker containers and clone the samples repo, run one of these commands for example
 
 ```bash
-./install-fabric.sh docker samples
-./install-fabric.sh d s
+./install-fabric.sh docker samples binary
+or
+./install-fabric.sh d s b
 ```
 
 If no arguments are supplied, then the arguments `docker binary samples` are assumed.
