@@ -9,10 +9,11 @@ The `ledgerutil` or ledger utility suite is a set of tools useful for troublesho
 
 ## Syntax
 
-The `ledgerutil` command has two subcommands
+The `ledgerutil` command has three subcommands
 
   * `compare`
   * `identifytxs`
+  * `verify`
 
 ## compare
 
@@ -130,6 +131,30 @@ The output of the `ledgerutil identifytxs` command is a directory containing a s
 The above output JSON file indicates that for the key `marbles marble1`, two transactions were found in the available block store that wrote to `marbles marble1`, the first transaction occurring at block 2 transaction 2, the second occurring at block 4 transaction 0. The field `blockStoreHeightSufficient` is used to inform the user if the available block range was sufficient for a full search up to the given key's height. If true, the last available block in the block store was at least at the height of the key's height of divergence, indicating the block store height was sufficient. If false, the last available block in the block store was not at the height of the key's height of divergence, indicating there may be transactions relevant to the key that are not present. In the case of the example, `blockStoreHeightSufficient` indicates that the block store's block height is at least 4 and that any transactions past this height would be irrelevant for troubleshooting purposes. Since no height of divergence was provided for the key `marbles marble2`, the `blockStoreHeightSufficient` would default to true in the `txlist2.json` file and becomes a less useful point of troubleshooting information.
 
 A block range is valid if the earliest available block in the local block store has a lower height than the height of the highest input key; if otherwise, a block store search for the input keys would be futile and the command throws an error. It is important to understand that, in cases where the earliest block available is greater than block 1 (which is typical for block stores of peers that have been bootstrapped by a snapshot), the output of the command may not be an exhaustive list of relevant transactions since the earliest blocks were not available to be searched. Further troubleshooting may be necessary in these circumstances.
+
+## verify
+
+The `ledgerutil verify` command allows administrator to check integrity of ledgers in a peer's local block store. While a blockchain ledger has an inherent structure such as hash chains that indicates whether it has got corrupted or not, peers usually do not verify it after the blocks are processed and persisted in a ledger. This subcommand verifies the local ledgers by using the hash values to show if they have any integrity error or not.
+
+The `ledgerutil verify` accepts the path to a block store as the input, and outputs a directory containing one or multiple directories, each of which contains a result JSON file for one channel in the block store. The JSON file will contain errors detected in the ledger for the channel. If the verification is successful (i.e. all the hash values in the block headers are consistent with the block contents), the file will have just an empty array like:
+
+```json
+[
+]
+```
+
+However, if it detects errors, each element of the array will contain the number of the block which has an error and the type of the error found like:
+
+```json
+[
+{"blockNum":0,"valid":false,"errors":["DataHash mismatch"]}
+,
+{"blockNum":1,"valid":false,"errors":["PreviousHash mismatch"]}
+]
+```
+
+The first element in the above output JSON file indicates that the hash value in the header of the block 0 (the genesis block), `DataHash`, does not match that calculated from the contents of the block. The second element indicates the "previous" hash value in the header of the block 1, `PreviousHash`, does not match the hash value calculated from the header of the previous block, i.e. Block 0. This implies that some data corruption exists in the header of the block 0. Then the administrator may want to compare ledgers from multiple peers using other `ledgerutil` subcommands above for further checks, or they may want to discard and rebuild the peer.
+
 ## ledgerutil compare
 ```
 usage: ledgerutil compare [<flags>] <snapshotPath1> <snapshotPath2>
@@ -175,6 +200,26 @@ Args:
                        system path was changed, the new path MUST be provided.
 ```
 
+
+## ledgerutil verify
+```
+usage: ledgerutil verify [<flags>] [<blockStorePath>]
+
+Verify the integrity of a ledger
+
+Flags:
+      --help                 Show context-sensitive help (also try --help-long
+                             and --help-man).
+  -o, --outputDir=OUTPUTDIR  Location for verification result output directory.
+                             Default is the current directory.
+
+Args:
+  [<blockStorePath>]  Path to file system of target peer, used to access
+                      block store. Defaults to '/var/hyperledger/production'.
+                      IMPORTANT: If the configuration for target peer's file
+                      system path was changed, the new path MUST be provided.
+```
+
 ## Exit Status
 
 ### ledgerutil compare
@@ -187,6 +232,11 @@ Args:
 
 - `0` if the block store was successfully searched for transactions
 - `1` if an error occurs or the block range is invalid
+
+### ledgerutil verify
+
+- `0` if all the checks for the ledgers in the block store are successful
+- `1` if an error occurs
 
 ## Example Usage
 
@@ -224,5 +274,29 @@ Here is an example of the `ledgerutil identifytxs` command.
 
     The response above indicates that the local block store was successfully searched. This means transactions within the block range that wrote to keys found in the output JSON of the compare command were identified. In the newly created directory identifytxs_output, a directory mychannel_identified_transactions was generated containing a JSON file of identified transactions for each key from the compare command JSON output.
 
+
+### ledgerutil verify example
+
+Here is an example of the `ledgerutil verify` command.
+
+  * Check the integrity of the blocks in a block store.
+
+    ```
+    ledgerutil verify ./peer0.org1.example.com/ledgersData/chains -o ./verify_output
+    ```
+
+    When it finds no error, it will simply output:
+    ```
+    Successfully executed verify tool. No error is found.
+    ```
+
+    Otherwise, it will show:
+    ```
+    Successfully executed verify tool. Some error(s) are found.
+    ```
+
+    The details of the errors can be found in the JSON files under the result directory (`./verify_output` in the example above).
+
+  * Note that since the `ledgerutil verify` command uses the indices in the block store, it is recommended to run the command against a copy of the block store, not the block store of a running peer directly.
 
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
