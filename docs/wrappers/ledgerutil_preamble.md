@@ -4,10 +4,11 @@ The `ledgerutil` or ledger utility suite is a set of tools useful for troublesho
 
 ## Syntax
 
-The `ledgerutil` command has two subcommands
+The `ledgerutil` command has three subcommands
 
   * `compare`
   * `identifytxs`
+  * `verify`
 
 ## compare
 
@@ -125,3 +126,26 @@ The output of the `ledgerutil identifytxs` command is a directory containing a s
 The above output JSON file indicates that for the key `marbles marble1`, two transactions were found in the available block store that wrote to `marbles marble1`, the first transaction occurring at block 2 transaction 2, the second occurring at block 4 transaction 0. The field `blockStoreHeightSufficient` is used to inform the user if the available block range was sufficient for a full search up to the given key's height. If true, the last available block in the block store was at least at the height of the key's height of divergence, indicating the block store height was sufficient. If false, the last available block in the block store was not at the height of the key's height of divergence, indicating there may be transactions relevant to the key that are not present. In the case of the example, `blockStoreHeightSufficient` indicates that the block store's block height is at least 4 and that any transactions past this height would be irrelevant for troubleshooting purposes. Since no height of divergence was provided for the key `marbles marble2`, the `blockStoreHeightSufficient` would default to true in the `txlist2.json` file and becomes a less useful point of troubleshooting information.
 
 A block range is valid if the earliest available block in the local block store has a lower height than the height of the highest input key; if otherwise, a block store search for the input keys would be futile and the command throws an error. It is important to understand that, in cases where the earliest block available is greater than block 1 (which is typical for block stores of peers that have been bootstrapped by a snapshot), the output of the command may not be an exhaustive list of relevant transactions since the earliest blocks were not available to be searched. Further troubleshooting may be necessary in these circumstances.
+
+## verify
+
+The `ledgerutil verify` command allows administrator to check integrity of ledgers in a peer's local block store. While a blockchain ledger has an inherent structure such as hash chains that indicates whether it has got corrupted or not, peers usually do not verify it after the blocks are processed and persisted in a ledger. This subcommand verifies the local ledgers by using the hash values to show if they have any integrity error or not.
+
+The `ledgerutil verify` accepts the path to a block store as the input, and outputs a directory containing one or multiple directories, each of which contains a result JSON file for one channel in the block store. The JSON file will contain errors detected in the ledger for the channel. If the verification is successful (i.e. all the hash values in the block headers are consistent with the block contents), the file will have just an empty array like:
+
+```json
+[
+]
+```
+
+However, if it detects errors, each element of the array will contain the number of the block which has an error and the type of the error found like:
+
+```json
+[
+{"blockNum":0,"valid":false,"errors":["DataHash mismatch"]}
+,
+{"blockNum":1,"valid":false,"errors":["PreviousHash mismatch"]}
+]
+```
+
+The first element in the above output JSON file indicates that the hash value in the header of the block 0 (the genesis block), `DataHash`, does not match that calculated from the contents of the block. The second element indicates the "previous" hash value in the header of the block 1, `PreviousHash`, does not match the hash value calculated from the header of the previous block, i.e. Block 0. This implies that some data corruption exists in the header of the block 0. Then the administrator may want to compare ledgers from multiple peers using other `ledgerutil` subcommands above for further checks, or they may want to discard and rebuild the peer.
