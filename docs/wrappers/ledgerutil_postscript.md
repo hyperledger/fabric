@@ -11,6 +11,11 @@
 - `0` if the block store was successfully searched for transactions
 - `1` if an error occurs or the block range is invalid
 
+### ledgerutil verify
+
+- `0` if all the checks for the ledgers in the block store are successful
+- `1` if an error occurs
+
 ## Example Usage
 
 ### ledgerutil compare example
@@ -47,5 +52,29 @@ Here is an example of the `ledgerutil identifytxs` command.
 
     The response above indicates that the local block store was successfully searched. This means transactions within the block range that wrote to keys found in the output JSON of the compare command were identified. In the newly created directory identifytxs_output, a directory mychannel_identified_transactions was generated containing a JSON file of identified transactions for each key from the compare command JSON output.
 
+
+### ledgerutil verify example
+
+Here is an example of the `ledgerutil verify` command.
+
+  * Check the integrity of the blocks in a block store.
+
+    ```
+    ledgerutil verify ./peer0.org1.example.com/ledgersData/chains -o ./verify_output
+    ```
+
+    When it finds no error, it will simply output:
+    ```
+    Successfully executed verify tool. No error is found.
+    ```
+
+    Otherwise, it will show:
+    ```
+    Successfully executed verify tool. Some error(s) are found.
+    ```
+
+    The details of the errors can be found in the JSON files under the result directory (`./verify_output` in the example above).
+
+  * Note that since the `ledgerutil verify` command uses the indices in the block store, it is recommended to run the command against a copy of the block store, not the block store of a running peer directly.
 
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.

@@ -141,7 +141,7 @@ generateOrCheck \
         docs/wrappers/osnadmin_channel_postscript.md \
         "${commands[@]}"
 
-commands=("ledgerutil compare" "ledgerutil identifytxs")
+commands=("ledgerutil compare" "ledgerutil identifytxs" "ledgerutil verify")
 generateOrCheck \
         docs/source/commands/ledgerutil.md \
         docs/wrappers/ledgerutil_preamble.md \
