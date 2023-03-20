@@ -171,6 +171,9 @@ indexes may not get created. If this occurs, you need to reinstall the chaincode
 CouchDB Configuration
 ---------------------
 
+Peer configuration for CouchDB
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 CouchDB is enabled as the state database by changing the ``stateDatabase`` configuration option from
 goleveldb to CouchDB. Additionally, the ``couchDBAddress`` needs to configured to point to the
 CouchDB to be used by the peer. The username and password properties should be populated with
@@ -219,29 +222,28 @@ Below is the ``stateDatabase`` section from *core.yaml*:
          # Limit on the number of records per CouchDB bulk update batch
          maxBatchUpdateSize: 1000
 
-CouchDB hosted in docker containers supplied with Hyperledger Fabric have the
-capability of setting the CouchDB username and password with environment
-variables passed in with the ``COUCHDB_USER`` and ``COUCHDB_PASSWORD`` environment
-variables using Docker Compose scripting.
-
-For CouchDB installations outside of the docker images supplied with Fabric,
-the
-`local.ini file of that installation
-<http://docs.couchdb.org/en/3.2.2/config/intro.html#configuration-files>`__
-must be edited to set the admin username and password.
-
-Docker compose scripts only set the username and password at the creation of
-the container. The *local.ini* file must be edited if the username or password
-is to be changed after creation of the container.
-
-If you choose to map the fabric-couchdb container port to a host port, make sure you
-are aware of the security implications. Mapping the CouchDB container port in a
-development environment exposes the CouchDB REST API and allows you to visualize
-the database via the CouchDB web interface (Fauxton). In a production environment
-you should refrain from mapping the host port to restrict access to the CouchDB
-container. Only the peer will be able to access the CouchDB container.
-
 .. note:: CouchDB peer options are read on each peer startup.
+
+CouchDB container configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Although full CouchDB configuration is beyond the scope of this document, some common considerations are provided in this section.
+
+If using Docker compose, the environment variables ``COUCHDB_USER`` and ``COUCHDB_PASSWORD``
+can be used to set the CouchDB user and password when the CouchDB container gets created.
+
+Alternatively, set the CouchDB user and password in the CouchDB
+`local.ini configuration file <http://docs.couchdb.org/en/3.2.2/config/intro.html#configuration-files>`__.
+
+To change the CouchDB user and password after CouchDB container creation, the ``local.ini`` configuration approach must be used.
+
+As of CouchDB 3.0.0 ``max_document_size`` defaults to ``8000000`` (8MB).
+``max_document_size`` can be set as high as ``4294967296`` (4GB) if you need to store large JSON documents to the state database.
+For more details see the CouchDB `max_document_size documentation <https://docs.couchdb.org/en/3.2.2-docs/config/couchdb.html#couchdb/max_document_size>`__.
+
+In a production environment the CouchDB container port should only be exposed to the relevant peer.
+In a development environment you may expose the CouchDB container port to allow for REST API interaction or CouchDB Fauxton user interface interaction,
+for example to ensure that you have correct indexes defined for a given query.
 
 Good practices for queries
 --------------------------
