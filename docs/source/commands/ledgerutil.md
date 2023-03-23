@@ -144,8 +144,8 @@ Flags:
   -f, --firstDiffs=10        Maximum number of differences to record in
                              first_diffs_by_height.json. Requesting a report
                              with many differences may result in a large amount
-                             of memory usage. Defaults to 10. If set to 0, will
-                             not produce first_diffs_by_height.json.
+                             of memory usage. Defaults to 10. If set to 0,
+                             will not produce first_diffs_by_height.json.
 
 Args:
   <snapshotPath1>  First ledger snapshot directory.
@@ -169,8 +169,8 @@ Args:
   <snapshotDiffsPath>  Path to json file containing list of target records to
                        search for in transactions. This is typically output from
                        ledgerutil compare.
-  [<blockStorePath>]   Path to file system of target peer, used to access block
-                       store. Defaults to '/var/hyperledger/production'.
+  [<blockStorePath>]   Path to file system of target peer, used to access
+                       block store. Defaults to '/var/hyperledger/production'.
                        IMPORTANT: If the configuration for target peer's file
                        system path was changed, the new path MUST be provided.
 ```
