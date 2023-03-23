@@ -889,28 +889,42 @@ func (msp *bccspmsp) getCertificationChainIdentifierFromChain(chain []*x509.Cert
 // do have signatures in Low-S. If this is not the case, the certificate
 // is regenerated to have a Low-S signature.
 func (msp *bccspmsp) sanitizeCert(cert *x509.Certificate) (*x509.Certificate, error) {
+	var err error
 	if isECDSASignedCert(cert) {
+		isRootCACert := false
+		validityOpts := msp.getValidityOptsForCert(cert)
+		if cert.IsCA && cert.CheckSignatureFrom(cert) == nil {
+			// this is a root CA we can already sanitize it
+			cert, err = sanitizeECDSASignedCert(cert, cert)
+			if err != nil {
+				return nil, err
+			}
+			isRootCACert = true
+			validityOpts.Roots = x509.NewCertPool()
+			validityOpts.Roots.AddCert(cert)
+		}
 		// Lookup for a parent certificate to perform the sanitization
-		var parentCert *x509.Certificate
-		chain, err := msp.getUniqueValidationChain(cert, msp.getValidityOptsForCert(cert))
+		// run cert validation at any rate, if this is a root CA
+		// we will validate already sanitized cert
+		chain, err := msp.getUniqueValidationChain(cert, validityOpts)
 		if err != nil {
 			return nil, err
 		}
 
-		// at this point, cert might be a root CA certificate
-		// or an intermediate CA certificate
-		if cert.IsCA && len(chain) == 1 {
-			// cert is a root CA certificate
-			parentCert = cert
-		} else {
-			parentCert = chain[1]
+		// once we finish validation and this is already
+		// sanitized certificate, there is no need to
+		// sanitize it once again hence we can just return it
+		if isRootCACert {
+			return cert, nil
 		}
+
+		// ok, this is no a root CA cert, and now we
+		// then we have chain of certs and can get parent
+		// to sanitize the cert whenever it's intermediate or leaf certificate
+		parentCert := chain[1]
 
 		// Sanitize
-		cert, err = sanitizeECDSASignedCert(cert, parentCert)
-		if err != nil {
-			return nil, err
-		}
+		return sanitizeECDSASignedCert(cert, parentCert)
 	}
 	return cert, nil
 }
