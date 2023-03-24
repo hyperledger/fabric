@@ -25,7 +25,7 @@ import (
 // to the lastBlockInBootSnapshot), the boot KV hashes in the private data store are used for
 // verifying the hashes -- in this case, the write-set of a collection is trimmed in order
 // to remove the key-values that were not present in the snapshot (most likely because, they
-//	were over-written in a later version). Also, the keys that have been purged explicitly by a
+// were over-written in a later version). Also, the keys that have been purged explicitly by a
 // user transaction are removed from the reconciled data
 func extractValidPvtData(
 	reconciledPvtdata []*ledger.ReconciledPvtdata,

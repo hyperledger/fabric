@@ -174,8 +174,17 @@ func TestEcdsaPublicKey(t *testing.T) {
 	require.Equal(t, bytes2, bytes, "bytes are not computed in the right way.")
 
 	invalidCurve := &elliptic.CurveParams{Name: "P-Invalid"}
+	invalidCurve.P = big.NewInt(1)
+	invalidCurve.N = big.NewInt(1)
+	invalidCurve.B = big.NewInt(1)
 	invalidCurve.BitSize = 1024
 	k.pubKey = &ecdsa.PublicKey{Curve: invalidCurve, X: big.NewInt(1), Y: big.NewInt(1)}
+
+	defer func() {
+		if r := recover(); r != nil {
+			require.Contains(t, r, "crypto/elliptic: attempted operation on invalid point")
+		}
+	}()
 	_, err = k.Bytes()
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Failed marshalling key [")

@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 GOROOT='/opt/go'
-GO_VERSION=1.18.10
+GO_VERSION=1.19.7
 
 # ----------------------------------------------------------------
 # Install Golang
