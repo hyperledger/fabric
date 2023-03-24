@@ -622,9 +622,9 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			By("Cannot call the operations endpoint to join orderers with expired certs")
 			appGenesisBlock := network.LoadAppChannelGenesisBlock("testchannel")
-			channelparticipationJoinConnectFailure(network, o1, "testchannel", appGenesisBlock, "participation/v1/channels\": x509: certificate has expired or is not yet valid:")
-			channelparticipationJoinConnectFailure(network, o2, "testchannel", appGenesisBlock, "participation/v1/channels\": x509: certificate has expired or is not yet valid:")
-			channelparticipationJoinConnectFailure(network, o3, "testchannel", appGenesisBlock, "participation/v1/channels\": x509: certificate has expired or is not yet valid:")
+			channelparticipationJoinConnectFailure(network, o1, "testchannel", appGenesisBlock, "participation/v1/channels\": tls: failed to verify certificate: x509: certificate has expired or is not yet valid:")
+			channelparticipationJoinConnectFailure(network, o2, "testchannel", appGenesisBlock, "participation/v1/channels\": tls: failed to verify certificate: x509: certificate has expired or is not yet valid:")
+			channelparticipationJoinConnectFailure(network, o3, "testchannel", appGenesisBlock, "participation/v1/channels\": tls: failed to verify certificate: x509: certificate has expired or is not yet valid:")
 
 			By("Killing orderers #1")
 			o1Proc.Signal(syscall.SIGTERM)
