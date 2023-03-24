@@ -39,8 +39,8 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.5.1
 	go.etcd.io/etcd/raft/v3 v3.5.1
 	go.etcd.io/etcd/server/v3 v3.5.1
-	go.uber.org/zap v1.17.0
-	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+	go.uber.org/zap v1.19.0
+	golang.org/x/crypto v0.1.0
 	golang.org/x/tools v0.1.12
 	google.golang.org/grpc v1.48.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
@@ -111,9 +111,9 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
-	golang.org/x/net v0.5.0 // indirect
-	golang.org/x/sys v0.4.0 // indirect
-	golang.org/x/text v0.6.0 // indirect
+	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	google.golang.org/genproto v0.0.0-20220718134204-073382fd740c // indirect
 	gopkg.in/ini.v1 v1.51.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
