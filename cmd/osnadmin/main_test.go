@@ -708,7 +708,7 @@ var _ = Describe("osnadmin", func() {
 					"--client-key", clientKey,
 				}
 				output, exit, err := executeForArgs(args)
-				checkCLIError(output, exit, err, fmt.Sprintf("Get \"%s/participation/v1/channels\": x509: certificate signed by unknown authority", testServer.URL))
+				checkCLIError(output, exit, err, fmt.Sprintf("Get \"%s/participation/v1/channels\": tls: failed to verify certificate: x509: certificate signed by unknown authority", testServer.URL))
 			})
 		})
 	})
