@@ -13,7 +13,7 @@ on:
 env:
   GOPATH: /opt/go
   PATH: /opt/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
-  GO_VER: 1.19.7
+  GO_VER: 1.20.2
 
 jobs:
   basic-checks:

@@ -621,6 +621,49 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
+<<<<<<< HEAD
+=======
+			By("Cannot call the operations endpoint to join orderers with expired certs")
+			appGenesisBlock := network.LoadAppChannelGenesisBlock("testchannel")
+			channelparticipationJoinConnectFailure(network, o1, "testchannel", appGenesisBlock, "participation/v1/channels\": tls: failed to verify certificate: x509: certificate has expired or is not yet valid:")
+			channelparticipationJoinConnectFailure(network, o2, "testchannel", appGenesisBlock, "participation/v1/channels\": tls: failed to verify certificate: x509: certificate has expired or is not yet valid:")
+			channelparticipationJoinConnectFailure(network, o3, "testchannel", appGenesisBlock, "participation/v1/channels\": tls: failed to verify certificate: x509: certificate has expired or is not yet valid:")
+
+			By("Killing orderers #1")
+			o1Proc.Signal(syscall.SIGTERM)
+			o2Proc.Signal(syscall.SIGTERM)
+			o3Proc.Signal(syscall.SIGTERM)
+			Eventually(o1Proc.Wait(), network.EventuallyTimeout).Should(Receive())
+			Eventually(o2Proc.Wait(), network.EventuallyTimeout).Should(Receive())
+			Eventually(o3Proc.Wait(), network.EventuallyTimeout).Should(Receive())
+
+			o1Runner = network.OrdererRunner(o1)
+			o2Runner = network.OrdererRunner(o2)
+			o3Runner = network.OrdererRunner(o3)
+
+			By("Launching orderers with Admin TLS disabled")
+			orderers := []*nwo.Orderer{o1, o2, o3}
+			for _, orderer := range orderers {
+				ordererConfig := network.ReadOrdererConfig(orderer)
+				ordererConfig.Admin.TLS.Enabled = false
+				network.WriteOrdererConfig(orderer, ordererConfig)
+			}
+
+			o1Proc = ifrit.Invoke(o1Runner)
+			o2Proc = ifrit.Invoke(o2Runner)
+			o3Proc = ifrit.Invoke(o3Runner)
+
+			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			By("Joining orderers to channel with Admin TLS disabled")
+			// TODO add a test case that ensures the admin client can connect with a time-shift as well
+			network.TLSEnabled = false
+			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
+			network.TLSEnabled = true
+
+>>>>>>> fa6ad6135 (Bump Go to 1.20.2)
 			By("Waiting for TLS handshakes to fail")
 			Eventually(o1Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("tls: bad certificate"))
 			Eventually(o2Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("tls: bad certificate"))
