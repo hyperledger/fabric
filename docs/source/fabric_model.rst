@@ -28,7 +28,7 @@ Assets
 ------
 
 Assets can range from the tangible (real estate and hardware) to the intangible
-(contracts and intellectual property).  Hyperledger Fabric provides the
+(contracts and intellectual property). Hyperledger Fabric provides the
 ability to modify assets using chaincode transactions.
 
 Assets are represented in Hyperledger Fabric as a collection of
