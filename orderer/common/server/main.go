@@ -20,8 +20,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-lib-go/healthz"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/bccsp"
@@ -119,38 +117,19 @@ func Main() {
 		logger.Panicf("Failed to create ledger factory: %v", err)
 	}
 
-	var bootstrapBlock *cb.Block
 	switch conf.General.BootstrapMethod {
 	case "file":
 		logger.Panic("Bootstrap method: 'file' is forbidden, since system channel is no longer supported")
 	case "none":
-		// TODO: verify there is no system channel join block
+		verifyNoSystemChannel(lf, cryptoProvider)
+		verifyNoSystemChannelJoinBlock(conf, cryptoProvider)
 	default:
 		logger.Panicf("Unknown bootstrap method: %s", conf.General.BootstrapMethod)
 	}
 
-	// select the highest numbered block among the bootstrap block and the last config block if the system channel.
-	sysChanConfigBlock := extractSystemChannel(lf, cryptoProvider)
-	clusterBootBlock := selectClusterBootBlock(bootstrapBlock, sysChanConfigBlock)
+	logger.Infof("Starting without a system channel")
 
-	// determine whether the orderer is of cluster type
-	var isClusterType bool
-	if clusterBootBlock == nil {
-		logger.Infof("Starting without a system channel")
-		isClusterType = true
-	} else {
-		sysChanID, err := protoutil.GetChannelIDFromBlock(clusterBootBlock)
-		if err != nil {
-			logger.Panicf("Failed getting channel ID from clusterBootBlock: %s", err)
-		}
-
-		consensusTypeName := consensusType(clusterBootBlock, cryptoProvider)
-		logger.Infof("Starting with system channel: %s, consensus type: %s", sysChanID, consensusTypeName)
-		_, isClusterType = clusterTypes[consensusTypeName]
-	}
-
-	// configure following artifacts properly if orderer is of cluster type
-	var repInitiator *onboarding.ReplicationInitiator
+	// configure following artifacts properly, always a cluster (e.g. Raft or BFT)
 	clusterServerConfig := serverConfig
 	clusterGRPCServer := grpcServer // by default, cluster shares the same grpc server
 	var clusterClientConfig comm.ClientConfig
@@ -159,39 +138,19 @@ func Main() {
 	var reuseGrpcListener bool
 	var serversToUpdate []*comm.GRPCServer
 
-	if isClusterType {
-		logger.Infof("Setting up cluster")
-		clusterClientConfig, reuseGrpcListener = initializeClusterClientConfig(conf)
-		clusterDialer = &cluster.PredicateDialer{
-			Config: clusterClientConfig,
-		}
-
-		if !reuseGrpcListener {
-			clusterServerConfig, clusterGRPCServer = configureClusterListener(conf, serverConfig, ioutil.ReadFile)
-		}
-
-		// If we have a separate gRPC server for the cluster,
-		// we need to update its TLS CA certificate pool.
-		serversToUpdate = append(serversToUpdate, clusterGRPCServer)
-
-		// If the orderer has a system channel and is of cluster type, it may have
-		// to replicate first.
-		if clusterBootBlock != nil {
-			// When we are bootstrapping with a clusterBootBlock with number >0,
-			// replication will be performed. Only clusters that are equipped with
-			// a recent config block (number i.e. >0) can replicate. This will
-			// replicate all channels if the clusterBootBlock number > system-channel
-			// height (i.e. there is a gap in the ledger).
-			repInitiator = onboarding.NewReplicationInitiator(lf, clusterBootBlock, conf, clusterClientConfig.SecOpts, signer, cryptoProvider)
-			repInitiator.ReplicateIfNeeded(clusterBootBlock)
-			// With BootstrapMethod == "none", the bootstrapBlock comes from a
-			// join-block. If it exists, we need to remove the system channel
-			// join-block from the filerepo.
-			if conf.General.BootstrapMethod == "none" && bootstrapBlock != nil {
-				discardSystemChannelJoinBlock(conf, bootstrapBlock)
-			}
-		}
+	logger.Infof("Setting up cluster")
+	clusterClientConfig, reuseGrpcListener = initializeClusterClientConfig(conf)
+	clusterDialer = &cluster.PredicateDialer{
+		Config: clusterClientConfig,
 	}
+
+	if !reuseGrpcListener {
+		clusterServerConfig, clusterGRPCServer = configureClusterListener(conf, serverConfig, ioutil.ReadFile)
+	}
+
+	// If we have a separate gRPC server for the cluster,
+	// we need to update its TLS CA certificate pool.
+	serversToUpdate = append(serversToUpdate, clusterGRPCServer)
 
 	identityBytes, err := signer.Serialize()
 	if err != nil {
@@ -218,28 +177,13 @@ func Main() {
 	tlsCallback := func(bundle *channelconfig.Bundle) {
 		logger.Debug("Executing callback to update root CAs")
 		caMgr.updateTrustedRoots(bundle, serversToUpdate...)
-		if isClusterType {
-			caMgr.updateClusterDialer(
-				clusterDialer,
-				clusterClientConfig.SecOpts.ServerRootCAs,
-			)
-		}
+		caMgr.updateClusterDialer(
+			clusterDialer,
+			clusterClientConfig.SecOpts.ServerRootCAs,
+		)
 	}
 
-	manager := initializeMultichannelRegistrar(
-		clusterBootBlock,
-		repInitiator,
-		clusterDialer,
-		clusterServerConfig,
-		clusterGRPCServer,
-		conf,
-		signer,
-		metricsProvider,
-		opsSystem,
-		lf,
-		cryptoProvider,
-		tlsCallback,
-	)
+	manager := initializeMultichannelRegistrar(clusterDialer, clusterServerConfig, clusterGRPCServer, conf, signer, metricsProvider, lf, cryptoProvider, tlsCallback)
 
 	adminServer := newAdminServer(conf.Admin)
 	adminServer.RegisterHandler(
@@ -272,7 +216,7 @@ func Main() {
 		},
 	}))
 
-	if !reuseGrpcListener && isClusterType {
+	if !reuseGrpcListener {
 		logger.Info("Starting cluster listener on", clusterGRPCServer.Address())
 		go clusterGRPCServer.Start()
 	}
@@ -287,17 +231,8 @@ func Main() {
 	}
 }
 
-// Searches whether there is a join block for a system channel, and if there is, and it is a genesis block,
-// initializes the ledger with it. Returns the join-block if it finds one.
-func initSystemChannelWithJoinBlock(
-	config *localconfig.TopLevel,
-	cryptoProvider bccsp.BCCSP,
-	lf blockledger.Factory,
-) (bootstrapBlock *cb.Block) {
-	if !config.ChannelParticipation.Enabled {
-		return nil
-	}
-
+// Searches whether there is a join block for a system channel, and if there is, panic.
+func verifyNoSystemChannelJoinBlock(config *localconfig.TopLevel, cryptoProvider bccsp.BCCSP) {
 	joinBlockFileRepo, err := multichannel.InitJoinBlockFileRepo(config)
 	if err != nil {
 		logger.Panicf("Failed initializing join-block file repo: %v", err)
@@ -308,7 +243,6 @@ func initSystemChannelWithJoinBlock(
 		logger.Panicf("Failed listing join-block file repo: %v", err)
 	}
 
-	var systemChannelID string
 	for _, fileName := range joinBlockFiles {
 		channelName := joinBlockFileRepo.FileToBaseName(fileName)
 		blockBytes, err := joinBlockFileRepo.Read(channelName)
@@ -320,41 +254,8 @@ func initSystemChannelWithJoinBlock(
 			logger.Panicf("Failed unmarshalling join-block for channel '%s', error: %v", channelName, err)
 		}
 		if err = onboarding.ValidateBootstrapBlock(block, cryptoProvider); err == nil {
-			bootstrapBlock = block
-			systemChannelID = channelName
-			break
+			logger.Panicf("Error: found a system channel join-block, channel: %s, block number: %d, file: %s. This version does not support the system channel. Remove it before upgrading.", channelName, block.Header.Number, fileName)
 		}
-	}
-
-	if bootstrapBlock == nil {
-		logger.Debug("No join-block was found for the system channel")
-		return nil
-	}
-
-	if bootstrapBlock.Header.Number == 0 {
-		initializeBootstrapChannel(bootstrapBlock, lf)
-	}
-
-	logger.Infof("Join-block was found for the system channel: %s, number: %d", systemChannelID, bootstrapBlock.Header.Number)
-	return bootstrapBlock
-}
-
-func discardSystemChannelJoinBlock(config *localconfig.TopLevel, bootstrapBlock *cb.Block) {
-	if !config.ChannelParticipation.Enabled {
-		return
-	}
-
-	systemChannelName, err := protoutil.GetChannelIDFromBlock(bootstrapBlock)
-	if err != nil {
-		logger.Panicf("Failed to extract system channel name from join-block: %s", err)
-	}
-	joinBlockFileRepo, err := multichannel.InitJoinBlockFileRepo(config)
-	if err != nil {
-		logger.Panicf("Failed initializing join-block file repo: %v", err)
-	}
-	err = joinBlockFileRepo.Remove(systemChannelName)
-	if err != nil {
-		logger.Panicf("Failed to remove join-block for system channel: %s", err)
 	}
 }
 
@@ -380,10 +281,9 @@ func reuseListener(conf *localconfig.TopLevel) bool {
 	return false
 }
 
-// extractSystemChannel loops through all channels, and return the last
-// config block for the system channel. Returns nil if no system channel
-// was found.
-func extractSystemChannel(lf blockledger.Factory, bccsp bccsp.BCCSP) *cb.Block {
+// verifyNoSystemChannel loops through all channels, and panics if the last
+// config block for a channel is consistent with a system channel.
+func verifyNoSystemChannel(lf blockledger.Factory, bccsp bccsp.BCCSP) {
 	for _, cID := range lf.ChannelIDs() {
 		channelLedger, err := lf.GetOrCreate(cID)
 		if err != nil {
@@ -397,34 +297,9 @@ func extractSystemChannel(lf blockledger.Factory, bccsp bccsp.BCCSP) *cb.Block {
 
 		err = onboarding.ValidateBootstrapBlock(channelConfigBlock, bccsp)
 		if err == nil {
-			logger.Infof("Found system channel config block, number: %d", channelConfigBlock.Header.Number)
-			return channelConfigBlock
+			logger.Panicf("Error: found system channel config block in the ledger, channel: %s, block number: %d. This version does not support the system channel. Remove it before upgrading.", cID, channelConfigBlock.Header.Number)
 		}
 	}
-	return nil
-}
-
-// Select cluster boot block
-func selectClusterBootBlock(bootstrapBlock, sysChanLastConfig *cb.Block) *cb.Block {
-	if sysChanLastConfig == nil {
-		logger.Debug("Selected bootstrap block, because system channel last config block is nil")
-		return bootstrapBlock
-	}
-
-	if bootstrapBlock == nil {
-		logger.Debug("Selected system channel last config block, because bootstrap block is nil")
-		return sysChanLastConfig
-	}
-
-	if sysChanLastConfig.Header.Number > bootstrapBlock.Header.Number {
-		logger.Infof("Cluster boot block is system channel last config block; Blocks Header.Number system-channel=%d, bootstrap=%d",
-			sysChanLastConfig.Header.Number, bootstrapBlock.Header.Number)
-		return sysChanLastConfig
-	}
-
-	logger.Infof("Cluster boot block is bootstrap (genesis) block; Blocks Header.Number system-channel=%d, bootstrap=%d",
-		sysChanLastConfig.Header.Number, bootstrapBlock.Header.Number)
-	return bootstrapBlock
 }
 
 func initializeLogging() {
@@ -667,47 +542,6 @@ func grpcLeveler(ctx context.Context, fullMethod string) zapcore.Level {
 	}
 }
 
-func initializeBootstrapChannel(genesisBlock *cb.Block, lf blockledger.Factory) {
-	channelID, err := protoutil.GetChannelIDFromBlock(genesisBlock)
-	if err != nil {
-		logger.Fatal("Failed to parse channel ID from genesis block:", err)
-	}
-	gl, err := lf.GetOrCreate(channelID)
-	if err != nil {
-		logger.Fatal("Failed to create the system channel:", err)
-	}
-	if gl.Height() == 0 {
-		if err := gl.Append(genesisBlock); err != nil {
-			logger.Fatal("Could not write genesis block to ledger:", err)
-		}
-	}
-	logger.Infof("Initialized the system channel '%s' from bootstrap block", channelID)
-}
-
-func isClusterType(genesisBlock *cb.Block, bccsp bccsp.BCCSP) bool {
-	_, exists := clusterTypes[consensusType(genesisBlock, bccsp)]
-	return exists
-}
-
-func consensusType(genesisBlock *cb.Block, bccsp bccsp.BCCSP) string {
-	if genesisBlock == nil || genesisBlock.Data == nil || len(genesisBlock.Data.Data) == 0 {
-		logger.Fatalf("Empty genesis block")
-	}
-	env := &cb.Envelope{}
-	if err := proto.Unmarshal(genesisBlock.Data.Data[0], env); err != nil {
-		logger.Fatalf("Failed to unmarshal the genesis block's envelope: %v", err)
-	}
-	bundle, err := channelconfig.NewBundleFromEnvelope(env, bccsp)
-	if err != nil {
-		logger.Fatalf("Failed creating bundle from the genesis block: %v", err)
-	}
-	ordConf, exists := bundle.OrdererConfig()
-	if !exists {
-		logger.Fatalf("Orderer config doesn't exist in bundle derived from genesis block")
-	}
-	return ordConf.ConsensusType()
-}
-
 func initializeGrpcServer(conf *localconfig.TopLevel, serverConfig comm.ServerConfig) *comm.GRPCServer {
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort))
 	if err != nil {
@@ -749,23 +583,13 @@ func loadLocalMSP(conf *localconfig.TopLevel) msp.MSP {
 	return localmsp
 }
 
-//go:generate counterfeiter -o mocks/health_checker.go -fake-name HealthChecker . healthChecker
-
-// HealthChecker defines the contract for health checker
-type healthChecker interface {
-	RegisterChecker(component string, checker healthz.HealthChecker) error
-}
-
 func initializeMultichannelRegistrar(
-	bootstrapBlock *cb.Block,
-	repInitiator *onboarding.ReplicationInitiator,
 	clusterDialer *cluster.PredicateDialer,
 	srvConf comm.ServerConfig,
 	srv *comm.GRPCServer,
 	conf *localconfig.TopLevel,
 	signer identity.SignerSerializer,
 	metricsProvider metrics.Provider,
-	healthChecker healthChecker,
 	lf blockledger.Factory,
 	bccsp bccsp.BCCSP,
 	callbacks ...channelconfig.BundleActor,
@@ -783,6 +607,8 @@ func initializeMultichannelRegistrar(
 
 	// without a system channel: assume cluster type, InactiveChainRegistry == nil, no go-routine.
 	consenterType := "etcdraft"
+
+	// TODO this can be removed, both consenter types can be created
 	// load consensus type from orderer config
 	var consensusConfig localconfig.Consensus
 	if err := mapstructure.Decode(conf.Consensus, &consensusConfig); err == nil && consensusConfig.Type != "" {
