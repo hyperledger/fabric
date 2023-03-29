@@ -100,6 +100,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -187,6 +188,23 @@ func (c custodianLauncherAdapter) Stop(ccid string) error {
 }
 
 func serve(args []string) error {
+	logger.Infof("Starting %s", version.GetInfo())
+
+	// Info logging for peer config, includes core.yaml settings and environment variable overrides
+	allSettings := viper.AllSettings()
+	settingsYaml, err := yaml.Marshal(allSettings)
+	if err != nil {
+		return err
+	}
+	logger.Infof("Peer config with combined core.yaml settings and environment variable overrides:\n%s", settingsYaml)
+
+	// Debug logging for peer environment variables
+	logger.Debugf("Environment variables:")
+	envVars := os.Environ()
+	for _, envVar := range envVars {
+		logger.Debug(envVar)
+	}
+
 	// currently the peer only works with the standard MSP
 	// because in certain scenarios the MSP has to make sure
 	// that from a single credential you only have a single 'identity'.
@@ -202,8 +220,6 @@ func serve(args []string) error {
 	// the deliver service connection factory as it has process wide implications
 	// and was racy with respect to initialization of gRPC clients and servers.
 	grpc.EnableTracing = true
-
-	logger.Infof("Starting %s", version.GetInfo())
 
 	// obtain coreConfiguration
 	coreConfig, err := peer.GlobalConfig()
