@@ -328,7 +328,7 @@ func TestInitializeServerConfig(t *testing.T) {
 	}
 }
 
-func TestInitSystemChannelWithJoinBlock(t *testing.T) {
+func TestVerifyNoSystemChannelJoinBlock(t *testing.T) {
 	configPathCleanup := configtest.SetDevFabricConfigPath(t)
 	defer configPathCleanup()
 
@@ -342,7 +342,6 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 	var (
 		config         *localconfig.TopLevel
 		cryptoProvider bccsp.BCCSP
-		ledgerFactory  blockledger.Factory
 		fileRepo       *filerepo.Repo
 		genesisBytes   []byte
 	)
@@ -364,9 +363,6 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 		cryptoProvider, err = sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		require.NoError(t, err)
 
-		ledgerFactory, err = createLedgerFactory(config, &disabled.Provider{})
-		require.NoError(t, err)
-
 		fileRepo, err = multichannel.InitJoinBlockFileRepo(config)
 		require.NoError(t, err)
 		require.NotNil(t, fileRepo)
@@ -379,11 +375,7 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 	t.Run("No join-block", func(t *testing.T) {
 		setup()
 
-		bootstrapBlock := initSystemChannelWithJoinBlock(config, cryptoProvider, ledgerFactory)
-		require.Nil(t, bootstrapBlock)
-		ledger, err := ledgerFactory.GetOrCreate("testchannelid")
-		require.NoError(t, err)
-		require.Equal(t, uint64(0), ledger.Height())
+		verifyNoSystemChannelJoinBlock(config, cryptoProvider)
 	})
 
 	t.Run("With genesis join-block", func(t *testing.T) {
@@ -391,17 +383,7 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 
 		err := fileRepo.Save("testchannelid", genesisBytes)
 		require.NoError(t, err)
-		bootstrapBlock := initSystemChannelWithJoinBlock(config, cryptoProvider, ledgerFactory)
-		require.NotNil(t, bootstrapBlock)
-		ledger, err := ledgerFactory.GetOrCreate("testchannelid")
-		require.NoError(t, err)
-		require.Equal(t, uint64(1), ledger.Height())
-		// Again, ledger already exists
-		bootstrapBlock = initSystemChannelWithJoinBlock(config, cryptoProvider, ledgerFactory)
-		require.NotNil(t, bootstrapBlock)
-		ledger, err = ledgerFactory.GetOrCreate("testchannelid")
-		require.NoError(t, err)
-		require.Equal(t, uint64(1), ledger.Height())
+		require.Panics(t, func() { verifyNoSystemChannelJoinBlock(config, cryptoProvider) })
 	})
 
 	t.Run("With non-genesis join-block", func(t *testing.T) {
@@ -412,15 +394,11 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 		configBlockBytes := protoutil.MarshalOrPanic(block)
 		err := fileRepo.Save("testchannelid", configBlockBytes)
 		require.NoError(t, err)
-		bootstrapBlock := initSystemChannelWithJoinBlock(config, cryptoProvider, ledgerFactory)
-		require.NotNil(t, bootstrapBlock)
-		ledger, err := ledgerFactory.GetOrCreate("testchannelid")
-		require.NoError(t, err)
-		require.Equal(t, uint64(0), ledger.Height())
+		require.Panics(t, func() { verifyNoSystemChannelJoinBlock(config, cryptoProvider) })
 	})
 }
 
-func TestExtractSystemChannel(t *testing.T) {
+func TestVerifyNoSystemChannel(t *testing.T) {
 	cryptoProvider, _ := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 
 	tmpdir := t.TempDir()
@@ -428,15 +406,15 @@ func TestExtractSystemChannel(t *testing.T) {
 	rlf, err := fileledger.New(tmpdir, &disabled.Provider{})
 	require.NoError(t, err)
 
-	lastConf := extractSystemChannel(rlf, cryptoProvider)
-	require.Nil(t, lastConf, "no ledgers")
+	// no ledgers
+	verifyNoSystemChannel(rlf, cryptoProvider)
 
+	// skipping empty ledgers
 	_, err = rlf.GetOrCreate("emptychannelid")
 	require.NoError(t, err)
+	verifyNoSystemChannel(rlf, cryptoProvider)
 
-	lastConf = extractSystemChannel(rlf, cryptoProvider)
-	require.Nil(t, lastConf, "skip empty ledger")
-
+	// skipping app channel
 	conf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	conf.Consortiums = nil
 	configBlock := encoder.New(conf).GenesisBlock()
@@ -444,22 +422,18 @@ func TestExtractSystemChannel(t *testing.T) {
 	require.NoError(t, err)
 	err = rl.Append(configBlock)
 	require.NoError(t, err)
+	verifyNoSystemChannel(rlf, cryptoProvider)
 
-	lastConf = extractSystemChannel(rlf, cryptoProvider)
-	require.Nil(t, lastConf, "skip app ledger")
-
+	// detecting system channel genesis and panicking
 	conf = genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	configBlock = encoder.New(conf).GenesisBlock()
 	rl, err = rlf.GetOrCreate("testchannelid")
 	require.NoError(t, err)
 	err = rl.Append(configBlock)
 	require.NoError(t, err)
+	require.Panics(t, func() { verifyNoSystemChannel(rlf, cryptoProvider) })
 
-	lastConf = extractSystemChannel(rlf, cryptoProvider)
-	require.NotNil(t, lastConf, "get system channel genesis block")
-	require.Equal(t, uint64(0), lastConf.Header.Number)
-
-	// Make and append the next config block
+	// Make and append the next config block, detecting system channel and panicking
 	prevHash := protoutil.BlockHeaderHash(configBlock.Header)
 	configBlock.Header.Number = 1
 	configBlock.Header.PreviousHash = prevHash
@@ -473,37 +447,7 @@ func TestExtractSystemChannel(t *testing.T) {
 	})
 	err = rl.Append(configBlock)
 	require.NoError(t, err)
-
-	lastConf = extractSystemChannel(rlf, cryptoProvider)
-	require.NotNil(t, lastConf, "get system channel last config block")
-	require.Equal(t, uint64(1), lastConf.Header.Number)
-}
-
-func TestSelectClusterBootBlock(t *testing.T) {
-	bootstrapBlock := &common.Block{Header: &common.BlockHeader{Number: 100}}
-	lastConfBlock := &common.Block{Header: &common.BlockHeader{Number: 100}}
-
-	clusterBoot := selectClusterBootBlock(bootstrapBlock, nil)
-	require.NotNil(t, clusterBoot)
-	require.Equal(t, uint64(100), clusterBoot.Header.Number)
-	require.True(t, bootstrapBlock == clusterBoot)
-
-	clusterBoot = selectClusterBootBlock(bootstrapBlock, lastConfBlock)
-	require.NotNil(t, clusterBoot)
-	require.Equal(t, uint64(100), clusterBoot.Header.Number)
-	require.True(t, bootstrapBlock == clusterBoot)
-
-	lastConfBlock.Header.Number = 200
-	clusterBoot = selectClusterBootBlock(bootstrapBlock, lastConfBlock)
-	require.NotNil(t, clusterBoot)
-	require.Equal(t, uint64(200), clusterBoot.Header.Number)
-	require.True(t, lastConfBlock == clusterBoot)
-
-	bootstrapBlock.Header.Number = 300
-	clusterBoot = selectClusterBootBlock(bootstrapBlock, lastConfBlock)
-	require.NotNil(t, clusterBoot)
-	require.Equal(t, uint64(300), clusterBoot.Header.Number)
-	require.True(t, bootstrapBlock == clusterBoot)
+	require.Panics(t, func() { verifyNoSystemChannel(rlf, cryptoProvider) })
 }
 
 func TestLoadLocalMSP(t *testing.T) {
@@ -567,24 +511,11 @@ func TestInitializeMultichannelRegistrar(t *testing.T) {
 	t.Run("registrar without a system channel", func(t *testing.T) {
 		conf := genesisConfig(t, genesisFile)
 		conf.General.BootstrapMethod = "none"
-		conf.General.GenesisFile = ""
 		srv, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{})
 		require.NoError(t, err)
 		lf, err := createLedgerFactory(conf, &disabled.Provider{})
 		require.NoError(t, err)
-		registrar := initializeMultichannelRegistrar(
-			nil,
-			nil,
-			&cluster.PredicateDialer{},
-			comm.ServerConfig{},
-			srv,
-			conf,
-			signer,
-			&disabled.Provider{},
-			&server_mocks.HealthChecker{},
-			lf,
-			cryptoProvider,
-		)
+		registrar := initializeMultichannelRegistrar(&cluster.PredicateDialer{}, comm.ServerConfig{}, srv, conf, signer, &disabled.Provider{}, lf, cryptoProvider)
 		require.NotNil(t, registrar)
 		require.Empty(t, registrar.SystemChannelID())
 	})
@@ -643,7 +574,6 @@ func TestUpdateTrustedRoots(t *testing.T) {
 
 	cryptoPath := generateCryptoMaterials(t, cryptogen, tmpDir)
 	t.Logf("Generated crypto material to: %s", cryptoPath)
-	genesisFile, serverCert := produceGenesisFileEtcdRaft(t, "testchannelid", tmpDir)
 
 	// get a free random port
 	listenAddr := func() string {
@@ -655,8 +585,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	ledgerDir := path.Join(tmpDir, "ledger-dir")
 	conf := &localconfig.TopLevel{
 		General: localconfig.General{
-			BootstrapMethod: "file",
-			BootstrapFile:   genesisFile,
+			BootstrapMethod: "none",
 			ListenAddress:   "localhost",
 			ListenPort:      uint16(port),
 			TLS: localconfig.TLS{
@@ -686,8 +615,10 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	}
 	lf, err := createLedgerFactory(conf, &disabled.Provider{})
 	require.NoError(t, err)
-	bootBlock := file.New(genesisFile).GenesisBlock()
-	initializeBootstrapChannel(bootBlock, lf)
+
+	genesisFile, serverCert := produceGenesisFileEtcdRaftAppChannel(t, "testchannelid", tmpDir)
+	genesisBlock := file.New(genesisFile).GenesisBlock()
+	initializeAppChannel(genesisBlock, lf)
 	signer := &server_mocks.SignerSerializer{}
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
@@ -699,20 +630,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		},
 	}
 
-	r := initializeMultichannelRegistrar(
-		bootBlock,
-		onboarding.NewReplicationInitiator(lf, bootBlock, conf, comm.SecureOptions{}, signer, cryptoProvider),
-		&cluster.PredicateDialer{},
-		srvConf,
-		grpcServer,
-		conf,
-		signer,
-		&disabled.Provider{},
-		&server_mocks.HealthChecker{},
-		lf,
-		cryptoProvider,
-		callback,
-	)
+	r := initializeMultichannelRegistrar(&cluster.PredicateDialer{}, srvConf, grpcServer, conf, signer, &disabled.Provider{}, lf, cryptoProvider, callback)
 
 	t.Logf("# app CAs: %d", len(caMgr.appRootCAsByChain["testchannelid"]))
 	t.Logf("# orderer CAs: %d", len(caMgr.ordererRootCAsByChain["testchannelid"]))
@@ -726,8 +644,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 
 	conf = &localconfig.TopLevel{
 		General: localconfig.General{
-			BootstrapMethod: "file",
-			BootstrapFile:   genesisFile,
+			BootstrapMethod: "none",
 			ListenAddress:   "localhost",
 			ListenPort:      uint16(port),
 			TLS: localconfig.TLS{
@@ -765,20 +682,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		}
 	}
 
-	r = initializeMultichannelRegistrar(
-		bootBlock,
-		onboarding.NewReplicationInitiator(lf, bootBlock, conf, comm.SecureOptions{}, signer, cryptoProvider),
-		predDialer,
-		srvConf,
-		grpcServer,
-		conf,
-		signer,
-		&disabled.Provider{},
-		&server_mocks.HealthChecker{},
-		lf,
-		cryptoProvider,
-		callback,
-	)
+	r = initializeMultichannelRegistrar(predDialer, srvConf, grpcServer, conf, signer, &disabled.Provider{}, lf, cryptoProvider, callback)
 	t.Logf("# app CAs: %d", len(caMgr.appRootCAsByChain["testchannelid"]))
 	t.Logf("# orderer CAs: %d", len(caMgr.ordererRootCAsByChain["testchannelid"]))
 	// mutual TLS is required so updates should have occurred
@@ -1128,4 +1032,38 @@ func produceGenesisFileEtcdRaft(t *testing.T, channelID string, tmpDir string) (
 	err = os.WriteFile(f, protoutil.MarshalOrPanic(joinBlockAppRaft), 0o644)
 	require.NoError(t, err)
 	return f, serverCert
+}
+
+func produceGenesisFileEtcdRaftAppChannel(t *testing.T, channelID string, tmpDir string) (string, []byte) {
+	confRaft := genesisconfig.Load("SampleOrgChannel", tmpDir)
+
+	serverCert, err := ioutil.ReadFile(string(confRaft.Orderer.EtcdRaft.Consenters[0].ServerTlsCert))
+	require.NoError(t, err)
+
+	bootstrapper, err := encoder.NewBootstrapper(confRaft)
+	require.NoError(t, err, "cannot create bootstrapper")
+
+	joinBlockAppRaft := bootstrapper.GenesisBlockForChannel(channelID)
+
+	f := path.Join(tmpDir, channelID+".block")
+	err = os.WriteFile(f, protoutil.MarshalOrPanic(joinBlockAppRaft), 0o644)
+	require.NoError(t, err)
+	return f, serverCert
+}
+
+func initializeAppChannel(genesisBlock *common.Block, lf blockledger.Factory) {
+	channelID, err := protoutil.GetChannelIDFromBlock(genesisBlock)
+	if err != nil {
+		logger.Fatal("Failed to parse channel ID from genesis block:", err)
+	}
+	gl, err := lf.GetOrCreate(channelID)
+	if err != nil {
+		logger.Fatal("Failed to create the system channel:", err)
+	}
+	if gl.Height() == 0 {
+		if err := gl.Append(genesisBlock); err != nil {
+			logger.Fatal("Could not write genesis block to ledger:", err)
+		}
+	}
+	logger.Infof("Initialized the channel '%s' from genesis block", channelID)
 }
