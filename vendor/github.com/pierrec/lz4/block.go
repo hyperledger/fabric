@@ -40,21 +40,22 @@ func UncompressBlock(src, dst []byte) (int, error) {
 // compressor. If provided, it should have length at least 1<<16. If it is
 // shorter (or nil), CompressBlock allocates its own hash table.
 //
-// The size of the compressed data is returned. If it is 0 and no error, then the data is incompressible.
+// The size of the compressed data is returned.
+//
+// If the destination buffer size is lower than CompressBlockBound and
+// the compressed size is 0 and no error, then the data is incompressible.
 //
 // An error is returned if the destination buffer is too small.
 func CompressBlock(src, dst []byte, hashTable []int) (_ int, err error) {
 	defer recoverBlock(&err)
 
+	// Return 0, nil only if the destination buffer size is < CompressBlockBound.
+	isNotCompressible := len(dst) < CompressBlockBound(len(src))
+
 	// adaptSkipLog sets how quickly the compressor begins skipping blocks when data is incompressible.
 	// This significantly speeds up incompressible data and usually has very small impact on compression.
 	// bytes to skip =  1 + (bytes since last match >> adaptSkipLog)
 	const adaptSkipLog = 7
-	sn, dn := len(src)-mfLimit, len(dst)
-	if sn <= 0 || dn == 0 {
-		return 0, nil
-	}
-
 	if len(hashTable) < htSize {
 		htIface := htPool.Get()
 		defer htPool.Put(htIface)
@@ -67,6 +68,10 @@ func CompressBlock(src, dst []byte, hashTable []int) (_ int, err error) {
 	// si: Current position of the search.
 	// anchor: Position of the current literals.
 	var si, di, anchor int
+	sn := len(src) - mfLimit
+	if sn <= 0 {
+		goto lastLiterals
+	}
 
 	// Fast scan strategy: the hash table only stores the last 4 bytes sequences.
 	for si < sn {
@@ -190,7 +195,8 @@ func CompressBlock(src, dst []byte, hashTable []int) (_ int, err error) {
 		hashTable[h] = si - 2
 	}
 
-	if anchor == 0 {
+lastLiterals:
+	if isNotCompressible && anchor == 0 {
 		// Incompressible.
 		return 0, nil
 	}
@@ -211,7 +217,7 @@ func CompressBlock(src, dst []byte, hashTable []int) (_ int, err error) {
 	di++
 
 	// Write the last literals.
-	if di >= anchor {
+	if isNotCompressible && di >= anchor {
 		// Incompressible.
 		return 0, nil
 	}
@@ -237,22 +243,24 @@ func blockHashHC(x uint32) uint32 {
 //
 // CompressBlockHC compression ratio is better than CompressBlock but it is also slower.
 //
-// The size of the compressed data is returned. If it is 0 and no error, then the data is not compressible.
+// The size of the compressed data is returned.
+//
+// If the destination buffer size is lower than CompressBlockBound and
+// the compressed size is 0 and no error, then the data is incompressible.
 //
 // An error is returned if the destination buffer is too small.
 func CompressBlockHC(src, dst []byte, depth int) (_ int, err error) {
 	defer recoverBlock(&err)
+
+	// Return 0, nil only if the destination buffer size is < CompressBlockBound.
+	isNotCompressible := len(dst) < CompressBlockBound(len(src))
 
 	// adaptSkipLog sets how quickly the compressor begins skipping blocks when data is incompressible.
 	// This significantly speeds up incompressible data and usually has very small impact on compression.
 	// bytes to skip =  1 + (bytes since last match >> adaptSkipLog)
 	const adaptSkipLog = 7
 
-	sn, dn := len(src)-mfLimit, len(dst)
-	if sn <= 0 || dn == 0 {
-		return 0, nil
-	}
-	var si, di int
+	var si, di, anchor int
 
 	// hashTable: stores the last position found for a given hash
 	// chainTable: stores previous positions for a given hash
@@ -262,7 +270,11 @@ func CompressBlockHC(src, dst []byte, depth int) (_ int, err error) {
 		depth = winSize
 	}
 
-	anchor := si
+	sn := len(src) - mfLimit
+	if sn <= 0 {
+		goto lastLiterals
+	}
+
 	for si < sn {
 		// Hash the next 4 bytes (sequence).
 		match := binary.LittleEndian.Uint32(src[si:])
@@ -369,12 +381,13 @@ func CompressBlockHC(src, dst []byte, depth int) (_ int, err error) {
 		}
 	}
 
-	if anchor == 0 {
+	if isNotCompressible && anchor == 0 {
 		// Incompressible.
 		return 0, nil
 	}
 
 	// Last literals.
+lastLiterals:
 	lLen := len(src) - anchor
 	if lLen < 0xF {
 		dst[di] = byte(lLen << 4)
@@ -391,7 +404,7 @@ func CompressBlockHC(src, dst []byte, depth int) (_ int, err error) {
 	di++
 
 	// Write the last literals.
-	if di >= anchor {
+	if isNotCompressible && di >= anchor {
 		// Incompressible.
 		return 0, nil
 	}

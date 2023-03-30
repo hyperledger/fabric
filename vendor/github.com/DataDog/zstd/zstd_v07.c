@@ -530,7 +530,7 @@ MEM_STATIC unsigned BITv07_highbit32 (U32 val)
     _BitScanReverse ( &r, val );
     return (unsigned) r;
 #   elif defined(__GNUC__) && (__GNUC__ >= 3)   /* Use GCC Intrinsic */
-    return 31 - __builtin_clz (val);
+    return __builtin_clz (val) ^ 31;
 #   else   /* Software version */
     static const unsigned DeBruijnClz[32] = { 0, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18, 22, 25, 3, 30, 8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31 };
     U32 v = val;
@@ -3470,13 +3470,11 @@ static size_t ZSTDv07_decodeSeqHeaders(int* nbSeqPtr,
     }
 
     /* FSE table descriptors */
+    if (ip + 4 > iend) return ERROR(srcSize_wrong); /* min : header byte + all 3 are "raw", hence no header, but at least xxLog bits per type */
     {   U32 const LLtype  = *ip >> 6;
         U32 const OFtype = (*ip >> 4) & 3;
         U32 const MLtype  = (*ip >> 2) & 3;
         ip++;
-
-        /* check */
-        if (ip > iend-3) return ERROR(srcSize_wrong); /* min : all 3 are "raw", hence no header, but at least xxLog bits per type */
 
         /* Build DTables */
         {   size_t const llhSize = ZSTDv07_buildSeqTable(DTableLL, LLtype, MaxLL, LLFSELog, ip, iend-ip, LL_defaultNorm, LL_defaultNormLog, flagRepeatTable);
@@ -3918,7 +3916,7 @@ void ZSTDv07_findFrameSizeInfoLegacy(const void *src, size_t srcSize, size_t* cS
     }
 
     /* Frame Header */
-    {   size_t const frameHeaderSize = ZSTDv07_frameHeaderSize(src, ZSTDv07_frameHeaderSize_min);
+    {   size_t const frameHeaderSize = ZSTDv07_frameHeaderSize(src, srcSize);
         if (ZSTDv07_isError(frameHeaderSize)) {
             ZSTD_errorFrameSizeInfoLegacy(cSize, dBound, frameHeaderSize);
             return;

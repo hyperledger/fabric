@@ -10,11 +10,12 @@ func GetMounts(f FilterFunc) ([]*Info, error) {
 	return parseMountTable(f)
 }
 
-// Mounted determines if a specified path is a mount point.
+// Mounted determines if a specified path is a mount point. In case of any
+// error, false (and an error) is returned.
 //
-// The argument must be an absolute path, with all symlinks resolved, and clean.
-// One way to ensure it is to process the path using filepath.Abs followed by
-// filepath.EvalSymlinks before calling this function.
+// If a non-existent path is specified, an appropriate error is returned.
+// In case the caller is not interested in this particular error, it should
+// be handled separately using e.g. errors.Is(err, fs.ErrNotExist).
 func Mounted(path string) (bool, error) {
 	// root is always mounted
 	if path == string(os.PathSeparator) {
@@ -29,35 +30,38 @@ type Info struct {
 	// ID is a unique identifier of the mount (may be reused after umount).
 	ID int
 
-	// Parent indicates the ID of the mount parent (or of self for the top of the
-	// mount tree).
+	// Parent is the ID of the parent mount (or of self for the root
+	// of this mount namespace's mount tree).
 	Parent int
 
-	// Major indicates one half of the device ID which identifies the device class.
-	Major int
+	// Major and Minor are the major and the minor components of the Dev
+	// field of unix.Stat_t structure returned by unix.*Stat calls for
+	// files on this filesystem.
+	Major, Minor int
 
-	// Minor indicates one half of the device ID which identifies a specific
-	// instance of device.
-	Minor int
-
-	// Root of the mount within the filesystem.
+	// Root is the pathname of the directory in the filesystem which forms
+	// the root of this mount.
 	Root string
 
-	// Mountpoint indicates the mount point relative to the process's root.
+	// Mountpoint is the pathname of the mount point relative to the
+	// process's root directory.
 	Mountpoint string
 
-	// Options represents mount-specific options.
+	// Options is a comma-separated list of mount options.
 	Options string
 
-	// Optional represents optional fields.
+	// Optional are zero or more fields of the form "tag[:value]",
+	// separated by a space.  Currently, the possible optional fields are
+	// "shared", "master", "propagate_from", and "unbindable". For more
+	// information, see mount_namespaces(7) Linux man page.
 	Optional string
 
-	// FSType indicates the type of filesystem, such as EXT3.
+	// FSType is the filesystem type in the form "type[.subtype]".
 	FSType string
 
-	// Source indicates filesystem specific information or "none".
+	// Source is filesystem-specific information, or "none".
 	Source string
 
-	// VFSOptions represents per super block options.
+	// VFSOptions is a comma-separated list of superblock options.
 	VFSOptions string
 }
