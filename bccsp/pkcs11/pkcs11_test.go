@@ -13,6 +13,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/sha512"
 	"crypto/x509"
@@ -845,6 +846,16 @@ func TestECDSAKeyImportFromECDSAPublicKey(t *testing.T) {
 	if !valid {
 		t.Fatal("Failed verifying ECDSA signature. Signature not valid.")
 	}
+}
+
+func TestX509RSAKeyImport(t *testing.T) {
+	pk, err := rsa.GenerateKey(rand.Reader, 2048)
+	assert.NoError(t, err, "key generation failed")
+	cert := &x509.Certificate{PublicKey: pk.Public()}
+	key, err := currentBCCSP.KeyImport(cert, &bccsp.X509PublicKeyImportOpts{Temporary: false})
+	assert.NoError(t, err, "key import failed")
+	assert.NotNil(t, key, "key must not be nil")
+	assert.Equal(t, &rsaPublicKey{pubKey: &pk.PublicKey}, key)
 }
 
 func TestKeyImportFromX509ECDSAPublicKey(t *testing.T) {
