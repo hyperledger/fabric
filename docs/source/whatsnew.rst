@@ -333,8 +333,7 @@ Release notes
 The release notes provide more details for users moving to the new release.
 Specifically, take a look at the changes and deprecations.
 
-* `Fabric v2.5.0-beta release notes <https://github.com/hyperledger/fabric/releases/tag/v2.5.0-beta>`_.
-* `Fabric v2.5.0-beta2 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.5.0-beta2>`_.
+* `Fabric v2.5.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.5.0>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
