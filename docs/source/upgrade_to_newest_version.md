@@ -1,12 +1,20 @@
 # Considerations for getting to v2.x
 
-In this topic we'll cover recommendations for upgrading to the newest release from the previous release as well as from the most recent long term support (LTS) release.
+In this topic we'll cover recommendations for upgrading from a prior v2.x release to the v2.5 long-term support (LTS) release, as well as from the v1.4 release.
 
-## Upgrading from a prior v2.x release to a later v2.x release.
+## Upgrading from a prior v2.x release to the v2.5 LTS release.
 
-While new features have been added in each v2.x release, there have been no capability updates since v2.0.0. Therefore there are no special considerations, simply follow the steps in [Upgrading your components](./upgrading_your_components.html).
+Upgrading nodes from a prior v2.x release to the v2.5 LTS release requires no special considerations, simply follow the steps in [Upgrading your components](./upgrading_your_components.html). Upon the first start each v2.5 peer will rebuild some internal indexes for managing private data.
 
-## Upgrading from v1.4.x long term support release to a v2.x release
+The 2.5 release featured one new application capability:
+
+* **Application** capability `V2_5` enables purging the history of private data from a peer while preserving a hash of the private data as immutable evidence on the blockchain as described in the [Purging private data](./private-data/private-data.html#purging-private-data-in-chaincode) concept topic.
+
+If you would like to take advantage of the new feature, make sure to upgrade your peer binaries before updating the **Application** capability to `V2_5`. If you do not need the new feature, the **Application** capability can remain at `V2_0`.
+
+For information about how to set new capabilities, check out [Updating the capability level of a channel](./updating_capabilities.html).
+
+## Upgrading from v1.4.x release to a v2.x release
 
 Before attempting to upgrade from v1.4.x to v2.x, make sure to consider the following before, during, and after your peer upgrades.
 
@@ -36,11 +44,11 @@ Support for user chaincodes to utilize the chaincode shim's logger via `NewLogge
 
 For more information, check out [Logging control](./logging-control.html#chaincode).
 
-#### Nodejs v1.4 Chaincode
+#### Node.js v1.4 Chaincode
 
-For v1.4 Nodejs chaincode libraries, the supported node runtime is v8. Though not formally supported, the v1.4 libraries can work on later versions. For example the Node12 runtime that was used with Fabric v2.2.  Fabric v2.4 has upgraded to Node16. It is _not possible_ to run the v1.4 libraries on Node 16.  Therefore any chaincode written with the v1.4 libraries will need to be updated. Typically this will be before upgrading to a Fabric 2.4 peer.
+For v1.4 Node.js chaincode libraries, the supported node runtime is v8. Though not formally supported, the v1.4 libraries can work on later versions. For example the Node.js 12 runtime that was used with the Fabric v2.2 `fabric-nodeenv` image.  Fabric v2.4 `fabric-nodeenv` has upgraded to Node.js 16 and Fabric v2.5 `fabric-nodeenv` has upgraded to Node.js 18. It is _not possible_ to run the v1.4 libraries on Node.js 16 or Node.js 18.  Therefore any chaincode written with the v1.4 libraries will need to be updated prior to upgrading to Fabric v2.4 or Fabric v2.5.
 
-Also please note that the v1.4 libraries themselves are not supported, and will no longer get updates. Please migrate to a v2 Node chaincode library.
+Also please note that the v1.4 libraries themselves are not supported, and will no longer get updates. Please migrate to a v2.x Node.js chaincode library.
 
 For detailed information please refer to the [compatibility](https://github.com/hyperledger/fabric-chaincode-node/blob/main/COMPATIBILITY.md) document in the `fabric-chaincode-node` repository.
 
