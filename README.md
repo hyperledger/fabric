@@ -27,10 +27,13 @@ support (LTS) releases. Important fixes will be backported to the most recent
 LTS release, and to the prior LTS release during periods of LTS release overlap.
 For more details see the [LTS strategy](https://github.com/hyperledger/fabric-rfcs/blob/main/text/0005-lts-release-strategy.md).
 
-LTS release:
-- [v2.2.x](https://hyperledger-fabric.readthedocs.io/en/release-2.2/whatsnew.html) (current LTS release)
+Current LTS release:
+- [v2.2.5](https://hyperledger-fabric.readthedocs.io/en/release-2.5/whatsnew.html)
 
 Prior LTS release:
+- [v2.2.x](https://hyperledger-fabric.readthedocs.io/en/release-2.2/whatsnew.html) (maintained through December 2023)
+
+Historic LTS releases:
 - [v1.4.x](https://hyperledger-fabric.readthedocs.io/en/release-1.4/whatsnew.html) (maintenance ended in April 2021 with the delivery of v1.4.12)
 
 Unless specified otherwise, all releases will be upgradable from the prior minor release.
@@ -45,6 +48,7 @@ Please visit the [GitHub issues with Epic label](https://github.com/hyperledger/
 Please visit our
 online documentation for
 information on getting started using and developing with the fabric, SDK and chaincode:
+- [v2.5](http://hyperledger-fabric.readthedocs.io/en/release-2.5/)
 - [v2.4](http://hyperledger-fabric.readthedocs.io/en/release-2.4/)
 - [v2.3](http://hyperledger-fabric.readthedocs.io/en/release-2.3/)
 - [v2.2](http://hyperledger-fabric.readthedocs.io/en/release-2.2/)
