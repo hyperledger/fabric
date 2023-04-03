@@ -1,0 +1,9 @@
+# Copyright the Hyperledger Fabric contributors. All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+blank_issues_enabled: true
+contact_links:
+  - name: Support, Help, Questions, Chat
+    url: "https://hyperledger-fabric.readthedocs.io/en/latest/CONTRIBUTING.html#communications-and-getting-help"
+    about: "Use the communication resources to get Help and Chat with other users"
