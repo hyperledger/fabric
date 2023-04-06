@@ -1,6 +1,8 @@
 # Copyright the Hyperledger Fabric contributors. All rights reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
+#
+# How to modify this file: https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-issue-forms
 
 name: Bug Report
 description: Let us know what went wrong
