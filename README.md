@@ -28,7 +28,7 @@ LTS release, and to the prior LTS release during periods of LTS release overlap.
 For more details see the [LTS strategy](https://github.com/hyperledger/fabric-rfcs/blob/main/text/0005-lts-release-strategy.md).
 
 Current LTS release:
-- [v2.2.5](https://hyperledger-fabric.readthedocs.io/en/release-2.5/whatsnew.html)
+- [v2.5.x](https://hyperledger-fabric.readthedocs.io/en/release-2.5/whatsnew.html)
 
 Prior LTS release:
 - [v2.2.x](https://hyperledger-fabric.readthedocs.io/en/release-2.2/whatsnew.html) (maintained through December 2023)
