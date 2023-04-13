@@ -24,10 +24,10 @@ jobs:
     strategy:
       matrix:
         include:
-        - image: ubuntu-20.04
+        - image: ubuntu-2004-paid
           target: linux
           arch: amd64
-        - image: ubuntu-20.04
+        - image: ubuntu-2004-paid
           target: linux
           arch: arm64
         - image: macos-11
@@ -39,7 +39,7 @@ jobs:
         - image: windows-2022
           target: windows
           arch: amd64
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-2004-paid
     steps:
       - name: Install Go
         uses: actions/setup-go@v3
@@ -63,7 +63,7 @@ jobs:
 
   build-and-push-docker-images:
     name: Build and Push
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-2004-paid
 
     permissions:
       contents: read
@@ -136,7 +136,7 @@ jobs:
     needs:
       - build-binaries
       - build-and-push-docker-images
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-2004-paid
     permissions:
       contents: write
     steps:
