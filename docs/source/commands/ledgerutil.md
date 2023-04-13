@@ -214,8 +214,8 @@ Flags:
                              Default is the current directory.
 
 Args:
-  [<blockStorePath>]  Path to file system of target peer, used to access block
-                      store. Defaults to '/var/hyperledger/production'.
+  [<blockStorePath>]  Path to file system of target peer, used to access
+                      block store. Defaults to '/var/hyperledger/production'.
                       IMPORTANT: If the configuration for target peer's file
                       system path was changed, the new path MUST be provided.
 ```
