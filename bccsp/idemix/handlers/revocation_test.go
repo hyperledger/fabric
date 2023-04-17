@@ -51,7 +51,9 @@ var _ = Describe("Revocation", func() {
 				idemixRevocationKey = &ecdsa.PrivateKey{
 					PublicKey: ecdsa.PublicKey{
 						Curve: elliptic.P256(),
-						X:     big.NewInt(1), Y: big.NewInt(1)},
+						X:     elliptic.P256().Params().Gx,
+						Y:     elliptic.P256().Params().Gy,
+					},
 					D: big.NewInt(1)}
 
 				raw := elliptic.Marshal(idemixRevocationKey.Curve, idemixRevocationKey.PublicKey.X, idemixRevocationKey.PublicKey.Y)
