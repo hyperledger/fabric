@@ -103,9 +103,9 @@ func sanitizeECDSASignedCert(cert *x509.Certificate, parentCert *x509.Certificat
 
 	// 2. Change the signature
 	newCert.SignatureValue = asn1.BitString{Bytes: expectedSig, BitLength: len(expectedSig) * 8}
+	newCert.Raw = nil
 
 	// 3. marshal again newCert. Raw must be nil
-	newCert.Raw = nil
 	newRaw, err := asn1.Marshal(newCert)
 	if err != nil {
 		return nil, errors.Wrap(err, "marshalling of the certificate failed")
