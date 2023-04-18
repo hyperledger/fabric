@@ -174,7 +174,7 @@ github.com/gorilla/mux
 # github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
 ## explicit
 github.com/grpc-ecosystem/go-grpc-middleware
-# github.com/hashicorp/go-version v1.2.0
+# github.com/hashicorp/go-version v1.4.0
 ## explicit
 github.com/hashicorp/go-version
 # github.com/hyperledger/fabric-amcl v0.0.0-20200128223036-d1aa2665426a
