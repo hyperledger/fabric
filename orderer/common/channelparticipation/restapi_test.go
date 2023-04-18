@@ -272,14 +272,13 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		}, infoResp)
 	})
 
-	t.Run("Error: System Channel Exists", func(t *testing.T) {
-		fakeManager, h := setup(config, t)
-		fakeManager.JoinChannelReturns(types.ChannelInfo{}, types.ErrSystemChannelExists)
+	t.Run("Error: system channel not supported", func(t *testing.T) {
+		_, h := setup(config, t)
+
 		resp := httptest.NewRecorder()
-		req := genJoinRequestFormData(t, validBlockBytes("ch-id"))
+		req := genJoinRequestFormData(t, sysChanBlockBytes("ch-id"))
 		h.ServeHTTP(resp, req)
-		checkErrorResponse(t, http.StatusMethodNotAllowed, "cannot join: system channel exists", resp)
-		require.Equal(t, "GET", resp.Result().Header.Get("Allow"))
+		checkErrorResponse(t, http.StatusBadRequest, "invalid join block: invalid config: contains consortiums: system channel not supported", resp)
 	})
 
 	t.Run("Error: Channel Exists", func(t *testing.T) {
@@ -528,6 +527,13 @@ func genJoinRequestFormData(t *testing.T, blockBytes []byte) *http.Request {
 func validBlockBytes(channelID string) []byte {
 	blockBytes := protoutil.MarshalOrPanic(blockWithGroups(map[string]*common.ConfigGroup{
 		"Application": {},
+	}, channelID))
+	return blockBytes
+}
+
+func sysChanBlockBytes(channelID string) []byte {
+	blockBytes := protoutil.MarshalOrPanic(blockWithGroups(map[string]*common.ConfigGroup{
+		"Consortiums": {},
 	}, channelID))
 	return blockBytes
 }
