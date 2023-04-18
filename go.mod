@@ -21,7 +21,7 @@ require (
 	github.com/hyperledger/fabric-lib-go v1.0.0
 	github.com/hyperledger/fabric-protos-go v0.0.0-20200506201313-25f6564b9ac4
 	github.com/kr/pretty v0.2.0
-	github.com/miekg/pkcs11 v1.0.3
+	github.com/miekg/pkcs11 v1.1.1
 	github.com/mitchellh/mapstructure v1.2.2
 	github.com/onsi/ginkgo v1.14.0
 	github.com/onsi/gomega v1.10.1
