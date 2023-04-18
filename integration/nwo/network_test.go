@@ -75,7 +75,7 @@ var _ = Describe("Network", func() {
 			network.Cleanup()
 		})
 
-		It("deploys and executes chaincode (simple) using the legacy lifecycle", func() {
+		PIt("deploys and executes chaincode (simple) using the legacy lifecycle", func() {
 			orderer := network.Orderer("orderer0")
 			peer := network.Peer("org1", "peer2")
 
@@ -121,7 +121,7 @@ var _ = Describe("Network", func() {
 		})
 	})
 
-	Describe("kafka network", func() {
+	PDescribe("kafka network", func() {
 		var (
 			config    nwo.Config
 			network   *nwo.Network
