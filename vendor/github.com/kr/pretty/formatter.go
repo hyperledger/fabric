@@ -8,6 +8,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/kr/text"
+	"github.com/rogpeppe/go-internal/fmtsort"
 )
 
 type formatter struct {
@@ -37,7 +38,7 @@ func (fo formatter) passThrough(f fmt.State, c rune) {
 	s := "%"
 	for i := 0; i < 128; i++ {
 		if f.Flag(i) {
-			s += string(i)
+			s += string(rune(i))
 		}
 	}
 	if w, ok := f.Width(); ok {
@@ -91,10 +92,37 @@ type visit struct {
 	typ reflect.Type
 }
 
+func (p *printer) catchPanic(v reflect.Value, method string) {
+	if r := recover(); r != nil {
+		if v.Kind() == reflect.Ptr && v.IsNil() {
+			writeByte(p, '(')
+			io.WriteString(p, v.Type().String())
+			io.WriteString(p, ")(nil)")
+			return
+		}
+		writeByte(p, '(')
+		io.WriteString(p, v.Type().String())
+		io.WriteString(p, ")(PANIC=calling method ")
+		io.WriteString(p, strconv.Quote(method))
+		io.WriteString(p, ": ")
+		fmt.Fprint(p, r)
+		writeByte(p, ')')
+	}
+}
+
 func (p *printer) printValue(v reflect.Value, showType, quote bool) {
 	if p.depth > 10 {
 		io.WriteString(p, "!%v(DEPTH EXCEEDED)")
 		return
+	}
+
+	if v.IsValid() && v.CanInterface() {
+		i := v.Interface()
+		if goStringer, ok := i.(fmt.GoStringer); ok {
+			defer p.catchPanic(v, "GoString")
+			io.WriteString(p, goStringer.GoString())
+			return
+		}
 	}
 
 	switch v.Kind() {
@@ -123,10 +151,10 @@ func (p *printer) printValue(v reflect.Value, showType, quote bool) {
 				writeByte(p, '\n')
 				pp = p.indent()
 			}
-			keys := v.MapKeys()
+			sm := fmtsort.Sort(v)
 			for i := 0; i < v.Len(); i++ {
-				k := keys[i]
-				mv := v.MapIndex(k)
+				k := sm.Key[i]
+				mv := sm.Value[i]
 				pp.printValue(k, false, true)
 				writeByte(pp, ':')
 				if expand {

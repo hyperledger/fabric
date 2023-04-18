@@ -223,10 +223,10 @@ github.com/inconshreveable/mousetrap
 # github.com/konsorten/go-windows-terminal-sequences v1.0.3
 ## explicit
 github.com/konsorten/go-windows-terminal-sequences
-# github.com/kr/pretty v0.2.0
+# github.com/kr/pretty v0.3.1
 ## explicit; go 1.12
 github.com/kr/pretty
-# github.com/kr/text v0.1.0
+# github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
 # github.com/magiconair/properties v1.8.1
@@ -345,6 +345,9 @@ github.com/prometheus/procfs/internal/util
 # github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a
 ## explicit
 github.com/rcrowley/go-metrics
+# github.com/rogpeppe/go-internal v1.9.0
+## explicit; go 1.17
+github.com/rogpeppe/go-internal/fmtsort
 # github.com/sirupsen/logrus v1.6.0
 ## explicit; go 1.13
 github.com/sirupsen/logrus

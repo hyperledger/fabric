@@ -20,7 +20,7 @@ require (
 	github.com/hyperledger/fabric-config v0.0.7
 	github.com/hyperledger/fabric-lib-go v1.0.0
 	github.com/hyperledger/fabric-protos-go v0.0.0-20200506201313-25f6564b9ac4
-	github.com/kr/pretty v0.2.0
+	github.com/kr/pretty v0.3.1
 	github.com/miekg/pkcs11 v1.1.1
 	github.com/mitchellh/mapstructure v1.2.2
 	github.com/onsi/ginkgo v1.14.0
@@ -77,7 +77,7 @@ require (
 	github.com/golang/snappy v0.0.2 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
-	github.com/kr/text v0.1.0 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
@@ -94,6 +94,7 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.26.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
+	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/sirupsen/logrus v1.6.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
