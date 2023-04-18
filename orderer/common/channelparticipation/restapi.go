@@ -260,13 +260,13 @@ func (h *HTTPHandler) serveJoin(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	channelID, isAppChannel, err := ValidateJoinBlock(block)
+	channelID, err := ValidateJoinBlock(block)
 	if err != nil {
 		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.WithMessage(err, "invalid join block"))
 		return
 	}
 
-	info, err := h.registrar.JoinChannel(channelID, block, isAppChannel)
+	info, err := h.registrar.JoinChannel(channelID, block, true)
 	if err != nil {
 		h.sendJoinError(err, resp)
 		return

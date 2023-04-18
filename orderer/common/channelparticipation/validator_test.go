@@ -20,23 +20,21 @@ import (
 
 func TestValidateJoinBlock(t *testing.T) {
 	tests := []struct {
-		testName             string
-		joinBlock            *cb.Block
-		expectedChannelID    string
-		expectedIsAppChannel bool
-		expectedErr          error
+		testName          string
+		joinBlock         *cb.Block
+		expectedChannelID string
+		expectedErr       error
 	}{
 		{
-			testName: "Valid system channel join block",
+			testName: "Not supported: system channel join block",
 			joinBlock: blockWithGroups(
 				map[string]*cb.ConfigGroup{
 					"Consortiums": {},
 				},
 				"my-channel",
 			),
-			expectedChannelID:    "my-channel",
-			expectedIsAppChannel: false,
-			expectedErr:          nil,
+			expectedChannelID: "",
+			expectedErr:       errors.New("invalid config: contains consortiums: system channel not supported"),
 		},
 		{
 			testName: "Valid application channel join block",
@@ -46,16 +44,14 @@ func TestValidateJoinBlock(t *testing.T) {
 				},
 				"my-channel",
 			),
-			expectedChannelID:    "my-channel",
-			expectedIsAppChannel: true,
-			expectedErr:          nil,
+			expectedChannelID: "my-channel",
+			expectedErr:       nil,
 		},
 		{
-			testName:             "Join block not a config block",
-			joinBlock:            nonConfigBlock(),
-			expectedChannelID:    "",
-			expectedIsAppChannel: false,
-			expectedErr:          errors.New("block is not a config block"),
+			testName:          "Join block not a config block",
+			joinBlock:         nonConfigBlock(),
+			expectedChannelID: "",
+			expectedErr:       errors.New("block is not a config block"),
 		},
 		{
 			testName: "block ChannelID not valid",
@@ -65,9 +61,8 @@ func TestValidateJoinBlock(t *testing.T) {
 				},
 				"My-Channel",
 			),
-			expectedChannelID:    "",
-			expectedIsAppChannel: false,
-			expectedErr:          errors.New("initializing configtx manager failed: bad channel ID: 'My-Channel' contains illegal characters"),
+			expectedChannelID: "",
+			expectedErr:       errors.New("initializing configtx manager failed: bad channel ID: 'My-Channel' contains illegal characters"),
 		},
 		{
 			testName: "Invalid bundle",
@@ -77,9 +72,8 @@ func TestValidateJoinBlock(t *testing.T) {
 				},
 				"my-channel",
 			),
-			expectedChannelID:    "",
-			expectedIsAppChannel: false,
-			expectedErr:          errors.New("initializing channelconfig failed: Disallowed channel group: "),
+			expectedChannelID: "",
+			expectedErr:       errors.New("initializing channelconfig failed: Disallowed channel group: "),
 		},
 		{
 			testName: "Join block has no application or consortiums group",
@@ -87,17 +81,15 @@ func TestValidateJoinBlock(t *testing.T) {
 				map[string]*cb.ConfigGroup{},
 				"my-channel",
 			),
-			expectedChannelID:    "",
-			expectedIsAppChannel: false,
-			expectedErr:          errors.New("invalid config: must have at least one of application or consortiums"),
+			expectedChannelID: "",
+			expectedErr:       errors.New("invalid config: must contain application config"),
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
-			channelID, isAppChannel, err := channelparticipation.ValidateJoinBlock(test.joinBlock)
+			channelID, err := channelparticipation.ValidateJoinBlock(test.joinBlock)
 			require.Equal(t, test.expectedChannelID, channelID)
-			require.Equal(t, test.expectedIsAppChannel, isAppChannel)
 			if test.expectedErr != nil {
 				require.EqualError(t, err, test.expectedErr.Error())
 			} else {
