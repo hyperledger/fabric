@@ -76,8 +76,8 @@ Optional: Install the latest Fabric supported version of [Go](https://golang.org
 installed (only required if you will be writing Go chaincode or SDK applications).
 
 ```shell
-brew install go@1.20.2
-go version # => go1.20.2 darwin/amd64
+brew install go@1.20.3
+go version # => go1.20.3 darwin/amd64
 ```
 
 ### JQ
@@ -95,7 +95,7 @@ jq --version # => jq-1.6
 
 <!--- Indent entire section -->
 <div style="margin-left: 1.5em;">
-  
+
 Prerequisites: [git](https://git-scm.com/downloads), [cURL](https://curl.haxx.se/download.html), [Docker](https://docs.docker.com/get-docker/)
 
 ```shell
@@ -110,7 +110,7 @@ sudo usermod -a -G docker <username>
 # Check version numbers  
 docker --version
 docker-compose --version
-  
+
 # Optional: If you want the Docker daemon to start when the system starts, use the following:
 sudo systemctl enable docker
 ```
