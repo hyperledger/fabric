@@ -28,7 +28,11 @@ type attestationserver struct {
 	*multichannel.Registrar
 }
 
-// NewServer creates an ab.AtomicBroadcastServer based on the broadcast target and ledger Reader
+// TODO This is preparation work for the BFT block puller. Right now it is used only in unit tests.
+// We need to revisit this code and redesign this concept.
+// We need to update the related unit tests.
+
+// NewAttestationService creates an ab.AtomicBroadcastServer based on the broadcast target and ledger Reader
 func NewAttestationService(
 	r *multichannel.Registrar,
 	metricsProvider metrics.Provider,
