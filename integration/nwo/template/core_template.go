@@ -16,7 +16,7 @@ peer:
   address: 127.0.0.1:{{ .PeerPort Peer "Listen" }}
   addressAutoDetect: true
   listenAddress: 127.0.0.1:{{ .PeerPort Peer "Listen" }}
-  chaincodeListenAddress: 127.0.0.1:{{ .PeerPort Peer "Chaincode" }}
+  chaincodeListenAddress: 0.0.0.0:{{ .PeerPort Peer "Chaincode" }}
   keepalive:
     minInterval: 60s
     client:
