@@ -24,10 +24,10 @@ jobs:
     strategy:
       matrix:
         include:
-        - image: ubuntu-2004-paid
+        - image: fabric-ubuntu-20.04
           target: linux
           arch: amd64
-        - image: ubuntu-2004-paid
+        - image: fabric-ubuntu-20.04
           target: linux
           arch: arm64
         - image: macos-11
@@ -36,10 +36,10 @@ jobs:
         - image: macos-11
           target: darwin
           arch: arm64
-        - image: windows-2022
+        - image: fabric-windows-latest
           target: windows
           arch: amd64
-    runs-on: ubuntu-2004-paid
+    runs-on: fabric-ubuntu-20.04
     steps:
       - name: Install Go
         uses: actions/setup-go@v3
@@ -63,7 +63,7 @@ jobs:
 
   build-and-push-docker-images:
     name: Build and Push
-    runs-on: ubuntu-2004-paid
+    runs-on: fabric-ubuntu-20.04
 
     permissions:
       contents: read
@@ -136,7 +136,7 @@ jobs:
     needs:
       - build-binaries
       - build-and-push-docker-images
-    runs-on: ubuntu-2004-paid
+    runs-on: fabric-ubuntu-20.04
     permissions:
       contents: write
     steps:
