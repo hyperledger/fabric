@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"math"
 	"reflect"
@@ -245,6 +246,12 @@ func (enc *logfmtEncoder) AppendReflected(value interface{}) error {
 		enc.AppendString(v.String())
 	case encoding.TextMarshaler:
 		b, err := v.MarshalText()
+		if err != nil {
+			return err
+		}
+		enc.AppendString(string(b))
+	case json.Marshaler:
+		b, err := v.MarshalJSON()
 		if err != nil {
 			return err
 		}
