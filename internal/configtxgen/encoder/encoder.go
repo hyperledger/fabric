@@ -534,6 +534,7 @@ func ConfigTemplateFromGroup(conf *genesisconfig.Profile, cg *cb.ConfigGroup) (*
 
 // MakeChannelCreationTransaction is a handy utility function for creating transactions for channel creation.
 // It assumes the invoker has no system channel context so ignores all but the application section.
+// Deprecated
 func MakeChannelCreationTransaction(
 	channelID string,
 	signer identity.SignerSerializer,
@@ -549,6 +550,7 @@ func MakeChannelCreationTransaction(
 // MakeChannelCreationTransactionWithSystemChannelContext is a utility function for creating channel creation txes.
 // It requires a configuration representing the orderer system channel to allow more sophisticated channel creation
 // transactions modifying pieces of the configuration like the orderer set.
+// Deprecated
 func MakeChannelCreationTransactionWithSystemChannelContext(
 	channelID string,
 	signer identity.SignerSerializer,

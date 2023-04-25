@@ -855,13 +855,13 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			resp, err = ordererclient.Broadcast(network, o4, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_BAD_REQUEST))
-			Expect(orderer4Runner.Err()).To(gbytes.Say("channel creation request not allowed because the orderer system channel is not defined"))
+			Expect(orderer4Runner.Err()).To(gbytes.Say("channel does not exist"))
 
 			env = CreateBroadcastEnvelope(network, peer, "testchannel3", []byte("hello"))
 			resp, err = ordererclient.Broadcast(network, o4, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_BAD_REQUEST))
-			Expect(orderer4Runner.Err()).To(gbytes.Say("channel creation request not allowed because the orderer system channel is not defined"))
+			Expect(orderer4Runner.Err()).To(gbytes.Say("channel does not exist"))
 
 			By("Adding orderer4 to testchannel2")
 			addConsenter(network, peer, o1, "testchannel2", etcdraft.Consenter{
@@ -980,11 +980,11 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			resp, err := ordererclient.Broadcast(network, o2, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_BAD_REQUEST))
-			Expect(ordererRunners[1].Err()).To(gbytes.Say("channel creation request not allowed because the orderer system channel is not defined"))
+			Expect(ordererRunners[1].Err()).To(gbytes.Say("channel does not exist"))
 			resp, err = ordererclient.Broadcast(network, o3, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_BAD_REQUEST))
-			Expect(ordererRunners[2].Err()).To(gbytes.Say("channel creation request not allowed because the orderer system channel is not defined"))
+			Expect(ordererRunners[2].Err()).To(gbytes.Say("channel does not exist"))
 			// With channel participation API, an orderer returns NOT_FOUND for channels it does not serve.
 			ensureNotFound(o2, peer, network, "mychannel")
 			ensureNotFound(o3, peer, network, "mychannel")

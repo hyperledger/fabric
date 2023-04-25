@@ -501,7 +501,7 @@ func TestInitializeMultichannelRegistrar(t *testing.T) {
 
 	cryptoPath := generateCryptoMaterials(t, cryptogen, tmpDir)
 	t.Logf("Generated crypto material to: %s", cryptoPath)
-	genesisFile, _ := produceGenesisFileEtcdRaft(t, "testchannelid", tmpDir)
+	genesisFile, _ := produceGenesisFileEtcdRaftAppChannel(t, "testchannelid", tmpDir)
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
@@ -510,14 +510,12 @@ func TestInitializeMultichannelRegistrar(t *testing.T) {
 
 	t.Run("registrar without a system channel", func(t *testing.T) {
 		conf := genesisConfig(t, genesisFile)
-		conf.General.BootstrapMethod = "none"
 		srv, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{})
 		require.NoError(t, err)
 		lf, err := createLedgerFactory(conf, &disabled.Provider{})
 		require.NoError(t, err)
 		registrar := initializeMultichannelRegistrar(&cluster.PredicateDialer{}, comm.ServerConfig{}, srv, conf, signer, &disabled.Provider{}, lf, cryptoProvider)
 		require.NotNil(t, registrar)
-		require.Empty(t, registrar.SystemChannelID())
 	})
 }
 
@@ -987,8 +985,7 @@ func genesisConfig(t *testing.T, genesisFile string) *localconfig.TopLevel {
 
 	return &localconfig.TopLevel{
 		General: localconfig.General{
-			BootstrapMethod: "file",
-			BootstrapFile:   genesisFile,
+			BootstrapMethod: "none",
 			LocalMSPDir:     localMSPDir,
 			LocalMSPID:      "SampleOrg",
 			BCCSP: &factory.FactoryOpts{
@@ -1018,6 +1015,7 @@ func panicMsg(f func()) string {
 	return message.(string)
 }
 
+// produces a system channel genesis file to make sure the server detects it and refuses to start
 func produceGenesisFileEtcdRaft(t *testing.T, channelID string, tmpDir string) (string, []byte) {
 	confRaft := genesisconfig.Load("SampleEtcdRaftSystemChannel", tmpDir)
 

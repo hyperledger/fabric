@@ -17,6 +17,7 @@ type ErrorResponse struct {
 // swagger:model channelList
 type ChannelList struct {
 	// The system channel info, nil if it doesn't exist.
+	// Deprecated system channel not supported, this will always be nil.
 	SystemChannel *ChannelInfoShort `json:"systemChannel"`
 	// Application channels only, nil or empty if no channels defined.
 	Channels []ChannelInfoShort `json:"channels"`
