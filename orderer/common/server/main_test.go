@@ -34,7 +34,6 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/filerepo"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
@@ -615,7 +614,9 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	require.NoError(t, err)
 
 	genesisFile, serverCert := produceGenesisFileEtcdRaftAppChannel(t, "testchannelid", tmpDir)
-	genesisBlock := file.New(genesisFile).GenesisBlock()
+	blockBytes, err := os.ReadFile(genesisFile)
+	require.NoError(t, err)
+	genesisBlock := protoutil.UnmarshalBlockOrPanic(blockBytes)
 	initializeAppChannel(genesisBlock, lf)
 	signer := &server_mocks.SignerSerializer{}
 
