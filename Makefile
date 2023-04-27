@@ -51,9 +51,13 @@ FABRIC_VER ?= 2.5.0
 
 # 3rd party image version
 # These versions are also set in the runners in ./integration/runners/
+<<<<<<< HEAD
 COUCHDB_VER ?= 3.2.2
 KAFKA_VER ?= 5.3.1
 ZOOKEEPER_VER ?= 5.3.1
+=======
+COUCHDB_VER ?= 3.3.2
+>>>>>>> 6612020e3 (Bump CouchDB to 3.3.2 (#4186))
 
 # Disable implicit rules
 .SUFFIXES:
