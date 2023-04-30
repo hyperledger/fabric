@@ -61,15 +61,16 @@ func (fake *LedgerResources) Append(arg1 *common.Block) error {
 	fake.appendArgsForCall = append(fake.appendArgsForCall, struct {
 		arg1 *common.Block
 	}{arg1})
+	stub := fake.AppendStub
+	fakeReturns := fake.appendReturns
 	fake.recordInvocation("Append", []interface{}{arg1})
 	fake.appendMutex.Unlock()
-	if fake.AppendStub != nil {
-		return fake.AppendStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.appendReturns
 	return fakeReturns.result1
 }
 
@@ -121,15 +122,16 @@ func (fake *LedgerResources) Block(arg1 uint64) *common.Block {
 	fake.blockArgsForCall = append(fake.blockArgsForCall, struct {
 		arg1 uint64
 	}{arg1})
+	stub := fake.BlockStub
+	fakeReturns := fake.blockReturns
 	fake.recordInvocation("Block", []interface{}{arg1})
 	fake.blockMutex.Unlock()
-	if fake.BlockStub != nil {
-		return fake.BlockStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.blockReturns
 	return fakeReturns.result1
 }
 
@@ -180,15 +182,16 @@ func (fake *LedgerResources) ChannelID() string {
 	ret, specificReturn := fake.channelIDReturnsOnCall[len(fake.channelIDArgsForCall)]
 	fake.channelIDArgsForCall = append(fake.channelIDArgsForCall, struct {
 	}{})
+	stub := fake.ChannelIDStub
+	fakeReturns := fake.channelIDReturns
 	fake.recordInvocation("ChannelID", []interface{}{})
 	fake.channelIDMutex.Unlock()
-	if fake.ChannelIDStub != nil {
-		return fake.ChannelIDStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.channelIDReturns
 	return fakeReturns.result1
 }
 
@@ -232,15 +235,16 @@ func (fake *LedgerResources) Height() uint64 {
 	ret, specificReturn := fake.heightReturnsOnCall[len(fake.heightArgsForCall)]
 	fake.heightArgsForCall = append(fake.heightArgsForCall, struct {
 	}{})
+	stub := fake.HeightStub
+	fakeReturns := fake.heightReturns
 	fake.recordInvocation("Height", []interface{}{})
 	fake.heightMutex.Unlock()
-	if fake.HeightStub != nil {
-		return fake.HeightStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.heightReturns
 	return fakeReturns.result1
 }
 

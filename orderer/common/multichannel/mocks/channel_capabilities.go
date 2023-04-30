@@ -67,15 +67,16 @@ func (fake *ChannelCapabilities) ConsensusTypeBFT() bool {
 	ret, specificReturn := fake.consensusTypeBFTReturnsOnCall[len(fake.consensusTypeBFTArgsForCall)]
 	fake.consensusTypeBFTArgsForCall = append(fake.consensusTypeBFTArgsForCall, struct {
 	}{})
+	stub := fake.ConsensusTypeBFTStub
+	fakeReturns := fake.consensusTypeBFTReturns
 	fake.recordInvocation("ConsensusTypeBFT", []interface{}{})
 	fake.consensusTypeBFTMutex.Unlock()
-	if fake.ConsensusTypeBFTStub != nil {
-		return fake.ConsensusTypeBFTStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.consensusTypeBFTReturns
 	return fakeReturns.result1
 }
 
@@ -119,15 +120,16 @@ func (fake *ChannelCapabilities) ConsensusTypeMigration() bool {
 	ret, specificReturn := fake.consensusTypeMigrationReturnsOnCall[len(fake.consensusTypeMigrationArgsForCall)]
 	fake.consensusTypeMigrationArgsForCall = append(fake.consensusTypeMigrationArgsForCall, struct {
 	}{})
+	stub := fake.ConsensusTypeMigrationStub
+	fakeReturns := fake.consensusTypeMigrationReturns
 	fake.recordInvocation("ConsensusTypeMigration", []interface{}{})
 	fake.consensusTypeMigrationMutex.Unlock()
-	if fake.ConsensusTypeMigrationStub != nil {
-		return fake.ConsensusTypeMigrationStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.consensusTypeMigrationReturns
 	return fakeReturns.result1
 }
 
@@ -171,15 +173,16 @@ func (fake *ChannelCapabilities) MSPVersion() msp.MSPVersion {
 	ret, specificReturn := fake.mSPVersionReturnsOnCall[len(fake.mSPVersionArgsForCall)]
 	fake.mSPVersionArgsForCall = append(fake.mSPVersionArgsForCall, struct {
 	}{})
+	stub := fake.MSPVersionStub
+	fakeReturns := fake.mSPVersionReturns
 	fake.recordInvocation("MSPVersion", []interface{}{})
 	fake.mSPVersionMutex.Unlock()
-	if fake.MSPVersionStub != nil {
-		return fake.MSPVersionStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.mSPVersionReturns
 	return fakeReturns.result1
 }
 
@@ -223,15 +226,16 @@ func (fake *ChannelCapabilities) OrgSpecificOrdererEndpoints() bool {
 	ret, specificReturn := fake.orgSpecificOrdererEndpointsReturnsOnCall[len(fake.orgSpecificOrdererEndpointsArgsForCall)]
 	fake.orgSpecificOrdererEndpointsArgsForCall = append(fake.orgSpecificOrdererEndpointsArgsForCall, struct {
 	}{})
+	stub := fake.OrgSpecificOrdererEndpointsStub
+	fakeReturns := fake.orgSpecificOrdererEndpointsReturns
 	fake.recordInvocation("OrgSpecificOrdererEndpoints", []interface{}{})
 	fake.orgSpecificOrdererEndpointsMutex.Unlock()
-	if fake.OrgSpecificOrdererEndpointsStub != nil {
-		return fake.OrgSpecificOrdererEndpointsStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.orgSpecificOrdererEndpointsReturns
 	return fakeReturns.result1
 }
 
@@ -275,15 +279,16 @@ func (fake *ChannelCapabilities) Supported() error {
 	ret, specificReturn := fake.supportedReturnsOnCall[len(fake.supportedArgsForCall)]
 	fake.supportedArgsForCall = append(fake.supportedArgsForCall, struct {
 	}{})
+	stub := fake.SupportedStub
+	fakeReturns := fake.supportedReturns
 	fake.recordInvocation("Supported", []interface{}{})
 	fake.supportedMutex.Unlock()
-	if fake.SupportedStub != nil {
-		return fake.SupportedStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.supportedReturns
 	return fakeReturns.result1
 }
 

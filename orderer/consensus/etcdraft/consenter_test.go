@@ -31,17 +31,14 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	clustermocks "github.com/hyperledger/fabric/orderer/common/cluster/mocks"
-	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft/mocks"
-	"github.com/hyperledger/fabric/orderer/consensus/inactive"
 	consensusmocks "github.com/hyperledger/fabric/orderer/consensus/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	gtypes "github.com/onsi/gomega/types"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -265,8 +262,6 @@ var _ = Describe("Consenter", func() {
 				switch channel {
 				case "mychannel":
 					return chainInstance
-				case "notraftchain":
-					return &inactive.Chain{Err: errors.New("not a raft chain")}
 				default:
 					return nil
 				}
@@ -334,7 +329,7 @@ var _ = Describe("Consenter", func() {
 			if strings.Contains(entry.Message, "EvictionSuspicion not set, defaulting to 10m0s") {
 				defaultSuspicionFallback = true
 			}
-			if strings.Contains(entry.Message, "With system channel: after eviction InactiveChainRegistry.TrackChain will be called") {
+			if strings.Contains(entry.Message, "After eviction from the cluster Registrar.SwitchToFollower will be called, and the orderer will become a follower of the channel.") {
 				trackChainCallback = true
 			}
 			return nil
@@ -377,9 +372,6 @@ var _ = Describe("Consenter", func() {
 		consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 		consenter.EtcdRaftConfig.WALDir = walDir
 		consenter.EtcdRaftConfig.SnapDir = snapDir
-		// without a system channel, the InactiveChainRegistry is nil
-		consenter.InactiveChainRegistry = nil
-		consenter.icr = nil
 
 		// consenter.EtcdRaftConfig.EvictionSuspicion is missing
 		var defaultSuspicionFallback bool
@@ -389,7 +381,7 @@ var _ = Describe("Consenter", func() {
 			if strings.Contains(entry.Message, "EvictionSuspicion not set, defaulting to 10m0s") {
 				defaultSuspicionFallback = true
 			}
-			if strings.Contains(entry.Message, "Without system channel: after eviction Registrar.SwitchToFollower will be called") {
+			if strings.Contains(entry.Message, "After eviction from the cluster Registrar.SwitchToFollower will be called, and the orderer will become a follower of the channel.") {
 				switchToFollowerCallback = true
 			}
 			return nil
@@ -432,15 +424,9 @@ var _ = Describe("Consenter", func() {
 		consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 
 		chain, err := consenter.HandleChain(support, &common.Metadata{})
-		Expect(chain).To(Not(BeNil()))
-		Expect(err).To(Not(HaveOccurred()))
-		Expect(chain.Order(nil, 0).Error()).To(Equal("channel foo is not serviced by me"))
-		Expect(consenter.icr.TrackChainCallCount()).To(Equal(1))
-		Expect(chainManager.ReportConsensusRelationAndStatusMetricsCallCount()).To(Equal(1))
-		channel, relation, status := chainManager.ReportConsensusRelationAndStatusMetricsArgsForCall(0)
-		Expect(channel).To(Equal("foo"))
-		Expect(relation).To(Equal(types.ConsensusRelationConfigTracker))
-		Expect(status).To(Equal(types.StatusInactive))
+		Expect(chain).To((BeNil()))
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("without a system channel, a follower should have been created"))
 	})
 
 	It("fails to handle chain if etcdraft options have not been provided", func() {
@@ -554,45 +540,29 @@ var _ = Describe("Consenter", func() {
 		support.ChannelIDReturns("foo")
 
 		consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
-		// without a system channel, the InactiveChainRegistry is nil
-		consenter.RemoveInactiveChainRegistry()
 
 		chain, err := consenter.HandleChain(support, &common.Metadata{})
 		Expect(chain).To((BeNil()))
 		Expect(err).To(MatchError("without a system channel, a follower should have been created: not in the channel"))
 	})
-
-	It("removes the inactive chain registry (and doesn't panic upon retries)", func() {
-		consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
-
-		consenter.RemoveInactiveChainRegistry()
-		Expect(consenter.icr.StopCallCount()).To(Equal(1))
-		Expect(consenter.InactiveChainRegistry).To(BeNil())
-
-		consenter.RemoveInactiveChainRegistry()
-		Expect(consenter.icr.StopCallCount()).To(Equal(1))
-	})
 })
 
 type consenter struct {
 	*etcdraft.Consenter
-	icr *mocks.InactiveChainRegistry
 }
 
 func newConsenter(chainManager *mocks.ChainManager, caCert, cert []byte) *consenter {
 	communicator := &clustermocks.Communicator{}
 	communicator.On("Configure", mock.Anything, mock.Anything)
-	icr := &mocks.InactiveChainRegistry{}
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	Expect(err).NotTo(HaveOccurred())
 
 	c := &etcdraft.Consenter{
-		ChainManager:          chainManager,
-		InactiveChainRegistry: icr,
-		Communication:         communicator,
-		Cert:                  cert,
-		Logger:                flogging.MustGetLogger("test"),
+		ChainManager:  chainManager,
+		Communication: communicator,
+		Cert:          cert,
+		Logger:        flogging.MustGetLogger("test"),
 		Dispatcher: &etcdraft.Dispatcher{
 			Logger:        flogging.MustGetLogger("test"),
 			ChainSelector: &mocks.ReceiverGetter{},
@@ -608,6 +578,5 @@ func newConsenter(chainManager *mocks.ChainManager, caCert, cert []byte) *consen
 	}
 	return &consenter{
 		Consenter: c,
-		icr:       icr,
 	}
 }

@@ -20,7 +20,6 @@ import (
 	"syscall"
 	"time"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
@@ -604,8 +603,6 @@ func initializeMultichannelRegistrar(
 	registrar := multichannel.NewRegistrar(*conf, lf, signer, metricsProvider, bccsp, clusterDialer, callbacks...)
 
 	consenters := map[string]consensus.Consenter{}
-
-	// without a system channel: assume cluster type, InactiveChainRegistry == nil, no go-routine.
 	consenterType := "etcdraft"
 
 	// TODO this can be removed, both consenter types can be created
@@ -618,7 +615,7 @@ func initializeMultichannelRegistrar(
 	// the orderer can start without channels at all and have an initialized cluster type consenter
 	switch consenterType {
 	case "etcdraft":
-		consenters["etcdraft"] = etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, nil, metricsProvider, bccsp)
+		consenters["etcdraft"] = etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, metricsProvider, bccsp)
 	case "BFT":
 		consenters["BFT"] = smartbft.New(dpmr.Registry(), signer, clusterDialer, conf, srvConf, srv, registrar, metricsProvider, bccsp)
 	default:
@@ -627,33 +624,6 @@ func initializeMultichannelRegistrar(
 
 	registrar.Initialize(consenters)
 	return registrar
-}
-
-func initializeEtcdraftConsenter(consenters map[string]consensus.Consenter, conf *localconfig.TopLevel, lf blockledger.Factory, clusterDialer *cluster.PredicateDialer, bootstrapBlock *cb.Block, ri *onboarding.ReplicationInitiator, srvConf comm.ServerConfig, srv *comm.GRPCServer, registrar *multichannel.Registrar, metricsProvider metrics.Provider, bccsp bccsp.BCCSP) {
-	systemChannelName, err := protoutil.GetChannelIDFromBlock(bootstrapBlock)
-	if err != nil {
-		logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
-	}
-	systemLedger, err := lf.GetOrCreate(systemChannelName)
-	if err != nil {
-		logger.Panicf("Failed obtaining system channel (%s) ledger: %v", systemChannelName, err)
-	}
-	getConfigBlock := func() *cb.Block {
-		return multichannel.ConfigBlockOrPanic(systemLedger)
-	}
-
-	icr := onboarding.NewInactiveChainReplicator(ri, getConfigBlock, ri.RegisterChain, conf.General.Cluster.ReplicationBackgroundRefreshInterval)
-
-	// Use the inactiveChainReplicator as a channel lister, since it has knowledge
-	// of all inactive chains.
-	// This is to prevent us pulling the entire system chain when attempting to enumerate
-	// the channels in the system.
-	ri.ChannelLister = icr
-
-	go icr.Run()
-
-	raftConsenter := etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, icr, metricsProvider, bccsp)
-	consenters["etcdraft"] = raftConsenter
 }
 
 func newOperationsSystem(ops localconfig.Operations, metrics localconfig.Metrics) *operations.System {

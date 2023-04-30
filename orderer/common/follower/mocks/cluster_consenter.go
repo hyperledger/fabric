@@ -21,10 +21,6 @@ type ClusterConsenter struct {
 		result1 bool
 		result2 error
 	}
-	RemoveInactiveChainRegistryStub        func()
-	removeInactiveChainRegistryMutex       sync.RWMutex
-	removeInactiveChainRegistryArgsForCall []struct {
-	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -35,15 +31,16 @@ func (fake *ClusterConsenter) IsChannelMember(arg1 *common.Block) (bool, error) 
 	fake.isChannelMemberArgsForCall = append(fake.isChannelMemberArgsForCall, struct {
 		arg1 *common.Block
 	}{arg1})
+	stub := fake.IsChannelMemberStub
+	fakeReturns := fake.isChannelMemberReturns
 	fake.recordInvocation("IsChannelMember", []interface{}{arg1})
 	fake.isChannelMemberMutex.Unlock()
-	if fake.IsChannelMemberStub != nil {
-		return fake.IsChannelMemberStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.isChannelMemberReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -92,36 +89,11 @@ func (fake *ClusterConsenter) IsChannelMemberReturnsOnCall(i int, result1 bool, 
 	}{result1, result2}
 }
 
-func (fake *ClusterConsenter) RemoveInactiveChainRegistry() {
-	fake.removeInactiveChainRegistryMutex.Lock()
-	fake.removeInactiveChainRegistryArgsForCall = append(fake.removeInactiveChainRegistryArgsForCall, struct {
-	}{})
-	fake.recordInvocation("RemoveInactiveChainRegistry", []interface{}{})
-	fake.removeInactiveChainRegistryMutex.Unlock()
-	if fake.RemoveInactiveChainRegistryStub != nil {
-		fake.RemoveInactiveChainRegistryStub()
-	}
-}
-
-func (fake *ClusterConsenter) RemoveInactiveChainRegistryCallCount() int {
-	fake.removeInactiveChainRegistryMutex.RLock()
-	defer fake.removeInactiveChainRegistryMutex.RUnlock()
-	return len(fake.removeInactiveChainRegistryArgsForCall)
-}
-
-func (fake *ClusterConsenter) RemoveInactiveChainRegistryCalls(stub func()) {
-	fake.removeInactiveChainRegistryMutex.Lock()
-	defer fake.removeInactiveChainRegistryMutex.Unlock()
-	fake.RemoveInactiveChainRegistryStub = stub
-}
-
 func (fake *ClusterConsenter) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.isChannelMemberMutex.RLock()
 	defer fake.isChannelMemberMutex.RUnlock()
-	fake.removeInactiveChainRegistryMutex.RLock()
-	defer fake.removeInactiveChainRegistryMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

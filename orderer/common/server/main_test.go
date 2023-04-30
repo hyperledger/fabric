@@ -38,9 +38,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/filerepo"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
-	"github.com/hyperledger/fabric/orderer/common/onboarding"
 	server_mocks "github.com/hyperledger/fabric/orderer/common/server/mocks"
-	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/gomega"
@@ -935,48 +933,6 @@ func TestReuseListener(t *testing.T) {
 			func() { reuseListener(top) },
 		)
 	})
-}
-
-// TODO remove
-func TestInitializeEtcdraftConsenter(t *testing.T) {
-	consenters := make(map[string]consensus.Consenter)
-
-	tmpdir := t.TempDir()
-	rlf, err := fileledger.New(tmpdir, &disabled.Provider{})
-	require.NoError(t, err)
-
-	conf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
-	genesisBlock := encoder.New(conf).GenesisBlock()
-
-	ca, _ := tlsgen.NewCA()
-	crt, _ := ca.NewServerCertKeyPair("127.0.0.1")
-
-	srv, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{})
-	require.NoError(t, err)
-
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
-
-	initializeEtcdraftConsenter(
-		consenters,
-		&localconfig.TopLevel{},
-		rlf,
-		&cluster.PredicateDialer{},
-		genesisBlock,
-		onboarding.NewReplicationInitiator(rlf, genesisBlock, nil, comm.SecureOptions{}, nil, cryptoProvider),
-		comm.ServerConfig{
-			SecOpts: comm.SecureOptions{
-				Certificate: crt.Cert,
-				Key:         crt.Key,
-				UseTLS:      true,
-			},
-		},
-		srv,
-		&multichannel.Registrar{},
-		&disabled.Provider{},
-		cryptoProvider,
-	)
-	require.NotNil(t, consenters["etcdraft"])
 }
 
 func genesisConfig(t *testing.T, genesisFile string) *localconfig.TopLevel {

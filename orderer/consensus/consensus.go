@@ -33,9 +33,6 @@ type ClusterConsenter interface {
 	// also inspects the consensus type metadata for validity. It returns an error if membership cannot be determined
 	// due to errors processing the block.
 	IsChannelMember(joinBlock *cb.Block) (bool, error)
-	// RemoveInactiveChainRegistry stops and removes the inactive chain registry.
-	// This is used when removing the system channel.
-	RemoveInactiveChainRegistry()
 }
 
 // MetadataValidator performs the validation of updates to ConsensusMetadata during config updates to the channel.

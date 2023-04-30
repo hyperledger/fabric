@@ -272,9 +272,3 @@ func (c *Consenter) detectSelfID(consenters []*cb.Consenter) (uint32, error) {
 	c.Logger.Warning("Could not find the node in channel consenters set")
 	return 0, cluster.ErrNotInChannel
 }
-
-// RemoveInactiveChainRegistry stops and removes the inactive chain registry.
-// This is used when removing the system channel.
-func (c *Consenter) RemoveInactiveChainRegistry() {
-	// no-op
-}
