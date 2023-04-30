@@ -55,11 +55,12 @@ type signerSerializer interface {
 	identity.SignerSerializer
 }
 
-// the path to cryptogen, which can be used by tests to create certificates
-var cryptogen, tempDir string
+// The path to cryptogen which can be used by tests to create certificates
+var cryptogen string
 
 func TestMain(m *testing.M) {
 	var err error
+
 	cryptogen, err = gexec.Build("github.com/hyperledger/fabric/cmd/cryptogen")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "cryptogen build failed: %v", err)

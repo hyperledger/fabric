@@ -42,7 +42,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/metadata"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
-	"github.com/hyperledger/fabric/orderer/common/onboarding"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
@@ -252,7 +251,7 @@ func verifyNoSystemChannelJoinBlock(config *localconfig.TopLevel, cryptoProvider
 		if err != nil {
 			logger.Panicf("Failed unmarshalling join-block for channel '%s', error: %v", channelName, err)
 		}
-		if err = onboarding.ValidateBootstrapBlock(block, cryptoProvider); err == nil {
+		if err = validateBootstrapBlock(block, cryptoProvider); err == nil {
 			logger.Panicf("Error: found a system channel join-block, channel: %s, block number: %d, file: %s. This version does not support the system channel. Remove it before upgrading.", channelName, block.Header.Number, fileName)
 		}
 	}
@@ -294,7 +293,7 @@ func verifyNoSystemChannel(lf blockledger.Factory, bccsp bccsp.BCCSP) {
 
 		channelConfigBlock := multichannel.ConfigBlockOrPanic(channelLedger)
 
-		err = onboarding.ValidateBootstrapBlock(channelConfigBlock, bccsp)
+		err = validateBootstrapBlock(channelConfigBlock, bccsp)
 		if err == nil {
 			logger.Panicf("Error: found system channel config block in the ledger, channel: %s, block number: %d. This version does not support the system channel. Remove it before upgrading.", cID, channelConfigBlock.Header.Number)
 		}
