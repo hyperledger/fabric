@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/SmartBFT-Go/consensus/pkg/api"
+	"github.com/SmartBFT-Go/consensus/pkg/metrics/disabled"
 	"github.com/SmartBFT-Go/consensus/pkg/types"
 	protos "github.com/SmartBFT-Go/consensus/smartbftprotos"
 	"github.com/golang/protobuf/proto"
@@ -92,17 +93,21 @@ type ViewChanger struct {
 	backOffFactor       uint64
 
 	// Runtime
-	Restore         chan struct{}
-	InMsqQSize      int
-	incMsgs         chan *incMsg
-	viewChangeMsgs  *voteSet
-	viewDataMsgs    *voteSet
-	nvs             *nextViews
-	realView        uint64
-	currView        uint64
-	nextView        uint64
-	startChangeChan chan *change
-	informChan      chan uint64
+	MetricsViewChange         *MetricsViewChange
+	MetricsBlacklist          *MetricsBlacklist
+	MetricsView               *MetricsView
+	Restore                   chan struct{}
+	InMsqQSize                int
+	incMsgs                   chan *incMsg
+	viewChangeMsgs            *voteSet
+	viewDataMsgs              *voteSet
+	nvs                       *nextViews
+	realView                  uint64
+	currView                  uint64
+	nextView                  uint64
+	startChangeChan           chan *change
+	informChan                chan uint64
+	committedDuringViewChange *protos.ViewMetadata
 
 	stopOnce sync.Once
 	stopChan chan struct{}
@@ -116,6 +121,10 @@ func (v *ViewChanger) Start(startViewNumber uint64) {
 	v.incMsgs = make(chan *incMsg, v.InMsqQSize)
 	v.startChangeChan = make(chan *change, 2)
 	v.informChan = make(chan uint64, 1)
+
+	if v.MetricsViewChange == nil {
+		v.MetricsViewChange = NewMetricsViewChange(api.NewCustomerProvider(&disabled.Provider{}))
+	}
 
 	v.quorum, v.f = computeQuorum(v.N)
 
@@ -131,6 +140,9 @@ func (v *ViewChanger) Start(startViewNumber uint64) {
 	v.currView = startViewNumber
 	v.realView = v.currView
 	v.nextView = v.currView
+	v.MetricsViewChange.CurrentView.Set(float64(v.currView))
+	v.MetricsViewChange.RealView.Set(float64(v.realView))
+	v.MetricsViewChange.NextView.Set(float64(v.nextView))
 
 	v.lastTick = time.Now()
 	v.lastResend = v.lastTick
@@ -330,6 +342,9 @@ func (v *ViewChanger) informNewView(view uint64) {
 	v.currView = view
 	v.realView = v.currView
 	v.nextView = v.currView
+	v.MetricsViewChange.CurrentView.Set(float64(v.currView))
+	v.MetricsViewChange.RealView.Set(float64(v.realView))
+	v.MetricsViewChange.NextView.Set(float64(v.nextView))
 	v.nvs.clear()
 	v.viewChangeMsgs.clear(v.N)
 	v.viewDataMsgs.clear(v.N)
@@ -358,6 +373,7 @@ func (v *ViewChanger) startViewChange(change *change) {
 		return
 	}
 	v.nextView = v.currView + 1
+	v.MetricsViewChange.NextView.Set(float64(v.nextView))
 	v.RequestsTimer.StopTimers()
 	msg := &protos.Message{
 		Content: &protos.Message_ViewChange{
@@ -401,6 +417,7 @@ func (v *ViewChanger) processViewChangeMsg(restore bool) {
 		}
 	}
 	v.currView = v.nextView
+	v.MetricsViewChange.CurrentView.Set(float64(v.currView))
 	v.viewChangeMsgs.clear(v.N)
 	v.viewDataMsgs.clear(v.N) // clear because currView changed
 	msg := v.prepareViewDataMsg()
@@ -415,11 +432,11 @@ func (v *ViewChanger) processViewChangeMsg(restore bool) {
 
 func (v *ViewChanger) prepareViewDataMsg() *protos.Message {
 	lastDecision, lastDecisionSignatures := v.Checkpoint.Get()
-	inFlight := v.getInFlight(&lastDecision)
+	inFlight := v.getInFlight(lastDecision)
 	prepared := v.InFlight.IsInFlightPrepared()
 	vd := &protos.ViewData{
 		NextView:               v.currView,
-		LastDecision:           &lastDecision,
+		LastDecision:           lastDecision,
 		LastDecisionSignatures: lastDecisionSignatures,
 		InFlightProposal:       inFlight,
 		InFlightPrepared:       prepared,
@@ -458,7 +475,8 @@ func (v *ViewChanger) getInFlight(lastDecision *protos.Proposal) *protos.Proposa
 		VerificationSequence: uint64(inFlight.VerificationSequence),
 	}
 	if lastDecision == nil {
-		v.Logger.Panicf("￿The given last decision is nil", v.SelfID)
+		v.Logger.Panicf("%d The given last decision is nil", v.SelfID)
+		return nil
 	}
 	if lastDecision.Metadata == nil {
 		return proposal // this is the first proposal after genesis
@@ -471,8 +489,11 @@ func (v *ViewChanger) getInFlight(lastDecision *protos.Proposal) *protos.Proposa
 		v.Logger.Debugf("Node %d's in flight proposal and the last decision has the same sequence: %d", v.SelfID, inFlightMetadata.LatestSequence)
 		return nil // this is not an actual in flight proposal
 	}
-	if inFlightMetadata.LatestSequence != lastDecisionMetadata.LatestSequence+1 {
-		v.Logger.Panicf("Node %d's in flight proposal sequence is %d while its last decision sequence is %d", v.SelfID, inFlightMetadata.LatestSequence, lastDecisionMetadata.LatestSequence)
+	if inFlightMetadata.LatestSequence+1 == lastDecisionMetadata.LatestSequence && v.committedDuringViewChange != nil &&
+		v.committedDuringViewChange.LatestSequence == lastDecisionMetadata.LatestSequence {
+		v.Logger.Infof("Node %d's in flight proposal sequence is %d while already committed decision %d, "+
+			"but that is because it committed it during the view change", v.SelfID, inFlightMetadata.LatestSequence, lastDecisionMetadata.LatestSequence)
+		return nil
 	}
 	return proposal
 }
@@ -618,6 +639,14 @@ func (v *ViewChanger) checkLastDecision(svd *protos.SignedViewData, sender uint6
 	}
 	v.deliverDecision(proposal, signatures)
 
+	// Make note that we have advanced the sequence during a view change,
+	// so our in-flight sequence may be behind.
+	md := &protos.ViewMetadata{}
+	if err := proto.Unmarshal(proposal.Metadata, md); err != nil {
+		v.Logger.Panicf("Node %d got %s from %d, but was unable to unmarshal proposal metadata, err: %v", v.SelfID, signedViewDataToString(svd), sender, err)
+	}
+	v.committedDuringViewChange = md
+
 	select { // if there was a delivery with a reconfig we need to stop here before verify signature
 	case <-v.stopChan:
 		return false, 0
@@ -640,12 +669,12 @@ func (v *ViewChanger) extractCurrentSequence() (uint64, *protos.Proposal) {
 	myMetadata := &protos.ViewMetadata{}
 	myLastDesicion, _ := v.Checkpoint.Get()
 	if myLastDesicion.Metadata == nil {
-		return 0, &myLastDesicion
+		return 0, myLastDesicion
 	}
 	if err := proto.Unmarshal(myLastDesicion.Metadata, myMetadata); err != nil {
 		v.Logger.Panicf("Node %d is unable to unmarshal its own last decision metadata from checkpoint, err: %v", v.SelfID, err)
 	}
-	return myMetadata.LatestSequence, &myLastDesicion
+	return myMetadata.LatestSequence, myLastDesicion
 }
 
 // ValidateLastDecision validates the given decision, and returns its sequence when valid
@@ -1129,6 +1158,7 @@ func (v *ViewChanger) processNewViewMsg(msg *protos.NewView) {
 	}
 
 	v.realView = v.currView
+	v.MetricsViewChange.RealView.Set(float64(v.realView))
 	v.nvs.clear()
 	v.Controller.ViewChanged(v.currView, mySequence+1)
 
@@ -1174,6 +1204,7 @@ func (v *ViewChanger) commitInFlightProposal(proposal *protos.Proposal) (success
 	myLastDecision, _ := v.Checkpoint.Get()
 	if proposal == nil {
 		v.Logger.Panicf("The in flight proposal is nil")
+		return
 	}
 	proposalMD := &protos.ViewMetadata{}
 	if err := proto.Unmarshal(proposal.Metadata, proposalMD); err != nil {
@@ -1187,8 +1218,8 @@ func (v *ViewChanger) commitInFlightProposal(proposal *protos.Proposal) (success
 		}
 		if lastDecisionMD.LatestSequence == proposalMD.LatestSequence {
 			v.Logger.Debugf("Node %d already decided on sequence %d and so it will not commit the in flight proposal with the same sequence", v.SelfID, lastDecisionMD.LatestSequence)
-			v.Logger.Debugf("Node %d is comparing its last decision with the in flight proposal with the same sequence", v.SelfID, lastDecisionMD.LatestSequence)
-			if !proto.Equal(&myLastDecision, proposal) {
+			v.Logger.Debugf("Node %d is comparing its last decision with the in flight proposal with the same sequence %d", v.SelfID, lastDecisionMD.LatestSequence)
+			if !proto.Equal(myLastDecision, proposal) {
 				v.Logger.Warnf("Node %d compared its last decision with the in flight proposal, which has the same sequence, but they are not equal", v.SelfID)
 				return false
 			}
@@ -1199,7 +1230,7 @@ func (v *ViewChanger) commitInFlightProposal(proposal *protos.Proposal) (success
 		}
 	}
 
-	v.Logger.Debugf("Node %d is creating a view for the in flight proposal", v.SelfID)
+	v.Logger.Debugf("Node %d is creating a view %d for the in flight proposal", v.SelfID, proposalMD.ViewId)
 
 	inFlightViewNum := proposalMD.ViewId
 	inFlightViewLatestSeq := proposalMD.LatestSequence
@@ -1225,7 +1256,15 @@ func (v *ViewChanger) commitInFlightProposal(proposal *protos.Proposal) (success
 		InMsgQSize:         v.InMsqQSize,
 		ViewSequences:      v.ViewSequences,
 		Phase:              PREPARED,
+		MetricsBlacklist:   v.MetricsBlacklist,
+		MetricsView:        v.MetricsView,
 	}
+	inFlightView.MetricsView.ViewNumber.Set(float64(inFlightView.Number))
+	inFlightView.MetricsView.LeaderID.Set(float64(inFlightView.LeaderID))
+	inFlightView.MetricsView.ProposalSequence.Set(float64(inFlightView.ProposalSequence))
+	inFlightView.MetricsView.DecisionsInView.Set(float64(inFlightView.DecisionsInView))
+	inFlightView.MetricsView.Phase.Set(float64(inFlightView.Phase))
+
 	v.inFlightView = inFlightView
 	v.inFlightView.inFlightProposal = &types.Proposal{
 		VerificationSequence: int64(proposal.VerificationSequence),
@@ -1258,7 +1297,7 @@ func (v *ViewChanger) commitInFlightProposal(proposal *protos.Proposal) (success
 
 	v.inFlightViewLock.Unlock()
 
-	v.Logger.Debugf("Node %d started a view for the in flight proposal", v.SelfID)
+	v.Logger.Debugf("Node %d started a view %d for the in flight proposal", v.SelfID, v.inFlightView.Number)
 
 	// wait for view to finish or time out
 	for {

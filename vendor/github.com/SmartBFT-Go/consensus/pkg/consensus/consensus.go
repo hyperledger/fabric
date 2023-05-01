@@ -12,12 +12,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-
 	algorithm "github.com/SmartBFT-Go/consensus/internal/bft"
 	bft "github.com/SmartBFT-Go/consensus/pkg/api"
+	"github.com/SmartBFT-Go/consensus/pkg/metrics/disabled"
 	"github.com/SmartBFT-Go/consensus/pkg/types"
 	protos "github.com/SmartBFT-Go/consensus/smartbftprotos"
+	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 )
 
@@ -37,7 +37,8 @@ type Consensus struct {
 	RequestInspector   bft.RequestInspector
 	Synchronizer       bft.Synchronizer
 	Logger             bft.Logger
-	Metadata           protos.ViewMetadata
+	MetricsProvider    *bft.CustomerProvider
+	Metadata           *protos.ViewMetadata
 	LastProposal       types.Proposal
 	LastSignatures     []types.Signature
 	Scheduler          <-chan time.Time
@@ -61,7 +62,10 @@ type Consensus struct {
 
 	consensusLock sync.RWMutex
 
-	reconfigChan chan types.Reconfig
+	reconfigChan     chan types.Reconfig
+	metricsBlacklist *algorithm.MetricsBlacklist
+	metricsConsensus *algorithm.MetricsConsensus
+	metricsView      *algorithm.MetricsView
 
 	running uint64
 }
@@ -82,7 +86,9 @@ func (c *Consensus) Deliver(proposal types.Proposal, signatures []types.Signatur
 }
 
 func (c *Consensus) Sync() types.SyncResponse {
+	begin := time.Now()
 	syncResponse := c.Synchronizer.Sync()
+	c.metricsConsensus.LatencySync.Observe(time.Since(begin).Seconds())
 	if syncResponse.Reconfig.InReplicatedDecisions {
 		c.Logger.Debugf("Detected a reconfig in sync")
 		c.reconfigChan <- types.Reconfig{
@@ -106,6 +112,13 @@ func (c *Consensus) Start() error {
 	if err := c.ValidateConfiguration(c.Comm.Nodes()); err != nil {
 		return errors.Wrapf(err, "configuration is invalid")
 	}
+
+	if c.MetricsProvider == nil {
+		c.MetricsProvider = bft.NewCustomerProvider(&disabled.Provider{})
+	}
+	c.metricsConsensus = algorithm.NewMetricsConsensus(c.MetricsProvider)
+	c.metricsBlacklist = algorithm.NewMetricsBlacklist(c.MetricsProvider)
+	c.metricsView = algorithm.NewMetricsView(c.MetricsProvider)
 
 	c.consensusDone.Add(1)
 	c.stopOnce = sync.Once{}
@@ -136,6 +149,7 @@ func (c *Consensus) Start() error {
 		AutoRemoveTimeout: c.Config.RequestAutoRemoveTimeout,
 		RequestMaxBytes:   c.Config.RequestMaxBytes,
 		SubmitTimeout:     c.Config.RequestPoolSubmitTimeout,
+		MetricsProvider:   c.MetricsProvider,
 	}
 	c.submittedChan = make(chan struct{}, 1)
 	c.Pool = algorithm.NewPool(c.Logger, c.RequestInspector, c.controller, opts, c.submittedChan)
@@ -204,9 +218,8 @@ func (c *Consensus) reconfig(reconfig types.Reconfig) {
 			c.close()
 			c.Logger.Infof("Closing consensus since this node is not in the current set of nodes")
 			return
-		} else {
-			c.Logger.Panicf("Configuration is invalid, error: %v", err)
 		}
+		c.Logger.Panicf("Configuration is invalid, error: %v", err)
 	}
 
 	c.setNodes(reconfig.CurrentNodes)
@@ -236,6 +249,8 @@ func (c *Consensus) reconfig(reconfig types.Reconfig) {
 	c.startComponents(view, seq, dec, false)
 
 	c.Pool.RestartTimers()
+
+	c.metricsConsensus.CountConsensusReconfig.Add(1)
 
 	c.Logger.Debugf("Reconfig is done")
 }
@@ -297,6 +312,8 @@ func (c *Consensus) proposalMaker() *algorithm.ProposalMaker {
 		Comm:               c.controller,
 		Decider:            c.controller,
 		Logger:             c.Logger,
+		MetricsBlacklist:   c.metricsBlacklist,
+		MetricsView:        c.metricsView,
 		Signer:             c.Signer,
 		MembershipNotifier: c.MembershipNotifier,
 		SelfID:             c.Config.SelfID,
@@ -374,6 +391,9 @@ func (c *Consensus) createComponents() {
 		ResendTimeout:     c.Config.ViewChangeResendInterval,
 		ViewChangeTimeout: c.Config.ViewChangeTimeout,
 		InMsqQSize:        int(c.Config.IncomingMessageBufferSize),
+		MetricsViewChange: algorithm.NewMetricsViewChange(c.MetricsProvider),
+		MetricsBlacklist:  c.metricsBlacklist,
+		MetricsView:       c.metricsView,
 	}
 
 	c.collector = &algorithm.StateCollector{
@@ -405,6 +425,7 @@ func (c *Consensus) createComponents() {
 		Collector:          c.collector,
 		State:              c.state,
 		InFlight:           c.inFlight,
+		MetricsView:        c.metricsView,
 	}
 	c.viewChanger.Application = &algorithm.MutuallyExclusiveDeliver{C: c.controller}
 	c.viewChanger.Comm = c.controller
@@ -443,15 +464,13 @@ func (c *Consensus) setViewAndSeq(view, seq, dec uint64) (newView, newSeq, newDe
 	}
 	if viewChange == nil {
 		c.Logger.Debugf("No view change to restore")
-	} else {
+	} else if viewChange.NextView >= view {
 		// Check if the view change has a newer view
-		if viewChange.NextView >= view {
-			c.Logger.Debugf("Restoring from view change with view %d", viewChange.NextView)
-			newView = viewChange.NextView
-			restoreChan := make(chan struct{}, 1)
-			restoreChan <- struct{}{}
-			c.viewChanger.Restore = restoreChan
-		}
+		c.Logger.Debugf("Restoring from view change with view %d", viewChange.NextView)
+		newView = viewChange.NextView
+		restoreChan := make(chan struct{}, 1)
+		restoreChan <- struct{}{}
+		c.viewChanger.Restore = restoreChan
 	}
 
 	viewSeq, err := c.state.LoadNewViewIfApplicable()
@@ -460,14 +479,12 @@ func (c *Consensus) setViewAndSeq(view, seq, dec uint64) (newView, newSeq, newDe
 	}
 	if viewSeq == nil {
 		c.Logger.Debugf("No new view to restore")
-	} else {
+	} else if viewSeq.Seq >= seq {
 		// Check if metadata should be taken from the restored new view
-		if viewSeq.Seq >= seq {
-			c.Logger.Debugf("Restoring from new view with view %d and seq %d", viewSeq.View, viewSeq.Seq)
-			newView = viewSeq.View
-			newSeq = viewSeq.Seq
-			newDec = 0
-		}
+		c.Logger.Debugf("Restoring from new view with view %d and seq %d", viewSeq.View, viewSeq.Seq)
+		newView = viewSeq.View
+		newSeq = viewSeq.Seq
+		newDec = 0
 	}
 	return newView, newSeq, newDec
 }

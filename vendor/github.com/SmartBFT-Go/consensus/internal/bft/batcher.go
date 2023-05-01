@@ -43,7 +43,7 @@ func (b *BatchBuilder) NextBatch() [][]byte {
 		return currBatch
 	}
 
-	timeout := time.After(b.batchTimeout) //TODO use task-scheduler based on logical time
+	timeout := time.After(b.batchTimeout) // TODO use task-scheduler based on logical time
 
 	for {
 		select {
@@ -70,7 +70,6 @@ func (b *BatchBuilder) Close() {
 	case <-b.closeChan:
 		return
 	default:
-
 	}
 	close(b.closeChan)
 }
