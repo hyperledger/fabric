@@ -320,7 +320,7 @@ Upgrading to Fabric v2.x
 A major new release brings some additional upgrade considerations. Rest assured
 though, that rolling upgrades from v1.4.x to v2.0 are supported, so that network
 components can be upgraded one at a time with no downtime. You can also upgrade
-directly from the v1.4.x LTS release to the v2.2.x LTS release.
+directly from the v1.4.x LTS release to the v2.2.x LTS release or v2.5.x LTS release.
 
 The upgrade docs have been significantly expanded and reworked, and now have a
 standalone home in the documentation: :doc:`upgrade`. Here you'll find documentation on
@@ -334,6 +334,7 @@ The release notes provide more details for users moving to the new release.
 Specifically, take a look at the changes and deprecations.
 
 * `Fabric v2.5.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.5.0>`_.
+* `Fabric v2.5.1 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.5.1>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
