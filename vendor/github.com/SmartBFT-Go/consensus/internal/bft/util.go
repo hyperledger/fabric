@@ -12,6 +12,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"math"
+	"strconv"
 	"sync"
 	"sync/atomic"
 
@@ -77,7 +78,7 @@ func MarshalOrPanic(msg proto.Message) []byte {
 
 func getLeaderID(
 	view uint64,
-	N uint64,
+	n uint64,
 	nodes []uint64,
 	leaderRotation bool,
 	decisionsInView uint64,
@@ -85,17 +86,17 @@ func getLeaderID(
 	blacklist []uint64,
 ) uint64 {
 	blackListed := make(map[uint64]struct{})
-	for _, n := range blacklist {
-		blackListed[n] = struct{}{}
+	for _, i := range blacklist {
+		blackListed[i] = struct{}{}
 	}
 
 	if !leaderRotation {
-		return nodes[view%N]
+		return nodes[view%n]
 	}
 
 	for i := 0; i < len(nodes); i++ {
 		index := (view + (decisionsInView / decisionsPerLeader)) + uint64(i)
-		node := nodes[index%N]
+		node := nodes[index%n]
 		_, exists := blackListed[node]
 		if !exists {
 			return node
@@ -170,15 +171,18 @@ type incMsg struct {
 //
 // The calculation satisfies the following:
 // Given a cluster size of N nodes, which tolerates f failures according to:
-//    f = argmax ( N >= 3f+1 )
+//
+//	f = argmax ( N >= 3f+1 )
+//
 // Q is the size of the quorum such that:
-//    any two subsets q1, q2 of size Q, intersect in at least f+1 nodes.
+//
+//	any two subsets q1, q2 of size Q, intersect in at least f+1 nodes.
 //
 // Note that this is different from N-f (the number of correct nodes), when N=3f+3. That is, we have two extra nodes
 // above the minimum required to tolerate f failures.
-func computeQuorum(N uint64) (Q int, F int) {
-	F = int((int(N) - 1) / 3)
-	Q = int(math.Ceil((float64(N) + float64(F) + 1) / 2.0))
+func computeQuorum(n uint64) (q int, f int) {
+	f = (int(n) - 1) / 3
+	q = int(math.Ceil((float64(n) + float64(f) + 1) / 2.0))
 	return
 }
 
@@ -258,6 +262,8 @@ type ProposalMaker struct {
 	FailureDetector    FailureDetector
 	Sync               Synchronizer
 	Logger             api.Logger
+	MetricsBlacklist   *MetricsBlacklist
+	MetricsView        *MetricsView
 	Comm               Comm
 	Verifier           api.Verifier
 	Signer             api.Signer
@@ -292,6 +298,8 @@ func (pm *ProposalMaker) NewProposer(leader, proposalSequence, viewNum, decision
 		State:              pm.State,
 		InMsgQSize:         pm.InMsqQSize,
 		ViewSequences:      pm.ViewSequences,
+		MetricsBlacklist:   pm.MetricsBlacklist,
+		MetricsView:        pm.MetricsView,
 	}
 
 	view.ViewSequences.Store(ViewSequence{
@@ -315,6 +323,12 @@ func (pm *ProposalMaker) NewProposer(leader, proposalSequence, viewNum, decision
 		view.Number = viewNum
 		view.DecisionsInView = decisionsInView
 	}
+
+	view.MetricsView.ViewNumber.Set(float64(view.Number))
+	view.MetricsView.LeaderID.Set(float64(view.LeaderID))
+	view.MetricsView.ProposalSequence.Set(float64(view.ProposalSequence))
+	view.MetricsView.DecisionsInView.Set(float64(view.DecisionsInView))
+	view.MetricsView.Phase.Set(float64(view.Phase))
 
 	return view
 }
@@ -412,6 +426,7 @@ type blacklist struct {
 	currView           uint64
 	preparesFrom       map[uint64]*protos.PreparesFrom
 	logger             api.Logger
+	metricsBlacklist   *MetricsBlacklist
 	f                  int
 	decisionsPerLeader uint64
 }
@@ -464,7 +479,26 @@ func (bl blacklist) computeUpdate() []uint64 {
 		bl.logger.Infof("Blacklist changed: %v --> %v", bl.prevMD.BlackList, newBlacklist)
 	}
 
+	newBlacklistMap := make(map[uint64]bool, len(newBlacklist))
+	for _, node := range newBlacklist {
+		newBlacklistMap[node] = true
+	}
+	for _, node := range bl.nodes {
+		inBlacklist := newBlacklistMap[node]
+		bl.metricsBlacklist.NodesInBlackList.With(
+			bl.metricsBlacklist.LabelsForWith(nameBlackListNodeID, strconv.FormatUint(node, 10))...,
+		).Set(btoi(inBlacklist))
+	}
+	bl.metricsBlacklist.CountBlackList.Set(float64(len(newBlacklist)))
+
 	return newBlacklist
+}
+
+func btoi(b bool) float64 {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 // pruneBlacklist receives the previous blacklist, prepare acknowledgements from nodes, and returns

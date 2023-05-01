@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/SmartBFT-Go/consensus/pkg/api"
 	"github.com/SmartBFT-Go/consensus/pkg/types"
@@ -30,6 +31,7 @@ const (
 )
 
 // State can save and restore the state
+//
 //go:generate mockery -dir . -name State -case underscore -output ./mocks/
 type State interface {
 	// Save saves a message.
@@ -46,7 +48,7 @@ type Comm interface {
 	BroadcastConsensus(m *protos.Message)
 }
 
-type CheckpointRetriever func() (protos.Proposal, []*protos.Signature)
+type CheckpointRetriever func() (*protos.Proposal, []*protos.Signature)
 
 // View is responsible for running the view protocol
 type View struct {
@@ -72,7 +74,7 @@ type View struct {
 	Phase              Phase
 	InMsgQSize         int
 	// Runtime
-	lastVotedProposalByID map[uint64]protos.Commit
+	lastVotedProposalByID map[uint64]*protos.Commit
 	incMsgs               chan *incMsg
 	myProposalSig         *types.Signature
 	inFlightProposal      *types.Proposal
@@ -94,6 +96,9 @@ type View struct {
 	nextPrepares   *voteSet
 	nextCommits    *voteSet
 
+	beginPrePrepare    time.Time
+	MetricsBlacklist   *MetricsBlacklist
+	MetricsView        *MetricsView
 	blacklistSupported bool
 	abortChan          chan struct{}
 	stopOnce           sync.Once
@@ -107,7 +112,7 @@ func (v *View) Start() {
 	v.stopOnce = sync.Once{}
 	v.incMsgs = make(chan *incMsg, v.InMsgQSize)
 	v.abortChan = make(chan struct{})
-	v.lastVotedProposalByID = make(map[uint64]protos.Commit)
+	v.lastVotedProposalByID = make(map[uint64]*protos.Commit)
 	v.viewEnded.Add(1)
 
 	v.prePrepare = make(chan *protos.Message, 1)
@@ -273,6 +278,8 @@ func (v *View) doPhase() {
 	default:
 		v.Logger.Panicf("Unknown phase in view : %v", v)
 	}
+
+	v.MetricsView.Phase.Set(float64(v.Phase))
 }
 
 func (v *View) processPrePrepare(pp *protos.PrePrepare, m *protos.Message, msgForNextProposal bool, sender uint64) {
@@ -310,6 +317,16 @@ func (v *View) prepared() Phase {
 	seq := v.ProposalSequence
 
 	v.Logger.Infof("%d processed commits for proposal with seq %d", v.SelfID, seq)
+
+	v.MetricsView.CountBatchAll.Add(1)
+	v.MetricsView.CountTxsAll.Add(float64(len(v.inFlightRequests)))
+	size := 0
+	size += len(proposal.Metadata) + len(proposal.Header) + len(proposal.Payload)
+	for i := range signatures {
+		size += len(signatures[i].Value) + len(signatures[i].Msg)
+	}
+	v.MetricsView.SizeOfBatch.Add(float64(size))
+	v.MetricsView.LatencyBatchProcessing.Observe(time.Since(v.beginPrePrepare).Seconds())
 
 	v.decide(proposal, signatures, v.inFlightRequests)
 	return COMMITTED
@@ -359,6 +376,9 @@ func (v *View) processProposal() Phase {
 		return ABORT
 	}
 
+	v.MetricsView.CountTxsInBatch.Set(float64(len(requests)))
+	v.beginPrePrepare = time.Now()
+
 	seq := v.ProposalSequence
 
 	prepareMessage := v.createPrepare(seq, proposal)
@@ -373,7 +393,7 @@ func (v *View) processProposal() Phase {
 			},
 		},
 	}
-	if err := v.State.Save(savedMsg); err != nil {
+	if err = v.State.Save(savedMsg); err != nil {
 		v.Logger.Panicf("Failed to save message to state, error: %v", err)
 	}
 	v.lastBroadcastSent = prepareMessage
@@ -469,7 +489,7 @@ func (v *View) processPrepares() Phase {
 
 	// We received enough prepares to send a commit.
 	// Save the commit message we are about to send.
-	if err := v.State.Save(preparedProof); err != nil {
+	if err = v.State.Save(preparedProof); err != nil {
 		v.Logger.Panicf("Failed to save message to state, error: %v", err)
 	}
 	v.currCommitSent = proto.Clone(commitMsg).(*protos.Message)
@@ -524,7 +544,7 @@ func (v *View) verifyProposal(proposal types.Proposal, prevCommits []*protos.Sig
 
 	// Verify proposal's metadata is valid.
 	md := &protos.ViewMetadata{}
-	if err := proto.Unmarshal(proposal.Metadata, md); err != nil {
+	if err = proto.Unmarshal(proposal.Metadata, md); err != nil {
 		return nil, err
 	}
 
@@ -554,7 +574,7 @@ func (v *View) verifyProposal(proposal types.Proposal, prevCommits []*protos.Sig
 		return nil, err
 	}
 
-	if err := v.verifyBlacklist(prevCommits, expectedSeq, md.BlackList, prepareAcknowledgements); err != nil {
+	if err = v.verifyBlacklist(prevCommits, expectedSeq, md.BlackList, prepareAcknowledgements); err != nil {
 		return nil, err
 	}
 
@@ -601,7 +621,7 @@ func (v *View) verifyPrevCommitSignatures(prevCommitSignatures []*protos.Signatu
 			return nil, errors.Errorf("failed verifying consenter signature of %d: %v", sig.Signer, err)
 		}
 		prpf := &protos.PreparesFrom{}
-		if err := proto.Unmarshal(aux, prpf); err != nil {
+		if err = proto.Unmarshal(aux, prpf); err != nil {
 			return nil, errors.Errorf("failed unmarshaling auxiliary input from %d: %v", sig.Signer, err)
 		}
 		prepareAcknowledgements[sig.Signer] = prpf
@@ -666,6 +686,7 @@ func (v *View) verifyBlacklist(prevCommitSignatures []*protos.Signature, currVer
 		preparesFrom:       prepareAcknowledgements,
 		f:                  f,
 		logger:             v.Logger,
+		metricsBlacklist:   v.MetricsBlacklist,
 		nodes:              v.Comm.Nodes(),
 		currView:           v.Number,
 	}
@@ -734,7 +755,7 @@ func (v *View) discoverIfSyncNeeded(sender uint64, m *protos.Message) {
 	_, f := computeQuorum(v.N)
 	threshold := f + 1
 
-	v.lastVotedProposalByID[sender] = *commit
+	v.lastVotedProposalByID[sender] = commit
 
 	v.Logger.Debugf("Got commit of seq %d in view %d from %d while being in seq %d in view %d",
 		commit.Seq, commit.View, sender, v.ProposalSequence, v.Number)
@@ -828,6 +849,9 @@ func (v *View) startNextSeq() {
 
 	nextSeq := v.ProposalSequence
 
+	v.MetricsView.ProposalSequence.Set(float64(v.ProposalSequence))
+	v.MetricsView.DecisionsInView.Set(float64(v.DecisionsInView))
+
 	v.Logger.Infof("Sequence: %d-->%d", prevSeq, nextSeq)
 
 	// swap next prePrepare
@@ -861,8 +885,10 @@ func (v *View) GetMetadata() []byte {
 		DecisionsInView: v.DecisionsInView,
 	}
 
-	var prevSigs []*protos.Signature
-	var prevProp protos.Proposal
+	var (
+		prevSigs []*protos.Signature
+		prevProp *protos.Proposal
+	)
 	verificationSeq := v.Verifier.VerificationSequence()
 
 	prevProp, prevSigs = v.RetrieveCheckpoint()
@@ -880,7 +906,7 @@ func (v *View) GetMetadata() []byte {
 	return MarshalOrPanic(metadata)
 }
 
-func (v *View) metadataWithUpdatedBlacklist(metadata *protos.ViewMetadata, verificationSeq uint64, prevProp protos.Proposal, prevSigs []*protos.Signature) *protos.ViewMetadata {
+func (v *View) metadataWithUpdatedBlacklist(metadata *protos.ViewMetadata, verificationSeq uint64, prevProp *protos.Proposal, prevSigs []*protos.Signature) *protos.ViewMetadata {
 	var membershipChange bool
 	if v.MembershipNotifier != nil {
 		membershipChange = v.MembershipNotifier.MembershipChange()
@@ -1006,6 +1032,7 @@ func (v *View) updateBlacklistMetadata(metadata *protos.ViewMetadata, prevSigs [
 		f:                  f,
 		n:                  v.N,
 		logger:             v.Logger,
+		metricsBlacklist:   v.MetricsBlacklist,
 		preparesFrom:       preparesFrom,
 		decisionsPerLeader: v.DecisionsPerLeader,
 	}

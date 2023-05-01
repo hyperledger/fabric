@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/SmartBFT-Go/consensus/pkg/api"
+	"github.com/SmartBFT-Go/consensus/pkg/metrics/disabled"
 	"github.com/SmartBFT-Go/consensus/pkg/types"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/semaphore"
@@ -37,13 +38,10 @@ var (
 // RequestTimeoutHandler defines the methods called by request timeout timers created by time.AfterFunc.
 // This interface is implemented by the bft.Controller.
 type RequestTimeoutHandler interface {
-
 	// OnRequestTimeout is called when a request timeout expires.
 	OnRequestTimeout(request []byte, requestInfo types.RequestInfo)
-
 	// OnLeaderFwdRequestTimeout is called when a leader forwarding timeout expires.
 	OnLeaderFwdRequestTimeout(request []byte, requestInfo types.RequestInfo)
-
 	// OnAutoRemoveTimeout is called when a auto-remove timeout expires.
 	OnAutoRemoveTimeout(requestInfo types.RequestInfo)
 }
@@ -53,6 +51,7 @@ type RequestTimeoutHandler interface {
 // block during submit until there will be place to submit new ones.
 type Pool struct {
 	logger    api.Logger
+	metrics   *MetricsRequestPool
 	inspector api.RequestInspector
 	options   PoolOptions
 
@@ -72,8 +71,9 @@ type Pool struct {
 
 // requestItem captures request related information
 type requestItem struct {
-	request []byte
-	timeout *time.Timer
+	request           []byte
+	timeout           *time.Timer
+	additionTimestamp time.Time
 }
 
 // PoolOptions is the pool configuration
@@ -84,6 +84,7 @@ type PoolOptions struct {
 	AutoRemoveTimeout time.Duration
 	RequestMaxBytes   uint64
 	SubmitTimeout     time.Duration
+	MetricsProvider   *api.CustomerProvider
 }
 
 // NewPool constructs new requests pool
@@ -103,6 +104,9 @@ func NewPool(log api.Logger, inspector api.RequestInspector, th RequestTimeoutHa
 	if options.SubmitTimeout == 0 {
 		options.SubmitTimeout = defaultRequestTimeout
 	}
+	if options.MetricsProvider == nil {
+		options.MetricsProvider = api.NewCustomerProvider(&disabled.Provider{})
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -110,6 +114,7 @@ func NewPool(log api.Logger, inspector api.RequestInspector, th RequestTimeoutHa
 		cancel:         cancel,
 		timeoutHandler: th,
 		logger:         log,
+		metrics:        NewMetricsRequestPool(options.MetricsProvider),
 		inspector:      inspector,
 		fifo:           list.New(),
 		semaphore:      semaphore.NewWeighted(options.QueueSize),
@@ -182,6 +187,9 @@ func (rp *Pool) Submit(request []byte) error {
 	}
 
 	if uint64(len(request)) > rp.options.RequestMaxBytes {
+		rp.metrics.CountOfFailAddRequestToPool.With(
+			rp.metrics.LabelsForWith(nameReasonFailAdd, reasonRequestMaxBytes)...,
+		).Add(1)
 		return fmt.Errorf(
 			"submitted request (%d) is bigger than request max bytes (%d)",
 			len(request),
@@ -208,6 +216,9 @@ func (rp *Pool) Submit(request []byte) error {
 	defer cancel()
 	// do not wait for a semaphore with a lock, as it will prevent draining the pool.
 	if err := rp.semaphore.Acquire(ctx, 1); err != nil {
+		rp.metrics.CountOfFailAddRequestToPool.With(
+			rp.metrics.LabelsForWith(nameReasonFailAdd, reasonSemaphoreAcquireFail)...,
+		).Add(1)
 		return errors.Wrapf(err, "acquiring semaphore for request: %s", reqInfo)
 	}
 
@@ -237,11 +248,14 @@ func (rp *Pool) Submit(request []byte) error {
 		to.Stop()
 	}
 	reqItem := &requestItem{
-		request: reqCopy,
-		timeout: to,
+		request:           reqCopy,
+		timeout:           to,
+		additionTimestamp: time.Now(),
 	}
 
 	element := rp.fifo.PushBack(reqItem)
+	rp.metrics.CountOfRequestPool.Add(1)
+	rp.metrics.CountOfRequestPoolAll.Add(1)
 	rp.existMap[reqInfo] = element
 
 	if len(rp.existMap) != rp.fifo.Len() {
@@ -285,7 +299,7 @@ func (rp *Pool) NextRequests(maxCount int, maxSizeBytes uint64, check bool) (bat
 	count := minInt(rp.fifo.Len(), maxCount)
 	var totalSize uint64
 	batch = make([][]byte, 0, count)
-	var element = rp.fifo.Front()
+	element := rp.fifo.Front()
 	for i := 0; i < count; i++ {
 		req := element.Value.(*requestItem).request
 		reqLen := uint64(len(req))
@@ -295,7 +309,7 @@ func (rp *Pool) NextRequests(maxCount int, maxSizeBytes uint64, check bool) (bat
 			return batch, true
 		}
 		batch = append(batch, req)
-		totalSize = totalSize + reqLen
+		totalSize += reqLen
 		element = element.Next()
 	}
 
@@ -371,6 +385,8 @@ func (rp *Pool) deleteRequest(element *list.Element, requestInfo types.RequestIn
 	item.timeout.Stop()
 
 	rp.fifo.Remove(element)
+	rp.metrics.CountOfRequestPool.Add(-1)
+	rp.metrics.LatencyOfRequestPool.Observe(time.Since(item.additionTimestamp).Seconds())
 	delete(rp.existMap, requestInfo)
 	rp.moveToDelSlice(requestInfo)
 	rp.logger.Infof("Removed request %s from request pool", requestInfo)
@@ -465,19 +481,8 @@ func (rp *Pool) RestartTimers() {
 	rp.logger.Debugf("Restarted all timers: size=%d", len(rp.existMap))
 }
 
-func (rp *Pool) contains(reqInfo types.RequestInfo) bool {
-	rp.lock.Lock()
-	defer rp.lock.Unlock()
-	_, contains := rp.existMap[reqInfo]
-	return contains
-}
-
 // called by the goroutine spawned by time.AfterFunc
 func (rp *Pool) onRequestTO(request []byte, reqInfo types.RequestInfo) {
-	if !rp.contains(reqInfo) {
-		return
-	}
-
 	rp.lock.Lock()
 
 	element, contains := rp.existMap[reqInfo]
@@ -505,15 +510,12 @@ func (rp *Pool) onRequestTO(request []byte, reqInfo types.RequestInfo) {
 
 	// may take time, in case Comm channel to leader is full; hence w/o the lock.
 	rp.logger.Debugf("Request %s timeout expired, going to send to leader", reqInfo)
+	rp.metrics.CountOfLeaderForwardRequest.Add(1)
 	rp.timeoutHandler.OnRequestTimeout(request, reqInfo)
 }
 
 // called by the goroutine spawned by time.AfterFunc
 func (rp *Pool) onLeaderFwdRequestTO(request []byte, reqInfo types.RequestInfo) {
-	if !rp.contains(reqInfo) {
-		return
-	}
-
 	rp.lock.Lock()
 
 	element, contains := rp.existMap[reqInfo]
@@ -541,6 +543,7 @@ func (rp *Pool) onLeaderFwdRequestTO(request []byte, reqInfo types.RequestInfo) 
 
 	// may take time, in case Comm channel is full; hence w/o the lock.
 	rp.logger.Debugf("Request %s leader-forwarding timeout expired, going to complain on leader", reqInfo)
+	rp.metrics.CountTimeoutTwoStep.Add(1)
 	rp.timeoutHandler.OnLeaderFwdRequestTimeout(request, reqInfo)
 }
 
@@ -551,6 +554,6 @@ func (rp *Pool) onAutoRemoveTO(reqInfo types.RequestInfo) {
 		rp.logger.Errorf("Removal of request %s failed; error: %s", reqInfo, err)
 		return
 	}
+	rp.metrics.CountOfDeleteRequestPool.Add(1)
 	rp.timeoutHandler.OnAutoRemoveTimeout(reqInfo)
-	return
 }
