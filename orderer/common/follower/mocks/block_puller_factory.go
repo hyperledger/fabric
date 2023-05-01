@@ -45,15 +45,16 @@ func (fake *BlockPullerFactory) BlockPuller(arg1 *common.Block, arg2 chan struct
 		arg1 *common.Block
 		arg2 chan struct{}
 	}{arg1, arg2})
+	stub := fake.BlockPullerStub
+	fakeReturns := fake.blockPullerReturns
 	fake.recordInvocation("BlockPuller", []interface{}{arg1, arg2})
 	fake.blockPullerMutex.Unlock()
-	if fake.BlockPullerStub != nil {
-		return fake.BlockPullerStub(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.blockPullerReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -108,15 +109,16 @@ func (fake *BlockPullerFactory) UpdateVerifierFromConfigBlock(arg1 *common.Block
 	fake.updateVerifierFromConfigBlockArgsForCall = append(fake.updateVerifierFromConfigBlockArgsForCall, struct {
 		arg1 *common.Block
 	}{arg1})
+	stub := fake.UpdateVerifierFromConfigBlockStub
+	fakeReturns := fake.updateVerifierFromConfigBlockReturns
 	fake.recordInvocation("UpdateVerifierFromConfigBlock", []interface{}{arg1})
 	fake.updateVerifierFromConfigBlockMutex.Unlock()
-	if fake.UpdateVerifierFromConfigBlockStub != nil {
-		return fake.UpdateVerifierFromConfigBlockStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.updateVerifierFromConfigBlockReturns
 	return fakeReturns.result1
 }
 

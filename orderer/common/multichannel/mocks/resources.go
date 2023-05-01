@@ -107,15 +107,16 @@ func (fake *Resources) ApplicationConfig() (channelconfig.Application, bool) {
 	ret, specificReturn := fake.applicationConfigReturnsOnCall[len(fake.applicationConfigArgsForCall)]
 	fake.applicationConfigArgsForCall = append(fake.applicationConfigArgsForCall, struct {
 	}{})
+	stub := fake.ApplicationConfigStub
+	fakeReturns := fake.applicationConfigReturns
 	fake.recordInvocation("ApplicationConfig", []interface{}{})
 	fake.applicationConfigMutex.Unlock()
-	if fake.ApplicationConfigStub != nil {
-		return fake.ApplicationConfigStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.applicationConfigReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -162,15 +163,16 @@ func (fake *Resources) ChannelConfig() channelconfig.Channel {
 	ret, specificReturn := fake.channelConfigReturnsOnCall[len(fake.channelConfigArgsForCall)]
 	fake.channelConfigArgsForCall = append(fake.channelConfigArgsForCall, struct {
 	}{})
+	stub := fake.ChannelConfigStub
+	fakeReturns := fake.channelConfigReturns
 	fake.recordInvocation("ChannelConfig", []interface{}{})
 	fake.channelConfigMutex.Unlock()
-	if fake.ChannelConfigStub != nil {
-		return fake.ChannelConfigStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.channelConfigReturns
 	return fakeReturns.result1
 }
 
@@ -214,15 +216,16 @@ func (fake *Resources) ConfigtxValidator() configtx.Validator {
 	ret, specificReturn := fake.configtxValidatorReturnsOnCall[len(fake.configtxValidatorArgsForCall)]
 	fake.configtxValidatorArgsForCall = append(fake.configtxValidatorArgsForCall, struct {
 	}{})
+	stub := fake.ConfigtxValidatorStub
+	fakeReturns := fake.configtxValidatorReturns
 	fake.recordInvocation("ConfigtxValidator", []interface{}{})
 	fake.configtxValidatorMutex.Unlock()
-	if fake.ConfigtxValidatorStub != nil {
-		return fake.ConfigtxValidatorStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.configtxValidatorReturns
 	return fakeReturns.result1
 }
 
@@ -266,15 +269,16 @@ func (fake *Resources) ConsortiumsConfig() (channelconfig.Consortiums, bool) {
 	ret, specificReturn := fake.consortiumsConfigReturnsOnCall[len(fake.consortiumsConfigArgsForCall)]
 	fake.consortiumsConfigArgsForCall = append(fake.consortiumsConfigArgsForCall, struct {
 	}{})
+	stub := fake.ConsortiumsConfigStub
+	fakeReturns := fake.consortiumsConfigReturns
 	fake.recordInvocation("ConsortiumsConfig", []interface{}{})
 	fake.consortiumsConfigMutex.Unlock()
-	if fake.ConsortiumsConfigStub != nil {
-		return fake.ConsortiumsConfigStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.consortiumsConfigReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -321,15 +325,16 @@ func (fake *Resources) MSPManager() msp.MSPManager {
 	ret, specificReturn := fake.mSPManagerReturnsOnCall[len(fake.mSPManagerArgsForCall)]
 	fake.mSPManagerArgsForCall = append(fake.mSPManagerArgsForCall, struct {
 	}{})
+	stub := fake.MSPManagerStub
+	fakeReturns := fake.mSPManagerReturns
 	fake.recordInvocation("MSPManager", []interface{}{})
 	fake.mSPManagerMutex.Unlock()
-	if fake.MSPManagerStub != nil {
-		return fake.MSPManagerStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.mSPManagerReturns
 	return fakeReturns.result1
 }
 
@@ -373,15 +378,16 @@ func (fake *Resources) OrdererConfig() (channelconfig.Orderer, bool) {
 	ret, specificReturn := fake.ordererConfigReturnsOnCall[len(fake.ordererConfigArgsForCall)]
 	fake.ordererConfigArgsForCall = append(fake.ordererConfigArgsForCall, struct {
 	}{})
+	stub := fake.OrdererConfigStub
+	fakeReturns := fake.ordererConfigReturns
 	fake.recordInvocation("OrdererConfig", []interface{}{})
 	fake.ordererConfigMutex.Unlock()
-	if fake.OrdererConfigStub != nil {
-		return fake.OrdererConfigStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.ordererConfigReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -428,15 +434,16 @@ func (fake *Resources) PolicyManager() policies.Manager {
 	ret, specificReturn := fake.policyManagerReturnsOnCall[len(fake.policyManagerArgsForCall)]
 	fake.policyManagerArgsForCall = append(fake.policyManagerArgsForCall, struct {
 	}{})
+	stub := fake.PolicyManagerStub
+	fakeReturns := fake.policyManagerReturns
 	fake.recordInvocation("PolicyManager", []interface{}{})
 	fake.policyManagerMutex.Unlock()
-	if fake.PolicyManagerStub != nil {
-		return fake.PolicyManagerStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.policyManagerReturns
 	return fakeReturns.result1
 }
 
@@ -481,15 +488,16 @@ func (fake *Resources) ValidateNew(arg1 channelconfig.Resources) error {
 	fake.validateNewArgsForCall = append(fake.validateNewArgsForCall, struct {
 		arg1 channelconfig.Resources
 	}{arg1})
+	stub := fake.ValidateNewStub
+	fakeReturns := fake.validateNewReturns
 	fake.recordInvocation("ValidateNew", []interface{}{arg1})
 	fake.validateNewMutex.Unlock()
-	if fake.ValidateNewStub != nil {
-		return fake.ValidateNewStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.validateNewReturns
 	return fakeReturns.result1
 }
 

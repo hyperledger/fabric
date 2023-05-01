@@ -22,9 +22,10 @@ func (fake *ChainCreator) SwitchFollowerToChain(arg1 string) {
 	fake.switchFollowerToChainArgsForCall = append(fake.switchFollowerToChainArgsForCall, struct {
 		arg1 string
 	}{arg1})
+	stub := fake.SwitchFollowerToChainStub
 	fake.recordInvocation("SwitchFollowerToChain", []interface{}{arg1})
 	fake.switchFollowerToChainMutex.Unlock()
-	if fake.SwitchFollowerToChainStub != nil {
+	if stub != nil {
 		fake.SwitchFollowerToChainStub(arg1)
 	}
 }

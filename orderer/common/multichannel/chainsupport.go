@@ -12,11 +12,9 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
-	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
-	"github.com/hyperledger/fabric/orderer/consensus/inactive"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -182,19 +180,4 @@ func (cs *ChainSupport) Sequence() uint64 {
 // unlike WriteBlock that also mutates its metadata.
 func (cs *ChainSupport) Append(block *cb.Block) error {
 	return cs.ledgerResources.ReadWriter.Append(block)
-}
-
-func newOnBoardingChainSupport(
-	ledgerResources *ledgerResources,
-	config localconfig.TopLevel,
-	bccsp bccsp.BCCSP,
-) (*ChainSupport, error) {
-	cs := &ChainSupport{ledgerResources: ledgerResources}
-	cs.Processor = msgprocessor.NewStandardChannel(cs, msgprocessor.CreateStandardChannelFilters(cs, config), bccsp)
-	cs.Chain = &inactive.Chain{Err: errors.New("system channel creation pending: server requires restart")}
-	cs.StatusReporter = consensus.StaticStatusReporter{ConsensusRelation: types.ConsensusRelationConsenter, Status: types.StatusInactive}
-
-	logger.Debugf("[channel: %s] Done creating onboarding channel support resources", cs.ChannelID())
-
-	return cs, nil
 }

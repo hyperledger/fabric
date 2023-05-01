@@ -9,10 +9,6 @@ package multichannel
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/orderer/common/localconfig"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
-	"github.com/hyperledger/fabric/orderer/common/types"
-
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	msgprocessormocks "github.com/hyperledger/fabric/orderer/common/msgprocessor/mocks"
@@ -66,52 +62,4 @@ func TestConsensusMetadataValidation(t *testing.T) {
 	mv.ValidateConsensusMetadataReturns(errors.New("bananas"))
 	_, err = cs.ProposeConfigUpdate(&common.Envelope{})
 	require.EqualError(t, err, "consensus metadata update for channel config update is invalid: bananas")
-}
-
-func TestNewOnboardingChainSupport(t *testing.T) {
-	mockResources := &mocks.Resources{}
-	mockValidator := &mocks.ConfigTXValidator{}
-	mockValidator.ChannelIDReturns("mychannel")
-	mockResources.ConfigtxValidatorReturns(mockValidator)
-
-	ms := &mutableResourcesMock{
-		Resources: mockResources,
-	}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
-
-	mockRW := &mocks.ReadWriter{}
-	mockRW.HeightReturns(7)
-	ledgerRes := &ledgerResources{
-		configResources: &configResources{
-			mutableResources: ms,
-			bccsp:            cryptoProvider,
-		},
-		ReadWriter: mockRW,
-	}
-
-	cs, err := newOnBoardingChainSupport(ledgerRes, localconfig.TopLevel{}, cryptoProvider)
-	require.NoError(t, err)
-	require.NotNil(t, cs)
-
-	errStr := "system channel creation pending: server requires restart"
-	require.EqualError(t, cs.Order(nil, 0), errStr)
-	require.EqualError(t, cs.Configure(nil, 0), errStr)
-	require.EqualError(t, cs.WaitReady(), errStr)
-	require.NotPanics(t, cs.Start)
-	require.NotPanics(t, cs.Halt)
-	_, open := <-cs.Errored()
-	require.False(t, open)
-
-	cRel, status := cs.StatusReport()
-	require.Equal(t, types.ConsensusRelationConsenter, cRel)
-	require.Equal(t, types.StatusInactive, status)
-
-	require.Equal(t, uint64(7), cs.Height(), "ledger ReadWriter is initialized")
-	require.Equal(t, "mychannel", cs.ConfigtxValidator().ChannelID(), "ChannelConfig is initialized")
-	require.Equal(t, msgprocessor.ConfigUpdateMsg,
-		cs.ClassifyMsg(&common.ChannelHeader{
-			Type:      int32(common.HeaderType_CONFIG_UPDATE),
-			ChannelId: "mychannel",
-		}), "Message processor is initialized")
 }
