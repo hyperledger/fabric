@@ -466,3 +466,33 @@ func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *cb.Block) 
 	}
 	return cluster.ErrNotInChannel
 }
+
+type worker struct {
+	work      [][]byte
+	f         func([]byte)
+	workerNum int
+	id        int
+}
+
+func (w *worker) doWork() {
+	// sanity check
+	if w.workerNum == 0 {
+		panic("worker number is not defined")
+	}
+
+	if w.f == nil {
+		panic("worker function is not defined")
+	}
+
+	if len(w.work) == 0 {
+		panic("work is not defined")
+	}
+
+	for i, datum := range w.work {
+		if i%w.workerNum != w.id {
+			continue
+		}
+
+		w.f(datum)
+	}
+}

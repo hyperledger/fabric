@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"reflect"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -197,11 +198,14 @@ func bftSmartConsensusBuild(
 	sync := &Synchronizer{
 		selfID:          rtc.id,
 		BlockToDecision: c.blockToDecision,
-		OnCommit:        c.updateRuntimeConfig,
-		Support:         c.support,
-		BlockPuller:     c.BlockPuller,
-		ClusterSize:     clusterSize,
-		Logger:          c.Logger,
+		OnCommit: func(block *cb.Block) types.Reconfig {
+			c.pruneCommittedRequests(block)
+			return c.updateRuntimeConfig(block)
+		},
+		Support:     c.support,
+		BlockPuller: c.BlockPuller,
+		ClusterSize: clusterSize,
+		Logger:      c.Logger,
 		LatestConfig: func() (types.Configuration, []uint64) {
 			rtc := c.RuntimeConfig.Load().(RuntimeConfig)
 			return rtc.BFTConfig, rtc.Nodes
@@ -270,6 +274,36 @@ func bftSmartConsensusBuild(
 	}
 
 	return consensus
+}
+
+func (c *BFTChain) pruneCommittedRequests(block *cb.Block) {
+	workerNum := runtime.NumCPU()
+
+	var workers []*worker
+
+	for i := 0; i < workerNum; i++ {
+		workers = append(workers, &worker{
+			id:        i,
+			work:      block.Data.Data,
+			workerNum: workerNum,
+			f: func(tx []byte) {
+				ri := c.verifier.ReqInspector.RequestID(tx)
+				c.consensus.Pool.RemoveRequest(ri)
+			},
+		})
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(workers))
+
+	for i := 0; i < len(workers); i++ {
+		go func(w *worker) {
+			defer wg.Done()
+			w.doWork()
+		}(workers[i])
+	}
+
+	wg.Wait()
 }
 
 func (c *BFTChain) submit(env *cb.Envelope, configSeq uint64) error {
