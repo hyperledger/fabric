@@ -20,12 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//go:generate counterfeiter -o mocks/sig_filter_support.go --fake-name SigFilterSupport . sigFilterSupport
-
-type sigFilterSupport interface {
-	SigFilterSupport
-}
-
 //go:generate counterfeiter -o mocks/policy.go --fake-name Policy . policy
 
 type policy interface {

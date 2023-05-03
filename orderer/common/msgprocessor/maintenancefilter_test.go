@@ -438,12 +438,12 @@ func makeConfigTx(original, updated *common.Config, t *testing.T) *common.Envelo
 	configUpdateEnv := &common.ConfigUpdateEnvelope{
 		ConfigUpdate: protoutil.MarshalOrPanic(configUpdate),
 	}
-	configUpdateTx, err := protoutil.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE, testChannelID, mockCrypto(), configUpdateEnv, 0, 0)
+	configUpdateTx, err := protoutil.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE, testChannelID, &mocks.SignerSerializer{}, configUpdateEnv, 0, 0)
 	require.NoError(t, err)
 	configTx, err := protoutil.CreateSignedEnvelope(
 		common.HeaderType_CONFIG,
 		testChannelID,
-		mockCrypto(),
+		&mocks.SignerSerializer{},
 		&common.ConfigEnvelope{
 			Config:     updated,
 			LastUpdate: configUpdateTx,

@@ -187,11 +187,10 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 	c.Logger.Debugf("SmartBFT-Go config: %+v", config)
 
 	configValidator := &ConfigBlockValidator{
-		ChannelConfigTemplator: c.Registrar,
-		ValidatingChannel:      support.ChannelID(),
-		Filters:                c.Registrar,
-		ConfigUpdateProposer:   c.Registrar,
-		Logger:                 c.Logger,
+		ValidatingChannel:    support.ChannelID(),
+		Filters:              c.Registrar,
+		ConfigUpdateProposer: c.Registrar,
+		Logger:               c.Logger,
 	}
 
 	chain, err := NewChain(configValidator, (uint64)(selfID), config, path.Join(c.WALBaseDir, support.ChannelID()), puller, c.Comm, c.SignerSerializer, c.GetPolicyManager(support.ChannelID()), support, c.Metrics, c.BCCSP)
