@@ -153,6 +153,7 @@ func (n *node) run(campaign bool) {
 
 			// skip empty apply
 			if len(rd.CommittedEntries) != 0 || rd.SoftState != nil {
+				n.maybeSyncWAL(rd.CommittedEntries)
 				n.chain.applyC <- apply{rd.CommittedEntries, rd.SoftState}
 			}
 
@@ -216,6 +217,24 @@ func (n *node) send(msgs []raftpb.Message) {
 		if msg.Type == raftpb.MsgSnap {
 			n.ReportSnapshot(msg.To, status)
 		}
+	}
+}
+
+func (n *node) maybeSyncWAL(entries []raftpb.Entry) {
+	allNormal := true
+	for _, entry := range entries {
+		if entry.Type == raftpb.EntryNormal {
+			continue
+		}
+		allNormal = false
+	}
+
+	if allNormal {
+		return
+	}
+
+	if err := n.storage.Sync(); err != nil {
+		n.logger.Errorf("Failed to sync raft log, error: %s", err)
 	}
 }
 

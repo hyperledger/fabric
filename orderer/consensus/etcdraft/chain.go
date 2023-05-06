@@ -1179,10 +1179,6 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 				continue
 			}
 
-			if err := c.Node.storage.Sync(); err != nil {
-				c.logger.Debugf("Failed to sync raft log, error: %s", err)
-			}
-
 			c.confState = *c.Node.ApplyConfChange(cc)
 
 			switch cc.Type {
