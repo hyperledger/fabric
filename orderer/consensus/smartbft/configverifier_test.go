@@ -242,21 +242,18 @@ func TestValidateConfig(t *testing.T) {
 			cup := &mocks.ConfigUpdateProposer{}
 			f := &mocks.Filters{}
 			b := &mocks.Bundle{}
-			cct := &mocks.ChannelConfigTemplator{}
 			ctv := &mocks.ConfigTxValidator{}
 			cbv := &smartbft.ConfigBlockValidator{
-				Logger:                 flogging.MustGetLogger("test"),
-				ConfigUpdateProposer:   cup,
-				Filters:                f,
-				ChannelConfigTemplator: cct,
-				ValidatingChannel:      "mychannel",
+				Logger:               flogging.MustGetLogger("test"),
+				ConfigUpdateProposer: cup,
+				Filters:              f,
+				ValidatingChannel:    "mychannel",
 			}
 			env := proto.Clone(testCase.envelope).(*cb.Envelope)
 			testCase.mutateEnvelope(env)
 			f.On("ApplyFilters", mock.Anything, env).Return(testCase.applyFiltersReturns)
 			cup.On("ProposeConfigUpdate", mock.Anything, mock.Anything).
 				Return(testCase.proposeConfigUpdateReturns, testCase.proposeConfigUpdaterr)
-			cct.On("NewChannelConfig", mock.Anything).Return(b, nil)
 			b.On("ConfigtxValidator").Return(ctv)
 			ctv.On("ProposeConfigUpdate", mock.Anything, mock.Anything).
 				Return(testCase.proposeConfigUpdateReturns, testCase.proposeConfigUpdaterr)

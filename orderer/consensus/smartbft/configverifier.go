@@ -29,13 +29,6 @@ type Filters interface {
 	ApplyFilters(channel string, env *cb.Envelope) error
 }
 
-//go:generate mockery -dir . -name ChannelConfigTemplator -case underscore -output mocks
-
-// ChannelConfigTemplator returnes a channel creation transaction to the system channel
-type ChannelConfigTemplator interface {
-	NewChannelConfig(env *cb.Envelope) (channelconfig.Resources, error)
-}
-
 //go:generate mockery -dir . -name ConfigUpdateProposer -case underscore -output mocks
 
 // ConfigUpdateProposer produces a ConfigEnvelope
@@ -59,11 +52,10 @@ type ConfigTxValidator interface {
 
 // ConfigBlockValidator struct
 type ConfigBlockValidator struct {
-	ChannelConfigTemplator ChannelConfigTemplator
-	ConfigUpdateProposer   ConfigUpdateProposer
-	ValidatingChannel      string
-	Filters                Filters
-	Logger                 *flogging.FabricLogger
+	ConfigUpdateProposer ConfigUpdateProposer
+	ValidatingChannel    string
+	Filters              Filters
+	Logger               *flogging.FabricLogger
 }
 
 // ValidateConfig validates config from envelope
