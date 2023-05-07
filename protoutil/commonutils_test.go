@@ -413,7 +413,7 @@ func TestIsConfigBlock(t *testing.T) {
 	block = newBlock(env)
 
 	result = IsConfigBlock(block)
-	require.True(t, result, "IsConfigBlock returns true for blocks with ORDERER_TRANSACTION envelope")
+	require.False(t, result, "IsConfigBlock returns false for blocks with ORDERER_TRANSACTION envelope since it is no longer supported")
 
 	// scenario 3: MESSAGE envelope
 	envType = int32(cb.HeaderType_MESSAGE)

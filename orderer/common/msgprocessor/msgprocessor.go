@@ -47,9 +47,13 @@ const (
 	// Messages of this type should be processed by ProcessConfigUpdateMsg.
 	ConfigUpdateMsg
 
-	// ConfigMsg indicates message of type ORDERER_TRANSACTION or CONFIG.
+	// ConfigMsg indicates message of type CONFIG.
 	// Messages of this type should be processed by ProcessConfigMsg
 	ConfigMsg
+
+	// UnsupportedMsg indicates a message of type ORDERER_TRANSACTION, which is no longer supported, since support for
+	// the system channel was removed.
+	UnsupportedMsg
 )
 
 // Processor provides the methods necessary to classify and process any message which

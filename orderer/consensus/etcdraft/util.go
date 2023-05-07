@@ -159,16 +159,7 @@ func ConfigEnvelopeFromBlock(block *common.Block) (*common.Envelope, error) {
 
 	switch channelHeader.Type {
 	case int32(common.HeaderType_ORDERER_TRANSACTION):
-		payload, err := protoutil.UnmarshalPayload(envelope.Payload)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to unmarshal envelope to extract config payload for orderer transaction")
-		}
-		configEnvelop, err := protoutil.UnmarshalEnvelope(payload.Data)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to unmarshal config envelope for orderer type transaction")
-		}
-
-		return configEnvelop, nil
+		return nil, errors.Errorf("unsupported legacy system channel header type: %v", channelHeader.Type)
 	case int32(common.HeaderType_CONFIG):
 		return envelope, nil
 	default:

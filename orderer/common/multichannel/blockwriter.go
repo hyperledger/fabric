@@ -34,19 +34,17 @@ type blockWriterSupport interface {
 // so that these other go routines safely interact with the calling one.
 type BlockWriter struct {
 	support            blockWriterSupport
-	registrar          *Registrar
 	lastConfigBlockNum uint64
 	lastConfigSeq      uint64
 	lastBlock          *cb.Block
 	committingBlock    sync.Mutex
 }
 
-func newBlockWriter(lastBlock *cb.Block, r *Registrar, support blockWriterSupport) *BlockWriter {
+func newBlockWriter(lastBlock *cb.Block, support blockWriterSupport) *BlockWriter {
 	bw := &BlockWriter{
 		support:       support,
 		lastConfigSeq: support.Sequence(),
 		lastBlock:     lastBlock,
-		registrar:     r,
 	}
 
 	// If this is the genesis block, the lastconfig field may be empty, and, the last config block is necessarily block 0
@@ -111,11 +109,7 @@ func (bw *BlockWriter) WriteConfigBlock(block *cb.Block, encodedMetadataValue []
 
 	switch chdr.Type {
 	case int32(cb.HeaderType_ORDERER_TRANSACTION):
-		newChannelConfig, err := protoutil.UnmarshalEnvelope(payload.Data)
-		if err != nil {
-			logger.Panicf("Told to write a config block with new channel, but did not have config update embedded: %s", err)
-		}
-		bw.registrar.newChain(newChannelConfig)
+		logger.Panicf("[channel: %s] Told to write a config block of type HeaderType_ORDERER_TRANSACTION, but the system channel is no longer supported", bw.support.ChannelID())
 
 	case int32(cb.HeaderType_CONFIG):
 		configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)

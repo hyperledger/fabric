@@ -137,67 +137,111 @@ func TestBlockLastConfig(t *testing.T) {
 }
 
 func TestWriteConfigBlock(t *testing.T) {
-	// TODO, use assert.PanicsWithValue once available
 	t.Run("EmptyBlock", func(t *testing.T) {
-		require.Panics(t, func() { (&BlockWriter{}).WriteConfigBlock(&cb.Block{}, nil) })
+		require.PanicsWithValue(t,
+			"Told to write a config block, but could not get configtx: block data is nil",
+			func() {
+				(&BlockWriter{}).WriteConfigBlock(&cb.Block{}, nil)
+			})
 	})
 	t.Run("BadPayload", func(t *testing.T) {
-		require.Panics(t, func() {
-			(&BlockWriter{}).WriteConfigBlock(&cb.Block{
-				Data: &cb.BlockData{
-					Data: [][]byte{
-						protoutil.MarshalOrPanic(&cb.Envelope{Payload: []byte("bad")}),
+		didPanic, pMsg := testPanic(
+			func() {
+				(&BlockWriter{}).WriteConfigBlock(&cb.Block{
+					Data: &cb.BlockData{
+						Data: [][]byte{
+							protoutil.MarshalOrPanic(&cb.Envelope{Payload: []byte("bad")}),
+						},
 					},
-				},
-			}, nil)
-		})
+				}, nil)
+			})
+
+		require.True(t, didPanic)
+		require.Contains(t, pMsg, "Told to write a config block, but configtx payload is invalid: error unmarshalling Payload: proto:")
 	})
 	t.Run("MissingHeader", func(t *testing.T) {
-		require.Panics(t, func() {
-			(&BlockWriter{}).WriteConfigBlock(&cb.Block{
-				Data: &cb.BlockData{
-					Data: [][]byte{
-						protoutil.MarshalOrPanic(&cb.Envelope{
-							Payload: protoutil.MarshalOrPanic(&cb.Payload{}),
-						}),
+		require.PanicsWithValue(t,
+			"Told to write a config block, but configtx payload header is missing",
+			func() {
+				(&BlockWriter{}).WriteConfigBlock(&cb.Block{
+					Data: &cb.BlockData{
+						Data: [][]byte{
+							protoutil.MarshalOrPanic(&cb.Envelope{
+								Payload: protoutil.MarshalOrPanic(&cb.Payload{}),
+							}),
+						},
 					},
-				},
-			}, nil)
-		})
+				}, nil)
+			})
 	})
 	t.Run("BadChannelHeader", func(t *testing.T) {
-		require.Panics(t, func() {
-			(&BlockWriter{}).WriteConfigBlock(&cb.Block{
-				Data: &cb.BlockData{
-					Data: [][]byte{
-						protoutil.MarshalOrPanic(&cb.Envelope{
-							Payload: protoutil.MarshalOrPanic(&cb.Payload{
-								Header: &cb.Header{
-									ChannelHeader: []byte("bad"),
-								},
+		didPanic, pMsg := testPanic(
+			func() {
+				(&BlockWriter{}).WriteConfigBlock(&cb.Block{
+					Data: &cb.BlockData{
+						Data: [][]byte{
+							protoutil.MarshalOrPanic(&cb.Envelope{
+								Payload: protoutil.MarshalOrPanic(&cb.Payload{
+									Header: &cb.Header{
+										ChannelHeader: []byte("bad"),
+									},
+								}),
 							}),
-						}),
+						},
 					},
-				},
-			}, nil)
-		})
+				}, nil)
+			})
+
+		require.True(t, didPanic)
+		require.Contains(t, pMsg, "Told to write a config block with an invalid channel header: error unmarshalling ChannelHeader: proto:")
 	})
 	t.Run("BadChannelHeaderType", func(t *testing.T) {
-		require.Panics(t, func() {
-			(&BlockWriter{}).WriteConfigBlock(&cb.Block{
-				Data: &cb.BlockData{
-					Data: [][]byte{
-						protoutil.MarshalOrPanic(&cb.Envelope{
-							Payload: protoutil.MarshalOrPanic(&cb.Payload{
-								Header: &cb.Header{
-									ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{}),
-								},
+		require.PanicsWithValue(t,
+			"Told to write a config block with unknown header type: 0",
+			func() {
+				(&BlockWriter{}).WriteConfigBlock(&cb.Block{
+					Data: &cb.BlockData{
+						Data: [][]byte{
+							protoutil.MarshalOrPanic(&cb.Envelope{
+								Payload: protoutil.MarshalOrPanic(&cb.Payload{
+									Header: &cb.Header{
+										ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{}),
+									},
+								}),
 							}),
-						}),
+						},
 					},
-				},
-			}, nil)
-		})
+				}, nil)
+			})
+	})
+	t.Run("UnsupportedChannelHeaderType", func(t *testing.T) {
+		mockValidator := &mocks.ConfigTXValidator{}
+		mockValidator.ChannelIDReturns("mychannel")
+		mockSupport := &mockBlockWriterSupport{
+			ConfigTXValidator: mockValidator,
+		}
+
+		require.PanicsWithValue(t,
+			"[channel: mychannel] Told to write a config block of type HeaderType_ORDERER_TRANSACTION, but the system channel is no longer supported",
+			func() {
+				(&BlockWriter{support: mockSupport}).WriteConfigBlock(&cb.Block{
+					Data: &cb.BlockData{
+						Data: [][]byte{
+							protoutil.MarshalOrPanic(&cb.Envelope{
+								Payload: protoutil.MarshalOrPanic(&cb.Payload{
+									Header: &cb.Header{
+										ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
+											Type:      int32(cb.HeaderType_ORDERER_TRANSACTION),
+											ChannelId: "mychannel",
+											TxId:      "tx1",
+										}),
+									},
+								}),
+							}),
+						},
+					},
+				}, nil)
+			})
 	})
 }
 
@@ -217,15 +261,14 @@ func TestGoodWriteConfig(t *testing.T) {
 
 	mockValidator := &mocks.ConfigTXValidator{}
 	mockValidator.ChannelIDReturns("testchannelid")
-	bw := newBlockWriter(genesisBlockSys, nil,
+	bw := newBlockWriter(genesisBlockSys,
 		&mockBlockWriterSupport{
 			SignerSerializer:  mockCrypto(),
 			ReadWriter:        l,
 			ConfigTXValidator: mockValidator,
 			fakeConfig:        fakeConfig,
 			bccsp:             cryptoProvider,
-		},
-	)
+		})
 
 	ctx := makeConfigTxFull("testchannelid", 1)
 	block := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.Header))
@@ -262,15 +305,14 @@ func TestWriteConfigSynchronously(t *testing.T) {
 
 	mockValidator := &mocks.ConfigTXValidator{}
 	mockValidator.ChannelIDReturns("testchannelid")
-	bw := newBlockWriter(genesisBlockSys, nil,
+	bw := newBlockWriter(genesisBlockSys,
 		&mockBlockWriterSupport{
 			SignerSerializer:  mockCrypto(),
 			ReadWriter:        l,
 			ConfigTXValidator: mockValidator,
 			fakeConfig:        fakeConfig,
 			bccsp:             cryptoProvider,
-		},
-	)
+		})
 
 	ctx := makeConfigTxFull("testchannelid", 1)
 	block := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.Header))
@@ -305,15 +347,14 @@ func TestMigrationWriteConfig(t *testing.T) {
 
 	mockValidator := &mocks.ConfigTXValidator{}
 	mockValidator.ChannelIDReturns("testchannelid")
-	bw := newBlockWriter(genesisBlockSys, nil,
+	bw := newBlockWriter(genesisBlockSys,
 		&mockBlockWriterSupport{
 			SignerSerializer:  mockCrypto(),
 			ReadWriter:        l,
 			ConfigTXValidator: mockValidator,
 			fakeConfig:        fakeConfig,
 			bccsp:             cryptoProvider,
-		},
-	)
+		})
 
 	ctx := makeConfigTxMig("testchannelid", 1)
 	block := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.Header))
@@ -349,15 +390,14 @@ func TestRaceWriteConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	mockValidator := &mocks.ConfigTXValidator{}
-	bw := newBlockWriter(genesisBlockSys, nil,
+	bw := newBlockWriter(genesisBlockSys,
 		&mockBlockWriterSupport{
 			SignerSerializer:  mockCrypto(),
 			ReadWriter:        l,
 			ConfigTXValidator: mockValidator,
 			fakeConfig:        fakeConfig,
 			bccsp:             cryptoProvider,
-		},
-	)
+		})
 
 	ctx := makeConfigTxFull("testchannelid", 1)
 	block1 := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.Header))
@@ -410,15 +450,14 @@ func TestRaceWriteBlocks(t *testing.T) {
 	require.NoError(t, err)
 
 	mockValidator := &mocks.ConfigTXValidator{}
-	bw := newBlockWriter(genesisBlockSys, nil,
+	bw := newBlockWriter(genesisBlockSys,
 		&mockBlockWriterSupport{
 			SignerSerializer:  mockCrypto(),
 			ReadWriter:        l,
 			ConfigTXValidator: mockValidator,
 			fakeConfig:        fakeConfig,
 			bccsp:             cryptoProvider,
-		},
-	)
+		})
 
 	ctx := makeConfigTxFull("testchannelid", 1)
 	block1 := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.Header))
@@ -477,4 +516,17 @@ func testLastConfigBlockNumber(t *testing.T, block *cb.Block, expectedBlockNumbe
 	err = proto.Unmarshal(metadata.Value, lastConfig)
 	require.NoError(t, err, "LAST_CONFIG metadata item should carry last config value")
 	require.Equal(t, expectedBlockNumber, lastConfig.Index, "LAST_CONFIG value should point to last config block")
+}
+
+func testPanic(f func()) (didPanic bool, message interface{}) {
+	didPanic = true
+
+	defer func() {
+		message = recover()
+	}()
+
+	f()
+	didPanic = false
+
+	return
 }

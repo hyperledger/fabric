@@ -73,7 +73,7 @@ func newChainSupport(
 	cs.Processor = msgprocessor.NewStandardChannel(cs, msgprocessor.CreateStandardChannelFilters(cs, registrar.config), bccsp)
 
 	// Set up the block writer
-	cs.BlockWriter = newBlockWriter(lastBlock, registrar, cs)
+	cs.BlockWriter = newBlockWriter(lastBlock, cs)
 
 	// Set up the consenter
 	consenterType := ledgerResources.SharedConfig().ConsensusType()

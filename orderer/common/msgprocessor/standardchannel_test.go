@@ -60,7 +60,7 @@ func TestClassifyMsg(t *testing.T) {
 	})
 	t.Run("OrdererTx", func(t *testing.T) {
 		class := (&StandardChannel{}).ClassifyMsg(&cb.ChannelHeader{Type: int32(cb.HeaderType_ORDERER_TRANSACTION)})
-		require.Equal(t, class, ConfigMsg)
+		require.Equal(t, class, UnsupportedMsg)
 	})
 	t.Run("ConfigTx", func(t *testing.T) {
 		class := (&StandardChannel{}).ClassifyMsg(&cb.ChannelHeader{Type: int32(cb.HeaderType_CONFIG)})

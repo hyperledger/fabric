@@ -1774,24 +1774,6 @@ var _ = Describe("Chain", func() {
 					}
 					return updateRaftConfigValue(metadata)
 				}
-				createChannelEnv = func(metadata *raftprotos.ConfigMetadata) *common.Envelope {
-					configEnv := newConfigEnv("another-channel",
-						common.HeaderType_CONFIG,
-						newConfigUpdateEnv(channelID, nil, updateRaftConfigValue(metadata)))
-
-					// Wrap config env in Orderer transaction
-					return &common.Envelope{
-						Payload: marshalOrPanic(&common.Payload{
-							Header: &common.Header{
-								ChannelHeader: marshalOrPanic(&common.ChannelHeader{
-									Type:      int32(common.HeaderType_ORDERER_TRANSACTION),
-									ChannelId: channelID,
-								}),
-							},
-							Data: marshalOrPanic(configEnv),
-						}),
-					}
-				}
 			)
 
 			BeforeEach(func() {
@@ -1819,20 +1801,6 @@ var _ = Describe("Chain", func() {
 
 			AfterEach(func() {
 				network.stop()
-			})
-
-			Context("channel creation", func() {
-				It("succeeds with valid config metadata", func() {
-					metadata := &raftprotos.ConfigMetadata{Options: options}
-					for _, consenter := range consenters {
-						metadata.Consenters = append(metadata.Consenters, consenter)
-					}
-
-					Expect(c1.Configure(createChannelEnv(metadata), 0)).To(Succeed())
-					network.exec(func(c *chain) {
-						Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-					})
-				})
 			})
 
 			Context("reconfiguration", func() {
@@ -2026,40 +1994,6 @@ var _ = Describe("Chain", func() {
 
 					network.exec(func(c *chain) {
 						Eventually(c.support.WriteBlockCallCount, defaultTimeout).Should(Equal(2))
-					})
-				})
-
-				It("does not reconfigure raft cluster if it's a channel creation tx", func() {
-					configEnv := newConfigEnv("another-channel",
-						common.HeaderType_CONFIG,
-						newConfigUpdateEnv(channelID, nil, removeConsenterConfigValue(2)))
-
-					// Wrap config env in Orderer transaction
-					channelCreationEnv := &common.Envelope{
-						Payload: marshalOrPanic(&common.Payload{
-							Header: &common.Header{
-								ChannelHeader: marshalOrPanic(&common.ChannelHeader{
-									Type:      int32(common.HeaderType_ORDERER_TRANSACTION),
-									ChannelId: channelID,
-								}),
-							},
-							Data: marshalOrPanic(configEnv),
-						}),
-					}
-
-					c1.cutter.CutNext = true
-
-					Expect(c1.Configure(channelCreationEnv, 0)).To(Succeed())
-					network.exec(func(c *chain) {
-						Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-					})
-
-					// assert c2 is not evicted
-					Consistently(c2.Errored).ShouldNot(BeClosed())
-					Expect(c2.Order(env, 0)).To(Succeed())
-
-					network.exec(func(c *chain) {
-						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 					})
 				})
 
