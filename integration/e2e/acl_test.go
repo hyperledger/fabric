@@ -55,7 +55,7 @@ var _ = Describe("EndToEndACL", func() {
 
 		// Speed up test by reducing the number of peers we
 		// bring up and install chaincode to.
-		etcdRaftConfig := nwo.BasicEtcdRaftNoSysChan()
+		etcdRaftConfig := nwo.BasicEtcdRaft()
 		etcdRaftConfig.RemovePeer("Org1", "peer1")
 		etcdRaftConfig.RemovePeer("Org2", "peer1")
 		Expect(etcdRaftConfig.Peers).To(HaveLen(2))

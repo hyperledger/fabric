@@ -939,7 +939,7 @@ func initThreeOrgsSetup(removePeer1 bool) *nwo.Network {
 	client, err := docker.NewClientFromEnv()
 	Expect(err).NotTo(HaveOccurred())
 
-	config := nwo.FullEtcdRaftNoSysChan()
+	config := nwo.FullEtcdRaft()
 
 	// add org3 with one peer
 	config.Organizations = append(config.Organizations, &nwo.Organization{

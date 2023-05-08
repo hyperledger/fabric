@@ -50,7 +50,7 @@ var _ = Describe("Release interoperability", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.MultiChannelEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+		network = nwo.New(nwo.MultiChannelEtcdRaft(), testDir, client, StartPort(), components)
 		network.GenerateConfigTree()
 		network.Bootstrap()
 

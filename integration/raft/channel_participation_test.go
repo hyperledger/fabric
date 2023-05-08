@@ -81,8 +81,6 @@ var _ = Describe("ChannelParticipation", func() {
 
 		BeforeEach(func() {
 			network = nwo.New(multiNodeEtcdRaftTwoChannels(), testDir, client, StartPort(), components)
-			network.Consensus.ChannelParticipationEnabled = true
-			network.Consensus.BootstrapMethod = "none"
 			network.GenerateConfigTree()
 			network.Bootstrap()
 		})
@@ -235,7 +233,6 @@ var _ = Describe("ChannelParticipation", func() {
 			Eventually(func() channelparticipation.ChannelList {
 				return channelparticipation.List(network, orderer1)
 			}, network.EventuallyTimeout).Should(Equal(channelparticipation.ChannelList{
-				SystemChannel: nil,
 				Channels: []channelparticipation.ChannelInfoShort{
 					{
 						Name: "another-participation-trophy",
@@ -816,80 +813,6 @@ func applicationChannelGenesisBlock(n *nwo.Network, orderers []*nwo.Orderer, pee
 	return genesisBlock
 }
 
-func systemChannelGenesisBlock(n *nwo.Network, orderers []*nwo.Orderer, peers []*nwo.Peer, channel string) *common.Block {
-	ordererOrgs, consenters := ordererOrganizationsAndConsenters(n, orderers)
-	peerOrgs := peerOrganizations(n, peers)
-
-	channelConfig := configtx.Channel{
-		Orderer: configtx.Orderer{
-			OrdererType:   "etcdraft",
-			Organizations: ordererOrgs,
-			EtcdRaft: orderer.EtcdRaft{
-				Consenters: consenters,
-				Options: orderer.EtcdRaftOptions{
-					TickInterval:         "500ms",
-					ElectionTick:         10,
-					HeartbeatTick:        1,
-					MaxInflightBlocks:    5,
-					SnapshotIntervalSize: 16 * 1024 * 1024, // 16 MB
-				},
-			},
-			Policies: map[string]configtx.Policy{
-				"Readers": {
-					Type: "ImplicitMeta",
-					Rule: "ANY Readers",
-				},
-				"Writers": {
-					Type: "ImplicitMeta",
-					Rule: "ANY Writers",
-				},
-				"Admins": {
-					Type: "ImplicitMeta",
-					Rule: "MAJORITY Admins",
-				},
-				"BlockValidation": {
-					Type: "ImplicitMeta",
-					Rule: "ANY Writers",
-				},
-			},
-			Capabilities: []string{"V2_0"},
-			BatchSize: orderer.BatchSize{
-				MaxMessageCount:   100,
-				AbsoluteMaxBytes:  1024 * 1024,
-				PreferredMaxBytes: 512 * 1024,
-			},
-			BatchTimeout: 2 * time.Second,
-			State:        "STATE_NORMAL",
-		},
-		Consortiums: []configtx.Consortium{
-			{
-				Name:          n.Consortiums[0].Name,
-				Organizations: peerOrgs,
-			},
-		},
-		Capabilities: []string{"V2_0"},
-		Policies: map[string]configtx.Policy{
-			"Readers": {
-				Type: "ImplicitMeta",
-				Rule: "ANY Readers",
-			},
-			"Writers": {
-				Type: "ImplicitMeta",
-				Rule: "ANY Writers",
-			},
-			"Admins": {
-				Type: "ImplicitMeta",
-				Rule: "MAJORITY Admins",
-			},
-		},
-	}
-
-	genesisBlock, err := configtx.NewSystemChannelGenesisBlock(channelConfig, channel)
-	Expect(err).NotTo(HaveOccurred())
-
-	return genesisBlock
-}
-
 // parseCertificate loads the PEM-encoded x509 certificate at the specified
 // path.
 func parseCertificate(path string) *x509.Certificate {
@@ -1094,7 +1017,7 @@ func channelparticipationRemoveFailure(n *nwo.Network, o *nwo.Orderer, channel s
 }
 
 func multiNodeEtcdRaftTwoChannels() *nwo.Config {
-	config := nwo.MultiNodeEtcdRaftNoSysChan()
+	config := nwo.MultiNodeEtcdRaft()
 	config.Channels = []*nwo.Channel{
 		{Name: "testchannel", Profile: "TwoOrgsAppChannelEtcdRaft"},
 		{Name: "testchannel2", Profile: "TwoOrgsAppChannelEtcdRaft"},

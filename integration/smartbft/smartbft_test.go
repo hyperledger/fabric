@@ -95,14 +95,10 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 	Describe("smartbft network", func() {
 		It("smartbft multiple nodes stop start all nodes", func() {
 			networkConfig := nwo.MultiNodeSmartBFT()
-			networkConfig.SystemChannel = nil
 			networkConfig.Channels = nil
 			channel := "testchannel1"
 
 			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
-			network.Consortiums = nil
-			network.Consensus.ChannelParticipationEnabled = true
-			network.Consensus.BootstrapMethod = "none"
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -176,13 +172,9 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 		It("smartbft node addition and removal", func() {
 			networkConfig := nwo.MultiNodeSmartBFT()
-			networkConfig.SystemChannel = nil
 			networkConfig.Channels = nil
 
 			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
-			network.Consortiums = nil
-			network.Consensus.ChannelParticipationEnabled = true
-			network.Consensus.BootstrapMethod = "none"
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -467,14 +459,10 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 		It("smartbft assisted synchronization no rotation", func() {
 			networkConfig := nwo.MultiNodeSmartBFT()
-			networkConfig.SystemChannel = nil
 			networkConfig.Channels = nil
 			channel := "testchannel1"
 
 			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
-			network.Consortiums = nil
-			network.Consensus.ChannelParticipationEnabled = true
-			network.Consensus.BootstrapMethod = "none"
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -573,14 +561,10 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 		It("smartbft autonomous synchronization", func() {
 			networkConfig := nwo.MultiNodeSmartBFT()
-			networkConfig.SystemChannel = nil
 			networkConfig.Channels = nil
 			channel := "testchannel1"
 
 			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
-			network.Consortiums = nil
-			network.Consensus.ChannelParticipationEnabled = true
-			network.Consensus.BootstrapMethod = "none"
 			network.GenerateConfigTree()
 			network.Bootstrap()
 			network.EventuallyTimeout = time.Minute * 2
@@ -666,14 +650,10 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 		It("smartbft multiple nodes view change", func() {
 			networkConfig := nwo.MultiNodeSmartBFT()
-			networkConfig.SystemChannel = nil
 			networkConfig.Channels = nil
 			channel := "testchannel1"
 
 			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
-			network.Consortiums = nil
-			network.Consensus.ChannelParticipationEnabled = true
-			network.Consensus.BootstrapMethod = "none"
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -743,13 +723,9 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 		It("smartbft iterated addition and iterated removal", func() {
 			networkConfig := nwo.MultiNodeSmartBFT()
-			networkConfig.SystemChannel = nil
 			networkConfig.Channels = nil
 
 			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
-			network.Consortiums = nil
-			network.Consensus.ChannelParticipationEnabled = true
-			network.Consensus.BootstrapMethod = "none"
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -932,13 +908,9 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 		It("smartbft reconfiguration prevents blacklisting", func() {
 			channel := "testchannel1"
 			networkConfig := nwo.MultiNodeSmartBFT()
-			networkConfig.SystemChannel = nil
 			networkConfig.Channels = nil
 
 			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
-			network.Consortiums = nil
-			network.Consensus.ChannelParticipationEnabled = true
-			network.Consensus.BootstrapMethod = "none"
 			network.GenerateConfigTree()
 			network.Bootstrap()
 

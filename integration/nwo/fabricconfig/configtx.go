@@ -125,17 +125,10 @@ type EtcdRaftOptions struct {
 }
 
 type Channel struct {
-	Orderer      *ConfigTxOrderer       `yaml:"Orderer,omitempty"`
-	Application  *Application           `yaml:"Application,omitempty"`
-	Policies     map[string]*Policy     `yaml:"Policies,omitempty"`
-	Capabilities map[string]bool        `yaml:"Capabilities,omitempty"`
-	Consortiums  map[string]*Consortium `yaml:"Consortiums,omitempty"`
-
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
-}
-
-type Consortium struct {
-	Organizations []*Organization `yaml:"Organizations,omitempty"`
+	Orderer      *ConfigTxOrderer   `yaml:"Orderer,omitempty"`
+	Application  *Application       `yaml:"Application,omitempty"`
+	Policies     map[string]*Policy `yaml:"Policies,omitempty"`
+	Capabilities map[string]bool    `yaml:"Capabilities,omitempty"`
 
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }

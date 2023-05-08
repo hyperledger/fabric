@@ -83,7 +83,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 		)
 
 		BeforeEach(func() {
-			network = nwo.New(nwo.MultiChannelEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.MultiChannelEtcdRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 

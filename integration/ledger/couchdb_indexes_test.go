@@ -68,7 +68,7 @@ var _ = Describe("CouchDB indexes", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.FullEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+		network = nwo.New(nwo.FullEtcdRaft(), testDir, client, StartPort(), components)
 
 		cwd, err := os.Getwd()
 		Expect(err).NotTo(HaveOccurred())

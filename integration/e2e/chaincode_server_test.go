@@ -43,7 +43,7 @@ var _ = Describe("ChaincodeAsExternalServer", func() {
 		testDir, err = ioutil.TempDir("", "external-chaincode-server")
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), testDir, nil, StartPort(), components)
+		network = nwo.New(nwo.BasicEtcdRaft(), testDir, nil, StartPort(), components)
 		network.GenerateConfigTree()
 		network.Bootstrap()
 

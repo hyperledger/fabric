@@ -50,7 +50,7 @@ var _ = Describe("Network", func() {
 		var ordererProcess, peerProcess ifrit.Process
 
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), tempDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaft(), tempDir, client, StartPort(), components)
 
 			// Generate config and bootstrap the network
 			network.GenerateConfigTree()

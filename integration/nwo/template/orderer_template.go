@@ -35,10 +35,7 @@ General:
     ServerMinInterval: 60s
     ServerInterval: 7200s
     ServerTimeout: 20s
-  BootstrapMethod: {{ .Consensus.BootstrapMethod }}
-  {{- if eq $w.Consensus.BootstrapMethod "file" }}
-  BootstrapFile: {{ .RootDir }}/{{ .SystemChannel.Name }}_block.pb
-  {{- end }}
+  BootstrapMethod: "none"
   LocalMSPDir: {{ $w.OrdererLocalMSPDir Orderer }}
   LocalMSPID: {{ ($w.Organization Orderer.Organization).MSPID }}
   Profile:
@@ -99,6 +96,6 @@ Admin:
     -  {{ $w.OrdererLocalTLSDir Orderer }}/ca.crt
 {{- end }}
 ChannelParticipation:
-  Enabled: {{ .Consensus.ChannelParticipationEnabled }}
+  Enabled: true
   MaxRequestBodySize: 1 MB
 `

@@ -50,7 +50,7 @@ var _ = Describe("PKCS11 enabled network", func() {
 		tempDir, err = ioutil.TempDir("", "p11")
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), tempDir, nil, StartPort(), components)
+		network = nwo.New(nwo.BasicEtcdRaft(), tempDir, nil, StartPort(), components)
 		network.GenerateConfigTree()
 		network.Bootstrap()
 

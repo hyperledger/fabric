@@ -275,7 +275,7 @@ func initThreeOrgsSetup() *setup {
 	client, err := docker.NewClientFromEnv()
 	Expect(err).NotTo(HaveOccurred())
 
-	config := nwo.ThreeOrgEtcdRaftNoSysChan()
+	config := nwo.ThreeOrgEtcdRaft()
 	// disable all anchor peers
 	for _, p := range config.Peers {
 		for _, pc := range p.Channels {

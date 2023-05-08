@@ -77,6 +77,7 @@ func doBody(client *http.Client, req *http.Request) []byte {
 }
 
 type ChannelList struct {
+	// Deprecated: system channel no longer supported
 	SystemChannel *ChannelInfoShort  `json:"systemChannel"`
 	Channels      []ChannelInfoShort `json:"channels"`
 }
@@ -155,10 +156,10 @@ func Remove(n *nwo.Network, o *nwo.Orderer, channel string) {
 	Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
 }
 
-func ChannelListMatcher(list ChannelList, expectedChannels []string, systemChannel ...string) {
+func ChannelListMatcher(list ChannelList, expectedChannels []string) {
 	Expect(list).To(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
 		"Channels":      channelsMatcher(expectedChannels),
-		"SystemChannel": systemChannelMatcher(systemChannel...),
+		"SystemChannel": BeNil(),
 	}))
 }
 
@@ -171,13 +172,6 @@ func channelsMatcher(channels []string) types.GomegaMatcher {
 		matchers[i] = channelInfoShortMatcher(channel)
 	}
 	return ConsistOf(matchers)
-}
-
-func systemChannelMatcher(systemChannel ...string) types.GomegaMatcher {
-	if len(systemChannel) == 0 {
-		return BeNil()
-	}
-	return gstruct.PointTo(channelInfoShortMatcher(systemChannel[0]))
 }
 
 func channelInfoShortMatcher(channel string) types.GomegaMatcher {

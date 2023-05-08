@@ -56,7 +56,7 @@ var _ = Describe("MSPs with RSA Certificate Authorities", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+		network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
 		network.GenerateConfigTree()
 
 		By("manually bootstrapping MSPs with RSA CAs")
