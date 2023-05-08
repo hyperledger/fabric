@@ -303,6 +303,34 @@ func createBlockChain(start, end uint64) []*common.Block {
 	return blockchain
 }
 
+func injectGlobalOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {
+	ordererAddresses := channelconfig.OrdererAddressesValue([]string{endpoint})
+	// Unwrap the layers until we reach the orderer addresses
+	env, err := protoutil.ExtractEnvelope(block, 0)
+	require.NoError(t, err)
+	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	require.NoError(t, err)
+	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	require.NoError(t, err)
+	// Replace the orderer addresses
+	confEnv.Config.ChannelGroup.Values[ordererAddresses.Key()] = &common.ConfigValue{
+		Value:     protoutil.MarshalOrPanic(ordererAddresses.Value()),
+		ModPolicy: "/Channel/Orderer/Admins",
+	}
+	// Remove the per org addresses, if applicable
+	ordererGrps := confEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups
+	for _, grp := range ordererGrps {
+		if grp.Values[channelconfig.EndpointsKey] == nil {
+			continue
+		}
+		grp.Values[channelconfig.EndpointsKey].Value = nil
+	}
+	// And put it back into the block
+	payload.Data = protoutil.MarshalOrPanic(confEnv)
+	env.Payload = protoutil.MarshalOrPanic(payload)
+	block.Data.Data[0] = protoutil.MarshalOrPanic(env)
+}
+
 func TestEndpointconfigFromConfigBlockGreenPath(t *testing.T) {
 	t.Run("global endpoints", func(t *testing.T) {
 		block, err := test.MakeGenesisBlock("mychannel")
@@ -829,30 +857,6 @@ func TestVerificationRegistry(t *testing.T) {
 	}
 }
 
-func TestLedgerInterceptor(t *testing.T) {
-	block := &common.Block{}
-
-	ledger := &mocks.LedgerWriter{}
-	ledger.On("Append", block).Return(nil).Once()
-
-	var intercepted bool
-
-	var interceptedLedger cluster.LedgerWriter = &cluster.LedgerInterceptor{
-		Channel:      "mychannel",
-		LedgerWriter: ledger,
-		InterceptBlockCommit: func(b *common.Block, channel string) {
-			require.Equal(t, block, b)
-			require.Equal(t, "mychannel", channel)
-			intercepted = true
-		},
-	}
-
-	err := interceptedLedger.Append(block)
-	require.NoError(t, err)
-	require.True(t, intercepted)
-	ledger.AssertCalled(t, "Append", block)
-}
-
 func injectAdditionalTLSCAEndpointPair(t *testing.T, block *common.Block, endpoint string, tlsCA []byte, orgName string) {
 	// Unwrap the layers until we reach the orderer addresses
 	env, err := protoutil.ExtractEnvelope(block, 0)
@@ -1156,4 +1160,161 @@ func TestGetTLSSessionBinding(t *testing.T) {
 	binding, err := cluster.GetTLSSessionBinding(stream.Context(), []byte{1, 2, 3, 4, 5})
 	require.NoError(t, err)
 	require.Len(t, binding, 32)
+}
+
+func TestChainParticipant(t *testing.T) {
+	for _, testCase := range []struct {
+		name                  string
+		heightsByEndpoints    map[string]uint64
+		heightsByEndpointsErr error
+		latestBlockSeq        uint64
+		latestBlock           *common.Block
+		latestConfigBlockSeq  uint64
+		latestConfigBlock     *common.Block
+		expectedError         string
+		participantError      error
+	}{
+		{
+			name:          "No available orderer",
+			expectedError: cluster.ErrRetryCountExhausted.Error(),
+		},
+		{
+			name:                  "Unauthorized for the channel",
+			expectedError:         cluster.ErrForbidden.Error(),
+			heightsByEndpointsErr: cluster.ErrForbidden,
+		},
+		{
+			name:                  "No OSN services the channel",
+			expectedError:         cluster.ErrServiceUnavailable.Error(),
+			heightsByEndpointsErr: cluster.ErrServiceUnavailable,
+		},
+		{
+			name: "Pulled block has no metadata",
+			heightsByEndpoints: map[string]uint64{
+				"orderer.example.com:7050": 100,
+			},
+			latestBlockSeq: uint64(99),
+			latestBlock:    &common.Block{},
+			expectedError:  "failed to retrieve metadata: no metadata in block",
+		},
+		{
+			name: "Pulled block has no last config sequence in metadata",
+			heightsByEndpoints: map[string]uint64{
+				"orderer.example.com:7050": 100,
+			},
+			latestBlockSeq: uint64(99),
+			latestBlock: &common.Block{
+				Metadata: &common.BlockMetadata{
+					Metadata: nil,
+				},
+			},
+			expectedError: "failed to retrieve metadata: no metadata at index [SIGNATURES]",
+		},
+		{
+			name: "Pulled block's SIGNATURES metadata is malformed",
+			heightsByEndpoints: map[string]uint64{
+				"orderer.example.com:7050": 100,
+			},
+			latestBlockSeq: uint64(99),
+			latestBlock: &common.Block{
+				Metadata: &common.BlockMetadata{
+					Metadata: [][]byte{{1, 2, 3}},
+				},
+			},
+			expectedError: "failed to retrieve metadata: error unmarshalling metadata at index [SIGNATURES]",
+		},
+		{
+			name: "Pulled block's LAST_CONFIG metadata is malformed",
+			heightsByEndpoints: map[string]uint64{
+				"orderer.example.com:7050": 100,
+			},
+			latestBlockSeq: uint64(99),
+			latestBlock: &common.Block{
+				Metadata: &common.BlockMetadata{
+					Metadata: [][]byte{{}, {1, 2, 3}},
+				},
+			},
+			expectedError: "failed to retrieve metadata: error unmarshalling metadata at index [LAST_CONFIG]",
+		},
+		{
+			name: "Pulled block's metadata is valid and has a last config",
+			heightsByEndpoints: map[string]uint64{
+				"orderer.example.com:7050": 100,
+			},
+			latestBlockSeq: uint64(99),
+			latestBlock: &common.Block{
+				Metadata: &common.BlockMetadata{
+					Metadata: [][]byte{protoutil.MarshalOrPanic(&common.Metadata{
+						Value: protoutil.MarshalOrPanic(&common.OrdererBlockMetadata{
+							LastConfig: &common.LastConfig{Index: 42},
+						}),
+					})},
+				},
+			},
+			latestConfigBlockSeq: 42,
+			latestConfigBlock:    &common.Block{Header: &common.BlockHeader{Number: 42}},
+			participantError:     cluster.ErrNotInChannel,
+		},
+		{
+			name:          "Failed pulling last block",
+			expectedError: cluster.ErrRetryCountExhausted.Error(),
+			heightsByEndpoints: map[string]uint64{
+				"orderer.example.com:7050": 100,
+			},
+			latestBlockSeq: uint64(99),
+			latestBlock:    nil,
+		},
+		{
+			name:          "Failed pulling last config block",
+			expectedError: cluster.ErrRetryCountExhausted.Error(),
+			heightsByEndpoints: map[string]uint64{
+				"orderer.example.com:7050": 100,
+			},
+			latestBlockSeq: uint64(99),
+			latestBlock: &common.Block{
+				Metadata: &common.BlockMetadata{
+					Metadata: [][]byte{protoutil.MarshalOrPanic(&common.Metadata{
+						Value: protoutil.MarshalOrPanic(&common.OrdererBlockMetadata{
+							LastConfig: &common.LastConfig{Index: 42},
+						}),
+					})},
+				},
+			},
+			latestConfigBlockSeq: 42,
+			latestConfigBlock:    nil,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			puller := &mocks.ChainPuller{}
+			puller.On("HeightsByEndpoints").Return(testCase.heightsByEndpoints, testCase.heightsByEndpointsErr)
+			puller.On("PullBlock", testCase.latestBlockSeq).Return(testCase.latestBlock)
+			puller.On("PullBlock", testCase.latestConfigBlockSeq).Return(testCase.latestConfigBlock)
+			puller.On("Close")
+
+			// Checks whether the caller participates in the chain.
+			// The ChainPuller should already be calibrated for the chain,
+			// participantError is used to detect whether the caller should service the chain.
+			// err is nil if the caller participates in the chain.
+			// err may be:
+			// ErrNotInChannel in case the caller doesn't participate in the chain.
+			// ErrForbidden in case the caller is forbidden from pulling the block.
+			// ErrServiceUnavailable in case all orderers reachable cannot complete the request.
+			// ErrRetryCountExhausted in case no orderer is reachable.
+			lastConfigBlock, err := cluster.PullLastConfigBlock(puller)
+			configBlocks := make(chan *common.Block, 1)
+			if err == nil {
+				configBlocks <- lastConfigBlock
+				err = testCase.participantError
+			}
+
+			if testCase.expectedError != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), testCase.expectedError)
+				require.Len(t, configBlocks, 0)
+			} else {
+				require.Len(t, configBlocks, 1)
+				require.Equal(t, testCase.participantError, err)
+			}
+		})
+	}
 }

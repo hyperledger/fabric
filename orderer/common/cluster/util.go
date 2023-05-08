@@ -482,6 +482,20 @@ type VerificationRegistry struct {
 	VerifiersByChannel map[string]protoutil.BlockVerifierFunc
 }
 
+//go:generate mockery --dir . --name ChainPuller --case underscore --output mocks/
+
+// ChainPuller pulls blocks from a chain
+type ChainPuller interface {
+	// PullBlock pulls the given block from some orderer node
+	PullBlock(seq uint64) *common.Block
+
+	// HeightsByEndpoints returns the block heights by endpoints of orderers
+	HeightsByEndpoints() (map[string]uint64, error)
+
+	// Close closes the ChainPuller
+	Close()
+}
+
 // RegisterVerifier adds a verifier into the registry if applicable.
 func (vr *VerificationRegistry) RegisterVerifier(chain string) {
 	if _, exists := vr.VerifiersByChannel[chain]; exists {
@@ -548,19 +562,6 @@ func BlockToString(block *common.Block) string {
 
 // BlockCommitFunc signals a block commit.
 type BlockCommitFunc func(block *common.Block, channel string)
-
-// LedgerInterceptor intercepts block commits.
-type LedgerInterceptor struct {
-	Channel              string
-	InterceptBlockCommit BlockCommitFunc
-	LedgerWriter
-}
-
-// Append commits a block into the ledger, and also fires the configured callback.
-func (interceptor *LedgerInterceptor) Append(block *common.Block) error {
-	defer interceptor.InterceptBlockCommit(block, interceptor.Channel)
-	return interceptor.LedgerWriter.Append(block)
-}
 
 // BlockVerifierAssembler creates a BlockVerifier out of a config envelope
 type BlockVerifierAssembler struct {
@@ -896,4 +897,48 @@ func verifyBlockSequence(blockBuff []*common.Block, signatureVerifier protoutil.
 	}
 
 	return nil
+}
+
+// PullLastConfigBlock pulls the last configuration block, or returns an error on failure.
+func PullLastConfigBlock(puller ChainPuller) (*common.Block, error) {
+	endpoint, latestHeight, err := LatestHeightAndEndpoint(puller)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint == "" {
+		return nil, ErrRetryCountExhausted
+	}
+	lastBlock := puller.PullBlock(latestHeight - 1)
+	if lastBlock == nil {
+		return nil, ErrRetryCountExhausted
+	}
+	lastConfNumber, err := protoutil.GetLastConfigIndexFromBlock(lastBlock)
+	if err != nil {
+		return nil, err
+	}
+	// The last config block is smaller than the latest height,
+	// and a block iterator on the server side is a sequenced one.
+	// So we need to reset the puller if we wish to pull an earlier block.
+	puller.Close()
+	lastConfigBlock := puller.PullBlock(lastConfNumber)
+	if lastConfigBlock == nil {
+		return nil, ErrRetryCountExhausted
+	}
+	return lastConfigBlock, nil
+}
+
+func LatestHeightAndEndpoint(puller ChainPuller) (string, uint64, error) {
+	var maxHeight uint64
+	var mostUpToDateEndpoint string
+	heightsByEndpoints, err := puller.HeightsByEndpoints()
+	if err != nil {
+		return "", 0, err
+	}
+	for endpoint, height := range heightsByEndpoints {
+		if height >= maxHeight {
+			maxHeight = height
+			mostUpToDateEndpoint = endpoint
+		}
+	}
+	return mostUpToDateEndpoint, maxHeight, nil
 }

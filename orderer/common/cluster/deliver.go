@@ -614,3 +614,14 @@ type errorAndResponse struct {
 	err  error
 	resp *orderer.DeliverResponse
 }
+
+// ErrForbidden denotes that an ordering node refuses sending blocks due to access control.
+var ErrForbidden = errors.New("forbidden pulling the channel")
+
+// ErrServiceUnavailable denotes that an ordering node is not servicing at the moment.
+var ErrServiceUnavailable = errors.New("service unavailable")
+
+// ErrNotInChannel denotes that an ordering node is not in the channel
+var ErrNotInChannel = errors.New("not in the channel")
+
+var ErrRetryCountExhausted = errors.New("retry attempts exhausted")

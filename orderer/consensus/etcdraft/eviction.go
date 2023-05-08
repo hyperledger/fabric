@@ -75,12 +75,15 @@ func (pc *PeriodicCheck) conditionFulfilled() {
 	pc.Report(time.Since(pc.conditionHoldsSince))
 }
 
+// SelfMembershipPredicate determines whether the caller is found in the given config block
+type SelfMembershipPredicate func(configBlock *common.Block) error
+
 type evictionSuspector struct {
 	evictionSuspicionThreshold time.Duration
 	logger                     *flogging.FabricLogger
 	createPuller               CreateBlockPuller
 	height                     func() uint64
-	amIInChannel               cluster.SelfMembershipPredicate
+	amIInChannel               SelfMembershipPredicate
 	halt                       func()
 	writeBlock                 func(block *common.Block) error
 	triggerCatchUp             func(sn *raftpb.Snapshot)
