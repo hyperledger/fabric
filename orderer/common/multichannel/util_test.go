@@ -155,14 +155,6 @@ func makeConfigTxMig(chainID string, i int) *cb.Envelope {
 	})
 }
 
-func wrapConfigTx(env *cb.Envelope) *cb.Envelope {
-	result, err := protoutil.CreateSignedEnvelope(cb.HeaderType_ORDERER_TRANSACTION, "testchannelid", mockCrypto(), env, msgVersion, epoch)
-	if err != nil {
-		panic(err)
-	}
-	return result
-}
-
 func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.ConfigUpdateEnvelope) *cb.Envelope {
 	configUpdateTx, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, chainID, mockCrypto(), configUpdateEnv, msgVersion, epoch)
 	if err != nil {

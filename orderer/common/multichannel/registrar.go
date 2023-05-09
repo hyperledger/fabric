@@ -322,6 +322,8 @@ func (r *Registrar) BroadcastChannelSupport(msg *cb.Envelope) (*cb.ChannelHeader
 		isConfig = true
 	case msgprocessor.ConfigMsg:
 		return chdr, false, nil, errors.New("message is of type that cannot be processed directly")
+	case msgprocessor.UnsupportedMsg:
+		return chdr, false, nil, errors.New("message is of type that is no longer supported")
 	default:
 	}
 
