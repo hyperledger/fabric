@@ -110,8 +110,6 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 	//      description: Bad request.
 	//    '404':
 	//      description: The channel does not exist.
-	//    '405':
-	//      description: The system channel exists, removal is not allowed.
 	//    '409':
 	//      description: The channel is pending removal.
 
@@ -159,13 +157,8 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 	//        type: string
 	//    '400':
 	//      description: Cannot join channel.
-	//    '403':
-	//      description: The client is trying to join the system-channel that does not exist, but application channels exist.
 	//    '405':
-	//      description: |
-	//                   The client is trying to join an app-channel, but the system channel exists.
-	//                   The client is trying to join an app-channel that exists, but the system channel does not.
-	//                   The client is trying to join the system-channel, and it exists.
+	//      description: The client is trying to join an app-channel that exists.
 	//    '409':
 	//      description: The client is trying to join a channel that is currently being removed.
 	//    '500':
