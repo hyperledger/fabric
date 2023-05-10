@@ -39,8 +39,7 @@ import (
 )
 
 func TestInitConfig(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	type args struct {
 		cmdRoot string
@@ -109,9 +108,8 @@ func TestSetBCCSPKeystorePath(t *testing.T) {
 	require.NoError(t, err)
 
 	keystorePath := "/msp/keystore"
-	defer os.Unsetenv("FABRIC_CFG_PATH")
 
-	os.Setenv("FABRIC_CFG_PATH", cfgPath)
+	t.Setenv("FABRIC_CFG_PATH", cfgPath)
 	viper.Reset()
 	err = common.InitConfig("notset")
 	require.NoError(t, err)
@@ -205,8 +203,7 @@ func TestGetDefaultSigner(t *testing.T) {
 }
 
 func TestInitCmd(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 	defer viper.Reset()
 
 	// test that InitCmd doesn't remove existing loggers from the logger levels map
@@ -219,19 +216,16 @@ func TestInitCmd(t *testing.T) {
 	flogging.ActivateSpec("test.test2=warn")
 	require.Equal(t, "warn", flogging.LoggerLevel("test.test2"))
 
-	origEnvValue := os.Getenv("FABRIC_LOGGING_SPEC")
-	os.Setenv("FABRIC_LOGGING_SPEC", "chaincode=debug:test.test2=fatal:abc=error")
+	t.Setenv("FABRIC_LOGGING_SPEC", "chaincode=debug:test.test2=fatal:abc=error")
 	common.InitCmd(&cobra.Command{}, nil)
 	require.Equal(t, "debug", flogging.LoggerLevel("chaincode"))
 	require.Equal(t, "info", flogging.LoggerLevel("test"))
 	require.Equal(t, "fatal", flogging.LoggerLevel("test.test2"))
 	require.Equal(t, "error", flogging.LoggerLevel("abc"))
-	os.Setenv("FABRIC_LOGGING_SPEC", origEnvValue)
 }
 
 func TestInitCmdWithoutInitCrypto(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 	defer viper.Reset()
 
 	peerCmd := &cobra.Command{
@@ -261,7 +255,7 @@ func TestInitCmdWithoutInitCrypto(t *testing.T) {
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)
 	dir := os.TempDir() + "/" + util.GenerateUUID()
-	os.Setenv("CORE_PEER_MSPCONFIGPATH", dir)
+	t.Setenv("CORE_PEER_MSPCONFIGPATH", dir)
 
 	common.InitCmd(packageCmd, nil)
 }

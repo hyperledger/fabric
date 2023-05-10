@@ -87,17 +87,13 @@ func copyYamlFiles(src, dst string) {
 }
 
 func TestInitializeLogging(t *testing.T) {
-	origEnvValue := os.Getenv("FABRIC_LOGGING_SPEC")
-	os.Setenv("FABRIC_LOGGING_SPEC", "foo=debug")
+	t.Setenv("FABRIC_LOGGING_SPEC", "foo=debug")
 	initializeLogging()
 	require.Equal(t, "debug", flogging.LoggerLevel("foo"))
-	os.Setenv("FABRIC_LOGGING_SPEC", origEnvValue)
 }
 
 func TestInitializeProfilingService(t *testing.T) {
-	origEnvValue := os.Getenv("FABRIC_LOGGING_SPEC")
-	defer os.Setenv("FABRIC_LOGGING_SPEC", origEnvValue)
-	os.Setenv("FABRIC_LOGGING_SPEC", "debug")
+	t.Setenv("FABRIC_LOGGING_SPEC", "debug")
 	// get a free random port
 	listenAddr := func() string {
 		l, _ := net.Listen("tcp", "localhost:0")
@@ -327,8 +323,7 @@ func TestInitializeServerConfig(t *testing.T) {
 }
 
 func TestVerifyNoSystemChannelJoinBlock(t *testing.T) {
-	configPathCleanup := configtest.SetDevFabricConfigPath(t)
-	defer configPathCleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	tmpDir := t.TempDir()
 	copyYamlFiles("testdata", tmpDir)
@@ -491,8 +486,7 @@ func TestLoadLocalMSP(t *testing.T) {
 }
 
 func TestInitializeMultichannelRegistrar(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	tmpDir := t.TempDir()
 	copyYamlFiles("testdata", tmpDir)
@@ -562,8 +556,7 @@ func generateCryptoMaterials(t *testing.T, cryptogen, tmpDir string) string {
 }
 
 func TestUpdateTrustedRoots(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	tmpDir := t.TempDir()
 	copyYamlFiles("testdata", tmpDir)

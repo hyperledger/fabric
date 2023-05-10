@@ -32,8 +32,7 @@ func TestEnvSlice(t *testing.T) {
 	}
 
 	envVar := testEnvPrefix + "_INNER_SLICE"
-	os.Setenv(envVar, "[a, b, c]")
-	defer os.Unsetenv(envVar)
+	t.Setenv(envVar, "[a, b, c]")
 
 	data := "---\nInner:\n    Slice: [d,e,f]"
 
@@ -196,8 +195,7 @@ func TestPEMBlocksFromFileEnv(t *testing.T) {
 	require.NoError(t, err, "failed to write temp file")
 
 	envVar := testEnvPrefix + "_INNER_MULTIPLE_FILE"
-	defer os.Unsetenv(envVar)
-	os.Setenv(envVar, file.Name())
+	t.Setenv(envVar, file.Name())
 
 	testCases := []struct {
 		name string
@@ -246,8 +244,7 @@ func TestStringFromFileEnv(t *testing.T) {
 	require.NoError(t, err, "failed to write temp file")
 
 	envVar := testEnvPrefix + "_INNER_SINGLE_FILE"
-	defer os.Unsetenv(envVar)
-	os.Setenv(envVar, file.Name())
+	t.Setenv(envVar, file.Name())
 
 	testCases := []struct {
 		name string
@@ -294,8 +291,7 @@ func TestBCCSPDecodeHookOverride(t *testing.T) {
 	yaml := "---\nBCCSP:\n  Default: default-provider\n  SW:\n    Security: 999\n"
 
 	overrideVar := testEnvPrefix + "_BCCSP_SW_SECURITY"
-	os.Setenv(overrideVar, "1111")
-	defer os.Unsetenv(overrideVar)
+	t.Setenv(overrideVar, "1111")
 
 	config := New()
 	config.SetConfigName(testConfigName)

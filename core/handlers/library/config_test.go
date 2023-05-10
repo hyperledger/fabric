@@ -8,7 +8,6 @@ package library
 
 import (
 	"bytes"
-	"os"
 	"strings"
 	"testing"
 
@@ -80,8 +79,7 @@ peer:
         library:
 `
 
-	os.Setenv("LIBTEST_PEER_HANDLERS_ENDORSERS_ESCC_LIBRARY", "/path/to/foo")
-	defer os.Unsetenv("LIBTEST_PEER_HANDLERS_ENDORSERS_ESCC_LIBRARY")
+	t.Setenv("LIBTEST_PEER_HANDLERS_ENDORSERS_ESCC_LIBRARY", "/path/to/foo")
 
 	defer viper.Reset()
 	viper.SetConfigType("yaml")

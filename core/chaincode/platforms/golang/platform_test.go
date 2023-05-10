@@ -70,8 +70,7 @@ func TestName(t *testing.T) {
 }
 
 func TestValidatePath(t *testing.T) {
-	reset := setupGopath(t, "testdata")
-	defer reset()
+	setupGopath(t, "testdata")
 
 	tests := []struct {
 		path string
@@ -222,8 +221,7 @@ func tarContents(t *testing.T, payload []byte) []string {
 }
 
 func TestGopathDeploymentPayload(t *testing.T) {
-	reset := setupGopath(t, "testdata")
-	defer reset()
+	setupGopath(t, "testdata")
 
 	platform := &Platform{}
 
@@ -295,33 +293,15 @@ func TestModuleDeploymentPayload(t *testing.T) {
 	})
 }
 
-func setupGopath(t *testing.T, path string) func() {
-	initialGopath, gopathSet := os.LookupEnv("GOPATH")
-	initialGo111Module, go111ModuleSet := os.LookupEnv("GO111MODULE")
-
+func setupGopath(t *testing.T, path string) {
 	if path == "" {
 		err := os.Unsetenv("GOPATH")
 		require.NoError(t, err)
 	} else {
 		absPath, err := filepath.Abs(path)
 		require.NoErrorf(t, err, "expected to calculate absolute path from %s", path)
-		err = os.Setenv("GOPATH", absPath)
-		require.NoError(t, err, "failed to set GOPATH")
-		err = os.Setenv("GO111MODULE", "off")
-		require.NoError(t, err, "failed set GO111MODULE")
-	}
-
-	return func() {
-		if !gopathSet {
-			os.Unsetenv("GOPATH")
-		} else {
-			os.Setenv("GOPATH", initialGopath)
-		}
-		if !go111ModuleSet {
-			os.Unsetenv("GO111MODULE")
-		} else {
-			os.Setenv("GO111MODULE", initialGo111Module)
-		}
+		t.Setenv("GOPATH", absPath)
+		t.Setenv("GO111MODULE", "off")
 	}
 }
 
@@ -385,17 +365,8 @@ echo Done!
 	})
 
 	t.Run("GOPROXY and GOSUMDB set", func(t *testing.T) {
-		oldGoproxy, set := os.LookupEnv("GOPROXY")
-		if set {
-			defer os.Setenv("GOPROXY", oldGoproxy)
-		}
-		os.Setenv("GOPROXY", "the-goproxy")
-
-		oldGosumdb, set := os.LookupEnv("GOSUMDB")
-		if set {
-			defer os.Setenv("GOSUMDB", oldGosumdb)
-		}
-		os.Setenv("GOSUMDB", "the-gosumdb")
+		t.Setenv("GOPROXY", "the-goproxy")
+		t.Setenv("GOSUMDB", "the-gosumdb")
 
 		opts, err := platform.DockerBuildOptions("the-path")
 		require.NoError(t, err, "unexpected error from DockerBuildOptions")

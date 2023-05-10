@@ -60,7 +60,7 @@ orderer:
 	_, err = configFile.WriteString(configStr)
 	require.NoError(t, err)
 
-	os.Setenv("FABRIC_CFG_PATH", cfgPath)
+	t.Setenv("FABRIC_CFG_PATH", cfgPath)
 	viper.Reset()
 	_ = common.InitConfig("test")
 	ca, err := tlsgen.NewCA()
@@ -102,8 +102,6 @@ QjUeWEu3crkxMvjq4vYh3LaDREuhRANCAAR+FujNKcGQW/CEpMU6Yp45ye2cbOwJ
 	require.NoError(t, err)
 
 	return cfgPath, func() {
-		err := os.Unsetenv("FABRIC_CFG_PATH")
-		require.NoError(t, err)
 		viper.Reset()
 	}
 }
