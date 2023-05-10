@@ -465,7 +465,7 @@ different chaincode definitions. As a result, both peers have two chaincode
 containers running on their peers. MYCC1 has an endorsement policy of 1 out of 2,
 while MYCC2 has an endorsement policy of 2 out of 2.*
 
-## Migrate to the new Fabric lifecycle
+## Migrate to the v2.x Fabric lifecycle
 
 For information about migrating to the new lifecycle, check out [Considerations for getting to v2.0](./upgrade_to_newest_version.html#chaincode-lifecycle).
 
