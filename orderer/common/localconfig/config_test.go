@@ -16,8 +16,7 @@ import (
 )
 
 func TestLoadGoodConfig(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 	cc := &configCache{}
 	cfg, err := cc.load()
 	require.NoError(t, err)
@@ -27,8 +26,7 @@ func TestLoadGoodConfig(t *testing.T) {
 
 func TestMissingConfigValueOverridden(t *testing.T) {
 	t.Run("when the value is missing and not overridden", func(t *testing.T) {
-		cleanup := configtest.SetDevFabricConfigPath(t)
-		defer cleanup()
+		configtest.SetDevFabricConfigPath(t)
 		cc := &configCache{}
 		cfg, err := cc.load()
 		require.NotNil(t, cfg, "Could not load config")
@@ -37,9 +35,8 @@ func TestMissingConfigValueOverridden(t *testing.T) {
 	})
 
 	t.Run("when the value is missing and is overridden", func(t *testing.T) {
-		os.Setenv("ORDERER_GENERAL_TLS_CLIENTROOTCAS", "msp/tlscacerts/tlsroot.pem")
-		cleanup := configtest.SetDevFabricConfigPath(t)
-		defer cleanup()
+		t.Setenv("ORDERER_GENERAL_TLS_CLIENTROOTCAS", "msp/tlscacerts/tlsroot.pem")
+		configtest.SetDevFabricConfigPath(t)
 		cache := &configCache{}
 		cfg, err := cache.load()
 		require.NotNil(t, cfg, "Could not load config")
@@ -49,14 +46,13 @@ func TestMissingConfigValueOverridden(t *testing.T) {
 }
 
 func TestLoadCached(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	// Load the initial config, update the environment, and load again.
 	// With the caching behavior, the update should not be reflected
 	initial, err := Load()
 	require.NoError(t, err)
-	os.Setenv("ORDERER_GENERAL_KEEPALIVE_SERVERTIMEOUT", "120s")
+	t.Setenv("ORDERER_GENERAL_KEEPALIVE_SERVERTIMEOUT", "120s")
 	updated, err := Load()
 	require.NoError(t, err)
 	require.Equal(t, initial, updated, "expected %#v to equal %#v", updated, initial)
@@ -70,10 +66,7 @@ func TestLoadCached(t *testing.T) {
 }
 
 func TestLoadMissingConfigFile(t *testing.T) {
-	envVar1 := "FABRIC_CFG_PATH"
-	envVal1 := "invalid fabric cfg path"
-	os.Setenv(envVar1, envVal1)
-	defer os.Unsetenv(envVar1)
+	t.Setenv("FABRIC_CFG_PATH", "invalid fabric cfg path")
 
 	cc := &configCache{}
 	cfg, err := cc.load()
@@ -90,10 +83,7 @@ func TestLoadMalformedConfigFile(t *testing.T) {
 	f.WriteString("General: 42")
 	require.NoError(t, f.Close(), "Error closing file")
 
-	envVar1 := "FABRIC_CFG_PATH"
-	envVal1 := name
-	os.Setenv(envVar1, envVal1)
-	defer os.Unsetenv(envVar1)
+	t.Setenv("FABRIC_CFG_PATH", name)
 
 	cc := &configCache{}
 	cfg, err := cc.load()
@@ -110,12 +100,9 @@ func TestEnvInnerVar(t *testing.T) {
 	envVal1 := uint16(80)
 	envVar2 := "ORDERER_GENERAL_KEEPALIVE_SERVERTIMEOUT"
 	envVal2 := "42s"
-	os.Setenv(envVar1, fmt.Sprintf("%d", envVal1))
-	os.Setenv(envVar2, envVal2)
-	defer os.Unsetenv(envVar1)
-	defer os.Unsetenv(envVar2)
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	t.Setenv(envVar1, fmt.Sprintf("%d", envVal1))
+	t.Setenv(envVar2, envVal2)
+	configtest.SetDevFabricConfigPath(t)
 
 	cc := &configCache{}
 	config, err := cc.load()
@@ -172,8 +159,7 @@ func TestAdminTLSConfig(t *testing.T) {
 }
 
 func TestClusterDefaults(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	cc := &configCache{}
 	cfg, err := cc.load()
@@ -196,10 +182,7 @@ Consensus:
 	f.WriteString(content)
 	require.NoError(t, f.Close(), "Error closing file")
 
-	envVar1 := "FABRIC_CFG_PATH"
-	envVal1 := name
-	os.Setenv(envVar1, envVal1)
-	defer os.Unsetenv(envVar1)
+	t.Setenv("FABRIC_CFG_PATH", name)
 
 	cc := &configCache{}
 	conf, err := cc.load()
@@ -223,8 +206,7 @@ Consensus:
 
 func TestConnectionTimeout(t *testing.T) {
 	t.Run("without connection timeout overridden", func(t *testing.T) {
-		cleanup := configtest.SetDevFabricConfigPath(t)
-		defer cleanup()
+		configtest.SetDevFabricConfigPath(t)
 		cc := &configCache{}
 		cfg, err := cc.load()
 		require.NotNil(t, cfg, "Could not load config")
@@ -233,10 +215,8 @@ func TestConnectionTimeout(t *testing.T) {
 	})
 
 	t.Run("with connection timeout overridden", func(t *testing.T) {
-		os.Setenv("ORDERER_GENERAL_CONNECTIONTIMEOUT", "10s")
-		defer os.Unsetenv("ORDERER_GENERAL_CONNECTIONTIMEOUT")
-		cleanup := configtest.SetDevFabricConfigPath(t)
-		defer cleanup()
+		t.Setenv("ORDERER_GENERAL_CONNECTIONTIMEOUT", "10s")
+		configtest.SetDevFabricConfigPath(t)
 
 		cc := &configCache{}
 		cfg, err := cc.load()
@@ -247,8 +227,7 @@ func TestConnectionTimeout(t *testing.T) {
 }
 
 func TestChannelParticipationDefaults(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	cc := &configCache{}
 	cfg, err := cc.load()

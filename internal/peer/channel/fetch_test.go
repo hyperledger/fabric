@@ -27,8 +27,7 @@ func TestFetch(t *testing.T) {
 	defer resetFlags()
 	InitMSP()
 	resetFlags()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchain := "mockchain"
 
@@ -111,8 +110,7 @@ func TestFetchNilCF(t *testing.T) {
 
 	InitMSP()
 	resetFlags()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchain := "mockchain"
 	viper.Set("peer.client.connTimeout", 10*time.Millisecond)

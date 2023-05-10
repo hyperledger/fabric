@@ -153,8 +153,7 @@ func TestCreateChain(t *testing.T) {
 	defer resetFlags()
 
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchain := "mockchain"
 
@@ -194,8 +193,7 @@ func TestCreateChainWithOutputBlock(t *testing.T) {
 	defer resetFlags()
 
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchain := "mockchain"
 
@@ -231,8 +229,7 @@ func TestCreateChainWithDefaultAnchorPeers(t *testing.T) {
 	defer resetFlags()
 
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchain := "mockchain"
 
@@ -264,8 +261,7 @@ func TestCreateChainWithWaitSuccess(t *testing.T) {
 	defer resetFlags()
 
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchain := "mockchain"
 
@@ -298,8 +294,7 @@ func TestCreateChainWithTimeoutErr(t *testing.T) {
 	defer resetFlags()
 
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchain := "mockchain"
 
@@ -345,8 +340,7 @@ func TestCreateChainBCFail(t *testing.T) {
 	defer resetFlags()
 
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchain := "mockchain"
 
@@ -385,8 +379,7 @@ func TestCreateChainDeliverFail(t *testing.T) {
 	defer resetFlags()
 
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchain := "mockchain"
 
@@ -449,8 +442,7 @@ func createTxFile(filename string, typ cb.HeaderType, channelID string) (*cb.Env
 func TestCreateChainFromTx(t *testing.T) {
 	defer resetFlags()
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchannel := "mockchannel"
 	dir := t.TempDir()
@@ -507,8 +499,7 @@ func TestCreateChainInvalidTx(t *testing.T) {
 	defer resetFlags()
 
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchannel := "mockchannel"
 
@@ -578,8 +569,7 @@ func TestCreateChainNilCF(t *testing.T) {
 	defer resetFlags()
 
 	InitMSP()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	mockchannel := "mockchannel"
 	dir := t.TempDir()

@@ -31,12 +31,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestNewWithEnvironment(t *testing.T) {
-	oldSpec, set := os.LookupEnv("FABRIC_LOGGING_SPEC")
-	if set {
-		defer os.Setenv("FABRIC_LOGGING_SPEC", oldSpec)
-	}
-
-	os.Setenv("FABRIC_LOGGING_SPEC", "fatal")
+	t.Setenv("FABRIC_LOGGING_SPEC", "fatal")
 	logging, err := flogging.New(flogging.Config{})
 	require.NoError(t, err)
 	require.Equal(t, zapcore.FatalLevel, logging.DefaultLevel())

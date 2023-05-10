@@ -155,8 +155,7 @@ func TestConfigTxFlags(t *testing.T) {
 		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	}()
 
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 	devConfigDir := configtest.GetDevConfigDir()
 
 	os.Args = []string{
@@ -193,8 +192,7 @@ func TestBlockFlags(t *testing.T) {
 		"-outputBlock=" + blockDest,
 		"-inspectBlock=" + blockDest,
 	}
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	main()
 

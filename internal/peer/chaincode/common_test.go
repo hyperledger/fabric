@@ -344,8 +344,7 @@ func TestValidatePeerConnectionParams(t *testing.T) {
 	defer resetFlags()
 	defer viper.Reset()
 	require := require.New(t)
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	// TLS disabled
 	viper.Set("peer.tls.enabled", false)
