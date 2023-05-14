@@ -26,7 +26,7 @@ func TestNewEtcdRaftConsenter(t *testing.T) {
 	dialer := &cluster.PredicateDialer{}
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
-	consenter := etcdraft.New(
+	consenter, metrics := etcdraft.New(
 		dialer,
 		&localconfig.TopLevel{},
 		comm.ServerConfig{
@@ -48,6 +48,7 @@ func TestNewEtcdRaftConsenter(t *testing.T) {
 	require.NotNil(t, consenter.ChainSelector)
 	require.NotNil(t, consenter.Dispatcher)
 	require.NotNil(t, consenter.Logger)
+	require.NotNil(t, metrics)
 }
 
 func TestNewEtcdRaftConsenterNoSystemChannel(t *testing.T) {
@@ -57,7 +58,7 @@ func TestNewEtcdRaftConsenterNoSystemChannel(t *testing.T) {
 	dialer := &cluster.PredicateDialer{}
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
-	consenter := etcdraft.New(
+	consenter, metrics := etcdraft.New(
 		dialer,
 		&localconfig.TopLevel{},
 		comm.ServerConfig{
@@ -79,4 +80,5 @@ func TestNewEtcdRaftConsenterNoSystemChannel(t *testing.T) {
 	require.NotNil(t, consenter.ChainSelector)
 	require.NotNil(t, consenter.Dispatcher)
 	require.NotNil(t, consenter.Logger)
+	require.NotNil(t, metrics)
 }

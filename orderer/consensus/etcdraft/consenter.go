@@ -305,7 +305,7 @@ func New(
 	registrar ChainManager,
 	metricsProvider metrics.Provider,
 	bccsp bccsp.BCCSP,
-) *Consenter {
+) (*Consenter, *cluster.Metrics) {
 	logger := flogging.MustGetLogger("orderer.consensus.etcdraft")
 
 	var cfg Config
@@ -343,7 +343,7 @@ func New(
 	}
 	orderer.RegisterClusterServer(srv.Server(), svc)
 
-	return consenter
+	return consenter, comm.Metrics
 }
 
 func createComm(clusterDialer *cluster.PredicateDialer, c *Consenter, config localconfig.Cluster, p metrics.Provider) *cluster.Comm {
