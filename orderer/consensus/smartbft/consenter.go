@@ -74,15 +74,14 @@ func New(
 	signerSerializer SignerSerializer,
 	clusterDialer *cluster.PredicateDialer,
 	conf *localconfig.TopLevel,
-	srvConf comm.ServerConfig,
+	srvConf comm.ServerConfig, // TODO why is this not used?
 	srv *comm.GRPCServer,
 	r *multichannel.Registrar,
 	metricsProvider metrics.Provider,
+	clusterMetrics *cluster.Metrics,
 	BCCSP bccsp.BCCSP,
 ) *Consenter {
 	logger := flogging.MustGetLogger("orderer.consensus.smartbft")
-
-	metrics := cluster.NewMetrics(metricsProvider)
 
 	var walConfig WALConfig
 	err := mapstructure.Decode(conf.Consensus, &walConfig)
@@ -116,7 +115,7 @@ func New(
 
 	consenter.Comm = &cluster.AuthCommMgr{
 		Logger:         flogging.MustGetLogger("orderer.common.cluster"),
-		Metrics:        metrics,
+		Metrics:        clusterMetrics,
 		SendBufferSize: conf.General.Cluster.SendBufferSize,
 		Chan2Members:   make(cluster.MembersByChannel),
 		Connections:    cluster.NewConnectionMgr(clusterDialer.Config),
@@ -126,7 +125,7 @@ func New(
 
 	consenter.ClusterService = &cluster.ClusterService{
 		StreamCountReporter: &cluster.StreamCountReporter{
-			Metrics: metrics,
+			Metrics: clusterMetrics,
 		},
 		Logger:                           flogging.MustGetLogger("orderer.common.cluster"),
 		StepLogger:                       flogging.MustGetLogger("orderer.common.cluster.step"),

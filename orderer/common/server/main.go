@@ -46,7 +46,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/mitchellh/mapstructure"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -602,24 +601,11 @@ func initializeMultichannelRegistrar(
 	registrar := multichannel.NewRegistrar(*conf, lf, signer, metricsProvider, bccsp, clusterDialer, callbacks...)
 
 	consenters := map[string]consensus.Consenter{}
-	consenterType := "etcdraft"
-
-	// TODO this can be removed, both consenter types can be created
-	// load consensus type from orderer config
-	var consensusConfig localconfig.Consensus
-	if err := mapstructure.Decode(conf.Consensus, &consensusConfig); err == nil && consensusConfig.Type != "" {
-		consenterType = consensusConfig.Type
-	}
 
 	// the orderer can start without channels at all and have an initialized cluster type consenter
-	switch consenterType {
-	case "etcdraft":
-		consenters["etcdraft"] = etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, metricsProvider, bccsp)
-	case "BFT":
-		consenters["BFT"] = smartbft.New(dpmr.Registry(), signer, clusterDialer, conf, srvConf, srv, registrar, metricsProvider, bccsp)
-	default:
-		logger.Panicf("Unknown cluster type consenter '%s'", consenterType)
-	}
+	etcdraftConsenter, clusterMetrics := etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, metricsProvider, bccsp)
+	consenters["etcdraft"] = etcdraftConsenter
+	consenters["BFT"] = smartbft.New(dpmr.Registry(), signer, clusterDialer, conf, srvConf, srv, registrar, metricsProvider, clusterMetrics, bccsp)
 
 	registrar.Initialize(consenters)
 	return registrar
