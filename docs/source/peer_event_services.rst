@@ -4,20 +4,21 @@ Peer channel-based event services
 General overview
 ----------------
 
-In previous versions of Fabric, the peer event service was known as the event
-hub. This service sent events any time a new block was added to the peer's
-ledger, regardless of the channel to which that block pertained, and it was only
-accessible to members of the organization running the eventing peer (i.e., the
-one being connected to for events).
+The peer's event service allows client applications to receive block events as blocks are committed to a peer's ledger.
+Client applications can also request block events starting from a certain block number,
+allowing client applications to receive prior block events or to resume receiving events
+in case the application or the peer has been restarted or lost connection.
 
-Starting with v1.1, there are new services which provide events. These services use an
-entirely different design to provide events on a per-channel basis. This means
-that registration for events occurs at the level of the channel instead of the peer,
-allowing for fine-grained control over access to the peer's data. Requests to
-receive events are accepted from identities outside of the peer's organization (as
-defined by the channel configuration). This also provides greater reliability and a
-way to receive events that may have been missed (whether due to a connectivity issue
-or because the peer is joining a network that has already been running).
+Requests to receive events are accepted from client identities of the same organization
+and also outside of the peer's organization (as defined by the channel configuration).
+
+Several different types of block events are available from a peer depending on the service requested.
+Block events also include any chaincode events from the transactions within the block.
+Each transaction may have a single chaincode event, which can be emitted by the called chaincode.
+
+This topic describes the low-level peer event services for block events.
+Fabric client SDKs utilize the peer event services and make block events and chaincode events
+available to client applications through higher level applications APIs.
 
 Available services
 ------------------
@@ -26,7 +27,7 @@ Available services
 
 This service sends entire blocks that have been committed to the ledger. If
 any events were set by a chaincode, these can be found within the
-``ChaincodeActionPayload`` of the block.
+``ChaincodeActionPayload`` of each transaction within the block.
 
 * ``DeliverWithPrivateData``
 
@@ -41,7 +42,7 @@ that have been committed to the ledger. It is intended to be used in a network
 where owners of the peers wish for external clients to primarily receive
 information about their transactions and the status of those transactions. If
 any events were set by a chaincode, these can be found within the
-``FilteredChaincodeAction`` of the filtered block.
+``FilteredChaincodeAction`` of each transaction within the block.
 
 .. note:: The payload of chaincode events will not be included in filtered blocks.
 
@@ -95,7 +96,7 @@ Application API documentation
 -----------------------------
 
 The Fabric Gateway application API allows client applications to receive
-chaincode events emitted by successfully committed transactions. These events
+block events from all committed blocks and chaincode events emitted by successfully committed transactions. These events
 can be used to trigger external business processes in response to ledger
 updates. For further details, refer to the API documentation:
 
