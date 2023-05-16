@@ -72,7 +72,7 @@ var _ = Describe("InstantiationPolicy", func() {
 
 	Describe("single node etcdraft network with single peer", func() {
 		BeforeEach(func() {
-			config := nwo.MinimalRaftNoSysChan()
+			config := nwo.MinimalRaft()
 			config.Profiles[0].Organizations = []string{"Org1", "Org2"}
 			network = nwo.New(config, testDir, client, StartPort(), components)
 			network.GenerateConfigTree()

@@ -44,7 +44,7 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), tempDir, client, StartPort(), components)
+		network = nwo.New(nwo.BasicEtcdRaft(), tempDir, client, StartPort(), components)
 	})
 
 	AfterEach(func() {

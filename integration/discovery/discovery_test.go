@@ -57,7 +57,7 @@ var _ = Describe("DiscoveryService", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		config = nwo.BasicEtcdRaftNoSysChan()
+		config = nwo.BasicEtcdRaft()
 		Expect(config.Peers).To(HaveLen(2))
 	})
 

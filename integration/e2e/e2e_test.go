@@ -99,7 +99,7 @@ var _ = Describe("EndToEnd", func() {
 			metricsReader = NewMetricsReader()
 			go metricsReader.Start()
 
-			network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), testDir, nil, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, nil, StartPort(), components)
 			network.MetricsProvider = "statsd"
 			network.StatsdEndpoint = metricsReader.Address()
 			network.Channels = append(network.Channels, &nwo.Channel{
@@ -276,7 +276,7 @@ var _ = Describe("EndToEnd", func() {
 
 	Describe("basic etcdraft network with docker chaincode builds", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
 			network.MetricsProvider = "prometheus"
 			network.GenerateConfigTree()
 			network.Bootstrap()
@@ -410,7 +410,7 @@ var _ = Describe("EndToEnd", func() {
 		)
 
 		BeforeEach(func() {
-			network = nwo.New(nwo.MultiChannelEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.MultiChannelEtcdRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			for _, peer := range network.Peers {
 				core := network.ReadPeerConfig(peer)
@@ -505,7 +505,7 @@ var _ = Describe("EndToEnd", func() {
 
 	Describe("single node etcdraft network with remapped orderer endpoints", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.MinimalRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.MinimalRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 
 			configtxConfig := network.ReadConfigTxConfig()
@@ -543,7 +543,7 @@ var _ = Describe("EndToEnd", func() {
 
 	Describe("basic etcdraft network with containers being interrupted", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.FullEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.FullEtcdRaft(), testDir, client, StartPort(), components)
 
 			network.GenerateConfigTree()
 			network.Bootstrap()
@@ -633,7 +633,7 @@ var _ = Describe("EndToEnd", func() {
 
 	Describe("basic lifecycle operations for chaincode install and update", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
 
 			network.GenerateConfigTree()
 			network.Bootstrap()

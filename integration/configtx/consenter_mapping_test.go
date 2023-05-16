@@ -24,7 +24,7 @@ var _ = Describe("ConfigTx ConsenterMapping", func() {
 		Expect(err).NotTo(HaveOccurred())
 		defer os.RemoveAll(testDir)
 
-		network := nwo.New(nwo.MultiNodeBFTNoSysChan(), testDir, nil, StartPort(), components)
+		network := nwo.New(nwo.MultiNodeBFT(), testDir, nil, StartPort(), components)
 
 		// Generate config
 		network.GenerateConfigTree()

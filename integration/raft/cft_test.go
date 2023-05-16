@@ -79,7 +79,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 	When("orderer stops and restarts", func() {
 		It("keeps network up and running", func() {
-			network = nwo.New(nwo.MultiNodeEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
 
 			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
 			network.GenerateConfigTree()
@@ -150,7 +150,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			// - kill o2 & o3, so that entries prior to snapshot are not in memory upon restart
 			// - start o1 & o2
 			// - assert that o1 can catch up with o2 using snapshot
-			network = nwo.New(nwo.MultiNodeEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
 			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
 			network.GenerateConfigTree()
 			network.Bootstrap()
@@ -246,7 +246,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 		})
 
 		It("catches up and replicates consenters metadata", func() {
-			network = nwo.New(nwo.MultiNodeEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
 			orderers := []*nwo.Orderer{network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")}
 			peer = network.Peer("Org1", "peer0")
 
@@ -450,7 +450,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 	When("The leader dies", func() {
 		It("Elects a new leader", func() {
-			network = nwo.New(nwo.MultiNodeEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
 
 			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
 
@@ -494,7 +494,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 	When("Leader cannot reach quorum", func() {
 		It("Steps down", func() {
-			network = nwo.New(nwo.MultiNodeEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
 
 			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
 			orderers := []*nwo.Orderer{o1, o2, o3}
@@ -560,7 +560,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 	When("orderer TLS certificates expire", func() {
 		It("is still possible to recover", func() {
-			network = nwo.New(nwo.MultiNodeEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
 
 			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
 			peer = network.Peer("Org1", "peer0")
@@ -815,7 +815,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 		})
 
 		It("disregards certificate renewal if only the validity period changed", func() {
-			config := nwo.MultiNodeEtcdRaftNoSysChan()
+			config := nwo.MultiNodeEtcdRaft()
 			config.Channels = append(config.Channels, &nwo.Channel{Name: "foo", Profile: "TwoOrgsAppChannelEtcdRaft"})
 			config.Channels = append(config.Channels, &nwo.Channel{Name: "bar", Profile: "TwoOrgsAppChannelEtcdRaft"})
 			network = nwo.New(config, testDir, client, StartPort(), components)
@@ -894,7 +894,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 	When("admin certificate expires", func() {
 		It("is still possible to replace them", func() {
-			network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 

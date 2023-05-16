@@ -96,7 +96,7 @@ var _ = Describe("GatewayService basic", func() {
 		client, err := docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		config := nwo.BasicEtcdRaftNoSysChan()
+		config := nwo.BasicEtcdRaft()
 		network = nwo.New(config, testDir, client, StartPort(), components)
 
 		network.GenerateConfigTree()

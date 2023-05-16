@@ -61,7 +61,7 @@ var _ = Describe("EndToEnd", func() {
 		Expect(err).NotTo(HaveOccurred())
 		SetValidationPluginActivationFolder(dir)
 
-		basicEtcdRaftConfig := nwo.BasicEtcdRaftNoSysChan()
+		basicEtcdRaftConfig := nwo.BasicEtcdRaft()
 		Expect(basicEtcdRaftConfig.Peers).To(HaveLen(2))
 
 		// docker client

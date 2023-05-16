@@ -226,16 +226,7 @@ Profiles:{{ range .Profiles }}
         Endorsement:
           Type: ImplicitMeta
           Rule: "MAJORITY Endorsement"
-    {{- if .Consortium }}
     Consortium: {{ .Consortium }}
-    {{- else }}
-    Consortiums:{{ range $w.Consortiums }}
-      {{ .Name }}:
-        Organizations:{{ range .Organizations }}
-        - *{{ ($w.Organization .).MSPID }}
-        {{- end }}
-    {{- end }}
-    {{- end }}
 {{- end }}
 {{ end }}
 `

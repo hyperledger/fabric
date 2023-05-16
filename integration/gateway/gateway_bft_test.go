@@ -49,11 +49,7 @@ var _ = Describe("GatewayService with BFT ordering service", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		networkConfig := nwo.MultiNodeSmartBFT()
-		networkConfig.SystemChannel = nil
 		network = nwo.New(networkConfig, testDir, client, StartPort(), components)
-		network.Consortiums = nil
-		network.Consensus.ChannelParticipationEnabled = true
-		network.Consensus.BootstrapMethod = "none"
 
 		network.GenerateConfigTree()
 		network.Bootstrap()

@@ -525,7 +525,7 @@ func initAndStartFourOrgsNetwork() *setup {
 	client, err := docker.NewClientFromEnv()
 	Expect(err).NotTo(HaveOccurred())
 
-	config := nwo.BasicEtcdRaftNoSysChan()
+	config := nwo.BasicEtcdRaft()
 
 	for _, peer := range config.Peers {
 		peer.Channels = []*nwo.PeerChannel{

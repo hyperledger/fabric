@@ -146,7 +146,7 @@ var _ = Describe("Pvtdata purge", func() {
 
 	When("the purge private data capability is not enabled", func() {
 		BeforeEach(func() {
-			config = nwo.ThreeOrgEtcdRaftNoSysChan()
+			config = nwo.ThreeOrgEtcdRaft()
 			applicationCapabilitiesVersion = "V2_0"
 		})
 
@@ -171,7 +171,7 @@ var _ = Describe("Pvtdata purge", func() {
 
 	When("the purge private data capability is enabled", func() {
 		BeforeEach(func() {
-			config = nwo.ThreeOrgEtcdRaftNoSysChan()
+			config = nwo.ThreeOrgEtcdRaft()
 			config.Profiles[0].Blocks = &nwo.Blocks{
 				BatchTimeout:      1,
 				MaxMessageCount:   30,

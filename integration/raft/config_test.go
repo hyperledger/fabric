@@ -81,7 +81,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 	Describe("three node etcdraft network with 2 orgs", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.MultiNodeEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -147,7 +147,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 	Describe("Invalid Raft config metadata", func() {
 		It("refuses to join orderer to channel", func() {
 			By("Creating malformed genesis block")
-			network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -206,7 +206,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		})
 
 		It("rejects config update", func() {
-			network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -260,7 +260,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				ordererProcesses = append(ordererProcesses, process)
 			}
 
-			network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -463,7 +463,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 	When("a single node cluster has the tick interval overridden", func() {
 		It("reflects this in its startup logs", func() {
-			network = nwo.New(nwo.BasicEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -489,7 +489,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 	When("the orderer certificates are all rotated", func() {
 		It("is possible to rotate certificate by adding & removing cert in single config", func() {
-			layout := nwo.MultiNodeEtcdRaftNoSysChan()
+			layout := nwo.MultiNodeEtcdRaft()
 			network = nwo.New(layout, testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
@@ -649,7 +649,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			// 5  |          6            | removing consenter 3
 			// 6  |          7            | adding consenter 4
 
-			layout := nwo.MultiNodeEtcdRaftNoSysChan()
+			layout := nwo.MultiNodeEtcdRaft()
 			layout.Channels = append(layout.Channels, &nwo.Channel{
 				Name:    "testchannel2",
 				Profile: "TwoOrgsAppChannelEtcdRaft",
@@ -927,7 +927,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 	When("an orderer channel is created with a subset of nodes", func() {
 		It("is still possible to onboard a new orderer to the channel", func() {
-			network = nwo.New(nwo.MultiNodeEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
 			network.Profiles = append(network.Profiles, &nwo.Profile{
 				Name:          "myprofile",
 				Consortium:    "MySampleConsortium",
@@ -1050,7 +1050,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		var o1, o2 *nwo.Orderer
 
 		BeforeEach(func() {
-			network = nwo.New(nwo.MultiNodeEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -1118,7 +1118,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			ordererRunners = nil
 			ordererProcesses = nil
 
-			network = nwo.New(nwo.MultiNodeEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -1494,7 +1494,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				}
 			}
 
-			layout := nwo.MultiNodeEtcdRaftNoSysChan()
+			layout := nwo.MultiNodeEtcdRaft()
 			layout.Orderers = orderers[:4]
 			layout.Profiles[0].Orderers = []string{"orderer1", "orderer2", "orderer3", "orderer4"}
 
@@ -1628,7 +1628,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 	})
 
 	It("can create a channel that contains a subset of orderers in another channel", func() {
-		config := nwo.BasicEtcdRaftNoSysChan()
+		config := nwo.BasicEtcdRaft()
 		config.Orderers = []*nwo.Orderer{
 			{Name: "orderer1", Organization: "OrdererOrg"},
 			{Name: "orderer2", Organization: "OrdererOrg"},
@@ -1686,7 +1686,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 	})
 
 	It("can add a new orderer organization", func() {
-		network = nwo.New(nwo.MultiNodeEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+		network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
 		o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
 		orderers := []*nwo.Orderer{o1, o2, o3}
 

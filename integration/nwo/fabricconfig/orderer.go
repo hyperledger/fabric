@@ -31,9 +31,6 @@ type General struct {
 	TLS             *OrdererTLS            `yaml:"TLS,omitempty"`
 	Keepalive       *OrdererKeepalive      `yaml:"Keepalive,omitempty"`
 	BootstrapMethod string                 `yaml:"BootstrapMethod,omitempty"`
-	GenesisProfile  string                 `yaml:"GenesisProfile,omitempty"`
-	GenesisFile     string                 `yaml:"GenesisFile,omitempty"` // will be replaced by the BootstrapFile
-	BootstrapFile   string                 `yaml:"BootstrapFile,omitempty"`
 	LocalMSPDir     string                 `yaml:"LocalMSPDir,omitempty"`
 	LocalMSPID      string                 `yaml:"LocalMSPID,omitempty"`
 	Profile         *OrdererProfile        `yaml:"Profile,omitempty"`

@@ -45,7 +45,7 @@ var _ = Describe("ConfigTx", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		config := nwo.BasicEtcdRaftNoSysChan()
+		config := nwo.BasicEtcdRaft()
 		// disable all anchor peers
 		for _, p := range config.Peers {
 			for _, pc := range p.Channels {

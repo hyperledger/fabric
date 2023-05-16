@@ -70,26 +70,9 @@ type CA struct {
 	Hostname string `yaml:"hostname,omitempty"`
 }
 
-// A Consortium is a named collection of Organizations. It is used to populate
-// the Orderer geneesis block profile.
-type Consortium struct {
-	Name          string   `yaml:"name,omitempty"`
-	Organizations []string `yaml:"organizations,omitempty"`
-}
-
 // Consensus indicates the orderer types.
 type Consensus struct {
-	Type                        string `yaml:"type,omitempty"`
-	BootstrapMethod             string `yaml:"bootstrap_method,omitempty"`
-	ChannelParticipationEnabled bool   `yaml:"channel_participation_enabled,omitempty"`
-}
-
-// The SystemChannel declares the name of the network system channel and its
-// associated configtxgen profile name.
-// Deprecated: will be removed soon
-type SystemChannel struct {
-	Name    string `yaml:"name,omitempty"`
-	Profile string `yaml:"profile,omitempty"`
+	Type string `yaml:"type,omitempty"`
 }
 
 // Channel associates a channel name with a configtxgen profile name.
@@ -172,16 +155,12 @@ type Network struct {
 	PortsByOrdererID map[string]Ports
 	PortsByPeerID    map[string]Ports
 	Organizations    []*Organization
-	// Deprecated: will soon be removed
-	SystemChannel *SystemChannel
-	Channels      []*Channel
-	Consensus     *Consensus
-	Orderers      []*Orderer
-	Peers         []*Peer
-	Profiles      []*Profile
-	// Deprecated: will soon be removed
-	Consortiums []*Consortium
-	Templates   *Templates
+	Channels         []*Channel
+	Consensus        *Consensus
+	Orderers         []*Orderer
+	Peers            []*Peer
+	Profiles         []*Profile
+	Templates        *Templates
 
 	mutex        sync.Locker
 	colorIndex   uint
@@ -208,10 +187,8 @@ func New(c *Config, rootDir string, dockerClient *docker.Client, startPort int, 
 		Consensus:      c.Consensus,
 		Orderers:       c.Orderers,
 		Peers:          c.Peers,
-		SystemChannel:  c.SystemChannel,
 		Channels:       c.Channels,
 		Profiles:       c.Profiles,
-		Consortiums:    c.Consortiums,
 		Templates:      c.Templates,
 		TLSEnabled:     true, // Set TLS enabled as true for default
 		GatewayEnabled: true, // Set Gateway enabled as true for default
@@ -290,9 +267,6 @@ func (n *Network) AddOrg(o *Organization, peers ...*Peer) {
 	}
 
 	n.Organizations = append(n.Organizations, o)
-	if n.Consortiums != nil {
-		n.Consortiums[0].Organizations = append(n.Consortiums[0].Organizations, o.Name)
-	}
 }
 
 // ConfigTxPath returns the path to the generated configtxgen configuration
@@ -770,17 +744,15 @@ func (n *Network) GenerateConfigTree() {
 	}
 }
 
-// Bootstrap generates the cryptographic material, orderer system channel
-// genesis block, and create channel transactions needed to run a fabric
-// network.
+// Bootstrap generates the cryptographic material and create application channels genesis blocks
+// needed to run a fabric network.
 //
 // The cryptogen tool is used to create crypto material from the contents of
 // ${rootDir}/crypto-config.yaml. The generated artifacts will be placed in
 // ${rootDir}/crypto/...
 //
-// The gensis block is generated from the profile referenced by the
-// SystemChannel.Profile attribute. The block is written to
-// ${rootDir}/${SystemChannel.Name}_block.pb.
+// The genesis block is generated from the profile referenced by the channel's Profile attribute.
+// The block is written to ${rootDir}/${Channel.Name}_block.pb.
 //
 // The create channel transactions are generated for each Channel referenced by
 // the Network using the channel's Profile attribute. The transactions are
@@ -798,32 +770,6 @@ func (n *Network) Bootstrap() {
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
 	n.bootstrapIdemix()
-
-	if n.SystemChannel != nil { // TODO this entire block could be removed once we finish using the system channel
-		sess, err = n.ConfigTxGen(commands.OutputBlock{
-			ChannelID:   n.SystemChannel.Name,
-			Profile:     n.SystemChannel.Profile,
-			ConfigPath:  n.RootDir,
-			OutputBlock: n.OutputBlockPath(n.SystemChannel.Name),
-		})
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-
-		for _, c := range n.Channels {
-			sess, err := n.ConfigTxGen(commands.CreateChannelTx{
-				ChannelID:             c.Name,
-				Profile:               c.Profile,
-				BaseProfile:           c.BaseProfile,
-				ConfigPath:            n.RootDir,
-				OutputCreateChannelTx: n.CreateChannelTxPath(c.Name),
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-		}
-
-		n.ConcatenateTLSCACertificates()
-		return
-	}
 
 	for _, c := range n.Channels {
 		sess, err := n.ConfigTxGen(commands.OutputBlock{
@@ -1576,16 +1522,6 @@ func (n *Network) Organization(orgName string) *Organization {
 	return nil
 }
 
-// Consortium returns information about the named Consortium.
-func (n *Network) Consortium(name string) *Consortium {
-	for _, c := range n.Consortiums {
-		if c.Name == name {
-			return c
-		}
-	}
-	return nil
-}
-
 // PeerOrgs returns all Organizations associated with at least one Peer.
 func (n *Network) PeerOrgs() []*Organization {
 	orgsByName := map[string]*Organization{}
@@ -1836,7 +1772,7 @@ func commandFingerprint(cmd *exec.Cmd) string {
 	_, err = buf.WriteString(cmd.Path)
 	Expect(err).NotTo(HaveOccurred())
 
-	// sort the environment since it's not positional
+	// sort the environment since it's not positional.
 	env := append([]string(nil), cmd.Env...)
 	sort.Strings(env)
 	for _, e := range env {

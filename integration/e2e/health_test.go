@@ -41,7 +41,7 @@ var _ = Describe("Health", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		config := nwo.BasicEtcdRaftNoSysChan()
+		config := nwo.BasicEtcdRaft()
 		network = nwo.New(config, testDir, client, StartPort(), components)
 		network.GenerateConfigTree()
 		network.Bootstrap()

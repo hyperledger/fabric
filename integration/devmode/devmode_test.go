@@ -308,9 +308,7 @@ var devModeEtcdraft = &nwo.Config{
 		CA:            &nwo.CA{Hostname: "ca"},
 	}},
 	Consensus: &nwo.Consensus{
-		Type:                        "etcdraft",
-		BootstrapMethod:             "none",
-		ChannelParticipationEnabled: true,
+		Type: "etcdraft",
 	},
 	Orderers: []*nwo.Orderer{
 		{Name: "orderer", Organization: "OrdererOrg"},
