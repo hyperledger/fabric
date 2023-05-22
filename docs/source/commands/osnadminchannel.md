@@ -11,10 +11,6 @@ orderer has joined, and removing a channel. The channel participation API must
 be enabled and the Admin endpoint must be configured in the `orderer.yaml` for
 each orderer.
 
-*Note: For a network using a system channel, `list` (for all channels) and
-`remove` (for the system channel) are the only supported operations. Any other
-attempted operation will return an error.
-
 ## Syntax
 
 The `osnadmin channel` command has the following subcommands:
@@ -171,8 +167,8 @@ Here's an example of the `osnadmin channel join` command.
 
 Here are some examples of the `osnadmin channel list` command.
 
-* Listing all the channels that the orderer has joined. This includes the
-  system channel (if one exists) and all of the application channels.
+* Listing all the channels that the orderer has joined. 
+Note that the system channel will always be NULL because it is no longer supported from release v3.0 onwards.
 
   ```
   osnadmin channel list -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY

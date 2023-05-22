@@ -429,7 +429,7 @@ Restart the peer.
 
 For orderer enrollment certificates you can also use the `enroll` or `reenroll` function, using the steps described above for peers.
 
-Orderer TLS certificates must be reenrolled with the option to reuse the private key. This is due to the orderer TLS certificates being configured in the system and application channels (orderer to orderer communication is verified using the public key in the configured TLS certificate). As of v1.4.9 and v2.2.1, orderer nodes verify a matching key rather than the entire configured TLS certificate, enabling orderer TLS certificate renewal without requiring a channel configuration update to update the certificate.
+Orderer TLS certificates must be reenrolled with the option to reuse the private key. This is due to the orderer TLS certificates being configured in the application channel (orderer to orderer communication is verified using the public key in the configured TLS certificate). As of v1.4.9 and v2.2.1, orderer nodes verify a matching key rather than the entire configured TLS certificate, enabling orderer TLS certificate renewal without requiring a channel configuration update to update the certificate.
 
 Use `reenroll` and reuse the TLS certificate's private key by passing the `csr.keyrequest.reusekey` option and indicating the `mspdir` location of the existing private key (the private key is found in the `<mspdir>/keystore` directory):
 
@@ -447,7 +447,7 @@ Restart the orderer node.
 
 ### Renew Orderer TLS Certificates Without Reusing the Private Key
 
-While it is recommended to reuse the private key for orderer TLS certificate renewal, this may not be possible in all situations. Additional steps and planning are required since each ordering service channel (including the system channel, if used) must be updated for the new orderer TLS certificate.
+While it is recommended to reuse the private key for orderer TLS certificate renewal, this may not be possible in all situations. Additional steps and planning are required since each ordering service channel must be updated for the new orderer TLS certificate.
 
 Suppose you do not reuse the orderer TLS private key during re-enrollment, and the original orderer TLS certificates have not yet expired. In that case, you must update the orderer TLS certificates one at a time on each node and in each channel configuration and then verify the orderer function before moving on to other orderer node TLS certificate updates.
 

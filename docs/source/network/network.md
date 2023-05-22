@@ -4,8 +4,6 @@ This topic will describe, **at a conceptual level**, how Hyperledger Fabric allo
 
 After reading this topic and understanding the concept of policies, you will have a solid understanding of the decisions that organizations need to make to establish the policies that control a deployed Hyperledger Fabric network. You'll also understand how organizations manage network evolution using declarative policies -- a key feature of Hyperledger Fabric. In a nutshell, you'll understand the major technical components of Hyperledger Fabric and the decisions organizations need to make about them.
 
-Note: in this topic, we'll refer to the structure of a network that does not have a "system channel", a channel run by the ordering service that ordering nodes are bootstrapped with. For a version of this topic that does use the system channel, check out [Blockchain network](https://hyperledger-fabric.readthedocs.io/en/release-2.2/network/network.html).
-
 ## What is a blockchain network?
 
 A blockchain network is a technical infrastructure that provides ledger and smart contract (which are packaged as part of a "chaincode") services to applications. Primarily, smart contracts are used to generate transactions which are subsequently distributed to every peer node in the network where they are immutably recorded on their copy of the ledger. The users of applications might be end users using client applications or blockchain network administrators.

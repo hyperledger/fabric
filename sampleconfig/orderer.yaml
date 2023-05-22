@@ -94,7 +94,7 @@ General:
     # system channel is specified. The option can be one of:
     #   "file" - path to a file containing the genesis block or config block of system channel
     #   "none" - allows an orderer to start without a system channel configuration
-    BootstrapMethod: file
+    BootstrapMethod: none
 
     # Bootstrap file: The file containing the bootstrap block to use when
     # initializing the orderer system channel and BootstrapMethod is set to

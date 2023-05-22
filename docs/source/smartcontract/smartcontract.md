@@ -181,9 +181,7 @@ Hyperledger Fabric to better model these types of real-world interactions.
 Finally, endorsement policies are just one example of
 [policy](../access_control.html#policies) in Hyperledger Fabric. Other policies
 can be defined to identify who can query or update the ledger, or add or remove
-participants from the network. In general, policies should be agreed in advance
-by the consortium of organizations in a blockchain network, although they are
-not set in stone. Indeed, policies themselves can define the rules by which they
+participants from the network. Indeed, policies themselves can define the rules by which they
 can be changed. And although an advanced topic, it is also possible to define
 [custom endorsement policy](../pluggable_endorsement_and_validation.html) rules
 over and above those provided by Fabric.

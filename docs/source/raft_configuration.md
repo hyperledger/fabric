@@ -2,8 +2,6 @@
 
 **Audience**: *Raft ordering node admins*
 
-Note: this topic describes the process for configuring a Raft ordering service that has not been bootstrapped with a system channel genesis block. For a version of this topic that includes information about the system channel, check out [Configuring and operating a Raft ordering service](https://hyperledger-fabric.readthedocs.io/en/release-2.2/raft_configuration.html).
-
 ## Conceptual overview
 
 For a high level overview of the concept of ordering and how the supported
