@@ -13,6 +13,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -24,12 +25,14 @@ import (
 	"github.com/hyperledger/fabric-config/configtx"
 	"github.com/hyperledger/fabric-config/configtx/orderer"
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/integration/channelparticipation"
 	conftx "github.com/hyperledger/fabric/integration/configtx"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/ordererclient"
+	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -321,6 +324,9 @@ var _ = Describe("ChannelParticipation", func() {
 
 			By("attempting to join a channel that already exists")
 			channelparticipationJoinFailure(network, orderer3, "participation-trophy", genesisBlock, http.StatusMethodNotAllowed, "cannot join: channel already exists")
+
+			By("attempting to join a channel that defines a system channel")
+			channelparticipationJoinFailure(network, orderer3, "nice-try", createJoinBlockDefineSystemChannel("nice-try"), http.StatusBadRequest, "invalid join block: invalid config: contains consortiums: system channel not supported")
 		})
 
 		It("joins application channels with join-block as consenter via channel participation api", func() {
@@ -1108,4 +1114,49 @@ func multiNodeEtcdRaftTwoChannels() *nwo.Config {
 	}
 
 	return config
+}
+
+func createJoinBlockDefineSystemChannel(channelID string) *common.Block {
+	return &common.Block{
+		Data: &common.BlockData{
+			Data: [][]byte{
+				protoutil.MarshalOrPanic(&common.Envelope{
+					Payload: protoutil.MarshalOrPanic(&common.Payload{
+						Data: protoutil.MarshalOrPanic(&common.ConfigEnvelope{
+							Config: &common.Config{
+								ChannelGroup: &common.ConfigGroup{
+									Groups: map[string]*common.ConfigGroup{
+										"Consortiums": {},
+									},
+									Values: map[string]*common.ConfigValue{
+										"HashingAlgorithm": {
+											Value: protoutil.MarshalOrPanic(&common.HashingAlgorithm{
+												Name: bccsp.SHA256,
+											}),
+										},
+										"BlockDataHashingStructure": {
+											Value: protoutil.MarshalOrPanic(&common.BlockDataHashingStructure{
+												Width: math.MaxUint32,
+											}),
+										},
+										"OrdererAddresses": {
+											Value: protoutil.MarshalOrPanic(&common.OrdererAddresses{
+												Addresses: []string{"localhost"},
+											}),
+										},
+									},
+								},
+							},
+						}),
+						Header: &common.Header{
+							ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
+								Type:      int32(common.HeaderType_CONFIG),
+								ChannelId: channelID,
+							}),
+						},
+					}),
+				}),
+			},
+		},
+	}
 }
