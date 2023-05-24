@@ -75,10 +75,15 @@ func (cs *CredentialSupport) GetPeerCredentials() credentials.TransportCredentia
 	})
 }
 
-func (cs *CredentialSupport) AppRootCAsByChain() map[string][][]byte {
+func (cs *CredentialSupport) AppRootCAsByChain() [][]byte {
 	cs.mutex.RLock()
 	defer cs.mutex.RUnlock()
-	return cs.appRootCAsByChain
+	trustedRoots := make([][]byte, 0, len(cs.appRootCAsByChain))
+	// iterate over all roots for all app and orderer channels
+	for _, roots := range cs.appRootCAsByChain {
+		trustedRoots = append(trustedRoots, roots...)
+	}
+	return trustedRoots
 }
 
 // BuildTrustedRootsForChain populates the appRootCAs and orderRootCAs maps by

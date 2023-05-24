@@ -92,11 +92,8 @@ func (p *Peer) updateTrustedRoots(cm channelconfig.Resources) {
 
 	p.CredentialSupport.BuildTrustedRootsForChain(cm)
 
-	// now iterate over all roots for all app and orderer channels
-	var trustedRoots [][]byte
-	for _, roots := range p.CredentialSupport.AppRootCAsByChain() {
-		trustedRoots = append(trustedRoots, roots...)
-	}
+	trustedRoots := p.CredentialSupport.AppRootCAsByChain()
+
 	trustedRoots = append(trustedRoots, p.ServerConfig.SecOpts.ClientRootCAs...)
 	trustedRoots = append(trustedRoots, p.ServerConfig.SecOpts.ServerRootCAs...)
 
