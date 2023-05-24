@@ -1,12 +1,12 @@
 # Introduction
 
-In general terms, a blockchain is an immutable transaction ledger, maintained
+Generally, a blockchain is an immutable transaction ledger, maintained
 within a distributed network of _peer nodes_. These nodes each maintain a copy
 of the ledger by applying transactions that have been validated by a _consensus
-protocol_, grouped into blocks that include a hash that bind each block to the
+protocol_, grouped into blocks that include a hash that binds each block to the
 preceding block.
 
-The first and most widely recognized application of blockchain is the
+The first and most widely recognized blockchain application is the
 [Bitcoin](https://en.wikipedia.org/wiki/Bitcoin) cryptocurrency, though others
 have followed in its footsteps. Ethereum, an alternative cryptocurrency, took a
 different approach, integrating many of the same characteristics as Bitcoin but
@@ -15,11 +15,11 @@ Bitcoin and Ethereum fall into a class of blockchain that we would classify as
 _public permissionless_ blockchain technology. Basically, these are public
 networks, open to anyone, where participants interact anonymously.
 
-As the popularity of Bitcoin, Ethereum and a few other derivative technologies
+As the popularity of Bitcoin, Ethereum, and a few other derivative technologies
 grew, interest in applying the underlying technology of the blockchain,
-distributed ledger and distributed application platform to more innovative
+distributed ledger, and distributed application platform to more innovative
 _enterprise_ use cases also grew. However, many enterprise use cases require
-performance characteristics that the permissionless blockchain technologies are
+performance characteristics that permissionless blockchain technologies are
 unable (presently) to deliver. In addition, in many use cases, the identity of
 the participants is a hard requirement, such as in the case of financial
 transactions where Know-Your-Customer (KYC) and Anti-Money Laundering (AML)
@@ -42,34 +42,31 @@ motivation for its architectural decisions.
 
 ## Hyperledger Fabric
 
-Hyperledger Fabric is an open source enterprise-grade permissioned distributed
+Hyperledger Fabric is an open-source enterprise-grade permissioned distributed
 ledger technology (DLT) platform, designed for use in enterprise contexts,
 that delivers some key differentiating capabilities over other popular
 distributed ledger or blockchain platforms.
 
 One key point of differentiation is that Hyperledger was established under the
 Linux Foundation, which itself has a long and very successful history of
-nurturing open source projects under **open governance** that grow strong
-sustaining communities and thriving ecosystems. Hyperledger is governed by a
-diverse technical steering committee, and the Hyperledger Fabric project by a
+nurturing open-source projects under **open governance** that grow strong, sustainable communities and thriving ecosystems. Hyperledger is governed by a
+diverse technical steering committee, while the Hyperledger Fabric project is handled by a
 diverse set of maintainers from multiple organizations. It has a development
 community that has grown to over 35 organizations and nearly 200 developers
 since its earliest commits.
 
 Fabric has a highly **modular** and **configurable** architecture, enabling
-innovation, versatility and optimization for a broad range of industry use cases
+innovation, versatility, and optimization for a broad range of industry use cases
 including banking, finance, insurance, healthcare, human resources, supply
-chain and even digital music delivery.
+chain, and even digital music delivery.
 
 Fabric is the first distributed ledger platform to support **smart contracts
-authored in general-purpose programming languages** such as Java, Go and
+authored in general-purpose programming languages** such as Java, Go, and
 Node.js, rather than constrained domain-specific languages (DSL). This means
 that most enterprises already have the skill set needed to develop smart
 contracts, and no additional training to learn a new language or DSL is needed.
 
-The Fabric platform is also **permissioned**, meaning that, unlike with a public
-permissionless network, the participants are known to each other, rather than
-anonymous and therefore fully untrusted. This means that while the participants
+The Fabric platform is also **permissioned**, meaning that, unlike with a public permissionless network, the participants are known to each other rather than anonymous and, therefore, fully untrusted. This means that while the participants
 may not _fully_ trust one another (they may, for example, be competitors in the
 same industry), a network can be operated under a governance model that is built
 off of what trust _does_ exist between participants, such as a legal agreement
