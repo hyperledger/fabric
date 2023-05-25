@@ -78,7 +78,8 @@ func (cs *CredentialSupport) GetPeerCredentials() credentials.TransportCredentia
 func (cs *CredentialSupport) AppRootCAsByChain() [][]byte {
 	cs.mutex.RLock()
 	defer cs.mutex.RUnlock()
-	trustedRoots := make([][]byte, 0, len(cs.appRootCAsByChain))
+
+	var trustedRoots [][]byte
 	// iterate over all roots for all app and orderer channels
 	for _, roots := range cs.appRootCAsByChain {
 		trustedRoots = append(trustedRoots, roots...)
