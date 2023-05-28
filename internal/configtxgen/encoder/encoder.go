@@ -154,7 +154,7 @@ func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
 
 	var err error
 	if conf.Orderer != nil {
-		channelGroup.Groups[channelconfig.OrdererGroupKey], err = NewOrdererGroup(conf.Orderer)
+		channelGroup.Groups[channelconfig.OrdererGroupKey], err = NewOrdererGroup(conf.Orderer, conf.Capabilities)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create orderer group")
 		}
@@ -181,7 +181,10 @@ func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
 // NewOrdererGroup returns the orderer component of the channel configuration.  It defines parameters of the ordering service
 // about how large blocks should be, how frequently they should be emitted, etc. as well as the organizations of the ordering network.
 // It sets the mod_policy of all elements to "Admins".  This group is always present in any channel configuration.
-func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
+func NewOrdererGroup(conf *genesisconfig.Orderer, channelCapabilities map[string]bool) (*cb.ConfigGroup, error) {
+	if conf.OrdererType == "BFT" && !channelCapabilities["V3_0"] {
+		return nil, errors.New("orderer type BFT must be used with V3_0 capability")
+	}
 	ordererGroup := protoutil.NewConfigGroup()
 	if err := AddOrdererPolicies(ordererGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
 		return nil, errors.Wrapf(err, "error adding policies to orderer group")
