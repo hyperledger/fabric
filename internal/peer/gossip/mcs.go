@@ -156,6 +156,10 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum u
 		return fmt.Errorf("Header.DataHash is different from Hash(block.Data) for block with id [%d] on channel [%s]", block.Header.Number, chainID)
 	}
 
+	return s.verifyHeaderAndMetadata(channelID, block)
+}
+
+func (s *MSPMessageCryptoService) verifyHeaderAndMetadata(channelID string, block *pcommon.Block) error {
 	// Get the policy manager for channelID
 	cpm := s.channelPolicyManagerGetter.Manager(channelID)
 	if cpm == nil {
@@ -182,6 +186,25 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum u
 
 	verifier := protoutil.BlockSignatureVerifier(bftEnabled, consenters, policy)
 	return verifier(block.Header, block.Metadata)
+}
+
+// VerifyBlockAttestation returns nil when the header matches the metadata signature. It assumed the block.Data is nil
+// and therefore does not verify that Header.DataHash is equal to the hash of block.Data. This is used when the orderer
+// delivers a block with header & metadata only, as an attestation of block existence.
+func (s *MSPMessageCryptoService) VerifyBlockAttestation(chainID string, block *pcommon.Block) error {
+	if block == nil {
+		return fmt.Errorf("Invalid Block on channel [%s]. Block is nil.", chainID)
+	}
+	if block.Header == nil {
+		return fmt.Errorf("Invalid Block on channel [%s]. Header must be different from nil.", chainID)
+	}
+
+	// - Unmarshal medatada
+	if block.Metadata == nil || len(block.Metadata.Metadata) == 0 {
+		return fmt.Errorf("Block with id [%d] on channel [%s] does not have metadata. Block not valid.", block.Header.Number, chainID)
+	}
+
+	return s.verifyHeaderAndMetadata(chainID, block)
 }
 
 // Sign signs msg with this peer's signing key and outputs

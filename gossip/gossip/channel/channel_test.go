@@ -146,6 +146,10 @@ func (cs *cryptoService) VerifyBlock(channelID common.ChannelID, seqNum uint64, 
 	return args.Get(0).(error)
 }
 
+func (*cryptoService) VerifyBlockAttestation(channelID string, signedBlock *cb.Block) error {
+	panic("Should not be called in this test")
+}
+
 func (cs *cryptoService) Sign(msg []byte) ([]byte, error) {
 	panic("Should not be called in this test")
 }

@@ -23,6 +23,18 @@ type BlockVerifier struct {
 	verifyBlockReturnsOnCall map[int]struct {
 		result1 error
 	}
+	VerifyBlockAttestationStub        func(string, *commona.Block) error
+	verifyBlockAttestationMutex       sync.RWMutex
+	verifyBlockAttestationArgsForCall []struct {
+		arg1 string
+		arg2 *commona.Block
+	}
+	verifyBlockAttestationReturns struct {
+		result1 error
+	}
+	verifyBlockAttestationReturnsOnCall map[int]struct {
+		result1 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -35,15 +47,16 @@ func (fake *BlockVerifier) VerifyBlock(arg1 common.ChannelID, arg2 uint64, arg3 
 		arg2 uint64
 		arg3 *commona.Block
 	}{arg1, arg2, arg3})
+	stub := fake.VerifyBlockStub
+	fakeReturns := fake.verifyBlockReturns
 	fake.recordInvocation("VerifyBlock", []interface{}{arg1, arg2, arg3})
 	fake.verifyBlockMutex.Unlock()
-	if fake.VerifyBlockStub != nil {
-		return fake.VerifyBlockStub(arg1, arg2, arg3)
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.verifyBlockReturns
 	return fakeReturns.result1
 }
 
@@ -89,11 +102,75 @@ func (fake *BlockVerifier) VerifyBlockReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *BlockVerifier) VerifyBlockAttestation(arg1 string, arg2 *commona.Block) error {
+	fake.verifyBlockAttestationMutex.Lock()
+	ret, specificReturn := fake.verifyBlockAttestationReturnsOnCall[len(fake.verifyBlockAttestationArgsForCall)]
+	fake.verifyBlockAttestationArgsForCall = append(fake.verifyBlockAttestationArgsForCall, struct {
+		arg1 string
+		arg2 *commona.Block
+	}{arg1, arg2})
+	stub := fake.VerifyBlockAttestationStub
+	fakeReturns := fake.verifyBlockAttestationReturns
+	fake.recordInvocation("VerifyBlockAttestation", []interface{}{arg1, arg2})
+	fake.verifyBlockAttestationMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *BlockVerifier) VerifyBlockAttestationCallCount() int {
+	fake.verifyBlockAttestationMutex.RLock()
+	defer fake.verifyBlockAttestationMutex.RUnlock()
+	return len(fake.verifyBlockAttestationArgsForCall)
+}
+
+func (fake *BlockVerifier) VerifyBlockAttestationCalls(stub func(string, *commona.Block) error) {
+	fake.verifyBlockAttestationMutex.Lock()
+	defer fake.verifyBlockAttestationMutex.Unlock()
+	fake.VerifyBlockAttestationStub = stub
+}
+
+func (fake *BlockVerifier) VerifyBlockAttestationArgsForCall(i int) (string, *commona.Block) {
+	fake.verifyBlockAttestationMutex.RLock()
+	defer fake.verifyBlockAttestationMutex.RUnlock()
+	argsForCall := fake.verifyBlockAttestationArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *BlockVerifier) VerifyBlockAttestationReturns(result1 error) {
+	fake.verifyBlockAttestationMutex.Lock()
+	defer fake.verifyBlockAttestationMutex.Unlock()
+	fake.VerifyBlockAttestationStub = nil
+	fake.verifyBlockAttestationReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *BlockVerifier) VerifyBlockAttestationReturnsOnCall(i int, result1 error) {
+	fake.verifyBlockAttestationMutex.Lock()
+	defer fake.verifyBlockAttestationMutex.Unlock()
+	fake.VerifyBlockAttestationStub = nil
+	if fake.verifyBlockAttestationReturnsOnCall == nil {
+		fake.verifyBlockAttestationReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.verifyBlockAttestationReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *BlockVerifier) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.verifyBlockMutex.RLock()
 	defer fake.verifyBlockMutex.RUnlock()
+	fake.verifyBlockAttestationMutex.RLock()
+	defer fake.verifyBlockAttestationMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

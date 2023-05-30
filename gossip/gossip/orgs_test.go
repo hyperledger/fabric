@@ -81,6 +81,12 @@ func (*configurableCryptoService) VerifyBlock(channelID common.ChannelID, seqNum
 	return nil
 }
 
+// VerifyBlockAttestation returns nil if the block attestation is properly signed,
+// else returns error
+func (*configurableCryptoService) VerifyBlockAttestation(channelID string, signedBlock *cb.Block) error {
+	return nil
+}
+
 // Sign signs msg with this peer's signing key and outputs
 // the signature if no error occurred.
 func (*configurableCryptoService) Sign(msg []byte) ([]byte, error) {

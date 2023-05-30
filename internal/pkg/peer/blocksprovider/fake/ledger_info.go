@@ -29,15 +29,16 @@ func (fake *LedgerInfo) LedgerHeight() (uint64, error) {
 	ret, specificReturn := fake.ledgerHeightReturnsOnCall[len(fake.ledgerHeightArgsForCall)]
 	fake.ledgerHeightArgsForCall = append(fake.ledgerHeightArgsForCall, struct {
 	}{})
+	stub := fake.LedgerHeightStub
+	fakeReturns := fake.ledgerHeightReturns
 	fake.recordInvocation("LedgerHeight", []interface{}{})
 	fake.ledgerHeightMutex.Unlock()
-	if fake.LedgerHeightStub != nil {
-		return fake.LedgerHeightStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.ledgerHeightReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
