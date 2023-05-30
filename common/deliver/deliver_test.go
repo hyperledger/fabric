@@ -501,6 +501,46 @@ var _ = Describe("Deliver", func() {
 			})
 		})
 
+		Context("when seek info is configured to header with sig content type", func() {
+			BeforeEach(func() {
+				seekInfo = &ab.SeekInfo{
+					Start:       &ab.SeekPosition{},
+					Stop:        seekNewest,
+					ContentType: ab.SeekInfo_HEADER_WITH_SIG,
+				}
+
+				fakeBlockReader.HeightReturns(3)
+				fakeBlockIterator.NextStub = func() (*cb.Block, cb.Status) {
+					blk := &cb.Block{
+						Header:   &cb.BlockHeader{Number: uint64(fakeBlockIterator.NextCallCount())},
+						Data:     &cb.BlockData{Data: [][]byte{{1}, {2}}},
+						Metadata: &cb.BlockMetadata{Metadata: [][]byte{{3}, {4}}},
+					}
+					return blk, cb.Status_SUCCESS
+				}
+			})
+
+			It("sends blocks with nil Data", func() {
+				err := handler.Handle(context.Background(), server)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeBlockReader.IteratorCallCount()).To(Equal(1))
+				start := fakeBlockReader.IteratorArgsForCall(0)
+				Expect(start).To(Equal(&ab.SeekPosition{}))
+
+				Expect(fakeBlockIterator.NextCallCount()).To(Equal(2))
+				Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(2))
+				for i := 0; i < fakeResponseSender.SendBlockResponseCallCount(); i++ {
+					b, _, _, _ := fakeResponseSender.SendBlockResponseArgsForCall(i)
+					Expect(b).To(Equal(&cb.Block{
+						Header:   &cb.BlockHeader{Number: uint64(i + 1)},
+						Data:     nil,
+						Metadata: &cb.BlockMetadata{Metadata: [][]byte{{3}, {4}}},
+					}))
+				}
+			})
+		})
+
 		Context("when filtered blocks are requested", func() {
 			var fakeResponseSender *mock.FilteredResponseSender
 
