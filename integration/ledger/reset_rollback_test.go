@@ -192,6 +192,118 @@ var _ = Describe("rollback, reset, pause and resume peer node commands", func() 
 		Expect(dbPath).To(BeADirectory())
 		helper.assertPresentInCollectionM("marblesp", "marble2", peer)
 	})
+<<<<<<< HEAD
+=======
+
+	It("change collection members and rebuild databases", func() {
+		By("Checking ledger height on each peer")
+		for _, peer := range helper.peers {
+			Expect(helper.getLedgerHeight(peer)).Should(Equal(14))
+		}
+
+		org1peer0 := setup.network.Peer("Org1", "peer0")
+		org2peer0 := setup.network.Peer("Org2", "peer0")
+		org3peer0 := setup.network.Peer("Org3", "peer0")
+
+		By("verifying marble1 to marble5 exist in collectionMarbles & collectionMarblePrivateDetails in the members")
+		for i := 1; i <= 5; i++ {
+			helper.assertPresentInCollectionM("marblesp", fmt.Sprintf("marble%d", i), org1peer0)
+			helper.assertPresentInCollectionM("marblesp", fmt.Sprintf("marble%d", i), org2peer0)
+			helper.assertPresentInCollectionMPD("marblesp", fmt.Sprintf("marble%d", i), org2peer0)
+			helper.assertPresentInCollectionMPD("marblesp", fmt.Sprintf("marble%d", i), org3peer0)
+		}
+
+		// Add org1 to collectionMarblesPrivateDetails
+		By("Updating the chaincode definition to version 2.0")
+		updatedChaincode := nwo.Chaincode{
+			Name:              "marblesp",
+			Version:           "2.0",
+			Path:              components.Build("github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd"),
+			Lang:              "binary",
+			PackageFile:       filepath.Join(setup.testDir, "marbles-pvtdata.tar.gz"),
+			Label:             "marbles-private-20",
+			SignaturePolicy:   `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
+			CollectionsConfig: filepath.Join("testdata", "collection_configs", "collections_config3.json"),
+			Sequence:          "2",
+		}
+
+		helper.deployChaincode(updatedChaincode)
+
+		// statedb rebuild test
+		By("Stopping peers and deleting the statedb folder on peer Org1.peer0")
+		org1peer0 = setup.network.Peer("Org1", "peer0")
+		setup.stopPeers()
+		dbPath := filepath.Join(setup.network.PeerLedgerDir(org1peer0), "stateLeveldb")
+		Expect(os.RemoveAll(dbPath)).NotTo(HaveOccurred())
+		Expect(dbPath).NotTo(BeADirectory())
+		By("Restarting the peer Org1.peer0")
+		setup.startPeers()
+		Expect(dbPath).To(BeADirectory())
+		helper.assertPresentInCollectionM("marblesp", "marble2", org1peer0)
+	})
+
+	// This test exercises peer node unjoin on the following peers:
+	// Org1.peer0 - unjoin
+	// Org2.peer0 -
+	// Org3.peer0 - unjoin (via partial / resumed deletion on restart)
+	It("unjoins channels and checks side effects on the ledger and transient storage", func() {
+		By("Checking ledger heights on each peer")
+		for _, peer := range helper.peers {
+			Expect(helper.getLedgerHeight(peer)).Should(Equal(14))
+		}
+
+		org1peer0 := setup.network.Peer("Org1", "peer0")
+		org2peer0 := setup.network.Peer("Org2", "peer0")
+		org3peer0 := setup.network.Peer("Org3", "peer0")
+
+		// Negative test: peer node unjoin should fail when the peer is online.
+		By("unjoining the peer while the peer node is online")
+		expectedErrMessage := "as another peer node command is executing," +
+			" wait for that command to complete its execution or terminate it before retrying"
+		helper.unjoin(org1peer0, expectedErrMessage, false)
+		helper.unjoin(org2peer0, expectedErrMessage, false)
+		helper.unjoin(org3peer0, expectedErrMessage, false)
+
+		By("stopping the peers to test unjoin commands")
+		setup.stopPeers()
+
+		By("Unjoining from a channel while the peer is down")
+		helper.unjoin(org1peer0, "", true)
+
+		// Negative test: unjoin when the channel has been unjoined
+		By("Double unjoining from a channel")
+		expectedErrMessage = "unjoin channel \\[testchannel\\]: cannot update ledger status, ledger \\[testchannel\\] does not exist"
+		helper.unjoin(org1peer0, expectedErrMessage, false)
+
+		// Simulate an error in peer unjoin by marking the ledger folder as read-only.
+		By("Unjoining from a peer with a read-only ledger file system")
+		ledgerStoragePath := filepath.Join(setup.network.PeerLedgerDir(org3peer0), "chains/chains", helper.channelID)
+		Expect(os.Chmod(ledgerStoragePath, 0o555)).NotTo(HaveOccurred())
+		Expect(os.RemoveAll(ledgerStoragePath)).To(HaveOccurred()) // can not delete write-only ledger folder
+		expectedErrMessage = "ledgersData/chains/chains/testchannel/blockfile_000000: permission denied"
+		helper.unjoin(org3peer0, expectedErrMessage, false)
+		Expect(os.Chmod(ledgerStoragePath, 0o755)).NotTo(HaveOccurred())
+
+		By("restarting peers")
+		setup.startPeer(org1peer0)
+		setup.startPeer(org2peer0)
+		setup.startPeer(org3peer0)
+
+		helper.assertUnjoinedChannel(org1peer0)
+		helper.assertUnjoinedChannel(org3peer0)
+
+		By("rejoining the channel with org1")
+		setup.network.JoinChannel(helper.channelID, setup.orderer, org1peer0)
+		helper.waitUntilPeerEqualLedgerHeight(org1peer0, 14)
+
+		By("Creating 2 more blocks post re-join org1")
+		for i := 6; i <= 7; i++ {
+			helper.addMarble("marblesp", fmt.Sprintf(`{"name":"marble%d", "color":"blue", "size":35, "owner":"tom", "price":99}`, i), org1peer0)
+			helper.waitUntilPeerEqualLedgerHeight(org1peer0, 14+i-5)
+			helper.waitUntilPeerEqualLedgerHeight(org2peer0, 14+i-5)
+		}
+	})
+>>>>>>> 494b8b850 (Make AmMemberOf to use only the mspIDs in collection policy)
 })
 
 type setup struct {
@@ -455,6 +567,20 @@ func (th *testHelper) assertPresentInCollectionM(chaincodeName, marbleName strin
 	expectedMsg := fmt.Sprintf(`{"docType":"marble","name":"%s"`, marbleName)
 	for _, peer := range peerList {
 		th.queryChaincode(peer, command, expectedMsg, true)
+	}
+}
+
+// assertAbsentInCollectionM asserts that the private data for given marble is present in collection
+// 'readMarble' at the given peers
+func (th *testHelper) assertAbsentInCollectionM(chaincodeName, marbleName string, peerList ...*nwo.Peer) {
+	command := commands.ChaincodeQuery{
+		ChannelID: th.channelID,
+		Name:      chaincodeName,
+		Ctor:      fmt.Sprintf(`{"Args":["readMarble","%s"]}`, marbleName),
+	}
+	expectedMsg := fmt.Sprintf(`{"docType":"marble","name":"%s"`, marbleName)
+	for _, peer := range peerList {
+		th.queryChaincode(peer, command, expectedMsg, false)
 	}
 }
 

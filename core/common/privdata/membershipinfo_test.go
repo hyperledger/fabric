@@ -48,6 +48,7 @@ func TestMembershipInfoProvider(t *testing.T) {
 
 	// verify membership provider returns false and nil when collection policy config is invalid
 	res, err = membershipProvider.AmMemberOf("test1", getBadAccessPolicy([]string{"signer0"}, 1))
+<<<<<<< HEAD
 	assert.False(t, res)
 	assert.Nil(t, err)
 
@@ -61,6 +62,18 @@ func TestMembershipInfoProvider(t *testing.T) {
 	res, err = membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer2", "peer3"}))
 	assert.False(t, res)
 	assert.Nil(t, err)
+=======
+	require.False(t, res)
+	require.Nil(t, err)
+}
+
+func TestMyImplicitCollectionName(t *testing.T) {
+	require.Equal(
+		t,
+		implicitcollection.NameForOrg("my_org"),
+		NewMembershipInfoProvider("my_org", protoutil.SignedData{}, nil).MyImplicitCollectionName(),
+	)
+>>>>>>> 494b8b850 (Make AmMemberOf to use only the mspIDs in collection policy)
 }
 
 func getAccessPolicy(signers []string) *peer.CollectionPolicyConfig {
