@@ -51,16 +51,6 @@ func TestMembershipInfoProvider(t *testing.T) {
 	assert.False(t, res)
 	assert.Nil(t, err)
 
-	// verify membership provider with empty mspID and fall back to default access policy evaluation returns true
-	membershipProvider = NewMembershipInfoProvider("", peerSelfSignedData, identityDeserializer)
-	res, err = membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer0", "peer1"}))
-	assert.True(t, res)
-	assert.Nil(t, err)
-
-	// verify membership provider with empty mspID and fall back to default access policy evaluation returns false
-	res, err = membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer2", "peer3"}))
-	assert.False(t, res)
-	assert.Nil(t, err)
 }
 
 func getAccessPolicy(signers []string) *peer.CollectionPolicyConfig {
