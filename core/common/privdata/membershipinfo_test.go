@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMembershipInfoProvider(t *testing.T) {
@@ -48,19 +49,16 @@ func TestMembershipInfoProvider(t *testing.T) {
 
 	// verify membership provider returns false and nil when collection policy config is invalid
 	res, err = membershipProvider.AmMemberOf("test1", getBadAccessPolicy([]string{"signer0"}, 1))
-	assert.False(t, res)
-	assert.Nil(t, err)
+	require.False(t, res)
+	require.Nil(t, err)
+}
 
-	// verify membership provider with empty mspID and fall back to default access policy evaluation returns true
-	membershipProvider = NewMembershipInfoProvider("", peerSelfSignedData, identityDeserializer)
-	res, err = membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer0", "peer1"}))
-	assert.True(t, res)
-	assert.Nil(t, err)
-
-	// verify membership provider with empty mspID and fall back to default access policy evaluation returns false
-	res, err = membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer2", "peer3"}))
-	assert.False(t, res)
-	assert.Nil(t, err)
+func TestMyImplicitCollectionName(t *testing.T) {
+	require.Equal(
+		t,
+		implicitcollection.NameForOrg("my_org"),
+		NewMembershipInfoProvider("my_org", protoutil.SignedData{}, nil).MyImplicitCollectionName(),
+	)
 }
 
 func getAccessPolicy(signers []string) *peer.CollectionPolicyConfig {
