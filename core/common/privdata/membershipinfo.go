@@ -35,33 +35,20 @@ func NewMembershipInfoProvider(mspID string, selfSignedData protoutil.SignedData
 }
 
 // AmMemberOf checks whether the current peer is a member of the given collection config.
-// If getPolicy returns an error, it will drop the error and return false - same as a RejectAll policy.
-// It is used when a chaincode is upgraded to see if the peer's org has become eligible after	a collection
-// change.
+// It is used when a chaincode is upgraded to see if the peer's org has become eligible after a collection change.
 func (m *MembershipProvider) AmMemberOf(channelName string, collectionPolicyConfig *peer.CollectionPolicyConfig) (bool, error) {
 	deserializer := m.IdentityDeserializerFactory(channelName)
 
 	// Do a simple check to see if the mspid matches any principal identities in the SignaturePolicy - FAB-17059
-	if collectionPolicyConfig.GetSignaturePolicy() != nil {
-		memberOrgs := getMemberOrgs(collectionPolicyConfig.GetSignaturePolicy().GetIdentities(), deserializer)
-
-		if _, ok := memberOrgs[m.mspID]; ok {
-			return true, nil
-		}
-	}
-
-	// Fall back to default access policy evaluation otherwise
-	accessPolicy, err := getPolicy(collectionPolicyConfig, deserializer)
-	if err != nil {
-		// drop the error and return false - same as reject all policy
-		logger.Errorf("Reject all due to error getting policy: %s", err)
-		return false, nil
-	}
-	if err := accessPolicy.EvaluateSignedData([]*protoutil.SignedData{&m.selfSignedData}); err != nil {
+	if collectionPolicyConfig.GetSignaturePolicy() == nil {
+		logger.Warningf("collection membership policy is nil")
 		return false, nil
 	}
 
-	return true, nil
+	memberOrgs := getMemberOrgs(collectionPolicyConfig.GetSignaturePolicy().GetIdentities(), deserializer)
+
+	_, ok := memberOrgs[m.mspID]
+	return ok, nil
 }
 
 func (m *MembershipProvider) MyImplicitCollectionName() string {
