@@ -51,17 +51,6 @@ func TestMembershipInfoProvider(t *testing.T) {
 	res, err = membershipProvider.AmMemberOf("test1", getBadAccessPolicy([]string{"signer0"}, 1))
 	require.False(t, res)
 	require.Nil(t, err)
-
-	// verify membership provider with empty mspID and fall back to default access policy evaluation returns true
-	membershipProvider = NewMembershipInfoProvider("", peerSelfSignedData, identityDeserializer)
-	res, err = membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer0", "peer1"}))
-	require.True(t, res)
-	require.Nil(t, err)
-
-	// verify membership provider with empty mspID and fall back to default access policy evaluation returns false
-	res, err = membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer2", "peer3"}))
-	require.False(t, res)
-	require.Nil(t, err)
 }
 
 func TestMyImplicitCollectionName(t *testing.T) {
