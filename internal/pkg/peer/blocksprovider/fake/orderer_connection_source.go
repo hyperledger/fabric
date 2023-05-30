@@ -30,15 +30,16 @@ func (fake *OrdererConnectionSource) RandomEndpoint() (*orderers.Endpoint, error
 	ret, specificReturn := fake.randomEndpointReturnsOnCall[len(fake.randomEndpointArgsForCall)]
 	fake.randomEndpointArgsForCall = append(fake.randomEndpointArgsForCall, struct {
 	}{})
+	stub := fake.RandomEndpointStub
+	fakeReturns := fake.randomEndpointReturns
 	fake.recordInvocation("RandomEndpoint", []interface{}{})
 	fake.randomEndpointMutex.Unlock()
-	if fake.RandomEndpointStub != nil {
-		return fake.RandomEndpointStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.randomEndpointReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 

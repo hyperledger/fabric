@@ -843,6 +843,12 @@ func (*naiveCryptoService) VerifyBlock(chainID gossipcommon.ChannelID, seqNum ui
 	return nil
 }
 
+// VerifyBlockAttestation returns nil if the block attestation is properly signed,
+// else returns error
+func (*naiveCryptoService) VerifyBlockAttestation(channelID string, signedBlock *common.Block) error {
+	return nil
+}
+
 // Sign signs msg with this peer's signing key and outputs
 // the signature if no error occurred.
 func (*naiveCryptoService) Sign(msg []byte) ([]byte, error) {

@@ -37,6 +37,11 @@ type MessageCryptoService interface {
 	// else returns error
 	VerifyBlock(channelID common.ChannelID, seqNum uint64, block *cb.Block) error
 
+	// VerifyBlockAttestation does the same as VerifyBlock, except it assumes block.Data = nil. It therefore does not
+	// compute the block.Data.Hash() and compare it to the block.Header.DataHash. This is used when the orderer
+	// delivers a block with header & metadata only, as an attestation of block existence.
+	VerifyBlockAttestation(channelID string, block *cb.Block) error
+
 	// Sign signs msg with this peer's signing key and outputs
 	// the signature if no error occurred.
 	Sign(msg []byte) ([]byte, error)

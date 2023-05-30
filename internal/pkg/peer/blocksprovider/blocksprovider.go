@@ -66,6 +66,11 @@ type GossipServiceAdapter interface {
 //go:generate counterfeiter -o fake/block_verifier.go --fake-name BlockVerifier . BlockVerifier
 type BlockVerifier interface {
 	VerifyBlock(channelID gossipcommon.ChannelID, blockNum uint64, block *common.Block) error
+
+	// VerifyBlockAttestation does the same as VerifyBlock, except it assumes block.Data = nil. It therefore does not
+	// compute the block.Data.Hash() and compare it to the block.Header.DataHash. This is used when the orderer
+	// delivers a block with header & metadata only, as an attestation of block existence.
+	VerifyBlockAttestation(channelID string, block *common.Block) error
 }
 
 //go:generate counterfeiter -o fake/orderer_connection_source.go --fake-name OrdererConnectionSource . OrdererConnectionSource

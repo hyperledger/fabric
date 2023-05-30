@@ -121,6 +121,12 @@ func (*cryptoServiceMock) VerifyBlock(channelID common.ChannelID, seqNum uint64,
 	return nil
 }
 
+// VerifyBlockAttestation returns nil if the block attestation is properly signed,
+// else returns error
+func (*cryptoServiceMock) VerifyBlockAttestation(channelID string, signedBlock *pcomm.Block) error {
+	return nil
+}
+
 // Sign signs msg with this peer's signing key and outputs
 // the signature if no error occurred.
 func (*cryptoServiceMock) Sign(msg []byte) ([]byte, error) {
