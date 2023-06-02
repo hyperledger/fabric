@@ -67,7 +67,7 @@ can be utilized with either LevelDB or CouchDB state database, e.g. ``GetState``
 ``GetStateByRange``, ``GetStateByPartialCompositeKey``. Additionally when you utilize CouchDB as
 the state database and model assets as JSON in chaincode, you can perform JSON queries against
 the data in the state database by using the ``GetQueryResult`` API and passing a CouchDB query string.
-The query string follows the `CouchDB JSON query syntax <http://docs.couchdb.org/en/3.2.2/api/database/find.html>`__.
+The query string follows the `CouchDB JSON query syntax <http://docs.couchdb.org/en/stable/api/database/find.html>`__.
 
 The `asset transfer Fabric sample <https://github.com/hyperledger/fabric-samples/blob/main/asset-transfer-ledger-queries/chaincode-go/asset_transfer_ledger_chaincode.go>`__
 demonstrates use of CouchDB queries from chaincode. It includes a ``queryAssetsByOwner()`` function
@@ -132,7 +132,7 @@ any JSON query with a sort. Indexes enable you to query data from chaincode when
 a large amount of data on your ledger. Indexes can be packaged alongside chaincode
 in a ``/META-INF/statedb/couchdb/indexes`` directory. Each index must be defined in
 its own text file with extension ``*.json`` with the index definition formatted in JSON
-following the `CouchDB index JSON syntax <http://docs.couchdb.org/en/3.2.2/api/database/find.html#db-index>`__.
+following the `CouchDB index JSON syntax <http://docs.couchdb.org/en/stable/api/database/find.html#db-index>`__.
 For example, to support the above marble query, a sample index on the ``docType`` and ``owner``
 fields is provided:
 
@@ -233,13 +233,13 @@ If using Docker compose, the environment variables ``COUCHDB_USER`` and ``COUCHD
 can be used to set the CouchDB user and password when the CouchDB container gets created.
 
 Alternatively, set the CouchDB user and password in the CouchDB
-`local.ini configuration file <http://docs.couchdb.org/en/3.2.2/config/intro.html#configuration-files>`__.
+`local.ini configuration file <http://docs.couchdb.org/en/stable/config/intro.html#configuration-files>`__.
 
 To change the CouchDB user and password after CouchDB container creation, the ``local.ini`` configuration approach must be used.
 
 As of CouchDB 3.0.0 ``max_document_size`` defaults to ``8000000`` (8MB).
 ``max_document_size`` can be set as high as ``4294967296`` (4GB) if you need to store large JSON documents to the state database.
-For more details see the CouchDB `max_document_size documentation <https://docs.couchdb.org/en/3.2.2-docs/config/couchdb.html#couchdb/max_document_size>`__.
+For more details see the CouchDB `max_document_size documentation <https://docs.couchdb.org/en/stable/config/couchdb.html#couchdb/max_document_size>`__.
 
 In a production environment the CouchDB container port should only be exposed to the relevant peer.
 In a development environment you may expose the CouchDB container port to allow for REST API interaction or CouchDB Fauxton user interface interaction,
