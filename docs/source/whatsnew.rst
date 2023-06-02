@@ -27,7 +27,7 @@ The release binaries and docker images have been updated as follows:
 
 .. note::
 
-   Fabric v2.5.0 is the current long-term support (LTS) release. A simple in-place upgrade from the prior LTS (Fabric v2.2.x) release is possible.
+   Fabric v2.5.x is the current long-term support (LTS) release. A simple in-place upgrade from the prior LTS (Fabric v2.2.x) release is possible.
 
 
 What's New in Hyperledger Fabric v2.4
@@ -335,6 +335,7 @@ Specifically, take a look at the changes and deprecations.
 
 * `Fabric v2.5.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.5.0>`_.
 * `Fabric v2.5.1 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.5.1>`_.
+* `Fabric v2.5.2 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.5.2>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
