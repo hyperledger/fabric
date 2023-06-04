@@ -479,7 +479,7 @@ func (g *GossipService) Stop() {
 		g.privateHandlers[chainID].close()
 
 		if g.deliveryService[chainID] != nil {
-			g.deliveryService[chainID].Stop()
+			_ = g.deliveryService[chainID].StopDeliverForChannel()
 		}
 	}
 	g.gossipSvc.Stop()
@@ -522,7 +522,7 @@ func (g *GossipService) onStatusChangeFactory(channelID string, committer blocks
 			}
 		} else {
 			logger.Info("Renounced leadership, stopping delivery service for channel", channelID)
-			if err := g.deliveryService[channelID].StopDeliverForChannel(channelID); err != nil {
+			if err := g.deliveryService[channelID].StopDeliverForChannel(); err != nil {
 				logger.Errorf("Delivery service is not able to stop blocks delivery for chain, due to %+v", err)
 			}
 		}

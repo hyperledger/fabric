@@ -35,10 +35,7 @@ type DeliverService interface {
 
 	// StopDeliverForChannel dynamically stops delivery of new blocks from ordering service
 	// to channel peers.
-	StopDeliverForChannel(chainID string) error
-
-	// Stop terminates delivery service and closes the connection
-	Stop()
+	StopDeliverForChannel() error
 }
 
 // BlockDeliverer communicates with orderers to obtain new blocks and send them to the committer service, for a
@@ -54,8 +51,9 @@ type BlockDeliverer interface {
 // blocks providers
 type deliverServiceImpl struct {
 	conf           *Config
-	blockProviders map[string]BlockDeliverer
-	lock           sync.RWMutex
+	channelID      string
+	blockDeliverer BlockDeliverer
+	lock           sync.Mutex
 	stopping       bool
 }
 
@@ -85,8 +83,7 @@ type Config struct {
 // fails to dial to it, return nil
 func NewDeliverService(conf *Config) DeliverService {
 	ds := &deliverServiceImpl{
-		conf:           conf,
-		blockProviders: make(map[string]BlockDeliverer),
+		conf: conf,
 	}
 	return ds
 }
@@ -114,14 +111,16 @@ func (DeliverAdapter) Deliver(ctx context.Context, clientConn *grpc.ClientConn) 
 func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo, finalizer func()) error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
-	if d.stopping {
-		errMsg := fmt.Sprintf("Delivery service is stopping cannot join a new channel %s", chainID)
-		logger.Errorf(errMsg)
+
+	if d.blockDeliverer != nil {
+		errMsg := fmt.Sprintf("block deliverer for channel `%s` already exists", chainID)
+		logger.Errorf("Delivery service: %s", errMsg)
 		return errors.New(errMsg)
 	}
-	if _, exist := d.blockProviders[chainID]; exist {
-		errMsg := fmt.Sprintf("Delivery service - block provider already exists for %s found, can't start delivery", chainID)
-		logger.Errorf(errMsg)
+
+	if d.stopping {
+		errMsg := fmt.Sprintf("block deliverer for channel `%s` is stopping", chainID)
+		logger.Errorf("Delivery service: %s", errMsg)
 		return errors.New(errMsg)
 	}
 
@@ -163,7 +162,9 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 		dc.TLSCertHash = util.ComputeSHA256(cert.Certificate[0])
 	}
 
-	d.blockProviders[chainID] = dc
+	d.blockDeliverer = dc
+	d.channelID = chainID
+
 	go func() {
 		dc.DeliverBlocks()
 		finalizer()
@@ -172,23 +173,22 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 }
 
 // StopDeliverForChannel stops blocks delivery for channel by stopping channel block provider
-func (d *deliverServiceImpl) StopDeliverForChannel(chainID string) error {
+func (d *deliverServiceImpl) StopDeliverForChannel() error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
+
 	if d.stopping {
-		errMsg := fmt.Sprintf("Delivery service is stopping, cannot stop delivery for channel %s", chainID)
-		logger.Errorf(errMsg)
+		errMsg := fmt.Sprintf("block deliverer for channel `%s` is already stopped", d.channelID)
+		logger.Errorf("Delivery service: %s", errMsg)
 		return errors.New(errMsg)
 	}
-	client, exist := d.blockProviders[chainID]
-	if !exist {
-		errMsg := fmt.Sprintf("Delivery service - no block provider for %s found, can't stop delivery", chainID)
-		logger.Errorf(errMsg)
-		return errors.New(errMsg)
+
+	d.stopping = true
+	if d.blockDeliverer != nil {
+		d.blockDeliverer.Stop()
 	}
-	client.Stop()
-	delete(d.blockProviders, chainID)
-	logger.Debug("This peer will stop pass blocks from orderer service to other peers")
+
+	logger.Debugf("This peer will stop passing blocks from orderer service to other peers on channel: %s", d.channelID)
 	return nil
 }
 
@@ -199,7 +199,7 @@ func (d *deliverServiceImpl) Stop() {
 	// Marking flag to indicate the shutdown of the delivery service
 	d.stopping = true
 
-	for _, client := range d.blockProviders {
-		client.Stop()
+	if d.blockDeliverer != nil {
+		d.blockDeliverer.Stop()
 	}
 }

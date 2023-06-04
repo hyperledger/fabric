@@ -185,12 +185,10 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 
 	for i := 0; i < n; i++ {
 		deliverServiceFactory := &mockDeliverServiceFactory{
-			service: &mockDeliverService{
-				running: make(map[string]bool),
-			},
+			service: &mockDeliverService{},
 		}
 		gossips[i].deliveryFactory = deliverServiceFactory
-		deliverServiceFactory.service.running[channelName] = false
+		deliverServiceFactory.service.running = false
 
 		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil), store.Store, Support{
 			Committer: &mockLedgerInfo{1},
@@ -207,7 +205,7 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 	startsNum := 0
 	for i := 0; i < n; i++ {
 		// Is mockDeliverService.StartDeliverForChannel in current peer for the specific channel was invoked
-		if gossips[i].deliveryService[channelName].(*mockDeliverService).running[channelName] {
+		if gossips[i].deliveryService[channelName].(*mockDeliverService).running {
 			startsNum++
 		}
 	}
@@ -247,14 +245,12 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	defer store.tearDown()
 
 	deliverServiceFactory := &mockDeliverServiceFactory{
-		service: &mockDeliverService{
-			running: make(map[string]bool),
-		},
+		service: &mockDeliverService{},
 	}
 
 	for i := 0; i < n; i++ {
 		gossips[i].deliveryFactory = deliverServiceFactory
-		deliverServiceFactory.service.running[channelName] = false
+		deliverServiceFactory.service.running = false
 		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil), store.Store, Support{
 			Committer: &mockLedgerInfo{1},
 		})
@@ -262,12 +258,12 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 
 	for i := 0; i < n; i++ {
 		require.NotNil(t, gossips[i].deliveryService[channelName], "Delivery service for channel %s not initiated in peer %d", channelName, i)
-		require.True(t, gossips[i].deliveryService[channelName].(*mockDeliverService).running[channelName], "Block deliverer not started for peer %d", i)
+		require.True(t, gossips[i].deliveryService[channelName].(*mockDeliverService).running, "Block deliverer not started for peer %d", i)
 	}
 
 	channelName = "chanB"
 	for i := 0; i < n; i++ {
-		deliverServiceFactory.service.running[channelName] = false
+		deliverServiceFactory.service.running = false
 		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil), store.Store, Support{
 			Committer: &mockLedgerInfo{1},
 		})
@@ -275,7 +271,7 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 
 	for i := 0; i < n; i++ {
 		require.NotNil(t, gossips[i].deliveryService[channelName], "Delivery service for channel %s not initiated in peer %d", channelName, i)
-		require.True(t, gossips[i].deliveryService[channelName].(*mockDeliverService).running[channelName], "Block deliverer not started for peer %d", i)
+		require.True(t, gossips[i].deliveryService[channelName].(*mockDeliverService).running, "Block deliverer not started for peer %d", i)
 	}
 
 	stopPeers(gossips)
@@ -306,14 +302,12 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 	defer store.tearDown()
 
 	deliverServiceFactory := &mockDeliverServiceFactory{
-		service: &mockDeliverService{
-			running: make(map[string]bool),
-		},
+		service: &mockDeliverService{},
 	}
 
 	for i := 0; i < n; i++ {
 		gossips[i].deliveryFactory = deliverServiceFactory
-		deliverServiceFactory.service.running[channelName] = false
+		deliverServiceFactory.service.running = false
 		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil), store.Store, Support{
 			Committer: &mockLedgerInfo{1},
 		})
@@ -321,7 +315,7 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 
 	for i := 0; i < n; i++ {
 		require.NotNil(t, gossips[i].deliveryService[channelName], "Delivery service for channel %s not initiated in peer %d", channelName, i)
-		require.False(t, gossips[i].deliveryService[channelName].(*mockDeliverService).running[channelName], "Block deliverer should not be started for peer %d", i)
+		require.False(t, gossips[i].deliveryService[channelName].(*mockDeliverService).running, "Block deliverer should not be started for peer %d", i)
 	}
 
 	stopPeers(gossips)
@@ -353,9 +347,7 @@ func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
 	defer store.tearDown()
 
 	deliverServiceFactory := &mockDeliverServiceFactory{
-		service: &mockDeliverService{
-			running: make(map[string]bool),
-		},
+		service: &mockDeliverService{},
 	}
 
 	for i := 0; i < n; i++ {
@@ -379,20 +371,19 @@ func (mf *mockDeliverServiceFactory) Service(GossipServiceAdapter, *orderers.Con
 }
 
 type mockDeliverService struct {
-	running map[string]bool
+	running   bool
+	channelID string
 }
 
 func (ds *mockDeliverService) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo, finalizer func()) error {
-	ds.running[chainID] = true
+	ds.running = true
+	ds.channelID = chainID
 	return nil
 }
 
-func (ds *mockDeliverService) StopDeliverForChannel(chainID string) error {
-	ds.running[chainID] = false
+func (ds *mockDeliverService) StopDeliverForChannel() error {
+	ds.running = false
 	return nil
-}
-
-func (ds *mockDeliverService) Stop() {
 }
 
 type mockLedgerInfo struct {
