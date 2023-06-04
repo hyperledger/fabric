@@ -2,8 +2,6 @@
 
 *Audience: network administrators, node administrators*
 
-Note: this topic describes the process for updating a channel on a network that does not have a system channel. For a version of this topic that includes information about the system channel, check out [Updating a channel configuration](https://hyperledger-fabric.readthedocs.io/en/release-2.2/config_update.html).
-
 ## What is a channel configuration?
 
 Like many complex systems, Hyperledger Fabric networks are comprised of both **structure** and a number related of **processes**.

@@ -2,8 +2,6 @@
 
 *Audience: network administrators, node administrators*
 
-Note: this topic describes the process for updating capabilities on a network that has not been bootstrapped with a system channel genesis block. For a version of this topic that includes information about updating system channel capabilities, check out [Updating the capability level of a channel](https://hyperledger-fabric.readthedocs.io/en/release-2.2/updating_capabilities.html).
-
 If you're not familiar with capabilities, check out [Capabilities](./capabilities_concept.html) before proceeding, paying particular attention to the fact that **peers and orderers that belong to the channel must be upgraded before enabling capabilities**.
 
 For information about any new capability levels in the latest release of Fabric, check out [Upgrading your components](./upgrade_to_newest_version.html#capabilities).

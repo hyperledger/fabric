@@ -1,11 +1,11 @@
 # Create a channel
 
-To simplify the channel creation process and enhance the privacy and scalability of channels, it is now possible to create application channels (where transactions involving assets happen) without first creating a “system channel” managed by the ordering service. Use this tutorial to learn how to create new channels without a system channel by using the `configtxgen` tool to create a genesis block and the `osnadmin CLI` (which runs against a REST API exposed by each ordering service node) to join ordering nodes to a channel. This process allows ordering nodes to join (or leave) any number of channels as needed, similar to how peers can participate in multiple channels.
+To simplify the channel creation process and enhance the privacy and scalability of channels, it is now mandatory to create application channels (where transactions involving assets happen) without first creating the system channel managed by the ordering service. Use this tutorial to learn how to create new channels by using the `configtxgen` tool to create a genesis block and the `osnadmin CLI` (which runs against a REST API exposed by each ordering service node) to join ordering nodes to a channel. This process allows ordering nodes to join (or leave) any number of channels as needed, similar to how peers can participate in multiple channels.
 
-**How this process differs from the legacy Fabric v2.2 process:**
+**How this process differs from the legacy Fabric v2.5 process:**
 
- * **System channel no longer required**: Besides the creation of the system channel representing an extra step (as compared to the new process), this system channel created an extra layer of administration that, for some use cases, provided no tangible benefit.
- * **Consortium no longer required**: You no longer need to define the set of organizations, known as the “consortium”, who are permitted to create channels on a particular ordering service. With this new process, all channels are application channels, so the concept of a list of organizations who can create channels no longer applies. Any set of organizations can get together and create a channel using a defined set of ordering nodes (which become the ordering service of that channel).
+ * **System channel no longer supported**: The system channel from prior releases required extra steps and administration and is no longer supported.
+ * **Consortium no longer supported**: You no longer need to define the set of organizations, known as the “consortium”, who are permitted to create channels on a particular ordering service. With this new process, all channels are application channels, so the concept of a list of organizations who can create channels no longer applies. Any set of organizations can get together and create a channel using a defined set of ordering nodes (which become the ordering service of that channel).
  * **Simplified ordering node creation process**: Because a system channel genesis block no longer needs to exist before an ordering node is created, admins can now focus on the process of setting up their infrastructure and making sure their node is working correctly before joining a particular application channel.
 
 **Benefits of the new process:**
@@ -19,7 +19,8 @@ To simplify the channel creation process and enhance the privacy and scalability
     * Orderer nodes can now track channels as a follower before being added to a channel’s consenter set, allowing them to detect this addition more quickly. Previously, this process could take several minutes, causing ordering node admins to restart their nodes so that the node could detect that it was joined more quickly.
     * If the MSP of a peer organization, as listed in the system channel, needs to be changed, the peer organization no longer needs to coordinate with an admin of the system channel to change the MSP.
 
-**Note:** The new mode of creating channels is incompatible with creating a channel using a system channel. If the system channel exists, the `channel join` operation is not supported. Similarly, `channel join` and `channel remove` cannot be used with a Solo or Kafka ordering service. “Mixed mode” management, where the system channel is to create channels on some ordering nodes and the new process is used to create channels on other ordering nodes is not supported and highly discouraged. You must either transition to the new process or continue to use the system channel process. For information about removing the system channel from an existing ordering service as part of transitioning to the new process, check out [Remove the system channel](#remove-the-system-channel).
+**Note**: if you still use the legacy system channel process in a version prior to v3.x (e.g., v2.5.x), you **must** [remove the system channel](https://hyperledger-fabric.readthedocs.io/en/release-2.5/create_channel/create_channel_participation.html) and migrate to the channel participation API **before** upgrading the code base to v3.x.
+
 
 While creating the channel, this tutorial will take you through the following steps and concepts:
 
@@ -89,107 +90,11 @@ If you are using a containerized solution for running your network (which for ob
 
 ## Prerequisites
 
-Because `osnadmin` commands are performed against an ordering node (which executes the actions), at least one orderer needs to exist so that you can join the orderer to the channel. You can attempt this tutorial with your existing ordering service or deploy a new set of ordering nodes.  If you decide to use `osnadmin` commands against orderers in an existing ordering service, the system channel must first be removed from each ordering node before you can create any new channels. Choose whether you want to use your existing ordering service or deploy a new set of orderers:
-
-- [Use existing ordering service](#use-existing-ordering-service)
-- [Deploy a new set of orderers](#deploy-a-new-set-of-orderers)
-
-### Use existing ordering service
-
-Before you can take advantage of this feature on a deployed ordering service, you need to remove the system channel from each ordering node that is a consenter in your application channels. A "mixed mode" of orderers on a channel, where some nodes are part of a system channel and others are not, is not supported. The `osadmin` CLI includes both a `channel list` and a `channel remove` command to facilitate the process of removing the system channel. If you prefer to deploy a new ordering service instead, skip ahead to [Deploy a new ordering service](#deploy-a-new-ordering-service).
-
-#### Remove the system channel
-
-- Before attempting these steps ensure that you have [upgraded](../upgrade.html) your ordering nodes to Fabric v2.3 or higher.
-- Modify the `orderer.yaml` for each ordering node to support this feature and restart the node. See the orderer [sampleconfig](https://github.com/hyperledger/fabric/blob/{BRANCH}/sampleconfig/orderer.yaml) for more information about these required parameters.
-    - `General.BootstrapMethod` - Set this value to `none`. Because the system channel is no longer required, the `orderer.yaml` file on each orderer needs to be configured with `BootstrapMethod: none` which means that no bootstrap block is required or used to start up the orderer.
-    - `Admin.ListenAddress` - The orderer admin server address (host and port) that can be used by the `osnadmin` command to configure channels on the ordering service. This value should be a unique `host:port` combination to avoid conflicts.
-    - `Admin.TLS.Enabled:` - Technically this can be set to `false`, but this is not recommended. In general, you should always set this value to `true`.
-    - `Admin.TLS.PrivateKey:` - The path to and file name of the orderer private key issued by the TLS CA.
-    - `Admin.TLS.Certificate:` - The path to and file name of the orderer signed certificate issued by the TLS CA.
-    - `Admin.TLS.ClientAuthRequired:` This value must be set to `true`. Note that while mutual TLS is required for all operations on the orderer Admin endpoint, the entire network is not required to use Mutual TLS.
-    - `Admin.TLS.ClientRootCAs:` - The path to and file name of the admin client TLS CA Root certificate. In the folder structure above, this is `admin-client/client-tls-ca-cert.pem`.
-    - `ChannelParticipation.Enabled:` - Set this value to `true` to enable this feature on the orderer.
-- Restart each ordering node.
-- Put the [system channel into maintenance mode](../kafka_raft_migration.html#entry-to-maintenance-mode) using the same process for the Kafka to Raft migration. This action stops new channel creation transactions from coming in.
-- Remove the system channel from the set of orderers, one by one. During the system channel removal from an orderer, the orderer stops servicing all other application channels it is a member of until removal is complete. Therefore, care must be taken to ensure that the remaining orderers can still function and reach consensus. This operation can be staggered, such that depending on the fault tolerance setup of the respective channels, no channel down time is experienced. If an application channel can tolerate one server offline, you should still be able to submit transactions to the channel, via the other orderers that are not undergoing the removal at that time.  Use the `osnadmin channel list` command to view the channels that this orderer is a member of:
-    ```
-    export OSN_TLS_CA_ROOT_CERT=../config/organizations/ordererOrganizations/ordererOrg1.example.com/ordering-service-nodes/osn1.ordererOrg1.example.com/tls/cacerts/tls-ca-cert.pem
-    export ADMIN_TLS_SIGN_CERT=../config/admin-client/client-tls-cert.pem
-    export ADMIN_TLS_PRIVATE_KEY=../config/admin-client/client-tls-key.pem
-
-    osnadmin channel list -o [ORDERER_ADMIN_LISTENADDRESS] --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
-    ```
-
-    Where:
-
-    - `ORDERER_ADMIN_LISTENADDRESS` corresponds to the `Orderer.Admin.ListenAddress` defined in the `orderer.yaml` for this orderer.
-    - `OSN_TLS_CA_ROOT_CERT` with the path and file name of the orderer organization TLS CA root certificate and intermediate certificate if using an intermediate TLS CA.
-    - `ADMIN_TLS_SIGN_CERT` with the path and file name of the admin client signed certificate from the TLS CA.
-    - `ADMIN_TLS_PRIVATE_KEY` with the path and file name of the admin client private key from the TLS CA.
-
-    **Note:** Because the connection between the `osnadmin` CLI and the orderer requires mutual TLS, you need to pass the `--client-cert` and `--client-key` parameters on each `osadmin` command. The `--client-cert` parameter points to the admin client certificate and `--client-key` refers to the admin client private key, both issued by the admin client TLS CA.
-
-    For example:
-    ```
-    osnadmin channel list -o HOST1:7081 --ca-file $TLS_CA_ROOT_CERT --client-cert $OSN_TLS_SIGN_CERT --client-key $OSN_TLS_PRIVATE_KEY
-    ```
-
-    The output of this command looks similar to:
-
-    ```
-    {
-      "systemChannel": {
-          "name": "syschannel",
-          "url": "/participation/v1/channels/systemchannel"
-      },
-      "channels":[
-          {
-            "name": "channel1",
-            "url": "/participation/v1/channels/channel1"
-          }
-      ]
-    }
-    ```
-    Now you can run `osnadmin channel remove` to remove the system channel from the node configuration:
-
-    ```
-    osnadmin channel remove -o [ORDERER_ADMIN_LISTENADDRESS] --channelID syschannel --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
-    ```
-
-    For example:
-    ```
-    osnadmin channel remove -o HOST1:7081 --channelID syschannel --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
-    ```
-    When successful you see:
-    ```
-    Status: 204
-    ```
-
-    And when you rerun the `osnadmin channel list` command, you can verify that the system channel was removed:
-    ```
-    osnadmin channel list -o [ORDERER_ADMIN_LISTENADDRESS] --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
-    ```
-
-    Examine the output of the command to verify that the system channel was removed:
-
-    ```
-    {
-      "systemChannel": null,
-      "channels":[
-          {
-            "name": "channel1",
-            "url": "/participation/v1/channels/channel1"
-          }
-      ]
-    }
-    ```
-
-    Repeat these commands for each ordering node.
+Because `osnadmin` commands are performed against an ordering node (which executes the actions), at least one orderer needs to exist so that you can join the orderer to the channel. This tutorial will guide you through the process of deploying a new set of ordering nodes.
 
 ### Deploy a new set of orderers
 
-Use these steps if you prefer to deploy a new set of orderers to try out this feature. Deploying the orderers is a two-step process:
+Deploying the orderers is a two-step process:
 
 - [Create the ordering organization MSP and generate ordering node certificates](#create-the-ordering-organization-msp-and-generate-ordering-node-certificates)
 - [Configure the orderer.yaml file for each orderer](#configure-the-orderer-yaml-file-for-each-orderer)
@@ -204,14 +109,14 @@ Because this tutorial demonstrates the process for creating a channel with **thr
 
 Follow the instructions in the [ordering service deployment guide](../deployorderer/ordererdeploy.html) to build an ordering service with three ordering nodes. Note that when you configure the `orderer.yaml` file for each orderer, you will need to make modifications to the [`ChannelParticipation`](../deployorderer/ordererchecklist.html#channelparticipation) and [`General.BoostrapMethod`](../deployorderer/ordererchecklist.html#general-bootstrapmethod) parameters to leverage this feature.
 
-- `General.BootstrapMethod` - Set this value to `none`. Because the system channel is no longer required, the `orderer.yaml` file on each orderer needs to be configured with `BootstrapMethod: none` which means that no bootstrap block is required or used to start up the orderer.
+- `General.BootstrapMethod` - Set this value to `none`. Because the system channel is no longer supported, the `orderer.yaml` file on each orderer needs to be configured with `BootstrapMethod: none` which means that no bootstrap block is required or used to start up the orderer.
 - `Admin.ListenAddress` - The orderer admin server address (host and port) that can be used by the `osnadmin` command to configure channels on the ordering service. This value should be a unique `host:port` combination to avoid conflicts.
 - `Admin.TLS.Enabled:` - Technically this can be set to `false`, but this is not recommended. In general, you should always set this value to `true`.
 - `Admin.TLS.PrivateKey:` - The path to and file name of the orderer private key issued by the TLS CA.
 - `Admin.TLS.Certificate:` - The path to and file name of the orderer signed certificate issued by the TLS CA.
 - `Admin.TLS.ClientAuthRequired:` This value must be set to `true`. Note that while mutual TLS is required for all operations on the orderer Admin endpoint, the entire network is not required to use Mutual TLS.
 - `Admin.TLS.ClientRootCAs:` - The path to and file name of the admin client TLS CA Root certificate. In the folder structure above, this is `admin-client/client-tls-ca-cert.pem`.
-- `ChannelParticipation.Enabled:` - Set this value to `true` to enable this feature on the orderer.
+- `ChannelParticipation.Enabled:` - Since the system channel is no longer supported, this value must be set to `true`.
 
 **Start each orderer**  
 
@@ -275,7 +180,7 @@ A sample `configtx.yaml` file is located in the `config` folder of the binary al
 - **[Orderer:](#orderer)** Contains the list of ordering nodes that will form the consenter set of the channel.
 - **[Profiles:](#profiles)** Each channel profile references information from other sections of the `configtx.yaml` file to build a channel configuration. Every channel that is created must reference a profile, which contains information like the peer organizations and the channel's set of consenters. An unlimited number of profiles can be listed in the `Profiles` section. However, each must have a distinctive name (this will not become the name of the channel itself, as that is specified by a flag given when the channel is created).
 
-Refer to the [Using `configtx.yaml` to build a channel configuration](create_channel_config.html) tutorial to learn more about this file. However, the following three sections require specific configuration in order to create a channel without a system channel.
+Refer to the [Using `configtx.yaml` to build a channel configuration](create_channel_config.html) tutorial to learn more about this file.
 
 **Note:** Peer organizations are not required when you initially create the channel, but if you know them it is recommended to add them now to the Profiles `Organizations:` and `Applications` section to avoid having to update the channel configuration later.
 
@@ -322,7 +227,7 @@ When the channel configuration block is created, `configtxgen` reads the paths t
 
 #### Profiles:
 
-If you are familiar with the legacy process for creating channels, you will recall that the `Profiles:` section of the `configtx.yaml` contained a consortium section under the `Orderer:` group. This consortium definition, which previously specified the peer organizations allowed to create channels on the ordering service, is no longer required. If this section exists in the profile, you cannot use this feature to create a channel. Rather, under the `Orderer:` section you simply include MSP ID of the ordering organization or organizations in the case of a multi-organization ordering service and list the peer organizations in `Application:` section that will be members of the channel. At least one orderer organization and one peer organization must be provided.
+If you are familiar with the legacy process for creating channels, you will recall that the `Profiles:` section of the `configtx.yaml` contained a consortium section under the `Orderer:` group. This consortium definition, which previously specified the peer organizations allowed to create channels on the ordering service, is no longer supported. If this section exists in the profile, you cannot use this feature to create a channel. Rather, under the `Orderer:` section you simply include MSP ID of the ordering organization or organizations in the case of a multi-organization ordering service and list the peer organizations in `Application:` section that will be members of the channel. At least one orderer organization and one peer organization must be provided.
 
 The following snippet is an example of a channel profile that contains an orderer configuration based on the default channel, orderer, organization, and policy configurations. The `Application:` section, where the peer organizations are listed, includes the default `Application` settings as well as at least one peer organization (`SampleOrg`, in this example) and the corresponding policies for the channel.
 
@@ -380,8 +285,6 @@ INFO 005 Writing genesis block
 ## Step two: Use the `osnadmin` CLI to add the first orderer to the channel
 
 Now that the genesis block has been created, the first ordering node that receives the `osnadmin channel join` command command effectively "activates" the channel, though the channel is not fully operational until a quorum of consenters is established (if your profile listed three consenters, at least one more node, for a total of two, would have to join using the `osnadmin channel join` command).
-
-**Note:** If you try to run the `osnadmin` commands (aside from the `channel list` command) against an ordering node that is a member of a system channel, you get an error which indicates that the system channel still exists. The system channel needs to be [removed](#remove-the-system-channel) before the `osnadmin` commands can be used to create or join channels.
 
 Each orderer needs to run the following command:
 

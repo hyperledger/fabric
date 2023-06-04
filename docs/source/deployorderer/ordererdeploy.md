@@ -2,9 +2,7 @@
 
 Before deploying an ordering service, review the material in [Planning for an ordering service](./ordererplan.html) and [Checklist for a production ordering service](./ordererchecklist.html), which discusses all of the relevant decisions you need to make and parameters you need to configure before deploying an ordering service.
 
-This tutorial is based on the Raft consensus protocol and can be used to build an ordering service, which is comprised of ordering nodes, or "orderers". It describes the process to create a three-node Raft ordering service where all of the ordering nodes belong to the same organization. This tutorial assumes that a system channel genesis block will not be used when bootstrapping the orderer. Instead, these nodes (or a subset of them), will be joined to a channel using the process to [Create a channel](../create_channel/create_channel_participation.html).
-
-For information on how to create an orderer that will be bootstrapped with a system channel genesis block, check out [Deploy the ordering service](https://hyperledger-fabric.readthedocs.io/en/release-2.2/deployorderer/ordererdeploy.html) from the Fabric v2.2 documentation.
+This tutorial is based on the Raft consensus protocol and can be used to build an ordering service, which is comprised of ordering nodes, or "orderers". It describes the process to create a three-node Raft ordering service where all of the ordering nodes belong to the same organization. For more info, refer to [create a channel](../create_channel/create_channel_participation.html).
 
 ## Download the ordering service binary and configuration files
 
@@ -105,13 +103,11 @@ At a minimum, you need to configure the following parameters:
 - `General.TLS.PrivateKey ` - Ordering node private key from TLS CA.
 - `General.TLS.Certificate ` - Ordering node signed certificate (public key) from the TLS CA.
 - `General.TLS.RootCAS` - This value should be unset.
-- `General.BoostrapMethod:none` - This allows the orderer to start without needing a system channel configuration block.
+- `General.BoostrapMethod:none` - This allows the orderer to start without needing a system channel configuration block (system channel is no longer supported since Fabric v3.0).
 - `General.LocalMSPDir` - Path to the ordering node MSP folder.
 - `General.LocalMSPID` - MSP ID of the ordering organization as specified in the channel configuration.
 - `FileLedger.Location` - Location on the file system to the ledgers of the channels this orderer will be servicing.
-- `ChannelParticipation.Enabled` - Set to `true`. This allows the orderer to be joined to an application channel without joining a system channel first.
-
-Because this tutorial assumes that a system channel genesis block will not be used when bootstrapping the orderer, the following additional parameters are required if you want to create an application channel with the `osnadmin` command.
+- `ChannelParticipation.Enabled` - Set to `true`. This allows the orderer to be joined to an application channel (note that the system channel is no longer supported since Fabric v3.0).
 
 - `Admin.ListenAddress` - The orderer admin server address (host and port) that can be used by the `osnadmin` command to configure channels on the ordering service. This value should be a unique `host:port` combination to avoid conflicts.
 - `Admin.TLS.Enabled:` - Technically this can be set to `false`, but this is not recommended. In general, you should always set this value to `true`.

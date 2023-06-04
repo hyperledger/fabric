@@ -1,8 +1,8 @@
 # Using configtx.yaml to build a channel configuration
 
-A channel is created by building a channel creation transaction artifact that specifies the initial configuration of the channel. The **channel configuration** is stored on the ledger, and governs all the subsequent blocks that are added to the channel. The channel configuration specifies which organizations are channel members, the ordering nodes that can add new blocks on the channel, as well as the policies that govern channel updates. The initial channel configuration, stored in the channel genesis block, can be updated through channel configuration updates. If a sufficient number of organizations approve a channel update, a new channel config block will govern the channel after it is committed to the channel.
+A channel is created by building a channel genesis block artifact that specifies the initial configuration of the channel. The **channel configuration** is stored on the ledger, and governs all the subsequent blocks that are added to the channel. The channel configuration specifies which organizations are channel members, the ordering nodes that can add new blocks on the channel, as well as the policies that govern channel updates. The initial channel configuration, stored in the channel genesis block, can be updated through channel configuration updates. If a sufficient number of organizations approve a channel update, a new channel config block will govern the channel after it is committed to the channel.
 
-While it is possible to build the channel creation transaction file manually, it is easier to create a channel by using the `configtx.yaml` file and the [configtxgen](../commands/configtxgen.html) tool. The `configtx.yaml` file contains the information that is required to build the channel configuration in a format that can be easily read and edited by humans. The `configtxgen` tool reads the information in the `configtx.yaml` file and writes it to the [protobuf format](https://developers.google.com/protocol-buffers) that can be read by Fabric.
+While it is possible to build the channel genesis block file manually, it is easier to create a channel by using the `configtx.yaml` file and the [configtxgen](../commands/configtxgen.html) tool. The `configtx.yaml` file contains the information that is required to build the channel configuration in a format that can be easily read and edited by humans. The `configtxgen` tool reads the information in the `configtx.yaml` file and writes it to the [protobuf format](https://developers.google.com/protocol-buffers) that can be read by Fabric.
 
 ## Overview
 
@@ -83,7 +83,7 @@ You can see the part of `configtx.yaml` that defines Org1 of the test network be
 
 ## Capabilities
 
-Fabric channels can be joined by orderer and peer nodes that are running different versions of Hyperledger Fabric. Channel capabilities allow organizations that are running different Fabric binaries to participate on the same channel by only enabling certain features. For example, organizations that are running Fabric v1.4 and organizations that are running Fabric v2.x can join the same channel as long as the channel capabilities levels are set to V1_4_X or below. None of the channel members will be able to use the features introduced in Fabric v2.0.
+Fabric channels can be joined by orderer and peer nodes that are running different versions of Hyperledger Fabric. Channel capabilities allow organizations that are running different Fabric binaries to participate on the same channel by only enabling certain features. For example, organizations that are running Fabric v1.4 and organizations that are running Fabric v2.x can join the same channel as long as the channel capabilities levels are set to V1_4_X or below. None of the channel members will be able to use the features introduced in Fabric v2.0. Note that this is true as long as the new binaries still support a feature that existed in a previous version, and do not use a new feature that does not exist in a previous version. For example, the system channel is no longer supported in version v3.0. Thus, a v3.0 binary will not interoperate with a v2.x binary that still operates with the system channel.
 
 If you examine the `configtx.yaml` file, you will see three capability groups:
 
@@ -132,62 +132,35 @@ Because the test network is used for development and testing, it uses an orderin
 
 ## Channel
 
-The channel section defines that policies that govern the highest level of the channel configuration. For an application channel, these policies govern the hashing algorithm, the data hashing structure used to create new blocks, and the channel capability level. In the system channel, these policies also govern the creation or removal of consortiums of peer organizations.
+The channel section defines that policies that govern the highest level of the channel configuration. In an application channel, these policies govern the hashing algorithm, the data hashing structure used to create new blocks, and the channel capability level.
 
-The test network uses the default policies provided by Fabric, which require that a majority of orderer service administrators would need to approve updates to these values in the system channel. In an application channel, changes would need to be approved by a majority of orderer organizations and a majority of channel members. Most users will not need to change these values.
+The test network uses the default policies provided by Fabric, which require that changes would need to be approved by a majority of orderer organizations and a majority of channel members. Most users will not need to change these values.
 
 ## Profiles
 
-The `configtxgen` tool reads the channel profiles in the **Profiles** section to build a channel configuration. Each profile uses YAML syntax to gather data from other sections of the file. The `configtxgen` tool uses this configuration to create a channel creation transaction for an applications channel, or to write the channel genesis block for a system channel. To learn more about YAML syntax, [Wikipedia](https://en.wikipedia.org/wiki/YAML) provides a good place to get started.
+The `configtxgen` tool reads the channel profiles in the **Profiles** section to build a channel configuration. Each profile uses YAML syntax to gather data from other sections of the file. The `configtxgen` tool uses this configuration to create a genesis block for joining orderers to a new channel via the channel participation API. To learn more about YAML syntax, [Wikipedia](https://en.wikipedia.org/wiki/YAML) provides a good place to get started.
 
-The `configtx.yaml` used by the test network contains two channel profiles, `TwoOrgsOrdererGenesis` and `TwoOrgsChannel`. If you want to create a channel without a system channel by using the `osnadmin CLI` then you can refer to the `SampleAppChannelEtcdRaft`
-
-### TwoOrgsOrdererGenesis
-
-The `TwoOrgsOrdererGenesis` profile is used to create the system channel genesis block:
+The `configtx.yaml` used by the test network contains one channel profile `TwoOrgsApplicationGenesis`.
+The `TwoOrgsApplicationGenesis` profile is used by the test network to create application channels:
 ```yaml
-TwoOrgsOrdererGenesis:
-    <<: *ChannelDefaults
-    Orderer:
-        <<: *OrdererDefaults
-        Organizations:
-            - *OrdererOrg
-        Capabilities:
-            <<: *OrdererCapabilities
-    Consortiums:
-        SampleConsortium:
-            Organizations:
-                - *Org1
-                - *Org2
+TwoOrgsApplicationGenesis:
+  <<: *ChannelDefaults
+  Orderer:
+    <<: *OrdererDefaults
+    Organizations:
+      - *OrdererOrg
+    Capabilities: *OrdererCapabilities
+  Application:
+    <<: *ApplicationDefaults
+    Organizations:
+      - *Org1
+      - *Org2
+    Capabilities: *ApplicationCapabilities
 ```
-
-The system channel defines the nodes of the ordering service and the set of organizations that are ordering service administrators. The system channel also includes a set of peer organizations that belong to the blockchain [consortium](../glossary.html#consortium). The channel MSP of each member of the consortium is included in the system channel, allowing them to create new application channels and add consortium members to the new channel.
-
-The profile creates a consortium named `SampleConsortium` that contains the two peer organizations in the `configtx.yaml` file, Org1 and Org2. The `Orderer` section of the profile uses the single node Raft ordering service defined in the **Orderer:** section of the file. The OrdererOrg from the **Organizations:** section is made the only administrator of the ordering service. Because our only ordering node is running Fabric 2.x, we can set the orderer system channel capability to `V2_0`. The system channel uses default policies from the **Channel** section and enables `V2_0` as the channel capability level.
-
-### TwoOrgsChannel
-
-The `TwoOrgsChannel` profile is used by the test network to create application channels:
-```yaml
-TwoOrgsChannel:
-    Consortium: SampleConsortium
-    <<: *ChannelDefaults
-    Application:
-        <<: *ApplicationDefaults
-        Organizations:
-            - *Org1
-            - *Org2
-        Capabilities:
-            <<: *ApplicationCapabilities
-```
-
-The system channel is used by the ordering service as a template to create application channels. The nodes of the ordering service that are defined in the system channel become the default consenter set of new channels, while the administrators of the ordering service become the orderer administrators of the channel. The channel MSPs of channel members are transferred to the new channel from the system channel. After the channel is created, ordering nodes can be added or removed from the channel by updating the channel configuration. You can also update the channel configuration to [add other organizations as channel members](../channel_update_tutorial.html).
-
-The `TwoOrgsChannel` provides the name of the consortium, `SampleConsortium`, hosted by the test network system channel. As a result, the ordering service defined in the `TwoOrgsOrdererGenesis` profile becomes channel consenter set. In the `Application` section, both organizations from the consortium, Org1 and Org2, are included as channel members. The channel uses `V2_0` as the application capabilities, and uses the default policies from the **Application** section to govern how peer organizations will interact with the channel. The application channel also uses the default policies from the **Channel** section and enables `V2_0` as the channel capability level.
 
 ### SampleAppChannelEtcdRaft
 
-The `SampleAppChannelEtcdRaft` profile is provided for customers that prefer to create a channel without a system channel by using the `osnadmin CLI`. The major difference is that a consortium definition is no longer required. Check out the [Create a channel](create_channel_participation.html) tutorial to learn more about how to use this profile.
+The `SampleAppChannelEtcdRaft` profile is provided as an example of creating a channel by using the `osnadmin CLI`.
 
 ```
 SampleAppChannelEtcdRaft:
@@ -212,4 +185,4 @@ SampleAppChannelEtcdRaft:
                       Type: Signature
                       Rule: "OR('SampleOrg.member')"
 ```
-For simplicity, this snippet assumes that the peers and orderers belong to the same organization `SampleOrg`. For a production deployment however, it is recommended that the peer and ordering nodes belong to separate organizations.
+Check out the [Create a channel](create_channel_participation.html) tutorial to learn more about channel creation.

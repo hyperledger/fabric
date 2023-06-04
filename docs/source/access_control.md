@@ -167,9 +167,7 @@ To this:
 `peer/Propose: /Channel/Application/MyPolicy`
 
 Once these fields have been changed in `configtx.yaml`, the `configtxgen` tool
-will use the policies and ACLs defined when creating a channel creation
-transaction. When appropriately signed and submitted by one of the admins of the
-consortium members, a new channel with the defined ACLs and policies is created.
+will use the policies and ACLs defined when creating a genesis block for channel creation using the channel participation API. When submitted to the orderer by one of the admins, the orderer is joined to the new channel with the defined ACLs and policies.
 
 Once `MyPolicy` has been bootstrapped into the channel configuration, it can also
 be referenced to override other ACL defaults. For example:

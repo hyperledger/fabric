@@ -35,8 +35,8 @@ execution and ordering are performed by the same nodes.
 Orderers also enforce basic access control for channels, restricting who can
 read and write data to them, and who can configure them. Remember that who
 is authorized to modify a configuration element in a channel is subject to the
-policies that the relevant administrators set when they created the consortium
-or the channel. Configuration transactions are processed by the orderer,
+policies that the relevant administrators set when they created the channel. 
+Configuration transactions are processed by the orderer,
 as it needs to know the current set of policies to execute its basic
 form of access control. In this case, the orderer processes the
 configuration update to make sure that the requestor has the proper

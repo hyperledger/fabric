@@ -139,10 +139,9 @@ In general, these four parameters would only need to be configured if you want t
 # system channel is specified. The option can be one of:
 #   "file" - path to a file containing the genesis block or config block of system channel
 #   "none" - allows an orderer to start without a system channel configuration
-BootstrapMethod: file
+BootstrapMethod: none
 ```
-
-* **`BootstrapMethod`**: If you plan to create this node on a network that is not using a system channel, override this value to `none` and then ensure that [`ChannelParticipation.Enabled`](#channelparticipation) is set to `true`, otherwise you will get an error when you attempt to start the node. If you are creating a node to be joined to a system channel, unless you plan to use a file type other than “file”, this value should be left as is.
+**`BootstrapMethod`**: Since Fabric v3.0 system channel is no longer supported, thus override this value to `none` and then ensure that [`ChannelParticipation.Enabled`](#channelparticipation) is set to `true`, otherwise you will get an error when you attempt to start the node. 
 
 ## General.BoostrapFile
 
@@ -157,7 +156,7 @@ BootstrapMethod: file
 BootstrapFile:
 ```
 
-* **`BoostrapFile`**: (if you are creating this node to be joined to a system channel, the default value should be overridden) Specify the location and name of the system channel genesis block to use when this node is created. If you are creating this node without using a system channel, this value will not be used, and can therefore be left blank.
+**`BoostrapFile`**: Since Fabric v3.0 the system channel is no longer supported, so this value will not be used, and can therefore be left blank.
 
 ## General.LocalMSPDir
 
@@ -175,9 +174,7 @@ LocalMSPDir: msp
 
 ```
 # LocalMSPID is the identity to register the local MSP material with the MSP
-# manager. IMPORTANT: The local MSP ID of an orderer needs to match the MSP
-# ID of one of the organizations defined in the orderer system channel's
-# /Channel/Orderer configuration. The sample organization defined in the
+# manager. The sample organization defined in the
 # sample configuration provided has an MSP ID of "SampleOrg".
 LocalMSPID: SampleOrg
 ```

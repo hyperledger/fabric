@@ -8,15 +8,14 @@ The atomic broadcast ordering protocol for Hyperledger Fabric is described in `h
 
 ## Service types
 
-* Solo ordering service (testing): The solo ordering service is intended to be an extremely easy to deploy, non-production ordering service. It consists of a single process which serves all clients, so consensus is not required as there is a single central authority.  There is correspondingly no high availability or scalability. This makes solo ideal for development and testing, but not for deployment.
-* Kafka-based ordering service (production): The Kafka-based ordering service leverages the Kafka pub/sub system to perform the ordering, but wraps this in the familiar `ab.proto` definition so that the peer orderer client code does not to be written specifically for Kafka. Kafka is currently the preferred choice for production deployments which demand high throughput and high availability, but do not require byzantine fault tolerance.
-* PBFT ordering service (pending): The PBFT ordering service will use the Hyperledger Fabric PBFT implementation (currently under development) to order messages in a byzantine fault tolerant way.
+* SmartBFT ordering service (pending): The SmartBFT ordering service will use the Hyperledger Fabric SmartBFT implementation (currently under development) to order messages in a byzantine fault tolerant way.
 
 ### Choosing a service type
 
 In order to set a service type, the ordering service administrator needs to set the right value in the genesis block that the ordering service nodes will be bootstrapped from.
 
-Specifically, the value corresponding to the `ConsensusType` key of the `Values` map of the `Orderer` config group on the system channel should be set to either `solo` or `etcdraft`.
+Specifically, the value corresponding to the `ConsensusType` key of the `Values` map of the `Orderer` config group should be set to either `BFT` or `etcdraft`.
+
 
 For details on the configuration structure of channels, refer to the [Channel Configuration](../docs/source/configtx.rst) guide.
 
