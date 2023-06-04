@@ -76,6 +76,7 @@ type BlockVerifier interface {
 //go:generate counterfeiter -o fake/orderer_connection_source.go --fake-name OrdererConnectionSource . OrdererConnectionSource
 type OrdererConnectionSource interface {
 	RandomEndpoint() (*orderers.Endpoint, error)
+	Endpoints() []*orderers.Endpoint
 }
 
 //go:generate counterfeiter -o fake/dialer.go --fake-name Dialer . Dialer

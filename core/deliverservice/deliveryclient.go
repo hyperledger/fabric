@@ -41,12 +41,20 @@ type DeliverService interface {
 	Stop()
 }
 
+// BlockDeliverer communicates with orderers to obtain new blocks and send them to the committer service, for a
+// specific channel. It can be implemented using different protocols depending on the ordering service consensus type,
+// e.g CFT (etcdraft) or BFT (SmartBFT).
+type BlockDeliverer interface {
+	Stop()
+	DeliverBlocks()
+}
+
 // deliverServiceImpl the implementation of the delivery service
 // maintains connection to the ordering service and maps of
 // blocks providers
 type deliverServiceImpl struct {
 	conf           *Config
-	blockProviders map[string]*blocksprovider.Deliverer
+	blockProviders map[string]BlockDeliverer
 	lock           sync.RWMutex
 	stopping       bool
 }
@@ -78,7 +86,7 @@ type Config struct {
 func NewDeliverService(conf *Config) DeliverService {
 	ds := &deliverServiceImpl{
 		conf:           conf,
-		blockProviders: make(map[string]*blocksprovider.Deliverer),
+		blockProviders: make(map[string]BlockDeliverer),
 	}
 	return ds
 }
