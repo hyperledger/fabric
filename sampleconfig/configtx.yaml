@@ -3,6 +3,16 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+
+################################################################################
+#
+#   NOTE
+#
+#   Since release V3.0 Solo, Kafka and the System Channel have been removed
+#   and are no longer supported.
+#
+################################################################################
+
 ---
 ################################################################################
 #
@@ -258,8 +268,9 @@ Application: &ApplicationDefaults
 Orderer: &OrdererDefaults
 
     # Orderer Type: The orderer implementation to start.
-    # Available types are "solo", "kafka" and "etcdraft".
-    OrdererType: solo
+    # Available types are "etcdraft" and "BFT".
+    # Please note that "solo" and "kafka" are no longer supported.
+    OrdererType: etcdraft
 
     # Addresses used to be the list of orderer addresses that clients and peers
     # could connect to.  However, this does not allow clients to associate orderer
@@ -470,6 +481,7 @@ Profiles:
         <<: *ChannelDefaults
         Orderer:
             <<: *OrdererDefaults
+            OrdererType: solo
             Organizations:
                 - *SampleOrg
         Consortiums:
@@ -498,6 +510,7 @@ Profiles:
         <<: *ChannelDefaults
         Orderer:
             <<: *OrdererDefaults
+            OrdererType: solo
         Consortiums:
             SampleConsortium:
                 Organizations:
@@ -522,6 +535,7 @@ Profiles:
         <<: *ChannelDefaults
         Orderer:
             <<: *OrdererDefaults
+            OrdererType: solo
             Organizations:
                 - <<: *SampleOrg
                   Policies:
@@ -600,7 +614,6 @@ Profiles:
         <<: *ChannelDefaults
         Orderer:
             <<: *OrdererDefaults
-            OrdererType: etcdraft
             Organizations:
                 - <<: *SampleOrg
                   Policies:
@@ -633,6 +646,7 @@ Profiles:
         <<: *ChannelDefaults
         Orderer:
             <<: *OrdererDefaults
+            OrdererType: solo
         Application:
             <<: *ApplicationDefaults
 
@@ -642,7 +656,6 @@ Profiles:
         <<: *ChannelDefaults
         Orderer:
             <<: *OrdererDefaults
-            OrdererType: etcdraft
             Organizations:
                 - <<: *SampleOrg
                   Policies:

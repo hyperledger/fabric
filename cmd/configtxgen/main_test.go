@@ -41,14 +41,14 @@ func TestInspectMissing(t *testing.T) {
 func TestInspectBlock(t *testing.T) {
 	blockDest := filepath.Join(tmpDir, "block")
 
-	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+	config := genesisconfig.Load(genesisconfig.SampleAppChannelInsecureSoloProfile, configtest.GetDevConfigDir())
 
 	require.NoError(t, doOutputBlock(config, "foo", blockDest), "Good block generation request")
 	require.NoError(t, doInspectBlock(blockDest), "Good block inspection request")
 }
 
 func TestInspectBlockErr(t *testing.T) {
-	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+	config := genesisconfig.Load(genesisconfig.SampleAppChannelInsecureSoloProfile, configtest.GetDevConfigDir())
 
 	require.EqualError(t, doOutputBlock(config, "foo", ""), "error writing genesis block: open : no such file or directory")
 	require.EqualError(t, doInspectBlock(""), "could not read block ")
@@ -57,7 +57,7 @@ func TestInspectBlockErr(t *testing.T) {
 func TestMissingOrdererSection(t *testing.T) {
 	blockDest := filepath.Join(tmpDir, "block")
 
-	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+	config := genesisconfig.Load(genesisconfig.SampleAppChannelInsecureSoloProfile, configtest.GetDevConfigDir())
 	config.Orderer = nil
 
 	require.EqualError(t, doOutputBlock(config, "foo", blockDest), "refusing to generate block which is missing orderer section")
@@ -162,7 +162,6 @@ func TestConfigTxFlags(t *testing.T) {
 		"cmd",
 		"-channelID=testchannelid",
 		"-outputCreateChannelTx=" + configTxDest,
-		"-channelCreateTxBaseProfile=" + genesisconfig.SampleSingleMSPSoloProfile,
 		"-profile=" + genesisconfig.SampleSingleMSPChannelProfile,
 		"-configPath=" + devConfigDir,
 		"-inspectChannelCreateTx=" + configTxDest,
