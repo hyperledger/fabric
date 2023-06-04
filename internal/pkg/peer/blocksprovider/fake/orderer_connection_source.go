@@ -9,6 +9,16 @@ import (
 )
 
 type OrdererConnectionSource struct {
+	EndpointsStub        func() []*orderers.Endpoint
+	endpointsMutex       sync.RWMutex
+	endpointsArgsForCall []struct {
+	}
+	endpointsReturns struct {
+		result1 []*orderers.Endpoint
+	}
+	endpointsReturnsOnCall map[int]struct {
+		result1 []*orderers.Endpoint
+	}
 	RandomEndpointStub        func() (*orderers.Endpoint, error)
 	randomEndpointMutex       sync.RWMutex
 	randomEndpointArgsForCall []struct {
@@ -23,6 +33,59 @@ type OrdererConnectionSource struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *OrdererConnectionSource) Endpoints() []*orderers.Endpoint {
+	fake.endpointsMutex.Lock()
+	ret, specificReturn := fake.endpointsReturnsOnCall[len(fake.endpointsArgsForCall)]
+	fake.endpointsArgsForCall = append(fake.endpointsArgsForCall, struct {
+	}{})
+	stub := fake.EndpointsStub
+	fakeReturns := fake.endpointsReturns
+	fake.recordInvocation("Endpoints", []interface{}{})
+	fake.endpointsMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *OrdererConnectionSource) EndpointsCallCount() int {
+	fake.endpointsMutex.RLock()
+	defer fake.endpointsMutex.RUnlock()
+	return len(fake.endpointsArgsForCall)
+}
+
+func (fake *OrdererConnectionSource) EndpointsCalls(stub func() []*orderers.Endpoint) {
+	fake.endpointsMutex.Lock()
+	defer fake.endpointsMutex.Unlock()
+	fake.EndpointsStub = stub
+}
+
+func (fake *OrdererConnectionSource) EndpointsReturns(result1 []*orderers.Endpoint) {
+	fake.endpointsMutex.Lock()
+	defer fake.endpointsMutex.Unlock()
+	fake.EndpointsStub = nil
+	fake.endpointsReturns = struct {
+		result1 []*orderers.Endpoint
+	}{result1}
+}
+
+func (fake *OrdererConnectionSource) EndpointsReturnsOnCall(i int, result1 []*orderers.Endpoint) {
+	fake.endpointsMutex.Lock()
+	defer fake.endpointsMutex.Unlock()
+	fake.EndpointsStub = nil
+	if fake.endpointsReturnsOnCall == nil {
+		fake.endpointsReturnsOnCall = make(map[int]struct {
+			result1 []*orderers.Endpoint
+		})
+	}
+	fake.endpointsReturnsOnCall[i] = struct {
+		result1 []*orderers.Endpoint
+	}{result1}
 }
 
 func (fake *OrdererConnectionSource) RandomEndpoint() (*orderers.Endpoint, error) {
@@ -84,6 +147,8 @@ func (fake *OrdererConnectionSource) RandomEndpointReturnsOnCall(i int, result1 
 func (fake *OrdererConnectionSource) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.endpointsMutex.RLock()
+	defer fake.endpointsMutex.RUnlock()
 	fake.randomEndpointMutex.RLock()
 	defer fake.randomEndpointMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
