@@ -153,6 +153,7 @@ func (n *node) run(campaign bool) {
 
 			// skip empty apply
 			if len(rd.CommittedEntries) != 0 || rd.SoftState != nil {
+				n.maybeSyncWAL(rd.CommittedEntries)
 				n.chain.applyC <- apply{rd.CommittedEntries, rd.SoftState}
 			}
 
@@ -170,11 +171,6 @@ func (n *node) run(campaign bool) {
 			// TODO(jay_guo) leader can write to disk in parallel with replicating
 			// to the followers and them writing to their disks. Check 10.2.1 in thesis
 			n.send(rd.Messages)
-
-		case <-n.storage.WALSyncC:
-			if err := n.storage.Sync(); err != nil {
-				n.logger.Warnf("Failed to sync raft log, error: %s", err)
-			}
 
 		case <-n.chain.haltC:
 			raftTicker.Stop()
@@ -221,6 +217,24 @@ func (n *node) send(msgs []raftpb.Message) {
 		if msg.Type == raftpb.MsgSnap {
 			n.ReportSnapshot(msg.To, status)
 		}
+	}
+}
+
+func (n *node) maybeSyncWAL(entries []raftpb.Entry) {
+	allNormal := true
+	for _, entry := range entries {
+		if entry.Type == raftpb.EntryNormal {
+			continue
+		}
+		allNormal = false
+	}
+
+	if allNormal {
+		return
+	}
+
+	if err := n.storage.Sync(); err != nil {
+		n.logger.Errorf("Failed to sync raft log, error: %s", err)
 	}
 }
 

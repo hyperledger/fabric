@@ -1149,10 +1149,8 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 				continue
 			}
 
-			// persist the WAL entries into disk
-			c.Node.storage.WALSyncC <- struct{}{}
-
 			c.confState = *c.Node.ApplyConfChange(cc)
+
 			switch cc.Type {
 			case raftpb.ConfChangeAddNode:
 				c.logger.Infof("Applied config change to add node %d, current nodes in channel: %+v", cc.NodeID, c.confState.Voters)

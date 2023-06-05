@@ -59,7 +59,6 @@ type RaftStorage struct {
 
 	// a queue that keeps track of indices of snapshots on disk
 	snapshotIndex []uint64
-	WALSyncC      chan struct{}
 }
 
 // CreateStorage attempts to create a storage to persist etcd/raft data.
@@ -114,7 +113,6 @@ func CreateStorage(
 		walDir:        walDir,
 		snapDir:       snapDir,
 		snapshotIndex: ListSnapshots(lg, snapDir),
-		WALSyncC:      make(chan struct{}),
 	}, nil
 }
 
