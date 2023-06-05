@@ -1997,6 +1997,77 @@ var _ = Describe("Chain", func() {
 					})
 				})
 
+				It("disconnecting follower node -> adding new node to the cluster -> writing blocks on the ledger -> reconnecting the follower node", func() {
+					By("Disconnecting a follower node")
+					network.disconnect(c2.id)
+
+					By("Configuring an additional node")
+					addConsenterUpdate := addConsenterConfigValue()
+					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, addConsenterUpdate))
+					c1.cutter.CutNext = true
+
+					By("Sending config transaction")
+					err := c1.Configure(configEnv, 0)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(c1.fakeFields.fakeConfigProposalsReceived.AddCallCount()).To(Equal(1))
+					Expect(c1.fakeFields.fakeConfigProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
+
+					network.exec(func(c *chain) {
+						if c.id == c2.id {
+							return
+						}
+						Eventually(c.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(1))
+						Eventually(c.fakeFields.fakeClusterSize.SetCallCount, LongEventualTimeout).Should(Equal(2))
+						Expect(c.fakeFields.fakeClusterSize.SetArgsForCall(1)).To(Equal(float64(4)))
+					})
+
+					_, raftmetabytes := c1.support.WriteConfigBlockArgsForCall(0)
+					meta := &common.Metadata{Value: raftmetabytes}
+					raftmeta, err := etcdraft.ReadBlockMetadata(meta, nil)
+					Expect(err).NotTo(HaveOccurred())
+
+					By("Starting the new node")
+					c4 := newChain(timeout, channelID, dataDir, 4, raftmeta, consenters, cryptoProvider, nil, nil)
+					// if we join a node to existing network, it MUST already obtained blocks
+					// till the config block that adds this node to cluster.
+					c4.support.WriteBlock(c1.support.WriteBlockArgsForCall(0))
+					c4.support.WriteConfigBlock(c1.support.WriteConfigBlockArgsForCall(0))
+					c4.init()
+
+					network.addChain(c4)
+					c4.Start()
+
+					// ConfChange is applied to etcd/raft asynchronously, meaning node 4 is not added
+					// to leader's node list right away. An immediate tick does not trigger a heartbeat
+					// being sent to node 4. Therefore, we repeatedly tick the leader until node 4 joins
+					// the cluster successfully.
+					Eventually(func() <-chan raft.SoftState {
+						c1.clock.Increment(interval)
+						return c4.observe
+					}, defaultTimeout).Should(Receive(Equal(raft.SoftState{Lead: 1, RaftState: raft.StateFollower})))
+
+					Eventually(c4.support.WriteBlockCallCount, defaultTimeout).Should(Equal(1))
+					Eventually(c4.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(1))
+
+					By("Sending data blocks to leader")
+					numOfBlocks := 100
+					for i := 0; i < numOfBlocks; i++ {
+						c1.cutter.CutNext = true
+						err := c1.Order(env, 0)
+						Expect(err).NotTo(HaveOccurred())
+					}
+
+					By("Reconnecting the follower node")
+					network.connect(c2.id)
+					c1.clock.Increment(interval)
+
+					By("Checking correct synchronization")
+					network.exec(func(c *chain) {
+						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1 + numOfBlocks))
+						Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+					})
+				})
+
 				It("stop leader and continue reconfiguration failing over to new leader", func() {
 					// Scenario: Starting replica set of 3 Raft nodes, electing node c1 to be a leader
 					// configure chain support mock to disconnect c1 right after it writes configuration block

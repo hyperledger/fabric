@@ -137,6 +137,7 @@ func (n *node) run(campaign bool) {
 			n.tracker.Check(&status)
 
 		case rd := <-n.Ready():
+			n.logger.Infof("Node %d:: ?????????? rd := <-n.Ready()", n.chain.raftID)
 			startStoring := n.clock.Now()
 			if err := n.storage.Store(rd.Entries, rd.HardState, rd.Snapshot); err != nil {
 				n.logger.Panicf("Failed to persist etcd/raft data: %s", err)
@@ -148,11 +149,13 @@ func (n *node) run(campaign bool) {
 			}
 
 			if !raft.IsEmptySnap(rd.Snapshot) {
+				n.logger.Infof("Node %d:: n.chain.snapC <- &rd.Snapshot", n.chain.raftID)
 				n.chain.snapC <- &rd.Snapshot
 			}
 
 			// skip empty apply
 			if len(rd.CommittedEntries) != 0 || rd.SoftState != nil {
+				n.logger.Infof("Node %d:: !!!!!!!!!!!!!!!!!! n.chain.applyC <- apply{rd.CommittedEntries, rd.SoftState}", n.chain.raftID)
 				n.chain.applyC <- apply{rd.CommittedEntries, rd.SoftState}
 			}
 
@@ -172,11 +175,13 @@ func (n *node) run(campaign bool) {
 			n.send(rd.Messages)
 
 		case <-n.storage.WALSyncC:
+			n.logger.Infof("Node %d:: <<<<<<<<<<<< case <-n.storage.WALSyncC", n.chain.raftID)
 			if err := n.storage.Sync(); err != nil {
 				n.logger.Warnf("Failed to sync raft log, error: %s", err)
 			}
 
 		case <-n.chain.haltC:
+			n.logger.Infof("Node %d:: case <-n.chain.haltC", n.chain.raftID)
 			raftTicker.Stop()
 			n.Stop()
 			n.storage.Close()

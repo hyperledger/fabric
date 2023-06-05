@@ -747,6 +747,7 @@ func (c *Chain) run() {
 			}
 
 		case app := <-c.applyC:
+			c.logger.Infof("Node %d:: app := <-c.applyC:", c.raftID)
 			if app.soft != nil {
 				newLeader := atomic.LoadUint64(&app.soft.Lead) // etcdraft requires atomic access
 				if newLeader != soft.Lead {
@@ -806,6 +807,7 @@ func (c *Chain) run() {
 				}
 			}
 
+			c.logger.Infof("Node %d:: c.apply(app.entries)", c.raftID)
 			c.apply(app.entries)
 
 			if c.justElected {
@@ -1180,7 +1182,9 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 			}
 
 			// persist the WAL entries into disk
+			c.logger.Infof("Node %d:: @@@@@@@@@@@@@@ c.Node.storage.WALSyncC <- struct{}{}", c.raftID)
 			c.Node.storage.WALSyncC <- struct{}{}
+			c.logger.Infof("Node %d:: @@@@@@@@@@@@@@+1", c.raftID)
 
 			c.confState = *c.Node.ApplyConfChange(cc)
 			switch cc.Type {
