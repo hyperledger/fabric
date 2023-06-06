@@ -25,23 +25,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-type sleeper struct {
-	sleep func(time.Duration)
-}
-
-func (s sleeper) Sleep(d time.Duration, doneC chan struct{}) {
-	if s.sleep == nil {
-		timer := time.NewTimer(d)
-		select {
-		case <-timer.C:
-		case <-doneC:
-			timer.Stop()
-		}
-		return
-	}
-	s.sleep(d)
-}
-
 // LedgerInfo an adapter to provide the interface to query
 // the ledger committer for current ledger height
 //
@@ -89,7 +72,7 @@ type DeliverStreamer interface {
 	Deliver(context.Context, *grpc.ClientConn) (orderer.AtomicBroadcast_DeliverClient, error)
 }
 
-// Deliverer the actual implementation for BlocksProvider interface
+// Deliverer the actual implementation for BlocksDeliverer interface
 type Deliverer struct {
 	ChannelID       string
 	Gossip          GossipServiceAdapter

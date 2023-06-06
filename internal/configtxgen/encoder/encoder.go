@@ -678,3 +678,7 @@ func (bs *Bootstrapper) GenesisBlock() *cb.Block {
 func (bs *Bootstrapper) GenesisBlockForChannel(channelID string) *cb.Block {
 	return genesis.NewFactoryImpl(bs.channelGroup).Block(channelID)
 }
+
+func (bs *Bootstrapper) GenesisChannelGroup() *cb.ConfigGroup {
+	return bs.channelGroup
+}

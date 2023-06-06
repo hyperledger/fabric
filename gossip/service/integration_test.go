@@ -8,15 +8,26 @@ package service
 
 import (
 	"bytes"
+	"fmt"
+	"io/ioutil"
+	"path"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/election"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
+	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
@@ -66,8 +77,8 @@ type embeddingDeliveryServiceFactory struct {
 	DeliveryServiceFactory
 }
 
-func (edsf *embeddingDeliveryServiceFactory) Service(g GossipServiceAdapter, endpoints *orderers.ConnectionSource, mcs api.MessageCryptoService, isStaticLeader bool) deliverservice.DeliverService {
-	ds := edsf.DeliveryServiceFactory.Service(g, endpoints, mcs, false)
+func (edsf *embeddingDeliveryServiceFactory) Service(g GossipServiceAdapter, ordererSource *orderers.ConnectionSource, mcs api.MessageCryptoService, isStaticLead bool, channelConfig *common.Config, cryptoProvider bccsp.BCCSP) deliverservice.DeliverService {
+	ds := edsf.DeliveryServiceFactory.Service(g, ordererSource, mcs, false, channelConfig, cryptoProvider)
 	return newEmbeddingDeliveryService(ds)
 }
 
@@ -95,7 +106,7 @@ func TestLeaderYield(t *testing.T) {
 	n := 2
 	gossips := startPeers(serviceConfig, n, 0, 1)
 	defer stopPeers(gossips)
-	channelName := "channelA"
+	channelName := "test-channel"
 	peerIndexes := []int{0, 1}
 	// Add peers to the channel
 	addPeersToChannel(channelName, gossips, peerIndexes)
@@ -105,21 +116,46 @@ func TestLeaderYield(t *testing.T) {
 	store := newTransientStore(t)
 	defer store.tearDown()
 
+	confAppRaft := genesisconfig.Load(genesisconfig.SampleAppChannelEtcdRaftProfile, configtest.GetDevConfigDir())
+	certDir := t.TempDir()
+	tlsCA, err := tlsgen.NewCA()
+	require.NoError(t, err)
+	generateCertificates(t, confAppRaft, tlsCA, certDir)
+	bootstrapper, err := encoder.NewBootstrapper(confAppRaft)
+	require.NoError(t, err)
+	channelConfigProto := &common.Config{ChannelGroup: bootstrapper.GenesisChannelGroup()}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	require.NoError(t, err)
+
+	bundle, err := channelconfig.NewBundle(channelName, channelConfigProto, cryptoProvider)
+	require.NoError(t, err)
+	require.NotNil(t, bundle)
+
 	// Helper function that creates a gossipService instance
 	newGossipService := func(i int) *GossipService {
 		gs := gossips[i].GossipService
-		gs.deliveryFactory = &embeddingDeliveryServiceFactory{&deliveryFactoryImpl{
-			credentialSupport: comm.NewCredentialSupport(),
-			deliverServiceConfig: &deliverservice.DeliverServiceConfig{
-				PeerTLSEnabled:              false,
-				ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
-				ReconnectTotalTimeThreshold: time.Second,
-				ConnectionTimeout:           time.Millisecond * 100,
+		gs.deliveryFactory = &embeddingDeliveryServiceFactory{
+			&deliveryFactoryImpl{
+				credentialSupport: comm.NewCredentialSupport(),
+				deliverServiceConfig: &deliverservice.DeliverServiceConfig{
+					PeerTLSEnabled:              false,
+					ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
+					ReconnectTotalTimeThreshold: time.Second,
+					ConnectionTimeout:           time.Millisecond * 100,
+				},
 			},
-		}}
-		gs.InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil), store.Store, Support{
-			Committer: &mockLedgerInfo{1},
-		})
+		}
+
+		gs.InitializeChannel(
+			channelName,
+			orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil),
+			store.Store,
+			Support{
+				Committer: &mockLedgerInfo{1},
+			},
+			channelConfigProto,
+			cryptoProvider,
+		)
 		return gs
 	}
 
@@ -180,4 +216,25 @@ func TestLeaderYield(t *testing.T) {
 	p1.chains[channelName].Stop()
 	p0.deliveryService[channelName].StopDeliverForChannel()
 	p1.deliveryService[channelName].StopDeliverForChannel()
+}
+
+// TODO this pattern repeats itself in several places. Make it common in the 'genesisconfig' package to easily create
+// Raft genesis blocks
+func generateCertificates(t *testing.T, confAppRaft *genesisconfig.Profile, tlsCA tlsgen.CA, certDir string) {
+	for i, c := range confAppRaft.Orderer.EtcdRaft.Consenters {
+		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)
+		require.NoError(t, err)
+		srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", i))
+		err = ioutil.WriteFile(srvP, srvC.Cert, 0o644)
+		require.NoError(t, err)
+
+		clnC, err := tlsCA.NewClientCertKeyPair()
+		require.NoError(t, err)
+		clnP := path.Join(certDir, fmt.Sprintf("client%d.crt", i))
+		err = ioutil.WriteFile(clnP, clnC.Cert, 0o644)
+		require.NoError(t, err)
+
+		c.ServerTlsCert = []byte(srvP)
+		c.ClientTlsCert = []byte(clnP)
+	}
 }

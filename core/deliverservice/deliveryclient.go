@@ -8,18 +8,21 @@ package deliverservice
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
 
@@ -75,6 +78,10 @@ type Config struct {
 	Signer identity.SignerSerializer
 	// DeliverServiceConfig is the configuration object.
 	DeliverServiceConfig *DeliverServiceConfig
+	// ChannelConfig the initial channel config.
+	ChannelConfig *common.Config
+	// CryptoProvider the crypto service provider.
+	CryptoProvider bccsp.BCCSP
 }
 
 // NewDeliverService construction function to create and initialize
@@ -124,6 +131,47 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 		return errors.New(errMsg)
 	}
 
+	// TODO save the initial bundle in the block deliverer in order to maintain a stand alone BlockVerifier that gets updated
+	// immediately after a config block is pulled and verified.
+	bundle, err := channelconfig.NewBundle(chainID, d.conf.ChannelConfig, d.conf.CryptoProvider)
+	if err != nil {
+		return errors.WithMessagef(err, "failed to create block deliverer for channel `%s`", chainID)
+	}
+	oc, ok := bundle.OrdererConfig()
+	if !ok {
+		// This should never happen because it is checked in peer.createChannel()
+		return errors.Errorf("failed to create block deliverer for channel `%s`, missing OrdererConfig", chainID)
+	}
+
+	switch ct := oc.ConsensusType(); ct {
+	case "etcdraft":
+		d.blockDeliverer, err = d.createBlockDelivererCFT(chainID, ledgerInfo)
+	case "BFT":
+		d.blockDeliverer, err = d.createBlockDelivererBFT(chainID, ledgerInfo)
+	default:
+		err = errors.Errorf("unexpected consensus type: `%s`", ct)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if !d.conf.DeliverServiceConfig.BlockGossipEnabled {
+		logger.Infow("This peer will retrieve blocks from ordering service (will not disseminate them to other peers in the organization)", "channel", chainID)
+	} else {
+		logger.Infow("This peer will retrieve blocks from ordering service and disseminate to other peers in the organization", "channel", chainID)
+	}
+
+	d.channelID = chainID
+
+	go func() {
+		d.blockDeliverer.DeliverBlocks()
+		finalizer()
+	}()
+	return nil
+}
+
+func (d *deliverServiceImpl) createBlockDelivererCFT(chainID string, ledgerInfo blocksprovider.LedgerInfo) (*blocksprovider.Deliverer, error) {
 	dc := &blocksprovider.Deliverer{
 		ChannelID:     chainID,
 		Gossip:        d.conf.Gossip,
@@ -148,28 +196,20 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 		YieldLeadership:     !d.conf.IsStaticLeader,
 	}
 
-	if dc.BlockGossipDisabled {
-		logger.Infow("This peer will retrieve blocks from ordering service (will not disseminate them to other peers in the organization)", "channel", chainID)
-	} else {
-		logger.Infow("This peer will retrieve blocks from ordering service and disseminate to other peers in the organization", "channel", chainID)
-	}
-
 	if d.conf.DeliverServiceConfig.SecOpts.RequireClientCert {
 		cert, err := d.conf.DeliverServiceConfig.SecOpts.ClientCertificate()
 		if err != nil {
-			return fmt.Errorf("failed to access client TLS configuration: %w", err)
+			return nil, fmt.Errorf("failed to access client TLS configuration: %w", err)
 		}
 		dc.TLSCertHash = util.ComputeSHA256(cert.Certificate[0])
 	}
+	return dc, nil
+}
 
-	d.blockDeliverer = dc
-	d.channelID = chainID
-
-	go func() {
-		dc.DeliverBlocks()
-		finalizer()
-	}()
-	return nil
+func (d *deliverServiceImpl) createBlockDelivererBFT(chainID string, ledgerInfo blocksprovider.LedgerInfo) (*blocksprovider.Deliverer, error) {
+	// TODO create a BFT BlockDeliverer
+	logger.Warning("Consensus type `BFT` BlockDeliverer not supported yet, creating a CFT one")
+	return d.createBlockDelivererCFT(chainID, ledgerInfo)
 }
 
 // StopDeliverForChannel stops blocks delivery for channel by stopping channel block provider
