@@ -11,6 +11,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/orderer/common/channelparticipation"
@@ -19,12 +20,45 @@ import (
 )
 
 func TestValidateJoinBlock(t *testing.T) {
+	validJoinBlock := blockWithGroups(
+		map[string]*cb.ConfigGroup{
+			"Application": {},
+		},
+		"my-channel",
+	)
+
 	tests := []struct {
 		testName          string
 		joinBlock         *cb.Block
 		expectedChannelID string
 		expectedErr       error
 	}{
+		{
+			testName:          "Valid application channel join block",
+			joinBlock:         validJoinBlock,
+			expectedChannelID: "my-channel",
+			expectedErr:       nil,
+		},
+		{
+			testName: "Invalid block data hash",
+			joinBlock: func() *cb.Block {
+				b := proto.Clone(validJoinBlock).(*cb.Block)
+				b.Header.DataHash = []byte("bogus")
+				return b
+			}(),
+			expectedChannelID: "",
+			expectedErr:       errors.New("invalid block: Header.DataHash is different from Hash(block.Data)"),
+		},
+		{
+			testName: "Invalid block metadata",
+			joinBlock: func() *cb.Block {
+				b := proto.Clone(validJoinBlock).(*cb.Block)
+				b.Metadata = nil
+				return b
+			}(),
+			expectedChannelID: "",
+			expectedErr:       errors.New("invalid block: does not have metadata"),
+		},
 		{
 			testName: "Not supported: system channel join block",
 			joinBlock: blockWithGroups(
@@ -35,17 +69,6 @@ func TestValidateJoinBlock(t *testing.T) {
 			),
 			expectedChannelID: "",
 			expectedErr:       errors.New("invalid config: contains consortiums: system channel not supported"),
-		},
-		{
-			testName: "Valid application channel join block",
-			joinBlock: blockWithGroups(
-				map[string]*cb.ConfigGroup{
-					"Application": {},
-				},
-				"my-channel",
-			),
-			expectedChannelID: "my-channel",
-			expectedErr:       nil,
 		},
 		{
 			testName:          "Join block not a config block",
@@ -100,62 +123,68 @@ func TestValidateJoinBlock(t *testing.T) {
 }
 
 func blockWithGroups(groups map[string]*cb.ConfigGroup, channelID string) *cb.Block {
-	return &cb.Block{
-		Data: &cb.BlockData{
-			Data: [][]byte{
-				protoutil.MarshalOrPanic(&cb.Envelope{
-					Payload: protoutil.MarshalOrPanic(&cb.Payload{
-						Data: protoutil.MarshalOrPanic(&cb.ConfigEnvelope{
-							Config: &cb.Config{
-								ChannelGroup: &cb.ConfigGroup{
-									Groups: groups,
-									Values: map[string]*cb.ConfigValue{
-										"HashingAlgorithm": {
-											Value: protoutil.MarshalOrPanic(&cb.HashingAlgorithm{
-												Name: bccsp.SHA256,
-											}),
-										},
-										"BlockDataHashingStructure": {
-											Value: protoutil.MarshalOrPanic(&cb.BlockDataHashingStructure{
-												Width: math.MaxUint32,
-											}),
-										},
-										"OrdererAddresses": {
-											Value: protoutil.MarshalOrPanic(&cb.OrdererAddresses{
-												Addresses: []string{"localhost"},
-											}),
-										},
+	block := protoutil.NewBlock(0, []byte{})
+	block.Data = &cb.BlockData{
+		Data: [][]byte{
+			protoutil.MarshalOrPanic(&cb.Envelope{
+				Payload: protoutil.MarshalOrPanic(&cb.Payload{
+					Data: protoutil.MarshalOrPanic(&cb.ConfigEnvelope{
+						Config: &cb.Config{
+							ChannelGroup: &cb.ConfigGroup{
+								Groups: groups,
+								Values: map[string]*cb.ConfigValue{
+									"HashingAlgorithm": {
+										Value: protoutil.MarshalOrPanic(&cb.HashingAlgorithm{
+											Name: bccsp.SHA256,
+										}),
+									},
+									"BlockDataHashingStructure": {
+										Value: protoutil.MarshalOrPanic(&cb.BlockDataHashingStructure{
+											Width: math.MaxUint32,
+										}),
+									},
+									"OrdererAddresses": {
+										Value: protoutil.MarshalOrPanic(&cb.OrdererAddresses{
+											Addresses: []string{"localhost"},
+										}),
 									},
 								},
 							},
-						}),
-						Header: &cb.Header{
-							ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
-								Type:      int32(cb.HeaderType_CONFIG),
-								ChannelId: channelID,
-							}),
 						},
 					}),
+					Header: &cb.Header{
+						ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
+							Type:      int32(cb.HeaderType_CONFIG),
+							ChannelId: channelID,
+						}),
+					},
 				}),
-			},
+			}),
 		},
 	}
+	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+	protoutil.InitBlockMetadata(block)
+
+	return block
 }
 
 func nonConfigBlock() *cb.Block {
-	return &cb.Block{
-		Data: &cb.BlockData{
-			Data: [][]byte{
-				protoutil.MarshalOrPanic(&cb.Envelope{
-					Payload: protoutil.MarshalOrPanic(&cb.Payload{
-						Header: &cb.Header{
-							ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
-								Type: int32(cb.HeaderType_ENDORSER_TRANSACTION),
-							}),
-						},
-					}),
+	block := protoutil.NewBlock(0, []byte{})
+	block.Data = &cb.BlockData{
+		Data: [][]byte{
+			protoutil.MarshalOrPanic(&cb.Envelope{
+				Payload: protoutil.MarshalOrPanic(&cb.Payload{
+					Header: &cb.Header{
+						ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
+							Type: int32(cb.HeaderType_ENDORSER_TRANSACTION),
+						}),
+					},
 				}),
-			},
+			}),
 		},
 	}
+	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+	protoutil.InitBlockMetadata(block)
+
+	return block
 }

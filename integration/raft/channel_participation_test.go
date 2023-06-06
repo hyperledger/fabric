@@ -1040,46 +1040,49 @@ func multiNodeEtcdRaftTwoChannels() *nwo.Config {
 }
 
 func createJoinBlockDefineSystemChannel(channelID string) *common.Block {
-	return &common.Block{
-		Data: &common.BlockData{
-			Data: [][]byte{
-				protoutil.MarshalOrPanic(&common.Envelope{
-					Payload: protoutil.MarshalOrPanic(&common.Payload{
-						Data: protoutil.MarshalOrPanic(&common.ConfigEnvelope{
-							Config: &common.Config{
-								ChannelGroup: &common.ConfigGroup{
-									Groups: map[string]*common.ConfigGroup{
-										"Consortiums": {},
+	block := protoutil.NewBlock(0, []byte{})
+	block.Data = &common.BlockData{
+		Data: [][]byte{
+			protoutil.MarshalOrPanic(&common.Envelope{
+				Payload: protoutil.MarshalOrPanic(&common.Payload{
+					Data: protoutil.MarshalOrPanic(&common.ConfigEnvelope{
+						Config: &common.Config{
+							ChannelGroup: &common.ConfigGroup{
+								Groups: map[string]*common.ConfigGroup{
+									"Consortiums": {},
+								},
+								Values: map[string]*common.ConfigValue{
+									"HashingAlgorithm": {
+										Value: protoutil.MarshalOrPanic(&common.HashingAlgorithm{
+											Name: bccsp.SHA256,
+										}),
 									},
-									Values: map[string]*common.ConfigValue{
-										"HashingAlgorithm": {
-											Value: protoutil.MarshalOrPanic(&common.HashingAlgorithm{
-												Name: bccsp.SHA256,
-											}),
-										},
-										"BlockDataHashingStructure": {
-											Value: protoutil.MarshalOrPanic(&common.BlockDataHashingStructure{
-												Width: math.MaxUint32,
-											}),
-										},
-										"OrdererAddresses": {
-											Value: protoutil.MarshalOrPanic(&common.OrdererAddresses{
-												Addresses: []string{"localhost"},
-											}),
-										},
+									"BlockDataHashingStructure": {
+										Value: protoutil.MarshalOrPanic(&common.BlockDataHashingStructure{
+											Width: math.MaxUint32,
+										}),
+									},
+									"OrdererAddresses": {
+										Value: protoutil.MarshalOrPanic(&common.OrdererAddresses{
+											Addresses: []string{"localhost"},
+										}),
 									},
 								},
 							},
-						}),
-						Header: &common.Header{
-							ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
-								Type:      int32(common.HeaderType_CONFIG),
-								ChannelId: channelID,
-							}),
 						},
 					}),
+					Header: &common.Header{
+						ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
+							Type:      int32(common.HeaderType_CONFIG),
+							ChannelId: channelID,
+						}),
+					},
 				}),
-			},
+			}),
 		},
 	}
+	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+	protoutil.InitBlockMetadata(block)
+
+	return block
 }

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -297,7 +296,7 @@ func (c *Chain) run() {
 	}()
 
 	if err := c.pull(); err != nil {
-		c.logger.Warnf("Pull failed, error: %s", err)
+		c.logger.Warnf("Pull failed, follower chain stopped, error: %s", err)
 		// TODO set the status to StatusError (see FAB-18106)
 	}
 }
@@ -345,10 +344,6 @@ func (c *Chain) pull() error {
 			return errors.WithMessage(err, "failed to pull up to join block")
 		}
 		c.logger.Info("Onboarding finished successfully, pulled blocks up to join-block")
-	}
-
-	if c.joinBlock != nil && !proto.Equal(c.ledgerResources.Block(c.joinBlock.Header.Number).Data, c.joinBlock.Data) {
-		c.logger.Panicf("Join block (%d) we pulled mismatches block we joined with", c.joinBlock.Header.Number)
 	}
 
 	err = c.pullAfterJoin()
@@ -479,8 +474,9 @@ func (c *Chain) pullUntilLatestWithRetry(latestNetworkHeight uint64, updateEndpo
 			break
 		}
 
-		c.logger.Debugf("Error while trying to pull to latest height: %d; going to try again in %v",
-			latestNetworkHeight, retryInterval)
+		c.logger.Debugf("Error while trying to pull to latest height: %d; going to try again in %v; error: %s",
+			latestNetworkHeight, retryInterval, errPull)
+
 		select {
 		case <-c.stopChan:
 			c.logger.Debug("Received a stop signal")
@@ -527,11 +523,22 @@ func (c *Chain) pullUntilTarget(targetHeight uint64, updateEndpoints bool) (uint
 			if nextBlock == nil {
 				return n, errors.WithMessagef(cluster.ErrRetryCountExhausted, "failed to pull block %d", seq)
 			}
+
 			reportedPrevHash := nextBlock.Header.PreviousHash
 			if (nextBlock.Header.Number > 0) && !bytes.Equal(reportedPrevHash, actualPrevHash) {
-				return n, errors.Errorf("block header mismatch on sequence %d, expected %x, got %x",
+				return n, errors.Errorf("block header previous hash mismatch on sequence %d, expected %x, got %x",
 					nextBlock.Header.Number, actualPrevHash, reportedPrevHash)
 			}
+
+			if c.joinBlock != nil && c.joinBlock.Header.Number == nextBlock.Header.Number {
+				// We don't need to verify the block.Data because we verify the join-block's DataHash against the
+				// hash(join-block.Data) when we verify it during the `Join` REST API call
+				if !proto.Equal(nextBlock.Header, c.joinBlock.Header) {
+					c.logger.Errorf("Block header mismatch between the block we pulled and the block we joined with, sequence %d", c.joinBlock.Header.Number)
+					return n, errors.Errorf("block header mismatch between the block we pulled and the block we joined with, sequence %d", c.joinBlock.Header.Number)
+				}
+			}
+
 			actualPrevHash = protoutil.BlockHeaderHash(nextBlock.Header)
 			if err := c.ledgerResources.Append(nextBlock); err != nil {
 				return n, errors.WithMessagef(err, "failed to append block %d to the ledger", nextBlock.Header.Number)
