@@ -166,10 +166,11 @@ func MultiNodeBFT() *Config {
 	}
 	config.Profiles = []*Profile{
 		{
-			Name:          "TwoOrgsAppChannelBFT",
-			Consortium:    "SampleConsortium",
-			Organizations: []string{"Org1", "Org2"},
-			Orderers:      []string{"orderer1", "orderer2", "orderer3"},
+			Name:                "TwoOrgsAppChannelBFT",
+			Consortium:          "SampleConsortium",
+			Organizations:       []string{"Org1", "Org2"},
+			Orderers:            []string{"orderer1", "orderer2", "orderer3"},
+			ChannelCapabilities: []string{"V3_0"},
 		},
 	}
 	config.Channels = []*Channel{{Name: "testchannel", Profile: "TwoOrgsAppChannelBFT"}}

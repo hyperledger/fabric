@@ -677,6 +677,7 @@ Profiles:
     # that uses the etcd/raft-based orderer.
     SampleAppChannelSmartBft:
         <<: *ChannelDefaults
+        Consortium: SampleConsortium
         Orderer:
             <<: *OrdererDefaults
             OrdererType: BFT

@@ -344,6 +344,7 @@ var _ = Describe("Encoder", func() {
 
 	Describe("NewOrdererGroup", func() {
 		var conf *genesisconfig.Orderer
+		var channelCapabilities map[string]bool
 
 		BeforeEach(func() {
 			conf = &genesisconfig.Orderer{
@@ -362,10 +363,13 @@ var _ = Describe("Encoder", func() {
 					"FakeCapability": true,
 				},
 			}
+			channelCapabilities = map[string]bool{
+				"V3_0": true,
+			}
 		})
 
 		It("translates the config into a config group", func() {
-			cg, err := encoder.NewOrdererGroup(conf)
+			cg, err := encoder.NewOrdererGroup(conf, channelCapabilities)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(cg.Policies)).To(Equal(4)) // BlockValidation automatically added
 			Expect(cg.Policies["Admins"]).NotTo(BeNil())
@@ -387,7 +391,7 @@ var _ = Describe("Encoder", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, err := encoder.NewOrdererGroup(conf)
+				_, err := encoder.NewOrdererGroup(conf, channelCapabilities)
 				Expect(err).To(MatchError("error adding policies to orderer group: invalid implicit meta policy rule 'garbage': expected two space separated tokens, but got 1"))
 			})
 		})
@@ -403,7 +407,7 @@ var _ = Describe("Encoder", func() {
 			})
 
 			It("adds the raft metadata", func() {
-				cg, err := encoder.NewOrdererGroup(conf)
+				cg, err := encoder.NewOrdererGroup(conf, channelCapabilities)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(cg.Values)).To(Equal(5))
 				consensusType := &ab.ConsensusType{}
@@ -426,7 +430,7 @@ var _ = Describe("Encoder", func() {
 				})
 
 				It("wraps and returns the error", func() {
-					_, err := encoder.NewOrdererGroup(conf)
+					_, err := encoder.NewOrdererGroup(conf, channelCapabilities)
 					Expect(err).To(MatchError("cannot marshal metadata for orderer type etcdraft: cannot load client cert for consenter :0: open : no such file or directory"))
 				})
 			})
@@ -456,7 +460,7 @@ var _ = Describe("Encoder", func() {
 			})
 
 			It("adds the Orderers key", func() {
-				cg, err := encoder.NewOrdererGroup(conf)
+				cg, err := encoder.NewOrdererGroup(conf, channelCapabilities)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(cg.Values)).To(Equal(6))
 				Expect(cg.Values["Orderers"]).NotTo(BeNil())
@@ -479,7 +483,7 @@ var _ = Describe("Encoder", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := encoder.NewOrdererGroup(conf)
+				_, err := encoder.NewOrdererGroup(conf, channelCapabilities)
 				Expect(err).To(MatchError("unknown orderer type: bad-type"))
 			})
 		})
@@ -490,7 +494,7 @@ var _ = Describe("Encoder", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, err := encoder.NewOrdererGroup(conf)
+				_, err := encoder.NewOrdererGroup(conf, channelCapabilities)
 				Expect(err).To(MatchError("failed to create orderer org: 1 - Error loading MSP configuration for org: SampleOrg: unknown MSP type 'garbage'"))
 			})
 		})

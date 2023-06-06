@@ -214,3 +214,35 @@ func TestPrintOrg(t *testing.T) {
 	require.Error(t, err, "Fake org")
 	require.Regexp(t, "bad org definition", err.Error())
 }
+
+func createBftOrdererConfig() *genesisconfig.Profile {
+	// Load the BFT config from the sample, and use some TLS CA Cert as crypto material
+	config := genesisconfig.Load(genesisconfig.SampleAppChannelSmartBftProfile, configtest.GetDevConfigDir())
+	tlsCertPath := filepath.Join(configtest.GetDevConfigDir(), "msp", "tlscacerts", "tlsroot.pem")
+	for _, consenter := range config.Orderer.ConsenterMapping {
+		consenter.Identity = tlsCertPath
+		consenter.ClientTLSCert = tlsCertPath
+		consenter.ServerTLSCert = tlsCertPath
+	}
+	return config
+}
+
+func TestBftOrdererTypeWithoutV3CapabilitiesShouldRaiseAnError(t *testing.T) {
+	// ### Arrange
+	blockDest := filepath.Join(tmpDir, "block")
+	config := createBftOrdererConfig()
+	config.Capabilities["V3_0"] = false
+
+	// ### Act & Assert
+	require.EqualError(t, doOutputBlock(config, "testChannelId", blockDest), "could not create bootstrapper: could not create channel group: could not create orderer group: orderer type BFT must be used with V3_0 capability")
+}
+
+func TestBftOrdererTypeWithV3CapabilitiesShouldNotRaiseAnError(t *testing.T) {
+	// ### Arrange
+	blockDest := filepath.Join(tmpDir, "block")
+	config := createBftOrdererConfig()
+	config.Capabilities["V3_0"] = true
+
+	// ### Act & Assert
+	require.NoError(t, doOutputBlock(config, "testChannelId", blockDest))
+}
