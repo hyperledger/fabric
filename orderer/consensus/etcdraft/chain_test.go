@@ -337,7 +337,7 @@ var _ = Describe("Chain", func() {
 				close(cutter.Block)
 
 				By("cutting next batch directly")
-				cutter.CutNext = true
+				cutter.SetCutNext(true)
 				err := chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(1))
@@ -358,7 +358,7 @@ var _ = Describe("Chain", func() {
 				Expect(fakeFields.fakeDataPersistDuration.ObserveArgsForCall(2)).Should(Equal(float64(0)))
 
 				By("respecting batch timeout")
-				cutter.CutNext = false
+				cutter.SetCutNext(false)
 				timeout := time.Second
 				support.SharedConfigReturns(mockOrdererWithBatchTimeout(timeout, nil))
 				err = chain.Order(env, 0)
@@ -425,7 +425,7 @@ var _ = Describe("Chain", func() {
 				clock.WaitForNWatchersAndIncrement(timeout/2, 2)
 
 				By("force a batch to be cut before timer expires")
-				cutter.CutNext = true
+				cutter.SetCutNext(true)
 				err = chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -435,7 +435,7 @@ var _ = Describe("Chain", func() {
 				Expect(cutter.CurBatch()).To(HaveLen(0))
 
 				// this should start a fresh timer
-				cutter.CutNext = false
+				cutter.SetCutNext(false)
 				err = chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
@@ -460,7 +460,7 @@ var _ = Describe("Chain", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
 
-				cutter.IsolatedTx = true
+				cutter.SetIsolatedTx(true)
 				err = chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -721,7 +721,7 @@ var _ = Describe("Chain", func() {
 						// to generate WAL data, we start a chain,
 						// order several envelopes and then halt the chain.
 						close(cutter.Block)
-						cutter.CutNext = true
+						cutter.SetCutNext(true)
 
 						// enque some data to be persisted on disk by raft
 						err := chain.Order(env, uint64(0))
@@ -764,7 +764,7 @@ var _ = Describe("Chain", func() {
 						// chain should keep functioning
 						campaign(c.Chain, c.observe)
 
-						c.cutter.CutNext = true
+						c.cutter.SetCutNext(true)
 
 						err := c.Order(env, uint64(0))
 						Expect(err).NotTo(HaveOccurred())
@@ -790,7 +790,7 @@ var _ = Describe("Chain", func() {
 						// chain should keep functioning
 						campaign(c.Chain, c.observe)
 
-						c.cutter.CutNext = true
+						c.cutter.SetCutNext(true)
 
 						err := c.Order(env, uint64(0))
 						Expect(err).NotTo(HaveOccurred())
@@ -809,7 +809,7 @@ var _ = Describe("Chain", func() {
 						// chain should keep functioning
 						campaign(c.Chain, c.observe)
 
-						c.cutter.CutNext = true
+						c.cutter.SetCutNext(true)
 
 						err := c.Order(env, uint64(0))
 						Expect(err).NotTo(HaveOccurred())
@@ -849,7 +849,7 @@ var _ = Describe("Chain", func() {
 						opts.SnapshotCatchUpEntries = 2
 
 						close(cutter.Block)
-						cutter.CutNext = true
+						cutter.SetCutNext(true)
 
 						ledgerLock.Lock()
 						ledger = map[uint64]*common.Block{
@@ -1035,7 +1035,7 @@ var _ = Describe("Chain", func() {
 								return c.observe
 							}, LongEventualTimeout).Should(Receive(StateEqual(1, raft.StateLeader)))
 
-							c.cutter.CutNext = true
+							c.cutter.SetCutNext(true)
 							err = c.Order(env, uint64(0))
 							Expect(err).NotTo(HaveOccurred())
 							Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
@@ -1185,7 +1185,7 @@ var _ = Describe("Chain", func() {
 								campaign(c.Chain, c.observe)
 
 								By("Ordering one more block to trigger snapshot")
-								c.cutter.CutNext = true
+								c.cutter.SetCutNext(true)
 								err = c.Order(largeEnv, uint64(0))
 								Expect(err).NotTo(HaveOccurred())
 
@@ -1221,7 +1221,7 @@ var _ = Describe("Chain", func() {
 							for i := 0; i < cnt; i++ {
 								c1.support.WriteBlock(support.WriteBlockArgsForCall(i))
 							}
-							c1.cutter.CutNext = true
+							c1.cutter.SetCutNext(true)
 							c1.opts.SnapshotIntervalSize = 1024
 
 							By("Restarting chain")
@@ -1410,7 +1410,7 @@ var _ = Describe("Chain", func() {
 			fakeHaltCallbacker = &mocks.HaltCallbacker{}
 			network = createNetwork(timeout, channelID, dataDir, raftMetadata, consenters, cryptoProvider, tlsCA, fakeHaltCallbacker.HaltCallback)
 			c1, c2 = network.chains[1], network.chains[2]
-			c1.cutter.CutNext = true
+			c1.cutter.SetCutNext(true)
 			network.init()
 			network.start()
 		})
@@ -1463,7 +1463,7 @@ var _ = Describe("Chain", func() {
 			Expect(status).To(Equal(orderer_types.StatusInactive))
 
 			By("Asserting leader can still serve requests as single-node cluster")
-			c2.cutter.CutNext = true
+			c2.cutter.SetCutNext(true)
 			Expect(c2.Order(env, 0)).To(Succeed())
 			Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 			Expect(c1.fakeFields.fakeActiveNodes.SetArgsForCall(2)).To(Equal(float64(0))) // was halted
@@ -1496,7 +1496,7 @@ var _ = Describe("Chain", func() {
 			}, LongEventualTimeout).Should(Receive(StateEqual(2, raft.StateLeader)))
 
 			By("Asserting leader can still serve requests as single-node cluster")
-			c2.cutter.CutNext = true
+			c2.cutter.SetCutNext(true)
 			Expect(c2.Order(env, 0)).To(Succeed())
 			Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 
@@ -1551,7 +1551,7 @@ var _ = Describe("Chain", func() {
 			Expect(status).To(Equal(orderer_types.StatusInactive))
 
 			By("Asserting leader can still serve requests as single-node cluster")
-			c2.cutter.CutNext = true
+			c2.cutter.SetCutNext(true)
 			Expect(c2.Order(env, 0)).To(Succeed())
 			Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 			lastSetActiveNodes := c1.fakeFields.fakeActiveNodes.SetCallCount() - 1
@@ -1571,7 +1571,7 @@ var _ = Describe("Chain", func() {
 			Eventually(c1.Chain.Errored, LongEventualTimeout).Should(BeClosed())
 
 			By("Asserting leader can still serve requests as single-node cluster")
-			c2.cutter.CutNext = true
+			c2.cutter.SetCutNext(true)
 			Expect(c2.Order(env, 0)).To(Succeed())
 			Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 		})
@@ -1655,7 +1655,7 @@ var _ = Describe("Chain", func() {
 				}, LongEventualTimeout).Should(Equal(2))
 				Expect(c2.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
 
-				c1.cutter.CutNext = true
+				c1.cutter.SetCutNext(true)
 				err := c1.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -1675,7 +1675,7 @@ var _ = Describe("Chain", func() {
 				c1.opts.SnapshotIntervalSize = 1
 				c1.opts.SnapshotCatchUpEntries = 1
 
-				c1.cutter.CutNext = true
+				c1.cutter.SetCutNext(true)
 
 				var blocksLock sync.Mutex
 				blocks := make(map[uint64]*common.Block) // storing written blocks for block puller
@@ -1805,7 +1805,7 @@ var _ = Describe("Chain", func() {
 				network.elect(1)
 
 				By("Submitting first tx to cut the block")
-				c1.cutter.CutNext = true
+				c1.cutter.SetCutNext(true)
 				err := c1.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -1866,7 +1866,7 @@ var _ = Describe("Chain", func() {
 
 					By("creating new configuration with removed node and new one")
 					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, value))
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 
 					By("sending config transaction")
 					Expect(c1.Configure(configEnv, 0)).To(Succeed())
@@ -1906,7 +1906,7 @@ var _ = Describe("Chain", func() {
 
 					By("creating new configuration with removed node and new one")
 					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, value))
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 
 					By("sending config transaction")
 					Expect(c1.Configure(configEnv, 0)).To(Succeed())
@@ -1948,7 +1948,7 @@ var _ = Describe("Chain", func() {
 
 						By("creating new configuration with removed node and new one")
 						configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, value))
-						c1.cutter.CutNext = true
+						c1.cutter.SetCutNext(true)
 
 						step1 := c1.getStepFunc()
 						count := c1.rpc.SendConsensusCallCount() // record current step call count
@@ -1976,7 +1976,7 @@ var _ = Describe("Chain", func() {
 				It("adding node to the cluster", func() {
 					addConsenterUpdate := addConsenterConfigValue()
 					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, addConsenterUpdate))
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 
 					By("sending config transaction")
 					err := c1.Configure(configEnv, 0)
@@ -2018,7 +2018,7 @@ var _ = Describe("Chain", func() {
 					Eventually(c4.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(1))
 
 					By("submitting new transaction to follower")
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 					err = c4.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(c4.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(1))
@@ -2029,6 +2029,7 @@ var _ = Describe("Chain", func() {
 					})
 				})
 
+<<<<<<< HEAD
 				It("does not reconfigure raft cluster if it's a channel creation tx", func() {
 					configEnv := newConfigEnv("another-channel",
 						common.HeaderType_CONFIG,
@@ -2060,6 +2061,76 @@ var _ = Describe("Chain", func() {
 
 					network.exec(func(c *chain) {
 						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+=======
+				It("disconnecting follower node -> adding new node to the cluster -> writing blocks on the ledger -> reconnecting the follower node", func() {
+					By("Disconnecting a follower node")
+					network.disconnect(c2.id)
+
+					By("Configuring an additional node")
+					addConsenterUpdate := addConsenterConfigValue()
+					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, addConsenterUpdate))
+					c1.cutter.SetCutNext(true)
+
+					By("Sending config transaction")
+					err := c1.Configure(configEnv, 0)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(c1.fakeFields.fakeConfigProposalsReceived.AddCallCount()).To(Equal(1))
+					Expect(c1.fakeFields.fakeConfigProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
+
+					network.exec(func(c *chain) {
+						if c.id == c2.id {
+							return
+						}
+						Eventually(c.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(1))
+						Eventually(c.fakeFields.fakeClusterSize.SetCallCount, LongEventualTimeout).Should(Equal(2))
+						Expect(c.fakeFields.fakeClusterSize.SetArgsForCall(1)).To(Equal(float64(4)))
+					})
+
+					_, raftmetabytes := c1.support.WriteConfigBlockArgsForCall(0)
+					meta := &common.Metadata{Value: raftmetabytes}
+					raftmeta, err := etcdraft.ReadBlockMetadata(meta, nil)
+					Expect(err).NotTo(HaveOccurred())
+
+					By("Starting the new node")
+					c4 := newChain(timeout, channelID, dataDir, 4, raftmeta, consenters, cryptoProvider, nil, nil)
+					// if we join a node to existing network, it MUST already obtained blocks
+					// till the config block that adds this node to cluster.
+					c4.support.WriteBlock(c1.support.WriteBlockArgsForCall(0))
+					c4.support.WriteConfigBlock(c1.support.WriteConfigBlockArgsForCall(0))
+					c4.init()
+
+					network.addChain(c4)
+					c4.Start()
+
+					// ConfChange is applied to etcd/raft asynchronously, meaning node 4 is not added
+					// to leader's node list right away. An immediate tick does not trigger a heartbeat
+					// being sent to node 4. Therefore, we repeatedly tick the leader until node 4 joins
+					// the cluster successfully.
+					Eventually(func() <-chan raft.SoftState {
+						c1.clock.Increment(interval)
+						return c4.observe
+					}, defaultTimeout).Should(Receive(Equal(raft.SoftState{Lead: 1, RaftState: raft.StateFollower})))
+
+					Eventually(c4.support.WriteBlockCallCount, defaultTimeout).Should(Equal(1))
+					Eventually(c4.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(1))
+
+					By("Sending data blocks to leader")
+					numOfBlocks := 100
+					for i := 0; i < numOfBlocks; i++ {
+						c1.cutter.SetCutNext(true)
+						err := c1.Order(env, 0)
+						Expect(err).NotTo(HaveOccurred())
+					}
+
+					By("Reconnecting the follower node")
+					network.connect(c2.id)
+					c1.clock.Increment(interval)
+
+					By("Checking correct synchronization")
+					network.exec(func(c *chain) {
+						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1 + numOfBlocks))
+						Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+>>>>>>> e8f817a41 (Raft WAL deadlock test (#4263))
 					})
 				})
 
@@ -2075,7 +2146,7 @@ var _ = Describe("Chain", func() {
 					// new configuration and successfully rejoins replica set.
 
 					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, addConsenterConfigValue()))
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 
 					step1 := c1.getStepFunc()
 					count := c1.rpc.SendConsensusCallCount() // record current step call count
@@ -2110,7 +2181,7 @@ var _ = Describe("Chain", func() {
 					if i3 > i2 {
 						candidate = 3
 					}
-					network.chains[candidate].cutter.CutNext = true
+					network.chains[candidate].cutter.SetCutNext(true)
 					network.elect(candidate)
 
 					_, raftmetabytes := c1.support.WriteConfigBlockArgsForCall(0)
@@ -2155,7 +2226,7 @@ var _ = Describe("Chain", func() {
 					// Restart the cluster and ensure it picks up updates and capable to finish reconfiguration.
 
 					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, addConsenterConfigValue()))
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 
 					step1 := c1.getStepFunc()
 					count := c1.rpc.SendConsensusCallCount() // record current step call count
@@ -2214,7 +2285,7 @@ var _ = Describe("Chain", func() {
 					if i3 > i2 {
 						candidate = 3
 					}
-					network.chains[candidate].cutter.CutNext = true
+					network.chains[candidate].cutter.SetCutNext(true)
 					network.elect(candidate)
 
 					c4.start()
@@ -2247,7 +2318,7 @@ var _ = Describe("Chain", func() {
 						common.HeaderType_CONFIG,
 						newConfigUpdateEnv(channelID, nil, removeConsenterConfigValue(1))) // remove nodeID == 1
 
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 
 					By("sending config transaction")
 					err := c1.Configure(configEnv, 0)
@@ -2286,7 +2357,7 @@ var _ = Describe("Chain", func() {
 					}
 
 					By("submitting transaction to new leader")
-					newLeader.cutter.CutNext = true
+					newLeader.cutter.SetCutNext(true)
 					err = newLeader.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
 
@@ -2294,7 +2365,7 @@ var _ = Describe("Chain", func() {
 					Eventually(remainingFollower.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 
 					By("trying to submit to new node, expected to fail")
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 					err = c1.Order(env, 0)
 					Expect(err).To(HaveOccurred())
 
@@ -2306,7 +2377,7 @@ var _ = Describe("Chain", func() {
 
 				It("does not deadlock if leader steps down while config block is in-flight", func() {
 					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, addConsenterConfigValue()))
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 
 					signal := make(chan struct{})
 					stub := c1.support.WriteConfigBlockStub
@@ -2398,7 +2469,7 @@ var _ = Describe("Chain", func() {
 
 			It("orders envelope on leader", func() {
 				By("instructed to cut next block")
-				c1.cutter.CutNext = true
+				c1.cutter.SetCutNext(true)
 				err := c1.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(c1.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(1))
@@ -2410,7 +2481,7 @@ var _ = Describe("Chain", func() {
 					})
 
 				By("respect batch timeout")
-				c1.cutter.CutNext = false
+				c1.cutter.SetCutNext(false)
 
 				err = c1.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
@@ -2427,7 +2498,7 @@ var _ = Describe("Chain", func() {
 
 			It("orders envelope on follower", func() {
 				By("instructed to cut next block")
-				c1.cutter.CutNext = true
+				c1.cutter.SetCutNext(true)
 				err := c2.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(c2.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(1))
@@ -2440,7 +2511,7 @@ var _ = Describe("Chain", func() {
 					})
 
 				By("respect batch timeout")
-				c1.cutter.CutNext = false
+				c1.cutter.SetCutNext(false)
 
 				err = c2.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
@@ -2462,7 +2533,7 @@ var _ = Describe("Chain", func() {
 				})
 
 				It("waits for in flight blocks to be committed", func() {
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 					// disconnect c1 to disrupt consensus
 					network.disconnect(1)
 
@@ -2490,8 +2561,8 @@ var _ = Describe("Chain", func() {
 				})
 
 				It("resets block in flight when steps down from leader", func() {
-					c1.cutter.CutNext = true
-					c2.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
+					c2.cutter.SetCutNext(true)
 					// disconnect c1 to disrupt consensus
 					network.disconnect(1)
 
@@ -2584,7 +2655,7 @@ var _ = Describe("Chain", func() {
 
 				It("does not deadlock if propose is blocked", func() {
 					signal := make(chan struct{})
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 					c1.support.SequenceStub = func() uint64 {
 						signal <- struct{}{}
 						<-signal
@@ -2655,7 +2726,7 @@ var _ = Describe("Chain", func() {
 			It("leader retransmits lost messages", func() {
 				// This tests that heartbeats will trigger leader to retransmit lost MsgApp
 
-				c1.cutter.CutNext = true
+				c1.cutter.SetCutNext(true)
 
 				network.disconnect(1) // drop MsgApp
 
@@ -2680,7 +2751,7 @@ var _ = Describe("Chain", func() {
 				// this ensures that the created blocks are not written out
 				network.disconnect(1)
 
-				c1.cutter.CutNext = true
+				c1.cutter.SetCutNext(true)
 				for i := 0; i < 3; i++ {
 					Expect(c1.Order(env, 0)).To(Succeed())
 				}
@@ -2723,8 +2794,8 @@ var _ = Describe("Chain", func() {
 				// - c2 commits block1
 				// - c2 accepts env2, and creates block2
 				// - c2 commits block2
-				c1.cutter.CutNext = true
-				c2.cutter.CutNext = true
+				c1.cutter.SetCutNext(true)
+				c2.cutter.SetCutNext(true)
 
 				step1 := c1.getStepFunc()
 				c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
@@ -2808,7 +2879,7 @@ var _ = Describe("Chain", func() {
 					// this ensures that the created blocks are not written out
 					network.disconnect(1)
 
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 					// config block
 					err := c1.Order(configEnv, 0)
 					Expect(err).NotTo(HaveOccurred())
@@ -2847,7 +2918,7 @@ var _ = Describe("Chain", func() {
 				})
 
 				It("continues creating blocks on leader after a config block has been successfully written out", func() {
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 					// config block
 					err := c1.Configure(configEnv, 0)
 					Expect(err).NotTo(HaveOccurred())
@@ -2889,7 +2960,7 @@ var _ = Describe("Chain", func() {
 					Expect(countSnapShotsForChain(c3)).Should(Equal(0))
 
 					By("order envelop on node 1 to accumulate bytes")
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 					err := c1.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
 
@@ -2959,7 +3030,7 @@ var _ = Describe("Chain", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(i).To(Equal(uint64(1)))
 
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 
 					err = c1.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
@@ -2998,7 +3069,7 @@ var _ = Describe("Chain", func() {
 
 				It("lagged node can catch up using snapshot", func() {
 					network.disconnect(2)
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 
 					c2Lasti, _ := c2.opts.MemoryStorage.LastIndex()
 					var blockCnt int
@@ -3048,7 +3119,7 @@ var _ = Describe("Chain", func() {
 					network.elect(2)
 
 					By("order envelope on new leader")
-					c2.cutter.CutNext = true
+					c2.cutter.SetCutNext(true)
 					err := c2.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
 
@@ -3074,7 +3145,7 @@ var _ = Describe("Chain", func() {
 				It("follower cannot be elected if its log is not up-to-date", func() {
 					network.disconnect(2)
 
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 					err := c1.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
 
@@ -3101,7 +3172,7 @@ var _ = Describe("Chain", func() {
 				It("PreVote prevents reconnected node from disturbing network", func() {
 					network.disconnect(2)
 
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 					err := c1.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
 
@@ -3123,7 +3194,7 @@ var _ = Describe("Chain", func() {
 				It("follower can catch up and then campaign with success", func() {
 					network.disconnect(2)
 
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 					for i := 0; i < 10; i++ {
 						err := c1.Order(env, 0)
 						Expect(err).NotTo(HaveOccurred())
@@ -3142,7 +3213,7 @@ var _ = Describe("Chain", func() {
 
 				It("purges blockcutter, stops timer and discards created blocks if leadership is lost", func() {
 					// enqueue one transaction into 1's blockcutter to test for purging of block cutter
-					c1.cutter.CutNext = false
+					c1.cutter.SetCutNext(false)
 					err := c1.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
 					Eventually(c1.cutter.CurBatch, LongEventualTimeout).Should(HaveLen(1))
@@ -3203,7 +3274,7 @@ var _ = Describe("Chain", func() {
 					network.elect(2)
 					network.connect(1)
 
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 					err := c1.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
 
@@ -3216,7 +3287,7 @@ var _ = Describe("Chain", func() {
 				It("aborts waiting for block to be committed upon leadership lost", func() {
 					network.disconnect(1)
 
-					c1.cutter.CutNext = true
+					c1.cutter.SetCutNext(true)
 					err := c1.Order(env, 0)
 					Expect(err).NotTo(HaveOccurred())
 

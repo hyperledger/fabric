@@ -17,17 +17,17 @@ var logger = flogging.MustGetLogger("orderer.mocks.common.blockcutter")
 
 // Receiver mocks the blockcutter.Receiver interface
 type Receiver struct {
-	// IsolatedTx causes Ordered returns [][]{curBatch, []{newTx}}, false when set to true
-	IsolatedTx bool
+	// isolatedTx causes Ordered returns [][]{curBatch, []{newTx}}, false when set to true
+	isolatedTx bool
 
-	// CutAncestors causes Ordered returns [][]{curBatch}, true when set to true
-	CutAncestors bool
+	// cutAncestors causes Ordered returns [][]{curBatch}, true when set to true
+	cutAncestors bool
 
-	// CutNext causes Ordered returns [][]{append(curBatch, newTx)}, false when set to true
-	CutNext bool
+	// cutNext causes Ordered returns [][]{append(curBatch, newTx)}, false when set to true
+	cutNext bool
 
-	// SkipAppendCurBatch causes Ordered to skip appending to curBatch
-	SkipAppendCurBatch bool
+	// skipAppendCurBatch causes Ordered to skip appending to curBatch
+	skipAppendCurBatch bool
 
 	// Lock to serialize writes access to curBatch
 	mutex sync.Mutex
@@ -43,9 +43,9 @@ type Receiver struct {
 // NewReceiver returns the mock blockcutter.Receiver implementation
 func NewReceiver() *Receiver {
 	return &Receiver{
-		IsolatedTx:   false,
-		CutAncestors: false,
-		CutNext:      false,
+		isolatedTx:   false,
+		cutAncestors: false,
+		cutNext:      false,
 		Block:        make(chan struct{}),
 	}
 }
@@ -59,25 +59,25 @@ func (mbc *Receiver) Ordered(env *cb.Envelope) ([][]*cb.Envelope, bool) {
 	mbc.mutex.Lock()
 	defer mbc.mutex.Unlock()
 
-	if mbc.IsolatedTx {
+	if mbc.isolatedTx {
 		logger.Debugf("Receiver: Returning dual batch")
 		res := [][]*cb.Envelope{mbc.curBatch, {env}}
 		mbc.curBatch = nil
 		return res, false
 	}
 
-	if mbc.CutAncestors {
+	if mbc.cutAncestors {
 		logger.Debugf("Receiver: Returning current batch and appending newest env")
 		res := [][]*cb.Envelope{mbc.curBatch}
 		mbc.curBatch = []*cb.Envelope{env}
 		return res, true
 	}
 
-	if !mbc.SkipAppendCurBatch {
+	if !mbc.skipAppendCurBatch {
 		mbc.curBatch = append(mbc.curBatch, env)
 	}
 
-	if mbc.CutNext {
+	if mbc.cutNext {
 		logger.Debugf("Receiver: Returning regular batch")
 		res := [][]*cb.Envelope{mbc.curBatch}
 		mbc.curBatch = nil
@@ -102,4 +102,32 @@ func (mbc *Receiver) CurBatch() []*cb.Envelope {
 	mbc.mutex.Lock()
 	defer mbc.mutex.Unlock()
 	return mbc.curBatch
+}
+
+// SetIsolatedTx is used to change the isolatedTx field in a thread safe manner.
+func (mbc *Receiver) SetIsolatedTx(isolatedTx bool) {
+	mbc.mutex.Lock()
+	defer mbc.mutex.Unlock()
+	mbc.isolatedTx = isolatedTx
+}
+
+// SetCutAncestors is used to change the cutAncestors field in a thread safe manner.
+func (mbc *Receiver) SetCutAncestors(cutAncestors bool) {
+	mbc.mutex.Lock()
+	defer mbc.mutex.Unlock()
+	mbc.cutAncestors = cutAncestors
+}
+
+// SetCutNext is used to change the cutNext field in a thread safe manner.
+func (mbc *Receiver) SetCutNext(cutNext bool) {
+	mbc.mutex.Lock()
+	defer mbc.mutex.Unlock()
+	mbc.cutNext = cutNext
+}
+
+// SkipAppendCurBatchSet is used to change the skipAppendCurBatch field in a thread safe manner.
+func (mbc *Receiver) SkipAppendCurBatchSet(skipAppendCurBatch bool) {
+	mbc.mutex.Lock()
+	defer mbc.mutex.Unlock()
+	mbc.skipAppendCurBatch = skipAppendCurBatch
 }
