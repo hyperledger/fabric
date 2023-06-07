@@ -41,7 +41,7 @@ const (
 	epoch      = 0
 )
 
-var logger = flogging.MustGetLogger("orderer.commmon.multichannel")
+var logger = flogging.MustGetLogger("orderer.common.multichannel")
 
 // Registrar serves as a point of access and control for the individual channel resources.
 type Registrar struct {
@@ -727,7 +727,7 @@ func (r *Registrar) createFollower(
 	joinBlock *cb.Block,
 	channelID string,
 ) (*follower.Chain, types.ChannelInfo, error) {
-	fLog := flogging.MustGetLogger("orderer.commmon.follower")
+	fLog := flogging.MustGetLogger("orderer.common.follower")
 	blockPullerCreator, err := follower.NewBlockPullerCreator(
 		channelID, fLog, r.signer, r.clusterDialer, r.config.General.Cluster, r.bccsp)
 	if err != nil {

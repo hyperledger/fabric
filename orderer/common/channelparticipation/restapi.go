@@ -64,7 +64,7 @@ type HTTPHandler struct {
 
 func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelManagement) *HTTPHandler {
 	handler := &HTTPHandler{
-		logger:    flogging.MustGetLogger("orderer.commmon.channelparticipation"),
+		logger:    flogging.MustGetLogger("orderer.common.channelparticipation"),
 		config:    config,
 		registrar: registrar,
 		router:    mux.NewRouter(),
