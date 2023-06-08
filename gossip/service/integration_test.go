@@ -55,15 +55,11 @@ func (eds *embeddingDeliveryService) StartDeliverForChannel(chainID string, ledg
 	return eds.DeliverService.StartDeliverForChannel(chainID, ledgerInfo, finalizer)
 }
 
-func (eds *embeddingDeliveryService) StopDeliverForChannel(chainID string) error {
+func (eds *embeddingDeliveryService) StopDeliverForChannel() error {
 	eds.stopOnce.Do(func() {
 		eds.stopSignal.Done()
 	})
-	return eds.DeliverService.StopDeliverForChannel(chainID)
-}
-
-func (eds *embeddingDeliveryService) Stop() {
-	eds.DeliverService.Stop()
+	return eds.DeliverService.StopDeliverForChannel()
 }
 
 type embeddingDeliveryServiceFactory struct {
@@ -182,6 +178,6 @@ func TestLeaderYield(t *testing.T) {
 	t.Log("p1 has taken over leadership")
 	p0.chains[channelName].Stop()
 	p1.chains[channelName].Stop()
-	p0.deliveryService[channelName].Stop()
-	p1.deliveryService[channelName].Stop()
+	p0.deliveryService[channelName].StopDeliverForChannel()
+	p1.deliveryService[channelName].StopDeliverForChannel()
 }
