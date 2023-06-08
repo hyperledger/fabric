@@ -178,8 +178,7 @@ func TestFollowerNewChain(t *testing.T) {
 
 func TestFollowerPullUpToJoin(t *testing.T) {
 	joinNum := uint64(10)
-	joinBlockAppRaft := makeConfigBlock(joinNum, []byte{}, 1)
-	require.NotNil(t, joinBlockAppRaft)
+	var joinBlockAppRaft *common.Block
 
 	var wgChain sync.WaitGroup
 
@@ -187,6 +186,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		globalSetup(t)
 		remoteBlockchain.fill(joinNum)
 		remoteBlockchain.appendConfig(1)
+		joinBlockAppRaft = remoteBlockchain.Block(joinNum)
 
 		ledgerResources.AppendCalls(localBlockchain.Append)
 
@@ -340,6 +340,41 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		require.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
 		require.Equal(t, 50, timeAfterCount.AfterCallCount())
 		require.Equal(t, int64(5000), atomic.LoadInt64(&maxDelay))
+	})
+	t.Run("join block header mismatch", func(t *testing.T) {
+		setup()
+		mockClusterConsenter.IsChannelMemberCalls(amIReallyInChannel)
+
+		joinBlockAppRaftBad := proto.Clone(joinBlockAppRaft).(*common.Block)
+		joinBlockAppRaftBad.Header.DataHash = []byte("bogus")
+
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaftBad, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
+		require.NoError(t, err)
+
+		consensusRelation, status := chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationConsenter, consensusRelation)
+		require.Equal(t, types.StatusOnBoarding, status)
+
+		require.NotPanics(t, chain.Start)
+		require.Eventually(t,
+			func() bool {
+				return puller.PullBlockCallCount() > int(joinNum*3) // it will retry forever unless we stop it
+			},
+			10*time.Second, time.Millisecond)
+
+		require.NotPanics(t, chain.Halt)
+		require.False(t, chain.IsRunning())
+
+		consensusRelation, status = chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationConsenter, consensusRelation)
+		require.Equal(t, types.StatusOnBoarding, status)
+
+		require.Equal(t, 10, ledgerResources.AppendCallCount())
+		require.Equal(t, uint64(10), ledgerResources.Height())
+		for i := uint64(0); i < joinNum; i++ {
+			require.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
+		}
+		require.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
 	})
 }
 
@@ -739,8 +774,10 @@ func TestFollowerPullPastJoin(t *testing.T) {
 	})
 	t.Run("Configs in the middle, latest height increasing", func(t *testing.T) {
 		setup()
-		localBlockchain.fill(5)
-		localBlockchain.appendConfig(0)
+		for i := uint64(0); i < 6; i++ {
+			localBlockchain.Append(remoteBlockchain.Block(i))
+		}
+
 		ledgerResources.AppendCalls(func(block *common.Block) error {
 			_ = localBlockchain.Append(block)
 
@@ -908,8 +945,11 @@ func (mbc *memoryBlockChain) fill(numBlocks uint64) {
 		var block *common.Block
 		if i == 0 {
 			block = makeConfigBlock(i, prevHash, 0)
+			block.Header.DataHash = protoutil.BlockDataHash(block.Data)
 		} else {
 			block = protoutil.NewBlock(i, prevHash)
+			block.Data.Data = [][]byte{{uint8(i)}, {uint8(i)}}
+			block.Header.DataHash = protoutil.BlockDataHash(block.Data)
 			protoutil.CopyBlockMetadata(mbc.chain[i-1], block)
 		}
 
@@ -923,6 +963,7 @@ func (mbc *memoryBlockChain) appendConfig(isMember uint8) {
 
 	h := uint64(len(mbc.chain))
 	configBlock := makeConfigBlock(h, protoutil.BlockHeaderHash(mbc.chain[h-1].Header), isMember)
+	configBlock.Header.DataHash = protoutil.BlockDataHash(configBlock.Data)
 	mbc.chain = append(mbc.chain, configBlock)
 }
 
@@ -949,7 +990,7 @@ func makeConfigBlock(num uint64, prevHash []byte, isMember uint8) *common.Block 
 	env := &common.Envelope{
 		Payload: protoutil.MarshalOrPanic(&common.Payload{
 			Header: protoutil.MakePayloadHeader(
-				protoutil.MakeChannelHeader(common.HeaderType_CONFIG, 0, "my-chennel", 0),
+				protoutil.MakeChannelHeader(common.HeaderType_CONFIG, 0, "my-channel", 0),
 				protoutil.MakeSignatureHeader([]byte{}, []byte{}),
 			),
 			Data: []byte{isMember},
@@ -957,6 +998,8 @@ func makeConfigBlock(num uint64, prevHash []byte, isMember uint8) *common.Block 
 		),
 	}
 	block.Data.Data = append(block.Data.Data, protoutil.MarshalOrPanic(env))
+	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+
 	protoutil.InitBlockMetadata(block)
 	obm := &common.OrdererBlockMetadata{LastConfig: &common.LastConfig{Index: num}}
 	block.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(

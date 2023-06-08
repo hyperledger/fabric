@@ -47,7 +47,7 @@ var _ = Describe("osnadmin", func() {
 
 	BeforeEach(func() {
 		var err error
-		tempDir, err = ioutil.TempDir("", "osnadmin")
+		tempDir, err = os.MkdirTemp("", "osnadmin")
 		Expect(err).NotTo(HaveOccurred())
 
 		generateCertificates(tempDir)
@@ -782,46 +782,49 @@ func generateCertificates(tempDir string) {
 }
 
 func blockWithGroups(groups map[string]*cb.ConfigGroup, channelID string) *cb.Block {
-	return &cb.Block{
-		Data: &cb.BlockData{
-			Data: [][]byte{
-				protoutil.MarshalOrPanic(&cb.Envelope{
-					Payload: protoutil.MarshalOrPanic(&cb.Payload{
-						Data: protoutil.MarshalOrPanic(&cb.ConfigEnvelope{
-							Config: &cb.Config{
-								ChannelGroup: &cb.ConfigGroup{
-									Groups: groups,
-									Values: map[string]*cb.ConfigValue{
-										"HashingAlgorithm": {
-											Value: protoutil.MarshalOrPanic(&cb.HashingAlgorithm{
-												Name: bccsp.SHA256,
-											}),
-										},
-										"BlockDataHashingStructure": {
-											Value: protoutil.MarshalOrPanic(&cb.BlockDataHashingStructure{
-												Width: math.MaxUint32,
-											}),
-										},
-										"OrdererAddresses": {
-											Value: protoutil.MarshalOrPanic(&cb.OrdererAddresses{
-												Addresses: []string{"localhost"},
-											}),
-										},
+	block := protoutil.NewBlock(0, []byte{})
+	block.Data = &cb.BlockData{
+		Data: [][]byte{
+			protoutil.MarshalOrPanic(&cb.Envelope{
+				Payload: protoutil.MarshalOrPanic(&cb.Payload{
+					Data: protoutil.MarshalOrPanic(&cb.ConfigEnvelope{
+						Config: &cb.Config{
+							ChannelGroup: &cb.ConfigGroup{
+								Groups: groups,
+								Values: map[string]*cb.ConfigValue{
+									"HashingAlgorithm": {
+										Value: protoutil.MarshalOrPanic(&cb.HashingAlgorithm{
+											Name: bccsp.SHA256,
+										}),
+									},
+									"BlockDataHashingStructure": {
+										Value: protoutil.MarshalOrPanic(&cb.BlockDataHashingStructure{
+											Width: math.MaxUint32,
+										}),
+									},
+									"OrdererAddresses": {
+										Value: protoutil.MarshalOrPanic(&cb.OrdererAddresses{
+											Addresses: []string{"localhost"},
+										}),
 									},
 								},
 							},
-						}),
-						Header: &cb.Header{
-							ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
-								Type:      int32(cb.HeaderType_CONFIG),
-								ChannelId: channelID,
-							}),
 						},
 					}),
+					Header: &cb.Header{
+						ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
+							Type:      int32(cb.HeaderType_CONFIG),
+							ChannelId: channelID,
+						}),
+					},
 				}),
-			},
+			}),
 		},
 	}
+	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+	protoutil.InitBlockMetadata(block)
+
+	return block
 }
 
 func createBlockFile(tempDir string, configBlock *cb.Block) string {
