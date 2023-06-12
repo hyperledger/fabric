@@ -673,8 +673,8 @@ Profiles:
                           Type: Signature
                           Rule: "OR('SampleOrg.member')"
 
-    # SampleAppChannelEtcdRaft defines an application channel configuration
-    # that uses the etcd/raft-based orderer.
+    # SampleAppChannelSmartBft defines an application channel configuration
+    # that uses the Smart BFT orderer.
     SampleAppChannelSmartBft:
         <<: *ChannelDefaults
         Consortium: SampleConsortium
