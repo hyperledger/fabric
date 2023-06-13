@@ -25,9 +25,10 @@ import (
 	. "github.com/onsi/gomega"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
-var _ = Describe("Blocksprovider", func() {
+var _ = Describe("CFT-Deliverer", func() {
 	var (
 		d                           *blocksprovider.Deliverer
 		ccs                         []*grpc.ClientConn
@@ -59,7 +60,7 @@ var _ = Describe("Blocksprovider", func() {
 		fakeDialer.DialStub = func(string, [][]byte) (*grpc.ClientConn, error) {
 			mutex.Lock()
 			defer mutex.Unlock()
-			cc, err := grpc.Dial("", grpc.WithInsecure())
+			cc, err := grpc.Dial("", grpc.WithTransportCredentials(insecure.NewCredentials()))
 			ccs = append(ccs, cc)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(cc.GetState()).NotTo(Equal(connectivity.Shutdown))
@@ -106,7 +107,7 @@ var _ = Describe("Blocksprovider", func() {
 			BlockVerifier:     fakeBlockVerifier,
 			Dialer:            fakeDialer,
 			Orderers:          fakeOrdererConnectionSource,
-			DoneC:             doneC,
+			DoneC:             make(chan struct{}),
 			Signer:            fakeSigner,
 			DeliverStreamer:   fakeDeliverStreamer,
 			Logger:            flogging.MustGetLogger("blocksprovider"),
@@ -115,6 +116,7 @@ var _ = Describe("Blocksprovider", func() {
 			MaxRetryDelay:     10 * time.Second,
 			InitialRetryDelay: 100 * time.Millisecond,
 		}
+		d.Initialize()
 
 		fakeSleeper = &fake.Sleeper{}
 		blocksprovider.SetSleeper(d, fakeSleeper)
@@ -129,6 +131,7 @@ var _ = Describe("Blocksprovider", func() {
 	})
 
 	AfterEach(func() {
+		d.Stop()
 		close(doneC)
 		<-endC
 	})
@@ -219,7 +222,7 @@ var _ = Describe("Blocksprovider", func() {
 	When("the dialer returns an error", func() {
 		BeforeEach(func() {
 			fakeDialer.DialReturnsOnCall(0, nil, fmt.Errorf("fake-dial-error"))
-			cc, err := grpc.Dial("", grpc.WithInsecure())
+			cc, err := grpc.Dial("", grpc.WithTransportCredentials(insecure.NewCredentials()))
 			Expect(err).NotTo(HaveOccurred())
 			fakeDialer.DialReturnsOnCall(1, cc, nil)
 		})

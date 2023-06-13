@@ -16,6 +16,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/core/deliverservice/fake"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
@@ -196,7 +197,8 @@ func TestStopDeliverForChannel(t *testing.T) {
 		ds := NewDeliverService(&Config{}).(*deliverServiceImpl)
 		doneA := make(chan struct{})
 		ds.blockDeliverer = &blocksprovider.Deliverer{
-			DoneC: doneA,
+			DoneC:  doneA,
+			Logger: flogging.MustGetLogger("deliveryclient.test"),
 		}
 		ds.channelID = "channel-id"
 
@@ -213,7 +215,8 @@ func TestStopDeliverForChannel(t *testing.T) {
 	t.Run("Already stopping", func(t *testing.T) {
 		ds := NewDeliverService(&Config{}).(*deliverServiceImpl)
 		ds.blockDeliverer = &blocksprovider.Deliverer{
-			DoneC: make(chan struct{}),
+			DoneC:  make(chan struct{}),
+			Logger: flogging.MustGetLogger("deliveryclient.test"),
 		}
 		ds.channelID = "channel-id"
 
@@ -225,7 +228,8 @@ func TestStopDeliverForChannel(t *testing.T) {
 	t.Run("Already stopped", func(t *testing.T) {
 		ds := NewDeliverService(&Config{}).(*deliverServiceImpl)
 		ds.blockDeliverer = &blocksprovider.Deliverer{
-			DoneC: make(chan struct{}),
+			DoneC:  make(chan struct{}),
+			Logger: flogging.MustGetLogger("deliveryclient.test"),
 		}
 		ds.channelID = "channel-id"
 
@@ -238,7 +242,8 @@ func TestStopDeliverForChannel(t *testing.T) {
 func TestStop(t *testing.T) {
 	ds := NewDeliverService(&Config{}).(*deliverServiceImpl)
 	ds.blockDeliverer = &blocksprovider.Deliverer{
-		DoneC: make(chan struct{}),
+		DoneC:  make(chan struct{}),
+		Logger: flogging.MustGetLogger("deliveryclient.test"),
 	}
 
 	require.False(t, ds.stopping)

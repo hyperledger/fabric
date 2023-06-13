@@ -9,6 +9,7 @@ package blocksprovider
 import (
 	"context"
 	"math"
+	"sync"
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -18,10 +19,6 @@ import (
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
-	"github.com/hyperledger/fabric/protoutil"
-
-	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
 
@@ -72,7 +69,9 @@ type DeliverStreamer interface {
 	Deliver(context.Context, *grpc.ClientConn) (orderer.AtomicBroadcast_DeliverClient, error)
 }
 
-// Deliverer the actual implementation for BlocksDeliverer interface
+const backoffExponentBase = 1.2
+
+// Deliverer the CFT implementation of the deliverservice.BlockDeliverer interface.
 type Deliverer struct {
 	ChannelID       string
 	Gossip          GossipServiceAdapter
@@ -95,12 +94,25 @@ type Deliverer struct {
 	TLSCertHash []byte // util.ComputeSHA256(b.credSupport.GetClientCertificate().Certificate[0])
 
 	sleeper sleeper
+
+	requester *DeliveryRequester
+
+	mutex         sync.Mutex
+	stopFlag      bool
+	blockReceiver *BlockReceiver
 }
 
-const backoffExponentBase = 1.2
+func (d *Deliverer) Initialize() {
+	d.requester = NewDeliveryRequester(
+		d.ChannelID,
+		d.Signer,
+		d.TLSCertHash,
+		d.Dialer,
+		d.DeliverStreamer,
+	)
+}
 
-// DeliverBlocks used to pull out blocks from the ordering service to
-// distributed them across peers
+// DeliverBlocks used to pull out blocks from the ordering service to distribute them across peers
 func (d *Deliverer) DeliverBlocks() {
 	failureCounter := 0
 	totalDuration := time.Duration(0)
@@ -142,196 +154,75 @@ func (d *Deliverer) DeliverBlocks() {
 			return
 		}
 
-		seekInfoEnv, err := d.createSeekInfo(ledgerHeight)
+		endpoint, err := d.Orderers.RandomEndpoint()
+		if err != nil {
+			d.Logger.Warningf("Could not connect to ordering service: could not get orderer endpoints: %s", err)
+			failureCounter++
+			continue
+		}
+
+		seekInfoEnv, err := d.requester.SeekInfoBlocksFrom(ledgerHeight)
 		if err != nil {
 			d.Logger.Error("Could not create a signed Deliver SeekInfo message, something is critically wrong", err)
 			return
 		}
 
-		deliverClient, endpoint, cancel, err := d.connect(seekInfoEnv)
+		deliverClient, cancel, err := d.requester.Connect(seekInfoEnv, endpoint)
 		if err != nil {
 			d.Logger.Warningf("Could not connect to ordering service: %s", err)
 			failureCounter++
 			continue
 		}
 
-		connLogger := d.Logger.With("orderer-address", endpoint.Address)
-		connLogger.Infow("Pulling next blocks from ordering service", "nextBlock", ledgerHeight)
+		d.mutex.Lock()
+		blockReceiver := &BlockReceiver{
+			channelID:           d.ChannelID,
+			gossip:              d.Gossip,
+			blockGossipDisabled: d.BlockGossipDisabled,
+			blockVerifier:       d.BlockVerifier,
+			deliverClient:       deliverClient,
+			cancelSendFunc:      cancel,
+			recvC:               make(chan *orderer.DeliverResponse),
+			stopC:               make(chan struct{}),
+			endpoint:            endpoint,
+			logger:              d.Logger.With("orderer-address", endpoint.Address),
+		}
+		d.blockReceiver = blockReceiver
+		d.mutex.Unlock()
 
-		recv := make(chan *orderer.DeliverResponse)
-		go func() {
-			for {
-				resp, err := deliverClient.Recv()
-				if err != nil {
-					connLogger.Warningf("Encountered an error reading from deliver stream: %s", err)
-					close(recv)
-					return
-				}
-				select {
-				case recv <- resp:
-				case <-d.DoneC:
-					close(recv)
-					return
-				}
-			}
-		}()
-
-	RecvLoop: // Loop until the endpoint is refreshed, or there is an error on the connection
-		for {
-			select {
-			case <-endpoint.Refreshed:
-				connLogger.Infof("Ordering endpoints have been refreshed, disconnecting from deliver to reconnect using updated endpoints")
-				break RecvLoop
-			case response, ok := <-recv:
-				if !ok {
-					connLogger.Warningf("Orderer hung up without sending status")
-					failureCounter++
-					break RecvLoop
-				}
-				err = d.processMsg(response)
-				if err != nil {
-					connLogger.Warningf("Got error while attempting to receive blocks: %v", err)
-					failureCounter++
-					break RecvLoop
-				}
-				failureCounter = 0
-			case <-d.DoneC:
-				break RecvLoop
+		blockReceiver.Start() // starts an internal goroutine
+		onSuccess := func(blockNum uint64) {
+			failureCounter = 0
+		}
+		if err := blockReceiver.ProcessIncoming(onSuccess); err != nil {
+			switch err.(type) {
+			case *errRefreshEndpoint:
+				// Don't count it as an error, we'll reconnect immediately.
+			case *errStopping:
+				// Don't count it as an error, it is a signal to stop.
+			default:
+				failureCounter++
 			}
 		}
-
-		// cancel and wait for our spawned go routine to exit
-		cancel()
-		<-recv
-	}
-}
-
-func (d *Deliverer) processMsg(msg *orderer.DeliverResponse) error {
-	switch t := msg.Type.(type) {
-	case *orderer.DeliverResponse_Status:
-		if t.Status == common.Status_SUCCESS {
-			return errors.Errorf("received success for a seek that should never complete")
-		}
-
-		return errors.Errorf("received bad status %v from orderer", t.Status)
-	case *orderer.DeliverResponse_Block:
-		blockNum := t.Block.Header.Number
-		if err := d.BlockVerifier.VerifyBlock(gossipcommon.ChannelID(d.ChannelID), blockNum, t.Block); err != nil {
-			return errors.WithMessage(err, "block from orderer could not be verified")
-		}
-
-		marshaledBlock, err := proto.Marshal(t.Block)
-		if err != nil {
-			return errors.WithMessage(err, "block from orderer could not be re-marshaled")
-		}
-
-		// Create payload with a block received
-		payload := &gossip.Payload{
-			Data:   marshaledBlock,
-			SeqNum: blockNum,
-		}
-
-		// Use payload to create gossip message
-		gossipMsg := &gossip.GossipMessage{
-			Nonce:   0,
-			Tag:     gossip.GossipMessage_CHAN_AND_ORG,
-			Channel: []byte(d.ChannelID),
-			Content: &gossip.GossipMessage_DataMsg{
-				DataMsg: &gossip.DataMessage{
-					Payload: payload,
-				},
-			},
-		}
-
-		d.Logger.Debugf("Adding payload to local buffer, blockNum = [%d]", blockNum)
-		// Add payload to local state payloads buffer
-		if err := d.Gossip.AddPayload(d.ChannelID, payload); err != nil {
-			d.Logger.Warningf("Block [%d] received from ordering service wasn't added to payload buffer: %v", blockNum, err)
-			return errors.WithMessage(err, "could not add block as payload")
-		}
-		if d.BlockGossipDisabled {
-			return nil
-		}
-		// Gossip messages with other nodes
-		d.Logger.Debugf("Gossiping block [%d]", blockNum)
-		d.Gossip.Gossip(gossipMsg)
-		return nil
-	default:
-		d.Logger.Warningf("Received unknown: %v", t)
-		return errors.Errorf("unknown message type '%T'", msg.Type)
 	}
 }
 
 // Stop stops blocks delivery provider
 func (d *Deliverer) Stop() {
-	// this select is not race-safe, but it prevents a panic
-	// for careless callers multiply invoking stop
-	select {
-	case <-d.DoneC:
-	default:
-		close(d.DoneC)
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
+	if d.stopFlag {
+		d.Logger.Debugf("Already stopped")
+		return
 	}
+
+	d.stopFlag = true
+	close(d.DoneC)
+	d.blockReceiver.Stop()
+	d.Logger.Info("Stopped")
 }
 
-func (d *Deliverer) connect(seekInfoEnv *common.Envelope) (orderer.AtomicBroadcast_DeliverClient, *orderers.Endpoint, func(), error) {
-	endpoint, err := d.Orderers.RandomEndpoint()
-	if err != nil {
-		return nil, nil, nil, errors.WithMessage(err, "could not get orderer endpoints")
-	}
-
-	conn, err := d.Dialer.Dial(endpoint.Address, endpoint.RootCerts)
-	if err != nil {
-		return nil, nil, nil, errors.WithMessagef(err, "could not dial endpoint '%s'", endpoint.Address)
-	}
-
-	ctx, ctxCancel := context.WithCancel(context.Background())
-
-	deliverClient, err := d.DeliverStreamer.Deliver(ctx, conn)
-	if err != nil {
-		conn.Close()
-		ctxCancel()
-		return nil, nil, nil, errors.WithMessagef(err, "could not create deliver client to endpoints '%s'", endpoint.Address)
-	}
-
-	err = deliverClient.Send(seekInfoEnv)
-	if err != nil {
-		deliverClient.CloseSend()
-		conn.Close()
-		ctxCancel()
-		return nil, nil, nil, errors.WithMessagef(err, "could not send deliver seek info handshake to '%s'", endpoint.Address)
-	}
-
-	return deliverClient, endpoint, func() {
-		deliverClient.CloseSend()
-		ctxCancel()
-		conn.Close()
-	}, nil
-}
-
-func (d *Deliverer) createSeekInfo(ledgerHeight uint64) (*common.Envelope, error) {
-	return protoutil.CreateSignedEnvelopeWithTLSBinding(
-		common.HeaderType_DELIVER_SEEK_INFO,
-		d.ChannelID,
-		d.Signer,
-		&orderer.SeekInfo{
-			Start: &orderer.SeekPosition{
-				Type: &orderer.SeekPosition_Specified{
-					Specified: &orderer.SeekSpecified{
-						Number: ledgerHeight,
-					},
-				},
-			},
-			Stop: &orderer.SeekPosition{
-				Type: &orderer.SeekPosition_Specified{
-					Specified: &orderer.SeekSpecified{
-						Number: math.MaxUint64,
-					},
-				},
-			},
-			Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
-		},
-		int32(0),
-		uint64(0),
-		d.TLSCertHash,
-	)
+func (d *Deliverer) setSleeperFunc(sleepFunc func(duration time.Duration)) {
+	d.sleeper.sleep = sleepFunc
 }

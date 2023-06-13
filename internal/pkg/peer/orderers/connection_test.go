@@ -125,6 +125,17 @@ var _ = Describe("Connection", func() {
 		}
 	})
 
+	It("endpoint stringer works", func() {
+		for _, endpoint := range endpoints {
+			Expect(endpoint.String()).To(MatchRegexp("Address: org[12]-address[12]"))
+			Expect(endpoint.String()).To(MatchRegexp("CertHash: [A-F0-9]+"))
+		}
+		e := &orderers.Endpoint{Address: "localhost"}
+		Expect(e.String()).To(Equal("Address: localhost, CertHash: <nil>"))
+		e = nil
+		Expect(e.String()).To(Equal("<nil>"))
+	})
+
 	When("an update does not modify the endpoint set", func() {
 		BeforeEach(func() {
 			cs.Update(nil, map[string]orderers.OrdererOrg{

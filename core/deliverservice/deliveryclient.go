@@ -7,13 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package deliverservice
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -23,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 	"github.com/pkg/errors"
-	"google.golang.org/grpc"
 )
 
 var logger = flogging.MustGetLogger("deliveryClient")
@@ -99,22 +96,6 @@ func NewDeliverService(conf *Config) DeliverService {
 	return ds
 }
 
-type DialerAdapter struct {
-	ClientConfig comm.ClientConfig
-}
-
-func (da DialerAdapter) Dial(address string, rootCerts [][]byte) (*grpc.ClientConn, error) {
-	cc := da.ClientConfig
-	cc.SecOpts.ServerRootCAs = rootCerts
-	return cc.Dial(address)
-}
-
-type DeliverAdapter struct{}
-
-func (DeliverAdapter) Deliver(ctx context.Context, clientConn *grpc.ClientConn) (orderer.AtomicBroadcast_DeliverClient, error) {
-	return orderer.NewAtomicBroadcastClient(clientConn).Deliver(ctx)
-}
-
 // StartDeliverForChannel starts blocks delivery for channel
 // initializes the grpc stream for given chainID, creates blocks provider instance
 // that spawns in go routine to read new blocks starting from the position provided by ledger
@@ -181,7 +162,7 @@ func (d *deliverServiceImpl) createBlockDelivererCFT(chainID string, ledgerInfo 
 		Gossip:        d.conf.Gossip,
 		Ledger:        ledgerInfo,
 		BlockVerifier: d.conf.CryptoSvc,
-		Dialer: DialerAdapter{
+		Dialer: blocksprovider.DialerAdapter{
 			ClientConfig: comm.ClientConfig{
 				DialTimeout: d.conf.DeliverServiceConfig.ConnectionTimeout,
 				KaOpts:      d.conf.DeliverServiceConfig.KeepaliveOptions,
@@ -191,7 +172,7 @@ func (d *deliverServiceImpl) createBlockDelivererCFT(chainID string, ledgerInfo 
 		Orderers:            d.conf.OrdererSource,
 		DoneC:               make(chan struct{}),
 		Signer:              d.conf.Signer,
-		DeliverStreamer:     DeliverAdapter{},
+		DeliverStreamer:     blocksprovider.DeliverAdapter{},
 		Logger:              flogging.MustGetLogger("peer.blocksprovider").With("channel", chainID),
 		MaxRetryDelay:       d.conf.DeliverServiceConfig.ReConnectBackoffThreshold,
 		MaxRetryDuration:    d.conf.DeliverServiceConfig.ReconnectTotalTimeThreshold,
@@ -207,6 +188,9 @@ func (d *deliverServiceImpl) createBlockDelivererCFT(chainID string, ledgerInfo 
 		}
 		dc.TLSCertHash = util.ComputeSHA256(cert.Certificate[0])
 	}
+
+	dc.Initialize()
+
 	return dc, nil
 }
 
