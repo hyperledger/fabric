@@ -72,7 +72,7 @@ type DeliverStreamer interface {
 	Deliver(context.Context, *grpc.ClientConn) (orderer.AtomicBroadcast_DeliverClient, error)
 }
 
-// Deliverer the actual implementation for BlocksDeliverer interface
+// Deliverer the CFT implementation of the BlocksDeliverer interface.
 type Deliverer struct {
 	ChannelID       string
 	Gossip          GossipServiceAdapter
@@ -148,7 +148,14 @@ func (d *Deliverer) DeliverBlocks() {
 			return
 		}
 
-		deliverClient, endpoint, cancel, err := d.connect(seekInfoEnv)
+		endpoint, err := d.Orderers.RandomEndpoint()
+		if err != nil {
+			d.Logger.Warningf("Could not connect to ordering service: could not get orderer endpoints: %s", err)
+			failureCounter++
+			continue
+		}
+
+		deliverClient, cancel, err := d.connect(seekInfoEnv, endpoint)
 		if err != nil {
 			d.Logger.Warningf("Could not connect to ordering service: %s", err)
 			failureCounter++
@@ -273,39 +280,36 @@ func (d *Deliverer) Stop() {
 	}
 }
 
-func (d *Deliverer) connect(seekInfoEnv *common.Envelope) (orderer.AtomicBroadcast_DeliverClient, *orderers.Endpoint, func(), error) {
-	endpoint, err := d.Orderers.RandomEndpoint()
-	if err != nil {
-		return nil, nil, nil, errors.WithMessage(err, "could not get orderer endpoints")
-	}
-
+func (d *Deliverer) connect(seekInfoEnv *common.Envelope, endpoint *orderers.Endpoint) (orderer.AtomicBroadcast_DeliverClient, func(), error) {
 	conn, err := d.Dialer.Dial(endpoint.Address, endpoint.RootCerts)
 	if err != nil {
-		return nil, nil, nil, errors.WithMessagef(err, "could not dial endpoint '%s'", endpoint.Address)
+		return nil, nil, errors.WithMessagef(err, "could not dial endpoint '%s'", endpoint.Address)
 	}
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
 	deliverClient, err := d.DeliverStreamer.Deliver(ctx, conn)
 	if err != nil {
-		conn.Close()
+		_ = conn.Close()
 		ctxCancel()
-		return nil, nil, nil, errors.WithMessagef(err, "could not create deliver client to endpoints '%s'", endpoint.Address)
+		return nil, nil, errors.WithMessagef(err, "could not create deliver client to endpoints '%s'", endpoint.Address)
 	}
 
 	err = deliverClient.Send(seekInfoEnv)
 	if err != nil {
-		deliverClient.CloseSend()
-		conn.Close()
+		_ = deliverClient.CloseSend()
+		_ = conn.Close()
 		ctxCancel()
-		return nil, nil, nil, errors.WithMessagef(err, "could not send deliver seek info handshake to '%s'", endpoint.Address)
+		return nil, nil, errors.WithMessagef(err, "could not send deliver seek info handshake to '%s'", endpoint.Address)
 	}
 
-	return deliverClient, endpoint, func() {
-		deliverClient.CloseSend()
+	cancelFunc := func() {
+		_ = deliverClient.CloseSend()
 		ctxCancel()
-		conn.Close()
-	}, nil
+		_ = conn.Close()
+	}
+
+	return deliverClient, cancelFunc, nil
 }
 
 func (d *Deliverer) createSeekInfo(ledgerHeight uint64) (*common.Envelope, error) {

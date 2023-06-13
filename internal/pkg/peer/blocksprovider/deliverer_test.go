@@ -8,6 +8,7 @@ package blocksprovider_test
 
 import (
 	"fmt"
+	"google.golang.org/grpc/credentials/insecure"
 	"sync"
 	"time"
 
@@ -59,7 +60,7 @@ var _ = Describe("Blocksprovider", func() {
 		fakeDialer.DialStub = func(string, [][]byte) (*grpc.ClientConn, error) {
 			mutex.Lock()
 			defer mutex.Unlock()
-			cc, err := grpc.Dial("", grpc.WithInsecure())
+			cc, err := grpc.Dial("", grpc.WithTransportCredentials(insecure.NewCredentials()))
 			ccs = append(ccs, cc)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(cc.GetState()).NotTo(Equal(connectivity.Shutdown))
@@ -219,7 +220,7 @@ var _ = Describe("Blocksprovider", func() {
 	When("the dialer returns an error", func() {
 		BeforeEach(func() {
 			fakeDialer.DialReturnsOnCall(0, nil, fmt.Errorf("fake-dial-error"))
-			cc, err := grpc.Dial("", grpc.WithInsecure())
+			cc, err := grpc.Dial("", grpc.WithTransportCredentials(insecure.NewCredentials()))
 			Expect(err).NotTo(HaveOccurred())
 			fakeDialer.DialReturnsOnCall(1, cc, nil)
 		})

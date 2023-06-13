@@ -28,5 +28,11 @@ type abDeliverClient interface {
 
 func TestBlocksprovider(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Blocksprovider Suite")
+
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	suiteConfig.EmitSpecProgress = true
+	reporterConfig.FullTrace = true
+	reporterConfig.VeryVerbose = true
+
+	RunSpecs(t, "Blocksprovider Suite", suiteConfig, reporterConfig)
 }
