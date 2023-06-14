@@ -16,7 +16,13 @@ import (
 
 func TestEtcdraft(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Etcdraft Suite")
+
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	suiteConfig.EmitSpecProgress = true
+	reporterConfig.FullTrace = true
+	reporterConfig.Verbose = true
+
+	RunSpecs(t, "Etcdraft Suite", suiteConfig, reporterConfig)
 }
 
 //go:generate counterfeiter -o mocks/orderer_org.go --fake-name OrdererOrg . channelConfigOrdererOrg
