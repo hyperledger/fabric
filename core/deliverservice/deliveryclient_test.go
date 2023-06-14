@@ -8,13 +8,20 @@ package deliverservice
 
 import (
 	"fmt"
+	"io/ioutil"
+	"path"
 	"testing"
 	"time"
 
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/core/deliverservice/fake"
+	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
+	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider"
-
 	"github.com/stretchr/testify/require"
 )
 
@@ -57,15 +64,28 @@ eUCutqn1KYDMYh54i6p723cXbdDkmvL2UCciHyHdSWS9lmkKVdyNGIJ6
 		),
 	}
 
+	confAppRaft := genesisconfig.Load(genesisconfig.SampleAppChannelEtcdRaftProfile, configtest.GetDevConfigDir())
+	certDir := t.TempDir()
+	tlsCA, err := tlsgen.NewCA()
+	require.NoError(t, err)
+	generateCertificates(t, confAppRaft, tlsCA, certDir)
+	bootstrapper, err := encoder.NewBootstrapper(confAppRaft)
+	require.NoError(t, err)
+	channelConfigProto := &cb.Config{ChannelGroup: bootstrapper.GenesisChannelGroup()}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	require.NoError(t, err)
+
 	t.Run("Green Path With Mutual TLS", func(t *testing.T) {
 		ds := NewDeliverService(&Config{
 			DeliverServiceConfig: &DeliverServiceConfig{
 				SecOpts: secOpts,
 			},
+			ChannelConfig:  channelConfigProto,
+			CryptoProvider: cryptoProvider,
 		}).(*deliverServiceImpl)
 
 		finalized := make(chan struct{})
-		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {
+		err = ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {
 			close(finalized)
 		})
 		require.NoError(t, err)
@@ -85,6 +105,8 @@ eUCutqn1KYDMYh54i6p723cXbdDkmvL2UCciHyHdSWS9lmkKVdyNGIJ6
 	t.Run("Green Path without mutual TLS", func(t *testing.T) {
 		ds := NewDeliverService(&Config{
 			DeliverServiceConfig: &DeliverServiceConfig{},
+			ChannelConfig:        channelConfigProto,
+			CryptoProvider:       cryptoProvider,
 		}).(*deliverServiceImpl)
 
 		finalized := make(chan struct{})
@@ -107,6 +129,8 @@ eUCutqn1KYDMYh54i6p723cXbdDkmvL2UCciHyHdSWS9lmkKVdyNGIJ6
 	t.Run("Exists", func(t *testing.T) {
 		ds := NewDeliverService(&Config{
 			DeliverServiceConfig: &DeliverServiceConfig{},
+			ChannelConfig:        channelConfigProto,
+			CryptoProvider:       cryptoProvider,
 		}).(*deliverServiceImpl)
 
 		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {})
@@ -181,5 +205,26 @@ func TestStop(t *testing.T) {
 	case <-bpd.DoneC:
 	default:
 		require.Fail(t, "block providers should te closed")
+	}
+}
+
+// TODO this pattern repeats itself in several places. Make it common in the 'genesisconfig' package to easily create
+// Raft genesis blocks
+func generateCertificates(t *testing.T, confAppRaft *genesisconfig.Profile, tlsCA tlsgen.CA, certDir string) {
+	for i, c := range confAppRaft.Orderer.EtcdRaft.Consenters {
+		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)
+		require.NoError(t, err)
+		srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", i))
+		err = ioutil.WriteFile(srvP, srvC.Cert, 0o644)
+		require.NoError(t, err)
+
+		clnC, err := tlsCA.NewClientCertKeyPair()
+		require.NoError(t, err)
+		clnP := path.Join(certDir, fmt.Sprintf("client%d.crt", i))
+		err = ioutil.WriteFile(clnP, clnC.Cert, 0o644)
+		require.NoError(t, err)
+
+		c.ServerTlsCert = []byte(srvP)
+		c.ClientTlsCert = []byte(clnP)
 	}
 }
