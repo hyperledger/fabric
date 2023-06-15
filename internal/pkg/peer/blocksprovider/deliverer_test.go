@@ -8,9 +8,10 @@ package blocksprovider_test
 
 import (
 	"fmt"
-	"google.golang.org/grpc/credentials/insecure"
 	"sync"
 	"time"
+
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -116,6 +117,7 @@ var _ = Describe("Blocksprovider", func() {
 			MaxRetryDelay:     10 * time.Second,
 			InitialRetryDelay: 100 * time.Millisecond,
 		}
+		d.Initialize()
 
 		fakeSleeper = &fake.Sleeper{}
 		blocksprovider.SetSleeper(d, fakeSleeper)

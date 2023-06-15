@@ -11,6 +11,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric-protos-go/orderer"
@@ -18,9 +19,6 @@ import (
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
-	"github.com/hyperledger/fabric/protoutil"
-
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
@@ -72,7 +70,9 @@ type DeliverStreamer interface {
 	Deliver(context.Context, *grpc.ClientConn) (orderer.AtomicBroadcast_DeliverClient, error)
 }
 
-// Deliverer the CFT implementation of the BlocksDeliverer interface.
+const backoffExponentBase = 1.2
+
+// Deliverer the CFT implementation of the deliverservice.BlockDeliverer interface.
 type Deliverer struct {
 	ChannelID       string
 	Gossip          GossipServiceAdapter
@@ -95,12 +95,21 @@ type Deliverer struct {
 	TLSCertHash []byte // util.ComputeSHA256(b.credSupport.GetClientCertificate().Certificate[0])
 
 	sleeper sleeper
+
+	requester *DeliveryRequester
 }
 
-const backoffExponentBase = 1.2
+func (d *Deliverer) Initialize() {
+	d.requester = &DeliveryRequester{
+		channelID:       d.ChannelID,
+		signer:          d.Signer,
+		tlsCertHash:     d.TLSCertHash,
+		dialer:          d.Dialer,
+		deliverStreamer: d.DeliverStreamer,
+	}
+}
 
-// DeliverBlocks used to pull out blocks from the ordering service to
-// distributed them across peers
+// DeliverBlocks used to pull out blocks from the ordering service to distribute them across peers
 func (d *Deliverer) DeliverBlocks() {
 	failureCounter := 0
 	totalDuration := time.Duration(0)
@@ -142,12 +151,6 @@ func (d *Deliverer) DeliverBlocks() {
 			return
 		}
 
-		seekInfoEnv, err := d.createSeekInfo(ledgerHeight)
-		if err != nil {
-			d.Logger.Error("Could not create a signed Deliver SeekInfo message, something is critically wrong", err)
-			return
-		}
-
 		endpoint, err := d.Orderers.RandomEndpoint()
 		if err != nil {
 			d.Logger.Warningf("Could not connect to ordering service: could not get orderer endpoints: %s", err)
@@ -155,61 +158,39 @@ func (d *Deliverer) DeliverBlocks() {
 			continue
 		}
 
-		deliverClient, cancel, err := d.connect(seekInfoEnv, endpoint)
+		seekInfoEnv, err := d.requester.SeekInfoBlocksFrom(ledgerHeight)
+		if err != nil {
+			d.Logger.Error("Could not create a signed Deliver SeekInfo message, something is critically wrong", err)
+			return
+		}
+
+		deliverClient, cancel, err := d.requester.Connect(seekInfoEnv, endpoint)
 		if err != nil {
 			d.Logger.Warningf("Could not connect to ordering service: %s", err)
 			failureCounter++
 			continue
 		}
 
-		connLogger := d.Logger.With("orderer-address", endpoint.Address)
-		connLogger.Infow("Pulling next blocks from ordering service", "nextBlock", ledgerHeight)
-
-		recv := make(chan *orderer.DeliverResponse)
-		go func() {
-			for {
-				resp, err := deliverClient.Recv()
-				if err != nil {
-					connLogger.Warningf("Encountered an error reading from deliver stream: %s", err)
-					close(recv)
-					return
-				}
-				select {
-				case recv <- resp:
-				case <-d.DoneC:
-					close(recv)
-					return
-				}
-			}
-		}()
-
-	RecvLoop: // Loop until the endpoint is refreshed, or there is an error on the connection
-		for {
-			select {
-			case <-endpoint.Refreshed:
-				connLogger.Infof("Ordering endpoints have been refreshed, disconnecting from deliver to reconnect using updated endpoints")
-				break RecvLoop
-			case response, ok := <-recv:
-				if !ok {
-					connLogger.Warningf("Orderer hung up without sending status")
-					failureCounter++
-					break RecvLoop
-				}
-				err = d.processMsg(response)
-				if err != nil {
-					connLogger.Warningf("Got error while attempting to receive blocks: %v", err)
-					failureCounter++
-					break RecvLoop
-				}
-				failureCounter = 0
-			case <-d.DoneC:
-				break RecvLoop
-			}
+		blockReceiver := BlockReceiver{
+			channelID:           d.ChannelID,
+			gossip:              d.Gossip,
+			blockGossipDisabled: d.BlockGossipDisabled,
+			blockVerifier:       d.BlockVerifier,
+			deliverClient:       deliverClient,
+			cancelSendFunc:      cancel,
+			recvC:               make(chan *orderer.DeliverResponse),
+			doneC:               d.DoneC,
+			endpoint:            endpoint,
+			logger:              d.Logger.With("orderer-address", endpoint.Address),
 		}
 
-		// cancel and wait for our spawned go routine to exit
-		cancel()
-		<-recv
+		blockReceiver.Start()
+		onSuccess := func(blockNum uint64) {
+			failureCounter = 0
+		}
+		if err := blockReceiver.ProcessIncoming(onSuccess); err != nil {
+			failureCounter++
+		}
 	}
 }
 
@@ -278,64 +259,4 @@ func (d *Deliverer) Stop() {
 	default:
 		close(d.DoneC)
 	}
-}
-
-func (d *Deliverer) connect(seekInfoEnv *common.Envelope, endpoint *orderers.Endpoint) (orderer.AtomicBroadcast_DeliverClient, func(), error) {
-	conn, err := d.Dialer.Dial(endpoint.Address, endpoint.RootCerts)
-	if err != nil {
-		return nil, nil, errors.WithMessagef(err, "could not dial endpoint '%s'", endpoint.Address)
-	}
-
-	ctx, ctxCancel := context.WithCancel(context.Background())
-
-	deliverClient, err := d.DeliverStreamer.Deliver(ctx, conn)
-	if err != nil {
-		_ = conn.Close()
-		ctxCancel()
-		return nil, nil, errors.WithMessagef(err, "could not create deliver client to endpoints '%s'", endpoint.Address)
-	}
-
-	err = deliverClient.Send(seekInfoEnv)
-	if err != nil {
-		_ = deliverClient.CloseSend()
-		_ = conn.Close()
-		ctxCancel()
-		return nil, nil, errors.WithMessagef(err, "could not send deliver seek info handshake to '%s'", endpoint.Address)
-	}
-
-	cancelFunc := func() {
-		_ = deliverClient.CloseSend()
-		ctxCancel()
-		_ = conn.Close()
-	}
-
-	return deliverClient, cancelFunc, nil
-}
-
-func (d *Deliverer) createSeekInfo(ledgerHeight uint64) (*common.Envelope, error) {
-	return protoutil.CreateSignedEnvelopeWithTLSBinding(
-		common.HeaderType_DELIVER_SEEK_INFO,
-		d.ChannelID,
-		d.Signer,
-		&orderer.SeekInfo{
-			Start: &orderer.SeekPosition{
-				Type: &orderer.SeekPosition_Specified{
-					Specified: &orderer.SeekSpecified{
-						Number: ledgerHeight,
-					},
-				},
-			},
-			Stop: &orderer.SeekPosition{
-				Type: &orderer.SeekPosition_Specified{
-					Specified: &orderer.SeekSpecified{
-						Number: math.MaxUint64,
-					},
-				},
-			},
-			Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
-		},
-		int32(0),
-		uint64(0),
-		d.TLSCertHash,
-	)
 }

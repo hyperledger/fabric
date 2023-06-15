@@ -8,6 +8,10 @@ package blocksprovider_test
 
 import (
 	"fmt"
+	"sync/atomic"
+	"testing"
+	"time"
+
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -16,9 +20,6 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"sync/atomic"
-	"testing"
-	"time"
 )
 
 func TestBftHeaderReceiver_NoBlocks(t *testing.T) {
@@ -90,7 +91,7 @@ func TestBftHeaderReceiver_WithBlocks(t *testing.T) {
 	assert.True(t, bTime.After(start))
 	assert.Equal(t, fakeBlockVerifier.VerifyBlockAttestationCallCount(), 2)
 
-	//Invalid blocks
+	// Invalid blocks
 	bNumOld = bNum
 	atomic.StoreUint32(&goodSig, 0)
 	assert.True(t, waitForAtomicGreaterThan(&seq, bNumOld+3))

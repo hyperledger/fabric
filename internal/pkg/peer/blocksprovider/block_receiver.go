@@ -1,0 +1,145 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+package blocksprovider
+
+import (
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/common/flogging"
+	gossipcommon "github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
+	"github.com/pkg/errors"
+)
+
+type BlockReceiver struct {
+	channelID           string
+	gossip              GossipServiceAdapter
+	blockGossipDisabled bool
+	blockVerifier       BlockVerifier
+	deliverClient       orderer.AtomicBroadcast_DeliverClient
+	cancelSendFunc      func()
+	recvC               chan *orderer.DeliverResponse
+	doneC               chan struct{}
+	endpoint            *orderers.Endpoint
+
+	logger *flogging.FabricLogger
+}
+
+// Start starts a goroutine that continuously receives blocks.
+func (br *BlockReceiver) Start() {
+	go func() {
+		for {
+			resp, err := br.deliverClient.Recv()
+			if err != nil {
+				br.logger.Warningf("Encountered an error reading from deliver stream: %s", err)
+				close(br.recvC)
+				return
+			}
+			select {
+			case br.recvC <- resp:
+			case <-br.doneC:
+				close(br.recvC)
+				return
+			}
+		}
+	}()
+}
+
+// ProcessIncoming processes incoming messages until stopped or encounters an error.
+func (br *BlockReceiver) ProcessIncoming(onSuccess func(blockNum uint64)) error {
+	var err error
+
+RecvLoop: // Loop until the endpoint is refreshed, or there is an error on the connection
+	for {
+		select {
+		case <-br.endpoint.Refreshed:
+			br.logger.Infof("Ordering endpoints have been refreshed, disconnecting from deliver to reconnect using updated endpoints")
+			break RecvLoop
+		case response, ok := <-br.recvC:
+			if !ok {
+				br.logger.Warningf("Orderer hung up without sending status")
+				err = errors.Errorf("orderer `%s` hung up without sending status", br.endpoint.Address)
+				break RecvLoop
+			}
+			err = br.processMsg(response)
+			if err != nil {
+				br.logger.Warningf("Got error while attempting to receive blocks: %v", err)
+				err = errors.WithMessagef(err, "got error while attempting to receive blocks from orderer `%s`", br.endpoint.Address)
+				break RecvLoop
+			}
+			//*failureCounter = 0
+			onSuccess(0)
+		case <-br.doneC:
+			br.logger.Warningf("BlockReceiver got a signal to stop")
+			break RecvLoop
+		}
+	}
+
+	// cancel the sending side and wait for the start goroutine to exit
+	br.cancelSendFunc()
+	<-br.recvC
+
+	return err
+}
+
+func (br *BlockReceiver) processMsg(msg *orderer.DeliverResponse) error {
+	switch t := msg.Type.(type) {
+	case *orderer.DeliverResponse_Status:
+		if t.Status == common.Status_SUCCESS {
+			return errors.Errorf("received success for a seek that should never complete")
+		}
+
+		return errors.Errorf("received bad status %v from orderer", t.Status)
+	case *orderer.DeliverResponse_Block:
+		blockNum := t.Block.Header.Number
+		if err := br.blockVerifier.VerifyBlock(gossipcommon.ChannelID(br.channelID), blockNum, t.Block); err != nil {
+			return errors.WithMessage(err, "block from orderer could not be verified")
+		}
+
+		marshaledBlock, err := proto.Marshal(t.Block)
+		if err != nil {
+			return errors.WithMessage(err, "block from orderer could not be re-marshaled")
+		}
+
+		// Create payload with a block received
+		payload := &gossip.Payload{
+			Data:   marshaledBlock,
+			SeqNum: blockNum,
+		}
+
+		// Use payload to create gossip message
+		gossipMsg := &gossip.GossipMessage{
+			Nonce:   0,
+			Tag:     gossip.GossipMessage_CHAN_AND_ORG,
+			Channel: []byte(br.channelID),
+			Content: &gossip.GossipMessage_DataMsg{
+				DataMsg: &gossip.DataMessage{
+					Payload: payload,
+				},
+			},
+		}
+
+		br.logger.Debugf("Adding payload to local buffer, blockNum = [%d]", blockNum)
+		// Add payload to local state payloads buffer
+		if err := br.gossip.AddPayload(br.channelID, payload); err != nil {
+			br.logger.Warningf("Block [%d] received from ordering service wasn't added to payload buffer: %v", blockNum, err)
+			return errors.WithMessage(err, "could not add block as payload")
+		}
+		if br.blockGossipDisabled {
+			return nil
+		}
+		// Gossip messages with other nodes
+		br.logger.Debugf("Gossiping block [%d]", blockNum)
+		br.gossip.Gossip(gossipMsg)
+		return nil
+	default:
+		br.logger.Warningf("Received unknown: %v", t)
+		return errors.Errorf("unknown message type '%T'", msg.Type)
+	}
+}

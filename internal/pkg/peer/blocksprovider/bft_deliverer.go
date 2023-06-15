@@ -6,13 +6,13 @@ SPDX-License-Identifier: Apache-2.0
 
 package blocksprovider
 
-type BFTDeliverer struct {
+type BFTDeliverer struct { // TODO
 }
 
 func (d *BFTDeliverer) Stop() {
-	//TODO
+	// TODO
 }
 
 func (d *BFTDeliverer) DeliverBlocks() {
-
+	// TODO
 }
