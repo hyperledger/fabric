@@ -185,7 +185,17 @@ between ordering service nodes.
 For information about how to stand up an ordering node (regardless of the
 implementation the node will be used in), check out [our documentation on deploying a production ordering service](../deployorderer/ordererplan.html).
 
-* **Raft** (recommended)
+* **BFT** 
+  New as of v3.0, the Byzantine Fault Tolerant (BFT) ordering service, as its name implies,
+  can withstand not only crash failures, but also a subset of nodes behaving maliciously.
+  An example of malicious behavior is a leader node sending different blocks with the same sequence number,
+  hence creating a fork in the blockchain. An ordering service that is only Crash Fault Tolerant (CFT) 
+  can not protect against such a behavior. 
+  A Byzantine Fault Tolerant ordering service can withstand up and not including to a third of its nodes misbehaving
+  (either crashing or deviating from the protocol).
+  More information about the BFT protocol can be found in its corresponding [paper](https://arxiv.org/abs/2107.06922). 
+
+* **Raft**
 
   New as of v1.4.1, Raft is a crash fault tolerant (CFT) ordering service
   based on an implementation of [Raft protocol](https://raft.github.io/raft.pdf)
@@ -197,7 +207,7 @@ implementation the node will be used in), check out [our documentation on deploy
 
 * **Kafka** 
   Kafka was deprecated in v2.x and is no longer supported in v3.x
-
+  
 * **Solo** (deprecated in v2.x)
 
   The Solo implementation of the ordering service is intended for test only and
