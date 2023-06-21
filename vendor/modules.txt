@@ -217,8 +217,8 @@ github.com/hyperledger/fabric-chaincode-go/pkg/statebased
 github.com/hyperledger/fabric-chaincode-go/shim
 github.com/hyperledger/fabric-chaincode-go/shim/internal
 github.com/hyperledger/fabric-chaincode-go/shimtest
-# github.com/hyperledger/fabric-config v0.1.0
-## explicit; go 1.14
+# github.com/hyperledger/fabric-config v0.2.0
+## explicit; go 1.20
 github.com/hyperledger/fabric-config/configtx
 github.com/hyperledger/fabric-config/configtx/internal/policydsl
 github.com/hyperledger/fabric-config/configtx/membership

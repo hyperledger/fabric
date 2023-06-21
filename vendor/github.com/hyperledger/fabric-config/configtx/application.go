@@ -360,8 +360,6 @@ func (a *ApplicationOrg) RemoveAnchorPeer(anchorPeerToRemove Address) error {
 			if err != nil {
 				return fmt.Errorf("failed to remove anchor peer %v from org %s: %v", anchorPeerToRemove, a.name, err)
 			}
-
-			return nil
 		}
 	}
 
