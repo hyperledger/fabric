@@ -73,6 +73,10 @@ func (eds *embeddingDeliveryService) StopDeliverForChannel() error {
 	return eds.DeliverService.StopDeliverForChannel()
 }
 
+func (eds *embeddingDeliveryService) Stop() {
+	eds.DeliverService.Stop()
+}
+
 type embeddingDeliveryServiceFactory struct {
 	DeliveryServiceFactory
 }
@@ -214,8 +218,8 @@ func TestLeaderYield(t *testing.T) {
 	t.Log("p1 has taken over leadership")
 	p0.chains[channelName].Stop()
 	p1.chains[channelName].Stop()
-	p0.deliveryService[channelName].StopDeliverForChannel()
-	p1.deliveryService[channelName].StopDeliverForChannel()
+	p0.deliveryService[channelName].Stop()
+	p1.deliveryService[channelName].Stop()
 }
 
 // TODO this pattern repeats itself in several places. Make it common in the 'genesisconfig' package to easily create

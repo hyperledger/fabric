@@ -387,6 +387,9 @@ func (ds *mockDeliverService) StopDeliverForChannel() error {
 	return nil
 }
 
+func (ds *mockDeliverService) Stop() {
+}
+
 type mockLedgerInfo struct {
 	Height uint64
 }

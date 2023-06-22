@@ -126,6 +126,45 @@ eUCutqn1KYDMYh54i6p723cXbdDkmvL2UCciHyHdSWS9lmkKVdyNGIJ6
 		require.Nil(t, bpd.TLSCertHash)
 	})
 
+	t.Run("Leader yields and re-elected: Start->Stop->Start", func(t *testing.T) {
+		ds := NewDeliverService(&Config{
+			DeliverServiceConfig: &DeliverServiceConfig{},
+			ChannelConfig:        channelConfigProto,
+			CryptoProvider:       cryptoProvider,
+		}).(*deliverServiceImpl)
+
+		finalized := make(chan struct{})
+		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {
+			close(finalized)
+		})
+		require.NoError(t, err)
+
+		select {
+		case <-finalized:
+		case <-time.After(time.Second):
+			require.FailNow(t, "finalizer should have executed")
+		}
+
+		require.NotNil(t, ds.blockDeliverer)
+		bpd := ds.blockDeliverer.(*blocksprovider.Deliverer)
+		require.Nil(t, bpd.TLSCertHash)
+
+		err = ds.StopDeliverForChannel()
+		require.NoError(t, err)
+		require.Nil(t, ds.blockDeliverer)
+
+		finalized2 := make(chan struct{})
+		err = ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {
+			close(finalized2)
+		})
+		require.NoError(t, err)
+		select {
+		case <-finalized2:
+		case <-time.After(time.Second):
+			require.FailNow(t, "finalizer should have executed")
+		}
+	})
+
 	t.Run("Exists", func(t *testing.T) {
 		ds := NewDeliverService(&Config{
 			DeliverServiceConfig: &DeliverServiceConfig{},
@@ -145,7 +184,7 @@ eUCutqn1KYDMYh54i6p723cXbdDkmvL2UCciHyHdSWS9lmkKVdyNGIJ6
 			DeliverServiceConfig: &DeliverServiceConfig{},
 		}).(*deliverServiceImpl)
 
-		ds.StopDeliverForChannel()
+		ds.Stop()
 
 		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {})
 		require.EqualError(t, err, "block deliverer for channel `channel-id` is stopping")
@@ -178,9 +217,21 @@ func TestStopDeliverForChannel(t *testing.T) {
 		}
 		ds.channelID = "channel-id"
 
-		ds.StopDeliverForChannel()
+		ds.Stop()
 		err := ds.StopDeliverForChannel()
 		require.EqualError(t, err, "block deliverer for channel `channel-id` is already stopped")
+	})
+
+	t.Run("Already stopped", func(t *testing.T) {
+		ds := NewDeliverService(&Config{}).(*deliverServiceImpl)
+		ds.blockDeliverer = &blocksprovider.Deliverer{
+			DoneC: make(chan struct{}),
+		}
+		ds.channelID = "channel-id"
+
+		ds.StopDeliverForChannel()
+		err := ds.StopDeliverForChannel()
+		require.EqualError(t, err, "block deliverer for channel `channel-id` is <nil>, can't stop delivery")
 	})
 }
 
@@ -198,7 +249,7 @@ func TestStop(t *testing.T) {
 	default:
 	}
 
-	ds.StopDeliverForChannel()
+	ds.Stop()
 	require.True(t, ds.stopping)
 
 	select {
