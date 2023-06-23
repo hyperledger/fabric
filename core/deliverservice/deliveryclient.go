@@ -37,8 +37,12 @@ type DeliverService interface {
 	StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo, finalizer func()) error
 
 	// StopDeliverForChannel dynamically stops delivery of new blocks from ordering service
-	// to channel peers.
+	// to channel peers. StartDeliverForChannel can be called again, and delivery will resume.
 	StopDeliverForChannel() error
+
+	// Stop terminates delivery service and closes the connection. Marks the service as stopped, meaning that
+	// StartDeliverForChannel cannot be called again.
+	Stop()
 }
 
 // BlockDeliverer communicates with orderers to obtain new blocks and send them to the committer service, for a
@@ -119,14 +123,14 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
-	if d.blockDeliverer != nil {
-		errMsg := fmt.Sprintf("block deliverer for channel `%s` already exists", chainID)
+	if d.stopping {
+		errMsg := fmt.Sprintf("block deliverer for channel `%s` is stopping", chainID)
 		logger.Errorf("Delivery service: %s", errMsg)
 		return errors.New(errMsg)
 	}
 
-	if d.stopping {
-		errMsg := fmt.Sprintf("block deliverer for channel `%s` is stopping", chainID)
+	if d.blockDeliverer != nil {
+		errMsg := fmt.Sprintf("block deliverer for channel `%s` already exists", chainID)
 		logger.Errorf("Delivery service: %s", errMsg)
 		return errors.New(errMsg)
 	}
@@ -223,10 +227,13 @@ func (d *deliverServiceImpl) StopDeliverForChannel() error {
 		return errors.New(errMsg)
 	}
 
-	d.stopping = true
-	if d.blockDeliverer != nil {
-		d.blockDeliverer.Stop()
+	if d.blockDeliverer == nil {
+		errMsg := fmt.Sprintf("block deliverer for channel `%s` is <nil>, can't stop delivery", d.channelID)
+		logger.Errorf("Delivery service: %s", errMsg)
+		return errors.New(errMsg)
 	}
+	d.blockDeliverer.Stop()
+	d.blockDeliverer = nil
 
 	logger.Debugf("This peer will stop passing blocks from orderer service to other peers on channel: %s", d.channelID)
 	return nil
@@ -241,5 +248,6 @@ func (d *deliverServiceImpl) Stop() {
 
 	if d.blockDeliverer != nil {
 		d.blockDeliverer.Stop()
+		d.blockDeliverer = nil
 	}
 }

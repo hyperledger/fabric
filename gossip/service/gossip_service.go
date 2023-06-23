@@ -491,7 +491,7 @@ func (g *GossipService) Stop() {
 		g.privateHandlers[chainID].close()
 
 		if g.deliveryService[chainID] != nil {
-			_ = g.deliveryService[chainID].StopDeliverForChannel()
+			g.deliveryService[chainID].Stop()
 		}
 	}
 	g.gossipSvc.Stop()
