@@ -9,6 +9,8 @@ package ordererext
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -80,6 +82,8 @@ func (ct *ConsensusType) VariablyOpaqueFieldProto(name string) (proto.Message, e
 	switch ct.Type {
 	case "etcdraft":
 		return &etcdraft.ConfigMetadata{}, nil
+	case "BFT":
+		return &smartbft.Options{}, nil
 	default:
 		return &empty.Empty{}, nil
 	}
@@ -146,6 +150,8 @@ func (docv *DynamicOrdererConfigValue) StaticallyOpaqueFieldProto(name string) (
 		return &orderer.ChannelRestrictions{}, nil
 	case "Capabilities":
 		return &common.Capabilities{}, nil
+	case "Orderers":
+		return &common.Orderers{}, nil
 	default:
 		return nil, fmt.Errorf("unknown Orderer ConfigValue name: %s", docv.name)
 	}
