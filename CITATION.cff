@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "YOUR_NAME_HERE"
+  given-names: "YOUR_NAME_HERE"
+  orcid: "https://orcid.org/0000-0000-0000-0000"
+- family-names: "Lisa"
+  given-names: "Mona"
+  orcid: "https://orcid.org/0000-0000-0000-0000"
+title: "fabric"
+version: 1.0.0
+doi: 10.5281/zenodo.1234
+date-released: 2023-06-27
+url: "https://github.com/hyperledger/fabric"
+
+# Please make edits to this with updated and accurate info so we can cite this repo. Thanks!
