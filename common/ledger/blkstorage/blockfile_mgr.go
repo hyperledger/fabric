@@ -27,6 +27,7 @@ const (
 	blockfilePrefix                   = "blockfile_"
 	bootstrappingSnapshotInfoFile     = "bootstrappingSnapshot.info"
 	bootstrappingSnapshotInfoTempFile = "bootstrappingSnapshotTemp.info"
+	defaultBlockCacheSizeBytes        = 1024 * 1024 * 50
 )
 
 var blkMgrInfoKey = []byte("blkMgrInfo")
@@ -41,6 +42,7 @@ type blockfileMgr struct {
 	blkfilesInfoCond          *sync.Cond
 	currentFileWriter         *blockfileWriter
 	bcInfo                    atomic.Value
+	cache                     *cache
 }
 
 /*
@@ -96,7 +98,7 @@ func newBlockfileMgr(id string, conf *Conf, indexConfig *IndexConfig, indexStore
 	if err != nil {
 		panic(fmt.Sprintf("Error creating block storage root dir [%s]: %s", rootDir, err))
 	}
-	mgr := &blockfileMgr{rootDir: rootDir, conf: conf, db: indexStore}
+	mgr := &blockfileMgr{rootDir: rootDir, conf: conf, db: indexStore, cache: newCache(defaultMaxBlockfileSize)}
 
 	blockfilesInfo, err := mgr.loadBlkfilesInfo()
 	if err != nil {
@@ -327,6 +329,8 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 		}
 		return errors.WithMessage(err, "error appending block to file")
 	}
+
+	defer mgr.cache.put(block, blockBytesLen)
 
 	// Update the blockfilesInfo with the results of adding the new block
 	currentBlkfilesInfo := mgr.blockfilesInfo

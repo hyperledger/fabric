@@ -20,12 +20,13 @@ type blocksItr struct {
 	stream               *blockStream
 	closeMarker          bool
 	closeMarkerLock      *sync.Mutex
+	cachedPrev           bool
 }
 
 func newBlockItr(mgr *blockfileMgr, startBlockNum uint64) *blocksItr {
 	mgr.blkfilesInfoCond.L.Lock()
 	defer mgr.blkfilesInfoCond.L.Unlock()
-	return &blocksItr{mgr, mgr.blockfilesInfo.lastPersistedBlock, startBlockNum, nil, false, &sync.Mutex{}}
+	return &blocksItr{mgr, mgr.blockfilesInfo.lastPersistedBlock, startBlockNum, nil, false, &sync.Mutex{}, false}
 }
 
 func (itr *blocksItr) waitForBlock(blockNum uint64) uint64 {
@@ -68,12 +69,32 @@ func (itr *blocksItr) Next() (ledger.QueryResult, error) {
 	if itr.closeMarker {
 		return nil, nil
 	}
+
+	cachedBlock, existsInCache := itr.mgr.cache.get(itr.blockNumToRetrieve)
+	if existsInCache {
+		logger.Debugf("Retrieved block %d from ledger in-memory cache", itr.blockNumToRetrieve)
+		itr.cachedPrev = true
+		itr.blockNumToRetrieve++
+		return cachedBlock, nil
+	}
+
+	if itr.cachedPrev {
+		itr.cachedPrev = false
+		if itr.stream != nil {
+			itr.stream.close()
+			itr.stream = nil
+		}
+	}
+
 	if itr.stream == nil {
 		logger.Debugf("Initializing block stream for iterator. itr.maxBlockNumAvailable=%d", itr.maxBlockNumAvailable)
 		if err := itr.initStream(); err != nil {
 			return nil, err
 		}
 	}
+
+	defer logger.Debugf("Retrieved block %d from ledger file storage", itr.blockNumToRetrieve)
+
 	nextBlockBytes, err := itr.stream.nextBlockBytes()
 	if err != nil {
 		return nil, err
