@@ -195,13 +195,8 @@ implementation the node will be used in), check out [our documentation on deploy
   up and manage than Kafka-based ordering services, and their design allows
   different organizations to contribute nodes to a distributed ordering service.
 
-* **Kafka** (deprecated in v2.x)
-
-  Similar to Raft-based ordering, Apache Kafka is a CFT implementation that uses
-  a "leader and follower" node configuration. Kafka utilizes a ZooKeeper
-  ensemble for management purposes. The Kafka based ordering service has been
-  available since Fabric v1.0, but many users may find the additional
-  administrative overhead of managing a Kafka cluster intimidating or undesirable.
+* **Kafka** 
+  Kafka was deprecated in v2.x and is no longer supported in v3.x
 
 * **Solo** (deprecated in v2.x)
 
@@ -231,56 +226,21 @@ centers and even locations. For example, by putting one node in three different
 data centers. That way, if a data center or entire location becomes unavailable,
 the nodes in the other data centers continue to operate.
 
-From the perspective of the service they provide to a network or a channel, Raft
-and the existing Kafka-based ordering service (which we'll talk about later) are
-similar. They're both CFT ordering services using the leader and follower
-design. If you are an application developer, smart contract developer, or peer
-administrator, you will not notice a functional difference between an ordering
-service based on Raft versus Kafka. However, there are a few major differences worth
-considering, especially if you intend to manage an ordering service.
-
-* Raft is easier to set up. Although Kafka has many admirers, even those
-admirers will (usually) admit that deploying a Kafka cluster and its ZooKeeper
-ensemble can be tricky, requiring a high level of expertise in Kafka
-infrastructure and settings. Additionally, there are many more components to
-manage with Kafka than with Raft, which means that there are more places where
-things can go wrong. Kafka also has its own versions, which must be coordinated
-with your orderers. **With Raft, everything is embedded into your ordering node**.
-
-* Kafka and Zookeeper are not designed to be run across large networks. While
-Kafka is CFT, it should be run in a tight group of hosts. This means that
-practically speaking you need to have one organization run the Kafka cluster.
-Given that, having ordering nodes run by different organizations when using Kafka
-(which Fabric supports) doesn't decentralize the nodes because ultimately
-the nodes all go to a Kafka cluster which is under the control of a
-single organization. With Raft, each organization can have its own ordering
-nodes, participating in the ordering service, which leads to a more decentralized
-system.
-
-* Kafka is supported natively, which means that users are required to get the requisite images and
-learn how to use Kafka and ZooKeeper on their own. Likewise, support for
-Kafka-related issues is handled through [Apache](https://kafka.apache.org/), the
-open-source developer of Kafka, not Hyperledger Fabric. The Fabric Raft implementation,
-on the other hand, has been developed and will be supported within the Fabric
+* The Fabric Raft implementation has been developed and will be supported within the Fabric
 developer community and its support apparatus.
 
-* Where Kafka uses a pool of servers (called "Kafka brokers") and the admin of
-the orderer organization specifies how many nodes they want to use on a
-particular channel, Raft allows the users to specify which ordering nodes will
+* Raft allows the users to specify which ordering nodes will
 be deployed to which channel. In this way, peer organizations can make sure
-that, if they also own an orderer, this node will be made a part of a ordering
+that, if they also own an orderer, this node will be made a part of an ordering
 service of that channel, rather than trusting and depending on a central admin
-to manage the Kafka nodes.
+to manage the nodes.
 
 * Raft is the first step toward Fabric's development of a byzantine fault tolerant
 (BFT) ordering service. As we'll see, some decisions in the development of
 Raft were driven by this. If you are interested in BFT, learning how to use
 Raft should ease the transition.
 
-For all of these reasons, support for Kafka-based ordering service is being
-deprecated in Fabric v2.x.
-
-Note: Similar to Solo and Kafka, a Raft ordering service can lose transactions
+Note: Similar to Solo, a Raft ordering service can lose transactions
 after acknowledgement of receipt has been sent to a client. For example, if the
 leader crashes at approximately the same time as a follower provides
 acknowledgement of receipt. Therefore, application clients should listen on peers
@@ -292,10 +252,8 @@ collect a new set of endorsements upon such a timeout.
 
 ### Raft concepts
 
-While Raft offers many of the same features as Kafka --- albeit in a simpler and
-easier-to-use package --- it functions substantially different under the covers
-from Kafka and introduces a number of new concepts, or twists on existing
-concepts, to Fabric.
+Raft offers many features in a simple and easy-to-use package
+and introduces a number of new concepts, or twists on existing concepts, to Fabric.
 
 **Log entry**. The primary unit of work in a Raft ordering service is a "log
 entry", with the full sequence of such entries known as the "log". We consider
@@ -316,11 +274,10 @@ there to be a quorum. If a quorum of nodes is unavailable for any reason, the
 ordering service cluster becomes unavailable for both read and write operations
 on the channel, and no new logs can be committed.
 
-**Leader**. This is not a new concept --- Kafka also uses leaders ---
-but it's critical to understand that at any given time, a channel's consenter set
-elects a single node to be the leader (we'll describe how this happens in Raft
-later). The leader is responsible for ingesting new log entries, replicating
-them to follower ordering nodes, and managing when an entry is considered
+**Leader**. This is not a new concept, but it's critical to understand that at any given time, 
+a channel's consenter set elects a single node to be the leader (we'll describe how 
+this happens in Raft later). The leader is responsible for ingesting new log entries, 
+replicating them to follower ordering nodes, and managing when an entry is considered
 committed. This is not a special **type** of orderer. It is only a role that
 an orderer may have at certain times, and then not others, as circumstances
 determine.
@@ -384,30 +341,6 @@ therefore receive block `180` from `L` and then make a `Deliver` request for
 blocks `101` to `180`. Blocks `180` to `196` would then be replicated to `R1`
 through the normal Raft protocol.
 
-### Kafka (deprecated in v2.x)
-
-The other crash fault tolerant ordering service supported by Fabric is an
-adaptation of a Kafka distributed streaming platform for use as a cluster of
-ordering nodes. You can read more about Kafka at the [Apache Kafka Web site](https://kafka.apache.org/intro),
-but at a high level, Kafka uses the same conceptual "leader and follower"
-configuration used by Raft, in which transactions (which Kafka calls "messages")
-are replicated from the leader node to the follower nodes. In the event the
-leader node goes down, one of the followers becomes the leader and ordering can
-continue, ensuring fault tolerance, just as with Raft.
-
-The management of the Kafka cluster, including the coordination of tasks,
-cluster membership, access control, and controller election, among others, is
-handled by a ZooKeeper ensemble and its related APIs.
-
-Kafka clusters and ZooKeeper ensembles are notoriously tricky to set up, so our
-documentation assumes a working knowledge of Kafka and ZooKeeper. If you decide
-to use Kafka without having this expertise, you should complete, *at a minimum*,
-the first six steps of the [Kafka Quickstart guide](https://kafka.apache.org/quickstart) before experimenting with the
-Kafka-based ordering service. You can also consult
-[this sample configuration file](https://github.com/hyperledger/fabric/blob/release-1.1/bddtests/dc-orderer-kafka.yml)
-for a brief explanation of the sensible defaults for Kafka and ZooKeeper.
-
-To learn how to bring up a Kafka-based ordering service, check out [our documentation on Kafka](../kafka.html).
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/) -->
