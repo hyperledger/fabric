@@ -200,7 +200,7 @@ OrdererEndpoints:
 
 #### Orderer:
 
-- **Orderer.OrdererType** Set this value to `etcdraft`. As mentioned before, this process does not work with Solo or Kafka ordering nodes.
+- **Orderer.OrdererType** Set this value to `etcdraft`. As mentioned before, this process does not work with Solo ordering nodes.
 - **Orderer.EtcdRaft.Consenters** Provide the list of ordering node addresses, in the form of `host:port`, that are considered active members of the consenter set. All orderers that are listed in this section will become active "consenters" on the channel when they join the channel.
 
 For example:
