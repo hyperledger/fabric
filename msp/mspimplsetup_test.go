@@ -11,6 +11,9 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 
 	"github.com/onsi/gomega"
 )
@@ -125,6 +128,43 @@ func TestTLSCAValidation(t *testing.T) {
 		})
 		gt.Expect(err).To(gomega.MatchError("CA Certificate problem with Subject Key Identifier extension, (SN: ab0ae311f3e32036): subjectKeyIdentifier not found in certificate"))
 	})
+}
+
+func TestMalformedCertsChainSetup(t *testing.T) {
+	gt := gomega.NewGomegaWithT(t)
+
+	ca, err := tlsgen.NewCA()
+	gt.Expect(err).NotTo(gomega.HaveOccurred())
+
+	inter, err := ca.NewIntermediateCA()
+	gt.Expect(err).NotTo(gomega.HaveOccurred())
+
+	cp, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	gt.Expect(err).NotTo(gomega.HaveOccurred())
+
+	cp.GetHash(&bccsp.SHA256Opts{})
+	mspImpl := &bccspmsp{
+		opts:  &x509.VerifyOptions{Roots: x509.NewCertPool(), Intermediates: x509.NewCertPool()},
+		bccsp: cp,
+		cryptoConfig: &msp.FabricCryptoConfig{
+			IdentityIdentifierHashFunction: "SHA256",
+		},
+	}
+
+	// Add root CA certificate
+	// cert, err := mspImpl.getCertFromPem([]byte(ca.CertBytes()))
+	certInter, err := mspImpl.getCertFromPem([]byte(inter.CertBytes()))
+	gt.Expect(err).NotTo(gomega.HaveOccurred())
+	mspImpl.opts.Roots.AddCert(certInter)
+	mspImpl.rootCerts = []Identity{&identity{cert: certInter}}
+
+	err = mspImpl.finalizeSetupCAs()
+	gt.Expect(err).NotTo(gomega.HaveOccurred())
+
+	// Extract identity from the leaf certificate
+	_, _, err = mspImpl.getIdentityFromConf(inter.CertBytes())
+	gt.Expect(err).To(gomega.HaveOccurred())
+	gt.Expect(err.Error()).To(gomega.ContainSubstring("failed to traverse certificate verification chain"))
 }
 
 func TestCAValidation(t *testing.T) {
