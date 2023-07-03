@@ -682,9 +682,9 @@ Profiles:
             <<: *OrdererDefaults
             OrdererType: BFT
             SmartBFT:
-                RequestBatchMaxCount: 100
-                RequestBatchMaxInterval: 50ms
-                RequestForwardTimeout: 2s
+                RequestBatchMaxCount: 5000
+                RequestBatchMaxInterval: 200ms
+                RequestForwardTimeout: 5s
                 RequestComplainTimeout: 20s
                 RequestAutoRemoveTimeout: 3m0s
                 ViewChangeResendInterval: 5s
