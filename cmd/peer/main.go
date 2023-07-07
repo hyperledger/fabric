@@ -28,12 +28,7 @@ import (
 var mainCmd = &cobra.Command{Use: "peer"}
 
 func main() {
-	// For environment variables.
-	viper.SetEnvPrefix(common.CmdRoot)
-	viper.AllowEmptyEnv(true)
-	viper.AutomaticEnv()
-	replacer := strings.NewReplacer(".", "_")
-	viper.SetEnvKeyReplacer(replacer)
+	setEnvConfig()
 
 	// Define command-line flags that are valid for all peer commands and
 	// subcommands.
@@ -57,4 +52,12 @@ func main() {
 	if mainCmd.Execute() != nil {
 		os.Exit(1)
 	}
+}
+
+func setEnvConfig() {
+	viper.SetEnvPrefix(common.CmdRoot)
+	viper.AllowEmptyEnv(true)
+	viper.AutomaticEnv()
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
 }
