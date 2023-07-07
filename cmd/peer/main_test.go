@@ -8,6 +8,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"net"
 	"os/exec"
 	"path/filepath"
@@ -73,6 +75,91 @@ func TestPluginLoadingFailure(t *testing.T) {
 
 			gt.Expect(sess.Err).To(gbytes.Say(fmt.Sprintf("panic: Error opening plugin at path %s", filepath.Join(parentDir, "internal/peer/testdata/invalid_plugins/invalidplugin.so"))))
 			gt.Expect(sess.Err).To(gbytes.Say("plugin.Open"))
+		})
+	}
+}
+
+func TestEnvVariableConfig(t *testing.T) {
+	t.Parallel()
+	type setup struct {
+		envVariables []string
+	}
+	type expect struct {
+		envVariables []string
+	}
+
+	tests := map[string]struct {
+		setup
+		expect
+	}{
+		"Non-Empty Env Variable Set": {
+			setup: setup{
+				envVariables: []string{
+					fmt.Sprintf("CORE_PEER_FILESYSTEMPATH=%s", "A"),
+					fmt.Sprintf("CORE_LEDGER_SNAPSHOTS_ROOTDIR=%s", "B"),
+					fmt.Sprintf("CORE_PEER_HANDLERS_PLUGIN_LIBRARY=%s", "C"),
+					fmt.Sprintf("CORE_PEER_LISTENADDRESS=%s", "D"),
+					fmt.Sprintf("CORE_PEER_CHAINCODELISTENADDRESS=%s", "E"),
+					fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=%s", "F"),
+					fmt.Sprintf("CORE_OPERATIONS_LISTENADDRESS=%s", "G"),
+					fmt.Sprintf("FABRIC_CFG_PATH=%s", "H"),
+				},
+			},
+			expect: expect{
+				envVariables: []string{
+					fmt.Sprintf("CORE_PEER_FILESYSTEMPATH=%s", "A"),
+					fmt.Sprintf("CORE_LEDGER_SNAPSHOTS_ROOTDIR=%s", "B"),
+					fmt.Sprintf("CORE_PEER_HANDLERS_PLUGIN_LIBRARY=%s", "C"),
+					fmt.Sprintf("CORE_PEER_LISTENADDRESS=%s", "D"),
+					fmt.Sprintf("CORE_PEER_CHAINCODELISTENADDRESS=%s", "E"),
+					fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=%s", "F"),
+					fmt.Sprintf("CORE_OPERATIONS_LISTENADDRESS=%s", "G"),
+					fmt.Sprintf("FABRIC_CFG_PATH=%s", "H"),
+				},
+			},
+		},
+		"Empty Env Variable Set": {
+			setup: setup{
+				envVariables: []string{
+					fmt.Sprintf("CORE_PEER_FILESYSTEMPATH=%s", "A"),
+					fmt.Sprintf("CORE_LEDGER_SNAPSHOTS_ROOTDIR=%s", "B"),
+					fmt.Sprintf("CORE_PEER_HANDLERS_PLUGIN_LIBRARY=%s", "C"),
+					fmt.Sprintf("CORE_PEER_LISTENADDRESS=%s", "D"),
+					fmt.Sprintf("CORE_PEER_CHAINCODELISTENADDRESS=%s", ""),
+					fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=%s", ""),
+					fmt.Sprintf("CORE_OPERATIONS_LISTENADDRESS=%s", ""),
+					fmt.Sprintf("FABRIC_CFG_PATH=%s", ""),
+				},
+			},
+			expect: expect{
+				envVariables: []string{
+					fmt.Sprintf("CORE_PEER_FILESYSTEMPATH=%s", "A"),
+					fmt.Sprintf("CORE_LEDGER_SNAPSHOTS_ROOTDIR=%s", "B"),
+					fmt.Sprintf("CORE_PEER_HANDLERS_PLUGIN_LIBRARY=%s", "C"),
+					fmt.Sprintf("CORE_PEER_LISTENADDRESS=%s", "D"),
+					fmt.Sprintf("CORE_PEER_CHAINCODELISTENADDRESS=%s", ""),
+					fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=%s", ""),
+					fmt.Sprintf("CORE_OPERATIONS_LISTENADDRESS=%s", ""),
+					fmt.Sprintf("FABRIC_CFG_PATH=%s", ""),
+				},
+			},
+		},
+	}
+	for name := range tests {
+		td := tests[name]
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			gt := NewGomegaWithT(t)
+			peer, err := gexec.Build("github.com/hyperledger/fabric/cmd/peer")
+			require.NoError(t, err)
+
+			cmd := exec.Command(peer)
+			cmd.Env = td.setup.envVariables
+			sess, err := gexec.Start(cmd, nil, nil)
+			require.NoError(t, err)
+			gt.Eventually(sess, time.Minute).Should(gexec.Exit())
+
+			assert.Equal(t, td.expect.envVariables, sess.Command.Env)
 		})
 	}
 }

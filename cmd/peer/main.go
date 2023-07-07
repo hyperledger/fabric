@@ -30,6 +30,7 @@ var mainCmd = &cobra.Command{Use: "peer"}
 func main() {
 	// For environment variables.
 	viper.SetEnvPrefix(common.CmdRoot)
+	viper.AllowEmptyEnv(true)
 	viper.AutomaticEnv()
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)
