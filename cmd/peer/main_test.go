@@ -8,9 +8,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"net"
 	"os/exec"
 	"path/filepath"
@@ -81,13 +81,17 @@ func TestPluginLoadingFailure(t *testing.T) {
 }
 
 func TestSetEnvConfig(t *testing.T) {
-	viper.Set("Fruit", "Apple")
-	viper.Set("Color", "Red_Green")
-	viper.Set("Town", "")
+	vp := viper.New()
+	t.Setenv("CORE_FRUIT", "Apple")
+	t.Setenv("CORE_COLOR", "")
+	err := vp.BindEnv("Fruit")
+	require.NoError(t, err)
+	err = vp.BindEnv("Color")
+	require.NoError(t, err)
+	vp.SetDefault("Color", "Green")
 
-	setEnvConfig()
+	setEnvConfig(vp)
 
-	assert.Equal(t, "Apple", viper.Get("Fruit"))
-	assert.Equal(t, "Red_Green", viper.Get("Color"))
-	assert.Empty(t, "", viper.Get("Town"))
+	assert.Equal(t, "Apple", vp.Get("Fruit"))
+	assert.Equal(t, "", vp.Get("Color"))
 }

@@ -28,7 +28,7 @@ import (
 var mainCmd = &cobra.Command{Use: "peer"}
 
 func main() {
-	setEnvConfig()
+	setEnvConfig(viper.GetViper())
 
 	// Define command-line flags that are valid for all peer commands and
 	// subcommands.
@@ -54,10 +54,10 @@ func main() {
 	}
 }
 
-func setEnvConfig() {
-	viper.SetEnvPrefix(common.CmdRoot)
-	viper.AllowEmptyEnv(true)
-	viper.AutomaticEnv()
+func setEnvConfig(v *viper.Viper) {
+	v.SetEnvPrefix(common.CmdRoot)
+	v.AllowEmptyEnv(true)
+	v.AutomaticEnv()
 	replacer := strings.NewReplacer(".", "_")
-	viper.SetEnvKeyReplacer(replacer)
+	v.SetEnvKeyReplacer(replacer)
 }
