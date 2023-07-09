@@ -8,6 +8,9 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "50 1 * * *"
+  pull_request:
+    paths:
+      - .github/workflows/broken-link-checker.yml
 
 env:
   GO_VER: 1.20.5
@@ -28,5 +31,3 @@ jobs:
       - name: Check Broken Links with Muffet
         # Exclude any links that direct to the documentation or release notes of the non-latest version to limit the scanning to target to that of the latest version.
         run: muffet --max-response-body-size=100000000 --rate-limit=10 --timeout=20 --buffer-size=2147483647 --color=always --exclude="^(https:\/\/hyperledger-fabric.readthedocs.io\/[A-z_]+\/(v[\d]+.[\d]+.[\d]+|release)).*$" https://hyperledger-fabric.readthedocs.io/en/latest/
-
-
