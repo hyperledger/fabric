@@ -1,0 +1,33 @@
+# Copyright the Hyperledger Fabric contributors. All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: "Broken link checker"
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "50 1 * * *"
+  pull_request:
+
+env:
+  GO_VER: 1.20.5
+
+jobs:
+  broken-lint-checker:
+    name: "Check for Broken Links"
+    runs-on: fabric-ubuntu-latest
+    steps:
+      - name: Checkout Fabric Code
+        uses: actions/checkout@v3
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VER }}
+      - name: Install Muffet
+        run: go install github.com/raviqqe/muffet/v2@latest
+      - name: Check Broken Links with Muffet
+        # Exclude any links that direct to the documentation or release notes of the non-latest version to limit the scanning to target to that of the latest version.
+        run: muffet --max-response-body-size=100000000 --rate-limit=10 --timeout=20 --buffer-size=2147483647 --color=always --exclude="^(https:\/\/hyperledger-fabric.readthedocs.io\/[A-z_]+\/(v[\d]+.[\d]+.[\d]+|release)).*$" https://hyperledger-fabric.readthedocs.io/en/latest/
+
+
