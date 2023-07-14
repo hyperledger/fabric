@@ -12,7 +12,7 @@ The following prerequisites are required to run a Docker-based Fabric test netwo
 For macOS, we recommend using [Homebrew](https://brew.sh) to manage the prereqs.
 
 ```shell
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 brew --version # => Homebrew 2.5.2
 ```
 
