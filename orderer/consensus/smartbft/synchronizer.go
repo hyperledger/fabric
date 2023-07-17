@@ -13,7 +13,6 @@ import (
 	"github.com/SmartBFT-Go/consensus/smartbftprotos"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -25,10 +24,11 @@ type Synchronizer struct {
 	LatestConfig    func() (types.Configuration, []uint64)
 	BlockToDecision func(*cb.Block) *types.Decision
 	OnCommit        func(*cb.Block) types.Reconfig
-	Support         consensus.ConsenterSupport
 	BlockPuller     BlockPuller
 	ClusterSize     uint64
 	Logger          *flogging.FabricLogger
+	Ledger          Ledger
+	Sequencer       Sequencer
 }
 
 // Close closes the block puller connection
@@ -41,7 +41,7 @@ func (s *Synchronizer) Sync() types.SyncResponse {
 	decision, err := s.synchronize()
 	if err != nil {
 		s.Logger.Warnf("Could not synchronize with remote peers due to %s, returning state from local ledger", err)
-		block := s.Support.Block(s.Support.Height() - 1)
+		block := s.Ledger.Block(s.Ledger.Height() - 1)
 		config, nodes := s.LatestConfig()
 		return types.SyncResponse{
 			Latest: *s.BlockToDecision(block),
@@ -73,7 +73,7 @@ func (s *Synchronizer) getViewMetadataLastConfigSqnFromBlock(block *cb.Block) (*
 		return nil, 0
 	}
 
-	lastConfigSqn := s.Support.Sequence()
+	lastConfigSqn := s.Sequencer.Sequence()
 
 	return viewMetadata, lastConfigSqn
 }
@@ -97,7 +97,7 @@ func (s *Synchronizer) synchronize() (*types.Decision, error) {
 	}
 
 	targetHeight := s.computeTargetHeight(heights)
-	startHeight := s.Support.Height()
+	startHeight := s.Ledger.Height()
 	if startHeight >= targetHeight {
 		return nil, errors.Errorf("already at height of %d", targetHeight)
 	}
@@ -117,9 +117,9 @@ func (s *Synchronizer) synchronize() (*types.Decision, error) {
 			break
 		}
 		if protoutil.IsConfigBlock(block) {
-			s.Support.WriteConfigBlock(block, nil)
+			s.Ledger.WriteConfigBlock(block, nil)
 		} else {
-			s.Support.WriteBlock(block, nil)
+			s.Ledger.WriteBlock(block, nil)
 		}
 		s.Logger.Debugf("Fetched and committed block [%d] from cluster", seq)
 		lastPulledBlock = block
