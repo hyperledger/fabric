@@ -14,6 +14,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"sort"
+	"sync/atomic"
 	"time"
 
 	"github.com/SmartBFT-Go/consensus/pkg/types"
@@ -33,6 +34,42 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
+
+//go:generate mockery --dir . --name RuntimeConfigManager --case underscore --with-expecter=true --output mocks
+
+type RuntimeConfigManager interface {
+	GetConfig() RuntimeConfig
+	UpdateUsingBlock(block *cb.Block, bccsp bccsp.BCCSP) (RuntimeConfig, error)
+}
+
+type RuntimeConfigManagerImpl struct {
+	RuntimeConfig *atomic.Value
+	RuntimeConfigManager
+}
+
+func (rtcm RuntimeConfigManagerImpl) GetConfig() RuntimeConfig {
+	return rtcm.RuntimeConfig.Load().(RuntimeConfig)
+}
+
+func (rtcm RuntimeConfigManagerImpl) UpdateUsingBlock(block *cb.Block, bccsp bccsp.BCCSP) (RuntimeConfig, error) {
+	rtc := rtcm.GetConfig()
+	rtc, err := rtc.BlockCommitted(block, bccsp)
+	if err != nil {
+		return rtc, errors.Wrap(err, "failed constructing RuntimeConfig")
+	}
+	rtcm.RuntimeConfig.Store(rtc)
+	return rtc, nil
+}
+
+type RuntimeConfigManagerFactory func(initialRtc RuntimeConfig) RuntimeConfigManager
+
+func NewRuntimeConfigManager(initialRtc RuntimeConfig) RuntimeConfigManager {
+	rtcm := &RuntimeConfigManagerImpl{
+		RuntimeConfig: &atomic.Value{},
+	}
+	rtcm.RuntimeConfig.Store(initialRtc)
+	return rtcm
+}
 
 // RuntimeConfig defines the configuration of the consensus
 // that is related to runtime.
@@ -323,6 +360,7 @@ func (ri *RequestInspector) unwrapReq(req []byte) (*request, error) {
 }
 
 // RemoteNodesFromConfigBlock unmarshals the node config from the block metadata
+// convert this to function pointer
 func RemoteNodesFromConfigBlock(block *cb.Block, logger *flogging.FabricLogger, bccsp bccsp.BCCSP) (*nodeConfig, error) {
 	env := &cb.Envelope{}
 	if err := proto.Unmarshal(block.Data.Data[0], env); err != nil {

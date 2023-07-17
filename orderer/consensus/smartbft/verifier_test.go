@@ -11,7 +11,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
-	"sync/atomic"
 	"testing"
 
 	"github.com/SmartBFT-Go/consensus/pkg/types"
@@ -64,16 +63,15 @@ func TestVerifySignature(t *testing.T) {
 	cv := &mocks.ConsenterVerifier{}
 	cv.On("Evaluate", mock.Anything).Return(errors.New("bad signature"))
 
-	v := &smartbft.Verifier{
-		Logger:            logger,
-		ConsenterVerifier: cv,
-		RuntimeConfig:     &atomic.Value{},
-	}
-
 	rtc := smartbft.RuntimeConfig{
 		ID2Identities: map[uint64][]byte{3: {0, 2, 4, 6}},
 	}
-	v.RuntimeConfig.Store(rtc)
+
+	v := &smartbft.Verifier{
+		Logger:               logger,
+		ConsenterVerifier:    cv,
+		RuntimeConfigManager: smartbft.NewRuntimeConfigManager(rtc),
+	}
 
 	t.Run("identity doesn't exist", func(t *testing.T) {
 		err := v.VerifySignature(types.Signature{
@@ -347,15 +345,14 @@ func TestVerifyConsenterSig(t *testing.T) {
 				LastConfigBlock:        lastConfigBlock,
 				LastCommittedBlockHash: lastHash,
 			}
-			runtimeConfig := &atomic.Value{}
-			runtimeConfig.Store(rtc)
+			runtimeConfigManager := smartbft.NewRuntimeConfigManager(rtc)
 
 			assembler := &smartbft.Assembler{
 				VerificationSeq: func() uint64 {
 					return testCase.verificationSequence
 				},
-				Logger:        logger,
-				RuntimeConfig: runtimeConfig,
+				Logger:               logger,
+				RuntimeConfigManager: runtimeConfigManager,
 			}
 
 			md := protoutil.MarshalOrPanic(&smartbftprotos.ViewMetadata{
@@ -371,7 +368,7 @@ func TestVerifyConsenterSig(t *testing.T) {
 			}
 
 			v := &smartbft.Verifier{
-				RuntimeConfig:         runtimeConfig,
+				RuntimeConfigManager:  runtimeConfigManager,
 				Logger:                logger,
 				Ledger:                ledger,
 				VerificationSequencer: sequencer,
@@ -533,26 +530,19 @@ func TestVerifyProposal(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
-			runtimeConfig := &atomic.Value{}
 			rtc := smartbft.RuntimeConfig{
 				LastCommittedBlockHash: lastHash,
 				LastBlock:              testCase.lastBlock,
 				LastConfigBlock:        testCase.lastConfigBlock,
 			}
-
-			runtimeConfig.Store(rtc)
-
+			runtimeConfigManager := smartbft.NewRuntimeConfigManager(rtc)
 			assembler := &smartbft.Assembler{
-				RuntimeConfig: &atomic.Value{},
+				RuntimeConfigManager: runtimeConfigManager,
 				VerificationSeq: func() uint64 {
 					return testCase.verificationSequence
 				},
 				Logger: logger,
 			}
-			assembler.RuntimeConfig.Store(smartbft.RuntimeConfig{
-				LastConfigBlock: testCase.lastConfigBlock,
-				LastBlock:       testCase.lastBlock,
-			})
 
 			md := protoutil.MarshalOrPanic(&smartbftprotos.ViewMetadata{
 				LatestSequence: 1,
@@ -585,11 +575,11 @@ func TestVerifyProposal(t *testing.T) {
 			tuple.B = protoutil.MarshalOrPanic(blockMD)
 			proposal.Payload = tuple.ToBytes()
 
-			runtimeConfig = &atomic.Value{}
 			rtc.LastConfigBlock = lastConfigBlock
-			runtimeConfig.Store(rtc)
+			runtimeConfigManager = smartbft.NewRuntimeConfigManager(rtc)
+
 			v := &smartbft.Verifier{
-				RuntimeConfig:         runtimeConfig,
+				RuntimeConfigManager:  runtimeConfigManager,
 				Logger:                logger,
 				Ledger:                ledger,
 				VerificationSequencer: sequencer,

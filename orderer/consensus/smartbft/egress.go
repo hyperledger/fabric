@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package smartbft
 
 import (
-	"sync/atomic"
-
 	protos "github.com/SmartBFT-Go/consensus/smartbftprotos"
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -16,7 +14,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 )
 
-//go:generate mockery -dir . -name RPC -case underscore -output mocks
+//go:generate mockery --dir . --name RPC --case underscore --with-expecter=true --output mocks
 
 // RPC sends a consensus and submits a request
 type RPC interface {
@@ -31,17 +29,32 @@ type Logger interface {
 	Panicf(template string, args ...interface{})
 }
 
+//go:generate mockery --dir . --name EgressComm --case underscore --with-expecter=true --output mocks
+
+type EgressCommFactory func(rtcm RuntimeConfigManager, channelId string, comm Communicator) EgressComm
+
+// Comm enables the communications between the nodes.
+type EgressComm interface {
+	// SendConsensus sends the consensus protocol related message m to the node with id targetID.
+	SendConsensus(targetID uint64, m *protos.Message)
+	// SendTransaction sends the given client's request to the node with id targetID.
+	SendTransaction(targetID uint64, request []byte)
+	// Nodes returns a set of ids of participating nodes.
+	// In case you need to change or keep this slice, create a copy.
+	Nodes() []uint64
+}
+
 // Egress implementation
 type Egress struct {
-	Channel       string
-	RPC           RPC
-	Logger        Logger
-	RuntimeConfig *atomic.Value
+	Channel              string
+	RPC                  RPC
+	Logger               Logger
+	RuntimeConfigManager RuntimeConfigManager
 }
 
 // Nodes returns nodes from the runtime config
 func (e *Egress) Nodes() []uint64 {
-	nodes := e.RuntimeConfig.Load().(RuntimeConfig).Nodes
+	nodes := e.RuntimeConfigManager.GetConfig().Nodes
 	var res []uint64
 	for _, n := range nodes {
 		res = append(res, (uint64)(n))

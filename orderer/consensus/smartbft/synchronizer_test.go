@@ -10,12 +10,13 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
+
 	"github.com/SmartBFT-Go/consensus/pkg/types"
 	"github.com/SmartBFT-Go/consensus/smartbftprotos"
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/flogging"
-	mocks2 "github.com/hyperledger/fabric/orderer/consensus/mocks"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft/mocks"
 	"github.com/hyperledger/fabric/protoutil"
@@ -46,12 +47,16 @@ func TestSynchronizerSync(t *testing.T) {
 	}
 
 	t.Run("no remotes", func(t *testing.T) {
-		bp := &mocks.FakeBlockPuller{}
-		fakeCS := &mocks2.FakeConsenterSupport{}
-		fakeCS.ChannelIDReturns("mychannel")
-		fakeCS.HeightReturns(100)
-		fakeCS.BlockReturns(b99)
-		fakeCS.SequenceReturns(blockNum2configSqn[99])
+		bp := mocks.NewBlockPuller(t)
+		bp.EXPECT().Close()
+		bp.EXPECT().HeightsByEndpoints().Return(
+			map[string]uint64{},
+			nil,
+		)
+		fakeLedger := mocks.NewLedger(t)
+		fakeLedger.EXPECT().Height().Return(100)
+		fakeLedger.EXPECT().Block(mock.Anything).Return(b99)
+		fakeSequencer := mocks.NewSequencer(t)
 
 		l := flogging.NewFabricLogger(zap.NewExample())
 
@@ -71,8 +76,9 @@ func TestSynchronizerSync(t *testing.T) {
 			Logger:      l,
 			BlockPuller: bp,
 			ClusterSize: 4,
-			Support:     fakeCS,
 			OnCommit:    noopUpdateLastHash,
+			Ledger:      fakeLedger,
+			Sequencer:   fakeSequencer,
 		}
 
 		d := syn.Sync()
@@ -80,8 +86,9 @@ func TestSynchronizerSync(t *testing.T) {
 	})
 
 	t.Run("all nodes present", func(t *testing.T) {
-		bp := &mocks.FakeBlockPuller{}
-		bp.HeightsByEndpointsReturns(
+		bp := mocks.NewBlockPuller(t)
+		bp.EXPECT().Close()
+		bp.EXPECT().HeightsByEndpoints().Return(
 			map[string]uint64{
 				"example.com:1": 100,
 				"example.com:2": 102,
@@ -90,28 +97,25 @@ func TestSynchronizerSync(t *testing.T) {
 			},
 			nil,
 		)
-		bp.PullBlockReturnsOnCall(0, b100)
-		bp.PullBlockReturnsOnCall(1, b101)
-		bp.PullBlockReturnsOnCall(2, b102)
+		bp.EXPECT().PullBlock(uint64(100)).Return(b100)
+		bp.EXPECT().PullBlock(uint64(101)).Return(b101)
+		bp.EXPECT().PullBlock(uint64(102)).Return(b102)
 
 		height := uint64(100)
 		ledger := map[uint64]*cb.Block{99: b99}
 
-		fakeCS := &mocks2.FakeConsenterSupport{}
-		fakeCS.ChannelIDReturns("mychannel")
-		fakeCS.HeightCalls(func() uint64 { return height })
-		fakeCS.SequenceCalls(func() uint64 { return blockNum2configSqn[height-1] })
-		fakeCS.WriteConfigBlockCalls(func(b *cb.Block, m []byte) {
+		mockLegder := mocks.NewLedger(t)
+		mockLegder.EXPECT().Height().RunAndReturn(func() uint64 { return height })
+		mockSequencer := mocks.NewSequencer(t)
+		mockSequencer.EXPECT().Sequence().RunAndReturn(func() uint64 { return blockNum2configSqn[height-1] })
+		writeBlockHandler := func(b *cb.Block, m []byte) {
 			ledger[height] = b
 			height++
-		})
-		fakeCS.WriteBlockCalls(func(b *cb.Block, m []byte) {
-			ledger[height] = b
-			height++
-		})
-		fakeCS.BlockCalls(func(sqn uint64) *cb.Block {
-			return ledger[sqn]
-		})
+		}
+		mockLegder.EXPECT().WriteConfigBlock(
+			mock.AnythingOfType("*common.Block"), mock.Anything).RunAndReturn(writeBlockHandler)
+		mockLegder.EXPECT().WriteBlock(
+			mock.AnythingOfType("*common.Block"), mock.Anything).RunAndReturn(writeBlockHandler)
 
 		decision := &types.SyncResponse{
 			Latest: types.Decision{},
@@ -126,8 +130,9 @@ func TestSynchronizerSync(t *testing.T) {
 			Logger:      flogging.NewFabricLogger(zap.NewExample()),
 			BlockPuller: bp,
 			ClusterSize: 4,
-			Support:     fakeCS,
 			OnCommit:    noopUpdateLastHash,
+			Ledger:      mockLegder,
+			Sequencer:   mockSequencer,
 		}
 
 		d := syn.Sync()
@@ -135,8 +140,9 @@ func TestSynchronizerSync(t *testing.T) {
 	})
 
 	t.Run("3/4 nodes present", func(t *testing.T) {
-		bp := &mocks.FakeBlockPuller{}
-		bp.HeightsByEndpointsReturns(
+		bp := mocks.NewBlockPuller(t)
+		bp.EXPECT().Close()
+		bp.EXPECT().HeightsByEndpoints().Return(
 			map[string]uint64{
 				"example.com:1": 100,
 				"example.com:2": 102,
@@ -144,28 +150,26 @@ func TestSynchronizerSync(t *testing.T) {
 			},
 			nil,
 		)
-		bp.PullBlockReturnsOnCall(0, b100)
-		bp.PullBlockReturnsOnCall(1, b101)
-		bp.PullBlockReturnsOnCall(2, b102)
+		bp.EXPECT().PullBlock(uint64(100)).Return(b100)
+		bp.EXPECT().PullBlock(uint64(101)).Return(b101)
 
 		height := uint64(100)
 		ledger := map[uint64]*cb.Block{99: b99}
 
-		fakeCS := &mocks2.FakeConsenterSupport{}
-		fakeCS.ChannelIDReturns("mychannel")
-		fakeCS.HeightCalls(func() uint64 { return height })
-		fakeCS.SequenceCalls(func() uint64 { return blockNum2configSqn[height-1] })
-		fakeCS.WriteConfigBlockCalls(func(b *cb.Block, m []byte) {
+		fakeLedger := mocks.NewLedger(t)
+		fakeLedger.EXPECT().Height().RunAndReturn(func() uint64 { return height })
+		writeBlockHandler := func(b *cb.Block, m []byte) {
 			ledger[height] = b
 			height++
-		})
-		fakeCS.WriteBlockCalls(func(b *cb.Block, m []byte) {
-			ledger[height] = b
-			height++
-		})
-		fakeCS.BlockCalls(func(sqn uint64) *cb.Block {
-			return ledger[sqn]
-		})
+		}
+		fakeLedger.EXPECT().WriteConfigBlock(
+			mock.AnythingOfType("*common.Block"), mock.Anything).RunAndReturn(writeBlockHandler)
+		fakeLedger.EXPECT().WriteBlock(
+			mock.AnythingOfType("*common.Block"), mock.Anything).RunAndReturn(writeBlockHandler)
+
+		fakeSequencer := mocks.NewSequencer(t)
+		fakeSequencer.EXPECT().Sequence().RunAndReturn(
+			func() uint64 { return blockNum2configSqn[height-1] })
 
 		decision := &types.SyncResponse{
 			Latest: types.Decision{},
@@ -180,8 +184,9 @@ func TestSynchronizerSync(t *testing.T) {
 			Logger:      flogging.NewFabricLogger(zap.NewExample()),
 			BlockPuller: bp,
 			ClusterSize: 4,
-			Support:     fakeCS,
 			OnCommit:    noopUpdateLastHash,
+			Ledger:      fakeLedger,
+			Sequencer:   fakeSequencer,
 		}
 
 		d := syn.Sync()
@@ -189,36 +194,32 @@ func TestSynchronizerSync(t *testing.T) {
 	})
 
 	t.Run("2/4 nodes present", func(t *testing.T) {
-		bp := &mocks.FakeBlockPuller{}
-		bp.HeightsByEndpointsReturns(
+		bp := mocks.NewBlockPuller(t)
+		bp.EXPECT().Close()
+		bp.EXPECT().HeightsByEndpoints().Return(
 			map[string]uint64{
 				"example.com:1": 101,
 				"example.com:4": 200, // byzantine, lying
 			},
 			nil,
 		)
-		bp.PullBlockReturnsOnCall(0, b100)
-		bp.PullBlockReturnsOnCall(1, b101)
-		bp.PullBlockReturnsOnCall(2, b102)
+		bp.EXPECT().PullBlock(uint64(100)).Return(b100)
 
 		height := uint64(100)
 		ledger := map[uint64]*cb.Block{99: b99}
 
-		fakeCS := &mocks2.FakeConsenterSupport{}
-		fakeCS.ChannelIDReturns("mychannel")
-		fakeCS.HeightCalls(func() uint64 { return height })
-		fakeCS.SequenceCalls(func() uint64 { return blockNum2configSqn[height-1] })
-		fakeCS.WriteConfigBlockCalls(func(b *cb.Block, m []byte) {
+		fakeLedger := mocks.NewLedger(t)
+		fakeLedger.EXPECT().Height().RunAndReturn(func() uint64 { return height })
+		writeBlockHandler := func(b *cb.Block, m []byte) {
 			ledger[height] = b
 			height++
-		})
-		fakeCS.WriteBlockCalls(func(b *cb.Block, m []byte) {
-			ledger[height] = b
-			height++
-		})
-		fakeCS.BlockCalls(func(sqn uint64) *cb.Block {
-			return ledger[sqn]
-		})
+		}
+		fakeLedger.EXPECT().WriteBlock(
+			mock.AnythingOfType("*common.Block"), mock.Anything).RunAndReturn(writeBlockHandler)
+
+		fakeSequencer := mocks.NewSequencer(t)
+		fakeSequencer.EXPECT().Sequence().RunAndReturn(
+			func() uint64 { return blockNum2configSqn[height-1] })
 
 		decision := &types.SyncResponse{
 			Latest: types.Decision{},
@@ -233,8 +234,9 @@ func TestSynchronizerSync(t *testing.T) {
 			Logger:      flogging.NewFabricLogger(zap.NewExample()),
 			BlockPuller: bp,
 			ClusterSize: 4,
-			Support:     fakeCS,
 			OnCommit:    noopUpdateLastHash,
+			Ledger:      fakeLedger,
+			Sequencer:   fakeSequencer,
 		}
 
 		d := syn.Sync()
@@ -242,35 +244,26 @@ func TestSynchronizerSync(t *testing.T) {
 	})
 
 	t.Run("1/4 nodes present", func(t *testing.T) {
-		bp := &mocks.FakeBlockPuller{}
-		bp.HeightsByEndpointsReturns(
+		bp := mocks.NewBlockPuller(t)
+		bp.EXPECT().Close()
+		bp.EXPECT().HeightsByEndpoints().Return(
 			map[string]uint64{
 				"example.com:1": 100,
 			},
 			nil,
 		)
-		bp.PullBlockReturnsOnCall(0, b100)
-		bp.PullBlockReturnsOnCall(1, b101)
-		bp.PullBlockReturnsOnCall(2, b102)
 
 		height := uint64(100)
 		ledger := map[uint64]*cb.Block{99: b99}
 
-		fakeCS := &mocks2.FakeConsenterSupport{}
-		fakeCS.ChannelIDReturns("mychannel")
-		fakeCS.HeightCalls(func() uint64 { return height })
-		fakeCS.SequenceCalls(func() uint64 { return blockNum2configSqn[height-1] })
-		fakeCS.WriteConfigBlockCalls(func(b *cb.Block, m []byte) {
-			ledger[height] = b
-			height++
-		})
-		fakeCS.WriteBlockCalls(func(b *cb.Block, m []byte) {
-			ledger[height] = b
-			height++
-		})
-		fakeCS.BlockCalls(func(sqn uint64) *cb.Block {
-			return ledger[sqn]
-		})
+		fakeLedger := mocks.NewLedger(t)
+		fakeLedger.EXPECT().Height().RunAndReturn(func() uint64 { return height })
+		fakeLedger.EXPECT().Block(mock.AnythingOfType("uint64")).RunAndReturn(
+			func(sqn uint64) *cb.Block {
+				return ledger[sqn]
+			})
+
+		fakeSequencer := mocks.NewSequencer(t)
 
 		decision := &types.SyncResponse{
 			Latest: types.Decision{},
@@ -288,8 +281,9 @@ func TestSynchronizerSync(t *testing.T) {
 			Logger:      flogging.NewFabricLogger(zap.NewExample()),
 			BlockPuller: bp,
 			ClusterSize: 4,
-			Support:     fakeCS,
 			OnCommit:    noopUpdateLastHash,
+			Ledger:      fakeLedger,
+			Sequencer:   fakeSequencer,
 		}
 
 		d := syn.Sync()

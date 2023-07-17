@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package smartbft_test
 
 import (
-	"sync/atomic"
 	"testing"
 
 	"github.com/SmartBFT-Go/consensus/pkg/types"
@@ -69,19 +68,18 @@ func TestAssembler(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			logger := flogging.MustGetLogger("test")
 
-			assembler := &smartbft.Assembler{
-				VerificationSeq: func() uint64 {
-					return 10
-				},
-				Logger:        logger,
-				RuntimeConfig: &atomic.Value{},
-			}
-
 			rtc := smartbft.RuntimeConfig{
 				LastBlock:       smartbft.LastBlockFromLedgerOrPanic(ledger, logger),
 				LastConfigBlock: smartbft.LastConfigBlockFromLedgerOrPanic(ledger, logger),
 			}
-			assembler.RuntimeConfig.Store(rtc)
+
+			assembler := &smartbft.Assembler{
+				VerificationSeq: func() uint64 {
+					return 10
+				},
+				Logger:               logger,
+				RuntimeConfigManager: smartbft.NewRuntimeConfigManager(rtc),
+			}
 
 			if testCase.panicVal != "" {
 

@@ -14,6 +14,9 @@ import (
 	"encoding/pem"
 	"path"
 	"reflect"
+	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -192,7 +195,40 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 		Logger:               c.Logger,
 	}
 
-	chain, err := NewChain(configValidator, (uint64)(selfID), config, path.Join(c.WALBaseDir, support.ChannelID()), puller, c.Comm, c.SignerSerializer, c.GetPolicyManager(support.ChannelID()), support, c.Metrics, c.BCCSP)
+	egressCommFactory := func(rtcm RuntimeConfigManager, channelId string, comm Communicator) EgressComm {
+		channelDecorator := zap.String("channel", channelId)
+		return &Egress{
+			RuntimeConfigManager: rtcm,
+			Channel:              channelId,
+			Logger:               flogging.MustGetLogger("orderer.consensus.smartbft.egress").With(channelDecorator),
+			RPC: &cluster.RPC{
+				Logger:        flogging.MustGetLogger("orderer.consensus.smartbft.rpc").With(channelDecorator),
+				Channel:       channelId,
+				StreamsByType: cluster.NewStreamsByType(),
+				Comm:          comm,
+				Timeout:       5 * time.Minute, // Externalize configuration
+			},
+		}
+	}
+
+	chain, err := NewChain(
+		support.ChannelID(),
+		configValidator,
+		(uint64)(selfID),
+		config,
+		path.Join(c.WALBaseDir, support.ChannelID()),
+		puller,
+		c.Comm,
+		c.SignerSerializer,
+		c.GetPolicyManager(support.ChannelID()),
+		c.Metrics,
+		c.BCCSP,
+		NewRuntimeConfigManager,
+		support,
+		support,
+		support,
+		egressCommFactory,
+	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed creating a new BFTChain")
 	}

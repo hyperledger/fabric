@@ -12,7 +12,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sync"
-	"sync/atomic"
 
 	"github.com/SmartBFT-Go/consensus/pkg/types"
 	"github.com/SmartBFT-Go/consensus/smartbftprotos"
@@ -27,14 +26,14 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-//go:generate mockery -dir . -name Sequencer -case underscore -output mocks
+//go:generate mockery --dir . --name Sequencer --case underscore --with-expecter=true --output mocks
 
 // Sequencer returns sequences
 type Sequencer interface {
 	Sequence() uint64
 }
 
-//go:generate mockery -dir . -name ConsenterVerifier -case underscore -output mocks
+//go:generate mockery --dir . --name ConsenterVerifier --case underscore --output mocks
 
 // ConsenterVerifier is used to determine whether a signature from one of the consenters is valid
 type ConsenterVerifier interface {
@@ -42,7 +41,7 @@ type ConsenterVerifier interface {
 	Evaluate(signatureSet []*protoutil.SignedData) error
 }
 
-//go:generate mockery -dir . -name AccessController -case underscore -output mocks
+//go:generate mockery --dir . --name AccessController --case underscore --output mocks
 
 // AccessController is used to determine if a signature of a certain client is valid
 type AccessController interface {
@@ -75,12 +74,12 @@ func (nibd NodeIdentitiesByID) IdentityToID(identity []byte) (uint64, bool) {
 
 // Verifier verifies proposals and signatures
 type Verifier struct {
-	RuntimeConfig         *atomic.Value
+	RuntimeConfigManager  RuntimeConfigManager
 	ReqInspector          *RequestInspector
 	ConsenterVerifier     ConsenterVerifier
 	AccessController      AccessController
 	VerificationSequencer Sequencer
-	Ledger                Ledger
+	Ledger                LedgerReader
 	Logger                *flogging.FabricLogger
 	ConfigValidator       ConfigValidator
 }
@@ -101,7 +100,7 @@ func (v *Verifier) VerifyProposal(proposal types.Proposal) ([]types.RequestInfo,
 		return nil, err
 	}
 
-	rtc := v.RuntimeConfig.Load().(RuntimeConfig)
+	rtc := v.RuntimeConfigManager.GetConfig()
 	if err := verifyHashChain(block, rtc.LastCommittedBlockHash); err != nil {
 		return nil, err
 	}
@@ -141,7 +140,7 @@ func (v *Verifier) RequestsFromProposal(proposal types.Proposal) []types.Request
 
 // VerifySignature verifies signature
 func (v *Verifier) VerifySignature(signature types.Signature) error {
-	id2Identity := v.RuntimeConfig.Load().(RuntimeConfig).ID2Identities
+	id2Identity := v.RuntimeConfigManager.GetConfig().ID2Identities
 	identity, exists := id2Identity[signature.ID]
 	if !exists {
 		return errors.Errorf("node with id of %d doesn't exist", signature.ID)
@@ -197,7 +196,7 @@ func (v *Verifier) verifyRequest(rawRequest []byte, noConfigAllowed bool) (types
 
 // VerifyConsenterSig verifies consenter signature
 func (v *Verifier) VerifyConsenterSig(signature types.Signature, prop types.Proposal) ([]byte, error) {
-	id2Identity := v.RuntimeConfig.Load().(RuntimeConfig).ID2Identities
+	id2Identity := v.RuntimeConfigManager.GetConfig().ID2Identities
 
 	identity, exists := id2Identity[signature.ID]
 	if !exists {
@@ -282,7 +281,7 @@ func (v *Verifier) verifyBlockDataAndMetadata(block *cb.Block, metadata []byte) 
 		)
 	}
 
-	rtc := v.RuntimeConfig.Load().(RuntimeConfig)
+	rtc := v.RuntimeConfigManager.GetConfig()
 	lastConfig := rtc.LastConfigBlock.Header.Number
 
 	if protoutil.IsConfigBlock(block) {

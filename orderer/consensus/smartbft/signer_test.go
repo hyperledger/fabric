@@ -8,7 +8,6 @@ package smartbft_test
 
 import (
 	"errors"
-	"sync/atomic"
 	"testing"
 
 	"github.com/SmartBFT-Go/consensus/pkg/types"
@@ -69,20 +68,18 @@ func TestSignProposal(t *testing.T) {
 
 	logger := flogging.MustGetLogger("test")
 
-	assembler := &smartbft.Assembler{
-		VerificationSeq: func() uint64 {
-			return 0
-		},
-		Logger:        logger,
-		RuntimeConfig: &atomic.Value{},
-	}
-
 	rtc := smartbft.RuntimeConfig{
 		LastBlock:       smartbft.LastBlockFromLedgerOrPanic(ledger, logger),
 		LastConfigBlock: smartbft.LastConfigBlockFromLedgerOrPanic(ledger, logger),
 	}
 
-	assembler.RuntimeConfig.Store(rtc)
+	assembler := &smartbft.Assembler{
+		VerificationSeq: func() uint64 {
+			return 0
+		},
+		Logger:               logger,
+		RuntimeConfigManager: smartbft.NewRuntimeConfigManager(rtc),
+	}
 
 	env := protoutil.MarshalOrPanic(&cb.Envelope{Payload: []byte{1, 2, 3, 4, 5}})
 	prop := assembler.AssembleProposal(nil, [][]byte{env})

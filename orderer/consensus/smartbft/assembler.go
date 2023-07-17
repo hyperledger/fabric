@@ -8,7 +8,6 @@ package smartbft
 
 import (
 	"encoding/asn1"
-	"sync/atomic"
 
 	"github.com/SmartBFT-Go/consensus/pkg/types"
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -18,10 +17,18 @@ import (
 	"github.com/pkg/errors"
 )
 
-//go:generate mockery -dir . -name Ledger -case underscore -output mocks
+//go:generate mockery --dir . --name Ledger --case underscore --with-expecter=true --output mocks
 
-// Ledger returns the height and a block with the given number
+// Ledger handles read and write ops on the ledger
 type Ledger interface {
+	LedgerReader
+	LedgerWriter
+}
+
+//go:generate mockery --dir . --name LedgerReader --case underscore --with-expecter=true --output mocks
+
+// LedgerReader returns the height and a block with the given number
+type LedgerReader interface {
 	// Height returns the number of blocks in the ledger this channel is associated with.
 	Height() uint64
 
@@ -30,16 +37,25 @@ type Ledger interface {
 	Block(number uint64) *cb.Block
 }
 
+// LedgerWriter writes blocks to the ledger
+type LedgerWriter interface {
+	// WriteBlock commits a block to the ledger.
+	WriteBlock(block *cb.Block, encodedMetadataValue []byte)
+
+	// WriteConfigBlock commits a block to the ledger, and applies the config update inside.
+	WriteConfigBlock(block *cb.Block, encodedMetadataValue []byte)
+}
+
 // Assembler is the proposal assembler
 type Assembler struct {
-	RuntimeConfig   *atomic.Value
-	Logger          *flogging.FabricLogger
-	VerificationSeq func() uint64
+	RuntimeConfigManager RuntimeConfigManager
+	Logger               *flogging.FabricLogger
+	VerificationSeq      func() uint64
 }
 
 // AssembleProposal assembles a proposal from the metadata and the request
 func (a *Assembler) AssembleProposal(metadata []byte, requests [][]byte) (nextProp types.Proposal) {
-	rtc := a.RuntimeConfig.Load().(RuntimeConfig)
+	rtc := a.RuntimeConfigManager.GetConfig()
 
 	lastConfigBlockNum := rtc.LastConfigBlock.Header.Number
 	lastBlock := rtc.LastBlock
@@ -117,7 +133,7 @@ func singleConfigTxOrSeveralNonConfigTx(requests [][]byte, logger Logger) [][]by
 }
 
 // LastConfigBlockFromLedgerOrPanic returns the last config block from the ledger
-func LastConfigBlockFromLedgerOrPanic(ledger Ledger, logger Logger) *cb.Block {
+func LastConfigBlockFromLedgerOrPanic(ledger LedgerReader, logger Logger) *cb.Block {
 	block, err := lastConfigBlockFromLedger(ledger)
 	if err != nil {
 		logger.Panicf("Failed retrieving last config block: %v", err)
@@ -125,7 +141,7 @@ func LastConfigBlockFromLedgerOrPanic(ledger Ledger, logger Logger) *cb.Block {
 	return block
 }
 
-func lastConfigBlockFromLedger(ledger Ledger) (*cb.Block, error) {
+func lastConfigBlockFromLedger(ledger LedgerReader) (*cb.Block, error) {
 	lastBlockSeq := ledger.Height() - 1
 	lastBlock := ledger.Block(lastBlockSeq)
 	if lastBlock == nil {
@@ -138,7 +154,7 @@ func lastConfigBlockFromLedger(ledger Ledger) (*cb.Block, error) {
 	return lastConfigBlock, nil
 }
 
-func PreviousConfigBlockFromLedgerOrPanic(ledger Ledger, logger Logger) *cb.Block {
+func PreviousConfigBlockFromLedgerOrPanic(ledger LedgerReader, logger Logger) *cb.Block {
 	block, err := previousConfigBlockFromLedger(ledger)
 	if err != nil {
 		logger.Panicf("Failed retrieving previous config block: %v", err)
@@ -146,7 +162,7 @@ func PreviousConfigBlockFromLedgerOrPanic(ledger Ledger, logger Logger) *cb.Bloc
 	return block
 }
 
-func previousConfigBlockFromLedger(ledger Ledger) (*cb.Block, error) {
+func previousConfigBlockFromLedger(ledger LedgerReader) (*cb.Block, error) {
 	previousBlockSeq := ledger.Height() - 2
 	if ledger.Height() == 1 {
 		previousBlockSeq = 0
@@ -163,7 +179,7 @@ func previousConfigBlockFromLedger(ledger Ledger) (*cb.Block, error) {
 }
 
 // LastBlockFromLedgerOrPanic returns the last block from the ledger
-func LastBlockFromLedgerOrPanic(ledger Ledger, logger Logger) *cb.Block {
+func LastBlockFromLedgerOrPanic(ledger LedgerReader, logger Logger) *cb.Block {
 	lastBlockSeq := ledger.Height() - 1
 	lastBlock := ledger.Block(lastBlockSeq)
 	if lastBlock == nil {
