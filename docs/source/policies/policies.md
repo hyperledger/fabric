@@ -359,9 +359,9 @@ endorsement policy can be specified either by reference to an endorsement policy
 defined in the channel configuration or by explicitly specifying a Signature policy.
 
 If an endorsement policy is not explicitly specified during the approval step,
-the default `Endorsement` policy `"MAJORITY Endorsement"` is used which means
-that a majority of the peers belonging to the different channel members
-(organizations) need to execute and validate a transaction against the chaincode
+the channel `Endorsement` policy is used which by default is `"MAJORITY Endorsement"`,
+meaning that a peer from a majority of the organizations belonging to a channel
+need to execute a transaction against the chaincode
 in order for the transaction to be considered valid. This default policy allows
 organizations that join the channel to become automatically added to the chaincode
 endorsement policy. If you don't want to use the default endorsement
