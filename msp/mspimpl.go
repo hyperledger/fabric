@@ -13,6 +13,7 @@ import (
 	"encoding/asn1"
 	"encoding/hex"
 	"encoding/pem"
+	"fmt"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
@@ -925,10 +926,15 @@ func (msp *bccspmsp) sanitizeCert(cert *x509.Certificate) (*x509.Certificate, er
 			return cert, nil
 		}
 
-		// ok, this is no a root CA cert, and now we
-		// then we have chain of certs and can get parent
+		// ok, this is not a root CA cert, and now we
+		// have chain of certs and can extract parent
 		// to sanitize the cert whenever it's intermediate or leaf certificate
-		parentCert := chain[1]
+		var parentCert *x509.Certificate
+		if len(chain) <= 1 {
+			return nil, fmt.Errorf("failed to traverse certificate verification chain"+
+				" for leaf or intermediate certificate, with subject %s", cert.Subject)
+		}
+		parentCert = chain[1]
 
 		// Sanitize
 		return sanitizeECDSASignedCert(cert, parentCert)
