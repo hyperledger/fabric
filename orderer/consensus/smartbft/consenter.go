@@ -19,7 +19,6 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
@@ -162,10 +161,10 @@ func (c *Consenter) ReceiverByChain(channelID string) MessageReceiver {
 
 // HandleChain returns a new Chain instance or an error upon failure
 func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb.Metadata) (consensus.Chain, error) {
-	configOptions := &smartbft.Options{}
 	consenters := support.SharedConfig().Consenters()
-	if err := proto.Unmarshal(support.SharedConfig().ConsensusMetadata(), configOptions); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal consensus metadata")
+	configOptions, err := createSmartBftConfig(support.SharedConfig())
+	if err != nil {
+		return nil, err
 	}
 
 	selfID, err := c.detectSelfID(consenters)

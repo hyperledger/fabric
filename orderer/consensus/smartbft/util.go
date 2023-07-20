@@ -114,8 +114,8 @@ func configBlockToBFTConfig(selfID uint64, block *cb.Block, bccsp bccsp.BCCSP) (
 		return types.Configuration{}, errors.New("no orderer config")
 	}
 
-	consensusConfigOptions := &smartbft.Options{}
-	if err := proto.Unmarshal(oc.ConsensusMetadata(), consensusConfigOptions); err != nil {
+	consensusConfigOptions, err := createSmartBftConfig(oc)
+	if err != nil {
 		return types.Configuration{}, err
 	}
 
@@ -193,7 +193,7 @@ func configFromMetadataOptions(selfID uint64, options *smartbft.Options) (types.
 	var err error
 
 	config := types.DefaultConfig
-	config.SelfID = (uint64)(selfID)
+	config.SelfID = selfID
 
 	if options == nil {
 		return config, errors.New("config metadata options field is nil")
@@ -238,7 +238,10 @@ func configFromMetadataOptions(selfID uint64, options *smartbft.Options) (types.
 		return config, errors.Wrap(err, "config validation failed")
 	}
 
-	config.RequestMaxBytes = 500 * 1024
+	if options.RequestMaxBytes == 0 {
+		config.RequestMaxBytes = config.RequestBatchMaxBytes
+	}
+
 	return config, nil
 }
 
@@ -343,9 +346,9 @@ func RemoteNodesFromConfigBlock(block *cb.Block, logger *flogging.FabricLogger, 
 		return nil, errors.New("no orderer config in config block")
 	}
 
-	configOptions := &smartbft.Options{}
-	if err := proto.Unmarshal(oc.ConsensusMetadata(), configOptions); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal consensus metadata")
+	_, err = createSmartBftConfig(oc)
+	if err != nil {
+		return nil, err
 	}
 
 	var nodeIDs []uint64
@@ -495,4 +498,15 @@ func (w *worker) doWork() {
 
 		w.f(datum)
 	}
+}
+
+func createSmartBftConfig(odrdererConfig channelconfig.Orderer) (*smartbft.Options, error) {
+	configOptions := &smartbft.Options{}
+	if err := proto.Unmarshal(odrdererConfig.ConsensusMetadata(), configOptions); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal consensus metadata")
+	}
+	batchSize := odrdererConfig.BatchSize()
+	configOptions.RequestBatchMaxCount = uint64(batchSize.MaxMessageCount)
+	configOptions.RequestBatchMaxBytes = uint64(batchSize.AbsoluteMaxBytes)
+	return configOptions, nil
 }

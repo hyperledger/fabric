@@ -681,8 +681,10 @@ Profiles:
         Orderer:
             <<: *OrdererDefaults
             OrdererType: BFT
+            BatchSize:
+                MaxMessageCount: 5000
+                AbsoluteMaxBytes: 10 MB
             SmartBFT:
-                RequestBatchMaxCount: 5000
                 RequestBatchMaxInterval: 200ms
                 RequestForwardTimeout: 5s
                 RequestComplainTimeout: 20s
@@ -691,7 +693,6 @@ Profiles:
                 ViewChangeTimeout: 20s
                 LeaderHeartbeatTimeout: 1m0s
                 CollectTimeout: 1s
-                RequestBatchMaxBytes: 10485760
                 IncomingMessageBufferSize: 200
                 RequestPoolSize: 100000
                 LeaderHeartbeatCount: 10

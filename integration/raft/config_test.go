@@ -813,7 +813,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}, orderers, peer, network)
 
 			By("Broadcasting envelope to testchannel")
-			env := CreateBroadcastEnvelope(network, peer, "testchannel", []byte("hello"))
+			env := ordererclient.CreateBroadcastEnvelope(network, peer, "testchannel", []byte("hello"))
 			resp, err := ordererclient.Broadcast(network, o1, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
@@ -852,13 +852,13 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}, orderers, peer, network)
 
 			By("Ensuring orderer4 doesn't serve testchannel2 and testchannel3")
-			env = CreateBroadcastEnvelope(network, peer, "testchannel2", []byte("hello"))
+			env = ordererclient.CreateBroadcastEnvelope(network, peer, "testchannel2", []byte("hello"))
 			resp, err = ordererclient.Broadcast(network, o4, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_BAD_REQUEST))
 			Expect(orderer4Runner.Err()).To(gbytes.Say("channel does not exist"))
 
-			env = CreateBroadcastEnvelope(network, peer, "testchannel3", []byte("hello"))
+			env = ordererclient.CreateBroadcastEnvelope(network, peer, "testchannel3", []byte("hello"))
 			resp, err = ordererclient.Broadcast(network, o4, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_BAD_REQUEST))
@@ -892,7 +892,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Consistently(orderer4Runner.Err()).ShouldNot(gbytes.Say("ERRO"))
 
 			By("Submitting a transaction through orderer4")
-			env = CreateBroadcastEnvelope(network, peer, "testchannel2", []byte("hello"))
+			env = ordererclient.CreateBroadcastEnvelope(network, peer, "testchannel2", []byte("hello"))
 			resp, err = ordererclient.Broadcast(network, o4, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
@@ -977,7 +977,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}, []*nwo.Orderer{o1}, peer, network)
 
 			By("Ensuring only orderer1 services the channel")
-			env := CreateBroadcastEnvelope(network, peer, "mychannel", []byte("hello"))
+			env := ordererclient.CreateBroadcastEnvelope(network, peer, "mychannel", []byte("hello"))
 			resp, err := ordererclient.Broadcast(network, o2, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_BAD_REQUEST))
@@ -1245,7 +1245,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}, []*nwo.Orderer{orderers[firstEvictedNode]}, peer, network)
 
 			By("Submitting tx")
-			env := CreateBroadcastEnvelope(network, orderers[survivor], "testchannel", []byte("foo"))
+			env := ordererclient.CreateBroadcastEnvelope(network, orderers[survivor], "testchannel", []byte("foo"))
 			resp, err := ordererclient.Broadcast(network, orderers[survivor], env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
@@ -1353,7 +1353,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				channelparticipation.Join(network, o1, "testchannel", configBlock, expectedInfo)
 
 				By("Submitting tx")
-				env := CreateBroadcastEnvelope(network, o2, "testchannel", []byte("foo"))
+				env := ordererclient.CreateBroadcastEnvelope(network, o2, "testchannel", []byte("foo"))
 				resp, err := ordererclient.Broadcast(network, o2, env)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.Status).To(Equal(common.Status_SUCCESS))
@@ -1595,7 +1595,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				FindLeader([]*ginkgomon.Runner{ordererRunners[4]})
 			}
 
-			env := CreateBroadcastEnvelope(network, orderers[4], "testchannel", []byte("hello"))
+			env := ordererclient.CreateBroadcastEnvelope(network, orderers[4], "testchannel", []byte("hello"))
 			resp, err := ordererclient.Broadcast(network, orderers[4], env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
