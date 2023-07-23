@@ -21,7 +21,7 @@ import (
 // BFTDeliverer TODO this is a skeleton
 type BFTDeliverer struct { // TODO
 	ChannelID       string
-	Gossip          GossipServiceAdapter
+	BlockHandler    BlockHandler
 	Ledger          LedgerInfo
 	BlockVerifier   BlockVerifier
 	Dialer          Dialer
@@ -30,12 +30,15 @@ type BFTDeliverer struct { // TODO
 	Signer          identity.SignerSerializer
 	DeliverStreamer DeliverStreamer
 	Logger          *flogging.FabricLogger
-	YieldLeadership bool
 
-	BlockGossipDisabled bool
-	MaxRetryDelay       time.Duration
-	InitialRetryDelay   time.Duration
-	MaxRetryDuration    time.Duration
+	// The maximal value of the actual retry interval, which cannot increase beyond this value
+	MaxRetryInterval time.Duration
+	// The initial value of the actual retry interval, which is increased on every failed retry
+	InitialRetryInterval time.Duration
+	// After this duration, the MaxRetryDurationExceededHandler is called to decide whether to keep trying
+	MaxRetryDuration time.Duration
+	// This function is called after MaxRetryDuration of failed retries to decide whether to keep trying
+	MaxRetryDurationExceededHandler MaxRetryDurationExceededHandler
 
 	// TLSCertHash should be nil when TLS is not enabled
 	TLSCertHash []byte // util.ComputeSHA256(b.credSupport.GetClientCertificate().Certificate[0])
@@ -196,16 +199,15 @@ func (d *BFTDeliverer) FetchBlocks(source *orderers.Endpoint) {
 		}
 
 		blockRcv := &BlockReceiver{
-			channelID:           d.ChannelID,
-			gossip:              d.Gossip,
-			blockGossipDisabled: d.BlockGossipDisabled,
-			blockVerifier:       d.BlockVerifier,
-			deliverClient:       deliverClient,
-			cancelSendFunc:      cancel,
-			recvC:               make(chan *orderer.DeliverResponse),
-			stopC:               make(chan struct{}),
-			endpoint:            source,
-			logger:              d.Logger.With("orderer-address", source.Address),
+			channelID:      d.ChannelID,
+			blockHandler:   d.BlockHandler,
+			blockVerifier:  d.BlockVerifier,
+			deliverClient:  deliverClient,
+			cancelSendFunc: cancel,
+			recvC:          make(chan *orderer.DeliverResponse),
+			stopC:          make(chan struct{}),
+			endpoint:       source,
+			logger:         d.Logger.With("orderer-address", source.Address),
 		}
 
 		d.mutex.Lock()

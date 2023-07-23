@@ -32,6 +32,7 @@ type bftDelivererTestSetup struct {
 
 	fakeDialer                  *fake.Dialer
 	fakeGossipServiceAdapter    *fake.GossipServiceAdapter
+	fakeBlockHandler            *fake.BlockHandler
 	fakeOrdererConnectionSource *fake.OrdererConnectionSource
 	fakeLedgerInfo              *fake.LedgerInfo
 	fakeBlockVerifier           *fake.BlockVerifier
@@ -49,6 +50,7 @@ func newBFTDelivererTestSetup(t *testing.T) *bftDelivererTestSetup {
 		withT:                       NewWithT(t),
 		fakeDialer:                  &fake.Dialer{},
 		fakeGossipServiceAdapter:    &fake.GossipServiceAdapter{},
+		fakeBlockHandler:            &fake.BlockHandler{},
 		fakeOrdererConnectionSource: &fake.OrdererConnectionSource{},
 		fakeLedgerInfo:              &fake.LedgerInfo{},
 		fakeBlockVerifier:           &fake.BlockVerifier{},
@@ -122,20 +124,20 @@ func (s *bftDelivererTestSetup) beforeEach() {
 	s.fakeDeliverStreamer.DeliverReturns(s.fakeDeliverClient, nil)
 
 	s.d = &blocksprovider.BFTDeliverer{
-		ChannelID:         "channel-id",
-		Gossip:            s.fakeGossipServiceAdapter,
-		Ledger:            s.fakeLedgerInfo,
-		BlockVerifier:     s.fakeBlockVerifier,
-		Dialer:            s.fakeDialer,
-		Orderers:          s.fakeOrdererConnectionSource,
-		DoneC:             make(chan struct{}),
-		Signer:            s.fakeSigner,
-		DeliverStreamer:   s.fakeDeliverStreamer,
-		Logger:            flogging.MustGetLogger("blocksprovider"),
-		TLSCertHash:       []byte("tls-cert-hash"),
-		MaxRetryDuration:  time.Hour,
-		MaxRetryDelay:     10 * time.Second,
-		InitialRetryDelay: 100 * time.Millisecond,
+		ChannelID:            "channel-id",
+		BlockHandler:         s.fakeBlockHandler,
+		Ledger:               s.fakeLedgerInfo,
+		BlockVerifier:        s.fakeBlockVerifier,
+		Dialer:               s.fakeDialer,
+		Orderers:             s.fakeOrdererConnectionSource,
+		DoneC:                make(chan struct{}),
+		Signer:               s.fakeSigner,
+		DeliverStreamer:      s.fakeDeliverStreamer,
+		Logger:               flogging.MustGetLogger("blocksprovider"),
+		TLSCertHash:          []byte("tls-cert-hash"),
+		MaxRetryDuration:     time.Hour,
+		MaxRetryInterval:     10 * time.Second,
+		InitialRetryInterval: 100 * time.Millisecond,
 	}
 	s.d.Initialize()
 

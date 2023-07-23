@@ -158,8 +158,12 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 
 func (d *deliverServiceImpl) createBlockDelivererCFT(chainID string, ledgerInfo blocksprovider.LedgerInfo) (*blocksprovider.Deliverer, error) {
 	dc := &blocksprovider.Deliverer{
-		ChannelID:     chainID,
-		Gossip:        d.conf.Gossip,
+		ChannelID: chainID,
+		BlockHandler: &GossipBlockHandler{
+			gossip:              d.conf.Gossip,
+			blockGossipDisabled: !d.conf.DeliverServiceConfig.BlockGossipEnabled,
+			logger:              flogging.MustGetLogger("peer.blocksprovider").With("channel", chainID),
+		},
 		Ledger:        ledgerInfo,
 		BlockVerifier: d.conf.CryptoSvc,
 		Dialer: blocksprovider.DialerAdapter{
@@ -169,16 +173,17 @@ func (d *deliverServiceImpl) createBlockDelivererCFT(chainID string, ledgerInfo 
 				SecOpts:     d.conf.DeliverServiceConfig.SecOpts,
 			},
 		},
-		Orderers:            d.conf.OrdererSource,
-		DoneC:               make(chan struct{}),
-		Signer:              d.conf.Signer,
-		DeliverStreamer:     blocksprovider.DeliverAdapter{},
-		Logger:              flogging.MustGetLogger("peer.blocksprovider").With("channel", chainID),
-		MaxRetryDelay:       d.conf.DeliverServiceConfig.ReConnectBackoffThreshold,
-		MaxRetryDuration:    d.conf.DeliverServiceConfig.ReconnectTotalTimeThreshold,
-		BlockGossipDisabled: !d.conf.DeliverServiceConfig.BlockGossipEnabled,
-		InitialRetryDelay:   100 * time.Millisecond,
-		YieldLeadership:     !d.conf.IsStaticLeader,
+		Orderers:             d.conf.OrdererSource,
+		DoneC:                make(chan struct{}),
+		Signer:               d.conf.Signer,
+		DeliverStreamer:      blocksprovider.DeliverAdapter{},
+		Logger:               flogging.MustGetLogger("peer.blocksprovider").With("channel", chainID),
+		MaxRetryInterval:     d.conf.DeliverServiceConfig.ReConnectBackoffThreshold,
+		MaxRetryDuration:     d.conf.DeliverServiceConfig.ReconnectTotalTimeThreshold,
+		InitialRetryInterval: 100 * time.Millisecond,
+		MaxRetryDurationExceededHandler: func() (stopRetries bool) {
+			return !d.conf.IsStaticLeader
+		},
 	}
 
 	if d.conf.DeliverServiceConfig.SecOpts.RequireClientCert {

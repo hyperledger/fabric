@@ -69,12 +69,20 @@ type DeliverStreamer interface {
 	Deliver(context.Context, *grpc.ClientConn) (orderer.AtomicBroadcast_DeliverClient, error)
 }
 
+// MaxRetryDurationExceededHandler is a function that decides what to do in case the total time the component spends in
+// reconnection attempts is exceeded. If it returns true, it means that the component should stop retrying.
+//
+// In the peer, with gossip and a dynamic leader, stopping causes the gossip leader to yield.
+// In the peer, with gossip and a static leader, we never stop.
+// In the orderer, we never stop.
+type MaxRetryDurationExceededHandler func() (stopRetries bool)
+
 const backoffExponentBase = 1.2
 
 // Deliverer the CFT implementation of the deliverservice.BlockDeliverer interface.
 type Deliverer struct {
 	ChannelID       string
-	Gossip          GossipServiceAdapter
+	BlockHandler    BlockHandler
 	Ledger          LedgerInfo
 	BlockVerifier   BlockVerifier
 	Dialer          Dialer
@@ -83,12 +91,15 @@ type Deliverer struct {
 	Signer          identity.SignerSerializer
 	DeliverStreamer DeliverStreamer
 	Logger          *flogging.FabricLogger
-	YieldLeadership bool
 
-	BlockGossipDisabled bool
-	MaxRetryDelay       time.Duration
-	InitialRetryDelay   time.Duration
-	MaxRetryDuration    time.Duration
+	// The maximal value of the actual retry interval, which cannot increase beyond this value
+	MaxRetryInterval time.Duration
+	// The initial value of the actual retry interval, which is increased on every failed retry
+	InitialRetryInterval time.Duration
+	// After this duration, the MaxRetryDurationExceededHandler is called to decide whether to keep trying
+	MaxRetryDuration time.Duration
+	// This function is called after MaxRetryDuration of failed retries to decide whether to keep trying
+	MaxRetryDurationExceededHandler MaxRetryDurationExceededHandler
 
 	// TLSCertHash should be nil when TLS is not enabled
 	TLSCertHash []byte // util.ComputeSHA256(b.credSupport.GetClientCertificate().Certificate[0])
@@ -117,11 +128,11 @@ func (d *Deliverer) DeliverBlocks() {
 	failureCounter := 0
 	totalDuration := time.Duration(0)
 
-	// InitialRetryDelay * backoffExponentBase^n > MaxRetryDelay
-	// backoffExponentBase^n > MaxRetryDelay / InitialRetryDelay
-	// n * log(backoffExponentBase) > log(MaxRetryDelay / InitialRetryDelay)
-	// n > log(MaxRetryDelay / InitialRetryDelay) / log(backoffExponentBase)
-	maxFailures := int(math.Log(float64(d.MaxRetryDelay)/float64(d.InitialRetryDelay)) / math.Log(backoffExponentBase))
+	// InitialRetryInterval * backoffExponentBase^n > MaxRetryInterval
+	// backoffExponentBase^n > MaxRetryInterval / InitialRetryInterval
+	// n * log(backoffExponentBase) > log(MaxRetryInterval / InitialRetryInterval)
+	// n > log(MaxRetryInterval / InitialRetryInterval) / log(backoffExponentBase)
+	maxFailures := int(math.Log(float64(d.MaxRetryInterval)/float64(d.InitialRetryInterval)) / math.Log(backoffExponentBase))
 	for {
 		select {
 		case <-d.DoneC:
@@ -132,13 +143,13 @@ func (d *Deliverer) DeliverBlocks() {
 		if failureCounter > 0 {
 			var sleepDuration time.Duration
 			if failureCounter-1 > maxFailures {
-				sleepDuration = d.MaxRetryDelay // configured from peer.deliveryclient.reConnectBackoffThreshold
+				sleepDuration = d.MaxRetryInterval // configured from peer.deliveryclient.reConnectBackoffThreshold
 			} else {
 				sleepDuration = time.Duration(math.Pow(backoffExponentBase, float64(failureCounter-1))*100) * time.Millisecond
 			}
 			totalDuration += sleepDuration
 			if totalDuration > d.MaxRetryDuration {
-				if d.YieldLeadership {
+				if d.MaxRetryDurationExceededHandler() {
 					d.Logger.Warningf("attempted to retry block delivery for more than peer.deliveryclient.reconnectTotalTimeThreshold duration %v, giving up", d.MaxRetryDuration)
 					return
 				}
@@ -176,16 +187,15 @@ func (d *Deliverer) DeliverBlocks() {
 
 		d.mutex.Lock()
 		blockReceiver := &BlockReceiver{
-			channelID:           d.ChannelID,
-			gossip:              d.Gossip,
-			blockGossipDisabled: d.BlockGossipDisabled,
-			blockVerifier:       d.BlockVerifier,
-			deliverClient:       deliverClient,
-			cancelSendFunc:      cancel,
-			recvC:               make(chan *orderer.DeliverResponse),
-			stopC:               make(chan struct{}),
-			endpoint:            endpoint,
-			logger:              d.Logger.With("orderer-address", endpoint.Address),
+			channelID:      d.ChannelID,
+			blockHandler:   d.BlockHandler,
+			blockVerifier:  d.BlockVerifier,
+			deliverClient:  deliverClient,
+			cancelSendFunc: cancel,
+			recvC:          make(chan *orderer.DeliverResponse),
+			stopC:          make(chan struct{}),
+			endpoint:       endpoint,
+			logger:         d.Logger.With("orderer-address", endpoint.Address),
 		}
 		d.blockReceiver = blockReceiver
 		d.mutex.Unlock()
@@ -213,14 +223,14 @@ func (d *Deliverer) Stop() {
 	defer d.mutex.Unlock()
 
 	if d.stopFlag {
-		d.Logger.Debugf("Already stopped")
+		d.Logger.Debugf("Deliverer already stopped")
 		return
 	}
 
 	d.stopFlag = true
 	close(d.DoneC)
 	d.blockReceiver.Stop()
-	d.Logger.Info("Stopped")
+	d.Logger.Info("Deliverer stopped")
 }
 
 func (d *Deliverer) setSleeperFunc(sleepFunc func(duration time.Duration)) {

@@ -10,9 +10,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/flogging"
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
@@ -20,16 +18,25 @@ import (
 	"github.com/pkg/errors"
 )
 
+// BlockHandler abstracts the next stage of processing after the block is fetched from the orderer.
+// In the peer the block is given to the gossip service.
+// In the orderer the block is placed in a buffer from which the chain or the follower pull blocks.
+//
+//go:generate counterfeiter -o fake/block_handler.go --fake-name BlockHandler . BlockHandler
+type BlockHandler interface {
+	// HandleBlock gives the block to the next stage of processing after fetching it from a remote orderer.
+	HandleBlock(channelID string, block *common.Block) error
+}
+
 type BlockReceiver struct {
-	channelID           string
-	gossip              GossipServiceAdapter
-	blockGossipDisabled bool
-	blockVerifier       BlockVerifier
-	deliverClient       orderer.AtomicBroadcast_DeliverClient
-	cancelSendFunc      func()
-	recvC               chan *orderer.DeliverResponse
-	stopC               chan struct{}
-	endpoint            *orderers.Endpoint
+	channelID      string
+	blockHandler   BlockHandler
+	blockVerifier  BlockVerifier
+	deliverClient  orderer.AtomicBroadcast_DeliverClient
+	cancelSendFunc func()
+	recvC          chan *orderer.DeliverResponse
+	stopC          chan struct{}
+	endpoint       *orderers.Endpoint
 
 	mutex    sync.Mutex
 	stopFlag bool
@@ -39,7 +46,7 @@ type BlockReceiver struct {
 
 // Start starts a goroutine that continuously receives blocks.
 func (br *BlockReceiver) Start() {
-	br.logger.Infof("Starting to receive")
+	br.logger.Infof("BlockReceiver starting")
 	go func() {
 		for {
 			resp, err := br.deliverClient.Recv()
@@ -69,11 +76,13 @@ func (br *BlockReceiver) Stop() {
 	defer br.mutex.Unlock()
 
 	if br.stopFlag {
+		br.logger.Infof("BlockReceiver already stopped")
 		return
 	}
 
 	br.stopFlag = true
 	close(br.stopC)
+	br.logger.Infof("BlockReceiver stopped")
 }
 
 // ProcessIncoming processes incoming messages until stopped or encounters an error.
@@ -128,42 +137,11 @@ func (br *BlockReceiver) processMsg(msg *orderer.DeliverResponse) (uint64, error
 		if err := br.blockVerifier.VerifyBlock(gossipcommon.ChannelID(br.channelID), blockNum, t.Block); err != nil {
 			return 0, errors.WithMessage(err, "block from orderer could not be verified")
 		}
-
-		marshaledBlock, err := proto.Marshal(t.Block)
+		err := br.blockHandler.HandleBlock(br.channelID, t.Block)
 		if err != nil {
-			return 0, errors.WithMessage(err, "block from orderer could not be re-marshaled")
+			return 0, errors.WithMessage(err, "block from orderer could not be handled")
 		}
 
-		// Create payload with a block received
-		payload := &gossip.Payload{
-			Data:   marshaledBlock,
-			SeqNum: blockNum,
-		}
-
-		// Use payload to create gossip message
-		gossipMsg := &gossip.GossipMessage{
-			Nonce:   0,
-			Tag:     gossip.GossipMessage_CHAN_AND_ORG,
-			Channel: []byte(br.channelID),
-			Content: &gossip.GossipMessage_DataMsg{
-				DataMsg: &gossip.DataMessage{
-					Payload: payload,
-				},
-			},
-		}
-
-		br.logger.Debugf("Adding payload to local buffer, blockNum = [%d]", blockNum)
-		// Add payload to local state payloads buffer
-		if err := br.gossip.AddPayload(br.channelID, payload); err != nil {
-			br.logger.Warningf("Block [%d] received from ordering service wasn't added to payload buffer: %v", blockNum, err)
-			return 0, errors.WithMessage(err, "could not add block as payload")
-		}
-		if br.blockGossipDisabled {
-			return blockNum, nil
-		}
-		// Gossip messages with other nodes
-		br.logger.Debugf("Gossiping block [%d]", blockNum)
-		br.gossip.Gossip(gossipMsg)
 		return blockNum, nil
 	default:
 		return 0, errors.Errorf("unknown message type: %T, message: %+v", t, msg)
