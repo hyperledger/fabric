@@ -53,23 +53,22 @@ type General struct {
 }
 
 type Cluster struct {
-	ListenAddress                        string
-	ListenPort                           uint16
-	ServerCertificate                    string
-	ServerPrivateKey                     string
-	ClientCertificate                    string
-	ClientPrivateKey                     string
-	RootCAs                              []string
-	DialTimeout                          time.Duration
-	RPCTimeout                           time.Duration
-	ReplicationBufferSize                int
-	ReplicationPullTimeout               time.Duration
-	ReplicationRetryTimeout              time.Duration
-	ReplicationBackgroundRefreshInterval time.Duration
-	ReplicationMaxRetries                int
-	SendBufferSize                       int
-	CertExpirationWarningThreshold       time.Duration
-	TLSHandshakeTimeShift                time.Duration
+	ListenAddress                  string
+	ListenPort                     uint16
+	ServerCertificate              string
+	ServerPrivateKey               string
+	ClientCertificate              string
+	ClientPrivateKey               string
+	RootCAs                        []string
+	DialTimeout                    time.Duration
+	RPCTimeout                     time.Duration
+	ReplicationBufferSize          int
+	ReplicationPullTimeout         time.Duration
+	ReplicationRetryTimeout        time.Duration
+	ReplicationMaxRetries          int
+	SendBufferSize                 int
+	CertExpirationWarningThreshold time.Duration
+	TLSHandshakeTimeShift          time.Duration
 }
 
 // Keepalive contains configuration for gRPC servers.
@@ -159,15 +158,14 @@ var Defaults = TopLevel{
 			Address: "0.0.0.0:6060",
 		},
 		Cluster: Cluster{
-			ReplicationMaxRetries:                12,
-			RPCTimeout:                           time.Second * 7,
-			DialTimeout:                          time.Second * 5,
-			ReplicationBufferSize:                20971520,
-			SendBufferSize:                       100,
-			ReplicationBackgroundRefreshInterval: time.Minute * 5,
-			ReplicationRetryTimeout:              time.Second * 5,
-			ReplicationPullTimeout:               time.Second * 5,
-			CertExpirationWarningThreshold:       time.Hour * 24 * 7,
+			ReplicationMaxRetries:          12,
+			RPCTimeout:                     time.Second * 7,
+			DialTimeout:                    time.Second * 5,
+			ReplicationBufferSize:          20971520,
+			SendBufferSize:                 100,
+			ReplicationRetryTimeout:        time.Second * 5,
+			ReplicationPullTimeout:         time.Second * 5,
+			CertExpirationWarningThreshold: time.Hour * 24 * 7,
 		},
 		LocalMSPDir: "msp",
 		LocalMSPID:  "SampleOrg",
@@ -307,8 +305,6 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			c.General.Cluster.ReplicationPullTimeout = Defaults.General.Cluster.ReplicationPullTimeout
 		case c.General.Cluster.ReplicationRetryTimeout == 0:
 			c.General.Cluster.ReplicationRetryTimeout = Defaults.General.Cluster.ReplicationRetryTimeout
-		case c.General.Cluster.ReplicationBackgroundRefreshInterval == 0:
-			c.General.Cluster.ReplicationBackgroundRefreshInterval = Defaults.General.Cluster.ReplicationBackgroundRefreshInterval
 		case c.General.Cluster.CertExpirationWarningThreshold == 0:
 			c.General.Cluster.CertExpirationWarningThreshold = Defaults.General.Cluster.CertExpirationWarningThreshold
 
