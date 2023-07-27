@@ -14,6 +14,7 @@ import (
 
 	"github.com/BDLS-bft/bdls"
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/pkg/errors"
@@ -24,6 +25,15 @@ type Chain struct {
 	Config  *bdls.Config
 	logger  *flogging.FabricLogger
 	support consensus.ConsenterSupport
+
+	opts Options
+}
+
+type Options struct {
+	// BlockMetadata and Consenters should only be modified while under lock
+	// of raftMetadataLock
+	BlockMetadata *etcdraft.BlockMetadata
+	Consenters    map[uint64]*etcdraft.Consenter
 }
 
 // Order accepts a message which has been processed at a given configSeq.
@@ -76,6 +86,16 @@ func (c *Chain) Start() {
 	config.StateValidate = func(bdls.State) bool { return true }
 	//config.PrivateKey =
 	//config.Participants =
+
+	//c.opts.Consenters
+}
+
+// NewChain constructs a chain object.
+func NewChain() (*Chain, error) {
+
+	c := &Chain{}
+	return c, nil
+
 }
 
 // Halt frees the resources which were allocated for this Chain.
