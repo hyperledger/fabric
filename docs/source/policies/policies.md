@@ -251,7 +251,12 @@ channel policies are defined. We can use the `configtx.yaml` file in the Fabric
 test network to see examples of both policy syntax types. We are going to examine
 the configtx.yaml file used by the [fabric-samples/test-network](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/test-network/configtx/configtx.yaml) sample.
 
+<<<<<<< HEAD
 The first section of the file defines the organizations of the network. Inside each
+=======
+### Member Organizations Section
+The first section of the file defines the organizations that will be members of the channel. Inside each
+>>>>>>> d49a118c7 (Fix some formatting issues with the policies doc.)
 organization definition are the default policies for that organization, `Readers`, `Writers`,
 `Admins`, and `Endorsement`, although you can name your policies anything you want.
 Each policy has a `Type` which describes how the policy is expressed (`Signature`
@@ -265,14 +270,22 @@ become the sub-policies that the ImplicitMeta policies point to.
 
 <details>
   <summary>
-    **Click here to see an example of an organization defined with signature policies**
+    <strong>Click here to see an example of an organization defined with signature policies</strong>
   </summary>
 
+<<<<<<< HEAD
 ```
  - &Org1
         # DefaultOrg defines the organization which is used in the sampleconfig
         # of the fabric.git development environment
         Name: Org1MSP
+=======
+  ```
+- &Org1
+       # DefaultOrg defines the organization which is used in the sampleconfig
+       # of the fabric.git development environment
+       Name: Org1MSP
+>>>>>>> d49a118c7 (Fix some formatting issues with the policies doc.)
 
         # ID to load the MSP definition as
         ID: Org1MSP
@@ -296,7 +309,11 @@ become the sub-policies that the ImplicitMeta policies point to.
                 Type: Signature
                 Rule: "OR('Org1MSP.peer')"
 ```
+
 </details>
+  
+
+### Application and Roles Section
 
 The next example shows the `ImplicitMeta` policy type used in the `Application`
 section of the `configtx.yaml`. These set of policies lie on the
@@ -313,8 +330,9 @@ create.
 
 <details>
   <summary>
-    **Click here to see an example of ImplicitMeta policies**
+    <strong>Click here to see an example of ImplicitMeta policies</strong>
   </summary>
+
 ```
 ################################################################################
 #
@@ -350,6 +368,7 @@ Application: &ApplicationDefaults
             Type: ImplicitMeta
             Rule: "MAJORITY Endorsement"
 ```
+
 </details>
 
 ## Fabric chaincode lifecycle
