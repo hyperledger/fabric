@@ -69,7 +69,6 @@ func assertFileCount(t *testing.T, wal, snap int) {
 func TestOpenWAL(t *testing.T) {
 	t.Run("Last WAL file is broken", func(t *testing.T) {
 		setup(t)
-		defer clean(t)
 
 		// create 10 new wal files
 		for i := 0; i < 10; i++ {
@@ -80,7 +79,7 @@ func TestOpenWAL(t *testing.T) {
 			)
 		}
 		assertFileCount(t, 1, 0)
-		lasti, _ := store.ram.LastIndex() // it never returns err
+		store.ram.LastIndex() // it never returns err
 
 		// close current storage
 		err = store.Close()
@@ -104,10 +103,7 @@ func TestOpenWAL(t *testing.T) {
 		// create new storage
 		ram = raft.NewMemoryStorage()
 		store, err = CreateStorage(logger, walDir, snapDir, ram)
-		require.NoError(t, err)
-		lastI, _ := store.ram.LastIndex()
-		require.True(t, lastI > 0)     // we are still able to read some entries
-		require.True(t, lasti > lastI) // but less than before because some are broken
+		require.ErrorContains(t, err, "failed to create or read WAL: failed to read WAL and cannot repair")
 	})
 }
 
