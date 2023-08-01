@@ -249,6 +249,31 @@ var _ = Describe("Chain", func() {
 		})
 
 		Context("when a node starts up", func() {
+			It("WAL 32MB file size should be within size limits", func() {
+				close(cutter.Block)
+				cutter.CutNext = true
+				// Wait for the leader to be chosen
+				campaign(chain, observeC)
+
+				By("Create large TX")
+				large_size_env := &common.Envelope{
+					Payload: marshalOrPanic(&common.Payload{
+						Header: &common.Header{ChannelHeader: marshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_MESSAGE), ChannelId: channelID})},
+						Data:   make([]byte, 32_000_000),
+					}),
+				}
+
+				By("Send TX to chain")
+				Expect(chain.Order(large_size_env, 0)).To(Succeed())
+				By("Wait for TX to be written to WAL")
+				Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+				By("Stop the chain")
+				chain.Halt()
+
+				By("Create new chain")
+				_, err := etcdraft.NewChain(support, opts, configurator, nil, cryptoProvider, noOpBlockPuller, nil, observeC)
+				Expect(err).NotTo(HaveOccurred())
+			})
 			It("properly configures the communication layer", func() {
 				expectedNodeConfig := nodeConfigFromMetadata(consenterMetadata)
 				Eventually(configurator.ConfigureCallCount, LongEventualTimeout).Should(Equal(1))
