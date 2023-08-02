@@ -29,29 +29,6 @@ func FetchBlock(n *nwo.Network, o *nwo.Orderer, seq uint64, channel string) *com
 	return blk
 }
 
-func CreateBroadcastEnvelope(n *nwo.Network, entity interface{}, channel string, data []byte) *common.Envelope {
-	var signer *nwo.SigningIdentity
-	switch creator := entity.(type) {
-	case *nwo.Peer:
-		signer = n.PeerUserSigner(creator, "Admin")
-	case *nwo.Orderer:
-		signer = n.OrdererUserSigner(creator, "Admin")
-	}
-	Expect(signer).NotTo(BeNil())
-
-	env, err := protoutil.CreateSignedEnvelope(
-		common.HeaderType_MESSAGE,
-		channel,
-		signer,
-		&common.Envelope{Payload: data},
-		0,
-		0,
-	)
-	Expect(err).NotTo(HaveOccurred())
-
-	return env
-}
-
 // CreateDeliverEnvelope creates a deliver env to seek for specified block.
 func CreateDeliverEnvelope(n *nwo.Network, o *nwo.Orderer, blkNum uint64, channel string) *common.Envelope {
 	specified := &orderer.SeekPosition{

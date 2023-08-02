@@ -245,7 +245,7 @@ var _ = Describe("ChannelParticipation", func() {
 			}))
 
 			By("submitting transaction to orderer1")
-			env := CreateBroadcastEnvelope(network, peer, "participation-trophy", []byte("hello"))
+			env := ordererclient.CreateBroadcastEnvelope(network, peer, "participation-trophy", []byte("hello"))
 			resp, err := ordererclient.Broadcast(network, orderer1, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_BAD_REQUEST))
@@ -702,14 +702,14 @@ var _ = Describe("ChannelParticipation", func() {
 // submit a transaction signed by the peer and ensure it was
 // committed to the ledger
 func submitPeerTxn(o *nwo.Orderer, peer *nwo.Peer, n *nwo.Network, expectedChannelInfo channelparticipation.ChannelInfo) {
-	env := CreateBroadcastEnvelope(n, peer, expectedChannelInfo.Name, []byte("hello"))
+	env := ordererclient.CreateBroadcastEnvelope(n, peer, expectedChannelInfo.Name, []byte("hello"))
 	submitTxn(o, env, n, expectedChannelInfo)
 }
 
 // submit a transaction signed by the orderer and ensure it is
 // committed to the ledger
 func submitOrdererTxn(o *nwo.Orderer, n *nwo.Network, expectedChannelInfo channelparticipation.ChannelInfo) {
-	env := CreateBroadcastEnvelope(n, o, expectedChannelInfo.Name, []byte("hello"))
+	env := ordererclient.CreateBroadcastEnvelope(n, o, expectedChannelInfo.Name, []byte("hello"))
 	submitTxn(o, env, n, expectedChannelInfo)
 }
 

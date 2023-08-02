@@ -101,7 +101,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			FindLeader([]*ginkgomon.Runner{o1Runner, o2Runner, o3Runner})
 
 			By("performing operation with orderer1")
-			env := CreateBroadcastEnvelope(network, o1, "testchannel", []byte("foo"))
+			env := ordererclient.CreateBroadcastEnvelope(network, o1, "testchannel", []byte("foo"))
 			resp, err := ordererclient.Broadcast(network, o1, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
@@ -171,7 +171,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			By("Submitting several transactions to trigger snapshot")
 			o2SnapDir := path.Join(network.RootDir, "orderers", o2.ID(), "etcdraft", "snapshot")
 
-			env := CreateBroadcastEnvelope(network, o2, channelID, make([]byte, 2000))
+			env := ordererclient.CreateBroadcastEnvelope(network, o2, channelID, make([]byte, 2000))
 			for i := 1; i <= 4; i++ { // 4 < MaxSnapshotFiles(5), so that no snapshot is pruned
 				// Note that MaxMessageCount is 1 be default, so every tx results in a new block
 				resp, err := ordererclient.Broadcast(network, o2, env)
@@ -221,7 +221,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			}, network.EventuallyTimeout).Should(Equal(1))
 
 			By("Asserting cluster is still functional")
-			env = CreateBroadcastEnvelope(network, o1, channelID, make([]byte, 1000))
+			env = ordererclient.CreateBroadcastEnvelope(network, o1, channelID, make([]byte, 1000))
 			resp, err := ordererclient.Broadcast(network, o1, env)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(resp.Status, network.EventuallyTimeout).Should(Equal(common.Status_SUCCESS))
@@ -366,7 +366,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			FindLeader([]*ginkgomon.Runner{r1, r2})
 
 			By("Submitting several transactions to trigger snapshot")
-			env := CreateBroadcastEnvelope(network, remainedOrderers[1], "testchannel", make([]byte, 2000))
+			env := ordererclient.CreateBroadcastEnvelope(network, remainedOrderers[1], "testchannel", make([]byte, 2000))
 			for i := 3; i <= 10; i++ {
 				// Note that MaxMessageCount is 1 be default, so every tx results in a new block
 				resp, err := ordererclient.Broadcast(network, remainedOrderers[1], env)
@@ -551,7 +551,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			By("Submitting tx to leader")
 			// This should fail because current leader steps down
 			// and there is no leader at this point of time
-			env := CreateBroadcastEnvelope(network, leader, "testchannel", []byte("foo"))
+			env := ordererclient.CreateBroadcastEnvelope(network, leader, "testchannel", []byte("foo"))
 			resp, err := ordererclient.Broadcast(network, leader, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SERVICE_UNAVAILABLE))

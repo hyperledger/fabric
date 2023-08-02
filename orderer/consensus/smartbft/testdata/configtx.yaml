@@ -373,8 +373,10 @@ Profiles:
                 - *OrdererOrg
             Capabilities: *OrdererCapabilities
             OrdererType: BFT
+            BatchSize:
+                MaxMessageCount: 100
+                AbsoluteMaxBytes: 10 MB
             SmartBFT:
-                RequestBatchMaxCount: 100
                 RequestBatchMaxInterval: 50ms
                 RequestForwardTimeout: 2s
                 RequestComplainTimeout: 20s
@@ -383,7 +385,6 @@ Profiles:
                 ViewChangeTimeout: 20s
                 LeaderHeartbeatTimeout: 1m0s
                 CollectTimeout: 1s
-                RequestBatchMaxBytes: 10485760
                 IncomingMessageBufferSize: 200
                 RequestPoolSize: 400
                 LeaderHeartbeatCount: 10

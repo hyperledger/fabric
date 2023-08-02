@@ -26,6 +26,10 @@ import (
 	"syscall"
 	"time"
 
+	protosOrderer "github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/integration/ordererclient"
+	"github.com/hyperledger/fabric/protoutil"
+
 	"github.com/golang/protobuf/proto"
 
 	"github.com/hyperledger/fabric/integration/channelparticipation"
@@ -905,6 +909,66 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			}
 		})
 
+		It("smartbft batch size max bytes config change", func() {
+			channel := "testchannel1"
+			By("Create network")
+			networkConfig := nwo.MultiNodeSmartBFT()
+			networkConfig.Channels = nil
+			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+			network.EventuallyTimeout *= 2
+
+			By("Start orderers")
+			var ordererRunners []*ginkgomon.Runner
+			for _, orderer := range network.Orderers {
+				runner := network.OrdererRunner(orderer)
+				runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.common.cluster=debug:orderer.consensus.smartbft=debug:policies.ImplicitOrderer=debug")
+				ordererRunners = append(ordererRunners, runner)
+				proc := ifrit.Invoke(runner)
+				ordererProcesses = append(ordererProcesses, proc)
+				Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			By("Start peer")
+			peerRunner := network.PeerGroupRunner()
+			peerProcesses = ifrit.Invoke(peerRunner)
+			Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			peer := network.Peer("Org1", "peer0")
+
+			By("Join network to channel")
+			joinChannel(network, channel)
+
+			By("Waiting for followers to see the leader")
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[2].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+
+			By("Joining peers to channel")
+			orderer1 := network.Orderers[0]
+			network.JoinChannel(channel, orderer1, network.PeersWithChannel(channel)...)
+
+			By("Sending TX with batch size >1MB (the default batch max bytes is >10MB)")
+			// Old batch size max bytes is 10MB
+			newAbsoluteMaxBytes := 1_000_000
+			env := ordererclient.CreateBroadcastEnvelope(network, orderer1, channel, make([]byte, newAbsoluteMaxBytes+1))
+			resp, err := ordererclient.Broadcast(network, orderer1, env)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+
+			By("Changing the batch max bytes to 1MB")
+			updateBatchSize(network, peer, orderer1, channel,
+				func(batchSize *protosOrderer.BatchSize) {
+					batchSize.AbsoluteMaxBytes = uint32(newAbsoluteMaxBytes)
+				})
+
+			By("Sending TX with batch size >1MB")
+			env = ordererclient.CreateBroadcastEnvelope(network, orderer1, channel, make([]byte, newAbsoluteMaxBytes+1))
+			resp, err = ordererclient.Broadcast(network, orderer1, env)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Status).To(Equal(common.Status_BAD_REQUEST))
+		})
+
 		It("smartbft reconfiguration prevents blacklisting", func() {
 			channel := "testchannel1"
 			networkConfig := nwo.MultiNodeSmartBFT()
@@ -1442,4 +1506,25 @@ func deployChaincode(network *nwo.Network, channel string, testDir string) {
 		InitRequired:    true,
 		Label:           "my_prebuilt_chaincode",
 	})
+}
+
+// updateBatchSize executes a config update that updates the orderer batch size
+// according to the given batchSizeMutator.
+func updateBatchSize(
+	network *nwo.Network,
+	peer *nwo.Peer,
+	orderer *nwo.Orderer,
+	channel string,
+	batchSizeMutator func(batchSize *protosOrderer.BatchSize)) {
+	config := nwo.GetConfig(network, peer, orderer, channel)
+	updatedConfig := proto.Clone(config).(*common.Config)
+	batchSizeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["BatchSize"]
+	batchSizeValue := &protosOrderer.BatchSize{}
+	Expect(proto.Unmarshal(batchSizeConfigValue.Value, batchSizeValue)).To(Succeed())
+	batchSizeMutator(batchSizeValue)
+	updatedConfig.ChannelGroup.Groups["Orderer"].Values["BatchSize"] = &common.ConfigValue{
+		ModPolicy: "Admins",
+		Value:     protoutil.MarshalOrPanic(batchSizeValue),
+	}
+	nwo.UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
 }
