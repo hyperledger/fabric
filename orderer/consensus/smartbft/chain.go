@@ -342,7 +342,9 @@ func (c *BFTChain) Order(env *cb.Envelope, configSeq uint64) error {
 // discarding the message if the reconfiguration is no longer valid.
 // The consenter may return an error, indicating the message was not accepted
 func (c *BFTChain) Configure(config *cb.Envelope, configSeq uint64) error {
-	// TODO: check configuration update validity
+	if err := c.verifier.ConfigValidator.ValidateConfig(config); err != nil {
+		return err
+	}
 	seq := c.support.Sequence()
 	if configSeq < seq {
 		c.Logger.Warnf("Normal message was validated against %d, although current config seq has advanced (%d)", configSeq, seq)
