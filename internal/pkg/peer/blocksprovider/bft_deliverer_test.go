@@ -195,4 +195,6 @@ func TestBFTDeliverer(t *testing.T) {
 
 		setup.afterEach()
 	})
+
+	// TODO more tests
 }

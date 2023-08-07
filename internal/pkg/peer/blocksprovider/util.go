@@ -14,13 +14,6 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 )
 
-const (
-	bftMinBackoffDelay           = 10 * time.Millisecond
-	bftMaxBackoffDelay           = 10 * time.Second
-	bftBlockRcvTotalBackoffDelay = 20 * time.Second
-	bftBlockCensorshipTimeout    = 20 * time.Second
-)
-
 type errRefreshEndpoint struct {
 	message string
 }
@@ -45,12 +38,20 @@ func (e *errFatal) Error() string {
 	return e.message
 }
 
+type errCensorship struct {
+	message string
+}
+
+func (e *errCensorship) Error() string {
+	return e.message
+}
+
 func backOffDuration(base float64, exponent uint, minDur, maxDur time.Duration) time.Duration {
 	if base < 1.0 {
 		base = 1.0
 	}
 	if minDur <= 0 {
-		minDur = bftMinBackoffDelay
+		minDur = BftMinRetryInterval
 	}
 	if maxDur < minDur {
 		maxDur = minDur
@@ -61,11 +62,24 @@ func backOffDuration(base float64, exponent uint, minDur, maxDur time.Duration) 
 	return time.Duration(fDurNano)
 }
 
-func backOffSleep(backOffDur time.Duration, stopChan <-chan struct{}) {
-	select {
-	case <-time.After(backOffDur):
-	case <-stopChan:
+// How many retries n does it take for minDur to reach maxDur, if minDur is scaled exponentially with base^i
+//
+// minDur * base^n > maxDur
+// base^n > maxDur / minDur
+// n * log(base) > log(maxDur / minDur)
+// n > log(maxDur / minDur) / log(base)
+func numRetries2Max(base float64, minDur, maxDur time.Duration) int {
+	if base <= 1.0 {
+		base = 1.001
 	}
+	if minDur <= 0 {
+		minDur = BftMinRetryInterval
+	}
+	if maxDur < minDur {
+		maxDur = minDur
+	}
+
+	return int(math.Ceil(math.Log(float64(maxDur)/float64(minDur)) / math.Log(base)))
 }
 
 // shuffle the endpoint slice
@@ -77,4 +91,9 @@ func shuffle(a []*orderers.Endpoint) []*orderers.Endpoint {
 		returnedSlice[i] = a[idx]
 	}
 	return returnedSlice
+}
+
+type timeNumber struct {
+	t time.Time
+	n uint64
 }
