@@ -15,8 +15,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func SetSleeper(d *Deliverer, sleeper customSleeper) {
-	d.sleeper.sleep = sleeper.Sleep
+type sleeperSetter interface {
+	setSleeperFunc(func(duration time.Duration))
+}
+
+func SetSleeper(d sleeperSetter, sleeper customSleeper) {
+	d.setSleeperFunc(sleeper.Sleep)
 }
 
 type testSleeper struct {

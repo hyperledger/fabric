@@ -8,7 +8,9 @@ package orderers
 
 import (
 	"bytes"
+	"crypto/md5"
 	"crypto/sha256"
+	"fmt"
 	"math/rand"
 	"sync"
 
@@ -29,6 +31,25 @@ type Endpoint struct {
 	Address   string
 	RootCerts [][]byte
 	Refreshed chan struct{}
+}
+
+func (e *Endpoint) String() string {
+	if e == nil {
+		return "<nil>"
+	}
+
+	certHashStr := "<nil>"
+
+	if e.RootCerts != nil {
+		hasher := md5.New()
+		for _, cert := range e.RootCerts {
+			hasher.Write(cert)
+		}
+		hash := hasher.Sum(nil)
+		certHashStr = fmt.Sprintf("%X", hash)
+	}
+
+	return fmt.Sprintf("Address: %s, CertHash: %s", e.Address, certHashStr)
 }
 
 type OrdererOrg struct {

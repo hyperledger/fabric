@@ -26,7 +26,12 @@ type abDeliverClient interface {
 	orderer.AtomicBroadcast_DeliverClient
 }
 
-func TestBlocksprovider(t *testing.T) {
+func TestBlocksProvider(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Blocksprovider Suite")
+
+	suiteConf, reporterConf := GinkgoConfiguration()
+	suiteConf.EmitSpecProgress = true
+	reporterConf.FullTrace = true
+
+	RunSpecs(t, "Blocksprovider Suite", suiteConf, reporterConf)
 }
