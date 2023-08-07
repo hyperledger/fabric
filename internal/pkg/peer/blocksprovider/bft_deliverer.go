@@ -101,8 +101,8 @@ FetchAndMonitorLoop:
 				rounds = uint(count / len(d.fetchSources))
 			}
 
-			dur := backOffDuration(2.0, rounds, bftMinBackoffDelay, bftMaxBackoffDelay)
-			backOffSleep(dur, d.DoneC)
+			dur := backOffDuration(2.0, rounds, BftMinRetryInterval, BftMaxRetryInterval)
+			d.sleeper.Sleep(dur, d.DoneC)
 		}
 
 		// assign other endpoints to the monitor
