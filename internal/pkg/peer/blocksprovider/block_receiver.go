@@ -112,12 +112,12 @@ RecvLoop: // Loop until the endpoint is refreshed, or there is an error on the c
 			onSuccess(blockNum)
 		case <-br.stopC:
 			br.logger.Infof("BlockReceiver got a signal to stop")
-			err = &errStopping{message: "got a signal to stop"}
+			err = &ErrStopping{Message: "got a signal to stop"}
 			break RecvLoop
 		}
 	}
 
-	// cancel the sending side and wait for the start goroutine to exit
+	// cancel the sending side and wait for the `Start` goroutine to exit
 	br.cancelSendFunc()
 	<-br.recvC
 

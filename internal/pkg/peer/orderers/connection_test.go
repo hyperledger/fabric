@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"os"
 	"sort"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -134,6 +135,39 @@ var _ = Describe("Connection", func() {
 		Expect(e.String()).To(Equal("Address: localhost, CertHash: <nil>"))
 		e = nil
 		Expect(e.String()).To(Equal("<nil>"))
+	})
+
+	It("returns shuffled endpoints", func() { // there is a chance of failure here, but it is very small.
+		combinationSet := make(map[string]bool)
+		for i := 0; i < 10000; i++ {
+			shuffledEndpoints := cs.ShuffledEndpoints()
+			Expect(stripEndpoints(shuffledEndpoints)).To(ConsistOf(
+				stripEndpoints(endpoints),
+			))
+			key := strings.Builder{}
+			for _, ep := range shuffledEndpoints {
+				key.WriteString(ep.Address)
+				key.WriteString(" ")
+			}
+			combinationSet[key.String()] = true
+		}
+
+		Expect(len(combinationSet)).To(Equal(4 * 3 * 2 * 1))
+	})
+
+	It("returns random endpoint", func() { // there is a chance of failure here, but it is very small.
+		combinationMap := make(map[string]*orderers.Endpoint)
+		for i := 0; i < 10000; i++ {
+			r, _ := cs.RandomEndpoint()
+			combinationMap[r.Address] = r
+		}
+		var all []*orderers.Endpoint
+		for _, ep := range combinationMap {
+			all = append(all, ep)
+		}
+		Expect(stripEndpoints(all)).To(ConsistOf(
+			stripEndpoints(endpoints),
+		))
 	})
 
 	When("an update does not modify the endpoint set", func() {

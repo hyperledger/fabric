@@ -27,6 +27,10 @@ func TestBackoffDuration(t *testing.T) {
 	dur = backOffDuration(2.0, 20, BftMinRetryInterval, BftMaxRetryInterval)
 	assert.Equal(t, BftMaxRetryInterval, dur)
 
+	// very large exponent -> dur=max
+	dur = backOffDuration(2.0, 1000000, BftMinRetryInterval, BftMaxRetryInterval)
+	assert.Equal(t, BftMaxRetryInterval, dur)
+
 	// max < min -> max=min
 	dur = backOffDuration(2.0, 0, BftMinRetryInterval, BftMinRetryInterval/2)
 	assert.Equal(t, BftMinRetryInterval, dur)
