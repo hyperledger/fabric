@@ -43,7 +43,7 @@ type DeliverClientRequester interface {
 // We track the progress of header receivers against the block reception progress.
 // If there is a header that is ahead of the last block, and a timeout had passed since that header was received, we
 // declare that censorship was detected.
-// When censorship is detected, errCensorship is sent to the errorCh which can be read by ErrorsChannel() method.
+// When censorship is detected, ErrCensorship is sent to the errorCh which can be read by ErrorsChannel() method.
 type BFTCensorshipMonitor struct {
 	chainID          string
 	headerVerifier   BlockVerifier
@@ -163,19 +163,19 @@ func (m *BFTCensorshipMonitor) Monitor() {
 	for {
 		if err := m.launchHeaderReceivers(); err != nil {
 			m.logger.Warningf("Failure while launching header receivers: %s", err)
-			m.errorCh <- &errFatal{message: err.Error()}
+			m.errorCh <- &ErrFatal{Message: err.Error()}
 			m.Stop()
 			return
 		}
 
 		select {
 		case <-m.stopCh:
-			m.errorCh <- &errStopping{message: "received a stop signal"}
+			m.errorCh <- &ErrStopping{Message: "received a stop signal"}
 			return
 		case <-time.After(m.timeoutConfig.BlockCensorshipTimeout / 100):
 			if m.detectBlockCensorship() {
 				m.logger.Warningf("Block censorship detected, block source endpoint: %s", m.fetchSources[m.blockSourceIndex])
-				m.errorCh <- &errCensorship{message: fmt.Sprintf("block censorship detected, endpoint: %s", m.fetchSources[m.blockSourceIndex])}
+				m.errorCh <- &ErrCensorship{Message: fmt.Sprintf("block censorship detected, endpoint: %s", m.fetchSources[m.blockSourceIndex])}
 				m.Stop()
 				return
 			}

@@ -18,23 +18,52 @@ import (
 	"github.com/pkg/errors"
 )
 
+//go:generate counterfeiter -o fake/censorship_detector.go --fake-name CensorshipDetector . CensorshipDetector
+type CensorshipDetector interface {
+	Monitor()
+	Stop()
+	ErrorsChannel() <-chan error
+}
+
+//go:generate counterfeiter -o fake/censorship_detector_factory.go --fake-name CensorshipDetectorFactory . CensorshipDetectorFactory
+type CensorshipDetectorFactory interface {
+	Create(
+		chainID string,
+		verifier BlockVerifier,
+		requester DeliverClientRequester,
+		progressReporter BlockProgressReporter,
+		fetchSources []*orderers.Endpoint,
+		blockSourceIndex int,
+		timeoutConf TimeoutConfig,
+	) CensorshipDetector
+}
+
+//go:generate counterfeiter -o fake/duration_exceeded_handler.go --fake-name DurationExceededHandler . DurationExceededHandler
+type DurationExceededHandler interface {
+	DurationExceededHandler() (stopRetries bool)
+}
+
 // BFTDeliverer TODO this is a skeleton
 type BFTDeliverer struct { // TODO
-	ChannelID       string
-	BlockHandler    BlockHandler
-	Ledger          LedgerInfo
-	BlockVerifier   BlockVerifier
-	Dialer          Dialer
-	Orderers        OrdererConnectionSource
-	DoneC           chan struct{}
-	Signer          identity.SignerSerializer
-	DeliverStreamer DeliverStreamer
-	Logger          *flogging.FabricLogger
+	ChannelID                 string
+	BlockHandler              BlockHandler
+	Ledger                    LedgerInfo
+	BlockVerifier             BlockVerifier
+	Dialer                    Dialer
+	Orderers                  OrdererConnectionSource
+	DoneC                     chan struct{}
+	Signer                    identity.SignerSerializer
+	DeliverStreamer           DeliverStreamer
+	CensorshipDetectorFactory CensorshipDetectorFactory
+	Logger                    *flogging.FabricLogger
 
-	// The maximal value of the actual retry interval, which cannot increase beyond this value
-	MaxRetryInterval time.Duration
 	// The initial value of the actual retry interval, which is increased on every failed retry
 	InitialRetryInterval time.Duration
+	// The maximal value of the actual retry interval, which cannot increase beyond this value
+	MaxRetryInterval time.Duration
+	// If a certain header from a header receiver is in front of the block receiver for more that this time, a
+	// censorship event is declared and the block source is changed.
+	BlockCensorshipTimeout time.Duration
 	// After this duration, the MaxRetryDurationExceededHandler is called to decide whether to keep trying
 	MaxRetryDuration time.Duration
 	// This function is called after MaxRetryDuration of failed retries to decide whether to keep trying
@@ -47,22 +76,20 @@ type BFTDeliverer struct { // TODO
 
 	requester *DeliveryRequester
 
-	mutex                sync.Mutex // mutex protects the following fields
-	stopFlag             bool       // mark the Deliverer as stopped
-	nextBlockNumber      uint64     // next block number
-	lastBlockTime        time.Time  // last block time
-	lastBlockSourceIndex int        // the source index of the last block we got, or -1
-	fetchFailureCounter  int        // counts the number of consecutive failures to fetch a block
+	mutex                          sync.Mutex    // mutex protects the following fields
+	stopFlag                       bool          // mark the Deliverer as stopped
+	nextBlockNumber                uint64        // next block number
+	lastBlockTime                  time.Time     // last block time
+	lastBlockSourceIndex           int           // the source index of the last block we got, or -1
+	fetchFailureCounter            int           // counts the number of consecutive failures to fetch a block
+	fetchFailureTotalSleepDuration time.Duration // the cumulative sleep time from when fetchFailureCounter goes 0->1
 
 	fetchSources     []*orderers.Endpoint
 	fetchSourceIndex int
 	fetchErrorsC     chan error
 
-	blockReceiver *BlockReceiver
-
-	// TODO here we'll have a CensorshipMonitor component that detects block censorship.
-	// When it suspects censorship, it will emit an error to this channel.
-	monitorErrorsC chan error
+	blockReceiver     *BlockReceiver
+	censorshipMonitor CensorshipDetector
 }
 
 func (d *BFTDeliverer) Initialize() {
@@ -75,6 +102,17 @@ func (d *BFTDeliverer) Initialize() {
 	)
 }
 
+func (d *BFTDeliverer) BlockProgress() (uint64, time.Time) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
+	if d.nextBlockNumber == 0 {
+		return 0, time.Time{}
+	}
+
+	return d.nextBlockNumber - 1, d.lastBlockTime
+}
+
 func (d *BFTDeliverer) DeliverBlocks() {
 	var err error
 
@@ -85,9 +123,19 @@ func (d *BFTDeliverer) DeliverBlocks() {
 		d.Logger.Error("Did not return ledger height, something is critically wrong", err)
 		return
 	}
-	d.Logger.Infof("Starting DeliverBlocks on channel `%s`, block height=%d", d.ChannelID, d.nextBlockNumber)
 
-	// select an initial source randomly
+	d.Logger.Infof("Starting to DeliverBlocks on channel `%s`, block height=%d", d.ChannelID, d.nextBlockNumber)
+	defer func() {
+		d.Logger.Infof("Stopping to DeliverBlocks on channel `%s`, block height=%d", d.ChannelID, d.nextBlockNumber)
+	}()
+
+	timeoutConfig := TimeoutConfig{
+		MinRetryInterval:       d.InitialRetryInterval,
+		MaxRetryInterval:       d.MaxRetryInterval,
+		BlockCensorshipTimeout: d.BlockCensorshipTimeout,
+	}
+
+	// Refresh and randomize the sources, selects a random initial source, and incurs a random iteration order.
 	d.refreshSources()
 
 FetchAndMonitorLoop:
@@ -95,66 +143,103 @@ FetchAndMonitorLoop:
 		// The backoff duration is doubled with every failed round.
 		// A failed round is when we had moved through all the endpoints without success.
 		// If we get a block successfully from a source, or endpoints are refreshed, the failure count is reset.
-		if count := d.getFetchFailureCounter(); count > 0 {
-			rounds := uint(count)
+		failureCounter, failureTotalSleepDuration := d.getFetchFailureStats()
+		if failureCounter > 0 {
+			rounds := uint(failureCounter)
 			if l := len(d.fetchSources); l > 0 {
-				rounds = uint(count / len(d.fetchSources))
+				rounds = uint(failureCounter / l)
 			}
 
-			dur := backOffDuration(2.0, rounds, BftMinRetryInterval, BftMaxRetryInterval)
+			if failureTotalSleepDuration > d.MaxRetryDuration {
+				if d.MaxRetryDurationExceededHandler() {
+					d.Logger.Warningf("Attempted to retry block delivery for more than MaxRetryDuration (%s), giving up", d.MaxRetryDuration)
+					break FetchAndMonitorLoop
+				}
+				d.Logger.Debugf("Attempted to retry block delivery for more than MaxRetryDuration (%s), but handler decided to continue retrying", d.MaxRetryDuration)
+			}
+
+			dur := backOffDuration(2.0, rounds, d.InitialRetryInterval, d.MaxRetryInterval)
+			d.Logger.Warningf("Failed to fetch blocks, count=%d, round=%d, going to retry in %s", failureCounter, rounds, dur)
 			d.sleeper.Sleep(dur, d.DoneC)
+			d.addFetchFailureSleepDuration(dur)
 		}
 
-		// assign other endpoints to the monitor
-
+		// No endpoints is a non-recoverable error, as new endpoints are a result of fetching new blocks from an orderer.
+		if len(d.fetchSources) == 0 {
+			d.Logger.Error("Failure in DeliverBlocks, no orderer endpoints, something is critically wrong")
+			break FetchAndMonitorLoop
+		}
 		// start a block fetcher and a monitor
 		// a buffered channel so that the fetcher goroutine can send an error and exit w/o waiting for it to be consumed.
 		d.fetchErrorsC = make(chan error, 1)
 		source := d.fetchSources[d.fetchSourceIndex]
 		go d.FetchBlocks(source)
 
-		// TODO start a censorship monitor
+		// create and start a censorship monitor
+		d.censorshipMonitor = d.CensorshipDetectorFactory.Create(
+			d.ChannelID, d.BlockVerifier, d.requester, d, d.fetchSources, d.fetchSourceIndex, timeoutConfig)
+		go d.censorshipMonitor.Monitor()
 
 		// wait for fetch  errors, censorship suspicions, or a stop signal.
 		select {
 		case <-d.DoneC:
 			break FetchAndMonitorLoop
 		case errFetch := <-d.fetchErrorsC:
-			if errFetch != nil {
-				switch errFetch.(type) {
-				case *errStopping:
-					// nothing to do
-				case *errRefreshEndpoint:
-					// get new endpoints and reassign fetcher and monitor
-					d.refreshSources()
-					d.resetFetchFailureCounter()
-				default:
-					d.fetchSourceIndex = (d.fetchSourceIndex + 1) % len(d.fetchSources)
-					d.incFetchFailureCounter()
-				}
-				// TODO can it be nil?
+			d.Logger.Debugf("Error received from fetchErrorsC channel: %s", errFetch)
+
+			switch errFetch.(type) {
+			case *ErrStopping:
+				// nothing to do
+				break FetchAndMonitorLoop
+			case *errRefreshEndpoint:
+				// get new endpoints and reassign fetcher and monitor
+				d.refreshSources()
+				d.resetFetchFailureCounter()
+			case *ErrFatal:
+				d.Logger.Errorf("Failure in FetchBlocks, something is critically wrong: %s", errFetch)
+				break FetchAndMonitorLoop
+			default:
+				d.fetchSourceIndex = (d.fetchSourceIndex + 1) % len(d.fetchSources)
+				d.incFetchFailureCounter()
 			}
-		case errMonitor := <-d.monitorErrorsC:
-			// TODO until we implement the censorship monitor this nil channel is blocked
-			if errMonitor != nil {
-				d.Logger.Warningf("Censorship suspicion: %s", err)
-				// TODO close the block receiver, increment the index
-				// TODO
+		case errMonitor := <-d.censorshipMonitor.ErrorsChannel():
+			d.Logger.Debugf("Error received from censorshipMonitor.ErrorsChannel: %s", errMonitor)
+
+			switch errMonitor.(type) {
+			case *ErrStopping:
+				// nothing to do
+				break FetchAndMonitorLoop
+			case *ErrCensorship:
+				d.Logger.Warningf("Censorship suspicion: %s", errMonitor)
+				d.mutex.Lock()
+				d.blockReceiver.Stop()
+				d.mutex.Unlock()
+				d.fetchSourceIndex = (d.fetchSourceIndex + 1) % len(d.fetchSources)
+				d.incFetchFailureCounter()
+			case *ErrFatal:
+				d.Logger.Errorf("Failure in CensorshipMonitor, something is critically wrong: %s", errMonitor)
+				break FetchAndMonitorLoop
+			default:
+				d.Logger.Errorf("Unexpected error from CensorshipMonitor, something is critically wrong: %s", errMonitor)
+				break FetchAndMonitorLoop
 			}
-			// TODO can it be nil?
 		}
+
+		d.censorshipMonitor.Stop()
 	}
 
 	// clean up everything because we are closing
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	d.blockReceiver.Stop()
-	// TODO stop the monitor
+	if d.censorshipMonitor != nil {
+		d.censorshipMonitor.Stop()
+	}
 }
 
 func (d *BFTDeliverer) refreshSources() {
 	// select an initial source randomly
-	d.fetchSources = shuffle(d.Orderers.Endpoints())
+	d.fetchSources = d.Orderers.ShuffledEndpoints()
 	d.Logger.Infof("Refreshed endpoints: %s", d.fetchSources)
 	d.fetchSourceIndex = 0
 }
@@ -179,7 +264,7 @@ func (d *BFTDeliverer) FetchBlocks(source *orderers.Endpoint) {
 	for {
 		select {
 		case <-d.DoneC:
-			d.fetchErrorsC <- &errStopping{message: "stopping"}
+			d.fetchErrorsC <- &ErrStopping{Message: "stopping"}
 			return
 		default:
 		}
@@ -187,7 +272,7 @@ func (d *BFTDeliverer) FetchBlocks(source *orderers.Endpoint) {
 		seekInfoEnv, err := d.requester.SeekInfoBlocksFrom(d.getNextBlockNumber())
 		if err != nil {
 			d.Logger.Errorf("Could not create a signed Deliver SeekInfo message, something is critically wrong: %s", err)
-			d.fetchErrorsC <- &errFatal{message: fmt.Sprintf("could not create a signed Deliver SeekInfo message: %s", err)}
+			d.fetchErrorsC <- &ErrFatal{Message: fmt.Sprintf("could not create a signed Deliver SeekInfo message: %s", err)}
 			return
 		}
 
@@ -207,29 +292,46 @@ func (d *BFTDeliverer) FetchBlocks(source *orderers.Endpoint) {
 			recvC:          make(chan *orderer.DeliverResponse),
 			stopC:          make(chan struct{}),
 			endpoint:       source,
-			logger:         d.Logger.With("orderer-address", source.Address),
+			logger:         flogging.MustGetLogger("BlockReceiver").With("orderer-address", source.Address),
 		}
 
 		d.mutex.Lock()
 		d.blockReceiver = blockRcv
 		d.mutex.Unlock()
 
+		// Starts a goroutine that receives blocks from the stream client and places them in the `recvC` channel
 		blockRcv.Start()
 
-		if err := blockRcv.ProcessIncoming(d.onBlockProcessingSuccess); err != nil {
-			d.Logger.Warningf("failure while processing incoming blocks: %s", err)
-			d.fetchErrorsC <- errors.Wrapf(err, "failure while processing incoming blocks, orderer-address: %s", source.Address)
+		// Consume blocks fom the `recvC` channel
+		if errProc := blockRcv.ProcessIncoming(d.onBlockProcessingSuccess); errProc != nil {
+			switch errProc.(type) {
+			case *ErrStopping:
+				// nothing to do
+				d.Logger.Debugf("BlockReceiver stopped while processing incoming blocks: %s", errProc)
+			case *errRefreshEndpoint:
+				d.Logger.Infof("Endpoint refreshed while processing incoming blocks: %s", errProc)
+				d.fetchErrorsC <- errProc
+			default:
+				d.Logger.Warningf("Failure while processing incoming blocks: %s", errProc)
+				d.fetchErrorsC <- errProc
+			}
+
 			return
 		}
 	}
 }
 
 func (d *BFTDeliverer) onBlockProcessingSuccess(blockNum uint64) {
+	d.Logger.Debugf("blockNum: %d", blockNum)
+
 	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
 	d.fetchFailureCounter = 0
+	d.fetchFailureTotalSleepDuration = 0
+
 	d.nextBlockNumber = blockNum + 1
 	d.lastBlockTime = time.Now()
-	d.mutex.Unlock()
 }
 
 func (d *BFTDeliverer) resetFetchFailureCounter() {
@@ -237,13 +339,14 @@ func (d *BFTDeliverer) resetFetchFailureCounter() {
 	defer d.mutex.Unlock()
 
 	d.fetchFailureCounter = 0
+	d.fetchFailureTotalSleepDuration = 0
 }
 
-func (d *BFTDeliverer) getFetchFailureCounter() int {
+func (d *BFTDeliverer) getFetchFailureStats() (int, time.Duration) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 
-	return d.fetchFailureCounter
+	return d.fetchFailureCounter, d.fetchFailureTotalSleepDuration
 }
 
 func (d *BFTDeliverer) incFetchFailureCounter() {
@@ -251,6 +354,13 @@ func (d *BFTDeliverer) incFetchFailureCounter() {
 	defer d.mutex.Unlock()
 
 	d.fetchFailureCounter++
+}
+
+func (d *BFTDeliverer) addFetchFailureSleepDuration(dur time.Duration) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
+	d.fetchFailureTotalSleepDuration += dur
 }
 
 func (d *BFTDeliverer) getNextBlockNumber() uint64 {

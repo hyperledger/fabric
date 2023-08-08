@@ -56,7 +56,7 @@ type BlockVerifier interface {
 //go:generate counterfeiter -o fake/orderer_connection_source.go --fake-name OrdererConnectionSource . OrdererConnectionSource
 type OrdererConnectionSource interface {
 	RandomEndpoint() (*orderers.Endpoint, error)
-	Endpoints() []*orderers.Endpoint
+	ShuffledEndpoints() []*orderers.Endpoint
 }
 
 //go:generate counterfeiter -o fake/dialer.go --fake-name Dialer . Dialer
@@ -208,7 +208,7 @@ func (d *Deliverer) DeliverBlocks() {
 			switch err.(type) {
 			case *errRefreshEndpoint:
 				// Don't count it as an error, we'll reconnect immediately.
-			case *errStopping:
+			case *ErrStopping:
 				// Don't count it as an error, it is a signal to stop.
 			default:
 				failureCounter++
