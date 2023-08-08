@@ -8,10 +8,7 @@ package blocksprovider
 
 import (
 	"math"
-	"math/rand"
 	"time"
-
-	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 )
 
 type errRefreshEndpoint struct {
@@ -22,28 +19,28 @@ func (e *errRefreshEndpoint) Error() string {
 	return e.message
 }
 
-type errStopping struct {
-	message string
+type ErrStopping struct {
+	Message string
 }
 
-func (e *errStopping) Error() string {
-	return e.message
+func (e *ErrStopping) Error() string {
+	return e.Message
 }
 
-type errFatal struct {
-	message string
+type ErrFatal struct {
+	Message string
 }
 
-func (e *errFatal) Error() string {
-	return e.message
+func (e *ErrFatal) Error() string {
+	return e.Message
 }
 
-type errCensorship struct {
-	message string
+type ErrCensorship struct {
+	Message string
 }
 
-func (e *errCensorship) Error() string {
-	return e.message
+func (e *ErrCensorship) Error() string {
+	return e.Message
 }
 
 func backOffDuration(base float64, exponent uint, minDur, maxDur time.Duration) time.Duration {
@@ -80,17 +77,6 @@ func numRetries2Max(base float64, minDur, maxDur time.Duration) int {
 	}
 
 	return int(math.Ceil(math.Log(float64(maxDur)/float64(minDur)) / math.Log(base)))
-}
-
-// shuffle the endpoint slice
-func shuffle(a []*orderers.Endpoint) []*orderers.Endpoint {
-	n := len(a)
-	returnedSlice := make([]*orderers.Endpoint, n)
-	indices := rand.Perm(n)
-	for i, idx := range indices {
-		returnedSlice[i] = a[idx]
-	}
-	return returnedSlice
 }
 
 type timeNumber struct {

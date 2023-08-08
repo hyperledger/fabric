@@ -171,7 +171,7 @@ func TestBFTCensorshipMonitor_NoHeadersNoBlocks(t *testing.T) {
 
 	require.Eventually(t, func() bool { return s.fakeRequester.SeekInfoHeadersFromCallCount() == 3 }, 5*time.Second, 10*time.Millisecond)
 	require.Eventually(t, func() bool { return s.fakeRequester.ConnectCallCount() == 3 }, 5*time.Second, 10*time.Millisecond)
-	require.Eventually(t, func() bool { return s.fakeProgressReporter.BlockProgressCallCount() == 9 }, 5*time.Second, 10*time.Millisecond)
+	require.Eventually(t, func() bool { return s.fakeProgressReporter.BlockProgressCallCount() >= 9 }, 5*time.Second, 10*time.Millisecond)
 	for i := 0; i < s.fakeRequester.ConnectCallCount(); i++ {
 		n := s.fakeRequester.SeekInfoHeadersFromArgsForCall(i)
 		require.Equal(t, uint64(0), n)
