@@ -70,7 +70,7 @@ func (s *bftDelivererTestSetup) beforeEach() {
 	s.fakeDialer.DialStub = func(string, [][]byte) (*grpc.ClientConn, error) {
 		s.mutex.Lock()
 		defer s.mutex.Unlock()
-		cc, err := grpc.Dial("", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		cc, err := grpc.Dial("localhost", grpc.WithTransportCredentials(insecure.NewCredentials()))
 		s.ccs = append(s.ccs, cc)
 		s.withT.Expect(err).NotTo(HaveOccurred())
 		s.withT.Expect(cc.GetState()).NotTo(Equal(connectivity.Shutdown))
