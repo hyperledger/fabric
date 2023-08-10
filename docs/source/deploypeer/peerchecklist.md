@@ -275,7 +275,7 @@ BCCSP:
 
 - **`BCCSP.Default:`** If you plan to use a Hardware Security Module (HSM), then this must be set to `PKCS11`.
 
-- **`BCCSP.PKCS11.*:`** Provide this set of parameters according to your HSM configuration. Refer to this [example]((../hsm.html) of an HSM configuration for more information.
+- **`BCCSP.PKCS11.*:`** Provide this set of parameters according to your HSM configuration. Refer to this [example](../hsm.html) of an HSM configuration for more information.
 
 ## chaincode.externalBuilders.*
 
