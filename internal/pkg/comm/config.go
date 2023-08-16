@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 )
 
@@ -131,7 +132,7 @@ func (cc ClientConfig) DialOptions() ([]grpc.DialOption, error) {
 		transportCreds := &DynamicClientCredentials{TLSConfig: tlsConfig}
 		dialOpts = append(dialOpts, grpc.WithTransportCredentials(transportCreds))
 	} else {
-		dialOpts = append(dialOpts, grpc.WithInsecure())
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
 	return dialOpts, nil

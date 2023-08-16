@@ -143,7 +143,7 @@ func TestAddRootCA(t *testing.T) {
 
 	// https://go-review.googlesource.com/c/go/+/229917
 	config.AddClientRootCA(cert)
-	require.Equal(t, certPool.Subjects(), expectedCertPool.Subjects(), "subjects in the pool should be equal")
+	require.True(t, certPool.Equal(expectedCertPool), "subjects in the pool should be equal")
 }
 
 func TestSetClientCAs(t *testing.T) {

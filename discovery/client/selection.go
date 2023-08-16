@@ -120,8 +120,8 @@ func (endorsers Endorsers) Filter(f ExclusionFilter) Endorsers {
 // Shuffle sorts the endorsers in random order
 func (endorsers Endorsers) Shuffle() Endorsers {
 	res := make(Endorsers, len(endorsers))
-	rand.Seed(time.Now().UnixNano())
-	for i, index := range rand.Perm(len(endorsers)) {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i, index := range r.Perm(len(endorsers)) {
 		res[i] = endorsers[index]
 	}
 	return res

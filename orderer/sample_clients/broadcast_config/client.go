@@ -16,6 +16,7 @@ import (
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type broadcastClient struct {
@@ -91,7 +92,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	conn, err := grpc.Dial(srv, grpc.WithInsecure())
+	conn, err := grpc.Dial(srv, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	defer func() {
 		_ = conn.Close()
 	}()

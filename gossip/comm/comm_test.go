@@ -41,11 +41,14 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 )
+
+var r *rand.Rand
 
 func init() {
 	util.SetupTestLogging()
-	rand.Seed(time.Now().UnixNano())
+	r = rand.New(rand.NewSource(time.Now().UnixNano()))
 	factory.InitFactories(nil)
 	naiveSec.On("OrgByPeerIdentity", mock.Anything).Return(api.OrgIdentityType{})
 }
@@ -197,7 +200,7 @@ func handshaker(port int, endpoint string, comm Comm, t *testing.T, connMutator 
 	ta := credentials.NewTLS(tlsCfg)
 	secureOpts := grpc.WithTransportCredentials(ta)
 	if connType == none {
-		secureOpts = grpc.WithInsecure()
+		secureOpts = grpc.WithTransportCredentials(insecure.NewCredentials())
 	}
 	acceptChan := comm.Accept(acceptAll)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -242,7 +245,7 @@ func handshaker(port int, endpoint string, comm Comm, t *testing.T, connMutator 
 	require.Equal(t, []byte(target), msg.GetConn().PkiId)
 	require.Equal(t, extractCertificateHashFromContext(stream.Context()), msg.GetConn().TlsCertHash)
 	msg2Send := createGossipMsg()
-	nonce := uint64(rand.Int())
+	nonce := uint64(r.Int())
 	msg2Send.Nonce = nonce
 	go stream.Send(msg2Send.Envelope)
 	return acceptChan
@@ -326,7 +329,7 @@ func TestHandshake(t *testing.T) {
 	id := []byte(endpoint)
 	idMapper := identity.NewIdentityMapper(naiveSec, id, noopPurgeIdentity, naiveSec)
 	inst, err := NewCommInstance(s, nil, idMapper, api.PeerIdentityType(endpoint), func() []grpc.DialOption {
-		return []grpc.DialOption{grpc.WithInsecure()}
+		return []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	}, naiveSec, disabledMetrics, testCommConfig)
 	go s.Serve(ll)
 	require.NoError(t, err)
@@ -1041,7 +1044,7 @@ func establishSession(t *testing.T, port int) (proto.Gossip_GossipStreamClient, 
 func createGossipMsg() *protoext.SignedGossipMessage {
 	msg, _ := protoext.NoopSign(&proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
-		Nonce: uint64(rand.Int()),
+		Nonce: uint64(r.Int()),
 		Content: &proto.GossipMessage_DataMsg{
 			DataMsg: &proto.DataMessage{},
 		},

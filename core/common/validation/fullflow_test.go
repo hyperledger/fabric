@@ -206,8 +206,8 @@ func TestTXWithTwoActionsRejected(t *testing.T) {
 }
 
 func corrupt(bytes []byte) {
-	rand.Seed(time.Now().UnixNano())
-	bytes[rand.Intn(len(bytes))]--
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	bytes[r.Intn(len(bytes))]--
 }
 
 func TestBadTx(t *testing.T) {

@@ -37,6 +37,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/balancer"
 	"google.golang.org/grpc/balancer/roundrobin"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // protects gRPC balancer registration
@@ -115,7 +116,7 @@ func (d *countingDialer) Dial(address cluster.EndpointCriteria) (*grpc.ClientCon
 	gRPCBalancerLock.Lock()
 	balancer := grpc.WithDefaultServiceConfig(fmt.Sprintf(`{"loadBalancingConfig": [{"%s":{}}]}`, d.name))
 	gRPCBalancerLock.Unlock()
-	return grpc.DialContext(ctx, address.Endpoint, grpc.WithBlock(), grpc.WithInsecure(), balancer)
+	return grpc.DialContext(ctx, address.Endpoint, grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()), balancer)
 }
 
 func noopBlockVerifierf(_ []*common.Block, _ string) error {
@@ -1134,7 +1135,7 @@ func TestImpatientStreamFailure(t *testing.T) {
 	gt.Eventually(func() (bool, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*10)
 		defer cancel()
-		conn, _ := grpc.DialContext(ctx, osn.srv.Address(), grpc.WithBlock(), grpc.WithInsecure())
+		conn, _ := grpc.DialContext(ctx, osn.srv.Address(), grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if conn != nil {
 			conn.Close()
 			return false, nil

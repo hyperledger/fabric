@@ -680,9 +680,9 @@ func (p *puller) isEligibleByLatestConfig(channel string, collection string, cha
 }
 
 func randomizeMemberList(members []discovery.NetworkMember) []discovery.NetworkMember {
-	rand.Seed(time.Now().UnixNano())
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	res := make([]discovery.NetworkMember, len(members))
-	for i, j := range rand.Perm(len(members)) {
+	for i, j := range r.Perm(len(members)) {
 		res[i] = members[j]
 	}
 	return res

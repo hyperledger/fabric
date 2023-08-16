@@ -205,10 +205,7 @@ func TestSecureOptionsTLSConfig(t *testing.T) {
 
 			if len(tt.so.ServerRootCAs) != 0 {
 				require.NotNil(t, tc.RootCAs)
-				require.Len(t, tc.RootCAs.Subjects(), len(tt.so.ServerRootCAs))
-				for _, subj := range tt.tc.RootCAs.Subjects() {
-					require.Contains(t, tc.RootCAs.Subjects(), subj, "missing subject %x", subj)
-				}
+				require.True(t, tt.tc.RootCAs.Equal(tc.RootCAs))
 				tt.tc.RootCAs, tc.RootCAs = nil, nil
 			}
 

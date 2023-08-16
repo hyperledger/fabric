@@ -26,6 +26,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 )
 
@@ -276,7 +277,7 @@ var _ = Describe("Server", func() {
 				serveCompleteCh = make(chan error, 1)
 				go func() { serveCompleteCh <- server.Serve(listener) }()
 
-				clientConn, err = grpc.Dial(listener.Addr().String(), grpc.WithInsecure(), grpc.WithBlock())
+				clientConn, err = grpc.Dial(listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 				Expect(err).NotTo(HaveOccurred())
 				echoServiceClient = testpb.NewEchoServiceClient(clientConn)
 
@@ -584,7 +585,7 @@ var _ = Describe("Server", func() {
 				serveCompleteCh = make(chan error, 1)
 				go func() { serveCompleteCh <- server.Serve(listener) }()
 
-				clientConn, err = grpc.Dial(listener.Addr().String(), grpc.WithInsecure(), grpc.WithBlock())
+				clientConn, err = grpc.Dial(listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 				Expect(err).NotTo(HaveOccurred())
 				echoServiceClient = testpb.NewEchoServiceClient(clientConn)
 

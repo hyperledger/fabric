@@ -14,9 +14,10 @@ import (
 	"syscall"
 	"time"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
@@ -193,7 +194,7 @@ func (lo *LSCCOperation) Tx(signer *nwo.SigningIdentity) *common.Envelope {
 	nonce, err := time.Now().MarshalBinary()
 	Expect(err).NotTo(HaveOccurred())
 
-	timestamp, err := ptypes.TimestampProto(time.Now().UTC())
+	timestamp := timestamppb.Now()
 	Expect(err).NotTo(HaveOccurred())
 
 	hasher := sha256.New()

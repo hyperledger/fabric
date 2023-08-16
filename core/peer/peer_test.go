@@ -42,6 +42,7 @@ import (
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func TestMain(m *testing.M) {
@@ -69,7 +70,9 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 		nil,
 	)
 	secAdv := peergossip.NewSecurityAdvisor(deserManager)
-	defaultSecureDialOpts := func() []grpc.DialOption { return []grpc.DialOption{grpc.WithInsecure()} }
+	defaultSecureDialOpts := func() []grpc.DialOption {
+		return []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	}
 	gossipConfig, err := gossip.GlobalConfig("localhost:0", nil)
 	require.NoError(t, err)
 
