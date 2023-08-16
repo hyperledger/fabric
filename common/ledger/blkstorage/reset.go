@@ -8,7 +8,6 @@ package blkstorage
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"strconv"
@@ -103,7 +102,7 @@ func retrieveGenesisBlkOffsetAndMakeACopy(ledgerDir string) (string, int64, erro
 		return "", -1, err
 	}
 	// just for an extra safety make a backup of genesis block
-	if err := ioutil.WriteFile(path.Join(ledgerDir, "__backupGenesisBlockBytes"), genesisBlockBytes, 0o640); err != nil {
+	if err := os.WriteFile(path.Join(ledgerDir, "__backupGenesisBlockBytes"), genesisBlockBytes, 0o640); err != nil {
 		return "", -1, err
 	}
 	logger.Infof("Genesis block backed up. Genesis block info file [%s], offset [%d]", blockfilePath, endOffsetGenesisBlock)
@@ -155,7 +154,7 @@ func recordHeightIfGreaterThanPreviousRecording(ledgerDir string) error {
 	}
 	previuoslyRecordedHt := uint64(0)
 	if exists {
-		htBytes, err := ioutil.ReadFile(preResetHtFile)
+		htBytes, err := os.ReadFile(preResetHtFile)
 		if err != nil {
 			return err
 		}
@@ -167,7 +166,7 @@ func recordHeightIfGreaterThanPreviousRecording(ledgerDir string) error {
 	currentHt := blkfilesInfo.lastPersistedBlock + 1
 	if currentHt > previuoslyRecordedHt {
 		logger.Infof("Recording current height [%d]", currentHt)
-		return ioutil.WriteFile(preResetHtFile,
+		return os.WriteFile(preResetHtFile,
 			[]byte(strconv.FormatUint(currentHt, 10)),
 			0o640,
 		)
@@ -188,7 +187,7 @@ func LoadPreResetHeight(blockStorageDir string, ledgerIDs []string) (map[string]
 	}
 	m := map[string]uint64{}
 	for ledgerID, filePath := range preResetFilesMap {
-		bytes, err := ioutil.ReadFile(filePath)
+		bytes, err := os.ReadFile(filePath)
 		if err != nil {
 			return nil, err
 		}
