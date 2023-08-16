@@ -10,7 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	pcommon "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
@@ -59,7 +59,7 @@ func getJoinCCSpec() (*pb.ChaincodeSpec, error) {
 		return nil, errors.New("Must supply genesis block file")
 	}
 
-	gb, err := ioutil.ReadFile(genesisBlockPath)
+	gb, err := os.ReadFile(genesisBlockPath)
 	if err != nil {
 		return nil, GBFileNotFoundErr(err.Error())
 	}

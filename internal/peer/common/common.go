@@ -10,7 +10,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -307,7 +306,7 @@ func configFromEnv(prefix string) (address string, clientConfig comm.ClientConfi
 		ServerNameOverride: viper.GetString(prefix + ".tls.serverhostoverride"),
 	}
 	if secOpts.UseTLS {
-		caPEM, res := ioutil.ReadFile(config.GetPath(prefix + ".tls.rootcert.file"))
+		caPEM, res := os.ReadFile(config.GetPath(prefix + ".tls.rootcert.file"))
 		if res != nil {
 			err = errors.WithMessagef(res, "unable to load %s.tls.rootcert.file", prefix)
 			return
@@ -334,11 +333,11 @@ func configFromEnv(prefix string) (address string, clientConfig comm.ClientConfi
 
 // getClientAuthInfoFromEnv reads client tls key file and cert file and returns the bytes for the files
 func getClientAuthInfoFromEnv(prefix string) ([]byte, []byte, error) {
-	keyPEM, err := ioutil.ReadFile(config.GetPath(prefix + ".tls.clientKey.file"))
+	keyPEM, err := os.ReadFile(config.GetPath(prefix + ".tls.clientKey.file"))
 	if err != nil {
 		return nil, nil, errors.WithMessagef(err, "unable to load %s.tls.clientKey.file", prefix)
 	}
-	certPEM, err := ioutil.ReadFile(config.GetPath(prefix + ".tls.clientCert.file"))
+	certPEM, err := os.ReadFile(config.GetPath(prefix + ".tls.clientCert.file"))
 	if err != nil {
 		return nil, nil, errors.WithMessagef(err, "unable to load %s.tls.clientCert.file", prefix)
 	}

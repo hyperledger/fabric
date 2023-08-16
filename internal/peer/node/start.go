@@ -10,7 +10,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -391,7 +390,7 @@ func serve(args []string) error {
 	legacyMetadataManager, err := cclifecycle.NewMetadataManager(
 		cclifecycle.EnumerateFunc(
 			func() ([]ccdef.InstalledChaincode, error) {
-				return ccInfoFSImpl.ListInstalledChaincodes(ccInfoFSImpl.GetChaincodeInstallPath(), ioutil.ReadDir, ccprovider.LoadPackage)
+				return ccInfoFSImpl.ListInstalledChaincodes(ccInfoFSImpl.GetChaincodeInstallPath(), os.ReadDir, ccprovider.LoadPackage)
 			},
 		),
 	)

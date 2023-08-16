@@ -8,7 +8,7 @@ package channel
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -72,7 +72,7 @@ func createChannelFromDefaults(cf *ChannelCmdFactory) (*cb.Envelope, error) {
 }
 
 func createChannelFromConfigTx(configTxFileName string) (*cb.Envelope, error) {
-	cftx, err := ioutil.ReadFile(configTxFileName)
+	cftx, err := os.ReadFile(configTxFileName)
 	if err != nil {
 		return nil, ConfigTxFileNotFound(err.Error())
 	}
@@ -187,7 +187,7 @@ func executeCreate(cf *ChannelCmdFactory) error {
 	if outputBlock != common.UndefinedParamValue {
 		file = outputBlock
 	}
-	err = ioutil.WriteFile(file, b, 0o644)
+	err = os.WriteFile(file, b, 0o644)
 	if err != nil {
 		return err
 	}

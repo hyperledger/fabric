@@ -8,7 +8,6 @@ package ccprovider_test
 
 import (
 	"crypto/sha256"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -39,7 +38,7 @@ func TestInstalledCCs(t *testing.T) {
 	}{
 		{
 			name:              "Non-empty directory",
-			ls:                ioutil.ReadDir,
+			ls:                os.ReadDir,
 			extractCCFromPath: ccprovider.LoadPackage,
 			expected: []chaincode.InstalledChaincode{
 				{
@@ -57,21 +56,21 @@ func TestInstalledCCs(t *testing.T) {
 		},
 		{
 			name:              "Nonexistent directory",
-			ls:                ioutil.ReadDir,
+			ls:                os.ReadDir,
 			extractCCFromPath: ccprovider.LoadPackage,
 			expected:          nil,
 			directory:         "nonexistent",
 		},
 		{
 			name:              "Empty directory",
-			ls:                ioutil.ReadDir,
+			ls:                os.ReadDir,
 			extractCCFromPath: ccprovider.LoadPackage,
 			expected:          nil,
 			directory:         "empty",
 		},
 		{
 			name: "No permission to open directory",
-			ls: func(_ string) ([]os.FileInfo, error) {
+			ls: func(_ string) ([]os.DirEntry, error) {
 				return nil, errors.New("orange")
 			},
 			extractCCFromPath: ccprovider.LoadPackage,
@@ -81,7 +80,7 @@ func TestInstalledCCs(t *testing.T) {
 		},
 		{
 			name: "No permission on chaincode files",
-			ls:   ioutil.ReadDir,
+			ls:   os.ReadDir,
 			extractCCFromPath: func(_ string, _ string, _ ccprovider.GetHasher) (ccprovider.CCPackage, error) {
 				return nil, errors.New("banana")
 			},

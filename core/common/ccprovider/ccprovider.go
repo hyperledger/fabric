@@ -188,7 +188,7 @@ func (cifs *CCInfoFSImpl) PutChaincode(depSpec *pb.ChaincodeDeploymentSpec) (CCP
 }
 
 // DirEnumerator enumerates directories
-type DirEnumerator func(string) ([]os.FileInfo, error)
+type DirEnumerator func(string) ([]os.DirEntry, error)
 
 // ChaincodeExtractor extracts chaincode from a given path
 type ChaincodeExtractor func(ccNameVersion string, path string, getHasher GetHasher) (CCPackage, error)
