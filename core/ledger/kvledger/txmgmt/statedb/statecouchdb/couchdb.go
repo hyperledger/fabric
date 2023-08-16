@@ -14,7 +14,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"mime"
 	"mime/multipart"
@@ -229,7 +228,7 @@ func (d *couchDoc) len() int {
 // connection pool
 func closeResponseBody(resp *http.Response) {
 	if resp != nil {
-		io.Copy(ioutil.Discard, resp.Body) // discard whatever is remaining of body
+		io.Copy(io.Discard, resp.Body) // discard whatever is remaining of body
 		resp.Body.Close()
 	}
 }
@@ -747,7 +746,7 @@ func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 
 	// Handle as JSON if multipart is NOT detected
 	if !strings.HasPrefix(mediaType, "multipart/") {
-		couchDoc.jsonValue, err = ioutil.ReadAll(resp.Body)
+		couchDoc.jsonValue, err = io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, "", errors.Wrap(err, "error reading response body")
 		}
@@ -772,7 +771,7 @@ func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 		couchdbLogger.Debugf("[%s] part header=%s", dbclient.dbName, p.Header)
 
 		if p.Header.Get("Content-Type") == "application/json" {
-			partdata, err := ioutil.ReadAll(p)
+			partdata, err := io.ReadAll(p)
 			if err != nil {
 				return nil, "", errors.Wrap(err, "error reading multipart data")
 			}
@@ -798,7 +797,7 @@ func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 			if err != nil {
 				return nil, "", errors.Wrap(err, "error creating gzip reader")
 			}
-			respBody, err = ioutil.ReadAll(gr)
+			respBody, err = io.ReadAll(gr)
 			if err != nil {
 				return nil, "", errors.Wrap(err, "error reading gzip data")
 			}
@@ -812,7 +811,7 @@ func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 		default:
 
 			// retrieve the data,  this is not gzip
-			partdata, err := ioutil.ReadAll(p)
+			partdata, err := io.ReadAll(p)
 			if err != nil {
 				return nil, "", errors.Wrap(err, "error reading multipart data")
 			}
@@ -887,7 +886,7 @@ func (dbclient *couchDatabase) readDocRange(startKey, endKey string, limit int32
 	}
 
 	// handle as JSON document
-	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	jsonResponseRaw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, "", errors.Wrap(err, "error reading response body")
 	}
@@ -1021,7 +1020,7 @@ func (dbclient *couchDatabase) queryDocuments(query string) ([]*queryResult, str
 	}
 
 	// handle as JSON document
-	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	jsonResponseRaw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, "", errors.Wrap(err, "error reading response body")
 	}
@@ -1107,7 +1106,7 @@ func (dbclient *couchDatabase) listIndex() ([]*indexResult, error) {
 	defer closeResponseBody(resp)
 
 	// handle as JSON document
-	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	jsonResponseRaw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading response body")
 	}
@@ -1173,7 +1172,7 @@ func (dbclient *couchDatabase) createIndex(indexdefinition string) (*createIndex
 	}
 
 	// Read the response body
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading response body")
 	}
@@ -1247,7 +1246,7 @@ func (dbclient *couchDatabase) getDatabaseSecurity() (*databaseSecurity, error) 
 	defer closeResponseBody(resp)
 
 	// handle as JSON document
-	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	jsonResponseRaw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading response body")
 	}
@@ -1357,7 +1356,7 @@ func (dbclient *couchDatabase) batchRetrieveDocumentMetadata(keys []string) ([]*
 	}
 
 	// handle as JSON document
-	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	jsonResponseRaw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading response body")
 	}
@@ -1481,7 +1480,7 @@ func (dbclient *couchDatabase) batchUpdateDocuments(documents []*couchDoc) ([]*b
 	}
 
 	// handle as JSON document
-	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	jsonResponseRaw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading response body")
 	}
@@ -1646,7 +1645,7 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 			// if this is an error, then populate the couchDBReturn
 			if resp.StatusCode >= 400 {
 				// Read the response body and close it for next attempt
-				jsonError, err := ioutil.ReadAll(resp.Body)
+				jsonError, err := io.ReadAll(resp.Body)
 				if err != nil {
 					return nil, nil, errors.Wrap(err, "error reading response body")
 				}
@@ -1679,7 +1678,7 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 				// otherwise this is an unexpected 500 error from CouchDB. Log the error and retry.
 			} else {
 				// Read the response body and close it for next attempt
-				jsonError, err := ioutil.ReadAll(resp.Body)
+				jsonError, err := io.ReadAll(resp.Body)
 				defer closeResponseBody(resp)
 				if err != nil {
 					return nil, nil, errors.Wrap(err, "error reading response body")

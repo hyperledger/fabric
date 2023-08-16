@@ -13,7 +13,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -493,7 +492,7 @@ func readMetadata(fpath string) (*kvledger.SnapshotSignableMetadata, error) {
 	var mdata kvledger.SnapshotSignableMetadata
 
 	// Open file
-	f, err := ioutil.ReadFile(fpath)
+	f, err := os.ReadFile(fpath)
 	if err != nil {
 		return nil, err
 	}
