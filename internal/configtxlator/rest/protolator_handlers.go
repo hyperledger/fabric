@@ -13,13 +13,12 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/pkg/errors"
-	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/reflect/protoregistry"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/mux"
 	"github.com/hyperledger/fabric-config/protolator"
+	"github.com/pkg/errors"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
 func getMsgType(r *http.Request) (proto.Message, error) {

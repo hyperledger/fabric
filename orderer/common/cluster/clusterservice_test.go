@@ -40,13 +40,12 @@ var (
 	sourceNodeID      uint64 = 1
 	destinationNodeID uint64 = 2
 	streamID          uint64 = 111
-	tstamp                   = timestamppb.Now()
 	nodeAuthRequest          = orderer.NodeAuthRequest{
 		Version:   0,
 		FromId:    sourceNodeID,
 		ToId:      destinationNodeID,
 		Channel:   "mychannel",
-		Timestamp: tstamp,
+		Timestamp: timestamppb.Now(),
 	}
 	nodeConsensusRequest = &orderer.ClusterNodeServiceStepRequest{
 		Payload: &orderer.ClusterNodeServiceStepRequest_NodeConrequest{

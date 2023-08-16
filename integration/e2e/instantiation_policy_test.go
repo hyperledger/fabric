@@ -14,8 +14,6 @@ import (
 	"syscall"
 	"time"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -33,6 +31,7 @@ import (
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var _ = Describe("InstantiationPolicy", func() {
@@ -194,9 +193,6 @@ func (lo *LSCCOperation) Tx(signer *nwo.SigningIdentity) *common.Envelope {
 	nonce, err := time.Now().MarshalBinary()
 	Expect(err).NotTo(HaveOccurred())
 
-	timestamp := timestamppb.Now()
-	Expect(err).NotTo(HaveOccurred())
-
 	hasher := sha256.New()
 	hasher.Write(nonce)
 	hasher.Write(creatorBytes)
@@ -214,7 +210,7 @@ func (lo *LSCCOperation) Tx(signer *nwo.SigningIdentity) *common.Envelope {
 				Name: "lscc",
 			},
 		}),
-		Timestamp: timestamp,
+		Timestamp: timestamppb.Now(),
 		TxId:      txid,
 		Type:      int32(common.HeaderType_ENDORSER_TRANSACTION),
 	})

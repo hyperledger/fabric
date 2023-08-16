@@ -252,11 +252,9 @@ func (cs *NodeClientStream) Auth() error {
 		return errors.New("signer is nil")
 	}
 
-	timestamp := timestamppb.Now()
-
 	payload := &orderer.NodeAuthRequest{
 		Version:   cs.Version,
-		Timestamp: timestamp,
+		Timestamp: timestamppb.Now(),
 		FromId:    cs.SourceNodeID,
 		ToId:      cs.DestinationNodeID,
 		Channel:   cs.Channel,
