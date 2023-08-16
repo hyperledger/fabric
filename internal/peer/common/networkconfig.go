@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package common
 
 import (
-	"io/ioutil"
+	"os"
 
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
@@ -160,7 +160,7 @@ func GetConfig(fileName string) (*NetworkConfig, error) {
 		return nil, errors.New("filename cannot be empty")
 	}
 
-	data, err := ioutil.ReadFile(fileName)
+	data, err := os.ReadFile(fileName)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading connection profile")
 	}
