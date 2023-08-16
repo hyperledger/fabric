@@ -307,7 +307,7 @@ func TestGRPCLogger(t *testing.T) {
 	gl := flogging.NewGRPCLogger(zl)
 
 	callWrapper(gl, "message")
-	require.Equal(t, "grpc DEBUG TestGRPCLogger message\n", buf.String())
+	require.Equal(t, "grpc INFO TestGRPCLogger message\n", buf.String())
 }
 
 // FAB-15432
