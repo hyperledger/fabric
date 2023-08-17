@@ -157,6 +157,7 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 }
 
 func (d *deliverServiceImpl) createBlockDelivererCFT(chainID string, ledgerInfo blocksprovider.LedgerInfo) (*blocksprovider.Deliverer, error) {
+	logger.Infof("Creating a CFT (crash fault tolerant) BlockDeliverer for channel `%s`", chainID)
 	dc := &blocksprovider.Deliverer{
 		ChannelID: chainID,
 		BlockHandler: &GossipBlockHandler{
@@ -199,10 +200,50 @@ func (d *deliverServiceImpl) createBlockDelivererCFT(chainID string, ledgerInfo 
 	return dc, nil
 }
 
-func (d *deliverServiceImpl) createBlockDelivererBFT(chainID string, ledgerInfo blocksprovider.LedgerInfo) (*blocksprovider.Deliverer, error) {
-	// TODO create a BFT BlockDeliverer
-	logger.Warning("Consensus type `BFT` BlockDeliverer not supported yet, creating a CFT one")
-	return d.createBlockDelivererCFT(chainID, ledgerInfo)
+func (d *deliverServiceImpl) createBlockDelivererBFT(chainID string, ledgerInfo blocksprovider.LedgerInfo) (*blocksprovider.BFTDeliverer, error) {
+	logger.Infof("Creating a BFT (byzantine fault tolerant) BlockDeliverer for channel `%s`", chainID)
+	dcBFT := &blocksprovider.BFTDeliverer{
+		ChannelID: chainID,
+		BlockHandler: &GossipBlockHandler{
+			gossip:              d.conf.Gossip,
+			blockGossipDisabled: true, // Block gossip is deprecated since in v2.2 and is no longer supported in v3.x
+			logger:              flogging.MustGetLogger("peer.blocksprovider").With("channel", chainID),
+		},
+		Ledger:        ledgerInfo,
+		BlockVerifier: d.conf.CryptoSvc,
+		Dialer: blocksprovider.DialerAdapter{
+			ClientConfig: comm.ClientConfig{
+				DialTimeout: d.conf.DeliverServiceConfig.ConnectionTimeout,
+				KaOpts:      d.conf.DeliverServiceConfig.KeepaliveOptions,
+				SecOpts:     d.conf.DeliverServiceConfig.SecOpts,
+			},
+		},
+		Orderers:                  d.conf.OrdererSource,
+		DoneC:                     make(chan struct{}),
+		Signer:                    d.conf.Signer,
+		DeliverStreamer:           blocksprovider.DeliverAdapter{},
+		CensorshipDetectorFactory: &blocksprovider.BFTCensorshipMonitorFactory{},
+		Logger:                    flogging.MustGetLogger("peer.blocksprovider").With("channel", chainID),
+		InitialRetryInterval:      100 * time.Millisecond, // TODO expose in config
+		MaxRetryInterval:          d.conf.DeliverServiceConfig.ReConnectBackoffThreshold,
+		BlockCensorshipTimeout:    30 * time.Second, // TODO expose in config
+		MaxRetryDuration:          12 * time.Hour,   // In v3 block gossip is no longer supported. We set it long to avoid needlessly calling the handler.
+		MaxRetryDurationExceededHandler: func() (stopRetries bool) {
+			return false // In v3 block gossip is no longer supported, the peer never stops retrying.
+		},
+	}
+
+	if d.conf.DeliverServiceConfig.SecOpts.RequireClientCert {
+		cert, err := d.conf.DeliverServiceConfig.SecOpts.ClientCertificate()
+		if err != nil {
+			return nil, fmt.Errorf("failed to access client TLS configuration: %w", err)
+		}
+		dcBFT.TLSCertHash = util.ComputeSHA256(cert.Certificate[0])
+	}
+
+	dcBFT.Initialize()
+
+	return dcBFT, nil
 }
 
 // StopDeliverForChannel stops blocks delivery for channel by stopping channel block provider
