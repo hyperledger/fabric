@@ -11,7 +11,7 @@ import (
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	grpc "google.golang.org/grpc"
+	"google.golang.org/grpc"
 )
 
 // GetMockEndorserClient return a endorser client return specified ProposalResponse and err(nil or error)

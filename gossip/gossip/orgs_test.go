@@ -364,7 +364,7 @@ func TestConfidentiality(t *testing.T) {
 			externalEndpoint := ""
 			if j < externalEndpointsInOrg { // The first peers of each org would have an external endpoint
 				externalEndpoint = endpoint
-				peersWithExternalEndpoints[string(endpoint)] = struct{}{}
+				peersWithExternalEndpoints[endpoint] = struct{}{}
 			}
 			peer := newGossipInstanceWithGRPCWithExternalEndpoint(id, ports[id], grpcs[id], certs[id], secDialOpts[id],
 				cs, externalEndpoint)
@@ -509,7 +509,7 @@ func expectedMembershipSize(peersInOrg, externalEndpointsInOrg int, org string, 
 
 func extractOrgsFromMsg(msg *proto.GossipMessage, sec api.SecurityAdvisor) []string {
 	if protoext.IsAliveMsg(msg) {
-		return []string{string(sec.OrgByPeerIdentity(api.PeerIdentityType(msg.GetAliveMsg().Membership.PkiId)))}
+		return []string{string(sec.OrgByPeerIdentity(msg.GetAliveMsg().Membership.PkiId))}
 	}
 
 	orgs := map[string]struct{}{}
@@ -544,7 +544,7 @@ func extractOrgsFromMsg(msg *proto.GossipMessage, sec api.SecurityAdvisor) []str
 		dead := msg.GetMemRes().Dead
 		for _, envp := range append(alive, dead...) {
 			msg, _ := protoext.EnvelopeToGossipMessage(envp)
-			orgs[string(sec.OrgByPeerIdentity(api.PeerIdentityType(msg.GetAliveMsg().Membership.PkiId)))] = struct{}{}
+			orgs[string(sec.OrgByPeerIdentity(msg.GetAliveMsg().Membership.PkiId))] = struct{}{}
 		}
 	}
 

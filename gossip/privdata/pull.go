@@ -470,7 +470,7 @@ func (p *puller) computeFilters(dig2src dig2sources) (digestToFilterMapping, err
 		sources := sources
 		endorserPeer, err := p.PeerFilter(common.ChannelID(p.channel), func(peerSignature api.PeerSignature) bool {
 			for _, endorsement := range sources {
-				if bytes.Equal(endorsement.Endorser, []byte(peerSignature.PeerIdentity)) {
+				if bytes.Equal(endorsement.Endorser, peerSignature.PeerIdentity) {
 					return true
 				}
 			}

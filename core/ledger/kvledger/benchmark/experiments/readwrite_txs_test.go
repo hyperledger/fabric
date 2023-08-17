@@ -94,9 +94,9 @@ func runReadWriteClient(chain *chainmgmt.Chain, rand *rand.Rand, numTx int, wg *
 			keyNumber := keysToOperateOn[i]
 			key := constructKey(keyNumber)
 			if useJSON {
-				value = []byte(constructJSONValue(keyNumber, kvSize))
+				value = constructJSONValue(keyNumber, kvSize)
 			} else {
-				value = []byte(constructValue(keyNumber, kvSize))
+				value = constructValue(keyNumber, kvSize)
 			}
 			panicOnError(simulator.SetState(chaincodeName, key, value))
 		}

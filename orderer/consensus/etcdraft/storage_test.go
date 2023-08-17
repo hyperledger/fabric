@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
-	raft "go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/wal"
 	"go.uber.org/zap"

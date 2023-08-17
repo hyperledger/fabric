@@ -293,7 +293,7 @@ func createBlockChain(start, end uint64) []*common.Block {
 		return block
 	}
 	var blockchain []*common.Block
-	for seq := uint64(start); seq <= uint64(end); seq++ {
+	for seq := start; seq <= end; seq++ {
 		block := newBlock(seq)
 		block.Data.Data = append(block.Data.Data, make([]byte, 100))
 		block.Header.DataHash = protoutil.BlockDataHash(block.Data)

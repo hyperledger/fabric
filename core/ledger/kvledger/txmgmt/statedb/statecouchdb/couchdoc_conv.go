@@ -37,7 +37,7 @@ type jsonValue map[string]interface{}
 func tryCastingToJSON(b []byte) (isJSON bool, val jsonValue) {
 	var jsonVal map[string]interface{}
 	err := json.Unmarshal(b, &jsonVal)
-	return err == nil, jsonValue(jsonVal)
+	return err == nil, jsonVal
 }
 
 func castToJSON(b []byte) (jsonValue, error) {

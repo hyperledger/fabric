@@ -181,7 +181,7 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 	When("gossip connection is lost and restored", func() {
 		var (
 			orderer       *nwo.Orderer
-			peerEndpoints map[string]string = map[string]string{}
+			peerEndpoints = map[string]string{}
 		)
 
 		BeforeEach(func() {

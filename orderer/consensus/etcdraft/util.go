@@ -23,7 +23,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	raft "go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 

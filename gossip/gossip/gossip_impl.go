@@ -1012,7 +1012,7 @@ func (sa *discoverySecurityAdapter) ValidateAliveMsg(m *protoext.SignedGossipMes
 
 	// If identity is included inside AliveMessage
 	if am.Identity != nil {
-		identity = api.PeerIdentityType(am.Identity)
+		identity = am.Identity
 		claimedPKIID := am.Membership.PkiId
 		err := sa.idMapper.Put(claimedPKIID, identity)
 		if err != nil {
@@ -1066,7 +1066,7 @@ func (sa *discoverySecurityAdapter) validateAliveMsgSignature(m *protoext.Signed
 	am := m.GetAliveMsg()
 	// At this point we got the certificate of the peer, proceed to verifying the AliveMessage
 	verifier := func(peerIdentity []byte, signature, message []byte) error {
-		return sa.mcs.Verify(api.PeerIdentityType(peerIdentity), signature, message)
+		return sa.mcs.Verify(peerIdentity, signature, message)
 	}
 
 	// We verify the signature on the message
@@ -1106,7 +1106,7 @@ func (g *Node) createCertStorePuller() pull.Mediator {
 			g.logger.Warning("Invalid PeerIdentity:", idMsg)
 			return
 		}
-		err := g.idMapper.Put(common.PKIidType(idMsg.PkiId), api.PeerIdentityType(idMsg.Cert))
+		err := g.idMapper.Put(idMsg.PkiId, idMsg.Cert)
 		if err != nil {
 			g.logger.Warningf("Failed associating PKI-ID with certificate: %+v", errors.WithStack(err))
 		}
@@ -1223,7 +1223,7 @@ func (g *Node) validateLeadershipMessage(msg *protoext.SignedGossipMessage) erro
 
 func (g *Node) validateStateInfoMsg(msg *protoext.SignedGossipMessage) error {
 	verifier := func(identity []byte, signature, message []byte) error {
-		pkiID := g.idMapper.GetPKIidOfCert(api.PeerIdentityType(identity))
+		pkiID := g.idMapper.GetPKIidOfCert(identity)
 		if pkiID == nil {
 			return errors.New("PKI-ID not found in identity mapper")
 		}
@@ -1336,7 +1336,7 @@ func extractChannels(a []*emittedGossipMessage) []common.ChannelID {
 			return bytes.Equal(a.(common.ChannelID), b.(common.ChannelID))
 		}
 		if util.IndexInSlice(channels, common.ChannelID(m.Channel), sameChan) == -1 {
-			channels = append(channels, common.ChannelID(m.Channel))
+			channels = append(channels, m.Channel)
 		}
 	}
 	return channels

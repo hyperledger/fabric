@@ -98,7 +98,7 @@ func (p *peer) Accept() <-chan Msg {
 		args := p.Called()
 		return args.Get(0).(<-chan Msg)
 	}
-	return (<-chan Msg)(p.msgChan)
+	return p.msgChan
 }
 
 func (p *peer) CreateMessage(isDeclaration bool) Msg {

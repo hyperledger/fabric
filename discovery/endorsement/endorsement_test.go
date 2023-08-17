@@ -1181,7 +1181,7 @@ func identitySet(pkiID2MSPID map[string]string) api.PeerIdentitySet {
 			IdBytes: []byte(pkiID),
 		}
 		res = append(res, api.PeerIdentityInfo{
-			Identity:     api.PeerIdentityType(protoutil.MarshalOrPanic(sID)),
+			Identity:     protoutil.MarshalOrPanic(sID),
 			PKIId:        common.PKIidType(pkiID),
 			Organization: api.OrgIdentityType(mspID),
 		})
@@ -1210,13 +1210,13 @@ func newPeer(i int) *peerInfo {
 	})
 	return &peerInfo{
 		pkiID:    common.PKIidType(p),
-		identity: api.PeerIdentityType(identity),
+		identity: identity,
 		NetworkMember: discovery.NetworkMember{
 			PKIid:            common.PKIidType(p),
 			Endpoint:         p,
 			InternalEndpoint: p,
 			Envelope: &gossip.Envelope{
-				Payload: []byte(identity),
+				Payload: identity,
 			},
 		},
 	}

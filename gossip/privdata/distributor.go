@@ -217,7 +217,7 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 		return colFilter(protoutil.SignedData{
 			Data:      signature.Message,
 			Signature: signature.Signature,
-			Identity:  []byte(signature.PeerIdentity),
+			Identity:  signature.PeerIdentity,
 		})
 	})
 	if err != nil {

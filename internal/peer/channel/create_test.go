@@ -60,7 +60,7 @@ func newOrderer(port int, t *testing.T) *timeoutOrderer {
 		t:                t,
 		nextExpectedSeek: uint64(1),
 		blockChannel:     make(chan uint64, 1),
-		counter:          int(1),
+		counter:          1,
 	}
 	orderer.RegisterAtomicBroadcastServer(srv, o)
 	go srv.Serve(lsnr)

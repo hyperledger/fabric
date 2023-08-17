@@ -162,7 +162,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 	acv.On("ForbidDuplicateTXIdInBlock").Return(true)
 	tValidator.Validate(block)
 
-	txsfltr = txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr = block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER]
 
 	require.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_VALID))
 	require.True(t, txsfltr.IsSetTo(1, peer.TxValidationCode_DUPLICATE_TXID))

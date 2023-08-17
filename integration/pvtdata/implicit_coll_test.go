@@ -23,7 +23,7 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
-var _ bool = Describe("Pvtdata dissemination for implicit collection", func() {
+var _ = Describe("Pvtdata dissemination for implicit collection", func() {
 	var (
 		network                     *nwo.Network
 		ordererProcess, peerProcess ifrit.Process

@@ -192,7 +192,7 @@ func TestNewComparablePrincipalSet(t *testing.T) {
 		member1 := NewComparablePrincipal(member("Org1MSP"))
 		peer2 := NewComparablePrincipal(peer("Org2MSP"))
 		principals := []*msp.MSPPrincipal{member("Org1MSP"), peer("Org2MSP")}
-		cps := NewComparablePrincipalSet(policies.PrincipalSet(principals))
+		cps := NewComparablePrincipalSet(principals)
 		expected := ComparablePrincipalSet([]*ComparablePrincipal{member1, peer2})
 		require.Equal(t, expected, cps)
 	})

@@ -137,7 +137,7 @@ type MSPIDsGetter func(string) []string
 // IDMSPManagerGetters used to get the MSP Manager for a channel.
 type MSPManagerGetter func(string) msp.MSPManager
 
-//---------- the LSCC -----------------
+// ---------- the LSCC -----------------
 
 // SCC implements chaincode lifecycle and policies around it
 type SCC struct {
@@ -198,7 +198,7 @@ func (p *PeerShim) GetApplicationConfig(cid string) (channelconfig.Application, 
 // and whether the policy manager exists
 func (p *PeerShim) PolicyManager(channelID string) (policies.Manager, bool) {
 	m := p.Peer.GetPolicyManager(channelID)
-	return m, (m != nil)
+	return m, m != nil
 }
 
 func (lscc *SCC) Name() string              { return "lscc" }
@@ -932,7 +932,7 @@ func (lscc *SCC) executeUpgrade(stub shim.ChaincodeStubInterface, chainName stri
 	return cdfs, nil
 }
 
-//-------------- the chaincode stub interface implementation ----------
+// -------------- the chaincode stub interface implementation ----------
 
 // Init is mostly useless for SCC
 func (lscc *SCC) Init(stub shim.ChaincodeStubInterface) pb.Response {

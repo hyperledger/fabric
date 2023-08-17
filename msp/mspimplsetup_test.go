@@ -153,7 +153,7 @@ func TestMalformedCertsChainSetup(t *testing.T) {
 
 	// Add root CA certificate
 	// cert, err := mspImpl.getCertFromPem([]byte(ca.CertBytes()))
-	certInter, err := mspImpl.getCertFromPem([]byte(inter.CertBytes()))
+	certInter, err := mspImpl.getCertFromPem(inter.CertBytes())
 	gt.Expect(err).NotTo(gomega.HaveOccurred())
 	mspImpl.opts.Roots.AddCert(certInter)
 	mspImpl.rootCerts = []Identity{&identity{cert: certInter}}

@@ -10,7 +10,7 @@ import (
 	"os"
 	"sync"
 
-	pb "github.com/cheggaaa/pb"
+	"github.com/cheggaaa/pb"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/bccsp/factory"
@@ -124,7 +124,7 @@ func main() {
 			}
 
 			s := newBroadcastClient(client, channelID, signer)
-			done := make(chan (struct{}))
+			done := make(chan struct{})
 			go func() {
 				for i := uint64(0); i < msgsPerGo; i++ {
 					err = s.getAck()

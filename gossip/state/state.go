@@ -604,7 +604,7 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 				continue
 			}
 
-			s.requestBlocksInRange(uint64(ourHeight), uint64(maxHeight)-1)
+			s.requestBlocksInRange(ourHeight, uint64(maxHeight)-1)
 		}
 	}
 }
@@ -811,5 +811,5 @@ func (s *GossipStateProviderImpl) commitBlock(block *common.Block, pvtData util.
 }
 
 func min(a uint64, b uint64) uint64 {
-	return b ^ ((a ^ b) & (-(uint64(a-b) >> 63)))
+	return b ^ ((a ^ b) & (-((a - b) >> 63)))
 }

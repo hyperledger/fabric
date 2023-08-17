@@ -171,7 +171,7 @@ var Defaults = TopLevel{
 		LocalMSPID:  "SampleOrg",
 		BCCSP:       bccsp.GetDefaultOpts(),
 		Authentication: Authentication{
-			TimeWindow: time.Duration(15 * time.Minute),
+			TimeWindow: 15 * time.Minute,
 		},
 		MaxRecvMsgSize: comm.DefaultMaxRecvMsgSize,
 		MaxSendMsgSize: comm.DefaultMaxSendMsgSize,

@@ -60,7 +60,7 @@ func setupTestLedger(t *testing.T, chainid string, path string) (*shimtest.MockS
 	}
 	stub := shimtest.NewMockStub("LedgerQuerier", lq)
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
-		return nil, peerInstance, cleanup, fmt.Errorf("Init failed for test ledger [%s] with message: %s", chainid, string(res.Message))
+		return nil, peerInstance, cleanup, fmt.Errorf("Init failed for test ledger [%s] with message: %s", chainid, res.Message)
 	}
 	return stub, peerInstance, cleanup, nil
 }

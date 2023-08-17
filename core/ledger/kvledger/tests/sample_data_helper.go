@@ -175,7 +175,7 @@ func (d *sampleDataHelper) verifyBlockAndPvtdataUsingSubmittedData(l *testLedger
 	for _, submittedBlk := range submittedData.Blocks {
 		blkNum := submittedBlk.Block.Header.Number
 		if blkNum != 8 {
-			l.verifyBlockAndPvtDataSameAs(uint64(blkNum), submittedBlk)
+			l.verifyBlockAndPvtDataSameAs(blkNum, submittedBlk)
 		} else {
 			l.verifyBlockAndPvtData(uint64(8), nil, func(r *retrievedBlockAndPvtdata) {
 				r.sameBlockHeaderAndData(submittedBlk.Block)

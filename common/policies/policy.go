@@ -214,7 +214,7 @@ func NewManagerImpl(path string, providers map[int32]Provider, root *cb.ConfigGr
 			}
 			cPolicy = imp
 		} else {
-			provider, ok := providers[int32(policy.Type)]
+			provider, ok := providers[policy.Type]
 			if !ok {
 				return nil, fmt.Errorf("policy %s at path %s has unknown policy type: %v", policyName, path, policy.Type)
 			}

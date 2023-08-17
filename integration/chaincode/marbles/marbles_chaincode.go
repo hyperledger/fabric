@@ -52,12 +52,12 @@
 // to create the indexes in the CouchDB Fauxton interface or a curl command line utility.
 //
 
-//Example hostname:port configurations to access CouchDB.
+// Example hostname:port configurations to access CouchDB.
 //
-//To access CouchDB docker container from within another docker container or from vagrant environments:
+// To access CouchDB docker container from within another docker container or from vagrant environments:
 // http://couchdb:5984/
 //
-//Inside couchdb docker container
+// Inside couchdb docker container
 // http://127.0.0.1:5984/
 
 // Index for docType, owner.
@@ -278,7 +278,7 @@ func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string
 		return shim.Error(jsonResp)
 	}
 
-	err = json.Unmarshal([]byte(valAsbytes), &marbleJSON)
+	err = json.Unmarshal(valAsbytes, &marbleJSON)
 	if err != nil {
 		jsonResp = "{\"Error\":\"Failed to decode JSON of: " + marbleName + "\"}"
 		return shim.Error(jsonResp)

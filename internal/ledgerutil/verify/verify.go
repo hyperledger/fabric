@@ -97,7 +97,7 @@ func VerifyLedger(blockStorePath string, outputDir string) (bool, error) {
 			return false, err
 		}
 
-		previousHash := []byte{}
+		var previousHash []byte
 		for i := firstBlockNumber; i < info.GetHeight(); i++ {
 			// Retrieve the next block
 			result, err := iterator.Next()

@@ -216,7 +216,7 @@ func InitBlockMetadata(block *cb.Block) {
 	if block.Metadata == nil {
 		block.Metadata = &cb.BlockMetadata{Metadata: [][]byte{{}, {}, {}, {}, {}}}
 	} else if len(block.Metadata.Metadata) < int(cb.BlockMetadataIndex_COMMIT_HASH+1) {
-		for i := int(len(block.Metadata.Metadata)); i <= int(cb.BlockMetadataIndex_COMMIT_HASH); i++ {
+		for i := len(block.Metadata.Metadata); i <= int(cb.BlockMetadataIndex_COMMIT_HASH); i++ {
 			block.Metadata.Metadata = append(block.Metadata.Metadata, []byte{})
 		}
 	}

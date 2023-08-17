@@ -639,12 +639,12 @@ var _ = Describe("ExternalFunctions", func() {
 			}
 
 			fakePublicState = &mock.ReadWritableState{}
-			fakePublicKVStore = MapLedgerShim(map[string][]byte{})
+			fakePublicKVStore = map[string][]byte{}
 			fakePublicState = &mock.ReadWritableState{}
 			fakePublicState.PutStateStub = fakePublicKVStore.PutState
 			fakePublicState.GetStateStub = fakePublicKVStore.GetState
 
-			fakeOrgKVStore = MapLedgerShim(map[string][]byte{})
+			fakeOrgKVStore = map[string][]byte{}
 			fakeOrgState = &mock.ReadWritableState{}
 			fakeOrgState.PutStateStub = fakeOrgKVStore.PutState
 			fakeOrgState.GetStateStub = fakeOrgKVStore.GetState
@@ -983,7 +983,7 @@ var _ = Describe("ExternalFunctions", func() {
 				},
 			}
 
-			publicKVS = MapLedgerShim(map[string][]byte{})
+			publicKVS = map[string][]byte{}
 			fakePublicState = &mock.ReadWritableState{}
 			fakePublicState.GetStateStub = publicKVS.GetState
 			fakePublicState.PutStateStub = publicKVS.PutState
@@ -1000,8 +1000,8 @@ var _ = Describe("ExternalFunctions", func() {
 				},
 			}, publicKVS)
 
-			org0KVS = MapLedgerShim(map[string][]byte{})
-			org1KVS = MapLedgerShim(map[string][]byte{})
+			org0KVS = map[string][]byte{}
+			org1KVS = map[string][]byte{}
 			fakeOrg0State := &mock.ReadWritableState{}
 			fakeOrg0State.CollectionNameReturns("_implicit_org_org0")
 			fakeOrg1State := &mock.ReadWritableState{}
@@ -1156,15 +1156,15 @@ var _ = Describe("ExternalFunctions", func() {
 				PackageID: "hash",
 			}
 
-			publicKVS = MapLedgerShim(map[string][]byte{})
+			publicKVS = map[string][]byte{}
 			fakePublicState = &mock.ReadWritableState{}
 			fakePublicState.GetStateStub = publicKVS.GetState
 			fakePublicState.PutStateStub = publicKVS.PutState
 
 			resources.Serializer.Serialize("namespaces", "cc-name", testDefinition, publicKVS)
 
-			org0KVS = MapLedgerShim(map[string][]byte{})
-			org1KVS = MapLedgerShim(map[string][]byte{})
+			org0KVS = map[string][]byte{}
+			org1KVS = map[string][]byte{}
 			fakeOrg0State := &mock.ReadWritableState{}
 			fakeOrg0State.CollectionNameReturns("_implicit_org_org0")
 			fakeOrg1State := &mock.ReadWritableState{}
@@ -1442,7 +1442,7 @@ var _ = Describe("ExternalFunctions", func() {
 				},
 			}
 
-			publicKVS = MapLedgerShim(map[string][]byte{})
+			publicKVS = map[string][]byte{}
 			fakePublicState = &mock.ReadWritableState{}
 			fakePublicState.GetStateStub = publicKVS.GetState
 			fakePublicState.PutStateStub = publicKVS.PutState
@@ -1459,8 +1459,8 @@ var _ = Describe("ExternalFunctions", func() {
 				},
 			}, publicKVS)
 
-			org0KVS = MapLedgerShim(map[string][]byte{})
-			org1KVS = MapLedgerShim(map[string][]byte{})
+			org0KVS = map[string][]byte{}
+			org1KVS = map[string][]byte{}
 			fakeOrg0State := &mock.ReadWritableState{}
 			fakeOrg0State.CollectionNameReturns("_implicit_org_org0")
 			fakeOrg1State := &mock.ReadWritableState{}
@@ -1630,7 +1630,7 @@ var _ = Describe("ExternalFunctions", func() {
 		)
 
 		BeforeEach(func() {
-			publicKVS = MapLedgerShim(map[string][]byte{})
+			publicKVS = map[string][]byte{}
 			fakePublicState = &mock.ReadWritableState{}
 			fakePublicState.GetStateStub = publicKVS.GetState
 			fakePublicState.PutStateStub = publicKVS.PutState
@@ -1650,8 +1650,8 @@ var _ = Describe("ExternalFunctions", func() {
 
 			resources.Serializer.Serialize("namespaces", "cc-name", testDefinition, publicKVS)
 
-			org0KVS = MapLedgerShim(map[string][]byte{})
-			org1KVS = MapLedgerShim(map[string][]byte{})
+			org0KVS = map[string][]byte{}
+			org1KVS = map[string][]byte{}
 			fakeOrg0State := &mock.ReadWritableState{}
 			fakeOrg1State := &mock.ReadWritableState{}
 			fakeOrgStates = []*mock.ReadWritableState{
@@ -1702,7 +1702,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("returns an error", func() {
-				cc, err := ef.QueryChaincodeDefinition("cc-name", fakePublicState) //, nil)
+				cc, err := ef.QueryChaincodeDefinition("cc-name", fakePublicState) // , nil)
 				Expect(err).To(MatchError("could not fetch metadata for namespace cc-name: could not query metadata for namespace namespaces/cc-name: metadata-error"))
 				Expect(cc).To(BeNil())
 			})
@@ -1745,8 +1745,8 @@ var _ = Describe("ExternalFunctions", func() {
 				Collections: &pb.CollectionConfigPackage{},
 			}
 
-			org0KVS = MapLedgerShim(map[string][]byte{})
-			org1KVS = MapLedgerShim(map[string][]byte{})
+			org0KVS = map[string][]byte{}
+			org1KVS = map[string][]byte{}
 			fakeOrg0State := &mock.ReadWritableState{}
 			fakeOrg0State.CollectionNameReturns("_implicit_org_org0")
 			fakeOrg1State := &mock.ReadWritableState{}
@@ -1796,7 +1796,7 @@ var _ = Describe("ExternalFunctions", func() {
 		)
 
 		BeforeEach(func() {
-			publicKVS = MapLedgerShim(map[string][]byte{})
+			publicKVS = map[string][]byte{}
 			fakePublicState = &mock.ReadWritableState{}
 			fakePublicState.GetStateStub = publicKVS.GetState
 			fakePublicState.GetStateRangeStub = publicKVS.GetStateRange

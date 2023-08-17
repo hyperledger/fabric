@@ -81,7 +81,7 @@ func testSortJSON(t *testing.T, filePrefix int) {
 	require.NoError(t, err)
 
 	var prettyPrintJSON bytes.Buffer
-	err = json.Indent(&prettyPrintJSON, []byte(actualKV.Value), "", "  ")
+	err = json.Indent(&prettyPrintJSON, actualKV.Value, "", "  ")
 	require.NoError(t, err)
 	expected, err := ioutil.ReadFile(
 		fmt.Sprintf("testdata/json_documents/%d_sorted.json",

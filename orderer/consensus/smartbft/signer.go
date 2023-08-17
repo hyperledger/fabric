@@ -51,7 +51,7 @@ func (s *Signer) SignProposal(proposal types.Proposal, _ []byte) *types.Signatur
 		BlockHeader:      protoutil.BlockHeaderBytes(block.Header),
 		IdentifierHeader: protoutil.MarshalOrPanic(s.newIdentifierHeaderOrPanic(nonce)),
 		OrdererBlockMetadata: protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
-			LastConfig:        &cb.LastConfig{Index: uint64(s.LastConfigBlockNum(block))},
+			LastConfig:        &cb.LastConfig{Index: s.LastConfigBlockNum(block)},
 			ConsenterMetadata: proposal.Metadata,
 		}),
 	}

@@ -1179,7 +1179,7 @@ func (dbclient *couchDatabase) createIndex(indexdefinition string) (*createIndex
 
 	couchDBReturn := &createIndexResponse{}
 
-	jsonBytes := []byte(respBody)
+	jsonBytes := respBody
 
 	// unmarshal the response
 	err = json.Unmarshal(jsonBytes, &couchDBReturn)
@@ -1651,7 +1651,7 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 				}
 				defer closeResponseBody(resp)
 
-				errorBytes := []byte(jsonError)
+				errorBytes := jsonError
 				// Unmarshal the response
 				err = json.Unmarshal(errorBytes, &couchDBReturn)
 				if err != nil {
@@ -1684,7 +1684,7 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 					return nil, nil, errors.Wrap(err, "error reading response body")
 				}
 
-				errorBytes := []byte(jsonError)
+				errorBytes := jsonError
 				// Unmarshal the response
 				err = json.Unmarshal(errorBytes, &couchDBReturn)
 				if err != nil {

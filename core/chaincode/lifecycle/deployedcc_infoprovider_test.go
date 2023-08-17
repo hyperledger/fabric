@@ -85,7 +85,7 @@ var _ = Describe("ValidatorCommitter", func() {
 			LegacyDeployedCCInfoProvider: fakeLegacyProvider,
 		}
 
-		fakePublicState = MapLedgerShim(map[string][]byte{})
+		fakePublicState = map[string][]byte{}
 		fakeQueryExecutor = &mock.SimpleQueryExecutor{}
 		fakeQueryExecutor.GetStateStub = func(namespace, key string) ([]byte, error) {
 			return fakePublicState.GetState(key)
@@ -242,7 +242,7 @@ var _ = Describe("ValidatorCommitter", func() {
 	Describe("AllChaincodesInfo", func() {
 		var fakeStateIteratorKVs MapLedgerShim
 		BeforeEach(func() {
-			fakeStateIteratorKVs = MapLedgerShim(map[string][]byte{})
+			fakeStateIteratorKVs = map[string][]byte{}
 			err := resources.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{}, fakeStateIteratorKVs)
 			Expect(err).NotTo(HaveOccurred())
 			fakeQueryExecutor.GetStateRangeScanIteratorStub = func(namespace, begin, end string) (commonledger.ResultsIterator, error) {

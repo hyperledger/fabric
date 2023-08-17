@@ -54,7 +54,7 @@ func (advisor *mspSecurityAdvisor) OrgByPeerIdentity(peerIdentity api.PeerIdenti
 	// namely the identity's MSP identifier be returned (Identity.GetMSPIdentifier())
 
 	// First check against the local MSP.
-	identity, err := advisor.deserializer.GetLocalDeserializer().DeserializeIdentity([]byte(peerIdentity))
+	identity, err := advisor.deserializer.GetLocalDeserializer().DeserializeIdentity(peerIdentity)
 	if err == nil {
 		return []byte(identity.GetMSPIdentifier())
 	}
@@ -62,7 +62,7 @@ func (advisor *mspSecurityAdvisor) OrgByPeerIdentity(peerIdentity api.PeerIdenti
 	// Check against managers
 	for chainID, mspManager := range advisor.deserializer.GetChannelDeserializers() {
 		// Deserialize identity
-		identity, err := mspManager.DeserializeIdentity([]byte(peerIdentity))
+		identity, err := mspManager.DeserializeIdentity(peerIdentity)
 		if err != nil {
 			saLogger.Debugf("Failed deserialization identity [% x] on [%s]: [%s]", peerIdentity, chainID, err)
 			continue

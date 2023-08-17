@@ -75,7 +75,7 @@ func (pvt *PvtDataCollections) Unmarshal(data [][]byte) error {
 func PrivateRWSets(rwsets ...PrivateRWSet) [][]byte {
 	var res [][]byte
 	for _, rws := range rwsets {
-		res = append(res, []byte(rws))
+		res = append(res, rws)
 	}
 	return res
 }

@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package pvtstatepurgemgmt
 
 import (
-	math "math"
+	"math"
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"

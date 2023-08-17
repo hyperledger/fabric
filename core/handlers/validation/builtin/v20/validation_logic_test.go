@@ -246,7 +246,7 @@ var (
 	id        msp.SigningIdentity
 	sid       []byte
 	mspid     string
-	channelID string = "testchannelid"
+	channelID = "testchannelid"
 )
 
 func TestMain(m *testing.M) {

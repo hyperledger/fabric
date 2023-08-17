@@ -338,7 +338,7 @@ func TestHandshake(t *testing.T) {
 	_, tempEndpoint, tempL := getAvailablePort(t)
 	acceptChan := handshaker(port, tempEndpoint, inst, t, mutator, none)
 	select {
-	case <-time.After(time.Duration(time.Second * 4)):
+	case <-time.After(time.Second * 4):
 		require.FailNow(t, "Didn't receive a message, seems like handshake failed")
 	case msg = <-acceptChan:
 	}
@@ -719,7 +719,7 @@ func TestResponses(t *testing.T) {
 			m.Respond(reply.GossipMessage)
 		}
 	}()
-	expectedNOnce := uint64(msg.Nonce + 1)
+	expectedNOnce := msg.Nonce + 1
 	responsesFromComm1 := comm2.Accept(acceptAll)
 
 	ticker := time.NewTicker(10 * time.Second)

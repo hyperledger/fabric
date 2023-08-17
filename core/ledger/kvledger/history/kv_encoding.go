@@ -38,7 +38,7 @@ func constructDataKey(ns string, key string, blocknum uint64, trannum uint64) da
 	k = append(k, compositeKeySep...)
 	k = append(k, util.EncodeOrderPreservingVarUint64(blocknum)...)
 	k = append(k, util.EncodeOrderPreservingVarUint64(trannum)...)
-	return dataKey(k)
+	return k
 }
 
 // constructRangescanKeys returns start and endKey for performing a range scan

@@ -353,7 +353,7 @@ func serve(args []string) error {
 	// startup aclmgmt with default ACL providers (resource based and default 1.0 policies based).
 	// Users can pass in their own ACLProvider to RegisterACLProvider (currently unit tests do this)
 	aclProvider := aclmgmt.NewACLProvider(
-		aclmgmt.ResourceGetter(peerInstance.GetStableChannelConfig),
+		peerInstance.GetStableChannelConfig,
 		policyChecker,
 	)
 

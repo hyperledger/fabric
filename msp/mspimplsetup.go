@@ -18,7 +18,7 @@ import (
 	m "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/utils"
-	errors "github.com/pkg/errors"
+	"github.com/pkg/errors"
 )
 
 func (msp *bccspmsp) getCertifiersIdentifier(certRaw []byte) ([]byte, error) {

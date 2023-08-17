@@ -64,7 +64,7 @@ func (p *LSCCBasedBTLPolicy) GetBTL(namespace string, collection string) (uint64
 		}
 		btlConfigured := collConfig.BlockToLive
 		if btlConfigured > 0 {
-			btl = uint64(btlConfigured)
+			btl = btlConfigured
 		} else {
 			btl = defaultBTL
 		}

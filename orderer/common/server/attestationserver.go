@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
-	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/protoutil"

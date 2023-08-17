@@ -52,7 +52,7 @@ import (
 
 const channelID = "testchannel"
 
-var _ bool = Describe("PrivateData", func() {
+var _ = Describe("PrivateData", func() {
 	var (
 		network                     *nwo.Network
 		ordererProcess, peerProcess ifrit.Process

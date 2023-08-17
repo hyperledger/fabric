@@ -151,7 +151,7 @@ func encodeInelgMissingDataKey(key *missingDataKey) []byte {
 	encKey = append(encKey, nilByte)
 	encKey = append(encKey, []byte(key.coll)...)
 	encKey = append(encKey, nilByte)
-	return append(encKey, []byte(encodeReverseOrderVarUint64(key.blkNum))...)
+	return append(encKey, encodeReverseOrderVarUint64(key.blkNum)...)
 }
 
 func decodeInelgMissingDataKey(keyBytes []byte) *missingDataKey {
@@ -425,5 +425,5 @@ func decodeReverseOrderVarUint64(bytes []byte) (uint64, int) {
 	for i := 0; i < numFFBytes; i++ {
 		decodedBytes[i] = 0xff
 	}
-	return (math.MaxUint64 - binary.BigEndian.Uint64(decodedBytes)), numBytesConsumed
+	return math.MaxUint64 - binary.BigEndian.Uint64(decodedBytes), numBytesConsumed
 }

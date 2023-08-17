@@ -41,7 +41,7 @@ import (
 var timeout = time.Second * time.Duration(15)
 
 var (
-	aliveTimeInterval = time.Duration(time.Millisecond * 300)
+	aliveTimeInterval = time.Millisecond * 300
 	defaultTestConfig = DiscoveryConfig{
 		AliveTimeInterval:            aliveTimeInterval,
 		AliveExpirationTimeout:       10 * aliveTimeInterval,
@@ -1397,7 +1397,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 		_, exist := instances[index].discoveryImpl().aliveLastTS[string(instances[i].discoveryImpl().self.PKIid)]
 		require.True(t, exist, fmt.Sprint(step, " Data from alive msg ", i, " doesn't exist in aliveLastTS of discovery inst ", index))
 
-		_, exist = instances[index].discoveryImpl().id2Member[string(string(instances[i].discoveryImpl().self.PKIid))]
+		_, exist = instances[index].discoveryImpl().id2Member[string(instances[i].discoveryImpl().self.PKIid)]
 		require.True(t, exist, fmt.Sprint(step, " id2Member mapping doesn't exist for alive msg ", i, " of discovery inst ", index))
 
 		require.NotNil(t, instances[index].discoveryImpl().aliveMembership.MsgByID(instances[i].discoveryImpl().self.PKIid), fmt.Sprint(step, " Alive msg", i, " not exist in aliveMembership of discovery inst ", index))

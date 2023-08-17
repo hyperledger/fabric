@@ -262,7 +262,7 @@ func (s *MSPMessageCryptoService) VerifyByChannel(chainID common.ChannelID, peer
 	return policy.EvaluateSignedData(
 		[]*protoutil.SignedData{{
 			Data:      message,
-			Identity:  []byte(peerIdentity),
+			Identity:  peerIdentity,
 			Signature: signature,
 		}},
 	)
@@ -296,7 +296,7 @@ func (s *MSPMessageCryptoService) getValidatedIdentity(peerIdentity api.PeerIden
 	// the local MSP is required to take the final decision on the validity
 	// of the signature.
 	lDes := s.deserializer.GetLocalDeserializer()
-	identity, err := lDes.DeserializeIdentity([]byte(peerIdentity))
+	identity, err := lDes.DeserializeIdentity(peerIdentity)
 	if err == nil {
 		// No error means that the local MSP successfully deserialized the identity.
 		// We now check additional properties.
@@ -324,7 +324,7 @@ func (s *MSPMessageCryptoService) getValidatedIdentity(peerIdentity api.PeerIden
 	// Check against managers
 	for chainID, mspManager := range s.deserializer.GetChannelDeserializers() {
 		// Deserialize identity
-		identity, err := mspManager.DeserializeIdentity([]byte(peerIdentity))
+		identity, err := mspManager.DeserializeIdentity(peerIdentity)
 		if err != nil {
 			mcsLogger.Debugf("Failed deserialization identity %s on [%s]: [%s]", peerIdentity, chainID, err)
 			continue

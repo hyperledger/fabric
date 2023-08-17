@@ -185,7 +185,7 @@ func (s *Service) channelMembershipResponse(q *discovery.Query) *discovery.Query
 		membersByOrgs[org] = &discovery.Peers{}
 		for id, peer := range ids2Peers {
 			// Check if the peer is in the channel view
-			stateInfoMsg, exists := chanPeerByID[string(id)]
+			stateInfoMsg, exists := chanPeerByID[id]
 			// If the peer isn't in the channel view, skip it and don't include it in the response
 			if !exists {
 				continue

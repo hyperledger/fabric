@@ -42,7 +42,7 @@ func (l LevelerFunc) PayloadLevel(ctx context.Context, fullMethod string) zapcor
 }
 
 // DefaultPayloadLevel is default level to use when logging payloads
-const DefaultPayloadLevel = zapcore.Level(zapcore.DebugLevel - 1)
+const DefaultPayloadLevel = zapcore.DebugLevel - 1
 
 type options struct {
 	Leveler
