@@ -43,9 +43,7 @@ type Egress struct {
 func (e *Egress) Nodes() []uint64 {
 	nodes := e.RuntimeConfig.Load().(RuntimeConfig).Nodes
 	var res []uint64
-	for _, n := range nodes {
-		res = append(res, n)
-	}
+	res = append(res, nodes...)
 	return res
 }
 
