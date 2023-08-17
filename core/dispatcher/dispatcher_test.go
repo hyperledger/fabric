@@ -10,33 +10,31 @@ import (
 	"fmt"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-
+	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/core/dispatcher"
 	"github.com/hyperledger/fabric/core/dispatcher/mock"
-
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/timestamp"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type TestReceiver struct{}
 
 func (tr TestReceiver) GoodFunc(ts *timestamp.Timestamp) (*timestamp.Timestamp, error) {
-	return ptypes.TimestampProto(time.Unix(0, 0))
+	return timestamppb.New(time.Unix(0, 0)), nil
 }
 
 func (tr TestReceiver) MissingFuncParameters() (*timestamp.Timestamp, error) {
-	return ptypes.TimestampProto(time.Unix(0, 0))
+	return timestamppb.New(time.Unix(0, 0)), nil
 }
 
 func (tr TestReceiver) NotProtoParameter(foo *string) (*timestamp.Timestamp, error) {
-	return ptypes.TimestampProto(time.Unix(0, 0))
+	return timestamppb.New(time.Unix(0, 0)), nil
 }
 
 func (tr TestReceiver) NotPointerParameter(foo string) (*timestamp.Timestamp, error) {
-	return ptypes.TimestampProto(time.Unix(0, 0))
+	return timestamppb.New(time.Unix(0, 0)), nil
 }
 
 func (tr TestReceiver) NoReturnValues(ts *timestamp.Timestamp) {}
@@ -81,7 +79,7 @@ var _ = Describe("Dispatcher", func() {
 
 		BeforeEach(func() {
 			var err error
-			inputBytes, err = proto.Marshal(ptypes.TimestampNow())
+			inputBytes, err = proto.Marshal(timestamppb.Now())
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -91,8 +89,7 @@ var _ = Describe("Dispatcher", func() {
 			ts := &timestamp.Timestamp{}
 			err = proto.Unmarshal(outputBytes, ts)
 			Expect(err).NotTo(HaveOccurred())
-			gts, err := ptypes.Timestamp(ts)
-			Expect(err).NotTo(HaveOccurred())
+			gts := ts.AsTime()
 			Expect(gts).To(Equal(time.Unix(0, 0).UTC()))
 		})
 

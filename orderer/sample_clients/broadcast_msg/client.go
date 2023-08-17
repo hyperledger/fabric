@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/protoutil"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type broadcastClient struct {
@@ -91,7 +92,7 @@ func main() {
 	flag.Uint64Var(&msgSize, "size", 1024, "The size in bytes of the data section for the payload")
 	flag.Parse()
 
-	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
+	conn, err := grpc.Dial(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	defer func() {
 		_ = conn.Close()
 	}()

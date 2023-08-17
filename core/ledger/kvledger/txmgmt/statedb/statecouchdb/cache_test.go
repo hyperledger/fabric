@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package statecouchdb
 
 import (
-	"math/rand"
+	"crypto/rand"
 	"testing"
 
 	"github.com/VictoriaMetrics/fastcache"

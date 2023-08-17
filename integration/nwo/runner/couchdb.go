@@ -120,7 +120,7 @@ func (c *CouchDB) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 	}
 	defer c.Stop()
 
-	container, err = c.Client.InspectContainer(container.ID)
+	container, err = c.Client.InspectContainerWithOptions(docker.InspectContainerOptions{ID: container.ID})
 	if err != nil {
 		return err
 	}

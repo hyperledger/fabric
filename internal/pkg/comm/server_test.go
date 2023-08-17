@@ -29,6 +29,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 )
 
@@ -533,7 +534,7 @@ func TestNewGRPCServer(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// invoke the EmptyCall service
-	_, err = invokeEmptyCall(testAddress, grpc.WithInsecure())
+	_, err = invokeEmptyCall(testAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err, "failed to invoke the EmptyCall service")
 }
 
@@ -567,7 +568,7 @@ func TestNewGRPCServerFromListener(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// invoke the EmptyCall service
-	_, err = invokeEmptyCall(testAddress, grpc.WithInsecure())
+	_, err = invokeEmptyCall(testAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err, "client failed to invoke the EmptyCall service")
 }
 
@@ -1257,7 +1258,7 @@ func TestServerInterceptors(t *testing.T) {
 	_, err = invokeEmptyCall(
 		lis.Addr().String(),
 		grpc.WithBlock(),
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	require.Error(t, err)
 	require.Equal(t, status.Convert(err).Message(), msg, "Expected error from second usi")
@@ -1266,7 +1267,7 @@ func TestServerInterceptors(t *testing.T) {
 	_, err = invokeEmptyStream(
 		lis.Addr().String(),
 		grpc.WithBlock(),
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	require.Error(t, err)
 	require.Equal(t, status.Convert(err).Message(), msg, "Expected error from second ssi")

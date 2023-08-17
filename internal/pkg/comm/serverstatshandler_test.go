@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/comm/testpb"
 	. "github.com/onsi/gomega"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/stats"
 )
 
@@ -89,7 +90,7 @@ func TestConnMetricsGRPCServer(t *testing.T) {
 	// create GRPC client conn
 	var clientConns []*grpc.ClientConn
 	for i := 1; i <= 3; i++ {
-		clientConn, err := grpc.DialContext(ctx, listener.Addr().String(), grpc.WithInsecure())
+		clientConn, err := grpc.DialContext(ctx, listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		gt.Expect(err).NotTo(HaveOccurred())
 		clientConns = append(clientConns, clientConn)
 

@@ -18,11 +18,9 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
@@ -44,6 +42,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tedsuo/ifrit"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // The chaincode used in these tests has two collections defined:
@@ -1301,10 +1300,6 @@ func createDeliverEnvelope(channelID string, signingIdentity *nwo.SigningIdentit
 }
 
 func createHeader(txType cb.HeaderType, channelID string, creator []byte) (*cb.Header, error) {
-	ts, err := ptypes.TimestampProto(time.Now())
-	if err != nil {
-		return nil, err
-	}
 	nonce, err := crypto.GetRandomNonce()
 	if err != nil {
 		return nil, err
@@ -1314,7 +1309,7 @@ func createHeader(txType cb.HeaderType, channelID string, creator []byte) (*cb.H
 		ChannelId: channelID,
 		TxId:      protoutil.ComputeTxID(nonce, creator),
 		Epoch:     0,
-		Timestamp: ts,
+		Timestamp: timestamppb.Now(),
 	}
 	chdrBytes := protoutil.MarshalOrPanic(chdr)
 

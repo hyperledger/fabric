@@ -66,7 +66,6 @@ func createCouchInstance(config *ledger.CouchDBConfig, metricsProvider metrics.P
 		DialContext: (&net.Dialer{
 			Timeout:   5 * time.Second,
 			KeepAlive: 30 * time.Second,
-			DualStack: true,
 		}).DialContext,
 		ForceAttemptHTTP2:     true,
 		MaxIdleConns:          2000,
