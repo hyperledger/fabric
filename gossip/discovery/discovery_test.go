@@ -35,6 +35,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var timeout = time.Second * time.Duration(15)
@@ -222,7 +223,7 @@ func (comm *dummyCommModule) Ping(peer *NetworkMember) bool {
 	_, alreadyExists := comm.streams[peer.Endpoint]
 	conn := comm.conns[peer.Endpoint]
 	if !alreadyExists || conn.GetState() == connectivity.Shutdown {
-		newConn, err := grpc.Dial(peer.Endpoint, grpc.WithInsecure())
+		newConn, err := grpc.Dial(peer.Endpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			return false
 		}

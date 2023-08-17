@@ -17,11 +17,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/common/crypto"
-
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/util"
@@ -35,19 +33,19 @@ import (
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var (
 	sourceNodeID      uint64 = 1
 	destinationNodeID uint64 = 2
 	streamID          uint64 = 111
-	tstamp, _                = ptypes.TimestampProto(time.Now().UTC())
 	nodeAuthRequest          = orderer.NodeAuthRequest{
 		Version:   0,
 		FromId:    sourceNodeID,
 		ToId:      destinationNodeID,
 		Channel:   "mychannel",
-		Timestamp: tstamp,
+		Timestamp: timestamppb.Now(),
 	}
 	nodeConsensusRequest = &orderer.ClusterNodeServiceStepRequest{
 		Payload: &orderer.ClusterNodeServiceStepRequest_NodeConrequest{

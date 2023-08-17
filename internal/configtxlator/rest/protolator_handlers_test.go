@@ -47,8 +47,7 @@ var (
 func TestProtolatorDecode(t *testing.T) {
 	data, err := proto.Marshal(testProto)
 	require.NoError(t, err)
-
-	url := fmt.Sprintf("/protolator/decode/%s", proto.MessageName(testProto))
+	url := fmt.Sprintf("/protolator/decode/%s", proto.MessageReflect(testProto).Descriptor().FullName())
 
 	req, _ := http.NewRequest("POST", url, bytes.NewReader(data))
 	rec := httptest.NewRecorder()
@@ -64,7 +63,7 @@ func TestProtolatorDecode(t *testing.T) {
 }
 
 func TestProtolatorEncode(t *testing.T) {
-	url := fmt.Sprintf("/protolator/encode/%s", proto.MessageName(testProto))
+	url := fmt.Sprintf("/protolator/encode/%s", proto.MessageReflect(testProto).Descriptor().FullName())
 
 	req, _ := http.NewRequest("POST", url, bytes.NewReader([]byte(testOutput)))
 	rec := httptest.NewRecorder()
@@ -99,7 +98,7 @@ func TestProtolatorEncodeNonExistantProto(t *testing.T) {
 }
 
 func TestProtolatorDecodeBadData(t *testing.T) {
-	url := fmt.Sprintf("/protolator/decode/%s", proto.MessageName(testProto))
+	url := fmt.Sprintf("/protolator/decode/%s", proto.MessageReflect(testProto).Descriptor().FullName())
 
 	req, _ := http.NewRequest("POST", url, bytes.NewReader([]byte("Garbage")))
 
@@ -111,7 +110,7 @@ func TestProtolatorDecodeBadData(t *testing.T) {
 }
 
 func TestProtolatorEncodeBadData(t *testing.T) {
-	url := fmt.Sprintf("/protolator/encode/%s", proto.MessageName(testProto))
+	url := fmt.Sprintf("/protolator/encode/%s", proto.MessageReflect(testProto).Descriptor().FullName())
 
 	req, _ := http.NewRequest("POST", url, bytes.NewReader([]byte("Garbage")))
 

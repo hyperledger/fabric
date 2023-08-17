@@ -766,9 +766,9 @@ func TestBlockingEnqueue(t *testing.T) {
 
 	// Get a block from gossip every 1ms too
 	go func() {
-		rand.Seed(time.Now().UnixNano())
+		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		for i := 1; i <= numBlocksReceived/2; i++ {
-			blockSeq := rand.Intn(numBlocksReceived)
+			blockSeq := r.Intn(numBlocksReceived)
 			rawblock := protoutil.NewBlock(uint64(blockSeq), []byte{})
 			b, _ := pb.Marshal(rawblock)
 			block := &proto.Payload{

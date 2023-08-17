@@ -291,8 +291,8 @@ func TestIsEnabledFor(t *testing.T) {
 	require.Equal(t, 2, enablerCallCount)
 }
 
-func logCaller(l grpclog.Logger, msg string)   { l.Println(msg) }
-func callWrapper(l grpclog.Logger, msg string) { logCaller(l, msg) }
+func logCaller(l grpclog.LoggerV2, msg string)   { l.Infoln(msg) }
+func callWrapper(l grpclog.LoggerV2, msg string) { logCaller(l, msg) }
 
 func TestGRPCLogger(t *testing.T) {
 	// ensure it includes the name as module, logs at debug level, and the caller with appropriate skip level
@@ -307,7 +307,7 @@ func TestGRPCLogger(t *testing.T) {
 	gl := flogging.NewGRPCLogger(zl)
 
 	callWrapper(gl, "message")
-	require.Equal(t, "grpc DEBUG TestGRPCLogger message\n", buf.String())
+	require.Equal(t, "grpc INFO TestGRPCLogger message\n", buf.String())
 }
 
 // FAB-15432

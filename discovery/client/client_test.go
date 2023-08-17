@@ -41,6 +41,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
@@ -603,7 +604,7 @@ func TestBadResponses(t *testing.T) {
 	defer svc.shutdown()
 
 	connect := func() (*grpc.ClientConn, error) {
-		return grpc.Dial(fmt.Sprintf("localhost:%d", svc.port), grpc.WithInsecure())
+		return grpc.Dial(fmt.Sprintf("localhost:%d", svc.port), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
 	auth := &discovery.AuthInfo{

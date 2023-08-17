@@ -15,6 +15,7 @@ import (
 	"reflect"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/gorilla/handlers"
 	"github.com/hyperledger/fabric-config/protolator"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	_ "github.com/hyperledger/fabric-protos-go/msp"
@@ -25,9 +26,9 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxlator/metadata"
 	"github.com/hyperledger/fabric/internal/configtxlator/rest"
 	"github.com/hyperledger/fabric/internal/configtxlator/update"
-
-	"github.com/gorilla/handlers"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -125,13 +126,19 @@ func printVersion() {
 }
 
 func encodeProto(msgName string, input, output *os.File) error {
-	msgType := proto.MessageType(msgName)
+	mt, err := protoregistry.GlobalTypes.FindMessageByName(protoreflect.FullName(msgName))
+	if err != nil {
+		return errors.Wrapf(err, "error encode input")
+	}
+
+	msgType := reflect.TypeOf(proto.MessageV1(mt.Zero().Interface()))
+
 	if msgType == nil {
 		return errors.Errorf("message of type %s unknown", msgType)
 	}
 	msg := reflect.New(msgType.Elem()).Interface().(proto.Message)
 
-	err := protolator.DeepUnmarshalJSON(input, msg)
+	err = protolator.DeepUnmarshalJSON(input, msg)
 	if err != nil {
 		return errors.Wrapf(err, "error decoding input")
 	}
@@ -150,7 +157,13 @@ func encodeProto(msgName string, input, output *os.File) error {
 }
 
 func decodeProto(msgName string, input, output *os.File) error {
-	msgType := proto.MessageType(msgName)
+	mt, err := protoregistry.GlobalTypes.FindMessageByName(protoreflect.FullName(msgName))
+	if err != nil {
+		return errors.Wrapf(err, "error encode input")
+	}
+
+	msgType := reflect.TypeOf(proto.MessageV1(mt.Zero().Interface()))
+
 	if msgType == nil {
 		return errors.Errorf("message of type %s unknown", msgType)
 	}

@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func TestStartCmd(t *testing.T) {
@@ -46,7 +47,7 @@ func TestStartCmd(t *testing.T) {
 	}()
 
 	grpcProbe := func(addr string) bool {
-		c, err := grpc.Dial(addr, grpc.WithBlock(), grpc.WithInsecure())
+		c, err := grpc.Dial(addr, grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err == nil {
 			c.Close()
 			return true

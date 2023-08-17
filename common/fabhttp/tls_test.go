@@ -61,7 +61,7 @@ var _ = Describe("TLS", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// https://go-review.googlesource.com/c/go/+/229917
-		Expect(tlsConfig.ClientCAs.Subjects()).To(Equal(clientCAPool.Subjects()))
+		Expect(tlsConfig.ClientCAs.Equal(clientCAPool)).To(BeTrue())
 		tlsConfig.ClientCAs = nil
 
 		Expect(tlsConfig).To(Equal(&tls.Config{
@@ -120,9 +120,10 @@ var _ = Describe("TLS", func() {
 		})
 
 		It("builds a TLS configuration without an empty CA pool", func() {
+			emptyPool := x509.NewCertPool()
 			tlsConfig, err := httpTLS.Config()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(tlsConfig.ClientCAs.Subjects()).To(BeEmpty())
+			Expect(tlsConfig.ClientCAs.Equal(emptyPool)).To(BeTrue())
 		})
 	})
 

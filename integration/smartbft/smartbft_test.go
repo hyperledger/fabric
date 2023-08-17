@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -26,34 +25,26 @@ import (
 	"syscall"
 	"time"
 
-	protosOrderer "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/integration/ordererclient"
-	"github.com/hyperledger/fabric/protoutil"
-
-	"github.com/golang/protobuf/proto"
-
-	"github.com/hyperledger/fabric/integration/channelparticipation"
-
-	"github.com/tedsuo/ifrit/grouper"
-
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/configtx"
 	"github.com/hyperledger/fabric-config/configtx/orderer"
 	"github.com/hyperledger/fabric-protos-go/common"
+	protosOrderer "github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	conftx "github.com/hyperledger/fabric/integration/configtx"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/integration/ordererclient"
+	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
+	"github.com/tedsuo/ifrit/grouper"
 )
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
 
 var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 	var (

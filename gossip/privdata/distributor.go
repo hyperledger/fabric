@@ -256,7 +256,7 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 	remainingPeersAcrossOrgs := []api.PeerIdentityInfo{}
 	selectedPeerEndpointsForDebug := []string{}
 
-	rand.Seed(time.Now().Unix())
+	r := rand.New(rand.NewSource(time.Now().Unix()))
 
 	// PHASE 1 - Select one peer from each eligible org
 	if maximumPeerRemainingCount > 0 {
@@ -269,7 +269,7 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 				acksRequired = 0
 			}
 
-			selectedPeerIndex := rand.Intn(len(selectionPeersForOrg))
+			selectedPeerIndex := r.Intn(len(selectionPeersForOrg))
 			peer2SendPerOrg := selectionPeersForOrg[selectedPeerIndex]
 			selectedPeerEndpointsForDebug = append(selectedPeerEndpointsForDebug, peerEndpoints[string(peer2SendPerOrg.PKIId)])
 			sc := gossipgossip.SendCriteria{
@@ -322,7 +322,7 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 		if requiredPeerRemainingCount == 0 {
 			required = 0
 		}
-		selectedPeerIndex := rand.Intn(len(remainingPeersAcrossOrgs))
+		selectedPeerIndex := r.Intn(len(remainingPeersAcrossOrgs))
 		peer2Send := remainingPeersAcrossOrgs[selectedPeerIndex]
 		selectedPeerEndpointsForDebug = append(selectedPeerEndpointsForDebug, peerEndpoints[string(peer2Send.PKIId)])
 		sc := gossipgossip.SendCriteria{

@@ -11,15 +11,14 @@ import (
 	"encoding/asn1"
 	"strconv"
 	"sync"
-	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // AuthCommMgr implements the Communicator
@@ -253,14 +252,9 @@ func (cs *NodeClientStream) Auth() error {
 		return errors.New("signer is nil")
 	}
 
-	timestamp, err := ptypes.TimestampProto(time.Now().UTC())
-	if err != nil {
-		return errors.Wrap(err, "failed to read timestamp")
-	}
-
 	payload := &orderer.NodeAuthRequest{
 		Version:   cs.Version,
-		Timestamp: timestamp,
+		Timestamp: timestamppb.Now(),
 		FromId:    cs.SourceNodeID,
 		ToId:      cs.DestinationNodeID,
 		Channel:   cs.Channel,
