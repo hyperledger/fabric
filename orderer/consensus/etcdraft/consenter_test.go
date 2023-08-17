@@ -424,7 +424,7 @@ var _ = Describe("Consenter", func() {
 		consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 
 		chain, err := consenter.HandleChain(support, &common.Metadata{})
-		Expect(chain).To((BeNil()))
+		Expect(chain).To(BeNil())
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("without a system channel, a follower should have been created"))
 	})
@@ -542,7 +542,7 @@ var _ = Describe("Consenter", func() {
 		consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 
 		chain, err := consenter.HandleChain(support, &common.Metadata{})
-		Expect(chain).To((BeNil()))
+		Expect(chain).To(BeNil())
 		Expect(err).To(MatchError("without a system channel, a follower should have been created: not in the channel"))
 	})
 })

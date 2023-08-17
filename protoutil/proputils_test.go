@@ -464,9 +464,9 @@ func TestComputeProposalTxID(t *testing.T) {
 	hashOut := hf.Sum(nil)
 	txid2 := hex.EncodeToString(hashOut)
 
-	t.Logf("% x\n", hashOut)
-	t.Logf("% s\n", txid)
-	t.Logf("% s\n", txid2)
+	t.Logf("%x\n", hashOut)
+	t.Logf("%s\n", txid)
+	t.Logf("%s\n", txid2)
 
 	require.Equal(t, txid, txid2)
 }

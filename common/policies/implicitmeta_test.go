@@ -73,7 +73,7 @@ func runPolicyTest(t *testing.T, rule cb.ImplicitMetaPolicy_Rule, managerCount i
 
 	errI := imp.EvaluateIdentities(nil)
 
-	require.False(t, ((errI == nil && errSD != nil) || (errSD == nil && errI != nil)))
+	require.False(t, (errI == nil && errSD != nil) || (errSD == nil && errI != nil))
 	if errI != nil && errSD != nil {
 		require.Equal(t, errI.Error(), errSD.Error())
 	}

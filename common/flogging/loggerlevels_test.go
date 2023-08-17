@@ -183,9 +183,9 @@ func TestEnabled(t *testing.T) {
 
 			for i := flogging.PayloadLevel; i <= zapcore.FatalLevel; i++ {
 				if tc.enabledAt <= i {
-					require.Truef(t, ll.Enabled(i), "expected level %s and spec %s to be enabled", zapcore.Level(i), tc.spec)
+					require.Truef(t, ll.Enabled(i), "expected level %s and spec %s to be enabled", i, tc.spec)
 				} else {
-					require.False(t, ll.Enabled(i), "expected level %s and spec %s to be disabled", zapcore.Level(i), tc.spec)
+					require.False(t, ll.Enabled(i), "expected level %s and spec %s to be disabled", i, tc.spec)
 				}
 			}
 		})

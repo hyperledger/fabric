@@ -39,7 +39,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
 	"github.com/pkg/errors"
-	raft "go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.uber.org/zap"
 )
@@ -3304,7 +3304,7 @@ func nodeConfigFromMetadata(consenterMetadata *raftprotos.ConfigMetadata) []clus
 
 func createMetadata(nodeCount int, tlsCA tlsgen.CA) *raftprotos.ConfigMetadata {
 	md := &raftprotos.ConfigMetadata{Options: &raftprotos.Options{
-		TickInterval:      time.Duration(interval).String(),
+		TickInterval:      interval.String(),
 		ElectionTick:      ELECTION_TICK,
 		HeartbeatTick:     HEARTBEAT_TICK,
 		MaxInflightBlocks: 5,
@@ -3409,7 +3409,7 @@ func newChain(
 
 	opts := etcdraft.Options{
 		RPCTimeout:          timeout,
-		RaftID:              uint64(id),
+		RaftID:              id,
 		Clock:               clock,
 		TickInterval:        interval,
 		ElectionTick:        ELECTION_TICK,

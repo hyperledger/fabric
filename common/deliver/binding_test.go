@@ -85,7 +85,7 @@ func TestBindingInspector(t *testing.T) {
 	// Scenario IV: Client sends its TLS cert hash as needed, but doesn't use mutual TLS
 	cert, _ := tls.X509KeyPair([]byte(selfSignedCertPEM), []byte(selfSignedKeyPEM))
 	h := sha256.New()
-	h.Write([]byte(cert.Certificate[0]))
+	h.Write(cert.Certificate[0])
 	chanHdr.TlsCertHash = h.Sum(nil)
 	ch, _ = proto.Marshal(chanHdr)
 	err = srv.newInspection(t).inspectBinding(envelopeWithChannelHeader(ch))

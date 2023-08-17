@@ -37,7 +37,7 @@ var _ = Describe("GatewayService with BFT ordering service", func() {
 		network          *nwo.Network
 		ordererProcesses map[string]ifrit.Process
 		peerProcesses    ifrit.Process
-		channel          string = "testchannel1"
+		channel          = "testchannel1"
 	)
 
 	BeforeEach(func() {

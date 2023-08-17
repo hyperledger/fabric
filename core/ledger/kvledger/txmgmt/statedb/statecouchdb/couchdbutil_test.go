@@ -8,7 +8,7 @@ package statecouchdb
 
 import (
 	"encoding/hex"
-	fmt "fmt"
+	"fmt"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/metrics/disabled"

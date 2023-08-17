@@ -19,8 +19,8 @@ import (
 	"github.com/hyperledger/fabric/internal/cryptogen/metadata"
 	"github.com/hyperledger/fabric/internal/cryptogen/msp"
 
-	kingpin "gopkg.in/alecthomas/kingpin.v2"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/alecthomas/kingpin.v2"
+	"gopkg.in/yaml.v2"
 )
 
 const (

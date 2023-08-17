@@ -958,7 +958,7 @@ func getQueryMetadataFromBytes(metadataBytes []byte) (*pb.QueryMetadata, error) 
 func (h *Handler) calculateTotalReturnLimit(metadata *pb.QueryMetadata) int32 {
 	totalReturnLimit := int32(h.TotalQueryLimit)
 	if metadata != nil {
-		pageSize := int32(metadata.PageSize)
+		pageSize := metadata.PageSize
 		if pageSize > 0 && pageSize < totalReturnLimit {
 			totalReturnLimit = pageSize
 		}
@@ -1210,7 +1210,7 @@ func (h *Handler) Execute(txParams *ccprovider.TransactionParams, namespace stri
 	defer chaincodeLogger.Debugf("Exit")
 
 	txParams.CollectionStore = h.getCollectionStore(msg.ChannelId)
-	txParams.IsInitTransaction = (msg.Type == pb.ChaincodeMessage_INIT)
+	txParams.IsInitTransaction = msg.Type == pb.ChaincodeMessage_INIT
 	txParams.NamespaceID = namespace
 
 	txctx, err := h.TXContexts.Create(txParams)

@@ -241,7 +241,7 @@ func testInstall(t *testing.T, ccname string, version string, path string, creat
 			require.Equal(t, int32(shim.OK), res.Status, res.Message)
 		} else {
 			res := stub.MockInvokeWithSignedProposal("1", args, sProp)
-			require.True(t, strings.HasPrefix(string(res.Message), expectedErrorMsg), res.Message)
+			require.True(t, strings.HasPrefix(res.Message, expectedErrorMsg), res.Message)
 		}
 	})
 }
@@ -587,7 +587,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 			})
 		}
 	} else {
-		require.Equal(t, expectedErrorMsg, string(res.Message))
+		require.Equal(t, expectedErrorMsg, res.Message)
 	}
 }
 
@@ -852,7 +852,7 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 			require.NoError(t, err)
 			require.Equal(t, newccname, lifecycleEvent.ChaincodeName)
 		} else {
-			require.Equal(t, expectedErrorMsg, string(res.Message))
+			require.Equal(t, expectedErrorMsg, res.Message)
 		}
 	})
 }
@@ -1133,7 +1133,7 @@ func TestPutChaincodeCollectionData(t *testing.T) {
 	stub := shimtest.NewMockStub("lscc", scc)
 
 	if res := stub.MockInit("1", nil); res.Status != shim.OK {
-		fmt.Println("Init failed", string(res.Message))
+		fmt.Println("Init failed", res.Message)
 		t.FailNow()
 	}
 

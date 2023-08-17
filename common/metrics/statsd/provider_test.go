@@ -133,11 +133,11 @@ var _ = Describe("Provider", func() {
 			gauge := provider.NewGauge(gaugeOpts)
 
 			for _, alpha := range []string{"x", "y", "z"} {
-				gauge.With("alpha", alpha, "beta", "b").Set(float64(1.0))
+				gauge.With("alpha", alpha, "beta", "b").Set(1.0)
 			}
 			for _, alpha := range []string{"x", "y", "z"} {
 				for i := 0; i < 5; i++ {
-					gauge.With("alpha", alpha, "beta", "b").Add(float64(1.0))
+					gauge.With("alpha", alpha, "beta", "b").Add(1.0)
 				}
 			}
 			buf := &bytes.Buffer{}

@@ -44,7 +44,7 @@ func TestMSPConfigManager(t *testing.T) {
 		}
 
 		for _, mspInst := range msps {
-			require.Equal(t, mspInst.GetVersion(), msp.MSPVersion(ver))
+			require.Equal(t, mspInst.GetVersion(), ver)
 		}
 	}
 }

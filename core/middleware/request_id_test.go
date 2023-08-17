@@ -29,7 +29,7 @@ var _ = Describe("WithRequestID", func() {
 	BeforeEach(func() {
 		handler = &fakes.HTTPHandler{}
 		requestID = middleware.WithRequestID(
-			middleware.GenerateIDFunc(func() string { return "generated-id" }),
+			func() string { return "generated-id" },
 		)
 		chain = requestID(handler)
 

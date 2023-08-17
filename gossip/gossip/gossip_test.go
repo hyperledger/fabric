@@ -1130,7 +1130,7 @@ func TestDataLeakage(t *testing.T) {
 				go func(instanceIndex int, channel common.ChannelID) {
 					incMsgChan, _ := peers[instanceIndex].Accept(acceptData, false)
 					msg := <-incMsgChan
-					require.Equal(t, []byte(channel), []byte(msg.Channel))
+					require.Equal(t, []byte(channel), msg.Channel)
 					wg.Done()
 				}(instanceIndex, channel)
 			}
@@ -1480,7 +1480,7 @@ func TestIdentityExpiration(t *testing.T) {
 
 func createDataMsg(seqnum uint64, data []byte, channel common.ChannelID) *proto.GossipMessage {
 	return &proto.GossipMessage{
-		Channel: []byte(channel),
+		Channel: channel,
 		Nonce:   0,
 		Tag:     proto.GossipMessage_CHAN_AND_ORG,
 		Content: &proto.GossipMessage_DataMsg{

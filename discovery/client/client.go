@@ -129,7 +129,7 @@ func (req *Request) AddPeersQuery(invocationChain ...*peer.ChaincodeCall) *Reque
 	})
 	var ic InvocationChain
 	if len(invocationChain) > 0 {
-		ic = InvocationChain(invocationChain)
+		ic = invocationChain
 	}
 	req.addChaincodeQueryMapping([]InvocationChain{ic})
 	req.addQueryMapping(protoext.PeerMembershipQueryType, channnelAndInvocationChain(ch, ic))
@@ -303,7 +303,7 @@ var NoFilter = NewFilter(NoPriorities, NoExclusion)
 func selectPeersForLayout(endorsersByGroups map[string][]*Peer, layout map[string]int, f Filter) (Endorsers, bool) {
 	var endorsers []*Peer
 	for grp, count := range layout {
-		endorsersOfGrp := f.Filter(Endorsers(endorsersByGroups[grp]))
+		endorsersOfGrp := f.Filter(endorsersByGroups[grp])
 
 		// We couldn't select enough peers for this layout because the current group
 		// requires more peers than we have available to be selected

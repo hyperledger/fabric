@@ -353,7 +353,7 @@ func (t *MarblesPrivateChaincode) delete(stub shim.ChaincodeStubInterface, args 
 	}
 
 	var marbleToDelete marble
-	err = json.Unmarshal([]byte(valAsbytes), &marbleToDelete)
+	err = json.Unmarshal(valAsbytes, &marbleToDelete)
 	if err != nil {
 		return shim.Error("Failed to decode JSON of: " + string(valAsbytes))
 	}
@@ -432,7 +432,7 @@ func (t *MarblesPrivateChaincode) purge(stub shim.ChaincodeStubInterface, args [
 	}
 
 	var marbleToPurge marble
-	err = json.Unmarshal([]byte(valAsbytes), &marbleToPurge)
+	err = json.Unmarshal(valAsbytes, &marbleToPurge)
 	if err != nil {
 		return shim.Error("Failed to decode JSON of: " + string(valAsbytes))
 	}

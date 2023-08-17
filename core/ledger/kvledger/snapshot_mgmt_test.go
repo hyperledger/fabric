@@ -380,7 +380,7 @@ func testutilCommitBlocks(t *testing.T, l ledger.PeerLedger, bg *testutil.BlockG
 		require.NoError(t, err)
 		blockHash := protoutil.BlockHeaderHash(block.Header)
 		require.Equal(t, &common.BlockchainInfo{
-			Height: uint64(i + 1), CurrentBlockHash: blockHash, PreviousBlockHash: previousBlockHash,
+			Height: i + 1, CurrentBlockHash: blockHash, PreviousBlockHash: previousBlockHash,
 		}, bcInfo)
 		previousBlockHash = blockHash
 	}

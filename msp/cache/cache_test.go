@@ -175,8 +175,8 @@ func TestValidate(t *testing.T) {
 	mockMSP.AssertExpectations(t)
 	// Check the cache
 	identifier := mockIdentity.GetIdentifier()
-	key := string(identifier.Mspid + ":" + identifier.Id)
-	v, ok := i.(*cachedMSP).validateIdentityCache.get(string(key))
+	key := identifier.Mspid + ":" + identifier.Id
+	v, ok := i.(*cachedMSP).validateIdentityCache.get(key)
 	require.True(t, ok)
 	require.True(t, v.(bool))
 
@@ -194,8 +194,8 @@ func TestValidate(t *testing.T) {
 	mockMSP.AssertExpectations(t)
 	// Check the cache
 	identifier = mockIdentity.GetIdentifier()
-	key = string(identifier.Mspid + ":" + identifier.Id)
-	_, ok = i.(*cachedMSP).validateIdentityCache.get(string(key))
+	key = identifier.Mspid + ":" + identifier.Id
+	_, ok = i.(*cachedMSP).validateIdentityCache.get(key)
 	require.False(t, ok)
 }
 
@@ -276,7 +276,7 @@ func TestSatisfiesPrincipal(t *testing.T) {
 	mockMSP.AssertExpectations(t)
 	// Check the cache
 	identifier := mockIdentity.GetIdentifier()
-	identityKey := string(identifier.Mspid + ":" + identifier.Id)
+	identityKey := identifier.Mspid + ":" + identifier.Id
 	principalKey := string(mockMSPPrincipal.PrincipalClassification) + string(mockMSPPrincipal.Principal)
 	key := identityKey + principalKey
 	v, ok := i.(*cachedMSP).satisfiesPrincipalCache.get(key)
@@ -299,7 +299,7 @@ func TestSatisfiesPrincipal(t *testing.T) {
 	mockMSP.AssertExpectations(t)
 	// Check the cache
 	identifier = mockIdentity.GetIdentifier()
-	identityKey = string(identifier.Mspid + ":" + identifier.Id)
+	identityKey = identifier.Mspid + ":" + identifier.Id
 	principalKey = string(mockMSPPrincipal.PrincipalClassification) + string(mockMSPPrincipal.Principal)
 	key = identityKey + principalKey
 	v, ok = i.(*cachedMSP).satisfiesPrincipalCache.get(key)

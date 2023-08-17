@@ -137,7 +137,7 @@ func (m *Metrics) reportWorkerCount(channel string, count uint32) {
 }
 
 func (m *Metrics) reportMsgSendTime(host string, channel string, duration time.Duration) {
-	m.MessageSendTime.With("host", host, "channel", channel).Observe(float64(duration.Seconds()))
+	m.MessageSendTime.With("host", host, "channel", channel).Observe(duration.Seconds())
 }
 
 func (m *Metrics) reportEgressStreamCount(channel string, count uint32) {

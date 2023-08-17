@@ -74,8 +74,9 @@ func (rm RemoteNode) String() string {
 		rm.ID, rm.Endpoint, DERtoPEM(rm.ServerTLSCert), DERtoPEM(rm.ClientTLSCert), rm.ServerRootCA)
 }
 
-// go:generate mockery --dir . --name StepClientStream --case underscore --output ./mocks/
 // StepClientStream
+//
+//go:generate mockery --dir . --name StepClientStream --case underscore --output ./mocks/
 type StepClientStream interface {
 	Send(request *orderer.StepRequest) error
 	Recv() (*orderer.StepResponse, error)

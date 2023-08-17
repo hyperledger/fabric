@@ -862,8 +862,8 @@ func peerIdentity(mspID string, i int) api.PeerIdentityInfo {
 	}
 	b, _ := proto.Marshal(sID)
 	return api.PeerIdentityInfo{
-		Identity:     api.PeerIdentityType(b),
-		PKIId:        gossipcommon.PKIidType(p),
+		Identity:     b,
+		PKIId:        p,
 		Organization: api.OrgIdentityType(mspID),
 	}
 }

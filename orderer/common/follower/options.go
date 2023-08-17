@@ -15,14 +15,14 @@ import (
 
 const (
 	// The default minimal retry interval when pulling blocks
-	defaultPullRetryMinInterval time.Duration = 50 * time.Millisecond
+	defaultPullRetryMinInterval = 50 * time.Millisecond
 	// The default maximal retry interval when pulling blocks
-	defaultPullRetryMaxInterval time.Duration = 60 * time.Second
+	defaultPullRetryMaxInterval = 60 * time.Second
 
 	// The default minimal height polling interval when pulling blocks after the join block
-	defaultHeightPollMinInterval time.Duration = 500 * time.Millisecond
+	defaultHeightPollMinInterval = 500 * time.Millisecond
 	// The default maximal height polling interval when pulling blocks after the join block
-	defaultHeightPollMaxInterval time.Duration = 10 * time.Second
+	defaultHeightPollMaxInterval = 10 * time.Second
 )
 
 // Options contains some configuration options relevant to the follower.Chain.

@@ -532,7 +532,7 @@ func TestPeerConfiger_SubmittingOrdererGenesis(t *testing.T) {
 	}
 	mockStub := &mocks.ChaincodeStub{}
 	// Failed path: wrong parameter type
-	args := [][]byte{[]byte("JoinChain"), []byte(blockBytes)}
+	args := [][]byte{[]byte("JoinChain"), blockBytes}
 	mockStub.GetArgsReturns(args)
 	mockStub.GetSignedProposalReturns(validSignedProposal(), nil)
 	res := cscc.Invoke(mockStub)

@@ -694,7 +694,7 @@ func (gc *gossipChannel) HandleMessage(msg protoext.ReceivedMessage) {
 					gc.logger.Warningf("Data update contains an invalid message: %+v", err)
 					return
 				}
-				if !bytes.Equal(gMsg.Channel, []byte(gc.chainID)) {
+				if !bytes.Equal(gMsg.Channel, gc.chainID) {
 					gc.logger.Warning("DataUpdate message contains item with channel", gMsg.Channel, "but should be", gc.chainID)
 					return
 				}
@@ -894,7 +894,7 @@ func (gc *gossipChannel) verifyMsg(msg protoext.ReceivedMessage) bool {
 		return true
 	}
 
-	if !bytes.Equal(m.Channel, []byte(gc.chainID)) {
+	if !bytes.Equal(m.Channel, gc.chainID) {
 		gc.logger.Warning("Message contains wrong channel(", m.Channel, "), expected", gc.chainID)
 		return false
 	}

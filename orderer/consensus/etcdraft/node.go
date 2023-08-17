@@ -142,7 +142,7 @@ func (n *node) run(campaign bool) {
 				n.logger.Panicf("Failed to persist etcd/raft data: %s", err)
 			}
 			duration := n.clock.Since(startStoring).Seconds()
-			n.metrics.DataPersistDuration.Observe(float64(duration))
+			n.metrics.DataPersistDuration.Observe(duration)
 			if duration > halfElectionTimeout {
 				n.logger.Warningf("WAL sync took %v seconds and the network is configured to start elections after %v seconds. Your disk is too slow and may cause loss of quorum and trigger leadership election.", duration, electionTimeout)
 			}

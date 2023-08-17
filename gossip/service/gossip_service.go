@@ -442,7 +442,7 @@ func (g *GossipService) createSelfSignedData() protoutil.SignedData {
 
 // updateAnchors constructs a joinChannelMessage and sends it to the gossipSvc
 func (g *GossipService) updateAnchors(configUpdate ConfigUpdate) {
-	myOrg := string(g.secAdv.OrgByPeerIdentity(api.PeerIdentityType(g.peerIdentity)))
+	myOrg := string(g.secAdv.OrgByPeerIdentity(g.peerIdentity))
 	if !g.amIinChannel(myOrg, configUpdate) {
 		logger.Error("Tried joining channel", configUpdate.ChannelID, "but our org(", myOrg, "), isn't "+
 			"among the orgs of the channel:", orgListFromConfigUpdate(configUpdate), ", aborting.")

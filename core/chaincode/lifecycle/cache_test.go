@@ -161,8 +161,8 @@ var _ = Describe("Cache", func() {
 		lifecycle.SetChaincodeMap(c, "channel-id", channelCache)
 		lifecycle.SetLocalChaincodesMap(c, localChaincodes)
 
-		fakePublicState = MapLedgerShim(map[string][]byte{})
-		fakePrivateState = MapLedgerShim(map[string][]byte{})
+		fakePublicState = map[string][]byte{}
+		fakePrivateState = map[string][]byte{}
 		fakeQueryExecutor = &mock.SimpleQueryExecutor{}
 		fakeQueryExecutor.GetStateStub = func(namespace, key string) ([]byte, error) {
 			return fakePublicState.GetState(key)
@@ -979,14 +979,14 @@ var _ = Describe("Cache", func() {
 
 				trigger = &ledger.StateUpdateTrigger{
 					LedgerID: "channel-id",
-					StateUpdates: ledger.StateUpdates(map[string]*ledger.KVStateUpdates{
+					StateUpdates: map[string]*ledger.KVStateUpdates{
 						"_lifecycle": {
 							PublicUpdates: []*kvrwset.KVWrite{
 								{Key: "namespaces/fields/chaincode-name/Sequence"},
 							},
 							CollHashUpdates: map[string][]*kvrwset.KVWriteHash{},
 						},
-					}),
+					},
 					PostCommitQueryExecutor: fakeQueryExecutor,
 				}
 			})
@@ -1070,7 +1070,7 @@ var _ = Describe("Cache", func() {
 
 			Context("when the state update contains no updates to _lifecycle", func() {
 				BeforeEach(func() {
-					trigger.StateUpdates = ledger.StateUpdates(map[string]*ledger.KVStateUpdates{})
+					trigger.StateUpdates = map[string]*ledger.KVStateUpdates{}
 				})
 
 				It("returns an error", func() {
@@ -1136,20 +1136,20 @@ var _ = Describe("Cache", func() {
 			BeforeEach(func() {
 				definitionTrigger = &ledger.StateUpdateTrigger{
 					LedgerID: "channel-id",
-					StateUpdates: ledger.StateUpdates(map[string]*ledger.KVStateUpdates{
+					StateUpdates: map[string]*ledger.KVStateUpdates{
 						"_lifecycle": {
 							PublicUpdates: []*kvrwset.KVWrite{
 								{Key: "namespaces/fields/chaincode-name-1/Sequence"},
 							},
 							CollHashUpdates: map[string][]*kvrwset.KVWriteHash{},
 						},
-					}),
+					},
 					PostCommitQueryExecutor: fakeQueryExecutor,
 				}
 
 				approvalTrigger = &ledger.StateUpdateTrigger{
 					LedgerID: "channel-id",
-					StateUpdates: ledger.StateUpdates(map[string]*ledger.KVStateUpdates{
+					StateUpdates: map[string]*ledger.KVStateUpdates{
 						"_lifecycle": {
 							PublicUpdates: []*kvrwset.KVWrite{},
 							CollHashUpdates: map[string][]*kvrwset.KVWriteHash{
@@ -1160,7 +1160,7 @@ var _ = Describe("Cache", func() {
 								},
 							},
 						},
-					}),
+					},
 					PostCommitQueryExecutor: fakeQueryExecutor,
 				}
 

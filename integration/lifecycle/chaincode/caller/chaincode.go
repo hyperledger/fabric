@@ -32,10 +32,10 @@ func (t *CC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 			return shim.Error(err.Error())
 		}
 
-		return stub.InvokeChaincode(string(args[0]), [][]byte{[]byte("INVOKE")}, "")
+		return stub.InvokeChaincode(args[0], [][]byte{[]byte("INVOKE")}, "")
 
 	case "QUERYCALLEE":
-		response := stub.InvokeChaincode(string(args[0]), [][]byte{[]byte("QUERY")}, args[1])
+		response := stub.InvokeChaincode(args[0], [][]byte{[]byte("QUERY")}, args[1])
 		if response.Status >= 400 {
 			return shim.Error(response.Message)
 		}

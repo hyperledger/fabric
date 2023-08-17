@@ -793,7 +793,7 @@ func TestBlockingEnqueue(t *testing.T) {
 		mc.Mock = m
 		mc.Unlock()
 		require.Equal(t, receivedBlock, uint64(receivedBlockCount))
-		if int(receivedBlockCount) == numBlocksReceived {
+		if receivedBlockCount == numBlocksReceived {
 			break
 		}
 		time.Sleep(time.Millisecond * 10)

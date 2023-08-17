@@ -44,7 +44,7 @@ func (e *Egress) Nodes() []uint64 {
 	nodes := e.RuntimeConfig.Load().(RuntimeConfig).Nodes
 	var res []uint64
 	for _, n := range nodes {
-		res = append(res, (uint64)(n))
+		res = append(res, n)
 	}
 	return res
 }

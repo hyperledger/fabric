@@ -336,10 +336,10 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		},
 	)
 
-	//======================================================================================
+	// ======================================================================================
 	// SCENARIO 1: peer writes the second block to the block storage and fails
 	// before committing the block to state DB and history DB
-	//======================================================================================
+	// ======================================================================================
 	blockAndPvtdata2 := prepareNextBlockForTest(t, ledger1, bg, "SimulateForBlk2",
 		map[string]string{"key1": "value1.2", "key2": "value2.2", "key3": "value3.2"},
 		map[string]string{"key1": "pvtValue1.2", "key2": "pvtValue2.2", "key3": "pvtValue3.2"})
@@ -393,10 +393,10 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		},
 	)
 
-	//======================================================================================
+	// ======================================================================================
 	// SCENARIO 2: peer fails after committing the third block to the block storage and state DB
 	// but before committing to history DB
-	//======================================================================================
+	// ======================================================================================
 	blockAndPvtdata3 := prepareNextBlockForTest(t, ledger2, bg, "SimulateForBlk3",
 		map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
 		map[string]string{"key1": "pvtValue1.3", "key2": "pvtValue2.3", "key3": "pvtValue3.3"},
@@ -453,10 +453,10 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	)
 
 	// Rare scenario
-	//======================================================================================
+	// ======================================================================================
 	// SCENARIO 3: peer fails after committing the fourth block to the block storgae
 	// and history DB but before committing to state DB
-	//======================================================================================
+	// ======================================================================================
 	blockAndPvtdata4 := prepareNextBlockForTest(t, ledger3, bg, "SimulateForBlk4",
 		map[string]string{"key1": "value1.4", "key2": "value2.4", "key3": "value3.4"},
 		map[string]string{"key1": "pvtValue1.4", "key2": "pvtValue2.4", "key3": "pvtValue3.4"},
@@ -1378,7 +1378,7 @@ func sampleDataWithPvtdataForSelectiveTx(t *testing.T, bg *testutil.BlockGenerat
 	missingData.Add(4, "ns-4", "coll-4", true)
 	missingData.Add(5, "ns-5", "coll-5", true)
 	blockAndpvtdata[5].MissingPvtData = missingData
-	txFilter = txflags.ValidationFlags(blockAndpvtdata[5].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txFilter = blockAndpvtdata[5].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER]
 	txFilter.SetFlag(5, peer.TxValidationCode_INVALID_WRITESET)
 	blockAndpvtdata[5].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txFilter
 

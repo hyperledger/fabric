@@ -304,11 +304,11 @@ func TestService(t *testing.T) {
 	require.Equal(t, "an error occurred", resp.Results[2].GetError().Content)
 
 	for org, responsePeers := range resp.Results[0].GetMembers().PeersByOrg {
-		err := peers(expectedChannelResponse.PeersByOrg[org].Peers).compare(peers(responsePeers.Peers))
+		err := peers(expectedChannelResponse.PeersByOrg[org].Peers).compare(responsePeers.Peers)
 		require.NoError(t, err)
 	}
 	for org, responsePeers := range resp.Results[1].GetMembers().PeersByOrg {
-		err := peers(expectedLocalResponse.PeersByOrg[org].Peers).compare(peers(responsePeers.Peers))
+		err := peers(expectedLocalResponse.PeersByOrg[org].Peers).compare(responsePeers.Peers)
 		require.NoError(t, err)
 	}
 

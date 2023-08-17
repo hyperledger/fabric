@@ -36,7 +36,7 @@ var noopPurgeTrigger = func(_ common.PKIidType, _ api.PeerIdentityType) {}
 
 func init() {
 	util.SetupTestLogging()
-	msgCryptoService.On("Expiration", api.PeerIdentityType(dummyID)).Return(time.Now().Add(time.Hour), nil)
+	msgCryptoService.On("Expiration", dummyID).Return(time.Now().Add(time.Hour), nil)
 	msgCryptoService.On("Expiration", api.PeerIdentityType("yacovm")).Return(time.Now().Add(time.Hour), nil)
 	msgCryptoService.On("Expiration", api.PeerIdentityType("not-yacovm")).Return(time.Now().Add(time.Hour), nil)
 	msgCryptoService.On("Expiration", api.PeerIdentityType("invalidIdentity")).Return(time.Now().Add(time.Hour), nil)
@@ -117,9 +117,9 @@ func TestPut(t *testing.T) {
 	identity2 := []byte("not-yacovm")
 	identity3 := []byte("invalidIdentity")
 	msgCryptoService.revokedIdentities[string(identity3)] = struct{}{}
-	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
-	pkiID2 := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity2))
-	pkiID3 := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity3))
+	pkiID := msgCryptoService.GetPKIidOfCert(identity)
+	pkiID2 := msgCryptoService.GetPKIidOfCert(identity2)
+	pkiID3 := msgCryptoService.GetPKIidOfCert(identity3)
 	require.NoError(t, idStore.Put(pkiID, identity))
 	require.NoError(t, idStore.Put(pkiID, identity))
 	require.Error(t, idStore.Put(nil, identity))
@@ -133,8 +133,8 @@ func TestGet(t *testing.T) {
 	idStore := NewIdentityMapper(msgCryptoService, dummyID, noopPurgeTrigger, msgCryptoService)
 	identity := []byte("yacovm")
 	identity2 := []byte("not-yacovm")
-	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
-	pkiID2 := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity2))
+	pkiID := msgCryptoService.GetPKIidOfCert(identity)
+	pkiID2 := msgCryptoService.GetPKIidOfCert(identity2)
 	require.NoError(t, idStore.Put(pkiID, identity))
 	cert, err := idStore.Get(pkiID)
 	require.NoError(t, err)
@@ -148,9 +148,9 @@ func TestVerify(t *testing.T) {
 	idStore := NewIdentityMapper(msgCryptoService, dummyID, noopPurgeTrigger, msgCryptoService)
 	identity := []byte("yacovm")
 	identity2 := []byte("not-yacovm")
-	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
-	pkiID2 := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity2))
-	idStore.Put(pkiID, api.PeerIdentityType(identity))
+	pkiID := msgCryptoService.GetPKIidOfCert(identity)
+	pkiID2 := msgCryptoService.GetPKIidOfCert(identity2)
+	idStore.Put(pkiID, identity)
 	signed, err := idStore.Sign([]byte("bla bla"))
 	require.NoError(t, err)
 	require.NoError(t, idStore.Verify(pkiID, signed, []byte("bla bla")))
@@ -176,8 +176,8 @@ func TestListInvalidIdentities(t *testing.T) {
 	}, msgCryptoService)
 	identity := []byte("yacovm")
 	// Test for a revoked identity
-	pkiID := msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
-	require.NoError(t, idStore.Put(pkiID, api.PeerIdentityType(identity)))
+	pkiID := msgCryptoService.GetPKIidOfCert(identity)
+	require.NoError(t, idStore.Put(pkiID, identity))
 	cert, err := idStore.Get(pkiID)
 	require.NoError(t, err)
 	require.NotNil(t, cert)
@@ -197,8 +197,8 @@ func TestListInvalidIdentities(t *testing.T) {
 	// Now, test for a certificate that has not been used
 	// for a long time
 	// Add back the identity
-	pkiID = msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
-	require.NoError(t, idStore.Put(pkiID, api.PeerIdentityType(identity)))
+	pkiID = msgCryptoService.GetPKIidOfCert(identity)
+	require.NoError(t, idStore.Put(pkiID, identity))
 	// Check it exists in the meantime
 	cert, err = idStore.Get(pkiID)
 	require.NoError(t, err)
@@ -215,8 +215,8 @@ func TestListInvalidIdentities(t *testing.T) {
 
 	// Now test that an identity that is frequently used doesn't expire
 	// Add back the identity
-	pkiID = msgCryptoService.GetPKIidOfCert(api.PeerIdentityType(identity))
-	require.NoError(t, idStore.Put(pkiID, api.PeerIdentityType(identity)))
+	pkiID = msgCryptoService.GetPKIidOfCert(identity)
+	require.NoError(t, idStore.Put(pkiID, identity))
 	stopChan := make(chan struct{})
 	go func() {
 		for {

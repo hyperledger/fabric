@@ -497,7 +497,7 @@ func readMetadata(fpath string) (*kvledger.SnapshotSignableMetadata, error) {
 		return nil, err
 	}
 	// Unmarshal bytes
-	err = json.Unmarshal([]byte(f), &mdata)
+	err = json.Unmarshal(f, &mdata)
 	if err != nil {
 		return nil, err
 	}

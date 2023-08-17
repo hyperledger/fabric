@@ -43,7 +43,7 @@ type aesKeyGenerator struct {
 }
 
 func (kg *aesKeyGenerator) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
-	lowLevelKey, err := GetRandomBytes(int(kg.length))
+	lowLevelKey, err := GetRandomBytes(kg.length)
 	if err != nil {
 		return nil, fmt.Errorf("Failed generating AES %d key [%s]", kg.length, err)
 	}

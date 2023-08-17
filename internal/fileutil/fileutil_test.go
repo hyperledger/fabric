@@ -52,7 +52,7 @@ func TestFileExists(t *testing.T) {
 
 		file := filepath.Join(testPath, "empty-file")
 		contents := []byte("some random contents")
-		ioutil.WriteFile(file, []byte(contents), 0o644)
+		ioutil.WriteFile(file, contents, 0o644)
 		exists, size, err := FileExists(file)
 		require.NoError(t, err)
 		require.True(t, exists)

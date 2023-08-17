@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"os"
 
-	ginkgo "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/ginkgo/v2"
 )
 
 // TestPortRange represents a port range

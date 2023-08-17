@@ -141,7 +141,7 @@ func (f *fetcherMock) fetch(dig2src dig2sources) (*privdatacommon.FetchedPvtData
 			uniqueEndorsements[string(endorsement.Endorser)] = struct{}{}
 		}
 	}
-	require.True(f.t, digests(f.expectedDigests).Equal(digests(dig2src.keys())))
+	require.True(f.t, digests(f.expectedDigests).Equal(dig2src.keys()))
 	require.Equal(f.t, len(f.expectedEndorsers), len(uniqueEndorsements))
 	args := f.Called(dig2src)
 	if args.Get(1) == nil {

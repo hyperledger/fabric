@@ -1572,7 +1572,7 @@ var (
 	id      msp.SigningIdentity
 	sid     []byte
 	mspid   string
-	chainId string = "testchannelid"
+	chainId = "testchannelid"
 )
 
 func createCollectionConfig(collectionName string, signaturePolicyEnvelope *common.SignaturePolicyEnvelope,

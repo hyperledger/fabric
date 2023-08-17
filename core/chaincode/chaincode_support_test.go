@@ -346,7 +346,7 @@ func processDone(t *testing.T, done chan error, expecterr bool) {
 }
 
 func startTx(t *testing.T, peerInstance *peer.Peer, channelID string, cis *pb.ChaincodeInvocationSpec, txId string) (*ccprovider.TransactionParams, ledger.TxSimulator) {
-	creator := []byte([]byte("Alice"))
+	creator := []byte("Alice")
 	sprop, prop := protoutil.MockSignedEndorserProposalOrPanic(channelID, cis.ChaincodeSpec, creator, []byte("msg1"))
 	txsim, hqe, err := startTxSimulation(peerInstance, channelID, txId)
 	if err != nil {
@@ -523,8 +523,8 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mock.MockCCComm,
 	// be triggered by the chaincode stream.  We just expect an error from fabric. Hence pass nil for done
 	execCC(t, txParams, ccSide, "badccname", false, true, nil, cis, respSet, chaincodeSupport)
 
-	//---------try a successful init at last-------
-	//everything lined up
+	// ---------try a successful init at last-------
+	// everything lined up
 	//    correct registered chaincode version
 	//    matching txid
 	//    txsim context

@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package pvtstatepurgemgmt
 
 import (
-	fmt "fmt"
+	"fmt"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"

@@ -12,7 +12,7 @@ import (
 	"github.com/hyperledger/fabric/cmd/common/comm"
 	"github.com/hyperledger/fabric/cmd/common/signer"
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 // Config aggregates configuration of TLS and signing
@@ -30,7 +30,7 @@ func ConfigFromFile(file string) (Config, error) {
 	}
 	config := Config{}
 
-	if err := yaml.Unmarshal([]byte(configData), &config); err != nil {
+	if err := yaml.Unmarshal(configData, &config); err != nil {
 		return Config{}, errors.Errorf("error unmarshalling YAML file %s: %s", file, err)
 	}
 

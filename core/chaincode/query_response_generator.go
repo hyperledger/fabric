@@ -84,6 +84,6 @@ func createQueryResponse(txContext *TransactionContext, iterID string, isPaginat
 func createResponseMetadata(returnCount int32, bookmark string) *pb.QueryResponseMetadata {
 	responseMetadata := &pb.QueryResponseMetadata{}
 	responseMetadata.Bookmark = bookmark
-	responseMetadata.FetchedRecordsCount = int32(returnCount)
+	responseMetadata.FetchedRecordsCount = returnCount
 	return responseMetadata
 }

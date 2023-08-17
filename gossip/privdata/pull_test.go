@@ -306,7 +306,7 @@ func newPRWSet() []util.PrivateRWSet {
 	b2 := make([]byte, 10)
 	rand.Read(b1)
 	rand.Read(b2)
-	return []util.PrivateRWSet{util.PrivateRWSet(b1), util.PrivateRWSet(b2)}
+	return []util.PrivateRWSet{b1, b2}
 }
 
 func TestPullerFromOnly1Peer(t *testing.T) {

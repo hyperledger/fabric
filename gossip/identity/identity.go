@@ -14,7 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
-	errors "github.com/pkg/errors"
+	"github.com/pkg/errors"
 )
 
 // identityUsageThreshold sets the maximum time that an identity

@@ -39,8 +39,8 @@ func TestPrincipalsFromCollectionConfig(t *testing.T) {
 		config := buildCollectionConfig(col2principals)
 		res, err := principalsFromCollectionConfig(config)
 		require.NoError(t, err)
-		assertEqualPrincipalSets(t, policies.PrincipalSet(org1AndOrg2), res["foo"])
-		assertEqualPrincipalSets(t, policies.PrincipalSet(org3AndOrg4), res["bar"])
+		assertEqualPrincipalSets(t, org1AndOrg2, res["foo"])
+		assertEqualPrincipalSets(t, org3AndOrg4, res["bar"])
 		require.Empty(t, res["baz"])
 	})
 }

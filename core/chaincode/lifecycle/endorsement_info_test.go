@@ -50,7 +50,7 @@ var _ = Describe("ChaincodeEndorsementInfoSource", func() {
 			ChannelConfigSource: fakeChannelConfigSource,
 		}
 
-		fakePublicState = MapLedgerShim(map[string][]byte{})
+		fakePublicState = map[string][]byte{}
 		fakeQueryExecutor = &mock.SimpleQueryExecutor{}
 		fakeQueryExecutor.GetStateStub = func(namespace, key string) ([]byte, error) {
 			return fakePublicState.GetState(key)

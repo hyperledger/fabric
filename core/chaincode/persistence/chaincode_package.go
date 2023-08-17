@@ -75,7 +75,7 @@ func (fpl *FallbackPackageLocator) GetChaincodePackage(packageID string) (*Chain
 		return metadata, mdBytes, tarStream, nil
 	}
 
-	cds, err := fpl.LegacyCCPackageLocator.GetChaincodeDepSpec(string(packageID))
+	cds, err := fpl.LegacyCCPackageLocator.GetChaincodeDepSpec(packageID)
 	if err != nil {
 		return nil, nil, nil, errors.WithMessagef(err, "could not get legacy chaincode package '%s'", packageID)
 	}
