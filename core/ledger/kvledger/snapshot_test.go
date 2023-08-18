@@ -469,7 +469,7 @@ func TestSnapshotDirPathsCreation(t *testing.T) {
 
 	// add a file in each of the above folders
 	for _, dir := range [2]string{inProgressSnapshotsPath, completedSnapshotsPath} {
-		err := ioutil.WriteFile(filepath.Join(dir, "testFile"), []byte("some junk data"), 0o644)
+		err := os.WriteFile(filepath.Join(dir, "testFile"), []byte("some junk data"), 0o644)
 		require.NoError(t, err)
 		f, err := ioutil.ReadDir(dir)
 		require.NoError(t, err)
@@ -515,7 +515,7 @@ func TestSnapshotsDirInitializingErrors(t *testing.T) {
 
 		completedSnapshotsPath := CompletedSnapshotsPath(conf.SnapshotsConfig.RootDir)
 		require.NoError(t, os.MkdirAll(filepath.Dir(completedSnapshotsPath), 0o755))
-		require.NoError(t, ioutil.WriteFile(completedSnapshotsPath, []byte("some data"), 0o644))
+		require.NoError(t, os.WriteFile(completedSnapshotsPath, []byte("some data"), 0o644))
 		err := initKVLedgerProvider(conf)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "while creating the dir: "+completedSnapshotsPath)
@@ -588,7 +588,7 @@ func TestGenerateSnapshotErrors(t *testing.T) {
 		snapshotFinalDir := SnapshotDirForLedgerBlockNum(conf.SnapshotsConfig.RootDir, "testLedgerid", 0)
 		require.NoError(t, os.MkdirAll(snapshotFinalDir, 0o744))
 		defer os.RemoveAll(snapshotFinalDir)
-		require.NoError(t, ioutil.WriteFile( // make a non-empty snapshotFinalDir to trigger failure on rename
+		require.NoError(t, os.WriteFile( // make a non-empty snapshotFinalDir to trigger failure on rename
 			filepath.Join(snapshotFinalDir, "dummyFile"),
 			[]byte("dummy file"), 0o444),
 		)
@@ -627,7 +627,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		for _, f := range files {
 			content, err := ioutil.ReadFile(filepath.Join(originalSnapshotDir, f.Name()))
 			require.NoError(t, err)
-			err = ioutil.WriteFile(filepath.Join(snapshotDirForTest, f.Name()), content, 0o600)
+			err = os.WriteFile(filepath.Join(snapshotDirForTest, f.Name()), content, 0o600)
 			require.NoError(t, err)
 		}
 
@@ -648,17 +648,17 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 	overwriteModifiedSignableMetadata := func() {
 		signaleMetadataJSON, err := metadata.SnapshotSignableMetadata.ToJSON()
 		require.NoError(t, err)
-		require.NoError(t, ioutil.WriteFile(signableMetadataFile, signaleMetadataJSON, 0o600))
+		require.NoError(t, os.WriteFile(signableMetadataFile, signaleMetadataJSON, 0o600))
 
 		metadata.snapshotAdditionalMetadata.SnapshotHashInHex = computeHashForTest(t, provider, signaleMetadataJSON)
 		additionalMetadataJSON, err := metadata.snapshotAdditionalMetadata.ToJSON()
 		require.NoError(t, err)
-		require.NoError(t, ioutil.WriteFile(additionalMetadataFile, additionalMetadataJSON, 0o600))
+		require.NoError(t, os.WriteFile(additionalMetadataFile, additionalMetadataJSON, 0o600))
 	}
 
 	overwriteDataFile := func(fileName string, content []byte) {
 		filePath := filepath.Join(snapshotDirForTest, fileName)
-		require.NoError(t, ioutil.WriteFile(filePath, content, 0o600))
+		require.NoError(t, os.WriteFile(filePath, content, 0o600))
 		metadata.SnapshotSignableMetadata.FilesAndHashes[fileName] = computeHashForTest(t, provider, content)
 		overwriteModifiedSignableMetadata()
 	}
@@ -696,7 +696,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		init(t)
 		defer cleanup()
 
-		require.NoError(t, ioutil.WriteFile(signableMetadataFile, []byte(""), 0o600))
+		require.NoError(t, os.WriteFile(signableMetadataFile, []byte(""), 0o600))
 		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.EqualError(t,
 			err,
@@ -709,7 +709,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		init(t)
 		defer cleanup()
 
-		require.NoError(t, ioutil.WriteFile(additionalMetadataFile, []byte(""), 0o600))
+		require.NoError(t, os.WriteFile(additionalMetadataFile, []byte(""), 0o600))
 		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.EqualError(t,
 			err,
@@ -722,7 +722,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		init(t)
 		defer cleanup()
 
-		require.NoError(t, ioutil.WriteFile(signableMetadataFile, []byte("{}"), 0o600))
+		require.NoError(t, os.WriteFile(signableMetadataFile, []byte("{}"), 0o600))
 		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.Contains(t,
 			err.Error(),
@@ -752,7 +752,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		init(t)
 		defer cleanup()
 
-		err := ioutil.WriteFile(filepath.Join(snapshotDirForTest, "txids.data"), []byte("random content"), 0o600)
+		err := os.WriteFile(filepath.Join(snapshotDirForTest, "txids.data"), []byte("random content"), 0o600)
 		require.NoError(t, err)
 
 		_, _, err = provider.CreateFromSnapshot(snapshotDirForTest)

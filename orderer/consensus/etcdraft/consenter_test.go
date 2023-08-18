@@ -184,7 +184,7 @@ var _ = Describe("Consenter", func() {
 			consenterDir, err := ioutil.TempDir(dataDir, "consenter")
 			Expect(err).NotTo(HaveOccurred())
 			consenterCertPath := filepath.Join(consenterDir, "client.pem")
-			err = ioutil.WriteFile(consenterCertPath, memberKeyPair.Cert, 0o644)
+			err = os.WriteFile(consenterCertPath, memberKeyPair.Cert, 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			confAppRaft.Orderer.EtcdRaft.Consenters[0].ClientTlsCert = []byte(consenterCertPath)
@@ -197,7 +197,7 @@ var _ = Describe("Consenter", func() {
 			confAppRaft.Orderer.Organizations[0].ID = fmt.Sprintf("SampleMSP-%d", time.Now().UnixNano())
 
 			// Write the TLS root cert to the msp folder
-			err = ioutil.WriteFile(filepath.Join(mspDir, "tlscacerts", "cert.pem"), tlsCA.CertBytes(), 0o644)
+			err = os.WriteFile(filepath.Join(mspDir, "tlscacerts", "cert.pem"), tlsCA.CertBytes(), 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			bootstrapper, err := encoder.NewBootstrapper(confAppRaft)
@@ -235,7 +235,7 @@ var _ = Describe("Consenter", func() {
 			consenterDir, err := ioutil.TempDir(dataDir, "foreign-consenter")
 			Expect(err).NotTo(HaveOccurred())
 			foreignConsenterCertPath := filepath.Join(consenterDir, "client.pem")
-			err = ioutil.WriteFile(foreignConsenterCertPath, foreignKeyPair.Cert, 0o644)
+			err = os.WriteFile(foreignConsenterCertPath, foreignKeyPair.Cert, 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			confAppRaft.Orderer.EtcdRaft.Consenters[0].ClientTlsCert = []byte(foreignConsenterCertPath)

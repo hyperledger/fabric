@@ -36,7 +36,7 @@ var _ = Describe("copy", func() {
 		err = os.Mkdir(srcRootDir, 0o755)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = ioutil.WriteFile(filepath.Join(srcRootDir, "file-in-root.txt"), []byte("root file contents"), 0o644)
+		err = os.WriteFile(filepath.Join(srcRootDir, "file-in-root.txt"), []byte("root file contents"), 0o644)
 		Expect(err).NotTo(HaveOccurred())
 
 		err = os.Symlink("file-in-root.txt", filepath.Join(srcRootDir, "symlink-in-root.txt"))
@@ -46,7 +46,7 @@ var _ = Describe("copy", func() {
 		err = os.Mkdir(srcSubDir, 0o755)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = ioutil.WriteFile(filepath.Join(srcSubDir, "file-in-subdir.txt"), []byte("subdir file contents"), 0o644)
+		err = os.WriteFile(filepath.Join(srcSubDir, "file-in-subdir.txt"), []byte("subdir file contents"), 0o644)
 		Expect(err).NotTo(HaveOccurred())
 
 		err = os.Symlink("file-in-subdir.txt", filepath.Join(srcSubDir, "symlink-in-subdir.txt"))

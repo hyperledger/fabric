@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package channel
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -40,7 +39,7 @@ func TestJoin(t *testing.T) {
 
 	dir := t.TempDir()
 	mockblockfile := filepath.Join(dir, "mockjointest.block")
-	err := ioutil.WriteFile(mockblockfile, []byte(""), 0o644)
+	err := os.WriteFile(mockblockfile, []byte(""), 0o644)
 	require.NoError(t, err, "Could not write to the file %s", mockblockfile)
 	signer, err := common.GetDefaultSigner()
 	require.NoError(t, err, "Get default signer error: %v", err)
@@ -110,7 +109,7 @@ func TestBadProposalResponse(t *testing.T) {
 	resetFlags()
 
 	mockblockfile := "/tmp/mockjointest.block"
-	ioutil.WriteFile(mockblockfile, []byte(""), 0o644)
+	os.WriteFile(mockblockfile, []byte(""), 0o644)
 	defer os.Remove(mockblockfile)
 	signer, err := common.GetDefaultSigner()
 	require.NoError(t, err, "Get default signer error: %v", err)

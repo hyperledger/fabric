@@ -200,7 +200,7 @@ func writeFile(filename string, data []byte, perm os.FileMode) error {
 			return err
 		}
 	}
-	return ioutil.WriteFile(filename, data, perm)
+	return os.WriteFile(filename, data, perm)
 }
 
 func dirExists(path string) (bool, error) {

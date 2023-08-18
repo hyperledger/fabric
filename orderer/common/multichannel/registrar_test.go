@@ -8,7 +8,6 @@ package multichannel
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -503,7 +502,7 @@ func createJoinBlockFileRepoDirWithBlocks(t *testing.T, tmpdir string, joinBlock
 	for _, jb := range joinBlocks {
 		blockBytes, err := proto.Marshal(jb.block)
 		require.NoError(t, err)
-		err = ioutil.WriteFile(filepath.Join(joinBlockRepoPath, fmt.Sprintf("%s.join", jb.channel)), blockBytes, 0o600)
+		err = os.WriteFile(filepath.Join(joinBlockRepoPath, fmt.Sprintf("%s.join", jb.channel)), blockBytes, 0o600)
 		require.NoError(t, err)
 	}
 }
@@ -1276,13 +1275,13 @@ func generateCertificates(t *testing.T, confAppRaft *genesisconfig.Profile, tlsC
 		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)
 		require.NoError(t, err)
 		srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", i))
-		err = ioutil.WriteFile(srvP, srvC.Cert, 0o644)
+		err = os.WriteFile(srvP, srvC.Cert, 0o644)
 		require.NoError(t, err)
 
 		clnC, err := tlsCA.NewClientCertKeyPair()
 		require.NoError(t, err)
 		clnP := path.Join(certDir, fmt.Sprintf("client%d.crt", i))
-		err = ioutil.WriteFile(clnP, clnC.Cert, 0o644)
+		err = os.WriteFile(clnP, clnC.Cert, 0o644)
 		require.NoError(t, err)
 
 		c.ServerTlsCert = []byte(srvP)

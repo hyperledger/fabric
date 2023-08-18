@@ -88,7 +88,7 @@ func copyYamlFiles(gt *GomegaWithT, src, dst string) {
 	for _, file := range []string{"configtx.yaml", "examplecom-config.yaml", "orderer.yaml"} {
 		fileBytes, err := ioutil.ReadFile(filepath.Join(src, file))
 		gt.Expect(err).NotTo(HaveOccurred())
-		err = ioutil.WriteFile(filepath.Join(dst, file), fileBytes, 0o644)
+		err = os.WriteFile(filepath.Join(dst, file), fileBytes, 0o644)
 		gt.Expect(err).NotTo(HaveOccurred())
 	}
 }
@@ -172,7 +172,7 @@ func writeJoinBlock(gt *GomegaWithT, configPath string, configtxgen string, temp
 	err = os.MkdirAll(fileRepoDir, 0o744)
 	gt.Expect(err).NotTo(HaveOccurred())
 	joinBlockPath := filepath.Join(fileRepoDir, "mychannel.join")
-	err = ioutil.WriteFile(joinBlockPath, genesisBlockBytes, 0o644)
+	err = os.WriteFile(joinBlockPath, genesisBlockBytes, 0o644)
 	gt.Expect(err).NotTo(HaveOccurred())
 	return joinBlockPath
 }
