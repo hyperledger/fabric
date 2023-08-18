@@ -58,7 +58,7 @@ var _ = Describe("Persistence", func() {
 
 		It("stats a file", func() {
 			path := filepath.Join(testDir, "stat")
-			err := ioutil.WriteFile(path, []byte("test"), 0o600)
+			err := os.WriteFile(path, []byte("test"), 0o600)
 			Expect(err).NotTo(HaveOccurred())
 
 			exists, err := filesystemIO.Exists(path)
@@ -74,7 +74,7 @@ var _ = Describe("Persistence", func() {
 
 		It("removes a file", func() {
 			path := filepath.Join(testDir, "remove")
-			err := ioutil.WriteFile(path, []byte("test"), 0o600)
+			err := os.WriteFile(path, []byte("test"), 0o600)
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = os.Stat(path)
@@ -89,7 +89,7 @@ var _ = Describe("Persistence", func() {
 
 		It("reads a file", func() {
 			path := filepath.Join(testDir, "readfile")
-			err := ioutil.WriteFile(path, []byte("test"), 0o600)
+			err := os.WriteFile(path, []byte("test"), 0o600)
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = os.Stat(path)
@@ -102,7 +102,7 @@ var _ = Describe("Persistence", func() {
 
 		It("reads a directory", func() {
 			path := filepath.Join(testDir, "readdir")
-			err := ioutil.WriteFile(path, []byte("test"), 0o600)
+			err := os.WriteFile(path, []byte("test"), 0o600)
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = os.Stat(path)

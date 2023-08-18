@@ -330,7 +330,7 @@ func (n *Network) WriteOrdererConfig(o *Orderer, config *fabricconfig.Orderer) {
 	ordererBytes, err := yaml.Marshal(config)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = ioutil.WriteFile(n.OrdererConfigPath(o), ordererBytes, 0o644)
+	err = os.WriteFile(n.OrdererConfigPath(o), ordererBytes, 0o644)
 	Expect(err).NotTo(HaveOccurred())
 
 	pw := gexec.NewPrefixedWriter(fmt.Sprintf("[updated-%s#orderer.yaml] ", o.ID()), ginkgo.GinkgoWriter)
@@ -356,7 +356,7 @@ func (n *Network) WriteConfigTxConfig(config *fabricconfig.ConfigTx) {
 	configtxBytes, err := yaml.Marshal(config)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = ioutil.WriteFile(n.ConfigTxConfigPath(), configtxBytes, 0o644)
+	err = os.WriteFile(n.ConfigTxConfigPath(), configtxBytes, 0o644)
 	Expect(err).NotTo(HaveOccurred())
 }
 
@@ -396,7 +396,7 @@ func (n *Network) WritePeerConfig(p *Peer, config *fabricconfig.Core) {
 	coreBytes, err := yaml.Marshal(config)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = ioutil.WriteFile(n.PeerConfigPath(p), coreBytes, 0o644)
+	err = os.WriteFile(n.PeerConfigPath(p), coreBytes, 0o644)
 	Expect(err).NotTo(HaveOccurred())
 
 	pw := gexec.NewPrefixedWriter(fmt.Sprintf("[updated-%s#core.yaml] ", p.ID()), ginkgo.GinkgoWriter)
@@ -906,7 +906,7 @@ func (n *Network) ConcatenateTLSCACertificates() {
 		Expect(err).NotTo(HaveOccurred())
 		bundle.Write(certBytes)
 	}
-	err := ioutil.WriteFile(n.CACertsBundlePath(), bundle.Bytes(), 0o660)
+	err := os.WriteFile(n.CACertsBundlePath(), bundle.Bytes(), 0o660)
 	Expect(err).NotTo(HaveOccurred())
 }
 

@@ -13,7 +13,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -34,7 +33,7 @@ func TestWriteFileToPackage(t *testing.T) {
 	filename := "test.txt"
 	filecontent := "hello"
 	filePath := filepath.Join(tempDir, filename)
-	err := ioutil.WriteFile(filePath, bytes.NewBufferString(filecontent).Bytes(), 0o600)
+	err := os.WriteFile(filePath, bytes.NewBufferString(filecontent).Bytes(), 0o600)
 	require.NoError(t, err, "Error creating file %s", filePath)
 
 	err = WriteFileToPackage(filePath, filename, tw)
@@ -214,7 +213,7 @@ func Test_WriteFolderToTarPackageFailure4(t *testing.T) {
 
 	tempDir := t.TempDir()
 	testFile := filepath.Join(tempDir, "test.java")
-	err := ioutil.WriteFile(testFile, []byte("Content"), 0o644)
+	err := os.WriteFile(testFile, []byte("Content"), 0o644)
 	require.NoError(t, err, "Error creating file", testFile)
 	err = os.Chmod(tempDir, 0o644)
 	require.NoError(t, err)

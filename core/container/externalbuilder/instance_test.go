@@ -57,7 +57,7 @@ var _ = Describe("Instance", func() {
 			Expect(err).NotTo(HaveOccurred())
 			// initialize with a well-formed, all fields set, connection.json file
 			ccdata := `{"address": "ccaddress:12345", "domain": "ccaddress", "tls_required": true, "dial_timeout": "10s", "client_auth_required": true, "client_key": "fake-key", "client_cert": "fake-cert", "root_cert": "fake-root-cert"}`
-			err = ioutil.WriteFile(filepath.Join(instance.ChaincodeServerReleaseDir(), "connection.json"), []byte(ccdata), 0o600)
+			err = os.WriteFile(filepath.Join(instance.ChaincodeServerReleaseDir(), "connection.json"), []byte(ccdata), 0o600)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -101,7 +101,7 @@ var _ = Describe("Instance", func() {
 		When("chaincode info is badly formed", func() {
 			BeforeEach(func() {
 				ccdata := `{"badly formed chaincode"}`
-				err := ioutil.WriteFile(filepath.Join(instance.ChaincodeServerReleaseDir(), "connection.json"), []byte(ccdata), 0o600)
+				err := os.WriteFile(filepath.Join(instance.ChaincodeServerReleaseDir(), "connection.json"), []byte(ccdata), 0o600)
 				Expect(err).NotTo(HaveOccurred())
 			})
 

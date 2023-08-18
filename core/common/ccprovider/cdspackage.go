@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"fmt"
 	"hash"
-	"io/ioutil"
 	"os"
 
 	"github.com/golang/protobuf/proto"
@@ -28,7 +27,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 )
 
-//----- CDSData ------
+// ----- CDSData ------
 
 // CDSData is data stored in the LSCC on instantiation of a CC
 // for CDSPackage.  This needs to be serialized for ChaincodeData
@@ -41,7 +40,7 @@ type CDSData struct {
 	MetaDataHash []byte `protobuf:"bytes,2,opt,name=metadatahash,proto3"`
 }
 
-//----implement functions needed from proto.Message for proto's mar/unmarshal functions
+// ----implement functions needed from proto.Message for proto's mar/unmarshal functions
 
 // Reset resets
 func (data *CDSData) Reset() { *data = CDSData{} }
@@ -62,7 +61,7 @@ type GetHasher interface {
 	GetHash(opts bccsp.HashOpts) (h hash.Hash, err error)
 }
 
-//--------- CDSPackage ------------
+// --------- CDSPackage ------------
 
 // CDSPackage encapsulates ChaincodeDeploymentSpec.
 type CDSPackage struct {
@@ -283,7 +282,7 @@ func (ccpack *CDSPackage) PutChaincodeToFS() error {
 		return fmt.Errorf("chaincode %s exists", path)
 	}
 
-	if err := ioutil.WriteFile(path, ccpack.buf, 0o644); err != nil {
+	if err := os.WriteFile(path, ccpack.buf, 0o644); err != nil {
 		return err
 	}
 

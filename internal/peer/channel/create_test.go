@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -432,7 +431,7 @@ func createTxFile(filename string, typ cb.HeaderType, channelID string) (*cb.Env
 		return nil, err
 	}
 
-	if err = ioutil.WriteFile(filename, data, 0o644); err != nil {
+	if err = os.WriteFile(filename, data, 0o644); err != nil {
 		return nil, err
 	}
 

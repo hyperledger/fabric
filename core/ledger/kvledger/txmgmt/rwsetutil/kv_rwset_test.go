@@ -8,6 +8,7 @@ package rwsetutil
 
 import (
 	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
@@ -38,7 +39,7 @@ func TestKVRWSetV1BackwardCompatible(t *testing.T) {
 func PrepareBinaryFileSampleKVRWSetV1(t *testing.T) {
 	b, err := proto.Marshal(constructSampleKVRWSet())
 	require.NoError(t, err)
-	require.NoError(t, ioutil.WriteFile(kvrwsetV1ProtoBytesFile, b, 0o644))
+	require.NoError(t, os.WriteFile(kvrwsetV1ProtoBytesFile, b, 0o644))
 }
 
 func constructSampleKVRWSet() *kvrwset.KVRWSet {

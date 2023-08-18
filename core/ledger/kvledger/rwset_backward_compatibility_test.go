@@ -35,7 +35,7 @@ func TestBackwardCompatibilityRWSetV21(t *testing.T) {
 // and uncomment and run the following test
 // func TestGenerateSampleRWSet(t *testing.T) {
 // 	b := testGenerateSampleRWSet(t)
-// 	require.NoError(t, ioutil.WriteFile("testdata/rwsetbytes_v21", b, 0644))
+// 	require.NoError(t, os.WriteFile("testdata/rwsetbytes_v21", b, 0644))
 // }
 
 func testGenerateSampleRWSet(t *testing.T) []byte {

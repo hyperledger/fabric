@@ -6,7 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 package common_test
 
 import (
-	"io/ioutil"
 	"net"
 	"os"
 	"path"
@@ -65,26 +64,26 @@ orderer:
 	require.NoError(t, err)
 
 	caCrtFile := path.Join(certsDir, "ca.crt")
-	err = ioutil.WriteFile(caCrtFile, ca.CertBytes(), 0o644)
+	err = os.WriteFile(caCrtFile, ca.CertBytes(), 0o644)
 	require.NoError(t, err)
 
 	kp, err := ca.NewClientCertKeyPair()
 	require.NoError(t, err)
 
 	key := path.Join(certsDir, "client.key")
-	err = ioutil.WriteFile(key, kp.Key, 0o644)
+	err = os.WriteFile(key, kp.Key, 0o644)
 	require.NoError(t, err)
 
 	crt := path.Join(certsDir, "client.crt")
-	err = ioutil.WriteFile(crt, kp.Cert, 0o644)
+	err = os.WriteFile(crt, kp.Cert, 0o644)
 	require.NoError(t, err)
 
 	ekey := path.Join(certsDir, "empty.key")
-	err = ioutil.WriteFile(ekey, []byte{}, 0o644)
+	err = os.WriteFile(ekey, []byte{}, 0o644)
 	require.NoError(t, err)
 
 	ecrt := path.Join(certsDir, "empty.crt")
-	err = ioutil.WriteFile(ecrt, []byte{}, 0o644)
+	err = os.WriteFile(ecrt, []byte{}, 0o644)
 	require.NoError(t, err)
 
 	configFile, err = os.Create(filepath.Join(certsDir, "bad.key"))

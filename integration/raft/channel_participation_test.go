@@ -552,7 +552,7 @@ var _ = Describe("ChannelParticipation", func() {
 				blockPath := filepath.Join(joinBlockFileRepoPath, "participation-trophy.join")
 				configBlockBytes, err := proto.Marshal(configBlock)
 				Expect(err).NotTo(HaveOccurred())
-				err = ioutil.WriteFile(blockPath, configBlockBytes, 0o600)
+				err = os.WriteFile(blockPath, configBlockBytes, 0o600)
 				Expect(err).NotTo(HaveOccurred())
 
 				By("starting third orderer")
@@ -579,7 +579,7 @@ var _ = Describe("ChannelParticipation", func() {
 				blockPath := filepath.Join(joinBlockFileRepoPath, "participation-trophy.join")
 				configBlockBytes, err := proto.Marshal(configBlock)
 				Expect(err).NotTo(HaveOccurred())
-				err = ioutil.WriteFile(blockPath, configBlockBytes, 0o600)
+				err = os.WriteFile(blockPath, configBlockBytes, 0o600)
 				Expect(err).NotTo(HaveOccurred())
 
 				// create the ledger directory
@@ -611,7 +611,7 @@ var _ = Describe("ChannelParticipation", func() {
 				blockPath := filepath.Join(joinBlockFileRepoPath, "participation-trophy.join")
 				configBlockBytes, err := proto.Marshal(configBlock)
 				Expect(err).NotTo(HaveOccurred())
-				err = ioutil.WriteFile(blockPath, configBlockBytes, 0o600)
+				err = os.WriteFile(blockPath, configBlockBytes, 0o600)
 				Expect(err).NotTo(HaveOccurred())
 
 				// create the ledger and add the genesis block

@@ -192,7 +192,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			genesisBlock.Header.DataHash = protoutil.BlockDataHash(genesisBlock.Data)
 			genesisBlockBytes, err := protoutil.Marshal(genesisBlock)
 			Expect(err).NotTo(HaveOccurred())
-			err = ioutil.WriteFile(network.OutputBlockPath("testchannel"), genesisBlockBytes, 0o644)
+			err = os.WriteFile(network.OutputBlockPath("testchannel"), genesisBlockBytes, 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Starting orderer")
@@ -370,9 +370,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Updating it on the file system")
-			err = ioutil.WriteFile(caCertPath, caCert, 0o644)
+			err = os.WriteFile(caCertPath, caCert, 0o644)
 			Expect(err).NotTo(HaveOccurred())
-			err = ioutil.WriteFile(thirdOrdererCertificatePath, thirdOrdererCertificate, 0o644)
+			err = os.WriteFile(thirdOrdererCertificatePath, thirdOrdererCertificate, 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Overwriting the TLS directory of the new orderer")
@@ -382,7 +382,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				data, err := ioutil.ReadFile(filepath.Join(ordererTLSPath, fileName))
 				Expect(err).NotTo(HaveOccurred())
 
-				err = ioutil.WriteFile(dst, data, 0o644)
+				err = os.WriteFile(dst, data, 0o644)
 				Expect(err).NotTo(HaveOccurred())
 			}
 
@@ -759,14 +759,14 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			genesisBytes2, err := protoutil.Marshal(genesisBlock2)
 			Expect(err).NotTo(HaveOccurred())
 			path2 := network.OutputBlockPath("testchannel2")
-			err = ioutil.WriteFile(path2, genesisBytes2, 0o644)
+			err = os.WriteFile(path2, genesisBytes2, 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			genesisBlock3 := configToGenesisBlock(lastConfigBlock, "testchannel3")
 			genesisBytes3, err := protoutil.Marshal(genesisBlock3)
 			Expect(err).NotTo(HaveOccurred())
 			path3 := network.OutputBlockPath("testchannel3")
-			err = ioutil.WriteFile(path3, genesisBytes3, 0o644)
+			err = os.WriteFile(path3, genesisBytes3, 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Creating a testchannel2, joining all orderers")
@@ -1837,7 +1837,7 @@ func extendNetwork(n *nwo.Network) {
 	Expect(err).NotTo(HaveOccurred())
 	defer os.Remove(cryptoConfigYAML.Name())
 
-	err = ioutil.WriteFile(cryptoConfigYAML.Name(), []byte(extendedCryptoConfig), 0o644)
+	err = os.WriteFile(cryptoConfigYAML.Name(), []byte(extendedCryptoConfig), 0o644)
 	Expect(err).NotTo(HaveOccurred())
 
 	// Invoke cryptogen extend to add new orderers
@@ -1878,7 +1878,7 @@ func refreshOrdererPEMs(n *nwo.Network) []*certificateChange {
 		newCertBytes, err := ioutil.ReadFile(certChange.srcFile)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = ioutil.WriteFile(certChange.dstFile, newCertBytes, 0o644)
+		err = os.WriteFile(certChange.dstFile, newCertBytes, 0o644)
 		Expect(err).NotTo(HaveOccurred())
 
 		if !strings.Contains(certChange.dstFile, "server.crt") {

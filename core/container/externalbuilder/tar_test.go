@@ -60,7 +60,7 @@ var _ = Describe("Tar", func() {
 
 		Context("when the file's directory cannot be created", func() {
 			BeforeEach(func() {
-				ioutil.WriteFile(dst+"/a", []byte("test"), 0o700)
+				os.WriteFile(dst+"/a", []byte("test"), 0o700)
 			})
 
 			It("returns an error", func() {
@@ -74,7 +74,7 @@ var _ = Describe("Tar", func() {
 
 		Context("when the empty directory cannot be created", func() {
 			BeforeEach(func() {
-				ioutil.WriteFile(dst+"/d", []byte("test"), 0o700)
+				os.WriteFile(dst+"/d", []byte("test"), 0o700)
 			})
 
 			It("returns an error", func() {

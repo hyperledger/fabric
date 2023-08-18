@@ -144,7 +144,7 @@ func (d *Detector) Build(ccid string, mdBytes []byte, codeStream io.Reader) (*In
 		return nil, errors.WithMessage(err, "could not marshal for build-info.json")
 	}
 
-	err = ioutil.WriteFile(filepath.Join(durablePath, "build-info.json"), buildInfo, 0o600)
+	err = os.WriteFile(filepath.Join(durablePath, "build-info.json"), buildInfo, 0o600)
 	if err != nil {
 		os.RemoveAll(durablePath)
 		return nil, errors.WithMessage(err, "could not write build-info.json")
@@ -233,7 +233,7 @@ func NewBuildContext(ccid string, mdBytes []byte, codePackage io.Reader) (bc *Bu
 		return nil, errors.WithMessage(err, "could not untar source package")
 	}
 
-	err = ioutil.WriteFile(filepath.Join(metadataDir, "metadata.json"), mdBytes, 0o700)
+	err = os.WriteFile(filepath.Join(metadataDir, "metadata.json"), mdBytes, 0o700)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not write metadata file")
 	}
@@ -371,7 +371,7 @@ func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection
 		return nil, errors.WithMessage(err, "could not marshal run config")
 	}
 
-	if err := ioutil.WriteFile(filepath.Join(launchDir, "chaincode.json"), marshaledRC, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(launchDir, "chaincode.json"), marshaledRC, 0o600); err != nil {
 		return nil, errors.WithMessage(err, "could not write root cert")
 	}
 

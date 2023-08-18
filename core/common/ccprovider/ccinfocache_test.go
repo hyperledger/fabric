@@ -212,7 +212,7 @@ func TestGetInstalledChaincodesErrorPaths(t *testing.T) {
 
 	// Set the above created directory as the chaincode install path
 	SetChaincodesPath(dir)
-	err := ioutil.WriteFile(filepath.Join(dir, "idontexist.1.0"), []byte("test"), 0o777)
+	err := os.WriteFile(filepath.Join(dir, "idontexist.1.0"), []byte("test"), 0o777)
 	require.NoError(t, err)
 	resp, err := GetInstalledChaincodes()
 	require.NoError(t, err)

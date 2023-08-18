@@ -444,7 +444,7 @@ func getTarGZ(t *testing.T, name string, contents []byte) []byte {
 	tr.Write(contents)
 	tr.Close()
 	gw.Close()
-	ioutil.WriteFile("/tmp/t.gz", inputbuf.Bytes(), 0o644)
+	os.WriteFile("/tmp/t.gz", inputbuf.Bytes(), 0o644)
 	return inputbuf.Bytes()
 }
 

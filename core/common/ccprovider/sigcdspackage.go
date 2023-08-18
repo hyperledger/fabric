@@ -19,7 +19,6 @@ package ccprovider
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/golang/protobuf/proto"
@@ -30,7 +29,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 )
 
-//----- SignedCDSData ------
+// ----- SignedCDSData ------
 
 // SignedCDSData is data stored in the LSCC on instantiation of a CC
 // for SignedCDSPackage. This needs to be serialized for ChaincodeData
@@ -41,7 +40,7 @@ type SignedCDSData struct {
 	SignatureHash []byte `protobuf:"bytes,3,opt,name=signaturehash"`
 }
 
-//----implement functions needed from proto.Message for proto's mar/unmarshal functions
+// ----implement functions needed from proto.Message for proto's mar/unmarshal functions
 
 // Reset resets
 func (data *SignedCDSData) Reset() { *data = SignedCDSData{} }
@@ -60,7 +59,7 @@ func (data *SignedCDSData) Equals(other *SignedCDSData) bool {
 		bytes.Equal(data.SignatureHash, other.SignatureHash)
 }
 
-//-------- SignedCDSPackage ---------
+// -------- SignedCDSPackage ---------
 
 // SignedCDSPackage encapsulates SignedChaincodeDeploymentSpec.
 type SignedCDSPackage struct {
@@ -342,7 +341,7 @@ func (ccpack *SignedCDSPackage) PutChaincodeToFS() error {
 		return fmt.Errorf("chaincode %s exists", path)
 	}
 
-	if err := ioutil.WriteFile(path, ccpack.buf, 0o644); err != nil {
+	if err := os.WriteFile(path, ccpack.buf, 0o644); err != nil {
 		return err
 	}
 

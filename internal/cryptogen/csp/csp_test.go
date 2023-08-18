@@ -14,7 +14,6 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -83,7 +82,7 @@ func TestLoadPrivateKey_BadPEM(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			err := ioutil.WriteFile(
+			err := os.WriteFile(
 				badPEMFile,
 				test.data,
 				0o755,

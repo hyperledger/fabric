@@ -166,7 +166,7 @@ func run() error {
 		return fmt.Errorf("failed to marshal updated connection.json file: %s", err)
 	}
 
-	err = ioutil.WriteFile(connectionDestFile, updatedConnectionBytes, fileInfo.Mode())
+	err = os.WriteFile(connectionDestFile, updatedConnectionBytes, fileInfo.Mode())
 	if err != nil {
 		return err
 	}
