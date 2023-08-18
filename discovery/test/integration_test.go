@@ -15,7 +15,6 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -526,7 +525,7 @@ func createUserSigner(t *testing.T) *signer {
 	identityDir := filepath.Join(testdir, "crypto-config", "peerOrganizations", "org1.example.com", "users", "User1@org1.example.com", "msp")
 	certPath := filepath.Join(identityDir, "signcerts", "User1@org1.example.com-cert.pem")
 	keyPath := filepath.Join(identityDir, "keystore")
-	keys, err := ioutil.ReadDir(keyPath)
+	keys, err := os.ReadDir(keyPath)
 	require.NoError(t, err)
 	require.Len(t, keys, 1)
 	keyPath = filepath.Join(keyPath, keys[0].Name())
@@ -539,7 +538,7 @@ func createAdminSigner(t *testing.T) *signer {
 	identityDir := filepath.Join(testdir, "crypto-config", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 	certPath := filepath.Join(identityDir, "signcerts", "Admin@org1.example.com-cert.pem")
 	keyPath := filepath.Join(identityDir, "keystore")
-	keys, err := ioutil.ReadDir(keyPath)
+	keys, err := os.ReadDir(keyPath)
 	require.NoError(t, err)
 	require.Len(t, keys, 1)
 	keyPath = filepath.Join(keyPath, keys[0].Name())
@@ -633,7 +632,7 @@ func buildBinaries() error {
 }
 
 func generateChannelArtifacts() (string, error) {
-	dir, err := ioutil.TempDir("", "TestMSPIDMapping")
+	dir, err := os.MkdirTemp("", "TestMSPIDMapping")
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
@@ -810,7 +809,7 @@ func newPeer(dir, mspID string, org, id int) *testPeer {
 	peerStr := fmt.Sprintf("peer%d.org%d.example.com", id, org)
 	certFile := filepath.Join(dir, fmt.Sprintf("org%d.example.com", org),
 		"peers", peerStr, "msp", "signcerts", fmt.Sprintf("%s-cert.pem", peerStr))
-	certBytes, err := ioutil.ReadFile(certFile)
+	certBytes, err := os.ReadFile(certFile)
 	if err != nil {
 		panic(fmt.Sprintf("failed reading file %s: %v", certFile, err))
 	}
@@ -942,7 +941,7 @@ func newSigner(msp, certPath, keyPath string) (*signer, error) {
 }
 
 func serializeIdentity(clientCert string, mspID string) ([]byte, error) {
-	b, err := ioutil.ReadFile(clientCert)
+	b, err := os.ReadFile(clientCert)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -959,7 +958,7 @@ func (si *signer) Sign(msg []byte) ([]byte, error) {
 }
 
 func loadPrivateKey(file string) (*ecdsa.PrivateKey, error) {
-	b, err := ioutil.ReadFile(file)
+	b, err := os.ReadFile(file)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

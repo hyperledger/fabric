@@ -10,7 +10,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -72,12 +71,12 @@ ZsQXrlIqlmNalfYPX+NDDELqlpXQBeEqnA==
 		},
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
-			tmpFile, err := ioutil.TempFile("", "key")
+			tmpFile, err := os.CreateTemp("", "key")
 			require.NoError(t, err)
 
 			defer os.Remove(tmpFile.Name())
 
-			err = ioutil.WriteFile(tmpFile.Name(), testCase.keyBytes, 0o600)
+			err = os.WriteFile(tmpFile.Name(), testCase.keyBytes, 0o600)
 			require.NoError(t, err)
 
 			signer, err := NewSigner(Config{

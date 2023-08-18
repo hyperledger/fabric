@@ -8,7 +8,7 @@ package channelparticipation
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -300,7 +300,7 @@ func (h *HTTPHandler) multipartFormDataBodyToBlock(params map[string]string, req
 		return nil
 	}
 
-	blockBytes, err := ioutil.ReadAll(file)
+	blockBytes, err := io.ReadAll(file)
 	if err != nil {
 		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrapf(err, "cannot read file part %s from request body", FormDataConfigBlockKey))
 		return nil

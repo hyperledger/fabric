@@ -13,7 +13,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/msp"
@@ -29,7 +29,7 @@ type SigningIdentity struct {
 
 // Serialize returns the probobuf encoding of an msp.SerializedIdenity.
 func (s *SigningIdentity) Serialize() ([]byte, error) {
-	cert, err := ioutil.ReadFile(s.CertPath)
+	cert, err := os.ReadFile(s.CertPath)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (s *SigningIdentity) Serialize() ([]byte, error) {
 // key, and returns the signature after low-S normlization.
 func (s *SigningIdentity) Sign(msg []byte) ([]byte, error) {
 	digest := sha256.Sum256(msg)
-	pemKey, err := ioutil.ReadFile(s.KeyPath)
+	pemKey, err := os.ReadFile(s.KeyPath)
 	if err != nil {
 		return nil, err
 	}

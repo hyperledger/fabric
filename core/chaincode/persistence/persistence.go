@@ -9,7 +9,6 @@ package persistence
 import (
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -45,7 +44,7 @@ func (f *FilesystemIO) WriteFile(path, name string, data []byte) error {
 	if path == "" {
 		return errors.New("empty path not allowed")
 	}
-	tmpFile, err := ioutil.TempFile(path, ".ccpackage.")
+	tmpFile, err := os.CreateTemp(path, ".ccpackage.")
 	if err != nil {
 		return errors.Wrapf(err, "error creating temp file in directory '%s'", path)
 	}
@@ -79,12 +78,12 @@ func (f *FilesystemIO) Remove(name string) error {
 
 // ReadFile reads a file from the filesystem
 func (f *FilesystemIO) ReadFile(filename string) ([]byte, error) {
-	return ioutil.ReadFile(filename)
+	return os.ReadFile(filename)
 }
 
 // ReadDir reads a directory from the filesystem
 func (f *FilesystemIO) ReadDir(dirname string) ([]os.FileInfo, error) {
-	return ioutil.ReadDir(dirname)
+	return os.ReadDir(dirname)
 }
 
 // MakeDir makes a directory on the filesystem (and any

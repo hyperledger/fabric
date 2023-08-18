@@ -7,7 +7,6 @@ package peer
 
 import (
 	"crypto/tls"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -121,18 +120,18 @@ func TestGetServerConfig(t *testing.T) {
 	// good config with TLS
 	org1CA, err := tlsgen.NewCA()
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tempdir, "org1-ca-cert.pem"), org1CA.CertBytes(), 0o644)
+	err = os.WriteFile(filepath.Join(tempdir, "org1-ca-cert.pem"), org1CA.CertBytes(), 0o644)
 	require.NoError(t, err)
 	org2CA, err := tlsgen.NewCA()
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tempdir, "org2-ca-cert.pem"), org2CA.CertBytes(), 0o644)
+	err = os.WriteFile(filepath.Join(tempdir, "org2-ca-cert.pem"), org2CA.CertBytes(), 0o644)
 	require.NoError(t, err)
 
 	org1ServerKP, err := org1CA.NewServerCertKeyPair("localhost")
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tempdir, "org1-server1-cert.pem"), org1ServerKP.Cert, 0o644)
+	err = os.WriteFile(filepath.Join(tempdir, "org1-server1-cert.pem"), org1ServerKP.Cert, 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tempdir, "org1-server1-key.pem"), org1ServerKP.Key, 0o600)
+	err = os.WriteFile(filepath.Join(tempdir, "org1-server1-key.pem"), org1ServerKP.Key, 0o600)
 	require.NoError(t, err)
 
 	viper.Set("peer.tls.enabled", true)
@@ -184,9 +183,9 @@ func TestGetClientCertificate(t *testing.T) {
 	require.NoError(t, err)
 	kp, err := ca.NewServerCertKeyPair("localhost")
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tempdir, "server1-cert.pem"), kp.Cert, 0o644)
+	err = os.WriteFile(filepath.Join(tempdir, "server1-cert.pem"), kp.Cert, 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tempdir, "server1-key.pem"), kp.Key, 0o600)
+	err = os.WriteFile(filepath.Join(tempdir, "server1-key.pem"), kp.Key, 0o600)
 	require.NoError(t, err)
 
 	viper.Set("peer.tls.key.file", "")

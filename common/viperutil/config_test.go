@@ -8,7 +8,6 @@ package viperutil
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -133,13 +132,13 @@ func TestStringNotFromFile(t *testing.T) {
 }
 
 func TestStringFromFile(t *testing.T) {
-	file, err := ioutil.TempFile(os.TempDir(), "test")
+	file, err := os.CreateTemp(os.TempDir(), "test")
 	require.NoError(t, err, "failed to create temp file")
 	defer os.Remove(file.Name())
 
 	expectedValue := "this is the text in the file"
 
-	err = ioutil.WriteFile(file.Name(), []byte(expectedValue), 0o644)
+	err = os.WriteFile(file.Name(), []byte(expectedValue), 0o644)
 	require.NoError(t, err, "uname to write temp file")
 
 	yaml := fmt.Sprintf("---\nInner:\n  Single:\n    File: %s", file.Name())
@@ -155,7 +154,7 @@ func TestStringFromFile(t *testing.T) {
 }
 
 func TestPEMBlocksFromFile(t *testing.T) {
-	file, err := ioutil.TempFile(os.TempDir(), "test")
+	file, err := os.CreateTemp(os.TempDir(), "test")
 	require.NoError(t, err, "failed to create temp file")
 	defer os.Remove(file.Name())
 
@@ -165,7 +164,7 @@ func TestPEMBlocksFromFile(t *testing.T) {
 		pems = append(pems, publicKeyCert...)
 	}
 
-	err = ioutil.WriteFile(file.Name(), pems, 0o644)
+	err = os.WriteFile(file.Name(), pems, 0o644)
 	require.NoError(t, err, "failed to write temp file")
 
 	yaml := fmt.Sprintf("---\nInner:\n  Multiple:\n    File: %s", file.Name())
@@ -181,7 +180,7 @@ func TestPEMBlocksFromFile(t *testing.T) {
 }
 
 func TestPEMBlocksFromFileEnv(t *testing.T) {
-	file, err := ioutil.TempFile(os.TempDir(), "test")
+	file, err := os.CreateTemp(os.TempDir(), "test")
 	require.NoError(t, err, "failed to create temp file")
 	defer os.Remove(file.Name())
 
@@ -191,7 +190,7 @@ func TestPEMBlocksFromFileEnv(t *testing.T) {
 		pems = append(pems, publicKeyCert...)
 	}
 
-	err = ioutil.WriteFile(file.Name(), pems, 0o644)
+	err = os.WriteFile(file.Name(), pems, 0o644)
 	require.NoError(t, err, "failed to write temp file")
 
 	envVar := testEnvPrefix + "_INNER_MULTIPLE_FILE"
@@ -236,11 +235,11 @@ func TestStringFromFileNotSpecified(t *testing.T) {
 func TestStringFromFileEnv(t *testing.T) {
 	expectedValue := "this is the text in the file"
 
-	file, err := ioutil.TempFile(os.TempDir(), "test")
+	file, err := os.CreateTemp(os.TempDir(), "test")
 	require.NoError(t, err, "failed to create temp file")
 	defer os.Remove(file.Name())
 
-	err = ioutil.WriteFile(file.Name(), []byte(expectedValue), 0o644)
+	err = os.WriteFile(file.Name(), []byte(expectedValue), 0o644)
 	require.NoError(t, err, "failed to write temp file")
 
 	envVar := testEnvPrefix + "_INNER_SINGLE_FILE"

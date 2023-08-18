@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"net/http/httptest"
 	"net/url"
@@ -75,7 +74,7 @@ var _ = Describe("osnadmin", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		caCertPool := x509.NewCertPool()
-		clientCAPem, err := ioutil.ReadFile(filepath.Join(tempDir, "client-ca.pem"))
+		clientCAPem, err := os.ReadFile(filepath.Join(tempDir, "client-ca.pem"))
 		Expect(err).NotTo(HaveOccurred())
 		caCertPool.AppendCertsFromPEM(clientCAPem)
 
@@ -745,39 +744,39 @@ func checkCLIError(output string, exit int, err error, expectedError string) {
 func generateCertificates(tempDir string) {
 	serverCA, err := tlsgen.NewCA()
 	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(filepath.Join(tempDir, "server-ca.pem"), serverCA.CertBytes(), 0o640)
+	err = os.WriteFile(filepath.Join(tempDir, "server-ca.pem"), serverCA.CertBytes(), 0o640)
 	Expect(err).NotTo(HaveOccurred())
 	serverKeyPair, err := serverCA.NewServerCertKeyPair("127.0.0.1")
 	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(filepath.Join(tempDir, "server-cert.pem"), serverKeyPair.Cert, 0o640)
+	err = os.WriteFile(filepath.Join(tempDir, "server-cert.pem"), serverKeyPair.Cert, 0o640)
 	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(filepath.Join(tempDir, "server-key.pem"), serverKeyPair.Key, 0o640)
+	err = os.WriteFile(filepath.Join(tempDir, "server-key.pem"), serverKeyPair.Key, 0o640)
 	Expect(err).NotTo(HaveOccurred())
 
 	serverIntermediateCA, err := serverCA.NewIntermediateCA()
 	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(filepath.Join(tempDir, "server-intermediate-ca.pem"), serverIntermediateCA.CertBytes(), 0o640)
+	err = os.WriteFile(filepath.Join(tempDir, "server-intermediate-ca.pem"), serverIntermediateCA.CertBytes(), 0o640)
 	Expect(err).NotTo(HaveOccurred())
 	serverIntermediateKeyPair, err := serverIntermediateCA.NewServerCertKeyPair("127.0.0.1")
 	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(filepath.Join(tempDir, "server-intermediate-cert.pem"), serverIntermediateKeyPair.Cert, 0o640)
+	err = os.WriteFile(filepath.Join(tempDir, "server-intermediate-cert.pem"), serverIntermediateKeyPair.Cert, 0o640)
 	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(filepath.Join(tempDir, "server-intermediate-key.pem"), serverIntermediateKeyPair.Key, 0o640)
+	err = os.WriteFile(filepath.Join(tempDir, "server-intermediate-key.pem"), serverIntermediateKeyPair.Key, 0o640)
 	Expect(err).NotTo(HaveOccurred())
 
 	serverAndIntermediateCABytes := append(serverCA.CertBytes(), serverIntermediateCA.CertBytes()...)
-	err = ioutil.WriteFile(filepath.Join(tempDir, "server-ca+intermediate-ca.pem"), serverAndIntermediateCABytes, 0o640)
+	err = os.WriteFile(filepath.Join(tempDir, "server-ca+intermediate-ca.pem"), serverAndIntermediateCABytes, 0o640)
 	Expect(err).NotTo(HaveOccurred())
 
 	clientCA, err := tlsgen.NewCA()
 	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(filepath.Join(tempDir, "client-ca.pem"), clientCA.CertBytes(), 0o640)
+	err = os.WriteFile(filepath.Join(tempDir, "client-ca.pem"), clientCA.CertBytes(), 0o640)
 	Expect(err).NotTo(HaveOccurred())
 	clientKeyPair, err := clientCA.NewClientCertKeyPair()
 	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(filepath.Join(tempDir, "client-cert.pem"), clientKeyPair.Cert, 0o640)
+	err = os.WriteFile(filepath.Join(tempDir, "client-cert.pem"), clientKeyPair.Cert, 0o640)
 	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(filepath.Join(tempDir, "client-key.pem"), clientKeyPair.Key, 0o640)
+	err = os.WriteFile(filepath.Join(tempDir, "client-key.pem"), clientKeyPair.Key, 0o640)
 	Expect(err).NotTo(HaveOccurred())
 }
 
@@ -831,7 +830,7 @@ func createBlockFile(tempDir string, configBlock *cb.Block) string {
 	blockBytes, err := proto.Marshal(configBlock)
 	Expect(err).NotTo(HaveOccurred())
 	blockPath := filepath.Join(tempDir, "block.pb")
-	err = ioutil.WriteFile(blockPath, blockBytes, 0o644)
+	err = os.WriteFile(blockPath, blockBytes, 0o644)
 	Expect(err).NotTo(HaveOccurred())
 	return blockPath
 }

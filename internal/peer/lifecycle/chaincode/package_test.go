@@ -11,7 +11,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -231,7 +230,7 @@ func readMetadataFromBytes(pkgTarGzBytes []byte) ([]byte, error) {
 			return nil, err
 		}
 		if header.Name == "metadata.json" {
-			return ioutil.ReadAll(tr)
+			return io.ReadAll(tr)
 		}
 	}
 	return nil, errors.New("metadata.json not found")

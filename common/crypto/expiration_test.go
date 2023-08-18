@@ -11,7 +11,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -25,7 +25,7 @@ import (
 )
 
 func TestX509CertExpiresAt(t *testing.T) {
-	certBytes, err := ioutil.ReadFile(filepath.Join("testdata", "cert.pem"))
+	certBytes, err := os.ReadFile(filepath.Join("testdata", "cert.pem"))
 	require.NoError(t, err)
 	sId := &msp.SerializedIdentity{
 		IdBytes: certBytes,
@@ -37,7 +37,7 @@ func TestX509CertExpiresAt(t *testing.T) {
 }
 
 func TestX509InvalidCertExpiresAt(t *testing.T) {
-	certBytes, err := ioutil.ReadFile(filepath.Join("testdata", "badCert.pem"))
+	certBytes, err := os.ReadFile(filepath.Join("testdata", "badCert.pem"))
 	require.NoError(t, err)
 	sId := &msp.SerializedIdentity{
 		IdBytes: certBytes,

@@ -11,7 +11,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -57,7 +56,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		ordererProcesses = nil
 
 		var err error
-		testDir, err = ioutil.TempDir("", "e2e-etcdraft_reconfig")
+		testDir, err = os.MkdirTemp("", "e2e-etcdraft_reconfig")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = docker.NewClientFromEnv()
@@ -192,7 +191,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			genesisBlock.Header.DataHash = protoutil.BlockDataHash(genesisBlock.Data)
 			genesisBlockBytes, err := protoutil.Marshal(genesisBlock)
 			Expect(err).NotTo(HaveOccurred())
-			err = ioutil.WriteFile(network.OutputBlockPath("testchannel"), genesisBlockBytes, 0o644)
+			err = os.WriteFile(network.OutputBlockPath("testchannel"), genesisBlockBytes, 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Starting orderer")
@@ -292,7 +291,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			extendNetwork(network)
 
 			secondOrdererCertificatePath := filepath.Join(network.OrdererLocalTLSDir(orderer2), "server.crt")
-			secondOrdererCertificate, err := ioutil.ReadFile(secondOrdererCertificatePath)
+			secondOrdererCertificate, err := os.ReadFile(secondOrdererCertificatePath)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Adding the second orderer")
@@ -344,7 +343,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			network.Orderers = append(network.Orderers, orderer3)
 			network.GenerateOrdererConfig(orderer3)
 
-			tmpDir, err := ioutil.TempDir("", "e2e-etcfraft_reconfig")
+			tmpDir, err := os.MkdirTemp("", "e2e-etcfraft_reconfig")
 			Expect(err).NotTo(HaveOccurred())
 			defer os.RemoveAll(tmpDir)
 
@@ -362,27 +361,27 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			caCertPath := filepath.Join(tmpDir, "ordererOrganizations", domain, "tlsca", fmt.Sprintf("tlsca.%s-cert.pem", domain))
 
-			caCert, err := ioutil.ReadFile(caCertPath)
+			caCert, err := os.ReadFile(caCertPath)
 			Expect(err).NotTo(HaveOccurred())
 
 			thirdOrdererCertificatePath := filepath.Join(ordererTLSPath, "server.crt")
-			thirdOrdererCertificate, err := ioutil.ReadFile(thirdOrdererCertificatePath)
+			thirdOrdererCertificate, err := os.ReadFile(thirdOrdererCertificatePath)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Updating it on the file system")
-			err = ioutil.WriteFile(caCertPath, caCert, 0o644)
+			err = os.WriteFile(caCertPath, caCert, 0o644)
 			Expect(err).NotTo(HaveOccurred())
-			err = ioutil.WriteFile(thirdOrdererCertificatePath, thirdOrdererCertificate, 0o644)
+			err = os.WriteFile(thirdOrdererCertificatePath, thirdOrdererCertificate, 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Overwriting the TLS directory of the new orderer")
 			for _, fileName := range []string{"server.crt", "server.key", "ca.crt"} {
 				dst := filepath.Join(network.OrdererLocalTLSDir(orderer3), fileName)
 
-				data, err := ioutil.ReadFile(filepath.Join(ordererTLSPath, fileName))
+				data, err := os.ReadFile(filepath.Join(ordererTLSPath, fileName))
 				Expect(err).NotTo(HaveOccurred())
 
-				err = ioutil.WriteFile(dst, data, 0o644)
+				err = os.WriteFile(dst, data, 0o644)
 				Expect(err).NotTo(HaveOccurred())
 			}
 
@@ -759,14 +758,14 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			genesisBytes2, err := protoutil.Marshal(genesisBlock2)
 			Expect(err).NotTo(HaveOccurred())
 			path2 := network.OutputBlockPath("testchannel2")
-			err = ioutil.WriteFile(path2, genesisBytes2, 0o644)
+			err = os.WriteFile(path2, genesisBytes2, 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			genesisBlock3 := configToGenesisBlock(lastConfigBlock, "testchannel3")
 			genesisBytes3, err := protoutil.Marshal(genesisBlock3)
 			Expect(err).NotTo(HaveOccurred())
 			path3 := network.OutputBlockPath("testchannel3")
-			err = ioutil.WriteFile(path3, genesisBytes3, 0o644)
+			err = os.WriteFile(path3, genesisBytes3, 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Creating a testchannel2, joining all orderers")
@@ -797,7 +796,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Adding orderer4 to the channel")
 			orderer4CertificatePath := filepath.Join(network.OrdererLocalTLSDir(o4), "server.crt")
-			orderer4Certificate, err := ioutil.ReadFile(orderer4CertificatePath)
+			orderer4Certificate, err := os.ReadFile(orderer4CertificatePath)
 			Expect(err).NotTo(HaveOccurred())
 
 			addConsenter(network, peer, o1, "testchannel", etcdraft.Consenter{
@@ -992,7 +991,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Adding orderer2 to mychannel")
 			ordererCertificatePath := filepath.Join(network.OrdererLocalTLSDir(o2), "server.crt")
-			ordererCertificate, err := ioutil.ReadFile(ordererCertificatePath)
+			ordererCertificate, err := os.ReadFile(ordererCertificatePath)
 			Expect(err).NotTo(HaveOccurred())
 
 			addConsenter(network, peer, o1, "mychannel", etcdraft.Consenter{
@@ -1020,7 +1019,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Adding orderer3 to the channel")
 			ordererCertificatePath = filepath.Join(network.OrdererLocalTLSDir(o3), "server.crt")
-			ordererCertificate, err = ioutil.ReadFile(ordererCertificatePath)
+			ordererCertificate, err = os.ReadFile(ordererCertificatePath)
 			Expect(err).NotTo(HaveOccurred())
 			addConsenter(network, peer, o1, "mychannel", etcdraft.Consenter{
 				ServerTlsCert: ordererCertificate,
@@ -1157,7 +1156,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			firstEvictedNode := FindLeader(ordererRunners) - 1
 
 			By("Removing the leader from 3-node channel")
-			server1CertBytes, err := ioutil.ReadFile(filepath.Join(network.OrdererLocalTLSDir(orderers[firstEvictedNode]), "server.crt"))
+			server1CertBytes, err := os.ReadFile(filepath.Join(network.OrdererLocalTLSDir(orderers[firstEvictedNode]), "server.crt"))
 			Expect(err).To(Not(HaveOccurred()))
 
 			ordererEvicted1st := network.Orderers[(firstEvictedNode+1)%3]
@@ -1210,7 +1209,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Eventually(assertFollower(expectedInfo, orderers[firstEvictedNode]), network.EventuallyTimeout, 100*time.Millisecond).Should(BeTrue())
 
 			By("Removing the leader from 2-node channel")
-			server2CertBytes, err := ioutil.ReadFile(filepath.Join(network.OrdererLocalTLSDir(orderers[secondEvictedNode]), "server.crt"))
+			server2CertBytes, err := os.ReadFile(filepath.Join(network.OrdererLocalTLSDir(orderers[secondEvictedNode]), "server.crt"))
 			Expect(err).To(Not(HaveOccurred()))
 
 			removeConsenter(network, peer, orderers[survivor], "testchannel", server2CertBytes)
@@ -1284,7 +1283,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Eventually(o2Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Current active nodes in cluster are: \\[2 3\\]"))
 
 				By("Removing the first orderer from the application channel")
-				server1CertBytes, err := ioutil.ReadFile(filepath.Join(network.OrdererLocalTLSDir(o1), "server.crt"))
+				server1CertBytes, err := os.ReadFile(filepath.Join(network.OrdererLocalTLSDir(o1), "server.crt"))
 				Expect(err).To(Not(HaveOccurred()))
 				removeConsenter(network, peer, o2, "testchannel", server1CertBytes)
 
@@ -1408,7 +1407,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}, []*nwo.Orderer{o2, o3}, peer, network)
 
 			By("Removing the first orderer from an application channel")
-			o1cert, err := ioutil.ReadFile(path.Join(network.OrdererLocalTLSDir(o1), "server.crt"))
+			o1cert, err := os.ReadFile(path.Join(network.OrdererLocalTLSDir(o1), "server.crt"))
 			Expect(err).ToNot(HaveOccurred())
 			removeConsenter(network, peer, o2, "testchannel", o1cert)
 
@@ -1544,7 +1543,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			for _, i := range []int{4, 5, 6} {
 				By(fmt.Sprintf("Adding orderer%d", i+1))
 				ordererCertificatePath := filepath.Join(network.OrdererLocalTLSDir(orderers[i]), "server.crt")
-				ordererCertificate, err := ioutil.ReadFile(ordererCertificatePath)
+				ordererCertificate, err := os.ReadFile(ordererCertificatePath)
 				Expect(err).NotTo(HaveOccurred())
 
 				addConsenter(network, peer, orderers[0], "testchannel", etcdraft.Consenter{
@@ -1833,11 +1832,11 @@ type certificateChange struct {
 // extendNetwork rotates adds an additional orderer
 func extendNetwork(n *nwo.Network) {
 	// Overwrite the current crypto-config with additional orderers
-	cryptoConfigYAML, err := ioutil.TempFile("", "crypto-config.yaml")
+	cryptoConfigYAML, err := os.CreateTemp("", "crypto-config.yaml")
 	Expect(err).NotTo(HaveOccurred())
 	defer os.Remove(cryptoConfigYAML.Name())
 
-	err = ioutil.WriteFile(cryptoConfigYAML.Name(), []byte(extendedCryptoConfig), 0o644)
+	err = os.WriteFile(cryptoConfigYAML.Name(), []byte(extendedCryptoConfig), 0o644)
 	Expect(err).NotTo(HaveOccurred())
 
 	// Invoke cryptogen extend to add new orderers
@@ -1872,13 +1871,13 @@ func refreshOrdererPEMs(n *nwo.Network) []*certificateChange {
 
 	// Overwrite the destination files with the contents of the source files.
 	for _, certChange := range fileChanges {
-		previousCertBytes, err := ioutil.ReadFile(certChange.dstFile)
+		previousCertBytes, err := os.ReadFile(certChange.dstFile)
 		Expect(err).NotTo(HaveOccurred())
 
-		newCertBytes, err := ioutil.ReadFile(certChange.srcFile)
+		newCertBytes, err := os.ReadFile(certChange.srcFile)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = ioutil.WriteFile(certChange.dstFile, newCertBytes, 0o644)
+		err = os.WriteFile(certChange.dstFile, newCertBytes, 0o644)
 		Expect(err).NotTo(HaveOccurred())
 
 		if !strings.Contains(certChange.dstFile, "server.crt") {
@@ -1886,7 +1885,7 @@ func refreshOrdererPEMs(n *nwo.Network) []*certificateChange {
 		}
 
 		// Read the previous key file
-		previousKeyBytes, err := ioutil.ReadFile(strings.Replace(certChange.dstFile, "server.crt", "server.key", -1))
+		previousKeyBytes, err := os.ReadFile(strings.Replace(certChange.dstFile, "server.crt", "server.key", -1))
 		Expect(err).NotTo(HaveOccurred())
 
 		serverCertChanges = append(serverCertChanges, certChange)

@@ -18,7 +18,6 @@ import (
 	"encoding/asn1"
 	"fmt"
 	"hash"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"os"
@@ -45,7 +44,7 @@ type testConfig struct {
 }
 
 func (tc testConfig) Provider(t *testing.T) (bccsp.BCCSP, bccsp.KeyStore, func()) {
-	td, err := ioutil.TempDir(tempDir, "test")
+	td, err := os.MkdirTemp(tempDir, "test")
 	require.NoError(t, err)
 	ks, err := NewFileBasedKeyStore(nil, td, false)
 	require.NoError(t, err)
@@ -67,7 +66,7 @@ func TestMain(m *testing.M) {
 	}
 
 	var err error
-	tempDir, err = ioutil.TempDir("", "bccsp-sw")
+	tempDir, err = os.MkdirTemp("", "bccsp-sw")
 	if err != nil {
 		fmt.Printf("Failed to create temporary directory: %s\n\n", err)
 		return

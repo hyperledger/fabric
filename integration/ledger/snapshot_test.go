@@ -11,7 +11,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -519,7 +518,7 @@ func configPeerWithCouchDB(s *setup, peer *nwo.Peer) ifrit.Process {
 // Initially only start Org1.peer0 and Org2.peer0 are started and join the channel.
 func initAndStartFourOrgsNetwork() *setup {
 	var err error
-	testDir, err := ioutil.TempDir("", "snapshot")
+	testDir, err := os.MkdirTemp("", "snapshot")
 	Expect(err).NotTo(HaveOccurred())
 
 	client, err := docker.NewClientFromEnv()
@@ -760,9 +759,9 @@ func compareSnapshotMetadata(snapshotDir1, snapshotDir2 string) {
 	// compare metadata files
 	for _, file := range []string{"_snapshot_signable_metadata.json", "_snapshot_additional_metadata.json"} {
 		By("comparing metadata file from snapshots on multiple peers: " + file)
-		fileContent1, err := ioutil.ReadFile(filepath.Join(snapshotDir1, file))
+		fileContent1, err := os.ReadFile(filepath.Join(snapshotDir1, file))
 		Expect(err).NotTo(HaveOccurred())
-		fileContent2, err := ioutil.ReadFile(filepath.Join(snapshotDir2, file))
+		fileContent2, err := os.ReadFile(filepath.Join(snapshotDir2, file))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fileContent1).To(Equal(fileContent2))
 	}

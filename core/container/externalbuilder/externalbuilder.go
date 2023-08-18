@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -62,7 +61,7 @@ func (d *Detector) CachedBuild(ccid string) (*Instance, error) {
 	}
 
 	buildInfoPath := filepath.Join(durablePath, "build-info.json")
-	buildInfoData, err := ioutil.ReadFile(buildInfoPath)
+	buildInfoData, err := os.ReadFile(buildInfoPath)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "could not read '%s' for build info", buildInfoPath)
 	}
@@ -144,7 +143,7 @@ func (d *Detector) Build(ccid string, mdBytes []byte, codeStream io.Reader) (*In
 		return nil, errors.WithMessage(err, "could not marshal for build-info.json")
 	}
 
-	err = ioutil.WriteFile(filepath.Join(durablePath, "build-info.json"), buildInfo, 0o600)
+	err = os.WriteFile(filepath.Join(durablePath, "build-info.json"), buildInfo, 0o600)
 	if err != nil {
 		os.RemoveAll(durablePath)
 		return nil, errors.WithMessage(err, "could not write build-info.json")
@@ -197,7 +196,7 @@ type BuildContext struct {
 // Users of the BuildContext must call Cleanup when the build process is
 // complete to remove the transient file system assets.
 func NewBuildContext(ccid string, mdBytes []byte, codePackage io.Reader) (bc *BuildContext, err error) {
-	scratchDir, err := ioutil.TempDir("", "fabric-"+SanitizeCCIDPath(ccid))
+	scratchDir, err := os.MkdirTemp("", "fabric-"+SanitizeCCIDPath(ccid))
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not create temp dir")
 	}
@@ -233,7 +232,7 @@ func NewBuildContext(ccid string, mdBytes []byte, codePackage io.Reader) (bc *Bu
 		return nil, errors.WithMessage(err, "could not untar source package")
 	}
 
-	err = ioutil.WriteFile(filepath.Join(metadataDir, "metadata.json"), mdBytes, 0o700)
+	err = os.WriteFile(filepath.Join(metadataDir, "metadata.json"), mdBytes, 0o700)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not write metadata file")
 	}
@@ -360,7 +359,7 @@ func newRunConfig(ccid string, peerConnection *ccintf.PeerConnection, mspid stri
 // Run starts the `run` script and returns a Session that can be used to
 // signal it and wait for termination.
 func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection) (*Session, error) {
-	launchDir, err := ioutil.TempDir("", "fabric-run")
+	launchDir, err := os.MkdirTemp("", "fabric-run")
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not create temp run dir")
 	}
@@ -371,7 +370,7 @@ func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection
 		return nil, errors.WithMessage(err, "could not marshal run config")
 	}
 
-	if err := ioutil.WriteFile(filepath.Join(launchDir, "chaincode.json"), marshaledRC, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(launchDir, "chaincode.json"), marshaledRC, 0o600); err != nil {
 		return nil, errors.WithMessage(err, "could not write root cert")
 	}
 

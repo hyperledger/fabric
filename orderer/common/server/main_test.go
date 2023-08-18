@@ -5,7 +5,6 @@ package server
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -75,11 +74,11 @@ func TestMain(m *testing.M) {
 
 func copyYamlFiles(src, dst string) {
 	for _, file := range []string{"configtx.yaml", "examplecom-config.yaml", "orderer.yaml"} {
-		fileBytes, err := ioutil.ReadFile(filepath.Join(src, file))
+		fileBytes, err := os.ReadFile(filepath.Join(src, file))
 		if err != nil {
 			os.Exit(-1)
 		}
-		err = ioutil.WriteFile(filepath.Join(dst, file), fileBytes, 0o644)
+		err = os.WriteFile(filepath.Join(dst, file), fileBytes, 0o644)
 		if err != nil {
 			os.Exit(-1)
 		}
@@ -135,7 +134,7 @@ func TestInitializeServerConfig(t *testing.T) {
 		},
 	}
 	sc := initializeServerConfig(conf, nil)
-	expectedContent, _ := ioutil.ReadFile("main.go")
+	expectedContent, _ := os.ReadFile("main.go")
 	require.Equal(t, expectedContent, sc.SecOpts.Certificate)
 	require.Equal(t, expectedContent, sc.SecOpts.Key)
 	require.Equal(t, [][]byte{expectedContent}, sc.SecOpts.ServerRootCAs)
@@ -360,7 +359,7 @@ func TestVerifyNoSystemChannelJoinBlock(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, fileRepo)
 
-		genesisBytes, err = ioutil.ReadFile(genesisFile)
+		genesisBytes, err = os.ReadFile(genesisFile)
 		require.NoError(t, err)
 		require.NotNil(t, genesisBytes)
 	}
@@ -970,7 +969,7 @@ func panicMsg(f func()) string {
 func produceGenesisFileEtcdRaft(t *testing.T, channelID string, tmpDir string) (string, []byte) {
 	confRaft := genesisconfig.Load("SampleEtcdRaftSystemChannel", tmpDir)
 
-	serverCert, err := ioutil.ReadFile(string(confRaft.Orderer.EtcdRaft.Consenters[0].ServerTlsCert))
+	serverCert, err := os.ReadFile(string(confRaft.Orderer.EtcdRaft.Consenters[0].ServerTlsCert))
 	require.NoError(t, err)
 
 	bootstrapper, err := encoder.NewBootstrapper(confRaft)
@@ -986,7 +985,7 @@ func produceGenesisFileEtcdRaft(t *testing.T, channelID string, tmpDir string) (
 func produceGenesisFileEtcdRaftAppChannel(t *testing.T, channelID string, tmpDir string) (string, []byte) {
 	confRaft := genesisconfig.Load("SampleOrgChannel", tmpDir)
 
-	serverCert, err := ioutil.ReadFile(string(confRaft.Orderer.EtcdRaft.Consenters[0].ServerTlsCert))
+	serverCert, err := os.ReadFile(string(confRaft.Orderer.EtcdRaft.Consenters[0].ServerTlsCert))
 	require.NoError(t, err)
 
 	bootstrapper, err := encoder.NewBootstrapper(confRaft)

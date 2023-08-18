@@ -74,7 +74,7 @@ Two test frameworks that we use are
 
 When modifying code, please use the test framework that has already been chosen for the package. Also, when using golang’s built-in test framework, it is encouraged  to organize the tests using the table-driven test strategy for testing a function in different scenarios or with different input, wherever possible.
 
-Any fixtures or data required by tests should be generated or placed under version control. When fixtures are generated, they must be placed in a temporary directory created by `ioutil.TempDir` and cleaned up when the test terminates. When fixtures are placed under version control, they should be created inside a `testdata` folder; documentation that describes how to regenerate the fixtures should be provided in the tests or a `README.txt`. Sharing fixtures across packages is strongly discouraged.
+Any fixtures or data required by tests should be generated or placed under version control. When fixtures are generated, they must be placed in a temporary directory created by `os.MkdirTemp` and cleaned up when the test terminates. When fixtures are placed under version control, they should be created inside a `testdata` folder; documentation that describes how to regenerate the fixtures should be provided in the tests or a `README.txt`. Sharing fixtures across packages is strongly discouraged.
 
 When fakes or mocks are needed, they must be generated. Bespoke, hand-coded mocks are a maintenance burden and tend to include simulations that inevitably diverge from reality. Within Fabric, we use [go generate](https://blog.golang.org/generate) directives to manage the generation with the following tools:
 - [counterfeiter](https://github.com/maxbrunsfeld/counterfeiter)

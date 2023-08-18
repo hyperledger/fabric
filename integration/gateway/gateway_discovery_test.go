@@ -8,7 +8,6 @@ package gateway
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -40,14 +39,14 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 	)
 
 	loadPeerCert := func(peer *nwo.Peer) string {
-		peerCert, err := ioutil.ReadFile(network.PeerCert(peer))
+		peerCert, err := os.ReadFile(network.PeerCert(peer))
 		Expect(err).NotTo(HaveOccurred())
 		return string(peerCert)
 	}
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "gateway")
+		testDir, err = os.MkdirTemp("", "gateway")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err := docker.NewClientFromEnv()

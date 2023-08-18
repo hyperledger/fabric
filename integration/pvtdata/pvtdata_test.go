@@ -11,7 +11,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -242,7 +241,7 @@ var _ = Describe("PrivateData", func() {
 		It("verifies private data is pulled when joining a new peer with new certs", func() {
 			By("generating new certs for org2Peer1")
 			org2Peer1 := network.Peer("Org2", "peer1")
-			tempCryptoDir, err := ioutil.TempDir("", "crypto")
+			tempCryptoDir, err := os.MkdirTemp("", "crypto")
 			Expect(err).NotTo(HaveOccurred())
 			defer os.RemoveAll(tempCryptoDir)
 			generateNewCertsForPeer(network, tempCryptoDir, org2Peer1)
@@ -257,7 +256,7 @@ var _ = Describe("PrivateData", func() {
 			Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			By("joining peer1.org2 to the channel with its Admin2 user")
-			tempFile, err := ioutil.TempFile("", "genesis-block")
+			tempFile, err := os.CreateTemp("", "genesis-block")
 			Expect(err).NotTo(HaveOccurred())
 			tempFile.Close()
 			defer os.Remove(tempFile.Name())
@@ -932,7 +931,7 @@ var _ = Describe("PrivateData", func() {
 
 func initThreeOrgsSetup(removePeer1 bool) *nwo.Network {
 	var err error
-	testDir, err := ioutil.TempDir("", "e2e-pvtdata")
+	testDir, err := os.MkdirTemp("", "e2e-pvtdata")
 	Expect(err).NotTo(HaveOccurred())
 
 	client, err := docker.NewClientFromEnv()

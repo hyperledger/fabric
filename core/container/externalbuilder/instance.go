@@ -8,7 +8,6 @@ package externalbuilder
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -133,7 +132,7 @@ func (i *Instance) ChaincodeServerInfo() (*ccintf.ChaincodeServerInfo, error) {
 	if err != nil {
 		return nil, errors.WithMessage(err, "connection information not provided")
 	}
-	b, err := ioutil.ReadFile(ccinfoPath)
+	b, err := os.ReadFile(ccinfoPath)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "could not read '%s' for chaincode info", ccinfoPath)
 	}

@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package nwo
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,7 +28,7 @@ import (
 
 // GetConfigBlock retrieves the current config block for a channel.
 func GetConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string) *common.Block {
-	tempDir, err := ioutil.TempDir(n.RootDir, "getConfigBlock")
+	tempDir, err := os.MkdirTemp(n.RootDir, "getConfigBlock")
 	Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
@@ -85,7 +84,7 @@ func GetConfig(n *Network, peer *Peer, orderer *Orderer, channel string) *common
 // UpdateConfig computes, signs, and submits a configuration update and waits
 // for the update to complete.
 func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated *common.Config, getConfigBlockFromOrderer bool, submitter *Peer, additionalSigners ...*Peer) {
-	tempDir, err := ioutil.TempDir("", "updateConfig")
+	tempDir, err := os.MkdirTemp("", "updateConfig")
 	Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
@@ -106,7 +105,7 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 	Expect(signedEnvelope).NotTo(BeNil())
 
 	updateFile := filepath.Join(tempDir, "update.pb")
-	err = ioutil.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0o600)
+	err = os.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0o600)
 	Expect(err).NotTo(HaveOccurred())
 
 	for _, signer := range additionalSigners {
@@ -154,7 +153,7 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 // has completed. If an orderer is not provided, the current config block will
 // be fetched from the peer.
 func CurrentConfigBlockNumber(n *Network, peer *Peer, orderer *Orderer, channel string) uint64 {
-	tempDir, err := ioutil.TempDir(n.RootDir, "currentConfigBlock")
+	tempDir, err := os.MkdirTemp(n.RootDir, "currentConfigBlock")
 	Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
@@ -193,7 +192,7 @@ func CurrentConfigBlockNumberFromPeer(n *Network, peer *Peer, channel, output st
 // UpdateOrdererConfig computes, signs, and submits a configuration update
 // which requires orderers signature and waits for the update to complete.
 func UpdateOrdererConfig(n *Network, orderer *Orderer, channel string, current, updated *common.Config, submitter *Peer, additionalSigners ...*Orderer) {
-	tempDir, err := ioutil.TempDir(n.RootDir, "updateConfig")
+	tempDir, err := os.MkdirTemp(n.RootDir, "updateConfig")
 	Expect(err).NotTo(HaveOccurred())
 	updateFile := filepath.Join(tempDir, "update.pb")
 	defer os.RemoveAll(tempDir)
@@ -227,7 +226,7 @@ func UpdateOrdererConfig(n *Network, orderer *Orderer, channel string, current, 
 // update which requires orderer signatures. The caller should wait on the
 // returned seession retrieve the exit code.
 func UpdateOrdererConfigSession(n *Network, orderer *Orderer, channel string, current, updated *common.Config, submitter *Peer, additionalSigners ...*Orderer) *gexec.Session {
-	tempDir, err := ioutil.TempDir(n.RootDir, "updateConfig")
+	tempDir, err := os.MkdirTemp(n.RootDir, "updateConfig")
 	Expect(err).NotTo(HaveOccurred())
 	updateFile := filepath.Join(tempDir, "update.pb")
 
@@ -261,7 +260,7 @@ func ComputeUpdateOrdererConfig(updateFile string, n *Network, channel string, c
 	Expect(err).NotTo(HaveOccurred())
 	Expect(signedEnvelope).NotTo(BeNil())
 
-	err = ioutil.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0o600)
+	err = os.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0o600)
 	Expect(err).NotTo(HaveOccurred())
 
 	for _, signer := range additionalSigners {
@@ -273,7 +272,7 @@ func ComputeUpdateOrdererConfig(updateFile string, n *Network, channel string, c
 
 // UnmarshalBlockFromFile unmarshals a proto encoded block from a file.
 func UnmarshalBlockFromFile(blockFile string) *common.Block {
-	blockBytes, err := ioutil.ReadFile(blockFile)
+	blockBytes, err := os.ReadFile(blockFile)
 	Expect(err).NotTo(HaveOccurred())
 
 	block, err := protoutil.UnmarshalBlock(blockBytes)

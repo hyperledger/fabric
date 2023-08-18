@@ -8,7 +8,7 @@ package filter
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -32,7 +32,7 @@ func corruptMutator(b []byte) []byte {
 }
 
 func createX509Identity(t *testing.T, certFileName string) []byte {
-	certBytes, err := ioutil.ReadFile(filepath.Join("testdata", certFileName))
+	certBytes, err := os.ReadFile(filepath.Join("testdata", certFileName))
 	require.NoError(t, err)
 	sId := &msp.SerializedIdentity{
 		IdBytes: certBytes,

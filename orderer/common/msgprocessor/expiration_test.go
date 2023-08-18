@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package msgprocessor
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -53,7 +53,7 @@ func createEnvelope(t *testing.T, serializedIdentity []byte) *common.Envelope {
 }
 
 func createX509Identity(t *testing.T, certFileName string) []byte {
-	certBytes, err := ioutil.ReadFile(filepath.Join("testdata", certFileName))
+	certBytes, err := os.ReadFile(filepath.Join("testdata", certFileName))
 	require.NoError(t, err)
 	sId := &msp.SerializedIdentity{
 		IdBytes: certBytes,

@@ -8,7 +8,6 @@ package discovery
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -51,7 +50,7 @@ var _ = Describe("DiscoveryService", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "e2e-sd")
+		testDir, err = os.MkdirTemp("", "e2e-sd")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = docker.NewClientFromEnv()

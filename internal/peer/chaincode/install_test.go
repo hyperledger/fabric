@@ -8,7 +8,6 @@ package chaincode
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -113,7 +112,7 @@ func TestInstallFromBadPackage(t *testing.T) {
 	pdir := t.TempDir()
 
 	ccpackfile := pdir + "/ccpack.file"
-	err := ioutil.WriteFile(ccpackfile, []byte("really bad CC package"), 0o700)
+	err := os.WriteFile(ccpackfile, []byte("really bad CC package"), 0o700)
 	if err != nil {
 		t.Fatalf("could not create package :%v", err)
 	}

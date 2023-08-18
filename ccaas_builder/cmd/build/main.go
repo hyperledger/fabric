@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -74,7 +73,7 @@ func run() error {
 		return errors.WithMessagef(err, "%s not found ", metadataFile)
 	}
 
-	metadataFileContents, cause := ioutil.ReadFile(metadataFile)
+	metadataFileContents, cause := os.ReadFile(metadataFile)
 	if cause != nil {
 		return errors.WithMessagef(cause, "%s file not readable", metadataFile)
 	}
@@ -104,7 +103,7 @@ func run() error {
 		return errors.WithMessagef(err, "%s not found ", connectionSrcFile)
 	}
 
-	connectionFileContents, err := ioutil.ReadFile(connectionSrcFile)
+	connectionFileContents, err := os.ReadFile(connectionSrcFile)
 	if err != nil {
 		return err
 	}
@@ -166,7 +165,7 @@ func run() error {
 		return fmt.Errorf("failed to marshal updated connection.json file: %s", err)
 	}
 
-	err = ioutil.WriteFile(connectionDestFile, updatedConnectionBytes, fileInfo.Mode())
+	err = os.WriteFile(connectionDestFile, updatedConnectionBytes, fileInfo.Mode())
 	if err != nil {
 		return err
 	}

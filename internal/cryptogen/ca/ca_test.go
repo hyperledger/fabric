@@ -8,7 +8,6 @@ package ca_test
 import (
 	"crypto/ecdsa"
 	"crypto/x509"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -39,7 +38,7 @@ func TestLoadCertificateECDSA(t *testing.T) {
 	testDir := t.TempDir()
 
 	// generate private key
-	certDir, err := ioutil.TempDir(testDir, "certs")
+	certDir, err := os.MkdirTemp(testDir, "certs")
 	if err != nil {
 		t.Fatalf("Failed to create certs directory: %s", err)
 	}
@@ -87,7 +86,7 @@ func TestLoadCertificateECDSA_wrongEncoding(t *testing.T) {
 	testDir := t.TempDir()
 
 	filename := filepath.Join(testDir, "wrong_encoding.pem")
-	err := ioutil.WriteFile(filename, []byte("wrong_encoding"), 0o644) // Wrong encoded cert
+	err := os.WriteFile(filename, []byte("wrong_encoding"), 0o644) // Wrong encoded cert
 	require.NoErrorf(t, err, "failed to create file %s", filename)
 
 	_, err = ca.LoadCertificateECDSA(testDir)
@@ -100,7 +99,7 @@ func TestLoadCertificateECDSA_empty_DER_cert(t *testing.T) {
 
 	filename := filepath.Join(testDir, "empty.pem")
 	empty_cert := "-----BEGIN CERTIFICATE-----\n-----END CERTIFICATE-----"
-	err := ioutil.WriteFile(filename, []byte(empty_cert), 0o644)
+	err := os.WriteFile(filename, []byte(empty_cert), 0o644)
 	require.NoErrorf(t, err, "failed to create file %s", filename)
 
 	cert, err := ca.LoadCertificateECDSA(testDir)
@@ -154,7 +153,7 @@ func TestGenerateSignCertificate(t *testing.T) {
 	testDir := t.TempDir()
 
 	// generate private key
-	certDir, err := ioutil.TempDir(testDir, "certs")
+	certDir, err := os.MkdirTemp(testDir, "certs")
 	if err != nil {
 		t.Fatalf("Failed to create certs directory: %s", err)
 	}

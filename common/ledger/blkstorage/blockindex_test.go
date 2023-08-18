@@ -10,7 +10,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"hash"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -282,7 +281,7 @@ func TestExportUniqueTxIDs(t *testing.T) {
 	fileHashes, err := blkfileMgr.index.exportUniqueTxIDs(testSnapshotDir, testNewHashFunc)
 	require.NoError(t, err)
 	require.Empty(t, fileHashes)
-	files, err := ioutil.ReadDir(testSnapshotDir)
+	files, err := os.ReadDir(testSnapshotDir)
 	require.NoError(t, err)
 	require.Len(t, files, 0)
 
@@ -311,7 +310,7 @@ func TestExportUniqueTxIDs(t *testing.T) {
 	require.NoError(t, err)
 	fileHashes, err = blkfileMgr.index.exportUniqueTxIDs(testSnapshotDir, testNewHashFunc)
 	require.NoError(t, err)
-	verifyExportedTxIDs(t, testSnapshotDir, fileHashes, "txid-1", "txid-2", "txid-3", configTxID) //"txid-1" appears once, Txids appear in radix sort order
+	verifyExportedTxIDs(t, testSnapshotDir, fileHashes, "txid-1", "txid-2", "txid-3", configTxID) // "txid-1" appears once, Txids appear in radix sort order
 	os.Remove(filepath.Join(testSnapshotDir, snapshotDataFileName))
 	os.Remove(filepath.Join(testSnapshotDir, snapshotMetadataFileName))
 
@@ -399,13 +398,13 @@ func verifyExportedTxIDs(t *testing.T, dir string, fileHashes map[string][]byte,
 	require.Contains(t, fileHashes, snapshotMetadataFileName)
 
 	dataFile := filepath.Join(dir, snapshotDataFileName)
-	dataFileContent, err := ioutil.ReadFile(dataFile)
+	dataFileContent, err := os.ReadFile(dataFile)
 	require.NoError(t, err)
 	dataFileHash := sha256.Sum256(dataFileContent)
 	require.Equal(t, dataFileHash[:], fileHashes[snapshotDataFileName])
 
 	metadataFile := filepath.Join(dir, snapshotMetadataFileName)
-	metadataFileContent, err := ioutil.ReadFile(metadataFile)
+	metadataFileContent, err := os.ReadFile(metadataFile)
 	require.NoError(t, err)
 	metadataFileHash := sha256.Sum256(metadataFileContent)
 	require.Equal(t, metadataFileHash[:], fileHashes[snapshotMetadataFileName])

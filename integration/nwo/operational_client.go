@@ -9,8 +9,8 @@ package nwo
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -38,7 +38,7 @@ func operationalClients(n *Network, tlsDir string) (authClient, unauthClient *ht
 	Expect(err).NotTo(HaveOccurred())
 
 	clientCertPool := x509.NewCertPool()
-	caCert, err := ioutil.ReadFile(filepath.Join(tlsDir, "ca.crt"))
+	caCert, err := os.ReadFile(filepath.Join(tlsDir, "ca.crt"))
 	Expect(err).NotTo(HaveOccurred())
 	clientCertPool.AppendCertsFromPEM(caCert)
 

@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package externalbuilder_test
 
 import (
-	"io/ioutil"
 	"os"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -22,7 +21,7 @@ var _ = Describe("Tar", func() {
 
 		BeforeEach(func() {
 			var err error
-			dst, err = ioutil.TempDir("", "untar-test")
+			dst, err = os.MkdirTemp("", "untar-test")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -60,7 +59,7 @@ var _ = Describe("Tar", func() {
 
 		Context("when the file's directory cannot be created", func() {
 			BeforeEach(func() {
-				ioutil.WriteFile(dst+"/a", []byte("test"), 0o700)
+				os.WriteFile(dst+"/a", []byte("test"), 0o700)
 			})
 
 			It("returns an error", func() {
@@ -74,7 +73,7 @@ var _ = Describe("Tar", func() {
 
 		Context("when the empty directory cannot be created", func() {
 			BeforeEach(func() {
-				ioutil.WriteFile(dst+"/d", []byte("test"), 0o700)
+				os.WriteFile(dst+"/d", []byte("test"), 0o700)
 			})
 
 			It("returns an error", func() {

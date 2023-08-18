@@ -17,7 +17,6 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -47,7 +46,7 @@ var _ = Describe("PKCS11 enabled network", func() {
 
 	BeforeEach(func() {
 		var err error
-		tempDir, err = ioutil.TempDir("", "p11")
+		tempDir, err = os.MkdirTemp("", "p11")
 		Expect(err).NotTo(HaveOccurred())
 
 		network = nwo.New(nwo.BasicEtcdRaft(), tempDir, nil, StartPort(), components)
@@ -192,7 +191,7 @@ func configurePeerPKCS11(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, network *nw
 
 		// Retrieves org CA cert
 		orgCAPath := network.PeerOrgCADir(network.Organization(orgName))
-		caBytes, err := ioutil.ReadFile(filepath.Join(orgCAPath, fmt.Sprintf("ca.%s-cert.pem", domain)))
+		caBytes, err := os.ReadFile(filepath.Join(orgCAPath, fmt.Sprintf("ca.%s-cert.pem", domain)))
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Updating the peer signcerts")
@@ -224,7 +223,7 @@ func configureOrdererPKCS11(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, network 
 
 	// Retrieves org CA cert
 	orgCAPath := network.OrdererOrgCADir(network.Organization(orgName))
-	caBytes, err := ioutil.ReadFile(filepath.Join(orgCAPath, fmt.Sprintf("ca.%s-cert.pem", domain)))
+	caBytes, err := os.ReadFile(filepath.Join(orgCAPath, fmt.Sprintf("ca.%s-cert.pem", domain)))
 	Expect(err).NotTo(HaveOccurred())
 
 	By("Updating the orderer signcerts")
@@ -317,7 +316,7 @@ func buildCert(caBytes []byte, org1CAPath string, csr *x509.CertificateRequest, 
 	caCert, err := x509.ParseCertificate(pemBlock.Bytes)
 	Expect(err).NotTo(HaveOccurred())
 
-	keyBytes, err := ioutil.ReadFile(filepath.Join(org1CAPath, "priv_sk"))
+	keyBytes, err := os.ReadFile(filepath.Join(org1CAPath, "priv_sk"))
 	Expect(err).NotTo(HaveOccurred())
 
 	pemBlock, _ = pem.Decode(keyBytes)
@@ -352,7 +351,7 @@ func buildCert(caBytes []byte, org1CAPath string, csr *x509.CertificateRequest, 
 // Overwrites existing cert and removes private key from keystore folder
 func updateMSPFolder(path, certName string, cert []byte) {
 	// Overwrite existing certificate with new certificate
-	err := ioutil.WriteFile(filepath.Join(path, "signcerts", certName), cert, 0o644)
+	err := os.WriteFile(filepath.Join(path, "signcerts", certName), cert, 0o644)
 	Expect(err).NotTo(HaveOccurred())
 
 	// delete the existing private key - this is stored in the hsm

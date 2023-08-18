@@ -8,7 +8,6 @@ package lifecycle
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -46,7 +45,7 @@ var _ = Describe("Lifecycle", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "lifecycle")
+		testDir, err = os.MkdirTemp("", "lifecycle")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = docker.NewClientFromEnv()
@@ -157,9 +156,9 @@ var _ = Describe("Lifecycle", func() {
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-		fileBytes, err := ioutil.ReadFile(chaincode.PackageFile)
+		fileBytes, err := os.ReadFile(chaincode.PackageFile)
 		Expect(err).NotTo(HaveOccurred())
-		fileBytesFromPeer, err := ioutil.ReadFile(filepath.Join(network.RootDir, chaincode.PackageID+".tar.gz"))
+		fileBytesFromPeer, err := os.ReadFile(filepath.Join(network.RootDir, chaincode.PackageID+".tar.gz"))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fileBytesFromPeer).To(Equal(fileBytes))
 

@@ -13,7 +13,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -168,7 +167,7 @@ func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), 
 
 	peerInstance := &peer.Peer{CryptoProvider: cryptoProvider}
 
-	tempdir, err := ioutil.TempDir("", "cc-support-test")
+	tempdir, err := os.MkdirTemp("", "cc-support-test")
 	if err != nil {
 		panic(fmt.Sprintf("failed to create temporary directory: %s", err))
 	}
@@ -444,7 +443,7 @@ func getTarGZ(t *testing.T, name string, contents []byte) []byte {
 	tr.Write(contents)
 	tr.Close()
 	gw.Close()
-	ioutil.WriteFile("/tmp/t.gz", inputbuf.Bytes(), 0o644)
+	os.WriteFile("/tmp/t.gz", inputbuf.Bytes(), 0o644)
 	return inputbuf.Bytes()
 }
 

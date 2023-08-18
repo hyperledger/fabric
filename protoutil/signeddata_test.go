@@ -9,7 +9,7 @@ package protoutil_test
 import (
 	"bytes"
 	"encoding/pem"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -161,7 +161,7 @@ func TestLogMessageForSerializedIdentity(t *testing.T) {
 }
 
 func readFile(file string) ([]byte, error) {
-	fileCont, err := ioutil.ReadFile(file)
+	fileCont, err := os.ReadFile(file)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not read file %s", file)
 	}

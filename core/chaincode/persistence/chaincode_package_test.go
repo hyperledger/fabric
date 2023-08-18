@@ -7,7 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package persistence_test
 
 import (
-	"io/ioutil"
+	"io"
+	"os"
 
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
@@ -47,7 +48,7 @@ var _ = Describe("FallbackPackageLocator", func() {
 				Label: "Real-Label",
 			}))
 			Expect(mdBytes).To(MatchJSON(`{"type":"Fake-Type","path":"Fake-Path","label":"Real-Label","extra_field":"extra-field-value"}`))
-			code, err := ioutil.ReadAll(stream)
+			code, err := io.ReadAll(stream)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(code).To(Equal([]byte("package")))
 			Expect(fakeLegacyLocator.GetChaincodeDepSpecCallCount()).To(Equal(0))
@@ -91,7 +92,7 @@ var _ = Describe("FallbackPackageLocator", func() {
 					Type: "GOLANG",
 				}))
 				Expect(mdBytes).To(MatchJSON(`{"type":"GOLANG","path":"legacy-path","label":""}`))
-				code, err := ioutil.ReadAll(stream)
+				code, err := io.ReadAll(stream)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(code).To(Equal([]byte("legacy-code")))
 			})
@@ -125,7 +126,7 @@ var _ = Describe("ChaincodePackageParser", func() {
 
 	Describe("ParseChaincodePackage", func() {
 		It("parses a chaincode package", func() {
-			data, err := ioutil.ReadFile("testdata/good-package.tar.gz")
+			data, err := os.ReadFile("testdata/good-package.tar.gz")
 			Expect(err).NotTo(HaveOccurred())
 
 			ccPackage, err := ccpp.Parse(data)
@@ -154,7 +155,7 @@ var _ = Describe("ChaincodePackageParser", func() {
 			})
 
 			It("fails", func() {
-				data, err := ioutil.ReadFile("testdata/good-package.tar.gz")
+				data, err := os.ReadFile("testdata/good-package.tar.gz")
 				Expect(err).NotTo(HaveOccurred())
 
 				ccPackage, err := ccpp.Parse(data)
@@ -165,7 +166,7 @@ var _ = Describe("ChaincodePackageParser", func() {
 
 		Context("when the chaincode package metadata is missing", func() {
 			It("fails", func() {
-				data, err := ioutil.ReadFile("testdata/missing-metadata.tar.gz")
+				data, err := os.ReadFile("testdata/missing-metadata.tar.gz")
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = ccpp.Parse(data)
@@ -175,7 +176,7 @@ var _ = Describe("ChaincodePackageParser", func() {
 
 		Context("when the chaincode package metadata is corrupt", func() {
 			It("fails", func() {
-				data, err := ioutil.ReadFile("testdata/bad-metadata.tar.gz")
+				data, err := os.ReadFile("testdata/bad-metadata.tar.gz")
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = ccpp.Parse(data)
@@ -185,7 +186,7 @@ var _ = Describe("ChaincodePackageParser", func() {
 
 		Context("when the label is empty or missing", func() {
 			It("fails", func() {
-				data, err := ioutil.ReadFile("testdata/empty-label.tar.gz")
+				data, err := os.ReadFile("testdata/empty-label.tar.gz")
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = ccpp.Parse(data)
@@ -195,7 +196,7 @@ var _ = Describe("ChaincodePackageParser", func() {
 
 		Context("when the label contains forbidden characters", func() {
 			It("fails", func() {
-				data, err := ioutil.ReadFile("testdata/bad-label.tar.gz")
+				data, err := os.ReadFile("testdata/bad-label.tar.gz")
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = ccpp.Parse(data)
@@ -205,7 +206,7 @@ var _ = Describe("ChaincodePackageParser", func() {
 
 		Context("when the tar file is corrupted", func() {
 			It("fails", func() {
-				data, err := ioutil.ReadFile("testdata/corrupted-package.tar.gz")
+				data, err := os.ReadFile("testdata/corrupted-package.tar.gz")
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = ccpp.Parse(data)
@@ -215,7 +216,7 @@ var _ = Describe("ChaincodePackageParser", func() {
 
 		Context("when the tar has non-regular files", func() {
 			It("fails", func() {
-				data, err := ioutil.ReadFile("testdata/non-regular-file.tar.gz")
+				data, err := os.ReadFile("testdata/non-regular-file.tar.gz")
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = ccpp.Parse(data)
@@ -225,7 +226,7 @@ var _ = Describe("ChaincodePackageParser", func() {
 
 		Context("when the tar has a corrupt header entry", func() {
 			It("fails", func() {
-				data, err := ioutil.ReadFile("testdata/corrupted-header.tar.gz")
+				data, err := os.ReadFile("testdata/corrupted-header.tar.gz")
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = ccpp.Parse(data)
@@ -235,7 +236,7 @@ var _ = Describe("ChaincodePackageParser", func() {
 
 		Context("when the tar has too many entries", func() {
 			It("logs a warning but otherwise allows it", func() {
-				data, err := ioutil.ReadFile("testdata/too-many-files.tar.gz")
+				data, err := os.ReadFile("testdata/too-many-files.tar.gz")
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = ccpp.Parse(data)
@@ -245,7 +246,7 @@ var _ = Describe("ChaincodePackageParser", func() {
 
 		Context("when the tar is missing a code-package", func() {
 			It("fails", func() {
-				data, err := ioutil.ReadFile("testdata/missing-codepackage.tar.gz")
+				data, err := os.ReadFile("testdata/missing-codepackage.tar.gz")
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = ccpp.Parse(data)
@@ -321,7 +322,7 @@ var _ = Describe("ChaincodePackageStreamer", func() {
 		It("reads a file from the package", func() {
 			code, err := streamer.Code()
 			Expect(err).NotTo(HaveOccurred())
-			codeBytes, err := ioutil.ReadAll(code)
+			codeBytes, err := io.ReadAll(code)
 			code.Close()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(codeBytes).To(Equal([]byte("package")))
@@ -343,7 +344,7 @@ var _ = Describe("ChaincodePackageStreamer", func() {
 		It("reads a file from the package", func() {
 			code, err := streamer.File("code.tar.gz")
 			Expect(err).NotTo(HaveOccurred())
-			codeBytes, err := ioutil.ReadAll(code)
+			codeBytes, err := io.ReadAll(code)
 			code.Close()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(codeBytes).To(Equal([]byte("package")))

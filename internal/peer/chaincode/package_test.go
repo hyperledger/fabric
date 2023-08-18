@@ -8,7 +8,6 @@ package chaincode
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -67,7 +66,7 @@ func TestCDSPackage(t *testing.T) {
 		t.Fatalf("Run chaincode package cmd error:%v", err)
 	}
 
-	b, err := ioutil.ReadFile(ccpackfile)
+	b, err := os.ReadFile(ccpackfile)
 	if err != nil {
 		t.Fatalf("package file %s not created", ccpackfile)
 	}
@@ -121,7 +120,7 @@ func TestSignedCDSPackage(t *testing.T) {
 		t.Fatalf("could not create signed cds package %s", err)
 	}
 
-	b, err := ioutil.ReadFile(ccpackfile)
+	b, err := os.ReadFile(ccpackfile)
 	if err != nil {
 		t.Fatalf("package file %s not created", ccpackfile)
 	}
@@ -153,7 +152,7 @@ func TestSignedCDSPackageWithSignature(t *testing.T) {
 		t.Fatalf("could not create signed cds package %s", err)
 	}
 
-	b, err := ioutil.ReadFile(ccpackfile)
+	b, err := os.ReadFile(ccpackfile)
 	if err != nil {
 		t.Fatalf("package file %s not created", ccpackfile)
 	}

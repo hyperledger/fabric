@@ -9,7 +9,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,7 +22,7 @@ import (
 var tmpDir string
 
 func TestMain(m *testing.M) {
-	dir, err := ioutil.TempDir("", "configtxgen")
+	dir, err := os.MkdirTemp("", "configtxgen")
 	if err != nil {
 		panic("Error creating temp dir")
 	}
@@ -93,7 +92,7 @@ func TestUnsuccessfulChannelTxFileCreation(t *testing.T) {
 	configTxDest := filepath.Join(tmpDir, "configtx")
 
 	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir())
-	require.NoError(t, ioutil.WriteFile(configTxDest, []byte{}, 0o440))
+	require.NoError(t, os.WriteFile(configTxDest, []byte{}, 0o440))
 	defer os.Remove(configTxDest)
 
 	require.EqualError(t, doOutputChannelCreateTx(config, nil, "foo", configTxDest), fmt.Sprintf("error writing channel create tx: open %s: permission denied", configTxDest))

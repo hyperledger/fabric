@@ -8,7 +8,6 @@ package server_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -86,9 +85,9 @@ func TestSpawnEtcdRaft(t *testing.T) {
 
 func copyYamlFiles(gt *GomegaWithT, src, dst string) {
 	for _, file := range []string{"configtx.yaml", "examplecom-config.yaml", "orderer.yaml"} {
-		fileBytes, err := ioutil.ReadFile(filepath.Join(src, file))
+		fileBytes, err := os.ReadFile(filepath.Join(src, file))
 		gt.Expect(err).NotTo(HaveOccurred())
-		err = ioutil.WriteFile(filepath.Join(dst, file), fileBytes, 0o644)
+		err = os.WriteFile(filepath.Join(dst, file), fileBytes, 0o644)
 		gt.Expect(err).NotTo(HaveOccurred())
 	}
 }
@@ -135,7 +134,7 @@ func testEtcdRaftOSNStart(gt *GomegaWithT, tempDir, configtxgen, orderer, crypto
 }
 
 func testEtcdRaftOSNJoinAppChan(gt *GomegaWithT, configPath, configtxgen, orderer, cryptoPath string) {
-	tempDir, err := ioutil.TempDir("", "etcdraft-test")
+	tempDir, err := os.MkdirTemp("", "etcdraft-test")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
@@ -166,19 +165,19 @@ func testEtcdRaftOSNJoinAppChan(gt *GomegaWithT, configPath, configtxgen, ordere
 // emulate a join-block for an application channel written to the join-block filerepo location
 func writeJoinBlock(gt *GomegaWithT, configPath string, configtxgen string, tempDir string) string {
 	genesisBlockPath := generateBootstrapBlock(gt, configPath, configtxgen, "mychannel", "SampleOrgChannel")
-	genesisBlockBytes, err := ioutil.ReadFile(genesisBlockPath)
+	genesisBlockBytes, err := os.ReadFile(genesisBlockPath)
 	gt.Expect(err).NotTo(HaveOccurred())
 	fileRepoDir := filepath.Join(tempDir, "ledger", "pendingops", "join")
 	err = os.MkdirAll(fileRepoDir, 0o744)
 	gt.Expect(err).NotTo(HaveOccurred())
 	joinBlockPath := filepath.Join(fileRepoDir, "mychannel.join")
-	err = ioutil.WriteFile(joinBlockPath, genesisBlockBytes, 0o644)
+	err = os.WriteFile(joinBlockPath, genesisBlockBytes, 0o644)
 	gt.Expect(err).NotTo(HaveOccurred())
 	return joinBlockPath
 }
 
 func testEtcdRaftOSNSuccess(gt *GomegaWithT, configPath, configtxgen, orderer, cryptoPath string) {
-	tempDir, err := ioutil.TempDir("", "etcdraft-test")
+	tempDir, err := os.MkdirTemp("", "etcdraft-test")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
@@ -208,7 +207,7 @@ func testEtcdRaftOSNSuccess(gt *GomegaWithT, configPath, configtxgen, orderer, c
 
 // the orderer refuses to launch with the 'file' bootstrap method
 func testEtcdRaftOSNFailureInvalidBootstrapMethod(gt *GomegaWithT, configPath, orderer, configtxgen, cryptoPath string) {
-	tempDir, err := ioutil.TempDir("", "etcdraft-test")
+	tempDir, err := os.MkdirTemp("", "etcdraft-test")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
@@ -225,7 +224,7 @@ func testEtcdRaftOSNFailureInvalidBootstrapMethod(gt *GomegaWithT, configPath, o
 
 // the orderer ignores General.ChannelParticipation.Enabled=false
 func testEtcdRaftOSNFailureChannelParticipationDisabled(gt *GomegaWithT, configPath, orderer, configtxgen, cryptoPath string) {
-	tempDir, err := ioutil.TempDir("", "etcdraft-test")
+	tempDir, err := os.MkdirTemp("", "etcdraft-test")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
@@ -242,7 +241,7 @@ func testEtcdRaftOSNFailureChannelParticipationDisabled(gt *GomegaWithT, configP
 }
 
 func testEtcdRaftOSNNoTLSSingleListener(gt *GomegaWithT, configPath, orderer string, configtxgen, cryptoPath string) {
-	tempDir, err := ioutil.TempDir("", "etcdraft-test")
+	tempDir, err := os.MkdirTemp("", "etcdraft-test")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
@@ -262,7 +261,7 @@ func testEtcdRaftOSNNoTLSSingleListener(gt *GomegaWithT, configPath, orderer str
 }
 
 func testEtcdRaftOSNNoTLSDualListener(gt *GomegaWithT, configPath, orderer string, configtxgen, cryptoPath string) {
-	tempDir, err := ioutil.TempDir("", "etcdraft-test")
+	tempDir, err := os.MkdirTemp("", "etcdraft-test")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 

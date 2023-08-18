@@ -17,7 +17,6 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"os"
@@ -50,7 +49,7 @@ var _ = Describe("MSPs with RSA Certificate Authorities", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "msp")
+		testDir, err = os.MkdirTemp("", "msp")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = docker.NewClientFromEnv()
@@ -206,13 +205,13 @@ func createMSP(baseDir, domain string, nodeOUs bool) (signCA *CA, tlsCA *CA, adm
 	}
 
 	writeLocalMSP(adminDir, adminUsername, ous, nil, signCA, tlsCA, nil, nodeOUs, true)
-	adminPemCert, err = ioutil.ReadFile(filepath.Join(adminDir, "msp", "signcerts", certFilename(adminUsername)))
+	adminPemCert, err = os.ReadFile(filepath.Join(adminDir, "msp", "signcerts", certFilename(adminUsername)))
 	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(filepath.Join(adminDir, "msp", "admincerts", certFilename(adminUsername)), adminPemCert, 0o644)
+	err = os.WriteFile(filepath.Join(adminDir, "msp", "admincerts", certFilename(adminUsername)), adminPemCert, 0o644)
 	Expect(err).NotTo(HaveOccurred())
 
 	if !nodeOUs {
-		err := ioutil.WriteFile(filepath.Join(mspDir, "admincerts", certFilename(adminUsername)), adminPemCert, 0o644)
+		err := os.WriteFile(filepath.Join(mspDir, "admincerts", certFilename(adminUsername)), adminPemCert, 0o644)
 		Expect(err).NotTo(HaveOccurred())
 	}
 
@@ -276,7 +275,7 @@ func writeLocalMSP(baseDir, name string, signOUs, sans []string, signCA, tlsCA *
 		block, _ := pem.Decode(adminCertPem)
 		adminCert, err := x509.ParseCertificate(block.Bytes)
 		Expect(err).NotTo(HaveOccurred())
-		err = ioutil.WriteFile(filepath.Join(mspDir, "admincerts", certFilename(adminCert.Subject.CommonName)), adminCertPem, 0o644)
+		err = os.WriteFile(filepath.Join(mspDir, "admincerts", certFilename(adminCert.Subject.CommonName)), adminCertPem, 0o644)
 		Expect(err).NotTo(HaveOccurred())
 	}
 

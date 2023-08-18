@@ -8,7 +8,6 @@ package transientstore
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -27,7 +26,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	tempdir, err := ioutil.TempDir("", "ts")
+	tempdir, err := os.MkdirTemp("", "ts")
 	if err != nil {
 		panic(err)
 	}

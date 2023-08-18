@@ -11,7 +11,8 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"hash"
-	"io/ioutil"
+	"io"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -840,9 +841,9 @@ func TestJSONArrayFileWriter(t *testing.T) {
 	require.NoError(t, err)
 
 	// Read results of output and compare
-	resBytes, err := ioutil.ReadFile(filepath.Join(resultDir, "result.json"))
+	resBytes, err := os.ReadFile(filepath.Join(resultDir, "result.json"))
 	require.NoError(t, err)
-	res, err := ioutil.ReadAll(bytes.NewReader(resBytes))
+	res, err := io.ReadAll(bytes.NewReader(resBytes))
 	require.NoError(t, err)
 
 	require.JSONEq(t, expectedResult, string(res))
