@@ -71,7 +71,7 @@ var _ = Describe("copy", func() {
 		Expect(destRootDir).To(BeADirectory())
 
 		Expect(filepath.Join(destRootDir, "file-in-root.txt")).To(BeARegularFile())
-		contents, err := ioutil.ReadFile(filepath.Join(destRootDir, "file-in-root.txt"))
+		contents, err := os.ReadFile(filepath.Join(destRootDir, "file-in-root.txt"))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(contents).To(Equal([]byte("root file contents")))
 
@@ -82,7 +82,7 @@ var _ = Describe("copy", func() {
 		Expect(destSubDir).To(BeADirectory())
 
 		Expect(filepath.Join(destSubDir, "file-in-subdir.txt")).To(BeARegularFile())
-		contents, err = ioutil.ReadFile(filepath.Join(destSubDir, "file-in-subdir.txt"))
+		contents, err = os.ReadFile(filepath.Join(destSubDir, "file-in-subdir.txt"))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(contents).To(Equal([]byte("subdir file contents")))
 

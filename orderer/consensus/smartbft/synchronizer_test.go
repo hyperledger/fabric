@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package smartbft_test
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/SmartBFT-Go/consensus/pkg/types"
@@ -27,7 +27,7 @@ import (
 func noopUpdateLastHash(_ *cb.Block) types.Reconfig { return types.Reconfig{} }
 
 func TestSynchronizerSync(t *testing.T) {
-	blockBytes, err := ioutil.ReadFile("testdata/mychannel.block")
+	blockBytes, err := os.ReadFile("testdata/mychannel.block")
 	require.NoError(t, err)
 
 	goodConfigBlock := &cb.Block{}

@@ -86,7 +86,7 @@ func TestSpawnEtcdRaft(t *testing.T) {
 
 func copyYamlFiles(gt *GomegaWithT, src, dst string) {
 	for _, file := range []string{"configtx.yaml", "examplecom-config.yaml", "orderer.yaml"} {
-		fileBytes, err := ioutil.ReadFile(filepath.Join(src, file))
+		fileBytes, err := os.ReadFile(filepath.Join(src, file))
 		gt.Expect(err).NotTo(HaveOccurred())
 		err = os.WriteFile(filepath.Join(dst, file), fileBytes, 0o644)
 		gt.Expect(err).NotTo(HaveOccurred())
@@ -166,7 +166,7 @@ func testEtcdRaftOSNJoinAppChan(gt *GomegaWithT, configPath, configtxgen, ordere
 // emulate a join-block for an application channel written to the join-block filerepo location
 func writeJoinBlock(gt *GomegaWithT, configPath string, configtxgen string, tempDir string) string {
 	genesisBlockPath := generateBootstrapBlock(gt, configPath, configtxgen, "mychannel", "SampleOrgChannel")
-	genesisBlockBytes, err := ioutil.ReadFile(genesisBlockPath)
+	genesisBlockBytes, err := os.ReadFile(genesisBlockPath)
 	gt.Expect(err).NotTo(HaveOccurred())
 	fileRepoDir := filepath.Join(tempDir, "ledger", "pendingops", "join")
 	err = os.MkdirAll(fileRepoDir, 0o744)

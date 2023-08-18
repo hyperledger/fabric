@@ -9,7 +9,7 @@ package kvledger
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -280,7 +280,7 @@ func getEnvelopeFromConfig(channelName string, config *cb.Config) *cb.Envelope {
 // createTestOrgGroups returns application org ConfigGroups based on test_configblock.json.
 // The config block contains the following organizations(MSPIDs): org1(Org1MSP) and org2(Org2MSP)
 func createTestOrgGroups(t *testing.T) map[string]*cb.ConfigGroup {
-	blockData, err := ioutil.ReadFile("testdata/test_configblock.json")
+	blockData, err := os.ReadFile("testdata/test_configblock.json")
 	require.NoError(t, err)
 	block := &cb.Block{}
 	require.NoError(t, protolator.DeepUnmarshalJSON(bytes.NewBuffer(blockData), block))

@@ -8,7 +8,6 @@ package blkstorage
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -479,7 +478,7 @@ func testBlockfileMgrSimulateCrashAtFirstBlockInFile(t *testing.T, deleteBlkfile
 
 	// verify that the block file number 1 has been created with partial bytes as a side-effect of crash
 	lastFilePath := blockfileMgr.currentFileWriter.filePath
-	lastFileContent, err := ioutil.ReadFile(lastFilePath)
+	lastFileContent, err := os.ReadFile(lastFilePath)
 	require.NoError(t, err)
 	require.Equal(t, lastFileContent, partialBytesForNextBlock)
 

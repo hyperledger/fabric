@@ -9,7 +9,7 @@ package chaincode_test
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode/mock"
@@ -35,7 +35,7 @@ var _ = Describe("CalculatePackageID", func() {
 			}
 
 			mockReader = &mock.Reader{}
-			data, err := ioutil.ReadFile("testdata/good-package.tar.gz")
+			data, err := os.ReadFile("testdata/good-package.tar.gz")
 			Expect(err).NotTo(HaveOccurred())
 			mockReader.ReadFileReturns(data, nil)
 
@@ -78,7 +78,7 @@ var _ = Describe("CalculatePackageID", func() {
 
 		Context("when the package file cannot be parsed", func() {
 			BeforeEach(func() {
-				data, err := ioutil.ReadFile("testdata/unparsed-package.tar.gz")
+				data, err := os.ReadFile("testdata/unparsed-package.tar.gz")
 				Expect(err).NotTo(HaveOccurred())
 				mockReader.ReadFileReturns(data, nil)
 			})

@@ -79,7 +79,7 @@ func (f *FilesystemIO) Remove(name string) error {
 
 // ReadFile reads a file from the filesystem
 func (f *FilesystemIO) ReadFile(filename string) ([]byte, error) {
-	return ioutil.ReadFile(filename)
+	return os.ReadFile(filename)
 }
 
 // ReadDir reads a directory from the filesystem

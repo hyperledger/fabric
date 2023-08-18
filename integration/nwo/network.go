@@ -315,7 +315,7 @@ func (n *Network) OrdererConfigPath(o *Orderer) string {
 // object approximating its contents.
 func (n *Network) ReadOrdererConfig(o *Orderer) *fabricconfig.Orderer {
 	var orderer fabricconfig.Orderer
-	ordererBytes, err := ioutil.ReadFile(n.OrdererConfigPath(o))
+	ordererBytes, err := os.ReadFile(n.OrdererConfigPath(o))
 	Expect(err).NotTo(HaveOccurred())
 
 	err = yaml.Unmarshal(ordererBytes, &orderer)
@@ -342,7 +342,7 @@ func (n *Network) WriteOrdererConfig(o *Orderer, config *fabricconfig.Orderer) {
 // object approximating its contents.
 func (n *Network) ReadConfigTxConfig() *fabricconfig.ConfigTx {
 	var configtx fabricconfig.ConfigTx
-	configtxBytes, err := ioutil.ReadFile(n.ConfigTxConfigPath())
+	configtxBytes, err := os.ReadFile(n.ConfigTxConfigPath())
 	Expect(err).NotTo(HaveOccurred())
 
 	err = yaml.Unmarshal(configtxBytes, &configtx)
@@ -381,7 +381,7 @@ func (n *Network) PeerLedgerDir(p *Peer) string {
 // approximating its contents.
 func (n *Network) ReadPeerConfig(p *Peer) *fabricconfig.Core {
 	var core fabricconfig.Core
-	coreBytes, err := ioutil.ReadFile(n.PeerConfigPath(p))
+	coreBytes, err := os.ReadFile(n.PeerConfigPath(p))
 	Expect(err).NotTo(HaveOccurred())
 
 	err = yaml.Unmarshal(coreBytes, &core)
@@ -902,7 +902,7 @@ func (n *Network) bootstrapIdemix() {
 func (n *Network) ConcatenateTLSCACertificates() {
 	bundle := &bytes.Buffer{}
 	for _, tlsCertPath := range n.listTLSCACertificates() {
-		certBytes, err := ioutil.ReadFile(tlsCertPath)
+		certBytes, err := os.ReadFile(tlsCertPath)
 		Expect(err).NotTo(HaveOccurred())
 		bundle.Write(certBytes)
 	}
@@ -1075,7 +1075,7 @@ func (n *Network) VerifyMembership(expectedPeers []*Peer, channel string, chainc
 }
 
 func (n *Network) discoveredPeerMatcher(p *Peer, chaincodes ...string) types.GomegaMatcher {
-	peerCert, err := ioutil.ReadFile(n.PeerCert(p))
+	peerCert, err := os.ReadFile(n.PeerCert(p))
 	Expect(err).NotTo(HaveOccurred())
 
 	var ccs []interface{}
@@ -1491,7 +1491,7 @@ func (n *Network) Peer(orgName, peerName string) *Peer {
 // DiscoveredPeer creates a new DiscoveredPeer from the peer and chaincodes
 // passed as arguments.
 func (n *Network) DiscoveredPeer(p *Peer, chaincodes ...string) DiscoveredPeer {
-	peerCert, err := ioutil.ReadFile(n.PeerCert(p))
+	peerCert, err := os.ReadFile(n.PeerCert(p))
 	Expect(err).NotTo(HaveOccurred())
 
 	return DiscoveredPeer{
@@ -1895,7 +1895,7 @@ func (n *Network) GenerateCoreConfig(p *Peer) {
 
 func (n *Network) LoadAppChannelGenesisBlock(channelID string) *common.Block {
 	appGenesisPath := n.OutputBlockPath(channelID)
-	appGenesisBytes, err := ioutil.ReadFile(appGenesisPath)
+	appGenesisBytes, err := os.ReadFile(appGenesisPath)
 	Expect(err).NotTo(HaveOccurred())
 	appGenesisBlock, err := protoutil.UnmarshalBlock(appGenesisBytes)
 	Expect(err).NotTo(HaveOccurred())

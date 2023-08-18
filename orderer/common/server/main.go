@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	_ "net/http/pprof" // This is essentially the main package for the orderer
@@ -142,7 +141,7 @@ func Main() {
 	}
 
 	if !reuseGrpcListener {
-		clusterServerConfig, clusterGRPCServer = configureClusterListener(conf, serverConfig, ioutil.ReadFile)
+		clusterServerConfig, clusterGRPCServer = configureClusterListener(conf, serverConfig, os.ReadFile)
 	}
 
 	// If we have a separate gRPC server for the cluster,
@@ -409,19 +408,19 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel) (comm.ClientConfi
 		keyFile = conf.General.TLS.PrivateKey
 	}
 
-	certBytes, err := ioutil.ReadFile(certFile)
+	certBytes, err := os.ReadFile(certFile)
 	if err != nil {
 		logger.Fatalf("Failed to load client TLS certificate file '%s' (%s)", certFile, err)
 	}
 
-	keyBytes, err := ioutil.ReadFile(keyFile)
+	keyBytes, err := os.ReadFile(keyFile)
 	if err != nil {
 		logger.Fatalf("Failed to load client TLS key file '%s' (%s)", keyFile, err)
 	}
 
 	var serverRootCAs [][]byte
 	for _, serverRoot := range conf.General.Cluster.RootCAs {
-		rootCACert, err := ioutil.ReadFile(serverRoot)
+		rootCACert, err := os.ReadFile(serverRoot)
 		if err != nil {
 			logger.Fatalf("Failed to load ServerRootCAs file '%s' (%s)", serverRoot, err)
 		}
@@ -457,19 +456,19 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 	if secureOpts.UseTLS {
 		msg := "TLS"
 		// load crypto material from files
-		serverCertificate, err := ioutil.ReadFile(conf.General.TLS.Certificate)
+		serverCertificate, err := os.ReadFile(conf.General.TLS.Certificate)
 		if err != nil {
 			logger.Fatalf("Failed to load server Certificate file '%s' (%s)",
 				conf.General.TLS.Certificate, err)
 		}
-		serverKey, err := ioutil.ReadFile(conf.General.TLS.PrivateKey)
+		serverKey, err := os.ReadFile(conf.General.TLS.PrivateKey)
 		if err != nil {
 			logger.Fatalf("Failed to load PrivateKey file '%s' (%s)",
 				conf.General.TLS.PrivateKey, err)
 		}
 		var serverRootCAs, clientRootCAs [][]byte
 		for _, serverRoot := range conf.General.TLS.RootCAs {
-			root, err := ioutil.ReadFile(serverRoot)
+			root, err := os.ReadFile(serverRoot)
 			if err != nil {
 				logger.Fatalf("Failed to load ServerRootCAs file '%s' (%s)",
 					err, serverRoot)
@@ -478,7 +477,7 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 		}
 		if secureOpts.RequireClientCert {
 			for _, clientRoot := range conf.General.TLS.ClientRootCAs {
-				root, err := ioutil.ReadFile(clientRoot)
+				root, err := os.ReadFile(clientRoot)
 				if err != nil {
 					logger.Fatalf("Failed to load ClientRootCAs file '%s' (%s)",
 						err, clientRoot)

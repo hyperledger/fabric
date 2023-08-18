@@ -62,7 +62,7 @@ func (d *Detector) CachedBuild(ccid string) (*Instance, error) {
 	}
 
 	buildInfoPath := filepath.Join(durablePath, "build-info.json")
-	buildInfoData, err := ioutil.ReadFile(buildInfoPath)
+	buildInfoData, err := os.ReadFile(buildInfoPath)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "could not read '%s' for build info", buildInfoPath)
 	}

@@ -11,7 +11,6 @@ import (
 	"crypto/sha256"
 	"errors"
 	"hash"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -214,7 +213,7 @@ func TestFileReaderErrorPropagation(t *testing.T) {
 }
 
 func computeSha256(t *testing.T, file string) []byte {
-	data, err := ioutil.ReadFile(file)
+	data, err := os.ReadFile(file)
 	require.NoError(t, err)
 	sha := sha256.Sum256(data)
 	return sha[:]

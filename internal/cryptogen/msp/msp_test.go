@@ -6,7 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 package msp_test
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -189,7 +188,7 @@ func TestExportConfig(t *testing.T) {
 	err = msp.ExportConfig(path, caFile, true)
 	require.NoError(t, err)
 
-	configBytes, err := ioutil.ReadFile(configFile)
+	configBytes, err := os.ReadFile(configFile)
 	if err != nil {
 		t.Fatalf("failed to read config file: [%s]", err)
 	}

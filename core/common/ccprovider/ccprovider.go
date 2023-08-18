@@ -96,7 +96,7 @@ func GetChaincodePackageFromPath(ccNameVersion string, ccInstallPath string) ([]
 	path := fmt.Sprintf("%s/%s", ccInstallPath, strings.ReplaceAll(ccNameVersion, ":", "."))
 	var ccbytes []byte
 	var err error
-	if ccbytes, err = ioutil.ReadFile(path); err != nil {
+	if ccbytes, err = os.ReadFile(path); err != nil {
 		return nil, err
 	}
 	return ccbytes, nil
@@ -354,7 +354,7 @@ func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
 	return cqr, nil
 }
 
-//-------- ChaincodeData is stored on the LSCC -------
+// -------- ChaincodeData is stored on the LSCC -------
 
 // ChaincodeData defines the datastructure for chaincodes to be serialized by proto
 // Type provides an additional check by directing to use a specific package after instantiation

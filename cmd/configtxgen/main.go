@@ -9,7 +9,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -133,7 +132,7 @@ func doOutputAnchorPeersUpdate(conf *genesisconfig.Profile, channelID string, ou
 
 func doInspectBlock(inspectBlock string) error {
 	logger.Info("Inspecting block")
-	data, err := ioutil.ReadFile(inspectBlock)
+	data, err := os.ReadFile(inspectBlock)
 	if err != nil {
 		return fmt.Errorf("could not read block %s", inspectBlock)
 	}
@@ -152,7 +151,7 @@ func doInspectBlock(inspectBlock string) error {
 
 func doInspectChannelCreateTx(inspectChannelCreateTx string) error {
 	logger.Info("Inspecting transaction")
-	data, err := ioutil.ReadFile(inspectChannelCreateTx)
+	data, err := os.ReadFile(inspectChannelCreateTx)
 	if err != nil {
 		return fmt.Errorf("could not read channel create tx: %s", err)
 	}

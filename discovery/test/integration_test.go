@@ -810,7 +810,7 @@ func newPeer(dir, mspID string, org, id int) *testPeer {
 	peerStr := fmt.Sprintf("peer%d.org%d.example.com", id, org)
 	certFile := filepath.Join(dir, fmt.Sprintf("org%d.example.com", org),
 		"peers", peerStr, "msp", "signcerts", fmt.Sprintf("%s-cert.pem", peerStr))
-	certBytes, err := ioutil.ReadFile(certFile)
+	certBytes, err := os.ReadFile(certFile)
 	if err != nil {
 		panic(fmt.Sprintf("failed reading file %s: %v", certFile, err))
 	}
@@ -942,7 +942,7 @@ func newSigner(msp, certPath, keyPath string) (*signer, error) {
 }
 
 func serializeIdentity(clientCert string, mspID string) ([]byte, error) {
-	b, err := ioutil.ReadFile(clientCert)
+	b, err := os.ReadFile(clientCert)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -959,7 +959,7 @@ func (si *signer) Sign(msg []byte) ([]byte, error) {
 }
 
 func loadPrivateKey(file string) (*ecdsa.PrivateKey, error) {
-	b, err := ioutil.ReadFile(file)
+	b, err := os.ReadFile(file)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

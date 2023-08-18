@@ -625,7 +625,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		files, err := ioutil.ReadDir(originalSnapshotDir)
 		require.NoError(t, err)
 		for _, f := range files {
-			content, err := ioutil.ReadFile(filepath.Join(originalSnapshotDir, f.Name()))
+			content, err := os.ReadFile(filepath.Join(originalSnapshotDir, f.Name()))
 			require.NoError(t, err)
 			err = os.WriteFile(filepath.Join(snapshotDirForTest, f.Name()), content, 0o600)
 			require.NoError(t, err)
@@ -871,14 +871,14 @@ func verifySnapshotOutput(
 
 	filesAndHashes := map[string]string{}
 	for _, f := range o.expectedBinaryFiles {
-		c, err := ioutil.ReadFile(filepath.Join(snapshotDir, f))
+		c, err := os.ReadFile(filepath.Join(snapshotDir, f))
 		require.NoError(t, err)
 		filesAndHashes[f] = hex.EncodeToString(util.ComputeSHA256(c))
 	}
 
 	// verify the contents of the file snapshot_metadata.json
 	m := &SnapshotSignableMetadata{}
-	mJSON, err := ioutil.ReadFile(filepath.Join(snapshotDir, SnapshotSignableMetadataFileName))
+	mJSON, err := os.ReadFile(filepath.Join(snapshotDir, SnapshotSignableMetadataFileName))
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(mJSON, m))
 
@@ -900,7 +900,7 @@ func verifySnapshotOutput(
 
 	// verify the contents of the file snapshot_metadata_hash.json
 	mh := &snapshotAdditionalMetadata{}
-	mhJSON, err := ioutil.ReadFile(filepath.Join(snapshotDir, snapshotAdditionalMetadataFileName))
+	mhJSON, err := os.ReadFile(filepath.Join(snapshotDir, snapshotAdditionalMetadataFileName))
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(mhJSON, mh))
 	require.Equal(t,

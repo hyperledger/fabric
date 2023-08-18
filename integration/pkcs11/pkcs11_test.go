@@ -192,7 +192,7 @@ func configurePeerPKCS11(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, network *nw
 
 		// Retrieves org CA cert
 		orgCAPath := network.PeerOrgCADir(network.Organization(orgName))
-		caBytes, err := ioutil.ReadFile(filepath.Join(orgCAPath, fmt.Sprintf("ca.%s-cert.pem", domain)))
+		caBytes, err := os.ReadFile(filepath.Join(orgCAPath, fmt.Sprintf("ca.%s-cert.pem", domain)))
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Updating the peer signcerts")
@@ -224,7 +224,7 @@ func configureOrdererPKCS11(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, network 
 
 	// Retrieves org CA cert
 	orgCAPath := network.OrdererOrgCADir(network.Organization(orgName))
-	caBytes, err := ioutil.ReadFile(filepath.Join(orgCAPath, fmt.Sprintf("ca.%s-cert.pem", domain)))
+	caBytes, err := os.ReadFile(filepath.Join(orgCAPath, fmt.Sprintf("ca.%s-cert.pem", domain)))
 	Expect(err).NotTo(HaveOccurred())
 
 	By("Updating the orderer signcerts")
@@ -317,7 +317,7 @@ func buildCert(caBytes []byte, org1CAPath string, csr *x509.CertificateRequest, 
 	caCert, err := x509.ParseCertificate(pemBlock.Bytes)
 	Expect(err).NotTo(HaveOccurred())
 
-	keyBytes, err := ioutil.ReadFile(filepath.Join(org1CAPath, "priv_sk"))
+	keyBytes, err := os.ReadFile(filepath.Join(org1CAPath, "priv_sk"))
 	Expect(err).NotTo(HaveOccurred())
 
 	pemBlock, _ = pem.Decode(keyBytes)

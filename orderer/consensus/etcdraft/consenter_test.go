@@ -82,7 +82,7 @@ var _ = Describe("Consenter", func() {
 		walDir = path.Join(dataDir, "wal-")
 		snapDir = path.Join(dataDir, "snap-")
 
-		blockBytes, err := ioutil.ReadFile("testdata/mychannel.block")
+		blockBytes, err := os.ReadFile("testdata/mychannel.block")
 		Expect(err).NotTo(HaveOccurred())
 
 		goodConfigBlock := &common.Block{}
