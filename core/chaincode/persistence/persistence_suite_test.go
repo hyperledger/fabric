@@ -20,9 +20,9 @@ type ioReadWriter interface {
 	persistence.IOReadWriter
 }
 
-//go:generate counterfeiter -o mock/osfileinfo.go -fake-name OSFileInfo . osFileInfo
-type osFileInfo interface {
-	os.FileInfo
+//go:generate counterfeiter  -generate -o mock/direntry.go -fake-name OSDirEntry . osDirEntry
+type osDirEntry interface {
+	os.DirEntry
 }
 
 //go:generate mockery -dir . -name MetadataProvider -case underscore -output mock/ -outpkg mock

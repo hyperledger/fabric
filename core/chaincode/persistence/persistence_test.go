@@ -365,11 +365,11 @@ var _ = Describe("Persistence", func() {
 			hash1 = util.ComputeSHA256([]byte("hash1"))
 			hash2 = util.ComputeSHA256([]byte("hash2"))
 			mockReadWriter = &mock.IOReadWriter{}
-			mockFileInfo := &mock.OSFileInfo{}
+			mockFileInfo := &mock.OSDirEntry{}
 			mockFileInfo.NameReturns(fmt.Sprintf("%s.%x.tar.gz", "label1", hash1))
-			mockFileInfo2 := &mock.OSFileInfo{}
+			mockFileInfo2 := &mock.OSDirEntry{}
 			mockFileInfo2.NameReturns(fmt.Sprintf("%s.%x.tar.gz", "label2", hash2))
-			mockReadWriter.ReadDirReturns([]os.FileInfo{mockFileInfo, mockFileInfo2}, nil)
+			mockReadWriter.ReadDirReturns([]os.DirEntry{mockFileInfo, mockFileInfo2}, nil)
 			store = &persistence.Store{
 				ReadWriter: mockReadWriter,
 			}
@@ -397,15 +397,15 @@ var _ = Describe("Persistence", func() {
 			BeforeEach(func() {
 				hash1 = util.ComputeSHA256([]byte("hash1"))
 				hash2 = util.ComputeSHA256([]byte("hash2"))
-				mockFileInfo := &mock.OSFileInfo{}
+				mockFileInfo := &mock.OSDirEntry{}
 				mockFileInfo.NameReturns(fmt.Sprintf("%s.%x.tar.gz", "label1", hash1))
-				mockFileInfo2 := &mock.OSFileInfo{}
+				mockFileInfo2 := &mock.OSDirEntry{}
 				mockFileInfo2.NameReturns(fmt.Sprintf("%s.%x.tar.gz", "label2", hash2))
-				mockFileInfo3 := &mock.OSFileInfo{}
+				mockFileInfo3 := &mock.OSDirEntry{}
 				mockFileInfo3.NameReturns(fmt.Sprintf("%s.%x.tar.gz", "", "Musha rain dum a doo, dum a da"))
-				mockFileInfo4 := &mock.OSFileInfo{}
+				mockFileInfo4 := &mock.OSDirEntry{}
 				mockFileInfo4.NameReturns(fmt.Sprintf("%s.%x.tar.gz", "", "barfity:barf.tar.gz"))
-				mockReadWriter.ReadDirReturns([]os.FileInfo{mockFileInfo, mockFileInfo2, mockFileInfo3}, nil)
+				mockReadWriter.ReadDirReturns([]os.DirEntry{mockFileInfo, mockFileInfo2, mockFileInfo3}, nil)
 			})
 
 			It("returns the list of installed chaincodes", func() {
@@ -427,7 +427,7 @@ var _ = Describe("Persistence", func() {
 
 		Context("when the directory can't be read", func() {
 			BeforeEach(func() {
-				mockReadWriter.ReadDirReturns([]os.FileInfo{}, errors.New("I'm illiterate and so obviously I can't read"))
+				mockReadWriter.ReadDirReturns([]os.DirEntry{}, errors.New("I'm illiterate and so obviously I can't read"))
 			})
 
 			It("returns an error", func() {

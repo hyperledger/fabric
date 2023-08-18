@@ -2,7 +2,7 @@
 package mock
 
 import (
-	"os"
+	"io/fs"
 	"sync"
 )
 
@@ -20,11 +20,11 @@ type IOReadWriter struct {
 		result1 bool
 		result2 error
 	}
-	MakeDirStub        func(string, os.FileMode) error
+	MakeDirStub        func(string, fs.FileMode) error
 	makeDirMutex       sync.RWMutex
 	makeDirArgsForCall []struct {
 		arg1 string
-		arg2 os.FileMode
+		arg2 fs.FileMode
 	}
 	makeDirReturns struct {
 		result1 error
@@ -32,17 +32,17 @@ type IOReadWriter struct {
 	makeDirReturnsOnCall map[int]struct {
 		result1 error
 	}
-	ReadDirStub        func(string) ([]os.FileInfo, error)
+	ReadDirStub        func(string) ([]fs.DirEntry, error)
 	readDirMutex       sync.RWMutex
 	readDirArgsForCall []struct {
 		arg1 string
 	}
 	readDirReturns struct {
-		result1 []os.FileInfo
+		result1 []fs.DirEntry
 		result2 error
 	}
 	readDirReturnsOnCall map[int]struct {
-		result1 []os.FileInfo
+		result1 []fs.DirEntry
 		result2 error
 	}
 	ReadFileStub        func(string) ([]byte, error)
@@ -149,12 +149,12 @@ func (fake *IOReadWriter) ExistsReturnsOnCall(i int, result1 bool, result2 error
 	}{result1, result2}
 }
 
-func (fake *IOReadWriter) MakeDir(arg1 string, arg2 os.FileMode) error {
+func (fake *IOReadWriter) MakeDir(arg1 string, arg2 fs.FileMode) error {
 	fake.makeDirMutex.Lock()
 	ret, specificReturn := fake.makeDirReturnsOnCall[len(fake.makeDirArgsForCall)]
 	fake.makeDirArgsForCall = append(fake.makeDirArgsForCall, struct {
 		arg1 string
-		arg2 os.FileMode
+		arg2 fs.FileMode
 	}{arg1, arg2})
 	fake.recordInvocation("MakeDir", []interface{}{arg1, arg2})
 	fake.makeDirMutex.Unlock()
@@ -174,13 +174,13 @@ func (fake *IOReadWriter) MakeDirCallCount() int {
 	return len(fake.makeDirArgsForCall)
 }
 
-func (fake *IOReadWriter) MakeDirCalls(stub func(string, os.FileMode) error) {
+func (fake *IOReadWriter) MakeDirCalls(stub func(string, fs.FileMode) error) {
 	fake.makeDirMutex.Lock()
 	defer fake.makeDirMutex.Unlock()
 	fake.MakeDirStub = stub
 }
 
-func (fake *IOReadWriter) MakeDirArgsForCall(i int) (string, os.FileMode) {
+func (fake *IOReadWriter) MakeDirArgsForCall(i int) (string, fs.FileMode) {
 	fake.makeDirMutex.RLock()
 	defer fake.makeDirMutex.RUnlock()
 	argsForCall := fake.makeDirArgsForCall[i]
@@ -210,7 +210,7 @@ func (fake *IOReadWriter) MakeDirReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *IOReadWriter) ReadDir(arg1 string) ([]os.FileInfo, error) {
+func (fake *IOReadWriter) ReadDir(arg1 string) ([]fs.DirEntry, error) {
 	fake.readDirMutex.Lock()
 	ret, specificReturn := fake.readDirReturnsOnCall[len(fake.readDirArgsForCall)]
 	fake.readDirArgsForCall = append(fake.readDirArgsForCall, struct {
@@ -234,7 +234,7 @@ func (fake *IOReadWriter) ReadDirCallCount() int {
 	return len(fake.readDirArgsForCall)
 }
 
-func (fake *IOReadWriter) ReadDirCalls(stub func(string) ([]os.FileInfo, error)) {
+func (fake *IOReadWriter) ReadDirCalls(stub func(string) ([]fs.DirEntry, error)) {
 	fake.readDirMutex.Lock()
 	defer fake.readDirMutex.Unlock()
 	fake.ReadDirStub = stub
@@ -247,28 +247,28 @@ func (fake *IOReadWriter) ReadDirArgsForCall(i int) string {
 	return argsForCall.arg1
 }
 
-func (fake *IOReadWriter) ReadDirReturns(result1 []os.FileInfo, result2 error) {
+func (fake *IOReadWriter) ReadDirReturns(result1 []fs.DirEntry, result2 error) {
 	fake.readDirMutex.Lock()
 	defer fake.readDirMutex.Unlock()
 	fake.ReadDirStub = nil
 	fake.readDirReturns = struct {
-		result1 []os.FileInfo
+		result1 []fs.DirEntry
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *IOReadWriter) ReadDirReturnsOnCall(i int, result1 []os.FileInfo, result2 error) {
+func (fake *IOReadWriter) ReadDirReturnsOnCall(i int, result1 []fs.DirEntry, result2 error) {
 	fake.readDirMutex.Lock()
 	defer fake.readDirMutex.Unlock()
 	fake.ReadDirStub = nil
 	if fake.readDirReturnsOnCall == nil {
 		fake.readDirReturnsOnCall = make(map[int]struct {
-			result1 []os.FileInfo
+			result1 []fs.DirEntry
 			result2 error
 		})
 	}
 	fake.readDirReturnsOnCall[i] = struct {
-		result1 []os.FileInfo
+		result1 []fs.DirEntry
 		result2 error
 	}{result1, result2}
 }
