@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -169,7 +168,7 @@ func TestTemplating(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// check that the file has the exepected contents
-	connectionFileContents, err := ioutil.ReadFile(chkfile)
+	connectionFileContents, err := os.ReadFile(chkfile)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	expectedJson := `{

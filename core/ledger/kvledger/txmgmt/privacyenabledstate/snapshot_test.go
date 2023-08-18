@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"hash"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -314,7 +313,7 @@ func TestSnapshotImportMetadtaHintImport(t *testing.T) {
 }
 
 func sha256ForFileForTest(t *testing.T, file string) []byte {
-	data, err := ioutil.ReadFile(file)
+	data, err := os.ReadFile(file)
 	require.NoError(t, err)
 	sha := sha256.Sum256(data)
 	return sha[:]

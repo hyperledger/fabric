@@ -40,7 +40,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 	)
 
 	loadPeerCert := func(peer *nwo.Peer) string {
-		peerCert, err := ioutil.ReadFile(network.PeerCert(peer))
+		peerCert, err := os.ReadFile(network.PeerCert(peer))
 		Expect(err).NotTo(HaveOccurred())
 		return string(peerCert)
 	}

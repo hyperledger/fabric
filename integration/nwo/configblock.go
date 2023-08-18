@@ -273,7 +273,7 @@ func ComputeUpdateOrdererConfig(updateFile string, n *Network, channel string, c
 
 // UnmarshalBlockFromFile unmarshals a proto encoded block from a file.
 func UnmarshalBlockFromFile(blockFile string) *common.Block {
-	blockBytes, err := ioutil.ReadFile(blockFile)
+	blockBytes, err := os.ReadFile(blockFile)
 	Expect(err).NotTo(HaveOccurred())
 
 	block, err := protoutil.UnmarshalBlock(blockBytes)

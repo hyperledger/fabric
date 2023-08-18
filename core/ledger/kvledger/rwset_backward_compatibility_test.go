@@ -8,7 +8,7 @@ package kvledger
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -23,7 +23,7 @@ import (
 // TestBackwardCompatibilityRWSetV21 is added to protect against any changes in the hash function
 // that is used in preparing the rwset that includes a merkle tree for the range query
 func TestBackwardCompatibilityRWSetV21(t *testing.T) {
-	rwsetBytes, err := ioutil.ReadFile("testdata/rwsetbytes_v21")
+	rwsetBytes, err := os.ReadFile("testdata/rwsetbytes_v21")
 	require.NoError(t, err)
 	b := testGenerateSampleRWSet(t)
 	require.Equal(t, rwsetBytes, b)

@@ -10,7 +10,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
@@ -69,7 +69,7 @@ func TestSortJSON(t *testing.T) {
 }
 
 func testSortJSON(t *testing.T, filePrefix int) {
-	input, err := ioutil.ReadFile(
+	input, err := os.ReadFile(
 		fmt.Sprintf("testdata/json_documents/%d_unsorted.json",
 			filePrefix,
 		))
@@ -83,7 +83,7 @@ func testSortJSON(t *testing.T, filePrefix int) {
 	var prettyPrintJSON bytes.Buffer
 	err = json.Indent(&prettyPrintJSON, actualKV.Value, "", "  ")
 	require.NoError(t, err)
-	expected, err := ioutil.ReadFile(
+	expected, err := os.ReadFile(
 		fmt.Sprintf("testdata/json_documents/%d_sorted.json",
 			filePrefix,
 		))

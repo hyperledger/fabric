@@ -395,7 +395,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			extendNetwork(network)
 
 			secondOrdererCertificatePath := filepath.Join(network.OrdererLocalTLSDir(orderer2), "server.crt")
-			secondOrdererCertificate, err := ioutil.ReadFile(secondOrdererCertificatePath)
+			secondOrdererCertificate, err := os.ReadFile(secondOrdererCertificatePath)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("10) Adding the second orderer to second channel")

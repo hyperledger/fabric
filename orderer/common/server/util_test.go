@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package server
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -68,11 +67,11 @@ func TestValidateBootstrapBlock(t *testing.T) {
 	defer os.RemoveAll(cryptoPath)
 
 	systemChannelBlockPath, _ := produceGenesisFileEtcdRaft(t, "system", tempDir)
-	systemChannelBlockBytes, err := ioutil.ReadFile(systemChannelBlockPath)
+	systemChannelBlockBytes, err := os.ReadFile(systemChannelBlockPath)
 	require.NoError(t, err)
 
 	applicationChannelBlockPath, _ := produceGenesisFileEtcdRaftAppChannel(t, "mychannel", tempDir)
-	applicationChannelBlockBytes, err := ioutil.ReadFile(applicationChannelBlockPath)
+	applicationChannelBlockBytes, err := os.ReadFile(applicationChannelBlockPath)
 	require.NoError(t, err)
 
 	appBlock := &common.Block{}

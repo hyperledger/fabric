@@ -17,7 +17,6 @@ limitations under the License.
 package rwsetutil
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -33,7 +32,7 @@ const rwsetV1ProtoBytesFile = "testdata/rwsetV1ProtoBytes"
 // is able to unmarshal the protobytes that are produced by the 'RWSet' proto message declared in
 // v1.0. This is to make sure that any incompatible changes does not go uncaught.
 func TestRWSetV1BackwardCompatible(t *testing.T) {
-	protoBytes, err := ioutil.ReadFile(rwsetV1ProtoBytesFile)
+	protoBytes, err := os.ReadFile(rwsetV1ProtoBytesFile)
 	require.NoError(t, err)
 	rwset1 := &rwset.TxReadWriteSet{}
 	require.NoError(t, proto.Unmarshal(protoBytes, rwset1))

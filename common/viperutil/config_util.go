@@ -10,7 +10,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -286,7 +285,7 @@ func stringFromFileDecodeHook(f reflect.Kind, t reflect.Kind, data interface{}) 
 		}
 		switch {
 		case ok && fileName != nil:
-			bytes, err := ioutil.ReadFile(fileName.(string))
+			bytes, err := os.ReadFile(fileName.(string))
 			if err != nil {
 				return data, err
 			}
@@ -333,7 +332,7 @@ func pemBlocksFromFileDecodeHook(f reflect.Kind, t reflect.Kind, data interface{
 		switch {
 		case ok && fileName != "":
 			var result []string
-			bytes, err := ioutil.ReadFile(fileName)
+			bytes, err := os.ReadFile(fileName)
 			if err != nil {
 				return data, err
 			}

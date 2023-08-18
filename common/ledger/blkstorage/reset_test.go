@@ -249,7 +249,7 @@ func assertBlockStorePostReset(t *testing.T, store *BlockStore, originallyCommit
 }
 
 func assertRecordedHeight(t *testing.T, ledgerDir, expectedRecordedHt string) {
-	bytes, err := ioutil.ReadFile(path.Join(ledgerDir, fileNamePreRestHt))
+	bytes, err := os.ReadFile(path.Join(ledgerDir, fileNamePreRestHt))
 	require.NoError(t, err)
 	require.Equal(t, expectedRecordedHt, string(bytes))
 }

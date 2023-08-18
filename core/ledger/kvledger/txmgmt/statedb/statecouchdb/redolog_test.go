@@ -8,7 +8,7 @@ package statecouchdb
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
@@ -160,7 +160,7 @@ func redologTestSetup(t *testing.T) (p *redoLoggerProvider, cleanup func()) {
 }
 
 func TestReadExistingRedoRecord(t *testing.T) {
-	b, err := ioutil.ReadFile("testdata/persisted_redo_record")
+	b, err := os.ReadFile("testdata/persisted_redo_record")
 	require.NoError(t, err)
 	rec, err := decodeRedologVal(b)
 	require.NoError(t, err)

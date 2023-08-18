@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"net/http/httptest"
 	"net/url"
@@ -75,7 +74,7 @@ var _ = Describe("osnadmin", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		caCertPool := x509.NewCertPool()
-		clientCAPem, err := ioutil.ReadFile(filepath.Join(tempDir, "client-ca.pem"))
+		clientCAPem, err := os.ReadFile(filepath.Join(tempDir, "client-ca.pem"))
 		Expect(err).NotTo(HaveOccurred())
 		caCertPool.AppendCertsFromPEM(clientCAPem)
 

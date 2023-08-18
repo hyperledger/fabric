@@ -9,7 +9,6 @@ package fabhttp_test
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -51,7 +50,7 @@ func generateCertificates(tempDir string) {
 
 func newHTTPClient(tlsDir string, withClientCert bool, tlsOpts ...func(config *tls.Config)) *http.Client {
 	clientCertPool := x509.NewCertPool()
-	caCert, err := ioutil.ReadFile(filepath.Join(tlsDir, "server-ca.pem"))
+	caCert, err := os.ReadFile(filepath.Join(tlsDir, "server-ca.pem"))
 	Expect(err).NotTo(HaveOccurred())
 	clientCertPool.AppendCertsFromPEM(caCert)
 

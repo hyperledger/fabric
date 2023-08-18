@@ -286,7 +286,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			extendNetwork(network)
 
 			ordererCertificatePath := filepath.Join(network.OrdererLocalTLSDir(o4), "server.crt")
-			ordererCert, err := ioutil.ReadFile(ordererCertificatePath)
+			ordererCert, err := os.ReadFile(ordererCertificatePath)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Adding new ordering service node")
@@ -319,7 +319,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			By("Pick ordering service node to be evicted")
 			victimIdx := FindLeader(ordererRunners) - 1
 			victim := orderers[victimIdx]
-			victimCertBytes, err := ioutil.ReadFile(filepath.Join(network.OrdererLocalTLSDir(victim), "server.crt"))
+			victimCertBytes, err := os.ReadFile(filepath.Join(network.OrdererLocalTLSDir(victim), "server.crt"))
 			Expect(err).NotTo(HaveOccurred())
 
 			assertBlockReception(map[string]int{
@@ -572,18 +572,18 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			ordererTLSCAKeyPath := filepath.Join(network.RootDir, "crypto", "ordererOrganizations",
 				ordererDomain, "tlsca", "priv_sk")
 
-			ordererTLSCAKey, err := ioutil.ReadFile(ordererTLSCAKeyPath)
+			ordererTLSCAKey, err := os.ReadFile(ordererTLSCAKeyPath)
 			Expect(err).NotTo(HaveOccurred())
 
 			ordererTLSCACertPath := filepath.Join(network.RootDir, "crypto", "ordererOrganizations",
 				ordererDomain, "tlsca", fmt.Sprintf("tlsca.%s-cert.pem", ordererDomain))
-			ordererTLSCACert, err := ioutil.ReadFile(ordererTLSCACertPath)
+			ordererTLSCACert, err := os.ReadFile(ordererTLSCACertPath)
 			Expect(err).NotTo(HaveOccurred())
 
 			serverTLSCerts := make(map[string][]byte)
 			for _, orderer := range []*nwo.Orderer{o1, o2, o3} {
 				tlsCertPath := filepath.Join(network.OrdererLocalTLSDir(orderer), "server.crt")
-				serverTLSCerts[tlsCertPath], err = ioutil.ReadFile(tlsCertPath)
+				serverTLSCerts[tlsCertPath], err = os.ReadFile(tlsCertPath)
 				Expect(err).NotTo(HaveOccurred())
 			}
 
@@ -904,16 +904,16 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			ordererDomain := network.Organization(orderer.Organization).Domain
 			ordererCAKeyPath := filepath.Join(network.RootDir, "crypto", "ordererOrganizations", ordererDomain, "ca", "priv_sk")
 
-			ordererCAKey, err := ioutil.ReadFile(ordererCAKeyPath)
+			ordererCAKey, err := os.ReadFile(ordererCAKeyPath)
 			Expect(err).NotTo(HaveOccurred())
 
 			ordererCACertPath := network.OrdererCACert(orderer)
-			ordererCACert, err := ioutil.ReadFile(ordererCACertPath)
+			ordererCACert, err := os.ReadFile(ordererCACertPath)
 			Expect(err).NotTo(HaveOccurred())
 
 			adminCertPath := network.OrdererUserCert(orderer, "Admin")
 
-			originalAdminCert, err := ioutil.ReadFile(adminCertPath)
+			originalAdminCert, err := os.ReadFile(adminCertPath)
 			Expect(err).NotTo(HaveOccurred())
 
 			expiredAdminCert, earlyCACert := expireCertificate(originalAdminCert, ordererCACert, ordererCAKey, time.Now())
@@ -951,7 +951,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			By("Creating config update that adds another orderer admin")
 			bootBlockPath := filepath.Join(network.RootDir, fmt.Sprintf("%s_block.pb", "testchannel"))
-			bootBlock, err := ioutil.ReadFile(bootBlockPath)
+			bootBlock, err := os.ReadFile(bootBlockPath)
 			Expect(err).NotTo(HaveOccurred())
 
 			current := configFromBootstrapBlock(bootBlock)
@@ -964,7 +964,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			defer os.RemoveAll(tempDir)
 			nwo.ComputeUpdateOrdererConfig(configBlockFile, network, "testchannel", current, updatedConfig, peer)
 
-			updateTransaction, err := ioutil.ReadFile(configBlockFile)
+			updateTransaction, err := os.ReadFile(configBlockFile)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Creating config update")
@@ -1027,18 +1027,18 @@ func renewOrdererCertificates(network *nwo.Network, orderers ...*nwo.Orderer) {
 	ordererTLSCAKeyPath := filepath.Join(network.RootDir, "crypto", "ordererOrganizations",
 		ordererDomain, "tlsca", "priv_sk")
 
-	ordererTLSCAKey, err := ioutil.ReadFile(ordererTLSCAKeyPath)
+	ordererTLSCAKey, err := os.ReadFile(ordererTLSCAKeyPath)
 	Expect(err).NotTo(HaveOccurred())
 
 	ordererTLSCACertPath := filepath.Join(network.RootDir, "crypto", "ordererOrganizations",
 		ordererDomain, "tlsca", fmt.Sprintf("tlsca.%s-cert.pem", ordererDomain))
-	ordererTLSCACert, err := ioutil.ReadFile(ordererTLSCACertPath)
+	ordererTLSCACert, err := os.ReadFile(ordererTLSCACertPath)
 	Expect(err).NotTo(HaveOccurred())
 
 	serverTLSCerts := map[string][]byte{}
 	for _, orderer := range orderers {
 		tlsCertPath := filepath.Join(network.OrdererLocalTLSDir(orderer), "server.crt")
-		serverTLSCerts[tlsCertPath], err = ioutil.ReadFile(tlsCertPath)
+		serverTLSCerts[tlsCertPath], err = os.ReadFile(tlsCertPath)
 		Expect(err).NotTo(HaveOccurred())
 	}
 

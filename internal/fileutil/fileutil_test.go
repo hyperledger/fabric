@@ -8,7 +8,6 @@ package fileutil
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -218,7 +217,7 @@ func TestCreateAndSyncFileAtomically(t *testing.T) {
 		err := CreateAndSyncFileAtomically(testPath, "tmpFile", "finalFile", content, 0o644)
 		require.NoError(t, err)
 		require.NoFileExists(t, filepath.Join(testPath, "tmpFile"))
-		contentRetrieved, err := ioutil.ReadFile(filepath.Join(testPath, "finalFile"))
+		contentRetrieved, err := os.ReadFile(filepath.Join(testPath, "finalFile"))
 		require.NoError(t, err)
 		require.Equal(t, content, contentRetrieved)
 	})
@@ -253,7 +252,7 @@ func TestCreateAndSyncFileAtomically(t *testing.T) {
 		require.NoError(t, err)
 		err = CreateAndSyncFileAtomically(testPath, "tmpFile", "finalFile", content, 0o644)
 		require.NoError(t, err)
-		contentRetrieved, err := ioutil.ReadFile(filepath.Join(testPath, "finalFile"))
+		contentRetrieved, err := os.ReadFile(filepath.Join(testPath, "finalFile"))
 		require.NoError(t, err)
 		require.Equal(t, content, contentRetrieved)
 	})

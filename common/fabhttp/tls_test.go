@@ -51,7 +51,7 @@ var _ = Describe("TLS", func() {
 		)
 		Expect(err).NotTo(HaveOccurred())
 
-		pemBytes, err := ioutil.ReadFile(filepath.Join(tempDir, "client-ca.pem"))
+		pemBytes, err := os.ReadFile(filepath.Join(tempDir, "client-ca.pem"))
 		Expect(err).NotTo(HaveOccurred())
 
 		clientCAPool := x509.NewCertPool()

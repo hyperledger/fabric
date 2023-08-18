@@ -59,7 +59,7 @@ type Configuration struct {
 }
 
 func readFile(file string) ([]byte, error) {
-	fileCont, err := ioutil.ReadFile(file)
+	fileCont, err := os.ReadFile(file)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not read file %s", file)
 	}
@@ -264,7 +264,7 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 	if err == nil {
 		// load the file, if there is a failure in loading it then
 		// return an error
-		raw, err := ioutil.ReadFile(configFile)
+		raw, err := os.ReadFile(configFile)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed loading configuration file at [%s]", configFile)
 		}

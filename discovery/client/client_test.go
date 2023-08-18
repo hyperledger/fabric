@@ -11,8 +11,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"net"
+	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -272,7 +272,7 @@ var (
 )
 
 func loadFileOrPanic(file string) []byte {
-	b, err := ioutil.ReadFile(file)
+	b, err := os.ReadFile(file)
 	if err != nil {
 		panic(err)
 	}

@@ -9,7 +9,7 @@ package comm
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -319,15 +319,15 @@ func LoadTestCerts(t *testing.T) TestCerts {
 
 	var certs TestCerts
 	var err error
-	certs.CAPEM, err = ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-cert.pem"))
+	certs.CAPEM, err = os.ReadFile(filepath.Join("testdata", "certs", "Org1-cert.pem"))
 	if err != nil {
 		t.Fatalf("unexpected error reading root cert for test: %v", err)
 	}
-	certs.CertPEM, err = ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-client1-cert.pem"))
+	certs.CertPEM, err = os.ReadFile(filepath.Join("testdata", "certs", "Org1-client1-cert.pem"))
 	if err != nil {
 		t.Fatalf("unexpected error reading cert for test: %v", err)
 	}
-	certs.KeyPEM, err = ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-client1-key.pem"))
+	certs.KeyPEM, err = os.ReadFile(filepath.Join("testdata", "certs", "Org1-client1-key.pem"))
 	if err != nil {
 		t.Fatalf("unexpected error reading key for test: %v", err)
 	}

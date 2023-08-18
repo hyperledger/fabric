@@ -277,10 +277,10 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 
 			ordererCertificatePath := filepath.Join(network.OrdererLocalTLSDir(orderer5), "server.crt")
-			ordererCertificate, err := ioutil.ReadFile(ordererCertificatePath)
+			ordererCertificate, err := os.ReadFile(ordererCertificatePath)
 			Expect(err).NotTo(HaveOccurred())
 
-			ordererIdentity, err := ioutil.ReadFile(network.OrdererCert(orderer5))
+			ordererIdentity, err := os.ReadFile(network.OrdererCert(orderer5))
 			Expect(err).NotTo(HaveOccurred())
 
 			nwo.UpdateConsenters(network, peer, orderer, channel, func(orderers *common.Orderers) {
@@ -810,10 +810,10 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 
 				ordererCertificatePath := filepath.Join(network.OrdererLocalTLSDir(newOrderer), "server.crt")
-				ordererCertificate, err := ioutil.ReadFile(ordererCertificatePath)
+				ordererCertificate, err := os.ReadFile(ordererCertificatePath)
 				Expect(err).NotTo(HaveOccurred())
 
-				ordererIdentity, err := ioutil.ReadFile(network.OrdererCert(newOrderer))
+				ordererIdentity, err := os.ReadFile(network.OrdererCert(newOrderer))
 				Expect(err).NotTo(HaveOccurred())
 
 				By(fmt.Sprintf("Adding consenter with certificate %s", string(ordererIdentity)))
@@ -1033,10 +1033,10 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 
 			ordererCertificatePath := filepath.Join(network.OrdererLocalTLSDir(orderer5), "server.crt")
-			ordererCertificate, err := ioutil.ReadFile(ordererCertificatePath)
+			ordererCertificate, err := os.ReadFile(ordererCertificatePath)
 			Expect(err).NotTo(HaveOccurred())
 
-			ordererIdentity, err := ioutil.ReadFile(network.OrdererCert(orderer5))
+			ordererIdentity, err := os.ReadFile(network.OrdererCert(orderer5))
 			Expect(err).NotTo(HaveOccurred())
 
 			nwo.UpdateConsenters(network, peer, network.Orderers[0], channel, func(orderers *common.Orderers) {
@@ -1389,7 +1389,7 @@ func ordererOrganizationsAndConsenters(n *nwo.Network, orderers []*nwo.Orderer) 
 // parseCertificate loads the PEM-encoded x509 certificate at the specified
 // path.
 func parseCertificate(path string) *x509.Certificate {
-	certBytes, err := ioutil.ReadFile(path)
+	certBytes, err := os.ReadFile(path)
 	Expect(err).NotTo(HaveOccurred())
 	pemBlock, _ := pem.Decode(certBytes)
 	cert, err := x509.ParseCertificate(pemBlock.Bytes)

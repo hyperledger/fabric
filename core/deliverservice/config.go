@@ -8,7 +8,7 @@ package deliverservice
 
 import (
 	"encoding/pem"
-	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/hyperledger/fabric/core/config"
@@ -76,7 +76,7 @@ func LoadOverridesMap() (map[string]*orderers.Endpoint, error) {
 	for _, override := range overrides {
 		var rootCerts [][]byte
 		if override.CACertsFile != "" {
-			pem, err := ioutil.ReadFile(override.CACertsFile)
+			pem, err := os.ReadFile(override.CACertsFile)
 			if err != nil {
 				logger.Warningf("could not read file '%s' specified for caCertsFile of orderer endpoint override from '%s' to '%s': %s", override.CACertsFile, override.From, override.To, err)
 				continue
@@ -165,12 +165,12 @@ func (c *DeliverServiceConfig) loadDeliverServiceConfig() {
 			keyFile = config.GetPath("peer.tls.key.file")
 		}
 
-		keyPEM, err := ioutil.ReadFile(keyFile)
+		keyPEM, err := os.ReadFile(keyFile)
 		if err != nil {
 			panic(errors.WithMessagef(err, "unable to load key at '%s'", keyFile))
 		}
 		c.SecOpts.Key = keyPEM
-		certPEM, err := ioutil.ReadFile(certFile)
+		certPEM, err := os.ReadFile(certFile)
 		if err != nil {
 			panic(errors.WithMessagef(err, "unable to load cert at '%s'", certFile))
 		}
