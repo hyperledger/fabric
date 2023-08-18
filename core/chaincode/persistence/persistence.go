@@ -26,7 +26,7 @@ var logger = flogging.MustGetLogger("chaincode.persistence")
 // IOReadWriter defines the interface needed for reading, writing, removing, and
 // checking for existence of a specified file
 type IOReadWriter interface {
-	ReadDir(string) ([]os.FileInfo, error)
+	ReadDir(string) ([]os.DirEntry, error)
 	ReadFile(string) ([]byte, error)
 	Remove(name string) error
 	WriteFile(string, string, []byte) error
@@ -82,7 +82,7 @@ func (f *FilesystemIO) ReadFile(filename string) ([]byte, error) {
 }
 
 // ReadDir reads a directory from the filesystem
-func (f *FilesystemIO) ReadDir(dirname string) ([]os.FileInfo, error) {
+func (f *FilesystemIO) ReadDir(dirname string) ([]os.DirEntry, error) {
 	return os.ReadDir(dirname)
 }
 
