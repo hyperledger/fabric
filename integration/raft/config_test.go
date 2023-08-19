@@ -11,7 +11,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -1833,7 +1832,7 @@ type certificateChange struct {
 // extendNetwork rotates adds an additional orderer
 func extendNetwork(n *nwo.Network) {
 	// Overwrite the current crypto-config with additional orderers
-	cryptoConfigYAML, err := ioutil.TempFile("", "crypto-config.yaml")
+	cryptoConfigYAML, err := os.CreateTemp("", "crypto-config.yaml")
 	Expect(err).NotTo(HaveOccurred())
 	defer os.Remove(cryptoConfigYAML.Name())
 

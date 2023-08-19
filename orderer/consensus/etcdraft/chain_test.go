@@ -1275,7 +1275,7 @@ var _ = Describe("Chain", func() {
 
 				When("WAL dir is a file", func() {
 					It("replaces file with fresh WAL dir", func() {
-						f, err := ioutil.TempFile("", "wal-")
+						f, err := os.CreateTemp("", "wal-")
 						Expect(err).NotTo(HaveOccurred())
 						defer os.RemoveAll(f.Name())
 

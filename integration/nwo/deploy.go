@@ -9,7 +9,6 @@ package nwo
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
@@ -102,7 +101,7 @@ func DeployChaincodeLegacy(n *Network, channel string, orderer *Orderer, chainco
 
 	// create temp file for chaincode package if not provided
 	if chaincode.PackageFile == "" {
-		tempFile, err := ioutil.TempFile("", "chaincode-package")
+		tempFile, err := os.CreateTemp("", "chaincode-package")
 		Expect(err).NotTo(HaveOccurred())
 		tempFile.Close()
 		defer os.Remove(tempFile.Name())
@@ -124,7 +123,7 @@ func DeployChaincodeLegacy(n *Network, channel string, orderer *Orderer, chainco
 func PackageAndInstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer) {
 	// create temp file for chaincode package if not provided
 	if chaincode.PackageFile == "" {
-		tempFile, err := ioutil.TempFile("", "chaincode-package")
+		tempFile, err := os.CreateTemp("", "chaincode-package")
 		Expect(err).NotTo(HaveOccurred())
 		tempFile.Close()
 		defer os.Remove(tempFile.Name())

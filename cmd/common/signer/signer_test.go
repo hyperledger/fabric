@@ -10,7 +10,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -72,7 +71,7 @@ ZsQXrlIqlmNalfYPX+NDDELqlpXQBeEqnA==
 		},
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
-			tmpFile, err := ioutil.TempFile("", "key")
+			tmpFile, err := os.CreateTemp("", "key")
 			require.NoError(t, err)
 
 			defer os.Remove(tmpFile.Name())
