@@ -52,7 +52,7 @@ var _ = Describe("EndToEnd", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "e2e")
+		testDir, err = os.MkdirTemp("", "e2e")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = docker.NewClientFromEnv()

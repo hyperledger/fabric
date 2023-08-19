@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -197,7 +196,7 @@ type BuildContext struct {
 // Users of the BuildContext must call Cleanup when the build process is
 // complete to remove the transient file system assets.
 func NewBuildContext(ccid string, mdBytes []byte, codePackage io.Reader) (bc *BuildContext, err error) {
-	scratchDir, err := ioutil.TempDir("", "fabric-"+SanitizeCCIDPath(ccid))
+	scratchDir, err := os.MkdirTemp("", "fabric-"+SanitizeCCIDPath(ccid))
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not create temp dir")
 	}
@@ -360,7 +359,7 @@ func newRunConfig(ccid string, peerConnection *ccintf.PeerConnection, mspid stri
 // Run starts the `run` script and returns a Session that can be used to
 // signal it and wait for termination.
 func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection) (*Session, error) {
-	launchDir, err := ioutil.TempDir("", "fabric-run")
+	launchDir, err := os.MkdirTemp("", "fabric-run")
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not create temp run dir")
 	}

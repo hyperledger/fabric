@@ -8,7 +8,6 @@ package persistence_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -32,7 +31,7 @@ var _ = Describe("Persistence", func() {
 			filesystemIO = &persistence.FilesystemIO{}
 
 			var err error
-			testDir, err = ioutil.TempDir("", "persistence-test")
+			testDir, err = os.MkdirTemp("", "persistence-test")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -131,7 +130,7 @@ var _ = Describe("Persistence", func() {
 		)
 
 		BeforeEach(func() {
-			tempDir, err = ioutil.TempDir("", "NewStore")
+			tempDir, err = os.MkdirTemp("", "NewStore")
 			Expect(err).NotTo(HaveOccurred())
 		})
 

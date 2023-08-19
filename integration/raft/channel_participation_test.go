@@ -51,7 +51,7 @@ var _ = Describe("ChannelParticipation", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "channel-participation")
+		testDir, err = os.MkdirTemp("", "channel-participation")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = docker.NewClientFromEnv()

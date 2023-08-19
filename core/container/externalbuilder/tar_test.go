@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package externalbuilder_test
 
 import (
-	"io/ioutil"
 	"os"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -22,7 +21,7 @@ var _ = Describe("Tar", func() {
 
 		BeforeEach(func() {
 			var err error
-			dst, err = ioutil.TempDir("", "untar-test")
+			dst, err = os.MkdirTemp("", "untar-test")
 			Expect(err).NotTo(HaveOccurred())
 		})
 

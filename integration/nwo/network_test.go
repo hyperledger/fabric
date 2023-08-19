@@ -8,7 +8,6 @@ package nwo_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -33,7 +32,7 @@ var _ = Describe("Network", func() {
 
 	BeforeEach(func() {
 		var err error
-		tempDir, err = ioutil.TempDir("", "nwo")
+		tempDir, err = os.MkdirTemp("", "nwo")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = docker.NewClientFromEnv()

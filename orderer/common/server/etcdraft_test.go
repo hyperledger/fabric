@@ -8,7 +8,6 @@ package server_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -135,7 +134,7 @@ func testEtcdRaftOSNStart(gt *GomegaWithT, tempDir, configtxgen, orderer, crypto
 }
 
 func testEtcdRaftOSNJoinAppChan(gt *GomegaWithT, configPath, configtxgen, orderer, cryptoPath string) {
-	tempDir, err := ioutil.TempDir("", "etcdraft-test")
+	tempDir, err := os.MkdirTemp("", "etcdraft-test")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
@@ -178,7 +177,7 @@ func writeJoinBlock(gt *GomegaWithT, configPath string, configtxgen string, temp
 }
 
 func testEtcdRaftOSNSuccess(gt *GomegaWithT, configPath, configtxgen, orderer, cryptoPath string) {
-	tempDir, err := ioutil.TempDir("", "etcdraft-test")
+	tempDir, err := os.MkdirTemp("", "etcdraft-test")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
@@ -208,7 +207,7 @@ func testEtcdRaftOSNSuccess(gt *GomegaWithT, configPath, configtxgen, orderer, c
 
 // the orderer refuses to launch with the 'file' bootstrap method
 func testEtcdRaftOSNFailureInvalidBootstrapMethod(gt *GomegaWithT, configPath, orderer, configtxgen, cryptoPath string) {
-	tempDir, err := ioutil.TempDir("", "etcdraft-test")
+	tempDir, err := os.MkdirTemp("", "etcdraft-test")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
@@ -225,7 +224,7 @@ func testEtcdRaftOSNFailureInvalidBootstrapMethod(gt *GomegaWithT, configPath, o
 
 // the orderer ignores General.ChannelParticipation.Enabled=false
 func testEtcdRaftOSNFailureChannelParticipationDisabled(gt *GomegaWithT, configPath, orderer, configtxgen, cryptoPath string) {
-	tempDir, err := ioutil.TempDir("", "etcdraft-test")
+	tempDir, err := os.MkdirTemp("", "etcdraft-test")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
@@ -242,7 +241,7 @@ func testEtcdRaftOSNFailureChannelParticipationDisabled(gt *GomegaWithT, configP
 }
 
 func testEtcdRaftOSNNoTLSSingleListener(gt *GomegaWithT, configPath, orderer string, configtxgen, cryptoPath string) {
-	tempDir, err := ioutil.TempDir("", "etcdraft-test")
+	tempDir, err := os.MkdirTemp("", "etcdraft-test")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
@@ -262,7 +261,7 @@ func testEtcdRaftOSNNoTLSSingleListener(gt *GomegaWithT, configPath, orderer str
 }
 
 func testEtcdRaftOSNNoTLSDualListener(gt *GomegaWithT, configPath, orderer string, configtxgen, cryptoPath string) {
-	tempDir, err := ioutil.TempDir("", "etcdraft-test")
+	tempDir, err := os.MkdirTemp("", "etcdraft-test")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 

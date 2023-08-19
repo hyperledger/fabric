@@ -57,7 +57,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		ordererProcesses = nil
 
 		var err error
-		testDir, err = ioutil.TempDir("", "e2e-etcdraft_reconfig")
+		testDir, err = os.MkdirTemp("", "e2e-etcdraft_reconfig")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = docker.NewClientFromEnv()
@@ -344,7 +344,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			network.Orderers = append(network.Orderers, orderer3)
 			network.GenerateOrdererConfig(orderer3)
 
-			tmpDir, err := ioutil.TempDir("", "e2e-etcfraft_reconfig")
+			tmpDir, err := os.MkdirTemp("", "e2e-etcfraft_reconfig")
 			Expect(err).NotTo(HaveOccurred())
 			defer os.RemoveAll(tmpDir)
 

@@ -8,7 +8,6 @@ package ca_test
 import (
 	"crypto/ecdsa"
 	"crypto/x509"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -39,7 +38,7 @@ func TestLoadCertificateECDSA(t *testing.T) {
 	testDir := t.TempDir()
 
 	// generate private key
-	certDir, err := ioutil.TempDir(testDir, "certs")
+	certDir, err := os.MkdirTemp(testDir, "certs")
 	if err != nil {
 		t.Fatalf("Failed to create certs directory: %s", err)
 	}
@@ -154,7 +153,7 @@ func TestGenerateSignCertificate(t *testing.T) {
 	testDir := t.TempDir()
 
 	// generate private key
-	certDir, err := ioutil.TempDir(testDir, "certs")
+	certDir, err := os.MkdirTemp(testDir, "certs")
 	if err != nil {
 		t.Fatalf("Failed to create certs directory: %s", err)
 	}

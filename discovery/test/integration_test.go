@@ -633,7 +633,7 @@ func buildBinaries() error {
 }
 
 func generateChannelArtifacts() (string, error) {
-	dir, err := ioutil.TempDir("", "TestMSPIDMapping")
+	dir, err := os.MkdirTemp("", "TestMSPIDMapping")
 	if err != nil {
 		return "", errors.WithStack(err)
 	}

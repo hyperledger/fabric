@@ -17,7 +17,6 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"os"
@@ -50,7 +49,7 @@ var _ = Describe("MSPs with RSA Certificate Authorities", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "msp")
+		testDir, err = os.MkdirTemp("", "msp")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = docker.NewClientFromEnv()

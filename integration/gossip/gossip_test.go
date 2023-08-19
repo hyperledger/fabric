@@ -8,7 +8,6 @@ package gossip
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"syscall"
 	"time"
@@ -36,7 +35,7 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "gossip-statexfer")
+		testDir, err = os.MkdirTemp("", "gossip-statexfer")
 		Expect(err).NotTo(HaveOccurred())
 
 		dockerClient, err := docker.NewClientFromEnv()

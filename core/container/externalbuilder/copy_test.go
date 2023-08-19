@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package externalbuilder
 
 import (
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -29,7 +28,7 @@ var _ = Describe("copy", func() {
 
 	BeforeEach(func() {
 		var err error
-		tempDir, err = ioutil.TempDir("", "copy-test-")
+		tempDir, err = os.MkdirTemp("", "copy-test-")
 		Expect(err).NotTo(HaveOccurred())
 
 		srcRootDir = filepath.Join(tempDir, "src")

@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -37,7 +36,7 @@ var _ = Describe("chaincode install", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "lifecycle")
+		testDir, err = os.MkdirTemp("", "lifecycle")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = docker.NewClientFromEnv()
@@ -82,7 +81,7 @@ var _ = Describe("chaincode install", func() {
 		)
 
 		BeforeEach(func() {
-			packageTempDir, err := ioutil.TempDir(network.RootDir, "chaincode-package")
+			packageTempDir, err := os.MkdirTemp(network.RootDir, "chaincode-package")
 			Expect(err).NotTo(HaveOccurred())
 
 			orderer = network.Orderer("orderer")

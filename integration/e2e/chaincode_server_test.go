@@ -9,7 +9,6 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -40,7 +39,7 @@ var _ = Describe("ChaincodeAsExternalServer", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "external-chaincode-server")
+		testDir, err = os.MkdirTemp("", "external-chaincode-server")
 		Expect(err).NotTo(HaveOccurred())
 
 		network = nwo.New(nwo.BasicEtcdRaft(), testDir, nil, StartPort(), components)
@@ -52,7 +51,7 @@ var _ = Describe("ChaincodeAsExternalServer", func() {
 		connData, serverKeyPair := generateChaincodeConfig(chaincodeServerAddress)
 
 		// Create directory for configuration files
-		assetDir, err = ioutil.TempDir(testDir, "assets")
+		assetDir, err = os.MkdirTemp(testDir, "assets")
 		Expect(err).NotTo(HaveOccurred())
 
 		// Write the config files

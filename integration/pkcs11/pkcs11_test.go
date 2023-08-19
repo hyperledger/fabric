@@ -17,7 +17,6 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -47,7 +46,7 @@ var _ = Describe("PKCS11 enabled network", func() {
 
 	BeforeEach(func() {
 		var err error
-		tempDir, err = ioutil.TempDir("", "p11")
+		tempDir, err = os.MkdirTemp("", "p11")
 		Expect(err).NotTo(HaveOccurred())
 
 		network = nwo.New(nwo.BasicEtcdRaft(), tempDir, nil, StartPort(), components)

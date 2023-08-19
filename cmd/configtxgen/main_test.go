@@ -9,7 +9,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,7 +22,7 @@ import (
 var tmpDir string
 
 func TestMain(m *testing.M) {
-	dir, err := ioutil.TempDir("", "configtxgen")
+	dir, err := os.MkdirTemp("", "configtxgen")
 	if err != nil {
 		panic("Error creating temp dir")
 	}
