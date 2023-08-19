@@ -8,6 +8,7 @@ package container_test
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -64,7 +65,7 @@ var _ = Describe("Router", func() {
 			ccid, md, codeStream := fakeExternalBuilder.BuildArgsForCall(0)
 			Expect(ccid).To(Equal("package-id"))
 			Expect(md).To(Equal([]byte(`{"some":"json"}`)))
-			codePackage, err := ioutil.ReadAll(codeStream)
+			codePackage, err := io.ReadAll(codeStream)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(codePackage).To(Equal([]byte("code-bytes")))
 		})
@@ -124,7 +125,7 @@ var _ = Describe("Router", func() {
 					Type: "package-type",
 					Path: "package-path",
 				}))
-				codePackage, err := ioutil.ReadAll(codeStream)
+				codePackage, err := io.ReadAll(codeStream)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(codePackage).To(Equal([]byte("code-bytes")))
 			})
