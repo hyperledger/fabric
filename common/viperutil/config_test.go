@@ -8,7 +8,6 @@ package viperutil
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -133,7 +132,7 @@ func TestStringNotFromFile(t *testing.T) {
 }
 
 func TestStringFromFile(t *testing.T) {
-	file, err := ioutil.TempFile(os.TempDir(), "test")
+	file, err := os.CreateTemp(os.TempDir(), "test")
 	require.NoError(t, err, "failed to create temp file")
 	defer os.Remove(file.Name())
 
@@ -155,7 +154,7 @@ func TestStringFromFile(t *testing.T) {
 }
 
 func TestPEMBlocksFromFile(t *testing.T) {
-	file, err := ioutil.TempFile(os.TempDir(), "test")
+	file, err := os.CreateTemp(os.TempDir(), "test")
 	require.NoError(t, err, "failed to create temp file")
 	defer os.Remove(file.Name())
 
@@ -181,7 +180,7 @@ func TestPEMBlocksFromFile(t *testing.T) {
 }
 
 func TestPEMBlocksFromFileEnv(t *testing.T) {
-	file, err := ioutil.TempFile(os.TempDir(), "test")
+	file, err := os.CreateTemp(os.TempDir(), "test")
 	require.NoError(t, err, "failed to create temp file")
 	defer os.Remove(file.Name())
 
@@ -236,7 +235,7 @@ func TestStringFromFileNotSpecified(t *testing.T) {
 func TestStringFromFileEnv(t *testing.T) {
 	expectedValue := "this is the text in the file"
 
-	file, err := ioutil.TempFile(os.TempDir(), "test")
+	file, err := os.CreateTemp(os.TempDir(), "test")
 	require.NoError(t, err, "failed to create temp file")
 	defer os.Remove(file.Name())
 

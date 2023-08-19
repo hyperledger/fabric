@@ -999,7 +999,7 @@ func (n *Network) CreateAndJoinChannel(o *Orderer, channelName string) {
 // TODO using configtxgen with -outputAnchorPeersUpdate to update the anchor peers is deprecated and does not work
 // with channel participation API. We'll have to generate the channel update explicitly (see UpdateOrgAnchorPeers).
 func (n *Network) UpdateChannelAnchors(o *Orderer, channelName string) {
-	tempFile, err := ioutil.TempFile("", "update-anchors")
+	tempFile, err := os.CreateTemp("", "update-anchors")
 	Expect(err).NotTo(HaveOccurred())
 	tempFile.Close()
 	defer os.Remove(tempFile.Name())
@@ -1170,7 +1170,7 @@ func (n *Network) JoinChannel(name string, o *Orderer, peers ...*Peer) {
 		return
 	}
 
-	tempFile, err := ioutil.TempFile("", "genesis-block")
+	tempFile, err := os.CreateTemp("", "genesis-block")
 	Expect(err).NotTo(HaveOccurred())
 	tempFile.Close()
 	defer os.Remove(tempFile.Name())

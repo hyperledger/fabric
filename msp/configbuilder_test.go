@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package msp
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -94,7 +93,7 @@ func TestGetLocalMspConfigFails(t *testing.T) {
 }
 
 func TestGetPemMaterialFromDirWithFile(t *testing.T) {
-	tempFile, err := ioutil.TempFile("", "fabric-msp-test")
+	tempFile, err := os.CreateTemp("", "fabric-msp-test")
 	require.NoError(t, err)
 	err = tempFile.Close()
 	require.NoError(t, err)

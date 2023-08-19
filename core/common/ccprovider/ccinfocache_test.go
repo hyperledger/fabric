@@ -20,7 +20,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -234,7 +233,7 @@ func TestSetChaincodesPath(t *testing.T) {
 	cip := chaincodeInstallPath
 	defer SetChaincodesPath(cip)
 
-	f, err := ioutil.TempFile(dir, "chaincodes")
+	f, err := os.CreateTemp(dir, "chaincodes")
 	require.NoError(t, err)
 	require.Panics(t, func() {
 		SetChaincodesPath(f.Name())
