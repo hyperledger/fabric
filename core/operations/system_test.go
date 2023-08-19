@@ -47,7 +47,7 @@ var _ = Describe("System", func() {
 
 	BeforeEach(func() {
 		var err error
-		tempDir, err = ioutil.TempDir("", "opssys")
+		tempDir, err = os.MkdirTemp("", "opssys")
 		Expect(err).NotTo(HaveOccurred())
 
 		generateCertificates(tempDir)

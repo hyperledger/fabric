@@ -9,7 +9,6 @@ package etcdraft_test
 import (
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -77,7 +76,7 @@ var _ = Describe("Consenter", func() {
 		}
 		chainManager = &mocks.ChainManager{}
 		support = &consensusmocks.FakeConsenterSupport{}
-		dataDir, err = ioutil.TempDir("", "consenter-")
+		dataDir, err = os.MkdirTemp("", "consenter-")
 		Expect(err).NotTo(HaveOccurred())
 		walDir = path.Join(dataDir, "wal-")
 		snapDir = path.Join(dataDir, "snap-")
@@ -158,7 +157,7 @@ var _ = Describe("Consenter", func() {
 
 		BeforeEach(func() {
 			var err error
-			mspDir, err = ioutil.TempDir(dataDir, "msp")
+			mspDir, err = os.MkdirTemp(dataDir, "msp")
 			Expect(err).NotTo(HaveOccurred())
 
 			confAppRaft = genesisconfig.Load(genesisconfig.SampleDevModeEtcdRaftProfile, configtest.GetDevConfigDir())
@@ -181,7 +180,7 @@ var _ = Describe("Consenter", func() {
 			// Generate client pair using tlsCA and set it to the consenter
 			memberKeyPair, err = tlsCA.NewServerCertKeyPair("127.0.0.1", "::1", "localhost")
 			Expect(err).NotTo(HaveOccurred())
-			consenterDir, err := ioutil.TempDir(dataDir, "consenter")
+			consenterDir, err := os.MkdirTemp(dataDir, "consenter")
 			Expect(err).NotTo(HaveOccurred())
 			consenterCertPath := filepath.Join(consenterDir, "client.pem")
 			err = os.WriteFile(consenterCertPath, memberKeyPair.Cert, 0o644)
@@ -232,7 +231,7 @@ var _ = Describe("Consenter", func() {
 			foreignKeyPair, err := foreignCA.NewServerCertKeyPair("127.0.0.1", "::1", "localhost")
 			Expect(err).NotTo(HaveOccurred())
 
-			consenterDir, err := ioutil.TempDir(dataDir, "foreign-consenter")
+			consenterDir, err := os.MkdirTemp(dataDir, "foreign-consenter")
 			Expect(err).NotTo(HaveOccurred())
 			foreignConsenterCertPath := filepath.Join(consenterDir, "client.pem")
 			err = os.WriteFile(foreignConsenterCertPath, foreignKeyPair.Cert, 0o644)

@@ -17,7 +17,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -61,7 +60,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 		ordererProcesses = nil
 		peerProcesses = nil
 		var err error
-		testDir, err = ioutil.TempDir("", "e2e-smartbft-test")
+		testDir, err = os.MkdirTemp("", "e2e-smartbft-test")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = docker.NewClientFromEnv()

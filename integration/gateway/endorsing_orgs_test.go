@@ -8,7 +8,6 @@ package gateway
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -40,7 +39,7 @@ var _ = Describe("GatewayService with endorsing orgs", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "gateway")
+		testDir, err = os.MkdirTemp("", "gateway")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err := docker.NewClientFromEnv()

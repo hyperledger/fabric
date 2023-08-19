@@ -10,7 +10,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
@@ -53,7 +52,7 @@ var _ = Describe("Pvtdata purge", func() {
 
 	JustBeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "purgedata")
+		testDir, err = os.MkdirTemp("", "purgedata")
 		Expect(err).NotTo(HaveOccurred())
 
 		// Add additional peer before generating config tree

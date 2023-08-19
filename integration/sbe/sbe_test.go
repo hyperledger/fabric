@@ -8,7 +8,6 @@ package sbe
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,7 +39,7 @@ var _ = Describe("SBE_E2E", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "e2e_sbe")
+		testDir, err = os.MkdirTemp("", "e2e_sbe")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = docker.NewClientFromEnv()
@@ -54,7 +53,7 @@ var _ = Describe("SBE_E2E", func() {
 			CollectionsConfig: "testdata/collection_config.json",
 		}
 
-		tempDir, err = ioutil.TempDir("", "sbe")
+		tempDir, err = os.MkdirTemp("", "sbe")
 		Expect(err).NotTo(HaveOccurred())
 	})
 

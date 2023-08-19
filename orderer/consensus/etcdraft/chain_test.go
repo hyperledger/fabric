@@ -148,7 +148,7 @@ var _ = Describe("Chain", func() {
 			clock = fakeclock.NewFakeClock(time.Now())
 			storage = raft.NewMemoryStorage()
 
-			dataDir, err = ioutil.TempDir("", "wal-")
+			dataDir, err = os.MkdirTemp("", "wal-")
 			Expect(err).NotTo(HaveOccurred())
 			walDir = path.Join(dataDir, "wal")
 			snapDir = path.Join(dataDir, "snapshot")
@@ -1306,7 +1306,7 @@ var _ = Describe("Chain", func() {
 
 				When("WAL dir is not writeable", func() {
 					It("replace it with fresh WAL dir", func() {
-						d, err := ioutil.TempDir("", "wal-")
+						d, err := os.MkdirTemp("", "wal-")
 						Expect(err).NotTo(HaveOccurred())
 						defer os.RemoveAll(d)
 
@@ -1338,7 +1338,7 @@ var _ = Describe("Chain", func() {
 					It("fails to bootstrap fresh raft node", func() {
 						skipIfRoot()
 
-						d, err := ioutil.TempDir("", "wal-")
+						d, err := os.MkdirTemp("", "wal-")
 						Expect(err).NotTo(HaveOccurred())
 						defer os.RemoveAll(d)
 
@@ -1386,7 +1386,7 @@ var _ = Describe("Chain", func() {
 			channelID = "multi-node-channel"
 			timeout = 10 * time.Second
 
-			dataDir, err = ioutil.TempDir("", "raft-test-")
+			dataDir, err = os.MkdirTemp("", "raft-test-")
 			Expect(err).NotTo(HaveOccurred())
 
 			cryptoProvider, err = sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
@@ -1621,7 +1621,7 @@ var _ = Describe("Chain", func() {
 			channelID = "multi-node-channel"
 			timeout = 10 * time.Second
 
-			dataDir, err = ioutil.TempDir("", "raft-test-")
+			dataDir, err = os.MkdirTemp("", "raft-test-")
 			Expect(err).NotTo(HaveOccurred())
 
 			raftMetadata = &raftprotos.BlockMetadata{
@@ -3736,7 +3736,7 @@ func createNetwork(
 	}
 
 	for _, nodeID := range raftMetadata.ConsenterIds {
-		dir, err := ioutil.TempDir(dataDir, fmt.Sprintf("node-%d-", nodeID))
+		dir, err := os.MkdirTemp(dataDir, fmt.Sprintf("node-%d-", nodeID))
 		Expect(err).NotTo(HaveOccurred())
 
 		m := proto.Clone(raftMetadata).(*raftprotos.BlockMetadata)

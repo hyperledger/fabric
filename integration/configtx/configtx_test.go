@@ -10,7 +10,6 @@ import (
 	"crypto"
 	"crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
 	"os"
 	"syscall"
 	"time"
@@ -39,7 +38,7 @@ var _ = Describe("ConfigTx", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "configtx")
+		testDir, err = os.MkdirTemp("", "configtx")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = docker.NewClientFromEnv()

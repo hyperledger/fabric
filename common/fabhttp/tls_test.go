@@ -9,7 +9,6 @@ package fabhttp_test
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -24,7 +23,7 @@ var _ = Describe("TLS", func() {
 
 	BeforeEach(func() {
 		var err error
-		tempDir, err = ioutil.TempDir("", "opstls")
+		tempDir, err = os.MkdirTemp("", "opstls")
 		Expect(err).NotTo(HaveOccurred())
 
 		generateCertificates(tempDir)

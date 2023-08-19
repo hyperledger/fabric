@@ -39,7 +39,7 @@ var _ = Describe("Server", func() {
 
 	BeforeEach(func() {
 		var err error
-		tempDir, err = ioutil.TempDir("", "fabhttp-test")
+		tempDir, err = os.MkdirTemp("", "fabhttp-test")
 		Expect(err).NotTo(HaveOccurred())
 
 		generateCertificates(tempDir)

@@ -8,7 +8,6 @@ package externalbuilder_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -96,7 +95,7 @@ var _ = Describe("externalbuilder", func() {
 
 		BeforeEach(func() {
 			var err error
-			durablePath, err = ioutil.TempDir("", "detect-test")
+			durablePath, err = os.MkdirTemp("", "detect-test")
 			Expect(err).NotTo(HaveOccurred())
 
 			detector = &externalbuilder.Detector{
@@ -311,7 +310,7 @@ var _ = Describe("externalbuilder", func() {
 
 			BeforeEach(func() {
 				var err error
-				bldDir, err = ioutil.TempDir("", "run-test")
+				bldDir, err = os.MkdirTemp("", "run-test")
 				Expect(err).NotTo(HaveOccurred())
 
 				fakeConnection = &ccintf.PeerConnection{

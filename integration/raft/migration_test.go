@@ -9,7 +9,6 @@ package raft
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,7 +47,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "consensus-type-migration")
+		testDir, err = os.MkdirTemp("", "consensus-type-migration")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = docker.NewClientFromEnv()

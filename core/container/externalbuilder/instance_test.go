@@ -8,7 +8,6 @@ package externalbuilder_test
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -50,7 +49,7 @@ var _ = Describe("Instance", func() {
 	Describe("ChaincodeServerInfo", func() {
 		BeforeEach(func() {
 			var err error
-			instance.ReleaseDir, err = ioutil.TempDir("", "cc-conn-test")
+			instance.ReleaseDir, err = os.MkdirTemp("", "cc-conn-test")
 			Expect(err).NotTo(HaveOccurred())
 
 			err = os.MkdirAll(filepath.Join(instance.ReleaseDir, "chaincode", "server"), 0o755)
@@ -120,7 +119,7 @@ var _ = Describe("Instance", func() {
 
 		BeforeEach(func() {
 			var err error
-			releaseDir, err = ioutil.TempDir("", "cc-conn-test")
+			releaseDir, err = os.MkdirTemp("", "cc-conn-test")
 			Expect(err).NotTo(HaveOccurred())
 
 			err = os.MkdirAll(filepath.Join(releaseDir, "chaincode", "server"), 0o755)

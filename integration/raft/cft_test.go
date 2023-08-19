@@ -56,7 +56,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "e2e")
+		testDir, err = os.MkdirTemp("", "e2e")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = docker.NewClientFromEnv()
@@ -957,7 +957,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			current := configFromBootstrapBlock(bootBlock)
 			updatedConfig := addAdminCertToConfig(current, originalAdminCert)
 
-			tempDir, err := ioutil.TempDir("", "adminExpirationTest")
+			tempDir, err := os.MkdirTemp("", "adminExpirationTest")
 			Expect(err).NotTo(HaveOccurred())
 
 			configBlockFile := filepath.Join(tempDir, "update.pb")
@@ -1160,7 +1160,7 @@ func configFromBlock(block *common.Block) *common.Config {
 }
 
 func fetchConfig(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, port nwo.PortName, channel string, tlsHandshakeTimeShift time.Duration) *common.Config {
-	tempDir, err := ioutil.TempDir(n.RootDir, "fetchConfig")
+	tempDir, err := os.MkdirTemp(n.RootDir, "fetchConfig")
 	Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
@@ -1191,7 +1191,7 @@ func fetchConfigBlock(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, port
 }
 
 func currentConfigBlockNumber(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, port nwo.PortName, channel string, tlsHandshakeTimeShift time.Duration) uint64 {
-	tempDir, err := ioutil.TempDir(n.RootDir, "currentConfigBlock")
+	tempDir, err := os.MkdirTemp(n.RootDir, "currentConfigBlock")
 	Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
@@ -1202,7 +1202,7 @@ func currentConfigBlockNumber(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Order
 }
 
 func updateOrdererConfig(n *nwo.Network, orderer *nwo.Orderer, port nwo.PortName, channel string, tlsHandshakeTimeShift time.Duration, current, updated *common.Config, submitter *nwo.Peer, additionalSigners ...*nwo.Orderer) {
-	tempDir, err := ioutil.TempDir(n.RootDir, "updateConfig")
+	tempDir, err := os.MkdirTemp(n.RootDir, "updateConfig")
 	Expect(err).NotTo(HaveOccurred())
 	updateFile := filepath.Join(tempDir, "update.pb")
 	defer os.RemoveAll(tempDir)

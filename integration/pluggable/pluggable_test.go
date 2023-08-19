@@ -8,7 +8,6 @@ package pluggable
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -43,7 +42,7 @@ var _ = Describe("EndToEnd", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "pluggable-suite")
+		testDir, err = os.MkdirTemp("", "pluggable-suite")
 		Expect(err).NotTo(HaveOccurred())
 
 		// Compile plugins

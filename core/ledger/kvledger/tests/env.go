@@ -8,7 +8,6 @@ package tests
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -207,7 +206,7 @@ func populateMissingsWithTestDefaults(t *testing.T, initializer *ledgermgmt.Init
 	}
 
 	if initializer.Config == nil || initializer.Config.RootFSPath == "" {
-		rootPath, err := ioutil.TempDir("/tmp", "ledgersData")
+		rootPath, err := os.MkdirTemp("/tmp", "ledgersData")
 		if err != nil {
 			t.Fatalf("Failed to create root directory: %s", err)
 		}

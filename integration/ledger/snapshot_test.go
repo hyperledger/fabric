@@ -11,7 +11,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -519,7 +518,7 @@ func configPeerWithCouchDB(s *setup, peer *nwo.Peer) ifrit.Process {
 // Initially only start Org1.peer0 and Org2.peer0 are started and join the channel.
 func initAndStartFourOrgsNetwork() *setup {
 	var err error
-	testDir, err := ioutil.TempDir("", "snapshot")
+	testDir, err := os.MkdirTemp("", "snapshot")
 	Expect(err).NotTo(HaveOccurred())
 
 	client, err := docker.NewClientFromEnv()
