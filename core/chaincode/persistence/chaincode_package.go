@@ -141,7 +141,7 @@ func (cps *ChaincodePackageStreamer) MetadataBytes() ([]byte, error) {
 
 	defer tarFileStream.Close()
 
-	md, err := ioutil.ReadAll(tarFileStream)
+	md, err := io.ReadAll(tarFileStream)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could read metadata file")
 	}
@@ -303,7 +303,7 @@ func ParseChaincodePackage(source []byte) (*ChaincodePackageMetadata, []byte, er
 			return ccPackageMetadata, nil, errors.Errorf("tar entry %s is not a regular file, type %v", header.Name, header.Typeflag)
 		}
 
-		fileBytes, err := ioutil.ReadAll(tarReader)
+		fileBytes, err := io.ReadAll(tarReader)
 		if err != nil {
 			return ccPackageMetadata, nil, errors.Wrapf(err, "could not read %s from tar", header.Name)
 		}

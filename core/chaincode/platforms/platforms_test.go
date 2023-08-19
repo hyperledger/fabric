@@ -11,7 +11,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/metadata"
@@ -145,7 +145,7 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 			It("creates a stream for the package", func() {
 				reader, err := registry.GenerateDockerBuild("fakeType", "", nil, client)
 				Expect(err).NotTo(HaveOccurred())
-				_, err = ioutil.ReadAll(reader)
+				_, err = io.ReadAll(reader)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -162,7 +162,7 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 					pw.WriteReturns(errors.New("fake-error"))
 					reader, err := registry.GenerateDockerBuild("fakeType", "", nil, client)
 					Expect(err).NotTo(HaveOccurred())
-					_, err = ioutil.ReadAll(reader)
+					_, err = io.ReadAll(reader)
 					Expect(err).To(MatchError("Failed to inject \"Dockerfile\": fake-error"))
 				})
 			})

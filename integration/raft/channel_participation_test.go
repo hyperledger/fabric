@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math"
 	"net/http"
@@ -1002,7 +1003,7 @@ func doBodyFailure(client *http.Client, req *http.Request, expectedStatus int, e
 	resp, err := client.Do(req)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.StatusCode).To(Equal(expectedStatus))
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	Expect(err).NotTo(HaveOccurred())
 	resp.Body.Close()
 

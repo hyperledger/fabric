@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"text/template"
@@ -241,14 +240,14 @@ func getConfig() (*Config, error) {
 	var configData string
 
 	if *genConfigFile != nil {
-		data, err := ioutil.ReadAll(*genConfigFile)
+		data, err := io.ReadAll(*genConfigFile)
 		if err != nil {
 			return nil, fmt.Errorf("Error reading configuration: %s", err)
 		}
 
 		configData = string(data)
 	} else if *extConfigFile != nil {
-		data, err := ioutil.ReadAll(*extConfigFile)
+		data, err := io.ReadAll(*extConfigFile)
 		if err != nil {
 			return nil, fmt.Errorf("Error reading configuration: %s", err)
 		}

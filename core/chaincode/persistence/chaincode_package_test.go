@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package persistence_test
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 
 	pb "github.com/hyperledger/fabric-protos-go/peer"
@@ -48,7 +48,7 @@ var _ = Describe("FallbackPackageLocator", func() {
 				Label: "Real-Label",
 			}))
 			Expect(mdBytes).To(MatchJSON(`{"type":"Fake-Type","path":"Fake-Path","label":"Real-Label","extra_field":"extra-field-value"}`))
-			code, err := ioutil.ReadAll(stream)
+			code, err := io.ReadAll(stream)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(code).To(Equal([]byte("package")))
 			Expect(fakeLegacyLocator.GetChaincodeDepSpecCallCount()).To(Equal(0))
@@ -92,7 +92,7 @@ var _ = Describe("FallbackPackageLocator", func() {
 					Type: "GOLANG",
 				}))
 				Expect(mdBytes).To(MatchJSON(`{"type":"GOLANG","path":"legacy-path","label":""}`))
-				code, err := ioutil.ReadAll(stream)
+				code, err := io.ReadAll(stream)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(code).To(Equal([]byte("legacy-code")))
 			})
@@ -322,7 +322,7 @@ var _ = Describe("ChaincodePackageStreamer", func() {
 		It("reads a file from the package", func() {
 			code, err := streamer.Code()
 			Expect(err).NotTo(HaveOccurred())
-			codeBytes, err := ioutil.ReadAll(code)
+			codeBytes, err := io.ReadAll(code)
 			code.Close()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(codeBytes).To(Equal([]byte("package")))
@@ -344,7 +344,7 @@ var _ = Describe("ChaincodePackageStreamer", func() {
 		It("reads a file from the package", func() {
 			code, err := streamer.File("code.tar.gz")
 			Expect(err).NotTo(HaveOccurred())
-			codeBytes, err := ioutil.ReadAll(code)
+			codeBytes, err := io.ReadAll(code)
 			code.Close()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(codeBytes).To(Equal([]byte("package")))

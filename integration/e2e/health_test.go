@@ -9,6 +9,7 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -133,7 +134,7 @@ func doHealthCheck(client *http.Client, url string) (int, *healthz.HealthStatus)
 	resp, err := client.Get(url)
 	Expect(err).NotTo(HaveOccurred())
 
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(resp.Body)
 	Expect(err).NotTo(HaveOccurred())
 	resp.Body.Close()
 
