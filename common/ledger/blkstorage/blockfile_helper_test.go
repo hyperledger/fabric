@@ -8,7 +8,6 @@ package blkstorage
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -102,7 +101,7 @@ func TestBinarySearchBlockFileNum(t *testing.T) {
 	blkfileMgrWrapper.addBlocks(blocks)
 
 	ledgerDir := (&Conf{blockStorageDir: blockStoreRootDir}).getLedgerBlockDir("testLedger")
-	files, err := ioutil.ReadDir(ledgerDir)
+	files, err := os.ReadDir(ledgerDir)
 	require.NoError(t, err)
 	require.Len(t, files, 11)
 

@@ -9,7 +9,7 @@ package persistence
 import (
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -84,7 +84,21 @@ func (f *FilesystemIO) ReadFile(filename string) ([]byte, error) {
 
 // ReadDir reads a directory from the filesystem
 func (f *FilesystemIO) ReadDir(dirname string) ([]os.FileInfo, error) {
-	return ioutil.ReadDir(dirname)
+	entries, err := os.ReadDir(dirname)
+	if err != nil {
+		return nil, err
+	}
+
+	infos := make([]fs.FileInfo, 0, len(entries))
+	for _, entry := range entries {
+		info, err := entry.Info()
+		if err != nil {
+			return nil, err
+		}
+		infos = append(infos, info)
+	}
+
+	return infos, nil
 }
 
 // MakeDir makes a directory on the filesystem (and any

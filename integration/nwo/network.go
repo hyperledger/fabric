@@ -11,7 +11,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
@@ -546,7 +545,7 @@ func (n *Network) PeerUserKey(p *Peer, user string) string {
 	)
 
 	// file names are the SKI and non-deterministic
-	keys, err := ioutil.ReadDir(keystore)
+	keys, err := os.ReadDir(keystore)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(keys).To(HaveLen(1))
 
@@ -565,7 +564,7 @@ func (n *Network) OrdererUserKey(o *Orderer, user string) string {
 	)
 
 	// file names are the SKI and non-deterministic
-	keys, err := ioutil.ReadDir(keystore)
+	keys, err := os.ReadDir(keystore)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(keys).To(HaveLen(1))
 

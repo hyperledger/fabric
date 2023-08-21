@@ -12,7 +12,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -183,7 +182,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 				// guaranteed that every block triggers a snapshot file being created,
 				// due to the mechanism to prevent excessive snapshotting.
 				Eventually(func() int {
-					files, err := ioutil.ReadDir(path.Join(o2SnapDir, channelID))
+					files, err := os.ReadDir(path.Join(o2SnapDir, channelID))
 					Expect(err).NotTo(HaveOccurred())
 					return len(files)
 				}, network.EventuallyTimeout).Should(Equal(i)) // snapshot interval is 1 KB, every block triggers snapshot
@@ -208,14 +207,14 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			By("Asserting that orderer1 has snapshot dir for application channel")
 			Eventually(func() int {
-				files, err := ioutil.ReadDir(o1SnapDir)
+				files, err := os.ReadDir(o1SnapDir)
 				Expect(err).NotTo(HaveOccurred())
 				return len(files)
 			}, network.EventuallyTimeout).Should(Equal(1))
 
 			By("Asserting that orderer1 receives and persists snapshot")
 			Eventually(func() int {
-				files, err := ioutil.ReadDir(path.Join(o1SnapDir, channelID))
+				files, err := os.ReadDir(path.Join(o1SnapDir, channelID))
 				Expect(err).NotTo(HaveOccurred())
 				return len(files)
 			}, network.EventuallyTimeout).Should(Equal(1))
@@ -380,7 +379,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			By("Clean snapshot folder of lagging behind node")
 			snapDir := path.Join(network.RootDir, "orderers", remainedOrderers[0].ID(), "etcdraft", "snapshot")
-			snapshots, err := ioutil.ReadDir(snapDir)
+			snapshots, err := os.ReadDir(snapDir)
 			Expect(err).NotTo(HaveOccurred())
 
 			for _, snap := range snapshots {
@@ -404,7 +403,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			By("Asserting that orderer1 receives and persists snapshot")
 			Eventually(func() int {
-				files, err := ioutil.ReadDir(path.Join(snapDir, "testchannel"))
+				files, err := os.ReadDir(path.Join(snapDir, "testchannel"))
 				Expect(err).NotTo(HaveOccurred())
 				return len(files)
 			}, network.EventuallyTimeout).Should(BeNumerically(">", 0))
