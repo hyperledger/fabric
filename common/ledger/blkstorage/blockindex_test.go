@@ -10,7 +10,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"hash"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -282,7 +281,7 @@ func TestExportUniqueTxIDs(t *testing.T) {
 	fileHashes, err := blkfileMgr.index.exportUniqueTxIDs(testSnapshotDir, testNewHashFunc)
 	require.NoError(t, err)
 	require.Empty(t, fileHashes)
-	files, err := ioutil.ReadDir(testSnapshotDir)
+	files, err := os.ReadDir(testSnapshotDir)
 	require.NoError(t, err)
 	require.Len(t, files, 0)
 

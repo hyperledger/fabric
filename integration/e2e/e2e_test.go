@@ -14,7 +14,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -470,7 +469,7 @@ var _ = Describe("EndToEnd", func() {
 
 			By("Update consensus metadata to increase snapshot interval")
 			snapDir := path.Join(network.RootDir, "orderers", orderer.ID(), "etcdraft", "snapshot", "testchannel")
-			files, err := ioutil.ReadDir(snapDir)
+			files, err := os.ReadDir(snapDir)
 			Expect(err).NotTo(HaveOccurred())
 			numOfSnaps := len(files)
 
@@ -490,7 +489,7 @@ var _ = Describe("EndToEnd", func() {
 			})
 
 			// assert that no new snapshot is taken because SnapshotIntervalSize has just enlarged
-			files, err = ioutil.ReadDir(snapDir)
+			files, err = os.ReadDir(snapDir)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(files)).To(Equal(numOfSnaps))
 

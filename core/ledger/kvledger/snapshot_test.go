@@ -10,7 +10,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -462,7 +461,7 @@ func TestSnapshotDirPathsCreation(t *testing.T) {
 
 	// verify that upon first time start, kvledgerProvider creates an empty temp dir and an empty final dir for the snapshots
 	for _, dir := range [2]string{inProgressSnapshotsPath, completedSnapshotsPath} {
-		f, err := ioutil.ReadDir(dir)
+		f, err := os.ReadDir(dir)
 		require.NoError(t, err)
 		require.Len(t, f, 0)
 	}
@@ -471,7 +470,7 @@ func TestSnapshotDirPathsCreation(t *testing.T) {
 	for _, dir := range [2]string{inProgressSnapshotsPath, completedSnapshotsPath} {
 		err := os.WriteFile(filepath.Join(dir, "testFile"), []byte("some junk data"), 0o644)
 		require.NoError(t, err)
-		f, err := ioutil.ReadDir(dir)
+		f, err := os.ReadDir(dir)
 		require.NoError(t, err)
 		require.Len(t, f, 1)
 	}
@@ -480,10 +479,10 @@ func TestSnapshotDirPathsCreation(t *testing.T) {
 	// potentially from a previous crash, from the temp dir but it does not remove any files from the final dir
 	provider.Close()
 	provider = testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
-	f, err := ioutil.ReadDir(inProgressSnapshotsPath)
+	f, err := os.ReadDir(inProgressSnapshotsPath)
 	require.NoError(t, err)
 	require.Len(t, f, 0)
-	f, err = ioutil.ReadDir(completedSnapshotsPath)
+	f, err = os.ReadDir(completedSnapshotsPath)
 	require.NoError(t, err)
 	require.Len(t, f, 1)
 }
@@ -622,7 +621,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		// make a copy of originalSnapshotDir
 		snapshotDirForTest = filepath.Join(conf.RootFSPath, "snapshot")
 		require.NoError(t, os.MkdirAll(snapshotDirForTest, 0o700))
-		files, err := ioutil.ReadDir(originalSnapshotDir)
+		files, err := os.ReadDir(originalSnapshotDir)
 		require.NoError(t, err)
 		for _, f := range files {
 			content, err := os.ReadFile(filepath.Join(originalSnapshotDir, f.Name()))
@@ -860,12 +859,12 @@ func verifySnapshotOutput(
 	o *expectedSnapshotOutput,
 ) {
 	inProgressSnapshotsPath := SnapshotsTempDirPath(o.snapshotRootDir)
-	f, err := ioutil.ReadDir(inProgressSnapshotsPath)
+	f, err := os.ReadDir(inProgressSnapshotsPath)
 	require.NoError(t, err)
 	require.Len(t, f, 0)
 
 	snapshotDir := SnapshotDirForLedgerBlockNum(o.snapshotRootDir, o.ledgerID, o.lastBlockNumber)
-	files, err := ioutil.ReadDir(snapshotDir)
+	files, err := os.ReadDir(snapshotDir)
 	require.NoError(t, err)
 	require.Len(t, files, len(o.expectedBinaryFiles)+2) // + 2 JSON files
 

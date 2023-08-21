@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package blkstorage
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -72,7 +71,7 @@ func TestResetToGenesisBlkMultipleBlkFiles(t *testing.T) {
 	provider.Close()
 
 	ledgerDir := (&Conf{blockStorageDir: blockStoreRootDir}).getLedgerBlockDir("ledger1")
-	files, err := ioutil.ReadDir(ledgerDir)
+	files, err := os.ReadDir(ledgerDir)
 	require.NoError(t, err)
 	require.Len(t, files, 5)
 	resetToGenesisBlk(ledgerDir)
@@ -199,7 +198,7 @@ func TestRecordHeight(t *testing.T) {
 }
 
 func assertBlocksDirOnlyFileWithGenesisBlock(t *testing.T, ledgerDir string, genesisBlock *common.Block) {
-	files, err := ioutil.ReadDir(ledgerDir)
+	files, err := os.ReadDir(ledgerDir)
 	require.NoError(t, err)
 	require.Len(t, files, 2)
 	require.Equal(t, "__backupGenesisBlockBytes", files[0].Name())

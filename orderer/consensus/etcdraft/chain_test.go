@@ -9,7 +9,6 @@ package etcdraft_test
 import (
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/user"
 	"path"
@@ -846,7 +845,7 @@ var _ = Describe("Chain", func() {
 						It("fails to load wal", func() {
 							skipIfRoot()
 
-							files, err := ioutil.ReadDir(walDir)
+							files, err := os.ReadDir(walDir)
 							Expect(err).NotTo(HaveOccurred())
 							for _, f := range files {
 								os.Chmod(path.Join(walDir, f.Name()), 0o300)
@@ -866,7 +865,7 @@ var _ = Describe("Chain", func() {
 					)
 
 					countFiles := func() int {
-						files, err := ioutil.ReadDir(snapDir)
+						files, err := os.ReadDir(snapDir)
 						Expect(err).NotTo(HaveOccurred())
 						return len(files)
 					}
@@ -2921,7 +2920,7 @@ var _ = Describe("Chain", func() {
 					c2.opts.SnapshotCatchUpEntries = 1
 
 					countSnapShotsForChain := func(cn *chain) int {
-						files, err := ioutil.ReadDir(cn.opts.SnapDir)
+						files, err := os.ReadDir(cn.opts.SnapDir)
 						Expect(err).NotTo(HaveOccurred())
 						return len(files)
 					}

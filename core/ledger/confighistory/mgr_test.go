@@ -10,7 +10,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"hash"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -349,7 +348,7 @@ func TestExportAndImportConfigHistory(t *testing.T) {
 		fileHashes, err := retriever.ExportConfigHistory(env.testSnapshotDir, testNewHashFunc)
 		require.NoError(t, err)
 		require.Empty(t, fileHashes)
-		files, err := ioutil.ReadDir(env.testSnapshotDir)
+		files, err := os.ReadDir(env.testSnapshotDir)
 		require.NoError(t, err)
 		require.Len(t, files, 0)
 	})

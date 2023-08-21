@@ -15,7 +15,6 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -526,7 +525,7 @@ func createUserSigner(t *testing.T) *signer {
 	identityDir := filepath.Join(testdir, "crypto-config", "peerOrganizations", "org1.example.com", "users", "User1@org1.example.com", "msp")
 	certPath := filepath.Join(identityDir, "signcerts", "User1@org1.example.com-cert.pem")
 	keyPath := filepath.Join(identityDir, "keystore")
-	keys, err := ioutil.ReadDir(keyPath)
+	keys, err := os.ReadDir(keyPath)
 	require.NoError(t, err)
 	require.Len(t, keys, 1)
 	keyPath = filepath.Join(keyPath, keys[0].Name())
@@ -539,7 +538,7 @@ func createAdminSigner(t *testing.T) *signer {
 	identityDir := filepath.Join(testdir, "crypto-config", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 	certPath := filepath.Join(identityDir, "signcerts", "Admin@org1.example.com-cert.pem")
 	keyPath := filepath.Join(identityDir, "keystore")
-	keys, err := ioutil.ReadDir(keyPath)
+	keys, err := os.ReadDir(keyPath)
 	require.NoError(t, err)
 	require.Len(t, keys, 1)
 	keyPath = filepath.Join(keyPath, keys[0].Name())

@@ -8,7 +8,6 @@ package msp
 
 import (
 	"encoding/pem"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -90,7 +89,7 @@ func getPemMaterialFromDir(dir string) ([][]byte, error) {
 	}
 
 	content := make([][]byte, 0)
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not read directory %s", dir)
 	}

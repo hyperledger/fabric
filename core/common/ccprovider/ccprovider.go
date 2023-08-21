@@ -8,7 +8,6 @@ package ccprovider
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -302,7 +301,7 @@ func GetCCPackage(buf []byte, bccsp bccsp.BCCSP) (CCPackage, error) {
 // been installed (but not necessarily instantiated) on the peer by searching
 // the chaincode install path
 func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
-	files, err := ioutil.ReadDir(chaincodeInstallPath)
+	files, err := os.ReadDir(chaincodeInstallPath)
 	if err != nil {
 		return nil, err
 	}
