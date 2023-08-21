@@ -24,6 +24,8 @@ Each tutorial describes the operational steps that need to be taken
 by a network administrator to create a channel. For a deeper dive, the :doc:`create_channel_config` tutorial
 introduces the conceptual aspects of creating a channel, followed by a
 separate discussion of :doc:`channel_policies`.
+The **Add an Orderer** tutorial shows the proper way to add/remove new orderer to
+an existing network and join it to a channel.
 
 
 .. toctree::
@@ -33,6 +35,7 @@ separate discussion of :doc:`channel_policies`.
    create_channel_test_net.md
    create_channel_config.md
    channel_policies.md
+   add_orderer.md
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
