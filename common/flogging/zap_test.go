@@ -9,7 +9,7 @@ package flogging_test
 import (
 	"bytes"
 	"errors"
-	"io/ioutil"
+	"io"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -282,7 +282,7 @@ func TestIsEnabledFor(t *testing.T) {
 		return l == zapcore.ErrorLevel
 	})
 
-	core := zapcore.NewCore(enc, zapcore.AddSync(ioutil.Discard), enabler)
+	core := zapcore.NewCore(enc, zapcore.AddSync(io.Discard), enabler)
 	zl := zap.New(core).Named("test")
 	fl := flogging.NewFabricLogger(zl)
 

@@ -914,7 +914,7 @@ func TestChannelConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	mockSignerSerializer := &mocks.SignerSerializer{}
-	mockSignerSerializer.SerializeReturns(api.PeerIdentityType(orgInChannelA), nil)
+	mockSignerSerializer.SerializeReturns(orgInChannelA, nil)
 	secAdv := peergossip.NewSecurityAdvisor(peergossip.NewDeserializersManager(mgmt.GetLocalMSP(cryptoProvider)))
 	gossipConfig, err := gossip.GlobalConfig(endpoint, nil)
 	require.NoError(t, err)
