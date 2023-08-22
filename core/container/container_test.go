@@ -9,7 +9,6 @@ package container_test
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -41,7 +40,7 @@ var _ = Describe("Router", func() {
 				Path: "package-path",
 			},
 			[]byte(`{"some":"json"}`),
-			ioutil.NopCloser(bytes.NewBuffer([]byte("code-bytes"))),
+			io.NopCloser(bytes.NewBuffer([]byte("code-bytes"))),
 			nil,
 		)
 

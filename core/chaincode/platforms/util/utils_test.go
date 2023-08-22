@@ -11,7 +11,7 @@ import (
 	"bytes"
 	"encoding/base32"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"runtime"
 	"strings"
@@ -60,7 +60,7 @@ func TestDockerBuild(t *testing.T) {
 	err = client.BuildImage(docker.BuildImageOptions{
 		Name:         imageName,
 		InputStream:  is,
-		OutputStream: ioutil.Discard,
+		OutputStream: io.Discard,
 	})
 	require.NoError(t, err, "failed to build base image")
 	defer client.RemoveImageExtended(imageName, docker.RemoveImageOptions{Force: true})
@@ -74,7 +74,7 @@ func TestDockerBuild(t *testing.T) {
 			Image:        imageName,
 			Cmd:          "/bin/true",
 			InputStream:  codepackage,
-			OutputStream: ioutil.Discard,
+			OutputStream: io.Discard,
 		},
 		client,
 	)

@@ -12,7 +12,6 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -93,7 +92,7 @@ func (fpl *FallbackPackageLocator) GetChaincodePackage(packageID string) (*Chain
 
 	return md,
 		mdBytes,
-		ioutil.NopCloser(bytes.NewBuffer(cds.CodePackage)),
+		io.NopCloser(bytes.NewBuffer(cds.CodePackage)),
 		nil
 }
 
