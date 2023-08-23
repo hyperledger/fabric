@@ -74,7 +74,6 @@ type DeliverStreamer interface {
 //
 // In the peer, with gossip and a dynamic leader, stopping causes the gossip leader to yield.
 // In the peer, with gossip and a static leader, we never stop.
-// In the orderer, we never stop.
 type MaxRetryDurationExceededHandler func() (stopRetries bool)
 
 const backoffExponentBase = 1.2
@@ -150,7 +149,7 @@ func (d *Deliverer) DeliverBlocks() {
 			totalDuration += sleepDuration
 			if totalDuration > d.MaxRetryDuration {
 				if d.MaxRetryDurationExceededHandler() {
-					d.Logger.Warningf("attempted to retry block delivery for more than peer.deliveryclient.reconnectTotalTimeThreshold duration %v, giving up", d.MaxRetryDuration)
+					d.Logger.Warningf("attempted to retry block delivery for more than peer.deliveryclient.reconnectTotalTimeThreshold duration (%s), giving up", d.MaxRetryDuration)
 					return
 				}
 				d.Logger.Warningf("peer is a static leader, ignoring peer.deliveryclient.reconnectTotalTimeThreshold")
@@ -203,6 +202,7 @@ func (d *Deliverer) DeliverBlocks() {
 		blockReceiver.Start() // starts an internal goroutine
 		onSuccess := func(blockNum uint64) {
 			failureCounter = 0
+			totalDuration = time.Duration(0)
 		}
 		if err := blockReceiver.ProcessIncoming(onSuccess); err != nil {
 			switch err.(type) {
@@ -211,6 +211,7 @@ func (d *Deliverer) DeliverBlocks() {
 			case *ErrStopping:
 				// Don't count it as an error, it is a signal to stop.
 			default:
+				d.Logger.Warningf("Failure in processing incoming messages: %s", err)
 				failureCounter++
 			}
 		}
