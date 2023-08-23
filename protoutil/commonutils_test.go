@@ -422,6 +422,22 @@ func TestIsConfigBlock(t *testing.T) {
 
 	result = IsConfigBlock(block)
 	require.False(t, result, "IsConfigBlock returns false for blocks with MESSAGE envelope")
+
+	// scenario 4: Data with more than one tx
+	result = IsConfigBlock(&cb.Block{
+		Header:   nil,
+		Data:     &cb.BlockData{Data: [][]byte{{1, 2, 3, 4}, {1, 2, 3, 4}}},
+		Metadata: nil,
+	})
+	require.False(t, result, "IsConfigBlock returns false for blocks with more than one transaction")
+
+	// scenario 5: nil data
+	result = IsConfigBlock(&cb.Block{
+		Header:   nil,
+		Data:     nil,
+		Metadata: nil,
+	})
+	require.False(t, result, "IsConfigBlock returns false for blocks with no data")
 }
 
 func TestEnvelopeToConfigUpdate(t *testing.T) {
