@@ -15,6 +15,8 @@ import (
 	"path"
 	"reflect"
 
+	"github.com/SmartBFT-Go/consensus/pkg/api"
+	"github.com/SmartBFT-Go/consensus/pkg/wal"
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
@@ -63,6 +65,8 @@ type Consenter struct {
 	ClusterDialer    *cluster.PredicateDialer
 	Conf             *localconfig.TopLevel
 	Metrics          *Metrics
+	MetricsBFT       *api.Metrics
+	MetricsWalBFT    *wal.Metrics
 	BCCSP            bccsp.BCCSP
 	ClusterService   *cluster.ClusterService
 }
@@ -90,6 +94,10 @@ func New(
 
 	logger.Infof("WAL Directory is %s", walConfig.WALDir)
 
+	mpc := &MetricProviderConverter{
+		metricsProvider: metricsProvider,
+	}
+
 	consenter := &Consenter{
 		Registrar:        r,
 		GetPolicyManager: pmr,
@@ -100,6 +108,8 @@ func New(
 		SignerSerializer: signerSerializer,
 		WALBaseDir:       walConfig.WALDir,
 		Metrics:          NewMetrics(metricsProvider),
+		MetricsBFT:       api.NewMetrics(mpc, "channel"),
+		MetricsWalBFT:    wal.NewMetrics(mpc, "channel"),
 		CreateChain:      r.CreateChain,
 		BCCSP:            BCCSP,
 	}
@@ -191,7 +201,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 		Logger:               c.Logger,
 	}
 
-	chain, err := NewChain(configValidator, (uint64)(selfID), config, path.Join(c.WALBaseDir, support.ChannelID()), puller, c.Comm, c.SignerSerializer, c.GetPolicyManager(support.ChannelID()), support, c.Metrics, c.BCCSP)
+	chain, err := NewChain(configValidator, (uint64)(selfID), config, path.Join(c.WALBaseDir, support.ChannelID()), puller, c.Comm, c.SignerSerializer, c.GetPolicyManager(support.ChannelID()), support, c.Metrics, c.MetricsBFT, c.MetricsWalBFT, c.BCCSP)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed creating a new BFTChain")
 	}

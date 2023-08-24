@@ -17,7 +17,6 @@ import (
 
 	"github.com/SmartBFT-Go/consensus/pkg/api"
 	smartbft "github.com/SmartBFT-Go/consensus/pkg/consensus"
-	"github.com/SmartBFT-Go/consensus/pkg/metrics/disabled"
 	"github.com/SmartBFT-Go/consensus/pkg/types"
 	"github.com/SmartBFT-Go/consensus/pkg/wal"
 	"github.com/SmartBFT-Go/consensus/smartbftprotos"
@@ -83,6 +82,8 @@ type BFTChain struct {
 	verifier         *Verifier
 	assembler        *Assembler
 	Metrics          *Metrics
+	MetricsBFT       *api.Metrics
+	MetricsWalBFT    *wal.Metrics
 	bccsp            bccsp.BCCSP
 
 	statusReportMutex sync.Mutex
@@ -102,8 +103,9 @@ func NewChain(
 	policyManager policies.Manager,
 	support consensus.ConsenterSupport,
 	metrics *Metrics,
+	metricsBFT *api.Metrics,
+	metricsWalBFT *wal.Metrics,
 	bccsp bccsp.BCCSP,
-
 ) (*BFTChain, error) {
 	requestInspector := &RequestInspector{
 		ValidateIdentityStructure: func(_ *msp.SerializedIdentity) error {
@@ -132,7 +134,9 @@ func NewChain(
 			IsLeader:             metrics.IsLeader.With("channel", support.ChannelID()),
 			LeaderID:             metrics.LeaderID.With("channel", support.ChannelID()),
 		},
-		bccsp: bccsp,
+		MetricsBFT:    metricsBFT.With("channel", support.ChannelID()),
+		MetricsWalBFT: metricsWalBFT.With("channel", support.ChannelID()),
+		bccsp:         bccsp,
 	}
 
 	lastBlock := LastBlockFromLedgerOrPanic(support, c.Logger)
@@ -159,7 +163,7 @@ func NewChain(
 	// Setup communication with list of remotes notes for the new channel
 	c.Comm.Configure(c.support.ChannelID(), rtc.RemoteNodes)
 
-	if err := c.consensus.ValidateConfiguration(rtc.Nodes); err != nil {
+	if err = c.consensus.ValidateConfiguration(rtc.Nodes); err != nil {
 		return nil, errors.Wrap(err, "failed to verify SmartBFT-Go configuration")
 	}
 
@@ -185,7 +189,9 @@ func bftSmartConsensusBuild(
 	var walInitState [][]byte
 
 	c.Logger.Infof("Initializing a WAL for chain %s, on dir: %s", c.support.ChannelID(), c.WALDir)
-	consensusWAL, walInitState, err = wal.InitializeAndReadAll(c.Logger, c.WALDir, wal.DefaultOptions())
+	opt := wal.DefaultOptions()
+	opt.Metrics = c.MetricsWalBFT
+	consensusWAL, walInitState, err = wal.InitializeAndReadAll(c.Logger, c.WALDir, opt)
 	if err != nil {
 		c.Logger.Panicf("failed to initialize a WAL for chain %s, err %s", c.support.ChannelID(), err)
 	}
@@ -237,7 +243,7 @@ func bftSmartConsensusBuild(
 				return c.RuntimeConfig.Load().(RuntimeConfig).LastConfigBlock.Header.Number
 			},
 		},
-		MetricsProvider: api.NewCustomerProvider(&disabled.Provider{}),
+		Metrics: c.MetricsBFT,
 		Metadata: &smartbftprotos.ViewMetadata{
 			ViewId:                    latestMetadata.ViewId,
 			LatestSequence:            latestMetadata.LatestSequence,
@@ -313,7 +319,7 @@ func (c *BFTChain) submit(env *cb.Envelope, configSeq uint64) error {
 	}
 
 	c.Logger.Debugf("Consensus.SubmitRequest, node id %d", c.Config.SelfID)
-	if err := c.consensus.SubmitRequest(reqBytes); err != nil {
+	if err = c.consensus.SubmitRequest(reqBytes); err != nil {
 		return errors.Wrapf(err, "failed to submit request")
 	}
 	return nil
@@ -371,7 +377,7 @@ func (c *BFTChain) Deliver(proposal types.Proposal, signatures []types.Signature
 
 	for _, s := range signatures {
 		sig := &Signature{}
-		if err := sig.Unmarshal(s.Msg); err != nil {
+		if err = sig.Unmarshal(s.Msg); err != nil {
 			c.Logger.Errorf("Failed unmarshaling signature from %d: %v", s.ID, err)
 			c.Logger.Errorf("Offending signature Msg: %s", base64.StdEncoding.EncodeToString(s.Msg))
 			c.Logger.Errorf("Offending signature Value: %s", base64.StdEncoding.EncodeToString(s.Value))

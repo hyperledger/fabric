@@ -6,7 +6,6 @@
 package bft
 
 import (
-	"encoding/base64"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -93,9 +92,9 @@ type ViewChanger struct {
 	backOffFactor       uint64
 
 	// Runtime
-	MetricsViewChange         *MetricsViewChange
-	MetricsBlacklist          *MetricsBlacklist
-	MetricsView               *MetricsView
+	MetricsViewChange         *api.MetricsViewChange
+	MetricsBlacklist          *api.MetricsBlacklist
+	MetricsView               *api.MetricsView
 	Restore                   chan struct{}
 	InMsqQSize                int
 	incMsgs                   chan *incMsg
@@ -123,7 +122,7 @@ func (v *ViewChanger) Start(startViewNumber uint64) {
 	v.informChan = make(chan uint64, 1)
 
 	if v.MetricsViewChange == nil {
-		v.MetricsViewChange = NewMetricsViewChange(api.NewCustomerProvider(&disabled.Provider{}))
+		v.MetricsViewChange = api.NewMetricsViewChange(&disabled.Provider{})
 	}
 
 	v.quorum, v.f = computeQuorum(v.N)
@@ -642,7 +641,7 @@ func (v *ViewChanger) checkLastDecision(svd *protos.SignedViewData, sender uint6
 	// Make note that we have advanced the sequence during a view change,
 	// so our in-flight sequence may be behind.
 	md := &protos.ViewMetadata{}
-	if err := proto.Unmarshal(proposal.Metadata, md); err != nil {
+	if err = proto.Unmarshal(proposal.Metadata, md); err != nil {
 		v.Logger.Panicf("Node %d got %s from %d, but was unable to unmarshal proposal metadata, err: %v", v.SelfID, signedViewDataToString(svd), sender, err)
 	}
 	v.committedDuringViewChange = md
@@ -1168,15 +1167,13 @@ func (v *ViewChanger) processNewViewMsg(msg *protos.NewView) {
 }
 
 func (v *ViewChanger) deliverDecision(proposal types.Proposal, signatures []types.Signature) {
-	v.Logger.Debugf("Delivering to app the last decision proposal")
+	v.Logger.Debugf("Delivering to app from deliverDecision the last decision proposal")
 	reconfig := v.Application.Deliver(proposal, signatures)
 	if reconfig.InLatestDecision {
 		v.close()
 	}
-	if v.isProposalLatestComparedToCheckpoint(proposal) {
-		// Only set the proposal in case it is later than the already known checkpoint.
-		v.Checkpoint.Set(proposal, signatures)
-	}
+	v.Logger.Debugf("Delivering end to app from deliverDecision the last decision proposal")
+
 	requests := v.Verifier.RequestsFromProposal(proposal)
 	for _, reqInfo := range requests {
 		if err := v.RequestsTimer.RemoveRequest(reqInfo); err != nil {
@@ -1184,20 +1181,6 @@ func (v *ViewChanger) deliverDecision(proposal types.Proposal, signatures []type
 		}
 	}
 	v.Pruner.MaybePruneRevokedRequests()
-}
-
-func (v *ViewChanger) isProposalLatestComparedToCheckpoint(proposal types.Proposal) bool {
-	checkpointProposal, _ := v.Checkpoint.Get()
-	return v.sequenceFromProposal(proposal.Metadata) > v.sequenceFromProposal(checkpointProposal.Metadata)
-}
-
-func (v *ViewChanger) sequenceFromProposal(rawMetadata []byte) uint64 {
-	md := &protos.ViewMetadata{}
-	if err := proto.Unmarshal(rawMetadata, md); err != nil {
-		v.Logger.Panicf("Failed extracting view metadata from proposal metadata %s: %v",
-			base64.StdEncoding.EncodeToString(rawMetadata), err)
-	}
-	return md.LatestSequence
 }
 
 func (v *ViewChanger) commitInFlightProposal(proposal *protos.Proposal) (success bool) {
@@ -1324,15 +1307,13 @@ func (v *ViewChanger) commitInFlightProposal(proposal *protos.Proposal) (success
 // Decide delivers to the application and informs the view changer after delivery
 func (v *ViewChanger) Decide(proposal types.Proposal, signatures []types.Signature, requests []types.RequestInfo) {
 	v.inFlightView.stop()
-	v.Logger.Debugf("Delivering to app the last decision proposal")
+	v.Logger.Debugf("Delivering to app from Decide the last decision proposal")
 	reconfig := v.Application.Deliver(proposal, signatures)
 	if reconfig.InLatestDecision {
 		v.close()
 	}
-	if v.isProposalLatestComparedToCheckpoint(proposal) {
-		// Only set the proposal in case it is later than the already known checkpoint.
-		v.Checkpoint.Set(proposal, signatures)
-	}
+	v.Logger.Debugf("Delivering end to app from Decide the last decision proposal")
+
 	for _, reqInfo := range requests {
 		if err := v.RequestsTimer.RemoveRequest(reqInfo); err != nil {
 			v.Logger.Warnf("Error during remove of request %s from the pool, err: %v", reqInfo, err)

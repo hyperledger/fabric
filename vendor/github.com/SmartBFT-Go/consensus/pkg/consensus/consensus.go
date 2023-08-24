@@ -37,7 +37,7 @@ type Consensus struct {
 	RequestInspector   bft.RequestInspector
 	Synchronizer       bft.Synchronizer
 	Logger             bft.Logger
-	MetricsProvider    *bft.CustomerProvider
+	Metrics            *bft.Metrics
 	Metadata           *protos.ViewMetadata
 	LastProposal       types.Proposal
 	LastSignatures     []types.Signature
@@ -62,12 +62,8 @@ type Consensus struct {
 
 	consensusLock sync.RWMutex
 
-	reconfigChan     chan types.Reconfig
-	metricsBlacklist *algorithm.MetricsBlacklist
-	metricsConsensus *algorithm.MetricsConsensus
-	metricsView      *algorithm.MetricsView
-
-	running uint64
+	reconfigChan chan types.Reconfig
+	running      uint64
 }
 
 func (c *Consensus) Complain(viewNum uint64, stopView bool) {
@@ -88,7 +84,7 @@ func (c *Consensus) Deliver(proposal types.Proposal, signatures []types.Signatur
 func (c *Consensus) Sync() types.SyncResponse {
 	begin := time.Now()
 	syncResponse := c.Synchronizer.Sync()
-	c.metricsConsensus.LatencySync.Observe(time.Since(begin).Seconds())
+	c.Metrics.MetricsConsensus.LatencySync.Observe(time.Since(begin).Seconds())
 	if syncResponse.Reconfig.InReplicatedDecisions {
 		c.Logger.Debugf("Detected a reconfig in sync")
 		c.reconfigChan <- types.Reconfig{
@@ -113,12 +109,9 @@ func (c *Consensus) Start() error {
 		return errors.Wrapf(err, "configuration is invalid")
 	}
 
-	if c.MetricsProvider == nil {
-		c.MetricsProvider = bft.NewCustomerProvider(&disabled.Provider{})
+	if c.Metrics == nil {
+		c.Metrics = bft.NewMetrics(&disabled.Provider{})
 	}
-	c.metricsConsensus = algorithm.NewMetricsConsensus(c.MetricsProvider)
-	c.metricsBlacklist = algorithm.NewMetricsBlacklist(c.MetricsProvider)
-	c.metricsView = algorithm.NewMetricsView(c.MetricsProvider)
 
 	c.consensusDone.Add(1)
 	c.stopOnce = sync.Once{}
@@ -128,6 +121,7 @@ func (c *Consensus) Start() error {
 	defer c.consensusLock.Unlock()
 
 	c.setNodes(c.Comm.Nodes())
+	c.Metrics.Initialize(c.nodes)
 
 	c.inFlight = &algorithm.InFlightData{}
 
@@ -149,7 +143,7 @@ func (c *Consensus) Start() error {
 		AutoRemoveTimeout: c.Config.RequestAutoRemoveTimeout,
 		RequestMaxBytes:   c.Config.RequestMaxBytes,
 		SubmitTimeout:     c.Config.RequestPoolSubmitTimeout,
-		MetricsProvider:   c.MetricsProvider,
+		Metrics:           c.Metrics.MetricsRequestPool,
 	}
 	c.submittedChan = make(chan struct{}, 1)
 	c.Pool = algorithm.NewPool(c.Logger, c.RequestInspector, c.controller, opts, c.submittedChan)
@@ -222,7 +216,20 @@ func (c *Consensus) reconfig(reconfig types.Reconfig) {
 		c.Logger.Panicf("Configuration is invalid, error: %v", err)
 	}
 
+	tmp := c.nodes
+	var newNodes []uint64
 	c.setNodes(reconfig.CurrentNodes)
+
+OuterLoop:
+	for _, i := range c.nodes {
+		for _, j := range tmp {
+			if i == j {
+				continue OuterLoop
+			}
+		}
+		newNodes = append(newNodes, i)
+	}
+	c.Metrics.MetricsBlacklist.Initialize(newNodes)
 
 	c.createComponents()
 	opts := algorithm.PoolOptions{
@@ -250,7 +257,7 @@ func (c *Consensus) reconfig(reconfig types.Reconfig) {
 
 	c.Pool.RestartTimers()
 
-	c.metricsConsensus.CountConsensusReconfig.Add(1)
+	c.Metrics.MetricsConsensus.CountConsensusReconfig.Add(1)
 
 	c.Logger.Debugf("Reconfig is done")
 }
@@ -312,8 +319,8 @@ func (c *Consensus) proposalMaker() *algorithm.ProposalMaker {
 		Comm:               c.controller,
 		Decider:            c.controller,
 		Logger:             c.Logger,
-		MetricsBlacklist:   c.metricsBlacklist,
-		MetricsView:        c.metricsView,
+		MetricsBlacklist:   c.Metrics.MetricsBlacklist,
+		MetricsView:        c.Metrics.MetricsView,
 		Signer:             c.Signer,
 		MembershipNotifier: c.MembershipNotifier,
 		SelfID:             c.Config.SelfID,
@@ -391,9 +398,9 @@ func (c *Consensus) createComponents() {
 		ResendTimeout:     c.Config.ViewChangeResendInterval,
 		ViewChangeTimeout: c.Config.ViewChangeTimeout,
 		InMsqQSize:        int(c.Config.IncomingMessageBufferSize),
-		MetricsViewChange: algorithm.NewMetricsViewChange(c.MetricsProvider),
-		MetricsBlacklist:  c.metricsBlacklist,
-		MetricsView:       c.metricsView,
+		MetricsViewChange: c.Metrics.MetricsViewChange,
+		MetricsBlacklist:  c.Metrics.MetricsBlacklist,
+		MetricsView:       c.Metrics.MetricsView,
 	}
 
 	c.collector = &algorithm.StateCollector{
@@ -425,8 +432,10 @@ func (c *Consensus) createComponents() {
 		Collector:          c.collector,
 		State:              c.state,
 		InFlight:           c.inFlight,
-		MetricsView:        c.metricsView,
+		MetricsView:        c.Metrics.MetricsView,
 	}
+	c.controller.Deliver = &algorithm.MutuallyExclusiveDeliver{C: c.controller}
+
 	c.viewChanger.Application = &algorithm.MutuallyExclusiveDeliver{C: c.controller}
 	c.viewChanger.Comm = c.controller
 	c.viewChanger.Synchronizer = c.controller
