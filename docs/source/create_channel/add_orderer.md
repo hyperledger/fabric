@@ -4,7 +4,7 @@
 Fabric supports adding new orderer to an existing functioning network.
 We will lay out a simple scenario of such functionality using the **test-network** sample (from [fabric samples repo](https://github.com/hyperledger/fabric-samples)).
 
-### Exending the test network to support the fifth orderer
+### Extending the test network to support the fifth orderer
 We extend the `docker-compose-bft` and the `crypto-config-orderer.yaml` to support 5 orderers.\
 In the `crypto-config-orderer.yaml` we should add:
 ```yaml
@@ -16,53 +16,53 @@ In the `crypto-config-orderer.yaml` we should add:
 In the `docker-compose-bft` we should create a new volume in the volumes section:
 ```yaml
 volumes:
-  - ...
-  - orderer5.example.com
+  ...
+  orderer5.example.com
 ```
 Now, add the definition of the new orderer:
 (Note that you can change the ports according to your needs)
 ```yaml
-orderer5.example.com:
-container_name: orderer5.example.com
-image: hyperledger/fabric-orderer:latest
-labels:
-  service: hyperledger-fabric
-environment:
-  - FABRIC_LOGGING_SPEC=DEBUG
-  - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
-  - ORDERER_GENERAL_LISTENPORT=7060
-  - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
-  - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
-  # enabled TLS
-  - ORDERER_GENERAL_TLS_ENABLED=true
-  - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
-  - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
-  - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
-  - ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt
-  - ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key
-  - ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
-  - ORDERER_GENERAL_BOOTSTRAPMETHOD=none
-  - ORDERER_CHANNELPARTICIPATION_ENABLED=true
-  - ORDERER_ADMIN_TLS_ENABLED=true
-  - ORDERER_ADMIN_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
-  - ORDERER_ADMIN_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
-  - ORDERER_ADMIN_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
-  - ORDERER_ADMIN_TLS_CLIENTROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
-  - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:7061
-  - ORDERER_OPERATIONS_LISTENADDRESS=orderer5.example.com:9450
-  - ORDERER_METRICS_PROVIDER=prometheus
-working_dir: /root
-command: orderer
-volumes:
-  - ../organizations/ordererOrganizations/example.com/orderers/orderer5.example.com/msp:/var/hyperledger/orderer/msp
-  - ../organizations/ordererOrganizations/example.com/orderers/orderer5.example.com/tls:/var/hyperledger/orderer/tls
-  - orderer5.example.com:/var/hyperledger/production/orderer
-ports:
-  - 7060:7060
-  - 7061:7061
-  - 9450:9450
-networks:
-  - test
+  orderer5.example.com:
+    container_name: orderer5.example.com
+    image: hyperledger/fabric-orderer:latest
+    labels:
+      service: hyperledger-fabric
+    environment:
+      - FABRIC_LOGGING_SPEC=DEBUG
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_LISTENPORT=7060
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
+      # enabled TLS
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_GENERAL_BOOTSTRAPMETHOD=none
+      - ORDERER_CHANNELPARTICIPATION_ENABLED=true
+      - ORDERER_ADMIN_TLS_ENABLED=true
+      - ORDERER_ADMIN_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_ADMIN_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_ADMIN_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_ADMIN_TLS_CLIENTROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:7061
+      - ORDERER_OPERATIONS_LISTENADDRESS=orderer5.example.com:9450
+      - ORDERER_METRICS_PROVIDER=prometheus
+    working_dir: /root
+    command: orderer
+    volumes:
+      - ../organizations/ordererOrganizations/example.com/orderers/orderer5.example.com/msp:/var/hyperledger/orderer/msp
+      - ../organizations/ordererOrganizations/example.com/orderers/orderer5.example.com/tls:/var/hyperledger/orderer/tls
+      - orderer5.example.com:/var/hyperledger/production/orderer
+    ports:
+      - 7060:7060
+      - 7061:7061
+      - 9450:9450
+    networks:
+      - test
 ```
 
 We also add the following volume to the CLI container definition:
@@ -78,7 +78,7 @@ Use:
 ./network.sh createChannel -bft
 ```
 This command will start a network of 4 orderers and 2 peers and 1 CLI, a container of the fifth orderer will be started
-as well, but is not a part of the network at this stage.
+as well, but is not a part of the network at this stage. This command also will create a channel named "mychannel" in which the 4 orderers and the 2 peers participate.
 
 ## Altering the config
 The following commands should be executing from the CLI container.
@@ -91,6 +91,8 @@ export CORE_PEER_LOCALMSPID="Org1MSP"
 export CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG1_CA
 export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
 export CORE_PEER_ADDRESS=localhost:7051
+
+export ORDERER_CA=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 ```
 Now, in order to get the last config block we will make:
 ```shell
@@ -197,11 +199,11 @@ We made this process easy and created a Python script which can be found in the 
 that does just that (steps 1-4)!
 Example for the script usage:
 ```shell
-python3 add_new_orderer_to_config.py original_config.json modified_config.json
--a orderer5.example.com:7060
--i .../test-network/organizations/ordererOrganizations/example.com/orderers/orderer5.example.com/msp/signcerts/orderer5.example.com-cert.pem
--s .../test-network/organizations/ordererOrganizations/example.com/orderers/orderer5.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
--c .../test-network/organizations/ordererOrganizations/example.com/orderers/orderer5.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+python3 scripts/add_new_orderer_to_config.py original_config.json modified_config.json \
+-a orderer5.example.com:7060 \
+-i ./organizations/ordererOrganizations/example.com/orderers/orderer5.example.com/msp/signcerts/orderer5.example.com-cert.pem \
+-s ./organizations/ordererOrganizations/example.com/orderers/orderer5.example.com/msp/tlscacerts/tlsca.example.com-cert.pem \
+-c ./organizations/ordererOrganizations/example.com/orderers/orderer5.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 ```
 
 Calculate the update using:
@@ -218,7 +220,7 @@ configtxlator proto_encode --input config_update_in_envelope.json --type common.
 if it was created on your local machine, please copy it to the CLI container.
 
 ## Make the update
-From the CLI we need to sign the TX using one of the peers' organizations and the orderes' organization.
+From the CLI we need to sign the TX using one of the peers' organizations and the orderers' organization.
 Since we are in the context of the peer organization `Org1`, we can simply:
 ```shell
 peer channel signconfigtx -f envelope.pb
@@ -250,8 +252,8 @@ The new orderer needs to run the following command:
 
 ```shell
 export OSN_TLS_CA_ROOT_CERT=${PWD}/organizations/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem
-export ADMIN_TLS_SIGN_CERT=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/tls/server.crt
-export ADMIN_TLS_PRIVATE_KEY=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer4.example.com/tls/server.key
+export ADMIN_TLS_SIGN_CERT=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer5.example.com/tls/server.crt
+export ADMIN_TLS_PRIVATE_KEY=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer5.example.com/tls/server.key
 
 osnadmin channel join --channelID [CHANNEL_NAME]  --config-block [CHANNEL_CONFIG_BLOCK] -o [ORDERER_ADMIN_LISTENADDRESS] --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
 ```
@@ -293,6 +295,22 @@ DEBU [orderer.consensus.smartbft.consensus] followerTick -> Last heartbeat from 
 DEBU [orderer.consensus.smartbft.consensus] followerTick -> Last heartbeat from 1 was 3.99966021s ago channel=mychannel
 DEBU [orderer.consensus.smartbft.consensus] followerTick -> Last heartbeat from 1 was 5.000054669s ago channel=mychannel
 DEBU [orderer.consensus.smartbft.consensus] followerTick -> Last heartbeat from 1 was 5.999811586s ago channel=mychannel
+```
+
+You can use the following command to confirm that the status of the added orderer:
+```shell
+osnadmin channel list --channelID mychannel -o localhost:7061 --ca-file "$OSN_TLS_CA_ROOT_CERT" --client-cert "$ADMIN_TLS_SIGN_CERT" --client-key "$ADMIN_TLS_PRIVATE_KEY"
+```
+
+You should see something similar to the following output that the consensusRelation status for the added orderer automatically changes to consenter:
+```shell
+{
+        "name": "mychannel",
+        "url": "/participation/v1/channels/mychannel",
+        "consensusRelation": "consenter",
+        "status": "active",
+        "height": 4
+}
 ```
 
 You can read further about the osnadmin command [here](https://hyperledger-fabric.readthedocs.io/en/latest/create_channel/create_channel_participation.html#step-two-use-the-osnadmin-cli-to-add-the-first-orderer-to-the-channel).
