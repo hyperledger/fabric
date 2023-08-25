@@ -6,7 +6,6 @@
 package bft
 
 import (
-	"errors"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -101,6 +100,7 @@ type Controller struct {
 	Logger             api.Logger
 	Assembler          api.Assembler
 	Application        api.Application
+	Deliver            api.Application
 	FailureDetector    FailureDetector
 	Synchronizer       api.Synchronizer
 	Signer             api.Signer
@@ -112,7 +112,7 @@ type Controller struct {
 	Collector          *StateCollector
 	State              State
 	InFlight           *InFlightData
-	MetricsView        *MetricsView
+	MetricsView        *api.MetricsView
 	quorum             int
 
 	currView Proposer
@@ -423,6 +423,8 @@ func (c *Controller) changeView(newViewNumber uint64, newProposalSequence uint64
 
 func (c *Controller) abortView(view uint64) bool {
 	currView := c.getCurrentViewNumber()
+	c.Logger.Debugf("view for abort %d, current view %d", view, currView)
+
 	if view < currView {
 		c.Logger.Debugf("Was asked to abort view %d but the current view with number %d", view, currView)
 		return false
@@ -504,6 +506,7 @@ func (c *Controller) run() {
 		case d := <-c.decisionChan:
 			c.decide(d)
 		case newView := <-c.viewChange:
+			c.Logger.Debugf("get newView from viewChange")
 			c.changeView(newView.viewNumber, newView.proposalSeq, 0)
 		case view := <-c.abortViewChan:
 			c.abortView(view)
@@ -512,11 +515,13 @@ func (c *Controller) run() {
 		case <-c.leaderToken:
 			c.propose()
 		case <-c.syncChan:
+			c.Logger.Debugf("get msg from syncChan")
 			view, seq, dec := c.sync()
 			c.MaybePruneRevokedRequests()
 			if view > 0 || seq > 0 {
 				c.changeView(view, seq, dec)
 			} else {
+				c.Logger.Debugf("view and seq is zero")
 				vs := c.ViewSequences.Load()
 				if vs == nil {
 					c.Logger.Panicf("ViewSequences is nil")
@@ -528,13 +533,11 @@ func (c *Controller) run() {
 }
 
 func (c *Controller) decide(d decision) {
-	begin := time.Now()
-	reconfig := c.Application.Deliver(d.proposal, d.signatures)
-	c.MetricsView.LatencyBatchSave.Observe(time.Since(begin).Seconds())
+	c.Logger.Debugf("Delivering to app from Controller decide the last decision proposal")
+	reconfig := c.Deliver.Deliver(d.proposal, d.signatures)
 	if reconfig.InLatestDecision {
 		c.close()
 	}
-	c.Checkpoint.Set(d.proposal, d.signatures)
 	c.Logger.Debugf("Node %d delivered proposal", c.ID)
 	c.removeDeliveredFromPool(d)
 	select {
@@ -592,16 +595,6 @@ func (c *Controller) sync() (viewNum uint64, seq uint64, decisions uint64) {
 	if syncResponse.Reconfig.InReplicatedDecisions {
 		c.close()
 		c.ViewChanger.close()
-	}
-
-	if len(syncResponse.RequestDel) != 0 {
-		c.RequestPool.Prune(func(bytes []byte) error {
-			return errors.New("need all delete")
-		})
-
-		for i := range syncResponse.RequestDel {
-			_ = c.RequestPool.RemoveRequest(syncResponse.RequestDel[i])
-		}
 	}
 
 	decision := syncResponse.Latest
@@ -948,7 +941,7 @@ func (med *MutuallyExclusiveDeliver) Deliver(proposal types.Proposal, signature 
 	// do not proceed to commit the proposal, but instead invoke a sync and update the checkpoint once more
 	// to match the sync result.
 	latest := med.C.latestSeq()
-	if latest >= pendingProposalMetadata.LatestSequence {
+	if latest != 0 && latest >= pendingProposalMetadata.LatestSequence {
 		med.C.Logger.Infof("Attempted to deliver block %d via view change but meanwhile view change already synced to seq %d, "+
 			"returning result from sync", pendingProposalMetadata.LatestSequence, latest)
 		syncResult := med.C.Synchronizer.Sync()
@@ -960,5 +953,12 @@ func (med *MutuallyExclusiveDeliver) Deliver(proposal types.Proposal, signature 
 		}
 	}
 
-	return med.C.Application.Deliver(proposal, signature)
+	begin := time.Now()
+	result := med.C.Application.Deliver(proposal, signature)
+	med.C.MetricsView.LatencyBatchSave.Observe(time.Since(begin).Seconds())
+
+	// Only set the proposal in case it is later than the already known checkpoint.
+	med.C.Checkpoint.Set(proposal, signature)
+
+	return result
 }

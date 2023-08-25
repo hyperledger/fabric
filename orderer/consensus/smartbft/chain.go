@@ -15,9 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/SmartBFT-Go/consensus/pkg/api"
 	smartbft "github.com/SmartBFT-Go/consensus/pkg/consensus"
-	"github.com/SmartBFT-Go/consensus/pkg/metrics/disabled"
 	"github.com/SmartBFT-Go/consensus/pkg/types"
 	"github.com/SmartBFT-Go/consensus/pkg/wal"
 	"github.com/SmartBFT-Go/consensus/smartbftprotos"
@@ -237,7 +235,6 @@ func bftSmartConsensusBuild(
 				return c.RuntimeConfig.Load().(RuntimeConfig).LastConfigBlock.Header.Number
 			},
 		},
-		MetricsProvider: api.NewCustomerProvider(&disabled.Provider{}),
 		Metadata: &smartbftprotos.ViewMetadata{
 			ViewId:                    latestMetadata.ViewId,
 			LatestSequence:            latestMetadata.LatestSequence,

@@ -56,8 +56,8 @@ github.com/Microsoft/hcsshim v0.8.25/go.mod h1:4zegtUJth7lAvFyc6cH2gGQ5B3OFQim01
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/Shopify/sarama v1.19.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWXgklEdEo=
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
-github.com/SmartBFT-Go/consensus v0.0.0-20230430133422-4dca5ba006ee h1:1/b3uHIk7nZRRJK5bkPBs/8URxSkD7xgsMZpwK3yk1A=
-github.com/SmartBFT-Go/consensus v0.0.0-20230430133422-4dca5ba006ee/go.mod h1:KsqqnNjG+MiuEdm/9ufh5C0oKJqd1rkpQ5S2mYPvVcA=
+github.com/SmartBFT-Go/consensus v0.0.0-20230717102940-071648f76967 h1:YYRetq5PWdDYxeKL46VHk6qUe2Gxswhc3sw0HeYXz5s=
+github.com/SmartBFT-Go/consensus v0.0.0-20230717102940-071648f76967/go.mod h1:KsqqnNjG+MiuEdm/9ufh5C0oKJqd1rkpQ5S2mYPvVcA=
 github.com/VictoriaMetrics/fastcache v1.9.0 h1:oMwsS6c8abz98B7ytAewQ7M1ZN/Im/iwKoE1euaFvhs=
 github.com/VictoriaMetrics/fastcache v1.9.0/go.mod h1:otoTS3xu+6IzF/qByjqzjp3rTuzM3Qf0ScU1UTj97iU=
 github.com/VividCortex/gohistogram v1.0.0 h1:6+hBz+qvs0JOrrNhhmR7lFxo5sINxBCGXrdtl/UvroE=

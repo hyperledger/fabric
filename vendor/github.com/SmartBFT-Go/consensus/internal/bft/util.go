@@ -262,8 +262,8 @@ type ProposalMaker struct {
 	FailureDetector    FailureDetector
 	Sync               Synchronizer
 	Logger             api.Logger
-	MetricsBlacklist   *MetricsBlacklist
-	MetricsView        *MetricsView
+	MetricsBlacklist   *api.MetricsBlacklist
+	MetricsView        *api.MetricsView
 	Comm               Comm
 	Verifier           api.Verifier
 	Signer             api.Signer
@@ -426,7 +426,7 @@ type blacklist struct {
 	currView           uint64
 	preparesFrom       map[uint64]*protos.PreparesFrom
 	logger             api.Logger
-	metricsBlacklist   *MetricsBlacklist
+	metricsBlacklist   *api.MetricsBlacklist
 	f                  int
 	decisionsPerLeader uint64
 }
@@ -486,7 +486,7 @@ func (bl blacklist) computeUpdate() []uint64 {
 	for _, node := range bl.nodes {
 		inBlacklist := newBlacklistMap[node]
 		bl.metricsBlacklist.NodesInBlackList.With(
-			bl.metricsBlacklist.LabelsForWith(nameBlackListNodeID, strconv.FormatUint(node, 10))...,
+			bl.metricsBlacklist.LabelsForWith(api.NameBlackListNodeID, strconv.FormatUint(node, 10))...,
 		).Set(btoi(inBlacklist))
 	}
 	bl.metricsBlacklist.CountBlackList.Set(float64(len(newBlacklist)))
