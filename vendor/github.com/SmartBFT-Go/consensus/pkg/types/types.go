@@ -111,9 +111,8 @@ type Reconfig struct {
 }
 
 type SyncResponse struct {
-	Latest     Decision
-	Reconfig   ReconfigSync
-	RequestDel []RequestInfo
+	Latest   Decision
+	Reconfig ReconfigSync
 }
 
 type ReconfigSync struct {

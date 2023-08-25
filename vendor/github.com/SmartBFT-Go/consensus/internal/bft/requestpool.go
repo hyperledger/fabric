@@ -51,7 +51,7 @@ type RequestTimeoutHandler interface {
 // block during submit until there will be place to submit new ones.
 type Pool struct {
 	logger    api.Logger
-	metrics   *MetricsRequestPool
+	metrics   *api.MetricsRequestPool
 	inspector api.RequestInspector
 	options   PoolOptions
 
@@ -84,7 +84,7 @@ type PoolOptions struct {
 	AutoRemoveTimeout time.Duration
 	RequestMaxBytes   uint64
 	SubmitTimeout     time.Duration
-	MetricsProvider   *api.CustomerProvider
+	Metrics           *api.MetricsRequestPool
 }
 
 // NewPool constructs new requests pool
@@ -104,8 +104,8 @@ func NewPool(log api.Logger, inspector api.RequestInspector, th RequestTimeoutHa
 	if options.SubmitTimeout == 0 {
 		options.SubmitTimeout = defaultRequestTimeout
 	}
-	if options.MetricsProvider == nil {
-		options.MetricsProvider = api.NewCustomerProvider(&disabled.Provider{})
+	if options.Metrics == nil {
+		options.Metrics = api.NewMetricsRequestPool(&disabled.Provider{})
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -114,7 +114,7 @@ func NewPool(log api.Logger, inspector api.RequestInspector, th RequestTimeoutHa
 		cancel:         cancel,
 		timeoutHandler: th,
 		logger:         log,
-		metrics:        NewMetricsRequestPool(options.MetricsProvider),
+		metrics:        options.Metrics,
 		inspector:      inspector,
 		fifo:           list.New(),
 		semaphore:      semaphore.NewWeighted(options.QueueSize),
@@ -188,7 +188,7 @@ func (rp *Pool) Submit(request []byte) error {
 
 	if uint64(len(request)) > rp.options.RequestMaxBytes {
 		rp.metrics.CountOfFailAddRequestToPool.With(
-			rp.metrics.LabelsForWith(nameReasonFailAdd, reasonRequestMaxBytes)...,
+			rp.metrics.LabelsForWith(api.NameReasonFailAdd, api.ReasonRequestMaxBytes)...,
 		).Add(1)
 		return fmt.Errorf(
 			"submitted request (%d) is bigger than request max bytes (%d)",
@@ -217,7 +217,7 @@ func (rp *Pool) Submit(request []byte) error {
 	// do not wait for a semaphore with a lock, as it will prevent draining the pool.
 	if err := rp.semaphore.Acquire(ctx, 1); err != nil {
 		rp.metrics.CountOfFailAddRequestToPool.With(
-			rp.metrics.LabelsForWith(nameReasonFailAdd, reasonSemaphoreAcquireFail)...,
+			rp.metrics.LabelsForWith(api.NameReasonFailAdd, api.ReasonSemaphoreAcquireFail)...,
 		).Add(1)
 		return errors.Wrapf(err, "acquiring semaphore for request: %s", reqInfo)
 	}
@@ -254,7 +254,7 @@ func (rp *Pool) Submit(request []byte) error {
 	}
 
 	element := rp.fifo.PushBack(reqItem)
-	rp.metrics.CountOfRequestPool.Add(1)
+	rp.metrics.CountOfRequestPool.Set(float64(rp.fifo.Len()))
 	rp.metrics.CountOfRequestPoolAll.Add(1)
 	rp.existMap[reqInfo] = element
 
@@ -385,7 +385,7 @@ func (rp *Pool) deleteRequest(element *list.Element, requestInfo types.RequestIn
 	item.timeout.Stop()
 
 	rp.fifo.Remove(element)
-	rp.metrics.CountOfRequestPool.Add(-1)
+	rp.metrics.CountOfRequestPool.Set(float64(rp.fifo.Len()))
 	rp.metrics.LatencyOfRequestPool.Observe(time.Since(item.additionTimestamp).Seconds())
 	delete(rp.existMap, requestInfo)
 	rp.moveToDelSlice(requestInfo)

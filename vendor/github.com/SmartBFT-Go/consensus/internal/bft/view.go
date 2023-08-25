@@ -97,8 +97,8 @@ type View struct {
 	nextCommits    *voteSet
 
 	beginPrePrepare    time.Time
-	MetricsBlacklist   *MetricsBlacklist
-	MetricsView        *MetricsView
+	MetricsBlacklist   *api.MetricsBlacklist
+	MetricsView        *api.MetricsView
 	blacklistSupported bool
 	abortChan          chan struct{}
 	stopOnce           sync.Once

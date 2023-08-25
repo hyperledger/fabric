@@ -17,9 +17,19 @@ type Metrics struct {
 }
 
 // NewMetrics create new wal metrics
-func NewMetrics(p *metrics.CustomerProvider) *Metrics {
-	countOfFilesOptsTmp := p.NewGaugeOpts(countOfFilesOpts)
+func NewMetrics(p metrics.Provider, labelNames ...string) *Metrics {
+	countOfFilesOptsTmp := metrics.NewGaugeOpts(countOfFilesOpts, labelNames)
 	return &Metrics{
-		CountOfFiles: p.NewGauge(countOfFilesOptsTmp).With(p.LabelsForWith()...),
+		CountOfFiles: p.NewGauge(countOfFilesOptsTmp),
 	}
+}
+
+func (m *Metrics) With(labelValues ...string) *Metrics {
+	return &Metrics{
+		CountOfFiles: m.CountOfFiles.With(labelValues...),
+	}
+}
+
+func (m *Metrics) Initialize() {
+	m.CountOfFiles.Add(0)
 }
