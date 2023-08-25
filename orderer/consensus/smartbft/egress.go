@@ -63,7 +63,6 @@ func (e *Egress) SendTransaction(targetID uint64, request []byte) {
 		e.Logger.Panicf("Failed unmarshaling request %v to envelope: %v", request, err)
 	}
 	msg := &ab.SubmitRequest{
-		Channel: e.Channel,
 		Payload: env,
 	}
 
@@ -78,6 +77,5 @@ func (e *Egress) SendTransaction(targetID uint64, request []byte) {
 func bftMsgToClusterMsg(message *protos.Message, channel string) *ab.ConsensusRequest {
 	return &ab.ConsensusRequest{
 		Payload: protoutil.MarshalOrPanic(message),
-		Channel: channel,
 	}
 }

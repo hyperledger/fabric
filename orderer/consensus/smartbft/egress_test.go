@@ -42,7 +42,6 @@ func TestEgressSendConsensus(t *testing.T) {
 
 	rpc.AssertCalled(t, "SendConsensus", uint64(42), &ab.ConsensusRequest{
 		Payload: protoutil.MarshalOrPanic(viewData),
-		Channel: "test",
 	})
 }
 
@@ -70,7 +69,6 @@ func TestEgressSendTransaction(t *testing.T) {
 	})
 
 	rpc.AssertCalled(t, "SendSubmit", uint64(42), &ab.SubmitRequest{
-		Channel: "test",
 		Payload: &cb.Envelope{
 			Payload: []byte{1, 2, 3},
 		},
