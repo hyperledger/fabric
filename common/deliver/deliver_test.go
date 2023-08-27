@@ -541,6 +541,73 @@ var _ = Describe("Deliver", func() {
 			})
 		})
 
+		Context("when seek info is configured to header with sig content type and block can be a config block", func() {
+			BeforeEach(func() {
+				seekInfo = &ab.SeekInfo{
+					Start:       &ab.SeekPosition{},
+					Stop:        seekNewest,
+					ContentType: ab.SeekInfo_HEADER_WITH_SIG,
+				}
+				fakeBlockReader.HeightReturns(4)
+				fakeBlockIterator.NextStub = func() (*cb.Block, cb.Status) {
+					nxtCallCount := fakeBlockIterator.NextCallCount()
+					block := &cb.Block{
+						Header:   &cb.BlockHeader{Number: uint64(nxtCallCount)},
+						Metadata: &cb.BlockMetadata{Metadata: [][]byte{{3}, {4}}},
+					}
+					if nxtCallCount == 1 || nxtCallCount == 3 {
+						block.Data = &cb.BlockData{Data: [][]byte{{1}, {2}}}
+					} else {
+						channelHeader = protoutil.MakeChannelHeader(cb.HeaderType_CONFIG, int32(1), "chain-1", 0)
+						payloadSignatureHeader := protoutil.MakeSignatureHeader(nil, make([]byte, 24))
+						protoutil.SetTxID(channelHeader, payloadSignatureHeader)
+						payloadHeader := protoutil.MakePayloadHeader(channelHeader, payloadSignatureHeader)
+						cg := protoutil.NewConfigGroup()
+						payload := &cb.Payload{Header: payloadHeader, Data: protoutil.MarshalOrPanic(&cb.ConfigEnvelope{Config: &cb.Config{ChannelGroup: cg}})}
+						envelope := &cb.Envelope{Payload: protoutil.MarshalOrPanic(payload), Signature: nil}
+
+						block.Data = &cb.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(envelope)}}
+						block.Header.DataHash = nil
+					}
+					return block, cb.Status_SUCCESS
+				}
+			})
+
+			It("sends blocks with non nil Data", func() {
+				err := handler.Handle(context.Background(), server)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeBlockReader.IteratorCallCount()).To(Equal(1))
+				start := fakeBlockReader.IteratorArgsForCall(0)
+				Expect(start).To(Equal(&ab.SeekPosition{}))
+				Expect(fakeBlockIterator.NextCallCount()).To(Equal(3))
+				Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(3))
+				for i := 0; i < fakeResponseSender.SendBlockResponseCallCount(); i++ {
+					b, _, _, _ := fakeResponseSender.SendBlockResponseArgsForCall(i)
+					if i+1 == 1 || i+1 == 3 {
+						Expect(b).To(Equal(&cb.Block{
+							Header:   &cb.BlockHeader{Number: uint64(i + 1)},
+							Data:     nil,
+							Metadata: &cb.BlockMetadata{Metadata: [][]byte{{3}, {4}}},
+						}))
+					} else {
+						payloadSignatureHeader := protoutil.MakeSignatureHeader(nil, make([]byte, 24))
+						protoutil.SetTxID(channelHeader, payloadSignatureHeader)
+						payloadHeader := protoutil.MakePayloadHeader(channelHeader, payloadSignatureHeader)
+						cg := protoutil.NewConfigGroup()
+						payload := &cb.Payload{Header: payloadHeader, Data: protoutil.MarshalOrPanic(&cb.ConfigEnvelope{Config: &cb.Config{ChannelGroup: cg}})}
+						envelope := &cb.Envelope{Payload: protoutil.MarshalOrPanic(payload), Signature: nil}
+						blk := &cb.Block{
+							Header:   &cb.BlockHeader{Number: uint64(i + 1)},
+							Data:     &cb.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(envelope)}},
+							Metadata: &cb.BlockMetadata{Metadata: [][]byte{{3}, {4}}},
+						}
+						Expect(b).To(Equal(blk))
+						Expect(b.Data.Data).NotTo(BeNil())
+					}
+				}
+			})
+		})
+
 		Context("when filtered blocks are requested", func() {
 			var fakeResponseSender *mock.FilteredResponseSender
 
