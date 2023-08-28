@@ -21,7 +21,7 @@ _arg_comp=('' )
 
 # if version not passed in, default to latest released version
 # if ca version not passed in, default to latest released version
-_arg_fabric_version="2.5.3"
+_arg_fabric_version="2.5.4"
 _arg_ca_version="1.5.6"
 
 REGISTRY=${FABRIC_DOCKER_REGISTRY:-docker.io/hyperledger}
@@ -55,7 +55,7 @@ print_help()
 {
 	printf 'Usage: %s [-f|--fabric-version <arg>] [-c|--ca-version <arg>] <comp-1> [<comp-2>] ... [<comp-n>] ...\n' "$0"
 	printf '\t%s\n' "<comp> Component to install, one or more of  docker | binary | samples | podman  First letter of component also accepted; If none specified docker | binary | samples is assumed"
-	printf '\t%s\n' "-f, --fabric-version: FabricVersion (default: '2.5.3')"
+	printf '\t%s\n' "-f, --fabric-version: FabricVersion (default: '2.5.4')"
 	printf '\t%s\n' "-c, --ca-version: Fabric CA Version (default: '1.5.6')"
 }
 
