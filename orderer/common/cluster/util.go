@@ -13,6 +13,7 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -22,6 +23,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/golang/protobuf/ptypes/timestamp"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/protolator"
@@ -812,7 +815,7 @@ func exportKM(cs tls.ConnectionState, label string, context []byte) ([]byte, err
 func GetSessionBindingHash(authReq *orderer.NodeAuthRequest) []byte {
 	return util.ComputeSHA256(util.ConcatenateBytes(
 		[]byte(strconv.FormatUint(uint64(authReq.Version), 10)),
-		[]byte(authReq.Timestamp.String()),
+		EncodeTimestamp(authReq.Timestamp),
 		[]byte(strconv.FormatUint(authReq.FromId, 10)),
 		[]byte(strconv.FormatUint(authReq.ToId, 10)),
 		[]byte(authReq.Channel),
@@ -941,4 +944,10 @@ func LatestHeightAndEndpoint(puller ChainPuller) (string, uint64, error) {
 		}
 	}
 	return mostUpToDateEndpoint, maxHeight, nil
+}
+
+func EncodeTimestamp(t *timestamp.Timestamp) []byte {
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b, uint64(t.Seconds))
+	return b
 }

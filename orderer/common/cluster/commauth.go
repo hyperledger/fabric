@@ -270,7 +270,7 @@ func (cs *NodeClientStream) Auth() error {
 
 	asnSignFields, _ := asn1.Marshal(AuthRequestSignature{
 		Version:        int64(payload.Version),
-		Timestamp:      payload.Timestamp.String(),
+		Timestamp:      EncodeTimestamp(payload.Timestamp),
 		FromId:         strconv.FormatUint(payload.FromId, 10),
 		ToId:           strconv.FormatUint(payload.ToId, 10),
 		SessionBinding: payload.SessionBinding,
