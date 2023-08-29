@@ -59,7 +59,7 @@ type ClusterService struct {
 
 type AuthRequestSignature struct {
 	Version        int64
-	Timestamp      string
+	Timestamp      []byte
 	FromId         string
 	ToId           string
 	Channel        string
@@ -138,7 +138,7 @@ func (s *ClusterService) VerifyAuthRequest(stream orderer.ClusterNodeService_Ste
 
 	msg, err := asn1.Marshal(AuthRequestSignature{
 		Version:        int64(authReq.Version),
-		Timestamp:      authReq.Timestamp.String(),
+		Timestamp:      EncodeTimestamp(authReq.Timestamp),
 		FromId:         strconv.FormatUint(authReq.FromId, 10),
 		ToId:           strconv.FormatUint(authReq.ToId, 10),
 		SessionBinding: tlsBinding,
