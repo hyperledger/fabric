@@ -23,6 +23,8 @@ const (
 	DefaultReConnectBackoffThreshold   = time.Hour * 1
 	DefaultReConnectTotalTimeThreshold = time.Second * 60 * 60
 	DefaultConnectionTimeout           = time.Second * 3
+	DefaultBlockCensorshipTimeout      = time.Second * 30
+	DefaultMinimalReconnectInterval    = time.Millisecond * 100
 )
 
 // DeliverServiceConfig is the struct that defines the deliverservice configuration.
@@ -42,7 +44,11 @@ type DeliverServiceConfig struct {
 	KeepaliveOptions comm.KeepaliveOptions
 	// SecOpts provides the TLS info for connections
 	SecOpts comm.SecureOptions
-
+	// If a certain header from a header receiver is in front of the block receiver for more that this time, a
+	// censorship event is declared and the block source is changed.
+	BlockCensorshipTimeout time.Duration
+	// The initial value of the actual retry interval, which is increased on every failed retry
+	MinimalReconnectInterval time.Duration
 	// OrdererEndpointOverrides is a map of orderer addresses which should be
 	// re-mapped to a different orderer endpoint.
 	OrdererEndpointOverrides map[string]*orderers.Endpoint
@@ -123,6 +129,24 @@ func (c *DeliverServiceConfig) loadDeliverServiceConfig() {
 		logger.Infof("peer.deliveryclient.blockGossipEnabled is not set, defaulting to true.")
 	}
 	c.BlockGossipEnabled = enabledConfigOptionMissing || viper.GetBool(enabledKey)
+
+	blockCensorshipTimeout := "peer.deliveryclient.blockCensorshipTimeout"
+	blockCensorshipTimeoutOptionMissing := !viper.IsSet(blockCensorshipTimeout)
+	if blockCensorshipTimeoutOptionMissing {
+		c.BlockCensorshipTimeout = DefaultBlockCensorshipTimeout
+		logger.Infof("peer.deliveryclient.blockCensorshipTimeout is not set, defaulting to 30s.")
+	} else {
+		c.BlockCensorshipTimeout = viper.GetDuration(blockCensorshipTimeout)
+	}
+
+	minimalReconnectInterval := "peer.deliveryclient.minimalReconnectInterval"
+	MinimalReconnectIntervalOptionMissing := !viper.IsSet(minimalReconnectInterval)
+	if MinimalReconnectIntervalOptionMissing {
+		c.MinimalReconnectInterval = DefaultMinimalReconnectInterval
+		logger.Infof("peer.deliveryclient.minimalReconnectInterval is not set, defaulting to 100ms.")
+	} else {
+		c.MinimalReconnectInterval = viper.GetDuration(minimalReconnectInterval)
+	}
 
 	c.PeerTLSEnabled = viper.GetBool("peer.tls.enabled")
 
