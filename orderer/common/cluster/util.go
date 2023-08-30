@@ -685,7 +685,7 @@ type certificateExpirationCheck struct {
 
 func (exp *certificateExpirationCheck) checkExpiration(currentTime time.Time, channel string) {
 	timeLeft := exp.expiresAt.Sub(currentTime)
-	if timeLeft > exp.expirationWarningThreshold {
+	if exp.expiresAt.IsZero() || timeLeft > exp.expirationWarningThreshold {
 		return
 	}
 

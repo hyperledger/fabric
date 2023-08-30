@@ -14,6 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -101,12 +102,15 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 	s.expCheck = &certificateExpirationCheck{
 		minimumExpirationWarningInterval: rc.minimumExpirationWarningInterval,
 		expirationWarningThreshold:       rc.certExpWarningThreshold,
-		expiresAt:                        rc.expiresAt,
 		endpoint:                         s.Endpoint,
 		nodeName:                         s.NodeName,
 		alert: func(template string, args ...interface{}) {
 			s.Logger.Warningf(template, args...)
 		},
+	}
+
+	if cert := util.ExtractCertificateFromContext(stream.Context()); cert != nil {
+		s.expCheck.expiresAt = cert.NotAfter
 	}
 
 	err = stream.Auth()
