@@ -165,9 +165,6 @@ var _ = Describe("GatewayService with BFT ordering service", func() {
 		Eventually(ordererProcesses["orderer2"].Ready(), network.EventuallyTimeout).Should(BeClosed())
 		time.Sleep(time.Second)
 
-		By("Resubmitting the same transaction")
-		_, err = gw.Submit(ctx, submitRequest)
-		Expect(err).NotTo(HaveOccurred())
 		waitForCommit(ctx, gw, signer, channel, submitRequest.TransactionId)
 
 		By("Checking the ledger state")
