@@ -80,7 +80,8 @@ func TestQueryCmdEndorsementFailure(t *testing.T) {
 		err = cmd.Execute()
 		require.Error(t, err)
 		require.Regexp(t, "endorsement failure during query", err.Error())
-		require.Regexp(t, fmt.Sprintf("response: status:%d payload:\"%s\"", ccRespStatus[i], ccRespPayload[i]), err.Error())
+		require.Regexp(t, fmt.Sprintf("status: %d", ccRespStatus[i]), err.Error())
+		require.Regexp(t, fmt.Sprintf("payload: \"%s\"", ccRespPayload[i]), err.Error())
 	}
 
 	// failure - nil proposal response
