@@ -53,19 +53,18 @@ Usage:
 
     Flags:
     Used with network.sh up, network.sh createChannel:
-    -ca <use CAs> -  Use Certificate Authorities to generate network crypto material
+    -ca - Use Certificate Authorities to generate network crypto material
+    -bft - Use Orderers with consensus type BFT (Not available in Fabric v2.x)
     -c <channel name> - Name of channel to create (defaults to "mychannel")
     -s <dbtype> - Peer state database to deploy: goleveldb (default) or couchdb
     -r <max retry> - CLI times out after certain number of attempts (defaults to 5)
     -d <delay> - CLI delays for a certain number of seconds (defaults to 3)
-    -i <imagetag> - Docker image tag of Fabric to deploy (defaults to "latest")
-    -cai <ca_imagetag> - Docker image tag of Fabric CA to deploy (defaults to "latest")
     -verbose - Verbose mode
 
     Used with network.sh deployCC
     -c <channel name> - Name of channel to deploy chaincode to
     -ccn <name> - Chaincode name.
-    -ccl <language> - Programming language of the chaincode to deploy: go (default), java, javascript, typescript
+    -ccl <language> - Programming language of the chaincode to deploy: go, java, javascript, typescript
     -ccv <version>  - Chaincode version. 1.0 (default), v2, version3.x, etc
     -ccs <sequence>  - Chaincode definition sequence. Must be an integer, 1 (default), 2, 3, etc
     -ccp <path>  - File path to the chaincode.
@@ -76,13 +75,15 @@ Usage:
     -h - Print this message
 
  Possible Mode and flag combinations
-   up -ca -r -d -s -i -cai -verbose
-   up createChannel -ca -c -r -d -s -i -cai -verbose
-   createChannel -c -r -d -verbose
+   up -ca -r -d -s -verbose
+   up -bft -r -d -s -verbose
+   up createChannel -ca -c -r -d -s -verbose
+   up createChannel -bft -c -r -d -s -verbose
+   createChannel -bft -c -r -d -verbose
    deployCC -ccn -ccl -ccv -ccs -ccp -cci -r -d -verbose
 
  Examples:
-   network.sh up createChannel -ca -c mychannel -s couchdb -i 2.0.0
+   network.sh up createChannel -ca -c mychannel -s couchdb
    network.sh createChannel -c channelName
    network.sh deployCC -ccn basic -ccp ../asset-transfer-basic/chaincode-javascript/ -ccl javascript
    network.sh deployCC -ccn mychaincode -ccp ./user/mychaincode -ccv 1 -ccl javascript
@@ -543,6 +544,46 @@ below provide a guided tour of what happens when you issue the command of
   chaincode on the channel. Once the chaincode definition is committed to the
   channel, the peer cli initializes the chaincode using the `Init` and invokes
   the chaincode to put initial data on the ledger.
+
+## Bring up the network using BFT ordering service
+
+You can try out the Byzantine Fault Tolerant (BFT) ordering service, newly added since v3.0,
+together with the test network.
+
+If you would like to bring up a network using BFT ordering service, first run the following
+command to bring down any running networks:
+
+```
+./network.sh down
+```
+
+Then, with the BFT flag (-bft), run the network up and create a channel on that network:
+
+```
+./network.sh up -bft
+./network.sh createChannel -bft
+```
+
+These commands will start a Fabric network consisting of 4 orderers managed by OrdererOrg,
+1 peer managed by Org1 and 1 peer managed by Org2.
+They also will create a channel named "mychannel" in which the 4 orderers with BFT consensus type and the 2 peers participate.
+
+After you have created the channel with BFT consensus type,
+you can start a chaincode on the channel or interact with your network as well as the previous instructions.
+For example:
+
+```
+./network.sh deployCC -ccn basic -ccp ../asset-transfer-basic/chaincode-go -ccl go
+...
+```
+
+### Next steps to use BFT ordering service
+
+To understand more about the BFT ordering service, refer to the following information:
+
+- [What is BFT and what is BFT Ordering service?](./orderer/ordering_service.md)
+- [Adding orderer to an existing network](./create_channel/add_orderer.md)
+- [Configuring and operating a BFT ordering service](./bft_configuration.md)
 
 ## Troubleshooting
 
