@@ -185,16 +185,6 @@ between ordering service nodes.
 For information about how to stand up an ordering node (regardless of the
 implementation the node will be used in), check out [our documentation on deploying a production ordering service](../deployorderer/ordererplan.html).
 
-* **BFT** 
-  New as of v3.0, the Byzantine Fault Tolerant (BFT) ordering service, as its name implies,
-  can withstand not only crash failures, but also a subset of nodes behaving maliciously.
-  An example of malicious behavior is a leader node sending different blocks with the same sequence number,
-  hence creating a fork in the blockchain. An ordering service that is only Crash Fault Tolerant (CFT) 
-  can not protect against such a behavior. 
-  A Byzantine Fault Tolerant ordering service can withstand up and not including to a third of its nodes misbehaving
-  (either crashing or deviating from the protocol).
-  More information about the BFT protocol can be found in its corresponding [paper](https://arxiv.org/abs/2107.06922). 
-
 * **Raft**
 
   New as of v1.4.1, Raft is a crash fault tolerant (CFT) ordering service
@@ -204,6 +194,15 @@ implementation the node will be used in), check out [our documentation on deploy
   are replicated by the followers. Raft ordering services should be easier to set
   up and manage than Kafka-based ordering services, and their design allows
   different organizations to contribute nodes to a distributed ordering service.
+
+* **BFT** (New as of v3.0)
+  
+  A Byzantine Fault Tolerant (BFT) ordering service, as its name implies,
+  can withstand not only crash failures, but also a subset of nodes behaving maliciously.
+  It is now possible to run a BFT ordering service
+  with the [SmartBFT](https://arxiv.org/abs/2107.0692) [library](https://github.com/SmartBFT-Go/consensus)
+  as its underlying consensus protocol. Consider using the BFT orderer if true decentralization is required, where
+  up to and not including a third of the parties running the orderers may not be trusted due to malicious intent or being compromised.
 
 * **Kafka** 
   Kafka was deprecated in v2.x and is no longer supported in v3.x
@@ -350,6 +349,56 @@ snapshot at amount of data that in this case represents 20 blocks. `R1` would
 therefore receive block `180` from `L` and then make a `Deliver` request for
 blocks `101` to `180`. Blocks `180` to `196` would then be replicated to `R1`
 through the normal Raft protocol.
+
+
+## BFT
+
+For information on how to deploy and manage the BFT orderer, be sure to check out the [deployment guide](../bft_configuration.md).
+
+The protocol used by Fabric's BFT orderer implementation is the [SmartBFT](https://arxiv.org/abs/2107.0692) protocol 
+heavily inspired by the [BFT-SMART](https://www.di.fc.ul.pt/~bessani/publications/dsn14-bftsmart.pdf) protocol,
+which itself can be thought of as a non-pipelined(*) version of the seminal [PBFT](https://pmg.csail.mit.edu/papers/osdi99.pdf) protocol.
+As in Raft, the protocol designates a single leader which batches transactions into a block and sends them to the rest of the nodes, termed followers. 
+However, unlike Raft, the leader is not dynamically selected but is rotated in a round-robin fashion every time the previous leader is suspected of being faulty 
+by the follower nodes.
+
+Further differentiating itself from Raft, where more than half of the nodes are required for the ordering service to be functional, 
+the BFT protocol withstands failures of up to (and not including) a third of the nodes. 
+If a third or more of the nodes crash or are unreachable, no blocks can be agreed upon.
+
+The advantage of the BFT orderer over the Raft orderer is that it can withstand some of the nodes being compromised.
+Indeed, if up to (but not including) a third of the orderer nodes are controlled by a malicous party,
+the system can still accept new transactions, order them, and most importantly ensure the same blocks are committed
+by the rest of the ordering nodes. This is in contrast to Raft, which is not suitable to be deployed in such a harsh adversary model.
+
+Operating the BFT orderer is identical to how the Raft orderer is operated: New nodes can be added and removed from
+the channel dynamically and while the system is running, and it is described in the [reconfiguration guide](../create_channel/add_orderer.md).
+
+Similarly to Raft, the BFT leader sends periodical heartbeats to each follower, and if the latter does not hear
+from the leader within a period of time, it starts lobbying other followers to change the leader.
+
+A major difference from Raft, is that when a client submits a transaction to a BFT ordering service, it should send
+the transaction to all nodes instead of to a single node. Sending the transaction to all nodes will not only
+make sure it has reached the leader node, but will also ensure that even if the leader node is malicious
+and is ignoring the transaction of the client, it will eventually have no choice but to include the transaction
+in some future block, or face being overthrown by the follower nodes which have received the transaction 
+from the client and lost their patience waiting for it being included in a block sent by the leader.
+
+While sending the transaction to all nodes may seem as a disadvantage, the BFT transaction semantics actually
+harbor an implicit advantage over the Raft transactional semantics: In Raft, sending a transaction to an orderer
+does not guarantee its inclusion in a block, and neither does sending it to all nodes, as the leader may crash and 
+then the transaction may be lost. In BFT, however, even if the leader crashes, the transaction will still remain 
+in the memory of the follower nodes, and will eventually be either sent to the leader and then included in a block,
+or the leader will be forced to change to a new leader that will eventually include the transaction.
+
+Applications that submit their transactions through the [gateway service](../gateway.md) do not need to change
+anything, as the gateway service knows whether it should submit to all ordering nodes or just to one
+based on the configuration of the channel, and acts accordingly.
+
+
+
+(*) A consensus protocol without a pipeline agrees on a block only after the previous block has been agreed upon.
+
 
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
