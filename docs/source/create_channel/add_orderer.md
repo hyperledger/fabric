@@ -121,10 +121,10 @@ and add the new orderer endpoint.
 ```json lines
 [
     "orderer.example.com:7050",
-    "orderer.example.com:7052",
-    "orderer.example.com:7056",
-    "orderer.example.com:7058",
-    "orderer.example.com:7060"
+    "orderer2.example.com:7052",
+    "orderer3.example.com:7056",
+    "orderer4.example.com:7058",
+    "orderer5.example.com:7060"
 ]
 ```
 
