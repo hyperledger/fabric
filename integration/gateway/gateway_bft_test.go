@@ -155,19 +155,18 @@ var _ = Describe("GatewayService with BFT ordering service", func() {
 		By("Submitting a new transaction")
 		submitRequest = prepareTransaction(ctx, gw, signer, channel, "gatewaycc", "invoke", []string{"a", "b", "10"})
 		_, err = gw.Submit(ctx, submitRequest)
-		Expect(err).To(HaveOccurred())
-		rpcErr = status.Convert(err)
-		Expect(rpcErr.Message()).To(Equal("insufficient number of orderers could successfully process transaction to satisfy quorum requirement"))
+		Expect(err).NotTo(HaveOccurred())
 
+		waitForCommitWithError(ctx, gw, signer, channel, submitRequest.TransactionId)
+
+		ctx, cancel = context.WithTimeout(context.Background(), network.EventuallyTimeout)
+		defer cancel()
 		By("Restarting orderer2")
 		runner := network.OrdererRunner(network.Orderers[1])
 		ordererProcesses["orderer2"] = ifrit.Invoke(runner)
 		Eventually(ordererProcesses["orderer2"].Ready(), network.EventuallyTimeout).Should(BeClosed())
 		time.Sleep(time.Second)
 
-		By("Resubmitting the same transaction")
-		_, err = gw.Submit(ctx, submitRequest)
-		Expect(err).NotTo(HaveOccurred())
 		waitForCommit(ctx, gw, signer, channel, submitRequest.TransactionId)
 
 		By("Checking the ledger state")
@@ -258,6 +257,36 @@ func waitForCommit(
 	statusResponse, err := gatewayClient.CommitStatus(ctx, signedStatusRequest)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(statusResponse.Result).To(Equal(peer.TxValidationCode_VALID))
+}
+
+func waitForCommitWithError(
+	ctx context.Context,
+	gatewayClient gateway.GatewayClient,
+	signer *nwo.SigningIdentity,
+	channel string,
+	transactionId string,
+) {
+	idBytes, err := signer.Serialize()
+	Expect(err).NotTo(HaveOccurred())
+
+	statusRequest := &gateway.CommitStatusRequest{
+		ChannelId:     channel,
+		Identity:      idBytes,
+		TransactionId: transactionId,
+	}
+	statusRequestBytes, err := proto.Marshal(statusRequest)
+	Expect(err).NotTo(HaveOccurred())
+
+	signature, err := signer.Sign(statusRequestBytes)
+	Expect(err).NotTo(HaveOccurred())
+
+	signedStatusRequest := &gateway.SignedCommitStatusRequest{
+		Request:   statusRequestBytes,
+		Signature: signature,
+	}
+
+	_, err = gatewayClient.CommitStatus(ctx, signedStatusRequest)
+	Expect(err).To(HaveOccurred())
 }
 
 func evaluateTransaction(

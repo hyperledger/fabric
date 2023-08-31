@@ -556,67 +556,6 @@ func TestSubmit(t *testing.T) {
 			},
 		},
 		{
-			name:  "7 BFT orderers cannot tolerate 3 faults",
-			isBFT: true,
-			plan: endorsementPlan{
-				"g1": {{endorser: localhostMock}},
-			},
-			config: &dp.ConfigResult{
-				Orderers: map[string]*dp.Endpoints{
-					"msp1": {
-						Endpoint: []*dp.Endpoint{
-							{Host: "orderer1", Port: 7050},
-							{Host: "orderer2", Port: 7050},
-							{Host: "orderer3", Port: 7050},
-							{Host: "orderer4", Port: 7050},
-							{Host: "orderer5", Port: 7050},
-							{Host: "orderer6", Port: 7050},
-							{Host: "orderer7", Port: 7050},
-						},
-					},
-				},
-				Msps: map[string]*msp.FabricMSPConfig{
-					"msp1": {
-						TlsRootCerts: [][]byte{},
-					},
-				},
-			},
-			endpointDefinition: &endpointDef{
-				proposalResponseStatus: 200,
-				ordererStatus:          200,
-			},
-			postSetup: func(t *testing.T, def *preparedTest) {
-				abbc := &mocks.ABBClient{}
-				response := &ab.BroadcastResponse{
-					Status: cp.Status_BAD_REQUEST,
-					Info:   "extra details",
-				}
-				abbc.RecvReturns(response, nil)
-				orderer1Mock.client.(*mocks.ABClient).BroadcastReturns(nil, status.Error(codes.Unavailable, "orderer1 fails"))
-				orderer4Mock.client.(*mocks.ABClient).BroadcastReturns(nil, status.Error(codes.Unavailable, "orderer4 fails"))
-				orderer7Mock.client.(*mocks.ABClient).BroadcastReturns(abbc, nil)
-			},
-			errCode:   codes.Unavailable,
-			errString: "insufficient number of orderers could successfully process transaction to satisfy quorum requirement",
-			errDetails: []*pb.ErrorDetail{
-				{
-					Address: "orderer1:7050",
-					MspId:   "msp1",
-					Message: "rpc error: code = Unavailable desc = orderer1 fails",
-				},
-				{
-					Address: "orderer4:7050",
-					MspId:   "msp1",
-					Message: "rpc error: code = Unavailable desc = orderer4 fails",
-				},
-				{
-					Address: "orderer7:7050",
-					MspId:   "msp1",
-					Message: "received unsuccessful response from orderer: status=BAD_REQUEST, info=extra details",
-				},
-			},
-		},
-		{
 			name:  "all BFT orderers exceed timeout",
 			isBFT: true,
 			plan: endorsementPlan{
@@ -751,50 +690,6 @@ func TestSubmit(t *testing.T) {
 				require.Equal(t, 1, orderer3Mock.client.(*mocks.ABClient).BroadcastCallCount())
 				require.Equal(t, 1, orderer4Mock.client.(*mocks.ABClient).BroadcastCallCount())
 			},
-		},
-		{
-			name:  "two BFT orderers cannot connect - quorum not satisfied",
-			isBFT: true,
-			plan: endorsementPlan{
-				"g1": {{endorser: localhostMock}},
-			},
-			config: &dp.ConfigResult{
-				Orderers: map[string]*dp.Endpoints{
-					"msp1": {
-						Endpoint: []*dp.Endpoint{
-							{Host: "orderer1", Port: 7050},
-							{Host: "orderer2", Port: 7050},
-							{Host: "orderer3", Port: 7050},
-							{Host: "orderer4", Port: 7050},
-						},
-					},
-				},
-				Msps: map[string]*msp.FabricMSPConfig{
-					"msp1": {
-						TlsRootCerts: [][]byte{},
-					},
-				},
-			},
-			endpointDefinition: &endpointDef{
-				proposalResponseStatus: 200,
-				ordererStatus:          200,
-			},
-			postSetup: func(t *testing.T, def *preparedTest) {
-				def.dialer.Calls(func(_ context.Context, target string, _ ...grpc.DialOption) (*grpc.ClientConn, error) {
-					if target == "orderer2:7050" || target == "orderer3:7050" {
-						return nil, fmt.Errorf("orderer not answering")
-					}
-					return nil, nil
-				})
-			},
-			postTest: func(t *testing.T, def *preparedTest) {
-				require.Equal(t, 1, orderer1Mock.client.(*mocks.ABClient).BroadcastCallCount())
-				require.Equal(t, 0, orderer2Mock.client.(*mocks.ABClient).BroadcastCallCount())
-				require.Equal(t, 0, orderer3Mock.client.(*mocks.ABClient).BroadcastCallCount())
-				require.Equal(t, 1, orderer4Mock.client.(*mocks.ABClient).BroadcastCallCount())
-			},
-			errCode:   codes.Unavailable,
-			errString: "insufficient number of orderers could successfully process transaction to satisfy quorum requirement",
 		},
 	}
 	for _, tt := range tests {
