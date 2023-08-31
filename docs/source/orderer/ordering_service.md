@@ -35,7 +35,7 @@ execution and ordering are performed by the same nodes.
 Orderers also enforce basic access control for channels, restricting who can
 read and write data to them, and who can configure them. Remember that who
 is authorized to modify a configuration element in a channel is subject to the
-policies that the relevant administrators set when they created the channel. 
+policies that the relevant administrators set when they created the channel.
 Configuration transactions are processed by the orderer,
 as it needs to know the current set of policies to execute its basic
 form of access control. In this case, the orderer processes the
@@ -196,17 +196,17 @@ implementation the node will be used in), check out [our documentation on deploy
   different organizations to contribute nodes to a distributed ordering service.
 
 * **BFT** (New as of v3.0)
-  
+
   A Byzantine Fault Tolerant (BFT) ordering service, as its name implies,
   can withstand not only crash failures, but also a subset of nodes behaving maliciously.
   It is now possible to run a BFT ordering service
-  with the [SmartBFT](https://arxiv.org/abs/2107.0692) [library](https://github.com/SmartBFT-Go/consensus)
+  with the [SmartBFT](https://arxiv.org/abs/2107.06922) [library](https://github.com/SmartBFT-Go/consensus)
   as its underlying consensus protocol. Consider using the BFT orderer if true decentralization is required, where
   up to and not including a third of the parties running the orderers may not be trusted due to malicious intent or being compromised.
 
-* **Kafka** 
+* **Kafka**
   Kafka was deprecated in v2.x and is no longer supported in v3.x
-  
+
 * **Solo** (deprecated in v2.x)
 
   The Solo implementation of the ordering service is intended for test only and
@@ -283,9 +283,9 @@ there to be a quorum. If a quorum of nodes is unavailable for any reason, the
 ordering service cluster becomes unavailable for both read and write operations
 on the channel, and no new logs can be committed.
 
-**Leader**. This is not a new concept, but it's critical to understand that at any given time, 
-a channel's consenter set elects a single node to be the leader (we'll describe how 
-this happens in Raft later). The leader is responsible for ingesting new log entries, 
+**Leader**. This is not a new concept, but it's critical to understand that at any given time,
+a channel's consenter set elects a single node to be the leader (we'll describe how
+this happens in Raft later). The leader is responsible for ingesting new log entries,
 replicating them to follower ordering nodes, and managing when an entry is considered
 committed. This is not a special **type** of orderer. It is only a role that
 an orderer may have at certain times, and then not others, as circumstances
@@ -355,15 +355,15 @@ through the normal Raft protocol.
 
 For information on how to deploy and manage the BFT orderer, be sure to check out the [deployment guide](../bft_configuration.md).
 
-The protocol used by Fabric's BFT orderer implementation is the [SmartBFT](https://arxiv.org/abs/2107.0692) protocol 
+The protocol used by Fabric's BFT orderer implementation is the [SmartBFT](https://arxiv.org/abs/2107.0692) protocol
 heavily inspired by the [BFT-SMART](https://www.di.fc.ul.pt/~bessani/publications/dsn14-bftsmart.pdf) protocol,
 which itself can be thought of as a non-pipelined(*) version of the seminal [PBFT](https://pmg.csail.mit.edu/papers/osdi99.pdf) protocol.
-As in Raft, the protocol designates a single leader which batches transactions into a block and sends them to the rest of the nodes, termed followers. 
-However, unlike Raft, the leader is not dynamically selected but is rotated in a round-robin fashion every time the previous leader is suspected of being faulty 
+As in Raft, the protocol designates a single leader which batches transactions into a block and sends them to the rest of the nodes, termed followers.
+However, unlike Raft, the leader is not dynamically selected but is rotated in a round-robin fashion every time the previous leader is suspected of being faulty
 by the follower nodes.
 
-Further differentiating itself from Raft, where more than half of the nodes are required for the ordering service to be functional, 
-the BFT protocol withstands failures of up to (and not including) a third of the nodes. 
+Further differentiating itself from Raft, where more than half of the nodes are required for the ordering service to be functional,
+the BFT protocol withstands failures of up to (and not including) a third of the nodes.
 If a third or more of the nodes crash or are unreachable, no blocks can be agreed upon.
 
 The advantage of the BFT orderer over the Raft orderer is that it can withstand some of the nodes being compromised.
@@ -381,13 +381,13 @@ A major difference from Raft, is that when a client submits a transaction to a B
 the transaction to all nodes instead of to a single node. Sending the transaction to all nodes will not only
 make sure it has reached the leader node, but will also ensure that even if the leader node is malicious
 and is ignoring the transaction of the client, it will eventually have no choice but to include the transaction
-in some future block, or face being overthrown by the follower nodes which have received the transaction 
+in some future block, or face being overthrown by the follower nodes which have received the transaction
 from the client and lost their patience waiting for it being included in a block sent by the leader.
 
 While sending the transaction to all nodes may seem as a disadvantage, the BFT transaction semantics actually
 harbor an implicit advantage over the Raft transactional semantics: In Raft, sending a transaction to an orderer
-does not guarantee its inclusion in a block, and neither does sending it to all nodes, as the leader may crash and 
-then the transaction may be lost. In BFT, however, even if the leader crashes, the transaction will still remain 
+does not guarantee its inclusion in a block, and neither does sending it to all nodes, as the leader may crash and
+then the transaction may be lost. In BFT, however, even if the leader crashes, the transaction will still remain
 in the memory of the follower nodes, and will eventually be either sent to the leader and then included in a block,
 or the leader will be forced to change to a new leader that will eventually include the transaction.
 
