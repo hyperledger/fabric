@@ -498,6 +498,13 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		c.CapabilitiesReturns(cap)
 		res := &mocks.Resources{}
 		res.ChannelConfigReturns(c)
+		val := &mocks.Orderer{}
+		if tt.isBFT {
+			val.ConsensusTypeReturns("BFT")
+		} else {
+			val.ConsensusTypeReturns("etcdraft")
+		}
+		res.OrdererConfigReturns(val, true)
 		return res
 	}
 

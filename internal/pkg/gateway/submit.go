@@ -50,7 +50,11 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 
 	logger := logger.With("txID", request.TransactionId)
 	config := gs.getChannelConfig(request.ChannelId)
-	if config.ChannelConfig().Capabilities().ConsensusTypeBFT() {
+	oc, ok := config.OrdererConfig()
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "failed to create block deliverer for channel `%s`, missing OrdererConfig", request.ChannelId)
+	}
+	if oc.ConsensusType() == "BFT" {
 		return gs.submitBFT(ctx, orderers, txn, clusterSize, logger)
 	} else {
 		return gs.submitNonBFT(ctx, orderers, txn, logger)
