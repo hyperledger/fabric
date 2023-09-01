@@ -7,7 +7,9 @@ name: Release
 on:
   workflow_dispatch: # workflow_dispatch must be enabled in main branch to support release action on older release branches
   push:
-    tags: [ v2.* ]
+    tags:
+      - v2.*
+      - v3.*
 
 env:
   GO_VER: 1.20.7
