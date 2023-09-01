@@ -35,6 +35,10 @@ General:
     ServerMinInterval: 60s
     ServerInterval: 7200s
     ServerTimeout: 20s
+  Backoff:
+    BaseDelay: 1s
+    Multiplier: 1.6
+    MaxDelay: 2m
   BootstrapMethod: "none"
   LocalMSPDir: {{ $w.OrdererLocalMSPDir Orderer }}
   LocalMSPID: {{ ($w.Organization Orderer.Organization).MSPID }}

@@ -390,6 +390,7 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel) (comm.ClientConfi
 	cc := comm.ClientConfig{
 		AsyncConnect:   true,
 		KaOpts:         comm.DefaultKeepaliveOptions,
+		BaOpts:         comm.BackoffOptions{},
 		DialTimeout:    conf.General.Cluster.DialTimeout,
 		SecOpts:        comm.SecureOptions{},
 		MaxRecvMsgSize: int(conf.General.MaxRecvMsgSize),
@@ -440,6 +441,24 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel) (comm.ClientConfi
 		Certificate:       certBytes,
 		Key:               keyBytes,
 		UseTLS:            true,
+	}
+
+	if conf.General.Backoff.BaseDelay > 0 ||
+		conf.General.Backoff.Multiplier > 0 ||
+		conf.General.Backoff.MaxDelay > 0 {
+		cc.BaOpts = comm.DefaultBackoffOptions
+
+		if conf.General.Backoff.BaseDelay > time.Duration(0) {
+			cc.BaOpts.BaseDelay = conf.General.Backoff.BaseDelay
+		}
+
+		if conf.General.Backoff.Multiplier > 0 {
+			cc.BaOpts.Multiplier = conf.General.Backoff.Multiplier
+		}
+
+		if conf.General.Backoff.MaxDelay > time.Duration(0) {
+			cc.BaOpts.MaxDelay = conf.General.Backoff.MaxDelay
+		}
 	}
 
 	return cc, reuseGrpcListener
