@@ -1,11 +1,8 @@
 /*
- *
- * Copyright IBM Corp. All Rights Reserved.
- *
- * SPDX-License-Identifier: Apache-2.0
- * /
- *
- */
+Copyright IBM Corp All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
 
 package smartbft
 
@@ -26,10 +23,6 @@ import (
 	"time"
 
 	protos "github.com/SmartBFT-Go/consensus/smartbftprotos"
-	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
-
-	"github.com/hyperledger/fabric/orderer/common/cluster"
-
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/configtx"
@@ -41,6 +34,8 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
+	"github.com/hyperledger/fabric/orderer/common/cluster"
+	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -1576,6 +1571,79 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			By("Assert success")
 			Eventually(ordererRunners[follower.Id-1].Err(), network.EventuallyTimeout).Should(gbytes.Say("Processed proposal with seq 1"))
+		})
+
+		It("smartbft setting max backoff and LeaderHeartbeatTimeout", func() {
+			networkConfig := nwo.MultiNodeSmartBFT()
+			networkConfig.Channels = nil
+			channel := "testchannel1"
+
+			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			var ordererRunners []*ginkgomon.Runner
+			for _, orderer := range network.Orderers {
+				runner := network.OrdererRunner(orderer)
+				runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug")
+				ordererRunners = append(ordererRunners, runner)
+				proc := ifrit.Invoke(runner)
+				ordererProcesses = append(ordererProcesses, proc)
+				Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			peerGroupRunner, _ := peerGroupRunners(network)
+			peerProcesses = ifrit.Invoke(peerGroupRunner)
+			Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			peer := network.Peer("Org1", "peer0")
+
+			joinChannel(network, channel)
+
+			By("Waiting for followers to see the leader")
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[2].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+
+			By("Joining peers to testchannel1")
+			network.JoinChannel(channel, network.Orderers[0], network.PeersWithChannel(channel)...)
+
+			By("Deploying chaincode")
+			deployChaincode(network, channel, testDir)
+
+			By("querying the chaincode")
+			sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+				ChannelID: channel,
+				Name:      "mycc",
+				Ctor:      `{"Args":["query","a"]}`,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+			Expect(sess).To(gbytes.Say("100"))
+
+			By("invoking the chaincode")
+			invokeQuery(network, peer, network.Orderers[1], channel, 90)
+
+			numberKill := 3
+			orderer := network.Orderers[numberKill]
+			By(fmt.Sprintf("Killing %s", orderer.Name))
+			ordererProcesses[numberKill].Signal(syscall.SIGTERM)
+			Eventually(ordererProcesses[numberKill].Wait(), network.EventuallyTimeout).Should(Receive())
+
+			time.Sleep(time.Second * 180)
+
+			By(fmt.Sprintf("Launching %s", orderer.Name))
+			runner := network.OrdererRunner(orderer)
+			runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug")
+			ordererRunners[numberKill] = runner
+			proc := ifrit.Invoke(runner)
+			ordererProcesses[numberKill] = proc
+			Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			By("Waiting for followers to see the leader, again")
+			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1 channel=testchannel1"))
+
+			By("invoking the chaincode, again")
+			invokeQuery(network, peer, network.Orderers[2], channel, 80)
 		})
 	})
 })
