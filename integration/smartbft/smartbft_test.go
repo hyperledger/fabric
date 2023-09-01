@@ -1585,7 +1585,11 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			var ordererRunners []*ginkgomon.Runner
 			for _, orderer := range network.Orderers {
 				runner := network.OrdererRunner(orderer)
-				runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug")
+				runner.Command.Env = append(
+					runner.Command.Env,
+					"FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug",
+					"ORDERER_GENERAL_BACKOFF_MAXDELAY=20s",
+				)
 				ordererRunners = append(ordererRunners, runner)
 				proc := ifrit.Invoke(runner)
 				ordererProcesses = append(ordererProcesses, proc)
@@ -1629,11 +1633,15 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			ordererProcesses[numberKill].Signal(syscall.SIGTERM)
 			Eventually(ordererProcesses[numberKill].Wait(), network.EventuallyTimeout).Should(Receive())
 
-			time.Sleep(time.Second * 180)
+			time.Sleep(time.Second * 240)
 
 			By(fmt.Sprintf("Launching %s", orderer.Name))
 			runner := network.OrdererRunner(orderer)
-			runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug")
+			runner.Command.Env = append(
+				runner.Command.Env,
+				"FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug",
+				"ORDERER_GENERAL_BACKOFF_MAXDELAY=20s",
+			)
 			ordererRunners[numberKill] = runner
 			proc := ifrit.Invoke(runner)
 			ordererProcesses[numberKill] = proc
