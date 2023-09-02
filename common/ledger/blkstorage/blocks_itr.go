@@ -20,13 +20,12 @@ type blocksItr struct {
 	stream               *blockStream
 	closeMarker          bool
 	closeMarkerLock      *sync.Mutex
-	cachedPrev           bool
 }
 
 func newBlockItr(mgr *blockfileMgr, startBlockNum uint64) *blocksItr {
 	mgr.blkfilesInfoCond.L.Lock()
 	defer mgr.blkfilesInfoCond.L.Unlock()
-	return &blocksItr{mgr, mgr.blockfilesInfo.lastPersistedBlock, startBlockNum, nil, false, &sync.Mutex{}, false}
+	return &blocksItr{mgr, mgr.blockfilesInfo.lastPersistedBlock, startBlockNum, nil, false, &sync.Mutex{}}
 }
 
 func (itr *blocksItr) waitForBlock(blockNum uint64) uint64 {
@@ -72,18 +71,18 @@ func (itr *blocksItr) Next() (ledger.QueryResult, error) {
 
 	cachedBlock, existsInCache := itr.mgr.cache.get(itr.blockNumToRetrieve)
 	if existsInCache {
-		logger.Debugf("Retrieved block %d from ledger in-memory cache", itr.blockNumToRetrieve)
-		itr.cachedPrev = true
-		itr.blockNumToRetrieve++
-		return cachedBlock, nil
-	}
 
-	if itr.cachedPrev {
-		itr.cachedPrev = false
+		// Close the stream if applicable, because since we're fetching from
+		// the cache, the file stream is no longer in sync with the block number to retrieve.
+		// Hopefully the next iteration will also be a cache hit.
 		if itr.stream != nil {
 			itr.stream.close()
 			itr.stream = nil
 		}
+
+		logger.Debugf("Retrieved block %d from ledger in-memory cache", itr.blockNumToRetrieve)
+		itr.blockNumToRetrieve++
+		return cachedBlock, nil
 	}
 
 	if itr.stream == nil {
