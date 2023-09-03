@@ -30,6 +30,21 @@ const (
 	ABORT
 )
 
+func (p Phase) String() string {
+	switch p {
+	case COMMITTED:
+		return "COMMITTED"
+	case PROPOSED:
+		return "PROPOSED"
+	case PREPARED:
+		return "PREPARED"
+	case ABORT:
+		return "ABORT"
+	default:
+		return "Invalid Phase"
+	}
+}
+
 // State can save and restore the state
 //
 //go:generate mockery -dir . -name State -case underscore -output ./mocks/
@@ -884,6 +899,8 @@ func (v *View) GetMetadata() []byte {
 		LatestSequence:  v.ProposalSequence,
 		DecisionsInView: v.DecisionsInView,
 	}
+
+	v.Logger.Debugf("GetMetadata with view %d, seq %d, dec %d", metadata.ViewId, metadata.LatestSequence, metadata.DecisionsInView)
 
 	var (
 		prevSigs []*protos.Signature
