@@ -227,7 +227,7 @@ pullImages() {
     if [ "${NODOCKER}" == 0 ]; then
         FABRIC_IMAGES=(peer orderer ccenv tools)
         case "$VERSION" in
-        2.*)
+        [2-3].*)
             FABRIC_IMAGES+=(baseos)
             shift
             ;;
