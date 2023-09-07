@@ -56,11 +56,12 @@ github.com/Microsoft/hcsshim/internal/vmcompute
 github.com/Microsoft/hcsshim/internal/wclayer
 github.com/Microsoft/hcsshim/internal/winapi
 github.com/Microsoft/hcsshim/osversion
-# github.com/SmartBFT-Go/consensus v0.0.0-20230717102940-071648f76967
+# github.com/SmartBFT-Go/consensus v0.0.0-20230907130931-31f018a899a6
 ## explicit; go 1.20
 github.com/SmartBFT-Go/consensus/internal/bft
 github.com/SmartBFT-Go/consensus/pkg/api
 github.com/SmartBFT-Go/consensus/pkg/consensus
+github.com/SmartBFT-Go/consensus/pkg/metrics
 github.com/SmartBFT-Go/consensus/pkg/metrics/disabled
 github.com/SmartBFT-Go/consensus/pkg/types
 github.com/SmartBFT-Go/consensus/pkg/wal

@@ -1,14 +1,71 @@
 package api
 
-import "strconv"
+import (
+	"fmt"
+	"sort"
+	"strconv"
+
+	"github.com/SmartBFT-Go/consensus/pkg/metrics"
+)
 
 const (
-	NameBlackListNodeID = "blackid"
-	NameReasonFailAdd   = "reason"
-
 	ReasonRequestMaxBytes      = "MAX_BYTES"
 	ReasonSemaphoreAcquireFail = "SEMAPHORE_ACQUIRE_FAIL"
 )
+
+func NewGaugeOpts(old metrics.GaugeOpts, labelNames []string) metrics.GaugeOpts {
+	return metrics.GaugeOpts{
+		Namespace:    old.Namespace,
+		Subsystem:    old.Subsystem,
+		Name:         old.Name,
+		Help:         old.Help,
+		LabelNames:   makeLabelNames(labelNames, old.LabelNames...),
+		LabelHelp:    old.LabelHelp,
+		StatsdFormat: makeStatsdFormat(labelNames, old.StatsdFormat),
+	}
+}
+
+func NewCounterOpts(old metrics.CounterOpts, labelNames []string) metrics.CounterOpts {
+	return metrics.CounterOpts{
+		Namespace:    old.Namespace,
+		Subsystem:    old.Subsystem,
+		Name:         old.Name,
+		Help:         old.Help,
+		LabelNames:   makeLabelNames(labelNames, old.LabelNames...),
+		LabelHelp:    old.LabelHelp,
+		StatsdFormat: makeStatsdFormat(labelNames, old.StatsdFormat),
+	}
+}
+
+func NewHistogramOpts(old metrics.HistogramOpts, labelNames []string) metrics.HistogramOpts {
+	return metrics.HistogramOpts{
+		Namespace:    old.Namespace,
+		Subsystem:    old.Subsystem,
+		Name:         old.Name,
+		Help:         old.Help,
+		Buckets:      old.Buckets,
+		LabelNames:   makeLabelNames(labelNames, old.LabelNames...),
+		LabelHelp:    old.LabelHelp,
+		StatsdFormat: makeStatsdFormat(labelNames, old.StatsdFormat),
+	}
+}
+
+func makeStatsdFormat(labelNames []string, str string) string {
+	sort.Strings(labelNames)
+	for _, s := range labelNames {
+		str += fmt.Sprintf(".%%{%s}", s)
+	}
+
+	return str
+}
+
+func makeLabelNames(labelNames []string, names ...string) []string {
+	ln := make([]string, 0, len(names)+len(labelNames))
+	ln = append(ln, names...)
+	sort.Strings(labelNames)
+	ln = append(ln, labelNames...)
+	return ln
+}
 
 type Metrics struct {
 	MetricsRequestPool *MetricsRequestPool
@@ -18,7 +75,7 @@ type Metrics struct {
 	MetricsViewChange  *MetricsViewChange
 }
 
-func NewMetrics(p Provider, labelNames ...string) *Metrics {
+func NewMetrics(p metrics.Provider, labelNames ...string) *Metrics {
 	return &Metrics{
 		MetricsRequestPool: NewMetricsRequestPool(p, labelNames...),
 		MetricsBlacklist:   NewMetricsBlacklist(p, labelNames...),
@@ -46,64 +103,64 @@ func (m *Metrics) Initialize(nodes []uint64) {
 	m.MetricsViewChange.Initialize()
 }
 
-var countOfRequestPoolOpts = GaugeOpts{
+var countOfRequestPoolOpts = metrics.GaugeOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "pool_count_of_elements",
 	Help:         "Number of elements in the consensus request pool.",
 	LabelNames:   []string{},
 	StatsdFormat: "%{#fqname}",
 }
 
-var countOfFailAddRequestToPoolOpts = CounterOpts{
+var countOfFailAddRequestToPoolOpts = metrics.CounterOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "pool_count_of_fail_add_request",
 	Help:         "Number of requests pool insertion failure.",
-	LabelNames:   []string{NameReasonFailAdd},
-	StatsdFormat: "%{#fqname}.%{" + NameReasonFailAdd + "}",
+	LabelNames:   []string{"reason"},
+	StatsdFormat: "%{#fqname}.%{reason}",
 }
 
 // ForwardTimeout
-var countOfLeaderForwardRequestOpts = CounterOpts{
+var countOfLeaderForwardRequestOpts = metrics.CounterOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "pool_count_leader_forward_request",
 	Help:         "Number of requests forwarded to the leader.",
 	LabelNames:   []string{},
 	StatsdFormat: "%{#fqname}",
 }
 
-var countTimeoutTwoStepOpts = CounterOpts{
+var countTimeoutTwoStepOpts = metrics.CounterOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "pool_count_timeout_two_step",
 	Help:         "Number of times requests reached second timeout.",
 	LabelNames:   []string{},
 	StatsdFormat: "%{#fqname}",
 }
 
-var countOfDeleteRequestPoolOpts = CounterOpts{
+var countOfDeleteRequestPoolOpts = metrics.CounterOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "pool_count_of_delete_request",
 	Help:         "Number of elements removed from the request pool.",
 	LabelNames:   []string{},
 	StatsdFormat: "%{#fqname}",
 }
 
-var countOfRequestPoolAllOpts = CounterOpts{
+var countOfRequestPoolAllOpts = metrics.CounterOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "pool_count_of_elements_all",
 	Help:         "Total amount of elements in the request pool.",
 	LabelNames:   []string{},
 	StatsdFormat: "%{#fqname}",
 }
 
-var latencyOfRequestPoolOpts = HistogramOpts{
+var latencyOfRequestPoolOpts = metrics.HistogramOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "pool_latency_of_elements",
 	Help:         "The average request processing time, time request resides in the pool.",
 	Buckets:      []float64{0.005, 0.01, 0.015, 0.05, 0.1, 1, 10},
@@ -113,19 +170,19 @@ var latencyOfRequestPoolOpts = HistogramOpts{
 
 // MetricsRequestPool encapsulates request pool metrics
 type MetricsRequestPool struct {
-	CountOfRequestPool          Gauge
-	CountOfFailAddRequestToPool Counter
-	CountOfLeaderForwardRequest Counter
-	CountTimeoutTwoStep         Counter
-	CountOfDeleteRequestPool    Counter
-	CountOfRequestPoolAll       Counter
-	LatencyOfRequestPool        Histogram
+	CountOfRequestPool          metrics.Gauge
+	CountOfFailAddRequestToPool metrics.Counter
+	CountOfLeaderForwardRequest metrics.Counter
+	CountTimeoutTwoStep         metrics.Counter
+	CountOfDeleteRequestPool    metrics.Counter
+	CountOfRequestPoolAll       metrics.Counter
+	LatencyOfRequestPool        metrics.Histogram
 
 	labels []string
 }
 
 // NewMetricsRequestPool create new request pool metrics
-func NewMetricsRequestPool(p Provider, labelNames ...string) *MetricsRequestPool {
+func NewMetricsRequestPool(p metrics.Provider, labelNames ...string) *MetricsRequestPool {
 	countOfRequestPoolOptsTmp := NewGaugeOpts(countOfRequestPoolOpts, labelNames)
 	countOfFailAddRequestToPoolOptsTmp := NewCounterOpts(countOfFailAddRequestToPoolOpts, labelNames)
 	countOfLeaderForwardRequestOptsTmp := NewCounterOpts(countOfLeaderForwardRequestOpts, labelNames)
@@ -160,10 +217,10 @@ func (m *MetricsRequestPool) With(labelValues ...string) *MetricsRequestPool {
 func (m *MetricsRequestPool) Initialize() {
 	m.CountOfRequestPool.Add(0)
 	m.CountOfFailAddRequestToPool.With(
-		m.LabelsForWith(NameReasonFailAdd, ReasonRequestMaxBytes)...,
+		m.LabelsForWith("reason", ReasonRequestMaxBytes)...,
 	).Add(0)
 	m.CountOfFailAddRequestToPool.With(
-		m.LabelsForWith(NameReasonFailAdd, ReasonSemaphoreAcquireFail)...,
+		m.LabelsForWith("reason", ReasonSemaphoreAcquireFail)...,
 	).Add(0)
 	m.CountOfLeaderForwardRequest.Add(0)
 	m.CountTimeoutTwoStep.Add(0)
@@ -179,34 +236,34 @@ func (m *MetricsRequestPool) LabelsForWith(labelValues ...string) []string {
 	return result
 }
 
-var countBlackListOpts = GaugeOpts{
+var countBlackListOpts = metrics.GaugeOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "blacklist_count",
 	Help:         "Count of nodes in blacklist on this channel.",
 	LabelNames:   []string{},
 	StatsdFormat: "%{#fqname}",
 }
 
-var nodesInBlackListOpts = GaugeOpts{
+var nodesInBlackListOpts = metrics.GaugeOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "node_id_in_blacklist",
 	Help:         "Node ID in blacklist on this channel.",
-	LabelNames:   []string{NameBlackListNodeID},
-	StatsdFormat: "%{#fqname}.%{" + NameBlackListNodeID + "}",
+	LabelNames:   []string{"blackid"},
+	StatsdFormat: "%{#fqname}.%{blackid}",
 }
 
 // MetricsBlacklist encapsulates blacklist metrics
 type MetricsBlacklist struct {
-	CountBlackList   Gauge
-	NodesInBlackList Gauge
+	CountBlackList   metrics.Gauge
+	NodesInBlackList metrics.Gauge
 
 	labels []string
 }
 
 // NewMetricsBlacklist create new blacklist metrics
-func NewMetricsBlacklist(p Provider, labelNames ...string) *MetricsBlacklist {
+func NewMetricsBlacklist(p metrics.Provider, labelNames ...string) *MetricsBlacklist {
 	countBlackListOptsTmp := NewGaugeOpts(countBlackListOpts, labelNames)
 	nodesInBlackListOptsTmp := NewGaugeOpts(nodesInBlackListOpts, labelNames)
 	return &MetricsBlacklist{
@@ -227,7 +284,7 @@ func (m *MetricsBlacklist) Initialize(nodes []uint64) {
 	m.CountBlackList.Add(0)
 	for _, n := range nodes {
 		m.NodesInBlackList.With(
-			m.LabelsForWith(NameBlackListNodeID, strconv.FormatUint(n, 10))...,
+			m.LabelsForWith("blackid", strconv.FormatUint(n, 10))...,
 		).Set(0)
 	}
 }
@@ -239,18 +296,18 @@ func (m *MetricsBlacklist) LabelsForWith(labelValues ...string) []string {
 	return result
 }
 
-var consensusReconfigOpts = CounterOpts{
+var consensusReconfigOpts = metrics.CounterOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "consensus_reconfig",
 	Help:         "Number of reconfiguration requests.",
 	LabelNames:   []string{},
 	StatsdFormat: "%{#fqname}",
 }
 
-var latencySyncOpts = HistogramOpts{
+var latencySyncOpts = metrics.HistogramOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "consensus_latency_sync",
 	Help:         "An average time it takes to sync node.",
 	Buckets:      []float64{0.005, 0.01, 0.015, 0.05, 0.1, 1, 10},
@@ -260,12 +317,12 @@ var latencySyncOpts = HistogramOpts{
 
 // MetricsConsensus encapsulates consensus metrics
 type MetricsConsensus struct {
-	CountConsensusReconfig Counter
-	LatencySync            Histogram
+	CountConsensusReconfig metrics.Counter
+	LatencySync            metrics.Histogram
 }
 
 // NewMetricsConsensus create new consensus metrics
-func NewMetricsConsensus(p Provider, labelNames ...string) *MetricsConsensus {
+func NewMetricsConsensus(p metrics.Provider, labelNames ...string) *MetricsConsensus {
 	consensusReconfigOptsTmp := NewCounterOpts(consensusReconfigOpts, labelNames)
 	latencySyncOptsTmp := NewHistogramOpts(latencySyncOpts, labelNames)
 	return &MetricsConsensus{
@@ -286,90 +343,90 @@ func (m *MetricsConsensus) Initialize() {
 	m.LatencySync.Observe(0)
 }
 
-var viewNumberOpts = GaugeOpts{
+var viewNumberOpts = metrics.GaugeOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "view_number",
 	Help:         "The View number value.",
 	LabelNames:   []string{},
 	StatsdFormat: "%{#fqname}",
 }
 
-var leaderIDOpts = GaugeOpts{
+var leaderIDOpts = metrics.GaugeOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "view_leader_id",
 	Help:         "The leader id.",
 	LabelNames:   []string{},
 	StatsdFormat: "%{#fqname}",
 }
 
-var proposalSequenceOpts = GaugeOpts{
+var proposalSequenceOpts = metrics.GaugeOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "view_proposal_sequence",
 	Help:         "The sequence number within current view.",
 	LabelNames:   []string{},
 	StatsdFormat: "%{#fqname}",
 }
 
-var decisionsInViewOpts = GaugeOpts{
+var decisionsInViewOpts = metrics.GaugeOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "view_decisions",
 	Help:         "The number of decisions in the current view.",
 	LabelNames:   []string{},
 	StatsdFormat: "%{#fqname}",
 }
 
-var phaseOpts = GaugeOpts{
+var phaseOpts = metrics.GaugeOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "view_phase",
 	Help:         "Current consensus phase.",
 	LabelNames:   []string{},
 	StatsdFormat: "%{#fqname}",
 }
 
-var countTxsInBatchOpts = GaugeOpts{
+var countTxsInBatchOpts = metrics.GaugeOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "view_count_txs_in_batch",
 	Help:         "The number of transactions per batch.",
 	LabelNames:   []string{},
 	StatsdFormat: "%{#fqname}",
 }
 
-var countBatchAllOpts = CounterOpts{
+var countBatchAllOpts = metrics.CounterOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "view_count_batch_all",
 	Help:         "Amount of batched processed.",
 	LabelNames:   []string{},
 	StatsdFormat: "%{#fqname}",
 }
 
-var countTxsAllOpts = CounterOpts{
+var countTxsAllOpts = metrics.CounterOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "view_count_txs_all",
 	Help:         "Total amount of transactions.",
 	LabelNames:   []string{},
 	StatsdFormat: "%{#fqname}",
 }
 
-var sizeOfBatchOpts = CounterOpts{
+var sizeOfBatchOpts = metrics.CounterOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "view_size_batch",
 	Help:         "An average batch size.",
 	LabelNames:   []string{},
 	StatsdFormat: "%{#fqname}",
 }
 
-var latencyBatchProcessingOpts = HistogramOpts{
+var latencyBatchProcessingOpts = metrics.HistogramOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "view_latency_batch_processing",
 	Help:         "Amount of time it take to process batch.",
 	Buckets:      []float64{0.005, 0.01, 0.015, 0.05, 0.1, 1, 10},
@@ -377,9 +434,9 @@ var latencyBatchProcessingOpts = HistogramOpts{
 	StatsdFormat: "%{#fqname}",
 }
 
-var latencyBatchSaveOpts = HistogramOpts{
+var latencyBatchSaveOpts = metrics.HistogramOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "view_latency_batch_save",
 	Help:         "An average time it takes to persist batch.",
 	Buckets:      []float64{0.005, 0.01, 0.015, 0.05, 0.1, 1, 10},
@@ -389,21 +446,21 @@ var latencyBatchSaveOpts = HistogramOpts{
 
 // MetricsView encapsulates view metrics
 type MetricsView struct {
-	ViewNumber             Gauge
-	LeaderID               Gauge
-	ProposalSequence       Gauge
-	DecisionsInView        Gauge
-	Phase                  Gauge
-	CountTxsInBatch        Gauge
-	CountBatchAll          Counter
-	CountTxsAll            Counter
-	SizeOfBatch            Counter
-	LatencyBatchProcessing Histogram
-	LatencyBatchSave       Histogram
+	ViewNumber             metrics.Gauge
+	LeaderID               metrics.Gauge
+	ProposalSequence       metrics.Gauge
+	DecisionsInView        metrics.Gauge
+	Phase                  metrics.Gauge
+	CountTxsInBatch        metrics.Gauge
+	CountBatchAll          metrics.Counter
+	CountTxsAll            metrics.Counter
+	SizeOfBatch            metrics.Counter
+	LatencyBatchProcessing metrics.Histogram
+	LatencyBatchSave       metrics.Histogram
 }
 
 // NewMetricsView create new view metrics
-func NewMetricsView(p Provider, labelNames ...string) *MetricsView {
+func NewMetricsView(p metrics.Provider, labelNames ...string) *MetricsView {
 	viewNumberOptsTmp := NewGaugeOpts(viewNumberOpts, labelNames)
 	leaderIDOptsTmp := NewGaugeOpts(leaderIDOpts, labelNames)
 	proposalSequenceOptsTmp := NewGaugeOpts(proposalSequenceOpts, labelNames)
@@ -460,27 +517,27 @@ func (m *MetricsView) Initialize() {
 	m.LatencyBatchSave.Observe(0)
 }
 
-var currentViewOpts = GaugeOpts{
+var currentViewOpts = metrics.GaugeOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "viewchange_current_view",
 	Help:         "current view of viewchange on this channel.",
 	LabelNames:   []string{},
 	StatsdFormat: "%{#fqname}",
 }
 
-var nextViewOpts = GaugeOpts{
+var nextViewOpts = metrics.GaugeOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "viewchange_next_view",
 	Help:         "next view of viewchange on this channel.",
 	LabelNames:   []string{},
 	StatsdFormat: "%{#fqname}",
 }
 
-var realViewOpts = GaugeOpts{
+var realViewOpts = metrics.GaugeOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "viewchange_real_view",
 	Help:         "real view of viewchange on this channel.",
 	LabelNames:   []string{},
@@ -489,13 +546,13 @@ var realViewOpts = GaugeOpts{
 
 // MetricsViewChange encapsulates view change metrics
 type MetricsViewChange struct {
-	CurrentView Gauge
-	NextView    Gauge
-	RealView    Gauge
+	CurrentView metrics.Gauge
+	NextView    metrics.Gauge
+	RealView    metrics.Gauge
 }
 
 // NewMetricsViewChange create new view change metrics
-func NewMetricsViewChange(p Provider, labelNames ...string) *MetricsViewChange {
+func NewMetricsViewChange(p metrics.Provider, labelNames ...string) *MetricsViewChange {
 	currentViewOptsTmp := NewGaugeOpts(currentViewOpts, labelNames)
 	nextViewOptsTmp := NewGaugeOpts(nextViewOpts, labelNames)
 	realViewOptsTmp := NewGaugeOpts(realViewOpts, labelNames)

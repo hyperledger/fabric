@@ -1,10 +1,13 @@
 package wal
 
-import metrics "github.com/SmartBFT-Go/consensus/pkg/api"
+import (
+	"github.com/SmartBFT-Go/consensus/pkg/api"
+	"github.com/SmartBFT-Go/consensus/pkg/metrics"
+)
 
 var countOfFilesOpts = metrics.GaugeOpts{
 	Namespace:    "consensus",
-	Subsystem:    "bft",
+	Subsystem:    "smartbft",
 	Name:         "wal_count_of_files",
 	Help:         "Count of wal-files.",
 	LabelNames:   []string{},
@@ -18,7 +21,7 @@ type Metrics struct {
 
 // NewMetrics create new wal metrics
 func NewMetrics(p metrics.Provider, labelNames ...string) *Metrics {
-	countOfFilesOptsTmp := metrics.NewGaugeOpts(countOfFilesOpts, labelNames)
+	countOfFilesOptsTmp := api.NewGaugeOpts(countOfFilesOpts, labelNames)
 	return &Metrics{
 		CountOfFiles: p.NewGauge(countOfFilesOptsTmp),
 	}

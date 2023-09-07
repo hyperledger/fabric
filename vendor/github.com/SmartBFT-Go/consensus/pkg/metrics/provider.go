@@ -4,66 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package api
-
-import (
-	"fmt"
-	"sort"
-)
-
-func NewGaugeOpts(old GaugeOpts, labelNames []string) GaugeOpts {
-	return GaugeOpts{
-		Namespace:    old.Namespace,
-		Subsystem:    old.Subsystem,
-		Name:         old.Name,
-		Help:         old.Help,
-		LabelNames:   makeLabelNames(labelNames, old.LabelNames...),
-		LabelHelp:    old.LabelHelp,
-		StatsdFormat: makeStatsdFormat(labelNames, old.StatsdFormat),
-	}
-}
-
-func NewCounterOpts(old CounterOpts, labelNames []string) CounterOpts {
-	return CounterOpts{
-		Namespace:    old.Namespace,
-		Subsystem:    old.Subsystem,
-		Name:         old.Name,
-		Help:         old.Help,
-		LabelNames:   makeLabelNames(labelNames, old.LabelNames...),
-		LabelHelp:    old.LabelHelp,
-		StatsdFormat: makeStatsdFormat(labelNames, old.StatsdFormat),
-	}
-}
-
-func NewHistogramOpts(old HistogramOpts, labelNames []string) HistogramOpts {
-	return HistogramOpts{
-		Namespace:    old.Namespace,
-		Subsystem:    old.Subsystem,
-		Name:         old.Name,
-		Help:         old.Help,
-		Buckets:      old.Buckets,
-		LabelNames:   makeLabelNames(labelNames, old.LabelNames...),
-		LabelHelp:    old.LabelHelp,
-		StatsdFormat: makeStatsdFormat(labelNames, old.StatsdFormat),
-	}
-}
-
-func makeStatsdFormat(labelNames []string, str string) string {
-	sort.Strings(labelNames)
-	for _, s := range labelNames {
-		str += fmt.Sprintf(".%%{%s}", s)
-	}
-
-	return str
-}
-
-func makeLabelNames(labelNames []string, names ...string) []string {
-	ln := make([]string, 0, len(names)+len(labelNames))
-	ln = append(ln, names...)
-	sort.Strings(labelNames)
-	ln = append(ln, labelNames...)
-	return ln
-}
+package metrics
 
 // A Provider is an abstraction for a metrics provider. It is a factory for
 // Counter, Gauge, and Histogram meters.
