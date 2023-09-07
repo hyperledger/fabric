@@ -1036,6 +1036,52 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			}
 		})
 
+		It("smartbft broadcast invalid message", func() {
+			channel := "testchannel1"
+			By("Create network")
+			networkConfig := nwo.MultiNodeSmartBFT()
+			networkConfig.Channels = nil
+			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+			network.EventuallyTimeout *= 2
+
+			By("Start orderers")
+			var ordererRunners []*ginkgomon.Runner
+			for _, orderer := range network.Orderers {
+				runner := network.OrdererRunner(orderer)
+				runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.common.cluster=debug:orderer.consensus.smartbft=debug:policies.ImplicitOrderer=debug")
+				ordererRunners = append(ordererRunners, runner)
+				proc := ifrit.Invoke(runner)
+				ordererProcesses = append(ordererProcesses, proc)
+				Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			By("Join network to channel")
+			joinChannel(network, channel)
+
+			By("Waiting for followers to see the leader")
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[2].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+
+			leader := network.Orderers[0]
+
+			By("Sending valid TX")
+			env := ordererclient.CreateBroadcastEnvelope(network, leader, channel, []byte("MESSSAGE"))
+			resp, err := ordererclient.Broadcast(network, leader, env)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+
+			By("Sending TX with corrupted signature")
+			env = ordererclient.CreateBroadcastEnvelope(network, leader, channel, []byte("MESSSAGE_2"))
+			env.Signature = []byte{}
+			resp, err = ordererclient.Broadcast(network, leader, env)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Status).To(Equal(common.Status_FORBIDDEN))
+			Expect(resp.Info).To(ContainSubstring("implicit policy evaluation failed - 0 sub-policies were satisfied"))
+		})
+
 		It("smartbft batch size max bytes config change", func() {
 			channel := "testchannel1"
 			By("Create network")
