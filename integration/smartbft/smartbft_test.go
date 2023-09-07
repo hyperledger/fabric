@@ -13,6 +13,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -24,12 +25,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hyperledger/fabric/orderer/common/cluster"
+
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/configtx"
 	"github.com/hyperledger/fabric-config/configtx/orderer"
 	"github.com/hyperledger/fabric-protos-go/common"
-	protosOrderer "github.com/hyperledger/fabric-protos-go/orderer"
+	ordererProtos "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/integration/channelparticipation"
 	conftx "github.com/hyperledger/fabric/integration/configtx"
 	"github.com/hyperledger/fabric/integration/nwo"
@@ -1085,7 +1088,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			By("Changing the batch max bytes to 1MB")
 			updateBatchSize(network, peer, orderer1, channel,
-				func(batchSize *protosOrderer.BatchSize) {
+				func(batchSize *ordererProtos.BatchSize) {
 					batchSize.AbsoluteMaxBytes = uint32(newAbsoluteMaxBytes)
 				})
 
@@ -1257,6 +1260,119 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			Eventually(ordererRunners[4].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Skipping verifying prev commit signatures due to verification sequence advancing from 0 to 1 channel=testchannel1"))
 
 			assertBlockReception(map[string]int{"testchannel1": 8}, network.Orderers[1:], peer, network)
+		})
+
+		It("smartbft forwarding errorous message to leader", func() {
+			networkConfig := nwo.MultiNodeSmartBFT()
+			networkConfig.Channels = nil
+			channel := "testchannel1"
+
+			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			var ordererRunners []*ginkgomon.Runner
+			for _, orderer := range network.Orderers {
+				runner := network.OrdererRunner(orderer)
+				runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug:policies=debug")
+				ordererRunners = append(ordererRunners, runner)
+				proc := ifrit.Invoke(runner)
+				ordererProcesses = append(ordererProcesses, proc)
+				Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			joinChannel(network, channel)
+
+			By("Waiting for followers to see the leader")
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[2].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+
+			leader := network.Orderers[0]
+			follower := network.Orderers[1]
+
+			By("Create a GRPC")
+			grpcConn := network.NewClientConn(
+				network.OrdererAddress(leader, nwo.ClusterPort),
+				filepath.Join(network.OrdererLocalTLSDir(leader), "ca.crt"),
+				filepath.Join(network.OrdererLocalTLSDir(follower), "server.crt"),
+				filepath.Join(network.OrdererLocalTLSDir(follower), "server.key"),
+			)
+			defer grpcConn.Close()
+
+			By("Create a step client")
+			clusterNodeServiceClient := ordererProtos.NewClusterNodeServiceClient(grpcConn)
+			stepClient, err := clusterNodeServiceClient.Step(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+
+			signer := &nwo.SigningIdentity{
+				CertPath: network.OrdererSignCert(follower),
+				KeyPath: filepath.Join(
+					network.OrdererLocalCryptoDir(follower, "msp"),
+					"keystore",
+					"priv_sk",
+				),
+				MSPID: network.Organization(follower.Organization).MSPID,
+			}
+
+			client := &cluster.NodeClientStream{
+				Version:           0,
+				StepClient:        stepClient,
+				SourceNodeID:      uint64(follower.Id),
+				DestinationNodeID: uint64(leader.Id),
+				Signer:            signer,
+				Channel:           channel,
+			}
+
+			By("Create an envelope with invalid signature")
+			env, err := protoutil.CreateSignedEnvelope(
+				common.HeaderType_ENDORSER_TRANSACTION,
+				channel,
+				signer,
+				&common.Envelope{Payload: []byte("TEST_MESSAGE")},
+				0,
+				0,
+			)
+			Expect(err).NotTo(HaveOccurred())
+			env.Signature = []byte{}
+
+			By("Authenticate to the leader step service")
+			err = client.Auth()
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Send the request")
+			req := &ordererProtos.StepRequest{
+				Payload: &ordererProtos.StepRequest_SubmitRequest{
+					SubmitRequest: &ordererProtos.SubmitRequest{
+						Channel:           channel,
+						LastValidationSeq: 0,
+						Payload:           env,
+					},
+				},
+			}
+
+			By("Expect an error")
+			Expect(client.Send(req)).NotTo(HaveOccurred())
+			requestErrMessage := "SigFilter evaluation failed: implicit policy evaluation failed - 0 sub-policies were satisfied"
+			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(requestErrMessage))
+
+			By("Send valid message")
+			env, err = protoutil.CreateSignedEnvelope(
+				common.HeaderType_ENDORSER_TRANSACTION,
+				channel,
+				signer,
+				&common.Envelope{Payload: []byte("TEST_MESSAGE_2")},
+				0,
+				0,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Should not be an error")
+			req.Payload.(*ordererProtos.StepRequest_SubmitRequest).SubmitRequest.Payload = env
+			Expect(client.Send(req)).NotTo(HaveOccurred())
+			<-time.After(time.Second)
+			Eventually(ordererRunners[0].Err(), time.Second).ShouldNot(gbytes.Say(requestErrMessage))
+			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("writing block 1 with 1 transactions and metadata"))
 		})
 	})
 })
@@ -1642,11 +1758,11 @@ func updateBatchSize(
 	peer *nwo.Peer,
 	orderer *nwo.Orderer,
 	channel string,
-	batchSizeMutator func(batchSize *protosOrderer.BatchSize)) {
+	batchSizeMutator func(batchSize *ordererProtos.BatchSize)) {
 	config := nwo.GetConfig(network, peer, orderer, channel)
 	updatedConfig := proto.Clone(config).(*common.Config)
 	batchSizeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["BatchSize"]
-	batchSizeValue := &protosOrderer.BatchSize{}
+	batchSizeValue := &ordererProtos.BatchSize{}
 	Expect(proto.Unmarshal(batchSizeConfigValue.Value, batchSizeValue)).To(Succeed())
 	batchSizeMutator(batchSizeValue)
 	updatedConfig.ChannelGroup.Groups["Orderer"].Values["BatchSize"] = &common.ConfigValue{

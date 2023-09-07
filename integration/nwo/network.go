@@ -9,6 +9,8 @@ package nwo
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"net"
@@ -1408,9 +1410,11 @@ func (n *Network) PeerUserSession(p *Peer, user string, command Command) (*gexec
 // services. The client connection should be closed when the tests are done
 // using it.
 func (n *Network) PeerClientConn(p *Peer) *grpc.ClientConn {
-	return n.newClientConn(
+	return n.NewClientConn(
 		n.PeerAddress(p, ListenPort),
 		filepath.Join(n.PeerLocalTLSDir(p), "ca.crt"),
+		"",
+		"",
 	)
 }
 
@@ -1419,23 +1423,48 @@ func (n *Network) PeerClientConn(p *Peer) *grpc.ClientConn {
 // orderer services. The client connection should be closed when the tests are
 // done using it.
 func (n *Network) OrdererClientConn(o *Orderer) *grpc.ClientConn {
-	return n.newClientConn(
+	return n.NewClientConn(
 		n.OrdererAddress(o, ListenPort),
 		filepath.Join(n.OrdererLocalTLSDir(o), "ca.crt"),
+		"",
+		"",
 	)
 }
 
-func (n *Network) newClientConn(address, ca string) *grpc.ClientConn {
-	fingerprint := "grpc::" + address + "::" + ca
+func (n *Network) NewClientConn(address, caCertPath string, clientCertPath string, clientKeyPath string) *grpc.ClientConn {
+	fingerprint := "grpc::" + address + "::" + caCertPath
 	if d := n.throttleDuration(fingerprint); d > 0 {
 		time.Sleep(d)
 	}
 
+	var creds credentials.TransportCredentials
+	var err error
+	if clientCertPath == "" || clientKeyPath == "" {
+		creds, err = credentials.NewClientTLSFromFile(caCertPath, "")
+		Expect(err).NotTo(HaveOccurred())
+	} else {
+		// read ca's cert
+		caCert, err := os.ReadFile(caCertPath)
+		Expect(err).NotTo(HaveOccurred())
+
+		// create cert pool and append ca's cert
+		certPool := x509.NewCertPool()
+		Expect(certPool.AppendCertsFromPEM(caCert)).To(BeTrue())
+
+		// read client cert
+		clientCert, err := tls.LoadX509KeyPair(clientCertPath, clientKeyPath)
+		Expect(err).NotTo(HaveOccurred())
+
+		config := &tls.Config{
+			Certificates: []tls.Certificate{clientCert},
+			RootCAs:      certPool,
+		}
+
+		creds = credentials.NewTLS(config)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
-	creds, err := credentials.NewClientTLSFromFile(ca, "")
-	Expect(err).NotTo(HaveOccurred())
 
 	conn, err := grpc.DialContext(
 		ctx,
