@@ -134,6 +134,7 @@ func (d *BFTDeliverer) DeliverBlocks() {
 		MaxRetryInterval:       d.MaxRetryInterval,
 		BlockCensorshipTimeout: d.BlockCensorshipTimeout,
 	}
+	fmt.Printf("\n\n\n!!!we are inside DeliverBlocks. timeoutConfig.BlockCensorshipTimeout is: !!! %v\n\n\n", timeoutConfig.BlockCensorshipTimeout)
 
 	// Refresh and randomize the sources, selects a random initial source, and incurs a random iteration order.
 	d.refreshSources()
@@ -171,6 +172,8 @@ FetchAndMonitorLoop:
 		}
 		// start a block fetcher and a monitor
 		// a buffered channel so that the fetcher goroutine can send an error and exit w/o waiting for it to be consumed.
+		fmt.Printf("\n\n\n!!! we are before FetchBlocks. !!!!\n\n\n")
+
 		d.fetchErrorsC = make(chan error, 1)
 		source := d.fetchSources[d.fetchSourceIndex]
 		go d.FetchBlocks(source)
@@ -268,7 +271,8 @@ func (d *BFTDeliverer) FetchBlocks(source *orderers.Endpoint) {
 			return
 		default:
 		}
-
+		fmt.Printf("\n\n\n <<<<<<<<<<<<<<< Trying to fetch blocks from orderer: %s\n\n\n", source.Address)
+		fmt.Printf("\n\n\n <<<<<<<<<<<<<<< Number of Block to get: %v\n\n\n", d.getNextBlockNumber())
 		seekInfoEnv, err := d.requester.SeekInfoBlocksFrom(d.getNextBlockNumber())
 		if err != nil {
 			d.Logger.Errorf("Could not create a signed Deliver SeekInfo message, something is critically wrong: %s", err)
@@ -277,6 +281,7 @@ func (d *BFTDeliverer) FetchBlocks(source *orderers.Endpoint) {
 		}
 
 		deliverClient, cancel, err := d.requester.Connect(seekInfoEnv, source)
+		fmt.Printf("<<<<<<<<<<<<<<<connet to an ordering service: %v>>>>>>>>>>>>>>>>", source)
 		if err != nil {
 			d.Logger.Warningf("Could not connect to ordering service: %s", err)
 			d.fetchErrorsC <- errors.Wrapf(err, "could not connect to ordering service, orderer-address: %s", source.Address)
@@ -303,6 +308,7 @@ func (d *BFTDeliverer) FetchBlocks(source *orderers.Endpoint) {
 		blockRcv.Start()
 
 		// Consume blocks fom the `recvC` channel
+		fmt.Printf("\n\n\n!!!we are before process incoming!!! \n\n\n")
 		if errProc := blockRcv.ProcessIncoming(d.onBlockProcessingSuccess); errProc != nil {
 			switch errProc.(type) {
 			case *ErrStopping:

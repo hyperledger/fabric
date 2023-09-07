@@ -8,6 +8,7 @@ package deliver
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"math"
 	"strconv"
@@ -257,6 +258,7 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 		return cb.Status_BAD_REQUEST, nil
 	}
 
+	fmt.Printf("\n\n\n DELIVERRRR: [channel: %s] Received seekInfo (%p) %v from %s \n\n\n", chdr.ChannelId, seekInfo, seekInfo, addr)
 	logger.Debugf("[channel: %s] Received seekInfo (%p) %v from %s", chdr.ChannelId, seekInfo, seekInfo, addr)
 
 	cursor, number := chain.Reader().Iterator(seekInfo.Start)
@@ -297,6 +299,7 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 		iterCh := make(chan struct{})
 		go func() {
 			block, status = cursor.Next()
+			fmt.Printf("\n\n\n DELIVERRRRR:  block data is: %v and block number is: %v \n\n\n", block.GetData(), block.Header.Number)
 			close(iterCh)
 		}()
 

@@ -419,8 +419,10 @@ func (c *BFTChain) Deliver(proposal types.Proposal, signatures []types.Signature
 	c.reportIsLeader()                                               // report the leader
 	if protoutil.IsConfigBlock(block) {
 		c.support.WriteConfigBlock(block, nil)
+		fmt.Printf("/n/n/n writing config block with data: %v", block.GetData())
 	} else {
 		c.support.WriteBlock(block, nil)
+		fmt.Printf("/n/n/n writing config block with data: %v", block.GetData())
 	}
 
 	reconfig := c.updateRuntimeConfig(block)

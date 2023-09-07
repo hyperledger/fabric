@@ -114,6 +114,11 @@ peer:
   localMspId: {{ (.Organization Peer.Organization).MSPID }}
   deliveryclient:
     reconnectTotalTimeThreshold: 3600s
+    blockGossipEnabled: true
+    connTimeout: 3s
+    reConnectBackoffThreshold: 3600s
+    blockCensorshipTimeout: 20s
+    minimalReconnectInterval: 110ms
   localMspType: bccsp
   profile:
     enabled:     false

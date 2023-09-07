@@ -148,7 +148,7 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 	}
 
 	d.channelID = chainID
-
+	fmt.Printf("\n\n\n<<<<<<<<< we are in StartDeliverForChannel: we are going to DeliverBlocks >>>>>> \n\n\n")
 	go func() {
 		d.blockDeliverer.DeliverBlocks()
 		finalizer()
@@ -224,14 +224,17 @@ func (d *deliverServiceImpl) createBlockDelivererBFT(chainID string, ledgerInfo 
 		DeliverStreamer:           blocksprovider.DeliverAdapter{},
 		CensorshipDetectorFactory: &blocksprovider.BFTCensorshipMonitorFactory{},
 		Logger:                    flogging.MustGetLogger("peer.blocksprovider").With("channel", chainID),
-		InitialRetryInterval:      100 * time.Millisecond, // TODO expose in config
+		InitialRetryInterval:      d.conf.DeliverServiceConfig.MinimalReconnectInterval,
 		MaxRetryInterval:          d.conf.DeliverServiceConfig.ReConnectBackoffThreshold,
-		BlockCensorshipTimeout:    30 * time.Second, // TODO expose in config
-		MaxRetryDuration:          12 * time.Hour,   // In v3 block gossip is no longer supported. We set it long to avoid needlessly calling the handler.
+		BlockCensorshipTimeout:    d.conf.DeliverServiceConfig.BlockCensorshipTimeout,
+		MaxRetryDuration:          12 * time.Hour, // In v3 block gossip is no longer supported. We set it long to avoid needlessly calling the handler.
 		MaxRetryDurationExceededHandler: func() (stopRetries bool) {
 			return false // In v3 block gossip is no longer supported, the peer never stops retrying.
 		},
 	}
+	fmt.Printf("\n\n\n <<<<<<<<<<<<<<< createBlockDelivererBFT >>>>>>>>>>>>>>> \n\n\n")
+	fmt.Printf("\n\n\n!!! dcBFT.BlockCensorshipTimeout is:  !!! %v\n\n\n", dcBFT.BlockCensorshipTimeout)
+	fmt.Printf("\n\n\n!!! dcBFT.InitialRetryInterval is:   !!! %v\n\n\n", dcBFT.InitialRetryInterval)
 
 	if d.conf.DeliverServiceConfig.SecOpts.RequireClientCert {
 		cert, err := d.conf.DeliverServiceConfig.SecOpts.ClientCertificate()

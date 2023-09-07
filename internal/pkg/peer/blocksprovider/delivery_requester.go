@@ -8,6 +8,7 @@ package blocksprovider
 
 import (
 	"context"
+	"fmt"
 	"math"
 
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -46,6 +47,7 @@ func NewDeliveryRequester(
 
 // SeekInfoBlocksFrom produces a signed SeekInfo envelope requesting a stream of blocks from a certain block number.
 func (dr *DeliveryRequester) SeekInfoBlocksFrom(ledgerHeight uint64) (*common.Envelope, error) {
+	fmt.Printf("\n\n\n <<<<<<<<<<<<<<< SeekInfoBlocksFrom >>>>>>>>>>>>>>> \n\n\n")
 	return protoutil.CreateSignedEnvelopeWithTLSBinding(
 		common.HeaderType_DELIVER_SEEK_INFO,
 		dr.channelID,
@@ -60,6 +62,7 @@ func (dr *DeliveryRequester) SeekInfoBlocksFrom(ledgerHeight uint64) (*common.En
 // SeekInfoHeadersFrom produces a signed SeekInfo envelope requesting a stream of headers (block attestations) from
 // a certain block number.
 func (dr *DeliveryRequester) SeekInfoHeadersFrom(ledgerHeight uint64) (*common.Envelope, error) {
+	fmt.Printf("\n\n\n <<<<<<<<<<<<<<< SeekInfoHeadersFrom >>>>>>>>>>>>>>> \n\n\n")
 	return protoutil.CreateSignedEnvelopeWithTLSBinding(
 		common.HeaderType_DELIVER_SEEK_INFO,
 		dr.channelID,

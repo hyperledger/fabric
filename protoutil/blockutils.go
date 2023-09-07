@@ -83,8 +83,14 @@ func GetChannelIDFromBlockBytes(bytes []byte) (string, error) {
 
 // GetChannelIDFromBlock returns channel ID in the block
 func GetChannelIDFromBlock(block *cb.Block) (string, error) {
+	fmt.Printf("\n\n\n###1: GetChannelIDFromBlock, the block is: %v\n\n\n", block)
 	if block == nil || block.Data == nil || block.Data.Data == nil || len(block.Data.Data) == 0 {
-		return "", errors.New("failed to retrieve channel id - block is empty")
+		if block != nil {
+			fmt.Printf("\n\n\n###2 %v\n\n\n", block.Data)
+		}
+		panic("!")
+		// fmt.Printf("\n\n\n###2%v\n\n\n", block.Data)
+		// return "", errors.New("failed to retrieve channel id - block is empty")
 	}
 	var err error
 	envelope, err := GetEnvelopeFromBlock(block.Data.Data[0])
@@ -103,7 +109,7 @@ func GetChannelIDFromBlock(block *cb.Block) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
+	// fmt.Printf("\n\n\n??? %v\n %v \n\n\n", payload, chdr)
 	return chdr.ChannelId, nil
 }
 

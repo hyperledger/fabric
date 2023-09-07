@@ -49,7 +49,10 @@ func (br *BlockReceiver) Start() {
 	br.logger.Infof("BlockReceiver starting")
 	go func() {
 		for {
+			// fmt.Printf("we get nil from Recv")
 			resp, err := br.deliverClient.Recv()
+			fmt.Printf("\n\n\n !!! 1-get block from receiver - data of block is %v\n\n\n", resp.GetBlock().GetData())
+			fmt.Printf("!!! 2-we are inside start!!! and the data is: %v", resp.GetBlock().GetData())
 			if err != nil {
 				br.logger.Warningf("Encountered an error reading from deliver stream: %s", err)
 				close(br.recvC)
@@ -88,7 +91,7 @@ func (br *BlockReceiver) Stop() {
 // ProcessIncoming processes incoming messages until stopped or encounters an error.
 func (br *BlockReceiver) ProcessIncoming(onSuccess func(blockNum uint64)) error {
 	var err error
-
+	fmt.Printf("\n\n\n!!!we are inside process incoming!!! \n\n\n")
 RecvLoop: // Loop until the endpoint is refreshed, or there is an error on the connection
 	for {
 		select {
@@ -103,6 +106,7 @@ RecvLoop: // Loop until the endpoint is refreshed, or there is an error on the c
 				break RecvLoop
 			}
 			var blockNum uint64
+			fmt.Printf("!!!we are inside process incoming!!! and the data is from type: %v", response.GetType())
 			blockNum, err = br.processMsg(response)
 			if err != nil {
 				br.logger.Warningf("Got error while attempting to receive blocks: %v", err)
@@ -134,6 +138,7 @@ func (br *BlockReceiver) processMsg(msg *orderer.DeliverResponse) (uint64, error
 		return 0, errors.Errorf("received bad status %v from orderer", t.Status)
 	case *orderer.DeliverResponse_Block:
 		blockNum := t.Block.Header.Number
+		fmt.Printf("\n\n\n!!!we are inside processMsg. !!! data is: %v\n\n\n", t.Block.Data.GetData())
 		if err := br.blockVerifier.VerifyBlock(gossipcommon.ChannelID(br.channelID), blockNum, t.Block); err != nil {
 			return 0, errors.WithMessage(err, "block from orderer could not be verified")
 		}
