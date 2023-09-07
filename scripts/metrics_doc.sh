@@ -15,7 +15,7 @@ generate_doc() {
     local peer_statsd
 
     local orderer_deps=()
-    while IFS= read -r pkg; do orderer_deps+=("$pkg"); done < <(go list -deps github.com/hyperledger/fabric/cmd/orderer | sort -u | grep hyperledger)
+    while IFS= read -r pkg; do orderer_deps+=("$pkg"); done < <(go list -deps github.com/hyperledger/fabric/cmd/orderer | sort -u | grep -E "(hyperledger|SmartBFT-Go/consensus)")
     orderer_prom="$($gendoc_command -template <(echo '{{PrometheusTable}}') "${orderer_deps[@]}")"
     orderer_statsd="$($gendoc_command -template <(echo '{{StatsdTable}}') "${orderer_deps[@]}")"
 
