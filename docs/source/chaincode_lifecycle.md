@@ -273,8 +273,19 @@ container on that peer.*
 ## Upgrade a chaincode
 
 You can upgrade a chaincode using the same Fabric lifecycle process as you used
-to install and start the chaincode. You can upgrade the chaincode binaries, or
-only update the chaincode policies. Follow these steps to upgrade a chaincode:
+to install and start the chaincode. You can upgrade the chaincode binaries,
+update the chaincode definition policies, or upgrade both at the same time.
+
+Ledger state is not version specific, state that was created prior to the chaincode upgrade
+will continue to exist and can be used seamlessly in an upgraded chaincode.
+You can modify state data definitions as part of a chaincode upgrade, as long
+as the upgraded chaincode can tolerate the original data definition and the upgraded
+data definition. For example, if your state data is JSON based, you can
+add an optional JSON field in an upgraded chaincode. The optional field will
+not be present in existing state data, but the next time the upgraded
+chaincode reads and re-writes this state, the optional field can be set.
+
+Follow these steps to upgrade a chaincode:
 
 1. **Repackage the chaincode:** You only need to complete this step if you are
   upgrading the chaincode binaries.
