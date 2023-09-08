@@ -44,7 +44,7 @@ Run the script with the `-h` option to see the options:
 Usage: ./install-fabric.sh [-f|--fabric-version <arg>] [-c|--ca-version <arg>] <comp-1> [<comp-2>] ... [<comp-n>] ...
         <comp>: Component to install one or more of  d[ocker]|b[inary]|s[amples]. If none specified, all will be installed
         -f, --fabric-version: FabricVersion (default: '2.5.4')
-        -c, --ca-version: Fabric CA Version (default: '1.5.6')
+        -c, --ca-version: Fabric CA Version (default: '1.5.7')
 ```
 
 ## Choosing which components
