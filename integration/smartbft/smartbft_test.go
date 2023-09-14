@@ -25,8 +25,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hyperledger/fabric/orderer/common/cluster"
-
+	protos "github.com/SmartBFT-Go/consensus/smartbftprotos"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/configtx"
@@ -38,6 +37,8 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
+	"github.com/hyperledger/fabric/orderer/common/cluster"
+	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -1398,7 +1399,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			}
 
 			By("Expect an error")
-			Expect(client.Send(req)).NotTo(HaveOccurred())
+			Expect(client.Send(req)).To(Succeed())
 			requestErrMessage := "SigFilter evaluation failed: implicit policy evaluation failed - 0 sub-policies were satisfied"
 			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(requestErrMessage))
 
@@ -1415,10 +1416,318 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			By("Should not be an error")
 			req.Payload.(*ordererProtos.StepRequest_SubmitRequest).SubmitRequest.Payload = env
-			Expect(client.Send(req)).NotTo(HaveOccurred())
-			<-time.After(time.Second)
-			Eventually(ordererRunners[0].Err(), time.Second).ShouldNot(gbytes.Say(requestErrMessage))
+			Expect(client.Send(req)).To(Succeed())
+			Consistently(ordererRunners[0].Err(), time.Second).ShouldNot(gbytes.Say(requestErrMessage))
 			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("writing block 1 with 1 transactions and metadata"))
+		})
+
+		It("smartbft leader sends preprepare consensus request to follower", func() {
+			networkConfig := nwo.MultiNodeSmartBFT()
+			networkConfig.Channels = nil
+			channel := "testchannel1"
+
+			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			var ordererRunners []*ginkgomon.Runner
+			for _, orderer := range network.Orderers {
+				runner := network.OrdererRunner(orderer)
+				runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug:policies=debug")
+				ordererRunners = append(ordererRunners, runner)
+				proc := ifrit.Invoke(runner)
+				ordererProcesses = append(ordererProcesses, proc)
+				Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			joinChannel(network, channel)
+
+			By("Waiting for followers to see the leader")
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[2].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+
+			leader := network.Orderers[0]
+
+			signer := &nwo.SigningIdentity{
+				CertPath: network.OrdererSignCert(leader),
+				KeyPath: filepath.Join(
+					network.OrdererLocalCryptoDir(leader, "msp"),
+					"keystore",
+					"priv_sk",
+				),
+				MSPID: network.Organization(leader.Organization).MSPID,
+			}
+
+			By("Create an envelope with an invalid signature")
+			env, err := protoutil.CreateSignedEnvelope(
+				common.HeaderType_ENDORSER_TRANSACTION,
+				channel,
+				signer,
+				&common.Envelope{Payload: []byte("TEST_MESSAGE")},
+				0,
+				0,
+			)
+			Expect(err).NotTo(HaveOccurred())
+			env.Signature = []byte{}
+
+			By("Create the consensus request")
+			genesisBlock := network.LoadAppChannelGenesisBlock(channel)
+			req, _ := createPrePrepareRequest(genesisBlock, genesisBlock, env, channel, 0)
+
+			for _, follower := range []*nwo.Orderer{network.Orderers[1], network.Orderers[2]} {
+				By(fmt.Sprintf("Create a GRPC from leader #1 to follower #%d", follower.Id))
+				grpcConn := network.NewClientConn(
+					network.OrdererAddress(follower, nwo.ClusterPort),
+					filepath.Join(network.OrdererLocalTLSDir(follower), "ca.crt"),
+					filepath.Join(network.OrdererLocalTLSDir(leader), "server.crt"),
+					filepath.Join(network.OrdererLocalTLSDir(leader), "server.key"),
+				)
+				defer grpcConn.Close()
+
+				By(fmt.Sprintf("Create a step client to follower #%d", follower.Id))
+				clusterNodeServiceClient := ordererProtos.NewClusterNodeServiceClient(grpcConn)
+				stepClient, err := clusterNodeServiceClient.Step(context.Background())
+				Expect(err).NotTo(HaveOccurred())
+
+				client := &cluster.NodeClientStream{
+					Version:           0,
+					StepClient:        stepClient,
+					SourceNodeID:      uint64(leader.Id),
+					DestinationNodeID: uint64(follower.Id),
+					Signer:            signer,
+					Channel:           channel,
+				}
+
+				By(fmt.Sprintf("Authenticate to follower #%d step service", follower.Id))
+				err = client.Auth()
+				Expect(err).NotTo(HaveOccurred())
+
+				By(fmt.Sprintf("Send the request to follower #%d", follower.Id))
+				Expect(client.Send(req)).To(Succeed())
+
+				By(fmt.Sprintf("Assert failure for follower #%d", follower.Id))
+				Eventually(ordererRunners[follower.Id-1].Err(), network.EventuallyTimeout).Should(gbytes.Say("SigFilter evaluation failed: implicit policy evaluation failed - 0 sub-policies were satisfied"))
+			}
+
+			By("Wait to node #2 to be elected as leader")
+			for _, ordererRunnerId := range []int{0, 2, 3} {
+				Eventually(ordererRunners[ordererRunnerId].Err(), network.EventuallyTimeout).Should(gbytes.Say("Changing to follower role, current view: 1, current leader: 2"))
+				Eventually(ordererRunners[ordererRunnerId].Err(), network.EventuallyTimeout).Should(gbytes.Say("Starting view with number 1, sequence 1, and decisions 0"))
+			}
+			leader = network.Orderers[1]
+
+			signer = &nwo.SigningIdentity{
+				CertPath: network.OrdererSignCert(leader),
+				KeyPath: filepath.Join(
+					network.OrdererLocalCryptoDir(leader, "msp"),
+					"keystore",
+					"priv_sk",
+				),
+				MSPID: network.Organization(leader.Organization).MSPID,
+			}
+
+			By("Create an envelope with a valid signature")
+			env, err = protoutil.CreateSignedEnvelope(
+				common.HeaderType_ENDORSER_TRANSACTION,
+				channel,
+				signer,
+				&common.Envelope{Payload: []byte("TEST_MESSAGE")},
+				0,
+				0,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Create the consensus request")
+			req, _ = createPrePrepareRequest(genesisBlock, genesisBlock, env, channel, 1)
+
+			By("Create a GRPC to the old leader")
+			follower := network.Orderers[0]
+			grpcConn := network.NewClientConn(
+				network.OrdererAddress(follower, nwo.ClusterPort),
+				filepath.Join(network.OrdererLocalTLSDir(follower), "ca.crt"),
+				filepath.Join(network.OrdererLocalTLSDir(leader), "server.crt"),
+				filepath.Join(network.OrdererLocalTLSDir(leader), "server.key"),
+			)
+			defer grpcConn.Close()
+
+			By("Create a step client")
+			clusterNodeServiceClient := ordererProtos.NewClusterNodeServiceClient(grpcConn)
+			stepClient, err := clusterNodeServiceClient.Step(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+
+			client := &cluster.NodeClientStream{
+				Version:           0,
+				StepClient:        stepClient,
+				SourceNodeID:      uint64(leader.Id),
+				DestinationNodeID: uint64(follower.Id),
+				Signer:            signer,
+				Channel:           channel,
+			}
+
+			By("Authenticate to the old leader's step service")
+			err = client.Auth()
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Send the request")
+			Expect(client.Send(req)).To(Succeed())
+
+			By("Assert success")
+			Eventually(ordererRunners[follower.Id-1].Err(), network.EventuallyTimeout).Should(gbytes.Say("Processed proposal with seq 1"))
+		})
+
+		It("smartbft the leader froze, waiting for an answer", func() {
+			networkConfig := nwo.MultiNodeSmartBFT()
+			networkConfig.Channels = nil
+			channel := "testchannel1"
+
+			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			var ordererRunners []*ginkgomon.Runner
+			for _, orderer := range network.Orderers {
+				runner := network.OrdererRunner(orderer)
+				runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug")
+				ordererRunners = append(ordererRunners, runner)
+				proc := ifrit.Invoke(runner)
+				ordererProcesses = append(ordererProcesses, proc)
+				Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			peerGroupRunner, _ := peerGroupRunners(network)
+			peerProcesses = ifrit.Invoke(peerGroupRunner)
+			Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			peer := network.Peer("Org1", "peer0")
+
+			joinChannel(network, channel)
+
+			By("Waiting for followers to see the leader")
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[2].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+
+			// Stopped 2 out of 4 nodes
+			for i := 2; i <= 3; i++ {
+				orderer := network.Orderers[i]
+				By(fmt.Sprintf("Killing %s", orderer.Name))
+				ordererProcesses[i].Signal(syscall.SIGTERM)
+				Eventually(ordererProcesses[i].Wait(), network.EventuallyTimeout).Should(Receive())
+			}
+
+			By("Joining peers to testchannel1")
+			network.JoinChannel(channel, network.Orderers[0], network.PeersWithChannel(channel)...)
+
+			By("Try deploying chaincode")
+			peers := network.PeersWithChannel(channel)
+			if len(peers) == 0 {
+				return
+			}
+			chaincode := nwo.Chaincode{
+				Name:            "mycc",
+				Version:         "0.0",
+				Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd"),
+				Lang:            "binary",
+				PackageFile:     filepath.Join(testDir, "simplecc.tar.gz"),
+				Ctor:            `{"Args":["init","a","100","b","200"]}`,
+				SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
+				Sequence:        "1",
+				InitRequired:    true,
+				Label:           "my_prebuilt_chaincode",
+			}
+			nwo.PackageAndInstallChaincode(network, chaincode, peers...)
+
+			if chaincode.PackageID == "" {
+				chaincode.SetPackageIDFromPackageFile()
+			}
+
+			// used to ensure we only approve once per org
+			// the transaction must fail
+			sess, err := network.PeerAdminSession(peers[0], commands.ChaincodeApproveForMyOrg{
+				ChannelID:           channel,
+				Orderer:             network.OrdererAddress(network.Orderers[0], "Listen"),
+				Name:                chaincode.Name,
+				Version:             chaincode.Version,
+				PackageID:           chaincode.PackageID,
+				Sequence:            chaincode.Sequence,
+				EndorsementPlugin:   chaincode.EndorsementPlugin,
+				ValidationPlugin:    chaincode.ValidationPlugin,
+				SignaturePolicy:     chaincode.SignaturePolicy,
+				ChannelConfigPolicy: chaincode.ChannelConfigPolicy,
+				InitRequired:        chaincode.InitRequired,
+				CollectionsConfig:   chaincode.CollectionsConfig,
+				ClientAuth:          network.ClientAuthRequired,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
+
+			// wait for a state where the leader could freeze
+			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("1 got message from 2: prepare"))
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("2 got message from 1: prepare"))
+
+			// start the 2 stopped nodes
+			for i := 2; i <= 3; i++ {
+				orderer := network.Orderers[i]
+				By(fmt.Sprintf("Launching %s", orderer.Name))
+				runner := network.OrdererRunner(orderer)
+				runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug")
+				ordererRunners[i] = runner
+				proc := ifrit.Invoke(runner)
+				ordererProcesses[i] = proc
+				Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			// wait for a change in leader
+			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Changing to follower role, current view: 1, current leader: 2 channel=testchannel1"))
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Changing to leader role, current view: 1, current leader: 2 channel=testchannel1"))
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("HandleRequest from 1 channel=testchannel1"))
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Proposing proposal sequence 1 in view 1 channel=testchannel1"))
+
+			for i := 0; i <= 3; i++ {
+				Eventually(ordererRunners[i].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Sequence: 1-->2 channel=testchannel1"))
+			}
+
+			// let's continue deploying chaincode
+			sess, err = network.PeerAdminSession(peers[1], commands.ChaincodeApproveForMyOrg{
+				ChannelID:           channel,
+				Orderer:             network.OrdererAddress(network.Orderers[0], "Listen"),
+				Name:                chaincode.Name,
+				Version:             chaincode.Version,
+				PackageID:           chaincode.PackageID,
+				Sequence:            chaincode.Sequence,
+				EndorsementPlugin:   chaincode.EndorsementPlugin,
+				ValidationPlugin:    chaincode.ValidationPlugin,
+				SignaturePolicy:     chaincode.SignaturePolicy,
+				ChannelConfigPolicy: chaincode.ChannelConfigPolicy,
+				InitRequired:        chaincode.InitRequired,
+				CollectionsConfig:   chaincode.CollectionsConfig,
+				ClientAuth:          network.ClientAuthRequired,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+			Eventually(sess.Err, network.EventuallyTimeout).Should(gbytes.Say(fmt.Sprintf(`\Qcommitted with status (VALID) at %s\E`, network.PeerAddress(peers[1], "Listen"))))
+
+			// commit definition
+			nwo.CheckCommitReadinessUntilReady(network, channel, chaincode, network.PeerOrgs(), peers...)
+			nwo.CommitChaincode(network, channel, network.Orderers[0], chaincode, peers[0], peers...)
+
+			// init the chaincode, if required
+			if chaincode.InitRequired {
+				nwo.InitChaincode(network, channel, network.Orderers[0], chaincode, peers...)
+			}
+
+			By("querying the chaincode")
+			sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+				ChannelID: channel,
+				Name:      "mycc",
+				Ctor:      `{"Args":["query","a"]}`,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+			Expect(sess).To(gbytes.Say("100"))
+
+			By("invoking the chaincode")
+			invokeQuery(network, peer, network.Orderers[1], channel, 90)
 		})
 	})
 })
@@ -1816,4 +2125,63 @@ func updateBatchSize(
 		Value:     protoutil.MarshalOrPanic(batchSizeValue),
 	}
 	nwo.UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
+}
+
+func createPrePrepareRequest(
+	lastBlock *common.Block,
+	lastConfigBlock *common.Block,
+	env *common.Envelope,
+	channel string,
+	viewId uint64,
+) (*ordererProtos.StepRequest, *common.Block) {
+	block := protoutil.NewBlock(lastBlock.Header.Number+1, protoutil.BlockHeaderHash(lastBlock.Header))
+	block.Data = &common.BlockData{
+		Data: [][]byte{
+			protoutil.MarshalOrPanic(env),
+		},
+	}
+	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+
+	metadata := protoutil.MarshalOrPanic(&protos.ViewMetadata{
+		ViewId:         viewId,
+		LatestSequence: 1,
+	})
+
+	block.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&common.Metadata{
+		Value: protoutil.MarshalOrPanic(&common.OrdererBlockMetadata{
+			ConsenterMetadata: metadata,
+			LastConfig: &common.LastConfig{
+				Index: lastConfigBlock.Header.Number,
+			},
+		}),
+	})
+
+	tuple := &smartbft.ByteBufferTuple{
+		A: protoutil.MarshalOrPanic(block.Data),
+		B: protoutil.MarshalOrPanic(block.Metadata),
+	}
+
+	req := &ordererProtos.StepRequest{
+		Payload: &ordererProtos.StepRequest_ConsensusRequest{
+			ConsensusRequest: &ordererProtos.ConsensusRequest{
+				Payload: protoutil.MarshalOrPanic(&protos.Message{
+					Content: &protos.Message_PrePrepare{
+						PrePrepare: &protos.PrePrepare{
+							View: viewId,
+							Seq:  1,
+							Proposal: &protos.Proposal{
+								Header:               protoutil.BlockHeaderBytes(block.Header),
+								Payload:              tuple.ToBytes(),
+								Metadata:             metadata,
+								VerificationSequence: 0,
+							},
+						},
+					},
+				}),
+				Channel: channel,
+			},
+		},
+	}
+
+	return req, block
 }
