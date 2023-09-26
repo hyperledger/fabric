@@ -28,7 +28,6 @@ func main() {
 	}
 
 	logger.Printf("::Type detected as ccaas")
-
 }
 
 type chaincodeMetadata struct {
@@ -42,26 +41,22 @@ func run() error {
 
 	chaincodeMetaData := os.Args[2]
 
+	// Check metadata file's existence
 	metadataFile := filepath.Join(chaincodeMetaData, "metadata.json")
-	_, err := os.Stat(metadataFile)
-	if err != nil {
-		return fmt.Errorf("%s not found ", metadataFile)
-	}
-
 	if _, err := os.Stat(metadataFile); err != nil {
 		return errors.WithMessagef(err, "%s not found ", metadataFile)
 	}
 
-	mdbytes, cause := os.ReadFile(metadataFile)
-	if cause != nil {
-		err := errors.WithMessagef(cause, "%s not readable", metadataFile)
-		return err
+	// Read the metadata file
+	mdbytes, err := os.ReadFile(metadataFile)
+	if err != nil {
+		return errors.WithMessagef(err, "%s not readable", metadataFile)
 	}
 
 	var metadata chaincodeMetadata
-	cause = json.Unmarshal(mdbytes, &metadata)
-	if cause != nil {
-		return errors.WithMessage(cause, "Unable to parse the metadata.json file")
+	err = json.Unmarshal(mdbytes, &metadata)
+	if err != nil {
+		return errors.WithMessage(err, "Unable to parse the metadata.json file")
 	}
 
 	if strings.ToLower(metadata.Type) != "ccaas" {
@@ -70,5 +65,4 @@ func run() error {
 
 	// returning nil indicates to the peer a successful detection
 	return nil
-
 }
