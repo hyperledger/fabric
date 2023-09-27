@@ -40,16 +40,15 @@ func (fake *OrdererConnectionSource) Endpoints() []*orderers.Endpoint {
 	ret, specificReturn := fake.endpointsReturnsOnCall[len(fake.endpointsArgsForCall)]
 	fake.endpointsArgsForCall = append(fake.endpointsArgsForCall, struct {
 	}{})
-	stub := fake.EndpointsStub
-	fakeReturns := fake.endpointsReturns
 	fake.recordInvocation("Endpoints", []interface{}{})
 	fake.endpointsMutex.Unlock()
-	if stub != nil {
-		return stub()
+	if fake.EndpointsStub != nil {
+		return fake.EndpointsStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
+	fakeReturns := fake.endpointsReturns
 	return fakeReturns.result1
 }
 
@@ -93,16 +92,15 @@ func (fake *OrdererConnectionSource) RandomEndpoint() (*orderers.Endpoint, error
 	ret, specificReturn := fake.randomEndpointReturnsOnCall[len(fake.randomEndpointArgsForCall)]
 	fake.randomEndpointArgsForCall = append(fake.randomEndpointArgsForCall, struct {
 	}{})
-	stub := fake.RandomEndpointStub
-	fakeReturns := fake.randomEndpointReturns
 	fake.recordInvocation("RandomEndpoint", []interface{}{})
 	fake.randomEndpointMutex.Unlock()
-	if stub != nil {
-		return stub()
+	if fake.RandomEndpointStub != nil {
+		return fake.RandomEndpointStub()
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
+	fakeReturns := fake.randomEndpointReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
