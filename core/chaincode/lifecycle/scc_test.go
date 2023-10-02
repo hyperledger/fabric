@@ -1226,7 +1226,7 @@ var _ = Describe("SCC", func() {
 				fakeSCCFuncs.CheckCommitReadinessReturns(map[string]bool{
 					"fake-mspid":  true,
 					"other-mspid": true,
-				}, nil)
+				}, nil, nil)
 			})
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
@@ -1295,7 +1295,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.CheckCommitReadinessReturns(nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.CheckCommitReadinessReturns(nil, nil, fmt.Errorf("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -1456,6 +1456,7 @@ var _ = Describe("SCC", func() {
 						"other-mspid": true,
 					},
 					nil,
+					nil,
 				)
 			})
 
@@ -1506,7 +1507,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying QueryOrgApprovals function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.QueryOrgApprovalsReturns(nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.QueryOrgApprovalsReturns(nil, nil, fmt.Errorf("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
