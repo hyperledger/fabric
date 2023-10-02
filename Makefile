@@ -148,7 +148,7 @@ integration-test: integration-test-prereqs
 	./scripts/run-integration-tests.sh $(INTEGRATION_TEST_SUITE)
 
 .PHONY: integration-test-prereqs
-integration-test-prereqs: gotool.ginkgo baseos-docker ccenv-docker docker-thirdparty ccaasbuilder
+integration-test-prereqs: gotool.ginkgo baseos-docker ccenv-docker ccenv-docker-tag-latest docker-thirdparty ccaasbuilder
 
 .PHONY: unit-test
 unit-test: unit-test-clean docker-thirdparty-couchdb
@@ -249,7 +249,7 @@ $(BUILD_DIR)/images/%/$(DUMMY):
 		--build-arg TARGETARCH=$(ARCH) \
 		--build-arg TARGETOS=linux \
 		$(BUILD_ARGS) \
-		-t $(DOCKER_NS)/fabric-$* ./$(BUILD_CONTEXT)
+		-t $(DOCKER_NS)/fabric-$*:$(DOCKER_TAG) ./$(BUILD_CONTEXT)
 
 # builds release packages for the host platform
 .PHONY: release
