@@ -24,23 +24,23 @@ const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 // on previous configuration transactions.
 //
 // It is generated with the following scheme:
-//   1. Retrieve the existing configuration
-//   2. Note the config properties (ConfigValue, ConfigPolicy, ConfigGroup) to be modified
-//   3. Add any intermediate ConfigGroups to the ConfigUpdate.read_set (sparsely)
-//   4. Add any additional desired dependencies to ConfigUpdate.read_set (sparsely)
-//   5. Modify the config properties, incrementing each version by 1, set them in the ConfigUpdate.write_set
-//      Note: any element not modified but specified should already be in the read_set, so may be specified sparsely
-//   6. Create ConfigUpdate message and marshal it into ConfigUpdateEnvelope.update and encode the required signatures
+//  1. Retrieve the existing configuration
+//  2. Note the config properties (ConfigValue, ConfigPolicy, ConfigGroup) to be modified
+//  3. Add any intermediate ConfigGroups to the ConfigUpdate.read_set (sparsely)
+//  4. Add any additional desired dependencies to ConfigUpdate.read_set (sparsely)
+//  5. Modify the config properties, incrementing each version by 1, set them in the ConfigUpdate.write_set
+//     Note: any element not modified but specified should already be in the read_set, so may be specified sparsely
+//  6. Create ConfigUpdate message and marshal it into ConfigUpdateEnvelope.update and encode the required signatures
 //     a) Each signature is of type ConfigSignature
 //     b) The ConfigSignature signature is over the concatenation of signature_header and the ConfigUpdate bytes (which includes a ChainHeader)
-//   5. Submit new Config for ordering in Envelope signed by submitter
+//  5. Submit new Config for ordering in Envelope signed by submitter
 //     a) The Envelope Payload has data set to the marshaled ConfigEnvelope
 //     b) The Envelope Payload has a header of type Header.Type.CONFIG_UPDATE
 //
 // The configuration manager will verify:
-//   1. All items in the read_set exist at the read versions
-//   2. All items in the write_set at a different version than, or not in, the read_set have been appropriately signed according to their mod_policy
-//   3. The new configuration satisfies the ConfigSchema
+//  1. All items in the read_set exist at the read versions
+//  2. All items in the write_set at a different version than, or not in, the read_set have been appropriately signed according to their mod_policy
+//  3. The new configuration satisfies the ConfigSchema
 type ConfigEnvelope struct {
 	Config               *Config   `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
 	LastUpdate           *Envelope `protobuf:"bytes,2,opt,name=last_update,json=lastUpdate,proto3" json:"last_update,omitempty"`
@@ -186,12 +186,12 @@ func (m *ConfigUpdateEnvelope) GetSignatures() []*ConfigSignature {
 // ConfigUpdate is used to submit a subset of config and to have the orderer apply to Config
 // it is always submitted inside a ConfigUpdateEnvelope which allows the addition of signatures
 // resulting in a new total configuration.  The update is applied as follows:
-// 1. The versions from all of the elements in the read_set is verified against the versions in the existing config.
-//    If there is a mismatch in the read versions, then the config update fails and is rejected.
-// 2. Any elements in the write_set with the same version as the read_set are ignored.
-// 3. The corresponding mod_policy for every remaining element in the write_set is collected.
-// 4. Each policy is checked against the signatures from the ConfigUpdateEnvelope, any failing to verify are rejected
-// 5. The write_set is applied to the Config and the ConfigGroupSchema verifies that the updates were legal
+//  1. The versions from all of the elements in the read_set is verified against the versions in the existing config.
+//     If there is a mismatch in the read versions, then the config update fails and is rejected.
+//  2. Any elements in the write_set with the same version as the read_set are ignored.
+//  3. The corresponding mod_policy for every remaining element in the write_set is collected.
+//  4. Each policy is checked against the signatures from the ConfigUpdateEnvelope, any failing to verify are rejected
+//  5. The write_set is applied to the Config and the ConfigGroupSchema verifies that the updates were legal
 type ConfigUpdate struct {
 	ChannelId            string            `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
 	ReadSet              *ConfigGroup      `protobuf:"bytes,2,opt,name=read_set,json=readSet,proto3" json:"read_set,omitempty"`
