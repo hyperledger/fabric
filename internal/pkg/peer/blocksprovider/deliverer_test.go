@@ -275,7 +275,7 @@ var _ = Describe("CFT-Deliverer", func() {
 
 		It("hits the maximum sleep time value in an exponential fashion and retries until exceeding the max retry duration", func() {
 			d.MaxRetryDurationExceededHandler = func() (stopRetries bool) { return true }
-			Eventually(fakeSleeper.SleepCallCount).Should(Equal(380))
+			Eventually(fakeSleeper.SleepCallCount, 5*time.Second).Should(Equal(380))
 			Expect(fakeSleeper.SleepArgsForCall(25)).To(Equal(9539 * time.Millisecond))
 			Expect(fakeSleeper.SleepArgsForCall(26)).To(Equal(10 * time.Second))
 			Expect(fakeSleeper.SleepArgsForCall(27)).To(Equal(10 * time.Second))
@@ -291,7 +291,7 @@ var _ = Describe("CFT-Deliverer", func() {
 
 		It("hits the maximum sleep time value in an exponential fashion and retries indefinitely", func() {
 			d.MaxRetryDurationExceededHandler = func() (stopRetries bool) { return false }
-			Eventually(fakeSleeper.SleepCallCount).Should(Equal(500))
+			Eventually(fakeSleeper.SleepCallCount, 5*time.Second).Should(Equal(500))
 			Expect(fakeSleeper.SleepArgsForCall(25)).To(Equal(9539 * time.Millisecond))
 			Expect(fakeSleeper.SleepArgsForCall(26)).To(Equal(10 * time.Second))
 			Expect(fakeSleeper.SleepArgsForCall(27)).To(Equal(10 * time.Second))
