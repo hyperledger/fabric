@@ -29,6 +29,7 @@ const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 // ClusterNodeServiceStepRequest wraps a message that is sent to a cluster member.
 type ClusterNodeServiceStepRequest struct {
 	// Types that are valid to be assigned to Payload:
+	//
 	//	*ClusterNodeServiceStepRequest_NodeConrequest
 	//	*ClusterNodeServiceStepRequest_NodeTranrequest
 	//	*ClusterNodeServiceStepRequest_NodeAuthrequest
@@ -125,6 +126,7 @@ func (*ClusterNodeServiceStepRequest) XXX_OneofWrappers() []interface{} {
 // ClusterNodeServiceStepResponse is a message received from a cluster member.
 type ClusterNodeServiceStepResponse struct {
 	// Types that are valid to be assigned to Payload:
+	//
 	//	*ClusterNodeServiceStepResponse_TranorderRes
 	Payload              isClusterNodeServiceStepResponse_Payload `protobuf_oneof:"payload"`
 	XXX_NoUnkeyedLiteral struct{}                                 `json:"-"`

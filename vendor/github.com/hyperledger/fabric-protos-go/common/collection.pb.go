@@ -71,6 +71,7 @@ func (m *CollectionConfigPackage) GetConfig() []*CollectionConfig {
 // Deprecated: Do not use.
 type CollectionConfig struct {
 	// Types that are valid to be assigned to Payload:
+	//
 	//	*CollectionConfig_StaticCollectionConfig
 	Payload              isCollectionConfig_Payload `protobuf_oneof:"payload"`
 	XXX_NoUnkeyedLiteral struct{}                   `json:"-"`
@@ -264,6 +265,7 @@ func (m *StaticCollectionConfig) GetEndorsementPolicy() *ApplicationPolicy {
 // Deprecated: Do not use.
 type CollectionPolicyConfig struct {
 	// Types that are valid to be assigned to Payload:
+	//
 	//	*CollectionPolicyConfig_SignaturePolicy
 	Payload              isCollectionPolicyConfig_Payload `protobuf_oneof:"payload"`
 	XXX_NoUnkeyedLiteral struct{}                         `json:"-"`
