@@ -249,7 +249,10 @@ $(BUILD_DIR)/images/%/$(DUMMY):
 		--build-arg TARGETARCH=$(ARCH) \
 		--build-arg TARGETOS=linux \
 		$(BUILD_ARGS) \
-		-t $(DOCKER_NS)/fabric-$* ./$(BUILD_CONTEXT)
+		-t $(DOCKER_NS)/fabric-$* \
+		-t $(DOCKER_NS)/fabric-$*:$(FABRIC_VER) \
+		-t $(DOCKER_NS)/fabric-$*:$(TWO_DIGIT_VERSION) \
+		./$(BUILD_CONTEXT)
 
 # builds release packages for the host platform
 .PHONY: release
