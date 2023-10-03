@@ -253,8 +253,15 @@ $(BUILD_DIR)/images/%/$(DUMMY):
 		--build-arg TARGETARCH=$(ARCH) \
 		--build-arg TARGETOS=linux \
 		$(BUILD_ARGS) \
+<<<<<<< HEAD
 		-t $(DOCKER_NS)/fabric-$* ./$(BUILD_CONTEXT)
 	@touch $@
+=======
+		-t $(DOCKER_NS)/fabric-$* \
+		-t $(DOCKER_NS)/fabric-$*:$(FABRIC_VER) \
+		-t $(DOCKER_NS)/fabric-$*:$(TWO_DIGIT_VERSION) \
+		./$(BUILD_CONTEXT)
+>>>>>>> b8ce6d0f9 (Tag docker images with release (#4460))
 
 # builds release packages for the host platform
 .PHONY: release
