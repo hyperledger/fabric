@@ -7,13 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package cauthdsl
 
 import (
-	"fmt"
 	"time"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/msp"
+	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -23,7 +23,7 @@ var cauthdslLogger = flogging.MustGetLogger("cauthdsl")
 // passing them to this function for evaluation
 func compile(policy *cb.SignaturePolicy, identities []*mb.MSPPrincipal) (func([]msp.Identity, []bool) bool, error) {
 	if policy == nil {
-		return nil, fmt.Errorf("Empty policy element")
+		return nil, errors.Errorf("Empty policy element")
 	}
 
 	switch t := policy.Type.(type) {
@@ -60,7 +60,7 @@ func compile(policy *cb.SignaturePolicy, identities []*mb.MSPPrincipal) (func([]
 		}, nil
 	case *cb.SignaturePolicy_SignedBy:
 		if t.SignedBy < 0 || t.SignedBy >= int32(len(identities)) {
-			return nil, fmt.Errorf("identity index out of range, requested %v, but identities length is %d", t.SignedBy, len(identities))
+			return nil, errors.Errorf("identity index out of range, requested %v, but identities length is %d", t.SignedBy, len(identities))
 		}
 		signedByID := identities[t.SignedBy]
 		return func(signedData []msp.Identity, used []bool) bool {
@@ -87,6 +87,6 @@ func compile(policy *cb.SignaturePolicy, identities []*mb.MSPPrincipal) (func([]
 			return false
 		}, nil
 	default:
-		return nil, fmt.Errorf("Unknown type: %T:%v", t, t)
+		return nil, errors.Errorf("Unknown type: %T:%v", t, t)
 	}
 }
