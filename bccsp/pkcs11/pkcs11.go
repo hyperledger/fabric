@@ -664,7 +664,7 @@ func (csp *Provider) verifyP11ECDSA(ski []byte, msg []byte, R, S *big.Int, byteS
 		return false, fmt.Errorf("PKCS11: Verify-initialize [%s]", err)
 	}
 	err = csp.ctx.Verify(session, msg, sig)
-	if err == pkcs11.Error(pkcs11.CKR_SIGNATURE_INVALID) {
+	if errors.Is(err, pkcs11.Error(pkcs11.CKR_SIGNATURE_INVALID)) {
 		return false, nil
 	}
 	if err != nil {
