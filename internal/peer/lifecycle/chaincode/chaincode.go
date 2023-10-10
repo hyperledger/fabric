@@ -70,6 +70,7 @@ var (
 	sequence              int
 	initRequired          bool
 	output                string
+	inspectionEnabled     bool
 	outputDirectory       string
 )
 
@@ -119,6 +120,7 @@ func ResetFlags() {
 	flags.IntVarP(&sequence, "sequence", "", 0, "The sequence number of the chaincode definition for the channel")
 	flags.BoolVarP(&initRequired, "init-required", "", false, "Whether the chaincode requires invoking 'init'")
 	flags.StringVarP(&output, "output", "O", "", "The output format for query results. Default is human-readable plain-text. json is currently the only supported format.")
+	flags.BoolVarP(&inspectionEnabled, "inspect", "", false, "If inspect is enabled, output additional information to identify discrepancies when an organization's approval is false")
 	flags.StringVarP(&outputDirectory, "output-directory", "", "", "The output directory to use when writing a chaincode install package to disk. Default is the current working directory.")
 }
 

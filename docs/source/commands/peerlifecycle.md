@@ -311,6 +311,7 @@ Flags:
   -E, --endorsement-plugin string      The name of the endorsement plugin to be used for this chaincode
   -h, --help                           help for checkcommitreadiness
       --init-required                  Whether the chaincode requires invoking 'init'
+      --inspect                        If inspect is enabled, output additional information to identify discrepancies when an organization's approval is false
   -n, --name string                    Name of the chaincode
   -O, --output string                  The output format for query results. Default is human-readable plain-text. json is currently the only supported format.
       --peerAddresses stringArray      The addresses of the peers to connect to
