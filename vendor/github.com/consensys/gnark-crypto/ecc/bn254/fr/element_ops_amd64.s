@@ -1,3 +1,5 @@
+// +build !purego
+
 // Copyright 2020 ConsenSys Software Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,118 +41,6 @@ GLOBL qInv0<>(SB), (RODATA+NOPTR), $8
 	CMOVQCS rb1, ra1;        \
 	CMOVQCS rb2, ra2;        \
 	CMOVQCS rb3, ra3;        \
-
-// add(res, x, y *Element)
-TEXT ·add(SB), NOSPLIT, $0-24
-	MOVQ x+8(FP), AX
-	MOVQ 0(AX), CX
-	MOVQ 8(AX), BX
-	MOVQ 16(AX), SI
-	MOVQ 24(AX), DI
-	MOVQ y+16(FP), DX
-	ADDQ 0(DX), CX
-	ADCQ 8(DX), BX
-	ADCQ 16(DX), SI
-	ADCQ 24(DX), DI
-
-	// reduce element(CX,BX,SI,DI) using temp registers (R8,R9,R10,R11)
-	REDUCE(CX,BX,SI,DI,R8,R9,R10,R11)
-
-	MOVQ res+0(FP), R12
-	MOVQ CX, 0(R12)
-	MOVQ BX, 8(R12)
-	MOVQ SI, 16(R12)
-	MOVQ DI, 24(R12)
-	RET
-
-// sub(res, x, y *Element)
-TEXT ·sub(SB), NOSPLIT, $0-24
-	XORQ    DI, DI
-	MOVQ    x+8(FP), SI
-	MOVQ    0(SI), AX
-	MOVQ    8(SI), DX
-	MOVQ    16(SI), CX
-	MOVQ    24(SI), BX
-	MOVQ    y+16(FP), SI
-	SUBQ    0(SI), AX
-	SBBQ    8(SI), DX
-	SBBQ    16(SI), CX
-	SBBQ    24(SI), BX
-	MOVQ    $0x43e1f593f0000001, R8
-	MOVQ    $0x2833e84879b97091, R9
-	MOVQ    $0xb85045b68181585d, R10
-	MOVQ    $0x30644e72e131a029, R11
-	CMOVQCC DI, R8
-	CMOVQCC DI, R9
-	CMOVQCC DI, R10
-	CMOVQCC DI, R11
-	ADDQ    R8, AX
-	ADCQ    R9, DX
-	ADCQ    R10, CX
-	ADCQ    R11, BX
-	MOVQ    res+0(FP), R12
-	MOVQ    AX, 0(R12)
-	MOVQ    DX, 8(R12)
-	MOVQ    CX, 16(R12)
-	MOVQ    BX, 24(R12)
-	RET
-
-// double(res, x *Element)
-TEXT ·double(SB), NOSPLIT, $0-16
-	MOVQ x+8(FP), AX
-	MOVQ 0(AX), DX
-	MOVQ 8(AX), CX
-	MOVQ 16(AX), BX
-	MOVQ 24(AX), SI
-	ADDQ DX, DX
-	ADCQ CX, CX
-	ADCQ BX, BX
-	ADCQ SI, SI
-
-	// reduce element(DX,CX,BX,SI) using temp registers (DI,R8,R9,R10)
-	REDUCE(DX,CX,BX,SI,DI,R8,R9,R10)
-
-	MOVQ res+0(FP), R11
-	MOVQ DX, 0(R11)
-	MOVQ CX, 8(R11)
-	MOVQ BX, 16(R11)
-	MOVQ SI, 24(R11)
-	RET
-
-// neg(res, x *Element)
-TEXT ·neg(SB), NOSPLIT, $0-16
-	MOVQ  res+0(FP), DI
-	MOVQ  x+8(FP), AX
-	MOVQ  0(AX), DX
-	MOVQ  8(AX), CX
-	MOVQ  16(AX), BX
-	MOVQ  24(AX), SI
-	MOVQ  DX, AX
-	ORQ   CX, AX
-	ORQ   BX, AX
-	ORQ   SI, AX
-	TESTQ AX, AX
-	JEQ   l1
-	MOVQ  $0x43e1f593f0000001, R8
-	SUBQ  DX, R8
-	MOVQ  R8, 0(DI)
-	MOVQ  $0x2833e84879b97091, R8
-	SBBQ  CX, R8
-	MOVQ  R8, 8(DI)
-	MOVQ  $0xb85045b68181585d, R8
-	SBBQ  BX, R8
-	MOVQ  R8, 16(DI)
-	MOVQ  $0x30644e72e131a029, R8
-	SBBQ  SI, R8
-	MOVQ  R8, 24(DI)
-	RET
-
-l1:
-	MOVQ AX, 0(DI)
-	MOVQ AX, 8(DI)
-	MOVQ AX, 16(DI)
-	MOVQ AX, 24(DI)
-	RET
 
 TEXT ·reduce(SB), NOSPLIT, $0-8
 	MOVQ res+0(FP), AX

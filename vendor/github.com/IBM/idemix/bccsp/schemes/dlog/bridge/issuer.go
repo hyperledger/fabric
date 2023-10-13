@@ -8,9 +8,9 @@ package bridge
 import (
 	"fmt"
 
-	bccsp "github.com/IBM/idemix/bccsp/schemes"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers"
+	"github.com/IBM/idemix/bccsp/types"
+	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 )
@@ -37,7 +37,7 @@ func (o *IssuerSecretKey) Bytes() ([]byte, error) {
 	return proto.Marshal(o.SK)
 }
 
-func (o *IssuerSecretKey) Public() handlers.IssuerPublicKey {
+func (o *IssuerSecretKey) Public() types.IssuerPublicKey {
 	return &IssuerPublicKey{o.SK.Ipk}
 }
 
@@ -48,7 +48,7 @@ type Issuer struct {
 }
 
 // NewKey generates a new issuer key-pair
-func (i *Issuer) NewKey(attributeNames []string) (res handlers.IssuerSecretKey, err error) {
+func (i *Issuer) NewKey(attributeNames []string) (res types.IssuerSecretKey, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
@@ -66,7 +66,7 @@ func (i *Issuer) NewKey(attributeNames []string) (res handlers.IssuerSecretKey, 
 	return
 }
 
-func (i *Issuer) NewKeyFromBytes(raw []byte, attributes []string) (res handlers.IssuerSecretKey, err error) {
+func (i *Issuer) NewKeyFromBytes(raw []byte, attributes []string) (res types.IssuerSecretKey, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
@@ -84,7 +84,7 @@ func (i *Issuer) NewKeyFromBytes(raw []byte, attributes []string) (res handlers.
 	return
 }
 
-func (i *Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (res handlers.IssuerPublicKey, err error) {
+func (i *Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (res types.IssuerPublicKey, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil

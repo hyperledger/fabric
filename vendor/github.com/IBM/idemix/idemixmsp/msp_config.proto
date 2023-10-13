@@ -1,0 +1,56 @@
+// IdemixMSPConfig collects all the configuration information for
+// an Idemix MSP.
+
+
+// Copyright the Hyperledger Fabric contributors. All rights reserved.
+//
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+option go_package = "github.com/IBM/idemix/idemixmsp";
+
+package idemixmsp;
+
+message IdemixMSPConfig {
+    // Name holds the identifier of the MSP
+    string name = 1;
+    
+    // ipk represents the (serialized) issuer public key
+    bytes ipk = 2;
+    
+    // signer may contain crypto material to configure a default signer
+    IdemixMSPSignerConfig signer = 3;
+    
+    // revocation_pk is the public key used for revocation of credentials
+    bytes revocation_pk = 4;
+    
+    // epoch represents the current epoch (time interval) used for revocation
+    int64 epoch = 5;
+    
+    // curve_id indicates which Elliptic Curve should be used
+    string curve_id = 6;
+ }
+    
+ // IdemixMSPSIgnerConfig contains the crypto material to set up an idemix signing identity
+ message IdemixMSPSignerConfig {
+    // cred represents the serialized idemix credential of the default signer
+    bytes cred = 1;
+    
+    // sk is the secret key of the default signer, corresponding to credential Cred
+    bytes sk = 2;
+ 
+    // organizational_unit_identifier defines the organizational unit the default signer is in
+    string organizational_unit_identifier = 3;
+
+    // role defines whether the default signer is admin, peer, member or client
+    int32 role = 4;
+
+    // enrollment_id contains the enrollment id of this signer
+    string enrollment_id = 5;
+
+    // credential_revocation_information contains a serialized CredentialRevocationInformation
+    bytes credential_revocation_information = 6;
+
+    // RevocationHandle is the handle used to single out this credential and determine its revocation status
+    string revocation_handle = 7;
+}
