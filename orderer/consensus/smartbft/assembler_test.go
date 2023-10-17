@@ -99,6 +99,7 @@ func TestAssembler(t *testing.T) {
 
 func makeTx(headerType int32) []byte {
 	return protoutil.MarshalOrPanic(&common.Envelope{
+		Signature: []byte{1, 2, 3},
 		Payload: protoutil.MarshalOrPanic(&common.Payload{
 			Header: &common.Header{
 				ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
@@ -136,6 +137,7 @@ func makeConfigBlock(seq uint64) *common.Block {
 		},
 		Data: &common.BlockData{
 			Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{
+				Signature: []byte{1, 2, 3},
 				Payload: protoutil.MarshalOrPanic(&common.Payload{
 					Data: protoutil.MarshalOrPanic(&common.ConfigEnvelope{
 						Config: &common.Config{
