@@ -24,10 +24,7 @@ func CreateAndSyncFileAtomically(dir, tmpFile, finalFile string, content []byte,
 	if err := CreateAndSyncFile(tempFilePath, content, perm); err != nil {
 		return err
 	}
-	if err := os.Rename(tempFilePath, finalFilePath); err != nil {
-		return err
-	}
-	return nil
+	return os.Rename(tempFilePath, finalFilePath)
 }
 
 // CreateAndSyncFile creates a file, writes the content and syncs the file
@@ -36,17 +33,13 @@ func CreateAndSyncFile(filePath string, content []byte, perm os.FileMode) error 
 	if err != nil {
 		return errors.Wrapf(err, "error while creating file:%s", filePath)
 	}
-	_, err = file.Write(content)
-	if err != nil {
-		file.Close()
+	defer file.Close()
+
+	if _, err = file.Write(content); err != nil {
 		return errors.Wrapf(err, "error while writing to file:%s", filePath)
 	}
 	if err = file.Sync(); err != nil {
-		file.Close()
 		return errors.Wrapf(err, "error while synching the file:%s", filePath)
-	}
-	if err := file.Close(); err != nil {
-		return errors.Wrapf(err, "error while closing the file:%s", filePath)
 	}
 	return nil
 }
