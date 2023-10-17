@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -169,7 +170,8 @@ var _ = Describe("Server", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = unauthClient.Get(fmt.Sprintf("https://%s/healthz", server.Addr()))
-			Expect(err).To(MatchError(ContainSubstring("remote error: tls: bad certificate")))
+			Expect(err).To(BeAssignableToTypeOf(&url.Error{}))
+			Expect(err.(*url.Error).Err.Error()).To(ContainSubstring("remote error: tls: certificate required"))
 		})
 	})
 
