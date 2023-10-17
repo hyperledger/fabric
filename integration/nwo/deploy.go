@@ -73,8 +73,16 @@ func DeployChaincode(n *Network, channel string, orderer *Orderer, chaincode Cha
 	// approve for each org
 	ApproveChaincodeForMyOrg(n, channel, orderer, chaincode, peers...)
 
-	// commit definition
+	// wait for checkcommitreadiness returns ready status
 	CheckCommitReadinessUntilReady(n, channel, chaincode, n.PeerOrgs(), peers...)
+
+	// after the chaincode definition has been correctly approved for each org,
+	// demonstrate the capability to inspect the discrepancies in the chaincode definitions
+	// by executing checkcommitreadiness with inspect flag,
+	// with intentionally altered values for chaincode definition parameters
+	InspectChaincodeDiscrepancies(n, channel, chaincode, n.PeerOrgs(), peers...)
+
+	// commit definition
 	CommitChaincode(n, channel, orderer, chaincode, peers[0], peers...)
 
 	// init the chaincode, if required
@@ -503,6 +511,40 @@ func checkCommitReadiness(n *Network, peer *Peer, channel string, chaincode Chai
 		err = json.Unmarshal(sess.Out.Contents(), output)
 		Expect(err).NotTo(HaveOccurred())
 		return output.Approvals
+	}
+}
+
+// InspectChaincodeDiscrepancies inspects the discrepancies in chaincode definitions using the checkcommitreadiness
+// command with inspection enabled. This is to verify that the network can detect differences in chaincode definitions,
+// particularly when comparing with mismatched parameters from the approved definitions by each organizations.
+func InspectChaincodeDiscrepancies(n *Network, channel string, chaincode Chaincode, checkOrgs []*Organization, peers ...*Peer) {
+	sess, err := n.PeerAdminSession(peers[0], commands.ChaincodeCheckCommitReadiness{
+		ChannelID:           channel,
+		Name:                chaincode.Name,
+		Version:             "mismatched-version", // Intentionally set mismatched version
+		Sequence:            chaincode.Sequence,
+		EndorsementPlugin:   chaincode.EndorsementPlugin,
+		ValidationPlugin:    "mismatched-vscc", // Intentionally set mismatched validation plugin
+		SignaturePolicy:     chaincode.SignaturePolicy,
+		ChannelConfigPolicy: chaincode.ChannelConfigPolicy,
+		InitRequired:        chaincode.InitRequired,
+		CollectionsConfig:   chaincode.CollectionsConfig,
+		ClientAuth:          n.ClientAuthRequired,
+		InspectionEnabled:   true,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	output := &lifecycle.CheckCommitReadinessResult{}
+	err = json.Unmarshal(sess.Out.Contents(), output)
+	Expect(err).NotTo(HaveOccurred())
+
+	for _, org := range checkOrgs {
+		Expect(output.Mismatches).To(HaveKeyWithValue(org.MSPID, gstruct.PointTo(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
+			"Items": ConsistOf(
+				"EndorsementInfo (Check the Version, InitRequired, EndorsementPlugin)",
+				"ValidationInfo (Check the ValidationParameter, ValidationPlugin)",
+			),
+		}))))
 	}
 }
 
