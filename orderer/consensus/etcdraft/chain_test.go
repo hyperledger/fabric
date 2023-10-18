@@ -271,6 +271,7 @@ var _ = Describe("Chain", func() {
 				chain.Halt()
 
 				By("Create new chain")
+				opts.MemoryStorage = raft.NewMemoryStorage()
 				_, err := etcdraft.NewChain(support, opts, configurator, nil, cryptoProvider, noOpBlockPuller, nil, observeC)
 				Expect(err).NotTo(HaveOccurred())
 			})
