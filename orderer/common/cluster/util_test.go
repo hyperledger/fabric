@@ -183,6 +183,37 @@ func TestStandardDialer(t *testing.T) {
 	require.ErrorContains(t, err, "error adding root certificate")
 }
 
+func TestVerifyBlockBFT(t *testing.T) {
+	block, err := test.MakeGenesisBlock("mychannel")
+	require.NoError(t, err)
+
+	block.Header.Number = 2
+
+	twoBlocks := createBlockChain(2, 3)
+	twoBlocks[0] = block
+
+	assignHashes(twoBlocks)
+
+	var firstBlockVerified bool
+	var secondBlockVerified bool
+
+	err = cluster.VerifyBlocksBFT(twoBlocks, func(header *common.BlockHeader, metadata *common.BlockMetadata) error {
+		firstBlockVerified = true
+		require.Equal(t, uint64(2), header.Number)
+		return nil
+	}, func(block *common.Block) protoutil.BlockVerifierFunc {
+		return func(header *common.BlockHeader, metadata *common.BlockMetadata) error {
+			require.Equal(t, uint64(3), header.Number)
+			secondBlockVerified = true
+			return nil
+		}
+	})
+
+	require.NoError(t, err)
+	require.True(t, firstBlockVerified)
+	require.True(t, secondBlockVerified)
+}
+
 func TestVerifyBlockHash(t *testing.T) {
 	var start uint64 = 3
 	var end uint64 = 23
