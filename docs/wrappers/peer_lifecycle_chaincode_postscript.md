@@ -303,6 +303,61 @@ definition can be committed to a channel.
     }
     ```
 
+  * You can also use the `--inspect` flag to output additional information to identify the cause when the approval from each organization is false. This will facilitate root cause analysis and streamline inter-organizational coordination during operations.
+
+    ```
+    peer lifecycle chaincode checkcommitreadiness --channelID mychannel --name basic --version 1.0 --sequence 1 --inspect
+    ```
+
+    If successful, the command will output additional information to identify the cause when the approval from each organization is false.
+    This example outputs that there is a mismatch with respect to the organization Org2MSP and Org3MSP, respectively,
+    compared to the chaincode definition specified in the arguments of checkcommitreadiness.
+
+    ```
+    Chaincode definition for chaincode 'basic', version '1.0', sequence '1' on channel 'mychannel' approval status by org:
+    Org1MSP: true
+    Org2MSP: false (mismatch: [EndorsementInfo, ValidationInfo, Collections])
+    Org3MSP: false (mismatch: [ChaincodeParameters])
+    ```
+
+    You can also use the `--inspect` flag and `--output` flag simultaneously.
+
+    ```
+    peer lifecycle chaincode checkcommitreadiness --channelID mychannel --name basic --version 1.0 --sequence 1 --inspect
+    ```
+
+    If successful, the command will return a JSON format with mismatches.
+
+    ```
+    {
+      "approvals": {
+        "Org1MSP": true,
+        "Org2MSP": false,
+        "Org3MSP": false
+      },
+      "mismatches": {
+        "Org2MSP": {
+          "items": [
+            "EndorsementInfo (Check the Version, InitRequired, EndorsementPlugin)",
+            "ValidationInfo (Check the ValidationParameter, ValidationPlugin)",
+            "Collections (Check the Collections)"
+          ]
+        },
+        "Org3MSP": {
+          "items": [
+            "ChaincodeParameters (Check the Sequence, ChaincodeName)"
+          ]
+        }
+      }
+    }
+    ```
+
+    checkcommitreadiness cannot fully retrieve the approved definition information, it will support root cause analysis by providing mismatch information for the following field definitions:
+    - ChaincodeParameters (Check the Sequence, ChaincodeName)
+    - EndorsementInfo (Check the Version, InitRequired, EndorsementPlugin)
+    - ValidationInfo (Check the ValidationParameter, ValidationPlugin)
+    - Collections (Check the Collections)
+
 ### peer lifecycle chaincode commit example
 
 Once a sufficient number of organizations approve a chaincode definition for
