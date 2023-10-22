@@ -34,7 +34,6 @@ var _ = Describe("Devmode", func() {
 		ordererRunner               *ginkgomon.Runner
 		ordererProcess, peerProcess ifrit.Process
 		chaincode                   nwo.Chaincode
-		legacyChaincode             nwo.Chaincode
 		chaincodeRunner             *ginkgomon.Runner
 		chaincodeProcess            ifrit.Process
 		channelName                 string
@@ -81,54 +80,6 @@ var _ = Describe("Devmode", func() {
 		}
 
 		os.RemoveAll(testDir)
-	})
-
-	It("executes chaincode in dev mode using legacy lifecycle", func() {
-		legacyChaincode = nwo.Chaincode{
-			Name:    "mycc",
-			Version: "0.0",
-			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-			Ctor:    `{"Args":["init","a","100","b","200"]}`,
-			Policy:  `OR ('Org1MSP.member')`,
-		}
-
-		org1peer0 := network.Peer("Org1", "peer0")
-		orderer := network.Orderer("orderer")
-
-		By("setting up the channel")
-		channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
-
-		By("building chaincode")
-		chaincodeExecutePath := components.Build(legacyChaincode.Path)
-
-		By("running the chaincode")
-		legacyChaincodeID := legacyChaincode.Name + ":" + legacyChaincode.Version
-		peerChaincodeAddress := network.PeerAddress(org1peer0, nwo.ChaincodePort)
-		envs := []string{
-			"CORE_PEER_TLS_ENABLED=false",
-			"CORE_CHAINCODE_ID_NAME=" + legacyChaincodeID,
-			"DEVMODE_ENABLED=true",
-		}
-		cmd := exec.Command(chaincodeExecutePath, "-peer.address", peerChaincodeAddress)
-		cmd.Env = append(cmd.Env, envs...)
-		chaincodeRunner = ginkgomon.New(ginkgomon.Config{
-			Name:              "chaincode",
-			Command:           cmd,
-			StartCheckTimeout: 15 * time.Second,
-			StartCheck:        "starting up in devmode...",
-		})
-		chaincodeProcess = ifrit.Invoke(chaincodeRunner)
-		Eventually(chaincodeProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
-
-		By("installing the chaincode")
-		nwo.InstallChaincodeLegacy(network, legacyChaincode, org1peer0)
-
-		By("instantiating the chaincode")
-		nwo.InstantiateChaincodeLegacy(network, channelName, orderer, legacyChaincode, org1peer0, org1peer0)
-
-		By("querying and invoking the chaincode")
-		RunQueryInvokeQuery(network, orderer, org1peer0, channelName, 100)
-		Eventually(chaincodeRunner).Should(gbytes.Say("invoking in devmode"))
 	})
 
 	It("executes chaincode in dev mode", func() {

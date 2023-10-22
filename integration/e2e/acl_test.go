@@ -69,15 +69,7 @@ var _ = Describe("EndToEndACL", func() {
 		org1Peer0 = network.Peer("Org1", "peer0")
 		org2Peer0 = network.Peer("Org2", "peer0")
 
-		chaincode = nwo.Chaincode{
-			Name:    "mycc",
-			Version: "0.0",
-			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-			Ctor:    `{"Args":["init","a","100","b","200"]}`,
-			Policy:  `OR ('Org1MSP.member','Org2MSP.member')`,
-		}
 		channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
-		nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
 	})
 
 	AfterEach(func() {
@@ -96,154 +88,6 @@ var _ = Describe("EndToEndACL", func() {
 	})
 
 	It("enforces access control list policies", func() {
-		invokeChaincode := commands.ChaincodeInvoke{
-			ChannelID:    "testchannel",
-			Orderer:      network.OrdererAddress(orderer, nwo.ListenPort),
-			Name:         chaincode.Name,
-			Ctor:         `{"Args":["invoke","a","b","10"]}`,
-			WaitForEvent: true,
-		}
-
-		outputBlock := filepath.Join(testDir, "newest_block.pb")
-		fetchNewest := commands.ChannelFetch{
-			ChannelID:  "testchannel",
-			Block:      "newest",
-			OutputFile: outputBlock,
-		}
-
-		//
-		// when the ACL policy for DeliverFiltered is satisfied
-		//
-		By("setting the filtered block event ACL policy to Org1/Admins")
-		policyName := resources.Event_FilteredBlock
-		policy := "/Channel/Application/Org1/Admins"
-		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
-
-		By("invoking chaincode as a permitted Org1 Admin identity")
-		sess, err := network.PeerAdminSession(org1Peer0, invokeChaincode)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess.Err, network.EventuallyTimeout).Should(gbytes.Say("Chaincode invoke successful. result: status:200"))
-
-		//
-		// when the ACL policy for DeliverFiltered is not satisfied
-		//
-		By("setting the filtered block event ACL policy to org2/Admins")
-		policyName = resources.Event_FilteredBlock
-		policy = "/Channel/Application/org2/Admins"
-		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
-
-		By("invoking chaincode as a forbidden Org1 Admin identity")
-		sess, err = network.PeerAdminSession(org1Peer0, invokeChaincode)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess.Err, network.EventuallyTimeout).Should(gbytes.Say(`\Qdeliver completed with status (FORBIDDEN)\E`))
-
-		//
-		// when the ACL policy for Deliver is satisfied
-		//
-		By("setting the block event ACL policy to Org1/Admins")
-		policyName = resources.Event_Block
-		policy = "/Channel/Application/Org1/Admins"
-		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
-
-		By("fetching the latest block from the peer as a permitted Org1 Admin identity")
-		sess, err = network.PeerAdminSession(org1Peer0, fetchNewest)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-		Expect(sess.Err).To(gbytes.Say("Received block: "))
-
-		//
-		// when the ACL policy for Deliver is not satisfied
-		//
-		By("fetching the latest block from the peer as a forbidden org2 Admin identity")
-		sess, err = network.PeerAdminSession(org2Peer0, fetchNewest)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
-		Expect(sess.Err).To(gbytes.Say("can't read the block: &{FORBIDDEN}"))
-
-		//
-		// when the ACL policy for lscc/GetInstantiatedChaincodes is satisfied
-		//
-		By("setting the lscc/GetInstantiatedChaincodes ACL policy to Org1/Admins")
-		policyName = resources.Lscc_GetInstantiatedChaincodes
-		policy = "/Channel/Application/Org1/Admins"
-		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
-
-		By("listing the instantiated chaincodes as a permitted Org1 Admin identity")
-		sess, err = network.PeerAdminSession(org1Peer0, commands.ChaincodeListInstantiatedLegacy{
-			ChannelID: "testchannel",
-		})
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-		Expect(sess).To(gbytes.Say("Name: mycc, Version: 0.0, Path: .*, Escc: escc, Vscc: vscc"))
-
-		//
-		// when the ACL policy for lscc/GetInstantiatedChaincodes is not satisfied
-		//
-		By("listing the instantiated chaincodes as a forbidden org2 Admin identity")
-		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeListInstantiatedLegacy{
-			ChannelID: "testchannel",
-		})
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
-		Expect(sess).NotTo(gbytes.Say("Name: mycc, Version: 0.0, Path: .*, Escc: escc, Vscc: vscc"))
-		Expect(sess.Err).To(gbytes.Say(`access denied for \[getchaincodes\]\[testchannel\](.*)signature set did not satisfy policy`))
-
-		//
-		// when a system chaincode ACL policy is set and a query is performed
-		//
-
-		// getting a transaction id from a block in the ledger
-		sess, err = network.PeerAdminSession(org1Peer0, fetchNewest)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-		Expect(sess.Err).To(gbytes.Say("Received block: "))
-		txID := GetTxIDFromBlockFile(outputBlock)
-
-		ItEnforcesPolicy := func(scc, operation string, args ...string) {
-			policyName := fmt.Sprintf("%s/%s", scc, operation)
-			policy := "/Channel/Application/Org1/Admins"
-			By("setting " + policyName + " to Org1 Admins")
-			SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
-
-			args = append([]string{operation}, args...)
-			chaincodeQuery := commands.ChaincodeQuery{
-				ChannelID: "testchannel",
-				Name:      scc,
-				Ctor:      ToCLIChaincodeArgs(args...),
-			}
-
-			By("evaluating " + policyName + " for a permitted subject")
-			sess, err := network.PeerAdminSession(org1Peer0, chaincodeQuery)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-
-			By("evaluating " + policyName + " for a forbidden subject")
-			sess, err = network.PeerAdminSession(org2Peer0, chaincodeQuery)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
-			Expect(sess.Err).To(gbytes.Say(fmt.Sprintf(`access denied for \[%s\]\[%s\](.*)signature set did not satisfy policy`, operation, "testchannel")))
-		}
-
-		//
-		// qscc
-		//
-		ItEnforcesPolicy("qscc", "GetChainInfo", "testchannel")
-		ItEnforcesPolicy("qscc", "GetBlockByNumber", "testchannel", "0")
-		ItEnforcesPolicy("qscc", "GetBlockByTxID", "testchannel", txID)
-		ItEnforcesPolicy("qscc", "GetTransactionByID", "testchannel", txID)
-
-		//
-		// lscc
-		//
-		ItEnforcesPolicy("lscc", "GetChaincodeData", "testchannel", "mycc")
-		ItEnforcesPolicy("lscc", "ChaincodeExists", "testchannel", "mycc")
-
-		//
-		// cscc
-		//
-		ItEnforcesPolicy("cscc", "GetConfigBlock", "testchannel")
-		ItEnforcesPolicy("cscc", "GetChannelConfig", "testchannel")
-
 		//
 		// _lifecycle ACL policies
 		//
@@ -267,7 +111,7 @@ var _ = Describe("EndToEndACL", func() {
 		// when the ACL policy for _lifecycle/InstallChaincode is not satisfied
 		//
 		By("installing the chaincode to an org1 peer as an org2 admin")
-		sess, err = network.PeerAdminSession(org2Peer0, commands.ChaincodeInstall{
+		sess, err := network.PeerAdminSession(org2Peer0, commands.ChaincodeInstall{
 			PackageFile:   chaincode.PackageFile,
 			PeerAddresses: []string{network.PeerAddress(org1Peer0, nwo.ListenPort)},
 		})
@@ -383,8 +227,8 @@ var _ = Describe("EndToEndACL", func() {
 		// when the ACL policy for CheckCommitReadiness is not satisfied
 		//
 		By("setting the simulate commit chaincode definition ACL policy to Org1/Admins")
-		policyName = resources.Lifecycle_CheckCommitReadiness
-		policy = "/Channel/Application/Org1/Admins"
+		policyName := resources.Lifecycle_CheckCommitReadiness
+		policy := "/Channel/Application/Org1/Admins"
 		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
 
 		By("simulating the commit of a chaincode dwefinition as a forbidden Org2 Admin identity")
@@ -512,6 +356,88 @@ var _ = Describe("EndToEndACL", func() {
 			ClientAuth: network.ClientAuthRequired,
 		}
 		verifyCommandErr(network, org1Peer0, "User1", joinbysnapshotstatusCmd, expectedMsgNonAdmin)
+
+		//
+		// when a system chaincode ACL policy is set and a query is performed
+		//
+
+		nwo.InitChaincode(network, "testchannel", orderer, chaincode, org1Peer0, org2Peer0)
+
+		outputBlock := filepath.Join(testDir, "newest_block.pb")
+		fetchNewest := commands.ChannelFetch{
+			ChannelID:  "testchannel",
+			Block:      "newest",
+			OutputFile: outputBlock,
+		}
+
+		//
+		// when the ACL policy for Deliver is satisfied
+		//
+		By("setting the block event ACL policy to Org1/Admins")
+		policyName = resources.Event_Block
+		policy = "/Channel/Application/Org1/Admins"
+		SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
+
+		By("fetching the latest block from the peer as a permitted Org1 Admin identity")
+		sess, err = network.PeerAdminSession(org1Peer0, fetchNewest)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+		Expect(sess.Err).To(gbytes.Say("Received block: "))
+
+		//
+		// when the ACL policy for Deliver is not satisfied
+		//
+		By("fetching the latest block from the peer as a forbidden org2 Admin identity")
+		sess, err = network.PeerAdminSession(org2Peer0, fetchNewest)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
+		Expect(sess.Err).To(gbytes.Say("can't read the block: &{FORBIDDEN}"))
+
+		// getting a transaction id from a block in the ledger
+		sess, err = network.PeerAdminSession(org1Peer0, fetchNewest)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+		Expect(sess.Err).To(gbytes.Say("Received block: "))
+		txID := GetTxIDFromBlockFile(outputBlock)
+
+		ItEnforcesPolicy := func(scc, operation string, args ...string) {
+			policyName := fmt.Sprintf("%s/%s", scc, operation)
+			policy := "/Channel/Application/Org1/Admins"
+			By("setting " + policyName + " to Org1 Admins")
+			SetACLPolicy(network, "testchannel", policyName, policy, "orderer")
+
+			args = append([]string{operation}, args...)
+			chaincodeQuery := commands.ChaincodeQuery{
+				ChannelID: "testchannel",
+				Name:      scc,
+				Ctor:      ToCLIChaincodeArgs(args...),
+			}
+
+			By("evaluating " + policyName + " for a permitted subject")
+			sess, err := network.PeerAdminSession(org1Peer0, chaincodeQuery)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+
+			By("evaluating " + policyName + " for a forbidden subject")
+			sess, err = network.PeerAdminSession(org2Peer0, chaincodeQuery)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
+			Expect(sess.Err).To(gbytes.Say(fmt.Sprintf(`access denied for \[%s\]\[%s\](.*)signature set did not satisfy policy`, operation, "testchannel")))
+		}
+
+		//
+		// qscc
+		//
+		ItEnforcesPolicy("qscc", "GetChainInfo", "testchannel")
+		ItEnforcesPolicy("qscc", "GetBlockByNumber", "testchannel", "0")
+		ItEnforcesPolicy("qscc", "GetBlockByTxID", "testchannel", txID)
+		ItEnforcesPolicy("qscc", "GetTransactionByID", "testchannel", txID)
+
+		//
+		// cscc
+		//
+		ItEnforcesPolicy("cscc", "GetConfigBlock", "testchannel")
+		ItEnforcesPolicy("cscc", "GetChannelConfig", "testchannel")
 	})
 })
 

@@ -9,6 +9,7 @@ package gossip
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -52,11 +53,16 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 		}
 
 		chaincode = nwo.Chaincode{
-			Name:    "mycc",
-			Version: "0.0",
-			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-			Ctor:    `{"Args":["init","a","100","b","200"]}`,
-			Policy:  `OR ('Org1MSP.member','Org2MSP.member')`,
+			Name:            "mycc",
+			Version:         "1.0",
+			Lang:            "binary",
+			PackageFile:     filepath.Join(testDir, "simplecc.tar.gz"),
+			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd"),
+			Ctor:            `{"Args":["init","a","100","b","200"]}`,
+			SignaturePolicy: "OR('Org1MSP.member','Org2MSP.member')",
+			Sequence:        "1",
+			InitRequired:    true,
+			Label:           "my_prebuilt_chaincode",
 		}
 	})
 
@@ -120,15 +126,31 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 		By("joining all peers to channel")
 		network.JoinChannel(channelName, orderer, peer0Org1, peer1Org1, peer0Org2, peer1Org2)
 
+		By("enabling V2_5 application capabilities on the channel")
+		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_5", orderer, network.Peers...)
+
 		// base peer will be used for chaincode interactions
 		basePeerForTransactions := peer0Org1
-		nwo.DeployChaincodeLegacy(network, channelName, orderer, chaincode, basePeerForTransactions)
+
+		By("packaging chaincode")
+		nwo.PackageChaincodeBinary(chaincode)
+
+		By("installing chaincode to org1.peer0")
+		nwo.InstallChaincode(network, chaincode, peer0Org1, peer0Org2)
+
+		By("approving chaincode definition for org1")
+		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, peer0Org1)
+		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, peer0Org2)
+
+		By("committing chaincode definition using org1.peer0")
+		nwo.CommitChaincode(network, "testchannel", orderer, chaincode, peer0Org1, peer0Org1, peer0Org2)
+		nwo.InitChaincode(network, "testchannel", orderer, chaincode, peer0Org1)
 
 		By("verifying peer0Org1 discovers all the peers and the legacy chaincode before starting the tests")
 		Eventually(nwo.DiscoverPeers(network, peer0Org1, "User1", "testchannel"), network.EventuallyTimeout).Should(ConsistOf(
-			network.DiscoveredPeer(peer0Org1, "_lifecycle", "mycc"),
+			network.DiscoveredPeer(peer0Org1, "mycc", "_lifecycle"),
 			network.DiscoveredPeer(peer1Org1, "_lifecycle"),
-			network.DiscoveredPeer(peer0Org2, "_lifecycle"),
+			network.DiscoveredPeer(peer0Org2, "mycc", "_lifecycle"),
 			network.DiscoveredPeer(peer1Org2, "_lifecycle"),
 		))
 
@@ -147,13 +169,13 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 
 		By("STATE TRANSFER TEST 2: restarted peers should receive blocks from the peers that are already up")
 		basePeerForTransactions = peer1Org1
-		nwo.InstallChaincodeLegacy(network, chaincode, basePeerForTransactions)
+		nwo.InstallChaincode(network, chaincode, basePeerForTransactions)
 
 		By("verifying peer0Org1 discovers all the peers and the additional legacy chaincode installed on peer1Org1")
 		Eventually(nwo.DiscoverPeers(network, peer0Org1, "User1", "testchannel"), network.EventuallyTimeout).Should(ConsistOf(
-			network.DiscoveredPeer(peer0Org1, "_lifecycle", "mycc"),
-			network.DiscoveredPeer(peer1Org1, "_lifecycle", "mycc"),
-			network.DiscoveredPeer(peer0Org2, "_lifecycle"),
+			network.DiscoveredPeer(peer0Org1, "mycc", "_lifecycle"),
+			network.DiscoveredPeer(peer1Org1, "mycc", "_lifecycle"),
+			network.DiscoveredPeer(peer0Org2, "mycc", "_lifecycle"),
 			network.DiscoveredPeer(peer1Org2, "_lifecycle"),
 		))
 
@@ -170,9 +192,9 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 
 		By("verifying peer0Org1 can still discover all the peers and the legacy chaincode after it has been restarted")
 		Eventually(nwo.DiscoverPeers(network, peer0Org1, "User1", "testchannel"), network.EventuallyTimeout).Should(ConsistOf(
-			network.DiscoveredPeer(peer0Org1, "_lifecycle", "mycc"),
-			network.DiscoveredPeer(peer1Org1, "_lifecycle", "mycc"),
-			network.DiscoveredPeer(peer0Org2, "_lifecycle"),
+			network.DiscoveredPeer(peer0Org1, "mycc", "_lifecycle"),
+			network.DiscoveredPeer(peer1Org1, "mycc", "_lifecycle"),
+			network.DiscoveredPeer(peer0Org2, "mycc", "_lifecycle"),
 			network.DiscoveredPeer(peer1Org2, "_lifecycle"),
 		))
 	})
@@ -363,6 +385,7 @@ func sendTransactionsAndSyncUpPeers(n *networkProcesses, orderer *nwo.Orderer, b
 	n.ordererRunner = n.network.OrdererRunner(orderer)
 	n.ordererProcess = ifrit.Invoke(n.ordererRunner)
 	Eventually(n.ordererProcess.Ready(), n.network.EventuallyTimeout).Should(BeClosed())
+	Eventually(n.ordererRunner.Err(), time.Minute, time.Second).Should(gbytes.Say("Raft leader changed: [0-9] -> "))
 }
 
 // assertPeerMembershipUpdate stops and restart peersToRestart and verify peer membership
