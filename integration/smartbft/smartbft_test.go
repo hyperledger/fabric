@@ -1579,6 +1579,10 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			channel := "testchannel1"
 
 			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
+			network.Profiles[0].SmartBFT = &nwo.SmartBFT{
+				LeaderHeartbeatTimeout: 10,
+				LeaderHeartbeatCount:   10,
+			}
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -1588,7 +1592,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				runner.Command.Env = append(
 					runner.Command.Env,
 					"FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug",
-					"ORDERER_GENERAL_BACKOFF_MAXDELAY=20s",
+					"ORDERER_GENERAL_BACKOFF_MAXDELAY=3s",
 				)
 				ordererRunners = append(ordererRunners, runner)
 				proc := ifrit.Invoke(runner)
@@ -1633,14 +1637,14 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			ordererProcesses[numberKill].Signal(syscall.SIGTERM)
 			Eventually(ordererProcesses[numberKill].Wait(), network.EventuallyTimeout).Should(Receive())
 
-			time.Sleep(time.Second * 240)
+			time.Sleep(time.Second * 60)
 
 			By(fmt.Sprintf("Launching %s", orderer.Name))
 			runner := network.OrdererRunner(orderer)
 			runner.Command.Env = append(
 				runner.Command.Env,
 				"FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug",
-				"ORDERER_GENERAL_BACKOFF_MAXDELAY=20s",
+				"ORDERER_GENERAL_BACKOFF_MAXDELAY=3s",
 			)
 			ordererRunners[numberKill] = runner
 			proc := ifrit.Invoke(runner)
@@ -1648,7 +1652,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			By("Waiting for followers to see the leader, again")
-			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1 channel=testchannel1"))
+			Eventually(ordererRunners[3].Err(), 15*time.Second, time.Second).Should(gbytes.Say("Message from 1 channel=testchannel1"))
 
 			By("invoking the chaincode, again")
 			invokeQuery(network, peer, network.Orderers[2], channel, 80)
