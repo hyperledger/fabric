@@ -1081,7 +1081,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			By("Sending TX with corrupted signature")
 			env = ordererclient.CreateBroadcastEnvelope(network, leader, channel, []byte("MESSSAGE_2"))
-			env.Signature = []byte{}
+			env.Signature = []byte{1, 2, 3}
 			resp, err = ordererclient.Broadcast(network, leader, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_FORBIDDEN))
@@ -1383,7 +1383,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				0,
 			)
 			Expect(err).NotTo(HaveOccurred())
-			env.Signature = []byte{}
+			env.Signature = []byte{1, 2, 3}
 
 			By("Authenticate to the leader step service")
 			err = client.Auth()
@@ -1466,12 +1466,12 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				common.HeaderType_ENDORSER_TRANSACTION,
 				channel,
 				signer,
-				&common.Envelope{Payload: []byte("TEST_MESSAGE")},
+				&common.Envelope{Payload: []byte("TEST_MESSAGE"), Signature: []byte{1, 2, 3}},
 				0,
 				0,
 			)
 			Expect(err).NotTo(HaveOccurred())
-			env.Signature = []byte{}
+			env.Signature = []byte{1, 2, 3}
 
 			By("Create the consensus request")
 			genesisBlock := network.LoadAppChannelGenesisBlock(channel)

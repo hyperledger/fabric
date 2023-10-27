@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/asn1"
+	"encoding/base64"
 	"fmt"
 	"math/big"
 
@@ -296,5 +297,41 @@ func searchConsenterIdentityByID(consenters []*cb.Consenter, identifier uint32) 
 			})
 		}
 	}
+	return nil
+}
+
+func VerifyTransactionsAreWellFormed(block *cb.Block) error {
+	if block == nil || block.Data == nil || len(block.Data.Data) == 0 {
+		return fmt.Errorf("empty block")
+	}
+
+	for i, rawTx := range block.Data.Data {
+		env := &cb.Envelope{}
+		if err := proto.Unmarshal(rawTx, env); err != nil {
+			return fmt.Errorf("transaction %d is invalid: %v", i, err)
+		}
+
+		if len(env.Payload) == 0 {
+			return fmt.Errorf("transaction %d has no payload", i)
+		}
+
+		if len(env.Signature) == 0 {
+			return fmt.Errorf("transaction %d has no signature", i)
+		}
+
+		expected, err := proto.Marshal(env)
+		if err != nil {
+			return fmt.Errorf("failed re-marshaling envelope: %v", err)
+		}
+
+		if len(expected) < len(rawTx) {
+			return fmt.Errorf("transaction %d has %d trailing bytes", i, len(rawTx)-len(expected))
+		}
+		if !bytes.Equal(expected, rawTx) {
+			return fmt.Errorf("transaction %d (%s) does not match its raw form (%s)", i,
+				base64.StdEncoding.EncodeToString(expected), base64.StdEncoding.EncodeToString(rawTx))
+		}
+	}
+
 	return nil
 }
