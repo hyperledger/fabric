@@ -151,6 +151,10 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum u
 		return fmt.Errorf("Failed unmarshalling medatata for signatures [%s]", err)
 	}
 
+	if err := protoutil.VerifyTransactionsAreWellFormed(block); err != nil {
+		return err
+	}
+
 	// - Verify that Header.DataHash is equal to the hash of block.Data
 	// This is to ensure that the header is consistent with the data carried by this block
 	if !bytes.Equal(protoutil.BlockDataHash(block.Data), block.Header.DataHash) {
