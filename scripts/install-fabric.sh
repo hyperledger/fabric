@@ -6,7 +6,7 @@
 #
 
 # A modified version of the Fabric bootstrap script
-# Use positional arguments to select componenets to install
+# Use positional arguments to select components to install
 #
 # Has exactly the same functional power of bootstrap.sh
 
