@@ -130,7 +130,7 @@ func TestReplicateChainsFailures(t *testing.T) {
 			name: "hash chain mismatch",
 			expectedPanic: "Failed pulling system channel: " +
 				"block header mismatch on sequence 11, " +
-				"expected 9cd61b7e9a5ea2d128cc877e5304e7205888175a8032d40b97db7412dca41d9e, got 010203",
+				"expected 229de8d87db1ddf7278093bc65ba9245cd3acd8ccfc687e0edc68adf9b181488, got 010203",
 			latestBlockSeqInOrderer: 21,
 			mutateBlocks: func(systemChannelBlocks []*common.Block) {
 				systemChannelBlocks[len(systemChannelBlocks)/2].Header.PreviousHash = []byte{1, 2, 3}
@@ -139,8 +139,8 @@ func TestReplicateChainsFailures(t *testing.T) {
 		{
 			name: "last pulled block doesn't match the boot block",
 			expectedPanic: "Block header mismatch on last system channel block," +
-				" expected 8ec93b2ef5ffdc302f0c0e24611be04ad2b17b099a1aeafd7cfb76a95923f146," +
-				" got e428decfc78f8e4c97b26da9c16f9d0b73f886dafa80477a0dd9bac7eb14fe7a",
+				" expected 0bea18bff7feeaa0bc08f528e1f563c818fc0633e291786c96eedffd8c7e6cff," +
+				" got 924c568c4a4e8f16e3cbd123ea0ae38d0bbb01d60bafb74f4bb55f108c0eb194",
 			latestBlockSeqInOrderer: 21,
 			mutateBlocks: func(systemChannelBlocks []*common.Block) {
 				systemChannelBlocks[21].Header.DataHash = nil
