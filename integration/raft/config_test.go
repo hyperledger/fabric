@@ -1327,7 +1327,14 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				// TODO the channelparticipation.Remove does not clean up the etcdraft folder. This may prevent the
 				// correct re-creation of the channel on this orderer.
 				// See: https://github.com/hyperledger/fabric/issues/3992
-				channelparticipation.Remove(network, o1, "testchannel")
+				ready := make(chan struct{})
+				go func() {
+					defer GinkgoRecover()
+					channelparticipation.Remove(network, o1, "testchannel")
+					close(ready)
+				}()
+				Eventually(ready, network.EventuallyTimeout).Should(BeClosed())
+
 				Eventually(func() int { // Removal is async
 					channelList := channelparticipation.List(network, o1)
 					return len(channelList.Channels)
