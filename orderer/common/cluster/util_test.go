@@ -289,7 +289,7 @@ func TestVerifyBlockHash(t *testing.T) {
 		},
 		{
 			name: "data hash mismatch",
-			errorContains: "computed hash of block (13) (dcb2ec1c5e482e4914cb953ff8eedd12774b244b12912afbe6001ba5de9ff800)" +
+			errorContains: "computed hash of block (13) (6de668ac99645e179a4921b477d50df9295fa56cd44f8e5c94756b60ce32ce1c)" +
 				" doesn't match claimed hash (07)",
 			mutateBlockSequence: func(blockSequence []*common.Block) []*common.Block {
 				blockSequence[len(blockSequence)/2].Header.DataHash = []byte{7}
@@ -299,7 +299,7 @@ func TestVerifyBlockHash(t *testing.T) {
 		{
 			name: "prev hash mismatch",
 			errorContains: "block [12]'s hash " +
-				"(866351705f1c2f13e10d52ead9d0ca3b80689ede8cc8bf70a6d60c67578323f4) " +
+				"(72cc7ddf4d8465da95115c0a906416d23d8c74bfcb731a5ab057c213d8db62e1) " +
 				"mismatches block [13]'s prev block hash (07)",
 			mutateBlockSequence: func(blockSequence []*common.Block) []*common.Block {
 				blockSequence[len(blockSequence)/2].Header.PreviousHash = []byte{7}
@@ -373,7 +373,7 @@ func TestVerifyBlocks(t *testing.T) {
 				return blockSequence
 			},
 			expectedError: "block [74]'s hash " +
-				"(5cb4bd1b6a73f81afafd96387bb7ff4473c2425929d0862586f5fbfa12d762dd) " +
+				"(6daec1924ac6db2b23e3f49c190115dfc096603bcd0ec916baf111c68633c969) " +
 				"mismatches block [75]'s prev block hash (07)",
 		},
 		{
@@ -398,7 +398,7 @@ func TestVerifyBlocks(t *testing.T) {
 				assignHashes(blockSequence)
 				return blockSequence
 			},
-			expectedError: "nil header in payload",
+			expectedError: "block has malformed transactions: transaction 0 has no payload",
 		},
 		{
 			name: "config blocks in the sequence need to be verified and one of them is improperly signed",
@@ -550,6 +550,7 @@ func createBlockChain(start, end uint64) []*common.Block {
 		})
 
 		txn := protoutil.MarshalOrPanic(&common.Envelope{
+			Signature: []byte{1, 2, 3},
 			Payload: protoutil.MarshalOrPanic(&common.Payload{
 				Header: &common.Header{},
 			}),
@@ -558,9 +559,8 @@ func createBlockChain(start, end uint64) []*common.Block {
 		return block
 	}
 	var blockchain []*common.Block
-	for seq := uint64(start); seq <= uint64(end); seq++ {
+	for seq := start; seq <= end; seq++ {
 		block := newBlock(seq)
-		block.Data.Data = append(block.Data.Data, make([]byte, 100))
 		block.Header.DataHash = protoutil.BlockDataHash(block.Data)
 		blockchain = append(blockchain, block)
 	}
@@ -706,7 +706,8 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 					Payload: protoutil.MarshalOrPanic(&common.Payload{
 						Data: []byte{1, 2, 3},
 					}),
-				})}}},
+				})}},
+			},
 		},
 		{
 			name:          "invalid envelope in block",
@@ -731,7 +732,8 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 							ChannelHeader: []byte{1, 2, 3},
 						},
 					}),
-				})}}},
+				})}},
+			},
 		},
 		{
 			name:          "invalid config block",
@@ -747,7 +749,8 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 							}),
 						},
 					}),
-				})}}},
+				})}},
+			},
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
