@@ -305,6 +305,12 @@ func VerifyTransactionsAreWellFormed(block *cb.Block) error {
 		return fmt.Errorf("empty block")
 	}
 
+	// If we have a single transaction, and the block is a config block, then no need to check
+	// well formed-ness, because there cannot be another transaction in the original block.
+	if IsConfigBlock(block) {
+		return nil
+	}
+
 	for i, rawTx := range block.Data.Data {
 		env := &cb.Envelope{}
 		if err := proto.Unmarshal(rawTx, env); err != nil {
