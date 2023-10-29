@@ -187,7 +187,14 @@ func TestVerifyBlockBFT(t *testing.T) {
 	block, err := test.MakeGenesisBlock("mychannel")
 	require.NoError(t, err)
 
+	configTx := &common.Envelope{}
+	err = proto.Unmarshal(block.Data.Data[0], configTx)
+	require.NoError(t, err)
+
+	configTx.Signature = []byte{1, 2, 3}
+	block.Data.Data[0] = protoutil.MarshalOrPanic(configTx)
 	block.Header.Number = 2
+	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
 
 	twoBlocks := createBlockChain(2, 3)
 	twoBlocks[0] = block
@@ -256,7 +263,7 @@ func TestVerifyBlockHash(t *testing.T) {
 		},
 		{
 			name: "data hash mismatch",
-			errorContains: "computed hash of block (13) (dcb2ec1c5e482e4914cb953ff8eedd12774b244b12912afbe6001ba5de9ff800)" +
+			errorContains: "computed hash of block (13) (6de668ac99645e179a4921b477d50df9295fa56cd44f8e5c94756b60ce32ce1c)" +
 				" doesn't match claimed hash (07)",
 			mutateBlockSequence: func(blockSequence []*common.Block) []*common.Block {
 				blockSequence[len(blockSequence)/2].Header.DataHash = []byte{7}
@@ -266,7 +273,7 @@ func TestVerifyBlockHash(t *testing.T) {
 		{
 			name: "prev hash mismatch",
 			errorContains: "block [12]'s hash " +
-				"(866351705f1c2f13e10d52ead9d0ca3b80689ede8cc8bf70a6d60c67578323f4) " +
+				"(72cc7ddf4d8465da95115c0a906416d23d8c74bfcb731a5ab057c213d8db62e1) " +
 				"mismatches block [13]'s prev block hash (07)",
 			mutateBlockSequence: func(blockSequence []*common.Block) []*common.Block {
 				blockSequence[len(blockSequence)/2].Header.PreviousHash = []byte{7}
@@ -316,6 +323,7 @@ func createBlockChain(start, end uint64) []*common.Block {
 		})
 
 		txn := protoutil.MarshalOrPanic(&common.Envelope{
+			Signature: []byte{1, 2, 3},
 			Payload: protoutil.MarshalOrPanic(&common.Payload{
 				Header: &common.Header{},
 			}),
@@ -326,7 +334,6 @@ func createBlockChain(start, end uint64) []*common.Block {
 	var blockchain []*common.Block
 	for seq := start; seq <= end; seq++ {
 		block := newBlock(seq)
-		block.Data.Data = append(block.Data.Data, make([]byte, 100))
 		block.Header.DataHash = protoutil.BlockDataHash(block.Data)
 		blockchain = append(blockchain, block)
 	}

@@ -114,7 +114,7 @@ Below is also shown a good approach to achieve consistency which consists of cre
 .. code:: go
 
   // Asset describes basic details of what makes up a simple asset
-  // Insert struct field in alphabetic order => to achieve determinism accross languages
+  // Insert struct field in alphabetic order => to achieve determinism across languages
   // golang keeps the order when marshal to json but doesn't order automatically
 
   type Asset struct {
