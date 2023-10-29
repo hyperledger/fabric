@@ -151,6 +151,10 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum u
 		return fmt.Errorf("Failed unmarshalling medatata for signatures [%s]", err)
 	}
 
+	if err := protoutil.VerifyTransactionsAreWellFormed(block); err != nil {
+		return fmt.Errorf("block has malformed transactions: %v", err)
+	}
+
 	// - Verify that Header.DataHash is equal to the hash of block.Data
 	// This is to ensure that the header is consistent with the data carried by this block
 	if !bytes.Equal(protoutil.BlockDataHash(block.Data), block.Header.DataHash) {
@@ -259,7 +263,6 @@ func (s *MSPMessageCryptoService) Expiration(peerIdentity api.PeerIdentityType) 
 		return time.Time{}, errors.Wrap(err, "Unable to extract msp.Identity from peer Identity")
 	}
 	return id.ExpiresAt(), nil
-
 }
 
 func (s *MSPMessageCryptoService) getValidatedIdentity(peerIdentity api.PeerIdentityType) (msp.Identity, common.ChannelID, error) {
