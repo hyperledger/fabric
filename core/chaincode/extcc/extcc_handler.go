@@ -58,7 +58,9 @@ func (i *ExternalChaincodeRuntime) Stream(ccid string, ccinfo *ccintf.ChaincodeS
 	}
 
 	// peer as client has to initiate the stream. Rest of the process is unchanged
-	sHandler.HandleChaincodeStream(stream)
+	if err := sHandler.HandleChaincodeStream(stream); err != nil {
+		return errors.WithMessagef(err, "error handling chaincode stream for %s", ccid)
+	}
 
 	extccLogger.Debugf("External chaincode %s client exited", ccid)
 
