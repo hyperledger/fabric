@@ -21,7 +21,7 @@ ifneq ($(NO_PROXY),)
 DOCKER_BUILD_FLAGS+=--build-arg 'NO_PROXY=$(NO_PROXY)'
 endif
 
-DOCKER_BUILD ?= docker build --force-rm
+DOCKER_BUILD ?= docker buildx build --force-rm
 DBUILD = $(DOCKER_BUILD) $(DOCKER_BUILD_FLAGS)
 
 DOCKER_NS ?= hyperledger
