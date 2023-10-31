@@ -50,7 +50,14 @@ func (cs *ConnectionSource) RandomEndpoint() (*Endpoint, error) {
 	if len(cs.allEndpoints) == 0 {
 		return nil, errors.Errorf("no endpoints currently defined")
 	}
-	return cs.allEndpoints[rand.Intn(len(cs.allEndpoints))], nil
+	OrderersOverridekeys := make([]string, 0, len(cs.overrides))
+	for key := range cs.overrides {
+		OrderersOverridekeys = append(OrderersOverridekeys, key)
+	}
+	random := rand.Intn(len(OrderersOverridekeys))
+	endpoint := cs.overrides[OrderersOverridekeys[random]]
+	endpoint.Address = cs.allEndpoints[random].Address
+	return endpoint, nil
 }
 
 func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]OrdererOrg) {
