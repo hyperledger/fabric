@@ -518,6 +518,23 @@ func TestVerifyTransactionsAreWellFormed(t *testing.T) {
 		block         *cb.Block
 	}{
 		{
+			name: "config block",
+			block: &cb.Block{Data: &cb.BlockData{
+				Data: [][]byte{
+					protoutil.MarshalOrPanic(
+						&cb.Envelope{
+							Payload: protoutil.MarshalOrPanic(&cb.Payload{
+								Header: &cb.Header{
+									ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
+										Type: int32(cb.HeaderType_CONFIG),
+									}),
+								},
+							}),
+						}),
+				},
+			}},
+		},
+		{
 			name:          "empty block",
 			expectedError: "empty block",
 		},
