@@ -122,22 +122,23 @@ func (MSPIdentityAnonymity_MSPIdentityAnonymityType) EnumDescriptor() ([]byte, [
 
 // MSPPrincipal aims to represent an MSP-centric set of identities.
 // In particular, this structure allows for definition of
-//  - a group of identities that are member of the same MSP
-//  - a group of identities that are member of the same organization unit
-//    in the same MSP
-//  - a group of identities that are administering a specific MSP
-//  - a specific identity
+//   - a group of identities that are member of the same MSP
+//   - a group of identities that are member of the same organization unit
+//     in the same MSP
+//   - a group of identities that are administering a specific MSP
+//   - a specific identity
+//
 // Expressing these groups is done given two fields of the fields below
-//  - Classification, that defines the type of classification of identities
-//    in an MSP this principal would be defined on; Classification can take
-//    three values:
+//   - Classification, that defines the type of classification of identities
+//     in an MSP this principal would be defined on; Classification can take
+//     three values:
 //     (i)  ByMSPRole: that represents a classification of identities within
-//          MSP based on one of the two pre-defined MSP rules, "member" and "admin"
+//     MSP based on one of the two pre-defined MSP rules, "member" and "admin"
 //     (ii) ByOrganizationUnit: that represents a classification of identities
-//          within MSP based on the organization unit an identity belongs to
+//     within MSP based on the organization unit an identity belongs to
 //     (iii)ByIdentity that denotes that MSPPrincipal is mapped to a single
-//          identity/certificate; this would mean that the Principal bytes
-//          message
+//     identity/certificate; this would mean that the Principal bytes
+//     message
 type MSPPrincipal struct {
 	// Classification describes the way that one should process
 	// Principal. An Classification value of "ByOrganizationUnit" reflects

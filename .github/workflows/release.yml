@@ -12,7 +12,7 @@ on:
       - v3.*
 
 env:
-  GO_VER: 1.20.7
+  GO_VER: 1.21.3
   UBUNTU_VER: 20.04
   FABRIC_VER: ${{ github.ref_name }}
   DOCKER_REGISTRY: ${{ github.repository_owner == 'hyperledger' && 'docker.io' || 'ghcr.io' }}

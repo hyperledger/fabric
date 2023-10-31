@@ -28,6 +28,7 @@ const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 // StepRequest wraps a message that is sent to a cluster member.
 type StepRequest struct {
 	// Types that are valid to be assigned to Payload:
+	//
 	//	*StepRequest_ConsensusRequest
 	//	*StepRequest_SubmitRequest
 	Payload              isStepRequest_Payload `protobuf_oneof:"payload"`
@@ -109,6 +110,7 @@ func (*StepRequest) XXX_OneofWrappers() []interface{} {
 // StepResponse is a message received from a cluster member.
 type StepResponse struct {
 	// Types that are valid to be assigned to Payload:
+	//
 	//	*StepResponse_SubmitRes
 	Payload              isStepResponse_Payload `protobuf_oneof:"payload"`
 	XXX_NoUnkeyedLiteral struct{}               `json:"-"`

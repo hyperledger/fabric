@@ -65,33 +65,31 @@ func (cli *CLI) Run(args []string) {
 	configureFlags(cli.app)
 
 	command := kingpin.MustParse(cli.app.Parse(args))
-	if command == persist.FullCommand() {
+	switch command {
+	case persist.FullCommand():
 		if *configFile == "" {
 			out("--configFile must be used to specify the configuration file")
 			return
 		}
 		persistConfig(parseFlagsToConfig(), *configFile)
-		return
-	}
+	default:
+		var conf Config
+		if *configFile == "" {
+			conf = parseFlagsToConfig()
+		} else {
+			conf = loadConfig(*configFile)
+		}
 
-	var conf Config
-	if *configFile == "" {
-		conf = parseFlagsToConfig()
-	} else {
-		conf = loadConfig(*configFile)
-	}
-
-	f, exists := cli.dispatchers[command]
-	if !exists {
-		out("Unknown command:", command)
-		terminate(1)
-		return
-	}
-	err := f(conf)
-	if err != nil {
-		out(err)
-		terminate(1)
-		return
+		f, exists := cli.dispatchers[command]
+		if !exists {
+			out("Unknown command:", command)
+			terminate(1)
+			return
+		}
+		if err := f(conf); err != nil {
+			out(err)
+			terminate(1)
+		}
 	}
 }
 

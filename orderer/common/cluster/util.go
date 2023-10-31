@@ -260,6 +260,9 @@ func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
 	if block.Header == nil {
 		return errors.New("missing block header")
 	}
+	if err := protoutil.VerifyTransactionsAreWellFormed(block); err != nil {
+		return err
+	}
 	seq := block.Header.Number
 	dataHash := protoutil.BlockDataHash(block.Data)
 	// Verify data hash matches the hash in the header
@@ -880,7 +883,10 @@ func verifyBlockSequence(blockBuff []*common.Block, signatureVerifier protoutil.
 	// Verify all configuration blocks that are found inside the block batch,
 	// with the configuration that was committed (nil) or with one that is picked up
 	// during iteration over the block batch.
-	for _, block := range blockBuff {
+	for i, block := range blockBuff {
+		if err := VerifyBlockHash(i, blockBuff); err != nil {
+			return err
+		}
 		configFromBlock, err := ConfigFromBlock(block)
 
 		if err != nil && err != errNotAConfig {

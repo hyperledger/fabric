@@ -52,6 +52,7 @@ var (
 func Cmd(cf *ChannelCmdFactory) *cobra.Command {
 	AddFlags(channelCmd)
 
+	// Add subcommands
 	channelCmd.AddCommand(createCmd(cf))
 	channelCmd.AddCommand(fetchCmd(cf))
 	channelCmd.AddCommand(joinCmd(cf))
@@ -95,7 +96,7 @@ func attachFlags(cmd *cobra.Command, names []string) {
 		if flag := flags.Lookup(name); flag != nil {
 			cmdFlags.AddFlag(flag)
 		} else {
-			logger.Fatalf("Could not find flag '%s' to attach to commond '%s'", name, cmd.Name())
+			logger.Fatalf("Could not find flag '%s' to attach to command '%s'", name, cmd.Name())
 		}
 	}
 }
@@ -128,7 +129,7 @@ type ChannelCmdFactory struct {
 	BroadcastFactory BroadcastClientFactory
 }
 
-// InitCmdFactory init the ChannelCmdFactory with clients to endorser and orderer according to params
+// InitCmdFactory init the ChannelCmdFactory with clients to endorser and orderer based on the given parameters
 func InitCmdFactory(isEndorserRequired, isPeerDeliverRequired, isOrdererRequired bool) (*ChannelCmdFactory, error) {
 	if isPeerDeliverRequired && isOrdererRequired {
 		// this is likely a bug during development caused by adding a new cmd

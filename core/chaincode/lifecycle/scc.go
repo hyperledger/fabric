@@ -98,7 +98,9 @@ type SCCFunctions interface {
 	// CheckCommitReadiness returns a map containing the orgs
 	// whose orgStates were supplied and whether or not they have approved
 	// the specified definition.
-	CheckCommitReadiness(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) (map[string]bool, error)
+	// Additionally, it returns a map of parameter mismatches for each organization
+	// if there are discrepancies between the provided definition and the stored data.
+	CheckCommitReadiness(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) (approvals map[string]bool, mismatches map[string][]string, err error)
 
 	// CommitChaincodeDefinition records a new chaincode definition into the
 	// public state and returns a map containing the orgs whose orgStates
@@ -111,8 +113,10 @@ type SCCFunctions interface {
 
 	// QueryOrgApprovals returns a map containing the orgs whose orgStates were
 	// supplied and whether or not they have approved a chaincode definition with
-	// the specified parameters.
-	QueryOrgApprovals(name string, cd *ChaincodeDefinition, orgStates []OpaqueState) (map[string]bool, error)
+	// the specified parameters. Additionally, it returns a map of parameter mismatches
+	// for each organization if there are discrepancies between the provided definition
+	// and the stored data.
+	QueryOrgApprovals(name string, cd *ChaincodeDefinition, orgStates []OpaqueState) (approvals map[string]bool, mismatches map[string][]string, err error)
 
 	// QueryNamespaceDefinitions returns all defined namespaces
 	QueryNamespaceDefinitions(publicState RangeableState) (map[string]string, error)
@@ -131,7 +135,7 @@ type ChannelConfigSource interface {
 
 //go:generate counterfeiter -o mock/queryexecutor_provider.go --fake-name QueryExecutorProvider . QueryExecutorProvider
 
-// QueryExecutorProvider provides a way to retrieve the query executor assosciated with an invocation
+// QueryExecutorProvider provides a way to retrieve the query executor associated with an invocation
 type QueryExecutorProvider interface {
 	TxQueryExecutor(channelID, txID string) ledger.SimpleQueryExecutor
 }
@@ -479,7 +483,7 @@ func (i *Invocation) CheckCommitReadiness(input *lb.CheckCommitReadinessArgs) (p
 		cd,
 	)
 
-	approvals, err := i.SCC.Functions.CheckCommitReadiness(
+	approvals, mismatches, err := i.SCC.Functions.CheckCommitReadiness(
 		i.Stub.GetChannelID(),
 		input.Name,
 		cd,
@@ -490,8 +494,14 @@ func (i *Invocation) CheckCommitReadiness(input *lb.CheckCommitReadinessArgs) (p
 		return nil, err
 	}
 
+	mismatchesProto := make(map[string]*lb.CheckCommitReadinessResult_Mismatches)
+	for org, items := range mismatches {
+		mismatchesProto[org] = &lb.CheckCommitReadinessResult_Mismatches{Items: items}
+	}
+
 	return &lb.CheckCommitReadinessResult{
-		Approvals: approvals,
+		Approvals:  approvals,
+		Mismatches: mismatchesProto,
 	}, nil
 }
 
@@ -581,7 +591,7 @@ func (i *Invocation) QueryChaincodeDefinition(input *lb.QueryChaincodeDefinition
 	}
 
 	var approvals map[string]bool
-	if approvals, err = i.SCC.Functions.QueryOrgApprovals(input.Name, definedChaincode, opaqueStates); err != nil {
+	if approvals, _, err = i.SCC.Functions.QueryOrgApprovals(input.Name, definedChaincode, opaqueStates); err != nil {
 		return nil, err
 	}
 

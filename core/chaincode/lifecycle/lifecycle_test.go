@@ -1022,12 +1022,16 @@ var _ = Describe("ExternalFunctions", func() {
 		})
 
 		It("checks the commit readiness of a chaincode definition and returns the approvals", func() {
-			approvals, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+			approvals, mismatches, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(approvals).To(Equal(map[string]bool{
 				"org0": true,
 				"org1": false,
 			}))
+			Expect(mismatches).
+				To(Equal(map[string][]string{
+					"org1": {"EndorsementInfo", "ValidationInfo"},
+				}))
 		})
 
 		Context("when IsSerialized fails", func() {
@@ -1036,7 +1040,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("wraps and returns an error", func() {
-				_, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+				_, _, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 				Expect(err).To(MatchError(ContainSubstring("serialization check failed for key cc-name#5: could not get value for key namespaces/metadata/cc-name#5: bad bad failure")))
 			})
 		})
@@ -1062,11 +1066,14 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("applies the chaincode definition and returns the approvals", func() {
-				approvals, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+				approvals, mismatches, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(approvals).To(Equal(map[string]bool{
 					"org0": true,
 					"org1": false,
+				}))
+				Expect(mismatches).To(Equal(map[string][]string{
+					"org1": {"EndorsementInfo", "ValidationInfo"},
 				}))
 			})
 
@@ -1076,7 +1083,7 @@ var _ = Describe("ExternalFunctions", func() {
 				})
 
 				It("returns an error", func() {
-					_, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+					_, _, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 					Expect(err).To(MatchError(ContainSubstring("could not set defaults for chaincode definition in " +
 						"channel my-channel: policy '/Channel/Application/Endorsement' must be defined " +
 						"for channel 'my-channel' before chaincode operations can be attempted")))
@@ -1089,7 +1096,7 @@ var _ = Describe("ExternalFunctions", func() {
 				})
 
 				It("returns an error", func() {
-					_, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+					_, _, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 					Expect(err).To(MatchError(ContainSubstring("could not get channel config for channel 'my-channel'")))
 				})
 			})
@@ -1100,7 +1107,7 @@ var _ = Describe("ExternalFunctions", func() {
 				})
 
 				It("wraps and returns the error", func() {
-					_, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+					_, _, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 					Expect(err).To(MatchError("could not get current sequence: could not get state for key namespaces/fields/cc-name/Sequence: getstate-error"))
 				})
 			})
@@ -1121,7 +1128,7 @@ var _ = Describe("ExternalFunctions", func() {
 				})
 
 				It("returns an error", func() {
-					_, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+					_, _, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 					Expect(err).To(MatchError("requested sequence is 5, but new definition must be sequence 4"))
 				})
 			})
@@ -1767,7 +1774,7 @@ var _ = Describe("ExternalFunctions", func() {
 		})
 
 		It("returns the org approvals", func() {
-			approvals, err := ef.QueryOrgApprovals("cc-name", testDefinition, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+			approvals, _, err := ef.QueryOrgApprovals("cc-name", testDefinition, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(approvals).To(Equal(map[string]bool{
 				"org0": true,
@@ -1781,7 +1788,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("wraps and returns an error", func() {
-				approvals, err := ef.QueryOrgApprovals("cc-name", testDefinition, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
+				approvals, _, err := ef.QueryOrgApprovals("cc-name", testDefinition, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 				Expect(err).To(MatchError("serialization check failed for key cc-name#4: could not get value for key namespaces/metadata/cc-name#4: owww that hurt"))
 				Expect(approvals).To(BeNil())
 			})

@@ -254,7 +254,7 @@ func (i *eligibilityAndBTLCache) hasExpiry(namespace, collection string, committ
 		coll: collection,
 	}]
 	if ok {
-		expiringBlk = pvtdatapolicy.ComputeExpiringBlock(namespace, collection, committingBlk, btl)
+		expiringBlk = pvtdatapolicy.ComputeExpiringBlock(collection, committingBlk, btl)
 	}
 	return expiringBlk < math.MaxUint64, expiringBlk
 }

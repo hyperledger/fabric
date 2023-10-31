@@ -193,6 +193,7 @@ func (m *SignaturePolicyEnvelope) GetIdentities() []*msp.MSPPrincipal {
 // and will be the CA for more traditional certificates
 type SignaturePolicy struct {
 	// Types that are valid to be assigned to Type:
+	//
 	//	*SignaturePolicy_SignedBy
 	//	*SignaturePolicy_NOutOf_
 	Type                 isSignaturePolicy_Type `protobuf_oneof:"Type"`
@@ -379,6 +380,7 @@ func (m *ImplicitMetaPolicy) GetRule() ImplicitMetaPolicy_Rule {
 // Deprecated: Do not use.
 type ApplicationPolicy struct {
 	// Types that are valid to be assigned to Type:
+	//
 	//	*ApplicationPolicy_SignaturePolicy
 	//	*ApplicationPolicy_ChannelConfigPolicyReference
 	Type                 isApplicationPolicy_Type `protobuf_oneof:"Type"`

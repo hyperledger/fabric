@@ -552,9 +552,10 @@ var _ = Describe("Serializer", func() {
 			Expect(testStruct.Int).To(Equal(deserialized.Int))
 			Expect(proto.Equal(testStruct.Proto, deserialized.Proto))
 
-			matched, err := s.IsSerialized("namespace", "fake", testStruct, fakeState)
+			matched, mismatches, err := s.IsSerialized("namespace", "fake", testStruct, fakeState)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(matched).To(BeTrue())
+			Expect(mismatches).To(BeEmpty())
 		})
 	})
 
@@ -634,9 +635,10 @@ var _ = Describe("Serializer", func() {
 		})
 
 		It("checks to see if the structure is stored in the opaque state", func() {
-			matched, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+			matched, mismatches, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(matched).To(BeTrue())
+			Expect(mismatches).To(BeEmpty())
 
 			Expect(fakeState.GetStateHashCallCount()).To(Equal(5))
 			Expect(fakeState.GetStateHashArgsForCall(0)).To(Equal("namespaces/metadata/fake"))
@@ -658,9 +660,10 @@ var _ = Describe("Serializer", func() {
 			})
 
 			It("returns a mismatch", func() {
-				matched, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+				matched, mismatches, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(matched).To(BeFalse())
+				Expect(mismatches).To(Equal([]string{"TestStruct"}))
 			})
 		})
 
@@ -672,15 +675,16 @@ var _ = Describe("Serializer", func() {
 			})
 
 			It("returns a mismatch", func() {
-				matched, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+				matched, mismatches, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(matched).To(BeFalse())
+				Expect(mismatches).To(Equal([]string{"Int"}))
 			})
 		})
 
 		Context("when the argument is not a pointer", func() {
 			It("fails", func() {
-				_, err := s.IsSerialized("namespaces", "fake", 8, fakeState)
+				_, _, err := s.IsSerialized("namespaces", "fake", 8, fakeState)
 				Expect(err).To(MatchError("structure for namespace namespaces/fake is not serializable: must be pointer to struct, but got non-pointer int"))
 			})
 		})
@@ -691,9 +695,10 @@ var _ = Describe("Serializer", func() {
 			})
 
 			It("returns a mismatch", func() {
-				matched, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+				matched, mismatches, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(matched).To(BeFalse())
+				Expect(mismatches).To(Equal([]string{"TestStruct"}))
 			})
 		})
 
@@ -703,7 +708,7 @@ var _ = Describe("Serializer", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+				_, _, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
 				Expect(err).To(MatchError("could not get value for key namespaces/metadata/fake: state-error"))
 			})
 		})
@@ -722,7 +727,7 @@ var _ = Describe("Serializer", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+				_, _, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
 				Expect(err).To(MatchError("could not marshal field Proto: marshal-error"))
 			})
 		})
@@ -738,7 +743,7 @@ var _ = Describe("Serializer", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+				_, _, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
 				Expect(err).To(MatchError("could not marshal value for key namespaces/fields/fake/Int: marshal-error"))
 			})
 		})
@@ -752,7 +757,7 @@ var _ = Describe("Serializer", func() {
 
 			It("wraps and returns the error", func() {
 				type Other struct{}
-				_, err := s.IsSerialized("namespaces", "fake", &Other{}, fakeState)
+				_, _, err := s.IsSerialized("namespaces", "fake", &Other{}, fakeState)
 				Expect(err).To(MatchError("could not marshal metadata for namespace namespaces/fake: marshal-error"))
 			})
 		})
