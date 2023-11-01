@@ -475,7 +475,7 @@ func mockBlock(t *testing.T, channel string, seqNum uint64, localSigner *mocks.S
 	if len(dataHash) != 0 {
 		block.Header.DataHash = dataHash
 	} else {
-		block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+		block.Header.DataHash, _ = protoutil.BlockDataHash(block.Data)
 	}
 
 	// Add signer's signature to the block
@@ -518,7 +518,7 @@ func mockBlockBFT(t *testing.T, channel string, seqNum uint64, localSigner *mock
 	if len(dataHash) != 0 {
 		block.Header.DataHash = dataHash
 	} else {
-		block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+		block.Header.DataHash, _ = protoutil.BlockDataHash(block.Data)
 	}
 
 	ihdr := &common.IdentifierHeader{

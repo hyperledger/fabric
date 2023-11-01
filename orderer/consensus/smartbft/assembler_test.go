@@ -161,7 +161,7 @@ func makeConfigBlock(seq uint64) *common.Block {
 func proposalFromRequests(verificationSeq, seq, lastConfigSeq uint64, lastBlockHash, metadata []byte, requests ...[]byte) types.Proposal {
 	block := protoutil.NewBlock(seq, nil)
 	block.Data = &common.BlockData{Data: requests}
-	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+	block.Header.DataHash, _ = protoutil.BlockDataHash(block.Data)
 	block.Header.PreviousHash = lastBlockHash
 	block.Metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&common.Metadata{
 		Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: lastConfigSeq}),

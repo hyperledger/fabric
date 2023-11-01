@@ -1961,7 +1961,8 @@ func updateBatchSize(
 	peer *nwo.Peer,
 	orderer *nwo.Orderer,
 	channel string,
-	batchSizeMutator func(batchSize *ordererProtos.BatchSize)) {
+	batchSizeMutator func(batchSize *ordererProtos.BatchSize),
+) {
 	config := nwo.GetConfig(network, peer, orderer, channel)
 	updatedConfig := proto.Clone(config).(*common.Config)
 	batchSizeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["BatchSize"]
@@ -1988,7 +1989,7 @@ func createPrePrepareRequest(
 			protoutil.MarshalOrPanic(env),
 		},
 	}
-	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+	block.Header.DataHash, _ = protoutil.BlockDataHash(block.Data)
 
 	metadata := protoutil.MarshalOrPanic(&protos.ViewMetadata{
 		ViewId:         viewId,

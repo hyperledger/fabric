@@ -150,13 +150,13 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum u
 		return fmt.Errorf("Block with id [%d] on channel [%s] does not have metadata. Block not valid.", block.Header.Number, chainID)
 	}
 
-	if err := protoutil.VerifyTransactionsAreWellFormed(block); err != nil {
+	dataHash, err := protoutil.BlockDataHash(block.Data)
+	if err != nil {
 		return err
 	}
-
 	// - Verify that Header.DataHash is equal to the hash of block.Data
 	// This is to ensure that the header is consistent with the data carried by this block
-	if !bytes.Equal(protoutil.BlockDataHash(block.Data), block.Header.DataHash) {
+	if !bytes.Equal(dataHash, block.Header.DataHash) {
 		return fmt.Errorf("Header.DataHash is different from Hash(block.Data) for block with id [%d] on channel [%s]", block.Header.Number, chainID)
 	}
 

@@ -82,7 +82,7 @@ func (bg *blkGenerator) nextBlock() *common.Block {
 	if len(block.Data.Data) == 0 {
 		return nil
 	}
-	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+	block.Header.DataHash, _ = protoutil.BlockDataHash(block.Data)
 	block.Header.Number = bg.blockNum
 	block.Header.PreviousHash = bg.previousBlockHash
 	txsfltr := txflags.NewWithValues(len(block.Data.Data), peer.TxValidationCode_VALID)

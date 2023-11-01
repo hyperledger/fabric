@@ -260,11 +260,11 @@ func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
 	if block.Header == nil {
 		return errors.New("missing block header")
 	}
-	if err := protoutil.VerifyTransactionsAreWellFormed(block); err != nil {
+	seq := block.Header.Number
+	dataHash, err := protoutil.BlockDataHash(block.Data)
+	if err != nil {
 		return err
 	}
-	seq := block.Header.Number
-	dataHash := protoutil.BlockDataHash(block.Data)
 	// Verify data hash matches the hash in the header
 	if !bytes.Equal(dataHash, block.Header.DataHash) {
 		computedHash := hex.EncodeToString(dataHash)

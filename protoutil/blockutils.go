@@ -66,9 +66,12 @@ func BlockHeaderHash(b *cb.BlockHeader) []byte {
 	return sum[:]
 }
 
-func BlockDataHash(b *cb.BlockData) []byte {
+func BlockDataHash(b *cb.BlockData) ([]byte, error) {
+	if err := VerifyTransactionsAreWellFormed(b); err != nil {
+		return nil, err
+	}
 	sum := sha256.Sum256(bytes.Join(b.Data, nil))
-	return sum[:]
+	return sum[:], nil
 }
 
 // GetChannelIDFromBlockBytes returns channel ID given byte array which represents
@@ -300,18 +303,18 @@ func searchConsenterIdentityByID(consenters []*cb.Consenter, identifier uint32) 
 	return nil
 }
 
-func VerifyTransactionsAreWellFormed(block *cb.Block) error {
-	if block == nil || block.Data == nil || len(block.Data.Data) == 0 {
+func VerifyTransactionsAreWellFormed(bd *cb.BlockData) error {
+	if bd.Data == nil || len(bd.Data) == 0 {
 		return fmt.Errorf("empty block")
 	}
 
 	// If we have a single transaction, and the block is a config block, then no need to check
 	// well formed-ness, because there cannot be another transaction in the original block.
-	if IsConfigBlock(block) {
+	if HasConfigTx(bd) {
 		return nil
 	}
 
-	for i, rawTx := range block.Data.Data {
+	for i, rawTx := range bd.Data {
 		env := &cb.Envelope{}
 		if err := proto.Unmarshal(rawTx, env); err != nil {
 			return fmt.Errorf("transaction %d is invalid: %v", i, err)

@@ -192,11 +192,19 @@ func IsConfigBlock(block *cb.Block) bool {
 		return false
 	}
 
-	if len(block.Data.Data) != 1 {
+	return HasConfigTx(block.Data)
+}
+
+func HasConfigTx(blockdata *cb.BlockData) bool {
+	if blockdata.Data == nil {
 		return false
 	}
 
-	marshaledEnvelope := block.Data.Data[0]
+	if len(blockdata.Data) != 1 {
+		return false
+	}
+
+	marshaledEnvelope := blockdata.Data[0]
 	envelope, err := GetEnvelopeFromBlock(marshaledEnvelope)
 	if err != nil {
 		return false

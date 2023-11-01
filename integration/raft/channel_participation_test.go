@@ -1081,7 +1081,7 @@ func createJoinBlockDefineSystemChannel(channelID string) *common.Block {
 			}),
 		},
 	}
-	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+	block.Header.DataHash, _ = protoutil.BlockDataHash(block.Data)
 	protoutil.InitBlockMetadata(block)
 
 	return block
