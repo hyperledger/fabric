@@ -62,29 +62,25 @@ func gopathDependencyPackageInfo(goos, goarch, pkg string) ([]PackageInfo, error
 	}
 	decoder := json.NewDecoder(stdout)
 
-	err = cmd.Start()
-	if err != nil {
+	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
 
 	var list []PackageInfo
 	for {
 		var packageInfo PackageInfo
-		err := decoder.Decode(&packageInfo)
-		if err == io.EOF {
+		if err := decoder.Decode(&packageInfo); errors.Is(err, io.EOF) {
 			break
-		}
-		if err != nil {
+		} else if err != nil {
 			return nil, err
 		}
+
 		if packageInfo.Incomplete {
 			return nil, fmt.Errorf("failed to calculate dependencies: incomplete package: %s", packageInfo.ImportPath)
 		}
-		if packageInfo.Goroot {
-			continue
+		if !packageInfo.Goroot {
+			list = append(list, packageInfo)
 		}
-
-		list = append(list, packageInfo)
 	}
 
 	err = cmd.Wait()
