@@ -193,13 +193,13 @@ Extending the cluster to five nodes means until the fifth node finishes replicat
 To add a new node to the ordering service:
 
 1. **Ensure the orderer organization that owns the new node is one of the orderer organizations on the channel**. If the orderer organization is not an administrator, the node will be unable to pull blocks as a follower or be joined to the consenter set.
-2. **Start the new ordering node**. For information about how to deploy an ordering node, check out [Planning for an ordering service](./deployorderer/ordererdeploy.html). Note that when you use the `osnadmin` CLI to create and join a channel, you do not need to point to a configuration block when starting the node.
+2. **Start the new ordering node**. For information about how to deploy an ordering node, check out [Planning for an ordering service](./deployorderer/ordererdeploy.html). Note that while you use the `osnadmin` CLI to create and join a channel, you do not need to point to a configuration block when starting the node.
 3. **Use the `osnadmin` CLI to add the first orderer to the channel**. For more information, check out the [Create a channel](./create_channel/create_channel_participation.html#step-two-use-the-osnadmin-cli-to-add-the-first-orderer-to-the-channel) tutorial.
 4. **Wait for the ordering node to replicate the blocks** from existing nodes for all channels its certificates have been added to. When an ordering node is added to a channel, it is added as a "follower", a state in which it can replicate blocks but is not part of the "consenter set" actively servicing the channel. When the node finishes replicating the blocks, its status should change from "onboarding" to "active". Note that an "active" ordering node is still not part of the consenter set.
 5. **Add the new ordering node to the consenter set** as described in the [reconfiguration tutorial](./create_channel/add_orderer.md)
 
 
-To remove an ordering node from the consenter set of a channel, use the `osnadmin channel remove` command to remove its endpoint and certificates from the channel. For more information, check out the [reconfiguration tutorial](./create_channel/add_orderer.md)
+To remove an ordering node from the consenter set of a channel, use a channel config update transaction to remove its endpoint and certificates from the channel. For more information, check out the [reconfiguration tutorial](./create_channel/add_orderer.md)
 
 Once an ordering node is removed from the channel, the other ordering nodes stop communicating with the removed orderer in the context of the removed channel. They might still be communicating on other channels.
 
