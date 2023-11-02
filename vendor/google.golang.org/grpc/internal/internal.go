@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/serviceconfig"
 )
 
 var (
@@ -37,12 +38,132 @@ var (
 	// KeepaliveMinPingTime is the minimum ping interval.  This must be 10s by
 	// default, but tests may wish to set it lower for convenience.
 	KeepaliveMinPingTime = 10 * time.Second
-	// NewRequestInfoContext creates a new context based on the argument context attaching
-	// the passed in RequestInfo to the new context.
-	NewRequestInfoContext interface{} // func(context.Context, credentials.RequestInfo) context.Context
-	// ParseServiceConfigForTesting is for creating a fake
-	// ClientConn for resolver testing only
-	ParseServiceConfigForTesting interface{} // func(string) *serviceconfig.ParseResult
+	// ParseServiceConfig parses a JSON representation of the service config.
+	ParseServiceConfig interface{} // func(string) *serviceconfig.ParseResult
+	// EqualServiceConfigForTesting is for testing service config generation and
+	// parsing. Both a and b should be returned by ParseServiceConfig.
+	// This function compares the config without rawJSON stripped, in case the
+	// there's difference in white space.
+	EqualServiceConfigForTesting func(a, b serviceconfig.Config) bool
+	// GetCertificateProviderBuilder returns the registered builder for the
+	// given name. This is set by package certprovider for use from xDS
+	// bootstrap code while parsing certificate provider configs in the
+	// bootstrap file.
+	GetCertificateProviderBuilder interface{} // func(string) certprovider.Builder
+	// GetXDSHandshakeInfoForTesting returns a pointer to the xds.HandshakeInfo
+	// stored in the passed in attributes. This is set by
+	// credentials/xds/xds.go.
+	GetXDSHandshakeInfoForTesting interface{} // func (*attributes.Attributes) *xds.HandshakeInfo
+	// GetServerCredentials returns the transport credentials configured on a
+	// gRPC server. An xDS-enabled server needs to know what type of credentials
+	// is configured on the underlying gRPC server. This is set by server.go.
+	GetServerCredentials interface{} // func (*grpc.Server) credentials.TransportCredentials
+	// CanonicalString returns the canonical string of the code defined here:
+	// https://github.com/grpc/grpc/blob/master/doc/statuscodes.md.
+	//
+	// This is used in the 1.0 release of gcp/observability, and thus must not be
+	// deleted or changed.
+	CanonicalString interface{} // func (codes.Code) string
+	// DrainServerTransports initiates a graceful close of existing connections
+	// on a gRPC server accepted on the provided listener address. An
+	// xDS-enabled server invokes this method on a grpc.Server when a particular
+	// listener moves to "not-serving" mode.
+	DrainServerTransports interface{} // func(*grpc.Server, string)
+	// AddGlobalServerOptions adds an array of ServerOption that will be
+	// effective globally for newly created servers. The priority will be: 1.
+	// user-provided; 2. this method; 3. default values.
+	//
+	// This is used in the 1.0 release of gcp/observability, and thus must not be
+	// deleted or changed.
+	AddGlobalServerOptions interface{} // func(opt ...ServerOption)
+	// ClearGlobalServerOptions clears the array of extra ServerOption. This
+	// method is useful in testing and benchmarking.
+	//
+	// This is used in the 1.0 release of gcp/observability, and thus must not be
+	// deleted or changed.
+	ClearGlobalServerOptions func()
+	// AddGlobalDialOptions adds an array of DialOption that will be effective
+	// globally for newly created client channels. The priority will be: 1.
+	// user-provided; 2. this method; 3. default values.
+	//
+	// This is used in the 1.0 release of gcp/observability, and thus must not be
+	// deleted or changed.
+	AddGlobalDialOptions interface{} // func(opt ...DialOption)
+	// DisableGlobalDialOptions returns a DialOption that prevents the
+	// ClientConn from applying the global DialOptions (set via
+	// AddGlobalDialOptions).
+	//
+	// This is used in the 1.0 release of gcp/observability, and thus must not be
+	// deleted or changed.
+	DisableGlobalDialOptions interface{} // func() grpc.DialOption
+	// ClearGlobalDialOptions clears the array of extra DialOption. This
+	// method is useful in testing and benchmarking.
+	//
+	// This is used in the 1.0 release of gcp/observability, and thus must not be
+	// deleted or changed.
+	ClearGlobalDialOptions func()
+	// JoinDialOptions combines the dial options passed as arguments into a
+	// single dial option.
+	JoinDialOptions interface{} // func(...grpc.DialOption) grpc.DialOption
+	// JoinServerOptions combines the server options passed as arguments into a
+	// single server option.
+	JoinServerOptions interface{} // func(...grpc.ServerOption) grpc.ServerOption
+
+	// WithBinaryLogger returns a DialOption that specifies the binary logger
+	// for a ClientConn.
+	//
+	// This is used in the 1.0 release of gcp/observability, and thus must not be
+	// deleted or changed.
+	WithBinaryLogger interface{} // func(binarylog.Logger) grpc.DialOption
+	// BinaryLogger returns a ServerOption that can set the binary logger for a
+	// server.
+	//
+	// This is used in the 1.0 release of gcp/observability, and thus must not be
+	// deleted or changed.
+	BinaryLogger interface{} // func(binarylog.Logger) grpc.ServerOption
+
+	// NewXDSResolverWithConfigForTesting creates a new xds resolver builder using
+	// the provided xds bootstrap config instead of the global configuration from
+	// the supported environment variables.  The resolver.Builder is meant to be
+	// used in conjunction with the grpc.WithResolvers DialOption.
+	//
+	// Testing Only
+	//
+	// This function should ONLY be used for testing and may not work with some
+	// other features, including the CSDS service.
+	NewXDSResolverWithConfigForTesting interface{} // func([]byte) (resolver.Builder, error)
+
+	// RegisterRLSClusterSpecifierPluginForTesting registers the RLS Cluster
+	// Specifier Plugin for testing purposes, regardless of the XDSRLS environment
+	// variable.
+	//
+	// TODO: Remove this function once the RLS env var is removed.
+	RegisterRLSClusterSpecifierPluginForTesting func()
+
+	// UnregisterRLSClusterSpecifierPluginForTesting unregisters the RLS Cluster
+	// Specifier Plugin for testing purposes. This is needed because there is no way
+	// to unregister the RLS Cluster Specifier Plugin after registering it solely
+	// for testing purposes using RegisterRLSClusterSpecifierPluginForTesting().
+	//
+	// TODO: Remove this function once the RLS env var is removed.
+	UnregisterRLSClusterSpecifierPluginForTesting func()
+
+	// RegisterRBACHTTPFilterForTesting registers the RBAC HTTP Filter for testing
+	// purposes, regardless of the RBAC environment variable.
+	//
+	// TODO: Remove this function once the RBAC env var is removed.
+	RegisterRBACHTTPFilterForTesting func()
+
+	// UnregisterRBACHTTPFilterForTesting unregisters the RBAC HTTP Filter for
+	// testing purposes. This is needed because there is no way to unregister the
+	// HTTP Filter after registering it solely for testing purposes using
+	// RegisterRBACHTTPFilterForTesting().
+	//
+	// TODO: Remove this function once the RBAC env var is removed.
+	UnregisterRBACHTTPFilterForTesting func()
+
+	// ORCAAllowAnyMinReportingInterval is for examples/orca use ONLY.
+	ORCAAllowAnyMinReportingInterval interface{} // func(so *orca.ServiceOptions)
 )
 
 // HealthChecker defines the signature of the client-side LB channel health checking function.
@@ -65,3 +186,9 @@ const (
 	// that supports backend returned by grpclb balancer.
 	CredsBundleModeBackendFromBalancer = "backend-from-balancer"
 )
+
+// RLSLoadBalancingPolicyName is the name of the RLS LB policy.
+//
+// It currently has an experimental suffix which would be removed once
+// end-to-end testing of the policy is completed.
+const RLSLoadBalancingPolicyName = "rls_experimental"

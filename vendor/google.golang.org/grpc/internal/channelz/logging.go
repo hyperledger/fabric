@@ -21,80 +21,59 @@ package channelz
 import (
 	"fmt"
 
-	"google.golang.org/grpc/internal/grpclog"
+	"google.golang.org/grpc/grpclog"
 )
 
-// Info logs through grpclog.Info and adds a trace event if channelz is on.
-func Info(id int64, args ...interface{}) {
-	if IsOn() {
-		AddTraceEvent(id, 1, &TraceEventDesc{
-			Desc:     fmt.Sprint(args...),
-			Severity: CtINFO,
-		})
-	} else {
-		grpclog.InfoDepth(1, args...)
-	}
+var logger = grpclog.Component("channelz")
+
+func withParens(id *Identifier) string {
+	return "[" + id.String() + "] "
 }
 
-// Infof logs through grpclog.Infof and adds a trace event if channelz is on.
-func Infof(id int64, format string, args ...interface{}) {
-	msg := fmt.Sprintf(format, args...)
-	if IsOn() {
-		AddTraceEvent(id, 1, &TraceEventDesc{
-			Desc:     msg,
-			Severity: CtINFO,
-		})
-	} else {
-		grpclog.InfoDepth(1, msg)
-	}
+// Info logs and adds a trace event if channelz is on.
+func Info(l grpclog.DepthLoggerV2, id *Identifier, args ...interface{}) {
+	AddTraceEvent(l, id, 1, &TraceEventDesc{
+		Desc:     fmt.Sprint(args...),
+		Severity: CtInfo,
+	})
 }
 
-// Warning logs through grpclog.Warning and adds a trace event if channelz is on.
-func Warning(id int64, args ...interface{}) {
-	if IsOn() {
-		AddTraceEvent(id, 1, &TraceEventDesc{
-			Desc:     fmt.Sprint(args...),
-			Severity: CtWarning,
-		})
-	} else {
-		grpclog.WarningDepth(1, args...)
-	}
+// Infof logs and adds a trace event if channelz is on.
+func Infof(l grpclog.DepthLoggerV2, id *Identifier, format string, args ...interface{}) {
+	AddTraceEvent(l, id, 1, &TraceEventDesc{
+		Desc:     fmt.Sprintf(format, args...),
+		Severity: CtInfo,
+	})
 }
 
-// Warningf logs through grpclog.Warningf and adds a trace event if channelz is on.
-func Warningf(id int64, format string, args ...interface{}) {
-	msg := fmt.Sprintf(format, args...)
-	if IsOn() {
-		AddTraceEvent(id, 1, &TraceEventDesc{
-			Desc:     msg,
-			Severity: CtWarning,
-		})
-	} else {
-		grpclog.WarningDepth(1, msg)
-	}
+// Warning logs and adds a trace event if channelz is on.
+func Warning(l grpclog.DepthLoggerV2, id *Identifier, args ...interface{}) {
+	AddTraceEvent(l, id, 1, &TraceEventDesc{
+		Desc:     fmt.Sprint(args...),
+		Severity: CtWarning,
+	})
 }
 
-// Error logs through grpclog.Error and adds a trace event if channelz is on.
-func Error(id int64, args ...interface{}) {
-	if IsOn() {
-		AddTraceEvent(id, 1, &TraceEventDesc{
-			Desc:     fmt.Sprint(args...),
-			Severity: CtError,
-		})
-	} else {
-		grpclog.ErrorDepth(1, args...)
-	}
+// Warningf logs and adds a trace event if channelz is on.
+func Warningf(l grpclog.DepthLoggerV2, id *Identifier, format string, args ...interface{}) {
+	AddTraceEvent(l, id, 1, &TraceEventDesc{
+		Desc:     fmt.Sprintf(format, args...),
+		Severity: CtWarning,
+	})
 }
 
-// Errorf logs through grpclog.Errorf and adds a trace event if channelz is on.
-func Errorf(id int64, format string, args ...interface{}) {
-	msg := fmt.Sprintf(format, args...)
-	if IsOn() {
-		AddTraceEvent(id, 1, &TraceEventDesc{
-			Desc:     msg,
-			Severity: CtError,
-		})
-	} else {
-		grpclog.ErrorDepth(1, msg)
-	}
+// Error logs and adds a trace event if channelz is on.
+func Error(l grpclog.DepthLoggerV2, id *Identifier, args ...interface{}) {
+	AddTraceEvent(l, id, 1, &TraceEventDesc{
+		Desc:     fmt.Sprint(args...),
+		Severity: CtError,
+	})
+}
+
+// Errorf logs and adds a trace event if channelz is on.
+func Errorf(l grpclog.DepthLoggerV2, id *Identifier, format string, args ...interface{}) {
+	AddTraceEvent(l, id, 1, &TraceEventDesc{
+		Desc:     fmt.Sprintf(format, args...),
+		Severity: CtError,
+	})
 }
