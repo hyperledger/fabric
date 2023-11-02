@@ -55,7 +55,7 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 	list := channel.Command("list", "List channel information for an Ordering Service Node (OSN). If the channelID flag is set, more detailed information will be provided for that channel.")
 	listChannelID := list.Flag("channelID", "Channel ID").Short('c').String()
 
-	remove := channel.Command("remove", "Remove an Ordering Service Node (OSN) from a channel.")
+	remove := channel.Command("remove", "Remove a channel from an Ordering Service Node (OSN).")
 	removeChannelID := remove.Flag("channelID", "Channel ID").Short('c').Required().String()
 
 	command, err := app.Parse(args)
