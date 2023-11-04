@@ -1577,6 +1577,16 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			By("Assert success")
 			Eventually(ordererRunners[follower.Id-1].Err(), network.EventuallyTimeout).Should(gbytes.Say("Processed proposal with seq 1"))
 		})
+
+		It("smartbft block deliverer", func() {
+			smartBftBlockDelivererTest(
+				testDir,
+				client,
+				network,
+				networkProcess,
+				ordererProcesses,
+				peerProcesses)
+		})
 	})
 })
 
