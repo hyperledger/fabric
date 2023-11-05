@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package smartbft
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/asn1"
 	"sync/atomic"
 
@@ -51,7 +53,11 @@ func (a *Assembler) AssembleProposal(metadata []byte, requests [][]byte) (nextPr
 
 	block := protoutil.NewBlock(lastBlock.Header.Number+1, protoutil.BlockHeaderHash(lastBlock.Header))
 	block.Data = &cb.BlockData{Data: batchedRequests}
-	block.Header.DataHash, _ = protoutil.BlockDataHash(block.Data)
+
+	// Instead of calling BlockDataHash() which calls VerifyTransactionsAreWellFormed(),
+	// we directly compute the block's data hash.
+	dataHash := sha256.Sum256(bytes.Join(block.Data.Data, nil))
+	block.Header.DataHash = dataHash[:]
 
 	if protoutil.IsConfigBlock(block) {
 		lastConfigBlockNum = block.Header.Number
