@@ -1592,7 +1592,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				runner.Command.Env = append(
 					runner.Command.Env,
 					"FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug",
-					"ORDERER_GENERAL_BACKOFF_MAXDELAY=3s",
+					// "ORDERER_GENERAL_BACKOFF_MAXDELAY=3s",
 				)
 				ordererRunners = append(ordererRunners, runner)
 				proc := ifrit.Invoke(runner)
@@ -1637,7 +1637,10 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			ordererProcesses[numberKill].Signal(syscall.SIGTERM)
 			Eventually(ordererProcesses[numberKill].Wait(), network.EventuallyTimeout).Should(Receive())
 
-			time.Sleep(time.Second * 60)
+			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Closing: connection error: desc = \"error reading from server: EOF\""))
+			for i := 0; i < 7; i++ {
+				Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("pickfirstBalancer: UpdateSubConnState.*IDLE connection error"))
+			}
 
 			By(fmt.Sprintf("Launching %s", orderer.Name))
 			runner := network.OrdererRunner(orderer)
