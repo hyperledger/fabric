@@ -1592,7 +1592,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				runner.Command.Env = append(
 					runner.Command.Env,
 					"FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug",
-					// "ORDERER_GENERAL_BACKOFF_MAXDELAY=3s",
+					"ORDERER_GENERAL_BACKOFF_MAXDELAY=3s",
 				)
 				ordererRunners = append(ordererRunners, runner)
 				proc := ifrit.Invoke(runner)
