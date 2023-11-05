@@ -95,12 +95,19 @@ This `configtx.yaml` file contains the following information that we will use to
           ServerTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
     ```
 - **Channel policies** Different sections of the file work together to define the policies that will govern how organizations interact with the channel and which organizations need to approve channel updates. For the purposes of this tutorial, we will use the default policies used by Fabric.
-- **Channel profiles** Each channel profile references information from other sections of the `configtx.yaml` file to build a channel configuration. The profiles are used to create the genesis block of application channel. Notice that the `configtx.yaml` file in the test network includes a single profile named `TwoOrgsApplicationGenesis` that we will use to generate the create channel transaction.
+- **Channel profiles** Each channel profile references information from other sections of the `configtx.yaml` file to build a channel configuration. The profiles are used to create the genesis block of application channel. Notice that the `configtx.yaml` file in the test network includes a single profile named `ChannelUsingRaft` that we will use to generate the create channel transaction.
     ```yaml
-    TwoOrgsApplicationGenesis:
+    ChannelUsingRaft:
         <<: *ChannelDefaults
         Orderer:
             <<: *OrdererDefaults
+            OrdererType: etcdraft
+            EtcdRaft:
+                Consenters:
+                    - Host: orderer.example.com
+                      Port: 7050
+                      ClientTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+                      ServerTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
             Organizations:
                 - *OrdererOrg
             Capabilities: *OrdererCapabilities
@@ -122,10 +129,10 @@ Because we have started the Fabric test network, we are ready to create a new ch
 
 Run the following command to create the channel genesis block for `channel1`:
 ```
-configtxgen -profile TwoOrgsApplicationGenesis -outputBlock ./channel-artifacts/channel1.block -channelID channel1
+configtxgen -profile ChannelUsingRaft -outputBlock ./channel-artifacts/channel1.block -channelID channel1
 ```
 
-- **`-profile`**: The command uses the `-profile` flag to reference the `TwoOrgsApplicationGenesis:` profile from `configtx.yaml` that is used by the test network to create application channels.
+- **`-profile`**: The command uses the `-profile` flag to reference the `ChannelUsingRaft:` profile from `configtx.yaml` that is used by the test network to create application channels.
 - **`-outputBlock`**: The output of this command is the channel genesis block that is written to `-outputBlock ./channel-artifacts/channel1.block`.
 - **`-channelID`**: The `-channelID` parameter will be the name of the future channel. You can specify any name you want for your channel but for illustration purposes in this tutorial we use `channel1`. Channel names must be all lowercase, fewer than 250 characters long and match the regular expression ``[a-z][a-z0-9.-]*``.
 
