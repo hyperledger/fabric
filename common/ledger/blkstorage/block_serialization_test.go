@@ -21,11 +21,13 @@ func TestBlockSerialization(t *testing.T) {
 
 	// malformed Payload
 	block.Data.Data[1] = protoutil.MarshalOrPanic(&common.Envelope{
-		Payload: []byte("Malformed Payload"),
+		Signature: []byte{1, 2, 3},
+		Payload:   []byte("Malformed Payload"),
 	})
 
 	// empty TxID
 	block.Data.Data[2] = protoutil.MarshalOrPanic(&common.Envelope{
+		Signature: []byte{1, 2, 3},
 		Payload: protoutil.MarshalOrPanic(&common.Payload{
 			Header: &common.Header{
 				ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{

@@ -243,6 +243,7 @@ func ConstructBlockWithTxidHeaderType(
 		if err != nil {
 			t.Fatalf("ConstructTestTransaction failed, err %s", err)
 		}
+		env.Signature = []byte{1, 2, 3}
 		envs = append(envs, env)
 	}
 	return NewBlock(envs, blockNum, previousHash)
@@ -261,6 +262,9 @@ func ConstructBlock(
 		env, _, err := ConstructTransaction(t, simulationResults[i], "", sign)
 		if err != nil {
 			t.Fatalf("ConstructTestTransaction failed, err %s", err)
+		}
+		if !sign {
+			env.Signature = []byte{1, 2, 3}
 		}
 		envs = append(envs, env)
 	}
