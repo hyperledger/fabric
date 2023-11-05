@@ -12,6 +12,8 @@ import (
 	"math"
 	"testing"
 
+	"github.com/pkg/errors"
+
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
@@ -608,11 +610,15 @@ func TestVerifyTransactionsAreWellFormed(t *testing.T) {
 		},
 	} {
 		t.Run(tst.name, func(t *testing.T) {
-			err := protoutil.VerifyTransactionsAreWellFormed(tst.block.Data)
-			if tst.expectedError == "" {
-				require.NoError(t, err)
+			if tst.block == nil || tst.block.Data == nil {
+				require.Error(t, errors.New("empty block"))
 			} else {
-				require.Contains(t, err.Error(), tst.expectedError)
+				err := protoutil.VerifyTransactionsAreWellFormed(tst.block.Data)
+				if tst.expectedError == "" {
+					require.NoError(t, err)
+				} else {
+					require.Contains(t, err.Error(), tst.expectedError)
+				}
 			}
 		})
 	}
