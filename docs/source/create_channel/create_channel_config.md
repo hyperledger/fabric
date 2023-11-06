@@ -140,13 +140,20 @@ The test network uses the default policies provided by Fabric, which require tha
 
 The `configtxgen` tool reads the channel profiles in the **Profiles** section to build a channel configuration. Each profile uses YAML syntax to gather data from other sections of the file. The `configtxgen` tool uses this configuration to create a genesis block for joining orderers to a new channel via the channel participation API. To learn more about YAML syntax, [Wikipedia](https://en.wikipedia.org/wiki/YAML) provides a good place to get started.
 
-The `configtx.yaml` used by the test network contains one channel profile `TwoOrgsApplicationGenesis`.
-The `TwoOrgsApplicationGenesis` profile is used by the test network to create application channels:
+The `configtx.yaml` used by the test network contains one channel profile `ChannelUsingRaft`.
+The `ChannelUsingRaft` profile is used by the test network to create application channels:
 ```yaml
-TwoOrgsApplicationGenesis:
+ChannelUsingRaft:
   <<: *ChannelDefaults
   Orderer:
     <<: *OrdererDefaults
+    OrdererType: etcdraft
+    EtcdRaft:
+      Consenters:
+        - Host: orderer.example.com
+          Port: 7050
+          ClientTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+          ServerTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
     Organizations:
       - *OrdererOrg
     Capabilities: *OrdererCapabilities
