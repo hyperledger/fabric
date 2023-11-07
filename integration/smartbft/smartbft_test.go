@@ -1989,7 +1989,7 @@ func createPrePrepareRequest(
 			protoutil.MarshalOrPanic(env),
 		},
 	}
-	block.Header.DataHash, _ = protoutil.BlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
 
 	metadata := protoutil.MarshalOrPanic(&protos.ViewMetadata{
 		ViewId:         viewId,

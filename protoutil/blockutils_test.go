@@ -12,8 +12,6 @@ import (
 	"math"
 	"testing"
 
-	"github.com/pkg/errors"
-
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
@@ -38,9 +36,9 @@ func TestNewBlock(t *testing.T) {
 	require.Equal(t, []byte("datahash"), block.Header.PreviousHash, "Incorrect previous hash")
 	require.NotNil(t, block.GetData())
 	require.NotNil(t, block.GetMetadata())
-	block.GetHeader().DataHash, _ = protoutil.BlockDataHash(data)
+	block.GetHeader().DataHash = protoutil.ComputeBlockDataHash(data)
 
-	dataHash, _ := protoutil.BlockDataHash(data)
+	dataHash := protoutil.ComputeBlockDataHash(data)
 
 	asn1Bytes, err := asn1.Marshal(struct {
 		Number       int64
@@ -539,10 +537,6 @@ func TestVerifyTransactionsAreWellFormed(t *testing.T) {
 			}},
 		},
 		{
-			name:          "empty block",
-			expectedError: "empty block",
-		},
-		{
 			name:          "no block data",
 			block:         &cb.Block{},
 			expectedError: "empty block",
@@ -611,7 +605,8 @@ func TestVerifyTransactionsAreWellFormed(t *testing.T) {
 	} {
 		t.Run(tst.name, func(t *testing.T) {
 			if tst.block == nil || tst.block.Data == nil {
-				require.Error(t, errors.New("empty block"))
+				err := protoutil.VerifyTransactionsAreWellFormed(tst.block.Data)
+				require.EqualError(t, err, "empty block")
 			} else {
 				err := protoutil.VerifyTransactionsAreWellFormed(tst.block.Data)
 				if tst.expectedError == "" {

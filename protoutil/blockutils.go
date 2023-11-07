@@ -70,8 +70,12 @@ func BlockDataHash(b *cb.BlockData) ([]byte, error) {
 	if err := VerifyTransactionsAreWellFormed(b); err != nil {
 		return nil, err
 	}
+	return ComputeBlockDataHash(b), nil
+}
+
+func ComputeBlockDataHash(b *cb.BlockData) []byte {
 	sum := sha256.Sum256(bytes.Join(b.Data, nil))
-	return sum[:], nil
+	return sum[:]
 }
 
 // GetChannelIDFromBlockBytes returns channel ID given byte array which represents
@@ -304,7 +308,7 @@ func searchConsenterIdentityByID(consenters []*cb.Consenter, identifier uint32) 
 }
 
 func VerifyTransactionsAreWellFormed(bd *cb.BlockData) error {
-	if bd.Data == nil || len(bd.Data) == 0 {
+	if bd == nil || bd.Data == nil || len(bd.Data) == 0 {
 		return fmt.Errorf("empty block")
 	}
 

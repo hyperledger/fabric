@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
-	"bytes"
-	"crypto/sha256"
 	"sync"
 
 	"github.com/golang/protobuf/proto"
@@ -80,12 +78,7 @@ func (bw *BlockWriter) CreateNextBlock(messages []*cb.Envelope) *cb.Block {
 	}
 
 	block := protoutil.NewBlock(bw.lastBlock.Header.Number+1, previousBlockHash)
-
-	// Instead of calling BlockDataHash() which calls VerifyTransactionsAreWellFormed(),
-	// we directly compute the block's data hash.
-	dataHash := sha256.Sum256(bytes.Join(data.Data, nil))
-
-	block.Header.DataHash = dataHash[:]
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(data)
 	block.Data = data
 
 	return block

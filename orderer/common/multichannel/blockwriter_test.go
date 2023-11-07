@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
-	"bytes"
-	"crypto/sha256"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -64,7 +62,7 @@ func TestCreateBlock(t *testing.T) {
 		{Payload: []byte("some other bytes")},
 	})
 
-	dataHash := sha256.Sum256(bytes.Join(block.Data.Data, nil))
+	dataHash := protoutil.ComputeBlockDataHash(block.Data)
 	protoutil.BlockHeaderHash(&cb.BlockHeader{
 		Number:       block.Header.Number,
 		DataHash:     dataHash[:],

@@ -31,10 +31,7 @@ func ValidateJoinBlock(configBlock *cb.Block) (channelID string, err error) {
 		return "", errors.New("invalid block: does not have metadata")
 	}
 
-	dataHash, err := protoutil.BlockDataHash(configBlock.Data)
-	if err != nil {
-		return "", err
-	}
+	dataHash := protoutil.ComputeBlockDataHash(configBlock.Data)
 	if !bytes.Equal(dataHash, configBlock.Header.DataHash) {
 		return "", errors.New("invalid block: Header.DataHash is different from Hash(block.Data)")
 	}

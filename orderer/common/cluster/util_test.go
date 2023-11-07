@@ -194,7 +194,7 @@ func TestVerifyBlockBFT(t *testing.T) {
 	configTx.Signature = []byte{1, 2, 3}
 	block.Data.Data[0] = protoutil.MarshalOrPanic(configTx)
 	block.Header.Number = 2
-	block.Header.DataHash, _ = protoutil.BlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
 
 	twoBlocks := createBlockChain(2, 3)
 	twoBlocks[0] = block
@@ -334,7 +334,7 @@ func createBlockChain(start, end uint64) []*common.Block {
 	var blockchain []*common.Block
 	for seq := start; seq <= end; seq++ {
 		block := newBlock(seq)
-		block.Header.DataHash, _ = protoutil.BlockDataHash(block.Data)
+		block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
 		blockchain = append(blockchain, block)
 	}
 	assignHashes(blockchain)

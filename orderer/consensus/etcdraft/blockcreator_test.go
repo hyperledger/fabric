@@ -25,14 +25,12 @@ func TestCreateNextBlock(t *testing.T) {
 	}
 
 	second := bc.createNextBlock([]*cb.Envelope{{Payload: []byte("some other bytes")}})
-	hash, _ := protoutil.BlockDataHash(second.Data)
 	require.Equal(t, first.Header.Number+1, second.Header.Number)
-	require.Equal(t, hash, second.Header.DataHash)
+	require.Equal(t, protoutil.ComputeBlockDataHash(second.Data), second.Header.DataHash)
 	require.Equal(t, protoutil.BlockHeaderHash(first.Header), second.Header.PreviousHash)
 
 	third := bc.createNextBlock([]*cb.Envelope{{Payload: []byte("some other bytes")}})
-	hash, _ = protoutil.BlockDataHash(third.Data)
 	require.Equal(t, second.Header.Number+1, third.Header.Number)
-	require.Equal(t, hash, third.Header.DataHash)
+	require.Equal(t, protoutil.ComputeBlockDataHash(third.Data), third.Header.DataHash)
 	require.Equal(t, protoutil.BlockHeaderHash(second.Header), third.Header.PreviousHash)
 }

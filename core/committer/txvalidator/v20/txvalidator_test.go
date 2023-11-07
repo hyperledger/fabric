@@ -231,7 +231,7 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 		},
 	}
 
-	hash, _ := protoutil.BlockDataHash(block.Data)
+	hash := protoutil.ComputeBlockDataHash(block.Data)
 	block.Header = &common.BlockHeader{
 		Number:   0,
 		DataHash: hash,

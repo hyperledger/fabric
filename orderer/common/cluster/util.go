@@ -260,6 +260,9 @@ func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
 	if block.Header == nil {
 		return errors.New("missing block header")
 	}
+	if block.Data == nil {
+		return errors.New("missing block data")
+	}
 	seq := block.Header.Number
 	dataHash, err := protoutil.BlockDataHash(block.Data)
 	if err != nil {

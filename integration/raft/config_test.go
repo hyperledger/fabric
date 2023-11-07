@@ -188,7 +188,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Expect(err).NotTo(HaveOccurred())
 			genesisBlock.Data.Data[0], err = protoutil.Marshal(envelope)
 			Expect(err).NotTo(HaveOccurred())
-			genesisBlock.Header.DataHash, _ = protoutil.BlockDataHash(genesisBlock.Data)
+			genesisBlock.Header.DataHash = protoutil.ComputeBlockDataHash(genesisBlock.Data)
 			genesisBlockBytes, err := protoutil.Marshal(genesisBlock)
 			Expect(err).NotTo(HaveOccurred())
 			err = os.WriteFile(network.OutputBlockPath("testchannel"), genesisBlockBytes, 0o644)
@@ -2127,7 +2127,7 @@ func configToGenesisBlock(configBlock *common.Block, channelId string) *common.B
 	genesisBlock.Data.Data[0], err = protoutil.Marshal(envelope)
 	Expect(err).NotTo(HaveOccurred())
 
-	genesisBlock.Header.DataHash, _ = protoutil.BlockDataHash(genesisBlock.Data)
+	genesisBlock.Header.DataHash = protoutil.ComputeBlockDataHash(genesisBlock.Data)
 
 	return genesisBlock
 }

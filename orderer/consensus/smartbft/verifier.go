@@ -237,11 +237,12 @@ func verifyHashChain(block *cb.Block, prevHeaderHash string) error {
 		return errors.Errorf("previous header hash is %s but expected %s", thisHdrHashOfPrevHdr, prevHeaderHash)
 	}
 
-	dataHashString := hex.EncodeToString(block.Header.DataHash)
 	dataHash, err := protoutil.BlockDataHash(block.Data)
 	if err != nil {
 		return err
 	}
+	dataHashString := hex.EncodeToString(block.Header.DataHash)
+
 	actualHashOfData := hex.EncodeToString(dataHash)
 	if dataHashString != actualHashOfData {
 		return errors.Errorf("data hash is %s but expected %s", dataHashString, actualHashOfData)
