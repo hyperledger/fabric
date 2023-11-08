@@ -1588,11 +1588,9 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			var ordererRunners []*ginkgomon.Runner
 			for _, orderer := range network.Orderers {
-				runner := network.OrdererRunner(orderer)
-				runner.Command.Env = append(
-					runner.Command.Env,
+				runner := network.OrdererRunner(orderer,
 					"FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug",
-					"ORDERER_GENERAL_BACKOFF_MAXDELAY=3s",
+					// "ORDERER_GENERAL_BACKOFF_MAXDELAY=3s",
 				)
 				ordererRunners = append(ordererRunners, runner)
 				proc := ifrit.Invoke(runner)
@@ -1637,15 +1635,18 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			ordererProcesses[numberKill].Signal(syscall.SIGTERM)
 			Eventually(ordererProcesses[numberKill].Wait(), network.EventuallyTimeout).Should(Receive())
 
+			// orderer 0 has discovered that orderer 3 has been killed.
 			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Closing: connection error: desc = \"error reading from server: EOF\""))
+			// Expect 7 attempts to connect from orderer 0 to orderer 3.
+			// If backoff's default settings are left, it will take 20-25 seconds after the 7th attempt to reach the 8th attempt.
+			// If the backoff is made controllable, as here in the test, the maximum time between attempts will be 3 seconds.
 			for i := 0; i < 7; i++ {
 				Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("pickfirstBalancer: UpdateSubConnState.*IDLE connection error"))
 			}
 
+			// After starting orderer 3, orderer 0 (leader) will have 10-11 seconds to establish a connection and throw a heartbeat message.
 			By(fmt.Sprintf("Launching %s", orderer.Name))
-			runner := network.OrdererRunner(orderer)
-			runner.Command.Env = append(
-				runner.Command.Env,
+			runner := network.OrdererRunner(orderer,
 				"FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug",
 				"ORDERER_GENERAL_BACKOFF_MAXDELAY=3s",
 			)
@@ -1655,10 +1656,11 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			By("Waiting for followers to see the leader, again")
-			Eventually(ordererRunners[3].Err(), 15*time.Second, time.Second).Should(gbytes.Say("Message from 1 channel=testchannel1"))
+			Consistently(ordererRunners[numberKill].Err(), 15*time.Second, time.Second).ShouldNot(gbytes.Say("Heartbeat timeout expired, complaining about leader: 1"))
+			Eventually(ordererRunners[numberKill].Err(), 15*time.Second, time.Second).Should(gbytes.Say("Message from 1 channel=testchannel1"))
 
 			By("invoking the chaincode, again")
-			invokeQuery(network, peer, network.Orderers[2], channel, 80)
+			invokeQuery(network, peer, network.Orderers[numberKill], channel, 80)
 		})
 	})
 })
