@@ -21,4 +21,7 @@ package fp
 
 import "golang.org/x/sys/cpu"
 
-var supportAdx = cpu.X86.HasADX && cpu.X86.HasBMI2
+var (
+	supportAdx = cpu.X86.HasADX && cpu.X86.HasBMI2
+	_          = supportAdx
+)

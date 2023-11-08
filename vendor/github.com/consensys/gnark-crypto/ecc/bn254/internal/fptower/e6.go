@@ -1,4 +1,4 @@
-// Copyright 2020 ConsenSys Software Inc.
+// Copyright 2020 Consensys Software Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ type E6 struct {
 	B0, B1, B2 E2
 }
 
-// Equal returns true if z equals x, fasle otherwise
+// Equal returns true if z equals x, false otherwise
 func (z *E6) Equal(x *E6) bool {
 	return z.B0.Equal(&x.B0) && z.B1.Equal(&x.B1) && z.B2.Equal(&x.B2)
 }
@@ -63,20 +63,13 @@ func (z *E6) SetRandom() (*E6, error) {
 	return z, nil
 }
 
-// ToMont converts to Mont form
-func (z *E6) ToMont() *E6 {
-	z.B0.ToMont()
-	z.B1.ToMont()
-	z.B2.ToMont()
-	return z
+// IsZero returns true if the two elements are equal, false otherwise
+func (z *E6) IsZero() bool {
+	return z.B0.IsZero() && z.B1.IsZero() && z.B2.IsZero()
 }
 
-// FromMont converts from Mont form
-func (z *E6) FromMont() *E6 {
-	z.B0.FromMont()
-	z.B1.FromMont()
-	z.B2.FromMont()
-	return z
+func (z *E6) IsOne() bool {
+	return z.B0.IsOne() && z.B1.IsZero() && z.B2.IsZero()
 }
 
 // Add adds two elements of E6
@@ -131,6 +124,34 @@ func (z *E6) MulByE2(x *E6, y *E2) *E6 {
 	z.B1.Mul(&x.B1, &yCopy)
 	z.B2.Mul(&x.B2, &yCopy)
 	return z
+}
+
+// MulBy12 multiplication by sparse element (0,b1,b2)
+func (x *E6) MulBy12(b1, b2 *E2) *E6 {
+	var t1, t2, c0, tmp, c1, c2 E2
+	t1.Mul(&x.B1, b1)
+	t2.Mul(&x.B2, b2)
+	c0.Add(&x.B1, &x.B2)
+	tmp.Add(b1, b2)
+	c0.Mul(&c0, &tmp)
+	c0.Sub(&c0, &t1)
+	c0.Sub(&c0, &t2)
+	c0.MulByNonResidue(&c0)
+	c1.Add(&x.B0, &x.B1)
+	c1.Mul(&c1, b1)
+	c1.Sub(&c1, &t1)
+	tmp.MulByNonResidue(&t2)
+	c1.Add(&c1, &tmp)
+	tmp.Add(&x.B0, &x.B2)
+	c2.Mul(b2, &tmp)
+	c2.Sub(&c2, &t2)
+	c2.Add(&c2, &t1)
+
+	x.B0 = c0
+	x.B1 = c1
+	x.B2 = c2
+
+	return x
 }
 
 // MulBy01 multiplication by sparse element (c0,c1,0)
@@ -237,6 +258,8 @@ func (z *E6) Square(x *E6) *E6 {
 }
 
 // Inverse an element in E6
+//
+// if x == 0, sets and returns z = x
 func (z *E6) Inverse(x *E6) *E6 {
 	// Algorithm 17 from https://eprint.iacr.org/2010/354.pdf
 	// step 9 is wrong in the paper it's t1-t4
@@ -261,4 +284,56 @@ func (z *E6) Inverse(x *E6) *E6 {
 	z.B2.Mul(&c2, &t6)
 
 	return z
+}
+
+// BatchInvertE6 returns a new slice with every element inverted.
+// Uses Montgomery batch inversion trick
+//
+// if a[i] == 0, returns result[i] = a[i]
+func BatchInvertE6(a []E6) []E6 {
+	res := make([]E6, len(a))
+	if len(a) == 0 {
+		return res
+	}
+
+	zeroes := make([]bool, len(a))
+	var accumulator E6
+	accumulator.SetOne()
+
+	for i := 0; i < len(a); i++ {
+		if a[i].IsZero() {
+			zeroes[i] = true
+			continue
+		}
+		res[i].Set(&accumulator)
+		accumulator.Mul(&accumulator, &a[i])
+	}
+
+	accumulator.Inverse(&accumulator)
+
+	for i := len(a) - 1; i >= 0; i-- {
+		if zeroes[i] {
+			continue
+		}
+		res[i].Mul(&res[i], &accumulator)
+		accumulator.Mul(&accumulator, &a[i])
+	}
+
+	return res
+}
+
+func (z *E6) Select(cond int, caseZ *E6, caseNz *E6) *E6 {
+	//Might be able to save a nanosecond or two by an aggregate implementation
+
+	z.B0.Select(cond, &caseZ.B0, &caseNz.B0)
+	z.B1.Select(cond, &caseZ.B1, &caseNz.B1)
+	z.B2.Select(cond, &caseZ.B2, &caseNz.B2)
+
+	return z
+}
+
+func (z *E6) Div(x *E6, y *E6) *E6 {
+	var r E6
+	r.Inverse(y).Mul(x, &r)
+	return z.Set(&r)
 }

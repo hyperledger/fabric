@@ -22,4 +22,7 @@ package fr
 // note: this is needed for test purposes, as dynamically changing supportAdx doesn't flag
 // certain errors (like fatal error: missing stackmap)
 // this ensures we test all asm path.
-var supportAdx = false
+var (
+	supportAdx = false
+	_          = supportAdx
+)

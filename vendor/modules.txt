@@ -60,7 +60,7 @@ github.com/alecthomas/units
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
-# github.com/bits-and-blooms/bitset v1.2.1
+# github.com/bits-and-blooms/bitset v1.7.0
 ## explicit; go 1.14
 github.com/bits-and-blooms/bitset
 # github.com/cespare/xxhash/v2 v2.2.0
@@ -69,16 +69,20 @@ github.com/cespare/xxhash/v2
 # github.com/cheggaaa/pb v1.0.29
 ## explicit; go 1.12
 github.com/cheggaaa/pb
-# github.com/consensys/gnark-crypto v0.6.0
-## explicit; go 1.16
+# github.com/consensys/bavard v0.1.13
+## explicit; go 1.15
+github.com/consensys/bavard
+# github.com/consensys/gnark-crypto v0.12.1
+## explicit; go 1.18
 github.com/consensys/gnark-crypto/ecc
 github.com/consensys/gnark-crypto/ecc/bn254
 github.com/consensys/gnark-crypto/ecc/bn254/fp
 github.com/consensys/gnark-crypto/ecc/bn254/fr
-github.com/consensys/gnark-crypto/ecc/bn254/fr/mimc
 github.com/consensys/gnark-crypto/ecc/bn254/internal/fptower
-github.com/consensys/gnark-crypto/field
-github.com/consensys/gnark-crypto/field/internal/addchain
+github.com/consensys/gnark-crypto/field/generator/config
+github.com/consensys/gnark-crypto/field/generator/internal/addchain
+github.com/consensys/gnark-crypto/field/hash
+github.com/consensys/gnark-crypto/field/pool
 github.com/consensys/gnark-crypto/internal/generator/config
 github.com/consensys/gnark-crypto/internal/parallel
 # github.com/containerd/containerd v1.6.18
@@ -369,8 +373,8 @@ github.com/spf13/afero/mem
 # github.com/spf13/cast v1.3.1
 ## explicit
 github.com/spf13/cast
-# github.com/spf13/cobra v1.1.3
-## explicit; go 1.12
+# github.com/spf13/cobra v1.5.0
+## explicit; go 1.15
 github.com/spf13/cobra
 # github.com/spf13/jwalterweatherman v1.1.0
 ## explicit
@@ -384,7 +388,7 @@ github.com/spf13/viper
 # github.com/stretchr/objx v0.5.0
 ## explicit; go 1.12
 github.com/stretchr/objx
-# github.com/stretchr/testify v1.8.1
+# github.com/stretchr/testify v1.8.2
 ## explicit; go 1.13
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/mock
@@ -620,3 +624,7 @@ gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
+# rsc.io/tmplfunc v0.0.3
+## explicit; go 1.17
+rsc.io/tmplfunc
+rsc.io/tmplfunc/internal/parse
