@@ -51,9 +51,8 @@ One key point of differentiation is that Hyperledger was established under the
 Linux Foundation, which itself has a long and very successful history of
 nurturing open-source projects under **open governance** that grow strong, sustainable communities and thriving ecosystems. Hyperledger is governed by a
 diverse technical steering committee, while the Hyperledger Fabric project is handled by a
-diverse set of maintainers from multiple organizations. It has a development
-community that has grown to over 35 organizations and nearly 200 developers
-since its earliest commits.
+diverse set of maintainers from multiple organizations. Hundreds of developers
+spanning many organizations have contributed to Hyperledger Fabric.
 
 Fabric has a highly **modular** and **configurable** architecture, enabling
 innovation, versatility, and optimization for a broad range of industry use cases
@@ -66,7 +65,8 @@ Node.js, rather than constrained domain-specific languages (DSL). This means
 that most enterprises already have the skill set needed to develop smart
 contracts, and no additional training to learn a new language or DSL is needed.
 
-The Fabric platform is also **permissioned**, meaning that, unlike with a public permissionless network, the participants are known to each other rather than anonymous and, therefore, fully untrusted. This means that while the participants
+The Fabric platform is also **permissioned**, meaning that, unlike with a public permissionless network,
+the participants are known to each other rather than anonymous and, therefore, fully untrusted. This means that while the participants
 may not _fully_ trust one another (they may, for example, be competitors in the
 same industry), a network can be operated under a governance model that is built
 off of what trust _does_ exist between participants, such as a legal agreement
@@ -101,8 +101,8 @@ Let's explore these differentiating features in more detail.
 ## Modularity
 
 Hyperledger Fabric has been specifically architected to have a modular
-architecture. Whether it is pluggable consensus, pluggable identity management
-protocols such as LDAP or OpenID Connect, key management protocols or
+architecture. Whether it is consensus, identity management
+protocols, key management protocols or
 cryptographic libraries, the platform has been designed at its core to be
 configured to meet the diversity of enterprise use case requirements.
 
@@ -165,7 +165,7 @@ There are three key points that apply to smart contracts, especially when
 applied to a platform:
 
 - many smart contracts run concurrently in the network,
-- they may be deployed dynamically (in many cases by anyone), and
+- they may be deployed dynamically (in many cases by any participant), and
 - application code should be treated as untrusted, potentially even
 malicious.
 
@@ -293,8 +293,20 @@ requirements.
 
 ## Performance and Scalability
 
+Due to Fabric's unique **execute-order-validate** model, transaction execution
+can be scaled horizontally across peer nodes. And because it is a permissioned blockchain,
+no costly mining is required. Taken together, it means that Fabric can scale and perform
+without the constraints of most other distributed ledger technologies.
+
 Performance of a blockchain platform can be affected by many variables such as
 transaction size, block size, network size, as well as available hardware resources such as CPU, Memory, Disk Space, Disk and network I/O.
+See the [Performance considerations topic](./performance.html) to learn more about the various performance factors.
+
+## Fabric Ecosystem
+
+There is a large [ecosystem](https://wiki.hyperledger.org/display/fabric/Ecosystem)
+of open source projects to help you build Fabric applications,
+as well as test, deploy, and manage production networks.
 
 ## Conclusion
 
@@ -306,11 +318,6 @@ system for permissioned blockchains supporting flexible trust assumptions that
 enable the platform to support a wide range of industry use cases ranging from
 government, to finance, to supply-chain logistics, to healthcare and so much
 more.
-
-Hyperledger Fabric is the most active of the Hyperledger projects. The community
-building around the platform is growing steadily, and the innovation delivered
-with each successive release far out-paces any of the other enterprise blockchain
-platforms.
 
 ## Acknowledgement
 
