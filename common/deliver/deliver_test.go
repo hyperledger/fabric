@@ -502,6 +502,7 @@ var _ = Describe("Deliver", func() {
 		})
 
 		Context("when seek info is configured to header with sig content type", func() {
+			var cachedBlocks []*cb.Block
 			BeforeEach(func() {
 				seekInfo = &ab.SeekInfo{
 					Start:       &ab.SeekPosition{},
@@ -516,11 +517,12 @@ var _ = Describe("Deliver", func() {
 						Data:     &cb.BlockData{Data: [][]byte{{1}, {2}}},
 						Metadata: &cb.BlockMetadata{Metadata: [][]byte{{3}, {4}}},
 					}
+					cachedBlocks = append(cachedBlocks, blk)
 					return blk, cb.Status_SUCCESS
 				}
 			})
 
-			It("sends blocks with nil Data", func() {
+			It("sends blocks with nil Data, but does not mutate cached blocks", func() {
 				err := handler.Handle(context.Background(), server)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -537,6 +539,10 @@ var _ = Describe("Deliver", func() {
 						Data:     nil,
 						Metadata: &cb.BlockMetadata{Metadata: [][]byte{{3}, {4}}},
 					}))
+				}
+
+				for _, b := range cachedBlocks {
+					Expect(b.Data).ToNot(BeNil())
 				}
 			})
 		})

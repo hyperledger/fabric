@@ -37,16 +37,15 @@ func (fake *GossipServiceAdapter) AddPayload(arg1 string, arg2 *gossip.Payload) 
 		arg1 string
 		arg2 *gossip.Payload
 	}{arg1, arg2})
-	stub := fake.AddPayloadStub
-	fakeReturns := fake.addPayloadReturns
 	fake.recordInvocation("AddPayload", []interface{}{arg1, arg2})
 	fake.addPayloadMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2)
+	if fake.AddPayloadStub != nil {
+		return fake.AddPayloadStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
+	fakeReturns := fake.addPayloadReturns
 	return fakeReturns.result1
 }
 
@@ -97,10 +96,9 @@ func (fake *GossipServiceAdapter) Gossip(arg1 *gossip.GossipMessage) {
 	fake.gossipArgsForCall = append(fake.gossipArgsForCall, struct {
 		arg1 *gossip.GossipMessage
 	}{arg1})
-	stub := fake.GossipStub
 	fake.recordInvocation("Gossip", []interface{}{arg1})
 	fake.gossipMutex.Unlock()
-	if stub != nil {
+	if fake.GossipStub != nil {
 		fake.GossipStub(arg1)
 	}
 }

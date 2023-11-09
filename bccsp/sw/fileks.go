@@ -417,7 +417,7 @@ func dirEmpty(path string) (bool, error) {
 	defer f.Close()
 
 	_, err = f.Readdir(1)
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		return true, nil
 	}
 	return false, err

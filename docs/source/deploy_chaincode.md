@@ -736,6 +736,27 @@ Error: failed to create signed transaction: proposal response was not successful
 }
 ```
 
+The `peer lifecycle chaincode checkcommitreadiness` with `--inspect` flag will output additional information to identify the cause when the approval from each organization is false. It will help root cause analysis.
+
+```
+{
+	"approvals": {
+		"Org1MSP": false,
+		"Org2MSP": true
+	}
+},
+	"mismatches": {
+		"Org2MSP": {
+			"items": [
+				"EndorsementInfo (Check the Version, InitRequired, EndorsementPlugin)",
+				"ValidationInfo (Check the ValidationParameter, ValidationPlugin)",
+				"Collections (Check the Collections)"
+			]
+		}
+	}
+}
+```
+
 ### Invoke failure
 
 **Problem:** The `peer lifecycle chaincode commit` transaction is successful, but when I try to invoke the chaincode for the first time, it fails with the following error:

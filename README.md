@@ -70,7 +70,7 @@ for the full details.
 
 ## Community
 
-[Hyperledger Community](https://www.hyperledger.org/community)
+[Hyperledger Community](https://www.meetup.com/pro/hyperledger/)
 
 [Hyperledger mailing lists and archives](http://lists.hyperledger.org/)
 

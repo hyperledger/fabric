@@ -482,6 +482,7 @@ type ChaincodeCheckCommitReadiness struct {
 	SignaturePolicy     string
 	ChannelConfigPolicy string
 	InitRequired        bool
+	InspectionEnabled   bool
 	CollectionsConfig   string
 	PeerAddresses       []string
 	ClientAuth          bool
@@ -507,6 +508,10 @@ func (c ChaincodeCheckCommitReadiness) Args() []string {
 
 	if c.InitRequired {
 		args = append(args, "--init-required")
+	}
+
+	if c.InspectionEnabled {
+		args = append(args, "--inspect")
 	}
 
 	if c.CollectionsConfig != "" {

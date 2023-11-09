@@ -206,6 +206,7 @@ func (m *SecretEnvelope) GetSignature() []byte {
 // the Envelope shouldn't know the secret's content.
 type Secret struct {
 	// Types that are valid to be assigned to Content:
+	//
 	//	*Secret_InternalEndpoint
 	Content              isSecret_Content `protobuf_oneof:"content"`
 	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
@@ -282,6 +283,7 @@ type GossipMessage struct {
 	// to forward the message
 	Tag GossipMessage_Tag `protobuf:"varint,3,opt,name=tag,proto3,enum=gossip.GossipMessage_Tag" json:"tag,omitempty"`
 	// Types that are valid to be assigned to Content:
+	//
 	//	*GossipMessage_AliveMsg
 	//	*GossipMessage_MemReq
 	//	*GossipMessage_MemRes

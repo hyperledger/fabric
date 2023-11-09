@@ -32,16 +32,15 @@ func (fake *BlockHandler) HandleBlock(arg1 string, arg2 *common.Block) error {
 		arg1 string
 		arg2 *common.Block
 	}{arg1, arg2})
-	stub := fake.HandleBlockStub
-	fakeReturns := fake.handleBlockReturns
 	fake.recordInvocation("HandleBlock", []interface{}{arg1, arg2})
 	fake.handleBlockMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2)
+	if fake.HandleBlockStub != nil {
+		return fake.HandleBlockStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
+	fakeReturns := fake.handleBlockReturns
 	return fakeReturns.result1
 }
 

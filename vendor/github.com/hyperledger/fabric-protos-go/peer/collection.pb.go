@@ -68,6 +68,7 @@ func (m *CollectionConfigPackage) GetConfig() []*CollectionConfig {
 // Dynamic collections are deferred.
 type CollectionConfig struct {
 	// Types that are valid to be assigned to Payload:
+	//
 	//	*CollectionConfig_StaticCollectionConfig
 	Payload              isCollectionConfig_Payload `protobuf_oneof:"payload"`
 	XXX_NoUnkeyedLiteral struct{}                   `json:"-"`
@@ -257,6 +258,7 @@ func (m *StaticCollectionConfig) GetEndorsementPolicy() *ApplicationPolicy {
 // configuration may in the future contain a string reference to a policy.
 type CollectionPolicyConfig struct {
 	// Types that are valid to be assigned to Payload:
+	//
 	//	*CollectionPolicyConfig_SignaturePolicy
 	Payload              isCollectionPolicyConfig_Payload `protobuf_oneof:"payload"`
 	XXX_NoUnkeyedLiteral struct{}                         `json:"-"`

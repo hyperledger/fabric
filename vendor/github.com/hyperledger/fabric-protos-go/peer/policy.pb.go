@@ -25,6 +25,7 @@ const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 // are set and evaluted at the application level.
 type ApplicationPolicy struct {
 	// Types that are valid to be assigned to Type:
+	//
 	//	*ApplicationPolicy_SignaturePolicy
 	//	*ApplicationPolicy_ChannelConfigPolicyReference
 	Type                 isApplicationPolicy_Type `protobuf_oneof:"Type"`

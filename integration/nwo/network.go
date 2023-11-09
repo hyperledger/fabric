@@ -55,6 +55,12 @@ type Blocks struct {
 	PreferredMaxBytes int `yaml:"preferred_max_bytes,omitempty"`
 }
 
+// SmartBFT defines the configuration of smartBFT options.
+type SmartBFT struct {
+	LeaderHeartbeatTimeout int `yaml:"leader_heartbeat_timeout,omitempty"`
+	LeaderHeartbeatCount   int `yaml:"leader_heartbeat_count,omitempty"`
+}
+
 // Organization models information about an Organization. It includes
 // the information needed to populate an MSP with cryptogen.
 type Organization struct {
@@ -128,13 +134,14 @@ func (p *Peer) Anchor() bool {
 
 // A profile encapsulates basic information for a configtxgen profile.
 type Profile struct {
-	Name                string   `yaml:"name,omitempty"`
-	Orderers            []string `yaml:"orderers,omitempty"`
-	Consortium          string   `yaml:"consortium,omitempty"`
-	Organizations       []string `yaml:"organizations,omitempty"`
-	AppCapabilities     []string `yaml:"app_capabilities,omitempty"`
-	ChannelCapabilities []string `yaml:"channel_capabilities,omitempty"`
-	Blocks              *Blocks  `yaml:"blocks,omitempty"`
+	Name                string    `yaml:"name,omitempty"`
+	Orderers            []string  `yaml:"orderers,omitempty"`
+	Consortium          string    `yaml:"consortium,omitempty"`
+	Organizations       []string  `yaml:"organizations,omitempty"`
+	AppCapabilities     []string  `yaml:"app_capabilities,omitempty"`
+	ChannelCapabilities []string  `yaml:"channel_capabilities,omitempty"`
+	Blocks              *Blocks   `yaml:"blocks,omitempty"`
+	SmartBFT            *SmartBFT `yaml:"smart_bft,omitempty"`
 }
 
 // Network holds information about a fabric network.

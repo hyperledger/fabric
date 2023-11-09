@@ -39,16 +39,15 @@ func (fake *Dialer) Dial(arg1 string, arg2 [][]byte) (*grpc.ClientConn, error) {
 		arg1 string
 		arg2 [][]byte
 	}{arg1, arg2Copy})
-	stub := fake.DialStub
-	fakeReturns := fake.dialReturns
 	fake.recordInvocation("Dial", []interface{}{arg1, arg2Copy})
 	fake.dialMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2)
+	if fake.DialStub != nil {
+		return fake.DialStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
+	fakeReturns := fake.dialReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 

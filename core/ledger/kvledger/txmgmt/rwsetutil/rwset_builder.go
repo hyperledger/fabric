@@ -179,7 +179,7 @@ func (b *RWSetBuilder) GetTxReadWriteSet() *TxRwSet {
 	sortedNsPubBuilders := []*nsPubRwBuilder{}
 	util.GetValuesBySortedKeys(&(b.pubRwBuilderMap), &sortedNsPubBuilders)
 
-	var nsPubRwSets []*NsRwSet
+	nsPubRwSets := make([]*NsRwSet, 0, len(sortedNsPubBuilders))
 	for _, nsPubRwBuilder := range sortedNsPubBuilders {
 		nsPubRwSets = append(nsPubRwSets, nsPubRwBuilder.build())
 	}
@@ -191,7 +191,7 @@ func (b *RWSetBuilder) getTxPvtReadWriteSet() *TxPvtRwSet {
 	sortedNsPvtBuilders := []*nsPvtRwBuilder{}
 	util.GetValuesBySortedKeys(&(b.pvtRwBuilderMap), &sortedNsPvtBuilders)
 
-	var nsPvtRwSets []*NsPvtRwSet
+	nsPvtRwSets := make([]*NsPvtRwSet, 0, len(sortedNsPvtBuilders))
 	for _, nsPvtRwBuilder := range sortedNsPvtBuilders {
 		nsPvtRwSets = append(nsPvtRwSets, nsPvtRwBuilder.build())
 	}
@@ -205,13 +205,13 @@ func (b *nsPubRwBuilder) build() *NsRwSet {
 	var readSet []*kvrwset.KVRead
 	var writeSet []*kvrwset.KVWrite
 	var metadataWriteSet []*kvrwset.KVMetadataWrite
-	var rangeQueriesInfo []*kvrwset.RangeQueryInfo
-	var collHashedRwSet []*CollHashedRwSet
 	// add read set
 	util.GetValuesBySortedKeys(&(b.readMap), &readSet)
 	// add write set
 	util.GetValuesBySortedKeys(&(b.writeMap), &writeSet)
 	util.GetValuesBySortedKeys(&(b.metadataWriteMap), &metadataWriteSet)
+
+	rangeQueriesInfo := make([]*kvrwset.RangeQueryInfo, 0, len(b.rangeQueriesKeys))
 	// add range query info
 	for _, key := range b.rangeQueriesKeys {
 		rangeQueriesInfo = append(rangeQueriesInfo, b.rangeQueriesMap[key])
@@ -219,9 +219,12 @@ func (b *nsPubRwBuilder) build() *NsRwSet {
 	// add hashed rws for private collections
 	sortedCollBuilders := []*collHashRwBuilder{}
 	util.GetValuesBySortedKeys(&(b.collHashRwBuilder), &sortedCollBuilders)
+
+	collHashedRwSet := make([]*CollHashedRwSet, 0, len(sortedCollBuilders))
 	for _, collBuilder := range sortedCollBuilders {
 		collHashedRwSet = append(collHashedRwSet, collBuilder.build())
 	}
+
 	return &NsRwSet{
 		NameSpace: b.namespace,
 		KvRwSet: &kvrwset.KVRWSet{
@@ -238,7 +241,7 @@ func (b *nsPvtRwBuilder) build() *NsPvtRwSet {
 	sortedCollBuilders := []*collPvtRwBuilder{}
 	util.GetValuesBySortedKeys(&(b.collPvtRwBuilders), &sortedCollBuilders)
 
-	var collPvtRwSets []*CollPvtRwSet
+	collPvtRwSets := make([]*CollPvtRwSet, 0, len(sortedCollBuilders))
 	for _, collBuilder := range sortedCollBuilders {
 		collPvtRwSets = append(collPvtRwSets, collBuilder.build())
 	}

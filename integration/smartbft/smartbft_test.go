@@ -1,11 +1,8 @@
 /*
- *
- * Copyright IBM Corp. All Rights Reserved.
- *
- * SPDX-License-Identifier: Apache-2.0
- * /
- *
- */
+Copyright IBM Corp All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
 
 package smartbft
 
@@ -44,6 +41,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pkg/errors"
 	"github.com/tedsuo/ifrit"
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
@@ -1079,7 +1077,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			By("Sending TX with corrupted signature")
 			env = ordererclient.CreateBroadcastEnvelope(network, leader, channel, []byte("MESSSAGE_2"))
-			env.Signature = []byte{}
+			env.Signature = []byte{1, 2, 3}
 			resp, err = ordererclient.Broadcast(network, leader, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_FORBIDDEN))
@@ -1381,7 +1379,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				0,
 			)
 			Expect(err).NotTo(HaveOccurred())
-			env.Signature = []byte{}
+			env.Signature = []byte{1, 2, 3}
 
 			By("Authenticate to the leader step service")
 			err = client.Auth()
@@ -1464,12 +1462,12 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				common.HeaderType_ENDORSER_TRANSACTION,
 				channel,
 				signer,
-				&common.Envelope{Payload: []byte("TEST_MESSAGE")},
+				&common.Envelope{Payload: []byte("TEST_MESSAGE"), Signature: []byte{1, 2, 3}},
 				0,
 				0,
 			)
 			Expect(err).NotTo(HaveOccurred())
-			env.Signature = []byte{}
+			env.Signature = []byte{1, 2, 3}
 
 			By("Create the consensus request")
 			genesisBlock := network.LoadAppChannelGenesisBlock(channel)
@@ -1576,19 +1574,25 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			Eventually(ordererRunners[follower.Id-1].Err(), network.EventuallyTimeout).Should(gbytes.Say("Processed proposal with seq 1"))
 		})
 
-		It("smartbft the leader froze, waiting for an answer", func() {
+		It("smartbft setting max backoff and LeaderHeartbeatTimeout", func() {
 			networkConfig := nwo.MultiNodeSmartBFT()
 			networkConfig.Channels = nil
 			channel := "testchannel1"
 
 			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
+			network.Profiles[0].SmartBFT = &nwo.SmartBFT{
+				LeaderHeartbeatTimeout: 10,
+				LeaderHeartbeatCount:   10,
+			}
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
 			var ordererRunners []*ginkgomon.Runner
 			for _, orderer := range network.Orderers {
-				runner := network.OrdererRunner(orderer)
-				runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug")
+				runner := network.OrdererRunner(orderer,
+					"FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug",
+					"ORDERER_GENERAL_BACKOFF_MAXDELAY=3s",
+				)
 				ordererRunners = append(ordererRunners, runner)
 				proc := ifrit.Invoke(runner)
 				ordererProcesses = append(ordererProcesses, proc)
@@ -1607,22 +1611,96 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			Eventually(ordererRunners[2].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
 			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
 
-			// Stopped 2 out of 4 nodes
-			for i := 2; i <= 3; i++ {
-				orderer := network.Orderers[i]
-				By(fmt.Sprintf("Killing %s", orderer.Name))
-				ordererProcesses[i].Signal(syscall.SIGTERM)
-				Eventually(ordererProcesses[i].Wait(), network.EventuallyTimeout).Should(Receive())
+			By("Joining peers to testchannel1")
+			network.JoinChannel(channel, network.Orderers[0], network.PeersWithChannel(channel)...)
+
+			By("Deploying chaincode")
+			deployChaincode(network, channel, testDir)
+
+			By("querying the chaincode")
+			sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+				ChannelID: channel,
+				Name:      "mycc",
+				Ctor:      `{"Args":["query","a"]}`,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+			Expect(sess).To(gbytes.Say("100"))
+
+			By("invoking the chaincode")
+			invokeQuery(network, peer, network.Orderers[1], channel, 90)
+
+			numberKill := 3
+			orderer := network.Orderers[numberKill]
+			By(fmt.Sprintf("Killing %s", orderer.Name))
+			ordererProcesses[numberKill].Signal(syscall.SIGTERM)
+			Eventually(ordererProcesses[numberKill].Wait(), network.EventuallyTimeout).Should(Receive())
+
+			// orderer 0 has discovered that orderer 3 has been killed.
+			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Closing: connection error: desc = \"error reading from server: EOF\""))
+			// Expect 7 attempts to connect from orderer 0 to orderer 3.
+			// If backoff's default settings are left, it will take 20-25 seconds after the 7th attempt to reach the 8th attempt.
+			// If the backoff is made controllable, as here in the test, the maximum time between attempts will be 3 seconds.
+			for i := 0; i < 7; i++ {
+				Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("pickfirstBalancer: UpdateSubConnState.*IDLE connection error"))
 			}
+
+			// After starting orderer 3, orderer 0 (leader) will have 10-11 seconds to establish a connection and throw a heartbeat message.
+			By(fmt.Sprintf("Launching %s", orderer.Name))
+			runner := network.OrdererRunner(orderer,
+				"FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug",
+				"ORDERER_GENERAL_BACKOFF_MAXDELAY=3s",
+			)
+			ordererRunners[numberKill] = runner
+			proc := ifrit.Invoke(runner)
+			ordererProcesses[numberKill] = proc
+			Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			By("Waiting for followers to see the leader, again")
+			Consistently(ordererRunners[numberKill].Err(), 15*time.Second, time.Second).ShouldNot(gbytes.Say("Heartbeat timeout expired, complaining about leader: 1"))
+			Eventually(ordererRunners[numberKill].Err(), 15*time.Second, time.Second).Should(gbytes.Say("Message from 1 channel=testchannel1"))
+
+			By("invoking the chaincode, again")
+			invokeQuery(network, peer, network.Orderers[numberKill], channel, 80)
+		})
+
+		It("smartbft the leader froze, waiting for an answer", func() {
+			networkConfig := nwo.MultiNodeSmartBFT()
+			networkConfig.Channels = nil
+			channel := "testchannel1"
+
+			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			var ordererRunners []*ginkgomon.Runner
+			for i := 0; i <= 1; i++ {
+				orderer := network.Orderers[i]
+				runner := network.OrdererRunner(orderer, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug",
+					"ORDERER_GENERAL_BACKOFF_MAXDELAY=20s")
+				ordererRunners = append(ordererRunners, runner)
+				proc := ifrit.Invoke(runner)
+				ordererProcesses = append(ordererProcesses, proc)
+				Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			peerGroupRunner, _ := peerGroupRunners(network)
+			peerProcesses = ifrit.Invoke(peerGroupRunner)
+			Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			peer := network.Peer("Org1", "peer0")
+
+			joinChannel(network, channel, 0, 1)
+
+			By("Waiting for followers to see the leader")
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
 
 			By("Joining peers to testchannel1")
 			network.JoinChannel(channel, network.Orderers[0], network.PeersWithChannel(channel)...)
 
 			By("Try deploying chaincode")
 			peers := network.PeersWithChannel(channel)
-			if len(peers) == 0 {
-				return
-			}
+			Expect(len(peers)).ToNot(Equal(0))
+
 			chaincode := nwo.Chaincode{
 				Name:            "mycc",
 				Version:         "0.0",
@@ -1669,15 +1747,17 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			for i := 2; i <= 3; i++ {
 				orderer := network.Orderers[i]
 				By(fmt.Sprintf("Launching %s", orderer.Name))
-				runner := network.OrdererRunner(orderer)
-				runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug")
-				ordererRunners[i] = runner
+				runner := network.OrdererRunner(orderer, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug",
+					"ORDERER_GENERAL_BACKOFF_MAXDELAY=20s")
+				ordererRunners = append(ordererRunners, runner)
 				proc := ifrit.Invoke(runner)
-				ordererProcesses[i] = proc
+				ordererProcesses = append(ordererProcesses, proc)
 				Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			}
 
-			// wait for a change in leader
+			joinChannel(network, channel, 2, 3)
+
+			// wait for the leader change
 			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Changing to follower role, current view: 1, current leader: 2 channel=testchannel1"))
 			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Changing to leader role, current view: 1, current leader: 2 channel=testchannel1"))
 			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("HandleRequest from 1 channel=testchannel1"))
@@ -2058,18 +2138,21 @@ func peerOrganizations(n *nwo.Network, peers []*nwo.Peer) []configtx.Organizatio
 	return peerOrgs
 }
 
-func joinChannel(network *nwo.Network, channel string) {
-	sess, err := network.ConfigTxGen(commands.OutputBlock{
-		ChannelID:   channel,
-		Profile:     network.Profiles[0].Name,
-		ConfigPath:  network.RootDir,
-		OutputBlock: network.OutputBlockPath(channel),
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-
+func joinChannel(network *nwo.Network, channel string, onlyNodes ...int) {
 	genesisBlockBytes, err := os.ReadFile(network.OutputBlockPath(channel))
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil && errors.Is(err, syscall.ENOENT) {
+		sess, err := network.ConfigTxGen(commands.OutputBlock{
+			ChannelID:   channel,
+			Profile:     network.Profiles[0].Name,
+			ConfigPath:  network.RootDir,
+			OutputBlock: network.OutputBlockPath(channel),
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+
+		genesisBlockBytes, err = os.ReadFile(network.OutputBlockPath(channel))
+		Expect(err).NotTo(HaveOccurred())
+	}
 
 	genesisBlock := &common.Block{}
 	err = proto.Unmarshal(genesisBlockBytes, genesisBlock)
@@ -2081,6 +2164,18 @@ func joinChannel(network *nwo.Network, channel string) {
 		Status:            "active",
 		ConsensusRelation: "consenter",
 		Height:            1,
+	}
+
+	if len(onlyNodes) != 0 {
+		for _, i := range onlyNodes {
+			o := network.Orderers[i]
+			By("joining " + o.Name + " to channel as a consenter")
+			channelparticipation.Join(network, o, channel, genesisBlock, expectedChannelInfoPT)
+			channelInfo := channelparticipation.ListOne(network, o, channel)
+			Expect(channelInfo).To(Equal(expectedChannelInfoPT))
+		}
+
+		return
 	}
 
 	for _, o := range network.Orderers {

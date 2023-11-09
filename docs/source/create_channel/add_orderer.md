@@ -80,9 +80,7 @@ Use:
 This command will start a network of 4 orderers and 2 peers and 1 CLI, a container of the fifth orderer will be started
 as well, but is not a part of the network at this stage. This command also will create a channel named "mychannel" in which the 4 orderers and the 2 peers participate.
 
-## Altering the config
-The following commands should be executing from the CLI container.
-
+## Use the `osnadmin` CLI to add the new orderer to the test channel
 ### Getting the last config block
 The `peer` command uses environment variables to define the context of the organization in which it will run, we will
 change the context to:
@@ -94,13 +92,53 @@ export CORE_PEER_ADDRESS=localhost:7051
 
 export ORDERER_CA=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 ```
-Now, in order to get the last config block we will make:
+In order to get the last config block we will make:
 ```shell
 peer channel fetch config config_block.pb -o orderer.example.com:7050 --ordererTLSHostnameOverride orderer.example.com -c mychannel --tls --cafile "$ORDERER_CA"
 ```
+### Adding the new orderer to the channel
+Now one needs to update the environment variables to the new orderer and run the following command using the freshly fetched block:
+
+```shell
+export OSN_TLS_CA_ROOT_CERT=${PWD}/organizations/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem
+export ADMIN_TLS_SIGN_CERT=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer5.example.com/tls/server.crt
+export ADMIN_TLS_PRIVATE_KEY=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer5.example.com/tls/server.key
+
+osnadmin channel join --channelID [CHANNEL_NAME]  --config-block [CHANNEL_CONFIG_BLOCK] -o [ORDERER_ADMIN_LISTENADDRESS] --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
+```
+
+Replace:
+- `CHANNEL_NAME` with the name you want to call this channel.
+- `CHANNEL_CONFIG_BLOCK` with the path and file name of the genesis block or the latest config block.
+- `ORDERER_ADMIN_LISTENADDRESS` corresponds to the `Orderer.Admin.ListenAddress` defined in the `orderer.yaml` for this orderer.
+- `OSN_TLS_CA_ROOT_CERT` with the path and file name of the orderer organization TLS CA root certificate and intermediate certificate if using an intermediate TLS CA.
+- `ADMIN_TLS_SIGN_CERT` with the path and file name of the admin client signed certificate from the TLS CA.
+- `ADMIN_TLS_PRIVATE_KEY` with the path and file name of the admin client private key from the TLS CA.
+
+For example:
+```shell
+osnadmin channel join --channelID mychannel --config-block config_block.pb -o localhost:7061 --ca-file "$OSN_TLS_CA_ROOT_CERT" --client-cert "$ADMIN_TLS_SIGN_CERT" --client-key "$ADMIN_TLS_PRIVATE_KEY"
+```
+
+**Note:** Because the connection between the `osnadmin` CLI and the orderer requires mutual TLS, you need to pass the `--client-cert` and `--client-key` parameters on each `osadmin` command. The `--client-cert` parameter points to the admin client certificate and `--client-key` refers to the admin client private key, both issued by the admin client TLS CA.
+
+The output of this command looks similar to:
+```
+Status: 201
+{
+    "name": "mychannel",
+    "url": "/participation/v1/channels/mychannel",
+    "consensusRelation": "follower",
+    "status": "onboarding",
+    "height": 0
+}
+```
+
+## Altering the config
+The following commands should be executing from the CLI container.
 
 ### Convert the block to a JSON
-Convert the block to JSON:
+Using the fetched block from the previous section, for altering it first convert the block to JSON:
 ```shell
 configtxlator proto_decode --input config_block.pb --type common.Block --output config_block.json
 ```
@@ -244,59 +282,6 @@ INFO [channelCmd] InitCmdFactory -> Endorser and orderer connections initialized
 INFO [channelCmd] update -> Successfully submitted channel update
 ```
 
-The new orderer has been added to the cluster, but not to the test channel.
-
-## Use the `osnadmin` CLI to add the new orderer to the test channel
-
-The new orderer needs to run the following command:
-
-```shell
-export OSN_TLS_CA_ROOT_CERT=${PWD}/organizations/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem
-export ADMIN_TLS_SIGN_CERT=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer5.example.com/tls/server.crt
-export ADMIN_TLS_PRIVATE_KEY=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer5.example.com/tls/server.key
-
-osnadmin channel join --channelID [CHANNEL_NAME]  --config-block [CHANNEL_CONFIG_BLOCK] -o [ORDERER_ADMIN_LISTENADDRESS] --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
-```
-
-Replace:
-- `CHANNEL_NAME` with the name you want to call this channel.
-- `CHANNEL_CONFIG_BLOCK` with the path and file name of the genesis block or the latest config block.
-- `ORDERER_ADMIN_LISTENADDRESS` corresponds to the `Orderer.Admin.ListenAddress` defined in the `orderer.yaml` for this orderer.
-- `OSN_TLS_CA_ROOT_CERT` with the path and file name of the orderer organization TLS CA root certificate and intermediate certificate if using an intermediate TLS CA.
-- `ADMIN_TLS_SIGN_CERT` with the path and file name of the admin client signed certificate from the TLS CA.
-- `ADMIN_TLS_PRIVATE_KEY` with the path and file name of the admin client private key from the TLS CA.
-
-For example:
-```shell
-osnadmin channel join --channelID mychannel --config-block ./channel-artifacts/mychannel.block -o localhost:7061 --ca-file "$OSN_TLS_CA_ROOT_CERT" --client-cert "$ADMIN_TLS_SIGN_CERT" --client-key "$ADMIN_TLS_PRIVATE_KEY"
-```
-
-**Note:** Because the connection between the `osnadmin` CLI and the orderer requires mutual TLS, you need to pass the `--client-cert` and `--client-key` parameters on each `osadmin` command. The `--client-cert` parameter points to the admin client certificate and `--client-key` refers to the admin client private key, both issued by the admin client TLS CA.
-
-The output of this command looks similar to:
-```
-Status: 201
-{
-    "name": "mychannel",
-    "url": "/participation/v1/channels/mychannel",
-    "consensusRelation": "follower",
-    "status": "onboarding",
-    "height": 0
-}
-```
-
-You should see something similar to the following in the new orderer logs:
-```
-DEBU [orderer.consensus.smartbft.consensus] ProcessMessages -> 5 got message from 1: <HeartBeat with view: 0, seq: 7 channel=mychannel
-DEBU [orderer.consensus.smartbft.consensus] handleHeartBeat -> Received heartbeat from 1, last heartbeat was 5.995614586s ago channel=mychannel
-DEBU [orderer.consensus.smartbft.consensus] followerTick -> Last heartbeat from 1 was 1.000437542s ago channel=mychannel
-DEBU [orderer.consensus.smartbft.consensus] followerTick -> Last heartbeat from 1 was 2.003549876s ago channel=mychannel
-DEBU [orderer.consensus.smartbft.consensus] followerTick -> Last heartbeat from 1 was 3.00110746s ago channel=mychannel
-DEBU [orderer.consensus.smartbft.consensus] followerTick -> Last heartbeat from 1 was 3.99966021s ago channel=mychannel
-DEBU [orderer.consensus.smartbft.consensus] followerTick -> Last heartbeat from 1 was 5.000054669s ago channel=mychannel
-DEBU [orderer.consensus.smartbft.consensus] followerTick -> Last heartbeat from 1 was 5.999811586s ago channel=mychannel
-```
-
 You can use the following command to confirm that the status of the added orderer:
 ```shell
 osnadmin channel list --channelID mychannel -o localhost:7061 --ca-file "$OSN_TLS_CA_ROOT_CERT" --client-cert "$ADMIN_TLS_SIGN_CERT" --client-key "$ADMIN_TLS_PRIVATE_KEY"
@@ -313,7 +298,21 @@ You should see something similar to the following output that the consensusRelat
 }
 ```
 
+And you should see something similar to the following in the new orderer logs:
+```
+DEBU [orderer.consensus.smartbft.consensus] ProcessMessages -> 5 got message from 1: <HeartBeat with view: 0, seq: 7 channel=mychannel
+DEBU [orderer.consensus.smartbft.consensus] handleHeartBeat -> Received heartbeat from 1, last heartbeat was 5.995614586s ago channel=mychannel
+DEBU [orderer.consensus.smartbft.consensus] followerTick -> Last heartbeat from 1 was 1.000437542s ago channel=mychannel
+DEBU [orderer.consensus.smartbft.consensus] followerTick -> Last heartbeat from 1 was 2.003549876s ago channel=mychannel
+DEBU [orderer.consensus.smartbft.consensus] followerTick -> Last heartbeat from 1 was 3.00110746s ago channel=mychannel
+DEBU [orderer.consensus.smartbft.consensus] followerTick -> Last heartbeat from 1 was 3.99966021s ago channel=mychannel
+DEBU [orderer.consensus.smartbft.consensus] followerTick -> Last heartbeat from 1 was 5.000054669s ago channel=mychannel
+DEBU [orderer.consensus.smartbft.consensus] followerTick -> Last heartbeat from 1 was 5.999811586s ago channel=mychannel
+```
+
 You can read further about the osnadmin command [here](https://hyperledger-fabric.readthedocs.io/en/latest/create_channel/create_channel_participation.html#step-two-use-the-osnadmin-cli-to-add-the-first-orderer-to-the-channel).
+
+
 
 # Removing an orderer from an existing network
 

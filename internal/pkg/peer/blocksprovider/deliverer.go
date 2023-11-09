@@ -155,7 +155,7 @@ func (d *Deliverer) DeliverBlocks() {
 				}
 				d.Logger.Warningf("peer is a static leader, ignoring peer.deliveryclient.reconnectTotalTimeThreshold")
 			}
-			d.Logger.Warningf("Disconnected from ordering service. Attempt to re-connect in %v", sleepDuration)
+			d.Logger.Warningf("Disconnected from ordering service. Attempt to re-connect in %v, totalDuration is %v", sleepDuration, totalDuration)
 			d.sleeper.Sleep(sleepDuration, d.DoneC)
 		}
 

@@ -79,10 +79,10 @@ func (p *LSCCBasedBTLPolicy) GetExpiringBlock(namespace string, collection strin
 	if err != nil {
 		return 0, err
 	}
-	return ComputeExpiringBlock(namespace, collection, committingBlock, btl), nil
+	return ComputeExpiringBlock(collection, committingBlock, btl), nil
 }
 
-func ComputeExpiringBlock(namespace, collection string, committingBlock, btl uint64) uint64 {
+func ComputeExpiringBlock(collection string, committingBlock, btl uint64) uint64 {
 	expiryBlk := committingBlock + btl + uint64(1)
 	if expiryBlk <= committingBlock { // committingBlk + btl overflows uint64-max
 		expiryBlk = math.MaxUint64

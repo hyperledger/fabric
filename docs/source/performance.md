@@ -179,7 +179,7 @@ When designing your application architecture, various choices can affect the ove
 
 ### Avoid CouchDB for high-throughput applications
 
-CouchDB performance is noticably slower than embedded LevelDB, sometimes by a factor of 2x slower. The only additional capability that a CouchDB state database provides is JSON (rich) queries, as stated in the [Fabric state database documentation](./deploypeer/peerplan.html#state-database). In addition, to ensure the integrity of the state data you must never allow direct access to CouchDB data (for instance via Fauxton UI). 
+CouchDB performance is noticeably slower than embedded LevelDB, sometimes by a factor of 2x slower. The only additional capability that a CouchDB state database provides is JSON (rich) queries, as stated in the [Fabric state database documentation](./deploypeer/peerplan.html#state-database). In addition, to ensure the integrity of the state data you must never allow direct access to CouchDB data (for instance via Fauxton UI).
 
 CouchDB as a state database has other limitations which reduce overall network performance and require additional hardware resource (and cost). For one, JSON queries are not re-executed at validation time, so Fabric does not offer built-in protection from phantom reads. Such protection is provided, however, by range queries. (Your application must be designed to tolerate phantom reads when using JSON queries, such as when records are added to state between the times of chaincode execution and block validation). You should therefore consider using range queries based on additional keys for high-throughput applications, rather than using CouchDB with JSON queries.
 

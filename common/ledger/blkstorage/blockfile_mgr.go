@@ -374,7 +374,7 @@ func (mgr *blockfileMgr) syncIndex() error {
 	nextIndexableBlock := uint64(0)
 	lastBlockIndexed, err := mgr.index.getLastBlockIndexed()
 	if err != nil {
-		if err != errIndexSavePointKeyNotPresent {
+		if !errors.Is(err, errIndexSavePointKeyNotPresent) {
 			return err
 		}
 	} else {

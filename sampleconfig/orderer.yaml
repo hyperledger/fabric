@@ -50,6 +50,15 @@ General:
         # ServerTimeout is the duration the server waits for a response from
         # a client before closing the connection.
         ServerTimeout: 20s
+    # Config defines the configuration options for backoff GRPC client.
+    Backoff:
+        # BaseDelay is the amount of time to backoff after the first failure.
+        BaseDelay: 1s
+        # Multiplier is the factor with which to multiply backoffs after a
+        # failed retry. Should ideally be greater than 1.
+        Multiplier: 1.6
+        # MaxDelay is the upper bound of backoff delay.
+        MaxDelay: 2m
 
     # Since all nodes should be consistent it is recommended to keep
     # the default value of 100MB for MaxRecvMsgSize & MaxSendMsgSize

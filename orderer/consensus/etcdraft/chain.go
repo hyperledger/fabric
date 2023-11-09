@@ -952,13 +952,13 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 					if err := c.Node.abdicateLeadership(); err != nil {
 						// If there is no leader, abort and do not retry.
 						// Return early to prevent re-submission of the transaction
-						if err == ErrNoLeader || err == ErrChainHalting {
+						if errors.Is(err, ErrNoLeader) || errors.Is(err, ErrChainHalting) {
 							c.logger.Warningf("Abdication attempt no.%d failed because there is no leader or chain halting, will not try again, will not submit TX, error: %s", attempt, err)
 							return
 						}
 
 						// If the error isn't any of the below, it's a programming error, so panic.
-						if err != ErrNoAvailableLeaderCandidate && err != ErrTimedOutLeaderTransfer {
+						if !errors.Is(err, ErrNoAvailableLeaderCandidate) && !errors.Is(err, ErrTimedOutLeaderTransfer) {
 							c.logger.Panicf("Programming error, abdicateLeader() returned with an unexpected error: %s", err)
 						}
 

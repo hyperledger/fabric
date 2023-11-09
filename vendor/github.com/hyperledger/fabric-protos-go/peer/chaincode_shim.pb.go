@@ -119,11 +119,11 @@ type ChaincodeMessage struct {
 	Payload   []byte                 `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
 	Txid      string                 `protobuf:"bytes,4,opt,name=txid,proto3" json:"txid,omitempty"`
 	Proposal  *SignedProposal        `protobuf:"bytes,5,opt,name=proposal,proto3" json:"proposal,omitempty"`
-	//event emitted by chaincode. Used only with Init or Invoke.
+	// event emitted by chaincode. Used only with Init or Invoke.
 	// This event is then stored (currently)
-	//with Block.NonHashData.TransactionResult
+	// with Block.NonHashData.TransactionResult
 	ChaincodeEvent *ChaincodeEvent `protobuf:"bytes,6,opt,name=chaincode_event,json=chaincodeEvent,proto3" json:"chaincode_event,omitempty"`
-	//channel id
+	// channel id
 	ChannelId            string   `protobuf:"bytes,7,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`

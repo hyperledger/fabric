@@ -74,6 +74,7 @@ func (m *BlockAttestation) GetMetadata() *common.BlockMetadata {
 
 type BlockAttestationResponse struct {
 	// Types that are valid to be assigned to Type:
+	//
 	//	*BlockAttestationResponse_Status
 	//	*BlockAttestationResponse_BlockAttestation
 	Type                 isBlockAttestationResponse_Type `protobuf_oneof:"Type"`
