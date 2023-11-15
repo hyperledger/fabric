@@ -263,7 +263,7 @@ func prepareBlock(seq uint64, contentType orderer.SeekInfo_SeekContentType, good
 	for i := 0; i < numTx; i++ {
 		data.Data[i] = []byte{byte(i), byte(seq)}
 	}
-	block.Header.DataHash = protoutil.BlockDataHash(data)
+	block.Header.DataHash, _ = protoutil.BlockDataHash(data)
 	if contentType == orderer.SeekInfo_BLOCK {
 		block.Data = data
 	}
