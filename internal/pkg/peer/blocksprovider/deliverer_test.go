@@ -302,9 +302,9 @@ var _ = Describe("CFT-Deliverer", func() {
 	When("an error occurs, then a block is successfully delivered", func() {
 		BeforeEach(func() {
 			fakeDeliverStreamer.DeliverReturnsOnCall(0, nil, fmt.Errorf("deliver-error"))
-			fakeDeliverStreamer.DeliverReturnsOnCall(1, fakeDeliverClient, nil)
 			fakeDeliverStreamer.DeliverReturnsOnCall(1, nil, fmt.Errorf("deliver-error"))
 			fakeDeliverStreamer.DeliverReturnsOnCall(2, nil, fmt.Errorf("deliver-error"))
+			fakeDeliverStreamer.DeliverReturnsOnCall(3, fakeDeliverClient, nil)
 		})
 
 		It("sleeps in an exponential fashion and retries until dial is successful", func() {

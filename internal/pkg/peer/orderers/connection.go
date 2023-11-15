@@ -65,6 +65,7 @@ func NewConnectionSource(logger *flogging.FabricLogger, overrides map[string]*En
 	}
 }
 
+// RandomEndpoint returns a random endpoint.
 func (cs *ConnectionSource) RandomEndpoint() (*Endpoint, error) {
 	cs.mutex.RLock()
 	defer cs.mutex.RUnlock()
@@ -79,6 +80,20 @@ func (cs *ConnectionSource) Endpoints() []*Endpoint {
 	defer cs.mutex.RUnlock()
 
 	return cs.allEndpoints
+}
+
+// ShuffledEndpoints returns a shuffled array of endpoints in a new slice.
+func (cs *ConnectionSource) ShuffledEndpoints() []*Endpoint {
+	cs.mutex.RLock()
+	defer cs.mutex.RUnlock()
+
+	n := len(cs.allEndpoints)
+	returnedSlice := make([]*Endpoint, n)
+	indices := rand.Perm(n)
+	for i, idx := range indices {
+		returnedSlice[i] = cs.allEndpoints[idx]
+	}
+	return returnedSlice
 }
 
 func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]OrdererOrg) {

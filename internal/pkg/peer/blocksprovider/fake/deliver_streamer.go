@@ -36,15 +36,16 @@ func (fake *DeliverStreamer) Deliver(arg1 context.Context, arg2 *grpc.ClientConn
 		arg1 context.Context
 		arg2 *grpc.ClientConn
 	}{arg1, arg2})
+	stub := fake.DeliverStub
+	fakeReturns := fake.deliverReturns
 	fake.recordInvocation("Deliver", []interface{}{arg1, arg2})
 	fake.deliverMutex.Unlock()
-	if fake.DeliverStub != nil {
-		return fake.DeliverStub(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.deliverReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
