@@ -31,7 +31,7 @@ type DeliverServiceConfig struct {
 	PeerTLSEnabled bool
 	// BlockGossipEnabled enables block forwarding via gossip
 	BlockGossipEnabled bool
-	// ReConnectBackoffThreshold sets the delivery service maximal delay between consencutive retries.
+	// ReConnectBackoffThreshold sets the delivery service maximal delay between consecutive retries.
 	ReConnectBackoffThreshold time.Duration
 	// ReconnectTotalTimeThreshold sets the total time the delivery service may spend in reconnection attempts
 	// until its retry logic gives up and returns an error.
