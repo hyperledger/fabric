@@ -211,19 +211,9 @@ Before you attempt this, you may want to upgrade peers from enough organizations
 
 To learn how to upgrade your Fabric CA server, click over to the [CA documentation](http://hyperledger-fabric-ca.readthedocs.io/en/latest/users-guide.html#upgrading-the-server).
 
-## Upgrade Node SDK clients
+## Upgrade SDK clients
 
-Upgrade Fabric and Fabric CA before upgrading Node SDK clients. Fabric and Fabric CA are tested for backwards compatibility with older SDK clients. While newer SDK clients often work with older Fabric and Fabric CA releases, they may expose features that are not yet available in the older Fabric and Fabric CA releases, and are not tested for full compatibility.
-
-Use NPM to upgrade any `Node.js` client by executing these commands in the root directory of your application:
-
-```
-npm install fabric-client@latest
-
-npm install fabric-ca-client@latest
-```
-
-These commands install the new version of both the Fabric client and Fabric-CA client and write the new versions to `package.json`.
+Upgrade Fabric before upgrading SDK clients. Fabric is tested for backwards compatibility with older SDK clients. While newer SDK clients often work with older Fabric releases, they may expose features that are not yet available in the older Fabric releases, and are not tested for full compatibility.
 
 ## Upgrading CouchDB
 

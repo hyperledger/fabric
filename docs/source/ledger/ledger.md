@@ -124,7 +124,7 @@ complex queries.
 Applications submit transactions which capture changes to the world state, and
 these transactions end up being committed to the ledger blockchain. Applications
 are insulated from the details of this [consensus](../txflow.html) mechanism by
-the Hyperledger Fabric SDK; they merely invoke a smart contract, and are
+the Hyperledger Fabric SDK and peer Gateway; they merely request invocation of a smart contract, and are
 notified when the transaction has been included in the blockchain (whether valid
 or invalid). The key design point is that only transactions that are **signed**
 by the required set of **endorsing organizations** will result in an update to

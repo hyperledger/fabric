@@ -118,7 +118,6 @@ For more information see the [Hardware Security Module (HSM) topic](./hsm.html).
 A Fabric application can interact with a blockchain network by submitting transactions to a ledger or querying ledger content.
 An application interacts with a blockchain network using one of the Fabric SDKs.
 
-The Fabric v2.x SDKs only support transaction and query functions and event listening.
 Support for administrative functions for channels and nodes has been removed from the SDKs in favor of the CLI tools.
 
 Applications typically reside in a managed tier of an organization's infrastructure.
@@ -127,14 +126,12 @@ Client identities only have permission to submit transactions and query the ledg
 
 In some use cases the application tier may persist user credentials including the private key and sign transactions.
 In other use cases end users of the application may want to keep their private key secret.
-To support these use cases, the Node.js SDK supports offline signing of transactions.
+To support these use cases, the SDKs supports offline signing of transactions.
 In both cases, a Hardware Security Module can be used to store private keys meaning that the client application does not have access to them.
 
 Regardless of application design, the SDKs do not have any privileged access to peer or orderer services other than that provided by the client identity.
 From a security perspective, the SDKs are merely a set of language specific convenience functions for interacting with the gRPC services exposed by the Fabric peers and orderers.
 All security enforcement is carried out by Fabric nodes as highlighted earlier in this topic, not the client SDK.
-
-For more information see the [Applications topic](./developapps/application.html) and [Offline Signing tutorial](https://hyperledger.github.io/fabric-sdk-node/release-2.2/tutorial-sign-transaction-offline.html).
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/ -->
