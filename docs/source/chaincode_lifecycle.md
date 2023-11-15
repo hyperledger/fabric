@@ -64,20 +64,20 @@ every organization on a channel needs to complete each step.
 
 This topic provides a detailed overview of the operations of the Fabric
 chaincode lifecycle rather than the specific commands. To learn more about how
-to use the Fabric lifecycle using the Peer CLI, see the
+to use the Fabric lifecycle using the peer CLI, see the
 [Deploying a smart contract to a channel tutorial](deploy_chaincode.html)
 or the [peer lifecycle command reference](commands/peerlifecycle.html).
 
 ### Step One: Packaging the smart contract
 
 Chaincode needs to be packaged in a tar file before it can be installed on your
-peers. You can package a chaincode using the Fabric peer binaries, the Node
-Fabric SDK, or a third party tool such as GNU tar. When you create a chaincode
+peers. You can package a chaincode using the Fabric peer binary
+or a third party tool such as GNU tar. When you create a chaincode
 package, you need to provide a chaincode package label to create a succinct and
 human readable description of the package.
 
 If you use a third party tool to package the chaincode, the resulting file needs
-to be in the format below. The Fabric peer binaries and the Fabric SDKs will
+to be in the format below. The Fabric peer binary will
 automatically create a file in this format.
 - The chaincode needs to be packaged in a tar file, ending with a `.tar.gz` file
   extension.
@@ -100,8 +100,8 @@ label.*
 ### Step Two: Install the chaincode on your peers
 
 You need to install the chaincode package on every peer that will execute and
-endorse transactions. Whether using the CLI or an SDK, you need to complete this
-step using your **Peer Administrator**. Your peer will build the chaincode
+endorse transactions. You need to complete this step with the peer CLI using the
+credentials of the **Peer Administrator**. Your peer will build the chaincode
 after the chaincode is installed, and return a build error if there is a problem
 with your chaincode. It is recommended that organizations only package a chaincode
 once, and then install the same package on every peer that belongs to their org.
@@ -114,7 +114,7 @@ is the package label combined with a hash of the package. This package
 identifier is used to associate a chaincode package installed on your peers with
 a chaincode definition approved by your organization. **Save the identifier**
 for next step. You can also find the package identifier by querying the packages
-installed on your peer using the Peer CLI.
+installed on your peer using the peer CLI.
 
   ![Installing the chaincode](lifecycle/Lifecycle-install.png)
 

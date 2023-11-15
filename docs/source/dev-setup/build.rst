@@ -63,14 +63,6 @@ call/execute
     go test -v -run=TestGetFoo
 
 
-Running Node.js Client SDK Unit Tests
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-You must also run the Node.js unit tests to ensure that the Node.js
-client SDK is not broken by your changes. To run the Node.js unit tests,
-follow the instructions
-`here <https://github.com/hyperledger/fabric-sdk-node/blob/main/README.md>`__.
-
 Configuration
 -------------
 

@@ -6,7 +6,7 @@ This approach limited chaincode implementations to a handful of languages, requi
 
 Starting with Fabric 2.0, External Builders and Launchers address these limitations by enabling operators to extend the peer with programs that can build, launch, and discover chaincode. To leverage this capability you will need to create your own buildpack and then modify the peer core.yaml to include a new `externalBuilder` configuration element which lets the peer know an external builder is available. The following sections describe the details of this process.
 
-Note that if no configured external builder claims a chaincode package, the peer will attempt to process the package as if it were created with the standard Fabric packaging tools such as the peer CLI or node SDK.
+Note that if no configured external builder claims a chaincode package, the peer will attempt to process the package as if it were created with the standard Fabric packaging tools such as the peer CLI.
 
 **Note:** This is an advanced feature which will likely require custom packaging of the peer image with everything your builders and launchers depend on unless your builders and launchers are simple enough, such as those used in the [basic asset transfer external chaincode Fabric sample](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-transfer-basic/chaincode-external). For example, the following samples use `go` and `bash`, which are not included in the current official `fabric-peer` image.
 

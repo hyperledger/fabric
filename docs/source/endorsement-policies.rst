@@ -100,7 +100,7 @@ For example:
 
     peer lifecycle chaincode approveformyorg --channelID mychannel --signature-policy "AND('Org1MSP.peer', 'Org2MSP.peer')" --name mycc --version 1.0 --package-id mycc_1:3a8c52d70c36313cfebbaf09d8616e7a6318ababa01c7cbe40603c373bcfe173 --sequence 1 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent
 
-In addition to the specifying an endorsement policy from the CLI or SDK, a
+In addition to specifying an endorsement policy in the CLI, a
 chaincode can also use policies in the channel configuration as endorsement
 policies. You can use the ``--channel-config-policy`` flag to select a channel policy with
 format used by the channel configuration and by ACLs.

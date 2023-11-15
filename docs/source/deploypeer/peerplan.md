@@ -86,7 +86,8 @@ If all peers have `orgLeader=true` (recommended), then each peer will get blocks
 
 ### Service Discovery
 
-In any network it is possible that peer nodes can be down for maintenance, unreachable due to network issues, or the peer ledger has fallen behind while being offline. For this reason, Fabric includes a “discovery service” that enables client applications that use the SDK to locate good candidate peers to target with endorsement requests. If service discovery is not enabled, when a client application targets a peer that is offline, the request fails and will need to be resubmitted to another peer. The discovery service runs on peers and uses the network metadata information maintained by the gossip communication layer to find out which peers are online and can be targeted for requests.
+In any network it is possible that peer nodes can be down for maintenance, unreachable due to network issues, or the peer ledger has fallen behind while being offline. For this reason, Fabric includes a “discovery service” that enables the
+peer gateway component to locate good candidate peers to target with endorsement requests. The discovery service runs on peers and uses the network metadata information maintained by the gossip communication layer to find out which peers are online and can be targeted for requests.
 
 Service discovery (and private data) requires that gossip is enabled, therefore you should configure the `peer.gossip.bootstrap`, `peer.gossip.endpoint` , and `peer.gossip.externalEndpoint` parameters, as well as anchor peers on each channel, to take advantage of this feature.
 

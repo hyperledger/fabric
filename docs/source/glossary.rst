@@ -590,10 +590,10 @@ for developers to write and test chaincode applications. The SDK is fully
 configurable and extensible through a standard interface. Components, including
 cryptographic algorithms for signatures, logging frameworks and state stores,
 are easily swapped in and out of the SDK. The SDK provides APIs for transaction
-processing, membership services, node traversal and event handling.
+processing and event handling.
 
-Currently, there are three officially supported SDKs -- for Node.js, Java, and Go. While the Python SDK
-is not yet official but can still be downloaded and tested.
+Currently, there are three officially supported SDKs -- for Node.js, Java, and Go.
+See :doc:`Application APIs <sdk_chaincode>` for more details.
 
 .. _Smart-Contract:
 

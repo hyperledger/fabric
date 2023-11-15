@@ -282,8 +282,7 @@ it receives a review comment(s).
 
 This policy applies to all official Fabric projects (fabric, fabric-ca,
 fabric-samples, fabric-test, fabric-sdk-node, fabric-sdk-java, fabric-sdk-go, fabric-gateway-java,
-fabric-chaincode-node, fabric-chaincode-java, fabric-chaincode-evm,
-fabric-baseimage, and fabric-amcl).
+fabric-gateway, fabric-chaincode-go, fabric-chaincode-node, fabric-chaincode-java, and fabric-amcl).
 
 Setting up development environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
