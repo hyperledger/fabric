@@ -243,6 +243,7 @@ func ConstructBlockWithTxidHeaderType(
 		if err != nil {
 			t.Fatalf("ConstructTestTransaction failed, err %s", err)
 		}
+		env.Signature = []byte{1, 2, 3}
 		envs = append(envs, env)
 	}
 	return NewBlock(envs, blockNum, previousHash)
@@ -261,6 +262,9 @@ func ConstructBlock(
 		env, _, err := ConstructTransaction(t, simulationResults[i], "", sign)
 		if err != nil {
 			t.Fatalf("ConstructTestTransaction failed, err %s", err)
+		}
+		if !sign {
+			env.Signature = []byte{1, 2, 3}
 		}
 		envs = append(envs, env)
 	}
@@ -303,7 +307,7 @@ func NewBlock(env []*common.Envelope, blockNum uint64, previousHash []byte) *com
 		txEnvBytes, _ := proto.Marshal(env[i])
 		block.Data.Data = append(block.Data.Data, txEnvBytes)
 	}
-	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
 	protoutil.InitBlockMetadata(block)
 
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txflags.NewWithValues(len(env), pb.TxValidationCode_VALID)

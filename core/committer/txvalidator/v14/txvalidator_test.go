@@ -277,9 +277,10 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 		},
 	}
 
+	hash, _ := protoutil.BlockDataHash(block.Data)
 	block.Header = &common.BlockHeader{
 		Number:   0,
-		DataHash: protoutil.BlockDataHash(block.Data),
+		DataHash: hash,
 	}
 
 	// Initialize metadata

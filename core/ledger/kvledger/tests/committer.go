@@ -90,7 +90,7 @@ func (g *blkGenerator) nextBlockAndPvtdata(trans []*txAndPvtdata, missingPvtData
 			blockPvtdata[seq] = &ledger.TxPvtData{SeqInBlock: seq, WriteSet: tran.Pvtws}
 		}
 	}
-	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
 	g.lastNum++
 	g.lastHash = protoutil.BlockHeaderHash(block.Header)
 	setBlockFlagsToValid(block)

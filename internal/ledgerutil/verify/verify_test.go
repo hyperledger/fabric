@@ -21,6 +21,7 @@ const (
 	TestDataDir                 = "../testdata/"
 	SampleBadLedgerDir          = TestDataDir + "sample_bad_ledger/"
 	SampleGoodLedgerDir         = TestDataDir + "sample_prod/"
+	TransactionsGluedTogether   = TestDataDir + "glued_together/"
 	SampleResultDir             = TestDataDir + "sample_verifications/"
 	SampleLedgerFromSnapshotDir = TestDataDir + "sample_ledger_from_snapshot/"
 	VerificationResultFile      = "mychannel_verification_result/blocks.json"
@@ -38,6 +39,11 @@ func TestVerify(t *testing.T) {
 			expectedResultFile:   "correct_blocks.json",
 			expectedReturnValue:  true,
 			errorExpected:        false,
+		},
+		"transactions_glued_together": {
+			sampleFileSystemPath: TransactionsGluedTogether,
+			errorExpected:        false,
+			expectedResultFile:   "glued_together.json",
 		},
 		"hash-error-in-block": {
 			sampleFileSystemPath: SampleBadLedgerDir,

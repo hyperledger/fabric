@@ -945,11 +945,11 @@ func (mbc *memoryBlockChain) fill(numBlocks uint64) {
 		var block *common.Block
 		if i == 0 {
 			block = makeConfigBlock(i, prevHash, 0)
-			block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+			block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
 		} else {
 			block = protoutil.NewBlock(i, prevHash)
 			block.Data.Data = [][]byte{{uint8(i)}, {uint8(i)}}
-			block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+			block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
 			protoutil.CopyBlockMetadata(mbc.chain[i-1], block)
 		}
 
@@ -963,7 +963,7 @@ func (mbc *memoryBlockChain) appendConfig(isMember uint8) {
 
 	h := uint64(len(mbc.chain))
 	configBlock := makeConfigBlock(h, protoutil.BlockHeaderHash(mbc.chain[h-1].Header), isMember)
-	configBlock.Header.DataHash = protoutil.BlockDataHash(configBlock.Data)
+	configBlock.Header.DataHash = protoutil.ComputeBlockDataHash(configBlock.Data)
 	mbc.chain = append(mbc.chain, configBlock)
 }
 
@@ -998,7 +998,7 @@ func makeConfigBlock(num uint64, prevHash []byte, isMember uint8) *common.Block 
 		),
 	}
 	block.Data.Data = append(block.Data.Data, protoutil.MarshalOrPanic(env))
-	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
 
 	protoutil.InitBlockMetadata(block)
 	obm := &common.OrdererBlockMetadata{LastConfig: &common.LastConfig{Index: num}}

@@ -76,7 +76,7 @@ func CreateNextBlock(rl Reader, messages []*cb.Envelope) *cb.Block {
 	}
 
 	block := protoutil.NewBlock(nextBlockNumber, previousBlockHash)
-	block.Header.DataHash = protoutil.BlockDataHash(data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(data)
 	block.Data = data
 
 	return block
