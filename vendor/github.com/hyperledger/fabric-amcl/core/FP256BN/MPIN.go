@@ -1,3 +1,5 @@
+//go:build !386 && !arm
+
 /*
  * Copyright (c) 2012-2020 MIRACL UK Ltd.
  *
@@ -23,7 +25,6 @@ package FP256BN
 
 import "github.com/hyperledger/fabric-amcl/core"
 
-
 const MFS int = int(MODBYTES)
 const MGS int = int(MODBYTES)
 const BAD_PARAMS int = -11
@@ -37,33 +38,33 @@ const MAXPIN int32 = 10000 /* PIN less than this */
 const PBLEN int32 = 14     /* Number of bits in PIN */
 
 func MPIN_HASH_ID(sha int, ID []byte) []byte {
-	return core.GPhashit(core.MC_SHA2,sha,int(MODBYTES),0,nil,-1,ID)
+	return core.GPhashit(core.MC_SHA2, sha, int(MODBYTES), 0, nil, -1, ID)
 	//return mhashit(sha, 0, ID)
 }
 
-func roundup(a int,b int) int {
-    return (((a)-1)/(b)+1)
+func roundup(a int, b int) int {
+	return (((a)-1)/(b) + 1)
 }
 
-func MPIN_ENCODE_TO_CURVE(DST []byte,ID []byte,HCID []byte) {
+func MPIN_ENCODE_TO_CURVE(DST []byte, ID []byte, HCID []byte) {
 	q := NewBIGints(Modulus)
 	k := q.Nbits()
 	r := NewBIGints(CURVE_Order)
-	m := r.Nbits();
-	L:= roundup(k+roundup(m,2),8)
-	var fd=make([]byte,L)
-	OKM:=core.XMD_Expand(core.MC_SHA2,HASH_TYPE,L,DST,ID)
-  
-	for j:=0;j<L;j++ {
-		fd[j]=OKM[j];
+	m := r.Nbits()
+	L := roundup(k+roundup(m, 2), 8)
+	var fd = make([]byte, L)
+	OKM := core.XMD_Expand(core.MC_SHA2, HASH_TYPE, L, DST, ID)
+
+	for j := 0; j < L; j++ {
+		fd[j] = OKM[j]
 	}
-	dx:=DBIG_fromBytes(fd)
-	u:=NewFPbig(dx.Mod(q))
-	P:=ECP_map2point(u)
+	dx := DBIG_fromBytes(fd)
+	u := NewFPbig(dx.Mod(q))
+	P := ECP_map2point(u)
 
 	P.Cfp()
-	P.Affine()	
-	P.ToBytes(HCID, false)   
+	P.Affine()
+	P.ToBytes(HCID, false)
 }
 
 /* create random secret S */
@@ -154,7 +155,7 @@ func MPIN_GET_SERVER_SECRET(S []byte, SST []byte) int {
 	Q := ECP2_generator()
 	s := FromBytes(S)
 	Q = G2mul(Q, s)
-	Q.ToBytes(SST,false)
+	Q.ToBytes(SST, false)
 	return 0
 }
 
@@ -199,5 +200,3 @@ func MPIN_SERVER(HID []byte, Y []byte, SST []byte, xID []byte, mSEC []byte) int 
 	}
 	return 0
 }
-
-

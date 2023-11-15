@@ -17,4 +17,21 @@ unit-tests-race:
 
 .PHONY: check-deps
 check-deps:
-	@go get -u github.com/google/addlicense
+	@go install github.com/google/addlicense@latest
+
+.PHONY: idemixgen
+idemixgen:
+	@go install ./tools/idemixgen
+
+.PHONY: binaries
+binaries:
+	mkdir -p bin/amd64
+	GOOS=linux GOARCH=amd64 go build -o bin/amd64/idemixgen tools/idemixgen/main.go
+
+	mkdir -p bin/arm64
+	GOOS=darwin GOARCH=arm64 go build -o bin/arm64/idemixgen tools/idemixgen/main.go
+
+.PHONY: genprotos
+genprotos:
+	go install github.com/bufbuild/buf/cmd/buf@v1.1.1
+	buf generate --template buf.gen.yaml

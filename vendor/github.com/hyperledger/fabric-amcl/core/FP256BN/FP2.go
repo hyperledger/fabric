@@ -1,3 +1,5 @@
+//go:build !386 && !arm
+
 /*
  * Copyright (c) 2012-2020 MIRACL UK Ltd.
  *
@@ -22,8 +24,8 @@
 /* FP2 elements are of the form a+ib, where i is sqrt(-1) */
 
 package FP256BN
-import "github.com/hyperledger/fabric-amcl/core"
 
+import "github.com/hyperledger/fabric-amcl/core"
 
 type FP2 struct {
 	a *FP
@@ -88,7 +90,7 @@ func NewFP2big(c *BIG) *FP2 {
 }
 
 func NewFP2rand(rng *core.RAND) *FP2 {
-	F := NewFP2fps(NewFPrand(rng),NewFPrand(rng))
+	F := NewFP2fps(NewFPrand(rng), NewFPrand(rng))
 	return F
 }
 
@@ -110,11 +112,11 @@ func (F *FP2) iszilch() bool {
 }
 
 func (F *FP2) islarger() int {
-    if F.iszilch() {
-		return 0;
+	if F.iszilch() {
+		return 0
 	}
-	cmp:=F.b.islarger()
-	if cmp!=0 {
+	cmp := F.b.islarger()
+	if cmp != 0 {
 		return cmp
 	}
 	return F.a.islarger()
@@ -123,28 +125,28 @@ func (F *FP2) islarger() int {
 func (F *FP2) ToBytes(bf []byte) {
 	var t [int(MODBYTES)]byte
 	MB := int(MODBYTES)
-	F.b.ToBytes(t[:]);
-	for i:=0;i<MB;i++ {
-		bf[i]=t[i];
+	F.b.ToBytes(t[:])
+	for i := 0; i < MB; i++ {
+		bf[i] = t[i]
 	}
-	F.a.ToBytes(t[:]);
-	for i:=0;i<MB;i++ {
-		bf[i+MB]=t[i];
+	F.a.ToBytes(t[:])
+	for i := 0; i < MB; i++ {
+		bf[i+MB] = t[i]
 	}
 }
 
 func FP2_fromBytes(bf []byte) *FP2 {
 	var t [int(MODBYTES)]byte
 	MB := int(MODBYTES)
-	for i:=0;i<MB;i++ {
-        t[i]=bf[i];
+	for i := 0; i < MB; i++ {
+		t[i] = bf[i]
 	}
-    tb:=FP_fromBytes(t[:])
-	for i:=0;i<MB;i++ {
-        t[i]=bf[i+MB]
+	tb := FP_fromBytes(t[:])
+	for i := 0; i < MB; i++ {
+		t[i] = bf[i+MB]
 	}
-    ta:=FP_fromBytes(t[:])
-	return NewFP2fps(ta,tb)
+	ta := FP_fromBytes(t[:])
+	return NewFP2fps(ta, tb)
 }
 
 func (F *FP2) cmove(g *FP2, d int) {
@@ -190,27 +192,28 @@ func (F *FP2) one() {
 	F.a.one()
 	F.b.zero()
 }
+
 /* Return sign */
 func (F *FP2) sign() int {
-	p1 := F.a.sign();
-	p2 := F.b.sign();
+	p1 := F.a.sign()
+	p2 := F.b.sign()
 	var u int
 	if BIG_ENDIAN_SIGN {
 		if F.b.iszilch() {
-			u=1;
+			u = 1
 		} else {
-			u=0;
+			u = 0
 		}
-		p2^=(p1^p2)&u;
-		return p2;
+		p2 ^= (p1 ^ p2) & u
+		return p2
 	} else {
 		if F.a.iszilch() {
-			u=1;
+			u = 1
 		} else {
-			u=0;
+			u = 0
 		}
-		p1^=(p1^p2)&u;
-		return p1;
+		p1 ^= (p1 ^ p2) & u
+		return p1
 	}
 }
 
@@ -329,23 +332,24 @@ func (F *FP2) mul(y *FP2) {
 	F.b.XES = 2
 
 }
+
 /*
-func (F *FP2) pow(b *BIG)  {
-	w := NewFP2copy(F);
-	r := NewFP2int(1)
-	z := NewBIGcopy(b)
-	for true {
-		bt := z.parity()
-		z.shr(1)
-		if bt==1 {
-			r.mul(w)
+	func (F *FP2) pow(b *BIG)  {
+		w := NewFP2copy(F);
+		r := NewFP2int(1)
+		z := NewBIGcopy(b)
+		for true {
+			bt := z.parity()
+			z.shr(1)
+			if bt==1 {
+				r.mul(w)
+			}
+			if z.iszilch() {break}
+			w.sqr()
 		}
-		if z.iszilch() {break}
-		w.sqr()
+		r.reduce()
+		F.copy(r)
 	}
-	r.reduce()
-	F.copy(r)
-}
 */
 func (F *FP2) qr(h *FP) int {
 	c := NewFP2copy(F)
@@ -357,16 +361,17 @@ func (F *FP2) qr(h *FP) int {
 /* sqrt(a+ib) = sqrt(a+sqrt(a*a-n*b*b)/2)+ib/(2*sqrt(a+sqrt(a*a-n*b*b)/2)) */
 func (F *FP2) sqrt(h *FP) {
 	if F.iszilch() {
-		return 
+		return
 	}
 	w1 := NewFPcopy(F.b)
 	w2 := NewFPcopy(F.a)
 	w3 := NewFP()
 	w4 := NewFP()
-	hint:=NewFP()
+	hint := NewFP()
 	w1.sqr()
 	w2.sqr()
-	w1.add(w2); w1.norm()
+	w1.add(w2)
+	w1.norm()
 
 	w1 = w1.sqrt(h)
 	w2.copy(F.a)
@@ -376,47 +381,55 @@ func (F *FP2) sqrt(h *FP) {
 	w2.norm()
 	w2.div2()
 
-	w1.copy(F.b); w1.div2()
-	qr:=w2.qr(hint)
+	w1.copy(F.b)
+	w1.div2()
+	qr := w2.qr(hint)
 
-// tweak hint
-    w3.copy(hint); w3.neg(); w3.norm()
-    w4.copy(w2); w4.neg(); w4.norm()
+	// tweak hint
+	w3.copy(hint)
+	w3.neg()
+	w3.norm()
+	w4.copy(w2)
+	w4.neg()
+	w4.norm()
 
-    w2.cmove(w4,1-qr)
-    hint.cmove(w3,1-qr)
+	w2.cmove(w4, 1-qr)
+	hint.cmove(w3, 1-qr)
 
-    F.a.copy(w2.sqrt(hint))
-    w3.copy(w2); w3.inverse(hint)
-    w3.mul(F.a)
-    F.b.copy(w3); F.b.mul(w1)
-    w4.copy(F.a)
-
-    F.a.cmove(F.b,1-qr)
-    F.b.cmove(w4,1-qr)
-
-/*
 	F.a.copy(w2.sqrt(hint))
-	w3.copy(w2); w3.inverse(hint)
+	w3.copy(w2)
+	w3.inverse(hint)
 	w3.mul(F.a)
-	F.b.copy(w3); F.b.mul(w1)
+	F.b.copy(w3)
+	F.b.mul(w1)
+	w4.copy(F.a)
 
-	hint.neg(); hint.norm()
-	w2.neg(); w2.norm()
+	F.a.cmove(F.b, 1-qr)
+	F.b.cmove(w4, 1-qr)
 
-	w4.copy(w2.sqrt(hint))
-	w3.copy(w2); w3.inverse(hint)
-	w3.mul(w4)
-	w3.mul(w1)
+	/*
+		F.a.copy(w2.sqrt(hint))
+		w3.copy(w2); w3.inverse(hint)
+		w3.mul(F.a)
+		F.b.copy(w3); F.b.mul(w1)
 
-	F.a.cmove(w3,1-qr)
-	F.b.cmove(w4,1-qr)
-*/
+		hint.neg(); hint.norm()
+		w2.neg(); w2.norm()
 
-	sgn:=F.sign()
-	nr:=NewFP2copy(F)
-	nr.neg(); nr.norm()
-	F.cmove(nr,sgn)
+		w4.copy(w2.sqrt(hint))
+		w3.copy(w2); w3.inverse(hint)
+		w3.mul(w4)
+		w3.mul(w1)
+
+		F.a.cmove(w3,1-qr)
+		F.b.cmove(w4,1-qr)
+	*/
+
+	sgn := F.sign()
+	nr := NewFP2copy(F)
+	nr.neg()
+	nr.norm()
+	F.cmove(nr, sgn)
 }
 
 /* output to hex string */

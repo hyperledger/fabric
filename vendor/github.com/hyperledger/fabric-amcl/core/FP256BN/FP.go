@@ -1,3 +1,5 @@
+//go:build !386 && !arm
+
 /*
  * Copyright (c) 2012-2020 MIRACL UK Ltd.
  *
@@ -21,6 +23,7 @@
 /* CLINT mod p functions */
 
 package FP256BN
+
 import "github.com/hyperledger/fabric-amcl/core"
 
 type FP struct {
@@ -41,7 +44,8 @@ func NewFPint(a int) *FP {
 	F := new(FP)
 	if a < 0 {
 		m := NewBIGints(Modulus)
-		m.inc(a); m.norm();
+		m.inc(a)
+		m.norm()
 		F.x = NewBIGcopy(m)
 	} else {
 		F.x = NewBIGint(a)
@@ -66,7 +70,7 @@ func NewFPcopy(a *FP) *FP {
 
 func NewFPrand(rng *core.RAND) *FP {
 	m := NewBIGints(Modulus)
-	w := Randomnum(m,rng)
+	w := Randomnum(m, rng)
 	F := NewFPbig(w)
 	return F
 }
@@ -135,7 +139,7 @@ func mod(d *DBIG) *BIG {
 		return b
 	}
 
-	if MODTYPE == GENERALISED_MERSENNE { // GoldiLocks only
+	if MODTYPE == GENERALISED_MERSENNE { // Ed448 only
 		t := d.split(MODBITS)
 		b := NewBIGdcopy(d)
 		b.add(t)
@@ -154,7 +158,7 @@ func mod(d *DBIG) *BIG {
 		b.w[NLEN-1] &= TMASK
 		b.w[0] += carry
 
-		ix := 224/int(BASEBITS)
+		ix := 224 / int(BASEBITS)
 		b.w[ix] += carry << (224 % BASEBITS)
 		b.norm()
 		return b
@@ -222,13 +226,14 @@ func (F *FP) iszilch() bool {
 }
 
 func (F *FP) islarger() int {
-    if F.iszilch() {
-		return 0;
+	if F.iszilch() {
+		return 0
 	}
-	sx:= NewBIGints(Modulus)
-    fx:=F.redc();
-    sx.sub(fx); sx.norm()
-    return Comp(fx,sx)
+	sx := NewBIGints(Modulus)
+	fx := F.redc()
+	sx.sub(fx)
+	sx.norm()
+	return Comp(fx, sx)
 }
 
 func (F *FP) ToBytes(b []byte) {
@@ -236,12 +241,12 @@ func (F *FP) ToBytes(b []byte) {
 }
 
 func FP_fromBytes(b []byte) *FP {
-	t:=FromBytes(b)
+	t := FromBytes(b)
 	return NewFPbig(t)
 }
 
 func (F *FP) isunity() bool {
-	W:=NewFPcopy(F)
+	W := NewFPcopy(F)
 	W.reduce()
 	return W.redc().isunity()
 }
@@ -270,13 +275,13 @@ func (F *FP) sign() int {
 		m := NewBIGints(Modulus)
 		m.dec(1)
 		m.fshr(1)
-		n := NewFPcopy(F);
+		n := NewFPcopy(F)
 		n.reduce()
 		w := n.redc()
-		cp:=Comp(w,m)
-		return ((cp+1)&2)>>1		
+		cp := Comp(w, m)
+		return ((cp + 1) & 2) >> 1
 	} else {
-		W:=NewFPcopy(F)
+		W := NewFPcopy(F)
 		W.reduce()
 		return W.redc().parity()
 	}
@@ -391,15 +396,15 @@ func (F *FP) rsub(b *FP) {
 
 /* this/=2 mod Modulus */
 func (F *FP) div2() {
-	p:=NewBIGints(Modulus)
-	pr:=F.x.parity()
-	w:=NewBIGcopy(F.x)
+	p := NewBIGints(Modulus)
+	pr := F.x.parity()
+	w := NewBIGcopy(F.x)
 	F.x.fshr(1)
-	w.add(p); w.norm()
+	w.add(p)
+	w.norm()
 	w.fshr(1)
-	F.x.cmove(w,pr)
+	F.x.cmove(w, pr)
 }
-
 
 /* return jacobi symbol (this/Modulus) */
 func (F *FP) jacobi() int {
@@ -486,17 +491,17 @@ func (F *FP) fpow() *FP {
 	e := int(PM1D2)
 
 	n = int(MODBITS)
-	if MODTYPE == GENERALISED_MERSENNE { // Goldilocks ONLY
+	if MODTYPE == GENERALISED_MERSENNE { // Ed448 ONLY
 		n /= 2
 	}
 
-	n-=(e+1)
-	c=(int(MConst)+(1<<e)+1)/(1<<(e+1))
-	
+	n -= (e + 1)
+	c = (int(MConst) + (1 << e) + 1) / (1 << (e + 1))
+
 	nd := 0
 	for c%2 == 0 {
-		c/=2
-		n-=1
+		c /= 2
+		n -= 1
 		nd++
 	}
 
@@ -571,7 +576,7 @@ func (F *FP) fpow() *FP {
 		r.mul(key)
 	}
 
-	if MODTYPE == GENERALISED_MERSENNE { // Goldilocks ONLY
+	if MODTYPE == GENERALISED_MERSENNE { // Ed448 ONLY
 		key.copy(r)
 		r.sqr()
 		r.mul(F)
@@ -580,7 +585,7 @@ func (F *FP) fpow() *FP {
 		}
 		r.mul(key)
 	}
-	for nd>0 {
+	for nd > 0 {
 		r.sqr()
 		nd--
 	}
@@ -589,53 +594,53 @@ func (F *FP) fpow() *FP {
 
 // calculates r=x^(p-1-2^e)/2^{e+1) where 2^e|p-1
 func (F *FP) progen() {
-	if (MODTYPE == PSEUDO_MERSENNE || MODTYPE == GENERALISED_MERSENNE) {
+	if MODTYPE == PSEUDO_MERSENNE || MODTYPE == GENERALISED_MERSENNE {
 		F.copy(F.fpow())
 		return
 	}
-	e:=uint(PM1D2)
+	e := uint(PM1D2)
 	m := NewBIGints(Modulus)
-	m.dec(1);
-	m.shr(e);
-	m.dec(1);
-	m.fshr(1);    
-	F.copy(F.pow(m));
+	m.dec(1)
+	m.shr(e)
+	m.dec(1)
+	m.fshr(1)
+	F.copy(F.pow(m))
 }
 
 /* this=1/this mod Modulus */
 func (F *FP) inverse(h *FP) {
-        e:=int(PM1D2)
-		F.norm()
-        s:=NewFPcopy(F)
-        for i:=0;i<e-1;i++ {
-            s.sqr()
-            s.mul(F)
-        }
-		if h==nil {
-			F.progen()
-		} else {
-			F.copy(h)
-		}
-        for i:=0;i<=e;i++ {
-            F.sqr()
-		}
-        F.mul(s)
-        F.reduce()
+	e := int(PM1D2)
+	F.norm()
+	s := NewFPcopy(F)
+	for i := 0; i < e-1; i++ {
+		s.sqr()
+		s.mul(F)
+	}
+	if h == nil {
+		F.progen()
+	} else {
+		F.copy(h)
+	}
+	for i := 0; i <= e; i++ {
+		F.sqr()
+	}
+	F.mul(s)
+	F.reduce()
 }
 
 /* test for Quadratic residue */
 func (F *FP) qr(h *FP) int {
-	r:=NewFPcopy(F)
-	e:=int(PM1D2)
+	r := NewFPcopy(F)
+	e := int(PM1D2)
 	r.progen()
-	if h!=nil {
+	if h != nil {
 		h.copy(r)
 	}
 
 	r.sqr()
 	r.mul(F)
-	for i:=0;i<e-1;i++ {
-            r.sqr()
+	for i := 0; i < e-1; i++ {
+		r.sqr()
 	}
 
 	if r.isunity() {
@@ -647,9 +652,9 @@ func (F *FP) qr(h *FP) int {
 
 /* return sqrt(this) mod Modulus */
 func (F *FP) sqrt(h *FP) *FP {
-	e:=int(PM1D2)
-	g:=NewFPcopy(F)
-	if h==nil {
+	e := int(PM1D2)
+	g := NewFPcopy(F)
+	if h == nil {
 		g.progen()
 	} else {
 		g.copy(h)
@@ -658,41 +663,44 @@ func (F *FP) sqrt(h *FP) *FP {
 	m := NewBIGints(ROI)
 	v := NewFPbig(m)
 
-	t:=NewFPcopy(g)
+	t := NewFPcopy(g)
 	t.sqr()
 	t.mul(F)
 
-	r:=NewFPcopy(F)
+	r := NewFPcopy(F)
 	r.mul(g)
-	b:=NewFPcopy(t)
-       
-	for k:=e;k>1;k-- {
-		for j:=1;j<k-1;j++ {
+	b := NewFPcopy(t)
+
+	for k := e; k > 1; k-- {
+		for j := 1; j < k-1; j++ {
 			b.sqr()
 		}
 		var u int
 		if b.isunity() {
-			u=0
+			u = 0
 		} else {
-			u=1
+			u = 1
 		}
-		g.copy(r); g.mul(v)
-		r.cmove(g,u)
+		g.copy(r)
+		g.mul(v)
+		r.cmove(g, u)
 		v.sqr()
-		g.copy(t); g.mul(v)
-		t.cmove(g,u)
+		g.copy(t)
+		g.mul(v)
+		t.cmove(g, u)
 		b.copy(t)
 	}
-	sgn:=r.sign()
-	nr:=NewFPcopy(r)
-	nr.neg(); nr.norm()
-	r.cmove(nr,sgn)
+	sgn := r.sign()
+	nr := NewFPcopy(r)
+	nr.neg()
+	nr.norm()
+	r.cmove(nr, sgn)
 	return r
 }
 
-func (F *FP) invsqrt(i *FP,s *FP) int {
-	h:=NewFP()
-	qr:=F.qr(h)
+func (F *FP) invsqrt(i *FP, s *FP) int {
+	h := NewFP()
+	qr := F.qr(h)
 	s.copy(F.sqrt(h))
 	i.copy(F)
 	i.inverse(h)
@@ -701,18 +709,18 @@ func (F *FP) invsqrt(i *FP,s *FP) int {
 
 // Two for the price of one  - See Hamburg https://eprint.iacr.org/2012/309.pdf
 // Calculate inverse of i and square root of s, return QR
-func FP_tpo(i *FP,s *FP) int {
-	w:=NewFPcopy(s)
-	t:=NewFPcopy(i)
+func FP_tpo(i *FP, s *FP) int {
+	w := NewFPcopy(s)
+	t := NewFPcopy(i)
 	w.mul(i)
 	t.mul(w)
-	qr:=t.invsqrt(i,s)
+	qr := t.invsqrt(i, s)
 	i.mul(w)
 	s.mul(i)
 	return qr
 }
 
-/* return sqrt(this) mod Modulus 
+/* return sqrt(this) mod Modulus
 func (F *FP) sqrt() *FP {
 	F.reduce()
 	if PM1D2 == 2 {
@@ -752,5 +760,3 @@ func (F *FP) sqrt() *FP {
 		return r
 	}
 } */
-
-

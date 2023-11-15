@@ -38,7 +38,8 @@ func (l *LoggerLevels) DefaultLevel() zapcore.Level {
 // ActivateSpec is used to modify logging levels.
 //
 // The logging specification has the following form:
-//   [<logger>[,<logger>...]=]<level>[:[<logger>[,<logger>...]=]<level>...]
+//
+//	[<logger>[,<logger>...]=]<level>[:[<logger>[,<logger>...]=]<level>...]
 func (l *LoggerLevels) ActivateSpec(spec string) error {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()

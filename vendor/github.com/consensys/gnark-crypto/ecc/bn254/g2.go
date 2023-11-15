@@ -1,4 +1,4 @@
-// Copyright 2020 ConsenSys Software Inc.
+// Copyright 2020 Consensys Software Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,14 +17,12 @@
 package bn254
 
 import (
-	"math"
-	"math/big"
-	"runtime"
-
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark-crypto/ecc/bn254/internal/fptower"
 	"github.com/consensys/gnark-crypto/internal/parallel"
+	"math/big"
+	"runtime"
 )
 
 // G2Affine point in affine coordinates
@@ -37,7 +35,7 @@ type G2Jac struct {
 	X, Y, Z fptower.E2
 }
 
-//  g2JacExtended parameterized jacobian coordinates (x=X/ZZ, y=Y/ZZZ, ZZ**3=ZZZ**2)
+// g2JacExtended parameterized Jacobian coordinates (x=X/ZZ, y=Y/ZZZ, ZZ³=ZZZ²)
 type g2JacExtended struct {
 	X, Y, ZZ, ZZZ fptower.E2
 }
@@ -56,7 +54,14 @@ func (p *G2Affine) Set(a *G2Affine) *G2Affine {
 	return p
 }
 
-// ScalarMultiplication computes and returns p = a*s
+// setInfinity sets p to O
+func (p *G2Affine) setInfinity() *G2Affine {
+	p.X.SetZero()
+	p.Y.SetZero()
+	return p
+}
+
+// ScalarMultiplication computes and returns p = a ⋅ s
 func (p *G2Affine) ScalarMultiplication(a *G2Affine, s *big.Int) *G2Affine {
 	var _p G2Jac
 	_p.FromAffine(a)
@@ -66,8 +71,7 @@ func (p *G2Affine) ScalarMultiplication(a *G2Affine, s *big.Int) *G2Affine {
 }
 
 // Add adds two point in affine coordinates.
-// This should rarely be used as it is very inneficient compared to Jacobian
-// TODO implement affine addition formula
+// This should rarely be used as it is very inefficient compared to Jacobian
 func (p *G2Affine) Add(a, b *G2Affine) *G2Affine {
 	var p1, p2 G2Jac
 	p1.FromAffine(a)
@@ -77,9 +81,18 @@ func (p *G2Affine) Add(a, b *G2Affine) *G2Affine {
 	return p
 }
 
+// Double doubles a point in affine coordinates.
+// This should rarely be used as it is very inefficient compared to Jacobian
+func (p *G2Affine) Double(a *G2Affine) *G2Affine {
+	var p1 G2Jac
+	p1.FromAffine(a)
+	p1.Double(&p1)
+	p.FromJacobian(&p1)
+	return p
+}
+
 // Sub subs two point in affine coordinates.
-// This should rarely be used as it is very inneficient compared to Jacobian
-// TODO implement affine addition formula
+// This should rarely be used as it is very inefficient compared to Jacobian
 func (p *G2Affine) Sub(a, b *G2Affine) *G2Affine {
 	var p1, p2 G2Jac
 	p1.FromAffine(a)
@@ -101,7 +114,7 @@ func (p *G2Affine) Neg(a *G2Affine) *G2Affine {
 	return p
 }
 
-// FromJacobian rescale a point in Jacobian coord in z=1 plane
+// FromJacobian rescales a point in Jacobian coord in z=1 plane
 func (p *G2Affine) FromJacobian(p1 *G2Jac) *G2Affine {
 
 	var a, b fptower.E2
@@ -120,14 +133,17 @@ func (p *G2Affine) FromJacobian(p1 *G2Jac) *G2Affine {
 	return p
 }
 
+// String returns the string representation of the point or "O" if it is infinity
 func (p *G2Affine) String() string {
-	var x, y fptower.E2
-	x.Set(&p.X)
-	y.Set(&p.Y)
-	return "E([" + x.String() + "," + y.String() + "]),"
+	if p.IsInfinity() {
+		return "O"
+	}
+	return "E([" + p.X.String() + "," + p.Y.String() + "])"
 }
 
-// IsInfinity checks if the point is infinity (in affine, it's encoded as (0,0))
+// IsInfinity checks if the point is infinity
+// in affine, it's encoded as (0,0)
+// (0,0) is never on the curve for j=0 curves
 func (p *G2Affine) IsInfinity() bool {
 	return p.X.IsZero() && p.Y.IsZero()
 }
@@ -157,17 +173,30 @@ func (p *G2Jac) Set(a *G2Jac) *G2Jac {
 
 // Equal tests if two points (in Jacobian coordinates) are equal
 func (p *G2Jac) Equal(a *G2Jac) bool {
-
-	if p.Z.IsZero() && a.Z.IsZero() {
-		return true
+	// If one point is infinity, the other must also be infinity.
+	if p.Z.IsZero() {
+		return a.Z.IsZero()
 	}
-	_p := G2Affine{}
-	_p.FromJacobian(p)
+	// If the other point is infinity, return false since we can't
+	// the following checks would be incorrect.
+	if a.Z.IsZero() {
+		return false
+	}
 
-	_a := G2Affine{}
-	_a.FromJacobian(a)
+	var pZSquare, aZSquare fptower.E2
+	pZSquare.Square(&p.Z)
+	aZSquare.Square(&a.Z)
 
-	return _p.X.Equal(&_a.X) && _p.Y.Equal(&_a.Y)
+	var lhs, rhs fptower.E2
+	lhs.Mul(&p.X, &aZSquare)
+	rhs.Mul(&a.X, &pZSquare)
+	if !lhs.Equal(&rhs) {
+		return false
+	}
+	lhs.Mul(&p.Y, &aZSquare).Mul(&lhs, &a.Z)
+	rhs.Mul(&a.Y, &pZSquare).Mul(&rhs, &p.Z)
+
+	return lhs.Equal(&rhs)
 }
 
 // Neg computes -G
@@ -177,7 +206,7 @@ func (p *G2Jac) Neg(a *G2Jac) *G2Jac {
 	return p
 }
 
-// SubAssign substracts two points on the curve
+// SubAssign subtracts two points on the curve
 func (p *G2Jac) SubAssign(a *G2Jac) *G2Jac {
 	var tmp G2Jac
 	tmp.Set(a)
@@ -244,7 +273,7 @@ func (p *G2Jac) AddAssign(a *G2Jac) *G2Jac {
 func (p *G2Jac) AddMixed(a *G2Affine) *G2Jac {
 
 	//if a is infinity return p
-	if a.X.IsZero() && a.Y.IsZero() {
+	if a.IsInfinity() {
 		return p
 	}
 	// p is infinity, return a
@@ -328,24 +357,22 @@ func (p *G2Jac) DoubleAssign() *G2Jac {
 	return p
 }
 
-// ScalarMultiplication computes and returns p = a*s
+// ScalarMultiplication computes and returns p = a ⋅ s
 // see https://www.iacr.org/archive/crypto2001/21390189.pdf
 func (p *G2Jac) ScalarMultiplication(a *G2Jac, s *big.Int) *G2Jac {
 	return p.mulGLV(a, s)
 }
 
+// String returns canonical representation of the point in affine coordinates
 func (p *G2Jac) String() string {
-	if p.Z.IsZero() {
-		return "O"
-	}
 	_p := G2Affine{}
 	_p.FromJacobian(p)
-	return "E([" + _p.X.String() + "," + _p.Y.String() + "]),"
+	return _p.String()
 }
 
-// FromAffine sets p = Q, p in Jacboian, Q in affine
+// FromAffine sets p = Q, p in Jacobian, Q in affine
 func (p *G2Jac) FromAffine(Q *G2Affine) *G2Jac {
-	if Q.X.IsZero() && Q.Y.IsZero() {
+	if Q.IsInfinity() {
 		p.Z.SetZero()
 		p.X.SetOne()
 		p.Y.SetOne()
@@ -372,25 +399,35 @@ func (p *G2Jac) IsOnCurve() bool {
 }
 
 // IsInSubGroup returns true if p is on the r-torsion, false otherwise.
-// [r]P == 0 <==> Frob(P) == [6x^2]P
+// https://eprint.iacr.org/2022/348.pdf, sec. 3 and 5.1
+// [r]P == 0 <==> [x₀+1]P + ψ([x₀]P) + ψ²([x₀]P) = ψ³([2x₀]P)
 func (p *G2Jac) IsInSubGroup() bool {
-	var a, res G2Jac
-	a.psi(p)
-	res.ScalarMultiplication(p, &fixedCoeff).
-		SubAssign(&a)
+	var a, b, c, res G2Jac
+	a.ScalarMultiplication(p, &xGen)
+	b.psi(&a)
+	a.AddAssign(p)
+	res.psi(&b)
+	c.Set(&res).
+		AddAssign(&b).
+		AddAssign(&a)
+	res.psi(&res).
+		Double(&res).
+		SubAssign(&c)
 
 	return res.IsOnCurve() && res.Z.IsZero()
-
 }
 
-// mulWindowed 2-bits windowed exponentiation
+// mulWindowed computes a 2-bits windowed scalar multiplication
 func (p *G2Jac) mulWindowed(a *G2Jac, s *big.Int) *G2Jac {
 
 	var res G2Jac
 	var ops [3]G2Jac
 
-	res.Set(&g2Infinity)
 	ops[0].Set(a)
+	if s.Sign() == -1 {
+		ops[0].Neg(&ops[0])
+	}
+	res.Set(&g2Infinity)
 	ops[1].Double(&ops[0])
 	ops[2].Set(&ops[0]).AddAssign(&ops[1])
 
@@ -413,7 +450,7 @@ func (p *G2Jac) mulWindowed(a *G2Jac, s *big.Int) *G2Jac {
 
 }
 
-// psi(p) = u o frob o u**-1 where u:E'->E iso from the twist to E
+// ψ(p) = u o π o u⁻¹ where u:E'→E iso from the twist to E
 func (p *G2Jac) psi(a *G2Jac) *G2Jac {
 	p.Set(a)
 	p.X.Conjugate(&p.X).Mul(&p.X, &endo.u)
@@ -422,14 +459,15 @@ func (p *G2Jac) psi(a *G2Jac) *G2Jac {
 	return p
 }
 
-// phi assigns p to phi(a) where phi: (x,y)->(ux,y), and returns p
+// ϕ assigns p to ϕ(a) where ϕ: (x,y) → (w x,y), and returns p
+// where w is a third root of unity in 𝔽p
 func (p *G2Jac) phi(a *G2Jac) *G2Jac {
 	p.Set(a)
 	p.X.MulByElement(&p.X, &thirdRootOneG2)
 	return p
 }
 
-// mulGLV performs scalar multiplication using GLV
+// mulGLV computes the scalar multiplication using a windowed-GLV method
 // see https://www.iacr.org/archive/crypto2001/21390189.pdf
 func (p *G2Jac) mulGLV(a *G2Jac, s *big.Int) *G2Jac {
 
@@ -439,11 +477,11 @@ func (p *G2Jac) mulGLV(a *G2Jac, s *big.Int) *G2Jac {
 
 	res.Set(&g2Infinity)
 
-	// table[b3b2b1b0-1] = b3b2*phi(a) + b1b0*a
+	// table[b3b2b1b0-1] = b3b2 ⋅ ϕ(a) + b1b0*a
 	table[0].Set(a)
 	table[3].phi(a)
 
-	// split the scalar, modifies +-a, phi(a) accordingly
+	// split the scalar, modifies ±a, ϕ(a) accordingly
 	k := ecc.SplitScalar(s, &glvBasis)
 
 	if k[0].Sign() == -1 {
@@ -456,7 +494,7 @@ func (p *G2Jac) mulGLV(a *G2Jac, s *big.Int) *G2Jac {
 	}
 
 	// precompute table (2 bits sliding window)
-	// table[b3b2b1b0-1] = b3b2*phi(a) + b1b0*a if b3b2b1b0 != 0
+	// table[b3b2b1b0-1] = b3b2 ⋅ ϕ(a) + b1b0 ⋅ a if b3b2b1b0 != 0
 	table[1].Double(&table[0])
 	table[2].Set(&table[1]).AddAssign(&table[0])
 	table[4].Set(&table[3]).AddAssign(&table[0])
@@ -471,12 +509,20 @@ func (p *G2Jac) mulGLV(a *G2Jac, s *big.Int) *G2Jac {
 	table[13].Set(&table[11]).AddAssign(&table[1])
 	table[14].Set(&table[11]).AddAssign(&table[2])
 
-	// bounds on the lattice base vectors guarantee that k1, k2 are len(r)/2 bits long max
-	k1.SetBigInt(&k[0]).FromMont()
-	k2.SetBigInt(&k[1]).FromMont()
+	// bounds on the lattice base vectors guarantee that k1, k2 are len(r)/2 or len(r)/2+1 bits long max
+	// this is because we use a probabilistic scalar decomposition that replaces a division by a right-shift
+	k1 = k1.SetBigInt(&k[0]).Bits()
+	k2 = k2.SetBigInt(&k[1]).Bits()
 
-	// loop starts from len(k1)/2 due to the bounds
-	for i := int(math.Ceil(fr.Limbs/2. - 1)); i >= 0; i-- {
+	// we don't target constant-timeness so we check first if we increase the bounds or not
+	maxBit := k1.BitLen()
+	if k2.BitLen() > maxBit {
+		maxBit = k2.BitLen()
+	}
+	hiWordIndex := (maxBit - 1) / 64
+
+	// loop starts from len(k1)/2 or len(k1)/2+1 due to the bounds
+	for i := hiWordIndex; i >= 0; i-- {
 		mask := uint64(3) << 62
 		for j := 0; j < 32; j++ {
 			res.Double(&res).Double(&res)
@@ -547,7 +593,11 @@ func (p *g2JacExtended) setInfinity() *g2JacExtended {
 	return p
 }
 
-// fromJacExtended sets Q in affine coords
+func (p *g2JacExtended) IsZero() bool {
+	return p.ZZ.IsZero()
+}
+
+// fromJacExtended sets Q in affine coordinates
 func (p *G2Affine) fromJacExtended(Q *g2JacExtended) *G2Affine {
 	if Q.ZZ.IsZero() {
 		p.X = fptower.E2{}
@@ -559,7 +609,7 @@ func (p *G2Affine) fromJacExtended(Q *g2JacExtended) *G2Affine {
 	return p
 }
 
-// fromJacExtended sets Q in Jacobian coords
+// fromJacExtended sets Q in Jacobian coordinates
 func (p *G2Jac) fromJacExtended(Q *g2JacExtended) *G2Jac {
 	if Q.ZZ.IsZero() {
 		p.Set(&g2Infinity)
@@ -571,7 +621,7 @@ func (p *G2Jac) fromJacExtended(Q *g2JacExtended) *G2Jac {
 	return p
 }
 
-// unsafeFromJacExtended sets p in jacobian coords, but don't check for infinity
+// unsafeFromJacExtended sets p in Jacobian coordinates, but don't check for infinity
 func (p *G2Jac) unsafeFromJacExtended(Q *g2JacExtended) *G2Jac {
 	p.X.Square(&Q.ZZ).Mul(&p.X, &Q.X)
 	p.Y.Square(&Q.ZZZ).Mul(&p.Y, &Q.Y)
@@ -579,7 +629,7 @@ func (p *G2Jac) unsafeFromJacExtended(Q *g2JacExtended) *G2Jac {
 	return p
 }
 
-// add point in ZZ coords
+// add point in Jacobian extended coordinates
 // https://www.hyperelliptic.org/EFD/g1p/auto-shortw-xyzz.html#addition-add-2008-s
 func (p *g2JacExtended) add(q *g2JacExtended) *g2JacExtended {
 	//if q is infinity return p
@@ -592,15 +642,15 @@ func (p *g2JacExtended) add(q *g2JacExtended) *g2JacExtended {
 		return p
 	}
 
-	var A, B, X1ZZ2, X2ZZ1, Y1ZZZ2, Y2ZZZ1 fptower.E2
+	var A, B, U1, U2, S1, S2 fptower.E2
 
 	// p2: q, p1: p
-	X2ZZ1.Mul(&q.X, &p.ZZ)
-	X1ZZ2.Mul(&p.X, &q.ZZ)
-	A.Sub(&X2ZZ1, &X1ZZ2)
-	Y2ZZZ1.Mul(&q.Y, &p.ZZZ)
-	Y1ZZZ2.Mul(&p.Y, &q.ZZZ)
-	B.Sub(&Y2ZZZ1, &Y1ZZZ2)
+	U2.Mul(&q.X, &p.ZZ)
+	U1.Mul(&p.X, &q.ZZ)
+	A.Sub(&U2, &U1)
+	S2.Mul(&q.Y, &p.ZZZ)
+	S1.Mul(&p.Y, &q.ZZZ)
+	B.Sub(&S2, &S1)
 
 	if A.IsZero() {
 		if B.IsZero() {
@@ -612,11 +662,7 @@ func (p *g2JacExtended) add(q *g2JacExtended) *g2JacExtended {
 		return p
 	}
 
-	var U1, U2, S1, S2, P, R, PP, PPP, Q, V fptower.E2
-	U1.Mul(&p.X, &q.ZZ)
-	U2.Mul(&q.X, &p.ZZ)
-	S1.Mul(&p.Y, &q.ZZZ)
-	S2.Mul(&q.Y, &p.ZZZ)
+	var P, R, PP, PPP, Q, V fptower.E2
 	P.Sub(&U2, &U1)
 	R.Sub(&S2, &S1)
 	PP.Square(&P)
@@ -639,8 +685,10 @@ func (p *g2JacExtended) add(q *g2JacExtended) *g2JacExtended {
 	return p
 }
 
-// double point in ZZ coords
+// double point in Jacobian extended coordinates
 // http://www.hyperelliptic.org/EFD/g1p/auto-shortw-xyzz.html#doubling-dbl-2008-s-1
+// since we consider any point on Z=0 as the point at infinity
+// this doubling formula works for infinity points as well
 func (p *g2JacExtended) double(q *g2JacExtended) *g2JacExtended {
 	var U, V, W, S, XX, M fptower.E2
 
@@ -670,7 +718,7 @@ func (p *g2JacExtended) double(q *g2JacExtended) *g2JacExtended {
 func (p *g2JacExtended) subMixed(a *G2Affine) *g2JacExtended {
 
 	//if a is infinity return p
-	if a.X.IsZero() && a.Y.IsZero() {
+	if a.IsInfinity() {
 		return p
 	}
 	// p is infinity, return a
@@ -726,7 +774,7 @@ func (p *g2JacExtended) subMixed(a *G2Affine) *g2JacExtended {
 func (p *g2JacExtended) addMixed(a *G2Affine) *g2JacExtended {
 
 	//if a is infinity return p
-	if a.X.IsZero() && a.Y.IsZero() {
+	if a.IsInfinity() {
 		return p
 	}
 	// p is infinity, return a
@@ -803,7 +851,7 @@ func (p *g2JacExtended) doubleNegMixed(q *G2Affine) *g2JacExtended {
 	return p
 }
 
-// doubleMixed point in ZZ coords
+// doubleMixed point in Jacobian extended coordinates
 // http://www.hyperelliptic.org/EFD/g1p/auto-shortw-xyzz.html#doubling-dbl-2008-s-1
 func (p *g2JacExtended) doubleMixed(q *G2Affine) *g2JacExtended {
 
@@ -846,18 +894,6 @@ func (p *g2Proj) Neg(a *g2Proj) *g2Proj {
 	return p
 }
 
-// FromJacobian converts a point from Jacobian to projective coordinates
-func (p *g2Proj) FromJacobian(Q *G2Jac) *g2Proj {
-	var buf fptower.E2
-	buf.Square(&Q.Z)
-
-	p.x.Mul(&Q.X, &Q.Z)
-	p.y.Set(&Q.Y)
-	p.z.Mul(&Q.Z, &buf)
-
-	return p
-}
-
 // FromAffine sets p = Q, p in homogenous projective, Q in affine
 func (p *g2Proj) FromAffine(Q *G2Affine) *g2Proj {
 	if Q.X.IsZero() && Q.Y.IsZero() {
@@ -872,97 +908,74 @@ func (p *g2Proj) FromAffine(Q *G2Affine) *g2Proj {
 	return p
 }
 
-// BatchScalarMultiplicationG2 multiplies the same base (generator) by all scalars
+// BatchScalarMultiplicationG2 multiplies the same base by all scalars
 // and return resulting points in affine coordinates
 // uses a simple windowed-NAF like exponentiation algorithm
 func BatchScalarMultiplicationG2(base *G2Affine, scalars []fr.Element) []G2Affine {
-
 	// approximate cost in group ops is
 	// cost = 2^{c-1} + n(scalar.nbBits+nbChunks)
 
 	nbPoints := uint64(len(scalars))
 	min := ^uint64(0)
 	bestC := 0
-	for c := 2; c < 18; c++ {
-		cost := uint64(1 << (c - 1))
-		nbChunks := uint64(fr.Limbs * 64 / c)
-		if (fr.Limbs*64)%c != 0 {
-			nbChunks++
-		}
-		cost += nbPoints * ((fr.Limbs * 64) + nbChunks)
+	for c := 2; c <= 16; c++ {
+		cost := uint64(1 << (c - 1)) // pre compute the table
+		nbChunks := computeNbChunks(uint64(c))
+		cost += nbPoints * (uint64(c) + 1) * nbChunks // doublings + point add
 		if cost < min {
 			min = cost
 			bestC = c
 		}
 	}
 	c := uint64(bestC) // window size
-	nbChunks := int(fr.Limbs * 64 / c)
-	if (fr.Limbs*64)%c != 0 {
-		nbChunks++
+	nbChunks := int(computeNbChunks(c))
+
+	// last window may be slightly larger than c; in which case we need to compute one
+	// extra element in the baseTable
+	maxC := lastC(c)
+	if c > maxC {
+		maxC = c
 	}
-	mask := uint64((1 << c) - 1) // low c bits are 1
-	msbWindow := uint64(1 << (c - 1))
 
 	// precompute all powers of base for our window
 	// note here that if performance is critical, we can implement as in the msmX methods
 	// this allocation to be on the stack
-	baseTable := make([]G2Jac, (1 << (c - 1)))
-	baseTable[0].Set(&g2Infinity)
-	baseTable[0].AddMixed(base)
+	baseTable := make([]G2Jac, (1 << (maxC - 1)))
+	baseTable[0].FromAffine(base)
 	for i := 1; i < len(baseTable); i++ {
 		baseTable[i] = baseTable[i-1]
 		baseTable[i].AddMixed(base)
 	}
-
-	pScalars, _ := partitionScalars(scalars, c, false, runtime.NumCPU())
-
-	// compute offset and word selector / shift to select the right bits of our windows
-	selectors := make([]selector, nbChunks)
-	for chunk := 0; chunk < nbChunks; chunk++ {
-		jc := uint64(uint64(chunk) * c)
-		d := selector{}
-		d.index = jc / 64
-		d.shift = jc - (d.index * 64)
-		d.mask = mask << d.shift
-		d.multiWordSelect = (64%c) != 0 && d.shift > (64-c) && d.index < (fr.Limbs-1)
-		if d.multiWordSelect {
-			nbBitsHigh := d.shift - uint64(64-c)
-			d.maskHigh = (1 << nbBitsHigh) - 1
-			d.shiftHigh = (c - nbBitsHigh)
-		}
-		selectors[chunk] = d
-	}
 	toReturn := make([]G2Affine, len(scalars))
 
-	// for each digit, take value in the base table, double it c time, voila.
-	parallel.Execute(len(pScalars), func(start, end int) {
+	// partition the scalars into digits
+	digits, _ := partitionScalars(scalars, c, runtime.NumCPU())
+
+	// for each digit, take value in the base table, double it c time, voilà.
+	parallel.Execute(len(scalars), func(start, end int) {
 		var p G2Jac
 		for i := start; i < end; i++ {
 			p.Set(&g2Infinity)
 			for chunk := nbChunks - 1; chunk >= 0; chunk-- {
-				s := selectors[chunk]
 				if chunk != nbChunks-1 {
 					for j := uint64(0); j < c; j++ {
 						p.DoubleAssign()
 					}
 				}
+				offset := chunk * len(scalars)
+				digit := digits[i+offset]
 
-				bits := (pScalars[i][s.index] & s.mask) >> s.shift
-				if s.multiWordSelect {
-					bits += (pScalars[i][s.index+1] & s.maskHigh) << s.shiftHigh
-				}
-
-				if bits == 0 {
+				if digit == 0 {
 					continue
 				}
 
-				// if msbWindow bit is set, we need to substract
-				if bits&msbWindow == 0 {
+				// if msbWindow bit is set, we need to subtract
+				if digit&1 == 0 {
 					// add
-					p.AddAssign(&baseTable[bits-1])
+					p.AddAssign(&baseTable[(digit>>1)-1])
 				} else {
 					// sub
-					t := baseTable[bits & ^msbWindow]
+					t := baseTable[digit>>1]
 					t.Neg(&t)
 					p.AddAssign(&t)
 				}
@@ -974,4 +987,55 @@ func BatchScalarMultiplicationG2(base *G2Affine, scalars []fr.Element) []G2Affin
 		}
 	})
 	return toReturn
+}
+
+// batch add affine coordinates
+// using batch inversion
+// special cases (doubling, infinity) must be filtered out before this call
+func batchAddG2Affine[TP pG2Affine, TPP ppG2Affine, TC cG2Affine](R *TPP, P *TP, batchSize int) {
+	var lambda, lambdain TC
+
+	// add part
+	for j := 0; j < batchSize; j++ {
+		lambdain[j].Sub(&(*P)[j].X, &(*R)[j].X)
+	}
+
+	// invert denominator using montgomery batch invert technique
+	{
+		var accumulator fptower.E2
+		lambda[0].SetOne()
+		accumulator.Set(&lambdain[0])
+
+		for i := 1; i < batchSize; i++ {
+			lambda[i] = accumulator
+			accumulator.Mul(&accumulator, &lambdain[i])
+		}
+
+		accumulator.Inverse(&accumulator)
+
+		for i := batchSize - 1; i > 0; i-- {
+			lambda[i].Mul(&lambda[i], &accumulator)
+			accumulator.Mul(&accumulator, &lambdain[i])
+		}
+		lambda[0].Set(&accumulator)
+	}
+
+	var d fptower.E2
+	var rr G2Affine
+
+	// add part
+	for j := 0; j < batchSize; j++ {
+		// computa lambda
+		d.Sub(&(*P)[j].Y, &(*R)[j].Y)
+		lambda[j].Mul(&lambda[j], &d)
+
+		// compute X, Y
+		rr.X.Square(&lambda[j])
+		rr.X.Sub(&rr.X, &(*R)[j].X)
+		rr.X.Sub(&rr.X, &(*P)[j].X)
+		d.Sub(&(*R)[j].X, &rr.X)
+		rr.Y.Mul(&lambda[j], &d)
+		rr.Y.Sub(&rr.Y, &(*R)[j].Y)
+		(*R)[j].Set(&rr)
+	}
 }

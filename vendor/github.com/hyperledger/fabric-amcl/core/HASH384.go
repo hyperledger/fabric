@@ -28,7 +28,7 @@
 
 package core
 
-//import "fmt"
+
 
 const SHA384 int = 48
 
@@ -161,14 +161,14 @@ func NewHASH384() *HASH384 {
 
 func NewHASH384copy(HC *HASH384) *HASH384 {
 	H := new(HASH384)
-	for i:=0;i<80;i++ {
-		H.w[i]=HC.w[i]
+	for i := 0; i < 80; i++ {
+		H.w[i] = HC.w[i]
 	}
-	for i:=0;i<8;i++ {
-		H.h[i]=HC.h[i]
+	for i := 0; i < 8; i++ {
+		H.h[i] = HC.h[i]
 	}
-	H.length[0]=HC.length[0]
-	H.length[1]=HC.length[1]
+	H.length[0] = HC.length[0]
+	H.length[1] = HC.length[1]
 	return H
 }
 

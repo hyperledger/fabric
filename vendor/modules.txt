@@ -8,25 +8,35 @@ code.cloudfoundry.org/clock/fakeclock
 ## explicit; go 1.16
 github.com/Azure/go-ansiterm
 github.com/Azure/go-ansiterm/winterm
-# github.com/IBM/idemix v0.0.0-20220112103229-701e7610d405
-## explicit; go 1.16
+# github.com/IBM/idemix v0.0.2-0.20231011101252-a4feda90f3f7
+## explicit; go 1.19
 github.com/IBM/idemix
 github.com/IBM/idemix/bccsp
+github.com/IBM/idemix/bccsp/handlers
 github.com/IBM/idemix/bccsp/keystore
-github.com/IBM/idemix/bccsp/schemes
 github.com/IBM/idemix/bccsp/schemes/dlog/bridge
 github.com/IBM/idemix/bccsp/schemes/dlog/crypto
 github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl
-github.com/IBM/idemix/bccsp/schemes/dlog/handlers
 github.com/IBM/idemix/common/flogging
 github.com/IBM/idemix/common/flogging/fabenc
-# github.com/IBM/mathlib v0.0.0-20220112091634-0a7378db6912
-## explicit; go 1.16
+github.com/IBM/idemix/idemixmsp
+# github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-20231003085036-c4470b87b2d6
+## explicit; go 1.19
+github.com/IBM/idemix/bccsp/schemes/aries
+# github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20231003085036-c4470b87b2d6
+## explicit; go 1.19
+github.com/IBM/idemix/bccsp/schemes/weak-bb
+# github.com/IBM/idemix/bccsp/types v0.0.0-20231003085036-c4470b87b2d6
+## explicit; go 1.19
+github.com/IBM/idemix/bccsp/types
+# github.com/IBM/mathlib v0.0.3-0.20231011094432-44ee0eb539da
+## explicit; go 1.18
 github.com/IBM/mathlib
 github.com/IBM/mathlib/driver
 github.com/IBM/mathlib/driver/amcl
 github.com/IBM/mathlib/driver/common
 github.com/IBM/mathlib/driver/gurvy
+github.com/IBM/mathlib/driver/kilic
 # github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 ## explicit
 github.com/Knetic/govaluate
@@ -50,6 +60,9 @@ github.com/SmartBFT-Go/consensus/smartbftprotos
 # github.com/VictoriaMetrics/fastcache v1.9.0
 ## explicit; go 1.13
 github.com/VictoriaMetrics/fastcache
+# github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230817163708-4b3de6d91874
+## explicit; go 1.19
+github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub
 # github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 ## explicit
 github.com/alecthomas/template
@@ -60,7 +73,7 @@ github.com/alecthomas/units
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
-# github.com/bits-and-blooms/bitset v1.2.1
+# github.com/bits-and-blooms/bitset v1.7.0
 ## explicit; go 1.14
 github.com/bits-and-blooms/bitset
 # github.com/cespare/xxhash/v2 v2.2.0
@@ -69,16 +82,28 @@ github.com/cespare/xxhash/v2
 # github.com/cheggaaa/pb v1.0.29
 ## explicit; go 1.12
 github.com/cheggaaa/pb
-# github.com/consensys/gnark-crypto v0.6.0
-## explicit; go 1.16
+# github.com/consensys/bavard v0.1.13
+## explicit; go 1.15
+github.com/consensys/bavard
+# github.com/consensys/gnark-crypto v0.12.1
+## explicit; go 1.18
 github.com/consensys/gnark-crypto/ecc
+github.com/consensys/gnark-crypto/ecc/bls12-377
+github.com/consensys/gnark-crypto/ecc/bls12-377/fp
+github.com/consensys/gnark-crypto/ecc/bls12-377/fr
+github.com/consensys/gnark-crypto/ecc/bls12-377/internal/fptower
+github.com/consensys/gnark-crypto/ecc/bls12-381
+github.com/consensys/gnark-crypto/ecc/bls12-381/fp
+github.com/consensys/gnark-crypto/ecc/bls12-381/fr
+github.com/consensys/gnark-crypto/ecc/bls12-381/internal/fptower
 github.com/consensys/gnark-crypto/ecc/bn254
 github.com/consensys/gnark-crypto/ecc/bn254/fp
 github.com/consensys/gnark-crypto/ecc/bn254/fr
-github.com/consensys/gnark-crypto/ecc/bn254/fr/mimc
 github.com/consensys/gnark-crypto/ecc/bn254/internal/fptower
-github.com/consensys/gnark-crypto/field
-github.com/consensys/gnark-crypto/field/internal/addchain
+github.com/consensys/gnark-crypto/field/generator/config
+github.com/consensys/gnark-crypto/field/generator/internal/addchain
+github.com/consensys/gnark-crypto/field/hash
+github.com/consensys/gnark-crypto/field/pool
 github.com/consensys/gnark-crypto/internal/generator/config
 github.com/consensys/gnark-crypto/internal/parallel
 # github.com/containerd/containerd v1.6.18
@@ -178,7 +203,7 @@ github.com/hashicorp/hcl/hcl/token
 github.com/hashicorp/hcl/json/parser
 github.com/hashicorp/hcl/json/scanner
 github.com/hashicorp/hcl/json/token
-# github.com/hyperledger/fabric-amcl v0.0.0-20210603140002-2670f91851c8
+# github.com/hyperledger/fabric-amcl v0.0.0-20230602173724-9e02669dceb2
 ## explicit
 github.com/hyperledger/fabric-amcl/amcl
 github.com/hyperledger/fabric-amcl/amcl/FP256BN
@@ -225,6 +250,9 @@ github.com/hyperledger/fabric-protos-go/transientstore
 # github.com/inconshreveable/mousetrap v1.0.0
 ## explicit
 github.com/inconshreveable/mousetrap
+# github.com/kilic/bls12-381 v0.1.0
+## explicit; go 1.13
+github.com/kilic/bls12-381
 # github.com/klauspost/compress v1.13.6
 ## explicit; go 1.15
 github.com/klauspost/compress
@@ -356,8 +384,8 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# github.com/rogpeppe/go-internal v1.9.0
-## explicit; go 1.17
+# github.com/rogpeppe/go-internal v1.11.0
+## explicit; go 1.19
 github.com/rogpeppe/go-internal/fmtsort
 # github.com/sirupsen/logrus v1.9.0
 ## explicit; go 1.13
@@ -369,8 +397,8 @@ github.com/spf13/afero/mem
 # github.com/spf13/cast v1.3.1
 ## explicit
 github.com/spf13/cast
-# github.com/spf13/cobra v1.1.3
-## explicit; go 1.12
+# github.com/spf13/cobra v1.5.0
+## explicit; go 1.15
 github.com/spf13/cobra
 # github.com/spf13/jwalterweatherman v1.1.0
 ## explicit
@@ -384,8 +412,8 @@ github.com/spf13/viper
 # github.com/stretchr/objx v0.5.0
 ## explicit; go 1.12
 github.com/stretchr/objx
-# github.com/stretchr/testify v1.8.1
-## explicit; go 1.13
+# github.com/stretchr/testify v1.8.4
+## explicit; go 1.20
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/mock
 github.com/stretchr/testify/require
@@ -455,8 +483,10 @@ go.uber.org/zap/zapgrpc
 go.uber.org/zap/zaptest/observer
 # golang.org/x/crypto v0.14.0
 ## explicit; go 1.17
+golang.org/x/crypto/blake2b
+golang.org/x/crypto/hkdf
 golang.org/x/crypto/sha3
-# golang.org/x/mod v0.8.0
+# golang.org/x/mod v0.9.0
 ## explicit; go 1.17
 golang.org/x/mod/semver
 # golang.org/x/net v0.17.0
@@ -620,3 +650,7 @@ gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
+# rsc.io/tmplfunc v0.0.3
+## explicit; go 1.17
+rsc.io/tmplfunc
+rsc.io/tmplfunc/internal/parse
