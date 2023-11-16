@@ -41,6 +41,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pkg/errors"
 	"github.com/tedsuo/ifrit"
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
@@ -1662,6 +1663,152 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			By("invoking the chaincode, again")
 			invokeQuery(network, peer, network.Orderers[numberKill], channel, 80)
 		})
+
+		It("smartbft the leader froze, waiting for an answer", func() {
+			networkConfig := nwo.MultiNodeSmartBFT()
+			networkConfig.Channels = nil
+			channel := "testchannel1"
+
+			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			var ordererRunners []*ginkgomon.Runner
+			for i := 0; i <= 1; i++ {
+				orderer := network.Orderers[i]
+				runner := network.OrdererRunner(orderer, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug",
+					"ORDERER_GENERAL_BACKOFF_MAXDELAY=20s")
+				ordererRunners = append(ordererRunners, runner)
+				proc := ifrit.Invoke(runner)
+				ordererProcesses = append(ordererProcesses, proc)
+				Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			peerGroupRunner, _ := peerGroupRunners(network)
+			peerProcesses = ifrit.Invoke(peerGroupRunner)
+			Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			peer := network.Peer("Org1", "peer0")
+
+			joinChannel(network, channel, 0, 1)
+
+			By("Waiting for followers to see the leader")
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+
+			By("Joining peers to testchannel1")
+			network.JoinChannel(channel, network.Orderers[0], network.PeersWithChannel(channel)...)
+
+			By("Try deploying chaincode")
+			peers := network.PeersWithChannel(channel)
+			Expect(len(peers)).ToNot(Equal(0))
+
+			chaincode := nwo.Chaincode{
+				Name:            "mycc",
+				Version:         "0.0",
+				Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd"),
+				Lang:            "binary",
+				PackageFile:     filepath.Join(testDir, "simplecc.tar.gz"),
+				Ctor:            `{"Args":["init","a","100","b","200"]}`,
+				SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
+				Sequence:        "1",
+				InitRequired:    true,
+				Label:           "my_prebuilt_chaincode",
+			}
+			nwo.PackageAndInstallChaincode(network, chaincode, peers...)
+
+			if chaincode.PackageID == "" {
+				chaincode.SetPackageIDFromPackageFile()
+			}
+
+			// used to ensure we only approve once per org
+			// the transaction must fail
+			sess, err := network.PeerAdminSession(peers[0], commands.ChaincodeApproveForMyOrg{
+				ChannelID:           channel,
+				Orderer:             network.OrdererAddress(network.Orderers[0], "Listen"),
+				Name:                chaincode.Name,
+				Version:             chaincode.Version,
+				PackageID:           chaincode.PackageID,
+				Sequence:            chaincode.Sequence,
+				EndorsementPlugin:   chaincode.EndorsementPlugin,
+				ValidationPlugin:    chaincode.ValidationPlugin,
+				SignaturePolicy:     chaincode.SignaturePolicy,
+				ChannelConfigPolicy: chaincode.ChannelConfigPolicy,
+				InitRequired:        chaincode.InitRequired,
+				CollectionsConfig:   chaincode.CollectionsConfig,
+				ClientAuth:          network.ClientAuthRequired,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
+
+			// wait for a state where the leader could freeze
+			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("1 got message from 2: prepare"))
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("2 got message from 1: prepare"))
+
+			// start the 2 stopped nodes
+			for i := 2; i <= 3; i++ {
+				orderer := network.Orderers[i]
+				By(fmt.Sprintf("Launching %s", orderer.Name))
+				runner := network.OrdererRunner(orderer, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug",
+					"ORDERER_GENERAL_BACKOFF_MAXDELAY=20s")
+				ordererRunners = append(ordererRunners, runner)
+				proc := ifrit.Invoke(runner)
+				ordererProcesses = append(ordererProcesses, proc)
+				Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			joinChannel(network, channel, 2, 3)
+
+			// wait for the leader change
+			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Changing to follower role, current view: 1, current leader: 2 channel=testchannel1"))
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Changing to leader role, current view: 1, current leader: 2 channel=testchannel1"))
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("HandleRequest from 1 channel=testchannel1"))
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Proposing proposal sequence 1 in view 1 channel=testchannel1"))
+
+			for i := 0; i <= 3; i++ {
+				Eventually(ordererRunners[i].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Sequence: 1-->2 channel=testchannel1"))
+			}
+
+			// let's continue deploying chaincode
+			sess, err = network.PeerAdminSession(peers[1], commands.ChaincodeApproveForMyOrg{
+				ChannelID:           channel,
+				Orderer:             network.OrdererAddress(network.Orderers[0], "Listen"),
+				Name:                chaincode.Name,
+				Version:             chaincode.Version,
+				PackageID:           chaincode.PackageID,
+				Sequence:            chaincode.Sequence,
+				EndorsementPlugin:   chaincode.EndorsementPlugin,
+				ValidationPlugin:    chaincode.ValidationPlugin,
+				SignaturePolicy:     chaincode.SignaturePolicy,
+				ChannelConfigPolicy: chaincode.ChannelConfigPolicy,
+				InitRequired:        chaincode.InitRequired,
+				CollectionsConfig:   chaincode.CollectionsConfig,
+				ClientAuth:          network.ClientAuthRequired,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+			Eventually(sess.Err, network.EventuallyTimeout).Should(gbytes.Say(fmt.Sprintf(`\Qcommitted with status (VALID) at %s\E`, network.PeerAddress(peers[1], "Listen"))))
+
+			// commit definition
+			nwo.CheckCommitReadinessUntilReady(network, channel, chaincode, network.PeerOrgs(), peers...)
+			nwo.CommitChaincode(network, channel, network.Orderers[0], chaincode, peers[0], peers...)
+
+			// init the chaincode, if required
+			if chaincode.InitRequired {
+				nwo.InitChaincode(network, channel, network.Orderers[0], chaincode, peers...)
+			}
+
+			By("querying the chaincode")
+			sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+				ChannelID: channel,
+				Name:      "mycc",
+				Ctor:      `{"Args":["query","a"]}`,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+			Expect(sess).To(gbytes.Say("100"))
+
+			By("invoking the chaincode")
+			invokeQuery(network, peer, network.Orderers[1], channel, 90)
+		})
 	})
 })
 
@@ -1991,18 +2138,21 @@ func peerOrganizations(n *nwo.Network, peers []*nwo.Peer) []configtx.Organizatio
 	return peerOrgs
 }
 
-func joinChannel(network *nwo.Network, channel string) {
-	sess, err := network.ConfigTxGen(commands.OutputBlock{
-		ChannelID:   channel,
-		Profile:     network.Profiles[0].Name,
-		ConfigPath:  network.RootDir,
-		OutputBlock: network.OutputBlockPath(channel),
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-
+func joinChannel(network *nwo.Network, channel string, onlyNodes ...int) {
 	genesisBlockBytes, err := os.ReadFile(network.OutputBlockPath(channel))
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil && errors.Is(err, syscall.ENOENT) {
+		sess, err := network.ConfigTxGen(commands.OutputBlock{
+			ChannelID:   channel,
+			Profile:     network.Profiles[0].Name,
+			ConfigPath:  network.RootDir,
+			OutputBlock: network.OutputBlockPath(channel),
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+
+		genesisBlockBytes, err = os.ReadFile(network.OutputBlockPath(channel))
+		Expect(err).NotTo(HaveOccurred())
+	}
 
 	genesisBlock := &common.Block{}
 	err = proto.Unmarshal(genesisBlockBytes, genesisBlock)
@@ -2014,6 +2164,18 @@ func joinChannel(network *nwo.Network, channel string) {
 		Status:            "active",
 		ConsensusRelation: "consenter",
 		Height:            1,
+	}
+
+	if len(onlyNodes) != 0 {
+		for _, i := range onlyNodes {
+			o := network.Orderers[i]
+			By("joining " + o.Name + " to channel as a consenter")
+			channelparticipation.Join(network, o, channel, genesisBlock, expectedChannelInfoPT)
+			channelInfo := channelparticipation.ListOne(network, o, channel)
+			Expect(channelInfo).To(Equal(expectedChannelInfoPT))
+		}
+
+		return
 	}
 
 	for _, o := range network.Orderers {
