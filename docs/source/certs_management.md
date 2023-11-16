@@ -318,12 +318,9 @@ org1ca/
 1. **Organization Enrollment Certificate** - Authenticates the client identity for interactions with peers and orderers.
 2. **TLS Certificate** - Authenticates client communications, and only required if mutual TLS is configured.
 
-Client Certificates expire after one year, using the Hyperledger Fabric CA default settings. Client Certificates can be re-enrolled using either command line Hyperledger Fabric CA utilities or the Fabric CA client SDK.
+Client Certificates expire after one year, using the Hyperledger Fabric CA default settings. Client Certificates can be re-enrolled using the command line Hyperledger Fabric CA utility.
 
 **Impact if expired**: Client Certificates must be re-enrolled before expiration or the client application will not be able to interact with the Fabric nodes.
-
-[Reference - Re-enroll user](https://hyperledger.github.io/fabric-sdk-node/release-2.2/FabricCAClient.html#reenroll__anchor)
-
 
 ### Certificate Decoding
 

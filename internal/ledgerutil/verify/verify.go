@@ -229,8 +229,12 @@ func checkBlock(block *common.Block, previousHash []byte) (*blockCheckResult, er
 		Errors:   []string{},
 	}
 
+	hash, err := protoutil.BlockDataHash(block.Data)
+	if err != nil {
+		result.Errors = append(result.Errors, err.Error())
+	}
 	// Check if the hash value of the data matches the hash value field in the header
-	if !bytes.Equal(block.Header.DataHash, protoutil.BlockDataHash(block.Data)) {
+	if !bytes.Equal(block.Header.DataHash, hash) {
 		result.Valid = false
 		result.Errors = append(result.Errors, errorDataHashMismatch)
 	}

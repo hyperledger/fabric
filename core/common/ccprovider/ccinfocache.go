@@ -48,7 +48,6 @@ func (c *ccInfoCacheImpl) GetChaincodeData(ccNameVersion string) (*ChaincodeData
 	c.RUnlock()
 
 	if !in {
-		var err error
 
 		// the chaincode data is not in the cache
 		// try to look it up from the file system

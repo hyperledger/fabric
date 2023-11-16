@@ -8,17 +8,7 @@ package blocksprovider
 
 import (
 	"math"
-	"math/rand"
 	"time"
-
-	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
-)
-
-const (
-	bftMinBackoffDelay           = 10 * time.Millisecond
-	bftMaxBackoffDelay           = 10 * time.Second
-	bftBlockRcvTotalBackoffDelay = 20 * time.Second
-	bftBlockCensorshipTimeout    = 20 * time.Second
 )
 
 type errRefreshEndpoint struct {
@@ -29,20 +19,28 @@ func (e *errRefreshEndpoint) Error() string {
 	return e.message
 }
 
-type errStopping struct {
-	message string
+type ErrStopping struct {
+	Message string
 }
 
-func (e *errStopping) Error() string {
-	return e.message
+func (e *ErrStopping) Error() string {
+	return e.Message
 }
 
-type errFatal struct {
-	message string
+type ErrFatal struct {
+	Message string
 }
 
-func (e *errFatal) Error() string {
-	return e.message
+func (e *ErrFatal) Error() string {
+	return e.Message
+}
+
+type ErrCensorship struct {
+	Message string
+}
+
+func (e *ErrCensorship) Error() string {
+	return e.Message
 }
 
 func backOffDuration(base float64, exponent uint, minDur, maxDur time.Duration) time.Duration {
@@ -50,7 +48,7 @@ func backOffDuration(base float64, exponent uint, minDur, maxDur time.Duration) 
 		base = 1.0
 	}
 	if minDur <= 0 {
-		minDur = bftMinBackoffDelay
+		minDur = BftMinRetryInterval
 	}
 	if maxDur < minDur {
 		maxDur = minDur
@@ -61,20 +59,27 @@ func backOffDuration(base float64, exponent uint, minDur, maxDur time.Duration) 
 	return time.Duration(fDurNano)
 }
 
-func backOffSleep(backOffDur time.Duration, stopChan <-chan struct{}) {
-	select {
-	case <-time.After(backOffDur):
-	case <-stopChan:
+// How many retries n does it take for minDur to reach maxDur, if minDur is scaled exponentially with base^i
+//
+// minDur * base^n > maxDur
+// base^n > maxDur / minDur
+// n * log(base) > log(maxDur / minDur)
+// n > log(maxDur / minDur) / log(base)
+func numRetries2Max(base float64, minDur, maxDur time.Duration) int {
+	if base <= 1.0 {
+		base = 1.001
 	}
+	if minDur <= 0 {
+		minDur = BftMinRetryInterval
+	}
+	if maxDur < minDur {
+		maxDur = minDur
+	}
+
+	return int(math.Ceil(math.Log(float64(maxDur)/float64(minDur)) / math.Log(base)))
 }
 
-// shuffle the endpoint slice
-func shuffle(a []*orderers.Endpoint) []*orderers.Endpoint {
-	n := len(a)
-	returnedSlice := make([]*orderers.Endpoint, n)
-	indices := rand.Perm(n)
-	for i, idx := range indices {
-		returnedSlice[i] = a[idx]
-	}
-	return returnedSlice
+type timeNumber struct {
+	t time.Time
+	n uint64
 }

@@ -36,7 +36,9 @@ func TestNewBlock(t *testing.T) {
 	require.Equal(t, []byte("datahash"), block.Header.PreviousHash, "Incorrect previous hash")
 	require.NotNil(t, block.GetData())
 	require.NotNil(t, block.GetMetadata())
-	block.GetHeader().DataHash = protoutil.BlockDataHash(data)
+	block.GetHeader().DataHash = protoutil.ComputeBlockDataHash(data)
+
+	dataHash := protoutil.ComputeBlockDataHash(data)
 
 	asn1Bytes, err := asn1.Marshal(struct {
 		Number       int64
@@ -44,7 +46,7 @@ func TestNewBlock(t *testing.T) {
 		DataHash     []byte
 	}{
 		Number:       0,
-		DataHash:     protoutil.BlockDataHash(data),
+		DataHash:     dataHash,
 		PreviousHash: []byte("datahash"),
 	})
 	headerHash := sha256.Sum256(asn1Bytes)
@@ -535,10 +537,6 @@ func TestVerifyTransactionsAreWellFormed(t *testing.T) {
 			}},
 		},
 		{
-			name:          "empty block",
-			expectedError: "empty block",
-		},
-		{
 			name:          "no block data",
 			block:         &cb.Block{},
 			expectedError: "empty block",
@@ -606,11 +604,16 @@ func TestVerifyTransactionsAreWellFormed(t *testing.T) {
 		},
 	} {
 		t.Run(tst.name, func(t *testing.T) {
-			err := protoutil.VerifyTransactionsAreWellFormed(tst.block)
-			if tst.expectedError == "" {
-				require.NoError(t, err)
+			if tst.block == nil || tst.block.Data == nil {
+				err := protoutil.VerifyTransactionsAreWellFormed(tst.block.Data)
+				require.EqualError(t, err, "empty block")
 			} else {
-				require.Contains(t, err.Error(), tst.expectedError)
+				err := protoutil.VerifyTransactionsAreWellFormed(tst.block.Data)
+				if tst.expectedError == "" {
+					require.NoError(t, err)
+				} else {
+					require.Contains(t, err.Error(), tst.expectedError)
+				}
 			}
 		})
 	}

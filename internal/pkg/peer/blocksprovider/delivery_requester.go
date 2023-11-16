@@ -50,23 +50,7 @@ func (dr *DeliveryRequester) SeekInfoBlocksFrom(ledgerHeight uint64) (*common.En
 		common.HeaderType_DELIVER_SEEK_INFO,
 		dr.channelID,
 		dr.signer,
-		&orderer.SeekInfo{
-			Start: &orderer.SeekPosition{
-				Type: &orderer.SeekPosition_Specified{
-					Specified: &orderer.SeekSpecified{
-						Number: ledgerHeight,
-					},
-				},
-			},
-			Stop: &orderer.SeekPosition{
-				Type: &orderer.SeekPosition_Specified{
-					Specified: &orderer.SeekSpecified{
-						Number: math.MaxUint64,
-					},
-				},
-			},
-			Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
-		},
+		seekInfoFrom(ledgerHeight, orderer.SeekInfo_BLOCK),
 		int32(0),
 		uint64(0),
 		dr.tlsCertHash,
@@ -76,8 +60,36 @@ func (dr *DeliveryRequester) SeekInfoBlocksFrom(ledgerHeight uint64) (*common.En
 // SeekInfoHeadersFrom produces a signed SeekInfo envelope requesting a stream of headers (block attestations) from
 // a certain block number.
 func (dr *DeliveryRequester) SeekInfoHeadersFrom(ledgerHeight uint64) (*common.Envelope, error) {
-	// TODO
-	return nil, errors.New("not implemented yet")
+	return protoutil.CreateSignedEnvelopeWithTLSBinding(
+		common.HeaderType_DELIVER_SEEK_INFO,
+		dr.channelID,
+		dr.signer,
+		seekInfoFrom(ledgerHeight, orderer.SeekInfo_HEADER_WITH_SIG),
+		int32(0),
+		uint64(0),
+		dr.tlsCertHash,
+	)
+}
+
+func seekInfoFrom(height uint64, contentType orderer.SeekInfo_SeekContentType) *orderer.SeekInfo {
+	return &orderer.SeekInfo{
+		Start: &orderer.SeekPosition{
+			Type: &orderer.SeekPosition_Specified{
+				Specified: &orderer.SeekSpecified{
+					Number: height,
+				},
+			},
+		},
+		Stop: &orderer.SeekPosition{
+			Type: &orderer.SeekPosition_Specified{
+				Specified: &orderer.SeekSpecified{
+					Number: math.MaxUint64,
+				},
+			},
+		},
+		Behavior:    orderer.SeekInfo_BLOCK_UNTIL_READY,
+		ContentType: contentType,
+	}
 }
 
 // SeekInfoNewestHeader produces a signed SeekInfo envelope requesting the newest header (block attestation) available

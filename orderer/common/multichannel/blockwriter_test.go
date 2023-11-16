@@ -62,8 +62,14 @@ func TestCreateBlock(t *testing.T) {
 		{Payload: []byte("some other bytes")},
 	})
 
+	dataHash := protoutil.ComputeBlockDataHash(block.Data)
+	protoutil.BlockHeaderHash(&cb.BlockHeader{
+		Number:       block.Header.Number,
+		DataHash:     dataHash[:],
+		PreviousHash: protoutil.BlockHeaderHash(seedBlock.Header),
+	})
 	require.Equal(t, seedBlock.Header.Number+1, block.Header.Number)
-	require.Equal(t, protoutil.BlockDataHash(block.Data), block.Header.DataHash)
+	require.Equal(t, dataHash[:], block.Header.DataHash)
 	require.Equal(t, protoutil.BlockHeaderHash(seedBlock.Header), block.Header.PreviousHash)
 }
 

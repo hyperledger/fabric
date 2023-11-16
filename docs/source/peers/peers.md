@@ -101,7 +101,7 @@ to hosting multiple ledgers and multiple chaincodes on a peer.
 Starting in Hyperledger Fabric v2.4, the [Fabric Gateway](../gateway.html) service
 is installed and enabled on each peer by default. The gateway service, as opposed
 to the client application (in Fabric v2.3 and earlier), manages transaction proposals
-and endorsements on the peer. The Gateway SDKs (v1.0.0 for Go, Node and Java) incorporate
+and endorsements on the peer. The Gateway SDKs for Go, Node and Java incorporate
 this peer-centric model of transaction processing, enabling simplified application
 development. Client applications developed with Fabric v2.3 or earlier SDKs will
 continue to run in Fabric v2.4.

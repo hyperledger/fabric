@@ -530,9 +530,7 @@ below provide a guided tour of what happens when you issue the command of
   script uses the ``docker-compose-test-net.yaml`` file in the `docker` folder
   to create the peer and orderer nodes. The `docker` folder also contains the
   ``docker-compose-e2e.yaml`` file that brings up the nodes of the network
-  alongside three Fabric CAs. This file is meant to be used to run end-to-end
-  tests by the Fabric SDK. Refer to the [Node SDK](https://github.com/hyperledger/fabric-sdk-node)
-  repo for details on running these tests.
+  alongside three Fabric CAs.
 
 - If you use the `createChannel` subcommand, `./network.sh` runs the
   `createChannel.sh` script in the `scripts` folder to create a channel
