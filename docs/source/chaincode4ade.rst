@@ -556,20 +556,19 @@ function. Here's the whole chaincode program source.
 Chaincode access control
 ------------------------
 
-Chaincode can utilize the client (submitter) certificate for access
-control decisions with ``ctx.GetStub().GetCreator()``. Additionally
-the Fabric Contract API provides extension APIs that extract client identity
+Chaincode can utilize the client (request submitter) certificate for access
+control decisions. The certificate can be retrieved with the ``ctx.GetStub().GetCreator()`` contract API.
+Additionally the Fabric contract API provides extension APIs that extract client identity
 from the submitter's certificate that can be used for access control decisions,
-whether that is based on client identity itself, or the org identity,
-or on a client identity attribute.
+whether that is based on client identity itself, the org identity,
+or a client identity attribute such as an OU in the certificate or a custom attribute.
 
-For example an asset that is represented as a key/value may include the
-client's identity as part of the value (for example as a JSON attribute
-indicating that asset owner), and only this client may be authorized
-to make updates to the key/value in the future. The client identity
-library extension APIs can be used within chaincode to retrieve this
-submitter information to make such access control decisions.
-
+For example an asset that is represented as a key/value on the ledger may include the
+client's identity as part of the value. The value may be in JSON format where one
+of the JSON attributes is the asset owner. The chaincode logic could then ensure
+that only the asset owner is authorized to make updates to the asset's key/value in the future.
+The `client identity library extension APIs <https://github.com/hyperledger/fabric-chaincode-go/blob/main/pkg/cid/README.md>`_
+can be used within chaincode to retrieve this submitter information to make such access control decisions.
 
 .. _vendoring:
 
