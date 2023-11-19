@@ -42,11 +42,10 @@ const testchannelID = "testchannel"
 
 var _ = Describe("Snapshot Generation and Bootstrap", func() {
 	var (
-		setup                 *setup
-		helper                *marblesTestHelper
-		couchProcess          []ifrit.Process
-		legacyChaincode       nwo.Chaincode
-		newlifecycleChaincode nwo.Chaincode
+		setup        *setup
+		helper       *marblesTestHelper
+		couchProcess []ifrit.Process
+		chaincode    nwo.Chaincode
 	)
 
 	BeforeEach(func() {
@@ -75,16 +74,7 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 
 	When("chaincode has no private data collections", func() {
 		BeforeEach(func() {
-			legacyChaincode = nwo.Chaincode{
-				Name:        "marbles",
-				Version:     "0.0",
-				Path:        chaincodePathWithIndex,
-				Ctor:        `{"Args":[]}`,
-				Policy:      `OR ('Org1MSP.member','Org2MSP.member','Org3MSP.member','Org4MSP.member')`,
-				PackageFile: filepath.Join(setup.testDir, "marbles_legacy.tar.gz"),
-			}
-
-			newlifecycleChaincode = nwo.Chaincode{
+			chaincode = nwo.Chaincode{
 				Name:            "marbles",
 				Version:         "0.0",
 				Path:            components.Build(chaincodePathWithIndex),
@@ -96,8 +86,16 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 				Label:           "marbles",
 			}
 
-			By("deploying legacy chaincode on initial peers (stateleveldb)")
-			nwo.DeployChaincodeLegacy(setup.network, testchannelID, setup.orderer, legacyChaincode)
+			// start org3peer0 so that we have majority number of orgs (3 out of 4) to satify the channel config update policy
+			org3peer0, _ := startPeer(setup, "Org3", "peer0", testchannelID, false)
+			setup.network.JoinChannel(testchannelID, setup.orderer, org3peer0)
+
+			By("enabling V2_0 capabilities")
+			channelPeers := setup.network.PeersWithChannel(testchannelID)
+			nwo.EnableCapabilities(setup.network, testchannelID, "Application", "V2_0", setup.orderer, channelPeers...)
+
+			By("deploying chaincode to the network")
+			nwo.DeployChaincode(setup.network, testchannelID, setup.orderer, chaincode, channelPeers...)
 		})
 
 		// Below test does the following when peers are using either leveldb or couchdb.
@@ -120,8 +118,8 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 
 			By("invoking marbles chaincode")
 			testKey := "marble-0"
-			helper.invokeMarblesChaincode(legacyChaincode.Name, org1peer0, "initMarble", "marble-0", "blue", "35", "tom")
-			helper.invokeMarblesChaincode(legacyChaincode.Name, org1peer0, "initMarble", "marble-1", "red", "100", "tom")
+			helper.invokeMarblesChaincode(chaincode.Name, org1peer0, "initMarble", "marble-0", "blue", "35", "tom")
+			helper.invokeMarblesChaincode(chaincode.Name, org1peer0, "initMarble", "marble-1", "red", "100", "tom")
 
 			By("getting an existing transaction from a block before snapshot is generated")
 			txenvBeforeSnapshot, txidBeforeSnapshot := getTxFromLastBlock(setup.network, org1peer0)
@@ -139,7 +137,7 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 			couchProcess = append(couchProcess, couchProc)
 
 			By("installing legacy chaincode on new peer org2peer1")
-			nwo.InstallChaincodeLegacy(setup.network, legacyChaincode, org2peer1)
+			nwo.InstallChaincode(setup.network, chaincode, org2peer1)
 
 			By("joining new peer org2peer1 to the channel")
 			joinBySnapshot(setup.network, setup.orderer, org2peer1, testchannelID, snapshotDir, blockNum)
@@ -148,28 +146,28 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 			verifySizeIndexExists(setup.network, testchannelID, setup.orderer, org2peer1, "marbles")
 
 			By("invoking marbles chaincode on bootstrapped peer org2peer1")
-			helper.invokeMarblesChaincode(legacyChaincode.Name, org2peer1, "transferMarble", testKey, "newowner2")
+			helper.invokeMarblesChaincode(chaincode.Name, org2peer1, "transferMarble", testKey, "newowner2")
 
 			By("verifying history on peer org2peer1")
 			expectedHistory := []*marbleHistoryResult{
 				{IsDelete: "false", Value: newMarble(testKey, "blue", 35, "newowner2")},
 			}
-			helper.assertGetHistoryForMarble(legacyChaincode.Name, org2peer1, expectedHistory, testKey)
+			helper.assertGetHistoryForMarble(chaincode.Name, org2peer1, expectedHistory, testKey)
 
 			verifyQSCC(setup.network, org2peer1, testchannelID, blockNum, txidBeforeSnapshot)
 
 			// test 3: bootstrap a peer in a new org from snapshot and verify
-			By("starting a peer Org3.peer0 in new org3 (stateleveldb)")
-			org3peer0, _ := startPeer(setup, "Org3", "peer0", testchannelID, false)
+			By("starting a peer Org3.peer1 in new org3 (stateleveldb)")
+			org3peer1, _ := startPeer(setup, "Org3", "peer1", testchannelID, false)
 
-			By("installing legacy chaincode on new peer org3peer0")
-			nwo.InstallChaincodeLegacy(setup.network, legacyChaincode, org3peer0)
+			By("installing legacy chaincode on new peer org3peer1")
+			nwo.InstallChaincode(setup.network, chaincode, org3peer1)
 
 			By("joining new peer org3peer0 to the channel")
-			joinBySnapshot(setup.network, setup.orderer, org3peer0, testchannelID, snapshotDir, blockNum)
+			joinBySnapshot(setup.network, setup.orderer, org3peer1, testchannelID, snapshotDir, blockNum)
 
-			By("invoking marbles chaincode on bootstrapped peer org3peer0")
-			helper.invokeMarblesChaincode(legacyChaincode.Name, org3peer0, "transferMarble", testKey, "newowner3")
+			By("invoking marbles chaincode on bootstrapped peer org3peer1")
+			helper.invokeMarblesChaincode(chaincode.Name, org3peer1, "transferMarble", testKey, "newowner3")
 
 			By("getting an existing transaction from a block after snapshot is generated")
 			txenvAfterSnapshot, txidAfterSnapshot := getTxFromLastBlock(setup.network, org1peer0)
@@ -179,27 +177,19 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 				{IsDelete: "false", Value: newMarble(testKey, "blue", 35, "newowner3")},
 				{IsDelete: "false", Value: newMarble(testKey, "blue", 35, "newowner2")},
 			}
-			helper.assertGetHistoryForMarble(legacyChaincode.Name, org3peer0, expectedHistory, testKey)
-			verifyQSCC(setup.network, org3peer0, testchannelID, blockNum, txidBeforeSnapshot)
+			helper.assertGetHistoryForMarble(chaincode.Name, org3peer1, expectedHistory, testKey)
+			verifyQSCC(setup.network, org3peer1, testchannelID, blockNum, txidBeforeSnapshot)
 
 			// verify DUPLICATE_TXID error when resubmitting old tx on a peer bootstrapped from snapshot (v1_4 capability)
 			By("resubmitting an old transaction committed before snapshot, expecting duplicated txid error")
-			err := commitTx(setup.network, setup.orderer, org3peer0, testchannelID, txenvBeforeSnapshot, txidBeforeSnapshot)
+			err := commitTx(setup.network, setup.orderer, org3peer1, testchannelID, txenvBeforeSnapshot, txidBeforeSnapshot)
 			Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (DUPLICATE_TXID)"))
 			By("resubmitting an old transaction committed after snapshot, expecting duplicated txid error")
-			err = commitTx(setup.network, setup.orderer, org3peer0, testchannelID, txenvAfterSnapshot, txidAfterSnapshot)
+			err = commitTx(setup.network, setup.orderer, org3peer1, testchannelID, txenvAfterSnapshot, txidAfterSnapshot)
 			Expect(err.Error()).To(Equal("transaction invalidated with status (DUPLICATE_TXID)"))
 
-			// test 4: upgrade legacy chaincode to new lifecycle
-			By("enabling V2_0 capabilities")
-			channelPeers := setup.network.PeersWithChannel(testchannelID)
-			nwo.EnableCapabilities(setup.network, testchannelID, "Application", "V2_0", setup.orderer, channelPeers...)
-
-			By("upgrading legacy chaincode to new lifecycle chaincode")
-			nwo.DeployChaincode(setup.network, testchannelID, setup.orderer, newlifecycleChaincode, channelPeers...)
-
-			By("invoking chaincode after upgraded to new lifecycle chaincode")
-			helper.invokeMarblesChaincode(newlifecycleChaincode.Name, org1peer0, "initMarble", "marble-upgrade", "blue", "35", "tom")
+			By("invoking chaincode again")
+			helper.invokeMarblesChaincode(chaincode.Name, org1peer0, "initMarble", "marble-upgrade", "blue", "35", "tom")
 
 			// test 5: generate snapshot again on a peer bootstrapped from a snapshot and upgraded to new lifecycle chaincode
 			blockNumForNextSnapshot := nwo.GetLedgerHeight(setup.network, org2peer1, testchannelID)
@@ -208,15 +198,15 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 
 			// invoke chaincode to trigger snapshot generation
 			// 1st call should be committed before snapshot generation, 2nd call should be committed after snapshot generation
-			helper.invokeMarblesChaincode(newlifecycleChaincode.Name, org2peer1, "transferMarble", testKey, "newowner_beforesnapshot")
-			helper.invokeMarblesChaincode(newlifecycleChaincode.Name, org2peer1, "transferMarble", testKey, "newowner_aftersnapshot")
+			helper.invokeMarblesChaincode(chaincode.Name, org2peer1, "transferMarble", testKey, "newowner_beforesnapshot")
+			helper.invokeMarblesChaincode(chaincode.Name, org2peer1, "transferMarble", testKey, "newowner_aftersnapshot")
 
 			By("verifying snapshot completed on org2peer1")
 			verifyNoPendingSnapshotRequest(setup.network, org2peer1, testchannelID)
 			nextSnapshotDir := filepath.Join(setup.network.PeerDir(org2peer1), "filesystem", "snapshots", "completed", testchannelID, strconv.Itoa(blockNumForNextSnapshot))
 
 			By("getting an existing transaction from a block after new snapshot is generated")
-			helper.invokeMarblesChaincode(legacyChaincode.Name, org2peer1, "initMarble", "marble-3", "red", "100", "tom")
+			helper.invokeMarblesChaincode(chaincode.Name, org2peer1, "initMarble", "marble-3", "red", "100", "tom")
 			txenvAfterSnapshot, txidAfterSnapshot = getTxFromLastBlock(setup.network, org1peer0)
 
 			// test 6: bootstrap a peer in a different org from the new snapshot
@@ -225,7 +215,7 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 			couchProcess = append(couchProcess, couchProc)
 
 			By("installing new lifecycle chaincode on peer org1peer1")
-			nwo.InstallChaincode(setup.network, newlifecycleChaincode, org1peer1)
+			nwo.InstallChaincode(setup.network, chaincode, org1peer1)
 
 			By("joining new peer org1peer1 to the channel")
 			joinBySnapshot(setup.network, setup.orderer, org1peer1, testchannelID, nextSnapshotDir, blockNumForNextSnapshot)
@@ -237,7 +227,7 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 			expectedHistory = []*marbleHistoryResult{
 				{IsDelete: "false", Value: newMarble(testKey, "blue", 35, "newowner_aftersnapshot")},
 			}
-			helper.assertGetHistoryForMarble(newlifecycleChaincode.Name, org1peer1, expectedHistory, testKey)
+			helper.assertGetHistoryForMarble(chaincode.Name, org1peer1, expectedHistory, testKey)
 
 			verifyQSCC(setup.network, org1peer1, testchannelID, blockNumForNextSnapshot, txidBeforeSnapshot)
 
@@ -250,20 +240,20 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 			joinBySnapshot(setup.network, setup.orderer, org4peer0, testchannelID, nextSnapshotDir, blockNumForNextSnapshot)
 
 			By("installing and approving chaincode on new peer org4peer0")
-			installAndApproveChaincode(setup.network, setup.orderer, org4peer0, testchannelID, newlifecycleChaincode, []string{"Org1", "Org2", "Org3", "Org4"})
+			installAndApproveChaincode(setup.network, setup.orderer, org4peer0, testchannelID, chaincode, []string{"Org1", "Org2", "Org3", "Org4"})
 
 			By("verifying index created on org4peer0")
 			verifySizeIndexExists(setup.network, testchannelID, setup.orderer, org2peer1, "marbles")
 
 			By("invoking chaincode on bootstrapped peer org4peer0")
-			helper.invokeMarblesChaincode(newlifecycleChaincode.Name, org4peer0, "delete", testKey)
+			helper.invokeMarblesChaincode(chaincode.Name, org4peer0, "delete", testKey)
 
 			By("verifying history on peer org4peer0")
 			expectedHistory = []*marbleHistoryResult{
 				{IsDelete: "true"},
 				{IsDelete: "false", Value: newMarble(testKey, "blue", 35, "newowner_aftersnapshot")},
 			}
-			helper.assertGetHistoryForMarble(newlifecycleChaincode.Name, org4peer0, expectedHistory, testKey)
+			helper.assertGetHistoryForMarble(chaincode.Name, org4peer0, expectedHistory, testKey)
 
 			verifyQSCC(setup.network, org4peer0, testchannelID, blockNumForNextSnapshot, txidBeforeSnapshot)
 
@@ -278,13 +268,13 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 			// test 8: verify cscc works correctly to get an orderer endpoint from the channel config
 			// even if the peer does not have a channel config block when bootstrapped from snapshot
 			By("invoking chaincode without passing orderer endpoint on org4peer0")
-			invokeWithoutPassingOrdererEndPoint(setup.network, org4peer0, testchannelID, newlifecycleChaincode.Name, "initMarble", "marble-cscctest", "blue", "35", "tom")
+			invokeWithoutPassingOrdererEndPoint(setup.network, org4peer0, testchannelID, chaincode.Name, "initMarble", "marble-cscctest", "blue", "35", "tom")
 
 			// test 9: verify chaincode upgrade and install after bootstrapping
 			By("upgrading chaincode to version 2.0 on all peers after bootstrapping from snapshot")
-			newlifecycleChaincode.Version = "2.0"
-			newlifecycleChaincode.Sequence = "2"
-			nwo.DeployChaincode(setup.network, testchannelID, setup.orderer, newlifecycleChaincode)
+			chaincode.Version = "2.0"
+			chaincode.Sequence = "2"
+			nwo.DeployChaincode(setup.network, testchannelID, setup.orderer, chaincode)
 
 			By("deploying a new chaincode on all the peers after bootstrapping from snapshot")
 			cc2 := nwo.Chaincode{
@@ -310,7 +300,7 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 
 	When("chaincode has private data collections", func() {
 		BeforeEach(func() {
-			newlifecycleChaincode = nwo.Chaincode{
+			chaincode = nwo.Chaincode{
 				Name:              "marblesp",
 				Version:           "1.0",
 				Path:              components.Build("github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd"),
@@ -334,7 +324,7 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 			nwo.EnableCapabilities(setup.network, testchannelID, "Application", "V2_0", setup.orderer, channelPeers...)
 
 			By("deploying newlifecycle chaincode on initial peers (leveldb)")
-			nwo.DeployChaincode(setup.network, testchannelID, setup.orderer, newlifecycleChaincode)
+			nwo.DeployChaincode(setup.network, testchannelID, setup.orderer, chaincode)
 		})
 
 		// This test verifies the following:
@@ -347,27 +337,27 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 
 			// prepare test data: add and delete marble1, add and transfer marble1
 			By("adding marble1")
-			marblechaincodeutil.AddMarble(setup.network, setup.orderer, testchannelID, newlifecycleChaincode.Name,
+			marblechaincodeutil.AddMarble(setup.network, setup.orderer, testchannelID, chaincode.Name,
 				`{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`, org2peer0)
 			By("deleting marble1")
-			marblechaincodeutil.DeleteMarble(setup.network, setup.orderer, testchannelID, newlifecycleChaincode.Name,
+			marblechaincodeutil.DeleteMarble(setup.network, setup.orderer, testchannelID, chaincode.Name,
 				`{"name":"marble1"}`, org2peer0)
 
 			By("verifying the deletion of marble1")
-			marblechaincodeutil.AssertDoesNotExistInCollectionM(setup.network, testchannelID, newlifecycleChaincode.Name, "marble1", channelPeers...)
-			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(setup.network, testchannelID, newlifecycleChaincode.Name, "marble1", channelPeers...)
+			marblechaincodeutil.AssertDoesNotExistInCollectionM(setup.network, testchannelID, chaincode.Name, "marble1", channelPeers...)
+			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(setup.network, testchannelID, chaincode.Name, "marble1", channelPeers...)
 
 			By("adding marble2")
-			marblechaincodeutil.AddMarble(setup.network, setup.orderer, testchannelID, newlifecycleChaincode.Name,
+			marblechaincodeutil.AddMarble(setup.network, setup.orderer, testchannelID, chaincode.Name,
 				`{"name":"marble2", "color":"blue", "size":35, "owner":"tom", "price":99}`, org2peer0)
 			By("transferring marble2")
-			marblechaincodeutil.TransferMarble(setup.network, setup.orderer, testchannelID, newlifecycleChaincode.Name,
+			marblechaincodeutil.TransferMarble(setup.network, setup.orderer, testchannelID, chaincode.Name,
 				`{"name":"marble2", "owner":"jerry"}`, org2peer0)
 
-			assertPvtdataPresencePerCollectionConfig1(setup.network, newlifecycleChaincode.Name, "marble2")
+			assertPvtdataPresencePerCollectionConfig1(setup.network, chaincode.Name, "marble2")
 
 			By("verifying the new ownership of marble2")
-			marblechaincodeutil.AssertOwnershipInCollectionM(setup.network, testchannelID, newlifecycleChaincode.Name, "marble2", "jerry", org1peer0, org2peer0)
+			marblechaincodeutil.AssertOwnershipInCollectionM(setup.network, testchannelID, chaincode.Name, "marble2", "jerry", org1peer0, org2peer0)
 
 			// test 1: generate snapshots on 2 peers for the same blockNum and verify they are same
 			blockNum := nwo.GetLedgerHeight(setup.network, org2peer0, testchannelID) - 1
@@ -379,23 +369,23 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 			couchProcess = append(couchProcess, couchProc)
 
 			By("installing chaincode on peer org2peer1")
-			nwo.InstallChaincode(setup.network, newlifecycleChaincode, org2peer1)
+			nwo.InstallChaincode(setup.network, chaincode, org2peer1)
 
 			By("joining peer org2peer1 to the channel by snapshot")
 			joinBySnapshot(setup.network, setup.orderer, org2peer1, testchannelID, snapshotDir, blockNum)
 
 			By("waiting for pvtdata to be reconciled on org2peer1")
-			waitForMarblePvtdataReconciliation(setup.network, org2peer1, testchannelID, newlifecycleChaincode.Name, []string{"marble2"})
+			waitForMarblePvtdataReconciliation(setup.network, org2peer1, testchannelID, chaincode.Name, []string{"marble2"})
 
 			// verify pvtdata reconciliation after joinbysnapshot
 			By("verifying marble2 pvtdata reconciliation on org2peer1")
-			assertPvtdataPresencePerCollectionConfig1(setup.network, newlifecycleChaincode.Name, "marble2", org2peer1)
+			assertPvtdataPresencePerCollectionConfig1(setup.network, chaincode.Name, "marble2", org2peer1)
 			By("verifying the new ownership of marble2")
-			marblechaincodeutil.AssertOwnershipInCollectionM(setup.network, testchannelID, newlifecycleChaincode.Name, "marble2", "jerry", org2peer1)
+			marblechaincodeutil.AssertOwnershipInCollectionM(setup.network, testchannelID, chaincode.Name, "marble2", "jerry", org2peer1)
 
 			By("verifying marble1 does not exist")
-			marblechaincodeutil.AssertDoesNotExistInCollectionM(setup.network, testchannelID, newlifecycleChaincode.Name, "marble1", org2peer1)
-			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(setup.network, testchannelID, newlifecycleChaincode.Name, "marble1", org2peer1)
+			marblechaincodeutil.AssertDoesNotExistInCollectionM(setup.network, testchannelID, chaincode.Name, "marble1", org2peer1)
+			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(setup.network, testchannelID, chaincode.Name, "marble1", org2peer1)
 
 			// test 3: submit a request to generate snapshot again on a peer (org2peer1) bootstrapped from a snapshot
 			blockNumForNextSnapshot := nwo.GetLedgerHeight(setup.network, org2peer1, testchannelID)
@@ -404,14 +394,14 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 
 			// block for marble3 tx is in snapshot, but block for marble4 tx is post snapshot
 			By("adding marble3")
-			marblechaincodeutil.AddMarble(setup.network, setup.orderer, testchannelID, newlifecycleChaincode.Name,
+			marblechaincodeutil.AddMarble(setup.network, setup.orderer, testchannelID, chaincode.Name,
 				`{"name":"marble3", "color":"blue", "size":35, "owner":"tom", "price":99}`, org2peer1)
-			assertPvtdataPresencePerCollectionConfig1(setup.network, newlifecycleChaincode.Name, "marble3")
+			assertPvtdataPresencePerCollectionConfig1(setup.network, chaincode.Name, "marble3")
 
 			By("adding marble4")
-			marblechaincodeutil.AddMarble(setup.network, setup.orderer, testchannelID, newlifecycleChaincode.Name,
+			marblechaincodeutil.AddMarble(setup.network, setup.orderer, testchannelID, chaincode.Name,
 				`{"name":"marble4", "color":"blue", "size":35, "owner":"tom", "price":99}`, org2peer1)
-			assertPvtdataPresencePerCollectionConfig1(setup.network, newlifecycleChaincode.Name, "marble4")
+			assertPvtdataPresencePerCollectionConfig1(setup.network, chaincode.Name, "marble4")
 
 			By("verifying snapshot completed on org2peer1")
 			verifyNoPendingSnapshotRequest(setup.network, org2peer1, testchannelID)
@@ -428,32 +418,32 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 			org2peer2, _ := startPeer(setup, "Org2", "peer2", testchannelID, false)
 
 			By("installing new lifecycle chaincode2 on peer org2peer2")
-			nwo.InstallChaincode(setup.network, newlifecycleChaincode, org2peer2)
+			nwo.InstallChaincode(setup.network, chaincode, org2peer2)
 
 			By("joining peer org2peer2 to the channel by snapshot")
 			joinBySnapshot(setup.network, setup.orderer, org2peer2, testchannelID, nextSnapshotDir, blockNumForNextSnapshot)
 
 			By("waiting for pvtdata to be reconciled on org2peer2")
-			waitForMarblePvtdataReconciliation(setup.network, org2peer2, testchannelID, newlifecycleChaincode.Name, []string{"marble2", "marble3", "marble4"})
+			waitForMarblePvtdataReconciliation(setup.network, org2peer2, testchannelID, chaincode.Name, []string{"marble2", "marble3", "marble4"})
 
 			By("verifying marble4 pvtdata reconciliation on org2peer2")
-			assertPvtdataPresencePerCollectionConfig1(setup.network, newlifecycleChaincode.Name, "marble4", org2peer2)
+			assertPvtdataPresencePerCollectionConfig1(setup.network, chaincode.Name, "marble4", org2peer2)
 			By("verifying marble3 pvtdata reconciliation on org2peer2")
-			assertPvtdataPresencePerCollectionConfig1(setup.network, newlifecycleChaincode.Name, "marble3", org2peer2)
+			assertPvtdataPresencePerCollectionConfig1(setup.network, chaincode.Name, "marble3", org2peer2)
 			By("verifying marble2 pvtdata reconciliation on org2peer2")
-			assertPvtdataPresencePerCollectionConfig1(setup.network, newlifecycleChaincode.Name, "marble2", org2peer2)
+			assertPvtdataPresencePerCollectionConfig1(setup.network, chaincode.Name, "marble2", org2peer2)
 			By("verifying the new ownership of marble2")
-			marblechaincodeutil.AssertOwnershipInCollectionM(setup.network, testchannelID, newlifecycleChaincode.Name, "marble2", "jerry", org2peer2)
+			marblechaincodeutil.AssertOwnershipInCollectionM(setup.network, testchannelID, chaincode.Name, "marble2", "jerry", org2peer2)
 			By("verifying marble1 does not exist")
-			marblechaincodeutil.AssertDoesNotExistInCollectionM(setup.network, testchannelID, newlifecycleChaincode.Name, "marble1", org2peer2)
-			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(setup.network, testchannelID, newlifecycleChaincode.Name, "marble1", org2peer2)
+			marblechaincodeutil.AssertDoesNotExistInCollectionM(setup.network, testchannelID, chaincode.Name, "marble1", org2peer2)
+			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(setup.network, testchannelID, chaincode.Name, "marble1", org2peer2)
 
 			// test 5: bootstrap a new peer Org2peer3 from genesis block to verify pvtdata reconciliation
 			By("startinging a peer Org2peer3 in an new org (leveldb)")
 			org2peer3, _ := startPeer(setup, "Org2", "peer3", testchannelID, false)
 
 			By("installing newlifecycleChaincode on new peer Org2peer3")
-			nwo.InstallChaincode(setup.network, newlifecycleChaincode, org2peer3)
+			nwo.InstallChaincode(setup.network, chaincode, org2peer3)
 
 			By("joining peer Org2peer3 to the channel by genesis block")
 			setup.network.JoinChannel(testchannelID, setup.orderer, org2peer3)
@@ -463,19 +453,19 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 			nwo.WaitUntilEqualLedgerHeight(setup.network, testchannelID, channelHeight, org2peer3)
 
 			By("waiting for pvtdata to be reconciled on org2peer3")
-			waitForMarblePvtdataReconciliation(setup.network, org2peer3, testchannelID, newlifecycleChaincode.Name, []string{"marble2", "marble3", "marble4"})
+			waitForMarblePvtdataReconciliation(setup.network, org2peer3, testchannelID, chaincode.Name, []string{"marble2", "marble3", "marble4"})
 
 			By("verifying marble4 pvtdata reconciliation on org2peer3")
-			assertPvtdataPresencePerCollectionConfig1(setup.network, newlifecycleChaincode.Name, "marble4", org2peer3)
+			assertPvtdataPresencePerCollectionConfig1(setup.network, chaincode.Name, "marble4", org2peer3)
 			By("verifying marble3 pvtdata reconciliation on org2peer3")
-			assertPvtdataPresencePerCollectionConfig1(setup.network, newlifecycleChaincode.Name, "marble3", org2peer3)
+			assertPvtdataPresencePerCollectionConfig1(setup.network, chaincode.Name, "marble3", org2peer3)
 			By("verifying marble2 pvtdata reconciliation on org2peer3")
-			assertPvtdataPresencePerCollectionConfig1(setup.network, newlifecycleChaincode.Name, "marble2", org2peer3)
+			assertPvtdataPresencePerCollectionConfig1(setup.network, chaincode.Name, "marble2", org2peer3)
 			By("verifying the new ownership of marble2")
-			marblechaincodeutil.AssertOwnershipInCollectionM(setup.network, testchannelID, newlifecycleChaincode.Name, "marble2", "jerry", org2peer3)
+			marblechaincodeutil.AssertOwnershipInCollectionM(setup.network, testchannelID, chaincode.Name, "marble2", "jerry", org2peer3)
 			By("verifying marble1 does not exist")
-			marblechaincodeutil.AssertDoesNotExistInCollectionM(setup.network, testchannelID, newlifecycleChaincode.Name, "marble1", org2peer3)
-			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(setup.network, testchannelID, newlifecycleChaincode.Name, "marble1", org2peer3)
+			marblechaincodeutil.AssertDoesNotExistInCollectionM(setup.network, testchannelID, chaincode.Name, "marble1", org2peer3)
+			marblechaincodeutil.AssertDoesNotExistInCollectionMPD(setup.network, testchannelID, chaincode.Name, "marble1", org2peer3)
 
 			// verify pvtdata hash on bootstrapped peers
 			peers := []*nwo.Peer{org2peer1, org2peer2, org2peer3}
@@ -488,11 +478,11 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 
 				By(fmt.Sprintf("verifying getMarbleHash for %s from all peers that has the chaincode instantiated", name))
 				expectedBytes := util.ComputeStringHash(fmt.Sprintf(`{"docType":"marble","name":"%s","color":"blue","size":35,"owner":"%s"}`, name, owner))
-				marblechaincodeutil.AssertMarblesPrivateHashM(setup.network, testchannelID, newlifecycleChaincode.Name, name, expectedBytes, peers)
+				marblechaincodeutil.AssertMarblesPrivateHashM(setup.network, testchannelID, chaincode.Name, name, expectedBytes, peers)
 
 				By(fmt.Sprintf("verifying getMarblePrivateDetailsHash for %s from all peers that has the chaincode instantiated", name))
 				expectedBytes = util.ComputeStringHash(fmt.Sprintf(`{"docType":"marblePrivateDetails","name":"%s","price":99}`, name))
-				marblechaincodeutil.AssertMarblesPrivateDetailsHashMPD(setup.network, testchannelID, newlifecycleChaincode.Name, name, expectedBytes, peers)
+				marblechaincodeutil.AssertMarblesPrivateDetailsHashMPD(setup.network, testchannelID, chaincode.Name, name, expectedBytes, peers)
 			}
 		})
 	})
@@ -557,7 +547,7 @@ func initAndStartFourOrgsNetwork() *setup {
 		},
 	)
 
-	// add org3 with one peer
+	// add org3 with two peer
 	config.Organizations = append(config.Organizations, &nwo.Organization{
 		Name:          "Org3",
 		MSPID:         "Org3MSP",
@@ -567,13 +557,21 @@ func initAndStartFourOrgsNetwork() *setup {
 		CA:            &nwo.CA{Hostname: "ca"},
 	})
 	config.Profiles[0].Organizations = append(config.Profiles[0].Organizations, "Org3")
-	config.Peers = append(config.Peers, &nwo.Peer{
-		Name:         "peer0",
-		Organization: "Org3",
-		Channels: []*nwo.PeerChannel{
-			{Name: testchannelID, Anchor: true},
+	config.Peers = append(config.Peers,
+		&nwo.Peer{
+			Name:         "peer0",
+			Organization: "Org3",
+			Channels: []*nwo.PeerChannel{
+				{Name: testchannelID, Anchor: true},
+			},
 		},
-	})
+		&nwo.Peer{
+			Name:         "peer1",
+			Organization: "Org3",
+			Channels: []*nwo.PeerChannel{
+				{Name: testchannelID, Anchor: false},
+			},
+		})
 
 	// add org4 with one peer
 	config.Organizations = append(config.Organizations, &nwo.Organization{
