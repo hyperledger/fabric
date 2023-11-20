@@ -12,14 +12,6 @@ import "github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 // CensorshipDetectorFactory interface which abstracts the creation of a BFTCensorshipMonitor.
 type BFTCensorshipMonitorFactory struct{}
 
-func (f *BFTCensorshipMonitorFactory) Create(
-	chainID string,
-	verifier BlockVerifier,
-	requester DeliverClientRequester,
-	progressReporter BlockProgressReporter,
-	fetchSources []*orderers.Endpoint,
-	blockSourceIndex int,
-	timeoutConf TimeoutConfig,
-) CensorshipDetector {
-	return NewBFTCensorshipMonitor(chainID, verifier, requester, progressReporter, fetchSources, blockSourceIndex, timeoutConf)
+func (f *BFTCensorshipMonitorFactory) Create(chainID string, updatableVerifier UpdatableBlockVerifier, requester DeliverClientRequester, progressReporter BlockProgressReporter, fetchSources []*orderers.Endpoint, blockSourceIndex int, timeoutConf TimeoutConfig) CensorshipDetector {
+	return NewBFTCensorshipMonitor(chainID, updatableVerifier, requester, progressReporter, fetchSources, blockSourceIndex, timeoutConf)
 }

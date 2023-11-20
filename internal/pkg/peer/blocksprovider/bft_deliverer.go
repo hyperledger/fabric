@@ -13,6 +13,7 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/common/deliverclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
@@ -30,7 +31,7 @@ type CensorshipDetector interface {
 type CensorshipDetectorFactory interface {
 	Create(
 		chainID string,
-		verifier BlockVerifier,
+		updatableVerifier UpdatableBlockVerifier,
 		requester DeliverClientRequester,
 		progressReporter BlockProgressReporter,
 		fetchSources []*orderers.Endpoint,
@@ -46,17 +47,7 @@ type DurationExceededHandler interface {
 
 //go:generate counterfeiter -o fake/updatable_block_verifier.go --fake-name UpdatableBlockVerifier . UpdatableBlockVerifier
 type UpdatableBlockVerifier interface {
-	// VerifyBlock checks block integrity and its relation to the chain, and verifies the signatures.
-	VerifyBlock(block *common.Block) error
-
-	// VerifyBlockAttestation does the same as VerifyBlock, except it assumes block.Data = nil. It therefore does not
-	// compute the block.Data.Hash() and compare it to the block.Header.DataHash. This is used when the orderer
-	// delivers a block with header & metadata only, as an attestation of block existence.
-	VerifyBlockAttestation(block *common.Block) error
-
-	// UpdateConfig sets the config by which blocks are verified. It is assumed that this config block had already been
-	// verified using the VerifyBlock method immediately prior to calling this method.
-	UpdateConfig(configBlock *common.Block) error
+	deliverclient.CloneableUpdatableBlockVerifier
 }
 
 // BFTDeliverer fetches blocks using a block receiver and maintains a BFTCensorshipMonitor.
@@ -70,7 +61,6 @@ type BFTDeliverer struct {
 	BlockHandler              BlockHandler
 	Ledger                    LedgerInfo
 	ChannelConfig             *common.Config
-	BlockVerifier             BlockVerifier // TODO remove
 	UpdatableBlockVerifier    UpdatableBlockVerifier
 	Dialer                    Dialer
 	Orderers                  OrdererConnectionSource
@@ -184,7 +174,7 @@ func (d *BFTDeliverer) DeliverBlocks() {
 
 		// Create and start a censorship monitor.
 		d.censorshipMonitor = d.CensorshipDetectorFactory.Create(
-			d.ChannelID, d.BlockVerifier, d.requester, d, d.fetchSources, d.fetchSourceIndex, timeoutConfig)
+			d.ChannelID, d.UpdatableBlockVerifier, d.requester, d, d.fetchSources, d.fetchSourceIndex, timeoutConfig)
 		go d.censorshipMonitor.Monitor()
 
 		// Wait for block fetcher & censorship monitor events, or a stop signal.

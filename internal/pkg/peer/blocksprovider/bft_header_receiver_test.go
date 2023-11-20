@@ -24,7 +24,7 @@ import (
 )
 
 func TestBftHeaderReceiver_NoBlocks_RecvError(t *testing.T) {
-	fakeBlockVerifier := &fake.BlockVerifier{}
+	fakeBlockVerifier := &fake.UpdatableBlockVerifier{}
 	fakeBlockVerifier.VerifyBlockAttestationReturns(fmt.Errorf("fake-verify-error"))
 
 	streamClientMock := &fake.DeliverClient{}
@@ -49,7 +49,7 @@ func TestBftHeaderReceiver_NoBlocks_RecvError(t *testing.T) {
 }
 
 func TestBftHeaderReceiver_BadStatus(t *testing.T) {
-	fakeBlockVerifier := &fake.BlockVerifier{}
+	fakeBlockVerifier := &fake.UpdatableBlockVerifier{}
 	fakeBlockVerifier.VerifyBlockAttestationReturns(fmt.Errorf("fake-verify-error"))
 
 	streamClientMock := &fake.DeliverClient{}
@@ -72,7 +72,7 @@ func TestBftHeaderReceiver_BadStatus(t *testing.T) {
 }
 
 func TestBftHeaderReceiver_NilResponse(t *testing.T) {
-	fakeBlockVerifier := &fake.BlockVerifier{}
+	fakeBlockVerifier := &fake.UpdatableBlockVerifier{}
 	fakeBlockVerifier.VerifyBlockAttestationReturns(fmt.Errorf("fake-verify-error"))
 
 	streamClientMock := &fake.DeliverClient{}
@@ -92,7 +92,9 @@ func TestBftHeaderReceiver_NilResponse(t *testing.T) {
 
 func TestBftHeaderReceiver_WithBlocks_Renew(t *testing.T) {
 	flogging.ActivateSpec("debug")
-	fakeBlockVerifier := &fake.BlockVerifier{}
+	fakeBlockVerifier := &fake.UpdatableBlockVerifier{}
+	fakeBlockVerifier.VerifyBlockAttestationCalls(naiveBlockVerifier)
+	fakeBlockVerifier.CloneReturns(fakeBlockVerifier)
 	streamClientMock := &fake.DeliverClient{}
 	hr := blocksprovider.NewBFTHeaderReceiver("testchannel", "10.10.10.11:666", streamClientMock, fakeBlockVerifier, nil, flogging.MustGetLogger("test.BFTHeaderReceiver"))
 
@@ -110,7 +112,6 @@ func TestBftHeaderReceiver_WithBlocks_Renew(t *testing.T) {
 		},
 	)
 	streamClientMock.CloseSendReturns(nil)
-	fakeBlockVerifier.VerifyBlockAttestationCalls(naiveBlockVerifier)
 
 	go hr.DeliverHeaders()
 
@@ -143,7 +144,7 @@ func TestBftHeaderReceiver_WithBlocks_Renew(t *testing.T) {
 	assert.Equal(t, fakeBlockVerifier.VerifyBlockAttestationCallCount(), 2)
 
 	//=== Create a new BFTHeaderReceiver with the last good header of the previous receiver
-	fakeBlockVerifier = &fake.BlockVerifier{}
+	fakeBlockVerifier = &fake.UpdatableBlockVerifier{}
 	streamClientMock = &fake.DeliverClient{}
 	hr2 := blocksprovider.NewBFTHeaderReceiver("testchannel", "10.10.10.11:666", streamClientMock, fakeBlockVerifier, hr, flogging.MustGetLogger("test.BFTHeaderReceiver.2"))
 	assert.False(t, hr2.IsStarted())
@@ -156,7 +157,9 @@ func TestBftHeaderReceiver_WithBlocks_Renew(t *testing.T) {
 
 func TestBftHeaderReceiver_WithBlocks_StopOnVerificationFailure(t *testing.T) {
 	flogging.ActivateSpec("debug")
-	fakeBlockVerifier := &fake.BlockVerifier{}
+	fakeBlockVerifier := &fake.UpdatableBlockVerifier{}
+	fakeBlockVerifier.VerifyBlockAttestationCalls(naiveBlockVerifier)
+	fakeBlockVerifier.CloneReturns(fakeBlockVerifier)
 	streamClientMock := &fake.DeliverClient{}
 	hr := blocksprovider.NewBFTHeaderReceiver("testchannel", "10.10.10.11:666", streamClientMock, fakeBlockVerifier, nil, flogging.MustGetLogger("test.BFTHeaderReceiver"))
 
@@ -175,7 +178,6 @@ func TestBftHeaderReceiver_WithBlocks_StopOnVerificationFailure(t *testing.T) {
 		},
 	)
 	streamClientMock.CloseSendReturns(nil)
-	fakeBlockVerifier.VerifyBlockAttestationCalls(naiveBlockVerifier)
 
 	go hr.DeliverHeaders()
 
@@ -213,7 +215,9 @@ func TestBftHeaderReceiver_WithBlocks_StopOnVerificationFailure(t *testing.T) {
 
 func TestBftHeaderReceiver_VerifyOnce(t *testing.T) {
 	flogging.ActivateSpec("debug")
-	fakeBlockVerifier := &fake.BlockVerifier{}
+	fakeBlockVerifier := &fake.UpdatableBlockVerifier{}
+	fakeBlockVerifier.VerifyBlockAttestationCalls(naiveBlockVerifier)
+	fakeBlockVerifier.CloneReturns(fakeBlockVerifier)
 	streamClientMock := &fake.DeliverClient{}
 	hr := blocksprovider.NewBFTHeaderReceiver("testchannel", "10.10.10.11:666", streamClientMock, fakeBlockVerifier, nil, flogging.MustGetLogger("test.BFTHeaderReceiver"))
 
@@ -232,7 +236,6 @@ func TestBftHeaderReceiver_VerifyOnce(t *testing.T) {
 		},
 	)
 	streamClientMock.CloseSendReturns(nil)
-	fakeBlockVerifier.VerifyBlockAttestationCalls(naiveBlockVerifier)
 
 	go hr.DeliverHeaders()
 
@@ -277,7 +280,7 @@ func prepareBlock(seq uint64, contentType orderer.SeekInfo_SeekContentType, good
 	return &orderer.DeliverResponse{Type: &orderer.DeliverResponse_Block{Block: block}}
 }
 
-func naiveBlockVerifier(_ string, signedBlock *common.Block) error {
+func naiveBlockVerifier(signedBlock *common.Block) error {
 	sigArray := signedBlock.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES]
 	sig := string(sigArray)
 	if sig == "good" {

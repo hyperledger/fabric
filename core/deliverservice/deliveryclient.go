@@ -69,9 +69,6 @@ type deliverServiceImpl struct {
 // and how it disseminates the messages to other peers
 type Config struct {
 	IsStaticLeader bool
-	// CryptoSvc performs cryptographic actions like message verification and signing
-	// and identity validation.
-	CryptoSvc blocksprovider.BlockVerifier
 	// Gossip enables to enumerate peers in the channel, send a message to peers,
 	// and add a block to the gossip state transfer layer.
 	Gossip blocksprovider.GossipServiceAdapter
@@ -186,7 +183,6 @@ func (d *deliverServiceImpl) createBlockDelivererCFT(chainID string, ledgerInfo 
 			logger:              flogging.MustGetLogger("peer.blocksprovider").With("channel", chainID),
 		},
 		Ledger:                 ledgerInfo,
-		BlockVerifier:          d.conf.CryptoSvc,
 		UpdatableBlockVerifier: ubv,
 		Dialer: blocksprovider.DialerAdapter{
 			ClientConfig: comm.ClientConfig{
@@ -250,7 +246,6 @@ func (d *deliverServiceImpl) createBlockDelivererBFT(chainID string, ledgerInfo 
 			logger:              flogging.MustGetLogger("peer.blocksprovider").With("channel", chainID),
 		},
 		Ledger:                 ledgerInfo,
-		BlockVerifier:          d.conf.CryptoSvc,
 		UpdatableBlockVerifier: ubv,
 		Dialer: blocksprovider.DialerAdapter{
 			ClientConfig: comm.ClientConfig{

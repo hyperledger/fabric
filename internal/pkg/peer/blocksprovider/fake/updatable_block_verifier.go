@@ -5,10 +5,26 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/common/deliverclient"
 	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider"
 )
 
 type UpdatableBlockVerifier struct {
+	CloneStub        func() deliverclient.CloneableUpdatableBlockVerifier
+	cloneMutex       sync.RWMutex
+	cloneArgsForCall []struct {
+	}
+	cloneReturns struct {
+		result1 deliverclient.CloneableUpdatableBlockVerifier
+	}
+	cloneReturnsOnCall map[int]struct {
+		result1 deliverclient.CloneableUpdatableBlockVerifier
+	}
+	UpdateBlockHeaderStub        func(*common.Block)
+	updateBlockHeaderMutex       sync.RWMutex
+	updateBlockHeaderArgsForCall []struct {
+		arg1 *common.Block
+	}
 	UpdateConfigStub        func(*common.Block) error
 	updateConfigMutex       sync.RWMutex
 	updateConfigArgsForCall []struct {
@@ -44,6 +60,91 @@ type UpdatableBlockVerifier struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *UpdatableBlockVerifier) Clone() deliverclient.CloneableUpdatableBlockVerifier {
+	fake.cloneMutex.Lock()
+	ret, specificReturn := fake.cloneReturnsOnCall[len(fake.cloneArgsForCall)]
+	fake.cloneArgsForCall = append(fake.cloneArgsForCall, struct {
+	}{})
+	stub := fake.CloneStub
+	fakeReturns := fake.cloneReturns
+	fake.recordInvocation("Clone", []interface{}{})
+	fake.cloneMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *UpdatableBlockVerifier) CloneCallCount() int {
+	fake.cloneMutex.RLock()
+	defer fake.cloneMutex.RUnlock()
+	return len(fake.cloneArgsForCall)
+}
+
+func (fake *UpdatableBlockVerifier) CloneCalls(stub func() deliverclient.CloneableUpdatableBlockVerifier) {
+	fake.cloneMutex.Lock()
+	defer fake.cloneMutex.Unlock()
+	fake.CloneStub = stub
+}
+
+func (fake *UpdatableBlockVerifier) CloneReturns(result1 deliverclient.CloneableUpdatableBlockVerifier) {
+	fake.cloneMutex.Lock()
+	defer fake.cloneMutex.Unlock()
+	fake.CloneStub = nil
+	fake.cloneReturns = struct {
+		result1 deliverclient.CloneableUpdatableBlockVerifier
+	}{result1}
+}
+
+func (fake *UpdatableBlockVerifier) CloneReturnsOnCall(i int, result1 deliverclient.CloneableUpdatableBlockVerifier) {
+	fake.cloneMutex.Lock()
+	defer fake.cloneMutex.Unlock()
+	fake.CloneStub = nil
+	if fake.cloneReturnsOnCall == nil {
+		fake.cloneReturnsOnCall = make(map[int]struct {
+			result1 deliverclient.CloneableUpdatableBlockVerifier
+		})
+	}
+	fake.cloneReturnsOnCall[i] = struct {
+		result1 deliverclient.CloneableUpdatableBlockVerifier
+	}{result1}
+}
+
+func (fake *UpdatableBlockVerifier) UpdateBlockHeader(arg1 *common.Block) {
+	fake.updateBlockHeaderMutex.Lock()
+	fake.updateBlockHeaderArgsForCall = append(fake.updateBlockHeaderArgsForCall, struct {
+		arg1 *common.Block
+	}{arg1})
+	stub := fake.UpdateBlockHeaderStub
+	fake.recordInvocation("UpdateBlockHeader", []interface{}{arg1})
+	fake.updateBlockHeaderMutex.Unlock()
+	if stub != nil {
+		fake.UpdateBlockHeaderStub(arg1)
+	}
+}
+
+func (fake *UpdatableBlockVerifier) UpdateBlockHeaderCallCount() int {
+	fake.updateBlockHeaderMutex.RLock()
+	defer fake.updateBlockHeaderMutex.RUnlock()
+	return len(fake.updateBlockHeaderArgsForCall)
+}
+
+func (fake *UpdatableBlockVerifier) UpdateBlockHeaderCalls(stub func(*common.Block)) {
+	fake.updateBlockHeaderMutex.Lock()
+	defer fake.updateBlockHeaderMutex.Unlock()
+	fake.UpdateBlockHeaderStub = stub
+}
+
+func (fake *UpdatableBlockVerifier) UpdateBlockHeaderArgsForCall(i int) *common.Block {
+	fake.updateBlockHeaderMutex.RLock()
+	defer fake.updateBlockHeaderMutex.RUnlock()
+	argsForCall := fake.updateBlockHeaderArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *UpdatableBlockVerifier) UpdateConfig(arg1 *common.Block) error {
@@ -232,6 +333,10 @@ func (fake *UpdatableBlockVerifier) VerifyBlockAttestationReturnsOnCall(i int, r
 func (fake *UpdatableBlockVerifier) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.cloneMutex.RLock()
+	defer fake.cloneMutex.RUnlock()
+	fake.updateBlockHeaderMutex.RLock()
+	defer fake.updateBlockHeaderMutex.RUnlock()
 	fake.updateConfigMutex.RLock()
 	defer fake.updateConfigMutex.RUnlock()
 	fake.verifyBlockMutex.RLock()
