@@ -140,14 +140,14 @@ type deliveryFactoryImpl struct {
 func (df *deliveryFactoryImpl) Service(
 	g GossipServiceAdapter,
 	ordererSource *orderers.ConnectionSource,
-	mcs api.MessageCryptoService, isStaticLead bool,
+	mcs api.MessageCryptoService, // TODO remove
+	isStaticLead bool,
 	channelConfig *cb.Config,
 	cryptoProvider bccsp.BCCSP,
 ) deliverservice.DeliverService {
 	return deliverservice.NewDeliverService(
 		&deliverservice.Config{
 			IsStaticLeader:       isStaticLead,
-			CryptoSvc:            mcs,
 			Gossip:               g,
 			Signer:               df.signer,
 			DeliverServiceConfig: df.deliverServiceConfig,

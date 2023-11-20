@@ -32,7 +32,6 @@ type BlockHandler interface {
 type BlockReceiver struct {
 	channelID              string
 	blockHandler           BlockHandler
-	blockVerifier          BlockVerifier
 	updatableBlockVerifier UpdatableBlockVerifier
 	deliverClient          orderer.AtomicBroadcast_DeliverClient
 	cancelSendFunc         func()
@@ -154,6 +153,8 @@ func (br *BlockReceiver) processMsg(msg *orderer.DeliverResponse) (uint64, error
 			}
 			br.logger.Infof("Updated config block %d", blockNum)
 		}
+
+		br.updatableBlockVerifier.UpdateBlockHeader(t.Block)
 
 		return blockNum, nil
 	default:

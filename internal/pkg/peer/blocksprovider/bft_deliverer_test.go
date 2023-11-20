@@ -155,7 +155,7 @@ func (s *bftDelivererTestSetup) initialize(t *testing.T) {
 	s.fakeCensorshipMonFactory.CreateCalls(
 		func(
 			chID string,
-			verifier blocksprovider.BlockVerifier,
+			updatableVerifier blocksprovider.UpdatableBlockVerifier,
 			requester blocksprovider.DeliverClientRequester,
 			reporter blocksprovider.BlockProgressReporter,
 			endpoints []*orderers.Endpoint,
