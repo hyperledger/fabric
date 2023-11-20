@@ -39,6 +39,7 @@ var _ = Describe("CFT-Deliverer", func() {
 		fakeDeliverStreamer         *fake.DeliverStreamer
 		fakeDeliverClient           *fake.DeliverClient
 		fakeSleeper                 *fake.Sleeper
+		fakeDurationExceededHandler *fake.DurationExceededHandler
 		doneC                       chan struct{}
 		recvStep                    chan struct{}
 		endC                        chan struct{}
@@ -98,6 +99,9 @@ var _ = Describe("CFT-Deliverer", func() {
 		fakeDeliverStreamer = &fake.DeliverStreamer{}
 		fakeDeliverStreamer.DeliverReturns(fakeDeliverClient, nil)
 
+		fakeDurationExceededHandler = &fake.DurationExceededHandler{}
+		fakeDurationExceededHandler.DurationExceededHandlerReturns(false)
+
 		d = &blocksprovider.Deliverer{
 			ChannelID:                       "channel-id",
 			BlockHandler:                    fakeBlockHandler,
@@ -111,7 +115,7 @@ var _ = Describe("CFT-Deliverer", func() {
 			Logger:                          flogging.MustGetLogger("blocksprovider"),
 			TLSCertHash:                     []byte("tls-cert-hash"),
 			MaxRetryDuration:                time.Hour,
-			MaxRetryDurationExceededHandler: func() (stopRetries bool) { return false },
+			MaxRetryDurationExceededHandler: fakeDurationExceededHandler.DurationExceededHandler,
 			MaxRetryInterval:                10 * time.Second,
 			InitialRetryInterval:            100 * time.Millisecond,
 		}
@@ -269,17 +273,101 @@ var _ = Describe("CFT-Deliverer", func() {
 
 	When("the consecutive errors are unbounded and the peer is not a static leader", func() {
 		BeforeEach(func() {
+			fakeDurationExceededHandler.DurationExceededHandlerReturns(true)
 			fakeDeliverStreamer.DeliverReturns(nil, fmt.Errorf("deliver-error"))
 			fakeDeliverStreamer.DeliverReturnsOnCall(500, fakeDeliverClient, nil)
 		})
 
 		It("hits the maximum sleep time value in an exponential fashion and retries until exceeding the max retry duration", func() {
-			d.MaxRetryDurationExceededHandler = func() (stopRetries bool) { return true }
+			Eventually(fakeDurationExceededHandler.DurationExceededHandlerCallCount).Should(BeNumerically(">", 0))
+			Eventually(endC).Should(BeClosed())
 			Eventually(fakeSleeper.SleepCallCount, 5*time.Second).Should(Equal(380))
 			Expect(fakeSleeper.SleepArgsForCall(25)).To(Equal(9539 * time.Millisecond))
 			Expect(fakeSleeper.SleepArgsForCall(26)).To(Equal(10 * time.Second))
 			Expect(fakeSleeper.SleepArgsForCall(27)).To(Equal(10 * time.Second))
 			Expect(fakeSleeper.SleepArgsForCall(379)).To(Equal(10 * time.Second))
+			Expect(fakeDurationExceededHandler.DurationExceededHandlerCallCount()).Should(Equal(1))
+		})
+	})
+
+	When("the consecutive errors are coming in short bursts and the peer is not a static leader", func() {
+		BeforeEach(func() {
+			// appease the race detector
+			doneC := doneC
+			recvStep := recvStep
+			fakeDeliverClient := fakeDeliverClient
+
+			fakeDeliverClient.CloseSendStub = func() error {
+				if fakeDeliverClient.CloseSendCallCount() >= 1000 {
+					select {
+					case <-doneC:
+					case recvStep <- struct{}{}:
+					}
+				}
+				return nil
+			}
+			fakeDeliverClient.RecvStub = func() (*orderer.DeliverResponse, error) {
+				c := fakeDeliverClient.RecvCallCount()
+				switch c {
+				case 300:
+					return &orderer.DeliverResponse{
+						Type: &orderer.DeliverResponse_Block{
+							Block: &common.Block{
+								Header: &common.BlockHeader{
+									Number: 8,
+								},
+							},
+						},
+					}, nil
+				case 600:
+					return &orderer.DeliverResponse{
+						Type: &orderer.DeliverResponse_Block{
+							Block: &common.Block{
+								Header: &common.BlockHeader{
+									Number: 9,
+								},
+							},
+						},
+					}, nil
+				case 900:
+					return &orderer.DeliverResponse{
+						Type: &orderer.DeliverResponse_Block{
+							Block: &common.Block{
+								Header: &common.BlockHeader{
+									Number: 9,
+								},
+							},
+						},
+					}, nil
+				default:
+					if c < 900 {
+						return nil, fmt.Errorf("fake-recv-error-XXX")
+					}
+
+					select {
+					case <-recvStep:
+						return nil, fmt.Errorf("fake-recv-step-error-XXX")
+					case <-doneC:
+						return nil, nil
+					}
+				}
+			}
+			fakeDurationExceededHandler.DurationExceededHandlerReturns(true)
+		})
+
+		It("hits the maximum sleep time value in an exponential fashion and retries but does not exceed the max retry duration", func() {
+			Eventually(fakeSleeper.SleepCallCount, 10*time.Second).Should(Equal(897))
+			Expect(fakeSleeper.SleepArgsForCall(0)).To(Equal(100 * time.Millisecond))
+			Expect(fakeSleeper.SleepArgsForCall(25)).To(Equal(9539 * time.Millisecond))
+			Expect(fakeSleeper.SleepArgsForCall(26)).To(Equal(10 * time.Second))
+			Expect(fakeSleeper.SleepArgsForCall(27)).To(Equal(10 * time.Second))
+			Expect(fakeSleeper.SleepArgsForCall(298)).To(Equal(10 * time.Second))
+			Expect(fakeSleeper.SleepArgsForCall(299)).To(Equal(100 * time.Millisecond))
+			Expect(fakeSleeper.SleepArgsForCall(2*299 - 1)).To(Equal(10 * time.Second))
+			Expect(fakeSleeper.SleepArgsForCall(2 * 299)).To(Equal(100 * time.Millisecond))
+			Expect(fakeSleeper.SleepArgsForCall(3*299 - 1)).To(Equal(10 * time.Second))
+
+			Expect(fakeDurationExceededHandler.DurationExceededHandlerCallCount()).Should(Equal(0))
 		})
 	})
 
@@ -290,12 +378,12 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("hits the maximum sleep time value in an exponential fashion and retries indefinitely", func() {
-			d.MaxRetryDurationExceededHandler = func() (stopRetries bool) { return false }
 			Eventually(fakeSleeper.SleepCallCount, 5*time.Second).Should(Equal(500))
 			Expect(fakeSleeper.SleepArgsForCall(25)).To(Equal(9539 * time.Millisecond))
 			Expect(fakeSleeper.SleepArgsForCall(26)).To(Equal(10 * time.Second))
 			Expect(fakeSleeper.SleepArgsForCall(27)).To(Equal(10 * time.Second))
-			Expect(fakeSleeper.SleepArgsForCall(379)).To(Equal(10 * time.Second))
+			Expect(fakeSleeper.SleepArgsForCall(499)).To(Equal(10 * time.Second))
+			Eventually(fakeDurationExceededHandler.DurationExceededHandlerCallCount).Should(Equal(120))
 		})
 	})
 
