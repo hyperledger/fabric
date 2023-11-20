@@ -9,6 +9,8 @@ package follower
 import (
 	"encoding/pem"
 
+	"github.com/hyperledger/fabric/common/deliverclient"
+
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -75,7 +77,7 @@ func NewBlockPullerCreator(
 	factory := &BlockPullerCreator{
 		channelID: channelID,
 		bccsp:     bccsp,
-		blockSigVerifierFactory: &cluster.BlockVerifierAssembler{
+		blockSigVerifierFactory: &deliverclient.BlockVerifierAssembler{
 			Logger: logger,
 			BCCSP:  bccsp,
 		},
