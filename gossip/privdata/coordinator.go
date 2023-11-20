@@ -31,14 +31,14 @@ const pullRetrySleepInterval = time.Second
 
 var logger = util.GetLogger(util.PrivateDataLogger, "")
 
-//go:generate mockery -dir . -name CollectionStore -case underscore -output mocks/
+//go:generate mockery --dir . --name CollectionStore --case underscore --output mocks/
 
 // CollectionStore is the local interface used to generate mocks for foreign interface.
 type CollectionStore interface {
 	privdata.CollectionStore
 }
 
-//go:generate mockery -dir . -name Committer -case underscore -output mocks/
+//go:generate mockery --dir . --name Committer --case underscore --output mocks/
 
 // Committer is the local interface used to generate mocks for foreign interface.
 type Committer interface {
@@ -86,7 +86,7 @@ type Fetcher interface {
 	fetch(dig2src dig2sources) (*privdatacommon.FetchedPvtDataContainer, error)
 }
 
-//go:generate mockery -dir ./ -name CapabilityProvider -case underscore -output mocks/
+//go:generate mockery --dir ./ --name CapabilityProvider --case underscore --output mocks/
 
 // CapabilityProvider contains functions to retrieve capability information for a channel
 type CapabilityProvider interface {

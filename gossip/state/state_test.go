@@ -233,6 +233,10 @@ func (mc *mockCommitter) LedgerHeight() (uint64, error) {
 	return args.Get(0).(uint64), args.Get(1).(error)
 }
 
+func (mc *mockCommitter) GetCurrentBlockHash() ([]byte, error) {
+	panic("implement me")
+}
+
 func (mc *mockCommitter) DoesPvtDataInfoExistInLedger(blkNum uint64) (bool, error) {
 	mc.Lock()
 	m := mc.Mock

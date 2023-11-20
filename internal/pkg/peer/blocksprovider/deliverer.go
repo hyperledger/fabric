@@ -29,6 +29,9 @@ import (
 type LedgerInfo interface {
 	// LedgerHeight returns current local ledger height
 	LedgerHeight() (uint64, error)
+
+	// GetCurrentBlockHash returns the block header hash of the last block in the ledger.
+	GetCurrentBlockHash() ([]byte, error)
 }
 
 // GossipServiceAdapter serves to provide basic functionality
@@ -80,16 +83,17 @@ const backoffExponentBase = 1.2
 
 // Deliverer the CFT implementation of the deliverservice.BlockDeliverer interface.
 type Deliverer struct {
-	ChannelID       string
-	BlockHandler    BlockHandler
-	Ledger          LedgerInfo
-	BlockVerifier   BlockVerifier
-	Dialer          Dialer
-	Orderers        OrdererConnectionSource
-	DoneC           chan struct{}
-	Signer          identity.SignerSerializer
-	DeliverStreamer DeliverStreamer
-	Logger          *flogging.FabricLogger
+	ChannelID              string
+	BlockHandler           BlockHandler
+	Ledger                 LedgerInfo
+	BlockVerifier          BlockVerifier
+	UpdatableBlockVerifier UpdatableBlockVerifier
+	Dialer                 Dialer
+	Orderers               OrdererConnectionSource
+	DoneC                  chan struct{}
+	Signer                 identity.SignerSerializer
+	DeliverStreamer        DeliverStreamer
+	Logger                 *flogging.FabricLogger
 
 	// The maximal value of the actual retry interval, which cannot increase beyond this value
 	MaxRetryInterval time.Duration
@@ -186,15 +190,15 @@ func (d *Deliverer) DeliverBlocks() {
 
 		d.mutex.Lock()
 		blockReceiver := &BlockReceiver{
-			channelID:      d.ChannelID,
-			blockHandler:   d.BlockHandler,
-			blockVerifier:  d.BlockVerifier,
-			deliverClient:  deliverClient,
-			cancelSendFunc: cancel,
-			recvC:          make(chan *orderer.DeliverResponse),
-			stopC:          make(chan struct{}),
-			endpoint:       endpoint,
-			logger:         d.Logger.With("orderer-address", endpoint.Address),
+			channelID:              d.ChannelID,
+			blockHandler:           d.BlockHandler,
+			updatableBlockVerifier: d.UpdatableBlockVerifier,
+			deliverClient:          deliverClient,
+			cancelSendFunc:         cancel,
+			recvC:                  make(chan *orderer.DeliverResponse),
+			stopC:                  make(chan struct{}),
+			endpoint:               endpoint,
+			logger:                 d.Logger.With("orderer-address", endpoint.Address),
 		}
 		d.blockReceiver = blockReceiver
 		d.mutex.Unlock()

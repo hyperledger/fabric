@@ -10,10 +10,11 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hyperledger/fabric/protoutil"
+
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/flogging"
-	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 	"github.com/pkg/errors"
 )
@@ -29,14 +30,15 @@ type BlockHandler interface {
 }
 
 type BlockReceiver struct {
-	channelID      string
-	blockHandler   BlockHandler
-	blockVerifier  BlockVerifier
-	deliverClient  orderer.AtomicBroadcast_DeliverClient
-	cancelSendFunc func()
-	recvC          chan *orderer.DeliverResponse
-	stopC          chan struct{}
-	endpoint       *orderers.Endpoint
+	channelID              string
+	blockHandler           BlockHandler
+	blockVerifier          BlockVerifier
+	updatableBlockVerifier UpdatableBlockVerifier
+	deliverClient          orderer.AtomicBroadcast_DeliverClient
+	cancelSendFunc         func()
+	recvC                  chan *orderer.DeliverResponse
+	stopC                  chan struct{}
+	endpoint               *orderers.Endpoint
 
 	mutex    sync.Mutex
 	stopFlag bool
@@ -134,12 +136,23 @@ func (br *BlockReceiver) processMsg(msg *orderer.DeliverResponse) (uint64, error
 		return 0, errors.Errorf("received bad status %v from orderer", t.Status)
 	case *orderer.DeliverResponse_Block:
 		blockNum := t.Block.Header.Number
-		if err := br.blockVerifier.VerifyBlock(gossipcommon.ChannelID(br.channelID), blockNum, t.Block); err != nil {
-			return 0, errors.WithMessage(err, "block from orderer could not be verified")
+
+		if err := br.updatableBlockVerifier.VerifyBlock(t.Block); err != nil {
+			return 0, errors.WithMessagef(err, "block [%d] from orderer [%s] could not be verified", blockNum, br.endpoint.String())
 		}
+
 		err := br.blockHandler.HandleBlock(br.channelID, t.Block)
 		if err != nil {
-			return 0, errors.WithMessage(err, "block from orderer could not be handled")
+			return 0, errors.WithMessagef(err, "block [%d] from orderer [%s] could not be handled", blockNum, br.endpoint.String())
+		}
+
+		br.logger.Debugf("Handled block %d", blockNum)
+
+		if protoutil.IsConfigBlock(t.Block) {
+			if err := br.updatableBlockVerifier.UpdateConfig(t.Block); err != nil {
+				return 0, errors.WithMessagef(err, "config block [%d] from orderer [%s] failed to update block verifier", blockNum, br.endpoint.String())
+			}
+			br.logger.Infof("Updated config block %d", blockNum)
 		}
 
 		return blockNum, nil

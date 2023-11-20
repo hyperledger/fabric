@@ -6,6 +6,18 @@ import (
 )
 
 type LedgerInfo struct {
+	GetCurrentBlockHashStub        func() ([]byte, error)
+	getCurrentBlockHashMutex       sync.RWMutex
+	getCurrentBlockHashArgsForCall []struct {
+	}
+	getCurrentBlockHashReturns struct {
+		result1 []byte
+		result2 error
+	}
+	getCurrentBlockHashReturnsOnCall map[int]struct {
+		result1 []byte
+		result2 error
+	}
 	LedgerHeightStub        func() (uint64, error)
 	ledgerHeightMutex       sync.RWMutex
 	ledgerHeightArgsForCall []struct {
@@ -22,20 +34,77 @@ type LedgerInfo struct {
 	invocationsMutex sync.RWMutex
 }
 
+func (fake *LedgerInfo) GetCurrentBlockHash() ([]byte, error) {
+	fake.getCurrentBlockHashMutex.Lock()
+	ret, specificReturn := fake.getCurrentBlockHashReturnsOnCall[len(fake.getCurrentBlockHashArgsForCall)]
+	fake.getCurrentBlockHashArgsForCall = append(fake.getCurrentBlockHashArgsForCall, struct {
+	}{})
+	stub := fake.GetCurrentBlockHashStub
+	fakeReturns := fake.getCurrentBlockHashReturns
+	fake.recordInvocation("GetCurrentBlockHash", []interface{}{})
+	fake.getCurrentBlockHashMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *LedgerInfo) GetCurrentBlockHashCallCount() int {
+	fake.getCurrentBlockHashMutex.RLock()
+	defer fake.getCurrentBlockHashMutex.RUnlock()
+	return len(fake.getCurrentBlockHashArgsForCall)
+}
+
+func (fake *LedgerInfo) GetCurrentBlockHashCalls(stub func() ([]byte, error)) {
+	fake.getCurrentBlockHashMutex.Lock()
+	defer fake.getCurrentBlockHashMutex.Unlock()
+	fake.GetCurrentBlockHashStub = stub
+}
+
+func (fake *LedgerInfo) GetCurrentBlockHashReturns(result1 []byte, result2 error) {
+	fake.getCurrentBlockHashMutex.Lock()
+	defer fake.getCurrentBlockHashMutex.Unlock()
+	fake.GetCurrentBlockHashStub = nil
+	fake.getCurrentBlockHashReturns = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *LedgerInfo) GetCurrentBlockHashReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.getCurrentBlockHashMutex.Lock()
+	defer fake.getCurrentBlockHashMutex.Unlock()
+	fake.GetCurrentBlockHashStub = nil
+	if fake.getCurrentBlockHashReturnsOnCall == nil {
+		fake.getCurrentBlockHashReturnsOnCall = make(map[int]struct {
+			result1 []byte
+			result2 error
+		})
+	}
+	fake.getCurrentBlockHashReturnsOnCall[i] = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *LedgerInfo) LedgerHeight() (uint64, error) {
 	fake.ledgerHeightMutex.Lock()
 	ret, specificReturn := fake.ledgerHeightReturnsOnCall[len(fake.ledgerHeightArgsForCall)]
 	fake.ledgerHeightArgsForCall = append(fake.ledgerHeightArgsForCall, struct {
 	}{})
+	stub := fake.LedgerHeightStub
+	fakeReturns := fake.ledgerHeightReturns
 	fake.recordInvocation("LedgerHeight", []interface{}{})
 	fake.ledgerHeightMutex.Unlock()
-	if fake.LedgerHeightStub != nil {
-		return fake.LedgerHeightStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.ledgerHeightReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -80,6 +149,8 @@ func (fake *LedgerInfo) LedgerHeightReturnsOnCall(i int, result1 uint64, result2
 func (fake *LedgerInfo) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.getCurrentBlockHashMutex.RLock()
+	defer fake.getCurrentBlockHashMutex.RUnlock()
 	fake.ledgerHeightMutex.RLock()
 	defer fake.ledgerHeightMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

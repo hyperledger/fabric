@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -43,17 +44,34 @@ type DurationExceededHandler interface {
 	DurationExceededHandler() (stopRetries bool)
 }
 
+//go:generate counterfeiter -o fake/updatable_block_verifier.go --fake-name UpdatableBlockVerifier . UpdatableBlockVerifier
+type UpdatableBlockVerifier interface {
+	// VerifyBlock checks block integrity and its relation to the chain, and verifies the signatures.
+	VerifyBlock(block *common.Block) error
+
+	// VerifyBlockAttestation does the same as VerifyBlock, except it assumes block.Data = nil. It therefore does not
+	// compute the block.Data.Hash() and compare it to the block.Header.DataHash. This is used when the orderer
+	// delivers a block with header & metadata only, as an attestation of block existence.
+	VerifyBlockAttestation(block *common.Block) error
+
+	// UpdateConfig sets the config by which blocks are verified. It is assumed that this config block had already been
+	// verified using the VerifyBlock method immediately prior to calling this method.
+	UpdateConfig(configBlock *common.Block) error
+}
+
 // BFTDeliverer fetches blocks using a block receiver and maintains a BFTCensorshipMonitor.
 // It maintains a shuffled orderer source slice, and will cycle through it trying to find a "good" orderer to fetch
 // blocks from. After it selects an orderer to fetch blocks from, it assigns all the rest of the orderers to the
 // censorship monitor. The censorship monitor will request block attestations (header+sigs) from said orderers, and
 // will monitor their progress relative to the block fetcher. If a censorship suspicion is detected, the BFTDeliverer
 // will try to find another orderer to fetch from.
-type BFTDeliverer struct { // TODO
+type BFTDeliverer struct {
 	ChannelID                 string
 	BlockHandler              BlockHandler
 	Ledger                    LedgerInfo
-	BlockVerifier             BlockVerifier
+	ChannelConfig             *common.Config
+	BlockVerifier             BlockVerifier // TODO remove
+	UpdatableBlockVerifier    UpdatableBlockVerifier
 	Dialer                    Dialer
 	Orderers                  OrdererConnectionSource
 	DoneC                     chan struct{}
@@ -321,15 +339,15 @@ func (d *BFTDeliverer) FetchBlocks(source *orderers.Endpoint) {
 		}
 
 		blockRcv := &BlockReceiver{
-			channelID:      d.ChannelID,
-			blockHandler:   d.BlockHandler,
-			blockVerifier:  d.BlockVerifier,
-			deliverClient:  deliverClient,
-			cancelSendFunc: cancel,
-			recvC:          make(chan *orderer.DeliverResponse),
-			stopC:          make(chan struct{}),
-			endpoint:       source,
-			logger:         flogging.MustGetLogger("BlockReceiver").With("orderer-address", source.Address),
+			channelID:              d.ChannelID,
+			blockHandler:           d.BlockHandler,
+			updatableBlockVerifier: d.UpdatableBlockVerifier,
+			deliverClient:          deliverClient,
+			cancelSendFunc:         cancel,
+			recvC:                  make(chan *orderer.DeliverResponse),
+			stopC:                  make(chan struct{}),
+			endpoint:               source,
+			logger:                 flogging.MustGetLogger("BlockReceiver").With("orderer-address", source.Address),
 		}
 
 		d.mutex.Lock()

@@ -34,8 +34,13 @@ type ledgerInfo interface {
 }
 
 func TestStartDeliverForChannel(t *testing.T) {
-	fakeLedgerInfo := &fake.LedgerInfo{}
-	fakeLedgerInfo.LedgerHeightReturns(0, fmt.Errorf("fake-ledger-error"))
+	fakeLedgerInfoCreator := func() *fake.LedgerInfo {
+		fakeLedgerInfo := &fake.LedgerInfo{}
+		fakeLedgerInfo.LedgerHeightReturns(7, nil)                                      // first call creates the verifier
+		fakeLedgerInfo.LedgerHeightReturnsOnCall(1, 0, fmt.Errorf("fake-ledger-error")) // second call inside the deliverer
+		fakeLedgerInfo.GetCurrentBlockHashReturns([]byte{1, 2, 3, 4, 5, 6, 7, 8}, nil)
+		return fakeLedgerInfo
+	}
 
 	secOpts := testSecureOptions()
 	channelConfigProto, cryptoProvider := testSetup(t, "CFT")
@@ -50,7 +55,7 @@ func TestStartDeliverForChannel(t *testing.T) {
 		}).(*deliverServiceImpl)
 
 		finalized := make(chan struct{})
-		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {
+		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfoCreator(), func() {
 			close(finalized)
 		})
 		require.NoError(t, err)
@@ -75,7 +80,7 @@ func TestStartDeliverForChannel(t *testing.T) {
 		}).(*deliverServiceImpl)
 
 		finalized := make(chan struct{})
-		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {
+		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfoCreator(), func() {
 			close(finalized)
 		})
 		require.NoError(t, err)
@@ -99,7 +104,7 @@ func TestStartDeliverForChannel(t *testing.T) {
 		}).(*deliverServiceImpl)
 
 		finalized := make(chan struct{})
-		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {
+		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfoCreator(), func() {
 			close(finalized)
 		})
 		require.NoError(t, err)
@@ -119,7 +124,7 @@ func TestStartDeliverForChannel(t *testing.T) {
 		require.Nil(t, ds.blockDeliverer)
 
 		finalized2 := make(chan struct{})
-		err = ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {
+		err = ds.StartDeliverForChannel("channel-id", fakeLedgerInfoCreator(), func() {
 			close(finalized2)
 		})
 		require.NoError(t, err)
@@ -137,10 +142,10 @@ func TestStartDeliverForChannel(t *testing.T) {
 			CryptoProvider:       cryptoProvider,
 		}).(*deliverServiceImpl)
 
-		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {})
+		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfoCreator(), func() {})
 		require.NoError(t, err)
 
-		err = ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {})
+		err = ds.StartDeliverForChannel("channel-id", fakeLedgerInfoCreator(), func() {})
 		require.EqualError(t, err, "block deliverer for channel `channel-id` already exists")
 	})
 
@@ -151,7 +156,7 @@ func TestStartDeliverForChannel(t *testing.T) {
 
 		ds.Stop()
 
-		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {})
+		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfoCreator(), func() {})
 		require.EqualError(t, err, "block deliverer for channel `channel-id` is stopping")
 	})
 }
@@ -159,11 +164,15 @@ func TestStartDeliverForChannel(t *testing.T) {
 func TestStartDeliverForChannel_BFT(t *testing.T) {
 	flogging.ActivateSpec("debug")
 
-	fakeLedgerInfo := &fake.LedgerInfo{}
-	fakeLedgerInfo.LedgerHeightReturns(0, fmt.Errorf("fake-ledger-error"))
-
 	secOpts := testSecureOptions()
 	channelConfigProto, cryptoProvider := testSetup(t, "BFT")
+	fakeLedgerInfoCreator := func() *fake.LedgerInfo {
+		fakeLedgerInfo := &fake.LedgerInfo{}
+		fakeLedgerInfo.LedgerHeightReturns(7, nil)                                      // first call creates the verifier
+		fakeLedgerInfo.LedgerHeightReturnsOnCall(1, 0, fmt.Errorf("fake-ledger-error")) // second call inside the deliverer
+		fakeLedgerInfo.GetCurrentBlockHashReturns([]byte{1, 2, 3, 4, 5, 6, 7, 8}, nil)
+		return fakeLedgerInfo
+	}
 
 	t.Run("Green Path With Mutual TLS", func(t *testing.T) {
 		ds := NewDeliverService(&Config{
@@ -175,7 +184,7 @@ func TestStartDeliverForChannel_BFT(t *testing.T) {
 		}).(*deliverServiceImpl)
 
 		finalized := make(chan struct{})
-		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {
+		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfoCreator(), func() {
 			close(finalized)
 		})
 		require.NoError(t, err)
@@ -200,7 +209,7 @@ func TestStartDeliverForChannel_BFT(t *testing.T) {
 		}).(*deliverServiceImpl)
 
 		finalized := make(chan struct{})
-		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {
+		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfoCreator(), func() {
 			close(finalized)
 		})
 		require.NoError(t, err)
@@ -224,7 +233,7 @@ func TestStartDeliverForChannel_BFT(t *testing.T) {
 		}).(*deliverServiceImpl)
 
 		finalized := make(chan struct{})
-		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {
+		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfoCreator(), func() {
 			close(finalized)
 		})
 		require.NoError(t, err)
@@ -244,7 +253,7 @@ func TestStartDeliverForChannel_BFT(t *testing.T) {
 		require.Nil(t, ds.blockDeliverer)
 
 		finalized2 := make(chan struct{})
-		err = ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {
+		err = ds.StartDeliverForChannel("channel-id", fakeLedgerInfoCreator(), func() {
 			close(finalized2)
 		})
 		require.NoError(t, err)
@@ -256,6 +265,8 @@ func TestStartDeliverForChannel_BFT(t *testing.T) {
 	})
 
 	t.Run("Exists", func(t *testing.T) {
+		fakeLedgerInfo := fakeLedgerInfoCreator()
+
 		ds := NewDeliverService(&Config{
 			DeliverServiceConfig: &DeliverServiceConfig{},
 			ChannelConfig:        channelConfigProto,
@@ -276,7 +287,7 @@ func TestStartDeliverForChannel_BFT(t *testing.T) {
 
 		ds.Stop()
 
-		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {})
+		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfoCreator(), func() {})
 		require.EqualError(t, err, "block deliverer for channel `channel-id` is stopping")
 	})
 }
