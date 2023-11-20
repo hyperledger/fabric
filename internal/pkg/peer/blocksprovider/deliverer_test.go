@@ -11,11 +11,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hyperledger/fabric/protoutil"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/flogging"
-	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider"
 	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider/fake"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
@@ -34,7 +35,7 @@ var _ = Describe("CFT-Deliverer", func() {
 		fakeBlockHandler            *fake.BlockHandler
 		fakeOrdererConnectionSource *fake.OrdererConnectionSource
 		fakeLedgerInfo              *fake.LedgerInfo
-		fakeBlockVerifier           *fake.BlockVerifier
+		fakeUpdatableBlockVerifier  *fake.UpdatableBlockVerifier
 		fakeSigner                  *fake.Signer
 		fakeDeliverStreamer         *fake.DeliverStreamer
 		fakeDeliverClient           *fake.DeliverClient
@@ -67,7 +68,7 @@ var _ = Describe("CFT-Deliverer", func() {
 		}
 
 		fakeBlockHandler = &fake.BlockHandler{}
-		fakeBlockVerifier = &fake.BlockVerifier{}
+		fakeUpdatableBlockVerifier = &fake.UpdatableBlockVerifier{}
 		fakeSigner = &fake.Signer{}
 
 		fakeLedgerInfo = &fake.LedgerInfo{}
@@ -106,7 +107,7 @@ var _ = Describe("CFT-Deliverer", func() {
 			ChannelID:                       "channel-id",
 			BlockHandler:                    fakeBlockHandler,
 			Ledger:                          fakeLedgerInfo,
-			BlockVerifier:                   fakeBlockVerifier,
+			UpdatableBlockVerifier:          fakeUpdatableBlockVerifier,
 			Dialer:                          fakeDialer,
 			Orderers:                        fakeOrdererConnectionSource,
 			DoneC:                           make(chan struct{}),
@@ -546,10 +547,8 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("checks the validity of the block", func() {
-			Eventually(fakeBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
-			channelID, blockNum, block := fakeBlockVerifier.VerifyBlockArgsForCall(0)
-			Expect(channelID).To(Equal(gossipcommon.ChannelID("channel-id")))
-			Expect(blockNum).To(Equal(uint64(8)))
+			Eventually(fakeUpdatableBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
+			block := fakeUpdatableBlockVerifier.VerifyBlockArgsForCall(0)
 			Expect(proto.Equal(block, &common.Block{
 				Header: &common.BlockHeader{
 					Number: 8,
@@ -559,7 +558,7 @@ var _ = Describe("CFT-Deliverer", func() {
 
 		When("the block is invalid", func() {
 			BeforeEach(func() {
-				fakeBlockVerifier.VerifyBlockReturns(fmt.Errorf("fake-verify-error"))
+				fakeUpdatableBlockVerifier.VerifyBlockReturns(fmt.Errorf("fake-verify-error"))
 			})
 
 			It("disconnects, sleeps, and tries again", func() {
@@ -597,6 +596,82 @@ var _ = Describe("CFT-Deliverer", func() {
 				defer mutex.Unlock()
 				Expect(len(ccs)).To(Equal(2))
 			})
+		})
+	})
+
+	When("the deliver client returns a config block", func() {
+		var env *common.Envelope
+
+		BeforeEach(func() {
+			// appease the race detector
+			doneC := doneC
+			recvStep := recvStep
+			fakeDeliverClient := fakeDeliverClient
+
+			env = &common.Envelope{
+				Payload: protoutil.MarshalOrPanic(&common.Payload{
+					Header: &common.Header{
+						ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
+							Type:      int32(common.HeaderType_CONFIG),
+							ChannelId: "test-chain",
+						}),
+					},
+					Data: []byte("test bytes"),
+				}),
+			}
+
+			configBlock := &common.Block{
+				Header: &common.BlockHeader{Number: 8},
+				Data: &common.BlockData{
+					Data: [][]byte{protoutil.MarshalOrPanic(env)},
+				},
+			}
+
+			fakeDeliverClient.RecvStub = func() (*orderer.DeliverResponse, error) {
+				if fakeDeliverClient.RecvCallCount() == 1 {
+					return &orderer.DeliverResponse{
+						Type: &orderer.DeliverResponse_Block{
+							Block: configBlock,
+						},
+					}, nil
+				}
+				select {
+				case <-recvStep:
+					return nil, fmt.Errorf("fake-recv-step-error")
+				case <-doneC:
+					return nil, nil
+				}
+			}
+		})
+
+		It("receives the block and loops, not sleeping", func() {
+			Eventually(fakeDeliverClient.RecvCallCount).Should(Equal(2))
+			Expect(fakeSleeper.SleepCallCount()).To(Equal(0))
+		})
+
+		It("checks the validity of the block", func() {
+			Eventually(fakeUpdatableBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
+			block := fakeUpdatableBlockVerifier.VerifyBlockArgsForCall(0)
+			Expect(proto.Equal(block, &common.Block{
+				Header: &common.BlockHeader{Number: 8},
+				Data: &common.BlockData{
+					Data: [][]byte{protoutil.MarshalOrPanic(env)},
+				},
+			})).To(BeTrue())
+		})
+
+		It("handle the block and updates the verifier config", func() {
+			Eventually(fakeBlockHandler.HandleBlockCallCount).Should(Equal(1))
+			channelID, block := fakeBlockHandler.HandleBlockArgsForCall(0)
+			Expect(channelID).To(Equal("channel-id"))
+			Expect(block).To(Equal(&common.Block{
+				Header: &common.BlockHeader{Number: 8},
+				Data: &common.BlockData{
+					Data: [][]byte{protoutil.MarshalOrPanic(env)},
+				},
+			},
+			))
+			Eventually(fakeUpdatableBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
 		})
 	})
 
