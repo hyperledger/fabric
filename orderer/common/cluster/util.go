@@ -483,14 +483,6 @@ type VerifierFactory interface {
 	VerifierFromConfig(configuration *common.ConfigEnvelope, channel string) (protoutil.BlockVerifierFunc, error)
 }
 
-// VerificationRegistry registers verifiers and retrieves them.
-type VerificationRegistry struct {
-	LoadVerifier       func(chain string) protoutil.BlockVerifierFunc
-	Logger             *flogging.FabricLogger
-	VerifierFactory    VerifierFactory
-	VerifiersByChannel map[string]protoutil.BlockVerifierFunc
-}
-
 //go:generate mockery --dir . --name ChainPuller --case underscore --output mocks/
 
 // ChainPuller pulls blocks from a chain
@@ -505,63 +497,6 @@ type ChainPuller interface {
 	Close()
 }
 
-// RegisterVerifier adds a verifier into the registry if applicable.
-func (vr *VerificationRegistry) RegisterVerifier(chain string) {
-	if _, exists := vr.VerifiersByChannel[chain]; exists {
-		vr.Logger.Debugf("No need to register verifier for chain %s", chain)
-		return
-	}
-
-	v := vr.LoadVerifier(chain)
-	if v == nil {
-		vr.Logger.Errorf("Failed loading verifier for chain %s", chain)
-		return
-	}
-
-	vr.VerifiersByChannel[chain] = v
-	vr.Logger.Infof("Registered verifier for chain %s", chain)
-}
-
-// RetrieveVerifier returns a BlockVerifierFunc for the given channel, or nil if not found.
-func (vr *VerificationRegistry) RetrieveVerifier(channel string) protoutil.BlockVerifierFunc {
-	verifier, exists := vr.VerifiersByChannel[channel]
-	if exists {
-		return verifier
-	}
-	vr.Logger.Errorf("No verifier for channel %s exists", channel)
-	return nil
-}
-
-// BlockCommitted notifies the VerificationRegistry upon a block commit, which may
-// trigger a registration of a verifier out of the block in case the block is a config block.
-func (vr *VerificationRegistry) BlockCommitted(block *common.Block, channel string) {
-	conf, err := ConfigFromBlock(block)
-	// The block doesn't contain a config block, but is a valid block
-	if err == errNotAConfig {
-		vr.Logger.Debugf("Committed block [%d] for channel %s that is not a config block",
-			block.Header.Number, channel)
-		return
-	}
-	// The block isn't a valid block
-	if err != nil {
-		vr.Logger.Errorf("Failed parsing block of channel %s: %v, content: %s",
-			channel, err, BlockToString(block))
-		return
-	}
-
-	// The block contains a config block
-	verifier, err := vr.VerifierFactory.VerifierFromConfig(conf, channel)
-	if err != nil {
-		vr.Logger.Errorf("Failed creating a verifier from a config block for channel %s: %v, content: %s",
-			channel, err, BlockToString(block))
-		return
-	}
-
-	vr.VerifiersByChannel[channel] = verifier
-
-	vr.Logger.Debugf("Committed config block [%d] for channel %s", block.Header.Number, channel)
-}
-
 // BlockToString returns a string representation of this block.
 func BlockToString(block *common.Block) string {
 	buff := &bytes.Buffer{}
@@ -571,39 +506,6 @@ func BlockToString(block *common.Block) string {
 
 // BlockCommitFunc signals a block commit.
 type BlockCommitFunc func(block *common.Block, channel string)
-
-// BlockVerifierAssembler creates a BlockVerifier out of a config envelope
-type BlockVerifierAssembler struct {
-	Logger *flogging.FabricLogger
-	BCCSP  bccsp.BCCSP
-}
-
-// VerifierFromConfig creates a BlockVerifier from the given configuration.
-func (bva *BlockVerifierAssembler) VerifierFromConfig(configuration *common.ConfigEnvelope, channel string) (protoutil.BlockVerifierFunc, error) {
-	bundle, err := channelconfig.NewBundle(channel, configuration.Config, bva.BCCSP)
-	if err != nil {
-		return createErrorFunc(err), err
-	}
-
-	policy, exists := bundle.PolicyManager().GetPolicy(policies.BlockValidation)
-	if !exists {
-		err := errors.New("no policies in config block")
-		return createErrorFunc(err), err
-	}
-
-	bftEnabled := bundle.ChannelConfig().Capabilities().ConsensusTypeBFT()
-
-	var consenters []*common.Consenter
-	if bftEnabled {
-		cfg, ok := bundle.OrdererConfig()
-		if !ok {
-			err := errors.New("no orderer section in config block")
-			return createErrorFunc(err), err
-		}
-		consenters = cfg.Consenters()
-	}
-	return protoutil.BlockSignatureVerifier(bftEnabled, consenters, policy), nil
-}
 
 // BlockValidationPolicyVerifier verifies signatures based on the block validation policy.
 type BlockValidationPolicyVerifier struct {

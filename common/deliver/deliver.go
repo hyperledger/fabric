@@ -4,6 +4,8 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
+// Package deliver contains an implementation of the server-side handlers of the gRPC delivery service.
+// The delivery service runs in the orderer and is used to deliver blocks to peers, as well as to other orderers.
 package deliver
 
 import (
