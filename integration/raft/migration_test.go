@@ -74,7 +74,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 	// possible the testing infrastructure for consensus-type migration that existed when "solo" and "kafka" were still
 	// supported. When a future type that can be migrated to from raft becomes available, some test-cases within this
 	// suite will need to be completed and revised.
-	Describe("Raft to future-type migration", func() {
+	Describe("Raft to bft migration", func() {
 		var (
 			orderer            *nwo.Orderer
 			peer               *nwo.Peer
@@ -107,7 +107,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 		// In maintenance mode we check that normal transactions are blocked.
 		//
 		// We also check that after entering maintenance mode, we can exit it without making any changes - the "abort path".
-		It("executes raft2future green path", func() {
+		It("executes raft2bft green path", func() {
 			// === The abort path ======================================================================================
 
 			// === Step 1: Config update on standard channel, MAINTENANCE ===
@@ -209,7 +209,23 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			// The following testing steps should be completed once we have a consensus-type ("future-type") that can be
 			// migrated to from etcdraft.
 
-			// === Step 6: config update on standard channel1, State=MAINTENANCE, type=future-type ===
+			// === Step 6: config update on standard channel1, State=MAINTENANCE, type=bft ===
+			By("6) Config update on standard channel1, State=MAINTENANCE, type=bft")
+			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
+				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"smartBFT", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
+
+			By("6) Verify: standard channel config changed")
+			std1BlockNum = nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
+			Expect(std1BlockNum).To(Equal(std1EntryBlockNum + 1))
+
+			By("6) Verify: delivery request from peer is blocked")
+			err = checkPeerDeliverRequest(orderer, peer, network, channel1)
+			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
+
+			By("6) Verify: Normal TX's on standard channel are blocked")
+			assertTxFailed(network, orderer, channel1)
 
 			// === Step 7: config update on standard channel2, State=MAINTENANCE, type=future-type ===
 		})
