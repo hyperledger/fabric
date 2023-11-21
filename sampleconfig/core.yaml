@@ -386,6 +386,13 @@ peer:
         # Time between retries will have exponential backoff until hitting this threshold.
         reConnectBackoffThreshold: 3600s
 
+        # If a certain header from a header receiver is in front of the block receiver for more that this time, a
+        # censorship event is declared and the block source is changed.
+        blockCensorshipTimeoutKey: 30s
+
+        # The initial value of the actual retry interval, which is increased on every failed retry
+        minimalReconnectInterval: 100ms
+
         # A list of orderer endpoint addresses which should be overridden
         # when found in channel configurations.
         addressOverrides:

@@ -87,6 +87,8 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.deliveryclient.connTimeout", "10s")
 	viper.Set("peer.keepalive.deliveryClient.interval", "5s")
 	viper.Set("peer.keepalive.deliveryClient.timeout", "2s")
+	viper.Set("peer.deliveryclient.blockCensorshipTimeoutKey", "40s")
+	viper.Set("peer.deliveryclient.minimalReconnectInterval", "110ms")
 
 	coreConfig := deliverservice.GlobalConfig()
 
@@ -94,6 +96,8 @@ func TestGlobalConfig(t *testing.T) {
 		BlockGossipEnabled:          true,
 		PeerTLSEnabled:              true,
 		ReConnectBackoffThreshold:   25 * time.Second,
+		BlockCensorshipTimeoutKey:   40 * time.Second,
+		MinimalReconnectInterval:    110 * time.Millisecond,
 		ReconnectTotalTimeThreshold: 20 * time.Second,
 		ConnectionTimeout:           10 * time.Second,
 		KeepaliveOptions: comm.KeepaliveOptions{
@@ -124,6 +128,8 @@ func TestGlobalConfigDefault(t *testing.T) {
 		ReconnectTotalTimeThreshold: deliverservice.DefaultReConnectTotalTimeThreshold,
 		ConnectionTimeout:           deliverservice.DefaultConnectionTimeout,
 		KeepaliveOptions:            comm.DefaultKeepaliveOptions,
+		BlockCensorshipTimeoutKey:   deliverservice.DefaultBlockCensorshipTimeoutKey,
+		MinimalReconnectInterval:    deliverservice.DefaultMinimalReconnectInterval,
 	}
 
 	require.Equal(t, expectedConfig, coreConfig)
@@ -232,4 +238,34 @@ func TestLoadOverridesMap(t *testing.T) {
 		require.NoError(t, err)
 		require.Nil(t, res)
 	})
+}
+
+func TestGlobalConfigCheckDefaultIsSet(t *testing.T) {
+	defer viper.Reset()
+	cwd, err := os.Getwd()
+	require.NoError(t, err, "failed to get current working directory")
+	viper.SetConfigFile(filepath.Join(cwd, "testdata", "core.yaml"))
+
+	err = viper.ReadInConfig()
+	require.NoError(t, err)
+
+	require.Equal(t, false, viper.IsSet("peer.deliveryclient.blockCensorshipTimeoutKey"))
+	require.Equal(t, false, viper.IsSet("peer.deliveryclient.minimalReconnectInterval"))
+	require.Equal(t, true, viper.IsSet("peer.deliveryclient.blockGossipEnabled"))
+
+	coreConfig := deliverservice.GlobalConfig()
+	require.NoError(t, err)
+
+	expectedConfig := &deliverservice.DeliverServiceConfig{
+		BlockGossipEnabled:          true,
+		PeerTLSEnabled:              false,
+		ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
+		ReconnectTotalTimeThreshold: deliverservice.DefaultReConnectTotalTimeThreshold,
+		ConnectionTimeout:           deliverservice.DefaultConnectionTimeout,
+		KeepaliveOptions:            comm.DefaultKeepaliveOptions,
+		BlockCensorshipTimeoutKey:   deliverservice.DefaultBlockCensorshipTimeoutKey,
+		MinimalReconnectInterval:    deliverservice.DefaultMinimalReconnectInterval,
+	}
+
+	require.Equal(t, coreConfig, expectedConfig)
 }
