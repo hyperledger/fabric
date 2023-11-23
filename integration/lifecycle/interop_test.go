@@ -81,30 +81,38 @@ var _ = Describe("Release interoperability", func() {
 		os.RemoveAll(testDir)
 	})
 
-	It("deploys and executes chaincode, upgrades the channel application capabilities to V2_0, and uses _lifecycle to update the endorsement policy", func() {
-		By("deploying the chaincode using LSCC on a channel with V1_4 application capabilities")
+	It("deploys and executes chaincode with new lifecycle, then update endoresement policy and upgrade chaincode", func() {
+		By("deploying the chaincode using _lifecycle on a channel with V2_0 application capabilities")
 		chaincode := nwo.Chaincode{
-			Name:    "mycc",
-			Version: "0.0",
-			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-			Ctor:    `{"Args":["init","a","100","b","200"]}`,
-			Policy:  `AND ('Org1MSP.member','Org2MSP.member')`,
+			Name:            "mycc",
+			Version:         "0.0",
+			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd"),
+			Lang:            "binary",
+			PackageFile:     filepath.Join(testDir, "simplecc.tar.gz"),
+			SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
+			Sequence:        "1",
+			InitRequired:    true,
+			Label:           "my_prebuilt_chaincode",
+			Ctor:            `{"Args":["init","a","100","b","200"]}`,
 		}
 
+		By("joining the channel")
 		channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
-		nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
-		RunQueryInvokeQuery(network, orderer, "mycc", 100, endorsers...)
 
 		By("enabling V2_0 application capabilities")
 		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, endorsers...)
 
-		By("ensuring that the chaincode is still operational after the upgrade")
+		By("deploying the chaincod")
+		nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+		RunQueryInvokeQuery(network, orderer, "mycc", 100, endorsers...)
+
+		By("ensuring that the chaincode is operational")
 		RunQueryInvokeQuery(network, orderer, "mycc", 90, endorsers...)
 
 		By("restarting the network from persistence (1)")
 		ordererRunner, ordererProcess, peerProcess = nwo.RestartSingleOrdererNetwork(ordererProcess, peerProcess, network)
 
-		By("ensuring that the chaincode is still operational after the upgrade and restart")
+		By("ensuring that the chaincode is still operational after the restart")
 		RunQueryInvokeQuery(network, orderer, "mycc", 80, endorsers...)
 
 		By("attempting to invoke the chaincode without sufficient endorsements")
@@ -125,12 +133,12 @@ var _ = Describe("Release interoperability", func() {
 		By("upgrading the chaincode definition using _lifecycle")
 		chaincode = nwo.Chaincode{
 			Name:            "mycc",
-			Version:         "0.0",
+			Version:         "1.0",
 			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd"),
 			Lang:            "binary",
 			PackageFile:     filepath.Join(testDir, "simplecc.tar.gz"),
 			SignaturePolicy: `OR ('Org1MSP.member','Org2MSP.member')`,
-			Sequence:        "1",
+			Sequence:        "2",
 			InitRequired:    false,
 			Label:           "my_prebuilt_chaincode",
 		}
@@ -175,62 +183,6 @@ var _ = Describe("Release interoperability", func() {
 			if pcc != nil {
 				pcc.Close()
 			}
-		})
-
-		It("deploys a chaincode with the legacy lifecycle, invokes it and the tx is committed only after the chaincode is upgraded via _lifecycle", func() {
-			By("deploying the chaincode using the legacy lifecycle")
-			chaincode := nwo.Chaincode{
-				Name:    "mycc",
-				Version: "0.0",
-				Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-				Ctor:    `{"Args":["init","a","100","b","200"]}`,
-				Policy:  `OR ('Org1MSP.member','Org2MSP.member')`,
-			}
-
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
-			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
-			RunQueryInvokeQuery(network, orderer, "mycc", 100, endorsers...)
-
-			By("invoking the chaincode with the legacy definition and keeping the transaction")
-			signedProp, prop, txid := SignedProposal(
-				"testchannel",
-				"mycc",
-				userSigner,
-				"invoke",
-				"a",
-				"b",
-				"10",
-			)
-			presp, err := endorserClient.ProcessProposal(context.Background(), signedProp)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(presp).NotTo(BeNil())
-
-			env, err := protoutil.CreateSignedTx(prop, userSigner, presp)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(env).NotTo(BeNil())
-
-			By("enabling V2_0 application capabilities")
-			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
-
-			By("upgrading the chaincode definition using _lifecycle")
-			chaincode = nwo.Chaincode{
-				Name:            "mycc",
-				Version:         "0.0",
-				Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd"),
-				Lang:            "binary",
-				PackageFile:     filepath.Join(testDir, "simplecc.tar.gz"),
-				SignaturePolicy: `OR ('Org1MSP.member','Org2MSP.member')`,
-				Sequence:        "1",
-				InitRequired:    false,
-				Label:           "my_prebuilt_chaincode",
-			}
-			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
-
-			By("committing the old transaction")
-			// FAB-17458: because the endorsed tx doesn't have _lifecycle in read set,
-			// it has no read conflict with the cc upgrade via new lifecycle.
-			err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
-			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("deploys a chaincode with the new lifecycle, invokes it and the tx is committed only after the chaincode is upgraded via _lifecycle", func() {
@@ -284,28 +236,12 @@ var _ = Describe("Release interoperability", func() {
 
 		Describe("Chaincode-to-chaincode interoperability", func() {
 			var (
-				callerDefOld nwo.Chaincode
 				callerDefNew nwo.Chaincode
-				calleeDefOld nwo.Chaincode
 				calleeDefNew nwo.Chaincode
 			)
 
 			BeforeEach(func() {
 				ccEP := `OR ('Org1MSP.member','Org2MSP.member')`
-				callerDefOld = nwo.Chaincode{
-					Name:    "caller",
-					Version: "0.0",
-					Path:    "github.com/hyperledger/fabric/integration/lifecycle/chaincode/caller/cmd",
-					Ctor:    `{"Args":[""]}`,
-					Policy:  ccEP,
-				}
-				calleeDefOld = nwo.Chaincode{
-					Name:    "callee",
-					Version: "0.0",
-					Path:    "github.com/hyperledger/fabric/integration/lifecycle/chaincode/callee/cmd",
-					Ctor:    `{"Args":[""]}`,
-					Policy:  ccEP,
-				}
 				callerDefNew = nwo.Chaincode{
 					Name:            "caller",
 					Version:         "0.0",
@@ -556,199 +492,6 @@ var _ = Describe("Release interoperability", func() {
 					calleeDefNew.Sequence = "2"
 					calleeDefNew.InitRequired = false
 					nwo.DeployChaincode(network, "testchannel", orderer, calleeDefNew)
-
-					By("committing the transaction")
-					err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
-					Expect(err).To(MatchError(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)")))
-
-					By("querying the caller chaincode")
-					sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
-						ChannelID: "testchannel",
-						Name:      "caller",
-						Ctor:      `{"Args":["QUERY"]}`,
-					})
-					Expect(err).NotTo(HaveOccurred())
-					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-					Expect(sess).To(gbytes.Say("caller:foo"))
-
-					By("querying the callee chaincode")
-					sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
-						ChannelID: "testchannel",
-						Name:      "callee",
-						Ctor:      `{"Args":["QUERY"]}`,
-					})
-					Expect(err).NotTo(HaveOccurred())
-					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-					Expect(sess).To(gbytes.Say("callee:foo"))
-				})
-			})
-
-			When("the network starts with legacy definitions and then upgrades to 2.0", func() {
-				BeforeEach(func() {
-					By("deploying the caller chaincode using the legacy lifecycle")
-					nwo.DeployChaincodeLegacy(network, "testchannel", orderer, callerDefOld)
-
-					By("deploying the callee chaincode using the legacy lifecycle")
-					nwo.DeployChaincodeLegacy(network, "testchannel", orderer, calleeDefOld)
-
-					By("enabling the 2.0 capability on the channel")
-					nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
-				})
-
-				It("upgrades the caller with the new and performs a successful cc2cc invocation", func() {
-					By("upgrading the caller with the new definition")
-					nwo.DeployChaincode(network, "testchannel", orderer, callerDefNew)
-
-					By("invoking the chaincode and generating a transaction")
-					signedProp, prop, txid := SignedProposal(
-						"testchannel",
-						"caller",
-						userSigner,
-						"INVOKE",
-						"callee",
-					)
-					presp, err := endorserClient.ProcessProposal(context.Background(), signedProp)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(presp).NotTo(BeNil())
-
-					env, err := protoutil.CreateSignedTx(prop, userSigner, presp)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(env).NotTo(BeNil())
-
-					By("committing the transaction")
-					err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
-					Expect(err).NotTo(HaveOccurred())
-
-					By("querying the caller chaincode")
-					sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
-						ChannelID: "testchannel",
-						Name:      "caller",
-						Ctor:      `{"Args":["QUERY"]}`,
-					})
-					Expect(err).NotTo(HaveOccurred())
-					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-					Expect(sess).To(gbytes.Say("caller:bar"))
-
-					By("querying the callee chaincode")
-					sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
-						ChannelID: "testchannel",
-						Name:      "callee",
-						Ctor:      `{"Args":["QUERY"]}`,
-					})
-					Expect(err).NotTo(HaveOccurred())
-					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-					Expect(sess).To(gbytes.Say("callee:bar"))
-				})
-
-				It("upgrades the callee with the new and performs a successful cc2cc invocation", func() {
-					By("upgrading the callee with the new definition")
-					nwo.DeployChaincode(network, "testchannel", orderer, calleeDefNew)
-
-					By("invoking the chaincode and generating a transaction")
-					signedProp, prop, txid := SignedProposal(
-						"testchannel",
-						"caller",
-						userSigner,
-						"INVOKE",
-						"callee",
-					)
-					presp, err := endorserClient.ProcessProposal(context.Background(), signedProp)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(presp).NotTo(BeNil())
-
-					env, err := protoutil.CreateSignedTx(prop, userSigner, presp)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(env).NotTo(BeNil())
-
-					By("committing the transaction")
-					err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
-					Expect(err).NotTo(HaveOccurred())
-
-					By("querying the caller chaincode")
-					sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
-						ChannelID: "testchannel",
-						Name:      "caller",
-						Ctor:      `{"Args":["QUERY"]}`,
-					})
-					Expect(err).NotTo(HaveOccurred())
-					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-					Expect(sess).To(gbytes.Say("caller:bar"))
-
-					By("querying the callee chaincode")
-					sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
-						ChannelID: "testchannel",
-						Name:      "callee",
-						Ctor:      `{"Args":["QUERY"]}`,
-					})
-					Expect(err).NotTo(HaveOccurred())
-					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-					Expect(sess).To(gbytes.Say("callee:bar"))
-				})
-
-				It("performs a cc2cc invocation which fails because in the meantime, the callee is upgraded with the new lifecycle", func() {
-					By("invoking the chaincode and generating a transaction")
-					signedProp, prop, txid := SignedProposal(
-						"testchannel",
-						"caller",
-						userSigner,
-						"INVOKE",
-						"callee",
-					)
-					presp, err := endorserClient.ProcessProposal(context.Background(), signedProp)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(presp).NotTo(BeNil())
-
-					env, err := protoutil.CreateSignedTx(prop, userSigner, presp)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(env).NotTo(BeNil())
-
-					By("upgrading the callee with the new definition")
-					nwo.DeployChaincode(network, "testchannel", orderer, calleeDefNew)
-
-					By("committing the transaction")
-					err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
-					Expect(err).To(MatchError(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)")))
-
-					By("querying the caller chaincode")
-					sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
-						ChannelID: "testchannel",
-						Name:      "caller",
-						Ctor:      `{"Args":["QUERY"]}`,
-					})
-					Expect(err).NotTo(HaveOccurred())
-					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-					Expect(sess).To(gbytes.Say("caller:foo"))
-
-					By("querying the callee chaincode")
-					sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
-						ChannelID: "testchannel",
-						Name:      "callee",
-						Ctor:      `{"Args":["QUERY"]}`,
-					})
-					Expect(err).NotTo(HaveOccurred())
-					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-					Expect(sess).To(gbytes.Say("callee:foo"))
-				})
-
-				It("performs a cc2cc invocation which fails because in the meantime, the caller is upgraded with the new lifecycle", func() {
-					By("invoking the chaincode and generating a transaction")
-					signedProp, prop, txid := SignedProposal(
-						"testchannel",
-						"caller",
-						userSigner,
-						"INVOKE",
-						"callee",
-					)
-					presp, err := endorserClient.ProcessProposal(context.Background(), signedProp)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(presp).NotTo(BeNil())
-
-					env, err := protoutil.CreateSignedTx(prop, userSigner, presp)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(env).NotTo(BeNil())
-
-					By("upgrading the caller with the new definition")
-					nwo.DeployChaincode(network, "testchannel", orderer, callerDefNew)
 
 					By("committing the transaction")
 					err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
