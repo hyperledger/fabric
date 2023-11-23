@@ -212,7 +212,7 @@ func (a *BlockVerificationAssistant) UpdateConfig(configBlock *common.Block) err
 	}
 
 	if chdr.GetChannelId() != a.channelID {
-		return errors.New("config block channel ID '%s' does not match expected: '%s'")
+		return errors.Errorf("config block channel ID [%s] does not match expected: [%s]", chdr.GetChannelId(), a.channelID)
 	}
 
 	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
