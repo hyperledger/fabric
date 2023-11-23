@@ -1,0 +1,36 @@
+
+syntax = "proto3";
+package agent;
+
+// CommandType defines supported commands
+enum CommandType {
+	NOP = 0;
+	KEY_AUTH_INIT=1;	
+	KEY_AUTH_CHALLENGE=2;
+	KEY_AUTH_CHALLENGE_REPLY= 3;
+	CONSENSUS=4;
+}
+
+// Gossip defines a stream based protocol
+message Gossip{
+	CommandType Command = 1; 
+	bytes Message=2;
+}
+
+message KeyAuthInit {
+	// client public key
+	bytes X = 1;
+	bytes Y = 2;
+}
+
+message KeyAuthChallenge {
+	// server ephermal publickey for client authentication
+	bytes X=1;
+	bytes Y=2;
+	// the challenge message, the peer can create the correct HMAC with this message
+	bytes Challenge=3;	
+}
+
+message KeyAuthChallengeReply{
+	bytes HMAC=1;
+}

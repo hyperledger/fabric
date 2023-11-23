@@ -1,0 +1,54 @@
+
+syntax = "proto3";
+package bdls;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+// SignedProto defines a message with signature and it's publickey
+message SignedProto {
+	uint32 version=1;
+	// the Message encoded raw protobuf in bytes
+	bytes Message=2;
+	// signer's public key
+	bytes x = 3 [(gogoproto.customtype) = "PubKeyAxis", (gogoproto.nullable) = false];
+	bytes y = 4 [(gogoproto.customtype) = "PubKeyAxis", (gogoproto.nullable) = false];
+	// signature r,s for prefix+messages+version+x+y above
+	bytes r = 5;
+	bytes s = 6;
+}
+
+// MessageType defines supported message types
+enum MessageType{
+	// No operation, for default message type, and keepalive connection
+	Nop = 0;
+	// MessageRoundChange = <roundchange> message
+	RoundChange = 1;
+	// MessageLock = <lock> message
+	Lock = 2;
+	// MessageSelect = <select> message
+	Select = 3;
+	// MessageCommit = <commit> message
+	Commit = 4; 
+	// MessageLockRelease = <lock-release> message
+	LockRelease = 5;
+	// MessageDecide = <decide> message
+	Decide = 6;
+	// MessageResync= <resync> message
+	Resync = 7;
+}
+
+// Message defines a consensus message
+message Message {
+	// Type of this message
+	MessageType Type = 1;
+	// Height in consensus
+	uint64 Height = 2;
+	// Round in consensus
+	uint64 Round  = 3; 
+	// Proposed state (optional)
+	bytes State = 4; 
+	// Proofs related
+	repeated SignedProto Proof=5;
+	// for lock-release, it's an embeded <lock> message
+	SignedProto LockRelease=6;
+}

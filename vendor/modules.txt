@@ -8,6 +8,12 @@ code.cloudfoundry.org/clock/fakeclock
 ## explicit; go 1.16
 github.com/Azure/go-ansiterm
 github.com/Azure/go-ansiterm/winterm
+# github.com/BDLS-bft/bdls v0.0.0-20230426164822-28f164ce5034
+## explicit; go 1.17
+github.com/BDLS-bft/bdls
+github.com/BDLS-bft/bdls/crypto/blake2b
+github.com/BDLS-bft/bdls/crypto/btcec
+github.com/BDLS-bft/bdls/timer
 # github.com/IBM/idemix v0.0.0-20220112103229-701e7610d405
 ## explicit; go 1.16
 github.com/IBM/idemix
@@ -242,8 +248,8 @@ github.com/kr/text
 # github.com/magiconair/properties v1.8.1
 ## explicit
 github.com/magiconair/properties
-# github.com/mattn/go-runewidth v0.0.4
-## explicit
+# github.com/mattn/go-runewidth v0.0.9
+## explicit; go 1.9
 github.com/mattn/go-runewidth
 # github.com/matttproud/golang_protobuf_extensions v1.0.4
 ## explicit; go 1.9
