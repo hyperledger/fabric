@@ -45,14 +45,6 @@ var _ = Describe("SBE_E2E", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		chaincode = nwo.Chaincode{
-			Name:              "mycc",
-			Version:           "0.0",
-			Path:              "github.com/hyperledger/fabric/integration/chaincode/keylevelep/cmd",
-			Ctor:              `{"Args":["init"]}`,
-			CollectionsConfig: "testdata/collection_config.json",
-		}
-
 		tempDir, err = os.MkdirTemp("", "sbe")
 		Expect(err).NotTo(HaveOccurred())
 	})
@@ -82,24 +74,6 @@ var _ = Describe("SBE_E2E", func() {
 			network.Bootstrap()
 
 			ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
-		})
-
-		It("executes a basic etcdraft network with 2 orgs and SBE checks", func() {
-			By("getting the orderer by name")
-			orderer := network.Orderer("orderer")
-
-			By("setting up the channel")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
-
-			By("deploying the chaincode")
-			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
-
-			By("deploying a second instance of the chaincode")
-			chaincode.Name = "mycc2"
-			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
-
-			RunSBE(network, orderer, "pub")
-			RunSBE(network, orderer, "priv")
 		})
 
 		It("executes a basic etcdraft network with 2 orgs and SBE checks with _lifecycle", func() {
