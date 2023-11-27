@@ -28,7 +28,7 @@ var _ = Describe("Pvtdata dissemination for implicit collection", func() {
 		network                     *nwo.Network
 		ordererProcess, peerProcess ifrit.Process
 		orderer                     *nwo.Orderer
-		testChaincode               chaincode
+		testChaincode               nwo.Chaincode
 	)
 
 	BeforeEach(func() {
@@ -61,17 +61,14 @@ var _ = Describe("Pvtdata dissemination for implicit collection", func() {
 		ordererProcess, peerProcess, orderer = startNetwork(network)
 
 		By("deploying new lifecycle chaincode")
-		testChaincode = chaincode{
-			Chaincode: nwo.Chaincode{
-				Name:        "kvexecutor",
-				Version:     "1.0",
-				Path:        components.Build("github.com/hyperledger/fabric/integration/chaincode/kvexecutor/cmd"),
-				Lang:        "binary",
-				PackageFile: filepath.Join(network.RootDir, "kvexecutor.tar.gz"),
-				Label:       "kvexecutor",
-				Sequence:    "1",
-			},
-			isLegacy: false,
+		testChaincode = nwo.Chaincode{
+			Name:        "kvexecutor",
+			Version:     "1.0",
+			Path:        components.Build("github.com/hyperledger/fabric/integration/chaincode/kvexecutor/cmd"),
+			Lang:        "binary",
+			PackageFile: filepath.Join(network.RootDir, "kvexecutor.tar.gz"),
+			Label:       "kvexecutor",
+			Sequence:    "1",
 		}
 		nwo.EnableCapabilities(network, channelID, "Application", "V2_0", orderer, network.Peers...)
 
