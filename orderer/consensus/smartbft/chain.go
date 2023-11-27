@@ -615,6 +615,7 @@ func buildVerifier(
 	channelDecorator := zap.String("channel", support.ChannelID())
 	logger := flogging.MustGetLogger("orderer.consensus.smartbft.verifier").With(channelDecorator)
 	return &Verifier{
+		Channel:               support.ChannelID(),
 		ConfigValidator:       cv,
 		VerificationSequencer: support,
 		ReqInspector:          requestInspector,

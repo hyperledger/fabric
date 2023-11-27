@@ -426,6 +426,7 @@ func TestVerifyProposal(t *testing.T) {
 		lastConfigBlock             *cb.Block
 		bftMetadataMutator          func([]byte) []byte
 		ordererBlockMetadataMutator func(metadata *cb.OrdererBlockMetadata)
+		verifierChainID             string
 		expectedErr                 string
 	}{
 		{
@@ -435,6 +436,17 @@ func TestVerifyProposal(t *testing.T) {
 			lastConfigBlock:             lastConfigBlock,
 			bftMetadataMutator:          noopMutator,
 			ordererBlockMetadataMutator: noopOrdererBlockMetadataMutator,
+			verifierChainID:             "test-chain",
+		},
+		{
+			description:                 "wrong chain ID",
+			verificationSequence:        12,
+			lastBlock:                   lastBlock,
+			lastConfigBlock:             lastConfigBlock,
+			bftMetadataMutator:          noopMutator,
+			ordererBlockMetadataMutator: noopOrdererBlockMetadataMutator,
+			verifierChainID:             "not-test-chain",
+			expectedErr:                 "request is for channel test-chain but expected channel not-test-chain",
 		},
 		{
 			description:                 "wrong verification sequence 1",
@@ -444,6 +456,7 @@ func TestVerifyProposal(t *testing.T) {
 			bftMetadataMutator:          noopMutator,
 			ordererBlockMetadataMutator: noopOrdererBlockMetadataMutator,
 			expectedErr:                 "expected verification sequence 12, but proposal has 11",
+			verifierChainID:             "test-chain",
 		},
 		{
 			description:                 "wrong verification sequence 2",
@@ -453,6 +466,7 @@ func TestVerifyProposal(t *testing.T) {
 			bftMetadataMutator:          noopMutator,
 			ordererBlockMetadataMutator: noopOrdererBlockMetadataMutator,
 			expectedErr:                 "last config in block orderer metadata points to 666 but our persisted last config is 10",
+			verifierChainID:             "test-chain",
 		},
 		{
 			description:                 "wrong verification sequence 3",
@@ -464,6 +478,7 @@ func TestVerifyProposal(t *testing.T) {
 			expectedErr: fmt.Sprintf("previous header hash is %s but expected %s",
 				hex.EncodeToString(protoutil.BlockHeaderHash(notLastBlock.Header)),
 				hex.EncodeToString(protoutil.BlockHeaderHash(lastBlock.Header))),
+			verifierChainID: "test-chain",
 		},
 		{
 			description:          "corrupt metadata",
@@ -475,6 +490,7 @@ func TestVerifyProposal(t *testing.T) {
 			},
 			ordererBlockMetadataMutator: noopOrdererBlockMetadataMutator,
 			expectedErr:                 "failed unmarshaling smartbft metadata from proposal: proto: cannot parse invalid wire-format data",
+			verifierChainID:             "test-chain",
 		},
 		{
 			description:          "corrupt metadata",
@@ -589,6 +605,7 @@ func TestVerifyProposal(t *testing.T) {
 			rtc.LastConfigBlock = lastConfigBlock
 			runtimeConfig.Store(rtc)
 			v := &smartbft.Verifier{
+				Channel:               testCase.verifierChainID,
 				RuntimeConfig:         runtimeConfig,
 				Logger:                logger,
 				Ledger:                ledger,
