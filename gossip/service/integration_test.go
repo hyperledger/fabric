@@ -20,10 +20,8 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/core/deliverservice"
-	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/election"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
@@ -81,8 +79,8 @@ type embeddingDeliveryServiceFactory struct {
 	DeliveryServiceFactory
 }
 
-func (edsf *embeddingDeliveryServiceFactory) Service(g GossipServiceAdapter, ordererSource *orderers.ConnectionSource, mcs api.MessageCryptoService, isStaticLead bool, channelConfig *common.Config, cryptoProvider bccsp.BCCSP) deliverservice.DeliverService {
-	ds := edsf.DeliveryServiceFactory.Service(g, ordererSource, mcs, false, channelConfig, cryptoProvider)
+func (edsf *embeddingDeliveryServiceFactory) Service(g GossipServiceAdapter, ordererEndpointOverrides map[string]*orderers.Endpoint, isStaticLead bool, channelConfig *common.Config, cryptoProvider bccsp.BCCSP) deliverservice.DeliverService {
+	ds := edsf.DeliveryServiceFactory.Service(g, nil, false, channelConfig, cryptoProvider)
 	return newEmbeddingDeliveryService(ds)
 }
 
@@ -150,16 +148,9 @@ func TestLeaderYield(t *testing.T) {
 			},
 		}
 
-		gs.InitializeChannel(
-			channelName,
-			orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil),
-			store.Store,
-			Support{
-				Committer: &mockLedgerInfo{1},
-			},
-			channelConfigProto,
-			cryptoProvider,
-		)
+		gs.InitializeChannel(channelName, nil, store.Store, Support{
+			Committer: &mockLedgerInfo{1},
+		}, channelConfigProto, cryptoProvider)
 		return gs
 	}
 

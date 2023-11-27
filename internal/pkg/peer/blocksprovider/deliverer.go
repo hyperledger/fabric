@@ -12,8 +12,10 @@ import (
 	"sync"
 	"time"
 
+	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
@@ -44,11 +46,11 @@ type GossipServiceAdapter interface {
 	Gossip(msg *gossip.GossipMessage)
 }
 
+//go:generate counterfeiter -o fake/orderer_connection_source_factory.go --fake-name OrdererConnectionSourceFactory . OrdererConnectionSourceFactory
+type OrdererConnectionSourceFactory orderers.ConnectionSourceCreator
+
 //go:generate counterfeiter -o fake/orderer_connection_source.go --fake-name OrdererConnectionSource . OrdererConnectionSource
-type OrdererConnectionSource interface {
-	RandomEndpoint() (*orderers.Endpoint, error)
-	ShuffledEndpoints() []*orderers.Endpoint
-}
+type OrdererConnectionSource orderers.ConnectionSourcer
 
 //go:generate counterfeiter -o fake/dialer.go --fake-name Dialer . Dialer
 type Dialer interface {
@@ -76,7 +78,8 @@ type Deliverer struct {
 	Ledger                 LedgerInfo
 	UpdatableBlockVerifier UpdatableBlockVerifier
 	Dialer                 Dialer
-	Orderers               OrdererConnectionSource
+	OrderersSourceFactory  OrdererConnectionSourceFactory
+	CryptoProvider         bccsp.BCCSP
 	DoneC                  chan struct{}
 	Signer                 identity.SignerSerializer
 	DeliverStreamer        DeliverStreamer
@@ -97,13 +100,14 @@ type Deliverer struct {
 	sleeper sleeper
 
 	requester *DeliveryRequester
+	orderers  OrdererConnectionSource
 
 	mutex         sync.Mutex
 	stopFlag      bool
 	blockReceiver *BlockReceiver
 }
 
-func (d *Deliverer) Initialize() {
+func (d *Deliverer) Initialize(channelConfig *cb.Config) {
 	d.requester = NewDeliveryRequester(
 		d.ChannelID,
 		d.Signer,
@@ -111,6 +115,16 @@ func (d *Deliverer) Initialize() {
 		d.Dialer,
 		d.DeliverStreamer,
 	)
+
+	osLogger := flogging.MustGetLogger("peer.orderers")
+	ordererSource := d.OrderersSourceFactory.CreateConnectionSource(osLogger)
+	globalAddresses, orgAddresses, err := extractAddresses(d.ChannelID, channelConfig, d.CryptoProvider)
+	if err != nil {
+		// The bundle was created prior to calling this function, so it should not fail when we recreate it here.
+		d.Logger.Panicf("Bundle creation should not have failed: %s", err)
+	}
+	ordererSource.Update(globalAddresses, orgAddresses)
+	d.orderers = ordererSource
 }
 
 // DeliverBlocks used to pull out blocks from the ordering service to distribute them across peers
@@ -155,7 +169,7 @@ func (d *Deliverer) DeliverBlocks() {
 			return
 		}
 
-		endpoint, err := d.Orderers.RandomEndpoint()
+		endpoint, err := d.orderers.RandomEndpoint()
 		if err != nil {
 			d.Logger.Warningf("Could not connect to ordering service: could not get orderer endpoints: %s", err)
 			failureCounter++
@@ -191,9 +205,18 @@ func (d *Deliverer) DeliverBlocks() {
 		d.mutex.Unlock()
 
 		blockReceiver.Start() // starts an internal goroutine
-		onSuccess := func(blockNum uint64) {
+		onSuccess := func(blockNum uint64, channelConfig *cb.Config) {
 			failureCounter = 0
 			totalDuration = time.Duration(0)
+
+			if channelConfig != nil {
+				globalAddresses, orgAddresses, err := extractAddresses(d.ChannelID, channelConfig, d.CryptoProvider)
+				if err != nil {
+					// The bundle was created prior to calling this function, so it should not fail when we recreate it here.
+					d.Logger.Panicf("Bundle creation should not have failed: %s", err)
+				}
+				d.orderers.Update(globalAddresses, orgAddresses)
+			}
 		}
 		if err := blockReceiver.ProcessIncoming(onSuccess); err != nil {
 			switch err.(type) {

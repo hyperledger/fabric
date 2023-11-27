@@ -15,7 +15,6 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
-
 	"github.com/pkg/errors"
 )
 
@@ -99,7 +98,7 @@ func (cs *ConnectionSource) ShuffledEndpoints() []*Endpoint {
 func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]OrdererOrg) {
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
-	cs.logger.Debug("Processing updates for orderer endpoints")
+	cs.logger.Infof("Processing updates for orderer endpoints: global: %v; orgs: %v", globalAddrs, orgs)
 
 	newOrgToEndpointsHash := map[string][]byte{}
 

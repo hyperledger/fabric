@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/hyperledger/fabric/common/deliverclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
@@ -52,7 +53,7 @@ type RuntimeConfig struct {
 
 // BlockCommitted updates the config from the block
 func (rtc RuntimeConfig) BlockCommitted(block *cb.Block, bccsp bccsp.BCCSP) (RuntimeConfig, error) {
-	if _, err := cluster.ConfigFromBlock(block); err == nil {
+	if _, err := deliverclient.ConfigFromBlock(block); err == nil {
 		return rtc.configBlockCommitted(block, bccsp)
 	}
 	return RuntimeConfig{

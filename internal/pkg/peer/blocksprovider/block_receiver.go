@@ -10,12 +10,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/hyperledger/fabric/protoutil"
-
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/common/deliverclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -87,7 +87,7 @@ func (br *BlockReceiver) Stop() {
 }
 
 // ProcessIncoming processes incoming messages until stopped or encounters an error.
-func (br *BlockReceiver) ProcessIncoming(onSuccess func(blockNum uint64)) error {
+func (br *BlockReceiver) ProcessIncoming(onSuccess func(blockNum uint64, channelConfig *common.Config)) error {
 	var err error
 
 RecvLoop: // Loop until the endpoint is refreshed, or there is an error on the connection
@@ -104,13 +104,14 @@ RecvLoop: // Loop until the endpoint is refreshed, or there is an error on the c
 				break RecvLoop
 			}
 			var blockNum uint64
-			blockNum, err = br.processMsg(response)
+			var channelConfig *common.Config
+			blockNum, channelConfig, err = br.processMsg(response)
 			if err != nil {
 				br.logger.Warningf("Got error while attempting to receive blocks: %v", err)
 				err = errors.WithMessagef(err, "got error while attempting to receive blocks from orderer `%s`", br.endpoint.Address)
 				break RecvLoop
 			}
-			onSuccess(blockNum)
+			onSuccess(blockNum, channelConfig)
 		case <-br.stopC:
 			br.logger.Infof("BlockReceiver got a signal to stop")
 			err = &ErrStopping{Message: "got a signal to stop"}
@@ -125,39 +126,48 @@ RecvLoop: // Loop until the endpoint is refreshed, or there is an error on the c
 	return err
 }
 
-func (br *BlockReceiver) processMsg(msg *orderer.DeliverResponse) (uint64, error) {
+func (br *BlockReceiver) processMsg(msg *orderer.DeliverResponse) (uint64, *common.Config, error) {
 	switch t := msg.GetType().(type) {
 	case *orderer.DeliverResponse_Status:
 		if t.Status == common.Status_SUCCESS {
-			return 0, errors.Errorf("received success for a seek that should never complete")
+			return 0, nil, errors.Errorf("received success for a seek that should never complete")
 		}
 
-		return 0, errors.Errorf("received bad status %v from orderer", t.Status)
+		return 0, nil, errors.Errorf("received bad status %v from orderer", t.Status)
 	case *orderer.DeliverResponse_Block:
 		blockNum := t.Block.Header.Number
 
 		if err := br.updatableBlockVerifier.VerifyBlock(t.Block); err != nil {
-			return 0, errors.WithMessagef(err, "block [%d] from orderer [%s] could not be verified", blockNum, br.endpoint.String())
+			return 0, nil, errors.WithMessagef(err, "block [%d] from orderer [%s] could not be verified", blockNum, br.endpoint.String())
 		}
 
 		err := br.blockHandler.HandleBlock(br.channelID, t.Block)
 		if err != nil {
-			return 0, errors.WithMessagef(err, "block [%d] from orderer [%s] could not be handled", blockNum, br.endpoint.String())
+			return 0, nil, errors.WithMessagef(err, "block [%d] from orderer [%s] could not be handled", blockNum, br.endpoint.String())
 		}
 
 		br.logger.Debugf("Handled block %d", blockNum)
 
+		var channelConfig *common.Config
 		if protoutil.IsConfigBlock(t.Block) {
+			configEnv, err := deliverclient.ConfigFromBlock(t.Block)
+			if err != nil {
+				return 0, nil, errors.WithMessagef(err, "failed to extract channel-config from config block [%d] from orderer [%s]", blockNum, br.endpoint.String())
+			}
+
+			channelConfig = configEnv.GetConfig()
+			br.logger.Debugf("channel config: %+v", channelConfig)
+
 			if err := br.updatableBlockVerifier.UpdateConfig(t.Block); err != nil {
-				return 0, errors.WithMessagef(err, "config block [%d] from orderer [%s] failed to update block verifier", blockNum, br.endpoint.String())
+				return 0, nil, errors.WithMessagef(err, "config block [%d] from orderer [%s] failed to update block verifier", blockNum, br.endpoint.String())
 			}
 			br.logger.Infof("Updated config block %d", blockNum)
 		}
 
 		br.updatableBlockVerifier.UpdateBlockHeader(t.Block)
 
-		return blockNum, nil
+		return blockNum, channelConfig, nil
 	default:
-		return 0, errors.Errorf("unknown message type: %T, message: %+v", t, msg)
+		return 0, nil, errors.Errorf("unknown message type: %T, message: %+v", t, msg)
 	}
 }

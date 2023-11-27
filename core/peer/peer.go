@@ -288,28 +288,6 @@ func (p *Peer) createChannel(
 		mspmgmt.XXXSetMSPManager(cid, bundle.MSPManager())
 	}
 
-	osLogger := flogging.MustGetLogger("peer.orderers")
-	namedOSLogger := osLogger.With("channel", cid)
-	ordererSource := orderers.NewConnectionSource(namedOSLogger, p.OrdererEndpointOverrides)
-
-	ordererSourceCallback := func(bundle *channelconfig.Bundle) {
-		globalAddresses := bundle.ChannelConfig().OrdererAddresses()
-		orgAddresses := map[string]orderers.OrdererOrg{}
-		if ordererConfig, ok := bundle.OrdererConfig(); ok {
-			for orgName, org := range ordererConfig.Organizations() {
-				var certs [][]byte
-				certs = append(certs, org.MSP().GetTLSRootCerts()...)
-				certs = append(certs, org.MSP().GetTLSIntermediateCerts()...)
-
-				orgAddresses[orgName] = orderers.OrdererOrg{
-					Addresses: org.Endpoints(),
-					RootCerts: certs,
-				}
-			}
-		}
-		ordererSource.Update(globalAddresses, orgAddresses)
-	}
-
 	channel := &Channel{
 		ledger:         l,
 		resources:      bundle,
@@ -317,7 +295,6 @@ func (p *Peer) createChannel(
 	}
 
 	callbacks := []channelconfig.BundleActor{
-		ordererSourceCallback,
 		gossipCallbackWrapper,
 		trustedRootsCallbackWrapper,
 		mspCallback,
@@ -373,7 +350,7 @@ func (p *Peer) createChannel(
 
 	p.GossipService.InitializeChannel(
 		bundle.ConfigtxValidator().ChannelID(),
-		ordererSource,
+		p.OrdererEndpointOverrides,
 		store,
 		gossipservice.Support{
 			Validator:            validator,

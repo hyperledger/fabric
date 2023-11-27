@@ -127,7 +127,7 @@ type GossipServiceAdapter interface {
 // DeliveryServiceFactory factory to create and initialize delivery service instance
 type DeliveryServiceFactory interface {
 	// Returns an instance of delivery client
-	Service(g GossipServiceAdapter, ordererSource *orderers.ConnectionSource, mcs api.MessageCryptoService, isStaticLead bool, channelConfig *cb.Config, cryptoProvider bccsp.BCCSP) deliverservice.DeliverService
+	Service(g GossipServiceAdapter, ordererEndpointOverrides map[string]*orderers.Endpoint, isStaticLead bool, channelConfig *cb.Config, cryptoProvider bccsp.BCCSP) deliverservice.DeliverService
 }
 
 type deliveryFactoryImpl struct {
@@ -139,21 +139,20 @@ type deliveryFactoryImpl struct {
 // Returns an instance of delivery service
 func (df *deliveryFactoryImpl) Service(
 	g GossipServiceAdapter,
-	ordererSource *orderers.ConnectionSource,
-	mcs api.MessageCryptoService, // TODO remove
+	ordererEndpointOverrides map[string]*orderers.Endpoint,
 	isStaticLead bool,
 	channelConfig *cb.Config,
 	cryptoProvider bccsp.BCCSP,
 ) deliverservice.DeliverService {
 	return deliverservice.NewDeliverService(
 		&deliverservice.Config{
-			IsStaticLeader:       isStaticLead,
-			Gossip:               g,
-			Signer:               df.signer,
-			DeliverServiceConfig: df.deliverServiceConfig,
-			OrdererSource:        ordererSource,
-			ChannelConfig:        channelConfig,
-			CryptoProvider:       cryptoProvider,
+			IsStaticLeader:           isStaticLead,
+			Gossip:                   g,
+			Signer:                   df.signer,
+			DeliverServiceConfig:     df.deliverServiceConfig,
+			OrdererEndpointOverrides: ordererEndpointOverrides,
+			ChannelConfig:            channelConfig,
+			CryptoProvider:           cryptoProvider,
 		})
 }
 
@@ -334,7 +333,14 @@ type Support struct {
 }
 
 // InitializeChannel allocates the state provider and should be invoked once per channel per execution
-func (g *GossipService) InitializeChannel(channelID string, ordererSource *orderers.ConnectionSource, store *transientstore.Store, support Support, channelConfig *cb.Config, cryptoProvider bccsp.BCCSP) {
+func (g *GossipService) InitializeChannel(
+	channelID string,
+	ordererEndpointOverrides map[string]*orderers.Endpoint,
+	store *transientstore.Store,
+	support Support,
+	channelConfig *cb.Config,
+	cryptoProvider bccsp.BCCSP,
+) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 	// Initialize new state provider for given committer
@@ -393,7 +399,7 @@ func (g *GossipService) InitializeChannel(channelID string, ordererSource *order
 		blockingMode,
 		stateConfig)
 	if g.deliveryService[channelID] == nil {
-		g.deliveryService[channelID] = g.deliveryFactory.Service(g, ordererSource, g.mcs, g.serviceConfig.OrgLeader, channelConfig, cryptoProvider)
+		g.deliveryService[channelID] = g.deliveryFactory.Service(g, ordererEndpointOverrides, g.serviceConfig.OrgLeader, channelConfig, cryptoProvider)
 	}
 
 	// Delivery service might be nil only if it was not able to get connected

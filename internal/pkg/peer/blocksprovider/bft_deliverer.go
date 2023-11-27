@@ -13,6 +13,7 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/deliverclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -55,13 +56,14 @@ type UpdatableBlockVerifier deliverclient.CloneableUpdatableBlockVerifier
 // will monitor their progress relative to the block fetcher. If a censorship suspicion is detected, the BFTDeliverer
 // will try to find another orderer to fetch from.
 type BFTDeliverer struct {
-	ChannelID                 string
-	BlockHandler              BlockHandler
-	Ledger                    LedgerInfo
-	ChannelConfig             *common.Config
+	ChannelID    string
+	BlockHandler BlockHandler
+	Ledger       LedgerInfo
+
 	UpdatableBlockVerifier    UpdatableBlockVerifier
 	Dialer                    Dialer
-	Orderers                  OrdererConnectionSource
+	OrderersSourceFactory     OrdererConnectionSourceFactory
+	CryptoProvider            bccsp.BCCSP
 	DoneC                     chan struct{}
 	Signer                    identity.SignerSerializer
 	DeliverStreamer           DeliverStreamer
@@ -86,12 +88,12 @@ type BFTDeliverer struct {
 	sleeper sleeper
 
 	requester *DeliveryRequester
+	orderers  OrdererConnectionSource
 
 	mutex                          sync.Mutex    // mutex protects the following fields
 	stopFlag                       bool          // mark the Deliverer as stopped
 	nextBlockNumber                uint64        // next block number
 	lastBlockTime                  time.Time     // last block time
-	lastBlockSourceIndex           int           // the source index of the last block we got, or -1
 	fetchFailureCounter            int           // counts the number of consecutive failures to fetch a block
 	fetchFailureTotalSleepDuration time.Duration // the cumulative sleep time from when fetchFailureCounter goes 0->1
 
@@ -103,7 +105,7 @@ type BFTDeliverer struct {
 	censorshipMonitor CensorshipDetector
 }
 
-func (d *BFTDeliverer) Initialize() {
+func (d *BFTDeliverer) Initialize(channelConfig *common.Config) {
 	d.requester = NewDeliveryRequester(
 		d.ChannelID,
 		d.Signer,
@@ -111,6 +113,16 @@ func (d *BFTDeliverer) Initialize() {
 		d.Dialer,
 		d.DeliverStreamer,
 	)
+
+	osLogger := flogging.MustGetLogger("peer.orderers")
+	ordererSource := d.OrderersSourceFactory.CreateConnectionSource(osLogger)
+	globalAddresses, orgAddresses, err := extractAddresses(d.ChannelID, channelConfig, d.CryptoProvider)
+	if err != nil {
+		// The bundle was created prior to calling this function, so it should not fail when we recreate it here.
+		d.Logger.Panicf("Bundle creation should not have failed: %s", err)
+	}
+	ordererSource.Update(globalAddresses, orgAddresses)
+	d.orderers = ordererSource
 }
 
 func (d *BFTDeliverer) BlockProgress() (uint64, time.Time) {
@@ -125,18 +137,15 @@ func (d *BFTDeliverer) BlockProgress() (uint64, time.Time) {
 }
 
 func (d *BFTDeliverer) DeliverBlocks() {
-	var err error
-
-	d.lastBlockSourceIndex = -1
-	d.lastBlockTime = time.Now()
-	d.nextBlockNumber, err = d.Ledger.LedgerHeight()
-	if err != nil {
-		d.Logger.Error("Did not return ledger height, something is critically wrong", err)
+	if err := d.initDeliverBlocks(); err != nil {
+		d.Logger.Errorf("Failed to start DeliverBlocks: %s", err)
 		return
 	}
 
-	d.Logger.Infof("Starting to DeliverBlocks on channel `%s`, block height=%d", d.ChannelID, d.nextBlockNumber)
 	defer func() {
+		d.mutex.Lock()
+		defer d.mutex.Unlock()
+
 		d.Logger.Infof("Stopping to DeliverBlocks on channel `%s`, block height=%d", d.ChannelID, d.nextBlockNumber)
 	}()
 
@@ -191,6 +200,22 @@ func (d *BFTDeliverer) DeliverBlocks() {
 	if d.censorshipMonitor != nil {
 		d.censorshipMonitor.Stop()
 	}
+}
+
+func (d *BFTDeliverer) initDeliverBlocks() (err error) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
+	d.lastBlockTime = time.Now()
+	d.nextBlockNumber, err = d.Ledger.LedgerHeight()
+	if err != nil {
+		d.Logger.Errorf("Did not return ledger height, something is critically wrong: %s", err)
+		return
+	}
+
+	d.Logger.Infof("Starting to DeliverBlocks on channel `%s`, block height=%d", d.ChannelID, d.nextBlockNumber)
+
+	return nil
 }
 
 // retryBackoff computes the backoff duration and wait before retrying.
@@ -282,7 +307,7 @@ func (d *BFTDeliverer) handleFetchAndCensorshipEvents() (stopLoop bool) {
 
 func (d *BFTDeliverer) refreshSources() {
 	// select an initial source randomly
-	d.fetchSources = d.Orderers.ShuffledEndpoints()
+	d.fetchSources = d.orderers.ShuffledEndpoints()
 	d.Logger.Infof("Refreshed endpoints: %s", d.fetchSources)
 	d.fetchSourceIndex = 0
 }
@@ -364,8 +389,8 @@ func (d *BFTDeliverer) FetchBlocks(source *orderers.Endpoint) {
 	}
 }
 
-func (d *BFTDeliverer) onBlockProcessingSuccess(blockNum uint64) {
-	d.Logger.Debugf("blockNum: %d", blockNum)
+func (d *BFTDeliverer) onBlockProcessingSuccess(blockNum uint64, channelConfig *common.Config) {
+	d.Logger.Debugf("onBlockProcessingSuccess: %d, %v", blockNum, channelConfig)
 
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
@@ -375,6 +400,19 @@ func (d *BFTDeliverer) onBlockProcessingSuccess(blockNum uint64) {
 
 	d.nextBlockNumber = blockNum + 1
 	d.lastBlockTime = time.Now()
+
+	if channelConfig != nil {
+		globalAddresses, orgAddresses, err := extractAddresses(d.ChannelID, channelConfig, d.CryptoProvider)
+		if err != nil {
+			// The bundle was created prior to calling this function, so it should not fail when we recreate it here.
+			d.Logger.Panicf("Bundle creation should not have failed: %s", err)
+		}
+		d.Logger.Debugf("Extracted orderer addresses: global %v, orgs: %v", globalAddresses, orgAddresses)
+		d.orderers.Update(globalAddresses, orgAddresses)
+		d.Logger.Debugf("Updated OrdererConnectionSource")
+	}
+
+	d.Logger.Debug("onBlockProcessingSuccess: exit")
 }
 
 func (d *BFTDeliverer) resetFetchFailureCounter() {

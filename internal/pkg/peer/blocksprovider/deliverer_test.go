@@ -8,18 +8,26 @@ package blocksprovider_test
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path"
 	"sync"
 	"time"
-
-	"github.com/hyperledger/fabric/protoutil"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
+	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider"
 	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider/fake"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
+	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"google.golang.org/grpc"
@@ -29,25 +37,33 @@ import (
 
 var _ = Describe("CFT-Deliverer", func() {
 	var (
-		d                           *blocksprovider.Deliverer
-		ccs                         []*grpc.ClientConn
-		fakeDialer                  *fake.Dialer
-		fakeBlockHandler            *fake.BlockHandler
-		fakeOrdererConnectionSource *fake.OrdererConnectionSource
-		fakeLedgerInfo              *fake.LedgerInfo
-		fakeUpdatableBlockVerifier  *fake.UpdatableBlockVerifier
-		fakeSigner                  *fake.Signer
-		fakeDeliverStreamer         *fake.DeliverStreamer
-		fakeDeliverClient           *fake.DeliverClient
-		fakeSleeper                 *fake.Sleeper
-		fakeDurationExceededHandler *fake.DurationExceededHandler
-		doneC                       chan struct{}
-		recvStep                    chan struct{}
-		endC                        chan struct{}
-		mutex                       sync.Mutex
+		d                                  *blocksprovider.Deliverer
+		ccs                                []*grpc.ClientConn
+		fakeDialer                         *fake.Dialer
+		fakeBlockHandler                   *fake.BlockHandler
+		fakeOrdererConnectionSource        *fake.OrdererConnectionSource
+		fakeOrdererConnectionSourceFactory *fake.OrdererConnectionSourceFactory
+		fakeLedgerInfo                     *fake.LedgerInfo
+		fakeUpdatableBlockVerifier         *fake.UpdatableBlockVerifier
+		fakeSigner                         *fake.Signer
+		fakeDeliverStreamer                *fake.DeliverStreamer
+		fakeDeliverClient                  *fake.DeliverClient
+		fakeSleeper                        *fake.Sleeper
+		fakeDurationExceededHandler        *fake.DurationExceededHandler
+		fakeCryptoProvider                 bccsp.BCCSP
+		doneC                              chan struct{}
+		recvStep                           chan struct{}
+		endC                               chan struct{}
+		mutex                              sync.Mutex
+		tempDir                            string
+		channelConfig                      *common.Config
 	)
 
 	BeforeEach(func() {
+		var err error
+		tempDir, err = os.MkdirTemp("", "deliverer")
+		Expect(err).NotTo(HaveOccurred())
+
 		doneC = make(chan struct{})
 		recvStep = make(chan struct{})
 
@@ -60,7 +76,7 @@ var _ = Describe("CFT-Deliverer", func() {
 		fakeDialer.DialStub = func(string, [][]byte) (*grpc.ClientConn, error) {
 			mutex.Lock()
 			defer mutex.Unlock()
-			cc, err := grpc.Dial("localhost", grpc.WithTransportCredentials(insecure.NewCredentials()))
+			cc, err := grpc.Dial("localhost:6006", grpc.WithTransportCredentials(insecure.NewCredentials()))
 			ccs = append(ccs, cc)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(cc.GetState()).NotTo(Equal(connectivity.Shutdown))
@@ -78,6 +94,9 @@ var _ = Describe("CFT-Deliverer", func() {
 		fakeOrdererConnectionSource.RandomEndpointReturns(&orderers.Endpoint{
 			Address: "orderer-address",
 		}, nil)
+
+		fakeOrdererConnectionSourceFactory = &fake.OrdererConnectionSourceFactory{}
+		fakeOrdererConnectionSourceFactory.CreateConnectionSourceReturns(fakeOrdererConnectionSource)
 
 		fakeDeliverClient = &fake.DeliverClient{}
 		fakeDeliverClient.RecvStub = func() (*orderer.DeliverResponse, error) {
@@ -103,13 +122,17 @@ var _ = Describe("CFT-Deliverer", func() {
 		fakeDurationExceededHandler = &fake.DurationExceededHandler{}
 		fakeDurationExceededHandler.DurationExceededHandlerReturns(false)
 
+		channelConfig, fakeCryptoProvider, err = testSetup(tempDir, "CFT")
+		Expect(err).NotTo(HaveOccurred())
+
 		d = &blocksprovider.Deliverer{
 			ChannelID:                       "channel-id",
 			BlockHandler:                    fakeBlockHandler,
 			Ledger:                          fakeLedgerInfo,
 			UpdatableBlockVerifier:          fakeUpdatableBlockVerifier,
 			Dialer:                          fakeDialer,
-			Orderers:                        fakeOrdererConnectionSource,
+			OrderersSourceFactory:           fakeOrdererConnectionSourceFactory,
+			CryptoProvider:                  fakeCryptoProvider,
 			DoneC:                           make(chan struct{}),
 			Signer:                          fakeSigner,
 			DeliverStreamer:                 fakeDeliverStreamer,
@@ -120,8 +143,7 @@ var _ = Describe("CFT-Deliverer", func() {
 			MaxRetryInterval:                10 * time.Second,
 			InitialRetryInterval:            100 * time.Millisecond,
 		}
-		d.Initialize()
-
+		d.Initialize(channelConfig)
 		fakeSleeper = &fake.Sleeper{}
 		blocksprovider.SetSleeper(d, fakeSleeper)
 	})
@@ -138,6 +160,8 @@ var _ = Describe("CFT-Deliverer", func() {
 		d.Stop()
 		close(doneC)
 		<-endC
+
+		_ = os.RemoveAll(tempDir)
 	})
 
 	It("waits patiently for new blocks from the orderer", func() {
@@ -226,7 +250,7 @@ var _ = Describe("CFT-Deliverer", func() {
 	When("the dialer returns an error", func() {
 		BeforeEach(func() {
 			fakeDialer.DialReturnsOnCall(0, nil, fmt.Errorf("fake-dial-error"))
-			cc, err := grpc.Dial("localhost", grpc.WithTransportCredentials(insecure.NewCredentials()))
+			cc, err := grpc.Dial("localhost:6006", grpc.WithTransportCredentials(insecure.NewCredentials()))
 			Expect(err).NotTo(HaveOccurred())
 			fakeDialer.DialReturnsOnCall(1, cc, nil)
 		})
@@ -280,7 +304,7 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("hits the maximum sleep time value in an exponential fashion and retries until exceeding the max retry duration", func() {
-			Eventually(fakeDurationExceededHandler.DurationExceededHandlerCallCount).Should(BeNumerically(">", 0))
+			Eventually(fakeDurationExceededHandler.DurationExceededHandlerCallCount, 5*time.Second).Should(BeNumerically(">", 0))
 			Eventually(endC).Should(BeClosed())
 			Eventually(fakeSleeper.SleepCallCount, 5*time.Second).Should(Equal(380))
 			Expect(fakeSleeper.SleepArgsForCall(25)).To(Equal(9539 * time.Millisecond))
@@ -384,7 +408,7 @@ var _ = Describe("CFT-Deliverer", func() {
 			Expect(fakeSleeper.SleepArgsForCall(26)).To(Equal(10 * time.Second))
 			Expect(fakeSleeper.SleepArgsForCall(27)).To(Equal(10 * time.Second))
 			Expect(fakeSleeper.SleepArgsForCall(499)).To(Equal(10 * time.Second))
-			Eventually(fakeDurationExceededHandler.DurationExceededHandlerCallCount).Should(Equal(120))
+			Eventually(fakeDurationExceededHandler.DurationExceededHandlerCallCount, 5*time.Second).Should(Equal(120))
 		})
 	})
 
@@ -607,7 +631,6 @@ var _ = Describe("CFT-Deliverer", func() {
 			doneC := doneC
 			recvStep := recvStep
 			fakeDeliverClient := fakeDeliverClient
-
 			env = &common.Envelope{
 				Payload: protoutil.MarshalOrPanic(&common.Payload{
 					Header: &common.Header{
@@ -616,7 +639,9 @@ var _ = Describe("CFT-Deliverer", func() {
 							ChannelId: "test-chain",
 						}),
 					},
-					Data: []byte("test bytes"),
+					Data: protoutil.MarshalOrPanic(&common.ConfigEnvelope{
+						Config: channelConfig, // it must be a legal config that can produce a new bundle
+					}),
 				}),
 			}
 
@@ -673,6 +698,18 @@ var _ = Describe("CFT-Deliverer", func() {
 			))
 			Eventually(fakeUpdatableBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
 		})
+
+		It("updates the orderer connection source", func() {
+			Eventually(fakeOrdererConnectionSource.UpdateCallCount()).Should(Equal(1))
+			globalAddresses, orgsAddresses := fakeOrdererConnectionSource.UpdateArgsForCall(0)
+			Expect(globalAddresses).To(BeNil())
+			Expect(orgsAddresses).ToNot(BeNil())
+			Expect(len(orgsAddresses)).To(Equal(1))
+			orgAddr, ok := orgsAddresses["SampleOrg"]
+			Expect(ok).To(BeTrue())
+			Expect(orgAddr.Addresses).To(Equal([]string{"127.0.0.1:7050"}))
+			Expect(len(orgAddr.RootCerts)).To(Equal(2))
+		})
 	})
 
 	When("the deliver client returns a status", func() {
@@ -717,3 +754,101 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 	})
 })
+
+func testSetup(certDir string, consensusClass string) (*common.Config, bccsp.BCCSP, error) {
+	var configProfile *genesisconfig.Profile
+	tlsCA, err := tlsgen.NewCA()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	switch consensusClass {
+	case "CFT":
+		configProfile = genesisconfig.Load(genesisconfig.SampleAppChannelEtcdRaftProfile, configtest.GetDevConfigDir())
+		err = generateCertificates(configProfile, tlsCA, certDir)
+	case "BFT":
+		configProfile = genesisconfig.Load(genesisconfig.SampleAppChannelSmartBftProfile, configtest.GetDevConfigDir())
+		err = generateCertificatesSmartBFT(configProfile, tlsCA, certDir)
+	default:
+		err = fmt.Errorf("expected CFT or BFT")
+	}
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	bootstrapper, err := encoder.NewBootstrapper(configProfile)
+	if err != nil {
+		return nil, nil, err
+	}
+	channelConfigProto := &common.Config{ChannelGroup: bootstrapper.GenesisChannelGroup()}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return channelConfigProto, cryptoProvider, nil
+}
+
+// TODO this pattern repeats itself in several places. Make it common in the 'genesisconfig' package to easily create
+// Raft genesis blocks
+func generateCertificates(confAppRaft *genesisconfig.Profile, tlsCA tlsgen.CA, certDir string) error {
+	for i, c := range confAppRaft.Orderer.EtcdRaft.Consenters {
+		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)
+		if err != nil {
+			return err
+		}
+		srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", i))
+		err = os.WriteFile(srvP, srvC.Cert, 0o644)
+		if err != nil {
+			return err
+		}
+
+		clnC, err := tlsCA.NewClientCertKeyPair()
+		if err != nil {
+			return err
+		}
+		clnP := path.Join(certDir, fmt.Sprintf("client%d.crt", i))
+		err = os.WriteFile(clnP, clnC.Cert, 0o644)
+		if err != nil {
+			return err
+		}
+
+		c.ServerTlsCert = []byte(srvP)
+		c.ClientTlsCert = []byte(clnP)
+	}
+
+	return nil
+}
+
+func generateCertificatesSmartBFT(confAppSmartBFT *genesisconfig.Profile, tlsCA tlsgen.CA, certDir string) error {
+	for i, c := range confAppSmartBFT.Orderer.ConsenterMapping {
+		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)
+		if err != nil {
+			return err
+		}
+
+		srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", i))
+		err = ioutil.WriteFile(srvP, srvC.Cert, 0o644)
+		if err != nil {
+			return err
+		}
+
+		clnC, err := tlsCA.NewClientCertKeyPair()
+		if err != nil {
+			return err
+		}
+
+		clnP := path.Join(certDir, fmt.Sprintf("client%d.crt", i))
+		err = ioutil.WriteFile(clnP, clnC.Cert, 0o644)
+		if err != nil {
+			return err
+		}
+
+		c.Identity = srvP
+		c.ServerTLSCert = srvP
+		c.ClientTLSCert = clnP
+	}
+
+	return nil
+}
