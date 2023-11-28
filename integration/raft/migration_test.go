@@ -15,6 +15,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/SmartBFT-Go/consensus/pkg/types"
+	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
+	"github.com/hyperledger/fabric/common/policies"
+
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -39,10 +43,12 @@ var _ = Describe("ConsensusTypeMigration", func() {
 		client  *docker.Client
 		network *nwo.Network
 
-		o1Proc, o2Proc, o3Proc ifrit.Process
+		o1Proc, o2Proc, o3Proc, o4Proc ifrit.Process
 
 		o1Runner *ginkgomon.Runner
 		o2Runner *ginkgomon.Runner
+		o3Runner *ginkgomon.Runner
+		o4Runner *ginkgomon.Runner
 	)
 
 	BeforeEach(func() {
@@ -55,7 +61,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 	})
 
 	AfterEach(func() {
-		for _, oProc := range []ifrit.Process{o1Proc, o2Proc, o3Proc} {
+		for _, oProc := range []ifrit.Process{o1Proc, o2Proc, o3Proc, o4Proc} {
 			if oProc != nil {
 				oProc.Signal(syscall.SIGTERM)
 				Eventually(oProc.Wait(), network.EventuallyTimeout).Should(Receive())
@@ -67,6 +73,125 @@ var _ = Describe("ConsensusTypeMigration", func() {
 		}
 
 		_ = os.RemoveAll(testDir)
+	})
+
+	Describe("Raft to BFT migration", func() {
+		It("migrates from Raft to BFT", func() {
+			networkConfig := nwo.MultiNodeEtcdRaft()
+			networkConfig.Orderers = append(networkConfig.Orderers, &nwo.Orderer{Name: "orderer4", Organization: "OrdererOrg"})
+			networkConfig.Profiles[0].Orderers = []string{"orderer1", "orderer2", "orderer3", "orderer4"}
+
+			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
+
+			o1, o2, o3, o4 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3"), network.Orderer("orderer4")
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			runOrderers := func() {
+				o1Runner = network.OrdererRunner(o1)
+				o2Runner = network.OrdererRunner(o2)
+				o3Runner = network.OrdererRunner(o3)
+				o4Runner = network.OrdererRunner(o4)
+
+				o1Runner.Command.Env = append(o1Runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.common.cluster=debug:orderer.consensus.smartbft=debug:policies.ImplicitOrderer=debug")
+				o2Runner.Command.Env = append(o2Runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.common.cluster=debug:orderer.consensus.smartbft=debug:policies.ImplicitOrderer=debug")
+				o3Runner.Command.Env = append(o3Runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.common.cluster=debug:orderer.consensus.smartbft=debug:policies.ImplicitOrderer=debug")
+				o4Runner.Command.Env = append(o4Runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.common.cluster=debug:orderer.consensus.smartbft=debug:policies.ImplicitOrderer=debug")
+
+				o1Proc = ifrit.Invoke(o1Runner)
+				o2Proc = ifrit.Invoke(o2Runner)
+				o3Proc = ifrit.Invoke(o3Runner)
+				o4Proc = ifrit.Invoke(o4Runner)
+
+				Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+				Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+				Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+				Eventually(o4Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			runOrderers()
+
+			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3, o4)
+			FindLeader([]*ginkgomon.Runner{o1Runner, o2Runner, o3Runner, o4Runner})
+
+			By("performing operation with orderer1")
+			env := CreateBroadcastEnvelope(network, o1, "testchannel", []byte("foo"))
+			resp, err := ordererclient.Broadcast(network, o1, env)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+
+			block := FetchBlock(network, o1, 1, "testchannel")
+			Expect(block).NotTo(BeNil())
+
+			By("Change to maintenance mode")
+
+			peer := network.Peer("Org1", "peer0")
+			orderer := network.Orderer("orderer1")
+
+			addBFTInConfigTree(network, peer, orderer, "testchannel")
+
+			By("Config update on standard channel, State=MAINTENANCE, enter maintenance-mode")
+			config, updatedConfig := prepareTransition(network, peer, orderer, "testchannel",
+				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
+				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, orderer, "testchannel", config, updatedConfig, peer, orderer)
+
+			bftMetadata := protoutil.MarshalOrPanic(&smartbft.Options{
+				RequestBatchMaxCount:      types.DefaultConfig.RequestBatchMaxCount,
+				RequestBatchMaxBytes:      types.DefaultConfig.RequestBatchMaxBytes,
+				RequestBatchMaxInterval:   types.DefaultConfig.RequestBatchMaxInterval.String(),
+				IncomingMessageBufferSize: types.DefaultConfig.IncomingMessageBufferSize,
+				RequestPoolSize:           types.DefaultConfig.RequestPoolSize,
+				RequestForwardTimeout:     types.DefaultConfig.RequestForwardTimeout.String(),
+				RequestComplainTimeout:    types.DefaultConfig.RequestComplainTimeout.String(),
+				RequestAutoRemoveTimeout:  types.DefaultConfig.RequestAutoRemoveTimeout.String(),
+				ViewChangeResendInterval:  types.DefaultConfig.ViewChangeResendInterval.String(),
+				ViewChangeTimeout:         types.DefaultConfig.ViewChangeTimeout.String(),
+				LeaderHeartbeatTimeout:    types.DefaultConfig.LeaderHeartbeatTimeout.String(),
+				LeaderHeartbeatCount:      types.DefaultConfig.LeaderHeartbeatCount,
+				CollectTimeout:            types.DefaultConfig.CollectTimeout.String(),
+				SyncOnStart:               types.DefaultConfig.SyncOnStart,
+				SpeedUpViewChange:         types.DefaultConfig.SpeedUpViewChange,
+			})
+			config, updatedConfig = prepareTransition(network, peer, orderer, "testchannel",
+				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"BFT", bftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
+			nwo.UpdateOrdererConfig(network, orderer, "testchannel", config, updatedConfig, peer, orderer)
+
+			time.Sleep(time.Second) // TODO: check block was committed in all orderers
+
+			for _, oProc := range []ifrit.Process{o1Proc, o2Proc, o3Proc, o4Proc} {
+				if oProc != nil {
+					oProc.Signal(syscall.SIGTERM)
+					Eventually(oProc.Wait(), network.EventuallyTimeout).Should(Receive())
+				}
+			}
+
+			runOrderers()
+
+			// TODO:
+			By("Waiting for followers to see the leader, again")
+			Eventually(o2Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1 channel=testchannel"))
+			Eventually(o3Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1 channel=testchannel"))
+			Eventually(o4Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1 channel=testchannel"))
+
+			// Exit maintenance mode
+
+			config, updatedConfig = prepareTransition(network, peer, orderer, "testchannel",
+				"BFT", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"BFT", bftMetadata, protosorderer.ConsensusType_STATE_NORMAL)
+			nwo.UpdateOrdererConfig(network, orderer, "testchannel", config, updatedConfig, peer, orderer)
+
+			// Now, run a transaction to ensure BFT works.
+			env = CreateBroadcastEnvelope(network, o1, "testchannel", []byte("foo"))
+			resp, err = ordererclient.Broadcast(network, o1, env)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+
+			time.Sleep(time.Second * 5)
+
+			// TODO: check block was successfully committed in all orderers
+		})
 	})
 
 	// These tests execute the migration config updates on an etcdraft based system, but do not restart the orderer
@@ -597,6 +722,75 @@ func createDeliverEnvelope(n *nwo.Network, signer *nwo.SigningIdentity, blkNum u
 			Stop:     specified,
 			Behavior: protosorderer.SeekInfo_BLOCK_UNTIL_READY,
 		},
+		0,
+		0,
+	)
+	Expect(err).NotTo(HaveOccurred())
+
+	return env
+}
+
+func addBFTInConfigTree(network *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channel string) {
+	config := nwo.GetConfig(network, peer, orderer, channel)
+
+	updatedConfig := proto.Clone(config).(*common.Config)
+
+	orderersVal := &common.Orderers{
+		ConsenterMapping: computeConsenterMappings(network),
+	}
+
+	policies.EncodeBFTBlockVerificationPolicy(orderersVal.ConsenterMapping, updatedConfig.ChannelGroup.Groups["Orderer"])
+
+	updatedConfig.ChannelGroup.Groups["Orderer"].Values["Orderers"] = &common.ConfigValue{
+		Value:     protoutil.MarshalOrPanic(orderersVal),
+		ModPolicy: "/Channel/Orderer/Admins",
+	}
+
+	nwo.UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
+}
+
+func computeConsenterMappings(network *nwo.Network) []*common.Consenter {
+	var consenters []*common.Consenter
+
+	for i, orderer := range network.Orderers {
+		ecertPath := network.OrdererCert(orderer)
+		ecert, err := os.ReadFile(ecertPath)
+		Expect(err).To(Not(HaveOccurred()))
+
+		tlsDir := network.OrdererLocalTLSDir(orderer)
+		tlsPath := filepath.Join(tlsDir, "server.crt")
+		tlsCert, err := os.ReadFile(tlsPath)
+		Expect(err).To(Not(HaveOccurred()))
+
+		consenters = append(consenters, &common.Consenter{
+			ServerTlsCert: tlsCert,
+			ClientTlsCert: tlsCert,
+			MspId:         network.Organization(orderer.Organization).MSPID,
+			Host:          "127.0.0.1",
+			Port:          uint32(network.PortsByOrdererID[orderer.ID()][nwo.ClusterPort]),
+			Id:            uint32(i + 1),
+			Identity:      ecert,
+		})
+	}
+
+	return consenters
+}
+
+func CreateBroadcastEnvelope(n *nwo.Network, entity interface{}, channel string, data []byte) *common.Envelope {
+	var signer *nwo.SigningIdentity
+	switch creator := entity.(type) {
+	case *nwo.Peer:
+		signer = n.PeerUserSigner(creator, "Admin")
+	case *nwo.Orderer:
+		signer = n.OrdererUserSigner(creator, "Admin")
+	}
+	Expect(signer).NotTo(BeNil())
+
+	env, err := protoutil.CreateSignedEnvelope(
+		common.HeaderType_ENDORSER_TRANSACTION,
+		channel,
+		signer,
+		&common.Envelope{Payload: data},
 		0,
 		0,
 	)

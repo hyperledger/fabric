@@ -84,22 +84,22 @@ func MetadataHasDuplication(md *etcdraft.ConfigMetadata) error {
 }
 
 // MetadataFromConfigValue reads and translates configuration updates from config value into raft metadata
-func MetadataFromConfigValue(configValue *common.ConfigValue) (*etcdraft.ConfigMetadata, error) {
+func MetadataFromConfigValue(configValue *common.ConfigValue) (*etcdraft.ConfigMetadata, *orderer.ConsensusType, error) {
 	consensusTypeValue := &orderer.ConsensusType{}
 	if err := proto.Unmarshal(configValue.Value, consensusTypeValue); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal consensusType config update")
+		return nil, nil, errors.Wrap(err, "failed to unmarshal consensusType config update")
 	}
 
 	updatedMetadata := &etcdraft.ConfigMetadata{}
 	if err := proto.Unmarshal(consensusTypeValue.Metadata, updatedMetadata); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal updated (new) etcdraft metadata configuration")
+		return nil, nil, errors.Wrap(err, "failed to unmarshal updated (new) etcdraft metadata configuration")
 	}
 
-	return updatedMetadata, nil
+	return updatedMetadata, consensusTypeValue, nil
 }
 
 // MetadataFromConfigUpdate extracts consensus metadata from config update
-func MetadataFromConfigUpdate(update *common.ConfigUpdate) (*etcdraft.ConfigMetadata, error) {
+func MetadataFromConfigUpdate(update *common.ConfigUpdate) (*etcdraft.ConfigMetadata, *orderer.ConsensusType, error) {
 	var baseVersion uint64
 	if update.ReadSet != nil && update.ReadSet.Groups != nil {
 		if ordererConfigGroup, ok := update.ReadSet.Groups["Orderer"]; ok {
@@ -115,13 +115,13 @@ func MetadataFromConfigUpdate(update *common.ConfigUpdate) (*etcdraft.ConfigMeta
 				if baseVersion == val.Version {
 					// Only if the version in the write set differs from the read-set
 					// should we consider this to be an update to the consensus type
-					return nil, nil
+					return nil, nil, nil
 				}
 				return MetadataFromConfigValue(val)
 			}
 		}
 	}
-	return nil, nil
+	return nil, nil, nil
 }
 
 // ConfigChannelHeader expects a config block and returns the header type
@@ -168,28 +168,28 @@ func ConfigEnvelopeFromBlock(block *common.Block) (*common.Envelope, error) {
 }
 
 // ConsensusMetadataFromConfigBlock reads consensus metadata updates from the configuration block
-func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.ConfigMetadata, error) {
+func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.ConfigMetadata, *orderer.ConsensusType, error) {
 	if block == nil {
-		return nil, errors.New("nil block")
+		return nil, nil, errors.New("nil block")
 	}
 
 	if !protoutil.IsConfigBlock(block) {
-		return nil, errors.New("not a config block")
+		return nil, nil, errors.New("not a config block")
 	}
 
 	configEnvelope, err := ConfigEnvelopeFromBlock(block)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot read config update")
+		return nil, nil, errors.Wrap(err, "cannot read config update")
 	}
 
 	payload, err := protoutil.UnmarshalPayload(configEnvelope.Payload)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to extract payload from config envelope")
+		return nil, nil, errors.Wrap(err, "failed to extract payload from config envelope")
 	}
 	// get config update
 	configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not read config update")
+		return nil, nil, errors.Wrap(err, "could not read config update")
 	}
 
 	return MetadataFromConfigUpdate(configUpdate)
