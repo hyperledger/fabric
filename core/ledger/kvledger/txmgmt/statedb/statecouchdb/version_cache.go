@@ -46,8 +46,7 @@ func (c *versionsCache) getVersion(ns, key string) (*version.Height, bool) {
 // between the read-set and the write-set. During the commit, we load missing revisions for
 // any additional writes in the write-sets corresponding to which there were no reads in the read-sets
 func (c *versionsCache) setVerAndRev(ns, key string, ver *version.Height, rev string) {
-	_, ok := c.vers[ns]
-	if !ok {
+	if _, ok := c.vers[ns]; !ok {
 		c.vers[ns] = make(nsVersions)
 		c.revs[ns] = make(nsRevisions)
 	}
