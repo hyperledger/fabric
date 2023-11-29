@@ -91,43 +91,6 @@ func DeployChaincode(n *Network, channel string, orderer *Orderer, chaincode Cha
 	}
 }
 
-// DeployChaincodeLegacy is a helper that will install chaincode to all peers
-// that are connected to the specified channel, instantiate the chaincode on
-// one of the peers, and wait for the instantiation to complete on all of the
-// peers. It uses the legacy lifecycle (lscc) implementation.
-//
-// NOTE: This helper should not be used to deploy the same chaincode on
-// multiple channels as the install will fail on subsequent calls. Instead,
-// simply use InstantiateChaincode().
-func DeployChaincodeLegacy(n *Network, channel string, orderer *Orderer, chaincode Chaincode, peers ...*Peer) {
-	if len(peers) == 0 {
-		peers = n.PeersWithChannel(channel)
-	}
-	if len(peers) == 0 {
-		return
-	}
-
-	// create temp file for chaincode package if not provided
-	if chaincode.PackageFile == "" {
-		tempFile, err := os.CreateTemp("", "chaincode-package")
-		Expect(err).NotTo(HaveOccurred())
-		tempFile.Close()
-		defer os.Remove(tempFile.Name())
-		chaincode.PackageFile = tempFile.Name()
-	}
-
-	// only create chaincode package if it doesn't already exist
-	if fi, err := os.Stat(chaincode.PackageFile); os.IsNotExist(err) || fi.Size() == 0 {
-		PackageChaincodeLegacy(n, chaincode, peers[0])
-	}
-
-	// install on all peers
-	InstallChaincodeLegacy(n, chaincode, peers...)
-
-	// instantiate on the first peer
-	InstantiateChaincodeLegacy(n, channel, orderer, chaincode, peers[0], peers...)
-}
-
 func PackageAndInstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer) {
 	// create temp file for chaincode package if not provided
 	if chaincode.PackageFile == "" {
@@ -164,19 +127,6 @@ func PackageChaincode(n *Network, chaincode Chaincode, peer *Peer) {
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 }
 
-func PackageChaincodeLegacy(n *Network, chaincode Chaincode, peer *Peer) {
-	sess, err := n.PeerAdminSession(peer, commands.ChaincodePackageLegacy{
-		Name:       chaincode.Name,
-		Version:    chaincode.Version,
-		Path:       chaincode.Path,
-		Lang:       chaincode.Lang,
-		OutputFile: chaincode.PackageFile,
-		ClientAuth: n.ClientAuthRequired,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-}
-
 func CheckPackageID(n *Network, packageFile string, packageID string, peer *Peer) {
 	sess, err := n.PeerAdminSession(peer, commands.ChaincodeCalculatePackageID{
 		PackageFile: packageFile,
@@ -206,33 +156,6 @@ func InstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer) {
 
 		EnsureInstalled(n, chaincode.Label, chaincode.PackageID, p)
 		CheckPackageID(n, chaincode.PackageFile, chaincode.PackageID, p)
-	}
-}
-
-func InstallChaincodeLegacy(n *Network, chaincode Chaincode, peers ...*Peer) {
-	// Ensure 'jq' exists in path, because we need it to build chaincode
-	if _, err := exec.LookPath("jq"); err != nil {
-		ginkgo.Fail("'jq' is needed to build chaincode but it wasn't found in the PATH")
-	}
-
-	for _, p := range peers {
-		sess, err := n.PeerAdminSession(p, commands.ChaincodeInstallLegacy{
-			Name:        chaincode.Name,
-			Version:     chaincode.Version,
-			Path:        chaincode.Path,
-			Lang:        chaincode.Lang,
-			PackageFile: chaincode.PackageFile,
-			ClientAuth:  n.ClientAuthRequired,
-		})
-		Expect(err).NotTo(HaveOccurred())
-		EventuallyWithOffset(1, sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-
-		sess, err = n.PeerAdminSession(p, commands.ChaincodeListInstalledLegacy{
-			ClientAuth: n.ClientAuthRequired,
-		})
-		Expect(err).NotTo(HaveOccurred())
-		EventuallyWithOffset(1, sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-		ExpectWithOffset(1, sess).To(gbytes.Say(fmt.Sprintf("Name: %s, Version: %s,", chaincode.Name, chaincode.Version)))
 	}
 }
 
@@ -375,60 +298,6 @@ func InitChaincode(n *Network, channel string, orderer *Orderer, chaincode Chain
 		Eventually(sess.Err, n.EventuallyTimeout).Should(gbytes.Say(`\Qcommitted with status (VALID)\E`))
 	}
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
-}
-
-func InstantiateChaincodeLegacy(n *Network, channel string, orderer *Orderer, chaincode Chaincode, peer *Peer, checkPeers ...*Peer) {
-	sess, err := n.PeerAdminSession(peer, commands.ChaincodeInstantiateLegacy{
-		ChannelID:         channel,
-		Orderer:           n.OrdererAddress(orderer, ListenPort),
-		Name:              chaincode.Name,
-		Version:           chaincode.Version,
-		Ctor:              chaincode.Ctor,
-		Policy:            chaincode.Policy,
-		Lang:              chaincode.Lang,
-		CollectionsConfig: chaincode.CollectionsConfig,
-		ClientAuth:        n.ClientAuthRequired,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-
-	EnsureInstantiatedLegacy(n, channel, chaincode.Name, chaincode.Version, checkPeers...)
-}
-
-func EnsureInstantiatedLegacy(n *Network, channel, name, version string, peers ...*Peer) {
-	for _, p := range peers {
-		Eventually(listInstantiatedLegacy(n, p, channel), n.EventuallyTimeout).Should(
-			gbytes.Say(fmt.Sprintf("Name: %s, Version: %s,", name, version)),
-		)
-	}
-}
-
-func UpgradeChaincodeLegacy(n *Network, channel string, orderer *Orderer, chaincode Chaincode, peers ...*Peer) {
-	if len(peers) == 0 {
-		peers = n.PeersWithChannel(channel)
-	}
-	if len(peers) == 0 {
-		return
-	}
-
-	// install on all peers
-	InstallChaincodeLegacy(n, chaincode, peers...)
-
-	// upgrade from the first peer
-	sess, err := n.PeerAdminSession(peers[0], commands.ChaincodeUpgradeLegacy{
-		ChannelID:         channel,
-		Orderer:           n.OrdererAddress(orderer, ListenPort),
-		Name:              chaincode.Name,
-		Version:           chaincode.Version,
-		Ctor:              chaincode.Ctor,
-		Policy:            chaincode.Policy,
-		CollectionsConfig: chaincode.CollectionsConfig,
-		ClientAuth:        n.ClientAuthRequired,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-
-	EnsureInstantiatedLegacy(n, channel, chaincode.Name, chaincode.Version, peers...)
 }
 
 func EnsureInstalled(n *Network, label, packageID string, peers ...*Peer) {
@@ -602,18 +471,6 @@ func listCommitted(n *Network, peer *Peer, channel, name string) func() queryCom
 		err = json.Unmarshal(sess.Out.Contents(), output)
 		Expect(err).NotTo(HaveOccurred())
 		return *output
-	}
-}
-
-func listInstantiatedLegacy(n *Network, peer *Peer, channel string) func() *gbytes.Buffer {
-	return func() *gbytes.Buffer {
-		sess, err := n.PeerAdminSession(peer, commands.ChaincodeListInstantiatedLegacy{
-			ChannelID:  channel,
-			ClientAuth: n.ClientAuthRequired,
-		})
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-		return sess.Buffer()
 	}
 }
 
