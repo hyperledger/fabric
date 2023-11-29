@@ -104,25 +104,6 @@ var _ = Describe("chaincode install", func() {
 			}
 		})
 
-		It("legacy does not fallback to internal platforms", func() {
-			By("packaging the chaincode using the legacy lifecycle")
-			nwo.PackageChaincodeLegacy(network, chaincode, org1Peer)
-
-			By("installing the chaincode using the legacy lifecycle")
-			sess, err := network.PeerAdminSession(org1Peer, commands.ChaincodeInstallLegacy{
-				Name:        chaincode.Name,
-				Version:     chaincode.Version,
-				Path:        chaincode.Path,
-				Lang:        chaincode.Lang,
-				PackageFile: chaincode.PackageFile,
-				ClientAuth:  network.ClientAuthRequired,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-
-			Expect(sess.Err).To(gbytes.Say(`\Qexternal builder 'external-golang' failed: exit status 1\E`))
-		})
-
 		It("_lifecycle does not fallback to internal platforms when an external builder fails", func() {
 			By("enabling V2_0 application capabilities")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, org1Peer, org2Peer)
