@@ -7,11 +7,18 @@ SPDX-License-Identifier: Apache-2.0
 package msgprocessor
 
 import (
+	"fmt"
+	"os"
+	"path"
 	"testing"
+
+	"github.com/SmartBFT-Go/consensus/pkg/types"
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -29,7 +36,7 @@ func newMockOrdererConfig(migration bool, state orderer.ConsensusType_State) *mo
 	mockCapabilities := &mocks.OrdererCapabilities{}
 	mockCapabilities.ConsensusTypeMigrationReturns(migration)
 	mockOrderer.CapabilitiesReturns(mockCapabilities)
-	mockOrderer.ConsensusTypeReturns("solo")
+	mockOrderer.ConsensusTypeReturns("etcdraft")
 	mockOrderer.ConsensusStateReturns(state)
 	return mockOrderer
 }
@@ -54,7 +61,7 @@ func TestMaintenanceDisabled(t *testing.T) {
 	require.NoError(t, err)
 	mf := NewMaintenanceFilter(msInactive, cryptoProvider)
 	require.NotNil(t, mf)
-	current := consensusTypeInfo{ordererType: "solo", metadata: []byte{}, state: orderer.ConsensusType_STATE_NORMAL}
+	current := consensusTypeInfo{ordererType: "etcdraft", metadata: []byte{}, state: orderer.ConsensusType_STATE_NORMAL}
 
 	t.Run("Good", func(t *testing.T) {
 		configTx := makeConfigEnvelopeWithExtraStuff(t, current, current, 3)
@@ -63,7 +70,7 @@ func TestMaintenanceDisabled(t *testing.T) {
 	})
 
 	t.Run("Block entry to maintenance", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "solo", metadata: []byte{}, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		next := consensusTypeInfo{ordererType: "etcdraft", metadata: []byte{}, state: orderer.ConsensusType_STATE_MAINTENANCE}
 		configTx := makeConfigEnvelope(t, current, next)
 		err := mf.Apply(configTx)
 		require.EqualError(t, err,
@@ -71,11 +78,11 @@ func TestMaintenanceDisabled(t *testing.T) {
 	})
 
 	t.Run("Block type change", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "etcdraft", metadata: []byte{}, state: orderer.ConsensusType_STATE_NORMAL}
+		next := consensusTypeInfo{ordererType: "BFT", metadata: []byte{}, state: orderer.ConsensusType_STATE_NORMAL}
 		configTx := makeConfigEnvelope(t, current, next)
 		err := mf.Apply(configTx)
 		require.EqualError(t, err,
-			"config transaction inspection failed: next config attempted to change ConsensusType.Type from solo to etcdraft, but capability is disabled")
+			"config transaction inspection failed: next config attempted to change ConsensusType.Type from etcdraft to BFT, but capability is disabled")
 	})
 }
 
@@ -166,29 +173,47 @@ func TestMaintenanceInspectEntry(t *testing.T) {
 	mf := NewMaintenanceFilter(msActive, cryptoProvider)
 	require.NotNil(t, mf)
 	bogusMetadata := []byte{1, 2, 3, 4}
-	current := consensusTypeInfo{ordererType: "solo", metadata: []byte{}, state: orderer.ConsensusType_STATE_NORMAL}
+	validMetadata := []byte{}
+	bftMetadata := protoutil.MarshalOrPanic(createValidBFTMetadata())
+	current := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
 
 	t.Run("Good", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "solo", metadata: []byte{}, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
 		configTx := makeConfigEnvelope(t, current, next)
 		err := mf.Apply(configTx)
 		require.NoError(t, err)
 	})
 
 	t.Run("Bad: concurrent change to consensus type & state", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "etcdraft", metadata: bogusMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		next := consensusTypeInfo{ordererType: "BFT", metadata: bogusMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
 		configTx := makeConfigEnvelope(t, current, next)
 		err := mf.Apply(configTx)
 		require.EqualError(t, err,
-			"config transaction inspection failed: attempted to change ConsensusType.Type from solo to etcdraft, but ConsensusType.State is changing from STATE_NORMAL to STATE_MAINTENANCE")
+			"config transaction inspection failed: attempted to change ConsensusType.Type from etcdraft to BFT, but ConsensusType.State is changing from STATE_NORMAL to STATE_MAINTENANCE")
+	})
+
+	t.Run("Bad: concurrent change to metadata & state", func(t *testing.T) {
+		next := consensusTypeInfo{ordererType: "etcdraft", metadata: bftMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		configTx := makeConfigEnvelope(t, current, next)
+		err := mf.Apply(configTx)
+		require.EqualError(t, err,
+			"config transaction inspection failed: attempted to change ConsensusType.Metadata, but ConsensusType.State is changing from STATE_NORMAL to STATE_MAINTENANCE")
+	})
+
+	t.Run("Bad: concurrent change to state & orderer value", func(t *testing.T) {
+		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 4)
+		err := mf.Apply(configTx)
+		require.EqualError(t, err,
+			"config transaction inspection failed: config update contains changes to groups within the Orderer group")
 	})
 
 	t.Run("Bad: change consensus type not in maintenance", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "etcdraft", metadata: bogusMetadata, state: orderer.ConsensusType_STATE_NORMAL}
+		next := consensusTypeInfo{ordererType: "BFT", metadata: bogusMetadata, state: orderer.ConsensusType_STATE_NORMAL}
 		configTx := makeConfigEnvelope(t, current, next)
 		err := mf.Apply(configTx)
 		require.EqualError(t, err,
-			"config transaction inspection failed: attempted to change consensus type from solo to etcdraft, but current config ConsensusType.State is not in maintenance mode")
+			"config transaction inspection failed: attempted to change consensus type from etcdraft to BFT, but current config ConsensusType.State is not in maintenance mode")
 	})
 }
 
@@ -201,21 +226,39 @@ func TestMaintenanceInspectChange(t *testing.T) {
 	mf := NewMaintenanceFilter(msActive, cryptoProvider)
 	require.NotNil(t, mf)
 	bogusMetadata := []byte{1, 2, 3, 4}
-	validMetadata := protoutil.MarshalOrPanic(&etcdraft.ConfigMetadata{})
-	current := consensusTypeInfo{ordererType: "solo", metadata: []byte{}, state: orderer.ConsensusType_STATE_MAINTENANCE}
+	validMetadata := protoutil.MarshalOrPanic(createValidBFTMetadata())
+	current := consensusTypeInfo{ordererType: "etcdraft", metadata: []byte{}, state: orderer.ConsensusType_STATE_MAINTENANCE}
 
-	t.Run("Good type change", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
-		configTx := makeConfigEnvelope(t, current, next)
+	t.Run("Good type change with valid BFT metadata and consenter mapping", func(t *testing.T) {
+		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 4)
 		err := mf.Apply(configTx)
 		require.NoError(t, err)
 	})
 
 	t.Run("Good exit, no change", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "solo", metadata: []byte{}, state: orderer.ConsensusType_STATE_NORMAL}
+		next := consensusTypeInfo{ordererType: "etcdraft", metadata: []byte{}, state: orderer.ConsensusType_STATE_NORMAL}
 		configTx := makeConfigEnvelope(t, current, next)
 		err := mf.Apply(configTx)
 		require.NoError(t, err)
+	})
+
+	t.Run("Bad: good type change with invalid BFT metadata", func(t *testing.T) {
+		next := consensusTypeInfo{ordererType: "BFT", metadata: []byte{}, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		configTx := makeConfigEnvelope(t, current, next)
+		err := mf.Apply(configTx)
+		require.Error(t, err)
+		require.EqualError(t, err,
+			"config transaction inspection failed: invalid BFT metadata configuration")
+	})
+
+	t.Run("Bad: BFT metadata cannot be unmarshalled", func(t *testing.T) {
+		next := consensusTypeInfo{ordererType: "BFT", metadata: bogusMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		configTx := makeConfigEnvelope(t, current, next)
+		err := mf.Apply(configTx)
+		require.Error(t, err)
+		require.Contains(t, err.Error(),
+			"config transaction inspection failed: failed to unmarshal BFT metadata configuration")
 	})
 
 	t.Run("Bad: unsupported consensus type", func(t *testing.T) {
@@ -223,31 +266,22 @@ func TestMaintenanceInspectChange(t *testing.T) {
 		configTx := makeConfigEnvelope(t, current, next)
 		err := mf.Apply(configTx)
 		require.EqualError(t, err,
-			"config transaction inspection failed: attempted to change consensus type from solo to unsupported, transition not supported")
+			"config transaction inspection failed: attempted to change consensus type from etcdraft to unsupported, transition not supported")
 	})
 
 	t.Run("Bad: concurrent change to consensus type & state", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
+		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
 		configTx := makeConfigEnvelope(t, current, next)
 		err := mf.Apply(configTx)
 		require.EqualError(t, err,
-			"config transaction inspection failed: attempted to change ConsensusType.Type from solo to etcdraft, but ConsensusType.State is changing from STATE_MAINTENANCE to STATE_NORMAL")
-	})
-
-	t.Run("Bad: etcdraft metadata", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "etcdraft", metadata: bogusMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
-		configTx := makeConfigEnvelope(t, current, next)
-		err := mf.Apply(configTx)
-		require.Error(t, err)
-		require.Contains(t, err.Error(),
-			"config transaction inspection failed: failed to unmarshal etcdraft metadata configuration")
+			"config transaction inspection failed: attempted to change ConsensusType.Type from etcdraft to BFT, but ConsensusType.State is changing from STATE_MAINTENANCE to STATE_NORMAL")
 	})
 }
 
 func TestMaintenanceInspectExit(t *testing.T) {
-	validMetadata := protoutil.MarshalOrPanic(&etcdraft.ConfigMetadata{})
+	validMetadata := protoutil.MarshalOrPanic(createValidBFTMetadata())
 	mockOrderer := newMockOrdererConfig(true, orderer.ConsensusType_STATE_MAINTENANCE)
-	mockOrderer.ConsensusTypeReturns("etcdraft")
+	mockOrderer.ConsensusTypeReturns("BFT")
 	mockOrderer.ConsensusMetadataReturns(validMetadata)
 
 	msActive := &mockSystemChannelFilterSupport{
@@ -257,42 +291,57 @@ func TestMaintenanceInspectExit(t *testing.T) {
 	require.NoError(t, err)
 	mf := NewMaintenanceFilter(msActive, cryptoProvider)
 	require.NotNil(t, mf)
-	current := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
+	current := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
 
 	t.Run("Good exit", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
+		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
 		configTx := makeConfigEnvelope(t, current, next)
 		err := mf.Apply(configTx)
 		require.NoError(t, err)
 	})
 
 	t.Run("Bad: concurrent change to consensus type & state", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "solo", metadata: []byte{}, state: orderer.ConsensusType_STATE_NORMAL}
+		next := consensusTypeInfo{ordererType: "etcdraft", metadata: []byte{}, state: orderer.ConsensusType_STATE_NORMAL}
 		configTx := makeConfigEnvelope(t, current, next)
 		err := mf.Apply(configTx)
 		require.EqualError(t, err,
-			"config transaction inspection failed: attempted to change ConsensusType.Type from etcdraft to solo, but ConsensusType.State is changing from STATE_MAINTENANCE to STATE_NORMAL")
+			"config transaction inspection failed: attempted to change ConsensusType.Type from BFT to etcdraft, but ConsensusType.State is changing from STATE_MAINTENANCE to STATE_NORMAL")
+	})
+
+	t.Run("Bad: change consensus type from BFT to Raft", func(t *testing.T) {
+		next := consensusTypeInfo{ordererType: "etcdraft", metadata: []byte{}, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		configTx := makeConfigEnvelope(t, current, next)
+		err := mf.Apply(configTx)
+		require.EqualError(t, err,
+			"config transaction inspection failed: attempted to change consensus type from BFT to etcdraft, transition not supported")
 	})
 
 	t.Run("Bad: exit with extra group", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
+		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
 		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 1)
 		err := mf.Apply(configTx)
 		require.EqualError(t, err, "config transaction inspection failed: config update contains changes to more than one group")
 	})
 
 	t.Run("Bad: exit with extra value", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
+		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
 		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 2)
 		err := mf.Apply(configTx)
 		require.EqualError(t, err, "config transaction inspection failed: config update contains changes to values in group Channel")
 	})
 
 	t.Run("Bad: exit with extra orderer value", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
+		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
 		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 3)
 		err := mf.Apply(configTx)
 		require.EqualError(t, err, "config transaction inspection failed: config update contain more then just the ConsensusType value in the Orderer group")
+	})
+
+	t.Run("Bad: exit with extra orderer value required for BFT", func(t *testing.T) {
+		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 4)
+		err := mf.Apply(configTx)
+		require.EqualError(t, err, "config transaction inspection failed: config update contains changes to groups within the Orderer group")
 	})
 }
 
@@ -304,26 +353,33 @@ func TestMaintenanceExtra(t *testing.T) {
 	require.NoError(t, err)
 	mf := NewMaintenanceFilter(msActive, cryptoProvider)
 	require.NotNil(t, mf)
-	current := consensusTypeInfo{ordererType: "solo", metadata: nil, state: orderer.ConsensusType_STATE_MAINTENANCE}
-	validMetadata := protoutil.MarshalOrPanic(&etcdraft.ConfigMetadata{})
+	current := consensusTypeInfo{ordererType: "etcdraft", metadata: nil, state: orderer.ConsensusType_STATE_MAINTENANCE}
+	validMetadata := protoutil.MarshalOrPanic(createValidBFTMetadata())
 
 	t.Run("Good: with extra group", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
 		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 1)
 		err := mf.Apply(configTx)
 		require.NoError(t, err)
 	})
 
 	t.Run("Good: with extra value", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
 		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 2)
 		err := mf.Apply(configTx)
 		require.NoError(t, err)
 	})
 
 	t.Run("Good: with extra orderer value", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
 		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 3)
+		err := mf.Apply(configTx)
+		require.NoError(t, err)
+	})
+
+	t.Run("Good: with extra orderer value required for BFT", func(t *testing.T) {
+		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 4)
 		err := mf.Apply(configTx)
 		require.NoError(t, err)
 	})
@@ -337,7 +393,7 @@ func TestMaintenanceMissingConsensusType(t *testing.T) {
 	require.NoError(t, err)
 	mf := NewMaintenanceFilter(msActive, cryptoProvider)
 	require.NotNil(t, mf)
-	current := consensusTypeInfo{ordererType: "solo", metadata: nil, state: orderer.ConsensusType_STATE_MAINTENANCE}
+	current := consensusTypeInfo{ordererType: "etcdraft", metadata: nil, state: orderer.ConsensusType_STATE_MAINTENANCE}
 	for i := 1; i < 4; i++ {
 		configTx := makeConfigEnvelopeWithExtraStuff(t, current, current, i)
 		err := mf.Apply(configTx)
@@ -353,7 +409,7 @@ type consensusTypeInfo struct {
 
 func makeConfigEnvelope(t *testing.T, current, next consensusTypeInfo) *common.Envelope {
 	original := makeBaseConfig(t)
-	updated := makeBaseConfig(t)
+	updated := proto.Clone(original).(*common.Config)
 
 	original.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.ConsensusTypeKey] = &common.ConfigValue{
 		Value: protoutil.MarshalOrPanic(
@@ -382,7 +438,7 @@ func makeConfigEnvelope(t *testing.T, current, next consensusTypeInfo) *common.E
 
 func makeConfigEnvelopeWithExtraStuff(t *testing.T, current, next consensusTypeInfo, extra int) *common.Envelope {
 	original := makeBaseConfig(t)
-	updated := makeBaseConfig(t)
+	updated := proto.Clone(original).(*common.Config)
 
 	original.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.ConsensusTypeKey] = &common.ConfigValue{
 		Value: protoutil.MarshalOrPanic(
@@ -406,7 +462,7 @@ func makeConfigEnvelopeWithExtraStuff(t *testing.T, current, next consensusTypeI
 
 	switch extra {
 	case 1:
-		updated.ChannelGroup.Groups[channelconfig.ConsortiumsGroupKey] = &common.ConfigGroup{}
+		updated.ChannelGroup.Groups[channelconfig.ApplicationGroupKey].Policies = nil
 	case 2:
 		updated.ChannelGroup.Values[channelconfig.ConsortiumKey] = &common.ConfigValue{
 			Value:     protoutil.MarshalOrPanic(&common.Consortium{}),
@@ -421,6 +477,11 @@ func makeConfigEnvelopeWithExtraStuff(t *testing.T, current, next consensusTypeI
 					MaxMessageCount:   1024,
 					PreferredMaxBytes: 10241024,
 				}),
+			ModPolicy: channelconfig.AdminsPolicyKey,
+		}
+	case 4:
+		updated.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.OrderersKey] = &common.ConfigValue{
+			Value:     protoutil.MarshalOrPanic(&common.Orderers{ConsenterMapping: []*common.Consenter{{Id: 1, Host: "", Port: 0}}}),
 			ModPolicy: channelconfig.AdminsPolicyKey,
 		}
 	default:
@@ -455,15 +516,62 @@ func makeConfigTx(original, updated *common.Config, t *testing.T) *common.Envelo
 }
 
 func makeBaseConfig(t *testing.T) *common.Config {
-	gConf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+	certDir := t.TempDir()
+	tlsCA, err := tlsgen.NewCA()
+	require.NoError(t, err)
+
+	gConf := genesisconfig.Load(genesisconfig.SampleAppChannelEtcdRaftProfile, configtest.GetDevConfigDir())
+	generateCertificates(t, gConf, tlsCA, certDir)
+
 	gConf.Orderer.Capabilities = map[string]bool{
-		capabilities.OrdererV1_4_2: true,
+		capabilities.ChannelV3_0: true,
 	}
-	gConf.Orderer.OrdererType = "solo"
+
+	gConf.Orderer.OrdererType = "etcdraft"
 	channelGroup, err := encoder.NewChannelGroup(gConf)
 	require.NoError(t, err)
 	original := &common.Config{
 		ChannelGroup: channelGroup,
 	}
 	return original
+}
+
+func generateCertificates(t *testing.T, confAppRaft *genesisconfig.Profile, tlsCA tlsgen.CA, certDir string) {
+	for i, c := range confAppRaft.Orderer.EtcdRaft.Consenters {
+		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)
+		require.NoError(t, err)
+		srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", i))
+		err = os.WriteFile(srvP, srvC.Cert, 0o644)
+		require.NoError(t, err)
+
+		clnC, err := tlsCA.NewClientCertKeyPair()
+		require.NoError(t, err)
+		clnP := path.Join(certDir, fmt.Sprintf("client%d.crt", i))
+		err = os.WriteFile(clnP, clnC.Cert, 0o644)
+		require.NoError(t, err)
+
+		c.ServerTlsCert = []byte(srvP)
+		c.ClientTlsCert = []byte(clnP)
+	}
+}
+
+func createValidBFTMetadata() *smartbft.Options {
+	bftMetadata := &smartbft.Options{
+		RequestBatchMaxCount:      types.DefaultConfig.RequestBatchMaxCount,
+		RequestBatchMaxBytes:      types.DefaultConfig.RequestBatchMaxBytes,
+		RequestBatchMaxInterval:   types.DefaultConfig.RequestBatchMaxInterval.String(),
+		IncomingMessageBufferSize: types.DefaultConfig.IncomingMessageBufferSize,
+		RequestPoolSize:           types.DefaultConfig.RequestPoolSize,
+		RequestForwardTimeout:     types.DefaultConfig.RequestForwardTimeout.String(),
+		RequestComplainTimeout:    types.DefaultConfig.RequestComplainTimeout.String(),
+		RequestAutoRemoveTimeout:  types.DefaultConfig.RequestAutoRemoveTimeout.String(),
+		ViewChangeResendInterval:  types.DefaultConfig.ViewChangeResendInterval.String(),
+		ViewChangeTimeout:         types.DefaultConfig.ViewChangeTimeout.String(),
+		LeaderHeartbeatTimeout:    types.DefaultConfig.LeaderHeartbeatTimeout.String(),
+		LeaderHeartbeatCount:      types.DefaultConfig.LeaderHeartbeatCount,
+		CollectTimeout:            types.DefaultConfig.CollectTimeout.String(),
+		SyncOnStart:               types.DefaultConfig.SyncOnStart,
+		SpeedUpViewChange:         types.DefaultConfig.SpeedUpViewChange,
+	}
+	return bftMetadata
 }

@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric-protos-go/orderer"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	etcdraftproto "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
@@ -409,4 +411,19 @@ func TestVerifyConfigMetadata(t *testing.T) {
 
 		require.Nil(t, VerifyConfigMetadata(metadataWithExpiredConsenter, goodVerifyingOpts))
 	})
+}
+
+func TestMetadataFromConfigValue(t *testing.T) {
+	configValue := &common.ConfigValue{
+		Value: protoutil.MarshalOrPanic(&orderer.ConsensusType{
+			Type:     "BFT",
+			Metadata: []byte{1, 2},
+		}),
+	}
+
+	metadata, consensusType, err := MetadataFromConfigValue(configValue)
+	require.Nil(t, metadata)
+	require.Nil(t, err)
+	require.NotNil(t, consensusType)
+	require.Equal(t, consensusType.Type, "BFT")
 }

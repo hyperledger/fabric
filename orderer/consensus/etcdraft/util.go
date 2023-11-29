@@ -84,10 +84,17 @@ func MetadataHasDuplication(md *etcdraft.ConfigMetadata) error {
 }
 
 // MetadataFromConfigValue reads and translates configuration updates from config value into raft metadata
+// In case consensus type is changed to BFT the raft metadata will be nil
 func MetadataFromConfigValue(configValue *common.ConfigValue) (*etcdraft.ConfigMetadata, *orderer.ConsensusType, error) {
 	consensusTypeValue := &orderer.ConsensusType{}
 	if err := proto.Unmarshal(configValue.Value, consensusTypeValue); err != nil {
 		return nil, nil, errors.Wrap(err, "failed to unmarshal consensusType config update")
+	}
+
+	if consensusTypeValue.Type != "etcdraft" {
+		if consensusTypeValue.Type == "BFT" {
+			return nil, consensusTypeValue, nil
+		}
 	}
 
 	updatedMetadata := &etcdraft.ConfigMetadata{}
