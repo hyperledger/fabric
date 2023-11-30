@@ -18,10 +18,8 @@ import (
 	"github.com/hyperledger/fabric-protos-go/msp"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 
-	//"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
 	"github.com/pkg/errors"
 
-	//cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
@@ -106,7 +104,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	*/
 	opts := Options{
 		Consenters:        consenters,
-		MaxInflightBlocks: 5,
+		MaxInflightBlocks: 2000,
 		Clock:             clock.NewClock(),
 	}
 
@@ -162,10 +160,9 @@ func New(
 		Logger:           logger,
 		Chains:           r,
 		SignerSerializer: signerSerializer,
-		//WALBaseDir:       walConfig.WALDir,
-		Metrics:     NewMetrics(metricsProvider),
-		CreateChain: r.CreateChain,
-		BCCSP:       BCCSP,
+		Metrics:          NewMetrics(metricsProvider),
+		CreateChain:      r.CreateChain,
+		BCCSP:            BCCSP,
 	}
 
 	identity, _ := signerSerializer.Serialize()

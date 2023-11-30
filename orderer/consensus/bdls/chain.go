@@ -92,6 +92,8 @@ type Chain struct {
 	bdlsId  uint64
 	Channel string
 
+	ActiveNodes atomic.Value
+
 	//agent *agent
 
 	//BDLS
@@ -174,20 +176,21 @@ type Options struct {
 
 // Order accepts a message which has been processed at a given configSeq.
 func (c *Chain) Order(env *common.Envelope, configSeq uint64) error {
-
+	c.Metrics.NormalProposalsReceived.Add(1)
 	seq := c.support.Sequence()
 	if configSeq < seq {
 		c.Logger.Warnf("Normal message was validated against %d, although current config seq has advanced (%d)", configSeq, seq)
-		if _, err := c.support.ProcessNormalMsg(env); err != nil {
+		// No need to ProcessNormalMsg. this process must be in Ordered func
+		/*if _, err := c.support.ProcessNormalMsg(env); err != nil {
 			return errors.Errorf("bad normal message: %s", err)
-		}
+		}*/
 	}
-
 	return c.submit(env, configSeq)
 }
 
 // Configure accepts a message which reconfigures the channel
 func (c *Chain) Configure(env *common.Envelope, configSeq uint64) error {
+	c.Metrics.ConfigProposalsReceived.Add(1)
 	seq := c.support.Sequence()
 	if configSeq < seq {
 		c.Logger.Warnf("Normal message was validated against %d, although current config seq has advanced (%d)", configSeq, seq)
@@ -269,69 +272,56 @@ func NewChain(
 	}
 
 	c := &Chain{
-		//RuntimeConfig:     &atomic.Value{},
-		Channel: support.ChannelID(),
-		//Config:            config,
-		lastBlock: b,
-		WALDir:    walDir,
-		Comm:      comm,
-		support:   support,
-
 		SignerSerializer: signerSerializer,
+		Channel:          support.ChannelID(),
+		lastBlock:        b,
+		WALDir:           walDir,
+		Comm:             comm,
+		support:          support,
 		PolicyManager:    policyManager,
 		BlockPuller:      blockPuller,
 		Logger:           logger,
 		opts:             opts,
 		bdlsId:           selfID,
-
-		applyC:  make(chan apply),
-		submitC: make(chan *submit),
-		haltC:   make(chan struct{}),
-		doneC:   make(chan struct{}),
-		startC:  make(chan struct{}),
-		errorC:  make(chan struct{}),
-
+		applyC:           make(chan apply),
+		submitC:          make(chan *submit),
+		haltC:            make(chan struct{}),
+		doneC:            make(chan struct{}),
+		startC:           make(chan struct{}),
+		errorC:           make(chan struct{}),
+		//RuntimeConfig:     &atomic.Value{},
+		//Config:            config,
 		clock:             opts.Clock,
 		consensusRelation: types2.ConsensusRelationConsenter,
 		status:            types2.StatusActive,
 
 		Metrics: &Metrics{
-			ClusterSize:          metrics.ClusterSize.With("channel", support.ChannelID()),
-			CommittedBlockNumber: metrics.CommittedBlockNumber.With("channel", support.ChannelID()),
-			IsLeader:             metrics.IsLeader.With("channel", support.ChannelID()),
-			LeaderID:             metrics.LeaderID.With("channel", support.ChannelID()),
+			ClusterSize:             metrics.ClusterSize.With("channel", support.ChannelID()),
+			CommittedBlockNumber:    metrics.CommittedBlockNumber.With("channel", support.ChannelID()),
+			ActiveNodes:             metrics.ActiveNodes.With("channel", support.ChannelID()),
+			IsLeader:                metrics.IsLeader.With("channel", support.ChannelID()),
+			LeaderID:                metrics.LeaderID.With("channel", support.ChannelID()),
+			NormalProposalsReceived: metrics.NormalProposalsReceived.With("channel", support.ChannelID()),
+			ConfigProposalsReceived: metrics.ConfigProposalsReceived.With("channel", support.ChannelID()),
 		},
 		bccsp: bccsp,
 
 		chConsensusMessages: make(chan struct{}, 1),
 	}
+
+	// Sets initial values for metrics
+	c.Metrics.ClusterSize.Set(float64(len(c.opts.Consenters)))
+	c.Metrics.IsLeader.Set(float64(0)) // all nodes start out as followers
+	c.Metrics.ActiveNodes.Set(float64(0))
+	c.Metrics.CommittedBlockNumber.Set(float64(c.lastBlock.Header.Number))
+
 	/*
 		lastBlock := LastBlockFromLedgerOrPanic(support, c.Logger)
 		lastConfigBlock := LastConfigBlockFromLedgerOrPanic(support, c.Logger)
 
-		rtc := RuntimeConfig{
-			logger: logger,
-			id:     selfID,
-		}*/
-	/*	rtc, err := rtc.BlockCommitted(lastConfigBlock, bccsp)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed constructing RuntimeConfig")
-		}
-		rtc, err = rtc.BlockCommitted(lastBlock, bccsp)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed constructing RuntimeConfig")
-		}
-
-		c.RuntimeConfig.Store(rtc)
 	*/
-	//c.verifier = buildVerifier(cv, c.RuntimeConfig, support, requestInspector, policyManager)
-	//c.consensus = bftSmartConsensusBuild(c, requestInspector)
 
 	// Setup communication with list of remotes notes for the new channel
-
-	//if err != nil {
-	//	return nil, errors.WithStack(err)
-	//}
 
 	/*privateKey, err := ecdsa.GenerateKey(S256Curve, rand.Reader)
 	if err != nil {
@@ -369,9 +359,7 @@ func NewChain(
 		priv.D = i
 		priv.PublicKey.X, priv.PublicKey.Y = bdls.S256Curve.ScalarBaseMult(priv.D.Bytes())
 		// myself
-		logger.Info("XXXXXXX ", c.bdlsId, k, "  XXXXXXXX ")
 		if int(c.bdlsId) == k+1 {
-			logger.Info("----- T r u e -----")
 			config.PrivateKey = priv
 		}
 
@@ -381,32 +369,12 @@ func NewChain(
 
 	c.config = config
 
-	/*if err := c.startConsensus(config); err != nil {
-		logger.Error(err)
-	}*/
-
-	// create the consensus object
-	/*consensus, err := bdls.NewConsensus(config)
-	if err != nil {
-		logger.Warnf(" ^^^^^^^ Cannot init BDLS instincas: %v", err)
-		return nil, errors.WithStack(err)
-
-	}*/
-
-	//c.consensus = consensus
-
-	//c.opts.Consenters
 	nodes, err := c.remotePeers()
-
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	c.Comm.Configure(c.support.ChannelID(), nodes)
 
-	/*	if err := c.consensus.ValidateConfiguration(rtc.Nodes); err != nil {
-			return nil, errors.Wrap(err, "failed to verify SmartBFT-Go configuration")
-		}
-	*/
 	logger.Infof("BDLS is now servicing chain %s", support.ChannelID())
 
 	return c, nil
@@ -568,7 +536,7 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 	}
 
 	if c.blockInflight > 0 {
-		c.blockInflight-- // only reduce on leader
+		c.blockInflight-- // Reduce on All Orderer
 	}
 	c.lastBlock = block
 
@@ -711,21 +679,21 @@ func (c *Chain) startConsensus(config *bdls.Config) error {
 		}(peers[k])
 	}
 
-	//go c.TestMultiClients()
+	go c.TestMultiClients()
 
 	c.transportLayer = transportLayer
-	//updateTick := time.NewTicker(updatePeriod)
+	updateTick := time.NewTicker(updatePeriod)
 
 	for {
-		//<-updateTick.C
-		//c.transportLayer.Update()
+		<-updateTick.C
+		c.transportLayer.Update()
 		// Check for confirmed new block
 		height /*round*/, _, state := c.transportLayer.GetLatestState()
 		if height > c.lastBlock.Header.Number {
 			c.applyC <- apply{state}
 		}
 	}
-	//defer c.testOrder()
+
 	/*
 	   	// c.Order(env, 0)
 	   	var bc *blockCreator
@@ -893,18 +861,19 @@ func (c *Chain) run() {
 			<-updateTick.C
 			c.transportLayer.Update()
 			// Check for confirmed new block
-			height , _, state := c.transportLayer.GetLatestState()
+			height, _, state := c.transportLayer.GetLatestState()
 			if height > c.lastBlock.Header.Number {
 				c.applyC <- apply{state}
 			}
+
 		}
 	}()*/
 	for {
 		select {
-		case <-updateTick.C:
+		//case <-updateTick.C:
 
-			// Calling BDLS  consensus Update() function
-			c.transportLayer.Update()
+		// Calling BDLS  consensus Update() function
+		// c.transportLayer.Update() Due to new bug
 
 		// check if new block confirmed
 		/*height, round, state := c.transportLayer.GetLatestState()
@@ -927,6 +896,7 @@ func (c *Chain) run() {
 				// polled by `WaitReady`
 				continue
 			}
+			// Direct Ordered for the Payload
 			//batches, pending := c.support.BlockCutter().Ordered(s.req.Payload)
 
 			batches, pending, err := c.ordered(s.req)
@@ -952,6 +922,8 @@ func (c *Chain) run() {
 			}
 
 			c.propose(ch, bc, batches...)
+
+			// The code block bellow direct cut the block and propse to the consensus.
 			/*
 				batch := c.support.BlockCutter().Cut()
 
@@ -985,6 +957,7 @@ func (c *Chain) run() {
 			} else if c.blockInflight < c.opts.MaxInflightBlocks {
 				submitC = c.submitC
 			}
+			//The code section is direct writeBlock
 			/*//if app.state != nil {
 				newBlock, err := protoutil.UnmarshalBlock(app.state)
 				if err != nil {

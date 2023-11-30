@@ -612,6 +612,10 @@ func isCandidate(state raft.StateType) bool {
 }
 
 func (c *Chain) run() {
+
+	// Calculate TPS
+	go c.TestMultiClients()
+
 	ticking := false
 	timer := c.clock.NewTimer(time.Second)
 	// we need a stopped timer rather than nil,

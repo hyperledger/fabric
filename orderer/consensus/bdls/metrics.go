@@ -19,9 +19,17 @@ var (
 	}
 	proposalFailuresOpts = metrics.CounterOpts{
 		Namespace:    "consensus",
-		Subsystem:    "etcdraft",
+		Subsystem:    "BFT",
 		Name:         "proposal_failures",
 		Help:         "The number of proposal failures.",
+		LabelNames:   []string{"channel"},
+		StatsdFormat: "%{#fqname}.%{channel}",
+	}
+	ActiveNodesOpts = metrics.GaugeOpts{
+		Namespace:    "consensus",
+		Subsystem:    "BFT",
+		Name:         "active_nodes",
+		Help:         "Number of active nodes in this channel.",
 		LabelNames:   []string{"channel"},
 		StatsdFormat: "%{#fqname}.%{channel}",
 	}
@@ -49,24 +57,46 @@ var (
 		LabelNames:   []string{"channel"},
 		StatsdFormat: "%{#fqname}.%{channel}",
 	}
+	normalProposalsReceivedOpts = metrics.CounterOpts{
+		Namespace:    "consensus",
+		Subsystem:    "BFT",
+		Name:         "normal_proposals_received",
+		Help:         "The total number of proposals received for normal type transactions.",
+		LabelNames:   []string{"channel"},
+		StatsdFormat: "%{#fqname}.%{channel}",
+	}
+	configProposalsReceivedOpts = metrics.CounterOpts{
+		Namespace:    "consensus",
+		Subsystem:    "BFT",
+		Name:         "config_proposals_received",
+		Help:         "The total number of proposals received for config type transactions.",
+		LabelNames:   []string{"channel"},
+		StatsdFormat: "%{#fqname}.%{channel}",
+	}
 )
 
 // Metrics defines the metrics for the cluster.
 type Metrics struct {
-	ClusterSize          metrics.Gauge
-	CommittedBlockNumber metrics.Gauge
-	IsLeader             metrics.Gauge
-	LeaderID             metrics.Gauge
-	ProposalFailures     metrics.Counter
+	ClusterSize             metrics.Gauge
+	CommittedBlockNumber    metrics.Gauge
+	ActiveNodes             metrics.Gauge
+	IsLeader                metrics.Gauge
+	LeaderID                metrics.Gauge
+	ProposalFailures        metrics.Counter
+	NormalProposalsReceived metrics.Counter
+	ConfigProposalsReceived metrics.Counter
 }
 
 // NewMetrics creates the Metrics
 func NewMetrics(p metrics.Provider) *Metrics {
 	return &Metrics{
-		ClusterSize:          p.NewGauge(clusterSizeOpts),
-		CommittedBlockNumber: p.NewGauge(committedBlockNumberOpts),
-		ProposalFailures:     p.NewCounter(proposalFailuresOpts),
-		IsLeader:             p.NewGauge(isLeaderOpts),
-		LeaderID:             p.NewGauge(leaderIDOpts),
+		ClusterSize:             p.NewGauge(clusterSizeOpts),
+		CommittedBlockNumber:    p.NewGauge(committedBlockNumberOpts),
+		ActiveNodes:             p.NewGauge(ActiveNodesOpts),
+		ProposalFailures:        p.NewCounter(proposalFailuresOpts),
+		IsLeader:                p.NewGauge(isLeaderOpts),
+		LeaderID:                p.NewGauge(leaderIDOpts),
+		NormalProposalsReceived: p.NewCounter(normalProposalsReceivedOpts),
+		ConfigProposalsReceived: p.NewCounter(configProposalsReceivedOpts),
 	}
 }
