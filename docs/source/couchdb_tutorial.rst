@@ -220,6 +220,34 @@ the CouchDB recommended practice.
   }
 
 
+If you want to add sorting to your indexing, add a sort type. Then you can query result at needed sort. Example below.
+
+.. code:: json
+
+  {
+    "index":{
+      "fields":[
+         {
+            "owner":"desc"
+         },
+         {
+            "color":"desc"
+         },
+         {
+            "size":"desc"
+         }
+      ] // Names of the fields to be queried and sorted for descending.
+   },
+    "ddoc":"index3Doc",
+    "name":"index3",
+    "type":"json"
+  }
+
+.. tip:: Be aware if you want to have good performance in your query, put the most 
+         restrictive field in the first place to limit the results the most. 
+         In our case ``owner`` should be the first value in index ``fields``.
+         Because the ``owner`` carries a unique user identifier.
+
 In general, you should model index fields to match the fields that will be used
 in query filters and sorts. For more details on building an index in JSON
 format refer to the `CouchDB documentation <http://docs.couchdb.org/en/stable/api/database/find.html#db-index>`__.
