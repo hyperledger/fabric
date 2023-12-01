@@ -11,7 +11,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/common/deliverclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
@@ -29,7 +31,7 @@ type CensorshipDetector interface {
 type CensorshipDetectorFactory interface {
 	Create(
 		chainID string,
-		verifier BlockVerifier,
+		updatableVerifier UpdatableBlockVerifier,
 		requester DeliverClientRequester,
 		progressReporter BlockProgressReporter,
 		fetchSources []*orderers.Endpoint,
@@ -43,17 +45,21 @@ type DurationExceededHandler interface {
 	DurationExceededHandler() (stopRetries bool)
 }
 
+//go:generate counterfeiter -o fake/updatable_block_verifier.go --fake-name UpdatableBlockVerifier . UpdatableBlockVerifier
+type UpdatableBlockVerifier deliverclient.CloneableUpdatableBlockVerifier
+
 // BFTDeliverer fetches blocks using a block receiver and maintains a BFTCensorshipMonitor.
 // It maintains a shuffled orderer source slice, and will cycle through it trying to find a "good" orderer to fetch
 // blocks from. After it selects an orderer to fetch blocks from, it assigns all the rest of the orderers to the
 // censorship monitor. The censorship monitor will request block attestations (header+sigs) from said orderers, and
 // will monitor their progress relative to the block fetcher. If a censorship suspicion is detected, the BFTDeliverer
 // will try to find another orderer to fetch from.
-type BFTDeliverer struct { // TODO
+type BFTDeliverer struct {
 	ChannelID                 string
 	BlockHandler              BlockHandler
 	Ledger                    LedgerInfo
-	BlockVerifier             BlockVerifier
+	ChannelConfig             *common.Config
+	UpdatableBlockVerifier    UpdatableBlockVerifier
 	Dialer                    Dialer
 	Orderers                  OrdererConnectionSource
 	DoneC                     chan struct{}
@@ -166,7 +172,7 @@ func (d *BFTDeliverer) DeliverBlocks() {
 
 		// Create and start a censorship monitor.
 		d.censorshipMonitor = d.CensorshipDetectorFactory.Create(
-			d.ChannelID, d.BlockVerifier, d.requester, d, d.fetchSources, d.fetchSourceIndex, timeoutConfig)
+			d.ChannelID, d.UpdatableBlockVerifier, d.requester, d, d.fetchSources, d.fetchSourceIndex, timeoutConfig)
 		go d.censorshipMonitor.Monitor()
 
 		// Wait for block fetcher & censorship monitor events, or a stop signal.
@@ -321,15 +327,15 @@ func (d *BFTDeliverer) FetchBlocks(source *orderers.Endpoint) {
 		}
 
 		blockRcv := &BlockReceiver{
-			channelID:      d.ChannelID,
-			blockHandler:   d.BlockHandler,
-			blockVerifier:  d.BlockVerifier,
-			deliverClient:  deliverClient,
-			cancelSendFunc: cancel,
-			recvC:          make(chan *orderer.DeliverResponse),
-			stopC:          make(chan struct{}),
-			endpoint:       source,
-			logger:         flogging.MustGetLogger("BlockReceiver").With("orderer-address", source.Address),
+			channelID:              d.ChannelID,
+			blockHandler:           d.BlockHandler,
+			updatableBlockVerifier: d.UpdatableBlockVerifier,
+			deliverClient:          deliverClient,
+			cancelSendFunc:         cancel,
+			recvC:                  make(chan *orderer.DeliverResponse),
+			stopC:                  make(chan struct{}),
+			endpoint:               source,
+			logger:                 flogging.MustGetLogger("BlockReceiver").With("orderer-address", source.Address),
 		}
 
 		d.mutex.Lock()

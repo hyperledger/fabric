@@ -45,11 +45,11 @@ type DeliverClientRequester interface {
 // declare that censorship was detected.
 // When censorship is detected, ErrCensorship is sent to the errorCh which can be read by ErrorsChannel() method.
 type BFTCensorshipMonitor struct {
-	chainID          string
-	headerVerifier   BlockVerifier
-	requester        DeliverClientRequester
-	fetchSources     []*orderers.Endpoint
-	blockSourceIndex int
+	chainID                 string
+	updatableHeaderVerifier UpdatableBlockVerifier
+	requester               DeliverClientRequester
+	fetchSources            []*orderers.Endpoint
+	blockSourceIndex        int
 
 	timeoutConfig        TimeoutConfig
 	stopHistoryWindowDur time.Duration
@@ -112,7 +112,7 @@ func (tracker *headerReceiverTracker) appendIfNewer(u time.Time) bool {
 
 func NewBFTCensorshipMonitor(
 	chainID string,
-	verifier BlockVerifier,
+	updatableVerifier UpdatableBlockVerifier,
 	requester DeliverClientRequester,
 	progressReporter BlockProgressReporter,
 	fetchSources []*orderers.Endpoint,
@@ -125,18 +125,18 @@ func NewBFTCensorshipMonitor(
 	stopWindowDur := time.Duration(int64(numRetries2Max(2.0, timeoutConf.MinRetryInterval, timeoutConf.MaxRetryInterval)+1) * timeoutConf.MaxRetryInterval.Nanoseconds())
 
 	m := &BFTCensorshipMonitor{
-		chainID:              chainID,
-		headerVerifier:       verifier,
-		requester:            requester,
-		fetchSources:         fetchSources,
-		progressReporter:     progressReporter,
-		stopCh:               make(chan struct{}),
-		errorCh:              make(chan error, 1), // Buffered to allow the Monitor() goroutine to exit without waiting
-		hdrRcvTrackers:       make(map[string]*headerReceiverTracker),
-		blockSourceIndex:     blockSourceIndex,
-		timeoutConfig:        timeoutConf,
-		stopHistoryWindowDur: stopWindowDur,
-		logger:               flogging.MustGetLogger("BFTCensorshipMonitor").With("channel", chainID),
+		chainID:                 chainID,
+		updatableHeaderVerifier: updatableVerifier,
+		requester:               requester,
+		fetchSources:            fetchSources,
+		progressReporter:        progressReporter,
+		stopCh:                  make(chan struct{}),
+		errorCh:                 make(chan error, 1), // Buffered to allow the Monitor() goroutine to exit without waiting
+		hdrRcvTrackers:          make(map[string]*headerReceiverTracker),
+		blockSourceIndex:        blockSourceIndex,
+		timeoutConfig:           timeoutConf,
+		stopHistoryWindowDur:    stopWindowDur,
+		logger:                  flogging.MustGetLogger("BFTCensorshipMonitor").With("channel", chainID),
 	}
 
 	return m
@@ -365,7 +365,7 @@ func (m *BFTCensorshipMonitor) launchHeaderReceivers() error {
 			continue
 		}
 
-		hrRcvMon.headerReceiver = NewBFTHeaderReceiver(m.chainID, ep.Address, headerClient, m.headerVerifier, hrRcvMon.headerReceiver, flogging.MustGetLogger("BFTHeaderReceiver"))
+		hrRcvMon.headerReceiver = NewBFTHeaderReceiver(m.chainID, ep.Address, headerClient, m.updatableHeaderVerifier, hrRcvMon.headerReceiver, flogging.MustGetLogger("BFTHeaderReceiver"))
 		hrRcvMon.connectFailureCounter = 0
 		hrRcvMon.retryDeadline = time.Time{}
 

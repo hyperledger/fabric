@@ -12,11 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/flogging"
-	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 	"google.golang.org/grpc"
@@ -29,6 +27,9 @@ import (
 type LedgerInfo interface {
 	// LedgerHeight returns current local ledger height
 	LedgerHeight() (uint64, error)
+
+	// GetCurrentBlockHash returns the block header hash of the last block in the ledger.
+	GetCurrentBlockHash() ([]byte, error)
 }
 
 // GossipServiceAdapter serves to provide basic functionality
@@ -41,16 +42,6 @@ type GossipServiceAdapter interface {
 
 	// Gossip the message across the peers
 	Gossip(msg *gossip.GossipMessage)
-}
-
-//go:generate counterfeiter -o fake/block_verifier.go --fake-name BlockVerifier . BlockVerifier
-type BlockVerifier interface {
-	VerifyBlock(channelID gossipcommon.ChannelID, blockNum uint64, block *common.Block) error
-
-	// VerifyBlockAttestation does the same as VerifyBlock, except it assumes block.Data = nil. It therefore does not
-	// compute the block.Data.Hash() and compare it to the block.Header.DataHash. This is used when the orderer
-	// delivers a block with header & metadata only, as an attestation of block existence.
-	VerifyBlockAttestation(channelID string, block *common.Block) error
 }
 
 //go:generate counterfeiter -o fake/orderer_connection_source.go --fake-name OrdererConnectionSource . OrdererConnectionSource
@@ -80,16 +71,16 @@ const backoffExponentBase = 1.2
 
 // Deliverer the CFT implementation of the deliverservice.BlockDeliverer interface.
 type Deliverer struct {
-	ChannelID       string
-	BlockHandler    BlockHandler
-	Ledger          LedgerInfo
-	BlockVerifier   BlockVerifier
-	Dialer          Dialer
-	Orderers        OrdererConnectionSource
-	DoneC           chan struct{}
-	Signer          identity.SignerSerializer
-	DeliverStreamer DeliverStreamer
-	Logger          *flogging.FabricLogger
+	ChannelID              string
+	BlockHandler           BlockHandler
+	Ledger                 LedgerInfo
+	UpdatableBlockVerifier UpdatableBlockVerifier
+	Dialer                 Dialer
+	Orderers               OrdererConnectionSource
+	DoneC                  chan struct{}
+	Signer                 identity.SignerSerializer
+	DeliverStreamer        DeliverStreamer
+	Logger                 *flogging.FabricLogger
 
 	// The maximal value of the actual retry interval, which cannot increase beyond this value
 	MaxRetryInterval time.Duration
@@ -186,15 +177,15 @@ func (d *Deliverer) DeliverBlocks() {
 
 		d.mutex.Lock()
 		blockReceiver := &BlockReceiver{
-			channelID:      d.ChannelID,
-			blockHandler:   d.BlockHandler,
-			blockVerifier:  d.BlockVerifier,
-			deliverClient:  deliverClient,
-			cancelSendFunc: cancel,
-			recvC:          make(chan *orderer.DeliverResponse),
-			stopC:          make(chan struct{}),
-			endpoint:       endpoint,
-			logger:         d.Logger.With("orderer-address", endpoint.Address),
+			channelID:              d.ChannelID,
+			blockHandler:           d.BlockHandler,
+			updatableBlockVerifier: d.UpdatableBlockVerifier,
+			deliverClient:          deliverClient,
+			cancelSendFunc:         cancel,
+			recvC:                  make(chan *orderer.DeliverResponse),
+			stopC:                  make(chan struct{}),
+			endpoint:               endpoint,
+			logger:                 d.Logger.With("orderer-address", endpoint.Address),
 		}
 		d.blockReceiver = blockReceiver
 		d.mutex.Unlock()

@@ -24,15 +24,15 @@ import (
 // TODO The header receiver will receive (or ask for) full config blocks - in a later commit.
 // TODO The header receiver will maintain its own private block verifier (bundle) - in a later commit.
 type BFTHeaderReceiver struct {
-	mutex         sync.Mutex
-	chainID       string
-	stop          bool
-	stopChan      chan struct{}
-	started       bool
-	errorStopTime time.Time
-	endpoint      string
-	client        orderer.AtomicBroadcast_DeliverClient
-	blockVerifier BlockVerifier
+	mutex                  sync.Mutex
+	chainID                string
+	stop                   bool
+	stopChan               chan struct{}
+	started                bool
+	errorStopTime          time.Time
+	endpoint               string
+	client                 orderer.AtomicBroadcast_DeliverClient
+	updatableBlockVerifier UpdatableBlockVerifier
 
 	// A block with Header & Metadata, without Data (i.e. lastHeader.Data==nil); TODO except from config blocks, which are full.
 	lastHeader *common.Block
@@ -50,17 +50,17 @@ func NewBFTHeaderReceiver(
 	chainID string,
 	endpoint string,
 	client orderer.AtomicBroadcast_DeliverClient,
-	msgVerifier BlockVerifier,
+	updatableBlockVerifier UpdatableBlockVerifier,
 	previousReceiver *BFTHeaderReceiver,
 	logger *flogging.FabricLogger,
 ) *BFTHeaderReceiver {
 	hRcv := &BFTHeaderReceiver{
-		chainID:       chainID,
-		stopChan:      make(chan struct{}, 1),
-		endpoint:      endpoint,
-		client:        client,
-		blockVerifier: msgVerifier,
-		logger:        logger,
+		chainID:                chainID,
+		stopChan:               make(chan struct{}, 1),
+		endpoint:               endpoint,
+		client:                 client,
+		updatableBlockVerifier: updatableBlockVerifier.Clone(),
+		logger:                 logger,
 	}
 
 	if previousReceiver != nil {
@@ -110,19 +110,22 @@ func (hr *BFTHeaderReceiver) DeliverHeaders() {
 
 		case *orderer.DeliverResponse_Block:
 			blockNum := t.Block.Header.Number
-
-			err := hr.blockVerifier.VerifyBlockAttestation(hr.chainID, t.Block)
+			err := hr.updatableBlockVerifier.VerifyBlockAttestation(t.Block)
 			if err != nil {
 				hr.logger.Warningf("[%s][%s] Last block verification failed, blockNum [%d], err: %s", hr.chainID, hr.endpoint, blockNum, err)
 				return
 			}
 
 			if protoutil.IsConfigBlock(t.Block) { // blocks with block.Data==nil return false
-				hr.logger.Debugf("[%s][%s] Applying config block to block verifier, blockNum = [%d]", hr.chainID, hr.endpoint, blockNum)
-				// TODO
+				if err := hr.updatableBlockVerifier.UpdateConfig(t.Block); err != nil {
+					hr.logger.Warningf("config block [%d] from orderer [%s] failed to update block verifierm error: %s", blockNum, hr.endpoint, err)
+					return
+				}
+				hr.logger.Infof("[%s][%s] Applied config block to header verifier, blockNum = [%d]", hr.chainID, hr.endpoint, blockNum)
 			}
 
 			hr.logger.Debugf("[%s][%s] Saving block header & metadata, blockNum = [%d]", hr.chainID, hr.endpoint, blockNum)
+			hr.updatableBlockVerifier.UpdateBlockHeader(t.Block)
 			hr.mutex.Lock()
 			hr.lastHeader = t.Block
 			hr.lastHeaderTime = time.Now()

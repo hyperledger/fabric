@@ -39,7 +39,7 @@ type bftDelivererTestSetup struct {
 	fakeBlockHandler            *fake.BlockHandler
 	fakeOrdererConnectionSource *fake.OrdererConnectionSource
 	fakeLedgerInfo              *fake.LedgerInfo
-	fakeBlockVerifier           *fake.BlockVerifier
+	fakeUpdatableBlockVerifier  *fake.UpdatableBlockVerifier
 	fakeSigner                  *fake.Signer
 	fakeDeliverStreamer         *fake.DeliverStreamer
 	fakeDeliverClient           *fake.DeliverClient
@@ -68,7 +68,7 @@ func newBFTDelivererTestSetup(t *testing.T) *bftDelivererTestSetup {
 		fakeBlockHandler:            &fake.BlockHandler{},
 		fakeOrdererConnectionSource: &fake.OrdererConnectionSource{},
 		fakeLedgerInfo:              &fake.LedgerInfo{},
-		fakeBlockVerifier:           &fake.BlockVerifier{},
+		fakeUpdatableBlockVerifier:  &fake.UpdatableBlockVerifier{},
 		fakeSigner:                  &fake.Signer{},
 		fakeDeliverStreamer:         &fake.DeliverStreamer{},
 		fakeDeliverClient:           &fake.DeliverClient{},
@@ -155,7 +155,7 @@ func (s *bftDelivererTestSetup) initialize(t *testing.T) {
 	s.fakeCensorshipMonFactory.CreateCalls(
 		func(
 			chID string,
-			verifier blocksprovider.BlockVerifier,
+			updatableVerifier blocksprovider.UpdatableBlockVerifier,
 			requester blocksprovider.DeliverClientRequester,
 			reporter blocksprovider.BlockProgressReporter,
 			endpoints []*orderers.Endpoint,
@@ -200,7 +200,7 @@ func (s *bftDelivererTestSetup) initialize(t *testing.T) {
 		ChannelID:                       "channel-id",
 		BlockHandler:                    s.fakeBlockHandler,
 		Ledger:                          s.fakeLedgerInfo,
-		BlockVerifier:                   s.fakeBlockVerifier,
+		UpdatableBlockVerifier:          s.fakeUpdatableBlockVerifier,
 		Dialer:                          s.fakeDialer,
 		Orderers:                        s.fakeOrdererConnectionSource,
 		DoneC:                           make(chan struct{}),
@@ -678,10 +678,8 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		require.Equal(t, 0, setup.fakeSleeper.SleepCallCount())
 
 		t.Log("checks the validity of the block")
-		setup.gWithT.Eventually(setup.fakeBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
-		channelID, blockNum, block := setup.fakeBlockVerifier.VerifyBlockArgsForCall(0)
-		require.Equal(t, "channel-id", channelID.String())
-		require.Equal(t, uint64(7), blockNum)
+		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
+		block := setup.fakeUpdatableBlockVerifier.VerifyBlockArgsForCall(0)
 		require.True(t, proto.Equal(block, &common.Block{Header: &common.BlockHeader{Number: 7}}))
 
 		t.Log("handle the block")
@@ -689,6 +687,9 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		channelName, block2 := setup.fakeBlockHandler.HandleBlockArgsForCall(0)
 		require.Equal(t, "channel-id", channelName)
 		require.True(t, proto.Equal(block2, &common.Block{Header: &common.BlockHeader{Number: 7}}))
+
+		t.Log("does not update config on verifier")
+		require.Equal(t, 0, setup.fakeUpdatableBlockVerifier.UpdateConfigCallCount())
 
 		t.Log("block progress is reported correctly")
 		bNum2, bTime2 := setup.d.BlockProgress()
@@ -704,7 +705,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		setup.initialize(t)
 
 		t.Log("block verification fails")
-		setup.fakeBlockVerifier.VerifyBlockReturns(fmt.Errorf("fake-verify-error"))
+		setup.fakeUpdatableBlockVerifier.VerifyBlockReturns(fmt.Errorf("fake-verify-error"))
 
 		startTime := time.Now()
 		setup.start()
@@ -717,7 +718,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		}
 
 		t.Log("disconnects, sleeps, and tries again")
-		setup.gWithT.Eventually(setup.fakeBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
 		setup.gWithT.Eventually(setup.fakeSleeper.SleepCallCount).Should(Equal(1))
 		require.Equal(t, 1, setup.fakeDeliverClient.CloseSendCallCount())
 		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(2))
@@ -763,7 +764,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		}
 
 		t.Log("disconnects, sleeps, and tries again")
-		setup.gWithT.Eventually(setup.fakeBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
 		setup.gWithT.Eventually(setup.fakeSleeper.SleepCallCount).Should(Equal(1))
 		require.Equal(t, 1, setup.fakeDeliverClient.CloseSendCallCount())
 		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(2))
@@ -825,10 +826,8 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		require.Equal(t, 24, setup.fakeSleeper.SleepCallCount())
 
 		t.Log("checks the validity of the block")
-		setup.gWithT.Eventually(setup.fakeBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
-		channelID, blockNum, block := setup.fakeBlockVerifier.VerifyBlockArgsForCall(0)
-		require.Equal(t, "channel-id", channelID.String())
-		require.Equal(t, uint64(7), blockNum)
+		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
+		block := setup.fakeUpdatableBlockVerifier.VerifyBlockArgsForCall(0)
 		require.True(t, proto.Equal(block, &common.Block{Header: &common.BlockHeader{Number: 7}}))
 
 		t.Log("handle the block")
@@ -928,6 +927,88 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		t.Log("DurationExceededHandler handler is never called, DeliverBlocks() does not stop")
 		setup.gWithT.Expect(setup.fakeDurationExceededHandler.DurationExceededHandlerCallCount()).To(Equal(0))
 		setup.gWithT.Consistently(setup.endC).ShouldNot(BeClosed())
+
+		setup.stop()
+	})
+
+	t.Run("Config block is valid, updates verifier", func(t *testing.T) {
+		flogging.ActivateSpec("debug")
+		setup := newBFTDelivererTestSetup(t)
+		setup.initialize(t)
+		startTime := time.Now()
+
+		t.Log("block progress is reported correctly before start")
+		bNum, bTime := setup.d.BlockProgress()
+		require.Equal(t, uint64(0), bNum)
+		require.True(t, bTime.IsZero())
+
+		setup.start()
+
+		setup.gWithT.Eventually(setup.fakeLedgerInfo.LedgerHeightCallCount).Should(Equal(1))
+		bNum, bTime = setup.d.BlockProgress()
+		require.Equal(t, uint64(6), bNum)
+		require.True(t, bTime.After(startTime))
+
+		t.Log("Recv() returns a single config block, num: 7")
+		env := &common.Envelope{
+			Payload: protoutil.MarshalOrPanic(&common.Payload{
+				Header: &common.Header{
+					ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
+						Type:      int32(common.HeaderType_CONFIG),
+						ChannelId: "test-chain",
+					}),
+				},
+				Data: []byte("test bytes"),
+			}),
+		}
+
+		configBlock := &common.Block{
+			Header: &common.BlockHeader{Number: 7},
+			Data: &common.BlockData{
+				Data: [][]byte{protoutil.MarshalOrPanic(env)},
+			},
+		}
+
+		setup.recvStepC <- &orderer.DeliverResponse{
+			Type: &orderer.DeliverResponse_Block{
+				Block: configBlock,
+			},
+		}
+
+		t.Log("receives the block and loops, not sleeping")
+		setup.gWithT.Eventually(setup.fakeDeliverClient.RecvCallCount).Should(Equal(2))
+		require.Equal(t, 0, setup.fakeSleeper.SleepCallCount())
+
+		t.Log("checks the validity of the block")
+		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
+		block := setup.fakeUpdatableBlockVerifier.VerifyBlockArgsForCall(0)
+		require.True(t, proto.Equal(block,
+			&common.Block{
+				Header: &common.BlockHeader{Number: 7},
+				Data: &common.BlockData{
+					Data: [][]byte{protoutil.MarshalOrPanic(env)},
+				},
+			}))
+
+		t.Log("handle the block")
+		setup.gWithT.Eventually(setup.fakeBlockHandler.HandleBlockCallCount).Should(Equal(1))
+		channelName, block2 := setup.fakeBlockHandler.HandleBlockArgsForCall(0)
+		require.Equal(t, "channel-id", channelName)
+		require.True(t, proto.Equal(block2,
+			&common.Block{
+				Header: &common.BlockHeader{Number: 7},
+				Data: &common.BlockData{
+					Data: [][]byte{protoutil.MarshalOrPanic(env)},
+				},
+			}))
+
+		t.Log("update config on verifier")
+		require.Equal(t, 1, setup.fakeUpdatableBlockVerifier.UpdateConfigCallCount())
+
+		t.Log("block progress is reported correctly")
+		bNum2, bTime2 := setup.d.BlockProgress()
+		require.Equal(t, uint64(7), bNum2)
+		require.True(t, bTime2.After(bTime))
 
 		setup.stop()
 	})

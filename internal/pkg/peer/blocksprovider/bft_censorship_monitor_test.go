@@ -28,7 +28,7 @@ func TestNewBFTCensorshipMonitor_New(t *testing.T) {
 	flogging.ActivateSpec("debug")
 
 	s := newMonitorTestSetup(t, 5)
-	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, 0, blocksprovider.TimeoutConfig{})
+	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeUpdatableBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, 0, blocksprovider.TimeoutConfig{})
 	require.NotNil(t, mon)
 }
 
@@ -39,7 +39,7 @@ func TestBFTCensorshipMonitor_Stop(t *testing.T) {
 	flogging.ActivateSpec("debug")
 
 	s := newMonitorTestSetup(t, 1)
-	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, 0, blocksprovider.TimeoutConfig{})
+	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeUpdatableBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, 0, blocksprovider.TimeoutConfig{})
 	require.NotNil(t, mon)
 
 	var wg sync.WaitGroup
@@ -61,7 +61,7 @@ func TestBFTCensorshipMonitor_StopWithErrors(t *testing.T) {
 	flogging.ActivateSpec("debug")
 
 	s := newMonitorTestSetup(t, 1)
-	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, 0, blocksprovider.TimeoutConfig{})
+	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeUpdatableBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, 0, blocksprovider.TimeoutConfig{})
 	require.NotNil(t, mon)
 
 	var wg sync.WaitGroup
@@ -90,7 +90,7 @@ func TestBFTCensorshipMonitor_NoSources(t *testing.T) {
 	flogging.ActivateSpec("debug")
 
 	s := newMonitorTestSetup(t, 0)
-	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, 0, blocksprovider.TimeoutConfig{})
+	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeUpdatableBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, 0, blocksprovider.TimeoutConfig{})
 	require.NotNil(t, mon)
 
 	var wg sync.WaitGroup
@@ -128,7 +128,7 @@ func TestBFTCensorshipMonitor_NoHeadersNoBlocks(t *testing.T) {
 		BlockCensorshipTimeout: time.Second,
 	}
 	s := newMonitorTestSetup(t, numOrderers)
-	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, blockSource, tConfig)
+	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeUpdatableBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, blockSource, tConfig)
 	require.NotNil(t, mon)
 
 	fakeEnv := &common.Envelope{Payload: []byte("bogus"), Signature: []byte("bogus")}
@@ -202,7 +202,7 @@ func TestBFTCensorshipMonitor_CensorshipDetected(t *testing.T) {
 		BlockCensorshipTimeout: time.Second,
 	}
 	s := newMonitorTestSetup(t, numOrderers)
-	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, blockSource, tConfig)
+	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeUpdatableBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, blockSource, tConfig)
 	require.NotNil(t, mon)
 
 	fakeEnv := &common.Envelope{Payload: []byte("bogus"), Signature: []byte("bogus")}
@@ -288,7 +288,7 @@ func TestBFTCensorshipMonitor_SuspicionsRemovedCensorshipDetected(t *testing.T) 
 		BlockCensorshipTimeout: time.Second,
 	}
 	s := newMonitorTestSetup(t, numOrderers)
-	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, blockSource, tConfig)
+	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeUpdatableBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, blockSource, tConfig)
 	require.NotNil(t, mon)
 
 	fakeEnv := &common.Envelope{Payload: []byte("bogus"), Signature: []byte("bogus")}
@@ -398,7 +398,7 @@ func TestBFTCensorshipMonitor_SuspicionRemoved(t *testing.T) {
 		BlockCensorshipTimeout: 5 * time.Second,
 	}
 	s := newMonitorTestSetup(t, numOrderers)
-	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, blockSource, tConfig)
+	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeUpdatableBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, blockSource, tConfig)
 	require.NotNil(t, mon)
 
 	fakeEnv := &common.Envelope{Payload: []byte("bogus"), Signature: []byte("bogus")}
@@ -501,7 +501,7 @@ func TestBFTCensorshipMonitor_FaultySourceIgnored(t *testing.T) {
 		BlockCensorshipTimeout: 5 * time.Second,
 	}
 	s := newMonitorTestSetup(t, numOrderers)
-	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, blockSource, tConfig)
+	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeUpdatableBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, blockSource, tConfig)
 	require.NotNil(t, mon)
 
 	fakeEnv := &common.Envelope{Payload: []byte("bogus"), Signature: []byte("bogus")}
@@ -617,7 +617,7 @@ func TestBFTCensorshipMonitor_FaultySourceRecovery(t *testing.T) {
 		BlockCensorshipTimeout: 1 * time.Second,
 	}
 	s := newMonitorTestSetup(t, numOrderers)
-	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, blockSource, tConfig)
+	mon := blocksprovider.NewBFTCensorshipMonitor(s.channelID, s.fakeUpdatableBlockVerifier, s.fakeRequester, s.fakeProgressReporter, s.sources, blockSource, tConfig)
 	require.NotNil(t, mon)
 
 	fakeEnv := &common.Envelope{Payload: []byte("bogus"), Signature: []byte("bogus")}
@@ -720,24 +720,25 @@ func TestBFTCensorshipMonitor_FaultySourceRecovery(t *testing.T) {
 }
 
 type monitorTestSetup struct {
-	channelID            string
-	fakeBlockVerifier    *fake.BlockVerifier
-	fakeProgressReporter *fake.BlockProgressReporter
-	fakeRequester        *fake.DeliverClientRequester
-	sources              []*orderers.Endpoint
-	sourceIndex          int
-	sourceStream         []chan *orderer.DeliverResponse
+	channelID                  string
+	fakeUpdatableBlockVerifier *fake.UpdatableBlockVerifier
+	fakeProgressReporter       *fake.BlockProgressReporter
+	fakeRequester              *fake.DeliverClientRequester
+	sources                    []*orderers.Endpoint
+	sourceIndex                int
+	sourceStream               []chan *orderer.DeliverResponse
 }
 
 func newMonitorTestSetup(t *testing.T, numSources int) *monitorTestSetup {
 	s := &monitorTestSetup{
-		channelID:            "testchannel",
-		fakeBlockVerifier:    &fake.BlockVerifier{},
-		fakeProgressReporter: &fake.BlockProgressReporter{},
-		fakeRequester:        &fake.DeliverClientRequester{},
-		sources:              nil,
-		sourceIndex:          0,
+		channelID:                  "testchannel",
+		fakeUpdatableBlockVerifier: &fake.UpdatableBlockVerifier{},
+		fakeProgressReporter:       &fake.BlockProgressReporter{},
+		fakeRequester:              &fake.DeliverClientRequester{},
+		sources:                    nil,
+		sourceIndex:                0,
 	}
+	s.fakeUpdatableBlockVerifier.CloneReturns(&fake.UpdatableBlockVerifier{})
 
 	for i := 0; i < numSources; i++ {
 		s.sources = append(s.sources, &orderers.Endpoint{

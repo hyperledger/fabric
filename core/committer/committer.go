@@ -42,8 +42,11 @@ type Committer interface {
 	// collections and namespaces of private data to retrieve
 	GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error)
 
-	// Get recent block sequence number
+	// LedgerHeight get the number of blocks in the ledger (i.e. the sequence number of the next block).
 	LedgerHeight() (uint64, error)
+
+	// GetCurrentBlockHash get the current block header hash.
+	GetCurrentBlockHash() ([]byte, error)
 
 	// DoesPvtDataInfoExistInLedger returns true if the ledger has pvtdata info
 	// about a given block number.

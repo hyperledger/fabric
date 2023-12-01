@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hyperledger/fabric/common/deliverclient"
+
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -67,9 +69,6 @@ type deliverServiceImpl struct {
 // and how it disseminates the messages to other peers
 type Config struct {
 	IsStaticLeader bool
-	// CryptoSvc performs cryptographic actions like message verification and signing
-	// and identity validation.
-	CryptoSvc blocksprovider.BlockVerifier
 	// Gossip enables to enumerate peers in the channel, send a message to peers,
 	// and add a block to the gossip state transfer layer.
 	Gossip blocksprovider.GossipServiceAdapter
@@ -157,6 +156,24 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 }
 
 func (d *deliverServiceImpl) createBlockDelivererCFT(chainID string, ledgerInfo blocksprovider.LedgerInfo) (*blocksprovider.Deliverer, error) {
+	height, err := ledgerInfo.LedgerHeight()
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot get ledger height")
+	}
+	currentBlockHash, err := ledgerInfo.GetCurrentBlockHash()
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot get current block hash")
+	}
+	if height == 0 {
+		return nil, errors.New("cannot create a block deliverer because height=0")
+	}
+	ubv, err := deliverclient.NewBlockVerificationAssistantFromConfig(
+		d.conf.ChannelConfig, height-1, currentBlockHash, chainID, d.conf.CryptoProvider, flogging.MustGetLogger("common.deliverclient.blockverification"))
+	if err != nil {
+		return nil, err
+	}
+	logger.Debugf("Created an updatable block verifier from ChannelConfig, height: %d,`%+v`", height, ubv)
+
 	logger.Infof("Creating a CFT (crash fault tolerant) BlockDeliverer for channel `%s`", chainID)
 	dc := &blocksprovider.Deliverer{
 		ChannelID: chainID,
@@ -165,8 +182,8 @@ func (d *deliverServiceImpl) createBlockDelivererCFT(chainID string, ledgerInfo 
 			blockGossipDisabled: !d.conf.DeliverServiceConfig.BlockGossipEnabled,
 			logger:              flogging.MustGetLogger("peer.blocksprovider").With("channel", chainID),
 		},
-		Ledger:        ledgerInfo,
-		BlockVerifier: d.conf.CryptoSvc,
+		Ledger:                 ledgerInfo,
+		UpdatableBlockVerifier: ubv,
 		Dialer: blocksprovider.DialerAdapter{
 			ClientConfig: comm.ClientConfig{
 				DialTimeout: d.conf.DeliverServiceConfig.ConnectionTimeout,
@@ -201,7 +218,26 @@ func (d *deliverServiceImpl) createBlockDelivererCFT(chainID string, ledgerInfo 
 }
 
 func (d *deliverServiceImpl) createBlockDelivererBFT(chainID string, ledgerInfo blocksprovider.LedgerInfo) (*blocksprovider.BFTDeliverer, error) {
+	height, err := ledgerInfo.LedgerHeight()
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot get ledger height")
+	}
+	currentBlockHash, err := ledgerInfo.GetCurrentBlockHash()
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot get current block hash")
+	}
+	if height == 0 {
+		return nil, errors.New("cannot create a block deliverer because height=0")
+	}
+	ubv, err := deliverclient.NewBlockVerificationAssistantFromConfig(
+		d.conf.ChannelConfig, height-1, currentBlockHash, chainID, d.conf.CryptoProvider, flogging.MustGetLogger("common.deliverclient.blockverification"))
+	if err != nil {
+		return nil, err
+	}
+	logger.Debugf("Created an updatable block verifier from ChannelConfig, height: %d,`%+v`", height, ubv)
+
 	logger.Infof("Creating a BFT (byzantine fault tolerant) BlockDeliverer for channel `%s`", chainID)
+
 	dcBFT := &blocksprovider.BFTDeliverer{
 		ChannelID: chainID,
 		BlockHandler: &GossipBlockHandler{
@@ -209,8 +245,8 @@ func (d *deliverServiceImpl) createBlockDelivererBFT(chainID string, ledgerInfo 
 			blockGossipDisabled: true, // Block gossip is deprecated since in v2.2 and is no longer supported in v3.x
 			logger:              flogging.MustGetLogger("peer.blocksprovider").With("channel", chainID),
 		},
-		Ledger:        ledgerInfo,
-		BlockVerifier: d.conf.CryptoSvc,
+		Ledger:                 ledgerInfo,
+		UpdatableBlockVerifier: ubv,
 		Dialer: blocksprovider.DialerAdapter{
 			ClientConfig: comm.ClientConfig{
 				DialTimeout: d.conf.DeliverServiceConfig.ConnectionTimeout,
