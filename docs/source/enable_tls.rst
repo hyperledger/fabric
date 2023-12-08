@@ -117,6 +117,22 @@ as well:
 * --keyfile <fully qualified path of the file that contains the client private key>
 * --certfile <fully qualified path of the file that contains the client certificate>
 
+TLS with proxy servers
+----------------------
+
+Since Fabric components verify each other with TLS, if you are using a proxy server,
+it must be configured for TLS passthrough (non-terminating) so that the TLS
+credentials are passed on to the Fabric components.
+
+Subject Alternative Names
+-------------------------
+
+Each TLS server must have one or more Subject Alternative Names configured in its TLS certificate that specifies its domain name or IP address.
+When a TLS client attempts to connect to the TLS server, it verifies that one of the Subject Alternative Names matches the address it is trying to connect to.
+
+When creating a TLS certificate, the Subject Alternative Name(s) must be specified.
+If using Fabric CA to create a TLS certificate, specify the Subject Alternative Names as a comma-separated list in the ``--csr.hosts`` flag in the enroll command.
+If using cryptogen to create a TLS certificate, specify the Subject Alternative Names as a list under the ``SANS`` element of the cryptogen config yaml.
 
 Debugging TLS issues
 --------------------
@@ -128,6 +144,8 @@ Check the client's ``CORE_PEER_TLS_ROOTCERT_FILE`` (for connections to peer node
 or ``--cafile`` (for connections to orderer nodes).
 The corresponding error on the client side in these cases is the handshake error ``x509: certificate signed by unknown authority``
 and ultimately connection failure with ``context deadline exceeded``.
+The problem may also be a Subject Alternative Names issue. In these cases the the handshake error on the client side will be
+``tls: failed to verify certificate: x509: certificate is valid for <configured_SAN>, not <attempted_address>``.
 
 If you see the error message ``remote error: tls: bad certificate`` on the client side, it
 usually means that the TLS server has enabled client authentication and the server either did
