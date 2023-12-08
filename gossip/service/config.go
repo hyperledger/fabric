@@ -15,7 +15,7 @@ import (
 
 const (
 	btlPullMarginDefault           = 10
-	transientBlockRetentionDefault = 1000
+	transientBlockRetentionDefault = 20000
 )
 
 // ServiceConfig is the config struct for gossip services

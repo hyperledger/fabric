@@ -60,7 +60,7 @@ peer:
       leaderElectionDuration: 5s
     pvtData:
       pullRetryThreshold: 7s
-      transientstoreMaxBlockRetention: 1000
+      transientstoreMaxBlockRetention: 20000
       pushAckTimeout: 3s
       btlPullMargin: 10
       reconcileBatchSize: 10
