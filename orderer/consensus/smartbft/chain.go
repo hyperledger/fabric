@@ -312,6 +312,13 @@ func (c *BFTChain) pruneCommittedRequests(block *cb.Block) {
 	wg.Wait()
 }
 
+func (c *BFTChain) pruneBadRequests() {
+	c.consensus.Pool.Prune(func(req []byte) error {
+		_, err := c.consensus.Verifier.VerifyRequest(req)
+		return err
+	})
+}
+
 func (c *BFTChain) submit(env *cb.Envelope, configSeq uint64) error {
 	reqBytes, err := proto.Marshal(env)
 	if err != nil {
@@ -566,6 +573,7 @@ func (c *BFTChain) updateRuntimeConfig(block *cb.Block) types.Reconfig {
 	if protoutil.IsConfigBlock(block) {
 		c.Comm.Configure(c.Channel, newRTC.RemoteNodes)
 		c.clusterService.ConfigureNodeCerts(c.Channel, newRTC.consenters)
+		c.pruneBadRequests()
 	}
 
 	membershipDidNotChange := reflect.DeepEqual(newRTC.Nodes, prevRTC.Nodes)
