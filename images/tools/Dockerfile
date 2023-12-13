@@ -69,7 +69,7 @@ ENV PATH="/usr/local/go/bin:$PATH"
 # - docker run --rm debian:stretch grep '^hosts:' /etc/nsswitch.conf
 RUN echo 'hosts: files dns' > /etc/nsswitch.conf
 
-ENV     FABRIC_CFG_PATH /var/hyperledger/fabric/config
+ENV     FABRIC_CFG_PATH /etc/hyperledger/fabric
 ENV     FABRIC_VER      ${FABRIC_VER}
 
 COPY    --from=builder  sampleconfig    ${FABRIC_CFG_PATH}
