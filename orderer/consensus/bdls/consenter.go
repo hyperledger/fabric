@@ -104,7 +104,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	*/
 	opts := Options{
 		Consenters:        consenters,
-		MaxInflightBlocks: 2000,
+		MaxInflightBlocks: 1,
 		Clock:             clock.NewClock(),
 	}
 

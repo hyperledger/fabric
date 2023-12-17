@@ -22,17 +22,17 @@ func (c *Chain) TestMultiClients() {
 
 	c.logger.Info(" ------------------------------- c.raftID is: %v", c.raftID)
 	time.Sleep(10 * time.Second)
-	if c.raftID == 1 {
+	if c.raftID == 2 {
 		c.logger.Info("************* TEST TPS start---")
 		// start := time.Now()
 		// c.logger.Debugf("TEST TPS start:", start)
 		multichannel.SetTPSStart()
 		wg := new(sync.WaitGroup)
-		wg.Add(4)
+		wg.Add(1)
 		go c.TestOrderClient1(wg)
-		go c.TestOrderClient2(wg)
-		go c.TestOrderClient3(wg)
-		go c.TestOrderClient4(wg)
+		//go c.TestOrderClient2(wg)
+		//go c.TestOrderClient3(wg)
+		//go c.TestOrderClient4(wg)
 		wg.Wait()
 	}
 	/*end := time.Now()
@@ -44,9 +44,8 @@ func (c *Chain) TestMultiClients() {
 }
 
 func (c *Chain) TestOrderClient1(wg *sync.WaitGroup) {
-	//time.Sleep(1000 * time.Millisecond)
 	c.logger.Infof("For client %v", 1)
-	for i := 0; i < 2500; i++ {
+	for i := 0; i < 100000; i++ {
 		env := &common.Envelope{
 			Payload: marshalOrPanic(&common.Payload{
 				Header: &common.Header{ChannelHeader: marshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_MESSAGE), ChannelId: c.channelID})},

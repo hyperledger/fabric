@@ -205,7 +205,7 @@ func (bw *BlockWriter) commitBlock(encodedMetadataValue []byte) {
 	logger.Debugf("[channel: %s] Wrote block [%d]", bw.support.ChannelID(), bw.lastBlock.GetHeader().Number)
 	SetTPSEndTime()
 	total := endTime.Sub(startTime)
-	logger.Infof(" **************************************** The Total time is %v , The TPS value is %v", total, float64(10000*math.Pow(10, 9))/float64(total))
+	logger.Infof(" **************************************** The Total time is %v , The TPS value is %v", total, float64(100000*math.Pow(10, 9))/float64(total))
 }
 
 var startTime time.Time

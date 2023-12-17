@@ -108,6 +108,7 @@ type Chain struct {
 	haltC   chan struct{} // Signals to goroutines that the chain is halting
 	doneC   chan struct{} // Closes when the chain halts
 	startC  chan struct{} // Closes when the node is started
+	readyC  chan Ready
 
 	errorCLock   sync.RWMutex
 	errorC       chan struct{} // returned by Errored()
@@ -289,6 +290,7 @@ func NewChain(
 		doneC:            make(chan struct{}),
 		startC:           make(chan struct{}),
 		errorC:           make(chan struct{}),
+		readyC:           make(chan Ready),
 		//RuntimeConfig:     &atomic.Value{},
 		//Config:            config,
 		clock:             opts.Clock,
@@ -375,7 +377,7 @@ func NewChain(
 	}
 	c.Comm.Configure(c.support.ChannelID(), nodes)
 
-	logger.Infof("BDLS is now servicing chain %s", support.ChannelID())
+	logger.Infof("BDLS is now serving chain %s", support.ChannelID())
 
 	return c, nil
 }
@@ -528,6 +530,7 @@ func (c *Chain) propose(ch chan<- *common.Block, bc *blockCreator, batches ...[]
 }
 
 func (c *Chain) writeBlock(block *common.Block, index uint64) {
+	c.Logger.Infof("WWWWWWWWWWWWWWWWWWWWWWWWWWW writeBlock WWWWWWWWWWWWWWWWWWWWWWWWWWWW")
 	if block.Header.Number > c.lastBlock.Header.Number+1 {
 		c.Logger.Panicf("Got block [%d], expect block [%d]", block.Header.Number, c.lastBlock.Header.Number+1)
 	} else if block.Header.Number < c.lastBlock.Header.Number+1 {
@@ -540,7 +543,7 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 	}
 	c.lastBlock = block
 
-	c.Logger.Infof("Writing block [%d] (Raft index: %d) to ledger", block.Header.Number, index)
+	c.Logger.Infof("Writing block [%d] (BDLS index: %d) to ledger", block.Header.Number, index)
 
 	if protoutil.IsConfigBlock(block) {
 		c.configInflight = false
@@ -679,126 +682,35 @@ func (c *Chain) startConsensus(config *bdls.Config) error {
 		}(peers[k])
 	}
 
-	go c.TestMultiClients()
-
 	c.transportLayer = transportLayer
-	updateTick := time.NewTicker(updatePeriod)
 
+	//go c.runNode()
+
+	updateTick := time.NewTicker(updatePeriod)
+	go c.TestMultiClients()
 	for {
 		<-updateTick.C
 		c.transportLayer.Update()
 		// Check for confirmed new block
 		height /*round*/, _, state := c.transportLayer.GetLatestState()
 		if height > c.lastBlock.Header.Number {
-			c.applyC <- apply{state}
+			go func() {
+				c.applyC <- apply{state}
+			}()
 		}
 	}
 
-	/*
-	   	// c.Order(env, 0)
-	   	var bc *blockCreator
-	   NEXTHEIGHT:
-	   	for {
-
-	   		env := &common.Envelope{
-	   			Payload: marshalOrPanic(&common.Payload{
-	   				Header: &common.Header{ChannelHeader: marshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_MESSAGE), ChannelId: c.Channel})},
-	   				Data:   []byte("TEST_MESSAGE-UNCC-2023-09-12---"),
-	   			}),
-	   		}
-	   		//req := &orderer.SubmitRequest{LastValidationSeq: 0, Payload: env, Channel: c.Channel}
-	   		//   batches, pending, err := c.ordered(req)
-	   		// if err != nil {
-	   		// 	c.Logger.Errorf("Failed to order message: %s", err)
-	   		// 	continue
-	   		// }
-	   		batches, pending := c.support.BlockCutter().Ordered(env)
-
-	   		if !pending && len(batches) == 0 {
-	   			c.Logger.Info("batches, pending ", batches, pending)
-	   			//continue
-	   		}
-
-	   		batch := c.support.BlockCutter().Cut()
-	   		if len(batch) == 0 {
-	   			c.Logger.Warningf("Batch timer expired with no pending requests, this might indicate a bug")
-	   			continue
-	   		}
-
-	   		bc = &blockCreator{
-	   			hash:   protoutil.BlockHeaderHash(c.lastBlock.Header),
-	   			number: c.lastBlock.Header.Number,
-	   			logger: c.Logger,
-	   		}
-	   		//batch = c.support.BlockCutter().Cut()
-	   		//for _, batch := range batches {
-	   		//block := c.support.CreateNextBlock(batch)
-
-	   		block := bc.createNextBlock(batch)
-
-	   		data, err := proto.Marshal(block)
-	   		if err != nil {
-	   			c.Logger.Info("*** cannot Marshal Block ", err)
-	   		}
-	   		//transportLayer.Propose(data)
-	   		c.transportLayer.Propose(data)
-	   		//} //batches for-loop end
-	   		for {
-	   			newHeight, _, newState := transportLayer.GetLatestState() //newRound
-	   			if newHeight > c.lastBlock.Header.Number {
-	   				//h := blake2b.Sum256(data)
-
-	   				newBlock, err := protoutil.UnmarshalBlock(newState)
-	   				if err != nil {
-	   					return errors.Errorf("failed to unmarshal bdls State to block: %s", err)
-	   				}
-
-	   				c.Logger.Infof("Unmarshal bdls State to \r\n block: %v \r\n Header.Number: %v ", newBlock.Data, newBlock.Header.Number)
-
-	   				c.Logger.Info("lastBlock number before write decide block: ", c.lastBlock.Header.Number, c.lastBlock.Header.PreviousHash)
-
-	   				// c.Logger.Infof("<decide> at height:%v round:%v hash:%v", newHeight, newRound, hex.EncodeToString(h[:]))
-
-	   				c.lastBlock = newBlock
-	   				// TODO use the bdls <decide> info for the new block
-
-	   				// Using the newState type of bdls.State. it represented the proposed blocked that achived consensus
-	   				//c.writeBlock(newBlock, 0)
-	   				c.support.WriteBlock(newBlock, nil)
-
-	   				continue NEXTHEIGHT
-	   			}
-	   			// wait
-	   			<-time.After(20 * time.Millisecond)
-	   		}
-	   		//}
-	   	}*/
 	//return nil
 }
 
 func (c *Chain) apply( /*height uint64, round uint64,*/ state bdls.State) {
 
-	newBlock, err := protoutil.UnmarshalBlock(state)
-	if err != nil {
-		c.Logger.Errorf("failed to unmarshal bdls State to block: %s", err)
-	}
-	c.Logger.Infof("Unmarshal bdls State to \r\n block data: %v ", newBlock.Data)
-	c.Logger.Infof("lastBlock number before write decide block Number : %v ", c.lastBlock.Header.Number)
+	newBlock := protoutil.UnmarshalBlockOrPanic(state)
 	c.writeBlock(newBlock, 0)
 	c.Metrics.CommittedBlockNumber.Set(float64(newBlock.Header.Number))
 }
 
-func marshalOrPanic(pb proto.Message) []byte {
-	data, err := proto.Marshal(pb)
-	if err != nil {
-		panic(err)
-	}
-	return data
-}
-
 func (c *Chain) run() {
-	// BDLS consensus updater ticker
-	updateTick := time.NewTicker(updatePeriod)
 
 	ticking := false
 	timer := c.clock.NewTimer(time.Second)
@@ -823,19 +735,24 @@ func (c *Chain) run() {
 		}
 		ticking = false
 	}
-
-	//TODO replace the:
-	defer updateTick.Stop()
+	// the consensus updater ticker
+	updateTick := time.NewTicker(updatePeriod)
+	//defer updateTick.Stop()
 
 	submitC := c.submitC
 	//var propC chan<- *common.Block
 	ch := make(chan *common.Block, c.opts.MaxInflightBlocks)
 	c.blockInflight = 0
 
-	var bc *blockCreator
-
+	//var bc *blockCreator
+	//No need to create Var for bc, BFT type Orderer intialaize the blockCreator in each node participent
+	bc := &blockCreator{
+		hash:   protoutil.BlockHeaderHash(c.lastBlock.Header),
+		number: c.lastBlock.Header.Number,
+		logger: c.Logger,
+	}
 	c.Logger.Infof("Start accepting requests at block [%d]", c.lastBlock.Header.Number)
-
+	//submitC = nil
 	// Leader should call Propose in go routine, because this method may be blocked
 	// if node is leaderless (this can happen when leader steps down in a heavily
 	// loaded network). We need to make sure applyC can still be consumed properly.
@@ -852,45 +769,22 @@ func (c *Chain) run() {
 				c.Logger.Debugf("Quit proposing blocks, discarded %d blocks in the queue", len(ch))
 				return
 			}*/
-
-			c.Logger.Debugf("INSIDE GOROUTINE Proposed block [%d] to bdls consensus", b.Header.Number)
 		}
 	}(ch)
-	/*go func() {
-		for {
-			<-updateTick.C
-			c.transportLayer.Update()
-			// Check for confirmed new block
-			height, _, state := c.transportLayer.GetLatestState()
-			if height > c.lastBlock.Header.Number {
-				c.applyC <- apply{state}
-			}
 
-		}
-	}()*/
 	for {
 		select {
-		//case <-updateTick.C:
-
-		// Calling BDLS  consensus Update() function
-		// c.transportLayer.Update() Due to new bug
-
-		// check if new block confirmed
-		/*height, round, state := c.transportLayer.GetLatestState()
-		if height > c.lastBlock.Header.Number {
-			go c.apply(height, round, state)
+		/*case <-updateTick.C:
+		c.transportLayer.Update()
+		newHeight, newRound, newState := c.transportLayer.GetLatestState()
+		if newHeight > c.lastBlock.Header.Number {
+			c.Logger.Infof("RRRRRRRRRRR updateTick.C RRRRRRRRRRRRRRRRRR height: %v round: %v  lastBlock: %v", newHeight, newRound, c.lastBlock.Header.Number)
+			//newBlock := protoutil.UnmarshalBlockOrPanic(newState)
+			//	c.writeBlock(newBlock, 0)
+			go func() {
+				c.applyC <- apply{state: newState}
+			}()
 		}*/
-
-		// EOL  the consensus updater ticker
-		case <-c.chConsensusMessages:
-			c.Lock()
-			msgs := c.consensusMessages
-			c.consensusMessages = nil
-
-			for _, msg := range msgs {
-				c.consensus.ReceiveMessage(msg, time.Now())
-			}
-			c.Unlock()
 		case s := <-submitC:
 			if s == nil {
 				// polled by `WaitReady`
@@ -915,31 +809,11 @@ func (c *Chain) run() {
 				stopTimer()
 			}
 
-			bc = &blockCreator{
-				hash:   protoutil.BlockHeaderHash(c.lastBlock.Header),
-				number: c.lastBlock.Header.Number,
-				logger: c.Logger,
-			}
-
 			c.propose(ch, bc, batches...)
 
-			// The code block bellow direct cut the block and propse to the consensus.
-			/*
-				batch := c.support.BlockCutter().Cut()
-
-				if len(batch) == 0 {
-					c.Logger.Warningf("Batch timer expired with no pending requests, this might indicate a bug")
-					continue
-				}
-
-
-				block := bc.createNextBlock(batch)
-				data, err := proto.Marshal(block)
-				if err != nil {
-					c.Logger.Info("*** cannot Marshal Block ", err)
-				}
-				c.transportLayer.Propose(data)
-			*/
+			/*if len(batches) == 1 {
+				submitC = nil
+			}*/
 
 			if c.configInflight {
 				c.Logger.Info("Received config transaction, pause accepting transaction till it is committed")
@@ -950,6 +824,7 @@ func (c *Chain) run() {
 				submitC = nil
 			}
 		case app := <-c.applyC:
+			c.Logger.Infof("applyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyc")
 			c.apply(app.state)
 			if c.configInflight {
 				c.Logger.Info("Config block or ConfChange in flight, pause accepting transaction")
@@ -957,33 +832,10 @@ func (c *Chain) run() {
 			} else if c.blockInflight < c.opts.MaxInflightBlocks {
 				submitC = c.submitC
 			}
-			//The code section is direct writeBlock
-			/*//if app.state != nil {
-				newBlock, err := protoutil.UnmarshalBlock(app.state)
-				if err != nil {
-					c.Logger.Errorf("failed to unmarshal bdls State to block: %s", err)
-				}
 
-				c.Logger.Infof("Unmarshal bdls State to \r\n block data: %v ", newBlock.Data)
-
-				c.Logger.Infof("lastBlock number before write decide block Number : %v ", c.lastBlock.Header.Number)
-
-				//c.Logger.Infof("<decide> at height:%v round:%v hash:%v", newHeight, newRound, hex.EncodeToString(h[:]))
-
-				c.lastBlock = newBlock
-
-				// Using the newState type of bdls.State.
-				// represented the proposed blocked that achived consensus
-				//TODO use the c.WriteBlock
-
-				//c.writeBlock(newBlock, 0)
-				c.support.WriteBlock(newBlock, nil)
-
-				c.Metrics.CommittedBlockNumber.Set(float64(newBlock.Header.Number))
-			//	}*/
 		case <-timer.C():
 			ticking = false
-
+			c.Logger.Infof("pppppppppppppppppppppppppppppppp <-timer.C( pppppppppppppppppppppppppppppppppppppppp")
 			batch := c.support.BlockCutter().Cut()
 			if len(batch) == 0 {
 				c.Logger.Warningf("Batch timer expired with no pending requests, this might indicate a bug")
@@ -993,27 +845,18 @@ func (c *Chain) run() {
 			c.Logger.Debugf("Batch timer expired, creating block")
 			c.propose(ch, bc, batch) // we are certain this is normal block, no need to block
 
-			// required tick for BDLS
-		/*case <-updateTick.C:
-		c.transportLayer.Update()*/
-		case <-c.die:
-			return
-
 		case <-c.doneC:
 			stopTimer()
 			//cancelProp()
 			updateTick.Stop()
-
 			select {
 			case <-c.errorC: // avoid closing closed channel
 			default:
 				close(c.errorC)
 			}
-
 			c.Logger.Infof("Stop serving requests")
 			//c.periodicChecker.Stop()
 			return
-
 		}
 	}
 
@@ -1045,4 +888,55 @@ func (c *chainACL) Evaluate(signatureSet []*protoutil.SignedData) error {
 		return errors.Wrap(errors.WithStack(msgprocessor.ErrPermissionDenied), err.Error())
 	}
 	return nil
+}
+
+type Peer struct {
+	ID      uint64
+	Context []byte
+}
+
+// RaftPeers maps consenters to slice of raft.Peer
+func BdlsPeers(consenters []*common.Consenter) []Peer {
+	var peers []Peer
+	//consenterIDs := len(consenters)
+	//for id := range consenterIDs {
+	for i := 1; i <= len(consenters); i++ {
+		peers = append(peers, Peer{ID: uint64(i)})
+	}
+	return peers
+}
+
+func (c *Chain) runNode() {
+	bdlsPeers := BdlsPeers(c.opts.Consenters)
+	c.Logger.Debugf("*Starting bdls node: #peers: %v", len(bdlsPeers))
+
+	// BDLS consensus updater ticker
+	updateTick := time.NewTicker(updatePeriod)
+	for {
+		select {
+		// required tick for BDLS
+		case <-updateTick.C:
+			c.transportLayer.Update()
+
+		case rd := <-c.Ready():
+			state := rd.state
+			c.applyC <- apply{state}
+			c.readyC = nil
+		}
+	}
+}
+
+func (c *Chain) Ready() <-chan Ready {
+
+	height, _, state := c.transportLayer.GetLatestState()
+	//readyC := make(chan Ready)
+	if height > c.lastBlock.Header.Number {
+		c.readyC <- Ready{state}
+		return c.readyC
+	}
+	return nil
+}
+
+type Ready struct {
+	state bdls.State
 }

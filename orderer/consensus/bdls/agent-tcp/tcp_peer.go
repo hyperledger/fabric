@@ -139,7 +139,7 @@ func (agent *TCPAgent) Update() {
 	default:
 		// call consensus update
 		agent.consensus.Update(time.Now())
-		//timer.SystemTimedSched.Put(agent.Update, time.Now().Add(20*time.Millisecond))
+		//	timer.SystemTimedSched.Put(agent.Update, time.Now().Add(20*time.Millisecond))
 	}
 }
 
