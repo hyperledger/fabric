@@ -19,6 +19,7 @@ type decoderOptions struct {
 	maxDecodedSize uint64
 	maxWindowSize  uint64
 	dicts          []dict
+	ignoreChecksum bool
 }
 
 func (o *decoderOptions) setDefault() {
@@ -28,7 +29,10 @@ func (o *decoderOptions) setDefault() {
 		concurrent:    runtime.GOMAXPROCS(0),
 		maxWindowSize: MaxWindowSize,
 	}
-	o.maxDecodedSize = 1 << 63
+	if o.concurrent > 4 {
+		o.concurrent = 4
+	}
+	o.maxDecodedSize = 64 << 30
 }
 
 // WithDecoderLowmem will set whether to use a lower amount of memory,
@@ -37,16 +41,25 @@ func WithDecoderLowmem(b bool) DOption {
 	return func(o *decoderOptions) error { o.lowMem = b; return nil }
 }
 
-// WithDecoderConcurrency will set the concurrency,
-// meaning the maximum number of decoders to run concurrently.
-// The value supplied must be at least 1.
-// By default this will be set to GOMAXPROCS.
+// WithDecoderConcurrency sets the number of created decoders.
+// When decoding block with DecodeAll, this will limit the number
+// of possible concurrently running decodes.
+// When decoding streams, this will limit the number of
+// inflight blocks.
+// When decoding streams and setting maximum to 1,
+// no async decoding will be done.
+// When a value of 0 is provided GOMAXPROCS will be used.
+// By default this will be set to 4 or GOMAXPROCS, whatever is lower.
 func WithDecoderConcurrency(n int) DOption {
 	return func(o *decoderOptions) error {
-		if n <= 0 {
+		if n < 0 {
 			return errors.New("concurrency must be at least 1")
 		}
-		o.concurrent = n
+		if n == 0 {
+			o.concurrent = runtime.GOMAXPROCS(0)
+		} else {
+			o.concurrent = n
+		}
 		return nil
 	}
 }
@@ -54,7 +67,7 @@ func WithDecoderConcurrency(n int) DOption {
 // WithDecoderMaxMemory allows to set a maximum decoded size for in-memory
 // non-streaming operations or maximum window size for streaming operations.
 // This can be used to control memory usage of potentially hostile content.
-// Maximum and default is 1 << 63 bytes.
+// Maximum is 1 << 63 bytes. Default is 64GiB.
 func WithDecoderMaxMemory(n uint64) DOption {
 	return func(o *decoderOptions) error {
 		if n == 0 {
@@ -97,6 +110,14 @@ func WithDecoderMaxWindow(size uint64) DOption {
 			return errors.New("WithMaxWindowSize must be less than (1<<41) + 7*(1<<38) ~ 3.75TB")
 		}
 		o.maxWindowSize = size
+		return nil
+	}
+}
+
+// IgnoreChecksum allows to forcibly ignore checksum checking.
+func IgnoreChecksum(b bool) DOption {
+	return func(o *decoderOptions) error {
+		o.ignoreChecksum = b
 		return nil
 	}
 }
