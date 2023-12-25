@@ -330,6 +330,7 @@ type ChaincodeApproveForMyOrg struct {
 	PeerAddresses       []string
 	WaitForEvent        bool
 	ClientAuth          bool
+	WaitForEventTimeout time.Duration
 }
 
 func (c ChaincodeApproveForMyOrg) SessionName() string {
@@ -365,6 +366,10 @@ func (c ChaincodeApproveForMyOrg) Args() []string {
 
 	for _, p := range c.PeerAddresses {
 		args = append(args, "--peerAddresses", p)
+	}
+
+	if c.WaitForEventTimeout > 30*time.Second {
+		args = append(args, "--waitForEventTimeout", c.WaitForEventTimeout.String())
 	}
 
 	return args
@@ -471,6 +476,7 @@ type ChaincodeCommit struct {
 	PeerAddresses       []string
 	WaitForEvent        bool
 	ClientAuth          bool
+	WaitForEventTimeout time.Duration
 }
 
 func (c ChaincodeCommit) SessionName() string {
@@ -501,6 +507,9 @@ func (c ChaincodeCommit) Args() []string {
 	}
 	if c.ClientAuth {
 		args = append(args, "--clientauth")
+	}
+	if c.WaitForEventTimeout > 30*time.Second {
+		args = append(args, "--waitForEventTimeout", c.WaitForEventTimeout.String())
 	}
 	return args
 }

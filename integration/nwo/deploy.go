@@ -182,6 +182,7 @@ func ApproveChaincodeForMyOrg(n *Network, channel string, orderer *Orderer, chai
 				InitRequired:        chaincode.InitRequired,
 				CollectionsConfig:   chaincode.CollectionsConfig,
 				ClientAuth:          n.ClientAuthRequired,
+				WaitForEventTimeout: n.EventuallyTimeout,
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
@@ -238,6 +239,7 @@ func CommitChaincode(n *Network, channel string, orderer *Orderer, chaincode Cha
 		CollectionsConfig:   chaincode.CollectionsConfig,
 		PeerAddresses:       peerAddresses,
 		ClientAuth:          n.ClientAuthRequired,
+		WaitForEventTimeout: n.EventuallyTimeout,
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))

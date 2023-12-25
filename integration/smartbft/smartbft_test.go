@@ -1783,6 +1783,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				InitRequired:        chaincode.InitRequired,
 				CollectionsConfig:   chaincode.CollectionsConfig,
 				ClientAuth:          network.ClientAuthRequired,
+				WaitForEventTimeout: network.EventuallyTimeout,
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))

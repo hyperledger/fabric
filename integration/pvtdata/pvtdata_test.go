@@ -997,6 +997,7 @@ func approveChaincodeForMyOrgExpectErr(n *nwo.Network, orderer *nwo.Orderer, cha
 				ChannelConfigPolicy: chaincode.ChannelConfigPolicy,
 				InitRequired:        chaincode.InitRequired,
 				CollectionsConfig:   chaincode.CollectionsConfig,
+				WaitForEventTimeout: n.EventuallyTimeout,
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit())
