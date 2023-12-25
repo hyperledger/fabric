@@ -700,6 +700,7 @@ var _ = Describe("EndToEnd", func() {
 				InitRequired:        chaincode.InitRequired,
 				CollectionsConfig:   chaincode.CollectionsConfig,
 				ClientAuth:          network.ClientAuthRequired,
+				WaitForEventTimeout: network.EventuallyTimeout,
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess.Err, network.EventuallyTimeout).Should(gbytes.Say(`Error: proposal failed with status: 500`))
