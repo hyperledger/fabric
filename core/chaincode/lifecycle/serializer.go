@@ -42,6 +42,11 @@ type RangeableState interface {
 	GetStateRange(prefix string) (map[string][]byte, error)
 }
 
+type ReadRangeableState interface {
+	ReadableState
+	RangeableState
+}
+
 type Marshaler func(proto.Message) ([]byte, error)
 
 func (m Marshaler) Marshal(msg proto.Message) ([]byte, error) {

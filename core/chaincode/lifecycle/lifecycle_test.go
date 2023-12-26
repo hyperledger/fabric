@@ -1381,7 +1381,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 			It("wraps and returns the error", func() {
 				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 5, fakePublicState, fakeOrgStates[0])
-				Expect(err).To(MatchError("could not fetch approved chaincode definition (name: 'cc-name', sequence: '5') on channel 'my-channel'"))
+				Expect(err).To(MatchError("could not fetch chaincode-source metadata for cc-name#5"))
 				Expect(cc).To(BeNil())
 			})
 		})
@@ -1421,6 +1421,134 @@ var _ = Describe("ExternalFunctions", func() {
 			It("wraps and returns the error", func() {
 				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 4, fakePublicState, fakeOrgStates[0])
 				Expect(err).To(MatchError("not a chaincode local package type: badStruct"))
+				Expect(cc).To(BeNil())
+			})
+		})
+	})
+
+	Describe("QueryApprovedChaincodeDefinitions", func() {
+		var (
+			fakePublicState *mock.ReadWritableState
+			fakeOrgStates   []*mock.ReadWritableState
+
+			testDefinition            *lifecycle.ChaincodeDefinition
+			testChaincodeLocalPackage *lifecycle.ChaincodeLocalPackage
+
+			publicKVS, org0KVS, org1KVS MapLedgerShim
+		)
+
+		BeforeEach(func() {
+			testDefinition = &lifecycle.ChaincodeDefinition{
+				Sequence: 4,
+				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+					Version:           "version",
+					EndorsementPlugin: "endorsement-plugin",
+				},
+				ValidationInfo: &lb.ChaincodeValidationInfo{
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+				},
+			}
+
+			testChaincodeLocalPackage = &lifecycle.ChaincodeLocalPackage{
+				PackageID: "hash",
+			}
+
+			publicKVS = map[string][]byte{}
+			fakePublicState = &mock.ReadWritableState{}
+			fakePublicState.GetStateStub = publicKVS.GetState
+			fakePublicState.PutStateStub = publicKVS.PutState
+
+			resources.Serializer.Serialize("namespaces", "cc-name", testDefinition, publicKVS)
+
+			org0KVS = map[string][]byte{}
+			org1KVS = map[string][]byte{}
+			fakeOrg0State := &mock.ReadWritableState{}
+			fakeOrg0State.CollectionNameReturns("_implicit_org_org0")
+			fakeOrg1State := &mock.ReadWritableState{}
+			fakeOrg1State.CollectionNameReturns("_implicit_org_org1")
+			fakeOrgStates = []*mock.ReadWritableState{
+				fakeOrg0State,
+				fakeOrg1State,
+			}
+			for i, kvs := range []MapLedgerShim{org0KVS, org1KVS} {
+				kvs := kvs
+				fakeOrgStates[i].GetStateStub = kvs.GetState
+				fakeOrgStates[i].GetStateHashStub = kvs.GetStateHash
+				fakeOrgStates[i].PutStateStub = kvs.PutState
+				fakeOrgStates[i].GetStateRangeStub = kvs.GetStateRange
+			}
+
+			resources.Serializer.Serialize("namespaces", "cc-name#3", testDefinition.Parameters(), fakeOrgStates[0])
+			resources.Serializer.Serialize("chaincode-sources", "cc-name#3", testChaincodeLocalPackage, fakeOrgStates[0])
+			resources.Serializer.Serialize("namespaces", "cc-name#3", testDefinition.Parameters(), fakeOrgStates[1])
+			resources.Serializer.Serialize("chaincode-sources", "cc-name#3", testChaincodeLocalPackage, fakeOrgStates[1])
+
+			resources.Serializer.Serialize("namespaces", "cc-name#4", testDefinition.Parameters(), fakeOrgStates[0])
+			resources.Serializer.Serialize("chaincode-sources", "cc-name#4", testChaincodeLocalPackage, fakeOrgStates[0])
+			resources.Serializer.Serialize("namespaces", "cc-name#4", testDefinition.Parameters(), fakeOrgStates[1])
+			resources.Serializer.Serialize("chaincode-sources", "cc-name#4", testChaincodeLocalPackage, fakeOrgStates[1])
+
+			resources.Serializer.Serialize("namespaces", "cc-name2#1", testDefinition.Parameters(), fakeOrgStates[0])
+			resources.Serializer.Serialize("chaincode-sources", "cc-name2#1", testChaincodeLocalPackage, fakeOrgStates[0])
+			resources.Serializer.Serialize("namespaces", "cc-name2#1", testDefinition.Parameters(), fakeOrgStates[1])
+			resources.Serializer.Serialize("chaincode-sources", "cc-name2#1", testChaincodeLocalPackage, fakeOrgStates[1])
+		})
+
+		It("returns the approved chaincodes", func() {
+			acds, err := ef.QueryApprovedChaincodeDefinitions("my-channel", fakeOrgStates[0])
+			Expect(len(acds)).To(Equal(3))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		Context("when deserializing namespace metadatas fails", func() {
+			BeforeEach(func() {
+				org0KVS["namespaces/metadata/cc-name#5"] = []byte("garbage")
+			})
+
+			It("wraps and returns the error", func() {
+				cc, err := ef.QueryApprovedChaincodeDefinitions("my-channel", fakeOrgStates[0])
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("could not fetch metadatas"))
+				Expect(cc).To(BeNil())
+			})
+		})
+
+		Context("when namespace metadata has a bad key", func() {
+			BeforeEach(func() {
+				resources.Serializer.Serialize("namespaces", "badkey", testDefinition.Parameters(), fakeOrgStates[0])
+			})
+
+			It("wraps and returns the error", func() {
+				cc, err := ef.QueryApprovedChaincodeDefinitions("my-channel", fakeOrgStates[0])
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("could not extract chaincode name and sequence number from metadata: badkey: invalid private name format: badkey"))
+				Expect(cc).To(BeNil())
+			})
+		})
+
+		Context("when namespace metadata has a key with bad sequence", func() {
+			BeforeEach(func() {
+				resources.Serializer.Serialize("namespaces", "cc-name#bad-sequence", testDefinition.Parameters(), fakeOrgStates[0])
+			})
+
+			It("wraps and returns the error", func() {
+				cc, err := ef.QueryApprovedChaincodeDefinitions("my-channel", fakeOrgStates[0])
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("could not extract chaincode name and sequence number from metadata: cc-name#bad-sequence: invalid sequence number in private name"))
+				Expect(cc).To(BeNil())
+			})
+		})
+
+		Context("when deserializing chaincode-source metadata fails", func() {
+			BeforeEach(func() {
+				org0KVS["chaincode-sources/metadata/cc-name#4"] = []byte("garbage")
+			})
+
+			It("wraps and returns the error", func() {
+				cc, err := ef.QueryApprovedChaincodeDefinitions("my-channel", fakeOrgStates[0])
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("could not fetch approved chaincode definition (name: 'cc-name', sequence: '4') on channel 'my-channel': could not deserialize chaincode-source metadata for cc-name#4"))
 				Expect(cc).To(BeNil())
 			})
 		})
