@@ -9,6 +9,8 @@ package lifecycle
 import (
 	"bytes"
 	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -85,7 +87,7 @@ var DefaultEndorsementPolicyBytes = protoutil.MarshalOrPanic(&pb.ApplicationPoli
 // namespaces/fields/mycc/ValidationInfo:      {ValidationPlugin: "builtin", ValidationParameter: <application-policy>}
 // namespaces/fields/mycc/Collections          {<collection info>}
 //
-// Private/Org Scope Implcit Collection layout looks like the following
+// Private/Org Scope Implicit Collection layout looks like the following
 // namespaces/metadata/<namespace>#<sequence_number> -> namespace metadata, including type
 // namespaces/fields/<namespace>#<sequence_number>/<field>  -> field of namespace type
 //
@@ -575,26 +577,63 @@ func (ef *ExternalFunctions) QueryApprovedChaincodeDefinition(chname, ccname str
 	}
 
 	if !ok {
-		return nil, errors.Errorf("could not fetch approved chaincode definition (name: '%s', sequence: '%d') on channel '%s'", ccname, sequence, chname)
+		return nil, errors.Errorf("could not fetch approved chaincode definition (name: '%s', sequence: '%d') on channel '%s'", ccname, requestedSequence, chname)
 	}
 
+	return ef.fetchApprovedChaincodeDefinition(ccname, requestedSequence, metadata, orgState)
+}
+
+// QueryApprovedChaincodeDefinitions returns all approved chaincode definitions in Org state for the specified channel.
+// The return value is a map where the key is a combination of chaincode namespace and sequence number in the format "<namespace>#<sequence_number>",
+// and the value is the corresponding ApprovedChaincodeDefinition object.
+func (ef *ExternalFunctions) QueryApprovedChaincodeDefinitions(chname string, orgState ReadRangeableState) (map[string]*ApprovedChaincodeDefinition, error) {
+	// Get all metadatas for the channel
+	metadatas, err := ef.Resources.Serializer.DeserializeAllMetadata(NamespacesName, orgState)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not fetch metadatas")
+	}
+
+	// Get all approved chaincode definitions using the metadatas
+	definitions := map[string]*ApprovedChaincodeDefinition{}
+	for privateName, metadata := range metadatas {
+		// Extract chaincode name and sequence number from metadata
+		ccname, sequence, err := extractChaincodeNameAndSequence(privateName)
+		if err != nil {
+			return nil, errors.WithMessagef(err, "could not extract chaincode name and sequence number from metadata: %s", privateName)
+		}
+
+		// Fetch the approved chaincode definition
+		definition, err := ef.fetchApprovedChaincodeDefinition(ccname, sequence, metadata, orgState)
+		if err != nil {
+			return nil, errors.WithMessagef(err, "could not fetch approved chaincode definition (name: '%s', sequence: '%d') on channel '%s'", ccname, sequence, chname)
+		}
+
+		definitions[privateName] = definition
+	}
+
+	return definitions, nil
+}
+
+func (ef *ExternalFunctions) fetchApprovedChaincodeDefinition(ccname string, sequence int64, metadata *lb.StateMetadata, orgState ReadableState) (*ApprovedChaincodeDefinition, error) {
+	privateName := fmt.Sprintf("%s#%d", ccname, sequence)
+	// Verify that metadata type is chaincode parameters type
 	if metadata.Datatype != ChaincodeParametersType {
 		return nil, errors.Errorf("not a chaincode parameters type: %s", metadata.Datatype)
 	}
 
-	// Get chaincode parameters for the request sequence
+	// Get chaincode parameters for the requested sequence
 	ccParameters := &ChaincodeParameters{}
 	if err := ef.Resources.Serializer.Deserialize(NamespacesName, privateName, metadata, ccParameters, orgState); err != nil {
 		return nil, errors.WithMessagef(err, "could not deserialize chaincode parameters for %s", privateName)
 	}
 
 	// Get package ID for the requested sequence
-	metadata, ok, err = ef.Resources.Serializer.DeserializeMetadata(ChaincodeSourcesName, privateName, orgState)
+	metadata, ok, err := ef.Resources.Serializer.DeserializeMetadata(ChaincodeSourcesName, privateName, orgState)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "could not deserialize chaincode-source metadata for %s", privateName)
 	}
 	if !ok {
-		return nil, errors.Errorf("could not fetch approved chaincode definition (name: '%s', sequence: '%d') on channel '%s'", ccname, sequence, chname)
+		return nil, errors.Errorf("could not fetch chaincode-source metadata for %s", privateName)
 	}
 	if metadata.Datatype != ChaincodeLocalPackageType {
 		return nil, errors.Errorf("not a chaincode local package type: %s", metadata.Datatype)
@@ -625,12 +664,33 @@ func (ef *ExternalFunctions) QueryApprovedChaincodeDefinition(chname, ccname str
 	}
 
 	return &ApprovedChaincodeDefinition{
-		Sequence:        requestedSequence,
+		Sequence:        sequence,
 		EndorsementInfo: ccParameters.EndorsementInfo,
 		ValidationInfo:  ccParameters.ValidationInfo,
 		Collections:     ccParameters.Collections,
 		Source:          ccsrc,
 	}, nil
+}
+
+func extractChaincodeNameAndSequence(privateName string) (string, int64, error) {
+	var ccname string
+	var sequence int64
+
+	split := strings.Split(privateName, "#")
+	if len(split) != 2 {
+		return "", 0, errors.Errorf("invalid private name format: %s", privateName)
+	}
+
+	ccname = split[0]
+	sequenceStr := split[1]
+
+	var err error
+	sequence, err = strconv.ParseInt(sequenceStr, 10, 64)
+	if err != nil {
+		return "", 0, errors.WithMessagef(err, "invalid sequence number in private name: %s", privateName)
+	}
+
+	return ccname, sequence, nil
 }
 
 // ErrNamespaceNotDefined is the error returned when a namespace

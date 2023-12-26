@@ -55,6 +55,10 @@ const (
 	// query a approved chaincode definition for the user's own org
 	QueryApprovedChaincodeDefinitionFuncName = "QueryApprovedChaincodeDefinition"
 
+	// QueryApprovedChaincodeDefinitionsFuncName is the chaincode function name used to
+	// query all approved chaincode definitions for the user's own org in a channel
+	QueryApprovedChaincodeDefinitionsFuncName = "QueryApprovedChaincodeDefinitions"
+
 	// CheckCommitReadinessFuncName is the chaincode function name used to check
 	// a specified chaincode definition is ready to be committed. It returns the
 	// approval status for a given definition over a given set of orgs
@@ -92,8 +96,13 @@ type SCCFunctions interface {
 	// ApproveChaincodeDefinitionForOrg records a chaincode definition into this org's implicit collection.
 	ApproveChaincodeDefinitionForOrg(chname, ccname string, cd *ChaincodeDefinition, packageID string, publicState ReadableState, orgState ReadWritableState) error
 
-	// QueryApprovedChaincodeDefinition returns a approved chaincode definition from this org's implicit collection.
+	// QueryApprovedChaincodeDefinition returns an approved chaincode definition from this org's implicit collection.
 	QueryApprovedChaincodeDefinition(chname, ccname string, sequence int64, publicState ReadableState, orgState ReadableState) (*ApprovedChaincodeDefinition, error)
+
+	// QueryApprovedChaincodeDefinitions returns all approved chaincode definitions from this org's implicit collection for the specified channel.
+	// The return value is a map where the key is a combination of chaincode namespace and sequence number in the format "<namespace>#<sequence_number>",
+	// and the value is the corresponding ApprovedChaincodeDefinition object.
+	QueryApprovedChaincodeDefinitions(chname string, orgState ReadRangeableState) (map[string]*ApprovedChaincodeDefinition, error)
 
 	// CheckCommitReadiness returns a map containing the orgs
 	// whose orgStates were supplied and whether or not they have approved
@@ -453,6 +462,49 @@ func (i *Invocation) QueryApprovedChaincodeDefinition(input *lb.QueryApprovedCha
 		InitRequired:        ca.EndorsementInfo.InitRequired,
 		Collections:         ca.Collections,
 		Source:              ca.Source,
+	}, nil
+}
+
+// QueryApprovedChaincodeDefinitions is a SCC function that may be dispatched
+// to which routes to the underlying lifecycle implementation.
+func (i *Invocation) QueryApprovedChaincodeDefinitions(input *lb.QueryApprovedChaincodeDefinitionsArgs) (proto.Message, error) {
+	logger.Debugf("received invocation of QueryApprovedChaincodeDefinitions on channel '%s'",
+		i.Stub.GetChannelID(),
+	)
+	collectionName := implicitcollection.NameForOrg(i.SCC.OrgMSPID)
+
+	cas, err := i.SCC.Functions.QueryApprovedChaincodeDefinitions(
+		i.Stub.GetChannelID(),
+		&ChaincodePrivateLedgerShim{
+			Collection: collectionName,
+			Stub:       i.Stub,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	casProto := []*lb.QueryApprovedChaincodeDefinitionsResult_ApprovedChaincodeDefinition{}
+	for privateName, ca := range cas {
+		name, _, err := extractChaincodeNameAndSequence(privateName)
+		if err != nil {
+			return nil, errors.WithMessagef(err, "could not extract chaincode name and sequence number from private name: %s", privateName)
+		}
+		casProto = append(casProto, &lb.QueryApprovedChaincodeDefinitionsResult_ApprovedChaincodeDefinition{
+			Name:                name,
+			Sequence:            ca.Sequence,
+			Version:             ca.EndorsementInfo.Version,
+			EndorsementPlugin:   ca.EndorsementInfo.EndorsementPlugin,
+			ValidationPlugin:    ca.ValidationInfo.ValidationPlugin,
+			ValidationParameter: ca.ValidationInfo.ValidationParameter,
+			InitRequired:        ca.EndorsementInfo.InitRequired,
+			Collections:         ca.Collections,
+			Source:              ca.Source,
+		})
+	}
+
+	return &lb.QueryApprovedChaincodeDefinitionsResult{
+		ApprovedChaincodeDefinitions: casProto,
 	}, nil
 }
 
