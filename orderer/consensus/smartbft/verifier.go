@@ -190,11 +190,18 @@ func (v *Verifier) verifyRequest(rawRequest []byte, noConfigAllowed bool) (types
 	}
 
 	if req.chHdr.Type == int32(cb.HeaderType_CONFIG) {
-		err := v.ConfigValidator.ValidateConfig(req.envelope)
+		err = v.ConfigValidator.ValidateConfig(req.envelope)
 		if err != nil {
 			v.Logger.Errorf("Error verifying config update: %v", err)
 			return types.RequestInfo{}, err
 		}
+
+		reqID := v.ReqInspector.RequestID(rawRequest)
+		if v.ReqInspector.isEmpty(reqID) {
+			return types.RequestInfo{}, errors.Errorf("request id is empty")
+		}
+
+		return reqID, nil
 	}
 
 	return v.ReqInspector.requestIDFromSigHeader(req.sigHdr)

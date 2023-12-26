@@ -254,6 +254,7 @@ type request struct {
 // RequestInspector inspects incomming requests and validates serialized identity
 type RequestInspector struct {
 	ValidateIdentityStructure func(identity *msp.SerializedIdentity) error
+	Logger                    *flogging.FabricLogger
 }
 
 func (ri *RequestInspector) requestIDFromSigHeader(sigHdr *cb.SignatureHeader) (types.RequestInfo, error) {
@@ -277,12 +278,49 @@ func (ri *RequestInspector) requestIDFromSigHeader(sigHdr *cb.SignatureHeader) (
 	}, nil
 }
 
+func (ri *RequestInspector) requestIDFromEnvelope(envelope *cb.Envelope) (types.RequestInfo, error) {
+	data, err := proto.Marshal(envelope)
+	if err != nil {
+		return types.RequestInfo{}, err
+	}
+
+	req, err := ri.unwrapReqFromEnvelop(envelope)
+	if err != nil {
+		return types.RequestInfo{}, err
+	}
+
+	txID := sha256.Sum256(data)
+	clientID := sha256.Sum256(req.sigHdr.Creator)
+	return types.RequestInfo{
+		ID:       hex.EncodeToString(txID[:]),
+		ClientID: hex.EncodeToString(clientID[:]),
+	}, nil
+}
+
 // RequestID unwraps the request info from the raw request
 func (ri *RequestInspector) RequestID(rawReq []byte) types.RequestInfo {
 	req, err := ri.unwrapReq(rawReq)
 	if err != nil {
 		return types.RequestInfo{}
 	}
+
+	if req.chHdr.Type == int32(cb.HeaderType_CONFIG) {
+		configEnvelope := &cb.ConfigEnvelope{}
+		_, err = protoutil.UnmarshalEnvelopeOfType(req.envelope, cb.HeaderType_CONFIG, configEnvelope)
+		if err != nil {
+			ri.Logger.Errorf("can't get config envelope: %s", err.Error())
+			return types.RequestInfo{}
+		}
+
+		reqInfo, err := ri.requestIDFromEnvelope(configEnvelope.LastUpdate)
+		if err != nil {
+			ri.Logger.Errorf("can't get request ID: %s", err.Error())
+			return types.RequestInfo{}
+		}
+
+		return reqInfo
+	}
+
 	reqInfo, err := ri.requestIDFromSigHeader(req.sigHdr)
 	if err != nil {
 		return types.RequestInfo{}
@@ -290,11 +328,24 @@ func (ri *RequestInspector) RequestID(rawReq []byte) types.RequestInfo {
 	return reqInfo
 }
 
+func (ri *RequestInspector) isEmpty(req types.RequestInfo) bool {
+	if len(req.ID) == 0 && len(req.ClientID) == 0 {
+		return true
+	}
+
+	return false
+}
+
 func (ri *RequestInspector) unwrapReq(req []byte) (*request, error) {
 	envelope, err := protoutil.UnmarshalEnvelope(req)
 	if err != nil {
 		return nil, err
 	}
+
+	return ri.unwrapReqFromEnvelop(envelope)
+}
+
+func (ri *RequestInspector) unwrapReqFromEnvelop(envelope *cb.Envelope) (*request, error) {
 	payload := &cb.Payload{}
 	if err := proto.Unmarshal(envelope.Payload, payload); err != nil {
 		return nil, errors.Wrap(err, "failed unmarshaling payload")

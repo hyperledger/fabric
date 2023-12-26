@@ -111,6 +111,7 @@ func TestVerifyConsenterSig(t *testing.T) {
 		ValidateIdentityStructure: func(_ *msp.SerializedIdentity) error {
 			return nil
 		},
+		Logger: logger,
 	}
 
 	cv := &mocks.ConsenterVerifier{}
@@ -415,6 +416,7 @@ func TestVerifyProposal(t *testing.T) {
 		ValidateIdentityStructure: func(_ *msp.SerializedIdentity) error {
 			return nil
 		},
+		Logger: logger,
 	}
 
 	lastHash := hex.EncodeToString(protoutil.BlockHeaderHash(lastBlock.Header))
