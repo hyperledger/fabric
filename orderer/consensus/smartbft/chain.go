@@ -107,13 +107,14 @@ func NewChain(
 	metricsWalBFT *wal.Metrics,
 	bccsp bccsp.BCCSP,
 ) (*BFTChain, error) {
+	logger := flogging.MustGetLogger("orderer.consensus.smartbft.chain").With(zap.String("channel", support.ChannelID()))
+
 	requestInspector := &RequestInspector{
 		ValidateIdentityStructure: func(_ *msp.SerializedIdentity) error {
 			return nil
 		},
+		Logger: logger,
 	}
-
-	logger := flogging.MustGetLogger("orderer.consensus.smartbft.chain").With(zap.String("channel", support.ChannelID()))
 
 	c := &BFTChain{
 		RuntimeConfig:     &atomic.Value{},
