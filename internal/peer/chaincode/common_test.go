@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"testing"
 	"time"
@@ -26,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/chaincode/mock"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -838,4 +840,13 @@ func TestProcessProposals(t *testing.T) {
 		require.EqualError(t, err, "failed to call endorser")
 		require.Nil(t, responses)
 	})
+}
+
+func TestMain(m *testing.M) {
+	err := msptesttools.LoadMSPSetupForTesting()
+	if err != nil {
+		panic(fmt.Sprintf("Could not initialize msp providers: %s", err))
+	}
+
+	os.Exit(m.Run())
 }

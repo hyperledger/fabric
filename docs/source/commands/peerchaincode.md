@@ -28,8 +28,8 @@ different chaincode operations that are relevant to a peer. For example, use the
 the `peer chaincode query` subcommand option to query a chaincode for the
 current value on a peer's ledger.
 
-Some subcommands take flag `--ctor`, of which the value must be a JSON string 
-that has either key 'Args' or 'Function' and 'Args'. These keys are 
+Some subcommands take flag `--ctor`, of which the value must be a JSON string
+that has either key 'Args' or 'Function' and 'Args'. These keys are
 case-insensitive.
 
 If the JSON string only has the Args key, the key value is an array, where the
@@ -89,74 +89,6 @@ values. For example, you will use `--peerAddresses localhost:9051
 --peerAddresses localhost:7051` rather than `--peerAddresses "localhost:9051
 localhost:7051"`.
 
-## peer chaincode install
-```
-Install a chaincode on a peer. This installs a chaincode deployment spec package (if provided) or packages the specified chaincode before subsequently installing it.
-
-Usage:
-  peer chaincode install [flags]
-
-Flags:
-      --connectionProfile string       Connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
-  -c, --ctor string                    Constructor message for the chaincode in JSON format (default "{}")
-  -h, --help                           help for install
-  -l, --lang string                    Language the chaincode is written in (default "golang")
-  -n, --name string                    Name of the chaincode
-  -p, --path string                    Path to chaincode
-      --peerAddresses stringArray      The addresses of the peers to connect to
-      --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
-  -v, --version string                 Version of the chaincode specified in install/instantiate/upgrade commands
-
-Global Flags:
-      --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
-      --certfile string                     Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the orderer endpoint
-      --clientauth                          Use mutual TLS when communicating with the orderer endpoint
-      --connTimeout duration                Timeout for client to connect (default 3s)
-      --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
-  -o, --orderer string                      Ordering service endpoint
-      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
-      --tls                                 Use TLS when communicating with the orderer endpoint
-      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint
-      --transient string                    Transient map of arguments in JSON encoding
-```
-
-
-## peer chaincode instantiate
-```
-Deploy the specified chaincode to the network.
-
-Usage:
-  peer chaincode instantiate [flags]
-
-Flags:
-  -C, --channelID string               The channel on which this command should be executed
-      --collections-config string      The fully qualified path to the collection JSON file including the file name
-      --connectionProfile string       Connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
-  -c, --ctor string                    Constructor message for the chaincode in JSON format (default "{}")
-  -E, --escc string                    The name of the endorsement system chaincode to be used for this chaincode
-  -h, --help                           help for instantiate
-  -l, --lang string                    Language the chaincode is written in (default "golang")
-  -n, --name string                    Name of the chaincode
-      --peerAddresses stringArray      The addresses of the peers to connect to
-  -P, --policy string                  The endorsement policy associated to this chaincode
-      --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
-  -v, --version string                 Version of the chaincode specified in install/instantiate/upgrade commands
-  -V, --vscc string                    The name of the verification system chaincode to be used for this chaincode
-
-Global Flags:
-      --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
-      --certfile string                     Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the orderer endpoint
-      --clientauth                          Use mutual TLS when communicating with the orderer endpoint
-      --connTimeout duration                Timeout for client to connect (default 3s)
-      --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
-  -o, --orderer string                      Ordering service endpoint
-      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
-      --tls                                 Use TLS when communicating with the orderer endpoint
-      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint
-      --transient string                    Transient map of arguments in JSON encoding
-```
-
-
 ## peer chaincode invoke
 ```
 Invoke the specified chaincode. It will try to commit the endorsed transaction to the network.
@@ -190,68 +122,6 @@ Global Flags:
 ```
 
 
-## peer chaincode list
-```
-Get the instantiated chaincodes in the channel if specify channel, or get installed chaincodes on the peer
-
-Usage:
-  peer chaincode list [flags]
-
-Flags:
-  -C, --channelID string               The channel on which this command should be executed
-      --connectionProfile string       Connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
-  -h, --help                           help for list
-      --installed                      Get the installed chaincodes on a peer
-      --instantiated                   Get the instantiated chaincodes on a channel
-      --peerAddresses stringArray      The addresses of the peers to connect to
-      --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
-
-Global Flags:
-      --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
-      --certfile string                     Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the orderer endpoint
-      --clientauth                          Use mutual TLS when communicating with the orderer endpoint
-      --connTimeout duration                Timeout for client to connect (default 3s)
-      --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
-  -o, --orderer string                      Ordering service endpoint
-      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
-      --tls                                 Use TLS when communicating with the orderer endpoint
-      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint
-      --transient string                    Transient map of arguments in JSON encoding
-```
-
-
-## peer chaincode package
-```
-Package a chaincode and write the package to a file.
-
-Usage:
-  peer chaincode package [outputfile] [flags]
-
-Flags:
-  -s, --cc-package                  create CC deployment spec for owner endorsements instead of raw CC deployment spec
-  -c, --ctor string                 Constructor message for the chaincode in JSON format (default "{}")
-  -h, --help                        help for package
-  -i, --instantiate-policy string   instantiation policy for the chaincode
-  -l, --lang string                 Language the chaincode is written in (default "golang")
-  -n, --name string                 Name of the chaincode
-  -p, --path string                 Path to chaincode
-  -S, --sign                        if creating CC deployment spec package for owner endorsements, also sign it with local MSP
-  -v, --version string              Version of the chaincode specified in install/instantiate/upgrade commands
-
-Global Flags:
-      --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
-      --certfile string                     Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the orderer endpoint
-      --clientauth                          Use mutual TLS when communicating with the orderer endpoint
-      --connTimeout duration                Timeout for client to connect (default 3s)
-      --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
-  -o, --orderer string                      Ordering service endpoint
-      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
-      --tls                                 Use TLS when communicating with the orderer endpoint
-      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint
-      --transient string                    Transient map of arguments in JSON encoding
-```
-
-
 ## peer chaincode query
 ```
 Get endorsed result of chaincode function call and print it. It won't generate transaction.
@@ -269,67 +139,6 @@ Flags:
       --peerAddresses stringArray      The addresses of the peers to connect to
   -r, --raw                            If true, output the query value as raw bytes, otherwise format as a printable string
       --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
-
-Global Flags:
-      --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
-      --certfile string                     Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the orderer endpoint
-      --clientauth                          Use mutual TLS when communicating with the orderer endpoint
-      --connTimeout duration                Timeout for client to connect (default 3s)
-      --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
-  -o, --orderer string                      Ordering service endpoint
-      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
-      --tls                                 Use TLS when communicating with the orderer endpoint
-      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint
-      --transient string                    Transient map of arguments in JSON encoding
-```
-
-
-## peer chaincode signpackage
-```
-Sign the specified chaincode package
-
-Usage:
-  peer chaincode signpackage [flags]
-
-Flags:
-  -h, --help   help for signpackage
-
-Global Flags:
-      --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
-      --certfile string                     Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the orderer endpoint
-      --clientauth                          Use mutual TLS when communicating with the orderer endpoint
-      --connTimeout duration                Timeout for client to connect (default 3s)
-      --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
-  -o, --orderer string                      Ordering service endpoint
-      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
-      --tls                                 Use TLS when communicating with the orderer endpoint
-      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint
-      --transient string                    Transient map of arguments in JSON encoding
-```
-
-
-## peer chaincode upgrade
-```
-Upgrade an existing chaincode with the specified one. The new chaincode will immediately replace the existing chaincode upon the transaction committed.
-
-Usage:
-  peer chaincode upgrade [flags]
-
-Flags:
-  -C, --channelID string               The channel on which this command should be executed
-      --collections-config string      The fully qualified path to the collection JSON file including the file name
-      --connectionProfile string       Connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
-  -c, --ctor string                    Constructor message for the chaincode in JSON format (default "{}")
-  -E, --escc string                    The name of the endorsement system chaincode to be used for this chaincode
-  -h, --help                           help for upgrade
-  -l, --lang string                    Language the chaincode is written in (default "golang")
-  -n, --name string                    Name of the chaincode
-  -p, --path string                    Path to chaincode
-      --peerAddresses stringArray      The addresses of the peers to connect to
-  -P, --policy string                  The endorsement policy associated to this chaincode
-      --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
-  -v, --version string                 Version of the chaincode specified in install/instantiate/upgrade commands
-  -V, --vscc string                    The name of the verification system chaincode to be used for this chaincode
 
 Global Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint

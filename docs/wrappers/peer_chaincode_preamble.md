@@ -23,8 +23,8 @@ different chaincode operations that are relevant to a peer. For example, use the
 the `peer chaincode query` subcommand option to query a chaincode for the
 current value on a peer's ledger.
 
-Some subcommands take flag `--ctor`, of which the value must be a JSON string 
-that has either key 'Args' or 'Function' and 'Args'. These keys are 
+Some subcommands take flag `--ctor`, of which the value must be a JSON string
+that has either key 'Args' or 'Function' and 'Args'. These keys are
 case-insensitive.
 
 If the JSON string only has the Args key, the key value is an array, where the
