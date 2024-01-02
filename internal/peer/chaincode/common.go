@@ -317,43 +317,6 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 		return errors.Errorf("must supply value for %s name parameter", chainFuncName)
 	}
 
-	if cmd.Name() == instantiateCmdName || cmd.Name() == installCmdName ||
-		cmd.Name() == upgradeCmdName || cmd.Name() == packageCmdName {
-		if chaincodeVersion == common.UndefinedParamValue {
-			return errors.Errorf("chaincode version is not provided for %s", cmd.Name())
-		}
-
-		if escc != common.UndefinedParamValue {
-			logger.Infof("Using escc %s", escc)
-		} else {
-			logger.Info("Using default escc")
-			escc = "escc"
-		}
-
-		if vscc != common.UndefinedParamValue {
-			logger.Infof("Using vscc %s", vscc)
-		} else {
-			logger.Info("Using default vscc")
-			vscc = "vscc"
-		}
-
-		if policy != common.UndefinedParamValue {
-			p, err := policydsl.FromString(policy)
-			if err != nil {
-				return errors.Errorf("invalid policy %s", policy)
-			}
-			policyMarshalled = protoutil.MarshalOrPanic(p)
-		}
-
-		if collectionsConfigFile != common.UndefinedParamValue {
-			var err error
-			_, collectionConfigBytes, err = GetCollectionConfigFromFile(collectionsConfigFile)
-			if err != nil {
-				return errors.WithMessagef(err, "invalid collection configuration in file %s", collectionsConfigFile)
-			}
-		}
-	}
-
 	// Check that non-empty chaincode parameters contain only Args as a key.
 	// Type checking is done later when the JSON is actually unmarshaled
 	// into a pb.ChaincodeInput. To better understand what's going
@@ -376,9 +339,7 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 			return errors.New("non-empty JSON chaincode parameters must contain the following keys: 'Args' or 'Function' and 'Args'")
 		}
 	} else {
-		if cmd == nil || (cmd != chaincodeInstallCmd && cmd != chaincodePackageCmd) {
-			return errors.New("empty JSON chaincode parameters must contain the following keys: 'Args' or 'Function' and 'Args'")
-		}
+		return errors.New("empty JSON chaincode parameters must contain the following keys: 'Args' or 'Function' and 'Args'")
 	}
 
 	return nil

@@ -20,7 +20,7 @@ import (
 
 const (
 	chainFuncName = "chaincode"
-	chainCmdDes   = "Operate a chaincode: install|instantiate|invoke|package|query|signpackage|upgrade|list."
+	chainCmdDes   = "Query or invoke a chaincode: invoke|query."
 )
 
 var logger = flogging.MustGetLogger("chaincodeCmd")
@@ -41,14 +41,8 @@ func addFlags(cmd *cobra.Command) {
 func Cmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	addFlags(chaincodeCmd)
 
-	chaincodeCmd.AddCommand(installCmd(cf, nil, cryptoProvider))
-	chaincodeCmd.AddCommand(instantiateCmd(cf, cryptoProvider))
 	chaincodeCmd.AddCommand(invokeCmd(cf, cryptoProvider))
-	chaincodeCmd.AddCommand(packageCmd(cf, nil, nil, cryptoProvider))
 	chaincodeCmd.AddCommand(queryCmd(cf, cryptoProvider))
-	chaincodeCmd.AddCommand(signpackageCmd(cf, cryptoProvider))
-	chaincodeCmd.AddCommand(upgradeCmd(cf, cryptoProvider))
-	chaincodeCmd.AddCommand(listCmd(cf, cryptoProvider))
 
 	return chaincodeCmd
 }
@@ -65,8 +59,6 @@ var (
 	channelID             string
 	chaincodeVersion      string
 	policy                string
-	escc                  string
-	vscc                  string
 	policyMarshalled      []byte
 	transient             string
 	isInit                bool
@@ -115,16 +107,8 @@ func resetFlags() {
 		"The channel on which this command should be executed")
 	flags.StringVarP(&policy, "policy", "P", common.UndefinedParamValue,
 		"The endorsement policy associated to this chaincode")
-	flags.StringVarP(&escc, "escc", "E", common.UndefinedParamValue,
-		"The name of the endorsement system chaincode to be used for this chaincode")
-	flags.StringVarP(&vscc, "vscc", "V", common.UndefinedParamValue,
-		"The name of the verification system chaincode to be used for this chaincode")
 	flags.BoolVarP(&isInit, "isInit", "I", false,
 		"Is this invocation for init (useful for supporting legacy chaincodes in the new lifecycle)")
-	flags.BoolVarP(&getInstalledChaincodes, "installed", "", false,
-		"Get the installed chaincodes on a peer")
-	flags.BoolVarP(&getInstantiatedChaincodes, "instantiated", "", false,
-		"Get the instantiated chaincodes on a channel")
 	flags.StringVar(&collectionsConfigFile, "collections-config", common.UndefinedParamValue,
 		"The fully qualified path to the collection JSON file including the file name")
 	flags.StringArrayVarP(&peerAddresses, "peerAddresses", "", []string{common.UndefinedParamValue},
@@ -137,12 +121,6 @@ func resetFlags() {
 		"Whether to wait for the event from each peer's deliver filtered service signifying that the 'invoke' transaction has been committed successfully")
 	flags.DurationVar(&waitForEventTimeout, "waitForEventTimeout", 30*time.Second,
 		"Time to wait for the event from each peer's deliver filtered service signifying that the 'invoke' transaction has been committed successfully")
-	flags.BoolVarP(&createSignedCCDepSpec, "cc-package", "s", false,
-		"create CC deployment spec for owner endorsements instead of raw CC deployment spec")
-	flags.BoolVarP(&signCCDepSpec, "sign", "S", false,
-		"if creating CC deployment spec package for owner endorsements, also sign it with local MSP")
-	flags.StringVarP(&instantiationPolicy, "instantiate-policy", "i", "",
-		"instantiation policy for the chaincode")
 }
 
 func attachFlags(cmd *cobra.Command, names []string) {

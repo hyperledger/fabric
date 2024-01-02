@@ -78,7 +78,7 @@ generateOrCheck \
         docs/wrappers/license_postscript.md \
         "${commands[@]}"
 
-commands=("peer chaincode install" "peer chaincode instantiate" "peer chaincode invoke" "peer chaincode list" "peer chaincode package" "peer chaincode query" "peer chaincode signpackage" "peer chaincode upgrade")
+commands=("peer chaincode invoke" "peer chaincode query")
 generateOrCheck \
         docs/source/commands/peerchaincode.md \
         docs/wrappers/peer_chaincode_preamble.md \
