@@ -32,42 +32,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// checkSpec to see if chaincode resides within current package capture for language.
-func checkSpec(spec *pb.ChaincodeSpec) error {
-	// Don't allow nil value
-	if spec == nil {
-		return errors.New("expected chaincode specification, nil received")
-	}
-	if spec.ChaincodeId == nil {
-		return errors.New("expected chaincode ID, nil received")
-	}
-
-	return platformRegistry.ValidateSpec(spec.Type.String(), spec.ChaincodeId.Path)
-}
-
-// getChaincodeDeploymentSpec get chaincode deployment spec given the chaincode spec
-func getChaincodeDeploymentSpec(spec *pb.ChaincodeSpec, crtPkg bool) (*pb.ChaincodeDeploymentSpec, error) {
-	var codePackageBytes []byte
-	if crtPkg {
-		var err error
-		if err = checkSpec(spec); err != nil {
-			return nil, err
-		}
-
-		codePackageBytes, err = platformRegistry.GetDeploymentPayload(spec.Type.String(), spec.ChaincodeId.Path)
-		if err != nil {
-			return nil, errors.WithMessage(err, "error getting chaincode package bytes")
-		}
-		chaincodePath, err := platformRegistry.NormalizePath(spec.Type.String(), spec.ChaincodeId.Path)
-		if err != nil {
-			return nil, errors.WithMessage(err, "failed to normalize chaincode path")
-		}
-		spec.ChaincodeId.Path = chaincodePath
-	}
-
-	return &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackageBytes}, nil
-}
-
 // getChaincodeSpec get chaincode spec from the cli cmd parameters
 func getChaincodeSpec(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	spec := &pb.ChaincodeSpec{}

@@ -26,31 +26,12 @@ import (
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/peer/chaincode/mock"
 	"github.com/hyperledger/fabric/internal/peer/common"
-	"github.com/hyperledger/fabric/internal/pkg/identity"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
-
-//go:generate counterfeiter -o mock/signer_serializer.go --fake-name SignerSerializer . signerSerializer
-
-type signerSerializer interface {
-	identity.SignerSerializer
-}
-
-//go:generate counterfeiter -o mock/deliver.go --fake-name Deliver . deliver
-
-type deliver interface {
-	pb.Deliver_DeliverClient
-}
-
-//go:generate counterfeiter -o mock/deliver_client.go --fake-name PeerDeliverClient . peerDeliverClient
-
-type peerDeliverClient interface {
-	pb.DeliverClient
-}
 
 func TestCheckChaincodeCmdParamsWithNewCallingSchema(t *testing.T) {
 	chaincodeCtorJSON = `{ "Args":["func", "param"] }`
