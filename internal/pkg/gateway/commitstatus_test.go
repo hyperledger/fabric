@@ -119,7 +119,7 @@ func TestCommitStatus(t *testing.T) {
 
 			request := &pb.CommitStatusRequest{
 				ChannelId:     testChannel,
-				Identity:      tt.identity,
+				Identity:      []byte("IDENTITY"),
 				TransactionId: "TX_ID",
 			}
 			requestBytes, err := proto.Marshal(request)

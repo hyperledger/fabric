@@ -33,6 +33,16 @@ func (gs *Server) CommitStatus(ctx context.Context, signedRequest *gp.SignedComm
 		return nil, status.Errorf(codes.InvalidArgument, "invalid status request: %v", err)
 	}
 
+	// Validate the request has valid channel id and transaction id
+	switch {
+	case request.GetIdentity() == nil:
+		return nil, status.Error(codes.InvalidArgument, "no identity provided")
+	case request.GetChannelId() == "":
+		return nil, status.Error(codes.InvalidArgument, "no channel ID provided")
+	case request.GetTransactionId() == "":
+		return nil, status.Error(codes.InvalidArgument, "transaction ID should not be empty")
+	}
+
 	signedData := &protoutil.SignedData{
 		Data:      signedRequest.GetRequest(),
 		Identity:  request.GetIdentity(),
