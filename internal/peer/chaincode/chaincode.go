@@ -13,7 +13,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/internal/peer/common"
-	"github.com/hyperledger/fabric/internal/peer/packaging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -24,12 +23,6 @@ const (
 )
 
 var logger = flogging.MustGetLogger("chaincodeCmd")
-
-// XXX This is a terrible singleton hack, however
-// it simply making a latent dependency explicit.
-// It should be removed along with the other package
-// scoped variables
-var platformRegistry = packaging.NewRegistry(packaging.SupportedPlatforms...)
 
 func addFlags(cmd *cobra.Command) {
 	common.AddOrdererFlags(cmd)
@@ -49,26 +42,23 @@ func Cmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) *cobra.Command {
 
 // Chaincode-related variables.
 var (
-	chaincodeLang         string
-	chaincodeCtorJSON     string
-	chaincodePath         string
-	chaincodeName         string
-	chaincodeUsr          string // Not used
-	chaincodeQueryRaw     bool
-	chaincodeQueryHex     bool
-	channelID             string
-	chaincodeVersion      string
-	policy                string
-	policyMarshalled      []byte
-	transient             string
-	isInit                bool
-	collectionsConfigFile string
-	collectionConfigBytes []byte
-	peerAddresses         []string
-	tlsRootCertFiles      []string
-	connectionProfile     string
-	waitForEvent          bool
-	waitForEventTimeout   time.Duration
+	chaincodeLang       string
+	chaincodeCtorJSON   string
+	chaincodePath       string
+	chaincodeName       string
+	chaincodeUsr        string // Not used
+	chaincodeQueryRaw   bool
+	chaincodeQueryHex   bool
+	channelID           string
+	chaincodeVersion    string
+	policy              string
+	transient           string
+	isInit              bool
+	peerAddresses       []string
+	tlsRootCertFiles    []string
+	connectionProfile   string
+	waitForEvent        bool
+	waitForEventTimeout time.Duration
 )
 
 var chaincodeCmd = &cobra.Command{
@@ -109,8 +99,6 @@ func resetFlags() {
 		"The endorsement policy associated to this chaincode")
 	flags.BoolVarP(&isInit, "isInit", "I", false,
 		"Is this invocation for init (useful for supporting legacy chaincodes in the new lifecycle)")
-	flags.StringVar(&collectionsConfigFile, "collections-config", common.UndefinedParamValue,
-		"The fully qualified path to the collection JSON file including the file name")
 	flags.StringArrayVarP(&peerAddresses, "peerAddresses", "", []string{common.UndefinedParamValue},
 		"The addresses of the peers to connect to")
 	flags.StringArrayVarP(&tlsRootCertFiles, "tlsRootCertFiles", "", []string{common.UndefinedParamValue},
