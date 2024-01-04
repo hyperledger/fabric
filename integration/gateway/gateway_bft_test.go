@@ -7,9 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package gateway
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"syscall"
 	"time"
 
@@ -23,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
@@ -37,6 +41,7 @@ var _ = Describe("GatewayService with BFT ordering service", func() {
 		ordererProcesses map[string]ifrit.Process
 		peerProcesses    ifrit.Process
 		channel          = "testchannel1"
+		peerGinkgoRunner []*ginkgomon.Runner
 	)
 
 	BeforeEach(func() {
@@ -61,7 +66,8 @@ var _ = Describe("GatewayService with BFT ordering service", func() {
 			Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 		}
 
-		peerGroupRunner, _ := peerGroupRunners(network)
+		var peerGroupRunner ifrit.Runner
+		peerGroupRunner, peerGinkgoRunner = peerGroupRunners(network)
 		peerProcesses = ifrit.Invoke(peerGroupRunner)
 		Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
@@ -159,11 +165,18 @@ var _ = Describe("GatewayService with BFT ordering service", func() {
 		rpcErr = status.Convert(err)
 		Expect(rpcErr.Message()).To(Equal("insufficient number of orderers could successfully process transaction to satisfy quorum requirement"))
 
+		peerLog := peerGinkgoRunner[0].Err().Contents()
+		needAdr := scanAddrGRPCconnectStructInLog(peerLog, network.PortsByOrdererID["OrdererOrg.orderer2"]["Listen"])
+		lastDateTime := scanLastDateTimeInLog(peerLog)
+		// move cursor to end of log
+		Eventually(peerGinkgoRunner[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(lastDateTime))
+
 		By("Restarting orderer2")
 		runner := network.OrdererRunner(network.Orderers[1])
 		ordererProcesses["orderer2"] = ifrit.Invoke(runner)
 		Eventually(ordererProcesses["orderer2"].Ready(), network.EventuallyTimeout).Should(BeClosed())
-		time.Sleep(time.Second)
+		// wait peer conecting to orderer2
+		Eventually(peerGinkgoRunner[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(fmt.Sprintf("%s, \\{READY", needAdr)))
 
 		By("Resubmitting the same transaction")
 		_, err = gw.Submit(ctx, submitRequest)
@@ -186,6 +199,28 @@ var _ = Describe("GatewayService with BFT ordering service", func() {
 		Expect(result.Payload).To(Equal([]byte("60")))
 	})
 })
+
+func scanLastDateTimeInLog(data []byte) string {
+	last := bytes.LastIndexAny(data, "\n\r") + 1
+	data = data[:last]
+	// Remove empty lines (strip EOL chars)
+	data = bytes.TrimRight(data, "\n\r")
+	// We have no non-empty lines, so advance but do not return a token.
+	if len(data) == 0 {
+		return ""
+	}
+
+	token := data[bytes.LastIndexAny(data, "\n\r")+1:]
+	token = token[5:29]
+	return string(token)
+}
+
+func scanAddrGRPCconnectStructInLog(data []byte, listenPort uint16) string {
+	re := regexp.MustCompile(fmt.Sprintf("pickfirstBalancer: UpdateSubConnState.*%d", listenPort))
+	loc := re.FindIndex(data)
+	start := loc[0] + len("pickfirstBalancer: UpdateSubConnState: ")
+	return string(data[start : start+12])
+}
 
 func prepareTransaction(
 	ctx context.Context,
