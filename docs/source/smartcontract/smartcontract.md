@@ -99,7 +99,7 @@ state, and can also query the immutable blockchain record of transactions.
   current state of the ledger, but not its history.
 
 Smart contracts have many
-[APIs](../developapps/transactioncontext.html#structure) available to them.
+[APIs](../chaincode4ade.html#fabric-contract-api) available to them.
 Critically, in all cases, whether transactions create, read, update or delete
 business objects in the world state, the blockchain contains an [immutable
 record](../ledger/ledger.html) of these changes.
