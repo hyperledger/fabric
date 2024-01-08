@@ -488,8 +488,10 @@ func (r *Registrar) createNewChain(configtx *cb.Envelope) *ChainSupport {
 // SwitchFollowerToChain creates a consensus.Chain from the tip of the ledger, and removes the follower.
 // It is called when a follower detects a config block that indicates cluster membership and halts, transferring
 // execution to the consensus.Chain.
-func (r *Registrar) SwitchFollowerToChain(channelID string) {
-	r.lock.Lock()
+func (r *Registrar) SwitchFollowerToChain(channelID string) bool {
+	if !r.lock.TryLock() {
+		return false
+	}
 	defer r.lock.Unlock()
 
 	lf, err := r.ledgerFactory.GetOrCreate(channelID)
@@ -504,11 +506,13 @@ func (r *Registrar) SwitchFollowerToChain(channelID string) {
 	delete(r.followers, channelID)
 	logger.Debugf("Removed follower for channel %s", channelID)
 	cs := r.createNewChain(configTx(lf))
-	if err := r.removeJoinBlock(channelID); err != nil {
+	if err = r.removeJoinBlock(channelID); err != nil {
 		logger.Panicf("Failed removing join-block for channel: %s: %v", channelID, err)
 	}
 	cs.start()
 	logger.Infof("Created and started channel %s", cs.ChannelID())
+
+	return true
 }
 
 // SwitchChainToFollower creates a follower.Chain from the tip of the ledger and removes the consensus.Chain.

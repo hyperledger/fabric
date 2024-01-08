@@ -8,26 +8,37 @@ import (
 )
 
 type ChainCreator struct {
-	SwitchFollowerToChainStub        func(string)
+	SwitchFollowerToChainStub        func(string) bool
 	switchFollowerToChainMutex       sync.RWMutex
 	switchFollowerToChainArgsForCall []struct {
 		arg1 string
+	}
+	switchFollowerToChainReturns struct {
+		result1 bool
+	}
+	switchFollowerToChainReturnsOnCall map[int]struct {
+		result1 bool
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ChainCreator) SwitchFollowerToChain(arg1 string) {
+func (fake *ChainCreator) SwitchFollowerToChain(arg1 string) bool {
 	fake.switchFollowerToChainMutex.Lock()
+	ret, specificReturn := fake.switchFollowerToChainReturnsOnCall[len(fake.switchFollowerToChainArgsForCall)]
 	fake.switchFollowerToChainArgsForCall = append(fake.switchFollowerToChainArgsForCall, struct {
 		arg1 string
 	}{arg1})
-	stub := fake.SwitchFollowerToChainStub
 	fake.recordInvocation("SwitchFollowerToChain", []interface{}{arg1})
 	fake.switchFollowerToChainMutex.Unlock()
-	if stub != nil {
-		fake.SwitchFollowerToChainStub(arg1)
+	if fake.SwitchFollowerToChainStub != nil {
+		return fake.SwitchFollowerToChainStub(arg1)
 	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.switchFollowerToChainReturns
+	return fakeReturns.result1
 }
 
 func (fake *ChainCreator) SwitchFollowerToChainCallCount() int {
@@ -36,7 +47,7 @@ func (fake *ChainCreator) SwitchFollowerToChainCallCount() int {
 	return len(fake.switchFollowerToChainArgsForCall)
 }
 
-func (fake *ChainCreator) SwitchFollowerToChainCalls(stub func(string)) {
+func (fake *ChainCreator) SwitchFollowerToChainCalls(stub func(string) bool) {
 	fake.switchFollowerToChainMutex.Lock()
 	defer fake.switchFollowerToChainMutex.Unlock()
 	fake.SwitchFollowerToChainStub = stub
@@ -47,6 +58,29 @@ func (fake *ChainCreator) SwitchFollowerToChainArgsForCall(i int) string {
 	defer fake.switchFollowerToChainMutex.RUnlock()
 	argsForCall := fake.switchFollowerToChainArgsForCall[i]
 	return argsForCall.arg1
+}
+
+func (fake *ChainCreator) SwitchFollowerToChainReturns(result1 bool) {
+	fake.switchFollowerToChainMutex.Lock()
+	defer fake.switchFollowerToChainMutex.Unlock()
+	fake.SwitchFollowerToChainStub = nil
+	fake.switchFollowerToChainReturns = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *ChainCreator) SwitchFollowerToChainReturnsOnCall(i int, result1 bool) {
+	fake.switchFollowerToChainMutex.Lock()
+	defer fake.switchFollowerToChainMutex.Unlock()
+	fake.SwitchFollowerToChainStub = nil
+	if fake.switchFollowerToChainReturnsOnCall == nil {
+		fake.switchFollowerToChainReturnsOnCall = make(map[int]struct {
+			result1 bool
+		})
+	}
+	fake.switchFollowerToChainReturnsOnCall[i] = struct {
+		result1 bool
+	}{result1}
 }
 
 func (fake *ChainCreator) Invocations() map[string][][]interface{} {

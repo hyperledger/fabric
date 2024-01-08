@@ -195,7 +195,10 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 
 		wgChain = sync.WaitGroup{}
 		wgChain.Add(1)
-		mockChainCreator.SwitchFollowerToChainCalls(func(_ string) { wgChain.Done() })
+		mockChainCreator.SwitchFollowerToChainCalls(func(_ string) bool {
+			wgChain.Done()
+			return true
+		})
 
 		wgChain = sync.WaitGroup{}
 		wgChain.Add(1)
@@ -559,7 +562,10 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 			}
 			return nil
 		})
-		mockChainCreator.SwitchFollowerToChainCalls(func(_ string) { wgChain.Done() }) // Stop when a new chain is created
+		mockChainCreator.SwitchFollowerToChainCalls(func(_ string) bool {
+			wgChain.Done()
+			return true
+		}) // Stop when a new chain is created
 		require.Equal(t, joinNum+1, localBlockchain.Height())
 
 		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
@@ -604,7 +610,10 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 			}
 			return nil
 		})
-		mockChainCreator.SwitchFollowerToChainCalls(func(_ string) { wgChain.Done() }) // Stop when a new chain is created
+		mockChainCreator.SwitchFollowerToChainCalls(func(_ string) bool {
+			wgChain.Done()
+			return true
+		}) // Stop when a new chain is created
 		require.Equal(t, joinNum+1, localBlockchain.Height())
 
 		failPull := 10
@@ -794,7 +803,10 @@ func TestFollowerPullPastJoin(t *testing.T) {
 			}
 			return nil
 		})
-		mockChainCreator.SwitchFollowerToChainCalls(func(_ string) { wgChain.Done() }) // Stop when a new chain is created
+		mockChainCreator.SwitchFollowerToChainCalls(func(_ string) bool {
+			wgChain.Done()
+			return true
+		}) // Stop when a new chain is created
 		require.Equal(t, uint64(6), localBlockchain.Height())
 
 		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
@@ -839,7 +851,10 @@ func TestFollowerPullPastJoin(t *testing.T) {
 			}
 			return nil
 		})
-		mockChainCreator.SwitchFollowerToChainCalls(func(_ string) { wgChain.Done() }) // Stop when a new chain is created
+		mockChainCreator.SwitchFollowerToChainCalls(func(_ string) bool {
+			wgChain.Done()
+			return true
+		}) // Stop when a new chain is created
 		require.Equal(t, uint64(0), localBlockchain.Height())
 
 		failPull := 10
@@ -935,7 +950,7 @@ func (mbc *memoryBlockChain) fill(numBlocks uint64) {
 	defer mbc.lock.Unlock()
 
 	height := uint64(len(mbc.chain))
-	prevHash := []byte{}
+	var prevHash []byte
 
 	for i := height; i < height+numBlocks; i++ {
 		if i > 0 {
