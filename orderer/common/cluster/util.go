@@ -24,15 +24,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
-
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric-config/protolator"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/common/deliverclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
@@ -207,47 +206,6 @@ type BlockSequenceVerifier func(blocks []*common.Block, channel string) error
 // Dialer creates a gRPC connection to a remote address
 type Dialer interface {
 	Dial(endpointCriteria EndpointCriteria) (*grpc.ClientConn, error)
-}
-
-var errNotAConfig = errors.New("not a config block")
-
-// ConfigFromBlock returns a ConfigEnvelope if exists, or a *NotAConfigBlock error.
-// It may also return some other error in case parsing failed.
-func ConfigFromBlock(block *common.Block) (*common.ConfigEnvelope, error) {
-	if block == nil || block.Data == nil || len(block.Data.Data) == 0 {
-		return nil, errors.New("empty block")
-	}
-	txn := block.Data.Data[0]
-	env, err := protoutil.GetEnvelopeFromBlock(txn)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if block.Header.Number == 0 {
-		configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
-		if err != nil {
-			return nil, errors.Wrap(err, "invalid config envelope")
-		}
-		return configEnvelope, nil
-	}
-	if payload.Header == nil {
-		return nil, errors.New("nil header in payload")
-	}
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if common.HeaderType(chdr.Type) != common.HeaderType_CONFIG {
-		return nil, errNotAConfig
-	}
-	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
-	if err != nil {
-		return nil, errors.Wrap(err, "invalid config envelope")
-	}
-	return configEnvelope, nil
 }
 
 // VerifyBlockHash verifies the hash chain of the block with the given index
@@ -792,9 +750,9 @@ func verifyBlockSequence(blockBuff []*common.Block, signatureVerifier protoutil.
 		if err := VerifyBlockHash(i, blockBuff); err != nil {
 			return err
 		}
-		configFromBlock, err := ConfigFromBlock(block)
+		configFromBlock, err := deliverclient.ConfigFromBlock(block)
 
-		if err != nil && err != errNotAConfig {
+		if err != nil && err != deliverclient.ErrNotAConfig {
 			return err
 		}
 

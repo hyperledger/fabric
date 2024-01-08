@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -191,7 +190,7 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 		gossips[i].deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running = false
 
-		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil), store.Store, Support{
+		gossips[i].InitializeChannel(channelName, nil, store.Store, Support{
 			Committer: &mockLedgerInfo{1},
 		}, nil, nil)
 		service, exist := gossips[i].leaderElection[channelName]
@@ -252,7 +251,7 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	for i := 0; i < n; i++ {
 		gossips[i].deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running = false
-		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil), store.Store, Support{
+		gossips[i].InitializeChannel(channelName, nil, store.Store, Support{
 			Committer: &mockLedgerInfo{1},
 		}, nil, nil)
 	}
@@ -265,7 +264,7 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	channelName = "chanB"
 	for i := 0; i < n; i++ {
 		deliverServiceFactory.service.running = false
-		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil), store.Store, Support{
+		gossips[i].InitializeChannel(channelName, nil, store.Store, Support{
 			Committer: &mockLedgerInfo{1},
 		}, nil, nil)
 	}
@@ -309,7 +308,7 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 	for i := 0; i < n; i++ {
 		gossips[i].deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running = false
-		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil), store.Store, Support{
+		gossips[i].InitializeChannel(channelName, nil, store.Store, Support{
 			Committer: &mockLedgerInfo{1},
 		}, nil, nil)
 	}
@@ -354,7 +353,7 @@ func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
 	for i := 0; i < n; i++ {
 		gossips[i].deliveryFactory = deliverServiceFactory
 		require.Panics(t, func() {
-			gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil), store.Store, Support{
+			gossips[i].InitializeChannel(channelName, nil, store.Store, Support{
 				Committer: &mockLedgerInfo{1},
 			}, nil, nil)
 		}, "Dynamic leader election based and static connection to ordering service can't exist simultaneously")
@@ -367,7 +366,7 @@ type mockDeliverServiceFactory struct {
 	service *mockDeliverService
 }
 
-func (mf *mockDeliverServiceFactory) Service(GossipServiceAdapter, *orderers.ConnectionSource, api.MessageCryptoService, bool, *common.Config, bccsp.BCCSP) deliverservice.DeliverService {
+func (mf *mockDeliverServiceFactory) Service(GossipServiceAdapter, map[string]*orderers.Endpoint, bool, *common.Config, bccsp.BCCSP) deliverservice.DeliverService {
 	return mf.service
 }
 
@@ -419,7 +418,7 @@ func (li *mockLedgerInfo) GetPvtDataAndBlockByNum(seqNum uint64) (*ledger.BlockA
 }
 
 func (li *mockLedgerInfo) GetCurrentBlockHash() ([]byte, error) {
-	panic("implement me")
+	return []byte{1, 2, 3, 4}, nil
 }
 
 // LedgerHeight returns mocked value to the ledger height
@@ -905,7 +904,7 @@ func TestInvalidInitialization(t *testing.T) {
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
 
-	dc := gService.deliveryFactory.Service(gService, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil), &naiveCryptoService{}, false, nil, nil)
+	dc := gService.deliveryFactory.Service(gService, nil, false, nil, nil)
 	require.NotNil(t, dc)
 }
 

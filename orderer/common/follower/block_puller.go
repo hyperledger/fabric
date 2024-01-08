@@ -123,7 +123,7 @@ func (creator *BlockPullerCreator) BlockPuller(configBlock *common.Block, stopCh
 // UpdateVerifierFromConfigBlock creates a new block signature verifier from the config block and updates the internal
 // link to said verifier.
 func (creator *BlockPullerCreator) UpdateVerifierFromConfigBlock(configBlock *common.Block) error {
-	configEnv, err := cluster.ConfigFromBlock(configBlock)
+	configEnv, err := deliverclient.ConfigFromBlock(configBlock)
 	if err != nil {
 		return errors.WithMessage(err, "failed to extract config envelope from block")
 	}
@@ -154,7 +154,7 @@ func (creator *BlockPullerCreator) VerifyBlockSequence(blocks []*common.Block, _
 			// with our own.
 			blocks[0] = creator.JoinBlock
 		}
-		configEnv, err := cluster.ConfigFromBlock(blocks[0])
+		configEnv, err := deliverclient.ConfigFromBlock(blocks[0])
 		if err != nil {
 			return errors.WithMessage(err, "failed to extract config envelope from genesis block")
 		}

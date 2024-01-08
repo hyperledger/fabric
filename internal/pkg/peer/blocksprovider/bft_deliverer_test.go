@@ -17,6 +17,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider"
 	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider/fake"
@@ -35,18 +36,21 @@ type bftDelivererTestSetup struct {
 	gWithT *WithT
 	d      *blocksprovider.BFTDeliverer
 
-	fakeDialer                  *fake.Dialer
-	fakeBlockHandler            *fake.BlockHandler
-	fakeOrdererConnectionSource *fake.OrdererConnectionSource
-	fakeLedgerInfo              *fake.LedgerInfo
-	fakeUpdatableBlockVerifier  *fake.UpdatableBlockVerifier
-	fakeSigner                  *fake.Signer
-	fakeDeliverStreamer         *fake.DeliverStreamer
-	fakeDeliverClient           *fake.DeliverClient
-	fakeCensorshipMonFactory    *fake.CensorshipDetectorFactory
-	fakeCensorshipMon           *fake.CensorshipDetector
-	fakeSleeper                 *fake.Sleeper
-	fakeDurationExceededHandler *fake.DurationExceededHandler
+	fakeDialer                         *fake.Dialer
+	fakeBlockHandler                   *fake.BlockHandler
+	fakeOrdererConnectionSource        *fake.OrdererConnectionSource
+	fakeOrdererConnectionSourceFactory *fake.OrdererConnectionSourceFactory
+	fakeLedgerInfo                     *fake.LedgerInfo
+	fakeUpdatableBlockVerifier         *fake.UpdatableBlockVerifier
+	fakeSigner                         *fake.Signer
+	fakeDeliverStreamer                *fake.DeliverStreamer
+	fakeDeliverClient                  *fake.DeliverClient
+	fakeCensorshipMonFactory           *fake.CensorshipDetectorFactory
+	fakeCensorshipMon                  *fake.CensorshipDetector
+	fakeSleeper                        *fake.Sleeper
+	fakeDurationExceededHandler        *fake.DurationExceededHandler
+	fakeCryptoProvider                 bccsp.BCCSP
+	channelConfig                      *common.Config
 
 	deliverClientDoneC chan struct{} // signals the deliverClient to exit
 	recvStepC          chan *orderer.DeliverResponse
@@ -63,32 +67,34 @@ type bftDelivererTestSetup struct {
 
 func newBFTDelivererTestSetup(t *testing.T) *bftDelivererTestSetup {
 	s := &bftDelivererTestSetup{
-		gWithT:                      NewWithT(t),
-		fakeDialer:                  &fake.Dialer{},
-		fakeBlockHandler:            &fake.BlockHandler{},
-		fakeOrdererConnectionSource: &fake.OrdererConnectionSource{},
-		fakeLedgerInfo:              &fake.LedgerInfo{},
-		fakeUpdatableBlockVerifier:  &fake.UpdatableBlockVerifier{},
-		fakeSigner:                  &fake.Signer{},
-		fakeDeliverStreamer:         &fake.DeliverStreamer{},
-		fakeDeliverClient:           &fake.DeliverClient{},
-		fakeCensorshipMonFactory:    &fake.CensorshipDetectorFactory{},
-		fakeSleeper:                 &fake.Sleeper{},
-		fakeDurationExceededHandler: &fake.DurationExceededHandler{},
-		deliverClientDoneC:          make(chan struct{}),
-		recvStepC:                   make(chan *orderer.DeliverResponse),
-		endC:                        make(chan struct{}),
+		gWithT:                             NewWithT(t),
+		fakeDialer:                         &fake.Dialer{},
+		fakeBlockHandler:                   &fake.BlockHandler{},
+		fakeOrdererConnectionSource:        &fake.OrdererConnectionSource{},
+		fakeOrdererConnectionSourceFactory: &fake.OrdererConnectionSourceFactory{},
+		fakeLedgerInfo:                     &fake.LedgerInfo{},
+		fakeUpdatableBlockVerifier:         &fake.UpdatableBlockVerifier{},
+		fakeSigner:                         &fake.Signer{},
+		fakeDeliverStreamer:                &fake.DeliverStreamer{},
+		fakeDeliverClient:                  &fake.DeliverClient{},
+		fakeCensorshipMonFactory:           &fake.CensorshipDetectorFactory{},
+		fakeSleeper:                        &fake.Sleeper{},
+		fakeDurationExceededHandler:        &fake.DurationExceededHandler{},
+		deliverClientDoneC:                 make(chan struct{}),
+		recvStepC:                          make(chan *orderer.DeliverResponse),
+		endC:                               make(chan struct{}),
 	}
 
 	return s
 }
 
 func (s *bftDelivererTestSetup) initialize(t *testing.T) {
+	tempDir := t.TempDir()
 	s.fakeDialer.DialStub = func(string, [][]byte) (*grpc.ClientConn, error) {
 		s.mutex.Lock()
 		defer s.mutex.Unlock()
 
-		cc, err := grpc.Dial("localhost", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		cc, err := grpc.Dial("localhost:6005", grpc.WithTransportCredentials(insecure.NewCredentials()))
 		s.clientConnSet = append(s.clientConnSet, cc)
 		require.NoError(t, err)
 		require.NotEqual(t, connectivity.Shutdown, cc.GetState())
@@ -123,6 +129,8 @@ func (s *bftDelivererTestSetup) initialize(t *testing.T) {
 		},
 	}
 	s.fakeOrdererConnectionSource.ShuffledEndpointsReturns(sources)
+
+	s.fakeOrdererConnectionSourceFactory.CreateConnectionSourceReturns(s.fakeOrdererConnectionSource)
 
 	s.fakeSigner.SignReturns([]byte("good-sig"), nil)
 
@@ -196,13 +204,18 @@ func (s *bftDelivererTestSetup) initialize(t *testing.T) {
 			return mon
 		})
 
+	var err error
+	s.channelConfig, s.fakeCryptoProvider, err = testSetup(tempDir, "BFT")
+	require.NoError(t, err)
+
 	s.d = &blocksprovider.BFTDeliverer{
 		ChannelID:                       "channel-id",
 		BlockHandler:                    s.fakeBlockHandler,
 		Ledger:                          s.fakeLedgerInfo,
 		UpdatableBlockVerifier:          s.fakeUpdatableBlockVerifier,
 		Dialer:                          s.fakeDialer,
-		Orderers:                        s.fakeOrdererConnectionSource,
+		OrderersSourceFactory:           s.fakeOrdererConnectionSourceFactory,
+		CryptoProvider:                  s.fakeCryptoProvider,
 		DoneC:                           make(chan struct{}),
 		Signer:                          s.fakeSigner,
 		DeliverStreamer:                 s.fakeDeliverStreamer,
@@ -215,7 +228,7 @@ func (s *bftDelivererTestSetup) initialize(t *testing.T) {
 		MaxRetryDuration:                600 * time.Second,
 		MaxRetryDurationExceededHandler: s.fakeDurationExceededHandler.DurationExceededHandler,
 	}
-	s.d.Initialize()
+	s.d.Initialize(s.channelConfig)
 
 	s.fakeSleeper = &fake.Sleeper{}
 
@@ -374,7 +387,7 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 		setup.initialize(t)
 
 		setup.fakeDialer.DialReturnsOnCall(0, nil, fmt.Errorf("fake-dial-error"))
-		cc, err := grpc.Dial("localhost", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		cc, err := grpc.Dial("localhost:6005", grpc.WithTransportCredentials(insecure.NewCredentials()))
 		setup.gWithT.Expect(err).NotTo(HaveOccurred())
 		setup.fakeDialer.DialReturnsOnCall(1, cc, nil)
 
@@ -408,7 +421,7 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 			setup.fakeDialer.DialReturnsOnCall(i, nil, fmt.Errorf("fake-dial-error"))
 		}
 
-		cc, err := grpc.Dial("localhost", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		cc, err := grpc.Dial("localhost:6005", grpc.WithTransportCredentials(insecure.NewCredentials()))
 		setup.gWithT.Expect(err).NotTo(HaveOccurred())
 		setup.fakeDialer.DialReturnsOnCall(24, cc, nil)
 
@@ -802,7 +815,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 			setup.fakeDialer.DialReturnsOnCall(i, nil, fmt.Errorf("fake-dial-error"))
 		}
 		// success
-		cc, err := grpc.Dial("localhost", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		cc, err := grpc.Dial("localhost:6005", grpc.WithTransportCredentials(insecure.NewCredentials()))
 		setup.gWithT.Expect(err).NotTo(HaveOccurred())
 		require.NotNil(t, cc)
 		setup.fakeDialer.DialReturns(cc, nil)
@@ -837,9 +850,10 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		require.True(t, proto.Equal(block2, &common.Block{Header: &common.BlockHeader{Number: 7}}))
 
 		t.Log("block progress is reported correctly")
-		bNum, bTime := setup.d.BlockProgress()
-		require.Equal(t, uint64(7), bNum)
-		require.True(t, bTime.After(startTime))
+		require.Eventually(t, func() bool {
+			bNum, bTime := setup.d.BlockProgress()
+			return uint64(7) == bNum && bTime.After(startTime)
+		}, 5*time.Second, 10*time.Millisecond)
 
 		setup.gWithT.Expect(setup.fakeDialer.DialCallCount()).Should(Equal(25))
 
@@ -880,7 +894,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		}
 
 		// success at attempt 80, 160 and >=240, should reset total sleep time
-		cc, err := grpc.Dial("localhost", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		cc, err := grpc.Dial("localhost:6005", grpc.WithTransportCredentials(insecure.NewCredentials()))
 		setup.gWithT.Expect(err).NotTo(HaveOccurred())
 		require.NotNil(t, cc)
 		setup.fakeDialer.DialReturns(cc, nil)
@@ -931,10 +945,11 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		setup.stop()
 	})
 
-	t.Run("Config block is valid, updates verifier", func(t *testing.T) {
+	t.Run("Config block is valid, updates verifier, updates connection-source", func(t *testing.T) {
 		flogging.ActivateSpec("debug")
 		setup := newBFTDelivererTestSetup(t)
 		setup.initialize(t)
+		setup.gWithT.Eventually(setup.fakeOrdererConnectionSource.UpdateCallCount).Should(Equal(1))
 		startTime := time.Now()
 
 		t.Log("block progress is reported correctly before start")
@@ -958,7 +973,9 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 						ChannelId: "test-chain",
 					}),
 				},
-				Data: []byte("test bytes"),
+				Data: protoutil.MarshalOrPanic(&common.ConfigEnvelope{
+					Config: setup.channelConfig, // it must be a legal config that can produce a new bundle
+				}),
 			}),
 		}
 
@@ -1003,12 +1020,16 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 			}))
 
 		t.Log("update config on verifier")
-		require.Equal(t, 1, setup.fakeUpdatableBlockVerifier.UpdateConfigCallCount())
+		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.UpdateConfigCallCount).Should(Equal(1))
 
 		t.Log("block progress is reported correctly")
-		bNum2, bTime2 := setup.d.BlockProgress()
-		require.Equal(t, uint64(7), bNum2)
-		require.True(t, bTime2.After(bTime))
+		require.Eventually(t, func() bool {
+			bNum2, bTime2 := setup.d.BlockProgress()
+			return uint64(7) == bNum2 && bTime2.After(bTime)
+		}, 5*time.Second, 100*time.Millisecond)
+
+		t.Log("updated orderer source")
+		setup.gWithT.Eventually(setup.fakeOrdererConnectionSource.UpdateCallCount).Should(Equal(2))
 
 		setup.stop()
 	})

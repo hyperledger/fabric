@@ -9,6 +9,11 @@ package blocksprovider
 import (
 	"math"
 	"time"
+
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 )
 
 type errRefreshEndpoint struct {
@@ -82,4 +87,27 @@ func numRetries2Max(base float64, minDur, maxDur time.Duration) int {
 type timeNumber struct {
 	t time.Time
 	n uint64
+}
+
+func extractAddresses(channelID string, config *cb.Config, cryptoProvider bccsp.BCCSP) ([]string, map[string]orderers.OrdererOrg, error) {
+	bundle, err := channelconfig.NewBundle(channelID, config, cryptoProvider)
+	if err != nil {
+		return nil, nil, err
+	}
+	globalAddresses := bundle.ChannelConfig().OrdererAddresses()
+	orgAddresses := map[string]orderers.OrdererOrg{}
+	if ordererConfig, ok := bundle.OrdererConfig(); ok {
+		for orgName, org := range ordererConfig.Organizations() {
+			var certs [][]byte
+			certs = append(certs, org.MSP().GetTLSRootCerts()...)
+			certs = append(certs, org.MSP().GetTLSIntermediateCerts()...)
+
+			orgAddresses[orgName] = orderers.OrdererOrg{
+				Addresses: org.Endpoints(),
+				RootCerts: certs,
+			}
+		}
+	}
+
+	return globalAddresses, orgAddresses, nil
 }
