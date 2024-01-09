@@ -87,7 +87,7 @@ Ordering service nodes have an identity of their own, and are managed by an admi
 
 For more information see the [Ordering Nodes and Identity topic](./orderer/ordering_service.html#orderer-nodes-and-identity) and [Ordering Node Deployment and Administration topic](./deployorderer/ordererdeploy.html).
 
-## Tranport Layer Security (TLS)
+## Transport Layer Security (TLS)
 
 Fabric supports secure communication between nodes using Transport Layer Security (TLS).
 TLS communication can use both one-way (server only) and two-way (server and client) authentication.

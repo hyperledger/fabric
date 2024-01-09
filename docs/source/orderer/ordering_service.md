@@ -39,7 +39,7 @@ policies that the relevant administrators set when they created the channel.
 Configuration transactions are processed by the orderer,
 as it needs to know the current set of policies to execute its basic
 form of access control. In this case, the orderer processes the
-configuration update to make sure that the requestor has the proper
+configuration update to make sure that the requester has the proper
 administrative rights. If so, the orderer validates the update request against
 the existing configuration, generates a new configuration transaction,
 and packages it into a block that is relayed to all peers on the channel. The
@@ -367,7 +367,7 @@ the BFT protocol withstands failures of up to (and not including) a third of the
 If a third or more of the nodes crash or are unreachable, no blocks can be agreed upon.
 
 The advantage of the BFT orderer over the Raft orderer is that it can withstand some of the nodes being compromised.
-Indeed, if up to (but not including) a third of the orderer nodes are controlled by a malicous party,
+Indeed, if up to (but not including) a third of the orderer nodes are controlled by a malicious party,
 the system can still accept new transactions, order them, and most importantly ensure the same blocks are committed
 by the rest of the ordering nodes. This is in contrast to Raft, which is not suitable to be deployed in such a harsh adversary model.
 
