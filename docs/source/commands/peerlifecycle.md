@@ -511,7 +511,7 @@ This command will be useful, for example, in the following cases:
   * To check whether a particular chaincode package is installed or not without
   installing that package.
 
-Calcuate the package ID for the `mycc.tar.gz` package:
+Calculate the package ID for the `mycc.tar.gz` package:
 
 ```
 peer lifecycle chaincode calculatepackageid mycc.tar.gz

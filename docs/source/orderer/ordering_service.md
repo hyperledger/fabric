@@ -39,7 +39,7 @@ policies that the relevant administrators set when they created the consortium
 or the channel. Configuration transactions are processed by the orderer,
 as it needs to know the current set of policies to execute its basic
 form of access control. In this case, the orderer processes the
-configuration update to make sure that the requestor has the proper
+configuration update to make sure that the requester has the proper
 administrative rights. If so, the orderer validates the update request against
 the existing configuration, generates a new configuration transaction,
 and packages it into a block that is relayed to all peers on the channel. The
