@@ -189,7 +189,7 @@ Finally, you need to ensure Docker Desktop has integration enabled for your dist
 
 ### Microsoft VS Code (Optional)
 
-Microsoft VS Code provides an IDE that has tight integration with WSL2 Linux Distibutions. Search the Microsoft Marketplace in VS Code for the Remote Development extension pack for more information. This pack includes, among other things, the `Remote - WSL extension` and the `Remote - Containers` extension.
+Microsoft VS Code provides an IDE that has tight integration with WSL2 Linux Distributions. Search the Microsoft Marketplace in VS Code for the Remote Development extension pack for more information. This pack includes, among other things, the `Remote - WSL extension` and the `Remote - Containers` extension.
 
 ### Git For Windows (Optional)
 
