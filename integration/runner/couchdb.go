@@ -23,7 +23,7 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
-const CouchDBDefaultImage = "couchdb:3.3.2"
+const CouchDBDefaultImage = "couchdb:3.3.3"
 const CouchDBUsername = "admin"
 const CouchDBPassword = "adminpw"
 
