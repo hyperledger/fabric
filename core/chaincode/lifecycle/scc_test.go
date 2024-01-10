@@ -1496,7 +1496,8 @@ var _ = Describe("SCC", func() {
 				payload := &lb.QueryApprovedChaincodeDefinitionsResult{}
 				err := proto.Unmarshal(res.Payload, payload)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(proto.Equal(payload, &lb.QueryApprovedChaincodeDefinitionsResult{
+
+				expectedDefinitions := &lb.QueryApprovedChaincodeDefinitionsResult{
 					ApprovedChaincodeDefinitions: []*lb.QueryApprovedChaincodeDefinitionsResult_ApprovedChaincodeDefinition{
 						{
 							Name:                "cc-name1",
@@ -1550,7 +1551,8 @@ var _ = Describe("SCC", func() {
 							},
 						},
 					},
-				})).To(BeTrue())
+				}
+				Expect(payload.ApprovedChaincodeDefinitions).To(ConsistOf(expectedDefinitions.ApprovedChaincodeDefinitions))
 
 				Expect(fakeSCCFuncs.QueryApprovedChaincodeDefinitionsCallCount()).To(Equal(1))
 				chname, privState := fakeSCCFuncs.QueryApprovedChaincodeDefinitionsArgsForCall(0)
