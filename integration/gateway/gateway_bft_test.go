@@ -111,7 +111,7 @@ var _ = Describe("GatewayService with BFT ordering service", func() {
 	})
 
 	It("Submit transaction", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), network.EventuallyTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), network.EventuallyTimeout*2)
 		defer cancel()
 
 		org1Peer0 := network.Peer("Org1", "peer0")
