@@ -46,12 +46,10 @@ var (
 	chaincodeCtorJSON   string
 	chaincodePath       string
 	chaincodeName       string
-	chaincodeUsr        string // Not used
 	chaincodeQueryRaw   bool
 	chaincodeQueryHex   bool
 	channelID           string
 	chaincodeVersion    string
-	policy              string
 	transient           string
 	isInit              bool
 	peerAddresses       []string
@@ -91,12 +89,8 @@ func resetFlags() {
 		"Name of the chaincode")
 	flags.StringVarP(&chaincodeVersion, "version", "v", common.UndefinedParamValue,
 		"Version of the chaincode specified in install/instantiate/upgrade commands")
-	flags.StringVarP(&chaincodeUsr, "username", "u", common.UndefinedParamValue,
-		"Username for chaincode operations when security is enabled")
 	flags.StringVarP(&channelID, "channelID", "C", "",
 		"The channel on which this command should be executed")
-	flags.StringVarP(&policy, "policy", "P", common.UndefinedParamValue,
-		"The endorsement policy associated to this chaincode")
 	flags.BoolVarP(&isInit, "isInit", "I", false,
 		"Is this invocation for init (useful for supporting legacy chaincodes in the new lifecycle)")
 	flags.StringArrayVarP(&peerAddresses, "peerAddresses", "", []string{common.UndefinedParamValue},
