@@ -602,6 +602,16 @@ You can use this command to see the details (including package ID) of approved c
     Approved chaincode definition for chaincode 'mycc' on channel 'mychannel':
     sequence: 3, version: 3, init-required: false, package-id: mycc_1:d02f72000e7c0f715840f51cb8d72d70bc1ba230552f8445dded0ec8b6e0b830, endorsement plugin: escc, validation plugin: vscc
     ```
+  * You can also specify just the channel name in order to query all approved chaincode definitions on that channel.
+
+    ```
+    peer lifecycle chaincode queryapproved -C mychannel
+
+    Approved chaincode definitions on channel 'mychannel':
+    name: basic2, sequence: 2, version: 2.0.1, init-required: false, package-id: basic2_2.0.1:e916ea95517939e1fed9d9bf3b4179b5a301a9fe303d447d9d79220666ff15ff, endorsement plugin: escc, validation plugin: vscc
+    name: basic, sequence: 1, version: 1.0.1, init-required: false, package-id: basic_1.0.1:f4babb5fd92c0ab4bce8c6ac30ca7bbb4a55e6c37774582d11639b6036ae0273, endorsement plugin: escc, validation plugin: vscc
+    name: basic2, sequence: 1, version: 1.0.1, init-required: false, package-id: basic2_1.0.1.1:dae4dca432d56265e87e6416b602b40e94e7f7cdc177031abda1c81d9ed4258a, endorsement plugin: escc, validation plugin: vscc
+    ```
 
   * You can also use the `--output` flag to have the CLI format the output as
     JSON.
@@ -654,6 +664,69 @@ You can use this command to see the details (including package ID) of approved c
             "Unavailable": {}
           }
         }
+      }
+      ```
+
+    - For querying all approved definitions on that channel
+
+      ```
+      peer lifecycle chaincode queryapproved -C mychannel --output json
+      ```
+
+      If successful, the command will return a JSON that has approved chaincode definitions on channel 'mychannel'.
+
+      ```
+      {
+        "approved_chaincode_definitions": [
+          {
+            "name": "basic2",
+            "sequence": 2,
+            "version": "2.0.1",
+            "endorsement_plugin": "escc",
+            "validation_plugin": "vscc",
+            "validation_parameter": "EiAvQ2hhbm5lbC9BcHBsaWNhdGlvbi9FbmRvcnNlbWVudA==",
+            "collections": {},
+            "source": {
+              "Type": {
+                "LocalPackage": {
+                  "package_id": "basic2_2.0.1:e916ea95517939e1fed9d9bf3b4179b5a301a9fe303d447d9d79220666ff15ff"
+                }
+              }
+            }
+          },
+          {
+            "name": "basic",
+            "sequence": 1,
+            "version": "1.0.1",
+            "endorsement_plugin": "escc",
+            "validation_plugin": "vscc",
+            "validation_parameter": "EiAvQ2hhbm5lbC9BcHBsaWNhdGlvbi9FbmRvcnNlbWVudA==",
+            "collections": {},
+            "source": {
+              "Type": {
+                "LocalPackage": {
+                  "package_id": "basic_1.0.1:f4babb5fd92c0ab4bce8c6ac30ca7bbb4a55e6c37774582d11639b6036ae0273"
+                }
+              }
+            }
+          },
+          {
+            "name": "basic2",
+            "sequence": 1,
+            "version": "1.0.1",
+            "endorsement_plugin": "escc",
+            "validation_plugin": "vscc",
+            "validation_parameter": "EiAvQ2hhbm5lbC9BcHBsaWNhdGlvbi9FbmRvcnNlbWVudA==",
+            "collections": {},
+            "source": {
+              "Type": {
+                "LocalPackage": {
+                  "package_id": "basic2_1.0.1:dae4dca432d56265e87e6416b602b40e94e7f7cdc177031abda1c81d9ed4258a"
+                }
+              }
+            }
+          }
+        ]
       }
       ```
 
