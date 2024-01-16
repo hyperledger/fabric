@@ -60,7 +60,8 @@ var _ = Describe("GatewayService with BFT ordering service", func() {
 
 		ordererProcesses = make(map[string]ifrit.Process)
 		for _, orderer := range network.Orderers {
-			runner := network.OrdererRunner(orderer)
+			runner := network.OrdererRunner(orderer,
+				"ORDERER_GENERAL_BACKOFF_MAXDELAY=20s")
 			proc := ifrit.Invoke(runner)
 			ordererProcesses[orderer.Name] = proc
 			Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
@@ -172,7 +173,8 @@ var _ = Describe("GatewayService with BFT ordering service", func() {
 		Eventually(peerGinkgoRunner[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(lastDateTime))
 
 		By("Restarting orderer2")
-		runner := network.OrdererRunner(network.Orderers[1])
+		runner := network.OrdererRunner(network.Orderers[1],
+			"ORDERER_GENERAL_BACKOFF_MAXDELAY=20s")
 		ordererProcesses["orderer2"] = ifrit.Invoke(runner)
 		Eventually(ordererProcesses["orderer2"].Ready(), network.EventuallyTimeout).Should(BeClosed())
 		// wait peer conecting to orderer2
