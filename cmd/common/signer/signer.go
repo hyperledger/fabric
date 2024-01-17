@@ -95,7 +95,7 @@ func validateEnrollmentCertificate(b []byte) error {
 
 func (si *Signer) Sign(msg []byte) ([]byte, error) {
 	switch key := si.key.(type) {
-	// Fabric only supports ECDSA at the moment.
+	// Fabric only supports ECDSA and ed25519 at the moment.
 	case *ecdsa.PrivateKey:
 		digest := util.ComputeSHA256(msg)
 		return signECDSA(si.key.(*ecdsa.PrivateKey), digest)
