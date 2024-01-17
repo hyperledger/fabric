@@ -183,7 +183,7 @@ func (ki *x509PublicKeyImportOptsKeyImporter) KeyImport(raw interface{}, opts bc
 			&bccsp.ED25519GoPublicKeyImportOpts{Temporary: opts.Ephemeral()})
 	case *rsa.PublicKey:
 		// This path only exists to support environments that use RSA certificate
-		// authorities to issue ECDSA certificates.
+		// authorities to issue ECDSA and ed25519 certificates.
 		return &rsaPublicKey{pubKey: pk}, nil
 	default:
 		return nil, errors.New("Certificate's public key type not recognized. Supported keys: [ECDSA, ED25519, RSA]")
