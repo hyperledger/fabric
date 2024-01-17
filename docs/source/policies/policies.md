@@ -251,6 +251,8 @@ channel policies are defined. We can use the `configtx.yaml` file in the Fabric
 test network to see examples of both policy syntax types. We are going to examine
 the configtx.yaml file used by the [fabric-samples/test-network](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/test-network/configtx/configtx.yaml) sample.
 
+### Member Organizations Section
+
 The first section of the file defines the organizations of the network. Inside each
 organization definition are the default policies for that organization, `Readers`, `Writers`,
 `Admins`, and `Endorsement`, although you can name your policies anything you want.
@@ -265,11 +267,11 @@ become the sub-policies that the ImplicitMeta policies point to.
 
 <details>
   <summary>
-    **Click here to see an example of an organization defined with signature policies**
+    <strong>Click here to see an example of an organization defined with signature policies</strong>
   </summary>
 
-```
- - &Org1
+  ```
+  - &Org1
         # DefaultOrg defines the organization which is used in the sampleconfig
         # of the fabric.git development environment
         Name: Org1MSP
@@ -295,8 +297,12 @@ become the sub-policies that the ImplicitMeta policies point to.
             Endorsement:
                 Type: Signature
                 Rule: "OR('Org1MSP.peer')"
-```
+  ```
 </details>
+&nbsp;&nbsp;
+
+
+### Application and Roles Section
 
 The next example shows the `ImplicitMeta` policy type used in the `Application`
 section of the `configtx.yaml`. These set of policies lie on the
@@ -313,18 +319,19 @@ create.
 
 <details>
   <summary>
-    **Click here to see an example of ImplicitMeta policies**
+    <strong>Click here to see an example of ImplicitMeta policies</strong>
   </summary>
-```
-################################################################################
-#
-#   SECTION: Application
-#
-#   - This section defines the values to encode into a config transaction or
-#   genesis block for application related parameters
-#
-################################################################################
-Application: &ApplicationDefaults
+
+  ```
+  ################################################################################
+  #
+  #   SECTION: Application
+  #
+  #   - This section defines the values to encode into a config transaction or
+  #   genesis block for application related parameters
+  #
+  ################################################################################
+  Application: &ApplicationDefaults
 
     # Organizations is the list of orgs which are defined as participants on
     # the application side of the network
@@ -349,8 +356,10 @@ Application: &ApplicationDefaults
         Endorsement:
             Type: ImplicitMeta
             Rule: "MAJORITY Endorsement"
-```
+  ```
 </details>
+
+&nbsp;&nbsp;
 
 ## Fabric chaincode lifecycle
 
@@ -370,16 +379,21 @@ The `Application` section of  the `configtx.yaml` file includes the default
 chaincode lifecycle endorsement policy. In a production environment you would
 customize this definition for your own use case.
 
-```
-################################################################################
-#
-#   SECTION: Application
-#
-#   - This section defines the values to encode into a config transaction or
-#   genesis block for application related parameters
-#
-################################################################################
-Application: &ApplicationDefaults
+<details>
+  <summary>
+    <strong>Click here to see an example of ImplicitMeta policies</strong>
+  </summary>
+
+  ```
+  ################################################################################
+  #
+  #   SECTION: Application
+  #
+  #   - This section defines the values to encode into a config transaction or
+  #   genesis block for application related parameters
+  #
+  ################################################################################
+  Application: &ApplicationDefaults
 
     # Organizations is the list of orgs which are defined as participants on
     # the application side of the network
@@ -404,7 +418,8 @@ Application: &ApplicationDefaults
         Endorsement:
             Type: ImplicitMeta
             Rule: "MAJORITY Endorsement"
-```
+  ```
+</details>
 
 - The `LifecycleEndorsement` policy governs who needs to _approve a chaincode
 definition_.
