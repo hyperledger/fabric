@@ -12,6 +12,8 @@ import (
 	"path"
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+
 	"github.com/SmartBFT-Go/consensus/pkg/types"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
@@ -38,6 +40,12 @@ func newMockOrdererConfig(migration bool, state orderer.ConsensusType_State) *mo
 	mockOrderer.CapabilitiesReturns(mockCapabilities)
 	mockOrderer.ConsensusTypeReturns("etcdraft")
 	mockOrderer.ConsensusStateReturns(state)
+	mockOrderer.ConsensusMetadataReturns(protoutil.MarshalOrPanic(&etcdraft.ConfigMetadata{
+		Consenters: []*etcdraft.Consenter{
+			{Host: "127.0.0.1", Port: 4000, ClientTlsCert: []byte{1, 2, 3}, ServerTlsCert: []byte{4, 5, 6}},
+			{Host: "127.0.0.1", Port: 4001, ClientTlsCert: []byte{7, 8, 9}, ServerTlsCert: []byte{1, 2, 3}},
+		},
+	}))
 	return mockOrderer
 }
 
@@ -61,10 +69,11 @@ func TestMaintenanceDisabled(t *testing.T) {
 	require.NoError(t, err)
 	mf := NewMaintenanceFilter(msInactive, cryptoProvider)
 	require.NotNil(t, mf)
-	current := consensusTypeInfo{ordererType: "etcdraft", metadata: []byte{}, state: orderer.ConsensusType_STATE_NORMAL}
+	raftMetadata := protoutil.MarshalOrPanic(&etcdraft.ConfigMetadata{Consenters: []*etcdraft.Consenter{{Host: "127.0.0.1", Port: 4000, ClientTlsCert: []byte{1, 2, 3}, ServerTlsCert: []byte{4, 5, 6}}, {Host: "127.0.0.1", Port: 4001, ClientTlsCert: []byte{7, 8, 9}, ServerTlsCert: []byte{1, 2, 3}}}})
+	current := consensusTypeInfo{ordererType: "etcdraft", metadata: raftMetadata, state: orderer.ConsensusType_STATE_NORMAL}
 
 	t.Run("Good", func(t *testing.T) {
-		configTx := makeConfigEnvelopeWithExtraStuff(t, current, current, 3)
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, current, 3, 0)
 		err := mf.Apply(configTx)
 		require.NoError(t, err)
 	})
@@ -173,12 +182,12 @@ func TestMaintenanceInspectEntry(t *testing.T) {
 	mf := NewMaintenanceFilter(msActive, cryptoProvider)
 	require.NotNil(t, mf)
 	bogusMetadata := []byte{1, 2, 3, 4}
-	validMetadata := []byte{}
+	validRaftMetadata := protoutil.MarshalOrPanic(&etcdraft.ConfigMetadata{Consenters: []*etcdraft.Consenter{{Host: "127.0.0.1", Port: 4000, ClientTlsCert: []byte{1, 2, 3}, ServerTlsCert: []byte{4, 5, 6}}, {Host: "127.0.0.1", Port: 4001, ClientTlsCert: []byte{7, 8, 9}, ServerTlsCert: []byte{1, 2, 3}}}})
 	bftMetadata := protoutil.MarshalOrPanic(createValidBFTMetadata())
-	current := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
+	current := consensusTypeInfo{ordererType: "etcdraft", metadata: validRaftMetadata, state: orderer.ConsensusType_STATE_NORMAL}
 
 	t.Run("Good", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validRaftMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
 		configTx := makeConfigEnvelope(t, current, next)
 		err := mf.Apply(configTx)
 		require.NoError(t, err)
@@ -201,8 +210,8 @@ func TestMaintenanceInspectEntry(t *testing.T) {
 	})
 
 	t.Run("Bad: concurrent change to state & orderer value", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
-		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 4)
+		next := consensusTypeInfo{ordererType: "etcdraft", metadata: validRaftMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 0, 1)
 		err := mf.Apply(configTx)
 		require.EqualError(t, err,
 			"config transaction inspection failed: config update contains changes to groups within the Orderer group")
@@ -226,18 +235,19 @@ func TestMaintenanceInspectChange(t *testing.T) {
 	mf := NewMaintenanceFilter(msActive, cryptoProvider)
 	require.NotNil(t, mf)
 	bogusMetadata := []byte{1, 2, 3, 4}
-	validMetadata := protoutil.MarshalOrPanic(createValidBFTMetadata())
-	current := consensusTypeInfo{ordererType: "etcdraft", metadata: []byte{}, state: orderer.ConsensusType_STATE_MAINTENANCE}
+	validBFTMetadata := protoutil.MarshalOrPanic(createValidBFTMetadata())
+	raftMetadata := protoutil.MarshalOrPanic(&etcdraft.ConfigMetadata{Consenters: []*etcdraft.Consenter{{Host: "127.0.0.1", Port: 4000, ClientTlsCert: []byte{1, 2, 3}, ServerTlsCert: []byte{4, 5, 6}}, {Host: "127.0.0.1", Port: 4001, ClientTlsCert: []byte{7, 8, 9}, ServerTlsCert: []byte{1, 2, 3}}}})
+	current := consensusTypeInfo{ordererType: "etcdraft", metadata: raftMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
 
-	t.Run("Good type change with valid BFT metadata and consenter mapping", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
-		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 4)
+	t.Run("Good type change with valid BFT metadata and suitable consenter mapping", func(t *testing.T) {
+		next := consensusTypeInfo{ordererType: "BFT", metadata: validBFTMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 0, 1)
 		err := mf.Apply(configTx)
 		require.NoError(t, err)
 	})
 
 	t.Run("Good exit, no change", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "etcdraft", metadata: []byte{}, state: orderer.ConsensusType_STATE_NORMAL}
+		next := consensusTypeInfo{ordererType: "etcdraft", metadata: raftMetadata, state: orderer.ConsensusType_STATE_NORMAL}
 		configTx := makeConfigEnvelope(t, current, next)
 		err := mf.Apply(configTx)
 		require.NoError(t, err)
@@ -261,6 +271,33 @@ func TestMaintenanceInspectChange(t *testing.T) {
 			"config transaction inspection failed: failed to unmarshal BFT metadata configuration")
 	})
 
+	t.Run("Bad: good type change with valid BFT metadata but missing consenters mapping", func(t *testing.T) {
+		next := consensusTypeInfo{ordererType: "BFT", metadata: validBFTMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		configTx := makeConfigEnvelope(t, current, next)
+		err := mf.Apply(configTx)
+		require.Error(t, err)
+		require.EqualError(t, err,
+			"config transaction inspection failed: invalid BFT consenter mapping configuration: Invalid new config: bft consenters are missing")
+	})
+
+	t.Run("Bad: good type change with valid BFT metadata but corrupt consenters mapping", func(t *testing.T) {
+		next := consensusTypeInfo{ordererType: "BFT", metadata: validBFTMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 0, 2)
+		err := mf.Apply(configTx)
+		require.Error(t, err)
+		require.EqualError(t, err,
+			"config transaction inspection failed: invalid BFT consenter mapping configuration: No suitable BFT consenter for Raft consenter: host:\"127.0.0.1\" port:4000 client_tls_cert:\"\\001\\002\\003\" server_tls_cert:\"\\004\\005\\006\" ")
+	})
+
+	t.Run("Bad: good type change with valid BFT metadata but missing consenters", func(t *testing.T) {
+		next := consensusTypeInfo{ordererType: "BFT", metadata: validBFTMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 0, 3)
+		err := mf.Apply(configTx)
+		require.Error(t, err)
+		require.EqualError(t, err,
+			"config transaction inspection failed: invalid BFT consenter mapping configuration: Invalid new config: the number of bft consenters: 1 is not equal to the number of raft consenters: 2")
+	})
+
 	t.Run("Bad: unsupported consensus type", func(t *testing.T) {
 		next := consensusTypeInfo{ordererType: "unsupported", metadata: bogusMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
 		configTx := makeConfigEnvelope(t, current, next)
@@ -270,7 +307,7 @@ func TestMaintenanceInspectChange(t *testing.T) {
 	})
 
 	t.Run("Bad: concurrent change to consensus type & state", func(t *testing.T) {
-		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
+		next := consensusTypeInfo{ordererType: "BFT", metadata: validBFTMetadata, state: orderer.ConsensusType_STATE_NORMAL}
 		configTx := makeConfigEnvelope(t, current, next)
 		err := mf.Apply(configTx)
 		require.EqualError(t, err,
@@ -318,28 +355,28 @@ func TestMaintenanceInspectExit(t *testing.T) {
 
 	t.Run("Bad: exit with extra group", func(t *testing.T) {
 		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
-		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 1)
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 1, 1)
 		err := mf.Apply(configTx)
 		require.EqualError(t, err, "config transaction inspection failed: config update contains changes to more than one group")
 	})
 
 	t.Run("Bad: exit with extra value", func(t *testing.T) {
 		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
-		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 2)
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 2, 1)
 		err := mf.Apply(configTx)
 		require.EqualError(t, err, "config transaction inspection failed: config update contains changes to values in group Channel")
 	})
 
 	t.Run("Bad: exit with extra orderer value", func(t *testing.T) {
 		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
-		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 3)
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 3, 0)
 		err := mf.Apply(configTx)
 		require.EqualError(t, err, "config transaction inspection failed: config update contain more then just the ConsensusType value in the Orderer group")
 	})
 
 	t.Run("Bad: exit with extra orderer value required for BFT", func(t *testing.T) {
 		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_NORMAL}
-		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 4)
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 0, 1)
 		err := mf.Apply(configTx)
 		require.EqualError(t, err, "config transaction inspection failed: config update contains changes to groups within the Orderer group")
 	})
@@ -353,33 +390,34 @@ func TestMaintenanceExtra(t *testing.T) {
 	require.NoError(t, err)
 	mf := NewMaintenanceFilter(msActive, cryptoProvider)
 	require.NotNil(t, mf)
-	current := consensusTypeInfo{ordererType: "etcdraft", metadata: nil, state: orderer.ConsensusType_STATE_MAINTENANCE}
+	raftMetadata := protoutil.MarshalOrPanic(&etcdraft.ConfigMetadata{Consenters: []*etcdraft.Consenter{{Host: "127.0.0.1", Port: 4000, ClientTlsCert: []byte{1, 2, 3}, ServerTlsCert: []byte{4, 5, 6}}, {Host: "127.0.0.1", Port: 4001, ClientTlsCert: []byte{7, 8, 9}, ServerTlsCert: []byte{1, 2, 3}}}})
+	current := consensusTypeInfo{ordererType: "etcdraft", metadata: raftMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
 	validMetadata := protoutil.MarshalOrPanic(createValidBFTMetadata())
 
 	t.Run("Good: with extra group", func(t *testing.T) {
 		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
-		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 1)
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 1, 1)
 		err := mf.Apply(configTx)
 		require.NoError(t, err)
 	})
 
 	t.Run("Good: with extra value", func(t *testing.T) {
 		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
-		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 2)
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 2, 1)
 		err := mf.Apply(configTx)
 		require.NoError(t, err)
 	})
 
 	t.Run("Good: with extra orderer value", func(t *testing.T) {
 		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
-		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 3)
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 3, 1)
 		err := mf.Apply(configTx)
 		require.NoError(t, err)
 	})
 
 	t.Run("Good: with extra orderer value required for BFT", func(t *testing.T) {
 		next := consensusTypeInfo{ordererType: "BFT", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
-		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 4)
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 0, 1)
 		err := mf.Apply(configTx)
 		require.NoError(t, err)
 	})
@@ -395,7 +433,7 @@ func TestMaintenanceMissingConsensusType(t *testing.T) {
 	require.NotNil(t, mf)
 	current := consensusTypeInfo{ordererType: "etcdraft", metadata: nil, state: orderer.ConsensusType_STATE_MAINTENANCE}
 	for i := 1; i < 4; i++ {
-		configTx := makeConfigEnvelopeWithExtraStuff(t, current, current, i)
+		configTx := makeConfigEnvelopeWithExtraStuff(t, current, current, i, 1)
 		err := mf.Apply(configTx)
 		require.NoError(t, err)
 	}
@@ -436,7 +474,7 @@ func makeConfigEnvelope(t *testing.T, current, next consensusTypeInfo) *common.E
 	return configTx
 }
 
-func makeConfigEnvelopeWithExtraStuff(t *testing.T, current, next consensusTypeInfo, extra int) *common.Envelope {
+func makeConfigEnvelopeWithExtraStuff(t *testing.T, current, next consensusTypeInfo, extra int, addBFTConsenterMapping int) *common.Envelope {
 	original := makeBaseConfig(t)
 	updated := proto.Clone(original).(*common.Config)
 
@@ -479,13 +517,24 @@ func makeConfigEnvelopeWithExtraStuff(t *testing.T, current, next consensusTypeI
 				}),
 			ModPolicy: channelconfig.AdminsPolicyKey,
 		}
-	case 4:
+	}
+
+	switch addBFTConsenterMapping {
+	case 1:
 		updated.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.OrderersKey] = &common.ConfigValue{
-			Value:     protoutil.MarshalOrPanic(&common.Orderers{ConsenterMapping: []*common.Consenter{{Id: 1, Host: "", Port: 0}}}),
+			Value:     protoutil.MarshalOrPanic(&common.Orderers{ConsenterMapping: []*common.Consenter{{Id: 1, Host: "127.0.0.1", Port: 4000, ClientTlsCert: []byte{1, 2, 3}, ServerTlsCert: []byte{4, 5, 6}}, {Id: 2, Host: "127.0.0.1", Port: 4001, ClientTlsCert: []byte{7, 8, 9}, ServerTlsCert: []byte{1, 2, 3}}}}),
 			ModPolicy: channelconfig.AdminsPolicyKey,
 		}
-	default:
-		return nil
+	case 2:
+		updated.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.OrderersKey] = &common.ConfigValue{
+			Value:     protoutil.MarshalOrPanic(&common.Orderers{ConsenterMapping: []*common.Consenter{{Id: 1, Host: "127.0.0.1", Port: 4005, ClientTlsCert: []byte{1, 2, 3}, ServerTlsCert: []byte{4, 5, 6}}, {Id: 2, Host: "127.0.0.1", Port: 4001, ClientTlsCert: []byte{7, 8, 9}, ServerTlsCert: []byte{1, 2, 3}}}}),
+			ModPolicy: channelconfig.AdminsPolicyKey,
+		}
+	case 3:
+		updated.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.OrderersKey] = &common.ConfigValue{
+			Value:     protoutil.MarshalOrPanic(&common.Orderers{ConsenterMapping: []*common.Consenter{{Id: 1, Host: "127.0.0.1", Port: 4000, ClientTlsCert: []byte{1, 2, 3}, ServerTlsCert: []byte{4, 5, 6}}}}),
+			ModPolicy: channelconfig.AdminsPolicyKey,
+		}
 	}
 
 	configTx := makeConfigTx(original, updated, t)

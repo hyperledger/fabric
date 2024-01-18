@@ -553,7 +553,8 @@ var _ = Describe("Chain", func() {
 								"ConsensusType": {
 									Version: 4,
 									Value: marshalOrPanic(&orderer.ConsensusType{
-										Type: "etcdraft",
+										Type:     "etcdraft",
+										Metadata: []byte{1, 2, 3},
 									}),
 								},
 							}
@@ -561,7 +562,8 @@ var _ = Describe("Chain", func() {
 								"ConsensusType": {
 									Version: 4,
 									Value: marshalOrPanic(&orderer.ConsensusType{
-										Type: "etcdraft",
+										Type:     "etcdraft",
+										Metadata: []byte{1, 2, 3},
 									}),
 								},
 							}

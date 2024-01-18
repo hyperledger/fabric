@@ -413,6 +413,8 @@ func TestVerifyConfigMetadata(t *testing.T) {
 	})
 }
 
+// This test checks that MetadataFromConfigValue, which reads and translates configuration updates from config value,
+// returns an empty raft metadata when the consensus type is BFT.
 func TestMetadataFromConfigValue(t *testing.T) {
 	configValue := &common.ConfigValue{
 		Value: protoutil.MarshalOrPanic(&orderer.ConsensusType{

@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/SmartBFT-Go/consensus/pkg/types"
-
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -142,8 +142,13 @@ func (mf *MaintenanceFilter) inspect(configEnvelope *cb.ConfigEnvelope, ordererC
 			}
 
 			_, err := validateBFTMetadataOptions(1, updatedMetadata)
-			if updatedMetadata.XXX_unrecognized != nil || err != nil {
+			if err != nil {
 				return errors.New("invalid BFT metadata configuration")
+			}
+
+			err = validateBFTConsenterMapping(ordererConfig, nextOrdererConfig)
+			if err != nil {
+				return errors.Wrap(err, "invalid BFT consenter mapping configuration")
 			}
 		}
 
@@ -259,4 +264,39 @@ func validateBFTMetadataOptions(selfID uint64, options *smartbft.Options) (types
 	}
 
 	return config, nil
+}
+
+func validateBFTConsenterMapping(currentOrdererConfig channelconfig.Orderer, nextOrdererConfig channelconfig.Orderer) error {
+	// extract raft consenters from consensusTypeValue.metadata
+	raftMetadata := &etcdraft.ConfigMetadata{}
+	proto.Unmarshal(currentOrdererConfig.ConsensusMetadata(), raftMetadata)
+	raftConsenters := raftMetadata.GetConsenters()
+
+	// extract bft consenters
+	bftConsenters := nextOrdererConfig.Consenters()
+
+	if len(bftConsenters) == 0 {
+		return errors.Errorf("Invalid new config: bft consenters are missing")
+	}
+
+	if len(raftConsenters) != len(bftConsenters) {
+		return errors.Errorf("Invalid new config: the number of bft consenters: %d is not equal to the number of raft consenters: %d", len(bftConsenters), len(raftConsenters))
+	}
+
+	for _, raftConsenter := range raftConsenters {
+		flag := false
+		for _, bftConsenter := range bftConsenters {
+			if raftConsenter.Port == bftConsenter.Port && raftConsenter.Host == bftConsenter.Host &&
+				bytes.Equal(raftConsenter.ServerTlsCert, bftConsenter.ServerTlsCert) &&
+				bytes.Equal(raftConsenter.ClientTlsCert, bftConsenter.ClientTlsCert) {
+				flag = true
+				break
+			}
+		}
+		if !flag {
+			return errors.Errorf("No suitable BFT consenter for Raft consenter: %v", raftConsenter)
+		}
+	}
+
+	return nil
 }

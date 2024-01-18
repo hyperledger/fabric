@@ -92,9 +92,7 @@ func MetadataFromConfigValue(configValue *common.ConfigValue) (*etcdraft.ConfigM
 	}
 
 	if consensusTypeValue.Type != "etcdraft" {
-		if consensusTypeValue.Type == "BFT" {
-			return nil, consensusTypeValue, nil
-		}
+		return nil, consensusTypeValue, nil
 	}
 
 	updatedMetadata := &etcdraft.ConfigMetadata{}

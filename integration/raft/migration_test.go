@@ -80,6 +80,8 @@ var _ = Describe("ConsensusTypeMigration", func() {
 	// This test restarts the orderers and ensures they operate under the new configuration.
 	Describe("Raft to BFT migration", func() {
 		It("migrates from Raft to BFT", func() {
+			// === Step 1: Create and run Raft based system with 4 nodes ===
+			By("1) Starting Raft based system with 4 nodes")
 			networkConfig := nwo.MultiNodeEtcdRaft()
 			networkConfig.Orderers = append(networkConfig.Orderers, &nwo.Orderer{Name: "orderer4", Organization: "OrdererOrg"})
 			networkConfig.Profiles[0].Orderers = []string{"orderer1", "orderer2", "orderer3", "orderer4"}
@@ -117,7 +119,8 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3, o4)
 			FindLeader([]*ginkgomon.Runner{o1Runner, o2Runner, o3Runner, o4Runner})
 
-			By("performing operation with orderer1")
+			// === Step 2: Create a transaction with orderer1 ===
+			By("2) Performing operation with orderer1")
 			env := CreateBroadcastEnvelope(network, o1, "testchannel", []byte("foo"))
 			resp, err := ordererclient.Broadcast(network, o1, env)
 			Expect(err).NotTo(HaveOccurred())
@@ -126,25 +129,27 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			block := FetchBlock(network, o1, 1, "testchannel")
 			Expect(block).NotTo(BeNil())
 
-			By("Change to maintenance mode")
-
+			// === Step 3: Config update on standard channel, State=MAINTENANCE, enter maintenance-mode ===
+			By("3) Change to maintenance mode")
 			peer := network.Peer("Org1", "peer0")
-
-			By("Config update on standard channel, State=MAINTENANCE, enter maintenance-mode")
 			config, updatedConfig := prepareTransition(network, peer, o1, "testchannel",
 				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
-				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE, 0)
 			nwo.UpdateOrdererConfig(network, o1, "testchannel", config, updatedConfig, peer, o1)
 
-			By("Config updates: migration from Raft to BFT")
+			// === Step 4: Config update, State=MAINTENANCE, type=BFT ===
+			By("4) Config updates: migration from Raft to BFT")
 
 			bftMetadata := protoutil.MarshalOrPanic(prepareBftMetadata())
 
 			config, updatedConfig = prepareTransition(network, peer, o1, "testchannel",
 				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
-				"BFT", bftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
+				"BFT", bftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE, 1)
 			currentBlockNumber := nwo.CurrentConfigBlockNumber(network, peer, o1, "testchannel")
 			nwo.UpdateOrdererConfig(network, o1, "testchannel", config, updatedConfig, peer, o1)
+
+			// === Step 5: Check block reception in all orderers and restart all orderers ===
+			By("5) Checking all orderers received the last block and restarting all orderers")
 
 			// check block was committed in all orderers
 			assertBlockReceptionInAllOrderers(network.Orderers[1:], peer, network, "testchannel", currentBlockNumber)
@@ -158,19 +163,22 @@ var _ = Describe("ConsensusTypeMigration", func() {
 
 			runOrderers()
 
-			By("Waiting for followers to see the leader, again")
+			// === Step 6: Waiting for followers to see the leader, again ===
+			By("6) Waiting for followers to see the leader, again")
 			Eventually(o2Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1 channel=testchannel"))
 			Eventually(o3Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1 channel=testchannel"))
 			Eventually(o4Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1 channel=testchannel"))
 
-			// Exit maintenance mode
+			// === Step 7: Config update on standard channel, State=NORMAL, exit maintenance-mode ===
+			By("7) Exit maintenance mode")
 			config, updatedConfig = prepareTransition(network, peer, o1, "testchannel",
 				"BFT", protosorderer.ConsensusType_STATE_MAINTENANCE,
-				"BFT", bftMetadata, protosorderer.ConsensusType_STATE_NORMAL)
+				"BFT", bftMetadata, protosorderer.ConsensusType_STATE_NORMAL, 1)
 			currentBlockNumber = nwo.CurrentConfigBlockNumber(network, peer, o1, "testchannel")
 			nwo.UpdateOrdererConfig(network, o1, "testchannel", config, updatedConfig, peer, o1)
 
-			// Now, run a transaction to ensure BFT works.
+			// === Step 8: Run a transaction to ensure BFT works ===
+			By("8) Running a transaction with orderer1 to ensure BFT works and check that the tx was committed in all orderers")
 			env = CreateBroadcastEnvelope(network, o1, "testchannel", []byte("foo"))
 			resp, err = ordererclient.Broadcast(network, o1, env)
 			Expect(err).NotTo(HaveOccurred())
@@ -236,14 +244,14 @@ var _ = Describe("ConsensusTypeMigration", func() {
 		// The green path is entering maintenance mode, and then changing the consensus type.
 		// In maintenance mode we check that normal transactions are blocked.
 		// We also check that after entering maintenance mode, we can exit it without making any changes - the "abort path".
-		It("executes raft2future green path", func() {
+		It("executes raft2fbft green path with extra checks", func() {
 			// === The abort path ======================================================================================
 
 			// === Step 1: Config update on standard channel, MAINTENANCE ===
 			By("1) Config update on standard channel, State=MAINTENANCE, enter maintenance-mode")
 			config, updatedConfig := prepareTransition(network, peer, o1, "testchannel",
 				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
-				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE, 0)
 			nwo.UpdateOrdererConfig(network, o1, "testchannel", config, updatedConfig, peer, o1)
 
 			By("1) Verify: standard channel config changed")
@@ -265,7 +273,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			By("2) Config update on standard channel, State=NORMAL, exit maintenance-mode - abort path")
 			config, updatedConfig = prepareTransition(network, peer, o1, "testchannel",
 				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
-				"etcdraft", nil, protosorderer.ConsensusType_STATE_NORMAL)
+				"etcdraft", nil, protosorderer.ConsensusType_STATE_NORMAL, 0)
 			nwo.UpdateOrdererConfig(network, o1, "testchannel", config, updatedConfig, peer, o1)
 
 			By("2) Verify: standard channel config changed")
@@ -285,7 +293,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			By("3) Config update on standard channel, State=MAINTENANCE, enter maintenance-mode again")
 			config, updatedConfig = prepareTransition(network, peer, o1, "testchannel",
 				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
-				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE, 0)
 			nwo.UpdateOrdererConfig(network, o1, "testchannel", config, updatedConfig, peer, o1)
 
 			By("3) Verify: standard channel config changed")
@@ -309,32 +317,19 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			By("4) config update on standard channel, State=MAINTENANCE, type=BFT")
 			config, updatedConfig = prepareTransition(network, peer, o1, "testchannel",
 				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
-				"BFT", bftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
+				"BFT", bftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE, 1)
 			nwo.UpdateOrdererConfig(network, o1, "testchannel", config, updatedConfig, peer, o1)
 
 			By("4) Verify: standard channel config changed")
 			std1EntryBlockNum = nwo.CurrentConfigBlockNumber(network, peer, o1, "testchannel")
 			Expect(std1EntryBlockNum).To(Equal(uint64(5)))
 
-			config = nwo.GetConfig(network, peer, o1, "testchannel")
-			consensusTypeValue = extractOrdererConsensusType(config)
-			validateConsensusTypeValue(consensusTypeValue, "BFT", protosorderer.ConsensusType_STATE_MAINTENANCE)
-
-			By("4) Verify: validate consensus type value in all orderers")
-			// orderer2
-			config = nwo.GetConfig(network, peer, o2, "testchannel")
-			consensusTypeValue = extractOrdererConsensusType(config)
-			validateConsensusTypeValue(consensusTypeValue, "BFT", protosorderer.ConsensusType_STATE_MAINTENANCE)
-
-			// orderer3
-			config = nwo.GetConfig(network, peer, o3, "testchannel")
-			consensusTypeValue = extractOrdererConsensusType(config)
-			validateConsensusTypeValue(consensusTypeValue, "BFT", protosorderer.ConsensusType_STATE_MAINTENANCE)
-
-			// orderer4
-			config = nwo.GetConfig(network, peer, o4, "testchannel")
-			consensusTypeValue = extractOrdererConsensusType(config)
-			validateConsensusTypeValue(consensusTypeValue, "BFT", protosorderer.ConsensusType_STATE_MAINTENANCE)
+			By("4) Verify: validate consensus type value in all orderers o1, o2, o3, o4")
+			for _, o := range []*nwo.Orderer{o1, o2, o3, o4} {
+				config = nwo.GetConfig(network, peer, o, "testchannel")
+				consensusTypeValue = extractOrdererConsensusType(config)
+				validateConsensusTypeValue(consensusTypeValue, "BFT", protosorderer.ConsensusType_STATE_MAINTENANCE)
+			}
 		})
 
 		// This test executes the migration flow and checks that forbidden transitions are rejected.
@@ -342,18 +337,18 @@ var _ = Describe("ConsensusTypeMigration", func() {
 		// - Entry to & exit from maintenance mode can only change ConsensusType.State.
 		// - In maintenance mode one can only change ConsensusType.Type & ConsensusType.Metadata & Orderers.ConsenterMapping.
 		// - ConsensusType.Type can only change from "etcdraft" to "BFT", and only in maintenance mode.
-		It("executes raft2future forbidden transitions", func() {
+		It("executes raft2bft forbidden transitions", func() {
 			// === Step 1: ===
 			By("1) Config update on standard channel, changing both ConsensusType State & Type is forbidden")
 			assertTransitionFailed(network, peer, o1, "testchannel",
 				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
-				"BFT", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+				"BFT", nil, protosorderer.ConsensusType_STATE_MAINTENANCE, 1)
 
 			// === Step 2: ===
 			By("2) Config update on standard channel, both ConsensusType State & some other value is forbidden")
 			config, updatedConfig := prepareTransition(network, peer, o1, "testchannel",
 				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
-				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE, 0)
 			updateConfigWithBatchTimeout(updatedConfig)
 			updateOrdererConfigFailed(network, o1, "testchannel", config, updatedConfig, peer, o1)
 
@@ -361,7 +356,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			By("3) Config update on standard channel, State=MAINTENANCE, enter maintenance-mode")
 			config, updatedConfig = prepareTransition(network, peer, o1, "testchannel",
 				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
-				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE, 0)
 			nwo.UpdateOrdererConfig(network, o1, "testchannel", config, updatedConfig, peer, o1)
 
 			By("3) Verify: standard channel config changed")
@@ -375,48 +370,151 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			By("4) Config update on standard channel, change ConsensusType.Type to unsupported type, forbidden")
 			assertTransitionFailed(network, peer, o1, "testchannel",
 				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
-				"hesse", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
+				"hesse", nil, protosorderer.ConsensusType_STATE_MAINTENANCE, 0)
 
 			// === Step 5: ===
 			By("5) Config update on standard channel, change ConsensusType.Type and State, forbidden")
 			assertTransitionFailed(network, peer, o1, "testchannel",
 				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
-				"BFT", nil, protosorderer.ConsensusType_STATE_NORMAL)
+				"BFT", nil, protosorderer.ConsensusType_STATE_NORMAL, 1)
 
-			// === Step 6: Config update on standard channel, changing both ConsensusType.Type and other value is permitted ===
-			By("6) changing both ConsensusType.Type and other value is permitted")
-			// Change consensus type and batch-timeout
+			// === Step 6: Config update on standard channel, changing ConsensusType.Type with invalid bft metadata ===
+			By("6) changing ConsensusType.Type with invalid BFT metadata")
+			invalidBftMetadata := protoutil.MarshalOrPanic(prepareInvalidBftMetadata())
+			assertTransitionFailed(network, peer, o1, "testchannel",
+				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"BFT", invalidBftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE, 1)
+
+			By("6) changing ConsensusType.Type with missing BFT metadata")
+			assertTransitionFailed(network, peer, o1, "testchannel",
+				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"BFT", nil, protosorderer.ConsensusType_STATE_MAINTENANCE, 1)
+
+			By("6) changing ConsensusType.Type with missing bft consenters mapping")
 			bftMetadata := protoutil.MarshalOrPanic(prepareBftMetadata())
+			assertTransitionFailed(network, peer, o1, "testchannel",
+				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"BFT", bftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE, 0)
+
+			By("6) changing ConsensusType.Type with corrupt bft consenters mapping")
+			assertTransitionFailed(network, peer, o1, "testchannel",
+				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"BFT", bftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE, 2)
+
+			// === Step 7: Config update on standard channel, changing both ConsensusType.Type and other value is permitted ===
+			By("7) changing both ConsensusType.Type and other value is permitted")
+			// Change consensus type and batch-timeout
 			config, updatedConfig = prepareTransition(network, peer, o1, "testchannel",
 				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
-				"BFT", bftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
+				"BFT", bftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE, 1)
 			updateConfigWithBatchTimeout(updatedConfig)
 			nwo.UpdateOrdererConfig(network, o1, "testchannel", config, updatedConfig, peer, o1)
 
-			By("6) Verify: standard channel config changed")
+			By("7) Verify: standard channel config changed")
 			std1BlockNum := nwo.CurrentConfigBlockNumber(network, peer, o1, "testchannel")
 			Expect(std1BlockNum).To(Equal(std1StartBlockNum + 1))
 			config = nwo.GetConfig(network, peer, o1, "testchannel")
 			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "BFT", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			// === Step 7: ===
-			By("7) Config update on standard channel, changing value other than ConsensusType.Type is permitted")
+			// === Step 8: ===
+			By("8) Config update on standard channel, changing value other than ConsensusType.Type is permitted")
 			updatedConfig = proto.Clone(config).(*common.Config)
 			updateConfigWithBatchTimeout(updatedConfig)
 			nwo.UpdateOrdererConfig(network, o1, "testchannel", config, updatedConfig, peer, o1)
 
-			By("7) Verify: standard channel config changed")
+			By("8) Verify: standard channel config changed")
 			std1BlockNum = nwo.CurrentConfigBlockNumber(network, peer, o1, "testchannel")
 			Expect(std1BlockNum).To(Equal(std1StartBlockNum + 2))
 
-			// === Step 8: ===
-			By("8) Config update on standard channel, both ConsensusType State & some other value is forbidden")
+			// === Step 9: ===
+			By("9) Config update on standard channel, both ConsensusType State & some other value is forbidden")
 			config, updatedConfig = prepareTransition(network, peer, o1, "testchannel",
 				"BFT", protosorderer.ConsensusType_STATE_MAINTENANCE,
-				"BFT", nil, protosorderer.ConsensusType_STATE_NORMAL)
+				"BFT", nil, protosorderer.ConsensusType_STATE_NORMAL, 1)
 			updateConfigWithBatchTimeout(updatedConfig)
 			updateOrdererConfigFailed(network, o1, "testchannel", config, updatedConfig, peer, o1)
+		})
+
+		// Note:
+		// This test aims to check some other config value in maintenance mode, reboot, and exit maintenance mode.
+		// The config value is unrelated to consensus type migration.
+		It("Config value change unrelated to consensus type migration", func() {
+			// === Step 1: Config update on standard channel, MAINTENANCE ===
+			By("1) Config update on standard channel, State=MAINTENANCE")
+			config, updatedConfig := prepareTransition(network, peer, o1, "testchannel",
+				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
+				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE, 0)
+			nwo.UpdateOrdererConfig(network, o1, "testchannel", config, updatedConfig, peer, o1)
+
+			By("1) Verify: standard channel config changed")
+			chan1StartBlockNum := nwo.CurrentConfigBlockNumber(network, peer, o1, "testchannel")
+			Expect(chan1StartBlockNum).ToNot(Equal(0))
+
+			config = nwo.GetConfig(network, peer, o1, "testchannel")
+			consensusTypeValue := extractOrdererConsensusType(config)
+			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
+
+			By("1) Verify: Normal TX's on standard channel are blocked")
+			assertTxFailed(network, o1, "testchannel")
+
+			// In maintenance mode deliver requests are open to those entities that satisfy the /Channel/Orderer/Readers policy
+			By("1) Verify: delivery request from peer is blocked")
+			err := checkPeerDeliverRequest(o1, peer, network, "testchannel")
+			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
+
+			// === Step 2: config update on standard channel, State=MAINTENANCE, type=etcdraft ===
+			By("2) Config update on standard channel, State=MAINTENANCE, type=etcdraft")
+			config = nwo.GetConfig(network, peer, o1, "testchannel")
+			consensusTypeValue = extractOrdererConsensusType(config)
+			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
+			updatedConfig = proto.Clone(config).(*common.Config)
+			updateConfigWithBatchTimeout(updatedConfig)
+			nwo.UpdateOrdererConfig(network, o1, "testchannel", config, updatedConfig, peer, o1)
+
+			By("2) Verify: standard channel config changed")
+			chan1BlockNum := nwo.CurrentConfigBlockNumber(network, peer, o1, "testchannel")
+			Expect(chan1BlockNum).To(Equal(chan1StartBlockNum + 1))
+
+			// === Step 3: kill ===
+			By("3) killing orderer1")
+			o1Proc.Signal(syscall.SIGKILL)
+			Eventually(o1Proc.Wait(), network.EventuallyTimeout).Should(Receive(MatchError("exit status 137")))
+
+			// === Step 4: restart ===
+			By("4) restarting orderer1")
+			network.Consensus.Type = "etcdraft"
+
+			o1Runner = network.OrdererRunner(o1)
+			o1Proc = ifrit.Invoke(o1Runner)
+
+			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			assertBlockReception(
+				map[string]int{
+					"testchannel": int(chan1BlockNum),
+				},
+				[]*nwo.Orderer{o1},
+				peer,
+				network,
+			)
+
+			Eventually(o1Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
+			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			By("5) Release - executing config transaction on standard channel with restarted orderer")
+			config, updatedConfig = prepareTransition(network, peer, o1, "testchannel",
+				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"etcdraft", nil, protosorderer.ConsensusType_STATE_NORMAL, 0)
+			nwo.UpdateOrdererConfig(network, o1, "testchannel", config, updatedConfig, peer, o1)
+
+			By("6) Verify: standard channel config changed")
+			chan1BlockNum = nwo.CurrentConfigBlockNumber(network, peer, o1, "testchannel")
+			Expect(chan1BlockNum).To(Equal(chan1StartBlockNum + 2))
+
+			By("7) Executing transaction on standard channel with restarted orderer")
+			assertBlockCreation(network, o1, peer, "testchannel", chan1StartBlockNum+3)
+			assertBlockCreation(network, o1, nil, "testchannel", chan1StartBlockNum+4)
 		})
 	})
 })
@@ -500,7 +598,7 @@ func updateOrdererConfigFailed(n *nwo.Network, orderer *nwo.Orderer, channel str
 func prepareTransition(
 	network *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channel string, // Auxiliary
 	fromConsensusType string, fromMigState protosorderer.ConsensusType_State, // From
-	toConsensusType string, toConsensusMetadata []byte, toMigState protosorderer.ConsensusType_State, // To
+	toConsensusType string, toConsensusMetadata []byte, toMigState protosorderer.ConsensusType_State, toConsenterMapping int, // To
 ) (current, updated *common.Config) {
 	current = nwo.GetConfig(network, peer, orderer, channel)
 	updated = proto.Clone(current).(*common.Config)
@@ -508,7 +606,13 @@ func prepareTransition(
 	validateConsensusTypeValue(consensusTypeValue, fromConsensusType, fromMigState)
 	updateConfigWithConsensusType(toConsensusType, toConsensusMetadata, toMigState, updated, consensusTypeValue)
 	if toConsensusType == "BFT" {
-		updateBFTOrderersConfig(network, updated)
+		// 1: updating valid consenters mapping
+		// 2: updating invalid consenters mapping
+		if toConsenterMapping == 1 {
+			updateBFTOrderersConfig(network, updated)
+		} else if toConsenterMapping == 2 {
+			updateInvalidBFTOrderersConfig(network, updated)
+		}
 	}
 	return current, updated
 }
@@ -516,12 +620,12 @@ func prepareTransition(
 func assertTransitionFailed(
 	network *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channel string, // Auxiliary
 	fromConsensusType string, fromMigState protosorderer.ConsensusType_State, // From
-	toConsensusType string, toConsensusMetadata []byte, toMigState protosorderer.ConsensusType_State, // To
+	toConsensusType string, toConsensusMetadata []byte, toMigState protosorderer.ConsensusType_State, toConsenterMapping int, // To
 ) {
 	current, updated := prepareTransition(
 		network, peer, orderer, channel,
 		fromConsensusType, fromMigState,
-		toConsensusType, toConsensusMetadata, toMigState)
+		toConsensusType, toConsensusMetadata, toMigState, toConsenterMapping)
 	updateOrdererConfigFailed(network, orderer, channel, current, updated, peer, orderer)
 }
 
@@ -602,6 +706,21 @@ func updateBFTOrderersConfig(network *nwo.Network, config *common.Config) {
 	}
 }
 
+func updateInvalidBFTOrderersConfig(network *nwo.Network, config *common.Config) {
+	orderersVal := &common.Orderers{
+		ConsenterMapping: computeConsenterMappings(network),
+	}
+
+	orderersVal.ConsenterMapping[0].Port = orderersVal.ConsenterMapping[0].Port + 1
+
+	policies.EncodeBFTBlockVerificationPolicy(orderersVal.ConsenterMapping, config.ChannelGroup.Groups["Orderer"])
+
+	config.ChannelGroup.Groups["Orderer"].Values["Orderers"] = &common.ConfigValue{
+		Value:     protoutil.MarshalOrPanic(orderersVal),
+		ModPolicy: "/Channel/Orderer/Admins",
+	}
+}
+
 func computeConsenterMappings(network *nwo.Network) []*common.Consenter {
 	var consenters []*common.Consenter
 
@@ -668,6 +787,28 @@ func assertBlockReceptionInAllOrderers(orderers []*nwo.Orderer, peer *nwo.Peer, 
 func prepareBftMetadata() *smartbft.Options {
 	bftMetadata := &smartbft.Options{
 		RequestBatchMaxCount:      types.DefaultConfig.RequestBatchMaxCount,
+		RequestBatchMaxBytes:      types.DefaultConfig.RequestBatchMaxBytes,
+		RequestBatchMaxInterval:   types.DefaultConfig.RequestBatchMaxInterval.String(),
+		IncomingMessageBufferSize: types.DefaultConfig.IncomingMessageBufferSize,
+		RequestPoolSize:           types.DefaultConfig.RequestPoolSize,
+		RequestForwardTimeout:     types.DefaultConfig.RequestForwardTimeout.String(),
+		RequestComplainTimeout:    types.DefaultConfig.RequestComplainTimeout.String(),
+		RequestAutoRemoveTimeout:  types.DefaultConfig.RequestAutoRemoveTimeout.String(),
+		ViewChangeResendInterval:  types.DefaultConfig.ViewChangeResendInterval.String(),
+		ViewChangeTimeout:         types.DefaultConfig.ViewChangeTimeout.String(),
+		LeaderHeartbeatTimeout:    types.DefaultConfig.LeaderHeartbeatTimeout.String(),
+		LeaderHeartbeatCount:      types.DefaultConfig.LeaderHeartbeatCount,
+		CollectTimeout:            types.DefaultConfig.CollectTimeout.String(),
+		SyncOnStart:               types.DefaultConfig.SyncOnStart,
+		SpeedUpViewChange:         types.DefaultConfig.SpeedUpViewChange,
+	}
+	return bftMetadata
+}
+
+// prepareBftMetadata prepare the bft consensusType.Metadata
+func prepareInvalidBftMetadata() *smartbft.Options {
+	bftMetadata := &smartbft.Options{
+		RequestBatchMaxCount:      0,
 		RequestBatchMaxBytes:      types.DefaultConfig.RequestBatchMaxBytes,
 		RequestBatchMaxInterval:   types.DefaultConfig.RequestBatchMaxInterval.String(),
 		IncomingMessageBufferSize: types.DefaultConfig.IncomingMessageBufferSize,
