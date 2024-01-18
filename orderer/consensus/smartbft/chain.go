@@ -70,7 +70,7 @@ type BFTChain struct {
 	RuntimeConfig    *atomic.Value
 	Channel          string
 	Config           types.Configuration
-	BlockPuller      BlockPuller
+	BlockPuller      BlockPuller // TODO make bft-synchro
 	Comm             cluster.Communicator
 	SignerSerializer signerSerializer
 	PolicyManager    policies.Manager
@@ -97,7 +97,7 @@ func NewChain(
 	selfID uint64,
 	config types.Configuration,
 	walDir string,
-	blockPuller BlockPuller,
+	blockPuller BlockPuller, // TODO make bft-synchro
 	comm cluster.Communicator,
 	signerSerializer signerSerializer,
 	policyManager policies.Manager,
@@ -202,7 +202,7 @@ func bftSmartConsensusBuild(
 	// report cluster size
 	c.Metrics.ClusterSize.Set(float64(clusterSize))
 
-	sync := &Synchronizer{
+	sync := &Synchronizer{ // TODO make bft-synchro
 		selfID:          rtc.id,
 		BlockToDecision: c.blockToDecision,
 		OnCommit: func(block *cb.Block) types.Reconfig {
