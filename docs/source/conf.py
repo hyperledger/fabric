@@ -82,7 +82,8 @@ extensions = ['sphinx.ext.autodoc',
     'sphinx.ext.imgmath',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
-    'myst_parser']
+    'myst_parser',
+    'sphinxcontrib.jquery']
 
 # -- Special API Accesses -------------------------------------------------
 # They create an instance of the Sphinx object, documented here
