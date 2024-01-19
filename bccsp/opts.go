@@ -22,6 +22,19 @@ const (
 	// ECDSAReRand ECDSA key re-randomization
 	ECDSAReRand = "ECDSA_RERAND"
 
+	// RSA at the default security level.
+	// Each BCCSP may or may not support default security level. If not supported than
+	// an error will be returned.
+	RSA = "RSA"
+	// RSA at 1024 bit security level.
+	RSA1024 = "RSA1024"
+	// RSA at 2048 bit security level.
+	RSA2048 = "RSA2048"
+	// RSA at 3072 bit security level.
+	RSA3072 = "RSA3072"
+	// RSA at 4096 bit security level.
+	RSA4096 = "RSA4096"
+
 	// AES Advanced Encryption Standard at the default security level.
 	// Each BCCSP may or may not support default security level. If not supported than
 	// an error will be returned.
