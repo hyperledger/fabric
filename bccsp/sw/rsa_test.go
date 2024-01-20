@@ -12,16 +12,10 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/asn1"
-	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
-
-type rsaPublicKeyASN struct {
-	N *big.Int
-	E int
-}
 
 func TestRSAPublicKey(t *testing.T) {
 	lowLevelKey, err := rsa.GenerateKey(rand.Reader, 2048)
