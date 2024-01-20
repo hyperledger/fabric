@@ -262,6 +262,38 @@ func (opts *SHAOpts) Algorithm() string {
 	return SHA
 }
 
+// RSAKeyGenOpts contains options for RSA key generation.
+type RSAKeyGenOpts struct {
+	Temporary bool
+}
+
+// Algorithm returns the key generation algorithm identifier (to be used).
+func (opts *RSAKeyGenOpts) Algorithm() string {
+	return RSA
+}
+
+// Ephemeral returns true if the key to generate has to be ephemeral,
+// false otherwise.
+func (opts *RSAKeyGenOpts) Ephemeral() bool {
+	return opts.Temporary
+}
+
+// RSAGoPublicKeyImportOpts contains options for RSA key importation from rsa.PublicKey
+type RSAGoPublicKeyImportOpts struct {
+	Temporary bool
+}
+
+// Algorithm returns the key importation algorithm identifier (to be used).
+func (opts *RSAGoPublicKeyImportOpts) Algorithm() string {
+	return RSA
+}
+
+// Ephemeral returns true if the key to generate has to be ephemeral,
+// false otherwise.
+func (opts *RSAGoPublicKeyImportOpts) Ephemeral() bool {
+	return opts.Temporary
+}
+
 // X509PublicKeyImportOpts contains options for importing public keys from an x509 certificate
 type X509PublicKeyImportOpts struct {
 	Temporary bool
