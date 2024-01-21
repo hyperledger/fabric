@@ -1115,7 +1115,26 @@ func (c *Chain) commitBlock(block *common.Block) {
 func (c *Chain) detectConfChange(block *common.Block) *MembershipChanges {
 	// If config is targeting THIS channel, inspect consenter set and
 	// propose raft ConfChange if it adds/removes node.
-	configMetadata := c.newConfigMetadata(block)
+	c.logger.Infof("Detected configuration change")
+
+	// if the consensusType is bft, then configMetadata which represents the raft metadata should be nil
+	configMetadata, consensusType := c.newConfigMetadata(block)
+	c.logger.Infof("Detected configuration change: consensusType is: %s, configMetadata is: %v", consensusType, configMetadata)
+
+	if consensusType == nil {
+		c.logger.Infof("ConsensusType is %v", consensusType)
+		return nil
+	}
+
+	if consensusType.Type != "etcdraft" {
+		if consensusType.Type == "BFT" {
+			c.logger.Infof("Detected migration to %s", consensusType.Type)
+			return nil
+		} else {
+			c.logger.Panicf("illegal consensus type detected: %s", consensusType.Type)
+			panic("illegal consensus type detected during conf change")
+		}
+	}
 
 	if configMetadata == nil {
 		return nil
@@ -1425,12 +1444,13 @@ func (c *Chain) getInFlightConfChange() *raftpb.ConfChange {
 }
 
 // newMetadata extract config metadata from the configuration block
-func (c *Chain) newConfigMetadata(block *common.Block) *etcdraft.ConfigMetadata {
-	metadata, err := ConsensusMetadataFromConfigBlock(block)
+func (c *Chain) newConfigMetadata(block *common.Block) (*etcdraft.ConfigMetadata, *orderer.ConsensusType) {
+	c.logger.Infof("Extract config metadata from the configuration block")
+	metadata, consensusType, err := ConsensusMetadataFromConfigBlock(block)
 	if err != nil {
 		c.logger.Panicf("error reading consensus metadata: %s", err)
 	}
-	return metadata
+	return metadata, consensusType
 }
 
 // ValidateConsensusMetadata determines the validity of a
@@ -1444,6 +1464,17 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 	// metadata was not updated
 	if newOrdererConfig.ConsensusMetadata() == nil {
 		return nil
+	}
+
+	if newOrdererConfig.ConsensusType() != "etcdraft" {
+		if newOrdererConfig.ConsensusType() == "BFT" {
+			// This is a migration, so we don't know how to validate this config change.
+			return nil
+		} else {
+			c.logger.Panicf("illegal consensus type detected during consensus metadata validation: %s", newOrdererConfig.ConsensusType())
+			return errors.Errorf("illegal consensus type detected during consensus metadata validation: %s", newOrdererConfig.ConsensusType())
+
+		}
 	}
 
 	if oldOrdererConfig == nil {
@@ -1572,7 +1603,7 @@ func (c *Chain) checkForEvictionNCertRotation(env *common.Envelope) bool {
 		return false
 	}
 
-	configMeta, err := MetadataFromConfigUpdate(configUpdate)
+	configMeta, _, err := MetadataFromConfigUpdate(configUpdate)
 	if err != nil || configMeta == nil {
 		c.logger.Warnf("could not read config metadata: %s", err)
 		return false

@@ -9,10 +9,13 @@ package msgprocessor
 import (
 	"bytes"
 
+	"github.com/hyperledger/fabric/orderer/consensus/smartbft/util"
+
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
-	protoetcdraft "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -45,10 +48,7 @@ func NewMaintenanceFilter(support MaintenanceFilterSupport, bccsp bccsp.BCCSP) *
 		permittedTargetConsensusTypes: make(map[string]bool),
 		bccsp:                         bccsp,
 	}
-	mf.permittedTargetConsensusTypes["etcdraft"] = true
-	// Until we have a BFT consensus type, we use this for integration testing of consensus-type migration.
-	// Caution: proposing a config block with this type will cause panic.
-	mf.permittedTargetConsensusTypes["testing-only"] = true
+	mf.permittedTargetConsensusTypes["BFT"] = true
 	return mf
 }
 
@@ -119,7 +119,7 @@ func (mf *MaintenanceFilter) inspect(configEnvelope *cb.ConfigEnvelope, ordererC
 	}
 
 	// ConsensusType.Type can only change in maintenance-mode, and only within the set of permitted types.
-	// Note: only solo to etcdraft transitions are supported.
+	// Note: only etcdraft to BFT transitions are supported.
 	if ordererConfig.ConsensusType() != nextOrdererConfig.ConsensusType() {
 		if ordererConfig.ConsensusState() == orderer.ConsensusType_STATE_NORMAL {
 			return errors.Errorf("attempted to change consensus type from %s to %s, but current config ConsensusType.State is not in maintenance mode",
@@ -135,10 +135,20 @@ func (mf *MaintenanceFilter) inspect(configEnvelope *cb.ConfigEnvelope, ordererC
 				ordererConfig.ConsensusType(), nextOrdererConfig.ConsensusType())
 		}
 
-		if nextOrdererConfig.ConsensusType() == "etcdraft" {
-			updatedMetadata := &protoetcdraft.ConfigMetadata{}
+		if nextOrdererConfig.ConsensusType() == "BFT" {
+			updatedMetadata := &smartbft.Options{}
 			if err := proto.Unmarshal(nextOrdererConfig.ConsensusMetadata(), updatedMetadata); err != nil {
-				return errors.Wrap(err, "failed to unmarshal etcdraft metadata configuration")
+				return errors.Wrap(err, "failed to unmarshal BFT metadata configuration")
+			}
+
+			_, err := util.ConfigFromMetadataOptions(1, updatedMetadata)
+			if err != nil {
+				return errors.New("invalid BFT metadata configuration")
+			}
+
+			err = validateBFTConsenterMapping(ordererConfig, nextOrdererConfig)
+			if err != nil {
+				return errors.Wrap(err, "invalid BFT consenter mapping configuration")
 			}
 		}
 
@@ -195,6 +205,41 @@ func (mf *MaintenanceFilter) ensureConsensusTypeChangeOnly(configEnvelope *cb.Co
 		}
 	} else {
 		return errors.Errorf("update does not contain the %s group", channelconfig.OrdererGroupKey)
+	}
+
+	return nil
+}
+
+func validateBFTConsenterMapping(currentOrdererConfig channelconfig.Orderer, nextOrdererConfig channelconfig.Orderer) error {
+	// extract raft consenters from consensusTypeValue.metadata
+	raftMetadata := &etcdraft.ConfigMetadata{}
+	proto.Unmarshal(currentOrdererConfig.ConsensusMetadata(), raftMetadata)
+	raftConsenters := raftMetadata.GetConsenters()
+
+	// extract bft consenters
+	bftConsenters := nextOrdererConfig.Consenters()
+
+	if len(bftConsenters) == 0 {
+		return errors.Errorf("Invalid new config: bft consenters are missing")
+	}
+
+	if len(raftConsenters) != len(bftConsenters) {
+		return errors.Errorf("Invalid new config: the number of bft consenters: %d is not equal to the number of raft consenters: %d", len(bftConsenters), len(raftConsenters))
+	}
+
+	for _, raftConsenter := range raftConsenters {
+		flag := false
+		for _, bftConsenter := range bftConsenters {
+			if raftConsenter.Port == bftConsenter.Port && raftConsenter.Host == bftConsenter.Host &&
+				bytes.Equal(raftConsenter.ServerTlsCert, bftConsenter.ServerTlsCert) &&
+				bytes.Equal(raftConsenter.ClientTlsCert, bftConsenter.ClientTlsCert) {
+				flag = true
+				break
+			}
+		}
+		if !flag {
+			return errors.Errorf("No suitable BFT consenter for Raft consenter: %v", raftConsenter)
+		}
 	}
 
 	return nil

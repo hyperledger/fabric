@@ -113,6 +113,7 @@ var _ = Describe("Metadata Validation", func() {
 		It("fails when old consensus metadata is not well-formed", func() {
 			oldOrdererConf := mockOrderer([]byte("test"))
 			newOrdererConf := mockOrderer([]byte("test"))
+			newOrdererConf.ConsensusTypeReturns("etcdraft")
 			Expect(func() {
 				chain.ValidateConsensusMetadata(oldOrdererConf, newOrdererConf, false)
 			}).To(Panic())
@@ -122,6 +123,7 @@ var _ = Describe("Metadata Validation", func() {
 			oldBytes, _ := proto.Marshal(&raftprotos.ConfigMetadata{})
 			oldOrdererConf := mockOrderer(oldBytes)
 			newOrdererConf := mockOrderer([]byte("test"))
+			newOrdererConf.ConsensusTypeReturns("etcdraft")
 			Expect(chain.ValidateConsensusMetadata(oldOrdererConf, newOrdererConf, false)).NotTo(Succeed())
 		})
 	})
@@ -177,6 +179,7 @@ var _ = Describe("Metadata Validation", func() {
 			newOrdererConfig.OrganizationsReturns(map[string]channelconfig.OrdererOrg{
 				"org1": org1,
 			})
+			newOrdererConfig.ConsensusTypeReturns("etcdraft")
 
 			newChannel = false
 		})

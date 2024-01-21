@@ -552,11 +552,19 @@ var _ = Describe("Chain", func() {
 								},
 								"ConsensusType": {
 									Version: 4,
+									Value: marshalOrPanic(&orderer.ConsensusType{
+										Type:     "etcdraft",
+										Metadata: []byte{1, 2, 3},
+									}),
 								},
 							}
 							oldValues := map[string]*common.ConfigValue{
 								"ConsensusType": {
 									Version: 4,
+									Value: marshalOrPanic(&orderer.ConsensusType{
+										Type:     "etcdraft",
+										Metadata: []byte{1, 2, 3},
+									}),
 								},
 							}
 							configEnv = newConfigEnv(channelID,
@@ -678,6 +686,7 @@ var _ = Describe("Chain", func() {
 								"ConsensusType": {
 									Version: 1,
 									Value: marshalOrPanic(&orderer.ConsensusType{
+										Type:     "etcdraft",
 										Metadata: marshalOrPanic(consenterMetadata),
 									}),
 								},
@@ -711,6 +720,7 @@ var _ = Describe("Chain", func() {
 								"ConsensusType": {
 									Version: 1,
 									Value: marshalOrPanic(&orderer.ConsensusType{
+										Type:     "etcdraft",
 										Metadata: marshalOrPanic(metadata),
 									}),
 								},
@@ -722,6 +732,35 @@ var _ = Describe("Chain", func() {
 
 							err := chain.Configure(configEnv, configSeq)
 							Expect(err).NotTo(HaveOccurred())
+							Eventually(support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+						})
+					})
+				})
+
+				Context("when a type C config update comes", func() {
+					Context("change from raft to bft", func() {
+						// use to prepare the Orderer Values
+						BeforeEach(func() {
+							values := map[string]*common.ConfigValue{
+								"ConsensusType": {
+									Version: 1,
+									Value: marshalOrPanic(&orderer.ConsensusType{
+										Type:     "BFT",
+										Metadata: []byte{1, 2},
+									}),
+								},
+							}
+							configEnv = newConfigEnv(channelID,
+								common.HeaderType_CONFIG,
+								newConfigUpdateEnv(channelID, nil, values))
+							configSeq = 0
+						}) // BeforeEach block
+
+						It("should be able to process config update of type C", func() {
+							err := chain.Configure(configEnv, configSeq)
+							Expect(err).NotTo(HaveOccurred())
+							Expect(fakeFields.fakeConfigProposalsReceived.AddCallCount()).To(Equal(1))
+							Expect(fakeFields.fakeConfigProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
 							Eventually(support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 						})
 					})
@@ -1426,6 +1465,7 @@ var _ = Describe("Chain", func() {
 				"ConsensusType": {
 					Version: 1,
 					Value: marshalOrPanic(&orderer.ConsensusType{
+						Type:     "etcdraft",
 						Metadata: marshalOrPanic(metadata),
 					}),
 				},
@@ -1770,6 +1810,7 @@ var _ = Describe("Chain", func() {
 						"ConsensusType": {
 							Version: 1,
 							Value: marshalOrPanic(&orderer.ConsensusType{
+								Type:     "etcdraft",
 								Metadata: marshalOrPanic(metadata),
 							}),
 						},
@@ -1853,6 +1894,7 @@ var _ = Describe("Chain", func() {
 						"ConsensusType": {
 							Version: 1,
 							Value: marshalOrPanic(&orderer.ConsensusType{
+								Type:     "etcdraft",
 								Metadata: marshalOrPanic(metadata),
 							}),
 						},
@@ -1893,6 +1935,7 @@ var _ = Describe("Chain", func() {
 						"ConsensusType": {
 							Version: 1,
 							Value: marshalOrPanic(&orderer.ConsensusType{
+								Type:     "etcdraft",
 								Metadata: marshalOrPanic(metadata),
 							}),
 						},
@@ -1935,6 +1978,7 @@ var _ = Describe("Chain", func() {
 							"ConsensusType": {
 								Version: 1,
 								Value: marshalOrPanic(&orderer.ConsensusType{
+									Type:     "etcdraft",
 									Metadata: marshalOrPanic(metadata),
 								}),
 							},
