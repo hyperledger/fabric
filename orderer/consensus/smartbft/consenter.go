@@ -15,6 +15,8 @@ import (
 	"path"
 	"reflect"
 
+	"github.com/hyperledger/fabric/orderer/consensus/smartbft/util"
+
 	"github.com/SmartBFT-Go/consensus/pkg/api"
 	"github.com/SmartBFT-Go/consensus/pkg/wal"
 	"github.com/golang/protobuf/proto"
@@ -188,7 +190,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 		c.Logger.Panicf("Failed initializing block puller")
 	}
 
-	config, err := configFromMetadataOptions((uint64)(selfID), configOptions)
+	config, err := util.ConfigFromMetadataOptions((uint64)(selfID), configOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed parsing smartbft configuration")
 	}

@@ -8,9 +8,9 @@ package msgprocessor
 
 import (
 	"bytes"
-	"time"
 
-	"github.com/SmartBFT-Go/consensus/pkg/types"
+	"github.com/hyperledger/fabric/orderer/consensus/smartbft/util"
+
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
@@ -141,7 +141,7 @@ func (mf *MaintenanceFilter) inspect(configEnvelope *cb.ConfigEnvelope, ordererC
 				return errors.Wrap(err, "failed to unmarshal BFT metadata configuration")
 			}
 
-			_, err := validateBFTMetadataOptions(1, updatedMetadata)
+			_, err := util.ConfigFromMetadataOptions(1, updatedMetadata)
 			if err != nil {
 				return errors.New("invalid BFT metadata configuration")
 			}
@@ -208,62 +208,6 @@ func (mf *MaintenanceFilter) ensureConsensusTypeChangeOnly(configEnvelope *cb.Co
 	}
 
 	return nil
-}
-
-func validateBFTMetadataOptions(selfID uint64, options *smartbft.Options) (types.Configuration, error) {
-	var err error
-
-	config := types.DefaultConfig
-	config.SelfID = selfID
-
-	if options == nil {
-		return config, errors.New("config metadata options field is nil")
-	}
-
-	config.RequestBatchMaxCount = options.RequestBatchMaxCount
-	config.RequestBatchMaxBytes = options.RequestBatchMaxBytes
-	if config.RequestBatchMaxInterval, err = time.ParseDuration(options.RequestBatchMaxInterval); err != nil {
-		return config, errors.Wrap(err, "bad config metadata option RequestBatchMaxInterval")
-	}
-	config.IncomingMessageBufferSize = options.IncomingMessageBufferSize
-	config.RequestPoolSize = options.RequestPoolSize
-	if config.RequestForwardTimeout, err = time.ParseDuration(options.RequestForwardTimeout); err != nil {
-		return config, errors.Wrap(err, "bad config metadata option RequestForwardTimeout")
-	}
-	if config.RequestComplainTimeout, err = time.ParseDuration(options.RequestComplainTimeout); err != nil {
-		return config, errors.Wrap(err, "bad config metadata option RequestComplainTimeout")
-	}
-	if config.RequestAutoRemoveTimeout, err = time.ParseDuration(options.RequestAutoRemoveTimeout); err != nil {
-		return config, errors.Wrap(err, "bad config metadata option RequestAutoRemoveTimeout")
-	}
-	if config.ViewChangeResendInterval, err = time.ParseDuration(options.ViewChangeResendInterval); err != nil {
-		return config, errors.Wrap(err, "bad config metadata option ViewChangeResendInterval")
-	}
-	if config.ViewChangeTimeout, err = time.ParseDuration(options.ViewChangeTimeout); err != nil {
-		return config, errors.Wrap(err, "bad config metadata option ViewChangeTimeout")
-	}
-	if config.LeaderHeartbeatTimeout, err = time.ParseDuration(options.LeaderHeartbeatTimeout); err != nil {
-		return config, errors.Wrap(err, "bad config metadata option LeaderHeartbeatTimeout")
-	}
-	config.LeaderHeartbeatCount = options.LeaderHeartbeatCount
-	if config.CollectTimeout, err = time.ParseDuration(options.CollectTimeout); err != nil {
-		return config, errors.Wrap(err, "bad config metadata option CollectTimeout")
-	}
-	config.SyncOnStart = options.SyncOnStart
-	config.SpeedUpViewChange = options.SpeedUpViewChange
-
-	config.LeaderRotation = false
-	config.DecisionsPerLeader = 0
-
-	if err = config.Validate(); err != nil {
-		return config, errors.Wrap(err, "config validation failed")
-	}
-
-	if options.RequestMaxBytes == 0 {
-		config.RequestMaxBytes = config.RequestBatchMaxBytes
-	}
-
-	return config, nil
 }
 
 func validateBFTConsenterMapping(currentOrdererConfig channelconfig.Orderer, nextOrdererConfig channelconfig.Orderer) error {

@@ -14,7 +14,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"sort"
-	"time"
 
 	"github.com/SmartBFT-Go/consensus/pkg/types"
 	"github.com/SmartBFT-Go/consensus/smartbftprotos"
@@ -30,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
+	"github.com/hyperledger/fabric/orderer/consensus/smartbft/util"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -119,7 +119,7 @@ func configBlockToBFTConfig(selfID uint64, block *cb.Block, bccsp bccsp.BCCSP) (
 		return types.Configuration{}, err
 	}
 
-	return configFromMetadataOptions(selfID, consensusConfigOptions)
+	return util.ConfigFromMetadataOptions(selfID, consensusConfigOptions)
 }
 
 //go:generate counterfeiter -o mocks/mock_blockpuller.go . BlockPuller
@@ -187,62 +187,6 @@ func getViewMetadataFromBlock(block *cb.Block) (*smartbftprotos.ViewMetadata, er
 	}
 
 	return &viewMetadata, nil
-}
-
-func configFromMetadataOptions(selfID uint64, options *smartbft.Options) (types.Configuration, error) {
-	var err error
-
-	config := types.DefaultConfig
-	config.SelfID = selfID
-
-	if options == nil {
-		return config, errors.New("config metadata options field is nil")
-	}
-
-	config.RequestBatchMaxCount = options.RequestBatchMaxCount
-	config.RequestBatchMaxBytes = options.RequestBatchMaxBytes
-	if config.RequestBatchMaxInterval, err = time.ParseDuration(options.RequestBatchMaxInterval); err != nil {
-		return config, errors.Wrap(err, "bad config metadata option RequestBatchMaxInterval")
-	}
-	config.IncomingMessageBufferSize = options.IncomingMessageBufferSize
-	config.RequestPoolSize = options.RequestPoolSize
-	if config.RequestForwardTimeout, err = time.ParseDuration(options.RequestForwardTimeout); err != nil {
-		return config, errors.Wrap(err, "bad config metadata option RequestForwardTimeout")
-	}
-	if config.RequestComplainTimeout, err = time.ParseDuration(options.RequestComplainTimeout); err != nil {
-		return config, errors.Wrap(err, "bad config metadata option RequestComplainTimeout")
-	}
-	if config.RequestAutoRemoveTimeout, err = time.ParseDuration(options.RequestAutoRemoveTimeout); err != nil {
-		return config, errors.Wrap(err, "bad config metadata option RequestAutoRemoveTimeout")
-	}
-	if config.ViewChangeResendInterval, err = time.ParseDuration(options.ViewChangeResendInterval); err != nil {
-		return config, errors.Wrap(err, "bad config metadata option ViewChangeResendInterval")
-	}
-	if config.ViewChangeTimeout, err = time.ParseDuration(options.ViewChangeTimeout); err != nil {
-		return config, errors.Wrap(err, "bad config metadata option ViewChangeTimeout")
-	}
-	if config.LeaderHeartbeatTimeout, err = time.ParseDuration(options.LeaderHeartbeatTimeout); err != nil {
-		return config, errors.Wrap(err, "bad config metadata option LeaderHeartbeatTimeout")
-	}
-	config.LeaderHeartbeatCount = options.LeaderHeartbeatCount
-	if config.CollectTimeout, err = time.ParseDuration(options.CollectTimeout); err != nil {
-		return config, errors.Wrap(err, "bad config metadata option CollectTimeout")
-	}
-	config.SyncOnStart = options.SyncOnStart
-	config.SpeedUpViewChange = options.SpeedUpViewChange
-
-	config.LeaderRotation = false
-	config.DecisionsPerLeader = 0
-
-	if err = config.Validate(); err != nil {
-		return config, errors.Wrap(err, "config validation failed")
-	}
-
-	if options.RequestMaxBytes == 0 {
-		config.RequestMaxBytes = config.RequestBatchMaxBytes
-	}
-
-	return config, nil
 }
 
 type request struct {
