@@ -449,3 +449,20 @@ While it is recommended to reuse the private key for orderer TLS certificate ren
 Suppose you do not reuse the orderer TLS private key during re-enrollment, and the original orderer TLS certificates have not yet expired. In that case, you must update the orderer TLS certificates one at a time on each node and in each channel configuration and then verify the orderer function before moving on to other orderer node TLS certificate updates.
 
 If you do not reuse the orderer TLS private key and the original orderer TLS certificates have expired, the ordering service will not be able to form consensus and will therefore not be able to process transactions including channel configuration updates. The ordering service recovery process is complicated as you must temporarily utilize the orderer `TLSHandshakeTimeShift` property on all nodes and restart them in order to form consensus with the expired certificates so that channel configuration updates can be processed to update the TLS certificates. Update a majority of the orderer TLS certificates (e.g. 3 out of 5) one at a time on each node and in the channel configuration. Once a majority have been updated the new certificate expiration dates will no longer fall within the `TLSHandshakeTimeShift` and therefore the updated ordering nodes will fall out of the consenter set causing loss of consensus again. Next, remove the `TLSHandshakeTimeShift` setting from all nodes. Upon restart the majority of updated orderer nodes will now form consensus and you can then update the remaining orderer TLS certificates (e.g. 2 out of 5) one at a time on each node and in the channel configuration.
+
+### Renew CA Certificate
+
+If an organization's CA certificate is going to expire, or if the organization simply wants to utilize a different CA certificate,
+the organization can make the update in a phased approach.
+
+First, the organization can submit a channel configuration update that includes both the old and the new CA certificate for their organization,
+by including them both in their msp's `cacerts` directory (and corresponding `config.yaml` updates) when creating the channel configuration transaction
+(or in the `tlscacerts` directory for TLS CA certs).
+The channel configuration transaction makes the new CA certificate known to all nodes on the channel.
+
+Next, the organization can issue new orderer and peer certificates or TLS certificates (Fabric CA register and enroll commands) based on the new CA,
+and distribute the new credentials to each of the orderers and peers.
+Note that new orderer TLS certificates will also require channel configuration updates one at a time for each orderer node as described above.
+The organization can retire any remaining nodes that have certificates issued from the old CA.
+
+Finally, the organization can submit another channel configuration update that removes the old CA certificate from their msp's `cacerts` directory (or `tlscacerts` directory).
