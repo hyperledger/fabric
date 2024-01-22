@@ -171,8 +171,7 @@ discussions/decisions to the `Fabric contributor meeting <https://wiki.hyperledg
 The mailing list, Discord, and GitHub each require their own login which you can request upon your first interaction.
 
 The Hyperledger Fabric `wiki <https://wiki.hyperledger.org/display/fabric>`__
-and the legacy issue management system in `Jira <https://jira.hyperledger.org/projects/FAB/issues>`__
-require a `Linux Foundation ID <https://identity.linuxfoundation.org/>`__,
+requires a `Linux Foundation ID <https://identity.linuxfoundation.org/>`__,
 but these resources are primarily for read-only reference and you will likely not need an ID.
 
 Contribution guide
@@ -207,7 +206,7 @@ issue. One of the project's maintainers should respond to your issue within 24
 hours. If not, please bump the issue with a comment and request that it be
 reviewed. You can also post to the relevant Hyperledger Fabric channel in
 `Hyperledger Discord <https://discord.com/servers/hyperledger-foundation-905194001349627914>`__.  For example, a doc bug should
-be broadcast to ``#fabric-documentation``, a database bug to ``#fabric-ledger``,
+be broadcast to ``#fabric-documentation``, a peer bug to ``#fabric-peer``,
 and so on...
 
 Submitting your fix
