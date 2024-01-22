@@ -10,6 +10,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/pem"
@@ -114,8 +115,21 @@ func privateKeyToPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
 			},
 		), nil
 
+	case *rsa.PrivateKey:
+		if k == nil {
+			return nil, errors.New("invalid rsa private key. It must be different from nil")
+		}
+		raw := x509.MarshalPKCS1PrivateKey(k)
+
+		return pem.EncodeToMemory(
+			&pem.Block{
+				Type:  "RSA PRIVATE KEY",
+				Bytes: raw,
+			},
+		), nil
+
 	default:
-		return nil, errors.New("invalid key type. It must be *ecdsa.PrivateKey")
+		return nil, errors.New("invalid key type. It must be *ecdsa.PrivateKey or *rsa.PrivateKey")
 	}
 }
 
@@ -279,8 +293,24 @@ func publicKeyToPEM(publicKey interface{}, pwd []byte) ([]byte, error) {
 			},
 		), nil
 
+	case *rsa.PublicKey:
+		if k == nil {
+			return nil, errors.New("invalid rsa public key. It must be different from nil")
+		}
+		PubASN1, err := x509.MarshalPKIXPublicKey(k)
+		if err != nil {
+			return nil, err
+		}
+
+		return pem.EncodeToMemory(
+			&pem.Block{
+				Type:  "RSA PUBLIC KEY",
+				Bytes: PubASN1,
+			},
+		), nil
+
 	default:
-		return nil, errors.New("invalid key type. It must be *ecdsa.PublicKey")
+		return nil, errors.New("invalid key type. It must be *ecdsa.PublicKey or *rsa.PublicKey")
 	}
 }
 
