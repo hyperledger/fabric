@@ -579,9 +579,9 @@ For example:
 
 To understand more about the BFT ordering service, refer to the following information:
 
-- [What is BFT and what is BFT Ordering service?](./orderer/ordering_service.md)
-- [Adding orderer to an existing network](./create_channel/add_orderer.md)
-- [Configuring and operating a BFT ordering service](./bft_configuration.md)
+- [What is BFT and what is BFT Ordering service?](./orderer/ordering_service.html)
+- [Adding orderer to an existing network](./create_channel/add_orderer.html)
+- [Configuring and operating a BFT ordering service](./bft_configuration.html)
 
 ## Troubleshooting
 
