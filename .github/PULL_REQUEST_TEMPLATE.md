@@ -23,7 +23,7 @@
 
 #### Related issues
 
-<!--- Include a link to any associated issues, e.g. Jira issue or approved rfc. -->
+<!--- Include a link to any associated issues, e.g. Github issue or approved rfc. -->
 
 <!---
 #### Release Note

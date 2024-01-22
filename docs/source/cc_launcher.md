@@ -101,7 +101,7 @@ When `release` completes, the peer will consume two types of metadata from `RELE
 
 If CouchDB index definitions are required for the chaincode, `release` is responsible for placing the indexes into the `statedb/couchdb/indexes` directory under `RELEASE_OUTPUT_DIR`. The indexes must have a `.json` extension.  See the [CouchDB indexes](couchdb_as_state_database.html#couchdb-indexes) documentation for details.
 
-In cases where a chaincode server implementation is used, `release` is responsible for populating `chaincode/server/connection.json` with the address of the chaincode server and any TLS assets required to communicate with the chaincode. When server connection information is provided to the peer, `run` will not be called. See the [Chaincode Server](https://jira.hyperledger.org/browse/FAB-14086) documentation for details.
+In cases where a chaincode server implementation is used, `release` is responsible for populating `chaincode/server/connection.json` with the address of the chaincode server and any TLS assets required to communicate with the chaincode. When server connection information is provided to the peer, `run` will not be called.
 
 The following is an example of a simple `release` script for go chaincode:
 
