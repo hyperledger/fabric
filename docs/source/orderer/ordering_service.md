@@ -353,7 +353,7 @@ through the normal Raft protocol.
 
 ## BFT
 
-For information on how to deploy and manage the BFT orderer, be sure to check out the [deployment guide](../bft_configuration.md).
+For information on how to deploy and manage the BFT orderer, be sure to check out the [deployment guide](../bft_configuration.html).
 
 The protocol used by Fabric's BFT orderer implementation is the [SmartBFT](https://arxiv.org/abs/2107.0692) protocol
 heavily inspired by the [BFT-SMART](https://www.di.fc.ul.pt/~bessani/publications/dsn14-bftsmart.pdf) protocol,
@@ -372,7 +372,7 @@ the system can still accept new transactions, order them, and most importantly e
 by the rest of the ordering nodes. This is in contrast to Raft, which is not suitable to be deployed in such a harsh adversary model.
 
 Operating the BFT orderer is identical to how the Raft orderer is operated: New nodes can be added and removed from
-the channel dynamically and while the system is running, and it is described in the [reconfiguration guide](../create_channel/add_orderer.md).
+the channel dynamically and while the system is running, and it is described in the [reconfiguration guide](../create_channel/add_orderer.html).
 
 Similarly to Raft, the BFT leader sends periodical heartbeats to each follower, and if the latter does not hear
 from the leader within a period of time, it starts lobbying other followers to change the leader.
@@ -391,7 +391,7 @@ then the transaction may be lost. In BFT, however, even if the leader crashes, t
 in the memory of the follower nodes, and will eventually be either sent to the leader and then included in a block,
 or the leader will be forced to change to a new leader that will eventually include the transaction.
 
-Applications that submit their transactions through the [gateway service](../gateway.md) do not need to change
+Applications that submit their transactions through the [gateway service](../gateway.html) do not need to change
 anything, as the gateway service knows whether it should submit to all ordering nodes or just to one
 based on the configuration of the channel, and acts accordingly.
 

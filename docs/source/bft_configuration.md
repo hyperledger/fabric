@@ -6,7 +6,7 @@
 
 For a high level overview of the concept of ordering and how the supported
 ordering service implementations (including BFT) work at a high level, check
-out our conceptual documentation on the [Ordering Service](./orderer/ordering_service.md).
+out our conceptual documentation on the [Ordering Service](./orderer/ordering_service.html).
 
 To learn about the process of setting up an ordering node, check out our
 documentation on [Planning for an ordering service](./deployorderer/ordererplan.html).
@@ -21,7 +21,7 @@ A BFT cluster is configured in two places:
 * **Channel configuration**: Defines the membership of the  BFT cluster for the
   corresponding channel, as well as protocol specific parameters such as timeouts.
 
-Unlike the [Raft ordering service](./raft_configuration.md), where nodes identify each other using TLS pinning, 
+Unlike the [Raft ordering service](./raft_configuration.html), where nodes identify each other using TLS pinning, 
 BFT nodes identify each other using their enrollment certificate.
 
 Each channel has its own instance of a BFT protocol running. Thus, each
@@ -69,9 +69,9 @@ to the identities (enrollment certificates) and TLS certificates, and replaces t
 the identities and certificates.
 Note that the `Identity` refers to the path of the enrollment certificate, and not to the entire MSP directory.
 
-Note: it is possible to remove or add an ordering node to a channel dynamically, a process described in the reconfiguration section below and in more detail in the [reconfiguration tutorial](./create_channel/add_orderer.md).
+Note: it is possible to remove or add an ordering node to a channel dynamically, a process described in the reconfiguration section below and in more detail in the [reconfiguration tutorial](./create_channel/add_orderer.html).
 
-In addition, note that the [channel capabilities](./capabilities_concept.md) V3.0 flag must be set to true.
+In addition, note that the [channel capabilities](./capabilities_concept.html) V3.0 flag must be set to true.
 
 ### Local configuration
 
@@ -171,7 +171,7 @@ The block validation policy in a Fabric channel defaults to a policy that requir
             Rule: "ANY Writers"
 ```
 
-In BFT, the [configtxgen](./commands/configtxgen.md) tool encodes a policy that is suitable for BFT.
+In BFT, the [configtxgen](./commands/configtxgen.html) tool encodes a policy that is suitable for BFT.
 It automatically derives the policy from the nodes configured in the `ConsenterMapping` section.
 However, when adding or removing ordering service nodes from the channel,
 the policy should be adjusted accordingly as described in the reconfiguration [tutorial](./create_channel/add_orderer.html#add-the-orderer-to-the-policy-rules).
@@ -196,10 +196,10 @@ To add a new node to the ordering service:
 2. **Start the new ordering node**. For information about how to deploy an ordering node, check out [Planning for an ordering service](./deployorderer/ordererdeploy.html). Note that while you use the `osnadmin` CLI to create and join a channel, you do not need to point to a configuration block when starting the node.
 3. **Use the `osnadmin` CLI to add the first orderer to the channel**. For more information, check out the [Create a channel](./create_channel/create_channel_participation.html#step-two-use-the-osnadmin-cli-to-add-the-first-orderer-to-the-channel) tutorial.
 4. **Wait for the ordering node to replicate the blocks** from existing nodes for all channels its certificates have been added to. When an ordering node is added to a channel, it is added as a "follower", a state in which it can replicate blocks but is not part of the "consenter set" actively servicing the channel. When the node finishes replicating the blocks, its status should change from "onboarding" to "active". Note that an "active" ordering node is still not part of the consenter set.
-5. **Add the new ordering node to the consenter set** as described in the [reconfiguration tutorial](./create_channel/add_orderer.md)
+5. **Add the new ordering node to the consenter set** as described in the [reconfiguration tutorial](./create_channel/add_orderer.html)
 
 
-To remove an ordering node from the consenter set of a channel, use a channel config update transaction to remove its endpoint and certificates from the channel. For more information, check out the [reconfiguration tutorial](./create_channel/add_orderer.md)
+To remove an ordering node from the consenter set of a channel, use a channel config update transaction to remove its endpoint and certificates from the channel. For more information, check out the [reconfiguration tutorial](./create_channel/add_orderer.html)
 
 Once an ordering node is removed from the channel, the other ordering nodes stop communicating with the removed orderer in the context of the removed channel. They might still be communicating on other channels.
 
