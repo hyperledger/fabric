@@ -124,11 +124,10 @@ func (s *Server) Listen() (net.Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	tlsConfig, err := s.options.TLS.Config()
-	if err != nil {
+
+	if tlsConfig, err := s.options.TLS.Config(); err != nil {
 		return nil, err
-	}
-	if tlsConfig != nil {
+	} else if tlsConfig != nil {
 		listener = tls.NewListener(listener, tlsConfig)
 	}
 	return listener, nil
