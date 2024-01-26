@@ -153,7 +153,7 @@ transactions are accepted.
 
 Let's now turn our attention from the world state to the blockchain. Whereas the
 world state contains a set of facts relating to the current state of a set of
-business objects, the blockchain is an historical record of the facts about how
+business objects, the blockchain is a historical record of the facts about how
 these objects arrived at their current states. The blockchain has recorded every
 previous version of each ledger state and how it has been changed.
 
