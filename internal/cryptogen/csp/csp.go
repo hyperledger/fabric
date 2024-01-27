@@ -68,7 +68,7 @@ func parsePrivateKeyPEM(rawKey []byte) (crypto.PrivateKey, error) {
 	_, isEcdsa := key.(*ecdsa.PrivateKey)
 	_, isEd25519 := key.(ed25519.PrivateKey)
 	if !isEcdsa && !isEd25519 {
-		return nil, errors.New("pem bytes do not contain an EC nor ED private key")
+		return nil, errors.New("pem bytes do not contain an ECDSA nor ed25519 private key")
 	}
 
 	return key, nil
