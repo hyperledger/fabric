@@ -193,6 +193,7 @@ func Main() {
 	defer adminServer.Stop()
 
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
+
 	server := NewServer(
 		manager,
 		metricsProvider,
@@ -220,7 +221,16 @@ func Main() {
 	if conf.General.Profile.Enabled {
 		go initializeProfilingService(conf)
 	}
-	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)
+
+	clientRateLimiter, orgRateLimiter := CreateThrottlers(conf.General.Throttling)
+	throttlingWrapper := &ThrottlingAtomicBroadcast{
+		ThrottlingEnabled:     conf.General.Throttling.Rate > 0,
+		PerOrgRateLimiter:     orgRateLimiter,
+		PerClientRateLimiter:  clientRateLimiter,
+		AtomicBroadcastServer: server,
+	}
+
+	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), throttlingWrapper)
 	logger.Info("Beginning to serve requests")
 	if err := grpcServer.Start(); err != nil {
 		logger.Fatalf("Atomic Broadcast gRPC server has terminated while serving requests due to: %v", err)

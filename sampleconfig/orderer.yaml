@@ -66,6 +66,22 @@ General:
     MaxRecvMsgSize: 104857600
     # Max message size in bytes the GRPC server and client can send
     MaxSendMsgSize: 104857600
+    # Throttling prevents clients from sending too many transactions
+    # per second to the broadcast API of this node.
+    # It is only enforced when the Rate is non-zero, and when the client
+    # connects using mutual TLS.
+    # The effective rate of transactions is divided across all clients
+    # and organizations at a given unit of time governed by the inactivity timeout.
+    # When a client's rate of transaction submission exhausts its allocated budget,
+    # it is throttled until additional "budget" is allocated (it is allocated once per second).
+    Throttling:
+        # Rate is the maximum rate (transactions per second) for all clients combined.
+        # A zero rate disables throttling.
+        Rate: 0
+        # InactivityTimeout defines the time frame after which
+        # inactive clients are pruned from memory and are not considered
+        # when allocating the budget for throttling per client.
+        InactivityTimeout: 5s
 
     # Cluster settings for ordering service nodes that communicate with other ordering service nodes
     # such as Raft based ordering service.

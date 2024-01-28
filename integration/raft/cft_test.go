@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package raft
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
@@ -16,19 +17,20 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
-
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	conftx "github.com/hyperledger/fabric-config/configtx"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
+	orderer2 "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
@@ -138,6 +140,60 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			blko2 := FetchBlock(network, o2, 3, "testchannel")
 
 			Expect(blko1.Header.DataHash).To(Equal(blko2.Header.DataHash))
+		})
+	})
+
+	When("orderer is configured with throttling", func() {
+		It("a hyperactive client cannot overwhelm the orderer", func() {
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
+
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			orderer := network.Orderer("orderer")
+
+			oRunner := network.OrdererRunner(orderer)
+
+			ordererProc = ifrit.Invoke(oRunner)
+			Eventually(ordererProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", orderer)
+
+			envs := make(chan *common.Envelope, 5000)
+
+			// Create 5000 envelopes to send to the orderer at the same time
+			for i := 0; i < 5000; i++ {
+				envs <- ordererclient.CreateBroadcastEnvelope(network, orderer, "testchannel", []byte(fmt.Sprintf("%d", i)))
+			}
+
+			close(envs)
+
+			// Broadcast all envelopes in parallel from 50 clients
+			Eventually(oRunner.Err, time.Minute).Should(gbytes.Say("Start accepting requests as Raft leader"))
+			TPS := measureTPS(5000, network, orderer, envs)
+			Expect(TPS).To(BeNumerically(">", 500))
+
+			// Next, restart the orderer with throttling enabled
+			ordererProc.Signal(syscall.SIGTERM)
+			Eventually(ordererProc.Wait(), network.EventuallyTimeout).Should(Receive())
+
+			oRunner = network.OrdererRunner(orderer, "ORDERER_GENERAL_THROTTLING_RATE=500")
+			ordererProc = ifrit.Invoke(oRunner)
+
+			// Re-create the envelopes
+			envs = make(chan *common.Envelope, 5000)
+
+			// Create 5000 envelopes to send to the orderer at the same time
+			for i := 0; i < 5000; i++ {
+				envs <- ordererclient.CreateBroadcastEnvelope(network, orderer, "testchannel", []byte(fmt.Sprintf("%d", i)))
+			}
+
+			close(envs)
+
+			// Broadcast all envelopes in parallel from 50 clients and ensure it's not as fast as earlier
+			Eventually(oRunner.Err, time.Minute).Should(gbytes.Say("Start accepting requests as Raft leader"))
+			TPS = measureTPS(5000, network, orderer, envs)
+			Expect(TPS).To(Equal(500))
 		})
 	})
 
@@ -1017,6 +1073,66 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 		})
 	})
 })
+
+func measureTPS(txNum int, network *nwo.Network, orderer *nwo.Orderer, envs chan *common.Envelope) int {
+	var bcastWG sync.WaitGroup
+	bcastWG.Add(50)
+
+	var lock sync.Mutex
+	cond := &sync.Cond{L: &lock}
+
+	var wg sync.WaitGroup
+	wg.Add(50)
+
+	for i := 0; i < 50; i++ {
+		go func() {
+			defer bcastWG.Done()
+			conn := network.NewClientConn(
+				network.OrdererAddress(orderer, nwo.ListenPort),
+				filepath.Join(network.OrdererLocalTLSDir(orderer), "ca.crt"),
+				filepath.Join(network.OrdererLocalTLSDir(orderer), "server.crt"),
+				filepath.Join(network.OrdererLocalTLSDir(orderer), "server.key"),
+			)
+
+			broadcaster, err := orderer2.NewAtomicBroadcastClient(conn).Broadcast(context.Background())
+			if err != nil {
+				panic(err)
+			}
+
+			wg.Done()
+
+			lock.Lock()
+			cond.Wait()
+			lock.Unlock()
+
+			for len(envs) > 0 {
+				env, ok := <-envs
+				if ok {
+					err := broadcaster.Send(env)
+					if err != nil {
+						panic(err)
+					}
+					_, err = broadcaster.Recv()
+					if err != nil {
+						panic(err)
+					}
+				}
+			}
+		}()
+	}
+
+	start := time.Now()
+	wg.Wait()
+	cond.Broadcast()
+	bcastWG.Wait()
+
+	elapsed := time.Since(start)
+	if elapsed < time.Second {
+		elapsed = time.Second
+	}
+
+	return txNum / int(elapsed.Seconds())
+}
 
 func renewOrdererCertificates(network *nwo.Network, orderers ...*nwo.Orderer) {
 	if len(orderers) == 0 {
