@@ -12,7 +12,6 @@ import (
 	"reflect"
 	"runtime"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	mspi "github.com/hyperledger/fabric/msp"
@@ -31,7 +30,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	types2 "github.com/hyperledger/fabric/orderer/common/types"
- 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -153,8 +151,8 @@ type BFTChain struct {
 	verifier             *Verifier
 	assembler            *Assembler
 	Metrics              *Metrics
-	MetricsBFT       *api.Metrics
-	MetricsWalBFT    *wal.Metrics
+	MetricsBFT           *api.Metrics
+	MetricsWalBFT        *wal.Metrics
 	bccsp                bccsp.BCCSP
 
 	statusReportMutex sync.Mutex
@@ -183,7 +181,7 @@ func NewChain(
 	sequencer Sequencer,
 	egressCommFactory EgressCommFactory,
 ) (*BFTChain, error) {
-	logger := flogging.MustGetLogger("orderer.consensus.smartbft.chain").With(zap.String("channel", ChannelID))
+	logger := flogging.MustGetLogger("orderer.consensus.smartbft.chain").With(zap.String("channel", channelID))
 
 	requestInspector := &RequestInspector{
 		ValidateIdentityStructure: func(_ *msp.SerializedIdentity) error {
@@ -218,8 +216,8 @@ func NewChain(
 			IsLeader:             metrics.IsLeader.With("channel", channelID),
 			LeaderID:             metrics.LeaderID.With("channel", channelID),
 		},
-		MetricsBFT:    metricsBFT.With("channel", support.ChannelID()),
-		MetricsWalBFT: metricsWalBFT.With("channel", support.ChannelID()),
+		MetricsBFT:    metricsBFT.With("channel", channelID),
+		MetricsWalBFT: metricsWalBFT.With("channel", channelID),
 		bccsp:         bccsp,
 	}
 

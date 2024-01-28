@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"sort"
 	"sync/atomic"
-	"time"
 
 	"github.com/SmartBFT-Go/consensus/pkg/types"
 	"github.com/SmartBFT-Go/consensus/smartbftprotos"

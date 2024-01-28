@@ -15,6 +15,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/SmartBFT-Go/consensus/pkg/api"
+	"github.com/SmartBFT-Go/consensus/pkg/wal"
+
 	"github.com/hyperledger/fabric/common/policies"
 
 	"github.com/SmartBFT-Go/consensus/pkg/types"
@@ -92,12 +95,16 @@ func createMockGenesisBlock() *cb.Block {
 		},
 	}
 
+	blockDataHash, err := protoutil.BlockDataHash(blockData)
+	if err != nil {
+		return nil
+	}
 	return &cb.Block{
 		Header: &cb.BlockHeader{
 			// The genesis block is the first block in the ledger
 			Number:       0,
 			PreviousHash: nil,
-			DataHash:     protoutil.BlockDataHash(blockData),
+			DataHash:     blockDataHash,
 		},
 		Data: blockData,
 		Metadata: &cb.BlockMetadata{
@@ -639,6 +646,11 @@ func newBftChain(node *Node) (*smartbft.BFTChain, error) {
 		return egressCommMock
 	}
 
+	mpc := &smartbft.MetricProviderConverter{MetricsProvider: &disabled.Provider{}}
+
+	metricsBFT := api.NewMetrics(mpc, channelId)
+	metricsWalBFT := wal.NewMetrics(mpc, channelId)
+
 	bftChain, err := smartbft.NewChain(
 		node.ChannelId,
 		configValidatorMock,
@@ -650,6 +662,8 @@ func newBftChain(node *Node) (*smartbft.BFTChain, error) {
 		signerSerializer,
 		policyManager,
 		smartbft.NewMetrics(&disabled.Provider{}),
+		metricsBFT,
+		metricsWalBFT,
 		cryptoProvider,
 		newRuntimeConfigManagerMockFactory,
 		msgprocessor,

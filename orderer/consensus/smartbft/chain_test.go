@@ -138,5 +138,6 @@ func createEndorserTxEnvelope(message string, channelId string) *cb.Envelope {
 			},
 			Data: []byte(message),
 		}),
+		Signature: []byte{1, 2, 3},
 	}
 }

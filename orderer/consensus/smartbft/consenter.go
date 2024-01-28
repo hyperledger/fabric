@@ -100,7 +100,7 @@ func New(
 	logger.Infof("WAL Directory is %s", walConfig.WALDir)
 
 	mpc := &MetricProviderConverter{
-		metricsProvider: metricsProvider,
+		MetricsProvider: metricsProvider,
 	}
 
 	consenter := &Consenter{
