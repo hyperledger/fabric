@@ -23,11 +23,12 @@ jobs:
     name: Basic Checks
     runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-20.04' || 'ubuntu-20.04' }}
     steps:
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         name: Install Go
         with:
           go-version: ${{ env.GO_VER }}
-      - uses: actions/checkout@v3
+          cache: false
+      - uses: actions/checkout@v4
         name: Checkout Fabric Code
         with:
           fetch-depth: 0
@@ -38,11 +39,12 @@ jobs:
     needs: basic-checks
     runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-20.04' || 'ubuntu-20.04' }}
     steps:
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         name: Install Go
         with:
           go-version: ${{ env.GO_VER }}
-      - uses: actions/checkout@v3
+          cache: false
+      - uses: actions/checkout@v4
         name: Checkout Fabric Code
       - run: ci/scripts/setup_hsm.sh
         name: Install SoftHSM
@@ -57,11 +59,12 @@ jobs:
         INTEGRATION_TEST_SUITE: ["raft","pvtdata","pvtdatapurge","ledger","lifecycle","e2e smartbft","discovery gossip devmode pluggable","gateway idemix pkcs11 configtx configtxlator","sbe nwo msp"]
     runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-20.04' || 'ubuntu-20.04' }}
     steps:
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         name: Install Go
         with:
           go-version: ${{ env.GO_VER }}
-      - uses: actions/checkout@v3
+          cache: false
+      - uses: actions/checkout@v4
         name: Checkout Fabric Code
       - run: ci/scripts/setup_hsm.sh
         name: Install SoftHSM
