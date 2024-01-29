@@ -8,7 +8,6 @@ package lifecycle
 
 import (
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -33,7 +32,7 @@ var _ = Describe("Lifecycle with Channel v3_0 capabilities and ed25519 identitie
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "lifecycle")
+		testDir, err = os.MkdirTemp("", "lifecycle")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = docker.NewClientFromEnv()
@@ -186,9 +185,9 @@ var _ = Describe("Lifecycle with Channel v3_0 capabilities and ed25519 identitie
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-		fileBytes, err := ioutil.ReadFile(chaincode.PackageFile)
+		fileBytes, err := os.ReadFile(chaincode.PackageFile)
 		Expect(err).NotTo(HaveOccurred())
-		fileBytesFromPeer, err := ioutil.ReadFile(filepath.Join(network.RootDir, chaincode.PackageID+".tar.gz"))
+		fileBytesFromPeer, err := os.ReadFile(filepath.Join(network.RootDir, chaincode.PackageID+".tar.gz"))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fileBytesFromPeer).To(Equal(fileBytes))
 
@@ -217,10 +216,7 @@ var _ = Describe("Lifecycle with Channel v3_0 capabilities and ed25519 identitie
 })
 
 func changePeerOrOrdererToEd25519(network *nwo.Network, orgName, entityname string) {
-	genConfigFile, _ := os.Open(network.CryptoConfigPath())
-	defer genConfigFile.Close()
-
-	data, err := ioutil.ReadAll(genConfigFile)
+	data, err := os.ReadFile(network.CryptoConfigPath())
 	if err != nil {
 		panic("Could no read crypto configuration")
 	}
@@ -257,5 +253,5 @@ func changePeerOrOrdererToEd25519(network *nwo.Network, orgName, entityname stri
 
 	data, _ = yaml.Marshal(config)
 
-	_ = ioutil.WriteFile(network.CryptoConfigPath(), data, fs.ModeExclusive)
+	_ = os.WriteFile(network.CryptoConfigPath(), data, fs.ModeExclusive)
 }
