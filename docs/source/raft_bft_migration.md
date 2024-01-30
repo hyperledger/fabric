@@ -14,7 +14,7 @@ Before attempting migration, take the following into account:
 2. Migration is one way. Once the ordering service is migrated to BFT, and starts committing transactions, it is not possible to go back to Raft.
 3. Because the ordering nodes must go down and be brought back up, downtime must be allowed during the migration.
 4. Recovering from a botched migration is possible only if a backup is taken at the point in migration prescribed later in this document. If you do not take a backup, and migration fails, you will be possibly unable to recover your previous state.
-5. All channels managed by the targeted ordering service node must be migrated during the same maintenance window. It is not supported to migrate only some channels before resuming operations.
+5. All channels managed by a targeted ordering service node must be migrated during the same maintenance window. It is not supported to migrate only some channels before resuming operations. If you want to migrate one channel to BFT but keep another channel on Raft, make sure these two channels have no ordering service nodes in common.
 6. At the end of the migration process, the set of consenters in a specific channel, prior to migration, should be the same as the set of consenters on that channel after migration.
    That is, addition or removal of consenters from a channel, or changing certificates, is not permitted during migration.
 7. Migration is done in place, utilizing the existing ledgers for the deployed ordering nodes. Addition or removal of orderers should be performed after the migration. 
@@ -54,13 +54,13 @@ Each consenter is represented by the following properties:
 \
 Before proceeding with the migration, the following preparatory steps are required:
 
-1.  **Config the number of node to be 3f + 1, so the cluster will be functional.**
+1.  **Config the number of nodes to be 3f + 1, so the cluster will be functional. (Where f is the number of tolerated failures).**
 2. Prepare the BFT `Metadata` channel configuration.
 Refer to the [BFT configuration guide](./bft_configuration.html) for more information on the channel configuration fields.
 
-3. Prepare the ConsenterMapping. Ensure all nodes are part of the consenters. 
+3. Prepare the ConsenterMapping. Ensure all nodes of the current Raft cluster are part of the consenters. 
 
-Note: all the channels should receive the same BFT `Metadata` and `ConsenterMapping` configuration.
+Note: different channels may receive different BFT `Metadata` and `ConsenterMapping` configuration.
 
 4. Ensure all ordering service nodes are running the same version of Fabric, and that this version is v3.0.0 or greater.
 5. Ensure all peers are running at least v3.0.0 of Fabric. Make sure all channels are configured with the channel capability that enables migration to BFT (V3_0 or later).
@@ -115,9 +115,9 @@ Note: exit of maintenance mode must be done after restart.
 After the configuration update from the previous step has been completed on each channel, restart the ordering service nodes. 
 They should restart as `BFT` nodes, form a cluster per channel, and elect a leader on each channel.
 
-The log output which proves that a BFT cluster is configured is: ```SmartBFT-v3 is now servicing chain testchannel channel=channel-name```
+The log output which proves that a BFT cluster is configured is: ```SmartBFT-v3 is now servicing chain channel=channel-name```
 
-After restart process finished, make sure to validate that a leader has been elected on each channel by inspecting the node logs. 
+After the restart process had finished, make sure to validate that a leader has been elected on each channel by inspecting the node logs. 
 This will confirm that the process has been completed successfully.
 
 When the followers see the leader, the log will show, for each channel:
