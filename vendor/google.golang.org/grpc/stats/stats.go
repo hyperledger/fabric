@@ -16,8 +16,6 @@
  *
  */
 
-//go:generate protoc --go_out=plugins=grpc:. grpc_testing/test.proto
-
 // Package stats is for collecting and reporting various network and RPC stats.
 // This package is for monitoring purpose only. All fields are read-only.
 // All APIs are experimental.
@@ -38,15 +36,22 @@ type RPCStats interface {
 	IsClient() bool
 }
 
-// Begin contains stats when an RPC begins.
+// Begin contains stats when an RPC attempt begins.
 // FailFast is only valid if this Begin is from client side.
 type Begin struct {
 	// Client is true if this Begin is from client side.
 	Client bool
-	// BeginTime is the time when the RPC begins.
+	// BeginTime is the time when the RPC attempt begins.
 	BeginTime time.Time
 	// FailFast indicates if this RPC is failfast.
 	FailFast bool
+	// IsClientStream indicates whether the RPC is a client streaming RPC.
+	IsClientStream bool
+	// IsServerStream indicates whether the RPC is a server streaming RPC.
+	IsServerStream bool
+	// IsTransparentRetryAttempt indicates whether this attempt was initiated
+	// due to transparently retrying a previous attempt.
+	IsTransparentRetryAttempt bool
 }
 
 // IsClient indicates if the stats information is from client side.
@@ -54,18 +59,36 @@ func (s *Begin) IsClient() bool { return s.Client }
 
 func (s *Begin) isRPCStats() {}
 
+// PickerUpdated indicates that the LB policy provided a new picker while the
+// RPC was waiting for one.
+type PickerUpdated struct{}
+
+// IsClient indicates if the stats information is from client side. Only Client
+// Side interfaces with a Picker, thus always returns true.
+func (*PickerUpdated) IsClient() bool { return true }
+
+func (*PickerUpdated) isRPCStats() {}
+
 // InPayload contains the information for an incoming payload.
 type InPayload struct {
 	// Client is true if this InPayload is from client side.
 	Client bool
 	// Payload is the payload with original type.
-	Payload interface{}
+	Payload any
 	// Data is the serialized message payload.
 	Data []byte
-	// Length is the length of uncompressed data.
+
+	// Length is the size of the uncompressed payload data. Does not include any
+	// framing (gRPC or HTTP/2).
 	Length int
-	// WireLength is the length of data on wire (compressed, signed, encrypted).
+	// CompressedLength is the size of the compressed payload data. Does not
+	// include any framing (gRPC or HTTP/2). Same as Length if compression not
+	// enabled.
+	CompressedLength int
+	// WireLength is the size of the compressed payload data plus gRPC framing.
+	// Does not include HTTP/2 framing.
 	WireLength int
+
 	// RecvTime is the time when the payload is received.
 	RecvTime time.Time
 }
@@ -121,12 +144,18 @@ type OutPayload struct {
 	// Client is true if this OutPayload is from client side.
 	Client bool
 	// Payload is the payload with original type.
-	Payload interface{}
+	Payload any
 	// Data is the serialized message payload.
 	Data []byte
-	// Length is the length of uncompressed data.
+	// Length is the size of the uncompressed payload data. Does not include any
+	// framing (gRPC or HTTP/2).
 	Length int
-	// WireLength is the length of data on wire (compressed, signed, encrypted).
+	// CompressedLength is the size of the compressed payload data. Does not
+	// include any framing (gRPC or HTTP/2). Same as Length if compression not
+	// enabled.
+	CompressedLength int
+	// WireLength is the size of the compressed payload data plus gRPC framing.
+	// Does not include HTTP/2 framing.
 	WireLength int
 	// SentTime is the time when the payload is sent.
 	SentTime time.Time

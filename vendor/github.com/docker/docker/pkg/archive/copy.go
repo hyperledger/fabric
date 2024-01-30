@@ -29,8 +29,8 @@ var (
 // clean path already ends in the separator, then another is not added.
 func PreserveTrailingDotOrSeparator(cleanedPath string, originalPath string, sep byte) string {
 	// Ensure paths are in platform semantics
-	cleanedPath = strings.Replace(cleanedPath, "/", string(sep), -1)
-	originalPath = strings.Replace(originalPath, "/", string(sep), -1)
+	cleanedPath = strings.ReplaceAll(cleanedPath, "/", string(sep))
+	originalPath = strings.ReplaceAll(originalPath, "/", string(sep))
 
 	if !specifiesCurrentDir(cleanedPath) && specifiesCurrentDir(originalPath) {
 		if !hasTrailingPathSeparator(cleanedPath, sep) {
@@ -303,7 +303,6 @@ func PrepareArchiveCopy(srcContent io.Reader, srcInfo, dstInfo CopyInfo) (dstDir
 		}
 		return dstDir, RebaseArchiveEntries(srcContent, srcBase, dstBase), nil
 	}
-
 }
 
 // RebaseArchiveEntries rewrites the given srcContent archive replacing
@@ -372,9 +371,6 @@ func RebaseArchiveEntries(srcContent io.Reader, oldBase, newBase string) io.Read
 
 	return rebased
 }
-
-// TODO @gupta-ak. These might have to be changed in the future to be
-// continuity driver aware as well to support LCOW.
 
 // CopyResource performs an archive copy from the given source path to the
 // given destination path. The source path MUST exist and the destination
