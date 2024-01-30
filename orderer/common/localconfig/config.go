@@ -51,6 +51,7 @@ type General struct {
 	Authentication    Authentication
 	MaxRecvMsgSize    int32
 	MaxSendMsgSize    int32
+	Throttling        Throttling
 }
 
 type Cluster struct {
@@ -148,6 +149,19 @@ type Admin struct {
 	TLS           TLS
 }
 
+// Throttling defines a max rate of transactions per client.
+// The effective rate per client is the rate defined divided equally
+// by all clients, until the clients cease from sending transactions
+// and inactivity timeout expires for them.
+type Throttling struct {
+	// Rate is the maximum rate for all clients combined.
+	Rate int
+	// InactivityTimeout defines the time frame after which
+	// inactive clients are pruned from memory and are not considered
+	// when allocating the budget for throttling per client.
+	InactivityTimeout time.Duration
+}
+
 // ChannelParticipation provides the channel participation API configuration for the orderer.
 // Channel participation uses the same ListenAddress and TLS settings of the Operations service.
 type ChannelParticipation struct {
@@ -183,6 +197,9 @@ var Defaults = TopLevel{
 		},
 		MaxRecvMsgSize: comm.DefaultMaxRecvMsgSize,
 		MaxSendMsgSize: comm.DefaultMaxSendMsgSize,
+		Throttling: Throttling{
+			InactivityTimeout: time.Second * 5,
+		},
 	},
 	FileLedger: FileLedger{
 		Location: "/var/hyperledger/production/orderer",
@@ -344,6 +361,9 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.General.MaxSendMsgSize == 0:
 			logger.Infof("General.MaxSendMsgSize is unset, setting to %v", Defaults.General.MaxSendMsgSize)
 			c.General.MaxSendMsgSize = Defaults.General.MaxSendMsgSize
+		case c.General.Throttling.InactivityTimeout == 0:
+			logger.Infof("General.Throttling.InactivityTimeout is unset, setting to %v", Defaults.General.Throttling.InactivityTimeout)
+			c.General.Throttling.InactivityTimeout = Defaults.General.Throttling.InactivityTimeout
 		default:
 			return
 		}

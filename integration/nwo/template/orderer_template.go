@@ -11,6 +11,13 @@ const DefaultOrderer = `---
 General:
   ListenAddress: 127.0.0.1
   ListenPort: {{ .OrdererPort Orderer "Listen" }}
+  Throttling:
+   # Rate is the maximum rate for all clients combined.
+    Rate: 0
+   # InactivityTimeout defines the time frame after which
+   # inactive clients are pruned from memory and are not considered
+   # when allocating the budget for throttling per client.
+    InactivityTimeout: 5s
   TLS:
     Enabled: {{ .TLSEnabled }}
     PrivateKey: {{ $w.OrdererLocalTLSDir Orderer }}/server.key

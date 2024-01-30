@@ -102,6 +102,12 @@ func NewServer(
 	return s
 }
 
+func CreateThrottlers(throttleConfig localconfig.Throttling) (RateLimiter, RateLimiter) {
+	clientRateLimiter := newRateLimiter(throttleConfig.Rate, throttleConfig.InactivityTimeout)
+	orgRateLimiter := newRateLimiter(throttleConfig.Rate, throttleConfig.InactivityTimeout)
+	return clientRateLimiter, orgRateLimiter
+}
+
 type msgTracer struct {
 	function string
 	debug    *localconfig.Debug
