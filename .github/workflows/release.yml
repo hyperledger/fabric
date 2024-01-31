@@ -20,7 +20,7 @@ on:
         type: string
 
 env:
-  GO_VER: 1.21.3
+  GO_VER: 1.21.6
 
 permissions:
   contents: read
