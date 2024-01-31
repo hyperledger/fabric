@@ -42,12 +42,12 @@ jobs:
           arch: amd64
     runs-on: ubuntu-20.04
     steps:
+      - name: Checkout Fabric Code
+        uses: actions/checkout@v4      
       - name: Install Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VER }}
-      - name: Checkout Fabric Code
-        uses: actions/checkout@v3
       - name: Compile Binary and Create Tarball
         run: ./ci/scripts/create_binary_package.sh
         env:
@@ -68,12 +68,12 @@ jobs:
         run: sudo apt update
       - name: Install Dependencies
         run: sudo apt install -y gcc haveged libtool make
+      - name: Checkout Fabric Code
+        uses: actions/checkout@v4        
       - name: Install Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VER }}
-      - name: Checkout Fabric Code
-        uses: actions/checkout@v3
       - name: Publish Docker Images
         run: ./ci/scripts/publish_docker.sh
         env:
@@ -89,7 +89,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout Fabric Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Download Artifacts
         id: download
         uses: actions/download-artifact@v3
