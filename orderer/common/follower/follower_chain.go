@@ -9,6 +9,7 @@ package follower
 import (
 	"bytes"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -60,7 +61,7 @@ type BlockPullerFactory interface {
 // ChainCreator defines a function that creates a new consensus.Chain for this channel, to replace the current
 // follower.Chain. This interface is meant to be implemented by the multichannel.Registrar.
 type ChainCreator interface {
-	SwitchFollowerToChain(chainName string)
+	SwitchFollowerToChain(chainName string) bool
 }
 
 //go:generate counterfeiter -o mocks/channel_participation_metrics_reporter.go -fake-name ChannelParticipationMetricsReporter . ChannelParticipationMetricsReporter
@@ -100,6 +101,7 @@ type Chain struct {
 	doneChan          chan struct{} // The go-routine signals the 'closer' that it is done by closing this channel.
 	consensusRelation types.ConsensusRelation
 	status            types.Status
+	removingExternal  atomic.Int32 // External channel removal once.
 
 	ledgerResources  LedgerResources            // ledger & config resources
 	clusterConsenter consensus.ClusterConsenter // detects whether a block indicates channel membership
@@ -224,6 +226,7 @@ func (c *Chain) Start() {
 
 // Halt signals the Chain to stop and waits for the internal go-routine to exit.
 func (c *Chain) Halt() {
+	c.removingExternal.Store(1)
 	c.halt()
 	<-c.doneChan
 }
@@ -354,7 +357,22 @@ func (c *Chain) pull() error {
 	// Trigger creation of a new consensus.Chain.
 	c.logger.Info("Block pulling finished successfully, going to switch from follower to a consensus.Chain")
 	c.halt()
-	c.chainCreator.SwitchFollowerToChain(c.ledgerResources.ChannelID())
+
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+
+	// SwitchFollowerToChain is trying to take over the mutex.
+	// If it fails, false is returned.
+	// Perhaps at this moment the command "remove channel" is being executed,
+	// let's check it `c.removingExternal.Load() == 1`. If so, leave the loop.
+	// If SwitchFollowerToChain returns true, we will also leave the loop.
+	// In other cases, we need to repeat the loop.
+	for range ticker.C {
+		if isExec := c.chainCreator.SwitchFollowerToChain(c.ledgerResources.ChannelID()); isExec ||
+			c.removingExternal.Load() == 1 {
+			break
+		}
+	}
 
 	return nil
 }
