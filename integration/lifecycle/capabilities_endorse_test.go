@@ -298,7 +298,6 @@ func giveEd25519CertAndKeyForEntity(network *nwo.Network, entitiy interface{}) {
 	} else if orderer, ok := entitiy.(*nwo.Orderer); ok {
 		certPath = network.OrdererCert(orderer)
 		domain := network.Organization(orderer.Organization).Domain
-		keyPath = filepath.Join(network.RootDir, "crypto", "peerOrganizations", domain, "ca", "priv_sk")
 		caCertPath = network.OrdererCACert(orderer)
 		caKeyPath = filepath.Join(network.RootDir, "crypto", "ordererOrganizations", domain, "ca", "priv_sk")
 	} else {
