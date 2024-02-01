@@ -475,7 +475,7 @@ var _ = Describe("DiscoveryService", func() {
 			currentConfig := nwo.GetConfig(network, org3Peer0, orderer, "testchannel")
 			updatedConfig := proto.Clone(currentConfig).(*common.Config)
 			updatedConfig.ChannelGroup.Groups["Application"].Groups["Org3"].Policies["Writers"].Policy.Value = protoutil.MarshalOrPanic(policydsl.SignedByMspAdmin("Org3MSP"))
-			nwo.UpdateConfig(network, orderer, "testchannel", currentConfig, updatedConfig, true, org3Peer0)
+			nwo.UpdateConfig(network, orderer, "testchannel", currentConfig, updatedConfig, true, org3Peer0, nil)
 
 			By("trying to discover endorsers as an org3 admin")
 			endorsers = commands.Endorsers{
