@@ -12,7 +12,6 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -301,7 +300,7 @@ func giveEd25519CertAndKeyForEntity(network *nwo.Network, entitiy interface{}) {
 		caCertPath = network.OrdererCACert(orderer)
 		caKeyPath = filepath.Join(network.RootDir, "crypto", "ordererOrganizations", domain, "ca", "priv_sk")
 	} else {
-		fmt.Println("Invalid entity type")
+		Fail("Invalid entity type")
 	}
 
 	keyPath = filepath.Join(certPath, "..", "..", "keystore", "priv_sk")
@@ -311,9 +310,7 @@ func giveEd25519CertAndKeyForEntity(network *nwo.Network, entitiy interface{}) {
 	caKey := getPrivateKey(caKeyPath)
 
 	newPub, newPriv, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		fmt.Println("Could not generate the new key")
-	}
+	Expect(err).NotTo(HaveOccurred(), "Could not generate the new key")
 
 	// The CA signs the certificate
 	certBytes, err := x509.CreateCertificate(rand.Reader, entityCert, caCert, newPub, caKey)
