@@ -6,9 +6,10 @@ code.cloudfoundry.org/clock/fakeclock
 ## explicit
 github.com/Azure/go-ansiterm
 github.com/Azure/go-ansiterm/winterm
-# github.com/BurntSushi/toml v0.3.1
-## explicit
+# github.com/BurntSushi/toml v1.3.2
+## explicit; go 1.16
 github.com/BurntSushi/toml
+github.com/BurntSushi/toml/internal
 # github.com/DataDog/zstd v1.4.0
 ## explicit
 github.com/DataDog/zstd
@@ -104,7 +105,7 @@ github.com/docker/docker/pkg/system
 # github.com/docker/go-connections v0.4.0
 ## explicit
 github.com/docker/go-connections/nat
-# github.com/docker/go-units v0.4.0
+# github.com/docker/go-units v0.5.0
 ## explicit
 github.com/docker/go-units
 # github.com/dustin/go-humanize v1.0.0
@@ -122,6 +123,8 @@ github.com/eapache/queue
 # github.com/felixge/httpsnoop v1.0.1
 ## explicit; go 1.13
 github.com/felixge/httpsnoop
+# github.com/frankban/quicktest v1.14.5
+## explicit; go 1.13
 # github.com/fsnotify/fsnotify v1.4.9
 ## explicit; go 1.13
 github.com/fsnotify/fsnotify
@@ -161,6 +164,8 @@ github.com/golang/protobuf/ptypes/timestamp
 # github.com/golang/snappy v0.0.4
 ## explicit
 github.com/golang/snappy
+# github.com/google/go-cmp v0.5.9
+## explicit; go 1.13
 # github.com/gorilla/handlers v1.5.1
 ## explicit; go 1.14
 github.com/gorilla/handlers
@@ -240,7 +245,7 @@ github.com/mitchellh/mapstructure
 # github.com/moby/sys/mount v0.2.0
 ## explicit; go 1.14
 github.com/moby/sys/mount
-# github.com/moby/sys/mountinfo v0.5.0
+# github.com/moby/sys/mountinfo v0.7.1
 ## explicit; go 1.16
 github.com/moby/sys/mountinfo
 # github.com/moby/term v0.0.0-20201216013528-df9cb8a40635
@@ -304,8 +309,8 @@ github.com/opencontainers/go-digest
 ## explicit
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/opencontainers/runc v1.1.5
-## explicit; go 1.16
+# github.com/opencontainers/runc v1.1.12
+## explicit; go 1.17
 github.com/opencontainers/runc/libcontainer/user
 # github.com/pierrec/lz4 v2.5.0+incompatible
 ## explicit
@@ -359,11 +364,11 @@ github.com/spf13/pflag
 # github.com/spf13/viper v0.0.0-20150908122457-1967d93db724
 ## explicit
 github.com/spf13/viper
-# github.com/stretchr/objx v0.1.1
-## explicit
+# github.com/stretchr/objx v0.5.0
+## explicit; go 1.12
 github.com/stretchr/objx
-# github.com/stretchr/testify v1.7.1-0.20210116013205-6990a05d54c2
-## explicit; go 1.13
+# github.com/stretchr/testify v1.8.4
+## explicit; go 1.20
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/mock
 github.com/stretchr/testify/require
@@ -427,14 +432,14 @@ go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
 go.uber.org/zap/zapgrpc
 go.uber.org/zap/zaptest/observer
-# golang.org/x/crypto v0.17.0
+# golang.org/x/crypto v0.18.0
 ## explicit; go 1.18
 golang.org/x/crypto/sha3
-# golang.org/x/mod v0.8.0
-## explicit; go 1.17
+# golang.org/x/mod v0.14.0
+## explicit; go 1.18
 golang.org/x/mod/semver
-# golang.org/x/net v0.10.0
-## explicit; go 1.17
+# golang.org/x/net v0.20.0
+## explicit; go 1.18
 golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/html/charset
@@ -472,15 +477,17 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# golang.org/x/tools v0.6.0
+# golang.org/x/tools v0.14.0
 ## explicit; go 1.18
 golang.org/x/tools/go/gcexportdata
 golang.org/x/tools/go/internal/packagesdriver
 golang.org/x/tools/go/packages
+golang.org/x/tools/go/types/objectpath
 golang.org/x/tools/internal/event
 golang.org/x/tools/internal/event/core
 golang.org/x/tools/internal/event/keys
 golang.org/x/tools/internal/event/label
+golang.org/x/tools/internal/event/tag
 golang.org/x/tools/internal/gcimporter
 golang.org/x/tools/internal/gocommand
 golang.org/x/tools/internal/packagesinternal
@@ -547,10 +554,10 @@ gopkg.in/cheggaaa/pb.v1
 # gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 ## explicit
 gopkg.in/tomb.v1
-# gopkg.in/yaml.v2 v2.3.0
-## explicit
+# gopkg.in/yaml.v2 v2.4.0
+## explicit; go 1.15
 gopkg.in/yaml.v2
-# gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
+# gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
 # github.com/onsi/gomega => github.com/onsi/gomega v1.9.0
