@@ -167,9 +167,19 @@ var _ = Describe("GatewayService with BFT ordering service", func() {
 		rpcErr = status.Convert(err)
 		Expect(rpcErr.Message()).To(Equal("insufficient number of orderers could successfully process transaction to satisfy quorum requirement"))
 
-		peerLog := peerGinkgoRunner[0].Err().Contents()
-		needAdr := scanAddrGRPCconnectStructInLog(peerLog, network.PortsByOrdererID["OrdererOrg.orderer2"]["Listen"])
-		lastDateTime := scanLastDateTimeInLog(peerLog)
+		var (
+			needAdr      string
+			lastDateTime string
+		)
+		Eventually(func() bool {
+			peerLog := peerGinkgoRunner[0].Err().Contents()
+			needAdr = scanAddrGRPCconnectStructInLog(peerLog, network.PortsByOrdererID["OrdererOrg.orderer2"]["Listen"])
+			if needAdr == "" {
+				return false
+			}
+			lastDateTime = scanLastDateTimeInLog(peerLog)
+			return true
+		}, network.EventuallyTimeout).Should(BeTrue())
 		// move cursor to end of log
 		Eventually(peerGinkgoRunner[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(lastDateTime))
 
@@ -225,6 +235,10 @@ func scanLastDateTimeInLog(data []byte) string {
 func scanAddrGRPCconnectStructInLog(data []byte, listenPort uint16) string {
 	re := regexp.MustCompile(fmt.Sprintf("pickfirstBalancer: UpdateSubConnState.*%d", listenPort))
 	loc := re.FindIndex(data)
+	if len(loc) == 0 {
+		return ""
+	}
+
 	start := loc[0] + len("pickfirstBalancer: UpdateSubConnState: ")
 	return string(data[start : start+12])
 }
