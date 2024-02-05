@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"math/bits"
+	"sync"
 
 	"github.com/klauspost/compress/fse"
 )
@@ -87,7 +88,7 @@ type Scratch struct {
 	// Decoders will return ErrMaxDecodedSizeExceeded is this limit is exceeded.
 	MaxDecodedSize int
 
-	br byteReader
+	srcLen int
 
 	// MaxSymbolValue will override the maximum symbol value of the next block.
 	MaxSymbolValue uint8
@@ -116,6 +117,7 @@ type Scratch struct {
 	nodes          []nodeElt
 	tmpOut         [4][]byte
 	fse            *fse.Scratch
+	decPool        sync.Pool // *[4][256]byte buffers.
 	huffWeight     [maxSymbolValue + 1]byte
 }
 
@@ -168,7 +170,7 @@ func (s *Scratch) prepare(in []byte) (*Scratch, error) {
 	if s.fse == nil {
 		s.fse = &fse.Scratch{}
 	}
-	s.br.init(in)
+	s.srcLen = len(in)
 
 	return s, nil
 }

@@ -179,8 +179,8 @@ var _ = Describe("GatewayService with BFT ordering service", func() {
 		ordererRunners[1] = runner
 		ordererProcesses["orderer2"] = ifrit.Invoke(runner)
 		Eventually(ordererProcesses["orderer2"].Ready(), network.EventuallyTimeout).Should(BeClosed())
-		// wait peer conecting to orderer2
-		Eventually(peerGinkgoRunner[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(fmt.Sprintf("%s, \\{READY", needAdr)))
+		// wait for peer to connect to orderer2
+		Eventually(peerGinkgoRunner[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(fmt.Sprintf("%s, \\{ConnectivityState:READY", needAdr)))
 		Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Starting view with number 0"))
 		// awaiting the selection of a new leader
 		Eventually(ordererRunners[1].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Starting view with number"))
@@ -223,9 +223,10 @@ func scanLastDateTimeInLog(data []byte) string {
 }
 
 func scanAddrGRPCconnectStructInLog(data []byte, listenPort uint16) string {
-	re := regexp.MustCompile(fmt.Sprintf("pickfirstBalancer: UpdateSubConnState.*%d", listenPort))
+	// look for grpc Info message indicating failure of peer to connect to orderer, then return the grpc identifier for that orderer
+	re := regexp.MustCompile(fmt.Sprintf("Received SubConn state update.*%d", listenPort))
 	loc := re.FindIndex(data)
-	start := loc[0] + len("pickfirstBalancer: UpdateSubConnState: ")
+	start := loc[0] + len("Received SubConn state update: ")
 	return string(data[start : start+12])
 }
 
