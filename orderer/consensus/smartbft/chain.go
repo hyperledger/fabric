@@ -555,11 +555,7 @@ func (c *BFTChain) HandleMessage(sender uint64, m *smartbftprotos.Message) {
 // HandleRequest handles the request from the sender
 func (c *BFTChain) HandleRequest(sender uint64, req []byte) {
 	c.Logger.Debugf("HandleRequest from %d", sender)
-	if _, err := c.verifier.VerifyRequest(req); err != nil {
-		c.Logger.Warnf("Got bad request from %d: %v", sender, err)
-		return
-	}
-	c.consensus.SubmitRequest(req)
+	c.consensus.HandleRequest(sender, req)
 }
 
 func (c *BFTChain) updateRuntimeConfig(block *cb.Block) types.Reconfig {
