@@ -50,7 +50,7 @@ Register-ArgumentCompleter -CommandName '%[1]s' -ScriptBlock {
     if ($Command.Length -gt $CursorPosition) {
         $Command=$Command.Substring(0,$CursorPosition)
     }
-	__%[1]s_debug "Truncated command: $Command"
+    __%[1]s_debug "Truncated command: $Command"
 
     $ShellCompDirectiveError=%[3]d
     $ShellCompDirectiveNoSpace=%[4]d
@@ -58,9 +58,10 @@ Register-ArgumentCompleter -CommandName '%[1]s' -ScriptBlock {
     $ShellCompDirectiveFilterFileExt=%[6]d
     $ShellCompDirectiveFilterDirs=%[7]d
 
-	# Prepare the command to request completions for the program.
+    # Prepare the command to request completions for the program.
     # Split the command at the first space to separate the program and arguments.
     $Program,$Arguments = $Command.Split(" ",2)
+
     $RequestComp="$Program %[2]s $Arguments"
     __%[1]s_debug "RequestComp: $RequestComp"
 
@@ -86,14 +87,16 @@ Register-ArgumentCompleter -CommandName '%[1]s' -ScriptBlock {
         # We add an extra empty parameter so we can indicate this to the go method.
         __%[1]s_debug "Adding extra empty parameter"
 `+"        # We need to use `\"`\" to pass an empty argument a \"\" or '' does not work!!!"+`
-`+"        $RequestComp=\"$RequestComp\" + ' `\"`\"' "+`
+`+"        $RequestComp=\"$RequestComp\" + ' `\"`\"'"+`
     }
 
     __%[1]s_debug "Calling $RequestComp"
+    # First disable ActiveHelp which is not supported for Powershell
+    $env:%[8]s=0
+
     #call the command store the output in $out and redirect stderr and stdout to null
     # $Out is an array contains each line per element
     Invoke-Expression -OutVariable out "$RequestComp" 2>&1 | Out-Null
-
 
     # get directive from last line
     [int]$Directive = $Out[-1].TrimStart(':')
@@ -140,6 +143,25 @@ Register-ArgumentCompleter -CommandName '%[1]s' -ScriptBlock {
         $Space = ""
     }
 
+    if ((($Directive -band $ShellCompDirectiveFilterFileExt) -ne 0 ) -or
+       (($Directive -band $ShellCompDirectiveFilterDirs) -ne 0 ))  {
+        __%[1]s_debug "ShellCompDirectiveFilterFileExt ShellCompDirectiveFilterDirs are not supported"
+
+        # return here to prevent the completion of the extensions
+        return
+    }
+
+    $Values = $Values | Where-Object {
+        # filter the result
+        $_.Name -like "$WordToComplete*"
+
+        # Join the flag back if we have an equal sign flag
+        if ( $IsEqualFlag ) {
+            __%[1]s_debug "Join the equal sign flag back to the completion value"
+            $_.Name = $Flag + "=" + $_.Name
+        }
+    }
+
     if (($Directive -band $ShellCompDirectiveNoFileComp) -ne 0 ) {
         __%[1]s_debug "ShellCompDirectiveNoFileComp is called"
 
@@ -153,32 +175,13 @@ Register-ArgumentCompleter -CommandName '%[1]s' -ScriptBlock {
         }
     }
 
-    if ((($Directive -band $ShellCompDirectiveFilterFileExt) -ne 0 ) -or
-       (($Directive -band $ShellCompDirectiveFilterDirs) -ne 0 ))  {
-        __%[1]s_debug "ShellCompDirectiveFilterFileExt ShellCompDirectiveFilterDirs are not supported"
-
-        # return here to prevent the completion of the extensions
-        return
-    }
-
-    $Values = $Values | Where-Object {
-        # filter the result
-        $_.Name -like "$WordToComplete*"
-
-        # Join the flag back if we have a equal sign flag
-        if ( $IsEqualFlag ) {
-            __%[1]s_debug "Join the equal sign flag back to the completion value"
-            $_.Name = $Flag + "=" + $_.Name
-        }
-    }
-
     # Get the current mode
     $Mode = (Get-PSReadLineKeyHandler | Where-Object {$_.Key -eq "Tab" }).Function
     __%[1]s_debug "Mode: $Mode"
 
     $Values | ForEach-Object {
 
-        # store temporay because switch will overwrite $_
+        # store temporary because switch will overwrite $_
         $comp = $_
 
         # PowerShell supports three different completion modes
@@ -233,7 +236,7 @@ Register-ArgumentCompleter -CommandName '%[1]s' -ScriptBlock {
             Default {
                 # Like MenuComplete but we don't want to add a space here because
                 # the user need to press space anyway to get the completion.
-                # Description will not be shown because thats not possible with TabCompleteNext
+                # Description will not be shown because that's not possible with TabCompleteNext
                 [System.Management.Automation.CompletionResult]::new($($comp.Name | __%[1]s_escapeStringWithSpecialChars), "$($comp.Name)", 'ParameterValue', "$($comp.Description)")
             }
         }
@@ -242,7 +245,7 @@ Register-ArgumentCompleter -CommandName '%[1]s' -ScriptBlock {
 }
 `, name, compCmd,
 		ShellCompDirectiveError, ShellCompDirectiveNoSpace, ShellCompDirectiveNoFileComp,
-		ShellCompDirectiveFilterFileExt, ShellCompDirectiveFilterDirs))
+		ShellCompDirectiveFilterFileExt, ShellCompDirectiveFilterDirs, activeHelpEnvVar(name)))
 }
 
 func (c *Command) genPowerShellCompletion(w io.Writer, includeDesc bool) error {

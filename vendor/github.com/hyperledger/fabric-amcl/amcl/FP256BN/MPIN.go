@@ -1,3 +1,5 @@
+//go:build !386 && !arm
+
 /*
 Licensed to the Apache Software Foundation (ASF) under one
 or more contributor license agreements.  See the NOTICE file
@@ -21,10 +23,11 @@ under the License.
 
 package FP256BN
 
-import "time"
-import "github.com/hyperledger/fabric-amcl/amcl"
+import (
+	"time"
 
-
+	"github.com/hyperledger/fabric-amcl/amcl"
+)
 
 const MFS int = int(MODBYTES)
 const MGS int = int(MODBYTES)
@@ -434,10 +437,10 @@ func MPIN_GET_SERVER_SECRET(S []byte, SST []byte) int {
 }
 
 /*
- W=x*H(G);
- if RNG == NULL then X is passed in
- if RNG != NULL the X is passed out
- if type=0 W=x*G where G is point on the curve, else W=x*M(G), where M(G) is mapping of octet G to point on the curve
+W=x*H(G);
+if RNG == NULL then X is passed in
+if RNG != NULL the X is passed out
+if type=0 W=x*G where G is point on the curve, else W=x*M(G), where M(G) is mapping of octet G to point on the curve
 */
 func MPIN_GET_G1_MULTIPLE(rng *amcl.RAND, typ int, X []byte, G []byte, W []byte) int {
 	var x *BIG

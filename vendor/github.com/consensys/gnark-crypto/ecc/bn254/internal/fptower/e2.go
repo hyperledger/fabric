@@ -1,4 +1,4 @@
-// Copyright 2020 ConsenSys Software Inc.
+// Copyright 2020 Consensys Software Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,17 +26,25 @@ type E2 struct {
 	A0, A1 fp.Element
 }
 
-// Equal returns true if z equals x, fasle otherwise
+// Equal returns true if z equals x, false otherwise
 func (z *E2) Equal(x *E2) bool {
 	return z.A0.Equal(&x.A0) && z.A1.Equal(&x.A1)
 }
 
+// Bits
+// TODO @gbotrel fixme this shouldn't return a E2
+func (z *E2) Bits() E2 {
+	r := E2{}
+	r.A0 = z.A0.Bits()
+	r.A1 = z.A1.Bits()
+	return r
+}
+
 // Cmp compares (lexicographic order) z and x and returns:
 //
-//   -1 if z <  x
-//    0 if z == x
-//   +1 if z >  x
-//
+//	-1 if z <  x
+//	 0 if z == x
+//	+1 if z >  x
 func (z *E2) Cmp(x *E2) int {
 	if a1 := z.A1.Cmp(&x.A1); a1 != 0 {
 		return a1
@@ -93,9 +101,13 @@ func (z *E2) SetRandom() (*E2, error) {
 	return z, nil
 }
 
-// IsZero returns true if the two elements are equal, fasle otherwise
+// IsZero returns true if the two elements are equal, false otherwise
 func (z *E2) IsZero() bool {
 	return z.A0.IsZero() && z.A1.IsZero()
+}
+
+func (z *E2) IsOne() bool {
+	return z.A0.IsOne() && z.A1.IsZero()
 }
 
 // Add adds two elements of E2
@@ -124,21 +136,7 @@ func (z *E2) Neg(x *E2) *E2 {
 
 // String implements Stringer interface for fancy printing
 func (z *E2) String() string {
-	return (z.A0.String() + "+" + z.A1.String() + "*u")
-}
-
-// ToMont converts to mont form
-func (z *E2) ToMont() *E2 {
-	z.A0.ToMont()
-	z.A1.ToMont()
-	return z
-}
-
-// FromMont converts from mont form
-func (z *E2) FromMont() *E2 {
-	z.A0.FromMont()
-	z.A1.FromMont()
-	return z
+	return z.A0.String() + "+" + z.A1.String() + "*u"
 }
 
 // MulByElement multiplies an element in E2 by an element in fp
@@ -170,10 +168,27 @@ func (z *E2) Legendre() int {
 	return n.Legendre()
 }
 
-// Exp sets z=x**e and returns it
-func (z *E2) Exp(x E2, exponent *big.Int) *E2 {
+// Exp sets z=xᵏ (mod q²) and returns it
+func (z *E2) Exp(x E2, k *big.Int) *E2 {
+	if k.IsUint64() && k.Uint64() == 0 {
+		return z.SetOne()
+	}
+
+	e := k
+	if k.Sign() == -1 {
+		// negative k, we invert
+		// if k < 0: xᵏ (mod q²) == (x⁻¹)ᵏ (mod q²)
+		x.Inverse(&x)
+
+		// we negate k in a temp big.Int since
+		// Int.Bit(_) of k and -k is different
+		e = bigIntPool.Get().(*big.Int)
+		defer bigIntPool.Put(e)
+		e.Neg(k)
+	}
+
 	z.SetOne()
-	b := exponent.Bytes()
+	b := e.Bytes()
 	for i := 0; i < len(b); i++ {
 		w := b[i]
 		for j := 0; j < 8; j++ {
@@ -199,7 +214,7 @@ func init() {
 var sqrtExp1, sqrtExp2 big.Int
 
 // Sqrt sets z to the square root of and returns z
-// The function does not test wether the square root
+// The function does not test whether the square root
 // exists or not, it's up to the caller to call
 // Legendre beforehand.
 // cf https://eprint.iacr.org/2012/685.pdf (algo 9)
@@ -228,9 +243,11 @@ func (z *E2) Sqrt(x *E2) *E2 {
 	return z
 }
 
-// BatchInvert returns a new slice with every element inverted.
+// BatchInvertE2 returns a new slice with every element inverted.
 // Uses Montgomery batch inversion trick
-func BatchInvert(a []E2) []E2 {
+//
+// if a[i] == 0, returns result[i] = a[i]
+func BatchInvertE2(a []E2) []E2 {
 	res := make([]E2, len(a))
 	if len(a) == 0 {
 		return res
@@ -260,4 +277,19 @@ func BatchInvert(a []E2) []E2 {
 	}
 
 	return res
+}
+
+func (z *E2) Select(cond int, caseZ *E2, caseNz *E2) *E2 {
+	//Might be able to save a nanosecond or two by an aggregate implementation
+
+	z.A0.Select(cond, &caseZ.A0, &caseNz.A0)
+	z.A1.Select(cond, &caseZ.A1, &caseNz.A1)
+
+	return z
+}
+
+func (z *E2) Div(x *E2, y *E2) *E2 {
+	var r E2
+	r.Inverse(y).Mul(x, &r)
+	return z.Set(&r)
 }

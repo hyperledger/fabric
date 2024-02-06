@@ -59,7 +59,7 @@ func newCredRequest(sk *math.Zr, IssuerNonce []byte, ipk *IssuerPublicKey, rng i
 	// 3 elements of G1 each taking 2*math.FieldBytes+1 bytes
 	// hash of the issuer public key of length math.FieldBytes
 	// issuer nonce of length math.FieldBytes
-	proofData := make([]byte, len([]byte(credRequestLabel))+3*(2*curve.FieldBytes+1)+2*curve.FieldBytes)
+	proofData := make([]byte, len([]byte(credRequestLabel))+3*curve.G1ByteSize+2*curve.ScalarByteSize)
 	index := 0
 	index = appendBytesString(proofData, index, credRequestLabel)
 	index = appendBytesG1(proofData, index, t)
@@ -108,7 +108,7 @@ func (m *CredRequest) Check(ipk *IssuerPublicKey, curve *math.Curve, tr Translat
 	t.Sub(Nym.Mul(ProofC)) // t = h_{sk}^s / Nym^C
 
 	// Recompute challenge
-	proofData := make([]byte, len([]byte(credRequestLabel))+3*(2*curve.FieldBytes+1)+2*curve.FieldBytes)
+	proofData := make([]byte, len([]byte(credRequestLabel))+3*curve.G1ByteSize+2*curve.ScalarByteSize)
 	index := 0
 	index = appendBytesString(proofData, index, credRequestLabel)
 	index = appendBytesG1(proofData, index, t)

@@ -7,11 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package gurvy
 
 import (
-	"crypto/rand"
-	"crypto/sha256"
 	"fmt"
-	"io"
-	"math/big"
 	"regexp"
 	"strings"
 
@@ -23,51 +19,8 @@ import (
 
 /*********************************************************************/
 
-type bn254Zr struct {
-	*big.Int
-}
-
-func (z *bn254Zr) Plus(a driver.Zr) driver.Zr {
-	return &bn254Zr{new(big.Int).Add(z.Int, a.(*bn254Zr).Int)}
-}
-
-func (z *bn254Zr) Mod(a driver.Zr) {
-	z.Int.Mod(z.Int, a.(*bn254Zr).Int)
-}
-
-func (z *bn254Zr) PowMod(x driver.Zr) driver.Zr {
-	return &bn254Zr{new(big.Int).Exp(z.Int, x.(*bn254Zr).Int, fr.Modulus())}
-}
-
-func (z *bn254Zr) InvModP(a driver.Zr) {
-	z.Int.ModInverse(z.Int, a.(*bn254Zr).Int)
-}
-
-func (z *bn254Zr) Bytes() []byte {
-	return common.BigToBytes(z.Int)
-}
-
-func (z *bn254Zr) Equals(a driver.Zr) bool {
-	return z.Int.Cmp(a.(*bn254Zr).Int) == 0
-}
-
-func (z *bn254Zr) Copy() driver.Zr {
-	return &bn254Zr{new(big.Int).Set(z.Int)}
-}
-
-func (z *bn254Zr) Clone(a driver.Zr) {
-	raw := a.(*bn254Zr).Int.Bytes()
-	z.Int.SetBytes(raw)
-}
-
-func (z *bn254Zr) String() string {
-	return z.Int.Text(16)
-}
-
-/*********************************************************************/
-
 type bn254G1 struct {
-	*bn254.G1Affine
+	bn254.G1Affine
 }
 
 func (g *bn254G1) Clone(a driver.G1) {
@@ -79,24 +32,23 @@ func (g *bn254G1) Clone(a driver.G1) {
 }
 
 func (e *bn254G1) Copy() driver.G1 {
-	c := &bn254.G1Affine{}
-	c.Set(e.G1Affine)
-	return &bn254G1{c}
+	c := &bn254G1{}
+	c.Set(&e.G1Affine)
+	return c
 }
 
 func (g *bn254G1) Add(a driver.G1) {
-	j := &bn254.G1Jac{}
-	j.FromAffine(g.G1Affine)
-	j.AddMixed((*bn254.G1Affine)(a.(*bn254G1).G1Affine))
-	g.G1Affine.FromJacobian(j)
+	j := bn254.G1Jac{}
+	j.FromAffine(&g.G1Affine)
+	j.AddMixed((*bn254.G1Affine)(&a.(*bn254G1).G1Affine))
+	g.G1Affine.FromJacobian(&j)
 }
 
 func (g *bn254G1) Mul(a driver.Zr) driver.G1 {
-	gc := &bn254G1{&bn254.G1Affine{}}
-	gc.Clone(g)
-	gc.G1Affine.ScalarMultiplication(g.G1Affine, a.(*bn254Zr).Int)
+	res := &bn254G1{}
+	res.G1Affine.ScalarMultiplication(&g.G1Affine, &a.(*common.BaseZr).Int)
 
-	return gc
+	return res
 }
 
 func (g *bn254G1) Mul2(e driver.Zr, Q driver.G1, f driver.Zr) driver.G1 {
@@ -108,7 +60,7 @@ func (g *bn254G1) Mul2(e driver.Zr, Q driver.G1, f driver.Zr) driver.G1 {
 }
 
 func (g *bn254G1) Equals(a driver.G1) bool {
-	return g.G1Affine.Equal(a.(*bn254G1).G1Affine)
+	return g.G1Affine.Equal(&a.(*bn254G1).G1Affine)
 }
 
 func (g *bn254G1) Bytes() []byte {
@@ -116,19 +68,24 @@ func (g *bn254G1) Bytes() []byte {
 	return raw[:]
 }
 
+func (g *bn254G1) Compressed() []byte {
+	raw := g.G1Affine.Bytes()
+	return raw[:]
+}
+
 func (g *bn254G1) Sub(a driver.G1) {
-	j, k := &bn254.G1Jac{}, &bn254.G1Jac{}
-	j.FromAffine(g.G1Affine)
-	k.FromAffine(a.(*bn254G1).G1Affine)
-	j.SubAssign(k)
-	g.G1Affine.FromJacobian(j)
+	j, k := bn254.G1Jac{}, bn254.G1Jac{}
+	j.FromAffine(&g.G1Affine)
+	k.FromAffine(&a.(*bn254G1).G1Affine)
+	j.SubAssign(&k)
+	g.G1Affine.FromJacobian(&j)
 }
 
 func (g *bn254G1) IsInfinity() bool {
 	return g.G1Affine.IsInfinity()
 }
 
-var g1StrRegexp *regexp.Regexp = regexp.MustCompile(`^E\([[]([0-9]+),([0-9]+)[]]\),$`)
+var g1StrRegexp *regexp.Regexp = regexp.MustCompile(`^E\([[]([0-9]+),([0-9]+)[]]\)$`)
 
 func (g *bn254G1) String() string {
 	rawstr := g.G1Affine.String()
@@ -136,10 +93,14 @@ func (g *bn254G1) String() string {
 	return "(" + strings.TrimLeft(m[0][1], "0") + "," + strings.TrimLeft(m[0][2], "0") + ")"
 }
 
+func (g *bn254G1) Neg() {
+	g.G1Affine.Neg(&g.G1Affine)
+}
+
 /*********************************************************************/
 
 type bn254G2 struct {
-	*bn254.G2Affine
+	bn254.G2Affine
 }
 
 func (g *bn254G2) Clone(a driver.G2) {
@@ -151,33 +112,32 @@ func (g *bn254G2) Clone(a driver.G2) {
 }
 
 func (e *bn254G2) Copy() driver.G2 {
-	c := &bn254.G2Affine{}
-	c.Set(e.G2Affine)
-	return &bn254G2{c}
+	c := &bn254G2{}
+	c.Set(&e.G2Affine)
+	return c
 }
 
 func (g *bn254G2) Mul(a driver.Zr) driver.G2 {
-	gc := &bn254G2{&bn254.G2Affine{}}
-	gc.Clone(g)
-	gc.G2Affine.ScalarMultiplication(g.G2Affine, a.(*bn254Zr).Int)
+	gc := &bn254G2{}
+	gc.G2Affine.ScalarMultiplication(&g.G2Affine, &a.(*common.BaseZr).Int)
 
 	return gc
 }
 
 func (g *bn254G2) Add(a driver.G2) {
-	j := &bn254.G2Jac{}
-	j.FromAffine(g.G2Affine)
-	j.AddMixed((*bn254.G2Affine)(a.(*bn254G2).G2Affine))
-	g.G2Affine.FromJacobian(j)
+	j := bn254.G2Jac{}
+	j.FromAffine(&g.G2Affine)
+	j.AddMixed((*bn254.G2Affine)(&a.(*bn254G2).G2Affine))
+	g.G2Affine.FromJacobian(&j)
 }
 
 func (g *bn254G2) Sub(a driver.G2) {
-	j := &bn254.G2Jac{}
-	j.FromAffine(g.G2Affine)
-	aJac := &bn254.G2Jac{}
-	aJac.FromAffine((*bn254.G2Affine)(a.(*bn254G2).G2Affine))
-	j.SubAssign(aJac)
-	g.G2Affine.FromJacobian(j)
+	j := bn254.G2Jac{}
+	j.FromAffine(&g.G2Affine)
+	aJac := bn254.G2Jac{}
+	aJac.FromAffine((*bn254.G2Affine)(&a.(*bn254G2).G2Affine))
+	j.SubAssign(&aJac)
+	g.G2Affine.FromJacobian(&j)
 }
 
 func (g *bn254G2) Affine() {
@@ -189,37 +149,47 @@ func (g *bn254G2) Bytes() []byte {
 	return raw[:]
 }
 
+func (g *bn254G2) Compressed() []byte {
+	raw := g.G2Affine.Bytes()
+	return raw[:]
+}
+
 func (g *bn254G2) String() string {
 	return g.G2Affine.String()
 }
 
 func (g *bn254G2) Equals(a driver.G2) bool {
-	return g.G2Affine.Equal(a.(*bn254G2).G2Affine)
+	return g.G2Affine.Equal(&a.(*bn254G2).G2Affine)
 }
 
 /*********************************************************************/
 
 type bn254Gt struct {
-	*bn254.GT
+	bn254.GT
+}
+
+func (g *bn254Gt) Exp(x driver.Zr) driver.Gt {
+	copy := bn254.GT{}
+	return &bn254Gt{*copy.Exp(g.GT, &x.(*common.BaseZr).Int)}
 }
 
 func (g *bn254Gt) Equals(a driver.Gt) bool {
-	return g.GT.Equal(a.(*bn254Gt).GT)
+	return g.GT.Equal(&a.(*bn254Gt).GT)
 }
 
 func (g *bn254Gt) Inverse() {
-	g.GT.Inverse(g.GT)
+	g.GT.Inverse(&g.GT)
 }
 
 func (g *bn254Gt) Mul(a driver.Gt) {
-	g.GT.Mul(g.GT, a.(*bn254Gt).GT)
+	g.GT.Mul(&g.GT, &a.(*bn254Gt).GT)
 }
 
 func (g *bn254Gt) IsUnity() bool {
-	unity := &bn254.GT{}
+	unity := bn254.GT{}
 	unity.SetOne()
 
-	return unity.Equal(g.GT)
+	return unity.Equal(&g.GT)
 }
 
 func (g *bn254Gt) ToString() string {
@@ -233,80 +203,63 @@ func (g *bn254Gt) Bytes() []byte {
 
 /*********************************************************************/
 
+func NewBn254() *Bn254 {
+	return &Bn254{common.CurveBase{Modulus: *fr.Modulus()}}
+}
+
 type Bn254 struct {
+	common.CurveBase
 }
 
 func (c *Bn254) Pairing(p2 driver.G2, p1 driver.G1) driver.Gt {
-	t, err := bn254.MillerLoop([]bn254.G1Affine{*p1.(*bn254G1).G1Affine}, []bn254.G2Affine{*p2.(*bn254G2).G2Affine})
+	t, err := bn254.MillerLoop([]bn254.G1Affine{p1.(*bn254G1).G1Affine}, []bn254.G2Affine{p2.(*bn254G2).G2Affine})
 	if err != nil {
 		panic(fmt.Sprintf("pairing failed [%s]", err.Error()))
 	}
 
-	return &bn254Gt{&t}
+	return &bn254Gt{t}
 }
 
 func (c *Bn254) Pairing2(p2a, p2b driver.G2, p1a, p1b driver.G1) driver.Gt {
-	t, err := bn254.MillerLoop([]bn254.G1Affine{*p1a.(*bn254G1).G1Affine, *p1b.(*bn254G1).G1Affine}, []bn254.G2Affine{*p2a.(*bn254G2).G2Affine, *p2b.(*bn254G2).G2Affine})
+	t, err := bn254.MillerLoop([]bn254.G1Affine{p1a.(*bn254G1).G1Affine, p1b.(*bn254G1).G1Affine}, []bn254.G2Affine{p2a.(*bn254G2).G2Affine, p2b.(*bn254G2).G2Affine})
 	if err != nil {
 		panic(fmt.Sprintf("pairing 2 failed [%s]", err.Error()))
 	}
 
-	return &bn254Gt{&t}
+	return &bn254Gt{t}
 }
 
 func (c *Bn254) FExp(a driver.Gt) driver.Gt {
-	gt := bn254.FinalExponentiation(a.(*bn254Gt).GT)
-	return &bn254Gt{&gt}
+	return &bn254Gt{bn254.FinalExponentiation(&a.(*bn254Gt).GT)}
 }
 
-func (*Bn254) ModAdd(a, b, m driver.Zr) driver.Zr {
-	c := a.Plus(b)
-	c.Mod(m)
-	return c
-}
+var g1Bytes254 [32]byte
+var g2Bytes254 [64]byte
 
-func (c *Bn254) ModSub(a, b, m driver.Zr) driver.Zr {
-	return c.ModAdd(a, c.ModNeg(b, m), m)
-}
-
-func (c *Bn254) ModNeg(a1, m driver.Zr) driver.Zr {
-	a := a1.Copy()
-	a.Mod(m)
-	return &bn254Zr{a.(*bn254Zr).Int.Sub(m.(*bn254Zr).Int, a.(*bn254Zr).Int)}
-}
-
-func (c *Bn254) ModMul(a1, b1, m driver.Zr) driver.Zr {
-	a := a1.Copy()
-	b := b1.Copy()
-	a.Mod(m)
-	b.Mod(m)
-	return &bn254Zr{a.(*bn254Zr).Int.Mul(a.(*bn254Zr).Int, b.(*bn254Zr).Int)}
+func init() {
+	_, _, g1, g2 := bn254.Generators()
+	g1Bytes254 = g1.Bytes()
+	g2Bytes254 = g2.Bytes()
 }
 
 func (c *Bn254) GenG1() driver.G1 {
-	_, _, g1, _ := bn254.Generators()
-	raw := g1.Bytes()
-
-	r := &bn254.G1Affine{}
-	_, err := r.SetBytes(raw[:])
+	r := &bn254G1{}
+	_, err := r.SetBytes(g1Bytes254[:])
 	if err != nil {
 		panic("could not generate point")
 	}
 
-	return &bn254G1{r}
+	return r
 }
 
 func (c *Bn254) GenG2() driver.G2 {
-	_, _, _, g2 := bn254.Generators()
-	raw := g2.Bytes()
-
-	r := &bn254.G2Affine{}
-	_, err := r.SetBytes(raw[:])
+	r := &bn254G2{}
+	_, err := r.SetBytes(g2Bytes254[:])
 	if err != nil {
 		panic("could not generate point")
 	}
 
-	return &bn254G2{r}
+	return r
 }
 
 func (c *Bn254) GenGt() driver.Gt {
@@ -317,91 +270,102 @@ func (c *Bn254) GenGt() driver.Gt {
 	return gengt
 }
 
-func (c *Bn254) GroupOrder() driver.Zr {
-	return &bn254Zr{fr.Modulus()}
+func (c *Bn254) CoordinateByteSize() int {
+	return bn254.SizeOfG1AffineCompressed
 }
 
-func (c *Bn254) FieldBytes() int {
-	return 32
+func (c *Bn254) G1ByteSize() int {
+	return bn254.SizeOfG1AffineUncompressed
+}
+
+func (c *Bn254) CompressedG1ByteSize() int {
+	return bn254.SizeOfG1AffineCompressed
+}
+
+func (c *Bn254) G2ByteSize() int {
+	return bn254.SizeOfG2AffineUncompressed
+}
+
+func (c *Bn254) CompressedG2ByteSize() int {
+	return bn254.SizeOfG2AffineCompressed
+}
+
+func (c *Bn254) ScalarByteSize() int {
+	return common.ScalarByteSize
 }
 
 func (c *Bn254) NewG1() driver.G1 {
-	return &bn254G1{&bn254.G1Affine{}}
+	return &bn254G1{}
 }
 
 func (c *Bn254) NewG2() driver.G2 {
-	return &bn254G2{&bn254.G2Affine{}}
-}
-
-func (c *Bn254) NewG1FromCoords(ix, iy driver.Zr) driver.G1 {
-	return nil
-}
-
-func (c *Bn254) NewZrFromBytes(b []byte) driver.Zr {
-	return &bn254Zr{new(big.Int).SetBytes(b)}
-}
-
-func (c *Bn254) NewZrFromInt(i int64) driver.Zr {
-	return &bn254Zr{big.NewInt(i)}
+	return &bn254G2{}
 }
 
 func (c *Bn254) NewG1FromBytes(b []byte) driver.G1 {
-	v := &bn254.G1Affine{}
+	v := &bn254G1{}
 	_, err := v.SetBytes(b)
 	if err != nil {
 		panic(fmt.Sprintf("set bytes failed [%s]", err.Error()))
 	}
 
-	return &bn254G1{v}
+	return v
 }
 
 func (c *Bn254) NewG2FromBytes(b []byte) driver.G2 {
-	v := &bn254.G2Affine{}
+	v := &bn254G2{}
 	_, err := v.SetBytes(b)
 	if err != nil {
 		panic(fmt.Sprintf("set bytes failed [%s]", err.Error()))
 	}
 
-	return &bn254G2{v}
+	return v
+}
+
+func (c *Bn254) NewG1FromCompressed(b []byte) driver.G1 {
+	v := &bn254G1{}
+	_, err := v.SetBytes(b)
+	if err != nil {
+		panic(fmt.Sprintf("set bytes failed [%s]", err.Error()))
+	}
+
+	return v
+}
+
+func (c *Bn254) NewG2FromCompressed(b []byte) driver.G2 {
+	v := &bn254G2{}
+	_, err := v.SetBytes(b)
+	if err != nil {
+		panic(fmt.Sprintf("set bytes failed [%s]", err.Error()))
+	}
+
+	return v
 }
 
 func (c *Bn254) NewGtFromBytes(b []byte) driver.Gt {
-	v := &bn254.GT{}
+	v := &bn254Gt{}
 	err := v.SetBytes(b)
 	if err != nil {
 		panic(fmt.Sprintf("set bytes failed [%s]", err.Error()))
 	}
 
-	return &bn254Gt{v}
-}
-
-func (c *Bn254) HashToZr(data []byte) driver.Zr {
-	digest := sha256.Sum256(data)
-	digestBig := c.NewZrFromBytes(digest[:])
-	digestBig.Mod(c.GroupOrder())
-	return digestBig
+	return v
 }
 
 func (c *Bn254) HashToG1(data []byte) driver.G1 {
-	g1, err := bn254.HashToCurveG1Svdw(data, []byte{})
+	g1, err := bn254.HashToG1(data, []byte{})
 	if err != nil {
 		panic(fmt.Sprintf("HashToG1 failed [%s]", err.Error()))
 	}
 
-	return &bn254G1{&g1}
+	return &bn254G1{g1}
 }
 
-func (c *Bn254) NewRandomZr(rng io.Reader) driver.Zr {
-	res := new(big.Int)
-	v := &fr.Element{}
-	_, err := v.SetRandom()
+func (p *Bn254) HashToG1WithDomain(data, domain []byte) driver.G1 {
+	g1, err := bn254.HashToG1(data, domain)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("HashToG1 failed [%s]", err.Error()))
 	}
 
-	return &bn254Zr{v.ToBigIntRegular(res)}
-}
-
-func (c *Bn254) Rand() (io.Reader, error) {
-	return rand.Reader, nil
+	return &bn254G1{g1}
 }

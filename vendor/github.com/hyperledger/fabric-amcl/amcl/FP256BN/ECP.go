@@ -1,3 +1,5 @@
+//go:build !386 && !arm
+
 /*
 Licensed to the Apache Software Foundation (ASF) under one
 or more contributor license agreements.  See the NOTICE file
@@ -19,8 +21,6 @@ under the License.
 
 package FP256BN
 
-
-
 //const WEIERSTRASS int = 0
 //const EDWARDS int = 1
 //const MONTGOMERY int = 2
@@ -31,7 +31,6 @@ package FP256BN
 //const M_TYPE int = 1
 //const POSITIVEX int = 0
 //const NEGATIVEX int = 1
-
 
 //const CURVETYPE int = @CT@
 //const CURVE_PAIRING_TYPE int = @PF@

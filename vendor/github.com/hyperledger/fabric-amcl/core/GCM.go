@@ -363,7 +363,7 @@ func (G *GCM) Finish(extract bool) []byte { /* Finish off GHASH and extract tag 
 			G.Y_0[i] ^= G.stateX[i]
 		}
 		for i := 0; i < 16; i++ {
-			tag = append(tag,G.Y_0[i])
+			tag = append(tag, G.Y_0[i])
 			G.Y_0[i] = 0
 			G.stateX[i] = 0
 		}
@@ -384,22 +384,22 @@ func hex2bytes(s string) []byte {
 	return data
 }
 
-func GCM_ENCRYPT(K []byte,IV []byte,H []byte,P []byte) ([]byte,[]byte){
-	g:=new(GCM)
-	g.Init(len(K),K,len(IV),IV)
-	g.Add_header(H,len(H))
-	C:=g.Add_plain(P,len(P))
-	T:=g.Finish(true)
-	return C,T
+func GCM_ENCRYPT(K []byte, IV []byte, H []byte, P []byte) ([]byte, []byte) {
+	g := new(GCM)
+	g.Init(len(K), K, len(IV), IV)
+	g.Add_header(H, len(H))
+	C := g.Add_plain(P, len(P))
+	T := g.Finish(true)
+	return C, T
 }
 
-func GCM_DECRYPT(K []byte,IV []byte,H []byte,C []byte) ([]byte,[]byte){
-	g:=new(GCM)
-	g.Init(len(K),K,len(IV),IV)
-	g.Add_header(H,len(H))
-	P:=g.Add_cipher(C,len(C))
-	T:=g.Finish(true)
-	return P,T
+func GCM_DECRYPT(K []byte, IV []byte, H []byte, C []byte) ([]byte, []byte) {
+	g := new(GCM)
+	g.Init(len(K), K, len(IV), IV)
+	g.Add_header(H, len(H))
+	P := g.Add_cipher(C, len(C))
+	T := g.Finish(true)
+	return P, T
 }
 
 /*

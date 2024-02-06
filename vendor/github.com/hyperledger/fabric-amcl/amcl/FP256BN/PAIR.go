@@ -1,3 +1,5 @@
+//go:build !386 && !arm
+
 /*
 Licensed to the Apache Software Foundation (ASF) under one
 or more contributor license agreements.  See the NOTICE file
@@ -20,8 +22,6 @@ under the License.
 /* MiotCL BN Curve Pairing functions */
 
 package FP256BN
-
-
 
 /* Line function */
 func line(A *ECP2, B *ECP2, Qx *FP, Qy *FP) *FP12 {
@@ -123,17 +123,17 @@ func line(A *ECP2, B *ECP2, Qx *FP, Qy *FP) *FP12 {
 		A.Add(B)
 	}
 
-	r:=NewFP12fp4s(a, b, c)
-	r.stype=FP_SPARSER
+	r := NewFP12fp4s(a, b, c)
+	r.stype = FP_SPARSER
 	return r
 }
 
 /* prepare ate parameter, n=6u+2 (BN) or n=u (BLS), n3=3*n */
-func lbits(n3 *BIG,n *BIG) int {
+func lbits(n3 *BIG, n *BIG) int {
 	n.copy(NewBIGints(CURVE_Bnx))
-	if CURVE_PAIRING_TYPE==BN {
+	if CURVE_PAIRING_TYPE == BN {
 		n.pmul(6)
-		if SIGN_OF_X==POSITIVEX {
+		if SIGN_OF_X == POSITIVEX {
 			n.inc(2)
 		} else {
 			n.dec(2)
@@ -150,21 +150,21 @@ func lbits(n3 *BIG,n *BIG) int {
 /* prepare for multi-pairing */
 func initmp() []*FP12 {
 	var r []*FP12
-	for i:=ATE_BITS-1; i>=0; i-- {
-		r=append(r,NewFP12int(1))
+	for i := ATE_BITS - 1; i >= 0; i-- {
+		r = append(r, NewFP12int(1))
 	}
 	return r
 }
 
 /* basic Miller loop */
 func miller(r []*FP12) *FP12 {
-	res:=NewFP12int(1);
-	for i:=ATE_BITS-1; i>=1; i-- {
+	res := NewFP12int(1)
+	for i := ATE_BITS - 1; i >= 1; i-- {
 		res.sqr()
-		res.ssmul(r[i]);
+		res.ssmul(r[i])
 	}
 
-	if SIGN_OF_X==NEGATIVEX {
+	if SIGN_OF_X == NEGATIVEX {
 		res.conj()
 	}
 	res.ssmul(r[0])
@@ -172,27 +172,27 @@ func miller(r []*FP12) *FP12 {
 }
 
 /* Accumulate another set of line functions for n-pairing */
-func another(r []*FP12,P1 *ECP2,Q1 *ECP) {
-	f:=NewFP2bigs(NewBIGints(Fra), NewBIGints(Frb))
-	n:=NewBIG()
-	n3:=NewBIG()
-	K:=NewECP2();
-	var lv,lv2 *FP12
+func another(r []*FP12, P1 *ECP2, Q1 *ECP) {
+	f := NewFP2bigs(NewBIGints(Fra), NewBIGints(Frb))
+	n := NewBIG()
+	n3 := NewBIG()
+	K := NewECP2()
+	var lv, lv2 *FP12
 
 	if Q1.Is_infinity() {
 		return
 	}
-// P is needed in affine form for line function, Q for (Qx,Qy) extraction
-	P:=NewECP2()
+	// P is needed in affine form for line function, Q for (Qx,Qy) extraction
+	P := NewECP2()
 	P.Copy(P1)
-	Q:=NewECP()
+	Q := NewECP()
 	Q.Copy(Q1)
 
 	P.Affine()
 	Q.Affine()
 
-	if CURVE_PAIRING_TYPE==BN {
-		if SEXTIC_TWIST==M_TYPE {
+	if CURVE_PAIRING_TYPE == BN {
+		if SEXTIC_TWIST == M_TYPE {
 			f.inverse()
 			f.norm()
 		}
@@ -201,52 +201,53 @@ func another(r []*FP12,P1 *ECP2,Q1 *ECP) {
 	Qx := NewFPcopy(Q.getx())
 	Qy := NewFPcopy(Q.gety())
 
-	A:=NewECP2()
+	A := NewECP2()
 	A.Copy(P)
 
-	MP:=NewECP2()
-	MP.Copy(P); MP.neg()
+	MP := NewECP2()
+	MP.Copy(P)
+	MP.neg()
 
-	nb:=lbits(n3,n)
+	nb := lbits(n3, n)
 
-	for i:=nb-2;i>=1;i-- {
-		lv=line(A,A,Qx,Qy)
+	for i := nb - 2; i >= 1; i-- {
+		lv = line(A, A, Qx, Qy)
 
-		bt:=n3.bit(i)-n.bit(i)
-		if bt==1 {
-			lv2=line(A,P,Qx,Qy)
+		bt := n3.bit(i) - n.bit(i)
+		if bt == 1 {
+			lv2 = line(A, P, Qx, Qy)
 			lv.smul(lv2)
 		}
-		if bt==-1 {
-			lv2=line(A,MP,Qx,Qy)
+		if bt == -1 {
+			lv2 = line(A, MP, Qx, Qy)
 			lv.smul(lv2)
 		}
 		r[i].ssmul(lv)
 	}
 
-/* R-ate fixup required for BN curves */
-	if CURVE_PAIRING_TYPE==BN {
-		if SIGN_OF_X==NEGATIVEX {
+	/* R-ate fixup required for BN curves */
+	if CURVE_PAIRING_TYPE == BN {
+		if SIGN_OF_X == NEGATIVEX {
 			A.neg()
 		}
 		K.Copy(P)
 		K.frob(f)
-		lv=line(A,K,Qx,Qy)
+		lv = line(A, K, Qx, Qy)
 		K.frob(f)
 		K.neg()
-		lv2=line(A,K,Qx,Qy)
+		lv2 = line(A, K, Qx, Qy)
 		lv.smul(lv2)
 		r[0].ssmul(lv)
-	} 
+	}
 }
 
 /* Optimal R-ate pairing */
 func Ate(P1 *ECP2, Q1 *ECP) *FP12 {
 	f := NewFP2bigs(NewBIGints(Fra), NewBIGints(Frb))
-	n:=NewBIG()
-	n3:=NewBIG()
+	n := NewBIG()
+	n3 := NewBIG()
 	K := NewECP2()
-	var lv,lv2 *FP12
+	var lv, lv2 *FP12
 
 	if Q1.Is_infinity() {
 		return NewFP12int(1)
@@ -278,7 +279,7 @@ func Ate(P1 *ECP2, Q1 *ECP) *FP12 {
 	NP.Copy(P)
 	NP.neg()
 
-	nb:=lbits(n3,n)
+	nb := lbits(n3, n)
 
 	for i := nb - 2; i >= 1; i-- {
 		r.sqr()
@@ -322,16 +323,16 @@ func Ate(P1 *ECP2, Q1 *ECP) *FP12 {
 /* Optimal R-ate double pairing e(P,Q).e(R,S) */
 func Ate2(P1 *ECP2, Q1 *ECP, R1 *ECP2, S1 *ECP) *FP12 {
 	f := NewFP2bigs(NewBIGints(Fra), NewBIGints(Frb))
-	n:=NewBIG()
-	n3:=NewBIG()
+	n := NewBIG()
+	n3 := NewBIG()
 	K := NewECP2()
-	var lv,lv2 *FP12
+	var lv, lv2 *FP12
 
 	if Q1.Is_infinity() {
-		return Ate(R1,S1)
+		return Ate(R1, S1)
 	}
 	if S1.Is_infinity() {
-		return Ate(P1,Q1)
+		return Ate(P1, Q1)
 	}
 
 	if CURVE_PAIRING_TYPE == BN {
@@ -372,7 +373,7 @@ func Ate2(P1 *ECP2, Q1 *ECP, R1 *ECP2, S1 *ECP) *FP12 {
 	NR.Copy(R)
 	NR.neg()
 
-	nb:=lbits(n3,n)
+	nb := lbits(n3, n)
 
 	for i := nb - 2; i >= 1; i-- {
 		r.sqr()
@@ -443,10 +444,10 @@ func Fexp(m *FP12) *FP12 {
 	r.frob(f)
 	r.frob(f)
 	r.Mul(lv)
-//	if r.Isunity() {
-//		r.zero()
-//		return r
-//	}
+	//	if r.Isunity() {
+	//		r.zero()
+	//		return r
+	//	}
 	/* Hard part of final exp */
 	if CURVE_PAIRING_TYPE == BN {
 		lv.Copy(r)

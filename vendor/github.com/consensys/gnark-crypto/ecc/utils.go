@@ -1,8 +1,6 @@
 package ecc
 
 import (
-	"crypto/sha256"
-	"errors"
 	"math/big"
 	"math/bits"
 )
@@ -54,12 +52,12 @@ func NafDecomposition(a *big.Int, result []int8) int {
 // Lattice represents a Z module spanned by V1, V2.
 // det is the associated determinant.
 type Lattice struct {
-	V1, V2 [2]big.Int
-	Det    big.Int
+	V1, V2      [2]big.Int
+	Det, b1, b2 big.Int
 }
 
 // PrecomputeLattice res such that res.V1, res.V2
-// are short vectors satisfying v11+v12lambda=v21+v22lambda=0[r].
+// are short vectors satisfying v11+v12.λ=v21+v22.λ=0[r].
 // cf https://www.iacr.org/archive/crypto2001/21390189.pdf
 func PrecomputeLattice(r, lambda *big.Int, res *Lattice) {
 
@@ -126,21 +124,31 @@ func PrecomputeLattice(r, lambda *big.Int, res *Lattice) {
 	tmp[0].Mul(&res.V1[1], &res.V2[0])
 	res.Det.Mul(&res.V1[0], &res.V2[1]).Sub(&res.Det, &tmp[0])
 
+	// sets roundings of 2^n*v21/d and 2^n*v11/d (where 2ⁿ > d)
+	n := 2 * uint(((res.Det.BitLen()+32)>>6)<<6)
+	res.b1.Lsh(&res.V2[1], n)
+	rounding(&res.b1, &res.Det, &res.b1)
+	res.b2.Lsh(&res.V1[1], n)
+	rounding(&res.b2, &res.Det, &res.b2)
 }
 
 // SplitScalar outputs u,v such that u+vlambda=s[r].
 // The method is to view s as (s,0) in ZxZ, and find a close
 // vector w of (s,0) in <l>, where l is a sub Z-module of
-// ker((a,b)->a+blambda[r]): then (u,v)=w-(s,0), and
-// u+vlambda=s[r].
+// ker((a,b) → a+b.λ[r]): then (u,v)=w-(s,0), and
+// u+v.λ=s[r].
 // cf https://www.iacr.org/archive/crypto2001/21390189.pdf
 func SplitScalar(s *big.Int, l *Lattice) [2]big.Int {
 
 	var k1, k2 big.Int
-	k1.Mul(s, &l.V2[1])
-	k2.Mul(s, &l.V1[1]).Neg(&k2)
-	rounding(&k1, &l.Det, &k1)
-	rounding(&k2, &l.Det, &k2)
+	k1.Mul(s, &l.b1)
+	k2.Mul(s, &l.b2).Neg(&k2)
+	// right-shift instead of division by lattice determinant
+	// this increases the bounds on k1 and k2 by 1
+	// but we check this ScalarMultiplication alg. (not constant-time)
+	n := 2 * uint(((l.Det.BitLen()+32)>>6)<<6)
+	k1.Rsh(&k1, n)
+	k2.Rsh(&k2, n)
 	v := getVector(l, &k1, &k2)
 	v[0].Sub(s, &v[0])
 	v[1].Neg(&v[1])
@@ -159,7 +167,7 @@ func rounding(n, d, res *big.Int) {
 	}
 }
 
-// getVector returns axV1 + bxV2
+// getVector returns aV1 + bV2
 func getVector(l *Lattice, a, b *big.Int) [2]big.Int {
 	var res [2]big.Int
 	var tmp big.Int
@@ -168,87 +176,6 @@ func getVector(l *Lattice, a, b *big.Int) [2]big.Int {
 	tmp.Mul(b, &l.V2[1])
 	res[1].Mul(a, &l.V1[1]).Add(&res[1], &tmp)
 	return res
-}
-
-// ExpandMsgXmd expands msg to a slice of lenInBytes bytes.
-// https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-06#section-5
-// https://tools.ietf.org/html/rfc8017#section-4.1 (I2OSP/O2ISP)
-func ExpandMsgXmd(msg, dst []byte, lenInBytes int) ([]byte, error) {
-
-	h := sha256.New()
-	ell := (lenInBytes + h.Size() - 1) / h.Size() // ceil(len_in_bytes / b_in_bytes)
-	if ell > 255 {
-		return nil, errors.New("invalid lenInBytes")
-	}
-	if len(dst) > 255 {
-		return nil, errors.New("invalid domain size (>255 bytes)")
-	}
-	sizeDomain := uint8(len(dst))
-
-	// Z_pad = I2OSP(0, r_in_bytes)
-	// l_i_b_str = I2OSP(len_in_bytes, 2)
-	// DST_prime = I2OSP(len(DST), 1) || DST
-	// b_0 = H(Z_pad || msg || l_i_b_str || I2OSP(0, 1) || DST_prime)
-	h.Reset()
-	if _, err := h.Write(make([]byte, h.BlockSize())); err != nil {
-		return nil, err
-	}
-	if _, err := h.Write(msg); err != nil {
-		return nil, err
-	}
-	if _, err := h.Write([]byte{uint8(lenInBytes >> 8), uint8(lenInBytes), uint8(0)}); err != nil {
-		return nil, err
-	}
-	if _, err := h.Write(dst); err != nil {
-		return nil, err
-	}
-	if _, err := h.Write([]byte{sizeDomain}); err != nil {
-		return nil, err
-	}
-	b0 := h.Sum(nil)
-
-	// b_1 = H(b_0 || I2OSP(1, 1) || DST_prime)
-	h.Reset()
-	if _, err := h.Write(b0); err != nil {
-		return nil, err
-	}
-	if _, err := h.Write([]byte{uint8(1)}); err != nil {
-		return nil, err
-	}
-	if _, err := h.Write(dst); err != nil {
-		return nil, err
-	}
-	if _, err := h.Write([]byte{sizeDomain}); err != nil {
-		return nil, err
-	}
-	b1 := h.Sum(nil)
-
-	res := make([]byte, lenInBytes)
-	copy(res[:h.Size()], b1)
-
-	for i := 2; i <= ell; i++ {
-		// b_i = H(strxor(b_0, b_(i - 1)) || I2OSP(i, 1) || DST_prime)
-		h.Reset()
-		strxor := make([]byte, h.Size())
-		for j := 0; j < h.Size(); j++ {
-			strxor[j] = b0[j] ^ b1[j]
-		}
-		if _, err := h.Write(strxor); err != nil {
-			return nil, err
-		}
-		if _, err := h.Write([]byte{uint8(i)}); err != nil {
-			return nil, err
-		}
-		if _, err := h.Write(dst); err != nil {
-			return nil, err
-		}
-		if _, err := h.Write([]byte{sizeDomain}); err != nil {
-			return nil, err
-		}
-		b1 = h.Sum(nil)
-		copy(res[h.Size()*(i-1):h.Size()*i], b1)
-	}
-	return res, nil
 }
 
 // NextPowerOfTwo returns the next power of 2 of n
