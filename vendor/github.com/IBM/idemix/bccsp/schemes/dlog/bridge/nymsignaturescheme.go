@@ -7,7 +7,7 @@ package bridge
 
 import (
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers"
+	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 
 	"github.com/golang/protobuf/proto"
@@ -23,7 +23,7 @@ type NymSignatureScheme struct {
 
 // Sign produces a signature over the passed digest. It takes in input, the user secret key (sk),
 // the pseudonym public key (Nym) and secret key (RNym), and the issuer public key (ipk).
-func (n *NymSignatureScheme) Sign(sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk handlers.IssuerPublicKey, digest []byte) (res []byte, err error) {
+func (n *NymSignatureScheme) Sign(sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk types.IssuerPublicKey, digest []byte) (res []byte, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
@@ -53,7 +53,7 @@ func (n *NymSignatureScheme) Sign(sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk 
 
 // Verify checks that the passed signatures is valid with the respect to the passed digest, issuer public key,
 // and pseudonym public key.
-func (n *NymSignatureScheme) Verify(ipk handlers.IssuerPublicKey, Nym *math.G1, signature, digest []byte) (err error) {
+func (n *NymSignatureScheme) Verify(ipk types.IssuerPublicKey, Nym *math.G1, signature, digest []byte) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.Errorf("failure [%s]", r)

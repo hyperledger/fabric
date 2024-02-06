@@ -1,3 +1,5 @@
+//go:build !386 && !arm
+
 /*
  * Copyright (c) 2012-2020 MIRACL UK Ltd.
  *
@@ -22,8 +24,8 @@
 /* FP4 elements are of the form a+ib, where i is sqrt(-1+sqrt(-1)) */
 
 package FP256BN
-import "github.com/hyperledger/fabric-amcl/core"
 
+import "github.com/hyperledger/fabric-amcl/core"
 
 type FP4 struct {
 	a *FP2
@@ -46,7 +48,7 @@ func NewFP4int(a int) *FP4 {
 }
 
 /* Constructors */
-func NewFP4ints(a int,b int) *FP4 {
+func NewFP4ints(a int, b int) *FP4 {
 	F := new(FP4)
 	F.a = NewFP2int(a)
 	F.b = NewFP2int(b)
@@ -82,7 +84,7 @@ func NewFP4fp(c *FP) *FP4 {
 }
 
 func NewFP4rand(rng *core.RAND) *FP4 {
-	F := NewFP4fp2s(NewFP2rand(rng),NewFP2rand(rng))
+	F := NewFP4fp2s(NewFP2rand(rng), NewFP2rand(rng))
 	return F
 }
 
@@ -104,43 +106,42 @@ func (F *FP4) iszilch() bool {
 }
 
 func (F *FP4) islarger() int {
-    if F.iszilch() {
-		return 0;
+	if F.iszilch() {
+		return 0
 	}
-	cmp:=F.b.islarger()
-	if cmp!=0 {
+	cmp := F.b.islarger()
+	if cmp != 0 {
 		return cmp
 	}
 	return F.a.islarger()
 }
 
 func (F *FP4) ToBytes(bf []byte) {
-	var t [2*int(MODBYTES)]byte
-	MB := 2*int(MODBYTES)
-	F.b.ToBytes(t[:]);
-	for i:=0;i<MB;i++ {
-		bf[i]=t[i];
+	var t [2 * int(MODBYTES)]byte
+	MB := 2 * int(MODBYTES)
+	F.b.ToBytes(t[:])
+	for i := 0; i < MB; i++ {
+		bf[i] = t[i]
 	}
-	F.a.ToBytes(t[:]);
-	for i:=0;i<MB;i++ {
-		bf[i+MB]=t[i];
+	F.a.ToBytes(t[:])
+	for i := 0; i < MB; i++ {
+		bf[i+MB] = t[i]
 	}
 }
 
 func FP4_fromBytes(bf []byte) *FP4 {
-	var t [2*int(MODBYTES)]byte
-	MB := 2*int(MODBYTES)
-	for i:=0;i<MB;i++ {
-        t[i]=bf[i];
+	var t [2 * int(MODBYTES)]byte
+	MB := 2 * int(MODBYTES)
+	for i := 0; i < MB; i++ {
+		t[i] = bf[i]
 	}
-    tb:=FP2_fromBytes(t[:])
-	for i:=0;i<MB;i++ {
-        t[i]=bf[i+MB]
+	tb := FP2_fromBytes(t[:])
+	for i := 0; i < MB; i++ {
+		t[i] = bf[i+MB]
 	}
-    ta:=FP2_fromBytes(t[:])
-	return NewFP4fp2s(ta,tb)
+	ta := FP2_fromBytes(t[:])
+	return NewFP4fp2s(ta, tb)
 }
-
 
 /* Conditional move */
 func (F *FP4) cmove(g *FP4, d int) {
@@ -198,25 +199,25 @@ func (F *FP4) one() {
 
 /* Return sign */
 func (F *FP4) sign() int {
-	p1 := F.a.sign();
-	p2 := F.b.sign();
+	p1 := F.a.sign()
+	p2 := F.b.sign()
 	var u int
 	if BIG_ENDIAN_SIGN {
 		if F.b.iszilch() {
-			u=1;
+			u = 1
 		} else {
-			u=0;
+			u = 0
 		}
-		p2^=(p1^p2)&u;
-		return p2;
+		p2 ^= (p1 ^ p2) & u
+		return p2
 	} else {
 		if F.a.iszilch() {
-			u=1;
+			u = 1
 		} else {
-			u=0;
+			u = 0
 		}
-		p1^=(p1^p2)&u;
-		return p1;
+		p1 ^= (p1 ^ p2) & u
+		return p1
 	}
 }
 
@@ -394,7 +395,7 @@ func (F *FP4) frob(f *FP2) {
 	F.b.mul(f)
 }
 
-/* this=this^e 
+/* this=this^e
 func (F *FP4) pow(e *BIG) *FP4 {
 	w := NewFP4copy(F)
 	w.norm()
@@ -664,6 +665,7 @@ func (F *FP4) div_i() {
 		F.norm()
 	}
 }
+
 /*
 func (F *FP4) pow(b *BIG) {
 	w := NewFP4copy(F);
@@ -684,7 +686,7 @@ func (F *FP4) pow(b *BIG) {
 */
 
 /* PFGE24S
-// Test for Quadratic Residue 
+// Test for Quadratic Residue
 func (F *FP4) qr(h *FP) int {
 	c := NewFP4copy(F)
 	c.conj()
@@ -692,10 +694,10 @@ func (F *FP4) qr(h *FP) int {
 	return c.a.qr(h)
 }
 
-// sqrt(a+ib) = sqrt(a+sqrt(a*a-n*b*b)/2)+ib/(2*sqrt(a+sqrt(a*a-n*b*b)/2)) 
+// sqrt(a+ib) = sqrt(a+sqrt(a*a-n*b*b)/2)+ib/(2*sqrt(a+sqrt(a*a-n*b*b)/2))
 func (F *FP4) sqrt(h *FP)  {
 	if F.iszilch() {
-		return 
+		return
 	}
 
 	a := NewFP2copy(F.a)

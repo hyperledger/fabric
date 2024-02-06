@@ -62,13 +62,13 @@ var ltab = [...]byte{
 	103, 74, 237, 222, 197, 49, 254, 24, 13, 99, 140, 128, 192, 247, 112, 7}
 
 type SHARE struct {
-	ID   byte       // Unique Share ID
-	NSR   byte		// Number of Shares required for recovery
-	B    []byte		// Share
+	ID  byte   // Unique Share ID
+	NSR byte   // Number of Shares required for recovery
+	B   []byte // Share
 }
 
 func add(x byte, y byte) byte {
-	return (x^y)
+	return (x ^ y)
 }
 
 func mul(x byte, y byte) byte { /* x.y= AntiLog(Log(x) + Log(y)) */
@@ -92,15 +92,15 @@ func inv(x byte) byte {
 
 /* Lagrange interpolation */
 func interpolate(n int, x []byte, y []byte) byte {
-	yp:=byte(0)
-	for i:=0;i<n;i++ {
-		p:=byte(1)
-		for j:=0;j<n;j++ {
-			if (i!=j) {
-				p=mul(p,mul(x[j],inv(add(x[i],x[j]))))
+	yp := byte(0)
+	for i := 0; i < n; i++ {
+		p := byte(1)
+		for j := 0; j < n; j++ {
+			if i != j {
+				p = mul(p, mul(x[j], inv(add(x[i], x[j]))))
 			}
 		}
-		yp=add(yp,mul(p,y[i]))
+		yp = add(yp, mul(p, y[i]))
 	}
 	return yp
 }
@@ -111,53 +111,54 @@ func interpolate(n int, x []byte, y []byte) byte {
 /* input Message M to be shared */
 /* input Random seed R */
 /* return share structure */
-func NewSHARE(id int,nsr int,M []byte,R []byte) *SHARE {
+func NewSHARE(id int, nsr int, M []byte, R []byte) *SHARE {
 	var S = new(SHARE)
-	if id<1 || id>=256 || nsr<2 || nsr>=256 {
-		S.ID=0
-		S.NSR=0
-		S.B=nil
+	if id < 1 || id >= 256 || nsr < 2 || nsr >= 256 {
+		S.ID = 0
+		S.NSR = 0
+		S.B = nil
 		return S
 	}
-	S.ID=byte(id)
-	S.NSR=byte(nsr)
-	m:=len(M)
-	S.B=make([]byte,m)
+	S.ID = byte(id)
+	S.NSR = byte(nsr)
+	m := len(M)
+	S.B = make([]byte, m)
 	rng := NewRAND()
 	rng.Clean()
-	rng.Seed(len(R),R)
-	for j:=0;j<m;j++ {
-		x:=byte(S.ID)
-		S.B[j]=M[j]
-		for n:=1;n<nsr;n++ {
-			S.B[j]=add(S.B[j],mul(rng.GetByte(),x))
-			x=mul(x,S.ID)
+	rng.Seed(len(R), R)
+	for j := 0; j < m; j++ {
+		x := byte(S.ID)
+		S.B[j] = M[j]
+		for n := 1; n < nsr; n++ {
+			S.B[j] = add(S.B[j], mul(rng.GetByte(), x))
+			x = mul(x, S.ID)
 		}
-	}        
-	return S	
+	}
+	return S
 }
+
 /* recover M from shares */
 func Recover(S []*SHARE) []byte {
-	m:=len(S[0].B)
-	nsr:=int(S[0].NSR)
-	if nsr!=len(S) {
+	m := len(S[0].B)
+	nsr := int(S[0].NSR)
+	if nsr != len(S) {
 		return nil
 	}
-	for i:=1;i<nsr;i++ {
-		if int(S[i].NSR) != nsr || len(S[i].B)!=m {
+	for i := 1; i < nsr; i++ {
+		if int(S[i].NSR) != nsr || len(S[i].B) != m {
 			return nil
 		}
 	}
-	x:=make([]byte,nsr)
-	y:=make([]byte,nsr)
-	
-	M:=make([]byte,m)
-	for j:=0;j<m;j++ {
-		for i:=0;i<nsr;i++ {
-			x[i]=S[i].ID
-			y[i]=S[i].B[j]
+	x := make([]byte, nsr)
+	y := make([]byte, nsr)
+
+	M := make([]byte, m)
+	for j := 0; j < m; j++ {
+		for i := 0; i < nsr; i++ {
+			x[i] = S[i].ID
+			y[i] = S[i].B[j]
 		}
-		M[j]=interpolate(nsr,x,y)
+		M[j] = interpolate(nsr, x, y)
 	}
 	return M
 }

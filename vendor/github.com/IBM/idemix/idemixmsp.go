@@ -16,12 +16,12 @@ import (
 
 	idemix "github.com/IBM/idemix/bccsp"
 	"github.com/IBM/idemix/bccsp/keystore"
-	bccsp "github.com/IBM/idemix/bccsp/schemes"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
+	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/IBM/idemix/common/flogging"
+	im "github.com/IBM/idemix/idemixmsp"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/msp"
 	m "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
@@ -96,6 +96,21 @@ func NewIdemixMsp(version MSPVersion) (MSP, error) {
 	return &msp, nil
 }
 
+// NewIdemixMspAries creates a new instance of idemixmsp
+func NewIdemixMspAries(version MSPVersion) (MSP, error) {
+	mspLogger.Debugf("Creating Idemix-based MSP instance")
+
+	curve := math.Curves[math.BLS12_381_BBS]
+	csp, err := idemix.NewAries(&keystore.Dummy{}, curve, &amcl.Gurvy{C: curve}, true)
+	if err != nil {
+		panic(fmt.Sprintf("unexpected condition, error received [%s]", err))
+	}
+
+	msp := Idemixmsp{csp: csp}
+	msp.version = version
+	return &msp, nil
+}
+
 func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 	mspLogger.Debugf("Setting up Idemix-based MSP instance")
 
@@ -103,11 +118,7 @@ func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 		return errors.Errorf("setup error: nil conf reference")
 	}
 
-	if conf1.Type != int32(IDEMIX) {
-		return errors.Errorf("setup error: config is not of type IDEMIX")
-	}
-
-	var conf m.IdemixMSPConfig
+	var conf im.IdemixMSPConfig
 	err := proto.Unmarshal(conf1.Config, &conf)
 	if err != nil {
 		return errors.Wrap(err, "failed unmarshalling idemix msp config")
@@ -115,6 +126,13 @@ func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 
 	msp.name = conf.Name
 	mspLogger.Debugf("Setting up Idemix MSP instance %s", msp.name)
+
+	switch conf1.Type {
+	case int32(IDEMIX):
+	case int32(IDEMIX_ARIES):
+	default:
+		return errors.Errorf("setup error: config is not of type IDEMIX")
+	}
 
 	// Import Issuer Public Key
 	IssuerPublicKey, err := msp.csp.KeyImport(
@@ -291,7 +309,7 @@ func (msp *Idemixmsp) DeserializeIdentity(serializedID []byte) (Identity, error)
 
 func (msp *Idemixmsp) DeserializeIdentityInternal(serializedID []byte) (Identity, error) {
 	mspLogger.Debug("idemixmsp: deserializing identity")
-	serialized := new(m.SerializedIdemixIdentity)
+	serialized := new(im.SerializedIdemixIdentity)
 	err := proto.Unmarshal(serializedID, serialized)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not deserialize a SerializedIdemixIdentity")
@@ -515,7 +533,7 @@ func (msp *Idemixmsp) satisfiesPrincipalValidated(id Identity, principal *m.MSPP
 // In this MSP implementation, an identity is considered well formed if it contains a
 // marshaled SerializedIdemixIdentity protobuf message.
 func (id *Idemixmsp) IsWellFormed(identity *m.SerializedIdentity) error {
-	sId := new(m.SerializedIdemixIdentity)
+	sId := new(im.SerializedIdemixIdentity)
 	err := proto.Unmarshal(identity.IdBytes, sId)
 	if err != nil {
 		return errors.Wrap(err, "not an idemix identity")
@@ -621,7 +639,7 @@ func (id *Idemixidentity) SatisfiesPrincipal(principal *m.MSPPrincipal) error {
 }
 
 func (id *Idemixidentity) Serialize() ([]byte, error) {
-	serialized := &m.SerializedIdemixIdentity{}
+	serialized := &im.SerializedIdemixIdentity{}
 
 	raw, err := id.NymPublicKey.Bytes()
 	if err != nil {
@@ -706,7 +724,12 @@ const (
 )
 
 // GetIdemixMspConfig returns the configuration for the Idemix MSP
-func GetIdemixMspConfig(dir string, ID string) (*msp.MSPConfig, error) {
+func GetIdemixMspConfig(dir string, ID string) (*m.MSPConfig, error) {
+	return GetIdemixMspConfigWithType(dir, ID, IDEMIX)
+}
+
+// GetIdemixMspConfigWithType returns the configuration for the Idemix MSP of the specified type
+func GetIdemixMspConfigWithType(dir string, ID string, mspType ProviderType) (*m.MSPConfig, error) {
 	ipkBytes, err := readFile(filepath.Join(dir, IdemixConfigDirMsp, IdemixConfigFileIssuerPublicKey))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read issuer public key file")
@@ -717,7 +740,7 @@ func GetIdemixMspConfig(dir string, ID string) (*msp.MSPConfig, error) {
 		return nil, errors.Wrapf(err, "failed to read revocation public key file")
 	}
 
-	idemixConfig := &msp.IdemixMSPConfig{
+	idemixConfig := &im.IdemixMSPConfig{
 		Name:         ID,
 		Ipk:          ipkBytes,
 		RevocationPk: revocationPkBytes,
@@ -725,7 +748,7 @@ func GetIdemixMspConfig(dir string, ID string) (*msp.MSPConfig, error) {
 
 	signerBytes, err := readFile(filepath.Join(dir, IdemixConfigDirUser, IdemixConfigFileSigner))
 	if err == nil {
-		signerConfig := &msp.IdemixMSPSignerConfig{}
+		signerConfig := &im.IdemixMSPSignerConfig{}
 		err = proto.Unmarshal(signerBytes, signerConfig)
 		if err != nil {
 			return nil, err
@@ -738,5 +761,5 @@ func GetIdemixMspConfig(dir string, ID string) (*msp.MSPConfig, error) {
 		return nil, err
 	}
 
-	return &msp.MSPConfig{Config: confBytes, Type: int32(IDEMIX)}, nil
+	return &m.MSPConfig{Config: confBytes, Type: int32(mspType)}, nil
 }

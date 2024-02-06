@@ -8,8 +8,8 @@ package bridge
 import (
 	"crypto/ecdsa"
 
-	bccsp "github.com/IBM/idemix/bccsp/schemes"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
+	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"

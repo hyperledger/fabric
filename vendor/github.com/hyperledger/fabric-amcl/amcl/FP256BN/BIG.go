@@ -1,3 +1,5 @@
+//go:build !386 && !arm
+
 /*
 Licensed to the Apache Software Foundation (ASF) under one
 or more contributor license agreements.  See the NOTICE file
@@ -21,10 +23,11 @@ under the License.
 
 package FP256BN
 
-import "strconv"
-import "github.com/hyperledger/fabric-amcl/amcl"
+import (
+	"strconv"
 
-
+	"github.com/hyperledger/fabric-amcl/amcl"
+)
 
 //const MODBYTES uint = @NB@
 //const BASEBITS uint = @BASE@
@@ -782,7 +785,9 @@ func (r *BIG) Jacobi(p *BIG) int {
 /* this=1/this mod p. Binary method */
 func (r *BIG) Invmodp(p *BIG) {
 	r.Mod(p)
-	if r.iszilch() {return}
+	if r.iszilch() {
+		return
+	}
 	u := NewBIGcopy(r)
 
 	v := NewBIGcopy(p)

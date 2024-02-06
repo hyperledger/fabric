@@ -58,10 +58,10 @@ func (i *Idemix) MakeNymFromBytes(raw []byte) (*math.G1, *math.Zr, error) {
 }
 
 func makeNymFromBytes(curve *math.Curve, raw []byte, translator Translator) (*math.G1, *math.Zr, error) {
-	RandNym := curve.NewZrFromBytes(raw[:curve.FieldBytes])
+	RandNym := curve.NewZrFromBytes(raw[:curve.ScalarByteSize])
 	pk, err := translator.G1FromProto(&amcl.ECP{
-		X: raw[curve.FieldBytes : 2*curve.FieldBytes],
-		Y: raw[2*curve.FieldBytes:],
+		X: raw[curve.ScalarByteSize : curve.ScalarByteSize+curve.CoordByteSize],
+		Y: raw[curve.ScalarByteSize+curve.CoordByteSize:],
 	})
 	if err != nil {
 		return nil, nil, err

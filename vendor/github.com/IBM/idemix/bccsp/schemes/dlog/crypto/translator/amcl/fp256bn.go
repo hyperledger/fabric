@@ -43,7 +43,7 @@ func (a *Fp256bn) G1FromProto(e *ECP) (*math.G1, error) {
 		return nil, fmt.Errorf("nil argument")
 	}
 
-	if len(e.X) != a.C.FieldBytes || len(e.Y) != a.C.FieldBytes {
+	if len(e.X) != a.C.CoordByteSize || len(e.Y) != a.C.CoordByteSize {
 		return nil, fmt.Errorf("invalid marshalled length")
 	}
 
@@ -76,7 +76,7 @@ func (a *Fp256bn) G2FromProto(e *ECP2) (*math.G2, error) {
 		return nil, fmt.Errorf("nil argument")
 	}
 
-	if len(e.Xa) != a.C.FieldBytes || len(e.Xb) != a.C.FieldBytes || len(e.Ya) != a.C.FieldBytes || len(e.Yb) != a.C.FieldBytes {
+	if len(e.Xa) != a.C.CoordByteSize || len(e.Xb) != a.C.CoordByteSize || len(e.Ya) != a.C.CoordByteSize || len(e.Yb) != a.C.CoordByteSize {
 		return nil, fmt.Errorf("invalid marshalled length")
 	}
 
@@ -120,7 +120,7 @@ func (a *Fp256bnMiracl) G1FromProto(e *ECP) (*math.G1, error) {
 		return nil, fmt.Errorf("nil argument")
 	}
 
-	if len(e.X) != a.C.FieldBytes || len(e.Y) != a.C.FieldBytes {
+	if len(e.X) != a.C.CoordByteSize || len(e.Y) != a.C.CoordByteSize {
 		return nil, fmt.Errorf("invalid marshalled length")
 	}
 
@@ -153,7 +153,7 @@ func (a *Fp256bnMiracl) G2FromProto(e *ECP2) (*math.G2, error) {
 		return nil, fmt.Errorf("nil argument")
 	}
 
-	if len(e.Xa) != a.C.FieldBytes || len(e.Xb) != a.C.FieldBytes || len(e.Ya) != a.C.FieldBytes || len(e.Yb) != a.C.FieldBytes {
+	if len(e.Xa) != a.C.CoordByteSize || len(e.Xb) != a.C.CoordByteSize || len(e.Ya) != a.C.CoordByteSize || len(e.Yb) != a.C.CoordByteSize {
 		return nil, fmt.Errorf("invalid marshalled length")
 	}
 
