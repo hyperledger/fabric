@@ -1,3 +1,5 @@
+//go:build !386 && !arm
+
 /*
  * Copyright (c) 2012-2020 MIRACL UK Ltd.
  *
@@ -27,8 +29,6 @@ package FP256BN
 
 import "github.com/hyperledger/fabric-amcl/core"
 
-
-
 const BFS int = int(MODBYTES)
 const BGS int = int(MODBYTES)
 const BLS_OK int = 0
@@ -36,35 +36,35 @@ const BLS_FAIL int = -1
 
 var G2_TAB []*FP4
 
-func ceil(a int,b int) int {
-    return (((a)-1)/(b)+1)
+func ceil(a int, b int) int {
+	return (((a)-1)/(b) + 1)
 }
 
 /* output u \in F_p */
-func hash_to_field(hash int,hlen int ,DST []byte,M []byte,ctr int) []*FP {
+func hash_to_field(hash int, hlen int, DST []byte, M []byte, ctr int) []*FP {
 	q := NewBIGints(Modulus)
-	L := ceil(q.nbits()+AESKEY*8,8)
+	nbq := q.nbits()
+	L := ceil(nbq+AESKEY*8, 8)
 	var u []*FP
-	var fd =make([]byte,L)
-	OKM:=core.XMD_Expand(hash,hlen,L*ctr,DST,M)
-	
-	for i:=0;i<ctr;i++ {
-		for j:=0;j<L;j++ {
-			fd[j]=OKM[i*L+j];
+	var fd = make([]byte, L)
+	OKM := core.XMD_Expand(hash, hlen, L*ctr, DST, M)
+
+	for i := 0; i < ctr; i++ {
+		for j := 0; j < L; j++ {
+			fd[j] = OKM[i*L+j]
 		}
-		u = append(u,NewFPbig(DBIG_fromBytes(fd).Mod(q)))
+		u = append(u, NewFPbig(DBIG_fromBytes(fd).ctmod(q, uint(8*L-nbq))))
 	}
 	return u
 }
 
-
 /* hash a message to an ECP point, using SHA2, random oracle method */
 func bls_hash_to_point(M []byte) *ECP {
 	DST := []byte("BLS_SIG_FP256BNG1_XMD:SHA-256_SVDW_RO_NUL_")
-	u := hash_to_field(core.MC_SHA2,HASH_TYPE,DST,M,2)
+	u := hash_to_field(core.MC_SHA2, HASH_TYPE, DST, M, 2)
 
-	P:=ECP_map2point(u[0])
-	P1 := ECP_map2point(u[1]);
+	P := ECP_map2point(u[0])
+	P1 := ECP_map2point(u[1])
 	P.Add(P1)
 	P.Cfp()
 	P.Affine()
@@ -83,28 +83,29 @@ func Init() int {
 /* generate key pair, private key S, public key W */
 func KeyPairGenerate(IKM []byte, S []byte, W []byte) int {
 	r := NewBIGints(CURVE_Order)
-	L := ceil(3*ceil(r.nbits(),8),2)
-	LEN:=core.InttoBytes(L, 2)
-	AIKM:=make([]byte,len(IKM)+1) 
-	for i:=0;i<len(IKM);i++ {
-		AIKM[i]=IKM[i]
+	nbr := r.nbits()
+	L := ceil(3*ceil(nbr, 8), 2)
+	LEN := core.InttoBytes(L, 2)
+	AIKM := make([]byte, len(IKM)+1)
+	for i := 0; i < len(IKM); i++ {
+		AIKM[i] = IKM[i]
 	}
-	AIKM[len(IKM)]=0
+	AIKM[len(IKM)] = 0
 
 	G := ECP2_generator()
 	if G.Is_infinity() {
 		return BLS_FAIL
 	}
 	SALT := []byte("BLS-SIG-KEYGEN-SALT-")
-	PRK := core.HKDF_Extract(core.MC_SHA2,HASH_TYPE,SALT,AIKM)
-	OKM := core.HKDF_Expand(core.MC_SHA2,HASH_TYPE,L,PRK,LEN)
+	PRK := core.HKDF_Extract(core.MC_SHA2, HASH_TYPE, SALT, AIKM)
+	OKM := core.HKDF_Expand(core.MC_SHA2, HASH_TYPE, L, PRK, LEN)
 
-	dx:= DBIG_fromBytes(OKM[:])
-	s:= dx.Mod(r)
+	dx := DBIG_fromBytes(OKM[:])
+	s := dx.ctmod(r, uint(8*L-nbr))
 	s.ToBytes(S)
-// SkToPk
+	// SkToPk
 	G = G2mul(G, s)
-	G.ToBytes(W,true)
+	G.ToBytes(W, true)
 	return BLS_OK
 }
 
@@ -122,13 +123,17 @@ func Core_Sign(SIG []byte, M []byte, S []byte) int {
 
 func Core_Verify(SIG []byte, M []byte, W []byte) int {
 	HM := bls_hash_to_point(M)
-	
+
 	D := ECP_fromBytes(SIG)
-	if !G1member(D) {return BLS_FAIL}
+	if !G1member(D) {
+		return BLS_FAIL
+	}
 	D.Neg()
 
 	PK := ECP2_fromBytes(W)
-	if !G2member(PK) {return BLS_FAIL}
+	if !G2member(PK) {
+		return BLS_FAIL
+	}
 	// Use new multi-pairing mechanism
 
 	r := Initmp()

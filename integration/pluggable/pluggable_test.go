@@ -138,6 +138,7 @@ func compilePlugin(pluginType string) string {
 		"go", "build",
 		"-x", // print build commands while running
 		"-buildmode=plugin",
+		"-tags=generic", // workaround to ensure github.com/kilic/bls12-381 dependency compiles on amd64 in plugin mode
 		"-o", pluginFilePath,
 		fmt.Sprintf("github.com/hyperledger/fabric/integration/pluggable/testdata/plugins/%s", pluginType),
 	)

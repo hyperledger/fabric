@@ -1,4 +1,4 @@
-// Copyright 2020 ConsenSys Software Inc.
+// Copyright 2020 Consensys Software Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,18 +17,26 @@
 package fptower
 
 import (
-	"encoding/binary"
 	"errors"
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fp"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"math/big"
+	"sync"
 )
+
+var bigIntPool = sync.Pool{
+	New: func() interface{} {
+		return new(big.Int)
+	},
+}
 
 // E12 is a degree two finite field extension of fp6
 type E12 struct {
 	C0, C1 E6
 }
 
-// Equal returns true if z equals x, fasle otherwise
+// Equal returns true if z equals x, false otherwise
 func (z *E12) Equal(x *E12) bool {
 	return z.C0.Equal(&x.C0) && z.C1.Equal(&x.C1)
 }
@@ -56,20 +64,6 @@ func (z *E12) Set(x *E12) *E12 {
 func (z *E12) SetOne() *E12 {
 	*z = E12{}
 	z.C0.B0.A0.SetOne()
-	return z
-}
-
-// ToMont converts to Mont form
-func (z *E12) ToMont() *E12 {
-	z.C0.ToMont()
-	z.C1.ToMont()
-	return z
-}
-
-// FromMont converts from Mont form
-func (z *E12) FromMont() *E12 {
-	z.C0.FromMont()
-	z.C1.FromMont()
 	return z
 }
 
@@ -103,6 +97,15 @@ func (z *E12) SetRandom() (*E12, error) {
 		return nil, err
 	}
 	return z, nil
+}
+
+// IsZero returns true if the two elements are equal, false otherwise
+func (z *E12) IsZero() bool {
+	return z.C0.IsZero() && z.C1.IsZero()
+}
+
+func (z *E12) IsOne() bool {
+	return z.C0.IsOne() && z.C1.IsZero()
 }
 
 // Mul set z=x*y in E12 and return z
@@ -210,29 +213,51 @@ func (z *E12) CyclotomicSquareCompressed(x *E12) *E12 {
 	return z
 }
 
-// Decompress Karabina's cyclotomic square result
-func (z *E12) Decompress(x *E12) *E12 {
+// DecompressKarabina Karabina's cyclotomic square result
+// if g3 != 0
+//
+//	g4 = (E * g5^2 + 3 * g1^2 - 2 * g2)/4g3
+//
+// if g3 == 0
+//
+//	g4 = 2g1g5/g2
+//
+// if g3=g2=0 then g4=g5=g1=0 and g0=1 (x=1)
+// Theorem 3.1 is well-defined for all x in Gϕₙ\{1}
+func (z *E12) DecompressKarabina(x *E12) *E12 {
 
 	var t [3]E2
 	var one E2
 	one.SetOne()
 
-	// t0 = g1^2
-	t[0].Square(&x.C0.B1)
-	// t1 = 3 * g1^2 - 2 * g2
-	t[1].Sub(&t[0], &x.C0.B2).
-		Double(&t[1]).
-		Add(&t[1], &t[0])
-		// t0 = E * g5^2 + t1
-	t[2].Square(&x.C1.B2)
-	t[0].MulByNonResidue(&t[2]).
-		Add(&t[0], &t[1])
-	// t1 = 1/(4 * g3)
-	t[1].Double(&x.C1.B0).
-		Double(&t[1]).
-		Inverse(&t[1]) // costly
+	if x.C1.B2.IsZero() /* g3 == 0 */ {
+		t[0].Mul(&x.C0.B1, &x.C1.B2).
+			Double(&t[0])
+		// t1 = g2
+		t[1].Set(&x.C0.B2)
+
+		if t[1].IsZero() /* g2 == g3 == 0 */ {
+			return z.SetOne()
+		}
+	} else /* g3 != 0 */ {
+
+		// t0 = g1^2
+		t[0].Square(&x.C0.B1)
+		// t1 = 3 * g1^2 - 2 * g2
+		t[1].Sub(&t[0], &x.C0.B2).
+			Double(&t[1]).
+			Add(&t[1], &t[0])
+			// t0 = E * g5^2 + t1
+		t[2].Square(&x.C1.B2)
+		t[0].MulByNonResidue(&t[2]).
+			Add(&t[0], &t[1])
+		// t1 = 4 * g3
+		t[1].Double(&x.C1.B0).
+			Double(&t[1])
+	}
+
 	// z4 = g4
-	z.C1.B1.Mul(&t[0], &t[1])
+	z.C1.B1.Div(&t[0], &t[1]) // costly
 
 	// t1 = g2 * g1
 	t[1].Mul(&x.C0.B2, &x.C0.B1)
@@ -241,7 +266,7 @@ func (z *E12) Decompress(x *E12) *E12 {
 		Sub(&t[2], &t[1]).
 		Double(&t[2]).
 		Sub(&t[2], &t[1])
-	// t1 = g3 * g5
+	// t1 = g3 * g5 (g3 can be 0)
 	t[1].Mul(&x.C1.B0, &x.C1.B2)
 	// c_0 = E * (2 * g4^2 + g3 * g5 - 3 * g2 * g1) + 1
 	t[2].Add(&t[2], &t[1])
@@ -256,8 +281,20 @@ func (z *E12) Decompress(x *E12) *E12 {
 	return z
 }
 
-// BatchDecompress multiple Karabina's cyclotomic square results
-func BatchDecompress(x []E12) []E12 {
+// BatchDecompressKarabina multiple Karabina's cyclotomic square results
+// if g3 != 0
+//
+//	g4 = (E * g5^2 + 3 * g1^2 - 2 * g2)/4g3
+//
+// if g3 == 0
+//
+//	g4 = 2g1g5/g2
+//
+// if g3=g2=0 then g4=g5=g1=0 and g0=1 (x=1)
+// Theorem 3.1 is well-defined for all x in Gϕₙ\{1}
+//
+// Divisions by 4g3 or g2 is batched using Montgomery batch inverse
+func BatchDecompressKarabina(x []E12) []E12 {
 
 	n := len(x)
 	if n == 0 {
@@ -267,29 +304,47 @@ func BatchDecompress(x []E12) []E12 {
 	t0 := make([]E2, n)
 	t1 := make([]E2, n)
 	t2 := make([]E2, n)
+	zeroes := make([]bool, n)
 
 	var one E2
 	one.SetOne()
 
 	for i := 0; i < n; i++ {
-		// t0 = g1^2
-		t0[i].Square(&x[i].C0.B1)
-		// t1 = 3 * g1^2 - 2 * g2
-		t1[i].Sub(&t0[i], &x[i].C0.B2).
-			Double(&t1[i]).
-			Add(&t1[i], &t0[i])
-			// t0 = E * g5^2 + t1
-		t2[i].Square(&x[i].C1.B2)
-		t0[i].MulByNonResidue(&t2[i]).
-			Add(&t0[i], &t1[i])
-		// t1 = 4 * g3
-		t1[i].Double(&x[i].C1.B0).
-			Double(&t1[i])
+		if x[i].C1.B2.IsZero() /* g3 == 0 */ {
+			t0[i].Mul(&x[i].C0.B1, &x[i].C1.B2).
+				Double(&t0[i])
+			// t1 = g2
+			t1[i].Set(&x[i].C0.B2)
+
+			if t1[i].IsZero() /* g3 == g2 == 0 */ {
+				x[i].SetOne()
+				zeroes[i] = true
+				continue
+			}
+		} else /* g3 != 0 */ {
+			// t0 = g1^2
+			t0[i].Square(&x[i].C0.B1)
+			// t1 = 3 * g1^2 - 2 * g2
+			t1[i].Sub(&t0[i], &x[i].C0.B2).
+				Double(&t1[i]).
+				Add(&t1[i], &t0[i])
+				// t0 = E * g5^2 + t1
+			t2[i].Square(&x[i].C1.B2)
+			t0[i].MulByNonResidue(&t2[i]).
+				Add(&t0[i], &t1[i])
+			// t1 = 4 * g3
+			t1[i].Double(&x[i].C1.B0).
+				Double(&t1[i])
+		}
 	}
 
-	t1 = BatchInvert(t1) // costs 1 inverse
+	t1 = BatchInvertE2(t1) // costs 1 inverse
 
 	for i := 0; i < n; i++ {
+		if zeroes[i] {
+			continue
+		}
+
 		// z4 = g4
 		x[i].C1.B1.Mul(&t0[i], &t1[i])
 
@@ -301,7 +356,7 @@ func BatchDecompress(x []E12) []E12 {
 		t2[i].Double(&t2[i])
 		t2[i].Sub(&t2[i], &t1[i])
 
-		// t1 = g3 * g5
+		// t1 = g3 * g5 (g3s can be 0s)
 		t1[i].Mul(&x[i].C1.B0, &x[i].C1.B2)
 		// z0 = E * (2 * g4^2 + g3 * g5 - 3 * g2 * g1) + 1
 		t2[i].Add(&t2[i], &t1[i])
@@ -352,6 +407,8 @@ func (z *E12) CyclotomicSquare(x *E12) *E12 {
 }
 
 // Inverse set z to the inverse of x in E12 and return z
+//
+// if x == 0, sets and returns z = x
 func (z *E12) Inverse(x *E12) *E12 {
 	// Algorithm 23 from https://eprint.iacr.org/2010/354.pdf
 
@@ -367,22 +424,213 @@ func (z *E12) Inverse(x *E12) *E12 {
 	return z
 }
 
-// Exp sets z=x**e and returns it
-func (z *E12) Exp(x *E12, e big.Int) *E12 {
+// BatchInvertE12 returns a new slice with every element inverted.
+// Uses Montgomery batch inversion trick
+//
+// if a[i] == 0, returns result[i] = a[i]
+func BatchInvertE12(a []E12) []E12 {
+	res := make([]E12, len(a))
+	if len(a) == 0 {
+		return res
+	}
+
+	zeroes := make([]bool, len(a))
+	var accumulator E12
+	accumulator.SetOne()
+
+	for i := 0; i < len(a); i++ {
+		if a[i].IsZero() {
+			zeroes[i] = true
+			continue
+		}
+		res[i].Set(&accumulator)
+		accumulator.Mul(&accumulator, &a[i])
+	}
+
+	accumulator.Inverse(&accumulator)
+
+	for i := len(a) - 1; i >= 0; i-- {
+		if zeroes[i] {
+			continue
+		}
+		res[i].Mul(&res[i], &accumulator)
+		accumulator.Mul(&accumulator, &a[i])
+	}
+
+	return res
+}
+
+// Exp sets z=xᵏ (mod q¹²) and returns it
+// uses 2-bits windowed method
+func (z *E12) Exp(x E12, k *big.Int) *E12 {
+	if k.IsUint64() && k.Uint64() == 0 {
+		return z.SetOne()
+	}
+
+	e := k
+	if k.Sign() == -1 {
+		// negative k, we invert
+		// if k < 0: xᵏ (mod q¹²) == (x⁻¹)ᵏ (mod q¹²)
+		x.Inverse(&x)
+
+		// we negate k in a temp big.Int since
+		// Int.Bit(_) of k and -k is different
+		e = bigIntPool.Get().(*big.Int)
+		defer bigIntPool.Put(e)
+		e.Neg(k)
+	}
+
 	var res E12
+	var ops [3]E12
+
 	res.SetOne()
+	ops[0].Set(&x)
+	ops[1].Square(&ops[0])
+	ops[2].Set(&ops[0]).Mul(&ops[2], &ops[1])
+
 	b := e.Bytes()
 	for i := range b {
 		w := b[i]
-		mask := byte(0x80)
-		for j := 7; j >= 0; j-- {
-			res.Square(&res)
-			if (w&mask)>>j != 0 {
-				res.Mul(&res, x)
+		mask := byte(0xc0)
+		for j := 0; j < 4; j++ {
+			res.Square(&res).Square(&res)
+			c := (w & mask) >> (6 - 2*j)
+			if c != 0 {
+				res.Mul(&res, &ops[c-1])
 			}
-			mask = mask >> 1
+			mask = mask >> 2
 		}
 	}
+	z.Set(&res)
+
+	return z
+}
+
+// CyclotomicExp sets z=xᵏ (mod q¹²) and returns it
+// uses 2-NAF decomposition
+// x must be in the cyclotomic subgroup
+// TODO: use a windowed method
+func (z *E12) CyclotomicExp(x E12, k *big.Int) *E12 {
+	if k.IsUint64() && k.Uint64() == 0 {
+		return z.SetOne()
+	}
+
+	e := k
+	if k.Sign() == -1 {
+		// negative k, we invert (=conjugate)
+		// if k < 0: xᵏ (mod q¹²) == (x⁻¹)ᵏ (mod q¹²)
+		x.Conjugate(&x)
+
+		// we negate k in a temp big.Int since
+		// Int.Bit(_) of k and -k is different
+		e = bigIntPool.Get().(*big.Int)
+		defer bigIntPool.Put(e)
+		e.Neg(k)
+	}
+
+	var res, xInv E12
+	xInv.InverseUnitary(&x)
+	res.SetOne()
+	eNAF := make([]int8, e.BitLen()+3)
+	n := ecc.NafDecomposition(e, eNAF[:])
+	for i := n - 1; i >= 0; i-- {
+		res.CyclotomicSquare(&res)
+		if eNAF[i] == 1 {
+			res.Mul(&res, &x)
+		} else if eNAF[i] == -1 {
+			res.Mul(&res, &xInv)
+		}
+	}
+	z.Set(&res)
+	return z
+}
+
+// ExpGLV sets z=xᵏ (q¹²) and returns it
+// uses 2-dimensional GLV with 2-bits windowed method
+// x must be in GT
+// TODO: use 2-NAF
+// TODO: use higher dimensional decomposition
+func (z *E12) ExpGLV(x E12, k *big.Int) *E12 {
+	if k.IsUint64() && k.Uint64() == 0 {
+		return z.SetOne()
+	}
+
+	e := k
+	if k.Sign() == -1 {
+		// negative k, we invert (=conjugate)
+		// if k < 0: xᵏ (mod q¹²) == (x⁻¹)ᵏ (mod q¹²)
+		x.Conjugate(&x)
+
+		// we negate k in a temp big.Int since
+		// Int.Bit(_) of k and -k is different
+		e = bigIntPool.Get().(*big.Int)
+		defer bigIntPool.Put(e)
+		e.Neg(k)
+	}
+
+	var table [15]E12
+	var res E12
+	var s1, s2 fr.Element
+
+	res.SetOne()
+
+	// table[b3b2b1b0-1] = b3b2*Frobinius(x) + b1b0*x
+	table[0].Set(&x)
+	table[3].Frobenius(&x)
+
+	// split the scalar, modifies ±x, Frob(x) accordingly
+	s := ecc.SplitScalar(e, &glvBasis)
+
+	if s[0].Sign() == -1 {
+		s[0].Neg(&s[0])
+		table[0].InverseUnitary(&table[0])
+	}
+	if s[1].Sign() == -1 {
+		s[1].Neg(&s[1])
+		table[3].InverseUnitary(&table[3])
+	}
+
+	// precompute table (2 bits sliding window)
+	// table[b3b2b1b0-1] = b3b2*Frobenius(x) + b1b0*x if b3b2b1b0 != 0
+	table[1].CyclotomicSquare(&table[0])
+	table[2].Mul(&table[1], &table[0])
+	table[4].Mul(&table[3], &table[0])
+	table[5].Mul(&table[3], &table[1])
+	table[6].Mul(&table[3], &table[2])
+	table[7].CyclotomicSquare(&table[3])
+	table[8].Mul(&table[7], &table[0])
+	table[9].Mul(&table[7], &table[1])
+	table[10].Mul(&table[7], &table[2])
+	table[11].Mul(&table[7], &table[3])
+	table[12].Mul(&table[11], &table[0])
+	table[13].Mul(&table[11], &table[1])
+	table[14].Mul(&table[11], &table[2])
+
+	// bounds on the lattice base vectors guarantee that s1, s2 are len(r)/2 bits long max
+	s1 = s1.SetBigInt(&s[0]).Bits()
+	s2 = s2.SetBigInt(&s[1]).Bits()
+
+	maxBit := s1.BitLen()
+	if s2.BitLen() > maxBit {
+		maxBit = s2.BitLen()
+	}
+	hiWordIndex := (maxBit - 1) / 64
+
+	// loop starts from len(s1)/2 due to the bounds
+	for i := hiWordIndex; i >= 0; i-- {
+		mask := uint64(3) << 62
+		for j := 0; j < 32; j++ {
+			res.CyclotomicSquare(&res).CyclotomicSquare(&res)
+			b1 := (s1[i] & mask) >> (62 - 2*j)
+			b2 := (s2[i] & mask) >> (62 - 2*j)
+			if b1|b2 != 0 {
+				s := (b2<<2 | b1)
+				res.Mul(&res, &table[s-1])
+			}
+			mask = mask >> 2
+		}
+	}
+
 	z.Set(&res)
 	return z
 }
@@ -408,76 +656,27 @@ func (z *E12) Marshal() []byte {
 	return b[:]
 }
 
-// Unmarshal is an allias to SetBytes()
+// Unmarshal is an alias to SetBytes()
 func (z *E12) Unmarshal(buf []byte) error {
 	return z.SetBytes(buf)
 }
 
 // Bytes returns the regular (non montgomery) value
 // of z as a big-endian byte array.
-// z.C1.B2.A1 | z.C1.B2.A0 | z.C1.B1.A1 | ...
+// z.C1.B2.A1 | z.C1.B2.A0 | z.C1.B1.A1 | ...
 func (z *E12) Bytes() (r [SizeOfGT]byte) {
-	_z := *z
-	_z.FromMont()
-	binary.BigEndian.PutUint64(r[376:384], _z.C0.B0.A0[0])
-	binary.BigEndian.PutUint64(r[368:376], _z.C0.B0.A0[1])
-	binary.BigEndian.PutUint64(r[360:368], _z.C0.B0.A0[2])
-	binary.BigEndian.PutUint64(r[352:360], _z.C0.B0.A0[3])
-
-	binary.BigEndian.PutUint64(r[344:352], _z.C0.B0.A1[0])
-	binary.BigEndian.PutUint64(r[336:344], _z.C0.B0.A1[1])
-	binary.BigEndian.PutUint64(r[328:336], _z.C0.B0.A1[2])
-	binary.BigEndian.PutUint64(r[320:328], _z.C0.B0.A1[3])
-
-	binary.BigEndian.PutUint64(r[312:320], _z.C0.B1.A0[0])
-	binary.BigEndian.PutUint64(r[304:312], _z.C0.B1.A0[1])
-	binary.BigEndian.PutUint64(r[296:304], _z.C0.B1.A0[2])
-	binary.BigEndian.PutUint64(r[288:296], _z.C0.B1.A0[3])
-
-	binary.BigEndian.PutUint64(r[280:288], _z.C0.B1.A1[0])
-	binary.BigEndian.PutUint64(r[272:280], _z.C0.B1.A1[1])
-	binary.BigEndian.PutUint64(r[264:272], _z.C0.B1.A1[2])
-	binary.BigEndian.PutUint64(r[256:264], _z.C0.B1.A1[3])
-
-	binary.BigEndian.PutUint64(r[248:256], _z.C0.B2.A0[0])
-	binary.BigEndian.PutUint64(r[240:248], _z.C0.B2.A0[1])
-	binary.BigEndian.PutUint64(r[232:240], _z.C0.B2.A0[2])
-	binary.BigEndian.PutUint64(r[224:232], _z.C0.B2.A0[3])
-
-	binary.BigEndian.PutUint64(r[216:224], _z.C0.B2.A1[0])
-	binary.BigEndian.PutUint64(r[208:216], _z.C0.B2.A1[1])
-	binary.BigEndian.PutUint64(r[200:208], _z.C0.B2.A1[2])
-	binary.BigEndian.PutUint64(r[192:200], _z.C0.B2.A1[3])
-
-	binary.BigEndian.PutUint64(r[184:192], _z.C1.B0.A0[0])
-	binary.BigEndian.PutUint64(r[176:184], _z.C1.B0.A0[1])
-	binary.BigEndian.PutUint64(r[168:176], _z.C1.B0.A0[2])
-	binary.BigEndian.PutUint64(r[160:168], _z.C1.B0.A0[3])
-
-	binary.BigEndian.PutUint64(r[152:160], _z.C1.B0.A1[0])
-	binary.BigEndian.PutUint64(r[144:152], _z.C1.B0.A1[1])
-	binary.BigEndian.PutUint64(r[136:144], _z.C1.B0.A1[2])
-	binary.BigEndian.PutUint64(r[128:136], _z.C1.B0.A1[3])
-
-	binary.BigEndian.PutUint64(r[120:128], _z.C1.B1.A0[0])
-	binary.BigEndian.PutUint64(r[112:120], _z.C1.B1.A0[1])
-	binary.BigEndian.PutUint64(r[104:112], _z.C1.B1.A0[2])
-	binary.BigEndian.PutUint64(r[96:104], _z.C1.B1.A0[3])
-
-	binary.BigEndian.PutUint64(r[88:96], _z.C1.B1.A1[0])
-	binary.BigEndian.PutUint64(r[80:88], _z.C1.B1.A1[1])
-	binary.BigEndian.PutUint64(r[72:80], _z.C1.B1.A1[2])
-	binary.BigEndian.PutUint64(r[64:72], _z.C1.B1.A1[3])
-
-	binary.BigEndian.PutUint64(r[56:64], _z.C1.B2.A0[0])
-	binary.BigEndian.PutUint64(r[48:56], _z.C1.B2.A0[1])
-	binary.BigEndian.PutUint64(r[40:48], _z.C1.B2.A0[2])
-	binary.BigEndian.PutUint64(r[32:40], _z.C1.B2.A0[3])
-
-	binary.BigEndian.PutUint64(r[24:32], _z.C1.B2.A1[0])
-	binary.BigEndian.PutUint64(r[16:24], _z.C1.B2.A1[1])
-	binary.BigEndian.PutUint64(r[8:16], _z.C1.B2.A1[2])
-	binary.BigEndian.PutUint64(r[0:8], _z.C1.B2.A1[3])
+	fp.BigEndian.PutElement((*[fp.Bytes]byte)(r[352:352+fp.Bytes]), z.C0.B0.A0)
+	fp.BigEndian.PutElement((*[fp.Bytes]byte)(r[320:320+fp.Bytes]), z.C0.B0.A1)
+	fp.BigEndian.PutElement((*[fp.Bytes]byte)(r[288:288+fp.Bytes]), z.C0.B1.A0)
+	fp.BigEndian.PutElement((*[fp.Bytes]byte)(r[256:256+fp.Bytes]), z.C0.B1.A1)
+	fp.BigEndian.PutElement((*[fp.Bytes]byte)(r[224:224+fp.Bytes]), z.C0.B2.A0)
+	fp.BigEndian.PutElement((*[fp.Bytes]byte)(r[192:192+fp.Bytes]), z.C0.B2.A1)
+	fp.BigEndian.PutElement((*[fp.Bytes]byte)(r[160:160+fp.Bytes]), z.C1.B0.A0)
+	fp.BigEndian.PutElement((*[fp.Bytes]byte)(r[128:128+fp.Bytes]), z.C1.B0.A1)
+	fp.BigEndian.PutElement((*[fp.Bytes]byte)(r[96:96+fp.Bytes]), z.C1.B1.A0)
+	fp.BigEndian.PutElement((*[fp.Bytes]byte)(r[64:64+fp.Bytes]), z.C1.B1.A1)
+	fp.BigEndian.PutElement((*[fp.Bytes]byte)(r[32:32+fp.Bytes]), z.C1.B2.A0)
+	fp.BigEndian.PutElement((*[fp.Bytes]byte)(r[0:0+fp.Bytes]), z.C1.B2.A1)
 
 	return
 }
@@ -485,39 +684,52 @@ func (z *E12) Bytes() (r [SizeOfGT]byte) {
 // SetBytes interprets e as the bytes of a big-endian GT
 // sets z to that value (in Montgomery form), and returns z.
 // size(e) == 32 * 12
-// z.C1.B2.A1 | z.C1.B2.A0 | z.C1.B1.A1 | ...
+// z.C1.B2.A1 | z.C1.B2.A0 | z.C1.B1.A1 | ...
 func (z *E12) SetBytes(e []byte) error {
 	if len(e) != SizeOfGT {
 		return errors.New("invalid buffer size")
 	}
-	z.C0.B0.A0.SetBytes(e[352 : 352+fp.Bytes])
-
-	z.C0.B0.A1.SetBytes(e[320 : 320+fp.Bytes])
-
-	z.C0.B1.A0.SetBytes(e[288 : 288+fp.Bytes])
-
-	z.C0.B1.A1.SetBytes(e[256 : 256+fp.Bytes])
-
-	z.C0.B2.A0.SetBytes(e[224 : 224+fp.Bytes])
-
-	z.C0.B2.A1.SetBytes(e[192 : 192+fp.Bytes])
-
-	z.C1.B0.A0.SetBytes(e[160 : 160+fp.Bytes])
-
-	z.C1.B0.A1.SetBytes(e[128 : 128+fp.Bytes])
-
-	z.C1.B1.A0.SetBytes(e[96 : 96+fp.Bytes])
-
-	z.C1.B1.A1.SetBytes(e[64 : 64+fp.Bytes])
-
-	z.C1.B2.A0.SetBytes(e[32 : 32+fp.Bytes])
-
-	z.C1.B2.A1.SetBytes(e[0 : 0+fp.Bytes])
+	if err := z.C0.B0.A0.SetBytesCanonical(e[352 : 352+fp.Bytes]); err != nil {
+		return err
+	}
+	if err := z.C0.B0.A1.SetBytesCanonical(e[320 : 320+fp.Bytes]); err != nil {
+		return err
+	}
+	if err := z.C0.B1.A0.SetBytesCanonical(e[288 : 288+fp.Bytes]); err != nil {
+		return err
+	}
+	if err := z.C0.B1.A1.SetBytesCanonical(e[256 : 256+fp.Bytes]); err != nil {
+		return err
+	}
+	if err := z.C0.B2.A0.SetBytesCanonical(e[224 : 224+fp.Bytes]); err != nil {
+		return err
+	}
+	if err := z.C0.B2.A1.SetBytesCanonical(e[192 : 192+fp.Bytes]); err != nil {
+		return err
+	}
+	if err := z.C1.B0.A0.SetBytesCanonical(e[160 : 160+fp.Bytes]); err != nil {
+		return err
+	}
+	if err := z.C1.B0.A1.SetBytesCanonical(e[128 : 128+fp.Bytes]); err != nil {
+		return err
+	}
+	if err := z.C1.B1.A0.SetBytesCanonical(e[96 : 96+fp.Bytes]); err != nil {
+		return err
+	}
+	if err := z.C1.B1.A1.SetBytesCanonical(e[64 : 64+fp.Bytes]); err != nil {
+		return err
+	}
+	if err := z.C1.B2.A0.SetBytesCanonical(e[32 : 32+fp.Bytes]); err != nil {
+		return err
+	}
+	if err := z.C1.B2.A1.SetBytesCanonical(e[0 : 0+fp.Bytes]); err != nil {
+		return err
+	}
 
 	return nil
 }
 
-// IsInSubGroup ensures GT/E12 is in correct sugroup
+// IsInSubGroup ensures GT/E12 is in correct subgroup
 func (z *E12) IsInSubGroup() bool {
 	var a, b, _b E12
 
@@ -529,4 +741,117 @@ func (z *E12) IsInSubGroup() bool {
 	b.Mul(&b, &_b)
 
 	return a.Equal(&b)
+}
+
+// CompressTorus GT/E12 element to half its size
+// z must be in the cyclotomic subgroup
+// i.e. z^(p^4-p^2+1)=1
+// e.g. GT
+// "COMPRESSION IN FINITE FIELDS AND TORUS-BASED CRYPTOGRAPHY", K. RUBIN AND A. SILVERBERG
+// z.C1 == 0 only when z \in {-1,1}
+func (z *E12) CompressTorus() (E6, error) {
+
+	if z.C1.IsZero() {
+		return E6{}, errors.New("invalid input")
+	}
+
+	var res, tmp, one E6
+	one.SetOne()
+	tmp.Inverse(&z.C1)
+	res.Add(&z.C0, &one).
+		Mul(&res, &tmp)
+
+	return res, nil
+}
+
+// BatchCompressTorus GT/E12 elements to half their size using a batch inversion.
+//
+// if len(x) == 0 or if any of the x[i].C1 coordinate is 0, this function returns an error.
+func BatchCompressTorus(x []E12) ([]E6, error) {
+
+	n := len(x)
+	if n == 0 {
+		return nil, errors.New("invalid input size")
+	}
+
+	var one E6
+	one.SetOne()
+	res := make([]E6, n)
+
+	for i := 0; i < n; i++ {
+		res[i].Set(&x[i].C1)
+		//  throw an error if any of the x[i].C1 is 0
+		if res[i].IsZero() {
+			return nil, errors.New("invalid input; C1 is 0")
+		}
+	}
+
+	t := BatchInvertE6(res) // costs 1 inverse
+
+	for i := 0; i < n; i++ {
+		res[i].Add(&x[i].C0, &one).
+			Mul(&res[i], &t[i])
+	}
+
+	return res, nil
+}
+
+// DecompressTorus GT/E12 a compressed element
+// element must be in the cyclotomic subgroup
+// "COMPRESSION IN FINITE FIELDS AND TORUS-BASED CRYPTOGRAPHY", K. RUBIN AND A. SILVERBERG
+func (z *E6) DecompressTorus() E12 {
+
+	var res, num, denum E12
+	num.C0.Set(z)
+	num.C1.SetOne()
+	denum.C0.Set(z)
+	denum.C1.SetOne().Neg(&denum.C1)
+	res.Inverse(&denum).
+		Mul(&res, &num)
+
+	return res
+}
+
+// BatchDecompressTorus GT/E12 compressed elements
+// using a batch inversion
+func BatchDecompressTorus(x []E6) ([]E12, error) {
+
+	n := len(x)
+	if n == 0 {
+		return []E12{}, errors.New("invalid input size")
+	}
+
+	res := make([]E12, n)
+	num := make([]E12, n)
+	denum := make([]E12, n)
+
+	for i := 0; i < n; i++ {
+		num[i].C0.Set(&x[i])
+		num[i].C1.SetOne()
+		denum[i].C0.Set(&x[i])
+		denum[i].C1.SetOne().Neg(&denum[i].C1)
+	}
+
+	denum = BatchInvertE12(denum) // costs 1 inverse
+
+	for i := 0; i < n; i++ {
+		res[i].Mul(&num[i], &denum[i])
+	}
+
+	return res, nil
+}
+
+func (z *E12) Select(cond int, caseZ *E12, caseNz *E12) *E12 {
+	//Might be able to save a nanosecond or two by an aggregate implementation
+
+	z.C0.Select(cond, &caseZ.C0, &caseNz.C0)
+	z.C1.Select(cond, &caseZ.C1, &caseNz.C1)
+
+	return z
+}
+
+func (z *E12) Div(x *E12, y *E12) *E12 {
+	var r E12
+	r.Inverse(y).Mul(x, &r)
+	return z.Set(&r)
 }

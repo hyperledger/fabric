@@ -66,9 +66,20 @@ message CredRequest {
 	bytes proof_s = 4;
 }
 
+// EIDNym specifies a pseudonymous enrollment id object that consists of
+// nym - pseudonymous enrollment id
+// s_eid - field element
 message EIDNym {
 	amcl.ECP nym = 1;
 	bytes proof_s_eid = 2;
+}
+
+// RHNym specifies a pseudonymous revocation handle object that consists of
+// nym - pseudonymous revocation handle
+// s_rh - field element
+message RHNym {
+	amcl.ECP nym = 1;
+	bytes proof_s_rh = 2;
 }
 
 // Signature specifies a signature object that consists of
@@ -96,6 +107,7 @@ message Signature {
 	int64 epoch = 16;
 	NonRevocationProof non_revocation_proof = 17;
 	EIDNym eid_nym = 18;
+	RHNym rh_nym = 19;
 }
 
 // NonRevocationProof contains proof that the credential is not revoked

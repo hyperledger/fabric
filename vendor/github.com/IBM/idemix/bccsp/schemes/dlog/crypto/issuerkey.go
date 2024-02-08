@@ -88,7 +88,7 @@ func newIssuerKey(AttributeNames []string, rng io.Reader, curve *math.Curve, t T
 	t2 := BarG1.Mul(r)       // t2 = (\bar g_1)^r, cover BarG2
 
 	// Step 2: Compute the Fiat-Shamir hash, forming the challenge of the ZKP.
-	proofData := make([]byte, 18*curve.FieldBytes+3)
+	proofData := make([]byte, 3*curve.G1ByteSize+3*curve.G2ByteSize)
 	index := 0
 	index = appendBytesG2(proofData, index, t1)
 	index = appendBytesG1(proofData, index, t2)
@@ -194,7 +194,7 @@ func (IPk *IssuerPublicKey) Check(curve *math.Curve, t Translator) error {
 	// Verify Proof
 
 	// Recompute challenge
-	proofData := make([]byte, 18*curve.FieldBytes+3)
+	proofData := make([]byte, 3*curve.G1ByteSize+3*curve.G2ByteSize)
 	index := 0
 
 	// Recompute t-values using s-values

@@ -832,39 +832,39 @@ func (F *FP12) trace() *FP4 {
 
 /* convert from byte array to FP12 */
 func FP12_fromBytes(w []byte) *FP12 {
-	var t [4*int(MODBYTES)]byte
-	MB := 4*int(MODBYTES)
+	var t [4 * int(MODBYTES)]byte
+	MB := 4 * int(MODBYTES)
 
-	for i:=0;i<MB;i++ {
-		t[i]=w[i]
+	for i := 0; i < MB; i++ {
+		t[i] = w[i]
 	}
-    c:=FP4_fromBytes(t[:])
-	for i:=0;i<MB;i++ {
-		t[i]=w[i+MB]
+	c := FP4_fromBytes(t[:])
+	for i := 0; i < MB; i++ {
+		t[i] = w[i+MB]
 	}
-    b:=FP4_fromBytes(t[:])
-	for i:=0;i<MB;i++ {
-		t[i]=w[i+2*MB]
+	b := FP4_fromBytes(t[:])
+	for i := 0; i < MB; i++ {
+		t[i] = w[i+2*MB]
 	}
-    a:=FP4_fromBytes(t[:])
-	return NewFP12fp4s(a,b,c)
+	a := FP4_fromBytes(t[:])
+	return NewFP12fp4s(a, b, c)
 }
 
 /* convert this to byte array */
 func (F *FP12) ToBytes(w []byte) {
-	var t [4*int(MODBYTES)]byte
-	MB := 4*int(MODBYTES)
-    F.c.ToBytes(t[:])
-	for i:=0;i<MB;i++ { 
-		w[i]=t[i]
+	var t [4 * int(MODBYTES)]byte
+	MB := 4 * int(MODBYTES)
+	F.c.ToBytes(t[:])
+	for i := 0; i < MB; i++ {
+		w[i] = t[i]
 	}
-    F.b.ToBytes(t[:])
-	for i:=0;i<MB;i++ {
-		w[i+MB]=t[i]
+	F.b.ToBytes(t[:])
+	for i := 0; i < MB; i++ {
+		w[i+MB] = t[i]
 	}
-    F.a.ToBytes(t[:])
-	for i:=0;i<MB;i++ {
-		w[i+2*MB]=t[i]
+	F.a.ToBytes(t[:])
+	for i := 0; i < MB; i++ {
+		w[i+2*MB] = t[i]
 	}
 }
 
@@ -884,10 +884,10 @@ func (F *FP12) Pow(e *BIG) *FP12 {
 	sf := NewFP12copy(F)
 	sf.norm()
 	w := NewFP12copy(sf)
-    if e3.iszilch() {
-        w.one()
-        return w
-    }
+	if e3.iszilch() {
+		w.one()
+		return w
+	}
 	nb := e3.nbits()
 	for i := nb - 2; i >= 1; i-- {
 		w.usqr()

@@ -81,23 +81,29 @@ func (r *DBIG) split(n uint) *BIG {
 	return t
 }
 
-func (r *DBIG) cmove(g *DBIG, d int) {
+func (r *DBIG) cmove(g *DBIG, d int) Chunk {
 	var b = Chunk(-d)
-
+	s := Chunk(0)
+	v := r.w[0]^g.w[1]
+	va := v+v; va >>= 1;
 	for i := 0; i < DNLEN; i++ {
-		r.w[i] ^= (r.w[i] ^ g.w[i]) & b
+		t :=(r.w[i] ^ g.w[i])&b
+		t^=v
+		e := r.w[i]^t; s^=e
+		r.w[i] = e^va
 	}
+	return s
 }
 
 /* Compare a and b, return 0 if a==b, -1 if a<b, +1 if a>b. Inputs must be normalised */
 func dcomp(a *DBIG, b *DBIG) int {
-	gt:=Chunk(0)
-	eq:=Chunk(1)
+	gt := Chunk(0)
+	eq := Chunk(1)
 	for i := DNLEN - 1; i >= 0; i-- {
-		gt |= ((b.w[i]-a.w[i]) >> BASEBITS) & eq
-		eq &= ((b.w[i]^a.w[i])-1) >> BASEBITS
+		gt |= ((b.w[i] - a.w[i]) >> BASEBITS) & eq
+		eq &= ((b.w[i] ^ a.w[i]) - 1) >> BASEBITS
 	}
-	return int(gt+gt+eq-1)
+	return int(gt + gt + eq - 1)
 }
 
 /* Copy from another DBIG */
@@ -165,70 +171,68 @@ func (r *DBIG) shr(k uint) {
 	}
 }
 
-/* reduces this DBIG mod a BIG, and returns the BIG */
-func (r *DBIG) Mod(c *BIG) *BIG {
+func (r *DBIG) ctmod(m *BIG,bd uint) *BIG {
+	k:=bd
 	r.norm()
-	m := NewDBIGscopy(c)
+	c :=NewDBIGscopy(m)
 	dr := NewDBIG()
 
-	if dcomp(r, m) < 0 {
-		return NewBIGdcopy(r)
-	}
+	c.shl(k)
 
-	m.shl(1)
-	k := 1
-
-	for dcomp(r, m) >= 0 {
-		m.shl(1)
-		k++
-	}
-
-	for k > 0 {
-		m.shr(1)
-
+	for {
 		dr.copy(r)
-		dr.sub(m)
+		dr.sub(c)
 		dr.norm()
 		r.cmove(dr, int(1-((dr.w[DNLEN-1]>>uint(CHUNK-1))&1)))
-		k--
+		if k==0 {break}
+		k -= 1
+		c.shr(1)
 	}
 	return NewBIGdcopy(r)
 }
 
-/* return this/c */
-func (r *DBIG) div(c *BIG) *BIG {
-	var d int
-	k := 0
-	m := NewDBIGscopy(c)
+/* reduces this DBIG mod a BIG, and returns the BIG */
+func (r *DBIG) Mod(m *BIG) *BIG {
+	k:=r.nbits()-m.nbits()
+	if k<0 {k=0}
+	return r.ctmod(m,uint(k))
+}
+
+func (r *DBIG) ctdiv(m *BIG,bd uint) *BIG {
+	k:=bd
+	c := NewDBIGscopy(m)
 	a := NewBIGint(0)
 	e := NewBIGint(1)
 	sr := NewBIG()
 	dr := NewDBIG()
 	r.norm()
 
-	for dcomp(r, m) >= 0 {
-		e.fshl(1)
-		m.shl(1)
-		k++
-	}
+	c.shl(k)
+	e.shl(k)
 
-	for k > 0 {
-		m.shr(1)
-		e.shr(1)
-
+	for {
 		dr.copy(r)
-		dr.sub(m)
+		dr.sub(c)
 		dr.norm()
-		d = int(1 - ((dr.w[DNLEN-1] >> uint(CHUNK-1)) & 1))
+		d := int(1 - ((dr.w[DNLEN-1] >> uint(CHUNK-1)) & 1))
 		r.cmove(dr, d)
 		sr.copy(a)
 		sr.add(e)
 		sr.norm()
-		a.cmove(sr, d)
-
-		k--
+		a.cmove(sr, d)	
+		if k==0 {break}
+		k -= 1
+		c.shr(1)
+		e.shr(1)
 	}
 	return a
+}
+
+/* return this/c */
+func (r *DBIG) div(m *BIG) *BIG {
+	k:=r.nbits()-m.nbits()
+	if k<0 {k=0}
+	return r.ctdiv(m,uint(k))
 }
 
 /* Convert to Hex String */

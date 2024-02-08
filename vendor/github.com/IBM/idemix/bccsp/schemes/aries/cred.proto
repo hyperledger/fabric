@@ -1,0 +1,65 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+option go_package = "github.com/IBM/idemix/bccsp/schemes/aries";
+
+package aries;
+
+// Credential specifies a credential object
+message Credential {
+	bytes cred = 1;
+	repeated bytes attrs = 2;
+}
+
+// Signature is a PoK of a BBS+ signature (a credential)
+message Signature {
+	bytes main_signature = 1;
+	bytes nonce = 2;
+	bytes nym = 3;
+	bytes nym_proof = 4;
+	bytes nym_eid = 5;
+	bytes nym_eid_proof = 6;
+	int32 nym_eid_idx = 7;
+	bytes nym_rh = 8;
+	bytes nym_rh_proof = 9;
+	int32 nym_rh_idx = 10;
+
+	bytes revocation_epoch_pk = 11;
+	bytes revocation_pk_sig = 12;
+	int64 epoch = 13;
+
+	NonRevocationProof non_revocation_proof = 14;
+}
+
+// NonRevocationProof contains proof that the credential is not revoked
+message NonRevocationProof {
+	int32 revocation_alg = 1;
+	bytes non_revocation_proof = 2;
+}
+
+message CredentialRevocationInformation {
+	// epoch contains the epoch (time window) in which this CRI is valid
+	int64 epoch = 1;
+
+	// epoch_pk is the public key that is used by the revocation authority in this epoch
+	bytes epoch_pk = 2;
+
+	// epoch_pk_sig is a signature on the EpochPK valid under the revocation authority's long term key
+	bytes epoch_pk_sig = 3;
+
+	// revocation_alg denotes which revocation algorithm is used
+	int32 revocation_alg = 4;
+
+	// revocation_data contains data specific to the revocation algorithm used
+	bytes revocation_data = 5;
+}
+
+message NymSignature {
+	bytes main_signature = 1;
+	bytes nonce = 2;
+}

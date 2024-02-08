@@ -28,8 +28,8 @@
 
 package core
 
-const MC_SHA2 int=2
-const MC_SHA3 int=3
+const MC_SHA2 int = 2
+const MC_SHA3 int = 3
 
 /* Convert Integer to n-byte array */
 func InttoBytes(n int, len int) []byte {
@@ -46,9 +46,10 @@ func InttoBytes(n int, len int) []byte {
 	}
 	return b
 }
+
 /* general purpose hashing of Byte array|integer|Byte array. Output of length olen, padded with leading zeros if required */
 
-func GPhashit(hash int,hlen int, olen int, zpad int,A []byte, n int32, B []byte) []byte {
+func GPhashit(hash int, hlen int, olen int, zpad int, A []byte, n int32, B []byte) []byte {
 	var R []byte
 	if hash == MC_SHA2 {
 		if hlen == SHA256 {
@@ -144,8 +145,8 @@ func GPhashit(hash int,hlen int, olen int, zpad int,A []byte, n int32, B []byte)
 }
 
 /* Simple hashing of byte array */
-func SPhashit(hash int,hlen int, A []byte) []byte {
-	return GPhashit(hash,hlen,0,0,A,-1,nil)
+func SPhashit(hash int, hlen int, A []byte) []byte {
+	return GPhashit(hash, hlen, 0, 0, A, -1, nil)
 }
 
 /* Key Derivation Function */
@@ -168,7 +169,7 @@ func KDF2(hash int, sha int, Z []byte, P []byte, olen int) []byte {
 	}
 
 	for counter := 1; counter <= cthreshold; counter++ {
-		B := GPhashit(hash,sha, 0, 0, Z, int32(counter), P)
+		B := GPhashit(hash, sha, 0, 0, Z, int32(counter), P)
 		if k+hlen > olen {
 			for i := 0; i < olen%hlen; i++ {
 				K[k] = B[i]
@@ -234,7 +235,7 @@ func PBKDF2(hash int, sha int, Pass []byte, Salt []byte, rep int, olen int) []by
 	return key
 }
 
-func blksize(hash int,sha int) int {
+func blksize(hash int, sha int) int {
 	b := 0
 	if hash == MC_SHA2 {
 		b = 64
@@ -243,7 +244,7 @@ func blksize(hash int,sha int) int {
 		}
 	}
 	if hash == MC_SHA3 {
-		b=200-2*sha
+		b = 200 - 2*sha
 	}
 	return b
 }
@@ -255,8 +256,10 @@ func HMAC(hash int, sha int, tag []byte, olen int, K []byte, M []byte) int {
 	* The output is the calculated tag */
 	var B []byte
 
-	b := blksize(hash,sha)
-	if b == 0 {return 0}
+	b := blksize(hash, sha)
+	if b == 0 {
+		return 0
+	}
 
 	var K0 [200]byte
 	//olen := len(tag)
@@ -293,41 +296,41 @@ func HMAC(hash int, sha int, tag []byte, olen int, K []byte, M []byte) int {
 	return 1
 }
 
-func HKDF_Extract(hash int, hlen int, SALT []byte, IKM []byte)  []byte { 
+func HKDF_Extract(hash int, hlen int, SALT []byte, IKM []byte) []byte {
 	var PRK []byte
-	for i:=0;i<hlen;i++ {
-		PRK = append(PRK,0)
+	for i := 0; i < hlen; i++ {
+		PRK = append(PRK, 0)
 	}
 	if SALT == nil {
 		var H []byte
 		for i := 0; i < hlen; i++ {
 			H = append(H, 0)
 		}
-		HMAC(hash,hlen,PRK,hlen,H,IKM)
+		HMAC(hash, hlen, PRK, hlen, H, IKM)
 	} else {
-		HMAC(hash,hlen,PRK,hlen,SALT,IKM)
+		HMAC(hash, hlen, PRK, hlen, SALT, IKM)
 	}
 	return PRK
 }
 
-func HKDF_Expand(hash int, hlen int, olen int, PRK []byte, INFO []byte) []byte { 
-	n := olen/hlen;
-	flen := olen%hlen;
+func HKDF_Expand(hash int, hlen int, olen int, PRK []byte, INFO []byte) []byte {
+	n := olen / hlen
+	flen := olen % hlen
 
 	var OKM []byte
 	var T []byte
 	var K [64]byte
 
-	for i:=1;i<=n;i++ {
+	for i := 1; i <= n; i++ {
 		for j := 0; j < len(INFO); j++ {
 			T = append(T, INFO[j])
 		}
 		T = append(T, byte(i))
-		HMAC(hash,hlen,K[:],hlen,PRK,T);
+		HMAC(hash, hlen, K[:], hlen, PRK, T)
 		T = nil
 		for j := 0; j < hlen; j++ {
 			OKM = append(OKM, K[j])
-			T= append(T,K[j])
+			T = append(T, K[j])
 		}
 	}
 	if flen > 0 {
@@ -335,7 +338,7 @@ func HKDF_Expand(hash int, hlen int, olen int, PRK []byte, INFO []byte) []byte {
 			T = append(T, INFO[j])
 		}
 		T = append(T, byte(n+1))
-		HMAC(hash,hlen,K[:],flen,PRK,T);
+		HMAC(hash, hlen, K[:], flen, PRK, T)
 		for j := 0; j < flen; j++ {
 			OKM = append(OKM, K[j])
 		}
@@ -343,68 +346,79 @@ func HKDF_Expand(hash int, hlen int, olen int, PRK []byte, INFO []byte) []byte {
 	return OKM
 }
 
-func ceil(a int,b int) int {
-    return (((a)-1)/(b)+1)
+func ceil(a int, b int) int {
+	return (((a)-1)/(b) + 1)
 }
 
-func XOF_Expand(hlen int,olen int,DST []byte,MSG []byte) []byte {
-	var OKM =make([]byte,olen)
+func XOF_Expand(hlen int, olen int, DST []byte, MSG []byte) []byte {
+	var OKM = make([]byte, olen)
 	H := NewSHA3(hlen)
-	for i:=0;i<len(MSG);i++ {
+	for i := 0; i < len(MSG); i++ {
 		H.Process(MSG[i])
 	}
-	H.Process(byte((olen >> 8) & 0xff));
-	H.Process(byte(olen & 0xff));
+	H.Process(byte((olen >> 8) & 0xff))
+	H.Process(byte(olen & 0xff))
 
-	for i:=0;i<len(DST);i++ {
+	for i := 0; i < len(DST); i++ {
 		H.Process(DST[i])
 	}
-	H.Process(byte(len(DST) & 0xff));
+	H.Process(byte(len(DST) & 0xff))
 
-	H.Shake(OKM[:],olen)
+	H.Shake(OKM[:], olen)
 	return OKM
 }
 
-func XMD_Expand(hash int,hlen int,olen int,DST []byte,MSG []byte) []byte {
-	var OKM =make([]byte,olen)
-	var TMP =make([]byte,len(DST)+4)
+func xmd_Expand_Short_DST(hash int, hlen int, olen int, DST []byte, MSG []byte) []byte {
+	var OKM = make([]byte, olen)
+	var TMP = make([]byte, len(DST)+4)
 
-	ell:=ceil(olen,hlen)
-	blk:=blksize(hash,hlen)
-	TMP[0]=byte((olen >> 8) & 0xff)
-	TMP[1]=byte(olen & 0xff)
-	TMP[2]=byte(0)
+	ell := ceil(olen, hlen)
+	blk := blksize(hash, hlen)
+	TMP[0] = byte((olen >> 8) & 0xff)
+	TMP[1] = byte(olen & 0xff)
+	TMP[2] = byte(0)
 
-	for j:=0;j<len(DST);j++ {
-		TMP[3+j]=DST[j]
+	for j := 0; j < len(DST); j++ {
+		TMP[3+j] = DST[j]
 	}
-	TMP[3+len(DST)]=byte(len(DST) & 0xff)
-	var H0=GPhashit(hash, hlen, 0, blk, MSG, -1, TMP)
+	TMP[3+len(DST)] = byte(len(DST) & 0xff)
+	var H0 = GPhashit(hash, hlen, 0, blk, MSG, -1, TMP)
 
-	var H1=make([]byte,hlen)
-	var TMP2=make([]byte,len(DST)+2)
+	var H1 = make([]byte, hlen)
+	var TMP2 = make([]byte, len(DST)+2)
 
-    k:=0
-	for i:=1;i<=ell;i++ {
-		for j:=0;j<hlen;j++ {
-			H1[j]^=H0[j]
-		}          
-		TMP2[0]=byte(i)
-
-		for j:=0;j<len(DST);j++ {
-			TMP2[1+j]=DST[j]
+	k := 0
+	for i := 1; i <= ell; i++ {
+		for j := 0; j < hlen; j++ {
+			H1[j] ^= H0[j]
 		}
-		TMP2[1+len(DST)]=byte(len(DST) & 0xff)
+		TMP2[0] = byte(i)
 
-		H1=GPhashit(hash, hlen, 0, 0, H1, -1, TMP2);
-		for j:=0;j<hlen && k<olen;j++ {
-                OKM[k]=H1[j]
-				k++
-        }
-	}        
-    return OKM;
+		for j := 0; j < len(DST); j++ {
+			TMP2[1+j] = DST[j]
+		}
+		TMP2[1+len(DST)] = byte(len(DST) & 0xff)
+
+		H1 = GPhashit(hash, hlen, 0, 0, H1, -1, TMP2)
+		for j := 0; j < hlen && k < olen; j++ {
+			OKM[k] = H1[j]
+			k++
+		}
+	}
+	return OKM
 }
 
+func XMD_Expand(hash int, hlen int, olen int, DST []byte, MSG []byte) []byte {
+	var R []byte
+	OS := []byte("H2C-OVERSIZE-DST-")
+	if len(DST)>=256 {
+		W := GPhashit(hash, hlen, 0, 0, OS, -1, DST)
+		R=xmd_Expand_Short_DST(hash,hlen,olen,W,MSG)
+	} else {
+		R=xmd_Expand_Short_DST(hash,hlen,olen,DST,MSG)
+	}
+	return R;
+}
 
 /* Mask Generation Function */
 
@@ -421,7 +435,7 @@ func MGF1(sha int, Z []byte, olen int, K []byte) {
 		cthreshold++
 	}
 	for counter := 0; counter < cthreshold; counter++ {
-		B := GPhashit(MC_SHA2,sha,0,0,Z,int32(counter),nil)
+		B := GPhashit(MC_SHA2, sha, 0, 0, Z, int32(counter), nil)
 		//B := hashit(sha, Z, counter)
 
 		if k+hlen > olen {
@@ -438,7 +452,6 @@ func MGF1(sha int, Z []byte, olen int, K []byte) {
 	}
 }
 
-
 func MGF1XOR(sha int, Z []byte, olen int, K []byte) {
 	hlen := sha
 
@@ -449,7 +462,7 @@ func MGF1XOR(sha int, Z []byte, olen int, K []byte) {
 		cthreshold++
 	}
 	for counter := 0; counter < cthreshold; counter++ {
-		B := GPhashit(MC_SHA2,sha,0,0,Z,int32(counter),nil)
+		B := GPhashit(MC_SHA2, sha, 0, 0, Z, int32(counter), nil)
 		//B := hashit(sha, Z, counter)
 
 		if k+hlen > olen {
@@ -479,7 +492,7 @@ func RSA_PKCS15(sha int, m []byte, w []byte, RFS int) bool {
 	if olen < idlen+hlen+10 {
 		return false
 	}
-	H := SPhashit(MC_SHA2,sha,m)
+	H := SPhashit(MC_SHA2, sha, m)
 	//H := hashit(sha, m, -1)
 
 	for i := 0; i < len(w); i++ {
@@ -581,107 +594,107 @@ func RSA_PKCS15b(sha int, m []byte, w []byte, RFS int) bool {
 
 
 func RSA_PSS_ENCODE(sha int, m []byte, rng *RAND, RFS int) []byte {
-	emlen:=RFS
-	embits:=8*emlen-1
+	emlen := RFS
+	embits := 8*emlen - 1
 
-	hlen:=sha
-	SALT := make([]byte,hlen)
+	hlen := sha
+	SALT := make([]byte, hlen)
 	for i := 0; i < hlen; i++ {
 		SALT[i] = rng.GetByte()
 	}
-	mask:=byte(0xff>>(8*emlen-embits))
+	mask := byte(0xff >> (8*emlen - embits))
 
-	H := SPhashit(MC_SHA2,sha,m)
+	H := SPhashit(MC_SHA2, sha, m)
 	if emlen < hlen+hlen+2 {
 		return nil
 	}
 
-	MD := make([]byte,8+hlen+hlen)
-	for i:=0;i<8;i++ {
-		MD[i]=0;
+	MD := make([]byte, 8+hlen+hlen)
+	for i := 0; i < 8; i++ {
+		MD[i] = 0
 	}
-	for i:=0;i<hlen;i++ {
-		MD[8+i]=H[i]
+	for i := 0; i < hlen; i++ {
+		MD[8+i] = H[i]
 	}
-	for i:=0;i<hlen;i++ {
-		MD[8+hlen+i]=SALT[i]
+	for i := 0; i < hlen; i++ {
+		MD[8+hlen+i] = SALT[i]
 	}
-	H=SPhashit(MC_SHA2,sha,MD)
-	f:= make([]byte,RFS)
-	for i:=0;i<emlen-hlen-hlen-2;i++ {
-		f[i]=0;
+	H = SPhashit(MC_SHA2, sha, MD)
+	f := make([]byte, RFS)
+	for i := 0; i < emlen-hlen-hlen-2; i++ {
+		f[i] = 0
 	}
-	f[emlen-hlen-hlen-2]=0x1
-	for i:=0;i<hlen;i++ {
-		f[emlen+i-hlen-hlen-1]=SALT[i]
+	f[emlen-hlen-hlen-2] = 0x1
+	for i := 0; i < hlen; i++ {
+		f[emlen+i-hlen-hlen-1] = SALT[i]
 	}
 
-	MGF1XOR(sha,H,emlen-hlen-1,f)
-	f[0]&=mask;
-	for i:=0;i<hlen;i++ {
-		f[emlen+i-hlen-1]=H[i]
+	MGF1XOR(sha, H, emlen-hlen-1, f)
+	f[0] &= mask
+	for i := 0; i < hlen; i++ {
+		f[emlen+i-hlen-1] = H[i]
 	}
-	f[emlen-1]=byte(0xbc)
+	f[emlen-1] = byte(0xbc)
 	return f
 }
 
 func RSA_PSS_VERIFY(sha int, m []byte, f []byte) bool {
-	emlen:=len(f)
-	embits:=8*emlen-1
-	hlen:=sha
-	SALT := make([]byte,hlen)
-	mask:=byte(0xff>>(8*emlen-embits))
+	emlen := len(f)
+	embits := 8*emlen - 1
+	hlen := sha
+	SALT := make([]byte, hlen)
+	mask := byte(0xff >> (8*emlen - embits))
 
-	HMASK := SPhashit(MC_SHA2,sha,m)
-    if emlen < hlen + hlen +  2 {
+	HMASK := SPhashit(MC_SHA2, sha, m)
+	if emlen < hlen+hlen+2 {
 		return false
 	}
-    if (f[emlen-1]!=byte(0xbc)) {
+	if f[emlen-1] != byte(0xbc) {
 		return false
 	}
-    if (f[0]&(^mask))!=0 {
+	if (f[0] & (^mask)) != 0 {
 		return false
 	}
-	DB:=make([]byte,emlen-hlen-1)
-	for i:=0;i<emlen-hlen-1;i++ {
-		DB[i]=f[i]
+	DB := make([]byte, emlen-hlen-1)
+	for i := 0; i < emlen-hlen-1; i++ {
+		DB[i] = f[i]
 	}
-	H:=make([]byte,hlen)
-	for i:=0;i<hlen;i++ {
-		H[i]=f[emlen+i-hlen-1]
+	H := make([]byte, hlen)
+	for i := 0; i < hlen; i++ {
+		H[i] = f[emlen+i-hlen-1]
 	}
-	MGF1XOR(sha,H,emlen-hlen-1,DB)
-	DB[0]&=mask;
-	k:=byte(0);
-	for i:=0;i<emlen-hlen-hlen-2;i++ {
-		k|=DB[i]
+	MGF1XOR(sha, H, emlen-hlen-1, DB)
+	DB[0] &= mask
+	k := byte(0)
+	for i := 0; i < emlen-hlen-hlen-2; i++ {
+		k |= DB[i]
 	}
-	if k!=0 {
+	if k != 0 {
 		return false
 	}
-    if DB[emlen-hlen-hlen-2]!=0x01 {
+	if DB[emlen-hlen-hlen-2] != 0x01 {
 		return false
 	}
 
-	for i:=0;i<hlen;i++ {
-		SALT[i]=DB[emlen+i-hlen-hlen-1]
+	for i := 0; i < hlen; i++ {
+		SALT[i] = DB[emlen+i-hlen-hlen-1]
 	}
-	MD:=make([]byte,8+hlen+hlen)
-    for i:=0;i<8;i++ {
-        MD[i]=0
+	MD := make([]byte, 8+hlen+hlen)
+	for i := 0; i < 8; i++ {
+		MD[i] = 0
 	}
-    for i:=0;i<hlen;i++ {
-        MD[8+i]=HMASK[i]
+	for i := 0; i < hlen; i++ {
+		MD[8+i] = HMASK[i]
 	}
-    for i:=0;i<hlen;i++ {
-        MD[8+hlen+i]=SALT[i]
+	for i := 0; i < hlen; i++ {
+		MD[8+hlen+i] = SALT[i]
 	}
-	HMASK=SPhashit(MC_SHA2,sha,MD)
-	k=0
-    for i:=0;i<hlen;i++ {
-		k|=(H[i]-HMASK[i])
+	HMASK = SPhashit(MC_SHA2, sha, MD)
+	k = 0
+	for i := 0; i < hlen; i++ {
+		k |= (H[i] - HMASK[i])
 	}
-	if k!=0 {
+	if k != 0 {
 		return false
 	}
 	return true
@@ -692,7 +705,7 @@ func RSA_OAEP_ENCODE(sha int, m []byte, rng *RAND, p []byte, RFS int) []byte {
 	olen := RFS - 1
 	mlen := len(m)
 	//var f [RFS]byte
-	f := make([]byte,RFS)
+	f := make([]byte, RFS)
 
 	hlen := sha
 
@@ -705,7 +718,7 @@ func RSA_OAEP_ENCODE(sha int, m []byte, rng *RAND, p []byte, RFS int) []byte {
 
 	DBMASK := make([]byte, olen-seedlen)
 
-	h := SPhashit(MC_SHA2,sha,p)
+	h := SPhashit(MC_SHA2, sha, p)
 	//h := hashit(sha, p, -1)
 
 	for i := 0; i < hlen; i++ {
@@ -779,7 +792,7 @@ func RSA_OAEP_DECODE(sha int, p []byte, f []byte, RFS int) []byte {
 		}
 	}
 
-	h := SPhashit(MC_SHA2,sha,p)
+	h := SPhashit(MC_SHA2, sha, p)
 	//h := hashit(sha, p, -1)
 	for i := 0; i < hlen; i++ {
 		CHASH[i] = h[i]
@@ -800,14 +813,15 @@ func RSA_OAEP_DECODE(sha int, p []byte, f []byte, RFS int) []byte {
 		DBMASK[i] ^= f[i]
 	}
 
-	comp := true
+	comp := 0
 	for i := 0; i < hlen; i++ {
-		if CHASH[i] != DBMASK[i] {
-			comp = false
-		}
+		comp |= int(CHASH[i] ^ DBMASK[i])
+		//if CHASH[i] != DBMASK[i] {
+		//	comp = false
+		//}
 	}
-
-	for i := 0; i < olen-seedlen-hlen; i++ {
+	m:=olen-seedlen-hlen
+	for i := 0; i < m; i++ {
 		DBMASK[i] = DBMASK[i+hlen]
 	}
 
@@ -816,27 +830,36 @@ func RSA_OAEP_DECODE(sha int, p []byte, f []byte, RFS int) []byte {
 		CHASH[i] = 0
 	}
 
+	k:=0
+	t:=0
+	for i:=0;i<m; i++ {
+		if t==0 && DBMASK[i]!=0 {
+			k=i
+			t=int(DBMASK[i])
+		}
+	}
+/*
 	var k int
 	for k = 0; ; k++ {
-		if k >= olen-seedlen-hlen {
+		if k >= m {
 			return nil
 		}
 		if DBMASK[k] != 0 {
 			break
 		}
 	}
+	t := DBMASK[k] */
 
-	t := DBMASK[k]
-	if !comp || x != 0 || t != 0x01 {
+	if comp!=0 || x != 0 || t != 0x01 {
 		for i := 0; i < olen-seedlen; i++ {
 			DBMASK[i] = 0
 		}
 		return nil
 	}
 
-	var r = make([]byte, olen-seedlen-hlen-k-1)
+	var r = make([]byte, m-k-1)
 
-	for i := 0; i < olen-seedlen-hlen-k-1; i++ {
+	for i := 0; i < m-k-1; i++ {
 		r[i] = DBMASK[i+k+1]
 	}
 
@@ -846,9 +869,6 @@ func RSA_OAEP_DECODE(sha int, p []byte, f []byte, RFS int) []byte {
 
 	return r
 }
-
-
-
 
 /*
 
@@ -868,7 +888,7 @@ func main() {
 	var ikm []byte
 	var salt []byte
 	var info []byte
-	
+
 	for i:=0;i<22;i++ {ikm=append(ikm,0x0b)}
 	for i:=0;i<13;i++ {salt=append(salt,byte(i))}
 	for i:=0;i<10;i++ {info=append(info,byte(0xf0+i))}
@@ -884,7 +904,6 @@ func main() {
 	for i := 0; i < len(okm); i++ {
 		fmt.Printf("%02x", okm[i])
 	}
-	
+
 }
 */
-

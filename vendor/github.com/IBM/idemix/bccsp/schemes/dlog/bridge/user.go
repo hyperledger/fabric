@@ -7,7 +7,7 @@ package bridge
 
 import (
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers"
+	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/pkg/errors"
 )
@@ -33,8 +33,8 @@ func (u *User) NewKey() (res *math.Zr, err error) {
 }
 
 func (u *User) NewKeyFromBytes(raw []byte) (res *math.Zr, err error) {
-	if len(raw) != u.Idemix.Curve.FieldBytes {
-		return nil, errors.Errorf("invalid length, expected [%d], got [%d]", u.Idemix.Curve.FieldBytes, len(raw))
+	if len(raw) != u.Idemix.Curve.ScalarByteSize {
+		return nil, errors.Errorf("invalid length, expected [%d], got [%d]", u.Idemix.Curve.ScalarByteSize, len(raw))
 	}
 
 	res = u.Idemix.Curve.NewZrFromBytes(raw)
@@ -43,7 +43,7 @@ func (u *User) NewKeyFromBytes(raw []byte) (res *math.Zr, err error) {
 }
 
 // MakeNym generates a new pseudonym key-pair derived from the passed user secret key (sk) and issuer public key (ipk)
-func (u *User) MakeNym(sk *math.Zr, ipk handlers.IssuerPublicKey) (r1 *math.G1, r2 *math.Zr, err error) {
+func (u *User) MakeNym(sk *math.Zr, ipk types.IssuerPublicKey) (r1 *math.G1, r2 *math.Zr, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			r1 = nil

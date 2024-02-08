@@ -9,7 +9,7 @@ package keystore
 import (
 	"errors"
 
-	bccsp "github.com/IBM/idemix/bccsp/schemes"
+	bccsp "github.com/IBM/idemix/bccsp/types"
 )
 
 // Dummy is a read-only KeyStore that neither loads nor stores keys.
