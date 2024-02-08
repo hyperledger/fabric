@@ -15,6 +15,11 @@ unit-tests:
 unit-tests-race:
 	@export GORACE=history_size=7; go test -timeout 960s -race -cover $(shell go list ./...)
 
+.PHONY: perf
+perf:
+	@go test -benchmem -bench=Benchmark_Sequential.* -run=^$$ -v
+	@go test -benchmem -bench=Benchmark_Parallel.* -run=^$$ -cpu=1,2,4,8,16,32,64 -v
+
 .PHONY: check-deps
 check-deps:
-	@go get -u github.com/google/addlicense
+	@go install github.com/google/addlicense@latest

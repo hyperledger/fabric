@@ -30,7 +30,7 @@
 
 package core
 
-//import "fmt"
+
 
 const SHA3_HASH224 int = 28
 const SHA3_HASH256 int = 32
@@ -152,9 +152,9 @@ func NewSHA3copy(HC *SHA3) *SHA3 {
 			H.s[i][j] = HC.s[i][j]
 		}
 	}
-	H.length=HC.length
-	H.len=HC.len
-	H.rate=HC.rate
+	H.length = HC.length
+	H.len = HC.len
+	H.rate = HC.rate
 	return H
 }
 
@@ -186,7 +186,6 @@ func (H *SHA3) Process_num(n int32) {
 	H.Process(byte((n >> 8) & 0xff))
 	H.Process(byte(n & 0xff))
 }
-
 
 /* squeeze the sponge */
 func (H *SHA3) Squeeze(buff []byte, olen int) {
@@ -225,7 +224,7 @@ func (H *SHA3) Squeeze(buff []byte, olen int) {
 }
 
 /* Generate Hash */
-func (H *SHA3) Hash()  []byte  { /* generate a SHA3 hash of appropriate size */
+func (H *SHA3) Hash() []byte { /* generate a SHA3 hash of appropriate size */
 	var digest [64]byte
 	q := H.rate - int(H.length%uint64(H.rate))
 	if q == 1 {
@@ -241,7 +240,7 @@ func (H *SHA3) Hash()  []byte  { /* generate a SHA3 hash of appropriate size */
 	return digest[0:H.len]
 }
 
-func (H *SHA3) Continuing_Hash() [] byte {
+func (H *SHA3) Continuing_Hash() []byte {
 	sh := NewSHA3copy(H)
 	return sh.Hash()
 }
@@ -262,7 +261,7 @@ func (H *SHA3) Shake(hash []byte, olen int) { /* generate a SHA3 hash of appropr
 
 func (H *SHA3) Continuing_Shake(hash []byte, olen int) {
 	sh := NewSHA3copy(H)
-	sh.Shake(hash,olen)
+	sh.Shake(hash, olen)
 }
 
 /* test program: should produce digest */

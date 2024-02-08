@@ -28,7 +28,7 @@
 
 package core
 
-//import "fmt"
+
 
 const SHA512 int = 64
 
@@ -161,14 +161,14 @@ func NewHASH512() *HASH512 {
 
 func NewHASH512copy(HC *HASH512) *HASH512 {
 	H := new(HASH512)
-	for i:=0;i<80;i++ {
-		H.w[i]=HC.w[i]
+	for i := 0; i < 80; i++ {
+		H.w[i] = HC.w[i]
 	}
-	for i:=0;i<8;i++ {
-		H.h[i]=HC.h[i]
+	for i := 0; i < 8; i++ {
+		H.h[i] = HC.h[i]
 	}
-	H.length[0]=HC.length[0]
-	H.length[1]=HC.length[1]
+	H.length[0] = HC.length[0]
+	H.length[1] = HC.length[1]
 	return H
 }
 

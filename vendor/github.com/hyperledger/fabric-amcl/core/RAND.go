@@ -30,7 +30,7 @@
 
 package core
 
-//import "fmt"
+
 
 const rand_NK int = 21
 const rand_NJ int = 6

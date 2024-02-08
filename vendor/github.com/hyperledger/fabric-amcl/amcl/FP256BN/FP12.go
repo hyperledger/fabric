@@ -1,3 +1,5 @@
+//go:build !386 && !arm
+
 /*
 Licensed to the Apache Software Foundation (ASF) under one
 or more contributor license agreements.  See the NOTICE file
@@ -22,12 +24,10 @@ under the License.
 
 package FP256BN
 
-
-
 type FP12 struct {
-	a *FP4
-	b *FP4
-	c *FP4
+	a     *FP4
+	b     *FP4
+	c     *FP4
 	stype int
 }
 
@@ -37,7 +37,7 @@ func NewFP12() *FP12 {
 	F.a = NewFP4()
 	F.b = NewFP4()
 	F.c = NewFP4()
-	F.stype=FP_ZERO
+	F.stype = FP_ZERO
 	return F
 }
 
@@ -46,7 +46,7 @@ func NewFP12fp4(d *FP4) *FP12 {
 	F.a = NewFP4copy(d)
 	F.b = NewFP4()
 	F.c = NewFP4()
-	F.stype=FP_SPARSER
+	F.stype = FP_SPARSER
 	return F
 }
 
@@ -55,10 +55,10 @@ func NewFP12int(d int) *FP12 {
 	F.a = NewFP4int(d)
 	F.b = NewFP4()
 	F.c = NewFP4()
-	if d==1 {
-		F.stype=FP_ONE
+	if d == 1 {
+		F.stype = FP_ONE
 	} else {
-		F.stype=FP_SPARSER
+		F.stype = FP_SPARSER
 	}
 	return F
 }
@@ -68,7 +68,7 @@ func NewFP12fp4s(d *FP4, e *FP4, f *FP4) *FP12 {
 	F.a = NewFP4copy(d)
 	F.b = NewFP4copy(e)
 	F.c = NewFP4copy(f)
-	F.stype=FP_DENSE
+	F.stype = FP_DENSE
 	return F
 }
 
@@ -77,7 +77,7 @@ func NewFP12copy(x *FP12) *FP12 {
 	F.a = NewFP4copy(x.a)
 	F.b = NewFP4copy(x.b)
 	F.c = NewFP4copy(x.c)
-	F.stype=x.stype
+	F.stype = x.stype
 	return F
 }
 
@@ -105,8 +105,8 @@ func (F *FP12) cmove(g *FP12, d int) {
 	F.a.cmove(g.a, d)
 	F.b.cmove(g.b, d)
 	F.c.cmove(g.c, d)
-	d=^(d-1)
-	F.stype^=(F.stype^g.stype)&d
+	d = ^(d - 1)
+	F.stype ^= (F.stype ^ g.stype) & d
 }
 
 /* Constant time select from pre-computed table */
@@ -162,7 +162,7 @@ func (F *FP12) Copy(x *FP12) {
 	F.a.copy(x.a)
 	F.b.copy(x.b)
 	F.c.copy(x.c)
-	F.stype=x.stype
+	F.stype = x.stype
 }
 
 /* set this=1 */
@@ -170,7 +170,7 @@ func (F *FP12) one() {
 	F.a.one()
 	F.b.zero()
 	F.c.zero()
-	F.stype=FP_ONE
+	F.stype = FP_ONE
 }
 
 /* set this=0 */
@@ -178,7 +178,7 @@ func (F *FP12) zero() {
 	F.a.zero()
 	F.b.zero()
 	F.c.zero()
-	F.stype=FP_ZERO
+	F.stype = FP_ZERO
 }
 
 /* this=conj(this) */
@@ -227,13 +227,13 @@ func (F *FP12) usqr() {
 	F.b.add(B)
 	F.c.add(C)
 	F.reduce()
-	F.stype=FP_DENSE
+	F.stype = FP_DENSE
 
 }
 
 /* Chung-Hasan SQR2 method from http://cacr.uwaterloo.ca/techreports/2006/cacr2006-24.pdf */
 func (F *FP12) sqr() {
-	if F.stype==FP_ONE {
+	if F.stype == FP_ONE {
 		return
 	}
 
@@ -272,10 +272,10 @@ func (F *FP12) sqr() {
 	F.b.copy(C)
 	F.b.add(D)
 	F.c.add(A)
-	if F.stype==FP_SPARSER {
-		F.stype=FP_SPARSE
+	if F.stype == FP_SPARSER {
+		F.stype = FP_SPARSE
 	} else {
-		F.stype=FP_DENSE
+		F.stype = FP_DENSE
 	}
 	F.norm()
 }
@@ -344,39 +344,38 @@ func (F *FP12) Mul(y *FP12) {
 	z3.times_i()
 	F.a.copy(z0)
 	F.a.add(z3)
-	F.stype=FP_DENSE
+	F.stype = FP_DENSE
 	F.norm()
 }
-
 
 /* FP12 full multiplication w=w*y */
 /* Supports sparse multiplicands */
 /* Usually w is denser than y */
 func (F *FP12) ssmul(y *FP12) {
-	if F.stype==FP_ONE {
+	if F.stype == FP_ONE {
 		F.Copy(y)
 		return
 	}
-	if y.stype==FP_ONE {
+	if y.stype == FP_ONE {
 		return
 	}
-	if y.stype>=FP_SPARSE {
-		z0:=NewFP4copy(F.a)
-		z1:=NewFP4()
-		z2:=NewFP4()
-		z3:=NewFP4()
+	if y.stype >= FP_SPARSE {
+		z0 := NewFP4copy(F.a)
+		z1 := NewFP4()
+		z2 := NewFP4()
+		z3 := NewFP4()
 		z0.mul(y.a)
 
-		if SEXTIC_TWIST==M_TYPE {
-			if y.stype==FP_SPARSE || F.stype==FP_SPARSE {
+		if SEXTIC_TWIST == M_TYPE {
+			if y.stype == FP_SPARSE || F.stype == FP_SPARSE {
 				z2.getb().copy(F.b.getb())
 				z2.getb().mul(y.b.getb())
 				z2.geta().zero()
-				if y.stype!=FP_SPARSE {
+				if y.stype != FP_SPARSE {
 					z2.geta().copy(F.b.getb())
 					z2.geta().mul(y.b.geta())
 				}
-				if F.stype!=FP_SPARSE {
+				if F.stype != FP_SPARSE {
 					z2.geta().copy(F.b.geta())
 					z2.geta().mul(y.b.getb())
 				}
@@ -389,42 +388,57 @@ func (F *FP12) ssmul(y *FP12) {
 			z2.copy(F.b)
 			z2.mul(y.b)
 		}
-		t0:=NewFP4copy(F.a)
-		t1:=NewFP4copy(y.a)
-		t0.add(F.b); t0.norm();
-		t1.add(y.b); t1.norm()
+		t0 := NewFP4copy(F.a)
+		t1 := NewFP4copy(y.a)
+		t0.add(F.b)
+		t0.norm()
+		t1.add(y.b)
+		t1.norm()
 
-		z1.copy(t0); z1.mul(t1)
-		t0.copy(F.b); t0.add(F.c); t0.norm()
-		t1.copy(y.b); t1.add(y.c); t1.norm()
+		z1.copy(t0)
+		z1.mul(t1)
+		t0.copy(F.b)
+		t0.add(F.c)
+		t0.norm()
+		t1.copy(y.b)
+		t1.add(y.c)
+		t1.norm()
 
-		z3.copy(t0); z3.mul(t1)
+		z3.copy(t0)
+		z3.mul(t1)
 
-		t0.copy(z0); t0.neg()
-		t1.copy(z2); t1.neg()
+		t0.copy(z0)
+		t0.neg()
+		t1.copy(z2)
+		t1.neg()
 
 		z1.add(t0)
-		F.b.copy(z1); F.b.add(t1)
+		F.b.copy(z1)
+		F.b.add(t1)
 
 		z3.add(t1)
 		z2.add(t0)
 
-		t0.copy(F.a); t0.add(F.c); t0.norm()
-		t1.copy(y.a); t1.add(y.c); t1.norm()
-	
+		t0.copy(F.a)
+		t0.add(F.c)
+		t0.norm()
+		t1.copy(y.a)
+		t1.add(y.c)
+		t1.norm()
+
 		t0.mul(t1)
 		z2.add(t0)
 
-		if SEXTIC_TWIST==D_TYPE {
-			if y.stype==FP_SPARSE || F.stype==FP_SPARSE {
+		if SEXTIC_TWIST == D_TYPE {
+			if y.stype == FP_SPARSE || F.stype == FP_SPARSE {
 				t0.geta().copy(F.c.geta())
 				t0.geta().mul(y.c.geta())
 				t0.getb().zero()
-				if y.stype!=FP_SPARSE {
+				if y.stype != FP_SPARSE {
 					t0.getb().copy(F.c.geta())
 					t0.getb().mul(y.c.getb())
 				}
-				if F.stype!=FP_SPARSE {
+				if F.stype != FP_SPARSE {
 					t0.getb().copy(F.c.getb())
 					t0.getb().mul(y.c.geta())
 				}
@@ -436,26 +450,29 @@ func (F *FP12) ssmul(y *FP12) {
 			t0.copy(F.c)
 			t0.mul(y.c)
 		}
-		t1.copy(t0); t1.neg()
+		t1.copy(t0)
+		t1.neg()
 
-		F.c.copy(z2); F.c.add(t1)
+		F.c.copy(z2)
+		F.c.add(t1)
 		z3.add(t1)
 		t0.times_i()
 		F.b.add(t0)
 		z3.norm()
 		z3.times_i()
-		F.a.copy(z0); F.a.add(z3);
+		F.a.copy(z0)
+		F.a.add(z3)
 	} else {
-		if F.stype==FP_SPARSER {
+		if F.stype == FP_SPARSER {
 			F.smul(y)
 			return
 		}
-		if SEXTIC_TWIST==D_TYPE { // dense by sparser - 13m 
-			z0:=NewFP4copy(F.a)
-			z2:=NewFP4copy(F.b)
-			z3:=NewFP4copy(F.b)
-			t0:=NewFP4()
-			t1:=NewFP4copy(y.a)
+		if SEXTIC_TWIST == D_TYPE { // dense by sparser - 13m
+			z0 := NewFP4copy(F.a)
+			z2 := NewFP4copy(F.b)
+			z3 := NewFP4copy(F.b)
+			t0 := NewFP4()
+			t1 := NewFP4copy(y.a)
 			z0.mul(y.a)
 			z2.pmul(y.b.real())
 			F.b.add(F.a)
@@ -468,8 +485,10 @@ func (F *FP12) ssmul(y *FP12) {
 			z3.norm()
 			z3.pmul(y.b.real())
 
-			t0.copy(z0); t0.neg()
-			t1.copy(z2); t1.neg()
+			t0.copy(z0)
+			t0.neg()
+			t1.copy(z2)
+			t1.neg()
 
 			F.b.add(t0)
 
@@ -477,97 +496,121 @@ func (F *FP12) ssmul(y *FP12) {
 			z3.add(t1)
 			z2.add(t0)
 
-			t0.copy(F.a); t0.add(F.c); t0.norm()
+			t0.copy(F.a)
+			t0.add(F.c)
+			t0.norm()
 			z3.norm()
 			t0.mul(y.a)
-			F.c.copy(z2); F.c.add(t0)
+			F.c.copy(z2)
+			F.c.add(t0)
 
 			z3.times_i()
-			F.a.copy(z0); F.a.add(z3)
+			F.a.copy(z0)
+			F.a.add(z3)
 		}
-		if SEXTIC_TWIST==M_TYPE {
-			z0:=NewFP4copy(F.a)
-			z1:=NewFP4()
-			z2:=NewFP4()
-			z3:=NewFP4()
-			t0:=NewFP4copy(F.a)
-			t1:=NewFP4()
-		
-			z0.mul(y.a)
-			t0.add(F.b); t0.norm()
+		if SEXTIC_TWIST == M_TYPE {
+			z0 := NewFP4copy(F.a)
+			z1 := NewFP4()
+			z2 := NewFP4()
+			z3 := NewFP4()
+			t0 := NewFP4copy(F.a)
+			t1 := NewFP4()
 
-			z1.copy(t0); z1.mul(y.a)
-			t0.copy(F.b); t0.add(F.c)
+			z0.mul(y.a)
+			t0.add(F.b)
+			t0.norm()
+
+			z1.copy(t0)
+			z1.mul(y.a)
+			t0.copy(F.b)
+			t0.add(F.c)
 			t0.norm()
 
 			z3.copy(t0)
 			z3.pmul(y.c.getb())
 			z3.times_i()
 
-			t0.copy(z0); t0.neg()
+			t0.copy(z0)
+			t0.neg()
 			z1.add(t0)
 			F.b.copy(z1)
 			z2.copy(t0)
 
-			t0.copy(F.a); t0.add(F.c); t0.norm()
-			t1.copy(y.a); t1.add(y.c); t1.norm()
+			t0.copy(F.a)
+			t0.add(F.c)
+			t0.norm()
+			t1.copy(y.a)
+			t1.add(y.c)
+			t1.norm()
 
 			t0.mul(t1)
 			z2.add(t0)
 			t0.copy(F.c)
-			
+
 			t0.pmul(y.c.getb())
 			t0.times_i()
-			t1.copy(t0); t1.neg()
+			t1.copy(t0)
+			t1.neg()
 
-			F.c.copy(z2); F.c.add(t1)
+			F.c.copy(z2)
+			F.c.add(t1)
 			z3.add(t1)
 			t0.times_i()
 			F.b.add(t0)
 			z3.norm()
 			z3.times_i()
-			F.a.copy(z0); F.a.add(z3)
-		}	
+			F.a.copy(z0)
+			F.a.add(z3)
+		}
 	}
-	F.stype=FP_DENSE
+	F.stype = FP_DENSE
 	F.norm()
 }
 
-
 /* Special case of multiplication arises from special form of ATE pairing line function */
 func (F *FP12) smul(y *FP12) {
-	if SEXTIC_TWIST==D_TYPE {	
-		w1:=NewFP2copy(F.a.geta())
-		w2:=NewFP2copy(F.a.getb())
-		w3:=NewFP2copy(F.b.geta())
+	if SEXTIC_TWIST == D_TYPE {
+		w1 := NewFP2copy(F.a.geta())
+		w2 := NewFP2copy(F.a.getb())
+		w3 := NewFP2copy(F.b.geta())
 
 		w1.mul(y.a.geta())
 		w2.mul(y.a.getb())
 		w3.mul(y.b.geta())
 
-		ta:=NewFP2copy(F.a.geta())
-		tb:=NewFP2copy(y.a.geta())
-		ta.add(F.a.getb()); ta.norm()
-		tb.add(y.a.getb()); tb.norm()
-		tc:=NewFP2copy(ta)
-		tc.mul(tb);
-		t:=NewFP2copy(w1)
+		ta := NewFP2copy(F.a.geta())
+		tb := NewFP2copy(y.a.geta())
+		ta.add(F.a.getb())
+		ta.norm()
+		tb.add(y.a.getb())
+		tb.norm()
+		tc := NewFP2copy(ta)
+		tc.mul(tb)
+		t := NewFP2copy(w1)
 		t.add(w2)
 		t.neg()
 		tc.add(t)
 
-		ta.copy(F.a.geta()); ta.add(F.b.geta()); ta.norm()
-		tb.copy(y.a.geta()); tb.add(y.b.geta()); tb.norm()
-		td:=NewFP2copy(ta)
+		ta.copy(F.a.geta())
+		ta.add(F.b.geta())
+		ta.norm()
+		tb.copy(y.a.geta())
+		tb.add(y.b.geta())
+		tb.norm()
+		td := NewFP2copy(ta)
 		td.mul(tb)
 		t.copy(w1)
 		t.add(w3)
 		t.neg()
 		td.add(t)
 
-		ta.copy(F.a.getb()); ta.add(F.b.geta()); ta.norm()
-		tb.copy(y.a.getb()); tb.add(y.b.geta()); tb.norm()
-		te:=NewFP2copy(ta)
+		ta.copy(F.a.getb())
+		ta.add(F.b.geta())
+		ta.norm()
+		tb.copy(y.a.getb())
+		tb.add(y.b.geta())
+		tb.norm()
+		te := NewFP2copy(ta)
 		te.mul(tb)
 		t.copy(w2)
 		t.add(w3)
@@ -577,44 +620,57 @@ func (F *FP12) smul(y *FP12) {
 		w2.mul_ip()
 		w1.add(w2)
 
-		F.a.geta().copy(w1); F.a.getb().copy(tc)
-		F.b.geta().copy(td); F.b.getb().copy(te)
-		F.c.geta().copy(w3); F.c.getb().zero()
+		F.a.geta().copy(w1)
+		F.a.getb().copy(tc)
+		F.b.geta().copy(td)
+		F.b.getb().copy(te)
+		F.c.geta().copy(w3)
+		F.c.getb().zero()
 
 		F.a.norm()
 		F.b.norm()
 	} else {
-		w1:=NewFP2copy(F.a.geta())
-		w2:=NewFP2copy(F.a.getb())
-		w3:=NewFP2copy(F.c.getb())
+		w1 := NewFP2copy(F.a.geta())
+		w2 := NewFP2copy(F.a.getb())
+		w3 := NewFP2copy(F.c.getb())
 
 		w1.mul(y.a.geta())
 		w2.mul(y.a.getb())
 		w3.mul(y.c.getb())
 
-		ta:=NewFP2copy(F.a.geta())
-		tb:=NewFP2copy(y.a.geta())
-		ta.add(F.a.getb()); ta.norm()
-		tb.add(y.a.getb()); tb.norm()
-		tc:=NewFP2copy(ta)
-		tc.mul(tb);
-		t:=NewFP2copy(w1)
+		ta := NewFP2copy(F.a.geta())
+		tb := NewFP2copy(y.a.geta())
+		ta.add(F.a.getb())
+		ta.norm()
+		tb.add(y.a.getb())
+		tb.norm()
+		tc := NewFP2copy(ta)
+		tc.mul(tb)
+		t := NewFP2copy(w1)
 		t.add(w2)
 		t.neg()
 		tc.add(t)
 
-		ta.copy(F.a.geta()); ta.add(F.c.getb()); ta.norm()
-		tb.copy(y.a.geta()); tb.add(y.c.getb()); tb.norm()
-		td:=NewFP2copy(ta)
+		ta.copy(F.a.geta())
+		ta.add(F.c.getb())
+		ta.norm()
+		tb.copy(y.a.geta())
+		tb.add(y.c.getb())
+		tb.norm()
+		td := NewFP2copy(ta)
 		td.mul(tb)
 		t.copy(w1)
 		t.add(w3)
 		t.neg()
 		td.add(t)
 
-		ta.copy(F.a.getb()); ta.add(F.c.getb()); ta.norm()
-		tb.copy(y.a.getb()); tb.add(y.c.getb()); tb.norm()
-		te:=NewFP2copy(ta)
+		ta.copy(F.a.getb())
+		ta.add(F.c.getb())
+		ta.norm()
+		tb.copy(y.a.getb())
+		tb.add(y.c.getb())
+		tb.norm()
+		te := NewFP2copy(ta)
 		te.mul(tb)
 		t.copy(w2)
 		t.add(w3)
@@ -623,11 +679,13 @@ func (F *FP12) smul(y *FP12) {
 
 		w2.mul_ip()
 		w1.add(w2)
-		F.a.geta().copy(w1); F.a.getb().copy(tc)
+		F.a.geta().copy(w1)
+		F.a.getb().copy(tc)
 
 		w3.mul_ip()
 		w3.norm()
-		F.b.geta().zero(); F.b.getb().copy(w3)
+		F.b.geta().zero()
+		F.b.getb().copy(w3)
 
 		te.norm()
 		te.mul_ip()
@@ -638,7 +696,7 @@ func (F *FP12) smul(y *FP12) {
 		F.c.norm()
 
 	}
-	F.stype=FP_SPARSE;
+	F.stype = FP_SPARSE
 }
 
 /* this=1/this */
@@ -686,7 +744,7 @@ func (F *FP12) Inverse() {
 	F.b.mul(f3)
 	F.c.copy(f2)
 	F.c.mul(f3)
-	F.stype=FP_DENSE
+	F.stype = FP_DENSE
 }
 
 /* this=this^p using Frobenius */
@@ -703,7 +761,7 @@ func (F *FP12) frob(f *FP2) {
 
 	F.b.pmul(f)
 	F.c.pmul(f2)
-	F.stype=FP_DENSE
+	F.stype = FP_DENSE
 }
 
 /* trace function */

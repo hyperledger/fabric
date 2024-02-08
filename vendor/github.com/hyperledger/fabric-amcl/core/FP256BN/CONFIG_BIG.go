@@ -1,3 +1,5 @@
+//go:build !386 && !arm
+
 /*
  * Copyright (c) 2012-2020 MIRACL UK Ltd.
  *
@@ -32,4 +34,3 @@ const HMASK Chunk = ((Chunk(1) << HBITS) - 1)
 const NEXCESS int = (1 << (uint(CHUNK) - BASEBITS - 1))
 
 const BIGBITS int = int(MODBYTES * 8)
-
