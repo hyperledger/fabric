@@ -9,12 +9,11 @@ package smartbft
 import (
 	"context"
 	"encoding/binary"
+	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"os"
 	"path/filepath"
 	"syscall"
 	"time"
-
-	"github.com/hyperledger/fabric/integration/nwo/commands"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -165,19 +164,6 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 			mocksArray = append(mocksArray, mo)
 			mocksArray[len(mocksArray)-1].logger.Infof("Mock orderer started at port %v", network.OrdererAddress(orderer, nwo.ListenPort))
 		}
-
-		/* Create peer */
-		By("Create a peer and join to channel")
-		p0 := network.Peers[0]
-		peerRunner := network.PeerRunner(p0)
-		peerProcesses = ifrit.Invoke(peerRunner)
-		Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
-
-		_, err = network.PeerAdminSession(p0, commands.ChannelJoin{
-			BlockPath:  network.OutputBlockPath(channel),
-			ClientAuth: network.ClientAuthRequired,
-		})
-		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
@@ -199,7 +185,48 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 	})
 
 	It("correct mock", func() {
+
+		var err error
 		channel := "testchannel1"
+
+		/* Create peer */
+		By("Create a peer and join to channel")
+		p0 := network.Peers[0]
+		peerRunner := network.PeerRunner(p0)
+		peerProcesses = ifrit.Invoke(peerRunner)
+		Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+		_, err = network.PeerAdminSession(p0, commands.ChannelJoin{
+			BlockPath:  network.OutputBlockPath(channel),
+			ClientAuth: network.ClientAuthRequired,
+		})
+		Expect(err).NotTo(HaveOccurred())
+
 		nwo.WaitUntilEqualLedgerHeight(network, channel, 11, network.Peers[0])
+	})
+
+	It("block censorship", func() {
+		var err error
+		channel := "testchannel1"
+
+		for _, mock := range mocksArray {
+			mock.censorDataMode = true
+		}
+
+		/* Create peer */
+		By("Create a peer and join to channel")
+		p0 := network.Peers[0]
+		peerRunner := network.PeerRunner(p0)
+		peerProcesses = ifrit.Invoke(peerRunner)
+		Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+		_, err = network.PeerAdminSession(p0, commands.ChannelJoin{
+			BlockPath:  network.OutputBlockPath(channel),
+			ClientAuth: network.ClientAuthRequired,
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		nwo.WaitUntilEqualLedgerHeight(network, channel, 11, network.Peers[0])
+
 	})
 })

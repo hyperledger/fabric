@@ -23,11 +23,15 @@ import (
 )
 
 type MockOrderer struct {
-	address     string
-	ledgerArray []*cb.Block
-	logger      *flogging.FabricLogger
-	grpcServer  *comm.GRPCServer
-	channel     chan string
+	address        string
+	ledgerArray    []*cb.Block
+	logger         *flogging.FabricLogger
+	grpcServer     *comm.GRPCServer
+	channel        chan string
+	censorDataMode bool
+	malicious      bool
+	peerFirstTry   bool
+	sentCount      int
 }
 
 func (mo *MockOrderer) parseEnvelope(ctx context.Context, envelope *cb.Envelope) (*cb.Payload, *cb.ChannelHeader, *cb.SignatureHeader, error) {
@@ -193,19 +197,43 @@ func (mo *MockOrderer) deliverBlocks(
 			Metadata: block.Metadata,
 			Data:     block.Data,
 		}
+
+		censor := false
+		onlyHeaderType := true
 		if seekInfo.ContentType == ab.SeekInfo_HEADER_WITH_SIG && !protoutil.IsConfigBlock(block) {
 			mo.logger.Infof("ASKED FOR HEADER WITH SIG")
 			block2send.Data = nil
+		} else if mo.censorDataMode {
+			mo.logger.Infof("PREPARING BLOCK DATA [%d]###### %s", block2send.Header.Number, mo.address)
+			onlyHeaderType = false
+			if !mo.peerFirstTry {
+				mo.malicious = true
+				mo.logger.Infof("Malicious %s", mo.address)
+			}
+			if mo.sentCount >= 5 && mo.malicious {
+				censor = true
+			}
+			mo.sentCount += 1
 		}
+
+		mo.peerFirstTry = true
 
 		blockResponse := &ab.DeliverResponse{
 			Type: &ab.DeliverResponse_Block{Block: block2send},
 		}
 
-		err = server.Send(blockResponse)
-		if err != nil {
-			mo.logger.Warningf("[channel: %s] Error sending to %s: %s", chdr.ChannelId, addr, err)
-			return cb.Status_INTERNAL_SERVER_ERROR, err
+		if !censor || onlyHeaderType {
+			if !onlyHeaderType {
+				mo.logger.Infof("SENDING DATA BLOCK [%d]###### %s", block2send.Header.Number, mo.address)
+			} else {
+				mo.logger.Infof("SENDING HEADER BLOCK [%d]###### %s", block2send.Header.Number, mo.address)
+			}
+
+			err = server.Send(blockResponse)
+			if err != nil {
+				mo.logger.Warningf("[channel: %s] Error sending to %s: %s", chdr.ChannelId, addr, err)
+				return cb.Status_INTERNAL_SERVER_ERROR, err
+			}
 		}
 
 		if stopNum == block.Header.Number {
@@ -231,10 +259,14 @@ func NewMockOrderer(address string, ledgerArray []*cb.Block, options comm.Secure
 	}
 
 	mo := &MockOrderer{
-		address:     address,
-		ledgerArray: ledgerArray,
-		logger:      flogging.MustGetLogger("mockorderer"),
-		grpcServer:  grpcServer,
+		address:        address,
+		ledgerArray:    ledgerArray,
+		logger:         flogging.MustGetLogger("mockorderer"),
+		grpcServer:     grpcServer,
+		censorDataMode: false,
+		malicious:      false,
+		peerFirstTry:   false,
+		sentCount:      0,
 	}
 
 	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), mo)
