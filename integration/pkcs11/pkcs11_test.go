@@ -26,7 +26,7 @@ import (
 	"github.com/hyperledger/fabric/integration/channelparticipation"
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 
-	bpkcs11 "github.com/hyperledger/fabric/bccsp/pkcs11"
+	bpkcs11 "github.com/hyperledger/fabric-lib-go/bccsp/pkcs11"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
 	"github.com/miekg/pkcs11"

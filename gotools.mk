@@ -3,12 +3,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-GOTOOLS = counterfeiter ginkgo gocov gocov-xml gofumpt goimports golint govulncheck misspell mockery protoc-gen-go staticcheck swagger
+GOTOOLS = counterfeiter gendoc ginkgo gocov gocov-xml gofumpt goimports golint govulncheck misspell mockery protoc-gen-go staticcheck swagger
 BUILD_DIR ?= build
 GOTOOLS_BINDIR ?= $(shell go env GOPATH)/bin
 
 # go tool->path mapping
 go.fqp.counterfeiter := github.com/maxbrunsfeld/counterfeiter/v6
+go.fqp.gendoc		 := github.com/hyperledger/fabric-lib-go/common/metrics/cmd/gendoc
 go.fqp.ginkgo        := github.com/onsi/ginkgo/v2/ginkgo
 go.fqp.gocov         := github.com/axw/gocov/gocov
 go.fqp.gocov-xml     := github.com/AlekSi/gocov-xml

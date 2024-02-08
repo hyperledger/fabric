@@ -7,6 +7,65 @@ import (
 	"github.com/onsi/ginkgo/v2/types"
 )
 
+type SortableSpecs struct {
+	Specs   Specs
+	Indexes []int
+}
+
+func NewSortableSpecs(specs Specs) *SortableSpecs {
+	indexes := make([]int, len(specs))
+	for i := range specs {
+		indexes[i] = i
+	}
+	return &SortableSpecs{
+		Specs:   specs,
+		Indexes: indexes,
+	}
+}
+func (s *SortableSpecs) Len() int      { return len(s.Indexes) }
+func (s *SortableSpecs) Swap(i, j int) { s.Indexes[i], s.Indexes[j] = s.Indexes[j], s.Indexes[i] }
+func (s *SortableSpecs) Less(i, j int) bool {
+	a, b := s.Specs[s.Indexes[i]], s.Specs[s.Indexes[j]]
+
+	aNodes, bNodes := a.Nodes.WithType(types.NodeTypesForContainerAndIt), b.Nodes.WithType(types.NodeTypesForContainerAndIt)
+
+	firstOrderedAIdx, firstOrderedBIdx := aNodes.IndexOfFirstNodeMarkedOrdered(), bNodes.IndexOfFirstNodeMarkedOrdered()
+	if firstOrderedAIdx > -1 && firstOrderedBIdx > -1 && aNodes[firstOrderedAIdx].ID == bNodes[firstOrderedBIdx].ID {
+		// strictly preserve order within an ordered containers.  ID will track this as IDs are generated monotonically
+		return aNodes.FirstNodeWithType(types.NodeTypeIt).ID < bNodes.FirstNodeWithType(types.NodeTypeIt).ID
+	}
+
+	// if either spec is in an ordered container - only use the nodes up to the outermost ordered container
+	if firstOrderedAIdx > -1 {
+		aNodes = aNodes[:firstOrderedAIdx+1]
+	}
+	if firstOrderedBIdx > -1 {
+		bNodes = bNodes[:firstOrderedBIdx+1]
+	}
+
+	for i := 0; i < len(aNodes) && i < len(bNodes); i++ {
+		aCL, bCL := aNodes[i].CodeLocation, bNodes[i].CodeLocation
+		if aCL.FileName != bCL.FileName {
+			return aCL.FileName < bCL.FileName
+		}
+		if aCL.LineNumber != bCL.LineNumber {
+			return aCL.LineNumber < bCL.LineNumber
+		}
+	}
+	// either everything is equal or we have different lengths of CLs
+	if len(aNodes) != len(bNodes) {
+		return len(aNodes) < len(bNodes)
+	}
+	// ok, now we are sure everything was equal. so we use the spec text to break ties
+	for i := 0; i < len(aNodes); i++ {
+		if aNodes[i].Text != bNodes[i].Text {
+			return aNodes[i].Text < bNodes[i].Text
+		}
+	}
+	// ok, all those texts were equal.  we'll use the ID of the most deeply nested node as a last resort
+	return aNodes[len(aNodes)-1].ID < bNodes[len(bNodes)-1].ID
+}
+
 type GroupedSpecIndices []SpecIndices
 type SpecIndices []int
 
@@ -28,12 +87,17 @@ func OrderSpecs(specs Specs, suiteConfig types.SuiteConfig) (GroupedSpecIndices,
 	// Seed a new random source based on thee configured random seed.
 	r := rand.New(rand.NewSource(suiteConfig.RandomSeed))
 
-	// first break things into execution groups
+	// first, we sort the entire suite to ensure a deterministic order.  the sort is performed by filename, then line number, and then spec text.  this ensures every parallel process has the exact same spec order and is only necessary to cover the edge case where the user iterates over a map to generate specs.
+	sortableSpecs := NewSortableSpecs(specs)
+	sort.Sort(sortableSpecs)
+
+	// then we break things into execution groups
 	// a group represents a single unit of execution and is a collection of SpecIndices
 	// usually a group is just a single spec, however ordered containers must be preserved as a single group
 	executionGroupIDs := []uint{}
 	executionGroups := map[uint]SpecIndices{}
-	for idx, spec := range specs {
+	for _, idx := range sortableSpecs.Indexes {
+		spec := specs[idx]
 		groupNode := spec.Nodes.FirstNodeMarkedOrdered()
 		if groupNode.IsZero() {
 			groupNode = spec.Nodes.FirstNodeWithType(types.NodeTypeIt)
@@ -48,7 +112,6 @@ func OrderSpecs(specs Specs, suiteConfig types.SuiteConfig) (GroupedSpecIndices,
 	// we shuffle outermost containers.  so we need to form shufflable groupings of GroupIDs
 	shufflableGroupingIDs := []uint{}
 	shufflableGroupingIDToGroupIDs := map[uint][]uint{}
-	shufflableGroupingsIDToSortKeys := map[uint]string{}
 
 	// for each execution group we're going to have to pick a node to represent how the
 	// execution group is grouped for shuffling:
@@ -57,7 +120,7 @@ func OrderSpecs(specs Specs, suiteConfig types.SuiteConfig) (GroupedSpecIndices,
 		nodeTypesToShuffle = types.NodeTypeIt
 	}
 
-	//so, fo reach execution group:
+	//so, for each execution group:
 	for _, groupID := range executionGroupIDs {
 		// pick out a representative spec
 		representativeSpec := specs[executionGroups[groupID][0]]
@@ -72,21 +135,8 @@ func OrderSpecs(specs Specs, suiteConfig types.SuiteConfig) (GroupedSpecIndices,
 		if len(shufflableGroupingIDToGroupIDs[shufflableGroupingNode.ID]) == 1 {
 			// record the shuffleable group ID
 			shufflableGroupingIDs = append(shufflableGroupingIDs, shufflableGroupingNode.ID)
-			// and record the sort key to use
-			shufflableGroupingsIDToSortKeys[shufflableGroupingNode.ID] = shufflableGroupingNode.CodeLocation.String()
 		}
 	}
-
-	// now we sort the shufflable groups by the sort key.  We use the shufflable group nodes code location and break ties using its node id
-	sort.SliceStable(shufflableGroupingIDs, func(i, j int) bool {
-		keyA := shufflableGroupingsIDToSortKeys[shufflableGroupingIDs[i]]
-		keyB := shufflableGroupingsIDToSortKeys[shufflableGroupingIDs[j]]
-		if keyA == keyB {
-			return shufflableGroupingIDs[i] < shufflableGroupingIDs[j]
-		} else {
-			return keyA < keyB
-		}
-	})
 
 	// now we permute the sorted shufflable grouping IDs and build the ordered Groups
 	orderedGroups := GroupedSpecIndices{}

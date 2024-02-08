@@ -8,7 +8,7 @@ package smartbft
 
 import (
 	api "github.com/SmartBFT-Go/consensus/pkg/metrics"
-	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric-lib-go/common/metrics"
 )
 
 type MetricProviderConverter struct {

@@ -325,17 +325,6 @@
       },
       "x-go-name": "ChannelList",
       "x-go-package": "github.com/hyperledger/fabric/orderer/common/types"
-    },
-    "spec": {
-      "type": "object",
-      "properties": {
-        "spec": {
-          "type": "string",
-          "x-go-name": "Spec"
-        }
-      },
-      "x-go-name": "LogSpec",
-      "x-go-package": "github.com/hyperledger/fabric/common/flogging/httpadmin"
     }
   },
   "tags": [

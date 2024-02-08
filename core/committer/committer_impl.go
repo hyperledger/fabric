@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package committer
 
 import (
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 )
 

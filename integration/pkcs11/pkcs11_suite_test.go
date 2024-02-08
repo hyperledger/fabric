@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	bpkcs11 "github.com/hyperledger/fabric/bccsp/pkcs11"
+	bpkcs11 "github.com/hyperledger/fabric-lib-go/bccsp/pkcs11"
 	"github.com/hyperledger/fabric/integration"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"

@@ -1,3 +1,4 @@
+//go:build tools
 // +build tools
 
 /*
@@ -14,6 +15,7 @@ import (
 	_ "github.com/client9/misspell/cmd/misspell"
 	_ "github.com/go-swagger/go-swagger/cmd/swagger"
 	_ "github.com/golang/protobuf/protoc-gen-go"
+	_ "github.com/hyperledger/fabric-lib-go/common/metrics/cmd/gendoc"
 	_ "github.com/maxbrunsfeld/counterfeiter/v6"
 	_ "github.com/onsi/ginkgo/v2/ginkgo"
 	_ "github.com/vektra/mockery/cmd/mockery"

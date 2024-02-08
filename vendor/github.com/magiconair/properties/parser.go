@@ -1,4 +1,4 @@
-// Copyright 2018 Frank Schroeder. All rights reserved.
+// Copyright 2013-2022 Frank Schroeder. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -59,14 +59,6 @@ func (p *parser) errorf(format string, args ...interface{}) {
 	panic(fmt.Errorf(format, args...))
 }
 
-func (p *parser) expect(expected itemType) (token item) {
-	token = p.lex.nextItem()
-	if token.typ != expected {
-		p.unexpected(token)
-	}
-	return token
-}
-
 func (p *parser) expectOneOf(expected ...itemType) (token item) {
 	token = p.lex.nextItem()
 	for _, v := range expected {
@@ -91,5 +83,4 @@ func (p *parser) recover(errp *error) {
 		}
 		*errp = e.(error)
 	}
-	return
 }

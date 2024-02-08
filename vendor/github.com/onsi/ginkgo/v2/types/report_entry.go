@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-//ReportEntryValue wraps a report entry's value ensuring it can be encoded and decoded safely into reports
-//and across the network connection when running in parallel
+// ReportEntryValue wraps a report entry's value ensuring it can be encoded and decoded safely into reports
+// and across the network connection when running in parallel
 type ReportEntryValue struct {
 	raw            interface{} //unexported to prevent gob from freaking out about unregistered structs
 	AsJSON         string
@@ -50,7 +50,6 @@ func (rev ReportEntryValue) MarshalJSON() ([]byte, error) {
 	}{
 		Representation: rev.String(),
 	}
-
 	asJSON, err := json.Marshal(rev.raw)
 	if err != nil {
 		return nil, err
@@ -86,10 +85,12 @@ func (rev *ReportEntryValue) GobDecode(data []byte) error {
 type ReportEntry struct {
 	// Visibility captures the visibility policy for this ReportEntry
 	Visibility ReportEntryVisibility
-	// Time captures the time the AddReportEntry was called
-	Time time.Time
 	// Location captures the location of the AddReportEntry call
 	Location CodeLocation
+
+	Time             time.Time //need this for backwards compatibility
+	TimelineLocation TimelineLocation
+
 	// Name captures the name of this report
 	Name string
 	// Value captures the (optional) object passed into AddReportEntry - this can be
@@ -98,7 +99,7 @@ type ReportEntry struct {
 	Value ReportEntryValue
 }
 
-// ColorableStringer is an interface that ReportEntry values can satisfy.  If they do then ColorableStirng() is used to generate their representation.
+// ColorableStringer is an interface that ReportEntry values can satisfy.  If they do then ColorableString() is used to generate their representation.
 type ColorableStringer interface {
 	ColorableString() string
 }
@@ -119,6 +120,10 @@ func (entry ReportEntry) StringRepresentation() string {
 // field yourself.
 func (entry ReportEntry) GetRawValue() interface{} {
 	return entry.Value.GetRawValue()
+}
+
+func (entry ReportEntry) GetTimelineLocation() TimelineLocation {
+	return entry.TimelineLocation
 }
 
 type ReportEntries []ReportEntry

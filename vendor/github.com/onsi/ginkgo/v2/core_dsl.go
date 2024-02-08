@@ -21,8 +21,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/onsi/ginkgo/v2/formatter"
 	"github.com/onsi/ginkgo/v2/internal"
 	"github.com/onsi/ginkgo/v2/internal/global"
@@ -46,7 +46,9 @@ func init() {
 	var err error
 	flagSet, err = types.BuildTestSuiteFlagSet(&suiteConfig, &reporterConfig)
 	exitIfErr(err)
-	GinkgoWriter = internal.NewWriter(os.Stdout)
+	writer := internal.NewWriter(os.Stdout)
+	GinkgoWriter = writer
+	GinkgoLogr = internal.GinkgoLogrFunc(writer)
 }
 
 func exitIfErr(err error) {
@@ -77,7 +79,7 @@ func exitIfErrors(errors []error) {
 	}
 }
 
-//The interface implemented by GinkgoWriter
+// The interface implemented by GinkgoWriter
 type GinkgoWriterInterface interface {
 	io.Writer
 
@@ -88,6 +90,15 @@ type GinkgoWriterInterface interface {
 	TeeTo(writer io.Writer)
 	ClearTeeWriters()
 }
+
+/*
+SpecContext is the context object passed into nodes that are subject to a timeout or need to be notified of an interrupt.  It implements the standard context.Context interface but also contains additional helpers to provide an extensibility point for Ginkgo.  (As an example, Gomega's Eventually can use the methods defined on SpecContext to provide deeper integration with Ginkgo).
+
+You can do anything with SpecContext that you do with a typical context.Context including wrapping it with any of the context.With* methods.
+
+Ginkgo will cancel the SpecContext when a node is interrupted (e.g. by the user sending an interrupt signal) or when a node has exceeded its allowed run-time.  Note, however, that even in cases where a node has a deadline, SpecContext will not return a deadline via .Deadline().  This is because Ginkgo does not use a WithDeadline() context to model node deadlines as Ginkgo needs control over the precise timing of the context cancellation to ensure it can provide an accurate progress report at the moment of cancellation.
+*/
+type SpecContext = internal.SpecContext
 
 /*
 GinkgoWriter implements a GinkgoWriterInterface and io.Writer
@@ -103,7 +114,12 @@ You can learn more at https://onsi.github.io/ginkgo/#logging-output
 */
 var GinkgoWriter GinkgoWriterInterface
 
-//The interface by which Ginkgo receives *testing.T
+/*
+GinkgoLogr is a logr.Logger that writes to GinkgoWriter
+*/
+var GinkgoLogr logr.Logger
+
+// The interface by which Ginkgo receives *testing.T
 type GinkgoTestingT interface {
 	Fail()
 }
@@ -148,6 +164,29 @@ func GinkgoParallelProcess() int {
 }
 
 /*
+GinkgoHelper marks the function it's called in as a test helper.  When a failure occurs inside a helper function, Ginkgo will skip the helper when analyzing the stack trace to identify where the failure occurred.
+
+This is an alternative, simpler, mechanism to passing in a skip offset when calling Fail or using Gomega.
+*/
+func GinkgoHelper() {
+	types.MarkAsHelper(1)
+}
+
+/*
+GinkgoLabelFilter() returns the label filter configured for this suite via `--label-filter`.
+
+You can use this to manually check if a set of labels would satisfy the filter via:
+
+	if (Label("cat", "dog").MatchesLabelFilter(GinkgoLabelFilter())) {
+		//...
+	}
+*/
+func GinkgoLabelFilter() string {
+	suiteConfig, _ := GinkgoConfiguration()
+	return suiteConfig.LabelFilter
+}
+
+/*
 PauseOutputInterception() pauses Ginkgo's output interception.  This is only relevant
 when running in parallel and output to stdout/stderr is being intercepted.  You generally
 don't need to call this function - however there are cases when Ginkgo's output interception
@@ -168,7 +207,7 @@ func PauseOutputInterception() {
 	outputInterceptor.PauseIntercepting()
 }
 
-//ResumeOutputInterception() - see docs for PauseOutputInterception()
+// ResumeOutputInterception() - see docs for PauseOutputInterception()
 func ResumeOutputInterception() {
 	if outputInterceptor == nil {
 		return
@@ -209,31 +248,13 @@ func RunSpecs(t GinkgoTestingT, description string, args ...interface{}) bool {
 		exitIfErr(types.GinkgoErrors.RerunningSuite())
 	}
 	suiteDidRun = true
-
-	suiteLabels := Labels{}
-	configErrors := []error{}
-	for _, arg := range args {
-		switch arg := arg.(type) {
-		case types.SuiteConfig:
-			suiteConfig = arg
-		case types.ReporterConfig:
-			reporterConfig = arg
-		case Labels:
-			suiteLabels = append(suiteLabels, arg...)
-		default:
-			configErrors = append(configErrors, types.GinkgoErrors.UnknownTypePassedToRunSpecs(arg))
-		}
+	err := global.PushClone()
+	if err != nil {
+		exitIfErr(err)
 	}
-	exitIfErrors(configErrors)
+	defer global.PopClone()
 
-	configErrors = types.VetConfig(flagSet, suiteConfig, reporterConfig)
-	if len(configErrors) > 0 {
-		fmt.Fprintf(formatter.ColorableStdErr, formatter.F("{{red}}Ginkgo detected configuration issues:{{/}}\n"))
-		for _, err := range configErrors {
-			fmt.Fprintf(formatter.ColorableStdErr, err.Error())
-		}
-		os.Exit(1)
-	}
+	suiteLabels := extractSuiteConfiguration(args)
 
 	var reporter reporters.Reporter
 	if suiteConfig.ParallelTotal == 1 {
@@ -259,7 +280,7 @@ func RunSpecs(t GinkgoTestingT, description string, args ...interface{}) bool {
 	}
 
 	writer := GinkgoWriter.(*internal.Writer)
-	if reporterConfig.Verbose && suiteConfig.ParallelTotal == 1 {
+	if reporterConfig.Verbosity().GTE(types.VerbosityLevelVerbose) && suiteConfig.ParallelTotal == 1 {
 		writer.SetMode(internal.WriterModeStreamAndBuffer)
 	} else {
 		writer.SetMode(internal.WriterModeBufferOnly)
@@ -269,15 +290,14 @@ func RunSpecs(t GinkgoTestingT, description string, args ...interface{}) bool {
 		registerReportAfterSuiteNodeForAutogeneratedReports(reporterConfig)
 	}
 
-	err := global.Suite.BuildTree()
+	err = global.Suite.BuildTree()
 	exitIfErr(err)
-
 	suitePath, err := os.Getwd()
 	exitIfErr(err)
 	suitePath, err = filepath.Abs(suitePath)
 	exitIfErr(err)
 
-	passed, hasFocusedTests := global.Suite.Run(description, suiteLabels, suitePath, global.Failer, reporter, writer, outputInterceptor, interrupt_handler.NewInterruptHandler(suiteConfig.Timeout, client), client, suiteConfig)
+	passed, hasFocusedTests := global.Suite.Run(description, suiteLabels, suitePath, global.Failer, reporter, writer, outputInterceptor, interrupt_handler.NewInterruptHandler(client), client, internal.RegisterForProgressSignal, suiteConfig)
 	outputInterceptor.Shutdown()
 
 	flagSet.ValidateDeprecations(deprecationTracker)
@@ -294,6 +314,69 @@ func RunSpecs(t GinkgoTestingT, description string, args ...interface{}) bool {
 		os.Exit(types.GINKGO_FOCUS_EXIT_CODE)
 	}
 	return passed
+}
+
+func extractSuiteConfiguration(args []interface{}) Labels {
+	suiteLabels := Labels{}
+	configErrors := []error{}
+	for _, arg := range args {
+		switch arg := arg.(type) {
+		case types.SuiteConfig:
+			suiteConfig = arg
+		case types.ReporterConfig:
+			reporterConfig = arg
+		case Labels:
+			suiteLabels = append(suiteLabels, arg...)
+		default:
+			configErrors = append(configErrors, types.GinkgoErrors.UnknownTypePassedToRunSpecs(arg))
+		}
+	}
+	exitIfErrors(configErrors)
+
+	configErrors = types.VetConfig(flagSet, suiteConfig, reporterConfig)
+	if len(configErrors) > 0 {
+		fmt.Fprintf(formatter.ColorableStdErr, formatter.F("{{red}}Ginkgo detected configuration issues:{{/}}\n"))
+		for _, err := range configErrors {
+			fmt.Fprintf(formatter.ColorableStdErr, err.Error())
+		}
+		os.Exit(1)
+	}
+
+	return suiteLabels
+}
+
+/*
+PreviewSpecs walks the testing tree and produces a report without actually invoking the specs.
+See http://onsi.github.io/ginkgo/#previewing-specs for more information.
+*/
+func PreviewSpecs(description string, args ...any) Report {
+	err := global.PushClone()
+	if err != nil {
+		exitIfErr(err)
+	}
+	defer global.PopClone()
+
+	suiteLabels := extractSuiteConfiguration(args)
+	priorDryRun, priorParallelTotal, priorParallelProcess := suiteConfig.DryRun, suiteConfig.ParallelTotal, suiteConfig.ParallelProcess
+	suiteConfig.DryRun, suiteConfig.ParallelTotal, suiteConfig.ParallelProcess = true, 1, 1
+	defer func() {
+		suiteConfig.DryRun, suiteConfig.ParallelTotal, suiteConfig.ParallelProcess = priorDryRun, priorParallelTotal, priorParallelProcess
+	}()
+	reporter := reporters.NoopReporter{}
+	outputInterceptor = internal.NoopOutputInterceptor{}
+	client = nil
+	writer := GinkgoWriter.(*internal.Writer)
+
+	err = global.Suite.BuildTree()
+	exitIfErr(err)
+	suitePath, err := os.Getwd()
+	exitIfErr(err)
+	suitePath, err = filepath.Abs(suitePath)
+	exitIfErr(err)
+
+	global.Suite.Run(description, suiteLabels, suitePath, global.Failer, reporter, writer, outputInterceptor, interrupt_handler.NewInterruptHandler(client), client, internal.RegisterForProgressSignal, suiteConfig)
+
+	return global.Suite.GetPreviewReport()
 }
 
 /*
@@ -354,6 +437,12 @@ func AbortSuite(message string, callerSkip ...int) {
 }
 
 /*
+ignorablePanic is used by Gomega to signal to GinkgoRecover that Goemga is handling
+the error associated with this panic.  It i used when Eventually/Consistently are passed a func(g Gomega) and the resulting function launches a goroutines that makes a failed assertion.  That failed assertion is registered by Gomega and then panics.  Ordinarily the panic is captured by Gomega.  In the case of a goroutine Gomega can't capture the panic - so we piggy back on GinkgoRecover so users have a single defer GinkgoRecover() pattern to follow.  To do that we need to tell Ginkgo to ignore this panic and not register it as a panic on the global Failer.
+*/
+type ignorablePanic interface{ GinkgoRecoverShouldIgnoreThisPanic() }
+
+/*
 GinkgoRecover should be deferred at the top of any spawned goroutine that (may) call `Fail`
 Since Gomega assertions call fail, you should throw a `defer GinkgoRecover()` at the top of any goroutine that
 calls out to Gomega
@@ -368,6 +457,9 @@ You can learn more about how Ginkgo manages failures here: https://onsi.github.i
 func GinkgoRecover() {
 	e := recover()
 	if e != nil {
+		if _, ok := e.(ignorablePanic); ok {
+			return
+		}
 		global.Failer.Panic(types.NewCodeLocationWithStackTrace(1), e)
 	}
 }
@@ -421,12 +513,30 @@ var XDescribe = PDescribe
 var Context, FContext, PContext, XContext = Describe, FDescribe, PDescribe, XDescribe
 
 /* When is an alias for Describe - it generates the exact same kind of Container node */
-var When, FWhen, PWhen, XWhen = Describe, FDescribe, PDescribe, XDescribe
+func When(text string, args ...interface{}) bool {
+	return pushNode(internal.NewNode(deprecationTracker, types.NodeTypeContainer, "when "+text, args...))
+}
+
+/* When is an alias for Describe - it generates the exact same kind of Container node */
+func FWhen(text string, args ...interface{}) bool {
+	args = append(args, internal.Focus)
+	return pushNode(internal.NewNode(deprecationTracker, types.NodeTypeContainer, "when "+text, args...))
+}
+
+/* When is an alias for Describe - it generates the exact same kind of Container node */
+func PWhen(text string, args ...interface{}) bool {
+	args = append(args, internal.Pending)
+	return pushNode(internal.NewNode(deprecationTracker, types.NodeTypeContainer, "when "+text, args...))
+}
+
+var XWhen = PWhen
 
 /*
 It nodes are Subject nodes that contain your spec code and assertions.
 
 Each It node corresponds to an individual Ginkgo spec.  You cannot nest any other Ginkgo nodes within an It node's closure.
+
+You can pass It nodes bare functions (func() {}) or functions that receive a SpecContext or context.Context: func(ctx SpecContext) {} and func (ctx context.Context) {}. If the function takes a context then the It is deemed interruptible and Ginkgo will cancel the context in the event of a timeout (configured via the SpecTimeout() or NodeTimeout() decorators) or of an interrupt signal.
 
 You can learn more at https://onsi.github.io/ginkgo/#spec-subjects-it
 In addition, subject nodes can be decorated with a variety of decorators.  You can learn more here: https://onsi.github.io/ginkgo/#decorator-reference
@@ -474,30 +584,11 @@ and will simply log the passed in text to the GinkgoWriter.  If By is handed a f
 
 By will also generate and attach a ReportEntry to the spec.  This will ensure that By annotations appear in Ginkgo's machine-readable reports.
 
-Note that By does not generate a new Ginkgo node - rather it is simply synctactic sugar around GinkgoWriter and AddReportEntry
+Note that By does not generate a new Ginkgo node - rather it is simply syntactic sugar around GinkgoWriter and AddReportEntry
 You can learn more about By here: https://onsi.github.io/ginkgo/#documenting-complex-specs-by
 */
 func By(text string, callback ...func()) {
-	if !global.Suite.InRunPhase() {
-		exitIfErr(types.GinkgoErrors.ByNotDuringRunPhase(types.NewCodeLocation(1)))
-	}
-	value := struct {
-		Text     string
-		Duration time.Duration
-	}{
-		Text: text,
-	}
-	t := time.Now()
-	AddReportEntry("By Step", ReportEntryVisibilityNever, Offset(1), &value, t)
-	formatter := formatter.NewWithNoColorBool(reporterConfig.NoColor)
-	GinkgoWriter.Println(formatter.F("{{bold}}STEP:{{/}} %s {{gray}}%s{{/}}", text, t.Format(types.GINKGO_TIME_FORMAT)))
-	if len(callback) == 1 {
-		callback[0]()
-		value.Duration = time.Since(t)
-	}
-	if len(callback) > 1 {
-		panic("just one callback per By, please")
-	}
+	exitIfErr(global.Suite.By(text, callback...))
 }
 
 /*
@@ -506,11 +597,15 @@ When running in parallel, each parallel process will call BeforeSuite.
 
 You may only register *one* BeforeSuite handler per test suite.  You typically do so in your bootstrap file at the top level.
 
+BeforeSuite can take a func() body, or an interruptible func(SpecContext)/func(context.Context) body.
+
 You cannot nest any other Ginkgo nodes within a BeforeSuite node's closure.
 You can learn more here: https://onsi.github.io/ginkgo/#suite-setup-and-cleanup-beforesuite-and-aftersuite
 */
-func BeforeSuite(body func()) bool {
-	return pushNode(internal.NewNode(deprecationTracker, types.NodeTypeBeforeSuite, "", body))
+func BeforeSuite(body interface{}, args ...interface{}) bool {
+	combinedArgs := []interface{}{body}
+	combinedArgs = append(combinedArgs, args...)
+	return pushNode(internal.NewNode(deprecationTracker, types.NodeTypeBeforeSuite, "", combinedArgs...))
 }
 
 /*
@@ -521,11 +616,15 @@ When running in parallel, each parallel process will call AfterSuite.
 
 You may only register *one* AfterSuite handler per test suite.  You typically do so in your bootstrap file at the top level.
 
+AfterSuite can take a func() body, or an interruptible func(SpecContext)/func(context.Context) body.
+
 You cannot nest any other Ginkgo nodes within an AfterSuite node's closure.
 You can learn more here: https://onsi.github.io/ginkgo/#suite-setup-and-cleanup-beforesuite-and-aftersuite
 */
-func AfterSuite(body func()) bool {
-	return pushNode(internal.NewNode(deprecationTracker, types.NodeTypeAfterSuite, "", body))
+func AfterSuite(body interface{}, args ...interface{}) bool {
+	combinedArgs := []interface{}{body}
+	combinedArgs = append(combinedArgs, args...)
+	return pushNode(internal.NewNode(deprecationTracker, types.NodeTypeAfterSuite, "", combinedArgs...))
 }
 
 /*
@@ -536,19 +635,34 @@ information from that setup to all parallel processes.
 SynchronizedBeforeSuite accomplishes this by taking *two* function arguments and passing data between them.
 The first function is only run on parallel process #1.  The second is run on all processes, but *only* after the first function completes successfully.  The functions have the following signatures:
 
-The first function (which only runs on process #1) has the signature:
+The first function (which only runs on process #1) can have any of the following the signatures:
 
+	func()
+	func(ctx context.Context)
+	func(ctx SpecContext)
 	func() []byte
+	func(ctx context.Context) []byte
+	func(ctx SpecContext) []byte
 
-The byte array returned by the first function is then passed to the second function, which has the signature:
+The byte array returned by the first function (if present) is then passed to the second function, which can have any of the following signature:
 
+	func()
+	func(ctx context.Context)
+	func(ctx SpecContext)
 	func(data []byte)
+	func(ctx context.Context, data []byte)
+	func(ctx SpecContext, data []byte)
+
+If either function receives a context.Context/SpecContext it is considered interruptible.
 
 You cannot nest any other Ginkgo nodes within an SynchronizedBeforeSuite node's closure.
 You can learn more, and see some examples, here: https://onsi.github.io/ginkgo/#parallel-suite-setup-and-cleanup-synchronizedbeforesuite-and-synchronizedaftersuite
 */
-func SynchronizedBeforeSuite(process1Body func() []byte, allProcessBody func([]byte)) bool {
-	return pushNode(internal.NewSynchronizedBeforeSuiteNode(process1Body, allProcessBody, types.NewCodeLocation(1)))
+func SynchronizedBeforeSuite(process1Body interface{}, allProcessBody interface{}, args ...interface{}) bool {
+	combinedArgs := []interface{}{process1Body, allProcessBody}
+	combinedArgs = append(combinedArgs, args...)
+
+	return pushNode(internal.NewNode(deprecationTracker, types.NodeTypeSynchronizedBeforeSuite, "", combinedArgs...))
 }
 
 /*
@@ -557,20 +671,25 @@ and a piece that must only run once - on process #1.
 
 SynchronizedAfterSuite accomplishes this by taking *two* function arguments.  The first runs on all processes.  The second runs only on parallel process #1
 and *only* after all other processes have finished and exited.  This ensures that process #1, and any resources it is managing, remain alive until
-all other processes are finished.
+all other processes are finished.  These two functions can be bare functions (func()) or interruptible (func(context.Context)/func(SpecContext))
 
 Note that you can also use DeferCleanup() in SynchronizedBeforeSuite to accomplish similar results.
 
 You cannot nest any other Ginkgo nodes within an SynchronizedAfterSuite node's closure.
 You can learn more, and see some examples, here: https://onsi.github.io/ginkgo/#parallel-suite-setup-and-cleanup-synchronizedbeforesuite-and-synchronizedaftersuite
 */
-func SynchronizedAfterSuite(allProcessBody func(), process1Body func()) bool {
-	return pushNode(internal.NewSynchronizedAfterSuiteNode(allProcessBody, process1Body, types.NewCodeLocation(1)))
+func SynchronizedAfterSuite(allProcessBody interface{}, process1Body interface{}, args ...interface{}) bool {
+	combinedArgs := []interface{}{allProcessBody, process1Body}
+	combinedArgs = append(combinedArgs, args...)
+
+	return pushNode(internal.NewNode(deprecationTracker, types.NodeTypeSynchronizedAfterSuite, "", combinedArgs...))
 }
 
 /*
 BeforeEach nodes are Setup nodes whose closures run before It node closures.  When multiple BeforeEach nodes
 are defined in nested Container nodes the outermost BeforeEach node closures are run first.
+
+BeforeEach can take a func() body, or an interruptible func(SpecContext)/func(context.Context) body.
 
 You cannot nest any other Ginkgo nodes within a BeforeEach node's closure.
 You can learn more here: https://onsi.github.io/ginkgo/#extracting-common-setup-beforeeach
@@ -582,6 +701,8 @@ func BeforeEach(args ...interface{}) bool {
 /*
 JustBeforeEach nodes are similar to BeforeEach nodes, however they are guaranteed to run *after* all BeforeEach node closures - just before the It node closure.
 This can allow you to separate configuration from creation of resources for a spec.
+
+JustBeforeEach can take a func() body, or an interruptible func(SpecContext)/func(context.Context) body.
 
 You cannot nest any other Ginkgo nodes within a JustBeforeEach node's closure.
 You can learn more and see some examples here: https://onsi.github.io/ginkgo/#separating-creation-and-configuration-justbeforeeach
@@ -596,6 +717,8 @@ are defined in nested Container nodes the innermost AfterEach node closures are 
 
 Note that you can also use DeferCleanup() in other Setup or Subject nodes to accomplish similar results.
 
+AfterEach can take a func() body, or an interruptible func(SpecContext)/func(context.Context) body.
+
 You cannot nest any other Ginkgo nodes within an AfterEach node's closure.
 You can learn more here: https://onsi.github.io/ginkgo/#spec-cleanup-aftereach-and-defercleanup
 */
@@ -606,6 +729,8 @@ func AfterEach(args ...interface{}) bool {
 /*
 JustAfterEach nodes are similar to AfterEach nodes, however they are guaranteed to run *before* all AfterEach node closures - just after the It node closure. This can allow you to separate diagnostics collection from teardown for a spec.
 
+JustAfterEach can take a func() body, or an interruptible func(SpecContext)/func(context.Context) body.
+
 You cannot nest any other Ginkgo nodes within a JustAfterEach node's closure.
 You can learn more and see some examples here: https://onsi.github.io/ginkgo/#separating-diagnostics-collection-and-teardown-justaftereach
 */
@@ -614,9 +739,11 @@ func JustAfterEach(args ...interface{}) bool {
 }
 
 /*
-BeforeAll nodes are Setup nodes that can occur inside Ordered contaienrs.  They run just once before any specs in the Ordered container run.
+BeforeAll nodes are Setup nodes that can occur inside Ordered containers.  They run just once before any specs in the Ordered container run.
 
 Multiple BeforeAll nodes can be defined in a given Ordered container however they cannot be nested inside any other container.
+
+BeforeAll can take a func() body, or an interruptible func(SpecContext)/func(context.Context) body.
 
 You cannot nest any other Ginkgo nodes within a BeforeAll node's closure.
 You can learn more about Ordered Containers at: https://onsi.github.io/ginkgo/#ordered-containers
@@ -627,11 +754,13 @@ func BeforeAll(args ...interface{}) bool {
 }
 
 /*
-AfterAll nodes are Setup nodes that can occur inside Ordered contaienrs.  They run just once after all specs in the Ordered container have run.
+AfterAll nodes are Setup nodes that can occur inside Ordered containers.  They run just once after all specs in the Ordered container have run.
 
 Multiple AfterAll nodes can be defined in a given Ordered container however they cannot be nested inside any other container.
 
 Note that you can also use DeferCleanup() in a BeforeAll node to accomplish similar behavior.
+
+AfterAll can take a func() body, or an interruptible func(SpecContext)/func(context.Context) body.
 
 You cannot nest any other Ginkgo nodes within an AfterAll node's closure.
 You can learn more about Ordered Containers at: https://onsi.github.io/ginkgo/#ordered-containers
@@ -646,15 +775,32 @@ DeferCleanup can be called within any Setup or Subject node to register a cleanu
 
 DeferCleanup can be passed:
 1. A function that takes no arguments and returns no values.
-2. A function that returns an error (in which case it will assert that the returned error was nil, or it will fail the spec).
-3. A function that takes arguments (and optionally returns an error) followed by a list of arguments to passe to the function. For example:
+2. A function that returns multiple values.  `DeferCleanup` will ignore all these return values except for the last one.  If this last return value is a non-nil error `DeferCleanup` will fail the spec).
+3. A function that takes a context.Context or SpecContext (and optionally returns multiple values).  The resulting cleanup node is deemed interruptible and the passed-in context will be cancelled in the event of a timeout or interrupt.
+4. A function that takes arguments (and optionally returns multiple values) followed by a list of arguments to pass to the function.
+5. A function that takes SpecContext and a list of arguments (and optionally returns multiple values) followed by a list of arguments to pass to the function.
 
-    BeforeEach(func() {
-        DeferCleanup(os.SetEnv, "FOO", os.GetEnv("FOO"))
-        os.SetEnv("FOO", "BAR")
-    })
+For example:
 
-will register a cleanup handler that will set the environment variable "FOO" to it's current value (obtained by os.GetEnv("FOO")) after the spec runs and then sets the environment variable "FOO" to "BAR" for the current spec.
+	BeforeEach(func() {
+	    DeferCleanup(os.SetEnv, "FOO", os.GetEnv("FOO"))
+	    os.SetEnv("FOO", "BAR")
+	})
+
+will register a cleanup handler that will set the environment variable "FOO" to its current value (obtained by os.GetEnv("FOO")) after the spec runs and then sets the environment variable "FOO" to "BAR" for the current spec.
+
+Similarly:
+
+	BeforeEach(func() {
+	    DeferCleanup(func(ctx SpecContext, path) {
+	    	req, err := http.NewRequestWithContext(ctx, "POST", path, nil)
+	    	Expect(err).NotTo(HaveOccured())
+	    	_, err := http.DefaultClient.Do(req)
+	    	Expect(err).NotTo(HaveOccured())
+	    }, "example.com/cleanup", NodeTimeout(time.Second*3))
+	})
+
+will register a cleanup handler that will have three seconds to successfully complete a request to the specified path. Note that we do not specify a context in the list of arguments passed to DeferCleanup - only in the signature of the function we pass in.  Ginkgo will detect the requested context and supply a SpecContext when it invokes the cleanup node.  If you want to pass in your own context in addition to the Ginkgo-provided SpecContext you must specify the SpecContext as the first argument (e.g. func(ctx SpecContext, otherCtx context.Context)).
 
 When DeferCleanup is called in BeforeEach, JustBeforeEach, It, AfterEach, or JustAfterEach the registered callback will be invoked when the spec completes (i.e. it will behave like an AfterEach node)
 When DeferCleanup is called in BeforeAll or AfterAll the registered callback will be invoked when the ordered container completes (i.e. it will behave like an AfterAll node)
@@ -667,5 +813,26 @@ func DeferCleanup(args ...interface{}) {
 	fail := func(message string, cl types.CodeLocation) {
 		global.Failer.Fail(message, cl)
 	}
-	pushNode(internal.NewCleanupNode(fail, args...))
+	pushNode(internal.NewCleanupNode(deprecationTracker, fail, args...))
+}
+
+/*
+AttachProgressReporter allows you to register a function that will be called whenever Ginkgo generates a Progress Report.  The contents returned by the function will be included in the report.
+
+**This is an experimental feature and the public-facing interface may change in a future minor version of Ginkgo**
+
+Progress Reports are generated:
+- whenever the user explicitly requests one (via `SIGINFO` or `SIGUSR1`)
+- on nodes decorated  with PollProgressAfter
+- on suites run with --poll-progress-after
+- whenever a test times out
+
+Ginkgo uses Progress Reports to convey the current state of the test suite, including any running goroutines.  By attaching a progress reporter you are able to supplement these reports with additional information.
+
+# AttachProgressReporter returns a function that can be called to detach the progress reporter
+
+You can learn more about AttachProgressReporter here: https://onsi.github.io/ginkgo/#attaching-additional-information-to-progress-reports
+*/
+func AttachProgressReporter(reporter func() string) func() {
+	return global.Suite.AttachProgressReporter(reporter)
 }

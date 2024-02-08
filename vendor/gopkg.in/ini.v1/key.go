@@ -54,13 +54,15 @@ func (k *Key) addShadow(val string) error {
 		return errors.New("cannot add shadow to auto-increment or boolean key")
 	}
 
-	// Deduplicate shadows based on their values.
-	if k.value == val {
-		return nil
-	}
-	for i := range k.shadows {
-		if k.shadows[i].value == val {
+	if !k.s.f.options.AllowDuplicateShadowValues {
+		// Deduplicate shadows based on their values.
+		if k.value == val {
 			return nil
+		}
+		for i := range k.shadows {
+			if k.shadows[i].value == val {
+				return nil
+			}
 		}
 	}
 
@@ -108,15 +110,24 @@ func (k *Key) Value() string {
 	return k.value
 }
 
-// ValueWithShadows returns raw values of key and its shadows if any.
+// ValueWithShadows returns raw values of key and its shadows if any. Shadow
+// keys with empty values are ignored from the returned list.
 func (k *Key) ValueWithShadows() []string {
 	if len(k.shadows) == 0 {
+		if k.value == "" {
+			return []string{}
+		}
 		return []string{k.value}
 	}
-	vals := make([]string, len(k.shadows)+1)
-	vals[0] = k.value
-	for i := range k.shadows {
-		vals[i+1] = k.shadows[i].value
+
+	vals := make([]string, 0, len(k.shadows)+1)
+	if k.value != "" {
+		vals = append(vals, k.value)
+	}
+	for _, s := range k.shadows {
+		if s.value != "" {
+			vals = append(vals, s.value)
+		}
 	}
 	return vals
 }
@@ -686,99 +697,124 @@ func (k *Key) StrictTimes(delim string) ([]time.Time, error) {
 // parseBools transforms strings to bools.
 func (k *Key) parseBools(strs []string, addInvalid, returnOnInvalid bool) ([]bool, error) {
 	vals := make([]bool, 0, len(strs))
-	for _, str := range strs {
+	parser := func(str string) (interface{}, error) {
 		val, err := parseBool(str)
-		if err != nil && returnOnInvalid {
-			return nil, err
-		}
-		if err == nil || addInvalid {
-			vals = append(vals, val)
+		return val, err
+	}
+	rawVals, err := k.doParse(strs, addInvalid, returnOnInvalid, parser)
+	if err == nil {
+		for _, val := range rawVals {
+			vals = append(vals, val.(bool))
 		}
 	}
-	return vals, nil
+	return vals, err
 }
 
 // parseFloat64s transforms strings to float64s.
 func (k *Key) parseFloat64s(strs []string, addInvalid, returnOnInvalid bool) ([]float64, error) {
 	vals := make([]float64, 0, len(strs))
-	for _, str := range strs {
+	parser := func(str string) (interface{}, error) {
 		val, err := strconv.ParseFloat(str, 64)
-		if err != nil && returnOnInvalid {
-			return nil, err
-		}
-		if err == nil || addInvalid {
-			vals = append(vals, val)
+		return val, err
+	}
+	rawVals, err := k.doParse(strs, addInvalid, returnOnInvalid, parser)
+	if err == nil {
+		for _, val := range rawVals {
+			vals = append(vals, val.(float64))
 		}
 	}
-	return vals, nil
+	return vals, err
 }
 
 // parseInts transforms strings to ints.
 func (k *Key) parseInts(strs []string, addInvalid, returnOnInvalid bool) ([]int, error) {
 	vals := make([]int, 0, len(strs))
-	for _, str := range strs {
-		valInt64, err := strconv.ParseInt(str, 0, 64)
-		val := int(valInt64)
-		if err != nil && returnOnInvalid {
-			return nil, err
-		}
-		if err == nil || addInvalid {
-			vals = append(vals, val)
+	parser := func(str string) (interface{}, error) {
+		val, err := strconv.ParseInt(str, 0, 64)
+		return val, err
+	}
+	rawVals, err := k.doParse(strs, addInvalid, returnOnInvalid, parser)
+	if err == nil {
+		for _, val := range rawVals {
+			vals = append(vals, int(val.(int64)))
 		}
 	}
-	return vals, nil
+	return vals, err
 }
 
 // parseInt64s transforms strings to int64s.
 func (k *Key) parseInt64s(strs []string, addInvalid, returnOnInvalid bool) ([]int64, error) {
 	vals := make([]int64, 0, len(strs))
-	for _, str := range strs {
+	parser := func(str string) (interface{}, error) {
 		val, err := strconv.ParseInt(str, 0, 64)
-		if err != nil && returnOnInvalid {
-			return nil, err
-		}
-		if err == nil || addInvalid {
-			vals = append(vals, val)
+		return val, err
+	}
+
+	rawVals, err := k.doParse(strs, addInvalid, returnOnInvalid, parser)
+	if err == nil {
+		for _, val := range rawVals {
+			vals = append(vals, val.(int64))
 		}
 	}
-	return vals, nil
+	return vals, err
 }
 
 // parseUints transforms strings to uints.
 func (k *Key) parseUints(strs []string, addInvalid, returnOnInvalid bool) ([]uint, error) {
 	vals := make([]uint, 0, len(strs))
-	for _, str := range strs {
-		val, err := strconv.ParseUint(str, 0, 0)
-		if err != nil && returnOnInvalid {
-			return nil, err
-		}
-		if err == nil || addInvalid {
-			vals = append(vals, uint(val))
+	parser := func(str string) (interface{}, error) {
+		val, err := strconv.ParseUint(str, 0, 64)
+		return val, err
+	}
+
+	rawVals, err := k.doParse(strs, addInvalid, returnOnInvalid, parser)
+	if err == nil {
+		for _, val := range rawVals {
+			vals = append(vals, uint(val.(uint64)))
 		}
 	}
-	return vals, nil
+	return vals, err
 }
 
 // parseUint64s transforms strings to uint64s.
 func (k *Key) parseUint64s(strs []string, addInvalid, returnOnInvalid bool) ([]uint64, error) {
 	vals := make([]uint64, 0, len(strs))
-	for _, str := range strs {
+	parser := func(str string) (interface{}, error) {
 		val, err := strconv.ParseUint(str, 0, 64)
-		if err != nil && returnOnInvalid {
-			return nil, err
-		}
-		if err == nil || addInvalid {
-			vals = append(vals, val)
+		return val, err
+	}
+	rawVals, err := k.doParse(strs, addInvalid, returnOnInvalid, parser)
+	if err == nil {
+		for _, val := range rawVals {
+			vals = append(vals, val.(uint64))
 		}
 	}
-	return vals, nil
+	return vals, err
 }
+
+type Parser func(str string) (interface{}, error)
 
 // parseTimesFormat transforms strings to times in given format.
 func (k *Key) parseTimesFormat(format string, strs []string, addInvalid, returnOnInvalid bool) ([]time.Time, error) {
 	vals := make([]time.Time, 0, len(strs))
-	for _, str := range strs {
+	parser := func(str string) (interface{}, error) {
 		val, err := time.Parse(format, str)
+		return val, err
+	}
+	rawVals, err := k.doParse(strs, addInvalid, returnOnInvalid, parser)
+	if err == nil {
+		for _, val := range rawVals {
+			vals = append(vals, val.(time.Time))
+		}
+	}
+	return vals, err
+}
+
+// doParse transforms strings to different types
+func (k *Key) doParse(strs []string, addInvalid, returnOnInvalid bool, parser Parser) ([]interface{}, error) {
+	vals := make([]interface{}, 0, len(strs))
+	for _, str := range strs {
+		val, err := parser(str)
 		if err != nil && returnOnInvalid {
 			return nil, err
 		}
