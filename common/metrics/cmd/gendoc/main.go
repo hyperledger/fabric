@@ -34,7 +34,7 @@ func main() {
 		patterns = []string{"github.com/hyperledger/fabric/..."}
 	}
 
-	mode := packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedSyntax | packages.NeedTypesInfo
+	mode := packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedSyntax
 	pkgs, err := packages.Load(&packages.Config{Mode: mode}, patterns...)
 	if err != nil {
 		panic(err)
