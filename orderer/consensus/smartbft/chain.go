@@ -44,6 +44,8 @@ type WALConfig struct {
 }
 
 // ConfigValidator interface
+//
+//go:generate mockery --dir . --name ConfigValidator --case underscore --with-expecter=true --output mocks
 type ConfigValidator interface {
 	ValidateConfig(env *cb.Envelope) error
 }
@@ -63,15 +65,15 @@ type BFTChain struct {
 	Channel            string
 	Config             types.Configuration
 	BlockPuller        BlockPuller
-	clusterDialer      *cluster.PredicateDialer // Required by BFT-synchronizer
-	localConfigCluster localconfig.Cluster      // Required by BFT-synchronizer
-	Comm               cluster.Communicator
+	clusterDialer      *cluster.PredicateDialer // TODO Required by BFT-synchronizer
+	localConfigCluster localconfig.Cluster      // TODO Required by BFT-synchronizer
+	Comm               Communicator
 	SignerSerializer   signerSerializer
-	PolicyManager      policies.Manager
+	PolicyManager      PolicyManager
 	Logger             *flogging.FabricLogger
 	WALDir             string
 	consensus          *smartbft.Consensus
-	support            consensus.ConsenterSupport
+	support            ConsenterSupport
 	clusterService     *cluster.ClusterService
 	verifier           *Verifier
 	assembler          *Assembler
@@ -96,12 +98,13 @@ func NewChain(
 	localConfigCluster localconfig.Cluster,
 	comm cluster.Communicator,
 	signerSerializer signerSerializer,
-	policyManager policies.Manager,
+	policyManager PolicyManager,
 	support consensus.ConsenterSupport,
 	metrics *Metrics,
 	metricsBFT *api.Metrics,
 	metricsWalBFT *wal.Metrics,
 	bccsp bccsp.BCCSP,
+	egressCommFactory EgressCommFactory,
 ) (*BFTChain, error) {
 	logger := flogging.MustGetLogger("orderer.consensus.smartbft.chain").With(zap.String("channel", support.ChannelID()))
 
@@ -157,7 +160,7 @@ func NewChain(
 	c.RuntimeConfig.Store(rtc)
 
 	c.verifier = buildVerifier(cv, c.RuntimeConfig, support, requestInspector, policyManager)
-	c.consensus = bftSmartConsensusBuild(c, requestInspector)
+	c.consensus = bftSmartConsensusBuild(c, requestInspector, egressCommFactory)
 
 	// Setup communication with list of remotes notes for the new channel
 	c.Comm.Configure(c.support.ChannelID(), rtc.RemoteNodes)
@@ -174,6 +177,7 @@ func NewChain(
 func bftSmartConsensusBuild(
 	c *BFTChain,
 	requestInspector *RequestInspector,
+	egressCommFactory EgressCommFactory,
 ) *smartbft.Consensus {
 	var err error
 
@@ -285,18 +289,7 @@ func bftSmartConsensusBuild(
 		Assembler:         c.assembler,
 		RequestInspector:  requestInspector,
 		Synchronizer:      sync,
-		Comm: &Egress{
-			RuntimeConfig: c.RuntimeConfig,
-			Channel:       c.support.ChannelID(),
-			Logger:        flogging.MustGetLogger("orderer.consensus.smartbft.egress").With(channelDecorator),
-			RPC: &cluster.RPC{
-				Logger:        flogging.MustGetLogger("orderer.consensus.smartbft.rpc").With(channelDecorator),
-				Channel:       c.support.ChannelID(),
-				StreamsByType: cluster.NewStreamsByType(),
-				Comm:          c.Comm,
-				Timeout:       5 * time.Minute, // Externalize configuration
-			},
-		},
+		Comm:              egressCommFactory(c.RuntimeConfig, c.Channel, c.Comm),
 		Scheduler:         time.NewTicker(time.Second).C,
 		ViewChangerTicker: time.NewTicker(time.Second).C,
 	}
