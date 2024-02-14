@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
+	"crypto/x509"
 	"encoding/pem"
 
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -88,9 +89,17 @@ func NewBlockPuller(support consensus.ConsenterSupport,
 			string(stdDialer.Config.SecOpts.Certificate))
 	}
 
+	logger := flogging.MustGetLogger("orderer.common.cluster.puller").With("channel", support.ChannelID())
+
+	myCert, err := x509.ParseCertificate(der.Bytes)
+	if err != nil {
+		logger.Warnf("Failed parsing my own TLS certificate: %v, therefore we may connect to our own endpoint when pulling blocks", err)
+	}
+
 	bp := &cluster.BlockPuller{
+		MyOwnTLSCert:        myCert,
 		VerifyBlockSequence: verifyBlockSequence,
-		Logger:              flogging.MustGetLogger("orderer.common.cluster.puller").With("channel", support.ChannelID()),
+		Logger:              logger,
 		RetryTimeout:        clusterConfig.ReplicationRetryTimeout,
 		MaxTotalBufferBytes: clusterConfig.ReplicationBufferSize,
 		FetchTimeout:        clusterConfig.ReplicationPullTimeout,

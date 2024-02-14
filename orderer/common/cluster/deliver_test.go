@@ -9,7 +9,9 @@ package cluster_test
 import (
 	"context"
 	"crypto/rand"
+	"crypto/x509"
 	"encoding/hex"
+	"encoding/pem"
 	"fmt"
 	"net"
 	"strconv"
@@ -144,9 +146,10 @@ func readSeekEnvelope(stream orderer.AtomicBroadcast_DeliverServer) (*orderer.Se
 }
 
 type deliverServer struct {
-	logger *flogging.FabricLogger
-
-	t *testing.T
+	logger  *flogging.FabricLogger
+	cert    *x509.Certificate
+	rawCert []byte
+	t       *testing.T
 	sync.Mutex
 	err            error
 	srv            *comm.GRPCServer
@@ -330,7 +333,35 @@ func newClusterNode(t *testing.T) *deliverServer {
 	return ds
 }
 
-func newBlockPuller(dialer *countingDialer, orderers ...string) *cluster.BlockPuller {
+func newClusterNodeWithTLS(t *testing.T) *deliverServer {
+	cert, err := ca.NewServerCertKeyPair("127.0.0.1")
+	require.NoError(t, err)
+
+	srv, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{
+		SecOpts: comm.SecureOptions{
+			Key:         cert.Key,
+			Certificate: cert.Cert,
+			UseTLS:      true,
+		},
+	})
+
+	require.NoError(t, err)
+	ds := &deliverServer{
+		rawCert:        cert.Cert,
+		cert:           cert.TLSCert,
+		logger:         flogging.MustGetLogger("test.debug"),
+		t:              t,
+		seekAssertions: make(chan func(*orderer.SeekInfo, string), 100),
+		blockResponses: make(chan *orderer.DeliverResponse, 100),
+		done:           make(chan struct{}),
+		srv:            srv,
+	}
+	orderer.RegisterAtomicBroadcastServer(srv.Server(), ds)
+	go srv.Start()
+	return ds
+}
+
+func newBlockPuller(dialer cluster.Dialer, orderers ...string) *cluster.BlockPuller {
 	return &cluster.BlockPuller{
 		Dialer:              dialer,
 		Channel:             "mychannel",
@@ -520,6 +551,61 @@ func TestBlockPullerClone(t *testing.T) {
 	dialer.assertAllConnectionsClosed(t)
 }
 
+func TestBlockPullerHeightsByEndpointsDetectSelf(t *testing.T) {
+	// Scenario: We ask for the latest block from two nodes,
+	// one of them is yourself and the other is not.
+
+	osn1 := newClusterNodeWithTLS(t)
+	defer osn1.stop()
+
+	osn2 := newClusterNodeWithTLS(t)
+	defer osn2.stop()
+
+	sd := &cluster.StandardDialer{
+		Config: comm.ClientConfig{
+			DialTimeout: time.Second,
+			SecOpts: comm.SecureOptions{
+				UseTLS:        true,
+				ServerRootCAs: [][]byte{ca.CertBytes()},
+			},
+		},
+	}
+
+	bp := newBlockPuller(sd, osn1.srv.Address(), osn2.srv.Address())
+	// Override endpoints
+	var endpoints []cluster.EndpointCriteria
+	for _, endpoint := range bp.Endpoints {
+		endpoint.TLSRootCAs = [][]byte{ca.CertBytes()}
+		endpoints = append(endpoints, endpoint)
+	}
+
+	bl, _ := pem.Decode(osn1.rawCert)
+	bp.TLSCert = bl.Bytes
+
+	tlsCert, err := x509.ParseCertificate(bl.Bytes)
+	require.NoError(t, err)
+
+	bp.MyOwnTLSCert = tlsCert
+
+	bp.Endpoints = endpoints
+
+	osn1.addExpectProbeAssert()
+	osn2.addExpectProbeAssert()
+
+	osn1.enqueueResponse(5)
+	osn2.enqueueResponse(5)
+
+	res, self, err := bp.HeightsByEndpoints()
+	require.NoError(t, err)
+
+	require.Equal(t, map[string]uint64{
+		osn1.srv.Address(): 6,
+		osn2.srv.Address(): 6,
+	}, res)
+
+	require.Equal(t, osn1.srv.Address(), self)
+}
+
 func TestBlockPullerHeightsByEndpoints(t *testing.T) {
 	// Scenario: We ask for the latest block from all the known ordering nodes.
 	// One ordering node is unavailable (offline).
@@ -550,7 +636,7 @@ func TestBlockPullerHeightsByEndpoints(t *testing.T) {
 	// The third returns the latest block
 	osn3.enqueueResponse(5)
 
-	res, err := bp.HeightsByEndpoints()
+	res, _, err := bp.HeightsByEndpoints()
 	require.NoError(t, err)
 	expected := map[string]uint64{
 		osn3.srv.Address(): 6,
@@ -1113,6 +1199,29 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 	}
 }
 
+func TestImpatientStreamDetectSelf(t *testing.T) {
+	osn := newClusterNodeWithTLS(t)
+	defer osn.stop()
+	var conn *grpc.ClientConn
+	var err error
+
+	cc := comm.ClientConfig{
+		DialTimeout: time.Second,
+		SecOpts: comm.SecureOptions{
+			UseTLS:        true,
+			ServerRootCAs: [][]byte{ca.CertBytes()},
+		},
+	}
+
+	conn, err = cc.Dial(osn.srv.Address())
+	require.NoError(t, err)
+
+	newStream := cluster.NewImpatientStream(conn, time.Millisecond*100)
+	stream, err := newStream()
+	require.NoError(t, err)
+	require.Equal(t, osn.cert, stream.Certificate)
+}
+
 func TestImpatientStreamFailure(t *testing.T) {
 	osn := newClusterNode(t)
 	dialer := newCountingDialer()
@@ -1324,7 +1433,7 @@ func TestBlockPuller_UpdateEndpoint(t *testing.T) {
 		osn2.enqueueResponse(4)
 		osn3.enqueueResponse(5)
 
-		res, err := bp.HeightsByEndpoints()
+		res, _, err := bp.HeightsByEndpoints()
 		require.NoError(t, err)
 		expected := map[string]uint64{
 			osn1.srv.Address(): 4,
@@ -1346,7 +1455,7 @@ func TestBlockPuller_UpdateEndpoint(t *testing.T) {
 		osn3.enqueueResponse(55)
 		osn4.enqueueResponse(66)
 
-		res, err = bp.HeightsByEndpoints()
+		res, _, err = bp.HeightsByEndpoints()
 		require.NoError(t, err)
 		expected = map[string]uint64{
 			osn2.srv.Address(): 45,

@@ -449,7 +449,7 @@ type ChainPuller interface {
 	PullBlock(seq uint64) *common.Block
 
 	// HeightsByEndpoints returns the block heights by endpoints of orderers
-	HeightsByEndpoints() (map[string]uint64, error)
+	HeightsByEndpoints() (map[string]uint64, string, error)
 
 	// Close closes the ChainPuller
 	Close()
@@ -802,7 +802,7 @@ func PullLastConfigBlock(puller ChainPuller) (*common.Block, error) {
 func LatestHeightAndEndpoint(puller ChainPuller) (string, uint64, error) {
 	var maxHeight uint64
 	var mostUpToDateEndpoint string
-	heightsByEndpoints, err := puller.HeightsByEndpoints()
+	heightsByEndpoints, _, err := puller.HeightsByEndpoints()
 	if err != nil {
 		return "", 0, err
 	}

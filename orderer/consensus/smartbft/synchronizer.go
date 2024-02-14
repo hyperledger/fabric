@@ -80,7 +80,7 @@ func (s *Synchronizer) getViewMetadataLastConfigSqnFromBlock(block *cb.Block) (*
 
 func (s *Synchronizer) synchronize() (*types.Decision, error) {
 	defer s.BlockPuller.Close()
-	heightByEndpoint, err := s.BlockPuller.HeightsByEndpoints()
+	heightByEndpoint, _, err := s.BlockPuller.HeightsByEndpoints()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot get HeightsByEndpoints")
 	}

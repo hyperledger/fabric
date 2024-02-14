@@ -394,11 +394,11 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 
 		puller.PullBlockCalls(func(i uint64) *common.Block { return remoteBlockchain.Block(i) })
 		puller.HeightsByEndpointsCalls(
-			func() (map[string]uint64, error) {
+			func() (map[string]uint64, string, error) {
 				m := make(map[string]uint64)
 				m["good-node"] = remoteBlockchain.Height()
 				m["lazy-node"] = remoteBlockchain.Height() - 2
-				return m, nil
+				return m, "", nil
 			},
 		)
 		pullerFactory.BlockPullerReturns(puller, nil)
@@ -489,7 +489,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 
 		var hCount int
 		puller.HeightsByEndpointsCalls(
-			func() (map[string]uint64, error) {
+			func() (map[string]uint64, string, error) {
 				m := make(map[string]uint64)
 				if hCount%10 == 0 {
 					m["good-node"] = remoteBlockchain.Height()
@@ -498,7 +498,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 					m["equal-to-local-node"] = localBlockchain.Height()
 				}
 				hCount++
-				return m, nil
+				return m, "", nil
 			},
 		)
 		ledgerResources.AppendCalls(func(block *common.Block) error {
@@ -628,16 +628,16 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 
 		failHeight := 1
 		puller.HeightsByEndpointsCalls(
-			func() (map[string]uint64, error) {
+			func() (map[string]uint64, string, error) {
 				if failHeight > 0 {
 					failHeight = failHeight - 1
-					return nil, errors.New("failed to get heights")
+					return nil, "", errors.New("failed to get heights")
 				}
 				failHeight = 1
 				m := make(map[string]uint64)
 				m["good-node"] = remoteBlockchain.Height()
 				m["lazy-node"] = remoteBlockchain.Height() - 2
-				return m, nil
+				return m, "", nil
 			},
 		)
 		pullerFactory.BlockPullerReturns(puller, nil)
@@ -691,11 +691,11 @@ func TestFollowerPullPastJoin(t *testing.T) {
 
 		puller.PullBlockCalls(func(i uint64) *common.Block { return remoteBlockchain.Block(i) })
 		puller.HeightsByEndpointsCalls(
-			func() (map[string]uint64, error) {
+			func() (map[string]uint64, string, error) {
 				m := make(map[string]uint64)
 				m["good-node"] = remoteBlockchain.Height()
 				m["lazy-node"] = remoteBlockchain.Height() - 2
-				return m, nil
+				return m, "", nil
 			},
 		)
 		pullerFactory.BlockPullerReturns(puller, nil)
@@ -869,16 +869,16 @@ func TestFollowerPullPastJoin(t *testing.T) {
 
 		failHeight := 1
 		puller.HeightsByEndpointsCalls(
-			func() (map[string]uint64, error) {
+			func() (map[string]uint64, string, error) {
 				if failHeight > 0 {
 					failHeight = failHeight - 1
-					return nil, errors.New("failed to get heights")
+					return nil, "", errors.New("failed to get heights")
 				}
 				failHeight = 1
 				m := make(map[string]uint64)
 				m["good-node"] = remoteBlockchain.Height()
 				m["lazy-node"] = remoteBlockchain.Height() - 2
-				return m, nil
+				return m, "", nil
 			},
 		)
 		pullerFactory.BlockPullerReturns(puller, nil)

@@ -1040,7 +1040,7 @@ func TestChainParticipant(t *testing.T) {
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			puller := &mocks.ChainPuller{}
-			puller.On("HeightsByEndpoints").Return(testCase.heightsByEndpoints, testCase.heightsByEndpointsErr)
+			puller.On("HeightsByEndpoints").Return(testCase.heightsByEndpoints, "", testCase.heightsByEndpointsErr)
 			puller.On("PullBlock", testCase.latestBlockSeq).Return(testCase.latestBlock)
 			puller.On("PullBlock", testCase.latestConfigBlockSeq).Return(testCase.latestConfigBlock)
 			puller.On("Close")

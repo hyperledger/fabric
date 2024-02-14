@@ -130,7 +130,8 @@ func newBlockPuller(
 	support consensus.ConsenterSupport,
 	baseDialer *cluster.PredicateDialer,
 	clusterConfig localconfig.Cluster,
-	bccsp bccsp.BCCSP) (BlockPuller, error) {
+	bccsp bccsp.BCCSP,
+) (BlockPuller, error) {
 	verifyBlockSequence := func(blocks []*cb.Block, _ string) error {
 		vb := cluster.BlockVerifierBuilder(bccsp)
 		return cluster.VerifyBlocksBFT(blocks, support.SignatureVerifier(), vb)
@@ -148,15 +149,23 @@ func newBlockPuller(
 		return nil, err
 	}
 
+	logger := flogging.MustGetLogger("orderer.common.cluster.puller")
+
 	der, _ := pem.Decode(stdDialer.Config.SecOpts.Certificate)
 	if der == nil {
 		return nil, errors.Errorf("client certificate isn't in PEM format: %v",
 			string(stdDialer.Config.SecOpts.Certificate))
 	}
 
+	myCert, err := x509.ParseCertificate(der.Bytes)
+	if err != nil {
+		logger.Warnf("Failed parsing my own TLS certificate: %v, therefore we may connect to our own endpoint when pulling blocks", err)
+	}
+
 	bp := &cluster.BlockPuller{
+		MyOwnTLSCert:        myCert,
 		VerifyBlockSequence: verifyBlockSequence,
-		Logger:              flogging.MustGetLogger("orderer.common.cluster.puller"),
+		Logger:              logger,
 		RetryTimeout:        clusterConfig.ReplicationRetryTimeout,
 		MaxTotalBufferBytes: clusterConfig.ReplicationBufferSize,
 		FetchTimeout:        clusterConfig.ReplicationPullTimeout,

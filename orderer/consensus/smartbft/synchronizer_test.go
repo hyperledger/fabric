@@ -88,7 +88,7 @@ func TestSynchronizerSync(t *testing.T) {
 				"example.com:3": 103,
 				"example.com:4": 200, // byzantine, lying
 			},
-			nil,
+			"", nil,
 		)
 		bp.PullBlockReturnsOnCall(0, b100)
 		bp.PullBlockReturnsOnCall(1, b101)
@@ -142,7 +142,7 @@ func TestSynchronizerSync(t *testing.T) {
 				"example.com:2": 102,
 				"example.com:4": 200, // byzantine, lying
 			},
-			nil,
+			"", nil,
 		)
 		bp.PullBlockReturnsOnCall(0, b100)
 		bp.PullBlockReturnsOnCall(1, b101)
@@ -195,7 +195,7 @@ func TestSynchronizerSync(t *testing.T) {
 				"example.com:1": 101,
 				"example.com:4": 200, // byzantine, lying
 			},
-			nil,
+			"", nil,
 		)
 		bp.PullBlockReturnsOnCall(0, b100)
 		bp.PullBlockReturnsOnCall(1, b101)
@@ -247,7 +247,7 @@ func TestSynchronizerSync(t *testing.T) {
 			map[string]uint64{
 				"example.com:1": 100,
 			},
-			nil,
+			"", nil,
 		)
 		bp.PullBlockReturnsOnCall(0, b100)
 		bp.PullBlockReturnsOnCall(1, b101)
