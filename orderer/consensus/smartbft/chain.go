@@ -15,6 +15,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
+
 	"github.com/SmartBFT-Go/consensus/pkg/api"
 	smartbft "github.com/SmartBFT-Go/consensus/pkg/consensus"
 	"github.com/SmartBFT-Go/consensus/pkg/types"
@@ -26,6 +29,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	types2 "github.com/hyperledger/fabric/orderer/common/types"
@@ -64,6 +68,68 @@ type signerSerializer interface {
 	Serialize() ([]byte, error)
 }
 
+//go:generate mockery --dir . --name ConsenterSupport --case underscore --with-expecter=true --output mocks
+
+// ConsenterSupport provides the resources available to a Consenter implementation.
+type ConsenterSupport interface {
+	identity.SignerSerializer
+	msgprocessor.Processor
+
+	// SignatureVerifier verifies a signature of a block.
+	SignatureVerifier() protoutil.BlockVerifierFunc
+
+	// BlockCutter returns the block cutting helper for this channel.
+	BlockCutter() blockcutter.Receiver
+
+	// SharedConfig provides the shared config from the channel's current config block.
+	SharedConfig() channelconfig.Orderer
+
+	// ChannelConfig provides the channel config from the channel's current config block.
+	ChannelConfig() channelconfig.Channel
+
+	// CreateNextBlock takes a list of messages and creates the next block based on the block with highest block number committed to the ledger
+	// Note that either WriteBlock or WriteConfigBlock must be called before invoking this method a second time.
+	CreateNextBlock(messages []*cb.Envelope) *cb.Block
+
+	// Block returns a block with the given number,
+	// or nil if such a block doesn't exist.
+	Block(number uint64) *cb.Block
+
+	// WriteBlock commits a block to the ledger.
+	WriteBlock(block *cb.Block, encodedMetadataValue []byte)
+
+	// WriteConfigBlock commits a block to the ledger, and applies the config update inside.
+	WriteConfigBlock(block *cb.Block, encodedMetadataValue []byte)
+
+	// Sequence returns the current config sequence.
+	Sequence() uint64
+
+	// ChannelID returns the channel ID this support is associated with.
+	ChannelID() string
+
+	// Height returns the number of blocks in the chain this channel is associated with.
+	Height() uint64
+	// Append appends a new block to the ledger in its raw form,
+	// unlike WriteBlock that also mutates its metadata.
+	Append(block *cb.Block) error
+}
+
+//go:generate mockery --dir . --name Communicator --case underscore --with-expecter=true --output mocks
+
+// Communicator defines communication for a consenter
+type Communicator interface {
+	// Remote returns a RemoteContext for the given RemoteNode ID in the context
+	// of the given channel, or error if connection cannot be established, or
+	// the channel wasn't configured
+	Remote(channel string, id uint64) (*cluster.RemoteContext, error)
+	// Configure configures the communication to connect to all
+	// given members, and disconnect from any members not among the given
+	// members.
+	Configure(channel string, members []cluster.RemoteNode)
+	// Shutdown shuts down the communicator
+	Shutdown()
+}
+
 // BFTChain implements Chain interface to wire with
 // BFT smart library
 type BFTChain struct {
@@ -71,13 +137,13 @@ type BFTChain struct {
 	Channel          string
 	Config           types.Configuration
 	BlockPuller      BlockPuller
-	Comm             cluster.Communicator
+	Comm             Communicator
 	SignerSerializer signerSerializer
 	PolicyManager    policies.Manager
 	Logger           *flogging.FabricLogger
 	WALDir           string
 	consensus        *smartbft.Consensus
-	support          consensus.ConsenterSupport
+	support          ConsenterSupport
 	clusterService   *cluster.ClusterService
 	verifier         *Verifier
 	assembler        *Assembler
