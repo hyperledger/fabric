@@ -49,7 +49,7 @@ github.com/Microsoft/go-winio/internal/stringbuffer
 github.com/Microsoft/go-winio/pkg/guid
 # github.com/Microsoft/hcsshim v0.11.4
 ## explicit; go 1.18
-# github.com/SmartBFT-Go/consensus v0.0.0-20230907130931-31f018a899a6
+# github.com/SmartBFT-Go/consensus v0.0.0-20240215044737-fd3c35e3c876
 ## explicit; go 1.20
 github.com/SmartBFT-Go/consensus/internal/bft
 github.com/SmartBFT-Go/consensus/pkg/api

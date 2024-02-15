@@ -6,7 +6,7 @@ require (
 	code.cloudfoundry.org/clock v1.0.0
 	github.com/IBM/idemix v0.0.2-0.20231011101252-a4feda90f3f7
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
-	github.com/SmartBFT-Go/consensus v0.0.0-20230907130931-31f018a899a6
+	github.com/SmartBFT-Go/consensus v0.0.0-20240215044737-fd3c35e3c876
 	github.com/VictoriaMetrics/fastcache v1.9.0
 	github.com/bits-and-blooms/bitset v1.13.0
 	github.com/cheggaaa/pb v1.0.29
