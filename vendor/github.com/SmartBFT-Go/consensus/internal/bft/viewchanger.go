@@ -415,6 +415,7 @@ func (v *ViewChanger) processViewChangeMsg(restore bool) {
 			v.Logger.Panicf("Failed to save message to state, error: %v", err)
 		}
 	}
+	v.Controller.AbortView(v.currView) // before preparing the view data message abort the current view
 	v.currView = v.nextView
 	v.MetricsViewChange.CurrentView.Set(float64(v.currView))
 	v.viewChangeMsgs.clear(v.N)
@@ -1320,7 +1321,13 @@ func (v *ViewChanger) Decide(proposal types.Proposal, signatures []types.Signatu
 		}
 	}
 	v.Pruner.MaybePruneRevokedRequests()
-	v.inFlightDecideChan <- struct{}{}
+
+	select {
+	case v.inFlightDecideChan <- struct{}{}:
+		return
+	case <-v.stopChan:
+		return
+	}
 }
 
 // Complain panics when a view change is requested

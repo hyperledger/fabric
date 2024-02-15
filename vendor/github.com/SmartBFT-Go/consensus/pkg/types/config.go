@@ -114,50 +114,49 @@ var DefaultConfig = Configuration{
 }
 
 func (c Configuration) Validate() error {
-	if !(c.SelfID > 0) {
+	if c.SelfID == 0 {
 		return errors.Errorf("SelfID is lower than or equal to zero")
 	}
-
-	if !(c.RequestBatchMaxCount > 0) {
+	if c.RequestBatchMaxCount == 0 {
 		return errors.Errorf("RequestBatchMaxCount should be greater than zero")
 	}
-	if !(c.RequestBatchMaxBytes > 0) {
+	if c.RequestBatchMaxBytes == 0 {
 		return errors.Errorf("RequestBatchMaxBytes should be greater than zero")
 	}
-	if !(c.RequestBatchMaxInterval > 0) {
+	if c.RequestBatchMaxInterval <= 0 {
 		return errors.Errorf("RequestBatchMaxInterval should be greater than zero")
 	}
-	if !(c.IncomingMessageBufferSize > 0) {
+	if c.IncomingMessageBufferSize == 0 {
 		return errors.Errorf("IncomingMessageBufferSize should be greater than zero")
 	}
-	if !(c.RequestPoolSize > 0) {
+	if c.RequestPoolSize == 0 {
 		return errors.Errorf("RequestPoolSize should be greater than zero")
 	}
-	if !(c.RequestForwardTimeout > 0) {
+	if c.RequestForwardTimeout <= 0 {
 		return errors.Errorf("RequestForwardTimeout should be greater than zero")
 	}
-	if !(c.RequestComplainTimeout > 0) {
+	if c.RequestComplainTimeout <= 0 {
 		return errors.Errorf("RequestComplainTimeout should be greater than zero")
 	}
-	if !(c.RequestAutoRemoveTimeout > 0) {
+	if c.RequestAutoRemoveTimeout <= 0 {
 		return errors.Errorf("RequestAutoRemoveTimeout should be greater than zero")
 	}
-	if !(c.ViewChangeResendInterval > 0) {
+	if c.ViewChangeResendInterval <= 0 {
 		return errors.Errorf("ViewChangeResendInterval should be greater than zero")
 	}
-	if !(c.ViewChangeTimeout > 0) {
+	if c.ViewChangeTimeout <= 0 {
 		return errors.Errorf("ViewChangeTimeout should be greater than zero")
 	}
-	if !(c.LeaderHeartbeatTimeout > 0) {
+	if c.LeaderHeartbeatTimeout <= 0 {
 		return errors.Errorf("LeaderHeartbeatTimeout should be greater than zero")
 	}
-	if !(c.LeaderHeartbeatCount > 0) {
+	if c.LeaderHeartbeatCount == 0 {
 		return errors.Errorf("LeaderHeartbeatCount should be greater than zero")
 	}
-	if !(c.NumOfTicksBehindBeforeSyncing > 0) {
+	if c.NumOfTicksBehindBeforeSyncing == 0 {
 		return errors.Errorf("NumOfTicksBehindBeforeSyncing should be greater than zero")
 	}
-	if !(c.CollectTimeout > 0) {
+	if c.CollectTimeout <= 0 {
 		return errors.Errorf("CollectTimeout should be greater than zero")
 	}
 	if c.RequestBatchMaxCount > c.RequestBatchMaxBytes {
@@ -176,11 +175,11 @@ func (c Configuration) Validate() error {
 		return errors.Errorf("DecisionsPerLeader should be greater than zero when leader rotation is active")
 	}
 
-	if !(c.RequestMaxBytes > 0) {
+	if c.RequestMaxBytes == 0 {
 		return errors.Errorf("RequestMaxBytes should be greater than zero")
 	}
 
-	if !(c.RequestPoolSubmitTimeout > 0) {
+	if c.RequestPoolSubmitTimeout <= 0 {
 		return errors.Errorf("RequestPoolSubmitTimeout should be greater than zero")
 	}
 
