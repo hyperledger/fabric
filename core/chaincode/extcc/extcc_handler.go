@@ -9,7 +9,7 @@ package extcc
 import (
 	"context"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/pkg/errors"
 

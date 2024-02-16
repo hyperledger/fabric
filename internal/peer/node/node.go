@@ -8,7 +8,7 @@ package node
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/spf13/cobra"
 )

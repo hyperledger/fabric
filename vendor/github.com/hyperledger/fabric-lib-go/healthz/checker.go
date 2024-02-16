@@ -20,7 +20,7 @@ import (
 type AlreadyRegisteredError string
 
 func (are AlreadyRegisteredError) Error() string {
-	return fmt.Sprintf("'%s' is already registered", are)
+	return fmt.Sprintf("'%s' is already registered", string(are))
 }
 
 const (

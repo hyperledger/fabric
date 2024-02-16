@@ -17,11 +17,11 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	"github.com/hyperledger/fabric-protos-go/common"
 	ordererProtos "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/ordererclient"
 	"github.com/hyperledger/fabric/internal/pkg/comm"

@@ -8,7 +8,7 @@ fabric_dir="$(cd "$(dirname "$0")/.." && pwd)"
 metrics_doc="${fabric_dir}/docs/source/metrics_reference.rst"
 
 generate_doc() {
-    local gendoc_command="go run github.com/hyperledger/fabric/common/metrics/cmd/gendoc"
+    local gendoc_command="gendoc" # built using "make gotools"
     local orderer_prom
     local orderer_statsd
     local peer_prom

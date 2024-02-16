@@ -14,7 +14,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/syndtr/goleveldb/leveldb"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/stretchr/testify/require"
 )
 

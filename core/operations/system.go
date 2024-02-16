@@ -13,16 +13,16 @@ import (
 	"time"
 
 	kitstatsd "github.com/go-kit/kit/metrics/statsd"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging/httpadmin"
+	"github.com/hyperledger/fabric-lib-go/common/metrics"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/prometheus"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/statsd"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/statsd/goruntime"
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric/common/fabhttp"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/flogging/httpadmin"
 	"github.com/hyperledger/fabric/common/metadata"
-	"github.com/hyperledger/fabric/common/metrics"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/common/metrics/prometheus"
-	"github.com/hyperledger/fabric/common/metrics/statsd"
-	"github.com/hyperledger/fabric/common/metrics/statsd/goruntime"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 

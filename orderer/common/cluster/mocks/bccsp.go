@@ -5,7 +5,7 @@ import (
 	"hash"
 	"sync"
 
-	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
 )
 
 type BCCSP struct {

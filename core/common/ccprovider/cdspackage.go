@@ -23,8 +23,8 @@ import (
 	"os"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp"
 )
 
 // ----- CDSData ------

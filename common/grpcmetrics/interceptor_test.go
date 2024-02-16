@@ -12,10 +12,10 @@ import (
 	"io"
 	"net"
 
+	"github.com/hyperledger/fabric-lib-go/common/metrics/metricsfakes"
 	"github.com/hyperledger/fabric/common/grpcmetrics"
 	"github.com/hyperledger/fabric/common/grpcmetrics/fakes"
 	"github.com/hyperledger/fabric/common/grpcmetrics/testpb"
-	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"google.golang.org/grpc"

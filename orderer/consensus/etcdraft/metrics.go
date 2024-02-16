@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package etcdraft
 
-import "github.com/hyperledger/fabric/common/metrics"
+import "github.com/hyperledger/fabric-lib-go/common/metrics"
 
 var (
 	clusterSizeOpts = metrics.GaugeOpts{

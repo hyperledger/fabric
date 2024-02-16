@@ -14,7 +14,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric/common/grpclogging"
 	"github.com/hyperledger/fabric/common/grpclogging/fakes"
 	"github.com/hyperledger/fabric/common/grpclogging/testpb"

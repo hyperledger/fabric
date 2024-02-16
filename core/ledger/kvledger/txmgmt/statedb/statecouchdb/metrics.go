@@ -9,7 +9,7 @@ package statecouchdb
 import (
 	"time"
 
-	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric-lib-go/common/metrics"
 )
 
 var apiProcessingTimeOpts = metrics.HistogramOpts{

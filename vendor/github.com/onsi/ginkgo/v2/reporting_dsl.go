@@ -35,7 +35,7 @@ func CurrentSpecReport() SpecReport {
 }
 
 /*
- ReportEntryVisibility governs the visibility of ReportEntries in Ginkgo's console reporter
+	ReportEntryVisibility governs the visibility of ReportEntries in Ginkgo's console reporter
 
 - ReportEntryVisibilityAlways: the default behavior - the ReportEntry is always emitted.
 - ReportEntryVisibilityFailureOrVerbose: the ReportEntry is only emitted if the spec fails or if the tests are run with -v (similar to GinkgoWriters behavior).
@@ -50,9 +50,9 @@ const ReportEntryVisibilityAlways, ReportEntryVisibilityFailureOrVerbose, Report
 /*
 AddReportEntry generates and adds a new ReportEntry to the current spec's SpecReport.
 It can take any of the following arguments:
-   - A single arbitrary object to attach as the Value of the ReportEntry.  This object will be included in any generated reports and will be emitted to the console when the report is emitted.
-   - A ReportEntryVisibility enum to control the visibility of the ReportEntry
-   - An Offset or CodeLocation decoration to control the reported location of the ReportEntry
+  - A single arbitrary object to attach as the Value of the ReportEntry.  This object will be included in any generated reports and will be emitted to the console when the report is emitted.
+  - A ReportEntryVisibility enum to control the visibility of the ReportEntry
+  - An Offset or CodeLocation decoration to control the reported location of the ReportEntry
 
 If the Value object implements `fmt.Stringer`, it's `String()` representation is used when emitting to the console.
 
@@ -79,8 +79,11 @@ receives a SpecReport.  They are called before the spec starts.
 You cannot nest any other Ginkgo nodes within a ReportBeforeEach node's closure.
 You can learn more about ReportBeforeEach here: https://onsi.github.io/ginkgo/#generating-reports-programmatically
 */
-func ReportBeforeEach(body func(SpecReport)) bool {
-	return pushNode(internal.NewReportBeforeEachNode(body, types.NewCodeLocation(1)))
+func ReportBeforeEach(body func(SpecReport), args ...interface{}) bool {
+	combinedArgs := []interface{}{body}
+	combinedArgs = append(combinedArgs, args...)
+
+	return pushNode(internal.NewNode(deprecationTracker, types.NodeTypeReportBeforeEach, "", combinedArgs...))
 }
 
 /*
@@ -90,8 +93,30 @@ receives a SpecReport.  They are called after the spec has completed and receive
 You cannot nest any other Ginkgo nodes within a ReportAfterEach node's closure.
 You can learn more about ReportAfterEach here: https://onsi.github.io/ginkgo/#generating-reports-programmatically
 */
-func ReportAfterEach(body func(SpecReport)) bool {
-	return pushNode(internal.NewReportAfterEachNode(body, types.NewCodeLocation(1)))
+func ReportAfterEach(body func(SpecReport), args ...interface{}) bool {
+	combinedArgs := []interface{}{body}
+	combinedArgs = append(combinedArgs, args...)
+
+	return pushNode(internal.NewNode(deprecationTracker, types.NodeTypeReportAfterEach, "", combinedArgs...))
+}
+
+/*
+ReportBeforeSuite nodes are run at the beginning of the suite.  ReportBeforeSuite nodes take a function that receives a suite Report.
+
+They are called at the beginning of the suite, before any specs have run and any BeforeSuite or SynchronizedBeforeSuite nodes, and are passed in the initial report for the suite.
+ReportBeforeSuite nodes must be created at the top-level (i.e. not nested in a Context/Describe/When node)
+
+# When running in parallel, Ginkgo ensures that only one of the parallel nodes runs the ReportBeforeSuite
+
+You cannot nest any other Ginkgo nodes within a ReportAfterSuite node's closure.
+You can learn more about ReportAfterSuite here: https://onsi.github.io/ginkgo/#generating-reports-programmatically
+
+You can learn more about Ginkgo's reporting infrastructure, including generating reports with the CLI here: https://onsi.github.io/ginkgo/#generating-machine-readable-reports
+*/
+func ReportBeforeSuite(body func(Report), args ...interface{}) bool {
+	combinedArgs := []interface{}{body}
+	combinedArgs = append(combinedArgs, args...)
+	return pushNode(internal.NewNode(deprecationTracker, types.NodeTypeReportBeforeSuite, "", combinedArgs...))
 }
 
 /*
@@ -107,10 +132,13 @@ In addition to using ReportAfterSuite to programmatically generate suite reports
 
 You cannot nest any other Ginkgo nodes within a ReportAfterSuite node's closure.
 You can learn more about ReportAfterSuite here: https://onsi.github.io/ginkgo/#generating-reports-programmatically
+
 You can learn more about Ginkgo's reporting infrastructure, including generating reports with the CLI here: https://onsi.github.io/ginkgo/#generating-machine-readable-reports
 */
-func ReportAfterSuite(text string, body func(Report)) bool {
-	return pushNode(internal.NewReportAfterSuiteNode(text, body, types.NewCodeLocation(1)))
+func ReportAfterSuite(text string, body func(Report), args ...interface{}) bool {
+	combinedArgs := []interface{}{body}
+	combinedArgs = append(combinedArgs, args...)
+	return pushNode(internal.NewNode(deprecationTracker, types.NodeTypeReportAfterSuite, text, combinedArgs...))
 }
 
 func registerReportAfterSuiteNodeForAutogeneratedReports(reporterConfig types.ReporterConfig) {
@@ -145,7 +173,8 @@ func registerReportAfterSuiteNodeForAutogeneratedReports(reporterConfig types.Re
 	if reporterConfig.TeamcityReport != "" {
 		flags = append(flags, "--teamcity-report")
 	}
-	pushNode(internal.NewReportAfterSuiteNode(
+	pushNode(internal.NewNode(
+		deprecationTracker, types.NodeTypeReportAfterSuite,
 		fmt.Sprintf("Autogenerated ReportAfterSuite for %s", strings.Join(flags, " ")),
 		body,
 		types.NewCustomCodeLocation("autogenerated by Ginkgo"),

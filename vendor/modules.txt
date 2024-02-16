@@ -149,8 +149,8 @@ github.com/dustin/go-humanize
 # github.com/felixge/httpsnoop v1.0.1
 ## explicit; go 1.13
 github.com/felixge/httpsnoop
-# github.com/fsnotify/fsnotify v1.4.9
-## explicit; go 1.13
+# github.com/fsnotify/fsnotify v1.7.0
+## explicit; go 1.17
 github.com/fsnotify/fsnotify
 # github.com/fsouza/go-dockerclient v1.10.0
 ## explicit; go 1.20
@@ -167,6 +167,13 @@ github.com/go-kit/kit/util/conn
 # github.com/go-logfmt/logfmt v0.5.1
 ## explicit; go 1.17
 github.com/go-logfmt/logfmt
+# github.com/go-logr/logr v1.4.1
+## explicit; go 1.18
+github.com/go-logr/logr
+github.com/go-logr/logr/funcr
+# github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572
+## explicit; go 1.13
+github.com/go-task/slim-sprig
 # github.com/gogo/protobuf v1.3.2
 ## explicit; go 1.15
 github.com/gogo/protobuf/gogoproto
@@ -184,6 +191,16 @@ github.com/golang/protobuf/ptypes/timestamp
 # github.com/golang/snappy v0.0.4
 ## explicit
 github.com/golang/snappy
+# github.com/google/go-cmp v0.6.0
+## explicit; go 1.13
+github.com/google/go-cmp/cmp
+github.com/google/go-cmp/cmp/internal/diff
+github.com/google/go-cmp/cmp/internal/flags
+github.com/google/go-cmp/cmp/internal/function
+github.com/google/go-cmp/cmp/internal/value
+# github.com/google/pprof v0.0.0-20240130152714-0ed6a68c8d9e
+## explicit; go 1.19
+github.com/google/pprof/profile
 # github.com/gorilla/handlers v1.5.1
 ## explicit; go 1.14
 github.com/gorilla/handlers
@@ -230,8 +247,27 @@ github.com/hyperledger/fabric-config/protolator/protoext/ledger/rwsetext
 github.com/hyperledger/fabric-config/protolator/protoext/mspext
 github.com/hyperledger/fabric-config/protolator/protoext/ordererext
 github.com/hyperledger/fabric-config/protolator/protoext/peerext
-# github.com/hyperledger/fabric-lib-go v1.0.0
-## explicit
+# github.com/hyperledger/fabric-lib-go v1.0.1-0.20240216124656-9f79bd087182
+## explicit; go 1.20
+github.com/hyperledger/fabric-lib-go/bccsp
+github.com/hyperledger/fabric-lib-go/bccsp/factory
+github.com/hyperledger/fabric-lib-go/bccsp/pkcs11
+github.com/hyperledger/fabric-lib-go/bccsp/signer
+github.com/hyperledger/fabric-lib-go/bccsp/sw
+github.com/hyperledger/fabric-lib-go/bccsp/utils
+github.com/hyperledger/fabric-lib-go/common/flogging
+github.com/hyperledger/fabric-lib-go/common/flogging/fabenc
+github.com/hyperledger/fabric-lib-go/common/flogging/floggingtest
+github.com/hyperledger/fabric-lib-go/common/flogging/httpadmin
+github.com/hyperledger/fabric-lib-go/common/flogging/metrics
+github.com/hyperledger/fabric-lib-go/common/flogging/mock
+github.com/hyperledger/fabric-lib-go/common/metrics
+github.com/hyperledger/fabric-lib-go/common/metrics/disabled
+github.com/hyperledger/fabric-lib-go/common/metrics/metricsfakes
+github.com/hyperledger/fabric-lib-go/common/metrics/namer
+github.com/hyperledger/fabric-lib-go/common/metrics/prometheus
+github.com/hyperledger/fabric-lib-go/common/metrics/statsd
+github.com/hyperledger/fabric-lib-go/common/metrics/statsd/goruntime
 github.com/hyperledger/fabric-lib-go/healthz
 # github.com/hyperledger/fabric-protos-go v0.3.2
 ## explicit; go 1.17
@@ -270,8 +306,8 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/magiconair/properties v1.8.1
-## explicit
+# github.com/magiconair/properties v1.8.7
+## explicit; go 1.19
 github.com/magiconair/properties
 # github.com/mattn/go-runewidth v0.0.4
 ## explicit
@@ -282,7 +318,7 @@ github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/miekg/pkcs11 v1.1.1
 ## explicit; go 1.12
 github.com/miekg/pkcs11
-# github.com/mitchellh/mapstructure v1.4.3
+# github.com/mitchellh/mapstructure v1.5.0
 ## explicit; go 1.14
 github.com/mitchellh/mapstructure
 # github.com/mmcloughlin/addchain v0.4.0
@@ -322,11 +358,21 @@ github.com/moby/term/windows
 # github.com/morikuni/aec v1.0.0
 ## explicit
 github.com/morikuni/aec
-# github.com/onsi/ginkgo/v2 v2.1.3
-## explicit; go 1.16
+# github.com/onsi/ginkgo/v2 v2.13.2
+## explicit; go 1.18
 github.com/onsi/ginkgo/v2
 github.com/onsi/ginkgo/v2/config
 github.com/onsi/ginkgo/v2/formatter
+github.com/onsi/ginkgo/v2/ginkgo
+github.com/onsi/ginkgo/v2/ginkgo/build
+github.com/onsi/ginkgo/v2/ginkgo/command
+github.com/onsi/ginkgo/v2/ginkgo/generators
+github.com/onsi/ginkgo/v2/ginkgo/internal
+github.com/onsi/ginkgo/v2/ginkgo/labels
+github.com/onsi/ginkgo/v2/ginkgo/outline
+github.com/onsi/ginkgo/v2/ginkgo/run
+github.com/onsi/ginkgo/v2/ginkgo/unfocus
+github.com/onsi/ginkgo/v2/ginkgo/watch
 github.com/onsi/ginkgo/v2/internal
 github.com/onsi/ginkgo/v2/internal/global
 github.com/onsi/ginkgo/v2/internal/interrupt_handler
@@ -334,8 +380,8 @@ github.com/onsi/ginkgo/v2/internal/parallel_support
 github.com/onsi/ginkgo/v2/internal/testingtproxy
 github.com/onsi/ginkgo/v2/reporters
 github.com/onsi/ginkgo/v2/types
-# github.com/onsi/gomega v1.19.0
-## explicit; go 1.18
+# github.com/onsi/gomega v1.31.0
+## explicit; go 1.20
 github.com/onsi/gomega
 github.com/onsi/gomega/format
 github.com/onsi/gomega/gbytes
@@ -393,12 +439,13 @@ github.com/rogpeppe/go-internal/fmtsort
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
-# github.com/spf13/afero v1.3.1
-## explicit; go 1.13
+# github.com/spf13/afero v1.11.0
+## explicit; go 1.19
 github.com/spf13/afero
+github.com/spf13/afero/internal/common
 github.com/spf13/afero/mem
-# github.com/spf13/cast v1.3.1
-## explicit
+# github.com/spf13/cast v1.6.0
+## explicit; go 1.19
 github.com/spf13/cast
 # github.com/spf13/cobra v1.5.0
 ## explicit; go 1.15
@@ -420,8 +467,8 @@ github.com/stretchr/objx
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/mock
 github.com/stretchr/testify/require
-# github.com/subosito/gotenv v1.2.0
-## explicit
+# github.com/subosito/gotenv v1.6.0
+## explicit; go 1.18
 github.com/subosito/gotenv
 # github.com/sykesm/zap-logfmt v0.0.4
 ## explicit; go 1.13
@@ -492,6 +539,7 @@ golang.org/x/crypto/sha3
 golang.org/x/mod/semver
 # golang.org/x/net v0.20.0
 ## explicit; go 1.18
+golang.org/x/net/context
 golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/html/charset
@@ -504,7 +552,7 @@ golang.org/x/net/trace
 # golang.org/x/sync v0.6.0
 ## explicit; go 1.18
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.16.0
+# golang.org/x/sys v0.17.0
 ## explicit; go 1.18
 golang.org/x/sys/cpu
 golang.org/x/sys/unix
@@ -534,6 +582,7 @@ golang.org/x/text/unicode/norm
 # golang.org/x/tools v0.17.0
 ## explicit; go 1.18
 golang.org/x/tools/cmd/stringer
+golang.org/x/tools/go/ast/inspector
 golang.org/x/tools/go/gcexportdata
 golang.org/x/tools/go/internal/packagesdriver
 golang.org/x/tools/go/packages
@@ -551,7 +600,7 @@ golang.org/x/tools/internal/tokeninternal
 golang.org/x/tools/internal/typeparams
 golang.org/x/tools/internal/typesinternal
 golang.org/x/tools/internal/versions
-# google.golang.org/genproto/googleapis/rpc v0.0.0-20231106174013-bbf56f31fb17
+# google.golang.org/genproto/googleapis/rpc v0.0.0-20231120223509-83a465c0220f
 ## explicit; go 1.19
 google.golang.org/genproto/googleapis/rpc/status
 # google.golang.org/grpc v1.61.0
@@ -647,7 +696,7 @@ google.golang.org/protobuf/types/known/timestamppb
 # gopkg.in/alecthomas/kingpin.v2 v2.2.6
 ## explicit
 gopkg.in/alecthomas/kingpin.v2
-# gopkg.in/ini.v1 v1.51.0
+# gopkg.in/ini.v1 v1.67.0
 ## explicit
 gopkg.in/ini.v1
 # gopkg.in/yaml.v2 v2.4.0

@@ -9,7 +9,7 @@ package kvledger
 import (
 	"time"
 
-	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric-lib-go/common/metrics"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validation"
 )
 

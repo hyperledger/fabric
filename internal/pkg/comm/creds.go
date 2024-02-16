@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"google.golang.org/grpc/credentials"
 )
 

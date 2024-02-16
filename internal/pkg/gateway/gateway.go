@@ -8,9 +8,9 @@ package gateway
 import (
 	"context"
 
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	peerproto "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc"
 	gdiscovery "github.com/hyperledger/fabric/gossip/discovery"

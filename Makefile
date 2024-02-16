@@ -187,12 +187,12 @@ check-deps:
 	./scripts/check_deps.sh
 
 .PHONY: check-metrics-docs
-check-metrics-doc:
+check-metrics-doc: gotool.gendoc
 	@echo "METRICS: Checking for outdated reference documentation.."
 	./scripts/metrics_doc.sh check
 
 .PHONY: generate-metrics-docs
-generate-metrics-doc:
+generate-metrics-doc: gotool.gendoc
 	@echo "Generating metrics reference documentation..."
 	./scripts/metrics_doc.sh generate
 
