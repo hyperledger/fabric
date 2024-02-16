@@ -8,7 +8,7 @@ require (
 	github.com/client9/misspell v0.3.4
 	github.com/go-swagger/go-swagger v0.25.0
 	github.com/golang/protobuf v1.5.3
-	github.com/hyperledger/fabric-lib-go v1.0.1-0.20240216124656-9f79bd087182
+	github.com/hyperledger/fabric-lib-go v1.1.0
 	github.com/maxbrunsfeld/counterfeiter/v6 v6.2.2
 	github.com/onsi/ginkgo/v2 v2.13.2
 	github.com/vektra/mockery v0.0.0-20181123154057-e78b021dcbb5
