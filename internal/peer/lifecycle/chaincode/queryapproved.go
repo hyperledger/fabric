@@ -46,8 +46,8 @@ type ApprovedQueryInput struct {
 func QueryApprovedCmd(a *ApprovedQuerier, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	chaincodeQueryApprovedCmd := &cobra.Command{
 		Use:   "queryapproved",
-		Short: "Query an org's approved chaincode definition from its peer.",
-		Long:  "Query an organization's approved chaincode definition from its peer.",
+		Short: "Query org's approved chaincode definitions from its peer.",
+		Long:  "Query organization's approved chaincode definitions from its peer.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if a == nil {
 				ccInput := &ClientConnectionsInput{
@@ -203,6 +203,9 @@ func (a *ApprovedQuerier) printSingleApprovedChaincodeDefinition(acd ApprovedCha
 func (a *ApprovedQuerier) validateInput() error {
 	if a.Input.ChannelID == "" {
 		return errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
+	}
+	if a.Input.Name == "" && a.Input.Sequence != 0 {
+		return errors.New("Specifying parameter 'sequence' is invalid without parameter 'name'. Rerun the command with -n flag")
 	}
 
 	return nil

@@ -312,6 +312,18 @@ var _ = Describe("QueryApproved", func() {
 			})
 		})
 
+		Context("when the sequence is specified without name", func() {
+			BeforeEach(func() {
+				approvedQuerier.Input.ChannelID = "test-channel"
+				approvedQuerier.Input.Sequence = 7
+			})
+
+			It("returns an error", func() {
+				err := approvedQuerier.Query()
+				Expect(err).To(MatchError("Specifying parameter 'sequence' is invalid without parameter 'name'. Rerun the command with -n flag"))
+			})
+		})
+
 		Context("when the signer cannot be serialized", func() {
 			BeforeEach(func() {
 				mockSigner.SerializeReturns(nil, errors.New("bad serialization"))
