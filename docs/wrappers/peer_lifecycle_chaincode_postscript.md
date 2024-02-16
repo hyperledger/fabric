@@ -176,7 +176,7 @@ channel `mychannel`.
 
 ### peer lifecycle chaincode queryapproved example
 
-You can query an organization's approved chaincode definition by using the `peer lifecycle chaincode queryapproved` command.
+You can query organization's approved chaincode definitions by using the `peer lifecycle chaincode queryapproved` command.
 You can use this command to see the details (including package ID) of approved chaincode definitions.
 
   * Here is an example of the `peer lifecycle chaincode queryapproved` command,
