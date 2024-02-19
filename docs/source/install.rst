@@ -47,12 +47,12 @@ the binaries and images.
 
 .. note:: If you want a specific release, pass a version identifier for Fabric and Fabric-CA docker images.
           The command below demonstrates how to download the latest production releases -
-          **Fabric v2.2.14** and **Fabric CA v1.5.7**
+          **Fabric v2.2.15** and **Fabric CA v1.5.9**
 
 .. code:: bash
 
   curl -sSL https://bit.ly/2ysbOFE | bash -s -- <fabric_version> <fabric-ca_version>
-  curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.2.14 1.5.7
+  curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.2.15 1.5.9
 
 .. note:: If you get an error running the above curl command, you may
           have too old a version of curl that does not handle
