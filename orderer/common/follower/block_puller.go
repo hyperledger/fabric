@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package follower
 
 import (
+	"crypto/x509"
 	"encoding/pem"
 
 	"github.com/hyperledger/fabric/common/deliverclient"
@@ -26,7 +27,7 @@ import (
 // ChannelPuller pulls blocks for a channel
 type ChannelPuller interface {
 	PullBlock(seq uint64) *common.Block
-	HeightsByEndpoints() (map[string]uint64, error)
+	HeightsByEndpoints() (map[string]uint64, string, error)
 	UpdateEndpoints(endpoints []cluster.EndpointCriteria)
 	Close()
 }
@@ -100,11 +101,19 @@ func (creator *BlockPullerCreator) BlockPuller(configBlock *common.Block, stopCh
 		return nil, errors.WithMessage(err, "error extracting endpoints from config block")
 	}
 
+	logger := flogging.MustGetLogger("orderer.common.cluster.puller").With("channel", creator.channelID)
+
 	creator.JoinBlock = configBlock
 
+	myCert, err := x509.ParseCertificate(creator.der.Bytes)
+	if err != nil {
+		logger.Warnf("Failed parsing my own TLS certificate: %v, therefore we may connect to our own endpoint when pulling blocks", err)
+	}
+
 	bp := &cluster.BlockPuller{
+		MyOwnTLSCert:        myCert,
 		VerifyBlockSequence: creator.VerifyBlockSequence,
-		Logger:              flogging.MustGetLogger("orderer.common.cluster.puller").With("channel", creator.channelID),
+		Logger:              logger,
 		RetryTimeout:        creator.clusterConfig.ReplicationRetryTimeout,
 		MaxTotalBufferBytes: creator.clusterConfig.ReplicationBufferSize,
 		MaxPullBlockRetries: uint64(creator.clusterConfig.ReplicationMaxRetries),

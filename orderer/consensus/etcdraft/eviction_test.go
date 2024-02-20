@@ -134,7 +134,7 @@ func TestEvictionSuspector(t *testing.T) {
 
 	puller := &mocks.ChainPuller{}
 	puller.On("Close")
-	puller.On("HeightsByEndpoints").Return(map[string]uint64{"foo": 10}, nil)
+	puller.On("HeightsByEndpoints").Return(map[string]uint64{"foo": 10}, "", nil)
 	puller.On("PullBlock", uint64(9)).Return(configBlock)
 
 	for _, testCase := range []struct {

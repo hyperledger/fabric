@@ -10,21 +10,21 @@ import (
 )
 
 type ChannelPuller struct {
-	CloseStub        func()
-	closeMutex       sync.RWMutex
-	closeArgsForCall []struct {
-	}
-	HeightsByEndpointsStub        func() (map[string]uint64, error)
+	CloseStub                     func()
+	closeMutex                    sync.RWMutex
+	closeArgsForCall              []struct{}
+	HeightsByEndpointsStub        func() (map[string]uint64, string, error)
 	heightsByEndpointsMutex       sync.RWMutex
-	heightsByEndpointsArgsForCall []struct {
-	}
-	heightsByEndpointsReturns struct {
+	heightsByEndpointsArgsForCall []struct{}
+	heightsByEndpointsReturns     struct {
 		result1 map[string]uint64
-		result2 error
+		result2 string
+		result3 error
 	}
 	heightsByEndpointsReturnsOnCall map[int]struct {
 		result1 map[string]uint64
-		result2 error
+		result2 string
+		result3 error
 	}
 	PullBlockStub        func(uint64) *common.Block
 	pullBlockMutex       sync.RWMutex
@@ -48,12 +48,10 @@ type ChannelPuller struct {
 
 func (fake *ChannelPuller) Close() {
 	fake.closeMutex.Lock()
-	fake.closeArgsForCall = append(fake.closeArgsForCall, struct {
-	}{})
-	stub := fake.CloseStub
+	fake.closeArgsForCall = append(fake.closeArgsForCall, struct{}{})
 	fake.recordInvocation("Close", []interface{}{})
 	fake.closeMutex.Unlock()
-	if stub != nil {
+	if fake.CloseStub != nil {
 		fake.CloseStub()
 	}
 }
@@ -70,22 +68,20 @@ func (fake *ChannelPuller) CloseCalls(stub func()) {
 	fake.CloseStub = stub
 }
 
-func (fake *ChannelPuller) HeightsByEndpoints() (map[string]uint64, error) {
+func (fake *ChannelPuller) HeightsByEndpoints() (map[string]uint64, string, error) {
 	fake.heightsByEndpointsMutex.Lock()
 	ret, specificReturn := fake.heightsByEndpointsReturnsOnCall[len(fake.heightsByEndpointsArgsForCall)]
-	fake.heightsByEndpointsArgsForCall = append(fake.heightsByEndpointsArgsForCall, struct {
-	}{})
-	stub := fake.HeightsByEndpointsStub
-	fakeReturns := fake.heightsByEndpointsReturns
+	fake.heightsByEndpointsArgsForCall = append(fake.heightsByEndpointsArgsForCall, struct{}{})
 	fake.recordInvocation("HeightsByEndpoints", []interface{}{})
 	fake.heightsByEndpointsMutex.Unlock()
-	if stub != nil {
-		return stub()
+	if fake.HeightsByEndpointsStub != nil {
+		return fake.HeightsByEndpointsStub()
 	}
 	if specificReturn {
-		return ret.result1, ret.result2
+		return ret.result1, ret.result2, ret.result3
 	}
-	return fakeReturns.result1, fakeReturns.result2
+	fakeReturns := fake.heightsByEndpointsReturns
+	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
 }
 
 func (fake *ChannelPuller) HeightsByEndpointsCallCount() int {
@@ -94,36 +90,39 @@ func (fake *ChannelPuller) HeightsByEndpointsCallCount() int {
 	return len(fake.heightsByEndpointsArgsForCall)
 }
 
-func (fake *ChannelPuller) HeightsByEndpointsCalls(stub func() (map[string]uint64, error)) {
+func (fake *ChannelPuller) HeightsByEndpointsCalls(stub func() (map[string]uint64, string, error)) {
 	fake.heightsByEndpointsMutex.Lock()
 	defer fake.heightsByEndpointsMutex.Unlock()
 	fake.HeightsByEndpointsStub = stub
 }
 
-func (fake *ChannelPuller) HeightsByEndpointsReturns(result1 map[string]uint64, result2 error) {
+func (fake *ChannelPuller) HeightsByEndpointsReturns(result1 map[string]uint64, result2 string, result3 error) {
 	fake.heightsByEndpointsMutex.Lock()
 	defer fake.heightsByEndpointsMutex.Unlock()
 	fake.HeightsByEndpointsStub = nil
 	fake.heightsByEndpointsReturns = struct {
 		result1 map[string]uint64
-		result2 error
-	}{result1, result2}
+		result2 string
+		result3 error
+	}{result1, result2, result3}
 }
 
-func (fake *ChannelPuller) HeightsByEndpointsReturnsOnCall(i int, result1 map[string]uint64, result2 error) {
+func (fake *ChannelPuller) HeightsByEndpointsReturnsOnCall(i int, result1 map[string]uint64, result2 string, result3 error) {
 	fake.heightsByEndpointsMutex.Lock()
 	defer fake.heightsByEndpointsMutex.Unlock()
 	fake.HeightsByEndpointsStub = nil
 	if fake.heightsByEndpointsReturnsOnCall == nil {
 		fake.heightsByEndpointsReturnsOnCall = make(map[int]struct {
 			result1 map[string]uint64
-			result2 error
+			result2 string
+			result3 error
 		})
 	}
 	fake.heightsByEndpointsReturnsOnCall[i] = struct {
 		result1 map[string]uint64
-		result2 error
-	}{result1, result2}
+		result2 string
+		result3 error
+	}{result1, result2, result3}
 }
 
 func (fake *ChannelPuller) PullBlock(arg1 uint64) *common.Block {
@@ -132,16 +131,15 @@ func (fake *ChannelPuller) PullBlock(arg1 uint64) *common.Block {
 	fake.pullBlockArgsForCall = append(fake.pullBlockArgsForCall, struct {
 		arg1 uint64
 	}{arg1})
-	stub := fake.PullBlockStub
-	fakeReturns := fake.pullBlockReturns
 	fake.recordInvocation("PullBlock", []interface{}{arg1})
 	fake.pullBlockMutex.Unlock()
-	if stub != nil {
-		return stub(arg1)
+	if fake.PullBlockStub != nil {
+		return fake.PullBlockStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
+	fakeReturns := fake.pullBlockReturns
 	return fakeReturns.result1
 }
 
@@ -197,10 +195,9 @@ func (fake *ChannelPuller) UpdateEndpoints(arg1 []cluster.EndpointCriteria) {
 	fake.updateEndpointsArgsForCall = append(fake.updateEndpointsArgsForCall, struct {
 		arg1 []cluster.EndpointCriteria
 	}{arg1Copy})
-	stub := fake.UpdateEndpointsStub
 	fake.recordInvocation("UpdateEndpoints", []interface{}{arg1Copy})
 	fake.updateEndpointsMutex.Unlock()
-	if stub != nil {
+	if fake.UpdateEndpointsStub != nil {
 		fake.UpdateEndpointsStub(arg1)
 	}
 }

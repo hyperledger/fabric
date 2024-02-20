@@ -3737,18 +3737,18 @@ func (n *network) addChain(c *chain) {
 		return block
 	}
 
-	c.puller.HeightsByEndpointsStub = func() (map[string]uint64, error) {
+	c.puller.HeightsByEndpointsStub = func() (map[string]uint64, string, error) {
 		n.RLock()
 		leader := n.chains[n.leader]
 		n.RUnlock()
 
 		if leader == nil {
-			return nil, errors.Errorf("ledger not available")
+			return nil, "", errors.Errorf("ledger not available")
 		}
 
 		leader.ledgerLock.RLock()
 		defer leader.ledgerLock.RUnlock()
-		return map[string]uint64{"leader": leader.ledgerHeight}, nil
+		return map[string]uint64{"leader": leader.ledgerHeight}, "", nil
 	}
 
 	c.configurator.ConfigureCalls(func(channel string, nodes []cluster.RemoteNode) {

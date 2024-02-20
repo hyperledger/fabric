@@ -9,21 +9,21 @@ import (
 )
 
 type FakeBlockPuller struct {
-	CloseStub        func()
-	closeMutex       sync.RWMutex
-	closeArgsForCall []struct {
-	}
-	HeightsByEndpointsStub        func() (map[string]uint64, error)
+	CloseStub                     func()
+	closeMutex                    sync.RWMutex
+	closeArgsForCall              []struct{}
+	HeightsByEndpointsStub        func() (map[string]uint64, string, error)
 	heightsByEndpointsMutex       sync.RWMutex
-	heightsByEndpointsArgsForCall []struct {
-	}
-	heightsByEndpointsReturns struct {
+	heightsByEndpointsArgsForCall []struct{}
+	heightsByEndpointsReturns     struct {
 		result1 map[string]uint64
-		result2 error
+		result2 string
+		result3 error
 	}
 	heightsByEndpointsReturnsOnCall map[int]struct {
 		result1 map[string]uint64
-		result2 error
+		result2 string
+		result3 error
 	}
 	PullBlockStub        func(uint64) *common.Block
 	pullBlockMutex       sync.RWMutex
@@ -42,8 +42,7 @@ type FakeBlockPuller struct {
 
 func (fake *FakeBlockPuller) Close() {
 	fake.closeMutex.Lock()
-	fake.closeArgsForCall = append(fake.closeArgsForCall, struct {
-	}{})
+	fake.closeArgsForCall = append(fake.closeArgsForCall, struct{}{})
 	fake.recordInvocation("Close", []interface{}{})
 	fake.closeMutex.Unlock()
 	if fake.CloseStub != nil {
@@ -63,21 +62,20 @@ func (fake *FakeBlockPuller) CloseCalls(stub func()) {
 	fake.CloseStub = stub
 }
 
-func (fake *FakeBlockPuller) HeightsByEndpoints() (map[string]uint64, error) {
+func (fake *FakeBlockPuller) HeightsByEndpoints() (map[string]uint64, string, error) {
 	fake.heightsByEndpointsMutex.Lock()
 	ret, specificReturn := fake.heightsByEndpointsReturnsOnCall[len(fake.heightsByEndpointsArgsForCall)]
-	fake.heightsByEndpointsArgsForCall = append(fake.heightsByEndpointsArgsForCall, struct {
-	}{})
+	fake.heightsByEndpointsArgsForCall = append(fake.heightsByEndpointsArgsForCall, struct{}{})
 	fake.recordInvocation("HeightsByEndpoints", []interface{}{})
 	fake.heightsByEndpointsMutex.Unlock()
 	if fake.HeightsByEndpointsStub != nil {
 		return fake.HeightsByEndpointsStub()
 	}
 	if specificReturn {
-		return ret.result1, ret.result2
+		return ret.result1, ret.result2, ret.result3
 	}
 	fakeReturns := fake.heightsByEndpointsReturns
-	return fakeReturns.result1, fakeReturns.result2
+	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
 }
 
 func (fake *FakeBlockPuller) HeightsByEndpointsCallCount() int {
@@ -86,36 +84,39 @@ func (fake *FakeBlockPuller) HeightsByEndpointsCallCount() int {
 	return len(fake.heightsByEndpointsArgsForCall)
 }
 
-func (fake *FakeBlockPuller) HeightsByEndpointsCalls(stub func() (map[string]uint64, error)) {
+func (fake *FakeBlockPuller) HeightsByEndpointsCalls(stub func() (map[string]uint64, string, error)) {
 	fake.heightsByEndpointsMutex.Lock()
 	defer fake.heightsByEndpointsMutex.Unlock()
 	fake.HeightsByEndpointsStub = stub
 }
 
-func (fake *FakeBlockPuller) HeightsByEndpointsReturns(result1 map[string]uint64, result2 error) {
+func (fake *FakeBlockPuller) HeightsByEndpointsReturns(result1 map[string]uint64, result2 string, result3 error) {
 	fake.heightsByEndpointsMutex.Lock()
 	defer fake.heightsByEndpointsMutex.Unlock()
 	fake.HeightsByEndpointsStub = nil
 	fake.heightsByEndpointsReturns = struct {
 		result1 map[string]uint64
-		result2 error
-	}{result1, result2}
+		result2 string
+		result3 error
+	}{result1, result2, result3}
 }
 
-func (fake *FakeBlockPuller) HeightsByEndpointsReturnsOnCall(i int, result1 map[string]uint64, result2 error) {
+func (fake *FakeBlockPuller) HeightsByEndpointsReturnsOnCall(i int, result1 map[string]uint64, result2 string, result3 error) {
 	fake.heightsByEndpointsMutex.Lock()
 	defer fake.heightsByEndpointsMutex.Unlock()
 	fake.HeightsByEndpointsStub = nil
 	if fake.heightsByEndpointsReturnsOnCall == nil {
 		fake.heightsByEndpointsReturnsOnCall = make(map[int]struct {
 			result1 map[string]uint64
-			result2 error
+			result2 string
+			result3 error
 		})
 	}
 	fake.heightsByEndpointsReturnsOnCall[i] = struct {
 		result1 map[string]uint64
-		result2 error
-	}{result1, result2}
+		result2 string
+		result3 error
+	}{result1, result2, result3}
 }
 
 func (fake *FakeBlockPuller) PullBlock(arg1 uint64) *common.Block {
