@@ -19,7 +19,7 @@ func TestCreateConnectionSource(t *testing.T) {
 	require.NotNil(t, factory)
 	require.Nil(t, factory.Overrides)
 	lg := flogging.MustGetLogger("test")
-	connSource := factory.CreateConnectionSource(lg)
+	connSource := factory.CreateConnectionSource(lg, "")
 	require.NotNil(t, connSource)
 
 	overrides := make(map[string]*orderers.Endpoint)
@@ -31,6 +31,6 @@ func TestCreateConnectionSource(t *testing.T) {
 	factory = &orderers.ConnectionSourceFactory{Overrides: overrides}
 	require.NotNil(t, factory)
 	require.Len(t, factory.Overrides, 1)
-	connSource = factory.CreateConnectionSource(lg)
+	connSource = factory.CreateConnectionSource(lg, "")
 	require.NotNil(t, connSource)
 }

@@ -12,11 +12,10 @@ import (
 	"sort"
 	"strings"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 type comparableEndpoint struct {
@@ -83,12 +82,13 @@ var _ = Describe("Connection", func() {
 		org2Certs = [][]byte{cert3}
 		overrideCerts = [][]byte{cert2}
 
-		cs = orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), map[string]*orderers.Endpoint{
-			"override-address": {
-				Address:   "re-mapped-address",
-				RootCerts: overrideCerts,
-			},
-		})
+		cs = orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"),
+			map[string]*orderers.Endpoint{
+				"override-address": {
+					Address:   "re-mapped-address",
+					RootCerts: overrideCerts,
+				},
+			}, "") // << no self endpoint
 		cs.Update(nil, map[string]orderers.OrdererOrg{
 			"org1": org1,
 			"org2": org2,
@@ -565,6 +565,72 @@ var _ = Describe("Connection", func() {
 					Expect(endpoint.Refreshed).To(BeClosed())
 				}
 			})
+		})
+	})
+
+	When("self-endpoint exists as in the orderer", func() {
+		BeforeEach(func() {
+			cs = orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"),
+				map[string]*orderers.Endpoint{
+					"override-address": {
+						Address:   "re-mapped-address",
+						RootCerts: overrideCerts,
+					},
+				},
+				"org1-address1")
+			cs.Update(nil, map[string]orderers.OrdererOrg{
+				"org1": org1,
+				"org2": org2,
+			})
+
+			endpoints = cs.Endpoints()
+		})
+
+		It("does not include the self-endpoint in endpoints", func() {
+			Expect(len(endpoints)).To(Equal(3))
+			Expect(stripEndpoints(endpoints)).To(ConsistOf(
+				stripEndpoints([]*orderers.Endpoint{
+					{
+						Address:   "org1-address2",
+						RootCerts: org1Certs,
+					},
+					{
+						Address:   "org2-address1",
+						RootCerts: org2Certs,
+					},
+					{
+						Address:   "org2-address2",
+						RootCerts: org2Certs,
+					},
+				}),
+			))
+		})
+
+		It("does not include the self endpoint in shuffled endpoints", func() {
+			shuffledEndpoints := cs.ShuffledEndpoints()
+			Expect(len(shuffledEndpoints)).To(Equal(3))
+			Expect(stripEndpoints(endpoints)).To(ConsistOf(
+				stripEndpoints([]*orderers.Endpoint{
+					{
+						Address:   "org1-address2",
+						RootCerts: org1Certs,
+					},
+					{
+						Address:   "org2-address1",
+						RootCerts: org2Certs,
+					},
+					{
+						Address:   "org2-address2",
+						RootCerts: org2Certs,
+					},
+				}),
+			))
+		})
+
+		It("does not mark any of the endpoints as refreshed", func() {
+			for _, endpoint := range endpoints {
+				Expect(endpoint.Refreshed).NotTo(BeClosed())
+			}
 		})
 	})
 })

@@ -228,7 +228,7 @@ func (s *bftDelivererTestSetup) initialize(t *testing.T) {
 		MaxRetryDuration:                600 * time.Second,
 		MaxRetryDurationExceededHandler: s.fakeDurationExceededHandler.DurationExceededHandler,
 	}
-	s.d.Initialize(s.channelConfig)
+	s.d.Initialize(s.channelConfig, "")
 
 	s.fakeSleeper = &fake.Sleeper{}
 

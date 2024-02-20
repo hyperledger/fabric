@@ -209,8 +209,8 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 		config,
 		path.Join(c.WALBaseDir, support.ChannelID()),
 		puller,
-		c.ClusterDialer,        //TODO BFT-sync
-		c.Conf.General.Cluster, //TODO BFT-sync
+		c.ClusterDialer,        // TODO BFT-sync
+		c.Conf.General.Cluster, // TODO BFT-sync
 		c.Comm,
 		c.SignerSerializer,
 		c.GetPolicyManager(support.ChannelID()),

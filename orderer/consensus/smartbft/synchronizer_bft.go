@@ -7,11 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package smartbft
 
 import (
+	"sort"
+	"time"
+
 	"github.com/SmartBFT-Go/consensus/smartbftprotos"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/protoutil"
-	"sort"
-	"time"
 
 	"github.com/SmartBFT-Go/consensus/pkg/types"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
@@ -81,7 +82,7 @@ func (s *BFTSynchronizer) synchronize() (*types.Decision, error) {
 		return nil, errors.Wrap(err, "cannot get create BlockPuller")
 	}
 	defer blockPuller.Close()
-	
+
 	heightByEndpoint, myEndpoint, err := blockPuller.HeightsByEndpoints()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot get HeightsByEndpoints")
@@ -155,7 +156,7 @@ func (s *BFTSynchronizer) synchronize() (*types.Decision, error) {
 	}
 
 	s.Logger.Infof("Created a BFTDeliverer: %+v", bftDeliverer)
-	bftDeliverer.Initialize(lastConfigEnv.GetConfig()) //TODO allow input for self endpoint
+	bftDeliverer.Initialize(lastConfigEnv.GetConfig(), myEndpoint)
 
 	go bftDeliverer.DeliverBlocks()
 	defer bftDeliverer.Stop()

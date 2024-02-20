@@ -24,6 +24,8 @@ type ConnectionSource struct {
 	orgToEndpointsHash map[string][]byte
 	logger             *flogging.FabricLogger
 	overrides          map[string]*Endpoint
+	// empty when used by a peer, or self endpoint address when the ConnectionSource is used by an orderer.
+	selfEndpoint string
 }
 
 type Endpoint struct {
@@ -56,11 +58,12 @@ type OrdererOrg struct {
 	RootCerts [][]byte
 }
 
-func NewConnectionSource(logger *flogging.FabricLogger, overrides map[string]*Endpoint) *ConnectionSource {
+func NewConnectionSource(logger *flogging.FabricLogger, overrides map[string]*Endpoint, selfEndpoint string) *ConnectionSource {
 	return &ConnectionSource{
 		orgToEndpointsHash: map[string][]byte{},
 		logger:             logger,
 		overrides:          overrides,
+		selfEndpoint:       selfEndpoint,
 	}
 }
 
@@ -202,6 +205,10 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 
 		// Note, if !hasOrgEndpoints, this for loop is a no-op
 		for _, address := range org.Addresses {
+			if address == cs.selfEndpoint {
+				cs.logger.Debugf("Skipping self endpoint [%s] from org specific endpoints", address)
+				continue
+			}
 			overrideEndpoint, ok := cs.overrides[address]
 			if ok {
 				cs.allEndpoints = append(cs.allEndpoints, &Endpoint{
@@ -228,6 +235,10 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 	}
 
 	for _, address := range globalAddrs {
+		if address == cs.selfEndpoint {
+			cs.logger.Debugf("Skipping self endpoint [%s] from global endpoints", address)
+			continue
+		}
 		overrideEndpoint, ok := cs.overrides[address]
 		if ok {
 			cs.allEndpoints = append(cs.allEndpoints, &Endpoint{
@@ -245,5 +256,5 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 		})
 	}
 
-	cs.logger.Debugf("Returning an orderer connection pool source with global endpoints only")
+	cs.logger.Debug("Returning an orderer connection pool source with global endpoints only")
 }

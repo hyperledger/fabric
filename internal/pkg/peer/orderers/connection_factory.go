@@ -17,13 +17,13 @@ type ConnectionSourcer interface {
 }
 
 type ConnectionSourceCreator interface {
-	CreateConnectionSource(logger *flogging.FabricLogger) ConnectionSourcer
+	CreateConnectionSource(logger *flogging.FabricLogger, selfEndpoint string) ConnectionSourcer
 }
 
 type ConnectionSourceFactory struct {
 	Overrides map[string]*Endpoint
 }
 
-func (f *ConnectionSourceFactory) CreateConnectionSource(logger *flogging.FabricLogger) ConnectionSourcer {
-	return NewConnectionSource(logger, f.Overrides)
+func (f *ConnectionSourceFactory) CreateConnectionSource(logger *flogging.FabricLogger, selfEndpoint string) ConnectionSourcer {
+	return NewConnectionSource(logger, f.Overrides, selfEndpoint)
 }

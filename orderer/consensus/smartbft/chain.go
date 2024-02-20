@@ -95,7 +95,23 @@ type BFTChain struct {
 }
 
 // NewChain creates new BFT Smart chain
-func NewChain(cv ConfigValidator, selfID uint64, config types.Configuration, walDir string, blockPuller BlockPuller, clusterDialer *cluster.PredicateDialer, localConfigCluster localconfig.Cluster, comm cluster.Communicator, signerSerializer signerSerializer, policyManager policies.Manager, support consensus.ConsenterSupport, metrics *Metrics, metricsBFT *api.Metrics, metricsWalBFT *wal.Metrics, bccsp bccsp.BCCSP) (*BFTChain, error) {
+func NewChain(
+	cv ConfigValidator,
+	selfID uint64,
+	config types.Configuration,
+	walDir string,
+	blockPuller BlockPuller,
+	clusterDialer *cluster.PredicateDialer,
+	localConfigCluster localconfig.Cluster,
+	comm cluster.Communicator,
+	signerSerializer signerSerializer,
+	policyManager policies.Manager,
+	support consensus.ConsenterSupport,
+	metrics *Metrics,
+	metricsBFT *api.Metrics,
+	metricsWalBFT *wal.Metrics,
+	bccsp bccsp.BCCSP,
+) (*BFTChain, error) {
 	logger := flogging.MustGetLogger("orderer.consensus.smartbft.chain").With(zap.String("channel", support.ChannelID()))
 
 	requestInspector := &RequestInspector{

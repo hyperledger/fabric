@@ -526,5 +526,5 @@ func (a *ledgerInfoAdapter) LedgerHeight() (uint64, error) {
 }
 
 func (a *ledgerInfoAdapter) GetCurrentBlockHash() ([]byte, error) {
-	return nil, errors.New("not implemented")
+	return nil, errors.New("not implemented: never used in orderer")
 }
