@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
+	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	types2 "github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
@@ -67,24 +68,26 @@ type signerSerializer interface {
 // BFTChain implements Chain interface to wire with
 // BFT smart library
 type BFTChain struct {
-	RuntimeConfig    *atomic.Value
-	Channel          string
-	Config           types.Configuration
-	BlockPuller      BlockPuller // TODO make bft-synchro
-	Comm             cluster.Communicator
-	SignerSerializer signerSerializer
-	PolicyManager    policies.Manager
-	Logger           *flogging.FabricLogger
-	WALDir           string
-	consensus        *smartbft.Consensus
-	support          consensus.ConsenterSupport
-	clusterService   *cluster.ClusterService
-	verifier         *Verifier
-	assembler        *Assembler
-	Metrics          *Metrics
-	MetricsBFT       *api.Metrics
-	MetricsWalBFT    *wal.Metrics
-	bccsp            bccsp.BCCSP
+	RuntimeConfig      *atomic.Value
+	Channel            string
+	Config             types.Configuration
+	BlockPuller        BlockPuller              // TODO make bft-synchro
+	clusterDialer      *cluster.PredicateDialer // TODO make bft-synchro
+	localConfigCluster localconfig.Cluster      // TODO make bft-synchro
+	Comm               cluster.Communicator
+	SignerSerializer   signerSerializer
+	PolicyManager      policies.Manager
+	Logger             *flogging.FabricLogger
+	WALDir             string
+	consensus          *smartbft.Consensus
+	support            consensus.ConsenterSupport
+	clusterService     *cluster.ClusterService
+	verifier           *Verifier
+	assembler          *Assembler
+	Metrics            *Metrics
+	MetricsBFT         *api.Metrics
+	MetricsWalBFT      *wal.Metrics
+	bccsp              bccsp.BCCSP
 
 	statusReportMutex sync.Mutex
 	consensusRelation types2.ConsensusRelation
@@ -92,21 +95,7 @@ type BFTChain struct {
 }
 
 // NewChain creates new BFT Smart chain
-func NewChain(
-	cv ConfigValidator,
-	selfID uint64,
-	config types.Configuration,
-	walDir string,
-	blockPuller BlockPuller, // TODO make bft-synchro
-	comm cluster.Communicator,
-	signerSerializer signerSerializer,
-	policyManager policies.Manager,
-	support consensus.ConsenterSupport,
-	metrics *Metrics,
-	metricsBFT *api.Metrics,
-	metricsWalBFT *wal.Metrics,
-	bccsp bccsp.BCCSP,
-) (*BFTChain, error) {
+func NewChain(cv ConfigValidator, selfID uint64, config types.Configuration, walDir string, blockPuller BlockPuller, clusterDialer *cluster.PredicateDialer, localConfigCluster localconfig.Cluster, comm cluster.Communicator, signerSerializer signerSerializer, policyManager policies.Manager, support consensus.ConsenterSupport, metrics *Metrics, metricsBFT *api.Metrics, metricsWalBFT *wal.Metrics, bccsp bccsp.BCCSP) (*BFTChain, error) {
 	logger := flogging.MustGetLogger("orderer.consensus.smartbft.chain").With(zap.String("channel", support.ChannelID()))
 
 	requestInspector := &RequestInspector{
@@ -117,18 +106,20 @@ func NewChain(
 	}
 
 	c := &BFTChain{
-		RuntimeConfig:     &atomic.Value{},
-		Channel:           support.ChannelID(),
-		Config:            config,
-		WALDir:            walDir,
-		Comm:              comm,
-		support:           support,
-		SignerSerializer:  signerSerializer,
-		PolicyManager:     policyManager,
-		BlockPuller:       blockPuller,
-		Logger:            logger,
-		consensusRelation: types2.ConsensusRelationConsenter,
-		status:            types2.StatusActive,
+		RuntimeConfig:      &atomic.Value{},
+		Channel:            support.ChannelID(),
+		Config:             config,
+		WALDir:             walDir,
+		Comm:               comm,
+		support:            support,
+		SignerSerializer:   signerSerializer,
+		PolicyManager:      policyManager,
+		BlockPuller:        blockPuller,        // TODO make bft-synchro
+		clusterDialer:      clusterDialer,      // TODO make bft-synchro
+		localConfigCluster: localConfigCluster, // TODO make bft-synchro
+		Logger:             logger,
+		consensusRelation:  types2.ConsensusRelationConsenter,
+		status:             types2.StatusActive,
 		Metrics: &Metrics{
 			ClusterSize:          metrics.ClusterSize.With("channel", support.ChannelID()),
 			CommittedBlockNumber: metrics.CommittedBlockNumber.With("channel", support.ChannelID()),
@@ -211,7 +202,8 @@ func bftSmartConsensusBuild(
 		},
 		Support:     c.support,
 		BlockPuller: c.BlockPuller,
-		ClusterSize: clusterSize,
+
+		ClusterSize: clusterSize, // TODO this must be dynamic as the cluster may change in size
 		Logger:      c.Logger,
 		LatestConfig: func() (types.Configuration, []uint64) {
 			rtc := c.RuntimeConfig.Load().(RuntimeConfig)

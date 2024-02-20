@@ -515,3 +515,16 @@ func createSmartBftConfig(odrdererConfig channelconfig.Orderer) (*smartbft.Optio
 	configOptions.RequestBatchMaxBytes = uint64(batchSize.AbsoluteMaxBytes)
 	return configOptions, nil
 }
+
+// ledgerInfoAdapter translates from blocksprovider.LedgerInfo in to calls to consensus.ConsenterSupport.
+type ledgerInfoAdapter struct {
+	support consensus.ConsenterSupport
+}
+
+func (a *ledgerInfoAdapter) LedgerHeight() (uint64, error) {
+	return a.support.Height(), nil
+}
+
+func (a *ledgerInfoAdapter) GetCurrentBlockHash() ([]byte, error) {
+	return nil, errors.New("not implemented")
+}

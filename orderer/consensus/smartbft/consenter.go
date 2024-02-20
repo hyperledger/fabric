@@ -203,7 +203,23 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 		Logger:               c.Logger,
 	}
 
-	chain, err := NewChain(configValidator, (uint64)(selfID), config, path.Join(c.WALBaseDir, support.ChannelID()), puller, c.Comm, c.SignerSerializer, c.GetPolicyManager(support.ChannelID()), support, c.Metrics, c.MetricsBFT, c.MetricsWalBFT, c.BCCSP)
+	chain, err := NewChain(
+		configValidator,
+		(uint64)(selfID),
+		config,
+		path.Join(c.WALBaseDir, support.ChannelID()),
+		puller,
+		c.ClusterDialer,        //TODO BFT-sync
+		c.Conf.General.Cluster, //TODO BFT-sync
+		c.Comm,
+		c.SignerSerializer,
+		c.GetPolicyManager(support.ChannelID()),
+		support,
+		c.Metrics,
+		c.MetricsBFT,
+		c.MetricsWalBFT,
+		c.BCCSP,
+	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed creating a new BFTChain")
 	}
