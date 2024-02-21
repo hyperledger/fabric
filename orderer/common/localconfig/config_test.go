@@ -165,6 +165,7 @@ func TestClusterDefaults(t *testing.T) {
 	cfg, err := cc.load()
 	require.NoError(t, err)
 	require.Equal(t, cfg.General.Cluster.ReplicationMaxRetries, Defaults.General.Cluster.ReplicationMaxRetries)
+	require.Equal(t, cfg.General.Cluster.ReplicationPolicy, Defaults.General.Cluster.ReplicationPolicy)
 }
 
 func TestConsensusConfig(t *testing.T) {

@@ -115,6 +115,12 @@ General:
         # ServerPrivateKey defines the file location of the private key of the TLS certificate.
         ServerPrivateKey:
 
+        # ReplicationPolicy defines how blocks are replicated between orderers.
+        # Permitted values:
+        # in BFT: "simple" | "consensus" (default);
+        # in etcdraft: ignored, (always "simple", regardless of value in config).
+        ReplicationPolicy:
+
     # Bootstrap method: The method by which to obtain the bootstrap block
     # system channel is specified. The option can be one of:
     #   "file" - path to a file containing the genesis block or config block of system channel
