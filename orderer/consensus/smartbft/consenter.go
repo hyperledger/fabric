@@ -15,8 +15,6 @@ import (
 	"path"
 	"reflect"
 
-	"github.com/hyperledger/fabric/orderer/consensus/smartbft/util"
-
 	"github.com/SmartBFT-Go/consensus/pkg/api"
 	"github.com/SmartBFT-Go/consensus/pkg/wal"
 	"github.com/golang/protobuf/proto"
@@ -34,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/orderer/consensus/smartbft/util"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -203,7 +202,23 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 		Logger:               c.Logger,
 	}
 
-	chain, err := NewChain(configValidator, (uint64)(selfID), config, path.Join(c.WALBaseDir, support.ChannelID()), puller, c.Comm, c.SignerSerializer, c.GetPolicyManager(support.ChannelID()), support, c.Metrics, c.MetricsBFT, c.MetricsWalBFT, c.BCCSP)
+	chain, err := NewChain(
+		configValidator,
+		(uint64)(selfID),
+		config,
+		path.Join(c.WALBaseDir, support.ChannelID()),
+		puller,
+		c.ClusterDialer,        // required by the BFT-synchronizer
+		c.Conf.General.Cluster, // required by the BFT-synchronizer
+		c.Comm,
+		c.SignerSerializer,
+		c.GetPolicyManager(support.ChannelID()),
+		support,
+		c.Metrics,
+		c.MetricsBFT,
+		c.MetricsWalBFT,
+		c.BCCSP,
+	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed creating a new BFTChain")
 	}

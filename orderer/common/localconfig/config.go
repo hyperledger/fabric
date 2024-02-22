@@ -68,6 +68,7 @@ type Cluster struct {
 	ReplicationPullTimeout         time.Duration
 	ReplicationRetryTimeout        time.Duration
 	ReplicationMaxRetries          int
+	ReplicationPolicy              string // BFT: "simple" | "consensus" (default); etcdraft: ignored, always "simple"
 	SendBufferSize                 int
 	CertExpirationWarningThreshold time.Duration
 	TLSHandshakeTimeShift          time.Duration
@@ -188,6 +189,7 @@ var Defaults = TopLevel{
 			ReplicationRetryTimeout:        time.Second * 5,
 			ReplicationPullTimeout:         time.Second * 5,
 			CertExpirationWarningThreshold: time.Hour * 24 * 7,
+			ReplicationPolicy:              "consensus", // BFT default; on etcdraft it is ignored
 		},
 		LocalMSPDir: "msp",
 		LocalMSPID:  "SampleOrg",
@@ -332,6 +334,9 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			c.General.Cluster.ReplicationRetryTimeout = Defaults.General.Cluster.ReplicationRetryTimeout
 		case c.General.Cluster.CertExpirationWarningThreshold == 0:
 			c.General.Cluster.CertExpirationWarningThreshold = Defaults.General.Cluster.CertExpirationWarningThreshold
+		case (c.General.Cluster.ReplicationPolicy != "simple") && (c.General.Cluster.ReplicationPolicy != "consensus"):
+			logger.Infof("General.Cluster.ReplicationPolicy is `%s`, setting to `%s`", c.General.Cluster.ReplicationPolicy, Defaults.General.Cluster.ReplicationPolicy)
+			c.General.Cluster.ReplicationPolicy = Defaults.General.Cluster.ReplicationPolicy
 
 		case c.General.Profile.Enabled && c.General.Profile.Address == "":
 			logger.Infof("Profiling enabled and General.Profile.Address unset, setting to %s", Defaults.General.Profile.Address)
