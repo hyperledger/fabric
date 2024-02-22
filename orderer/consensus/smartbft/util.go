@@ -176,6 +176,8 @@ func newBlockPuller(
 		Dialer:              stdDialer,
 	}
 
+	logger.Infof("Built new block puller with cluster config: %+v, endpoints: %+v", clusterConfig, endpoints)
+
 	return bp, nil
 }
 

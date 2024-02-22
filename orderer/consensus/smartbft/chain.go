@@ -212,21 +212,22 @@ func bftSmartConsensusBuild(
 	var sync api.Synchronizer
 	switch c.localConfigCluster.ReplicationPolicy {
 	case "consensus":
-		sync = &Synchronizer{ // TODO make bft-synchronizer
-			selfID:          rtc.id,
+		sync = &BFTSynchronizer{
+			selfID: rtc.id,
+			LatestConfig: func() (types.Configuration, []uint64) {
+				rtc := c.RuntimeConfig.Load().(RuntimeConfig)
+				return rtc.BFTConfig, rtc.Nodes
+			},
 			BlockToDecision: c.blockToDecision,
 			OnCommit: func(block *cb.Block) types.Reconfig {
 				c.pruneCommittedRequests(block)
 				return c.updateRuntimeConfig(block)
 			},
-			Support:     c.support,
-			BlockPuller: c.BlockPuller,
-			ClusterSize: clusterSize,
-			Logger:      c.Logger,
-			LatestConfig: func() (types.Configuration, []uint64) {
-				rtc := c.RuntimeConfig.Load().(RuntimeConfig)
-				return rtc.BFTConfig, rtc.Nodes
-			},
+			Support:            c.support,
+			CryptoProvider:     c.bccsp,
+			clusterDialer:      c.clusterDialer,
+			localConfigCluster: c.localConfigCluster,
+			Logger:             c.Logger,
 		}
 	case "simple":
 		sync = &Synchronizer{
@@ -238,7 +239,6 @@ func bftSmartConsensusBuild(
 			},
 			Support:     c.support,
 			BlockPuller: c.BlockPuller,
-
 			ClusterSize: clusterSize, // TODO this must be dynamic as the cluster may change in size
 			Logger:      c.Logger,
 			LatestConfig: func() (types.Configuration, []uint64) {
@@ -247,7 +247,7 @@ func bftSmartConsensusBuild(
 			},
 		}
 	default:
-
+		c.Logger.Panicf("unsupported ReplicationPolicy: %s", c.localConfigCluster.ReplicationPolicy)
 	}
 
 	channelDecorator := zap.String("channel", c.support.ChannelID())

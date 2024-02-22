@@ -334,7 +334,8 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			c.General.Cluster.ReplicationRetryTimeout = Defaults.General.Cluster.ReplicationRetryTimeout
 		case c.General.Cluster.CertExpirationWarningThreshold == 0:
 			c.General.Cluster.CertExpirationWarningThreshold = Defaults.General.Cluster.CertExpirationWarningThreshold
-		case c.General.Cluster.ReplicationPolicy == "":
+		case (c.General.Cluster.ReplicationPolicy != "simple") && (c.General.Cluster.ReplicationPolicy != "consensus"):
+			logger.Infof("General.Cluster.ReplicationPolicy is `%s`, setting to `%s`", c.General.Cluster.ReplicationPolicy, Defaults.General.Cluster.ReplicationPolicy)
 			c.General.Cluster.ReplicationPolicy = Defaults.General.Cluster.ReplicationPolicy
 
 		case c.General.Profile.Enabled && c.General.Profile.Address == "":
