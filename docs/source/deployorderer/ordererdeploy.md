@@ -16,7 +16,7 @@ The resulting folder structure is similar to:
   │   ├── configtxlator
   │   ├── cryptogen
   │   ├── discover
-  │   ├── idemixgen
+  │   ├── ledgerutil
   │   ├── orderer
   │   └── osnadmin
   └── config

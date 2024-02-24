@@ -15,7 +15,7 @@ The cURL command in the instructions below sets up your environment so that you 
   * `configtxlator`,
   * `cryptogen`,
   * `discover`,
-  * `idemixgen`,
+  * `ledgerutil`,
   * `orderer`,
   * `osnadmin`,
   * `peer`,
