@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
+	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	types2 "github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
@@ -67,24 +68,26 @@ type signerSerializer interface {
 // BFTChain implements Chain interface to wire with
 // BFT smart library
 type BFTChain struct {
-	RuntimeConfig    *atomic.Value
-	Channel          string
-	Config           types.Configuration
-	BlockPuller      BlockPuller
-	Comm             cluster.Communicator
-	SignerSerializer signerSerializer
-	PolicyManager    policies.Manager
-	Logger           *flogging.FabricLogger
-	WALDir           string
-	consensus        *smartbft.Consensus
-	support          consensus.ConsenterSupport
-	clusterService   *cluster.ClusterService
-	verifier         *Verifier
-	assembler        *Assembler
-	Metrics          *Metrics
-	MetricsBFT       *api.Metrics
-	MetricsWalBFT    *wal.Metrics
-	bccsp            bccsp.BCCSP
+	RuntimeConfig      *atomic.Value
+	Channel            string
+	Config             types.Configuration
+	BlockPuller        BlockPuller
+	clusterDialer      *cluster.PredicateDialer // TODO Required by BFT-synchronizer
+	localConfigCluster localconfig.Cluster      // TODO Required by BFT-synchronizer
+	Comm               cluster.Communicator
+	SignerSerializer   signerSerializer
+	PolicyManager      policies.Manager
+	Logger             *flogging.FabricLogger
+	WALDir             string
+	consensus          *smartbft.Consensus
+	support            consensus.ConsenterSupport
+	clusterService     *cluster.ClusterService
+	verifier           *Verifier
+	assembler          *Assembler
+	Metrics            *Metrics
+	MetricsBFT         *api.Metrics
+	MetricsWalBFT      *wal.Metrics
+	bccsp              bccsp.BCCSP
 
 	statusReportMutex sync.Mutex
 	consensusRelation types2.ConsensusRelation
@@ -98,6 +101,8 @@ func NewChain(
 	config types.Configuration,
 	walDir string,
 	blockPuller BlockPuller,
+	clusterDialer *cluster.PredicateDialer,
+	localConfigCluster localconfig.Cluster,
 	comm cluster.Communicator,
 	signerSerializer signerSerializer,
 	policyManager policies.Manager,
@@ -117,18 +122,20 @@ func NewChain(
 	}
 
 	c := &BFTChain{
-		RuntimeConfig:     &atomic.Value{},
-		Channel:           support.ChannelID(),
-		Config:            config,
-		WALDir:            walDir,
-		Comm:              comm,
-		support:           support,
-		SignerSerializer:  signerSerializer,
-		PolicyManager:     policyManager,
-		BlockPuller:       blockPuller,
-		Logger:            logger,
-		consensusRelation: types2.ConsensusRelationConsenter,
-		status:            types2.StatusActive,
+		RuntimeConfig:      &atomic.Value{},
+		Channel:            support.ChannelID(),
+		Config:             config,
+		WALDir:             walDir,
+		Comm:               comm,
+		support:            support,
+		SignerSerializer:   signerSerializer,
+		PolicyManager:      policyManager,
+		BlockPuller:        blockPuller,        // FIXME create internally or with a factory
+		clusterDialer:      clusterDialer,      // TODO Required by BFT-synchronizer
+		localConfigCluster: localConfigCluster, // TODO Required by BFT-synchronizer
+		Logger:             logger,
+		consensusRelation:  types2.ConsensusRelationConsenter,
+		status:             types2.StatusActive,
 		Metrics: &Metrics{
 			ClusterSize:          metrics.ClusterSize.With("channel", support.ChannelID()),
 			CommittedBlockNumber: metrics.CommittedBlockNumber.With("channel", support.ChannelID()),
@@ -202,21 +209,31 @@ func bftSmartConsensusBuild(
 	// report cluster size
 	c.Metrics.ClusterSize.Set(float64(clusterSize))
 
-	sync := &Synchronizer{
-		selfID:          rtc.id,
-		BlockToDecision: c.blockToDecision,
-		OnCommit: func(block *cb.Block) types.Reconfig {
-			c.pruneCommittedRequests(block)
-			return c.updateRuntimeConfig(block)
-		},
-		Support:     c.support,
-		BlockPuller: c.BlockPuller,
-		ClusterSize: clusterSize,
-		Logger:      c.Logger,
-		LatestConfig: func() (types.Configuration, []uint64) {
-			rtc := c.RuntimeConfig.Load().(RuntimeConfig)
-			return rtc.BFTConfig, rtc.Nodes
-		},
+	var sync api.Synchronizer
+	switch c.localConfigCluster.ReplicationPolicy {
+	case "consensus":
+		c.Logger.Debug("BFTSynchronizer not yet available") // TODO create BFTSynchronizer when available
+		fallthrough
+	case "simple":
+		c.Logger.Debug("Creating simple Synchronizer")
+		sync = &Synchronizer{
+			selfID:          rtc.id,
+			BlockToDecision: c.blockToDecision,
+			OnCommit: func(block *cb.Block) types.Reconfig {
+				c.pruneCommittedRequests(block)
+				return c.updateRuntimeConfig(block)
+			},
+			Support:     c.support,
+			BlockPuller: c.BlockPuller, // FIXME this must be created dynamically as the cluster may change config
+			ClusterSize: clusterSize,   // FIXME this must be taken dynamically from `support` as the cluster may change in size
+			Logger:      c.Logger,
+			LatestConfig: func() (types.Configuration, []uint64) {
+				rtc := c.RuntimeConfig.Load().(RuntimeConfig)
+				return rtc.BFTConfig, rtc.Nodes
+			},
+		}
+	default:
+		c.Logger.Panicf("Unsupported Cluster.ReplicationPolicy: %s", c.localConfigCluster.ReplicationPolicy)
 	}
 
 	channelDecorator := zap.String("channel", c.support.ChannelID())
