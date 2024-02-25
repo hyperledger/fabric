@@ -176,6 +176,8 @@ func newBlockPuller(
 		Dialer:              stdDialer,
 	}
 
+	logger.Infof("Built new block puller with cluster config: %+v, endpoints: %+v", clusterConfig, endpoints)
+
 	return bp, nil
 }
 
@@ -514,4 +516,17 @@ func createSmartBftConfig(odrdererConfig channelconfig.Orderer) (*smartbft.Optio
 	configOptions.RequestBatchMaxCount = uint64(batchSize.MaxMessageCount)
 	configOptions.RequestBatchMaxBytes = uint64(batchSize.AbsoluteMaxBytes)
 	return configOptions, nil
+}
+
+// ledgerInfoAdapter translates from blocksprovider.LedgerInfo in to calls to consensus.ConsenterSupport.
+type ledgerInfoAdapter struct {
+	support consensus.ConsenterSupport
+}
+
+func (a *ledgerInfoAdapter) LedgerHeight() (uint64, error) {
+	return a.support.Height(), nil
+}
+
+func (a *ledgerInfoAdapter) GetCurrentBlockHash() ([]byte, error) {
+	return nil, errors.New("not implemented: never used in orderer")
 }
