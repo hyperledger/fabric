@@ -105,7 +105,7 @@ type BFTDeliverer struct {
 	censorshipMonitor CensorshipDetector
 }
 
-func (d *BFTDeliverer) Initialize(channelConfig *common.Config) {
+func (d *BFTDeliverer) Initialize(channelConfig *common.Config, selfEndpoint string) {
 	d.requester = NewDeliveryRequester(
 		d.ChannelID,
 		d.Signer,
@@ -115,7 +115,7 @@ func (d *BFTDeliverer) Initialize(channelConfig *common.Config) {
 	)
 
 	osLogger := flogging.MustGetLogger("peer.orderers")
-	ordererSource := d.OrderersSourceFactory.CreateConnectionSource(osLogger)
+	ordererSource := d.OrderersSourceFactory.CreateConnectionSource(osLogger, selfEndpoint)
 	globalAddresses, orgAddresses, err := extractAddresses(d.ChannelID, channelConfig, d.CryptoProvider)
 	if err != nil {
 		// The bundle was created prior to calling this function, so it should not fail when we recreate it here.
