@@ -10,10 +10,11 @@ import (
 )
 
 type OrdererConnectionSourceFactory struct {
-	CreateConnectionSourceStub        func(*flogging.FabricLogger) orderers.ConnectionSourcer
+	CreateConnectionSourceStub        func(*flogging.FabricLogger, string) orderers.ConnectionSourcer
 	createConnectionSourceMutex       sync.RWMutex
 	createConnectionSourceArgsForCall []struct {
 		arg1 *flogging.FabricLogger
+		arg2 string
 	}
 	createConnectionSourceReturns struct {
 		result1 orderers.ConnectionSourcer
@@ -25,18 +26,19 @@ type OrdererConnectionSourceFactory struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *OrdererConnectionSourceFactory) CreateConnectionSource(arg1 *flogging.FabricLogger) orderers.ConnectionSourcer {
+func (fake *OrdererConnectionSourceFactory) CreateConnectionSource(arg1 *flogging.FabricLogger, arg2 string) orderers.ConnectionSourcer {
 	fake.createConnectionSourceMutex.Lock()
 	ret, specificReturn := fake.createConnectionSourceReturnsOnCall[len(fake.createConnectionSourceArgsForCall)]
 	fake.createConnectionSourceArgsForCall = append(fake.createConnectionSourceArgsForCall, struct {
 		arg1 *flogging.FabricLogger
-	}{arg1})
+		arg2 string
+	}{arg1, arg2})
 	stub := fake.CreateConnectionSourceStub
 	fakeReturns := fake.createConnectionSourceReturns
-	fake.recordInvocation("CreateConnectionSource", []interface{}{arg1})
+	fake.recordInvocation("CreateConnectionSource", []interface{}{arg1, arg2})
 	fake.createConnectionSourceMutex.Unlock()
 	if stub != nil {
-		return stub(arg1)
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
@@ -50,17 +52,17 @@ func (fake *OrdererConnectionSourceFactory) CreateConnectionSourceCallCount() in
 	return len(fake.createConnectionSourceArgsForCall)
 }
 
-func (fake *OrdererConnectionSourceFactory) CreateConnectionSourceCalls(stub func(*flogging.FabricLogger) orderers.ConnectionSourcer) {
+func (fake *OrdererConnectionSourceFactory) CreateConnectionSourceCalls(stub func(*flogging.FabricLogger, string) orderers.ConnectionSourcer) {
 	fake.createConnectionSourceMutex.Lock()
 	defer fake.createConnectionSourceMutex.Unlock()
 	fake.CreateConnectionSourceStub = stub
 }
 
-func (fake *OrdererConnectionSourceFactory) CreateConnectionSourceArgsForCall(i int) *flogging.FabricLogger {
+func (fake *OrdererConnectionSourceFactory) CreateConnectionSourceArgsForCall(i int) (*flogging.FabricLogger, string) {
 	fake.createConnectionSourceMutex.RLock()
 	defer fake.createConnectionSourceMutex.RUnlock()
 	argsForCall := fake.createConnectionSourceArgsForCall[i]
-	return argsForCall.arg1
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *OrdererConnectionSourceFactory) CreateConnectionSourceReturns(result1 orderers.ConnectionSourcer) {

@@ -228,7 +228,9 @@ func (s *bftDelivererTestSetup) initialize(t *testing.T) {
 		MaxRetryDuration:                600 * time.Second,
 		MaxRetryDurationExceededHandler: s.fakeDurationExceededHandler.DurationExceededHandler,
 	}
-	s.d.Initialize(s.channelConfig)
+	s.d.Initialize(s.channelConfig, "bogus-self-endpoint")
+	_, selfEP := s.fakeOrdererConnectionSourceFactory.CreateConnectionSourceArgsForCall(0)
+	require.Equal(t, "bogus-self-endpoint", selfEP)
 
 	s.fakeSleeper = &fake.Sleeper{}
 

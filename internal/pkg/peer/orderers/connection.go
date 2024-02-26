@@ -20,10 +20,11 @@ import (
 
 type ConnectionSource struct {
 	mutex              sync.RWMutex
-	allEndpoints       []*Endpoint
-	orgToEndpointsHash map[string][]byte
+	allEndpoints       []*Endpoint       // All endpoints, excluding the self-endpoint.
+	orgToEndpointsHash map[string][]byte // Used to detect whether the endpoints or certificates has changed.
 	logger             *flogging.FabricLogger
-	overrides          map[string]*Endpoint
+	overrides          map[string]*Endpoint // In the peer, it is used to override an orderer endpoint.
+	selfEndpoint       string               // Empty when used by a peer, or the self-endpoint when used by an orderer.
 }
 
 type Endpoint struct {
@@ -56,11 +57,12 @@ type OrdererOrg struct {
 	RootCerts [][]byte
 }
 
-func NewConnectionSource(logger *flogging.FabricLogger, overrides map[string]*Endpoint) *ConnectionSource {
+func NewConnectionSource(logger *flogging.FabricLogger, overrides map[string]*Endpoint, selfEndpoint string) *ConnectionSource {
 	return &ConnectionSource{
 		orgToEndpointsHash: map[string][]byte{},
 		logger:             logger,
 		overrides:          overrides,
+		selfEndpoint:       selfEndpoint,
 	}
 }
 
@@ -95,6 +97,12 @@ func (cs *ConnectionSource) ShuffledEndpoints() []*Endpoint {
 	return returnedSlice
 }
 
+// Update calculates whether there was a change in the endpoints or certificates, and updates the endpoint if there was
+// a change. When endpoints are updated, all the 'refreshed' channels of the old endpoints are closed and a new set of
+// endpoints is prepared.
+//
+// Update skips the self-endpoint (if not empty) when preparing the endpoint array. However, changes to the
+// self-endpoint do trigger the refresh of all the endpoints.
 func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]OrdererOrg) {
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
@@ -202,6 +210,10 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 
 		// Note, if !hasOrgEndpoints, this for loop is a no-op
 		for _, address := range org.Addresses {
+			if address == cs.selfEndpoint {
+				cs.logger.Debugf("Skipping self endpoint [%s] from org specific endpoints", address)
+				continue
+			}
 			overrideEndpoint, ok := cs.overrides[address]
 			if ok {
 				cs.allEndpoints = append(cs.allEndpoints, &Endpoint{
@@ -228,6 +240,10 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 	}
 
 	for _, address := range globalAddrs {
+		if address == cs.selfEndpoint {
+			cs.logger.Debugf("Skipping self endpoint [%s] from global endpoints", address)
+			continue
+		}
 		overrideEndpoint, ok := cs.overrides[address]
 		if ok {
 			cs.allEndpoints = append(cs.allEndpoints, &Endpoint{
@@ -245,5 +261,5 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 		})
 	}
 
-	cs.logger.Debugf("Returning an orderer connection pool source with global endpoints only")
+	cs.logger.Debug("Returning an orderer connection pool source with global endpoints only")
 }

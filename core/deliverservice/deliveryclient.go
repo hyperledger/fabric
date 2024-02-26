@@ -280,7 +280,7 @@ func (d *deliverServiceImpl) createBlockDelivererBFT(chainID string, ledgerInfo 
 		dcBFT.TLSCertHash = util.ComputeSHA256(cert.Certificate[0])
 	}
 
-	dcBFT.Initialize(d.conf.ChannelConfig)
+	dcBFT.Initialize(d.conf.ChannelConfig, "")
 
 	return dcBFT, nil
 }

@@ -117,7 +117,7 @@ func (d *Deliverer) Initialize(channelConfig *cb.Config) {
 	)
 
 	osLogger := flogging.MustGetLogger("peer.orderers")
-	ordererSource := d.OrderersSourceFactory.CreateConnectionSource(osLogger)
+	ordererSource := d.OrderersSourceFactory.CreateConnectionSource(osLogger, "")
 	globalAddresses, orgAddresses, err := extractAddresses(d.ChannelID, channelConfig, d.CryptoProvider)
 	if err != nil {
 		// The bundle was created prior to calling this function, so it should not fail when we recreate it here.
