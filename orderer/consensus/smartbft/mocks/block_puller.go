@@ -9,13 +9,15 @@ import (
 )
 
 type FakeBlockPuller struct {
-	CloseStub                     func()
-	closeMutex                    sync.RWMutex
-	closeArgsForCall              []struct{}
+	CloseStub        func()
+	closeMutex       sync.RWMutex
+	closeArgsForCall []struct {
+	}
 	HeightsByEndpointsStub        func() (map[string]uint64, string, error)
 	heightsByEndpointsMutex       sync.RWMutex
-	heightsByEndpointsArgsForCall []struct{}
-	heightsByEndpointsReturns     struct {
+	heightsByEndpointsArgsForCall []struct {
+	}
+	heightsByEndpointsReturns struct {
 		result1 map[string]uint64
 		result2 string
 		result3 error
@@ -42,10 +44,12 @@ type FakeBlockPuller struct {
 
 func (fake *FakeBlockPuller) Close() {
 	fake.closeMutex.Lock()
-	fake.closeArgsForCall = append(fake.closeArgsForCall, struct{}{})
+	fake.closeArgsForCall = append(fake.closeArgsForCall, struct {
+	}{})
+	stub := fake.CloseStub
 	fake.recordInvocation("Close", []interface{}{})
 	fake.closeMutex.Unlock()
-	if fake.CloseStub != nil {
+	if stub != nil {
 		fake.CloseStub()
 	}
 }
@@ -65,16 +69,18 @@ func (fake *FakeBlockPuller) CloseCalls(stub func()) {
 func (fake *FakeBlockPuller) HeightsByEndpoints() (map[string]uint64, string, error) {
 	fake.heightsByEndpointsMutex.Lock()
 	ret, specificReturn := fake.heightsByEndpointsReturnsOnCall[len(fake.heightsByEndpointsArgsForCall)]
-	fake.heightsByEndpointsArgsForCall = append(fake.heightsByEndpointsArgsForCall, struct{}{})
+	fake.heightsByEndpointsArgsForCall = append(fake.heightsByEndpointsArgsForCall, struct {
+	}{})
+	stub := fake.HeightsByEndpointsStub
+	fakeReturns := fake.heightsByEndpointsReturns
 	fake.recordInvocation("HeightsByEndpoints", []interface{}{})
 	fake.heightsByEndpointsMutex.Unlock()
-	if fake.HeightsByEndpointsStub != nil {
-		return fake.HeightsByEndpointsStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1, ret.result2, ret.result3
 	}
-	fakeReturns := fake.heightsByEndpointsReturns
 	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
 }
 
@@ -125,15 +131,16 @@ func (fake *FakeBlockPuller) PullBlock(arg1 uint64) *common.Block {
 	fake.pullBlockArgsForCall = append(fake.pullBlockArgsForCall, struct {
 		arg1 uint64
 	}{arg1})
+	stub := fake.PullBlockStub
+	fakeReturns := fake.pullBlockReturns
 	fake.recordInvocation("PullBlock", []interface{}{arg1})
 	fake.pullBlockMutex.Unlock()
-	if fake.PullBlockStub != nil {
-		return fake.PullBlockStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.pullBlockReturns
 	return fakeReturns.result1
 }
 

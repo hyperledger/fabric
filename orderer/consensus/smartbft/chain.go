@@ -36,15 +36,6 @@ import (
 	"go.uber.org/zap"
 )
 
-//go:generate counterfeiter -o mocks/mock_blockpuller.go . BlockPuller
-
-// BlockPuller is used to pull blocks from other OSN
-type BlockPuller interface {
-	PullBlock(seq uint64) *cb.Block
-	HeightsByEndpoints() (map[string]uint64, string, error)
-	Close()
-}
-
 // WALConfig consensus specific configuration parameters from orderer.yaml; for SmartBFT only WALDir is relevant.
 type WALConfig struct {
 	WALDir            string // WAL data of <my-channel> is stored in WALDir/<my-channel>
@@ -224,11 +215,14 @@ func bftSmartConsensusBuild(
 				c.pruneCommittedRequests(block)
 				return c.updateRuntimeConfig(block)
 			},
-			Support:            c.support,
-			CryptoProvider:     c.bccsp,
-			clusterDialer:      c.clusterDialer,
-			localConfigCluster: c.localConfigCluster,
-			Logger:             c.Logger,
+			Support:             c.support,
+			CryptoProvider:      c.bccsp,
+			ClusterDialer:       c.clusterDialer,
+			LocalConfigCluster:  c.localConfigCluster,
+			BlockPullerFactory:  &blockPullerCreator{},
+			VerifierFactory:     &verifierCreator{},
+			BFTDelivererFactory: &bftDelivererCreator{},
+			Logger:              c.Logger,
 		}
 	case "simple":
 		c.Logger.Debug("Creating simple Synchronizer")

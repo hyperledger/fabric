@@ -29,14 +29,14 @@ func NewSyncBuffer() *SyncBuffer {
 // HandleBlock gives the block to the next stage of processing after fetching it from a remote orderer.
 func (sb *SyncBuffer) HandleBlock(channelID string, block *common.Block) error {
 	if block == nil || block.Header == nil {
-		return errors.New("empty block or block header")
+		return errors.Errorf("empty block or block header, channel: %s", channelID)
 	}
 
 	select {
 	case sb.blockCh <- block:
 		return nil
 	case <-sb.stopCh:
-		return errors.New("SyncBuffer stopping")
+		return errors.Errorf("SyncBuffer stopping, channel: %s", channelID)
 	}
 }
 

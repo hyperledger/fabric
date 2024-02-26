@@ -8,10 +8,10 @@ package smartbft
 
 import (
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/SmartBFT-Go/consensus/pkg/types"
-	"github.com/SmartBFT-Go/consensus/smartbftprotos"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -26,17 +26,22 @@ import (
 )
 
 type BFTSynchronizer struct {
-	lastReconfig       types.Reconfig
-	selfID             uint64
-	LatestConfig       func() (types.Configuration, []uint64)
-	BlockToDecision    func(*common.Block) *types.Decision
-	OnCommit           func(*common.Block) types.Reconfig
-	Support            consensus.ConsenterSupport
-	CryptoProvider     bccsp.BCCSP
-	BlockPuller        BlockPuller              // TODO improve - this only an endpoint prober - detect self EP
-	clusterDialer      *cluster.PredicateDialer // TODO make bft-synchro
-	localConfigCluster localconfig.Cluster      // TODO make bft-synchro
-	Logger             *flogging.FabricLogger
+	lastReconfig        types.Reconfig
+	selfID              uint64
+	LatestConfig        func() (types.Configuration, []uint64)
+	BlockToDecision     func(*common.Block) *types.Decision
+	OnCommit            func(*common.Block) types.Reconfig
+	Support             consensus.ConsenterSupport
+	CryptoProvider      bccsp.BCCSP
+	ClusterDialer       *cluster.PredicateDialer
+	LocalConfigCluster  localconfig.Cluster
+	BlockPullerFactory  BlockPullerFactory
+	VerifierFactory     VerifierFactory
+	BFTDelivererFactory BFTDelivererFactory
+	Logger              *flogging.FabricLogger
+
+	mutex    sync.Mutex
+	syncBuff *SyncBuffer
 }
 
 func (s *BFTSynchronizer) Sync() types.SyncResponse {
@@ -59,6 +64,8 @@ func (s *BFTSynchronizer) Sync() types.SyncResponse {
 	defer func() {
 		s.lastReconfig = types.Reconfig{}
 	}()
+
+	s.Logger.Debugf("reconfig: %+v", s.lastReconfig)
 	return types.SyncResponse{
 		Latest: *decision,
 		Reconfig: types.ReconfigSync{
@@ -69,142 +76,84 @@ func (s *BFTSynchronizer) Sync() types.SyncResponse {
 	}
 }
 
+// Buffer return the internal SyncBuffer for testability.
+func (s *BFTSynchronizer) Buffer() *SyncBuffer {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	return s.syncBuff
+}
+
 func (s *BFTSynchronizer) synchronize() (*types.Decision, error) {
-	//=== We use the BlockPuller to probe all the endpoints and establish a target height, as well as detect
-	// the self endpoint.
-
-	// In BFT it is highly recommended that the channel/orderer-endpoints (for delivery & broadcast) map 1:1 to the
-	// channel/orderers/consenters (for cluster consensus), that is, every consenter should be represented by a
-	// delivery endpoint.
-	blockPuller, err := newBlockPuller(s.Support, s.clusterDialer, s.localConfigCluster, s.CryptoProvider)
+	//=== We probe all the endpoints and establish a target height, as well as detect the self endpoint.
+	targetHeight, myEndpoint, err := s.detectTargetHeight()
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot get create BlockPuller")
-	}
-	defer blockPuller.Close()
-
-	heightByEndpoint, myEndpoint, err := blockPuller.HeightsByEndpoints()
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot get HeightsByEndpoints")
+		return nil, errors.Wrapf(err, "cannot get detect target height")
 	}
 
-	s.Logger.Infof("HeightsByEndpoints: %+v, my endpoint: %s", heightByEndpoint, myEndpoint)
-
-	var heights []uint64
-	for ep, value := range heightByEndpoint {
-		if ep == myEndpoint {
-			continue
-		}
-		heights = append(heights, value)
-	}
-
-	if len(heights) == 0 {
-		return nil, errors.New("no cluster members to synchronize with")
-	}
-
-	targetHeight := s.computeTargetHeight(heights)
 	startHeight := s.Support.Height()
 	if startHeight >= targetHeight {
 		return nil, errors.Errorf("already at target height of %d", targetHeight)
 	}
 
-	//====
-	// create a buffer to accept the blocks delivered from the BFTDeliverer
-	syncBuffer := NewSyncBuffer()
+	//=== Create a buffer to accept the blocks delivered from the BFTDeliverer.
+	s.mutex.Lock()
+	s.syncBuff = NewSyncBuffer()
+	s.mutex.Unlock()
 
-	//===
-	// create the deliverer
-	lastBlock := s.Support.Block(startHeight - 1)
-	lastConfigBlock, err := cluster.LastConfigBlock(lastBlock, s.Support)
+	//=== Create the BFT block deliverer and start a go-routine that fetches block and inserts them into the syncBuffer.
+	bftDeliverer, err := s.createBFTDeliverer(startHeight, myEndpoint)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to retrieve last config block")
+		return nil, errors.Wrapf(err, "cannot create BFT block deliverer")
 	}
-	lastConfigEnv, err := deliverclient.ConfigFromBlock(lastConfigBlock)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to retrieve last config envelope")
-	}
-	verifier, err := deliverclient.NewBlockVerificationAssistant(lastConfigBlock, lastBlock, s.CryptoProvider, s.Logger)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create BlockVerificationAssistant")
-	}
-
-	clientConfig := s.clusterDialer.Config // The cluster and block puller use slightly different options
-	clientConfig.AsyncConnect = false
-	clientConfig.SecOpts.VerifyCertificate = nil
-
-	bftDeliverer := &blocksprovider.BFTDeliverer{
-		ChannelID:                 s.Support.ChannelID(),
-		BlockHandler:              syncBuffer,
-		Ledger:                    &ledgerInfoAdapter{s.Support},
-		UpdatableBlockVerifier:    verifier,
-		Dialer:                    blocksprovider.DialerAdapter{ClientConfig: clientConfig},
-		OrderersSourceFactory:     &orderers.ConnectionSourceFactory{}, // no overrides in the orderer
-		CryptoProvider:            s.CryptoProvider,
-		DoneC:                     make(chan struct{}),
-		Signer:                    s.Support,
-		DeliverStreamer:           blocksprovider.DeliverAdapter{},
-		CensorshipDetectorFactory: &blocksprovider.BFTCensorshipMonitorFactory{},
-		Logger:                    flogging.MustGetLogger("orderer.blocksprovider").With("channel", s.Support.ChannelID()),
-		InitialRetryInterval:      10 * time.Millisecond, // TODO get it from config.
-		MaxRetryInterval:          2 * time.Second,       // TODO get it from config.
-		BlockCensorshipTimeout:    20 * time.Second,      // TODO get it from config.
-		MaxRetryDuration:          time.Minute,           // TODO get it from config.
-		MaxRetryDurationExceededHandler: func() (stopRetries bool) {
-			syncBuffer.Stop()
-			return true // In the orderer we must limit the time we try to do Synch()
-		},
-	}
-
-	s.Logger.Infof("Created a BFTDeliverer: %+v", bftDeliverer)
-	bftDeliverer.Initialize(lastConfigEnv.GetConfig(), myEndpoint)
 
 	go bftDeliverer.DeliverBlocks()
 	defer bftDeliverer.Stop()
 
-	//===
-	// Loop on sync-buffer
-
-	targetSeq := targetHeight - 1
-	seq := startHeight
-	var blocksFetched int
-
-	s.Logger.Debugf("Will fetch sequences [%d-%d]", seq, targetSeq)
-
-	var lastPulledBlock *common.Block
-	for seq <= targetSeq {
-		block := syncBuffer.PullBlock(seq)
-		if block == nil {
-			s.Logger.Debugf("Failed to fetch block [%d] from cluster", seq)
-			break
-		}
-		if protoutil.IsConfigBlock(block) {
-			s.Support.WriteConfigBlock(block, nil)
-		} else {
-			s.Support.WriteBlock(block, nil)
-		}
-		s.Logger.Debugf("Fetched and committed block [%d] from cluster", seq)
-		lastPulledBlock = block
-
-		prevInLatestDecision := s.lastReconfig.InLatestDecision
-		s.lastReconfig = s.OnCommit(lastPulledBlock)
-		s.lastReconfig.InLatestDecision = s.lastReconfig.InLatestDecision || prevInLatestDecision
-		seq++
-		blocksFetched++
+	//=== Loop on sync-buffer and pull blocks, writing them to the ledger, returning the last block pulled.
+	lastPulledBlock, err := s.getBlocksFromSyncBuffer(startHeight, targetHeight)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get any blocks from SyncBuffer")
 	}
 
-	syncBuffer.Stop()
+	decision := s.BlockToDecision(lastPulledBlock)
+	s.Logger.Infof("Returning decision from block [%d], decision: %+v", lastPulledBlock.GetHeader().GetNumber(), decision)
+	return decision, nil
+}
 
-	if lastPulledBlock == nil {
-		return nil, errors.Errorf("failed pulling block %d", seq)
+// detectTargetHeight probes remote endpoints and detects what is the target height this node needs to reach. It also
+// detects the self-endpoint.
+//
+// In BFT it is highly recommended that the channel/orderer-endpoints (for delivery & broadcast) map 1:1 to the
+// channel/orderers/consenters (for cluster consensus), that is, every consenter should be represented by a
+// delivery endpoint. This important for Sync to work properly.
+func (s *BFTSynchronizer) detectTargetHeight() (uint64, string, error) {
+	blockPuller, err := s.BlockPullerFactory.CreateBlockPuller(s.Support, s.ClusterDialer, s.LocalConfigCluster, s.CryptoProvider)
+	if err != nil {
+		return 0, "", errors.Wrap(err, "cannot get create BlockPuller")
+	}
+	defer blockPuller.Close()
+
+	heightByEndpoint, myEndpoint, err := blockPuller.HeightsByEndpoints()
+	if err != nil {
+		return 0, "", errors.Wrap(err, "cannot get HeightsByEndpoints")
 	}
 
-	startSeq := startHeight
-	s.Logger.Infof("Finished synchronizing with cluster, fetched %d blocks, starting from block [%d], up until and including block [%d]",
-		blocksFetched, startSeq, lastPulledBlock.Header.Number)
+	s.Logger.Infof("HeightsByEndpoints: %+v, my endpoint: %s", heightByEndpoint, myEndpoint)
 
-	viewMetadata, lastConfigSqn := s.getViewMetadataLastConfigSqnFromBlock(lastPulledBlock)
+	delete(heightByEndpoint, myEndpoint)
+	var heights []uint64
+	for _, value := range heightByEndpoint {
+		heights = append(heights, value)
+	}
 
-	s.Logger.Infof("Returning view metadata of %v, lastConfigSeq %d", viewMetadata, lastConfigSqn)
-	return s.BlockToDecision(lastPulledBlock), nil
+	if len(heights) == 0 {
+		return 0, "", errors.New("no cluster members to synchronize with")
+	}
+
+	targetHeight := s.computeTargetHeight(heights)
+	s.Logger.Infof("Detected target height: %d", targetHeight)
+	return targetHeight, myEndpoint, nil
 }
 
 // computeTargetHeight compute the target height to synchronize to.
@@ -217,7 +166,7 @@ func (s *BFTSynchronizer) computeTargetHeight(heights []uint64) uint64 {
 	f := uint64(clusterSize-1) / 3 // The number of tolerated byzantine faults
 	lenH := uint64(len(heights))
 
-	s.Logger.Debugf("Heights: %v", heights)
+	s.Logger.Debugf("Cluster size: %d, F: %d, Heights: %v", clusterSize, f, heights)
 
 	if lenH < f+1 {
 		s.Logger.Debugf("Returning %d", heights[0])
@@ -227,13 +176,96 @@ func (s *BFTSynchronizer) computeTargetHeight(heights []uint64) uint64 {
 	return heights[f]
 }
 
-func (s *BFTSynchronizer) getViewMetadataLastConfigSqnFromBlock(block *common.Block) (*smartbftprotos.ViewMetadata, uint64) {
-	viewMetadata, err := getViewMetadataFromBlock(block)
+// createBFTDeliverer creates and initializes the BFT block deliverer.
+func (s *BFTSynchronizer) createBFTDeliverer(startHeight uint64, myEndpoint string) (BFTBlockDeliverer, error) {
+	lastBlock := s.Support.Block(startHeight - 1)
+	lastConfigBlock, err := cluster.LastConfigBlock(lastBlock, s.Support)
 	if err != nil {
-		return nil, 0
+		return nil, errors.Wrapf(err, "failed to retrieve last config block")
+	}
+	lastConfigEnv, err := deliverclient.ConfigFromBlock(lastConfigBlock)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to retrieve last config envelope")
 	}
 
-	lastConfigSqn := s.Support.Sequence()
+	var updatableVerifier deliverclient.CloneableUpdatableBlockVerifier
+	updatableVerifier, err = s.VerifierFactory.CreateBlockVerifier(lastConfigBlock, lastBlock, s.CryptoProvider, s.Logger)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create BlockVerificationAssistant")
+	}
 
-	return viewMetadata, lastConfigSqn
+	clientConfig := s.ClusterDialer.Config // The cluster and block puller use slightly different options
+	clientConfig.AsyncConnect = false
+	clientConfig.SecOpts.VerifyCertificate = nil
+
+	bftDeliverer := s.BFTDelivererFactory.CreateBFTDeliverer(
+		s.Support.ChannelID(),
+		s.syncBuff,
+		&ledgerInfoAdapter{s.Support},
+		updatableVerifier,
+		blocksprovider.DialerAdapter{ClientConfig: clientConfig},
+		&orderers.ConnectionSourceFactory{}, // no overrides in the orderer
+		s.CryptoProvider,
+		make(chan struct{}),
+		s.Support,
+		blocksprovider.DeliverAdapter{},
+		&blocksprovider.BFTCensorshipMonitorFactory{},
+		flogging.MustGetLogger("orderer.blocksprovider").With("channel", s.Support.ChannelID()),
+		10*time.Millisecond, // TODO get it from config.
+		2*time.Second,       // TODO get it from config.
+		20*time.Second,      // TODO get it from config.
+		time.Minute,         // TODO get it from config.
+		func() (stopRetries bool) {
+			s.syncBuff.Stop()
+			return true // In the orderer we must limit the time we try to do Synch()
+		},
+	)
+
+	s.Logger.Infof("Created a BFTDeliverer: %+v", bftDeliverer)
+	bftDeliverer.Initialize(lastConfigEnv.GetConfig(), myEndpoint)
+
+	return bftDeliverer, nil
+}
+
+func (s *BFTSynchronizer) getBlocksFromSyncBuffer(startHeight, targetHeight uint64) (*common.Block, error) {
+	targetSeq := targetHeight - 1
+	seq := startHeight
+	var blocksFetched int
+	s.Logger.Debugf("Will fetch sequences [%d-%d]", seq, targetSeq)
+
+	var lastPulledBlock *common.Block
+	for seq <= targetSeq {
+		block := s.syncBuff.PullBlock(seq)
+		if block == nil {
+			s.Logger.Debugf("Failed to fetch block [%d] from cluster", seq)
+			break
+		}
+		if protoutil.IsConfigBlock(block) {
+			s.Support.WriteConfigBlock(block, nil)
+			s.Logger.Debugf("Fetched and committed config block [%d] from cluster", seq)
+		} else {
+			s.Support.WriteBlock(block, nil)
+			s.Logger.Debugf("Fetched and committed block [%d] from cluster", seq)
+		}
+		lastPulledBlock = block
+
+		prevInLatestDecision := s.lastReconfig.InLatestDecision
+		s.lastReconfig = s.OnCommit(lastPulledBlock)
+		s.lastReconfig.InLatestDecision = s.lastReconfig.InLatestDecision || prevInLatestDecision
+		s.Logger.Debugf("Last reconfig %+v", s.lastReconfig)
+		seq++
+		blocksFetched++
+	}
+
+	s.syncBuff.Stop()
+
+	if lastPulledBlock == nil {
+		return nil, errors.Errorf("failed pulling block %d", seq)
+	}
+
+	startSeq := startHeight
+	s.Logger.Infof("Finished synchronizing with cluster, fetched %d blocks, starting from block [%d], up until and including block [%d]",
+		blocksFetched, startSeq, lastPulledBlock.Header.Number)
+
+	return lastPulledBlock, nil
 }

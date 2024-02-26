@@ -308,7 +308,7 @@ func makeBlockWithMetadata(sqnNum, lastConfigIndex uint64, viewMetadata *smartbf
 		Value: protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
 			ConsenterMetadata: protoutil.MarshalOrPanic(viewMetadata),
 			LastConfig: &cb.LastConfig{
-				Index: sqnNum,
+				Index: lastConfigIndex,
 			},
 		}),
 	})
