@@ -12,7 +12,7 @@ The following orderer metrics are exported for consumption by Prometheus.
 +------------------------------------------------------+-----------+------------------------------------------------------------+--------------------------------------------------------------------------------+
 | Name                                                 | Type      | Description                                                | Labels                                                                         |
 +======================================================+===========+============================================================+===========+====================================================================+
-| blockcutter_block_fill_duration                      | histogram | The time from first transaction enqueing to the block      | channel   |                                                                    |
+| blockcutter_block_fill_duration                      | histogram | The time from first transaction enqueuing to the block     | channel   |                                                                    |
 |                                                      |           | being cut in seconds.                                      |           |                                                                    |
 +------------------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 | broadcast_enqueue_duration                           | histogram | The time to enqueue a transaction in seconds.              | channel   |                                                                    |
@@ -252,7 +252,7 @@ associated with the metric.
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | Bucket                                                                    | Type      | Description                                                |
 +===========================================================================+===========+============================================================+
-| blockcutter.block_fill_duration.%{channel}                                | histogram | The time from first transaction enqueing to the block      |
+| blockcutter.block_fill_duration.%{channel}                                | histogram | The time from first transaction enqueuing to the block     |
 |                                                                           |           | being cut in seconds.                                      |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | broadcast.enqueue_duration.%{channel}.%{type}.%{status}                   | histogram | The time to enqueue a transaction in seconds.              |

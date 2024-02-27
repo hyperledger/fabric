@@ -447,8 +447,8 @@ func (p *Peer) GetPolicyManager(cid string) policies.Manager {
 	return nil
 }
 
-// JoinBySnaphotStatus queries ledger mgr to get the status of joinbysnapshot
-func (p *Peer) JoinBySnaphotStatus() *pb.JoinBySnapshotStatus {
+// JoinBySnapshotStatus queries ledger mgr to get the status of joinbysnapshot
+func (p *Peer) JoinBySnapshotStatus() *pb.JoinBySnapshotStatus {
 	return p.LedgerMgr.JoinBySnapshotStatus()
 }
 
