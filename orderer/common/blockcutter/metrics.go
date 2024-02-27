@@ -11,7 +11,7 @@ import "github.com/hyperledger/fabric-lib-go/common/metrics"
 var blockFillDuration = metrics.HistogramOpts{
 	Namespace:    "blockcutter",
 	Name:         "block_fill_duration",
-	Help:         "The time from first transaction enqueing to the block being cut in seconds.",
+	Help:         "The time from first transaction enqueuing to the block being cut in seconds.",
 	LabelNames:   []string{"channel"},
 	StatsdFormat: "%{#fqname}.%{channel}",
 }

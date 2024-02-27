@@ -340,7 +340,7 @@ func (e *PeerConfiger) getChannels() pb.Response {
 
 // joinBySnapshotStatus returns information about joinbysnapshot running status.
 func (e *PeerConfiger) joinBySnapshotStatus() pb.Response {
-	status := e.peer.JoinBySnaphotStatus()
+	status := e.peer.JoinBySnapshotStatus()
 
 	statusBytes, err := proto.Marshal(status)
 	if err != nil {
