@@ -187,7 +187,6 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 	})
 
 	It("correct mock", func() {
-
 		var err error
 		channel := "testchannel1"
 
@@ -231,6 +230,5 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		nwo.WaitUntilEqualLedgerHeight(network, channel, 11, network.Peers[0])
-
 	})
 })
