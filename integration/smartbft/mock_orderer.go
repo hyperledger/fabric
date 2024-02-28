@@ -122,10 +122,11 @@ func (mo *MockOrderer) deliverBlocks(
 		mo.logger.Warningf("[channel: %s] Received seekInfo message from %s with missing start or stop %v, %v", chdr.ChannelId, addr, seekInfo.Start, seekInfo.Stop)
 		return cb.Status_BAD_REQUEST, nil
 	}
+	mo.logger.Infof("[%s] Recieved seekInfo.Start %v", mo.address, seekInfo.Start)
 
 	mo.logger.Infof("[channel: %s] Received seekInfo (%p) %v from %s", chdr.ChannelId, seekInfo, seekInfo, addr)
 
-	ledgerIdx := uint64(1)
+	ledgerIdx := seekInfo.Start.GetSpecified().Number
 	number := uint64(1)
 	ledgerLastIdx := uint64(len(mo.ledgerArray) - 1)
 	mo.logger.Infof("<%s> delivering blocks", mo.address)
@@ -190,7 +191,7 @@ func (mo *MockOrderer) deliverBlocks(
 
 		// increment block number to support FAIL_IF_NOT_READY deliver behavior
 		number++
-		mo.logger.Infof("[channel: %s] Delivering block [%d] for (%p) for %s", chdr.ChannelId, block.Header.Number, seekInfo, addr)
+		//mo.logger.Infof("[channel: %s] Delivering block [%d] for (%p) for %s", chdr.ChannelId, block.Header.Number, seekInfo, addr)
 
 		block2send := &cb.Block{
 			Header:   block.Header,
@@ -198,43 +199,37 @@ func (mo *MockOrderer) deliverBlocks(
 			Data:     block.Data,
 		}
 
-		censor := false
 		onlyHeaderType := true
 		if seekInfo.ContentType == ab.SeekInfo_HEADER_WITH_SIG && !protoutil.IsConfigBlock(block) {
 			mo.logger.Infof("ASKED FOR HEADER WITH SIG")
 			block2send.Data = nil
 		} else if mo.censorDataMode {
-			mo.logger.Infof("PREPARING BLOCK DATA [%d]###### %s", block2send.Header.Number, mo.address)
 			onlyHeaderType = false
 			if !mo.peerFirstTry {
 				mo.malicious = true
-				mo.logger.Infof("Malicious %s", mo.address)
 			}
 			if mo.sentCount >= 5 && mo.malicious {
-				censor = true
+				break
 			}
-			mo.sentCount += 1
 		}
-
 		mo.peerFirstTry = true
 
 		blockResponse := &ab.DeliverResponse{
 			Type: &ab.DeliverResponse_Block{Block: block2send},
 		}
 
-		if !censor || onlyHeaderType {
-			if !onlyHeaderType {
-				mo.logger.Infof("SENDING DATA BLOCK [%d]###### %s", block2send.Header.Number, mo.address)
-			} else {
-				mo.logger.Infof("SENDING HEADER BLOCK [%d]###### %s", block2send.Header.Number, mo.address)
-			}
-
-			err = server.Send(blockResponse)
-			if err != nil {
-				mo.logger.Warningf("[channel: %s] Error sending to %s: %s", chdr.ChannelId, addr, err)
-				return cb.Status_INTERNAL_SERVER_ERROR, err
-			}
+		if !onlyHeaderType {
+			mo.logger.Infof("%s >>>> SENDING DATA BLOCK [%d]######", mo.address, block2send.Header.Number)
+		} else {
+			mo.logger.Infof("%s >>>> SENDING HEADER BLOCK [%d]######", mo.address, block2send.Header.Number)
 		}
+
+		err = server.Send(blockResponse)
+		if err != nil {
+			mo.logger.Warningf("[channel: %s] Error sending to %s: %s", chdr.ChannelId, addr, err)
+			return cb.Status_INTERNAL_SERVER_ERROR, err
+		}
+		mo.sentCount += 1
 
 		if stopNum == block.Header.Number {
 			break
@@ -271,7 +266,7 @@ func NewMockOrderer(address string, ledgerArray []*cb.Block, options comm.Secure
 
 	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), mo)
 
-	mo.logger.Info("Beginning to serve request")
+	mo.logger.Info("%s >>>> Beginning to serve request", address)
 	go grpcServer.Start()
 
 	return mo, nil

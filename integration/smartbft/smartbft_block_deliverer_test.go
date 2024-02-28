@@ -9,6 +9,7 @@ package smartbft
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"os"
 	"path/filepath"
@@ -69,7 +70,7 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		var ordererRunners []*ginkgomon.Runner
 		for _, orderer := range network.Orderers {
 			runner := network.OrdererRunner(orderer)
-			runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug")
+			runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=debug")
 			ordererRunners = append(ordererRunners, runner)
 			proc := ifrit.Invoke(runner)
 			ordererProcesses = append(ordererProcesses, proc)
@@ -203,9 +204,10 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		nwo.WaitUntilEqualLedgerHeight(network, channel, 11, network.Peers[0])
+		fmt.Println("Hello")
 	})
 
-	It("block censorship", func() {
+	FIt("block censorship", func() {
 		var err error
 		channel := "testchannel1"
 
@@ -217,6 +219,7 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		By("Create a peer and join to channel")
 		p0 := network.Peers[0]
 		peerRunner := network.PeerRunner(p0)
+		peerRunner.Command.Env = append(peerRunner.Command.Env, "FABRIC_LOGGING_SPEC=debug")
 		peerProcesses = ifrit.Invoke(peerRunner)
 		Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
