@@ -207,7 +207,7 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		fmt.Println("Hello")
 	})
 
-	FIt("block censorship", func() {
+	It("block censorship", func() {
 		var err error
 		channel := "testchannel1"
 
