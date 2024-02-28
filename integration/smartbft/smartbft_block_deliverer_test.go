@@ -10,11 +10,12 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"os"
 	"path/filepath"
 	"syscall"
 	"time"
+
+	"github.com/hyperledger/fabric/integration/nwo/commands"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-protos-go/common"
