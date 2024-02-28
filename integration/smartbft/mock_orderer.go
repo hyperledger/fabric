@@ -122,14 +122,10 @@ func (mo *MockOrderer) deliverBlocks(
 		mo.logger.Warningf("[channel: %s] Received seekInfo message from %s with missing start or stop %v, %v", chdr.ChannelId, addr, seekInfo.Start, seekInfo.Stop)
 		return cb.Status_BAD_REQUEST, nil
 	}
-	mo.logger.Infof("[%s] Recieved seekInfo.Start %v", mo.address, seekInfo.Start)
-
-	mo.logger.Infof("[channel: %s] Received seekInfo (%p) %v from %s", chdr.ChannelId, seekInfo, seekInfo, addr)
 
 	ledgerIdx := seekInfo.Start.GetSpecified().Number
 	number := uint64(1)
 	ledgerLastIdx := uint64(len(mo.ledgerArray) - 1)
-	mo.logger.Infof("<%s> delivering blocks", mo.address)
 	var stopNum uint64
 
 	switch stop := seekInfo.Stop.Type.(type) {
@@ -189,9 +185,7 @@ func (mo *MockOrderer) deliverBlocks(
 			return status, nil
 		}
 
-		// increment block number to support FAIL_IF_NOT_READY deliver behavior
 		number++
-		//mo.logger.Infof("[channel: %s] Delivering block [%d] for (%p) for %s", chdr.ChannelId, block.Header.Number, seekInfo, addr)
 
 		block2send := &cb.Block{
 			Header:   block.Header,
@@ -199,12 +193,10 @@ func (mo *MockOrderer) deliverBlocks(
 			Data:     block.Data,
 		}
 
-		onlyHeaderType := true
 		if seekInfo.ContentType == ab.SeekInfo_HEADER_WITH_SIG && !protoutil.IsConfigBlock(block) {
 			mo.logger.Infof("ASKED FOR HEADER WITH SIG")
 			block2send.Data = nil
 		} else if mo.censorDataMode {
-			onlyHeaderType = false
 			if !mo.peerFirstTry {
 				mo.malicious = true
 			}
@@ -216,12 +208,6 @@ func (mo *MockOrderer) deliverBlocks(
 
 		blockResponse := &ab.DeliverResponse{
 			Type: &ab.DeliverResponse_Block{Block: block2send},
-		}
-
-		if !onlyHeaderType {
-			mo.logger.Infof("%s >>>> SENDING DATA BLOCK [%d]######", mo.address, block2send.Header.Number)
-		} else {
-			mo.logger.Infof("%s >>>> SENDING HEADER BLOCK [%d]######", mo.address, block2send.Header.Number)
 		}
 
 		err = server.Send(blockResponse)
