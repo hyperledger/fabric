@@ -16,9 +16,9 @@ Several different types of block events are available from a peer depending on t
 Block events also include any chaincode events from the transactions within the block.
 Each transaction may have a single chaincode event, which can be emitted by the called chaincode.
 
-This topic describes the low-level peer event services for block events.
-Fabric client SDKs utilize the peer event services and make block events and chaincode events
-available to client applications through higher level applications APIs.
+This topic describes the low-level peer event services (gRPC services) for block events.
+Fabric Gateway application API (for Fabric v2.4 onwards) internally utilizes the peer event services and make block events and chaincode events
+available to client applications through the client APIs for Fabric v2.4 onwards.
 
 Available services
 ------------------
@@ -104,7 +104,7 @@ updates. For further details, refer to the API documentation:
 * `Node.js <https://hyperledger.github.io/fabric-gateway/main/api/node/interfaces/Network.html#getChaincodeEvents>`_
 * `Java <https://hyperledger.github.io/fabric-gateway/main/api/java/org/hyperledger/fabric/client/Network.html>`_
 
-Legacy application SDKs use the deliver service and allow client applications
+Legacy application SDKs (Note: Deprecated in Fabric v2.5) use the deliver service and allow client applications
 to receive block events, or only chaincode events emitted by successfully
 committed transactions within those blocks.
 
