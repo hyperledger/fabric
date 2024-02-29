@@ -407,9 +407,10 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 		defer setup.mutex.Unlock()
 		require.Len(t, setup.monitorSet, 2)
 		for i, mon := range setup.monitorSet {
+			<-setup.monEndCSet[i]
 			require.Equal(t, 1, mon.MonitorCallCount())
 			require.Equal(t, 1, mon.StopCallCount())
-			<-setup.monEndCSet[i]
+
 		}
 	})
 
@@ -448,9 +449,9 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 		defer setup.mutex.Unlock()
 		require.Len(t, setup.monitorSet, 25)
 		for i, mon := range setup.monitorSet {
+			<-setup.monEndCSet[i]
 			require.Equal(t, 1, mon.MonitorCallCount())
 			require.Equal(t, 1, mon.StopCallCount())
-			<-setup.monEndCSet[i]
 		}
 
 		t.Log("Cycles through all sources")
@@ -572,9 +573,9 @@ func TestBFTDeliverer_DeliverRetries(t *testing.T) {
 		defer setup.mutex.Unlock()
 		require.Len(t, setup.monitorSet, 2)
 		for i, mon := range setup.monitorSet {
-			require.Equal(t, 1, mon.MonitorCallCount())
-			require.Equal(t, 1, mon.StopCallCount())
 			<-setup.monEndCSet[i]
+			require.Equal(t, 1, mon.MonitorCallCount(), fmt.Sprintf("i=%d", i))
+			require.Equal(t, 1, mon.StopCallCount(), fmt.Sprintf("i=%d", i))
 		}
 	})
 
@@ -610,9 +611,9 @@ func TestBFTDeliverer_DeliverRetries(t *testing.T) {
 		defer setup.mutex.Unlock()
 		require.Len(t, setup.monitorSet, 25)
 		for i, mon := range setup.monitorSet {
-			require.Equal(t, 1, mon.MonitorCallCount())
-			require.Equal(t, 1, mon.StopCallCount())
 			<-setup.monEndCSet[i]
+			require.Equal(t, 1, mon.MonitorCallCount(), fmt.Sprintf("i=%d", i))
+			require.Equal(t, 1, mon.StopCallCount(), fmt.Sprintf("i=%d", i))
 		}
 
 		t.Log("Cycles through all sources")
@@ -1143,9 +1144,9 @@ func TestBFTDeliverer_CensorshipMonitorEvents(t *testing.T) {
 		defer setup.mutex.Unlock()
 		require.Len(t, setup.monitorSet, 41)
 		for i, mon := range setup.monitorSet {
+			<-setup.monEndCSet[i]
 			require.Equal(t, 1, mon.MonitorCallCount())
 			require.Equal(t, 1, mon.StopCallCount())
-			<-setup.monEndCSet[i]
 		}
 
 		t.Log("Cycles through all sources")
