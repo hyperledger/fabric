@@ -252,7 +252,6 @@ func NewMockOrderer(address string, ledgerArray []*cb.Block, options comm.Secure
 
 	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), mo)
 
-	mo.logger.Info("%s >>>> Beginning to serve request", address)
 	go grpcServer.Start()
 
 	return mo, nil
