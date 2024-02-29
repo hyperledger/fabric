@@ -108,10 +108,6 @@ func (mo *MockOrderer) deliverBlocks(
 		return cb.Status_BAD_REQUEST, nil
 	}
 
-	if chdr.ChannelId != "testchannel1" {
-		panic("WHAT CHANNEL ARE YOU TALKING ABOUT?")
-	}
-
 	seekInfo := &ab.SeekInfo{}
 	if err = proto.Unmarshal(payload.Data, seekInfo); err != nil {
 		mo.logger.Warningf("[channel: %s] Received a signed deliver request from %s with malformed seekInfo payload: %s", chdr.ChannelId, addr, err)
@@ -167,7 +163,6 @@ func (mo *MockOrderer) deliverBlocks(
 			}
 			block = mo.ledgerArray[ledgerIdx]
 			status = cb.Status_SUCCESS
-			mo.logger.Infof("### <%s> extracted block %d ; %v", mo.address, ledgerIdx, block)
 			ledgerIdx++
 			close(iterCh)
 		}()
@@ -194,7 +189,6 @@ func (mo *MockOrderer) deliverBlocks(
 		}
 
 		if seekInfo.ContentType == ab.SeekInfo_HEADER_WITH_SIG && !protoutil.IsConfigBlock(block) {
-			mo.logger.Infof("ASKED FOR HEADER WITH SIG")
 			block2send.Data = nil
 		} else if mo.censorDataMode {
 			if !mo.peerFirstTry {
