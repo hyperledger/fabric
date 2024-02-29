@@ -9,7 +9,6 @@ package smartbft
 import (
 	"context"
 	"encoding/binary"
-	"fmt"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -204,7 +203,6 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		nwo.WaitUntilEqualLedgerHeight(network, channel, 11, network.Peers[0])
-		fmt.Println("Hello")
 	})
 
 	It("block censorship", func() {
