@@ -1201,6 +1201,10 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 
 func TestImpatientStreamDetectSelf(t *testing.T) {
 	osn := newClusterNodeWithTLS(t)
+	osn.Lock()
+	osn.err = fmt.Errorf("service unavailable")
+	osn.Unlock()
+
 	defer osn.stop()
 	var conn *grpc.ClientConn
 	var err error
