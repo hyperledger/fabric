@@ -121,3 +121,7 @@ html_add_permalinks = True
 # https://myst-parser.readthedocs.io/en/latest/configuration.html#sphinx-config-options
 
 myst_all_links_external = True
+
+rst_prolog = """.. attention::
+    This version of Hyperledger Fabric is no longer supported or maintained. You can change the documentation version using the selector at the bottom of the navigation panel.
+"""
