@@ -164,6 +164,7 @@ latex_elements = {
     # 'figure_align': 'htbp',
 }
 
+<<<<<<< HEAD
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
@@ -224,3 +225,10 @@ linkcheck_anchors = False
 
 # Increase the linkcheck timeout to 5 seconds
 linkcheck_timeout = 5
+=======
+myst_all_links_external = True
+
+rst_prolog = """.. attention::
+    This version of Hyperledger Fabric is no longer supported or maintained. You can change the documentation version using the selector at the bottom of the navigation panel.
+"""
+>>>>>>> 4748fec14 (Add a doc notice that old version is no longer supported (release-2.2) (#4706))
