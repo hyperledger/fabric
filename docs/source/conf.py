@@ -224,3 +224,7 @@ linkcheck_anchors = False
 
 # Increase the linkcheck timeout to 5 seconds
 linkcheck_timeout = 5
+
+rst_prolog = """.. attention::
+    This version of Hyperledger Fabric is no longer supported or maintained. You can change the documentation version using the selector at the bottom of the navigation panel.
+"""
