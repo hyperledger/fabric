@@ -30,10 +30,8 @@ For more details see the [LTS strategy](https://github.com/hyperledger/fabric-rf
 Current LTS release:
 - [v2.5.x](https://hyperledger-fabric.readthedocs.io/en/release-2.5/whatsnew.html)
 
-Prior LTS release:
-- [v2.2.x](https://hyperledger-fabric.readthedocs.io/en/release-2.2/whatsnew.html) (maintained through December 2023)
-
 Historic LTS releases:
+- [v2.2.x](https://hyperledger-fabric.readthedocs.io/en/release-2.2/whatsnew.html) (maintenance ended in February 2024 with the delivery of v2.2.15)
 - [v1.4.x](https://hyperledger-fabric.readthedocs.io/en/release-1.4/whatsnew.html) (maintenance ended in April 2021 with the delivery of v1.4.12)
 
 Unless specified otherwise, all releases will be upgradable from the prior minor release.
