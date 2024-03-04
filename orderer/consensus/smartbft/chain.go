@@ -611,6 +611,10 @@ func (c *BFTChain) lastPersistedProposalAndSignatures() (*types.Proposal, []type
 	return &decision.Proposal, decision.Signatures
 }
 
+func (c *BFTChain) GetLeaderID() uint64 {
+	return c.consensus.GetLeaderID()
+}
+
 func (c *BFTChain) reportIsLeader() {
 	leaderID := c.consensus.GetLeaderID()
 	c.Metrics.LeaderID.Set(float64(leaderID))

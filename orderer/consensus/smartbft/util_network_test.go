@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -89,11 +90,43 @@ func (ns *NetworkSetupInfo) SendTxToAllAvailableNodes(tx *cb.Envelope) error {
 		ns.t.Logf("Sending tx to node %v", idx)
 		err := node.SendTx(tx)
 		if err != nil {
-			ns.t.Logf("Error occured during sending tx to node %v: %v", idx, err)
+			ns.t.Logf("Error occurred during sending tx to node %v: %v", idx, err)
 		}
 		errorsArr = append(errorsArr, err)
 	}
 	return errors.Join(errorsArr...)
+}
+
+func (ns *NetworkSetupInfo) RestartAllNodes() error {
+	var errorsArr []error
+	for _, node := range ns.nodeIdToNode {
+		err := node.Restart()
+		if err != nil {
+			ns.t.Logf("Restarting node %v fail: %v", node.NodeId, err)
+		}
+		errorsArr = append(errorsArr, err)
+	}
+	return errors.Join(errorsArr...)
+}
+
+func (ns *NetworkSetupInfo) GetAgreedLeader() uint64 {
+	var ids []uint64
+	for _, node := range ns.nodeIdToNode {
+		if !node.IsAvailable() {
+			continue
+		}
+		id := node.Chain.GetLeaderID()
+		ids = append(ids, id)
+	}
+
+	// check all nodes see the same leader
+	for _, element := range ids {
+		if element != ids[0] {
+			return 0
+		}
+	}
+
+	return ids[0]
 }
 
 type Node struct {
@@ -141,6 +174,29 @@ func (n *Node) Start() {
 	n.Chain.Start()
 	n.IsConnectedToNetwork = true
 	n.IsStarted = true
+}
+
+func (n *Node) Restart() error {
+	n.t.Logf("Restarting node %d", n.NodeId)
+	n.lock.Lock()
+	defer n.lock.Unlock()
+	n.Chain.Halt()
+	newChain, err := createBFTChainUsingMocks(n.t, n)
+	if err != nil {
+		return err
+	}
+	n.Chain = newChain
+	n.Chain.Start()
+	return nil
+}
+
+func (n *Node) Stop() {
+	n.t.Logf("Stoping node %d", n.NodeId)
+	n.lock.Lock()
+	defer n.lock.Unlock()
+	n.IsStarted = false
+	n.IsConnectedToNetwork = false
+	n.Chain.Halt()
 }
 
 func (n *Node) IsAvailable() bool {
@@ -244,7 +300,7 @@ func (ns *NodeState) GetLedgerHeight() int {
 }
 
 func (ns *NodeState) WaitLedgerHeightToBe(height int) {
-	require.Eventually(ns.t, func() bool { return ns.GetLedgerHeight() == height }, 30*time.Second, 100*time.Millisecond)
+	require.Eventually(ns.t, func() bool { return ns.GetLedgerHeight() == height }, 10*time.Second, 100*time.Millisecond)
 }
 
 // createBFTChainUsingMocks creates a new bft chain which is exposed to all nodes in the network.
@@ -302,11 +358,13 @@ func createBFTChainUsingMocks(t *testing.T, node *Node) (*smartbft.BFTChain, err
 	supportMock.EXPECT().WriteBlock(mock.Anything, mock.Anything).Run(
 		func(block *cb.Block, encodedMetadataValue []byte) {
 			node.State.AddBlock(block)
+			t.Logf("Node %d appended block number %v to ledger", node.NodeId, block.Header.Number)
 		}).Maybe()
 
 	supportMock.EXPECT().WriteConfigBlock(mock.Anything, mock.Anything).Run(
 		func(block *cb.Block, encodedMetadataValue []byte) {
 			node.State.AddBlock(block)
+			t.Logf("Node %d appended block number %v to ledger", node.NodeId, block.Header.Number)
 		}).Maybe()
 
 	mpc := &smartbft.MetricProviderConverter{MetricsProvider: &disabled.Provider{}}
@@ -323,6 +381,11 @@ func createBFTChainUsingMocks(t *testing.T, node *Node) (*smartbft.BFTChain, err
 			for nodeId := range node.nodesMap {
 				nodeIds = append(nodeIds, nodeId)
 			}
+
+			sort.Slice(nodeIds, func(i, j int) bool {
+				return nodeIds[i] < nodeIds[j]
+			})
+
 			return nodeIds
 		}).Maybe()
 	egressCommMock.EXPECT().SendTransaction(mock.Anything, mock.Anything).Run(
@@ -465,13 +528,13 @@ func createBFTConfiguration(node *Node) types.Configuration {
 		RequestAutoRemoveTimeout:      3 * time.Minute,
 		ViewChangeResendInterval:      5 * time.Second,
 		ViewChangeTimeout:             20 * time.Second,
-		LeaderHeartbeatTimeout:        1 * time.Minute,
+		LeaderHeartbeatTimeout:        (1 * time.Minute) / 2,
 		LeaderHeartbeatCount:          10,
 		NumOfTicksBehindBeforeSyncing: types.DefaultConfig.NumOfTicksBehindBeforeSyncing,
 		CollectTimeout:                1 * time.Second,
 		SyncOnStart:                   types.DefaultConfig.SyncOnStart,
 		SpeedUpViewChange:             types.DefaultConfig.SpeedUpViewChange,
-		LeaderRotation:                types.DefaultConfig.LeaderRotation,
+		LeaderRotation:                false,
 		DecisionsPerLeader:            types.DefaultConfig.DecisionsPerLeader,
 		RequestMaxBytes:               types.DefaultConfig.RequestMaxBytes,
 		RequestPoolSubmitTimeout:      types.DefaultConfig.RequestPoolSubmitTimeout,

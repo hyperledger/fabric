@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"testing"
+	"time"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
@@ -19,25 +20,92 @@ var nonce uint64 = 0
 
 // Scenario:
 // 1. Start a network of 4 nodes
-// 2. Submit a TX
-// 3. Wait for the TX to be received by all nodes
+// 2. Submit a TX and wait for the TX to be received by all nodes
+// 3. Restart all nodes
+// 4. Submit a TX and wait for the TX to be received by all nodes
 func TestSuccessfulTxPropagation(t *testing.T) {
 	dir := t.TempDir()
 	channelId := "testchannel"
 
+	// start a network
 	networkSetupInfo := NewNetworkSetupInfo(t, channelId, dir)
 	nodeMap := networkSetupInfo.CreateNodes(4)
 	networkSetupInfo.StartAllNodes()
 
+	// wait until all nodes have the genesis block in their ledger
 	for _, node := range nodeMap {
 		node.State.WaitLedgerHeightToBe(1)
 	}
 
+	// send a tx to all nodes and wait the tx will be added to each ledger
 	env := createEndorserTxEnvelope("TEST_MESSAGE #1", channelId)
 	err := networkSetupInfo.SendTxToAllAvailableNodes(env)
 	require.NoError(t, err)
 	for _, node := range nodeMap {
 		node.State.WaitLedgerHeightToBe(2)
+	}
+
+	// restarting all nodes
+	err = networkSetupInfo.RestartAllNodes()
+	require.NoError(t, err)
+
+	// send a tx to all nodes again and wait the tx will be added to each ledger
+	env = createEndorserTxEnvelope("TEST_MESSAGE #2", channelId)
+	err = networkSetupInfo.SendTxToAllAvailableNodes(env)
+	require.NoError(t, err)
+	for _, node := range nodeMap {
+		node.State.WaitLedgerHeightToBe(3)
+	}
+}
+
+// Scenario:
+// 1. Start a network of 4 nodes
+// 2. Submit a TX and wait for the TX to be received by all nodes
+// 3. Stop the leader and wait for a new one to be elected
+// 4. Submit a TX and wait for the TX to be received by all nodes
+func TestStopLeaderAndSuccessfulTxPropagation(t *testing.T) {
+	dir := t.TempDir()
+	channelId := "testchannel"
+
+	// start a network
+	networkSetupInfo := NewNetworkSetupInfo(t, channelId, dir)
+	nodeMap := networkSetupInfo.CreateNodes(4)
+	networkSetupInfo.StartAllNodes()
+
+	// wait until all nodes have the genesis block in their ledger
+	for _, node := range nodeMap {
+		node.State.WaitLedgerHeightToBe(1)
+	}
+
+	// send a tx to all nodes and wait the tx will be added to each ledger
+	env := createEndorserTxEnvelope("TEST_MESSAGE #1", channelId)
+	err := networkSetupInfo.SendTxToAllAvailableNodes(env)
+	require.NoError(t, err)
+	for _, node := range nodeMap {
+		node.State.WaitLedgerHeightToBe(2)
+	}
+
+	// get leader id
+	leaderId := networkSetupInfo.GetAgreedLeader()
+
+	// stop the leader
+	nodeMap[leaderId].Stop()
+
+	// wait for a new leader to be elected
+	require.Eventually(t, func() bool {
+		newLeaderId := networkSetupInfo.GetAgreedLeader()
+		return leaderId != newLeaderId
+	}, 1*time.Minute, 100*time.Millisecond)
+
+	// send a tx to all nodes again and wait the tx will be added to each ledger, except the ledger of the old leader which is stopped
+	env = createEndorserTxEnvelope("TEST_MESSAGE #2", channelId)
+	err = networkSetupInfo.SendTxToAllAvailableNodes(env)
+	require.NoError(t, err)
+	for _, node := range nodeMap {
+		if node.NodeId == leaderId {
+			continue
+		}
+		node.State.WaitLedgerHeightToBe(3)
 	}
 }
 
