@@ -36,15 +36,6 @@ import (
 	"go.uber.org/zap"
 )
 
-//go:generate counterfeiter -o mocks/mock_blockpuller.go . BlockPuller
-
-// BlockPuller is used to pull blocks from other OSN
-type BlockPuller interface {
-	PullBlock(seq uint64) *cb.Block
-	HeightsByEndpoints() (map[string]uint64, string, error)
-	Close()
-}
-
 // WALConfig consensus specific configuration parameters from orderer.yaml; for SmartBFT only WALDir is relevant.
 type WALConfig struct {
 	WALDir            string // WAL data of <my-channel> is stored in WALDir/<my-channel>
@@ -72,8 +63,8 @@ type BFTChain struct {
 	Channel            string
 	Config             types.Configuration
 	BlockPuller        BlockPuller
-	clusterDialer      *cluster.PredicateDialer // TODO Required by BFT-synchronizer
-	localConfigCluster localconfig.Cluster      // TODO Required by BFT-synchronizer
+	clusterDialer      *cluster.PredicateDialer // Required by BFT-synchronizer
+	localConfigCluster localconfig.Cluster      // Required by BFT-synchronizer
 	Comm               cluster.Communicator
 	SignerSerializer   signerSerializer
 	PolicyManager      policies.Manager
@@ -131,8 +122,8 @@ func NewChain(
 		SignerSerializer:   signerSerializer,
 		PolicyManager:      policyManager,
 		BlockPuller:        blockPuller,        // FIXME create internally or with a factory
-		clusterDialer:      clusterDialer,      // TODO Required by BFT-synchronizer
-		localConfigCluster: localConfigCluster, // TODO Required by BFT-synchronizer
+		clusterDialer:      clusterDialer,      // Required by BFT-synchronizer
+		localConfigCluster: localConfigCluster, // Required by BFT-synchronizer
 		Logger:             logger,
 		consensusRelation:  types2.ConsensusRelationConsenter,
 		status:             types2.StatusActive,
@@ -212,8 +203,27 @@ func bftSmartConsensusBuild(
 	var sync api.Synchronizer
 	switch c.localConfigCluster.ReplicationPolicy {
 	case "consensus":
-		c.Logger.Debug("BFTSynchronizer not yet available") // TODO create BFTSynchronizer when available
-		fallthrough
+		c.Logger.Debug("Creating a BFTSynchronizer")
+		sync = &BFTSynchronizer{
+			selfID: rtc.id,
+			LatestConfig: func() (types.Configuration, []uint64) {
+				rtc := c.RuntimeConfig.Load().(RuntimeConfig)
+				return rtc.BFTConfig, rtc.Nodes
+			},
+			BlockToDecision: c.blockToDecision,
+			OnCommit: func(block *cb.Block) types.Reconfig {
+				c.pruneCommittedRequests(block)
+				return c.updateRuntimeConfig(block)
+			},
+			Support:             c.support,
+			CryptoProvider:      c.bccsp,
+			ClusterDialer:       c.clusterDialer,
+			LocalConfigCluster:  c.localConfigCluster,
+			BlockPullerFactory:  &blockPullerCreator{},
+			VerifierFactory:     &verifierCreator{},
+			BFTDelivererFactory: &bftDelivererCreator{},
+			Logger:              c.Logger,
+		}
 	case "simple":
 		c.Logger.Debug("Creating simple Synchronizer")
 		sync = &Synchronizer{

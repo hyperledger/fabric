@@ -45,7 +45,7 @@ type BlockPuller struct {
 
 	// A 'stopper' goroutine may signal the go-routine servicing PullBlock & HeightsByEndpoints to stop by closing this
 	// channel. Note: all methods of the BlockPuller must be serviced by a single goroutine, it is not thread safe.
-	// It is the responsibility of the 'stopper' not to close the channel more then once.
+	// It is the responsibility of the 'stopper' not to close the channel more than once.
 	StopChannel chan struct{}
 
 	// Internal state
