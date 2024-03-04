@@ -20,9 +20,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-//go:generate counterfeiter -o mocks/block_puller.go . BlockPuller
-
 // BlockPuller is used to pull blocks from other OSN
+//
+//go:generate counterfeiter -o mocks/block_puller.go . BlockPuller
+//go:generate mockery --dir . --name BlockPuller --case underscore --with-expecter=true --output mocks/mock_block_puller.go
 type BlockPuller interface {
 	PullBlock(seq uint64) *cb.Block
 	HeightsByEndpoints() (map[string]uint64, string, error)
