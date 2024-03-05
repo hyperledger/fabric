@@ -17,21 +17,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/orderer/common/localconfig"
-
-	"github.com/SmartBFT-Go/consensus/smartbftprotos"
-	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/orderer/common/cluster"
 
 	"github.com/SmartBFT-Go/consensus/pkg/api"
 	"github.com/SmartBFT-Go/consensus/pkg/types"
 	"github.com/SmartBFT-Go/consensus/pkg/wal"
+	"github.com/SmartBFT-Go/consensus/smartbftprotos"
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
+	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
 	smartBFTMocks "github.com/hyperledger/fabric/orderer/consensus/smartbft/mocks"
 	"github.com/hyperledger/fabric/protoutil"
@@ -401,7 +401,7 @@ func createBFTChainUsingMocks(t *testing.T, node *Node) (*smartbft.BFTChain, err
 			require.NoError(t, err)
 		}).Maybe()
 
-	egressCommFactory := func(runtimeConfig *atomic.Value, channelId string, comm smartbft.Communicator) smartbft.EgressComm {
+	egressCommFactory := func(runtimeConfig *atomic.Value, channelId string, comm cluster.Communicator) smartbft.EgressComm {
 		return egressCommMock
 	}
 
@@ -528,7 +528,7 @@ func createBFTConfiguration(node *Node) types.Configuration {
 		RequestAutoRemoveTimeout:      3 * time.Minute,
 		ViewChangeResendInterval:      5 * time.Second,
 		ViewChangeTimeout:             20 * time.Second,
-		LeaderHeartbeatTimeout:        (1 * time.Minute) / 2,
+		LeaderHeartbeatTimeout:        30 * time.Second,
 		LeaderHeartbeatCount:          10,
 		NumOfTicksBehindBeforeSyncing: types.DefaultConfig.NumOfTicksBehindBeforeSyncing,
 		CollectTimeout:                1 * time.Second,

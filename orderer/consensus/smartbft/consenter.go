@@ -17,10 +17,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hyperledger/fabric/orderer/consensus/smartbft/util"
-
-	"go.uber.org/zap"
-
 	"github.com/SmartBFT-Go/consensus/pkg/api"
 	"github.com/SmartBFT-Go/consensus/pkg/wal"
 	"github.com/golang/protobuf/proto"
@@ -38,9 +34,11 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/orderer/consensus/smartbft/util"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 )
 
 // CreateChainCallback creates a new chain
@@ -207,7 +205,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 		Logger:               c.Logger,
 	}
 
-	egressCommFactory := func(runtimeConfig *atomic.Value, channelId string, comm Communicator) EgressComm {
+	egressCommFactory := func(runtimeConfig *atomic.Value, channelId string, comm cluster.Communicator) EgressComm {
 		channelDecorator := zap.String("channel", channelId)
 		return &Egress{
 			RuntimeConfig: runtimeConfig,
@@ -218,7 +216,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 				Channel:       channelId,
 				StreamsByType: cluster.NewStreamsByType(),
 				Comm:          comm,
-				Timeout:       5 * time.Minute, // Externalize configuration
+				Timeout:       5 * time.Minute, // TODO: Externalize configuration
 			},
 		}
 	}

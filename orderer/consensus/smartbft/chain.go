@@ -43,9 +43,9 @@ type WALConfig struct {
 	EvictionSuspicion string // Duration threshold that the node samples in order to suspect its eviction from the channel.
 }
 
-// ConfigValidator interface
-//
 //go:generate mockery --dir . --name ConfigValidator --case underscore --with-expecter=true --output mocks
+
+// ConfigValidator interface
 type ConfigValidator interface {
 	ValidateConfig(env *cb.Envelope) error
 }
@@ -65,15 +65,15 @@ type BFTChain struct {
 	Channel            string
 	Config             types.Configuration
 	BlockPuller        BlockPuller
-	clusterDialer      *cluster.PredicateDialer // TODO Required by BFT-synchronizer
-	localConfigCluster localconfig.Cluster      // TODO Required by BFT-synchronizer
-	Comm               Communicator
+	clusterDialer      *cluster.PredicateDialer // Required by BFT-synchronizer
+	localConfigCluster localconfig.Cluster      // Required by BFT-synchronizer
+	Comm               cluster.Communicator
 	SignerSerializer   signerSerializer
-	PolicyManager      PolicyManager
+	PolicyManager      policies.Manager
 	Logger             *flogging.FabricLogger
 	WALDir             string
 	consensus          *smartbft.Consensus
-	support            ConsenterSupport
+	support            consensus.ConsenterSupport
 	clusterService     *cluster.ClusterService
 	verifier           *Verifier
 	assembler          *Assembler
@@ -98,7 +98,7 @@ func NewChain(
 	localConfigCluster localconfig.Cluster,
 	comm cluster.Communicator,
 	signerSerializer signerSerializer,
-	policyManager PolicyManager,
+	policyManager policies.Manager,
 	support consensus.ConsenterSupport,
 	metrics *Metrics,
 	metricsBFT *api.Metrics,

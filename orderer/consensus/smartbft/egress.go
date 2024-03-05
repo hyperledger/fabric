@@ -9,12 +9,24 @@ package smartbft
 import (
 	"sync/atomic"
 
+	"github.com/SmartBFT-Go/consensus/pkg/api"
+	"github.com/hyperledger/fabric/orderer/common/cluster"
+
 	protos "github.com/SmartBFT-Go/consensus/smartbftprotos"
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/protoutil"
 )
+
+//go:generate mockery --dir . --name EgressComm --case underscore --with-expecter=true --output mocks
+
+type EgressCommFactory func(runtimeConfig *atomic.Value, channelId string, comm cluster.Communicator) EgressComm
+
+// Comm enables the communications between the nodes.
+type EgressComm interface {
+	api.Comm
+}
 
 //go:generate mockery -dir . -name RPC -case underscore -output mocks
 
