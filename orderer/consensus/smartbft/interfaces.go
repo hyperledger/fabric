@@ -7,14 +7,15 @@ SPDX-License-Identifier: Apache-2.0
 package smartbft
 
 import (
+	"github.com/hyperledger-labs/SmartBFT/pkg/api"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/consensus"
 )
 
-// ConsenterSupport provides the resources available to a Consenter implementation.
-//
 //go:generate mockery --dir . --name consenterSupport --case underscore --with-expecter=true --exported --output mocks
+
+// ConsenterSupport provides the resources available to a Consenter implementation.
 type consenterSupport interface {
 	consensus.ConsenterSupport
 }
@@ -38,4 +39,9 @@ type policyManager interface {
 // Policy is used to determine if a signature is valid
 type policy interface {
 	policies.Policy
+}
+
+//go:generate mockery --dir . --name synchronizer --case underscore --with-expecter=true --exported --output mocks
+type synchronizer interface {
+	api.Synchronizer
 }

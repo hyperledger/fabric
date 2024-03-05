@@ -103,6 +103,7 @@ func NewChain(
 	metricsWalBFT *wal.Metrics,
 	bccsp bccsp.BCCSP,
 	egressCommFactory EgressCommFactory,
+	synchronizerFactory SynchronizerFactory,
 ) (*BFTChain, error) {
 	logger := flogging.MustGetLogger("orderer.consensus.smartbft.chain").With(zap.String("channel", support.ChannelID()))
 
@@ -157,7 +158,7 @@ func NewChain(
 	c.RuntimeConfig.Store(rtc)
 
 	c.verifier = buildVerifier(cv, c.RuntimeConfig, support, requestInspector, policyManager)
-	c.consensus = bftSmartConsensusBuild(c, requestInspector, egressCommFactory)
+	c.consensus = bftSmartConsensusBuild(c, requestInspector, egressCommFactory, synchronizerFactory)
 
 	// Setup communication with list of remotes notes for the new channel
 	c.Comm.Configure(c.support.ChannelID(), rtc.RemoteNodes)
@@ -175,6 +176,7 @@ func bftSmartConsensusBuild(
 	c *BFTChain,
 	requestInspector *RequestInspector,
 	egressCommFactory EgressCommFactory,
+	synchronizerFactory SynchronizerFactory,
 ) *smartbft.Consensus {
 	var err error
 
@@ -201,53 +203,18 @@ func bftSmartConsensusBuild(
 	// report cluster size
 	c.Metrics.ClusterSize.Set(float64(clusterSize))
 
-	var sync api.Synchronizer
-	switch c.localConfigCluster.ReplicationPolicy {
-	case "consensus":
-		c.Logger.Debug("Creating a BFTSynchronizer")
-		sync = &BFTSynchronizer{
-			selfID: rtc.id,
-			LatestConfig: func() (types.Configuration, []uint64) {
-				rtc := c.RuntimeConfig.Load().(RuntimeConfig)
-				return rtc.BFTConfig, rtc.Nodes
-			},
-			BlockToDecision: c.blockToDecision,
-			OnCommit: func(block *cb.Block) types.Reconfig {
-				c.pruneCommittedRequests(block)
-				return c.updateRuntimeConfig(block)
-			},
-			Support:             c.support,
-			CryptoProvider:      c.bccsp,
-			ClusterDialer:       c.clusterDialer,
-			LocalConfigCluster:  c.localConfigCluster,
-			BlockPullerFactory:  &blockPullerCreator{},
-			VerifierFactory:     &verifierCreator{},
-			BFTDelivererFactory: &bftDelivererCreator{},
-			Logger:              c.Logger,
-		}
-	case "simple":
-		c.Logger.Debug("Creating simple Synchronizer")
-		sync = &Synchronizer{
-			selfID:          rtc.id,
-			BlockToDecision: c.blockToDecision,
-			OnCommit: func(block *cb.Block) types.Reconfig {
-				c.pruneCommittedRequests(block)
-				return c.updateRuntimeConfig(block)
-			},
-			Support:            c.support,
-			CryptoProvider:     c.bccsp,
-			ClusterDialer:      c.clusterDialer,
-			LocalConfigCluster: c.localConfigCluster,
-			BlockPullerFactory: &blockPullerCreator{},
-			Logger:             c.Logger,
-			LatestConfig: func() (types.Configuration, []uint64) {
-				rtc := c.RuntimeConfig.Load().(RuntimeConfig)
-				return rtc.BFTConfig, rtc.Nodes
-			},
-		}
-	default:
-		c.Logger.Panicf("Unsupported Cluster.ReplicationPolicy: %s", c.localConfigCluster.ReplicationPolicy)
-	}
+	sync := synchronizerFactory(
+		c.Logger,
+		c.localConfigCluster,
+		c.RuntimeConfig.Load().(RuntimeConfig),
+		c.BlockToDecision,
+		c.pruneCommittedRequests,
+		c.updateRuntimeConfig,
+		c.support,
+		c.bccsp,
+		c.clusterDialer,
+		clusterSize,
+	)
 
 	channelDecorator := zap.String("channel", c.support.ChannelID())
 	logger := flogging.MustGetLogger("orderer.consensus.smartbft.consensus").With(channelDecorator)
@@ -521,7 +488,7 @@ func (c *BFTChain) blockToProposalWithoutSignaturesInMetadata(block *cb.Block) t
 	return prop
 }
 
-func (c *BFTChain) blockToDecision(block *cb.Block) *types.Decision {
+func (c *BFTChain) BlockToDecision(block *cb.Block) *types.Decision {
 	proposal := c.blockToProposalWithoutSignaturesInMetadata(block)
 	if block.Header.Number == 0 {
 		return &types.Decision{
@@ -606,7 +573,7 @@ func (c *BFTChain) lastPersistedProposalAndSignatures() (*types.Proposal, []type
 	lastBlock := LastBlockFromLedgerOrPanic(c.support, c.Logger)
 	// initial report of the last committed block number
 	c.Metrics.CommittedBlockNumber.Set(float64(lastBlock.Header.Number))
-	decision := c.blockToDecision(lastBlock)
+	decision := c.BlockToDecision(lastBlock)
 	return &decision.Proposal, decision.Signatures
 }
 
@@ -682,3 +649,16 @@ func (c *chainACL) Evaluate(signatureSet []*protoutil.SignedData) error {
 	}
 	return nil
 }
+
+type SynchronizerFactory func(
+	logger *flogging.FabricLogger,
+	localConfigCluster localconfig.Cluster,
+	rtc RuntimeConfig,
+	blockToDecision func(block *cb.Block) *types.Decision,
+	pruneCommittedRequests func(block *cb.Block),
+	updateRuntimeConfig func(block *cb.Block) types.Reconfig,
+	support consensus.ConsenterSupport,
+	bccsp bccsp.BCCSP,
+	clusterDialer *cluster.PredicateDialer,
+	clusterSize uint64,
+) api.Synchronizer
