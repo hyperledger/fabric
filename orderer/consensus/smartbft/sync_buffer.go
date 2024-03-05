@@ -19,9 +19,12 @@ type SyncBuffer struct {
 	stopOnce sync.Once
 }
 
-func NewSyncBuffer() *SyncBuffer {
+func NewSyncBuffer(capacity uint) *SyncBuffer {
+	if capacity == 0 {
+		capacity = 10
+	}
 	return &SyncBuffer{
-		blockCh: make(chan *common.Block, 10),
+		blockCh: make(chan *common.Block, capacity),
 		stopCh:  make(chan struct{}),
 	}
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/deliverclient"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
@@ -313,6 +314,11 @@ func TestBFTSynchronizer(t *testing.T) {
 		fakeOrdererConfig.ConsentersReturns([]*cb.Consenter{
 			{Id: 1}, {Id: 2}, {Id: 3}, {Id: 4},
 		})
+		fakeOrdererConfig.BatchSizeReturns(&orderer.BatchSize{
+			MaxMessageCount:   100,
+			AbsoluteMaxBytes:  1000000,
+			PreferredMaxBytes: 500000,
+		})
 		fakeCS.SharedConfigReturns(fakeOrdererConfig)
 
 		fakeVerifierFactory := &mocks.VerifierFactory{}
@@ -437,6 +443,11 @@ func TestBFTSynchronizer(t *testing.T) {
 		fakeOrdererConfig := &mocks.OrdererConfig{}
 		fakeOrdererConfig.ConsentersReturns([]*cb.Consenter{
 			{Id: 1}, {Id: 2}, {Id: 3}, {Id: 4},
+		})
+		fakeOrdererConfig.BatchSizeReturns(&orderer.BatchSize{
+			MaxMessageCount:   100,
+			AbsoluteMaxBytes:  1000000,
+			PreferredMaxBytes: 500000,
 		})
 		fakeCS.SharedConfigReturns(fakeOrdererConfig)
 

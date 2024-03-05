@@ -17,13 +17,13 @@ import (
 )
 
 func TestNewSyncBuffer(t *testing.T) {
-	buff := smartbft.NewSyncBuffer()
+	buff := smartbft.NewSyncBuffer(100)
 	require.NotNil(t, buff)
 }
 
 func TestSyncBuffer_PullBlock(t *testing.T) {
 	t.Run("blocks until stopped", func(t *testing.T) {
-		buff := smartbft.NewSyncBuffer()
+		buff := smartbft.NewSyncBuffer(100)
 		require.NotNil(t, buff)
 
 		var wg sync.WaitGroup
@@ -39,7 +39,7 @@ func TestSyncBuffer_PullBlock(t *testing.T) {
 	})
 
 	t.Run("blocks until HandleBlock is called", func(t *testing.T) {
-		buff := smartbft.NewSyncBuffer()
+		buff := smartbft.NewSyncBuffer(100)
 		require.NotNil(t, buff)
 
 		blockIn := &common.Block{
@@ -61,7 +61,7 @@ func TestSyncBuffer_PullBlock(t *testing.T) {
 	})
 
 	t.Run("block number mismatch, request number lower than head, return nil", func(t *testing.T) {
-		buff := smartbft.NewSyncBuffer()
+		buff := smartbft.NewSyncBuffer(100)
 		require.NotNil(t, buff)
 
 		blockIn := &common.Block{
@@ -82,7 +82,7 @@ func TestSyncBuffer_PullBlock(t *testing.T) {
 	})
 
 	t.Run("block number mismatch, requested number higher than head, blocks until inserted", func(t *testing.T) {
-		buff := smartbft.NewSyncBuffer()
+		buff := smartbft.NewSyncBuffer(100)
 		require.NotNil(t, buff)
 
 		blockIn2 := &common.Block{
@@ -110,7 +110,7 @@ func TestSyncBuffer_PullBlock(t *testing.T) {
 	})
 
 	t.Run("continuous operation", func(t *testing.T) {
-		buff := smartbft.NewSyncBuffer()
+		buff := smartbft.NewSyncBuffer(100)
 		require.NotNil(t, buff)
 
 		var wg sync.WaitGroup
@@ -142,11 +142,22 @@ func TestSyncBuffer_PullBlock(t *testing.T) {
 
 		wg.Wait()
 	})
+
+	t.Run("zero capacity is still buffered and does not block", func(t *testing.T) {
+		buff := smartbft.NewSyncBuffer(0)
+		require.NotNil(t, buff)
+
+		blockIn := &common.Block{
+			Header: &common.BlockHeader{Number: uint64(10), PreviousHash: []byte{1, 2, 3, 4}, DataHash: []byte{5, 6, 7, 8}},
+		}
+		err := buff.HandleBlock("mychannel", blockIn)
+		require.NoError(t, err)
+	})
 }
 
 func TestSyncBuffer_HandleBlock(t *testing.T) {
 	t.Run("blocks until stopped", func(t *testing.T) {
-		buff := smartbft.NewSyncBuffer()
+		buff := smartbft.NewSyncBuffer(100)
 		require.NotNil(t, buff)
 
 		var wg sync.WaitGroup
@@ -174,7 +185,7 @@ func TestSyncBuffer_HandleBlock(t *testing.T) {
 	})
 
 	t.Run("bad blocks", func(t *testing.T) {
-		buff := smartbft.NewSyncBuffer()
+		buff := smartbft.NewSyncBuffer(100)
 		require.NotNil(t, buff)
 
 		err := buff.HandleBlock("mychannel", nil)
