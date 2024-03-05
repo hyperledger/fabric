@@ -21,8 +21,8 @@ import (
 // It keeps track of the last header it received, and the time it was received.
 // The header receivers verify each block as it arrives.
 //
-// TODO The header receiver will receive (or ask for) full config blocks - in a later commit.
-// TODO The header receiver will maintain its own private block verifier (bundle) - in a later commit.
+// The header receiver receives full config blocks.
+// The header receiver maintains its own private block verifier that gets updated on every config block.
 type BFTHeaderReceiver struct {
 	mutex                  sync.Mutex
 	chainID                string
@@ -34,7 +34,7 @@ type BFTHeaderReceiver struct {
 	client                 orderer.AtomicBroadcast_DeliverClient
 	updatableBlockVerifier UpdatableBlockVerifier
 
-	// A block with Header & Metadata, without Data (i.e. lastHeader.Data==nil); TODO except from config blocks, which are full.
+	// A block with Header & Metadata, without Data (i.e. lastHeader.Data==nil); except from config blocks, which are full.
 	lastHeader *common.Block
 	// The time lastHeader was received, or time.Time{}
 	lastHeaderTime time.Time
@@ -110,15 +110,21 @@ func (hr *BFTHeaderReceiver) DeliverHeaders() {
 
 		case *orderer.DeliverResponse_Block:
 			blockNum := t.Block.Header.Number
-			err := hr.updatableBlockVerifier.VerifyBlockAttestation(t.Block)
-			if err != nil {
-				hr.logger.Warningf("[%s][%s] Last block verification failed, blockNum [%d], err: %s", hr.chainID, hr.endpoint, blockNum, err)
-				return
-			}
 
-			if protoutil.IsConfigBlock(t.Block) { // blocks with block.Data==nil return false
+			if !protoutil.IsConfigBlock(t.Block) { // normal blocks with block.Data==nil
+				err := hr.updatableBlockVerifier.VerifyBlockAttestation(t.Block)
+				if err != nil {
+					hr.logger.Warningf("[%s][%s] Last block attestation verification failed, blockNum [%d], err: %s", hr.chainID, hr.endpoint, blockNum, err)
+					return
+				}
+			} else { // a config block is a full block, so verify it as such, and update the verifier
+				err := hr.updatableBlockVerifier.VerifyBlock(t.Block)
+				if err != nil {
+					hr.logger.Warningf("[%s][%s] Last config block verification failed,  blockNum [%d], err: %s", hr.chainID, hr.endpoint, blockNum, err)
+					return
+				}
 				if err := hr.updatableBlockVerifier.UpdateConfig(t.Block); err != nil {
-					hr.logger.Warningf("config block [%d] from orderer [%s] failed to update block verifierm error: %s", blockNum, hr.endpoint, err)
+					hr.logger.Warningf("config block [%d] from orderer [%s] failed to update block verifier, error: %s", blockNum, hr.endpoint, err)
 					return
 				}
 				hr.logger.Infof("[%s][%s] Applied config block to header verifier, blockNum = [%d]", hr.chainID, hr.endpoint, blockNum)

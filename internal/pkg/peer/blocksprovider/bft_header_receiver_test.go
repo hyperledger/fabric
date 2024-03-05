@@ -142,6 +142,7 @@ func TestBftHeaderReceiver_WithBlocks_Renew(t *testing.T) {
 	assert.Equal(t, bTime, bTimeOld)
 
 	assert.Equal(t, fakeBlockVerifier.VerifyBlockAttestationCallCount(), 2)
+	assert.Equal(t, fakeBlockVerifier.VerifyBlockCallCount(), 0)
 
 	//=== Create a new BFTHeaderReceiver with the last good header of the previous receiver
 	fakeBlockVerifier = &fake.UpdatableBlockVerifier{}
@@ -211,6 +212,71 @@ func TestBftHeaderReceiver_WithBlocks_StopOnVerificationFailure(t *testing.T) {
 	assert.Equal(t, bTime, bTimeOld)
 
 	assert.Equal(t, fakeBlockVerifier.VerifyBlockAttestationCallCount(), 3)
+	assert.Equal(t, fakeBlockVerifier.VerifyBlockCallCount(), 0)
+}
+
+func TestBftHeaderReceiver_WithBlocks_ConfigVerification(t *testing.T) {
+	flogging.ActivateSpec("debug")
+	fakeBlockVerifier := &fake.UpdatableBlockVerifier{}
+	fakeBlockVerifier.VerifyBlockAttestationCalls(naiveBlockVerifier)
+	fakeBlockVerifier.CloneReturns(fakeBlockVerifier)
+	streamClientMock := &fake.DeliverClient{}
+	hr := blocksprovider.NewBFTHeaderReceiver("testchannel", "10.10.10.11:666", streamClientMock, fakeBlockVerifier, nil, flogging.MustGetLogger("test.BFTHeaderReceiver"))
+
+	seqCh := make(chan uint64)
+	streamClientMock.RecvCalls(
+		func() (*orderer.DeliverResponse, error) {
+			time.Sleep(time.Millisecond)
+
+			seqNew, ok := <-seqCh
+			if ok {
+				if seqNew == 3 {
+					res := prepareConfigBlock(seqNew, uint32(1))
+					assert.True(t, protoutil.IsConfigBlock(res.GetBlock()))
+					return res, nil
+				}
+				return prepareBlock(seqNew, orderer.SeekInfo_HEADER_WITH_SIG, uint32(1)), nil
+			} else {
+				return nil, errors.New("test closed")
+			}
+		},
+	)
+	streamClientMock.CloseSendReturns(nil)
+
+	go hr.DeliverHeaders()
+
+	var bNum uint64
+	var bTime time.Time
+	var err error
+
+	seqCh <- uint64(1)
+	require.Eventually(t, func() bool {
+		bNum, bTime, err = hr.LastBlockNum()
+		return err == nil && bNum == uint64(1) && !bTime.IsZero()
+	}, time.Second, time.Millisecond)
+
+	bTimeOld := bTime
+	seqCh <- uint64(2)
+	require.Eventually(t, func() bool {
+		bNum, bTime, err = hr.LastBlockNum()
+		return err == nil && bNum == uint64(2) && bTime.After(bTimeOld)
+	}, time.Second, time.Millisecond)
+
+	// config block should be verified in full
+	bTimeOld = bTime
+	seqCh <- uint64(3)
+	require.Eventually(t, func() bool {
+		bNum, bTime, err = hr.LastBlockNum()
+		return err == nil && bNum == uint64(3) && bTime.After(bTimeOld)
+	}, time.Second, time.Millisecond)
+
+	err = hr.Stop()
+	require.NoError(t, err)
+	require.Eventually(t, hr.IsStopped, time.Second, time.Millisecond)
+
+	assert.Equal(t, fakeBlockVerifier.VerifyBlockAttestationCallCount(), 2)
+	assert.Equal(t, fakeBlockVerifier.VerifyBlockCallCount(), 1)
+	assert.Equal(t, fakeBlockVerifier.UpdateConfigCallCount(), 1)
 }
 
 func TestBftHeaderReceiver_VerifyOnce(t *testing.T) {
@@ -253,7 +319,8 @@ func TestBftHeaderReceiver_VerifyOnce(t *testing.T) {
 	}
 	assert.Equal(t, fakeBlockVerifier.VerifyBlockAttestationCallCount(), 1)
 
-	hr.Stop()
+	err := hr.Stop()
+	assert.NoError(t, err)
 	assert.Eventually(t, hr.IsStopped, time.Second, time.Millisecond)
 }
 
@@ -271,13 +338,43 @@ func prepareBlock(seq uint64, contentType orderer.SeekInfo_SeekContentType, good
 		block.Data = data
 	}
 
+	fakeSignature(block, goodSignature)
+
+	return &orderer.DeliverResponse{Type: &orderer.DeliverResponse_Block{Block: block}}
+}
+
+func fakeSignature(block *common.Block, goodSignature uint32) {
 	if goodSignature > 0 {
 		block.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = []byte("good")
 	} else {
 		block.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = []byte("bad")
 	}
+}
 
-	return &orderer.DeliverResponse{Type: &orderer.DeliverResponse_Block{Block: block}}
+func prepareConfigBlock(seq uint64, goodSignature uint32) *orderer.DeliverResponse {
+	block := protoutil.NewBlock(seq, []byte{1, 2, 3, 4, 5, 6, 7, 8})
+
+	env := &common.Envelope{
+		Payload: protoutil.MarshalOrPanic(&common.Payload{
+			Header: &common.Header{
+				ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
+					Type:      int32(common.HeaderType_CONFIG),
+					ChannelId: "test-chain",
+				}),
+			},
+			Data: protoutil.MarshalOrPanic(&common.ConfigEnvelope{}),
+		}),
+	}
+
+	block.Data = &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(env)}}
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+	fakeSignature(block, goodSignature)
+
+	return &orderer.DeliverResponse{
+		Type: &orderer.DeliverResponse_Block{
+			Block: block,
+		},
+	}
 }
 
 func naiveBlockVerifier(signedBlock *common.Block) error {
@@ -287,27 +384,4 @@ func naiveBlockVerifier(signedBlock *common.Block) error {
 		return nil
 	}
 	return errors.New("test: bad signature")
-}
-
-func waitForAtomicGreaterThan(addr *uint64, threshold uint64, timeoutOpt ...time.Duration) bool {
-	to := 5 * time.Second
-	if len(timeoutOpt) > 0 {
-		to = timeoutOpt[0]
-	}
-
-	ticker := time.NewTicker(time.Millisecond)
-	defer ticker.Stop()
-	timeout := time.After(to)
-
-	for {
-		select {
-		case <-ticker.C:
-		case <-timeout:
-			return false
-		}
-
-		if atomic.LoadUint64(addr) > threshold {
-			return true
-		}
-	}
 }
