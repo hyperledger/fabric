@@ -13,6 +13,7 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 | Dave Enyeart            | [denyeart][denyeart] | dave.enyeart | <enyeart@us.ibm.com>
 | Manish Sethi            | [manish-sethi][manish-sethi] | manish-sethi | <manish.sethi@gmail.com>
 | Senthilnathan Natarajan | [cendhu][cendhu] | Senthil1 | <cendhu@gmail.com>
+| Tatsuya Sato            | [satota2][satota2] | satota2 | <tatsuya.sato.so@hitachi.com>
 | Yacov Manevich          | [yacovm][yacovm] | yacovm | <yacov.manevich@ibm.com>
 | Yoav Tock               | [tock-ibm][tock-ibm] | tock-ibm | <tock@il.ibm.com>
 
@@ -82,6 +83,7 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 [nikhil550]: https://github.com/nikhil550
 [odowdaibm]: https://github.com/odowdaibm
 [pamandrejko]: https://github.com/pamandrejko
+[satota2]: https://github.com/satota2
 [smithbk]: https://github.com/smithbk
 [srderson]: https://github.com/srderson
 [sykesm]: https://github.com/sykesm
