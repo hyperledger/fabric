@@ -9,15 +9,16 @@ package smartbft
 import (
 	"fmt"
 
-	mspa "github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/common/policydsl"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	mspa "github.com/hyperledger/fabric-protos-go/msp"
+	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -163,6 +164,26 @@ func (cbv *ConfigBlockValidator) checkConsentersMatchPolicy(conf *cb.Config) err
 
 	if !proto.Equal(expectedConfigPol, actualPolicy) {
 		return fmt.Errorf("block validation policy should be a signature policy: %v but it is %v instead", expectedConfigPol, actualPolicy)
+	}
+
+	consensusTypeConfigValue := conf.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
+
+	if consensusTypeConfigValue == nil {
+		return fmt.Errorf("missing consensus type property in config")
+	}
+
+	consensusTypeValue := &protosorderer.ConsensusType{}
+	if err := proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue); err != nil {
+		return fmt.Errorf("invalid consensus type property in config: %v", err)
+	}
+
+	configOptions := &smartbft.Options{}
+	if err := proto.Unmarshal(consensusTypeValue.Metadata, configOptions); err != nil {
+		return fmt.Errorf("invalid options encoded in consensus metadata: %v", err)
+	}
+
+	if configOptions.LeaderRotation == smartbft.Options_ROTATION_ON {
+		return fmt.Errorf("leader rotation must be turned off for this version or be unspecified")
 	}
 
 	return nil

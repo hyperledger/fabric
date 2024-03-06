@@ -56,8 +56,13 @@ func ConfigFromMetadataOptions(selfID uint64, options *smartbft.Options) (types.
 	config.SyncOnStart = options.SyncOnStart
 	config.SpeedUpViewChange = options.SpeedUpViewChange
 
-	config.LeaderRotation = false
-	config.DecisionsPerLeader = 0
+	if options.LeaderRotation != smartbft.Options_ROTATION_ON {
+		config.LeaderRotation = false
+		config.DecisionsPerLeader = 0
+	} else {
+		config.LeaderRotation = true
+		config.DecisionsPerLeader = options.DecisionsPerLeader
+	}
 
 	if err = config.Validate(); err != nil {
 		return config, errors.Wrap(err, "config validation failed")
