@@ -33,7 +33,7 @@ func (e InvalidIdInfo) Error() string {
 
 //---------- policyEvaluator ------
 
-// policyEvalutor interface provides the interfaces for policy evaluation
+// policyEvaluator interface provides the interfaces for policy evaluation
 type policyEvaluator interface {
 	PolicyRefForAPI(resName string) string
 	Evaluate(polName string, id []*protoutil.SignedData) error

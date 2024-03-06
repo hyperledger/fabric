@@ -131,10 +131,10 @@ type ChaincodeBuilder interface {
 	Build(ccid string) error
 }
 
-// MSPsIDGetter is used to get the MSP IDs for a channel.
+// MSPIDsGetter is used to get the MSP IDs for a channel.
 type MSPIDsGetter func(string) []string
 
-// IDMSPManagerGetters used to get the MSP Manager for a channel.
+// MSPManagerGetter used to get the MSP Manager for a channel.
 type MSPManagerGetter func(string) msp.MSPManager
 
 // ---------- the LSCC -----------------
