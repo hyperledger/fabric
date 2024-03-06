@@ -211,6 +211,7 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 
 		for _, mock := range mocksArray {
 			mock.censorDataMode = true
+			mock.stopDeliveryChannel = make(chan struct{})
 		}
 
 		/* Create peer */
@@ -226,7 +227,11 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 			ClientAuth: network.ClientAuthRequired,
 		})
 		Expect(err).NotTo(HaveOccurred())
-
+		Eventually(peerRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Block censorship detected"))
 		nwo.WaitUntilEqualLedgerHeight(network, channel, 11, network.Peers[0])
+
+		for _, mock := range mocksArray {
+			close(mock.stopDeliveryChannel)
+		}
 	})
 })

@@ -23,15 +23,16 @@ import (
 )
 
 type MockOrderer struct {
-	address        string
-	ledgerArray    []*cb.Block
-	logger         *flogging.FabricLogger
-	grpcServer     *comm.GRPCServer
-	channel        chan string
-	censorDataMode bool
-	malicious      bool
-	peerFirstTry   bool
-	sentCount      int
+	address             string
+	ledgerArray         []*cb.Block
+	logger              *flogging.FabricLogger
+	grpcServer          *comm.GRPCServer
+	channel             chan string
+	censorDataMode      bool
+	malicious           bool
+	peerFirstTry        bool
+	sentCount           int
+	stopDeliveryChannel chan struct{}
 }
 
 func (mo *MockOrderer) parseEnvelope(ctx context.Context, envelope *cb.Envelope) (*cb.Payload, *cb.ChannelHeader, *cb.SignatureHeader, error) {
@@ -115,14 +116,19 @@ func (mo *MockOrderer) deliverBlocks(
 	}
 
 	if seekInfo.Start == nil || seekInfo.Stop == nil {
-		mo.logger.Warningf("[channel: %s] Received seekInfo message from %s with missing start or stop %v, %v", chdr.ChannelId, addr, seekInfo.Start, seekInfo.Stop)
+		mo.logger.Warningf("[channel: %s] Received seekInfo message from %s with missing start or stop %+v, %+v", chdr.ChannelId, addr, seekInfo.Start, seekInfo.Stop)
 		return cb.Status_BAD_REQUEST, nil
 	}
+
+	mo.logger.Infof("[%s] Received seekInfo.Start %+v", mo.address, seekInfo.Start)
+
+	mo.logger.Infof("[channel: %s] Received seekInfo (%p) %+v from %s", chdr.ChannelId, seekInfo, seekInfo, addr)
 
 	ledgerIdx := seekInfo.Start.GetSpecified().Number
 	number := uint64(1)
 	ledgerLastIdx := uint64(len(mo.ledgerArray) - 1)
 	var stopNum uint64
+	mo.logger.Infof("[channel: %s] Received seekInfo %+v from %s with ledgerIdx: [%d]", chdr.ChannelId, seekInfo, addr, ledgerIdx)
 
 	switch stop := seekInfo.Stop.Type.(type) {
 	case *ab.SeekPosition_Oldest:
@@ -163,6 +169,7 @@ func (mo *MockOrderer) deliverBlocks(
 			}
 			block = mo.ledgerArray[ledgerIdx]
 			status = cb.Status_SUCCESS
+			mo.logger.Infof("### <%s> extracted block %d ; %+v", mo.address, ledgerIdx, block)
 			ledgerIdx++
 			close(iterCh)
 		}()
@@ -181,7 +188,6 @@ func (mo *MockOrderer) deliverBlocks(
 		}
 
 		number++
-
 		block2send := &cb.Block{
 			Header:   block.Header,
 			Metadata: block.Metadata,
@@ -189,14 +195,19 @@ func (mo *MockOrderer) deliverBlocks(
 		}
 
 		if seekInfo.ContentType == ab.SeekInfo_HEADER_WITH_SIG && !protoutil.IsConfigBlock(block) {
+			mo.logger.Debugf("asked for header block from [%s]; block num [%d]", mo.address, block2send.Header.Number)
 			block2send.Data = nil
 		} else if mo.censorDataMode {
+			mo.logger.Debugf("asked for data block from [%s]; block num [%d]", mo.address, block2send.Header.Number)
 			if !mo.peerFirstTry {
 				mo.malicious = true
+				mo.logger.Debugf("malicious mode activated for [%s]", mo.address)
 			}
 			if mo.sentCount >= 5 && mo.malicious {
-				break
+				<-mo.stopDeliveryChannel
 			}
+		} else {
+			mo.logger.Debugf("asked for data block from [%s]; block num [%d]", mo.address, block2send.Header.Number)
 		}
 		mo.peerFirstTry = true
 
