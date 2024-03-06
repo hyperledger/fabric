@@ -23,11 +23,16 @@ import (
 )
 
 type MockOrderer struct {
-	address     string
-	ledgerArray []*cb.Block
-	logger      *flogging.FabricLogger
-	grpcServer  *comm.GRPCServer
-	channel     chan string
+	address             string
+	ledgerArray         []*cb.Block
+	logger              *flogging.FabricLogger
+	grpcServer          *comm.GRPCServer
+	channel             chan string
+	censorDataMode      bool
+	malicious           bool
+	peerFirstTry        bool
+	sentCount           int
+	stopDeliveryChannel chan struct{}
 }
 
 func (mo *MockOrderer) parseEnvelope(ctx context.Context, envelope *cb.Envelope) (*cb.Payload, *cb.ChannelHeader, *cb.SignatureHeader, error) {
@@ -104,10 +109,6 @@ func (mo *MockOrderer) deliverBlocks(
 		return cb.Status_BAD_REQUEST, nil
 	}
 
-	if chdr.ChannelId != "testchannel1" {
-		panic("WHAT CHANNEL ARE YOU TALKING ABOUT?")
-	}
-
 	seekInfo := &ab.SeekInfo{}
 	if err = proto.Unmarshal(payload.Data, seekInfo); err != nil {
 		mo.logger.Warningf("[channel: %s] Received a signed deliver request from %s with malformed seekInfo payload: %s", chdr.ChannelId, addr, err)
@@ -115,17 +116,19 @@ func (mo *MockOrderer) deliverBlocks(
 	}
 
 	if seekInfo.Start == nil || seekInfo.Stop == nil {
-		mo.logger.Warningf("[channel: %s] Received seekInfo message from %s with missing start or stop %v, %v", chdr.ChannelId, addr, seekInfo.Start, seekInfo.Stop)
+		mo.logger.Warningf("[channel: %s] Received seekInfo message from %s with missing start or stop %+v, %+v", chdr.ChannelId, addr, seekInfo.Start, seekInfo.Stop)
 		return cb.Status_BAD_REQUEST, nil
 	}
 
-	mo.logger.Infof("[channel: %s] Received seekInfo (%p) %v from %s", chdr.ChannelId, seekInfo, seekInfo, addr)
+	mo.logger.Infof("[%s] Received seekInfo.Start %+v", mo.address, seekInfo.Start)
 
-	ledgerIdx := uint64(1)
+	mo.logger.Infof("[channel: %s] Received seekInfo (%p) %+v from %s", chdr.ChannelId, seekInfo, seekInfo, addr)
+
+	ledgerIdx := seekInfo.Start.GetSpecified().Number
 	number := uint64(1)
 	ledgerLastIdx := uint64(len(mo.ledgerArray) - 1)
-	mo.logger.Infof("<%s> delivering blocks", mo.address)
 	var stopNum uint64
+	mo.logger.Infof("[channel: %s] Received seekInfo %+v from %s with ledgerIdx: [%d]", chdr.ChannelId, seekInfo, addr, ledgerIdx)
 
 	switch stop := seekInfo.Stop.Type.(type) {
 	case *ab.SeekPosition_Oldest:
@@ -166,7 +169,7 @@ func (mo *MockOrderer) deliverBlocks(
 			}
 			block = mo.ledgerArray[ledgerIdx]
 			status = cb.Status_SUCCESS
-			mo.logger.Infof("### <%s> extracted block %d ; %v", mo.address, ledgerIdx, block)
+			mo.logger.Infof("### <%s> extracted block number %d ; ledgerIdx is %d", mo.address, block.Header.Number, ledgerIdx)
 			ledgerIdx++
 			close(iterCh)
 		}()
@@ -184,19 +187,29 @@ func (mo *MockOrderer) deliverBlocks(
 			return status, nil
 		}
 
-		// increment block number to support FAIL_IF_NOT_READY deliver behavior
 		number++
-		mo.logger.Infof("[channel: %s] Delivering block [%d] for (%p) for %s", chdr.ChannelId, block.Header.Number, seekInfo, addr)
-
 		block2send := &cb.Block{
 			Header:   block.Header,
 			Metadata: block.Metadata,
 			Data:     block.Data,
 		}
+
 		if seekInfo.ContentType == ab.SeekInfo_HEADER_WITH_SIG && !protoutil.IsConfigBlock(block) {
-			mo.logger.Infof("ASKED FOR HEADER WITH SIG")
+			mo.logger.Debugf("asked for header block from [%s]; block num [%d]", mo.address, block2send.Header.Number)
 			block2send.Data = nil
+		} else if mo.censorDataMode {
+			mo.logger.Debugf("asked for data block from [%s]; block num [%d]", mo.address, block2send.Header.Number)
+			if !mo.peerFirstTry {
+				mo.malicious = true
+				mo.logger.Debugf("malicious mode activated for [%s]", mo.address)
+			}
+			if mo.sentCount >= 5 && mo.malicious {
+				<-mo.stopDeliveryChannel
+			}
+		} else {
+			mo.logger.Debugf("asked for data block from [%s]; block num [%d]", mo.address, block2send.Header.Number)
 		}
+		mo.peerFirstTry = true
 
 		blockResponse := &ab.DeliverResponse{
 			Type: &ab.DeliverResponse_Block{Block: block2send},
@@ -207,6 +220,7 @@ func (mo *MockOrderer) deliverBlocks(
 			mo.logger.Warningf("[channel: %s] Error sending to %s: %s", chdr.ChannelId, addr, err)
 			return cb.Status_INTERNAL_SERVER_ERROR, err
 		}
+		mo.sentCount += 1
 
 		if stopNum == block.Header.Number {
 			break
@@ -231,15 +245,18 @@ func NewMockOrderer(address string, ledgerArray []*cb.Block, options comm.Secure
 	}
 
 	mo := &MockOrderer{
-		address:     address,
-		ledgerArray: ledgerArray,
-		logger:      flogging.MustGetLogger("mockorderer"),
-		grpcServer:  grpcServer,
+		address:        address,
+		ledgerArray:    ledgerArray,
+		logger:         flogging.MustGetLogger("mockorderer"),
+		grpcServer:     grpcServer,
+		censorDataMode: false,
+		malicious:      false,
+		peerFirstTry:   false,
+		sentCount:      0,
 	}
 
 	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), mo)
 
-	mo.logger.Info("Beginning to serve request")
 	go grpcServer.Start()
 
 	return mo, nil
