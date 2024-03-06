@@ -330,7 +330,7 @@ func (p *pullMediatorImpl) SendReq(dest string, items []string, nonce uint64) {
 	p.Sndr.Send(sMsg, p.peersWithEndpoints(dest)...)
 }
 
-// typeDigster normalizes the common digest operations needed to format them
+// typedDigester normalizes the common digest operations needed to format them
 // for log messages.
 type typedDigester interface {
 	GetMsgType() gossip.PullMsgType

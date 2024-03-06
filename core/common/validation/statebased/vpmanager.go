@@ -10,7 +10,7 @@ import (
 	"fmt"
 )
 
-// ValidationParameterUpdatedErr is returned whenever
+// ValidationParameterUpdatedError is returned whenever
 // Validation Parameters for a key could not be
 // supplied because they are being updated
 type ValidationParameterUpdatedError struct {
