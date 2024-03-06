@@ -43,6 +43,8 @@ type WALConfig struct {
 	EvictionSuspicion string // Duration threshold that the node samples in order to suspect its eviction from the channel.
 }
 
+//go:generate mockery --dir . --name ConfigValidator --case underscore --with-expecter=true --output mocks
+
 // ConfigValidator interface
 type ConfigValidator interface {
 	ValidateConfig(env *cb.Envelope) error
@@ -102,6 +104,7 @@ func NewChain(
 	metricsBFT *api.Metrics,
 	metricsWalBFT *wal.Metrics,
 	bccsp bccsp.BCCSP,
+	egressCommFactory EgressCommFactory,
 ) (*BFTChain, error) {
 	logger := flogging.MustGetLogger("orderer.consensus.smartbft.chain").With(zap.String("channel", support.ChannelID()))
 
@@ -157,7 +160,7 @@ func NewChain(
 	c.RuntimeConfig.Store(rtc)
 
 	c.verifier = buildVerifier(cv, c.RuntimeConfig, support, requestInspector, policyManager)
-	c.consensus = bftSmartConsensusBuild(c, requestInspector)
+	c.consensus = bftSmartConsensusBuild(c, requestInspector, egressCommFactory)
 
 	// Setup communication with list of remotes notes for the new channel
 	c.Comm.Configure(c.support.ChannelID(), rtc.RemoteNodes)
@@ -174,6 +177,7 @@ func NewChain(
 func bftSmartConsensusBuild(
 	c *BFTChain,
 	requestInspector *RequestInspector,
+	egressCommFactory EgressCommFactory,
 ) *smartbft.Consensus {
 	var err error
 
@@ -285,18 +289,7 @@ func bftSmartConsensusBuild(
 		Assembler:         c.assembler,
 		RequestInspector:  requestInspector,
 		Synchronizer:      sync,
-		Comm: &Egress{
-			RuntimeConfig: c.RuntimeConfig,
-			Channel:       c.support.ChannelID(),
-			Logger:        flogging.MustGetLogger("orderer.consensus.smartbft.egress").With(channelDecorator),
-			RPC: &cluster.RPC{
-				Logger:        flogging.MustGetLogger("orderer.consensus.smartbft.rpc").With(channelDecorator),
-				Channel:       c.support.ChannelID(),
-				StreamsByType: cluster.NewStreamsByType(),
-				Comm:          c.Comm,
-				Timeout:       5 * time.Minute, // Externalize configuration
-			},
-		},
+		Comm:              egressCommFactory(c.RuntimeConfig, c.Channel, c.Comm),
 		Scheduler:         time.NewTicker(time.Second).C,
 		ViewChangerTicker: time.NewTicker(time.Second).C,
 	}
@@ -616,6 +609,10 @@ func (c *BFTChain) lastPersistedProposalAndSignatures() (*types.Proposal, []type
 	c.Metrics.CommittedBlockNumber.Set(float64(lastBlock.Header.Number))
 	decision := c.blockToDecision(lastBlock)
 	return &decision.Proposal, decision.Signatures
+}
+
+func (c *BFTChain) GetLeaderID() uint64 {
+	return c.consensus.GetLeaderID()
 }
 
 func (c *BFTChain) reportIsLeader() {

@@ -14,6 +14,8 @@ import (
 	"encoding/pem"
 	"path"
 	"reflect"
+	"sync/atomic"
+	"time"
 
 	"github.com/SmartBFT-Go/consensus/pkg/api"
 	"github.com/SmartBFT-Go/consensus/pkg/wal"
@@ -36,6 +38,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 )
 
 // CreateChainCallback creates a new chain
@@ -96,7 +99,7 @@ func New(
 	logger.Infof("WAL Directory is %s", walConfig.WALDir)
 
 	mpc := &MetricProviderConverter{
-		metricsProvider: metricsProvider,
+		MetricsProvider: metricsProvider,
 	}
 
 	consenter := &Consenter{
@@ -202,6 +205,22 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 		Logger:               c.Logger,
 	}
 
+	egressCommFactory := func(runtimeConfig *atomic.Value, channelId string, comm cluster.Communicator) EgressComm {
+		channelDecorator := zap.String("channel", channelId)
+		return &Egress{
+			RuntimeConfig: runtimeConfig,
+			Channel:       channelId,
+			Logger:        flogging.MustGetLogger("orderer.consensus.smartbft.egress").With(channelDecorator),
+			RPC: &cluster.RPC{
+				Logger:        flogging.MustGetLogger("orderer.consensus.smartbft.rpc").With(channelDecorator),
+				Channel:       channelId,
+				StreamsByType: cluster.NewStreamsByType(),
+				Comm:          comm,
+				Timeout:       5 * time.Minute, // TODO: Externalize configuration
+			},
+		}
+	}
+
 	chain, err := NewChain(
 		configValidator,
 		(uint64)(selfID),
@@ -218,7 +237,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 		c.MetricsBFT,
 		c.MetricsWalBFT,
 		c.BCCSP,
-	)
+		egressCommFactory)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed creating a new BFTChain")
 	}

@@ -21,6 +21,7 @@ import (
 )
 
 //go:generate counterfeiter -o mocks/block_puller.go . BlockPuller
+//go:generate mockery --dir . --name BlockPuller --case underscore --with-expecter=true --output mocks/mock_block_puller.go
 
 // BlockPuller is used to pull blocks from other OSN
 type BlockPuller interface {
