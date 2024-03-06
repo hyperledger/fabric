@@ -169,7 +169,7 @@ func (mo *MockOrderer) deliverBlocks(
 			}
 			block = mo.ledgerArray[ledgerIdx]
 			status = cb.Status_SUCCESS
-			mo.logger.Infof("### <%s> extracted block %d ; %+v", mo.address, ledgerIdx, block)
+			mo.logger.Infof("### <%s> extracted block number %d ; ledgerIdx is %d", mo.address, block.Header.Number, ledgerIdx)
 			ledgerIdx++
 			close(iterCh)
 		}()
