@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider"
+	"github.com/hyperledger/fabric/common/deliverclient/blocksprovider"
 )
 
 type BlockProgressReporter struct {
