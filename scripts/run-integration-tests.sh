@@ -36,4 +36,4 @@ done
 
 printf "\nRunning the following test suites:\n\n%s\n\nStarting tests...\n\n" "$(echo "${dirs[@]}" | tr -s ' ' '\n')"
 
-ginkgo --keep-going --slow-spec-threshold 60s --timeout 24h "${dirs[@]}"
+ginkgo --keep-going --poll-progress-after 60s --timeout 24h "${dirs[@]}"
