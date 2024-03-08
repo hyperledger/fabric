@@ -45,7 +45,7 @@ func (sig Signature) AsBytes() []byte {
 	return msg2Sign
 }
 
-// ProposalToBlock marshals the proposal the the block
+// ProposalToBlock marshals the proposal the block
 func ProposalToBlock(proposal types.Proposal) (*cb.Block, error) {
 	// initialize block with empty fields
 	block := &cb.Block{

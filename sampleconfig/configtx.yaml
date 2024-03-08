@@ -71,7 +71,7 @@ Organizations:
                 Rule: "OR('SampleOrg.member')"
 
         # OrdererEndpoints is a list of all orderers this org runs which clients
-        # and peers may to connect to to push transactions and receive blocks respectively.
+        # and peers may to connect to push transactions and receive blocks respectively.
         OrdererEndpoints:
             - "127.0.0.1:7050"
 
