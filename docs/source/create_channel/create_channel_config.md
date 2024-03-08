@@ -60,7 +60,7 @@ You can see the part of `configtx.yaml` that defines Org1 of the test network be
               Rule: "OR('Org1MSP.peer')"
 
       # OrdererEndpoints is a list of all orderers this org runs which clients
-      # and peers may to connect to to push transactions and receive blocks respectively.
+      # and peers may to connect to push transactions and receive blocks respectively.
       OrdererEndpoints:
           - "orderer.example.com:7050"
   ```  
