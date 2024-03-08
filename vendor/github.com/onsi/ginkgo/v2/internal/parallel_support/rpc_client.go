@@ -72,6 +72,23 @@ func (client *rpcClient) Write(p []byte) (int, error) {
 	return n, err
 }
 
+func (client *rpcClient) PostEmitProgressReport(report types.ProgressReport) error {
+	return client.client.Call("Server.EmitProgressReport", report, voidReceiver)
+}
+
+func (client *rpcClient) PostReportBeforeSuiteCompleted(state types.SpecState) error {
+	return client.client.Call("Server.ReportBeforeSuiteCompleted", state, voidReceiver)
+}
+
+func (client *rpcClient) BlockUntilReportBeforeSuiteCompleted() (types.SpecState, error) {
+	var state types.SpecState
+	err := client.poll("Server.ReportBeforeSuiteState", &state)
+	if err == ErrorGone {
+		return types.SpecStateFailed, nil
+	}
+	return state, err
+}
+
 func (client *rpcClient) PostSynchronizedBeforeSuiteCompleted(state types.SpecState, data []byte) error {
 	beforeSuiteState := BeforeSuiteState{
 		State: state,

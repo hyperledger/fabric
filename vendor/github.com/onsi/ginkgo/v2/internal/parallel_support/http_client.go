@@ -94,6 +94,23 @@ func (client *httpClient) PostSuiteDidEnd(report types.Report) error {
 	return client.post("/suite-did-end", report)
 }
 
+func (client *httpClient) PostEmitProgressReport(report types.ProgressReport) error {
+	return client.post("/progress-report", report)
+}
+
+func (client *httpClient) PostReportBeforeSuiteCompleted(state types.SpecState) error {
+	return client.post("/report-before-suite-completed", state)
+}
+
+func (client *httpClient) BlockUntilReportBeforeSuiteCompleted() (types.SpecState, error) {
+	var state types.SpecState
+	err := client.poll("/report-before-suite-state", &state)
+	if err == ErrorGone {
+		return types.SpecStateFailed, nil
+	}
+	return state, err
+}
+
 func (client *httpClient) PostSynchronizedBeforeSuiteCompleted(state types.SpecState, data []byte) error {
 	beforeSuiteState := BeforeSuiteState{
 		State: state,
