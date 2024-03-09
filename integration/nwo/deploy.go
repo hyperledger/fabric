@@ -499,7 +499,29 @@ func EnableCapabilities(network *Network, channel, capabilitiesGroup, capabiliti
 		),
 	}
 
-	UpdateConfig(network, orderer, channel, config, updatedConfig, false, peers[0], peers...)
+	UpdateConfig(network, orderer, channel, config, updatedConfig, false, peers[0], nil, peers...)
+}
+
+func EnableChannelCapabilities(network *Network, channel, capabilitiesVersion string, getConfigBlockFromOrderer bool, orderer *Orderer, ordererSigners []*Orderer, peerSigners ...*Peer) {
+	if len(peerSigners) == 0 {
+		return
+	}
+
+	config := GetConfig(network, peerSigners[0], orderer, channel)
+	updatedConfig := proto.Clone(config).(*common.Config)
+
+	updatedConfig.ChannelGroup.Values["Capabilities"] = &common.ConfigValue{
+		ModPolicy: "Admins",
+		Value: protoutil.MarshalOrPanic(
+			&common.Capabilities{
+				Capabilities: map[string]*common.Capability{
+					capabilitiesVersion: {},
+				},
+			},
+		),
+	}
+
+	UpdateConfig(network, orderer, channel, config, updatedConfig, getConfigBlockFromOrderer, peerSigners[0], ordererSigners, peerSigners...)
 }
 
 // WaitUntilEqualLedgerHeight waits until all specified peers have the

@@ -7,7 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package sw
 
 import (
+	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
@@ -54,12 +56,20 @@ func oidFromNamedCurve(curve elliptic.Curve) (asn1.ObjectIdentifier, bool) {
 	return nil, false
 }
 
-func privateKeyToDER(privateKey *ecdsa.PrivateKey) ([]byte, error) {
+func privateKeyToDER(privateKey crypto.PrivateKey) ([]byte, error) {
 	if privateKey == nil {
-		return nil, errors.New("invalid ecdsa private key. It must be different from nil")
+		return nil, errors.New("invalid private key. It must be different from nil")
 	}
 
-	return x509.MarshalECPrivateKey(privateKey)
+	switch key := privateKey.(type) {
+	// Fabric supports ECDSA and ED25519 at the moment.
+	case *ecdsa.PrivateKey:
+		return x509.MarshalECPrivateKey(privateKey.(*ecdsa.PrivateKey))
+	case *ed25519.PrivateKey:
+		return x509.MarshalPKCS8PrivateKey(*privateKey.(*ed25519.PrivateKey))
+	default:
+		return nil, fmt.Errorf("found unknown private key type (%T) in marshaling", key)
+	}
 }
 
 func privateKeyToPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
@@ -114,6 +124,21 @@ func privateKeyToPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
 				Bytes: pkcs8Bytes,
 			},
 		), nil
+	case *ed25519.PrivateKey:
+		if k == nil {
+			return nil, errors.New("invalid ed25519 private key. It must be different from nil")
+		}
+
+		pkcs8Bytes, err := x509.MarshalPKCS8PrivateKey(*k)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling ED key to asn1: [%s]", err)
+		}
+		return pem.EncodeToMemory(
+			&pem.Block{
+				Type:  "PRIVATE KEY",
+				Bytes: pkcs8Bytes,
+			},
+		), nil
 
 	case *rsa.PrivateKey:
 		if k == nil {
@@ -129,7 +154,7 @@ func privateKeyToPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
 		), nil
 
 	default:
-		return nil, errors.New("invalid key type. It must be *ecdsa.PrivateKey or *rsa.PrivateKey")
+		return nil, errors.New("invalid key type. It must be *ecdsa.PrivateKey, *ed25519.PrivateKey or *rsa.PrivateKey")
 	}
 }
 
@@ -159,9 +184,29 @@ func privateKeyToEncryptedPEM(privateKey interface{}, pwd []byte) ([]byte, error
 		}
 
 		return pem.EncodeToMemory(block), nil
+	case *ed25519.PrivateKey:
+		if k == nil {
+			return nil, errors.New("invalid ed25519 private key. It must be different from nil")
+		}
+		raw, err := x509.MarshalPKCS8PrivateKey(*k)
+		if err != nil {
+			return nil, err
+		}
+
+		block, err := x509.EncryptPEMBlock(
+			rand.Reader,
+			"PRIVATE KEY",
+			raw,
+			pwd,
+			x509.PEMCipherAES256)
+		if err != nil {
+			return nil, err
+		}
+
+		return pem.EncodeToMemory(block), nil
 
 	default:
-		return nil, errors.New("invalid key type. It must be *ecdsa.PrivateKey")
+		return nil, errors.New("invalid key type. It must be *ecdsa.PrivateKey or *ed25519.PrivateKey")
 	}
 }
 
@@ -174,6 +219,8 @@ func derToPrivateKey(der []byte) (key interface{}, err error) {
 		switch key.(type) {
 		case *ecdsa.PrivateKey:
 			return
+		case ed25519.PrivateKey:
+			return
 		default:
 			return nil, errors.New("found unknown private key type in PKCS#8 wrapping")
 		}
@@ -183,7 +230,7 @@ func derToPrivateKey(der []byte) (key interface{}, err error) {
 		return
 	}
 
-	return nil, errors.New("invalid key type. The DER must contain an ecdsa.PrivateKey")
+	return nil, errors.New("invalid key type. The DER must contain an ecdsa.PrivateKey or an ed25519.PrivateKey")
 }
 
 func pemToPrivateKey(raw []byte, pwd []byte) (interface{}, error) {
@@ -292,6 +339,21 @@ func publicKeyToPEM(publicKey interface{}, pwd []byte) ([]byte, error) {
 				Bytes: PubASN1,
 			},
 		), nil
+	case *ed25519.PublicKey:
+		if k == nil {
+			return nil, errors.New("invalid ed25519 public key. It must be different from nil")
+		}
+		PubASN1, err := x509.MarshalPKIXPublicKey(*k)
+		if err != nil {
+			return nil, err
+		}
+
+		return pem.EncodeToMemory(
+			&pem.Block{
+				Type:  "PUBLIC KEY",
+				Bytes: PubASN1,
+			},
+		), nil
 
 	case *rsa.PublicKey:
 		if k == nil {
@@ -310,7 +372,7 @@ func publicKeyToPEM(publicKey interface{}, pwd []byte) ([]byte, error) {
 		), nil
 
 	default:
-		return nil, errors.New("invalid key type. It must be *ecdsa.PublicKey or *rsa.PublicKey")
+		return nil, errors.New("invalid key type. It must be *ecdsa.PublicKey, *ed25519.PublicKey or *rsa.PublicKey")
 	}
 }
 
@@ -336,8 +398,28 @@ func publicKeyToEncryptedPEM(publicKey interface{}, pwd []byte) ([]byte, error) 
 		}
 
 		return pem.EncodeToMemory(block), nil
+	case *ed25519.PublicKey:
+		if k == nil {
+			return nil, errors.New("invalid ed25519 public key. It must be different from nil")
+		}
+		raw, err := x509.MarshalPKIXPublicKey(*k)
+		if err != nil {
+			return nil, err
+		}
+
+		block, err := x509.EncryptPEMBlock(
+			rand.Reader,
+			"PUBLIC KEY",
+			raw,
+			pwd,
+			x509.PEMCipherAES256)
+		if err != nil {
+			return nil, err
+		}
+
+		return pem.EncodeToMemory(block), nil
 	default:
-		return nil, errors.New("invalid key type. It must be *ecdsa.PublicKey")
+		return nil, errors.New("invalid key type. It must be *ecdsa.PublicKey or *ed25519.PublicKey")
 	}
 }
 

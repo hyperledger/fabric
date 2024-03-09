@@ -8,6 +8,7 @@ package sw
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rsa"
 	"crypto/x509"
 	"errors"
@@ -101,6 +102,31 @@ func (*ecdsaPrivateKeyImportOptsKeyImporter) KeyImport(raw interface{}, opts bcc
 	return &ecdsaPrivateKey{ecdsaSK}, nil
 }
 
+type ed25519PrivateKeyImportOptsKeyImporter struct{}
+
+func (*ed25519PrivateKeyImportOptsKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (bccsp.Key, error) {
+	der, ok := raw.([]byte)
+	if !ok {
+		return nil, errors.New("[ED25519DERPrivateKeyImportOpts] Invalid raw material. Expected byte array.")
+	}
+
+	if len(der) == 0 {
+		return nil, errors.New("[ED25519DERPrivateKeyImportOpts] Invalid raw. It must not be nil.")
+	}
+
+	lowLevelKey, err := derToPrivateKey(der)
+	if err != nil {
+		return nil, fmt.Errorf("Failed converting PKIX to ED25519 public key [%s]", err)
+	}
+
+	ed25519SK, ok := lowLevelKey.(ed25519.PrivateKey)
+	if !ok {
+		return nil, errors.New("Failed casting to ED25519 private key. Invalid raw material.")
+	}
+
+	return &ed25519PrivateKey{&ed25519SK}, nil
+}
+
 type ecdsaGoPublicKeyImportOptsKeyImporter struct{}
 
 func (*ecdsaGoPublicKeyImportOptsKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (bccsp.Key, error) {
@@ -110,6 +136,17 @@ func (*ecdsaGoPublicKeyImportOptsKeyImporter) KeyImport(raw interface{}, opts bc
 	}
 
 	return &ecdsaPublicKey{lowLevelKey}, nil
+}
+
+type ed25519GoPublicKeyImportOptsKeyImporter struct{}
+
+func (*ed25519GoPublicKeyImportOptsKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (bccsp.Key, error) {
+	lowLevelKey, ok := raw.(ed25519.PublicKey)
+	if !ok {
+		return nil, errors.New("Invalid raw material. Expected *ed25519.PublicKey.")
+	}
+
+	return &ed25519PublicKey{&lowLevelKey}, nil
 }
 
 type rsaGoPublicKeyImportOptsKeyImporter struct{}
@@ -140,12 +177,16 @@ func (ki *x509PublicKeyImportOptsKeyImporter) KeyImport(raw interface{}, opts bc
 		return ki.bccsp.KeyImporters[reflect.TypeOf(&bccsp.ECDSAGoPublicKeyImportOpts{})].KeyImport(
 			pk,
 			&bccsp.ECDSAGoPublicKeyImportOpts{Temporary: opts.Ephemeral()})
+	case ed25519.PublicKey:
+		return ki.bccsp.KeyImporters[reflect.TypeOf(&bccsp.ED25519GoPublicKeyImportOpts{})].KeyImport(
+			pk,
+			&bccsp.ED25519GoPublicKeyImportOpts{Temporary: opts.Ephemeral()})
 	case *rsa.PublicKey:
 		// This path only exists to support environments that use RSA certificate
-		// authorities to issue ECDSA certificates.
+		// authorities to issue ECDSA and ed25519 certificates.
 		return &rsaPublicKey{pubKey: pk}, nil
 	default:
-		return nil, errors.New("Certificate's public key type not recognized. Supported keys: [ECDSA, RSA]")
+		return nil, errors.New("Certificate's public key type not recognized. Supported keys: [ECDSA, ED25519, RSA]")
 	}
 }
 

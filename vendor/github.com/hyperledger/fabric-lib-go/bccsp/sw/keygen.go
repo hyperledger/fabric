@@ -8,6 +8,7 @@ package sw
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
@@ -27,6 +28,17 @@ func (kg *ecdsaKeyGenerator) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
 	}
 
 	return &ecdsaPrivateKey{privKey}, nil
+}
+
+type ed25519KeyGenerator struct{}
+
+func (kg *ed25519KeyGenerator) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
+	_, privKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("Failed generating ED25519 key: [%s]", err)
+	}
+
+	return &ed25519PrivateKey{&privKey}, nil
 }
 
 type aesKeyGenerator struct {

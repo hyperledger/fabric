@@ -9,6 +9,7 @@ package signer
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/asn1"
@@ -37,7 +38,7 @@ type Config struct {
 // initialize an MSP without a CA cert that signs the signing identity,
 // this will do for now.
 type Signer struct {
-	key     *ecdsa.PrivateKey
+	key     crypto.PrivateKey
 	Creator []byte
 }
 
@@ -93,11 +94,19 @@ func validateEnrollmentCertificate(b []byte) error {
 }
 
 func (si *Signer) Sign(msg []byte) ([]byte, error) {
-	digest := util.ComputeSHA256(msg)
-	return signECDSA(si.key, digest)
+	switch key := si.key.(type) {
+	// Fabric only supports ECDSA and ed25519 at the moment.
+	case *ecdsa.PrivateKey:
+		digest := util.ComputeSHA256(msg)
+		return signECDSA(si.key.(*ecdsa.PrivateKey), digest)
+	case ed25519.PrivateKey:
+		return ed25519.Sign(si.key.(ed25519.PrivateKey), msg), nil
+	default:
+		return nil, errors.Errorf("found unknown private key type (%T) in msg signing", key)
+	}
 }
 
-func loadPrivateKey(file string) (*ecdsa.PrivateKey, error) {
+func loadPrivateKey(file string) (crypto.PrivateKey, error) {
 	b, err := os.ReadFile(file)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -110,7 +119,7 @@ func loadPrivateKey(file string) (*ecdsa.PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	return key.(*ecdsa.PrivateKey), nil
+	return key, nil
 }
 
 // Based on crypto/tls/tls.go but modified for Fabric:
@@ -120,6 +129,8 @@ func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
 		switch key := key.(type) {
 		// Fabric only supports ECDSA at the moment.
 		case *ecdsa.PrivateKey:
+			return key, nil
+		case ed25519.PrivateKey:
 			return key, nil
 		default:
 			return nil, errors.Errorf("found unknown private key type (%T) in PKCS#8 wrapping", key)

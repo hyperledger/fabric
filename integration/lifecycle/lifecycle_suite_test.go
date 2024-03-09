@@ -64,6 +64,17 @@ func StartPort() int {
 	return integration.LifecyclePort.StartPortForNode()
 }
 
+func QueryChaincode(n *nwo.Network, chaincodeName string, peer *nwo.Peer, initialQueryResult int) {
+	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+		ChannelID: "testchannel",
+		Name:      chaincodeName,
+		Ctor:      `{"Args":["query","a"]}`,
+	})
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	EventuallyWithOffset(1, sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	ExpectWithOffset(1, sess).To(gbytes.Say(fmt.Sprint(initialQueryResult)))
+}
+
 func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, chaincodeName string, initialQueryResult int, peers ...*nwo.Peer) {
 	if len(peers) == 0 {
 		peers = n.PeersWithChannel("testchannel")
@@ -75,17 +86,10 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, chaincodeName str
 	}
 
 	By("querying the chaincode")
-	sess, err := n.PeerUserSession(peers[0], "User1", commands.ChaincodeQuery{
-		ChannelID: "testchannel",
-		Name:      chaincodeName,
-		Ctor:      `{"Args":["query","a"]}`,
-	})
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
-	EventuallyWithOffset(1, sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	ExpectWithOffset(1, sess).To(gbytes.Say(fmt.Sprint(initialQueryResult)))
+	QueryChaincode(n, chaincodeName, peers[0], initialQueryResult)
 
 	By("invoking the chaincode")
-	sess, err = n.PeerUserSession(peers[0], "User1", commands.ChaincodeInvoke{
+	sess, err := n.PeerUserSession(peers[0], "User1", commands.ChaincodeInvoke{
 		ChannelID:     "testchannel",
 		Orderer:       n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:          chaincodeName,
@@ -98,14 +102,31 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, chaincodeName str
 	ExpectWithOffset(1, sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
 
 	By("querying the chaincode")
-	sess, err = n.PeerUserSession(peers[0], "User1", commands.ChaincodeQuery{
-		ChannelID: "testchannel",
-		Name:      chaincodeName,
-		Ctor:      `{"Args":["query","a"]}`,
+	QueryChaincode(n, chaincodeName, peers[0], initialQueryResult-10)
+}
+
+func RunInvokeAndExpectFailure(n *nwo.Network, orderer *nwo.Orderer, chaincodeName string, expectedError string, peers ...*nwo.Peer) {
+	if len(peers) == 0 {
+		peers = n.PeersWithChannel("testchannel")
+	}
+
+	addresses := make([]string, len(peers))
+	for i, peer := range peers {
+		addresses[i] = n.PeerAddress(peer, nwo.ListenPort)
+	}
+
+	By("invoking the chaincode")
+	sess, err := n.PeerUserSession(peers[1], "User1", commands.ChaincodeInvoke{
+		ChannelID:     "testchannel",
+		Orderer:       n.OrdererAddress(orderer, nwo.ListenPort),
+		Name:          chaincodeName,
+		Ctor:          `{"Args":["invoke","a","b","10"]}`,
+		PeerAddresses: addresses,
+		WaitForEvent:  true,
 	})
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
-	EventuallyWithOffset(1, sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	ExpectWithOffset(1, sess).To(gbytes.Say(fmt.Sprint(initialQueryResult - 10)))
+	EventuallyWithOffset(1, sess, n.EventuallyTimeout).Should(gexec.Exit(1))
+	ExpectWithOffset(1, sess.Err).To(gbytes.Say(expectedError))
 }
 
 func SignedProposal(channel, chaincode string, signer *nwo.SigningIdentity, args ...string) (*pb.SignedProposal, *pb.Proposal, string) {
