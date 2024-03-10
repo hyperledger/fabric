@@ -187,11 +187,6 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 	}
 	c.Logger.Infof("Local consenter id is %d", selfID)
 
-	puller, err := newBlockPuller(support, c.ClusterDialer, c.Conf.General.Cluster, c.BCCSP)
-	if err != nil {
-		c.Logger.Panicf("Failed initializing block puller")
-	}
-
 	config, err := util.ConfigFromMetadataOptions((uint64)(selfID), configOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed parsing smartbft configuration")
@@ -226,9 +221,8 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 		(uint64)(selfID),
 		config,
 		path.Join(c.WALBaseDir, support.ChannelID()),
-		puller,
-		c.ClusterDialer,        // required by the BFT-synchronizer
-		c.Conf.General.Cluster, // required by the BFT-synchronizer
+		c.ClusterDialer,
+		c.Conf.General.Cluster,
 		c.Comm,
 		c.SignerSerializer,
 		c.GetPolicyManager(support.ChannelID()),

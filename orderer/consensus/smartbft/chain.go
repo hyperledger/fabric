@@ -64,7 +64,6 @@ type BFTChain struct {
 	RuntimeConfig      *atomic.Value
 	Channel            string
 	Config             types.Configuration
-	BlockPuller        BlockPuller
 	clusterDialer      *cluster.PredicateDialer // Required by BFT-synchronizer
 	localConfigCluster localconfig.Cluster      // Required by BFT-synchronizer
 	Comm               cluster.Communicator
@@ -93,7 +92,6 @@ func NewChain(
 	selfID uint64,
 	config types.Configuration,
 	walDir string,
-	blockPuller BlockPuller,
 	clusterDialer *cluster.PredicateDialer,
 	localConfigCluster localconfig.Cluster,
 	comm cluster.Communicator,
@@ -124,7 +122,6 @@ func NewChain(
 		support:            support,
 		SignerSerializer:   signerSerializer,
 		PolicyManager:      policyManager,
-		BlockPuller:        blockPuller,        // FIXME create internally or with a factory
 		clusterDialer:      clusterDialer,      // Required by BFT-synchronizer
 		localConfigCluster: localConfigCluster, // Required by BFT-synchronizer
 		Logger:             logger,
@@ -237,9 +234,12 @@ func bftSmartConsensusBuild(
 				c.pruneCommittedRequests(block)
 				return c.updateRuntimeConfig(block)
 			},
-			Support:     c.support,
-			BlockPuller: c.BlockPuller, // FIXME this must be created dynamically as the cluster may change config
-			Logger:      c.Logger,
+			Support:            c.support,
+			CryptoProvider:     c.bccsp,
+			ClusterDialer:      c.clusterDialer,
+			LocalConfigCluster: c.localConfigCluster,
+			BlockPullerFactory: &blockPullerCreator{},
+			Logger:             c.Logger,
 			LatestConfig: func() (types.Configuration, []uint64) {
 				rtc := c.RuntimeConfig.Load().(RuntimeConfig)
 				return rtc.BFTConfig, rtc.Nodes

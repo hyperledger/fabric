@@ -15,6 +15,9 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
+	"github.com/hyperledger/fabric/orderer/common/cluster"
+	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	mocks2 "github.com/hyperledger/fabric/orderer/consensus/mocks"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft/mocks"
@@ -47,6 +50,9 @@ func TestSynchronizerSync(t *testing.T) {
 
 	t.Run("no remotes", func(t *testing.T) {
 		bp := &mocks.FakeBlockPuller{}
+		bpf := &mocks.FakeBlockPullerFactory{}
+		bpf.CreateBlockPullerReturns(bp, nil)
+
 		fakeCS := &mocks2.FakeConsenterSupport{}
 		fakeCS.ChannelIDReturns("mychannel")
 		fakeCS.HeightReturns(100)
@@ -68,10 +74,12 @@ func TestSynchronizerSync(t *testing.T) {
 				}
 				return nil
 			},
-			Logger:      l,
-			BlockPuller: bp,
-			Support:     fakeCS,
-			OnCommit:    noopUpdateLastHash,
+			Logger:             l,
+			ClusterDialer:      &cluster.PredicateDialer{Config: comm.ClientConfig{}},
+			LocalConfigCluster: localconfig.Cluster{},
+			BlockPullerFactory: bpf,
+			Support:            fakeCS,
+			OnCommit:           noopUpdateLastHash,
 		}
 
 		d := syn.Sync()
@@ -92,6 +100,8 @@ func TestSynchronizerSync(t *testing.T) {
 		bp.PullBlockReturnsOnCall(0, b100)
 		bp.PullBlockReturnsOnCall(1, b101)
 		bp.PullBlockReturnsOnCall(2, b102)
+		bpf := &mocks.FakeBlockPullerFactory{}
+		bpf.CreateBlockPullerReturns(bp, nil)
 
 		height := uint64(100)
 		ledger := map[uint64]*cb.Block{99: b99}
@@ -127,10 +137,12 @@ func TestSynchronizerSync(t *testing.T) {
 				}
 				return nil
 			},
-			Logger:      flogging.NewFabricLogger(zap.NewExample()),
-			BlockPuller: bp,
-			Support:     fakeCS,
-			OnCommit:    noopUpdateLastHash,
+			Logger:             flogging.NewFabricLogger(zap.NewExample()),
+			ClusterDialer:      &cluster.PredicateDialer{Config: comm.ClientConfig{}},
+			LocalConfigCluster: localconfig.Cluster{},
+			BlockPullerFactory: bpf,
+			Support:            fakeCS,
+			OnCommit:           noopUpdateLastHash,
 		}
 
 		d := syn.Sync()
@@ -150,6 +162,8 @@ func TestSynchronizerSync(t *testing.T) {
 		bp.PullBlockReturnsOnCall(0, b100)
 		bp.PullBlockReturnsOnCall(1, b101)
 		bp.PullBlockReturnsOnCall(2, b102)
+		bpf := &mocks.FakeBlockPullerFactory{}
+		bpf.CreateBlockPullerReturns(bp, nil)
 
 		height := uint64(100)
 		ledger := map[uint64]*cb.Block{99: b99}
@@ -185,10 +199,12 @@ func TestSynchronizerSync(t *testing.T) {
 				}
 				return nil
 			},
-			Logger:      flogging.NewFabricLogger(zap.NewExample()),
-			BlockPuller: bp,
-			Support:     fakeCS,
-			OnCommit:    noopUpdateLastHash,
+			Logger:             flogging.NewFabricLogger(zap.NewExample()),
+			ClusterDialer:      &cluster.PredicateDialer{Config: comm.ClientConfig{}},
+			LocalConfigCluster: localconfig.Cluster{},
+			BlockPullerFactory: bpf,
+			Support:            fakeCS,
+			OnCommit:           noopUpdateLastHash,
 		}
 
 		d := syn.Sync()
@@ -207,6 +223,8 @@ func TestSynchronizerSync(t *testing.T) {
 		bp.PullBlockReturnsOnCall(0, b100)
 		bp.PullBlockReturnsOnCall(1, b101)
 		bp.PullBlockReturnsOnCall(2, b102)
+		bpf := &mocks.FakeBlockPullerFactory{}
+		bpf.CreateBlockPullerReturns(bp, nil)
 
 		height := uint64(100)
 		ledger := map[uint64]*cb.Block{99: b99}
@@ -242,10 +260,12 @@ func TestSynchronizerSync(t *testing.T) {
 				}
 				return nil
 			},
-			Logger:      flogging.NewFabricLogger(zap.NewExample()),
-			BlockPuller: bp,
-			Support:     fakeCS,
-			OnCommit:    noopUpdateLastHash,
+			Logger:             flogging.NewFabricLogger(zap.NewExample()),
+			ClusterDialer:      &cluster.PredicateDialer{Config: comm.ClientConfig{}},
+			LocalConfigCluster: localconfig.Cluster{},
+			BlockPullerFactory: bpf,
+			Support:            fakeCS,
+			OnCommit:           noopUpdateLastHash,
 		}
 
 		d := syn.Sync()
@@ -263,6 +283,8 @@ func TestSynchronizerSync(t *testing.T) {
 		bp.PullBlockReturnsOnCall(0, b100)
 		bp.PullBlockReturnsOnCall(1, b101)
 		bp.PullBlockReturnsOnCall(2, b102)
+		bpf := &mocks.FakeBlockPullerFactory{}
+		bpf.CreateBlockPullerReturns(bp, nil)
 
 		height := uint64(100)
 		ledger := map[uint64]*cb.Block{99: b99}
@@ -301,10 +323,12 @@ func TestSynchronizerSync(t *testing.T) {
 				}
 				return nil
 			},
-			Logger:      flogging.NewFabricLogger(zap.NewExample()),
-			BlockPuller: bp,
-			Support:     fakeCS,
-			OnCommit:    noopUpdateLastHash,
+			Logger:             flogging.NewFabricLogger(zap.NewExample()),
+			ClusterDialer:      &cluster.PredicateDialer{Config: comm.ClientConfig{}},
+			LocalConfigCluster: localconfig.Cluster{},
+			BlockPullerFactory: bpf,
+			Support:            fakeCS,
+			OnCommit:           noopUpdateLastHash,
 		}
 
 		d := syn.Sync()

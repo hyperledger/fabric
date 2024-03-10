@@ -412,7 +412,6 @@ func createBFTChainUsingMocks(t *testing.T, node *Node) (*smartbft.BFTChain, err
 		nodeId,
 		config,
 		node.WorkingDir,
-		blockPuller,
 		nil,
 		localConfigCluster,
 		comm,
