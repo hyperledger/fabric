@@ -70,7 +70,6 @@ func TestSynchronizerSync(t *testing.T) {
 			},
 			Logger:      l,
 			BlockPuller: bp,
-			ClusterSize: 4,
 			Support:     fakeCS,
 			OnCommit:    noopUpdateLastHash,
 		}
@@ -112,6 +111,11 @@ func TestSynchronizerSync(t *testing.T) {
 		fakeCS.BlockCalls(func(sqn uint64) *cb.Block {
 			return ledger[sqn]
 		})
+		fakeOrdererConfig := &mocks.OrdererConfig{}
+		fakeOrdererConfig.ConsentersReturns([]*cb.Consenter{
+			{Id: 1}, {Id: 2}, {Id: 3}, {Id: 4},
+		})
+		fakeCS.SharedConfigReturns(fakeOrdererConfig)
 
 		decision := &types.SyncResponse{
 			Latest: types.Decision{},
@@ -125,7 +129,6 @@ func TestSynchronizerSync(t *testing.T) {
 			},
 			Logger:      flogging.NewFabricLogger(zap.NewExample()),
 			BlockPuller: bp,
-			ClusterSize: 4,
 			Support:     fakeCS,
 			OnCommit:    noopUpdateLastHash,
 		}
@@ -166,6 +169,11 @@ func TestSynchronizerSync(t *testing.T) {
 		fakeCS.BlockCalls(func(sqn uint64) *cb.Block {
 			return ledger[sqn]
 		})
+		fakeOrdererConfig := &mocks.OrdererConfig{}
+		fakeOrdererConfig.ConsentersReturns([]*cb.Consenter{
+			{Id: 1}, {Id: 2}, {Id: 3}, {Id: 4},
+		})
+		fakeCS.SharedConfigReturns(fakeOrdererConfig)
 
 		decision := &types.SyncResponse{
 			Latest: types.Decision{},
@@ -179,7 +187,6 @@ func TestSynchronizerSync(t *testing.T) {
 			},
 			Logger:      flogging.NewFabricLogger(zap.NewExample()),
 			BlockPuller: bp,
-			ClusterSize: 4,
 			Support:     fakeCS,
 			OnCommit:    noopUpdateLastHash,
 		}
@@ -219,6 +226,11 @@ func TestSynchronizerSync(t *testing.T) {
 		fakeCS.BlockCalls(func(sqn uint64) *cb.Block {
 			return ledger[sqn]
 		})
+		fakeOrdererConfig := &mocks.OrdererConfig{}
+		fakeOrdererConfig.ConsentersReturns([]*cb.Consenter{
+			{Id: 1}, {Id: 2}, {Id: 3}, {Id: 4},
+		})
+		fakeCS.SharedConfigReturns(fakeOrdererConfig)
 
 		decision := &types.SyncResponse{
 			Latest: types.Decision{},
@@ -232,7 +244,6 @@ func TestSynchronizerSync(t *testing.T) {
 			},
 			Logger:      flogging.NewFabricLogger(zap.NewExample()),
 			BlockPuller: bp,
-			ClusterSize: 4,
 			Support:     fakeCS,
 			OnCommit:    noopUpdateLastHash,
 		}
@@ -271,6 +282,11 @@ func TestSynchronizerSync(t *testing.T) {
 		fakeCS.BlockCalls(func(sqn uint64) *cb.Block {
 			return ledger[sqn]
 		})
+		fakeOrdererConfig := &mocks.OrdererConfig{}
+		fakeOrdererConfig.ConsentersReturns([]*cb.Consenter{
+			{Id: 1}, {Id: 2}, {Id: 3}, {Id: 4},
+		})
+		fakeCS.SharedConfigReturns(fakeOrdererConfig)
 
 		decision := &types.SyncResponse{
 			Latest: types.Decision{},
@@ -287,7 +303,6 @@ func TestSynchronizerSync(t *testing.T) {
 			},
 			Logger:      flogging.NewFabricLogger(zap.NewExample()),
 			BlockPuller: bp,
-			ClusterSize: 4,
 			Support:     fakeCS,
 			OnCommit:    noopUpdateLastHash,
 		}

@@ -239,7 +239,6 @@ func bftSmartConsensusBuild(
 			},
 			Support:     c.support,
 			BlockPuller: c.BlockPuller, // FIXME this must be created dynamically as the cluster may change config
-			ClusterSize: clusterSize,   // FIXME this must be taken dynamically from `support` as the cluster may change in size
 			Logger:      c.Logger,
 			LatestConfig: func() (types.Configuration, []uint64) {
 				rtc := c.RuntimeConfig.Load().(RuntimeConfig)
