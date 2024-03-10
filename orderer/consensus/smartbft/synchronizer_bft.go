@@ -202,6 +202,15 @@ func (s *BFTSynchronizer) createBFTDeliverer(startHeight uint64, myEndpoint stri
 	clientConfig.AsyncConnect = false
 	clientConfig.SecOpts.VerifyCertificate = nil
 
+	// The maximal amount of time to wait before retrying to connect.
+	maxRetryInterval := s.LocalConfigCluster.ReplicationRetryTimeout
+	// The minimal amount of time to wait before retrying. The retry interval doubles after every unsuccessful attempt.
+	minRetryInterval := maxRetryInterval / 50
+	// The maximal duration of a Sync. After this time Sync returns with whatever it had pulled until that point.
+	maxRetryDuration := s.LocalConfigCluster.ReplicationPullTimeout * time.Duration(s.LocalConfigCluster.ReplicationMaxRetries)
+	// If a remote orderer does not deliver blocks for this amount of time, even though it can do so, it is replaced as the block deliverer.
+	blockCesorshipTimeOut := maxRetryDuration / 3
+
 	bftDeliverer := s.BFTDelivererFactory.CreateBFTDeliverer(
 		s.Support.ChannelID(),
 		s.syncBuff,
@@ -215,10 +224,10 @@ func (s *BFTSynchronizer) createBFTDeliverer(startHeight uint64, myEndpoint stri
 		blocksprovider.DeliverAdapter{},
 		&blocksprovider.BFTCensorshipMonitorFactory{},
 		flogging.MustGetLogger("orderer.blocksprovider").With("channel", s.Support.ChannelID()),
-		10*time.Millisecond, // TODO get it from config.
-		2*time.Second,       // TODO get it from config.
-		20*time.Second,      // TODO get it from config.
-		time.Minute,         // TODO get it from config.
+		minRetryInterval,
+		maxRetryInterval,
+		blockCesorshipTimeOut,
+		maxRetryDuration,
 		func() (stopRetries bool) {
 			s.syncBuff.Stop()
 			return true // In the orderer we must limit the time we try to do Synch()
