@@ -482,8 +482,9 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	electionMetrics := gossipmetrics.NewGossipMetrics(&disabled.Provider{}).ElectionMetrics
 
 	for i := 0; i < n; i++ {
-		services[i] = &electionService{nil, false, 0}
-		services[i].LeaderElectionService = gossips[i].newLeaderElectionComponent(channelName, services[i].callback, electionMetrics)
+		es := &electionService{nil, false, 0}
+		services[i] = es
+		services[i].LeaderElectionService = gossips[i].newLeaderElectionComponent(channelName, es.callback, electionMetrics)
 	}
 
 	logger.Warning("Waiting for leader election")
@@ -514,9 +515,10 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	waitForFullMembershipOrFailNow(t, secondChannelName, secondChannelGossips, len(secondChannelGossips), TIMEOUT, time.Millisecond*100)
 
 	for idx, i := range secondChannelPeerIndexes {
-		secondChannelServices[idx] = &electionService{nil, false, 0}
+		es := &electionService{nil, false, 0}
+		secondChannelServices[idx] = es
 		secondChannelServices[idx].LeaderElectionService =
-			gossips[i].newLeaderElectionComponent(secondChannelName, secondChannelServices[idx].callback, electionMetrics)
+			gossips[i].newLeaderElectionComponent(secondChannelName, es.callback, electionMetrics)
 	}
 
 	require.True(t, waitForLeaderElection(secondChannelServices, time.Second*30, time.Second*2), "One leader should be selected for chanB")
