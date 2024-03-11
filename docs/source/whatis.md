@@ -50,7 +50,7 @@ distributed ledger or blockchain platforms.
 One key point of differentiation is that Hyperledger was established under the
 Linux Foundation, which itself has a long and very successful history of
 nurturing open-source projects under **open governance** that grow strong, sustainable communities and thriving ecosystems. Hyperledger is governed by a
-diverse technical steering committee, while the Hyperledger Fabric project is handled by a
+diverse technical oversight committee (TOC), while the Hyperledger Fabric project is handled by a
 diverse set of maintainers from multiple organizations. Hundreds of developers
 spanning many organizations have contributed to Hyperledger Fabric.
 
@@ -213,7 +213,7 @@ executes transactions before reaching final agreement on their order.
 
 In Fabric, an application-specific endorsement policy specifies which peer
 nodes, or how many of them, need to vouch for the correct execution of a given
-smart contract. Thus, each transaction need only be executed (endorsed) by the
+smart contract. Thus, each transaction needs only be executed (endorsed) by the
 subset of the peer nodes necessary to satisfy the transaction's endorsement
 policy. This allows for parallel execution increasing overall performance and
 scale of the system. This first phase also **eliminates any non-determinism**,
