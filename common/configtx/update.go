@@ -32,9 +32,8 @@ func (vi *ValidatorImpl) verifyReadSet(readSet map[string]comparable) error {
 func computeDeltaSet(readSet, writeSet map[string]comparable) map[string]comparable {
 	result := make(map[string]comparable)
 	for key, value := range writeSet {
-		readVal, ok := readSet[key]
 
-		if ok && readVal.version() == value.version() {
+		if readVal, ok := readSet[key]; ok && readVal.version() == value.version() {
 			continue
 		}
 
@@ -130,8 +129,8 @@ func (vi *ValidatorImpl) authorizeUpdate(configUpdateEnv *cb.ConfigUpdateEnvelop
 	if err != nil {
 		return nil, errors.Wrapf(err, "error mapping ReadSet")
 	}
-	err = vi.verifyReadSet(readSet)
-	if err != nil {
+
+	if err = vi.verifyReadSet(readSet); err != nil {
 		return nil, errors.Wrapf(err, "error validating ReadSet")
 	}
 
