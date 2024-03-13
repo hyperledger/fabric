@@ -11,8 +11,11 @@ import (
 
 	"github.com/SmartBFT-Go/consensus/pkg/types"
 	"github.com/SmartBFT-Go/consensus/smartbftprotos"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/orderer/common/cluster"
+	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -20,20 +23,17 @@ import (
 
 // Synchronizer implementation
 type Synchronizer struct {
-	lastReconfig    types.Reconfig
-	selfID          uint64
-	LatestConfig    func() (types.Configuration, []uint64)
-	BlockToDecision func(*cb.Block) *types.Decision
-	OnCommit        func(*cb.Block) types.Reconfig
-	Support         consensus.ConsenterSupport
-	BlockPuller     BlockPuller
-	ClusterSize     uint64
-	Logger          *flogging.FabricLogger
-}
-
-// Close closes the block puller connection
-func (s *Synchronizer) Close() {
-	s.BlockPuller.Close()
+	lastReconfig       types.Reconfig
+	selfID             uint64
+	LatestConfig       func() (types.Configuration, []uint64)
+	BlockToDecision    func(*cb.Block) *types.Decision
+	OnCommit           func(*cb.Block) types.Reconfig
+	Support            consensus.ConsenterSupport
+	CryptoProvider     bccsp.BCCSP
+	ClusterDialer      *cluster.PredicateDialer
+	LocalConfigCluster localconfig.Cluster
+	BlockPullerFactory BlockPullerFactory
+	Logger             *flogging.FabricLogger
 }
 
 // Sync synchronizes blocks and returns the response
@@ -79,8 +79,13 @@ func (s *Synchronizer) getViewMetadataLastConfigSqnFromBlock(block *cb.Block) (*
 }
 
 func (s *Synchronizer) synchronize() (*types.Decision, error) {
-	defer s.BlockPuller.Close()
-	heightByEndpoint, _, err := s.BlockPuller.HeightsByEndpoints()
+	blockPuller, err := s.BlockPullerFactory.CreateBlockPuller(s.Support, s.ClusterDialer, s.LocalConfigCluster, s.CryptoProvider)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot get create BlockPuller")
+	}
+	defer blockPuller.Close()
+
+	heightByEndpoint, _, err := blockPuller.HeightsByEndpoints()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot get HeightsByEndpoints")
 	}
@@ -111,7 +116,7 @@ func (s *Synchronizer) synchronize() (*types.Decision, error) {
 
 	var lastPulledBlock *cb.Block
 	for seq <= targetSeq {
-		block := s.BlockPuller.PullBlock(seq)
+		block := blockPuller.PullBlock(seq)
 		if block == nil {
 			s.Logger.Debugf("Failed to fetch block [%d] from cluster", seq)
 			break
@@ -151,10 +156,11 @@ func (s *Synchronizer) synchronize() (*types.Decision, error) {
 // clusterSize: the cluster size, must be >0.
 func (s *Synchronizer) computeTargetHeight(heights []uint64) uint64 {
 	sort.Slice(heights, func(i, j int) bool { return heights[i] > heights[j] }) // Descending
-	f := uint64(s.ClusterSize-1) / 3                                            // The number of tolerated byzantine faults
+	clusterSize := len(s.Support.SharedConfig().Consenters())
+	f := uint64(clusterSize-1) / 3 // The number of tolerated byzantine faults
 	lenH := uint64(len(heights))
 
-	s.Logger.Debugf("Heights: %v", heights)
+	s.Logger.Debugf("Cluster size: %d, F: %d, Heights: %v", clusterSize, f, heights)
 
 	if lenH < f+1 {
 		s.Logger.Debugf("Returning %d", heights[0])

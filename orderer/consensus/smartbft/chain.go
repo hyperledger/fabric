@@ -36,21 +36,14 @@ import (
 	"go.uber.org/zap"
 )
 
-//go:generate counterfeiter -o mocks/mock_blockpuller.go . BlockPuller
-
-// BlockPuller is used to pull blocks from other OSN
-type BlockPuller interface {
-	PullBlock(seq uint64) *cb.Block
-	HeightsByEndpoints() (map[string]uint64, string, error)
-	Close()
-}
-
 // WALConfig consensus specific configuration parameters from orderer.yaml; for SmartBFT only WALDir is relevant.
 type WALConfig struct {
 	WALDir            string // WAL data of <my-channel> is stored in WALDir/<my-channel>
 	SnapDir           string // Snapshots of <my-channel> are stored in SnapDir/<my-channel>
 	EvictionSuspicion string // Duration threshold that the node samples in order to suspect its eviction from the channel.
 }
+
+//go:generate mockery --dir . --name ConfigValidator --case underscore --with-expecter=true --output mocks
 
 // ConfigValidator interface
 type ConfigValidator interface {
@@ -71,9 +64,8 @@ type BFTChain struct {
 	RuntimeConfig      *atomic.Value
 	Channel            string
 	Config             types.Configuration
-	BlockPuller        BlockPuller
-	clusterDialer      *cluster.PredicateDialer // TODO Required by BFT-synchronizer
-	localConfigCluster localconfig.Cluster      // TODO Required by BFT-synchronizer
+	clusterDialer      *cluster.PredicateDialer // Required by BFT-synchronizer
+	localConfigCluster localconfig.Cluster      // Required by BFT-synchronizer
 	Comm               cluster.Communicator
 	SignerSerializer   signerSerializer
 	PolicyManager      policies.Manager
@@ -100,7 +92,6 @@ func NewChain(
 	selfID uint64,
 	config types.Configuration,
 	walDir string,
-	blockPuller BlockPuller,
 	clusterDialer *cluster.PredicateDialer,
 	localConfigCluster localconfig.Cluster,
 	comm cluster.Communicator,
@@ -111,6 +102,7 @@ func NewChain(
 	metricsBFT *api.Metrics,
 	metricsWalBFT *wal.Metrics,
 	bccsp bccsp.BCCSP,
+	egressCommFactory EgressCommFactory,
 ) (*BFTChain, error) {
 	logger := flogging.MustGetLogger("orderer.consensus.smartbft.chain").With(zap.String("channel", support.ChannelID()))
 
@@ -130,9 +122,8 @@ func NewChain(
 		support:            support,
 		SignerSerializer:   signerSerializer,
 		PolicyManager:      policyManager,
-		BlockPuller:        blockPuller,        // FIXME create internally or with a factory
-		clusterDialer:      clusterDialer,      // TODO Required by BFT-synchronizer
-		localConfigCluster: localConfigCluster, // TODO Required by BFT-synchronizer
+		clusterDialer:      clusterDialer,      // Required by BFT-synchronizer
+		localConfigCluster: localConfigCluster, // Required by BFT-synchronizer
 		Logger:             logger,
 		consensusRelation:  types2.ConsensusRelationConsenter,
 		status:             types2.StatusActive,
@@ -166,7 +157,7 @@ func NewChain(
 	c.RuntimeConfig.Store(rtc)
 
 	c.verifier = buildVerifier(cv, c.RuntimeConfig, support, requestInspector, policyManager)
-	c.consensus = bftSmartConsensusBuild(c, requestInspector)
+	c.consensus = bftSmartConsensusBuild(c, requestInspector, egressCommFactory)
 
 	// Setup communication with list of remotes notes for the new channel
 	c.Comm.Configure(c.support.ChannelID(), rtc.RemoteNodes)
@@ -183,6 +174,7 @@ func NewChain(
 func bftSmartConsensusBuild(
 	c *BFTChain,
 	requestInspector *RequestInspector,
+	egressCommFactory EgressCommFactory,
 ) *smartbft.Consensus {
 	var err error
 
@@ -212,8 +204,27 @@ func bftSmartConsensusBuild(
 	var sync api.Synchronizer
 	switch c.localConfigCluster.ReplicationPolicy {
 	case "consensus":
-		c.Logger.Debug("BFTSynchronizer not yet available") // TODO create BFTSynchronizer when available
-		fallthrough
+		c.Logger.Debug("Creating a BFTSynchronizer")
+		sync = &BFTSynchronizer{
+			selfID: rtc.id,
+			LatestConfig: func() (types.Configuration, []uint64) {
+				rtc := c.RuntimeConfig.Load().(RuntimeConfig)
+				return rtc.BFTConfig, rtc.Nodes
+			},
+			BlockToDecision: c.blockToDecision,
+			OnCommit: func(block *cb.Block) types.Reconfig {
+				c.pruneCommittedRequests(block)
+				return c.updateRuntimeConfig(block)
+			},
+			Support:             c.support,
+			CryptoProvider:      c.bccsp,
+			ClusterDialer:       c.clusterDialer,
+			LocalConfigCluster:  c.localConfigCluster,
+			BlockPullerFactory:  &blockPullerCreator{},
+			VerifierFactory:     &verifierCreator{},
+			BFTDelivererFactory: &bftDelivererCreator{},
+			Logger:              c.Logger,
+		}
 	case "simple":
 		c.Logger.Debug("Creating simple Synchronizer")
 		sync = &Synchronizer{
@@ -223,10 +234,12 @@ func bftSmartConsensusBuild(
 				c.pruneCommittedRequests(block)
 				return c.updateRuntimeConfig(block)
 			},
-			Support:     c.support,
-			BlockPuller: c.BlockPuller, // FIXME this must be created dynamically as the cluster may change config
-			ClusterSize: clusterSize,   // FIXME this must be taken dynamically from `support` as the cluster may change in size
-			Logger:      c.Logger,
+			Support:            c.support,
+			CryptoProvider:     c.bccsp,
+			ClusterDialer:      c.clusterDialer,
+			LocalConfigCluster: c.localConfigCluster,
+			BlockPullerFactory: &blockPullerCreator{},
+			Logger:             c.Logger,
 			LatestConfig: func() (types.Configuration, []uint64) {
 				rtc := c.RuntimeConfig.Load().(RuntimeConfig)
 				return rtc.BFTConfig, rtc.Nodes
@@ -275,18 +288,7 @@ func bftSmartConsensusBuild(
 		Assembler:         c.assembler,
 		RequestInspector:  requestInspector,
 		Synchronizer:      sync,
-		Comm: &Egress{
-			RuntimeConfig: c.RuntimeConfig,
-			Channel:       c.support.ChannelID(),
-			Logger:        flogging.MustGetLogger("orderer.consensus.smartbft.egress").With(channelDecorator),
-			RPC: &cluster.RPC{
-				Logger:        flogging.MustGetLogger("orderer.consensus.smartbft.rpc").With(channelDecorator),
-				Channel:       c.support.ChannelID(),
-				StreamsByType: cluster.NewStreamsByType(),
-				Comm:          c.Comm,
-				Timeout:       5 * time.Minute, // Externalize configuration
-			},
-		},
+		Comm:              egressCommFactory(c.RuntimeConfig, c.Channel, c.Comm),
 		Scheduler:         time.NewTicker(time.Second).C,
 		ViewChangerTicker: time.NewTicker(time.Second).C,
 	}
@@ -606,6 +608,10 @@ func (c *BFTChain) lastPersistedProposalAndSignatures() (*types.Proposal, []type
 	c.Metrics.CommittedBlockNumber.Set(float64(lastBlock.Header.Number))
 	decision := c.blockToDecision(lastBlock)
 	return &decision.Proposal, decision.Signatures
+}
+
+func (c *BFTChain) GetLeaderID() uint64 {
+	return c.consensus.GetLeaderID()
 }
 
 func (c *BFTChain) reportIsLeader() {

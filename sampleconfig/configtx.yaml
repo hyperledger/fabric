@@ -71,7 +71,7 @@ Organizations:
                 Rule: "OR('SampleOrg.member')"
 
         # OrdererEndpoints is a list of all orderers this org runs which clients
-        # and peers may to connect to to push transactions and receive blocks respectively.
+        # and peers may to connect to push transactions and receive blocks respectively.
         OrdererEndpoints:
             - "127.0.0.1:7050"
 
@@ -321,6 +321,12 @@ Orderer: &OrdererDefaults
     # network. When set to 0, this implies no maximum number of channels.
     MaxChannels: 0
 
+    # ConsenterMapping contains the definition of consenter identity, endpoints, and crypto material.
+    # The ConsenterMapping is used in the BFT consensus protocol, and should include enough servers to ensure
+    # fault-tolerance; In BFT this number is at least 3*F+1, where F is the number of potential failures.
+    # In BFT it is highly recommended that the addresses for delivery & broadcast (Ordrer/Addresses or
+    # the OrdererEndpoints item in the org definition) map 1:1 to the Orderer/ConsenterMapping (for cluster consensus).
+    # That is, every consenter should be represented by a delivery endpoint.
     ConsenterMapping:
     - ID: 1
       Host: bft0.example.com

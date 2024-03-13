@@ -14,6 +14,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/SmartBFT-Go/consensus/pkg/types"
 	"github.com/SmartBFT-Go/consensus/smartbftprotos"
@@ -26,10 +27,10 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/deliverclient"
+	"github.com/hyperledger/fabric/common/deliverclient/blocksprovider"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
-	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/consensus"
-	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft/util"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -121,62 +122,6 @@ func configBlockToBFTConfig(selfID uint64, block *cb.Block, bccsp bccsp.BCCSP) (
 	}
 
 	return util.ConfigFromMetadataOptions(selfID, consensusConfigOptions)
-}
-
-//go:generate counterfeiter -o mocks/mock_blockpuller.go . BlockPuller
-
-// newBlockPuller creates a new block puller
-func newBlockPuller(
-	support consensus.ConsenterSupport,
-	baseDialer *cluster.PredicateDialer,
-	clusterConfig localconfig.Cluster,
-	bccsp bccsp.BCCSP,
-) (BlockPuller, error) {
-	verifyBlockSequence := func(blocks []*cb.Block, _ string) error {
-		vb := cluster.BlockVerifierBuilder(bccsp)
-		return cluster.VerifyBlocksBFT(blocks, support.SignatureVerifier(), vb)
-	}
-
-	stdDialer := &cluster.StandardDialer{
-		Config: baseDialer.Config.Clone(),
-	}
-	stdDialer.Config.AsyncConnect = false
-	stdDialer.Config.SecOpts.VerifyCertificate = nil
-
-	// Extract the TLS CA certs and endpoints from the configuration,
-	endpoints, err := etcdraft.EndpointconfigFromSupport(support, bccsp)
-	if err != nil {
-		return nil, err
-	}
-
-	logger := flogging.MustGetLogger("orderer.common.cluster.puller")
-
-	der, _ := pem.Decode(stdDialer.Config.SecOpts.Certificate)
-	if der == nil {
-		return nil, errors.Errorf("client certificate isn't in PEM format: %v",
-			string(stdDialer.Config.SecOpts.Certificate))
-	}
-
-	myCert, err := x509.ParseCertificate(der.Bytes)
-	if err != nil {
-		logger.Warnf("Failed parsing my own TLS certificate: %v, therefore we may connect to our own endpoint when pulling blocks", err)
-	}
-
-	bp := &cluster.BlockPuller{
-		MyOwnTLSCert:        myCert,
-		VerifyBlockSequence: verifyBlockSequence,
-		Logger:              logger,
-		RetryTimeout:        clusterConfig.ReplicationRetryTimeout,
-		MaxTotalBufferBytes: clusterConfig.ReplicationBufferSize,
-		FetchTimeout:        clusterConfig.ReplicationPullTimeout,
-		Endpoints:           endpoints,
-		Signer:              support,
-		TLSCert:             der.Bytes,
-		Channel:             support.ChannelID(),
-		Dialer:              stdDialer,
-	}
-
-	return bp, nil
 }
 
 func getViewMetadataFromBlock(block *cb.Block) (*smartbftprotos.ViewMetadata, error) {
@@ -514,4 +459,114 @@ func createSmartBftConfig(odrdererConfig channelconfig.Orderer) (*smartbft.Optio
 	configOptions.RequestBatchMaxCount = uint64(batchSize.MaxMessageCount)
 	configOptions.RequestBatchMaxBytes = uint64(batchSize.AbsoluteMaxBytes)
 	return configOptions, nil
+}
+
+// ledgerInfoAdapter translates from blocksprovider.LedgerInfo in to calls to consensus.ConsenterSupport.
+type ledgerInfoAdapter struct {
+	support consensus.ConsenterSupport
+}
+
+func (a *ledgerInfoAdapter) LedgerHeight() (uint64, error) {
+	return a.support.Height(), nil
+}
+
+func (a *ledgerInfoAdapter) GetCurrentBlockHash() ([]byte, error) {
+	return nil, errors.New("not implemented: never used in orderer")
+}
+
+//go:generate counterfeiter -o mocks/verifier_factory.go --fake-name VerifierFactory . VerifierFactory
+
+type VerifierFactory interface {
+	CreateBlockVerifier(
+		configBlock *cb.Block,
+		lastBlock *cb.Block,
+		cryptoProvider bccsp.BCCSP,
+		lg *flogging.FabricLogger,
+	) (deliverclient.CloneableUpdatableBlockVerifier, error)
+}
+
+type verifierCreator struct{}
+
+func (*verifierCreator) CreateBlockVerifier(
+	configBlock *cb.Block,
+	lastBlock *cb.Block,
+	cryptoProvider bccsp.BCCSP,
+	lg *flogging.FabricLogger,
+) (deliverclient.CloneableUpdatableBlockVerifier, error) {
+	updatableVerifier, err := deliverclient.NewBlockVerificationAssistant(configBlock, lastBlock, cryptoProvider, lg)
+	return updatableVerifier, err
+}
+
+//go:generate counterfeiter -o mocks/bft_deliverer_factory.go --fake-name BFTDelivererFactory . BFTDelivererFactory
+
+type BFTDelivererFactory interface {
+	CreateBFTDeliverer(
+		channelID string,
+		blockHandler blocksprovider.BlockHandler,
+		ledger blocksprovider.LedgerInfo,
+		updatableBlockVerifier blocksprovider.UpdatableBlockVerifier,
+		dialer blocksprovider.Dialer,
+		orderersSourceFactory blocksprovider.OrdererConnectionSourceFactory,
+		cryptoProvider bccsp.BCCSP,
+		doneC chan struct{},
+		signer identity.SignerSerializer,
+		deliverStreamer blocksprovider.DeliverStreamer,
+		censorshipDetectorFactory blocksprovider.CensorshipDetectorFactory,
+		logger *flogging.FabricLogger,
+		initialRetryInterval time.Duration,
+		maxRetryInterval time.Duration,
+		blockCensorshipTimeout time.Duration,
+		maxRetryDuration time.Duration,
+		maxRetryDurationExceededHandler blocksprovider.MaxRetryDurationExceededHandler,
+	) BFTBlockDeliverer
+}
+
+type bftDelivererCreator struct{}
+
+func (*bftDelivererCreator) CreateBFTDeliverer(
+	channelID string,
+	blockHandler blocksprovider.BlockHandler,
+	ledger blocksprovider.LedgerInfo,
+	updatableBlockVerifier blocksprovider.UpdatableBlockVerifier,
+	dialer blocksprovider.Dialer,
+	orderersSourceFactory blocksprovider.OrdererConnectionSourceFactory,
+	cryptoProvider bccsp.BCCSP,
+	doneC chan struct{},
+	signer identity.SignerSerializer,
+	deliverStreamer blocksprovider.DeliverStreamer,
+	censorshipDetectorFactory blocksprovider.CensorshipDetectorFactory,
+	logger *flogging.FabricLogger,
+	initialRetryInterval time.Duration,
+	maxRetryInterval time.Duration,
+	blockCensorshipTimeout time.Duration,
+	maxRetryDuration time.Duration,
+	maxRetryDurationExceededHandler blocksprovider.MaxRetryDurationExceededHandler,
+) BFTBlockDeliverer {
+	bftDeliverer := &blocksprovider.BFTDeliverer{
+		ChannelID:                       channelID,
+		BlockHandler:                    blockHandler,
+		Ledger:                          ledger,
+		UpdatableBlockVerifier:          updatableBlockVerifier,
+		Dialer:                          dialer,
+		OrderersSourceFactory:           orderersSourceFactory,
+		CryptoProvider:                  cryptoProvider,
+		DoneC:                           doneC,
+		Signer:                          signer,
+		DeliverStreamer:                 deliverStreamer,
+		CensorshipDetectorFactory:       censorshipDetectorFactory,
+		Logger:                          logger,
+		InitialRetryInterval:            initialRetryInterval,
+		MaxRetryInterval:                maxRetryInterval,
+		BlockCensorshipTimeout:          blockCensorshipTimeout,
+		MaxRetryDuration:                maxRetryDuration,
+		MaxRetryDurationExceededHandler: maxRetryDurationExceededHandler,
+	}
+	return bftDeliverer
+}
+
+//go:generate counterfeiter -o mocks/bft_block_deliverer.go --fake-name BFTBlockDeliverer . BFTBlockDeliverer
+type BFTBlockDeliverer interface {
+	Stop()
+	DeliverBlocks()
+	Initialize(channelConfig *cb.Config, selfEndpoint string)
 }

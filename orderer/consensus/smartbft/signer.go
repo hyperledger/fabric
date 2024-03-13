@@ -14,7 +14,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 )
 
-//go:generate mockery -dir . -name SignerSerializer -case underscore -output ./mocks/
+//go:generate mockery --dir . --name SignerSerializer --case underscore --with-expecter=true --output mocks
 
 // SignerSerializer signs messages and serializes identities
 type SignerSerializer interface {

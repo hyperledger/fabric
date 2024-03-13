@@ -11,11 +11,12 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp"
-
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	gproto "github.com/hyperledger/fabric-protos-go/gossip"
 	tspb "github.com/hyperledger/fabric-protos-go/transientstore"
+	"github.com/hyperledger/fabric/common/deliverclient/blocksprovider"
+	"github.com/hyperledger/fabric/common/deliverclient/orderers"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -35,8 +36,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	corecomm "github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
-	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider"
-	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"

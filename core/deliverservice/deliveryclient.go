@@ -17,11 +17,11 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/deliverclient/blocksprovider"
+	"github.com/hyperledger/fabric/common/deliverclient/orderers"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
-	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider"
-	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 	"github.com/pkg/errors"
 )
 

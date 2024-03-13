@@ -70,7 +70,7 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		var ordererRunners []*ginkgomon.Runner
 		for _, orderer := range network.Orderers {
 			runner := network.OrdererRunner(orderer)
-			runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug")
+			runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=debug")
 			ordererRunners = append(ordererRunners, runner)
 			proc := ifrit.Invoke(runner)
 			ordererProcesses = append(ordererProcesses, proc)
@@ -165,19 +165,6 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 			mocksArray = append(mocksArray, mo)
 			mocksArray[len(mocksArray)-1].logger.Infof("Mock orderer started at port %v", network.OrdererAddress(orderer, nwo.ListenPort))
 		}
-
-		/* Create peer */
-		By("Create a peer and join to channel")
-		p0 := network.Peers[0]
-		peerRunner := network.PeerRunner(p0)
-		peerProcesses = ifrit.Invoke(peerRunner)
-		Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
-
-		_, err = network.PeerAdminSession(p0, commands.ChannelJoin{
-			BlockPath:  network.OutputBlockPath(channel),
-			ClientAuth: network.ClientAuthRequired,
-		})
-		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
@@ -199,7 +186,52 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 	})
 
 	It("correct mock", func() {
+		var err error
 		channel := "testchannel1"
+
+		/* Create peer */
+		By("Create a peer and join to channel")
+		p0 := network.Peers[0]
+		peerRunner := network.PeerRunner(p0)
+		peerProcesses = ifrit.Invoke(peerRunner)
+		Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+		_, err = network.PeerAdminSession(p0, commands.ChannelJoin{
+			BlockPath:  network.OutputBlockPath(channel),
+			ClientAuth: network.ClientAuthRequired,
+		})
+		Expect(err).NotTo(HaveOccurred())
+
 		nwo.WaitUntilEqualLedgerHeight(network, channel, 11, network.Peers[0])
+	})
+
+	It("block censorship", func() {
+		var err error
+		channel := "testchannel1"
+
+		for _, mock := range mocksArray {
+			mock.censorDataMode = true
+			mock.stopDeliveryChannel = make(chan struct{})
+		}
+
+		/* Create peer */
+		By("Create a peer and join to channel")
+		p0 := network.Peers[0]
+		peerRunner := network.PeerRunner(p0)
+		peerRunner.Command.Env = append(peerRunner.Command.Env, "FABRIC_LOGGING_SPEC=debug")
+		peerProcesses = ifrit.Invoke(peerRunner)
+		Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+		_, err = network.PeerAdminSession(p0, commands.ChannelJoin{
+			BlockPath:  network.OutputBlockPath(channel),
+			ClientAuth: network.ClientAuthRequired,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(peerRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Block censorship detected"))
+		nwo.WaitUntilEqualLedgerHeight(network, channel, 11, network.Peers[0])
+
+		for _, mock := range mocksArray {
+			close(mock.stopDeliveryChannel)
+		}
 	})
 })

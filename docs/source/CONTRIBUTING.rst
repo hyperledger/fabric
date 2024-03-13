@@ -86,7 +86,7 @@ Maintainers
 The Fabric project is lead by the project's top level `maintainers <https://github.com/hyperledger/fabric/blob/main/MAINTAINERS.md>`__.
 The maintainers are responsible for reviewing and merging all patches submitted
 for review, and they guide the overall technical direction of the project within
-the guidelines established by the Hyperledger Technical Steering Committee (TSC).
+the guidelines established by the Hyperledger Technical Oversight Committee (TOC).
 
 Becoming a maintainer
 ~~~~~~~~~~~~~~~~~~~~~
@@ -225,8 +225,10 @@ Review the list of issues and find
 something that interests you. You could also check the
 `"good first issue" <https://github.com/hyperledger/fabric/labels/good%20first%20issue>`__
 list. It is wise to start with something relatively straight forward and
-achievable, and that no one is already assigned. If no one is assigned,
-then assign the issue to yourself. Please be considerate and rescind the
+achievable, and that no one is already assigned.
+Please note, due to GitHub permissions, you might not be able to assign issues to yourself.
+If you find an issue that interests you and is unassigned, please let us know in the chat,
+and a maintainer will assign it to you. Please be considerate and rescind the
 assignment if you cannot finish in a reasonable time, or add a comment
 saying that you are still actively working the issue if you need a
 little more time.

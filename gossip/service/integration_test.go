@@ -20,6 +20,8 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/common/deliverclient/blocksprovider"
+	"github.com/hyperledger/fabric/common/deliverclient/orderers"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/gossip/election"
@@ -27,8 +29,6 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
-	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider"
-	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 	"github.com/stretchr/testify/require"
 )
 
