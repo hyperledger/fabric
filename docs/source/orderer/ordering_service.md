@@ -200,7 +200,7 @@ implementation the node will be used in), check out [our documentation on deploy
   A Byzantine Fault Tolerant (BFT) ordering service, as its name implies,
   can withstand not only crash failures, but also a subset of nodes behaving maliciously.
   It is now possible to run a BFT ordering service
-  with the [SmartBFT](https://arxiv.org/abs/2107.06922) [library](https://github.com/SmartBFT-Go/consensus)
+  with the [SmartBFT](https://arxiv.org/abs/2107.06922) [library](https://github.com/hyperledger-labs/SmartBFT)
   as its underlying consensus protocol. Consider using the BFT orderer if true decentralization is required, where
   up to and not including a third of the parties running the orderers may not be trusted due to malicious intent or being compromised.
 

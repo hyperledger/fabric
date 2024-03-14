@@ -15,14 +15,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/SmartBFT-Go/consensus/pkg/types"
-	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
-	"github.com/hyperledger/fabric/common/policies"
-
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger-labs/SmartBFT/pkg/types"
 	"github.com/hyperledger/fabric-protos-go/common"
 	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"

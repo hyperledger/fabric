@@ -10,7 +10,7 @@ Byzantine Fault Tolerant (BFT) ordering service
 Hyperledger Fabric has utilized a Raft crash fault tolerant (CFT) ordering service since version v1.4.
 A Byzantine Fault Tolerant (BFT) ordering service can withstand not only crash failures, but also a subset of nodes behaving maliciously.
 Fabric v3.0 is the first release to provide a BFT ordering service based on the
-`SmartBFT <https://arxiv.org/abs/2107.06922>`_ `consensus library <https://github.com/SmartBFT-Go/consensus>`_.
+`SmartBFT <https://arxiv.org/abs/2107.06922>`_ `consensus library <https://github.com/hyperledger-labs/SmartBFT>`_.
 Consider using the BFT orderer if true decentralization is required,
 where up to and not including a third of the parties running the orderers may not be trusted due to malicious intent or being compromised.
 
