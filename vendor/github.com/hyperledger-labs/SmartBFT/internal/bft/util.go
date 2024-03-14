@@ -257,6 +257,7 @@ func (ifp *InFlightData) clear() {
 type ProposalMaker struct {
 	DecisionsPerLeader uint64
 	N                  uint64
+	NodesList          []uint64
 	SelfID             uint64
 	Decider            Decider
 	FailureDetector    FailureDetector
@@ -281,6 +282,7 @@ func (pm *ProposalMaker) NewProposer(leader, proposalSequence, viewNum, decision
 		RetrieveCheckpoint: pm.Checkpoint.Get,
 		DecisionsPerLeader: pm.DecisionsPerLeader,
 		N:                  pm.N,
+		NodesList:          pm.NodesList,
 		LeaderID:           leader,
 		SelfID:             pm.SelfID,
 		Quorum:             quorumSize,

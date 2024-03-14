@@ -212,7 +212,7 @@ github.com/hashicorp/hcl/hcl/token
 github.com/hashicorp/hcl/json/parser
 github.com/hashicorp/hcl/json/scanner
 github.com/hashicorp/hcl/json/token
-# github.com/hyperledger-labs/SmartBFT v0.0.0-20240314083322-beb702253a8c
+# github.com/hyperledger-labs/SmartBFT v0.0.0-20240314102917-584daefbad5b
 ## explicit; go 1.20
 github.com/hyperledger-labs/SmartBFT/internal/bft
 github.com/hyperledger-labs/SmartBFT/pkg/api

@@ -72,6 +72,7 @@ type View struct {
 	RetrieveCheckpoint CheckpointRetriever
 	SelfID             uint64
 	N                  uint64
+	NodesList          []uint64
 	LeaderID           uint64
 	Quorum             int
 	Number             uint64
@@ -702,7 +703,7 @@ func (v *View) verifyBlacklist(prevCommitSignatures []*protos.Signature, currVer
 		f:                  f,
 		logger:             v.Logger,
 		metricsBlacklist:   v.MetricsBlacklist,
-		nodes:              v.Comm.Nodes(),
+		nodes:              v.NodesList,
 		currView:           v.Number,
 	}
 
@@ -1045,7 +1046,7 @@ func (v *View) updateBlacklistMetadata(metadata *protos.ViewMetadata, prevSigs [
 		leaderRotation:     v.DecisionsPerLeader > 0,
 		currView:           metadata.ViewId,
 		prevMD:             prevMD,
-		nodes:              v.Comm.Nodes(),
+		nodes:              v.NodesList,
 		f:                  f,
 		n:                  v.N,
 		logger:             v.Logger,
