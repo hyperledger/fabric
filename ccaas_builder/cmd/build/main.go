@@ -88,12 +88,12 @@ func run() error {
 	}
 
 	if err := copy.Copy(metadataDir, outputDir); err != nil {
-		return fmt.Errorf("failed to copy build metadata folder: %s", err)
+		return fmt.Errorf("failed to copy build metadata folder: %w", err)
 	}
 
 	if _, err := os.Stat(metainfoSrcDir); !os.IsNotExist(err) {
 		if err := copy.Copy(metainfoSrcDir, metainfoDestDir); err != nil {
-			return fmt.Errorf("failed to copy build META-INF folder: %s", err)
+			return fmt.Errorf("failed to copy build META-INF folder: %w", err)
 		}
 	}
 
