@@ -119,6 +119,12 @@ General:
         # Permitted values:
         # in BFT: "simple" | "consensus" (default);
         # in etcdraft: ignored, (always "simple", regardless of value in config).
+        # When running a Raft orderer or with ReplicationPolicy set to 'simple', an orderer
+        # replicates blocks from a single orderer node.
+        # When running a BFT orderer with ReplicationPolicy set to 'consensus', the orderer
+        # replicates blocks from a single orderer node, but replicates block headers with signatures
+        # from other orderer nodes, and if it suspects the former node withholds blocks from it,
+        # it switches to a new orderer as a source of blocks.
         ReplicationPolicy:
 
     # Bootstrap method: The method by which to obtain the bootstrap block
