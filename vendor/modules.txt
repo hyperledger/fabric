@@ -49,7 +49,7 @@ github.com/Microsoft/go-winio/internal/stringbuffer
 github.com/Microsoft/go-winio/pkg/guid
 # github.com/Microsoft/hcsshim v0.11.4
 ## explicit; go 1.18
-# github.com/SmartBFT-Go/consensus v0.0.0-20240215044737-fd3c35e3c876
+# github.com/SmartBFT-Go/consensus v0.0.0-20240215044737-fd3c35e3c876 => github.com/hyperledger-labs/SmartBFT v0.0.0-20240215044737-fd3c35e3c876
 ## explicit; go 1.20
 github.com/SmartBFT-Go/consensus/internal/bft
 github.com/SmartBFT-Go/consensus/pkg/api
@@ -711,3 +711,4 @@ gopkg.in/yaml.v3
 ## explicit; go 1.17
 rsc.io/tmplfunc
 rsc.io/tmplfunc/internal/parse
+# github.com/SmartBFT-Go/consensus => github.com/hyperledger-labs/SmartBFT v0.0.0-20240215044737-fd3c35e3c876

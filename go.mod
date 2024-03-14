@@ -2,6 +2,8 @@ module github.com/hyperledger/fabric
 
 go 1.20
 
+replace github.com/SmartBFT-Go/consensus => github.com/hyperledger-labs/SmartBFT v0.0.0-20240215044737-fd3c35e3c876
+
 require (
 	code.cloudfoundry.org/clock v1.0.0
 	github.com/IBM/idemix v0.0.2-0.20231011101252-a4feda90f3f7

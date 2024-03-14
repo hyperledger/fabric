@@ -59,8 +59,6 @@ github.com/Microsoft/hcsshim v0.11.4/go.mod h1:smjE4dvqPX9Zldna+t5FG3rnoHhaB7QYx
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/Shopify/sarama v1.19.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWXgklEdEo=
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
-github.com/SmartBFT-Go/consensus v0.0.0-20240215044737-fd3c35e3c876 h1:E7XUbc3IePMgCJmdbgwzRucmrBCvCBBnrsWR1I0EMkQ=
-github.com/SmartBFT-Go/consensus v0.0.0-20240215044737-fd3c35e3c876/go.mod h1:aeRINA5oFotrrfV/mDlTkN/UePrSIIPziuAjEqETRN0=
 github.com/VictoriaMetrics/fastcache v1.9.0 h1:oMwsS6c8abz98B7ytAewQ7M1ZN/Im/iwKoE1euaFvhs=
 github.com/VictoriaMetrics/fastcache v1.9.0/go.mod h1:otoTS3xu+6IzF/qByjqzjp3rTuzM3Qf0ScU1UTj97iU=
 github.com/VividCortex/gohistogram v1.0.0 h1:6+hBz+qvs0JOrrNhhmR7lFxo5sINxBCGXrdtl/UvroE=
@@ -318,6 +316,8 @@ github.com/hashicorp/memberlist v0.1.3/go.mod h1:ajVTdAv/9Im8oMAAj5G31PhhMCZJV2p
 github.com/hashicorp/serf v0.8.2/go.mod h1:6hOLApaqBFA1NXqRQAsxw9QxuDEvNxSQRwA/JwenrHc=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/hudl/fargo v1.3.0/go.mod h1:y3CKSmjA+wD2gak7sUSXTAoopbhU08POFhmITJgmKTg=
+github.com/hyperledger-labs/SmartBFT v0.0.0-20240215044737-fd3c35e3c876 h1:n3ZdU45C56xuU7ljtVNFp1XwdUvIOynEayNS5QG1BIU=
+github.com/hyperledger-labs/SmartBFT v0.0.0-20240215044737-fd3c35e3c876/go.mod h1:aeRINA5oFotrrfV/mDlTkN/UePrSIIPziuAjEqETRN0=
 github.com/hyperledger/fabric-amcl v0.0.0-20230602173724-9e02669dceb2 h1:B1Nt8hKb//KvgGRprk0h1t4lCnwhE9/ryb1WqfZbV+M=
 github.com/hyperledger/fabric-amcl v0.0.0-20230602173724-9e02669dceb2/go.mod h1:X+DIyUsaTmalOpmpQfIvFZjKHQedrURQ5t4YqquX7lE=
 github.com/hyperledger/fabric-chaincode-go v0.0.0-20220713164125-8f0791c989d7 h1:w0VDGxvAmu8WZEfAhLn9M4SJg5xWMFIxUokfflx1MaU=
