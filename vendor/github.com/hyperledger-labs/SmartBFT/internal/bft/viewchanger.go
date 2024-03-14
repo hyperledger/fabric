@@ -1225,6 +1225,7 @@ func (v *ViewChanger) commitInFlightProposal(proposal *protos.Proposal) (success
 		DecisionsPerLeader: v.DecisionsPerLeader,
 		SelfID:             v.SelfID,
 		N:                  v.N,
+		NodesList:          v.NodesList,
 		Number:             inFlightViewNum,
 		LeaderID:           v.SelfID, // so that no byzantine leader will cause a complain
 		Quorum:             v.quorum,

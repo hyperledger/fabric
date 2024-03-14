@@ -332,6 +332,7 @@ func (c *Consensus) proposalMaker() *algorithm.ProposalMaker {
 		FailureDetector:    c,
 		Verifier:           c.Verifier,
 		N:                  c.numberOfNodes,
+		NodesList:          c.nodes,
 		InMsqQSize:         int(c.Config.IncomingMessageBufferSize),
 		ViewSequences:      c.controller.ViewSequences,
 	}
