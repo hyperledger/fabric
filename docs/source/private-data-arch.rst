@@ -373,7 +373,7 @@ applied to the channel’s state database to enable JSON content queries, by
 packaging indexes in a ``META-INF/statedb/couchdb/indexes`` directory at chaincode
 installation time.  Similarly, indexes can also be applied to private data
 collections that are explicitly defined, by packaging indexes in a ``META-INF/statedb/couchdb/collections/<collection_name>/indexes``
-directory. An example index is available `here <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02_private/go/META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexOwner.json>`_.
+directory. An example index is available `here <https://github.com/hyperledger/fabric-samples/blob/main/asset-transfer-private-data/chaincode-go/META-INF/statedb/couchdb/collections/assetCollection/indexes/indexOwner.json>`_.
 
 Considerations when using private data
 --------------------------------------
