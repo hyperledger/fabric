@@ -2,13 +2,10 @@ module github.com/hyperledger/fabric
 
 go 1.20
 
-replace github.com/SmartBFT-Go/consensus => github.com/hyperledger-labs/SmartBFT v0.0.0-20240215044737-fd3c35e3c876
-
 require (
 	code.cloudfoundry.org/clock v1.0.0
 	github.com/IBM/idemix v0.0.2-0.20231011101252-a4feda90f3f7
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
-	github.com/SmartBFT-Go/consensus v0.0.0-20240215044737-fd3c35e3c876
 	github.com/VictoriaMetrics/fastcache v1.9.0
 	github.com/bits-and-blooms/bitset v1.13.0
 	github.com/cheggaaa/pb v1.0.29
@@ -19,6 +16,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
+	github.com/hyperledger-labs/SmartBFT v0.0.0-20240314083322-beb702253a8c
 	github.com/hyperledger/fabric-chaincode-go v0.0.0-20220713164125-8f0791c989d7
 	github.com/hyperledger/fabric-config v0.2.1
 	github.com/hyperledger/fabric-lib-go v1.1.0

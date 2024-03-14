@@ -9,13 +9,12 @@ package smartbft
 import (
 	"sync/atomic"
 
-	"github.com/SmartBFT-Go/consensus/pkg/api"
-	"github.com/hyperledger/fabric/orderer/common/cluster"
-
-	protos "github.com/SmartBFT-Go/consensus/smartbftprotos"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger-labs/SmartBFT/pkg/api"
+	protos "github.com/hyperledger-labs/SmartBFT/smartbftprotos"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/protoutil"
 )
 

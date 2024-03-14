@@ -23,9 +23,9 @@ import (
 	"syscall"
 	"time"
 
-	protos "github.com/SmartBFT-Go/consensus/smartbftprotos"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
+	protos "github.com/hyperledger-labs/SmartBFT/smartbftprotos"
 	"github.com/hyperledger/fabric-config/configtx"
 	"github.com/hyperledger/fabric-config/configtx/orderer"
 	"github.com/hyperledger/fabric-protos-go/common"
