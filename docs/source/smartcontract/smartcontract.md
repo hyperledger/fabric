@@ -114,7 +114,7 @@ about chaincode; everyone else can think in terms of smart contracts.
 
 At the heart of a smart contract is a set of `transaction` definitions. For
 example, look at assetTransfer.js
-[here](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-transfer-basic/chaincode-javascript/lib/assetTransfer.js#L67),
+[here](https://github.com/hyperledger/fabric-samples/blob/main/asset-transfer-basic/chaincode-javascript/lib/assetTransfer.js#L67),
 where you can see a smart contract transaction that creates a new asset:
 
 ```javascript
