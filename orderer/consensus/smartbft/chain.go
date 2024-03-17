@@ -167,6 +167,17 @@ func NewChain(
 		return nil, errors.Wrap(err, "failed to verify SmartBFT-Go configuration")
 	}
 
+	c.clusterService = &cluster.ClusterService{
+		StreamCountReporter:              &cluster.StreamCountReporter{},
+		Logger:                           flogging.MustGetLogger("orderer.common.cluster"),
+		StepLogger:                       flogging.MustGetLogger("orderer.common.cluster.step"),
+		MinimumExpirationWarningInterval: cluster.MinimumExpirationWarningInterval,
+		MembershipByChannel:              make(map[string]*cluster.ChannelMembersConfig),
+		RequestHandler: &Ingress{
+			Logger: logger,
+		},
+	}
+
 	logger.Infof("SmartBFT-v3 is now servicing chain")
 
 	return c, nil
@@ -423,6 +434,9 @@ func (c *BFTChain) Deliver(proposal types.Proposal, signatures []types.Signature
 	}
 
 	reconfig := c.updateRuntimeConfig(block)
+	if reconfig.InLatestDecision {
+		c.Logger.Infof("Reconfiguration was done and the current nodes are: %v", reconfig.CurrentNodes)
+	}
 	return reconfig
 }
 
