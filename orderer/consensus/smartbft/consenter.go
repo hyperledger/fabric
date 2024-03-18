@@ -19,7 +19,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger-labs/SmartBFT/pkg/api"
-	"github.com/hyperledger-labs/SmartBFT/pkg/types"
 	"github.com/hyperledger-labs/SmartBFT/pkg/wal"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
@@ -217,65 +216,6 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 		}
 	}
 
-	synchronizerFactory := func(
-		logger *flogging.FabricLogger,
-		localConfigCluster localconfig.Cluster,
-		rtc RuntimeConfig,
-		blockToDecision func(block *cb.Block) *types.Decision,
-		pruneCommittedRequests func(block *cb.Block),
-		updateRuntimeConfig func(block *cb.Block) types.Reconfig,
-		support consensus.ConsenterSupport,
-		bccsp bccsp.BCCSP,
-		clusterDialer *cluster.PredicateDialer,
-		clusterSize uint64,
-	) api.Synchronizer {
-		switch localConfigCluster.ReplicationPolicy {
-		case "consensus":
-			logger.Debug("Creating a BFTSynchronizer")
-			return &BFTSynchronizer{
-				selfID: rtc.id,
-				LatestConfig: func() (types.Configuration, []uint64) {
-					return rtc.BFTConfig, rtc.Nodes
-				},
-				BlockToDecision: blockToDecision,
-				OnCommit: func(block *cb.Block) types.Reconfig {
-					pruneCommittedRequests(block)
-					return updateRuntimeConfig(block)
-				},
-				Support:             support,
-				CryptoProvider:      bccsp,
-				ClusterDialer:       clusterDialer,
-				LocalConfigCluster:  localConfigCluster,
-				BlockPullerFactory:  &blockPullerCreator{},
-				VerifierFactory:     &verifierCreator{},
-				BFTDelivererFactory: &bftDelivererCreator{},
-				Logger:              logger,
-			}
-		case "simple":
-			c.Logger.Debug("Creating simple Synchronizer")
-			return &Synchronizer{
-				selfID:          rtc.id,
-				BlockToDecision: blockToDecision,
-				OnCommit: func(block *cb.Block) types.Reconfig {
-					pruneCommittedRequests(block)
-					return updateRuntimeConfig(block)
-				},
-				Support:            support,
-				CryptoProvider:     bccsp,
-				ClusterDialer:      clusterDialer,
-				LocalConfigCluster: localConfigCluster,
-				BlockPullerFactory: &blockPullerCreator{},
-				Logger:             logger,
-				LatestConfig: func() (types.Configuration, []uint64) {
-					return rtc.BFTConfig, rtc.Nodes
-				},
-			}
-		default:
-			c.Logger.Panicf("Unsupported Cluster.ReplicationPolicy: %s", localConfigCluster.ReplicationPolicy)
-			return nil
-		}
-	}
-
 	chain, err := NewChain(
 		configValidator,
 		(uint64)(selfID),
@@ -292,7 +232,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 		c.MetricsWalBFT,
 		c.BCCSP,
 		egressCommFactory,
-		synchronizerFactory)
+		&synchronizerCreator{})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed creating a new BFTChain")
 	}

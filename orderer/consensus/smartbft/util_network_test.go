@@ -22,9 +22,7 @@ import (
 	"github.com/hyperledger-labs/SmartBFT/pkg/types"
 	"github.com/hyperledger-labs/SmartBFT/pkg/wal"
 	"github.com/hyperledger-labs/SmartBFT/smartbftprotos"
-	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
-	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
@@ -34,7 +32,6 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
-	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
 	smartBFTMocks "github.com/hyperledger/fabric/orderer/consensus/smartbft/mocks"
 	"github.com/hyperledger/fabric/protoutil"
@@ -94,10 +91,11 @@ func (ns *NetworkSetupInfo) SendTxToAllAvailableNodes(tx *cb.Envelope) error {
 		ns.t.Logf("Sending tx to node %v", idx)
 		err := node.SendTx(tx)
 		if err != nil {
+			errorsArr = append(errorsArr, err)
 			ns.t.Logf("Error occurred during sending tx to node %v: %v", idx, err)
+		} else {
+			ns.t.Logf("Tx to node %v was sent successfully", idx)
 		}
-		errorsArr = append(errorsArr, err)
-		ns.t.Logf("Tx to node %v was sent successfully", idx)
 	}
 	return errors.Join(errorsArr...)
 }
@@ -185,7 +183,6 @@ func (n *Node) Restart() error {
 	n.t.Logf("Restarting node %d", n.NodeId)
 	n.lock.Lock()
 	defer n.lock.Unlock()
-	n.Chain.Halt()
 	newChain, err := createBFTChainUsingMocks(n.t, n)
 	if err != nil {
 		return err
@@ -436,10 +433,10 @@ func createBFTChainUsingMocks(t *testing.T, node *Node) (*smartbft.BFTChain, err
 			var ledgerToCopy []*cb.Block
 			for _, n := range node.nodesMap {
 				if n.NodeId != node.NodeId {
-					ledgerToCopy = n.State.GetLedgerArray()
-					len := len(ledgerToCopy)
+					len := n.State.GetLedgerHeight()
 					if len > max {
 						max = len
+						ledgerToCopy = n.State.GetLedgerArray()
 					}
 				}
 			}
@@ -452,29 +449,23 @@ func createBFTChainUsingMocks(t *testing.T, node *Node) (*smartbft.BFTChain, err
 
 			// send response
 			// at this point the chain exists, so we can use its methods
+			nodesMap := node.nodesMap
+			var currentNodes []uint64
+			for nodeId := range nodesMap {
+				currentNodes = append(currentNodes, nodeId)
+			}
+
 			return types.SyncResponse{
 				Latest: *node.Chain.BlockToDecision(ledgerToCopy[len(ledgerToCopy)-1]),
 				Reconfig: types.ReconfigSync{
 					InReplicatedDecisions: false,
-					CurrentNodes:          []uint64{1, 2, 3, 4},
-					CurrentConfig:         types.Configuration{SelfID: 1},
+					CurrentNodes:          currentNodes,
+					CurrentConfig:         types.Configuration{SelfID: node.NodeId},
 				},
 			}
 		}).Maybe()
-	synchronizerFactory := func(
-		logger *flogging.FabricLogger,
-		localConfigCluster localconfig.Cluster,
-		rtc smartbft.RuntimeConfig,
-		blockToDecision func(block *cb.Block) *types.Decision,
-		pruneCommittedRequests func(block *cb.Block),
-		updateRuntimeConfig func(block *cb.Block) types.Reconfig,
-		support consensus.ConsenterSupport,
-		bccsp bccsp.BCCSP,
-		clusterDialer *cluster.PredicateDialer,
-		clusterSize uint64,
-	) api.Synchronizer {
-		return synchronizerMock
-	}
+	synchronizerFactory := smartBFTMocks.NewSynchronizerFactory(t)
+	synchronizerFactory.EXPECT().CreateSynchronizer(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(synchronizerMock)
 
 	localConfigCluster := localconfig.Cluster{ReplicationPolicy: "consensus"}
 	clusterDialer := &cluster.PredicateDialer{}

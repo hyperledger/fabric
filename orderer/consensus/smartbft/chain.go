@@ -203,7 +203,7 @@ func bftSmartConsensusBuild(
 	// report cluster size
 	c.Metrics.ClusterSize.Set(float64(clusterSize))
 
-	sync := synchronizerFactory(
+	sync := synchronizerFactory.CreateSynchronizer(
 		c.Logger,
 		c.localConfigCluster,
 		c.RuntimeConfig.Load().(RuntimeConfig),
@@ -213,7 +213,6 @@ func bftSmartConsensusBuild(
 		c.support,
 		c.bccsp,
 		c.clusterDialer,
-		clusterSize,
 	)
 
 	channelDecorator := zap.String("channel", c.support.ChannelID())
@@ -649,16 +648,3 @@ func (c *chainACL) Evaluate(signatureSet []*protoutil.SignedData) error {
 	}
 	return nil
 }
-
-type SynchronizerFactory func(
-	logger *flogging.FabricLogger,
-	localConfigCluster localconfig.Cluster,
-	rtc RuntimeConfig,
-	blockToDecision func(block *cb.Block) *types.Decision,
-	pruneCommittedRequests func(block *cb.Block),
-	updateRuntimeConfig func(block *cb.Block) types.Reconfig,
-	support consensus.ConsenterSupport,
-	bccsp bccsp.BCCSP,
-	clusterDialer *cluster.PredicateDialer,
-	clusterSize uint64,
-) api.Synchronizer
