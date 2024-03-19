@@ -38,7 +38,7 @@ When it’s desired to maintain loose coupling, we encourage explicit dependency
 
 When using dependency injection pattern, try to use the following principles 
 - Treat configuration as a data dependency and pass to the constructors
-- When defining interface for dependencies, avoid the `Support` pattern that embeds all, otherwise unrelated, functions behind a single interface. Instead try to name the interfaces that makes it obvious what implementation component will fulfil it - e.g., [gateway.Discovery](https://github.com/hyperledger/fabric/blob/9a922fd9c78c01d185bc2b45fb98012a37f7bfb9/internal/pkg/gateway/registry.go#L26) interface makes it clear that the Discovry component fulfils this dependency for gateway component. Prefer defining interfaces for dependencies for a package in a single sorce file.
+- When defining interface for dependencies, avoid the `Support` pattern that embeds all, otherwise unrelated, functions behind a single interface. Instead try to name the interfaces that makes it obvious what implementation component will fulfil it - e.g., [gateway.Discovery](https://github.com/hyperledger/fabric/blob/9a922fd9c78c01d185bc2b45fb98012a37f7bfb9/internal/pkg/gateway/registry.go#L26) interface makes it clear that the Discovery component fulfils this dependency for gateway component. Prefer defining interfaces for dependencies for a package in a single source file.
 - Be aware that time is a latent dependency. When time is relevant to the behavior of an object, use an explicit clock dependency so it can be controlled in tests.
 
 ### Avoid the factory pattern

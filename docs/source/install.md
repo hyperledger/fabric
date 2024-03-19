@@ -80,7 +80,7 @@ You have completed installing Fabric samples, Docker images, and binaries to you
 
 * If you are looking to set up your environment to start contributing to Fabric, please refer to the instructions for [Setting up the contributor development environment](https://hyperledger-fabric.readthedocs.io/en/latest/dev-setup/devenv.html).
 
-> Note: this is an updated install script with the same end-result as the existing script, but with an improved syntax. This script adopts the postitive opt-in approach to selecting the components to install.  The original script is still present at the same location `curl -sSL https://raw.githubusercontent.com/hyperledger/fabric/main/scripts/bootstrap.sh| bash -s`
+> Note: this is an updated install script with the same end-result as the existing script, but with an improved syntax. This script adopts the positive opt-in approach to selecting the components to install.  The original script is still present at the same location `curl -sSL https://raw.githubusercontent.com/hyperledger/fabric/main/scripts/bootstrap.sh| bash -s`
 
 * If you need help, post your questions and share your logs on the **fabric-questions** channel on [Hyperledger Discord Chat](https://discord.com/invite/hyperledger) or on [StackOverflow](https://stackoverflow.com/questions/tagged/hyperledger-fabric).
 
