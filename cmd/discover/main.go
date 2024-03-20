@@ -10,8 +10,8 @@ import (
 	"os"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
-	"github.com/hyperledger/fabric/cmd/common"
-	discovery "github.com/hyperledger/fabric/discovery/cmd"
+	"github.com/hyperledger/fabric/v3/cmd/common"
+	discovery "github.com/hyperledger/fabric/v3/discovery/cmd"
 )
 
 func main() {

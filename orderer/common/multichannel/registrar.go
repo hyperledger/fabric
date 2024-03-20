@@ -18,21 +18,21 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-lib-go/common/metrics"
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/internal/pkg/identity"
-	"github.com/hyperledger/fabric/orderer/common/blockcutter"
-	"github.com/hyperledger/fabric/orderer/common/cluster"
-	"github.com/hyperledger/fabric/orderer/common/filerepo"
-	"github.com/hyperledger/fabric/orderer/common/follower"
-	"github.com/hyperledger/fabric/orderer/common/localconfig"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
-	"github.com/hyperledger/fabric/orderer/common/types"
-	"github.com/hyperledger/fabric/orderer/consensus"
-	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/common/channelconfig"
+	"github.com/hyperledger/fabric/v3/common/configtx"
+	"github.com/hyperledger/fabric/v3/common/ledger/blockledger"
+	"github.com/hyperledger/fabric/v3/common/policies"
+	"github.com/hyperledger/fabric/v3/internal/pkg/identity"
+	"github.com/hyperledger/fabric/v3/orderer/common/blockcutter"
+	"github.com/hyperledger/fabric/v3/orderer/common/cluster"
+	"github.com/hyperledger/fabric/v3/orderer/common/filerepo"
+	"github.com/hyperledger/fabric/v3/orderer/common/follower"
+	"github.com/hyperledger/fabric/v3/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/v3/orderer/common/msgprocessor"
+	"github.com/hyperledger/fabric/v3/orderer/common/types"
+	"github.com/hyperledger/fabric/v3/orderer/consensus"
+	"github.com/hyperledger/fabric/v3/orderer/consensus/etcdraft"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -449,7 +449,7 @@ func (r *Registrar) newChain(configtx *cb.Envelope) {
 		return
 	}
 
-	// fixes https://github.com/hyperledger/fabric/issues/2931
+	// fixes https://github.com/hyperledger/fabric/v3/issues/2931
 	if existingChain, exists := r.chains[channelName]; exists {
 		if _, isRaftChain := existingChain.Chain.(*etcdraft.Chain); isRaftChain {
 			logger.Infof("Channel %s already created, skipping its creation", channelName)

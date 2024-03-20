@@ -11,10 +11,10 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/core/aclmgmt/resources"
-	"github.com/hyperledger/fabric/core/policy"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/common/policies"
+	"github.com/hyperledger/fabric/v3/core/aclmgmt/resources"
+	"github.com/hyperledger/fabric/v3/core/policy"
+	"github.com/hyperledger/fabric/v3/protoutil"
 )
 
 const (
@@ -46,7 +46,7 @@ func newDefaultACLProvider(policyChecker policy.PolicyChecker) defaultACLProvide
 		cResourcePolicyMap: map[string]string{},
 	}
 
-	//-------------- _lifecycle --------------
+	// -------------- _lifecycle --------------
 	d.pResourcePolicyMap[resources.Lifecycle_InstallChaincode] = policy.Admins
 	d.pResourcePolicyMap[resources.Lifecycle_QueryInstalledChaincode] = policy.Admins
 	d.pResourcePolicyMap[resources.Lifecycle_GetInstalledChaincodePackage] = policy.Admins
@@ -60,13 +60,13 @@ func newDefaultACLProvider(policyChecker policy.PolicyChecker) defaultACLProvide
 	d.cResourcePolicyMap[resources.Lifecycle_QueryChaincodeDefinitions] = CHANNELWRITERS
 	d.cResourcePolicyMap[resources.Lifecycle_CheckCommitReadiness] = CHANNELWRITERS
 
-	//-------------- snapshot ---------------
+	// -------------- snapshot ---------------
 	d.pResourcePolicyMap[resources.Snapshot_submitrequest] = policy.Admins
 	d.pResourcePolicyMap[resources.Snapshot_cancelrequest] = policy.Admins
 	d.pResourcePolicyMap[resources.Snapshot_listpending] = policy.Admins
 
-	//-------------- LSCC --------------
-	//p resources (implemented by the chaincode currently)
+	// -------------- LSCC --------------
+	// p resources (implemented by the chaincode currently)
 	d.pResourcePolicyMap[resources.Lscc_Install] = policy.Admins
 	d.pResourcePolicyMap[resources.Lscc_GetInstalledChaincodes] = policy.Admins
 
@@ -79,8 +79,8 @@ func newDefaultACLProvider(policyChecker policy.PolicyChecker) defaultACLProvide
 	d.cResourcePolicyMap[resources.Lscc_GetInstantiatedChaincodes] = CHANNELREADERS
 	d.cResourcePolicyMap[resources.Lscc_GetCollectionsConfig] = CHANNELREADERS
 
-	//-------------- QSCC --------------
-	//p resources (none)
+	// -------------- QSCC --------------
+	// p resources (none)
 
 	// c resources
 	d.cResourcePolicyMap[resources.Qscc_GetChainInfo] = CHANNELREADERS
@@ -89,8 +89,8 @@ func newDefaultACLProvider(policyChecker policy.PolicyChecker) defaultACLProvide
 	d.cResourcePolicyMap[resources.Qscc_GetTransactionByID] = CHANNELREADERS
 	d.cResourcePolicyMap[resources.Qscc_GetBlockByTxID] = CHANNELREADERS
 
-	//--------------- CSCC resources -----------
-	//p resources (implemented by the chaincode currently)
+	// --------------- CSCC resources -----------
+	// p resources (implemented by the chaincode currently)
 	d.pResourcePolicyMap[resources.Cscc_JoinChain] = policy.Admins
 	d.pResourcePolicyMap[resources.Cscc_JoinChainBySnapshot] = policy.Admins
 	d.pResourcePolicyMap[resources.Cscc_JoinBySnapshotStatus] = policy.Admins
@@ -100,8 +100,8 @@ func newDefaultACLProvider(policyChecker policy.PolicyChecker) defaultACLProvide
 	d.cResourcePolicyMap[resources.Cscc_GetConfigBlock] = CHANNELREADERS
 	d.cResourcePolicyMap[resources.Cscc_GetChannelConfig] = CHANNELREADERS
 
-	//---------------- non-scc resources ------------
-	//Peer resources
+	// ---------------- non-scc resources ------------
+	// Peer resources
 	d.cResourcePolicyMap[resources.Peer_Propose] = CHANNELWRITERS
 	d.cResourcePolicyMap[resources.Peer_ChaincodeToChaincode] = CHANNELWRITERS
 

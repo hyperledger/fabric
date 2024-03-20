@@ -16,8 +16,8 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/common/channelconfig"
-	mspconstants "github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/v3/common/channelconfig"
+	mspconstants "github.com/hyperledger/fabric/v3/msp"
 	"github.com/pkg/errors"
 )
 

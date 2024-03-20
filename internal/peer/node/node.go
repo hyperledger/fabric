@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric/internal/peer/common"
+	"github.com/hyperledger/fabric/v3/internal/peer/common"
 	"github.com/spf13/cobra"
 )
 

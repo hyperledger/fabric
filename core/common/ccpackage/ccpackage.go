@@ -14,8 +14,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/internal/pkg/identity"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/internal/pkg/identity"
+	"github.com/hyperledger/fabric/v3/protoutil"
 )
 
 // ExtractSignedCCDepSpec extracts the messages from the envelope
@@ -89,7 +89,7 @@ func createSignedCCDepSpec(cdsbytes []byte, instpolicybytes []byte, endorsements
 	// create SignedChaincodeDeploymentSpec...
 	cip := &peer.SignedChaincodeDeploymentSpec{ChaincodeDeploymentSpec: cdsbytes, InstantiationPolicy: instpolicybytes, OwnerEndorsements: endorsements}
 
-	//...and marshal it
+	// ...and marshal it
 	cipbytes := protoutil.MarshalOrPanic(cip)
 
 	// use defaults (this is definitely ok for install package)

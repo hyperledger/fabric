@@ -8,7 +8,7 @@ package multichannel
 
 import (
 	"github.com/hyperledger/fabric-lib-go/common/metrics/metricsfakes"
-	"github.com/hyperledger/fabric/orderer/common/types"
+	"github.com/hyperledger/fabric/v3/orderer/common/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

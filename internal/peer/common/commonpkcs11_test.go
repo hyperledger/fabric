@@ -15,8 +15,8 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
-	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/hyperledger/fabric/internal/peer/common"
+	"github.com/hyperledger/fabric/v3/core/config/configtest"
+	"github.com/hyperledger/fabric/v3/internal/peer/common"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )

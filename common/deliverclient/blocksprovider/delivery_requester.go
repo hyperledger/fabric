@@ -12,9 +12,9 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/common/deliverclient/orderers"
-	"github.com/hyperledger/fabric/internal/pkg/identity"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/common/deliverclient/orderers"
+	"github.com/hyperledger/fabric/v3/internal/pkg/identity"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	"github.com/pkg/errors"
 )
 

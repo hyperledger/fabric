@@ -15,9 +15,9 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	privdatacommon "github.com/hyperledger/fabric/gossip/privdata/common"
+	"github.com/hyperledger/fabric/v3/core/ledger"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/rwsetutil"
+	privdatacommon "github.com/hyperledger/fabric/v3/gossip/privdata/common"
 )
 
 type txValidationFlags []uint8

@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	"github.com/hyperledger/fabric/v3/core/ledger"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/v3/core/ledger/ledgermgmt"
 	"github.com/stretchr/testify/require"
 )
 

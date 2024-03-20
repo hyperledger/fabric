@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
-	testmock "github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate/mock"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
-	"github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/v3/core/ledger"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/bookkeeping"
+	testmock "github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/privacyenabledstate/mock"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
+	"github.com/hyperledger/fabric/v3/core/ledger/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,7 +34,7 @@ type TestEnv interface {
 // For example, to skip CouchDB tests, remove &CouchDBLockBasedEnv{}
 var testEnvs = []TestEnv{&LevelDBTestEnv{}, &CouchDBTestEnv{}}
 
-///////////// LevelDB Environment //////////////
+// /////////// LevelDB Environment //////////////
 
 // LevelDBTestEnv implements TestEnv interface for leveldb based storage
 type LevelDBTestEnv struct {
@@ -97,7 +97,7 @@ func (env *LevelDBTestEnv) Cleanup() {
 	env.bookkeeperTestEnv.Cleanup()
 }
 
-///////////// CouchDB Environment //////////////
+// /////////// CouchDB Environment //////////////
 
 // CouchDBTestEnv implements TestEnv interface for couchdb based storage
 type CouchDBTestEnv struct {

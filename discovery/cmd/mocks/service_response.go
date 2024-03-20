@@ -4,7 +4,7 @@ package mocks
 
 import (
 	fabric_protos_godiscovery "github.com/hyperledger/fabric-protos-go/discovery"
-	discovery "github.com/hyperledger/fabric/discovery/client"
+	discovery "github.com/hyperledger/fabric/v3/discovery/client"
 
 	mock "github.com/stretchr/testify/mock"
 )

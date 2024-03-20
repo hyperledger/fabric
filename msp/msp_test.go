@@ -32,8 +32,8 @@ import (
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	"github.com/hyperledger/fabric-lib-go/bccsp/utils"
 	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/core/config/configtest"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	"github.com/stretchr/testify/require"
 )
 

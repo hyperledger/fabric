@@ -19,12 +19,12 @@ import (
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
-	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
-	"github.com/hyperledger/fabric/internal/configtxgen/metadata"
-	"github.com/hyperledger/fabric/internal/configtxlator/update"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/common/channelconfig"
+	"github.com/hyperledger/fabric/v3/internal/configtxgen/encoder"
+	"github.com/hyperledger/fabric/v3/internal/configtxgen/genesisconfig"
+	"github.com/hyperledger/fabric/v3/internal/configtxgen/metadata"
+	"github.com/hyperledger/fabric/v3/internal/configtxlator/update"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	"github.com/pkg/errors"
 )
 

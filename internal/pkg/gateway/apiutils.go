@@ -13,7 +13,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	gp "github.com/hyperledger/fabric-protos-go/gateway"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/v3/core/chaincode"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

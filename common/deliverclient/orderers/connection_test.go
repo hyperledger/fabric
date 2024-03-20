@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric/common/deliverclient/orderers"
+	"github.com/hyperledger/fabric/v3/common/deliverclient/orderers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -577,7 +577,7 @@ var _ = Describe("Connection", func() {
 						RootCerts: overrideCerts,
 					},
 				},
-				"org1-address1") //<< self-endpoint
+				"org1-address1") // << self-endpoint
 			cs.Update(nil, map[string]orderers.OrdererOrg{
 				"org1": org1,
 				"org2": org2,
@@ -1018,7 +1018,7 @@ var _ = Describe("Connection", func() {
 							RootCerts: overrideCerts,
 						},
 					},
-					"global-addr1") //<< self-endpoint from global endpoints
+					"global-addr1") // << self-endpoint from global endpoints
 
 				org1.Addresses = nil
 				org2.Addresses = nil

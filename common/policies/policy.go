@@ -14,8 +14,8 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
-	mspi "github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/protoutil"
+	mspi "github.com/hyperledger/fabric/v3/msp"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
 )

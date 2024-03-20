@@ -14,9 +14,9 @@ import (
 
 	pcommon "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/core/scc/cscc"
-	"github.com/hyperledger/fabric/internal/peer/common"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/core/scc/cscc"
+	"github.com/hyperledger/fabric/v3/internal/peer/common"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	"github.com/spf13/cobra"
 )
 

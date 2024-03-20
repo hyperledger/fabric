@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric/common/grpclogging"
-	"github.com/hyperledger/fabric/common/grpclogging/fakes"
-	"github.com/hyperledger/fabric/common/grpclogging/testpb"
+	"github.com/hyperledger/fabric/v3/common/grpclogging"
+	"github.com/hyperledger/fabric/v3/common/grpclogging/fakes"
+	"github.com/hyperledger/fabric/v3/common/grpclogging/testpb"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"

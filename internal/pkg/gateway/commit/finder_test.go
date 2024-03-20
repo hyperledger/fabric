@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/internal/pkg/gateway/ledger/mocks"
+	"github.com/hyperledger/fabric/v3/core/ledger"
+	"github.com/hyperledger/fabric/v3/internal/pkg/gateway/ledger/mocks"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )

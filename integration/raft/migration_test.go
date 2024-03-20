@@ -21,12 +21,12 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
-	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
-	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/integration/nwo/commands"
-	"github.com/hyperledger/fabric/integration/ordererclient"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/common/policies"
+	"github.com/hyperledger/fabric/v3/integration/channelparticipation"
+	"github.com/hyperledger/fabric/v3/integration/nwo"
+	"github.com/hyperledger/fabric/v3/integration/nwo/commands"
+	"github.com/hyperledger/fabric/v3/integration/ordererclient"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -288,7 +288,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 
 			// === The green path ======================================================================================
 
-			//=== Step 3: Config update on standard channel, MAINTENANCE, again ===
+			// === Step 3: Config update on standard channel, MAINTENANCE, again ===
 			By("3) Config update on standard channel, State=MAINTENANCE, enter maintenance-mode again")
 			config, updatedConfig = prepareTransition(network, peer, o1, "testchannel",
 				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,

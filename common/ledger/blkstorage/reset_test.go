@@ -14,8 +14,8 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/common/ledger/testutil"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	"github.com/stretchr/testify/require"
 )
 

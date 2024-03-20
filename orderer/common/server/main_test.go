@@ -24,22 +24,22 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/prometheus"
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/crypto/tlsgen"
-	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
-	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
-	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
-	"github.com/hyperledger/fabric/internal/pkg/identity"
-	"github.com/hyperledger/fabric/orderer/common/cluster"
-	"github.com/hyperledger/fabric/orderer/common/filerepo"
-	"github.com/hyperledger/fabric/orderer/common/localconfig"
-	"github.com/hyperledger/fabric/orderer/common/multichannel"
-	server_mocks "github.com/hyperledger/fabric/orderer/common/server/mocks"
-	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/common/channelconfig"
+	"github.com/hyperledger/fabric/v3/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/v3/common/ledger/blockledger"
+	"github.com/hyperledger/fabric/v3/common/ledger/blockledger/fileledger"
+	"github.com/hyperledger/fabric/v3/core/config/configtest"
+	"github.com/hyperledger/fabric/v3/internal/configtxgen/encoder"
+	"github.com/hyperledger/fabric/v3/internal/configtxgen/genesisconfig"
+	"github.com/hyperledger/fabric/v3/internal/pkg/comm"
+	"github.com/hyperledger/fabric/v3/internal/pkg/identity"
+	"github.com/hyperledger/fabric/v3/orderer/common/cluster"
+	"github.com/hyperledger/fabric/v3/orderer/common/filerepo"
+	"github.com/hyperledger/fabric/v3/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/v3/orderer/common/multichannel"
+	server_mocks "github.com/hyperledger/fabric/v3/orderer/common/server/mocks"
+	"github.com/hyperledger/fabric/v3/orderer/consensus/etcdraft"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/pkg/errors"
@@ -60,7 +60,7 @@ var cryptogen string
 func TestMain(m *testing.M) {
 	var err error
 
-	cryptogen, err = gexec.Build("github.com/hyperledger/fabric/cmd/cryptogen")
+	cryptogen, err = gexec.Build("github.com/hyperledger/fabric/v3/cmd/cryptogen")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "cryptogen build failed: %v", err)
 		os.Exit(-1)

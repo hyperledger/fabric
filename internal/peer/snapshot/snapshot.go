@@ -12,8 +12,8 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/internal/peer/common"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/internal/peer/common"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )

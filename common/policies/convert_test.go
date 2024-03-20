@@ -11,11 +11,11 @@ import (
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/common/policydsl"
-	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/common/cauthdsl"
+	"github.com/hyperledger/fabric/v3/common/policies"
+	"github.com/hyperledger/fabric/v3/common/policydsl"
+	"github.com/hyperledger/fabric/v3/msp"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )

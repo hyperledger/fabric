@@ -15,10 +15,10 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
-	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/integration/nwo/commands"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/integration/channelparticipation"
+	"github.com/hyperledger/fabric/v3/integration/nwo"
+	"github.com/hyperledger/fabric/v3/integration/nwo/commands"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -86,7 +86,7 @@ var _ = Describe("Release interoperability", func() {
 		chaincode := nwo.Chaincode{
 			Name:            "mycc",
 			Version:         "0.0",
-			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd"),
+			Path:            components.Build("github.com/hyperledger/fabric/v3/integration/chaincode/simple/cmd"),
 			Lang:            "binary",
 			PackageFile:     filepath.Join(testDir, "simplecc.tar.gz"),
 			SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
@@ -134,7 +134,7 @@ var _ = Describe("Release interoperability", func() {
 		chaincode = nwo.Chaincode{
 			Name:            "mycc",
 			Version:         "1.0",
-			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd"),
+			Path:            components.Build("github.com/hyperledger/fabric/v3/integration/chaincode/simple/cmd"),
 			Lang:            "binary",
 			PackageFile:     filepath.Join(testDir, "simplecc.tar.gz"),
 			SignaturePolicy: `OR ('Org1MSP.member','Org2MSP.member')`,
@@ -194,7 +194,7 @@ var _ = Describe("Release interoperability", func() {
 			chaincode := nwo.Chaincode{
 				Name:            "mycc",
 				Version:         "0.0",
-				Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd"),
+				Path:            components.Build("github.com/hyperledger/fabric/v3/integration/chaincode/simple/cmd"),
 				Lang:            "binary",
 				PackageFile:     filepath.Join(testDir, "simplecc.tar.gz"),
 				SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
@@ -245,7 +245,7 @@ var _ = Describe("Release interoperability", func() {
 				callerDefNew = nwo.Chaincode{
 					Name:            "caller",
 					Version:         "0.0",
-					Path:            components.Build("github.com/hyperledger/fabric/integration/lifecycle/chaincode/caller/cmd"),
+					Path:            components.Build("github.com/hyperledger/fabric/v3/integration/lifecycle/chaincode/caller/cmd"),
 					Lang:            "binary",
 					PackageFile:     filepath.Join(testDir, "caller.tar.gz"),
 					SignaturePolicy: ccEP,
@@ -257,7 +257,7 @@ var _ = Describe("Release interoperability", func() {
 				calleeDefNew = nwo.Chaincode{
 					Name:            "callee",
 					Version:         "0.0",
-					Path:            components.Build("github.com/hyperledger/fabric/integration/lifecycle/chaincode/callee/cmd"),
+					Path:            components.Build("github.com/hyperledger/fabric/v3/integration/lifecycle/chaincode/callee/cmd"),
 					Lang:            "binary",
 					PackageFile:     filepath.Join(testDir, "callee.tar.gz"),
 					SignaturePolicy: ccEP,

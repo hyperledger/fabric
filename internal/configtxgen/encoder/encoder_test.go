@@ -18,12 +18,12 @@ import (
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
-	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
-	"github.com/hyperledger/fabric/internal/configtxgen/encoder/fakes"
-	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
-	"github.com/hyperledger/fabric/internal/pkg/identity"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/common/util"
+	"github.com/hyperledger/fabric/v3/internal/configtxgen/encoder"
+	"github.com/hyperledger/fabric/v3/internal/configtxgen/encoder/fakes"
+	"github.com/hyperledger/fabric/v3/internal/configtxgen/genesisconfig"
+	"github.com/hyperledger/fabric/v3/internal/pkg/identity"
+	"github.com/hyperledger/fabric/v3/protoutil"
 )
 
 //go:generate counterfeiter -o fakes/signer_serializer.go --fake-name SignerSerializer . signerSerializer

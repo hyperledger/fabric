@@ -17,17 +17,17 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validation/mock"
-	mocklgr "github.com/hyperledger/fabric/core/ledger/mock"
-	lutils "github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/internal/pkg/txflags"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/common/ledger/testutil"
+	"github.com/hyperledger/fabric/v3/core/ledger"
+	"github.com/hyperledger/fabric/v3/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/privacyenabledstate"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/rwsetutil"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/validation/mock"
+	mocklgr "github.com/hyperledger/fabric/v3/core/ledger/mock"
+	lutils "github.com/hyperledger/fabric/v3/core/ledger/util"
+	"github.com/hyperledger/fabric/v3/internal/pkg/txflags"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -138,7 +138,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 		return nil
 	}
 	// good block
-	//_, gb := testutil.NewBlockGenerator(t, "testLedger", false)
+	// _, gb := testutil.NewBlockGenerator(t, "testLedger", false)
 	gb := testutil.ConstructTestBlock(t, 10, 1, 1)
 	_, _, err := preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
 	require.NoError(t, err)

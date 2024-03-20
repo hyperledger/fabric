@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric-lib-go/common/metrics"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validation"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/validation"
 )
 
 type stats struct {

@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
-	"github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/v3/msp/mgmt"
 	"github.com/stretchr/testify/require"
 )
 

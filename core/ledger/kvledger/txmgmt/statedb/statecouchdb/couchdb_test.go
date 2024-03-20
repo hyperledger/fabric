@@ -17,7 +17,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
-	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/v3/core/ledger"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1395,8 +1395,8 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 		require.Equal(t, true, updateDoc.Ok)
 	}
 
-	//----------------------------------------------
-	//Test Retrieve JSON
+	// ----------------------------------------------
+	// Test Retrieve JSON
 	dbGetResp, _, geterr := db.readDoc("marble01")
 	require.NoError(t, geterr, "Error when attempting read a document")
 
@@ -1406,7 +1406,7 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 	// Verify the owner retrieved matches
 	require.Equal(t, "jerry", assetResp.Owner)
 
-	//----------------------------------------------
+	// ----------------------------------------------
 	// Test Retrieve JSON using ID with URL special characters,
 	// this will confirm that batch document IDs and URL IDs are consistent, even if they include special characters
 	dbGetResp, _, geterr = db.readDoc("marble06#$&'()*+,/:;=?@[]")
@@ -1418,8 +1418,8 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 	// Verify the owner retrieved matches
 	require.Equal(t, "jerry", assetResp.Owner)
 
-	//----------------------------------------------
-	//Test retrieve binary
+	// ----------------------------------------------
+	// Test retrieve binary
 	dbGetResp, _, geterr = db.readDoc("marble03")
 	require.NoError(t, geterr, "Error when attempting read a document")
 	// Retrieve the attachments
@@ -1428,8 +1428,8 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 	retrievedAttachment := attachments[0]
 	// Verify the text matches
 	require.Equal(t, retrievedAttachment.AttachmentBytes, attachment3.AttachmentBytes)
-	//----------------------------------------------
-	//Test Bad Updates
+	// ----------------------------------------------
+	// Test Bad Updates
 	batchUpdateDocs = []*couchDoc{}
 	batchUpdateDocs = append(batchUpdateDocs, value1)
 	batchUpdateDocs = append(batchUpdateDocs, value2)
@@ -1443,8 +1443,8 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 		require.Equal(t, updateDocumentConflictReason, updateDoc.Reason)
 	}
 
-	//----------------------------------------------
-	//Test Batch Retrieve Keys and Update
+	// ----------------------------------------------
+	// Test Batch Retrieve Keys and Update
 
 	var keys []string
 
@@ -1479,8 +1479,8 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 		require.Equal(t, true, updateDoc.Ok)
 	}
 
-	//----------------------------------------------
-	//Test Batch Delete
+	// ----------------------------------------------
+	// Test Batch Delete
 
 	keys = []string{}
 

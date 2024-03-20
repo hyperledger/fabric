@@ -15,10 +15,10 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/metrics/metricsfakes"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/ledger/testutil"
-	lgr "github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validation"
-	"github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/v3/common/ledger/testutil"
+	lgr "github.com/hyperledger/fabric/v3/core/ledger"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/validation"
+	"github.com/hyperledger/fabric/v3/core/ledger/mock"
 	"github.com/stretchr/testify/require"
 )
 

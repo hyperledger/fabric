@@ -20,12 +20,12 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
-	"github.com/hyperledger/fabric/common/ledger/testutil"
-	util2 "github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/internal/pkg/txflags"
+	configtxtest "github.com/hyperledger/fabric/v3/common/configtx/test"
+	"github.com/hyperledger/fabric/v3/common/ledger/testutil"
+	util2 "github.com/hyperledger/fabric/v3/common/util"
+	"github.com/hyperledger/fabric/v3/core/ledger"
+	"github.com/hyperledger/fabric/v3/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/v3/internal/pkg/txflags"
 	"github.com/stretchr/testify/require"
 )
 

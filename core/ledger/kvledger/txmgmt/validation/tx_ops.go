@@ -8,10 +8,10 @@ package validation
 
 import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statemetadata"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/privacyenabledstate"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/rwsetutil"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/statemetadata"
 )
 
 func prepareTxOps(rwset *rwsetutil.TxRwSet, precedingUpdates *publicAndHashUpdates, db *privacyenabledstate.DB) (txOps, error) {
@@ -178,7 +178,7 @@ type keyOps struct {
 	metadata []byte
 }
 
-////////////////// txOps functions
+// //////////////// txOps functions
 
 func (txops txOps) upsert(k compositeKey, val []byte) {
 	keyops := txops.getOrCreateKeyEntry(k)
@@ -211,7 +211,7 @@ func (txops txOps) getOrCreateKeyEntry(k compositeKey) *keyOps {
 	return keyops
 }
 
-////////////////// keyOps functions
+// //////////////// keyOps functions
 
 func (keyops keyOps) isDelete() bool {
 	return keyops.flag&(keyDelete) == keyDelete

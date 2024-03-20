@@ -17,9 +17,9 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/common/deliverclient/blocksprovider"
-	"github.com/hyperledger/fabric/common/deliverclient/blocksprovider/fake"
-	"github.com/hyperledger/fabric/common/deliverclient/orderers"
+	"github.com/hyperledger/fabric/v3/common/deliverclient/blocksprovider"
+	"github.com/hyperledger/fabric/v3/common/deliverclient/blocksprovider/fake"
+	"github.com/hyperledger/fabric/v3/common/deliverclient/orderers"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )

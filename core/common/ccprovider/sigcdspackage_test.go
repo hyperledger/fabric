@@ -14,8 +14,8 @@ import (
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	"github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/core/common/ccpackage"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/core/common/ccpackage"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -341,7 +341,7 @@ func TestSignedCDSSwitchChaincodes(t *testing.T) {
 	// mimic the good code ChaincodeData from the instantiate...
 	cds.CodePackage = []byte("goodcode")
 
-	//...and generate the CD for it (don't overwrite the bad code)
+	// ...and generate the CD for it (don't overwrite the bad code)
 	_, _, goodcd, err := processSignedCDS(cds, &common.SignaturePolicyEnvelope{Version: 1}, false)
 	if err != nil {
 		t.Fatalf("error putting CDS to FS %s", err)

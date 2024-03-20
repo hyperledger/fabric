@@ -13,9 +13,9 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/transientstore"
-	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
-	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/v3/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/v3/common/util"
+	"github.com/hyperledger/fabric/v3/core/ledger"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
@@ -33,9 +33,9 @@ var (
 	transientStorageLockName = "transientStoreFileLock"
 )
 
-//////////////////////////////////////////////
+// ////////////////////////////////////////////
 // Interfaces and data types
-/////////////////////////////////////////////
+// ///////////////////////////////////////////
 
 // StoreProvider provides an instance of a TransientStore
 type StoreProvider interface {
@@ -59,9 +59,9 @@ type EndorserPvtSimulationResults struct {
 	PvtSimulationResultsWithConfig *transientstore.TxPvtReadWriteSetWithConfigInfo
 }
 
-//////////////////////////////////////////////
+// ////////////////////////////////////////////
 // Implementation
-/////////////////////////////////////////////
+// ///////////////////////////////////////////
 
 // storeProvider encapsulates a leveldb provider which is used to store
 // private write sets of simulated transactions, and implements TransientStoreProvider

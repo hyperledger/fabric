@@ -11,11 +11,11 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/chaincode"
-	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/common/policydsl"
-	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/common/chaincode"
+	"github.com/hyperledger/fabric/v3/common/policies"
+	"github.com/hyperledger/fabric/v3/common/policydsl"
+	"github.com/hyperledger/fabric/v3/core/chaincode/implicitcollection"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	"github.com/pkg/errors"
 )
 

@@ -15,7 +15,7 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric/common/metadata"
+	"github.com/hyperledger/fabric/v3/common/metadata"
 	"github.com/spf13/viper"
 )
 
@@ -67,9 +67,9 @@ func DockerBuild(opts DockerBuildOptions, client *docker.Client) error {
 
 	logger.Debugf("Attempting build with options: %s", opts)
 
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	// Ensure the image exists locally, or pull it from a registry if it doesn't
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	_, err := client.InspectImage(opts.Image)
 	if err != nil {
 		logger.Debugf("Image %s does not exist locally, attempt pull", opts.Image)
@@ -80,9 +80,9 @@ func DockerBuild(opts DockerBuildOptions, client *docker.Client) error {
 		}
 	}
 
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	// Create an ephemeral container, armed with our Image/Cmd
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	container, err := client.CreateContainer(docker.CreateContainerOptions{
 		Config: &docker.Config{
 			Image:        opts.Image,
@@ -97,9 +97,9 @@ func DockerBuild(opts DockerBuildOptions, client *docker.Client) error {
 	}
 	defer client.RemoveContainer(docker.RemoveContainerOptions{ID: container.ID})
 
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	// Upload our input stream
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	err = client.UploadToContainer(container.ID, docker.UploadToContainerOptions{
 		Path:        "/chaincode/input",
 		InputStream: opts.InputStream,
@@ -108,9 +108,9 @@ func DockerBuild(opts DockerBuildOptions, client *docker.Client) error {
 		return fmt.Errorf("Error uploading input to container: %s", err)
 	}
 
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	// Attach stdout buffer to capture possible compilation errors
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	stdout := bytes.NewBuffer(nil)
 	cw, err := client.AttachToContainerNonBlocking(docker.AttachToContainerOptions{
 		Container:    container.ID,
@@ -125,18 +125,18 @@ func DockerBuild(opts DockerBuildOptions, client *docker.Client) error {
 		return fmt.Errorf("Error attaching to container: %s", err)
 	}
 
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	// Launch the actual build, realizing the Env/Cmd specified at container creation
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	err = client.StartContainer(container.ID, nil)
 	if err != nil {
 		cw.Close()
 		return fmt.Errorf("Error executing build: %s \"%s\"", err, stdout.String())
 	}
 
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	// Wait for the build to complete and gather the return value
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	retval, err := client.WaitContainer(container.ID)
 	if err != nil {
 		cw.Close()
@@ -156,9 +156,9 @@ func DockerBuild(opts DockerBuildOptions, client *docker.Client) error {
 
 	logger.Debugf("Build output is %s", stdout.String())
 
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	// Finally, download the result
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	err = client.DownloadFromContainer(container.ID, docker.DownloadFromContainerOptions{
 		Path:         "/chaincode/output/.",
 		OutputStream: opts.OutputStream,

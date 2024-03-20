@@ -4,8 +4,8 @@ package fake
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/common/deliverclient/orderers"
-	"github.com/hyperledger/fabric/common/deliverclient/blocksprovider"
+	"github.com/hyperledger/fabric/v3/common/deliverclient/blocksprovider"
+	"github.com/hyperledger/fabric/v3/common/deliverclient/orderers"
 )
 
 type CensorshipDetectorFactory struct {

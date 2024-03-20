@@ -68,7 +68,7 @@ PROJECT_VERSION=$(FABRIC_VER)-snapshot-$(EXTRA_VERSION)
 # tag triggering a Fabric release.
 TWO_DIGIT_VERSION = $(shell echo $(FABRIC_VER) | sed -e  's/^v\(.*\)/\1/' | cut -d '.' -f 1,2)
 
-PKGNAME = github.com/hyperledger/fabric
+PKGNAME = github.com/hyperledger/fabric/v3
 ARCH=$(shell go env GOARCH)
 MARCH=$(shell go env GOOS)-$(shell go env GOARCH)
 

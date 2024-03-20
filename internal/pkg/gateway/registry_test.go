@@ -13,11 +13,11 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	dp "github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/crypto/tlsgen"
-	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
-	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
+	"github.com/hyperledger/fabric/v3/common/channelconfig"
+	"github.com/hyperledger/fabric/v3/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/v3/core/config/configtest"
+	"github.com/hyperledger/fabric/v3/internal/configtxgen/encoder"
+	"github.com/hyperledger/fabric/v3/internal/configtxgen/genesisconfig"
 	"github.com/stretchr/testify/require"
 )
 

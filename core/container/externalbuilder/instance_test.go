@@ -18,9 +18,9 @@ import (
 	"github.com/onsi/gomega/types"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric/core/container/ccintf"
-	"github.com/hyperledger/fabric/core/container/externalbuilder"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
+	"github.com/hyperledger/fabric/v3/core/container/ccintf"
+	"github.com/hyperledger/fabric/v3/core/container/externalbuilder"
+	"github.com/hyperledger/fabric/v3/internal/pkg/comm"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )

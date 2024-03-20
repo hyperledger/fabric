@@ -14,9 +14,9 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/orderer/common/broadcast/mock"
-	"github.com/hyperledger/fabric/orderer/common/server"
-	mock2 "github.com/hyperledger/fabric/orderer/common/server/mock"
+	"github.com/hyperledger/fabric/v3/orderer/common/broadcast/mock"
+	"github.com/hyperledger/fabric/v3/orderer/common/server"
+	mock2 "github.com/hyperledger/fabric/v3/orderer/common/server/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"

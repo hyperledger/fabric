@@ -11,13 +11,13 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
-	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
-	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/v3/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/bookkeeping"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/privacyenabledstate"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/hyperledger/fabric/v3/core/ledger/pvtdatapolicy"
+	btltestutil "github.com/hyperledger/fabric/v3/core/ledger/pvtdatapolicy/testutil"
+	"github.com/hyperledger/fabric/v3/core/ledger/util"
 	"github.com/stretchr/testify/require"
 )
 

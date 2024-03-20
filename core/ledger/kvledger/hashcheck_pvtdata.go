@@ -11,12 +11,12 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/v3/common/util"
+	"github.com/hyperledger/fabric/v3/core/ledger"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/rwsetutil"
+	"github.com/hyperledger/fabric/v3/core/ledger/pvtdatastorage"
+	"github.com/hyperledger/fabric/v3/protoutil"
 )
 
 // extractValidPvtData computes the valid and invalid pvt data

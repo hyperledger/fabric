@@ -10,17 +10,17 @@ import (
 	"fmt"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/capabilities"
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
-	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
-	"github.com/hyperledger/fabric/orderer/common/blockcutter"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
-	"github.com/hyperledger/fabric/orderer/common/types"
-	"github.com/hyperledger/fabric/orderer/consensus"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/common/capabilities"
+	"github.com/hyperledger/fabric/v3/common/channelconfig"
+	"github.com/hyperledger/fabric/v3/common/configtx"
+	"github.com/hyperledger/fabric/v3/core/config/configtest"
+	"github.com/hyperledger/fabric/v3/internal/configtxgen/encoder"
+	"github.com/hyperledger/fabric/v3/internal/configtxgen/genesisconfig"
+	"github.com/hyperledger/fabric/v3/orderer/common/blockcutter"
+	"github.com/hyperledger/fabric/v3/orderer/common/msgprocessor"
+	"github.com/hyperledger/fabric/v3/orderer/common/types"
+	"github.com/hyperledger/fabric/v3/orderer/consensus"
+	"github.com/hyperledger/fabric/v3/protoutil"
 )
 
 type mockChainCluster struct {

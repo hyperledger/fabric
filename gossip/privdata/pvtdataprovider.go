@@ -16,14 +16,14 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	vsccErrors "github.com/hyperledger/fabric/common/errors"
-	commonutil "github.com/hyperledger/fabric/common/util"
-	pvtdatasc "github.com/hyperledger/fabric/core/common/privdata"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/transientstore"
-	pvtdatacommon "github.com/hyperledger/fabric/gossip/privdata/common"
-	"github.com/hyperledger/fabric/gossip/util"
-	"github.com/hyperledger/fabric/protoutil"
+	vsccErrors "github.com/hyperledger/fabric/v3/common/errors"
+	commonutil "github.com/hyperledger/fabric/v3/common/util"
+	pvtdatasc "github.com/hyperledger/fabric/v3/core/common/privdata"
+	"github.com/hyperledger/fabric/v3/core/ledger"
+	"github.com/hyperledger/fabric/v3/core/transientstore"
+	pvtdatacommon "github.com/hyperledger/fabric/v3/gossip/privdata/common"
+	"github.com/hyperledger/fabric/v3/gossip/util"
+	"github.com/hyperledger/fabric/v3/protoutil"
 )
 
 type sleeper struct {

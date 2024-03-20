@@ -5,10 +5,10 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp"
-	"github.com/hyperledger/fabric/orderer/common/cluster"
-	"github.com/hyperledger/fabric/orderer/common/localconfig"
-	"github.com/hyperledger/fabric/orderer/consensus"
-	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
+	"github.com/hyperledger/fabric/v3/orderer/common/cluster"
+	"github.com/hyperledger/fabric/v3/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/v3/orderer/consensus"
+	"github.com/hyperledger/fabric/v3/orderer/consensus/smartbft"
 )
 
 type FakeBlockPullerFactory struct {

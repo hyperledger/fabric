@@ -9,8 +9,8 @@ package packaging_test
 import (
 	"errors"
 
-	"github.com/hyperledger/fabric/internal/peer/packaging"
-	"github.com/hyperledger/fabric/internal/peer/packaging/mock"
+	"github.com/hyperledger/fabric/v3/internal/peer/packaging"
+	"github.com/hyperledger/fabric/v3/internal/peer/packaging/mock"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

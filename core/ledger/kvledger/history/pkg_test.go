@@ -11,11 +11,11 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
-	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
-	"github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/v3/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/bookkeeping"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/privacyenabledstate"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/txmgr"
+	"github.com/hyperledger/fabric/v3/core/ledger/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -88,7 +88,7 @@ func (env *levelDBLockBasedHistoryEnv) cleanup() {
 	env.testHistoryDBProvider.Close()
 }
 
-/////// testBlockStoreEnv//////
+// ///// testBlockStoreEnv//////
 
 type testBlockStoreEnv struct {
 	t               testing.TB

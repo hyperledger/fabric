@@ -16,13 +16,13 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/confighistory"
-	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
-	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/v3/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/v3/core/ledger"
+	"github.com/hyperledger/fabric/v3/core/ledger/confighistory"
+	"github.com/hyperledger/fabric/v3/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/rwsetutil"
+	"github.com/hyperledger/fabric/v3/core/ledger/pvtdatapolicy"
+	"github.com/hyperledger/fabric/v3/core/ledger/util"
 	"github.com/pkg/errors"
 )
 
@@ -173,8 +173,8 @@ type storeEntries struct {
 // and is stored as the value of lastUpdatedOldBlocksKey (defined in kv_encoding.go)
 type lastUpdatedOldBlocksList []uint64
 
-//////// Provider functions  /////////////
-//////////////////////////////////////////
+// ////// Provider functions  /////////////
+// ////////////////////////////////////////
 
 // NewProvider instantiates a StoreProvider
 func NewProvider(conf *PrivateDataConfig) (*Provider, error) {
@@ -255,8 +255,8 @@ func (p *Provider) Drop(ledgerid string) error {
 	return p.dbProvider.Drop(ledgerid)
 }
 
-//////// store functions  ////////////////
-//////////////////////////////////////////
+// ////// store functions  ////////////////
+// ////////////////////////////////////////
 
 func (s *Store) initState() error {
 	var err error

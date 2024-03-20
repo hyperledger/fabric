@@ -21,8 +21,8 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/metrics/statsd"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/statsd/goruntime"
 	"github.com/hyperledger/fabric-lib-go/healthz"
-	"github.com/hyperledger/fabric/common/fabhttp"
-	"github.com/hyperledger/fabric/common/metadata"
+	"github.com/hyperledger/fabric/v3/common/fabhttp"
+	"github.com/hyperledger/fabric/v3/common/metadata"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 

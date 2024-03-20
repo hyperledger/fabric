@@ -10,7 +10,7 @@ import (
 
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/v3/msp"
 	"github.com/stretchr/testify/require"
 )
 

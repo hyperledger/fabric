@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/hyperledger/fabric/integration/nwo"
+	"github.com/hyperledger/fabric/v3/integration/nwo"
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -54,7 +54,7 @@ var _ = Describe("sample ledger generation", func() {
 		chaincodemp = nwo.Chaincode{
 			Name:              "marblesp",
 			Version:           "1.0",
-			Path:              components.Build("github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd"),
+			Path:              components.Build("github.com/hyperledger/fabric/v3/integration/chaincode/marbles_private/cmd"),
 			Lang:              "binary",
 			PackageFile:       filepath.Join(setup.testDir, "marbles-pvtdata.tar.gz"),
 			Label:             "marbles-private-20",
@@ -66,7 +66,7 @@ var _ = Describe("sample ledger generation", func() {
 		chaincodem = nwo.Chaincode{
 			Name:            "marbles",
 			Version:         "0.0",
-			Path:            "github.com/hyperledger/fabric/integration/chaincode/marbles/cmd",
+			Path:            "github.com/hyperledger/fabric/v3/integration/chaincode/marbles/cmd",
 			Lang:            "golang",
 			PackageFile:     filepath.Join(setup.testDir, "marbles.tar.gz"),
 			Label:           "marbles",

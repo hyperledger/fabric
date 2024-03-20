@@ -18,9 +18,9 @@ import (
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/chaincode"
-	"github.com/hyperledger/fabric/core/common/privdata"
-	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/v3/common/chaincode"
+	"github.com/hyperledger/fabric/v3/core/common/privdata"
+	"github.com/hyperledger/fabric/v3/core/ledger"
 	"github.com/pkg/errors"
 )
 

@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	smartbft "github.com/hyperledger/fabric/orderer/consensus/smartbft"
+	smartbft "github.com/hyperledger/fabric/v3/orderer/consensus/smartbft"
 	mock "github.com/stretchr/testify/mock"
 )
 

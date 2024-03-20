@@ -11,8 +11,8 @@ import (
 	"os"
 
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	"github.com/hyperledger/fabric/core/chaincode/persistence/mock"
+	"github.com/hyperledger/fabric/v3/core/chaincode/persistence"
+	"github.com/hyperledger/fabric/v3/core/chaincode/persistence/mock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"

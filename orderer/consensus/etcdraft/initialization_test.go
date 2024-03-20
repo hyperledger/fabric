@@ -11,11 +11,11 @@ import (
 
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
-	"github.com/hyperledger/fabric/orderer/common/cluster"
-	"github.com/hyperledger/fabric/orderer/common/localconfig"
-	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
-	"github.com/hyperledger/fabric/orderer/consensus/etcdraft/mocks"
+	"github.com/hyperledger/fabric/v3/internal/pkg/comm"
+	"github.com/hyperledger/fabric/v3/orderer/common/cluster"
+	"github.com/hyperledger/fabric/v3/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/v3/orderer/consensus/etcdraft"
+	"github.com/hyperledger/fabric/v3/orderer/consensus/etcdraft/mocks"
 	"github.com/stretchr/testify/require"
 )
 

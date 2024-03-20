@@ -15,12 +15,12 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/metrics"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
-	"github.com/hyperledger/fabric/common/util"
-	config "github.com/hyperledger/fabric/orderer/common/localconfig"
-	"github.com/hyperledger/fabric/orderer/common/throttle"
+	"github.com/hyperledger/fabric/v3/common/channelconfig"
+	"github.com/hyperledger/fabric/v3/common/ledger/blockledger"
+	"github.com/hyperledger/fabric/v3/common/ledger/blockledger/fileledger"
+	"github.com/hyperledger/fabric/v3/common/util"
+	config "github.com/hyperledger/fabric/v3/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/v3/orderer/common/throttle"
 	"github.com/pkg/errors"
 )
 

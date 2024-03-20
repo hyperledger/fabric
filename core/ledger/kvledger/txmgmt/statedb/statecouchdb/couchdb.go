@@ -28,7 +28,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/v3/core/ledger"
 	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
 )

@@ -9,9 +9,9 @@ package smartbft
 import (
 	"github.com/hyperledger-labs/SmartBFT/pkg/types"
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/crypto"
-	"github.com/hyperledger/fabric/internal/pkg/identity"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/common/crypto"
+	"github.com/hyperledger/fabric/v3/internal/pkg/identity"
+	"github.com/hyperledger/fabric/v3/protoutil"
 )
 
 //go:generate mockery --dir . --name SignerSerializer --case underscore --with-expecter=true --output mocks

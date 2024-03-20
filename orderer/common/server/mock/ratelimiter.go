@@ -4,7 +4,7 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/orderer/common/server"
+	"github.com/hyperledger/fabric/v3/orderer/common/server"
 )
 
 type RateLimiter struct {

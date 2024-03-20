@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
-	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode/mock"
+	"github.com/hyperledger/fabric/v3/internal/peer/lifecycle/chaincode"
+	"github.com/hyperledger/fabric/v3/internal/peer/lifecycle/chaincode/mock"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 

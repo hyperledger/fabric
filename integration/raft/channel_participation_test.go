@@ -27,12 +27,12 @@ import (
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
-	conftx "github.com/hyperledger/fabric/integration/configtx"
-	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/integration/ordererclient"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/common/ledger/blockledger/fileledger"
+	"github.com/hyperledger/fabric/v3/integration/channelparticipation"
+	conftx "github.com/hyperledger/fabric/v3/integration/configtx"
+	"github.com/hyperledger/fabric/v3/integration/nwo"
+	"github.com/hyperledger/fabric/v3/integration/ordererclient"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -684,7 +684,7 @@ var _ = Describe("ChannelParticipation", func() {
 			By("join 3 nodes to a 3-node channel")
 			By("remove channel from those 3 nodes")
 			By("join node1 to a 1-node channel with the same name")
-			// TODO See: https://github.com/hyperledger/fabric/issues/4016
+			// TODO See: https://github.com/hyperledger/fabric/v3/issues/4016
 		})
 
 		It("requires a client certificate to connect when TLS is enabled", func() {

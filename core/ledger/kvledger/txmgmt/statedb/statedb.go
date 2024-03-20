@@ -9,8 +9,8 @@ package statedb
 import (
 	"sort"
 
-	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/v3/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/v3/core/ledger/util"
 )
 
 //go:generate counterfeiter -o mock/results_iterator.go -fake-name ResultsIterator . ResultsIterator

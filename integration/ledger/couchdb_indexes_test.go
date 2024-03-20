@@ -13,11 +13,11 @@ import (
 	"syscall"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
-	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/integration/nwo/commands"
-	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
-	"github.com/hyperledger/fabric/integration/nwo/runner"
+	"github.com/hyperledger/fabric/v3/integration/channelparticipation"
+	"github.com/hyperledger/fabric/v3/integration/nwo"
+	"github.com/hyperledger/fabric/v3/integration/nwo/commands"
+	"github.com/hyperledger/fabric/v3/integration/nwo/fabricconfig"
+	"github.com/hyperledger/fabric/v3/integration/nwo/runner"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -27,9 +27,9 @@ import (
 )
 
 const (
-	chaincodePathWithNoIndex = "github.com/hyperledger/fabric/integration/chaincode/marbles/cmd"
-	chaincodePathWithIndex   = "github.com/hyperledger/fabric/integration/chaincode/marbles/cmdwithindexspec"
-	chaincodePathWithIndexes = "github.com/hyperledger/fabric/integration/chaincode/marbles/cmdwithindexspecs"
+	chaincodePathWithNoIndex = "github.com/hyperledger/fabric/v3/integration/chaincode/marbles/cmd"
+	chaincodePathWithIndex   = "github.com/hyperledger/fabric/v3/integration/chaincode/marbles/cmdwithindexspec"
+	chaincodePathWithIndexes = "github.com/hyperledger/fabric/v3/integration/chaincode/marbles/cmdwithindexspecs"
 )
 
 var (

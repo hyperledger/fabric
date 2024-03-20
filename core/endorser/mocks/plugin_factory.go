@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 package mocks
 
 import (
-	endorsement "github.com/hyperledger/fabric/core/handlers/endorsement/api"
+	endorsement "github.com/hyperledger/fabric/v3/core/handlers/endorsement/api"
 	mock "github.com/stretchr/testify/mock"
 )
 

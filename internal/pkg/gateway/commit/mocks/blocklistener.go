@@ -4,7 +4,7 @@ package mocks
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/v3/core/ledger"
 )
 
 type BlockListener struct {

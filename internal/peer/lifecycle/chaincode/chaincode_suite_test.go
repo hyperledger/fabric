@@ -13,9 +13,9 @@ import (
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/internal/peer/common"
-	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
-	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
+	"github.com/hyperledger/fabric/v3/internal/peer/common"
+	"github.com/hyperledger/fabric/v3/internal/peer/lifecycle/chaincode"
+	msptesttools "github.com/hyperledger/fabric/v3/msp/mgmt/testtools"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

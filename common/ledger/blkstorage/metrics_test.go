@@ -12,7 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric-lib-go/common/metrics"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/metricsfakes"
-	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/v3/common/ledger/testutil"
 	"github.com/stretchr/testify/require"
 )
 

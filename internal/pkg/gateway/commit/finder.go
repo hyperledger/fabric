@@ -12,7 +12,7 @@ import (
 	"context"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/internal/pkg/gateway/ledger"
+	"github.com/hyperledger/fabric/v3/internal/pkg/gateway/ledger"
 
 	"github.com/pkg/errors"
 )

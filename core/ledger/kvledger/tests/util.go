@@ -13,12 +13,12 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/msp"
 	protopeer "github.com/hyperledger/fabric-protos-go/peer"
-	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
-	"github.com/hyperledger/fabric/common/crypto"
-	"github.com/hyperledger/fabric/common/policydsl"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/tests/fakes"
-	"github.com/hyperledger/fabric/internal/pkg/txflags"
-	"github.com/hyperledger/fabric/protoutil"
+	configtxtest "github.com/hyperledger/fabric/v3/common/configtx/test"
+	"github.com/hyperledger/fabric/v3/common/crypto"
+	"github.com/hyperledger/fabric/v3/common/policydsl"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/tests/fakes"
+	"github.com/hyperledger/fabric/v3/internal/pkg/txflags"
+	"github.com/hyperledger/fabric/v3/protoutil"
 )
 
 var logger = flogging.MustGetLogger("test2")

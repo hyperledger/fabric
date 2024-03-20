@@ -1,4 +1,4 @@
-module github.com/hyperledger/fabric
+module github.com/hyperledger/fabric/v3
 
 go 1.20
 

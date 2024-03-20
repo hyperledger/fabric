@@ -8,7 +8,7 @@ package lifecycle
 
 import (
 	"github.com/hyperledger/fabric-lib-go/bccsp"
-	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
+	"github.com/hyperledger/fabric/v3/internal/peer/lifecycle/chaincode"
 	"github.com/spf13/cobra"
 )
 

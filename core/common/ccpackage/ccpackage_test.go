@@ -16,11 +16,11 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/policydsl"
-	"github.com/hyperledger/fabric/msp"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/common/policydsl"
+	"github.com/hyperledger/fabric/v3/msp"
+	mspmgmt "github.com/hyperledger/fabric/v3/msp/mgmt"
+	msptesttools "github.com/hyperledger/fabric/v3/msp/mgmt/testtools"
+	"github.com/hyperledger/fabric/v3/protoutil"
 )
 
 func ownerCreateCCDepSpec(codepackage []byte, sigpolicy *common.SignaturePolicyEnvelope, owner msp.SigningIdentity) (*common.Envelope, error) {
@@ -70,7 +70,7 @@ func TestAddSignature(t *testing.T) {
 		t.Fatalf("error signing existing package %s", err)
 		return
 	}
-	//...and sign aother for luck
+	// ...and sign aother for luck
 	env, err = SignExistingPackage(env, signer)
 	if err != nil || env == nil {
 		t.Fatalf("error signing existing package %s", err)

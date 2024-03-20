@@ -6,9 +6,9 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	ledgerb "github.com/hyperledger/fabric/common/ledger"
-	ledgera "github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/internal/pkg/gateway/ledger"
+	ledgerb "github.com/hyperledger/fabric/v3/common/ledger"
+	ledgera "github.com/hyperledger/fabric/v3/core/ledger"
+	"github.com/hyperledger/fabric/v3/internal/pkg/gateway/ledger"
 )
 
 type Ledger struct {

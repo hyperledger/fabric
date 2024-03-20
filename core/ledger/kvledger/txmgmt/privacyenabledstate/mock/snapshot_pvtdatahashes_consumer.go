@@ -4,7 +4,7 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/v3/core/ledger/internal/version"
 )
 
 type SnapshotPvtdataHashesConsumer struct {

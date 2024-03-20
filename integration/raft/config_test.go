@@ -25,12 +25,12 @@ import (
 	"github.com/hyperledger/fabric-protos-go/msp"
 	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	"github.com/hyperledger/fabric/common/crypto/tlsgen"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
-	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/integration/nwo/commands"
-	"github.com/hyperledger/fabric/integration/ordererclient"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/v3/integration/channelparticipation"
+	"github.com/hyperledger/fabric/v3/integration/nwo"
+	"github.com/hyperledger/fabric/v3/integration/nwo/commands"
+	"github.com/hyperledger/fabric/v3/integration/ordererclient"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -1317,7 +1317,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				// never ending loop. We need to fix this behavior.
 				// Currnetly, with channel participation, the only way to stop this is by explicitly removing the
 				// orderer from the channel, which causes the ledger to be deleted.
-				// See: https://github.com/hyperledger/fabric/issues/3992
+				// See: https://github.com/hyperledger/fabric/v3/issues/3992
 				for i := 0; i < 5; i++ {
 					Eventually(o1Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Received msg to 5, my ID is probably wrong due to out of date, cowardly halting channel=testchannel node=1"))
 					Eventually(o1Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Created and started a follower.Chain for channel testchannel"))
@@ -1326,7 +1326,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				By("Removing channel from the first orderer")
 				// TODO the channelparticipation.Remove does not clean up the etcdraft folder. This may prevent the
 				// correct re-creation of the channel on this orderer.
-				// See: https://github.com/hyperledger/fabric/issues/3992
+				// See: https://github.com/hyperledger/fabric/v3/issues/3992
 				ready := make(chan struct{})
 				go func() {
 					defer GinkgoRecover()
@@ -1341,7 +1341,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				}()).Should(BeZero())
 
 				// TODO It is recommended to remove the etcdraft folder for the WAL to be re-created correctly
-				// See: https://github.com/hyperledger/fabric/issues/3992
+				// See: https://github.com/hyperledger/fabric/v3/issues/3992
 				err = os.RemoveAll(path.Join(network.OrdererDir(o1), "etcdraft", "wal", "testchannel"))
 				Expect(err).NotTo(HaveOccurred())
 				err = os.RemoveAll(path.Join(network.OrdererDir(o1), "etcdraft", "snapshot", "testchannel"))

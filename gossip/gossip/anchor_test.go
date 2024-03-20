@@ -17,12 +17,12 @@ import (
 	"time"
 
 	proto "github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/gossip/common"
-	"github.com/hyperledger/fabric/gossip/protoext"
-	utilgossip "github.com/hyperledger/fabric/gossip/util"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
+	"github.com/hyperledger/fabric/v3/common/util"
+	"github.com/hyperledger/fabric/v3/gossip/api"
+	"github.com/hyperledger/fabric/v3/gossip/common"
+	"github.com/hyperledger/fabric/v3/gossip/protoext"
+	utilgossip "github.com/hyperledger/fabric/v3/gossip/util"
+	"github.com/hyperledger/fabric/v3/internal/pkg/comm"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )

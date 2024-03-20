@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	common "github.com/hyperledger/fabric/gossip/privdata/common"
+	common "github.com/hyperledger/fabric/v3/gossip/privdata/common"
 	mock "github.com/stretchr/testify/mock"
 )
 

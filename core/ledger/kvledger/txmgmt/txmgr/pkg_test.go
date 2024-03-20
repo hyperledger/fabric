@@ -17,16 +17,16 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
-	"github.com/hyperledger/fabric/core/ledger/mock"
-	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
-	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
-	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/internal/pkg/txflags"
+	"github.com/hyperledger/fabric/v3/common/ledger/testutil"
+	"github.com/hyperledger/fabric/v3/core/ledger"
+	"github.com/hyperledger/fabric/v3/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/bookkeeping"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/privacyenabledstate"
+	"github.com/hyperledger/fabric/v3/core/ledger/mock"
+	"github.com/hyperledger/fabric/v3/core/ledger/pvtdatapolicy"
+	btltestutil "github.com/hyperledger/fabric/v3/core/ledger/pvtdatapolicy/testutil"
+	"github.com/hyperledger/fabric/v3/core/ledger/util"
+	"github.com/hyperledger/fabric/v3/internal/pkg/txflags"
 	"github.com/stretchr/testify/require"
 )
 
@@ -67,7 +67,7 @@ var testEnvsMap = map[string]testEnv{
 	couchDBtestEnvName: testEnvs[1],
 }
 
-///////////// LevelDB Environment //////////////
+// /////////// LevelDB Environment //////////////
 
 type lockBasedEnv struct {
 	dbInitialized      bool
@@ -134,7 +134,7 @@ func (env *lockBasedEnv) stopExternalResource() {
 	env.testDBEnv.StopExternalResource()
 }
 
-//////////// txMgrTestHelper /////////////
+// ////////// txMgrTestHelper /////////////
 
 type txMgrTestHelper struct {
 	t     *testing.T

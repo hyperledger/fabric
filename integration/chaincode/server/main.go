@@ -12,7 +12,7 @@ import (
 	"os"
 
 	"github.com/hyperledger/fabric-chaincode-go/shim"
-	"github.com/hyperledger/fabric/integration/chaincode/simple"
+	"github.com/hyperledger/fabric/v3/integration/chaincode/simple"
 )
 
 type config struct {

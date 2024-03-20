@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	transientstore "github.com/hyperledger/fabric/core/transientstore"
+	transientstore "github.com/hyperledger/fabric/v3/core/transientstore"
 	mock "github.com/stretchr/testify/mock"
 )
 

@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package ordererclient
 
 import (
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	. "github.com/onsi/gomega"
 
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/integration/nwo"
+	"github.com/hyperledger/fabric/v3/integration/nwo"
 )
 
 func CreateBroadcastEnvelope(n *nwo.Network, entity interface{}, channel string, data []byte, optionalEnvelopeType ...common.HeaderType) *common.Envelope {

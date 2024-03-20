@@ -14,9 +14,9 @@ import (
 
 	pb "github.com/hyperledger/fabric-protos-go/gateway"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/gossip/common"
-	gdiscovery "github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/internal/pkg/gateway/mocks"
+	"github.com/hyperledger/fabric/v3/gossip/common"
+	gdiscovery "github.com/hyperledger/fabric/v3/gossip/discovery"
+	"github.com/hyperledger/fabric/v3/internal/pkg/gateway/mocks"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"

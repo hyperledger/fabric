@@ -11,8 +11,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	gp "github.com/hyperledger/fabric-protos-go/gateway"
-	"github.com/hyperledger/fabric/core/aclmgmt/resources"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/core/aclmgmt/resources"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

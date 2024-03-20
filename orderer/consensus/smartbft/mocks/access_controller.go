@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	protoutil "github.com/hyperledger/fabric/protoutil"
+	protoutil "github.com/hyperledger/fabric/v3/protoutil"
 	mock "github.com/stretchr/testify/mock"
 )
 

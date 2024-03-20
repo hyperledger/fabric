@@ -8,9 +8,9 @@ package peer
 
 import (
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
-	"github.com/hyperledger/fabric/common/channelconfig"
-	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
-	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/v3/common/channelconfig"
+	configtxtest "github.com/hyperledger/fabric/v3/common/configtx/test"
+	"github.com/hyperledger/fabric/v3/core/ledger"
 )
 
 func CreateMockChannel(p *Peer, cid string, resources channelconfig.Resources) error {

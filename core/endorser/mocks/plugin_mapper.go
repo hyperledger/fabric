@@ -3,8 +3,8 @@
 package mocks
 
 import (
-	endorser "github.com/hyperledger/fabric/core/endorser"
-	endorsement "github.com/hyperledger/fabric/core/handlers/endorsement/api"
+	endorser "github.com/hyperledger/fabric/v3/core/endorser"
+	endorsement "github.com/hyperledger/fabric/v3/core/handlers/endorsement/api"
 
 	mock "github.com/stretchr/testify/mock"
 )

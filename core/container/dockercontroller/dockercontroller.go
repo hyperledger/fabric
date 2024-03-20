@@ -24,10 +24,10 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/ccintf"
+	"github.com/hyperledger/fabric/v3/common/util"
+	"github.com/hyperledger/fabric/v3/core/chaincode/persistence"
+	"github.com/hyperledger/fabric/v3/core/container"
+	"github.com/hyperledger/fabric/v3/core/container/ccintf"
 	"github.com/pkg/errors"
 )
 

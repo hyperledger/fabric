@@ -23,12 +23,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hyperledger/fabric/integration/channelparticipation"
+	"github.com/hyperledger/fabric/v3/integration/channelparticipation"
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 
 	bpkcs11 "github.com/hyperledger/fabric-lib-go/bccsp/pkcs11"
-	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
+	"github.com/hyperledger/fabric/v3/integration/nwo"
+	"github.com/hyperledger/fabric/v3/integration/nwo/fabricconfig"
 	"github.com/miekg/pkcs11"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -56,7 +56,7 @@ var _ = Describe("PKCS11 enabled network", func() {
 		chaincode = nwo.Chaincode{
 			Name:            "mycc",
 			Version:         "0.0",
-			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd"),
+			Path:            components.Build("github.com/hyperledger/fabric/v3/integration/chaincode/simple/cmd"),
 			Lang:            "binary",
 			PackageFile:     filepath.Join(tempDir, "simplecc.tar.gz"),
 			Ctor:            `{"Args":["init","a","100","b","200"]}`,

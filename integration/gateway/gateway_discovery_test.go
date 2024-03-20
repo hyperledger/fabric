@@ -16,9 +16,9 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/gateway"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
-	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/integration/channelparticipation"
+	"github.com/hyperledger/fabric/v3/integration/nwo"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
@@ -89,7 +89,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 		chaincode := nwo.Chaincode{
 			Name:            "gatewaycc",
 			Version:         "0.0",
-			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd"),
+			Path:            components.Build("github.com/hyperledger/fabric/v3/integration/chaincode/simple/cmd"),
 			Lang:            "binary",
 			PackageFile:     filepath.Join(testDir, "gatewaycc.tar.gz"),
 			Ctor:            `{"Args":["init","a","100","b","200"]}`,
@@ -103,7 +103,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 		chaincode = nwo.Chaincode{
 			Name:              "sbecc",
 			Version:           "0.0",
-			Path:              components.Build("github.com/hyperledger/fabric/integration/chaincode/keylevelep/cmd"),
+			Path:              components.Build("github.com/hyperledger/fabric/v3/integration/chaincode/keylevelep/cmd"),
 			Ctor:              `{"Args":["init"]}`,
 			Lang:              "binary",
 			PackageFile:       filepath.Join(testDir, "sbecc.tar.gz"),
@@ -118,7 +118,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 		chaincode = nwo.Chaincode{
 			Name:              "readpvtcc",
 			Version:           "0.0",
-			Path:              components.Build("github.com/hyperledger/fabric/integration/chaincode/keylevelep/cmd"),
+			Path:              components.Build("github.com/hyperledger/fabric/v3/integration/chaincode/keylevelep/cmd"),
 			Ctor:              `{"Args":["init"]}`,
 			Lang:              "binary",
 			PackageFile:       filepath.Join(testDir, "readpvtcc.tar.gz"),

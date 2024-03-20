@@ -15,13 +15,13 @@ import (
 
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/internal/fileutil"
-	"github.com/hyperledger/fabric/internal/ledgerutil/jsonrw"
-	"github.com/hyperledger/fabric/internal/ledgerutil/models"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/rwsetutil"
+	"github.com/hyperledger/fabric/v3/internal/fileutil"
+	"github.com/hyperledger/fabric/v3/internal/ledgerutil/jsonrw"
+	"github.com/hyperledger/fabric/v3/internal/ledgerutil/models"
+	"github.com/hyperledger/fabric/v3/protoutil"
 
 	"github.com/pkg/errors"
 )

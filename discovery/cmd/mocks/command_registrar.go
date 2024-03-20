@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	common "github.com/hyperledger/fabric/cmd/common"
+	common "github.com/hyperledger/fabric/v3/cmd/common"
 
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 

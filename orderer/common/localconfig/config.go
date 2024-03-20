@@ -12,9 +12,9 @@ import (
 
 	bccsp "github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric/common/viperutil"
-	coreconfig "github.com/hyperledger/fabric/core/config"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
+	"github.com/hyperledger/fabric/v3/common/viperutil"
+	coreconfig "github.com/hyperledger/fabric/v3/core/config"
+	"github.com/hyperledger/fabric/v3/internal/pkg/comm"
 )
 
 var logger = flogging.MustGetLogger("localconfig")

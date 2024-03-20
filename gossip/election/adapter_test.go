@@ -16,12 +16,12 @@ import (
 
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	proto "github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric/gossip/common"
-	"github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/gossip/metrics"
-	"github.com/hyperledger/fabric/gossip/metrics/mocks"
-	"github.com/hyperledger/fabric/gossip/protoext"
-	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/v3/gossip/common"
+	"github.com/hyperledger/fabric/v3/gossip/discovery"
+	"github.com/hyperledger/fabric/v3/gossip/metrics"
+	"github.com/hyperledger/fabric/v3/gossip/metrics/mocks"
+	"github.com/hyperledger/fabric/v3/gossip/protoext"
+	"github.com/hyperledger/fabric/v3/gossip/util"
 	"github.com/stretchr/testify/require"
 )
 

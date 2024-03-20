@@ -17,8 +17,8 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric/core/container/ccintf"
-	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/v3/core/container/ccintf"
+	"github.com/hyperledger/fabric/v3/core/peer"
 	"github.com/pkg/errors"
 )
 

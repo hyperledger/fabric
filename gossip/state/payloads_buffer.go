@@ -12,7 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric-lib-go/common/metrics"
 	proto "github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/v3/gossip/util"
 )
 
 // PayloadsBuffer is used to store payloads into which used to

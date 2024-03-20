@@ -16,11 +16,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/ledger/util"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
-	"github.com/hyperledger/fabric/internal/fileutil"
-	"github.com/hyperledger/fabric/internal/ledgerutil/jsonrw"
+	"github.com/hyperledger/fabric/v3/common/ledger/util"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/privacyenabledstate"
+	"github.com/hyperledger/fabric/v3/internal/fileutil"
+	"github.com/hyperledger/fabric/v3/internal/ledgerutil/jsonrw"
 	"github.com/stretchr/testify/require"
 )
 

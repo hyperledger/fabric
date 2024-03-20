@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/deliverclient"
+	"github.com/hyperledger/fabric/v3/common/deliverclient"
 )
 
 type UpdatableBlockVerifier struct {

@@ -13,9 +13,9 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric/core/container/ccintf"
-	"github.com/hyperledger/fabric/core/container/externalbuilder"
-	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/v3/core/container/ccintf"
+	"github.com/hyperledger/fabric/v3/core/container/externalbuilder"
+	"github.com/hyperledger/fabric/v3/core/peer"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"

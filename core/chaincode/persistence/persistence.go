@@ -16,8 +16,8 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric/common/chaincode"
-	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/v3/common/chaincode"
+	"github.com/hyperledger/fabric/v3/common/util"
 
 	"github.com/pkg/errors"
 )

@@ -11,8 +11,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/core/ledger"
+	"github.com/hyperledger/fabric/v3/protoutil"
 )
 
 const (
@@ -20,10 +20,10 @@ const (
 	peerNamespace    = ""
 )
 
-// ConfigTxProcessor implements the interface 'github.com/hyperledger/fabric/core/ledger/customtx/Processor'
+// ConfigTxProcessor implements the interface 'github.com/hyperledger/fabric/v3/core/ledger/customtx/Processor'
 type ConfigTxProcessor struct{}
 
-// GenerateSimulationResults implements function in the interface 'github.com/hyperledger/fabric/core/ledger/customtx/Processor'
+// GenerateSimulationResults implements function in the interface 'github.com/hyperledger/fabric/v3/core/ledger/customtx/Processor'
 // This implementation processes CONFIG transactions which simply stores the config-envelope-bytes
 func (tp *ConfigTxProcessor) GenerateSimulationResults(txEnv *common.Envelope, simulator ledger.TxSimulator, initializingLedger bool) error {
 	payload := protoutil.UnmarshalPayloadOrPanic(txEnv.Payload)

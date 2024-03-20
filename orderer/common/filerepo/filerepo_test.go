@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hyperledger/fabric/orderer/common/filerepo"
+	"github.com/hyperledger/fabric/v3/orderer/common/filerepo"
 	"github.com/stretchr/testify/require"
 )
 

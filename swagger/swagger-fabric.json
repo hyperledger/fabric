@@ -263,17 +263,17 @@
           "x-go-name": "URL"
         }
       },
-      "x-go-package": "github.com/hyperledger/fabric/orderer/common/types"
+      "x-go-package": "github.com/hyperledger/fabric/v3/orderer/common/types"
     },
     "ConsensusRelation": {
       "type": "string",
       "title": "ConsensusRelation represents the relationship between the orderer and the channel's consensus cluster.",
-      "x-go-package": "github.com/hyperledger/fabric/orderer/common/types"
+      "x-go-package": "github.com/hyperledger/fabric/v3/orderer/common/types"
     },
     "Status": {
       "description": "Status represents the degree by which the orderer had caught up with the rest of the cluster after joining the\nchannel (either as a consenter or a follower).",
       "type": "string",
-      "x-go-package": "github.com/hyperledger/fabric/orderer/common/types"
+      "x-go-package": "github.com/hyperledger/fabric/v3/orderer/common/types"
     },
     "channelInfo": {
       "description": "This is marshaled into the body of the HTTP response.",
@@ -304,7 +304,7 @@
         }
       },
       "x-go-name": "ChannelInfo",
-      "x-go-package": "github.com/hyperledger/fabric/orderer/common/types"
+      "x-go-package": "github.com/hyperledger/fabric/v3/orderer/common/types"
     },
     "channelList": {
       "description": "This is marshaled into the body of the HTTP response.",
@@ -324,7 +324,7 @@
         }
       },
       "x-go-name": "ChannelList",
-      "x-go-package": "github.com/hyperledger/fabric/orderer/common/types"
+      "x-go-package": "github.com/hyperledger/fabric/v3/orderer/common/types"
     }
   },
   "tags": [

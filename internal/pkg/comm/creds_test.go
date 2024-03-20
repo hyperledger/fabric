@@ -17,7 +17,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging/floggingtest"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
+	"github.com/hyperledger/fabric/v3/internal/pkg/comm"
 	"github.com/stretchr/testify/require"
 )
 

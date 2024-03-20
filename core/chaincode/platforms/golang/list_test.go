@@ -17,12 +17,12 @@ import (
 
 func Test_gopathDependencyPackageInfo(t *testing.T) {
 	t.Run("TestPeer", func(t *testing.T) {
-		deps, err := gopathDependencyPackageInfo(runtime.GOOS, runtime.GOARCH, "github.com/hyperledger/fabric/cmd/peer")
+		deps, err := gopathDependencyPackageInfo(runtime.GOOS, runtime.GOARCH, "github.com/hyperledger/fabric/v3/cmd/peer")
 		require.NoError(t, err, "failed to get dependencyPackageInfo")
 
 		var found bool
 		for _, pi := range deps {
-			if pi.ImportPath == "github.com/hyperledger/fabric/cmd/peer" {
+			if pi.ImportPath == "github.com/hyperledger/fabric/v3/cmd/peer" {
 				found = true
 				break
 			}
@@ -31,7 +31,7 @@ func Test_gopathDependencyPackageInfo(t *testing.T) {
 	})
 
 	t.Run("TestIncomplete", func(t *testing.T) {
-		_, err := gopathDependencyPackageInfo(runtime.GOOS, runtime.GOARCH, "github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/BadImport")
+		_, err := gopathDependencyPackageInfo(runtime.GOOS, runtime.GOARCH, "github.com/hyperledger/fabric/v3/core/chaincode/platforms/golang/testdata/src/chaincodes/BadImport")
 		require.EqualError(t, err, "failed to calculate dependencies: incomplete package: bogus/package")
 	})
 

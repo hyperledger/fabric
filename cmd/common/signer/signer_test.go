@@ -15,7 +15,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp/utils"
-	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/v3/common/util"
 	"github.com/stretchr/testify/require"
 )
 

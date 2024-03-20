@@ -18,12 +18,12 @@ import (
 	dp "github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/core/scc"
-	gossipapi "github.com/hyperledger/fabric/gossip/api"
-	gossipcommon "github.com/hyperledger/fabric/gossip/common"
-	gossipdiscovery "github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/internal/pkg/gateway/ledger"
+	"github.com/hyperledger/fabric/v3/common/channelconfig"
+	"github.com/hyperledger/fabric/v3/core/scc"
+	gossipapi "github.com/hyperledger/fabric/v3/gossip/api"
+	gossipcommon "github.com/hyperledger/fabric/v3/gossip/common"
+	gossipdiscovery "github.com/hyperledger/fabric/v3/gossip/discovery"
+	"github.com/hyperledger/fabric/v3/internal/pkg/gateway/ledger"
 	"github.com/pkg/errors"
 )
 

@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
+	"github.com/hyperledger/fabric/v3/orderer/consensus/smartbft"
 	"github.com/stretchr/testify/require"
 )
 

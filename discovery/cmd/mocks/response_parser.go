@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	discovery "github.com/hyperledger/fabric/discovery/cmd"
+	discovery "github.com/hyperledger/fabric/v3/discovery/cmd"
 	mock "github.com/stretchr/testify/mock"
 )
 

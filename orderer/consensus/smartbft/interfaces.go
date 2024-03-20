@@ -7,9 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package smartbft
 
 import (
-	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/orderer/common/cluster"
-	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/v3/common/policies"
+	"github.com/hyperledger/fabric/v3/orderer/common/cluster"
+	"github.com/hyperledger/fabric/v3/orderer/consensus"
 )
 
 // ConsenterSupport provides the resources available to a Consenter implementation.

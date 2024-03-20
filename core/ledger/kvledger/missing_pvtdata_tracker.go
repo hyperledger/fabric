@@ -9,7 +9,7 @@ package kvledger
 import (
 	"math"
 
-	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/v3/core/ledger"
 )
 
 type missingPvtdataTracker struct {

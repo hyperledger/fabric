@@ -15,8 +15,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/hyperledger/fabric/core/deliverservice"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
+	"github.com/hyperledger/fabric/v3/core/deliverservice"
+	"github.com/hyperledger/fabric/v3/internal/pkg/comm"
 	"github.com/spf13/viper"
 )
 

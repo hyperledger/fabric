@@ -15,9 +15,9 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/common/deliverclient/blocksprovider"
-	"github.com/hyperledger/fabric/common/deliverclient/blocksprovider/fake"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v3/common/deliverclient/blocksprovider"
+	"github.com/hyperledger/fabric/v3/common/deliverclient/blocksprovider/fake"
+	"github.com/hyperledger/fabric/v3/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -144,7 +144,7 @@ func TestBftHeaderReceiver_WithBlocks_Renew(t *testing.T) {
 	assert.Equal(t, fakeBlockVerifier.VerifyBlockAttestationCallCount(), 2)
 	assert.Equal(t, fakeBlockVerifier.VerifyBlockCallCount(), 0)
 
-	//=== Create a new BFTHeaderReceiver with the last good header of the previous receiver
+	// === Create a new BFTHeaderReceiver with the last good header of the previous receiver
 	fakeBlockVerifier = &fake.UpdatableBlockVerifier{}
 	streamClientMock = &fake.DeliverClient{}
 	hr2 := blocksprovider.NewBFTHeaderReceiver("testchannel", "10.10.10.11:666", streamClientMock, fakeBlockVerifier, hr, flogging.MustGetLogger("test.BFTHeaderReceiver.2"))

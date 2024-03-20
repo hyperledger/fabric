@@ -8,7 +8,7 @@ package gossip
 
 import (
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric/gossip/api"
+	"github.com/hyperledger/fabric/v3/gossip/api"
 )
 
 var saLogger = flogging.MustGetLogger("peer.gossip.sa")

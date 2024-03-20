@@ -15,9 +15,9 @@ import (
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
-	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
-	"github.com/hyperledger/fabric/protoutil"
-	"github.com/hyperledger/fabric/protoutil/mocks"
+	configtxtest "github.com/hyperledger/fabric/v3/common/configtx/test"
+	"github.com/hyperledger/fabric/v3/protoutil"
+	"github.com/hyperledger/fabric/v3/protoutil/mocks"
 	"github.com/stretchr/testify/require"
 )
 

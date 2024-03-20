@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hyperledger/fabric/internal/ledgerutil/models"
+	"github.com/hyperledger/fabric/v3/internal/ledgerutil/models"
 	"github.com/stretchr/testify/require"
 )
 

@@ -15,12 +15,12 @@ generate_doc() {
     local peer_statsd
 
     local orderer_deps=()
-    while IFS= read -r pkg; do orderer_deps+=("$pkg"); done < <(go list -deps github.com/hyperledger/fabric/cmd/orderer | sort -u | grep -E "(hyperledger|hyperledger-labs/SmartBFT)")
+    while IFS= read -r pkg; do orderer_deps+=("$pkg"); done < <(go list -deps github.com/hyperledger/fabric/v3/cmd/orderer | sort -u | grep -E "(hyperledger|hyperledger-labs/SmartBFT)")
     orderer_prom="$($gendoc_command -template <(echo '{{PrometheusTable}}') "${orderer_deps[@]}")"
     orderer_statsd="$($gendoc_command -template <(echo '{{StatsdTable}}') "${orderer_deps[@]}")"
 
     local peer_deps=()
-    while IFS= read -r pkg; do peer_deps+=("$pkg"); done < <(go list -deps github.com/hyperledger/fabric/cmd/peer | sort -u | grep hyperledger)
+    while IFS= read -r pkg; do peer_deps+=("$pkg"); done < <(go list -deps github.com/hyperledger/fabric/v3/cmd/peer | sort -u | grep hyperledger)
     peer_prom="$($gendoc_command -template <(echo '{{PrometheusTable}}') "${peer_deps[@]}")"
     peer_statsd="$($gendoc_command -template <(echo '{{StatsdTable}}') "${peer_deps[@]}")"
 

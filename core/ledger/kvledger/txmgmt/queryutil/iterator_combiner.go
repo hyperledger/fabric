@@ -10,8 +10,8 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
-	commonledger "github.com/hyperledger/fabric/common/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
+	commonledger "github.com/hyperledger/fabric/v3/common/ledger"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/statedb"
 )
 
 type itrCombiner struct {

@@ -3,10 +3,10 @@
 package mocks
 
 import (
-	common "github.com/hyperledger/fabric/cmd/common"
-	cmd "github.com/hyperledger/fabric/discovery/cmd"
+	common "github.com/hyperledger/fabric/v3/cmd/common"
+	cmd "github.com/hyperledger/fabric/v3/discovery/cmd"
 
-	discovery "github.com/hyperledger/fabric/discovery/client"
+	discovery "github.com/hyperledger/fabric/v3/discovery/client"
 
 	mock "github.com/stretchr/testify/mock"
 )

@@ -9,8 +9,8 @@ package common
 import (
 	"os"
 
-	"github.com/hyperledger/fabric/cmd/common/comm"
-	"github.com/hyperledger/fabric/cmd/common/signer"
+	"github.com/hyperledger/fabric/v3/cmd/common/comm"
+	"github.com/hyperledger/fabric/v3/cmd/common/signer"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )

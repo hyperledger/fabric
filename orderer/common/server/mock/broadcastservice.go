@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/orderer/common/server"
+	"github.com/hyperledger/fabric/v3/orderer/common/server"
 )
 
 type BroadcastService struct {

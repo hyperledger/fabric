@@ -14,11 +14,11 @@ import (
 
 	protosgossip "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/core/committer"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/gossip/metrics"
-	privdatacommon "github.com/hyperledger/fabric/gossip/privdata/common"
-	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/v3/core/committer"
+	"github.com/hyperledger/fabric/v3/core/ledger"
+	"github.com/hyperledger/fabric/v3/gossip/metrics"
+	privdatacommon "github.com/hyperledger/fabric/v3/gossip/privdata/common"
+	"github.com/hyperledger/fabric/v3/gossip/util"
 	"github.com/pkg/errors"
 )
 

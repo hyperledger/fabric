@@ -11,7 +11,7 @@ import (
 	"math"
 	"sync"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/hyperledger/fabric/v3/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/pkg/errors"
 )
 

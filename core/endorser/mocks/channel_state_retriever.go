@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	endorser "github.com/hyperledger/fabric/core/endorser"
+	endorser "github.com/hyperledger/fabric/v3/core/endorser"
 	mock "github.com/stretchr/testify/mock"
 )
 
