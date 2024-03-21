@@ -42,6 +42,7 @@ Finally, we provide an introduction to how to write a basic smart contract,
    couchdb_tutorial
    create_channel/create_channel_overview.md
    channel_update_tutorial
+   channel_remove_org
    config_update.md
    chaincode4ade
    peer-chaincode-devmode
