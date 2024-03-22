@@ -130,7 +130,7 @@ func (fbrs *filteredBlockResponseSender) DataType() string {
 	return "filtered_block"
 }
 
-// blockResponseSender structure used to send block responses
+// blockAndPrivateDataResponseSender structure used to send block responses
 type blockAndPrivateDataResponseSender struct {
 	peer.Deliver_DeliverWithPrivateDataServer
 	CollectionPolicyChecker
