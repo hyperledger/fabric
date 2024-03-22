@@ -31,7 +31,7 @@ type Platform interface {
 	GetDeploymentPayload(path string) ([]byte, error)
 }
 
-// NormalizerPather is an optional interface that can be implemented by
+// NormalizePather is an optional interface that can be implemented by
 // platforms to modify the path stored in the chaincode ID.
 type NormalizePather interface {
 	NormalizePath(path string) (string, error)
