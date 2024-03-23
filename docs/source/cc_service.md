@@ -232,7 +232,7 @@ func (s *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
         // invoke code
 }
 
-//NOTE - parameters such as ccid and endpoint information are hard coded here for illustration. This can be passed in in a variety of standard ways
+//NOTE - parameters such as ccid and endpoint information are hard coded here for illustration. This can be passed in a variety of standard ways
 func main() {
        //The ccid is assigned to the chaincode on install (using the “peer lifecycle chaincode install <package>” command) for instance
         ccid := "mycc:fcbf8724572d42e859a7dd9a7cd8e2efb84058292017df6e3d89178b64e6c831"
