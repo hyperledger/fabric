@@ -517,8 +517,6 @@ func (l *kvLedger) GetTransactionByID(txID string) (*peer.ProcessedTransaction, 
 
 // GetBlockchainInfo returns basic info about blockchain
 func (l *kvLedger) GetBlockchainInfo() (*common.BlockchainInfo, error) {
-	l.blockAPIsRWLock.RLock()
-	defer l.blockAPIsRWLock.RUnlock()
 	bcInfo, err := l.blockStore.GetBlockchainInfo()
 	return bcInfo, err
 }
@@ -545,8 +543,6 @@ func (l *kvLedger) GetBlocksIterator(startBlockNumber uint64) (commonledger.Resu
 
 // GetBlockByHash returns a block given it's hash
 func (l *kvLedger) GetBlockByHash(blockHash []byte) (*common.Block, error) {
-	l.blockAPIsRWLock.RLock()
-	defer l.blockAPIsRWLock.RUnlock()
 	block, err := l.blockStore.RetrieveBlockByHash(blockHash)
 	return block, err
 }
@@ -1024,8 +1020,6 @@ func (itr *blocksItr) Next() (commonledger.QueryResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	itr.blockAPIsRWLock.RLock()
-	itr.blockAPIsRWLock.RUnlock() //lint:ignore SA2001 syncpoint
 	return block, nil
 }
 
