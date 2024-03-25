@@ -222,7 +222,7 @@ type metadata struct {
 	Bookmark     string `json:"Bookmark"`
 }
 
-// marbleQueryResult is the struct to unmarshal the metadata bytes returned from marbles pagination APIs
+// paginationMetadata is the struct to unmarshal the metadata bytes returned from marbles pagination APIs
 type paginationMetadata struct {
 	ResponseMetadata *metadata `json:"ResponseMetadata"`
 }

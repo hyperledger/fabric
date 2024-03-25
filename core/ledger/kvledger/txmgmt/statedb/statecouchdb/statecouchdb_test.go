@@ -89,7 +89,7 @@ func (env *testVDBEnv) cleanup() {
 	env.couchDBEnv.cleanup(env.config)
 }
 
-// testVDBEnv provides a couch db for testing
+// testCouchDBEnv provides a couch db for testing
 type testCouchDBEnv struct {
 	t              *testing.T
 	couchAddress   string
