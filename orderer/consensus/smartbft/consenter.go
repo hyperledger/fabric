@@ -231,7 +231,8 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 		c.MetricsBFT,
 		c.MetricsWalBFT,
 		c.BCCSP,
-		egressCommFactory)
+		egressCommFactory,
+		&synchronizerCreator{})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed creating a new BFTChain")
 	}

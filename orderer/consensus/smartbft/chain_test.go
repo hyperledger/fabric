@@ -7,6 +7,7 @@ package smartbft_test
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"testing"
 	"time"
 
@@ -106,6 +107,78 @@ func TestStopLeaderAndSuccessfulTxPropagation(t *testing.T) {
 			continue
 		}
 		node.State.WaitLedgerHeightToBe(3)
+	}
+}
+
+// Scenario:
+// 1. Start a network of 4 nodes
+// 2. Submit a TX and wait for the TX to be received by all nodes
+// 3. Stop the leader and wait for a new one to be elected
+// 4. Submit some more TXs and wait for the TXs to be received by all available nodes
+// 5. Start the old leader
+// 6. Make sure the old leader has synced with the nodes in the network
+// 7. Submit a TX and wait for the TX to be received by all nodes
+func TestSyncNode(t *testing.T) {
+	dir := t.TempDir()
+	channelId := "testchannel"
+
+	// start a network
+	networkSetupInfo := NewNetworkSetupInfo(t, channelId, dir)
+	nodeMap := networkSetupInfo.CreateNodes(4)
+	networkSetupInfo.StartAllNodes()
+
+	// wait until all nodes have the genesis block in their ledger
+	for _, node := range nodeMap {
+		node.State.WaitLedgerHeightToBe(1)
+	}
+
+	// send a tx to all nodes and wait the tx will be added to each ledger
+	env := createEndorserTxEnvelope("TEST_MESSAGE #1", channelId)
+	err := networkSetupInfo.SendTxToAllAvailableNodes(env)
+	require.NoError(t, err)
+	for _, node := range nodeMap {
+		node.State.WaitLedgerHeightToBe(2)
+	}
+
+	// get leader id
+	leaderId := networkSetupInfo.GetAgreedLeader()
+
+	// stop the leader
+	nodeMap[leaderId].Stop()
+
+	// wait for a new leader to be elected
+	require.Eventually(t, func() bool {
+		newLeaderId := networkSetupInfo.GetAgreedLeader()
+		return leaderId != newLeaderId
+	}, 1*time.Minute, 100*time.Millisecond)
+
+	// send 5 txs to all available nodes and wait the tx will be added to each ledger except the ledger of the old leader
+	numberTxs := 5
+	for i := 0; i < numberTxs; i++ {
+		message := "TEST_MESSAGE #" + fmt.Sprintf("%d", i+2)
+		env = createEndorserTxEnvelope(message, channelId)
+		err = networkSetupInfo.SendTxToAllAvailableNodes(env)
+		require.NoError(t, err)
+		for _, node := range nodeMap {
+			if node.NodeId == leaderId {
+				continue
+			}
+			node.State.WaitLedgerHeightToBe(i + 3)
+		}
+	}
+
+	// restart the old leader
+	nodeMap[leaderId].Restart()
+
+	// make sure the old leader has synced with the nodes in the network
+	nodeMap[leaderId].State.WaitLedgerHeightToBe(7)
+
+	// send a tx to all nodes and wait the tx will be added to each ledger
+	env = createEndorserTxEnvelope("TEST_MESSAGE #7", channelId)
+	err = networkSetupInfo.SendTxToAllAvailableNodes(env)
+	require.NoError(t, err)
+	for _, node := range nodeMap {
+		node.State.WaitLedgerHeightToBe(8)
 	}
 }
 

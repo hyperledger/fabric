@@ -12,9 +12,9 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus"
 )
 
-// ConsenterSupport provides the resources available to a Consenter implementation.
-//
 //go:generate mockery --dir . --name consenterSupport --case underscore --with-expecter=true --exported --output mocks
+
+// ConsenterSupport provides the resources available to a Consenter implementation.
 type consenterSupport interface {
 	consensus.ConsenterSupport
 }

@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger-labs/SmartBFT/pkg/api"
 	"github.com/hyperledger-labs/SmartBFT/pkg/types"
 	"github.com/hyperledger-labs/SmartBFT/pkg/wal"
@@ -84,14 +85,17 @@ func (ns *NetworkSetupInfo) SendTxToAllAvailableNodes(tx *cb.Envelope) error {
 	var errorsArr []error
 	for idx, node := range ns.nodeIdToNode {
 		if !node.IsAvailable() {
+			ns.t.Logf("Sending tx to node %v, but the node is not available", idx)
 			continue
 		}
 		ns.t.Logf("Sending tx to node %v", idx)
 		err := node.SendTx(tx)
 		if err != nil {
+			errorsArr = append(errorsArr, err)
 			ns.t.Logf("Error occurred during sending tx to node %v: %v", idx, err)
+		} else {
+			ns.t.Logf("Tx to node %v was sent successfully", idx)
 		}
-		errorsArr = append(errorsArr, err)
 	}
 	return errors.Join(errorsArr...)
 }
@@ -179,13 +183,14 @@ func (n *Node) Restart() error {
 	n.t.Logf("Restarting node %d", n.NodeId)
 	n.lock.Lock()
 	defer n.lock.Unlock()
-	n.Chain.Halt()
 	newChain, err := createBFTChainUsingMocks(n.t, n)
 	if err != nil {
 		return err
 	}
 	n.Chain = newChain
 	n.Chain.Start()
+	n.IsConnectedToNetwork = true
+	n.IsStarted = true
 	return nil
 }
 
@@ -218,6 +223,7 @@ func (n *Node) sendMessage(sender uint64, target uint64, message *smartbftprotos
 		return fmt.Errorf("target node %d does not exist", target)
 	}
 	targetNode.receiveMessage(sender, message)
+	n.t.Logf("Node %v received a message of type <%s> from node %v", targetNode.NodeId, reflect.TypeOf(message.GetContent()), sender)
 	return nil
 }
 
@@ -233,14 +239,14 @@ func (n *Node) sendRequest(sender uint64, target uint64, request []byte) error {
 }
 
 func (n *Node) receiveMessage(sender uint64, message *smartbftprotos.Message) {
-	n.lock.Lock()
-	defer n.lock.Unlock()
+	n.lock.RLock()
+	defer n.lock.RUnlock()
 	n.Chain.HandleMessage(sender, message)
 }
 
 func (n *Node) receiveRequest(sender uint64, request []byte) {
-	n.lock.Lock()
-	defer n.lock.Unlock()
+	n.lock.RLock()
+	defer n.lock.RUnlock()
 	n.Chain.HandleRequest(sender, request)
 }
 
@@ -299,7 +305,13 @@ func (ns *NodeState) GetLedgerHeight() int {
 }
 
 func (ns *NodeState) WaitLedgerHeightToBe(height int) {
-	require.Eventually(ns.t, func() bool { return ns.GetLedgerHeight() == height }, 10*time.Second, 100*time.Millisecond)
+	require.Eventually(ns.t, func() bool { return ns.GetLedgerHeight() == height }, 60*time.Second, 100*time.Millisecond)
+}
+
+func (ns *NodeState) GetLedgerArray() []*cb.Block {
+	ns.lock.RLock()
+	defer ns.lock.RUnlock()
+	return ns.ledgerArray
 }
 
 // createBFTChainUsingMocks creates a new bft chain which is exposed to all nodes in the network.
@@ -389,12 +401,20 @@ func createBFTChainUsingMocks(t *testing.T, node *Node) (*smartbft.BFTChain, err
 		}).Maybe()
 	egressCommMock.EXPECT().SendTransaction(mock.Anything, mock.Anything).Run(
 		func(targetNodeId uint64, message []byte) {
+			if !node.IsConnectedToNetwork {
+				t.Logf("Node %d requested SendTransaction to node %d but is not connected to the network", node.NodeId, targetNodeId)
+				return
+			}
 			t.Logf("Node %d requested SendTransaction to node %d", node.NodeId, targetNodeId)
 			err := node.sendRequest(node.NodeId, targetNodeId, message)
 			require.NoError(t, err)
 		}).Maybe()
 	egressCommMock.EXPECT().SendConsensus(mock.Anything, mock.Anything).Run(
 		func(targetNodeId uint64, message *smartbftprotos.Message) {
+			if !node.IsConnectedToNetwork {
+				t.Logf("Node %d requested SendConsensus to node %d of type <%s> but is not connected to the network", node.NodeId, targetNodeId, reflect.TypeOf(message.GetContent()))
+				return
+			}
 			t.Logf("Node %d requested SendConsensus to node %d of type <%s>", node.NodeId, targetNodeId, reflect.TypeOf(message.GetContent()))
 			err = node.sendMessage(node.NodeId, targetNodeId, message)
 			require.NoError(t, err)
@@ -404,14 +424,58 @@ func createBFTChainUsingMocks(t *testing.T, node *Node) (*smartbft.BFTChain, err
 		return egressCommMock
 	}
 
-	localConfigCluster := localconfig.Cluster{ReplicationPolicy: "simple"}
+	synchronizerMock := smartBFTMocks.NewSynchronizer(t)
+	synchronizerMock.EXPECT().Sync().RunAndReturn(
+		func() types.SyncResponse {
+			t.Logf("Sync Called by node %v", node.NodeId)
+			// iterate over the ledger of the other nodes and find the highest ledger to sync with
+			max := 0
+			var ledgerToCopy []*cb.Block
+			for _, n := range node.nodesMap {
+				if n.NodeId != node.NodeId {
+					len := n.State.GetLedgerHeight()
+					if len > max {
+						max = len
+						ledgerToCopy = n.State.GetLedgerArray()
+					}
+				}
+			}
+
+			// sync node
+			for i := node.State.GetLedgerHeight(); i < len(ledgerToCopy); i++ {
+				clonedBlock := proto.Clone(ledgerToCopy[i]).(*cb.Block)
+				node.State.AddBlock(clonedBlock)
+			}
+
+			// send response
+			// at this point the chain exists, so we can use its methods
+			nodesMap := node.nodesMap
+			var currentNodes []uint64
+			for nodeId := range nodesMap {
+				currentNodes = append(currentNodes, nodeId)
+			}
+
+			return types.SyncResponse{
+				Latest: *node.Chain.BlockToDecision(ledgerToCopy[len(ledgerToCopy)-1]),
+				Reconfig: types.ReconfigSync{
+					InReplicatedDecisions: false,
+					CurrentNodes:          currentNodes,
+					CurrentConfig:         types.Configuration{SelfID: node.NodeId},
+				},
+			}
+		}).Maybe()
+	synchronizerFactory := smartBFTMocks.NewSynchronizerFactory(t)
+	synchronizerFactory.EXPECT().CreateSynchronizer(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(synchronizerMock)
+
+	localConfigCluster := localconfig.Cluster{ReplicationPolicy: "consensus"}
+	clusterDialer := &cluster.PredicateDialer{}
 
 	bftChain, err := smartbft.NewChain(
 		configValidatorMock,
 		nodeId,
 		config,
 		node.WorkingDir,
-		nil,
+		clusterDialer,
 		localConfigCluster,
 		comm,
 		signerSerializerMock,
@@ -421,7 +485,8 @@ func createBFTChainUsingMocks(t *testing.T, node *Node) (*smartbft.BFTChain, err
 		metricsBFT,
 		metricsWalBFT,
 		cryptoProvider,
-		egressCommFactory)
+		egressCommFactory,
+		synchronizerFactory)
 
 	require.NoError(t, err)
 	require.NotNil(t, bftChain)
@@ -521,19 +586,19 @@ func createBFTConfiguration(node *Node) types.Configuration {
 		RequestBatchMaxInterval:       50 * time.Millisecond,
 		IncomingMessageBufferSize:     200,
 		RequestPoolSize:               400,
-		RequestForwardTimeout:         2 * time.Second,
+		RequestForwardTimeout:         10 * time.Second,
 		RequestComplainTimeout:        20 * time.Second,
 		RequestAutoRemoveTimeout:      3 * time.Minute,
-		ViewChangeResendInterval:      5 * time.Second,
+		ViewChangeResendInterval:      10 * time.Second,
 		ViewChangeTimeout:             20 * time.Second,
-		LeaderHeartbeatTimeout:        30 * time.Second,
+		LeaderHeartbeatTimeout:        20 * time.Second,
 		LeaderHeartbeatCount:          10,
 		NumOfTicksBehindBeforeSyncing: types.DefaultConfig.NumOfTicksBehindBeforeSyncing,
 		CollectTimeout:                1 * time.Second,
 		SyncOnStart:                   types.DefaultConfig.SyncOnStart,
 		SpeedUpViewChange:             types.DefaultConfig.SpeedUpViewChange,
 		LeaderRotation:                false,
-		DecisionsPerLeader:            types.DefaultConfig.DecisionsPerLeader,
+		DecisionsPerLeader:            0,
 		RequestMaxBytes:               types.DefaultConfig.RequestMaxBytes,
 		RequestPoolSubmitTimeout:      types.DefaultConfig.RequestPoolSubmitTimeout,
 	}
