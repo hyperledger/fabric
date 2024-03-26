@@ -240,6 +240,79 @@ func TestAddNode(t *testing.T) {
 	}
 }
 
+// Scenario:
+// 1. Start a network of 4 nodes
+// 2. Submit a TX and wait for the TX to be received by all nodes
+// 3. Stop the leader and wait for a new leader to be elected
+// 4. Add new node to the network
+// 5. Start the old leader and make sure he has synced with other nodes about the config change
+// 4. Submit a TX and wait for the TX to be received by all nodes
+func TestReconfigurationWhileNodeIsDown(t *testing.T) {
+	dir := t.TempDir()
+	channelId := "testchannel"
+
+	// start a network
+	networkSetupInfo := NewNetworkSetupInfo(t, channelId, dir)
+	nodeMap := networkSetupInfo.CreateNodes(4)
+	networkSetupInfo.StartAllNodes()
+
+	// wait until all nodes have the genesis block in their ledger
+	for _, node := range nodeMap {
+		node.State.WaitLedgerHeightToBe(1)
+	}
+
+	// send a tx to all nodes and wait the tx will be added to each ledger
+	env := createEndorserTxEnvelope("TEST_MESSAGE #1", channelId)
+	err := networkSetupInfo.SendTxToAllAvailableNodes(env)
+	require.NoError(t, err)
+	for _, node := range nodeMap {
+		node.State.WaitLedgerHeightToBe(2)
+	}
+
+	// get leader id
+	leaderId := networkSetupInfo.GetAgreedLeader()
+
+	// stop the leader
+	nodeMap[leaderId].Stop()
+
+	// wait for a new leader to be elected
+	require.Eventually(t, func() bool {
+		newLeaderId := networkSetupInfo.GetAgreedLeader()
+		return leaderId != newLeaderId
+	}, 1*time.Minute, 100*time.Millisecond)
+
+	// send a new config block to all available nodes, to notice them about the new node
+	env = addNodeToConfig(t, networkSetupInfo.genesisBlock, 5, networkSetupInfo.tlsCA, networkSetupInfo.dir, networkSetupInfo.channelId)
+	err = networkSetupInfo.SendTxToAllAvailableNodes(env)
+	require.NoError(t, err)
+	for _, node := range nodeMap {
+		if node.NodeId == leaderId {
+			continue
+		}
+		node.State.WaitLedgerHeightToBe(3)
+	}
+
+	// add new node to the network
+	nodesMap, newNode := networkSetupInfo.AddNewNode()
+	newNode.Start()
+	require.Equal(t, len(nodesMap), 5)
+	require.Equal(t, len(networkSetupInfo.nodeIdToNode), 5)
+
+	// restart the old leader
+	nodeMap[leaderId].Restart(networkSetupInfo.configInfo)
+
+	// make sure the old leader has synced with the nodes in the network
+	nodeMap[leaderId].State.WaitLedgerHeightToBe(3)
+
+	// send a tx to all nodes again and wait the tx will be added to each ledger
+	env = createEndorserTxEnvelope("TEST_ADDITION_OF_NODE", channelId)
+	err = networkSetupInfo.SendTxToAllAvailableNodes(env)
+	require.NoError(t, err)
+	for _, node := range nodeMap {
+		node.State.WaitLedgerHeightToBe(4)
+	}
+}
+
 func createEndorserTxEnvelope(message string, channelId string) *cb.Envelope {
 	return &cb.Envelope{
 		Payload: protoutil.MarshalOrPanic(&cb.Payload{
