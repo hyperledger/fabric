@@ -470,9 +470,9 @@ func createBFTChainUsingMocks(t *testing.T, node *Node, configInfo *ConfigInfo) 
 		func(block *cb.Block, encodedMetadataValue []byte) {
 			node.State.AddBlock(block)
 			t.Logf("Node %d appended config block number %v to ledger", node.NodeId, block.Header.Number)
+			configInfo.lock.Lock()
+			defer configInfo.lock.Unlock()
 			if !slices.Contains(configInfo.numsOfConfigBlocks, block.Header.Number) {
-				configInfo.lock.Lock()
-				defer configInfo.lock.Unlock()
 				configInfo.numsOfConfigBlocks = append(configInfo.numsOfConfigBlocks, block.Header.Number)
 			}
 		}).Maybe()
