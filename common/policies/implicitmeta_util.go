@@ -43,17 +43,17 @@ func TemplateImplicitMetaPolicy(path []string, policyName string, rule cb.Implic
 	return TemplateImplicitMetaPolicyWithSubPolicy(path, policyName, policyName, rule)
 }
 
-// TempateImplicitMetaAnyPolicy returns TemplateImplicitMetaPolicy with cb.ImplicitMetaPolicy_ANY as the rule
+// TemplateImplicitMetaAnyPolicy returns TemplateImplicitMetaPolicy with cb.ImplicitMetaPolicy_ANY as the rule
 func TemplateImplicitMetaAnyPolicy(path []string, policyName string) *cb.ConfigGroup {
 	return TemplateImplicitMetaPolicy(path, policyName, cb.ImplicitMetaPolicy_ANY)
 }
 
-// TempateImplicitMetaAnyPolicy returns TemplateImplicitMetaPolicy with cb.ImplicitMetaPolicy_ALL as the rule
+// TemplateImplicitMetaAllPolicy returns TemplateImplicitMetaPolicy with cb.ImplicitMetaPolicy_ALL as the rule
 func TemplateImplicitMetaAllPolicy(path []string, policyName string) *cb.ConfigGroup {
 	return TemplateImplicitMetaPolicy(path, policyName, cb.ImplicitMetaPolicy_ALL)
 }
 
-// TempateImplicitMetaAnyPolicy returns TemplateImplicitMetaPolicy with cb.ImplicitMetaPolicy_MAJORITY as the rule
+// TemplateImplicitMetaMajorityPolicy returns TemplateImplicitMetaPolicy with cb.ImplicitMetaPolicy_MAJORITY as the rule
 func TemplateImplicitMetaMajorityPolicy(path []string, policyName string) *cb.ConfigGroup {
 	return TemplateImplicitMetaPolicy(path, policyName, cb.ImplicitMetaPolicy_MAJORITY)
 }
