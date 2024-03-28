@@ -118,7 +118,7 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 			return errors.WithMessage(err, "error while unmarshalling chaincode action")
 		}
 		if proposalResp.Endorsement == nil {
-			return errors.Errorf("endorsement failure during invoke. response: %v", proposalResp.Response)
+			return errors.Errorf("endorsement failure during invoke. response: %v", proto.MarshalTextString(proposalResp.Response))
 		}
 		logger.Infof("Chaincode invoke successful. result: %v", ca.Response)
 	} else {
@@ -126,7 +126,7 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 			return errors.New("error during query: received nil proposal response")
 		}
 		if proposalResp.Endorsement == nil {
-			return errors.Errorf("endorsement failure during query. response: %v", proposalResp.Response)
+			return errors.Errorf("endorsement failure during query. response: %v", proto.MarshalTextString(proposalResp.Response))
 		}
 
 		if chaincodeQueryRaw && chaincodeQueryHex {
