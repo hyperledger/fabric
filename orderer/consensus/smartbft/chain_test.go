@@ -281,7 +281,7 @@ func TestAddAndRemoveNode(t *testing.T) {
 // 4. Add new node to the network
 // 5. Start the old leader and make sure he has synced with other nodes about the config change
 // 4. Submit a TX and wait for the TX to be received by all nodes
-func TestReconfigurationWhileNodeIsDown(t *testing.T) {
+func TestAddNodeWhileAnotherNodeIsDown(t *testing.T) {
 	dir := t.TempDir()
 	channelId := "testchannel"
 
@@ -344,6 +344,89 @@ func TestReconfigurationWhileNodeIsDown(t *testing.T) {
 	require.NoError(t, err)
 	for _, node := range nodeMap {
 		node.State.WaitLedgerHeightToBe(4)
+	}
+}
+
+// Scenario:
+// 1. Start a network of 4 nodes
+// 2. Submit a TX and wait for the TX to be received by all nodes
+// 3. Add new node to the network
+// 4. Submit a TX and wait for the TX to be received by all nodes
+// 5. Remove node from the network
+// 6. Submit a TX and wait for the TX to be received by all nodes
+// NOTE: in this scenario node 5 is not stopped and is only removed from the list of nodes, in such a case nodes 1-4 should ignore its messages.
+func TestAddAndRemoveNodeWithoutStop(t *testing.T) {
+	dir := t.TempDir()
+	channelId := "testchannel"
+
+	// start a network
+	networkSetupInfo := NewNetworkSetupInfo(t, channelId, dir)
+	nodeMap := networkSetupInfo.CreateNodes(4)
+	networkSetupInfo.StartAllNodes()
+
+	// wait until all nodes have the genesis block in their ledger
+	for _, node := range nodeMap {
+		node.State.WaitLedgerHeightToBe(1)
+	}
+
+	// send a tx to all nodes and wait the tx will be added to each ledger
+	env := createEndorserTxEnvelope("TEST_MESSAGE #1", channelId)
+	err := networkSetupInfo.SendTxToAllAvailableNodes(env)
+	require.NoError(t, err)
+	for _, node := range nodeMap {
+		node.State.WaitLedgerHeightToBe(2)
+	}
+
+	// send a new config block to all nodes, to notice them about the new node
+	env = addNodeToConfig(t, networkSetupInfo.genesisBlock, 5, networkSetupInfo.tlsCA, networkSetupInfo.dir, networkSetupInfo.channelId)
+	err = networkSetupInfo.SendTxToAllAvailableNodes(env)
+	require.NoError(t, err)
+	for _, node := range nodeMap {
+		node.State.WaitLedgerHeightToBe(3)
+	}
+
+	// add new node to the network
+	nodesMap, newNode := networkSetupInfo.AddNewNode()
+	newNode.Start()
+	require.Equal(t, len(nodesMap), 5)
+	require.Equal(t, len(networkSetupInfo.nodeIdToNode), 5)
+
+	// send a tx to all nodes again and wait the tx will be added to each ledger
+	env = createEndorserTxEnvelope("TEST_ADDITION_OF_NODE", channelId)
+	err = networkSetupInfo.SendTxToAllAvailableNodes(env)
+	require.NoError(t, err)
+	for _, node := range nodeMap {
+		node.State.WaitLedgerHeightToBe(4)
+	}
+
+	// get leader id and ask for the last config block
+	leaderId := networkSetupInfo.GetAgreedLeader()
+	lastConfigBlock := nodesMap[leaderId].GetConfigBlock(networkSetupInfo.configInfo.numsOfConfigBlocks[len(networkSetupInfo.configInfo.numsOfConfigBlocks)-1])
+
+	nodeToRemove := nodesMap[uint64(5)]
+
+	// send a new config block to all nodes, to remove node number 5
+	env = removeNodeFromConfig(t, lastConfigBlock, 5, networkSetupInfo.channelId)
+	err = networkSetupInfo.SendTxToAllAvailableNodes(env)
+	require.NoError(t, err)
+	for _, node := range nodeMap {
+		if node.NodeId == nodeToRemove.NodeId {
+			continue
+		}
+		node.State.WaitLedgerHeightToBe(5)
+	}
+
+	// remove node from the network
+	nodesMap = networkSetupInfo.RemoveNode(uint64(5))
+	require.Equal(t, len(nodesMap), 4)
+	require.Equal(t, len(networkSetupInfo.nodeIdToNode), 4)
+
+	// send a tx to all nodes again and wait the tx will be added to each ledger
+	env = createEndorserTxEnvelope("TEST_REMOVAL_OF_NODE", channelId)
+	err = networkSetupInfo.SendTxToAllAvailableNodes(env)
+	require.NoError(t, err)
+	for _, node := range nodeMap {
+		node.State.WaitLedgerHeightToBe(6)
 	}
 }
 
