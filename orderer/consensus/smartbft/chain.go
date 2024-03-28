@@ -73,7 +73,7 @@ type BFTChain struct {
 	WALDir             string
 	consensus          *smartbft.Consensus
 	support            consensus.ConsenterSupport
-	clusterService     *cluster.ClusterService
+	ClusterService     *cluster.ClusterService
 	verifier           *Verifier
 	assembler          *Assembler
 	Metrics            *Metrics
@@ -423,6 +423,9 @@ func (c *BFTChain) Deliver(proposal types.Proposal, signatures []types.Signature
 	}
 
 	reconfig := c.updateRuntimeConfig(block)
+	if reconfig.InLatestDecision {
+		c.Logger.Infof("Reconfiguration was done and the current nodes are: %v", reconfig.CurrentNodes)
+	}
 	return reconfig
 }
 
@@ -554,7 +557,7 @@ func (c *BFTChain) updateRuntimeConfig(block *cb.Block) types.Reconfig {
 	c.RuntimeConfig.Store(newRTC)
 	if protoutil.IsConfigBlock(block) {
 		c.Comm.Configure(c.Channel, newRTC.RemoteNodes)
-		c.clusterService.ConfigureNodeCerts(c.Channel, newRTC.consenters)
+		c.ClusterService.ConfigureNodeCerts(c.Channel, newRTC.consenters)
 		c.pruneBadRequests()
 	}
 
