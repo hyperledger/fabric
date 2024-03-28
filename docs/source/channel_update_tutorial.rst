@@ -579,7 +579,7 @@ The first step is to package the Basic chaincode:
 
 .. code:: bash
 
-    peer lifecycle chaincode package basic.tar.gz --path ../asset-transfer-basic/chaincode-go/ --lang golang --label basic_1
+    peer lifecycle chaincode package basic.tar.gz --path ../asset-transfer-basic/chaincode-go/ --lang golang --label basic_1.0
 
 This command will create a chaincode package named ``basic.tar.gz``, which we can
 install on the Org3 peer. Modify the command accordingly if the channel is running a
@@ -606,7 +606,7 @@ You should see output similar to the following:
 .. code:: bash
 
       Get installed chaincodes on peer:
-      Package ID: basic_1:5443b5b557efd3faece8723883d28d6f7026c0bf12245de109b89c5c4fe64887, Label: basic_1
+      Package ID: basic_1.0:c6a45e2d5563c883869149c3dbd941c22fbe27daa21f0552834f5a53fbb8058a, Label: basic_1.0
 
 We are going to need the package ID in a future command, so lets go ahead and
 save it as an environment variable. Paste the package ID returned by the
@@ -616,7 +616,7 @@ using the package ID returned from your console.
 
 .. code:: bash
 
-   export CC_PACKAGE_ID=basic_1:5443b5b557efd3faece8723883d28d6f7026c0bf12245de109b89c5c4fe64887
+   export CC_PACKAGE_ID=basic_1.0:c6a45e2d5563c883869149c3dbd941c22fbe27daa21f0552834f5a53fbb8058a
 
 Use the following command to approve a definition of the basic chaincode
 for Org3:
