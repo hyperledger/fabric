@@ -32,6 +32,30 @@ import (
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
+func ExtractLedger(network *nwo.Network, orderer *nwo.Orderer) []*common.Block {
+	By("Extracting blocks from ledger")
+	ordererFabricConfig := network.ReadOrdererConfig(orderer)
+	blockStoreProvider, err := blkstorage.NewProvider(
+		blkstorage.NewConf(ordererFabricConfig.FileLedger.Location, -1),
+		&blkstorage.IndexConfig{
+			AttrsToIndex: []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockNum},
+		},
+		&disabled.Provider{},
+	)
+	Expect(err).NotTo(HaveOccurred())
+	blockStore, err := blockStoreProvider.Open("testchannel1")
+	Expect(err).NotTo(HaveOccurred())
+	fileLedger := fileledger.NewFileLedger(blockStore)
+	var ledgerArray []*common.Block
+	for i := uint64(0); i < fileLedger.Height(); i++ {
+		block, err := fileLedger.RetrieveBlockByNumber(i)
+		Expect(err).NotTo(HaveOccurred())
+		ledgerArray = append(ledgerArray, block)
+	}
+	return ledgerArray
+}
+
+
 var _ = Describe("Smart BFT Block Deliverer", func() {
 	var (
 		testDir          string
@@ -41,6 +65,8 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		ordererProcesses []ifrit.Process
 		peerProcesses    ifrit.Process
 		mocksArray       []*MockOrderer
+		ledgerArray      []*common.Block
+		
 	)
 
 	BeforeEach(func() {
@@ -112,6 +138,32 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		Eventually(ordererRunners[1].Err(), 20*time.Second).Should(gbytes.Say("Delivering proposal, writing block 10"))
 		Eventually(ordererRunners[2].Err(), 20*time.Second).Should(gbytes.Say("Delivering proposal, writing block 10"))
 		Eventually(ordererRunners[3].Err(), 20*time.Second).Should(gbytes.Say("Delivering proposal, writing block 10"))
+	})
+
+	AfterEach(func() {
+		for _, mock := range mocksArray {
+			mock.grpcServer.Stop()
+		}
+		if peerProcesses != nil {
+			peerProcesses.Signal(syscall.SIGTERM)
+			Eventually(peerProcesses.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+		if network != nil {
+			network.Cleanup()
+		}
+
+		ledgerArray = nil
+
+		for _, ordererInstance := range ordererProcesses {
+			ordererInstance.Signal(syscall.SIGTERM)
+			Eventually(ordererInstance.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+		_ = os.RemoveAll(testDir)
+	})
+
+	FIt("correct mock", func() {
+		/* Create orderer mocks and make sure they can access the ledger */
+		var err error
 
 		/* Shut down the orderers */
 		By("Taking down all the orderers")
@@ -120,29 +172,7 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 			Eventually(proc.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
 
-		/* Extract ledger from one of the orderers */
-		By("Extracting blocks from ledger")
-		ordererFabricConfig := network.ReadOrdererConfig(network.Orderers[0])
-		blockStoreProvider, err := blkstorage.NewProvider(
-			blkstorage.NewConf(ordererFabricConfig.FileLedger.Location, -1),
-			&blkstorage.IndexConfig{
-				AttrsToIndex: []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockNum},
-			},
-			&disabled.Provider{},
-		)
-		Expect(err).NotTo(HaveOccurred())
-		blockStore, err := blockStoreProvider.Open(channel)
-		Expect(err).NotTo(HaveOccurred())
-		fileLedger := fileledger.NewFileLedger(blockStore)
-		var ledgerArray []*common.Block
-		for i := uint64(0); i < fileLedger.Height(); i++ {
-			block, err := fileLedger.RetrieveBlockByNumber(i)
-			Expect(err).NotTo(HaveOccurred())
-			ledgerArray = append(ledgerArray, block)
-		}
-		/* The ledger now saved and can be accessed at ledgerArray */
-
-		/* Create orderer mocks and make sure they can access the ledger */
+		ledgerArray = ExtractLedger(network, network.Orderers[0])
 
 		for _, orderer := range network.Orderers {
 			serverTLSCerts := map[string][]byte{}
@@ -165,28 +195,7 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 			mocksArray = append(mocksArray, mo)
 			mocksArray[len(mocksArray)-1].logger.Infof("Mock orderer started at port %v", network.OrdererAddress(orderer, nwo.ListenPort))
 		}
-	})
 
-	AfterEach(func() {
-		for _, mock := range mocksArray {
-			mock.grpcServer.Stop()
-		}
-		if peerProcesses != nil {
-			peerProcesses.Signal(syscall.SIGTERM)
-			Eventually(peerProcesses.Wait(), network.EventuallyTimeout).Should(Receive())
-		}
-		if network != nil {
-			network.Cleanup()
-		}
-		for _, ordererInstance := range ordererProcesses {
-			ordererInstance.Signal(syscall.SIGTERM)
-			Eventually(ordererInstance.Wait(), network.EventuallyTimeout).Should(Receive())
-		}
-		_ = os.RemoveAll(testDir)
-	})
-
-	It("correct mock", func() {
-		var err error
 		channel := "testchannel1"
 
 		/* Create peer */
@@ -205,8 +214,104 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		nwo.WaitUntilEqualLedgerHeight(network, channel, 11, network.Peers[0])
 	})
 
-	It("block censorship", func() {
+	FIt("block censorship", func() {
 		var err error
+		
+		/* Shut down the orderers */
+		By("Taking down all the orderers")
+		for _, proc := range ordererProcesses {
+			proc.Signal(syscall.SIGINT)
+			Eventually(proc.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
+		ledgerArray = ExtractLedger(network, network.Orderers[0])
+
+		for _, orderer := range network.Orderers {
+			serverTLSCerts := map[string][]byte{}
+			tlsCertPath := filepath.Join(network.OrdererLocalTLSDir(orderer), "server.crt")
+			serverTLSCerts[tlsCertPath], err = os.ReadFile(tlsCertPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			serverTLSKeys := map[string][]byte{}
+			tlsKeyPath := filepath.Join(network.OrdererLocalTLSDir(orderer), "server.key")
+			serverTLSKeys[tlsKeyPath], err = os.ReadFile(tlsKeyPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			secOpts := comm.SecureOptions{
+				UseTLS:      true,
+				Certificate: serverTLSCerts[tlsCertPath],
+				Key:         serverTLSKeys[tlsKeyPath],
+			}
+			mo, err := NewMockOrderer(network.OrdererAddress(orderer, nwo.ListenPort), ledgerArray, secOpts)
+			Expect(err).NotTo(HaveOccurred())
+			mocksArray = append(mocksArray, mo)
+			mocksArray[len(mocksArray)-1].logger.Infof("Mock orderer started at port %v", network.OrdererAddress(orderer, nwo.ListenPort))
+		}
+
+		channel := "testchannel1"
+
+		for _, mock := range mocksArray {
+			mock.censorDataMode = true
+			mock.stopDeliveryChannel = make(chan struct{})
+		}
+
+		/* Create peer */
+		By("Create a peer and join to channel")
+		p0 := network.Peers[0]
+		peerRunner := network.PeerRunner(p0)
+		peerRunner.Command.Env = append(peerRunner.Command.Env, "FABRIC_LOGGING_SPEC=debug")
+		peerProcesses = ifrit.Invoke(peerRunner)
+		Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+		_, err = network.PeerAdminSession(p0, commands.ChannelJoin{
+			BlockPath:  network.OutputBlockPath(channel),
+			ClientAuth: network.ClientAuthRequired,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(peerRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Block censorship detected"))
+		nwo.WaitUntilEqualLedgerHeight(network, channel, 11, network.Peers[0])
+
+		for _, mock := range mocksArray {
+			close(mock.stopDeliveryChannel)
+		}
+	})
+
+	It("block censorship 2", func() {
+		var err error
+		
+		/* Shut down the orderers */
+		By("Taking down last orderer")
+		proc := ordererProcesses[len(ordererProcesses)-1]
+		proc.Signal(syscall.SIGINT)
+		Eventually(proc.Wait(), network.EventuallyTimeout).Should(Receive())
+		
+		By("Send 10 more block in network")
+
+
+		ledgerArray = ExtractLedger(network, network.Orderers[0])
+
+		for _, orderer := range network.Orderers {
+			serverTLSCerts := map[string][]byte{}
+			tlsCertPath := filepath.Join(network.OrdererLocalTLSDir(orderer), "server.crt")
+			serverTLSCerts[tlsCertPath], err = os.ReadFile(tlsCertPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			serverTLSKeys := map[string][]byte{}
+			tlsKeyPath := filepath.Join(network.OrdererLocalTLSDir(orderer), "server.key")
+			serverTLSKeys[tlsKeyPath], err = os.ReadFile(tlsKeyPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			secOpts := comm.SecureOptions{
+				UseTLS:      true,
+				Certificate: serverTLSCerts[tlsCertPath],
+				Key:         serverTLSKeys[tlsKeyPath],
+			}
+			mo, err := NewMockOrderer(network.OrdererAddress(orderer, nwo.ListenPort), ledgerArray, secOpts)
+			Expect(err).NotTo(HaveOccurred())
+			mocksArray = append(mocksArray, mo)
+			mocksArray[len(mocksArray)-1].logger.Infof("Mock orderer started at port %v", network.OrdererAddress(orderer, nwo.ListenPort))
+		}
+
 		channel := "testchannel1"
 
 		for _, mock := range mocksArray {
