@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger-labs/SmartBFT/pkg/api"
@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/config/configtest"
@@ -83,8 +84,19 @@ func (ns *NetworkSetupInfo) CreateNodes(numberOfNodes int) map[uint64]*Node {
 	}
 	nodeIdToNode := map[uint64]*Node{}
 	genesisBlock, tlsCA := createConfigBlock(ns.t, ns.channelId)
+	clusterService := &cluster.ClusterService{
+		StreamCountReporter:              &cluster.StreamCountReporter{},
+		Logger:                           flogging.MustGetLogger("orderer.common.cluster"),
+		StepLogger:                       flogging.MustGetLogger("orderer.common.cluster.step"),
+		MinimumExpirationWarningInterval: cluster.MinimumExpirationWarningInterval,
+		MembershipByChannel:              make(map[string]*cluster.ChannelMembersConfig),
+		RequestHandler:                   &smartbft.Ingress{},
+	}
+
 	for _, nodeId := range nodeIds {
 		nodeIdToNode[nodeId] = NewNode(ns.t, nodeId, ns.dir, ns.channelId, genesisBlock, ns.configInfo, nil)
+		// update each node's chain to recognize the cluster service
+		nodeIdToNode[nodeId].Chain.ClusterService = clusterService
 	}
 	ns.nodeIdToNode = nodeIdToNode
 	ns.genesisBlock = genesisBlock
@@ -104,12 +116,7 @@ func (ns *NetworkSetupInfo) AddNewNode() (map[uint64]*Node, *Node) {
 
 	ns.t.Logf("Adding node %v to the network", newNodeId)
 
-	var ledgerToSyncWith []*cb.Block
-	for _, n := range ns.nodeIdToNode {
-		if n.NodeId != newNodeId {
-			ledgerToSyncWith = n.State.GetLedgerArray()
-		}
-	}
+	ledgerToSyncWith := findLargestDifferentLedger(ns.nodeIdToNode, newNodeId)
 
 	ns.nodeIdToNode[newNodeId] = NewNode(ns.t, newNodeId, ns.dir, ns.channelId, ns.genesisBlock, ns.configInfo, ledgerToSyncWith)
 
@@ -396,9 +403,26 @@ func (ns *NodeState) GetLedgerArray() []*cb.Block {
 
 func (ns *NodeState) UpdateLedger(ledgerToSyncWith []*cb.Block) {
 	// copy the blocks from ledgerToSyncWith except the genesisBlock which is already exists in the node's ledger
+	ns.lock.Lock()
+	defer ns.lock.Unlock()
 	for i := 1; i < len(ledgerToSyncWith); i++ {
 		ns.ledgerArray = append(ns.ledgerArray, proto.Clone(ledgerToSyncWith[i]).(*cb.Block))
 	}
+}
+
+func findLargestDifferentLedger(nodes map[uint64]*Node, givenNodeId uint64) []*cb.Block {
+	max := 0
+	var ledgerToCopy []*cb.Block
+	for _, n := range nodes {
+		if n.NodeId != givenNodeId {
+			len := n.State.GetLedgerHeight()
+			if len > max {
+				max = len
+				ledgerToCopy = n.State.GetLedgerArray()
+			}
+		}
+	}
+	return ledgerToCopy
 }
 
 // createBFTChainUsingMocks creates a new bft chain which is exposed to all nodes in the network.
@@ -533,17 +557,7 @@ func createBFTChainUsingMocks(t *testing.T, node *Node, configInfo *ConfigInfo) 
 		func() types.SyncResponse {
 			t.Logf("Sync Called by node %v", node.NodeId)
 			// iterate over the ledger of the other nodes and find the highest ledger to sync with
-			max := 0
-			var ledgerToCopy []*cb.Block
-			for _, n := range node.nodesMap {
-				if n.NodeId != node.NodeId {
-					len := n.State.GetLedgerHeight()
-					if len > max {
-						max = len
-						ledgerToCopy = n.State.GetLedgerArray()
-					}
-				}
-			}
+			ledgerToCopy := findLargestDifferentLedger(node.nodesMap, node.NodeId)
 
 			// sync node
 			for i := node.State.GetLedgerHeight(); i < len(ledgerToCopy); i++ {
@@ -619,7 +633,8 @@ func createConfigBlock(t *testing.T, channelId string) (*cb.Block, tlsgen.CA) {
 	// update organization endpoints
 	ordererEndpoints := channelGroup.Groups[channelconfig.OrdererGroupKey].Groups["SampleOrg"].Values["Endpoints"].Value
 	ordererEndpointsVal := &cb.OrdererAddresses{}
-	proto.Unmarshal(ordererEndpoints, ordererEndpointsVal)
+	err = proto.Unmarshal(ordererEndpoints, ordererEndpointsVal)
+	require.NoError(t, err)
 	ordererAddresses := ordererEndpointsVal.Addresses
 	for _, consenter := range configProfile.Orderer.ConsenterMapping {
 		ordererAddresses = append(ordererAddresses, fmt.Sprintf("%s:%d", consenter.Host, consenter.Port))

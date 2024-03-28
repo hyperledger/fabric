@@ -73,7 +73,7 @@ type BFTChain struct {
 	WALDir             string
 	consensus          *smartbft.Consensus
 	support            consensus.ConsenterSupport
-	clusterService     *cluster.ClusterService
+	ClusterService     *cluster.ClusterService
 	verifier           *Verifier
 	assembler          *Assembler
 	Metrics            *Metrics
@@ -165,17 +165,6 @@ func NewChain(
 
 	if err = c.consensus.ValidateConfiguration(rtc.Nodes); err != nil {
 		return nil, errors.Wrap(err, "failed to verify SmartBFT-Go configuration")
-	}
-
-	c.clusterService = &cluster.ClusterService{
-		StreamCountReporter:              &cluster.StreamCountReporter{},
-		Logger:                           flogging.MustGetLogger("orderer.common.cluster"),
-		StepLogger:                       flogging.MustGetLogger("orderer.common.cluster.step"),
-		MinimumExpirationWarningInterval: cluster.MinimumExpirationWarningInterval,
-		MembershipByChannel:              make(map[string]*cluster.ChannelMembersConfig),
-		RequestHandler: &Ingress{
-			Logger: logger,
-		},
 	}
 
 	logger.Infof("SmartBFT-v3 is now servicing chain")
@@ -568,7 +557,7 @@ func (c *BFTChain) updateRuntimeConfig(block *cb.Block) types.Reconfig {
 	c.RuntimeConfig.Store(newRTC)
 	if protoutil.IsConfigBlock(block) {
 		c.Comm.Configure(c.Channel, newRTC.RemoteNodes)
-		c.clusterService.ConfigureNodeCerts(c.Channel, newRTC.consenters)
+		c.ClusterService.ConfigureNodeCerts(c.Channel, newRTC.consenters)
 		c.pruneBadRequests()
 	}
 

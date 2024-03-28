@@ -239,7 +239,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 
 	// refresh cluster service with updated consenters
 	c.ClusterService.ConfigureNodeCerts(chain.Channel, consenters)
-	chain.clusterService = c.ClusterService
+	chain.ClusterService = c.ClusterService
 
 	return chain, nil
 }
