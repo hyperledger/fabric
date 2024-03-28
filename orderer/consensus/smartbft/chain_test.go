@@ -195,7 +195,9 @@ func TestSyncNode(t *testing.T) {
 // 2. Submit a TX and wait for the TX to be received by all nodes
 // 3. Add new node to the network
 // 4. Submit a TX and wait for the TX to be received by all nodes
-func TestAddNode(t *testing.T) {
+// 5. Remove node from the network
+// 6. Submit a TX and wait for the TX to be received by all nodes
+func TestAddAndRemoveNode(t *testing.T) {
 	dir := t.TempDir()
 	channelId := "testchannel"
 
@@ -237,6 +239,38 @@ func TestAddNode(t *testing.T) {
 	require.NoError(t, err)
 	for _, node := range nodeMap {
 		node.State.WaitLedgerHeightToBe(4)
+	}
+
+	// get leader id and ask for the last config block
+	leaderId := networkSetupInfo.GetAgreedLeader()
+	lastConfigBlock := nodesMap[leaderId].GetConfigBlock(networkSetupInfo.configInfo.numsOfConfigBlocks[len(networkSetupInfo.configInfo.numsOfConfigBlocks)-1])
+
+	// stop the node that should be removed
+	nodeToRemove := nodesMap[uint64(5)]
+	nodeToRemove.Stop()
+
+	// send a new config block to all nodes, to remove node number 5
+	env = removeNodeFromConfig(t, lastConfigBlock, 5, networkSetupInfo.channelId)
+	err = networkSetupInfo.SendTxToAllAvailableNodes(env)
+	require.NoError(t, err)
+	for _, node := range nodeMap {
+		if node.NodeId == nodeToRemove.NodeId {
+			continue
+		}
+		node.State.WaitLedgerHeightToBe(5)
+	}
+
+	// remove node from the network
+	nodesMap = networkSetupInfo.RemoveNode(uint64(5))
+	require.Equal(t, len(nodesMap), 4)
+	require.Equal(t, len(networkSetupInfo.nodeIdToNode), 4)
+
+	// send a tx to all nodes again and wait the tx will be added to each ledger
+	env = createEndorserTxEnvelope("TEST_REMOVAL_OF_NODE", channelId)
+	err = networkSetupInfo.SendTxToAllAvailableNodes(env)
+	require.NoError(t, err)
+	for _, node := range nodeMap {
+		node.State.WaitLedgerHeightToBe(6)
 	}
 }
 
@@ -345,7 +379,7 @@ func generateNonce() []byte {
 	return nonceBuf.Bytes()
 }
 
-// addNodeToConfig creates a config block based on the last config block. It is useful for addition or removal of a node
+// addNodeToConfig creates a config block based on the last config block. It is useful for addition of a node
 func addNodeToConfig(t *testing.T, lastConfigBlock *cb.Block, nodeId uint32, tlsCA tlsgen.CA, certDir string, channelId string) *cb.Envelope {
 	// copy the last config block
 	clonedLastConfigBlock := proto.Clone(lastConfigBlock).(*cb.Block)
@@ -389,11 +423,96 @@ func addNodeToConfig(t *testing.T, lastConfigBlock *cb.Block, nodeId uint32, tls
 	// update organization endpoints
 	ordererEndpoints := configEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups["SampleOrg"].Values["Endpoints"].Value
 	ordererEndpointsVal := &cb.OrdererAddresses{}
-	proto.Unmarshal(ordererEndpoints, ordererEndpointsVal)
+	err = proto.Unmarshal(ordererEndpoints, ordererEndpointsVal)
+	require.NoError(t, err)
 	ordererAddresses := ordererEndpointsVal.Addresses
 	ordererAddresses = append(ordererAddresses, fmt.Sprintf("%s:%d", newOrderer.Host, newOrderer.Port))
 	configEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups["SampleOrg"].Values["Endpoints"].Value = protoutil.MarshalOrPanic(&cb.OrdererAddresses{
 		Addresses: ordererAddresses,
+	})
+
+	// increase the sequence
+	configEnv.Config.Sequence = configEnv.Config.Sequence + 1
+
+	// calculate config update tx
+	configUpdate, err := update.Compute(originalConfigEnv.Config, configEnv.Config)
+	require.NoError(t, err)
+	signerSerializer := smartBFTMocks.NewSignerSerializer(t)
+	signerSerializer.EXPECT().Serialize().RunAndReturn(
+		func() ([]byte, error) {
+			return []byte{1, 2, 3}, nil
+		}).Maybe()
+	signerSerializer.EXPECT().Sign(mock.Anything).RunAndReturn(
+		func(message []byte) ([]byte, error) {
+			return message, nil
+		}).Maybe()
+	configUpdateTx, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelId, signerSerializer, configUpdate, 0, 0)
+	require.NoError(t, err)
+
+	// return the updated Envelope
+	return &cb.Envelope{
+		Payload: protoutil.MarshalOrPanic(&cb.Payload{
+			Data: protoutil.MarshalOrPanic(&cb.ConfigEnvelope{
+				Config:     configEnv.Config,
+				LastUpdate: configUpdateTx,
+			}),
+			Header: &cb.Header{
+				ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
+					Type:      int32(cb.HeaderType_CONFIG),
+					ChannelId: channelId,
+				}),
+			},
+		}),
+	}
+}
+
+// removeNodeFromConfig creates a config block based on the last config block. It is useful for removal of a node
+func removeNodeFromConfig(t *testing.T, lastConfigBlock *cb.Block, nodeId uint32, channelId string) *cb.Envelope {
+	// copy the last config block
+	clonedLastConfigBlock := proto.Clone(lastConfigBlock).(*cb.Block)
+
+	// fetch the ConfigEnvelope from the block
+	env := protoutil.UnmarshalEnvelopeOrPanic(clonedLastConfigBlock.Data.Data[0])
+	payload := protoutil.UnmarshalPayloadOrPanic(env.Payload)
+	configEnv, err := protoutil.UnmarshalConfigEnvelope(payload.Data)
+	require.NoError(t, err)
+	originalConfigEnv := proto.Clone(configEnv).(*cb.ConfigEnvelope)
+
+	// update the consenter mapping to exclude the new node
+	currentOrderers := &cb.Orderers{}
+	err = proto.Unmarshal(configEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.OrderersKey].Value, currentOrderers)
+	require.NoError(t, err)
+	var newConsenterMapping []*cb.Consenter
+	var ordererAddress string
+	for i, consenter := range currentOrderers.ConsenterMapping {
+		if consenter.Id == nodeId {
+			newConsenterMapping = append(currentOrderers.ConsenterMapping[:i], currentOrderers.ConsenterMapping[i+1:]...)
+			ordererAddress = fmt.Sprintf("%s:%d", consenter.Host, consenter.Port)
+			break
+		}
+	}
+
+	currentOrderers.ConsenterMapping = newConsenterMapping
+	configEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.OrderersKey] = &cb.ConfigValue{
+		Version:   configEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.OrderersKey].Version + 1,
+		Value:     protoutil.MarshalOrPanic(currentOrderers),
+		ModPolicy: channelconfig.AdminsPolicyKey,
+	}
+
+	// update organization endpoints to exclude the node's endpoint
+	ordererEndpoints := configEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups["SampleOrg"].Values["Endpoints"].Value
+	ordererEndpointsVal := &cb.OrdererAddresses{}
+	err = proto.Unmarshal(ordererEndpoints, ordererEndpointsVal)
+	require.NoError(t, err)
+	ordererAddresses := ordererEndpointsVal.Addresses
+	var newOrdererAddresses []string
+	for i, address := range ordererAddresses {
+		if address == ordererAddress {
+			newOrdererAddresses = append(ordererAddresses[:i], ordererAddresses[i+1:]...)
+		}
+	}
+	configEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups["SampleOrg"].Values["Endpoints"].Value = protoutil.MarshalOrPanic(&cb.OrdererAddresses{
+		Addresses: newOrdererAddresses,
 	})
 
 	// increase the sequence
