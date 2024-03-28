@@ -579,7 +579,7 @@ The first step is to package the Basic chaincode:
 
 .. code:: bash
 
-    peer lifecycle chaincode package basic.tar.gz --path ../asset-transfer-basic/chaincode-go/ --lang golang --label basic_1
+    peer lifecycle chaincode package basic.tar.gz --path ../asset-transfer-basic/chaincode-go/ --lang golang --label basic_1.0.1
 
 This command will create a chaincode package named ``basic.tar.gz``, which we can
 install on the Org3 peer. Modify the command accordingly if the channel is running a
@@ -606,7 +606,7 @@ You should see output similar to the following:
 .. code:: bash
 
       Get installed chaincodes on peer:
-      Package ID: basic_1:5443b5b557efd3faece8723883d28d6f7026c0bf12245de109b89c5c4fe64887, Label: basic_1
+      Package ID: basic_1.0.1:650b7b4f5a8545d710651dc01edee8cf83518ef4b36a67a08be061ba14da653a, Label: basic_1.0.1
 
 We are going to need the package ID in a future command, so lets go ahead and
 save it as an environment variable. Paste the package ID returned by the
@@ -616,7 +616,7 @@ using the package ID returned from your console.
 
 .. code:: bash
 
-   export CC_PACKAGE_ID=basic_1:5443b5b557efd3faece8723883d28d6f7026c0bf12245de109b89c5c4fe64887
+   export CC_PACKAGE_ID=basic_1.0.1:650b7b4f5a8545d710651dc01edee8cf83518ef4b36a67a08be061ba14da653a
 
 Use the following command to approve a definition of the basic chaincode
 for Org3:
@@ -625,7 +625,7 @@ for Org3:
 
     # use the --package-id flag to provide the package identifier
     # use the --init-required flag to require the execution of an initialization function before other chaincode functions can be called.
-    peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" --channelID channel1 --name basic --version 1.0 --package-id $CC_PACKAGE_ID --sequence 1
+    peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" --channelID channel1 --name basic --version 1.0.1 --package-id $CC_PACKAGE_ID --sequence 1
 
 
 You can use the ``peer lifecycle chaincode querycommitted`` command to check if
@@ -642,7 +642,7 @@ A successful command will return information about the committed definition:
 .. code:: bash
 
     Committed chaincode definition for chaincode 'basic' on channel 'channel1':
-    Version: 1.0, Sequence: 1, Endorsement Plugin: escc, Validation Plugin: vscc, Approvals: [Org1MSP: true, Org2MSP: true, Org3MSP: true]
+    Version: 1.0.1, Sequence: 1, Endorsement Plugin: escc, Validation Plugin: vscc, Approvals: [Org1MSP: true, Org2MSP: true, Org3MSP: true]
 
 Org3 can use the basic chaincode after it approves the chaincode definition
 that was committed to the channel. The chaincode definition uses the default endorsement
