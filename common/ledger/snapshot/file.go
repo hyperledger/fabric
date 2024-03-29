@@ -64,7 +64,7 @@ func (c *FileWriter) EncodeString(str string) error {
 	return c.EncodeBytes([]byte(str))
 }
 
-// EncodeString encodes and appends a proto message to the data stream
+// EncodeProtoMessage encodes and appends a proto message to the data stream
 func (c *FileWriter) EncodeProtoMessage(m proto.Message) error {
 	b, err := proto.Marshal(m)
 	if err != nil {

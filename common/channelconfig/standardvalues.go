@@ -14,7 +14,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 )
 
-// DeserializeGroup deserializes the value for all values in a config group
+// DeserializeProtoValuesFromGroup deserializes the value for all values in a config group
 func DeserializeProtoValuesFromGroup(group *cb.ConfigGroup, protosStructs ...interface{}) error {
 	sv, err := NewStandardValues(protosStructs...)
 	if err != nil {

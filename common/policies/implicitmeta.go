@@ -26,7 +26,7 @@ type ImplicitMetaPolicy struct {
 	SubPolicyName string
 }
 
-// NewPolicy creates a new policy based on the policy bytes
+// NewImplicitMetaPolicy creates a new policy based on the policy bytes
 func NewImplicitMetaPolicy(data []byte, managers map[string]*ManagerImpl) (*ImplicitMetaPolicy, error) {
 	definition := &cb.ImplicitMetaPolicy{}
 	if err := proto.Unmarshal(data, definition); err != nil {
