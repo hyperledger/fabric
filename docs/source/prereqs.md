@@ -79,8 +79,7 @@ go version # => go1.21.9 darwin/amd64
 
 ### JQ
 
-Optional: Install the latest version of [jq](https://stedolan.github.io/jq/download/) if it is not already installed
-(only required for the tutorials related to channel configuration transactions).
+Install the latest version of [jq](https://stedolan.github.io/jq/download/) if it is not already installed, it's required for the tutorials that utilize the fabric-samples test-network.
 
 ```shell
 brew install jq

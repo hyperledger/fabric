@@ -41,7 +41,6 @@
 #   - publish-images - publishes release docker images to nexus3 or docker hub.
 #   - release-all - builds release packages for all target platforms
 #   - release - builds release packages for the host platform
-#   - tools-docker[-clean] - ensures the tools container is available[/cleaned]
 #   - unit-test-clean - cleans unit test state (particularly from docker)
 #   - unit-test - runs the go-test based unit tests
 #   - verify - runs unit tests for only the changed package tree
@@ -82,7 +81,7 @@ GO_VER = 1.21.9
 GO_TAGS ?=
 
 RELEASE_EXES = orderer $(TOOLS_EXES)
-RELEASE_IMAGES = baseos ccenv orderer peer tools
+RELEASE_IMAGES = baseos ccenv orderer peer
 RELEASE_PLATFORMS = darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64
 TOOLS_EXES = configtxgen configtxlator cryptogen discover ledgerutil osnadmin peer
 
@@ -237,7 +236,6 @@ $(BUILD_DIR)/images/baseos/$(DUMMY):  BUILD_CONTEXT=images/baseos
 $(BUILD_DIR)/images/ccenv/$(DUMMY):   BUILD_CONTEXT=images/ccenv
 $(BUILD_DIR)/images/peer/$(DUMMY):    BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
 $(BUILD_DIR)/images/orderer/$(DUMMY): BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
-$(BUILD_DIR)/images/tools/$(DUMMY):   BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
 
 $(BUILD_DIR)/images/%/$(DUMMY):
 	@echo "Building Docker image $(DOCKER_NS)/fabric-$*"

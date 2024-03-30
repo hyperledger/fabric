@@ -118,7 +118,7 @@ pullDockerImages() {
     command -v ${CONTAINER_CLI} >& /dev/null
     NODOCKER=$?
     if [ "${NODOCKER}" == 0 ]; then
-        FABRIC_IMAGES=(peer orderer ccenv tools)
+        FABRIC_IMAGES=(peer orderer ccenv)
         case "$VERSION" in
         [2-3].*)
             FABRIC_IMAGES+=(baseos)
