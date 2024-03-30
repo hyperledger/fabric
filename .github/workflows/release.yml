@@ -82,8 +82,6 @@ jobs:
             CONTEXT: .
           - COMPONENT: orderer
             CONTEXT: .
-          - COMPONENT: tools
-            CONTEXT: .
 
     steps:
       - name: Set up QEMU

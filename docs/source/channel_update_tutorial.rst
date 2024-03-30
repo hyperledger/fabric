@@ -174,11 +174,9 @@ This Docker Compose file has been configured to bridge across our initial networ
 so that the Org3 peer resolves with the existing peers and ordering
 node of the test network.
 
-.. note:: the `./addOrg3.sh up` command uses a `fabric-tools` CLI container to perform
-          the channel configuration update process demonstrated below. This is to avoid the
-          `jq` dependency requirement for first-time users. However, it is recommended to
-          follow the process below directly on your local machine instead of using the unnecessary
-          CLI container.
+.. note:: the `./addOrg3.sh up` command uses a `jq` CLI to perform
+          the channel configuration update process demonstrated. It is recommended to
+          follow the process below directly on your local machine.
 
 Fetch the Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~
