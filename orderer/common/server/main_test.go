@@ -409,6 +409,7 @@ func TestVerifyNoSystemChannel(t *testing.T) {
 	// skipping app channel
 	conf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	conf.Consortiums = nil
+	conf.Capabilities = map[string]bool{"V2_0": true}
 	configBlock := encoder.New(conf).GenesisBlock()
 	rl, err := rlf.GetOrCreate("appchannelid")
 	require.NoError(t, err)
@@ -418,6 +419,7 @@ func TestVerifyNoSystemChannel(t *testing.T) {
 
 	// detecting system channel genesis and panicking
 	conf = genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+	conf.Capabilities = map[string]bool{"V2_0": true}
 	configBlock = encoder.New(conf).GenesisBlock()
 	rl, err = rlf.GetOrCreate("testchannelid")
 	require.NoError(t, err)
@@ -968,6 +970,9 @@ func panicMsg(f func()) string {
 // produces a system channel genesis file to make sure the server detects it and refuses to start
 func produceGenesisFileEtcdRaft(t *testing.T, channelID string, tmpDir string) (string, []byte) {
 	confRaft := genesisconfig.Load("SampleEtcdRaftSystemChannel", tmpDir)
+	confRaft.Orderer.Addresses = []string{}
+	confRaft.Orderer.Organizations[0].OrdererEndpoints = []string{"127.0.0.1:7050"}
+	confRaft.Capabilities = map[string]bool{"V3_0": true}
 
 	serverCert, err := os.ReadFile(string(confRaft.Orderer.EtcdRaft.Consenters[0].ServerTlsCert))
 	require.NoError(t, err)
@@ -984,6 +989,9 @@ func produceGenesisFileEtcdRaft(t *testing.T, channelID string, tmpDir string) (
 
 func produceGenesisFileEtcdRaftAppChannel(t *testing.T, channelID string, tmpDir string) (string, []byte) {
 	confRaft := genesisconfig.Load("SampleOrgChannel", tmpDir)
+	confRaft.Orderer.Addresses = []string{}
+	confRaft.Orderer.Organizations[0].OrdererEndpoints = []string{"127.0.0.1:7050"}
+	confRaft.Capabilities = map[string]bool{"V3_0": true}
 
 	serverCert, err := os.ReadFile(string(confRaft.Orderer.EtcdRaft.Consenters[0].ServerTlsCert))
 	require.NoError(t, err)

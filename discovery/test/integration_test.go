@@ -666,6 +666,7 @@ func createChannelConfig(t *testing.T, cryptoConfigDir string) *common.Config {
 	// Override the MSP directories
 	for _, org := range channelConfig.Orderer.Organizations {
 		org.MSPDir = filepath.Join(cryptoConfigDir, "ordererOrganizations", "example.com", "msp")
+		org.OrdererEndpoints = []string{"orderer.example.com:7050"}
 	}
 	for i, org := range channelConfig.Application.Organizations {
 		if org.MSPType != "bccsp" {
