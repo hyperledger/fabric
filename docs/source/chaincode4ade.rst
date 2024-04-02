@@ -25,7 +25,7 @@ visit the :doc:`deploy_chaincode` tutorial and the :doc:`chaincode_lifecycle`
 concept topic.
 
 This tutorial provides an overview of the high level APIs provided by the Fabric Contract API.
-To learn more about developing smart contracts using the Fabric contract API, visit the :doc:`developapps/smartcontract` topic.
+To learn more about developing smart contracts using the Fabric contract API, visit the :doc:`sdk_chaincode` topic.
 
 Fabric Contract API
 -------------------
