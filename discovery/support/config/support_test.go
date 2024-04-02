@@ -65,6 +65,7 @@ func TestMSPIDMapping(t *testing.T) {
 	for _, org := range ordererConfig.Orderer.Organizations {
 		org.MSPDir = filepath.Join(cryptoConfigDir, "ordererOrganizations", "example.com", "msp")
 		org.Name = randString()
+		org.OrdererEndpoints = []string{"foo:7050", "bar:8050"}
 	}
 
 	// Randomize organization names

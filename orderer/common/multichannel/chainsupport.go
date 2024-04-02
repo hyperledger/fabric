@@ -161,6 +161,9 @@ func (cs *ChainSupport) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEn
 	}
 
 	if err = cs.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, false); err != nil {
+		if env.Config.ChannelGroup.Values["OrdererAddressesKey"] != nil && env.Config.ChannelGroup.Values["OrdererAddressesKey"].Value == nil {
+			return nil, errors.WithMessage(err, "consensus metadata update for channel config update is invalid since it includes global level endpoints which are not supported in V3.0")
+		}
 		return nil, errors.WithMessage(err, "consensus metadata update for channel config update is invalid")
 	}
 	return env, nil

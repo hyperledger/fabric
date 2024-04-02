@@ -1117,7 +1117,6 @@ func (c *Chain) detectConfChange(block *common.Block) *MembershipChanges {
 	// propose raft ConfChange if it adds/removes node.
 	c.logger.Infof("Detected configuration change")
 
-	// if the consensusType is bft, then configMetadata which represents the raft metadata should be nil
 	configMetadata, consensusType := c.newConfigMetadata(block)
 	c.logger.Infof("Detected configuration change: consensusType is: %s, configMetadata is: %v", consensusType, configMetadata)
 
@@ -1468,7 +1467,13 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 
 	if newOrdererConfig.ConsensusType() != "etcdraft" {
 		if newOrdererConfig.ConsensusType() == "BFT" {
-			// This is a migration, so we don't know how to validate this config change.
+			// This is a migration, so we have to validate the config change and make sure that endpoints per org are configured
+			for _, org := range newOrdererConfig.Organizations() {
+				if org.Endpoints() == nil {
+					c.logger.Panicf("illegal orderer config detected during consensus metadata validation: endpoints of org %s are missing", org.Name())
+					return errors.Errorf("illegal orderer config detected during consensus metadata validation: endpoints of org %s are missing", org.Name())
+				}
+			}
 			return nil
 		} else {
 			c.logger.Panicf("illegal consensus type detected during consensus metadata validation: %s", newOrdererConfig.ConsensusType())

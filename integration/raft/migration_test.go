@@ -15,6 +15,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hyperledger/fabric/common/channelconfig"
+
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger-labs/SmartBFT/pkg/types"
@@ -128,9 +130,21 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			block := FetchBlock(network, o1, 1, "testchannel")
 			Expect(block).NotTo(BeNil())
 
+			peer := network.Peer("Org1", "peer0")
+
+			By("Config update with global level endpoints")
+			config := nwo.GetConfig(network, peer, o1, "testchannel")
+			clonedConfig := proto.Clone(config).(*common.Config)
+			addGlobalLevelEndpointsToConfig(clonedConfig)
+			updateOrdererConfigFailed(network, o1, "testchannel", config, clonedConfig, peer, o1, o2)
+
+			// By("Config update with empty endpoints per organization")
+			// clonedConfig = proto.Clone(config).(*common.Config)
+			// cleanEndpointsPerOrgFromConfig(clonedConfig)
+			// updateOrdererConfigFailed(network, o1, "testchannel", config, clonedConfig, peer, o1)
+
 			// === Step 3: Config update on standard channel, State=MAINTENANCE, enter maintenance-mode ===
 			By("3) Change to maintenance mode")
-			peer := network.Peer("Org1", "peer0")
 			config, updatedConfig := prepareTransition(network, peer, o1, "testchannel",
 				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,
 				"etcdraft", nil, protosorderer.ConsensusType_STATE_MAINTENANCE, 0)
@@ -824,4 +838,18 @@ func prepareInvalidBftMetadata() *smartbft.Options {
 		SpeedUpViewChange:         types.DefaultConfig.SpeedUpViewChange,
 	}
 	return bftMetadata
+}
+
+func addGlobalLevelEndpointsToConfig(config *common.Config) {
+	globalEndpoint := []string{"127.0.0.1:7050"}
+	config.ChannelGroup.Values[channelconfig.OrdererAddressesKey] = &common.ConfigValue{
+		Value: protoutil.MarshalOrPanic(&common.OrdererAddresses{
+			Addresses: globalEndpoint,
+		}),
+		ModPolicy: "/Channel/Orderer/Admins",
+	}
+}
+
+func cleanEndpointsPerOrgFromConfig(config *common.Config) {
+	config.ChannelGroup.Groups["Orderer"].Groups["OrdererOrg"].Values[channelconfig.EndpointsKey] = &common.ConfigValue{ModPolicy: channelconfig.AdminsPolicyKey}
 }
