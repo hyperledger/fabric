@@ -1900,6 +1900,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			for i := range network.Orderers {
 				wg.Add(1)
 				go func(ccid int) {
+					defer GinkgoRecover()
 					defer wg.Done()
 					resp, err := ordererclient.Broadcast(network, network.Orderers[ccid], ctxEnv)
 					Expect(err).NotTo(HaveOccurred())
