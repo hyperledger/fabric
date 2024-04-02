@@ -145,7 +145,7 @@ If you’ve read through the key concept topic on :doc:`peers/peers`, you should
 
 These roles are important to understand before you create a peer, as they will influence your customization and deployment decisions. For a look at the various decisions you will need to make, check out :doc:`deploypeer/peerplan`.
 
-The configuration values in a peer's ``core.yaml`` file must be customized or overridden with environment variables. You can find the default ``core.yaml`` configuration file `in the sampleconfig directory of Hyperledger Fabric <https://github.com/hyperledger/fabric/blob/main/sampleconfig/core.yaml>`_. This configuration file is bundled with the peer image and is also included with the downloadable binaries. For information about how to download the production ``core.yaml`` along with the peer image, check out :doc:`deploypeer/peerdeploy`.
+The configuration values in a peer's ``core.yaml`` file must be customized or overridden with environment variables. You can find the default ``core.yaml`` configuration file `in the sampleconfig directory of Hyperledger Fabric <https://github.com/hyperledger/fabric/blob/main/sampleconfig/core.yaml>`__. This configuration file is bundled with the peer image and is also included with the downloadable binaries. For information about how to download the production ``core.yaml`` along with the peer image, check out :doc:`deploypeer/peerdeploy`.
 
 While there are many parameters in the default ``core.yaml``, you will only need to customize a small percentage of them. In general, if you do not have the need to change a tuning value, keep the default value.
 
@@ -207,7 +207,7 @@ Note: This tutorial assumes that a system channel genesis block will not be used
 Next steps
 ----------
 
-Blockchain networks are all about connection, so once you've deployed nodes, you'll obviously want to connect them to other nodes! If you have a peer organization and a peer, you'll want to join your organization to a consortium and join or :doc:`create_channel/create_channel_participation`. If you have an ordering node, you will want to add peer organizations to your consortium. You'll also want to learn how to develop chaincode, which you can learn about in the topics :doc:`developapps/scenario` and :doc:`chaincode4ade`.
+Blockchain networks are all about connection, so once you've deployed nodes, you'll obviously want to connect them to other nodes! If you have a peer organization and a peer, you'll want to join your organization to a consortium and join or :doc:`create_channel/create_channel_participation`. If you have an ordering node, you will want to add peer organizations to your consortium. You'll also want to learn how to develop chaincode, which you can learn about in the topics :doc:`smartcontract/smartcontract` and :doc:`chaincode4ade`.
 
 Part of the process of connecting nodes and creating channels will involve modifying policies to fit the use cases of business networks. For more information about policies, check out :doc:`policies/policies`.
 
