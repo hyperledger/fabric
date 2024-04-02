@@ -118,6 +118,7 @@ func doInspectChannelCreateTx(inspectChannelCreateTx string) error {
 func doPrintOrg(t *genesisconfig.TopLevel, printOrg string) error {
 	for _, org := range t.Organizations {
 		if org.Name == printOrg {
+			org.OrdererEndpoints = []string{"127.0.0.1:7050"}
 			og, err := encoder.NewOrdererOrgGroup(org)
 			if err != nil {
 				return errors.Wrapf(err, "bad org definition for org %s", org.Name)

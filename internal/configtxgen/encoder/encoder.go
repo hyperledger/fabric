@@ -142,7 +142,7 @@ func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
 	addValue(channelGroup, channelconfig.HashingAlgorithmValue(), channelconfig.AdminsPolicyKey)
 	addValue(channelGroup, channelconfig.BlockDataHashingStructureValue(), channelconfig.AdminsPolicyKey)
 	if conf.Orderer != nil && len(conf.Orderer.Addresses) > 0 {
-		addValue(channelGroup, channelconfig.OrdererAddressesValue(conf.Orderer.Addresses), ordererAdminsPolicyName)
+		return nil, errors.New("error adding global level endpoints to channel group, in V3.0 global level endpoints are not supported")
 	}
 
 	if conf.Consortium != "" {
@@ -329,6 +329,8 @@ func NewOrdererOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, erro
 
 	if len(conf.OrdererEndpoints) > 0 {
 		addValue(ordererOrgGroup, channelconfig.EndpointsValue(conf.OrdererEndpoints), channelconfig.AdminsPolicyKey)
+	} else {
+		return nil, errors.Errorf("orderer endpoints for organization %s are missing and must be cofigured", conf.Name)
 	}
 
 	return ordererOrgGroup, nil

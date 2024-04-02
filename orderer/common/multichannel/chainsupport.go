@@ -9,6 +9,7 @@ package multichannel
 import (
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
@@ -149,6 +150,23 @@ func (cs *ChainSupport) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEn
 		return nil, err
 	}
 
+	isOldV3 := cs.ChannelConfig().Capabilities().ConsensusTypeBFT()
+	isNewV3 := bundle.ChannelConfig().Capabilities().ConsensusTypeBFT()
+
+	// if we move from V2 to V3 we need the check the org endpoints, if one of them is empty return an error
+	if !isOldV3 && isNewV3 {
+		orderer, err := bundle.OrdererConfig()
+		if err {
+			return nil, errors.New("new config is missing orderer group")
+		}
+
+		for _, org := range orderer.Organizations() {
+			if len(org.Endpoints()) == 0 {
+				return nil, errors.Errorf("illegal orderer config detected during consensus metadata validation: endpoints of org %s are missing", org.Name())
+			}
+		}
+	}
+
 	oldOrdererConfig, ok := cs.OrdererConfig()
 	if !ok {
 		logger.Panic("old config is missing orderer group")
@@ -163,6 +181,11 @@ func (cs *ChainSupport) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEn
 	if err = cs.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, false); err != nil {
 		return nil, errors.WithMessage(err, "consensus metadata update for channel config update is invalid")
 	}
+
+	if env.Config.ChannelGroup.Values[channelconfig.OrdererAddressesKey] != nil && len(env.Config.ChannelGroup.Values[channelconfig.OrdererAddressesKey].Value) > 0 {
+		return nil, errors.Errorf("consensus metadata update for channel config update is invalid since it includes global level endpoints which are not supported in V3.0")
+	}
+
 	return env, nil
 }
 

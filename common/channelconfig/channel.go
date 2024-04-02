@@ -180,7 +180,8 @@ func (cc *ChannelConfig) Validate(channelCapabilities ChannelCapabilities) error
 		}
 	}
 
-	if !channelCapabilities.OrgSpecificOrdererEndpoints() {
+	// we check orderer addresses only if we are not in V3.0
+	if !channelCapabilities.OrgSpecificOrdererEndpoints() && !channelCapabilities.ConsensusTypeBFT() {
 		return cc.validateOrdererAddresses()
 	}
 
