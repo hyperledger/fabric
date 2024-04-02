@@ -140,6 +140,7 @@ The test network uses the default policies provided by Fabric, which require tha
 
 The `configtxgen` tool reads the channel profiles in the **Profiles** section to build a channel configuration. Each profile uses YAML syntax to gather data from other sections of the file. The `configtxgen` tool uses this configuration to create a channel creation transaction for an applications channel, or to write the channel genesis block for a system channel. To learn more about YAML syntax, [Wikipedia](https://en.wikipedia.org/wiki/YAML) provides a good place to get started.
 
+<<<<<<< HEAD
 The `configtx.yaml` used by the test network contains two channel profiles, `TwoOrgsOrdererGenesis` and `TwoOrgsChannel`. If you want to create a channel without a system channel by using the `osnadmin CLI` then you can refer to the `SampleAppChannelEtcdRaft`
 
 ### TwoOrgsOrdererGenesis
@@ -159,6 +160,24 @@ TwoOrgsOrdererGenesis:
             Organizations:
                 - *Org1
                 - *Org2
+=======
+The `configtx.yaml` used by the test network contains one channel profile `ChannelUsingRaft`.
+The `ChannelUsingRaft` profile is used by the test network to create application channels:
+```yaml
+ChannelUsingRaft:
+  <<: *ChannelDefaults
+  Orderer:
+    <<: *OrdererDefaults
+    Organizations:
+      - *OrdererOrg
+    Capabilities: *OrdererCapabilities
+  Application:
+    <<: *ApplicationDefaults
+    Organizations:
+      - *Org1
+      - *Org2
+    Capabilities: *ApplicationCapabilities
+>>>>>>> 4dd4445ae (update variable name in create a channel doc)
 ```
 
 The system channel defines the nodes of the ordering service and the set of organizations that are ordering service administrators. The system channel also includes a set of peer organizations that belong to the blockchain [consortium](../glossary.html#consortium). The channel MSP of each member of the consortium is included in the system channel, allowing them to create new application channels and add consortium members to the new channel.
