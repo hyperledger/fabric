@@ -979,7 +979,6 @@ the collection JSON file.
 .. note:: It is not possible to create an index for use with an implicit private data collection.
           An implicit collection is based on the organizations name and is created automatically. The format of the name
           is ``_implicit_org_<OrgsMSPid>``
-          Please see `FAB-17916 <https://jira.hyperledger.org/browse/FAB-17916>`__ for more information.
 
 Clean up
 --------
