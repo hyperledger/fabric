@@ -51,6 +51,7 @@ var _ = Describe("Integration", func() {
 	DescribeTable("successfully parses the profile",
 		func(profile string) {
 			config := genesisconfig.Load(profile, configtest.GetDevConfigDir())
+			config.Capabilities = map[string]bool{"V2_0": true}
 			group, err := encoder.NewChannelGroup(config)
 			Expect(err).NotTo(HaveOccurred())
 

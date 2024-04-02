@@ -242,7 +242,6 @@ var _ = Describe("Encoder", func() {
 				Orderer: &genesisconfig.Orderer{
 					OrdererType: "solo",
 					Policies:    CreateStandardOrdererPolicies(),
-					Addresses:   []string{"foo.com:7050", "bar.com:8050"},
 				},
 				Consortiums: map[string]*genesisconfig.Consortium{
 					"SampleConsortium": {},
@@ -256,12 +255,12 @@ var _ = Describe("Encoder", func() {
 		It("translates the config into a config group", func() {
 			cg, err := encoder.NewChannelGroup(conf)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(cg.Values)).To(Equal(5))
+			Expect(len(cg.Values)).To(Equal(4))
 			Expect(cg.Values["BlockDataHashingStructure"]).NotTo(BeNil())
 			Expect(cg.Values["Consortium"]).NotTo(BeNil())
 			Expect(cg.Values["Capabilities"]).NotTo(BeNil())
 			Expect(cg.Values["HashingAlgorithm"]).NotTo(BeNil())
-			Expect(cg.Values["OrdererAddresses"]).NotTo(BeNil())
+			Expect(cg.Values["OrdererAddresses"]).To(BeNil())
 		})
 
 		Context("when the policy definition is bad", func() {
@@ -351,11 +350,12 @@ var _ = Describe("Encoder", func() {
 				OrdererType: "solo",
 				Organizations: []*genesisconfig.Organization{
 					{
-						MSPDir:   "../../../sampleconfig/msp",
-						ID:       "SampleMSP",
-						MSPType:  "bccsp",
-						Name:     "SampleOrg",
-						Policies: CreateStandardPolicies(),
+						MSPDir:           "../../../sampleconfig/msp",
+						ID:               "SampleMSP",
+						MSPType:          "bccsp",
+						Name:             "SampleOrg",
+						Policies:         CreateStandardPolicies(),
+						OrdererEndpoints: []string{"foo:7050", "bar:8050"},
 					},
 				},
 				Policies: CreateStandardOrdererPolicies(),
@@ -692,8 +692,8 @@ var _ = Describe("Encoder", func() {
 
 			It("does not include the endpoints in the config group", func() {
 				cg, err := encoder.NewOrdererOrgGroup(conf)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(cg.Values["Endpoints"]).To(BeNil())
+				Expect(err).To(HaveOccurred())
+				Expect(cg).To(BeNil())
 			})
 		})
 

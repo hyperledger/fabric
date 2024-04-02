@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
@@ -30,37 +31,44 @@ func TestWithRealConfigtx(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TODO: maybe add more test cases
 func TestOrgSpecificOrdererEndpoints(t *testing.T) {
-	t.Run("Without_Capability", func(t *testing.T) {
+	t.Run("could not create channel orderer config with empty organization endpoints", func(t *testing.T) {
 		conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
-		conf.Orderer.Addresses = []string{"127.0.0.1:7050"}
-		conf.Capabilities = map[string]bool{"V1_3": true}
+		// NOTE: conf.Capability is V3_0, one organization, conf.Orderer.Addresses (global endpoints) is empty, organization endpoints is not empty
 
 		cg, err := encoder.NewChannelGroup(conf)
 		require.NoError(t, err)
 
+		cg.Groups["Orderer"].Groups["SampleOrg"].Values[channelconfig.EndpointsKey] = &common.ConfigValue{ModPolicy: channelconfig.AdminsPolicyKey}
+
 		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		require.NoError(t, err)
 		_, err = channelconfig.NewChannelConfig(cg, cryptoProvider)
-		require.EqualError(t, err, "could not create channel Orderer sub-group config: Orderer Org SampleOrg cannot contain endpoints value until V1_4_2+ capabilities have been enabled")
+		require.EqualError(t, err, "could not create channel Orderer sub-group config: all orderer organizations endpoints are empty")
 	})
 
-	t.Run("Without_Capability_NoOSNs", func(t *testing.T) {
+	t.Run("could not create channelgroup with empty organization endpoints", func(t *testing.T) {
 		conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
-		conf.Capabilities = map[string]bool{"V1_3": true}
+		conf.Capabilities = map[string]bool{"V3_0": true}
 		conf.Orderer.Organizations[0].OrdererEndpoints = nil
 		conf.Orderer.Addresses = []string{}
 
 		cg, err := encoder.NewChannelGroup(conf)
+		require.Nil(t, cg)
+		require.EqualError(t, err, "could not create orderer group: failed to create orderer org: orderer endpoints for organization SampleOrg are missing and must be cofigured")
+
+		conf.Orderer.Organizations[0].OrdererEndpoints = []string{"127.0.0.1:7050"}
+		cg, err = encoder.NewChannelGroup(conf)
 		require.NoError(t, err)
 
 		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		require.NoError(t, err)
 		_, err = channelconfig.NewChannelConfig(cg, cryptoProvider)
-		require.EqualError(t, err, "Must set some OrdererAddresses")
+		require.NoError(t, err)
 	})
 
-	t.Run("With_Capability", func(t *testing.T) {
+	t.Run("With_V2_Capability", func(t *testing.T) {
 		conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
 		conf.Capabilities = map[string]bool{"V2_0": true}
 		require.NotEmpty(t, conf.Orderer.Organizations[0].OrdererEndpoints)
