@@ -75,7 +75,7 @@ func (mp *MetadataProvider) PackageMetadata(ccid string) ([]byte, error) {
 		if err != nil {
 			return errors.WithMessage(err, "could not open file")
 		}
-
+		defer data.Close()
 		if _, err := io.Copy(tw, data); err != nil {
 			return errors.WithMessage(err, "could not copy file into tar")
 		}
