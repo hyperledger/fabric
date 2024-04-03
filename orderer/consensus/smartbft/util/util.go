@@ -70,6 +70,8 @@ func ConfigFromMetadataOptions(selfID uint64, options *smartbft.Options) (types.
 
 	if options.RequestMaxBytes == 0 {
 		config.RequestMaxBytes = config.RequestBatchMaxBytes
+	} else {
+		config.RequestMaxBytes = options.RequestMaxBytes
 	}
 
 	return config, nil
