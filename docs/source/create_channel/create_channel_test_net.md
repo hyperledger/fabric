@@ -100,16 +100,23 @@ This `configtx.yaml` file contains the following information that we will use to
     ChannelUsingRaft:
         <<: *ChannelDefaults
         Orderer:
-            <<: *OrdererDefaults
-            Organizations:
-                - *OrdererOrg
-            Capabilities: *OrdererCapabilities
+        <<: *OrdererDefaults
+        OrdererType: etcdraft
+        EtcdRaft:
+            Consenters:
+            - Host: orderer.example.com
+                Port: 7050
+                ClientTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+                ServerTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+        Organizations:
+            - *OrdererOrg
+        Capabilities: *OrdererCapabilities
         Application:
-            <<: *ApplicationDefaults
-            Organizations:
-                - *Org1
-                - *Org2
-            Capabilities: *ApplicationCapabilities
+        <<: *ApplicationDefaults
+        Organizations:
+            - *Org1
+            - *Org2
+        Capabilities: *ApplicationCapabilities
     ```
 
 The profile includes both peer organizations, `Org1` and `Org2` as well as the ordering organization `OrdererOrg`. Additional ordering nodes and ordering organizations can be added or removed from the consenter set at a later time using a channel update transaction.
