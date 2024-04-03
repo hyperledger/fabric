@@ -91,6 +91,7 @@ func NewChannelConfig(channelGroup *cb.ConfigGroup, bccsp bccsp.BCCSP) (*Channel
 
 	channelCapabilities := cc.Capabilities()
 
+	// TODO: this cause conflicts in tests
 	if err := cc.Validate(channelCapabilities); err != nil {
 		return nil, err
 	}

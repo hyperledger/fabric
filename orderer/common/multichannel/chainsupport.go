@@ -9,6 +9,7 @@ package multichannel
 import (
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
@@ -161,11 +162,13 @@ func (cs *ChainSupport) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEn
 	}
 
 	if err = cs.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, false); err != nil {
-		if env.Config.ChannelGroup.Values["OrdererAddressesKey"] != nil && env.Config.ChannelGroup.Values["OrdererAddressesKey"].Value == nil {
-			return nil, errors.WithMessage(err, "consensus metadata update for channel config update is invalid since it includes global level endpoints which are not supported in V3.0")
-		}
 		return nil, errors.WithMessage(err, "consensus metadata update for channel config update is invalid")
 	}
+
+	if env.Config.ChannelGroup.Values[channelconfig.OrdererAddressesKey] != nil && len(env.Config.ChannelGroup.Values[channelconfig.OrdererAddressesKey].Value) > 0 {
+		return nil, errors.Errorf("consensus metadata update for channel config update is invalid since it includes global level endpoints which are not supported in V3.0")
+	}
+
 	return env, nil
 }
 

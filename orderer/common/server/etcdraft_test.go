@@ -26,6 +26,7 @@ func nextPort() int32 {
 	return atomic.AddInt32(&basePort, 1)
 }
 
+// TODO: explore why fail
 func TestSpawnEtcdRaft(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
@@ -102,6 +103,7 @@ func generateBootstrapBlock(gt *GomegaWithT, tempDir, configtxgen, channel, prof
 		"-outputBlock", genesisBlockPath,
 		"--configPath", tempDir,
 	)
+
 	configtxgenProcess, err := gexec.Start(cmd, nil, nil)
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Eventually(configtxgenProcess, time.Minute).Should(gexec.Exit(0))
@@ -290,6 +292,7 @@ func testEtcdRaftOSNNoTLSDualListener(gt *GomegaWithT, configPath, orderer strin
 		"FABRIC_LOGGING_SPEC=info",
 	}
 	ordererProcess, err := gexec.Start(cmd, nil, nil)
+	fmt.Printf("Hwlloooo 2\n")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer func() { gt.Eventually(ordererProcess.Kill(), time.Minute).Should(gexec.Exit()) }()
 

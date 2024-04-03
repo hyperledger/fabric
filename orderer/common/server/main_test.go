@@ -360,6 +360,7 @@ func TestVerifyNoSystemChannelJoinBlock(t *testing.T) {
 		require.NotNil(t, fileRepo)
 
 		genesisBytes, err = os.ReadFile(genesisFile)
+		fmt.Printf("genesisBytes are: %v", genesisBytes)
 		require.NoError(t, err)
 		require.NotNil(t, genesisBytes)
 	}
@@ -372,7 +373,7 @@ func TestVerifyNoSystemChannelJoinBlock(t *testing.T) {
 
 	t.Run("With genesis join-block", func(t *testing.T) {
 		setup()
-
+		// TODO: why the test is affected by the changes to the produceGenesisFileEtcdRaft func that adds endpoints + remove the globals
 		err := fileRepo.Save("testchannelid", genesisBytes)
 		require.NoError(t, err)
 		require.Panics(t, func() { verifyNoSystemChannelJoinBlock(config, cryptoProvider) })
@@ -554,6 +555,7 @@ func generateCryptoMaterials(t *testing.T, cryptogen, tmpDir string) string {
 	return cryptoPath
 }
 
+// TODO: this test is in conflict with our new requirements
 func TestUpdateTrustedRoots(t *testing.T) {
 	configtest.SetDevFabricConfigPath(t)
 
@@ -968,6 +970,8 @@ func panicMsg(f func()) string {
 // produces a system channel genesis file to make sure the server detects it and refuses to start
 func produceGenesisFileEtcdRaft(t *testing.T, channelID string, tmpDir string) (string, []byte) {
 	confRaft := genesisconfig.Load("SampleEtcdRaftSystemChannel", tmpDir)
+	confRaft.Orderer.Addresses = []string{}
+	confRaft.Orderer.Organizations[0].OrdererEndpoints = []string{"127.0.0.1:7050"}
 
 	serverCert, err := os.ReadFile(string(confRaft.Orderer.EtcdRaft.Consenters[0].ServerTlsCert))
 	require.NoError(t, err)
@@ -984,6 +988,8 @@ func produceGenesisFileEtcdRaft(t *testing.T, channelID string, tmpDir string) (
 
 func produceGenesisFileEtcdRaftAppChannel(t *testing.T, channelID string, tmpDir string) (string, []byte) {
 	confRaft := genesisconfig.Load("SampleOrgChannel", tmpDir)
+	confRaft.Orderer.Addresses = []string{}
+	confRaft.Orderer.Organizations[0].OrdererEndpoints = []string{"127.0.0.1:7050"}
 
 	serverCert, err := os.ReadFile(string(confRaft.Orderer.EtcdRaft.Consenters[0].ServerTlsCert))
 	require.NoError(t, err)

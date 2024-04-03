@@ -243,6 +243,24 @@ func UpdateOrdererConfigSession(n *Network, orderer *Orderer, channel string, cu
 	return sess
 }
 
+func UpdatePeerConfigSession(n *Network, orderer *Orderer, channel string, current, updated *common.Config, submitter *Peer, additionalSigners ...*Peer) *gexec.Session {
+	tempDir, err := os.MkdirTemp(n.RootDir, "updateConfig")
+	Expect(err).NotTo(HaveOccurred())
+	updateFile := filepath.Join(tempDir, "update.pb")
+
+	ComputeUpdateOrdererConfig(updateFile, n, channel, current, updated, submitter, orderer)
+
+	// session should not return with a zero exit code nor with a success response
+	sess, err := n.PeerAdminSession(submitter, commands.ChannelUpdate{
+		ChannelID:  channel,
+		Orderer:    n.OrdererAddress(orderer, ListenPort),
+		File:       updateFile,
+		ClientAuth: n.ClientAuthRequired,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	return sess
+}
+
 func ComputeUpdateOrdererConfig(updateFile string, n *Network, channel string, current, updated *common.Config, submitter *Peer, additionalSigners ...*Orderer) {
 	// compute update
 	configUpdate, err := update.Compute(current, updated)

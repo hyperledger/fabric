@@ -31,6 +31,7 @@ func TestWithRealConfigtx(t *testing.T) {
 }
 
 func TestOrgSpecificOrdererEndpoints(t *testing.T) {
+	// TODO: check how we want it to beahve
 	t.Run("Without_Capability", func(t *testing.T) {
 		conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
 		conf.Orderer.Addresses = []string{"127.0.0.1:7050"}
