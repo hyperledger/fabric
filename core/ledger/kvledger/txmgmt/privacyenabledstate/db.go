@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-lib-go/common/metrics"
 	"github.com/hyperledger/fabric-lib-go/healthz"
+	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
@@ -23,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 )
 
 var logger = flogging.MustGetLogger("privacyenabledstate")
@@ -31,6 +33,10 @@ const (
 	nsJoiner       = "$$"
 	pvtDataPrefix  = "p"
 	hashDataPrefix = "h"
+)
+
+const (
+	allImplicitCollectionNotation string = "*"
 )
 
 // StateDBConfig encapsulates the configuration for stateDB on the ledger.
@@ -124,12 +130,13 @@ func (p *DBProvider) Drop(ledgerid string) error {
 type DB struct {
 	statedb.VersionedDB
 	metadataHint *metadataHint
+	localMspId   string
 }
 
 // NewDB wraps a VersionedDB instance. The public data is managed directly by the wrapped versionedDB.
 // For managing the hashed data and private data, this implementation creates separate namespaces in the wrapped db
 func NewDB(vdb statedb.VersionedDB, ledgerid string, metadataHint *metadataHint) (*DB, error) {
-	return &DB{vdb, metadataHint}, nil
+	return &DB{vdb, metadataHint, viper.GetString("peer.localMspId")}, nil
 }
 
 // IsBulkOptimizable checks whether the underlying statedb implements statedb.BulkOptimizable
@@ -330,9 +337,17 @@ func (s *DB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt.ChaincodeDef
 		case indexInfo.hasIndexForCollection:
 			_, ok := collectionConfigMap[indexInfo.collectionName]
 			if !ok {
-				logger.Errorf("Error processing index for chaincode [%s]: cannot create an index for an undefined collection=[%s]",
-					chaincodeDefinition.Name, indexInfo.collectionName)
-				continue
+				isImplicitCollection, collectionMspId := implicitcollection.MspIDIfImplicitCollection(indexInfo.collectionName)
+				if !isImplicitCollection {
+					logger.Errorf("Error processing index for chaincode [%s]: cannot create an index for an undefined collection=[%s]",
+						chaincodeDefinition.Name, indexInfo.collectionName)
+					continue
+				}
+				if collectionMspId != allImplicitCollectionNotation && collectionMspId != s.localMspId {
+					logger.Debugf("Skipped processing index of other org implicit collection=[%s] for chaincode [%s] ",
+						indexInfo.collectionName, chaincodeDefinition.Name)
+					continue
+				}
 			}
 			err := indexCapable.ProcessIndexesForChaincodeDeploy(derivePvtDataNs(chaincodeDefinition.Name, indexInfo.collectionName), indexFilesData)
 			if err != nil {

@@ -176,9 +176,11 @@ The properties ``requiredPeerCount`` and ``maxPeerCount`` can however be set in 
 can set these properties based on the number of peers that they deploy, as described
 in the next section.
 
-.. note:: Since implicit private data collections are not explicitly defined,
-          it is not possible to associate CouchDB indexes with them. Utilize
-          key-based queries and key-range queries rather than JSON queries.
+.. note:: 
+
+CouchDB indexes can be created to organisation specific implicit collections just like explicitly defined collections with indexes directory name `_implicit_org_<MSP_ID>`. Such indexes are only effective within the respective organization to which the implicit collection belongs.
+
+To create common indexes for implicit collection of all the organisations, the indexes directory should be named "_implicit_org_*".
 
 Private data dissemination
 --------------------------
@@ -361,9 +363,6 @@ Limitations:
   chaincode function to make the updates. Note that calls to GetPrivateData() to retrieve
   individual keys can be made in the same transaction as PutPrivateData() calls, since
   all peers can validate key reads based on the hashed key version.
-* Since implicit private data collections are not explicitly defined,
-  it is not possible to associate CouchDB indexes with them.
-  It is therefore not recommended to utilize JSON queries with implicit private data collections.
 
 Using Indexes with collections
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
