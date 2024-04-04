@@ -181,7 +181,7 @@ func (cc *ChannelConfig) Validate(channelCapabilities ChannelCapabilities) error
 		}
 	}
 
-	if !channelCapabilities.OrgSpecificOrdererEndpoints() {
+	if !channelCapabilities.OrgSpecificOrdererEndpoints() && !channelCapabilities.ConsensusTypeBFT() {
 		return cc.validateOrdererAddresses()
 	}
 

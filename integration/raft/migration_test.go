@@ -87,7 +87,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			networkConfig := nwo.MultiNodeEtcdRaft()
 			networkConfig.Orderers = append(networkConfig.Orderers, &nwo.Orderer{Name: "orderer4", Organization: "OrdererOrg"})
 			networkConfig.Profiles[0].Orderers = []string{"orderer1", "orderer2", "orderer3", "orderer4"}
-
+			networkConfig.Profiles[0].ChannelCapabilities = append(networkConfig.Profiles[0].ChannelCapabilities, "V3_0")
 			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
 
 			o1, o2, o3, o4 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3"), network.Orderer("orderer4")
@@ -99,6 +99,11 @@ var _ = Describe("ConsensusTypeMigration", func() {
 				o2Runner = network.OrdererRunner(o2)
 				o3Runner = network.OrdererRunner(o3)
 				o4Runner = network.OrdererRunner(o4)
+
+				o1Runner.Command.Env = append(o1Runner.Command.Env, "FABRIC_LOGGING_SPEC=debug")
+				//o2Runner.Command.Env = append(o2Runner.Command.Env, "FABRIC_LOGGING_SPEC=debug")
+				//o3Runner.Command.Env = append(o3Runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.common.cluster=debug:orderer.consensus.smartbft=debug:policies.ImplicitOrderer=debug")
+				//o4Runner.Command.Env = append(o4Runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.common.cluster=debug:orderer.consensus.smartbft=debug:policies.ImplicitOrderer=debug")
 
 				o1Proc = ifrit.Invoke(o1Runner)
 				o2Proc = ifrit.Invoke(o2Runner)
@@ -129,25 +134,18 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			peer := network.Peer("Org1", "peer0")
 			peer2 := network.Peer("Org2", "peer0")
 
-			// ==========================================================================
-			// TODO: solve the err in the log:
-			// [e][peer-channel-update] Error: got unexpected status: BAD_REQUEST -- error applying config update to existing channel 'testchannel': error authorizing update: error validating DeltaSet: policy for [Group] /Channel not satisfied: implicit policy evaluation failed - 1 sub-policies were satisfied, but this policy requires 2 of the 'Admins' sub-policies to be satisfied
+			// config update that should fail
 			By("Config update with global level endpoints")
 			config := nwo.GetConfig(network, peer, o1, "testchannel")
 			updatedConfig := proto.Clone(config).(*common.Config)
 			addGlobalLevelEndpointsToConfig(updatedConfig)
-
 			updateOrdererEndpointsConfigFails(network, o1, "testchannel", config, updatedConfig, peer, peer, peer2)
 
-			// By("Config update with empty endpoints per organization")
-			// clonedConfig = proto.Clone(config).(*common.Config)
-			// cleanEndpointsPerOrgFromConfig(clonedConfig)
-			// updateOrdererConfigFailed(network, o1, "testchannel", config, clonedConfig, peer, o1)
-
-			// TODO: nwo.UpdateConfig is using the peers as additional signers, using this method leads to the same problem
-			// nwo.UpdateConfig(network, o1, "testchannel", currentConfig, updatedConfig, true, peer, peer, peer2)
-
-			// ============================================================================
+			// config update that succeeds but cause a failure during the migration step
+			By("Config update with empty endpoints per organization")
+			updatedConfig = proto.Clone(config).(*common.Config)
+			cleanEndpointsPerOrgFromConfig(updatedConfig)
+			updateOrdererOrgEndpointsConfigSucceeds(network, o1, "testchannel", config, updatedConfig, peer, peer, peer2)
 
 			// === Step 3: Config update on standard channel, State=MAINTENANCE, enter maintenance-mode ===
 			By("3) Change to maintenance mode")
@@ -161,6 +159,22 @@ var _ = Describe("ConsensusTypeMigration", func() {
 
 			bftMetadata := protoutil.MarshalOrPanic(prepareBftMetadata())
 
+			// NOTE: migration should fail since there are empty orderer organizations endpoints
+			By("Migration from Raft to BFT fails")
+			config, updatedConfig = prepareTransition(network, peer, o1, "testchannel",
+				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
+				"BFT", bftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE, 1)
+			UpdateOrdererConfigFails(network, o1, "testchannel", config, updatedConfig, peer, o1)
+
+			// config update to add orderer organizations endpoints
+			By("Config update to add orderer organizations endpoints")
+			config = nwo.GetConfig(network, peer, o1, "testchannel")
+			updatedConfig = proto.Clone(config).(*common.Config)
+			addEndpointsPerOrgInConfig(updatedConfig)
+			updateOrdererOrgEndpointsConfigSucceeds(network, o1, "testchannel", config, updatedConfig, peer, peer, peer2)
+
+			// now, we can migrate
+			By("Migration from Raft to BFT succeeds")
 			config, updatedConfig = prepareTransition(network, peer, o1, "testchannel",
 				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"BFT", bftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE, 1)
@@ -662,48 +676,9 @@ func updateOrdererEndpointsConfigFails(n *nwo.Network, orderer *nwo.Orderer, cha
 		ClientAuth: n.ClientAuthRequired,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess.Err).To(gbytes.Say("Successfully submitted channel update"))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(1))
+	Expect(sess.Err).NotTo(gbytes.Say("Successfully submitted channel update"))
 }
-
-//
-//func updateEndpointsConfigFailed(n *nwo.Network, orderer *nwo.Orderer, channel string, current, updated *common.Config, peer *nwo.Peer, additionalSigners ...*nwo.Peer) {
-//	tempDir, err := os.MkdirTemp("", "updateConfig")
-//	Expect(err).NotTo(HaveOccurred())
-//	defer os.RemoveAll(tempDir)
-//
-//	// compute update
-//	configUpdate, err := update.Compute(current, updated)
-//	Expect(err).NotTo(HaveOccurred())
-//	configUpdate.ChannelId = channel
-//
-//	signedEnvelope, err := protoutil.CreateSignedEnvelope(
-//		common.HeaderType_CONFIG_UPDATE,
-//		channel,
-//		nil, // local signer
-//		&common.ConfigUpdateEnvelope{ConfigUpdate: protoutil.MarshalOrPanic(configUpdate)},
-//		0, // message version
-//		0, // epoch
-//	)
-//	Expect(err).NotTo(HaveOccurred())
-//	Expect(signedEnvelope).NotTo(BeNil())
-//
-//	updateFile := filepath.Join(tempDir, "update.pb")
-//	err = os.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0o600)
-//	Expect(err).NotTo(HaveOccurred())
-//
-//	var sess *gexec.Session
-//	for _, signer := range additionalSigners {
-//		sess, err = n.PeerAdminSession(signer, commands.SignConfigTx{
-//			File:       updateFile,
-//			ClientAuth: n.ClientAuthRequired,
-//		})
-//		Expect(err).NotTo(HaveOccurred())
-//	}
-//
-//	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(1))
-//	Expect(sess.Err).NotTo(gbytes.Say("Successfully submitted channel update"))
-//}
 
 func prepareTransition(
 	network *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channel string, // Auxiliary
@@ -948,5 +923,94 @@ func addGlobalLevelEndpointsToConfig(config *common.Config) {
 }
 
 func cleanEndpointsPerOrgFromConfig(config *common.Config) {
-	config.ChannelGroup.Groups["Orderer"].Groups["OrdererOrg"].Values[channelconfig.EndpointsKey] = &common.ConfigValue{ModPolicy: channelconfig.AdminsPolicyKey}
+	config.ChannelGroup.Groups["Orderer"].Groups["OrdererOrg"].Values[channelconfig.EndpointsKey] = &common.ConfigValue{ModPolicy: "/Channel/Admins"}
+}
+
+func addEndpointsPerOrgInConfig(config *common.Config) {
+	ordererOrgEndpoint := &common.OrdererAddresses{
+		Addresses: []string{"127.0.0.1:7050"},
+	}
+	config.ChannelGroup.Groups["Orderer"].Groups["OrdererOrg"].Values[channelconfig.EndpointsKey] = &common.ConfigValue{Value: protoutil.MarshalOrPanic(ordererOrgEndpoint), ModPolicy: "/Channel/Application/Writers"}
+	//config.ChannelGroup.Groups["Orderer"].Groups["Org1"].Values[channelconfig.EndpointsKey] = &common.ConfigValue{Value: protoutil.MarshalOrPanic(ordererOrgEndpoint), ModPolicy: "/Channel/Admins"}
+	//config.ChannelGroup.Groups["Orderer"].Groups["Org2"].Values[channelconfig.EndpointsKey] = &common.ConfigValue{Value: protoutil.MarshalOrPanic(ordererOrgEndpoint), ModPolicy: "/Channel/Admins"}
+}
+
+func updateOrdererOrgEndpointsConfigSucceeds(n *nwo.Network, orderer *nwo.Orderer, channel string, current, updated *common.Config, peer *nwo.Peer, additionalSigners ...*nwo.Peer) {
+	tempDir, err := os.MkdirTemp("", "updateConfig")
+	Expect(err).NotTo(HaveOccurred())
+	defer os.RemoveAll(tempDir)
+
+	// compute update
+	configUpdate, err := update.Compute(current, updated)
+	Expect(err).NotTo(HaveOccurred())
+	configUpdate.ChannelId = channel
+
+	signedEnvelope, err := protoutil.CreateSignedEnvelope(
+		common.HeaderType_CONFIG_UPDATE,
+		channel,
+		nil, // local signer
+		&common.ConfigUpdateEnvelope{ConfigUpdate: protoutil.MarshalOrPanic(configUpdate)},
+		0, // message version
+		0, // epoch
+	)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(signedEnvelope).NotTo(BeNil())
+
+	updateFile := filepath.Join(tempDir, "update.pb")
+	err = os.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0o600)
+	Expect(err).NotTo(HaveOccurred())
+
+	for _, signer := range additionalSigners {
+		sess, err := n.PeerAdminSession(signer, commands.SignConfigTx{
+			File:       updateFile,
+			ClientAuth: n.ClientAuthRequired,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	}
+
+	sess, err := n.OrdererAdminSession(orderer, peer, commands.SignConfigTx{
+		File:       updateFile,
+		ClientAuth: n.ClientAuthRequired,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+
+	sess, err = n.OrdererAdminSession(orderer, peer, commands.ChannelUpdate{
+		ChannelID:  channel,
+		Orderer:    n.OrdererAddress(orderer, nwo.ListenPort),
+		File:       updateFile,
+		ClientAuth: n.ClientAuthRequired,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	Expect(sess.Err).To(gbytes.Say("Successfully submitted channel update"))
+}
+
+// UpdateOrdererConfig computes, signs, and submits a configuration update
+// which requires orderers signature. the update should fail.
+func UpdateOrdererConfigFails(n *nwo.Network, orderer *nwo.Orderer, channel string, current, updated *common.Config, submitter *nwo.Peer, additionalSigners ...*nwo.Orderer) {
+	tempDir, err := os.MkdirTemp(n.RootDir, "updateConfig")
+	Expect(err).NotTo(HaveOccurred())
+	updateFile := filepath.Join(tempDir, "update.pb")
+	defer os.RemoveAll(tempDir)
+
+	nwo.ComputeUpdateOrdererConfig(updateFile, n, channel, current, updated, submitter, additionalSigners...)
+
+	Eventually(func() bool {
+		sess, err := n.OrdererAdminSession(orderer, submitter, commands.ChannelUpdate{
+			ChannelID:  channel,
+			Orderer:    n.OrdererAddress(orderer, nwo.ListenPort),
+			File:       updateFile,
+			ClientAuth: n.ClientAuthRequired,
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		sess.Wait(n.EventuallyTimeout)
+		if sess.ExitCode() != 0 {
+			return false
+		}
+
+		return strings.Contains(string(sess.Err.Contents()), "Successfully submitted channel update")
+	}, n.EventuallyTimeout).Should(BeFalse())
 }

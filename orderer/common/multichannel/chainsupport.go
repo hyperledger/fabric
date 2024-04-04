@@ -150,6 +150,14 @@ func (cs *ChainSupport) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEn
 		return nil, err
 	}
 
+	isOldV3 := cs.ChannelConfig().Capabilities().ConsensusTypeBFT()
+	isNewV3 := bundle.ChannelConfig().Capabilities().ConsensusTypeBFT()
+
+	if !isOldV3 && isNewV3 {
+		//TODO: check org endponits and check in the unit tests
+		// if someoe is empty - return err
+	}
+
 	oldOrdererConfig, ok := cs.OrdererConfig()
 	if !ok {
 		logger.Panic("old config is missing orderer group")

@@ -140,6 +140,17 @@ func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler,
 			return nil, err
 		}
 	}
+
+	if channelCapabilities.ConsensusTypeBFT() {
+		var someOrgHasEndpoints bool
+		for _, org := range oc.Organizations() {
+			someOrgHasEndpoints = someOrgHasEndpoints || len(org.Endpoints()) > 0
+		}
+		if !someOrgHasEndpoints {
+			return nil, errors.Errorf("all orderer organizations endpoints are empty")
+		}
+	}
+
 	return oc, nil
 }
 

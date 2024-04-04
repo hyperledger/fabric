@@ -34,16 +34,20 @@ func TestOrgSpecificOrdererEndpoints(t *testing.T) {
 	// TODO: check how we want it to beahve
 	t.Run("Without_Capability", func(t *testing.T) {
 		conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
-		conf.Orderer.Addresses = []string{"127.0.0.1:7050"}
-		conf.Capabilities = map[string]bool{"V1_3": true}
+		//conf.Orderer.Addresses = []string{"127.0.0.1:7050"}
+		conf.Capabilities = map[string]bool{"V_3": true}
+
+		//fmt.Printf("----endpoints are: %v", conf.Orderer.Organizations[0].OrdererEndpoints)
 
 		cg, err := encoder.NewChannelGroup(conf)
 		require.NoError(t, err)
 
+		conf.Orderer.Organizations[0].OrdererEndpoints = nil
+
 		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		require.NoError(t, err)
 		_, err = channelconfig.NewChannelConfig(cg, cryptoProvider)
-		require.EqualError(t, err, "could not create channel Orderer sub-group config: Orderer Org SampleOrg cannot contain endpoints value until V1_4_2+ capabilities have been enabled")
+		require.EqualError(t, err, "all orderer organizations endpoints are empty")
 	})
 
 	t.Run("Without_Capability_NoOSNs", func(t *testing.T) {
