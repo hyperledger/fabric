@@ -97,16 +97,9 @@ jq-1.6
 
 ## **Linux**
 
-<<<<<<< HEAD
-<!--- Indent entire section -->
-<div style="margin-left: 1.5em;">
-
 ### Git
 
 Install the latest version of [git](https://git-scm.com/downloads) if it is not already installed.
-=======
-Prerequisites: [git](https://git-scm.com/downloads), [cURL](https://curl.haxx.se/download.html), [Docker](https://docs.docker.com/get-docker/)
->>>>>>> 22aaf3468 (Fix prerequisites doc page for content is partly occluded by navigator)
 
 ```shell
 $ sudo apt-get install git
