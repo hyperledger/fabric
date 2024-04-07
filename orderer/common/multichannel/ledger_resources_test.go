@@ -72,7 +72,8 @@ func (mrm *mutableResourcesMock) CreateBundle(channelID string, c *common.Config
 }
 
 func testConfigEnvelope(t *testing.T) *common.ConfigEnvelope {
-	conf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+	conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
+	conf.Orderer.Organizations[0].OrdererEndpoints = []string{"127.0.0.1:7050"}
 	group, err := encoder.NewChannelGroup(conf)
 	require.NoError(t, err)
 	group.Groups["Orderer"].Values["ConsensusType"].Value, err = proto.Marshal(&orderer.ConsensusType{
