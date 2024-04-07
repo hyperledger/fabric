@@ -327,7 +327,7 @@ var _ = Describe("RuntimeLauncher", func() {
 		})
 	})
 
-	Context("when the contaienr terminates before registration", func() {
+	Context("when the container terminates before registration", func() {
 		BeforeEach(func() {
 			fakeRuntime.StartReturns(nil)
 			fakeRuntime.WaitReturns(-99, nil)

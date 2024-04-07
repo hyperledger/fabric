@@ -810,7 +810,7 @@ type CommitNotification struct {
 }
 
 // CommitNotificationTxInfo contains the details of a transaction that is included in the CommitNotification
-// ChaincodeID will be nil if the transaction is not an endorser transaction. This may or may not be nil if the tranasction is invalid.
+// ChaincodeID will be nil if the transaction is not an endorser transaction. This may or may not be nil if the transaction is invalid.
 // Specifically, it will be nil if the transaction is marked invalid by the validator (e.g., bad payload or insufficient endorements) and it will be non-nil if the transaction is marked invalid for concurrency conflicts.
 // However, it is guaranteed be non-nil if the transaction is a valid endorser transaction.
 type CommitNotificationTxInfo struct {
