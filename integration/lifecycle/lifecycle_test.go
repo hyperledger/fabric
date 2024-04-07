@@ -8,7 +8,6 @@ package lifecycle
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -23,8 +22,6 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
 	"github.com/hyperledger/fabric/integration/nwo/runner"
-	"github.com/hyperledger/fabric/internal/configtxlator/update"
-	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -313,20 +310,7 @@ var _ = Describe("Lifecycle", func() {
 
 		// update the channel config to include org3
 		updatedConfig.ChannelGroup.Groups["Application"].Groups["Org3"] = org3Group.ConfigGroup
-		ordererOrg3Endpoint := &common.OrdererAddresses{
-			Addresses: []string{"127.0.0.1:7050"},
-		}
-		updatedConfig.ChannelGroup.Groups["Orderer"].Groups["Org3"] = &common.ConfigGroup{
-			Values: map[string]*common.ConfigValue{
-				"Endpoints": {
-					Value:     protoutil.MarshalOrPanic(ordererOrg3Endpoint),
-					ModPolicy: "/Channel/Application/Writers",
-				},
-			},
-			ModPolicy: "/Channel/Application/Writers",
-		}
-		fmt.Printf("Lifecycle: org3 info: %v", updatedConfig.ChannelGroup.Groups["Orderer"].Groups["Org3"])
-		updateConfigSucceeds(network, orderer, "testchannel", currentConfig, updatedConfig, testPeers[0], testPeers...)
+		nwo.UpdateConfig(network, orderer, "testchannel", currentConfig, updatedConfig, true, testPeers[0], testPeers...)
 
 		By("joining the org3 peers to the channel")
 		network.JoinChannel("testchannel", orderer, org3peer0)
@@ -420,55 +404,3 @@ var _ = Describe("Lifecycle", func() {
 		Expect(sess.Err).To(gbytes.Say(`Chaincode invoke successful. result: status:200`))
 	})
 })
-
-func updateConfigSucceeds(n *nwo.Network, orderer *nwo.Orderer, channel string, current, updated *common.Config, peer *nwo.Peer, additionalSigners ...*nwo.Peer) {
-	tempDir, err := os.MkdirTemp("", "updateConfig")
-	Expect(err).NotTo(HaveOccurred())
-	defer os.RemoveAll(tempDir)
-
-	// compute update
-	configUpdate, err := update.Compute(current, updated)
-	Expect(err).NotTo(HaveOccurred())
-	configUpdate.ChannelId = channel
-
-	signedEnvelope, err := protoutil.CreateSignedEnvelope(
-		common.HeaderType_CONFIG_UPDATE,
-		channel,
-		nil, // local signer
-		&common.ConfigUpdateEnvelope{ConfigUpdate: protoutil.MarshalOrPanic(configUpdate)},
-		0, // message version
-		0, // epoch
-	)
-	Expect(err).NotTo(HaveOccurred())
-	Expect(signedEnvelope).NotTo(BeNil())
-
-	updateFile := filepath.Join(tempDir, "update.pb")
-	err = os.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0o600)
-	Expect(err).NotTo(HaveOccurred())
-
-	for _, signer := range additionalSigners {
-		sess, err := n.PeerAdminSession(signer, commands.SignConfigTx{
-			File:       updateFile,
-			ClientAuth: n.ClientAuthRequired,
-		})
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	}
-
-	sess, err := n.OrdererAdminSession(orderer, peer, commands.SignConfigTx{
-		File:       updateFile,
-		ClientAuth: n.ClientAuthRequired,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-
-	sess, err = n.OrdererAdminSession(orderer, peer, commands.ChannelUpdate{
-		ChannelID:  channel,
-		Orderer:    n.OrdererAddress(orderer, nwo.ListenPort),
-		File:       updateFile,
-		ClientAuth: n.ClientAuthRequired,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess.Err).To(gbytes.Say("Successfully submitted channel update"))
-}

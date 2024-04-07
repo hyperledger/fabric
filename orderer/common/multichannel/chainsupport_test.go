@@ -28,6 +28,12 @@ func TestConsensusMetadataValidation(t *testing.T) {
 	mockResources := &mocks.Resources{}
 	mockResources.ConfigtxValidatorReturns(mockValidator)
 	mockResources.OrdererConfigReturns(mockOrderer, true)
+	mockChannelConfig := &mocks.ChannelConfig{}
+	mockChannelConfig.OrdererAddressesReturns([]string{"127.0.0.1"})
+	mockChannelCapabilities := &mocks.ChannelCapabilities{}
+	mockChannelCapabilities.ConsensusTypeBFTReturns(true)
+	mockChannelConfig.CapabilitiesReturns(mockChannelCapabilities)
+	mockResources.ChannelConfigReturns(mockChannelConfig)
 
 	ms := &mutableResourcesMock{
 		Resources:               mockResources,

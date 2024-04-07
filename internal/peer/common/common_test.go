@@ -269,6 +269,7 @@ func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
 
 	t.Run("green-path", func(t *testing.T) {
 		profile := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+		profile.Capabilities = map[string]bool{"V_2": true}
 		channelGroup, err := encoder.NewChannelGroup(profile)
 		require.NoError(t, err)
 		channelConfig := &cb.Config{ChannelGroup: channelGroup}
