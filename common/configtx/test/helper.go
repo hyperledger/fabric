@@ -53,7 +53,7 @@ func MakeChannelConfig(channelID string) (*cb.Config, error) {
 // MakeGenesisBlockFromMSPs creates a genesis block using the MSPs provided for the given channelID
 func MakeGenesisBlockFromMSPs(channelID string, appMSPConf, ordererMSPConf *mspproto.MSPConfig, appOrgID, ordererOrgID string) (*cb.Block, error) {
 	profile := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
-	profile.Orderer.Organizations = nil
+
 	channelGroup, err := encoder.NewChannelGroup(profile)
 	if err != nil {
 		logger.Panicf("Error creating channel config: %s", err)

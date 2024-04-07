@@ -14,6 +14,10 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
+	"os/exec"
+	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -40,6 +44,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/onsi/gomega/gexec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -351,13 +356,13 @@ func injectGlobalOrdererEndpoint(t *testing.T, block *common.Block, endpoint str
 		Value:     protoutil.MarshalOrPanic(ordererAddresses.Value()),
 		ModPolicy: "/Channel/Orderer/Admins",
 	}
-	// Remove the per org addresses, if applicable
+	// Update the per org addresses
 	ordererGrps := confEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups
 	for _, grp := range ordererGrps {
 		if grp.Values[channelconfig.EndpointsKey] == nil {
 			continue
 		}
-		grp.Values[channelconfig.EndpointsKey].Value = nil
+		grp.Values[channelconfig.EndpointsKey].Value = protoutil.MarshalOrPanic(ordererAddresses.Value())
 	}
 	// And put it back into the block
 	payload.Data = protoutil.MarshalOrPanic(confEnv)
@@ -470,7 +475,32 @@ func TestEndpointconfigFromConfigBlockFailures(t *testing.T) {
 }
 
 func TestBlockValidationPolicyVerifier(t *testing.T) {
+	dir := filepath.Join(os.TempDir())
+	os.Mkdir(dir, 0o700)
+	defer os.RemoveAll(dir)
+
+	cryptogen, err := gexec.Build("github.com/hyperledger/fabric/cmd/cryptogen")
+	require.NoError(t, err)
+	defer os.Remove(cryptogen)
+
+	cryptoConfigDir := filepath.Join(dir, "crypto-config")
+	b, err := exec.Command(cryptogen, "generate", fmt.Sprintf("--output=%s", cryptoConfigDir)).CombinedOutput()
+	require.NoError(t, err, string(b))
+
 	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+	config.Orderer.Organizations = append(config.Orderer.Organizations, &genesisconfig.Organization{
+		MSPDir:           filepath.Join(cryptoConfigDir, "ordererOrganizations", "example.com", "msp"),
+		OrdererEndpoints: []string{"foo:7050", "bar:8050"},
+		MSPType:          "bccsp",
+		ID:               "SampleMSP",
+		Name:             "SampleOrg",
+		Policies: map[string]*genesisconfig.Policy{
+			"Admins":  {Type: "ImplicitMeta", Rule: "ANY Admins"},
+			"Readers": {Type: "ImplicitMeta", Rule: "ANY Readers"},
+			"Writers": {Type: "ImplicitMeta", Rule: "ANY Writers"},
+		},
+	})
+
 	group, err := encoder.NewChannelGroup(config)
 	require.NoError(t, err)
 	require.NotNil(t, group)
@@ -758,7 +788,8 @@ func TestBlockVerifierBuilderNoConfigBlock(t *testing.T) {
 }
 
 func TestBlockVerifierFunc(t *testing.T) {
-	block := sampleConfigBlock()
+	block := sampleConfigBlock(t)
+	require.NotNil(t, block)
 	bvfunc := cluster.BlockVerifierBuilder(&mocks.BCCSP{})
 
 	verifier := bvfunc(block)
@@ -779,7 +810,21 @@ func TestBlockVerifierFunc(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func sampleConfigBlock() *common.Block {
+func sampleConfigBlock(t *testing.T) *common.Block {
+	certDir := t.TempDir()
+	tlsCA, err := tlsgen.NewCA()
+	require.NoError(t, err)
+	config := genesisconfig.Load(genesisconfig.SampleAppChannelSmartBftProfile, configtest.GetDevConfigDir())
+	generateCertificatesSmartBFT(t, config, tlsCA, certDir)
+	config.Orderer.Organizations[0].OrdererEndpoints = []string{"127.0.0.1:7050"}
+
+	group, err := encoder.NewChannelGroup(config)
+	if err != nil {
+		return nil
+	}
+
+	sampleOrg := group.Groups["Orderer"].Groups["SampleOrg"]
+
 	return &common.Block{
 		Header: &common.BlockHeader{
 			PreviousHash: []byte("foo"),
@@ -818,6 +863,9 @@ func sampleConfigBlock() *common.Block {
 														Type: 3,
 													},
 												},
+											},
+											Groups: map[string]*common.ConfigGroup{
+												"SampleOrg": sampleOrg,
 											},
 											Values: map[string]*common.ConfigValue{
 												"BatchSize": {
@@ -864,6 +912,27 @@ func sampleConfigBlock() *common.Block {
 				}),
 			},
 		},
+	}
+}
+
+func generateCertificatesSmartBFT(t *testing.T, confAppSmartBFT *genesisconfig.Profile, tlsCA tlsgen.CA, certDir string) {
+	for i, c := range confAppSmartBFT.Orderer.ConsenterMapping {
+		t.Logf("BFT Consenter: %+v", c)
+		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)
+		require.NoError(t, err)
+		srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", i))
+		err = os.WriteFile(srvP, srvC.Cert, 0o644)
+		require.NoError(t, err)
+
+		clnC, err := tlsCA.NewClientCertKeyPair()
+		require.NoError(t, err)
+		clnP := path.Join(certDir, fmt.Sprintf("client%d.crt", i))
+		err = os.WriteFile(clnP, clnC.Cert, 0o644)
+		require.NoError(t, err)
+
+		c.Identity = srvP
+		c.ServerTLSCert = srvP
+		c.ClientTLSCert = clnP
 	}
 }
 

@@ -120,10 +120,11 @@ func makeConfigTx(chainID string, i int) *cb.Envelope {
 }
 
 func makeConfigTxFull(chainID string, i int) *cb.Envelope {
-	gConf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+	gConf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
 	gConf.Orderer.Capabilities = map[string]bool{
 		capabilities.OrdererV2_0: true,
 	}
+	gConf.Orderer.Organizations[0].OrdererEndpoints = []string{"127.0.0.1:7050"}
 	gConf.Orderer.MaxChannels = 10
 	channelGroup, err := encoder.NewChannelGroup(gConf)
 	if err != nil {
@@ -138,10 +139,11 @@ func makeConfigTxFull(chainID string, i int) *cb.Envelope {
 }
 
 func makeConfigTxMig(chainID string, i int) *cb.Envelope {
-	gConf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+	gConf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
 	gConf.Orderer.Capabilities = map[string]bool{
 		capabilities.OrdererV2_0: true,
 	}
+	gConf.Orderer.Organizations[0].OrdererEndpoints = []string{"127.0.0.1:7050"}
 	gConf.Orderer.OrdererType = "solo"
 	channelGroup, err := encoder.NewChannelGroup(gConf)
 	if err != nil {
