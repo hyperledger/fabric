@@ -11,11 +11,14 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger-labs/SmartBFT/pkg/api"
@@ -25,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/config/configtest"
@@ -39,11 +43,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// ConfigInfo stores the block numbers which are configuration blocks
+type ConfigInfo struct {
+	t                  *testing.T
+	numsOfConfigBlocks []uint64
+	lock               sync.RWMutex
+}
+
+func NewConfigInfo(t *testing.T) *ConfigInfo {
+	return &ConfigInfo{
+		t:                  t,
+		numsOfConfigBlocks: []uint64{},
+	}
+}
+
 type NetworkSetupInfo struct {
 	t            *testing.T
 	nodeIdToNode map[uint64]*Node
 	dir          string
 	channelId    string
+	genesisBlock *cb.Block
+	tlsCA        tlsgen.CA
+	configInfo   *ConfigInfo
 }
 
 func NewNetworkSetupInfo(t *testing.T, channelId string, rootDir string) *NetworkSetupInfo {
@@ -52,6 +73,7 @@ func NewNetworkSetupInfo(t *testing.T, channelId string, rootDir string) *Networ
 		nodeIdToNode: map[uint64]*Node{},
 		dir:          rootDir,
 		channelId:    channelId,
+		configInfo:   NewConfigInfo(t),
 	}
 }
 
@@ -61,17 +83,49 @@ func (ns *NetworkSetupInfo) CreateNodes(numberOfNodes int) map[uint64]*Node {
 		nodeIds = append(nodeIds, nodeId)
 	}
 	nodeIdToNode := map[uint64]*Node{}
-	genesisBlock := createConfigBlock(ns.t, ns.channelId)
+	genesisBlock, tlsCA := createConfigBlock(ns.t, ns.channelId)
+	clusterService := &cluster.ClusterService{
+		StreamCountReporter:              &cluster.StreamCountReporter{},
+		Logger:                           flogging.MustGetLogger("orderer.common.cluster"),
+		StepLogger:                       flogging.MustGetLogger("orderer.common.cluster.step"),
+		MinimumExpirationWarningInterval: cluster.MinimumExpirationWarningInterval,
+		MembershipByChannel:              make(map[string]*cluster.ChannelMembersConfig),
+		RequestHandler:                   &smartbft.Ingress{},
+	}
+
 	for _, nodeId := range nodeIds {
-		nodeIdToNode[nodeId] = NewNode(ns.t, nodeId, ns.dir, ns.channelId, genesisBlock)
+		nodeIdToNode[nodeId] = NewNode(ns.t, nodeId, ns.dir, ns.channelId, genesisBlock, ns.configInfo, nil)
+		// update each node's chain to recognize the cluster service
+		nodeIdToNode[nodeId].Chain.ClusterService = clusterService
 	}
 	ns.nodeIdToNode = nodeIdToNode
+	ns.genesisBlock = genesisBlock
+	ns.tlsCA = tlsCA
 
 	// update all nodes about the nodes map
 	for _, nodeId := range nodeIds {
 		nodeIdToNode[nodeId].nodesMap = nodeIdToNode
 	}
 	return nodeIdToNode
+}
+
+func (ns *NetworkSetupInfo) AddNewNode() (map[uint64]*Node, *Node) {
+	numberOfNodes := uint64(len(ns.nodeIdToNode))
+	numberOfNodes = numberOfNodes + 1
+	newNodeId := numberOfNodes
+
+	ns.t.Logf("Adding node %v to the network", newNodeId)
+
+	ledgerToSyncWith := findLargestDifferentLedger(ns.nodeIdToNode, newNodeId)
+
+	ns.nodeIdToNode[newNodeId] = NewNode(ns.t, newNodeId, ns.dir, ns.channelId, ns.genesisBlock, ns.configInfo, ledgerToSyncWith)
+
+	// update all nodes about the nodes map
+	for nodeId := uint64(1); nodeId <= numberOfNodes; nodeId++ {
+		ns.nodeIdToNode[nodeId].nodesMap = ns.nodeIdToNode
+	}
+
+	return ns.nodeIdToNode, ns.nodeIdToNode[newNodeId]
 }
 
 func (ns *NetworkSetupInfo) StartAllNodes() {
@@ -103,7 +157,7 @@ func (ns *NetworkSetupInfo) SendTxToAllAvailableNodes(tx *cb.Envelope) error {
 func (ns *NetworkSetupInfo) RestartAllNodes() error {
 	var errorsArr []error
 	for _, node := range ns.nodeIdToNode {
-		err := node.Restart()
+		err := node.Restart(ns.configInfo)
 		if err != nil {
 			ns.t.Logf("Restarting node %v fail: %v", node.NodeId, err)
 		}
@@ -146,7 +200,7 @@ type Node struct {
 	lock                 sync.RWMutex
 }
 
-func NewNode(t *testing.T, nodeId uint64, rootDir string, channelId string, genesisBlock *cb.Block) *Node {
+func NewNode(t *testing.T, nodeId uint64, rootDir string, channelId string, genesisBlock *cb.Block, configInfo *ConfigInfo, ledgerToSyncWith []*cb.Block) *Node {
 	t.Logf("Creating node %d", nodeId)
 	nodeWorkingDir := filepath.Join(rootDir, fmt.Sprintf("node-%d", nodeId))
 
@@ -166,7 +220,15 @@ func NewNode(t *testing.T, nodeId uint64, rootDir string, channelId string, gene
 		Endpoint:             fmt.Sprintf("%s:%d", "localhost", 9000+nodeId),
 	}
 
-	node.Chain, err = createBFTChainUsingMocks(t, node)
+	// To test a case in which a new node is added to an existing network, its chain should be aware of his existence.
+	// Hence, the node's ledger has to sync with the ledger of the other nodes such that it will include
+	// all blocks from the genesis to the config block that adds it to the network. Only then its chain can be created.
+	if len(configInfo.numsOfConfigBlocks) >= 1 {
+		configBlkNum := configInfo.numsOfConfigBlocks[len(configInfo.numsOfConfigBlocks)-1]
+		node.State.UpdateLedger(ledgerToSyncWith[:configBlkNum+1])
+	}
+
+	node.Chain, err = createBFTChainUsingMocks(t, node, configInfo)
 	require.NoError(t, err)
 	return node
 }
@@ -179,11 +241,11 @@ func (n *Node) Start() {
 	n.IsStarted = true
 }
 
-func (n *Node) Restart() error {
+func (n *Node) Restart(configInfo *ConfigInfo) error {
 	n.t.Logf("Restarting node %d", n.NodeId)
 	n.lock.Lock()
 	defer n.lock.Unlock()
-	newChain, err := createBFTChainUsingMocks(n.t, n)
+	newChain, err := createBFTChainUsingMocks(n.t, n, configInfo)
 	if err != nil {
 		return err
 	}
@@ -212,7 +274,32 @@ func (n *Node) IsAvailable() bool {
 func (n *Node) SendTx(tx *cb.Envelope) error {
 	n.lock.RLock()
 	defer n.lock.RUnlock()
+	if isConfigTx(tx) {
+		return n.Chain.Configure(tx, n.State.Sequence)
+	}
 	return n.Chain.Order(tx, n.State.Sequence)
+}
+
+func isConfigTx(envelope *cb.Envelope) bool {
+	if envelope == nil {
+		return false
+	}
+
+	payload, err := protoutil.UnmarshalPayload(envelope.Payload)
+	if err != nil {
+		return false
+	}
+
+	if payload.Header == nil {
+		return false
+	}
+
+	hdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return false
+	}
+
+	return cb.HeaderType(hdr.Type) == cb.HeaderType_CONFIG
 }
 
 func (n *Node) sendMessage(sender uint64, target uint64, message *smartbftprotos.Message) error {
@@ -314,9 +401,33 @@ func (ns *NodeState) GetLedgerArray() []*cb.Block {
 	return ns.ledgerArray
 }
 
+func (ns *NodeState) UpdateLedger(ledgerToSyncWith []*cb.Block) {
+	// copy the blocks from ledgerToSyncWith except the genesisBlock which is already exists in the node's ledger
+	ns.lock.Lock()
+	defer ns.lock.Unlock()
+	for i := 1; i < len(ledgerToSyncWith); i++ {
+		ns.ledgerArray = append(ns.ledgerArray, proto.Clone(ledgerToSyncWith[i]).(*cb.Block))
+	}
+}
+
+func findLargestDifferentLedger(nodes map[uint64]*Node, givenNodeId uint64) []*cb.Block {
+	max := 0
+	var ledgerToCopy []*cb.Block
+	for _, n := range nodes {
+		if n.NodeId != givenNodeId {
+			len := n.State.GetLedgerHeight()
+			if len > max {
+				max = len
+				ledgerToCopy = n.State.GetLedgerArray()
+			}
+		}
+	}
+	return ledgerToCopy
+}
+
 // createBFTChainUsingMocks creates a new bft chain which is exposed to all nodes in the network.
 // the chain is created using mocks and is useful for testing
-func createBFTChainUsingMocks(t *testing.T, node *Node) (*smartbft.BFTChain, error) {
+func createBFTChainUsingMocks(t *testing.T, node *Node, configInfo *ConfigInfo) (*smartbft.BFTChain, error) {
 	nodeId := node.NodeId
 	channelId := node.ChannelId
 
@@ -335,14 +446,21 @@ func createBFTChainUsingMocks(t *testing.T, node *Node) (*smartbft.BFTChain, err
 		}).Maybe()
 
 	configValidatorMock := smartBFTMocks.NewConfigValidator(t)
+	configValidatorMock.EXPECT().ValidateConfig(mock.Anything).Return(nil).Maybe()
 
 	comm := smartBFTMocks.NewCommunicator(t)
-	comm.EXPECT().Configure(mock.Anything, mock.Anything)
+	comm.EXPECT().Configure(mock.Anything, mock.Anything).Run(func(channel string, members []cluster.RemoteNode) {
+		t.Logf("Configuring channel with remote nodes")
+	})
 
 	signerSerializerMock := smartBFTMocks.NewSignerSerializer(t)
 	signerSerializerMock.EXPECT().Sign(mock.Anything).RunAndReturn(
 		func(message []byte) ([]byte, error) {
 			return message, nil
+		}).Maybe()
+	signerSerializerMock.EXPECT().Serialize().RunAndReturn(
+		func() ([]byte, error) {
+			return []byte{1, 2, 3}, nil
 		}).Maybe()
 
 	policyManagerMock := smartBFTMocks.NewPolicyManager(t)
@@ -375,7 +493,17 @@ func createBFTChainUsingMocks(t *testing.T, node *Node) (*smartbft.BFTChain, err
 	supportMock.EXPECT().WriteConfigBlock(mock.Anything, mock.Anything).Run(
 		func(block *cb.Block, encodedMetadataValue []byte) {
 			node.State.AddBlock(block)
-			t.Logf("Node %d appended block number %v to ledger", node.NodeId, block.Header.Number)
+			t.Logf("Node %d appended config block number %v to ledger", node.NodeId, block.Header.Number)
+			configInfo.lock.Lock()
+			defer configInfo.lock.Unlock()
+			if !slices.Contains(configInfo.numsOfConfigBlocks, block.Header.Number) {
+				configInfo.numsOfConfigBlocks = append(configInfo.numsOfConfigBlocks, block.Header.Number)
+			}
+		}).Maybe()
+
+	supportMock.EXPECT().Serialize().RunAndReturn(
+		func() ([]byte, error) {
+			return []byte{1, 2, 3}, nil
 		}).Maybe()
 
 	mpc := &smartbft.MetricProviderConverter{MetricsProvider: &disabled.Provider{}}
@@ -429,17 +557,7 @@ func createBFTChainUsingMocks(t *testing.T, node *Node) (*smartbft.BFTChain, err
 		func() types.SyncResponse {
 			t.Logf("Sync Called by node %v", node.NodeId)
 			// iterate over the ledger of the other nodes and find the highest ledger to sync with
-			max := 0
-			var ledgerToCopy []*cb.Block
-			for _, n := range node.nodesMap {
-				if n.NodeId != node.NodeId {
-					len := n.State.GetLedgerHeight()
-					if len > max {
-						max = len
-						ledgerToCopy = n.State.GetLedgerArray()
-					}
-				}
-			}
+			ledgerToCopy := findLargestDifferentLedger(node.nodesMap, node.NodeId)
 
 			// sync node
 			for i := node.State.GetLedgerHeight(); i < len(ledgerToCopy); i++ {
@@ -495,19 +613,15 @@ func createBFTChainUsingMocks(t *testing.T, node *Node) (*smartbft.BFTChain, err
 }
 
 // createConfigBlock creates the genesis block. This is the first block in the ledger of all nodes.
-func createConfigBlock(t *testing.T, channelId string) *cb.Block {
+func createConfigBlock(t *testing.T, channelId string) (*cb.Block, tlsgen.CA) {
 	certDir := t.TempDir()
 	tlsCA, err := tlsgen.NewCA()
 	require.NoError(t, err)
 	configProfile := genesisconfig.Load(genesisconfig.SampleAppChannelSmartBftProfile, configtest.GetDevConfigDir())
-	tlsCertPath := filepath.Join(configtest.GetDevConfigDir(), "msp", "tlscacerts", "tlsroot.pem")
 
 	// make all BFT nodes belong to the same MSP ID
 	for _, consenter := range configProfile.Orderer.ConsenterMapping {
 		consenter.MSPID = "SampleOrg"
-		consenter.Identity = tlsCertPath
-		consenter.ClientTLSCert = tlsCertPath
-		consenter.ServerTLSCert = tlsCertPath
 	}
 
 	generateCertificatesSmartBFT(t, configProfile, tlsCA, certDir)
@@ -516,32 +630,51 @@ func createConfigBlock(t *testing.T, channelId string) *cb.Block {
 	require.NoError(t, err)
 	require.NotNil(t, channelGroup)
 
+	// update organization endpoints
+	ordererEndpoints := channelGroup.Groups[channelconfig.OrdererGroupKey].Groups["SampleOrg"].Values["Endpoints"].Value
+	ordererEndpointsVal := &cb.OrdererAddresses{}
+	err = proto.Unmarshal(ordererEndpoints, ordererEndpointsVal)
+	require.NoError(t, err)
+	ordererAddresses := ordererEndpointsVal.Addresses
+	for _, consenter := range configProfile.Orderer.ConsenterMapping {
+		ordererAddresses = append(ordererAddresses, fmt.Sprintf("%s:%d", consenter.Host, consenter.Port))
+	}
+	ordererAddresses = ordererAddresses[1:]
+	channelGroup.Groups[channelconfig.OrdererGroupKey].Groups["SampleOrg"].Values["Endpoints"].Value = protoutil.MarshalOrPanic(&cb.OrdererAddresses{
+		Addresses: ordererAddresses,
+	})
+
 	_, err = sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 
 	block := blockWithGroups(channelGroup, channelId, 0)
-	return block
+	return block, tlsCA
 }
 
 func generateCertificatesSmartBFT(t *testing.T, confAppSmartBFT *genesisconfig.Profile, tlsCA tlsgen.CA, certDir string) {
 	for i, c := range confAppSmartBFT.Orderer.ConsenterMapping {
 		t.Logf("BFT Consenter: %+v", c)
-		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)
-		require.NoError(t, err)
-		srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", i))
-		err = os.WriteFile(srvP, srvC.Cert, 0o644)
-		require.NoError(t, err)
-
-		clnC, err := tlsCA.NewClientCertKeyPair()
-		require.NoError(t, err)
-		clnP := path.Join(certDir, fmt.Sprintf("client%d.crt", i))
-		err = os.WriteFile(clnP, clnC.Cert, 0o644)
-		require.NoError(t, err)
-
+		srvP, clnP := generateSingleCertificateSmartBFT(t, tlsCA, certDir, i, c.Host)
 		c.Identity = srvP
 		c.ServerTLSCert = srvP
 		c.ClientTLSCert = clnP
 	}
+}
+
+func generateSingleCertificateSmartBFT(t *testing.T, tlsCA tlsgen.CA, certDir string, nodeId int, host string) (string, string) {
+	srvC, err := tlsCA.NewServerCertKeyPair(host)
+	require.NoError(t, err)
+	srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", nodeId))
+	err = os.WriteFile(srvP, srvC.Cert, 0o644)
+	require.NoError(t, err)
+
+	clnC, err := tlsCA.NewClientCertKeyPair()
+	require.NoError(t, err)
+	clnP := path.Join(certDir, fmt.Sprintf("client%d.crt", nodeId))
+	err = os.WriteFile(clnP, clnC.Cert, 0o644)
+	require.NoError(t, err)
+
+	return srvP, clnP
 }
 
 func blockWithGroups(groups *cb.ConfigGroup, channelID string, blockNumber uint64) *cb.Block {
@@ -599,7 +732,7 @@ func createBFTConfiguration(node *Node) types.Configuration {
 		SpeedUpViewChange:             types.DefaultConfig.SpeedUpViewChange,
 		LeaderRotation:                false,
 		DecisionsPerLeader:            0,
-		RequestMaxBytes:               types.DefaultConfig.RequestMaxBytes,
+		RequestMaxBytes:               types.DefaultConfig.RequestMaxBytes * 10,
 		RequestPoolSubmitTimeout:      types.DefaultConfig.RequestPoolSubmitTimeout,
 	}
 }
