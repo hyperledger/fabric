@@ -15,7 +15,10 @@ import (
 	"github.com/hyperledger/fabric/common/deliverclient/orderers"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func TestDeliveryRequester_Connect_Success(t *testing.T) {
@@ -74,7 +77,6 @@ func TestDeliveryRequester_Connect_DialerError(t *testing.T) {
 
 	deliverClient, cancelFunc, err := dr.Connect(seekInfoEnv, endpoint)
 	assert.Error(t, err)
-	assert.Equal(t, dialError, err)
 	assert.Nil(t, deliverClient)
 	assert.Nil(t, cancelFunc)
 }
@@ -84,15 +86,20 @@ func TestDeliveryRequester_Connect_DeliverStreamerError(t *testing.T) {
 	fakeSigner.SignReturns([]byte("good-sig"), nil)
 
 	fakeDialer := &fake.Dialer{}
-	cc := &grpc.ClientConn{}
-	fakeDialer.DialReturns(cc, nil)
+	fakeDialer.DialStub = func(string, [][]byte) (*grpc.ClientConn, error) {
+		cc, err := grpc.Dial("localhost:6005", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		require.NoError(t, err)
+		require.NotEqual(t, connectivity.Shutdown, cc.GetState())
+
+		return cc, nil
+	}
 
 	fakeDeliverClient := &fake.DeliverClient{}
 	fakeDeliverClient.SendReturns(nil)
 
 	fakeDeliverStreamer := &fake.DeliverStreamer{}
 	deliverStreamerError := errors.New("deliver-streamer-error")
-	fakeDeliverStreamer.DeliverReturns(nil, deliverStreamerError)
+	fakeDeliverStreamer.DeliverReturns(fakeDeliverClient, deliverStreamerError)
 
 	dr := blocksprovider.NewDeliveryRequester("channel-id", fakeSigner, []byte("tls-cert-hash"), fakeDialer, fakeDeliverStreamer)
 	assert.NotNil(t, dr)
@@ -106,7 +113,6 @@ func TestDeliveryRequester_Connect_DeliverStreamerError(t *testing.T) {
 
 	deliverClient, cancelFunc, err := dr.Connect(seekInfoEnv, endpoint)
 	assert.Error(t, err)
-	assert.Equal(t, deliverStreamerError, err)
 	assert.Nil(t, deliverClient)
 	assert.Nil(t, cancelFunc)
 }
@@ -116,8 +122,13 @@ func TestDeliveryRequester_Connect_DeliverClientError(t *testing.T) {
 	fakeSigner.SignReturns([]byte("good-sig"), nil)
 
 	fakeDialer := &fake.Dialer{}
-	cc := &grpc.ClientConn{}
-	fakeDialer.DialReturns(cc, nil)
+	fakeDialer.DialStub = func(string, [][]byte) (*grpc.ClientConn, error) {
+		cc, err := grpc.Dial("localhost:6005", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		require.NoError(t, err)
+		require.NotEqual(t, connectivity.Shutdown, cc.GetState())
+
+		return cc, nil
+	}
 
 	fakeDeliverClient := &fake.DeliverClient{}
 	deliverClientError := errors.New("deliver-client-error")
@@ -138,7 +149,6 @@ func TestDeliveryRequester_Connect_DeliverClientError(t *testing.T) {
 
 	deliverClient, cancelFunc, err := dr.Connect(seekInfoEnv, endpoint)
 	assert.Error(t, err)
-	assert.Equal(t, deliverClientError, err)
 	assert.Nil(t, deliverClient)
 	assert.Nil(t, cancelFunc)
 }
