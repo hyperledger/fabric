@@ -2669,7 +2669,7 @@ var _ = Describe("Handler", func() {
 				Expect(err).To(MatchError("burger"))
 			})
 
-			It("does not try to delete the tranasction context", func() {
+			It("does not try to delete the transaction context", func() {
 				handler.Execute(txParams, "chaincode-name", incomingMessage, time.Second)
 				Expect(fakeContextRegistry.CreateCallCount()).To(Equal(1))
 				Expect(fakeContextRegistry.DeleteCallCount()).To(Equal(0))
@@ -2770,7 +2770,7 @@ var _ = Describe("Handler", func() {
 			Expect(name).To(Equal("chaincode-id-name"))
 		})
 
-		It("sends registered and ready messsages", func() {
+		It("sends registered and ready messages", func() {
 			handler.HandleRegister(incomingMessage)
 
 			Eventually(fakeChatStream.SendCallCount).Should(Equal(2))

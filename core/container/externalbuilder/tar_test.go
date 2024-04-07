@@ -37,7 +37,7 @@ var _ = Describe("Tar", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		Context("when the archive conains an odd file type", func() {
+		Context("when the archive contains an odd file type", func() {
 			It("returns an error", func() {
 				file, err := os.Open("testdata/archive_with_symlink.tar.gz")
 				Expect(err).NotTo(HaveOccurred())
