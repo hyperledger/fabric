@@ -76,7 +76,7 @@ var _ = Describe("CFT-Deliverer", func() {
 		fakeDialer.DialStub = func(string, [][]byte) (*grpc.ClientConn, error) {
 			mutex.Lock()
 			defer mutex.Unlock()
-			cc, err := grpc.Dial("localhost:6006", grpc.WithTransportCredentials(insecure.NewCredentials()))
+			cc, err := grpc.NewClient("localhost:6006", grpc.WithTransportCredentials(insecure.NewCredentials()))
 			ccs = append(ccs, cc)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(cc.GetState()).NotTo(Equal(connectivity.Shutdown))
@@ -250,7 +250,7 @@ var _ = Describe("CFT-Deliverer", func() {
 	When("the dialer returns an error", func() {
 		BeforeEach(func() {
 			fakeDialer.DialReturnsOnCall(0, nil, fmt.Errorf("fake-dial-error"))
-			cc, err := grpc.Dial("localhost:6006", grpc.WithTransportCredentials(insecure.NewCredentials()))
+			cc, err := grpc.NewClient("localhost:6006", grpc.WithTransportCredentials(insecure.NewCredentials()))
 			Expect(err).NotTo(HaveOccurred())
 			fakeDialer.DialReturnsOnCall(1, cc, nil)
 		})

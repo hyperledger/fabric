@@ -92,7 +92,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	conn, err := grpc.Dial(srv, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(srv, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	defer func() {
 		_ = conn.Close()
 	}()

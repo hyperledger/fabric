@@ -105,7 +105,7 @@ var _ = Describe("Interceptor", func() {
 		serveCompleteCh = make(chan error, 1)
 		go func() { serveCompleteCh <- server.Serve(listener) }()
 
-		cc, err := grpc.Dial(listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+		cc, err := grpc.NewClient(listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 		Expect(err).NotTo(HaveOccurred())
 		echoServiceClient = testpb.NewEchoServiceClient(cc)
 	})

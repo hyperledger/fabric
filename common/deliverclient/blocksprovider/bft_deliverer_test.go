@@ -94,7 +94,7 @@ func (s *bftDelivererTestSetup) initialize(t *testing.T) {
 		s.mutex.Lock()
 		defer s.mutex.Unlock()
 
-		cc, err := grpc.Dial("localhost:6005", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		cc, err := grpc.NewClient("localhost:6005", grpc.WithTransportCredentials(insecure.NewCredentials()))
 		s.clientConnSet = append(s.clientConnSet, cc)
 		require.NoError(t, err)
 		require.NotEqual(t, connectivity.Shutdown, cc.GetState())
@@ -389,7 +389,7 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 		setup.initialize(t)
 
 		setup.fakeDialer.DialReturnsOnCall(0, nil, fmt.Errorf("fake-dial-error"))
-		cc, err := grpc.Dial("localhost:6005", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		cc, err := grpc.NewClient("localhost:6005", grpc.WithTransportCredentials(insecure.NewCredentials()))
 		setup.gWithT.Expect(err).NotTo(HaveOccurred())
 		setup.fakeDialer.DialReturnsOnCall(1, cc, nil)
 
@@ -424,7 +424,7 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 			setup.fakeDialer.DialReturnsOnCall(i, nil, fmt.Errorf("fake-dial-error"))
 		}
 
-		cc, err := grpc.Dial("localhost:6005", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		cc, err := grpc.NewClient("localhost:6005", grpc.WithTransportCredentials(insecure.NewCredentials()))
 		setup.gWithT.Expect(err).NotTo(HaveOccurred())
 		setup.fakeDialer.DialReturnsOnCall(24, cc, nil)
 
@@ -818,7 +818,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 			setup.fakeDialer.DialReturnsOnCall(i, nil, fmt.Errorf("fake-dial-error"))
 		}
 		// success
-		cc, err := grpc.Dial("localhost:6005", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		cc, err := grpc.NewClient("localhost:6005", grpc.WithTransportCredentials(insecure.NewCredentials()))
 		setup.gWithT.Expect(err).NotTo(HaveOccurred())
 		require.NotNil(t, cc)
 		setup.fakeDialer.DialReturns(cc, nil)
@@ -897,7 +897,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		}
 
 		// success at attempt 80, 160 and >=240, should reset total sleep time
-		cc, err := grpc.Dial("localhost:6005", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		cc, err := grpc.NewClient("localhost:6005", grpc.WithTransportCredentials(insecure.NewCredentials()))
 		setup.gWithT.Expect(err).NotTo(HaveOccurred())
 		require.NotNil(t, cc)
 		setup.fakeDialer.DialReturns(cc, nil)

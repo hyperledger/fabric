@@ -41,7 +41,7 @@ if [[ "$1" = "-install" ]]; then
   popd
   if [[ -z "${VET_SKIP_PROTO}" ]]; then
     if [[ "${GITHUB_ACTIONS}" = "true" ]]; then
-      PROTOBUF_VERSION=22.0 # a.k.a v4.22.0 in pb.go files.
+      PROTOBUF_VERSION=25.2 # a.k.a. v4.22.0 in pb.go files.
       PROTOC_FILENAME=protoc-${PROTOBUF_VERSION}-linux-x86_64.zip
       pushd /home/runner/go
       wget https://github.com/google/protobuf/releases/download/v${PROTOBUF_VERSION}/${PROTOC_FILENAME}
@@ -82,6 +82,10 @@ git grep 'func [A-Z]' -- "*_test.go" | not grep -v 'func Test\|Benchmark\|Exampl
 
 # - Do not import x/net/context.
 not git grep -l 'x/net/context' -- "*.go"
+
+# - Do not use time.After except in tests.  It has the potential to leak the
+#   timer since there is no way to stop it early.
+git grep -l 'time.After(' -- "*.go" | not grep -v '_test.go\|test_utils\|testutils'
 
 # - Do not import math/rand for real library code.  Use internal/grpcrand for
 #   thread safety.
@@ -172,6 +176,7 @@ UpdateAddresses is deprecated:
 UpdateSubConnState is deprecated:
 balancer.ErrTransientFailure is deprecated:
 grpc/reflection/v1alpha/reflection.proto
+SwitchTo is deprecated:
 XXXXX xDS deprecated fields we support
 .ExactMatch
 .PrefixMatch

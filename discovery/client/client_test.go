@@ -303,7 +303,7 @@ func createConnector(t *testing.T, certificate tls.Certificate, targetPort int) 
 
 	addr := fmt.Sprintf("localhost:%d", targetPort)
 	return func() (*grpc.ClientConn, error) {
-		conn, err := grpc.Dial(addr, grpc.WithBlock(), grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
+		conn, err := grpc.NewClient(addr, grpc.WithBlock(), grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
 		require.NoError(t, err)
 		if err != nil {
 			panic(err)
@@ -604,7 +604,7 @@ func TestBadResponses(t *testing.T) {
 	defer svc.shutdown()
 
 	connect := func() (*grpc.ClientConn, error) {
-		return grpc.Dial(fmt.Sprintf("localhost:%d", svc.port), grpc.WithTransportCredentials(insecure.NewCredentials()))
+		return grpc.NewClient(fmt.Sprintf("localhost:%d", svc.port), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
 	auth := &discovery.AuthInfo{

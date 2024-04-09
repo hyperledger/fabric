@@ -135,7 +135,7 @@ func main() {
 		flag.PrintDefaults()
 	}
 
-	conn, err := grpc.Dial(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		fmt.Println("Error connecting:", err)
 		return

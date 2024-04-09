@@ -47,7 +47,7 @@ func TestStartCmd(t *testing.T) {
 	}()
 
 	grpcProbe := func(addr string) bool {
-		c, err := grpc.Dial(addr, grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+		c, err := grpc.NewClient(addr, grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err == nil {
 			c.Close()
 			return true

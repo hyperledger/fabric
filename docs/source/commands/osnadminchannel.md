@@ -167,7 +167,7 @@ Here's an example of the `osnadmin channel join` command.
 
 Here are some examples of the `osnadmin channel list` command.
 
-* Listing all the channels that the orderer has joined. 
+* Listing all the channels that the orderer has joined.
 Note that the system channel will always be NULL because it is no longer supported from release v3.0 onwards.
 
   ```

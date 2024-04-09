@@ -85,7 +85,7 @@ var _ = Describe("Server", func() {
 			grpc.WithTransportCredentials(credentials.NewTLS(clientTLSConfig)),
 			grpc.WithBlock(),
 		}
-		clientConn, err = grpc.Dial(listener.Addr().String(), dialOpts...)
+		clientConn, err = grpc.NewClient(listener.Addr().String(), dialOpts...)
 		Expect(err).NotTo(HaveOccurred())
 
 		echoServiceClient = testpb.NewEchoServiceClient(clientConn)
@@ -277,7 +277,7 @@ var _ = Describe("Server", func() {
 				serveCompleteCh = make(chan error, 1)
 				go func() { serveCompleteCh <- server.Serve(listener) }()
 
-				clientConn, err = grpc.Dial(listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+				clientConn, err = grpc.NewClient(listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 				Expect(err).NotTo(HaveOccurred())
 				echoServiceClient = testpb.NewEchoServiceClient(clientConn)
 
@@ -453,7 +453,7 @@ var _ = Describe("Server", func() {
 					grpc.WithBlock(),
 				}
 				var err error
-				clientConn, err = grpc.Dial(listener.Addr().String(), dialOpts...)
+				clientConn, err = grpc.NewClient(listener.Addr().String(), dialOpts...)
 				Expect(err).NotTo(HaveOccurred())
 
 				echoServiceClient = testpb.NewEchoServiceClient(clientConn)
@@ -585,7 +585,7 @@ var _ = Describe("Server", func() {
 				serveCompleteCh = make(chan error, 1)
 				go func() { serveCompleteCh <- server.Serve(listener) }()
 
-				clientConn, err = grpc.Dial(listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+				clientConn, err = grpc.NewClient(listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 				Expect(err).NotTo(HaveOccurred())
 				echoServiceClient = testpb.NewEchoServiceClient(clientConn)
 

@@ -223,7 +223,7 @@ func (comm *dummyCommModule) Ping(peer *NetworkMember) bool {
 	_, alreadyExists := comm.streams[peer.Endpoint]
 	conn := comm.conns[peer.Endpoint]
 	if !alreadyExists || conn.GetState() == connectivity.Shutdown {
-		newConn, err := grpc.Dial(peer.Endpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		newConn, err := grpc.NewClient(peer.Endpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			return false
 		}

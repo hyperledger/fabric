@@ -92,7 +92,7 @@ func main() {
 	flag.Uint64Var(&msgSize, "size", 1024, "The size in bytes of the data section for the payload")
 	flag.Parse()
 
-	conn, err := grpc.Dial(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	defer func() {
 		_ = conn.Close()
 	}()
