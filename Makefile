@@ -281,7 +281,7 @@ dist: dist-clean dist/$(MARCH)
 
 .PHONY: dist-all
 dist-all: dist-clean $(RELEASE_PLATFORMS:%=dist/%)
-dist/%: release/% ccaasbuilder
+dist/%: release/% externalbuilder ccaasbuilder
 	mkdir -p release/$(@F)/config
 	cp -r sampleconfig/*.yaml release/$(@F)/config
 	cd release/$(@F) && tar -czvf hyperledger-fabric-$(@F).$(PROJECT_VERSION).tar.gz *
@@ -351,6 +351,11 @@ ccaasbuilder-clean/%:
 	$(eval platform = $(patsubst ccaasbuilder/%,%,$@) )
 	cd ccaas_builder &&	rm -rf $(strip $(platform))
 
+.PHONY: externalbuilder-clean
+externalbuilder-clean/%:
+	$(eval platform = $(patsubst externalbuilder/%,%,$@) )
+	cd external_builder &&     rm -rf $(strip $(platform))
+
 .PHONY: ccaasbuilder
 ccaasbuilder/%: ccaasbuilder-clean
 	$(eval platform = $(patsubst ccaasbuilder/%,%,$@) )
@@ -361,7 +366,19 @@ ccaasbuilder/%: ccaasbuilder-clean
 	cd ccaas_builder && go test -v ./cmd/build && GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildvcs=false -o ../release/$(strip $(platform))/builders/ccaas/bin/ ./cmd/build/
 	cd ccaas_builder && go test -v ./cmd/release && GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildvcs=false -o ../release/$(strip $(platform))/builders/ccaas/bin/ ./cmd/release/
 
+.PHONY: externalbuilder
+externalbuilder/%: externalbuilder-clean
+	$(eval platform = $(patsubst externalbuilder/%,%,$@) )
+	$(eval GOOS = $(word 1,$(subst -, ,$(platform))))
+	$(eval GOARCH = $(word 2,$(subst -, ,$(platform))))
+	@mkdir -p release/$(strip $(platform))/builders/external/bin
+	cd external_builder && go test -v ./cmd/detect && GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildvcs=false -o ../release/$(strip $(platform))/builders/external/bin/ ./cmd/detect/
+	cd external_builder && go test -v ./cmd/build && GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildvcs=false -o ../release/$(strip $(platform))/builders/external/bin/ ./cmd/build/
+	cd external_builder && go test -v ./cmd/release && GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildvcs=false -o ../release/$(strip $(platform))/builders/external/bin/ ./cmd/release/
+
 ccaasbuilder: ccaasbuilder/$(MARCH)
+
+externalbuilder: externalbuilder/$(MARCH)
 
 .PHONY: scan
 scan: scan-govulncheck

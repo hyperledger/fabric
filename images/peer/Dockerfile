@@ -42,6 +42,7 @@ ADD . .
 
 RUN make peer GO_TAGS=${GO_TAGS} FABRIC_VER=${FABRIC_VER}
 RUN make ccaasbuilder
+RUN make externalbuilder
 
 
 ###############################################################################
@@ -68,6 +69,7 @@ COPY    --from=builder  sampleconfig/msp        ${FABRIC_CFG_PATH}/msp
 COPY    --from=builder  sampleconfig/core.yaml  ${FABRIC_CFG_PATH}/core.yaml
 
 COPY    --from=builder  release/${TARGETOS}-${TARGETARCH}/builders/ccaas/bin /opt/hyperledger/ccaas_builder/bin
+COPY    --from=builder  release/${TARGETOS}-${TARGETARCH}/builders/external/bin /opt/hyperledger/external_builder/bin
 
 VOLUME  /etc/hyperledger/fabric
 VOLUME  /var/hyperledger
