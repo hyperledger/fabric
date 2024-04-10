@@ -821,7 +821,7 @@ func validateCollectionConfigs(collConfigs []*pb.StaticCollectionConfig, mspMgr 
 	return nil
 }
 
-// validateCollectionConfigAgainstMsp checks whether the supplied collection configuration
+// validateCollectionConfigMemberOrgsPolicy checks whether the supplied collection configuration
 // complies to the given msp configuration
 func validateCollectionConfigMemberOrgsPolicy(coll *pb.StaticCollectionConfig, mspMgr msp.MSPManager) error {
 	if coll.MemberOrgsPolicy == nil {

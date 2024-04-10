@@ -45,7 +45,7 @@ func (p *Platform) Name() string {
 	return pb.ChaincodeSpec_NODE.String()
 }
 
-// ValidateSpec validates Go chaincodes
+// ValidatePath validates Go chaincodes
 func (p *Platform) ValidatePath(rawPath string) error {
 	path, err := url.Parse(rawPath)
 	if err != nil || path == nil {

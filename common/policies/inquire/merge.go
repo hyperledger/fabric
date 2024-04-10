@@ -129,7 +129,7 @@ func (pair comparablePrincipalSetPair) MergeWithPlurality() ComparablePrincipalS
 // comparablePrincipalSetPairs aggregates []comparablePrincipalSetPairs
 type comparablePrincipalSetPairs []comparablePrincipalSetPair
 
-// ToPrincipalSets converts the comparablePrincipalSetPairs to ComparablePrincipalSets
+// ToMergedPrincipalSets converts the comparablePrincipalSetPairs to ComparablePrincipalSets
 // while taking into account plurality of each pair
 func (pairs comparablePrincipalSetPairs) ToMergedPrincipalSets() ComparablePrincipalSets {
 	var res ComparablePrincipalSets
