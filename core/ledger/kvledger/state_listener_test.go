@@ -62,7 +62,7 @@ func TestStateListener(t *testing.T) {
 	require.NoError(t, sim2.SetState(namespace, "key3", []byte("value3")))
 	sim2.Done()
 
-	// Simulate tx3 - this neighter conflicts with tx1 nor with tx2
+	// Simulate tx3 - this neither conflicts with tx1 nor with tx2
 	sim3, err := lgr.NewTxSimulator("test_tx_3")
 	require.NoError(t, err)
 	require.NoError(t, sim3.SetState(namespace, "key4", []byte("value4")))

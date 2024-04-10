@@ -118,7 +118,7 @@ func TestUnjoinChannelWithInvalidMetadataErrors(t *testing.T) {
 	_, err := provider.CreateFromGenesisBlock(genesisBlock)
 	require.NoError(t, err)
 
-	// purposely set an invalid metatdata
+	// purposely set an invalid metadata
 	require.NoError(t, provider.idStore.db.Put(metadataKey(ledgerID), []byte("invalid"), true))
 	provider.Close()
 

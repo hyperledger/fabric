@@ -80,7 +80,7 @@ func TestPauseAndResumeErrors(t *testing.T) {
 	genesisBlock, _ := configtxtest.MakeGenesisBlock(ledgerID)
 	_, err := provider.CreateFromGenesisBlock(genesisBlock)
 	require.NoError(t, err)
-	// purposely set an invalid metatdata
+	// purposely set an invalid metadata
 	require.NoError(t, provider.idStore.db.Put(metadataKey(ledgerID), []byte("invalid"), true))
 
 	// fail if provider is open (e.g., peer is up running)

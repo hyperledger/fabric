@@ -231,7 +231,7 @@ func (provider *VersionedDBProvider) Drop(dbName string) error {
 		}
 	}
 	if err := dropDB(provider.couchInstance, metadataDBName); err != nil {
-		logger.Errorw("Error dropping metatdataDB", "channel", dbName, "error", err)
+		logger.Errorw("Error dropping metadataDB", "channel", dbName, "error", err)
 		return err
 	}
 

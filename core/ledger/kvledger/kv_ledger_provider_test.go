@@ -161,7 +161,7 @@ func TestLedgerMetataDataUnmarshalError(t *testing.T) {
 	_, err := provider.CreateFromGenesisBlock(genesisBlock)
 	require.NoError(t, err)
 
-	// put invalid bytes for the metatdata key
+	// put invalid bytes for the metadata key
 	require.NoError(t, provider.idStore.db.Put(metadataKey(ledgerID), []byte("invalid"), true))
 
 	_, err = provider.List()
