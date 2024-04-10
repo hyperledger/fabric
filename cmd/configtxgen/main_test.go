@@ -120,33 +120,8 @@ func TestInspectConfigTx(t *testing.T) {
 	require.NoError(t, doInspectChannelCreateTx(configTxDest), "Good configtx inspection request")
 }
 
-func TestGenerateAnchorPeersUpdate(t *testing.T) {
-	configTxDest := filepath.Join(tmpDir, "anchorPeerUpdate")
-
-	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir())
-
-	require.NoError(t, doOutputAnchorPeersUpdate(config, "foo", configTxDest, genesisconfig.SampleOrgName), "Good anchorPeerUpdate request")
-}
-
-func TestBadAnchorPeersUpdates(t *testing.T) {
-	configTxDest := filepath.Join(tmpDir, "anchorPeerUpdate")
-
-	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir())
-
-	require.EqualError(t, doOutputAnchorPeersUpdate(config, "foo", configTxDest, ""), "must specify an organization to update the anchor peer for")
-
-	backupApplication := config.Application
-	config.Application = nil
-	require.EqualError(t, doOutputAnchorPeersUpdate(config, "foo", configTxDest, genesisconfig.SampleOrgName), "cannot update anchor peers without an application section")
-	config.Application = backupApplication
-
-	config.Application.Organizations[0] = &genesisconfig.Organization{Name: "FakeOrg", ID: "FakeOrg"}
-	require.EqualError(t, doOutputAnchorPeersUpdate(config, "foo", configTxDest, genesisconfig.SampleOrgName), "error parsing profile as channel group: could not create application group: failed to create application org: 1 - Error loading MSP configuration for org FakeOrg: unknown MSP type ''")
-}
-
 func TestConfigTxFlags(t *testing.T) {
 	configTxDest := filepath.Join(tmpDir, "configtx")
-	configTxDestAnchorPeers := filepath.Join(tmpDir, "configtxAnchorPeers")
 
 	oldArgs := os.Args
 	defer func() {
@@ -164,7 +139,6 @@ func TestConfigTxFlags(t *testing.T) {
 		"-profile=" + genesisconfig.SampleSingleMSPChannelProfile,
 		"-configPath=" + devConfigDir,
 		"-inspectChannelCreateTx=" + configTxDest,
-		"-outputAnchorPeersUpdate=" + configTxDestAnchorPeers,
 		"-asOrg=" + genesisconfig.SampleOrgName,
 	}
 
@@ -172,8 +146,6 @@ func TestConfigTxFlags(t *testing.T) {
 
 	_, err := os.Stat(configTxDest)
 	require.NoError(t, err, "Configtx file is written successfully")
-	_, err = os.Stat(configTxDestAnchorPeers)
-	require.NoError(t, err, "Configtx anchor peers file is written successfully")
 }
 
 func TestBlockFlags(t *testing.T) {
