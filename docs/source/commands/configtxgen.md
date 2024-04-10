@@ -29,8 +29,6 @@ Usage of configtxgen:
     	Prints the configuration contained in the block at the specified path
   -inspectChannelCreateTx string
     	[DEPRECATED] Prints the configuration contained in the transaction at the specified path
-  -outputAnchorPeersUpdate string
-    	[DEPRECATED] Creates a config update to update an anchor peer (works only with the default channel creation, and only for the first update)
   -outputBlock string
     	The path to write the genesis block to (if set)
   -outputCreateChannelTx string
@@ -93,21 +91,6 @@ for channel reconfiguration workflows, such as adding a member).
 configtxgen -printOrg Org1
 ```
 
-### Output anchor peer tx (deprecated)
-
-**Note:** The channel creation transaction was used in order to create a new application channel using a system channel. Because the system channel is no longer supported since release v3.0, it is now deprecated.
-
-Output a channel configuration update transaction `anchor_peer_tx.pb`  based on
-the anchor peers defined for Org1 and channel profile SampleSingleMSPChannelV1_1
-in `configtx.yaml`. Transaction will set anchor peers for Org1 if no anchor peers
-have been set on the channel.
-```
-configtxgen -outputAnchorPeersUpdate anchor_peer_tx.pb -profile SampleSingleMSPChannelV1_1 -asOrg Org1
-```
-
-The `-outputAnchorPeersUpdate` output flag has been deprecated. To set anchor
-peers on the channel, use [configtxlator](configtxlator.html) to update the
-channel configuration.
 
 ## Configuration
 
