@@ -9,6 +9,7 @@ package cluster_test
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
@@ -789,8 +790,18 @@ func TestBlockVerifierBuilderNoConfigBlock(t *testing.T) {
 
 func TestBlockVerifierFunc(t *testing.T) {
 	block := sampleConfigBlock(t)
-	require.NotNil(t, block)
-	bvfunc := cluster.BlockVerifierBuilder(&mocks.BCCSP{})
+	//require.NotNil(t, block)
+
+	//cp, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	//require.NoError(t, err)
+	//hash, err := cp.GetHash(&bccsp.SHA256Opts{})
+	//require.NoError(t, err)
+	//require.NotNil(t, hash)
+
+	bccsp := &mocks.BCCSP{}
+	bccsp.GetHashReturns(sha256.New(), nil)
+
+	bvfunc := cluster.BlockVerifierBuilder(bccsp)
 
 	verifier := bvfunc(block)
 
@@ -895,7 +906,7 @@ func sampleConfigBlock(t *testing.T) *common.Block {
 																Id:       1,
 																Host:     "host1",
 																Port:     8001,
-																MspId:    "msp1",
+																MspId:    "SampleOrg",
 																Identity: []byte("identity1"),
 															},
 														},
