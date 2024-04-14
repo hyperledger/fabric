@@ -976,7 +976,7 @@ func TestDynamicCapabilitiesAndMSP(t *testing.T) {
 	require.Equal(t, 2*mspManagerInvokeCount, v.ChannelResources.(*mocktxvalidator.Support).MSPManagerInvokeCount())
 }
 
-// TestLedgerIsNoAvailable simulates and provides a test for following scenario,
+// TestLedgerIsNotAvailable simulates and provides a test for following scenario,
 // which is based on FAB-535. Test checks the validation path which expects that
 // DB won't available while trying to lookup for VSCC from LCCC and therefore
 // transaction validation will have to fail. In such case the outcome should be
