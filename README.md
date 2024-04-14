@@ -5,6 +5,14 @@
 [![GoDoc](https://godoc.org/github.com/hyperledger/fabric?status.svg)](https://godoc.org/github.com/hyperledger/fabric)
 [![Documentation Status](https://readthedocs.org/projects/hyperledger-fabric/badge/?version=latest)](http://hyperledger-fabric.readthedocs.io/en/latest)
 
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/hyperledger/fabric/verify-build.yml?branch=main&label=build%20-%20main)](https://github.com/hyperledger/fabric/actions/workflows/verify-build.yml)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/hyperledger/fabric/verify-build.yml?branch=release-2.5&label=build%20-%20release-2.5)](https://github.com/hyperledger/fabric/actions/workflows/verify-build.yml)
+[![Security vulnerability scan](https://github.com/hyperledger/fabric/actions/workflows/vulnerability-scan.yml/badge.svg?branch=main)](https://github.com/hyperledger/fabric/actions/workflows/vulnerability-scan.yml)
+
+[![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/hyperledger/fabric)](https://github.com/hyperledger/fabric/blob/main/go.mod)
+[![GitHub Release](https://img.shields.io/github/v/release/hyperledger/fabric)](https://github.com/hyperledger/fabric/releases)
+
+
 This project is a _Graduated_ Hyperledger project. For more information on the history of this project, see the [Fabric wiki page](https://wiki.hyperledger.org/display/fabric). Information on what _Graduated_ entails can be found in
 the [Hyperledger Project Lifecycle document](https://tsc.hyperledger.org/project-lifecycle.html).
 Hyperledger Fabric is a platform for distributed ledger solutions underpinned
