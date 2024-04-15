@@ -1000,46 +1000,6 @@ func (n *Network) CreateAndJoinChannel(o *Orderer, channelName string) {
 	n.JoinChannel(channelName, o, peers...)
 }
 
-// UpdateChannelAnchors determines the anchor peers for the specified channel,
-// creates an anchor peer update transaction for each organization, and submits
-// the update transactions to the orderer.
-//
-// TODO using configtxgen with -outputAnchorPeersUpdate to update the anchor peers is deprecated and does not work
-// with channel participation API. We'll have to generate the channel update explicitly (see UpdateOrgAnchorPeers).
-func (n *Network) UpdateChannelAnchors(o *Orderer, channelName string) {
-	tempFile, err := os.CreateTemp("", "update-anchors")
-	Expect(err).NotTo(HaveOccurred())
-	tempFile.Close()
-	defer os.Remove(tempFile.Name())
-
-	peersByOrg := map[string]*Peer{}
-	for _, p := range n.AnchorsForChannel(channelName) {
-		peersByOrg[p.Organization] = p
-	}
-
-	for orgName, p := range peersByOrg {
-		anchorUpdate := commands.OutputAnchorPeersUpdate{
-			OutputAnchorPeersUpdate: tempFile.Name(),
-			ChannelID:               channelName,
-			Profile:                 n.ProfileForChannel(channelName),
-			ConfigPath:              n.RootDir,
-			AsOrg:                   orgName,
-		}
-		sess, err := n.ConfigTxGen(anchorUpdate)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-
-		sess, err = n.PeerAdminSession(p, commands.ChannelUpdate{
-			ChannelID:  channelName,
-			Orderer:    n.OrdererAddress(o, ListenPort),
-			File:       tempFile.Name(),
-			ClientAuth: n.ClientAuthRequired,
-		})
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	}
-}
-
 // UpdateOrgAnchorPeers sets the anchor peers of an organization on a channel using a config update tx, and waits for
 // the update to be complete.
 func (n *Network) UpdateOrgAnchorPeers(o *Orderer, channelName, orgName string, anchorPeersForOrg []*Peer) {
