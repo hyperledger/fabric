@@ -123,7 +123,7 @@ type CCInfoFSImpl struct {
 	GetHasher GetHasher
 }
 
-// GetChaincodeFromFS this is a wrapper for hiding package implementation.
+// GetChaincode this is a wrapper for hiding package implementation.
 // It calls GetChaincodeFromPath with the chaincodeInstallPath
 func (cifs *CCInfoFSImpl) GetChaincode(ccNameVersion string) (CCPackage, error) {
 	return cifs.GetChaincodeFromPath(ccNameVersion, chaincodeInstallPath)

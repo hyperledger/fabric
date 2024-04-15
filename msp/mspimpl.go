@@ -748,7 +748,7 @@ var (
 // verifyLegacyNameConstraints exercises the name constraint validation rules
 // that were part of the certificate verification process in Go 1.14.
 //
-// If a signing certificate contains a name constratint, the leaf certificate
+// If a signing certificate contains a name constraint, the leaf certificate
 // does not include SAN extensions, and the leaf's common name looks like a
 // host name, the validation would fail with an x509.CertificateInvalidError
 // and a rason of x509.NameConstraintsWithoutSANs.

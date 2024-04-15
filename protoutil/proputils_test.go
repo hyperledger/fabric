@@ -370,7 +370,7 @@ func TestEnvelope(t *testing.T) {
 	}
 
 	if act2.Response.Status != response.Status {
-		t.Fatalf("response staus don't match")
+		t.Fatalf("response status don't match")
 		return
 	}
 	if !bytes.Equal(act2.Response.Payload, response.Payload) {
@@ -426,7 +426,7 @@ func TestEnvelope(t *testing.T) {
 	}
 
 	if ca.Response.Status != response.Status {
-		t.Fatalf("response staus don't match")
+		t.Fatalf("response status don't match")
 		return
 	}
 	if !bytes.Equal(ca.Response.Payload, response.Payload) {
