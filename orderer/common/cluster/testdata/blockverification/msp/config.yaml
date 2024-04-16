@@ -1,0 +1,27 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+OrganizationalUnitIdentifiers:
+NodeOUs:
+  Enable: false
+  # For each identity classification that you would like to utilize, specify
+  # an OU identifier.
+  # You can optionally configure that the OU identifier must be issued by a specific CA
+  # or intermediate certificate from your organization. However, it is typical to NOT
+  # configure a specific Certificate. By not configuring a specific Certificate, you will be
+  # able to add other CA or intermediate certs later, without having to reissue all credentials.
+  # For this reason, the sample below comments out the Certificate field.
+  ClientOUIdentifier:
+    # Certificate: "cacerts/cacert.pem"
+    OrganizationalUnitIdentifier: "OU_client"
+  PeerOUIdentifier:
+    # Certificate: "cacerts/cacert.pem"
+    OrganizationalUnitIdentifier: "OU_peer"
+  AdminOUIdentifier:
+    # Certificate: "cacerts/cacert.pem"
+    OrganizationalUnitIdentifier: "OU_admin"
+  OrdererOUIdentifier:
+    # Certificate: "cacerts/cacert.pem"
+    OrganizationalUnitIdentifier: "OU_orderer"
