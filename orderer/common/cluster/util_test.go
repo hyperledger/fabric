@@ -15,9 +15,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"os"
-	"os/exec"
-	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -788,54 +785,67 @@ func TestBlockVerifierBuilderNoConfigBlock(t *testing.T) {
 	require.ErrorContains(t, verifier(nil, md), "initialized with an invalid config block: channelconfig Config cannot be nil")
 }
 
+func generateCertificatesSmartBFT(confAppSmartBFT *genesisconfig.Profile, certDir string, certs ...string) error {
+	for i, c := range confAppSmartBFT.Orderer.ConsenterMapping {
+		c.MSPID = "SampleOrg"
+		cert := filepath.Join(certDir, certs[i])
+		c.Identity = cert
+		c.ServerTLSCert = cert
+		c.ClientTLSCert = cert
+	}
+
+	return nil
+}
+
 func TestBlockVerifierFunc(t *testing.T) {
-	block := sampleConfigBlock(t)
-	//require.NotNil(t, block)
+	//block := sampleConfigBlock()
 
-	//cp, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	//require.NoError(t, err)
-	//hash, err := cp.GetHash(&bccsp.SHA256Opts{})
-	//require.NoError(t, err)
-	//require.NotNil(t, hash)
+	certPath := filepath.Join("testdata", "blockverification", "msp", "signcerts")
 
-	bccsp := &mocks.BCCSP{}
-	bccsp.GetHashReturns(sha256.New(), nil)
+	conf := genesisconfig.Load(genesisconfig.SampleAppChannelSmartBftProfile, filepath.Join("testdata", "blockverification"))
+	err := generateCertificatesSmartBFT(conf, certPath, "peer.pem", "orderer.example.com-cert.pem", "peer0.org1.example.com-cert.pem", "peer0.org2.example.com-cert.pem")
+	require.NoError(t, err)
 
-	bvfunc := cluster.BlockVerifierBuilder(bccsp)
+	flogging.ActivateSpec("debug")
 
-	verifier := bvfunc(block)
+	gb := encoder.New(conf).GenesisBlockForChannel("foo")
+
+	bc := &mocks.BCCSP{}
+	bc.VerifyReturns(true, nil)
+	bc.GetHashReturns(sha256.New(), nil)
+	bc.HashStub = func(msg []byte, _ bccsp.HashOpts) ([]byte, error) {
+		dig := sha256.Sum256(msg)
+		return dig[:], nil
+	}
+	bvfunc := cluster.BlockVerifierBuilder(bc)
+
+	verifier := bvfunc(gb)
 
 	header := &common.BlockHeader{}
 	md := &common.BlockMetadata{
 		Metadata: [][]byte{
 			protoutil.MarshalOrPanic(&common.Metadata{Signatures: []*common.MetadataSignature{
 				{
-					Signature:        []byte{},
+					Signature:        []byte{1},
 					IdentifierHeader: protoutil.MarshalOrPanic(&common.IdentifierHeader{Identifier: 1}),
+				},
+				{
+					Signature:        []byte{2},
+					IdentifierHeader: protoutil.MarshalOrPanic(&common.IdentifierHeader{Identifier: 2}),
+				},
+				{
+					Signature:        []byte{3},
+					IdentifierHeader: protoutil.MarshalOrPanic(&common.IdentifierHeader{Identifier: 3}),
 				},
 			}}),
 		},
 	}
 
-	err := verifier(header, md)
+	err = verifier(header, md)
 	require.NoError(t, err)
 }
 
-func sampleConfigBlock(t *testing.T) *common.Block {
-	certDir := t.TempDir()
-	tlsCA, err := tlsgen.NewCA()
-	require.NoError(t, err)
-	config := genesisconfig.Load(genesisconfig.SampleAppChannelSmartBftProfile, configtest.GetDevConfigDir())
-	generateCertificatesSmartBFT(t, config, tlsCA, certDir)
-	config.Orderer.Organizations[0].OrdererEndpoints = []string{"127.0.0.1:7050"}
-
-	group, err := encoder.NewChannelGroup(config)
-	if err != nil {
-		return nil
-	}
-
-	sampleOrg := group.Groups["Orderer"].Groups["SampleOrg"]
-
+func sampleConfigBlock() *common.Block {
 	return &common.Block{
 		Header: &common.BlockHeader{
 			PreviousHash: []byte("foo"),
@@ -868,15 +878,15 @@ func sampleConfigBlock(t *testing.T) *common.Block {
 									},
 									Groups: map[string]*common.ConfigGroup{
 										"Orderer": {
+											Groups: map[string]*common.ConfigGroup{
+												"SampleOrg": {},
+											},
 											Policies: map[string]*common.ConfigPolicy{
 												"BlockValidation": {
 													Policy: &common.Policy{
 														Type: 3,
 													},
 												},
-											},
-											Groups: map[string]*common.ConfigGroup{
-												"SampleOrg": sampleOrg,
 											},
 											Values: map[string]*common.ConfigValue{
 												"BatchSize": {
@@ -923,27 +933,6 @@ func sampleConfigBlock(t *testing.T) *common.Block {
 				}),
 			},
 		},
-	}
-}
-
-func generateCertificatesSmartBFT(t *testing.T, confAppSmartBFT *genesisconfig.Profile, tlsCA tlsgen.CA, certDir string) {
-	for i, c := range confAppSmartBFT.Orderer.ConsenterMapping {
-		t.Logf("BFT Consenter: %+v", c)
-		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)
-		require.NoError(t, err)
-		srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", i))
-		err = os.WriteFile(srvP, srvC.Cert, 0o644)
-		require.NoError(t, err)
-
-		clnC, err := tlsCA.NewClientCertKeyPair()
-		require.NoError(t, err)
-		clnP := path.Join(certDir, fmt.Sprintf("client%d.crt", i))
-		err = os.WriteFile(clnP, clnC.Cert, 0o644)
-		require.NoError(t, err)
-
-		c.Identity = srvP
-		c.ServerTLSCert = srvP
-		c.ClientTLSCert = clnP
 	}
 }
 
