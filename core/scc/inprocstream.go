@@ -21,7 +21,7 @@ func (e SendPanicFailure) Error() string {
 	return fmt.Sprintf("send failure %s", string(e))
 }
 
-// PeerChaincodeStream interface for stream between Peer and chaincode instance.
+// inProcStream interface for stream between Peer and chaincode instance.
 type inProcStream struct {
 	recv      <-chan *pb.ChaincodeMessage
 	send      chan<- *pb.ChaincodeMessage
