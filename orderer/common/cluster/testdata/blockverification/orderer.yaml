@@ -1,0 +1,359 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+---
+################################################################################
+#
+#   Orderer Configuration
+#
+#   - This controls the type and configuration of the orderer.
+#
+################################################################################
+General:
+    # Listen address: The IP on which to bind to listen.
+    ListenAddress: 127.0.0.1
+
+    # Listen port: The port on which to bind to listen.
+    ListenPort: 7050
+
+    # TLS: TLS settings for the GRPC server.
+    TLS:
+        # Require server-side TLS
+        Enabled: false
+        # PrivateKey governs the file location of the private key of the TLS certificate.
+        PrivateKey: tls/server.key
+        # Certificate governs the file location of the server TLS certificate.
+        Certificate: tls/server.crt
+        # RootCAs contains a list of additional root certificates used for verifying certificates
+        # of other orderer nodes during outbound connections.
+        # It is not required to be set, but can be used to augment the set of TLS CA certificates
+        # available from the MSPs of each channel’s configuration.
+        RootCAs:
+          - tls/ca.crt
+        # Require client certificates / mutual TLS for inbound connections.
+        ClientAuthRequired: false
+        # If mutual TLS is enabled, ClientRootCAs contains a list of additional root certificates
+        # used for verifying certificates of client connections.
+        # It is not required to be set, but can be used to augment the set of TLS CA certificates
+        # available from the MSPs of each channel’s configuration.
+        ClientRootCAs:
+    # Keepalive settings for the GRPC server.
+    Keepalive:
+        # ServerMinInterval is the minimum permitted time between client pings.
+        # If clients send pings more frequently, the server will
+        # disconnect them.
+        ServerMinInterval: 60s
+        # ServerInterval is the time between pings to clients.
+        ServerInterval: 7200s
+        # ServerTimeout is the duration the server waits for a response from
+        # a client before closing the connection.
+        ServerTimeout: 20s
+    # Config defines the configuration options for backoff GRPC client.
+    Backoff:
+        # BaseDelay is the amount of time to backoff after the first failure.
+        BaseDelay: 1s
+        # Multiplier is the factor with which to multiply backoffs after a
+        # failed retry. Should ideally be greater than 1.
+        Multiplier: 1.6
+        # MaxDelay is the upper bound of backoff delay.
+        MaxDelay: 2m
+
+    # Since all nodes should be consistent it is recommended to keep
+    # the default value of 100MB for MaxRecvMsgSize & MaxSendMsgSize
+    # Max message size in bytes the GRPC server and client can receive
+    MaxRecvMsgSize: 104857600
+    # Max message size in bytes the GRPC server and client can send
+    MaxSendMsgSize: 104857600
+    # Throttling prevents clients from sending too many transactions
+    # per second to the broadcast API of this node.
+    # It is only enforced when the Rate is non-zero, and when the client
+    # connects using mutual TLS.
+    # The effective rate of transactions is divided across all clients
+    # and organizations at a given unit of time governed by the inactivity timeout.
+    # When a client's rate of transaction submission exhausts its allocated budget,
+    # it is throttled until additional "budget" is allocated (it is allocated once per second).
+    Throttling:
+        # Rate is the maximum rate (transactions per second) for all clients combined.
+        # A zero rate disables throttling.
+        Rate: 0
+        # InactivityTimeout defines the time frame after which
+        # inactive clients are pruned from memory and are not considered
+        # when allocating the budget for throttling per client.
+        InactivityTimeout: 5s
+
+    # Cluster settings for ordering service nodes that communicate with other ordering service nodes
+    # such as Raft based ordering service.
+    Cluster:
+        # SendBufferSize is the maximum number of messages in the egress buffer.
+        # Consensus messages are dropped if the buffer is full, and transaction
+        # messages are waiting for space to be freed.
+        SendBufferSize: 100
+
+        # ClientCertificate governs the file location of the client TLS certificate
+        # used to establish mutual TLS connections with other ordering service nodes.
+        # If not set, the server General.TLS.Certificate is re-used.
+        ClientCertificate:
+        # ClientPrivateKey governs the file location of the private key of the client TLS certificate.
+        # If not set, the server General.TLS.PrivateKey is re-used.
+        ClientPrivateKey:
+
+        # The below 4 properties should be either set together, or be unset together.
+        # If they are set, then the orderer node uses a separate listener for intra-cluster
+        # communication. If they are unset, then the general orderer listener is used.
+        # This is useful if you want to use a different TLS server certificates on the
+        # client-facing and the intra-cluster listeners.
+
+        # ListenPort defines the port on which the cluster listens to connections.
+        ListenPort:
+        # ListenAddress defines the IP on which to listen to intra-cluster communication.
+        ListenAddress:
+        # ServerCertificate defines the file location of the server TLS certificate used for intra-cluster
+        # communication.
+        ServerCertificate:
+        # ServerPrivateKey defines the file location of the private key of the TLS certificate.
+        ServerPrivateKey:
+
+        # ReplicationPolicy defines how blocks are replicated between orderers.
+        # Permitted values:
+        # in BFT: "simple" | "consensus" (default);
+        # in etcdraft: ignored, (always "simple", regardless of value in config).
+        # When running a Raft orderer or with ReplicationPolicy set to 'simple', an orderer
+        # replicates blocks from a single orderer node.
+        # When running a BFT orderer with ReplicationPolicy set to 'consensus', the orderer
+        # replicates blocks from a single orderer node, but replicates block headers with signatures
+        # from other orderer nodes, and if it suspects the former node withholds blocks from it,
+        # it switches to a new orderer as a source of blocks.
+        ReplicationPolicy:
+
+    # Bootstrap method: The method by which to obtain the bootstrap block
+    # system channel is specified. The option can be one of:
+    #   "file" - path to a file containing the genesis block or config block of system channel
+    #   "none" - allows an orderer to start without a system channel configuration
+    BootstrapMethod: none
+
+    # Bootstrap file: The file containing the bootstrap block to use when
+    # initializing the orderer system channel and BootstrapMethod is set to
+    # "file".  The bootstrap file can be the genesis block, and it can also be
+    # a config block for late bootstrap of some consensus methods like Raft.
+    # Generate a genesis block by updating $FABRIC_CFG_PATH/configtx.yaml and
+    # using configtxgen command with "-outputBlock" option.
+    # Defaults to file "genesisblock" (in $FABRIC_CFG_PATH directory) if not specified.
+    BootstrapFile:
+
+    # LocalMSPDir is where to find the private crypto material needed by the
+    # orderer. It is set relative here as a default for dev environments but
+    # should be changed to the real location in production.
+    LocalMSPDir: msp
+
+    # LocalMSPID is the identity to register the local MSP material with the MSP
+    # manager. IMPORTANT: The local MSP ID of an orderer needs to match the MSP
+    # ID of one of the organizations defined in the orderer system channel's
+    # /Channel/Orderer configuration. The sample organization defined in the
+    # sample configuration provided has an MSP ID of "SampleOrg".
+    LocalMSPID: SampleOrg
+
+    # Enable an HTTP service for Go "pprof" profiling as documented at:
+    # https://golang.org/pkg/net/http/pprof
+    Profile:
+        Enabled: false
+        Address: 0.0.0.0:6060
+
+    # BCCSP configures the blockchain crypto service providers.
+    BCCSP:
+        # Default specifies the preferred blockchain crypto service provider
+        # to use. If the preferred provider is not available, the software
+        # based provider ("SW") will be used.
+        # Valid providers are:
+        #  - SW: a software based crypto provider
+        #  - PKCS11: a CA hardware security module crypto provider.
+        Default: SW
+
+        # SW configures the software based blockchain crypto provider.
+        SW:
+            # TODO: The default Hash and Security level needs refactoring to be
+            # fully configurable. Changing these defaults requires coordination
+            # SHA2 is hardcoded in several places, not only BCCSP
+            Hash: SHA2
+            Security: 256
+            # Location of key store. If this is unset, a location will be
+            # chosen using: 'LocalMSPDir'/keystore
+            FileKeyStore:
+                KeyStore:
+
+        # Settings for the PKCS#11 crypto provider (i.e. when DEFAULT: PKCS11)
+        PKCS11:
+            # Location of the PKCS11 module library
+            Library:
+            # Token Label
+            Label:
+            # User PIN
+            Pin:
+            Hash:
+            Security:
+            FileKeyStore:
+                KeyStore:
+
+    # Authentication contains configuration parameters related to authenticating
+    # client messages
+    Authentication:
+        # the acceptable difference between the current server time and the
+        # client's time as specified in a client request message
+        TimeWindow: 15m
+
+
+################################################################################
+#
+#   SECTION: File Ledger
+#
+#   - This section applies to the configuration of the file ledger.
+#
+################################################################################
+FileLedger:
+
+    # Location: The directory to store the blocks in.
+    Location: /var/hyperledger/production/orderer
+
+################################################################################
+#
+#   Debug Configuration
+#
+#   - This controls the debugging options for the orderer
+#
+################################################################################
+Debug:
+
+    # BroadcastTraceDir when set will cause each request to the Broadcast service
+    # for this orderer to be written to a file in this directory
+    BroadcastTraceDir:
+
+    # DeliverTraceDir when set will cause each request to the Deliver service
+    # for this orderer to be written to a file in this directory
+    DeliverTraceDir:
+
+################################################################################
+#
+#   Operations Configuration
+#
+#   - This configures the operations server endpoint for the orderer
+#
+################################################################################
+Operations:
+    # host and port for the operations server
+    ListenAddress: 127.0.0.1:8443
+
+    # TLS configuration for the operations endpoint
+    TLS:
+        # TLS enabled
+        Enabled: false
+
+        # Certificate is the location of the PEM encoded TLS certificate
+        Certificate:
+
+        # PrivateKey points to the location of the PEM-encoded key
+        PrivateKey:
+
+        # Most operations service endpoints require client authentication when TLS
+        # is enabled. ClientAuthRequired requires client certificate authentication
+        # at the TLS layer to access all resources.
+        ClientAuthRequired: false
+
+        # Paths to PEM encoded ca certificates to trust for client authentication
+        ClientRootCAs: []
+
+################################################################################
+#
+#   Metrics Configuration
+#
+#   - This configures metrics collection for the orderer
+#
+################################################################################
+Metrics:
+    # The metrics provider is one of statsd, prometheus, or disabled
+    Provider: disabled
+
+    # The statsd configuration
+    Statsd:
+      # network type: tcp or udp
+      Network: udp
+
+      # the statsd server address
+      Address: 127.0.0.1:8125
+
+      # The interval at which locally cached counters and gauges are pushed
+      # to statsd; timings are pushed immediately
+      WriteInterval: 30s
+
+      # The prefix is prepended to all emitted statsd metrics
+      Prefix:
+
+################################################################################
+#
+#   Admin Configuration
+#
+#   - This configures the admin server endpoint for the orderer
+#
+################################################################################
+Admin:
+    # host and port for the admin server
+    ListenAddress: 127.0.0.1:9443
+
+    # TLS configuration for the admin endpoint
+    TLS:
+        # TLS enabled
+        Enabled: false
+
+        # Certificate is the location of the PEM encoded TLS certificate
+        Certificate:
+
+        # PrivateKey points to the location of the PEM-encoded key
+        PrivateKey:
+
+        # Most admin service endpoints require client authentication when TLS
+        # is enabled. ClientAuthRequired requires client certificate authentication
+        # at the TLS layer to access all resources.
+        #
+        # NOTE: When TLS is enabled, the admin endpoint requires mutual TLS. The
+        # orderer will panic on startup if this value is set to false.
+        ClientAuthRequired: true
+
+        # Paths to PEM encoded ca certificates to trust for client authentication
+        ClientRootCAs: []
+
+################################################################################
+#
+#   Channel participation API Configuration
+#
+#   - This provides the channel participation API configuration for the orderer.
+#   - Channel participation uses the ListenAddress and TLS settings of the Admin
+#     service.
+#
+################################################################################
+ChannelParticipation:
+    # Channel participation API is enabled. Deprecated: must be set to true.
+    Enabled: true
+
+    # The maximum size of the request body when joining a channel.
+    MaxRequestBodySize: 1 MB
+
+
+################################################################################
+#
+#   Consensus Configuration
+#
+#   - This section contains config options for a consensus plugin. It is opaque
+#     to orderer, and completely up to consensus implementation to make use of.
+#
+################################################################################
+Consensus:
+    # The allowed key-value pairs here depend on consensus plugin. For etcd/raft,
+    # we use following options:
+
+    # WALDir specifies the location at which Write Ahead Logs for etcd/raft are
+    # stored. Each channel will have its own subdir named after channel ID.
+    WALDir: /var/hyperledger/production/orderer/etcdraft/wal
+
+    # SnapDir specifies the location at which snapshots for etcd/raft are
+    # stored. Each channel will have its own subdir named after channel ID.
+    SnapDir: /var/hyperledger/production/orderer/etcdraft/snapshot
