@@ -298,8 +298,8 @@ var _ = Describe("Lifecycle", func() {
 		currentConfig := nwo.GetConfig(network, testPeers[0], orderer, "testchannel")
 		updatedConfig := proto.Clone(currentConfig).(*common.Config)
 
-		jsonObj, err := json.MarshalIndent(updatedConfig, "", "    ")
-		_ = os.WriteFile("updatedConfig.json", jsonObj, 0644)
+		jsonObj, _ := json.MarshalIndent(updatedConfig, "", "    ")
+		_ = os.WriteFile("updatedConfig.json", jsonObj, 0o644)
 
 		// get the configtx info for org3
 		sess, err = network.ConfigTxGen(commands.PrintOrg{
@@ -311,10 +311,10 @@ var _ = Describe("Lifecycle", func() {
 		org3Group := &ordererext.DynamicOrdererOrgGroup{ConfigGroup: &common.ConfigGroup{}}
 		err = protolator.DeepUnmarshalJSON(bytes.NewBuffer(sess.Out.Contents()), org3Group)
 		Expect(err).NotTo(HaveOccurred())
-		//delete(org3Group.Values, "Endpoints")
+		// delete(org3Group.Values, "Endpoints")
 
-		jsonObj, err = json.MarshalIndent(org3Group, "", "    ")
-		_ = os.WriteFile("org3Group.json", jsonObj, 0644)
+		jsonObj, _ = json.MarshalIndent(org3Group, "", "    ")
+		_ = os.WriteFile("org3Group.json", jsonObj, 0o644)
 
 		// update the channel config to include org3
 		updatedConfig.ChannelGroup.Groups["Application"].Groups["Org3"] = org3Group.ConfigGroup
