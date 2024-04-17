@@ -45,6 +45,7 @@ type BFTSynchronizer struct {
 }
 
 func (s *BFTSynchronizer) Sync() types.SyncResponse {
+	s.Logger.Debug("BFTSynchronizer Sync initiated")
 	decision, err := s.synchronize()
 	if err != nil {
 		s.Logger.Warnf("Could not synchronize with remote orderers due to %s, returning state from local ledger", err)

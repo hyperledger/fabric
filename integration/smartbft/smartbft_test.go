@@ -1085,6 +1085,77 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			Expect(resp.Info).To(ContainSubstring("implicit policy evaluation failed - 0 sub-policies were satisfied"))
 		})
 
+		It("smartbft sync is called after restart", func() {
+			channel := "testchannel1"
+			networkConfig := nwo.MultiNodeSmartBFT()
+			networkConfig.Channels = nil
+
+			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
+			network.OrdererReplicationPolicy = "simple"
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			network.EventuallyTimeout *= 2
+			fabricLoggingSpec := "FABRIC_LOGGING_SPEC=debug"
+
+			var ordererRunners []*ginkgomon.Runner
+			for _, orderer := range network.Orderers {
+				runner := network.OrdererRunner(orderer)
+				runner.Command.Env = append(runner.Command.Env, fabricLoggingSpec)
+				ordererRunners = append(ordererRunners, runner)
+				proc := ifrit.Invoke(runner)
+				ordererProcesses = append(ordererProcesses, proc)
+				Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			peerRunner := network.PeerGroupRunner()
+			peerProcesses = ifrit.Invoke(peerRunner)
+
+			Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			peer := network.Peer("Org1", "peer0")
+
+			joinChannel(network, channel)
+
+			By("Waiting for followers to see the leader")
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[2].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+
+			By("Joining peers to channel")
+			network.JoinChannel(channel, network.Orderers[0], network.PeersWithChannel(channel)...)
+
+			By("Deploying chaincode")
+			deployChaincode(network, channel, testDir)
+			assertBlockReception(map[string]int{channel: 4}, network.Orderers, peer, network)
+
+			leader := network.Orderers[0]
+			By("Send TX")
+			invokeQuery(network, peer, leader, channel, 90)
+			assertBlockReception(map[string]int{channel: 5}, network.Orderers, peer, network)
+
+			lastOrderer := network.Orderers[3]
+			lastOrdererProcess := ordererProcesses[3]
+
+			By("Stop last orderer")
+			lastOrdererProcess.Signal(syscall.SIGTERM)
+			Eventually(lastOrdererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+
+			By("Send another TX")
+			invokeQuery(network, peer, leader, channel, 80)
+			assertBlockReception(map[string]int{channel: 6}, network.Orderers[:3], peer, network)
+
+			By("Restart the follower")
+			runner := network.OrdererRunner(lastOrderer)
+			runner.Command.Env = append(runner.Command.Env, fabricLoggingSpec)
+			ordererRunners[3] = runner
+			proc := ifrit.Invoke(runner)
+			ordererProcesses[3] = proc
+			Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			//Eventually(runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Synchronizer Sync initiated"))
+			assertBlockReception(map[string]int{channel: 6}, network.Orderers, peer, network)
+		})
+
 		It("smartbft batch size max bytes config change", func() {
 			channel := "testchannel1"
 			By("Create network")
