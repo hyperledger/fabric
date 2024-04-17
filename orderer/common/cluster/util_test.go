@@ -14,7 +14,8 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"math"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -798,8 +799,6 @@ func generateCertificatesSmartBFT(confAppSmartBFT *genesisconfig.Profile, certDi
 }
 
 func TestBlockVerifierFunc(t *testing.T) {
-	//block := sampleConfigBlock()
-
 	certPath := filepath.Join("testdata", "blockverification", "msp", "signcerts")
 
 	conf := genesisconfig.Load(genesisconfig.SampleAppChannelSmartBftProfile, filepath.Join("testdata", "blockverification"))
@@ -843,97 +842,6 @@ func TestBlockVerifierFunc(t *testing.T) {
 
 	err = verifier(header, md)
 	require.NoError(t, err)
-}
-
-func sampleConfigBlock() *common.Block {
-	return &common.Block{
-		Header: &common.BlockHeader{
-			PreviousHash: []byte("foo"),
-		},
-		Data: &common.BlockData{
-			Data: [][]byte{
-				protoutil.MarshalOrPanic(&common.Envelope{
-					Payload: protoutil.MarshalOrPanic(&common.Payload{
-						Header: &common.Header{
-							ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
-								Type:      int32(common.HeaderType_CONFIG),
-								ChannelId: "mychannel",
-							}),
-						},
-						Data: protoutil.MarshalOrPanic(&common.ConfigEnvelope{
-							Config: &common.Config{
-								ChannelGroup: &common.ConfigGroup{
-									Values: map[string]*common.ConfigValue{
-										"Capabilities": {
-											Value: protoutil.MarshalOrPanic(&common.Capabilities{
-												Capabilities: map[string]*common.Capability{"V3_0": {}},
-											}),
-										},
-										"HashingAlgorithm": {
-											Value: protoutil.MarshalOrPanic(&common.HashingAlgorithm{Name: "SHA256"}),
-										},
-										"BlockDataHashingStructure": {
-											Value: protoutil.MarshalOrPanic(&common.BlockDataHashingStructure{Width: math.MaxUint32}),
-										},
-									},
-									Groups: map[string]*common.ConfigGroup{
-										"Orderer": {
-											Groups: map[string]*common.ConfigGroup{
-												"SampleOrg": {},
-											},
-											Policies: map[string]*common.ConfigPolicy{
-												"BlockValidation": {
-													Policy: &common.Policy{
-														Type: 3,
-													},
-												},
-											},
-											Values: map[string]*common.ConfigValue{
-												"BatchSize": {
-													Value: protoutil.MarshalOrPanic(&orderer.BatchSize{
-														MaxMessageCount:   500,
-														AbsoluteMaxBytes:  10485760,
-														PreferredMaxBytes: 2097152,
-													}),
-												},
-												"BatchTimeout": {
-													Value: protoutil.MarshalOrPanic(&orderer.BatchTimeout{
-														Timeout: "2s",
-													}),
-												},
-												"Capabilities": {
-													Value: protoutil.MarshalOrPanic(&common.Capabilities{
-														Capabilities: map[string]*common.Capability{"V3_0": {}},
-													}),
-												},
-												"ConsensusType": {
-													Value: protoutil.MarshalOrPanic(&common.BlockData{Data: [][]byte{[]byte("BFT")}}),
-												},
-												"Orderers": {
-													Value: protoutil.MarshalOrPanic(&common.Orderers{
-														ConsenterMapping: []*common.Consenter{
-															{
-																Id:       1,
-																Host:     "host1",
-																Port:     8001,
-																MspId:    "SampleOrg",
-																Identity: []byte("identity1"),
-															},
-														},
-													}),
-												},
-											},
-										},
-									},
-								},
-							},
-						}),
-					}),
-					Signature: []byte("bar"),
-				}),
-			},
-		},
-	}
 }
 
 func TestGetTLSSessionBinding(t *testing.T) {
