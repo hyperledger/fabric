@@ -128,6 +128,18 @@ func (ns *NetworkSetupInfo) AddNewNode() (map[uint64]*Node, *Node) {
 	return ns.nodeIdToNode, ns.nodeIdToNode[newNodeId]
 }
 
+func (ns *NetworkSetupInfo) RemoveNode(num uint64) map[uint64]*Node {
+	ns.t.Logf("Removing node %v from the network", num)
+	delete(ns.nodeIdToNode, num)
+
+	// update all nodes about the nodes map
+	for nodeId := range ns.nodeIdToNode {
+		ns.nodeIdToNode[nodeId].nodesMap = ns.nodeIdToNode
+	}
+
+	return ns.nodeIdToNode
+}
+
 func (ns *NetworkSetupInfo) StartAllNodes() {
 	ns.t.Logf("Starting nodes in the network")
 	for _, node := range ns.nodeIdToNode {
@@ -278,6 +290,12 @@ func (n *Node) SendTx(tx *cb.Envelope) error {
 		return n.Chain.Configure(tx, n.State.Sequence)
 	}
 	return n.Chain.Order(tx, n.State.Sequence)
+}
+
+func (n *Node) GetConfigBlock(num uint64) *cb.Block {
+	n.lock.RLock()
+	defer n.lock.RUnlock()
+	return n.State.ledgerArray[num]
 }
 
 func isConfigTx(envelope *cb.Envelope) bool {
