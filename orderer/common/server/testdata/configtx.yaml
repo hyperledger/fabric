@@ -22,10 +22,13 @@ Organizations:
         AnchorPeers:
             - Host: 127.0.0.1
               Port: 7051
+        OrdererEndpoints:
+            - "127.0.0.1:7050"
 
 Capabilities:
     Channel: &ChannelCapabilities
         V1_3: true
+        V3_0: true
     Orderer: &OrdererCapabilities
         V1_1: true
     Application: &ApplicationCapabilities
@@ -65,8 +68,6 @@ Application: &ApplicationDefaults
 
 Orderer: &OrdererDefaults
     OrdererType: etcdraft
-    Addresses:
-        - 127.0.0.1:7050
     BatchTimeout: 2s
     BatchSize:
         MaxMessageCount: 10
