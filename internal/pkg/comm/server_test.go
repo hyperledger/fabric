@@ -723,7 +723,7 @@ func TestVerifyCertificateCallback(t *testing.T) {
 	})
 }
 
-// prior tests used self-signed certficates loaded by the GRPCServer and the test client
+// prior tests used self-signed certificates loaded by the GRPCServer and the test client
 // here we'll use certificates signed by certificate authorities
 func TestWithSignedRootCertificates(t *testing.T) {
 	t.Parallel()

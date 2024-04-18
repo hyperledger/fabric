@@ -102,7 +102,7 @@ type ClientConfig struct {
 	MaxSendMsgSize int
 }
 
-// Convert the ClientConfig to the approriate set of grpc.DialOptions.
+// Convert the ClientConfig to the appropriate set of grpc.DialOptions.
 func (cc ClientConfig) DialOptions() ([]grpc.DialOption, error) {
 	var dialOpts []grpc.DialOption
 	dialOpts = append(dialOpts, grpc.WithKeepaliveParams(keepalive.ClientParameters{

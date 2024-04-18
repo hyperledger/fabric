@@ -110,7 +110,7 @@ func (s *SupportImpl) IsSysCC(name string) bool {
 	return s.BuiltinSCCs.IsSysCC(name)
 }
 
-// ExecuteInit a deployment proposal and return the chaincode response
+// ExecuteLegacyInit a deployment proposal and return the chaincode response
 func (s *SupportImpl) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, name, version string, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
 	return s.ChaincodeSupport.ExecuteLegacyInit(txParams, name, version, input)
 }
