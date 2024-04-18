@@ -227,7 +227,7 @@ func (ccpack *CDSPackage) InitFromBuffer(buf []byte) (*ChaincodeData, error) {
 	return ccpack.GetChaincodeData(), nil
 }
 
-// InitFromFS returns the chaincode and its package from the file system
+// InitFromPath returns the chaincode and its package from the file system
 func (ccpack *CDSPackage) InitFromPath(ccNameVersion string, path string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
 	buf, err := GetChaincodePackageFromPath(ccNameVersion, path)
 	if err != nil {

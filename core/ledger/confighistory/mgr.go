@@ -109,7 +109,7 @@ func (m *Mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 	return dbHandle.writeBatch(batch, true)
 }
 
-// ImportConfigHistory imports the collection config history associated with a given
+// ImportFromSnapshot imports the collection config history associated with a given
 // ledgerID from the snapshot files present in the dir
 func (m *Mgr) ImportFromSnapshot(ledgerID string, dir string) error {
 	exist, _, err := fileutil.FileExists(filepath.Join(dir, snapshotDataFileName))
@@ -117,7 +117,7 @@ func (m *Mgr) ImportFromSnapshot(ledgerID string, dir string) error {
 		return err
 	}
 	if !exist {
-		// when the ledger being bootstapped never had a private data collection for
+		// when the ledger being bootstrapped never had a private data collection for
 		// any chaincode, the snapshot files associated with the confighistory store
 		// will not be present in the snapshot directory. Hence, we can return early
 		return nil

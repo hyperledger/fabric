@@ -350,7 +350,7 @@ func (m *KeyLevelValidationParameterManagerImpl) GetValidationParameterForKey(cc
 	return policy, nil
 }
 
-// SetTxValidationCode implements the method of the same name of
+// SetTxValidationResult implements the method of the same name of
 // the KeyLevelValidationParameterManager interface. Note that
 // this function receives a namespace argument so that it records
 // the validation result for this transaction and for this chaincode.
