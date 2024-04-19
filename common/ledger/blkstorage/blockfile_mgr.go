@@ -111,7 +111,7 @@ func newBlockfileMgr(id string, conf *Conf, indexConfig *IndexConfig, indexStore
 		}
 		logger.Debugf("Info constructed by scanning the blocks dir = %s", spew.Sdump(blockfilesInfo))
 	} else {
-		logger.Debug(`Synching block information from block storage (if needed)`)
+		logger.Debug(`Syncing block information from block storage (if needed)`)
 		syncBlockfilesInfoFromFS(rootDir, blockfilesInfo)
 	}
 	err = mgr.saveBlkfilesInfo(blockfilesInfo, true)
