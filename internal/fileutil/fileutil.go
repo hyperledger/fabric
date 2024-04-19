@@ -39,7 +39,7 @@ func CreateAndSyncFile(filePath string, content []byte, perm os.FileMode) error 
 		return errors.Wrapf(err, "error while writing to file:%s", filePath)
 	}
 	if err = file.Sync(); err != nil {
-		return errors.Wrapf(err, "error while synching the file:%s", filePath)
+		return errors.Wrapf(err, "error while syncing the file:%s", filePath)
 	}
 	return nil
 }

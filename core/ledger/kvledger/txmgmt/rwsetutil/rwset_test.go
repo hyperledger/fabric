@@ -44,7 +44,7 @@ func TestRWSetV1BackwardCompatible(t *testing.T) {
 // PrepareBinaryFileSampleRWSetV1 constructs a proto message for kvrwset and marshals its bytes to file 'rwsetV1ProtoBytes'.
 // this code should be run on fabric version 1.0 so as to produce a sample file of proto message declared in V1
 // In order to invoke this function on V1 code, copy this over on to V1 code, make the first letter as 'T', and finally invoke this function
-// using golang test framwork
+// using golang test framework
 func PrepareBinaryFileSampleRWSetV1(t *testing.T) {
 	b, err := proto.Marshal(constructSampleRWSet())
 	require.NoError(t, err)
