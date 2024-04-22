@@ -670,10 +670,10 @@ ledger:
   blockchain:
 
   state:
-    # stateDatabase - options are "goleveldb", "CouchDB"
+    # stateDatabase - options are "goleveldb", "CouchDB", "Badger"
     # goleveldb - default state database stored in goleveldb.
     # CouchDB - store state database in CouchDB
-    stateDatabase: goleveldb
+    stateDatabase: Badger
     # Limit on the number of records to return per query
     totalQueryLimit: 100000
     couchDBConfig:

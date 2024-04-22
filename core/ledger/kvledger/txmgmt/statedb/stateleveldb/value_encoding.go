@@ -13,7 +13,7 @@ import (
 )
 
 // encodeValue encodes the value, version, and metadata
-func encodeValue(v *statedb.VersionedValue) ([]byte, error) {
+func EncodeValue(v *statedb.VersionedValue) ([]byte, error) {
 	return proto.Marshal(
 		&DBValue{
 			Version:  v.Version.ToBytes(),
@@ -24,7 +24,7 @@ func encodeValue(v *statedb.VersionedValue) ([]byte, error) {
 }
 
 // decodeValue decodes the statedb value bytes
-func decodeValue(encodedValue []byte) (*statedb.VersionedValue, error) {
+func DecodeValue(encodedValue []byte) (*statedb.VersionedValue, error) {
 	dbValue := &DBValue{}
 	err := proto.Unmarshal(encodedValue, dbValue)
 	if err != nil {

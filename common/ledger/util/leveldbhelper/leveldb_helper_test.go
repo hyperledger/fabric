@@ -8,9 +8,12 @@ package leveldbhelper
 
 import (
 	"fmt"
+	"io/ioutil"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -212,4 +215,92 @@ func TestCreateDBInNonEmptyDir(t *testing.T) {
 		}
 	}()
 	db.Open()
+}
+
+func BenchmarkLevelDBHelper(b *testing.B) {
+	b.Run("get-leveldb-little-data", BenchmarkGetLevelDBWithLittleData)
+	// b.Run("get-leveldb-big-data", BenchmarkGetLevelDBWithBigData)
+	b.Run("put-leveldb", BenchmarkPutLevelDB)
+	b.Run("put-leveldb-type-2", BenchmarkPutLevelDB2)
+}
+
+func BenchmarkGetLevelDBWithLittleData(b *testing.B) {
+	db := createAndOpenDB()
+	db.Put([]byte("key1"), []byte("value1"), true)
+	db.Put([]byte("key2"), []byte("value2"), true)
+	db.Put([]byte("key3"), []byte(""), true)
+	db.Put([]byte("key4"), []byte("value4"), true)
+	db.Put([]byte("key5"), []byte("null"), true)
+	createdKeysAmount := 5
+	randSource := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(randSource)
+	keys := make([][]byte, 500)
+	for i := range keys {
+		keys[i] = []byte(fmt.Sprintf("key%d", (r.Int() % createdKeysAmount)))
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = db.Get(keys[i%500])
+	}
+}
+
+func BenchmarkGetLevelDBWithBigData(b *testing.B) {
+	db := createAndOpenDB()
+	keysTotalAmount := 1000
+	keysToGetApproxAmount := 500
+	for i := 0; i < keysTotalAmount; i++ {
+		_ = db.Put([]byte(createTestKey(i)), []byte(createTestValue("testdb", i)), true)
+	}
+	randSource := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(randSource)
+	keysToGet := make([][]byte, keysToGetApproxAmount)
+	for i := range keysToGet {
+		keysToGet[i] = []byte(createTestKey(r.Int() % keysTotalAmount))
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = db.Get(keysToGet[i%keysToGetApproxAmount])
+	}
+}
+
+func BenchmarkPutLevelDB(b *testing.B) {
+	db := createAndOpenDB()
+	keysAmount := 100000
+	keys := make([][]byte, 0, keysAmount)
+	values := make([][]byte, 0, keysAmount)
+	for i := 0; i < keysAmount; i++ {
+		key := []byte(createTestKey(i))
+		value := []byte(createTestValue("testdb", i))
+		keys = append(keys, key)
+		values = append(values, value)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = db.Put(keys[i], values[i], true)
+	}
+}
+
+func BenchmarkPutLevelDB2(b *testing.B) {
+	db := createAndOpenDB()
+	var key []byte
+	var value []byte
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		key = []byte(createTestKey(i))
+		value = []byte(createTestValue("testdb", i))
+		b.StartTimer()
+		_ = db.Put(key, value, true)
+	}
+}
+
+func createAndOpenDB() *DB {
+	dbPath, _ := ioutil.TempDir("", "stateleveldb")
+	defer os.RemoveAll(dbPath)
+	db := CreateDB(&Conf{
+		DBPath:         dbPath,
+		ExpectedFormat: "2.0",
+	})
+	db.Open()
+	return db
 }

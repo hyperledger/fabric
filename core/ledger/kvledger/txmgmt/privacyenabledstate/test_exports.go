@@ -147,7 +147,7 @@ func (env *CouchDBTestEnv) Init(t testing.TB) {
 				RedoLogPath:         redoPath,
 			},
 		},
-		LevelDBPath: "",
+		StateDBPath: "",
 	}
 
 	env.bookkeeperTestEnv = bookkeeping.NewTestEnv(t)

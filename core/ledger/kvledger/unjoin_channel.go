@@ -88,7 +88,7 @@ func removeLedgerData(config *ledger.Config, ledgerID string) error {
 		&noopHealthCheckRegistry{},
 		&privacyenabledstate.StateDBConfig{
 			StateDBConfig: config.StateDBConfig,
-			LevelDBPath:   StateDBPath(config.RootFSPath),
+			StateDBPath:   StateDBPath(config.RootFSPath),
 		},
 		[]string{},
 	)

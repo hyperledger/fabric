@@ -25,6 +25,7 @@ import (
 const (
 	GoLevelDB = "goleveldb"
 	CouchDB   = "CouchDB"
+	Badger    = "Badger"
 )
 
 // Initializer encapsulates dependencies for PeerLedgerProvider

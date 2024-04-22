@@ -228,7 +228,7 @@ func (p *Provider) initStateDBProvider() error {
 	}
 	stateDBConfig := &privacyenabledstate.StateDBConfig{
 		StateDBConfig: p.initializer.Config.StateDBConfig,
-		LevelDBPath:   StateDBPath(p.initializer.Config.RootFSPath),
+		StateDBPath:   StateDBPath(p.initializer.Config.RootFSPath),
 	}
 	sysNamespaces := p.initializer.DeployedChaincodeInfoProvider.Namespaces()
 	p.dbProvider, err = privacyenabledstate.NewDBProvider(
