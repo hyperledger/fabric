@@ -57,7 +57,7 @@ func main() {
 
 func run() error {
 	if len(os.Args) < 4 {
-		return fmt.Errorf("incorrect number of arguments")
+		return errors.New("incorrect number of arguments")
 	}
 
 	sourceDir, metadataDir, outputDir := os.Args[1], os.Args[2], os.Args[3]

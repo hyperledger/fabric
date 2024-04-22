@@ -227,11 +227,11 @@ func appendMSPConfigs(ordererGrp, appGrp map[string]*common.ConfigGroup, output 
 
 func ValidateConfig(c *common.Config) error {
 	if c.ChannelGroup == nil {
-		return fmt.Errorf("field Config.ChannelGroup is nil")
+		return errors.New("field Config.ChannelGroup is nil")
 	}
 	grps := c.ChannelGroup.Groups
 	if grps == nil {
-		return fmt.Errorf("field Config.ChannelGroup.Groups is nil")
+		return errors.New("field Config.ChannelGroup.Groups is nil")
 	}
 	for _, field := range []string{channelconfig.OrdererGroupKey, channelconfig.ApplicationGroupKey} {
 		grp, exists := grps[field]
@@ -243,7 +243,7 @@ func ValidateConfig(c *common.Config) error {
 		}
 	}
 	if c.ChannelGroup.Values == nil {
-		return fmt.Errorf("field Config.ChannelGroup.Values is nil")
+		return errors.New("field Config.ChannelGroup.Values is nil")
 	}
 	return nil
 }
