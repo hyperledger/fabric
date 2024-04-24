@@ -215,7 +215,6 @@ func newClusterNodeWithTLS(t *testing.T) *deliverServer {
 }
 
 func TestDeliveryRequester_Connect(t *testing.T) {
-
 	osn := newClusterNode(t)
 	defer osn.stop()
 
