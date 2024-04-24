@@ -10,7 +10,6 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
-	"log"
 	"sync"
 	"testing"
 	"time"
@@ -95,13 +94,11 @@ func (ds *deliverServer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) e
 	ds.Lock()
 	err := ds.err
 	ds.Unlock()
-
 	if err != nil {
 		return nil
 	}
 	seekInfo, channel, err := readSeekEnvelope(stream)
 	require.NoError(ds.t, err)
-
 	timer := time.NewTimer(1 * time.Minute)
 	defer timer.Stop()
 
@@ -217,7 +214,6 @@ func newClusterNodeWithTLS(t *testing.T) *deliverServer {
 func TestDeliveryRequester_Connect(t *testing.T) {
 	osn := newClusterNode(t)
 	defer osn.stop()
-
 	fakeSigner := &fake.Signer{}
 	fakeSigner.SignReturns([]byte("good-sig"), nil)
 
@@ -228,12 +224,6 @@ func TestDeliveryRequester_Connect(t *testing.T) {
 	}
 	fakeDeliverStreamer := blocksprovider.DeliverAdapter{}
 
-	seekInfoEnv := &common.Envelope{}
-	endpoint := &orderers.Endpoint{
-		Address:   osn.srv.Address(),
-		RootCerts: nil,
-	}
-
 	dr := blocksprovider.NewDeliveryRequester(
 		"channel-id",
 		fakeSigner,
@@ -241,10 +231,16 @@ func TestDeliveryRequester_Connect(t *testing.T) {
 		&fakeDialer,
 		fakeDeliverStreamer,
 	)
-	deliverClient, cancelFunc, err := dr.Connect(seekInfoEnv, endpoint)
-	if err != nil {
-		log.Fatalf("error : %v", err)
+
+	seekInfoEnv, err := dr.SeekInfoBlocksFrom(100)
+	require.NoError(t, err)
+	endpoint := &orderers.Endpoint{
+		Address:   osn.srv.Address(),
+		RootCerts: nil,
 	}
+
+	deliverClient, cancelFunc, err := dr.Connect(seekInfoEnv, endpoint)
+	time.Sleep(100 * time.Millisecond)
 	assert.Nil(t, err)
 	assert.NotNil(t, deliverClient)
 	assert.NotNil(t, cancelFunc)
