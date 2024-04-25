@@ -59,11 +59,15 @@ type kvLedger struct {
 	historyDB              *history.DB
 	configHistoryRetriever *collectionConfigHistoryRetriever
 	snapshotMgr            *snapshotMgr
-	blockAPIsRWLock        *sync.RWMutex
-	stats                  *ledgerStats
-	commitHash             []byte
-	hashProvider           ledger.HashProvider
-	config                 *ledger.Config
+	// this RWMutex provides atomicity to commit a block to the block-storage
+	// and to apply its effects on the state database
+	//
+	// for more details see https://github.com/hyperledger/fabric/pull/4694
+	blockAPIsRWLock *sync.RWMutex
+	stats           *ledgerStats
+	commitHash      []byte
+	hashProvider    ledger.HashProvider
+	config          *ledger.Config
 
 	// isPvtDataStoreAheadOfBlockStore is read during missing pvtData
 	// reconciliation and may be updated during a regular block commit.
