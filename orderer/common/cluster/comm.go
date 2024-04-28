@@ -266,7 +266,7 @@ func (c *Comm) updateStubInMapping(channel string, mapping MemberMapping, node R
 	stub.Activate(c.createRemoteContext(stub, channel))
 }
 
-// createRemoteStub returns a function that creates a RemoteContext.
+// createRemoteContext returns a function that creates a RemoteContext.
 // It is used as a parameter to Stub.Activate() in order to activate
 // a stub atomically.
 func (c *Comm) createRemoteContext(stub *Stub, channel string) func() (*RemoteContext, error) {

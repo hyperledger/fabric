@@ -65,7 +65,7 @@ func (s *Signer) SignProposal(proposal types.Proposal, _ []byte) *types.Signatur
 	}
 }
 
-// NewSignatureHeader creates a SignatureHeader with the correct signing identity and a valid nonce
+// newIdentifierHeaderOrPanic creates an IdentifierHeader with the signer's identifier and a valid nonce
 func (s *Signer) newIdentifierHeaderOrPanic(nonce []byte) *cb.IdentifierHeader {
 	return &cb.IdentifierHeader{
 		Identifier: uint32(s.ID),

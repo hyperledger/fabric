@@ -1443,7 +1443,7 @@ func (c *Chain) getInFlightConfChange() *raftpb.ConfChange {
 	return ConfChange(c.opts.BlockMetadata, confState)
 }
 
-// newMetadata extract config metadata from the configuration block
+// newConfigMetadata extract config metadata from the configuration block
 func (c *Chain) newConfigMetadata(block *common.Block) (*etcdraft.ConfigMetadata, *orderer.ConsensusType) {
 	c.logger.Infof("Extract config metadata from the configuration block")
 	metadata, consensusType, err := ConsensusMetadataFromConfigBlock(block)
