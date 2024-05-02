@@ -17,8 +17,10 @@ env:
 
 jobs:
   broken-lint-checker:
+    # Only run the scheduled job in hyperledger/fabric repository, not on personal forks
+    if: github.event_name != 'schedule' || (github.event_name == 'schedule' && github.repository == 'hyperledger/fabric')
     name: "Check for Broken Links"
-    runs-on: fabric-ubuntu-latest
+    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-20.04' || 'ubuntu-20.04' }}
     steps:
       - name: Checkout Fabric Code
         uses: actions/checkout@v4
