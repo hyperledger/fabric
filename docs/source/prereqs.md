@@ -65,7 +65,7 @@ docker-compose --version # => docker-compose version 1.27.2, build 18f557f9
 ```
 
 > **Note:** Some users have reported errors while running Fabric-Samples with the Docker Desktop `gRPC FUSE for file sharing` option checked.
-> Please uncheck this option in your Docker Preferences to continue using `osxfs for file sharing`.
+> Please utilize a different file sharing implementation option.
 
 ### Go
 
