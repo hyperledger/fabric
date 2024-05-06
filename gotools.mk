@@ -19,7 +19,7 @@ go.fqp.govulncheck   := golang.org/x/vuln/cmd/govulncheck@latest
 go.fqp.misspell      := github.com/client9/misspell/cmd/misspell
 go.fqp.mockery       := github.com/vektra/mockery/cmd/mockery
 go.fqp.protoc-gen-go := github.com/golang/protobuf/protoc-gen-go
-go.fqp.staticcheck   := honnef.co/go/tools/cmd/staticcheck@2023.1.2 # 2022.1.1 fixes the staticcheck issue with Go 1.18 "export data is newer version - update tool"
+go.fqp.staticcheck   := honnef.co/go/tools/cmd/staticcheck@2023.1.7
 go.fqp.swagger       := github.com/go-swagger/go-swagger/cmd/swagger
 
 .PHONY: gotools-install
