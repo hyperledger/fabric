@@ -1113,18 +1113,17 @@ func TestBFTDeliverer_CensorshipMonitorEvents(t *testing.T) {
 				setup.monErrC <- &blocksprovider.ErrCensorship{Message: fmt.Sprintf("censorship %d", n)}
 			}()
 
-			setup.gWithT.Eventually(
-				func() int {
-					setup.mutex.Lock()
-					defer setup.mutex.Unlock()
+			numMon := func() int {
+				setup.mutex.Lock()
+				defer setup.mutex.Unlock()
 
-					return len(setup.monitorSet)
-				}).Should(Equal(n + 1))
+				return len(setup.monitorSet)
+			}
+			setup.gWithT.Eventually(numMon, 10*time.Second, 10*time.Millisecond).Should(Equal(n + 1))
 
 			setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(n + 1))
 			setup.gWithT.Expect(setup.fakeSleeper.SleepCallCount()).To(Equal(n))
 			setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount).Should(Equal(n + 1))
-
 		}
 
 		t.Log("Exponential backoff after every round, with saturation")
