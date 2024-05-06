@@ -85,7 +85,7 @@ as well, but is not a part of the network at this stage. This command also will 
 The `peer` command uses environment variables to define the context of the organization in which it will run, we will
 change the context to:
 ```shell
-export CORE_PEER_LOCALMSPID="Org1MSP"
+export CORE_PEER_LOCALMSPID=Org1MSP
 export CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG1_CA
 export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
 export CORE_PEER_ADDRESS=localhost:7051
@@ -266,7 +266,7 @@ peer channel signconfigtx -f envelope.pb
 Now we switch to the orderer organization `Orderer`:
 ```shell
 export CORE_PEER_TLS_ENABLED=true
-export CORE_PEER_LOCALMSPID="OrdererMSP"
+export CORE_PEER_LOCALMSPID=OrdererMSP
 export CORE_PEER_TLS_ROOTCERT_FILE=/var/hyperledger/orderer/tls/ca.crt
 export CORE_PEER_MSPCONFIGPATH=/var/hyperledger/orderer/msp
 export CORE_PEER_ADDRESS=localhost:7050
@@ -353,7 +353,7 @@ peer channel signconfigtx -f envelope.pb
 Now switch to the orderer organization and post it:
 ```shell
 export CORE_PEER_TLS_ENABLED=true
-export CORE_PEER_LOCALMSPID="OrdererMSP"
+export CORE_PEER_LOCALMSPID=OrdererMSP
 export CORE_PEER_TLS_ROOTCERT_FILE=/var/hyperledger/orderer/tls/ca.crt
 export CORE_PEER_MSPCONFIGPATH=/var/hyperledger/orderer/msp
 export CORE_PEER_ADDRESS=localhost:7050
