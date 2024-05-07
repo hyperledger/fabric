@@ -1152,7 +1152,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			proc := ifrit.Invoke(runner)
 			ordererProcesses[3] = proc
 			Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
-			//Eventually(runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Synchronizer Sync initiated"))
+			// Eventually(runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Synchronizer Sync initiated"))
 			assertBlockReception(map[string]int{channel: 6}, network.Orderers, peer, network)
 		})
 
