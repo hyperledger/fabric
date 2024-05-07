@@ -23,5 +23,3 @@ Operations Guides
    enable_tls
    raft_configuration.md
    bft_configuration.md
-   kafka_raft_migration.md
-   kafka
