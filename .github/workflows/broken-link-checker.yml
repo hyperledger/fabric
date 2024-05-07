@@ -15,6 +15,9 @@ on:
 env:
   GO_VER: 1.21.9
 
+permissions:
+  contents: read
+
 jobs:
   broken-lint-checker:
     # Only run the scheduled job in hyperledger/fabric repository, not on personal forks
