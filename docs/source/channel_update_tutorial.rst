@@ -544,7 +544,7 @@ chaincode by approving the chaincode definition.
 
 Before we install a chaincode as Org3, we can use the ``./network.sh`` script to
 deploy the Basic chaincode on the channel. Open a new terminal and navigate to the ``test-network`` directory. You can then use
-use the ``test-network`` script to deploy the Basic chaincode:
+the ``test-network`` script to deploy the Basic chaincode:
 
 .. code:: bash
 
