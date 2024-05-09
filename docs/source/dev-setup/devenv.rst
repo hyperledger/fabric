@@ -4,11 +4,11 @@ Setting up the development environment
 Prerequisites
 ~~~~~~~~~~~~~
 
-In addition to the standard :doc:`../prereqs` for Fabric, the following prerequisites are also required:
+In addition to the standard :doc:`../prereqs` for Fabric, the following prerequisites are also required to run the Fabric tests:
 
 -  (macOS) `Xcode Command Line Tools <https://developer.apple.com/downloads/>`__
--  (All platforms) `SoftHSM <https://github.com/opendnssec/SoftHSMv2>`__ use version 2.5 as 2.6 is not operable in this environment
 -  (All platforms) `jq <https://stedolan.github.io/jq/download/>`__
+-  (All platforms) `SoftHSM <https://github.com/opendnssec/SoftHSMv2>`__ use version 2.5 as 2.6 is not operable in this environment
 
 For Linux platforms, including WSL2 on Windows, also required are various build tools such as gnu-make and 
 C compiler. On ubuntu and it's derivatives you can install the required toolset by using the command 
@@ -20,9 +20,11 @@ Steps
 
 Installing SoftHSM
 ^^^^^^^^^^^^^^^^^^
+SoftHSM is only required if you would like to run the SoftHSM integration tests (integration/pkcs11 directory).
+If you don't install and configure SoftHSM, the integration tests will automatically be skipped.
 Ensure you install ``2.5`` of softhsm, if you are using a distribution package manager such as ``apt`` on ubuntu
 or Homebrew on Mac OS, make sure that it offers this version otherwise you will need to install from source. Version 2.6
-of SoftHSM is known to have problems. Older versions than 2.5 may work however.
+of SoftHSM is known to have problems (but there is evidence integration tests pass on 2.6.1).
 
 When installing SoftHSM, you should note the path where the shared library ``libsofthsm2.so`` is installed
 you may need to have to provide this later in an environment variable to get the PKCS11 tests to pass.
@@ -41,7 +43,12 @@ Once Homebrew is ready, installing the necessary prerequisites is very easy, for
     brew install git jq
     brew install --cask docker
 
-Go and SoftHSM are also available from Homebrew, but make sure you install the appropriate versions
+Go and SoftHSM are also available from Homebrew, but make sure you install the appropriate versions:
+
+::
+
+    brew install go@1.21
+    brew install softhsm
 
 Docker Desktop must be launched to complete the installation, so be sure to open
 the application after installing it:
@@ -72,7 +79,7 @@ the repository.
 Configure SoftHSM
 ^^^^^^^^^^^^^^^^^
 
-A PKCS #11 cryptographic token implementation is required to run the unit
+A PKCS #11 cryptographic token implementation is required to run the integration
 tests. The PKCS #11 API is used by the bccsp component of Fabric to interact
 with hardware security modules (HSMs) that store cryptographic information and
 perform cryptographic computations.  For test environments, SoftHSM can be used
@@ -89,7 +96,7 @@ to an appropriate location. Please see the man page for ``softhsm2.conf`` for
 details.
 
 After SoftHSM has been configured, the following command can be used to
-initialize the token required by the unit tests:
+initialize the token required by the integration tests:
 
 ::
 
@@ -97,12 +104,19 @@ initialize the token required by the unit tests:
 
 If tests are unable to locate the libsofthsm2.so library in your environment,
 specify the library path, the PIN, and the label of your token in the
-appropriate environment variables. For example, on macOS, depending on where the
-library has been installed:
+appropriate environment variables. For example, if installed using Homebrew on macOS (Intel):
 
 ::
 
     export PKCS11_LIB="/usr/local/Cellar/softhsm/2.6.1/lib/softhsm/libsofthsm2.so"
+    export PKCS11_PIN=98765432
+    export PKCS11_LABEL="ForFabric"
+
+And for macOS on Apple silicon:
+
+::
+
+    export PKCS11_LIB=/opt/homebrew/Cellar/softhsm/2.6.1/lib/softhsm/libsofthsm2.so
     export PKCS11_PIN=98765432
     export PKCS11_LABEL="ForFabric"
 
