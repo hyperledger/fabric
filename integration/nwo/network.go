@@ -1224,6 +1224,7 @@ func (n *Network) OrdererRunner(o *Orderer, env ...string) *ginkgomon.Runner {
 	cmd := exec.Command(n.Components.Orderer())
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("FABRIC_CFG_PATH=%s", n.OrdererDir(o)))
+	cmd.Env = append(cmd.Env, fabricLoggingSpec)
 	cmd.Env = append(cmd.Env, env...)
 
 	config := ginkgomon.Config{
@@ -1256,6 +1257,7 @@ func (n *Network) PeerRunner(p *Peer, env ...string) *ginkgomon.Runner {
 		"FABRIC_CFG_PATH="+n.PeerDir(p),
 		"CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin",
 		"CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw",
+		fabricLoggingSpec,
 	)
 	cmd.Env = append(cmd.Env, env...)
 
@@ -1368,6 +1370,7 @@ func (n *Network) PeerUserSession(p *Peer, user string, command Command) (*gexec
 		n.PeerUserTLSDir(p, user),
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", n.PeerDir(p)),
 		fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=%s", n.PeerUserMSPDir(p, user)),
+		fabricLoggingSpec,
 	)
 	return n.StartSession(cmd, command.SessionName())
 }
@@ -1456,6 +1459,7 @@ func (n *Network) IdemixUserSession(p *Peer, idemixOrg *Organization, user strin
 		fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=%s", n.IdemixUserMSPDir(idemixOrg, user)),
 		fmt.Sprintf("CORE_PEER_LOCALMSPTYPE=%s", "idemix"),
 		fmt.Sprintf("CORE_PEER_LOCALMSPID=%s", idemixOrg.MSPID),
+		fabricLoggingSpec,
 	)
 	return n.StartSession(cmd, command.SessionName())
 }
@@ -1469,6 +1473,7 @@ func (n *Network) OrdererAdminSession(o *Orderer, p *Peer, command Command) (*ge
 		fmt.Sprintf("CORE_PEER_LOCALMSPID=%s", n.Organization(o.Organization).MSPID),
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", n.PeerDir(p)),
 		fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=%s", n.OrdererUserMSPDir(o, "Admin")),
+		fabricLoggingSpec,
 	)
 	return n.StartSession(cmd, command.SessionName())
 }
@@ -1669,6 +1674,12 @@ const (
 	OperationsPort PortName = "Operations"
 	ClusterPort    PortName = "Cluster"
 	AdminPort      PortName = "Admin"
+
+	// Default logging spec, may get overridden in specific tests
+	// For most components INFO logging is suitable
+	// When troubleshooting a specific test FABRIC_LOGGING_SPEC can be edited to suppress chatty components and debug other components
+	// e.g. "FABRIC_LOGGING_SPEC=info:grpc=warn:bccsp_p11=debug"
+	fabricLoggingSpec = "FABRIC_LOGGING_SPEC=info"
 )
 
 // PeerPortNames returns the list of ports that need to be reserved for a Peer.
