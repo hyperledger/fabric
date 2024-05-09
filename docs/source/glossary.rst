@@ -444,9 +444,8 @@ Ordering Service
 Also known as **orderer**. A defined collective of nodes that orders transactions into a block
 and then distributes blocks to connected peers for validation and commit. The ordering service
 exists independent of the peer processes and orders transactions on a first-come-first-serve basis
-for all channels on the network.  It is designed to support pluggable implementations beyond the
-out-of-the-box Kafka and Raft varieties. It is a common binding for the overall network; it
-contains the cryptographic identity material tied to each Member_.
+for all channels on the network. It is designed to support pluggable implementations
+with crash fault tolerant (CFT) and byzantine fault tolerant (BFT) options.
 
 .. _Organization:
 
@@ -575,10 +574,7 @@ New for v1.4.1, Raft is a crash fault tolerant (CFT) ordering service
 implementation based on the `etcd library <https://coreos.com/etcd/>`_
 of the `Raft protocol <https://raft.github.io/raft.pdf>`_. Raft follows a
 "leader and follower" model, where a leader node is elected (per channel) and
-its decisions are replicated by the followers. Raft ordering services should
-be easier to set up and manage than Kafka-based ordering services, and their
-design allows organizations to contribute nodes to a distributed ordering
-service.
+its decisions are replicated by the followers.
 
 .. _SDK:
 

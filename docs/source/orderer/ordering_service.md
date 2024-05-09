@@ -191,9 +191,7 @@ implementation the node will be used in), check out [our documentation on deploy
   based on an implementation of [Raft protocol](https://raft.github.io/raft.pdf)
   in [`etcd`](https://coreos.com/etcd/). Raft follows a "leader and
   follower" model, where a leader node is elected (per channel) and its decisions
-  are replicated by the followers. Raft ordering services should be easier to set
-  up and manage than Kafka-based ordering services, and their design allows
-  different organizations to contribute nodes to a distributed ordering service.
+  are replicated by the followers.
 
 * **BFT** (New as of v3.0)
 

@@ -282,8 +282,6 @@ particular deployment or solution. This modular architecture allows the platform
 to rely on well-established toolkits for CFT (crash fault-tolerant) or BFT
 (byzantine fault-tolerant) ordering.
 
-Fabric currently offers a CFT ordering service implementation
-based on the [`etcd` library](https://coreos.com/etcd/) of the [Raft protocol](https://raft.github.io/raft.pdf).
 For information about currently available ordering services, check
 out our [conceptual documentation about ordering](./orderer/ordering_service.html).
 
