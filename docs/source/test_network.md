@@ -26,8 +26,6 @@ Before you can run the test network, you need to install Fabric Samples in your
 environment. Follow the instructions on [getting_started](getting_started.html)
 to install the required software.
 
-**Note:** The test network has been successfully verified with Docker Desktop version 2.5.0.1 and is the recommended version at this time. Higher versions may not work.
-
 ## Bring up the test network
 
 You can find the scripts to bring up the network in the `test-network` directory
@@ -612,7 +610,7 @@ If you have any problems with the tutorial, review the following:
    Deploying chaincode failed
    ```
 
-   This problem is caused by a newer version of Docker Desktop for macOS. To resolve this issue, in the Docker Desktop preferences, uncheck the box `Use gRPC FUSE for file sharing` to use the legacy osxfs file sharing instead and click **Apply & Restart**.
+   This problem may be caused by Docker Desktop file sharing setting `gRPC FUSE`, select a different file sharing implementation.
 
 -  If you see errors on your create, approve, commit, invoke or query commands,
    make sure you have properly updated the channel name and chaincode name.
@@ -655,17 +653,6 @@ If you have any problems with the tutorial, review the following:
    Are you sure you want to continue? [y/N]
    ```
    Select ``y``.
-
--  If you try to create a channel with the command `./network.sh createChannel`,
-   and it fails with the following error:
-   ```
-   [comm.tls] ClientHandshake -> ERRO 003 Client TLS handshake failed after 1.908956ms with error: EOF remoteaddress=127.0.0.1:7051
-   Error: error getting endorser client for channel: endorser client failed to connect to localhost:7051: failed to create new connection: context deadline exceeded
-   After 5 attempts, peer0.org1 has failed to join channel 'mychannel'
-   ```
-
-   You need to uninstall Docker Desktop and reinstall the recommended version 2.5.0.1. Then, reclone the `fabric-samples`
-   repository before reattempting the commands.
 
 -  If you see an error similar to the following:
    ```
