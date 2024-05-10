@@ -8,13 +8,13 @@ Peer nodes are a fundamental element of a Fabric network because they host ledge
 
 ## Generate peer identities and Membership Service Providers (MSPs)
 
-Before proceeding with this topic, you should have reviewed the process for a [Deploying a Certificate Authority (CA)](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/ca-deploy-topology.html) for your organization in order to generate the identities and MSPs for the admins and peers in your organization. To learn how to use a CA to create these identities, check out [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html)
+Before proceeding with this topic, you should have reviewed the process for a [Deploying a Certificate Authority (CA)](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/ca-deploy-topology.html) for your organization in order to generate the identities and MSPs for the admins and peers in your organization. To learn how to use a CA to create these identities, check out [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html)
 
 **Note that the “cryptogen” tool should never be used to generate any identities in a production scenario**.
 
 ### Folder management
 
-While it is possible to bootstrap a peer using a number of folder structures for your MSPs and certificates, we do recommend a particular [folder structure](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html#folder-structure-for-your-org-and-node-admin-identities) for the sake of consistency and repeatability. These instructions will presume that you have used that folder structure.
+While it is possible to bootstrap a peer using a number of folder structures for your MSPs and certificates, we do recommend a particular [folder structure](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html#folder-structure-for-your-org-and-node-admin-identities) for the sake of consistency and repeatability. These instructions will presume that you have used that folder structure.
 
 ### Certificates from a non-Fabric CA
 
