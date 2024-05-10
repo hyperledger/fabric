@@ -12,7 +12,7 @@ The orderer nodes (or a subset of them), will be joined to a channel using the p
 
 ## Generate ordering node identities and Membership Service Providers (MSPs)
 
-Before proceeding with this topic, you should have reviewed the process for a Deploying a Certificate Authority (CA) for your organization in order to generate the identities and MSPs for the admins and ordering nodes in your organization. To learn how to use a CA to create these identities, check out [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html). Note that the best practice is to register and enroll a separate node identity for each ordering node and to use distinct TLS certificates for each node.
+Before proceeding with this topic, you should have reviewed the process for a Deploying a Certificate Authority (CA) for your organization in order to generate the identities and MSPs for the admins and ordering nodes in your organization. To learn how to use a CA to create these identities, check out [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html). Note that the best practice is to register and enroll a separate node identity for each ordering node and to use distinct TLS certificates for each node.
 
 Note that the `cryptogen` tool should never be used to generate any identities in a production scenario.
 
@@ -20,7 +20,7 @@ In this deployment guide, we’ll assume that all ordering nodes will be created
 
 ## Folder management
 
-While it is possible to bootstrap an ordering node using a number of folder structures for your MSPs and certificates, we do recommend the folder structure outlined in [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html#decide-on-the-structure-of-your-folders-and-certificates) for the sake of consistency and repeatability. Although it is not required, these instructions will presume that you have used that folder structure.
+While it is possible to bootstrap an ordering node using a number of folder structures for your MSPs and certificates, we do recommend the folder structure outlined in [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html#decide-on-the-structure-of-your-folders-and-certificates) for the sake of consistency and repeatability. Although it is not required, these instructions will presume that you have used that folder structure.
 
 ## Certificates from a non-Fabric CA
 
