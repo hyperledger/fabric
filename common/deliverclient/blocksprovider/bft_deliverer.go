@@ -370,7 +370,7 @@ func (d *BFTDeliverer) FetchBlocks(source *orderers.Endpoint) {
 		// Starts a goroutine that receives blocks from the stream client and places them in the `recvC` channel
 		blockRcv.Start()
 
-		// Consume blocks fom the `recvC` channel
+		// Consume blocks from the `recvC` channel
 		if errProc := blockRcv.ProcessIncoming(d.onBlockProcessingSuccess); errProc != nil {
 			switch errProc.(type) {
 			case *ErrStopping:

@@ -168,7 +168,7 @@ type ChannelPolicyManagerGetter interface {
 	Manager(channelID string) Manager
 }
 
-// PolicyManagerGetterFunc is a function adapater for ChannelPolicyManagerGetter.
+// PolicyManagerGetterFunc is a function adapter for ChannelPolicyManagerGetter.
 type PolicyManagerGetterFunc func(channelID string) Manager
 
 func (p PolicyManagerGetterFunc) Manager(channelID string) Manager { return p(channelID) }
