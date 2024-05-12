@@ -89,6 +89,7 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.keepalive.deliveryClient.timeout", "2s")
 	viper.Set("peer.deliveryclient.blockCensorshipTimeoutKey", "40s")
 	viper.Set("peer.deliveryclient.minimalReconnectInterval", "110ms")
+	viper.Set("peer.deliveryclient.policy", "simple")
 
 	coreConfig := deliverservice.GlobalConfig()
 
@@ -110,6 +111,7 @@ func TestGlobalConfig(t *testing.T) {
 		SecOpts: comm.SecureOptions{
 			UseTLS: true,
 		},
+		Policy: "simple",
 	}
 
 	require.Equal(t, expectedConfig, coreConfig)
@@ -130,6 +132,7 @@ func TestGlobalConfigDefault(t *testing.T) {
 		KeepaliveOptions:            comm.DefaultKeepaliveOptions,
 		BlockCensorshipTimeoutKey:   deliverservice.DefaultBlockCensorshipTimeoutKey,
 		MinimalReconnectInterval:    deliverservice.DefaultMinimalReconnectInterval,
+		Policy:                      deliverservice.DefaultPolicy,
 	}
 
 	require.Equal(t, expectedConfig, coreConfig)
@@ -265,6 +268,7 @@ func TestGlobalConfigCheckDefaultIsSet(t *testing.T) {
 		KeepaliveOptions:            comm.DefaultKeepaliveOptions,
 		BlockCensorshipTimeoutKey:   deliverservice.DefaultBlockCensorshipTimeoutKey,
 		MinimalReconnectInterval:    deliverservice.DefaultMinimalReconnectInterval,
+		Policy:                      deliverservice.DefaultPolicy,
 	}
 
 	require.Equal(t, coreConfig, expectedConfig)

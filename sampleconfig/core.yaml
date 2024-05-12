@@ -403,6 +403,12 @@ peer:
         #    to:
         #    caCertsFile:
 
+        # Determines which delivery client will be used when consensus type is "BFT"
+        # (when consensus type is "etcdraft" this key is ignored).
+        # "simple" - use CFT deliverer
+        # "cluster" - use BFT deliverer
+        policy: cluster
+
     # Type for the local MSP - by default it's of type bccsp
     localMspType: bccsp
 

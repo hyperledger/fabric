@@ -132,7 +132,14 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 	case "etcdraft":
 		d.blockDeliverer, err = d.createBlockDelivererCFT(chainID, ledgerInfo)
 	case "BFT":
-		d.blockDeliverer, err = d.createBlockDelivererBFT(chainID, ledgerInfo)
+		switch d.conf.DeliverServiceConfig.Policy {
+		case "cluster", "":
+			d.blockDeliverer, err = d.createBlockDelivererBFT(chainID, ledgerInfo)
+		case "simple":
+			d.blockDeliverer, err = d.createBlockDelivererCFT(chainID, ledgerInfo)
+		default:
+			err = errors.Errorf("unexpected delivey service policy: `%s`", d.conf.DeliverServiceConfig.Policy)
+		}
 	default:
 		err = errors.Errorf("unexpected consensus type: `%s`", ct)
 	}
