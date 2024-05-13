@@ -68,6 +68,7 @@ type Channel interface {
 	BlockDataHashingStructureWidth() uint32
 
 	// OrdererAddresses returns the list of valid orderer addresses to connect to invoke Broadcast/Deliver
+	// Deprecated
 	OrdererAddresses() []string
 
 	// Capabilities defines the capabilities for a channel
