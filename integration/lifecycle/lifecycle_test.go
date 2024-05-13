@@ -8,7 +8,6 @@ package lifecycle
 
 import (
 	"bytes"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -16,7 +15,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/protolator"
-	"github.com/hyperledger/fabric-config/protolator/protoext/ordererext"
+	"github.com/hyperledger/fabric-config/protolator/protoext/peerext"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
@@ -296,10 +295,10 @@ var _ = Describe("Lifecycle", func() {
 		By("updating the channel config to include org3")
 		// get the current channel config
 		currentConfig := nwo.GetConfig(network, testPeers[0], orderer, "testchannel")
-		updatedConfig := proto.Clone(currentConfig).(*common.Config)
+		//jsonObj, _ := json.MarshalIndent(currentConfig, "", "    ")
+		//_ = os.WriteFile("currentConfig.json", jsonObj, 0o644)
 
-		jsonObj, _ := json.MarshalIndent(updatedConfig, "", "    ")
-		_ = os.WriteFile("updatedConfig.json", jsonObj, 0o644)
+		updatedConfig := proto.Clone(currentConfig).(*common.Config)
 
 		// get the configtx info for org3
 		sess, err = network.ConfigTxGen(commands.PrintOrg{
@@ -308,16 +307,19 @@ var _ = Describe("Lifecycle", func() {
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-		org3Group := &ordererext.DynamicOrdererOrgGroup{ConfigGroup: &common.ConfigGroup{}}
+		org3Group := &peerext.DynamicApplicationOrgGroup{ConfigGroup: &common.ConfigGroup{}}
 		err = protolator.DeepUnmarshalJSON(bytes.NewBuffer(sess.Out.Contents()), org3Group)
 		Expect(err).NotTo(HaveOccurred())
 		// delete(org3Group.Values, "Endpoints")
 
-		jsonObj, _ = json.MarshalIndent(org3Group, "", "    ")
-		_ = os.WriteFile("org3Group.json", jsonObj, 0o644)
+		//jsonObj, _ = json.MarshalIndent(org3Group, "", "    ")
+		//_ = os.WriteFile("org3Group.json", jsonObj, 0o644)
 
 		// update the channel config to include org3
 		updatedConfig.ChannelGroup.Groups["Application"].Groups["Org3"] = org3Group.ConfigGroup
+		//jsonObj, _ = json.MarshalIndent(updatedConfig, "", "    ")
+		//_ = os.WriteFile("updatedConfig.json", jsonObj, 0o644)
+
 		nwo.UpdateConfig(network, orderer, "testchannel", currentConfig, updatedConfig, true, testPeers[0], testPeers...)
 
 		By("joining the org3 peers to the channel")

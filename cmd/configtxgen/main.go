@@ -15,6 +15,7 @@ import (
 
 	"github.com/hyperledger/fabric-config/protolator"
 	"github.com/hyperledger/fabric-config/protolator/protoext/ordererext"
+	"github.com/hyperledger/fabric-config/protolator/protoext/peerext"
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -118,13 +119,25 @@ func doInspectChannelCreateTx(inspectChannelCreateTx string) error {
 func doPrintOrg(t *genesisconfig.TopLevel, printOrg string) error {
 	for _, org := range t.Organizations {
 		if org.Name == printOrg {
-			org.OrdererEndpoints = []string{"127.0.0.1:7050"}
-			og, err := encoder.NewOrdererOrgGroup(org)
+			if len(org.OrdererEndpoints) > 0 {
+				// An Orderer OrgGroup
+				og, err := encoder.NewOrdererOrgGroup(org)
+				if err != nil {
+					return errors.Wrapf(err, "bad org definition for org %s", org.Name)
+				}
+
+				if err := protolator.DeepMarshalJSON(os.Stdout, &ordererext.DynamicOrdererOrgGroup{ConfigGroup: og}); err != nil {
+					return errors.Wrapf(err, "malformed org definition for org: %s", org.Name)
+				}
+				return nil
+			}
+
+			// Otherwise assume it is an Application OrgGroup, where the encoder is not strict whether anchor peers exist or not
+			ag, err := encoder.NewApplicationOrgGroup(org)
 			if err != nil {
 				return errors.Wrapf(err, "bad org definition for org %s", org.Name)
 			}
-
-			if err := protolator.DeepMarshalJSON(os.Stdout, &ordererext.DynamicOrdererOrgGroup{ConfigGroup: og}); err != nil {
+			if err := protolator.DeepMarshalJSON(os.Stdout, &peerext.DynamicApplicationOrgGroup{ConfigGroup: ag}); err != nil {
 				return errors.Wrapf(err, "malformed org definition for org: %s", org.Name)
 			}
 			return nil
