@@ -366,6 +366,8 @@ type ChaincodeCmdFactory struct {
 
 // InitCmdFactory init the ChaincodeCmdFactory with default clients
 func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool, cryptoProvider bccsp.BCCSP) (*ChaincodeCmdFactory, error) {
+	logger.Infof("InitCmdFactory: Entry: %s, %t, %t", cmdName, isEndorserRequired, isOrdererRequired)
+
 	var err error
 	var endorserClients []pb.EndorserClient
 	var deliverClients []pb.DeliverClient
@@ -416,7 +418,7 @@ func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool, 
 				return nil, errors.WithMessagef(err, "error getting channel (%s) orderer endpoint", channelID)
 			}
 			if len(orderingEndpoints) == 0 {
-				return nil, errors.Errorf("no orderer endpoints retrieved for channel %s, pass orderer endpoint with -o flag instead", channelID)
+				return nil, errors.Errorf("InitCmdFactory: no orderer endpoints retrieved for channel %s, pass orderer endpoint with -o flag instead", channelID)
 			}
 			logger.Infof("Retrieved channel (%s) orderer endpoint: %s", channelID, orderingEndpoints[0])
 			// override viper env
