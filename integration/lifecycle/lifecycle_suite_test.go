@@ -198,7 +198,7 @@ func CommitTx(nw *nwo.Network, tx *pcommon.Envelope, peer *nwo.Peer, dc pb.Deliv
 	}
 }
 
-// GenerateOrgUpdateMeterials generates the necessary configtx and
+// GenerateOrgUpdateMaterials generates the necessary configtx and
 // crypto materials for a new org's peers to join a network
 func GenerateOrgUpdateMaterials(n *nwo.Network, peers ...*nwo.Peer) {
 	orgUpdateNetwork := *n
