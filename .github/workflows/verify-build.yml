@@ -13,7 +13,7 @@ on:
 env:
   GOPATH: /opt/go
   PATH: /opt/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
-  GO_VER: 1.21.9
+  GO_VER: 1.22.3
 
 permissions:
   contents: read # to fetch code (actions/checkout)
@@ -37,6 +37,8 @@ jobs:
     name: Unit Tests
     needs: basic-checks
     runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-20.04' || 'ubuntu-20.04' }}
+    env:
+      GOEXPERIMENT: nocoverageredesign
     steps:
       - uses: actions/checkout@v4
         name: Checkout Fabric Code      
