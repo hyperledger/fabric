@@ -658,6 +658,10 @@ Profiles:
                       Admins:
                           Type: Signature
                           Rule: "OR('SampleOrg.member')"
+                  OrdererEndpoints:
+                    - "127.0.0.1:7050"
+                    - "127.0.0.1:7051"
+                    - "127.0.0.1:7052"
         Application:
             <<: *ApplicationDefaults
             Organizations:
