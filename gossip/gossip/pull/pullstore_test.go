@@ -39,7 +39,7 @@ type pullMsg struct {
 	msg         *protoext.SignedGossipMessage
 }
 
-// GetSourceMessage Returns the SignedGossipMessage the ReceivedMessage was
+// GetSourceEnvelope Returns the SignedGossipMessage the ReceivedMessage was
 // constructed with
 func (pm *pullMsg) GetSourceEnvelope() *gossip.Envelope {
 	return pm.msg.Envelope

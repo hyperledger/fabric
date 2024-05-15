@@ -27,7 +27,7 @@ type ReceivedMessage interface {
 	// GetGossipMessage returns the underlying GossipMessage
 	GetGossipMessage() *SignedGossipMessage
 
-	// GetSourceMessage Returns the Envelope the ReceivedMessage was
+	// GetSourceEnvelope Returns the Envelope the ReceivedMessage was
 	// constructed with
 	GetSourceEnvelope() *gossip.Envelope
 
