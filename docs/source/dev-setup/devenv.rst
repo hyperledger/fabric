@@ -47,7 +47,7 @@ Go and SoftHSM are also available from Homebrew, but make sure you install the a
 
 ::
 
-    brew install go@1.21
+    brew install go@1.22
     brew install softhsm
 
 Docker Desktop must be launched to complete the installation, so be sure to open
