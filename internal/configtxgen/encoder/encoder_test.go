@@ -475,6 +475,13 @@ var _ = Describe("Encoder", func() {
 				Expect(consenter2.Id).To(Equal(uint32(2)))
 				Expect(consenter2.ClientTlsCert).ToNot(BeNil())
 			})
+
+			It("requires V3_0", func() {
+				delete(channelCapabilities, "V3_0")
+				channelCapabilities["V2_0"] = true
+				_, err := encoder.NewOrdererGroup(conf, channelCapabilities)
+				Expect(err).To(MatchError("orderer type BFT must be used with V3_0 channel capability: map[V2_0:true]"))
+			})
 		})
 
 		Context("when the consensus type is unknown", func() {
@@ -496,6 +503,24 @@ var _ = Describe("Encoder", func() {
 			It("wraps and returns the error", func() {
 				_, err := encoder.NewOrdererGroup(conf, channelCapabilities)
 				Expect(err).To(MatchError("failed to create orderer org: 1 - Error loading MSP configuration for org: SampleOrg: unknown MSP type 'garbage'"))
+			})
+		})
+
+		Context("when global endpoints exist", func() {
+			BeforeEach(func() {
+				conf.Addresses = []string{"addr1", "addr2"}
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := encoder.NewOrdererGroup(conf, channelCapabilities)
+				Expect(err).To(MatchError("global orderer endpoints exist, but can not be used with V3_0 capability: [addr1 addr2]"))
+			})
+
+			It("is permitted when V3_0 is false", func() {
+				delete(channelCapabilities, "V3_0")
+				channelCapabilities["V2_0"] = true
+				_, err := encoder.NewOrdererGroup(conf, channelCapabilities)
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 	})

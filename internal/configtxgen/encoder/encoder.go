@@ -141,9 +141,6 @@ func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
 
 	addValue(channelGroup, channelconfig.HashingAlgorithmValue(), channelconfig.AdminsPolicyKey)
 	addValue(channelGroup, channelconfig.BlockDataHashingStructureValue(), channelconfig.AdminsPolicyKey)
-	if conf.Orderer != nil && len(conf.Orderer.Addresses) > 0 {
-		return nil, errors.New("error adding global level endpoints to channel group, in V3.0 global level endpoints are not supported")
-	}
 
 	if conf.Consortium != "" {
 		addValue(channelGroup, channelconfig.ConsortiumValue(conf.Consortium), channelconfig.AdminsPolicyKey)
@@ -184,8 +181,12 @@ func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
 // It sets the mod_policy of all elements to "Admins".  This group is always present in any channel configuration.
 func NewOrdererGroup(conf *genesisconfig.Orderer, channelCapabilities map[string]bool) (*cb.ConfigGroup, error) {
 	if conf.OrdererType == "BFT" && !channelCapabilities["V3_0"] {
-		return nil, errors.New("orderer type BFT must be used with V3_0 capability")
+		return nil, errors.Errorf("orderer type BFT must be used with V3_0 channel capability: %v", channelCapabilities)
 	}
+	if len(conf.Addresses) > 0 && channelCapabilities["V3_0"] {
+		return nil, errors.Errorf("global orderer endpoints exist, but can not be used with V3_0 capability: %v", conf.Addresses)
+	}
+
 	ordererGroup := protoutil.NewConfigGroup()
 	if err := AddOrdererPolicies(ordererGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
 		return nil, errors.Wrapf(err, "error adding policies to orderer group")
