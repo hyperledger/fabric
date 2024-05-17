@@ -33,6 +33,7 @@ Here's a list of some of the **peer** environment variables (with sample values 
 
 ```
 CORE_PEER_TLS_ENABLED=true
+CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test
 CORE_PEER_GOSSIP_USELEADERELECTION=true
 CORE_PEER_GOSSIP_ORGLEADER=false
 CORE_PEER_PROFILE_ENABLED=true
@@ -47,12 +48,20 @@ CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
 CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051
 CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org1.example.com:7051
 CORE_PEER_LOCALMSPID=Org1MSP
+CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+//If using couchdb add these configurations also
+CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0:5984
+CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
 ```
 
 Here are some **ordering node** variables (again, these are sample values) that might be listed in the environment variable file for a node. Again, you may or may not need to set all of these environment variables:
 
 ```
 ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+ORDERER_GENERAL_LISTENPORT=7050
+ORDERER_CHANNELPARTICIPATION_ENABLED=true
 ORDERER_GENERAL_GENESISMETHOD=file
 ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.genesis.block
 ORDERER_GENERAL_LOCALMSPID=OrdererMSP
@@ -111,8 +120,11 @@ docker stop $ORDERER_CONTAINER
 
 Once the orderer is down, you'll want to **backup its ledger and MSP**:
 
+Copying the orderer and production folder because the orderer checks for the certificate in the orderer folder only that is the reason we are copying the orderer and production folder.
 ```
-docker cp $ORDERER_CONTAINER:/var/hyperledger/production/orderer/ ./$LEDGERS_BACKUP/$ORDERER_CONTAINER
+docker cp $ORDERER_CONTAINER:/var/hyperledger/ ./$LEDGERS_BACKUP/$ORDERER_CONTAINER
+
+docker cp $ORDERER_CONTAINER:/etc/hyperledger/fabric ./$LEDGERS_BACKUP/Identity
 ```
 
 Then remove the ordering node container itself (since we will be giving our new container the same name as our old one):
@@ -124,11 +136,7 @@ docker rm -f $ORDERER_CONTAINER
 Then you can launch the new ordering node container by issuing:
 
 ```
-docker run -d -v /opt/backup/$ORDERER_CONTAINER/:/var/hyperledger/production/orderer/ \
-            -v /opt/msp/:/etc/hyperledger/fabric/msp/ \
-            --env-file ./env<name of node>.list \
-            --name $ORDERER_CONTAINER \
-            hyperledger/fabric-orderer:$IMAGE_TAG orderer
+docker run -d -v ./backup/$ORDERER_CONTAINER/:/var/hyperledger/             -v ./backup/Identity:/etc/hyperledger/fabric/             --env-file ./envorderer.list             --name $ORDERER_NAME    -p 7050:7050 -p 7053:7053 -p 9443:9443   --network fabric_test         hyperledger/fabric-orderer:$IMAGE_TAG orderer
 ```
 
 Once all of the ordering nodes have come up, you can move on to upgrading your peers.
@@ -167,6 +175,8 @@ We can then **backup the peer’s ledger and MSP**:
 
 ```
 docker cp $PEER_CONTAINER:/var/hyperledger/production ./$LEDGERS_BACKUP/$PEER_CONTAINER
+
+docker cp $PEER_CONTAINER:/etc/hyperledger/fabric/ ./$LEDGERS_BACKUP/Identity
 ```
 
 With the peer stopped and the ledger backed up, **remove the peer chaincode containers**:
@@ -192,11 +202,7 @@ docker rm -f $PEER_CONTAINER
 Then you can launch the new peer container by issuing:
 
 ```
-docker run -d -v /opt/backup/$PEER_CONTAINER/:/var/hyperledger/production/ \
-            -v /opt/msp/:/etc/hyperledger/fabric/msp/ \
-            --env-file ./env<name of node>.list \
-            --name $PEER_CONTAINER \
-            hyperledger/fabric-peer:$IMAGE_TAG peer node start
+docker run -d -v ./peer1_backup/$PEER_CONTAINER/production/:/var/hyperledger/production             -v ./peer1_backup/Identity/:/etc/hyperledger/fabric  -v /var/run/docker.sock:/var/run/docker.sock           --env-file ./envpeer1.list             --name $PEER1_NAME   -p 7051:7051 -p 9444:9444  --network fabric_test          hyperledger/fabric-peer:$IMAGE_TAG peer node start
 ```
 
 You do not need to relaunch the chaincode container. When the peer gets a request for a chaincode, (invoke or query), it first checks if it has a copy of that chaincode running. If so, it uses it. Otherwise, as in this case, the peer launches the chaincode (rebuilding the image if required).
@@ -210,6 +216,48 @@ Before you attempt this, you may want to upgrade peers from enough organizations
 ## Upgrade your CAs
 
 To learn how to upgrade your Fabric CA server, click over to the [CA documentation](http://hyperledger-fabric-ca.readthedocs.io/en/latest/users-guide.html#upgrading-the-server).
+
+(OR) 
+
+You can also follow these steps:
+
+```
+export CA_ORDERER_CONTAINER=7af1328915cc // Replace with your docker container
+
+export CA_ORDERER_NAME=ca_orderer
+```
+
+Create the backup folder
+
+```
+mkdir ca_orderer_backup
+
+export LEDGERS_BACKUP=ca_orderer_backup
+```
+
+Backup the contents:
+
+```
+docker cp $CA_ORDERER_CONTAINER:/etc/hyperledger/fabric-ca-server/ ./$LEDGERS_BACKUP/ca
+```
+
+Stop the docker container and remove the old container
+
+```
+docker stop $CA_ORDERER_CONTAINER
+
+docker rm -f $CA_ORDERER_NAME
+
+```
+
+Run the docker ca with upgraded version
+
+```
+docker run -d -v ./organizations/fabric-ca/ordererOrg:/etc/hyperledger/fabric-ca-server --env-file ./caorderer_backup.list --name $CA_ORDERER_NAME -p 9054:9054 -p 19054:19054 --network fabric_test  hyperledger/fabric-ca:1.5.7 sh -c 'fabric-ca-server start -b admin:adminpw -d'
+
+```
+
+Likewise do this for other organizations
 
 ## Upgrade SDK clients
 
@@ -225,6 +273,50 @@ To upgrade CouchDB:
 2. Backup CouchDB data directory.
 3. Install the latest CouchDB binaries or update deployment scripts to use a new Docker image.
 4. Restart CouchDB.
+
+Follow these steps to upgrade the couchdb
+
+```
+export COUCHDB0_CONTAINER=a5525c4424c6 //Replace with your couchdb container
+
+export COUCHDB0_NAME=couchdb0
+
+```
+Create the couchdb backup folder
+
+```
+mkdir couchdb0_backup
+
+export LEDGERS_BACKUP=couchdb0_backup
+
+```
+
+Stop the container
+
+```
+docker stop $COUCHDB0_CONTAINER
+```
+
+Backup the contents
+
+```
+docker cp $COUCHDB0_CONTAINER:/opt/couchdb/data/ ./$LEDGERS_BACKUP/
+
+```
+
+Remove the existing container
+
+```
+docker rm -f $COUCHDB0_NAME
+```
+Run the couchdb with upgraded docker version
+
+```
+docker run -d -v ./$LEDGERS_BACKUP/data/:/opt/couchdb/data/ --env-file ./couchdb0_backup.list --name $COUCHDB0_NAME -p 5984:5984 --network fabric_test  couchdb:3.3.2
+
+```
+
+Do this for all the couchdb containers
 
 ## Upgrade Node chaincode shim
 

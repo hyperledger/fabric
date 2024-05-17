@@ -132,6 +132,14 @@ Then, follow the steps at [Step 3: Re-encode and submit the config](./config_upd
 
 Note that the `mod_policy` for this capability defaults to requiring signatures from the `MAJORITY` of `Admins` in the `Application` group. In other words, a majority of peer organizations will need to approve. Ordering service admins have no say in this capability.
 
+To get the approval of the peer use this command. 
+
+```
+peer channel signconfigtx -f channel-artifacts/config_update_in_envelope.pb 
+```
+
+Do this command for all the majority of the peer organizations
+
 **As a result, be very careful to not change this capability to a level that does not exist**. Because ordering nodes neither understand nor validate `Application` capabilities, they will approve a configuration to any level and send the new config block to the peers to be committed to their ledgers. However, the peers will be unable to process the capability and will crash. And even it was possible to drive a corrected configuration change to a valid capability level, the previous config block with the faulty capability would still exist on the ledger and cause peers to crash when trying to process it.
 
 This is one reason why a file like `capabilities.json` can be useful. It prevents a simple user error --- for example, setting the `Application` capability to `V20` when the intent was to set it to `V2_0` --- that can cause a channel to be unusable and unrecoverable.
