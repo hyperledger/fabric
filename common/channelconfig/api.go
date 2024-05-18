@@ -177,14 +177,14 @@ type ApplicationCapabilities interface {
 	StorePvtDataOfInvalidTx() bool
 
 	// V2_0Validation returns true if this channel supports transaction validation
-	// as introduced in v2.0. This includes:
+	// as introduced in v2.x. This includes:
 	//  - new chaincode lifecycle
 	//  - implicit per-org collections
 	V2_0Validation() bool
 
 	// LifecycleV20 indicates whether the peer should use the deprecated and problematic
 	// v1.x lifecycle, or whether it should use the newer per channel approve/commit definitions
-	// process introduced in v2.0.  Note, this should only be used on the endorsing side
+	// process introduced in v2.x.  Note, this should only be used on the endorsing side
 	// of peer processing, so that we may safely remove all checks against it in v2.1.
 	LifecycleV20() bool
 

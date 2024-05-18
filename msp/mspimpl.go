@@ -602,7 +602,7 @@ func (msp *bccspmsp) satisfiesPrincipalInternalV13(id Identity, principal *m.MSP
 
 // satisfiesPrincipalInternalV142 takes as arguments the identity and the principal.
 // The function returns an error if one occurred.
-// The function implements the additional behavior expected of an MSP starting from v2.0.
+// The function implements the additional behavior expected of an MSP starting from v2.x.
 // For v1.3 functionality, the function calls the satisfiesPrincipalInternalPreV13.
 func (msp *bccspmsp) satisfiesPrincipalInternalV142(id Identity, principal *m.MSPPrincipal) error {
 	_, okay := id.(*identity)

@@ -466,7 +466,7 @@ type namespaceProvider struct {
 // existing database matches the namespace and filter out all extra namespaces if no databases match them.
 // Checking peer membership is complicated because it requires retrieving all the collection configs from
 // the collection config store. Because this is a temporary function needed to retroactively build namespaces
-// when upgrading v2.0/2.1 peers to a newer v2.x version and because returning extra private data namespaces
+// when upgrading v2.x/2.1 peers to a newer v2.x version and because returning extra private data namespaces
 // does not cause inconsistence, it makes sense to use the simple implementation.
 func (p *namespaceProvider) PossibleNamespaces(vdb statedb.VersionedDB) ([]string, error) {
 	retNamespaces := []string{}

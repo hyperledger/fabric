@@ -40,7 +40,7 @@ Hyperledger Fabric currently supports client application development in three la
 
 In order for a transaction to be successfully committed to the ledger, a sufficient number of endorsements are required in order to satisfy
 the [endorsement policy](endorsement-policies.html). Getting an endorsement from an organization involves connecting to one
-of its peers and have it simulate (execute) the transaction proposal against its copy of the ledger. The peer simulates the transaction by invoking the chaincode function, as specified by its name and arguments in the proposal, and building (and signing) a read-write set. The read-write set contains the current ledger state and proposed changes in response to the state get/set instructions in that function.
+of its peers and having it simulate (execute) the transaction proposal against its copy of the ledger. The peer simulates the transaction by invoking the chaincode function, as specified by its name and arguments in the proposal, and building (and signing) a read-write set. The read-write set contains the current ledger state and proposed changes in response to the state get/set instructions in that function.
 
 The endorsement policy, or sum of multiple policies, that gets applied to a transaction depends on the implementation of the chaincode function that is being invoked, and could be a combination of the following:
 

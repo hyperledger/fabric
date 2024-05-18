@@ -640,7 +640,7 @@ func TestPendingBatch(t *testing.T) {
 
 	// assume that a block has been prepared in v142 and the peer was
 	// killed for upgrade. When the pvtdataStore is opened again with
-	// v2.0 peer, the pendingBatch should be marked as committed.
+	// v2.x peer, the pendingBatch should be marked as committed.
 	batch = s.db.NewUpdateBatch()
 
 	// store pvtData entries

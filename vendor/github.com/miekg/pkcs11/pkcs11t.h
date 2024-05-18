@@ -1779,7 +1779,7 @@ typedef CK_ULONG CK_PKCS5_PBKDF2_SALT_SOURCE_TYPE;
 typedef CK_PKCS5_PBKDF2_SALT_SOURCE_TYPE CK_PTR \
                         CK_PKCS5_PBKDF2_SALT_SOURCE_TYPE_PTR;
 
-/* The following salt value sources are defined in PKCS #5 v2.0. */
+/* The following salt value sources are defined in PKCS #5 v2.x. */
 #define CKZ_SALT_SPECIFIED        0x00000001UL
 
 /* CK_PKCS5_PBKD2_PARAMS is a structure that provides the

@@ -163,7 +163,7 @@ var PPC64 struct {
 	_        CacheLinePad
 	HasDARN  bool // Hardware random number generator (requires kernel enablement)
 	HasSCV   bool // Syscall vectored (requires kernel enablement)
-	IsPOWER8 bool // ISA v2.07 (POWER8)
+	IsPOWER8 bool // ISA v2.x7 (POWER8)
 	IsPOWER9 bool // ISA v3.00 (POWER9), implies IsPOWER8
 	_        CacheLinePad
 }

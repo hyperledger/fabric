@@ -236,7 +236,7 @@ To move to the new version of the Node chaincode shim a developer would need to:
 
 ## Upgrade Chaincodes with vendored shim
 
-For information about upgrading the Go chaincode shim specific to the v2.0 release, check out [Chaincode shim changes](./upgrade_to_newest_version.html#chaincode-shim-changes).
+For information about upgrading the Go chaincode shim specific to the v2.x release, check out [Chaincode shim changes](./upgrade_to_newest_version.html#chaincode-shim-changes).
 
 A number of third party tools exist that will allow you to vendor a chaincode shim. If you used one of these tools, use the same one to update your vendored chaincode shim and re-package your chaincode.
 

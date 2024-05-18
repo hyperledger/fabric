@@ -25,7 +25,7 @@ const (
 	// ApplicationV1_4_2 is the capabilities string for standard new non-backwards compatible fabric v1.4.2 application capabilities.
 	ApplicationV1_4_2 = "V1_4_2"
 
-	// ApplicationV2_0 is the capabilities string for standard new non-backwards compatible fabric v2.0 application capabilities.
+	// ApplicationV2_0 is the capabilities string for standard new non-backwards compatible fabric v2.x application capabilities.
 	ApplicationV2_0 = "V2_0"
 
 	// ApplicationV2_5 is the capabilities string for standard new non-backwards compatible fabric v2.5 application capabilities.
@@ -112,7 +112,7 @@ func (ap *ApplicationProvider) V1_3Validation() bool {
 }
 
 // V2_0Validation returns true if this channel supports transaction validation
-// as introduced in v2.0. This includes:
+// as introduced in v2.x. This includes:
 //   - new chaincode lifecycle
 //   - implicit per-org collections
 func (ap *ApplicationProvider) V2_0Validation() bool {
@@ -121,7 +121,7 @@ func (ap *ApplicationProvider) V2_0Validation() bool {
 
 // LifecycleV20 indicates whether the peer should use the deprecated and problematic
 // v1.x lifecycle, or whether it should use the newer per channel approve/commit definitions
-// process introduced in v2.0.  Note, this should only be used on the endorsing side
+// process introduced in v2.x.  Note, this should only be used on the endorsing side
 // of peer processing, so that we may safely remove all checks against it in v2.1.
 func (ap *ApplicationProvider) LifecycleV20() bool {
 	return ap.v20 || ap.v25

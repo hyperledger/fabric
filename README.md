@@ -59,7 +59,7 @@ information on getting started using and developing with the fabric, SDK and cha
 - [v2.3](http://hyperledger-fabric.readthedocs.io/en/release-2.3/)
 - [v2.2](http://hyperledger-fabric.readthedocs.io/en/release-2.2/)
 - [v2.1](http://hyperledger-fabric.readthedocs.io/en/release-2.1/)
-- [v2.0](http://hyperledger-fabric.readthedocs.io/en/release-2.0/)
+- [v2.x](http://hyperledger-fabric.readthedocs.io/en/release-2.0/)
 - [v1.4](http://hyperledger-fabric.readthedocs.io/en/release-1.4/)
 - [v1.3](http://hyperledger-fabric.readthedocs.io/en/release-1.3/)
 - [v1.2](http://hyperledger-fabric.readthedocs.io/en/release-1.2/)

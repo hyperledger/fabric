@@ -83,7 +83,7 @@ You can see the part of `configtx.yaml` that defines Org1 of the test network be
 
 ## Capabilities
 
-Fabric channels can be joined by orderer and peer nodes that are running different versions of Hyperledger Fabric. Channel capabilities allow organizations that are running different Fabric binaries to participate on the same channel by only enabling certain features. For example, organizations that are running Fabric v1.4 and organizations that are running Fabric v2.x can join the same channel as long as the channel capabilities levels are set to V1_4_X or below. None of the channel members will be able to use the features introduced in Fabric v2.0. Note that this is true as long as the new binaries still support a feature that existed in a previous version, and do not use a new feature that does not exist in a previous version. For example, the system channel is no longer supported in version v3.0. Thus, a v3.0 binary will not interoperate with a v2.x binary that still operates with the system channel.
+Fabric channels can be joined by orderer and peer nodes that are running different versions of Hyperledger Fabric. Channel capabilities allow organizations that are running different Fabric binaries to participate on the same channel by only enabling certain features. For example, organizations that are running Fabric v1.4 and organizations that are running Fabric v2.x can join the same channel as long as the channel capabilities levels are set to V1_4_X or below. None of the channel members will be able to use the features introduced in Fabric v2.x. Note that this is true as long as the new binaries still support a feature that existed in a previous version, and do not use a new feature that does not exist in a previous version. For example, the system channel is no longer supported in version v3.0. Thus, a v3.0 binary will not interoperate with a v2.x binary that still operates with the system channel.
 
 If you examine the `configtx.yaml` file, you will see three capability groups:
 
@@ -93,7 +93,7 @@ If you examine the `configtx.yaml` file, you will see three capability groups:
 
 - **Channel** capabilities set the minimum version of the Fabric that can be run by peer and ordering nodes.
 
-Because both of the peers and the ordering node of the Fabric test network run version v2.x, every capability group is set to `V2_0`. As a result, the test network cannot be joined by nodes that run a lower version of Fabric than v2.0. For more information, see the [capabilities](../capabilities_concept.html) concept topic.  
+Because both of the peers and the ordering node of the Fabric test network run version v2.x, every capability group is set to `V2_0`. As a result, the test network cannot be joined by nodes that run a lower version of Fabric than v2.x. For more information, see the [capabilities](../capabilities_concept.html) concept topic.  
 
 ## Application
 

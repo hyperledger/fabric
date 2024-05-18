@@ -2,7 +2,7 @@
 
 **Attention: This page is for advanced users who choose to configure chaincode as a service external to the Fabric peer. Proceed with caution!** New users of chaincode should start with [deploying a smart contract to a channel](deploy_chaincode.html) before proceeding with this tutorial.
 
-Fabric v2.0 supports chaincode deployment and execution outside of Fabric that enables users to manage a chaincode runtime independently of the peer. This facilitates deployment of chaincode on Fabric cloud deployments, such as Kubernetes. Instead of building and launching the chaincode on every peer, chaincode can be run as a service, external to Fabric. This capability leverages the Fabric v2.0 external builder and launcher functionality, which enables operators to extend a peer with programs to build, launch, and discover chaincode. Before reading this topic you should become familiar with the [External Builder and Launcher](./cc_launcher.html) content.
+Fabric v2.x supports chaincode deployment and execution outside of Fabric that enables users to manage a chaincode runtime independently of the peer. This facilitates deployment of chaincode on Fabric cloud deployments, such as Kubernetes. Instead of building and launching the chaincode on every peer, chaincode can be run as a service, external to Fabric. This capability leverages the Fabric v2.x external builder and launcher functionality, which enables operators to extend a peer with programs to build, launch, and discover chaincode. Before reading this topic you should become familiar with the [External Builder and Launcher](./cc_launcher.html) content.
 
 Prior to the availability of the external builders, the chaincode package content was required to be a set of source code files for a particular language which could be built and launched as a chaincode binary. The new external build and launcher functionality now allows users to optionally customize the build process. With respect to running the chaincode as an external service, the build process allows you to specify the endpoint information of the server where the chaincode is running. Hence the package simply consists of the externally running chaincode server endpoint information and TLS artifacts for secure connection. TLS is optional but highly recommended for all environments except a simple test environment.
 
@@ -19,7 +19,7 @@ The rest of this topic describes how to configure chaincode as an external servi
 
 ## Packaging chaincode
 
-With the Fabric v2.0 chaincode lifecycle, chaincode is [packaged](./cc_launcher.html#chaincode-packages) and installed in a `.tar.gz` format. The following `myccpackage.tgz` archive  demonstrates the required structure:
+With the Fabric v2.x chaincode lifecycle, chaincode is [packaged](./cc_launcher.html#chaincode-packages) and installed in a `.tar.gz` format. The following `myccpackage.tgz` archive  demonstrates the required structure:
 
 ```sh
 $ tar xvfz myccpackage.tgz
@@ -27,8 +27,8 @@ metadata.json
 code.tar.gz
 ```
 
-The chaincode package should be used to provide two pieces of information to the external builder and launcher process
-* identify if the chaincode is an external service. The `bin/detect` section describes an approach using the `metadata.json` file
+The chaincode package should be used to provide two pieces of information to the external builder and launcher process:
+* identify if the chaincode is an external service. The `bin/detect` section describes an approach using the `metadata.json` file.
 * provide chaincode endpoint information in a `connection.json` file placed in the release directory. 
 
 There is plenty of flexibility to gathering the above information. The sample scripts in the [External builder and launcher sample scripts](#external-builder-and-launcher-sample-scripts) illustrate a simple approach to providing the information.
@@ -41,13 +41,13 @@ tar cfz myccpackage.tgz metadata.json code.tar.gz
 
 ## Configuring a peer to process external chaincode
 
-In this section we go over the configuration needed
+In this section we go over the configuration needed:
 * to detect if the chaincode package identifies an external chaincode service
 * to create the `connection.json` file in the release directory
 
 ### Modify the peer core.yaml to include the externalBuilder
 
-Assume the scripts are on the peer in the `bin` directory as follows
+Assume the scripts are on the peer in the `bin` directory as follows:
 ```
     <fully qualified path on the peer's env>
     └── bin
@@ -140,7 +140,7 @@ exit 0
 
 #### bin/release
 
-For chaincode as an external service, the `bin/release` script is responsible for providing the `connection.json` to the peer by placing it in the `RELEASE_OUTPUT_DIR`.  The `connection.json` file has the following JSON structure
+For chaincode as an external service, the `bin/release` script is responsible for providing the `connection.json` to the peer by placing it in the `RELEASE_OUTPUT_DIR`.  The `connection.json` file has the following JSON structure:
 
 * **address** - chaincode server endpoint accessible from peer. Must be specified in “<host>:<port>” format.
 * **domain** - chaincode service domain name. If the address is not authorized by the TLS certificate of the chaincode service, you can specify an authorized address through domain.
@@ -207,7 +207,7 @@ Currently, the chaincode as an external service model is supported by Go chainco
 
 ### Go
 
-In Fabric v2.0, the Go shim API provides a `ChaincodeServer` type that developers should use to create a chaincode server.  The `Invoke` and `Query` APIs are unaffected. Developers should write to the `shim.ChaincodeServer` API, then build the chaincode and run it in the external environment of choice. Here is a simple sample chaincode program to illustrate the pattern:
+In Fabric v2.x, the Go shim API provides a `ChaincodeServer` type that developers should use to create a chaincode server.  The `Invoke` and `Query` APIs are unaffected. Developers should write to the `shim.ChaincodeServer` API, then build the chaincode and run it in the external environment of choice. Here is a simple sample chaincode program to illustrate the pattern:
 
 ```go
 

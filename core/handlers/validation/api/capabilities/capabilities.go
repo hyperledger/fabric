@@ -48,7 +48,7 @@ type Capabilities interface {
 	StorePvtDataOfInvalidTx() bool
 
 	// V2_0Validation returns true if this channel supports transaction validation
-	// as introduced in v2.0. This includes:
+	// as introduced in v2.x. This includes:
 	//  - new chaincode lifecycle
 	//  - implicit per-org collections
 	V2_0Validation() bool

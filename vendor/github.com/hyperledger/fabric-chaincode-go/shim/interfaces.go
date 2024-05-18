@@ -229,7 +229,7 @@ type ChaincodeStubInterface interface {
 	// detected at validation/commit time. Applications susceptible to this
 	// should therefore not use GetHistoryForKey as part of transactions that
 	// update ledger, and should limit use to read-only chaincode operations.
-	// Starting in Fabric v2.0, the GetHistoryForKey chaincode API
+	// Starting in Fabric v2.x, the GetHistoryForKey chaincode API
 	// will return results from newest to oldest in terms of ordered transaction
 	// height (block height and transaction height within block).
 	// This will allow applications to efficiently iterate through the top results

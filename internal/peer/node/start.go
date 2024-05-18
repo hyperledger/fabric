@@ -564,7 +564,7 @@ func serve(args []string) error {
 				Registry: platformRegistry,
 				Client:   client,
 			},
-			// This field is superfluous for chaincodes built with v2.0+ binaries
+			// This field is superfluous for chaincodes built with v2.x+ binaries
 			// however, to prevent users from being forced to rebuild leaving for now
 			// but it should be removed in the future.
 			LoggingEnv: []string{

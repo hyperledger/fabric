@@ -854,7 +854,7 @@ func (vdb *VersionedDB) initChannelMetadata(isNewDB bool, namespaceProvider stat
 		return err
 	}
 
-	// channelMetadata is not present - this is the case when opening older dbs (e.g., v2.0/v2.1) for the first time
+	// channelMetadata is not present - this is the case when opening older dbs (e.g., v2.x/v2.1) for the first time
 	// create channelMetadata and build NamespaceDBInfo mapping retroactively
 	vdb.channelMetadata = &channelMetadata{
 		ChannelName:      vdb.chainName,

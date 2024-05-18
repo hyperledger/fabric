@@ -231,7 +231,7 @@ func (cs *ChaincodeSupport) CheckInvocation(txParams *ccprovider.TransactionPara
 		needsInitialization = !bytes.Equal(value, []byte(cii.Version))
 	}
 
-	// Note, IsInit is a new field for v2.0 and should only be set for invocations of non-legacy chaincodes.
+	// Note, IsInit is a new field for v2.x and should only be set for invocations of non-legacy chaincodes.
 	// Any invocation of a legacy chaincode with IsInit set will fail.  This is desirable, as the old
 	// InstantiationPolicy contract enforces which users may call init.
 	if input.IsInit {

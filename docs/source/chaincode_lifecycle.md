@@ -478,7 +478,7 @@ while MYCC2 has an endorsement policy of 2 out of 2.*
 
 ## Migrate to the v2.x Fabric lifecycle
 
-For information about migrating to the new lifecycle, check out [Considerations for getting to v2.0](./upgrade_to_newest_version.html#chaincode-lifecycle).
+For information about migrating to the new lifecycle, check out [Considerations for getting to v2.x](./upgrade_to_newest_version.html#chaincode-lifecycle).
 
 If you need to update your channel configurations to enable the new lifecycle, check out [Enabling the new chaincode lifecycle](./enable_cc_lifecycle.html).
 
