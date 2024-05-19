@@ -146,19 +146,20 @@ type Profile struct {
 
 // Network holds information about a fabric network.
 type Network struct {
-	RootDir               string
-	StartPort             uint16
-	Components            *Components
-	DockerClient          *docker.Client
-	ExternalBuilders      []fabricconfig.ExternalBuilder
-	NetworkID             string
-	EventuallyTimeout     time.Duration
-	SessionCreateInterval time.Duration
-	MetricsProvider       string
-	StatsdEndpoint        string
-	ClientAuthRequired    bool
-	TLSEnabled            bool
-	GatewayEnabled        bool
+	RootDir                  string
+	StartPort                uint16
+	Components               *Components
+	DockerClient             *docker.Client
+	ExternalBuilders         []fabricconfig.ExternalBuilder
+	NetworkID                string
+	EventuallyTimeout        time.Duration
+	SessionCreateInterval    time.Duration
+	MetricsProvider          string
+	StatsdEndpoint           string
+	ClientAuthRequired       bool
+	TLSEnabled               bool
+	GatewayEnabled           bool
+	OrdererReplicationPolicy string
 
 	PortsByOrdererID map[string]Ports
 	PortsByPeerID    map[string]Ports
