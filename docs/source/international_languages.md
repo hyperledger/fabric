@@ -230,7 +230,7 @@ order of translation in your workgroup.
 
 
 * [What's new in Hyperledger Fabric
-  v2.x](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/whatsnew.html)
+  v2.0](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/whatsnew.html)
 
   This topic covers the latest features in Hyperledger Fabric.
 

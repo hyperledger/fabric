@@ -205,7 +205,7 @@ implementation the node will be used in), check out [our documentation on deploy
 * **Kafka**
   Kafka was deprecated in v2.x and is no longer supported in v3.x
 
-* **Solo** (deprecated in v2.x)
+* **Solo** (deprecated in v2.0)
 
   The Solo implementation of the ordering service is intended for test only and
   consists only of a single ordering node. It has been deprecated and may be

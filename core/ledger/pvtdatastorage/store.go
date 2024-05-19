@@ -270,7 +270,7 @@ func (s *Store) initState() error {
 
 	// TODO: FAB-16298 -- the concept of pendingBatch is no longer valid
 	// for pvtdataStore. We can remove it v2.1. We retain the concept in
-	// v2.x to allow rolling upgrade from v142 to v2.x
+	// v2.x to allow rolling upgrade from v142 to v2.0
 	batchPending, err := s.hasPendingCommit()
 	if err != nil {
 		return err
@@ -396,9 +396,9 @@ func (s *Store) Commit(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtD
 
 // GetLastUpdatedOldBlocksPvtData returns the pvtdata of blocks listed in `lastUpdatedOldBlocksList`
 // TODO FAB-16293 -- GetLastUpdatedOldBlocksPvtData() can be removed either in v2.x or in v2.1.
-// If we decide to rebuild stateDB in v2.x, by default, the rebuild logic would take
+// If we decide to rebuild stateDB in v2.0, by default, the rebuild logic would take
 // care of syncing stateDB with pvtdataStore without calling GetLastUpdatedOldBlocksPvtData().
-// Hence, it can be safely removed. Suppose if we decide not to rebuild stateDB in v2.x,
+// Hence, it can be safely removed. Suppose if we decide not to rebuild stateDB in v2.0,
 // we can remove this function in v2.1.
 func (s *Store) GetLastUpdatedOldBlocksPvtData() (map[uint64][]*ledger.TxPvtData, error) {
 	if !s.isLastUpdatedOldBlocksSet {
@@ -447,8 +447,8 @@ func (s *Store) getLastUpdatedOldBlocksList() ([]uint64, error) {
 
 // TODO FAB-16294 -- ResetLastUpdatedOldBlocksList() can be removed in v2.1.
 // From v2.x onwards, we do not store the last updatedBlksList. Only to support
-// the rolling upgrade from v142 to v2.x, we retain the ResetLastUpdatedOldBlocksList()
-// in v2.x.
+// the rolling upgrade from v142 to v2.0, we retain the ResetLastUpdatedOldBlocksList()
+// in v2.0.
 
 // ResetLastUpdatedOldBlocksList removes the `lastUpdatedOldBlocksList` entry from the store
 func (s *Store) ResetLastUpdatedOldBlocksList() error {
@@ -1083,7 +1083,7 @@ func (s *Store) nextBlockNum() uint64 {
 
 // TODO: FAB-16298 -- the concept of pendingBatch is no longer valid
 // for pvtdataStore. We can remove it v2.1. We retain the concept in
-// v2.x to allow rolling upgrade from v142 to v2.x
+// v2.x to allow rolling upgrade from v142 to v2.0
 func (s *Store) hasPendingCommit() (bool, error) {
 	var v []byte
 	var err error

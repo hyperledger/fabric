@@ -86,7 +86,7 @@ type VersionedDB interface {
 
 // NamespaceProvider provides a mean for statedb to get all the possible namespaces for a channel.
 // The intended use is for statecouchdb to retroactively build channel metadata when it is missing,
-// e.g., when opening a statecouchdb from v2.x/2.1 version.
+// e.g., when opening a statecouchdb from v2.0/2.1 version.
 type NamespaceProvider interface {
 	// PossibleNamespaces returns all possible namespaces for the statedb. Note that it is a superset
 	// of the actual namespaces. Therefore, the caller should compare with the existing databases to

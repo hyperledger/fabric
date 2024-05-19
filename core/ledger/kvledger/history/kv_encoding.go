@@ -30,7 +30,7 @@ var (
 // using an order preserving encoding so that history query results are ordered by height
 // Note: this key format is different than the format in pre-v2.x releases and requires
 //
-//	a historydb rebuild when upgrading an older version to v2.x.
+//	a historydb rebuild when upgrading an older version to v2.0.
 func constructDataKey(ns string, key string, blocknum uint64, trannum uint64) dataKey {
 	k := append([]byte(ns), compositeKeySep...)
 	k = append(k, util.EncodeOrderPreservingVarUint64(uint64(len(key)))...)

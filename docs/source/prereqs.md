@@ -39,7 +39,7 @@ curl --version # => curl 7.64.1 (...)
 Install the latest version of [Docker Desktop](https://docs.docker.com/get-docker/) if it is not already installed.
 Since Docker Desktop is a UI application on Mac, use `cask` to install it.
 
-Homebrew v2.x:
+Homebrew v2.0:
 
 ```shell
 brew cask install --appdir="/Applications" docker

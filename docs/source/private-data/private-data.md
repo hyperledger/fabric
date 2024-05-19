@@ -176,7 +176,7 @@ sharing and verification of private data:
 * First, you don't necessarily have to be a member of a collection to write to a key in
   a collection, as long as the endorsement policy is satisfied.
   Endorsement policy can be defined at the chaincode level, key level (using state-based
-  endorsement), or collection level (starting in Fabric v2.x).
+  endorsement), or collection level (starting in Fabric v2.0).
 
 * Second, starting in v1.4.2 there is a chaincode API GetPrivateDataHash() that allows
   chaincode on non-member peers to read the hash value of a private key. This is an
@@ -191,7 +191,7 @@ number of collections that need to be defined.
 Alternatively, consider using a smaller number of private data collections (e.g.
 one collection per organization, or one collection per pair of organizations), and
 then sharing private data with other channel members, or with other
-collections as the need arises. Starting in Fabric v2.x, implicit organization-specific
+collections as the need arises. Starting in Fabric v2.0, implicit organization-specific
 collections are available for any chaincode to utilize,
 so that you don't even have to define these per-organization collections when
 deploying chaincode.
@@ -255,7 +255,7 @@ applications:
   which the chaincode will then check using GetPrivateDataHash(). In fact, this is
   exactly the same mechanism that the built-in lifecycle system chaincode uses to
   ensure organizations agree to a chaincode definition before it is committed to
-  a channel. Starting with Fabric v2.x, this pattern
+  a channel. Starting with Fabric v2.0, this pattern
   becomes more powerful with collection-level endorsement policies, to ensure
   that the chaincode is executed and endorsed on the collection owner's own trusted
   peer. Alternatively, a mutually agreed key with a key-level endorsement policy

@@ -12,7 +12,7 @@ definition listing the organizations in the collection, as well as properties
 used to control dissemination of private data at endorsement time and,
 optionally, whether the data will be purged.
 
-Beginning with the Fabric chaincode lifecycle introduced with Fabric v2.x, the
+Beginning with the Fabric chaincode lifecycle introduced with Fabric v2.0, the
 collection definition is part of the chaincode definition. The chaincode including
 collection definition must be approved by the required channel members, and
 then becomes effective when the chaincode definition is committed to the channel.
@@ -256,7 +256,7 @@ A single chaincode can reference multiple collections.
 Referencing implicit collections from chaincode
 -----------------------------------------------
 
-Starting in v2.x, an implicit private data collection can be used for each
+Starting in v2.0, an implicit private data collection can be used for each
 organization in a channel, so that you don't have to define collections if you'd
 like to utilize per-organization collections. Each org-specific implicit collection
 has a distribution policy and endorsement policy of the matching organization.
@@ -317,7 +317,7 @@ Until version 1.3, access control to private data based on collection membership
 was enforced for peers only. Access control based on the organization of the
 chaincode proposal submitter was required to be encoded in chaincode logic.
 Collection configuration options ``memberOnlyRead`` (since version v1.4) and
-``memberOnlyWrite`` (since version v2.x) can automatically enforce that the chaincode
+``memberOnlyWrite`` (since version v2.0) can automatically enforce that the chaincode
 proposal submitter must be from a collection member in order to read or write
 private data keys. For more information about collection
 configuration definitions and how to set them, refer back to the

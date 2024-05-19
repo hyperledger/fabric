@@ -27,7 +27,7 @@ tutorials:
    version before updating any capabilities.
 3. :doc:`updating_capabilities`. Completed after updating the versions of all nodes.
 4. :doc:`enable_cc_lifecycle`. Necessary to add organization specific endorsement
-   policies central to the new chaincode lifecycle for Fabric v2.x.
+   policies central to the new chaincode lifecycle for Fabric v2.0.
 
 As the upgrading of nodes and increasing the capability levels of channels is by
 now considered a standard Fabric process, we will not show the specific commands

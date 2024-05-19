@@ -1,4 +1,4 @@
-# Considerations for getting to v2.x
+# Considerations for getting to v2.0
 
 In this topic we'll cover recommendations for upgrading from a prior v2.x release to the v2.5 long-term support (LTS) release, as well as from the v1.4 release.
 
@@ -16,7 +16,7 @@ For information about how to set new capabilities, check out [Updating the capab
 
 ## Upgrading from v1.4.x release to a v2.x release
 
-Before attempting to upgrade from v1.4.x to v2.x, make sure to consider the following before, during, and after your peer upgrades.
+Before attempting to upgrade from v1.4.x to v2.0, make sure to consider the following before, during, and after your peer upgrades.
 
 ### Prior to upgrading peer nodes
 
@@ -26,7 +26,7 @@ Consider updating chaincode based on the below guidelines prior to upgrading nod
 #### Chaincode shim changes (Go chaincode only)
 
 The v2.x `ccenv` image that is used to build Go chaincodes no longer automatically vendors the Go chaincode shim dependency like the v1.4 `ccenv` image did.
-The recommended approach is to vendor the shim in your v1.4 Go chaincode before making upgrades to the peers and channels, since this approach works with both a v1.4.x and v2.x peer. If you are already using an existing tool such as ``govendor`` you may continue using it to vendor the chaincode shim. Best practice, however, would be to use Go modules to vendor the chaincode shim, as modules are now the de facto standard for dependency management in the Go ecosystem. Note that since Fabric v2.x, chaincode using Go modules without vendored dependencies is also supported. If you do this, you do not need to make any additional changes to your chaincode.
+The recommended approach is to vendor the shim in your v1.4 Go chaincode before making upgrades to the peers and channels, since this approach works with both a v1.4.x and v2.x peer. If you are already using an existing tool such as ``govendor`` you may continue using it to vendor the chaincode shim. Best practice, however, would be to use Go modules to vendor the chaincode shim, as modules are now the de facto standard for dependency management in the Go ecosystem. Note that since Fabric v2.0, chaincode using Go modules without vendored dependencies is also supported. If you do this, you do not need to make any additional changes to your chaincode.
 
 If you did not vendor the shim in your v1.4 chaincode, the old v1.4 chaincode images will still technically work after peer upgrade, but you are in a risky state. If the chaincode image gets deleted from your environment for whatever reason, the next invoke on v2.x peer will try to rebuild the chaincode image and you'll get an error that the shim cannot be found.
 
@@ -36,7 +36,7 @@ At this point, you have two options:
 
 2. If the entire channel is not yet ready to upgrade the chaincode, you can use peer environment variables to specify the v1.4 chaincode environment `ccenv` be used to rebuild the chaincode images. This v1.4 `ccenv` should still work with a v2.x peer.
 
-To eliminate these concerns, the recommendation is to make sure the chaincode shim is vendored and the chaincode is upgraded, prior to upgrading a peer to v2.x.
+To eliminate these concerns, the recommendation is to make sure the chaincode shim is vendored and the chaincode is upgraded, prior to upgrading a peer to v2.0.
 
 #### Chaincode logger (Go chaincode only)
 
@@ -68,7 +68,7 @@ functions that initialize state from an application consistent with how all othe
 
 #### Peer databases upgrade
 
-For information about how to upgrade peers, check out our documentation on [upgrading components](./upgrading_your_components.html). During the process for [upgrading your peers](./upgrading_your_components.html#upgrade-the-peers), you will need to perform one additional step to upgrade the peer databases. The databases of all peers (which include not just the state database but the history database and other internal databases for the peer) must be rebuilt using the v2.x data format as part of the upgrade to v2.x. To trigger the rebuild, the databases must be dropped before the peer is started. The instructions below utilize the `peer node upgrade-dbs` command to drop the local databases managed by the peer and prepare them for upgrade, so that they can be rebuilt the first time the v2.x peer starts. If you are using CouchDB as the state database, the peer has support to automatically drop this database as of v2.2. To leverage the support, you must configure the peer with CouchDB as the state database and start CouchDB before running the `upgrade-dbs` command. In v2.x and v2.1, the peer does not automatically drop the CouchDB state database; therefore you must drop it yourself.
+For information about how to upgrade peers, check out our documentation on [upgrading components](./upgrading_your_components.html). During the process for [upgrading your peers](./upgrading_your_components.html#upgrade-the-peers), you will need to perform one additional step to upgrade the peer databases. The databases of all peers (which include not just the state database but the history database and other internal databases for the peer) must be rebuilt using the v2.x data format as part of the upgrade to v2.0. To trigger the rebuild, the databases must be dropped before the peer is started. The instructions below utilize the `peer node upgrade-dbs` command to drop the local databases managed by the peer and prepare them for upgrade, so that they can be rebuilt the first time the v2.x peer starts. If you are using CouchDB as the state database, the peer has support to automatically drop this database as of v2.2. To leverage the support, you must configure the peer with CouchDB as the state database and start CouchDB before running the `upgrade-dbs` command. In v2.x and v2.1, the peer does not automatically drop the CouchDB state database; therefore you must drop it yourself.
 
 Follow the commands to upgrade a peer until the `docker run` command to launch the new peer container (you can skip the step where you set an `IMAGE_TAG`, since the `upgrade-dbs` command is for the v2.x release of Fabric only, but you will need to set the `PEER_CONTAINER` and `LEDGERS_BACKUP` environment variables). Instead of the `docker run` command to launch the peer, run this command instead to drop and prepare the local databases managed by the peer (substitute `2.1` for `2.0` in these commands if you are upgrading to that binary version from the 1.4.x LTS):
 

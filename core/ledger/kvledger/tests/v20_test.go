@@ -21,7 +21,7 @@ func TestV20SampleLedger(t *testing.T) {
 	env := newEnv(t)
 	defer env.cleanup()
 
-	dataHelper := &v20SampleDataHelper{sampleDataVersion: "v2.x", t: t}
+	dataHelper := &v20SampleDataHelper{sampleDataVersion: "v2.0", t: t}
 	env.initializer.DeployedChaincodeInfoProvider = createDeployedCCInfoProvider(dataHelper.mspIDsInChannelConfig())
 	ledgerFSRoot := env.initializer.Config.RootFSPath
 	require.NoError(t, testutil.Unzip("testdata/v20/sample_ledgers/ledgersData.zip", ledgerFSRoot, false))

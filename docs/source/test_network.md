@@ -54,7 +54,7 @@ Usage:
     Flags:
     Used with network.sh up, network.sh createChannel:
     -ca - Use Certificate Authorities to generate network crypto material
-    -bft - Use Orderers with consensus type BFT (Not available in Fabric v2.x)
+    -bft - Use Orderers with consensus type BFT (Not available in Fabric v2.0)
     -c <channel name> - Name of channel to create (defaults to "mychannel")
     -s <dbtype> - Peer state database to deploy: goleveldb (default) or couchdb
     -r <max retry> - CLI times out after certain number of attempts (defaults to 5)

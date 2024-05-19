@@ -151,8 +151,8 @@ $ go get gopkg.in/alecthomas/kingpin.v1
     - Use `app.Writer(os.Writer)` to specify the default writer for all output functions.
     - Dropped `os.Writer` prefix from all printf-like functions.
 
-- *2015-05-22* -- Stable v2.x.0 release.
-    - Initial stable release of v2.x.0.
+- *2015-05-22* -- Stable v2.0.0 release.
+    - Initial stable release of v2.0.0.
     - Fully supports interspersed flags, commands and arguments.
     - Flags can be present at any point after their logical definition.
     - Application.Parse() terminates if commands are present and a command is not parsed.

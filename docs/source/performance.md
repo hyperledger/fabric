@@ -247,7 +247,7 @@ Ensure monitoring of resources used by CouchDB instances, because as the size of
 
 ### CouchDB cache
 
-When using an external CouchDB state database, read delays during the endorsement and validation transaction phases have shown to be a performance bottleneck. In Fabric v2.x, the peer cache replaces many of these expensive lookups with fast local cache reads.
+When using an external CouchDB state database, read delays during the endorsement and validation transaction phases have shown to be a performance bottleneck. In Fabric v2.0, the peer cache replaces many of these expensive lookups with fast local cache reads.
 
 The cache will not improve performance of JSON queries.
 

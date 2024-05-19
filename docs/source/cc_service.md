@@ -207,7 +207,7 @@ Currently, the chaincode as an external service model is supported by Go chainco
 
 ### Go
 
-In Fabric v2.x, the Go shim API provides a `ChaincodeServer` type that developers should use to create a chaincode server.  The `Invoke` and `Query` APIs are unaffected. Developers should write to the `shim.ChaincodeServer` API, then build the chaincode and run it in the external environment of choice. Here is a simple sample chaincode program to illustrate the pattern:
+In Fabric v2.0, the Go shim API provides a `ChaincodeServer` type that developers should use to create a chaincode server.  The `Invoke` and `Query` APIs are unaffected. Developers should write to the `shim.ChaincodeServer` API, then build the chaincode and run it in the external environment of choice. Here is a simple sample chaincode program to illustrate the pattern:
 
 ```go
 

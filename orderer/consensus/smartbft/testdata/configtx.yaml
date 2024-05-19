@@ -144,7 +144,7 @@ Capabilities:
         # prior releases would behave in an incompatible way, and are therefore
         # not able to participate in channels at v2.x capability.
         # Prior to enabling v2.x channel capabilities, ensure that all
-        # orderers and peers on a channel are at v2.x.0 or later.
+        # orderers and peers on a channel are at v2.0.0 or later.
         V2_0: true
 
     # Orderer capabilities apply only to the orderers, and may be safely
@@ -156,7 +156,7 @@ Capabilities:
         # prior releases would behave in an incompatible way, and are therefore
         # not able to participate in channels at v2.x orderer capability.
         # Prior to enabling v2.x orderer capabilities, ensure that all
-        # orderers on channel are at v2.x.0 or later.
+        # orderers on channel are at v2.0.0 or later.
         V2_0: true
 
     # Application capabilities apply only to the peer network, and may be safely

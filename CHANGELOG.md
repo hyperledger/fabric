@@ -6,9 +6,9 @@ Hyperledger Fabric [releases](https://github.com/hyperledger/fabric/releases) ea
 
 Early Hyperledger Fabric releases prior to v2.x copied commit history into the changelog file below.
 
-## "v2.x.0-beta"
+## "v2.0.0-beta"
 
-* [7cd1eda](https://github.com/hyperledger/fabric/commit/7cd1eda) Add release notes for v2.x.0-beta
+* [7cd1eda](https://github.com/hyperledger/fabric/commit/7cd1eda) Add release notes for v2.0.0-beta
 * [402a077](https://github.com/hyperledger/fabric/commit/402a077) [FAB-17199](https://jira.hyperledger.org/browse/FAB-17199) Add new test network tutorial
 * [1432b66](https://github.com/hyperledger/fabric/commit/1432b66) [FAB-14083](https://jira.hyperledger.org/browse/FAB-14083) Chaincode as an external service documentation
 * [f93acfa](https://github.com/hyperledger/fabric/commit/f93acfa) [FAB-17239](https://jira.hyperledger.org/browse/FAB-17239) What's new links 2.0 beta
@@ -29,7 +29,7 @@ Early Hyperledger Fabric releases prior to v2.x copied commit history into the c
 * [b430f81](https://github.com/hyperledger/fabric/commit/b430f81) [FAB-16125](https://jira.hyperledger.org/browse/FAB-16125) fix allow ledger test to succeed  when no tests are run
 * [76765db](https://github.com/hyperledger/fabric/commit/76765db) Copy if rename fails during external build
 * [49ed882](https://github.com/hyperledger/fabric/commit/49ed882) [FAB-17196](https://jira.hyperledger.org/browse/FAB-17196) Fix broken md structures in docs
-* [3e3b0fc](https://github.com/hyperledger/fabric/commit/3e3b0fc) [FAB-17135](https://jira.hyperledger.org/browse/FAB-17135) Document private data enhancements in v2.x
+* [3e3b0fc](https://github.com/hyperledger/fabric/commit/3e3b0fc) [FAB-17135](https://jira.hyperledger.org/browse/FAB-17135) Document private data enhancements in v2.0
 * [96fefd0](https://github.com/hyperledger/fabric/commit/96fefd0) [FAB-17222](https://jira.hyperledger.org/browse/FAB-17222) updating go version to go1.13.4 in vagrant dev_env
 * [00eecd1](https://github.com/hyperledger/fabric/commit/00eecd1) Fix incorrect block metadata documentation (#378)
 * [3cce10a](https://github.com/hyperledger/fabric/commit/3cce10a) [FAB-17220](https://jira.hyperledger.org/browse/FAB-17220) Dynamically build TLS config in Raft client handshake
@@ -546,7 +546,7 @@ Early Hyperledger Fabric releases prior to v2.x copied commit history into the c
 * [91d2cff](https://github.com/hyperledger/fabric/commit/91d2cff) [FAB-15951](https://jira.hyperledger.org/browse/FAB-15951) Refactor GetDefault in LoadPackage
 * [d085666](https://github.com/hyperledger/fabric/commit/d085666) [FAB-15951](https://jira.hyperledger.org/browse/FAB-15951) Attach GetHasher to CCInfoFSImpl
 * [bc88a59](https://github.com/hyperledger/fabric/commit/bc88a59) mv DB's loc. constructor code to a single place
-* [5b44ac9](https://github.com/hyperledger/fabric/commit/5b44ac9) [FAB-16400](https://jira.hyperledger.org/browse/FAB-16400) Add v2.x.0 capabilities in configtx.yaml
+* [5b44ac9](https://github.com/hyperledger/fabric/commit/5b44ac9) [FAB-16400](https://jira.hyperledger.org/browse/FAB-16400) Add v2.0.0 capabilities in configtx.yaml
 * [d7bf770](https://github.com/hyperledger/fabric/commit/d7bf770) [FAB-16399](https://jira.hyperledger.org/browse/FAB-16399) Correct capabilities error message
 * [6b0aa6e](https://github.com/hyperledger/fabric/commit/6b0aa6e) [FAB-13941](https://jira.hyperledger.org/browse/FAB-13941) Add TestApplyOutOfDateSnapshot
 * [be0baea](https://github.com/hyperledger/fabric/commit/be0baea) [FAB-16270](https://jira.hyperledger.org/browse/FAB-16270) avoid conflicts in etcdraft_test.go
@@ -683,7 +683,7 @@ Early Hyperledger Fabric releases prior to v2.x copied commit history into the c
 * [925476e](https://github.com/hyperledger/fabric/commit/925476e) DRY up code to set package id in int. tests
 * [cbcfd11](https://github.com/hyperledger/fabric/commit/cbcfd11) [FAB-16239](https://jira.hyperledger.org/browse/FAB-16239) explicit environment propagation
 * [6ab3b66](https://github.com/hyperledger/fabric/commit/6ab3b66) [FAB-16238](https://jira.hyperledger.org/browse/FAB-16238) Document expiration checks in orderer
-* [5119fbf](https://github.com/hyperledger/fabric/commit/5119fbf) [FAB-16236](https://jira.hyperledger.org/browse/FAB-16236) Create initial release notes for v2.x.0
+* [5119fbf](https://github.com/hyperledger/fabric/commit/5119fbf) [FAB-16236](https://jira.hyperledger.org/browse/FAB-16236) Create initial release notes for v2.0.0
 * [e841ebe](https://github.com/hyperledger/fabric/commit/e841ebe) [FAB-16165](https://jira.hyperledger.org/browse/FAB-16165) Change pkcs11 test keystore directory
 * [812b532](https://github.com/hyperledger/fabric/commit/812b532) [FAB-15343](https://jira.hyperledger.org/browse/FAB-15343) Remove System Chaincode Plugins
 * [b1974a9](https://github.com/hyperledger/fabric/commit/b1974a9) [FAB-16234](https://jira.hyperledger.org/browse/FAB-16234) the lifecycle suite should not be nested
@@ -1401,10 +1401,10 @@ Early Hyperledger Fabric releases prior to v2.x copied commit history into the c
 * [c590d19](https://github.com/hyperledger/fabric/commit/c590d19) [FAB-14801](https://jira.hyperledger.org/browse/FAB-14801): Update transaction handler doc
 * [5594707](https://github.com/hyperledger/fabric/commit/5594707) [FAB-14680](https://jira.hyperledger.org/browse/FAB-14680) Fix a broken link of README
 
-## v2.x.0-alpha
+## v2.0.0-alpha
 Tue Apr  9 11:25:34 EDT 2019
 
-* [a3dafcd](https://github.com/hyperledger/fabric/commit/a3dafcd) [FAB-14988](https://jira.hyperledger.org/browse/FAB-14988) Release fabric v2.x.0-alpha
+* [a3dafcd](https://github.com/hyperledger/fabric/commit/a3dafcd) [FAB-14988](https://jira.hyperledger.org/browse/FAB-14988) Release fabric v2.0.0-alpha
 * [42e6305](https://github.com/hyperledger/fabric/commit/42e6305) [FAB-15122](https://jira.hyperledger.org/browse/FAB-15122) fix private data tutorial
 * [f7d2a04](https://github.com/hyperledger/fabric/commit/f7d2a04) [FAB-15120](https://jira.hyperledger.org/browse/FAB-15120) use LSCC namespace in valdiation test
 * [20c56c2](https://github.com/hyperledger/fabric/commit/20c56c2) [FAB-14930](https://jira.hyperledger.org/browse/FAB-14930) What's new for 2.0
