@@ -140,10 +140,10 @@ Capabilities:
     # Set the value of the capability to true to require it.
     Channel: &ChannelCapabilities
         # V2_0 capability ensures that orderers and peers behave according
-        # to v2.x channel capabilities. Orderers and peers from
+        # to v2.0 channel capabilities. Orderers and peers from
         # prior releases would behave in an incompatible way, and are therefore
-        # not able to participate in channels at v2.x capability.
-        # Prior to enabling v2.x channel capabilities, ensure that all
+        # not able to participate in channels at v2.0 capability.
+        # Prior to enabling v2.0 channel capabilities, ensure that all
         # orderers and peers on a channel are at v2.0.0 or later.
         V2_0: true
 
@@ -152,10 +152,10 @@ Capabilities:
     # Set the value of the capability to true to require it.
     Orderer: &OrdererCapabilities
         # V2_0 orderer capability ensures that orderers behave according
-        # to v2.x orderer capabilities. Orderers from
+        # to v2.0 orderer capabilities. Orderers from
         # prior releases would behave in an incompatible way, and are therefore
-        # not able to participate in channels at v2.x orderer capability.
-        # Prior to enabling v2.x orderer capabilities, ensure that all
+        # not able to participate in channels at v2.0 orderer capability.
+        # Prior to enabling v2.0 orderer capabilities, ensure that all
         # orderers on channel are at v2.0.0 or later.
         V2_0: true
 

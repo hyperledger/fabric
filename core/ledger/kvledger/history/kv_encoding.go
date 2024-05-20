@@ -28,7 +28,7 @@ var (
 
 // constructDataKey builds the key of the format namespace~len(key)~key~blocknum~trannum
 // using an order preserving encoding so that history query results are ordered by height
-// Note: this key format is different than the format in pre-v2.x releases and requires
+// Note: this key format is different than the format in pre-v2.0 releases and requires
 //
 //	a historydb rebuild when upgrading an older version to v2.0.
 func constructDataKey(ns string, key string, blocknum uint64, trannum uint64) dataKey {

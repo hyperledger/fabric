@@ -2,7 +2,7 @@
 
 **Attention: This page is for advanced users who choose to configure chaincode as a service external to the Fabric peer. Proceed with caution!** New users of chaincode should start with [deploying a smart contract to a channel](deploy_chaincode.html) before proceeding with this tutorial.
 
-Fabric v2.x supports chaincode deployment and execution outside of Fabric that enables users to manage a chaincode runtime independently of the peer. This facilitates deployment of chaincode on Fabric cloud deployments, such as Kubernetes. Instead of building and launching the chaincode on every peer, chaincode can be run as a service, external to Fabric. This capability leverages the Fabric v2.x external builder and launcher functionality, which enables operators to extend a peer with programs to build, launch, and discover chaincode. Before reading this topic you should become familiar with the [External Builder and Launcher](./cc_launcher.html) content.
+Fabric v2.0 and higher supports chaincode deployment and execution outside of Fabric that enables users to manage a chaincode runtime independently of the peer. This facilitates deployment of chaincode on Fabric cloud deployments, such as Kubernetes. Instead of building and launching the chaincode on every peer, chaincode can be run as a service, external to Fabric. This capability leverages the Fabric v2.0 external builder and launcher functionality, which enables operators to extend a peer with programs to build, launch, and discover chaincode. Before reading this topic you should become familiar with the [External Builder and Launcher](./cc_launcher.html) content.
 
 Prior to the availability of the external builders, the chaincode package content was required to be a set of source code files for a particular language which could be built and launched as a chaincode binary. The new external build and launcher functionality now allows users to optionally customize the build process. With respect to running the chaincode as an external service, the build process allows you to specify the endpoint information of the server where the chaincode is running. Hence the package simply consists of the externally running chaincode server endpoint information and TLS artifacts for secure connection. TLS is optional but highly recommended for all environments except a simple test environment.
 
@@ -19,7 +19,7 @@ The rest of this topic describes how to configure chaincode as an external servi
 
 ## Packaging chaincode
 
-With the Fabric v2.x chaincode lifecycle, chaincode is [packaged](./cc_launcher.html#chaincode-packages) and installed in a `.tar.gz` format. The following `myccpackage.tgz` archive  demonstrates the required structure:
+With the Fabric v2.0 chaincode lifecycle, chaincode is [packaged](./cc_launcher.html#chaincode-packages) and installed in a `.tar.gz` format. The following `myccpackage.tgz` archive  demonstrates the required structure:
 
 ```sh
 $ tar xvfz myccpackage.tgz

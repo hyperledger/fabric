@@ -114,7 +114,7 @@ Capabilities:
         # V1.1 for Orderer is a catchall flag for behavior which has been
         # determined to be desired for all orderers running at the v1.1.x
         # level, but which would be incompatible with orderers from prior releases.
-        # Prior to enabling v2.x orderer capabilities, ensure that all
+        # Prior to enabling v2.0 orderer capabilities, ensure that all
         # orderers on a channel are at v2.0.0 or later.
         V2_0: true
 

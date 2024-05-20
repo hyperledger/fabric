@@ -355,7 +355,7 @@ var _ = Describe("EndToEnd", func() {
 			CheckPeerOperationEndpoints(network, network.Peer("Org2", "peer0"))
 			CheckOrdererOperationEndpoints(network, orderer)
 
-			// upgrade chaincode to v2.x with different label
+			// upgrade chaincode to v2.0 with different label
 			chaincode.Version = "1.0"
 			chaincode.Sequence = "2"
 			chaincode.Label = "my_module_chaincode_updated"

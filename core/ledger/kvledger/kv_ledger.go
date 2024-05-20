@@ -438,9 +438,9 @@ func (l *kvLedger) syncStateAndHistoryDBWithBlockstore() error {
 func (l *kvLedger) syncStateDBWithOldBlkPvtdata() error {
 	// TODO: syncStateDBWithOldBlkPvtdata, GetLastUpdatedOldBlocksPvtData(),
 	// and ResetLastUpdatedOldBlocksList() can be removed in > v2 LTS.
-	// From v2.x onwards, we do not store the last updatedBlksList.
+	// From v2.0 onwards, we do not store the last updatedBlksList.
 	// Only to support the rolling upgrade from v14 LTS to v2 LTS, we
-	// retain these three functions in v2.x - FAB-16294.
+	// retain these three functions in v2.0 - FAB-16294.
 
 	blocksPvtData, err := l.pvtdataStore.GetLastUpdatedOldBlocksPvtData()
 	if err != nil {

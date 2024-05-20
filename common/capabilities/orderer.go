@@ -19,7 +19,7 @@ const (
 	// OrdererV1_4_2 is the capabilities string for standard new non-backwards compatible Fabric v1.4.2 orderer capabilities.
 	OrdererV1_4_2 = "V1_4_2"
 
-	// OrdererV2_0 is the capabilities string that defines new Fabric v2.x orderer capabilities.
+	// OrdererV2_0 is the capabilities string that defines new Fabric v2.0 orderer capabilities.
 	OrdererV2_0 = "V2_0"
 )
 

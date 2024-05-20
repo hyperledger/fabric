@@ -214,7 +214,7 @@ func (vc *ValidatorCommitter) ImplicitCollections(channelName, chaincodeName str
 	}
 
 	if !exists {
-		// Implicit collections are a v2.x lifecycle concept, if the chaincode is not in the new lifecycle, return nothing
+		// Implicit collections are a v2.0 lifecycle concept, if the chaincode is not in the new lifecycle, return nothing
 		return nil, nil
 	}
 

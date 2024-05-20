@@ -203,7 +203,7 @@ implementation the node will be used in), check out [our documentation on deploy
   up to and not including a third of the parties running the orderers may not be trusted due to malicious intent or being compromised.
 
 * **Kafka**
-  Kafka was deprecated in v2.x and is no longer supported in v3.x
+  Kafka was deprecated in v2.0 and is no longer supported in v3.x
 
 * **Solo** (deprecated in v2.0)
 

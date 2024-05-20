@@ -26,7 +26,7 @@ const (
 	// ChannelV1_4_3 is the capabilities string for standard new non-backwards compatible fabric v1.4.3 channel capabilities.
 	ChannelV1_4_3 = "V1_4_3"
 
-	// ChannelV2_0 is the capabilities string for standard new non-backwards compatible fabric v2.x channel capabilities.
+	// ChannelV2_0 is the capabilities string for standard new non-backwards compatible fabric v2.0 channel capabilities.
 	ChannelV2_0 = "V2_0"
 
 	// ChannelV3_0 is the capabilities string for standard new non-backwards compatible fabric v3.0 channel capabilities.

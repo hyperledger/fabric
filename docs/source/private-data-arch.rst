@@ -262,7 +262,7 @@ like to utilize per-organization collections. Each org-specific implicit collect
 has a distribution policy and endorsement policy of the matching organization.
 You can therefore utilize implicit collections for use cases where you'd like
 to ensure that a specific organization has written to a collection key namespace.
-The v2.x chaincode lifecycle uses implicit collections to track which organizations
+The v2.0 chaincode lifecycle uses implicit collections to track which organizations
 have approved a chaincode definition. Similarly, you can use implicit collections
 in application chaincode to track which organizations have approved or voted
 for some change in state.

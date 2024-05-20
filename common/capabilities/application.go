@@ -25,7 +25,7 @@ const (
 	// ApplicationV1_4_2 is the capabilities string for standard new non-backwards compatible fabric v1.4.2 application capabilities.
 	ApplicationV1_4_2 = "V1_4_2"
 
-	// ApplicationV2_0 is the capabilities string for standard new non-backwards compatible fabric v2.x application capabilities.
+	// ApplicationV2_0 is the capabilities string for standard new non-backwards compatible fabric v2.0 application capabilities.
 	ApplicationV2_0 = "V2_0"
 
 	// ApplicationV2_5 is the capabilities string for standard new non-backwards compatible fabric v2.5 application capabilities.

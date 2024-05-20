@@ -1,6 +1,6 @@
 # Enabling the new chaincode lifecycle
 
-Users upgrading from v1.4.x to v2.x will have to edit their channel configurations to enable the new lifecycle features. This process involves a series of [channel configuration updates](./config_update.html) the relevant users will have to perform.
+Users upgrading from v1.4.x to v2.0 and higher will have to edit their channel configurations to enable the new lifecycle features. This process involves a series of [channel configuration updates](./config_update.html) the relevant users will have to perform.
 
 Note that the `Channel` and `Application` [capabilities](./capabilities_concept.html) of your application channels will have to be updated to `V2_0` for the new chaincode lifecycle to work. Check out [Considerations for getting to 2.0](./upgrade_to_newest_version.html#chaincode-lifecycle) for more information.
 

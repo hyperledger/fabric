@@ -4,7 +4,7 @@ Hyperledger Fabric [releases](https://github.com/hyperledger/fabric/releases) ea
 
 # Early Hyperledger Fabric release Changelogs
 
-Early Hyperledger Fabric releases prior to v2.x copied commit history into the changelog file below.
+Early Hyperledger Fabric releases prior to v2.0 copied commit history into the changelog file below.
 
 ## "v2.0.0-beta"
 
@@ -18,7 +18,7 @@ Early Hyperledger Fabric releases prior to v2.x copied commit history into the c
 * [e73407f](https://github.com/hyperledger/fabric/commit/e73407f) [FAB-14086](https://jira.hyperledger.org/browse/FAB-14086) Chaincode launcher doc
 * [5e4ede7](https://github.com/hyperledger/fabric/commit/5e4ede7) [FAB-16754](https://jira.hyperledger.org/browse/FAB-16754) Upgrade doc
 * [339e682](https://github.com/hyperledger/fabric/commit/339e682) Add two digit release variable
-* [7d91ef4](https://github.com/hyperledger/fabric/commit/7d91ef4) What's New in Fabric v2.x Beta
+* [7d91ef4](https://github.com/hyperledger/fabric/commit/7d91ef4) What's New in Fabric v2.0 Beta
 * [a4bf700](https://github.com/hyperledger/fabric/commit/a4bf700) Update prereq doc for Go 1.13.x
 * [cce46ac](https://github.com/hyperledger/fabric/commit/cce46ac) Add an instantiation policy cache layer
 * [6f32be4](https://github.com/hyperledger/fabric/commit/6f32be4) [FAB-17160](https://jira.hyperledger.org/browse/FAB-17160) Ensure peer can be started without any docker requirements
@@ -2260,7 +2260,7 @@ Tue Apr  9 11:25:34 EDT 2019
 * [e67eeb9](https://github.com/hyperledger/fabric/commit/e67eeb9) [FAB-11639](https://jira.hyperledger.org/browse/FAB-11639): Fix data races in gossip/discovery
 * [41154f6](https://github.com/hyperledger/fabric/commit/41154f6) Fix bug in decoding missingdatakey
 * [a8a5094](https://github.com/hyperledger/fabric/commit/a8a5094) [FAB-12729](https://jira.hyperledger.org/browse/FAB-12729) Support subset of system channel OSNs
-* [653675c](https://github.com/hyperledger/fabric/commit/653675c) [FAB-13150](https://jira.hyperledger.org/browse/FAB-13150) Re-enable etcdraft for v2.x development
+* [653675c](https://github.com/hyperledger/fabric/commit/653675c) [FAB-13150](https://jira.hyperledger.org/browse/FAB-13150) Re-enable etcdraft for v2.0 development
 * [b59ec76](https://github.com/hyperledger/fabric/commit/b59ec76) [FAB-13024](https://jira.hyperledger.org/browse/FAB-13024) Update fabcar doc
 * [658db4b](https://github.com/hyperledger/fabric/commit/658db4b) [FAB-13199](https://jira.hyperledger.org/browse/FAB-13199) Reduce etcdraft test time.
 * [d03670b](https://github.com/hyperledger/fabric/commit/d03670b) [FAB-13225](https://jira.hyperledger.org/browse/FAB-13225) address code review comments
