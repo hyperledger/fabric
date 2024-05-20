@@ -31,6 +31,7 @@ General:
     ClientPrivateKey: {{ $w.OrdererLocalTLSDir Orderer }}/server.key
     ServerCertificate: {{ $w.OrdererLocalTLSDir Orderer }}/server.crt
     ServerPrivateKey: {{ $w.OrdererLocalTLSDir Orderer }}/server.key
+    ReplicationPolicy: {{ .OrdererReplicationPolicy }}
     DialTimeout: 5s
     RPCTimeout: 7s
     ReplicationBufferSize: 20971520

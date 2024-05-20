@@ -13,7 +13,6 @@ Operations Guides
    pluggable_endorsement_and_validation
    access_control.md
    idemix
-   idemixgen
    operations_service
    metrics_reference
    cc_launcher

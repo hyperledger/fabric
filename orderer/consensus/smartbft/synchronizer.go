@@ -38,6 +38,7 @@ type Synchronizer struct {
 
 // Sync synchronizes blocks and returns the response
 func (s *Synchronizer) Sync() types.SyncResponse {
+	s.Logger.Debug("Simple Sync initiated")
 	decision, err := s.synchronize()
 	if err != nil {
 		s.Logger.Warnf("Could not synchronize with remote peers due to %s, returning state from local ledger", err)

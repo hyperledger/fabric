@@ -247,7 +247,7 @@ github.com/hyperledger/fabric-config/protolator/protoext/ledger/rwsetext
 github.com/hyperledger/fabric-config/protolator/protoext/mspext
 github.com/hyperledger/fabric-config/protolator/protoext/ordererext
 github.com/hyperledger/fabric-config/protolator/protoext/peerext
-# github.com/hyperledger/fabric-lib-go v1.1.1
+# github.com/hyperledger/fabric-lib-go v1.1.2
 ## explicit; go 1.20
 github.com/hyperledger/fabric-lib-go/bccsp
 github.com/hyperledger/fabric-lib-go/bccsp/factory
