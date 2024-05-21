@@ -41,13 +41,13 @@ tar cfz myccpackage.tgz metadata.json code.tar.gz
 
 ## Configuring a peer to process external chaincode
 
-In this section we go over the configuration needed
+In this section we go over the configuration needed:
 * to detect if the chaincode package identifies an external chaincode service
 * to create the `connection.json` file in the release directory
 
 ### Modify the peer core.yaml to include the externalBuilder
 
-Assume the scripts are on the peer in the `bin` directory as follows
+Assume the scripts are on the peer in the `bin` directory as follows:
 ```
     <fully qualified path on the peer's env>
     └── bin
@@ -140,7 +140,7 @@ exit 0
 
 #### bin/release
 
-For chaincode as an external service, the `bin/release` script is responsible for providing the `connection.json` to the peer by placing it in the `RELEASE_OUTPUT_DIR`.  The `connection.json` file has the following JSON structure
+For chaincode as an external service, the `bin/release` script is responsible for providing the `connection.json` to the peer by placing it in the `RELEASE_OUTPUT_DIR`.  The `connection.json` file has the following JSON structure:
 
 * **address** - chaincode server endpoint accessible from peer. Must be specified in “<host>:<port>” format.
 * **domain** - chaincode service domain name. If the address is not authorized by the TLS certificate of the chaincode service, you can specify an authorized address through domain.
