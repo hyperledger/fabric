@@ -405,6 +405,7 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 		"listen tcp: unknown port tcp/1BBB",
 		"listen tcp: address tcp/1BBB: unknown port",
 		"listen tcp: lookup tcp/1BBB: Servname not supported for ai_socktype",
+		"listen tcp: lookup tcp/1BBB: unknown port",
 	}
 	require.Error(t, err, fmt.Sprintf("[%s], [%s] [%s] or [%s] expected", msgs[0], msgs[1], msgs[2], msgs[3]))
 	require.Contains(t, msgs, err.Error())
