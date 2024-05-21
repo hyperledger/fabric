@@ -1,9 +1,9 @@
 {
   "A": 1,
   "Backslash": "\\",
-  "Backspace": "\u0008",
+  "Backspace": "\b",
   "CarriageReturn": "\r",
-  "FormFeed": "\u000c",
+  "FormFeed": "\f",
   "Newline": "\n",
   "PublicKey": {
     "Curve": {
@@ -28,7 +28,7 @@
       "Args": [
         "deploy",
         "ch1",
-        "\nU\u0008\u0001\u0012I\n=github.com/hyperledger/fabric/examples/chaincode/go/marbles02\u0012\u0005mycc1\u001a\u00010\u001a\u0006\n\u0004init",
+        "\nU\b\u0001\u0012I\n=github.com/hyperledger/fabric/examples/chaincode/go/marbles02\u0012\u0005mycc1\u001a\u00010\u001a\u0006\n\u0004init",
         "",
         "escc",
         "vscc"
@@ -48,7 +48,7 @@
         "writes": [
           {
             "key": "mycc1",
-            "value": "\n\u0005mycc1\u0012\u00010\u001a\u0004escc\"\u0004vscc*\u0017\u0012\u0008\u0012\u0006\u0008\u0001\u0012\u0002\u0008\u0000\u001a\u000b\u0012\t\n\u0007DEFAULT2D\n ��$˞�K݂o�pJ{��_��(\u0015ݮ�\u003e\u001a�c�\tS�\u0012 \u0012V�1\u000e�\u000e��\u0010Q�i�$�VtV\\�\u0018L(�I����F�: E��ؿk�\u003c\u0015�x��F\r�\u0005��C9\u0001�\t�bA\u000e\u0018�5�B\u0019\u0012\u0008\u0012\u0006\u0008\u0001\u0012\u0002\u0008\u0000\u001a\r\u0012\u000b\n\u0007DEFAULT\u0010\u0001"
+            "value": "\n\u0005mycc1\u0012\u00010\u001a\u0004escc\"\u0004vscc*\u0017\u0012\b\u0012\u0006\b\u0001\u0012\u0002\b\u0000\u001a\u000b\u0012\t\n\u0007DEFAULT2D\n ��$˞�K݂o�pJ{��_��(\u0015ݮ�\u003e\u001a�c�\tS�\u0012 \u0012V�1\u000e�\u000e��\u0010Q�i�$�VtV\\�\u0018L(�I����F�: E��ؿk�\u003c\u0015�x��F\r�\u0005��C9\u0001�\t�bA\u000e\u0018�5�B\u0019\u0012\b\u0012\u0006\b\u0001\u0012\u0002\b\u0000\u001a\r\u0012\u000b\n\u0007DEFAULT\u0010\u0001"
           }
         ]
       },
