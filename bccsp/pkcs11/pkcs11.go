@@ -138,7 +138,7 @@ func (csp *Provider) initialize(opts PKCS11Opts) (*Provider, error) {
 		return nil, fmt.Errorf("pkcs11: instantiation failed for %s", opts.Library)
 	}
 	if err := ctx.Initialize(); err != nil {
-		logger.Debugf("initialize failed: %v", err)
+		logger.Warnf("initialize failed: %v", err)
 	}
 
 	slots, err := ctx.GetSlotList(true)
@@ -147,9 +147,15 @@ func (csp *Provider) initialize(opts PKCS11Opts) (*Provider, error) {
 	}
 	for _, s := range slots {
 		info, err := ctx.GetTokenInfo(s)
-		if err != nil || opts.Label != info.Label {
+		if err != nil {
+			logger.Warnf("Failed to get TokenInfo for slot %d: %v", s, err)
 			continue
 		}
+		if opts.Label != info.Label {
+			logger.Warnw("PKCS11 labels did not match", "slot", s, "configLabel", opts.Label, "tokenLabel", info.Label)
+			continue
+		}
+		logger.Debugw("Found a matching PKCS11 label to use", "slot", s, "label", info.Label, "pin", opts.Pin)
 
 		csp.slot = s
 		csp.ctx = ctx
