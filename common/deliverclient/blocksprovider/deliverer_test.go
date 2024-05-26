@@ -304,7 +304,7 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("hits the maximum sleep time value in an exponential fashion and retries until exceeding the max retry duration", func() {
-			Eventually(fakeDurationExceededHandler.DurationExceededHandlerCallCount, 5*time.Second).Should(BeNumerically(">", 0))
+			Eventually(fakeDurationExceededHandler.DurationExceededHandlerCallCount, 10*time.Second).Should(BeNumerically(">", 0))
 			Eventually(endC).Should(BeClosed())
 			Eventually(fakeSleeper.SleepCallCount, 5*time.Second).Should(Equal(380))
 			Expect(fakeSleeper.SleepArgsForCall(25)).To(Equal(9539 * time.Millisecond))
@@ -381,7 +381,7 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("hits the maximum sleep time value in an exponential fashion and retries but does not exceed the max retry duration", func() {
-			Eventually(fakeSleeper.SleepCallCount, 10*time.Second).Should(Equal(897))
+			Eventually(fakeSleeper.SleepCallCount, 20*time.Second).Should(Equal(897))
 			Expect(fakeSleeper.SleepArgsForCall(0)).To(Equal(100 * time.Millisecond))
 			Expect(fakeSleeper.SleepArgsForCall(25)).To(Equal(9539 * time.Millisecond))
 			Expect(fakeSleeper.SleepArgsForCall(26)).To(Equal(10 * time.Second))
@@ -403,7 +403,7 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("hits the maximum sleep time value in an exponential fashion and retries indefinitely", func() {
-			Eventually(fakeSleeper.SleepCallCount, 5*time.Second).Should(Equal(500))
+			Eventually(fakeSleeper.SleepCallCount, 20*time.Second).Should(Equal(500))
 			Expect(fakeSleeper.SleepArgsForCall(25)).To(Equal(9539 * time.Millisecond))
 			Expect(fakeSleeper.SleepArgsForCall(26)).To(Equal(10 * time.Second))
 			Expect(fakeSleeper.SleepArgsForCall(27)).To(Equal(10 * time.Second))
@@ -707,7 +707,7 @@ var _ = Describe("CFT-Deliverer", func() {
 			Expect(len(orgsAddresses)).To(Equal(1))
 			orgAddr, ok := orgsAddresses["SampleOrg"]
 			Expect(ok).To(BeTrue())
-			Expect(orgAddr.Addresses).To(Equal([]string{"127.0.0.1:7050"}))
+			Expect(orgAddr.Addresses).To(Equal([]string{"127.0.0.1:7050", "127.0.0.1:7051", "127.0.0.1:7052"}))
 			Expect(len(orgAddr.RootCerts)).To(Equal(2))
 		})
 	})

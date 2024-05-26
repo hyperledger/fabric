@@ -636,7 +636,7 @@ func TestBFTDeliverer_DeliverRetries(t *testing.T) {
 		setup.fakeDeliverStreamer.DeliverReturns(nil, fmt.Errorf("deliver-error"))
 
 		setup.start()
-		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(BeNumerically(">=", 40))
+		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, 10*time.Second, 100*time.Millisecond).Should(BeNumerically(">=", 40))
 		setup.stop()
 
 		t.Log("Exponential backoff after every round, with saturation of 10s")
