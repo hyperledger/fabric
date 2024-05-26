@@ -233,7 +233,7 @@ func NewOrdererGroup(conf *genesisconfig.Orderer, channelCapabilities map[string
 
 	for _, org := range conf.Organizations {
 		var err error
-		ordererGroup.Groups[org.Name], err = NewOrdererOrgGroup(org)
+		ordererGroup.Groups[org.Name], err = NewOrdererOrgGroup(org, channelCapabilities)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create orderer org")
 		}
@@ -309,7 +309,8 @@ func NewConsortiumOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, e
 
 // NewOrdererOrgGroup returns an orderer org component of the channel configuration.  It defines the crypto material for the
 // organization (its MSP).  It sets the mod_policy of all elements to "Admins".
-func NewOrdererOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, error) {
+// channelCapabilities map[string]bool
+func NewOrdererOrgGroup(conf *genesisconfig.Organization, channelCapabilities map[string]bool) (*cb.ConfigGroup, error) {
 	ordererOrgGroup := protoutil.NewConfigGroup()
 	ordererOrgGroup.ModPolicy = channelconfig.AdminsPolicyKey
 
@@ -330,8 +331,8 @@ func NewOrdererOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, erro
 
 	if len(conf.OrdererEndpoints) > 0 {
 		addValue(ordererOrgGroup, channelconfig.EndpointsValue(conf.OrdererEndpoints), channelconfig.AdminsPolicyKey)
-	} else {
-		return nil, errors.Errorf("orderer endpoints for organization %s are missing and must be cofigured", conf.Name)
+	} else if channelCapabilities["V3_0"] {
+		return nil, errors.Errorf("orderer endpoints for organization %s are missing and must be configured when capability V3_0 is enabled", conf.Name)
 	}
 
 	return ordererOrgGroup, nil

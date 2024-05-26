@@ -31,7 +31,6 @@ func TestWithRealConfigtx(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TODO: maybe add more test cases
 func TestOrgSpecificOrdererEndpoints(t *testing.T) {
 	t.Run("could not create channel orderer config with empty organization endpoints", func(t *testing.T) {
 		conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
@@ -56,7 +55,7 @@ func TestOrgSpecificOrdererEndpoints(t *testing.T) {
 
 		cg, err := encoder.NewChannelGroup(conf)
 		require.Nil(t, cg)
-		require.EqualError(t, err, "could not create orderer group: failed to create orderer org: orderer endpoints for organization SampleOrg are missing and must be cofigured")
+		require.EqualError(t, err, "could not create orderer group: failed to create orderer org: orderer endpoints for organization SampleOrg are missing and must be configured when capability V3_0 is enabled")
 
 		conf.Orderer.Organizations[0].OrdererEndpoints = []string{"127.0.0.1:7050"}
 		cg, err = encoder.NewChannelGroup(conf)
@@ -68,7 +67,7 @@ func TestOrgSpecificOrdererEndpoints(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("With_V2_Capability", func(t *testing.T) {
+	t.Run("With V2_0 Capability", func(t *testing.T) {
 		conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
 		conf.Capabilities = map[string]bool{"V2_0": true}
 		require.NotEmpty(t, conf.Orderer.Organizations[0].OrdererEndpoints)
