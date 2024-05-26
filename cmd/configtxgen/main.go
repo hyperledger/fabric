@@ -121,7 +121,8 @@ func doPrintOrg(t *genesisconfig.TopLevel, printOrg string) error {
 		if org.Name == printOrg {
 			if len(org.OrdererEndpoints) > 0 {
 				// An Orderer OrgGroup
-				og, err := encoder.NewOrdererOrgGroup(org)
+				channelCapabilities := t.Capabilities["Channel"]
+				og, err := encoder.NewOrdererOrgGroup(org, channelCapabilities)
 				if err != nil {
 					return errors.Wrapf(err, "bad org definition for org %s", org.Name)
 				}

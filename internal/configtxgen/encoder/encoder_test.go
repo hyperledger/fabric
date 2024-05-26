@@ -675,7 +675,7 @@ var _ = Describe("Encoder", func() {
 		})
 
 		It("translates the config into a config group", func() {
-			cg, err := encoder.NewOrdererOrgGroup(conf)
+			cg, err := encoder.NewOrdererOrgGroup(conf, nil)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(cg.Values)).To(Equal(2))
 			Expect(cg.Values["MSP"]).NotTo(BeNil())
@@ -692,7 +692,7 @@ var _ = Describe("Encoder", func() {
 			})
 
 			It("returns an empty org group with mod policy set", func() {
-				cg, err := encoder.NewOrdererOrgGroup(conf)
+				cg, err := encoder.NewOrdererOrgGroup(conf, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(cg.Values)).To(Equal(0))
 				Expect(len(cg.Policies)).To(Equal(0))
@@ -704,7 +704,7 @@ var _ = Describe("Encoder", func() {
 				})
 
 				It("returns without error", func() {
-					_, err := encoder.NewOrdererOrgGroup(conf)
+					_, err := encoder.NewOrdererOrgGroup(conf, nil)
 					Expect(err).NotTo(HaveOccurred())
 				})
 			})
@@ -715,8 +715,16 @@ var _ = Describe("Encoder", func() {
 				conf.OrdererEndpoints = []string{}
 			})
 
-			It("does not include the endpoints in the config group", func() {
-				cg, err := encoder.NewOrdererOrgGroup(conf)
+			It("does not include the endpoints in the config group with v2_0", func() {
+				channelCapabilities := map[string]bool{"V2_0": true}
+				cg, err := encoder.NewOrdererOrgGroup(conf, channelCapabilities)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cg.Values["Endpoints"]).To(BeNil())
+			})
+
+			It("emits an error with v3_0", func() {
+				channelCapabilities := map[string]bool{"V3_0": true}
+				cg, err := encoder.NewOrdererOrgGroup(conf, channelCapabilities)
 				Expect(err).To(HaveOccurred())
 				Expect(cg).To(BeNil())
 			})
@@ -728,7 +736,7 @@ var _ = Describe("Encoder", func() {
 			})
 
 			It("does not produce an error", func() {
-				_, err := encoder.NewOrdererOrgGroup(conf)
+				_, err := encoder.NewOrdererOrgGroup(conf, nil)
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
@@ -739,7 +747,7 @@ var _ = Describe("Encoder", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, err := encoder.NewOrdererOrgGroup(conf)
+				_, err := encoder.NewOrdererOrgGroup(conf, nil)
 				Expect(err).To(MatchError("error adding policies to orderer org group 'SampleOrg': invalid implicit meta policy rule 'garbage': expected two space separated tokens, but got 1"))
 			})
 		})
