@@ -263,7 +263,7 @@ func (s *bftDelivererTestSetup) assertEventuallyMonitorCallCount(n int) {
 			defer s.mutex.Unlock()
 
 			return s.fakeCensorshipMon.MonitorCallCount()
-		}).Should(Equal(n))
+		}, eventuallyTO).Should(Equal(n))
 }
 
 func TestBFTDeliverer_NoBlocks(t *testing.T) {
@@ -275,16 +275,16 @@ func TestBFTDeliverer_NoBlocks(t *testing.T) {
 	t.Log("Checks the ledger height")
 	require.Eventually(t, func() bool {
 		return setup.fakeLedgerInfo.LedgerHeightCallCount() == 1
-	}, time.Second, 10*time.Millisecond)
+	}, eventuallyTO, 10*time.Millisecond)
 
 	t.Log("Get the endpoints")
-	setup.gWithT.Eventually(setup.fakeOrdererConnectionSource.ShuffledEndpointsCallCount).Should(Equal(1))
+	setup.gWithT.Eventually(setup.fakeOrdererConnectionSource.ShuffledEndpointsCallCount, eventuallyTO).Should(Equal(1))
 
 	t.Log("Signs the seek request")
-	setup.gWithT.Eventually(setup.fakeSigner.SignCallCount).Should(Equal(1))
+	setup.gWithT.Eventually(setup.fakeSigner.SignCallCount, eventuallyTO).Should(Equal(1))
 
 	t.Log("Seeks the correct block")
-	setup.gWithT.Eventually(setup.fakeDeliverClient.SendCallCount).Should(Equal(1))
+	setup.gWithT.Eventually(setup.fakeDeliverClient.SendCallCount, eventuallyTO).Should(Equal(1))
 	env := setup.fakeDeliverClient.SendArgsForCall(0)
 	require.True(t, bytes.Equal(env.GetSignature(), []byte("good-sig")))
 	payload, err := protoutil.UnmarshalPayload(env.GetPayload())
@@ -295,11 +295,11 @@ func TestBFTDeliverer_NoBlocks(t *testing.T) {
 	require.Equal(t, uint64(7), seekInfo.GetStart().GetSpecified().GetNumber())
 
 	t.Log("Creates and starts the monitor")
-	setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount).Should(Equal(1))
+	setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount, eventuallyTO).Should(Equal(1))
 	setup.assertEventuallyMonitorCallCount(1)
 
 	t.Log("Dials to an orderer from the shuffled endpoints")
-	setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(1))
+	setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(1))
 	addr, tlsCerts := setup.fakeDialer.DialArgsForCall(0)
 	require.Equal(t, "orderer-address-1", addr)
 	require.Nil(t, tlsCerts) // TODO add tests that verify this
@@ -341,7 +341,7 @@ func TestBFTDeliverer_FatalErrors(t *testing.T) {
 		setup.start()
 
 		t.Log("Exits the DeliverBlocks loop")
-		setup.gWithT.Eventually(setup.endC).Should(BeClosed())
+		setup.gWithT.Eventually(setup.endC, eventuallyTO).Should(BeClosed())
 		require.Equal(t, 0, setup.fakeCensorshipMonFactory.CreateCallCount(), "monitor was not created")
 
 		setup.stop()
@@ -355,12 +355,12 @@ func TestBFTDeliverer_FatalErrors(t *testing.T) {
 		setup.start()
 
 		t.Log("Starts the DeliverBlocks and Monitor loop")
-		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount, eventuallyTO).Should(Equal(1))
 		setup.assertEventuallyMonitorCallCount(1)
 
 		t.Log("Exits the DeliverBlocks and Monitor loop")
-		setup.gWithT.Eventually(setup.endC).Should(BeClosed())
-		setup.gWithT.Eventually(setup.monEndC).Should(BeClosed())
+		setup.gWithT.Eventually(setup.endC, eventuallyTO).Should(BeClosed())
+		setup.gWithT.Eventually(setup.monEndC, eventuallyTO).Should(BeClosed())
 
 		setup.stop()
 	})
@@ -372,10 +372,10 @@ func TestBFTDeliverer_FatalErrors(t *testing.T) {
 		setup.start()
 
 		t.Log("Starts the DeliverBlocks and Monitor loop")
-		setup.gWithT.Eventually(setup.fakeOrdererConnectionSource.ShuffledEndpointsCallCount).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeOrdererConnectionSource.ShuffledEndpointsCallCount, eventuallyTO).Should(Equal(1))
 		t.Log("Exits the DeliverBlocks loop")
 		setup.gWithT.Eventually(setup.endC).Should(BeClosed())
-		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount).Should(Equal(0))
+		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount, eventuallyTO).Should(Equal(0))
 		require.Nil(t, setup.fakeCensorshipMon)
 
 		setup.stop()
@@ -395,9 +395,9 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 
 		setup.start()
 
-		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount).Should(Equal(2))
+		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount, eventuallyTO).Should(Equal(2))
 
-		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(2))
+		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(2))
 		setup.gWithT.Expect(setup.fakeSleeper.SleepCallCount()).To(Equal(1))
 		setup.gWithT.Expect(setup.fakeSleeper.SleepArgsForCall(0)).To(Equal(100 * time.Millisecond))
 
@@ -430,8 +430,8 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 
 		setup.start()
 
-		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount).Should(Equal(25))
-		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(25))
+		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount, eventuallyTO).Should(Equal(25))
+		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(25))
 		setup.gWithT.Expect(setup.fakeSleeper.SleepCallCount()).To(Equal(24))
 
 		t.Log("Exponential backoff after every round")
@@ -474,9 +474,9 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 		setup.fakeDialer.DialReturns(nil, fmt.Errorf("fake-dial-error"))
 
 		setup.start()
-		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(BeNumerically(">=", 100))
+		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(BeNumerically(">=", 100))
 		t.Log("Calls the handler but does not stop")
-		setup.gWithT.Eventually(setup.fakeDurationExceededHandler.DurationExceededHandlerCallCount).Should(BeNumerically(">", 5))
+		setup.gWithT.Eventually(setup.fakeDurationExceededHandler.DurationExceededHandlerCallCount, eventuallyTO).Should(BeNumerically(">", 5))
 		setup.gWithT.Consistently(setup.endC).ShouldNot(BeClosed())
 		setup.stop()
 
@@ -514,8 +514,8 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 
 		setup.start()
 		t.Log("Calls handler and stops")
-		setup.gWithT.Eventually(setup.fakeDurationExceededHandler.DurationExceededHandlerCallCount).Should(Equal(1))
-		setup.gWithT.Eventually(setup.endC).Should(BeClosed())
+		setup.gWithT.Eventually(setup.fakeDurationExceededHandler.DurationExceededHandlerCallCount, eventuallyTO).Should(Equal(1))
+		setup.gWithT.Eventually(setup.endC, eventuallyTO).Should(BeClosed())
 
 		t.Log("Exponential backoff after every round, with saturation of 10s")
 		minDur := 100 * time.Millisecond
@@ -561,9 +561,9 @@ func TestBFTDeliverer_DeliverRetries(t *testing.T) {
 
 		setup.start()
 
-		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount).Should(Equal(2))
+		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount, eventuallyTO).Should(Equal(2))
 
-		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(2))
+		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(2))
 		setup.gWithT.Expect(setup.fakeSleeper.SleepCallCount()).To(Equal(1))
 		setup.gWithT.Expect(setup.fakeSleeper.SleepArgsForCall(0)).To(Equal(100 * time.Millisecond))
 
@@ -592,8 +592,8 @@ func TestBFTDeliverer_DeliverRetries(t *testing.T) {
 
 		setup.start()
 
-		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount).Should(Equal(25))
-		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(25))
+		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount, eventuallyTO).Should(Equal(25))
+		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(25))
 		setup.gWithT.Expect(setup.fakeSleeper.SleepCallCount()).To(Equal(24))
 
 		t.Log("Exponential backoff after every round")
@@ -636,7 +636,7 @@ func TestBFTDeliverer_DeliverRetries(t *testing.T) {
 		setup.fakeDeliverStreamer.DeliverReturns(nil, fmt.Errorf("deliver-error"))
 
 		setup.start()
-		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(BeNumerically(">=", 40))
+		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(BeNumerically(">=", 40))
 		setup.stop()
 
 		t.Log("Exponential backoff after every round, with saturation of 10s")
@@ -677,7 +677,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 
 		setup.start()
 
-		setup.gWithT.Eventually(setup.fakeLedgerInfo.LedgerHeightCallCount).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeLedgerInfo.LedgerHeightCallCount, eventuallyTO).Should(Equal(1))
 		bNum, bTime = setup.d.BlockProgress()
 		require.Equal(t, uint64(6), bNum)
 		require.True(t, bTime.After(startTime))
@@ -690,16 +690,16 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		}
 
 		t.Log("receives the block and loops, not sleeping")
-		setup.gWithT.Eventually(setup.fakeDeliverClient.RecvCallCount).Should(Equal(2))
+		setup.gWithT.Eventually(setup.fakeDeliverClient.RecvCallCount, eventuallyTO).Should(Equal(2))
 		require.Equal(t, 0, setup.fakeSleeper.SleepCallCount())
 
 		t.Log("checks the validity of the block")
-		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.VerifyBlockCallCount, eventuallyTO).Should(Equal(1))
 		block := setup.fakeUpdatableBlockVerifier.VerifyBlockArgsForCall(0)
 		require.True(t, proto.Equal(block, &common.Block{Header: &common.BlockHeader{Number: 7}}))
 
 		t.Log("handle the block")
-		setup.gWithT.Eventually(setup.fakeBlockHandler.HandleBlockCallCount).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeBlockHandler.HandleBlockCallCount, eventuallyTO).Should(Equal(1))
 		channelName, block2 := setup.fakeBlockHandler.HandleBlockArgsForCall(0)
 		require.Equal(t, "channel-id", channelName)
 		require.True(t, proto.Equal(block2, &common.Block{Header: &common.BlockHeader{Number: 7}}))
@@ -734,10 +734,10 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		}
 
 		t.Log("disconnects, sleeps, and tries again")
-		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
-		setup.gWithT.Eventually(setup.fakeSleeper.SleepCallCount).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.VerifyBlockCallCount, eventuallyTO).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeSleeper.SleepCallCount, eventuallyTO).Should(Equal(1))
 		require.Equal(t, 1, setup.fakeDeliverClient.CloseSendCallCount())
-		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(2))
+		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(2))
 		addr1, _ := setup.fakeDialer.DialArgsForCall(0)
 		addr2, _ := setup.fakeDialer.DialArgsForCall(1)
 		require.NotEqual(t, addr1, addr2)
@@ -780,10 +780,10 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		}
 
 		t.Log("disconnects, sleeps, and tries again")
-		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
-		setup.gWithT.Eventually(setup.fakeSleeper.SleepCallCount).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.VerifyBlockCallCount, eventuallyTO).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeSleeper.SleepCallCount, eventuallyTO).Should(Equal(1))
 		require.Equal(t, 1, setup.fakeDeliverClient.CloseSendCallCount())
-		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(2))
+		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(2))
 
 		addr1, _ := setup.fakeDialer.DialArgsForCall(0)
 		addr2, _ := setup.fakeDialer.DialArgsForCall(1)
@@ -826,8 +826,8 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		startTime := time.Now()
 		setup.start()
 
-		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount).Should(Equal(25))
-		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(25))
+		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount, eventuallyTO).Should(Equal(25))
+		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(25))
 		setup.gWithT.Expect(setup.fakeSleeper.SleepCallCount()).To(Equal(24))
 
 		t.Log("Recv() returns a single block, num: 7")
@@ -838,16 +838,16 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		}
 
 		t.Log("receives the block and loops, not sleeping")
-		setup.gWithT.Eventually(setup.fakeDeliverClient.RecvCallCount).Should(Equal(2))
+		setup.gWithT.Eventually(setup.fakeDeliverClient.RecvCallCount, eventuallyTO).Should(Equal(2))
 		require.Equal(t, 24, setup.fakeSleeper.SleepCallCount())
 
 		t.Log("checks the validity of the block")
-		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.VerifyBlockCallCount, eventuallyTO).Should(Equal(1))
 		block := setup.fakeUpdatableBlockVerifier.VerifyBlockArgsForCall(0)
 		require.True(t, proto.Equal(block, &common.Block{Header: &common.BlockHeader{Number: 7}}))
 
 		t.Log("handle the block")
-		setup.gWithT.Eventually(setup.fakeBlockHandler.HandleBlockCallCount).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeBlockHandler.HandleBlockCallCount, eventuallyTO).Should(Equal(1))
 		channelName, block2 := setup.fakeBlockHandler.HandleBlockArgsForCall(0)
 		require.Equal(t, "channel-id", channelName)
 		require.True(t, proto.Equal(block2, &common.Block{Header: &common.BlockHeader{Number: 7}}))
@@ -856,7 +856,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		require.Eventually(t, func() bool {
 			bNum, bTime := setup.d.BlockProgress()
 			return uint64(7) == bNum && bTime.After(startTime)
-		}, 5*time.Second, 10*time.Millisecond)
+		}, eventuallyTO, 10*time.Millisecond)
 
 		setup.gWithT.Expect(setup.fakeDialer.DialCallCount()).Should(Equal(25))
 
@@ -864,8 +864,8 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		setup.fakeDeliverClient.CloseSendStub = nil
 		setup.recvStepC <- nil
 
-		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount).Should(Equal(26))
-		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(26))
+		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount, eventuallyTO).Should(Equal(26))
+		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(26))
 		setup.gWithT.Expect(setup.fakeSleeper.SleepCallCount()).To(Equal(25))
 
 		t.Log("failure count was reset, sleep duration returned to minimum")
@@ -904,7 +904,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 
 		setup.start()
 
-		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(81))
+		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(81))
 		setup.gWithT.Expect(setup.fakeSleeper.SleepCallCount()).To(Equal(80))
 
 		t.Log("Recv() returns a single block, num: 7")
@@ -915,13 +915,13 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		}
 
 		t.Log("receives the block and loops, not sleeping")
-		setup.gWithT.Eventually(setup.fakeDeliverClient.RecvCallCount).Should(Equal(2))
+		setup.gWithT.Eventually(setup.fakeDeliverClient.RecvCallCount, eventuallyTO).Should(Equal(2))
 		require.Equal(t, 80, setup.fakeSleeper.SleepCallCount())
 
 		t.Log("a Recv() error occurs, more dial attempts")
 		setup.fakeDeliverClient.CloseSendStub = nil
 		setup.recvStepC <- nil
-		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(161))
+		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(161))
 		setup.gWithT.Expect(setup.fakeSleeper.SleepCallCount()).To(Equal(160))
 
 		t.Log("Recv() returns a single block, num: 8")
@@ -932,13 +932,13 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		}
 
 		t.Log("receives the block and loops, not sleeping")
-		setup.gWithT.Eventually(setup.fakeDeliverClient.RecvCallCount).Should(Equal(4))
+		setup.gWithT.Eventually(setup.fakeDeliverClient.RecvCallCount, eventuallyTO).Should(Equal(4))
 		require.Equal(t, 160, setup.fakeSleeper.SleepCallCount())
 
 		t.Log("a Recv() error occurs, more dial attempts")
 		setup.fakeDeliverClient.CloseSendStub = nil
 		setup.recvStepC <- nil
-		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(241))
+		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(241))
 		setup.gWithT.Expect(setup.fakeSleeper.SleepCallCount()).To(Equal(240))
 
 		t.Log("DurationExceededHandler handler is never called, DeliverBlocks() does not stop")
@@ -952,7 +952,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		flogging.ActivateSpec("debug")
 		setup := newBFTDelivererTestSetup(t)
 		setup.initialize(t)
-		setup.gWithT.Eventually(setup.fakeOrdererConnectionSource.UpdateCallCount).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeOrdererConnectionSource.UpdateCallCount, eventuallyTO).Should(Equal(1))
 		startTime := time.Now()
 
 		t.Log("block progress is reported correctly before start")
@@ -962,7 +962,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 
 		setup.start()
 
-		setup.gWithT.Eventually(setup.fakeLedgerInfo.LedgerHeightCallCount).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeLedgerInfo.LedgerHeightCallCount, eventuallyTO).Should(Equal(1))
 		bNum, bTime = setup.d.BlockProgress()
 		require.Equal(t, uint64(6), bNum)
 		require.True(t, bTime.After(startTime))
@@ -996,11 +996,11 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		}
 
 		t.Log("receives the block and loops, not sleeping")
-		setup.gWithT.Eventually(setup.fakeDeliverClient.RecvCallCount).Should(Equal(2))
+		setup.gWithT.Eventually(setup.fakeDeliverClient.RecvCallCount, eventuallyTO).Should(Equal(2))
 		require.Equal(t, 0, setup.fakeSleeper.SleepCallCount())
 
 		t.Log("checks the validity of the block")
-		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.VerifyBlockCallCount, eventuallyTO).Should(Equal(1))
 		block := setup.fakeUpdatableBlockVerifier.VerifyBlockArgsForCall(0)
 		require.True(t, proto.Equal(block,
 			&common.Block{
@@ -1011,7 +1011,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 			}))
 
 		t.Log("handle the block")
-		setup.gWithT.Eventually(setup.fakeBlockHandler.HandleBlockCallCount).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeBlockHandler.HandleBlockCallCount, eventuallyTO).Should(Equal(1))
 		channelName, block2 := setup.fakeBlockHandler.HandleBlockArgsForCall(0)
 		require.Equal(t, "channel-id", channelName)
 		require.True(t, proto.Equal(block2,
@@ -1023,16 +1023,16 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 			}))
 
 		t.Log("update config on verifier")
-		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.UpdateConfigCallCount).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeUpdatableBlockVerifier.UpdateConfigCallCount, eventuallyTO).Should(Equal(1))
 
 		t.Log("block progress is reported correctly")
 		require.Eventually(t, func() bool {
 			bNum2, bTime2 := setup.d.BlockProgress()
 			return uint64(7) == bNum2 && bTime2.After(bTime)
-		}, 5*time.Second, 100*time.Millisecond)
+		}, eventuallyTO, 100*time.Millisecond)
 
 		t.Log("updated orderer source")
-		setup.gWithT.Eventually(setup.fakeOrdererConnectionSource.UpdateCallCount).Should(Equal(2))
+		setup.gWithT.Eventually(setup.fakeOrdererConnectionSource.UpdateCallCount, eventuallyTO).Should(Equal(2))
 
 		setup.stop()
 	})
@@ -1047,8 +1047,8 @@ func TestBFTDeliverer_CensorshipMonitorEvents(t *testing.T) {
 			setup.initialize(t)
 			setup.start()
 
-			setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount).Should(Equal(1))
-			setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(1))
+			setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount, eventuallyTO).Should(Equal(1))
+			setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(1))
 
 			// var mon *fake.CensorshipDetector
 			t.Logf("monitor error channel returns unexpected value: %v", errVal)
@@ -1074,8 +1074,8 @@ func TestBFTDeliverer_CensorshipMonitorEvents(t *testing.T) {
 		setup.initialize(t)
 		setup.start()
 
-		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount).Should(Equal(1))
-		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount, eventuallyTO).Should(Equal(1))
+		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(1))
 
 		t.Log("monitor error channel returns censorship error")
 		func() {
@@ -1085,9 +1085,9 @@ func TestBFTDeliverer_CensorshipMonitorEvents(t *testing.T) {
 			setup.monErrC <- &blocksprovider.ErrCensorship{Message: "censorship"}
 		}()
 
-		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount).Should(Equal(2))
+		setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount, eventuallyTO).Should(Equal(2))
 
-		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(2))
+		setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(2))
 		setup.gWithT.Expect(setup.fakeSleeper.SleepCallCount()).To(Equal(1))
 		setup.gWithT.Expect(setup.fakeSleeper.SleepArgsForCall(0)).To(Equal(100 * time.Millisecond))
 
@@ -1102,8 +1102,8 @@ func TestBFTDeliverer_CensorshipMonitorEvents(t *testing.T) {
 		setup.start()
 
 		for n := 1; n <= 40; n++ {
-			setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount).Should(Equal(n))
-			setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(n))
+			setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount, eventuallyTO).Should(Equal(n))
+			setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(n))
 
 			t.Logf("monitor error channel returns censorship error num: %d", n)
 			func() {
@@ -1119,11 +1119,11 @@ func TestBFTDeliverer_CensorshipMonitorEvents(t *testing.T) {
 
 				return len(setup.monitorSet)
 			}
-			setup.gWithT.Eventually(numMon, 10*time.Second, 10*time.Millisecond).Should(Equal(n + 1))
+			setup.gWithT.Eventually(numMon, eventuallyTO).Should(Equal(n + 1))
 
-			setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(n + 1))
+			setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(n + 1))
 			setup.gWithT.Expect(setup.fakeSleeper.SleepCallCount()).To(Equal(n))
-			setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount).Should(Equal(n + 1))
+			setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount, eventuallyTO).Should(Equal(n + 1))
 		}
 
 		t.Log("Exponential backoff after every round, with saturation")
@@ -1216,14 +1216,14 @@ func TestBFTDeliverer_RefreshEndpoints(t *testing.T) {
 	setup.start()
 
 	t.Log("Get the endpoints")
-	setup.gWithT.Eventually(setup.fakeOrdererConnectionSource.ShuffledEndpointsCallCount).Should(Equal(1))
+	setup.gWithT.Eventually(setup.fakeOrdererConnectionSource.ShuffledEndpointsCallCount, eventuallyTO).Should(Equal(1))
 
 	t.Log("Creates and starts the monitor")
-	setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount).Should(Equal(1))
+	setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount, eventuallyTO).Should(Equal(1))
 	setup.assertEventuallyMonitorCallCount(1)
 
 	t.Log("Dials to an orderer from the shuffled endpoints of the first set")
-	setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(1))
+	setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(1))
 	addr, _ := setup.fakeDialer.DialArgsForCall(0)
 	require.Equal(t, "orderer-address-1", addr)
 
@@ -1233,20 +1233,20 @@ func TestBFTDeliverer_RefreshEndpoints(t *testing.T) {
 	}
 
 	t.Log("Get the endpoints again")
-	setup.gWithT.Eventually(setup.fakeOrdererConnectionSource.ShuffledEndpointsCallCount).Should(Equal(2))
+	setup.gWithT.Eventually(setup.fakeOrdererConnectionSource.ShuffledEndpointsCallCount, eventuallyTO).Should(Equal(2))
 
 	t.Log("Creates and starts the monitor")
-	setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount).Should(Equal(2))
+	setup.gWithT.Eventually(setup.fakeCensorshipMonFactory.CreateCallCount, eventuallyTO).Should(Equal(2))
 	func() {
 		setup.mutex.Lock()
 		defer setup.mutex.Unlock()
 
-		setup.gWithT.Eventually(func() int { return len(setup.monitorSet) }).Should(Equal(2))
-		setup.gWithT.Eventually(setup.monitorSet[1].MonitorCallCount).Should(Equal(1))
+		setup.gWithT.Eventually(func() int { return len(setup.monitorSet) }, eventuallyTO).Should(Equal(2))
+		setup.gWithT.Eventually(setup.monitorSet[1].MonitorCallCount, eventuallyTO).Should(Equal(1))
 	}()
 
 	t.Log("Dials to an orderer from the shuffled endpoints of the second set")
-	setup.gWithT.Eventually(setup.fakeDialer.DialCallCount).Should(Equal(2))
+	setup.gWithT.Eventually(setup.fakeDialer.DialCallCount, eventuallyTO).Should(Equal(2))
 	addr, _ = setup.fakeDialer.DialArgsForCall(1)
 	require.Equal(t, "orderer-address-5", addr)
 

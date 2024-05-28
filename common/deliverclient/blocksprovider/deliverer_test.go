@@ -35,6 +35,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+const eventuallyTO = 20 * time.Second
+
 var _ = Describe("CFT-Deliverer", func() {
 	var (
 		d                                  *blocksprovider.Deliverer
@@ -172,7 +174,7 @@ var _ = Describe("CFT-Deliverer", func() {
 	})
 
 	It("checks the ledger height", func() {
-		Eventually(fakeLedgerInfo.LedgerHeightCallCount).Should(Equal(1))
+		Eventually(fakeLedgerInfo.LedgerHeightCallCount, eventuallyTO).Should(Equal(1))
 	})
 
 	When("the ledger returns an error", func() {
@@ -181,12 +183,12 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("exits the loop", func() {
-			Eventually(endC).Should(BeClosed())
+			Eventually(endC, eventuallyTO).Should(BeClosed())
 		})
 	})
 
 	It("signs the seek info request", func() {
-		Eventually(fakeSigner.SignCallCount).Should(Equal(1))
+		Eventually(fakeSigner.SignCallCount, eventuallyTO).Should(Equal(1))
 		// Note, the signer is used inside a util method
 		// which has its own set of tests, so checking the args
 		// in this test is unnecessary
@@ -198,12 +200,13 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("exits the loop", func() {
-			Eventually(endC).Should(BeClosed())
+			Eventually(endC, eventuallyTO).Should(BeClosed())
 		})
 	})
 
 	It("gets a random endpoint to connect to from the orderer connection source", func() {
-		Eventually(fakeOrdererConnectionSource.RandomEndpointCallCount).Should(Equal(1))
+		Eventually(fakeOrdererConnectionSource.RandomEndpointCallCount,
+			eventuallyTO).Should(Equal(1))
 	})
 
 	When("the orderer connection source returns an error", func() {
@@ -215,7 +218,7 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("sleeps and retries until a valid endpoint is selected", func() {
-			Eventually(fakeOrdererConnectionSource.RandomEndpointCallCount).Should(Equal(2))
+			Eventually(fakeOrdererConnectionSource.RandomEndpointCallCount, eventuallyTO).Should(Equal(2))
 			Expect(fakeSleeper.SleepCallCount()).To(Equal(1))
 			Expect(fakeSleeper.SleepArgsForCall(0)).To(Equal(100 * time.Millisecond))
 		})
@@ -235,13 +238,13 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("does not sleep, but disconnects and immediately tries to reconnect", func() {
-			Eventually(fakeOrdererConnectionSource.RandomEndpointCallCount).Should(Equal(2))
+			Eventually(fakeOrdererConnectionSource.RandomEndpointCallCount, eventuallyTO).Should(Equal(2))
 			Expect(fakeSleeper.SleepCallCount()).To(Equal(0))
 		})
 	})
 
 	It("dials the random endpoint", func() {
-		Eventually(fakeDialer.DialCallCount).Should(Equal(1))
+		Eventually(fakeDialer.DialCallCount, eventuallyTO).Should(Equal(1))
 		addr, tlsCerts := fakeDialer.DialArgsForCall(0)
 		Expect(addr).To(Equal("orderer-address"))
 		Expect(tlsCerts).To(BeNil()) // TODO
@@ -256,14 +259,14 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("sleeps and retries until dial is successful", func() {
-			Eventually(fakeDialer.DialCallCount).Should(Equal(2))
+			Eventually(fakeDialer.DialCallCount, eventuallyTO).Should(Equal(2))
 			Expect(fakeSleeper.SleepCallCount()).To(Equal(1))
 			Expect(fakeSleeper.SleepArgsForCall(0)).To(Equal(100 * time.Millisecond))
 		})
 	})
 
 	It("constructs a deliver client", func() {
-		Eventually(fakeDeliverStreamer.DeliverCallCount).Should(Equal(1))
+		Eventually(fakeDeliverStreamer.DeliverCallCount, eventuallyTO).Should(Equal(1))
 	})
 
 	When("the deliver client cannot be created", func() {
@@ -273,7 +276,7 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("closes the grpc connection, sleeps, and tries again", func() {
-			Eventually(fakeDeliverStreamer.DeliverCallCount).Should(Equal(2))
+			Eventually(fakeDeliverStreamer.DeliverCallCount, eventuallyTO).Should(Equal(2))
 			Expect(fakeSleeper.SleepCallCount()).To(Equal(1))
 			Expect(fakeSleeper.SleepArgsForCall(0)).To(Equal(100 * time.Millisecond))
 		})
@@ -288,7 +291,7 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("sleeps in an exponential fashion and retries until dial is successful", func() {
-			Eventually(fakeDeliverStreamer.DeliverCallCount).Should(Equal(4))
+			Eventually(fakeDeliverStreamer.DeliverCallCount, eventuallyTO).Should(Equal(4))
 			Expect(fakeSleeper.SleepCallCount()).To(Equal(3))
 			Expect(fakeSleeper.SleepArgsForCall(0)).To(Equal(100 * time.Millisecond))
 			Expect(fakeSleeper.SleepArgsForCall(1)).To(Equal(120 * time.Millisecond))
@@ -304,9 +307,9 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("hits the maximum sleep time value in an exponential fashion and retries until exceeding the max retry duration", func() {
-			Eventually(fakeDurationExceededHandler.DurationExceededHandlerCallCount, 5*time.Second).Should(BeNumerically(">", 0))
-			Eventually(endC).Should(BeClosed())
-			Eventually(fakeSleeper.SleepCallCount, 5*time.Second).Should(Equal(380))
+			Eventually(fakeDurationExceededHandler.DurationExceededHandlerCallCount, eventuallyTO).Should(BeNumerically(">", 0))
+			Eventually(endC, eventuallyTO).Should(BeClosed())
+			Eventually(fakeSleeper.SleepCallCount, eventuallyTO).Should(Equal(380))
 			Expect(fakeSleeper.SleepArgsForCall(25)).To(Equal(9539 * time.Millisecond))
 			Expect(fakeSleeper.SleepArgsForCall(26)).To(Equal(10 * time.Second))
 			Expect(fakeSleeper.SleepArgsForCall(27)).To(Equal(10 * time.Second))
@@ -381,7 +384,7 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("hits the maximum sleep time value in an exponential fashion and retries but does not exceed the max retry duration", func() {
-			Eventually(fakeSleeper.SleepCallCount, 10*time.Second).Should(Equal(897))
+			Eventually(fakeSleeper.SleepCallCount, eventuallyTO).Should(Equal(897))
 			Expect(fakeSleeper.SleepArgsForCall(0)).To(Equal(100 * time.Millisecond))
 			Expect(fakeSleeper.SleepArgsForCall(25)).To(Equal(9539 * time.Millisecond))
 			Expect(fakeSleeper.SleepArgsForCall(26)).To(Equal(10 * time.Second))
@@ -403,12 +406,12 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("hits the maximum sleep time value in an exponential fashion and retries indefinitely", func() {
-			Eventually(fakeSleeper.SleepCallCount, 5*time.Second).Should(Equal(500))
+			Eventually(fakeSleeper.SleepCallCount, eventuallyTO).Should(Equal(500))
 			Expect(fakeSleeper.SleepArgsForCall(25)).To(Equal(9539 * time.Millisecond))
 			Expect(fakeSleeper.SleepArgsForCall(26)).To(Equal(10 * time.Second))
 			Expect(fakeSleeper.SleepArgsForCall(27)).To(Equal(10 * time.Second))
 			Expect(fakeSleeper.SleepArgsForCall(499)).To(Equal(10 * time.Second))
-			Eventually(fakeDurationExceededHandler.DurationExceededHandlerCallCount, 5*time.Second).Should(Equal(120))
+			Eventually(fakeDurationExceededHandler.DurationExceededHandlerCallCount, eventuallyTO).Should(Equal(120))
 		})
 	})
 
@@ -421,7 +424,7 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("sleeps in an exponential fashion and retries until dial is successful", func() {
-			Eventually(fakeDeliverStreamer.DeliverCallCount).Should(Equal(4))
+			Eventually(fakeDeliverStreamer.DeliverCallCount, eventuallyTO).Should(Equal(4))
 			Expect(fakeSleeper.SleepCallCount()).To(Equal(3))
 			Expect(fakeSleeper.SleepArgsForCall(0)).To(Equal(100 * time.Millisecond))
 			Expect(fakeSleeper.SleepArgsForCall(1)).To(Equal(120 * time.Millisecond))
@@ -430,7 +433,7 @@ var _ = Describe("CFT-Deliverer", func() {
 	})
 
 	It("sends a request to the deliver client for new blocks", func() {
-		Eventually(fakeDeliverClient.SendCallCount).Should(Equal(1))
+		Eventually(fakeDeliverClient.SendCallCount, eventuallyTO).Should(Equal(1))
 		mutex.Lock()
 		defer mutex.Unlock()
 		Expect(len(ccs)).To(Equal(1))
@@ -444,19 +447,19 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("disconnects, sleeps and retries until the send is successful", func() {
-			Eventually(fakeDeliverClient.SendCallCount).Should(Equal(2))
+			Eventually(fakeDeliverClient.SendCallCount, eventuallyTO).Should(Equal(2))
 			Expect(fakeDeliverClient.CloseSendCallCount()).To(Equal(1))
 			Expect(fakeSleeper.SleepCallCount()).To(Equal(1))
 			Expect(fakeSleeper.SleepArgsForCall(0)).To(Equal(100 * time.Millisecond))
 			mutex.Lock()
 			defer mutex.Unlock()
 			Expect(len(ccs)).To(Equal(2))
-			Eventually(ccs[0].GetState).Should(Equal(connectivity.Shutdown))
+			Eventually(ccs[0].GetState, eventuallyTO).Should(Equal(connectivity.Shutdown))
 		})
 	})
 
 	It("attempts to read blocks from the deliver stream", func() {
-		Eventually(fakeDeliverClient.RecvCallCount).Should(Equal(1))
+		Eventually(fakeDeliverClient.RecvCallCount, eventuallyTO).Should(Equal(1))
 	})
 
 	When("reading blocks from the deliver stream fails", func() {
@@ -481,7 +484,7 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("disconnects, sleeps, and retries until the recv is successful", func() {
-			Eventually(fakeDeliverClient.RecvCallCount).Should(Equal(2))
+			Eventually(fakeDeliverClient.RecvCallCount, eventuallyTO).Should(Equal(2))
 			Expect(fakeSleeper.SleepCallCount()).To(Equal(1))
 			Expect(fakeSleeper.SleepArgsForCall(0)).To(Equal(100 * time.Millisecond))
 		})
@@ -529,7 +532,7 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("disconnects, sleeps, and retries until the recv is successful and resets the failure count", func() {
-			Eventually(fakeDeliverClient.RecvCallCount).Should(Equal(5))
+			Eventually(fakeDeliverClient.RecvCallCount, eventuallyTO).Should(Equal(5))
 			Expect(fakeSleeper.SleepCallCount()).To(Equal(3))
 			Expect(fakeSleeper.SleepArgsForCall(0)).To(Equal(100 * time.Millisecond))
 			Expect(fakeSleeper.SleepArgsForCall(1)).To(Equal(120 * time.Millisecond))
@@ -566,12 +569,12 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("receives the block and loops, not sleeping", func() {
-			Eventually(fakeDeliverClient.RecvCallCount).Should(Equal(2))
+			Eventually(fakeDeliverClient.RecvCallCount, eventuallyTO).Should(Equal(2))
 			Expect(fakeSleeper.SleepCallCount()).To(Equal(0))
 		})
 
 		It("checks the validity of the block", func() {
-			Eventually(fakeUpdatableBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
+			Eventually(fakeUpdatableBlockVerifier.VerifyBlockCallCount, eventuallyTO).Should(Equal(1))
 			block := fakeUpdatableBlockVerifier.VerifyBlockArgsForCall(0)
 			Expect(proto.Equal(block, &common.Block{
 				Header: &common.BlockHeader{
@@ -586,7 +589,7 @@ var _ = Describe("CFT-Deliverer", func() {
 			})
 
 			It("disconnects, sleeps, and tries again", func() {
-				Eventually(fakeSleeper.SleepCallCount).Should(Equal(1))
+				Eventually(fakeSleeper.SleepCallCount, eventuallyTO).Should(Equal(1))
 				Expect(fakeDeliverClient.CloseSendCallCount()).To(Equal(1))
 				mutex.Lock()
 				defer mutex.Unlock()
@@ -596,7 +599,7 @@ var _ = Describe("CFT-Deliverer", func() {
 
 		When("the block is valid", func() {
 			It("handle the block", func() {
-				Eventually(fakeBlockHandler.HandleBlockCallCount).Should(Equal(1))
+				Eventually(fakeBlockHandler.HandleBlockCallCount, eventuallyTO).Should(Equal(1))
 				channelID, block := fakeBlockHandler.HandleBlockArgsForCall(0)
 				Expect(channelID).To(Equal("channel-id"))
 				Expect(block).To(Equal(&common.Block{
@@ -614,7 +617,7 @@ var _ = Describe("CFT-Deliverer", func() {
 			})
 
 			It("disconnects, sleeps, and tries again", func() {
-				Eventually(fakeSleeper.SleepCallCount).Should(Equal(1))
+				Eventually(fakeSleeper.SleepCallCount, eventuallyTO).Should(Equal(1))
 				Expect(fakeDeliverClient.CloseSendCallCount()).To(Equal(1))
 				mutex.Lock()
 				defer mutex.Unlock()
@@ -670,12 +673,12 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("receives the block and loops, not sleeping", func() {
-			Eventually(fakeDeliverClient.RecvCallCount).Should(Equal(2))
+			Eventually(fakeDeliverClient.RecvCallCount, eventuallyTO).Should(Equal(2))
 			Expect(fakeSleeper.SleepCallCount()).To(Equal(0))
 		})
 
 		It("checks the validity of the block", func() {
-			Eventually(fakeUpdatableBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
+			Eventually(fakeUpdatableBlockVerifier.VerifyBlockCallCount, eventuallyTO).Should(Equal(1))
 			block := fakeUpdatableBlockVerifier.VerifyBlockArgsForCall(0)
 			Expect(proto.Equal(block, &common.Block{
 				Header: &common.BlockHeader{Number: 8},
@@ -686,7 +689,7 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("handle the block and updates the verifier config", func() {
-			Eventually(fakeBlockHandler.HandleBlockCallCount).Should(Equal(1))
+			Eventually(fakeBlockHandler.HandleBlockCallCount, eventuallyTO).Should(Equal(1))
 			channelID, block := fakeBlockHandler.HandleBlockArgsForCall(0)
 			Expect(channelID).To(Equal("channel-id"))
 			Expect(block).To(Equal(&common.Block{
@@ -696,11 +699,11 @@ var _ = Describe("CFT-Deliverer", func() {
 				},
 			},
 			))
-			Eventually(fakeUpdatableBlockVerifier.VerifyBlockCallCount).Should(Equal(1))
+			Eventually(fakeUpdatableBlockVerifier.VerifyBlockCallCount, eventuallyTO).Should(Equal(1))
 		})
 
 		It("updates the orderer connection source", func() {
-			Eventually(fakeOrdererConnectionSource.UpdateCallCount()).Should(Equal(1))
+			Eventually(fakeOrdererConnectionSource.UpdateCallCount, eventuallyTO).Should(Equal(1))
 			globalAddresses, orgsAddresses := fakeOrdererConnectionSource.UpdateArgsForCall(0)
 			Expect(globalAddresses).To(BeNil())
 			Expect(orgsAddresses).ToNot(BeNil())
@@ -740,7 +743,7 @@ var _ = Describe("CFT-Deliverer", func() {
 		})
 
 		It("disconnects with an error, and sleeps because the block request is infinite and should never complete", func() {
-			Eventually(fakeSleeper.SleepCallCount).Should(Equal(1))
+			Eventually(fakeSleeper.SleepCallCount, eventuallyTO).Should(Equal(1))
 		})
 
 		When("the status is not successful", func() {
@@ -749,7 +752,7 @@ var _ = Describe("CFT-Deliverer", func() {
 			})
 
 			It("still disconnects with an error", func() {
-				Eventually(fakeSleeper.SleepCallCount).Should(Equal(1))
+				Eventually(fakeSleeper.SleepCallCount, eventuallyTO).Should(Equal(1))
 			})
 		})
 	})
