@@ -139,7 +139,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			addGlobalLevelEndpointsToConfig(updatedConfig)
 			updateOrdererEndpointsConfigFails(network, o1, "testchannel", config, updatedConfig, peer, peer, peer2)
 
-			// config update that succeeds but cause a failure during the migration step
+			// config update that succeeds but causes a failure during the migration step
 			By("Config update with empty endpoints per organization")
 			updatedConfig = proto.Clone(config).(*common.Config)
 			cleanEndpointsPerOrgFromConfig(updatedConfig)
@@ -675,7 +675,7 @@ func updateOrdererEndpointsConfigFails(n *nwo.Network, orderer *nwo.Orderer, cha
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(1))
-	Expect(sess.Err).NotTo(gbytes.Say("Successfully submitted channel update"))
+	Expect(sess.Err).To(gbytes.Say("consensus metadata update for channel config update is invalid since it includes global level endpoints which are not supported in V3.0"))
 }
 
 func prepareTransition(

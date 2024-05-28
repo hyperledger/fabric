@@ -341,8 +341,8 @@ func createBlockChain(start, end uint64) []*common.Block {
 	return blockchain
 }
 
-func injectGlobalOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {
-	ordererAddresses := channelconfig.OrdererAddressesValue([]string{endpoint})
+func injectGlobalOrdererEndpoint(t *testing.T, block *common.Block, globalEndpoint, orgEndpoint string) {
+	ordererAddresses := channelconfig.OrdererAddressesValue([]string{globalEndpoint})
 	// Unwrap the layers until we reach the orderer addresses
 	env, err := protoutil.ExtractEnvelope(block, 0)
 	require.NoError(t, err)
@@ -361,7 +361,15 @@ func injectGlobalOrdererEndpoint(t *testing.T, block *common.Block, endpoint str
 		if grp.Values[channelconfig.EndpointsKey] == nil {
 			continue
 		}
-		grp.Values[channelconfig.EndpointsKey].Value = protoutil.MarshalOrPanic(ordererAddresses.Value())
+		if orgEndpoint == "" {
+			grp.Values[channelconfig.EndpointsKey].Value = nil
+			continue
+		}
+		// Inject the orgEndpoint
+		ordererOrgProtos := &common.OrdererAddresses{
+			Addresses: []string{orgEndpoint},
+		}
+		grp.Values[channelconfig.EndpointsKey].Value = protoutil.MarshalOrPanic(ordererOrgProtos)
 	}
 	// And put it back into the block
 	payload.Data = protoutil.MarshalOrPanic(confEnv)
@@ -369,8 +377,29 @@ func injectGlobalOrdererEndpoint(t *testing.T, block *common.Block, endpoint str
 	block.Data.Data[0] = protoutil.MarshalOrPanic(env)
 }
 
+func setChannelCapability(t *testing.T, block *common.Block, capabiliity string) {
+	env, err := protoutil.ExtractEnvelope(block, 0)
+	require.NoError(t, err)
+	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	require.NoError(t, err)
+	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	require.NoError(t, err)
+
+	// Replace the orderer addresses
+	topCapabilities := make(map[string]bool)
+	topCapabilities[capabiliity] = true
+	confEnv.Config.ChannelGroup.Values[channelconfig.CapabilitiesKey] = &common.ConfigValue{
+		Value:     protoutil.MarshalOrPanic(channelconfig.CapabilitiesValue(topCapabilities).Value()),
+		ModPolicy: channelconfig.AdminsPolicyKey,
+	}
+
+	payload.Data = protoutil.MarshalOrPanic(confEnv)
+	env.Payload = protoutil.MarshalOrPanic(payload)
+	block.Data.Data[0] = protoutil.MarshalOrPanic(env)
+}
+
 func TestEndpointconfigFromConfigBlockGreenPath(t *testing.T) {
-	t.Run("global endpoints", func(t *testing.T) {
+	t.Run("global endpoints V2", func(t *testing.T) {
 		block, err := test.MakeGenesisBlock("mychannel")
 		require.NoError(t, err)
 
@@ -378,7 +407,8 @@ func TestEndpointconfigFromConfigBlockGreenPath(t *testing.T) {
 		require.NoError(t, err)
 		// For a block that doesn't have per org endpoints,
 		// we take the global endpoints
-		injectGlobalOrdererEndpoint(t, block, "globalEndpoint")
+		injectGlobalOrdererEndpoint(t, block, "globalEndpoint", "")
+		setChannelCapability(t, block, capabilities.ChannelV2_0)
 		endpointConfig, err := cluster.EndpointconfigFromConfigBlock(block, cryptoProvider)
 		require.NoError(t, err)
 		require.Len(t, endpointConfig, 1)
@@ -389,6 +419,41 @@ func TestEndpointconfigFromConfigBlockGreenPath(t *testing.T) {
 		require.NoError(t, err)
 
 		require.True(t, cert.IsCA)
+	})
+
+	t.Run("global endpoints and org endpoints V2", func(t *testing.T) {
+		block, err := test.MakeGenesisBlock("mychannel")
+		require.NoError(t, err)
+
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		require.NoError(t, err)
+		// For a block that has both global and per org endpoints,
+		// we take the per org endpoints
+		injectGlobalOrdererEndpoint(t, block, "globalEndpoint", "orgEndpoint")
+		setChannelCapability(t, block, capabilities.ChannelV2_0)
+		endpointConfig, err := cluster.EndpointconfigFromConfigBlock(block, cryptoProvider)
+		require.NoError(t, err)
+		require.Len(t, endpointConfig, 1)
+		require.Equal(t, "orgEndpoint", endpointConfig[0].Endpoint)
+
+		bl, _ := pem.Decode(endpointConfig[0].TLSRootCAs[0])
+		cert, err := x509.ParseCertificate(bl.Bytes)
+		require.NoError(t, err)
+
+		require.True(t, cert.IsCA)
+	})
+
+	t.Run("global endpoints V3", func(t *testing.T) {
+		block, err := test.MakeGenesisBlock("mychannel")
+		require.NoError(t, err)
+
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		require.NoError(t, err)
+		// In V3, we do not allow global endpoints
+		injectGlobalOrdererEndpoint(t, block, "globalEndpoint", "orgEndpoint")
+		endpointConfig, err := cluster.EndpointconfigFromConfigBlock(block, cryptoProvider)
+		require.EqualError(t, err, "failed extracting bundle from envelope: initializing channelconfig failed: Global OrdererAddresses are not allowed, use org specifc addresses only")
+		require.Nil(t, endpointConfig)
 	})
 
 	t.Run("per org endpoints", func(t *testing.T) {
@@ -474,9 +539,7 @@ func TestEndpointconfigFromConfigBlockFailures(t *testing.T) {
 }
 
 func TestBlockValidationPolicyVerifier(t *testing.T) {
-	dir := filepath.Join(os.TempDir())
-	os.Mkdir(dir, 0o700)
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	cryptogen, err := gexec.Build("github.com/hyperledger/fabric/cmd/cryptogen")
 	require.NoError(t, err)

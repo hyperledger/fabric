@@ -710,7 +710,7 @@ var _ = Describe("CFT-Deliverer", func() {
 			Expect(len(orgsAddresses)).To(Equal(1))
 			orgAddr, ok := orgsAddresses["SampleOrg"]
 			Expect(ok).To(BeTrue())
-			Expect(orgAddr.Addresses).To(Equal([]string{"127.0.0.1:7050"}))
+			Expect(orgAddr.Addresses).To(Equal([]string{"127.0.0.1:7050", "127.0.0.1:7051", "127.0.0.1:7052"}))
 			Expect(len(orgAddr.RootCerts)).To(Equal(2))
 		})
 	})
