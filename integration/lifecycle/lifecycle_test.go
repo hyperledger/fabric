@@ -295,9 +295,6 @@ var _ = Describe("Lifecycle", func() {
 		By("updating the channel config to include org3")
 		// get the current channel config
 		currentConfig := nwo.GetConfig(network, testPeers[0], orderer, "testchannel")
-		//jsonObj, _ := json.MarshalIndent(currentConfig, "", "    ")
-		//_ = os.WriteFile("currentConfig.json", jsonObj, 0o644)
-
 		updatedConfig := proto.Clone(currentConfig).(*common.Config)
 
 		// get the configtx info for org3
@@ -310,16 +307,9 @@ var _ = Describe("Lifecycle", func() {
 		org3Group := &peerext.DynamicApplicationOrgGroup{ConfigGroup: &common.ConfigGroup{}}
 		err = protolator.DeepUnmarshalJSON(bytes.NewBuffer(sess.Out.Contents()), org3Group)
 		Expect(err).NotTo(HaveOccurred())
-		// delete(org3Group.Values, "Endpoints")
-
-		//jsonObj, _ = json.MarshalIndent(org3Group, "", "    ")
-		//_ = os.WriteFile("org3Group.json", jsonObj, 0o644)
 
 		// update the channel config to include org3
 		updatedConfig.ChannelGroup.Groups["Application"].Groups["Org3"] = org3Group.ConfigGroup
-		//jsonObj, _ = json.MarshalIndent(updatedConfig, "", "    ")
-		//_ = os.WriteFile("updatedConfig.json", jsonObj, 0o644)
-
 		nwo.UpdateConfig(network, orderer, "testchannel", currentConfig, updatedConfig, true, testPeers[0], testPeers...)
 
 		By("joining the org3 peers to the channel")
