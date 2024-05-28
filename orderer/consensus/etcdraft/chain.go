@@ -1470,7 +1470,6 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 			// This is a migration, so we have to validate the config change and make sure that endpoints per org are configured
 			for _, org := range newOrdererConfig.Organizations() {
 				if len(org.Endpoints()) == 0 {
-					c.logger.Panicf("illegal orderer config detected during consensus metadata validation: endpoints of org %s are missing", org.Name())
 					return errors.Errorf("illegal orderer config detected during consensus metadata validation: endpoints of org %s are missing", org.Name())
 				}
 			}

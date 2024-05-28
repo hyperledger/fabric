@@ -180,9 +180,16 @@ func (cc *ChannelConfig) Validate(channelCapabilities ChannelCapabilities) error
 		}
 	}
 
-	// we check orderer addresses only if we are not in V3.0
-	if !channelCapabilities.OrgSpecificOrdererEndpoints() && !channelCapabilities.ConsensusTypeBFT() {
-		return cc.validateOrdererAddresses()
+	// We check global orderer addresses only if we are below ChannelV1_4_2
+	if !channelCapabilities.OrgSpecificOrdererEndpoints() {
+		if err := cc.validateOrdererAddresses(); err != nil {
+			return err
+		}
+	}
+
+	// We validate no global endpoints at V3_0 or above
+	if channelCapabilities.ConsensusTypeBFT() {
+		return cc.validateNoOrdererAddresses()
 	}
 
 	return nil
@@ -211,6 +218,13 @@ func (cc *ChannelConfig) validateBlockDataHashingStructure() error {
 func (cc *ChannelConfig) validateOrdererAddresses() error {
 	if len(cc.protos.OrdererAddresses.Addresses) == 0 {
 		return fmt.Errorf("Must set some OrdererAddresses")
+	}
+	return nil
+}
+
+func (cc *ChannelConfig) validateNoOrdererAddresses() error {
+	if len(cc.protos.OrdererAddresses.Addresses) > 0 {
+		return fmt.Errorf("Global OrdererAddresses are not allowed, use org specifc addresses only ")
 	}
 	return nil
 }

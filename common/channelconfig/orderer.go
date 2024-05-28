@@ -142,13 +142,7 @@ func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler,
 	}
 
 	if channelCapabilities.ConsensusTypeBFT() {
-		var someOrgHasEndpoints bool
-		for _, org := range oc.Organizations() {
-			someOrgHasEndpoints = someOrgHasEndpoints || len(org.Endpoints()) > 0
-		}
-		if !someOrgHasEndpoints {
-			return nil, errors.Errorf("all orderer organizations endpoints are empty")
-		}
+		return nil, oc.validateSomeOrgHasEndpoints()
 	}
 
 	return oc, nil
@@ -236,6 +230,19 @@ func (oc *OrdererConfig) validateBatchTimeout() error {
 	if oc.batchTimeout <= 0 {
 		return fmt.Errorf("Attempted to set the batch timeout to a non-positive value: %s", oc.batchTimeout)
 	}
+	return nil
+}
+
+func (oc *OrdererConfig) validateSomeOrgHasEndpoints() error {
+	var someOrgHasEndpoints bool
+	for _, org := range oc.Organizations() {
+		fmt.Printf(">>> org %v", org)
+		someOrgHasEndpoints = someOrgHasEndpoints || len(org.Endpoints()) > 0
+	}
+	if !someOrgHasEndpoints {
+		return errors.Errorf("all orderer organizations endpoints are empty")
+	}
+
 	return nil
 }
 
