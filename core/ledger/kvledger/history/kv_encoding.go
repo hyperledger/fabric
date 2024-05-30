@@ -41,7 +41,7 @@ func constructDataKey(ns string, key string, blocknum uint64, trannum uint64) da
 	return k
 }
 
-// constructRangescanKeys returns start and endKey for performing a range scan
+// constructRangeScan returns start and endKey for performing a range scan
 // that covers all the keys for <ns, key>.
 // startKey = namespace~len(key)~key~
 // endKey = namespace~len(key)~key~0xff
