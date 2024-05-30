@@ -92,7 +92,7 @@ func (scanner *historyScanner) Close() {
 	scanner.dbItr.Release()
 }
 
-// getTxIDandKeyWriteValueFromTran inspects a transaction for writes to a given key
+// getKeyModificationFromTran inspects a transaction for writes to a given key
 func getKeyModificationFromTran(tranEnvelope *common.Envelope, namespace string, key string) (commonledger.QueryResult, error) {
 	logger.Debugf("Entering getKeyModificationFromTran %s:%s", namespace, key)
 
