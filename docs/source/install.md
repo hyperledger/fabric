@@ -6,7 +6,7 @@ We think the best way to understand something is to use it yourself.  To help y
 
 We also have precompiled `Fabric CLI tool binaries` and `Fabric Docker Images` which will be downloaded to your environment, to get you going.
 
-The cURL command in the instructions below sets up your environment so that you can run the Fabric test network. Specifically, it performs the following steps:
+The `install-fabric.sh` script introduced in the next section automates the process to set up your environment. Specifically, it performs the following steps:
 
 * Clones the [hyperledger/fabric-samples](https://github.com/hyperledger/fabric-samples) repository.
 * Downloads the latest Hyperledger Fabric Docker images and tags them as `latest`
