@@ -708,9 +708,11 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		require.Equal(t, 0, setup.fakeUpdatableBlockVerifier.UpdateConfigCallCount())
 
 		t.Log("block progress is reported correctly")
-		bNum2, bTime2 := setup.d.BlockProgress()
-		require.Equal(t, uint64(7), bNum2)
-		require.True(t, bTime2.After(bTime))
+		setup.gWithT.Eventually(
+			func() bool {
+				bNum2, bTime2 := setup.d.BlockProgress()
+				return uint64(7) == bNum2 && bTime2.After(bTime)
+			}).Should(BeTrue())
 
 		setup.stop()
 	})
