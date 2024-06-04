@@ -179,7 +179,7 @@ if [ -n "$CC_CONTAINERS" ] ; then docker rm -f $CC_CONTAINERS ; fi
 And the peer chaincode images:
 
 ```
-CC_IMAGES=$(docker images | grep dev-$PEER | awk '{print $1}')
+CC_IMAGES=$(docker images | grep dev-$PEER_CONTAINER | awk '{print $1}')
 if [ -n "$CC_IMAGES" ] ; then docker rmi -f $CC_IMAGES ; fi
 ```
 
