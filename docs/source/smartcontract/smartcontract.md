@@ -141,7 +141,7 @@ The legal and technical skills required to convert centuries of legal language
 into programming language is increasingly practiced by **smart contract
 auditors**. You can learn about how to design and develop a smart contract in
 the [Developing applications
-topic](../developapps/developing_applications.html).
+topic](../../developapps/developing_applications.html).
 
 
 ## Endorsement
