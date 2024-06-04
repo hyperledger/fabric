@@ -133,7 +133,7 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 		d.blockDeliverer, err = d.createBlockDelivererCFT(chainID, ledgerInfo)
 	case "BFT":
 		switch d.conf.DeliverServiceConfig.Policy {
-		case "cluster", "":
+		case "cluster":
 			d.blockDeliverer, err = d.createBlockDelivererBFT(chainID, ledgerInfo)
 		case "simple":
 			d.blockDeliverer, err = d.createBlockDelivererCFT(chainID, ledgerInfo)
