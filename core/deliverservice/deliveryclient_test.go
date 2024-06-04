@@ -178,6 +178,7 @@ func TestStartDeliverForChannel_BFT(t *testing.T) {
 		ds := NewDeliverService(&Config{
 			DeliverServiceConfig: &DeliverServiceConfig{
 				SecOpts: secOpts,
+				Policy:  DefaultPolicy,
 			},
 			ChannelConfig:  channelConfigProto,
 			CryptoProvider: cryptoProvider,
@@ -203,9 +204,11 @@ func TestStartDeliverForChannel_BFT(t *testing.T) {
 
 	t.Run("Green Path without mutual TLS", func(t *testing.T) {
 		ds := NewDeliverService(&Config{
-			DeliverServiceConfig: &DeliverServiceConfig{},
-			ChannelConfig:        channelConfigProto,
-			CryptoProvider:       cryptoProvider,
+			DeliverServiceConfig: &DeliverServiceConfig{
+				Policy: DefaultPolicy,
+			},
+			ChannelConfig:  channelConfigProto,
+			CryptoProvider: cryptoProvider,
 		}).(*deliverServiceImpl)
 
 		finalized := make(chan struct{})
@@ -227,9 +230,11 @@ func TestStartDeliverForChannel_BFT(t *testing.T) {
 
 	t.Run("Can restart for channel: Start->Stop->Start", func(t *testing.T) {
 		ds := NewDeliverService(&Config{
-			DeliverServiceConfig: &DeliverServiceConfig{},
-			ChannelConfig:        channelConfigProto,
-			CryptoProvider:       cryptoProvider,
+			DeliverServiceConfig: &DeliverServiceConfig{
+				Policy: DefaultPolicy,
+			},
+			ChannelConfig:  channelConfigProto,
+			CryptoProvider: cryptoProvider,
 		}).(*deliverServiceImpl)
 
 		finalized := make(chan struct{})
@@ -268,9 +273,11 @@ func TestStartDeliverForChannel_BFT(t *testing.T) {
 		fakeLedgerInfo := fakeLedgerInfoCreator()
 
 		ds := NewDeliverService(&Config{
-			DeliverServiceConfig: &DeliverServiceConfig{},
-			ChannelConfig:        channelConfigProto,
-			CryptoProvider:       cryptoProvider,
+			DeliverServiceConfig: &DeliverServiceConfig{
+				Policy: DefaultPolicy,
+			},
+			ChannelConfig:  channelConfigProto,
+			CryptoProvider: cryptoProvider,
 		}).(*deliverServiceImpl)
 
 		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {})
@@ -289,6 +296,21 @@ func TestStartDeliverForChannel_BFT(t *testing.T) {
 
 		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfoCreator(), func() {})
 		require.EqualError(t, err, "block deliverer for channel `channel-id` is stopping")
+	})
+
+	t.Run("Bad policy", func(t *testing.T) {
+		fakeLedgerInfo := fakeLedgerInfoCreator()
+
+		ds := NewDeliverService(&Config{
+			DeliverServiceConfig: &DeliverServiceConfig{
+				Policy: "bogus",
+			},
+			ChannelConfig:  channelConfigProto,
+			CryptoProvider: cryptoProvider,
+		}).(*deliverServiceImpl)
+
+		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {})
+		require.EqualError(t, err, "unexpected delivey service policy: `bogus`")
 	})
 }
 
