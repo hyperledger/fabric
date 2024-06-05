@@ -85,4 +85,15 @@ func TestOrgSpecificOrdererEndpoints(t *testing.T) {
 
 		require.NotEmpty(t, cc.OrdererConfig().Organizations()["SampleOrg"].Endpoints)
 	})
+
+	t.Run("no global address With V3_0 Capability", func(t *testing.T) {
+		conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
+		conf.Orderer.Addresses = []string{"globalAddress"}
+		conf.Capabilities = map[string]bool{"V3_0": true}
+		require.NotEmpty(t, conf.Orderer.Organizations[0].OrdererEndpoints)
+		require.NotEmpty(t, conf.Orderer.Addresses)
+
+		_, err := encoder.NewChannelGroup(conf)
+		require.EqualError(t, err, "could not create orderer group: global orderer endpoints exist, but can not be used with V3_0 capability: [globalAddress]")
+	})
 }

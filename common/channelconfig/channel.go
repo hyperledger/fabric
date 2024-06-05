@@ -224,7 +224,7 @@ func (cc *ChannelConfig) validateOrdererAddresses() error {
 
 func (cc *ChannelConfig) validateNoOrdererAddresses() error {
 	if len(cc.protos.OrdererAddresses.Addresses) > 0 {
-		return fmt.Errorf("Global OrdererAddresses are not allowed, use org specifc addresses only")
+		return fmt.Errorf("global OrdererAddresses are not allowed in V3, use org specific addresses only")
 	}
 	return nil
 }

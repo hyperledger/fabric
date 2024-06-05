@@ -69,3 +69,41 @@ func TestConsensusMetadataValidation(t *testing.T) {
 	_, err = cs.ProposeConfigUpdate(&common.Envelope{})
 	require.EqualError(t, err, "consensus metadata update for channel config update is invalid: bananas")
 }
+
+func TestBundleValidation(t *testing.T) {
+	mockValidator := &mocks.ConfigTXValidator{}
+	mockValidator.ChannelIDReturns("mychannel")
+	mockValidator.ProposeConfigUpdateReturns(testConfigEnvelope(t), nil)
+
+	mockResources := &mocks.Resources{}
+	mockResources.ConfigtxValidatorReturns(mockValidator)
+
+	mockChannelConfig := &mocks.ChannelConfig{}
+	mockChannelConfig.OrdererAddressesReturns([]string{"127.0.0.1"})
+
+	mockChannelCapabilities := &mocks.ChannelCapabilities{}
+	mockChannelCapabilities.ConsensusTypeBFTReturns(true)
+	mockChannelConfig.CapabilitiesReturns(mockChannelCapabilities)
+	mockResources.ChannelConfigReturns(mockChannelConfig)
+
+	mockNewResources := &mutableResourcesMock{
+		Resources: mockResources,
+	}
+	mockNewResources.ValidateNewReturns(errors.New("new config is bad"))
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	require.NoError(t, err)
+
+	cs := &ChainSupport{
+		ledgerResources: &ledgerResources{
+			configResources: &configResources{
+				mutableResources: mockNewResources,
+				bccsp:            cryptoProvider,
+			},
+		},
+		BCCSP: cryptoProvider,
+	}
+
+	_, err = cs.ProposeConfigUpdate(&common.Envelope{})
+	require.EqualError(t, err, "new config is bad")
+}

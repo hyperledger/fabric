@@ -285,6 +285,130 @@ func TestValidateNewWithConsensusMigration(t *testing.T) {
 	})
 }
 
+func TestValidateNewWithOrgEndpoints(t *testing.T) {
+	currb := &Bundle{
+		channelConfig: &ChannelConfig{
+			ordererConfig: &OrdererConfig{
+				protos: &OrdererProtos{
+					ConsensusType: &ab.ConsensusType{
+						Type: "type1",
+					},
+					Capabilities: &cb.Capabilities{},
+				},
+				orgs: map[string]OrdererOrg{
+					"org1": &OrdererOrgConfig{OrganizationConfig: &OrganizationConfig{mspID: "org1msp", name: "org1"}},
+					"org2": &OrdererOrgConfig{OrganizationConfig: &OrganizationConfig{mspID: "org2msp", name: "org2"}},
+				},
+			},
+			protos: &ChannelProtos{
+				Capabilities: &cb.Capabilities{
+					Capabilities: map[string]*cb.Capability{
+						cc.ChannelV2_0: {},
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("Missing org endpoints", func(t *testing.T) {
+		newb := &Bundle{
+			channelConfig: &ChannelConfig{
+				ordererConfig: &OrdererConfig{
+					protos: &OrdererProtos{
+						ConsensusType: &ab.ConsensusType{
+							Type: "type1",
+						},
+						Capabilities: &cb.Capabilities{},
+					},
+					orgs: map[string]OrdererOrg{
+						"org1": &OrdererOrgConfig{OrganizationConfig: &OrganizationConfig{mspID: "org1msp", name: "org1"}},
+						"org2": &OrdererOrgConfig{OrganizationConfig: &OrganizationConfig{mspID: "org2msp", name: "org2"}},
+					},
+				},
+				protos: &ChannelProtos{
+					Capabilities: &cb.Capabilities{
+						Capabilities: map[string]*cb.Capability{
+							cc.ChannelV3_0: {},
+						},
+					},
+				},
+			},
+		}
+
+		err := currb.ValidateNew(newb)
+		require.Error(t, err)
+		require.Regexp(t, "endpoints of org org[1,2] are missing", err.Error())
+	})
+
+	t.Run("Missing org endpoints, again", func(t *testing.T) {
+		newb := &Bundle{
+			channelConfig: &ChannelConfig{
+				ordererConfig: &OrdererConfig{
+					protos: &OrdererProtos{
+						ConsensusType: &ab.ConsensusType{
+							Type: "type1",
+						},
+						Capabilities: &cb.Capabilities{},
+					},
+					orgs: map[string]OrdererOrg{
+						"org1": &OrdererOrgConfig{OrganizationConfig: &OrganizationConfig{mspID: "org1msp", name: "org1"}},
+						"org2": &OrdererOrgConfig{
+							OrganizationConfig: &OrganizationConfig{mspID: "org2msp", name: "org2"},
+							protos:             &OrdererOrgProtos{Endpoints: &cb.OrdererAddresses{Addresses: []string{"org2-address"}}},
+						},
+					},
+				},
+				protos: &ChannelProtos{
+					Capabilities: &cb.Capabilities{
+						Capabilities: map[string]*cb.Capability{
+							cc.ChannelV3_0: {},
+						},
+					},
+				},
+			},
+		}
+
+		err := currb.ValidateNew(newb)
+		require.Error(t, err)
+		require.EqualError(t, err, "illegal orderer config update detected: endpoints of org org1 are missing")
+	})
+
+	t.Run("Valid org endpoints", func(t *testing.T) {
+		newb := &Bundle{
+			channelConfig: &ChannelConfig{
+				ordererConfig: &OrdererConfig{
+					protos: &OrdererProtos{
+						ConsensusType: &ab.ConsensusType{
+							Type: "type1",
+						},
+						Capabilities: &cb.Capabilities{},
+					},
+					orgs: map[string]OrdererOrg{
+						"org1": &OrdererOrgConfig{
+							OrganizationConfig: &OrganizationConfig{mspID: "org1msp", name: "org1"},
+							protos:             &OrdererOrgProtos{Endpoints: &cb.OrdererAddresses{Addresses: []string{"org1-address"}}},
+						},
+						"org2": &OrdererOrgConfig{
+							OrganizationConfig: &OrganizationConfig{mspID: "org2msp", name: "org2"},
+							protos:             &OrdererOrgProtos{Endpoints: &cb.OrdererAddresses{Addresses: []string{"org2-address"}}},
+						},
+					},
+				},
+				protos: &ChannelProtos{
+					Capabilities: &cb.Capabilities{
+						Capabilities: map[string]*cb.Capability{
+							cc.ChannelV3_0: {},
+						},
+					},
+				},
+			},
+		}
+
+		err := currb.ValidateNew(newb)
+		require.NoError(t, err)
+	})
+}
+
 func generateMigrationBundle(sysChan bool, cType string, cState ab.ConsensusType_State) *Bundle {
 	b := &Bundle{
 		channelConfig: &ChannelConfig{
