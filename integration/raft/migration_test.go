@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
+	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/integration/channelparticipation"
@@ -675,7 +676,7 @@ func updateOrdererEndpointsConfigFails(n *nwo.Network, orderer *nwo.Orderer, cha
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(1))
-	Expect(sess.Err).To(gbytes.Say("consensus metadata update for channel config update is invalid since it includes global level endpoints which are not supported in V3.0"))
+	Expect(sess.Err).To(gbytes.Say("error applying config update to existing channel 'testchannel': initializing channelconfig failed: global OrdererAddresses are not allowed in V3, use org specific addresses only"))
 }
 
 func prepareTransition(
@@ -917,6 +918,13 @@ func addGlobalLevelEndpointsToConfig(config *common.Config) {
 			Addresses: globalEndpoint,
 		}),
 		ModPolicy: "/Channel/Admins",
+	}
+
+	topCapabilities := make(map[string]bool)
+	topCapabilities[capabilities.ChannelV3_0] = true
+	config.ChannelGroup.Values[channelconfig.CapabilitiesKey] = &common.ConfigValue{
+		Value:     protoutil.MarshalOrPanic(channelconfig.CapabilitiesValue(topCapabilities).Value()),
+		ModPolicy: channelconfig.AdminsPolicyKey,
 	}
 }
 

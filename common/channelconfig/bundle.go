@@ -93,6 +93,17 @@ func (b *Bundle) ValidateNew(nb Resources) error {
 			}
 		}
 
+		// When we move from V2 to V3 we insist on per Org endpoints for every org
+		isOldV3 := b.ChannelConfig().Capabilities().ConsensusTypeBFT()
+		isNewV3 := nb.ChannelConfig().Capabilities().ConsensusTypeBFT()
+		if !isOldV3 && isNewV3 {
+			for _, org := range noc.Organizations() {
+				if len(org.Endpoints()) == 0 {
+					return errors.Errorf("illegal orderer config update detected: endpoints of org %s are missing", org.Name())
+				}
+			}
+		}
+
 		for orgName, org := range oc.Organizations() {
 			norg, ok := noc.Organizations()[orgName]
 			if !ok {

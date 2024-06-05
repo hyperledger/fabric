@@ -76,6 +76,10 @@ type OrdererOrgConfig struct {
 
 // Endpoints returns the set of addresses this ordering org exposes as orderers
 func (oc *OrdererOrgConfig) Endpoints() []string {
+	if oc.protos == nil || oc.protos.Endpoints == nil {
+		return nil
+	}
+
 	return oc.protos.Endpoints.Addresses
 }
 
