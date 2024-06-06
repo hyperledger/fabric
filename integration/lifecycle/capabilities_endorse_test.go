@@ -52,8 +52,8 @@ var _ = Describe("Lifecycle with Channel v3_0 capabilities and ed25519 identitie
 		chaincode = nwo.Chaincode{
 			Name:            "mycc",
 			Version:         "0.0",
-			Path:            "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-			Lang:            "golang",
+			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd"),
+			Lang:            "binary",
 			PackageFile:     filepath.Join(testDir, "simplecc.tar.gz"),
 			Ctor:            `{"Args":["init","a","100","b","200"]}`,
 			SignaturePolicy: `AND ('Org1MSP.peer', 'Org2MSP.peer')`,
