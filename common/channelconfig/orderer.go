@@ -146,7 +146,7 @@ func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler,
 	}
 
 	if channelCapabilities.ConsensusTypeBFT() {
-		if err := oc.validateSomeOrgHasEndpoints(); err != nil {
+		if err := oc.validateAllOrgsHaveEndpoints(); err != nil {
 			return nil, err
 		}
 	}
@@ -239,13 +239,17 @@ func (oc *OrdererConfig) validateBatchTimeout() error {
 	return nil
 }
 
-func (oc *OrdererConfig) validateSomeOrgHasEndpoints() error {
-	var someOrgHasEndpoints bool
+func (oc *OrdererConfig) validateAllOrgsHaveEndpoints() error {
+	var orgsMissingEndpoints []string
+
 	for _, org := range oc.Organizations() {
-		someOrgHasEndpoints = someOrgHasEndpoints || len(org.Endpoints()) > 0
+		if len(org.Endpoints()) == 0 {
+			orgsMissingEndpoints = append(orgsMissingEndpoints, org.Name())
+		}
 	}
-	if !someOrgHasEndpoints {
-		return errors.Errorf("all orderer organizations endpoints are empty")
+
+	if len(orgsMissingEndpoints) > 0 {
+		return errors.Errorf("some orderer organizations endpoints are empty: %s", orgsMissingEndpoints)
 	}
 
 	return nil

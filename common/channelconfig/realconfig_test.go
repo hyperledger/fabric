@@ -34,7 +34,6 @@ func TestWithRealConfigtx(t *testing.T) {
 func TestOrgSpecificOrdererEndpoints(t *testing.T) {
 	t.Run("could not create channel orderer config with empty organization endpoints", func(t *testing.T) {
 		conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
-		// NOTE: conf.Capability is V3_0, one organization, conf.Orderer.Addresses (global endpoints) is empty, organization endpoints is not empty
 
 		cg, err := encoder.NewChannelGroup(conf)
 		require.NoError(t, err)
@@ -44,7 +43,7 @@ func TestOrgSpecificOrdererEndpoints(t *testing.T) {
 		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		require.NoError(t, err)
 		_, err = channelconfig.NewChannelConfig(cg, cryptoProvider)
-		require.EqualError(t, err, "could not create channel Orderer sub-group config: all orderer organizations endpoints are empty")
+		require.EqualError(t, err, "could not create channel Orderer sub-group config: some orderer organizations endpoints are empty: [SampleOrg]")
 	})
 
 	t.Run("could not create channelgroup with empty organization endpoints", func(t *testing.T) {

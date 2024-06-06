@@ -313,9 +313,9 @@ Orderer: &OrdererDefaults
     # ConsenterMapping contains the definition of consenter identity, endpoints, and crypto material.
     # The ConsenterMapping is used in the BFT consensus protocol, and should include enough servers to ensure
     # fault-tolerance; In BFT this number is at least 3*F+1, where F is the number of potential failures.
-    # In BFT it is highly recommended that the addresses for delivery & broadcast (Ordrer/Addresses or
-    # the OrdererEndpoints item in the org definition) map 1:1 to the Orderer/ConsenterMapping (for cluster consensus).
-    # That is, every consenter should be represented by a delivery endpoint.
+    # In BFT it is highly recommended that the addresses for delivery & broadcast (the OrdererEndpoints item in the
+    # org definition) map 1:1 to the Orderer/ConsenterMapping (for cluster consensus). That is, every consenter should
+    # be represented by a delivery endpoint. Note that in BFT (V3) global Orderer/Addresses are no longer supported.
     ConsenterMapping:
     - ID: 1
       Host: bft0.example.com
