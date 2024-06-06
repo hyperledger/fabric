@@ -67,7 +67,7 @@ type Channel interface {
 	// Merkle tree to compute the BlockData hash
 	BlockDataHashingStructureWidth() uint32
 
-	// OrdererAddresses returns the list of valid orderer addresses to connect to invoke Broadcast/Deliver
+	// OrdererAddresses returns the list of valid global orderer addresses (does not include org-specific orderer endpoints)
 	// Deprecated
 	OrdererAddresses() []string
 

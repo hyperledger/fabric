@@ -93,7 +93,7 @@ func (b *Bundle) ValidateNew(nb Resources) error {
 			}
 		}
 
-		// When we move from V2 to V3 we insist on per Org endpoints for every org
+		// When we move to capability V3_0 we insist on per Org endpoints for every org
 		isOldV3 := b.ChannelConfig().Capabilities().ConsensusTypeBFT()
 		isNewV3 := nb.ChannelConfig().Capabilities().ConsensusTypeBFT()
 		if !isOldV3 && isNewV3 {

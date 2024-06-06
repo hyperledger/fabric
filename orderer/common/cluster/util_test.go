@@ -452,7 +452,7 @@ func TestEndpointconfigFromConfigBlockGreenPath(t *testing.T) {
 		// In V3, we do not allow global endpoints
 		injectGlobalOrdererEndpoint(t, block, "globalEndpoint", "orgEndpoint")
 		endpointConfig, err := cluster.EndpointconfigFromConfigBlock(block, cryptoProvider)
-		require.EqualError(t, err, "failed extracting bundle from envelope: initializing channelconfig failed: global OrdererAddresses are not allowed in V3, use org specific addresses only")
+		require.EqualError(t, err, "failed extracting bundle from envelope: initializing channelconfig failed: global OrdererAddresses are not allowed with V3_0 capability, use org specific addresses only")
 		require.Nil(t, endpointConfig)
 	})
 
