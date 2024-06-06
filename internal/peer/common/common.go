@@ -280,11 +280,6 @@ func GetOrdererEndpointOfChain(chainID string, signer Signer, endorserClient pb.
 		return nil, errors.WithMessage(err, "error loading channel config")
 	}
 
-	ordererAddresses := bundle.ChannelConfig().OrdererAddresses()
-	if len(ordererAddresses) > 0 {
-		logger.Warningf("Deprecated global OrdererAddresses exist: %v; ignoring", ordererAddresses)
-	}
-
 	ordererConfig, ok := bundle.OrdererConfig()
 	if !ok {
 		return nil, errors.New("missing OrdererConfig in channel config")
@@ -296,7 +291,16 @@ func GetOrdererEndpointOfChain(chainID string, signer Signer, endorserClient pb.
 		orgAddresses = append(orgAddresses, org.Endpoints()...)
 	}
 
-	return orgAddresses, nil
+	ordererAddresses := bundle.ChannelConfig().OrdererAddresses()
+	if len(orgAddresses) > 0 {
+		if len(ordererAddresses) > 0 {
+			logger.Warningf("Deprecated global OrdererAddresses exist: %s; ignoring them", ordererAddresses)
+		}
+		return orgAddresses, nil
+	}
+
+	logger.Warningf("Org specific endpoints are missing, returning (deprecated) global OrdererAddresses: %s; ", ordererAddresses)
+	return ordererAddresses, nil
 }
 
 // CheckLogLevel checks that a given log level string is valid

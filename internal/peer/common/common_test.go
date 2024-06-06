@@ -266,12 +266,68 @@ func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 
-	t.Run("green-path", func(t *testing.T) {
+	t.Run("green-path V3", func(t *testing.T) {
 		tlsCA, err := tlsgen.NewCA()
 		require.NoError(t, err)
 		certDir := t.TempDir()
 		profile := genesisconfig.Load(genesisconfig.SampleAppChannelEtcdRaftProfile, configtest.GetDevConfigDir())
-		profile.Capabilities = map[string]bool{"V3_0": true}
+		generateCertificates(profile, tlsCA, certDir)
+		t.Logf("%+v", profile.Orderer.Organizations[0])
+
+		channelGroup, err := encoder.NewChannelGroup(profile)
+		require.NoError(t, err)
+		channelConfig := &cb.Config{ChannelGroup: channelGroup}
+
+		mockEndorserClient := common.GetMockEndorserClient(
+			&pb.ProposalResponse{
+				Response:    &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(channelConfig)},
+				Endorsement: &pb.Endorsement{},
+			},
+			nil,
+		)
+
+		ordererEndpoints, err := common.GetOrdererEndpointOfChain("test-channel", signer, mockEndorserClient, cryptoProvider)
+		require.NoError(t, err)
+		require.Equal(t, []string{"127.0.0.1:7050", "127.0.0.1:7051", "127.0.0.1:7052"}, ordererEndpoints)
+	})
+
+	t.Run("green-path V2 ignores global addresses", func(t *testing.T) {
+		tlsCA, err := tlsgen.NewCA()
+		require.NoError(t, err)
+		certDir := t.TempDir()
+		profile := genesisconfig.Load(genesisconfig.SampleAppChannelEtcdRaftProfile, configtest.GetDevConfigDir())
+		profile.Capabilities = map[string]bool{"V2_0": true}
+		profile.Orderer.Addresses = []string{"globalAddr:666"} // should be ignored
+		generateCertificates(profile, tlsCA, certDir)
+
+		t.Logf("%+v", profile.Orderer.Addresses)
+		t.Logf("%+v", profile.Orderer.Organizations[0])
+
+		channelGroup, err := encoder.NewChannelGroup(profile)
+		require.NoError(t, err)
+		channelConfig := &cb.Config{ChannelGroup: channelGroup}
+
+		mockEndorserClient := common.GetMockEndorserClient(
+			&pb.ProposalResponse{
+				Response:    &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(channelConfig)},
+				Endorsement: &pb.Endorsement{},
+			},
+			nil,
+		)
+
+		ordererEndpoints, err := common.GetOrdererEndpointOfChain("test-channel", signer, mockEndorserClient, cryptoProvider)
+		require.NoError(t, err)
+		require.Equal(t, []string{"127.0.0.1:7050", "127.0.0.1:7051", "127.0.0.1:7052"}, ordererEndpoints)
+	})
+
+	t.Run("green-path V2 takes global addresses", func(t *testing.T) {
+		tlsCA, err := tlsgen.NewCA()
+		require.NoError(t, err)
+		certDir := t.TempDir()
+		profile := genesisconfig.Load(genesisconfig.SampleAppChannelEtcdRaftProfile, configtest.GetDevConfigDir())
+		profile.Capabilities = map[string]bool{"V2_0": true}
+		profile.Orderer.Addresses = []string{"globalAddr:666"}  // should be taken
+		profile.Orderer.Organizations[0].OrdererEndpoints = nil // because per-org are missing
 		generateCertificates(profile, tlsCA, certDir)
 
 		t.Logf("%+v", profile.Orderer.Organizations[0])
@@ -290,7 +346,7 @@ func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
 
 		ordererEndpoints, err := common.GetOrdererEndpointOfChain("test-channel", signer, mockEndorserClient, cryptoProvider)
 		require.NoError(t, err)
-		require.Equal(t, []string{"127.0.0.1:7050", "127.0.0.1:7051", "127.0.0.1:7052"}, ordererEndpoints)
+		require.Equal(t, []string{"globalAddr:666"}, ordererEndpoints)
 	})
 
 	t.Run("error-invoking-CSCC", func(t *testing.T) {
