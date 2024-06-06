@@ -676,7 +676,7 @@ func updateOrdererEndpointsConfigFails(n *nwo.Network, orderer *nwo.Orderer, cha
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(1))
-	Expect(sess.Err).To(gbytes.Say("error applying config update to existing channel 'testchannel': initializing channelconfig failed: global OrdererAddresses are not allowed in V3, use org specific addresses only"))
+	Expect(sess.Err).To(gbytes.Say("error applying config update to existing channel 'testchannel': initializing channelconfig failed: global OrdererAddresses are not allowed with V3_0 capability, use org specific addresses only"))
 }
 
 func prepareTransition(

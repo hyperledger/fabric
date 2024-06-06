@@ -52,7 +52,8 @@ type ChannelValues interface {
 	// Merkle tree to compute the BlockData hash
 	BlockDataHashingStructureWidth() uint32
 
-	// OrdererAddresses returns the list of valid orderer addresses to connect to invoke Broadcast/Deliver
+	// OrdererAddresses returns the list of valid global orderer addresses (does not include org-specific orderer endpoints)
+	// Deprecated
 	OrdererAddresses() []string
 }
 
@@ -224,7 +225,7 @@ func (cc *ChannelConfig) validateOrdererAddresses() error {
 
 func (cc *ChannelConfig) validateNoOrdererAddresses() error {
 	if len(cc.protos.OrdererAddresses.Addresses) > 0 {
-		return fmt.Errorf("global OrdererAddresses are not allowed in V3, use org specific addresses only")
+		return fmt.Errorf("global OrdererAddresses are not allowed with V3_0 capability, use org specific addresses only")
 	}
 	return nil
 }
