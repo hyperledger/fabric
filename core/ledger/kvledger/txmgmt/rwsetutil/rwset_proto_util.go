@@ -253,7 +253,7 @@ func (txRwSet *TxRwSet) NumCollections() int {
 // functions for private read-write set
 ///////////////////////////////////////////////////////////////////////////////
 
-// ToToProtoMsg transforms the struct into equivalent proto message
+// ToProtoMsg transforms the struct into equivalent proto message
 func (txPvtRwSet *TxPvtRwSet) ToProtoMsg() (*rwset.TxPvtReadWriteSet, error) {
 	protoMsg := &rwset.TxPvtReadWriteSet{DataModel: rwset.TxReadWriteSet_KV}
 	var nsProtoMsg *rwset.NsPvtReadWriteSet

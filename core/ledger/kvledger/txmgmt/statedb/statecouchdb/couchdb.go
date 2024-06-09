@@ -1748,7 +1748,7 @@ func (couchInstance *couchInstance) recordMetric(startTime time.Time, dbName, ap
 	couchInstance.stats.observeProcessingTime(startTime, dbName, api, strconv.Itoa(couchDBReturn.StatusCode))
 }
 
-// invalidCouchDBResponse checks to make sure either a valid response or error is returned
+// invalidCouchDBReturn checks to make sure either a valid response or error is returned
 func invalidCouchDBReturn(resp *http.Response, errResp error) bool {
 	if resp == nil && errResp == nil {
 		return true
