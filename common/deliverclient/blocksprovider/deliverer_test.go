@@ -8,7 +8,6 @@ package blocksprovider_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"sync"
@@ -832,7 +831,7 @@ func generateCertificatesSmartBFT(confAppSmartBFT *genesisconfig.Profile, tlsCA 
 		}
 
 		srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", i))
-		err = ioutil.WriteFile(srvP, srvC.Cert, 0o644)
+		err = os.WriteFile(srvP, srvC.Cert, 0o644)
 		if err != nil {
 			return err
 		}
@@ -843,7 +842,7 @@ func generateCertificatesSmartBFT(confAppSmartBFT *genesisconfig.Profile, tlsCA 
 		}
 
 		clnP := path.Join(certDir, fmt.Sprintf("client%d.crt", i))
-		err = ioutil.WriteFile(clnP, clnC.Cert, 0o644)
+		err = os.WriteFile(clnP, clnC.Cert, 0o644)
 		if err != nil {
 			return err
 		}
