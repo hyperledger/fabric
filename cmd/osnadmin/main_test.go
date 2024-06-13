@@ -118,13 +118,20 @@ var _ = Describe("osnadmin", func() {
 					Name: "fight-the-system",
 				},
 			})
+		})
 
-			mockChannelManagement.ChannelInfoReturns(types.ChannelInfo{
-				Name:              "asparagus",
-				ConsensusRelation: "broccoli",
-				Status:            "carrot",
-				Height:            987,
-			}, nil)
+		It("returns an error when channelID flag is not provided", func() {
+			args := []string{
+				"channel",
+				"info",
+				"--orderer-address", ordererURL,
+				"--ca-file", ordererCACert,
+				"--client-cert", clientCert,
+				"--client-key", clientKey,
+			}
+			output, exit, err := executeForArgs(args)
+			expectedErrorMessage := "required flag(s) \"channelID\" not set"
+			checkCLIError(output, exit, err, expectedErrorMessage)
 		})
 
 		It("uses the channel participation API to list all application channels and the system channel (when it exists)", func() {
@@ -154,50 +161,6 @@ var _ = Describe("osnadmin", func() {
 				},
 			}
 			checkStatusOutput(output, exit, err, 200, expectedOutput)
-		})
-
-		It("uses the channel participation API to list the details of a single channel", func() {
-			args := []string{
-				"channel",
-				"list",
-				"--orderer-address", ordererURL,
-				"--channelID", "tell-me-your-secrets",
-				"--ca-file", ordererCACert,
-				"--client-cert", clientCert,
-				"--client-key", clientKey,
-			}
-			output, exit, err := executeForArgs(args)
-			expectedOutput := types.ChannelInfo{
-				Name:              "asparagus",
-				URL:               "/participation/v1/channels/asparagus",
-				ConsensusRelation: "broccoli",
-				Status:            "carrot",
-				Height:            987,
-			}
-			checkStatusOutput(output, exit, err, 200, expectedOutput)
-		})
-
-		Context("when the channel does not exist", func() {
-			BeforeEach(func() {
-				mockChannelManagement.ChannelInfoReturns(types.ChannelInfo{}, errors.New("eat-your-peas"))
-			})
-
-			It("returns 404 not found", func() {
-				args := []string{
-					"channel",
-					"list",
-					"--orderer-address", ordererURL,
-					"--channelID", "tell-me-your-secrets",
-					"--ca-file", ordererCACert,
-					"--client-cert", clientCert,
-					"--client-key", clientKey,
-				}
-				output, exit, err := executeForArgs(args)
-				expectedOutput := types.ErrorResponse{
-					Error: "eat-your-peas",
-				}
-				checkStatusOutput(output, exit, err, 404, expectedOutput)
-			})
 		})
 
 		Context("when TLS is disabled", func() {
@@ -233,11 +196,86 @@ var _ = Describe("osnadmin", func() {
 				}
 				checkStatusOutput(output, exit, err, 200, expectedOutput)
 			})
+		})
+	})
+
+	Describe("Info", func() {
+		BeforeEach(func() {
+			mockChannelManagement.ChannelListReturns(types.ChannelList{
+				Channels: []types.ChannelInfoShort{
+					{
+						Name: "participation-trophy",
+					},
+					{
+						Name: "another-participation-trophy",
+					},
+				},
+				SystemChannel: &types.ChannelInfoShort{
+					Name: "fight-the-system",
+				},
+			})
+
+			mockChannelManagement.ChannelInfoReturns(types.ChannelInfo{
+				Name:              "asparagus",
+				ConsensusRelation: "broccoli",
+				Status:            "carrot",
+				Height:            987,
+			}, nil)
+		})
+
+		It("uses the channel participation API to list the details of a single channel", func() {
+			args := []string{
+				"channel",
+				"info",
+				"--orderer-address", ordererURL,
+				"--channelID", "tell-me-your-secrets",
+				"--ca-file", ordererCACert,
+				"--client-cert", clientCert,
+				"--client-key", clientKey,
+			}
+			output, exit, err := executeForArgs(args)
+			expectedOutput := types.ChannelInfo{
+				Name:              "asparagus",
+				URL:               "/participation/v1/channels/asparagus",
+				ConsensusRelation: "broccoli",
+				Status:            "carrot",
+				Height:            987,
+			}
+			checkStatusOutput(output, exit, err, 200, expectedOutput)
+		})
+
+		Context("when the channel does not exist", func() {
+			BeforeEach(func() {
+				mockChannelManagement.ChannelInfoReturns(types.ChannelInfo{}, errors.New("eat-your-peas"))
+			})
+
+			It("returns 404 not found", func() {
+				args := []string{
+					"channel",
+					"info",
+					"--orderer-address", ordererURL,
+					"--channelID", "tell-me-your-secrets",
+					"--ca-file", ordererCACert,
+					"--client-cert", clientCert,
+					"--client-key", clientKey,
+				}
+				output, exit, err := executeForArgs(args)
+				expectedOutput := types.ErrorResponse{
+					Error: "eat-your-peas",
+				}
+				checkStatusOutput(output, exit, err, 404, expectedOutput)
+			})
+		})
+
+		Context("when TLS is disabled", func() {
+			BeforeEach(func() {
+				tlsConfig = nil
+			})
 
 			It("uses the channel participation API to list the details of a single channel", func() {
 				args := []string{
 					"channel",
-					"list",
+					"info",
 					"--orderer-address", ordererURL,
 					"--channelID", "tell-me-your-secrets",
 				}
@@ -254,6 +292,26 @@ var _ = Describe("osnadmin", func() {
 				}
 				checkStatusOutput(output, exit, err, 200, expectedOutput)
 			})
+			Context("when the channel does not exist", func() {
+				BeforeEach(func() {
+					mockChannelManagement.ChannelInfoReturns(types.ChannelInfo{}, errors.New("eat-your-peas"))
+				})
+
+				It("returns 404 not found with the info subcommand", func() {
+					args := []string{
+						"channel",
+						"info",
+						"--orderer-address", ordererURL,
+						"--channelID", "tell-me-your-secrets",
+					}
+					output, exit, err := executeForArgs(args)
+					expectedOutput := types.ErrorResponse{
+						Error: "eat-your-peas",
+					}
+					checkStatusOutput(output, exit, err, 404, expectedOutput)
+				})
+			})
+
 		})
 	})
 
@@ -581,6 +639,18 @@ var _ = Describe("osnadmin", func() {
 			})
 		})
 
+		Context("when an unknown flag is used with the info subcommand", func() {
+			It("returns an error for long flags", func() {
+				_, _, err := executeForArgs([]string{"channel", "info", "--bad-flag"})
+				Expect(err).To(MatchError("unknown long flag '--bad-flag'"))
+			})
+
+			It("returns an error for short flags", func() {
+				_, _, err := executeForArgs([]string{"channel", "info", "-z"})
+				Expect(err).To(MatchError("unknown short flag '-z'"))
+			})
+		})
+
 		Context("when the ca cert cannot be read", func() {
 			BeforeEach(func() {
 				ordererCACert = "not-the-ca-cert-youre-looking-for"
@@ -590,6 +660,25 @@ var _ = Describe("osnadmin", func() {
 				args := []string{
 					"channel",
 					"list",
+					"--orderer-address", ordererURL,
+					"--ca-file", ordererCACert,
+					"--client-cert", clientCert,
+					"--client-key", clientKey,
+				}
+				output, exit, err := executeForArgs(args)
+				checkFlagError(output, exit, err, "reading orderer CA certificate: open not-the-ca-cert-youre-looking-for: no such file or directory")
+			})
+		})
+
+		Context("when the ca cert cannot be read with the info subcommand", func() {
+			BeforeEach(func() {
+				ordererCACert = "not-the-ca-cert-youre-looking-for"
+			})
+
+			It("returns with exit code 1 and prints the error with the info subcommand", func() {
+				args := []string{
+					"channel",
+					"info",
 					"--orderer-address", ordererURL,
 					"--channelID", channelID,
 					"--ca-file", ordererCACert,
@@ -631,6 +720,26 @@ var _ = Describe("osnadmin", func() {
 					"channel",
 					"list",
 					"--orderer-address", ordererURL,
+					"--ca-file", ordererCACert,
+					"--client-cert", clientCert,
+					"--client-key", clientKey,
+				}
+				output, exit, err := executeForArgs(args)
+				checkFlagError(output, exit, err, "loading client cert/key pair: open brussel-sprouts: no such file or directory")
+			})
+		})
+
+		Context("when the client cert/key pair fail to load with the info subcommand", func() {
+			BeforeEach(func() {
+				clientKey = "brussel-sprouts"
+			})
+
+			It("returns with exit code 1 and prints the error with the info subcommand", func() {
+				args := []string{
+					"channel",
+					"info",
+					"--orderer-address", ordererURL,
+					"--channelID", channelID,
 					"--ca-file", ordererCACert,
 					"--client-cert", clientCert,
 					"--client-key", clientKey,

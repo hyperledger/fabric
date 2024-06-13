@@ -52,7 +52,10 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 	configBlockPath := join.Flag("config-block", "Path to the file containing an up-to-date config block for the channel").Short('b').Required().String()
 
 	list := channel.Command("list", "List channel information for an Ordering Service Node (OSN). If the channelID flag is set, more detailed information will be provided for that channel.")
-	listChannelID := list.Flag("channelID", "Channel ID").Short('c').String()
+	// listChannelID := list.Flag("channelID", "Channel ID").Short('c').String()
+	// Define the new info subcommand
+	info := channel.Command("info", "Get detailed information about a specific channel.")
+	infoChannelID := info.Flag("channelID", "Channel ID").Short('c').Required().String()
 
 	remove := channel.Command("remove", "Remove a channel from an Ordering Service Node (OSN).")
 	removeChannelID := remove.Flag("channelID", "Channel ID").Short('c').Required().String()
@@ -113,11 +116,13 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 	case join.FullCommand():
 		resp, err = osnadmin.Join(osnURL, marshaledConfigBlock, caCertPool, tlsClientCert)
 	case list.FullCommand():
-		if *listChannelID != "" {
-			resp, err = osnadmin.ListSingleChannel(osnURL, *listChannelID, caCertPool, tlsClientCert)
-			break
-		}
+		// if *listChannelID != "" {
+		// 	resp, err = osnadmin.ListSingleChannel(osnURL, *listChannelID, caCertPool, tlsClientCert)
+		// 	break
+		// }
 		resp, err = osnadmin.ListAllChannels(osnURL, caCertPool, tlsClientCert)
+	case info.FullCommand():
+		resp, err = osnadmin.ListSingleChannel(osnURL, *infoChannelID, caCertPool, tlsClientCert)
 	case remove.FullCommand():
 		resp, err = osnadmin.Remove(osnURL, *removeChannelID, caCertPool, tlsClientCert)
 	}
