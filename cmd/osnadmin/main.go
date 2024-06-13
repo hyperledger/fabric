@@ -52,8 +52,6 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 	configBlockPath := join.Flag("config-block", "Path to the file containing an up-to-date config block for the channel").Short('b').Required().String()
 
 	list := channel.Command("list", "List channel information for an Ordering Service Node (OSN). If the channelID flag is set, more detailed information will be provided for that channel.")
-	// listChannelID := list.Flag("channelID", "Channel ID").Short('c').String()
-	// Define the new info subcommand
 	info := channel.Command("info", "Get detailed information about a specific channel.")
 	infoChannelID := info.Flag("channelID", "Channel ID").Short('c').Required().String()
 
