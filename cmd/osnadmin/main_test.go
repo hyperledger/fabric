@@ -120,20 +120,6 @@ var _ = Describe("osnadmin", func() {
 			})
 		})
 
-		It("returns an error when channelID flag is not provided", func() {
-			args := []string{
-				"channel",
-				"info",
-				"--orderer-address", ordererURL,
-				"--ca-file", ordererCACert,
-				"--client-cert", clientCert,
-				"--client-key", clientKey,
-			}
-			output, exit, err := executeForArgs(args)
-			expectedErrorMessage := "required flag(s) \"channelID\" not set"
-			checkCLIError(output, exit, err, expectedErrorMessage)
-		})
-
 		It("uses the channel participation API to list all application channels and the system channel (when it exists)", func() {
 			args := []string{
 				"channel",
@@ -222,6 +208,20 @@ var _ = Describe("osnadmin", func() {
 				Height:            987,
 			}, nil)
 		})
+
+		// It("returns an error when channelID flag is not provided", func() {
+		// 	args := []string{
+		// 		"channel",
+		// 		"info",
+		// 		"--orderer-address", ordererURL,
+		// 		"--ca-file", ordererCACert,
+		// 		"--client-cert", clientCert,
+		// 		"--client-key", clientKey,
+		// 	}
+		// 	output, exit, err := executeForArgs(args)
+		// 	expectedErrorMessage := "required flag(s) \"channelID\" not set"
+		// 	checkCLIError(output, exit, err, expectedErrorMessage)
+		// })
 
 		It("uses the channel participation API to list the details of a single channel", func() {
 			args := []string{

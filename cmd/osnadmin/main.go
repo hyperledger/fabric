@@ -58,7 +58,7 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 	infoChannelID := info.Flag("channelID", "Channel ID").Short('c').Required().String()
 
 	remove := channel.Command("remove", "Remove a channel from an Ordering Service Node (OSN).")
-	removeChannelID := remove.Flag("channelID", "Channel ID").Short('c').Required().String()
+	removeChannelID := remove.Flag("channelID", "Channel ID").Short('c').String()
 
 	command, err := app.Parse(args)
 	if err != nil {
