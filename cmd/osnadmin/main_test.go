@@ -209,20 +209,6 @@ var _ = Describe("osnadmin", func() {
 			}, nil)
 		})
 
-		// It("returns an error when channelID flag is not provided", func() {
-		// 	args := []string{
-		// 		"channel",
-		// 		"info",
-		// 		"--orderer-address", ordererURL,
-		// 		"--ca-file", ordererCACert,
-		// 		"--client-cert", clientCert,
-		// 		"--client-key", clientKey,
-		// 	}
-		// 	output, exit, err := executeForArgs(args)
-		// 	expectedErrorMessage := "required flag(s) \"channelID\" not set"
-		// 	checkCLIError(output, exit, err, expectedErrorMessage)
-		// })
-
 		It("uses the channel participation API to list the details of a single channel", func() {
 			args := []string{
 				"channel",
