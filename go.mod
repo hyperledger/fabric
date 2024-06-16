@@ -37,7 +37,7 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.5.9
 	go.etcd.io/etcd/raft/v3 v3.5.9
 	go.etcd.io/etcd/server/v3 v3.5.9
-	go.uber.org/zap v1.26.0
+	go.uber.org/zap v1.27.0
 	google.golang.org/grpc v1.61.0
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
