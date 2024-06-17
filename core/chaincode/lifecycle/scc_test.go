@@ -11,8 +11,6 @@ import (
 	"encoding/gob"
 	"fmt"
 
-	"github.com/hyperledger/fabric/core/ledger"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-chaincode-go/shim"
 	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
@@ -25,11 +23,11 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/dispatcher"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/pkg/errors"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 )
 
 var _ = Describe("SCC", func() {
@@ -1247,6 +1245,8 @@ var _ = Describe("SCC", func() {
 				chname, ccname, cd, pubState, orgStates := fakeSCCFuncs.CheckCommitReadinessArgsForCall(0)
 				Expect(chname).To(Equal("test-channel"))
 				Expect(ccname).To(Equal("name"))
+				colls, ok := proto.Clone(arg.Collections).(*pb.CollectionConfigPackage)
+				Expect(ok).To(BeTrue())
 				Expect(cd).To(Equal(&lifecycle.ChaincodeDefinition{
 					Sequence: 7,
 					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
@@ -1258,7 +1258,7 @@ var _ = Describe("SCC", func() {
 						ValidationPlugin:    "validation-plugin",
 						ValidationParameter: []byte("validation-parameter"),
 					},
-					Collections: arg.Collections,
+					Collections: colls,
 				}))
 				Expect(pubState).To(Equal(fakeStub))
 				Expect(orgStates).To(HaveLen(2))
