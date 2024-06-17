@@ -94,7 +94,7 @@ func getLeaderID(
 		return nodes[view%n]
 	}
 
-	for i := 0; i < len(nodes); i++ {
+	for i := range len(nodes) {
 		index := (view + (decisionsInView / decisionsPerLeader)) + uint64(i)
 		node := nodes[index%n]
 		_, exists := blackListed[node]
@@ -552,7 +552,7 @@ func equalIntLists(a, b []uint64) bool {
 		return false
 	}
 
-	for i := 0; i < len(a); i++ {
+	for i := range len(a) {
 		if a[i] != b[i] {
 			return false
 		}

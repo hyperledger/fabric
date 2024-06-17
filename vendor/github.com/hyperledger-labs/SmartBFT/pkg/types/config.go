@@ -6,9 +6,8 @@
 package types
 
 import (
+	"errors"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 // Configuration defines the parameters needed in order to create an instance of Consensus.
@@ -78,11 +77,11 @@ type Configuration struct {
 	// DecisionsPerLeader is the number of decisions reached by a leader before there is a leader rotation.
 	DecisionsPerLeader uint64
 
-	// RequestMaxBytes total allowed size of the single request
+	// RequestMaxBytes total allowed size of a single request.
 	RequestMaxBytes uint64
 
-	// RequestPoolSubmitTimeout the total amount of time client can wait for submission of single
-	// request into request pool
+	// RequestPoolSubmitTimeout the total amount of time a client can wait for the submission of a single
+	// request into the request pool.
 	RequestPoolSubmitTimeout time.Duration
 }
 
@@ -115,72 +114,73 @@ var DefaultConfig = Configuration{
 
 func (c Configuration) Validate() error {
 	if c.SelfID == 0 {
-		return errors.Errorf("SelfID is lower than or equal to zero")
+		return errors.New("SelfID should be greater than zero")
 	}
 	if c.RequestBatchMaxCount == 0 {
-		return errors.Errorf("RequestBatchMaxCount should be greater than zero")
+		return errors.New("RequestBatchMaxCount should be greater than zero")
 	}
 	if c.RequestBatchMaxBytes == 0 {
-		return errors.Errorf("RequestBatchMaxBytes should be greater than zero")
+		return errors.New("RequestBatchMaxBytes should be greater than zero")
 	}
 	if c.RequestBatchMaxInterval <= 0 {
-		return errors.Errorf("RequestBatchMaxInterval should be greater than zero")
+		return errors.New("RequestBatchMaxInterval should be greater than zero")
 	}
 	if c.IncomingMessageBufferSize == 0 {
-		return errors.Errorf("IncomingMessageBufferSize should be greater than zero")
+		return errors.New("IncomingMessageBufferSize should be greater than zero")
 	}
 	if c.RequestPoolSize == 0 {
-		return errors.Errorf("RequestPoolSize should be greater than zero")
+		return errors.New("RequestPoolSize should be greater than zero")
 	}
 	if c.RequestForwardTimeout <= 0 {
-		return errors.Errorf("RequestForwardTimeout should be greater than zero")
+		return errors.New("RequestForwardTimeout should be greater than zero")
 	}
 	if c.RequestComplainTimeout <= 0 {
-		return errors.Errorf("RequestComplainTimeout should be greater than zero")
+		return errors.New("RequestComplainTimeout should be greater than zero")
 	}
 	if c.RequestAutoRemoveTimeout <= 0 {
-		return errors.Errorf("RequestAutoRemoveTimeout should be greater than zero")
+		return errors.New("RequestAutoRemoveTimeout should be greater than zero")
 	}
 	if c.ViewChangeResendInterval <= 0 {
-		return errors.Errorf("ViewChangeResendInterval should be greater than zero")
+		return errors.New("ViewChangeResendInterval should be greater than zero")
 	}
 	if c.ViewChangeTimeout <= 0 {
-		return errors.Errorf("ViewChangeTimeout should be greater than zero")
+		return errors.New("ViewChangeTimeout should be greater than zero")
 	}
 	if c.LeaderHeartbeatTimeout <= 0 {
-		return errors.Errorf("LeaderHeartbeatTimeout should be greater than zero")
+		return errors.New("LeaderHeartbeatTimeout should be greater than zero")
 	}
 	if c.LeaderHeartbeatCount == 0 {
-		return errors.Errorf("LeaderHeartbeatCount should be greater than zero")
+		return errors.New("LeaderHeartbeatCount should be greater than zero")
 	}
 	if c.NumOfTicksBehindBeforeSyncing == 0 {
-		return errors.Errorf("NumOfTicksBehindBeforeSyncing should be greater than zero")
+		return errors.New("NumOfTicksBehindBeforeSyncing should be greater than zero")
 	}
 	if c.CollectTimeout <= 0 {
-		return errors.Errorf("CollectTimeout should be greater than zero")
+		return errors.New("CollectTimeout should be greater than zero")
 	}
 	if c.RequestBatchMaxCount > c.RequestBatchMaxBytes {
-		return errors.Errorf("RequestBatchMaxCount is bigger than RequestBatchMaxBytes")
+		return errors.New("RequestBatchMaxCount is bigger than RequestBatchMaxBytes")
 	}
 	if c.RequestForwardTimeout > c.RequestComplainTimeout {
-		return errors.Errorf("RequestForwardTimeout is bigger than RequestComplainTimeout")
+		return errors.New("RequestForwardTimeout is bigger than RequestComplainTimeout")
 	}
 	if c.RequestComplainTimeout > c.RequestAutoRemoveTimeout {
-		return errors.Errorf("RequestComplainTimeout is bigger than RequestAutoRemoveTimeout")
+		return errors.New("RequestComplainTimeout is bigger than RequestAutoRemoveTimeout")
 	}
 	if c.ViewChangeResendInterval > c.ViewChangeTimeout {
-		return errors.Errorf("ViewChangeResendInterval is bigger than ViewChangeTimeout")
+		return errors.New("ViewChangeResendInterval is bigger than ViewChangeTimeout")
 	}
-	if c.LeaderRotation && c.DecisionsPerLeader <= 0 {
-		return errors.Errorf("DecisionsPerLeader should be greater than zero when leader rotation is active")
+	if c.LeaderRotation && c.DecisionsPerLeader == 0 {
+		return errors.New("DecisionsPerLeader should be greater than zero when leader rotation is active")
 	}
-
+	if !c.LeaderRotation && c.DecisionsPerLeader != 0 {
+		return errors.New("DecisionsPerLeader should be zero when leader rotation is off")
+	}
 	if c.RequestMaxBytes == 0 {
-		return errors.Errorf("RequestMaxBytes should be greater than zero")
+		return errors.New("RequestMaxBytes should be greater than zero")
 	}
-
 	if c.RequestPoolSubmitTimeout <= 0 {
-		return errors.Errorf("RequestPoolSubmitTimeout should be greater than zero")
+		return errors.New("RequestPoolSubmitTimeout should be greater than zero")
 	}
 
 	return nil

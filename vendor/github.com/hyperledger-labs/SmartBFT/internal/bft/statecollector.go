@@ -105,8 +105,7 @@ func (s *StateCollector) collectedEnoughEqualVotes() *types.ViewAndSeq {
 		return nil
 	}
 	votesMap := make(map[types.ViewAndSeq]uint64)
-	num := len(s.responses.votes)
-	for i := 0; i < num; i++ {
+	for range len(s.responses.votes) {
 		vote := <-s.responses.votes
 		response := vote.GetStateTransferResponse()
 		if response == nil {
