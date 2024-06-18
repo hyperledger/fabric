@@ -103,14 +103,14 @@ func TestNewPolicyErrorCase(t *testing.T) {
 	pol1, msg1, err1 := provider.NewPolicy([]byte{0})
 	require.Nil(t, pol1)
 	require.Nil(t, msg1)
-	require.ErrorContains(t, err1, "Error unmarshalling to SignaturePolicy")
+	require.ErrorContains(t, err1, "error unmarshalling to SignaturePolicy")
 
 	sigPolicy2 := &cb.SignaturePolicyEnvelope{Version: -1}
 	data2 := marshalOrPanic(sigPolicy2)
 	pol2, msg2, err2 := provider.NewPolicy(data2)
 	require.Nil(t, pol2)
 	require.Nil(t, msg2)
-	require.EqualError(t, err2, "This evaluator only understands messages of version 0, but version was -1")
+	require.EqualError(t, err2, "this evaluator only understands messages of version 0, but version was -1")
 
 	pol3, msg3, err3 := provider.NewPolicy([]byte{})
 	require.Nil(t, pol3)

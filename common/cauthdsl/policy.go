@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package cauthdsl
 
 import (
-	"fmt"
-
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/policies"
@@ -32,11 +30,11 @@ func NewPolicyProvider(deserializer msp.IdentityDeserializer) policies.Provider 
 func (pr *provider) NewPolicy(data []byte) (policies.Policy, proto.Message, error) {
 	sigPolicy := &cb.SignaturePolicyEnvelope{}
 	if err := proto.Unmarshal(data, sigPolicy); err != nil {
-		return nil, nil, fmt.Errorf("Error unmarshalling to SignaturePolicy: %s", err)
+		return nil, nil, errors.Wrap(err, "error unmarshalling to SignaturePolicy")
 	}
 
 	if sigPolicy.Version != 0 {
-		return nil, nil, fmt.Errorf("This evaluator only understands messages of version 0, but version was %d", sigPolicy.Version)
+		return nil, nil, errors.Errorf("this evaluator only understands messages of version 0, but version was %d", sigPolicy.Version)
 	}
 
 	compiled, err := compile(sigPolicy.Rule, sigPolicy.Identities)
@@ -97,7 +95,7 @@ func (p *policy) EvaluateSignedData(signatureSet []*protoutil.SignedData) error 
 // they satisfy the policy
 func (p *policy) EvaluateIdentities(identities []msp.Identity) error {
 	if p == nil {
-		return fmt.Errorf("No such policy")
+		return errors.New("no such policy")
 	}
 
 	ok := p.evaluator(identities, make([]bool, len(identities)))
