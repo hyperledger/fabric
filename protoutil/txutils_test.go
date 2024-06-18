@@ -355,7 +355,7 @@ func TestCreateSignedEnvelope(t *testing.T) {
 	data := &cb.ConfigEnvelope{}
 	err = proto.Unmarshal(payload.Data, data)
 	require.NoError(t, err, "Expected payload data to be a config envelope")
-	require.Equal(t, msg, data, "Payload data does not match expected value")
+	require.True(t, proto.Equal(msg, data), "Payload data does not match expected value")
 
 	_, err = protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG, channelID,
 		id, &cb.ConfigEnvelope{}, int32(1), uint64(1))
@@ -378,7 +378,7 @@ func TestCreateSignedEnvelopeNilSigner(t *testing.T) {
 	data := &cb.ConfigEnvelope{}
 	err = proto.Unmarshal(payload.Data, data)
 	require.NoError(t, err, "Expected payload data to be a config envelope")
-	require.Equal(t, msg, data, "Payload data does not match expected value")
+	require.True(t, proto.Equal(msg, data), "Payload data does not match expected value")
 }
 
 func TestGetSignedProposal(t *testing.T) {

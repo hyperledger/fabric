@@ -445,7 +445,7 @@ func TestEnvelopeToConfigUpdate(t *testing.T) {
 	result, err := EnvelopeToConfigUpdate(env)
 
 	require.NoError(t, err, "EnvelopeToConfigUpdate runs without error for valid CONFIG_UPDATE envelope")
-	require.Equal(t, configUpdateEnv, result, "Correct configUpdateEnvelope returned")
+	require.True(t, proto.Equal(configUpdateEnv, result), "Correct configUpdateEnvelope returned")
 
 	// scenario 2: for invalid envelopes
 	env = makeEnv([]byte("test bytes"))

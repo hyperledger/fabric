@@ -417,8 +417,7 @@ func TestClient(t *testing.T) {
 		mychannel := r.ForChannel("mychannel")
 		conf, err := mychannel.Config()
 		require.NoError(t, err)
-		require.Equal(t, expectedConf.Msps, conf.Msps)
-		require.Equal(t, expectedConf.Orderers, conf.Orderers)
+		require.True(t, proto.Equal(expectedConf, conf))
 		peers, err := mychannel.Peers()
 		require.NoError(t, err)
 		// We should see all peers as provided above
