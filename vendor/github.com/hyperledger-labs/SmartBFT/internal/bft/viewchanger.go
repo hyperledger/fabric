@@ -6,6 +6,7 @@
 package bft
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -16,7 +17,6 @@ import (
 	"github.com/hyperledger-labs/SmartBFT/pkg/metrics/disabled"
 	"github.com/hyperledger-labs/SmartBFT/pkg/types"
 	protos "github.com/hyperledger-labs/SmartBFT/smartbftprotos"
-	"github.com/pkg/errors"
 )
 
 // ViewController controls the view
@@ -680,7 +680,7 @@ func (v *ViewChanger) extractCurrentSequence() (uint64, *protos.Proposal) {
 // ValidateLastDecision validates the given decision, and returns its sequence when valid
 func ValidateLastDecision(vd *protos.ViewData, quorum int, n uint64, verifier api.Verifier) (lastSequence uint64, err error) {
 	if vd.LastDecision == nil {
-		return 0, errors.Errorf("the last decision is not set")
+		return 0, errors.New("the last decision is not set")
 	}
 	if vd.LastDecision.Metadata == nil {
 		// This is a genesis proposal, there are no signatures to validate, so we return at this point
@@ -688,14 +688,14 @@ func ValidateLastDecision(vd *protos.ViewData, quorum int, n uint64, verifier ap
 	}
 	md := &protos.ViewMetadata{}
 	if err = proto.Unmarshal(vd.LastDecision.Metadata, md); err != nil {
-		return 0, errors.Errorf("unable to unmarshal last decision metadata, err: %v", err)
+		return 0, fmt.Errorf("unable to unmarshal last decision metadata, err: %w", err)
 	}
 	if md.ViewId >= vd.NextView {
-		return 0, errors.Errorf("last decision view %d is greater or equal to requested next view %d", md.ViewId, vd.NextView)
+		return 0, fmt.Errorf("last decision view %d is greater or equal to requested next view %d", md.ViewId, vd.NextView)
 	}
 	numSigs := len(vd.LastDecisionSignatures)
 	if numSigs < quorum {
-		return 0, errors.Errorf("there are only %d last decision signatures", numSigs)
+		return 0, fmt.Errorf("there are only %d last decision signatures", numSigs)
 	}
 	nodesMap := make(map[uint64]struct{}, n)
 	validSig := 0
@@ -716,12 +716,12 @@ func ValidateLastDecision(vd *protos.ViewData, quorum int, n uint64, verifier ap
 			VerificationSequence: int64(vd.LastDecision.VerificationSequence),
 		}
 		if _, err = verifier.VerifyConsenterSig(signature, proposal); err != nil {
-			return 0, errors.Errorf("last decision signature is invalid, error: %v", err)
+			return 0, fmt.Errorf("last decision signature is invalid, error: %w", err)
 		}
 		validSig++
 	}
 	if validSig < quorum {
-		return 0, errors.Errorf("there are only %d valid last decision signatures", validSig)
+		return 0, fmt.Errorf("there are only %d valid last decision signatures", validSig)
 	}
 	return md.LatestSequence, nil
 }
@@ -732,14 +732,14 @@ func ValidateInFlight(inFlightProposal *protos.Proposal, lastSequence uint64) er
 		return nil
 	}
 	if inFlightProposal.Metadata == nil {
-		return errors.Errorf("in flight proposal metadata is nil")
+		return errors.New("in flight proposal metadata is nil")
 	}
 	inFlightMetadata := &protos.ViewMetadata{}
 	if err := proto.Unmarshal(inFlightProposal.Metadata, inFlightMetadata); err != nil {
-		return errors.Errorf("unable to unmarshal the in flight proposal metadata, err: %v", err)
+		return fmt.Errorf("unable to unmarshal the in flight proposal metadata, err: %w", err)
 	}
 	if inFlightMetadata.LatestSequence != lastSequence+1 {
-		return errors.Errorf("the in flight proposal sequence is %d while the last decision sequence is %d", inFlightMetadata.LatestSequence, lastSequence)
+		return fmt.Errorf("the in flight proposal sequence is %d while the last decision sequence is %d", inFlightMetadata.LatestSequence, lastSequence)
 	}
 	return nil
 }
@@ -786,9 +786,8 @@ func (v *ViewChanger) processViewDataMsg() {
 
 // returns view data messages included in votes
 func (v *ViewChanger) getViewDataMessages() []*protos.ViewData {
-	num := len(v.viewDataMsgs.votes)
 	var messages []*protos.ViewData
-	for i := 0; i < num; i++ {
+	for range len(v.viewDataMsgs.votes) {
 		vt := <-v.viewDataMsgs.votes
 		vd := &protos.ViewData{}
 		if err := proto.Unmarshal(vt.GetViewData().RawViewData, vd); err != nil {
@@ -812,7 +811,7 @@ type proposalAndMetadata struct {
 }
 
 // CheckInFlight checks if there is an in-flight proposal that needs to be decided on (because a node might decided on it already)
-func CheckInFlight(messages []*protos.ViewData, f int, quorum int, N uint64, verifier api.Verifier) (ok, noInFlight bool, inFlightProposal *protos.Proposal, err error) {
+func CheckInFlight(messages []*protos.ViewData, f int, quorum int, n uint64, verifier api.Verifier) (ok, noInFlight bool, inFlightProposal *protos.Proposal, err error) {
 	expectedSequence := maxLastDecisionSequence(messages) + 1
 	possibleProposals := make([]*possibleProposal, 0)
 	proposalsAndMetadata := make([]*proposalAndMetadata, 0)
@@ -825,12 +824,12 @@ func CheckInFlight(messages []*protos.ViewData, f int, quorum int, N uint64, ver
 		}
 
 		if vd.InFlightProposal.Metadata == nil { // should have been validated earlier
-			return false, false, nil, errors.Errorf("Node has a view data message where the in flight proposal metadata is nil")
+			return false, false, nil, errors.New("Node has a view data message where the in flight proposal metadata is nil")
 		}
 
 		inFlightMetadata := &protos.ViewMetadata{}
 		if err = proto.Unmarshal(vd.InFlightProposal.Metadata, inFlightMetadata); err != nil { // should have been validated earlier
-			return false, false, nil, errors.Errorf("Node was unable to unmarshal the in flight proposal metadata, error: %v", err)
+			return false, false, nil, fmt.Errorf("Node was unable to unmarshal the in flight proposal metadata, error: %w", err)
 		}
 
 		proposalsAndMetadata = append(proposalsAndMetadata, &proposalAndMetadata{vd.InFlightProposal, inFlightMetadata})

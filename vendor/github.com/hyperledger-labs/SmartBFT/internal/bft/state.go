@@ -6,13 +6,13 @@
 package bft
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger-labs/SmartBFT/pkg/api"
 	"github.com/hyperledger-labs/SmartBFT/pkg/types"
 	protos "github.com/hyperledger-labs/SmartBFT/smartbftprotos"
-	"github.com/pkg/errors"
 )
 
 type StateRecorder struct {
@@ -84,7 +84,7 @@ func (ps *PersistedState) LoadNewViewIfApplicable() (*types.ViewAndSeq, error) {
 	lastPersistedMessage := &protos.SavedMessage{}
 	if err := proto.Unmarshal(lastEntry, lastPersistedMessage); err != nil {
 		ps.Logger.Errorf("Failed unmarshaling last entry from WAL: %v", err)
-		return nil, errors.Wrap(err, "failed unmarshaling last entry from WAL")
+		return nil, fmt.Errorf("failed unmarshaling last entry from WAL: %w", err)
 	}
 	if newViewMsg := lastPersistedMessage.GetNewView(); newViewMsg != nil {
 		ps.Logger.Infof("last entry in WAL is a newView record")
@@ -103,7 +103,7 @@ func (ps *PersistedState) LoadViewChangeIfApplicable() (*protos.ViewChange, erro
 	lastPersistedMessage := &protos.SavedMessage{}
 	if err := proto.Unmarshal(lastEntry, lastPersistedMessage); err != nil {
 		ps.Logger.Errorf("Failed unmarshaling last entry from WAL: %v", err)
-		return nil, errors.Wrap(err, "failed unmarshaling last entry from WAL")
+		return nil, fmt.Errorf("failed unmarshaling last entry from WAL: %w", err)
 	}
 	if viewChangeMsg := lastPersistedMessage.GetViewChange(); viewChangeMsg != nil {
 		ps.Logger.Infof("last entry in WAL is a viewChange message")
@@ -128,7 +128,7 @@ func (ps *PersistedState) Restore(v *View) error {
 	lastPersistedMessage := &protos.SavedMessage{}
 	if err := proto.Unmarshal(lastEntry, lastPersistedMessage); err != nil {
 		ps.Logger.Errorf("Failed unmarshaling last entry from WAL: %v", err)
-		return errors.Wrap(err, "failed unmarshaling last entry from WAL")
+		return fmt.Errorf("failed unmarshaling last entry from WAL: %w", err)
 	}
 
 	if proposed := lastPersistedMessage.GetProposedRecord(); proposed != nil {
@@ -149,7 +149,7 @@ func (ps *PersistedState) Restore(v *View) error {
 		return nil
 	}
 
-	return errors.Errorf("unrecognized record: %v", lastPersistedMessage)
+	return fmt.Errorf("unrecognized record: %v", lastPersistedMessage)
 }
 
 func (ps *PersistedState) recoverProposed(lastPersistedMessage *protos.ProposedRecord, v *View) error {
@@ -184,12 +184,12 @@ func (ps *PersistedState) recoverProposed(lastPersistedMessage *protos.ProposedR
 func (ps *PersistedState) recoverPrepared(lastPersistedMessage *protos.Message, v *View, entries [][]byte) error {
 	// Last entry is a commit, so we should have not pruned the previous pre-prepare
 	if len(entries) < 2 {
-		return fmt.Errorf("last message is a commit, but expected to also have a matching pre-prepare")
+		return errors.New("last message is a commit, but expected to also have a matching pre-prepare")
 	}
 	prePrepareMsg := &protos.SavedMessage{}
 	if err := proto.Unmarshal(entries[len(entries)-2], prePrepareMsg); err != nil {
 		ps.Logger.Errorf("Failed unmarshaling second last entry from WAL: %v", err)
-		return errors.Wrap(err, "failed unmarshaling last entry from WAL")
+		return fmt.Errorf("failed unmarshaling last entry from WAL: %w", err)
 	}
 
 	prePrepareFromWAL := prePrepareMsg.GetProposedRecord().GetPrePrepare()

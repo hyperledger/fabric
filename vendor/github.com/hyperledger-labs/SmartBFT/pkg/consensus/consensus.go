@@ -6,6 +6,8 @@
 package consensus
 
 import (
+	"errors"
+	"fmt"
 	"sort"
 	"strings"
 	"sync"
@@ -18,7 +20,6 @@ import (
 	"github.com/hyperledger-labs/SmartBFT/pkg/metrics/disabled"
 	"github.com/hyperledger-labs/SmartBFT/pkg/types"
 	protos "github.com/hyperledger-labs/SmartBFT/smartbftprotos"
-	"github.com/pkg/errors"
 )
 
 // Consensus submits requests to be total ordered,
@@ -106,7 +107,7 @@ func (c *Consensus) GetLeaderID() uint64 {
 
 func (c *Consensus) Start() error {
 	if err := c.ValidateConfiguration(c.Comm.Nodes()); err != nil {
-		return errors.Wrapf(err, "configuration is invalid")
+		return fmt.Errorf("configuration is invalid: %w", err)
 	}
 
 	if c.Metrics == nil {
@@ -309,7 +310,7 @@ func (c *Consensus) SubmitRequest(req []byte) error {
 	c.consensusLock.RLock()
 	defer c.consensusLock.RUnlock()
 	if c.GetLeaderID() == 0 {
-		return errors.Errorf("no leader")
+		return errors.New("no leader")
 	}
 	c.Logger.Debugf("Submit Request: %s", c.RequestInspector.RequestID(req))
 	return c.controller.SubmitRequest(req)
@@ -340,23 +341,23 @@ func (c *Consensus) proposalMaker() *algorithm.ProposalMaker {
 
 func (c *Consensus) ValidateConfiguration(nodes []uint64) error {
 	if err := c.Config.Validate(); err != nil {
-		return errors.Wrap(err, "bad configuration")
+		return fmt.Errorf("bad configuration: %w", err)
 	}
 
 	nodeSet := make(map[uint64]bool)
 	for _, val := range nodes {
 		if val == 0 {
-			return errors.Errorf("nodes contains node id 0 which is not permitted, nodes: %v", nodes)
+			return fmt.Errorf("nodes contains node id 0 which is not permitted, nodes: %v", nodes)
 		}
 		nodeSet[val] = true
 	}
 
 	if !nodeSet[c.Config.SelfID] {
-		return errors.Errorf("nodes does not contain the SelfID: %d, nodes: %v", c.Config.SelfID, nodes)
+		return fmt.Errorf("nodes does not contain the SelfID: %d, nodes: %v", c.Config.SelfID, nodes)
 	}
 
 	if len(nodeSet) != len(nodes) {
-		return errors.Errorf("nodes contains duplicate IDs, nodes: %v", nodes)
+		return fmt.Errorf("nodes contains duplicate IDs, nodes: %v", nodes)
 	}
 
 	return nil

@@ -21,7 +21,7 @@ var padTable [][]byte
 
 func init() {
 	padTable = make([][]byte, 8)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		padTable[i] = make([]byte, i)
 	}
 }
