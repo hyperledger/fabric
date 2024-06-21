@@ -14,7 +14,7 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 | Manish Sethi            | [manish-sethi][manish-sethi] | manish-sethi | <manish.sethi@gmail.com>
 | Senthilnathan Natarajan | [cendhu][cendhu] | Senthil1 | <cendhu@gmail.com>
 | Tatsuya Sato            | [satota2][satota2] | satota2 | <tatsuya.sato.so@hitachi.com>
-| Yacov Manevich          | [yacovm][yacovm] | yacovm | <yacov.manevich@ibm.com>
+| Yacov Manevich          | [yacovm][yacovm] | yacovm | <idontusefabric@gmail.com>
 | Yoav Tock               | [tock-ibm][tock-ibm] | tock-ibm | <tock@il.ibm.com>
 
 
