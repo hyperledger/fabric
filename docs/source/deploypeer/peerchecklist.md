@@ -146,10 +146,12 @@ gossip:
     # to pull ledger blocks from ordering service.
     useLeaderElection: false
 
-    # Statically defines peer to be an organization "leader",
-    # where this means that current peer will maintain connection
-    # with ordering service and disseminate block across peers in
-    # its own organization. Multiple peers or all peers in an organization
+    # Statically defines peer to be an organization "leader".
+    # Organization leaders maintain connection with ordering service
+    # and pulls blocks as they are created. Optionally, leader peers
+    # may disseminate pulled blocks to peers in its own organization
+    # based on the peer.deliveryclient.blockGossipEnabled setting.
+    # Multiple peers or all peers in an organization
     # may be configured as org leaders, so that they all pull
     # blocks directly from ordering service.
     orgLeader: true
@@ -187,7 +189,7 @@ Peers leverage the Gossip data dissemination protocol to broadcast ledger and ch
 
   - **`useLeaderElection:`** (Defaults to `false` as of v2.2, which is recommended so that peers get blocks from ordering service.) When `useLeaderElection` is set to false, you must configure at least one peer to be the org leader by setting `peer.gossip.orgLeader` to true. Set `useLeaderElection` to true if you prefer that peers use Gossip for block dissemination among peers in the organization.
 
-  - **`orgLeader:`** (Defaults to `true` as of v2.2, which is recommended so that peers get blocks from ordering service.) Set this value to `false` if you want to use Gossip for block dissemination among peers in the organization.
+  - **`orgLeader:`** (Defaults to `true` as of v2.2, which is recommended so that peers get blocks from ordering service.) Set this value to `true` so that the peer retrieves blocks from the ordering service.
 
   - **`state.enabled:`** (Defaults to `false` as of v2.2 which is recommended so that peers get blocks from ordering service.) Set this value to `true` when you want to use Gossip to sync up missing blocks, which allows a lagging peer to catch up with other peers on the network.
 
