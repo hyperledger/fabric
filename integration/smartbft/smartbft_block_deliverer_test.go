@@ -95,16 +95,14 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 
 		/* Create a network from the networkConfig */
 		network = nwo.New(networkConfig, testDir, client, StartPort(), components)
-		network.Profiles[0].SmartBFT = &nwo.SmartBFT{
-			LeaderHeartbeatTimeout: 10,
-			LeaderHeartbeatCount:   10,
-		}
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
 		for _, orderer := range network.Orderers {
-			runner := network.OrdererRunner(orderer)
-			runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=debug")
+			runner := network.OrdererRunner(orderer,
+				"FABRIC_LOGGING_SPEC=debug",
+				"ORDERER_GENERAL_BACKOFF_MAXDELAY=20s",
+			)
 			ordererRunners = append(ordererRunners, runner)
 			proc := ifrit.Invoke(runner)
 			ordererProcesses = append(ordererProcesses, proc)
@@ -363,6 +361,8 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		By("Bring up the last orderer")
 		o4Runner := network.OrdererRunner(network.Orderers[3], "FABRIC_LOGGING_SPEC=debug")
 		o4Proc = ifrit.Invoke(o4Runner)
+		ordererProcesses[3] = o4Proc
+
 		Eventually(o4Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 		By("Assert block censorship detected")

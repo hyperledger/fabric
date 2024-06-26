@@ -18,14 +18,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric-lib-go/common/flogging"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger-labs/SmartBFT/pkg/api"
 	"github.com/hyperledger-labs/SmartBFT/pkg/types"
 	"github.com/hyperledger-labs/SmartBFT/pkg/wal"
 	"github.com/hyperledger-labs/SmartBFT/smartbftprotos"
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -45,15 +44,15 @@ import (
 
 // ConfigInfo stores the block numbers which are configuration blocks
 type ConfigInfo struct {
-	t                  *testing.T
-	numsOfConfigBlocks []uint64
-	lock               sync.RWMutex
+	t                      *testing.T
+	numsOfConfigBlocks     []uint64
+	lock                   sync.RWMutex
+	leaderHeartbeatTimeout time.Duration
 }
 
 func NewConfigInfo(t *testing.T) *ConfigInfo {
 	return &ConfigInfo{
-		t:                  t,
-		numsOfConfigBlocks: []uint64{},
+		t: t,
 	}
 }
 
@@ -410,7 +409,7 @@ func (ns *NodeState) GetLedgerHeight() int {
 }
 
 func (ns *NodeState) WaitLedgerHeightToBe(height int) {
-	require.Eventually(ns.t, func() bool { return ns.GetLedgerHeight() == height }, 60*time.Second, 100*time.Millisecond)
+	require.Eventually(ns.t, func() bool { return ns.GetLedgerHeight() == height }, 2*time.Minute, 200*time.Millisecond)
 }
 
 func (ns *NodeState) GetLedgerArray() []*cb.Block {
@@ -450,6 +449,9 @@ func createBFTChainUsingMocks(t *testing.T, node *Node, configInfo *ConfigInfo) 
 	channelId := node.ChannelId
 
 	config := createBFTConfiguration(node)
+	if configInfo.leaderHeartbeatTimeout != 0 {
+		config.LeaderHeartbeatTimeout = configInfo.leaderHeartbeatTimeout
+	}
 
 	blockPuller := smartBFTMocks.NewBlockPuller(t)
 	blockPuller.EXPECT().Close().Maybe()
@@ -552,7 +554,7 @@ func createBFTChainUsingMocks(t *testing.T, node *Node, configInfo *ConfigInfo) 
 				return
 			}
 			t.Logf("Node %d requested SendTransaction to node %d", node.NodeId, targetNodeId)
-			err := node.sendRequest(node.NodeId, targetNodeId, message)
+			err = node.sendRequest(node.NodeId, targetNodeId, message)
 			require.NoError(t, err)
 		}).Maybe()
 	egressCommMock.EXPECT().SendConsensus(mock.Anything, mock.Anything).Run(

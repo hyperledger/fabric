@@ -182,7 +182,12 @@ func (mo *MockOrderer) deliverBlocks(
 		iterCh := make(chan struct{})
 		go func() {
 			if ledgerIdx > ledgerLastIdx {
-				time.Sleep(math.MaxInt64)
+				select {
+				case <-time.After(math.MaxInt64):
+				case <-ctx.Done():
+					close(iterCh)
+					return
+				}
 			}
 			block = mo.ledgerArray[ledgerIdx]
 			status = cb.Status_SUCCESS
