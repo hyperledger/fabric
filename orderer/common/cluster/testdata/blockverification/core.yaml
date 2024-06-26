@@ -114,10 +114,12 @@ peer:
         # connection with ordering service and use delivery protocol
         # to pull ledger blocks from ordering service.
         useLeaderElection: false
-        # Statically defines peer to be an organization "leader",
-        # where this means that current peer will maintain connection
-        # with ordering service and disseminate block across peers in
-        # its own organization. Multiple peers or all peers in an organization
+        # Statically defines peer to be an organization "leader".
+        # Organization leaders maintain connection with ordering service
+        # and pulls blocks as they are created. Optionally, leader peers
+        # may disseminate pulled blocks to peers in its own organization
+        # based on the peer.deliveryclient.blockGossipEnabled setting below.
+        # Multiple peers or all peers in an organization
         # may be configured as org leaders, so that they all pull
         # blocks directly from ordering service.
         orgLeader: true
@@ -242,10 +244,10 @@ peer:
 
         # Gossip state transfer related configuration
         state:
-            # indicates whenever state transfer is enabled or not
-            # default value is false, i.e. state transfer is active
-            # and takes care to sync up missing blocks allowing
-            # lagging peer to catch up to speed with rest network.
+            # Indicates whether state transfer is enabled.
+            # State transfer enabled allows a peer that is not a leader
+            # to sync up missed blocks from other peers.
+            # Default value is false since the recommended value of peer.gossip.orgleader is true.
             # Keep in mind that when peer.gossip.useLeaderElection is true
             # and there are several peers in the organization,
             # or peer.gossip.useLeaderElection is false alongside with
@@ -369,8 +371,8 @@ peer:
 
     # Delivery service related config
     deliveryclient:
-        # Enables this peer to disseminate blocks it pulled from the ordering service
-        # via gossip.
+        # Enables this peer to disseminate blocks it pulls from the ordering service
+        # to other peers in the same organization via gossip.
         # Note that 'gossip.state.enabled' controls point to point block replication
         # of blocks committed in the past.
         blockGossipEnabled: true
