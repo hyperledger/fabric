@@ -554,7 +554,7 @@ func createBFTChainUsingMocks(t *testing.T, node *Node, configInfo *ConfigInfo) 
 				return
 			}
 			t.Logf("Node %d requested SendTransaction to node %d", node.NodeId, targetNodeId)
-			err = node.sendRequest(node.NodeId, targetNodeId, message)
+			err := node.sendRequest(node.NodeId, targetNodeId, message)
 			require.NoError(t, err)
 		}).Maybe()
 	egressCommMock.EXPECT().SendConsensus(mock.Anything, mock.Anything).Run(
@@ -564,7 +564,7 @@ func createBFTChainUsingMocks(t *testing.T, node *Node, configInfo *ConfigInfo) 
 				return
 			}
 			t.Logf("Node %d requested SendConsensus to node %d of type <%s>", node.NodeId, targetNodeId, reflect.TypeOf(message.GetContent()))
-			err = node.sendMessage(node.NodeId, targetNodeId, message)
+			err := node.sendMessage(node.NodeId, targetNodeId, message)
 			require.NoError(t, err)
 		}).Maybe()
 
