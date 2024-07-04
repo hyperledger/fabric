@@ -8,6 +8,7 @@ package csp
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
@@ -24,8 +25,8 @@ import (
 
 // LoadPrivateKey loads a private key from a file in keystorePath.  It looks
 // for a file ending in "_sk" and expects a PEM-encoded PKCS8 EC private key.
-func LoadPrivateKey(keystorePath string) (*ecdsa.PrivateKey, error) {
-	var priv *ecdsa.PrivateKey
+func LoadPrivateKey(keystorePath string) (crypto.PrivateKey, error) {
+	var priv crypto.PrivateKey
 
 	walkFunc := func(path string, info os.FileInfo, pathErr error) error {
 		if !strings.HasSuffix(path, "_sk") {
@@ -53,7 +54,7 @@ func LoadPrivateKey(keystorePath string) (*ecdsa.PrivateKey, error) {
 	return priv, err
 }
 
-func parsePrivateKeyPEM(rawKey []byte) (*ecdsa.PrivateKey, error) {
+func parsePrivateKeyPEM(rawKey []byte) (crypto.PrivateKey, error) {
 	block, _ := pem.Decode(rawKey)
 	if block == nil {
 		return nil, errors.New("bytes are not PEM encoded")
@@ -64,17 +65,29 @@ func parsePrivateKeyPEM(rawKey []byte) (*ecdsa.PrivateKey, error) {
 		return nil, errors.WithMessage(err, "pem bytes are not PKCS8 encoded ")
 	}
 
-	priv, ok := key.(*ecdsa.PrivateKey)
-	if !ok {
-		return nil, errors.New("pem bytes do not contain an EC private key")
+	_, isEcdsa := key.(*ecdsa.PrivateKey)
+	_, isEd25519 := key.(ed25519.PrivateKey)
+	if !isEcdsa && !isEd25519 {
+		return nil, errors.New("pem bytes do not contain an ECDSA nor ed25519 private key")
 	}
-	return priv, nil
+
+	return key, nil
 }
 
-// GeneratePrivateKey creates an EC private key using a P-256 curve and stores
-// it in keystorePath.
-func GeneratePrivateKey(keystorePath string) (*ecdsa.PrivateKey, error) {
-	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+// GeneratePrivateKey creates an ecdsa private key using a P-256 curve or an ed25519 key
+// and stores it in keystorePath.
+func GeneratePrivateKey(keystorePath string, keyAlg string) (crypto.PrivateKey, error) {
+	var priv crypto.PrivateKey
+	var err error
+
+	switch keyAlg {
+	case "ecdsa":
+		priv, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	case "ed25519":
+		_, priv, err = ed25519.GenerateKey(rand.Reader)
+	default:
+		err = errors.WithMessagef(err, "Unsupported key algorithm: %s", keyAlg)
+	}
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to generate private key")
 	}
@@ -153,4 +166,20 @@ func toLowS(key ecdsa.PublicKey, sig ECDSASignature) ECDSASignature {
 
 type ECDSASignature struct {
 	R, S *big.Int
+}
+
+type ED25519Signer struct {
+	PrivateKey ed25519.PrivateKey
+}
+
+// Public returns the ed25519.PublicKey associated with PrivateKey.
+func (e *ED25519Signer) Public() crypto.PublicKey {
+	return e.PrivateKey.Public()
+}
+
+// Sign signs the digest
+func (e *ED25519Signer) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) ([]byte, error) {
+	sig := ed25519.Sign(e.PrivateKey, msg)
+
+	return sig, nil
 }

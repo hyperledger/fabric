@@ -8,6 +8,7 @@ package bft
 import (
 	"container/list"
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -15,7 +16,6 @@ import (
 	"github.com/hyperledger-labs/SmartBFT/pkg/api"
 	"github.com/hyperledger-labs/SmartBFT/pkg/metrics/disabled"
 	"github.com/hyperledger-labs/SmartBFT/pkg/types"
-	"github.com/pkg/errors"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -27,10 +27,10 @@ const (
 )
 
 var (
-	ErrReqAlreadyExists    = fmt.Errorf("request already exists")
-	ErrReqAlreadyProcessed = fmt.Errorf("request already processed")
-	ErrRequestTooBig       = fmt.Errorf("submitted request is too big")
-	ErrSubmitTimeout       = fmt.Errorf("timeout submitting to request pool")
+	ErrReqAlreadyExists    = errors.New("request already exists")
+	ErrReqAlreadyProcessed = errors.New("request already processed")
+	ErrRequestTooBig       = errors.New("submitted request is too big")
+	ErrSubmitTimeout       = errors.New("timeout submitting to request pool")
 )
 
 //go:generate mockery -dir . -name RequestTimeoutHandler -case underscore -output ./mocks/
@@ -191,7 +191,7 @@ func (rp *Pool) isClosed() bool {
 func (rp *Pool) Submit(request []byte) error {
 	reqInfo := rp.inspector.RequestID(request)
 	if rp.isClosed() {
-		return errors.Errorf("pool closed, request rejected: %s", reqInfo)
+		return fmt.Errorf("pool closed, request rejected: %s", reqInfo)
 	}
 
 	if uint64(len(request)) > rp.options.RequestMaxBytes {
@@ -227,7 +227,7 @@ func (rp *Pool) Submit(request []byte) error {
 		rp.metrics.CountOfFailAddRequestToPool.With(
 			rp.metrics.LabelsForWith("reason", api.ReasonSemaphoreAcquireFail)...,
 		).Add(1)
-		return errors.Wrapf(err, "acquiring semaphore for request: %s", reqInfo)
+		return fmt.Errorf("acquiring semaphore for request: %s: %w", reqInfo, err)
 	}
 
 	reqCopy := append(make([]byte, 0), request...)
@@ -308,7 +308,7 @@ func (rp *Pool) NextRequests(maxCount int, maxSizeBytes uint64, check bool) (bat
 	var totalSize uint64
 	batch = make([][]byte, 0, count)
 	element := rp.fifo.Front()
-	for i := 0; i < count; i++ {
+	for range count {
 		req := element.Value.(*requestItem).request
 		reqLen := uint64(len(req))
 		if totalSize+reqLen > maxSizeBytes {
@@ -380,7 +380,7 @@ func (rp *Pool) RemoveRequest(requestInfo types.RequestInfo) error {
 		rp.moveToDelSlice(requestInfo)
 		errStr := fmt.Sprintf("request %s is not in the pool at remove time", requestInfo)
 		rp.logger.Debugf(errStr)
-		return fmt.Errorf(errStr)
+		return errors.New(errStr)
 	}
 
 	rp.deleteRequest(element, requestInfo)

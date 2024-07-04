@@ -13,15 +13,14 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/internal/configtxlator/update"
 	smartBFTMocks "github.com/hyperledger/fabric/orderer/consensus/smartbft/mocks"
-	"github.com/stretchr/testify/mock"
-
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -361,6 +360,7 @@ func TestAddAndRemoveNodeWithoutStop(t *testing.T) {
 
 	// start a network
 	networkSetupInfo := NewNetworkSetupInfo(t, channelId, dir)
+	networkSetupInfo.configInfo.leaderHeartbeatTimeout = time.Minute
 	nodeMap := networkSetupInfo.CreateNodes(4)
 	networkSetupInfo.StartAllNodes()
 

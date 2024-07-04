@@ -81,6 +81,7 @@ To reduce network traffic, in Fabric v2.2 the default core.yaml is configured fo
 * `peer.gossip.useLeaderElection = false`
 * `peer.gossip.orgLeader = true`
 * `peer.gossip.state.enabled = false`
+* `peer.deliveryclient.blockGossipEnabled = false`
 
 If all peers have `orgLeader=true` (recommended), then each peer will get blocks from the ordering service.
 

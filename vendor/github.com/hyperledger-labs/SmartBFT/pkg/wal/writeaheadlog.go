@@ -7,6 +7,7 @@ package wal
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -19,7 +20,6 @@ import (
 	"github.com/hyperledger-labs/SmartBFT/pkg/api"
 	"github.com/hyperledger-labs/SmartBFT/pkg/metrics/disabled"
 	protos "github.com/hyperledger-labs/SmartBFT/smartbftprotos"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -762,44 +762,34 @@ func InitializeAndReadAll(
 	writeAheadLog, err = Create(logger, walDir, options)
 	if err != nil {
 		if !errors.Is(err, ErrWALAlreadyExists) {
-			err = errors.Wrap(err, "Cannot create Write-Ahead-Log")
-
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("Cannot create Write-Ahead-Log: %w", err)
 		}
 
 		logger.Infof("Write-Ahead-Log already exists at dir: %s; Trying to open", walDir)
 
 		writeAheadLog, err = Open(logger, walDir, options)
 		if err != nil {
-			err = errors.Wrap(err, "Cannot open Write-Ahead-Log")
-
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("Cannot open Write-Ahead-Log: %w", err)
 		}
 
 		initialState, err = writeAheadLog.ReadAll()
 		if err != nil {
 			if !errors.Is(err, io.ErrUnexpectedEOF) {
-				err = errors.Wrap(err, "Cannot read initial state from Write-Ahead-Log")
-
-				return nil, nil, err
+				return nil, nil, fmt.Errorf("Cannot read initial state from Write-Ahead-Log: %w", err)
 			}
 
 			logger.Infof("Received io.ErrUnexpectedEOF, trying to repair Write-Ahead-Log at dir: %s", walDir)
 
 			err = Repair(logger, walDir)
 			if err != nil {
-				err = errors.Wrap(err, "Cannot repair Write-Ahead-Log")
-
-				return nil, nil, err
+				return nil, nil, fmt.Errorf("Cannot repair Write-Ahead-Log: %w", err)
 			}
 
 			logger.Infof("Reading Write-Ahead-Log initial state after repair")
 
 			initialState, err = writeAheadLog.ReadAll()
 			if err != nil {
-				err = errors.Wrap(err, "Cannot initial state from Write-Ahead-Log, after repair")
-
-				return nil, nil, err
+				return nil, nil, fmt.Errorf("Cannot initial state from Write-Ahead-Log, after repair: %w", err)
 			}
 		}
 	}

@@ -160,6 +160,7 @@ type Network struct {
 	TLSEnabled               bool
 	GatewayEnabled           bool
 	OrdererReplicationPolicy string
+	PeerDeliveryClientPolicy string
 
 	PortsByOrdererID map[string]Ports
 	PortsByPeerID    map[string]Ports
@@ -186,11 +187,12 @@ func New(c *Config, rootDir string, dockerClient *docker.Client, startPort int, 
 		Components:   components,
 		DockerClient: dockerClient,
 
-		NetworkID:         runner.UniqueName(),
-		EventuallyTimeout: time.Minute,
-		MetricsProvider:   "prometheus",
-		PortsByOrdererID:  map[string]Ports{},
-		PortsByPeerID:     map[string]Ports{},
+		NetworkID:                runner.UniqueName(),
+		EventuallyTimeout:        time.Minute,
+		MetricsProvider:          "prometheus",
+		PortsByOrdererID:         map[string]Ports{},
+		PortsByPeerID:            map[string]Ports{},
+		PeerDeliveryClientPolicy: "",
 
 		Organizations:  c.Organizations,
 		Consensus:      c.Consensus,
@@ -1026,7 +1028,7 @@ func (n *Network) UpdateOrgAnchorPeers(o *Orderer, channelName, orgName string, 
 		ModPolicy: "Admins",
 	}
 
-	UpdateConfig(n, o, channelName, currentConfig, updatedConfig, false, peersInOrg[0], peersInOrg[0])
+	UpdateConfig(n, o, channelName, currentConfig, updatedConfig, false, peersInOrg[0], nil, peersInOrg[0])
 }
 
 // VerifyMembership checks that each peer has discovered the expected peers in
