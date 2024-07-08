@@ -80,11 +80,11 @@ Here are some examples of the `osnadmin channel info` command.
 
   Status: 200
   {
-  "name": "mychannel",
-  "url": "/participation/v1/channels/mychannel",
-  "consensusRelation": "consenter",
-  "status": "active",
-  "height": 3
+	"name": "mychannel",
+	"url": "/participation/v1/channels/mychannel",
+	"consensusRelation": "consenter",
+	"status": "active",
+	"height": 3
   }
 
   ```
