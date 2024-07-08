@@ -76,7 +76,7 @@ Here are some examples of the `osnadmin channel info` command.
 - Using the `--channel-id` flag to get detailed information for mychannel from the orderer at `orderer.example.com:9443`.
 
   ```
-  osnadmin channel info -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY --channel-id mychannel
+  osnadmin channel info -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY --channelID mychannel
 
   Status: 200
   {
