@@ -15,7 +15,7 @@ https://wiki.hyperledger.org/display/INTERN/Integrate+new+BFT+protocol+%28BDLS+c
 
 * Bi-weekly lab meeting.
 ```
-Next meeting: Thursday, April 11, 2024
+Next meeting: Thursday, July 11, 2024
 9:30am to 10:00am Eastern Time
 Repeats:
 Every 2 weeks on Thursday
