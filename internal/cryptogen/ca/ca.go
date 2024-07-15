@@ -9,12 +9,12 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
-	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
 	"math/big"
 	"net"
 	"os"
@@ -81,7 +81,10 @@ func NewCA(
 	subject.CommonName = name
 
 	template.Subject = subject
-	template.SubjectKeyId = computeSKI(priv)
+	template.SubjectKeyId, err = computeSKI(priv)
+	if err != nil {
+		return nil, err
+	}
 
 	x509Cert, err := genCertificate(
 		baseDir,
@@ -164,13 +167,17 @@ func (ca *CA) SignCertificate(
 }
 
 // compute Subject Key Identifier using RFC 7093, Section 2, Method 4
-func computeSKI(privKey crypto.PrivateKey) []byte {
+func computeSKI(privKey crypto.PrivateKey) ([]byte, error) {
 	var raw []byte
 
 	// Marshall the public key
 	switch kk := privKey.(type) {
 	case *ecdsa.PrivateKey:
-		raw = elliptic.Marshal(kk.Curve, kk.PublicKey.X, kk.PublicKey.Y)
+		ecdhKey, err := kk.ECDH()
+		if err != nil {
+			return nil, fmt.Errorf("private key transition failed: %w", err)
+		}
+		raw = ecdhKey.Bytes()
 	case ed25519.PrivateKey:
 		raw = kk.Public().(ed25519.PublicKey)
 	default:
@@ -178,7 +185,7 @@ func computeSKI(privKey crypto.PrivateKey) []byte {
 
 	// Hash it
 	hash := sha256.Sum256(raw)
-	return hash[:]
+	return hash[:], nil
 }
 
 // default template for X509 subject
