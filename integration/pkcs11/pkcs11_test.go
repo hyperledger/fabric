@@ -430,10 +430,10 @@ func generateKeyPair(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle) (*ecdsa.PublicK
 
 	// convert pub key to ansi types
 	nistCurve := elliptic.P256()
-	x, y := elliptic.Unmarshal(nistCurve, ecpt)
-	if x == nil {
-		Expect(x).NotTo(BeNil(), "Failed Unmarshalling Public Key")
-	}
+	x := new(big.Int).SetBytes(ecpt[1:33])
+	y := new(big.Int).SetBytes(ecpt[33:])
+	Expect(x).NotTo(BeNil(), "Failed Unmarshalling Public Key")
+	Expect(y).NotTo(BeNil(), "Failed Unmarshalling Public Key")
 
 	pubKey := &ecdsa.PublicKey{Curve: nistCurve, X: x, Y: y}
 
