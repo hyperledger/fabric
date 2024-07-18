@@ -104,7 +104,7 @@ type PrivateDataConfig struct {
 	// BatchesInterval is the minimum duration (milliseconds) between batches
 	// for converting ineligible missing data entries into eligible entries.
 	BatchesInterval int
-	// MatchBatchSize is the maximum size of batches when converting ineligible
+	// MaxBatchSize is the maximum size of batches when converting ineligible
 	// missing data entries into eligible entries.
 	MaxBatchSize int
 	// PurgeInterval is the number of blocks to wait until purging expired
@@ -310,7 +310,7 @@ type TxSimulator interface {
 	SetState(namespace string, key string, value []byte) error
 	// DeleteState deletes the given namespace and key
 	DeleteState(namespace string, key string) error
-	// SetMultipleKeys sets the values for multiple keys in a single call
+	// SetStateMultipleKeys sets the values for multiple keys in a single call
 	SetStateMultipleKeys(namespace string, kvs map[string][]byte) error
 	// SetStateMetadata sets the metadata associated with an existing key-tuple <namespace, key>
 	SetStateMetadata(namespace, key string, metadata map[string][]byte) error

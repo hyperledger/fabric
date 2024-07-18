@@ -69,7 +69,7 @@ type kvLedger struct {
 	hashProvider    ledger.HashProvider
 	config          *ledger.Config
 
-	// isPvtDataStoreAheadOfBlockStore is read during missing pvtData
+	// isPvtstoreAheadOfBlkstore is read during missing pvtData
 	// reconciliation and may be updated during a regular block commit.
 	// Hence, we use atomic value to ensure consistent read.
 	isPvtstoreAheadOfBlkstore atomic.Value
