@@ -11,6 +11,6 @@ Smart contract APIs are available for Go, Node.js, and Java.
 
 ## Fabric Application APIs
 
-Hyperledger Fabric offers a APIs to support developing client applications in Go, Node.js, and Java.
+Hyperledger Fabric offers application APIs to support developing client applications in Go, Node.js, and Java.
 
 - [Fabric Gateway client API](https://github.com/hyperledger/fabric-gateway) and [documentation](https://hyperledger.github.io/fabric-gateway/).
