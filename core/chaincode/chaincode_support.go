@@ -79,7 +79,7 @@ type ChaincodeSupport struct {
 // blocks until the peer side handler gets into ready state or encounters a fatal
 // error. If the chaincode is already running, it simply returns.
 func (cs *ChaincodeSupport) Launch(ccid string) (*Handler, error) {
-	if h := cs.HandlerRegistry.Handler(ccid); h != nil {
+	if h := cs.HandlerRegistry.Handler(ccid); h != nil && h.State() == Ready {
 		return h, nil
 	}
 

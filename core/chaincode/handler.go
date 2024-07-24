@@ -131,6 +131,8 @@ type Handler struct {
 	// Metrics holds chaincode handler metrics
 	Metrics *HandlerMetrics
 
+	// stateLock is used to read and set State.
+	stateLock sync.RWMutex
 	// state holds the current handler state. It will be created, established, or
 	// ready.
 	state State
@@ -152,19 +154,23 @@ type Handler struct {
 
 // handleMessage is called by ProcessStream to dispatch messages.
 func (h *Handler) handleMessage(msg *pb.ChaincodeMessage) error {
-	chaincodeLogger.Debugf("[%s] Fabric side handling ChaincodeMessage of type: %s in state %s", shorttxid(msg.Txid), msg.Type, h.state)
+	h.stateLock.RLock()
+	state := h.state
+	h.stateLock.RUnlock()
+
+	chaincodeLogger.Debugf("[%s] Fabric side handling ChaincodeMessage of type: %s in state %s", shorttxid(msg.Txid), msg.Type, state)
 
 	if msg.Type == pb.ChaincodeMessage_KEEPALIVE {
 		return nil
 	}
 
-	switch h.state {
+	switch state {
 	case Created:
 		return h.handleMessageCreatedState(msg)
 	case Ready:
 		return h.handleMessageReadyState(msg)
 	default:
-		return errors.Errorf("handle message: invalid state %s for transaction %s", h.state, msg.Txid)
+		return errors.Errorf("handle message: invalid state %s for transaction %s", state, msg.Txid)
 	}
 }
 
@@ -443,7 +449,9 @@ func (h *Handler) sendReady() error {
 		return err
 	}
 
+	h.stateLock.Lock()
 	h.state = Ready
+	h.stateLock.Unlock()
 
 	chaincodeLogger.Debugf("Changed to state ready for chaincode %s", h.chaincodeID)
 
@@ -468,7 +476,11 @@ func (h *Handler) notifyRegistry(err error) {
 
 // handleRegister is invoked when chaincode tries to register.
 func (h *Handler) HandleRegister(msg *pb.ChaincodeMessage) {
-	chaincodeLogger.Debugf("Received %s in state %s", msg.Type, h.state)
+	h.stateLock.RLock()
+	state := h.state
+	h.stateLock.RUnlock()
+
+	chaincodeLogger.Debugf("Received %s in state %s", msg.Type, state)
 	chaincodeID := &pb.ChaincodeID{}
 	err := proto.Unmarshal(msg.Payload, chaincodeID)
 	if err != nil {
@@ -498,7 +510,9 @@ func (h *Handler) HandleRegister(msg *pb.ChaincodeMessage) {
 		return
 	}
 
+	h.stateLock.Lock()
 	h.state = Established
+	h.stateLock.Unlock()
 
 	chaincodeLogger.Debugf("Changed state to established for %s", h.chaincodeID)
 
@@ -1260,8 +1274,13 @@ func (h *Handler) getCollectionStore(channelID string) privdata.CollectionStore 
 	)
 }
 
-func (h *Handler) State() State { return h.state }
-func (h *Handler) Close()       { h.TXContexts.Close() }
+func (h *Handler) State() State {
+	h.stateLock.RLock()
+	defer h.stateLock.RUnlock()
+
+	return h.state
+}
+func (h *Handler) Close() { h.TXContexts.Close() }
 
 type State int
 
