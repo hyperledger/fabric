@@ -237,6 +237,7 @@ func (p *Provider) initStateDBProvider() error {
 		p.initializer.HealthCheckRegistry,
 		stateDBConfig,
 		sysNamespaces,
+		p.initializer.MembershipInfoProvider.MyImplicitCollectionName(),
 	)
 	return err
 }
