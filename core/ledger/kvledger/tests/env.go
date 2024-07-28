@@ -317,7 +317,7 @@ type membershipInfoProvider struct {
 
 func (p *membershipInfoProvider) AmMemberOf(channelName string, collectionPolicyConfig *peer.CollectionPolicyConfig) (bool, error) {
 	members := convertFromMemberOrgsPolicy(collectionPolicyConfig)
-	fmt.Printf("memebers = %s\n", members)
+	fmt.Printf("members = %s\n", members)
 	for _, m := range members {
 		if m == p.myOrgMSPID {
 			return true, nil

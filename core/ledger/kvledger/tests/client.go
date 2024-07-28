@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// client helps in a transction simulation. The client keeps accumlating the results of each simulated transaction
+// client helps in a transaction simulation. The client keeps accumulating the results of each simulated transaction
 // in a slice and at a later stage can be used to cut a test block for committing.
 // In a test, for each instantiated ledger, a single instance of a client is typically sufficient.
 type client struct {
