@@ -448,13 +448,11 @@ peer:
     #     library: /etc/hyperledger/fabric/plugin/escc.so
     handlers:
         authFilters:
-          -
-            name: DefaultAuth
-          -
-            name: ExpirationCheck    # This filter checks identity x509 certificate expiration
+          - name: DefaultAuth
+          - name: ExpirationCheck # This filter checks identity x509 certificate expiration
+          - name: TimeWindowCheck # This filter checks Timestamp in TimeWindow
         decorators:
-          -
-            name: DefaultDecorator
+          - name: DefaultDecorator
         endorsers:
           escc:
             name: DefaultEndorsement

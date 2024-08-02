@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package library
 
 import (
+	"time"
+
 	"github.com/hyperledger/fabric/core/handlers/auth"
 	"github.com/hyperledger/fabric/core/handlers/auth/filter"
 	"github.com/hyperledger/fabric/core/handlers/decoration"
@@ -19,7 +21,9 @@ import (
 
 // HandlerLibrary is used to assert
 // how to create the various handlers
-type HandlerLibrary struct{}
+type HandlerLibrary struct {
+	authenticationTimeWindow time.Duration
+}
 
 // DefaultAuth creates a default auth.Filter
 // that doesn't do any access control checks - simply
@@ -34,6 +38,12 @@ func (r *HandlerLibrary) DefaultAuth() auth.Filter {
 // from identities with expired x509 certificates
 func (r *HandlerLibrary) ExpirationCheck() auth.Filter {
 	return filter.NewExpirationCheckFilter()
+}
+
+// TimeWindowCheck is an auth filter which blocks requests
+// from identities with Timestamp not in window
+func (r *HandlerLibrary) TimeWindowCheck() auth.Filter {
+	return filter.NewTimeWindowCheckFilter(r.authenticationTimeWindow)
 }
 
 // DefaultDecorator creates a default decorator
