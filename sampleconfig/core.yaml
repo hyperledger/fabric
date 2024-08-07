@@ -310,7 +310,8 @@ peer:
     # client messages
     authentication:
         # the acceptable difference between the current server time and the
-        # client's time as specified in a client request message
+        # client's time as specified in a client request message.
+        # timewindow is checked on requests to the delivery service only.
         timewindow: 15m
 
     # Path on the file system where peer will store data (eg ledger). This
