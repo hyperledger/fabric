@@ -162,7 +162,8 @@ General:
     # client messages
     Authentication:
         # the acceptable difference between the current server time and the
-        # client's time as specified in a client request message
+        # client's time as specified in a client request message.
+        # TimeWindow is checked on requests to the delivery service only.
         TimeWindow: 15m
 
 
