@@ -10,6 +10,7 @@ each orderer.
 
 The `osnadmin channel` command has the following subcommands:
 
-  * join
-  * list
-  * remove
+- join
+- list
+- info
+- remove
