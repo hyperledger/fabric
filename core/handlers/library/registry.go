@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric/core/handlers/auth"
@@ -47,10 +48,11 @@ const (
 )
 
 type registry struct {
-	filters    []auth.Filter
-	decorators []decoration.Decorator
-	endorsers  map[string]endorsement2.PluginFactory
-	validators map[string]validation.PluginFactory
+	filters                  []auth.Filter
+	decorators               []decoration.Decorator
+	endorsers                map[string]endorsement2.PluginFactory
+	validators               map[string]validation.PluginFactory
+	authenticationTimeWindow time.Duration
 }
 
 var (
@@ -63,8 +65,9 @@ var (
 func InitRegistry(c Config) Registry {
 	once.Do(func() {
 		reg = registry{
-			endorsers:  make(map[string]endorsement2.PluginFactory),
-			validators: make(map[string]validation.PluginFactory),
+			endorsers:                make(map[string]endorsement2.PluginFactory),
+			validators:               make(map[string]validation.PluginFactory),
+			authenticationTimeWindow: c.AuthenticationTimeWindow,
 		}
 		reg.loadHandlers(c)
 	})
@@ -100,7 +103,9 @@ func (r *registry) evaluateModeAndLoad(c *HandlerConfig, handlerType HandlerType
 
 // loadCompiled loads a statically compiled handler
 func (r *registry) loadCompiled(handlerFactory string, handlerType HandlerType, extraArgs ...string) {
-	registryMD := reflect.ValueOf(&HandlerLibrary{})
+	registryMD := reflect.ValueOf(&HandlerLibrary{
+		authenticationTimeWindow: r.authenticationTimeWindow,
+	})
 
 	o := registryMD.MethodByName(handlerFactory)
 	if !o.IsValid() {
