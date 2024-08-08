@@ -1,7 +1,25 @@
 Maintainers
 ===========
 
-See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io/en/latest/CONTRIBUTING.html#maintainers) to learn about the role of the maintainers and the process to become one.
+The maintainers defined in this file provide governance, technical oversight, and code reviews for the following repositories:
+- [fabric](https://github.com/hyperledger/fabric)
+- [fabric-amcl](https://github.com/hyperledger/fabric-amcl)
+- [fabric-ca](https://github.com/hyperledger/fabric-ca)
+- [fabric-chaincode-go](https://github.com/hyperledger/fabric-chaincode-go)
+- [fabric-chaincode-java](https://github.com/hyperledger/fabric-chaincode-java)
+- [fabric-chaincode-node](https://github.com/hyperledger/fabric-chaincode-node)
+- [fabric-config](https://github.com/hyperledger/fabric-config)
+- [fabric-contract-api-go](https://github.com/hyperledger/fabric-contract-api-go)
+- [fabric-gateway](https://github.com/hyperledger/fabric-gateway)
+- [fabric-lib-go](https://github.com/hyperledger/fabric-lib-go)
+- [fabric-protos](https://github.com/hyperledger/fabric-protos)
+- [fabric-protos-go](https://github.com/hyperledger/fabric-protos-go)
+- [fabric-protos-go-apiv2](https://github.com/hyperledger/fabric-protos-go-apiv2)
+- [fabric-rfcs](https://github.com/hyperledger/fabric-rfcs)
+- [fabric-samples](https://github.com/hyperledger/fabric-samples)
+- [fabric-test](https://github.com/hyperledger/fabric-test)
+
+See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io/en/latest/CONTRIBUTING.html#maintainers) to learn more about the role of the maintainers and the process to become one.
 
 **Active Maintainers**
 
@@ -12,6 +30,7 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 | Artem Barger            | [c0rwin][c0rwin] | c0rwin | <artem@bargr.net>
 | Dave Enyeart            | [denyeart][denyeart] | dave.enyeart | <enyeart@us.ibm.com>
 | Manish Sethi            | [manish-sethi][manish-sethi] | manish-sethi | <manish.sethi@gmail.com>
+| Mark Lewis              | [bestbeforetoday][bestbeforetoday] | bestbeforetoday | <Mark.S.Lewis@outlook.com>
 | Tatsuya Sato            | [satota2][satota2] | satota2 | <tatsuya.sato.so@hitachi.com>
 | Yacov Manevich          | [yacovm][yacovm] | yacovm | <yacov.manevich@gmail.com>
 | Yoav Tock               | [tock-ibm][tock-ibm] | tock-ibm | <tock@il.ibm.com>
@@ -60,6 +79,7 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 
 [ale-linux]: https://github.com/ale-linux
 [andrew-coleman]: https://github.com/andrew-coleman
+[bestbeforetoday]: https://github.com/bestbeforetoday
 [binhn]: https://github.com/binhn
 [lindluni]: https://github.com/lindluni
 [c0rwin]: https://github.com/c0rwin
@@ -78,7 +98,7 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 [jyellick]: https://github.com/jyellick
 [kchristidis]: https://github.com/kchristidis
 [manish-sethi]: https://github.com/manish-sethi
-[mastersingh24]: https://github.com/mastersingh24
+[mastersingh24]: https://github.com/mastersingh24 
 [muralisrini]: https://github.com/muralisrini
 [nikhil550]: https://github.com/nikhil550
 [odowdaibm]: https://github.com/odowdaibm
