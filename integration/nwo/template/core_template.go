@@ -123,6 +123,7 @@ peer:
     authFilters:
     - name: DefaultAuth
     - name: ExpirationCheck
+    - name: TimeWindowCheck
     decorators:
     - name: DefaultDecorator
     endorsers:

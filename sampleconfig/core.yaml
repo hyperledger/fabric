@@ -313,6 +313,8 @@ peer:
     authentication:
         # the acceptable difference between the current server time and the
         # client's time as specified in a client request message
+        # this value is used for delivery service and
+        # endorsement service (if the authFilter is enabled)
         timewindow: 15m
 
     # Path on the file system where peer will store data (eg ledger). This
@@ -454,13 +456,11 @@ peer:
     #     library: /etc/hyperledger/fabric/plugin/escc.so
     handlers:
         authFilters:
-          -
-            name: DefaultAuth
-          -
-            name: ExpirationCheck    # This filter checks identity x509 certificate expiration
+          - name: DefaultAuth
+          - name: ExpirationCheck # This filter checks identity x509 certificate expiration
+          - name: TimeWindowCheck # This filter checks the timestamp of an proposal request with the peer.authentication.timewindow parameter from core.yaml
         decorators:
-          -
-            name: DefaultDecorator
+          - name: DefaultDecorator
         endorsers:
           escc:
             name: DefaultEndorsement

@@ -834,26 +834,6 @@ func serve(args []string) error {
 		discprotos.RegisterDiscoveryServer(peerServer.Server(), discoveryService)
 	}
 
-	if coreConfig.GatewayOptions.Enabled {
-		if coreConfig.DiscoveryEnabled {
-			logger.Info("Starting peer with Gateway enabled")
-
-			gatewayServer := gateway.CreateServer(
-				serverEndorser,
-				discoveryService,
-				peerInstance,
-				&serverConfig.SecOpts,
-				aclProvider,
-				coreConfig.LocalMSPID,
-				coreConfig.GatewayOptions,
-				builtinSCCs,
-			)
-			gatewayprotos.RegisterGatewayServer(peerServer.Server(), gatewayServer)
-		} else {
-			logger.Warning("Discovery service must be enabled for embedded gateway")
-		}
-	}
-
 	logger.Infof("Starting peer with ID=[%s], network ID=[%s], address=[%s]", coreConfig.PeerID, coreConfig.NetworkID, coreConfig.PeerAddress)
 
 	// Get configuration before starting go routines to avoid
@@ -912,6 +892,26 @@ func serve(args []string) error {
 	auth := authHandler.ChainFilters(serverEndorser, authFilters...)
 	// Register the Endorser server
 	pb.RegisterEndorserServer(peerServer.Server(), auth)
+
+	if coreConfig.GatewayOptions.Enabled {
+		if coreConfig.DiscoveryEnabled {
+			logger.Info("Starting peer with Gateway enabled")
+
+			gatewayServer := gateway.CreateServer(
+				auth,
+				discoveryService,
+				peerInstance,
+				&serverConfig.SecOpts,
+				aclProvider,
+				coreConfig.LocalMSPID,
+				coreConfig.GatewayOptions,
+				builtinSCCs,
+			)
+			gatewayprotos.RegisterGatewayServer(peerServer.Server(), gatewayServer)
+		} else {
+			logger.Warning("Discovery service must be enabled for embedded gateway")
+		}
+	}
 
 	// register the snapshot server
 	snapshotSvc := &snapshotgrpc.SnapshotService{LedgerGetter: peerInstance, ACLProvider: aclProvider}
