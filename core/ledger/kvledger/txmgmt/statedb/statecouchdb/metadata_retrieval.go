@@ -27,7 +27,7 @@ type nsMetadataRetriever struct {
 
 type subNsMetadataRetriever nsMetadataRetriever
 
-// retrievedMetadata retrieves the metadata for a collection of `namespace-keys` combination
+// retrieveMetadata retrieves the metadata for a collection of `namespace-keys` combination
 func (vdb *VersionedDB) retrieveMetadata(nsKeysMap map[string][]string) (map[string][]*docMetadata, error) {
 	// construct one batch per namespace
 	nsMetadataRetrievers := []batch{}
