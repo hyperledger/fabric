@@ -161,7 +161,7 @@ func (s *txSimulator) SetPrivateDataMetadata(namespace, collection, key string, 
 	return s.checkPrivateStateMetadata(namespace, collection, key)
 }
 
-// DeletePrivateMetadata implements method in interface `ledger.TxSimulator`
+// DeletePrivateDataMetadata implements method in interface `ledger.TxSimulator`
 func (s *txSimulator) DeletePrivateDataMetadata(namespace, collection, key string) error {
 	return s.SetPrivateDataMetadata(namespace, collection, key, nil)
 }
