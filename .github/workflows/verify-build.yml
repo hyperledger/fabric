@@ -13,7 +13,7 @@ on:
 env:
   GOPATH: /opt/go
   PATH: /opt/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
-  GO_VER: 1.22.6
+  GO_VER: 1.23.0
 
 permissions:
   contents: read # to fetch code (actions/checkout)
@@ -41,6 +41,8 @@ jobs:
       GOEXPERIMENT: nocoverageredesign
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
         name: Checkout Fabric Code      
       - uses: actions/setup-go@v5
         name: Install Go
