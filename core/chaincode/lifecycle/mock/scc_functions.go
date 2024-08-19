@@ -200,16 +200,15 @@ func (fake *SCCFunctions) ApproveChaincodeDefinitionForOrg(arg1 string, arg2 str
 		arg5 lifecycle.ReadableState
 		arg6 lifecycle.ReadWritableState
 	}{arg1, arg2, arg3, arg4, arg5, arg6})
-	stub := fake.ApproveChaincodeDefinitionForOrgStub
-	fakeReturns := fake.approveChaincodeDefinitionForOrgReturns
 	fake.recordInvocation("ApproveChaincodeDefinitionForOrg", []interface{}{arg1, arg2, arg3, arg4, arg5, arg6})
 	fake.approveChaincodeDefinitionForOrgMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2, arg3, arg4, arg5, arg6)
+	if fake.ApproveChaincodeDefinitionForOrgStub != nil {
+		return fake.ApproveChaincodeDefinitionForOrgStub(arg1, arg2, arg3, arg4, arg5, arg6)
 	}
 	if specificReturn {
 		return ret.result1
 	}
+	fakeReturns := fake.approveChaincodeDefinitionForOrgReturns
 	return fakeReturns.result1
 }
 
@@ -270,16 +269,15 @@ func (fake *SCCFunctions) CheckCommitReadiness(arg1 string, arg2 string, arg3 *l
 		arg4 lifecycle.ReadWritableState
 		arg5 []lifecycle.OpaqueState
 	}{arg1, arg2, arg3, arg4, arg5Copy})
-	stub := fake.CheckCommitReadinessStub
-	fakeReturns := fake.checkCommitReadinessReturns
 	fake.recordInvocation("CheckCommitReadiness", []interface{}{arg1, arg2, arg3, arg4, arg5Copy})
 	fake.checkCommitReadinessMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2, arg3, arg4, arg5)
+	if fake.CheckCommitReadinessStub != nil {
+		return fake.CheckCommitReadinessStub(arg1, arg2, arg3, arg4, arg5)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2, ret.result3
 	}
+	fakeReturns := fake.checkCommitReadinessReturns
 	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
 }
 
@@ -346,16 +344,15 @@ func (fake *SCCFunctions) CommitChaincodeDefinition(arg1 string, arg2 string, ar
 		arg4 lifecycle.ReadWritableState
 		arg5 []lifecycle.OpaqueState
 	}{arg1, arg2, arg3, arg4, arg5Copy})
-	stub := fake.CommitChaincodeDefinitionStub
-	fakeReturns := fake.commitChaincodeDefinitionReturns
 	fake.recordInvocation("CommitChaincodeDefinition", []interface{}{arg1, arg2, arg3, arg4, arg5Copy})
 	fake.commitChaincodeDefinitionMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2, arg3, arg4, arg5)
+	if fake.CommitChaincodeDefinitionStub != nil {
+		return fake.CommitChaincodeDefinitionStub(arg1, arg2, arg3, arg4, arg5)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
+	fakeReturns := fake.commitChaincodeDefinitionReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -410,16 +407,15 @@ func (fake *SCCFunctions) GetInstalledChaincodePackage(arg1 string) ([]byte, err
 	fake.getInstalledChaincodePackageArgsForCall = append(fake.getInstalledChaincodePackageArgsForCall, struct {
 		arg1 string
 	}{arg1})
-	stub := fake.GetInstalledChaincodePackageStub
-	fakeReturns := fake.getInstalledChaincodePackageReturns
 	fake.recordInvocation("GetInstalledChaincodePackage", []interface{}{arg1})
 	fake.getInstalledChaincodePackageMutex.Unlock()
-	if stub != nil {
-		return stub(arg1)
+	if fake.GetInstalledChaincodePackageStub != nil {
+		return fake.GetInstalledChaincodePackageStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
+	fakeReturns := fake.getInstalledChaincodePackageReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -479,16 +475,15 @@ func (fake *SCCFunctions) InstallChaincode(arg1 []byte) (*chaincode.InstalledCha
 	fake.installChaincodeArgsForCall = append(fake.installChaincodeArgsForCall, struct {
 		arg1 []byte
 	}{arg1Copy})
-	stub := fake.InstallChaincodeStub
-	fakeReturns := fake.installChaincodeReturns
 	fake.recordInvocation("InstallChaincode", []interface{}{arg1Copy})
 	fake.installChaincodeMutex.Unlock()
-	if stub != nil {
-		return stub(arg1)
+	if fake.InstallChaincodeStub != nil {
+		return fake.InstallChaincodeStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
+	fakeReturns := fake.installChaincodeReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -547,16 +542,15 @@ func (fake *SCCFunctions) QueryApprovedChaincodeDefinition(arg1 string, arg2 str
 		arg4 lifecycle.ReadableState
 		arg5 lifecycle.ReadableState
 	}{arg1, arg2, arg3, arg4, arg5})
-	stub := fake.QueryApprovedChaincodeDefinitionStub
-	fakeReturns := fake.queryApprovedChaincodeDefinitionReturns
 	fake.recordInvocation("QueryApprovedChaincodeDefinition", []interface{}{arg1, arg2, arg3, arg4, arg5})
 	fake.queryApprovedChaincodeDefinitionMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2, arg3, arg4, arg5)
+	if fake.QueryApprovedChaincodeDefinitionStub != nil {
+		return fake.QueryApprovedChaincodeDefinitionStub(arg1, arg2, arg3, arg4, arg5)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
+	fakeReturns := fake.queryApprovedChaincodeDefinitionReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -612,16 +606,15 @@ func (fake *SCCFunctions) QueryApprovedChaincodeDefinitions(arg1 string, arg2 li
 		arg1 string
 		arg2 lifecycle.ReadRangeableState
 	}{arg1, arg2})
-	stub := fake.QueryApprovedChaincodeDefinitionsStub
-	fakeReturns := fake.queryApprovedChaincodeDefinitionsReturns
 	fake.recordInvocation("QueryApprovedChaincodeDefinitions", []interface{}{arg1, arg2})
 	fake.queryApprovedChaincodeDefinitionsMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2)
+	if fake.QueryApprovedChaincodeDefinitionsStub != nil {
+		return fake.QueryApprovedChaincodeDefinitionsStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
+	fakeReturns := fake.queryApprovedChaincodeDefinitionsReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -677,16 +670,15 @@ func (fake *SCCFunctions) QueryChaincodeDefinition(arg1 string, arg2 lifecycle.R
 		arg1 string
 		arg2 lifecycle.ReadableState
 	}{arg1, arg2})
-	stub := fake.QueryChaincodeDefinitionStub
-	fakeReturns := fake.queryChaincodeDefinitionReturns
 	fake.recordInvocation("QueryChaincodeDefinition", []interface{}{arg1, arg2})
 	fake.queryChaincodeDefinitionMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2)
+	if fake.QueryChaincodeDefinitionStub != nil {
+		return fake.QueryChaincodeDefinitionStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
+	fakeReturns := fake.queryChaincodeDefinitionReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -741,16 +733,15 @@ func (fake *SCCFunctions) QueryInstalledChaincode(arg1 string) (*chaincode.Insta
 	fake.queryInstalledChaincodeArgsForCall = append(fake.queryInstalledChaincodeArgsForCall, struct {
 		arg1 string
 	}{arg1})
-	stub := fake.QueryInstalledChaincodeStub
-	fakeReturns := fake.queryInstalledChaincodeReturns
 	fake.recordInvocation("QueryInstalledChaincode", []interface{}{arg1})
 	fake.queryInstalledChaincodeMutex.Unlock()
-	if stub != nil {
-		return stub(arg1)
+	if fake.QueryInstalledChaincodeStub != nil {
+		return fake.QueryInstalledChaincodeStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
+	fakeReturns := fake.queryInstalledChaincodeReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -804,16 +795,15 @@ func (fake *SCCFunctions) QueryInstalledChaincodes() []*chaincode.InstalledChain
 	ret, specificReturn := fake.queryInstalledChaincodesReturnsOnCall[len(fake.queryInstalledChaincodesArgsForCall)]
 	fake.queryInstalledChaincodesArgsForCall = append(fake.queryInstalledChaincodesArgsForCall, struct {
 	}{})
-	stub := fake.QueryInstalledChaincodesStub
-	fakeReturns := fake.queryInstalledChaincodesReturns
 	fake.recordInvocation("QueryInstalledChaincodes", []interface{}{})
 	fake.queryInstalledChaincodesMutex.Unlock()
-	if stub != nil {
-		return stub()
+	if fake.QueryInstalledChaincodesStub != nil {
+		return fake.QueryInstalledChaincodesStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
+	fakeReturns := fake.queryInstalledChaincodesReturns
 	return fakeReturns.result1
 }
 
@@ -858,16 +848,15 @@ func (fake *SCCFunctions) QueryNamespaceDefinitions(arg1 lifecycle.RangeableStat
 	fake.queryNamespaceDefinitionsArgsForCall = append(fake.queryNamespaceDefinitionsArgsForCall, struct {
 		arg1 lifecycle.RangeableState
 	}{arg1})
-	stub := fake.QueryNamespaceDefinitionsStub
-	fakeReturns := fake.queryNamespaceDefinitionsReturns
 	fake.recordInvocation("QueryNamespaceDefinitions", []interface{}{arg1})
 	fake.queryNamespaceDefinitionsMutex.Unlock()
-	if stub != nil {
-		return stub(arg1)
+	if fake.QueryNamespaceDefinitionsStub != nil {
+		return fake.QueryNamespaceDefinitionsStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
+	fakeReturns := fake.queryNamespaceDefinitionsReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -929,16 +918,15 @@ func (fake *SCCFunctions) QueryOrgApprovals(arg1 string, arg2 *lifecycle.Chainco
 		arg2 *lifecycle.ChaincodeDefinition
 		arg3 []lifecycle.OpaqueState
 	}{arg1, arg2, arg3Copy})
-	stub := fake.QueryOrgApprovalsStub
-	fakeReturns := fake.queryOrgApprovalsReturns
 	fake.recordInvocation("QueryOrgApprovals", []interface{}{arg1, arg2, arg3Copy})
 	fake.queryOrgApprovalsMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2, arg3)
+	if fake.QueryOrgApprovalsStub != nil {
+		return fake.QueryOrgApprovalsStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2, ret.result3
 	}
+	fakeReturns := fake.queryOrgApprovalsReturns
 	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
 }
 

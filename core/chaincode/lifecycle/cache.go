@@ -336,13 +336,6 @@ func (c *Cache) StateCommitDone(channelName string) {
 // An error is returned only if either the channel or the chaincode do not exist.
 func (c *Cache) ChaincodeInfo(channelID, name string) (*LocalChaincodeInfo, error) {
 	if name == LifecycleNamespace {
-		ac, ok := c.Resources.ChannelConfigSource.GetStableChannelConfig(channelID).ApplicationConfig()
-		if !ok {
-			return nil, errors.Errorf("application config does not exist for channel '%s'", channelID)
-		}
-		if !ac.Capabilities().LifecycleV20() {
-			return nil, errors.Errorf("cannot use _lifecycle without V2_0 application capabilities enabled for channel '%s'", channelID)
-		}
 		return c.getLifecycleSCCChaincodeInfo(channelID)
 	}
 

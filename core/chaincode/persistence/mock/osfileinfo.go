@@ -2,7 +2,7 @@
 package mock
 
 import (
-	"os"
+	"io/fs"
 	"sync"
 	"time"
 )
@@ -28,15 +28,15 @@ type OSFileInfo struct {
 	modTimeReturnsOnCall map[int]struct {
 		result1 time.Time
 	}
-	ModeStub        func() os.FileMode
+	ModeStub        func() fs.FileMode
 	modeMutex       sync.RWMutex
 	modeArgsForCall []struct {
 	}
 	modeReturns struct {
-		result1 os.FileMode
+		result1 fs.FileMode
 	}
 	modeReturnsOnCall map[int]struct {
-		result1 os.FileMode
+		result1 fs.FileMode
 	}
 	NameStub        func() string
 	nameMutex       sync.RWMutex
@@ -58,15 +58,15 @@ type OSFileInfo struct {
 	sizeReturnsOnCall map[int]struct {
 		result1 int64
 	}
-	SysStub        func() interface{}
+	SysStub        func() any
 	sysMutex       sync.RWMutex
 	sysArgsForCall []struct {
 	}
 	sysReturns struct {
-		result1 interface{}
+		result1 any
 	}
 	sysReturnsOnCall map[int]struct {
-		result1 interface{}
+		result1 any
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -176,7 +176,7 @@ func (fake *OSFileInfo) ModTimeReturnsOnCall(i int, result1 time.Time) {
 	}{result1}
 }
 
-func (fake *OSFileInfo) Mode() os.FileMode {
+func (fake *OSFileInfo) Mode() fs.FileMode {
 	fake.modeMutex.Lock()
 	ret, specificReturn := fake.modeReturnsOnCall[len(fake.modeArgsForCall)]
 	fake.modeArgsForCall = append(fake.modeArgsForCall, struct {
@@ -199,32 +199,32 @@ func (fake *OSFileInfo) ModeCallCount() int {
 	return len(fake.modeArgsForCall)
 }
 
-func (fake *OSFileInfo) ModeCalls(stub func() os.FileMode) {
+func (fake *OSFileInfo) ModeCalls(stub func() fs.FileMode) {
 	fake.modeMutex.Lock()
 	defer fake.modeMutex.Unlock()
 	fake.ModeStub = stub
 }
 
-func (fake *OSFileInfo) ModeReturns(result1 os.FileMode) {
+func (fake *OSFileInfo) ModeReturns(result1 fs.FileMode) {
 	fake.modeMutex.Lock()
 	defer fake.modeMutex.Unlock()
 	fake.ModeStub = nil
 	fake.modeReturns = struct {
-		result1 os.FileMode
+		result1 fs.FileMode
 	}{result1}
 }
 
-func (fake *OSFileInfo) ModeReturnsOnCall(i int, result1 os.FileMode) {
+func (fake *OSFileInfo) ModeReturnsOnCall(i int, result1 fs.FileMode) {
 	fake.modeMutex.Lock()
 	defer fake.modeMutex.Unlock()
 	fake.ModeStub = nil
 	if fake.modeReturnsOnCall == nil {
 		fake.modeReturnsOnCall = make(map[int]struct {
-			result1 os.FileMode
+			result1 fs.FileMode
 		})
 	}
 	fake.modeReturnsOnCall[i] = struct {
-		result1 os.FileMode
+		result1 fs.FileMode
 	}{result1}
 }
 
@@ -332,7 +332,7 @@ func (fake *OSFileInfo) SizeReturnsOnCall(i int, result1 int64) {
 	}{result1}
 }
 
-func (fake *OSFileInfo) Sys() interface{} {
+func (fake *OSFileInfo) Sys() any {
 	fake.sysMutex.Lock()
 	ret, specificReturn := fake.sysReturnsOnCall[len(fake.sysArgsForCall)]
 	fake.sysArgsForCall = append(fake.sysArgsForCall, struct {
@@ -355,32 +355,32 @@ func (fake *OSFileInfo) SysCallCount() int {
 	return len(fake.sysArgsForCall)
 }
 
-func (fake *OSFileInfo) SysCalls(stub func() interface{}) {
+func (fake *OSFileInfo) SysCalls(stub func() any) {
 	fake.sysMutex.Lock()
 	defer fake.sysMutex.Unlock()
 	fake.SysStub = stub
 }
 
-func (fake *OSFileInfo) SysReturns(result1 interface{}) {
+func (fake *OSFileInfo) SysReturns(result1 any) {
 	fake.sysMutex.Lock()
 	defer fake.sysMutex.Unlock()
 	fake.SysStub = nil
 	fake.sysReturns = struct {
-		result1 interface{}
+		result1 any
 	}{result1}
 }
 
-func (fake *OSFileInfo) SysReturnsOnCall(i int, result1 interface{}) {
+func (fake *OSFileInfo) SysReturnsOnCall(i int, result1 any) {
 	fake.sysMutex.Lock()
 	defer fake.sysMutex.Unlock()
 	fake.SysStub = nil
 	if fake.sysReturnsOnCall == nil {
 		fake.sysReturnsOnCall = make(map[int]struct {
-			result1 interface{}
+			result1 any
 		})
 	}
 	fake.sysReturnsOnCall[i] = struct {
-		result1 interface{}
+		result1 any
 	}{result1}
 }
 

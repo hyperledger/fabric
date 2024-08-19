@@ -37,8 +37,6 @@ var _ = Describe("Cache", func() {
 		fakeParser              *mock.PackageParser
 		fakeChannelConfigSource *mock.ChannelConfigSource
 		fakeChannelConfig       *mock.ChannelConfig
-		fakeApplicationConfig   *mock.ApplicationConfig
-		fakeCapabilities        *mock.ApplicationCapabilities
 		fakePolicyManager       *mock.PolicyManager
 		fakeMetadataHandler     *mock.MetadataHandler
 		channelCache            *lifecycle.ChannelCache
@@ -55,11 +53,6 @@ var _ = Describe("Cache", func() {
 		fakeChannelConfigSource = &mock.ChannelConfigSource{}
 		fakeChannelConfig = &mock.ChannelConfig{}
 		fakeChannelConfigSource.GetStableChannelConfigReturns(fakeChannelConfig)
-		fakeApplicationConfig = &mock.ApplicationConfig{}
-		fakeChannelConfig.ApplicationConfigReturns(fakeApplicationConfig, true)
-		fakeCapabilities = &mock.ApplicationCapabilities{}
-		fakeCapabilities.LifecycleV20Returns(true)
-		fakeApplicationConfig.CapabilitiesReturns(fakeCapabilities)
 		fakePolicyManager = &mock.PolicyManager{}
 		fakePolicyManager.GetPolicyReturns(nil, true)
 		fakeChannelConfig.PolicyManagerReturns(fakePolicyManager)
@@ -252,28 +245,6 @@ var _ = Describe("Cache", func() {
 					InstallInfo: &lifecycle.ChaincodeInstallInfo{},
 					Approved:    true,
 				}))
-			})
-		})
-
-		Context("when the application config cannot be found", func() {
-			BeforeEach(func() {
-				fakeChannelConfig.ApplicationConfigReturns(nil, false)
-			})
-
-			It("returns an error", func() {
-				_, err := c.ChaincodeInfo("channel-id", "_lifecycle")
-				Expect(err).To(MatchError("application config does not exist for channel 'channel-id'"))
-			})
-		})
-
-		Context("when the application config V2_0 capabilities are not enabled", func() {
-			BeforeEach(func() {
-				fakeCapabilities.LifecycleV20Returns(false)
-			})
-
-			It("returns an error", func() {
-				_, err := c.ChaincodeInfo("channel-id", "_lifecycle")
-				Expect(err).To(MatchError("cannot use _lifecycle without V2_0 application capabilities enabled for channel 'channel-id'"))
 			})
 		})
 	})

@@ -85,7 +85,6 @@ func TestApplicationV20(t *testing.T) {
 	require.True(t, ap.ACLs())
 	require.True(t, ap.CollectionUpgrade())
 	require.True(t, ap.PrivateChannelData())
-	require.True(t, ap.LifecycleV20())
 	require.True(t, ap.StorePvtDataOfInvalidTx())
 }
 
@@ -103,7 +102,6 @@ func TestApplicationV25(t *testing.T) {
 	require.True(t, ap.ACLs())
 	require.True(t, ap.CollectionUpgrade())
 	require.True(t, ap.PrivateChannelData())
-	require.True(t, ap.LifecycleV20())
 	require.True(t, ap.StorePvtDataOfInvalidTx())
 	require.True(t, ap.PurgePvtData())
 }

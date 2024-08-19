@@ -54,7 +54,6 @@ var _ = Describe("SCC", func() {
 		fakeApplicationConfig = &mock.ApplicationConfig{}
 		fakeChannelConfig.ApplicationConfigReturns(fakeApplicationConfig, true)
 		fakeCapabilities = &mock.ApplicationCapabilities{}
-		fakeCapabilities.LifecycleV20Returns(true)
 		fakeApplicationConfig.CapabilitiesReturns(fakeCapabilities)
 		fakeACLProvider = &mock.ACLProvider{}
 		fakeMSPManager = &mock.MSPManager{}
@@ -884,16 +883,6 @@ var _ = Describe("SCC", func() {
 					res := scc.Invoke(fakeStub)
 					Expect(res.Status).To(Equal(int32(500)))
 					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': underlying-error"))
-				})
-			})
-
-			Context("when the lifecycle capability is not enabled", func() {
-				BeforeEach(func() {
-					fakeCapabilities.LifecycleV20Returns(false)
-				})
-
-				It("returns an error", func() {
-					Expect(scc.Invoke(fakeStub)).To(Equal(shim.Error("cannot use new lifecycle for channel 'test-channel' as it does not have the required capabilities enabled")))
 				})
 			})
 		})

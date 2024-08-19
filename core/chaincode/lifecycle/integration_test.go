@@ -61,7 +61,6 @@ var _ = Describe("Integration", func() {
 		fakeApplicationConfig = &mock.ApplicationConfig{}
 		fakeChannelConfig.ApplicationConfigReturns(fakeApplicationConfig, true)
 		fakeCapabilities = &mock.ApplicationCapabilities{}
-		fakeCapabilities.LifecycleV20Returns(true)
 		fakeApplicationConfig.CapabilitiesReturns(fakeCapabilities)
 		fakeACLProvider = &mock.ACLProvider{}
 

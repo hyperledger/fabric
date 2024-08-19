@@ -426,7 +426,7 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(logger gossiputil.Logger, id 
 
 	mspID := "Org1MSP"
 	capabilityProvider := &capabilitymock.CapabilityProvider{}
-	appCapability := &capabilitymock.ApplicationCapabilities{}
+	appCapability := &capabilitymock.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coord := privdata.NewCoordinator(mspID, privdata.Support{
