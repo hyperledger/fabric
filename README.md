@@ -13,7 +13,7 @@ Discord: ahmedalsalih#6158
 
 * Bi-weekly lab meeting.
 ```
-Next meeting: Thursday, Aug-15, 2024
+Next meeting: Thursday, Aug-29, 2024
 9:30am to 10:00am Eastern Time
 Repeats:
 Every 2 weeks on Thursday
