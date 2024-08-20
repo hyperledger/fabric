@@ -139,7 +139,7 @@ var _ = Describe("GatewayService with BFT ordering service", func() {
 		rpcErr := status.Convert(err)
 		Expect(rpcErr.Message()).To(Equal("insufficient number of orderers could successfully process transaction to satisfy quorum requirement"))
 		Expect(len(rpcErr.Details())).To(BeNumerically(">", 0))
-		Expect(rpcErr.Details()[0].(*gateway.ErrorDetail).Message).To(Equal("received unsuccessful response from orderer: status=SERVICE_UNAVAILABLE, info=failed to submit request: request already processed"))
+		Expect(proto.MessageV1(rpcErr.Details()[0]).(*gateway.ErrorDetail).Message).To(Equal("received unsuccessful response from orderer: status=SERVICE_UNAVAILABLE, info=failed to submit request: request already processed"))
 
 		By("Shutting down orderer2")
 		ordererProcesses["orderer2"].Signal(syscall.SIGTERM)

@@ -1,6 +1,8 @@
+//go:build !grpcnotrace
+
 /*
  *
- * Copyright 2018 gRPC authors.
+ * Copyright 2024 gRPC authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,22 +18,22 @@
  *
  */
 
-package channelz
+package grpc
 
 import (
-	"syscall"
+	"context"
+
+	t "golang.org/x/net/trace"
 )
 
-// GetSocketOption gets the socket option info of the conn.
-func GetSocketOption(socket any) *SocketOptionData {
-	c, ok := socket.(syscall.Conn)
-	if !ok {
-		return nil
-	}
-	data := &SocketOptionData{}
-	if rawConn, err := c.SyscallConn(); err == nil {
-		rawConn.Control(data.Getsockopt)
-		return data
-	}
-	return nil
+func newTrace(family, title string) traceLog {
+	return t.New(family, title)
+}
+
+func newTraceContext(ctx context.Context, tr traceLog) context.Context {
+	return t.NewContext(ctx, tr)
+}
+
+func newTraceEventLog(family, title string) traceEventLog {
+	return t.NewEventLog(family, title)
 }
