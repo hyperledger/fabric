@@ -202,7 +202,7 @@ If you do not need to fallback to the legacy Docker build process for your chain
 
 ## Chaincode packages
 
-As part of the new lifecycle introduced with Fabric 2.0, the chaincode package format changed from serialized protocol buffer messages to a gzip compressed POSIX tape archive. Chaincode packages created with `peer lifecycle chaincode package` use this new format.
+A chaincode package contains chaincode and associated metadata in a compressed gzip file that can be installed to a peer. The peer command `peer lifecycle chaincode package` can be used to create a chaincode package. You can also create a chaincode package using third party tools.
 
 ### Lifecycle chaincode package contents
 

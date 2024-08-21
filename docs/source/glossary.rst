@@ -289,32 +289,10 @@ issues PKI-based certificates to network member organizations and their users.
 The CA issues one root certificate (rootCert) to each member and one enrollment
 certificate (ECert) to each authorized user.
 
-.. _Init:
-
-Init
-----
-
-A method to initialize a chaincode application. All chaincodes need to have an
-an Init function. By default, this function is never executed. However you can
-use the chaincode definition to request the execution of the Init function in
-order to initialize the chaincode.
-
 Install
 -------
 
 The process of placing a chaincode on a peer's file system.
-
-Instantiate
------------
-
-The process of starting and initializing a chaincode application on a specific
-channel. After instantiation, peers that have the chaincode installed can accept
-chaincode invocations.
-
-**NOTE**: *This method i.e. Instantiate was used in the 1.4.x and older versions of the chaincode
-lifecycle. For the current procedure used to start a chaincode on a channel with
-the new Fabric chaincode lifecycle introduced as part of Fabric v2.0,
-see Chaincode-definition_.*
 
 .. _Invoke:
 
@@ -501,7 +479,7 @@ example: ``OR('Org1.peer', 'Org2.peer')``. They are used to restrict access to
 resources on a blockchain network. For instance, they dictate who can read from
 or write to a channel, or who can use a specific chaincode API via an ACL_.
 Policies may be defined in ``configtx.yaml`` prior to bootstrapping an ordering
-service or creating a channel, or they can be specified when instantiating
+service or creating a channel, or they can be specified when deploying
 chaincode on a channel. A default set of policies ship in the sample
 ``configtx.yaml`` which will be appropriate for most networks.
 

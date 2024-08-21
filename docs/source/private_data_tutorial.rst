@@ -975,8 +975,8 @@ alongside the chaincode. An example index is available `here <https://github.com
 For deployment of chaincode to production environments, it is recommended
 to define any indexes alongside chaincode so that the chaincode and supporting
 indexes are deployed automatically as a unit, once the chaincode has been
-installed on a peer and instantiated on a channel. The associated indexes are
-automatically deployed upon chaincode instantiation on the channel when
+installed on a peer and deployed on a channel. The associated indexes are
+automatically created upon chaincode deployment on the channel when
 the  ``--collections-config`` flag is specified pointing to the location of
 the collection JSON file.
 

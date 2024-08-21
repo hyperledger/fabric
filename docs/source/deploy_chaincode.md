@@ -6,8 +6,6 @@ A chaincode is deployed to a channel using a process known as the Fabric chainco
 
 You can use this tutorial to learn how to use the [peer lifecycle chaincode commands](./commands/peerlifecycle.html) to deploy a chaincode to a channel of the Fabric test network. Once you have an understanding of the commands, you can use the steps in this tutorial to deploy your own chaincode to the test network, or to deploy chaincode to a production network. In this tutorial, you will deploy the asset-transfer (basic) chaincode that is used by the [Running a Fabric Application tutorial](./write_first_app.html).
 
-**Note:** These instructions use the Fabric chaincode lifecycle introduced in the v2.0 release. If you would like to use the previous lifecycle to install and instantiate a chaincode, visit the [v1.4 version of the Fabric documentation](https://hyperledger-fabric.readthedocs.io/en/release-1.4).
-
 ## Start the network
 
 We will start by deploying an instance of the Fabric test network. Before you begin, make sure that you have installed the necessary software by following the instructions on [getting_started](getting_started.html). Use the following command to navigate to the test network directory within your local clone of the `fabric-samples` repository:
@@ -777,7 +775,7 @@ CONTAINER ID        IMAGE                               COMMAND             CREA
 
 If you do not see any chaincode containers listed, use the `peer lifecycle chaincode approveformyorg` command approve a chaincode definition with the correct package ID.
 
-## Endorsement policy failure
+### Endorsement policy failure
 
 **Problem:** When I try to commit the chaincode definition to the channel, the transaction fails with the following error:
 
@@ -786,7 +784,7 @@ If you do not see any chaincode containers listed, use the `peer lifecycle chain
 Error: transaction invalidated with status (ENDORSEMENT_POLICY_FAILURE)
 ```
 
-**Solution:** This error is a result of the commit transaction not gathering enough endorsements to meet the Lifecycle endorsement policy. This problem could be a result of your transaction not targeting a sufficient number of peers to meet the policy. This could also be the result of some of the peer organizations not including the `Endorsement:` signature policy referenced by the default `/Channel/Application/Endorsement` policy in their `configtx.yaml` file:
+**Solution:** This error is a result of the commit transaction not gathering enough endorsements to meet the Lifecycle endorsement policy. This problem could be a result of your transaction not targeting a sufficient number of peers to meet the policy. This could also be the result of some of the peer organizations not including the `Endorsement:` signature policy referenced by the default `/Channel/Application/Endorsement` policy in the channel configuration:
 
 ```
 Readers:
@@ -803,7 +801,7 @@ Endorsement:
 		Rule: "OR('Org2MSP.peer')"
 ```
 
-When you [enable the Fabric chaincode lifecycle](enable_cc_lifecycle.html), you also need to use the new Fabric 2.0 channel policies in addition to upgrading your channel to the `V2_0` capability. Your channel needs to include the new `/Channel/Application/LifecycleEndorsement` and `/Channel/Application/Endorsement` policies:
+Finally, ensure your channel defines the `/Channel/Application/LifecycleEndorsement` and `/Channel/Application/Endorsement` policies:
 
 ```
 Policies:
@@ -824,7 +822,7 @@ Policies:
 				Rule: "MAJORITY Endorsement"
 ```
 
-If you do not include the new channel policies in the channel configuration, you will get the following error when you approve a chaincode definition for your organization:
+If you do not include the channel policies in the channel configuration, you will get the following error when you approve a chaincode definition for your organization:
 
 ```
 Error: proposal failed with status: 500 - failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': could not set defaults for chaincode definition in channel mychannel: policy '/Channel/Application/Endorsement' must be defined for channel 'mychannel' before chaincode operations can be attempted

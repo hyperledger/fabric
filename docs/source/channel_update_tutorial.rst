@@ -537,11 +537,6 @@ a chaincode on the channel. If the existing channel members have already committ
 a chaincode definition to the channel, a new organization can start using the
 chaincode by approving the chaincode definition.
 
-.. note:: These instructions use the Fabric chaincode lifecycle introduced in
-          the v2.0 release. If you would like to use the previous lifecycle to
-          install and instantiate a chaincode, visit the v1.4 version of the
-          `Adding an org to a channel tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/channel_update_tutorial.html>`__.
-
 Before we install a chaincode as Org3, we can use the ``./network.sh`` script to
 deploy the Basic chaincode on the channel. Open a new terminal and navigate to the ``test-network`` directory. You can then use
 the ``test-network`` script to deploy the Basic chaincode:

@@ -7,11 +7,6 @@ definition to a channel. The chaincode is ready to be used after the definition
 has been successfully committed to the channel. For more information, visit
 [Fabric chaincode lifecycle](../chaincode_lifecycle.html).
 
-*Note: These instructions use the Fabric chaincode lifecycle introduced in the
-v2.0 release. If you would like to use the old lifecycle to install and
-instantiate a chaincode, visit the [peer chaincode](peerchaincode.html) command
-reference.*
-
 ## Syntax
 
 The `peer lifecycle chaincode` command has the following subcommands:

@@ -83,7 +83,7 @@ configuration of the Fabric network.
 
 ### Multiple Chaincodes
 
-A chaincode is instantiated on a single channel. Each channel (and ledger) can
+A chaincode is deployed on a single channel. Each channel (and ledger) can
 have multiple chaincodes that interact with it.
 
 ![Peer4](./peers.diagram.4.png)

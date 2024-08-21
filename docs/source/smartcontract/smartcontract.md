@@ -305,11 +305,6 @@ abbreviations:
   the committing of chaincode definitions to channels. You can read more about
   how `_lifecycle` implements the Fabric chaincode lifecycle [process](../chaincode_lifecycle.html).
 
-* Lifecycle system chaincode (LSCC) manages the chaincode lifecycle for the
-  1.x releases of Fabric. This version of lifecycle required that chaincode be
-  instantiated or upgraded on channels. You can still use LSCC to manage your
-  chaincode if you have the channel application capability set to V1_4_x or below.
-
 * **Configuration system chaincode (CSCC)** runs in all peers to handle changes to a
   channel configuration, such as a policy update.  You can read more about this
   process in the following chaincode
