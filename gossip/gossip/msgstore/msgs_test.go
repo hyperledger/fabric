@@ -61,7 +61,7 @@ func TestSize(t *testing.T) {
 }
 
 func TestNewMessagesInvalidates(t *testing.T) {
-	invalidated := make([]int, 9)
+	invalidated := make([]int, 0, 9)
 	msgStore := NewMessageStore(compareInts, func(m interface{}) {
 		invalidated = append(invalidated, m.(int))
 	})
