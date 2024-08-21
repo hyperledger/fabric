@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-chaincode-go/shim"
-	"github.com/hyperledger/fabric-chaincode-go/shimtest"
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	"github.com/hyperledger/fabric-protos-go/common"
 	peer2 "github.com/hyperledger/fabric-protos-go/peer"
@@ -24,13 +23,19 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
 	"github.com/hyperledger/fabric/core/peer"
+	mocks2 "github.com/hyperledger/fabric/core/scc/qscc/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
 
-func setupTestLedger(t *testing.T, chainid string, path string) (*shimtest.MockStub, *peer.Peer, func(), error) {
+//go:generate counterfeiter -o mocks/chaincode_stub.go --fake-name ChaincodeStub . chaincodeStub
+type chaincodeStub interface {
+	shim.ChaincodeStubInterface
+}
+
+func setupTestLedger(t *testing.T, chainid string, path string) (*mocks2.ChaincodeStub, *LedgerQuerier, *peer.Peer, func(), error) {
 	mockAclProvider.Reset()
 
 	viper.Set("peer.fileSystemPath", path)
@@ -38,7 +43,7 @@ func setupTestLedger(t *testing.T, chainid string, path string) (*shimtest.MockS
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	initializer := ledgermgmttest.NewInitializer(testDir)
@@ -58,11 +63,12 @@ func setupTestLedger(t *testing.T, chainid string, path string) (*shimtest.MockS
 		aclProvider: mockAclProvider,
 		ledgers:     peerInstance,
 	}
-	stub := shimtest.NewMockStub("LedgerQuerier", lq)
-	if res := stub.MockInit("1", nil); res.Status != shim.OK {
-		return nil, peerInstance, cleanup, fmt.Errorf("Init failed for test ledger [%s] with message: %s", chainid, res.Message)
+	mockStub := mocks2.ChaincodeStub{}
+	if res := lq.Init(&mockStub); res.Status != shim.OK {
+		return nil, lq, peerInstance, cleanup, fmt.Errorf("Init failed for test ledger [%s] with message: %s", chainid, res.Message)
 	}
-	return stub, peerInstance, cleanup, nil
+
+	return &mockStub, lq, peerInstance, cleanup, nil
 }
 
 // pass the prop so we can conveniently inline it in the call and get it back
@@ -88,7 +94,7 @@ func TestQueryGetChainInfo(t *testing.T) {
 	chainid := "mytestchainid1"
 	path := t.TempDir()
 
-	stub, _, cleanup, err := setupTestLedger(t, chainid, path)
+	mockStub, lq, _, cleanup, err := setupTestLedger(t, chainid, path)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -96,48 +102,67 @@ func TestQueryGetChainInfo(t *testing.T) {
 
 	args := [][]byte{[]byte(GetChainInfo), []byte(chainid)}
 	prop := resetProvider(resources.Qscc_GetChainInfo, chainid, nil, nil)
-	res := stub.MockInvokeWithSignedProposal("1", args, prop)
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(prop, nil)
+	res := lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.OK), res.Status, "GetChainInfo failed with err: %s", res.Message)
 
 	args = [][]byte{[]byte(GetChainInfo)}
-	res = stub.MockInvoke("2", args)
+	mockStub.GetArgsReturns(args)
+	res = lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.ERROR), res.Status, "GetChainInfo should have failed because no channel id was provided")
+	require.Equal(t, "Incorrect number of arguments, 1", res.Message)
 
 	args = [][]byte{[]byte(GetChainInfo), []byte("fakechainid")}
-	res = stub.MockInvoke("3", args)
+	prop = resetProvider(resources.Qscc_GetChainInfo, chainid, nil, nil)
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(prop, nil)
+	res = lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.ERROR), res.Status, "GetChainInfo should have failed because the channel id does not exist")
+	require.Equal(t, "Invalid chain ID, fakechainid", res.Message)
 }
 
 func TestQueryGetTransactionByID(t *testing.T) {
 	chainid := "mytestchainid2"
 	path := t.TempDir()
 
-	stub, _, cleanup, err := setupTestLedger(t, chainid, path)
+	mockStub, lq, _, cleanup, err := setupTestLedger(t, chainid, path)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 	defer cleanup()
 
 	args := [][]byte{[]byte(GetTransactionByID), []byte(chainid), []byte("1")}
-	prop := resetProvider(resources.Qscc_GetTransactionByID, chainid, &peer2.SignedProposal{}, nil)
-	res := stub.MockInvokeWithSignedProposal("1", args, prop)
+	prop := resetProvider(resources.Qscc_GetTransactionByID, chainid, nil, nil)
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(prop, nil)
+	res := lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.ERROR), res.Status, "GetTransactionByID should have failed with invalid txid: 1")
+	require.Equal(t, "Failed to get transaction with id 1, error no such transaction ID [1] in index", res.Message)
 
 	args = [][]byte{[]byte(GetTransactionByID), []byte(chainid), []byte(nil)}
-	res = stub.MockInvoke("2", args)
+	prop = resetProvider(resources.Qscc_GetTransactionByID, chainid, nil, nil)
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(prop, nil)
+	res = lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.ERROR), res.Status, "GetTransactionByID should have failed with invalid txid: nil")
+	require.Equal(t, "Transaction ID must not be nil.", res.Message)
 
 	// Test with wrong number of parameters
 	args = [][]byte{[]byte(GetTransactionByID), []byte(chainid)}
-	res = stub.MockInvoke("3", args)
+	prop = resetProvider(resources.Qscc_GetTransactionByID, chainid, nil, nil)
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(prop, nil)
+	res = lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.ERROR), res.Status, "GetTransactionByID should have failed due to incorrect number of arguments")
+	require.Equal(t, "missing 3rd argument for GetTransactionByID", res.Message)
 }
 
 func TestQueryGetBlockByNumber(t *testing.T) {
 	chainid := "mytestchainid3"
 	path := t.TempDir()
 
-	stub, _, cleanup, err := setupTestLedger(t, chainid, path)
+	mockStub, lq, _, cleanup, err := setupTestLedger(t, chainid, path)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -146,59 +171,79 @@ func TestQueryGetBlockByNumber(t *testing.T) {
 	// block number 0 (genesis block) would already be present in the ledger
 	args := [][]byte{[]byte(GetBlockByNumber), []byte(chainid), []byte("0")}
 	prop := resetProvider(resources.Qscc_GetBlockByNumber, chainid, nil, nil)
-	res := stub.MockInvokeWithSignedProposal("1", args, prop)
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(prop, nil)
+	res := lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.OK), res.Status, "GetBlockByNumber should have succeeded for block number: 0")
 
 	// block number 1 should not be present in the ledger
 	args = [][]byte{[]byte(GetBlockByNumber), []byte(chainid), []byte("1")}
-	res = stub.MockInvoke("2", args)
+	prop = resetProvider(resources.Qscc_GetBlockByNumber, chainid, nil, nil)
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(prop, nil)
+	res = lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByNumber should have failed with invalid number: 1")
+	require.Equal(t, "Failed to get block number 1, error no such block number [1] in index", res.Message)
 
 	// block number cannot be nil
 	args = [][]byte{[]byte(GetBlockByNumber), []byte(chainid), []byte(nil)}
-	res = stub.MockInvoke("3", args)
+	prop = resetProvider(resources.Qscc_GetBlockByNumber, chainid, nil, nil)
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(prop, nil)
+	res = lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByNumber should have failed with nil block number")
+	require.Equal(t, "Block number must not be nil.", res.Message)
 }
 
 func TestQueryGetBlockByHash(t *testing.T) {
 	chainid := "mytestchainid4"
 	path := t.TempDir()
 
-	stub, _, cleanup, err := setupTestLedger(t, chainid, path)
+	mockStub, lq, _, cleanup, err := setupTestLedger(t, chainid, path)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 	defer cleanup()
 
 	args := [][]byte{[]byte(GetBlockByHash), []byte(chainid), []byte("0")}
-	prop := resetProvider(resources.Qscc_GetBlockByHash, chainid, &peer2.SignedProposal{}, nil)
-	res := stub.MockInvokeWithSignedProposal("1", args, prop)
+	prop := resetProvider(resources.Qscc_GetBlockByHash, chainid, nil, nil)
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(prop, nil)
+	res := lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByHash should have failed with invalid hash: 0")
+	require.Equal(t, "Failed to get block hash 0, error no such block hash [30] in index", res.Message)
 
 	args = [][]byte{[]byte(GetBlockByHash), []byte(chainid), []byte(nil)}
-	res = stub.MockInvoke("2", args)
+	prop = resetProvider(resources.Qscc_GetBlockByHash, chainid, nil, nil)
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(prop, nil)
+	res = lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByHash should have failed with nil hash")
+	require.Equal(t, "Block hash must not be nil.", res.Message)
 }
 
 func TestQueryGetBlockByTxID(t *testing.T) {
 	chainid := "mytestchainid5"
 	path := t.TempDir()
 
-	stub, _, cleanup, err := setupTestLedger(t, chainid, path)
+	mockStub, lq, _, cleanup, err := setupTestLedger(t, chainid, path)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 	defer cleanup()
 
 	args := [][]byte{[]byte(GetBlockByTxID), []byte(chainid), []byte("")}
-	prop := resetProvider(resources.Qscc_GetBlockByTxID, chainid, &peer2.SignedProposal{}, nil)
-	res := stub.MockInvokeWithSignedProposal("1", args, prop)
+	prop := resetProvider(resources.Qscc_GetBlockByTxID, chainid, nil, nil)
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(prop, nil)
+	res := lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByTxID should have failed with blank txId.")
+	require.Equal(t, "Failed to get block for txID , error no such transaction ID [] in index", res.Message)
 }
 
 func TestFailingCC2CC(t *testing.T) {
 	t.Run("BadProposal", func(t *testing.T) {
-		stub := shimtest.NewMockStub("testchannel", &LedgerQuerier{})
+		mockStub := &mocks2.ChaincodeStub{}
 		args := [][]byte{[]byte("funcname"), []byte("testchannel")}
 		sProp := &peer2.SignedProposal{
 			ProposalBytes: []byte("garbage"),
@@ -206,13 +251,16 @@ func TestFailingCC2CC(t *testing.T) {
 		sProp.Signature = sProp.ProposalBytes
 		// Set the ACLProvider to have a failure
 		resetProvider(resources.Qscc_GetChainInfo, "testchannel", sProp, nil)
-		res := stub.MockInvokeWithSignedProposal("2", args, sProp)
+		mockStub.GetArgsReturns(args)
+		mockStub.GetSignedProposalReturns(sProp, nil)
+		lq := &LedgerQuerier{}
+		res := lq.Invoke(mockStub)
 		require.Equal(t, int32(shim.ERROR), res.Status, "GetChainInfo must fail: %s", res.Message)
 		require.Contains(t, res.Message, "Failed to identify the called chaincode: could not unmarshal proposal")
 	})
 
 	t.Run("DifferentInvokedCC", func(t *testing.T) {
-		stub := shimtest.NewMockStub("testchannel", &LedgerQuerier{})
+		mockStub := &mocks2.ChaincodeStub{}
 		args := [][]byte{[]byte("funcname"), []byte("testchannel")}
 		sProp, _ := protoutil.MockSignedEndorserProposalOrPanic(
 			"testchannel",
@@ -227,7 +275,10 @@ func TestFailingCC2CC(t *testing.T) {
 		sProp.Signature = sProp.ProposalBytes
 		// Set the ACLProvider to have a failure
 		resetProvider(resources.Qscc_GetChainInfo, "testchannel", sProp, nil)
-		res := stub.MockInvokeWithSignedProposal("2", args, sProp)
+		mockStub.GetArgsReturns(args)
+		mockStub.GetSignedProposalReturns(sProp, nil)
+		lq := &LedgerQuerier{}
+		res := lq.Invoke(mockStub)
 		require.Equal(t, int32(shim.ERROR), res.Status, "GetChainInfo must fail: %s", res.Message)
 		require.Contains(t, res.Message, "Rejecting invoke of QSCC from another chaincode because of potential for deadlocks, original invocation for 'usercc'")
 	})
@@ -237,16 +288,11 @@ func TestFailingAccessControl(t *testing.T) {
 	chainid := "mytestchainid6"
 	path := t.TempDir()
 
-	_, p, cleanup, err := setupTestLedger(t, chainid, path)
+	mockStub, lq, _, cleanup, err := setupTestLedger(t, chainid, path)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 	defer cleanup()
-	e := &LedgerQuerier{
-		aclProvider: mockAclProvider,
-		ledgers:     p,
-	}
-	stub := shimtest.NewMockStub("LedgerQuerier", e)
 
 	// GetChainInfo
 	args := [][]byte{[]byte(GetChainInfo), []byte(chainid)}
@@ -262,9 +308,11 @@ func TestFailingAccessControl(t *testing.T) {
 	sProp.Signature = sProp.ProposalBytes
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetChainInfo, chainid, sProp, errors.New("Failed access control"))
-	res := stub.MockInvokeWithSignedProposal("2", args, sProp)
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(sProp, nil)
+	res := lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.ERROR), res.Status, "GetChainInfo must fail: %s", res.Message)
-	require.Contains(t, res.Message, "Failed access control")
+	require.Equal(t, "access denied for [GetChainInfo][mytestchainid6]: [Failed access control]", res.Message)
 	// assert that the expectations were met
 	mockAclProvider.AssertExpectations(t)
 
@@ -283,9 +331,11 @@ func TestFailingAccessControl(t *testing.T) {
 	sProp.Signature = sProp.ProposalBytes
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetBlockByNumber, chainid, sProp, errors.New("Failed access control"))
-	res = stub.MockInvokeWithSignedProposal("2", args, sProp)
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(sProp, nil)
+	res = lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByNumber must fail: %s", res.Message)
-	require.Contains(t, res.Message, "Failed access control")
+	require.Equal(t, "access denied for [GetBlockByNumber][mytestchainid6]: [Failed access control]", res.Message)
 	// assert that the expectations were met
 	mockAclProvider.AssertExpectations(t)
 
@@ -304,9 +354,11 @@ func TestFailingAccessControl(t *testing.T) {
 	sProp.Signature = sProp.ProposalBytes
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetBlockByHash, chainid, sProp, errors.New("Failed access control"))
-	res = stub.MockInvokeWithSignedProposal("2", args, sProp)
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(sProp, nil)
+	res = lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByHash must fail: %s", res.Message)
-	require.Contains(t, res.Message, "Failed access control")
+	require.Equal(t, "access denied for [GetBlockByHash][mytestchainid6]: [Failed access control]", res.Message)
 	// assert that the expectations were met
 	mockAclProvider.AssertExpectations(t)
 
@@ -325,9 +377,11 @@ func TestFailingAccessControl(t *testing.T) {
 	sProp.Signature = sProp.ProposalBytes
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetBlockByTxID, chainid, sProp, errors.New("Failed access control"))
-	res = stub.MockInvokeWithSignedProposal("2", args, sProp)
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(sProp, nil)
+	res = lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByTxID must fail: %s", res.Message)
-	require.Contains(t, res.Message, "Failed access control")
+	require.Equal(t, "access denied for [GetBlockByTxID][mytestchainid6]: [Failed access control]", res.Message)
 	// assert that the expectations were met
 	mockAclProvider.AssertExpectations(t)
 
@@ -346,9 +400,11 @@ func TestFailingAccessControl(t *testing.T) {
 	sProp.Signature = sProp.ProposalBytes
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetTransactionByID, chainid, sProp, errors.New("Failed access control"))
-	res = stub.MockInvokeWithSignedProposal("2", args, sProp)
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(sProp, nil)
+	res = lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.ERROR), res.Status, "Qscc_GetTransactionByID must fail: %s", res.Message)
-	require.Contains(t, res.Message, "Failed access control")
+	require.Equal(t, "access denied for [GetTransactionByID][mytestchainid6]: [Failed access control]", res.Message)
 	// assert that the expectations were met
 	mockAclProvider.AssertExpectations(t)
 }
@@ -357,16 +413,19 @@ func TestQueryNonexistentFunction(t *testing.T) {
 	chainid := "mytestchainid7"
 	path := t.TempDir()
 
-	stub, _, cleanup, err := setupTestLedger(t, chainid, path)
+	mockStub, lq, _, cleanup, err := setupTestLedger(t, chainid, path)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 	defer cleanup()
 
 	args := [][]byte{[]byte("GetBlocks"), []byte(chainid), []byte("arg1")}
-	prop := resetProvider("qscc/GetBlocks", chainid, &peer2.SignedProposal{}, nil)
-	res := stub.MockInvokeWithSignedProposal("1", args, prop)
+	prop := resetProvider("qscc/GetBlocks", chainid, nil, nil)
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(prop, nil)
+	res := lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.ERROR), res.Status, "GetBlocks should have failed because the function does not exist")
+	require.Equal(t, "Requested function GetBlocks not found.", res.Message)
 }
 
 // TestQueryGeneratedBlock tests various queries for a newly generated block
@@ -375,7 +434,7 @@ func TestQueryGeneratedBlock(t *testing.T) {
 	chainid := "mytestchainid8"
 	path := t.TempDir()
 
-	stub, p, cleanup, err := setupTestLedger(t, chainid, path)
+	mockStub, lq, p, cleanup, err := setupTestLedger(t, chainid, path)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -386,13 +445,17 @@ func TestQueryGeneratedBlock(t *testing.T) {
 	// block number 1 should now exist
 	args := [][]byte{[]byte(GetBlockByNumber), []byte(chainid), []byte("1")}
 	prop := resetProvider(resources.Qscc_GetBlockByNumber, chainid, nil, nil)
-	res := stub.MockInvokeWithSignedProposal("1", args, prop)
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(prop, nil)
+	res := lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.OK), res.Status, "GetBlockByNumber should have succeeded for block number 1")
 
 	// block number 1
 	args = [][]byte{[]byte(GetBlockByHash), []byte(chainid), protoutil.BlockHeaderHash(block1.Header)}
 	prop = resetProvider(resources.Qscc_GetBlockByHash, chainid, nil, nil)
-	res = stub.MockInvokeWithSignedProposal("2", args, prop)
+	mockStub.GetArgsReturns(args)
+	mockStub.GetSignedProposalReturns(prop, nil)
+	res = lq.Invoke(mockStub)
 	require.Equal(t, int32(shim.OK), res.Status, "GetBlockByHash should have succeeded for block 1 hash")
 
 	// drill into the block to find the transaction ids it contains
@@ -414,12 +477,16 @@ func TestQueryGeneratedBlock(t *testing.T) {
 					args = [][]byte{[]byte(GetBlockByTxID), []byte(chainid), []byte(chdr.TxId)}
 					mockAclProvider.Reset()
 					prop = resetProvider(resources.Qscc_GetBlockByTxID, chainid, nil, nil)
-					res = stub.MockInvokeWithSignedProposal("3", args, prop)
+					mockStub.GetArgsReturns(args)
+					mockStub.GetSignedProposalReturns(prop, nil)
+					res = lq.Invoke(mockStub)
 					require.Equal(t, int32(shim.OK), res.Status, "GetBlockByTxId should have succeeded for txid: %s", chdr.TxId)
 
 					args = [][]byte{[]byte(GetTransactionByID), []byte(chainid), []byte(chdr.TxId)}
 					prop = resetProvider(resources.Qscc_GetTransactionByID, chainid, nil, nil)
-					res = stub.MockInvokeWithSignedProposal("4", args, prop)
+					mockStub.GetArgsReturns(args)
+					mockStub.GetSignedProposalReturns(prop, nil)
+					res = lq.Invoke(mockStub)
 					require.Equal(t, int32(shim.OK), res.Status, "GetTransactionById should have succeeded for txid: %s", chdr.TxId)
 				}
 			}
