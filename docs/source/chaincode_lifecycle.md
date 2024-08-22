@@ -29,15 +29,6 @@ A network operator would use the Fabric lifecycle to perform the following tasks
 - [Install and define a chaincode](#install-and-define-a-chaincode)
 - [Upgrade a chaincode](#upgrade-a-chaincode)
 - [Deployment Scenarios](#deployment-scenarios)
-- [Migrate to the new Fabric lifecycle](#migrate-to-the-new-fabric-lifecycle)
-
-You can use the Fabric chaincode lifecycle by creating a new channel and setting
-the channel capabilities to V2_0. You will not be able to use the old lifecycle
-to install, instantiate, or update a chaincode on channels with V2_0 capabilities
-enabled. However, you can still invoke chaincode installed using the previous
-lifecycle model after you enable V2_0 capabilities. If you are upgrading from a
-v1.4.x network and need to edit your channel configurations to enable the new
-lifecycle, check out [Enabling the new chaincode lifecycle](./enable_cc_lifecycle.html).
 
 ## Install and define a chaincode
 
@@ -476,15 +467,9 @@ different chaincode definitions. As a result, both peers have two chaincode
 containers running on their peers. MYCC1 has an endorsement policy of 1 out of 2,
 while MYCC2 has an endorsement policy of 2 out of 2.*
 
-## Migrate to the v2.x Fabric lifecycle
-
-For information about migrating to the new lifecycle, check out [Considerations for getting to v2.0](./upgrade_to_newest_version.html#chaincode-lifecycle).
-
-If you need to update your channel configurations to enable the new lifecycle, check out [Enabling the new chaincode lifecycle](./enable_cc_lifecycle.html).
-
 ## More information
 
-You can watch video below to learn more about the motivation of the new Fabric chaincode lifecycle and how it is implemented.
+You can watch video below to learn more about the motivation of the Fabric chaincode lifecycle and how it is implemented.
 
 <iframe class="embed-responsive-item" id="youtubeplayer2" title="Starter Plan videos" type="text/html" width="560" height="315" src="https://www.youtube.com/embed/XvEMDScFU2M" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen> </iframe>
 
