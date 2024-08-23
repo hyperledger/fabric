@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	protosgossip "github.com/hyperledger/fabric-protos-go/gossip"
 	commonutil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -372,7 +373,7 @@ func (p *puller) scatterRequests(peersDigestMapping peer2Digests) []util.Subscri
 }
 
 type (
-	peer2Digests      map[remotePeer][]protosgossip.PvtDataDigest
+	peer2Digests      map[remotePeer][]*protosgossip.PvtDataDigest
 	noneSelectedPeers []discovery.NetworkMember
 )
 
@@ -380,7 +381,7 @@ func (p *puller) assignDigestsToPeers(members []discovery.NetworkMember, dig2Fil
 	if p.logger.IsEnabledFor(zapcore.DebugLevel) {
 		p.logger.Debug("Matching", members, "to", dig2Filter.String())
 	}
-	res := make(map[remotePeer][]protosgossip.PvtDataDigest)
+	res := make(map[remotePeer][]*protosgossip.PvtDataDigest)
 	// Create a mapping between peer and digests to ask for
 	for dig, collectionFilter := range dig2Filter {
 		// Find a peer that is a preferred peer
@@ -396,7 +397,7 @@ func (p *puller) assignDigestsToPeers(members []discovery.NetworkMember, dig2Fil
 		}
 		// Add the peer to the mapping from peer to digest slice
 		peer := remotePeer{pkiID: string(selectedPeer.PKIID), endpoint: selectedPeer.Endpoint}
-		res[peer] = append(res[peer], protosgossip.PvtDataDigest{
+		res[peer] = append(res[peer], &protosgossip.PvtDataDigest{
 			TxId:       dig.TxId,
 			BlockSeq:   dig.BlockSeq,
 			SeqInBlock: dig.SeqInBlock,
@@ -688,13 +689,10 @@ func randomizeMemberList(members []discovery.NetworkMember) []discovery.NetworkM
 	return res
 }
 
-func digestsAsPointerSlice(digests []protosgossip.PvtDataDigest) []*protosgossip.PvtDataDigest {
+func digestsAsPointerSlice(digests []*protosgossip.PvtDataDigest) []*protosgossip.PvtDataDigest {
 	res := make([]*protosgossip.PvtDataDigest, len(digests))
 	for i, dig := range digests {
-		// re-introduce dig variable to allocate
-		// new address for each iteration
-		dig := dig
-		res[i] = &dig
+		res[i] = proto.Clone(dig).(*protosgossip.PvtDataDigest)
 	}
 	return res
 }

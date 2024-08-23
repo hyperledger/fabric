@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package privdata
 
 import (
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -20,7 +21,7 @@ type SimpleCollection struct {
 	name         string
 	accessPolicy policies.Policy
 	memberOrgs   map[string]struct{}
-	conf         peer.StaticCollectionConfig
+	conf         *peer.StaticCollectionConfig
 }
 
 type SimpleCollectionPersistenceConfigs struct {
@@ -86,7 +87,7 @@ func (sc *SimpleCollection) Setup(collectionConfig *peer.StaticCollectionConfig,
 	if collectionConfig == nil {
 		return errors.New("Nil config passed to collection setup")
 	}
-	sc.conf = *collectionConfig
+	sc.conf = proto.Clone(collectionConfig).(*peer.StaticCollectionConfig)
 	sc.name = collectionConfig.GetName()
 
 	// get the access signature policy envelope

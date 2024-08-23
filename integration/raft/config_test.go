@@ -295,7 +295,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Adding the second orderer")
-			addConsenter(network, peer, orderer, "testchannel", etcdraft.Consenter{
+			addConsenter(network, peer, orderer, "testchannel", &etcdraft.Consenter{
 				ServerTlsCert: secondOrdererCertificate,
 				ClientTlsCert: secondOrdererCertificate,
 				Host:          "127.0.0.1",
@@ -403,9 +403,10 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Expanding the TLS root CA certificates and adding orderer3 to the channel")
 			updateOrdererMSPAndConsensusMetadata(network, peer, orderer, "testchannel", "OrdererOrg",
-				func(config msp.FabricMSPConfig) msp.FabricMSPConfig { // MSP mutator
-					config.TlsRootCerts = append(config.TlsRootCerts, caCert)
-					return config
+				func(config *msp.FabricMSPConfig) *msp.FabricMSPConfig { // MSP mutator
+					tmp := proto.Clone(config).(*msp.FabricMSPConfig)
+					tmp.TlsRootCerts = append(tmp.TlsRootCerts, caCert)
+					return tmp
 				},
 				func(metadata *etcdraft.ConfigMetadata) { // etcdraft mutator
 					metadata.Consenters = append(metadata.Consenters, &etcdraft.Consenter{
@@ -448,7 +449,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				peer,
 				orderer,
 				"testchannel",
-				etcdraft.Consenter{
+				&etcdraft.Consenter{
 					ServerTlsCert: client.Cert,
 					ClientTlsCert: client.Cert,
 					Host:          newConsenterHost,
@@ -527,7 +528,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			extendNetwork(network)
 			certificateRotations := refreshOrdererPEMs(network)
 
-			swap := func(o *nwo.Orderer, certificate []byte, c etcdraft.Consenter) {
+			swap := func(o *nwo.Orderer, certificate []byte, c *etcdraft.Consenter) {
 				updateEtcdRaftMetadata(network, peer, o, "testchannel", func(metadata *etcdraft.ConfigMetadata) {
 					var newConsenters []*etcdraft.Consenter
 					for _, consenter := range metadata.Consenters {
@@ -536,7 +537,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 						}
 						newConsenters = append(newConsenters, consenter)
 					}
-					newConsenters = append(newConsenters, &c)
+					newConsenters = append(newConsenters, c)
 
 					metadata.Consenters = newConsenters
 				})
@@ -566,7 +567,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				port := network.OrdererPort(targetOrderer, nwo.ClusterPort)
 
 				fmt.Fprintf(GinkgoWriter, "Rotating certificate of orderer node %d\n", target+1)
-				swap(submitterOrderer, rotation.oldCert, etcdraft.Consenter{
+				swap(submitterOrderer, rotation.oldCert, &etcdraft.Consenter{
 					ServerTlsCert: rotation.newCert,
 					ClientTlsCert: rotation.newCert,
 					Host:          "127.0.0.1",
@@ -708,7 +709,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 				By(fmt.Sprintf("Adding the future certificate of orderer node %d", i))
 				for _, channelName := range []string{"testchannel"} {
-					addConsenter(network, peer, o, channelName, etcdraft.Consenter{
+					addConsenter(network, peer, o, channelName, &etcdraft.Consenter{
 						ServerTlsCert: rotation.newCert,
 						ClientTlsCert: rotation.newCert,
 						Host:          "127.0.0.1",
@@ -799,7 +800,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			orderer4Certificate, err := os.ReadFile(orderer4CertificatePath)
 			Expect(err).NotTo(HaveOccurred())
 
-			addConsenter(network, peer, o1, "testchannel", etcdraft.Consenter{
+			addConsenter(network, peer, o1, "testchannel", &etcdraft.Consenter{
 				ServerTlsCert: orderer4Certificate,
 				ClientTlsCert: orderer4Certificate,
 				Host:          "127.0.0.1",
@@ -864,7 +865,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Eventually(orderer4Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("channel does not exist"))
 
 			By("Adding orderer4 to testchannel2")
-			addConsenter(network, peer, o1, "testchannel2", etcdraft.Consenter{
+			addConsenter(network, peer, o1, "testchannel2", &etcdraft.Consenter{
 				ServerTlsCert: orderer4Certificate,
 				ClientTlsCert: orderer4Certificate,
 				Host:          "127.0.0.1",
@@ -902,7 +903,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}, orderers, peer, network)
 
 			By("Adding orderer4 to testchannel3")
-			addConsenter(network, peer, o1, "testchannel3", etcdraft.Consenter{
+			addConsenter(network, peer, o1, "testchannel3", &etcdraft.Consenter{
 				ServerTlsCert: orderer4Certificate,
 				ClientTlsCert: orderer4Certificate,
 				Host:          "127.0.0.1",
@@ -994,7 +995,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			ordererCertificate, err := os.ReadFile(ordererCertificatePath)
 			Expect(err).NotTo(HaveOccurred())
 
-			addConsenter(network, peer, o1, "mychannel", etcdraft.Consenter{
+			addConsenter(network, peer, o1, "mychannel", &etcdraft.Consenter{
 				ServerTlsCert: ordererCertificate,
 				ClientTlsCert: ordererCertificate,
 				Host:          "127.0.0.1",
@@ -1021,7 +1022,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			ordererCertificatePath = filepath.Join(network.OrdererLocalTLSDir(o3), "server.crt")
 			ordererCertificate, err = os.ReadFile(ordererCertificatePath)
 			Expect(err).NotTo(HaveOccurred())
-			addConsenter(network, peer, o1, "mychannel", etcdraft.Consenter{
+			addConsenter(network, peer, o1, "mychannel", &etcdraft.Consenter{
 				ServerTlsCert: ordererCertificate,
 				ClientTlsCert: ordererCertificate,
 				Host:          "127.0.0.1",
@@ -1100,7 +1101,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				peer,
 				o2,
 				"testchannel",
-				etcdraft.Consenter{
+				&etcdraft.Consenter{
 					ServerTlsCert: certificatesOfOrderers[0].newCert,
 					ClientTlsCert: certificatesOfOrderers[0].newCert,
 					Host:          "127.0.0.1",
@@ -1231,7 +1232,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Eventually(assertFollower(expectedInfo, orderers[secondEvictedNode]), network.EventuallyTimeout, 100*time.Millisecond).Should(BeTrue())
 
 			By("Re-adding first evicted orderer")
-			addConsenter(network, peer, network.Orderers[survivor], "testchannel", etcdraft.Consenter{
+			addConsenter(network, peer, network.Orderers[survivor], "testchannel", &etcdraft.Consenter{
 				Host:          "127.0.0.1",
 				Port:          uint32(network.OrdererPort(orderers[firstEvictedNode], nwo.ClusterPort)),
 				ClientTlsCert: server1CertBytes,
@@ -1288,7 +1289,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				removeConsenter(network, peer, o2, "testchannel", server1CertBytes)
 
 				By("Adding the evicted orderer back to the application channel")
-				addConsenter(network, peer, o2, "testchannel", etcdraft.Consenter{
+				addConsenter(network, peer, o2, "testchannel", &etcdraft.Consenter{
 					ServerTlsCert: server1CertBytes,
 					ClientTlsCert: server1CertBytes,
 					Host:          "127.0.0.1",
@@ -1299,7 +1300,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				removeConsenter(network, peer, o2, "testchannel", server1CertBytes)
 
 				By("Adding the evicted orderer back to the application channel again")
-				addConsenter(network, peer, o2, "testchannel", etcdraft.Consenter{
+				addConsenter(network, peer, o2, "testchannel", &etcdraft.Consenter{
 					ServerTlsCert: server1CertBytes,
 					ClientTlsCert: server1CertBytes,
 					Host:          "127.0.0.1",
@@ -1459,7 +1460,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}, network.EventuallyTimeout).Should(Equal(expectedChannelInfo))
 
 			By("Adding the evicted orderer back to the application channel")
-			addConsenter(network, peer, o2, "testchannel", etcdraft.Consenter{
+			addConsenter(network, peer, o2, "testchannel", &etcdraft.Consenter{
 				ServerTlsCert: o1cert,
 				ClientTlsCert: o1cert,
 				Host:          "127.0.0.1",
@@ -1553,7 +1554,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				ordererCertificate, err := os.ReadFile(ordererCertificatePath)
 				Expect(err).NotTo(HaveOccurred())
 
-				addConsenter(network, peer, orderers[0], "testchannel", etcdraft.Consenter{
+				addConsenter(network, peer, orderers[0], "testchannel", &etcdraft.Consenter{
 					ServerTlsCert: ordererCertificate,
 					ClientTlsCert: ordererCertificate,
 					Host:          "127.0.0.1",
@@ -1951,7 +1952,8 @@ func revokeReaderAccess(network *nwo.Network, channel string, orderer *nwo.Order
 
 // consenterAdder constructs configs that can be used by `UpdateOrdererConfig`
 // to add a consenter.
-func consenterAdder(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channel string, consenter etcdraft.Consenter) (current, updated *common.Config) {
+func consenterAdder(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channel string, consenter *etcdraft.Consenter) (current, updated *common.Config) {
+	tmp := proto.Clone(consenter).(*etcdraft.Consenter)
 	config := nwo.GetConfig(n, peer, orderer, channel)
 	updatedConfig := proto.Clone(config).(*common.Config)
 
@@ -1964,7 +1966,7 @@ func consenterAdder(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channe
 	err = proto.Unmarshal(consensusTypeValue.Metadata, metadata)
 	Expect(err).NotTo(HaveOccurred())
 
-	metadata.Consenters = append(metadata.Consenters, &consenter)
+	metadata.Consenters = append(metadata.Consenters, tmp)
 
 	consensusTypeValue.Metadata, err = proto.Marshal(metadata)
 	Expect(err).NotTo(HaveOccurred())
@@ -2013,9 +2015,10 @@ func consenterRemover(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, chan
 }
 
 // addConsenter adds a new consenter to the given channel.
-func addConsenter(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channel string, consenter etcdraft.Consenter) {
+func addConsenter(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channel string, consenter *etcdraft.Consenter) {
+	tmp := proto.Clone(consenter).(*etcdraft.Consenter)
 	updateEtcdRaftMetadata(n, peer, orderer, channel, func(metadata *etcdraft.ConfigMetadata) {
-		metadata.Consenters = append(metadata.Consenters, &consenter)
+		metadata.Consenters = append(metadata.Consenters, tmp)
 	})
 }
 
@@ -2078,7 +2081,7 @@ func updateOrdererMSPAndConsensusMetadata(network *nwo.Network, peer *nwo.Peer, 
 	Expect(err).NotTo(HaveOccurred())
 
 	// Mutate it as we are asked
-	*fabricConfig = mutateMSP(*fabricConfig)
+	fabricConfig = mutateMSP(fabricConfig)
 
 	// Wrap it back into the config
 	mspConfig.Config = protoutil.MarshalOrPanic(fabricConfig)

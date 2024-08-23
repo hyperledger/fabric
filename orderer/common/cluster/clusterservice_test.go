@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -39,8 +40,7 @@ import (
 var (
 	sourceNodeID      uint64 = 1
 	destinationNodeID uint64 = 2
-	streamID          uint64 = 111
-	nodeAuthRequest          = orderer.NodeAuthRequest{
+	nodeAuthRequest          = &orderer.NodeAuthRequest{
 		Version:   0,
 		FromId:    sourceNodeID,
 		ToId:      destinationNodeID,
@@ -54,26 +54,9 @@ var (
 			},
 		},
 	}
-	nodeTranRequest = &orderer.ClusterNodeServiceStepRequest{
-		Payload: &orderer.ClusterNodeServiceStepRequest_NodeTranrequest{
-			NodeTranrequest: &orderer.NodeTransactionOrderRequest{
-				LastValidationSeq: 0,
-				Payload:           &common.Envelope{},
-			},
-		},
-	}
 	nodeInvalidRequest = &orderer.ClusterNodeServiceStepRequest{
 		Payload: &orderer.ClusterNodeServiceStepRequest_NodeConrequest{
 			NodeConrequest: nil,
-		},
-	}
-	submitRequest = &orderer.StepRequest{
-		Payload: &orderer.StepRequest_SubmitRequest{
-			SubmitRequest: &orderer.SubmitRequest{
-				LastValidationSeq: 0,
-				Payload:           &common.Envelope{},
-				Channel:           "mychannel",
-			},
 		},
 	}
 )
@@ -141,9 +124,9 @@ func TestClusterServiceStep(t *testing.T) {
 			NodeIdentity:        serverKeyPair.Cert,
 		}
 
-		authRequest := nodeAuthRequest
+		authRequest := proto.Clone(nodeAuthRequest).(*orderer.NodeAuthRequest)
 
-		bindingHash := cluster.GetSessionBindingHash(&authRequest)
+		bindingHash := cluster.GetSessionBindingHash(authRequest)
 		sessionBinding, err := cluster.GetTLSSessionBinding(stepStream.Context(), bindingHash)
 		require.NoError(t, err)
 
@@ -166,7 +149,7 @@ func TestClusterServiceStep(t *testing.T) {
 
 		stepRequest := &orderer.ClusterNodeServiceStepRequest{
 			Payload: &orderer.ClusterNodeServiceStepRequest_NodeAuthrequest{
-				NodeAuthrequest: &authRequest,
+				NodeAuthrequest: authRequest,
 			},
 		}
 
@@ -264,9 +247,9 @@ func TestClusterServiceStep(t *testing.T) {
 			NodeIdentity:        serverKeyPair.Cert,
 		}
 
-		authRequest := nodeAuthRequest
+		authRequest := proto.Clone(nodeAuthRequest).(*orderer.NodeAuthRequest)
 
-		bindingHash := cluster.GetSessionBindingHash(&authRequest)
+		bindingHash := cluster.GetSessionBindingHash(authRequest)
 		sessionBinding, err := cluster.GetTLSSessionBinding(stepStream.Context(), bindingHash)
 		require.NoError(t, err)
 
@@ -292,7 +275,7 @@ func TestClusterServiceStep(t *testing.T) {
 
 		stepRequest := &orderer.ClusterNodeServiceStepRequest{
 			Payload: &orderer.ClusterNodeServiceStepRequest_NodeAuthrequest{
-				NodeAuthrequest: &authRequest,
+				NodeAuthrequest: authRequest,
 			},
 		}
 
@@ -314,7 +297,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 
 	t.Run("Verify auth request completes successfully", func(t *testing.T) {
 		t.Parallel()
-		authRequest := nodeAuthRequest
+		authRequest := proto.Clone(nodeAuthRequest).(*orderer.NodeAuthRequest)
 
 		var err error
 		handler := &mocks.Handler{}
@@ -335,7 +318,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		stream := &mocks.ClusterStepStream{}
 
 		stream.On("Context").Return(stepStream.Context())
-		bindingHash := cluster.GetSessionBindingHash(&authRequest)
+		bindingHash := cluster.GetSessionBindingHash(authRequest)
 		authRequest.SessionBinding, _ = cluster.GetTLSSessionBinding(stepStream.Context(), bindingHash)
 
 		asnSignFields, _ := asn1.Marshal(cluster.AuthRequestSignature{
@@ -356,7 +339,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 
 		stepRequest := &orderer.ClusterNodeServiceStepRequest{
 			Payload: &orderer.ClusterNodeServiceStepRequest_NodeAuthrequest{
-				NodeAuthrequest: &authRequest,
+				NodeAuthrequest: authRequest,
 			},
 		}
 		svc.ConfigureNodeCerts(authRequest.Channel, []*common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}, {Id: uint32(authRequest.ToId), Identity: svc.NodeIdentity}})
@@ -366,7 +349,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 
 	t.Run("Verify auth request fails with sessing binding error", func(t *testing.T) {
 		t.Parallel()
-		authRequest := nodeAuthRequest
+		authRequest := proto.Clone(nodeAuthRequest).(*orderer.NodeAuthRequest)
 
 		handler := &mocks.Handler{}
 		svc := &cluster.ClusterService{
@@ -384,7 +367,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		svc.ConfigureNodeCerts(authRequest.Channel, []*common.Consenter{{Id: uint32(authRequest.FromId), Identity: clientKeyPair1.Cert}})
 		stepRequest := &orderer.ClusterNodeServiceStepRequest{
 			Payload: &orderer.ClusterNodeServiceStepRequest_NodeAuthrequest{
-				NodeAuthrequest: &authRequest,
+				NodeAuthrequest: authRequest,
 			},
 		}
 		_, err := svc.VerifyAuthRequest(stream, stepRequest)
@@ -394,10 +377,10 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 
 	t.Run("Verify auth request fails with session binding mismatch", func(t *testing.T) {
 		t.Parallel()
-		authRequest := nodeAuthRequest
+		authRequest := proto.Clone(nodeAuthRequest).(*orderer.NodeAuthRequest)
 		stepRequest := &orderer.ClusterNodeServiceStepRequest{
 			Payload: &orderer.ClusterNodeServiceStepRequest_NodeAuthrequest{
-				NodeAuthrequest: &authRequest,
+				NodeAuthrequest: authRequest,
 			},
 		}
 
@@ -438,7 +421,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 
 	t.Run("Verify auth request fails with channel config not found", func(t *testing.T) {
 		t.Parallel()
-		authRequest := nodeAuthRequest
+		authRequest := proto.Clone(nodeAuthRequest).(*orderer.NodeAuthRequest)
 
 		handler := &mocks.Handler{}
 		svc := &cluster.ClusterService{
@@ -453,7 +436,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		stream := &mocks.ClusterStepStream{}
 
 		stream.On("Context").Return(stepStream.Context())
-		bindingHash := cluster.GetSessionBindingHash(&authRequest)
+		bindingHash := cluster.GetSessionBindingHash(authRequest)
 		authRequest.SessionBinding, _ = cluster.GetTLSSessionBinding(stepStream.Context(), bindingHash)
 		asnSignFields, _ := asn1.Marshal(cluster.AuthRequestSignature{
 			Version:        int64(authRequest.Version),
@@ -472,7 +455,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		authRequest.Signature = sig
 		stepRequest := &orderer.ClusterNodeServiceStepRequest{
 			Payload: &orderer.ClusterNodeServiceStepRequest_NodeAuthrequest{
-				NodeAuthrequest: &authRequest,
+				NodeAuthrequest: authRequest,
 			},
 		}
 
@@ -484,10 +467,10 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 
 	t.Run("Verify auth request fails with node not part of the channel", func(t *testing.T) {
 		t.Parallel()
-		authRequest := nodeAuthRequest
+		authRequest := proto.Clone(nodeAuthRequest).(*orderer.NodeAuthRequest)
 		stepRequest := &orderer.ClusterNodeServiceStepRequest{
 			Payload: &orderer.ClusterNodeServiceStepRequest_NodeAuthrequest{
-				NodeAuthrequest: &authRequest,
+				NodeAuthrequest: authRequest,
 			},
 		}
 
@@ -504,7 +487,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		stream := &mocks.ClusterStepStream{}
 
 		stream.On("Context").Return(stepStream.Context())
-		bindingHash := cluster.GetSessionBindingHash(&authRequest)
+		bindingHash := cluster.GetSessionBindingHash(authRequest)
 		authRequest.SessionBinding, _ = cluster.GetTLSSessionBinding(stepStream.Context(), bindingHash)
 		asnSignFields, _ := asn1.Marshal(cluster.AuthRequestSignature{
 			Version:        int64(authRequest.Version),
@@ -531,7 +514,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 
 	t.Run("Verify auth request fails with signature mismatch", func(t *testing.T) {
 		t.Parallel()
-		authRequest := nodeAuthRequest
+		authRequest := proto.Clone(nodeAuthRequest).(*orderer.NodeAuthRequest)
 
 		handler := &mocks.Handler{}
 		serverKeyPair, _ := ca.NewServerCertKeyPair()
@@ -548,7 +531,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		stream := &mocks.ClusterStepStream{}
 
 		stream.On("Context").Return(stepStream.Context())
-		bindingHash := cluster.GetSessionBindingHash(&authRequest)
+		bindingHash := cluster.GetSessionBindingHash(authRequest)
 		authRequest.SessionBinding, _ = cluster.GetTLSSessionBinding(stepStream.Context(), bindingHash)
 
 		asnSignFields, _ := asn1.Marshal(cluster.AuthRequestSignature{
@@ -568,7 +551,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		authRequest.Signature = sig
 		stepRequest := &orderer.ClusterNodeServiceStepRequest{
 			Payload: &orderer.ClusterNodeServiceStepRequest_NodeAuthrequest{
-				NodeAuthrequest: &authRequest,
+				NodeAuthrequest: authRequest,
 			},
 		}
 
@@ -580,7 +563,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 
 	t.Run("Verify auth request fails with signature mismatch", func(t *testing.T) {
 		t.Parallel()
-		authRequest := nodeAuthRequest
+		authRequest := proto.Clone(nodeAuthRequest).(*orderer.NodeAuthRequest)
 
 		handler := &mocks.Handler{}
 		var err error
@@ -601,7 +584,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		stream := &mocks.ClusterStepStream{}
 
 		stream.On("Context").Return(stepStream.Context())
-		bindingHash := cluster.GetSessionBindingHash(&authRequest)
+		bindingHash := cluster.GetSessionBindingHash(authRequest)
 		authRequest.SessionBinding, _ = cluster.GetTLSSessionBinding(stepStream.Context(), bindingHash)
 
 		asnSignFields, _ := asn1.Marshal(cluster.AuthRequestSignature{
@@ -624,7 +607,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		authRequest.Signature = sig
 		stepRequest := &orderer.ClusterNodeServiceStepRequest{
 			Payload: &orderer.ClusterNodeServiceStepRequest_NodeAuthrequest{
-				NodeAuthrequest: &authRequest,
+				NodeAuthrequest: authRequest,
 			},
 		}
 
@@ -637,7 +620,7 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 
 func TestConfigureNodeCerts(t *testing.T) {
 	t.Parallel()
-	authRequest := nodeAuthRequest
+	authRequest := proto.Clone(nodeAuthRequest).(*orderer.NodeAuthRequest)
 
 	t.Run("Creates new entry when input channel not part of the members list", func(t *testing.T) {
 		t.Parallel()
@@ -681,7 +664,7 @@ func TestConfigureNodeCerts(t *testing.T) {
 
 func TestExpirationWarning(t *testing.T) {
 	t.Parallel()
-	authRequest := nodeAuthRequest
+	authRequest := proto.Clone(nodeAuthRequest).(*orderer.NodeAuthRequest)
 
 	server, stepStream := getStepStream(t)
 	defer server.Stop()
@@ -709,7 +692,7 @@ func TestExpirationWarning(t *testing.T) {
 		NodeIdentity:        serverKeyPair.Cert,
 	}
 
-	bindingHash := cluster.GetSessionBindingHash(&authRequest)
+	bindingHash := cluster.GetSessionBindingHash(authRequest)
 	authRequest.SessionBinding, _ = cluster.GetTLSSessionBinding(stepStream.Context(), bindingHash)
 
 	asnSignFields, _ := asn1.Marshal(cluster.AuthRequestSignature{
@@ -732,7 +715,7 @@ func TestExpirationWarning(t *testing.T) {
 	authRequest.Signature = sig
 	stepRequest := &orderer.ClusterNodeServiceStepRequest{
 		Payload: &orderer.ClusterNodeServiceStepRequest_NodeAuthrequest{
-			NodeAuthrequest: &authRequest,
+			NodeAuthrequest: authRequest,
 		},
 	}
 
@@ -765,10 +748,10 @@ func TestExpirationWarning(t *testing.T) {
 
 func TestClusterRequestAsString(t *testing.T) {
 	t.Parallel()
-	authRequest := nodeAuthRequest
+	authRequest := proto.Clone(nodeAuthRequest).(*orderer.NodeAuthRequest)
 	stepRequest := &orderer.ClusterNodeServiceStepRequest{
 		Payload: &orderer.ClusterNodeServiceStepRequest_NodeAuthrequest{
-			NodeAuthrequest: &authRequest,
+			NodeAuthrequest: authRequest,
 		},
 	}
 	tcs := []struct {
