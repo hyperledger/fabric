@@ -2551,7 +2551,7 @@ var _ = Describe("Handler", func() {
 		})
 
 		It("sends an execute message to the chaincode with the correct proposal", func() {
-			expectedMessage := incomingMessage
+			expectedMessage := proto.Clone(incomingMessage).(*pb.ChaincodeMessage)
 			expectedMessage.Proposal = expectedSignedProp
 
 			close(responseNotifier)
@@ -2560,7 +2560,7 @@ var _ = Describe("Handler", func() {
 			Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
 			Consistently(fakeChatStream.SendCallCount).Should(Equal(1))
 			msg := fakeChatStream.SendArgsForCall(0)
-			Expect(msg).To(ProtoEqual(incomingMessage))
+			Expect(msg).To(ProtoEqual(expectedMessage))
 			Expect(msg.Proposal).To(ProtoEqual(expectedSignedProp))
 		})
 

@@ -114,8 +114,7 @@ func (fbrs *filteredBlockResponseSender) SendBlockResponse(
 	signedData *protoutil.SignedData,
 ) error {
 	// Generates filtered block response
-	b := blockEvent(*block)
-	filteredBlock, err := b.toFilteredBlock()
+	filteredBlock, err := toFilteredBlock(block)
 	if err != nil {
 		logger.Warningf("Failed to generate filtered block due to: %s", err)
 		return fbrs.SendStatusResponse(common.Status_BAD_REQUEST)
@@ -231,10 +230,6 @@ func (bprs *blockAndPrivateDataResponseSender) getPrivateData(
 // transactionActions aliasing for peer.TransactionAction pointers slice
 type transactionActions []*peer.TransactionAction
 
-// blockEvent an alias for common.Block structure, used to
-// extend with auxiliary functionality
-type blockEvent common.Block
-
 // DeliverFiltered sends a stream of blocks to a client after commitment
 func (s *DeliverServer) DeliverFiltered(srv peer.Deliver_DeliverFilteredServer) error {
 	logger.Debugf("Starting new DeliverFiltered handler")
@@ -289,7 +284,7 @@ func (s *DeliverServer) DeliverWithPrivateData(srv peer.Deliver_DeliverWithPriva
 	return err
 }
 
-func (block *blockEvent) toFilteredBlock() (*peer.FilteredBlock, error) {
+func toFilteredBlock(block *common.Block) (*peer.FilteredBlock, error) {
 	filteredBlock := &peer.FilteredBlock{
 		Number: block.Header.Number,
 	}

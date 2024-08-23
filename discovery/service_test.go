@@ -593,7 +593,7 @@ type peers []*discovery.Peer
 func (ps peers) exists(p *discovery.Peer) error {
 	var found bool
 	for _, q := range ps {
-		if reflect.DeepEqual(*p, *q) {
+		if proto.Equal(p, q) {
 			found = true
 			break
 		}
