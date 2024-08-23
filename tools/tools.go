@@ -18,7 +18,7 @@ import (
 	_ "github.com/hyperledger/fabric-lib-go/common/metrics/cmd/gendoc"
 	_ "github.com/maxbrunsfeld/counterfeiter/v6"
 	_ "github.com/onsi/ginkgo/v2/ginkgo"
-	_ "github.com/vektra/mockery/cmd/mockery"
+	_ "github.com/vektra/mockery/v2"
 	_ "golang.org/x/lint/golint"
 	_ "golang.org/x/tools/cmd/goimports"
 	_ "honnef.co/go/tools/cmd/staticcheck"
