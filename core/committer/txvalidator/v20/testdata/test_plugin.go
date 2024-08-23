@@ -37,24 +37,6 @@ func NewSampleValidationPlugin(t *testing.T) *SampleValidationPlugin {
 	return &SampleValidationPlugin{t: t}
 }
 
-type MarshaledSignedData struct {
-	Data      []byte `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
-	Signature []byte `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"`
-	Identity  []byte `protobuf:"bytes,2,opt,name=identity,proto3" json:"identity,omitempty"`
-}
-
-func (sd *MarshaledSignedData) Reset() {
-	*sd = MarshaledSignedData{}
-}
-
-func (*MarshaledSignedData) String() string {
-	panic("implement me")
-}
-
-func (*MarshaledSignedData) ProtoMessage() {
-	panic("implement me")
-}
-
 func (p *SampleValidationPlugin) Validate(block *common.Block, namespace string, txPosition int, actionPosition int, contextData ...validation.ContextDatum) error {
 	txData := block.Data.Data[0]
 	txn := &MarshaledSignedData{}

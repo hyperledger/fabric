@@ -17,7 +17,6 @@ limitations under the License.
 package ccprovider
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 
@@ -28,36 +27,6 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 )
-
-// ----- SignedCDSData ------
-
-// SignedCDSData is data stored in the LSCC on instantiation of a CC
-// for SignedCDSPackage. This needs to be serialized for ChaincodeData
-// hence the protobuf format
-type SignedCDSData struct {
-	CodeHash      []byte `protobuf:"bytes,1,opt,name=hash"`
-	MetaDataHash  []byte `protobuf:"bytes,2,opt,name=metadatahash"`
-	SignatureHash []byte `protobuf:"bytes,3,opt,name=signaturehash"`
-}
-
-// ----implement functions needed from proto.Message for proto's mar/unmarshal functions
-
-// Reset resets
-func (data *SignedCDSData) Reset() { *data = SignedCDSData{} }
-
-// String converts to string
-func (data *SignedCDSData) String() string { return proto.CompactTextString(data) }
-
-// ProtoMessage just exists to make proto happy
-func (*SignedCDSData) ProtoMessage() {}
-
-// Equals data equals other
-func (data *SignedCDSData) Equals(other *SignedCDSData) bool {
-	return other != nil &&
-		bytes.Equal(data.CodeHash, other.CodeHash) &&
-		bytes.Equal(data.MetaDataHash, other.MetaDataHash) &&
-		bytes.Equal(data.SignatureHash, other.SignatureHash)
-}
 
 // -------- SignedCDSPackage ---------
 
@@ -242,7 +211,7 @@ func (ccpack *SignedCDSPackage) ValidateCC(ccdata *ChaincodeData) error {
 		return err
 	}
 
-	if !ccpack.data.Equals(otherdata) {
+	if !proto.Equal(ccpack.data, otherdata) {
 		return fmt.Errorf("data mismatch")
 	}
 
