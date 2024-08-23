@@ -241,8 +241,8 @@ func (gs *Server) planFromFirstEndorser(ctx context.Context, channel string, cha
 	var protectedCollections []string
 	if hasTransientData {
 		for _, call := range interest.GetChaincodes() {
-			ccc := *call // shallow copy
-			originalInterest.Chaincodes = append(originalInterest.Chaincodes, &ccc)
+			ccc := proto.Clone(call).(*peer.ChaincodeCall)
+			originalInterest.Chaincodes = append(originalInterest.Chaincodes, ccc)
 			if call.NoPrivateReads {
 				call.NoPrivateReads = false
 				protectedCollections = append(protectedCollections, call.CollectionNames...)

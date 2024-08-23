@@ -157,9 +157,9 @@ func (req *Request) addQueryMapping(queryType protoext.QueryType, key string) {
 
 // Send sends the request and returns the response, or error on failure
 func (c *Client) Send(ctx context.Context, req *Request, auth *discovery.AuthInfo) (Response, error) {
-	reqToBeSent := *req.Request
+	reqToBeSent := proto.Clone(req.Request).(*discovery.Request)
 	reqToBeSent.Authentication = auth
-	payload, err := proto.Marshal(&reqToBeSent)
+	payload, err := proto.Marshal(reqToBeSent)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed marshaling Request to bytes")
 	}
