@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 const (
@@ -195,7 +196,7 @@ func bootstrapFromSnapshottedTxIDs(
 		return err
 	}
 
-	if err := fileutil.CreateAndSyncFileAtomically(
+	if err = fileutil.CreateAndSyncFileAtomically(
 		rootDir,
 		bootstrappingSnapshotInfoTempFile,
 		bootstrappingSnapshotInfoFile,
@@ -307,7 +308,7 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 	currentOffset := mgr.blockfilesInfo.latestFileSize
 
 	blockBytesLen := len(blockBytes)
-	blockBytesEncodedLen := proto.EncodeVarint(uint64(blockBytesLen))
+	blockBytesEncodedLen := protowire.AppendVarint(nil, uint64(blockBytesLen))
 	totalBytesToAppend := blockBytesLen + len(blockBytesEncodedLen)
 
 	// Determine if we need to start a new file since the size of this block
@@ -649,7 +650,10 @@ func (mgr *blockfileMgr) fetchTransactionEnvelope(lp *fileLocPointer) (*common.E
 	if txEnvelopeBytes, err = mgr.fetchRawBytes(lp); err != nil {
 		return nil, err
 	}
-	_, n := proto.DecodeVarint(txEnvelopeBytes)
+	_, n := protowire.ConsumeVarint(txEnvelopeBytes)
+	if n < 0 {
+		n = 0
+	}
 	return protoutil.GetEnvelopeFromBlock(txEnvelopeBytes[n:])
 }
 
@@ -757,49 +761,49 @@ type blockfilesInfo struct {
 }
 
 func (i *blockfilesInfo) marshal() ([]byte, error) {
-	buffer := proto.NewBuffer([]byte{})
-	var err error
-	if err = buffer.EncodeVarint(uint64(i.latestFileNumber)); err != nil {
-		return nil, errors.Wrapf(err, "error encoding the latestFileNumber [%d]", i.latestFileNumber)
-	}
-	if err = buffer.EncodeVarint(uint64(i.latestFileSize)); err != nil {
-		return nil, errors.Wrapf(err, "error encoding the latestFileSize [%d]", i.latestFileSize)
-	}
-	if err = buffer.EncodeVarint(i.lastPersistedBlock); err != nil {
-		return nil, errors.Wrapf(err, "error encoding the lastPersistedBlock [%d]", i.lastPersistedBlock)
-	}
+	var buf []byte
+	buf = protowire.AppendVarint(buf, uint64(i.latestFileNumber))
+	buf = protowire.AppendVarint(buf, uint64(i.latestFileSize))
+	buf = protowire.AppendVarint(buf, i.lastPersistedBlock)
 	var noBlockFilesMarker uint64
 	if i.noBlockFiles {
 		noBlockFilesMarker = 1
 	}
-	if err = buffer.EncodeVarint(noBlockFilesMarker); err != nil {
-		return nil, errors.Wrapf(err, "error encoding noBlockFiles [%d]", noBlockFilesMarker)
-	}
-	return buffer.Bytes(), nil
+	buf = protowire.AppendVarint(buf, noBlockFilesMarker)
+
+	return buf, nil
 }
 
 func (i *blockfilesInfo) unmarshal(b []byte) error {
-	buffer := proto.NewBuffer(b)
-	var val uint64
-	var noBlockFilesMarker uint64
-	var err error
+	var (
+		val                uint64
+		noBlockFilesMarker uint64
+		position           int
+	)
 
-	if val, err = buffer.DecodeVarint(); err != nil {
-		return err
+	val, n := protowire.ConsumeVarint(b[position:])
+	if n < 0 {
+		return protowire.ParseError(n)
 	}
+	position += n
 	i.latestFileNumber = int(val)
 
-	if val, err = buffer.DecodeVarint(); err != nil {
-		return err
+	val, n = protowire.ConsumeVarint(b[position:])
+	if n < 0 {
+		return protowire.ParseError(n)
 	}
+	position += n
 	i.latestFileSize = int(val)
 
-	if val, err = buffer.DecodeVarint(); err != nil {
-		return err
+	val, n = protowire.ConsumeVarint(b[position:])
+	if n < 0 {
+		return protowire.ParseError(n)
 	}
+	position += n
 	i.lastPersistedBlock = val
-	if noBlockFilesMarker, err = buffer.DecodeVarint(); err != nil {
-		return err
+	noBlockFilesMarker, n = protowire.ConsumeVarint(b[position:])
+	if n < 0 {
+		return protowire.ParseError(n)
 	}
 	i.noBlockFiles = noBlockFilesMarker == 1
 	return nil

@@ -12,8 +12,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 // ErrUnexpectedEndOfBlockfile error used to indicate an unexpected end of a file segment
@@ -105,8 +105,8 @@ func (s *blockfileStream) nextBlockBytesAndPlacementInfo() ([]byte, *blockPlacem
 	if lenBytes, err = s.reader.Peek(peekBytes); err != nil {
 		return nil, nil, errors.Wrapf(err, "error peeking [%d] bytes from block file", peekBytes)
 	}
-	length, n := proto.DecodeVarint(lenBytes)
-	if n == 0 {
+	length, n := protowire.ConsumeVarint(lenBytes)
+	if n <= 0 {
 		// proto.DecodeVarint did not consume any byte at all which means that the bytes
 		// representing the size of the block are partial bytes
 		if !moreContentAvailable {
