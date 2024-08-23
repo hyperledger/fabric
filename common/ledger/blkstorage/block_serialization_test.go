@@ -9,11 +9,11 @@ package blkstorage
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 func TestBlockSerialization(t *testing.T) {
@@ -101,7 +101,10 @@ func testSerializedBlockInfo(t *testing.T, block *common.Block, c *testutilTxIDC
 
 		require.Equal(t, indexTxID, txid)
 		b := bb[indexOffset.offset:]
-		length, num := proto.DecodeVarint(b)
+		length, num := protowire.ConsumeVarint(b)
+		if num < 0 {
+			length, num = 0, 0
+		}
 		txEnvBytesFromBB := b[num : num+int(length)]
 		require.Equal(t, txEnvBytes, txEnvBytesFromBB)
 	}
