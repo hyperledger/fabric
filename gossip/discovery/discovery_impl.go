@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
 	"github.com/hyperledger/fabric/gossip/protoext"
@@ -414,7 +414,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(msg protoext.ReceivedMessage) {
 	}
 }
 
-func (d *gossipDiscoveryImpl) sendMemResponse(targetMember *proto.Member, internalEndpoint string, nonce uint64) {
+func (d *gossipDiscoveryImpl) sendMemResponse(targetMember *gossip.Member, internalEndpoint string, nonce uint64) {
 	d.logger.Debug("Entering", protoext.MemberToString(targetMember))
 
 	targetPeer := &NetworkMember{
@@ -446,10 +446,10 @@ func (d *gossipDiscoveryImpl) sendMemResponse(targetMember *proto.Member, intern
 
 	defer d.logger.Debug("Exiting, replying with", protoext.MembershipResponseToString(memResp))
 
-	msg, err := protoext.NoopSign(&proto.GossipMessage{
-		Tag:   proto.GossipMessage_EMPTY,
+	msg, err := protoext.NoopSign(&gossip.GossipMessage{
+		Tag:   gossip.GossipMessage_EMPTY,
 		Nonce: nonce,
-		Content: &proto.GossipMessage_MemRes{
+		Content: &gossip.GossipMessage_MemRes{
 			MemRes: memResp,
 		},
 	})
@@ -461,7 +461,7 @@ func (d *gossipDiscoveryImpl) sendMemResponse(targetMember *proto.Member, intern
 	d.comm.SendToPeer(targetPeer, msg)
 }
 
-func (d *gossipDiscoveryImpl) createMembershipResponse(aliveMsg *protoext.SignedGossipMessage, targetMember *NetworkMember) *proto.MembershipResponse {
+func (d *gossipDiscoveryImpl) createMembershipResponse(aliveMsg *protoext.SignedGossipMessage, targetMember *NetworkMember) *gossip.MembershipResponse {
 	shouldBeDisclosed, omitConcealedFields := d.disclosurePolicy(targetMember)
 
 	if !shouldBeDisclosed(aliveMsg) {
@@ -471,7 +471,7 @@ func (d *gossipDiscoveryImpl) createMembershipResponse(aliveMsg *protoext.Signed
 	d.lock.RLock()
 	defer d.lock.RUnlock()
 
-	deadPeers := []*proto.Envelope{}
+	deadPeers := []*gossip.Envelope{}
 
 	for _, dm := range d.deadMembership.ToSlice() {
 
@@ -481,7 +481,7 @@ func (d *gossipDiscoveryImpl) createMembershipResponse(aliveMsg *protoext.Signed
 		deadPeers = append(deadPeers, omitConcealedFields(dm))
 	}
 
-	var aliveSnapshot []*proto.Envelope
+	var aliveSnapshot []*gossip.Envelope
 	for _, am := range d.aliveMembership.ToSlice() {
 		if !shouldBeDisclosed(am) {
 			continue
@@ -489,7 +489,7 @@ func (d *gossipDiscoveryImpl) createMembershipResponse(aliveMsg *protoext.Signed
 		aliveSnapshot = append(aliveSnapshot, omitConcealedFields(am))
 	}
 
-	return &proto.MembershipResponse{
+	return &gossip.MembershipResponse{
 		Alive: append(aliveSnapshot, omitConcealedFields(aliveMsg)),
 		Dead:  deadPeers,
 	}
@@ -534,7 +534,7 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *protoext.SignedGossipMessage
 	if isDead {
 		if before(lastDeadTS, ts) {
 			// resurrect peer
-			d.resurrectMember(m, *ts)
+			d.resurrectMember(m, ts)
 		} else if !same(lastDeadTS, ts) {
 			d.logger.Debug("got old alive message about dead peer ", protoext.MemberToString(m.GetAliveMsg().Membership), "lastDeadTS:", lastDeadTS, "but got ts:", ts)
 		}
@@ -589,7 +589,7 @@ func (d *gossipDiscoveryImpl) isSentByMe(m *protoext.SignedGossipMessage) bool {
 	return true
 }
 
-func (d *gossipDiscoveryImpl) resurrectMember(am *protoext.SignedGossipMessage, t proto.PeerTime) {
+func (d *gossipDiscoveryImpl) resurrectMember(am *protoext.SignedGossipMessage, t *gossip.PeerTime) {
 	d.logger.Debug("Entering, AliveMessage:", am, "t:", t)
 	defer d.logger.Debug("Exiting")
 	d.lock.Lock()
@@ -662,22 +662,22 @@ func (d *gossipDiscoveryImpl) sendMembershipRequest(member *NetworkMember, inclu
 	d.comm.SendToPeer(member, req)
 }
 
-func (d *gossipDiscoveryImpl) createMembershipRequest(includeInternalEndpoint bool) (*proto.GossipMessage, error) {
+func (d *gossipDiscoveryImpl) createMembershipRequest(includeInternalEndpoint bool) (*gossip.GossipMessage, error) {
 	am, err := d.createSignedAliveMessage(includeInternalEndpoint)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	req := &proto.MembershipRequest{
+	req := &gossip.MembershipRequest{
 		SelfInformation: am.Envelope,
 		// TODO: sending the known peers is not secure because the remote peer might shouldn't know
 		// TODO: about the known peers. I'm deprecating this until a secure mechanism will be implemented.
 		// TODO: See FAB-2570 for tracking this issue.
 		Known: [][]byte{},
 	}
-	return &proto.GossipMessage{
-		Tag:   proto.GossipMessage_EMPTY,
+	return &gossip.GossipMessage{
+		Tag:   gossip.GossipMessage_EMPTY,
 		Nonce: uint64(0),
-		Content: &proto.GossipMessage_MemReq{
+		Content: &gossip.GossipMessage_MemReq{
 			MemReq: req,
 		},
 	}, nil
@@ -778,7 +778,7 @@ func (d *gossipDiscoveryImpl) periodicalSendAlive() {
 	}
 }
 
-func (d *gossipDiscoveryImpl) aliveMsgAndInternalEndpoint() (*proto.GossipMessage, string) {
+func (d *gossipDiscoveryImpl) aliveMsgAndInternalEndpoint() (*gossip.GossipMessage, string) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	d.seqNum++
@@ -787,16 +787,16 @@ func (d *gossipDiscoveryImpl) aliveMsgAndInternalEndpoint() (*proto.GossipMessag
 	meta := d.self.Metadata
 	pkiID := d.self.PKIid
 	internalEndpoint := d.self.InternalEndpoint
-	msg := &proto.GossipMessage{
-		Tag: proto.GossipMessage_EMPTY,
-		Content: &proto.GossipMessage_AliveMsg{
-			AliveMsg: &proto.AliveMessage{
-				Membership: &proto.Member{
+	msg := &gossip.GossipMessage{
+		Tag: gossip.GossipMessage_EMPTY,
+		Content: &gossip.GossipMessage_AliveMsg{
+			AliveMsg: &gossip.AliveMessage{
+				Membership: &gossip.Member{
 					Endpoint: endpoint,
 					Metadata: meta,
 					PkiId:    pkiID,
 				},
-				Timestamp: &proto.PeerTime{
+				Timestamp: &gossip.PeerTime{
 					IncNum: d.incTime,
 					SeqNum: seqNum,
 				},
@@ -980,7 +980,7 @@ func (d *gossipDiscoveryImpl) UpdateEndpoint(endpoint string) {
 }
 
 func (d *gossipDiscoveryImpl) Self() NetworkMember {
-	var env *proto.Envelope
+	var env *gossip.Envelope
 	msg, _ := d.aliveMsgAndInternalEndpoint()
 	sMsg, err := protoext.NoopSign(msg)
 	if err != nil {
@@ -1031,11 +1031,11 @@ func equalPKIid(a, b common.PKIidType) bool {
 	return bytes.Equal(a, b)
 }
 
-func same(a *timestamp, b *proto.PeerTime) bool {
+func same(a *timestamp, b *gossip.PeerTime) bool {
 	return uint64(a.incTime.UnixNano()) == b.IncNum && a.seqNum == b.SeqNum
 }
 
-func before(a *timestamp, b *proto.PeerTime) bool {
+func before(a *timestamp, b *gossip.PeerTime) bool {
 	return (uint64(a.incTime.UnixNano()) == b.IncNum && a.seqNum < b.SeqNum) ||
 		uint64(a.incTime.UnixNano()) < b.IncNum
 }

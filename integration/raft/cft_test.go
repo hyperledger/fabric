@@ -345,7 +345,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Adding new ordering service node")
-			addConsenter(network, peer, orderers[0], "testchannel", etcdraft.Consenter{
+			addConsenter(network, peer, orderers[0], "testchannel", &etcdraft.Consenter{
 				ServerTlsCert: ordererCert,
 				ClientTlsCert: ordererCert,
 				Host:          "127.0.0.1",
