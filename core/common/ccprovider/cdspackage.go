@@ -17,7 +17,6 @@ limitations under the License.
 package ccprovider
 
 import (
-	"bytes"
 	"fmt"
 	"hash"
 	"os"
@@ -26,35 +25,6 @@ import (
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 )
-
-// ----- CDSData ------
-
-// CDSData is data stored in the LSCC on instantiation of a CC
-// for CDSPackage.  This needs to be serialized for ChaincodeData
-// hence the protobuf format
-type CDSData struct {
-	// CodeHash hash of CodePackage from ChaincodeDeploymentSpec
-	CodeHash []byte `protobuf:"bytes,1,opt,name=codehash,proto3"`
-
-	// MetaDataHash hash of Name and Version from ChaincodeDeploymentSpec
-	MetaDataHash []byte `protobuf:"bytes,2,opt,name=metadatahash,proto3"`
-}
-
-// ----implement functions needed from proto.Message for proto's mar/unmarshal functions
-
-// Reset resets
-func (data *CDSData) Reset() { *data = CDSData{} }
-
-// String converts to string
-func (data *CDSData) String() string { return proto.CompactTextString(data) }
-
-// ProtoMessage just exists to make proto happy
-func (*CDSData) ProtoMessage() {}
-
-// Equals data equals other
-func (data *CDSData) Equals(other *CDSData) bool {
-	return other != nil && bytes.Equal(data.CodeHash, other.CodeHash) && bytes.Equal(data.MetaDataHash, other.MetaDataHash)
-}
 
 // GetHasher interface defines a subset of bccsp which contains GetHash function.
 type GetHasher interface {
@@ -198,7 +168,7 @@ func (ccpack *CDSPackage) ValidateCC(ccdata *ChaincodeData) error {
 		return err
 	}
 
-	if !ccpack.data.Equals(otherdata) {
+	if !proto.Equal(ccpack.data, otherdata) {
 		return fmt.Errorf("data mismatch")
 	}
 
