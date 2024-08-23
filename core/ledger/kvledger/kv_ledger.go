@@ -36,6 +36,7 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 var logger = flogging.MustGetLogger("kvledger")
@@ -811,7 +812,7 @@ func (l *kvLedger) addBlockCommitHash(block *common.Block, updateBatchBytes []by
 	var valueBytes []byte
 
 	txValidationCode := block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER]
-	valueBytes = append(valueBytes, proto.EncodeVarint(uint64(len(txValidationCode)))...)
+	valueBytes = append(valueBytes, protowire.AppendVarint(nil, uint64(len(txValidationCode)))...)
 	valueBytes = append(valueBytes, txValidationCode...)
 	valueBytes = append(valueBytes, updateBatchBytes...)
 	valueBytes = append(valueBytes, l.commitHash...)

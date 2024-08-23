@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 const (
@@ -478,11 +479,14 @@ func constructBlockNumTranNumKey(blockNum uint64, txNum uint64) []byte {
 }
 
 func encodeBlockNum(blockNum uint64) []byte {
-	return proto.EncodeVarint(blockNum)
+	return protowire.AppendVarint(nil, blockNum)
 }
 
 func decodeBlockNum(blockNumBytes []byte) uint64 {
-	blockNum, _ := proto.DecodeVarint(blockNumBytes)
+	blockNum, num := protowire.ConsumeVarint(blockNumBytes)
+	if num < 0 {
+		return 0
+	}
 	return blockNum
 }
 
@@ -510,38 +514,34 @@ func newFileLocationPointer(fileSuffixNum int, beginningOffset int, relativeLP *
 }
 
 func (flp *fileLocPointer) marshal() ([]byte, error) {
-	buffer := proto.NewBuffer([]byte{})
-	e := buffer.EncodeVarint(uint64(flp.fileSuffixNum))
-	if e != nil {
-		return nil, errors.Wrapf(e, "unexpected error while marshaling fileLocPointer [%s]", flp)
-	}
-	e = buffer.EncodeVarint(uint64(flp.offset))
-	if e != nil {
-		return nil, errors.Wrapf(e, "unexpected error while marshaling fileLocPointer [%s]", flp)
-	}
-	e = buffer.EncodeVarint(uint64(flp.bytesLength))
-	if e != nil {
-		return nil, errors.Wrapf(e, "unexpected error while marshaling fileLocPointer [%s]", flp)
-	}
-	return buffer.Bytes(), nil
+	var buf []byte
+	buf = protowire.AppendVarint(buf, uint64(flp.fileSuffixNum))
+	buf = protowire.AppendVarint(buf, uint64(flp.offset))
+	buf = protowire.AppendVarint(buf, uint64(flp.bytesLength))
+
+	return buf, nil
 }
 
 func (flp *fileLocPointer) unmarshal(b []byte) error {
-	buffer := proto.NewBuffer(b)
-	i, e := buffer.DecodeVarint()
-	if e != nil {
-		return errors.Wrapf(e, "unexpected error while unmarshalling bytes [%#v] into fileLocPointer", b)
+	var position int
+
+	i, n := protowire.ConsumeVarint(b[position:])
+	if n < 0 {
+		return errors.Wrapf(protowire.ParseError(n), "unexpected error while unmarshalling bytes [%#v] into fileLocPointer", b)
 	}
+	position += n
 	flp.fileSuffixNum = int(i)
 
-	i, e = buffer.DecodeVarint()
-	if e != nil {
-		return errors.Wrapf(e, "unexpected error while unmarshalling bytes [%#v] into fileLocPointer", b)
+	i, n = protowire.ConsumeVarint(b[position:])
+	if n < 0 {
+		return errors.Wrapf(protowire.ParseError(n), "unexpected error while unmarshalling bytes [%#v] into fileLocPointer", b)
 	}
+	position += n
 	flp.offset = int(i)
-	i, e = buffer.DecodeVarint()
-	if e != nil {
-		return errors.Wrapf(e, "unexpected error while unmarshalling bytes [%#v] into fileLocPointer", b)
+
+	i, n = protowire.ConsumeVarint(b[position:])
+	if n < 0 {
+		return errors.Wrapf(protowire.ParseError(n), "unexpected error while unmarshalling bytes [%#v] into fileLocPointer", b)
 	}
 	flp.bytesLength = int(i)
 	return nil

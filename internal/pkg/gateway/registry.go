@@ -25,6 +25,8 @@ import (
 	gossipdiscovery "github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/ledger"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/protoadapt"
 )
 
 type Discovery interface {
@@ -58,7 +60,8 @@ type endorserState struct {
 func (reg *registry) endorsementPlan(channel string, interest *peer.ChaincodeInterest, preferredEndorser *endorser) (*plan, error) {
 	descriptor, err := reg.discovery.PeersForEndorsement(gossipcommon.ChannelID(channel), interest)
 	if err != nil {
-		logger.Errorw("PeersForEndorsement failed.", "error", err, "channel", channel, "ChaincodeInterest", proto.MarshalTextString(interest))
+		b, _ := prototext.Marshal(protoadapt.MessageV2Of(interest))
+		logger.Errorw("PeersForEndorsement failed.", "error", err, "channel", channel, "ChaincodeInterest", b)
 		return nil, errors.Wrap(err, "no combination of peers can be derived which satisfy the endorsement policy")
 	}
 

@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock"
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
@@ -22,6 +21,7 @@ import (
 	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 var (
@@ -74,7 +74,10 @@ func (n *node) start(fresh, join bool) {
 			// determine the node to start campaign by selecting the node with ID equals to:
 			//                hash(channelID) % cluster_size + 1
 			sha := sha256.Sum256([]byte(n.chainID))
-			number, _ := proto.DecodeVarint(sha[24:])
+			number, s := protowire.ConsumeVarint(sha[24:])
+			if s < 0 {
+				number = 0
+			}
 			if n.config.ID == number%uint64(len(raftPeers))+1 {
 				campaign = true
 			}

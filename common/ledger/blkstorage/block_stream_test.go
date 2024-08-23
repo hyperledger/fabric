@@ -9,10 +9,10 @@ package blkstorage
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 func TestBlockfileStream(t *testing.T) {
@@ -53,7 +53,7 @@ func testBlockfileStream(t *testing.T, numBlocks int) {
 func TestBlockFileStreamUnexpectedEOF(t *testing.T) {
 	partialBlockBytes := []byte{}
 	dummyBlockBytes := testutil.ConstructRandomBytes(t, 100)
-	lenBytes := proto.EncodeVarint(uint64(len(dummyBlockBytes)))
+	lenBytes := protowire.AppendVarint(nil, uint64(len(dummyBlockBytes)))
 	partialBlockBytes = append(partialBlockBytes, lenBytes...)
 	partialBlockBytes = append(partialBlockBytes, dummyBlockBytes...)
 	testBlockFileStreamUnexpectedEOF(t, 10, partialBlockBytes[:1])
