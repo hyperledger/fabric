@@ -21,11 +21,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
@@ -40,6 +39,7 @@ import (
 	"google.golang.org/grpc/balancer"
 	"google.golang.org/grpc/balancer/roundrobin"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/proto"
 )
 
 // protects gRPC balancer registration
@@ -1120,7 +1120,7 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 		{
 			name:           "bad type",
 			corruptBlock:   statusType,
-			expectedErrMsg: "faulty node, received: status:INTERNAL_SERVER_ERROR ",
+			expectedErrMsg: "faulty node, received: status:INTERNAL_SERVER_ERROR",
 		},
 		{
 			name:           "wrong number",

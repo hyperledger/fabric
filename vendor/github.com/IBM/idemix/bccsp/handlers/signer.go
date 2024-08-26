@@ -7,23 +7,22 @@ package handlers
 
 import (
 	"crypto/ecdsa"
-	"github.com/pkg/errors"
 
 	"github.com/IBM/idemix/bccsp/types"
-	bccsp "github.com/IBM/idemix/bccsp/types"
+	"github.com/pkg/errors"
 )
 
 type Signer struct {
 	SignatureScheme types.SignatureScheme
 }
 
-func (s *Signer) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte, error) {
+func (s *Signer) Sign(k types.Key, digest []byte, opts types.SignerOpts) ([]byte, error) {
 	userSecretKey, ok := k.(*UserSecretKey)
 	if !ok {
 		return nil, errors.New("invalid key, expected *userSecretKey")
 	}
 
-	signerOpts, ok := opts.(*bccsp.IdemixSignerOpts)
+	signerOpts, ok := opts.(*types.IdemixSignerOpts)
 	if !ok {
 		return nil, errors.New("invalid options, expected *IdemixSignerOpts")
 	}
@@ -73,13 +72,13 @@ type Verifier struct {
 	SignatureScheme types.SignatureScheme
 }
 
-func (v *Verifier) AuditNymEid(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
+func (v *Verifier) AuditNymEid(k types.Key, signature, digest []byte, opts types.SignerOpts) (bool, error) {
 	issuerPublicKey, ok := k.(*issuerPublicKey)
 	if !ok {
 		return false, errors.New("invalid key, expected *issuerPublicKey")
 	}
 
-	signerOpts, ok := opts.(*bccsp.EidNymAuditOpts)
+	signerOpts, ok := opts.(*types.EidNymAuditOpts)
 	if !ok {
 		return false, errors.New("invalid options, expected *EidNymAuditOpts")
 	}
@@ -91,6 +90,7 @@ func (v *Verifier) AuditNymEid(k bccsp.Key, signature, digest []byte, opts bccsp
 	err := v.SignatureScheme.AuditNymEid(
 		issuerPublicKey.pk,
 		signerOpts.EidIndex,
+		signerOpts.SKIndex,
 		signature,
 		signerOpts.EnrollmentID,
 		signerOpts.RNymEid,
@@ -103,13 +103,13 @@ func (v *Verifier) AuditNymEid(k bccsp.Key, signature, digest []byte, opts bccsp
 	return true, nil
 }
 
-func (v *Verifier) AuditNymRh(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
+func (v *Verifier) AuditNymRh(k types.Key, signature, digest []byte, opts types.SignerOpts) (bool, error) {
 	issuerPublicKey, ok := k.(*issuerPublicKey)
 	if !ok {
 		return false, errors.New("invalid key, expected *issuerPublicKey")
 	}
 
-	signerOpts, ok := opts.(*bccsp.RhNymAuditOpts)
+	signerOpts, ok := opts.(*types.RhNymAuditOpts)
 	if !ok {
 		return false, errors.New("invalid options, expected *RhNymAuditOpts")
 	}
@@ -121,6 +121,7 @@ func (v *Verifier) AuditNymRh(k bccsp.Key, signature, digest []byte, opts bccsp.
 	err := v.SignatureScheme.AuditNymRh(
 		issuerPublicKey.pk,
 		signerOpts.RhIndex,
+		signerOpts.SKIndex,
 		signature,
 		signerOpts.RevocationHandle,
 		signerOpts.RNymRh,
@@ -133,13 +134,13 @@ func (v *Verifier) AuditNymRh(k bccsp.Key, signature, digest []byte, opts bccsp.
 	return true, nil
 }
 
-func (v *Verifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
+func (v *Verifier) Verify(k types.Key, signature, digest []byte, opts types.SignerOpts) (bool, error) {
 	issuerPublicKey, ok := k.(*issuerPublicKey)
 	if !ok {
 		return false, errors.New("invalid key, expected *issuerPublicKey")
 	}
 
-	signerOpts, ok := opts.(*bccsp.IdemixSignerOpts)
+	signerOpts, ok := opts.(*types.IdemixSignerOpts)
 	if !ok {
 		return false, errors.New("invalid options, expected *IdemixSignerOpts")
 	}
@@ -163,6 +164,7 @@ func (v *Verifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Sign
 		signerOpts.Attributes,
 		signerOpts.RhIndex,
 		signerOpts.EidIndex,
+		signerOpts.SKIndex,
 		rPK,
 		signerOpts.Epoch,
 		signerOpts.VerificationType,

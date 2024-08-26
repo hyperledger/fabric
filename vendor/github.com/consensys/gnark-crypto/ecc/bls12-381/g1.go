@@ -65,14 +65,6 @@ func (p *G1Affine) ScalarMultiplication(a *G1Affine, s *big.Int) *G1Affine {
 	return p
 }
 
-// ScalarMultiplicationAffine computes and returns p = a ⋅ s
-// Takes an affine point and returns a Jacobian point (useful for KZG)
-func (p *G1Jac) ScalarMultiplicationAffine(a *G1Affine, s *big.Int) *G1Jac {
-	p.FromAffine(a)
-	p.mulGLV(p, s)
-	return p
-}
-
 // ScalarMultiplicationBase computes and returns p = g ⋅ s where g is the prime subgroup generator
 func (p *G1Affine) ScalarMultiplicationBase(s *big.Int) *G1Affine {
 	var _p G1Jac
@@ -82,34 +74,65 @@ func (p *G1Affine) ScalarMultiplicationBase(s *big.Int) *G1Affine {
 }
 
 // Add adds two point in affine coordinates.
-// This should rarely be used as it is very inefficient compared to Jacobian
+// Jacobian addition with Z1=Z2=1
+// https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#addition-mmadd-2007-bl
 func (p *G1Affine) Add(a, b *G1Affine) *G1Affine {
-	var p1, p2 G1Jac
-	p1.FromAffine(a)
-	p2.FromAffine(b)
-	p1.AddAssign(&p2)
-	p.FromJacobian(&p1)
-	return p
+	var q G1Jac
+	// a is infinity, return b
+	if a.IsInfinity() {
+		p.Set(b)
+		return p
+	}
+	// b is infinity, return a
+	if b.IsInfinity() {
+		p.Set(a)
+		return p
+	}
+	if a.X.Equal(&b.X) {
+		// if b == a, we double instead
+		if a.Y.Equal(&b.Y) {
+			q.DoubleMixed(a)
+			return p.FromJacobian(&q)
+		} else {
+			// if b == -a, we return 0
+			return p.setInfinity()
+		}
+	}
+	var H, HH, I, J, r, V fp.Element
+	H.Sub(&b.X, &a.X)
+	HH.Square(&H)
+	I.Double(&HH).Double(&I)
+	J.Mul(&H, &I)
+	r.Sub(&b.Y, &a.Y)
+	r.Double(&r)
+	V.Mul(&a.X, &I)
+	q.X.Square(&r).
+		Sub(&q.X, &J).
+		Sub(&q.X, &V).
+		Sub(&q.X, &V)
+	q.Y.Sub(&V, &q.X).
+		Mul(&q.Y, &r)
+	J.Mul(&a.Y, &J).Double(&J)
+	q.Y.Sub(&q.Y, &J)
+	q.Z.Double(&H)
+
+	return p.FromJacobian(&q)
 }
 
 // Double doubles a point in affine coordinates.
-// This should rarely be used as it is very inefficient compared to Jacobian
 func (p *G1Affine) Double(a *G1Affine) *G1Affine {
-	var p1 G1Jac
-	p1.FromAffine(a)
-	p1.Double(&p1)
-	p.FromJacobian(&p1)
+	var q G1Jac
+	q.FromAffine(a)
+	q.DoubleMixed(a)
+	p.FromJacobian(&q)
 	return p
 }
 
 // Sub subs two point in affine coordinates.
-// This should rarely be used as it is very inefficient compared to Jacobian
 func (p *G1Affine) Sub(a, b *G1Affine) *G1Affine {
-	var p1, p2 G1Jac
-	p1.FromAffine(a)
-	p2.FromAffine(b)
-	p1.SubAssign(&p2)
-	p.FromJacobian(&p1)
+	var bneg G1Affine
+	bneg.Neg(b)
+	p.Add(a, &bneg)
 	return p
 }
 
@@ -279,6 +302,35 @@ func (p *G1Jac) AddAssign(a *G1Jac) *G1Jac {
 	return p
 }
 
+// DoubleMixed point addition
+// http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-mdbl-2007-bl
+func (p *G1Jac) DoubleMixed(a *G1Affine) *G1Jac {
+	var XX, YY, YYYY, S, M, T fp.Element
+	XX.Square(&a.X)
+	YY.Square(&a.Y)
+	YYYY.Square(&YY)
+	S.Add(&a.X, &YY).
+		Square(&S).
+		Sub(&S, &XX).
+		Sub(&S, &YYYY).
+		Double(&S)
+	M.Double(&XX).
+		Add(&M, &XX) // -> + a, but a=0 here
+	T.Square(&M).
+		Sub(&T, &S).
+		Sub(&T, &S)
+	p.X.Set(&T)
+	p.Y.Sub(&S, &T).
+		Mul(&p.Y, &M)
+	YYYY.Double(&YYYY).
+		Double(&YYYY).
+		Double(&YYYY)
+	p.Y.Sub(&p.Y, &YYYY)
+	p.Z.Double(&a.Y)
+
+	return p
+}
+
 // AddMixed point addition
 // http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#addition-madd-2007-bl
 func (p *G1Jac) AddMixed(a *G1Affine) *G1Jac {
@@ -303,7 +355,7 @@ func (p *G1Jac) AddMixed(a *G1Affine) *G1Jac {
 
 	// if p == a, we double instead
 	if U2.Equal(&p.X) && S2.Equal(&p.Y) {
-		return p.DoubleAssign()
+		return p.DoubleMixed(a)
 	}
 
 	H.Sub(&U2, &p.X)
@@ -374,6 +426,11 @@ func (p *G1Jac) ScalarMultiplication(a *G1Jac, s *big.Int) *G1Jac {
 	return p.mulGLV(a, s)
 }
 
+// ScalarMultiplicationBase computes and returns p = g ⋅ s where g is the prime subgroup generator
+func (p *G1Jac) ScalarMultiplicationBase(s *big.Int) *G1Jac {
+	return p.mulGLV(&g1Gen, s)
+}
+
 // String returns canonical representation of the point in affine coordinates
 func (p *G1Jac) String() string {
 	_p := G1Affine{}
@@ -397,14 +454,13 @@ func (p *G1Jac) FromAffine(Q *G1Affine) *G1Jac {
 
 // IsOnCurve returns true if p in on the curve
 func (p *G1Jac) IsOnCurve() bool {
-	var left, right, tmp fp.Element
+	var left, right, tmp, ZZ fp.Element
 	left.Square(&p.Y)
 	right.Square(&p.X).Mul(&right, &p.X)
-	tmp.Square(&p.Z).
-		Square(&tmp).
-		Mul(&tmp, &p.Z).
-		Mul(&tmp, &p.Z).
-		Mul(&tmp, &bCurveCoeff)
+	ZZ.Square(&p.Z)
+	tmp.Square(&ZZ).Mul(&tmp, &ZZ)
+	// Mul tmp by bCurveCoeff=4
+	tmp.Double(&tmp).Double(&tmp)
 	right.Add(&right, &tmp)
 	return left.Equal(&right)
 }
@@ -561,14 +617,13 @@ func (p *G1Jac) ClearCofactor(a *G1Jac) *G1Jac {
 
 }
 
-// JointScalarMultiplicationBase computes [s1]g+[s2]a using Straus-Shamir technique
-// where g is the prime subgroup generator
-func (p *G1Jac) JointScalarMultiplicationBase(a *G1Affine, s1, s2 *big.Int) *G1Jac {
+// JointScalarMultiplication computes [s1]a1+[s2]a2 using Straus-Shamir technique
+func (p *G1Jac) JointScalarMultiplication(a1, a2 *G1Affine, s1, s2 *big.Int) *G1Jac {
 
 	var res, p1, p2 G1Jac
 	res.Set(&g1Infinity)
-	p1.Set(&g1Gen)
-	p2.FromAffine(a)
+	p1.FromAffine(a1)
+	p2.FromAffine(a2)
 
 	var table [15]G1Jac
 
@@ -630,6 +685,12 @@ func (p *G1Jac) JointScalarMultiplicationBase(a *G1Affine, s1, s2 *big.Int) *G1J
 	p.Set(&res)
 	return p
 
+}
+
+// JointScalarMultiplicationBase computes [s1]g+[s2]a using Straus-Shamir technique
+// where g is the prime subgroup generator
+func (p *G1Jac) JointScalarMultiplicationBase(a *G1Affine, s1, s2 *big.Int) *G1Jac {
+	return p.JointScalarMultiplication(&g1GenAff, a, s1, s2)
 }
 
 // -------------------------------------------------------------------------------------------------

@@ -19,7 +19,7 @@ package protolator
 import (
 	"reflect"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 type variablyOpaqueFieldFactory struct{}

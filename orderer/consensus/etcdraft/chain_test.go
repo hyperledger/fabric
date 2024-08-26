@@ -17,14 +17,13 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	raftprotos "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	raftprotos "github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
@@ -41,6 +40,8 @@ import (
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/protoadapt"
 )
 
 const (
@@ -206,7 +207,7 @@ var _ = Describe("Chain", func() {
 
 		campaign := func(c *etcdraft.Chain, observeC <-chan raft.SoftState) {
 			Eventually(func() <-chan raft.SoftState {
-				c.Consensus(&orderer.ConsensusRequest{Payload: protoutil.MarshalOrPanic(&raftpb.Message{Type: raftpb.MsgTimeoutNow, To: 1})}, 0)
+				c.Consensus(&orderer.ConsensusRequest{Payload: protoutil.MarshalOrPanic(protoadapt.MessageV2Of(&raftpb.Message{Type: raftpb.MsgTimeoutNow, To: 1}))}, 0)
 				return observeC
 			}, LongEventualTimeout).Should(Receive(StateEqual(1, raft.StateLeader)))
 		}
@@ -1578,10 +1579,11 @@ var _ = Describe("Chain", func() {
 
 			step1 := c1.getStepFunc()
 			c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
-				stepMsg := &raftpb.Message{}
-				if err := proto.Unmarshal(msg.Payload, stepMsg); err != nil {
+				tmp := protoadapt.MessageV2Of(&raftpb.Message{})
+				if err := proto.Unmarshal(msg.Payload, tmp); err != nil {
 					return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %s", err)
 				}
+				stepMsg := protoadapt.MessageV1Of(tmp).(*raftpb.Message)
 
 				if stepMsg.Type == raftpb.MsgTimeoutNow && atomic.CompareAndSwapUint32(&messageOmission, 0, 1) {
 					return nil
@@ -2351,7 +2353,7 @@ var _ = Describe("Chain", func() {
 							if retry > 0 {
 								retry -= 1
 								By("leadership transfer not complete, hence retrying")
-								c2.Consensus(&orderer.ConsensusRequest{Payload: protoutil.MarshalOrPanic(&raftpb.Message{Type: raftpb.MsgTimeoutNow, To: 2})}, 0)
+								c2.Consensus(&orderer.ConsensusRequest{Payload: protoutil.MarshalOrPanic(protoadapt.MessageV2Of(&raftpb.Message{Type: raftpb.MsgTimeoutNow, To: 2}))}, 0)
 								continue
 							}
 							Fail("Expected a new leader to present")
@@ -2782,9 +2784,9 @@ var _ = Describe("Chain", func() {
 				//
 				// Instead, we can simply send artificial MsgHeartbeatResp to leader to resume.
 				m2 := &raftpb.Message{To: c1.id, From: c2.id, Type: raftpb.MsgHeartbeatResp}
-				c1.Consensus(&orderer.ConsensusRequest{Channel: channelID, Payload: protoutil.MarshalOrPanic(m2)}, c2.id)
+				c1.Consensus(&orderer.ConsensusRequest{Channel: channelID, Payload: protoutil.MarshalOrPanic(protoadapt.MessageV2Of(m2))}, c2.id)
 				m3 := &raftpb.Message{To: c1.id, From: c3.id, Type: raftpb.MsgHeartbeatResp}
-				c1.Consensus(&orderer.ConsensusRequest{Channel: channelID, Payload: protoutil.MarshalOrPanic(m3)}, c3.id)
+				c1.Consensus(&orderer.ConsensusRequest{Channel: channelID, Payload: protoutil.MarshalOrPanic(protoadapt.MessageV2Of(m3))}, c3.id)
 
 				network.exec(func(c *chain) {
 					Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(3))
@@ -2813,8 +2815,9 @@ var _ = Describe("Chain", func() {
 
 				step1 := c1.getStepFunc()
 				c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
-					stepMsg := &raftpb.Message{}
-					Expect(proto.Unmarshal(msg.Payload, stepMsg)).NotTo(HaveOccurred())
+					tmp := protoadapt.MessageV2Of(&raftpb.Message{})
+					Expect(proto.Unmarshal(msg.Payload, tmp)).NotTo(HaveOccurred())
+					stepMsg := protoadapt.MessageV1Of(tmp).(*raftpb.Message)
 
 					if dest == 3 {
 						return nil
@@ -2837,8 +2840,9 @@ var _ = Describe("Chain", func() {
 
 				step2 := c2.getStepFunc()
 				c2.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
-					stepMsg := &raftpb.Message{}
-					Expect(proto.Unmarshal(msg.Payload, stepMsg)).NotTo(HaveOccurred())
+					tmp := protoadapt.MessageV2Of(&raftpb.Message{})
+					Expect(proto.Unmarshal(msg.Payload, tmp)).NotTo(HaveOccurred())
+					stepMsg := protoadapt.MessageV1Of(tmp).(*raftpb.Message)
 
 					if stepMsg.Type == raftpb.MsgApp && len(stepMsg.Entries) != 0 && dest == 3 {
 						for _, ent := range stepMsg.Entries {
@@ -2990,12 +2994,13 @@ var _ = Describe("Chain", func() {
 					step1 := c1.getStepFunc()
 
 					c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
-						stepMsg := &raftpb.Message{}
-						Expect(proto.Unmarshal(msg.Payload, stepMsg)).NotTo(HaveOccurred())
+						tmp := protoadapt.MessageV2Of(&raftpb.Message{})
+						Expect(proto.Unmarshal(msg.Payload, tmp)).NotTo(HaveOccurred())
+						stepMsg := protoadapt.MessageV1Of(tmp).(*raftpb.Message)
 						if dest == 3 && stepMsg.Type == raftpb.MsgApp && len(stepMsg.Entries) > 0 {
 							stepMsg.Entries = stepMsg.Entries[0:1]
 							stepMsg.Entries[0].Data = nil
-							msg.Payload = protoutil.MarshalOrPanic(stepMsg)
+							msg.Payload = protoutil.MarshalOrPanic(protoadapt.MessageV2Of(stepMsg))
 						}
 						return step1(dest, msg)
 					})
@@ -3009,8 +3014,9 @@ var _ = Describe("Chain", func() {
 					// order data on all nodes except node 3, send raft raftpb.EntryConfChange message to node 3
 					// node 1 should take a snapshot but node 3 should not
 					c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
-						stepMsg := &raftpb.Message{}
-						Expect(proto.Unmarshal(msg.Payload, stepMsg)).NotTo(HaveOccurred())
+						tmp := protoadapt.MessageV2Of(&raftpb.Message{})
+						Expect(proto.Unmarshal(msg.Payload, tmp)).NotTo(HaveOccurred())
+						stepMsg := protoadapt.MessageV1Of(tmp).(*raftpb.Message)
 						if dest == 3 && stepMsg.Type == raftpb.MsgApp && len(stepMsg.Entries) > 0 {
 							stepMsg.Entries = stepMsg.Entries[0:1]
 							// change message type to raftpb.EntryConfChange
@@ -3019,7 +3025,7 @@ var _ = Describe("Chain", func() {
 							data, err := cc.Marshal()
 							Expect(err).NotTo(HaveOccurred())
 							stepMsg.Entries[0].Data = data
-							msg.Payload = protoutil.MarshalOrPanic(stepMsg)
+							msg.Payload = protoutil.MarshalOrPanic(protoadapt.MessageV2Of(stepMsg))
 						}
 						return step1(dest, msg)
 					})
@@ -3934,7 +3940,7 @@ func (n *network) elect(id uint64) {
 
 	// Send node an artificial MsgTimeoutNow to emulate leadership transfer.
 	fmt.Fprintf(GinkgoWriter, "Send artificial MsgTimeoutNow to elect node %d\n", id)
-	candidate.Consensus(&orderer.ConsensusRequest{Payload: protoutil.MarshalOrPanic(&raftpb.Message{Type: raftpb.MsgTimeoutNow, To: id})}, 0)
+	candidate.Consensus(&orderer.ConsensusRequest{Payload: protoutil.MarshalOrPanic(protoadapt.MessageV2Of(&raftpb.Message{Type: raftpb.MsgTimeoutNow, To: id}))}, 0)
 	Eventually(candidate.observe, LongEventualTimeout).Should(Receive(StateEqual(id, raft.StateLeader)))
 
 	n.Lock()

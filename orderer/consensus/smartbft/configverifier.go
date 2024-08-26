@@ -9,18 +9,18 @@ package smartbft
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	mspa "github.com/hyperledger/fabric-protos-go/msp"
-	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	mspa "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	protosorderer "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/smartbft"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 //go:generate mockery -dir . -name Filters -case underscore -output mocks

@@ -15,10 +15,9 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/gateway"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/gateway"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/protoutil"
@@ -28,6 +27,7 @@ import (
 	"github.com/tedsuo/ifrit"
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -116,14 +116,14 @@ var _ = Describe("FilterProposalTimeWindow", func() {
 		rpcErr := status.Convert(err)
 		Expect(rpcErr.Message()).To(Equal("failed to collect enough transaction endorsements, see attached details for more info"))
 		Expect(len(rpcErr.Details())).To(BeNumerically(">", 0))
-		Expect(proto.MessageV1(rpcErr.Details()[0]).(*gateway.ErrorDetail).Message).To(ContainSubstring("request unauthorized due to incorrect timestamp"))
+		Expect(rpcErr.Details()[0].(*gateway.ErrorDetail).Message).To(ContainSubstring("request unauthorized due to incorrect timestamp"))
 
 		By("sub 30 minute")
 		err = endorser(network, timestamppb.New(time.Now().Add(-time.Minute*30)))
 		rpcErr = status.Convert(err)
 		Expect(rpcErr.Message()).To(Equal("failed to collect enough transaction endorsements, see attached details for more info"))
 		Expect(len(rpcErr.Details())).To(BeNumerically(">", 0))
-		Expect(proto.MessageV1(rpcErr.Details()[0]).(*gateway.ErrorDetail).Message).To(ContainSubstring("request unauthorized due to incorrect timestamp"))
+		Expect(rpcErr.Details()[0].(*gateway.ErrorDetail).Message).To(ContainSubstring("request unauthorized due to incorrect timestamp"))
 	})
 })
 

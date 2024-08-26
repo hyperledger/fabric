@@ -9,18 +9,15 @@ package gateway
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"syscall"
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/gateway"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/gateway"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
@@ -32,6 +29,7 @@ import (
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ = Describe("GatewayService with BFT ordering service", func() {
@@ -139,7 +137,7 @@ var _ = Describe("GatewayService with BFT ordering service", func() {
 		rpcErr := status.Convert(err)
 		Expect(rpcErr.Message()).To(Equal("insufficient number of orderers could successfully process transaction to satisfy quorum requirement"))
 		Expect(len(rpcErr.Details())).To(BeNumerically(">", 0))
-		Expect(proto.MessageV1(rpcErr.Details()[0]).(*gateway.ErrorDetail).Message).To(Equal("received unsuccessful response from orderer: status=SERVICE_UNAVAILABLE, info=failed to submit request: request already processed"))
+		Expect(rpcErr.Details()[0].(*gateway.ErrorDetail).Message).To(Equal("received unsuccessful response from orderer: status=SERVICE_UNAVAILABLE, info=failed to submit request: request already processed"))
 
 		By("Shutting down orderer2")
 		ordererProcesses["orderer2"].Signal(syscall.SIGTERM)
@@ -168,7 +166,6 @@ var _ = Describe("GatewayService with BFT ordering service", func() {
 		Expect(rpcErr.Message()).To(Equal("insufficient number of orderers could successfully process transaction to satisfy quorum requirement"))
 
 		peerLog := peerGinkgoRunner[0].Err().Contents()
-		needAdr := scanAddrGRPCconnectStructInLog(peerLog, network.PortsByOrdererID["OrdererOrg.orderer2"]["Listen"])
 		lastDateTime := scanLastDateTimeInLog(peerLog)
 		// move cursor to end of log
 		Eventually(peerGinkgoRunner[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(lastDateTime))
@@ -180,7 +177,7 @@ var _ = Describe("GatewayService with BFT ordering service", func() {
 		ordererProcesses["orderer2"] = ifrit.Invoke(runner)
 		Eventually(ordererProcesses["orderer2"].Ready(), network.EventuallyTimeout).Should(BeClosed())
 		// wait for peer to connect to orderer2
-		Eventually(peerGinkgoRunner[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(fmt.Sprintf("%s, \\{ConnectivityState:READY", needAdr)))
+		Eventually(peerGinkgoRunner[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("ConnectivityState:READY ConnectionError:<nil> connectedAddress:\\{Addr:127.0.0.1:22005"))
 		Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Starting view with number 0"))
 		// awaiting the selection of a new leader
 		Eventually(ordererRunners[1].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Starting view with number"))
@@ -220,14 +217,6 @@ func scanLastDateTimeInLog(data []byte) string {
 	token := data[bytes.LastIndexAny(data, "\n\r")+1:]
 	token = token[5:29]
 	return string(token)
-}
-
-func scanAddrGRPCconnectStructInLog(data []byte, listenPort uint16) string {
-	// look for grpc Info message indicating failure of peer to connect to orderer, then return the grpc identifier for that orderer
-	re := regexp.MustCompile(fmt.Sprintf("Received SubConn state update.*%d", listenPort))
-	loc := re.FindIndex(data)
-	start := loc[0] + len("Received SubConn state update: ")
-	return string(data[start : start+12])
 }
 
 func submitWithTimeout(ctx context.Context, gw gateway.GatewayClient, submitRequest *gateway.SubmitRequest, timeout time.Duration) error {

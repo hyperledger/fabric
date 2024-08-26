@@ -15,13 +15,14 @@ import (
 
 	"code.cloudfoundry.org/clock"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/protoadapt"
 )
 
 var (
@@ -205,7 +206,7 @@ func (n *node) send(msgs []raftpb.Message) {
 			}
 		}
 
-		msgBytes := protoutil.MarshalOrPanic(&msg)
+		msgBytes := protoutil.MarshalOrPanic(protoadapt.MessageV2Of(&msg))
 		err := n.rpc.SendConsensus(msg.To, &orderer.ConsensusRequest{Channel: n.chainID, Payload: msgBytes})
 		if err != nil {
 			n.ReportUnreachable(msg.To)

@@ -8,7 +8,7 @@ package ledger
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
 	"github.com/stretchr/testify/require"
 )
 

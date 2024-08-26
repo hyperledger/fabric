@@ -12,13 +12,12 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock"
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-lib-go/common/metrics"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
@@ -30,6 +29,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft/v3"
+	"google.golang.org/protobuf/proto"
 )
 
 //go:generate counterfeiter -o mocks/chain_manager.go --fake-name ChainManager . ChainManager

@@ -62,8 +62,7 @@ func TestConstructBlockfilesInfo(t *testing.T) {
 
 	// Write a partial block (to simulate a crash) and verify that blockfilesInfo derived from filesystem should be same as from the blockfile manager
 	lastTestBlk := bg.NextTestBlocks(1)[0]
-	blockBytes, _, err := serializeBlock(lastTestBlk)
-	require.NoError(t, err)
+	blockBytes, _ := serializeBlock(lastTestBlk)
 	partialByte := append(protowire.AppendVarint(nil, uint64(len(blockBytes))), blockBytes[len(blockBytes)/2:]...)
 	blockfileMgr.currentFileWriter.append(partialByte, true)
 	checkBlockfilesInfoFromFS(t, blkStoreDir, blockfileMgr.blockfilesInfo)

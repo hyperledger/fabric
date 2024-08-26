@@ -7,14 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package caller
 
 import (
-	"github.com/hyperledger/fabric-chaincode-go/shim"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 )
 
 // CC example simple Chaincode implementation
 type CC struct{}
 
-func (t *CC) Init(stub shim.ChaincodeStubInterface) pb.Response {
+func (t *CC) Init(stub shim.ChaincodeStubInterface) *pb.Response {
 	err := stub.PutState("foo", []byte("caller:foo"))
 	if err != nil {
 		return shim.Error(err.Error())
@@ -23,7 +23,7 @@ func (t *CC) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	return shim.Success(nil)
 }
 
-func (t *CC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
+func (t *CC) Invoke(stub shim.ChaincodeStubInterface) *pb.Response {
 	fn, args := stub.GetFunctionAndParameters()
 	switch fn {
 	case "INVOKE":

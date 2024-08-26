@@ -9,7 +9,7 @@ package service
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/stretchr/testify/require"
@@ -74,8 +74,11 @@ func TestSecondUpdate(t *testing.T) {
 	}
 
 	ce.ProcessConfigUpdate(cu)
-	require.Equal(t, cu, mr.cu, "should have updated config on second update but did not")
 	require.Equal(t, 2, mr.updateCount)
+	require.Equal(t, cu.Sequence, mr.cu.Sequence, "should have updated config on second update but did not")
+	require.Equal(t, cu.OrdererAddresses, mr.cu.OrdererAddresses, "should have updated config on second update but did not")
+	require.Equal(t, cu.ChannelID, mr.cu.ChannelID, "should have updated config on second update but did not")
+	require.True(t, orgMapEqual(cu.Organizations, mr.cu.Organizations), "should have updated config on second update but did not")
 }
 
 func TestSecondSameUpdate(t *testing.T) {

@@ -12,12 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	cp "github.com/hyperledger/fabric-protos-go/common"
-	dp "github.com/hyperledger/fabric-protos-go/discovery"
-	pb "github.com/hyperledger/fabric-protos-go/gateway"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	cp "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	dp "github.com/hyperledger/fabric-protos-go-apiv2/discovery"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/gateway"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/deliverclient/orderers"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/mocks"
 	"github.com/pkg/errors"
@@ -25,6 +24,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestSubmit(t *testing.T) {

@@ -10,8 +10,8 @@ import (
 	"bytes"
 	"testing"
 
-	discprotos "github.com/hyperledger/fabric-protos-go/discovery"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	discprotos "github.com/hyperledger/fabric-protos-go-apiv2/discovery"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/cmd/common"
 	. "github.com/hyperledger/fabric/discovery/client"
 	discovery "github.com/hyperledger/fabric/discovery/cmd"

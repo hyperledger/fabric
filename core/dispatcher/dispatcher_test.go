@@ -10,48 +10,47 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/core/dispatcher"
 	"github.com/hyperledger/fabric/core/dispatcher/mock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type TestReceiver struct{}
 
-func (tr TestReceiver) GoodFunc(ts *timestamp.Timestamp) (*timestamp.Timestamp, error) {
+func (tr TestReceiver) GoodFunc(ts *timestamppb.Timestamp) (*timestamppb.Timestamp, error) {
 	return timestamppb.New(time.Unix(0, 0)), nil
 }
 
-func (tr TestReceiver) MissingFuncParameters() (*timestamp.Timestamp, error) {
+func (tr TestReceiver) MissingFuncParameters() (*timestamppb.Timestamp, error) {
 	return timestamppb.New(time.Unix(0, 0)), nil
 }
 
-func (tr TestReceiver) NotProtoParameter(foo *string) (*timestamp.Timestamp, error) {
+func (tr TestReceiver) NotProtoParameter(foo *string) (*timestamppb.Timestamp, error) {
 	return timestamppb.New(time.Unix(0, 0)), nil
 }
 
-func (tr TestReceiver) NotPointerParameter(foo string) (*timestamp.Timestamp, error) {
+func (tr TestReceiver) NotPointerParameter(foo string) (*timestamppb.Timestamp, error) {
 	return timestamppb.New(time.Unix(0, 0)), nil
 }
 
-func (tr TestReceiver) NoReturnValues(ts *timestamp.Timestamp) {}
+func (tr TestReceiver) NoReturnValues(ts *timestamppb.Timestamp) {}
 
-func (tr TestReceiver) NotProtoReturn(ts *timestamp.Timestamp) (string, error) {
+func (tr TestReceiver) NotProtoReturn(ts *timestamppb.Timestamp) (string, error) {
 	return "", nil
 }
 
-func (tr TestReceiver) NotErrorReturn(ts *timestamp.Timestamp) (*timestamp.Timestamp, string) {
+func (tr TestReceiver) NotErrorReturn(ts *timestamppb.Timestamp) (*timestamppb.Timestamp, string) {
 	return nil, ""
 }
 
-func (tr TestReceiver) NilNilReturn(ts *timestamp.Timestamp) (*timestamp.Timestamp, error) {
+func (tr TestReceiver) NilNilReturn(ts *timestamppb.Timestamp) (*timestamppb.Timestamp, error) {
 	return nil, nil
 }
 
-func (tr TestReceiver) ErrorReturned(ts *timestamp.Timestamp) (*timestamp.Timestamp, error) {
+func (tr TestReceiver) ErrorReturned(ts *timestamppb.Timestamp) (*timestamppb.Timestamp, error) {
 	return nil, fmt.Errorf("fake-error")
 }
 
@@ -86,7 +85,7 @@ var _ = Describe("Dispatcher", func() {
 		It("unmarshals, dispatches to the correct function, and marshals the result", func() {
 			outputBytes, err := d.Dispatch(inputBytes, "GoodFunc", testReceiver)
 			Expect(err).NotTo(HaveOccurred())
-			ts := &timestamp.Timestamp{}
+			ts := &timestamppb.Timestamp{}
 			err = proto.Unmarshal(outputBytes, ts)
 			Expect(err).NotTo(HaveOccurred())
 			gts := ts.AsTime()

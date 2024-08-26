@@ -17,14 +17,13 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
-	pcomm "github.com/hyperledger/fabric-protos-go/common"
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	tspb "github.com/hyperledger/fabric-protos-go/transientstore"
+	pcomm "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	tspb "github.com/hyperledger/fabric-protos-go-apiv2/transientstore"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	errors2 "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/core/committer"
@@ -53,6 +52,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	pb "google.golang.org/protobuf/proto"
 )
 
 var (

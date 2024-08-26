@@ -10,11 +10,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
 
 var logger = flogging.MustGetLogger("chaincode.accesscontrol")

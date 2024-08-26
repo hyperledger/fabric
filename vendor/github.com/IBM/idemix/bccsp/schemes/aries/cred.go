@@ -10,14 +10,15 @@ import (
 
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/aries-bbs-go/bbs"
 	"github.com/pkg/errors"
 )
 
 type Cred struct {
-	Bls   *bbs12381g2pub.BBSG2Pub
-	Curve *math.Curve
+	BBS                *bbs.BBSG2Pub
+	Curve              *math.Curve
+	UserSecretKeyIndex int
 }
 
 // Sign issues a new credential, which is the last step of the interactive issuance protocol
@@ -34,9 +35,9 @@ func (c *Cred) Sign(key types.IssuerSecretKey, credentialRequest []byte, attribu
 		return nil, fmt.Errorf("ParseBlindedMessages failed [%w]", err)
 	}
 
-	msgsZr := attributesToSignatureMessage(nil, attributes, c.Curve)
+	msgsZr := attributesToSignatureMessage(attributes, c.Curve, c.UserSecretKeyIndex)
 
-	sig, err := BlindSign(msgsZr, len(attributes)+1, blindedMsg.C, isk.SK.FR.Bytes())
+	sig, err := BlindSign(msgsZr, len(attributes)+1, blindedMsg.C, isk.SK.FR.Bytes(), c.Curve)
 	if err != nil {
 		return nil, fmt.Errorf("ParseBlindedMessages failed [%w]", err)
 	}
@@ -73,36 +74,44 @@ func (c *Cred) Verify(sk *math.Zr, key types.IssuerPublicKey, credBytes []byte, 
 		return fmt.Errorf("proto.Unmarshal failed [%w]", err)
 	}
 
-	sigma, err := bbs12381g2pub.ParseSignature(credential.Cred)
+	sigma, err := bbs.NewBBSLib(c.Curve).ParseSignature(credential.Cred)
 	if err != nil {
 		return fmt.Errorf("ParseSignature failed [%w]", err)
 	}
 
-	sm := make([]*bbs12381g2pub.SignatureMessage, len(credential.Attrs)+1)
-	sm[0] = &bbs12381g2pub.SignatureMessage{
-		FR:  sk,
-		Idx: 0,
-	}
-	for i, v := range credential.Attrs {
-		sm[i+1] = &bbs12381g2pub.SignatureMessage{
-			FR:  c.Curve.NewZrFromBytes(v),
-			Idx: i + 1,
+	i := 0
+	sm := make([]*bbs.SignatureMessage, len(ipk.PKwG.H))
+	for j := range ipk.PKwG.H {
+		if j == int(credential.SkPos) {
+			sm[j] = &bbs.SignatureMessage{
+				FR:  sk,
+				Idx: j,
+			}
+
+			continue
+		}
+
+		sm[j] = &bbs.SignatureMessage{
+			FR:  c.Curve.NewZrFromBytes(credential.Attrs[i]),
+			Idx: j,
 		}
 
 		switch attributes[i].Type {
 		case types.IdemixHiddenAttribute:
 			continue
 		case types.IdemixBytesAttribute:
-			fr := bbs12381g2pub.FrFromOKM(attributes[i].Value.([]byte))
-			if !fr.Equals(sm[i+1].FR) {
+			fr := bbs.FrFromOKM(attributes[i].Value.([]byte), c.Curve)
+			if !fr.Equals(sm[j].FR) {
 				return errors.Errorf("credential does not contain the correct attribute value at position [%d]", i)
 			}
 		case types.IdemixIntAttribute:
 			fr := c.Curve.NewZrFromInt(int64(attributes[i].Value.(int)))
-			if !fr.Equals(sm[i+1].FR) {
+			if !fr.Equals(sm[j].FR) {
 				return errors.Errorf("credential does not contain the correct attribute value at position [%d]", i)
 			}
 		}
+
+		i++
 	}
 
 	return sigma.Verify(sm, ipk.PKwG)

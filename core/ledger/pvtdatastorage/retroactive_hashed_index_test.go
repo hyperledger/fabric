@@ -11,12 +11,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 // TestConstructHashedIndexAndUpgradeDataFmtRetroactively test that we create hashed indexes retroactively on the existing
@@ -75,7 +76,7 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 		pvtWS, err := rwsetutil.TxPvtRwSetFromProtoMsg(pvtdata[0].WriteSet)
 		require.NoError(t, err)
 
-		require.Equal(t, &rwsetutil.TxPvtRwSet{
+		rwset := &rwsetutil.TxPvtRwSet{
 			NsPvtRwSet: []*rwsetutil.NsPvtRwSet{
 				{
 					NameSpace: "marbles_private",
@@ -91,7 +92,6 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 								},
 							},
 						},
-
 						{
 							CollectionName: "collectionMarbles",
 							KvRwSet: &kvrwset.KVRWSet{
@@ -106,9 +106,17 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 					},
 				},
 			},
-		},
-			pvtWS,
-		)
+		}
+
+		require.True(t, proto.Equal(rwset.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet, pvtWS.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet) ||
+			proto.Equal(rwset.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet, pvtWS.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet))
+		require.True(t, proto.Equal(rwset.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet, pvtWS.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet) ||
+			proto.Equal(rwset.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet, pvtWS.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet))
+		rwset.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet = nil
+		rwset.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet = nil
+		pvtWS.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet = nil
+		pvtWS.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet = nil
+		require.Equal(t, rwset, pvtWS)
 
 		for blk := 11; blk < 14; blk++ {
 			checkDataNotExists(t, s, blk)
@@ -121,7 +129,7 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 		pvtWS, err = rwsetutil.TxPvtRwSetFromProtoMsg(pvtdata[0].WriteSet)
 		require.NoError(t, err)
 
-		require.Equal(t, &rwsetutil.TxPvtRwSet{
+		rwset = &rwsetutil.TxPvtRwSet{
 			NsPvtRwSet: []*rwsetutil.NsPvtRwSet{
 				{
 					NameSpace: "marbles_private",
@@ -152,9 +160,17 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 					},
 				},
 			},
-		},
-			pvtWS,
-		)
+		}
+
+		require.True(t, proto.Equal(rwset.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet, pvtWS.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet) ||
+			proto.Equal(rwset.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet, pvtWS.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet))
+		require.True(t, proto.Equal(rwset.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet, pvtWS.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet) ||
+			proto.Equal(rwset.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet, pvtWS.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet))
+		rwset.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet = nil
+		rwset.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet = nil
+		pvtWS.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet = nil
+		pvtWS.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet = nil
+		require.Equal(t, rwset, pvtWS)
 
 		_, err = s.GetPvtDataByBlockNum(uint64(15), nil)
 		require.EqualError(t, err, "last committed block number [14] smaller than the requested block number [15]")

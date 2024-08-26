@@ -8,7 +8,7 @@ package smartbft
 
 import (
 	"github.com/hyperledger-labs/SmartBFT/pkg/types"
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protoutil"

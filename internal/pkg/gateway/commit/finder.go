@@ -11,9 +11,8 @@ package commit
 import (
 	"context"
 
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/ledger"
-
 	"github.com/pkg/errors"
 )
 

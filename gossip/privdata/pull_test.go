@@ -12,11 +12,10 @@ import (
 	"sync"
 	"testing"
 
-	pb "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/transientstore"
@@ -35,6 +34,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	pb "google.golang.org/protobuf/proto"
 )
 
 func init() {
@@ -1027,7 +1027,7 @@ func TestPullerAvoidPullingPurgedData(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, 1, len(fetchedMessages.PurgedElements))
-	require.Equal(t, dig1, fetchedMessages.PurgedElements[0])
+	require.True(t, pb.Equal(dig1, fetchedMessages.PurgedElements[0]))
 	p3.PrivateDataRetriever.(*dataRetrieverMock).AssertNumberOfCalls(t, "CollectionRWSet", 1)
 }
 

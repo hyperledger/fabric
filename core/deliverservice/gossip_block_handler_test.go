@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/deliverclient/blocksprovider/fake"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"

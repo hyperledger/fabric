@@ -13,7 +13,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/orderer/common/broadcast/mock"
 	"github.com/hyperledger/fabric/orderer/common/server"
 	mock2 "github.com/hyperledger/fabric/orderer/common/server/mock"

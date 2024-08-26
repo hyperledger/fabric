@@ -13,11 +13,10 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-lib-go/common/metrics"
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
@@ -34,6 +33,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -652,6 +652,9 @@ func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block) (info t
 		return types.ChannelInfo{}, err
 	}
 
+	if configBlock == nil {
+		return types.ChannelInfo{}, errors.Wrap(err, "failed marshaling joinblock: proto: Marshal called with nil")
+	}
 	blockBytes, err := proto.Marshal(configBlock)
 	if err != nil {
 		return types.ChannelInfo{}, errors.Wrap(err, "failed marshaling joinblock")

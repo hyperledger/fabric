@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package deliverservice
 
 import (
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // GossipServiceAdapter serves to provide basic functionality
@@ -33,6 +33,9 @@ type GossipBlockHandler struct {
 }
 
 func (h *GossipBlockHandler) HandleBlock(channelID string, block *common.Block) error {
+	if block == nil {
+		return errors.New("block from orderer could not be re-marshaled: proto: Marshal called with nil")
+	}
 	marshaledBlock, err := proto.Marshal(block)
 	if err != nil {
 		return errors.WithMessage(err, "block from orderer could not be re-marshaled")

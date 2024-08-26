@@ -10,8 +10,8 @@ import (
 	"crypto/sha256"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/queryresult"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
@@ -20,6 +20,7 @@ import (
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 var testHashFunc = func(data []byte) ([]byte, error) {
@@ -197,7 +198,12 @@ func testGetPvtdataHash(t *testing.T, env testEnv) {
 			},
 		},
 	}
-	require.Equal(t, expectedRwSet, txrwset)
+	require.Equal(t, len(expectedRwSet.NsRwSets), len(txrwset.NsRwSets))
+	require.Equal(t, expectedRwSet.NsRwSets[0].NameSpace, txrwset.NsRwSets[0].NameSpace)
+	require.True(t, proto.Equal(expectedRwSet.NsRwSets[0].KvRwSet, txrwset.NsRwSets[0].KvRwSet))
+	require.Equal(t, len(expectedRwSet.NsRwSets[0].CollHashedRwSets), len(txrwset.NsRwSets[0].CollHashedRwSets))
+	require.Equal(t, expectedRwSet.NsRwSets[0].CollHashedRwSets[0].CollectionName, txrwset.NsRwSets[0].CollHashedRwSets[0].CollectionName)
+	require.True(t, proto.Equal(expectedRwSet.NsRwSets[0].CollHashedRwSets[0].HashedRwSet, txrwset.NsRwSets[0].CollHashedRwSets[0].HashedRwSet))
 }
 
 func putPvtUpdates(t *testing.T, updates *privacyenabledstate.UpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {

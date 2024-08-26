@@ -21,10 +21,8 @@ import (
 	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/raft"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon_v2"
 )

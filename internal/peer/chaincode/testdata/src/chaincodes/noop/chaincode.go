@@ -9,18 +9,18 @@ package main
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric-chaincode-go/shim"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 )
 
 // No-op test chaincode
 type TestChaincode struct{}
 
-func (t *TestChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
+func (t *TestChaincode) Init(stub shim.ChaincodeStubInterface) *pb.Response {
 	return shim.Success(nil)
 }
 
-func (t *TestChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
+func (t *TestChaincode) Invoke(stub shim.ChaincodeStubInterface) *pb.Response {
 	return shim.Success(nil)
 }
 

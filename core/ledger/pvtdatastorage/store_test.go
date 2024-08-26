@@ -14,15 +14,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestMain(m *testing.M) {
@@ -384,7 +384,10 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 		produceSamplePvtdata(t, 4, []string{"ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 	}
 	retrievedData, _ = store.GetPvtDataByBlockNum(1, nil)
-	require.Equal(t, expectedPvtdataFromBlock1, retrievedData)
+	require.Equal(t, expectedPvtdataFromBlock1[0].SeqInBlock, retrievedData[0].SeqInBlock)
+	require.Equal(t, expectedPvtdataFromBlock1[1].SeqInBlock, retrievedData[1].SeqInBlock)
+	require.True(t, proto.Equal(expectedPvtdataFromBlock1[0].WriteSet, retrievedData[0].WriteSet))
+	require.True(t, proto.Equal(expectedPvtdataFromBlock1[1].WriteSet, retrievedData[1].WriteSet))
 
 	// After committing block 3, the missing data of "ns1-coll1" in block1-tx1 should have expired
 	expectedMissingPvtDataInfo = make(ledger.MissingPvtDataInfo)
@@ -407,7 +410,10 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 		produceSamplePvtdata(t, 4, []string{"ns-1:coll-2", "ns-2:coll-1"}),
 	}
 	retrievedData, _ = store.GetPvtDataByBlockNum(1, nil)
-	require.Equal(t, expectedPvtdataFromBlock1, retrievedData)
+	require.Equal(t, expectedPvtdataFromBlock1[0].SeqInBlock, retrievedData[0].SeqInBlock)
+	require.Equal(t, expectedPvtdataFromBlock1[1].SeqInBlock, retrievedData[1].SeqInBlock)
+	require.True(t, proto.Equal(expectedPvtdataFromBlock1[0].WriteSet, retrievedData[0].WriteSet))
+	require.True(t, proto.Equal(expectedPvtdataFromBlock1[1].WriteSet, retrievedData[1].WriteSet))
 
 	// Now, for block 2, "ns-1:coll1" should also have expired
 	expectedPvtdataFromBlock2 := []*ledger.TxPvtData{
@@ -415,7 +421,10 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 		produceSamplePvtdata(t, 5, []string{"ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 	}
 	retrievedData, _ = store.GetPvtDataByBlockNum(2, nil)
-	require.Equal(t, expectedPvtdataFromBlock2, retrievedData)
+	require.Equal(t, expectedPvtdataFromBlock2[0].SeqInBlock, retrievedData[0].SeqInBlock)
+	require.Equal(t, expectedPvtdataFromBlock2[1].SeqInBlock, retrievedData[1].SeqInBlock)
+	require.True(t, proto.Equal(expectedPvtdataFromBlock2[0].WriteSet, retrievedData[0].WriteSet))
+	require.True(t, proto.Equal(expectedPvtdataFromBlock2[1].WriteSet, retrievedData[1].WriteSet))
 
 	// After committing block 4, the missing data of "ns1-coll1" in block2-tx1 should have expired
 	expectedMissingPvtDataInfo = make(ledger.MissingPvtDataInfo)
@@ -1294,19 +1303,20 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 	// this should cause purging key-1 from data
 	require.True(t, testDataKeyExists(t, s, dataKeyColl1))
 	require.Equal(t,
-		&rwsetutil.CollPvtRwSet{
-			CollectionName: "coll-1",
-			KvRwSet: &kvrwset.KVRWSet{
-				Writes: []*kvrwset.KVWrite{
-					{
-						Key:   "key-2",
-						Value: []byte("value-2"),
-					},
+		"coll-1",
+		testRetrieveDataValue(t, s, dataKeyColl1).CollectionName,
+	)
+	require.True(t,
+		proto.Equal(&kvrwset.KVRWSet{
+			Writes: []*kvrwset.KVWrite{
+				{
+					Key:   "key-2",
+					Value: []byte("value-2"),
 				},
 			},
 		},
-		testRetrieveDataValue(t, s, dataKeyColl1),
-	)
+			testRetrieveDataValue(t, s, dataKeyColl1).KvRwSet,
+		))
 	require.True(t, testDataKeyExists(t, s, dataKeyColl2))
 	require.False(t, testHashedIndexExists(t, s, hashedIndexKey1))
 	require.False(t, testHashedIndexExists(t, s, hashedIndexDeleteKey1))
@@ -1399,12 +1409,13 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 
 	// this should cause purging key-2 (e.g., all keys) from data
 	require.True(t, testDataKeyExists(t, s, dataKeyColl1))
+	tmp := testRetrieveDataValue(t, s, dataKeyColl1)
 	require.Equal(t,
-		&rwsetutil.CollPvtRwSet{
-			CollectionName: "coll-1",
-			KvRwSet:        &kvrwset.KVRWSet{},
-		},
-		testRetrieveDataValue(t, s, dataKeyColl1),
+		"coll-1",
+		tmp.CollectionName,
+	)
+	require.True(t,
+		proto.Equal(&kvrwset.KVRWSet{}, tmp.KvRwSet),
 	)
 	require.True(t, testDataKeyExists(t, s, dataKeyColl2))
 	require.False(t, testHashedIndexExists(t, s, hashedIndexKey1))

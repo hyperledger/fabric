@@ -9,23 +9,21 @@ package gateway
 import (
 	"io"
 	"testing"
-	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/timestamp"
-	cp "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/gateway"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	cp "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/gateway"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestChaincodeEvents(t *testing.T) {
-	now := time.Now()
 	lastTransactionID := "LAST_TX_ID"
 
 	newChaincodeEvent := func(chaincodeName string, transactionID string) *peer.ChaincodeEvent {
@@ -40,12 +38,9 @@ func TestChaincodeEvents(t *testing.T) {
 	newTransactionHeader := func(transactionID string) *cp.Header {
 		return &cp.Header{
 			ChannelHeader: protoutil.MarshalOrPanic(&cp.ChannelHeader{
-				Type: int32(cp.HeaderType_ENDORSER_TRANSACTION),
-				Timestamp: &timestamp.Timestamp{
-					Seconds: now.Unix(),
-					Nanos:   int32(now.Nanosecond()),
-				},
-				TxId: transactionID,
+				Type:      int32(cp.HeaderType_ENDORSER_TRANSACTION),
+				Timestamp: timestamppb.Now(),
+				TxId:      transactionID,
 			}),
 		}
 	}

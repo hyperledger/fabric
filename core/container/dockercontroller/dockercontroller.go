@@ -23,7 +23,7 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/container"

@@ -10,12 +10,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
-	gp "github.com/hyperledger/fabric-protos-go/gateway"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	gp "github.com/hyperledger/fabric-protos-go-apiv2/gateway"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/protoadapt"
 )
 
 // responseStatus unpacks the proposal response and error values that are returned from ProcessProposal and
@@ -58,7 +59,13 @@ func responseStatus(response *peer.ProposalResponse, err error) (statusCode code
 func newRpcError(code codes.Code, message string, details ...proto.Message) error {
 	st := status.New(code, message)
 	if len(details) != 0 {
-		std, err := st.WithDetails(details...)
+		var ds []protoadapt.MessageV1
+		for _, detail := range details {
+			d := protoadapt.MessageV1Of(detail)
+			ds = append(ds, d)
+		}
+
+		std, err := st.WithDetails(ds...)
 		if err == nil {
 			return std.Err()
 		} // otherwise return the error without the details

@@ -7,15 +7,19 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft_test
 
 import (
+	"cmp"
+	"slices"
+	"strings"
 	"testing"
 
-	etcdraftproto "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	etcdraftproto "github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft/mocks"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/raft/v3/raftpb"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestQuorumCheck(t *testing.T) {
@@ -332,11 +336,46 @@ func TestMembershipChanges(t *testing.T) {
 		t.Run(test.Name, func(t *testing.T) {
 			changes, err := etcdraft.ComputeMembershipChanges(blockMetadata, test.OldConsenters, test.NewConsenters)
 
+			sortSlice := func(e *etcdraftproto.Consenter, e2 *etcdraftproto.Consenter) int {
+				if n := strings.Compare(e.Host, e2.Host); n != 0 {
+					return n
+				}
+				return cmp.Compare(e.Port, e2.Port)
+			}
+
 			if test.ExpectedErr != "" {
 				require.EqualError(t, err, test.ExpectedErr)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, test.Changes, changes)
+				if test.Changes != nil && changes != nil {
+					require.Equal(t, test.Changes.ConfChange, changes.ConfChange)
+					require.Equal(t, test.Changes.RotatedNode, changes.RotatedNode)
+					require.True(t, proto.Equal(test.Changes.NewBlockMetadata, changes.NewBlockMetadata))
+
+					require.Equal(t, len(test.Changes.NewConsenters), len(changes.NewConsenters))
+					for k, v := range test.Changes.NewConsenters {
+						v1, ok := changes.NewConsenters[k]
+						require.True(t, ok)
+						require.True(t, proto.Equal(v, v1))
+					}
+
+					require.Equal(t, len(test.Changes.AddedNodes), len(changes.AddedNodes))
+					slices.SortFunc(test.Changes.AddedNodes, sortSlice)
+					slices.SortFunc(changes.AddedNodes, sortSlice)
+					for i := range test.Changes.AddedNodes {
+						require.True(t, proto.Equal(test.Changes.AddedNodes[i], changes.AddedNodes[i]))
+					}
+
+					require.Equal(t, len(test.Changes.RemovedNodes), len(changes.RemovedNodes))
+					slices.SortFunc(test.Changes.RemovedNodes, sortSlice)
+					slices.SortFunc(changes.RemovedNodes, sortSlice)
+					for i := range test.Changes.RemovedNodes {
+						require.True(t, proto.Equal(test.Changes.RemovedNodes[i], changes.RemovedNodes[i]))
+					}
+				} else {
+					require.Equal(t, test.Changes, changes)
+				}
+
 				require.Equal(t, test.Changed, changes.Changed())
 				require.Equal(t, test.Rotated, changes.Rotated())
 			}

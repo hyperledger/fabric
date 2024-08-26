@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"testing"
 
-	discprotos "github.com/hyperledger/fabric-protos-go/discovery"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	discprotos "github.com/hyperledger/fabric-protos-go-apiv2/discovery"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/cmd/common"
 	discovery "github.com/hyperledger/fabric/discovery/cmd"
 	"github.com/hyperledger/fabric/discovery/cmd/mocks"

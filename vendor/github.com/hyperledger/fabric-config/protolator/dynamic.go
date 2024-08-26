@@ -19,7 +19,7 @@ package protolator
 import (
 	"reflect"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 func dynamicFrom(dynamicMsg func(underlying proto.Message) (proto.Message, error), value interface{}, destType reflect.Type) (reflect.Value, error) {

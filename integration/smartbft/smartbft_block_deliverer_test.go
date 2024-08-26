@@ -18,8 +18,8 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
-	"github.com/hyperledger/fabric-protos-go/common"
-	ordererProtos "github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	ordererProtos "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
 	"github.com/hyperledger/fabric/integration/nwo"

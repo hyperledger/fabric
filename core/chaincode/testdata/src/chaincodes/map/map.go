@@ -12,8 +12,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/hyperledger/fabric-chaincode-go/shim"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 )
 
 // This chaincode implements a simple map that is stored in the state.
@@ -35,14 +35,14 @@ type PageResponse struct {
 }
 
 // Init is a no-op
-func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
+func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) *pb.Response {
 	return shim.Success(nil)
 }
 
 // Invoke has two functions
 // put - takes two arguments, a key and value, and stores them in the state
 // remove - takes one argument, a key, and removes if from the state
-func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
+func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) *pb.Response {
 	function, args := stub.GetFunctionAndParameters()
 	switch function {
 
@@ -96,7 +96,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	}
 }
 
-func (t *SimpleChaincode) putPrivate(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) putPrivate(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) < 3 {
 		return shim.Error("put operation on private data must include three arguments: [collection, key, value]")
 	}
@@ -111,7 +111,7 @@ func (t *SimpleChaincode) putPrivate(stub shim.ChaincodeStubInterface, args []st
 
 	return shim.Success(nil)
 }
-func (t *SimpleChaincode) removePrivate(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) removePrivate(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) < 2 {
 		return shim.Error("remove operation on private data must include two arguments: [collection, key]")
 	}
@@ -124,7 +124,7 @@ func (t *SimpleChaincode) removePrivate(stub shim.ChaincodeStubInterface, args [
 	}
 	return shim.Success(nil)
 }
-func (t *SimpleChaincode) getPrivate(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) getPrivate(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) < 2 {
 		return shim.Error("get operation on private data must include two arguments: [collection, key]")
 	}
@@ -138,7 +138,7 @@ func (t *SimpleChaincode) getPrivate(stub shim.ChaincodeStubInterface, args []st
 	return shim.Success(jsonVal)
 
 }
-func (t *SimpleChaincode) keysPrivate(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) keysPrivate(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) < 3 {
 		return shim.Error("range query operation on private data must include three arguments, a collection, key and value")
 	}
@@ -146,7 +146,7 @@ func (t *SimpleChaincode) keysPrivate(stub shim.ChaincodeStubInterface, args []s
 	startKey := args[1]
 	endKey := args[2]
 
-	//sleep needed to test peer's timeout behavior when using iterators
+	// sleep needed to test peer's timeout behavior when using iterators
 	stime := 0
 	if len(args) > 3 {
 		stime, _ = strconv.Atoi(args[3])
@@ -160,7 +160,7 @@ func (t *SimpleChaincode) keysPrivate(stub shim.ChaincodeStubInterface, args []s
 
 	var keys []string
 	for keysIter.HasNext() {
-		//if sleeptime is specied, take a nap
+		// if sleeptime is specied, take a nap
 		if stime > 0 {
 			time.Sleep(time.Duration(stime) * time.Millisecond)
 		}
@@ -184,7 +184,7 @@ func (t *SimpleChaincode) keysPrivate(stub shim.ChaincodeStubInterface, args []s
 	return shim.Success(jsonKeys)
 }
 
-func (t *SimpleChaincode) queryPrivate(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) queryPrivate(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	collection := args[0]
 	query := args[1]
 	keysIter, err := stub.GetPrivateDataQueryResult(collection, query)
@@ -209,7 +209,7 @@ func (t *SimpleChaincode) queryPrivate(stub shim.ChaincodeStubInterface, args []
 
 	return shim.Success(jsonKeys)
 }
-func (t *SimpleChaincode) put(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) put(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) < 2 {
 		return shim.Error("put operation must include two arguments: [key, value]")
 	}
@@ -235,7 +235,7 @@ func (t *SimpleChaincode) put(stub shim.ChaincodeStubInterface, args []string) p
 
 	return shim.Success(nil)
 }
-func (t *SimpleChaincode) remove(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) remove(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) < 1 {
 		return shim.Error("remove operation must include one argument: [key]")
 	}
@@ -247,7 +247,7 @@ func (t *SimpleChaincode) remove(stub shim.ChaincodeStubInterface, args []string
 	}
 	return shim.Success(nil)
 }
-func (t *SimpleChaincode) get(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) get(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) < 1 {
 		return shim.Error("get operation must include one argument, a key")
 	}
@@ -259,14 +259,14 @@ func (t *SimpleChaincode) get(stub shim.ChaincodeStubInterface, args []string) p
 	jsonVal, err := json.Marshal(string(value))
 	return shim.Success(jsonVal)
 }
-func (t *SimpleChaincode) keys(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) keys(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) < 2 {
 		return shim.Error("keys operation must include two arguments, a key and value")
 	}
 	startKey := args[0]
 	endKey := args[1]
 
-	//sleep needed to test peer's timeout behavior when using iterators
+	// sleep needed to test peer's timeout behavior when using iterators
 	stime := 0
 	if len(args) > 2 {
 		stime, _ = strconv.Atoi(args[2])
@@ -280,7 +280,7 @@ func (t *SimpleChaincode) keys(stub shim.ChaincodeStubInterface, args []string) 
 
 	var keys []string
 	for keysIter.HasNext() {
-		//if sleeptime is specied, take a nap
+		// if sleeptime is specied, take a nap
 		if stime > 0 {
 			time.Sleep(time.Duration(stime) * time.Millisecond)
 		}
@@ -304,7 +304,7 @@ func (t *SimpleChaincode) keys(stub shim.ChaincodeStubInterface, args []string) 
 	return shim.Success(jsonKeys)
 }
 
-func (t *SimpleChaincode) keysByPage(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) keysByPage(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) < 4 {
 		return shim.Error("paginated range query operation must include four arguments, a key, value, pageSize and a bookmark")
 	}
@@ -316,7 +316,7 @@ func (t *SimpleChaincode) keysByPage(stub shim.ChaincodeStubInterface, args []st
 	}
 	bookmark := args[3]
 
-	//sleep needed to test peer's timeout behavior when using iterators
+	// sleep needed to test peer's timeout behavior when using iterators
 	stime := 0
 	if len(args) > 4 {
 		stime, _ = strconv.Atoi(args[4])
@@ -330,7 +330,7 @@ func (t *SimpleChaincode) keysByPage(stub shim.ChaincodeStubInterface, args []st
 
 	var keys []string
 	for keysIter.HasNext() {
-		//if sleeptime is specied, take a nap
+		// if sleeptime is specied, take a nap
 		if stime > 0 {
 			time.Sleep(time.Duration(stime) * time.Millisecond)
 		}
@@ -358,7 +358,7 @@ func (t *SimpleChaincode) keysByPage(stub shim.ChaincodeStubInterface, args []st
 
 	return shim.Success(queryResp)
 }
-func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	query := args[0]
 	keysIter, err := stub.GetQueryResult(query)
 	if err != nil {
@@ -382,7 +382,7 @@ func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string)
 
 	return shim.Success(jsonKeys)
 }
-func (t *SimpleChaincode) queryByPage(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) queryByPage(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	query := args[0]
 	pageSize, parserr := strconv.ParseInt(args[1], 10, 32)
 	if parserr != nil {
@@ -421,7 +421,7 @@ func (t *SimpleChaincode) queryByPage(stub shim.ChaincodeStubInterface, args []s
 
 	return shim.Success(queryResp)
 }
-func (t *SimpleChaincode) history(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) history(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	key := args[0]
 	keysIter, err := stub.GetHistoryForKey(key)
 	if err != nil {
@@ -449,11 +449,11 @@ func (t *SimpleChaincode) history(stub shim.ChaincodeStubInterface, args []strin
 
 	return shim.Success(jsonKeys)
 }
-func (t *SimpleChaincode) getPut(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) getPut(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	_ = t.get(stub, args)
 	return t.put(stub, args)
 }
-func (t *SimpleChaincode) getPutPrivate(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) getPutPrivate(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	_ = t.getPrivate(stub, args)
 	return t.putPrivate(stub, args)
 }

@@ -11,7 +11,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/stretchr/testify/require"
 )
 

@@ -12,13 +12,12 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/metricsfakes"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	mspproto "github.com/hyperledger/fabric-protos-go/msp"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
+	mspproto "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/endorser/fake"
@@ -29,6 +28,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 func sortChaincodeCall(a, b *pb.ChaincodeCall) int {
@@ -1242,7 +1242,6 @@ var _ = Describe("Endorser", func() {
 
 			slices.SortFunc(proposalResponse.Interest.Chaincodes, sortChaincodeCall)
 			Expect(proposalResponse.Interest).To(ProtoEqual(
-				proposalResponse.Interest,
 				&pb.ChaincodeInterest{
 					Chaincodes: []*pb.ChaincodeCall{
 						{
@@ -1328,10 +1327,21 @@ var _ = Describe("Endorser", func() {
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(proposalResponse.Interest.Chaincodes).To(ContainElements([]*pb.ChaincodeCall{
-				{Name: "myCC"},
-				{Name: "otherCC"},
-			}))
+			Expect(proto.Equal(proposalResponse.Interest.Chaincodes[0],
+				&pb.ChaincodeCall{
+					Name: "myCC",
+				}) || proto.Equal(proposalResponse.Interest.Chaincodes[0],
+				&pb.ChaincodeCall{
+					Name: "otherCC",
+				})).To(BeTrue())
+
+			Expect(proto.Equal(proposalResponse.Interest.Chaincodes[1],
+				&pb.ChaincodeCall{
+					Name: "myCC",
+				}) || proto.Equal(proposalResponse.Interest.Chaincodes[1],
+				&pb.ChaincodeCall{
+					Name: "otherCC",
+				})).To(BeTrue())
 		})
 
 		It("ignores system chaincodes", func() {
@@ -1395,8 +1405,9 @@ var _ = Describe("Endorser", func() {
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(proposalResponse.Interest.Chaincodes).To(ContainElements([]*pb.ChaincodeCall{
-				{Name: "myCC", CollectionNames: []string{"mycollection-1"}},
+			Expect(proposalResponse.Interest.Chaincodes[0]).To(ProtoEqual(&pb.ChaincodeCall{
+				Name:            "myCC",
+				CollectionNames: []string{"mycollection-1"},
 			}))
 		})
 	})

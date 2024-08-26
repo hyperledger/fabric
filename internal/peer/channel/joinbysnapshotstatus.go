@@ -10,12 +10,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	common2 "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	common2 "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 )
 
 func joinBySnapshotStatusCmd(cf *ChannelCmdFactory) *cobra.Command {

@@ -16,14 +16,13 @@ import (
 	"sort"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger-labs/SmartBFT/pkg/types"
 	"github.com/hyperledger-labs/SmartBFT/smartbftprotos"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/smartbft"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/deliverclient"
@@ -34,6 +33,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft/util"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // RuntimeConfig defines the configuration of the consensus
@@ -178,6 +178,9 @@ func (ri *RequestInspector) requestIDFromSigHeader(sigHdr *cb.SignatureHeader) (
 }
 
 func (ri *RequestInspector) requestIDFromEnvelope(envelope *cb.Envelope) (types.RequestInfo, error) {
+	if envelope == nil {
+		return types.RequestInfo{}, errors.New("proto: Marshal called with nil")
+	}
 	data, err := proto.Marshal(envelope)
 	if err != nil {
 		return types.RequestInfo{}, err

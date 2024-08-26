@@ -20,11 +20,10 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	protosorderer "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
@@ -37,6 +36,7 @@ import (
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
@@ -922,7 +922,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			channelparticipation.Join(network, o4, "testchannel3", configBlock, expectedChannelInfo)
 
 			By("checking the logs that indicate that channel3 cannot be pulled using the delivery service, as the read policy is corrupt")
-			Eventually(orderer4Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Received status:FORBIDDEN  from 127\\.0\\.0\\.1:[0-9]+: forbidden pulling the channel channel=testchannel3"))
+			Eventually(orderer4Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Received status:FORBIDDEN from 127\\.0\\.0\\.1:[0-9]+: forbidden pulling the channel channel=testchannel3"))
 		})
 	})
 

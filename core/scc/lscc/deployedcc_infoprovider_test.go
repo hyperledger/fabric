@@ -10,15 +10,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/queryresult"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/core/scc/lscc/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestNamespaces(t *testing.T) {
@@ -141,7 +141,7 @@ func TestCollectionInfo(t *testing.T) {
 
 	ccPkg2, err := ccInfoProvdier.AllCollectionsConfigPkg("", "cc2", mockQE)
 	require.NoError(t, err)
-	require.Equal(t, prepapreCollectionConfigPkg([]string{"cc2_coll1", "cc2_coll2"}), ccPkg2)
+	require.True(t, proto.Equal(prepapreCollectionConfigPkg([]string{"cc2_coll1", "cc2_coll2"}), ccPkg2))
 }
 
 func prepareMockQE(t *testing.T, deployedChaincodes []*ledger.DeployedChaincodeInfo) *mock.QueryExecutor {

@@ -7,13 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package policydsl
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestOutOf1(t *testing.T) {
@@ -113,7 +113,7 @@ func TestAndClientPeerOrderer(t *testing.T) {
 		Identities: principals,
 	}
 
-	require.True(t, reflect.DeepEqual(p1, p2))
+	require.True(t, proto.Equal(p1, p2))
 }
 
 func TestOr(t *testing.T) {

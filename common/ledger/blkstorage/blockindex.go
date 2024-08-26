@@ -12,15 +12,15 @@ import (
 	"path/filepath"
 	"unicode/utf8"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/ledger/snapshot"
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -93,10 +93,7 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 	blkHash := blockIdxInfo.blockHash
 	txsfltr := txflags.ValidationFlags(blockIdxInfo.metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	batch := index.db.NewUpdateBatch()
-	flpBytes, err := flp.marshal()
-	if err != nil {
-		return err
-	}
+	flpBytes := flp.marshal()
 
 	// Index1
 	if index.isAttributeIndexed(IndexableAttrBlockHash) {
@@ -113,10 +110,7 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 		for i, txoffset := range txOffsets {
 			txFlp := newFileLocationPointer(flp.fileSuffixNum, flp.offset, txoffset.loc)
 			logger.Debugf("Adding txLoc [%s] for tx ID: [%s] to txid-index", txFlp, txoffset.txID)
-			txFlpBytes, marshalErr := txFlp.marshal()
-			if marshalErr != nil {
-				return marshalErr
-			}
+			txFlpBytes := txFlp.marshal()
 
 			indexVal := &TxIDIndexValue{
 				BlkLocation:      flpBytes,
@@ -139,10 +133,7 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 		for i, txoffset := range txOffsets {
 			txFlp := newFileLocationPointer(flp.fileSuffixNum, flp.offset, txoffset.loc)
 			logger.Debugf("Adding txLoc [%s] for tx number:[%d] ID: [%s] to blockNumTranNum index", txFlp, i, txoffset.txID)
-			txFlpBytes, marshalErr := txFlp.marshal()
-			if marshalErr != nil {
-				return marshalErr
-			}
+			txFlpBytes := txFlp.marshal()
 			batch.Put(constructBlockNumTranNumKey(blkNum, uint64(i)), txFlpBytes)
 		}
 	}
@@ -513,13 +504,13 @@ func newFileLocationPointer(fileSuffixNum int, beginningOffset int, relativeLP *
 	return flp
 }
 
-func (flp *fileLocPointer) marshal() ([]byte, error) {
+func (flp *fileLocPointer) marshal() []byte {
 	var buf []byte
 	buf = protowire.AppendVarint(buf, uint64(flp.fileSuffixNum))
 	buf = protowire.AppendVarint(buf, uint64(flp.offset))
 	buf = protowire.AppendVarint(buf, uint64(flp.bytesLength))
 
-	return buf, nil
+	return buf
 }
 
 func (flp *fileLocPointer) unmarshal(b []byte) error {

@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	fabric_protos_godiscovery "github.com/hyperledger/fabric-protos-go/discovery"
+	fabric_protos_godiscovery "github.com/hyperledger/fabric-protos-go-apiv2/discovery"
 	discovery "github.com/hyperledger/fabric/discovery/client"
 
 	mock "github.com/stretchr/testify/mock"

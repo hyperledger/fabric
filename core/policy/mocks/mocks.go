@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"time"
 
-	mspproto "github.com/hyperledger/fabric-protos-go/msp"
+	mspproto "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"

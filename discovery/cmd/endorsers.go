@@ -13,16 +13,15 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/hyperledger/fabric-protos-go/peer"
-
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/discovery"
-	"github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/discovery"
+	"github.com/hyperledger/fabric-protos-go-apiv2/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/cmd/common"
 	discoveryclient "github.com/hyperledger/fabric/discovery/client"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // NewEndorsersCmd creates a new EndorsersCmd

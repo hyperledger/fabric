@@ -10,7 +10,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/gomega"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/integration/nwo"
 )
 

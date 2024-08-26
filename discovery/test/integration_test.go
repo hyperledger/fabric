@@ -22,14 +22,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	bccsp "github.com/hyperledger/fabric-lib-go/bccsp/utils"
-	"github.com/hyperledger/fabric-protos-go/common"
-	discprotos "github.com/hyperledger/fabric-protos-go/discovery"
-	"github.com/hyperledger/fabric-protos-go/gossip"
-	msprotos "github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	discprotos "github.com/hyperledger/fabric-protos-go-apiv2/discovery"
+	"github.com/hyperledger/fabric-protos-go-apiv2/gossip"
+	msprotos "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
@@ -60,6 +59,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -215,7 +215,7 @@ func TestGreenPath(t *testing.T) {
 		// Ensure MSP Configs are exactly as they appear in the config block
 		for mspID, mspConfig := range conf.Msps {
 			expectedConfig := service.sup.mspConfigs[mspID]
-			require.Equal(t, expectedConfig, mspConfig)
+			require.True(t, proto.Equal(expectedConfig, mspConfig))
 		}
 		// Ensure orderer endpoints are as they appear in the config block
 		for mspID, endpoints := range conf.Orderers {

@@ -13,9 +13,9 @@ import (
 	"testing"
 
 	"github.com/bits-and-blooms/bitset"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/core/ledger/confighistory/confighistorytest"
@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestSnapshotImporter(t *testing.T) {
@@ -950,7 +951,7 @@ func (v *dbEntriesVerifier) verifyBootKVHashesEntry(key *bootKVHashesKey, expect
 	require.NoError(v.t, err)
 	val, err := decodeBootKVHashesVal(encVal)
 	require.NoError(v.t, err)
-	require.Equal(v.t, expectedVal, val)
+	require.True(v.t, proto.Equal(expectedVal, val))
 }
 
 func (v *dbEntriesVerifier) verifyExpiryEntry(key *expiryKey, expectedVal *ExpiryData) {
@@ -958,7 +959,7 @@ func (v *dbEntriesVerifier) verifyExpiryEntry(key *expiryKey, expectedVal *Expir
 	require.NoError(v.t, err)
 	val, err := decodeExpiryValue(encVal)
 	require.NoError(v.t, err)
-	require.Equal(v.t, expectedVal, val)
+	require.True(v.t, proto.Equal(expectedVal, val))
 }
 
 func (v *dbEntriesVerifier) verifyNoExpiryEntries() {

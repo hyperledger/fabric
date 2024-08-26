@@ -9,9 +9,10 @@ package policydsl
 import (
 	"sort"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	mb "github.com/hyperledger/fabric-protos-go/msp"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	mb "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // AcceptAllPolicy always evaluates to true
@@ -196,6 +197,9 @@ func NOutOf(n int32, policies []*cb.SignaturePolicy) *cb.SignaturePolicy {
 // protoMarshalOrPanic serializes a protobuf message and panics if this
 // operation fails
 func protoMarshalOrPanic(pb proto.Message) []byte {
+	if !pb.ProtoReflect().IsValid() {
+		panic(errors.New("proto: Marshal called with nil"))
+	}
 	data, err := proto.Marshal(pb)
 	if err != nil {
 		panic(err)

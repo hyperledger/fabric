@@ -10,15 +10,15 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger-labs/SmartBFT/pkg/types"
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/smartbft"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func newMockOrdererConfig(migration bool, state orderer.ConsensusType_State) *mocks.OrdererConfig {
@@ -283,8 +284,10 @@ func TestMaintenanceInspectChange(t *testing.T) {
 		configTx := makeConfigEnvelopeWithExtraStuff(t, current, next, 0, 2)
 		err := mf.Apply(configTx)
 		require.Error(t, err)
-		require.EqualError(t, err,
-			"config transaction inspection failed: invalid BFT consenter mapping configuration: No suitable BFT consenter for Raft consenter: host:\"127.0.0.1\" port:4000 client_tls_cert:\"\\001\\002\\003\" server_tls_cert:\"\\004\\005\\006\" ")
+
+		t1 := strings.ReplaceAll(err.Error(), " ", "")
+		t2 := strings.ReplaceAll("config transaction inspection failed: invalid BFT consenter mapping configuration: No suitable BFT consenter for Raft consenter: host:\"127.0.0.1\" port:4000 client_tls_cert:\"\\x01\\x02\\x03\" server_tls_cert:\"\\x04\\x05\\x06\"", " ", "")
+		require.Equal(t, t1, t2)
 	})
 
 	t.Run("Bad: good type change with valid BFT metadata but missing consenters", func(t *testing.T) {

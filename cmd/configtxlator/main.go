@@ -14,19 +14,19 @@ import (
 	"os"
 	"reflect"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/handlers"
 	"github.com/hyperledger/fabric-config/protolator"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	_ "github.com/hyperledger/fabric-protos-go/msp"
-	_ "github.com/hyperledger/fabric-protos-go/orderer"
-	_ "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	_ "github.com/hyperledger/fabric-protos-go/peer"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	_ "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	_ "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	_ "github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
+	_ "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/internal/configtxlator/metadata"
 	"github.com/hyperledger/fabric/internal/configtxlator/rest"
 	"github.com/hyperledger/fabric/internal/configtxlator/update"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -131,7 +131,7 @@ func encodeProto(msgName string, input, output *os.File) error {
 		return errors.Wrapf(err, "error encode input")
 	}
 
-	msgType := reflect.TypeOf(proto.MessageV1(mt.Zero().Interface()))
+	msgType := reflect.TypeOf(mt.Zero().Interface())
 
 	if msgType == nil {
 		return errors.Errorf("message of type %s unknown", msgType)
@@ -143,6 +143,9 @@ func encodeProto(msgName string, input, output *os.File) error {
 		return errors.Wrapf(err, "error decoding input")
 	}
 
+	if msg == nil {
+		return errors.New("error marshaling: proto: Marshal called with nil")
+	}
 	out, err := proto.Marshal(msg)
 	if err != nil {
 		return errors.Wrapf(err, "error marshaling")
@@ -162,7 +165,7 @@ func decodeProto(msgName string, input, output *os.File) error {
 		return errors.Wrapf(err, "error encode input")
 	}
 
-	msgType := reflect.TypeOf(proto.MessageV1(mt.Zero().Interface()))
+	msgType := reflect.TypeOf(mt.Zero().Interface())
 
 	if msgType == nil {
 		return errors.Errorf("message of type %s unknown", msgType)
@@ -217,6 +220,9 @@ func computeUpdt(original, updated, output *os.File, channelID string) error {
 
 	cu.ChannelId = channelID
 
+	if cu == nil {
+		return errors.New("error marshaling computed config update: proto: Marshal called with nil")
+	}
 	outBytes, err := proto.Marshal(cu)
 	if err != nil {
 		return errors.Wrapf(err, "error marshaling computed config update")

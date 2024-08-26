@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	mockpolicies "github.com/hyperledger/fabric/common/configtx/mock"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/protoutil"

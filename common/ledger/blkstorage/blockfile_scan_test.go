@@ -10,7 +10,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/stretchr/testify/require"
@@ -38,8 +38,7 @@ func TestBlockFileScanSmallTxOnly(t *testing.T) {
 	require.Equal(t, len(blocks), numBlocks)
 	require.Equal(t, fileSize, endOffsetLastBlock)
 
-	expectedLastBlockBytes, _, err := serializeBlock(blocks[len(blocks)-1])
-	require.NoError(t, err)
+	expectedLastBlockBytes, _ := serializeBlock(blocks[len(blocks)-1])
 	require.Equal(t, expectedLastBlockBytes, lastBlockBytes)
 }
 
@@ -70,7 +69,6 @@ func TestBlockFileScanSmallTxLastTxIncomplete(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, len(blocks)-1, numBlocks)
 
-	expectedLastBlockBytes, _, err := serializeBlock(blocks[len(blocks)-2])
-	require.NoError(t, err)
+	expectedLastBlockBytes, _ := serializeBlock(blocks[len(blocks)-2])
 	require.Equal(t, expectedLastBlockBytes, lastBlockBytes)
 }

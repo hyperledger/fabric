@@ -13,13 +13,13 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/discovery"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/discovery"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/discovery/protoext"
 	gprotoext "github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 var configTypes = []protoext.QueryType{

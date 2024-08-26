@@ -9,8 +9,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric-chaincode-go/shim"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 )
 
 // SimpleChaincode example simple Chaincode implementation
@@ -18,7 +18,7 @@ type SimpleChaincode struct {
 }
 
 // Init initializes a public state
-func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
+func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) *pb.Response {
 	if err := stub.PutState("dummyKey", []byte("dummyValue")); err != nil {
 		return shim.Error(fmt.Sprintf("put operation failed. Error storing state: %s", err))
 	}
@@ -26,7 +26,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
 }
 
 // Invoke is a no-op
-func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
+func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) *pb.Response {
 	return shim.Success(nil)
 }
 

@@ -14,9 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
@@ -27,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 var chaincodeLogger = flogging.MustGetLogger("chaincode")
@@ -782,6 +782,10 @@ func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *Tra
 		txContext.CleanupQueryContext(iterID)
 		return nil, errors.WithStack(err)
 	}
+	if payload == nil {
+		txContext.CleanupQueryContext(iterID)
+		return nil, errors.New("marshal failed: proto: Marshal called with nil")
+	}
 
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
@@ -812,6 +816,10 @@ func (h *Handler) HandleQueryStateNext(msg *pb.ChaincodeMessage, txContext *Tran
 	if err != nil {
 		txContext.CleanupQueryContext(queryStateNext.Id)
 		return nil, errors.WithStack(err)
+	}
+	if payload == nil {
+		txContext.CleanupQueryContext(queryStateNext.Id)
+		return nil, errors.New("marshal failed: proto: Marshal called with nil")
 	}
 
 	payloadBytes, err := proto.Marshal(payload)
@@ -892,6 +900,10 @@ func (h *Handler) HandleGetQueryResult(msg *pb.ChaincodeMessage, txContext *Tran
 		txContext.CleanupQueryContext(iterID)
 		return nil, errors.WithStack(err)
 	}
+	if payload == nil {
+		txContext.CleanupQueryContext(iterID)
+		return nil, errors.New("marshal failed: proto: Marshal called with nil")
+	}
 
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
@@ -929,6 +941,10 @@ func (h *Handler) HandleGetHistoryForKey(msg *pb.ChaincodeMessage, txContext *Tr
 	if err != nil {
 		txContext.CleanupQueryContext(iterID)
 		return nil, errors.WithStack(err)
+	}
+	if payload == nil {
+		txContext.CleanupQueryContext(iterID)
+		return nil, errors.New("marshal failed: proto: Marshal called with nil")
 	}
 
 	payloadBytes, err := proto.Marshal(payload)
@@ -1207,6 +1223,9 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 	responseMessage, err := h.Invoker.Invoke(txParams, targetInstance.ChaincodeName, chaincodeSpec.Input)
 	if err != nil {
 		return nil, errors.Wrap(err, "execute failed")
+	}
+	if responseMessage == nil {
+		return nil, errors.New("marshal failed: proto: Marshal called with nil")
 	}
 
 	// payload is marshalled and sent to the calling chaincode's shim which unmarshals and

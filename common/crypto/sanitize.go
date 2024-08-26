@@ -15,10 +15,10 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/bccsp/utils"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // SanitizeIdentity sanitizes the signature scheme of the identity

@@ -11,9 +11,9 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/internal/configtxlator/update"
+	"google.golang.org/protobuf/proto"
 )
 
 func fieldBytes(fieldName string, r *http.Request) ([]byte, error) {

@@ -12,11 +12,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 )
 
 func fetchCmd(cf *ChannelCmdFactory) *cobra.Command {
@@ -88,11 +89,13 @@ func fetch(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 		}
 		block, err = cf.DeliverClient.GetSpecifiedBlock(uint64(num))
 	}
-
 	if err != nil {
 		return err
 	}
 
+	if block == nil {
+		return errors.New("proto: Marshal called with nil")
+	}
 	b, err := proto.Marshal(block)
 	if err != nil {
 		return err

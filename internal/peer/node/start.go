@@ -20,15 +20,14 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	floggingmetrics "github.com/hyperledger/fabric-lib-go/common/flogging/metrics"
 	"github.com/hyperledger/fabric-lib-go/common/metrics"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	discprotos "github.com/hyperledger/fabric-protos-go/discovery"
-	gatewayprotos "github.com/hyperledger/fabric-protos-go/gateway"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	discprotos "github.com/hyperledger/fabric-protos-go-apiv2/discovery"
+	gatewayprotos "github.com/hyperledger/fabric-protos-go-apiv2/gateway"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	ccdef "github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/crypto"
@@ -100,6 +99,7 @@ import (
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v2"
 )
 

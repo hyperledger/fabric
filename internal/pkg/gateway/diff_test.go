@@ -8,13 +8,14 @@ package gateway
 
 import (
 	"math"
+	"strings"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/stretchr/testify/require"
 )
 
@@ -353,10 +354,17 @@ func TestPayloadDifferenceSBEPolicy(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := [][]interface{}{
-		{"type", "write metadata mismatch (SBE policy)", "namespace", "ns1", "key", "key1", "name", "VALIDATION_PARAMETER", "initial-endorser-value", "rule:<n_out_of:<n:1 rules:<signed_by:0 > > > identities:<principal:\"orgA\" > ", "invoked-endorser-value", "rule:<n_out_of:<n:1 rules:<signed_by:0 > > > identities:<principal:\"orgB\" > "},
-		{"type", "missing metadata write (SBE policy)", "namespace", "ns1", "key", "key2", "name", "VALIDATION_PARAMETER", "initial-endorser-value", "rule:<n_out_of:<n:1 rules:<signed_by:0 > > > identities:<principal:\"orgA\" > ", "invoked-endorser-value", ""},
+		{"type", "write metadata mismatch (SBE policy)", "namespace", "ns1", "key", "key1", "name", "VALIDATION_PARAMETER", "initial-endorser-value", "rule:{n_out_of:{n:1  rules:{signed_by:0}}}  identities:{principal:\"orgA\"}", "invoked-endorser-value", "rule:{n_out_of:{n:1  rules:{signed_by:0}}}  identities:{principal:\"orgB\"}"},
+		{"type", "missing metadata write (SBE policy)", "namespace", "ns1", "key", "key2", "name", "VALIDATION_PARAMETER", "initial-endorser-value", "rule:{n_out_of:{n:1  rules:{signed_by:0}}}  identities:{principal:\"orgA\"}", "invoked-endorser-value", ""},
 	}
-	require.ElementsMatch(t, expected, diff.details())
+	dif := diff.details()
+	for i := range expected {
+		for j := range expected[i] {
+			expected[i][j] = strings.ReplaceAll(expected[i][j].(string), " ", "")
+			dif[i][j] = strings.ReplaceAll(dif[i][j].(string), " ", "")
+		}
+	}
+	require.ElementsMatch(t, expected, dif)
 }
 
 func TestPayloadDifferenceChaincodeResponse(t *testing.T) {

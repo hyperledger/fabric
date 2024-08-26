@@ -9,12 +9,12 @@ package chaincode_test
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/queryresult"
 	"github.com/hyperledger/fabric/core/chaincode"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ = Describe("PendingQueryResult", func() {

@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	msgprocessormocks "github.com/hyperledger/fabric/orderer/common/msgprocessor/mocks"
 	"github.com/hyperledger/fabric/orderer/common/multichannel/mocks"
 	"github.com/pkg/errors"

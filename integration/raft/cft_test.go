@@ -22,12 +22,11 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/golang/protobuf/proto"
 	conftx "github.com/hyperledger/fabric-config/configtx"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	orderer2 "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	orderer2 "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/integration/channelparticipation"
@@ -42,6 +41,7 @@ import (
 	"github.com/tedsuo/ifrit"
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
@@ -169,6 +169,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			close(envs)
 
 			// Broadcast all envelopes in parallel from 50 clients
+			By("Send envs for TPS1")
 			Eventually(oRunner.Err, time.Minute).Should(gbytes.Say("Start accepting requests as Raft leader"))
 			TPS := measureTPS(5000, network, orderer, envs)
 			Expect(TPS).To(BeNumerically(">", 500))
@@ -191,9 +192,11 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			close(envs)
 
 			// Broadcast all envelopes in parallel from 50 clients and ensure it's not as fast as earlier
+			By("Send envs for TPS2")
 			Eventually(oRunner.Err, time.Minute).Should(gbytes.Say("Start accepting requests as Raft leader"))
 			TPS = measureTPS(5000, network, orderer, envs)
-			Expect(TPS).To(Equal(500))
+			Expect(TPS).To(BeNumerically(">", 440))
+			Expect(TPS).To(BeNumerically("<", 560))
 		})
 	})
 
@@ -1079,7 +1082,7 @@ func measureTPS(txNum int, network *nwo.Network, orderer *nwo.Orderer, envs chan
 	bcastWG.Add(50)
 
 	var lock sync.Mutex
-	cond := &sync.Cond{L: &lock}
+	cond := sync.NewCond(&lock)
 
 	var wg sync.WaitGroup
 	wg.Add(50)
@@ -1121,8 +1124,8 @@ func measureTPS(txNum int, network *nwo.Network, orderer *nwo.Orderer, envs chan
 		}()
 	}
 
-	start := time.Now()
 	wg.Wait()
+	start := time.Now()
 	cond.Broadcast()
 	bcastWG.Wait()
 

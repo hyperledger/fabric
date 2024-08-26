@@ -14,11 +14,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/bccsp/utils"
-	m "github.com/hyperledger/fabric-protos-go/msp"
+	m "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 func (msp *bccspmsp) getCertifiersIdentifier(certRaw []byte) ([]byte, error) {

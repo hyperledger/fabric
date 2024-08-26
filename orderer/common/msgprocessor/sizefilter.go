@@ -9,7 +9,7 @@ package msgprocessor
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/channelconfig"
 )
 

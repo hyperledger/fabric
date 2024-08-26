@@ -10,13 +10,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
-	"github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil/fakes"
 	"github.com/hyperledger/fabric/msp"

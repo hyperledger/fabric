@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	peerprotos "github.com/hyperledger/fabric-protos-go/peer"
+	peerprotos "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/internal/pkg/comm"

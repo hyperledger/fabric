@@ -12,11 +12,12 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestResetToGenesisBlkSingleBlkFile(t *testing.T) {
@@ -218,13 +219,14 @@ func assertBlocksDirOnlyFileWithGenesisBlock(t *testing.T, ledgerDir string, gen
 func assertBlockStorePostReset(t *testing.T, store *BlockStore, originallyCommittedBlocks []*common.Block) {
 	bcInfo, _ := store.GetBlockchainInfo()
 	t.Logf("bcInfo = %s", spew.Sdump(bcInfo))
-	require.Equal(t,
+	require.True(t, proto.Equal(
 		&common.BlockchainInfo{
 			Height:            1,
 			CurrentBlockHash:  protoutil.BlockHeaderHash(originallyCommittedBlocks[0].Header),
 			PreviousBlockHash: nil,
 		},
-		bcInfo)
+		bcInfo),
+	)
 
 	blk, err := store.RetrieveBlockByNumber(0)
 	require.NoError(t, err)
@@ -256,8 +258,7 @@ func assertRecordedHeight(t *testing.T, ledgerDir, expectedRecordedHt string) {
 func testutilEstimateTotalSizeOnDisk(t *testing.T, blocks []*common.Block) int {
 	size := 0
 	for _, block := range blocks {
-		by, _, err := serializeBlock(block)
-		require.NoError(t, err)
+		by, _ := serializeBlock(block)
 		blockBytesSize := len(by)
 		encodedLen := protowire.AppendVarint(nil, uint64(blockBytesSize))
 		size += blockBytesSize + len(encodedLen)

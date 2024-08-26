@@ -14,14 +14,14 @@ import (
 	"sync/atomic"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -298,10 +298,7 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 			bcInfo.CurrentBlockHash, block.Header.PreviousHash,
 		)
 	}
-	blockBytes, info, err := serializeBlock(block)
-	if err != nil {
-		return errors.WithMessage(err, "error serializing block")
-	}
+	blockBytes, info := serializeBlock(block)
 	blockHash := protoutil.BlockHeaderHash(block.Header)
 	// Get the location / offset where each transaction starts in the block and where the block ends
 	txOffsets := info.txOffsets
@@ -318,7 +315,7 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 		currentOffset = 0
 	}
 	// append blockBytesEncodedLen to the file
-	err = mgr.currentFileWriter.append(blockBytesEncodedLen, false)
+	err := mgr.currentFileWriter.append(blockBytesEncodedLen, false)
 	if err == nil {
 		// append the actual block bytes to the file
 		err = mgr.currentFileWriter.append(blockBytes, true)
@@ -700,11 +697,8 @@ func (mgr *blockfileMgr) loadBlkfilesInfo() (*blockfilesInfo, error) {
 }
 
 func (mgr *blockfileMgr) saveBlkfilesInfo(i *blockfilesInfo, sync bool) error {
-	b, err := i.marshal()
-	if err != nil {
-		return err
-	}
-	if err = mgr.db.Put(blkMgrInfoKey, b, sync); err != nil {
+	b := i.marshal()
+	if err := mgr.db.Put(blkMgrInfoKey, b, sync); err != nil {
 		return err
 	}
 	return nil
@@ -760,7 +754,7 @@ type blockfilesInfo struct {
 	lastPersistedBlock uint64
 }
 
-func (i *blockfilesInfo) marshal() ([]byte, error) {
+func (i *blockfilesInfo) marshal() []byte {
 	var buf []byte
 	buf = protowire.AppendVarint(buf, uint64(i.latestFileNumber))
 	buf = protowire.AppendVarint(buf, uint64(i.latestFileSize))
@@ -771,7 +765,7 @@ func (i *blockfilesInfo) marshal() ([]byte, error) {
 	}
 	buf = protowire.AppendVarint(buf, noBlockFilesMarker)
 
-	return buf, nil
+	return buf
 }
 
 func (i *blockfilesInfo) unmarshal(b []byte) error {

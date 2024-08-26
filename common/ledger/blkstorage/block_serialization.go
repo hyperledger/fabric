@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package blkstorage
 
 import (
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/protowire"
@@ -25,7 +25,7 @@ type txindexInfo struct {
 	loc  *locPointer
 }
 
-func serializeBlock(block *common.Block) ([]byte, *serializedBlockInfo, error) {
+func serializeBlock(block *common.Block) ([]byte, *serializedBlockInfo) {
 	var buf []byte
 	info := &serializedBlockInfo{}
 	info.blockHeader = block.Header
@@ -33,7 +33,7 @@ func serializeBlock(block *common.Block) ([]byte, *serializedBlockInfo, error) {
 	buf = addHeaderBytes(block.Header, buf)
 	info.txOffsets, buf = addDataBytesAndConstructTxIndexInfo(block.Data, buf)
 	buf = addMetadataBytes(block.Metadata, buf)
-	return buf, info, nil
+	return buf, info
 }
 
 func deserializeBlock(serializedBlockBytes []byte) (*common.Block, error) {
