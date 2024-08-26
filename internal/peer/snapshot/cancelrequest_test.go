@@ -10,17 +10,17 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/hyperledger/fabric/internal/peer/snapshot/mock"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 func TestCancelRequestCmd(t *testing.T) {
 	mockSigner := &mock.Signer{}
 	mockSigner.SignReturns([]byte("snapshot-request-signature"), nil)
 	mockSnapshotClient := &mock.SnapshotClient{}
-	mockSnapshotClient.CancelReturns(&empty.Empty{}, nil)
+	mockSnapshotClient.CancelReturns(&emptypb.Empty{}, nil)
 	buffer := gbytes.NewBuffer()
 	mockClient := &client{mockSnapshotClient, mockSigner, buffer}
 

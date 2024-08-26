@@ -11,8 +11,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/hyperledger/fabric-chaincode-go/shim"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/pkg/errors"
 )
 
@@ -33,13 +33,13 @@ type KVData struct {
 
 // Init initializes chaincode
 // ===========================
-func (t *KVExecutor) Init(stub shim.ChaincodeStubInterface) pb.Response {
+func (t *KVExecutor) Init(stub shim.ChaincodeStubInterface) *pb.Response {
 	return shim.Success(nil)
 }
 
 // Invoke - Our entry point for Invocations
 // ========================================
-func (t *KVExecutor) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
+func (t *KVExecutor) Invoke(stub shim.ChaincodeStubInterface) *pb.Response {
 	function, args := stub.GetFunctionAndParameters()
 	fmt.Println("invoke is running " + function)
 
@@ -54,7 +54,7 @@ func (t *KVExecutor) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 }
 
 // both params should be marshalled json data and base64 encoded
-func (t *KVExecutor) readWriteKVs(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *KVExecutor) readWriteKVs(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) != 2 {
 		return shim.Error("Incorrect number of arguments. Expecting 2 (readInputs and writeInputs)")
 	}

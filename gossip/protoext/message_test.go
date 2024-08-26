@@ -9,7 +9,7 @@ package protoext_test
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/stretchr/testify/require"
 )

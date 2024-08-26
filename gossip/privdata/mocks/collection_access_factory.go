@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	peer "github.com/hyperledger/fabric-protos-go/peer"
+	peer "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	mock "github.com/stretchr/testify/mock"
 
 	privdata "github.com/hyperledger/fabric/core/common/privdata"

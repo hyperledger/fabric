@@ -10,10 +10,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
-	raftprotos "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	raftprotos "github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
@@ -21,6 +20,7 @@ import (
 	consensusmocks "github.com/hyperledger/fabric/orderer/consensus/mocks"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"google.golang.org/protobuf/proto"
 )
 
 func makeOrdererOrg(caCert []byte) *mocks.OrdererOrg {

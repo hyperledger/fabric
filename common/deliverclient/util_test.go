@@ -9,7 +9,7 @@ package deliverclient_test
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/deliverclient"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"

@@ -10,8 +10,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"google.golang.org/protobuf/proto"
 )
 
 //go:generate mockery --dir . --name Communicator --case underscore --output ./mocks/

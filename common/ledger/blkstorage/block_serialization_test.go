@@ -9,7 +9,7 @@ package blkstorage
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
@@ -37,8 +37,7 @@ func TestBlockSerialization(t *testing.T) {
 		}),
 	})
 
-	bb, _, err := serializeBlock(block)
-	require.NoError(t, err)
+	bb, _ := serializeBlock(block)
 	deserializedBlock, err := deserializeBlock(bb)
 	require.NoError(t, err)
 	require.Equal(t, block, deserializedBlock)
@@ -87,8 +86,7 @@ func TestSerializedBlockInfo(t *testing.T) {
 }
 
 func testSerializedBlockInfo(t *testing.T, block *common.Block, c *testutilTxIDComputator) {
-	bb, info, err := serializeBlock(block)
-	require.NoError(t, err)
+	bb, info := serializeBlock(block)
 	infoFromBB, err := extractSerializedBlockInfo(bb)
 	require.NoError(t, err)
 	require.Equal(t, info, infoFromBB)

@@ -6,7 +6,7 @@ import (
 	channelconfig "github.com/hyperledger/fabric/common/channelconfig"
 	blockcutter "github.com/hyperledger/fabric/orderer/common/blockcutter"
 
-	common "github.com/hyperledger/fabric-protos-go/common"
+	common "github.com/hyperledger/fabric-protos-go-apiv2/common"
 
 	mock "github.com/stretchr/testify/mock"
 

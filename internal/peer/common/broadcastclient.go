@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package common
 
 import (
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/pkg/errors"
 )
 

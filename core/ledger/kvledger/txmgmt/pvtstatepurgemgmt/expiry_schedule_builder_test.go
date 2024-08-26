@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package pvtstatepurgemgmt
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
@@ -15,6 +16,7 @@ import (
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestBuildExpirySchedule(t *testing.T) {
@@ -53,7 +55,18 @@ func TestBuildExpirySchedule(t *testing.T) {
 	}
 
 	require.Len(t, listExpinfo, 3)
-	require.ElementsMatch(t, expectedListExpInfo, listExpinfo)
+	for i := 0; i < len(expectedListExpInfo); i++ {
+		j := 0
+		for ; j < len(listExpinfo); j++ {
+			if reflect.DeepEqual(expectedListExpInfo[i].expiryInfoKey, listExpinfo[j].expiryInfoKey) {
+				require.True(t, proto.Equal(expectedListExpInfo[i].pvtdataKeys, listExpinfo[j].pvtdataKeys))
+				break
+			}
+		}
+		if j == len(listExpinfo) {
+			require.Fail(t, "Not equal")
+		}
+	}
 }
 
 func TestBuildExpiryScheduleWithMissingPvtdata(t *testing.T) {
@@ -103,7 +116,18 @@ func TestBuildExpiryScheduleWithMissingPvtdata(t *testing.T) {
 	}
 
 	require.Len(t, listExpinfo, 3)
-	require.ElementsMatch(t, expectedListExpInfo, listExpinfo)
+	for i := 0; i < len(expectedListExpInfo); i++ {
+		j := 0
+		for ; j < len(listExpinfo); j++ {
+			if reflect.DeepEqual(expectedListExpInfo[i].expiryInfoKey, listExpinfo[j].expiryInfoKey) {
+				require.True(t, proto.Equal(expectedListExpInfo[i].pvtdataKeys, listExpinfo[j].pvtdataKeys))
+				break
+			}
+		}
+		if j == len(listExpinfo) {
+			require.Fail(t, "Not equal")
+		}
+	}
 }
 
 func putPvtAndHashUpdates(t *testing.T, updates *privacyenabledstate.UpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {

@@ -10,9 +10,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/metricsfakes"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/util"
 	ar "github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -25,6 +24,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ = Describe("Handler", func() {
@@ -2551,7 +2551,7 @@ var _ = Describe("Handler", func() {
 		})
 
 		It("sends an execute message to the chaincode with the correct proposal", func() {
-			expectedMessage := proto.Clone(incomingMessage).(*pb.ChaincodeMessage)
+			expectedMessage := incomingMessage
 			expectedMessage.Proposal = expectedSignedProp
 
 			close(responseNotifier)

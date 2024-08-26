@@ -92,7 +92,7 @@ func (s *SignatureScheme) Sign(cred []byte, sk *math.Zr, Nym *math.G1, RNym *mat
 // AuditNymEid Audits the pseudonymous enrollment id of a signature
 func (s *SignatureScheme) AuditNymEid(
 	ipk types.IssuerPublicKey,
-	eidIndex int,
+	eidIndex, _ int,
 	signature []byte,
 	enrollmentID string,
 	RNymEid *math.Zr,
@@ -148,7 +148,7 @@ func (s *SignatureScheme) AuditNymEid(
 // AuditNymRh Audits the pseudonymous revocation handle of a signature
 func (s *SignatureScheme) AuditNymRh(
 	ipk types.IssuerPublicKey,
-	rhIndex int,
+	rhIndex, _ int,
 	signature []byte,
 	revocationHandle string,
 	RNymRh *math.Zr,
@@ -205,7 +205,7 @@ func (s *SignatureScheme) Verify(
 	ipk types.IssuerPublicKey,
 	signature, digest []byte,
 	attributes []bccsp.IdemixAttribute,
-	rhIndex, eidIndex int,
+	rhIndex, eidIndex, _ int,
 	revocationPublicKey *ecdsa.PublicKey,
 	epoch int,
 	verType bccsp.VerificationType,

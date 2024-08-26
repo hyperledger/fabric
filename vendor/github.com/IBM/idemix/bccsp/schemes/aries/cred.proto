@@ -14,6 +14,7 @@ package aries;
 message Credential {
 	bytes cred = 1;
 	repeated bytes attrs = 2;
+	int32 sk_pos = 3;
 }
 
 // Signature is a PoK of a BBS+ signature (a credential)

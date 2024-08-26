@@ -11,14 +11,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	cp "github.com/hyperledger/fabric-protos-go/common"
-	dp "github.com/hyperledger/fabric-protos-go/discovery"
-	pb "github.com/hyperledger/fabric-protos-go/gateway"
-	"github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	cp "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	dp "github.com/hyperledger/fabric-protos-go-apiv2/discovery"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/gateway"
+	"github.com/hyperledger/fabric-protos-go-apiv2/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/deliverclient/orderers"
@@ -39,6 +38,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 // The following private interfaces are here purely to prevent counterfeiter creating an import cycle in the unit test
@@ -68,7 +68,7 @@ type commitFinder interface {
 	CommitFinder
 }
 
-//go:generate counterfeiter -o mocks/chaincodeeventsserver.go --fake-name ChaincodeEventsServer github.com/hyperledger/fabric-protos-go/gateway.Gateway_ChaincodeEventsServer
+//go:generate counterfeiter -o mocks/chaincodeeventsserver.go --fake-name ChaincodeEventsServer github.com/hyperledger/fabric-protos-go-apiv2/gateway.Gateway_ChaincodeEventsServer
 
 //go:generate counterfeiter -o mocks/aclchecker.go --fake-name ACLChecker . aclChecker
 type aclChecker interface {
@@ -563,8 +563,14 @@ func checkError(t *testing.T, tt *testDef, err error) (checked bool) {
 
 	if detailsCheck {
 		require.Len(t, s.Details(), len(tt.errDetails))
+	external:
 		for _, detail := range s.Details() {
-			require.Contains(t, tt.errDetails, proto.MessageV1(detail), "error details, expected: %v", tt.errDetails)
+			for _, errDetail := range tt.errDetails {
+				if proto.Equal(errDetail, detail.(*pb.ErrorDetail)) {
+					continue external
+				}
+			}
+			require.Fail(t, "error match detail", "error details, expected: %v", tt.errDetails)
 		}
 	}
 
@@ -690,13 +696,13 @@ func createEndpointFactory(t *testing.T, definition *endpointDef, dialer dialer,
 	require.NoError(t, err, "failed to create client key pair")
 	return &endpointFactory{
 		timeout: 5 * time.Second,
-		connectEndorser: func(conn *grpc.ClientConn) peer.EndorserClient {
+		connectEndorser: func(conn grpc.ClientConnInterface) peer.EndorserClient {
 			if ep, ok := endorsers[endpoint]; ok && ep.client != nil {
 				return ep.client
 			}
 			return nil
 		},
-		connectOrderer: func(conn *grpc.ClientConn) ab.AtomicBroadcastClient {
+		connectOrderer: func(conn grpc.ClientConnInterface) ab.AtomicBroadcastClient {
 			if ep, ok := ordererMocks[endpoint]; ok && ep.client != nil {
 				return ep.client
 			}

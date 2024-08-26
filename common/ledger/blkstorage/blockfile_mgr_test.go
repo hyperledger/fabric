@@ -11,8 +11,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
@@ -394,8 +394,7 @@ func TestBlockfileMgrFileRolling(t *testing.T) {
 	blocks := testutil.ConstructTestBlocks(t, 200)
 	size := 0
 	for _, block := range blocks[:100] {
-		by, _, err := serializeBlock(block)
-		require.NoError(t, err, "Error while serializing block")
+		by, _ := serializeBlock(block)
 		blockBytesSize := len(by)
 		encodedLen := protowire.AppendVarint(nil, uint64(blockBytesSize))
 		size += blockBytesSize + len(encodedLen)

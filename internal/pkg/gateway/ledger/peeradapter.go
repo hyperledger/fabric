@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package ledger
 
 import (
-	"github.com/hyperledger/fabric-protos-go/common"
-	peerproto "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	peerproto "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/ledger"
 	peerledger "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"

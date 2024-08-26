@@ -10,14 +10,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	"github.com/hyperledger/fabric-lib-go/common/flogging/floggingtest"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/internal/peer/chaincode/mock"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/msp"
@@ -226,7 +227,9 @@ func TestInvokeCmdEndorsementFailure(t *testing.T) {
 		err = cmd.Execute()
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "endorsement failure during invoke")
-		require.Contains(t, err.Error(), fmt.Sprintf("response: status:%d payload:\"%s\"", ccRespStatus[i], ccRespPayload[i]))
+		tmp1 := strings.ReplaceAll(err.Error(), " ", "")
+		tmp2 := strings.ReplaceAll(fmt.Sprintf("response: status:%d payload:\"%s\"", ccRespStatus[i], ccRespPayload[i]), " ", "")
+		require.Contains(t, tmp1, tmp2)
 	}
 }
 

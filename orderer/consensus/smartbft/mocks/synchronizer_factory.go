@@ -8,7 +8,7 @@ import (
 
 	cluster "github.com/hyperledger/fabric/orderer/common/cluster"
 
-	common "github.com/hyperledger/fabric-protos-go/common"
+	common "github.com/hyperledger/fabric-protos-go-apiv2/common"
 
 	consensus "github.com/hyperledger/fabric/orderer/consensus"
 

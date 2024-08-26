@@ -8,9 +8,11 @@ package ccprovider_test
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/protoadapt"
 )
 
 // -------- ChaincodeDataOld is stored on the LSCC -------
@@ -45,7 +47,8 @@ func (cd *ChaincodeData) Reset() { *cd = ChaincodeData{} }
 
 // String converts to string
 func (cd *ChaincodeData) String() string {
-	return proto.CompactTextString(cd)
+	b, _ := prototext.MarshalOptions{Indent: ""}.Marshal(protoadapt.MessageV2Of(cd))
+	return string(b)
 }
 
 // ProtoMessage just exists to make proto happy
@@ -67,7 +70,10 @@ type SignedCDSData struct {
 func (data *SignedCDSData) Reset() { *data = SignedCDSData{} }
 
 // String converts to string
-func (data *SignedCDSData) String() string { return proto.CompactTextString(data) }
+func (data *SignedCDSData) String() string {
+	b, _ := prototext.MarshalOptions{Indent: ""}.Marshal(protoadapt.MessageV2Of(data))
+	return string(b)
+}
 
 // ProtoMessage just exists to make proto happy
 func (*SignedCDSData) ProtoMessage() {}
@@ -96,17 +102,17 @@ func TestChaincodeDataOldToNew(t *testing.T) {
 		Id:                  []byte("id"),
 		InstantiationPolicy: []byte("instantiation-policy"),
 	}
-	bOld, err := proto.Marshal(ccDataOld)
+	bOld, err := proto.Marshal(protoadapt.MessageV2Of(ccDataOld))
 	require.NoError(t, err)
 
 	ccDataOld2 := &ChaincodeData{}
 	ccData2 := &ccprovider.ChaincodeData{}
-	err = proto.Unmarshal(bNew, ccDataOld2)
+	err = proto.Unmarshal(bNew, protoadapt.MessageV2Of(ccDataOld2))
 	require.NoError(t, err)
 	err = proto.Unmarshal(bOld, ccData2)
 	require.NoError(t, err)
 
-	require.True(t, proto.Equal(ccDataOld, ccDataOld2))
+	require.True(t, proto.Equal(protoadapt.MessageV2Of(ccDataOld), protoadapt.MessageV2Of(ccDataOld2)))
 	require.True(t, proto.Equal(ccData, ccData2))
 }
 
@@ -124,16 +130,16 @@ func TestSignedCDSDataOldToNew(t *testing.T) {
 		MetaDataHash:  []byte("data"),
 		SignatureHash: []byte("id"),
 	}
-	bOld, err := proto.Marshal(ccDataOld)
+	bOld, err := proto.Marshal(protoadapt.MessageV2Of(ccDataOld))
 	require.NoError(t, err)
 
 	ccDataOld2 := &SignedCDSData{}
 	ccData2 := &ccprovider.SignedCDSData{}
-	err = proto.Unmarshal(bNew, ccDataOld2)
+	err = proto.Unmarshal(bNew, protoadapt.MessageV2Of(ccDataOld2))
 	require.NoError(t, err)
 	err = proto.Unmarshal(bOld, ccData2)
 	require.NoError(t, err)
 
-	require.True(t, proto.Equal(ccDataOld, ccDataOld2))
+	require.True(t, proto.Equal(protoadapt.MessageV2Of(ccDataOld), protoadapt.MessageV2Of(ccDataOld2)))
 	require.True(t, proto.Equal(ccData, ccData2))
 }

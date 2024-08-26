@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestPurgeMgrBuilder(t *testing.T) {
@@ -164,7 +165,12 @@ func TestPurgeMgrBuilder(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			output, err := purgeMgr.expKeeper.retrieve(tc.expiringBlock)
 			require.NoError(t, err)
-			require.Equal(t, tc.expectedOutput, output)
+			if tc.expectedOutput != nil && output != nil {
+				require.Equal(t, tc.expectedOutput[0].expiryInfoKey, output[0].expiryInfoKey)
+				require.True(t, proto.Equal(tc.expectedOutput[0].pvtdataKeys, output[0].pvtdataKeys))
+			} else {
+				require.Equal(t, tc.expectedOutput, output)
+			}
 		})
 	}
 }

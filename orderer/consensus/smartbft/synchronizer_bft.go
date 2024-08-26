@@ -14,7 +14,7 @@ import (
 	"github.com/hyperledger-labs/SmartBFT/pkg/types"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/deliverclient"
 	"github.com/hyperledger/fabric/common/deliverclient/blocksprovider"
 	"github.com/hyperledger/fabric/common/deliverclient/orderers"
@@ -86,7 +86,7 @@ func (s *BFTSynchronizer) Buffer() *SyncBuffer {
 }
 
 func (s *BFTSynchronizer) synchronize() (*types.Decision, error) {
-	//=== We probe all the endpoints and establish a target height, as well as detect the self endpoint.
+	// === We probe all the endpoints and establish a target height, as well as detect the self endpoint.
 	targetHeight, myEndpoint, err := s.detectTargetHeight()
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot get detect target height")
@@ -97,7 +97,7 @@ func (s *BFTSynchronizer) synchronize() (*types.Decision, error) {
 		return nil, errors.Errorf("already at target height of %d", targetHeight)
 	}
 
-	//=== Create a buffer to accept the blocks delivered from the BFTDeliverer.
+	// === Create a buffer to accept the blocks delivered from the BFTDeliverer.
 	capacityBlocks := uint(s.LocalConfigCluster.ReplicationBufferSize) / uint(s.Support.SharedConfig().BatchSize().AbsoluteMaxBytes)
 	if capacityBlocks < 100 {
 		capacityBlocks = 100
@@ -106,7 +106,7 @@ func (s *BFTSynchronizer) synchronize() (*types.Decision, error) {
 	s.syncBuff = NewSyncBuffer(capacityBlocks)
 	s.mutex.Unlock()
 
-	//=== Create the BFT block deliverer and start a go-routine that fetches block and inserts them into the syncBuffer.
+	// === Create the BFT block deliverer and start a go-routine that fetches block and inserts them into the syncBuffer.
 	bftDeliverer, err := s.createBFTDeliverer(startHeight, myEndpoint)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot create BFT block deliverer")
@@ -115,7 +115,7 @@ func (s *BFTSynchronizer) synchronize() (*types.Decision, error) {
 	go bftDeliverer.DeliverBlocks()
 	defer bftDeliverer.Stop()
 
-	//=== Loop on sync-buffer and pull blocks, writing them to the ledger, returning the last block pulled.
+	// === Loop on sync-buffer and pull blocks, writing them to the ledger, returning the last block pulled.
 	lastPulledBlock, err := s.getBlocksFromSyncBuffer(startHeight, targetHeight)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get any blocks from SyncBuffer")

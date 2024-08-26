@@ -9,8 +9,8 @@ package dispatcher
 import (
 	"reflect"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // Dispatcher is used to handle the boilerplate proto tasks of unmarshalling inputs and remarshaling outputs

@@ -4,7 +4,7 @@ package fake
 import (
 	"sync"
 
-	mspa "github.com/hyperledger/fabric-protos-go/msp"
+	mspa "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/msp"
 )
 

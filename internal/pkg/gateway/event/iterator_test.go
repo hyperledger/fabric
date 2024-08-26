@@ -10,17 +10,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/gateway"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/gateway"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/event"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/event/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 //go:generate counterfeiter -o mocks/resultsiterator.go --fake-name ResultsIterator . mockResultsIterator
@@ -43,12 +43,9 @@ func TestIterators(t *testing.T) {
 		Payload: protoutil.MarshalOrPanic(&common.Payload{
 			Header: &common.Header{
 				ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
-					Type: int32(common.HeaderType_ENDORSER_TRANSACTION),
-					Timestamp: &timestamp.Timestamp{
-						Seconds: now.Unix(),
-						Nanos:   int32(now.Nanosecond()),
-					},
-					TxId: transactionId,
+					Type:      int32(common.HeaderType_ENDORSER_TRANSACTION),
+					Timestamp: timestamppb.New(now),
+					TxId:      transactionId,
 				}),
 			},
 			Data: protoutil.MarshalOrPanic(&peer.Transaction{
@@ -118,7 +115,7 @@ func TestIterators(t *testing.T) {
 			require.Equal(t, block, transaction.Block(), "transaction[%d].Block()", txIndex)
 			require.Equal(t, transactionId, transaction.ID(), "transaction[%d].ID()", txIndex)
 			require.EqualValues(t, now.Unix(), transaction.Timestamp().Seconds, "transaction[%d].Timestamp.Seconds", txIndex)
-			require.EqualValues(t, now.Nanosecond(), transaction.Timestamp().Nanos, "transaction[%d].Tomestamp.Nanos", txIndex)
+			require.EqualValues(t, now.Nanosecond(), int(transaction.Timestamp().Nanos), "transaction[%d].Tomestamp.Nanos", txIndex)
 
 			events, err := transaction.ChaincodeEvents()
 			require.NoError(t, err, "ChaincodeEvents()")

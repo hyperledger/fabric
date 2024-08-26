@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"reflect"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -20,8 +19,8 @@ import (
 
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -34,6 +33,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	corecomm "github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -55,7 +55,7 @@ var (
 		AliveExpirationTimeout:       10 * aliveTimeInterval,
 		AliveExpirationCheckInterval: aliveTimeInterval,
 		ReconnectInterval:            aliveTimeInterval,
-		MaxConnectionAttempts:        5,
+		MaxConnectionAttempts:        120,
 		MsgExpirationFactor:          discovery.DefMsgExpirationFactor,
 	}
 )
@@ -63,15 +63,15 @@ var (
 var orgInChannelA = api.OrgIdentityType("ORG1")
 
 func acceptData(m interface{}) bool {
-	if dataMsg := m.(*proto.GossipMessage).GetDataMsg(); dataMsg != nil {
+	if dataMsg := m.(*gossip.GossipMessage).GetDataMsg(); dataMsg != nil {
 		return true
 	}
 	return false
 }
 
 func acceptLeadershp(message interface{}) bool {
-	validMsg := message.(*proto.GossipMessage).Tag == proto.GossipMessage_CHAN_AND_ORG &&
-		protoext.IsLeadershipMsg(message.(*proto.GossipMessage))
+	validMsg := message.(*gossip.GossipMessage).Tag == gossip.GossipMessage_CHAN_AND_ORG &&
+		protoext.IsLeadershipMsg(message.(*gossip.GossipMessage))
 
 	return validMsg
 }
@@ -449,7 +449,7 @@ func TestPull(t *testing.T) {
 	for i := 1; i <= n; i++ {
 		go func(i int) {
 			acceptChan, _ := peers[i-1].Accept(acceptData, false)
-			go func(index int, ch <-chan *proto.GossipMessage) {
+			go func(index int, ch <-chan *gossip.GossipMessage) {
 				defer wg.Done()
 				for j := 0; j < msgsCount2Send; j++ {
 					<-ch
@@ -692,7 +692,7 @@ func TestNoMessagesSelfLoop(t *testing.T) {
 	peerCh, _ := peer.Accept(acceptData, false)
 
 	// Ensure recipient gets his message
-	go func(ch <-chan *proto.GossipMessage) {
+	go func(ch <-chan *gossip.GossipMessage) {
 		defer wg.Done()
 		<-ch
 	}(peerCh)
@@ -723,7 +723,7 @@ func TestDissemination(t *testing.T) {
 	boot := newGossipInstanceWithGRPC(0, port0, grpc0, certs0, secDialOpts0, 100)
 	boot.JoinChan(&joinChanMsg{}, common.ChannelID("A"))
 	boot.UpdateLedgerHeight(1, common.ChannelID("A"))
-	boot.UpdateChaincodes([]*proto.Chaincode{{Name: "exampleCC", Version: "1.2"}}, common.ChannelID("A"))
+	boot.UpdateChaincodes([]*gossip.Chaincode{{Name: "exampleCC", Version: "1.2"}}, common.ChannelID("A"))
 
 	peers := make([]*gossipGRPC, n)
 	receivedMessages := make([]int, n)
@@ -740,9 +740,9 @@ func TestDissemination(t *testing.T) {
 		peers[i-1] = pI
 		pI.JoinChan(&joinChanMsg{}, common.ChannelID("A"))
 		pI.UpdateLedgerHeight(1, common.ChannelID("A"))
-		pI.UpdateChaincodes([]*proto.Chaincode{{Name: "exampleCC", Version: "1.2"}}, common.ChannelID("A"))
+		pI.UpdateChaincodes([]*gossip.Chaincode{{Name: "exampleCC", Version: "1.2"}}, common.ChannelID("A"))
 		acceptChan, _ := pI.Accept(acceptData, false)
-		go func(index int, ch <-chan *proto.GossipMessage) {
+		go func(index int, ch <-chan *gossip.GossipMessage) {
 			defer wg.Done()
 			for j := 0; j < msgsCount2Send; j++ {
 				<-ch
@@ -768,7 +768,7 @@ func TestDissemination(t *testing.T) {
 					return false
 				}
 
-				if !reflect.DeepEqual(p.Properties.Chaincodes, []*proto.Chaincode{{Name: "exampleCC", Version: "1.2"}}) {
+				if !proto.Equal(p.Properties.Chaincodes[0], &gossip.Chaincode{Name: "exampleCC", Version: "1.2"}) {
 					return false
 				}
 			}
@@ -801,7 +801,7 @@ func TestDissemination(t *testing.T) {
 	wgLeadership.Add(n)
 	for i := 1; i <= n; i++ {
 		leadershipChan, _ := peers[i-1].Accept(acceptLeadershp, false)
-		go func(index int, ch <-chan *proto.GossipMessage) {
+		go func(index int, ch <-chan *gossip.GossipMessage) {
 			defer wgLeadership.Done()
 			msg := <-ch
 			if bytes.Equal(msg.Channel, common.ChannelID("A")) {
@@ -943,6 +943,10 @@ func TestMembershipConvergence(t *testing.T) {
 }
 
 func TestMembershipRequestSpoofing(t *testing.T) {
+	fmt.Printf("begin test %s\n", t.Name())
+	defer fmt.Printf("end test %s\n", t.Name())
+	util.SetupTestLoggingWithLevel("DEBUG")
+	defer util.SetupTestLogging()
 	// Scenario: g1, g2, g3 are peers, and g2 is malicious, and wants
 	// to impersonate g3 when sending a membership request to g1.
 	// Expected output: g1 should *NOT* respond to g2,
@@ -984,12 +988,12 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 	}, true)
 
 	// Now, create a membership request message
-	memRequestSpoofFactory := func(aliveMsgEnv *proto.Envelope) *protoext.SignedGossipMessage {
-		sMsg, _ := protoext.NoopSign(&proto.GossipMessage{
-			Tag:   proto.GossipMessage_EMPTY,
+	memRequestSpoofFactory := func(aliveMsgEnv *gossip.Envelope) *protoext.SignedGossipMessage {
+		sMsg, _ := protoext.NoopSign(&gossip.GossipMessage{
+			Tag:   gossip.GossipMessage_EMPTY,
 			Nonce: uint64(0),
-			Content: &proto.GossipMessage_MemReq{
-				MemReq: &proto.MembershipRequest{
+			Content: &gossip.GossipMessage_MemReq{
+				MemReq: &gossip.MembershipRequest{
 					SelfInformation: aliveMsgEnv,
 					Known:           [][]byte{},
 				},
@@ -1202,7 +1206,7 @@ func TestDisseminateAll2All(t *testing.T) {
 	wg = sync.WaitGroup{}
 	wg.Add(n)
 
-	reader := func(msgChan <-chan *proto.GossipMessage, i int) {
+	reader := func(msgChan <-chan *gossip.GossipMessage, i int) {
 		wg.Done()
 		for range msgChan {
 			bMutex.Done()
@@ -1478,14 +1482,14 @@ func TestIdentityExpiration(t *testing.T) {
 	g5.Stop()
 }
 
-func createDataMsg(seqnum uint64, data []byte, channel common.ChannelID) *proto.GossipMessage {
-	return &proto.GossipMessage{
+func createDataMsg(seqnum uint64, data []byte, channel common.ChannelID) *gossip.GossipMessage {
+	return &gossip.GossipMessage{
 		Channel: channel,
 		Nonce:   0,
-		Tag:     proto.GossipMessage_CHAN_AND_ORG,
-		Content: &proto.GossipMessage_DataMsg{
-			DataMsg: &proto.DataMessage{
-				Payload: &proto.Payload{
+		Tag:     gossip.GossipMessage_CHAN_AND_ORG,
+		Content: &gossip.GossipMessage_DataMsg{
+			DataMsg: &gossip.DataMessage{
+				Payload: &gossip.Payload{
 					Data:   data,
 					SeqNum: seqnum,
 				},
@@ -1494,20 +1498,20 @@ func createDataMsg(seqnum uint64, data []byte, channel common.ChannelID) *proto.
 	}
 }
 
-func createLeadershipMsg(isDeclaration bool, channel common.ChannelID, incTime uint64, seqNum uint64, pkiid []byte) *proto.GossipMessage {
-	leadershipMsg := &proto.LeadershipMessage{
+func createLeadershipMsg(isDeclaration bool, channel common.ChannelID, incTime uint64, seqNum uint64, pkiid []byte) *gossip.GossipMessage {
+	leadershipMsg := &gossip.LeadershipMessage{
 		IsDeclaration: isDeclaration,
 		PkiId:         pkiid,
-		Timestamp: &proto.PeerTime{
+		Timestamp: &gossip.PeerTime{
 			IncNum: incTime,
 			SeqNum: seqNum,
 		},
 	}
 
-	msg := &proto.GossipMessage{
+	msg := &gossip.GossipMessage{
 		Nonce:   0,
-		Tag:     proto.GossipMessage_CHAN_AND_ORG,
-		Content: &proto.GossipMessage_LeadershipMsg{LeadershipMsg: leadershipMsg},
+		Tag:     gossip.GossipMessage_CHAN_AND_ORG,
+		Content: &gossip.GossipMessage_LeadershipMsg{LeadershipMsg: leadershipMsg},
 		Channel: channel,
 	}
 	return msg
@@ -1584,10 +1588,11 @@ func waitUntilOrFailBlocking(t *testing.T, f func(), context string) {
 func checkPeersMembership(t *testing.T, peers []*gossipGRPC, n int) func() bool {
 	return func() bool {
 		for _, peer := range peers {
-			if len(peer.Peers()) != n {
+			ps := peer.Peers()
+			if len(ps) != n {
 				return false
 			}
-			for _, p := range peer.Peers() {
+			for _, p := range ps {
 				require.NotNil(t, p.InternalEndpoint)
 				require.NotEmpty(t, p.Endpoint)
 			}

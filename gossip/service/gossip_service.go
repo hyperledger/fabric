@@ -12,9 +12,9 @@ import (
 
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	gproto "github.com/hyperledger/fabric-protos-go/gossip"
-	tspb "github.com/hyperledger/fabric-protos-go/transientstore"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	gproto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
+	tspb "github.com/hyperledger/fabric-protos-go-apiv2/transientstore"
 	"github.com/hyperledger/fabric/common/deliverclient/blocksprovider"
 	"github.com/hyperledger/fabric/common/deliverclient/orderers"
 	"github.com/hyperledger/fabric/core/committer"

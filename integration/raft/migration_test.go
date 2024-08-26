@@ -16,11 +16,10 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger-labs/SmartBFT/pkg/types"
-	"github.com/hyperledger/fabric-protos-go/common"
-	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/smartbft"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	protosorderer "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/smartbft"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/policies"
@@ -36,6 +35,7 @@ import (
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ = Describe("ConsensusTypeMigration", func() {
@@ -321,7 +321,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 
 			// === The green path ======================================================================================
 
-			//=== Step 3: Config update on standard channel, MAINTENANCE, again ===
+			// === Step 3: Config update on standard channel, MAINTENANCE, again ===
 			By("3) Config update on standard channel, State=MAINTENANCE, enter maintenance-mode again")
 			config, updatedConfig = prepareTransition(network, peer, o1, "testchannel",
 				"etcdraft", protosorderer.ConsensusType_STATE_NORMAL,

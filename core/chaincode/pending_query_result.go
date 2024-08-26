@@ -7,9 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
-	"github.com/golang/protobuf/proto"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 type PendingQueryResult struct {
@@ -23,6 +24,11 @@ func (p *PendingQueryResult) Cut() []*pb.QueryResultBytes {
 }
 
 func (p *PendingQueryResult) Add(queryResult commonledger.QueryResult) error {
+	_, ok := queryResult.(proto.Message)
+	if !ok {
+		chaincodeLogger.Error("failed to marshal query result: proto is nil")
+		return errors.New("marshal-failed")
+	}
 	queryResultBytes, err := proto.Marshal(queryResult.(proto.Message))
 	if err != nil {
 		chaincodeLogger.Errorf("failed to marshal query result: %s", err)

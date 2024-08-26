@@ -9,13 +9,13 @@ package aclmgmt
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/protoutil"
 )
 
-//--------- errors ---------
+// --------- errors ---------
 
 // PolicyNotFound cache for resource
 type PolicyNotFound string
@@ -31,7 +31,7 @@ func (e InvalidIdInfo) Error() string {
 	return fmt.Sprintf("Invalid id for policy [%s]", string(e))
 }
 
-//---------- policyEvaluator ------
+// ---------- policyEvaluator ------
 
 // policyEvaluator interface provides the interfaces for policy evaluation
 type policyEvaluator interface {
@@ -71,7 +71,7 @@ func (pe *policyEvaluatorImpl) Evaluate(polName string, sd []*protoutil.SignedDa
 	return err
 }
 
-//------ resourcePolicyProvider ----------
+// ------ resourcePolicyProvider ----------
 
 // aclmgmtPolicyProvider is the interface implemented by resource based ACL.
 type aclmgmtPolicyProvider interface {
@@ -145,7 +145,7 @@ func (rp *aclmgmtPolicyProviderImpl) CheckACL(polName string, idinfo interface{}
 	return nil
 }
 
-//-------- resource provider - entry point API used by aclmgmtimpl for doing resource based ACL ----------
+// -------- resource provider - entry point API used by aclmgmtimpl for doing resource based ACL ----------
 
 // resource getter gets channelconfig.Resources given channel ID
 type ResourceGetter func(channelID string) channelconfig.Resources

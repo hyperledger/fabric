@@ -13,11 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSecureOptsConfig(t *testing.T) {

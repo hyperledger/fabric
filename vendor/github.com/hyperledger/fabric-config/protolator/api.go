@@ -7,10 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package protolator
 
 import (
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // This set of interfaces and methods is designed to allow protos to have Go methods attached
 // to them, so that they may be automatically marshaled to human readable JSON (where the
@@ -37,7 +37,7 @@ import (
 // wrapping the underlying proto message in another type which can be configured at runtime with
 // different contextual behavior. (See tests for examples)
 //
-///////////////////////////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////////////////////////
 
 // StaticallyOpaqueFieldProto should be implemented by protos which have bytes fields which
 // are the marshaled value of a fixed type
@@ -100,7 +100,7 @@ type VariablyOpaqueSliceFieldProto interface {
 	// VariablyOpaqueSliceFields returns the field names which contain opaque data
 	VariablyOpaqueSliceFields() []string
 
-	// VariablyOpaqueFieldProto returns a newly allocated proto message of the correct
+	// VariablyOpaqueSliceFieldProto returns a newly allocated proto message of the correct
 	// type for the field name.
 	VariablyOpaqueSliceFieldProto(name string, index int) (proto.Message, error)
 }

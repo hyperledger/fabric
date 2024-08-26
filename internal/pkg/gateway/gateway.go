@@ -9,7 +9,7 @@ import (
 	"context"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	peerproto "github.com/hyperledger/fabric-protos-go/peer"
+	peerproto "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/deliverclient/orderers"
 	"github.com/hyperledger/fabric/core/peer"

@@ -9,18 +9,20 @@ package protoutil
 import (
 	"crypto/rand"
 	"fmt"
-	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/timestamp"
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // MarshalOrPanic serializes a protobuf message and panics if this
 // operation fails
 func MarshalOrPanic(pb proto.Message) []byte {
+	if !pb.ProtoReflect().IsValid() {
+		panic(errors.New("proto: Marshal called with nil"))
+	}
 	data, err := proto.Marshal(pb)
 	if err != nil {
 		panic(err)
@@ -30,6 +32,9 @@ func MarshalOrPanic(pb proto.Message) []byte {
 
 // Marshal serializes a protobuf message.
 func Marshal(pb proto.Message) ([]byte, error) {
+	if !pb.ProtoReflect().IsValid() {
+		return nil, errors.New("proto: Marshal called with nil")
+	}
 	return proto.Marshal(pb)
 }
 
@@ -104,13 +109,12 @@ func ExtractEnvelope(block *cb.Block, index int) (*cb.Envelope, error) {
 
 // MakeChannelHeader creates a ChannelHeader.
 func MakeChannelHeader(headerType cb.HeaderType, version int32, chainID string, epoch uint64) *cb.ChannelHeader {
+	tm := timestamppb.Now()
+	tm.Nanos = 0
 	return &cb.ChannelHeader{
-		Type:    int32(headerType),
-		Version: version,
-		Timestamp: &timestamp.Timestamp{
-			Seconds: time.Now().Unix(),
-			Nanos:   0,
-		},
+		Type:      int32(headerType),
+		Version:   version,
+		Timestamp: tm,
 		ChannelId: chainID,
 		Epoch:     epoch,
 	}

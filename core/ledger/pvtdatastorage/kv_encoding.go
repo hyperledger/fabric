@@ -12,11 +12,11 @@ import (
 	"math"
 
 	"github.com/bits-and-blooms/bitset"
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -72,6 +72,9 @@ func encodeDataKey(key *dataKey) []byte {
 }
 
 func encodeDataValue(collData *rwset.CollectionPvtReadWriteSet) ([]byte, error) {
+	if collData == nil {
+		return nil, errors.New("proto: Marshal called with nil")
+	}
 	return proto.Marshal(collData)
 }
 
@@ -81,6 +84,9 @@ func encodeExpiryKey(expiryKey *expiryKey) []byte {
 }
 
 func encodeExpiryValue(expiryData *ExpiryData) ([]byte, error) {
+	if expiryData == nil {
+		return nil, errors.New("proto: Marshal called with nil")
+	}
 	return proto.Marshal(expiryData)
 }
 
@@ -189,6 +195,9 @@ func decodeCollElgKey(b []byte) uint64 {
 }
 
 func encodeCollElgVal(m *CollElgInfo) ([]byte, error) {
+	if m == nil {
+		return nil, errors.New("proto: Marshal called with nil")
+	}
 	return proto.Marshal(m)
 }
 
@@ -208,6 +217,9 @@ func encodeBootKVHashesKey(key *bootKVHashesKey) []byte {
 }
 
 func encodeBootKVHashesVal(val *BootKVHashes) ([]byte, error) {
+	if val == nil {
+		return nil, errors.New("error while marshalling BootKVHashes: proto: Marshal called with nil")
+	}
 	b, err := proto.Marshal(val)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while marshalling BootKVHashes")

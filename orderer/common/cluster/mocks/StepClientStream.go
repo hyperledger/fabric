@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	orderer "github.com/hyperledger/fabric-protos-go/orderer"
+	orderer "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	mock "github.com/stretchr/testify/mock"
 )
 

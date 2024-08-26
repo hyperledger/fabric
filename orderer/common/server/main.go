@@ -25,7 +25,7 @@ import (
 	floggingmetrics "github.com/hyperledger/fabric-lib-go/common/flogging/metrics"
 	"github.com/hyperledger/fabric-lib-go/common/metrics"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/fabhttp"

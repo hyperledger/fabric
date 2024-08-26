@@ -15,13 +15,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/ledger/snapshot"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 var testNewHashFunc = func() (hash.Hash, error) {
@@ -108,7 +108,7 @@ func TestMgrQueries(t *testing.T) {
 				retrievedConfig, err := retriever.MostRecentCollectionConfigBelow(testHeight, chaincodeName)
 				require.NoError(t, err)
 				expectedConfig := sampleCollectionConfigPackage(ledgerid, expectedHeight)
-				require.Equal(t, expectedConfig, retrievedConfig.CollectionConfig)
+				require.True(t, proto.Equal(expectedConfig, retrievedConfig.CollectionConfig))
 				require.Equal(t, expectedHeight, retrievedConfig.CommittingBlockNum)
 			}
 
@@ -155,7 +155,7 @@ func TestDrop(t *testing.T) {
 		retrievedConfig, err = retriever2.MostRecentCollectionConfigBelow(testHeight, chaincodeName)
 		require.NoError(t, err)
 		expectedConfig := sampleCollectionConfigPackage("ledger2", expectedHeight)
-		require.Equal(t, expectedConfig, retrievedConfig.CollectionConfig)
+		require.True(t, proto.Equal(expectedConfig, retrievedConfig.CollectionConfig))
 		require.Equal(t, expectedHeight, retrievedConfig.CommittingBlockNum)
 	}
 

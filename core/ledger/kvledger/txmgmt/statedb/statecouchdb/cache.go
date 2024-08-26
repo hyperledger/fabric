@@ -8,7 +8,7 @@ package statecouchdb
 
 import (
 	"github.com/VictoriaMetrics/fastcache"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 var keySep = []byte{0x00}

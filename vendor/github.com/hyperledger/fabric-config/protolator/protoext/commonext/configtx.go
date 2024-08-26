@@ -9,8 +9,8 @@ package commonext
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"google.golang.org/protobuf/proto"
 )
 
 type ConfigUpdateEnvelope struct{ *common.ConfigUpdateEnvelope }
@@ -70,7 +70,7 @@ func (c *Config) DynamicFieldProto(name string, base proto.Message) (proto.Messa
 	return &DynamicChannelGroup{ConfigGroup: cg}, nil
 }
 
-// ConfigUpdateIsolatedDataTypes allows other proto packages to register types for the
+// ConfigUpdateIsolatedDataTypes allows other proto packages to register types for
 // the isolated_data field.  This is necessary to break import cycles.
 var ConfigUpdateIsolatedDataTypes = map[string]func(string) proto.Message{}
 

@@ -19,13 +19,12 @@ import (
 	"syscall"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	mspp "github.com/hyperledger/fabric-protos-go/msp"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
+	mspp "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/integration/channelparticipation"
@@ -41,6 +40,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tedsuo/ifrit"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -136,7 +136,10 @@ var _ = Describe("PrivateData", func() {
 				},
 				WaitForEvent: true,
 			}
-			expectedErrMsg := `Error: endorsement failure during invoke. response: status:500 message:"error in simulation: failed to distribute private collection`
+			expectedErrMsg := []string{
+				`Error: endorsement failure during invoke. response: status:500`,
+				`message:"error in simulation: failed to distribute private collection`,
+			}
 			invokeChaincodeExpectErr(network, network.Peer("Org1", "peer0"), command, expectedErrMsg)
 		})
 
@@ -846,7 +849,7 @@ var _ = Describe("PrivateData", func() {
 			}
 			peer1 := network.Peer("Org1", "peer0")
 			expectedErrMsg := "tx creator does not have write access permission"
-			invokeChaincodeExpectErr(network, peer1, command, expectedErrMsg)
+			invokeChaincodeExpectErr(network, peer1, command, []string{expectedErrMsg})
 
 			assertMarbleAPIs()
 			assertDeliverWithPrivateDataACLBehavior()
@@ -972,11 +975,13 @@ func installChaincode(n *nwo.Network, chaincode nwo.Chaincode, peer *nwo.Peer) {
 	nwo.PackageAndInstallChaincode(n, chaincode, peer)
 }
 
-func invokeChaincodeExpectErr(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeInvoke, expectedErrMsg string) {
+func invokeChaincodeExpectErr(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeInvoke, expectedErrMsgs []string) {
 	sess, err := n.PeerUserSession(peer, "User1", command)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(1))
-	Expect(sess.Err).To(gbytes.Say(expectedErrMsg))
+	for _, msg := range expectedErrMsgs {
+		Expect(sess.Err).To(gbytes.Say(msg))
+	}
 }
 
 func approveChaincodeForMyOrgExpectErr(n *nwo.Network, orderer *nwo.Orderer, chaincode nwo.Chaincode, expectedErrMsg string, peers ...*nwo.Peer) {

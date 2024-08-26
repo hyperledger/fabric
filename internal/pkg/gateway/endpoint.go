@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"time"
 
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/deliverclient/orderers"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
@@ -41,8 +41,8 @@ type endpointConfig struct {
 }
 
 type (
-	endorserConnector func(*grpc.ClientConn) peer.EndorserClient
-	ordererConnector  func(*grpc.ClientConn) ab.AtomicBroadcastClient
+	endorserConnector func(conn grpc.ClientConnInterface) peer.EndorserClient
+	ordererConnector  func(conn grpc.ClientConnInterface) ab.AtomicBroadcastClient
 )
 
 //go:generate counterfeiter -o mocks/dialer.go --fake-name Dialer . dialer

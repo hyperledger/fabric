@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package smartbft
 
 import (
-	"github.com/golang/protobuf/proto"
 	protos "github.com/hyperledger-labs/SmartBFT/smartbftprotos"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 //go:generate mockery -dir . -name MessageReceiver -case underscore -output mocks

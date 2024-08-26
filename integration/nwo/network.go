@@ -8,7 +8,6 @@ package nwo
 
 import (
 	"bytes"
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -26,9 +25,8 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
 	"github.com/hyperledger/fabric/integration/nwo/runner"
@@ -44,6 +42,7 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v2"
 )
 
@@ -1436,14 +1435,8 @@ func (n *Network) NewClientConn(address, caCertPath string, clientCertPath strin
 		creds = credentials.NewTLS(config)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	conn, err := grpc.DialContext(
-		ctx,
+	conn, err := grpc.NewClient(
 		address,
-		grpc.WithBlock(),
-		grpc.FailOnNonTempDialError(true),
 		grpc.WithTransportCredentials(creds),
 	)
 	Expect(err).NotTo(HaveOccurred())

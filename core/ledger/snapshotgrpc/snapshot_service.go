@@ -10,15 +10,15 @@ import (
 	"context"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/empty"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // Snapshot Service implements SnapshotServer grpc interface
@@ -38,7 +38,7 @@ type ACLProvider interface {
 }
 
 // Generate generates a snapshot request.
-func (s *SnapshotService) Generate(ctx context.Context, signedRequest *pb.SignedSnapshotRequest) (*empty.Empty, error) {
+func (s *SnapshotService) Generate(ctx context.Context, signedRequest *pb.SignedSnapshotRequest) (*emptypb.Empty, error) {
 	request := &pb.SnapshotRequest{}
 	if err := proto.Unmarshal(signedRequest.Request, request); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal snapshot request")
@@ -57,11 +57,11 @@ func (s *SnapshotService) Generate(ctx context.Context, signedRequest *pb.Signed
 		return nil, err
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 // Cancel cancels a snapshot request.
-func (s *SnapshotService) Cancel(ctx context.Context, signedRequest *pb.SignedSnapshotRequest) (*empty.Empty, error) {
+func (s *SnapshotService) Cancel(ctx context.Context, signedRequest *pb.SignedSnapshotRequest) (*emptypb.Empty, error) {
 	request := &pb.SnapshotRequest{}
 	if err := proto.Unmarshal(signedRequest.Request, request); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal snapshot request")
@@ -80,7 +80,7 @@ func (s *SnapshotService) Cancel(ctx context.Context, signedRequest *pb.SignedSn
 		return nil, err
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 // QueryPendings returns a list of pending snapshot requests.

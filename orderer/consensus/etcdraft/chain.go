@@ -15,12 +15,11 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock"
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
@@ -31,6 +30,8 @@ import (
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/wal"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/protoadapt"
 )
 
 const (
@@ -507,10 +508,11 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 		return err
 	}
 
-	stepMsg := &raftpb.Message{}
-	if err := proto.Unmarshal(req.Payload, stepMsg); err != nil {
+	tmp := protoadapt.MessageV2Of(&raftpb.Message{})
+	if err := proto.Unmarshal(req.Payload, tmp); err != nil {
 		return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %s", err)
 	}
+	stepMsg := protoadapt.MessageV1Of(tmp).(*raftpb.Message)
 
 	if stepMsg.To != c.raftID {
 		c.logger.Warnf("Received msg to %d, my ID is probably wrong due to out of date, cowardly halting", stepMsg.To)

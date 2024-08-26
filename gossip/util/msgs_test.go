@@ -7,13 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package util
 
 import (
-	"reflect"
 	"testing"
 
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func init() {
@@ -27,7 +27,7 @@ func TestMembershipStore(t *testing.T) {
 	id2 := common.PKIidType("id2")
 
 	msg1 := &protoext.SignedGossipMessage{}
-	msg2 := &protoext.SignedGossipMessage{Envelope: &proto.Envelope{}}
+	msg2 := &protoext.SignedGossipMessage{Envelope: &gossip.Envelope{}}
 
 	// Test initially created store is empty
 	require.Nil(t, membershipStore.MsgByID(id1))
@@ -46,8 +46,8 @@ func TestMembershipStore(t *testing.T) {
 	require.Nil(t, membershipStore.MsgByID(id1))
 	require.Equal(t, membershipStore.Size(), 1)
 	// Test returned instance is not a copy
-	msg3 := &protoext.SignedGossipMessage{GossipMessage: &proto.GossipMessage{}}
-	msg3Clone := &protoext.SignedGossipMessage{GossipMessage: &proto.GossipMessage{}}
+	msg3 := &protoext.SignedGossipMessage{GossipMessage: &gossip.GossipMessage{}}
+	msg3Clone := &protoext.SignedGossipMessage{GossipMessage: &gossip.GossipMessage{}}
 	id3 := common.PKIidType("id3")
 	membershipStore.Put(id3, msg3)
 	require.Equal(t, msg3Clone, msg3)
@@ -63,9 +63,9 @@ func TestToSlice(t *testing.T) {
 	id4 := common.PKIidType("id4")
 
 	msg1 := &protoext.SignedGossipMessage{}
-	msg2 := &protoext.SignedGossipMessage{Envelope: &proto.Envelope{}}
-	msg3 := &protoext.SignedGossipMessage{GossipMessage: &proto.GossipMessage{}}
-	msg4 := &protoext.SignedGossipMessage{GossipMessage: &proto.GossipMessage{}, Envelope: &proto.Envelope{}}
+	msg2 := &protoext.SignedGossipMessage{Envelope: &gossip.Envelope{}}
+	msg3 := &protoext.SignedGossipMessage{GossipMessage: &gossip.GossipMessage{}}
+	msg4 := &protoext.SignedGossipMessage{GossipMessage: &gossip.GossipMessage{}, Envelope: &gossip.Envelope{}}
 
 	membershipStore.Put(id1, msg1)
 	membershipStore.Put(id2, msg2)
@@ -76,7 +76,7 @@ func TestToSlice(t *testing.T) {
 
 	existsInSlice := func(slice []*protoext.SignedGossipMessage, msg *protoext.SignedGossipMessage) bool {
 		for _, m := range slice {
-			if reflect.DeepEqual(m, msg) {
+			if proto.Equal(m.Envelope, msg.Envelope) && proto.Equal(m.GossipMessage, msg.GossipMessage) {
 				return true
 			}
 		}

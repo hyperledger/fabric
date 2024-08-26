@@ -11,15 +11,16 @@ import (
 
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/aries-bbs-go/bbs"
 )
 
 const nymSigLabel = "nym-sig"
 
 type NymSigner struct {
-	Curve *math.Curve
-	Rng   io.Reader
+	Curve              *math.Curve
+	Rng                io.Reader
+	UserSecretKeyIndex int
 }
 
 // Sign creates a new idemix pseudonym signature
@@ -37,9 +38,9 @@ func (s *NymSigner) Sign(
 
 	Nonce := s.Curve.NewRandomZr(s.Rng)
 
-	commit := bbs12381g2pub.NewProverCommittingG1()
+	commit := bbs.NewBBSLib(s.Curve).NewProverCommittingG1()
 	commit.Commit(ipk.PKwG.H0)
-	commit.Commit(ipk.PKwG.H[0])
+	commit.Commit(ipk.PKwG.H[s.UserSecretKeyIndex])
 	commitNym := commit.Finish()
 
 	challengeBytes := []byte(nymSigLabel)
@@ -47,11 +48,11 @@ func (s *NymSigner) Sign(
 	challengeBytes = append(challengeBytes, commitNym.ToBytes()...)
 	challengeBytes = append(challengeBytes, digest...)
 
-	proofChallenge := bbs12381g2pub.FrFromOKM(challengeBytes)
+	proofChallenge := bbs.FrFromOKM(challengeBytes, s.Curve)
 
 	challengeBytes = proofChallenge.Bytes()
 	challengeBytes = append(challengeBytes, Nonce.Bytes()...)
-	proofChallenge = bbs12381g2pub.FrFromOKM(challengeBytes)
+	proofChallenge = bbs.FrFromOKM(challengeBytes, s.Curve)
 
 	proof := commitNym.GenerateProof(proofChallenge, []*math.Zr{RNym, sk})
 
@@ -68,6 +69,7 @@ func (s *NymSigner) Verify(
 	key types.IssuerPublicKey,
 	Nym *math.G1,
 	sigBytes, digest []byte,
+	skIndex int,
 ) error {
 	ipk, ok := key.(*IssuerPublicKey)
 	if !ok {
@@ -80,7 +82,7 @@ func (s *NymSigner) Verify(
 		return fmt.Errorf("error unmarshalling signature: [%w]", err)
 	}
 
-	nymProof, err := bbs12381g2pub.ParseProofG1(sig.MainSignature)
+	nymProof, err := bbs.NewBBSLib(s.Curve).ParseProofG1(sig.MainSignature)
 	if err != nil {
 		return fmt.Errorf("parse nym proof: %w", err)
 	}
@@ -88,15 +90,15 @@ func (s *NymSigner) Verify(
 	challengeBytes := []byte(nymSigLabel)
 	challengeBytes = append(challengeBytes, Nym.Bytes()...)
 	challengeBytes = append(challengeBytes, ipk.PKwG.H0.Bytes()...)
-	challengeBytes = append(challengeBytes, ipk.PKwG.H[0].Bytes()...)
+	challengeBytes = append(challengeBytes, ipk.PKwG.H[skIndex].Bytes()...)
 	challengeBytes = append(challengeBytes, nymProof.Commitment.Bytes()...)
 	challengeBytes = append(challengeBytes, digest...)
 
-	proofChallenge := bbs12381g2pub.FrFromOKM(challengeBytes)
+	proofChallenge := bbs.FrFromOKM(challengeBytes, s.Curve)
 
 	challengeBytes = proofChallenge.Bytes()
 	challengeBytes = append(challengeBytes, sig.Nonce...)
-	proofChallenge = bbs12381g2pub.FrFromOKM(challengeBytes)
+	proofChallenge = bbs.FrFromOKM(challengeBytes, s.Curve)
 
-	return nymProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[0]}, Nym, proofChallenge)
+	return nymProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[skIndex]}, Nym, proofChallenge)
 }

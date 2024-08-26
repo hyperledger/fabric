@@ -10,11 +10,11 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/hyperledger/fabric-chaincode-go/shim"
-	"github.com/hyperledger/fabric-protos-go/common"
-	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
+	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	mspprotos "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	lb "github.com/hyperledger/fabric-protos-go-apiv2/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -25,9 +25,9 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/msp"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -180,14 +180,14 @@ func (scc *SCC) Chaincode() shim.Chaincode {
 }
 
 // Init is mostly useless for system chaincodes and always returns success
-func (scc *SCC) Init(stub shim.ChaincodeStubInterface) pb.Response {
+func (scc *SCC) Init(stub shim.ChaincodeStubInterface) *pb.Response {
 	return shim.Success(nil)
 }
 
 // Invoke takes chaincode invocation arguments and routes them to the correct
 // underlying lifecycle operation.  All functions take a single argument of
 // type marshaled lb.<FunctionName>Args and return a marshaled lb.<FunctionName>Result
-func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
+func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) *pb.Response {
 	args := stub.GetArgs()
 	if len(args) == 0 {
 		return shim.Error("lifecycle scc must be invoked with arguments")
@@ -238,7 +238,7 @@ func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	if err != nil {
 		switch err.(type) {
 		case ErrNamespaceNotDefined, persistence.CodePackageNotFoundErr:
-			return pb.Response{
+			return &pb.Response{
 				Status:  404,
 				Message: err.Error(),
 			}

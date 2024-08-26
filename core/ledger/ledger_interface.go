@@ -11,15 +11,16 @@ import (
 	"hash"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/metrics"
 	"github.com/hyperledger/fabric-lib-go/healthz"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -546,6 +547,9 @@ type TxSimulationResults struct {
 
 // GetPubSimulationBytes returns the serialized bytes of public readwrite set
 func (txSim *TxSimulationResults) GetPubSimulationBytes() ([]byte, error) {
+	if txSim.PubSimulationResults == nil {
+		return nil, errors.New("proto: Marshal called with nil")
+	}
 	return proto.Marshal(txSim.PubSimulationResults)
 }
 
@@ -553,6 +557,9 @@ func (txSim *TxSimulationResults) GetPubSimulationBytes() ([]byte, error) {
 func (txSim *TxSimulationResults) GetPvtSimulationBytes() ([]byte, error) {
 	if !txSim.ContainsPvtWrites() {
 		return nil, nil
+	}
+	if txSim.PvtSimulationResults == nil {
+		return nil, errors.New("proto: Marshal called with nil")
 	}
 	return proto.Marshal(txSim.PvtSimulationResults)
 }
@@ -569,7 +576,7 @@ func (txSim *TxSimulationResults) ContainsPvtWrites() bool {
 // the `stateUpdates` parameter passed to the function captures the state changes caused by the block
 // for the namespace. The actual data type of stateUpdates depends on the data model enabled.
 // For instance, for KV data model, the actual type would be proto message
-// `github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset.KVWrite`
+// `github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset.KVWrite`
 // Function `HandleStateUpdates` is expected to be invoked before block is committed and if this
 // function returns an error, the ledger implementation is expected to halt block commit operation
 // and result in a panic.

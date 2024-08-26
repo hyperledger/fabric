@@ -13,10 +13,10 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/mux"
 	"github.com/hyperledger/fabric-config/protolator"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 )
@@ -30,7 +30,7 @@ func getMsgType(r *http.Request) (proto.Message, error) {
 		return nil, errors.Wrapf(err, "message type not found")
 	}
 
-	msgType := reflect.TypeOf(proto.MessageV1(mt.Zero().Interface()))
+	msgType := reflect.TypeOf(mt.Zero().Interface())
 
 	if msgType == nil {
 		return nil, fmt.Errorf("message name not found")

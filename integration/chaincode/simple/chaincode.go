@@ -11,14 +11,14 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/hyperledger/fabric-chaincode-go/shim"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 )
 
 // SimpleChaincode example simple Chaincode implementation
 type SimpleChaincode struct{}
 
-func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
+func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) *pb.Response {
 	fmt.Println("Init invoked")
 	_, args := stub.GetFunctionAndParameters()
 	var A, B string    // Entities
@@ -57,7 +57,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	return shim.Success(nil)
 }
 
-func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
+func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) *pb.Response {
 	fmt.Println("ex02 Invoke")
 	if os.Getenv("DEVMODE_ENABLED") != "" {
 		fmt.Println("invoking in devmode")
@@ -89,7 +89,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 }
 
 // Transaction makes payment of X units from A to B
-func (t *SimpleChaincode) invoke(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) invoke(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	var A, B string    // Entities
 	var Aval, Bval int // Asset holdings
 	var X int          // Transaction value
@@ -146,7 +146,7 @@ func (t *SimpleChaincode) invoke(stub shim.ChaincodeStubInterface, args []string
 }
 
 // Deletes an entity from state
-func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) != 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 1")
 	}
@@ -163,7 +163,7 @@ func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string
 }
 
 // query callback representing the query of a chaincode
-func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	var A string // Entities
 	var err error
 
@@ -191,7 +191,7 @@ func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string)
 }
 
 // respond simply generates a response payload from the args
-func (t *SimpleChaincode) respond(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) respond(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) != 3 {
 		return shim.Error("expected three arguments")
 	}
@@ -203,7 +203,7 @@ func (t *SimpleChaincode) respond(stub shim.ChaincodeStubInterface, args []strin
 	message := args[1]
 	payload := []byte(args[2])
 
-	return pb.Response{
+	return &pb.Response{
 		Status:  int32(status),
 		Message: message,
 		Payload: payload,
@@ -212,7 +212,7 @@ func (t *SimpleChaincode) respond(stub shim.ChaincodeStubInterface, args []strin
 
 // mspid simply calls shim.GetMSPID() to verify the mspid was properly passed from the peer
 // via the CORE_PEER_LOCALMSPID env var
-func (t *SimpleChaincode) mspid(args []string) pb.Response {
+func (t *SimpleChaincode) mspid(args []string) *pb.Response {
 	if len(args) != 0 {
 		return shim.Error("expected no arguments")
 	}
@@ -234,7 +234,7 @@ func (t *SimpleChaincode) mspid(args []string) pb.Response {
 }
 
 // event emits a chaincode event
-func (t *SimpleChaincode) event(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) event(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) != 2 {
 		return shim.Error("Incorrect number of arguments. Expecting 2")
 	}
@@ -247,7 +247,7 @@ func (t *SimpleChaincode) event(stub shim.ChaincodeStubInterface, args []string)
 }
 
 // Issue asset holding. Can only be done once.
-func (t *SimpleChaincode) issue(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) issue(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	fmt.Printf("Entry: issue\n")
 
 	if len(args) != 2 {

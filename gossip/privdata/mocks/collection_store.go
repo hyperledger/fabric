@@ -6,7 +6,7 @@ import (
 	ledger "github.com/hyperledger/fabric/core/ledger"
 	mock "github.com/stretchr/testify/mock"
 
-	peer "github.com/hyperledger/fabric-protos-go/peer"
+	peer "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 
 	privdata "github.com/hyperledger/fabric/core/common/privdata"
 )

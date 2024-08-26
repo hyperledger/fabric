@@ -12,9 +12,9 @@ import (
 	"encoding/pem"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // ExpiresAt returns when the given identity expires, or a zero time.Time

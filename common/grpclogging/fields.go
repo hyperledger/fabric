@@ -7,27 +7,26 @@ SPDX-License-Identifier: Apache-2.0
 package grpclogging
 
 import (
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 type protoMarshaler struct {
-	jsonpb.Marshaler
 	message proto.Message
 }
 
 func (m *protoMarshaler) MarshalJSON() ([]byte, error) {
-	out, err := m.Marshaler.MarshalToString(m.message)
+	out, err := protojson.Marshal(m.message)
 	if err != nil {
 		return nil, err
 	}
-	return []byte(out), nil
+	return out, nil
 }
 
 func ProtoMessage(key string, val interface{}) zapcore.Field {
-	if pm, ok := val.(proto.Message); ok {
+	if pm, ok := val.(proto.Message); ok && pm.ProtoReflect().IsValid() {
 		return zap.Reflect(key, &protoMarshaler{message: pm})
 	}
 	return zap.Any(key, val)

@@ -15,7 +15,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger-labs/SmartBFT/pkg/api"
 	smartbft "github.com/hyperledger-labs/SmartBFT/pkg/consensus"
 	"github.com/hyperledger-labs/SmartBFT/pkg/types"
@@ -23,8 +22,8 @@ import (
 	"github.com/hyperledger-labs/SmartBFT/smartbftprotos"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
@@ -34,6 +33,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 )
 
 // WALConfig consensus specific configuration parameters from orderer.yaml; for SmartBFT only WALDir is relevant.
@@ -306,6 +306,9 @@ func (c *BFTChain) pruneBadRequests() {
 }
 
 func (c *BFTChain) submit(env *cb.Envelope, configSeq uint64) error {
+	if env == nil {
+		return errors.New("failed to marshal request envelope: proto: Marshal called with nil")
+	}
 	reqBytes, err := proto.Marshal(env)
 	if err != nil {
 		return errors.Wrapf(err, "failed to marshal request envelope")

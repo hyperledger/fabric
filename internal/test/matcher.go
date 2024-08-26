@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/onsi/gomega/types"
 	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 )
 
 // ProtoEqual provides a Gomega matcher that uses proto.Equal to compare actual with expected.
@@ -64,10 +64,10 @@ func (m *protoEqualMatcher) NegatedFailureMessage(actual interface{}) string {
 }
 
 func (m *protoEqualMatcher) format(message proto.Message) string {
-	formatted := strings.TrimSpace(m.marshal.Format(proto.MessageV2(message)))
+	formatted := strings.TrimSpace(m.marshal.Format(message))
 	return fmt.Sprintf("%s{\n%s\n}", messageType(message), m.indent(formatted))
 }
 
 func messageType(message proto.Message) string {
-	return string(proto.MessageV2(message).ProtoReflect().Descriptor().Name())
+	return string(message.ProtoReflect().Descriptor().Name())
 }

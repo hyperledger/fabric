@@ -4,8 +4,8 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric-chaincode-go/shim"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -400,7 +400,7 @@ type ChaincodeStub struct {
 		result1 *timestamppb.Timestamp
 		result2 error
 	}
-	InvokeChaincodeStub        func(string, [][]byte, string) peer.Response
+	InvokeChaincodeStub        func(string, [][]byte, string) *peer.Response
 	invokeChaincodeMutex       sync.RWMutex
 	invokeChaincodeArgsForCall []struct {
 		arg1 string
@@ -408,10 +408,10 @@ type ChaincodeStub struct {
 		arg3 string
 	}
 	invokeChaincodeReturns struct {
-		result1 peer.Response
+		result1 *peer.Response
 	}
 	invokeChaincodeReturnsOnCall map[int]struct {
-		result1 peer.Response
+		result1 *peer.Response
 	}
 	PurgePrivateDataStub        func(string, string) error
 	purgePrivateDataMutex       sync.RWMutex
@@ -2358,7 +2358,7 @@ func (fake *ChaincodeStub) GetTxTimestampReturnsOnCall(i int, result1 *timestamp
 	}{result1, result2}
 }
 
-func (fake *ChaincodeStub) InvokeChaincode(arg1 string, arg2 [][]byte, arg3 string) peer.Response {
+func (fake *ChaincodeStub) InvokeChaincode(arg1 string, arg2 [][]byte, arg3 string) *peer.Response {
 	var arg2Copy [][]byte
 	if arg2 != nil {
 		arg2Copy = make([][]byte, len(arg2))
@@ -2390,7 +2390,7 @@ func (fake *ChaincodeStub) InvokeChaincodeCallCount() int {
 	return len(fake.invokeChaincodeArgsForCall)
 }
 
-func (fake *ChaincodeStub) InvokeChaincodeCalls(stub func(string, [][]byte, string) peer.Response) {
+func (fake *ChaincodeStub) InvokeChaincodeCalls(stub func(string, [][]byte, string) *peer.Response) {
 	fake.invokeChaincodeMutex.Lock()
 	defer fake.invokeChaincodeMutex.Unlock()
 	fake.InvokeChaincodeStub = stub
@@ -2403,26 +2403,26 @@ func (fake *ChaincodeStub) InvokeChaincodeArgsForCall(i int) (string, [][]byte, 
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *ChaincodeStub) InvokeChaincodeReturns(result1 peer.Response) {
+func (fake *ChaincodeStub) InvokeChaincodeReturns(result1 *peer.Response) {
 	fake.invokeChaincodeMutex.Lock()
 	defer fake.invokeChaincodeMutex.Unlock()
 	fake.InvokeChaincodeStub = nil
 	fake.invokeChaincodeReturns = struct {
-		result1 peer.Response
+		result1 *peer.Response
 	}{result1}
 }
 
-func (fake *ChaincodeStub) InvokeChaincodeReturnsOnCall(i int, result1 peer.Response) {
+func (fake *ChaincodeStub) InvokeChaincodeReturnsOnCall(i int, result1 *peer.Response) {
 	fake.invokeChaincodeMutex.Lock()
 	defer fake.invokeChaincodeMutex.Unlock()
 	fake.InvokeChaincodeStub = nil
 	if fake.invokeChaincodeReturnsOnCall == nil {
 		fake.invokeChaincodeReturnsOnCall = make(map[int]struct {
-			result1 peer.Response
+			result1 *peer.Response
 		})
 	}
 	fake.invokeChaincodeReturnsOnCall[i] = struct {
-		result1 peer.Response
+		result1 *peer.Response
 	}{result1}
 }
 
@@ -2989,5 +2989,3 @@ func (fake *ChaincodeStub) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
-
-var _ shim.ChaincodeStubInterface = new(ChaincodeStub)

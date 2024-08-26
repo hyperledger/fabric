@@ -12,11 +12,10 @@ import (
 	"regexp"
 	"sync"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-chaincode-go/shim"
+	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/aclmgmt"
@@ -30,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -323,6 +323,9 @@ func (lscc *SCC) ValidationInfo(channelID, chaincodeName string, qe ledger.Simpl
 
 // create the chaincode on the given chain
 func (lscc *SCC) putChaincodeData(stub shim.ChaincodeStubInterface, cd *ccprovider.ChaincodeData) error {
+	if cd == nil {
+		return errors.New("proto: Marshal called with nil")
+	}
 	cdbytes, err := proto.Marshal(cd)
 	if err != nil {
 		return err

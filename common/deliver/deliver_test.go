@@ -13,12 +13,11 @@ import (
 	"io"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/metricsfakes"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/deliver/mock"
@@ -29,6 +28,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var (
@@ -150,7 +150,7 @@ var _ = Describe("Deliver", func() {
 
 			channelHeader *cb.ChannelHeader
 			seekInfo      *ab.SeekInfo
-			ts            *timestamp.Timestamp
+			ts            *timestamppb.Timestamp
 
 			channelHeaderPayload []byte
 			seekInfoPayload      []byte
@@ -877,7 +877,7 @@ var _ = Describe("Deliver", func() {
 		Context("when the channel header timestamp is out of the time window", func() {
 			BeforeEach(func() {
 				channelHeaderPayload = protoutil.MarshalOrPanic(&cb.ChannelHeader{
-					Timestamp: &timestamp.Timestamp{},
+					Timestamp: &timestamppb.Timestamp{},
 				})
 			})
 

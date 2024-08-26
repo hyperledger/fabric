@@ -7,13 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package smartbft_test
 
 import (
-	"reflect"
 	"sync"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestNewSyncBuffer(t *testing.T) {
@@ -51,7 +51,7 @@ func TestSyncBuffer_PullBlock(t *testing.T) {
 		go func() {
 			blockOut := buff.PullBlock(2)
 			require.NotNil(t, blockOut)
-			require.True(t, reflect.DeepEqual(blockIn, blockOut))
+			require.True(t, proto.Equal(blockIn, blockOut))
 			wg.Done()
 		}()
 
@@ -97,7 +97,7 @@ func TestSyncBuffer_PullBlock(t *testing.T) {
 		go func() {
 			blockOut := buff.PullBlock(3)
 			require.NotNil(t, blockOut)
-			require.True(t, reflect.DeepEqual(blockIn3, blockOut))
+			require.True(t, proto.Equal(blockIn3, blockOut))
 			wg.Done()
 		}()
 

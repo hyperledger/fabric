@@ -9,16 +9,16 @@ package gateway
 import (
 	"io"
 
-	"github.com/golang/protobuf/proto"
-	gp "github.com/hyperledger/fabric-protos-go/gateway"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	gp "github.com/hyperledger/fabric-protos-go-apiv2/gateway"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/event"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/ledger"
 	"github.com/hyperledger/fabric/protoutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 // ChaincodeEvents supplies a stream of responses, each containing all the events emitted by the requested chaincode

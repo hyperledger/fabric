@@ -10,8 +10,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/gossip"
+	"google.golang.org/protobuf/proto"
 )
 
 // Signer signs a message, and returns (signature, nil)
@@ -24,6 +24,9 @@ type Verifier func(peerIdentity []byte, signature, message []byte) error
 
 // SignSecret signs the secret payload and creates a secret envelope out of it.
 func SignSecret(e *gossip.Envelope, signer Signer, secret *gossip.Secret) error {
+	if secret == nil {
+		return errors.New("proto: Marshal called with nil")
+	}
 	payload, err := proto.Marshal(secret)
 	if err != nil {
 		return err
@@ -99,6 +102,9 @@ func (m *SignedGossipMessage) Sign(signer Signer) (*gossip.Envelope, error) {
 		secretEnvelope = m.Envelope.SecretEnvelope
 	}
 	m.Envelope = nil
+	if m.GossipMessage == nil {
+		return nil, errors.New("proto: Marshal called with nil")
+	}
 	payload, err := proto.Marshal(m.GossipMessage)
 	if err != nil {
 		return nil, err

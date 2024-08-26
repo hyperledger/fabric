@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package gossip
 
 import (
-	mspproto "github.com/hyperledger/fabric-protos-go/msp"
+	mspproto "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"

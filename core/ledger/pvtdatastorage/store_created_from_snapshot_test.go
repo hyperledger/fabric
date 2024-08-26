@@ -11,7 +11,7 @@ import (
 	"path"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/confighistory/confighistorytest"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"

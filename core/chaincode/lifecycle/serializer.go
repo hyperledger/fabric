@@ -11,11 +11,10 @@ import (
 	"fmt"
 	"reflect"
 
-	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
+	lb "github.com/hyperledger/fabric-protos-go-apiv2/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/util"
-
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -52,6 +51,9 @@ type Marshaler func(proto.Message) ([]byte, error)
 func (m Marshaler) Marshal(msg proto.Message) ([]byte, error) {
 	if m != nil {
 		return m(msg)
+	}
+	if !msg.ProtoReflect().IsValid() {
+		return nil, errors.New("proto: Marshal called with nil")
 	}
 	return proto.Marshal(msg)
 }

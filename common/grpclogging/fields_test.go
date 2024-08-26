@@ -9,7 +9,6 @@ package grpclogging_test
 import (
 	"encoding/json"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/hyperledger/fabric/common/grpclogging"
 	"github.com/hyperledger/fabric/common/grpclogging/testpb"
 	. "github.com/onsi/ginkgo/v2"
@@ -17,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var _ = Describe("Fields", func() {
@@ -37,15 +37,14 @@ var _ = Describe("Fields", func() {
 			Expect(ok).To(BeTrue())
 		})
 
-		It("marshals messages compatible with jsonpb", func() {
+		It("marshals messages compatible with protojson", func() {
 			field := grpclogging.ProtoMessage("field-key", message)
 			marshaler := field.Interface.(json.Marshaler)
 
 			marshaled, err := marshaler.MarshalJSON()
 			Expect(err).NotTo(HaveOccurred())
 
-			protoMarshaler := &jsonpb.Marshaler{}
-			protoJson, err := protoMarshaler.MarshalToString(message)
+			protoJson, err := protojson.Marshal(message)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(marshaled).To(MatchJSON(protoJson))
@@ -118,6 +117,6 @@ type badProto struct{ err error }
 func (b badProto) Reset()         {}
 func (b badProto) String() string { return "" }
 func (b badProto) ProtoMessage()  {}
-func (b badProto) MarshalJSONPB(*jsonpb.Marshaler) ([]byte, error) {
+func (b badProto) MarshalJSON() ([]byte, error) {
 	return nil, b.err
 }

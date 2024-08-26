@@ -160,7 +160,18 @@ func (i *NymPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOp
 
 	pk, err := i.User.NewPublicNymFromBytes(bytes)
 	if err != nil {
-		return nil, err
+		// A Nym public key is just a group element. There are 2 main ways of serialising
+		// an uncompressed point: either the two coordinates, or the prefix `0x04` and the
+		// two coordinates. Typically these serialisation issues are handled with a
+		// `translator` object which gets bytes, understands the serialisation and produces
+		// a group element. This code does not have that, however. As a consequence, we
+		// handle the issue by prefixing the `0x04` byte and re-attempting deserialisation
+		// in case it first failed. Issue https://github.com/IBM/idemix/issues/42 has
+		// been created to fix this properly by adding the translator.
+		pk, err = i.User.NewPublicNymFromBytes(append([]byte{04}, bytes...))
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &nymPublicKey{pk: pk, translator: i.Translator}, nil
