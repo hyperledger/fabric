@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"time"
 
+	. "github.com/hyperledger/fabric/internal/test"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -951,7 +952,7 @@ var _ = Describe("Encoder", func() {
 						},
 					},
 				}
-				Expect(proto.Equal(expected, cg)).To(BeTrue())
+				Expect(expected).To(ProtoEqual(cg))
 			})
 
 			Context("when the template configuration is not the default", func() {
@@ -1339,7 +1340,7 @@ var _ = Describe("Encoder", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(cg.Groups)).To(Equal(2))
 				Expect(cg.Groups["Orderer"]).NotTo(BeNil())
-				Expect(proto.Equal(cg.Groups["Orderer"], sysChannelGroup.Groups["Orderer"])).To(BeTrue())
+				Expect(cg.Groups["Orderer"]).To(ProtoEqual(sysChannelGroup.Groups["Orderer"]))
 				Expect(cg.Groups["Application"]).NotTo(BeNil())
 				Expect(len(cg.Groups["Application"].Policies)).To(Equal(1))
 				Expect(cg.Groups["Application"].Policies["Admins"]).NotTo(BeNil())

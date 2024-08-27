@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/common/grpclogging"
 	"github.com/hyperledger/fabric/common/grpclogging/fakes"
 	"github.com/hyperledger/fabric/common/grpclogging/testpb"
+	. "github.com/hyperledger/fabric/internal/test"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
@@ -105,7 +106,7 @@ var _ = Describe("Server", func() {
 
 			resp, err := echoServiceClient.Echo(ctx, &testpb.Message{Message: "hi"})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp).To(Equal(&testpb.Message{Message: "hi", Sequence: 1}))
+			Expect(resp).To(ProtoEqual(&testpb.Message{Message: "hi", Sequence: 1}))
 
 			var logMessages []string
 			for _, entry := range observed.AllUntimed() {
@@ -332,7 +333,7 @@ var _ = Describe("Server", func() {
 
 			msg, err := streamClient.Recv()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(msg).To(Equal(&testpb.Message{Message: "hello", Sequence: 1}))
+			Expect(msg).To(ProtoEqual(&testpb.Message{Message: "hello", Sequence: 1}))
 
 			err = streamClient.CloseSend()
 			Expect(err).NotTo(HaveOccurred())
@@ -420,7 +421,7 @@ var _ = Describe("Server", func() {
 
 			msg, err := streamClient.Recv()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(msg).To(Equal(&testpb.Message{Message: "hello", Sequence: 1}))
+			Expect(msg).To(ProtoEqual(&testpb.Message{Message: "hello", Sequence: 1}))
 
 			err = streamClient.CloseSend()
 			Expect(err).NotTo(HaveOccurred())
@@ -472,7 +473,7 @@ var _ = Describe("Server", func() {
 
 				msg, err := streamClient.Recv()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(msg).To(Equal(&testpb.Message{Message: "hello", Sequence: 1}))
+				Expect(msg).To(ProtoEqual(&testpb.Message{Message: "hello", Sequence: 1}))
 
 				err = streamClient.CloseSend()
 				Expect(err).NotTo(HaveOccurred())
@@ -595,7 +596,7 @@ var _ = Describe("Server", func() {
 				Expect(err).NotTo(HaveOccurred())
 				msg, err := streamClient.Recv()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(msg).To(Equal(&testpb.Message{Message: "hello", Sequence: 1}))
+				Expect(msg).To(ProtoEqual(&testpb.Message{Message: "hello", Sequence: 1}))
 
 				err = streamClient.CloseSend()
 				Expect(err).NotTo(HaveOccurred())

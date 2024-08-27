@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package dispatcher_test
 
 import (
+	. "github.com/hyperledger/fabric/internal/test"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -37,7 +38,7 @@ var _ = Describe("ProtobufImpl", func() {
 			msg := &lc.InstallChaincodeArgs{}
 			err = proto.Unmarshal(res, msg)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(proto.Equal(msg, sampleMsg)).To(BeTrue())
+			Expect(msg).To(ProtoEqual(sampleMsg))
 		})
 	})
 
@@ -49,7 +50,7 @@ var _ = Describe("ProtobufImpl", func() {
 			msg := &lc.InstallChaincodeArgs{}
 			err = pi.Unmarshal(res, msg)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(proto.Equal(msg, sampleMsg)).To(BeTrue())
+			Expect(msg).To(ProtoEqual(sampleMsg))
 		})
 	})
 })

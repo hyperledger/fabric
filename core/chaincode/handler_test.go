@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/scc"
+	. "github.com/hyperledger/fabric/internal/test"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -176,7 +177,7 @@ var _ = Describe("Handler", func() {
 
 			Expect(fakeMessageHandler.HandleCallCount()).To(Equal(1))
 			msg, ctx := fakeMessageHandler.HandleArgsForCall(0)
-			Expect(msg).To(Equal(incomingMessage))
+			Expect(msg).To(ProtoEqual(incomingMessage))
 			Expect(ctx).To(Equal(txContext))
 		})
 
@@ -185,7 +186,7 @@ var _ = Describe("Handler", func() {
 
 			Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
 			msg := fakeChatStream.SendArgsForCall(0)
-			Expect(msg).To(Equal(expectedResponse))
+			Expect(msg).To(ProtoEqual(expectedResponse))
 		})
 
 		It("deregisters the transaction ID before sending the response", func() {
@@ -210,7 +211,7 @@ var _ = Describe("Handler", func() {
 			handler.HandleTransaction(incomingMessage, fakeMessageHandler.Handle)
 			Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
 			msg := fakeChatStream.SendArgsForCall(0)
-			Expect(msg).To(Equal(expectedResponse))
+			Expect(msg).To(ProtoEqual(expectedResponse))
 
 			Expect(fakeShimRequestsReceived.WithCallCount()).To(Equal(1))
 			labelValues := fakeShimRequestsReceived.WithArgsForCall(0)
@@ -324,7 +325,7 @@ var _ = Describe("Handler", func() {
 
 				Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
 				msg := fakeChatStream.SendArgsForCall(0)
-				Expect(msg).To(Equal(&pb.ChaincodeMessage{
+				Expect(msg).To(ProtoEqual(&pb.ChaincodeMessage{
 					Type:      pb.ChaincodeMessage_ERROR,
 					Payload:   []byte("GET_STATE failed: transaction ID: tx-id: no ledger context"),
 					Txid:      "tx-id",
@@ -352,7 +353,7 @@ var _ = Describe("Handler", func() {
 
 				Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
 				msg := fakeChatStream.SendArgsForCall(0)
-				Expect(msg).To(Equal(&pb.ChaincodeMessage{
+				Expect(msg).To(ProtoEqual(&pb.ChaincodeMessage{
 					Type:      pb.ChaincodeMessage_ERROR,
 					Payload:   []byte("GET_STATE failed: transaction ID: tx-id: no ledger context"),
 					Txid:      "tx-id",
@@ -397,7 +398,7 @@ var _ = Describe("Handler", func() {
 
 				Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
 				msg := fakeChatStream.SendArgsForCall(0)
-				Expect(msg).To(Equal(&pb.ChaincodeMessage{
+				Expect(msg).To(ProtoEqual(&pb.ChaincodeMessage{
 					Type:      pb.ChaincodeMessage_ERROR,
 					Payload:   []byte("INVOKE_CHAINCODE failed: transaction ID: tx-id: could not get valid transaction"),
 					Txid:      "tx-id",
@@ -416,7 +417,7 @@ var _ = Describe("Handler", func() {
 
 					Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
 					msg := fakeChatStream.SendArgsForCall(0)
-					Expect(msg).To(Equal(&pb.ChaincodeMessage{
+					Expect(msg).To(ProtoEqual(&pb.ChaincodeMessage{
 						Type:    pb.ChaincodeMessage_ERROR,
 						Payload: []byte("INVOKE_CHAINCODE failed: transaction ID: tx-id: could not get valid transaction"),
 						Txid:    "tx-id",
@@ -435,7 +436,7 @@ var _ = Describe("Handler", func() {
 						Expect(fakeContextRegistry.GetCallCount()).To(Equal(1))
 						Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
 						msg := fakeChatStream.SendArgsForCall(0)
-						Expect(msg).To(Equal(expectedResponse))
+						Expect(msg).To(ProtoEqual(expectedResponse))
 					})
 
 					Context("and the transaction context is missing", func() {
@@ -445,7 +446,7 @@ var _ = Describe("Handler", func() {
 
 							Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
 							msg := fakeChatStream.SendArgsForCall(0)
-							Expect(msg).To(Equal(&pb.ChaincodeMessage{
+							Expect(msg).To(ProtoEqual(&pb.ChaincodeMessage{
 								Type:    pb.ChaincodeMessage_ERROR,
 								Payload: []byte("INVOKE_CHAINCODE failed: transaction ID: tx-id: failed to get transaction context"),
 								Txid:    "tx-id",
@@ -482,7 +483,7 @@ var _ = Describe("Handler", func() {
 
 				Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
 				msg := fakeChatStream.SendArgsForCall(0)
-				Expect(msg).To(Equal(&pb.ChaincodeMessage{
+				Expect(msg).To(ProtoEqual(&pb.ChaincodeMessage{
 					Type:      pb.ChaincodeMessage_ERROR,
 					Payload:   []byte("GET_STATE failed: transaction ID: tx-id: watermelon-swirl"),
 					Txid:      "tx-id",
@@ -515,7 +516,7 @@ var _ = Describe("Handler", func() {
 		It("returns a response message", func() {
 			resp, err := handler.HandlePutState(incomingMessage, txContext)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp).To(Equal(&pb.ChaincodeMessage{
+			Expect(resp).To(ProtoEqual(&pb.ChaincodeMessage{
 				Type:      pb.ChaincodeMessage_RESPONSE,
 				Txid:      "tx-id",
 				ChannelId: "channel-id",
@@ -643,7 +644,7 @@ var _ = Describe("Handler", func() {
 		It("returns a response message", func() {
 			resp, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp).To(Equal(&pb.ChaincodeMessage{
+			Expect(resp).To(ProtoEqual(&pb.ChaincodeMessage{
 				Type:      pb.ChaincodeMessage_RESPONSE,
 				Txid:      "tx-id",
 				ChannelId: "channel-id",
@@ -812,7 +813,7 @@ var _ = Describe("Handler", func() {
 		It("returns a response message", func() {
 			resp, err := handler.HandleDelState(incomingMessage, txContext)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp).To(Equal(&pb.ChaincodeMessage{
+			Expect(resp).To(ProtoEqual(&pb.ChaincodeMessage{
 				Type:      pb.ChaincodeMessage_RESPONSE,
 				Txid:      "tx-id",
 				ChannelId: "channel-id",
@@ -1031,7 +1032,7 @@ var _ = Describe("Handler", func() {
 					fakeCollectionStore.RetrieveReadWritePermissionReturns(true, false, nil) // to
 					resp, err := handler.HandleGetState(incomingMessage, txContext)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(resp).To(Equal(&pb.ChaincodeMessage{
+					Expect(resp).To(ProtoEqual(&pb.ChaincodeMessage{
 						Type:      pb.ChaincodeMessage_RESPONSE,
 						Payload:   []byte("get-private-data-response"),
 						Txid:      "tx-id",
@@ -1093,7 +1094,7 @@ var _ = Describe("Handler", func() {
 			It("returns the response from GetState", func() {
 				resp, err := handler.HandleGetState(incomingMessage, txContext)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(resp).To(Equal(&pb.ChaincodeMessage{
+				Expect(resp).To(ProtoEqual(&pb.ChaincodeMessage{
 					Type:      pb.ChaincodeMessage_RESPONSE,
 					Payload:   []byte("get-state-response"),
 					Txid:      "tx-id",
@@ -1143,7 +1144,7 @@ var _ = Describe("Handler", func() {
 			Expect(ccname).To(Equal("cc-instance-name"))
 			Expect(collection).To(Equal("collection-name"))
 			Expect(key).To(Equal("get-pvtdata-hash-key"))
-			Expect(response).To(Equal(expectedResponse))
+			Expect(response).To(ProtoEqual(expectedResponse))
 		})
 
 		Context("when unmarshalling the request fails", func() {
@@ -1288,7 +1289,7 @@ var _ = Describe("Handler", func() {
 			It("returns the response message from GetPrivateDataMetadata", func() {
 				resp, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(resp).To(Equal(expectedResponse))
+				Expect(resp).To(ProtoEqual(expectedResponse))
 			})
 
 			Context("and GetPrivateDataMetadata fails due to ledger error", func() {
@@ -1367,7 +1368,7 @@ var _ = Describe("Handler", func() {
 			It("returns the response from GetStateMetadata", func() {
 				resp, err := handler.HandleGetStateMetadata(incomingMessage, txContext)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(resp).To(Equal(expectedResponse))
+				Expect(resp).To(ProtoEqual(expectedResponse))
 			})
 
 			Context("and GetStateMetadata fails", func() {
@@ -1444,7 +1445,7 @@ var _ = Describe("Handler", func() {
 		It("returns the response message", func() {
 			resp, err := handler.HandleGetStateByRange(incomingMessage, txContext)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp).To(Equal(expectedResponse))
+			Expect(resp).To(ProtoEqual(expectedResponse))
 		})
 
 		Context("when collection is not set", func() {
@@ -1473,7 +1474,7 @@ var _ = Describe("Handler", func() {
 			It("returns the response from GetStateRangeScanIterator", func() {
 				resp, err := handler.HandleGetStateByRange(incomingMessage, txContext)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(resp).To(Equal(expectedResponse))
+				Expect(resp).To(ProtoEqual(expectedResponse))
 			})
 		})
 
@@ -1652,7 +1653,7 @@ var _ = Describe("Handler", func() {
 			expectedPayload, err := proto.Marshal(expectedQueryResponse)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(resp).To(Equal(&pb.ChaincodeMessage{
+			Expect(resp).To(ProtoEqual(&pb.ChaincodeMessage{
 				Type:      pb.ChaincodeMessage_RESPONSE,
 				Payload:   expectedPayload,
 				ChannelId: "channel-id",
@@ -1764,7 +1765,7 @@ var _ = Describe("Handler", func() {
 			expectedPayload, err := proto.Marshal(expectedQueryResponse)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(resp).To(Equal(&pb.ChaincodeMessage{
+			Expect(resp).To(ProtoEqual(&pb.ChaincodeMessage{
 				Type:      pb.ChaincodeMessage_RESPONSE,
 				Payload:   expectedPayload,
 				ChannelId: "channel-id",
@@ -2550,7 +2551,7 @@ var _ = Describe("Handler", func() {
 		})
 
 		It("sends an execute message to the chaincode with the correct proposal", func() {
-			expectedMessage := *incomingMessage
+			expectedMessage := incomingMessage
 			expectedMessage.Proposal = expectedSignedProp
 
 			close(responseNotifier)
@@ -2559,8 +2560,8 @@ var _ = Describe("Handler", func() {
 			Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
 			Consistently(fakeChatStream.SendCallCount).Should(Equal(1))
 			msg := fakeChatStream.SendArgsForCall(0)
-			Expect(msg).To(Equal(&expectedMessage))
-			Expect(msg.Proposal).To(Equal(expectedSignedProp))
+			Expect(msg).To(ProtoEqual(incomingMessage))
+			Expect(msg.Proposal).To(ProtoEqual(expectedSignedProp))
 		})
 
 		It("waits for the chaincode to respond", func() {
@@ -2583,7 +2584,7 @@ var _ = Describe("Handler", func() {
 
 			resp, err := handler.Execute(txParams, "chaincode-name", incomingMessage, time.Second)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp).To(Equal(&pb.ChaincodeMessage{Txid: "a-transaction-id"}))
+			Expect(resp).To(ProtoEqual(&pb.ChaincodeMessage{Txid: "a-transaction-id"}))
 		})
 
 		It("deletes the transaction context", func() {
@@ -2778,11 +2779,11 @@ var _ = Describe("Handler", func() {
 			registeredMessage := fakeChatStream.SendArgsForCall(0)
 			readyMessage := fakeChatStream.SendArgsForCall(1)
 
-			Expect(registeredMessage).To(Equal(&pb.ChaincodeMessage{
+			Expect(registeredMessage).To(ProtoEqual(&pb.ChaincodeMessage{
 				Type: pb.ChaincodeMessage_REGISTERED,
 			}))
 
-			Expect(readyMessage).To(Equal(&pb.ChaincodeMessage{
+			Expect(readyMessage).To(ProtoEqual(&pb.ChaincodeMessage{
 				Type: pb.ChaincodeMessage_READY,
 			}))
 		})

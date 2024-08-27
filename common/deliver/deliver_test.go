@@ -13,7 +13,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/metricsfakes"
@@ -25,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/util"
+	. "github.com/hyperledger/fabric/internal/test"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -295,7 +295,7 @@ var _ = Describe("Deliver", func() {
 			Expect(fakeInspector.InspectCallCount()).To(Equal(1))
 			ctx, header := fakeInspector.InspectArgsForCall(0)
 			Expect(ctx).To(Equal(context.Background()))
-			Expect(proto.Equal(header, channelHeader)).To(BeTrue())
+			Expect(header).To(ProtoEqual(channelHeader))
 		})
 
 		Context("when channel header validation fails", func() {
@@ -335,7 +335,7 @@ var _ = Describe("Deliver", func() {
 
 			Expect(fakePolicyChecker.CheckPolicyCallCount()).To(BeNumerically(">=", 1))
 			e, cid := fakePolicyChecker.CheckPolicyArgsForCall(0)
-			Expect(proto.Equal(e, envelope)).To(BeTrue())
+			Expect(e).To(ProtoEqual(envelope))
 			Expect(cid).To(Equal("chain-id"))
 		})
 
@@ -345,7 +345,7 @@ var _ = Describe("Deliver", func() {
 
 			Expect(fakeBlockReader.IteratorCallCount()).To(Equal(1))
 			startPosition := fakeBlockReader.IteratorArgsForCall(0)
-			Expect(proto.Equal(startPosition, seekInfo.Start)).To(BeTrue())
+			Expect(startPosition).To(ProtoEqual(seekInfo.Start))
 		})
 
 		Context("when multiple blocks are requested", func() {
@@ -427,12 +427,12 @@ var _ = Describe("Deliver", func() {
 
 				Expect(fakeBlockReader.IteratorCallCount()).To(Equal(1))
 				start := fakeBlockReader.IteratorArgsForCall(0)
-				Expect(start).To(Equal(&ab.SeekPosition{}))
+				Expect(start).To(ProtoEqual(&ab.SeekPosition{}))
 				Expect(fakeBlockIterator.NextCallCount()).To(Equal(1))
 
 				Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(1))
 				b, _, _, _ := fakeResponseSender.SendBlockResponseArgsForCall(0)
-				Expect(b).To(Equal(&cb.Block{
+				Expect(b).To(ProtoEqual(&cb.Block{
 					Header: &cb.BlockHeader{Number: 100},
 				}))
 			})
@@ -457,13 +457,13 @@ var _ = Describe("Deliver", func() {
 
 				Expect(fakeBlockReader.IteratorCallCount()).To(Equal(1))
 				start := fakeBlockReader.IteratorArgsForCall(0)
-				Expect(start).To(Equal(&ab.SeekPosition{}))
+				Expect(start).To(ProtoEqual(&ab.SeekPosition{}))
 
 				Expect(fakeBlockIterator.NextCallCount()).To(Equal(2))
 				Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(2))
 				for i := 0; i < fakeResponseSender.SendBlockResponseCallCount(); i++ {
 					b, _, _, _ := fakeResponseSender.SendBlockResponseArgsForCall(i)
-					Expect(b).To(Equal(&cb.Block{
+					Expect(b).To(ProtoEqual(&cb.Block{
 						Header: &cb.BlockHeader{Number: uint64(i + 1)},
 					}))
 				}
@@ -494,7 +494,7 @@ var _ = Describe("Deliver", func() {
 				Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(1))
 				for i := 0; i < fakeResponseSender.SendBlockResponseCallCount(); i++ {
 					b, _, _, _ := fakeResponseSender.SendBlockResponseArgsForCall(i)
-					Expect(b).To(Equal(&cb.Block{
+					Expect(b).To(ProtoEqual(&cb.Block{
 						Header: &cb.BlockHeader{Number: uint64(i)},
 					}))
 				}
@@ -528,13 +528,13 @@ var _ = Describe("Deliver", func() {
 
 				Expect(fakeBlockReader.IteratorCallCount()).To(Equal(1))
 				start := fakeBlockReader.IteratorArgsForCall(0)
-				Expect(start).To(Equal(&ab.SeekPosition{}))
+				Expect(start).To(ProtoEqual(&ab.SeekPosition{}))
 
 				Expect(fakeBlockIterator.NextCallCount()).To(Equal(2))
 				Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(2))
 				for i := 0; i < fakeResponseSender.SendBlockResponseCallCount(); i++ {
 					b, _, _, _ := fakeResponseSender.SendBlockResponseArgsForCall(i)
-					Expect(b).To(Equal(&cb.Block{
+					Expect(b).To(ProtoEqual(&cb.Block{
 						Header:   &cb.BlockHeader{Number: uint64(i + 1)},
 						Data:     nil,
 						Metadata: &cb.BlockMetadata{Metadata: [][]byte{{3}, {4}}},
@@ -584,13 +584,13 @@ var _ = Describe("Deliver", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(fakeBlockReader.IteratorCallCount()).To(Equal(1))
 				start := fakeBlockReader.IteratorArgsForCall(0)
-				Expect(start).To(Equal(&ab.SeekPosition{}))
+				Expect(start).To(ProtoEqual(&ab.SeekPosition{}))
 				Expect(fakeBlockIterator.NextCallCount()).To(Equal(3))
 				Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(3))
 				for i := 0; i < fakeResponseSender.SendBlockResponseCallCount(); i++ {
 					b, _, _, _ := fakeResponseSender.SendBlockResponseArgsForCall(i)
 					if i+1 == 1 || i+1 == 3 {
-						Expect(b).To(Equal(&cb.Block{
+						Expect(b).To(ProtoEqual(&cb.Block{
 							Header:   &cb.BlockHeader{Number: uint64(i + 1)},
 							Data:     nil,
 							Metadata: &cb.BlockMetadata{Metadata: [][]byte{{3}, {4}}},
@@ -607,7 +607,7 @@ var _ = Describe("Deliver", func() {
 							Data:     &cb.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(envelope)}},
 							Metadata: &cb.BlockMetadata{Metadata: [][]byte{{3}, {4}}},
 						}
-						Expect(b).To(Equal(blk))
+						Expect(b).To(ProtoEqual(blk))
 						Expect(b.Data.Data).NotTo(BeNil())
 					}
 				}
@@ -702,7 +702,7 @@ var _ = Describe("Deliver", func() {
 				Expect(fakeResponseSender.DataTypeCallCount()).To(Equal(1))
 				Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(1))
 				b, _, _, _ := fakeResponseSender.SendBlockResponseArgsForCall(0)
-				Expect(b).To(Equal(&cb.Block{
+				Expect(b).To(ProtoEqual(&cb.Block{
 					Header: &cb.BlockHeader{Number: 100},
 				}))
 			})
@@ -769,7 +769,7 @@ var _ = Describe("Deliver", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(1))
 			b, _, _, _ := fakeResponseSender.SendBlockResponseArgsForCall(0)
-			Expect(b).To(Equal(&cb.Block{
+			Expect(b).To(ProtoEqual(&cb.Block{
 				Header: &cb.BlockHeader{Number: 100},
 			}))
 		})

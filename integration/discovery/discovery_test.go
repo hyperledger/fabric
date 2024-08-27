@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	. "github.com/hyperledger/fabric/internal/test"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
@@ -273,7 +274,7 @@ var _ = Describe("DiscoveryService", func() {
 			discoveredConfig2 := discoverConfiguration(network, org3Peer0)
 
 			By("comparing configuration from org1Peer0 and org3Peer0")
-			Expect(proto.Equal(discoveredConfig, discoveredConfig2)).To(BeTrue())
+			Expect(discoveredConfig).To(ProtoEqual(discoveredConfig2))
 
 			By("validating the membership data")
 			Expect(discoveredConfig.Msps).To(HaveLen(len(network.Organizations)))
@@ -281,13 +282,13 @@ var _ = Describe("DiscoveryService", func() {
 				org := network.Organization(o.Organization)
 				mspConfig, err := msp.GetVerifyingMspConfig(network.OrdererOrgMSPDir(org), org.MSPID, "bccsp")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(discoveredConfig.Msps[org.MSPID]).To(Equal(unmarshalFabricMSPConfig(mspConfig)))
+				Expect(discoveredConfig.Msps[org.MSPID]).To(ProtoEqual(unmarshalFabricMSPConfig(mspConfig)))
 			}
 			for _, p := range network.Peers {
 				org := network.Organization(p.Organization)
 				mspConfig, err := msp.GetVerifyingMspConfig(network.PeerOrgMSPDir(org), org.MSPID, "bccsp")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(discoveredConfig.Msps[org.MSPID]).To(Equal(unmarshalFabricMSPConfig(mspConfig)))
+				Expect(discoveredConfig.Msps[org.MSPID]).To(ProtoEqual(unmarshalFabricMSPConfig(mspConfig)))
 			}
 
 			By("validating the orderers")
