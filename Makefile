@@ -45,7 +45,7 @@
 #   - unit-test - runs the go-test based unit tests
 #   - verify - runs unit tests for only the changed package tree
 
-UBUNTU_VER ?= 20.04
+UBUNTU_VER ?= 22.04
 FABRIC_VER ?= 3.0.0
 
 # 3rd party image version
@@ -248,7 +248,7 @@ $(BUILD_DIR)/images/peer/$(DUMMY):    BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
 $(BUILD_DIR)/images/orderer/$(DUMMY): BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
 
 $(BUILD_DIR)/images/%/$(DUMMY):
-	@echo "Building Docker image $(DOCKER_NS)/fabric-$*"
+	@echo "Building Docker image $(DOCKER_NS)/fabric-$* with Ubuntu version $(UBUNTU_VER)"
 	@mkdir -p $(@D)
 	$(DBUILD) -f images/$*/Dockerfile \
 		--build-arg GO_VER=$(GO_VER) \
