@@ -6,6 +6,18 @@ To migrate, upgrade from version 2.x to version 3.0.0.
 
 This tutorial will describe the migration process at a high level, calling out specific details where necessary.
 
+## Pre-migration Checklist
+Before beginning the migration process, ensure the following:
+1. All ordering service nodes are running Fabric v3.0.0 or greater
+2. All peers are running at least Fabric v3.0.0
+3. All channels are configured with the V3_0 or later channel capability
+4. The number of nodes is configured as 3f + 1, where f is the number of tolerated failures
+5. BFT metadata and ConsenterMapping are prepared for each channel
+
+## Security Considerations
+1. Ensure all communication channels are encrypted
+2. Verify node identities and certificates before and after migration
+3. Update access controls if necessary after migration
 
 ## Assumptions and considerations
 Before attempting migration, take the following into account:
