@@ -54,7 +54,6 @@ docker start $(docker ps -aq --filter name=orderer)
 
 ## Step 5: Switch to BFT and Update Consenter Mapping
 
-```bash
 # Prepare the new consenter mapping
 cat << EOF > consenter_mapping.json
 [
@@ -102,10 +101,17 @@ jq --slurpfile mapping consenter_mapping.json '
   .channel_group.groups.Orderer.values.ConsensusType.value.type = "BFT" |
   .channel_group.groups.Orderer.values.ConsensusType.value.metadata = {
     "options": {
-      "election_tick": 10,
-      "heartbeat_tick": 1,
-      "max_inflight_blocks": 5,
-      "snapshot_interval_size": 16777216
+      "RequestBatchMaxInterval": "200ms",
+      "RequestForwardTimeout": "5s",
+      "RequestComplainTimeout": "20s",
+      "RequestAutoRemoveTimeout": "3m0s",
+      "ViewChangeResendInterval": "5s",
+      "ViewChangeTimeout": "20s",
+      "LeaderHeartbeatTimeout": "1m0s",
+      "CollectTimeout": "1s",
+      "IncomingMessageBufferSize": 200,
+      "RequestPoolSize": 100000,
+      "LeaderHeartbeatCount": 10
     }
   } |
   .channel_group.groups.Orderer.values.Orderers.value.consenter_mapping = $mapping[0]
@@ -118,7 +124,6 @@ configtxlator compute_update --channel_id $CHANNEL_NAME --original current_confi
 
 peer channel signconfigtx -f config_update.pb
 peer channel update -f config_update.pb -c $CHANNEL_NAME -o orderer.example.com:7050 --tls --cafile $ORDERER_CA
-```
 
 ## Step 6: Restart and Validate
 
