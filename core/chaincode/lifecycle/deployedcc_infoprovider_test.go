@@ -27,6 +27,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	. "github.com/hyperledger/fabric/internal/test"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -271,7 +272,7 @@ var _ = Describe("ValidatorCommitter", func() {
 			Expect(ccInfo.Name).To(Equal("cc-name"))
 			Expect(ccInfo.IsLegacy).To(BeFalse())
 			Expect(ccInfo.Version).To(Equal(fakeChaincodeDef.EndorsementInfo.Version))
-			Expect(proto.Equal(ccInfo.ExplicitCollectionConfigPkg, fakeChaincodeDef.Collections)).To(BeTrue())
+			Expect(ccInfo.ExplicitCollectionConfigPkg).To(ProtoEqual(fakeChaincodeDef.Collections))
 		})
 
 		Context("when state range scan returns an error", func() {
@@ -343,7 +344,7 @@ var _ = Describe("ValidatorCommitter", func() {
 				Expect(newlifecycleCCInfo.Name).To(Equal("cc-name"))
 				Expect(newlifecycleCCInfo.IsLegacy).To(BeFalse())
 				Expect(newlifecycleCCInfo.Version).To(Equal(fakeChaincodeDef.EndorsementInfo.Version))
-				Expect(proto.Equal(newlifecycleCCInfo.ExplicitCollectionConfigPkg, fakeChaincodeDef.Collections)).To(BeTrue())
+				Expect(newlifecycleCCInfo.ExplicitCollectionConfigPkg).To(ProtoEqual(fakeChaincodeDef.Collections))
 
 				legacyCCInfo, ok := res["another-cc-name"]
 				Expect(ok).To(BeTrue())
@@ -379,9 +380,9 @@ var _ = Describe("ValidatorCommitter", func() {
 		It("returns the collection info as defined in the new lifecycle", func() {
 			res, err := vc.CollectionInfo("channel-name", "cc-name", "collection-name", fakeQueryExecutor)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(proto.Equal(res, &pb.StaticCollectionConfig{
+			Expect(res).To(ProtoEqual(&pb.StaticCollectionConfig{
 				Name: "collection-name",
-			})).To(BeTrue())
+			}))
 		})
 
 		Context("when no matching collection is found", func() {

@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/core/dispatcher"
 	"github.com/hyperledger/fabric/protoutil"
 
+	. "github.com/hyperledger/fabric/internal/test"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -200,7 +201,7 @@ var _ = Describe("Integration", func() {
 			chaincodeResult := &lb.QueryChaincodeDefinitionResult{}
 			err = proto.Unmarshal(response.Payload, chaincodeResult)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(proto.Equal(chaincodeResult, &lb.QueryChaincodeDefinitionResult{
+			Expect(chaincodeResult).To(ProtoEqual(&lb.QueryChaincodeDefinitionResult{
 				Sequence:            1,
 				Version:             "1.0",
 				EndorsementPlugin:   "builtin",
@@ -210,7 +211,7 @@ var _ = Describe("Integration", func() {
 				Approvals: map[string]bool{
 					"fake-mspid": true,
 				},
-			})).To(BeTrue())
+			}))
 		})
 	})
 })

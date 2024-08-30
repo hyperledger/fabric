@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 
+	. "github.com/hyperledger/fabric/internal/test"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -667,11 +668,11 @@ var _ = Describe("ExternalFunctions", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(committedDefinition.EndorsementInfo.Version).To(Equal("version"))
 			Expect(committedDefinition.EndorsementInfo.EndorsementPlugin).To(Equal("my endorsement plugin"))
-			Expect(proto.Equal(committedDefinition.ValidationInfo, &lb.ChaincodeValidationInfo{
+			Expect(committedDefinition.ValidationInfo).To(ProtoEqual(&lb.ChaincodeValidationInfo{
 				ValidationPlugin:    "my validation plugin",
 				ValidationParameter: []byte("some awesome policy"),
-			})).To(BeTrue())
-			Expect(proto.Equal(committedDefinition.Collections, &pb.CollectionConfigPackage{})).To(BeTrue())
+			}))
+			Expect(committedDefinition.Collections).To(ProtoEqual(&pb.CollectionConfigPackage{}))
 
 			metadata, ok, err = resources.Serializer.DeserializeMetadata("chaincode-sources", "cc-name#5", fakeOrgState)
 			Expect(err).NotTo(HaveOccurred())
@@ -703,7 +704,7 @@ var _ = Describe("ExternalFunctions", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(committedDefinition.EndorsementInfo.Version).To(Equal("version"))
 				Expect(committedDefinition.EndorsementInfo.EndorsementPlugin).To(Equal("escc"))
-				Expect(proto.Equal(committedDefinition.ValidationInfo, &lb.ChaincodeValidationInfo{
+				Expect(committedDefinition.ValidationInfo).To(ProtoEqual(&lb.ChaincodeValidationInfo{
 					ValidationPlugin: "vscc",
 					ValidationParameter: protoutil.MarshalOrPanic(
 						&pb.ApplicationPolicy{
@@ -711,8 +712,8 @@ var _ = Describe("ExternalFunctions", func() {
 								ChannelConfigPolicyReference: "/Channel/Application/Endorsement",
 							},
 						}),
-				})).To(BeTrue())
-				Expect(proto.Equal(committedDefinition.Collections, &pb.CollectionConfigPackage{})).To(BeTrue())
+				}))
+				Expect(committedDefinition.Collections).To(ProtoEqual(&pb.CollectionConfigPackage{}))
 			})
 
 			Context("when no default endorsement policy is defined on thc channel", func() {
@@ -1202,22 +1203,22 @@ var _ = Describe("ExternalFunctions", func() {
 			cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 3, fakePublicState, fakeOrgStates[0])
 			Expect(err).NotTo(HaveOccurred())
 			Expect(cc.Sequence).To(Equal(int64(3)))
-			Expect(proto.Equal(cc.EndorsementInfo, &lb.ChaincodeEndorsementInfo{
+			Expect(cc.EndorsementInfo).To(ProtoEqual(&lb.ChaincodeEndorsementInfo{
 				Version:           "version",
 				EndorsementPlugin: "endorsement-plugin",
-			})).To(BeTrue())
-			Expect(proto.Equal(cc.ValidationInfo, &lb.ChaincodeValidationInfo{
+			}))
+			Expect(cc.ValidationInfo).To(ProtoEqual(&lb.ChaincodeValidationInfo{
 				ValidationPlugin:    "validation-plugin",
 				ValidationParameter: []byte("validation-parameter"),
-			})).To(BeTrue())
-			Expect(proto.Equal(cc.Collections, &pb.CollectionConfigPackage{})).To(BeTrue())
-			Expect(proto.Equal(cc.Source, &lb.ChaincodeSource{
+			}))
+			Expect(cc.Collections).To(ProtoEqual(&pb.CollectionConfigPackage{}))
+			Expect(cc.Source).To(ProtoEqual(&lb.ChaincodeSource{
 				Type: &lb.ChaincodeSource_LocalPackage{
 					LocalPackage: &lb.ChaincodeSource_Local{
 						PackageId: "hash",
 					},
 				},
-			})).To(BeTrue())
+			}))
 		})
 
 		Context("when the next sequence is not defined and the sequence argument is not provided", func() {
@@ -1225,22 +1226,22 @@ var _ = Describe("ExternalFunctions", func() {
 				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 0, fakePublicState, fakeOrgStates[0])
 				Expect(err).NotTo(HaveOccurred())
 				Expect(cc.Sequence).To(Equal(int64(4)))
-				Expect(proto.Equal(cc.EndorsementInfo, &lb.ChaincodeEndorsementInfo{
+				Expect(cc.EndorsementInfo).To(ProtoEqual(&lb.ChaincodeEndorsementInfo{
 					Version:           "version",
 					EndorsementPlugin: "endorsement-plugin",
-				})).To(BeTrue())
-				Expect(proto.Equal(cc.ValidationInfo, &lb.ChaincodeValidationInfo{
+				}))
+				Expect(cc.ValidationInfo).To(ProtoEqual(&lb.ChaincodeValidationInfo{
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),
-				})).To(BeTrue())
-				Expect(proto.Equal(cc.Collections, &pb.CollectionConfigPackage{})).To(BeTrue())
-				Expect(proto.Equal(cc.Source, &lb.ChaincodeSource{
+				}))
+				Expect(cc.Collections).To(ProtoEqual(&pb.CollectionConfigPackage{}))
+				Expect(cc.Source).To(ProtoEqual(&lb.ChaincodeSource{
 					Type: &lb.ChaincodeSource_LocalPackage{
 						LocalPackage: &lb.ChaincodeSource_Local{
 							PackageId: "hash",
 						},
 					},
-				})).To(BeTrue())
+				}))
 			})
 		})
 
@@ -1255,20 +1256,20 @@ var _ = Describe("ExternalFunctions", func() {
 				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 0, fakePublicState, fakeOrgStates[0])
 				Expect(err).NotTo(HaveOccurred())
 				Expect(cc.Sequence).To(Equal(int64(5)))
-				Expect(proto.Equal(cc.EndorsementInfo, &lb.ChaincodeEndorsementInfo{
+				Expect(cc.EndorsementInfo).To(ProtoEqual(&lb.ChaincodeEndorsementInfo{
 					Version:           "version",
 					EndorsementPlugin: "endorsement-plugin",
-				})).To(BeTrue())
-				Expect(proto.Equal(cc.ValidationInfo, &lb.ChaincodeValidationInfo{
+				}))
+				Expect(cc.ValidationInfo).To(ProtoEqual(&lb.ChaincodeValidationInfo{
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),
-				})).To(BeTrue())
-				Expect(proto.Equal(cc.Collections, &pb.CollectionConfigPackage{})).To(BeTrue())
-				Expect(proto.Equal(cc.Source, &lb.ChaincodeSource{
+				}))
+				Expect(cc.Collections).To(ProtoEqual(&pb.CollectionConfigPackage{}))
+				Expect(cc.Source).To(ProtoEqual(&lb.ChaincodeSource{
 					Type: &lb.ChaincodeSource_Unavailable_{
 						Unavailable: &lb.ChaincodeSource_Unavailable{},
 					},
-				})).To(BeTrue())
+				}))
 			})
 
 			Context("and deserializing namespace metadata for next sequence fails", func() {
@@ -1296,22 +1297,22 @@ var _ = Describe("ExternalFunctions", func() {
 				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 5, fakePublicState, fakeOrgStates[0])
 				Expect(err).NotTo(HaveOccurred())
 				Expect(cc.Sequence).To(Equal(int64(5)))
-				Expect(proto.Equal(cc.EndorsementInfo, &lb.ChaincodeEndorsementInfo{
+				Expect(cc.EndorsementInfo).To(ProtoEqual(&lb.ChaincodeEndorsementInfo{
 					Version:           "version",
 					EndorsementPlugin: "endorsement-plugin",
-				})).To(BeTrue())
-				Expect(proto.Equal(cc.ValidationInfo, &lb.ChaincodeValidationInfo{
+				}))
+				Expect(cc.ValidationInfo).To(ProtoEqual(&lb.ChaincodeValidationInfo{
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),
-				})).To(BeTrue())
-				Expect(proto.Equal(cc.Collections, &pb.CollectionConfigPackage{})).To(BeTrue())
-				Expect(proto.Equal(cc.Source, &lb.ChaincodeSource{
+				}))
+				Expect(cc.Collections).To(ProtoEqual(&pb.CollectionConfigPackage{}))
+				Expect(cc.Source).To(ProtoEqual(&lb.ChaincodeSource{
 					Type: &lb.ChaincodeSource_LocalPackage{
 						LocalPackage: &lb.ChaincodeSource_Local{
 							PackageId: "hash",
 						},
 					},
-				})).To(BeTrue())
+				}))
 			})
 		})
 
@@ -1808,15 +1809,15 @@ var _ = Describe("ExternalFunctions", func() {
 			cc, err := ef.QueryChaincodeDefinition("cc-name", fakePublicState)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(cc.Sequence).To(Equal(int64(4)))
-			Expect(proto.Equal(cc.EndorsementInfo, &lb.ChaincodeEndorsementInfo{
+			Expect(cc.EndorsementInfo).To(ProtoEqual(&lb.ChaincodeEndorsementInfo{
 				Version:           "version",
 				EndorsementPlugin: "endorsement-plugin",
-			})).To(BeTrue())
-			Expect(proto.Equal(cc.ValidationInfo, &lb.ChaincodeValidationInfo{
+			}))
+			Expect(cc.ValidationInfo).To(ProtoEqual(&lb.ChaincodeValidationInfo{
 				ValidationPlugin:    "validation-plugin",
 				ValidationParameter: []byte("validation-parameter"),
-			})).To(BeTrue())
-			Expect(proto.Equal(cc.Collections, &pb.CollectionConfigPackage{})).To(BeTrue())
+			}))
+			Expect(cc.Collections).To(ProtoEqual(&pb.CollectionConfigPackage{}))
 		})
 
 		Context("when the chaincode is not defined", func() {

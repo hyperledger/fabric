@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/dispatcher"
 	"github.com/hyperledger/fabric/core/ledger"
+	. "github.com/hyperledger/fabric/internal/test"
 	"github.com/hyperledger/fabric/msp"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -497,10 +498,7 @@ var _ = Describe("SCC", func() {
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),
 				}))
-				Expect(proto.Equal(
-					cd.Collections,
-					collConfigs.toProtoCollectionConfigPackage(),
-				)).Should(BeTrue())
+				Expect(cd.Collections).To(ProtoEqual(collConfigs.toProtoCollectionConfigPackage()))
 
 				Expect(packageID).To(Equal("hash"))
 				Expect(pubState).To(Equal(fakeStub))
@@ -1354,7 +1352,7 @@ var _ = Describe("SCC", func() {
 				payload := &lb.QueryApprovedChaincodeDefinitionResult{}
 				err := proto.Unmarshal(res.Payload, payload)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(proto.Equal(payload, &lb.QueryApprovedChaincodeDefinitionResult{
+				Expect(payload).To(ProtoEqual(&lb.QueryApprovedChaincodeDefinitionResult{
 					Sequence:            7,
 					Version:             "version",
 					EndorsementPlugin:   "endorsement-plugin",
@@ -1369,7 +1367,7 @@ var _ = Describe("SCC", func() {
 							},
 						},
 					},
-				})).To(BeTrue())
+				}))
 
 				Expect(fakeSCCFuncs.QueryApprovedChaincodeDefinitionCallCount()).To(Equal(1))
 				chname, ccname, sequence, pubState, privState := fakeSCCFuncs.QueryApprovedChaincodeDefinitionArgsForCall(0)
@@ -1683,7 +1681,7 @@ var _ = Describe("SCC", func() {
 				payload := &lb.QueryChaincodeDefinitionResult{}
 				err := proto.Unmarshal(res.Payload, payload)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(proto.Equal(payload, &lb.QueryChaincodeDefinitionResult{
+				Expect(payload).To(ProtoEqual(&lb.QueryChaincodeDefinitionResult{
 					Sequence:            2,
 					Version:             "version",
 					EndorsementPlugin:   "endorsement-plugin",
@@ -1694,7 +1692,7 @@ var _ = Describe("SCC", func() {
 						"fake-mspid":  true,
 						"other-mspid": true,
 					},
-				})).To(BeTrue())
+				}))
 
 				Expect(fakeSCCFuncs.QueryChaincodeDefinitionCallCount()).To(Equal(1))
 				name, pubState := fakeSCCFuncs.QueryChaincodeDefinitionArgsForCall(0)

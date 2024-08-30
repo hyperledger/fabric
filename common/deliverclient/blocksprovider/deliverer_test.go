@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
@@ -26,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
+	. "github.com/hyperledger/fabric/internal/test"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -575,11 +575,11 @@ var _ = Describe("CFT-Deliverer", func() {
 		It("checks the validity of the block", func() {
 			Eventually(fakeUpdatableBlockVerifier.VerifyBlockCallCount, eventuallyTO).Should(Equal(1))
 			block := fakeUpdatableBlockVerifier.VerifyBlockArgsForCall(0)
-			Expect(proto.Equal(block, &common.Block{
+			Expect(block).To(ProtoEqual(&common.Block{
 				Header: &common.BlockHeader{
 					Number: 8,
 				},
-			})).To(BeTrue())
+			}))
 		})
 
 		When("the block is invalid", func() {
@@ -679,19 +679,19 @@ var _ = Describe("CFT-Deliverer", func() {
 		It("checks the validity of the block", func() {
 			Eventually(fakeUpdatableBlockVerifier.VerifyBlockCallCount, eventuallyTO).Should(Equal(1))
 			block := fakeUpdatableBlockVerifier.VerifyBlockArgsForCall(0)
-			Expect(proto.Equal(block, &common.Block{
+			Expect(block).To(ProtoEqual(&common.Block{
 				Header: &common.BlockHeader{Number: 8},
 				Data: &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(env)},
 				},
-			})).To(BeTrue())
+			}))
 		})
 
 		It("handle the block and updates the verifier config", func() {
 			Eventually(fakeBlockHandler.HandleBlockCallCount, eventuallyTO).Should(Equal(1))
 			channelID, block := fakeBlockHandler.HandleBlockArgsForCall(0)
 			Expect(channelID).To(Equal("channel-id"))
-			Expect(block).To(Equal(&common.Block{
+			Expect(block).To(ProtoEqual(&common.Block{
 				Header: &common.BlockHeader{Number: 8},
 				Data: &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(env)},

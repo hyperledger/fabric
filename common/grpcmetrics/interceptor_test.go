@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/grpcmetrics"
 	"github.com/hyperledger/fabric/common/grpcmetrics/fakes"
 	"github.com/hyperledger/fabric/common/grpcmetrics/testpb"
+	. "github.com/hyperledger/fabric/internal/test"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"google.golang.org/grpc"
@@ -120,7 +121,7 @@ var _ = Describe("Interceptor", func() {
 		It("records request duration", func() {
 			resp, err := echoServiceClient.Echo(context.Background(), &testpb.Message{Message: "yo"})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp).To(Equal(&testpb.Message{Message: "yo", Sequence: 1}))
+			Expect(resp).To(ProtoEqual(&testpb.Message{Message: "yo", Sequence: 1}))
 
 			Expect(fakeRequestDuration.WithCallCount()).To(Equal(1))
 			labelValues := fakeRequestDuration.WithArgsForCall(0)
@@ -142,7 +143,7 @@ var _ = Describe("Interceptor", func() {
 
 			resp, err := echoServiceClient.Echo(context.Background(), &testpb.Message{Message: "yo"})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp).To(Equal(&testpb.Message{Message: "yo", Sequence: 1}))
+			Expect(resp).To(ProtoEqual(&testpb.Message{Message: "yo", Sequence: 1}))
 
 			Expect(fakeRequestsReceived.WithCallCount()).To(Equal(1))
 			labelValues := fakeRequestsReceived.WithArgsForCall(0)
@@ -162,7 +163,7 @@ var _ = Describe("Interceptor", func() {
 
 			resp, err := echoServiceClient.Echo(context.Background(), &testpb.Message{Message: "yo"})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp).To(Equal(&testpb.Message{Message: "yo", Sequence: 1}))
+			Expect(resp).To(ProtoEqual(&testpb.Message{Message: "yo", Sequence: 1}))
 
 			Expect(fakeRequestsCompleted.WithCallCount()).To(Equal(1))
 			labelValues := fakeRequestsCompleted.WithArgsForCall(0)
@@ -313,10 +314,10 @@ func streamMessages(streamClient testpb.EchoService_EchoStreamClient) {
 
 	msg, err := streamClient.Recv()
 	Expect(err).NotTo(HaveOccurred())
-	Expect(msg).To(Equal(&testpb.Message{Message: "hello", Sequence: 1}))
+	Expect(msg).To(ProtoEqual(&testpb.Message{Message: "hello", Sequence: 1}))
 	msg, err = streamClient.Recv()
 	Expect(err).NotTo(HaveOccurred())
-	Expect(msg).To(Equal(&testpb.Message{Message: "hello", Sequence: 3}))
+	Expect(msg).To(ProtoEqual(&testpb.Message{Message: "hello", Sequence: 3}))
 
 	err = streamClient.CloseSend()
 	Expect(err).NotTo(HaveOccurred())

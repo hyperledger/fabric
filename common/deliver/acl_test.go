@@ -12,6 +12,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/deliver/mock"
+	. "github.com/hyperledger/fabric/internal/test"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -47,7 +48,7 @@ var _ = Describe("SessionAccessControl", func() {
 
 		Expect(fakePolicyChecker.CheckPolicyCallCount()).To(Equal(1))
 		env, cid := fakePolicyChecker.CheckPolicyArgsForCall(0)
-		Expect(env).To(Equal(envelope))
+		Expect(env).To(ProtoEqual(envelope))
 		Expect(cid).To(Equal("chain-id"))
 	})
 

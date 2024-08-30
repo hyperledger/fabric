@@ -15,12 +15,12 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/configtx"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/ordererclient"
+	. "github.com/hyperledger/fabric/internal/test"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
@@ -132,7 +132,7 @@ var _ = Describe("ConfigTx", func() {
 
 		By("ensuring the active channel config matches the submitted config")
 		updatedChannelConfig := nwo.GetConfig(network, org2peer0, orderer, "testchannel")
-		Expect(proto.Equal(c.UpdatedConfig(), updatedChannelConfig)).To(BeTrue())
+		Expect(c.UpdatedConfig()).To(ProtoEqual(updatedChannelConfig))
 
 		By("checking the current application capabilities")
 		c = configtx.New(updatedChannelConfig)
@@ -190,7 +190,7 @@ var _ = Describe("ConfigTx", func() {
 
 		By("ensuring the active channel config matches the submitted config")
 		updatedChannelConfig = nwo.GetConfig(network, org2peer0, orderer, "testchannel")
-		Expect(proto.Equal(c.UpdatedConfig(), updatedChannelConfig)).To(BeTrue())
+		Expect(c.UpdatedConfig()).To(ProtoEqual(updatedChannelConfig))
 
 		By("adding the anchor peer for each org")
 		for _, peer := range testPeers {
@@ -235,7 +235,7 @@ var _ = Describe("ConfigTx", func() {
 
 			By("ensuring the active channel config matches the submitted config")
 			updatedChannelConfig = nwo.GetConfig(network, peer, orderer, "testchannel")
-			Expect(proto.Equal(c.UpdatedConfig(), updatedChannelConfig)).To(BeTrue())
+			Expect(c.UpdatedConfig()).To(ProtoEqual(updatedChannelConfig))
 		}
 	})
 })
