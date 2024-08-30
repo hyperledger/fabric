@@ -95,7 +95,7 @@ Each language can function in the '-as-a-service' mode. The following approaches
 
 With the Fabric v2.4.1 Java chaincode libraries, there are no code changes or build changes to implement. The '-as-a-service' mode will be used if the environment variable `CHAINCODE_SERVER_ADDRESS` is set.
 
-The following sample Docker run command shows the two required variables, `CHAINCODE_SERVER_ADDRESS` and `CORE_CHAICODE_ID_NAME`:
+The following sample Docker run command shows the two required variables, `CHAINCODE_SERVER_ADDRESS` and `CORE_CHAINCODE_ID_NAME`:
 
 ```bash
     docker run --rm -d --name peer0org1_assettx_ccaas  \
