@@ -1,7 +1,7 @@
 # Secured asset transfer in Fabric
 
 This tutorial will demonstrate how an asset can be represented and traded between organizations in a Hyperledger Fabric blockchain channel, while keeping details of the asset and transaction private using private data.
-Each on-chain asset is a non-fungible token (NFT) that represents a specific asset having certain immutable metadata properties (such as size and color) with a unique owner. When the owner wants to sell the asset, both parties need to agree to the same price before the asset is transferred. The private asset transfer smart contract enforces that only the owner of the asset can transfer the asset. In the course of this tutorial, you will learn how Fabric features such as state based endorsement, private data, and access control come together to provide secured transactions that are both private and verifiable.
+Each on-chain asset is a non-fungible token (NFT) that represents a specific asset having certain immutable properties (such as size and color) with a unique owner. When the owner wants to sell the asset, both parties need to agree to the same price before the asset is transferred. The private asset transfer smart contract enforces that only the owner of the asset can transfer the asset. In the course of this tutorial, you will learn how Fabric features such as state based endorsement, private data, and access control come together to provide secured transactions that are both private and verifiable.
 
 This tutorial will deploy the [secured asset transfer sample](https://github.com/hyperledger/fabric-samples/tree/main/asset-transfer-secured-agreement/chaincode-go) to demonstrate how to transfer a private asset between two organizations without publicly sharing data. You should have completed the task
 [Install Samples, Binaries, and Docker Images](../install.html#install-samples-binaries-and-docker-images).
@@ -13,19 +13,19 @@ The private asset transfer scenario is bound by the following requirements:
 
 - An asset may be issued by the first owner's organization (in the real world issuance may be restricted to some authority that certifies an asset's properties).
 - Ownership is managed at the organization level (the Fabric permissioning scheme would equally support ownership at an individual identity level within an organization).
-- The asset identifier and owner is stored as public channel data for all channel members to see.
-- The asset metadata properties however are private information known only to the asset owner (and prior owners).
-- An interested buyer will want to verify an asset's private properties.
-- An interested buyer will want to verify an asset's provenance, specifically the asset's origin and chain of custody. They will also want to verify that the asset has not changed since issuance, and that all prior transfers have been legitimate.
-- To transfer an asset, a buyer and seller must first agree on the sales price.
+- The asset identifier is a hash of the asset's immutable properties, and along with the current owner is stored as public channel data for all channel members to see.
+- The asset immutable properties however are private information known only to the asset owner (and prior owners).
+- An interested buyer will want to verify an asset's private properties against the hashed asset id before purchasing. This confirms that the buyer has the correct asset description.
+- An interested buyer will want to verify an asset's provenance, specifically the asset's origin and chain of custody. This confirms that the asset has not changed since issuance.
+- To transfer an asset, a buyer and seller must first agree on the asset's properties and sales price.
 - Only the current owner may transfer their asset to another organization.
-- The actual private asset transfer must verify that the legitimate asset is being transferred, and verify that the price has been agreed to. Both buyer and seller must endorse the transfer.
+- The actual private asset transfer must verify that the asset's properties and price have been agreed to. Both buyer and seller must endorse the transfer.
 
 ## How privacy is maintained
 
 The smart contract uses the following techniques to ensure that the asset properties remain private:
 
-- The asset metadata properties are stored in the current owning organization's implicit private data collection on the organization's peers only. Each organization on a Fabric channel has a private data collection that their own organization can use. This collection is *implicit* because it does not need to be explicitly defined in the chaincode.
+- The asset properties are stored in the current owning organization's implicit private data collection on the organization's peers only. Each organization on a Fabric channel has a private data collection that their own organization can use. This collection is *implicit* because it does not need to be explicitly defined in the chaincode.
 - Although a hash of the private properties is automatically stored on-chain for all channel members to see, a random salt is included in the private properties so that other channel members cannot guess the private data pre-image through a dictionary attack.
 - Smart contract requests utilize the transient field for private data so that private data does not get included in the final on-chain transaction.
 - Private data queries must originate from a client whose org id matches the peer's org id, which must be the same as the asset owner's org id.
@@ -41,33 +41,34 @@ The private asset transfer smart contract is deployed with an endorsement policy
 The smart contract uses the following Fabric features to ensure that the asset can only be updated or transferred by the organization that owns the asset:
 
 - When the asset is created, the smart contract gets the MSP ID of the organization that submitted the request, and stores the MSP ID as the owner in the asset key/value in the public chaincode world state. Subsequent smart contract requests to update or transfer the asset will use access control logic to verify that the requesting client is from the same organization. Note that in other scenarios, the ownership could be based on a specific client identity within an organization, rather than an organization itself.
-- Also when the asset is created, the smart contract sets a state based endorsement policy for the asset key. The state based policy specifies that a peer from the organization that owns the asset must endorse a subsequent request to update or transfer the asset. This prevents any other organization from updating or transferring the asset using a smart contract that has been maliciously altered on their own peers.
+- Also when the asset is created, the smart contract sets a state based endorsement policy for the asset key. The state based policy specifies that a peer from the organization that owns the asset must endorse a subsequent request to update or transfer the asset. This prevents any other organization from updating or initiating the transfer of the asset using a smart contract that has been maliciously altered on their own peers. To further secure asset transfer, consider including other parties in the asset's state based endorsement policy, such as a trusted third party.
 
 ### Agreeing to the transfer
 
-After a asset is created, channel members can use the smart contract to agree to transfer the asset:
+After an asset is created, channel members can use the smart contract to agree to transfer the asset:
 
 - The owner of the asset can change the description in the public ownership record, for example to advertise that the asset is for sale. Smart contract access control enforces that this change needs to be submitted from a member of the asset owner organization. The state based endorsement policy enforces that this description change must be endorsed by a peer from the owner's organization.
 
 The asset owner and the asset buyer agree to transfer the asset for a certain price:
-- The price agreed to by the buyer and the seller is stored in each organization's implicit private data collection. The private data collection keeps the agreed price secret from other members of the channel. The endorsement policy of the private data collection ensures that the respective organization's peer endorsed the price agreement, and the smart contract access control logic ensures that the price agreement was submitted by a client of the associated organization.
-- A hash of each price agreement is stored on the ledger. The two hashes will match only if the two organizations have agreed to the same price. This allows the organizations to verify that they have come to agreement on the transfer details before the transfer takes place. A random trade id is added to the price agreement, which serves as a *salt* to ensure that other channel members can not use the hash on the ledger to guess the price.
+- The price and the private asset properties agreed to by the buyer and the seller is stored in each organization's implicit private data collection. The private data collection keeps the agreed price and asset properties secret from other members of the channel. The endorsement policy of the implicit private data collection ensures that the respective organization's peer endorsed the price agreement, and the smart contract access control logic ensures that the price agreement was submitted by a client of the associated organization.
+- A hash of each price agreement and of the asset properties is automatically stored on the ledger when using private data collections. These hashes will match only if the two organizations have agreed to the same price and the two asset descriptions correspond. This allows the organizations to verify that they have come to agreement on the transfer details when they execute and endorse the transfer transaction. A random trade id is added to the price agreement, which serves as a *salt* to ensure that other channel members can not use the hash on the ledger to guess the price.
 
 ### Transferring the asset
 
-After the two organizations have agreed to the same price, the asset owner can use the transfer function to transfer the asset to the buyer:
+After the two organizations have agreed to the same price and asset properties, the asset owner can invoke the transfer function to transfer the asset to the buyer:
 
 - Smart contract access control ensures that the transfer must be initiated by a member of the organization that owns the asset.
-- The transfer function verifies that the asset's private immutable properties passed to the transfer function matches the on chain hash of the asset data in private collection, to ensure that the asset owner is *selling* the same asset that they own.
-- The transfer function uses the hash of the price agreement on the ledger to ensure that both organizations have agreed to the same price.
-- If the transfer conditions are met, the transfer function adds the asset to the implicit private data collection of the buyer, and deletes the asset from the collection of the seller. The transfer also updates the owner in the public ownership record.
-- Because of the endorsement policies of the seller and buyer implicit data collections, and the state based endorsement policy of the public record (requiring the seller to endorse), the transfer needs to be endorsed by peers from both buyer and seller.
-- The state based endorsement policy of the public asset record is updated so that only a peer of the new owner of the asset can update or sell their new asset.
-- The price agreements are also deleted from both the seller and buyer implicit private data collection, and a sales receipt is created in each private data collection.
+- The transfer function verifies that the on-chain asset properties present in the seller's private collection correspond to the ones present in the buyer's private collection by comparing their hash, to ensure that the asset owner is *selling* the same asset declared.
+- The transfer function also uses the hash of the price agreement on the ledger to ensure that both organizations have agreed to the same price.
+- If the transfer conditions are met, the transfer function deletes the asset from the collection of the seller and updates the owner in the public ownership record.
+- The price agreements are also deleted from both the seller and buyer implicit private data collection, and a sales receipt is created in each private data collection to record the transaction price and timestamp.
+- Because the transfer transaction updates data in the seller and buyer implicit data collections, the transfer must be endorsed by peers from both buyer and seller.
+- The state based endorsement policy of the public asset record is updated so that only a peer of the new owner of the asset can update or initialize a subsequent transfer of their new asset.
 
-## Running the private asset transfer smart contract
 
-You can use the Fabric test network to run the private asset transfer smart contract. The test network contains two peer organizations, Org1 and Org2, that operate one peer each. In this tutorial, we will deploy the smart contract to a channel of the test network joined by both organizations. We will first create an asset that is owned by Org1. After the two organizations agree on the price, we will transfer the asset from Org1 to Org2.
+## Running the secured asset transfer smart contract
+
+You can use the Fabric test network to run the secured asset transfer smart contract. The test network contains two peer organizations, Org1 and Org2, that operate one peer each. In this tutorial, we will deploy the smart contract to a channel of the test network joined by both organizations. We will first create an asset that is owned by Org1. After the two organizations agree on the asset properties and price, we will transfer the asset from Org1 to Org2.
 
 ## Deploy the test network
 
@@ -104,7 +105,7 @@ In the course of running this sample, you need to interact with the network as b
 export PATH=${PWD}/../bin:${PWD}:$PATH
 export FABRIC_CFG_PATH=$PWD/../config/
 export CORE_PEER_TLS_ENABLED=true
-export CORE_PEER_LOCALMSPID="Org1MSP"
+export CORE_PEER_LOCALMSPID=Org1MSP
 export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
 export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
 export CORE_PEER_ADDRESS=localhost:7051
@@ -120,7 +121,7 @@ Now that we have one terminal that we can operate as Org1, open a new terminal f
 export PATH=${PWD}/../bin:${PWD}:$PATH
 export FABRIC_CFG_PATH=$PWD/../config/
 export CORE_PEER_TLS_ENABLED=true
-export CORE_PEER_LOCALMSPID="Org2MSP"
+export CORE_PEER_LOCALMSPID=Org2MSP
 export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
 export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
 export CORE_PEER_ADDRESS=localhost:9051
@@ -140,7 +141,7 @@ Before we create the asset, we need to specify the details of what our asset wil
 export ASSET_PROPERTIES=$(echo -n "{\"object_type\":\"asset_properties\",\"asset_no\":\"asset1\",\"color\":\"blue\",\"size\":35,\"salt\":\"a94a8fe5ccb19ba61c4c0873d391e987982fbbd3\"}" | base64 | tr -d \\n)
 ```
 
-We can now use the following command to create a asset that belongs to Org1:
+We can now use the following command to create an asset that belongs to Org1.
 
 ```
 peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n secured -c '{"function":"CreateAsset","Args":["A new asset for Org1MSP"]}' --transient "{\"asset_properties\":\"$ASSET_PROPERTIES\"}"
@@ -149,6 +150,7 @@ When successful, the command will return a result similar to below:
 ```
 2024-09-04 21:38:34.682 IST 0001 INFO [chaincodeCmd] chaincodeInvokeOrQuery -> Chaincode invoke successful. result: status:200 payload:"79fe40b627db72d731c045b3d1ab0fc815db682557d886182123eb9048921ac9"
 ```
+The hash of the asset properties will become the asset ID and is returned by the CreateAsset call. Look for the hash in the response "payload" that was reported to the CLI, and set it as an environment variable for later reference.
 
 Note down the asset id returned as payload to an environment variable. 
 ```
@@ -172,7 +174,7 @@ We can also query the ledger to see the public ownership record:
 peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n secured -c '{"function":"ReadAsset","Args":["'$ASSET_ID'"]}'
 
 ```
-The command will return the record that the asset1 is owned by Org1:
+The command will return the record that the asset is owned by Org1:
 
 ```
 {"objectType":"asset","assetID":"79fe40b627db72d731c045b3d1ab0fc815db682557d886182123eb9048921ac9","ownerOrg":"Org1MSP","publicDescription":"A new asset for Org1MSP"}
@@ -229,11 +231,11 @@ Error: endorsement failure during invoke. response: status:500 message:"a client
 
 ## Agree to sell the asset
 
-To sell an asset, both the buyer and the seller must agree on an asset price. Each party stores the price that they agree to in their own private data collection. The private asset transfer smart contract enforces that both parties need to agree to the same price before the asset can be transferred.
+To sell an asset, both the buyer and the seller must agree on an asset price and make sure that they both have the same asset properties in their respective private data collections. Each party stores the price that they agree to in their own private data collection. The private asset transfer smart contract enforces that both parties need to agree to the same price and asset properties before the asset can be transferred.
 
 ## Agree to sell as Org1
 
-Operate from the Org1 terminal. Org1 will agree to set the asset price as 110 dollars. The `trade_id` is used as salt to prevent a channel member that is not a buyer or a seller from guessing the price. This value needs to be passed out of band, through email or other communication, between the buyer and the seller. The buyer and the seller can also add salt to the asset key to prevent other members of the channel from guessing which asset is for sale.
+Operate from the Org1 terminal. Org1 will agree to set the asset price as 110 dollars. The `trade_id` is used as salt to prevent a channel member that is not a buyer or a seller from guessing the price. This value needs to be passed out of band together with the asset properties, through email or other communication, between the buyer and the seller. The buyer and the seller can also add salt to the asset key to prevent other members of the channel from guessing which asset is for sale.
 
 ```
 export ASSET_PRICE=$(echo -n "{\"asset_no\":\"asset1\",\"trade_id\":\"109f4b3c50d7b0df729d299bc6f8e9ef9066971f\",\"price\":110}" | base64 | tr -d \\n)
@@ -255,7 +257,7 @@ export ASSET_PROPERTIES=$(echo -n "{\"object_type\":\"asset_properties\",\"asset
 peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n secured -c '{"function":"VerifyAssetProperties","Args":["'$ASSET_ID'"]}' --transient "{\"asset_properties\":\"$ASSET_PROPERTIES\"}"
 ```
 
-Run the following command to agree to buy asset1 for 100 dollars. As of now, Org2 will agree to a different price than Org2. Don't worry, the two organizations will agree to the same price in a future step. However, we we can use this temporary disagreement as a test of what happens if the buyer and the seller agree to a different price. Org2 needs to use the same `trade_id` as Org1.
+Run the following command to agree to buy asset1 for 100 dollars. As of now, Org2 will agree to a different price than Org1. Don't worry, the two organizations will agree to the same price in a future step. However, we can use this temporary disagreement as a test of what happens if the buyer and the seller agree to a different price. Org2 needs to use the same `trade_id` as Org1.
 
 ```
 export ASSET_PRICE=$(echo -n "{\"asset_no\":\"asset1\",\"trade_id\":\"109f4b3c50d7b0df729d299bc6f8e9ef9066971f\",\"price\":100}" | base64 | tr -d \\n)
@@ -273,11 +275,11 @@ peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.exam
 
 ## Transfer the asset from Org1 to Org2
 
-After both organizations have agreed to their price, Org1 can attempt to transfer the asset to Org2. The private asset transfer function in the smart contract uses the hash on the ledger to check that both organizations have agreed to the same price. The function will also use the hash of the private asset details to check that the asset that is transferred is the same asset that Org1 owns.
+After both organizations have agreed to their price and asset properties, Org1 can attempt to transfer the asset to Org2. The private asset transfer function in the smart contract uses the hash on the ledger to check that both organizations have agreed to the same price. The function will also check the asset properties hash of both seller and buyer private collection to check that the asset that is transferred is the same asset that Org1 owns.
 
 ### Transfer the asset as Org1
 
-Operate from the Org1 terminal. The owner of the asset needs to initiate the transfer. Note that the command below uses the `--peerAddresses` flag to target the peers of both Org1 and Org2. Both organizations need to endorse the transfer. _Also note that the asset properties and price are passed in the transfer request as transient properties. These are passed so that the current owner can be sure that the correct asset is transferred for the correct price. These properties will be checked against the on-chain hashes by both endorsers._
+Operate from the Org1 terminal. The owner of the asset needs to initiate the transfer. Note that the command below uses the `--peerAddresses` flag to target the peers of both Org1 and Org2. Both organizations need to endorse the transfer. _Also note that the price is passed in the transfer request as transient properties. This is passed so that the current owner can be sure that the correct asset is transferred for the correct price. These properties will be checked against the on-chain hashes by both endorsers._
 
 ```
 peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n secured -c '{"function":"TransferAsset","Args":["'$ASSET_ID'","Org2MSP"]}' --transient "{\"asset_properties\":\"$ASSET_PROPERTIES\",\"asset_price\":\"$ASSET_PRICE\"}" --peerAddresses localhost:7051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" --peerAddresses localhost:9051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt"
@@ -315,7 +317,7 @@ The record now lists Org2 as the asset owner:
 ```
 
   ![Org1 transfers the asset to Org2](./transfer_assets_3.png)  
-*Figure 3: After the asset is transferred, the asset details are placed in the Org2 implicit data collection and deleted from the Org1 implicit data collection. As a result, the asset details are now only stored on the Org2 peer. The asset ownership record on the ledger is updated to reflect that the asset is owned by Org1.*
+*Figure 3: After the asset is transferred, the asset details are placed in the Org2 implicit data collection and deleted from the Org1 implicit data collection. As a result, the asset details are now only stored on the Org2 peer. The asset ownership record on the ledger is updated to reflect that the asset is owned by Org2.*
 
 ### Update the asset description as Org2
 
