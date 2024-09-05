@@ -18,7 +18,6 @@ package util
 
 import (
 	"encoding/binary"
-	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
@@ -43,7 +42,7 @@ func EncodeOrderPreservingVarUint64(number uint64) []byte {
 	}
 	sizeBytes := proto.EncodeVarint(uint64(size))
 	if len(sizeBytes) > 1 {
-		panic(fmt.Errorf("[]sizeBytes should not be more than one byte because the max number it needs to hold is 8. size=%d", size))
+		panic(errors.Errorf("[]sizeBytes should not be more than one byte because the max number it needs to hold is 8. size=%d", size))
 	}
 	encodedBytes := make([]byte, size+1)
 	encodedBytes[0] = sizeBytes[0]
