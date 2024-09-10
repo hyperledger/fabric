@@ -1,5 +1,6 @@
+#ifndef USE_EXTERNAL_ZSTD
 /*
- * Copyright (c) 2016-present, Yann Collet, Facebook, Inc.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
  *
  * This source code is licensed under both the BSD-style license (found in the
@@ -24,3 +25,5 @@ unsigned ZBUFF_isError(size_t errorCode) { return ERR_isError(errorCode); }
 /*! ZBUFF_getErrorName() :
 *   provides error code string from function result (useful for debugging) */
 const char* ZBUFF_getErrorName(size_t errorCode) { return ERR_getErrorName(errorCode); }
+
+#endif /* USE_EXTERNAL_ZSTD */

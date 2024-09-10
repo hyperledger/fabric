@@ -1,5 +1,6 @@
+#ifndef USE_EXTERNAL_ZSTD
 /*
- * Copyright (c) 2016-present, Yann Collet, Facebook, Inc.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
  *
  * This source code is licensed under both the BSD-style license (found in the
@@ -44,4 +45,13 @@ size_t ZSTD_encodeSequences(
             FSE_CTable const* CTable_LitLength, BYTE const* llCodeTable,
             seqDef const* sequences, size_t nbSeq, int longOffsets, int bmi2);
 
+size_t ZSTD_fseBitCost(
+    FSE_CTable const* ctable,
+    unsigned const* count,
+    unsigned const max);
+
+size_t ZSTD_crossEntropyCost(short const* norm, unsigned accuracyLog,
+                             unsigned const* count, unsigned const max);
 #endif /* ZSTD_COMPRESS_SEQUENCES_H */
+
+#endif /* USE_EXTERNAL_ZSTD */

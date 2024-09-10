@@ -1,5 +1,6 @@
+#ifndef USE_EXTERNAL_ZSTD
 /*
- * Copyright (c) 2016-present, Yann Collet, Facebook, Inc.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
  *
  * This source code is licensed under both the BSD-style license (found in the
@@ -16,7 +17,7 @@ extern "C" {
 #endif
 
 
-#include <stddef.h>   /* size_t */
+#include "zstd_deps.h"
 #define ZSTD_STATIC_LINKING_ONLY   /* ZSTD_customMem */
 #include "zstd.h"
 
@@ -38,10 +39,16 @@ POOL_ctx* POOL_create_advanced(size_t numThreads, size_t queueSize,
  */
 void POOL_free(POOL_ctx* ctx);
 
+
+/*! POOL_joinJobs() :
+ *  Waits for all queued jobs to finish executing.
+ */
+void POOL_joinJobs(POOL_ctx* ctx);
+
 /*! POOL_resize() :
  *  Expands or shrinks pool's number of threads.
  *  This is more efficient than releasing + creating a new context,
- *  since it tries to preserve and re-use existing threads.
+ *  since it tries to preserve and reuse existing threads.
  * `numThreads` must be at least 1.
  * @return : 0 when resize was successful,
  *           !0 (typically 1) if there is an error.
@@ -53,7 +60,7 @@ int POOL_resize(POOL_ctx* ctx, size_t numThreads);
  * @return threadpool memory usage
  *  note : compatible with NULL (returns 0 in this case)
  */
-size_t POOL_sizeof(POOL_ctx* ctx);
+size_t POOL_sizeof(const POOL_ctx* ctx);
 
 /*! POOL_function :
  *  The function type that can be added to a thread pool.
@@ -70,7 +77,7 @@ void POOL_add(POOL_ctx* ctx, POOL_function function, void* opaque);
 
 
 /*! POOL_tryAdd() :
- *  Add the job `function(opaque)` to thread pool _if_ a worker is available.
+ *  Add the job `function(opaque)` to thread pool _if_ a queue slot is available.
  *  Returns immediately even if not (does not block).
  * @return : 1 if successful, 0 if not.
  */
@@ -82,3 +89,5 @@ int POOL_tryAdd(POOL_ctx* ctx, POOL_function function, void* opaque);
 #endif
 
 #endif
+
+#endif /* USE_EXTERNAL_ZSTD */

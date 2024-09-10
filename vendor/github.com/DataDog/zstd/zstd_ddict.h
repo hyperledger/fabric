@@ -1,5 +1,6 @@
+#ifndef USE_EXTERNAL_ZSTD
 /*
- * Copyright (c) 2016-present, Yann Collet, Facebook, Inc.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
  *
  * This source code is licensed under both the BSD-style license (found in the
@@ -15,7 +16,7 @@
 /*-*******************************************************
  *  Dependencies
  *********************************************************/
-#include <stddef.h>   /* size_t */
+#include "zstd_deps.h"   /* size_t */
 #include "zstd.h"     /* ZSTD_DDict, and several public functions */
 
 
@@ -42,3 +43,5 @@ void ZSTD_copyDDictParameters(ZSTD_DCtx* dctx, const ZSTD_DDict* ddict);
 
 
 #endif /* ZSTD_DDICT_H */
+
+#endif /* USE_EXTERNAL_ZSTD */

@@ -1,6 +1,8 @@
 #!/bin/bash
 # Get utilities
-yum -y -q -e 0 install wget tar unzip gcc
+#yum -y -q -e 0 install wget tar unzip gcc
+apt-get update
+apt-get -y install wget tar unzip gcc
 
 # Get Go
 wget -q https://dl.google.com/go/go1.13.linux-386.tar.gz
@@ -13,5 +15,5 @@ unzip mr.zip
 
 # Build and run tests
 go build
-PAYLOAD=$(pwd)/mr go test -v
-PAYLOAD=$(pwd)/mr go test -bench .
+DISABLE_BIG_TESTS=1 PAYLOAD=$(pwd)/mr go test -v
+DISABLE_BIG_TESTS=1 PAYLOAD=$(pwd)/mr go test -bench .

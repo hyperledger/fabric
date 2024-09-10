@@ -1,5 +1,6 @@
+#ifndef USE_EXTERNAL_ZSTD
 /*
- * Copyright (c) 2018-present, Facebook, Inc.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
  *
  * This source code is licensed under both the BSD-style license (found in the
@@ -15,8 +16,6 @@
  * Implementation taken from folly/CpuId.h
  * https://github.com/facebook/folly/blob/master/folly/CpuId.h
  */
-
-#include <string.h>
 
 #include "mem.h"
 
@@ -37,6 +36,7 @@ MEM_STATIC ZSTD_cpuid_t ZSTD_cpuid(void) {
     U32 f7b = 0;
     U32 f7c = 0;
 #if defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
+#if !defined(__clang__)
     int reg[4];
     __cpuid((int*)reg, 0);
     {
@@ -52,6 +52,41 @@ MEM_STATIC ZSTD_cpuid_t ZSTD_cpuid(void) {
             f7c = (U32)reg[2];
         }
     }
+#else
+    /* Clang compiler has a bug (fixed in https://reviews.llvm.org/D101338) in
+     * which the `__cpuid` intrinsic does not save and restore `rbx` as it needs
+     * to due to being a reserved register. So in that case, do the `cpuid`
+     * ourselves. Clang supports inline assembly anyway.
+     */
+    U32 n;
+    __asm__(
+        "pushq %%rbx\n\t"
+        "cpuid\n\t"
+        "popq %%rbx\n\t"
+        : "=a"(n)
+        : "a"(0)
+        : "rcx", "rdx");
+    if (n >= 1) {
+      U32 f1a;
+      __asm__(
+          "pushq %%rbx\n\t"
+          "cpuid\n\t"
+          "popq %%rbx\n\t"
+          : "=a"(f1a), "=c"(f1c), "=d"(f1d)
+          : "a"(1)
+          :);
+    }
+    if (n >= 7) {
+      __asm__(
+          "pushq %%rbx\n\t"
+          "cpuid\n\t"
+          "movq %%rbx, %%rax\n\t"
+          "popq %%rbx"
+          : "=a"(f7b), "=c"(f7c)
+          : "a"(7), "c"(0)
+          : "rdx");
+    }
+#endif
 #elif defined(__i386__) && defined(__PIC__) && !defined(__clang__) && defined(__GNUC__)
     /* The following block like the normal cpuid branch below, but gcc
      * reserves ebx for use of its pic register so we must specially
@@ -213,3 +248,5 @@ MEM_STATIC ZSTD_cpuid_t ZSTD_cpuid(void) {
 #undef X
 
 #endif /* ZSTD_COMMON_CPU_H */
+
+#endif /* USE_EXTERNAL_ZSTD */

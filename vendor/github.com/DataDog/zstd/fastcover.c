@@ -1,3 +1,14 @@
+#ifndef USE_EXTERNAL_ZSTD
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under both the BSD-style license (found in the
+ * LICENSE file in the root directory of this source tree) and the GPLv2 (found
+ * in the COPYING file in the root directory of this source tree).
+ * You may select, at your option, one of the above-listed licenses.
+ */
+
 /*-*************************************
 *  Dependencies
 ***************************************/
@@ -6,24 +17,33 @@
 #include <string.h> /* memset */
 #include <time.h>   /* clock */
 
+#ifndef ZDICT_STATIC_LINKING_ONLY
+#  define ZDICT_STATIC_LINKING_ONLY
+#endif
+
 #include "mem.h" /* read */
 #include "pool.h"
 #include "threading.h"
-#include "cover.h"
 #include "zstd_internal.h" /* includes zstd.h */
-#ifndef ZDICT_STATIC_LINKING_ONLY
-#define ZDICT_STATIC_LINKING_ONLY
-#endif
+#include "zstd_compress_internal.h" /* ZSTD_hash*() */
 #include "zdict.h"
+#include "cover.h"
 
 
 /*-*************************************
 *  Constants
 ***************************************/
+/**
+* There are 32bit indexes used to ref samples, so limit samples size to 4GB
+* on 64bit builds.
+* For 32bit builds we choose 1 GB.
+* Most 32bit platforms have 2GB user-mode addressable space and we allocate a large
+* contiguous buffer, so 1GB is already a high limit.
+*/
 #define FASTCOVER_MAX_SAMPLES_SIZE (sizeof(size_t) == 8 ? ((unsigned)-1) : ((unsigned)1 GB))
 #define FASTCOVER_MAX_F 31
 #define FASTCOVER_MAX_ACCEL 10
-#define DEFAULT_SPLITPOINT 0.75
+#define FASTCOVER_DEFAULT_SPLITPOINT 0.75
 #define DEFAULT_F 20
 #define DEFAULT_ACCEL 1
 
@@ -31,50 +51,50 @@
 /*-*************************************
 *  Console display
 ***************************************/
-static int g_displayLevel = 2;
+#ifndef LOCALDISPLAYLEVEL
+static int g_displayLevel = 0;
+#endif
+#undef  DISPLAY
 #define DISPLAY(...)                                                           \
   {                                                                            \
     fprintf(stderr, __VA_ARGS__);                                              \
     fflush(stderr);                                                            \
   }
+#undef  LOCALDISPLAYLEVEL
 #define LOCALDISPLAYLEVEL(displayLevel, l, ...)                                \
   if (displayLevel >= l) {                                                     \
     DISPLAY(__VA_ARGS__);                                                      \
   } /* 0 : no display;   1: errors;   2: default;  3: details;  4: debug */
+#undef  DISPLAYLEVEL
 #define DISPLAYLEVEL(l, ...) LOCALDISPLAYLEVEL(g_displayLevel, l, __VA_ARGS__)
 
+#ifndef LOCALDISPLAYUPDATE
+static const clock_t g_refreshRate = CLOCKS_PER_SEC * 15 / 100;
+static clock_t g_time = 0;
+#endif
+#undef  LOCALDISPLAYUPDATE
 #define LOCALDISPLAYUPDATE(displayLevel, l, ...)                               \
   if (displayLevel >= l) {                                                     \
-    if ((clock() - g_time > refreshRate) || (displayLevel >= 4)) {             \
+    if ((clock() - g_time > g_refreshRate) || (displayLevel >= 4)) {             \
       g_time = clock();                                                        \
       DISPLAY(__VA_ARGS__);                                                    \
     }                                                                          \
   }
+#undef  DISPLAYUPDATE
 #define DISPLAYUPDATE(l, ...) LOCALDISPLAYUPDATE(g_displayLevel, l, __VA_ARGS__)
-static const clock_t refreshRate = CLOCKS_PER_SEC * 15 / 100;
-static clock_t g_time = 0;
 
 
 /*-*************************************
 * Hash Functions
 ***************************************/
-static const U64 prime6bytes = 227718039650203ULL;
-static size_t ZSTD_hash6(U64 u, U32 h) { return (size_t)(((u  << (64-48)) * prime6bytes) >> (64-h)) ; }
-static size_t ZSTD_hash6Ptr(const void* p, U32 h) { return ZSTD_hash6(MEM_readLE64(p), h); }
-
-static const U64 prime8bytes = 0xCF1BBCDCB7A56463ULL;
-static size_t ZSTD_hash8(U64 u, U32 h) { return (size_t)(((u) * prime8bytes) >> (64-h)) ; }
-static size_t ZSTD_hash8Ptr(const void* p, U32 h) { return ZSTD_hash8(MEM_readLE64(p), h); }
-
-
 /**
- * Hash the d-byte value pointed to by p and mod 2^f
+ * Hash the d-byte value pointed to by p and mod 2^f into the frequency vector
  */
-static size_t FASTCOVER_hashPtrToIndex(const void* p, U32 h, unsigned d) {
+static size_t FASTCOVER_hashPtrToIndex(const void* p, U32 f, unsigned d) {
   if (d == 6) {
-    return ZSTD_hash6Ptr(p, h) & ((1 << h) - 1);
+    return ZSTD_hash6Ptr(p, f);
   }
-  return ZSTD_hash8Ptr(p, h) & ((1 << h) - 1);
+  return ZSTD_hash8Ptr(p, f);
 }
 
 
@@ -285,7 +305,7 @@ FASTCOVER_computeFrequency(U32* freqs, const FASTCOVER_ctx_t* ctx)
 
 /**
  * Prepare a context for dictionary building.
- * The context is only dependent on the parameter `d` and can used multiple
+ * The context is only dependent on the parameter `d` and can be used multiple
  * times.
  * Returns 0 on success or error code on error.
  * The context must be destroyed with `FASTCOVER_ctx_destroy()`.
@@ -451,20 +471,20 @@ typedef struct FASTCOVER_tryParameters_data_s {
  * This function is thread safe if zstd is compiled with multithreaded support.
  * It takes its parameters as an *OWNING* opaque pointer to support threading.
  */
-static void FASTCOVER_tryParameters(void *opaque)
+static void FASTCOVER_tryParameters(void* opaque)
 {
   /* Save parameters as local variables */
-  FASTCOVER_tryParameters_data_t *const data = (FASTCOVER_tryParameters_data_t *)opaque;
+  FASTCOVER_tryParameters_data_t *const data = (FASTCOVER_tryParameters_data_t*)opaque;
   const FASTCOVER_ctx_t *const ctx = data->ctx;
   const ZDICT_cover_params_t parameters = data->parameters;
   size_t dictBufferCapacity = data->dictBufferCapacity;
   size_t totalCompressedSize = ERROR(GENERIC);
   /* Initialize array to keep track of frequency of dmer within activeSegment */
-  U16* segmentFreqs = (U16 *)calloc(((U64)1 << ctx->f), sizeof(U16));
+  U16* segmentFreqs = (U16*)calloc(((U64)1 << ctx->f), sizeof(U16));
   /* Allocate space for hash table, dict, and freqs */
-  BYTE *const dict = (BYTE * const)malloc(dictBufferCapacity);
+  BYTE *const dict = (BYTE*)malloc(dictBufferCapacity);
   COVER_dictSelection_t selection = COVER_dictSelectionError(ERROR(GENERIC));
-  U32 *freqs = (U32*) malloc(((U64)1 << ctx->f) * sizeof(U32));
+  U32* freqs = (U32*) malloc(((U64)1 << ctx->f) * sizeof(U32));
   if (!segmentFreqs || !dict || !freqs) {
     DISPLAYLEVEL(1, "Failed to allocate buffers: out of memory\n");
     goto _cleanup;
@@ -476,7 +496,7 @@ static void FASTCOVER_tryParameters(void *opaque)
                                                     parameters, segmentFreqs);
 
     const unsigned nbFinalizeSamples = (unsigned)(ctx->nbTrainSamples * ctx->accelParams.finalize / 100);
-    selection = COVER_selectDict(dict + tail, dictBufferCapacity - tail,
+    selection = COVER_selectDict(dict + tail, dictBufferCapacity, dictBufferCapacity - tail,
          ctx->samples, ctx->samplesSizes, nbFinalizeSamples, ctx->nbTrainSamples, ctx->nbSamples, parameters, ctx->offsets,
          totalCompressedSize);
 
@@ -526,7 +546,7 @@ FASTCOVER_convertToFastCoverParams(ZDICT_cover_params_t coverParams,
 }
 
 
-ZDICTLIB_API size_t
+ZDICTLIB_STATIC_API size_t
 ZDICT_trainFromBuffer_fastCover(void* dictBuffer, size_t dictBufferCapacity,
                                 const void* samplesBuffer,
                                 const size_t* samplesSizes, unsigned nbSamples,
@@ -537,7 +557,7 @@ ZDICT_trainFromBuffer_fastCover(void* dictBuffer, size_t dictBufferCapacity,
     ZDICT_cover_params_t coverParams;
     FASTCOVER_accel_t accelParams;
     /* Initialize global data */
-    g_displayLevel = parameters.zParams.notificationLevel;
+    g_displayLevel = (int)parameters.zParams.notificationLevel;
     /* Assign splitPoint and f if not provided */
     parameters.splitPoint = 1.0;
     parameters.f = parameters.f == 0 ? DEFAULT_F : parameters.f;
@@ -595,7 +615,7 @@ ZDICT_trainFromBuffer_fastCover(void* dictBuffer, size_t dictBufferCapacity,
 }
 
 
-ZDICTLIB_API size_t
+ZDICTLIB_STATIC_API size_t
 ZDICT_optimizeTrainFromBuffer_fastCover(
                     void* dictBuffer, size_t dictBufferCapacity,
                     const void* samplesBuffer,
@@ -607,7 +627,7 @@ ZDICT_optimizeTrainFromBuffer_fastCover(
     /* constants */
     const unsigned nbThreads = parameters->nbThreads;
     const double splitPoint =
-        parameters->splitPoint <= 0.0 ? DEFAULT_SPLITPOINT : parameters->splitPoint;
+        parameters->splitPoint <= 0.0 ? FASTCOVER_DEFAULT_SPLITPOINT : parameters->splitPoint;
     const unsigned kMinD = parameters->d == 0 ? 6 : parameters->d;
     const unsigned kMaxD = parameters->d == 0 ? 8 : parameters->d;
     const unsigned kMinK = parameters->k == 0 ? 50 : parameters->k;
@@ -620,7 +640,7 @@ ZDICT_optimizeTrainFromBuffer_fastCover(
     const unsigned accel = parameters->accel == 0 ? DEFAULT_ACCEL : parameters->accel;
     const unsigned shrinkDict = 0;
     /* Local variables */
-    const int displayLevel = parameters->zParams.notificationLevel;
+    const int displayLevel = (int)parameters->zParams.notificationLevel;
     unsigned iteration = 1;
     unsigned d;
     unsigned k;
@@ -704,7 +724,7 @@ ZDICT_optimizeTrainFromBuffer_fastCover(
         data->parameters.splitPoint = splitPoint;
         data->parameters.steps = kSteps;
         data->parameters.shrinkDict = shrinkDict;
-        data->parameters.zParams.notificationLevel = g_displayLevel;
+        data->parameters.zParams.notificationLevel = (unsigned)g_displayLevel;
         /* Check the parameters */
         if (!FASTCOVER_checkParameters(data->parameters, dictBufferCapacity,
                                        data->ctx->f, accel)) {
@@ -745,3 +765,5 @@ ZDICT_optimizeTrainFromBuffer_fastCover(
     }
 
 }
+
+#endif /* USE_EXTERNAL_ZSTD */
