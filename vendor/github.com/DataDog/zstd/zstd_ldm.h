@@ -1,10 +1,12 @@
+#ifndef USE_EXTERNAL_ZSTD
 /*
- * Copyright (c) 2016-present, Yann Collet, Facebook, Inc.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
  *
  * This source code is licensed under both the BSD-style license (found in the
  * LICENSE file in the root directory of this source tree) and the GPLv2 (found
  * in the COPYING file in the root directory of this source tree).
+ * You may select, at your option, one of the above-listed licenses.
  */
 
 #ifndef ZSTD_LDM_H
@@ -22,6 +24,10 @@ extern "C" {
 ***************************************/
 
 #define ZSTD_LDM_DEFAULT_WINDOW_LOG ZSTD_WINDOWLOG_LIMIT_DEFAULT
+
+void ZSTD_ldm_fillHashTable(
+            ldmState_t* state, const BYTE* ip,
+            const BYTE* iend, ldmParams_t const* params);
 
 /**
  * ZSTD_ldm_generateSequences():
@@ -61,6 +67,7 @@ size_t ZSTD_ldm_generateSequences(
  */
 size_t ZSTD_ldm_blockCompress(rawSeqStore_t* rawSeqStore,
             ZSTD_matchState_t* ms, seqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
+            ZSTD_paramSwitch_e useRowMatchFinder,
             void const* src, size_t srcSize);
 
 /**
@@ -68,11 +75,17 @@ size_t ZSTD_ldm_blockCompress(rawSeqStore_t* rawSeqStore,
  *
  * Skip past `srcSize` bytes worth of sequences in `rawSeqStore`.
  * Avoids emitting matches less than `minMatch` bytes.
- * Must be called for data with is not passed to ZSTD_ldm_blockCompress().
+ * Must be called for data that is not passed to ZSTD_ldm_blockCompress().
  */
 void ZSTD_ldm_skipSequences(rawSeqStore_t* rawSeqStore, size_t srcSize,
     U32 const minMatch);
 
+/* ZSTD_ldm_skipRawSeqStoreBytes():
+ * Moves forward in rawSeqStore by nbBytes, updating fields 'pos' and 'posInSequence'.
+ * Not to be used in conjunction with ZSTD_ldm_skipSequences().
+ * Must be called for data with is not passed to ZSTD_ldm_blockCompress().
+ */
+void ZSTD_ldm_skipRawSeqStoreBytes(rawSeqStore_t* rawSeqStore, size_t nbBytes);
 
 /** ZSTD_ldm_getTableSize() :
  *  Estimate the space needed for long distance matching tables or 0 if LDM is
@@ -103,3 +116,5 @@ void ZSTD_ldm_adjustParameters(ldmParams_t* params,
 #endif
 
 #endif /* ZSTD_FAST_H */
+
+#endif /* USE_EXTERNAL_ZSTD */

@@ -1,29 +1,18 @@
 package zstd
 
 /*
-#define ZSTD_STATIC_LINKING_ONLY
+// support decoding of "legacy" zstd payloads from versions [0.4, 0.8], matching the
+// default configuration of the zstd command line tool:
+// https://github.com/facebook/zstd/blob/dev/programs/README.md
+#cgo CFLAGS: -DZSTD_LEGACY_SUPPORT=4 -DZSTD_MULTITHREAD=1
+
 #include "zstd.h"
-#include "stdint.h"  // for uintptr_t
-
-// The following *_wrapper function are used for removing superflouos
-// memory allocations when calling the wrapped functions from Go code.
-// See https://github.com/golang/go/issues/24450 for details.
-
-static size_t ZSTD_compress_wrapper(uintptr_t dst, size_t maxDstSize, const uintptr_t src, size_t srcSize, int compressionLevel) {
-	return ZSTD_compress((void*)dst, maxDstSize, (const void*)src, srcSize, compressionLevel);
-}
-
-static size_t ZSTD_decompress_wrapper(uintptr_t dst, size_t maxDstSize, uintptr_t src, size_t srcSize) {
-	return ZSTD_decompress((void*)dst, maxDstSize, (const void *)src, srcSize);
-}
-
 */
 import "C"
 import (
 	"bytes"
 	"errors"
 	"io/ioutil"
-	"runtime"
 	"unsafe"
 )
 
@@ -37,6 +26,17 @@ const (
 var (
 	// ErrEmptySlice is returned when there is nothing to compress
 	ErrEmptySlice = errors.New("Bytes slice is empty")
+)
+
+const (
+	// decompressSizeBufferLimit is the limit we set on creating a decompression buffer for the Decompress API
+	// This is made to prevent DOS from maliciously-created payloads (aka zipbomb).
+	// For large payloads with a compression ratio > 10, you can do your own allocation and pass it to the method:
+	// dst := make([]byte, 1GB)
+	// decompressed, err := zstd.Decompress(dst, src)
+	decompressSizeBufferLimit = 1000 * 1000
+
+	zstdFrameHeaderSizeMin = 2 // From zstd.h. Since it's experimental API, hardcoding it
 )
 
 // CompressBound returns the worst case size needed for a destination buffer,
@@ -57,6 +57,33 @@ func cCompressBound(srcSize int) int {
 	return int(C.ZSTD_compressBound(C.size_t(srcSize)))
 }
 
+// decompressSizeHint tries to give a hint on how much of the output buffer size we should have
+// based on zstd frame descriptors. To prevent DOS from maliciously-created payloads, limit the size
+func decompressSizeHint(src []byte) int {
+	// 1 MB or 50x input size
+	upperBound := 50 * len(src)
+	if upperBound < decompressSizeBufferLimit {
+		upperBound = decompressSizeBufferLimit
+	}
+
+	hint := upperBound
+	if len(src) >= zstdFrameHeaderSizeMin {
+		hint = int(C.ZSTD_getFrameContentSize(unsafe.Pointer(&src[0]), C.size_t(len(src))))
+		if hint < 0 { // On error, just use upperBound
+			hint = upperBound
+		}
+		if hint == 0 { // When compressing the empty slice, we need an output of at least 1 to pass down to the C lib
+			hint = 1
+		}
+	}
+
+	// Take the minimum of both
+	if hint > upperBound {
+		return upperBound
+	}
+	return hint
+}
+
 // Compress src into dst.  If you have a buffer to use, you can pass it to
 // prevent allocation.  If it is too small, or if nil is passed, a new buffer
 // will be allocated and returned.
@@ -73,19 +100,26 @@ func CompressLevel(dst, src []byte, level int) ([]byte, error) {
 		dst = make([]byte, bound)
 	}
 
-	srcPtr := C.uintptr_t(uintptr(0)) // Do not point anywhere, if src is empty
-	if len(src) > 0 {
-		srcPtr = C.uintptr_t(uintptr(unsafe.Pointer(&src[0])))
+	// We need unsafe.Pointer(&src[0]) in the Cgo call to avoid "Go pointer to Go pointer" panics.
+	// This means we need to special case empty input. See:
+	// https://github.com/golang/go/issues/14210#issuecomment-346402945
+	var cWritten C.size_t
+	if len(src) == 0 {
+		cWritten = C.ZSTD_compress(
+			unsafe.Pointer(&dst[0]),
+			C.size_t(len(dst)),
+			unsafe.Pointer(nil),
+			C.size_t(0),
+			C.int(level))
+	} else {
+		cWritten = C.ZSTD_compress(
+			unsafe.Pointer(&dst[0]),
+			C.size_t(len(dst)),
+			unsafe.Pointer(&src[0]),
+			C.size_t(len(src)),
+			C.int(level))
 	}
 
-	cWritten := C.ZSTD_compress_wrapper(
-		C.uintptr_t(uintptr(unsafe.Pointer(&dst[0]))),
-		C.size_t(len(dst)),
-		srcPtr,
-		C.size_t(len(src)),
-		C.int(level))
-
-	runtime.KeepAlive(src)
 	written := int(cWritten)
 	// Check if the return is an Error code
 	if err := getError(written); err != nil {
@@ -101,47 +135,40 @@ func Decompress(dst, src []byte) ([]byte, error) {
 	if len(src) == 0 {
 		return []byte{}, ErrEmptySlice
 	}
-	decompress := func(dst, src []byte) ([]byte, error) {
 
-		cWritten := C.ZSTD_decompress_wrapper(
-			C.uintptr_t(uintptr(unsafe.Pointer(&dst[0]))),
-			C.size_t(len(dst)),
-			C.uintptr_t(uintptr(unsafe.Pointer(&src[0]))),
-			C.size_t(len(src)))
+	bound := decompressSizeHint(src)
+	if cap(dst) >= bound {
+		dst = dst[0:cap(dst)]
+	} else {
+		dst = make([]byte, bound)
+	}
 
-		runtime.KeepAlive(src)
-		written := int(cWritten)
-		// Check error
-		if err := getError(written); err != nil {
-			return nil, err
-		}
+	written, err := DecompressInto(dst, src)
+	if err == nil {
 		return dst[:written], nil
 	}
-
-	if len(dst) == 0 {
-		// Attempt to use zStd to determine decompressed size (may result in error or 0)
-		size := int(C.size_t(C.ZSTD_getDecompressedSize(unsafe.Pointer(&src[0]), C.size_t(len(src)))))
-
-		if err := getError(size); err != nil {
-			return nil, err
-		}
-
-		if size > 0 {
-			dst = make([]byte, size)
-		} else {
-			dst = make([]byte, len(src)*3) // starting guess
-		}
-	}
-	for i := 0; i < 3; i++ { // 3 tries to allocate a bigger buffer
-		result, err := decompress(dst, src)
-		if !IsDstSizeTooSmallError(err) {
-			return result, err
-		}
-		dst = make([]byte, len(dst)*2) // Grow buffer by 2
+	if !IsDstSizeTooSmallError(err) {
+		return nil, err
 	}
 
 	// We failed getting a dst buffer of correct size, use stream API
 	r := NewReader(bytes.NewReader(src))
 	defer r.Close()
 	return ioutil.ReadAll(r)
+}
+
+// DecompressInto decompresses src into dst. Unlike Decompress, DecompressInto
+// requires that dst be sufficiently large to hold the decompressed payload.
+// DecompressInto may be used when the caller knows the size of the decompressed
+// payload before attempting decompression.
+//
+// It returns the number of bytes copied and an error if any is encountered. If
+// dst is too small, DecompressInto errors.
+func DecompressInto(dst, src []byte) (int, error) {
+	written := int(C.ZSTD_decompress(
+		unsafe.Pointer(&dst[0]),
+		C.size_t(len(dst)),
+		unsafe.Pointer(&src[0]),
+		C.size_t(len(src))))
+	return written, getError(written)
 }

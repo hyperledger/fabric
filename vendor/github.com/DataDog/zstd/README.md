@@ -6,8 +6,8 @@
 
 [C Zstd Homepage](https://github.com/facebook/zstd)
 
-The current headers and C files are from *v1.4.4* (Commit
-[10f0e699](https://github.com/facebook/zstd/releases/tag/v1.4.4)).
+The current headers and C files are from *v1.5.6* (Commit
+[794ea1b](https://github.com/facebook/zstd/releases/tag/v1.5.6)).
 
 ## Usage
 
@@ -18,6 +18,21 @@ There are two main APIs:
 
 The compress/decompress APIs mirror that of lz4, while the streaming API was
 designed to be a drop-in replacement for zlib.
+
+### Building against an external libzstd
+
+By default, zstd source code is vendored in this repository and the binding will be built with
+the vendored source code bundled.
+
+If you want to build this binding against an external static or shared libzstd library, you can
+use the `external_libzstd` build tag. This will look for the libzstd pkg-config file and extract
+build and linking parameters from that pkg-config file.
+
+Note that it requires at least libzstd 1.4.0.
+
+```bash
+go build -tags external_libzstd
+```
 
 ### Simple `Compress/Decompress`
 
@@ -59,6 +74,9 @@ NewWriterLevelDict(w io.Writer, level int, dict []byte) *Writer
 
 // Write compresses the input data and write it to the underlying writer
 (w *Writer) Write(p []byte) (int, error)
+
+// Flush writes any unwritten data to the underlying writer
+(w *Writer) Flush() error
 
 // Close flushes the buffer and frees C zstd objects
 (w *Writer) Close() error
