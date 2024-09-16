@@ -201,7 +201,7 @@ github.com/gorilla/mux
 # github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 ## explicit; go 1.14
 github.com/grpc-ecosystem/go-grpc-middleware
-# github.com/hyperledger-labs/SmartBFT v0.0.0-20240616160543-3f61a410b8c1
+# github.com/hyperledger-labs/SmartBFT v0.0.0-20240916013553-852e5be5889b
 ## explicit; go 1.22
 github.com/hyperledger-labs/SmartBFT/internal/bft
 github.com/hyperledger-labs/SmartBFT/pkg/api

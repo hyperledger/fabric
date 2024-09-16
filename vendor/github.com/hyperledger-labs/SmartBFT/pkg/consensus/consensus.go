@@ -14,12 +14,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	algorithm "github.com/hyperledger-labs/SmartBFT/internal/bft"
 	bft "github.com/hyperledger-labs/SmartBFT/pkg/api"
 	"github.com/hyperledger-labs/SmartBFT/pkg/metrics/disabled"
 	"github.com/hyperledger-labs/SmartBFT/pkg/types"
 	protos "github.com/hyperledger-labs/SmartBFT/smartbftprotos"
+	"google.golang.org/protobuf/proto"
 )
 
 // Consensus submits requests to be total ordered,
