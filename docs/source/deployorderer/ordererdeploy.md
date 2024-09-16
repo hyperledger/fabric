@@ -103,7 +103,6 @@ At a minimum, you need to configure the following parameters:
 - `General.TLS.PrivateKey ` - Ordering node private key from TLS CA.
 - `General.TLS.Certificate ` - Ordering node signed certificate (public key) from the TLS CA.
 - `General.TLS.RootCAS` - This value should be unset.
-- `General.BoostrapMethod:none` - This allows the orderer to start without needing a system channel configuration block (system channel is no longer supported since Fabric v3.0).
 - `General.LocalMSPDir` - Path to the ordering node MSP folder.
 - `General.LocalMSPID` - MSP ID of the ordering organization as specified in the channel configuration.
 - `FileLedger.Location` - Location on the file system to the ledgers of the channels this orderer will be servicing.

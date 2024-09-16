@@ -132,32 +132,6 @@ In general, these four parameters would only need to be configured if you want t
 * **`ServerCertificate`**
 * **`ServerPrivateKey`**
 
-## General.BoostrapMethod
-
-```
-# Bootstrap method: The method by which to obtain the bootstrap block
-# system channel is specified. The option can be one of:
-#   "file" - path to a file containing the genesis block or config block of system channel
-#   "none" - allows an orderer to start without a system channel configuration
-BootstrapMethod: none
-```
-**`BootstrapMethod`**: Since Fabric v3.0 system channel is no longer supported, thus override this value to `none` and then ensure that [`ChannelParticipation.Enabled`](#channelparticipation) is set to `true`, otherwise you will get an error when you attempt to start the node. 
-
-## General.BoostrapFile
-
-```
-# Bootstrap file: The file containing the bootstrap block to use when
-# initializing the orderer system channel and BootstrapMethod is set to
-# "file".  The bootstrap file can be the genesis block, and it can also be
-# a config block for late bootstrap of some consensus methods like Raft.
-# Generate a genesis block by updating $FABRIC_CFG_PATH/configtx.yaml and
-# using configtxgen command with "-outputBlock" option.
-# Defaults to file "genesisblock" (in $FABRIC_CFG_PATH directory) if not specified.
-BootstrapFile:
-```
-
-**`BoostrapFile`**: Since Fabric v3.0 the system channel is no longer supported, so this value will not be used, and can therefore be left blank.
-
 ## General.LocalMSPDir
 
 ```
@@ -349,13 +323,14 @@ Admin:
 ```
 ChannelParticipation:
     # Channel participation API is enabled.
-    Enabled: false
+    Enabled: true
 
     # The maximum size of the request body when joining a channel.
     MaxRequestBodySize: 1 MB
 ```
 
-* **`Enabled`**: If you are bootstrapping the ordering node with a system channel genesis block, this value can be set to either `true` or `false` (setting the value to `true` allows you to list channels and to migrate away from the system channel in the future). If you are **not** bootstrapping the ordering node with a system channel genesis block, this value must be set to `true` and the [`General.BoostrapMethod`](#general-boostrapmethod) should be set to `none`.
+* **`Enabled`**: Since system channel is no longer supported, this value must be `true` so that you can join ordering service nodes to a channel.
+
 * **`MaxRequestBodySize`**: (default value should not be overridden) This value controls the maximum size a configuration block can be and be accepted by this ordering node. Most configuration blocks are smaller than 1 MB, but if for some reason a configuration block is too large to be accept, bring down the node, increase this value, and restart the node.
 
 ## Consensus.*

@@ -37,9 +37,6 @@ In addition to the above, here is a sampling of the decisions you will need to m
 * **Database type.**
   Some channels in a network might require all data to be modeled in a way :doc:`couchdb_as_state_database` can understand, while other networks, prioritizing speed, might decide that all peers will use LevelDB. Note that channels should not have peers that use both CouchDB and LevelDB on them, as CouchDB imposes some data restrictions on keys and values. Keys and values that are valid in LevelDB may not be valid in CouchDB.
 
-* **Create a system channel or not.**
-  Ordering nodes can be bootstrapped with a configuration block for an administrative channel known as the “system channel” (from which application channels can be created), or simply started and joined to application channels as needed. The recommended method is to bootstrap without a configuration block, which is the approach this deployment guide assumes you will take. For more information about creating a system channel genesis block and bootstrapping an ordering node with it, check out `Deploying a production network <https://hyperledger-fabric.readthedocs.io/en/release-2.2/deployment_guide_overview.html#creating-an-ordering-node>`_ from the Fabric v2.2 documentation.
-
 * **Channels and private data.**
   Some networks might decide that :doc:`channels` are the best way to ensure privacy and isolation for certain transactions. Others might decide that fewer channels, supplemented where necessary with :doc:`private-data/private-data` collections, better serves their privacy needs.
 
@@ -193,8 +190,6 @@ Among the parameters in ``orderer.yaml``, there are:
 * **Addresses and paths**: because ordering nodes interact with other components, you must specify a series of addresses in the configuration. These include addresses where the ordering node itself can be found by other components as well as **Operations and metrics**, which allow you to set up methods for monitoring the health and performance of your ordering node through the configuration of endpoints.
 
 For more information about ``orderer.yaml`` and its specific parameters, check out :doc:`deployorderer/ordererchecklist`.
-
-Note: This tutorial assumes that a system channel genesis block will not be used when bootstrapping the orderer. Instead, these nodes (or a subset of them), will be joined to a channel using the process to :doc:`create_channel/create_channel_participation`. For information on how to create an orderer that will be bootstrapped with a system channel genesis block, check out `Deploy the ordering service <https://hyperledger-fabric.readthedocs.io/en/release-2.2/deployment_guide_overview.html>`_ from the Fabric v2.2 documentation.
 
 .. toctree::
    :maxdepth: 1
