@@ -165,7 +165,7 @@ func TestDockerBuildOptions(t *testing.T) {
 	require.NoError(t, err, "unexpected error from DockerBuildOptions")
 
 	expectedOpts := util.DockerBuildOptions{
-		Image: "hyperledger/fabric-javaenv:latest",
+		Image: "hyperledger/fabric-javaenv:2.5",
 		Cmd:   "./build.sh",
 	}
 	require.Equal(t, expectedOpts, opts)
