@@ -2,7 +2,7 @@
 
 Use this tutorial along with the test network to learn how to create a channel genesis block and then create a new application channel that the test network peers can join. Rather than requiring you to set up an orderer, this tutorial leverages the nodes from the Fabric sample test network. Because the test network deploys an ordering service and peers for you, this tutorial focuses solely on the process to create a channel. It is worth noting that the test network includes a `createChannel` subcommand that can be used to create a channel, but this tutorial explains how do it manually, the process that is required when you do not use the test network.
 
-Fabric v2.3 introduces the capability to create a channel without requiring a system channel, removing an extra layer of administration from the process of creating a channel. In this tutorial, we use the [configtxgen](../commands/configtxgen.html) tool to create a channel genesis block and then use the [osnadmin channel](../commands/osnadminchannel.html) command to create the channel.
+In this tutorial, we use the [configtxgen](../commands/configtxgen.html) tool to create a channel genesis block and then use the [osnadmin channel](../commands/osnadminchannel.html) command to create the channel.
 
 **Note:**
 - If you are _not_ using the test network, you should follow the instructions for [how to deploy an ordering service](create_channel_participation.html#deploy-a-new-set-of-orderers).

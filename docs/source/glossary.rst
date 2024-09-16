@@ -182,9 +182,7 @@ Consenter set
 -------------
 
 In a Raft ordering service, these are the ordering nodes actively participating
-in the consensus mechanism on a channel. If other ordering nodes exist on the
-system channel, but are not a part of a channel, they are not part of that
-channel's consenter set.
+in the consensus mechanism on a channel.
 
 .. _Consortium:
 
@@ -587,23 +585,6 @@ State Database
 
 World state data is stored in a state database for efficient reads and queries
 from chaincode. Supported databases include levelDB and couchDB.
-
-.. _System-Chain:
-
-System Chain
-------------
-
-Contains a configuration block defining the network at a system level. The
-system chain lives within the ordering service, and similar to a channel, has
-an initial configuration containing information such as: MSP information, policies,
-and configuration details.  Any change to the overall network (e.g. a new org
-joining or a new ordering node being added) will result in a new configuration block
-being added to the system chain.
-
-The system chain can be thought of as the common binding for a channel or group
-of channels.  For instance, a collection of financial institutions may form a
-consortium (represented through the system chain), and then proceed to create
-channels relative to their aligned and varying business agendas.
 
 .. _Transaction:
 

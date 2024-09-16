@@ -191,8 +191,7 @@ administrator to their bearer, provided that they possess the client or admin OU
 Adding MSPs to channels
 -----------------------
 
-For information about how to add MSPs to a channel (including the decision of
-whether to bootstrap ordering nodes with a system channel genesis block), check
+For information about how to add MSPs to a channel, check
 out :doc:`create_channel/create_channel_overview`.
 
 Best practices

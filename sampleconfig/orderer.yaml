@@ -127,30 +127,13 @@ General:
         # it switches to a new orderer as a source of blocks.
         ReplicationPolicy:
 
-    # Bootstrap method: The method by which to obtain the bootstrap block
-    # system channel is specified. The option can be one of:
-    #   "file" - path to a file containing the genesis block or config block of system channel
-    #   "none" - allows an orderer to start without a system channel configuration
-    BootstrapMethod: none
-
-    # Bootstrap file: The file containing the bootstrap block to use when
-    # initializing the orderer system channel and BootstrapMethod is set to
-    # "file".  The bootstrap file can be the genesis block, and it can also be
-    # a config block for late bootstrap of some consensus methods like Raft.
-    # Generate a genesis block by updating $FABRIC_CFG_PATH/configtx.yaml and
-    # using configtxgen command with "-outputBlock" option.
-    # Defaults to file "genesisblock" (in $FABRIC_CFG_PATH directory) if not specified.
-    BootstrapFile:
-
     # LocalMSPDir is where to find the private crypto material needed by the
     # orderer. It is set relative here as a default for dev environments but
     # should be changed to the real location in production.
     LocalMSPDir: msp
 
     # LocalMSPID is the identity to register the local MSP material with the MSP
-    # manager. IMPORTANT: The local MSP ID of an orderer needs to match the MSP
-    # ID of one of the organizations defined in the orderer system channel's
-    # /Channel/Orderer configuration. The sample organization defined in the
+    # manager. The sample organization defined in the
     # sample configuration provided has an MSP ID of "SampleOrg".
     LocalMSPID: SampleOrg
 
