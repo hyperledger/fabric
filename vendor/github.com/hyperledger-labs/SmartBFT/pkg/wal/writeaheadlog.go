@@ -16,10 +16,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger-labs/SmartBFT/pkg/api"
 	"github.com/hyperledger-labs/SmartBFT/pkg/metrics/disabled"
 	protos "github.com/hyperledger-labs/SmartBFT/smartbftprotos"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -84,16 +84,16 @@ type WriteAheadLogFile struct {
 	logger  api.Logger
 	metrics *Metrics
 
-	mutex         sync.Mutex
-	dirFile       *os.File
-	index         uint64
-	logFile       *os.File
-	headerBuff    []byte
-	dataBuff      *proto.Buffer
-	crc           uint32
-	readMode      bool
-	truncateIndex uint64
-	activeIndexes []uint64
+	mutex           sync.Mutex
+	dirFile         *os.File
+	index           uint64
+	logFile         *os.File
+	headerBuff      []byte
+	crc             uint32
+	readMode        bool
+	truncateIndex   uint64
+	activeIndexes   []uint64
+	bufferSizeBytes int64
 }
 
 type Options struct {
@@ -154,16 +154,16 @@ func Create(logger api.Logger, dirPath string, options *Options) (*WriteAheadLog
 	}
 
 	wal := &WriteAheadLogFile{
-		dirName:       cleanDirName,
-		options:       opt,
-		logger:        logger,
-		metrics:       opt.Metrics,
-		index:         1,
-		headerBuff:    make([]byte, 8),
-		dataBuff:      proto.NewBuffer(make([]byte, opt.BufferSizeBytes)),
-		crc:           walCRCSeed,
-		truncateIndex: 1,
-		activeIndexes: []uint64{1},
+		dirName:         cleanDirName,
+		options:         opt,
+		logger:          logger,
+		metrics:         opt.Metrics,
+		index:           1,
+		headerBuff:      make([]byte, 8),
+		crc:             walCRCSeed,
+		truncateIndex:   1,
+		activeIndexes:   []uint64{1},
+		bufferSizeBytes: opt.BufferSizeBytes,
 	}
 	wal.metrics.CountOfFiles.Set(float64(len(wal.activeIndexes)))
 
@@ -237,13 +237,13 @@ func Open(logger api.Logger, dirPath string, options *Options) (*WriteAheadLogFi
 	cleanDirName := filepath.Clean(dirPath)
 
 	wal := &WriteAheadLogFile{
-		dirName:    cleanDirName,
-		options:    opt,
-		logger:     logger,
-		metrics:    opt.Metrics,
-		headerBuff: make([]byte, 8),
-		dataBuff:   proto.NewBuffer(make([]byte, opt.BufferSizeBytes)),
-		readMode:   true,
+		dirName:         cleanDirName,
+		options:         opt,
+		logger:          logger,
+		metrics:         opt.Metrics,
+		headerBuff:      make([]byte, 8),
+		readMode:        true,
+		bufferSizeBytes: opt.BufferSizeBytes,
 	}
 
 	wal.dirFile, err = os.Open(cleanDirName)
@@ -351,7 +351,6 @@ func (w *WriteAheadLogFile) Close() error {
 		w.logFile = nil
 	}
 
-	w.dataBuff = nil
 	w.headerBuff = nil
 
 	if w.dirFile != nil {
@@ -426,14 +425,21 @@ func (w *WriteAheadLogFile) append(record *protos.LogRecord) error {
 		return ErrReadOnly
 	}
 
-	w.dataBuff.Reset()
-
-	err := w.dataBuff.Marshal(record)
+	buf := make([]byte, 0, w.bufferSizeBytes)
+	nbuf, err := proto.MarshalOptions{
+		Deterministic: false,
+		AllowPartial:  true,
+	}.MarshalAppend(buf, record)
 	if err != nil {
 		return fmt.Errorf("wal: failed to marshal to data buffer: %w", err)
 	}
+	if len(buf) == len(nbuf) {
+		if !record.ProtoReflect().IsValid() {
+			return fmt.Errorf("wal: failed to marshal to data buffer: %w", errors.New("proto: Marshal called with nil"))
+		}
+	}
 
-	payloadBuff := w.dataBuff.Bytes()
+	payloadBuff := nbuf
 
 	recordLength := len(payloadBuff)
 	if (uint64(recordLength) & recordCRCMask) != 0 {
