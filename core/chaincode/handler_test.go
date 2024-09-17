@@ -123,8 +123,10 @@ var _ = Describe("Handler", func() {
 			UUIDGenerator: chaincode.UUIDGeneratorFunc(func() string {
 				return "generated-query-id"
 			}),
-			AppConfig: fakeApplicationConfigRetriever,
-			Metrics:   chaincodeMetrics,
+			AppConfig:         fakeApplicationConfigRetriever,
+			Metrics:           chaincodeMetrics,
+			UseWriteBatch:     true,
+			MaxSizeWriteBatch: 1000,
 		}
 		chaincode.SetHandlerChatStream(handler, fakeChatStream)
 		chaincode.SetHandlerChaincodeID(handler, "test-handler-name:1.0")
@@ -2783,8 +2785,16 @@ var _ = Describe("Handler", func() {
 				Type: pb.ChaincodeMessage_REGISTERED,
 			}))
 
+			chaincodeAdditionalParams := &pb.ChaincodeAdditionalParams{
+				UseWriteBatch:     true,
+				MaxSizeWriteBatch: 1000,
+			}
+			payloadBytes, err := proto.Marshal(chaincodeAdditionalParams)
+			Expect(err).NotTo(HaveOccurred())
+
 			Expect(readyMessage).To(ProtoEqual(&pb.ChaincodeMessage{
-				Type: pb.ChaincodeMessage_READY,
+				Type:    pb.ChaincodeMessage_READY,
+				Payload: payloadBytes,
 			}))
 		})
 
