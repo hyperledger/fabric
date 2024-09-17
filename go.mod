@@ -36,7 +36,7 @@ require (
 	github.com/sykesm/zap-logfmt v0.0.4
 	github.com/syndtr/goleveldb v1.0.1-0.20210305035536-64b5b1c73954
 	github.com/tedsuo/ifrit v0.0.0-20220120221754-dd274de71113
-	go.etcd.io/etcd/client/pkg/v3 v3.5.9
+	go.etcd.io/etcd/client/pkg/v3 v3.5.14
 	go.etcd.io/etcd/raft/v3 v3.5.9
 	go.etcd.io/etcd/server/v3 v3.5.9
 	go.uber.org/zap v1.27.0
@@ -118,7 +118,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
-	go.etcd.io/etcd/pkg/v3 v3.5.9 // indirect
+	go.etcd.io/etcd/pkg/v3 v3.5.14 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/mod v0.15.0 // indirect
 	golang.org/x/net v0.23.0 // indirect

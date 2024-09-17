@@ -492,11 +492,11 @@ github.com/syndtr/goleveldb/leveldb/util
 github.com/tedsuo/ifrit
 github.com/tedsuo/ifrit/ginkgomon_v2
 github.com/tedsuo/ifrit/grouper
-# go.etcd.io/etcd/client/pkg/v3 v3.5.9
-## explicit; go 1.19
+# go.etcd.io/etcd/client/pkg/v3 v3.5.14
+## explicit; go 1.21
 go.etcd.io/etcd/client/pkg/v3/fileutil
-# go.etcd.io/etcd/pkg/v3 v3.5.9
-## explicit; go 1.19
+# go.etcd.io/etcd/pkg/v3 v3.5.14
+## explicit; go 1.21
 go.etcd.io/etcd/pkg/v3/crc
 go.etcd.io/etcd/pkg/v3/ioutil
 go.etcd.io/etcd/pkg/v3/pbutil

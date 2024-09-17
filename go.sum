@@ -597,10 +597,10 @@ github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9dec
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.etcd.io/bbolt v1.3.3/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.etcd.io/etcd v0.0.0-20191023171146-3cf2f69b5738/go.mod h1:dnLIgRNXwCJa5e+c6mIZCrds/GIG4ncV9HhK5PX7jPg=
-go.etcd.io/etcd/client/pkg/v3 v3.5.9 h1:oidDC4+YEuSIQbsR94rY9gur91UPL6DnxDCIYd2IGsE=
-go.etcd.io/etcd/client/pkg/v3 v3.5.9/go.mod h1:y+CzeSmkMpWN2Jyu1npecjB9BBnABxGM4pN8cGuJeL4=
-go.etcd.io/etcd/pkg/v3 v3.5.9 h1:6R2jg/aWd/zB9+9JxmijDKStGJAPFsX3e6BeJkMi6eQ=
-go.etcd.io/etcd/pkg/v3 v3.5.9/go.mod h1:BZl0SAShQFk0IpLWR78T/+pyt8AruMHhTNNX73hkNVY=
+go.etcd.io/etcd/client/pkg/v3 v3.5.14 h1:SaNH6Y+rVEdxfpA2Jr5wkEvN6Zykme5+YnbCkxvuWxQ=
+go.etcd.io/etcd/client/pkg/v3 v3.5.14/go.mod h1:8uMgAokyG1czCtIdsq+AGyYQMvpIKnSvPjFMunkgeZI=
+go.etcd.io/etcd/pkg/v3 v3.5.14 h1:keuxhJiDCPjTKpW77GxJnnVVD5n4IsfvkDaqiqUMNEQ=
+go.etcd.io/etcd/pkg/v3 v3.5.14/go.mod h1:7o+DL6a7DYz9KSjWByX+NGmQPYinoH3D36VAu/B3JqA=
 go.etcd.io/etcd/raft/v3 v3.5.9 h1:ZZ1GIHoUlHsn0QVqiRysAm3/81Xx7+i2d7nSdWxlOiI=
 go.etcd.io/etcd/raft/v3 v3.5.9/go.mod h1:WnFkqzFdZua4LVlVXQEGhmooLeyS7mqzS4Pf4BCVqXg=
 go.etcd.io/etcd/server/v3 v3.5.9 h1:vomEmmxeztLtS5OEH7d0hBAg4cjVIu9wXuNzUZx2ZA0=
