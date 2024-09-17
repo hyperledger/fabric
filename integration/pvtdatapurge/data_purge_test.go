@@ -164,7 +164,7 @@ var _ = Describe("Pvtdata purge", func() {
 				WaitForEvent: true,
 			}
 
-			marblechaincodeutil.AssertInvokeChaincodeFails(network, org2Peer0, purgeCommand, "Failed to purge state:PURGE_PRIVATE_DATA failed: transaction ID: [a-f0-9]{64}: purge private data is not enabled, channel application capability of V2_5 or later is required")
+			marblechaincodeutil.AssertInvokeChaincodeFails(network, org2Peer0, purgeCommand, "failed: transaction ID: [a-f0-9]{64}: purge private data is not enabled, channel application capability of V2_5 or later is required")
 		})
 	})
 
