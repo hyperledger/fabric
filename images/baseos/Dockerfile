@@ -25,6 +25,6 @@ RUN apt update && apt install -y \
     tzdata
 
 RUN     groupadd --gid 500 chaincode
-RUN     useradd -c "" -u 500 -g 500 -d /home/chaincode -M chaincode
+RUN     useradd -c "" -u 500 -g 500 -d /home/chaincode -m chaincode
 
 USER    chaincode
