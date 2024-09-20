@@ -512,7 +512,7 @@ func checkError(t *testing.T, tt *testDef, err error) (checked bool) {
 	if detailsCheck {
 		require.Len(t, s.Details(), len(tt.errDetails))
 		for _, detail := range s.Details() {
-			require.Contains(t, tt.errDetails, detail, "error details, expected: %v", tt.errDetails)
+			require.Contains(t, tt.errDetails, proto.MessageV1(detail), "error details, expected: %v", tt.errDetails)
 		}
 	}
 
