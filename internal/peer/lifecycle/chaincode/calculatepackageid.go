@@ -52,7 +52,7 @@ func (i *CalculatePackageIDInput) Validate() error {
 // the package ID for a packaged chaincode
 func CalculatePackageIDCmd(p *PackageIDCalculator) *cobra.Command {
 	calculatePackageIDCmd := &cobra.Command{
-		Use:       "calculatepackageid packageFile",
+		Use:       "calculatepackageid [packageFile]",
 		Short:     "Calculate the package ID for a chaincode.",
 		Long:      "Calculate the package ID for a packaged chaincode.",
 		ValidArgs: []string{"1"},

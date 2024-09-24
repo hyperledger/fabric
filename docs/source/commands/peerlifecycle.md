@@ -200,7 +200,7 @@ Global Flags:
 Calculate the package ID for a packaged chaincode.
 
 Usage:
-  peer lifecycle chaincode calculatepackageid packageFile [flags]
+  peer lifecycle chaincode calculatepackageid [packageFile] [flags]
 
 Flags:
       --connectionProfile string       The fully qualified path to the connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
