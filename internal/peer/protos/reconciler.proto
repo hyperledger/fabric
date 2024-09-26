@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package protos;
+
+// ReconcileRequest represents a request to reconcile a block.
+message ReconcileRequest {
+  string channel_id = 1;  // The name of the channel.
+  uint64 block_number = 2; // The block number to reconcile.
+}
+
+// ReconcileResponse represents the response from a reconciliation request.
+message ReconcileResponse {
+  bool success = 1;        // Indicates if the reconciliation was successful.
+  string message = 2;      // A message providing additional information.
+}
+
+// Define the service for reconciliation
+service ReconcileService {
+  // RPC method to send a reconcile request
+  rpc SendReconcileRequest(ReconcileRequest) returns (ReconcileResponse);
+}

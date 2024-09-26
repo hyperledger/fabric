@@ -9,6 +9,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"github.com/hyperledger/fabric/internal/peer/protos"
 	"io"
 	"io/ioutil"
 	"net"
@@ -502,6 +503,19 @@ func serve(args []string) error {
 		PolicyCheckerProvider: policyCheckerProvider,
 	}
 	pb.RegisterDeliverServer(peerServer.Server(), abServer)
+
+	// Custom
+	p2pMessageServer := &peer.P2pMessageServer{
+		DeliverHandler: deliver.NewHandler(
+			&peer.DeliverChainManager{Peer: peerInstance},
+			coreConfig.AuthenticationTimeWindow,
+			mutualTLS,
+			metrics,
+			false,
+		),
+		PolicyCheckerProvider: policyCheckerProvider,
+	}
+	protos.RegisterReconcileServiceServer(peerServer.Server(), p2pMessageServer)
 
 	// Create a self-signed CA for chaincode service
 	ca, err := tlsgen.NewCA()

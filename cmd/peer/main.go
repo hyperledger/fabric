@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
+	"github.com/hyperledger/fabric/internal/peer/reconciler"
 	_ "net/http/pprof"
 	"os"
 	"strings"
@@ -50,6 +51,7 @@ func main() {
 	mainCmd.AddCommand(channel.Cmd(nil))
 	mainCmd.AddCommand(lifecycle.Cmd(cryptoProvider))
 	mainCmd.AddCommand(snapshot.Cmd(cryptoProvider))
+	mainCmd.AddCommand(reconciler.Cmd(nil))
 
 	// On failure Cobra prints the usage message and error string, so we only
 	// need to exit with a non-0 status

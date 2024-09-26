@@ -9,6 +9,7 @@ package common
 import (
 	"context"
 	"crypto/tls"
+	"github.com/hyperledger/fabric/internal/peer/protos"
 	"io/ioutil"
 	"time"
 
@@ -121,6 +122,15 @@ func (pc *PeerClient) PeerDeliver() (pb.DeliverClient, error) {
 		return nil, errors.WithMessagef(err, "deliver client failed to connect to %s", pc.Address)
 	}
 	return pb.NewDeliverClient(conn), nil
+}
+
+// P2PMessage returns a client for the Deliver service
+func (pc *PeerClient) P2PMessage() (protos.ReconcileServiceClient, error) {
+	conn, err := pc.CommonClient.NewConnection(pc.Address, comm.ServerNameOverride(pc.sn))
+	if err != nil {
+		return nil, errors.WithMessagef(err, "deliver client failed to connect to %s", pc.Address)
+	}
+	return protos.NewReconcileServiceClient(conn), nil
 }
 
 // Certificate returns the TLS client certificate (if available)

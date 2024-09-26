@@ -12,6 +12,7 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/internal/peer/protos"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -155,6 +156,14 @@ func seekHelper(
 	}
 
 	return env
+}
+
+type ordererP2PDeliverService struct {
+	protos.ReconcileServiceClient
+}
+
+type peerP2PDeliverService struct {
+	protos.ReconcileServiceClient
 }
 
 type ordererDeliverService struct {
