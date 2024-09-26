@@ -10,7 +10,7 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"math/rand"
+	"math/rand/v2"
 	"sync/atomic"
 	"time"
 

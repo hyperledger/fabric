@@ -7,9 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package discovery
 
 import (
-	"math/rand"
+	crand "crypto/rand"
+	"math/rand/v2"
 	"sort"
-	"time"
 
 	"github.com/hyperledger/fabric/gossip/protoext"
 )
@@ -120,7 +120,9 @@ func (endorsers Endorsers) Filter(f ExclusionFilter) Endorsers {
 // Shuffle sorts the endorsers in random order
 func (endorsers Endorsers) Shuffle() Endorsers {
 	res := make(Endorsers, len(endorsers))
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
+	r := rand.New(rand.NewChaCha8(seed))
 	for i, index := range r.Perm(len(endorsers)) {
 		res[i] = endorsers[index]
 	}

@@ -8,10 +8,11 @@ package privdata
 
 import (
 	"bytes"
+	crand "crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"math"
-	"math/rand"
+	"math/rand/v2"
 	"sync"
 	"time"
 
@@ -681,7 +682,9 @@ func (p *puller) isEligibleByLatestConfig(channel string, collection string, cha
 }
 
 func randomizeMemberList(members []discovery.NetworkMember) []discovery.NetworkMember {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
+	r := rand.New(rand.NewChaCha8(seed))
 	res := make([]discovery.NetworkMember, len(members))
 	for i, j := range r.Perm(len(members)) {
 		res[i] = members[j]

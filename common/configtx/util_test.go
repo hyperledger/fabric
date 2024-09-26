@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package configtx
 
 import (
-	"math/rand"
+	"math/rand/v2"
 	"testing"
 
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
@@ -101,7 +101,7 @@ func randomLowerAlphaString(size int) string {
 	letters := []rune("abcdefghijklmnopqrstuvwxyz")
 	output := make([]rune, size)
 	for i := range output {
-		output[i] = letters[rand.Intn(len(letters))]
+		output[i] = letters[rand.IntN(len(letters))]
 	}
 	return string(output)
 }
@@ -110,7 +110,7 @@ func randomAlphaString(size int) string {
 	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	output := make([]rune, size)
 	for i := range output {
-		output[i] = letters[rand.Intn(len(letters))]
+		output[i] = letters[rand.IntN(len(letters))]
 	}
 	return string(output)
 }

@@ -809,7 +809,3 @@ func (s *GossipStateProviderImpl) commitBlock(block *common.Block, pvtData util.
 
 	return nil
 }
-
-func min(a uint64, b uint64) uint64 {
-	return b ^ ((a ^ b) & (-((a - b) >> 63)))
-}

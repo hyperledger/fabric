@@ -7,7 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package msgstore
 
 import (
-	"math/rand"
+	crand "crypto/rand"
+	"math/rand/v2"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -22,7 +23,9 @@ var r *rand.Rand
 
 func init() {
 	util.SetupTestLogging()
-	r = rand.New(rand.NewSource(time.Now().UnixNano()))
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
+	r = rand.New(rand.NewChaCha8(seed))
 }
 
 func alwaysNoAction(_ interface{}, _ interface{}) common.InvalidationResult {

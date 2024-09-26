@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdsa"
+	crand "crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
@@ -18,7 +19,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -650,7 +651,9 @@ func (cm *ComparisonMemoizer) shrink() {
 func (cm *ComparisonMemoizer) setup() {
 	cm.lock.Lock()
 	defer cm.lock.Unlock()
-	cm.rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
+	cm.rand = rand.New(rand.NewChaCha8(seed))
 	cm.cache = make(map[arguments]bool)
 }
 

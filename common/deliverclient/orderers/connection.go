@@ -11,7 +11,7 @@ import (
 	"crypto/md5"
 	"crypto/sha256"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"sync"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
@@ -73,7 +73,7 @@ func (cs *ConnectionSource) RandomEndpoint() (*Endpoint, error) {
 	if len(cs.allEndpoints) == 0 {
 		return nil, errors.Errorf("no endpoints currently defined")
 	}
-	return cs.allEndpoints[rand.Intn(len(cs.allEndpoints))], nil
+	return cs.allEndpoints[rand.IntN(len(cs.allEndpoints))], nil
 }
 
 func (cs *ConnectionSource) Endpoints() []*Endpoint {

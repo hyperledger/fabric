@@ -7,8 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package util
 
 import (
+	crand "crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"reflect"
 	"runtime"
 	"sync"
@@ -20,7 +21,9 @@ import (
 var r *rand.Rand
 
 func init() { // do we really need this?
-	r = rand.New(rand.NewSource(time.Now().UnixNano()))
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
+	r = rand.New(rand.NewChaCha8(seed))
 }
 
 // Equals returns whether a and b are the same
@@ -176,7 +179,7 @@ func SetVal(key string, val interface{}) {
 // RandomInt returns, as an int, a non-negative pseudo-random integer in [0,n)
 // It panics if n <= 0
 func RandomInt(n int) int {
-	return r.Intn(n)
+	return r.IntN(n)
 }
 
 // RandomUInt64 returns a random uint64

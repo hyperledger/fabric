@@ -7,13 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package statebased
 
 import (
+	crand "crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"runtime"
 	"strconv"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
@@ -169,8 +169,8 @@ func pvtRwsetUpdatingMetadataFor(cc, coll, key string) []byte {
 		})
 }
 
-func runFunctions(t *testing.T, seed int64, funcs ...func()) {
-	r := rand.New(rand.NewSource(seed))
+func runFunctions(t *testing.T, seed [32]byte, funcs ...func()) {
+	r := rand.New(rand.NewChaCha8(seed))
 	c := make(chan struct{})
 	for _, i := range r.Perm(len(funcs)) {
 		iLcl := i
@@ -186,7 +186,8 @@ func runFunctions(t *testing.T, seed int64, funcs ...func()) {
 
 func TestTranslatorBadPolicy(t *testing.T) {
 	t.Parallel()
-	seed := time.Now().Unix()
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
 
 	// Scenario: we verify that translation from SignaturePolicyEnvelope to ApplicationPolicy fails appropriately
 
@@ -226,7 +227,8 @@ func TestTranslatorBadPolicy(t *testing.T) {
 
 func TestTranslatorBadPolicyPvt(t *testing.T) {
 	t.Parallel()
-	seed := time.Now().Unix()
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
 
 	// Scenario: we verify that translation from SignaturePolicyEnvelope to ApplicationPolicy fails appropriately with private data
 
@@ -266,7 +268,8 @@ func TestTranslatorBadPolicyPvt(t *testing.T) {
 
 func TestDependencyNoConflict(t *testing.T) {
 	t.Parallel()
-	seed := time.Now().Unix()
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
 
 	// Scenario: validation parameter is retrieved successfully
 	// for a ledger key for transaction (1,1) after waiting for
@@ -309,7 +312,8 @@ func TestDependencyNoConflict(t *testing.T) {
 
 func TestDependencyConflict(t *testing.T) {
 	t.Parallel()
-	seed := time.Now().Unix()
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
 
 	// Scenario: validation parameter is retrieved
 	// for a ledger key for transaction (1,1) after waiting for
@@ -353,7 +357,8 @@ func TestDependencyConflict(t *testing.T) {
 
 func TestMultipleDependencyNoConflict(t *testing.T) {
 	t.Parallel()
-	seed := time.Now().Unix()
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
 
 	// Scenario: validation parameter is retrieved successfully
 	// for a ledger key for transaction (1,2) after waiting for
@@ -402,7 +407,8 @@ func TestMultipleDependencyNoConflict(t *testing.T) {
 
 func TestMultipleDependencyConflict(t *testing.T) {
 	t.Parallel()
-	seed := time.Now().Unix()
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
 
 	// Scenario: validation parameter is retrieved
 	// for a ledger key for transaction (1,2) after waiting for
@@ -452,7 +458,8 @@ func TestMultipleDependencyConflict(t *testing.T) {
 
 func TestPvtDependencyNoConflict(t *testing.T) {
 	t.Parallel()
-	seed := time.Now().Unix()
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
 
 	// Scenario: like TestDependencyNoConflict but for private data
 
@@ -490,7 +497,8 @@ func TestPvtDependencyNoConflict(t *testing.T) {
 
 func TestPvtDependencyConflict(t *testing.T) {
 	t.Parallel()
-	seed := time.Now().Unix()
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
 
 	// Scenario: like TestDependencyConflict but for private data
 
@@ -553,7 +561,8 @@ func TestBlockValidationTerminatesBeforeNewBlock(t *testing.T) {
 
 func TestLedgerErrors(t *testing.T) {
 	t.Parallel()
-	seed := time.Now().Unix()
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
 
 	// Scenario: we check that if a ledger error occurs,
 	// GetValidationParameterForKey returns an error
@@ -625,7 +634,8 @@ func TestLedgerErrors(t *testing.T) {
 
 func TestBadRwsetIsNoDependency(t *testing.T) {
 	t.Parallel()
-	seed := time.Now().Unix()
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
 
 	// Scenario: a transaction has a bogus read-write set.
 	// While the transaction will fail eventually, we check
@@ -663,7 +673,8 @@ func TestBadRwsetIsNoDependency(t *testing.T) {
 
 func TestWritesIntoDifferentNamespaces(t *testing.T) {
 	t.Parallel()
-	seed := time.Now().Unix()
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
 
 	// Scenario: transaction (1,0) writes to namespace cc1.
 	// Transaction (1,1) attempts to retrieve validation
@@ -701,7 +712,8 @@ func TestWritesIntoDifferentNamespaces(t *testing.T) {
 
 func TestCombinedCalls(t *testing.T) {
 	t.Parallel()
-	seed := time.Now().Unix()
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
 
 	// Scenario: transaction (1,3) requests validation parameters
 	// for different keys - one succeeds and one fails.
@@ -760,7 +772,8 @@ func TestCombinedCalls(t *testing.T) {
 }
 
 func TestForRaces(t *testing.T) {
-	seed := time.Now().Unix()
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
 
 	// scenario to stress test the parallel validation
 	// this is an extended combined test

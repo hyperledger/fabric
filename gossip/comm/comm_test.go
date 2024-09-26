@@ -10,12 +10,13 @@ import (
 	"bytes"
 	"context"
 	"crypto/hmac"
+	crand "crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
+	"math/rand/v2"
 	"net"
 	"strconv"
 	"sync"
@@ -48,7 +49,9 @@ var r *rand.Rand
 
 func init() {
 	util.SetupTestLogging()
-	r = rand.New(rand.NewSource(time.Now().UnixNano()))
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
+	r = rand.New(rand.NewChaCha8(seed))
 	factory.InitFactories(nil)
 	naiveSec.On("OrgByPeerIdentity", mock.Anything).Return(api.OrgIdentityType{})
 }
