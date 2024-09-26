@@ -9,7 +9,7 @@ package gateway
 import (
 	"context"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"

@@ -7,14 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package graph
 
 import (
-	"math/rand"
-	"time"
+	crand "crypto/rand"
+	"math/rand/v2"
 )
 
 var r *rand.Rand
 
 func init() {
-	r = rand.New(rand.NewSource(time.Now().UnixNano()))
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
+	r = rand.New(rand.NewChaCha8(seed))
 }
 
 // treePermutations represents possible permutations
@@ -112,7 +114,7 @@ func (tp *treePermutations) computeDescendantPermutations() {
 		// Ensure we don't have too much combinations of descendants
 		for CombinationsExceed(len(v.Descendants), v.Threshold, tp.combinationUpperBound) {
 			// Randomly pick a descendant, and remove it
-			victim := r.Intn(len(v.Descendants))
+			victim := r.IntN(len(v.Descendants))
 			v.Descendants = append(v.Descendants[:victim], v.Descendants[victim+1:]...)
 		}
 

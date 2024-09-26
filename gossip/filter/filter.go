@@ -7,17 +7,19 @@ SPDX-License-Identifier: Apache-2.0
 package filter
 
 import (
-	"math/rand"
+	crand "crypto/rand"
+	"math/rand/v2"
 
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/gossip/util"
 )
 
 var r *rand.Rand
 
 func init() { // do we really need this?
-	r = rand.New(rand.NewSource(int64(util.RandomUInt64())))
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
+	r = rand.New(rand.NewChaCha8(seed))
 }
 
 // RoutingFilter defines a predicate on a NetworkMember

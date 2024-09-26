@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package experiments
 
 import (
+	crand "crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/benchmark/chainmgmt"
@@ -51,7 +51,9 @@ func runReadWriteClientsForChain(chain *chainmgmt.Chain) {
 	wg.Add(numClients)
 	for i := 0; i < numClients; i++ {
 		numTxForClient := calculateShare(numTxForChain, numClients, i)
-		randomNumGen := rand.New(rand.NewSource(int64(time.Now().Nanosecond()) + int64(chain.ID)))
+		var seed [32]byte
+		_, _ = crand.Read(seed[:])
+		randomNumGen := rand.New(rand.NewChaCha8(seed))
 		go runReadWriteClient(chain, randomNumGen, numTxForClient, wg)
 	}
 	wg.Wait()
@@ -66,16 +68,16 @@ func runReadWriteClient(chain *chainmgmt.Chain, rand *rand.Rand, numTx int, wg *
 	useJSON := conf.dataConf.useJSON
 	var value []byte
 
-	for i := 0; i < numTx; i++ {
+	for range numTx {
 		simulator, err := chain.NewTxSimulator(util.GenerateUUID())
 		panicOnError(err)
 		maxKeys := max(numReadsPerTx, numWritesPerTx)
 		keysToOperateOn := []int{}
-		for i := 0; i < maxKeys; i++ {
-			keysToOperateOn = append(keysToOperateOn, rand.Intn(maxKeyNumber))
+		for range maxKeys {
+			keysToOperateOn = append(keysToOperateOn, rand.IntN(maxKeyNumber))
 		}
 
-		for i := 0; i < numReadsPerTx; i++ {
+		for i := range numReadsPerTx {
 			keyNumber := keysToOperateOn[i]
 			value, err = simulator.GetState(chaincodeName, constructKey(keyNumber))
 			panicOnError(err)
@@ -90,7 +92,7 @@ func runReadWriteClient(chain *chainmgmt.Chain, rand *rand.Rand, numTx int, wg *
 			}
 		}
 
-		for i := 0; i < numWritesPerTx; i++ {
+		for i := range numWritesPerTx {
 			keyNumber := keysToOperateOn[i]
 			key := constructKey(keyNumber)
 			if useJSON {
@@ -108,11 +110,4 @@ func runReadWriteClient(chain *chainmgmt.Chain, rand *rand.Rand, numTx int, wg *
 		chain.SubmitTx(srBytes)
 	}
 	wg.Done()
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
