@@ -11,7 +11,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math/rand"
+	"math/rand/v2"
 	"net"
 	"sort"
 	"strconv"
@@ -576,7 +576,7 @@ func TestConnect(t *testing.T) {
 	}
 	waitUntilOrFail(t, fullMembership)
 
-	discInst := instances[rand.Intn(len(instances))].Discovery.(*gossipDiscoveryImpl)
+	discInst := instances[rand.IntN(len(instances))].Discovery.(*gossipDiscoveryImpl)
 	mr, _ := discInst.createMembershipRequest(true)
 	am, _ := protoext.EnvelopeToGossipMessage(mr.GetMemReq().SelfInformation)
 	require.NotNil(t, am.SecretEnvelope)

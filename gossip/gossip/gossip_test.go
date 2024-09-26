@@ -8,9 +8,10 @@ package gossip
 
 import (
 	"bytes"
+	crand "crypto/rand"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -43,7 +44,9 @@ var (
 
 func TestMain(m *testing.M) {
 	util.SetupTestLogging()
-	r = rand.New(rand.NewSource(int64(time.Now().Second())))
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
+	r = rand.New(rand.NewChaCha8(seed))
 	factory.InitFactories(nil)
 	os.Exit(m.Run())
 }
@@ -535,7 +538,7 @@ func TestConnectToAnchorPeers(t *testing.T) {
 	waitUntilOrFailBlocking(t, wg.Wait, "waiting until all peers join the channel")
 
 	// Now start a random anchor peer
-	index := r.Intn(anchorPeercount)
+	index := r.IntN(anchorPeercount)
 	anchorPeer := newGossipInstanceWithGRPC(index, ports[index], grpcs[index], certs[index], secDialOpts[index], 100)
 	anchorPeer.JoinChan(jcm, common.ChannelID("A"))
 	anchorPeer.UpdateLedgerHeight(1, common.ChannelID("A"))
@@ -1443,7 +1446,7 @@ func TestIdentityExpiration(t *testing.T) {
 	// Now revoke some peer
 	var ports []int
 	ports = append(ports, port1, port2, port3, port4)
-	revokedPeerIndex := r.Intn(4)
+	revokedPeerIndex := r.IntN(4)
 	revokedPkiID := common.PKIidType(fmt.Sprintf("127.0.0.1:%d", ports[revokedPeerIndex]))
 	for i, p := range peers {
 		if i == revokedPeerIndex {

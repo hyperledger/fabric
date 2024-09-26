@@ -7,8 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package common
 
 import (
+	crand "crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,7 +21,9 @@ import (
 )
 
 func TestConfig(t *testing.T) {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
+	r := rand.New(rand.NewChaCha8(seed))
 	configFilePath := filepath.Join(os.TempDir(), fmt.Sprintf("config-%d.yaml", r.Int()))
 	fmt.Println(configFilePath)
 	t.Run("save and load a config", func(t *testing.T) {

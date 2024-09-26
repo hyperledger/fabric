@@ -8,7 +8,7 @@ package gateway
 
 import (
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"sort"
 	"strings"
 	"sync"
