@@ -8,6 +8,7 @@ package peer
 
 import (
 	"fmt"
+	"github.com/hyperledger/fabric/common/p2pmessage"
 	"sync"
 
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -116,6 +117,21 @@ func (p *Peer) updateTrustedRoots(cm channelconfig.Resources) {
 			"This peer may not be able to communicate with members of channel %s (%s)"
 		peerLogger.Warningf(msg, cm.ConfigtxValidator().ChannelID(), err)
 	}
+}
+
+//
+// P2P Message service support structs for the peer
+//
+
+type P2PMessageChainManager struct {
+	Peer *Peer
+}
+
+func (p P2PMessageChainManager) GetChain(chainID string) p2pmessage.Chain {
+	if channel := p.Peer.Channel(chainID); channel != nil {
+		return channel
+	}
+	return nil
 }
 
 //
