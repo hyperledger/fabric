@@ -26,7 +26,7 @@ import (
 )
 
 func TestBasicEncodingDecoding(t *testing.T) {
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		value := EncodeOrderPreservingVarUint64(uint64(i))
 		nextValue := EncodeOrderPreservingVarUint64(uint64(i + 1))
 		if !(bytes.Compare(value, nextValue) < 0) {
@@ -43,16 +43,16 @@ func TestBasicEncodingDecoding(t *testing.T) {
 
 func TestDecodingAppendedValues(t *testing.T) {
 	appendedValues := []byte{}
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		appendedValues = append(appendedValues, EncodeOrderPreservingVarUint64(uint64(i))...)
 	}
 
-	len := 0
+	l := 0
 	value := uint64(0)
 	var err error
-	for i := 0; i < 1000; i++ {
-		appendedValues = appendedValues[len:]
-		value, len, err = DecodeOrderPreservingVarUint64(appendedValues)
+	for i := range 1000 {
+		appendedValues = appendedValues[l:]
+		value, l, err = DecodeOrderPreservingVarUint64(appendedValues)
 		require.NoError(t, err, "Error via calling DecodeOrderPreservingVarUint64")
 		if value != uint64(i) {
 			t.Fatalf("expected value = [%d], decode value = [%d]", i, value)

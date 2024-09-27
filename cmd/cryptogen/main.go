@@ -344,9 +344,9 @@ func extendPeerOrg(orgSpec OrgSpec) {
 	publicKeyAlg := getPublicKeyAlg(orgSpec.Users.PublicKeyAlgorithm)
 	// TODO: add ability to specify usernames
 	users := []NodeSpec{}
-	for j := 1; j <= orgSpec.Users.Count; j++ {
+	for j := range orgSpec.Users.Count {
 		user := NodeSpec{
-			CommonName:         fmt.Sprintf("%s%d@%s", userBaseName, j, orgName),
+			CommonName:         fmt.Sprintf("%s%d@%s", userBaseName, j+1, orgName),
 			PublicKeyAlgorithm: publicKeyAlg,
 		}
 
@@ -485,7 +485,7 @@ func renderNodeSpec(domain string, spec *NodeSpec) error {
 func renderOrgSpec(orgSpec *OrgSpec, prefix string) error {
 	publickKeyAlg := getPublicKeyAlg(orgSpec.Template.PublicKeyAlgorithm)
 	// First process all of our templated nodes
-	for i := 0; i < orgSpec.Template.Count; i++ {
+	for i := range orgSpec.Template.Count {
 		data := HostnameData{
 			Prefix: prefix,
 			Index:  i + orgSpec.Template.Start,
@@ -563,9 +563,9 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 	publicKeyAlg := getPublicKeyAlg(orgSpec.Users.PublicKeyAlgorithm)
 	// TODO: add ability to specify usernames
 	users := []NodeSpec{}
-	for j := 1; j <= orgSpec.Users.Count; j++ {
+	for j := range orgSpec.Users.Count {
 		user := NodeSpec{
-			CommonName:         fmt.Sprintf("%s%d@%s", userBaseName, j, orgName),
+			CommonName:         fmt.Sprintf("%s%d@%s", userBaseName, j+1, orgName),
 			PublicKeyAlgorithm: publicKeyAlg,
 		}
 
@@ -638,7 +638,7 @@ func generateNodes(baseDir string, nodes []NodeSpec, signCA *ca.CA, tlsCA *ca.CA
 			if node.isAdmin && nodeOUs {
 				currentNodeType = msp.ADMIN
 			}
-			err := msp.GenerateLocalMSP(nodeDir, node.CommonName, node.SANS, signCA, tlsCA, currentNodeType, nodeOUs, node.PublicKeyAlgorithm)
+			err = msp.GenerateLocalMSP(nodeDir, node.CommonName, node.SANS, signCA, tlsCA, currentNodeType, nodeOUs, node.PublicKeyAlgorithm)
 			if err != nil {
 				fmt.Printf("Error generating local MSP for %v:\n%v\n", node, err)
 				os.Exit(1)

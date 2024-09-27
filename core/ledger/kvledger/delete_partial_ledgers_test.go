@@ -88,7 +88,7 @@ func TestNewProviderDeletesPartialLedgers(t *testing.T) {
 
 // Construct a series of test ledgers, each with a target status.
 func constructPartialLedgers(t *testing.T, provider *Provider, targetStatus []msgs.Status) {
-	for i := 0; i < len(targetStatus); i++ {
+	for i := range len(targetStatus) {
 		ledgerID := constructTestLedger(t, provider, i)
 		require.NoError(t, provider.idStore.updateLedgerStatus(ledgerID, targetStatus[i]))
 		verifyLedgerIDExists(t, provider, ledgerID, targetStatus[i])
@@ -101,7 +101,7 @@ func verifyPartialLedgers(t *testing.T, provider *Provider, targetStatus []msgs.
 	activeLedgers, err := provider.List()
 	require.NoError(t, err)
 
-	for i := 0; i < len(targetStatus); i++ {
+	for i := range len(targetStatus) {
 		ledgerID := constructTestLedgerID(i)
 		if targetStatus[i] == msgs.Status_UNDER_CONSTRUCTION || targetStatus[i] == msgs.Status_UNDER_DELETION {
 			verifyLedgerDoesNotExist(t, provider, ledgerID)

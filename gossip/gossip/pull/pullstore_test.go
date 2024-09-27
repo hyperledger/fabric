@@ -257,7 +257,7 @@ func TestAddAndRemove(t *testing.T) {
 	msgCount := 3
 
 	go func() {
-		for i := 0; i < msgCount; i++ {
+		for i := range msgCount {
 			time.Sleep(pullInterval)
 			inst1.mediator.Add(dataMsg(i))
 		}

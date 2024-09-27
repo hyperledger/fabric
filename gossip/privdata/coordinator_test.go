@@ -1647,7 +1647,7 @@ func TestPurgeBelowHeight(t *testing.T) {
 	defer store.tearDown()
 
 	// store 9 data sets initially
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		txID := fmt.Sprintf("tx%d", i+1)
 		store.Persist(txID, uint64(i), &tspb.TxPvtReadWriteSetWithConfigInfo{
 			PvtRwset: &rwset.TxPvtReadWriteSet{
@@ -1671,8 +1671,8 @@ func TestPurgeBelowHeight(t *testing.T) {
 		if purged {
 			numTx = 10
 		}
-		for i := 1; i <= numTx; i++ {
-			txID := fmt.Sprintf("tx%d", i)
+		for i := range numTx {
+			txID := fmt.Sprintf("tx%d", i+1)
 			iterator, err := store.GetTxPvtRWSetByTxid(txID, nil)
 			if err != nil {
 				iterator.Close()
@@ -1683,7 +1683,7 @@ func TestPurgeBelowHeight(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed iterating, got err %s", err)
 			}
-			if (i < 6 || i == numTx) && purged {
+			if (i < 5 || i == numTx-1) && purged {
 				if res != nil {
 					return false
 				}

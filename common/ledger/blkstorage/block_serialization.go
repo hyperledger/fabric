@@ -139,7 +139,7 @@ func extractData(buf *buffer) (*common.BlockData, []*txindexInfo, error) {
 	if numItems, err = buf.DecodeVarint(); err != nil {
 		return nil, nil, errors.Wrap(err, "error decoding the length of block data")
 	}
-	for i := uint64(0); i < numItems; i++ {
+	for range numItems {
 		var txEnvBytes []byte
 		var txid string
 		txOffset := buf.GetBytesConsumed()
@@ -165,7 +165,7 @@ func extractMetadata(buf *buffer) (*common.BlockMetadata, error) {
 	if numItems, err = buf.DecodeVarint(); err != nil {
 		return nil, errors.Wrap(err, "error decoding the length of block metadata")
 	}
-	for i := uint64(0); i < numItems; i++ {
+	for range numItems {
 		if metadataEntry, err = buf.DecodeRawBytes(false); err != nil {
 			return nil, errors.Wrap(err, "error decoding the block metadata")
 		}

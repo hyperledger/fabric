@@ -169,7 +169,7 @@ func (v *TxValidator) Validate(block *common.Block) error {
 	logger.Debugf("expecting %d block validation responses", len(block.Data.Data))
 
 	// now we read responses in the order in which they come back
-	for i := 0; i < len(block.Data.Data); i++ {
+	for range len(block.Data.Data) {
 		res := <-results
 
 		if res.err != nil {
@@ -295,7 +295,6 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 		logger.Debugf("[%s] validateTx starts for block %p env %p txn %d", v.ChannelID, block, env, tIdx)
 		defer logger.Debugf("[%s] validateTx completes for block %p env %p txn %d", v.ChannelID, block, env, tIdx)
 		var payload *common.Payload
-		var err error
 		var txResult peer.TxValidationCode
 		var txsChaincodeName *sysccprovider.ChaincodeInstance
 		var txsUpgradedChaincode *sysccprovider.ChaincodeInstance
@@ -332,7 +331,6 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 		}
 
 		if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
-
 			txID = chdr.TxId
 
 			// Check duplicate transactions
@@ -395,7 +393,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 				return
 			}
 
-			if err := v.ChannelResources.Apply(configEnvelope); err != nil {
+			if err = v.ChannelResources.Apply(configEnvelope); err != nil {
 				err = errors.WithMessage(err, "error validating config which passed initial validity checks")
 				logger.Criticalf("%+v", err)
 				results <- &blockValidationResult{
@@ -415,7 +413,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 			return
 		}
 
-		if _, err := proto.Marshal(env); err != nil {
+		if _, err = proto.Marshal(env); err != nil {
 			logger.Warningf("Cannot marshal transaction: %s", err)
 			results <- &blockValidationResult{
 				tIdx:           tIdx,

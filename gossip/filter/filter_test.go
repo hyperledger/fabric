@@ -138,7 +138,7 @@ func BenchmarkSelectPeers(t *testing.B) {
 	var l1, l2, l3, l4 int
 
 	t.ResetTimer()
-	for i := 0; i < t.N; i++ {
+	for range t.N {
 		// individual filters
 		l1 = len(SelectPeers(3, []discovery.NetworkMember{nm1, nm2, nm3}, a))
 		l2 = len(SelectPeers(3, []discovery.NetworkMember{nm1, nm2, nm3}, b))

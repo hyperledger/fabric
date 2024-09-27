@@ -86,7 +86,7 @@ func (s *Serializer) SerializableChecks(structure interface{}) (reflect.Value, [
 	}
 
 	allFields := make([]string, value.NumField())
-	for i := 0; i < value.NumField(); i++ {
+	for i := range value.NumField() {
 		fieldName := value.Type().Field(i).Name
 		fieldValue := value.Field(i)
 		allFields[i] = fieldName
@@ -137,7 +137,7 @@ func (s *Serializer) Serialize(namespace, name string, structure interface{}, st
 		existingKeys[fqKey] = value
 	}
 
-	for i := 0; i < value.NumField(); i++ {
+	for i := range value.NumField() {
 		fieldName := value.Type().Field(i).Name
 		fieldValue := value.Field(i)
 
@@ -192,7 +192,7 @@ func (s *Serializer) Serialize(namespace, name string, structure interface{}, st
 	}
 
 	for key := range existingKeys {
-		err := state.DelState(key)
+		err = state.DelState(key)
 		if err != nil {
 			return errors.WithMessagef(err, "could not delete unneeded key %s", key)
 		}
@@ -272,7 +272,7 @@ func (s *Serializer) IsSerialized(namespace, name string, structure interface{},
 		return
 	}
 
-	for i := 0; i < value.NumField(); i++ {
+	for i := range value.NumField() {
 		fieldName := value.Type().Field(i).Name
 		fieldValue := value.Field(i)
 
@@ -332,7 +332,7 @@ func (s *Serializer) Deserialize(namespace, name string, metadata *lb.StateMetad
 		return errors.Errorf("type name mismatch '%s' != '%s'", typeName, metadata.Datatype)
 	}
 
-	for i := 0; i < value.NumField(); i++ {
+	for i := range value.NumField() {
 		fieldName := value.Type().Field(i).Name
 		fieldValue := value.Field(i)
 		switch fieldValue.Kind() {

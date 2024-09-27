@@ -210,7 +210,7 @@ func (v *TxValidator) Validate(block *common.Block) error {
 	logger.Debugf("expecting %d block validation responses", len(block.Data.Data))
 
 	// now we read responses in the order in which they come back
-	for i := 0; i < len(block.Data.Data); i++ {
+	for range len(block.Data.Data) {
 		res := <-results
 
 		if res.err != nil {

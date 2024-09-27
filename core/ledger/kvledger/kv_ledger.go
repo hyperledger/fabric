@@ -483,12 +483,12 @@ func (l *kvLedger) recommitLostBlocks(firstBlockNum uint64, lastBlockNum uint64,
 	logger.Infof("Recommitting lost blocks - firstBlockNum=%d, lastBlockNum=%d, recoverables=%#v", firstBlockNum, lastBlockNum, recoverables)
 	var err error
 	var blockAndPvtdata *ledger.BlockAndPvtData
-	for blockNumber := firstBlockNum; blockNumber <= lastBlockNum; blockNumber++ {
-		if blockAndPvtdata, err = l.GetPvtDataAndBlockByNum(blockNumber, nil); err != nil {
+	for blockNumber := range lastBlockNum + 1 - firstBlockNum {
+		if blockAndPvtdata, err = l.GetPvtDataAndBlockByNum(blockNumber+firstBlockNum, nil); err != nil {
 			return err
 		}
 		for _, r := range recoverables {
-			if err := r.CommitLostBlock(blockAndPvtdata); err != nil {
+			if err = r.CommitLostBlock(blockAndPvtdata); err != nil {
 				return err
 			}
 		}
@@ -1167,7 +1167,7 @@ func constructPvtDataAndMissingData(blockAndPvtData *ledger.BlockAndPvtData) ([]
 
 	numTxs := uint64(len(blockAndPvtData.Block.Data.Data))
 
-	for txNum := uint64(0); txNum < numTxs; txNum++ {
+	for txNum := range numTxs {
 		if pvtdata, ok := blockAndPvtData.PvtData[txNum]; ok {
 			pvtData = append(pvtData, pvtdata)
 		}

@@ -44,7 +44,7 @@ func testSnapshot(t *testing.T, env TestEnv) {
 	generateSampleData := func(namespaces ...string) []*statedb.VersionedKV {
 		sampleData := []*statedb.VersionedKV{}
 		for _, ns := range namespaces {
-			for i := 0; i < 5; i++ {
+			for i := range 5 {
 				sampleKV := &statedb.VersionedKV{
 					CompositeKey: &statedb.CompositeKey{
 						Namespace: ns,
@@ -354,11 +354,11 @@ func TestSnapshotReaderNextFunction(t *testing.T) {
 }
 
 func TestMetadataCursor(t *testing.T) {
-	metadata := []*metadataRow{}
-	for i := 1; i <= 100; i++ {
+	var metadata []*metadataRow
+	for i := range 100 {
 		metadata = append(metadata, &metadataRow{
-			namespace: fmt.Sprintf("ns-%d", i),
-			kvCounts:  uint64(i),
+			namespace: fmt.Sprintf("ns-%d", i+1),
+			kvCounts:  uint64(i + 1),
 		})
 	}
 
@@ -367,7 +367,7 @@ func TestMetadataCursor(t *testing.T) {
 	}
 
 	for _, m := range metadata {
-		for i := uint64(0); i < m.kvCounts; i++ {
+		for range m.kvCounts {
 			require.True(t, cursor.canMove())
 			require.True(t, cursor.move())
 			require.Equal(t, m.namespace, cursor.currentNamespace())
@@ -380,11 +380,11 @@ func TestMetadataCursor(t *testing.T) {
 func TestLoadMetadata(t *testing.T) {
 	testdir := t.TempDir()
 
-	metadata := []*metadataRow{}
-	for i := 1; i <= 100; i++ {
+	var metadata []*metadataRow
+	for i := range 100 {
 		metadata = append(metadata, &metadataRow{
-			namespace: fmt.Sprintf("ns-%d", i),
-			kvCounts:  uint64(i),
+			namespace: fmt.Sprintf("ns-%d", i+1),
+			kvCounts:  uint64(i + 1),
 		})
 	}
 	metadataFilePath := filepath.Join(testdir, PubStateMetadataFileName)

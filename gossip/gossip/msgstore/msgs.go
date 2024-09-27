@@ -124,16 +124,16 @@ func (s *messageStoreImpl) Add(message interface{}) bool {
 	defer s.lock.Unlock()
 
 	n := len(s.messages)
-	for i := 0; i < n; i++ {
-		m := s.messages[i]
+	delCnt := 0
+	for i := range n {
+		m := s.messages[i-delCnt]
 		switch s.pol(message, m.data) {
 		case common.MessageInvalidated:
 			return false
 		case common.MessageInvalidates:
 			s.invTrigger(m.data)
-			s.messages = append(s.messages[:i], s.messages[i+1:]...)
-			n--
-			i--
+			s.messages = append(s.messages[:i-delCnt], s.messages[i+1-delCnt:]...)
+			delCnt++
 		}
 	}
 
@@ -151,14 +151,14 @@ func (s *messageStoreImpl) Purge(shouldBePurged func(interface{}) bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	n := len(s.messages)
-	for i := 0; i < n; i++ {
-		if !shouldMsgBePurged(s.messages[i]) {
+	delCnt := 0
+	for i := range n {
+		if !shouldMsgBePurged(s.messages[i-delCnt]) {
 			continue
 		}
-		s.invTrigger(s.messages[i].data)
-		s.messages = append(s.messages[:i], s.messages[i+1:]...)
-		n--
-		i--
+		s.invTrigger(s.messages[i-delCnt].data)
+		s.messages = append(s.messages[:i-delCnt], s.messages[i+1-delCnt:]...)
+		delCnt++
 	}
 }
 
@@ -204,8 +204,9 @@ func (s *messageStoreImpl) expireMessages() {
 	defer s.externalUnlock()
 
 	n := len(s.messages)
+	delCnt := 0
 	for i := 0; i < n; i++ {
-		m := s.messages[i]
+		m := s.messages[i-delCnt]
 		if !m.expired {
 			if time.Since(m.created) > s.msgTTL {
 				m.expired = true
@@ -214,9 +215,8 @@ func (s *messageStoreImpl) expireMessages() {
 			}
 		} else {
 			if time.Since(m.created) > (s.msgTTL * 2) {
-				s.messages = append(s.messages[:i], s.messages[i+1:]...)
-				n--
-				i--
+				s.messages = append(s.messages[:i-delCnt], s.messages[i+1-delCnt:]...)
+				delCnt++
 				s.expiredCount--
 			}
 		}

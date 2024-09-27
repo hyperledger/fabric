@@ -488,7 +488,7 @@ func TestParallelValidation(t *testing.T) {
 		SerializedID: []byte("signer1"),
 		MspID:        "Org2",
 	}
-	for txNum := 0; txNum < txCnt; txNum++ {
+	for txNum := range txCnt {
 		var sig msp.SigningIdentity
 		// create rwset for the tx - KVS key depends on the txnum
 		key := strconv.Itoa(txNum % 10)
@@ -566,7 +566,7 @@ func TestParallelValidation(t *testing.T) {
 	// Block metadata array position to store serialized bit array filter of invalid transactions
 	txsFilter := txflags.ValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	// tx validity
-	for txNum := 0; txNum < txCnt; txNum += 1 {
+	for txNum := range txCnt {
 		switch uint(txNum / 10) {
 		case 1:
 			fallthrough

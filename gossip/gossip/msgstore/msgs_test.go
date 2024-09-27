@@ -69,11 +69,11 @@ func TestNewMessagesInvalidates(t *testing.T) {
 		invalidated = append(invalidated, m.(int))
 	})
 	require.True(t, msgStore.Add(0))
-	for i := 1; i < 10; i++ {
-		require.True(t, msgStore.Add(i))
-		require.Equal(t, i-1, invalidated[len(invalidated)-1])
+	for i := range 9 {
+		require.True(t, msgStore.Add(i+1))
+		require.Equal(t, i, invalidated[len(invalidated)-1])
 		require.Equal(t, 1, msgStore.Size())
-		require.Equal(t, i, msgStore.Get()[0].(int))
+		require.Equal(t, i+1, msgStore.Get()[0].(int))
 	}
 }
 
@@ -89,7 +89,7 @@ func TestMessagesGet(t *testing.T) {
 
 	msgStore := NewMessageStore(alwaysNoAction, Noop)
 	expected := []int{}
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		n := r.Int()
 		expected = append(expected, n)
 		msgStore.Add(n)
@@ -153,7 +153,7 @@ func TestExpiration(t *testing.T) {
 		expired <- m.(int)
 	})
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.True(t, msgStore.Add(i), "Adding", i)
 	}
 
@@ -161,21 +161,21 @@ func TestExpiration(t *testing.T) {
 
 	time.Sleep(time.Second * 2)
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.False(t, msgStore.CheckValid(i))
 		require.False(t, msgStore.Add(i))
 	}
 
-	for i := 10; i < 20; i++ {
-		require.True(t, msgStore.CheckValid(i))
-		require.True(t, msgStore.Add(i))
-		require.False(t, msgStore.CheckValid(i))
+	for i := range 10 {
+		require.True(t, msgStore.CheckValid(i+10))
+		require.True(t, msgStore.Add(i+10))
+		require.False(t, msgStore.CheckValid(i+10))
 	}
 	require.Equal(t, 20, msgStore.Size(), "Wrong number of items in store - second batch")
 
 	time.Sleep(time.Second * 2)
 
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		require.False(t, msgStore.Add(i))
 	}
 
@@ -187,7 +187,7 @@ func TestExpiration(t *testing.T) {
 	require.Equal(t, 0, msgStore.Size(), "Wrong number of items in store - after second batch expiration")
 	require.Equal(t, 20, len(expired), "Wrong number of expired msgs - after second batch expiration")
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.True(t, msgStore.CheckValid(i))
 		require.True(t, msgStore.Add(i))
 		require.False(t, msgStore.CheckValid(i))
@@ -213,7 +213,7 @@ func TestExpirationConcurrency(t *testing.T) {
 		})
 
 	lock.Lock()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.True(t, msgStore.Add(i), "Adding", i)
 	}
 	require.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - first batch")
@@ -224,7 +224,7 @@ func TestExpirationConcurrency(t *testing.T) {
 	lock.Lock()
 	time.Sleep(time.Second * 2)
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.False(t, msgStore.Add(i))
 	}
 
@@ -235,7 +235,7 @@ func TestExpirationConcurrency(t *testing.T) {
 	time.Sleep(time.Second * 1)
 
 	lock.Lock()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.False(t, msgStore.Add(i))
 	}
 
@@ -253,7 +253,7 @@ func TestStop(t *testing.T) {
 		expired = append(expired, m.(int))
 	})
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.True(t, msgStore.Add(i), "Adding", i)
 	}
 
@@ -274,7 +274,7 @@ func TestPurge(t *testing.T) {
 	msgStore := NewMessageStore(alwaysNoAction, func(o interface{}) {
 		purged <- o.(int)
 	})
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.True(t, msgStore.Add(i))
 	}
 	// Purge all numbers greater than 9 - shouldn't do anything

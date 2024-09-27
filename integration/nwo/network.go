@@ -1314,7 +1314,7 @@ func (n *Network) peerCommand(command Command, tlsDir string, env ...string) *ex
 	// usages we have, and add the same (concatenated TLS CA certificates file)
 	// the same number of times to bypass the peer CLI sanity checks
 	requiredPeerAddresses := flagCount("--peerAddresses", cmd.Args)
-	for i := 0; i < requiredPeerAddresses; i++ {
+	for range requiredPeerAddresses {
 		cmd.Args = append(cmd.Args, "--tlsRootCertFiles")
 		cmd.Args = append(cmd.Args, n.CACertsBundlePath())
 	}

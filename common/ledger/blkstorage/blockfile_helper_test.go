@@ -104,10 +104,10 @@ func TestBinarySearchBlockFileNum(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, files, 11)
 
-	for i := uint64(0); i < 100; i++ {
-		fileNum, err := binarySearchFileNumForBlock(ledgerDir, i)
+	for i := range 100 {
+		fileNum, err := binarySearchFileNumForBlock(ledgerDir, uint64(i))
 		require.NoError(t, err)
-		locFromIndex, err := blkfileMgr.index.getBlockLocByBlockNum(i)
+		locFromIndex, err := blkfileMgr.index.getBlockLocByBlockNum(uint64(i))
 		require.NoError(t, err)
 		expectedFileNum := locFromIndex.fileSuffixNum
 		require.Equal(t, expectedFileNum, fileNum)
@@ -145,7 +145,7 @@ func TestGetLedgersBootstrappedFromSnapshot(t *testing.T) {
 		testDir := t.TempDir()
 
 		// create chains directories for ledgers without bootstrappingSnapshotInfoFile
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			require.NoError(t, os.MkdirAll(filepath.Join(testDir, ChainsDir, fmt.Sprintf("ledger_%d", i)), 0o755))
 		}
 
@@ -159,7 +159,7 @@ func TestGetLedgersBootstrappedFromSnapshot(t *testing.T) {
 
 		// create chains directories for ledgers
 		// also create bootstrappingSnapshotInfoFile for ledger_0 and ledger_1
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			ledgerChainDir := filepath.Join(testDir, ChainsDir, fmt.Sprintf("ledger_%d", i))
 			require.NoError(t, os.MkdirAll(ledgerChainDir, 0o755))
 			if i < 2 {

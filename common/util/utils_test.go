@@ -52,7 +52,7 @@ func TestUUIDGeneration(t *testing.T) {
 }
 
 func TestTimestamp(t *testing.T) {
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		t.Logf("timestamp now: %v", CreateUtcTimestamp())
 		time.Sleep(200 * time.Millisecond)
 	}

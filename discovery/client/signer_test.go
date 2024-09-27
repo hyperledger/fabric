@@ -30,7 +30,7 @@ func TestSameMessage(t *testing.T) {
 	}
 
 	ms := NewMemoizeSigner(sign, 10)
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		sig, err := ms.Sign([]byte{1, 2, 3})
 		require.NoError(t, err)
 		require.Equal(t, []byte{1, 2, 3}, sig)
@@ -50,8 +50,8 @@ func TestDifferentMessages(t *testing.T) {
 	parallelSignRange := func(start, end uint) {
 		var wg sync.WaitGroup
 		wg.Add((int)(end - start))
-		for i := start; i < end; i++ {
-			i := i
+		for i := range end - start {
+			i := i + start
 			go func() {
 				defer wg.Done()
 				sig, err := ms.Sign([]byte{byte(i)})
@@ -71,8 +71,8 @@ func TestDifferentMessages(t *testing.T) {
 	require.Equal(t, uint32(n), atomic.LoadUint32(&signedInvokedCount))
 
 	// Query thrice on a disjoint range
-	for i := n + 1; i < 2*n; i++ {
-		parallelSignRange(i, i+1)
+	for i := range n - 1 {
+		parallelSignRange(i+n+1, i+n+2)
 	}
 	oldSignedInvokedCount := atomic.LoadUint32(&signedInvokedCount)
 

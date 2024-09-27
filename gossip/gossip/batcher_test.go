@@ -81,9 +81,9 @@ func TestBatchingEmitterCounter(t *testing.T) {
 	emitter := newBatchingEmitter(5, 100, time.Duration(500)*time.Millisecond, cb)
 	defer emitter.Stop()
 
-	for i := 1; i <= 5; i++ {
-		emitter.Add(i)
-		if i == 5 {
+	for i := range 5 {
+		emitter.Add(i + 1)
+		if i == 4 {
 			break
 		}
 		time.Sleep(time.Duration(600) * time.Millisecond)
@@ -107,7 +107,7 @@ func TestBatchingEmitterBurstSizeCap(t *testing.T) {
 	emitter := newBatchingEmitter(1, 10, time.Duration(800)*time.Millisecond, cb)
 	defer emitter.Stop()
 
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		emitter.Add(i)
 	}
 	require.Equal(t, int32(5), atomic.LoadInt32(&disseminationAttempts))

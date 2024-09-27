@@ -842,8 +842,8 @@ func TestCertificationIdentifierComputation(t *testing.T) {
 	hf, err := localMsp.(*bccspmsp).bccsp.GetHash(hashOpt)
 	require.NoError(t, err)
 	// Skipping first cert because it belongs to the identity
-	for i := 1; i < len(chain); i++ {
-		hf.Write(chain[i].Raw)
+	for i := range len(chain) - 1 {
+		hf.Write(chain[i+1].Raw)
 	}
 	sum := hf.Sum(nil)
 

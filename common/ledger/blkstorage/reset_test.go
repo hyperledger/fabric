@@ -242,8 +242,8 @@ func assertBlockStorePostReset(t *testing.T, store *BlockStore, originallyCommit
 		require.NoError(t, store.AddBlock(b))
 	}
 
-	for i := 0; i < len(originallyCommittedBlocks); i++ {
-		blk, err := store.RetrieveBlockByNumber(uint64(i))
+	for i := range len(originallyCommittedBlocks) {
+		blk, err = store.RetrieveBlockByNumber(uint64(i))
 		require.NoError(t, err)
 		require.Equal(t, originallyCommittedBlocks[i], blk)
 	}

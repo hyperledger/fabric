@@ -44,7 +44,7 @@ func Contains(s string, a []string) bool {
 // IndexInSlice returns the index of given object o in array, and -1 if it is not in array.
 func IndexInSlice(array interface{}, o interface{}, equals Equals) int {
 	arr := reflect.ValueOf(array)
-	for i := 0; i < arr.Len(); i++ {
+	for i := range arr.Len() {
 		if equals(arr.Index(i).Interface(), o) {
 			return i
 		}

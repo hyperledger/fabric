@@ -25,7 +25,7 @@ func TestRedoLogger(t *testing.T) {
 	records := []*redoRecord{}
 
 	verifyLogRecords := func() {
-		for i := 0; i < len(loggers); i++ {
+		for i := range len(loggers) {
 			retrievedRec, err := loggers[i].load()
 			require.NoError(t, err)
 			require.Equal(t, records[i], retrievedRec)
@@ -33,7 +33,7 @@ func TestRedoLogger(t *testing.T) {
 	}
 
 	// write log records for multiple channels
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		logger := provider.newRedoLogger(fmt.Sprintf("channel-%d", i))
 		rec, err := logger.load()
 		require.NoError(t, err)

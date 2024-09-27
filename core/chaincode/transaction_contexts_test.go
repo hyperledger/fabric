@@ -145,7 +145,7 @@ var _ = Describe("TransactionContexts", func() {
 
 		BeforeEach(func() {
 			fakeIterators = make([]*mock.QueryResultsIterator, 6)
-			for i := 0; i < len(fakeIterators); i++ {
+			for i := range len(fakeIterators) {
 				fakeIterators[i] = &mock.QueryResultsIterator{}
 			}
 

@@ -243,7 +243,7 @@ func TestCertExpiration(t *testing.T) {
 		return false
 	}
 	g1.Accept(acceptIdentityPullMsgs, true)
-	for i := 0; i < identities2Detect; i++ {
+	for range identities2Detect {
 		select {
 		case <-identitiesGotViaPull:
 		case <-time.After(time.Second * 15):

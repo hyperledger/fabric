@@ -57,16 +57,16 @@ func testBlockIndexSync(t *testing.T, numBlocks int, numBlocksToIndex int, syncB
 		// Plug-in back the original index store
 		blkfileMgr.index.db = originalIndexStore
 		// Verify that the first set of blocks are indexed in the original index
-		for i := 0; i < numBlocksToIndex; i++ {
+		for i := range numBlocksToIndex {
 			block, err := blkfileMgr.retrieveBlockByNumber(uint64(i))
 			require.NoError(t, err, "block [%d] should have been present in the index", i)
 			require.Equal(t, blocks[i], block)
 		}
 
 		// Before, we test for index sync-up, verify that the last set of blocks not indexed in the original index
-		for i := numBlocksToIndex + 1; i <= numBlocks; i++ {
-			_, err := blkfileMgr.retrieveBlockByNumber(uint64(i))
-			require.EqualError(t, err, fmt.Sprintf("no such block number [%d] in index", i))
+		for i := range numBlocks - numBlocksToIndex {
+			_, err := blkfileMgr.retrieveBlockByNumber(uint64(i + numBlocksToIndex + 1))
+			require.EqualError(t, err, fmt.Sprintf("no such block number [%d] in index", i+numBlocksToIndex+1))
 		}
 
 		// perform index sync
@@ -80,10 +80,10 @@ func testBlockIndexSync(t *testing.T, numBlocks int, numBlocksToIndex int, syncB
 		}
 
 		// Now, last set of blocks should also be indexed in the original index
-		for i := numBlocksToIndex; i < numBlocks; i++ {
-			block, err := blkfileMgr.retrieveBlockByNumber(uint64(i))
-			require.NoError(t, err, "block [%d] should have been present in the index", i)
-			require.Equal(t, blocks[i], block)
+		for i := range numBlocks - numBlocksToIndex {
+			block, err := blkfileMgr.retrieveBlockByNumber(uint64(i + numBlocksToIndex))
+			require.NoError(t, err, "block [%d] should have been present in the index", i+numBlocksToIndex)
+			require.Equal(t, blocks[i+numBlocksToIndex], block)
 		}
 	})
 }
@@ -420,7 +420,7 @@ func verifyExportedTxIDs(t *testing.T, dir string, fileHashes map[string][]byte,
 	numTxIDs, err := metadataReader.DecodeUVarInt()
 	require.NoError(t, err)
 	retrievedTxIDs := []string{}
-	for i := uint64(0); i < numTxIDs; i++ {
+	for range numTxIDs {
 		txID, err := dataReader.DecodeString()
 		require.NoError(t, err)
 		retrievedTxIDs = append(retrievedTxIDs, txID)

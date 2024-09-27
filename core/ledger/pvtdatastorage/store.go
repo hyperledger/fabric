@@ -440,7 +440,7 @@ func (s *Store) getLastUpdatedOldBlocksList() ([]uint64, error) {
 	}
 	position += n
 
-	for i := 0; i < int(numBlks); i++ {
+	for range numBlks {
 		blkNum, n := protowire.ConsumeVarint(v[position:])
 		if n < 0 {
 			return nil, protowire.ParseError(n)

@@ -98,7 +98,7 @@ func TestBuildCommittersForNs(t *testing.T) {
 	nsUpdates = make(map[string]*statedb.VersionedValue)
 	// populate updates with maxBatchSize + 1.
 	dummyHeight := version.NewHeight(1, 1)
-	for i := 0; i <= vdbEnv.config.MaxBatchUpdateSize; i++ {
+	for i := range vdbEnv.config.MaxBatchUpdateSize + 1 {
 		nsUpdates[strconv.Itoa(i)] = &statedb.VersionedValue{
 			Value:    nil,
 			Metadata: nil,
@@ -125,7 +125,7 @@ func TestBuildCommitters(t *testing.T) {
 	batch := statedb.NewUpdateBatch()
 	batch.Put("ns-1", "key1", []byte("value1"), dummyHeight)
 	batch.Put("ns-2", "key1", []byte("value2"), dummyHeight)
-	for i := 0; i <= vdbEnv.config.MaxBatchUpdateSize; i++ {
+	for range vdbEnv.config.MaxBatchUpdateSize + 1 {
 		batch.Put("maxBatch", "key1", []byte("value3"), dummyHeight)
 	}
 	namespaceSet := map[string]bool{

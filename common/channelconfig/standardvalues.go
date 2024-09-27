@@ -80,7 +80,7 @@ func (sv *StandardValues) initializeProtosStruct(objValue reflect.Value) error {
 	}
 
 	numFields := objValue.Elem().NumField()
-	for i := 0; i < numFields; i++ {
+	for i := range numFields {
 		structField := objType.Elem().Field(i)
 		logger.Debugf("Processing field: %s\n", structField.Name)
 		switch structField.Type.Kind() {

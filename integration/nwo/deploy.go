@@ -243,7 +243,7 @@ func CommitChaincode(n *Network, channel string, orderer *Orderer, chaincode Cha
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	for i := 0; i < len(peerAddresses); i++ {
+	for range len(peerAddresses) {
 		Eventually(sess.Err, n.EventuallyTimeout).Should(gbytes.Say(`\Qcommitted with status (VALID)\E`))
 	}
 	checkOrgs := []*Organization{}
@@ -296,7 +296,7 @@ func InitChaincode(n *Network, channel string, orderer *Orderer, chaincode Chain
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	for i := 0; i < len(peerAddresses); i++ {
+	for range len(peerAddresses) {
 		Eventually(sess.Err, n.EventuallyTimeout).Should(gbytes.Say(`\Qcommitted with status (VALID)\E`))
 	}
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))

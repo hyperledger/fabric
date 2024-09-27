@@ -55,16 +55,15 @@ func TestBuildExpirySchedule(t *testing.T) {
 	}
 
 	require.Len(t, listExpinfo, 3)
-	for i := 0; i < len(expectedListExpInfo); i++ {
-		j := 0
-		for ; j < len(listExpinfo); j++ {
+	for i := range len(expectedListExpInfo) {
+		for j := range len(listExpinfo) {
 			if reflect.DeepEqual(expectedListExpInfo[i].expiryInfoKey, listExpinfo[j].expiryInfoKey) {
 				require.True(t, proto.Equal(expectedListExpInfo[i].pvtdataKeys, listExpinfo[j].pvtdataKeys))
 				break
 			}
-		}
-		if j == len(listExpinfo) {
-			require.Fail(t, "Not equal")
+			if j == len(listExpinfo)-1 {
+				require.Fail(t, "Not equal")
+			}
 		}
 	}
 }
@@ -116,16 +115,15 @@ func TestBuildExpiryScheduleWithMissingPvtdata(t *testing.T) {
 	}
 
 	require.Len(t, listExpinfo, 3)
-	for i := 0; i < len(expectedListExpInfo); i++ {
-		j := 0
-		for ; j < len(listExpinfo); j++ {
+	for i := range len(expectedListExpInfo) {
+		for j := range len(listExpinfo) {
 			if reflect.DeepEqual(expectedListExpInfo[i].expiryInfoKey, listExpinfo[j].expiryInfoKey) {
 				require.True(t, proto.Equal(expectedListExpInfo[i].pvtdataKeys, listExpinfo[j].pvtdataKeys))
 				break
 			}
-		}
-		if j == len(listExpinfo) {
-			require.Fail(t, "Not equal")
+			if j == len(listExpinfo)-1 {
+				require.Fail(t, "Not equal")
+			}
 		}
 	}
 }

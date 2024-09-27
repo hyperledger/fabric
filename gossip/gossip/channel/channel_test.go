@@ -668,12 +668,12 @@ func TestChannelPull(t *testing.T) {
 	adapter.On("Send", mock.Anything, mock.Anything).Run(pullPhase)
 
 	wg.Wait()
-	for expectedSeq := 10; expectedSeq <= 11; expectedSeq++ {
+	for expectedSeq := range 2 {
 		select {
 		case <-time.After(time.Second * 5):
 			t.Fatal("Haven't received blocks on time")
 		case msg := <-receivedBlocksChan:
-			require.Equal(t, uint64(expectedSeq), msg.GetDataMsg().Payload.SeqNum)
+			require.Equal(t, uint64(expectedSeq+10), msg.GetDataMsg().Payload.SeqNum)
 		}
 	}
 }
@@ -2114,10 +2114,8 @@ func simulatePullPhaseWithVariableDigest(gc GossipChannel, t *testing.T, wg *syn
 
 func sequence(start uint64, end uint64) []uint64 {
 	sequence := make([]uint64, end-start+1)
-	i := 0
-	for n := start; n <= end; n++ {
-		sequence[i] = n
-		i++
+	for n := range end + 1 - start {
+		sequence[n] = n + start
 	}
 	return sequence
 }

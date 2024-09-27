@@ -307,7 +307,7 @@ func TestGetPrivateDataHashError(t *testing.T) {
 }
 
 func testutilCheckIteratorResults(t *testing.T, itr commonledger.ResultsIterator, expectedResults []*queryresult.KV) {
-	results := []*queryresult.KV{}
+	var results []*queryresult.KV
 	for {
 		result, err := itr.Next()
 		require.NoError(t, err)

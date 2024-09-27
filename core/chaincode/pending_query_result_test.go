@@ -28,22 +28,22 @@ var _ = Describe("PendingQueryResult", func() {
 		It("returns the number of results in the batch", func() {
 			Expect(pqr.Size()).To(Equal(0))
 
-			for i := 1; i <= 10; i++ {
-				kv := &queryresult.KV{Key: fmt.Sprintf("key-%d", i)}
+			for i := range 10 {
+				kv := &queryresult.KV{Key: fmt.Sprintf("key-%d", i+1)}
 				err := pqr.Add(kv)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pqr.Size()).To(Equal(i))
+				Expect(pqr.Size()).To(Equal(i + 1))
 			}
 		})
 
 		Describe("Add and Cut", func() {
 			It("tracks the query results", func() {
 				By("adding the results")
-				for i := 1; i <= 10; i++ {
-					kv := &queryresult.KV{Key: fmt.Sprintf("key-%d", i)}
+				for i := range 10 {
+					kv := &queryresult.KV{Key: fmt.Sprintf("key-%d", i+1)}
 					err := pqr.Add(kv)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(pqr.Size()).To(Equal(i))
+					Expect(pqr.Size()).To(Equal(i + 1))
 				}
 
 				By("cutting the results")
@@ -67,11 +67,11 @@ var _ = Describe("PendingQueryResult", func() {
 
 		Describe("Cut", func() {
 			BeforeEach(func() {
-				for i := 1; i <= 10; i++ {
-					kv := &queryresult.KV{Key: fmt.Sprintf("key-%d", i)}
+				for i := range 10 {
+					kv := &queryresult.KV{Key: fmt.Sprintf("key-%d", i+1)}
 					err := pqr.Add(kv)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(pqr.Size()).To(Equal(i))
+					Expect(pqr.Size()).To(Equal(i + 1))
 				}
 			})
 

@@ -41,7 +41,7 @@ func TestKVAndDocConversion(t *testing.T) {
 		keyWithBinaryValue,
 		keyWithSortedJSONValue,
 	}
-	for i := 0; i < len(testData); i++ {
+	for i := range len(testData) {
 		t.Run(fmt.Sprintf("testdata-%d", i),
 			func(t *testing.T) {
 				testKVAndDocConversion(t, testData[i])
@@ -58,14 +58,12 @@ func testKVAndDocConversion(t *testing.T, kv *keyValue) {
 }
 
 func TestSortJSON(t *testing.T) {
-	for i := 3; i <= 3; i++ {
-		t.Run(
-			fmt.Sprintf("testdata/json_documents/%d_unsorted.json", i),
-			func(t *testing.T) {
-				testSortJSON(t, i)
-			},
-		)
-	}
+	t.Run(
+		fmt.Sprintf("testdata/json_documents/%d_unsorted.json", 3),
+		func(t *testing.T) {
+			testSortJSON(t, 3)
+		},
+	)
 }
 
 func testSortJSON(t *testing.T, filePrefix int) {

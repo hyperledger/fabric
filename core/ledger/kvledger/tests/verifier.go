@@ -269,7 +269,7 @@ func (r *retrievedBlockAndPvtdata) sameMetadata(expectedBlock *common.Block) {
 	retrievedMetadata := r.Block.Metadata.Metadata
 	expectedMetadata := expectedBlock.Metadata.Metadata
 	r.assert.Equal(len(expectedMetadata), len(retrievedMetadata))
-	for i := 0; i < len(expectedMetadata); i++ {
+	for i := range len(expectedMetadata) {
 		if i == int(common.BlockMetadataIndex_COMMIT_HASH) {
 			// in order to compare the exact hash value, we need to duplicate the
 			// production code in this test too, so skipping this match

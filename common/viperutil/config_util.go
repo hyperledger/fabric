@@ -153,7 +153,7 @@ func getKeysRecursively(base string, getenv envGetter, nodeKeys map[string]inter
 
 	if oType != nil && oType.Kind() == reflect.Struct {
 	outer:
-		for i := 0; i < oType.NumField(); i++ {
+		for i := range oType.NumField() {
 			fieldName := oType.Field(i).Name
 			fieldType := oType.Field(i).Type
 

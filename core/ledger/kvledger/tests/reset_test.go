@@ -30,7 +30,7 @@ func TestResetAllLedgers(t *testing.T) {
 	// Also, retrieve the genesis blocks and blockchain info for matching later
 	numLedgers := 10
 	ledgerIDs := make([]string, numLedgers)
-	for i := 0; i < numLedgers; i++ {
+	for i := range numLedgers {
 		ledgerIDs[i] = fmt.Sprintf("ledger-%d", i)
 		l := env.createTestLedgerFromGenesisBlk(ledgerIDs[i])
 		dataHelper.populateLedger(l)
@@ -59,7 +59,7 @@ func TestResetAllLedgers(t *testing.T) {
 	// - compare the genesis block from the one before reset
 	// - resubmit the previous committed blocks from block number 1 onwards
 	//   and final blockchainInfo and ledger state same as before reset
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		ledgerID := fmt.Sprintf("ledger-%d", i)
 		l := env.openTestLedger(ledgerID)
 		l.verifyLedgerHeight(1)
@@ -91,7 +91,7 @@ func TestResetAllLedgers(t *testing.T) {
 	preResetHt, err = kvledger.LoadPreResetHeight(env.initializer.Config.RootFSPath, newLedgerIDs)
 	require.NoError(t, err)
 	require.Equal(t, numLedgers-3, len(preResetHt))
-	for i := 0; i < len(preResetHt); i++ {
+	for i := range len(preResetHt) {
 		require.Contains(t, preResetHt, fmt.Sprintf("ledger-%d", i))
 	}
 	// verify preResetHt after ClearPreResetHeight

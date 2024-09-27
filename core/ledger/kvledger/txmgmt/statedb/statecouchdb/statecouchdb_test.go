@@ -1008,12 +1008,12 @@ func TestRangeScanWithCouchInternalDocsPresent(t *testing.T) {
 	require.NoError(t, err)
 
 	batch := statedb.NewUpdateBatch()
-	for i := 1; i <= 3; i++ {
-		keySmallerThanDesignDoc := fmt.Sprintf("Key-%d", i)
-		keyGreaterThanDesignDoc := fmt.Sprintf("key-%d", i)
-		jsonValue := fmt.Sprintf(`{"asset_name": "marble-%d"}`, i)
-		batch.Put("ns", keySmallerThanDesignDoc, []byte(jsonValue), version.NewHeight(1, uint64(i)))
-		batch.Put("ns", keyGreaterThanDesignDoc, []byte(jsonValue), version.NewHeight(1, uint64(i)))
+	for i := range 3 {
+		keySmallerThanDesignDoc := fmt.Sprintf("Key-%d", i+1)
+		keyGreaterThanDesignDoc := fmt.Sprintf("key-%d", i+1)
+		jsonValue := fmt.Sprintf(`{"asset_name": "marble-%d"}`, i+1)
+		batch.Put("ns", keySmallerThanDesignDoc, []byte(jsonValue), version.NewHeight(1, uint64(i+1)))
+		batch.Put("ns", keyGreaterThanDesignDoc, []byte(jsonValue), version.NewHeight(1, uint64(i+1)))
 	}
 	require.NoError(t, db.ApplyUpdates(batch, version.NewHeight(2, 2)))
 	require.NoError(t, err)
@@ -1370,7 +1370,7 @@ func TestChannelMetadata(t *testing.T) {
 
 	// call getNamespaceDBHandle for new dbs, verify that new db names are added to dbMetadataMapping
 	namepsaces := make([]string, 10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		ns := fmt.Sprintf("nsname_%d", i)
 		_, err := vdb.getNamespaceDBHandle(ns)
 		require.NoError(t, err)
@@ -1558,7 +1558,7 @@ func TestRangeQueryWithInternalLimitAndPageSize(t *testing.T) {
 			VersionedValue: &statedb.VersionedValue{Value: []byte("v0"), Version: ver, Metadata: []byte("m0")},
 		}
 		sampleData = append(sampleData, sampleKV)
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			sampleKV = &statedb.VersionedKV{
 				CompositeKey: &statedb.CompositeKey{
 					Namespace: "ns1",
@@ -1877,7 +1877,7 @@ func TestFullScanIteratorDeterministicJSONOutput(t *testing.T) {
 	generateSampleData := func(ns string, sortedJSON bool) []*statedb.VersionedKV {
 		sampleData := []*statedb.VersionedKV{}
 		ver := version.NewHeight(1, 1)
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			sampleKV := &statedb.VersionedKV{
 				CompositeKey: &statedb.CompositeKey{
 					Namespace: ns,
@@ -1943,7 +1943,7 @@ func TestFullScanIteratorSkipInternalKeys(t *testing.T) {
 	generateSampleData := func(ns string, keys []string) []*statedb.VersionedKV {
 		sampleData := []*statedb.VersionedKV{}
 		ver := version.NewHeight(1, 1)
-		for i := 0; i < len(keys); i++ {
+		for i := range len(keys) {
 			sampleKV := &statedb.VersionedKV{
 				CompositeKey: &statedb.CompositeKey{
 					Namespace: ns,

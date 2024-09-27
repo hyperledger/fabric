@@ -66,7 +66,7 @@ func TestPermute(t *testing.T) {
 func TestPermuteTooManyCombinations(t *testing.T) {
 	root := NewTreeVertex("r", nil)
 	root.Threshold = 500
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		root.AddDescendant(NewTreeVertex(fmt.Sprintf("%d", i), nil))
 	}
 	permutations := root.ToTree().Permute(501)

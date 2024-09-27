@@ -34,7 +34,7 @@ func TestChannelDeMultiplexer_EvenOddChannels(t *testing.T) {
 		return false
 	})
 	demux.DeMultiplex("msg") // neither even, nor odd
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		demux.DeMultiplex(i)
 	}
 	if len(evens) != 10 || len(odds) != 10 {
@@ -83,7 +83,7 @@ func TestChannelDeMultiplexer_OperationsAfterClose(t *testing.T) {
 func TestChannelDeMultiplexer_ShouldCloseWithFullChannel(t *testing.T) {
 	demux := comm.NewChannelDemultiplexer()
 	demux.AddChannel(matchAnything)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		demux.DeMultiplex(i)
 	}
 

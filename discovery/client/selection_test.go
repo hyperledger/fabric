@@ -17,14 +17,14 @@ import (
 
 func TestShuffle(t *testing.T) {
 	endorsers := make(Endorsers, 1000)
-	for i := 0; i < len(endorsers); i++ {
+	for i := range len(endorsers) {
 		endorsers[i] = &Peer{
 			StateInfoMessage: stateInfoWithHeight(uint64(i)),
 		}
 	}
 
 	isHeightAscending := func(endorsers Endorsers) bool {
-		for i := 0; i < len(endorsers)-1; i++ {
+		for i := range len(endorsers) - 1 {
 			currHeight := endorsers[i].StateInfoMessage.GetStateInfo().Properties.LedgerHeight
 			nextHeight := endorsers[i+1].StateInfoMessage.GetStateInfo().Properties.LedgerHeight
 			if currHeight > nextHeight {

@@ -186,7 +186,7 @@ func TestPullEngine_Stop(t *testing.T) {
 	defer inst2.stop()
 	inst2.setNextPeerSelection([]string{"p1"})
 	go func() {
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			inst1.Add(strconv.Itoa(i))
 			time.Sleep(time.Duration(10) * time.Millisecond)
 		}
@@ -208,18 +208,18 @@ func TestPullEngineAll2AllWithIncrementalSpawning(t *testing.T) {
 	instanceCount := 10
 	peers := make(map[string]*pullTestInstance)
 
-	for i := 0; i < instanceCount; i++ {
+	for i := range instanceCount {
 		inst := newPushPullTestInstance(fmt.Sprintf("p%d", i+1), peers)
 		inst.Add(strconv.Itoa(i + 1))
 		time.Sleep(time.Duration(50) * time.Millisecond)
 	}
-	for i := 0; i < instanceCount; i++ {
+	for i := range instanceCount {
 		pID := fmt.Sprintf("p%d", i+1)
 		peers[pID].setNextPeerSelection(keySet(pID, peers))
 	}
 	time.Sleep(time.Duration(4000) * time.Millisecond)
 
-	for i := 0; i < instanceCount; i++ {
+	for i := range instanceCount {
 		pID := fmt.Sprintf("p%d", i+1)
 		require.Equal(t, instanceCount, len(peers[pID].state.ToArray()))
 	}
@@ -458,7 +458,7 @@ func TestSpread(t *testing.T) {
 	inst4.hook(addToCounters("p4"))
 	inst5.hook(addToCounters("p5"))
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		item := fmt.Sprintf("%d", i)
 		inst2.Add(item)
 		inst3.Add(item)

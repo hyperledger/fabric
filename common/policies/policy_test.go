@@ -230,8 +230,8 @@ func TestPrincipalUniqueSet(t *testing.T) {
 func TestPrincipalSetContainingOnly(t *testing.T) {
 	var principalSets PrincipalSets
 	var principalSet PrincipalSet
-	for j := 0; j < 3; j++ {
-		for i := 0; i < 10; i++ {
+	for j := range 3 {
+		for i := range 10 {
 			principalSet = append(principalSet, &msp.MSPPrincipal{
 				PrincipalClassification: msp.MSPPrincipal_IDENTITY,
 				Principal:               []byte(fmt.Sprintf("%d", j*10+i)),

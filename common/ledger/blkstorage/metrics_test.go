@@ -86,7 +86,7 @@ func TestStatsBlockCommit(t *testing.T) {
 	require.NoError(t, err)
 
 	// add 3 more blocks
-	for i := 1; i <= 3; i++ {
+	for range 3 {
 		b := blockGenerator.NextBlock([][]byte{})
 		err = store.AddBlock(b)
 		require.NoError(t, err)
@@ -99,7 +99,7 @@ func TestStatsBlockCommit(t *testing.T) {
 	require.Equal(t, expectedCallCount, fakeBlockstorageCommitTimeHist.ObserveCallCount())
 
 	// verify the value of channel in each call (0, 1, 2, 3)
-	for i := 0; i < expectedCallCount; i++ {
+	for i := range expectedCallCount {
 		require.Equal(t, []string{"channel", ledgerid}, fakeBlockstorageCommitTimeHist.WithArgsForCall(i))
 	}
 

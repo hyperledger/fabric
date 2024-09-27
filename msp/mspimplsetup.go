@@ -273,8 +273,8 @@ func (msp *bccspmsp) finalizeSetupCAs() error {
 		}
 
 		// Recall chain[0] is id.(*identity).id so it does not count as a parent
-		for i := 1; i < len(chain); i++ {
-			msp.certificationTreeInternalNodesMap[string(chain[i].Raw)] = true
+		for i := range len(chain) - 1 {
+			msp.certificationTreeInternalNodesMap[string(chain[i+1].Raw)] = true
 		}
 	}
 

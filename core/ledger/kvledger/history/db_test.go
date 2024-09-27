@@ -405,10 +405,10 @@ func TestHistoryWithBlockNumber256(t *testing.T) {
 	require.NoError(t, env.testHistoryDB.Commit(gb))
 
 	// add 256 blocks, each block has 1 transaction setting state for "ns1" and "key", value is "value<blockNum>"
-	for i := 1; i <= 256; i++ {
+	for i := range 256 {
 		txid := util2.GenerateUUID()
 		simulator, _ := env.txmgr.NewTxSimulator(txid)
-		value := fmt.Sprintf("value%d", i)
+		value := fmt.Sprintf("value%d", i+1)
 		require.NoError(t, simulator.SetState("ns1", "key", []byte(value)))
 		simulator.Done()
 		simRes, _ := simulator.GetTxSimulationResults()

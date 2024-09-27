@@ -32,7 +32,7 @@ func TestLedgerMgmt(t *testing.T) {
 
 	numLedgers := 10
 	ledgers := make([]ledger.PeerLedger, numLedgers)
-	for i := 0; i < numLedgers; i++ {
+	for i := range numLedgers {
 		cid := constructTestLedgerID(i)
 		gb, _ := test.MakeGenesisBlock(cid)
 		l, err := ledgerMgr.CreateLedger(cid, gb)
@@ -42,7 +42,7 @@ func TestLedgerMgmt(t *testing.T) {
 
 	ids, _ := ledgerMgr.GetLedgerIDs()
 	require.Len(t, ids, numLedgers)
-	for i := 0; i < numLedgers; i++ {
+	for i := range numLedgers {
 		require.Equal(t, constructTestLedgerID(i), ids[i])
 	}
 
@@ -173,13 +173,13 @@ func TestConcurrentCreateLedgerFromGB(t *testing.T) {
 
 	var err error
 	gbs := make([]*common.Block, 0, 5)
-	for i := 0; i < len(gbs); i++ {
+	for i := range len(gbs) {
 		gbs[i], err = test.MakeGenesisBlock(fmt.Sprintf("l%d", i))
 		require.NoError(t, err)
 	}
 
 	// verify CreateLedger (from genesisblock) can be called concurrently
-	for i := 0; i < len(gbs); i++ {
+	for i := range len(gbs) {
 		gb := gbs[i]
 		ledgerID := fmt.Sprintf("l%d", i)
 		go func() {

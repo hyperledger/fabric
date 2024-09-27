@@ -84,13 +84,13 @@ func (p *batchingEmitterImpl) emit() {
 
 func (p *batchingEmitterImpl) decrementCounters() {
 	n := len(p.buff)
-	for i := 0; i < n; i++ {
-		msg := p.buff[i]
+	delCnt := 0
+	for i := range n {
+		msg := p.buff[i-delCnt]
 		msg.iterationsLeft--
 		if msg.iterationsLeft == 0 {
-			p.buff = append(p.buff[:i], p.buff[i+1:]...)
-			n--
-			i--
+			p.buff = append(p.buff[:i-delCnt], p.buff[i+1-delCnt:]...)
+			delCnt++
 		}
 	}
 }

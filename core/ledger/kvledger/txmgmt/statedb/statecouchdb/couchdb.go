@@ -1511,8 +1511,7 @@ func (dbclient *couchDatabase) handleRequestWithRevisionRetry(id, method, dbName
 	// attempt the http request for the max number of retries
 	// In this case, the retry is to catch problems where a client timeout may miss a
 	// successful CouchDB update and cause a document revision conflict on a retry in handleRequest
-	for attempts := 0; attempts <= maxRetries; attempts++ {
-
+	for attempts := range maxRetries + 1 {
 		// if the revision was not passed in, or if a revision conflict is detected on prior attempt,
 		// query CouchDB for the document revision
 		if rev == "" || revisionConflictDetected {
@@ -1579,8 +1578,7 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 	//    return an error if unsuccessful
 	// if maxRetries is 3 (default), a maximum of 4 attempts (one attempt with 3 retries)
 	//    will be made with warning entries for unsuccessful attempts
-	for attempts := 0; attempts <= maxRetries; attempts++ {
-
+	for attempts := range maxRetries + 1 {
 		// Set up a buffer for the payload data
 		payloadData := new(bytes.Buffer)
 
@@ -1664,7 +1662,6 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 
 		// If the maxRetries is greater than 0, then log the retry info
 		if maxRetries > 0 {
-
 			retryMessage := fmt.Sprintf("Retrying couchdb request in %s", waitDuration)
 			if attempts == maxRetries {
 				retryMessage = "Retries exhausted"
@@ -1703,9 +1700,7 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 
 			// backoff, doubling the retry time for next attempt
 			waitDuration *= 2
-
 		}
-
 	} // end retry loop
 
 	// if a golang http error is still present after retries are exhausted, return the error
@@ -1728,14 +1723,12 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 	// response codes 4XX and 500 will be treated as errors -
 	// golang error will be created from the couchDBReturn contents and both will be returned
 	if resp.StatusCode >= 400 {
-
 		// if the status code is 400 or greater, log and return an error
 		couchdbLogger.Debugf("Error handling CouchDB request. Error:%s,  Status Code:%v,  Reason:%s",
 			couchDBReturn.Error, resp.StatusCode, couchDBReturn.Reason)
 
 		return nil, couchDBReturn, errors.Errorf("error handling CouchDB request. Error:%s,  Status Code:%v,  Reason:%s",
 			couchDBReturn.Error, resp.StatusCode, couchDBReturn.Reason)
-
 	}
 
 	couchdbLogger.Debugf("Exiting handleRequest()")

@@ -115,8 +115,8 @@ func (c *client) discardSimulation() {
 
 func (c *client) retrieveCommittedBlocksAndPvtdata(startNum, endNum uint64) []*ledger.BlockAndPvtData {
 	data := []*ledger.BlockAndPvtData{}
-	for i := startNum; i <= endNum; i++ {
-		d, err := c.lgr.GetPvtDataAndBlockByNum(i, nil)
+	for i := range endNum - startNum {
+		d, err := c.lgr.GetPvtDataAndBlockByNum(i+startNum, nil)
 		c.assert.NoError(err)
 		data = append(data, d)
 	}

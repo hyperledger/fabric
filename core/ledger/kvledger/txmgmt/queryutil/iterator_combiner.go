@@ -46,22 +46,23 @@ func (combiner *itrCombiner) Next() (commonledger.QueryResult, error) {
 		return nil, nil
 	}
 	smallestHolderIndex := 0
-	for i := 1; i < len(combiner.holders); i++ {
-		smallestKey, holderKey := combiner.keyAt(smallestHolderIndex), combiner.keyAt(i)
+	removedCnt := 0
+	for i := range len(combiner.holders) - 1 {
+		smallestKey, holderKey := combiner.keyAt(smallestHolderIndex), combiner.keyAt(i+1-removedCnt)
 		switch {
 		case holderKey == smallestKey: // we found the same key in the lower order iterator (stale value of the key);
 			// we already have the latest value for this key (in smallestHolder). Ignore this value and move the iterator
 			// to next item (to a greater key) so that for next round of key selection, we do not consider this key again
-			removed, err := combiner.moveItrAndRemoveIfExhausted(i)
+			removed, err := combiner.moveItrAndRemoveIfExhausted(i + 1 - removedCnt)
 			if err != nil {
 				return nil, err
 			}
 			if removed { // if the current iterator is exhausted and hence removed, decrement the index
 				// because indexes of the remaining iterators are decremented by one
-				i--
+				removedCnt++
 			}
 		case holderKey < smallestKey:
-			smallestHolderIndex = i
+			smallestHolderIndex = i + 1 - removedCnt
 		default:
 			// the current key under evaluation is greater than the smallestKey - do nothing
 		}

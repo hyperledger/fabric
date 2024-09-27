@@ -150,7 +150,10 @@ func (d *gossipDiscoveryImpl) Connect(member NetworkMember, id identifier) {
 	d.logger.Debug("Entering", member)
 	defer d.logger.Debug("Exiting")
 	go func() {
-		for i := 0; i < d.maxConnectionAttempts && !d.toDie(); i++ {
+		for range d.maxConnectionAttempts {
+			if d.toDie() {
+				break
+			}
 			id, err := id()
 			if err != nil {
 				if d.toDie() {
@@ -216,7 +219,10 @@ func (d *gossipDiscoveryImpl) validateSelfConfig() {
 
 func (d *gossipDiscoveryImpl) sendUntilAcked(peer *NetworkMember, message *protoext.SignedGossipMessage) {
 	nonce := message.Nonce
-	for i := 0; i < d.maxConnectionAttempts && !d.toDie(); i++ {
+	for range d.maxConnectionAttempts {
+		if d.toDie() {
+			break
+		}
 		sub := d.pubsub.Subscribe(fmt.Sprintf("%d", nonce), time.Second*5)
 		d.comm.SendToPeer(peer, message)
 		if _, timeoutErr := sub.Listen(); timeoutErr == nil {
@@ -474,7 +480,6 @@ func (d *gossipDiscoveryImpl) createMembershipResponse(aliveMsg *protoext.Signed
 	deadPeers := []*gossip.Envelope{}
 
 	for _, dm := range d.deadMembership.ToSlice() {
-
 		if !shouldBeDisclosed(dm) {
 			continue
 		}

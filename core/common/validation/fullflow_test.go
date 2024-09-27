@@ -241,7 +241,7 @@ func TestBadTx(t *testing.T) {
 	paylOrig := tx.Payload
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
-	for i := 0; i < len(paylOrig); i++ {
+	for i := range len(paylOrig) {
 		paylCopy := make([]byte, len(paylOrig))
 		copy(paylCopy, paylOrig)
 		paylCopy[i] = byte(int(paylCopy[i]+1) % 255)

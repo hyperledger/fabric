@@ -11,11 +11,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/ledger/dataformat"
-	"github.com/syndtr/goleveldb/leveldb"
-
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/stretchr/testify/require"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 func TestMain(m *testing.M) {
@@ -35,7 +34,7 @@ func TestIterator(t *testing.T) {
 	db1 := p.GetDBHandle("db1")
 	db2 := p.GetDBHandle("db2")
 	db3 := p.GetDBHandle("db3")
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		require.NoError(t, db1.Put([]byte(createTestKey(i)), []byte(createTestValue("db1", i)), false))
 		require.NoError(t, db2.Put([]byte(createTestKey(i)), []byte(createTestValue("db2", i)), false))
 		require.NoError(t, db3.Put([]byte(createTestKey(i)), []byte(createTestValue("db3", i)), false))
@@ -50,20 +49,20 @@ func TestIterator(t *testing.T) {
 		{
 			startKey:       []byte(createTestKey(2)),
 			endKey:         []byte(createTestKey(4)),
-			expectedKeys:   createTestKeys(2, 3),
-			expectedValues: createTestValues("db2", 2, 3),
+			expectedKeys:   createTestKeys(2, 4),
+			expectedValues: createTestValues("db2", 2, 4),
 		},
 		{
 			startKey:       []byte(createTestKey(2)),
 			endKey:         nil,
-			expectedKeys:   createTestKeys(2, 19),
-			expectedValues: createTestValues("db2", 2, 19),
+			expectedKeys:   createTestKeys(2, 20),
+			expectedValues: createTestValues("db2", 2, 20),
 		},
 		{
 			startKey:       nil,
 			endKey:         nil,
-			expectedKeys:   createTestKeys(0, 19),
-			expectedValues: createTestValues("db2", 0, 19),
+			expectedKeys:   createTestKeys(0, 20),
+			expectedValues: createTestValues("db2", 0, 20),
 		},
 	}
 
@@ -92,16 +91,16 @@ func TestIterator(t *testing.T) {
 			endKey:            nil,
 			seekToKey:         []byte(createTestKey(10)),
 			itrAtKeyAfterSeek: []byte(createTestKey(10)),
-			expectedKeys:      createTestKeys(11, 19),
-			expectedValues:    createTestValues("db1", 11, 19),
+			expectedKeys:      createTestKeys(11, 20),
+			expectedValues:    createTestValues("db1", 11, 20),
 		},
 		{
 			startKey:          []byte(createTestKey(11)),
 			endKey:            nil,
 			seekToKey:         []byte(createTestKey(5)),
 			itrAtKeyAfterSeek: []byte(createTestKey(11)),
-			expectedKeys:      createTestKeys(12, 19),
-			expectedValues:    createTestValues("db1", 12, 19),
+			expectedKeys:      createTestKeys(12, 20),
+			expectedValues:    createTestValues("db1", 12, 20),
 		},
 		{
 			startKey:          nil,
@@ -133,22 +132,22 @@ func TestIterator(t *testing.T) {
 		defer itr.Release()
 		require.True(t, itr.Seek([]byte(createTestKey(10))))
 		require.Equal(t, []byte(createTestKey(10)), itr.Key())
-		checkItrResults(t, itr, createTestKeys(11, 19), createTestValues("db1", 11, 19))
+		checkItrResults(t, itr, createTestKeys(11, 20), createTestValues("db1", 11, 20))
 
 		require.True(t, itr.First())
 		require.True(t, itr.Seek([]byte(createTestKey(10))))
 		require.Equal(t, []byte(createTestKey(10)), itr.Key())
 		require.True(t, itr.Prev())
-		checkItrResults(t, itr, createTestKeys(10, 19), createTestValues("db1", 10, 19))
+		checkItrResults(t, itr, createTestKeys(10, 20), createTestValues("db1", 10, 20))
 
 		require.True(t, itr.First())
 		require.False(t, itr.Seek([]byte(createTestKey(20))))
 		require.True(t, itr.First())
-		checkItrResults(t, itr, createTestKeys(1, 19), createTestValues("db1", 1, 19))
+		checkItrResults(t, itr, createTestKeys(1, 20), createTestValues("db1", 1, 20))
 
 		require.True(t, itr.First())
 		require.False(t, itr.Prev())
-		checkItrResults(t, itr, createTestKeys(0, 19), createTestValues("db1", 0, 19))
+		checkItrResults(t, itr, createTestKeys(0, 20), createTestValues("db1", 0, 20))
 
 		require.True(t, itr.First())
 		require.True(t, itr.Last())
@@ -212,12 +211,12 @@ func TestDrop(t *testing.T) {
 	require.Contains(t, p.dbHandles, "db2")
 	require.Contains(t, p.dbHandles, "db3")
 
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		require.NoError(t, db1.Put([]byte(createTestKey(i)), []byte(createTestValue("db1", i)), false))
 		require.NoError(t, db2.Put([]byte(createTestKey(i)), []byte(createTestValue("db2", i)), false))
 	}
 	// db3 is used to test remove when multiple batches are needed (each long key has 125 bytes)
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		require.NoError(t, db3.Put([]byte(createTestLongKey(i)), []byte(createTestValue("db3", i)), false))
 	}
 
@@ -228,18 +227,18 @@ func TestDrop(t *testing.T) {
 	}{
 		{
 			db:             db1,
-			expectedKeys:   createTestKeys(0, 19),
-			expectedValues: createTestValues("db1", 0, 19),
+			expectedKeys:   createTestKeys(0, 20),
+			expectedValues: createTestValues("db1", 0, 20),
 		},
 		{
 			db:             db2,
-			expectedKeys:   createTestKeys(0, 19),
-			expectedValues: createTestValues("db2", 0, 19),
+			expectedKeys:   createTestKeys(0, 20),
+			expectedValues: createTestValues("db2", 0, 20),
 		},
 		{
 			db:             db3,
-			expectedKeys:   createTestLongKeys(0, 9999),
-			expectedValues: createTestValues("db3", 0, 9999),
+			expectedKeys:   createTestLongKeys(0, 10000),
+			expectedValues: createTestValues("db3", 0, 10000),
 		},
 	}
 
@@ -269,8 +268,8 @@ func TestDrop(t *testing.T) {
 		},
 		{
 			db:             db2,
-			expectedKeys:   createTestKeys(0, 19),
-			expectedValues: createTestValues("db2", 0, 19),
+			expectedKeys:   createTestKeys(0, 20),
+			expectedValues: createTestValues("db2", 0, 20),
 		},
 		{
 			db:             db3,
@@ -655,24 +654,24 @@ func createTestValue(dbname string, i int) string {
 
 func createTestKeys(start int, end int) []string {
 	var keys []string
-	for i := start; i <= end; i++ {
-		keys = append(keys, createTestKey(i))
+	for i := range end - start {
+		keys = append(keys, createTestKey(i+start))
 	}
 	return keys
 }
 
 func createTestLongKeys(start int, end int) []string {
 	var keys []string
-	for i := start; i <= end; i++ {
-		keys = append(keys, createTestLongKey(i))
+	for i := range end - start {
+		keys = append(keys, createTestLongKey(i+start))
 	}
 	return keys
 }
 
 func createTestValues(dbname string, start int, end int) []string {
 	var values []string
-	for i := start; i <= end; i++ {
-		values = append(values, createTestValue(dbname, i))
+	for i := range end - start {
+		values = append(values, createTestValue(dbname, i+start))
 	}
 	return values
 }

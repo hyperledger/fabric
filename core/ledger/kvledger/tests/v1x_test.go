@@ -178,7 +178,7 @@ func testV11CommitHashes(t *testing.T,
 
 	env.initLedgerMgmt()
 	h := env.openTestLedger("ledger1")
-	blocksAndPvtData := h.retrieveCommittedBlocksAndPvtdata(0, h.currentHeight()-1)
+	blocksAndPvtData := h.retrieveCommittedBlocksAndPvtdata(0, h.currentHeight())
 
 	var commitHashPreReset []byte
 	if preResetCommitHashExists {
@@ -193,14 +193,15 @@ func testV11CommitHashes(t *testing.T,
 	env.initLedgerMgmt()
 
 	h = env.openTestLedger("ledger1")
-	for i := int(h.currentHeight()); i < len(blocksAndPvtData); i++ {
-		d := blocksAndPvtData[i]
+	start := int(h.currentHeight())
+	for i := range len(blocksAndPvtData) - start {
+		d := blocksAndPvtData[i+start]
 		// add metadata slot for commit hash, as this would have be missing in the blocks from 1.1 prior to this feature
 		for len(d.Block.Metadata.Metadata) < int(common.BlockMetadataIndex_COMMIT_HASH)+1 {
 			d.Block.Metadata.Metadata = append(d.Block.Metadata.Metadata, []byte{})
 		}
 		// set previous block hash, as this is not present in the test blocks from 1.1
-		d.Block.Header.PreviousHash = protoutil.BlockHeaderHash(blocksAndPvtData[i-1].Block.Header)
+		d.Block.Header.PreviousHash = protoutil.BlockHeaderHash(blocksAndPvtData[i-1+start].Block.Header)
 		require.NoError(t, h.lgr.CommitLegacy(d, &ledger.CommitOptions{FetchPvtDataFromLedger: true}))
 	}
 

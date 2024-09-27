@@ -87,7 +87,7 @@ func TestSupport(t *testing.T) {
 			sup := NewDiscoverySupport(&mockMetadataRetriever{res: test.input})
 			res := sup.PoliciesByChaincode("", "", test.collNames...)
 			require.Equal(t, len(res), len(test.expectedReturn))
-			for i := 0; i < len(test.expectedReturn); i++ {
+			for i := range len(test.expectedReturn) {
 				require.Equal(t, res[i].SatisfiedBy(), test.expectedReturn[i].SatisfiedBy())
 			}
 		})

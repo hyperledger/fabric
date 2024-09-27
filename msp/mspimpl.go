@@ -888,7 +888,7 @@ func (msp *bccspmsp) getCertificationChainIdentifierFromChain(chain []*x509.Cert
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed getting hash function when computing certification chain identifier")
 	}
-	for i := 0; i < len(chain); i++ {
+	for i := range len(chain) {
 		hf.Write(chain[i].Raw)
 	}
 	return hf.Sum(nil), nil

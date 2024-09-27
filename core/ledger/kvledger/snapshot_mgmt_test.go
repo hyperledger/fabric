@@ -362,11 +362,11 @@ func testutilCommitBlocks(t *testing.T, l ledger.PeerLedger, bg *testutil.BlockG
 	startBlockNum := bcInfo.Height
 
 	var block *common.Block
-	for i := startBlockNum; i <= finalBlockNum; i++ {
+	for i := range finalBlockNum + 1 - startBlockNum {
 		txid := util.GenerateUUID()
 		simulator, err := l.NewTxSimulator(txid)
 		require.NoError(t, err)
-		require.NoError(t, simulator.SetState("ns1", fmt.Sprintf("key%d", i), []byte(fmt.Sprintf("value%d", i))))
+		require.NoError(t, simulator.SetState("ns1", fmt.Sprintf("key%d", i+startBlockNum), []byte(fmt.Sprintf("value%d", i+startBlockNum))))
 		simulator.Done()
 		require.NoError(t, err)
 		simRes, err := simulator.GetTxSimulationResults()
@@ -380,7 +380,7 @@ func testutilCommitBlocks(t *testing.T, l ledger.PeerLedger, bg *testutil.BlockG
 		require.NoError(t, err)
 		blockHash := protoutil.BlockHeaderHash(block.Header)
 		require.Equal(t, &common.BlockchainInfo{
-			Height: i + 1, CurrentBlockHash: blockHash, PreviousBlockHash: previousBlockHash,
+			Height: i + 1 + startBlockNum, CurrentBlockHash: blockHash, PreviousBlockHash: previousBlockHash,
 		}, bcInfo)
 		previousBlockHash = blockHash
 	}

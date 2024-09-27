@@ -29,17 +29,17 @@ func TestMain(m *testing.M) {
 func TestBatch(t *testing.T) {
 	batch := UpdateMap(make(map[string]NsBatch))
 	v := version.NewHeight(1, 1)
-	for i := 0; i < 5; i++ {
-		for j := 0; j < 5; j++ {
-			for k := 0; k < 5; k++ {
+	for i := range 5 {
+		for j := range 5 {
+			for k := range 5 {
 				batch.Put(fmt.Sprintf("ns-%d", i), fmt.Sprintf("collection-%d", j), fmt.Sprintf("key-%d", k),
 					[]byte(fmt.Sprintf("value-%d-%d-%d", i, j, k)), v)
 			}
 		}
 	}
-	for i := 0; i < 5; i++ {
-		for j := 0; j < 5; j++ {
-			for k := 0; k < 5; k++ {
+	for i := range 5 {
+		for j := range 5 {
+			for k := range 5 {
 				vv := batch.Get(fmt.Sprintf("ns-%d", i), fmt.Sprintf("collection-%d", j), fmt.Sprintf("key-%d", k))
 				require.NotNil(t, vv)
 				require.Equal(t,
