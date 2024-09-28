@@ -26,8 +26,6 @@ func main() {
 		logger.Printf("::Error: %v\n", err)
 		os.Exit(1)
 	}
-
-	logger.Printf("::Type detected as ccaas")
 }
 
 type chaincodeMetadata struct {
@@ -59,9 +57,11 @@ func run() error {
 		return errors.WithMessage(err, "Unable to parse the metadata.json file")
 	}
 
-	if strings.ToLower(metadata.Type) != "ccaas" {
+	if strings.ToLower(metadata.Type) != "ccaas" && strings.ToLower(metadata.Type) != "remote" {
 		return fmt.Errorf("chaincode type not supported: %s", metadata.Type)
 	}
+
+	logger.Printf("::Type detected as: " + strings.ToLower(metadata.Type))
 
 	// returning nil indicates to the peer a successful detection
 	return nil
