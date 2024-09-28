@@ -26,6 +26,8 @@ func reconcileBlockCmd(cf *ReconcileCmdFactory) *cobra.Command {
 
 func reconcileBlock(cmd *cobra.Command, args []string, rf *ReconcileCmdFactory) error {
 
+	logger.Debugf("Received the arguments for reconcilation %d", args)
+
 	if len(args) == 0 {
 		return fmt.Errorf("reconcile target required, block number")
 	}
@@ -59,12 +61,15 @@ func reconcileBlock(cmd *cobra.Command, args []string, rf *ReconcileCmdFactory) 
 		}
 	}
 
-	response, _ := rf.DeliverClient.ReconcileSpecifiedBlock(uint64(blockNumber))
+	response, err := rf.DeliverClient.ReconcileSpecifiedBlock(uint64(blockNumber))
 
-	fmt.Println(response)
+	if err != nil {
+		fmt.Printf("Failed to reconcile block %d: %v\n", blockNumber, err.Error())
+	} else {
+		fmt.Println(response)
+	}
 
-	logger.Debugf("Received the arguments for reconcilation %d", blockNumber)
-	fmt.Printf("Received the arguments for reconcilation %v on channel %s\n", args, channelID)
+	// fmt.Printf("Received the arguments for reconcilation %v on channel %s\n", args, channelID)
 
 	err = rf.DeliverClient.Close()
 	if err != nil {

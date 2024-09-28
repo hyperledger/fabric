@@ -9,6 +9,7 @@ package privdata
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/hyperledger/fabric/internal/peer/protos"
 	"math"
 	"sync"
 	"time"
@@ -53,6 +54,9 @@ type PvtDataReconciler interface {
 	Start()
 	// Stop function stops reconciler
 	Stop()
+
+	//Reconcile performs on demand reconcilation a block or transaction
+	Reconcile(uint65 uint64) (protos.ReconcileResponse, error)
 }
 
 type Reconciler struct {
@@ -68,6 +72,25 @@ type Reconciler struct {
 	committer.Committer
 }
 
+var ReconcilerServiceRegistry = make(map[string]PvtDataReconciler)
+
+// SetOnDemandReconcilerService sets a reconciler service by name
+func SetOnDemandReconcilerService(name string, reconciler PvtDataReconciler) {
+	ReconcilerServiceRegistry[name] = reconciler
+}
+
+func GetOnDemandReconcilerService(name string) PvtDataReconciler {
+
+	if len(ReconcilerServiceRegistry) == 0 {
+		return nil
+	}
+	if ReconcilerServiceRegistry[name] == nil {
+		return nil
+	}
+
+	return ReconcilerServiceRegistry[name]
+}
+
 // NoOpReconciler non functional reconciler to be used
 // in case reconciliation has been disabled
 type NoOpReconciler struct {
@@ -80,6 +103,11 @@ func (*NoOpReconciler) Start() {
 
 func (*NoOpReconciler) Stop() {
 	// do nothing
+}
+
+func (*NoOpReconciler) Reconcile(num uint64) (protos.ReconcileResponse, error) {
+	logger.Debug("Private data reconciliation has been disabled")
+	return protos.ReconcileResponse{Success: false, Message: "got nil as MissingPvtDataTracker, exiting..."}, nil
 }
 
 // NewReconciler creates a new instance of reconciler
@@ -111,6 +139,10 @@ func (r *Reconciler) Start() {
 	})
 }
 
+func (r *Reconciler) Reconcile(num uint64) (protos.ReconcileResponse, error) {
+	return r.reconcileSpecific(num)
+}
+
 func (r *Reconciler) run() {
 	for {
 		select {
@@ -124,6 +156,60 @@ func (r *Reconciler) run() {
 			}
 		}
 	}
+}
+
+// ReconcileSpecific initiates a reconcilation for specific block and returns the number of items that were reconciled , minBlock, maxBlock (blocks range) and an error
+func (r *Reconciler) reconcileSpecific(num uint64) (protos.ReconcileResponse, error) {
+	missingPvtDataTracker, err := r.GetMissingPvtDataTracker()
+	if err != nil {
+		r.logger.Error("reconciliation error when trying to get missingPvtDataTracker:", err)
+		return protos.ReconcileResponse{Success: false, Message: err.Error()}, err
+	}
+	if missingPvtDataTracker == nil {
+		r.logger.Error("got nil as MissingPvtDataTracker, exiting...")
+		return protos.ReconcileResponse{Success: false, Message: "got nil as MissingPvtDataTracker, exiting..."}, nil
+	}
+	totalReconciled := 0
+
+	defer r.reportReconciliationDuration(time.Now())
+
+	// for {
+	missingPvtDataInfo, err := missingPvtDataTracker.GetMissingPvtDataInfoForSpecificBlock(num)
+	if err != nil {
+		r.logger.Errorf("reconciliation error when trying to get missing pvt data info for the block [%d] blocks: error %v", num, err.Error())
+		return protos.ReconcileResponse{Success: false, Message: err.Error()}, err
+	}
+	// if missingPvtDataInfo is nil, len will return 0
+	if len(missingPvtDataInfo) == 0 {
+		r.logger.Debug("Reconciliation cycle finished successfully. no items to reconcile")
+		return protos.ReconcileResponse{Success: true, Message: fmt.Sprintf("Reconciliation cycle finished successfully. nothing to reconcile for blocks range [%d]", num)}, nil
+	}
+
+	r.logger.Debug("got from ledger", len(missingPvtDataInfo), "blocks with missing private data, trying to reconcile...")
+
+	dig2collectionCfg, _, _ := r.getDig2CollectionConfig(missingPvtDataInfo)
+	fetchedData, err := r.FetchReconciledItems(dig2collectionCfg)
+	if err != nil {
+		r.logger.Error("reconciliation error when trying to fetch missing items from different peers:", err)
+		return protos.ReconcileResponse{Success: false, Message: err.Error()}, err
+	}
+
+	pvtDataToCommit := r.preparePvtDataToCommit(fetchedData.AvailableElements)
+	unreconciled := constructUnreconciledMissingData(dig2collectionCfg, fetchedData.AvailableElements)
+	pvtdataHashMismatch, err := r.CommitPvtDataOfOldBlocks(pvtDataToCommit, unreconciled)
+	if err != nil {
+		return protos.ReconcileResponse{Success: false, Message: "failed to commit private data"}, err
+	}
+	r.logMismatched(pvtdataHashMismatch)
+	//if minB < minBlock {
+	//	minBlock = minB
+	//}
+	//if maxB > maxBlock {
+	//	maxBlock = maxB
+	//}
+	totalReconciled += len(fetchedData.AvailableElements)
+	// }
+	return protos.ReconcileResponse{Success: true, Message: fmt.Sprintf("Reconciliation cycle finished successfully. reconciled %d private data keys from blocks range [%d]", totalReconciled, num)}, nil
 }
 
 // returns the number of items that were reconciled , minBlock, maxBlock (blocks range) and an error

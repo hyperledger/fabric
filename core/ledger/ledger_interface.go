@@ -536,6 +536,7 @@ type ConfigHistoryRetriever interface {
 // MissingPvtDataTracker allows getting information about the private data that is not missing on the peer
 type MissingPvtDataTracker interface {
 	GetMissingPvtDataInfoForMostRecentBlocks(maxBlocks int) (MissingPvtDataInfo, error)
+	GetMissingPvtDataInfoForSpecificBlock(blockNumber uint64) (MissingPvtDataInfo, error)
 }
 
 // MissingPvtDataInfo is a map of block number to MissingBlockPvtdataInfo

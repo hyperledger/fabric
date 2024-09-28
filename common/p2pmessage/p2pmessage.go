@@ -2,11 +2,13 @@ package p2pmessage
 
 import (
 	"context"
+	"fmt"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
+	gossipprivdata "github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/internal/peer/protos"
 	"time"
 )
@@ -113,11 +115,21 @@ func (h *Handler) Handle(ctx context.Context, request *protos.ReconcileRequest) 
 	defer h.Metrics.StreamsClosed.Add(1)
 
 	reconcileResponse := &protos.ReconcileResponse{
-		Success: true,
-		Message: "I amd sending the response! It's me server",
+		Success: false,
 	}
 
-	return reconcileResponse, nil
+	// Calling Reconciler Service
+	// reconcilerServiceRegistry := gossipprivdata.NewOnDemandReconcilerService()
+	reconciler := gossipprivdata.GetOnDemandReconcilerService(request.ChannelId)
+	fmt.Println(reconciler)
+
+	if reconciler == nil {
+		reconcileResponse.Message = "no reconciler found for channel " + request.ChannelId
+
+		return reconcileResponse, fmt.Errorf("no reconciler found for channel " + request.ChannelId)
+	}
+	response, err := reconciler.Reconcile(request.BlockNumber)
+	return &response, err
 }
 
 // ExtractChannelHeaderCertHash extracts the TLS cert hash from a channel header.

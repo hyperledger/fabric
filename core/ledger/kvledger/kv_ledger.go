@@ -464,8 +464,8 @@ func (l *kvLedger) filterYetToCommitBlocks(blocksPvtData map[uint64][]*ledger.Tx
 	return nil
 }
 
-//recommitLostBlocks retrieves blocks in specified range and commit the write set to either
-//state DB or history DB or both
+// recommitLostBlocks retrieves blocks in specified range and commit the write set to either
+// state DB or history DB or both
 func (l *kvLedger) recommitLostBlocks(firstBlockNum uint64, lastBlockNum uint64, recoverables ...recoverable) error {
 	logger.Infof("Recommitting lost blocks - firstBlockNum=%d, lastBlockNum=%d, recoverables=%#v", firstBlockNum, lastBlockNum, recoverables)
 	var err error
@@ -762,6 +762,23 @@ func (l *kvLedger) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledge
 	return l.pvtdataStore.GetMissingPvtDataInfoForMostRecentBlocks(maxBlock)
 }
 
+// GetMissingPvtDataInfoForSpecificBlock returns the missing private data information for the
+// specified blocks which miss at least a private data of a eligible collection.
+func (l *kvLedger) GetMissingPvtDataInfoForSpecificBlock(blockNumber uint64) (ledger.MissingPvtDataInfo, error) {
+	// the missing pvtData info in the pvtdataStore could belong to a block which is yet
+	// to be processed and committed to the blockStore and stateDB (such a scenario is possible
+	// after a peer rollback). In such cases, we cannot return missing pvtData info. Otherwise,
+	// we would end up in an inconsistent state database.
+	if l.isPvtstoreAheadOfBlkstore.Load().(bool) {
+		return nil, nil
+	}
+	// it is safe to not acquire a read lock on l.blockAPIsRWLock. Without a lock, the value of
+	// lastCommittedBlock can change due to a new block commit. As a result, we may not
+	// be able to fetch the missing data info of truly the most recent blocks. This
+	// decision was made to ensure that the regular block commit rate is not affected.
+	return l.pvtdataStore.GetMissingPvtDataInfoForSpecificBlock(blockNumber)
+}
+
 func (l *kvLedger) addBlockCommitHash(block *common.Block, updateBatchBytes []byte) {
 	var valueBytes []byte
 
@@ -812,9 +829,12 @@ func (l *kvLedger) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilte
 // DoesPvtDataInfoExist returns true when
 // (1) the ledger has pvtdata associated with the given block number (or)
 // (2) a few or all pvtdata associated with the given block number is missing but the
-//     missing info is recorded in the ledger (or)
+//
+//	missing info is recorded in the ledger (or)
+//
 // (3) the block is committed but it does not contain even a single
-//     transaction with pvtData.
+//
+//	transaction with pvtData.
 func (l *kvLedger) DoesPvtDataInfoExist(blockNum uint64) (bool, error) {
 	pvtStoreHt, err := l.pvtdataStore.LastCommittedBlockHeight()
 	if err != nil {

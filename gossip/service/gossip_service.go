@@ -366,6 +366,10 @@ func (g *GossipService) InitializeChannel(channelID string, ordererSource *order
 		reconciler = &gossipprivdata.NoOpReconciler{}
 	}
 
+	// reconcilerServiceRegistry := gossipprivdata.NewOnDemandReconcilerService()
+	// reconcilerServiceRegistry.SetOnDemandReconcilerService(channelID, reconciler)
+	gossipprivdata.SetOnDemandReconcilerService(channelID, reconciler)
+
 	pushAckTimeout := g.serviceConfig.PvtDataPushAckTimeout
 	g.privateHandlers[channelID] = privateHandler{
 		support:     support,

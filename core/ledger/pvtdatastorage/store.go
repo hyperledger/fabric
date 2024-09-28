@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package pvtdatastorage
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -476,6 +477,41 @@ func (s *Store) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.M
 	return s.getMissingData(elgPrioritizedMissingDataGroup, maxBlock)
 }
 
+// GetMissingPvtDataInfoForSpecificBlock returns the missing private data information for the
+// specified block which miss at least a private data of a eligible collection.
+func (s *Store) GetMissingPvtDataInfoForSpecificBlock(blockNumber uint64) (ledger.MissingPvtDataInfo, error) {
+	// we assume that this function would be called by the gossip only after processing the
+	// last retrieved missing pvtdata info and committing the same.
+	if blockNumber < 1 {
+		return nil, fmt.Errorf("invalid block number [%d]", blockNumber)
+	}
+
+	lastCommittedBlock := atomic.LoadUint64(&s.lastCommittedBlock)
+	if blockNumber > lastCommittedBlock {
+		return nil, fmt.Errorf("block [%d] is not committed yet to the ledger", blockNumber)
+	}
+
+	logger.Debug("fetching missing pvtdata entries from the de-prioritized list")
+	dePrioratizedQue, err := s.getMissingDataFromSpecificBlock(elgDeprioritizedMissingDataGroup, blockNumber)
+	if err != nil {
+		logger.Debugf("Error in fetching missing pvtdata entries from the de-prioritized list: %s", err)
+		return nil, err
+	}
+	logger.Debug("fetching missing pvtdata entries from the prioritized list")
+	prioritizedQue, err := s.getMissingDataFromSpecificBlock(elgPrioritizedMissingDataGroup, blockNumber)
+	if err != nil {
+		logger.Debugf("Error in fetching missing pvtdata entries from the prioritized list: %s", err)
+		return nil, err
+	}
+
+	for k, v := range dePrioratizedQue {
+		prioritizedQue[k] = v // This will overwrite map1's entry if the key exists
+	}
+
+	return prioritizedQue, nil
+
+}
+
 func (s *Store) getMissingData(group []byte, maxBlock int) (ledger.MissingPvtDataInfo, error) {
 	missingPvtDataInfo := make(ledger.MissingPvtDataInfo)
 	numberOfBlockProcessed := 0
@@ -545,6 +581,54 @@ func (s *Store) getMissingData(group []byte, maxBlock int) (ledger.MissingPvtDat
 			txNum := uint64(index)
 			missingPvtDataInfo.Add(missingDataKey.blkNum, txNum, missingDataKey.ns, missingDataKey.coll)
 		}
+	}
+
+	return missingPvtDataInfo, nil
+}
+
+func (s *Store) getMissingDataFromSpecificBlock(group []byte, blockNumber uint64) (ledger.MissingPvtDataInfo, error) {
+	missingPvtDataInfo := make(ledger.MissingPvtDataInfo)
+
+	startKey, endKey := createRangeScanKeysForElgMissingData(blockNumber, group)
+	dbItr, err := s.db.GetIterator(startKey, endKey)
+	if err != nil {
+		return nil, err
+	}
+	defer dbItr.Release()
+
+	for dbItr.Next() {
+		missingDataKeyBytes := dbItr.Key()
+		missingDataKey := decodeElgMissingDataKey(missingDataKeyBytes)
+
+		// check whether the entry is expired. If so, move to the next item.
+		// As we may use the old lastCommittedBlock value, there is a possibility that
+		// this missing data is actually expired but we may get the stale information.
+		// Though it may leads to extra work of pulling the expired data, it will not
+		// affect the correctness. Further, as we try to fetch the most recent missing
+		// data (less possibility of expiring now), such scenario would be rare. In the
+		// best case, we can load the latest lastCommittedBlock value here atomically to
+		// make this scenario very rare.
+		expired, err := isExpired(missingDataKey.nsCollBlk, s.btlPolicy, blockNumber)
+		if err != nil {
+			return nil, err
+		}
+		if expired {
+			continue
+		}
+
+		valueBytes := dbItr.Value()
+		bitmap, err := decodeMissingDataValue(valueBytes)
+		if err != nil {
+			return nil, err
+		}
+
+		// for each transaction which misses private data, make an entry in missingBlockPvtDataInfo
+		for index, isSet := bitmap.NextSet(0); isSet; index, isSet = bitmap.NextSet(index + 1) {
+			txNum := uint64(index)
+			missingPvtDataInfo.Add(missingDataKey.blkNum, txNum, missingDataKey.ns, missingDataKey.coll)
+		}
+
+		break
 	}
 
 	return missingPvtDataInfo, nil
