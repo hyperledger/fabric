@@ -68,8 +68,15 @@ var base64Encoding = base64.URLEncoding
 // Base64StdEncoding Marshal/Unmarshal BitSet with base64.StdEncoding(Default: base64.URLEncoding)
 func Base64StdEncoding() { base64Encoding = base64.StdEncoding }
 
-// LittleEndian Marshal/Unmarshal Binary as Little Endian(Default: binary.BigEndian)
+// LittleEndian sets Marshal/Unmarshal Binary as Little Endian (Default: binary.BigEndian)
 func LittleEndian() { binaryOrder = binary.LittleEndian }
+
+// BigEndian sets Marshal/Unmarshal Binary as Big Endian (Default: binary.BigEndian)
+func BigEndian() { binaryOrder = binary.BigEndian }
+
+// BinaryOrder returns the current binary order, see also LittleEndian()
+// and BigEndian() to change the order.
+func BinaryOrder() binary.ByteOrder { return binaryOrder }
 
 // A BitSet is a set of bits. The zero value of a BitSet is an empty set of length 0.
 type BitSet struct {
@@ -104,7 +111,9 @@ func FromWithLength(len uint, set []uint64) *BitSet {
 	return &BitSet{len, set}
 }
 
-// Bytes returns the bitset as array of words
+// Bytes returns the bitset as array of 64-bit words, giving direct access to the internal representation.
+// It is not a copy, so changes to the returned slice will affect the bitset.
+// It is meant for advanced users.
 func (b *BitSet) Bytes() []uint64 {
 	return b.set
 }
@@ -118,7 +127,7 @@ func wordsNeeded(i uint) int {
 }
 
 // wordsNeededUnbound calculates the number of words needed for i bits, possibly exceeding the capacity.
-// This function is useful if you know that the capacity cannot be exceeded (e.g., you have an existing bitmap).
+// This function is useful if you know that the capacity cannot be exceeded (e.g., you have an existing BitSet).
 func wordsNeededUnbound(i uint) int {
 	return int((i + (wordSize - 1)) >> log2WordSize)
 }
@@ -148,12 +157,16 @@ func New(length uint) (bset *BitSet) {
 }
 
 // Cap returns the total possible capacity, or number of bits
+// that can be stored in the BitSet theoretically. Under 32-bit system,
+// it is 4294967295 and under 64-bit system, it is 18446744073709551615.
+// Note that this is further limited by the maximum allocation size in Go,
+// and your available memory, as any Go data structure.
 func Cap() uint {
 	return ^uint(0)
 }
 
 // Len returns the number of bits in the BitSet.
-// Note the difference to method Count, see example.
+// Note that it differ from Count function.
 func (b *BitSet) Len() uint {
 	return b.length
 }
@@ -186,10 +199,10 @@ func (b *BitSet) Test(i uint) bool {
 
 // Set bit i to 1, the capacity of the bitset is automatically
 // increased accordingly.
-// If i>= Cap(), this function will panic.
 // Warning: using a very large value for 'i'
 // may lead to a memory shortage and a panic: the caller is responsible
 // for providing sensible parameters in line with their memory capacity.
+// The memory usage is at least slightly over i/8 bytes.
 func (b *BitSet) Set(i uint) *BitSet {
 	if i >= b.length { // if we need more bits, make 'em
 		b.extendSet(i)
@@ -198,7 +211,7 @@ func (b *BitSet) Set(i uint) *BitSet {
 	return b
 }
 
-// Clear bit i to 0
+// Clear bit i to 0. This never cause a memory allocation. It is always safe.
 func (b *BitSet) Clear(i uint) *BitSet {
 	if i >= b.length {
 		return b
@@ -208,7 +221,6 @@ func (b *BitSet) Clear(i uint) *BitSet {
 }
 
 // SetTo sets bit i to value.
-// If i>= Cap(), this function will panic.
 // Warning: using a very large value for 'i'
 // may lead to a memory shortage and a panic: the caller is responsible
 // for providing sensible parameters in line with their memory capacity.
@@ -220,7 +232,6 @@ func (b *BitSet) SetTo(i uint, value bool) *BitSet {
 }
 
 // Flip bit at i.
-// If i>= Cap(), this function will panic.
 // Warning: using a very large value for 'i'
 // may lead to a memory shortage and a panic: the caller is responsible
 // for providing sensible parameters in line with their memory capacity.
@@ -233,7 +244,6 @@ func (b *BitSet) Flip(i uint) *BitSet {
 }
 
 // FlipRange bit in [start, end).
-// If end>= Cap(), this function will panic.
 // Warning: using a very large value for 'end'
 // may lead to a memory shortage and a panic: the caller is responsible
 // for providing sensible parameters in line with their memory capacity.
@@ -275,6 +285,7 @@ func (b *BitSet) FlipRange(start, end uint) *BitSet {
 // memory usage until the GC runs. Normally this should not be a problem, but if you
 // have an extremely large BitSet its important to understand that the old BitSet will
 // remain in memory until the GC frees it.
+// If you are memory constrained, this function may cause a panic.
 func (b *BitSet) Shrink(lastbitindex uint) *BitSet {
 	length := lastbitindex + 1
 	idx := wordsNeeded(length)
@@ -294,6 +305,11 @@ func (b *BitSet) Shrink(lastbitindex uint) *BitSet {
 
 // Compact shrinks BitSet to so that we preserve all set bits, while minimizing
 // memory usage. Compact calls Shrink.
+// A new slice is allocated to store the new bits, so you may see an increase in
+// memory usage until the GC runs. Normally this should not be a problem, but if you
+// have an extremely large BitSet its important to understand that the old BitSet will
+// remain in memory until the GC frees it.
+// If you are memory constrained, this function may cause a panic.
 func (b *BitSet) Compact() *BitSet {
 	idx := len(b.set) - 1
 	for ; idx >= 0 && b.set[idx] == 0; idx-- {
@@ -353,7 +369,8 @@ func (b *BitSet) InsertAt(idx uint) *BitSet {
 	return b
 }
 
-// String creates a string representation of the Bitmap
+// String creates a string representation of the BitSet. It is only intended for
+// human-readable output and not for serialization.
 func (b *BitSet) String() string {
 	// follows code from https://github.com/RoaringBitmap/roaring
 	var buffer bytes.Buffer
@@ -541,7 +558,8 @@ func (b *BitSet) NextClear(i uint) (uint, bool) {
 	return 0, false
 }
 
-// ClearAll clears the entire BitSet
+// ClearAll clears the entire BitSet.
+// It does not free the memory.
 func (b *BitSet) ClearAll() *BitSet {
 	if b != nil && b.set != nil {
 		for i := range b.set {
@@ -737,7 +755,7 @@ func (b *BitSet) Intersection(compare *BitSet) (result *BitSet) {
 	return
 }
 
-// IntersectionCardinality computes the cardinality of the union
+// IntersectionCardinality computes the cardinality of the intersection
 func (b *BitSet) IntersectionCardinality(compare *BitSet) uint {
 	panicIfNull(b)
 	panicIfNull(compare)
@@ -958,6 +976,7 @@ func (b *BitSet) IsStrictSuperSet(other *BitSet) bool {
 
 // DumpAsBits dumps a bit set as a string of bits. Following the usual convention in Go,
 // the least significant bits are printed last (index 0 is at the end of the string).
+// This is useful for debugging and testing. It is not suitable for serialization.
 func (b *BitSet) DumpAsBits() string {
 	if b.set == nil {
 		return "."
@@ -1020,6 +1039,15 @@ func writeUint64Array(writer io.Writer, data []uint64) error {
 // WriteTo writes a BitSet to a stream. The format is:
 // 1. uint64 length
 // 2. []uint64 set
+// The length is the number of bits in the BitSet.
+//
+// The set is a slice of uint64s containing between length and length + 63 bits.
+// It is interpreted as a big-endian array of uint64s by default (see BinaryOrder())
+// meaning that the first 8 bits are stored at byte index 7, the next 8 bits are stored
+// at byte index 6... the bits 64 to 71 are stored at byte index 8, etc.
+// If you change the binary order, you need to do so for both reading and writing.
+// We recommend using the default binary order.
+//
 // Upon success, the number of bytes written is returned.
 //
 // Performance: if this function is used to write to a disk or network
@@ -1050,6 +1078,7 @@ func (b *BitSet) WriteTo(stream io.Writer) (int64, error) {
 // The format is:
 // 1. uint64 length
 // 2. []uint64 set
+// See WriteTo for details.
 // Upon success, the number of bytes read is returned.
 // If the current BitSet is not large enough to hold the data,
 // it is extended. In case of error, the BitSet is either
@@ -1101,6 +1130,7 @@ func (b *BitSet) ReadFrom(stream io.Reader) (int64, error) {
 }
 
 // MarshalBinary encodes a BitSet into a binary form and returns the result.
+// Please see WriteTo for details.
 func (b *BitSet) MarshalBinary() ([]byte, error) {
 	var buf bytes.Buffer
 	_, err := b.WriteTo(&buf)
@@ -1112,6 +1142,7 @@ func (b *BitSet) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary decodes the binary form generated by MarshalBinary.
+// Please see WriteTo for details.
 func (b *BitSet) UnmarshalBinary(data []byte) error {
 	buf := bytes.NewReader(data)
 	_, err := b.ReadFrom(buf)
@@ -1181,4 +1212,122 @@ func (b *BitSet) Select(index uint) uint {
 		leftover -= w
 	}
 	return b.length
+}
+
+// top detects the top bit set
+func (b *BitSet) top() (uint, bool) {
+	panicIfNull(b)
+
+	idx := len(b.set) - 1
+	for ; idx >= 0 && b.set[idx] == 0; idx-- {
+	}
+
+	// no set bits
+	if idx < 0 {
+		return 0, false
+	}
+
+	return uint(idx)*wordSize + len64(b.set[idx]) - 1, true
+}
+
+// ShiftLeft shifts the bitset like << operation would do.
+//
+// Left shift may require bitset size extension. We try to avoid the
+// unnecessary memory operations by detecting the leftmost set bit.
+// The function will panic if shift causes excess of capacity.
+func (b *BitSet) ShiftLeft(bits uint) {
+	panicIfNull(b)
+
+	if bits == 0 {
+		return
+	}
+
+	top, ok := b.top()
+	if !ok {
+		return
+	}
+
+	// capacity check
+	if top+bits < bits {
+		panic("You are exceeding the capacity")
+	}
+
+	// destination set
+	dst := b.set
+
+	// not using extendSet() to avoid unneeded data copying
+	nsize := wordsNeeded(top + bits)
+	if len(b.set) < nsize {
+		dst = make([]uint64, nsize)
+	}
+	if top+bits >= b.length {
+		b.length = top + bits + 1
+	}
+
+	pad, idx := top%wordSize, top>>log2WordSize
+	shift, pages := bits%wordSize, bits>>log2WordSize
+	if bits%wordSize == 0 { // happy case: just add pages
+		copy(dst[pages:nsize], b.set)
+	} else {
+		if pad+shift >= wordSize {
+			dst[idx+pages+1] = b.set[idx] >> (wordSize - shift)
+		}
+
+		for i := int(idx); i >= 0; i-- {
+			if i > 0 {
+				dst[i+int(pages)] = (b.set[i] << shift) | (b.set[i-1] >> (wordSize - shift))
+			} else {
+				dst[i+int(pages)] = b.set[i] << shift
+			}
+		}
+	}
+
+	// zeroing extra pages
+	for i := 0; i < int(pages); i++ {
+		dst[i] = 0
+	}
+
+	b.set = dst
+}
+
+// ShiftRight shifts the bitset like >> operation would do.
+func (b *BitSet) ShiftRight(bits uint) {
+	panicIfNull(b)
+
+	if bits == 0 {
+		return
+	}
+
+	top, ok := b.top()
+	if !ok {
+		return
+	}
+
+	if bits >= top {
+		b.set = make([]uint64, wordsNeeded(b.length))
+		return
+	}
+
+	pad, idx := top%wordSize, top>>log2WordSize
+	shift, pages := bits%wordSize, bits>>log2WordSize
+	if bits%wordSize == 0 { // happy case: just clear pages
+		b.set = b.set[pages:]
+		b.length -= pages * wordSize
+	} else {
+		for i := 0; i <= int(idx-pages); i++ {
+			if i < int(idx-pages) {
+				b.set[i] = (b.set[i+int(pages)] >> shift) | (b.set[i+int(pages)+1] << (wordSize - shift))
+			} else {
+				b.set[i] = b.set[i+int(pages)] >> shift
+			}
+		}
+
+		if pad < shift {
+			b.set[int(idx-pages)] = 0
+		}
+	}
+
+	for i := int(idx-pages) + 1; i <= int(idx); i++ {
+		b.set[i] = 0
+	}
 }
