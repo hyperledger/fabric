@@ -10,7 +10,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/cheggaaa/pb"
+	"github.com/cheggaaa/pb/v3"
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
@@ -92,7 +92,7 @@ func main() {
 	flag.Uint64Var(&msgSize, "size", 1024, "The size in bytes of the data section for the payload")
 	flag.Parse()
 
-	conn, err := grpc.Dial(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	defer func() {
 		_ = conn.Close()
 	}()
@@ -107,39 +107,38 @@ func main() {
 		fmt.Println("Rounding messages to", roundMsgs)
 	}
 	bar = pb.New64(int64(roundMsgs))
-	bar.ShowPercent = true
-	bar.ShowSpeed = true
 	bar = bar.Start()
 
 	msgData := make([]byte, msgSize)
 
 	var wg sync.WaitGroup
 	wg.Add(int(goroutines))
-	for i := uint64(0); i < goroutines; i++ {
+	for i := range goroutines {
 		go func(i uint64, pb *pb.ProgressBar) {
-			client, err := ab.NewAtomicBroadcastClient(conn).Broadcast(context.TODO())
-			if err != nil {
-				fmt.Println("Error connecting:", err)
+			client, err1 := ab.NewAtomicBroadcastClient(conn).Broadcast(context.TODO())
+			if err1 != nil {
+				fmt.Println("Error connecting:", err1)
 				return
 			}
 
 			s := newBroadcastClient(client, channelID, signer)
 			done := make(chan struct{})
 			go func() {
-				for i := uint64(0); i < msgsPerGo; i++ {
-					err = s.getAck()
-					if err == nil && bar != nil {
+				var err2 error
+				for range msgsPerGo {
+					err2 = s.getAck()
+					if err2 == nil && bar != nil {
 						bar.Increment()
 					}
 				}
-				if err != nil {
-					fmt.Printf("\nError: %v\n", err)
+				if err2 != nil {
+					fmt.Printf("\nError: %v\n", err2)
 				}
 				close(done)
 			}()
-			for i := uint64(0); i < msgsPerGo; i++ {
-				if err := s.broadcast(msgData); err != nil {
-					panic(err)
+			for range msgsPerGo {
+				if err1 = s.broadcast(msgData); err1 != nil {
+					panic(err1)
 				}
 			}
 			<-done
@@ -149,5 +148,5 @@ func main() {
 	}
 
 	wg.Wait()
-	bar.FinishPrint("----------------------broadcast message finish-------------------------------")
+	bar.Finish()
 }
