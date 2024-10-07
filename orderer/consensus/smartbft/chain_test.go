@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -357,6 +358,9 @@ func TestAddNodeWhileAnotherNodeIsDown(t *testing.T) {
 func TestAddAndRemoveNodeWithoutStop(t *testing.T) {
 	dir := t.TempDir()
 	channelId := "testchannel"
+
+	flogging.ActivateSpec("debug")
+	defer flogging.ActivateSpec("info")
 
 	// start a network
 	networkSetupInfo := NewNetworkSetupInfo(t, channelId, dir)
