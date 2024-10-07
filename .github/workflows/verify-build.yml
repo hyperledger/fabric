@@ -58,7 +58,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        INTEGRATION_TEST_SUITE: ["raft","pvtdata","pvtdatapurge","ledger","lifecycle","e2e smartbft","discovery gossip devmode pluggable","gateway idemix pkcs11 configtx configtxlator","sbe nwo msp"]
+        INTEGRATION_TEST_SUITE: ["raft","pvtdata","pvtdatapurge e2e","ledger","lifecycle","smartbft","discovery gossip devmode pluggable","gateway idemix pkcs11 configtx configtxlator","sbe nwo msp"]
     runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-22.04' || 'ubuntu-22.04' }}
     steps:
       - uses: actions/checkout@v4
