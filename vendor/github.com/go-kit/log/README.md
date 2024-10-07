@@ -66,7 +66,7 @@ Redirect stdlib logger to Go kit logger.
 import (
 	"os"
 	stdlog "log"
-	kitlog "github.com/go-kit/kit/log"
+	kitlog "github.com/go-kit/log"
 )
 
 func main() {
@@ -105,7 +105,7 @@ logger.Log("msg", "hello")
 
 ## Levels
 
-Log levels are supported via the [level package](https://godoc.org/github.com/go-kit/kit/log/level).
+Log levels are supported via the [level package](https://godoc.org/github.com/go-kit/log/level).
 
 ## Supported output formats
 
@@ -136,11 +136,11 @@ Also, please see
 to review historical conversations about package log and the Logger interface.
 
 Value-add packages and suggestions,
-like improvements to [the leveled logger](https://godoc.org/github.com/go-kit/kit/log/level),
+like improvements to [the leveled logger](https://godoc.org/github.com/go-kit/log/level),
 are of course welcome. Good proposals should
 
-- Be composable with [contextual loggers](https://godoc.org/github.com/go-kit/kit/log#With),
-- Not break the behavior of [log.Caller](https://godoc.org/github.com/go-kit/kit/log#Caller) in any wrapped contextual loggers, and
+- Be composable with [contextual loggers](https://godoc.org/github.com/go-kit/log#With),
+- Not break the behavior of [log.Caller](https://godoc.org/github.com/go-kit/log#Caller) in any wrapped contextual loggers, and
 - Be friendly to packages that accept only an unadorned log.Logger.
 
 ## Benchmarks & comparisons
