@@ -18,7 +18,7 @@ require (
 	github.com/hyperledger/fabric-chaincode-go/v2 v2.0.0
 	github.com/hyperledger/fabric-config v0.3.0
 	github.com/hyperledger/fabric-lib-go v1.1.3-0.20240523144151-25edd1eaf5f5
-	github.com/hyperledger/fabric-protos-go-apiv2 v0.3.3
+	github.com/hyperledger/fabric-protos-go-apiv2 v0.3.4
 	github.com/kr/pretty v0.3.1
 	github.com/miekg/pkcs11 v1.1.1
 	github.com/mitchellh/mapstructure v1.5.0
@@ -36,7 +36,7 @@ require (
 	go.etcd.io/etcd/raft/v3 v3.5.14
 	go.etcd.io/etcd/server/v3 v3.5.14
 	go.uber.org/zap v1.27.0
-	google.golang.org/grpc v1.66.1
+	google.golang.org/grpc v1.67.1
 	google.golang.org/protobuf v1.34.2
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v2 v2.4.0
@@ -118,7 +118,7 @@ require (
 	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/text v0.18.0 // indirect
 	golang.org/x/tools v0.25.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240604185151-ef581f913117 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240814211410-ddb44dafa142 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
