@@ -18,9 +18,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )

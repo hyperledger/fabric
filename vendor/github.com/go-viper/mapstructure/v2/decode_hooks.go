@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
@@ -36,6 +37,30 @@ func typedDecodeHook(h DecodeHookFunc) DecodeHookFunc {
 	return nil
 }
 
+// cachedDecodeHook takes a raw DecodeHookFunc (an interface{}) and turns
+// it into a closure to be used directly
+// if the type fails to convert we return a closure always erroring to keep the previous behaviour
+func cachedDecodeHook(raw DecodeHookFunc) func(from reflect.Value, to reflect.Value) (interface{}, error) {
+	switch f := typedDecodeHook(raw).(type) {
+	case DecodeHookFuncType:
+		return func(from reflect.Value, to reflect.Value) (interface{}, error) {
+			return f(from.Type(), to.Type(), from.Interface())
+		}
+	case DecodeHookFuncKind:
+		return func(from reflect.Value, to reflect.Value) (interface{}, error) {
+			return f(from.Kind(), to.Kind(), from.Interface())
+		}
+	case DecodeHookFuncValue:
+		return func(from reflect.Value, to reflect.Value) (interface{}, error) {
+			return f(from, to)
+		}
+	default:
+		return func(from reflect.Value, to reflect.Value) (interface{}, error) {
+			return nil, errors.New("invalid decode hook signature")
+		}
+	}
+}
+
 // DecodeHookExec executes the given decode hook. This should be used
 // since it'll naturally degrade to the older backwards compatible DecodeHookFunc
 // that took reflect.Kind instead of reflect.Type.
@@ -61,13 +86,17 @@ func DecodeHookExec(
 // The composed funcs are called in order, with the result of the
 // previous transformation.
 func ComposeDecodeHookFunc(fs ...DecodeHookFunc) DecodeHookFunc {
+	cached := make([]func(from reflect.Value, to reflect.Value) (interface{}, error), 0, len(fs))
+	for _, f := range fs {
+		cached = append(cached, cachedDecodeHook(f))
+	}
 	return func(f reflect.Value, t reflect.Value) (interface{}, error) {
 		var err error
 		data := f.Interface()
 
 		newFrom := f
-		for _, f1 := range fs {
-			data, err = DecodeHookExec(f1, newFrom, t)
+		for _, c := range cached {
+			data, err = c(newFrom, t)
 			if err != nil {
 				return nil, err
 			}
@@ -81,13 +110,17 @@ func ComposeDecodeHookFunc(fs ...DecodeHookFunc) DecodeHookFunc {
 // OrComposeDecodeHookFunc executes all input hook functions until one of them returns no error. In that case its value is returned.
 // If all hooks return an error, OrComposeDecodeHookFunc returns an error concatenating all error messages.
 func OrComposeDecodeHookFunc(ff ...DecodeHookFunc) DecodeHookFunc {
+	cached := make([]func(from reflect.Value, to reflect.Value) (interface{}, error), 0, len(ff))
+	for _, f := range ff {
+		cached = append(cached, cachedDecodeHook(f))
+	}
 	return func(a, b reflect.Value) (interface{}, error) {
 		var allErrs string
 		var out interface{}
 		var err error
 
-		for _, f := range ff {
-			out, err = DecodeHookExec(f, a, b)
+		for _, c := range cached {
+			out, err = c(a, b)
 			if err != nil {
 				allErrs += err.Error() + "\n"
 				continue
@@ -141,6 +174,26 @@ func StringToTimeDurationHookFunc() DecodeHookFunc {
 
 		// Convert it by parsing
 		return time.ParseDuration(data.(string))
+	}
+}
+
+// StringToURLHookFunc returns a DecodeHookFunc that converts
+// strings to *url.URL.
+func StringToURLHookFunc() DecodeHookFunc {
+	return func(
+		f reflect.Type,
+		t reflect.Type,
+		data interface{},
+	) (interface{}, error) {
+		if f.Kind() != reflect.String {
+			return data, nil
+		}
+		if t != reflect.TypeOf(&url.URL{}) {
+			return data, nil
+		}
+
+		// Convert it by parsing
+		return url.Parse(data.(string))
 	}
 }
 

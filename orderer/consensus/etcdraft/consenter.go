@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-lib-go/common/metrics"
@@ -26,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft/v3"
 	"google.golang.org/protobuf/proto"

@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/require"
 )
 
