@@ -116,7 +116,7 @@ Global Flags:
 Install a chaincode on a peer.
 
 Usage:
-  peer lifecycle chaincode install [flags]
+  peer lifecycle chaincode install [packageFile] [flags]
 
 Flags:
       --connectionProfile string       The fully qualified path to the connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
