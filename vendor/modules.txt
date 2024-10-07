@@ -201,9 +201,6 @@ github.com/gorilla/handlers
 # github.com/gorilla/mux v1.8.1
 ## explicit; go 1.20
 github.com/gorilla/mux
-# github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
-## explicit; go 1.14
-github.com/grpc-ecosystem/go-grpc-middleware
 # github.com/hyperledger-labs/SmartBFT v0.0.0-20240916013553-852e5be5889b
 ## explicit; go 1.22
 github.com/hyperledger-labs/SmartBFT/internal/bft
