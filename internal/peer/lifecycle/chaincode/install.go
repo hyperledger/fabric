@@ -55,7 +55,7 @@ func (i *InstallInput) Validate() error {
 // InstallCmd returns the cobra command for chaincode install.
 func InstallCmd(i *Installer, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	chaincodeInstallCmd := &cobra.Command{
-		Use:       "install",
+		Use:       "install [packageFile]",
 		Short:     "Install a chaincode.",
 		Long:      "Install a chaincode on a peer.",
 		ValidArgs: []string{"1"},
