@@ -64,6 +64,7 @@ type NetworkSetupInfo struct {
 	genesisBlock *cb.Block
 	tlsCA        tlsgen.CA
 	configInfo   *ConfigInfo
+	Logger       *flogging.FabricLogger
 }
 
 func NewNetworkSetupInfo(t *testing.T, channelId string, rootDir string) *NetworkSetupInfo {
@@ -73,6 +74,7 @@ func NewNetworkSetupInfo(t *testing.T, channelId string, rootDir string) *Networ
 		dir:          rootDir,
 		channelId:    channelId,
 		configInfo:   NewConfigInfo(t),
+		Logger:       flogging.MustGetLogger("orderer.consensus.smartbft").With("channel", channelId),
 	}
 }
 
@@ -113,7 +115,7 @@ func (ns *NetworkSetupInfo) AddNewNode() (map[uint64]*Node, *Node) {
 	numberOfNodes = numberOfNodes + 1
 	newNodeId := numberOfNodes
 
-	ns.t.Logf("Adding node %v to the network", newNodeId)
+	ns.Logger.Infof("Adding node %v to the network", newNodeId)
 
 	ledgerToSyncWith := findLargestDifferentLedger(ns.nodeIdToNode, newNodeId)
 
@@ -128,7 +130,7 @@ func (ns *NetworkSetupInfo) AddNewNode() (map[uint64]*Node, *Node) {
 }
 
 func (ns *NetworkSetupInfo) RemoveNode(num uint64) map[uint64]*Node {
-	ns.t.Logf("Removing node %v from the network", num)
+	ns.Logger.Infof("Removing node %v from the network", num)
 	delete(ns.nodeIdToNode, num)
 
 	// update all nodes about the nodes map
@@ -140,7 +142,7 @@ func (ns *NetworkSetupInfo) RemoveNode(num uint64) map[uint64]*Node {
 }
 
 func (ns *NetworkSetupInfo) StartAllNodes() {
-	ns.t.Logf("Starting nodes in the network")
+	ns.Logger.Infof("Starting nodes in the network")
 	for _, node := range ns.nodeIdToNode {
 		node.Start()
 	}
@@ -150,16 +152,16 @@ func (ns *NetworkSetupInfo) SendTxToAllAvailableNodes(tx *cb.Envelope) error {
 	var errorsArr []error
 	for idx, node := range ns.nodeIdToNode {
 		if !node.IsAvailable() {
-			ns.t.Logf("Sending tx to node %v, but the node is not available", idx)
+			ns.Logger.Infof("Sending tx to node %v, but the node is not available", idx)
 			continue
 		}
-		ns.t.Logf("Sending tx to node %v", idx)
+		ns.Logger.Infof("Sending tx to node %v", idx)
 		err := node.SendTx(tx)
 		if err != nil {
 			errorsArr = append(errorsArr, err)
-			ns.t.Logf("Error occurred during sending tx to node %v: %v", idx, err)
+			ns.Logger.Infof("Error occurred during sending tx to node %v: %v", idx, err)
 		} else {
-			ns.t.Logf("Tx to node %v was sent successfully", idx)
+			ns.Logger.Infof("Tx to node %v was sent successfully", idx)
 		}
 	}
 	return errors.Join(errorsArr...)
@@ -170,7 +172,7 @@ func (ns *NetworkSetupInfo) RestartAllNodes() error {
 	for _, node := range ns.nodeIdToNode {
 		err := node.Restart(ns.configInfo)
 		if err != nil {
-			ns.t.Logf("Restarting node %v fail: %v", node.NodeId, err)
+			ns.Logger.Infof("Restarting node %v fail: %v", node.NodeId, err)
 		}
 		errorsArr = append(errorsArr, err)
 	}
@@ -209,17 +211,20 @@ type Node struct {
 	nodesMap             map[uint64]*Node
 	Endpoint             string
 	lock                 sync.RWMutex
+	Logger               *flogging.FabricLogger
 }
 
 func NewNode(t *testing.T, nodeId uint64, rootDir string, channelId string, genesisBlock *cb.Block, configInfo *ConfigInfo, ledgerToSyncWith []*cb.Block) *Node {
-	t.Logf("Creating node %d", nodeId)
+	logger := flogging.MustGetLogger("orderer.consensus.smartbft").With("channel", channelId).With("nodeId", nodeId)
+
+	logger.Infof("Creating node %d", nodeId)
 	nodeWorkingDir := filepath.Join(rootDir, fmt.Sprintf("node-%d", nodeId))
 
-	t.Logf("Creating working directory for node %d: %s", nodeId, nodeWorkingDir)
+	logger.Infof("Creating working directory for node %d: %s", nodeId, nodeWorkingDir)
 	err := os.Mkdir(nodeWorkingDir, os.ModePerm)
 	require.NoError(t, err)
 
-	t.Log("Creating chain")
+	logger.Info("Creating chain")
 	node := &Node{
 		t:                    t,
 		NodeId:               nodeId,
@@ -229,6 +234,7 @@ func NewNode(t *testing.T, nodeId uint64, rootDir string, channelId string, gene
 		IsStarted:            false,
 		IsConnectedToNetwork: false,
 		Endpoint:             fmt.Sprintf("%s:%d", "localhost", 9000+nodeId),
+		Logger:               logger,
 	}
 
 	// To test a case in which a new node is added to an existing network, its chain should be aware of his existence.
@@ -253,7 +259,7 @@ func (n *Node) Start() {
 }
 
 func (n *Node) Restart(configInfo *ConfigInfo) error {
-	n.t.Logf("Restarting node %d", n.NodeId)
+	n.Logger.Infof("Restarting node %d", n.NodeId)
 	n.lock.Lock()
 	defer n.lock.Unlock()
 	newChain, err := createBFTChainUsingMocks(n.t, n, configInfo)
@@ -268,7 +274,7 @@ func (n *Node) Restart(configInfo *ConfigInfo) error {
 }
 
 func (n *Node) Stop() {
-	n.t.Logf("Stoping node %d", n.NodeId)
+	n.Logger.Infof("Stoping node %d", n.NodeId)
 	n.lock.Lock()
 	defer n.lock.Unlock()
 	n.IsStarted = false
@@ -327,7 +333,7 @@ func (n *Node) sendMessage(sender uint64, target uint64, message *smartbftprotos
 		return fmt.Errorf("target node %d does not exist", target)
 	}
 	targetNode.receiveMessage(sender, message)
-	n.t.Logf("Node %v received a message of type <%s> from node %v", targetNode.NodeId, reflect.TypeOf(message.GetContent()), sender)
+	n.Logger.Infof("Node %v received a message of type <%s> from node %v", targetNode.NodeId, reflect.TypeOf(message.GetContent()), sender)
 	return nil
 }
 
@@ -461,7 +467,7 @@ func createBFTChainUsingMocks(t *testing.T, node *Node, configInfo *ConfigInfo) 
 		}).Maybe()
 	blockPuller.EXPECT().PullBlock(mock.Anything).RunAndReturn(
 		func(seq uint64) *cb.Block {
-			t.Logf("Node %d reqested PullBlock %d, returning nil", node.NodeId, seq)
+			node.Logger.Infof("Node %d reqested PullBlock %d, returning nil", node.NodeId, seq)
 			return nil
 		}).Maybe()
 
@@ -470,7 +476,7 @@ func createBFTChainUsingMocks(t *testing.T, node *Node, configInfo *ConfigInfo) 
 
 	comm := smartBFTMocks.NewCommunicator(t)
 	comm.EXPECT().Configure(mock.Anything, mock.Anything).Run(func(channel string, members []cluster.RemoteNode) {
-		t.Logf("Configuring channel with remote nodes")
+		node.Logger.Infof("Configuring channel with remote nodes")
 	})
 
 	signerSerializerMock := smartBFTMocks.NewSignerSerializer(t)
@@ -507,13 +513,13 @@ func createBFTChainUsingMocks(t *testing.T, node *Node, configInfo *ConfigInfo) 
 	supportMock.EXPECT().WriteBlock(mock.Anything, mock.Anything).Run(
 		func(block *cb.Block, encodedMetadataValue []byte) {
 			node.State.AddBlock(block)
-			t.Logf("Node %d appended block number %v to ledger", node.NodeId, block.Header.Number)
+			node.Logger.Infof("Node %d appended block number %v to ledger", node.NodeId, block.Header.Number)
 		}).Maybe()
 
 	supportMock.EXPECT().WriteConfigBlock(mock.Anything, mock.Anything).Run(
 		func(block *cb.Block, encodedMetadataValue []byte) {
 			node.State.AddBlock(block)
-			t.Logf("Node %d appended config block number %v to ledger", node.NodeId, block.Header.Number)
+			node.Logger.Infof("Node %d appended config block number %v to ledger", node.NodeId, block.Header.Number)
 			configInfo.lock.Lock()
 			defer configInfo.lock.Unlock()
 			if !slices.Contains(configInfo.numsOfConfigBlocks, block.Header.Number) {
@@ -550,20 +556,20 @@ func createBFTChainUsingMocks(t *testing.T, node *Node, configInfo *ConfigInfo) 
 	egressCommMock.EXPECT().SendTransaction(mock.Anything, mock.Anything).Run(
 		func(targetNodeId uint64, message []byte) {
 			if !node.IsConnectedToNetwork {
-				t.Logf("Node %d requested SendTransaction to node %d but is not connected to the network", node.NodeId, targetNodeId)
+				node.Logger.Infof("Node %d requested SendTransaction to node %d but is not connected to the network", node.NodeId, targetNodeId)
 				return
 			}
-			t.Logf("Node %d requested SendTransaction to node %d", node.NodeId, targetNodeId)
+			node.Logger.Infof("Node %d requested SendTransaction to node %d", node.NodeId, targetNodeId)
 			err := node.sendRequest(node.NodeId, targetNodeId, message)
 			require.NoError(t, err)
 		}).Maybe()
 	egressCommMock.EXPECT().SendConsensus(mock.Anything, mock.Anything).Run(
 		func(targetNodeId uint64, message *smartbftprotos.Message) {
 			if !node.IsConnectedToNetwork {
-				t.Logf("Node %d requested SendConsensus to node %d of type <%s> but is not connected to the network", node.NodeId, targetNodeId, reflect.TypeOf(message.GetContent()))
+				node.Logger.Infof("Node %d requested SendConsensus to node %d of type <%s> but is not connected to the network", node.NodeId, targetNodeId, reflect.TypeOf(message.GetContent()))
 				return
 			}
-			t.Logf("Node %d requested SendConsensus to node %d of type <%s>", node.NodeId, targetNodeId, reflect.TypeOf(message.GetContent()))
+			node.Logger.Infof("Node %d requested SendConsensus to node %d of type <%s>", node.NodeId, targetNodeId, reflect.TypeOf(message.GetContent()))
 			err := node.sendMessage(node.NodeId, targetNodeId, message)
 			require.NoError(t, err)
 		}).Maybe()
@@ -575,7 +581,7 @@ func createBFTChainUsingMocks(t *testing.T, node *Node, configInfo *ConfigInfo) 
 	synchronizerMock := smartBFTMocks.NewSynchronizer(t)
 	synchronizerMock.EXPECT().Sync().RunAndReturn(
 		func() types.SyncResponse {
-			t.Logf("Sync Called by node %v", node.NodeId)
+			node.Logger.Infof("Sync Called by node %v", node.NodeId)
 			// iterate over the ledger of the other nodes and find the highest ledger to sync with
 			ledgerToCopy := findLargestDifferentLedger(node.nodesMap, node.NodeId)
 
@@ -672,8 +678,10 @@ func createConfigBlock(t *testing.T, channelId string) (*cb.Block, tlsgen.CA) {
 }
 
 func generateCertificatesSmartBFT(t *testing.T, confAppSmartBFT *genesisconfig.Profile, tlsCA tlsgen.CA, certDir string) {
+	logger := flogging.MustGetLogger("orderer.consensus.smartbft")
+
 	for i, c := range confAppSmartBFT.Orderer.ConsenterMapping {
-		t.Logf("BFT Consenter: %+v", c)
+		logger.Infof("BFT Consenter: %+v", c)
 		srvP, clnP := generateSingleCertificateSmartBFT(t, tlsCA, certDir, i, c.Host)
 		c.Identity = srvP
 		c.ServerTLSCert = srvP
