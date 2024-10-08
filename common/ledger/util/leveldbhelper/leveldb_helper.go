@@ -107,13 +107,19 @@ func (dbInst *DB) Get(key []byte) ([]byte, error) {
 	dbInst.mutex.RLock()
 	defer dbInst.mutex.RUnlock()
 	value, err := dbInst.db.Get(key, dbInst.readOpts)
-	if err == leveldb.ErrNotFound {
-		value = nil
-		err = nil
+	if errors.Is(err, leveldb.ErrNotFound) {
+		return nil, nil
 	}
 	if err != nil {
 		logger.Errorf("Error retrieving leveldb key [%#v]: %s", key, err)
 		return nil, errors.Wrapf(err, "error retrieving leveldb key [%#v]", key)
+	}
+	// Previously the goleveldb library returned []byte{}
+	// Now it returns []byte(nil)
+	// NB!!! Because of the above changed behavior when there is no key in the database.
+	// Here we simulate the desired behavior that the key is in the database.
+	if value == nil {
+		value = []byte{}
 	}
 	return value, nil
 }
