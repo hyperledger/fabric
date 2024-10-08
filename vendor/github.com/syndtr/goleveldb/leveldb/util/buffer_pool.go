@@ -10,30 +10,15 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
-	"time"
 )
-
-type buffer struct {
-	b    []byte
-	miss int
-}
 
 // BufferPool is a 'buffer pool'.
 type BufferPool struct {
-	pool      [6]chan []byte
-	size      [5]uint32
-	sizeMiss  [5]uint32
-	sizeHalf  [5]uint32
-	baseline  [4]int
-	baseline0 int
-
-	mu     sync.RWMutex
-	closed bool
-	closeC chan struct{}
+	pool     [6]sync.Pool
+	baseline [5]int
 
 	get     uint32
 	put     uint32
-	half    uint32
 	less    uint32
 	equal   uint32
 	greater uint32
@@ -41,15 +26,12 @@ type BufferPool struct {
 }
 
 func (p *BufferPool) poolNum(n int) int {
-	if n <= p.baseline0 && n > p.baseline0/2 {
-		return 0
-	}
 	for i, x := range p.baseline {
 		if n <= x {
-			return i + 1
+			return i
 		}
 	}
-	return len(p.baseline) + 1
+	return len(p.baseline)
 }
 
 // Get returns buffer with length of n.
@@ -57,101 +39,47 @@ func (p *BufferPool) Get(n int) []byte {
 	if p == nil {
 		return make([]byte, n)
 	}
-
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	if p.closed {
-		return make([]byte, n)
-	}
-
 	atomic.AddUint32(&p.get, 1)
 
 	poolNum := p.poolNum(n)
-	pool := p.pool[poolNum]
-	if poolNum == 0 {
-		// Fast path.
-		select {
-		case b := <-pool:
-			switch {
-			case cap(b) > n:
-				if cap(b)-n >= n {
-					atomic.AddUint32(&p.half, 1)
-					select {
-					case pool <- b:
-					default:
-					}
-					return make([]byte, n)
-				} else {
-					atomic.AddUint32(&p.less, 1)
-					return b[:n]
-				}
-			case cap(b) == n:
-				atomic.AddUint32(&p.equal, 1)
-				return b[:n]
-			default:
-				atomic.AddUint32(&p.greater, 1)
-			}
-		default:
-			atomic.AddUint32(&p.miss, 1)
+
+	b := p.pool[poolNum].Get().(*[]byte)
+
+	if cap(*b) == 0 {
+		// If we grabbed nothing, increment the miss stats.
+		atomic.AddUint32(&p.miss, 1)
+
+		if poolNum == len(p.baseline) {
+			*b = make([]byte, n)
+			return *b
 		}
 
-		return make([]byte, n, p.baseline0)
+		*b = make([]byte, p.baseline[poolNum])
+		*b = (*b)[:n]
+		return *b
 	} else {
-		sizePtr := &p.size[poolNum-1]
-
-		select {
-		case b := <-pool:
-			switch {
-			case cap(b) > n:
-				if cap(b)-n >= n {
-					atomic.AddUint32(&p.half, 1)
-					sizeHalfPtr := &p.sizeHalf[poolNum-1]
-					if atomic.AddUint32(sizeHalfPtr, 1) == 20 {
-						atomic.StoreUint32(sizePtr, uint32(cap(b)/2))
-						atomic.StoreUint32(sizeHalfPtr, 0)
-					} else {
-						select {
-						case pool <- b:
-						default:
-						}
-					}
-					return make([]byte, n)
-				} else {
-					atomic.AddUint32(&p.less, 1)
-					return b[:n]
-				}
-			case cap(b) == n:
-				atomic.AddUint32(&p.equal, 1)
-				return b[:n]
-			default:
-				atomic.AddUint32(&p.greater, 1)
-				if uint32(cap(b)) >= atomic.LoadUint32(sizePtr) {
-					select {
-					case pool <- b:
-					default:
-					}
-				}
-			}
-		default:
-			atomic.AddUint32(&p.miss, 1)
-		}
-
-		if size := atomic.LoadUint32(sizePtr); uint32(n) > size {
-			if size == 0 {
-				atomic.CompareAndSwapUint32(sizePtr, 0, uint32(n))
-			} else {
-				sizeMissPtr := &p.sizeMiss[poolNum-1]
-				if atomic.AddUint32(sizeMissPtr, 1) == 20 {
-					atomic.StoreUint32(sizePtr, uint32(n))
-					atomic.StoreUint32(sizeMissPtr, 0)
-				}
-			}
-			return make([]byte, n)
-		} else {
-			return make([]byte, n, size)
+		// If there is enough capacity in the bytes grabbed, resize the length
+		// to n and return.
+		if n < cap(*b) {
+			atomic.AddUint32(&p.less, 1)
+			*b = (*b)[:n]
+			return *b
+		} else if n == cap(*b) {
+			atomic.AddUint32(&p.equal, 1)
+			*b = (*b)[:n]
+			return *b
+		} else if n > cap(*b) {
+			atomic.AddUint32(&p.greater, 1)
 		}
 	}
+
+	if poolNum == len(p.baseline) {
+		*b = make([]byte, n)
+		return *b
+	}
+	*b = make([]byte, p.baseline[poolNum])
+	*b = (*b)[:n]
+	return *b
 }
 
 // Put adds given buffer to the pool.
@@ -160,68 +88,18 @@ func (p *BufferPool) Put(b []byte) {
 		return
 	}
 
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	if p.closed {
-		return
-	}
+	poolNum := p.poolNum(cap(b))
 
 	atomic.AddUint32(&p.put, 1)
-
-	pool := p.pool[p.poolNum(cap(b))]
-	select {
-	case pool <- b:
-	default:
-	}
-
-}
-
-func (p *BufferPool) Close() {
-	if p == nil {
-		return
-	}
-
-	p.mu.Lock()
-	if !p.closed {
-		p.closed = true
-		p.closeC <- struct{}{}
-	}
-	p.mu.Unlock()
+	p.pool[poolNum].Put(&b)
 }
 
 func (p *BufferPool) String() string {
 	if p == nil {
 		return "<nil>"
 	}
-
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	return fmt.Sprintf("BufferPool{B·%d Z·%v Zm·%v Zh·%v G·%d P·%d H·%d <·%d =·%d >·%d M·%d}",
-		p.baseline0, p.size, p.sizeMiss, p.sizeHalf, p.get, p.put, p.half, p.less, p.equal, p.greater, p.miss)
-}
-
-func (p *BufferPool) drain() {
-	ticker := time.NewTicker(2 * time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ticker.C:
-			for _, ch := range p.pool {
-				select {
-				case <-ch:
-				default:
-				}
-			}
-		case <-p.closeC:
-			close(p.closeC)
-			for _, ch := range p.pool {
-				close(ch)
-			}
-			return
-		}
-	}
+	return fmt.Sprintf("BufferPool{B·%d G·%d P·%d <·%d =·%d >·%d M·%d}",
+		p.baseline, p.get, p.put, p.less, p.equal, p.greater, p.miss)
 }
 
 // NewBufferPool creates a new initialized 'buffer pool'.
@@ -229,14 +107,29 @@ func NewBufferPool(baseline int) *BufferPool {
 	if baseline <= 0 {
 		panic("baseline can't be <= 0")
 	}
-	p := &BufferPool{
-		baseline0: baseline,
-		baseline:  [...]int{baseline / 4, baseline / 2, baseline * 2, baseline * 4},
-		closeC:    make(chan struct{}, 1),
+	bufPool := &BufferPool{
+		baseline: [...]int{baseline / 4, baseline / 2, baseline, baseline * 2, baseline * 4},
+		pool: [6]sync.Pool{
+			{
+				New: func() interface{} { return new([]byte) },
+			},
+			{
+				New: func() interface{} { return new([]byte) },
+			},
+			{
+				New: func() interface{} { return new([]byte) },
+			},
+			{
+				New: func() interface{} { return new([]byte) },
+			},
+			{
+				New: func() interface{} { return new([]byte) },
+			},
+			{
+				New: func() interface{} { return new([]byte) },
+			},
+		},
 	}
-	for i, cap := range []int{2, 2, 4, 4, 2, 1} {
-		p.pool[i] = make(chan []byte, cap)
-	}
-	go p.drain()
-	return p
+
+	return bufPool
 }
