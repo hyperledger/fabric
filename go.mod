@@ -32,9 +32,9 @@ require (
 	github.com/stretchr/testify v1.9.0 // includes ErrorContains
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d
 	github.com/tedsuo/ifrit v0.0.0-20230516164442-7862c310ad26
-	go.etcd.io/etcd/client/pkg/v3 v3.5.14
-	go.etcd.io/etcd/raft/v3 v3.5.14
-	go.etcd.io/etcd/server/v3 v3.5.14
+	go.etcd.io/etcd/client/pkg/v3 v3.5.16
+	go.etcd.io/etcd/raft/v3 v3.5.16
+	go.etcd.io/etcd/server/v3 v3.5.16
 	go.uber.org/zap v1.27.0
 	google.golang.org/grpc v1.67.1
 	google.golang.org/protobuf v1.34.2
@@ -110,7 +110,7 @@ require (
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/sykesm/zap-logfmt v0.0.4 // indirect
-	go.etcd.io/etcd/pkg/v3 v3.5.14 // indirect
+	go.etcd.io/etcd/pkg/v3 v3.5.16 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.27.0 // indirect
 	golang.org/x/net v0.29.0 // indirect
