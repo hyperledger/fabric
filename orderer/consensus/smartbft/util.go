@@ -46,6 +46,7 @@ type RuntimeConfig struct {
 	LastCommittedBlockHash string
 	RemoteNodes            []cluster.RemoteNode
 	ID2Identities          NodeIdentitiesByID
+	ID2IdentitiesPrev      NodeIdentitiesByID
 	LastBlock              *cb.Block
 	LastConfigBlock        *cb.Block
 	Nodes                  []uint64
@@ -65,6 +66,7 @@ func (rtc RuntimeConfig) BlockCommitted(block *cb.Block, bccsp bccsp.BCCSP) (Run
 		LastCommittedBlockHash: hex.EncodeToString(protoutil.BlockHeaderHash(block.Header)),
 		Nodes:                  rtc.Nodes,
 		ID2Identities:          rtc.ID2Identities,
+		ID2IdentitiesPrev:      rtc.ID2IdentitiesPrev,
 		RemoteNodes:            rtc.RemoteNodes,
 		LastBlock:              block,
 		LastConfigBlock:        rtc.LastConfigBlock,
@@ -91,6 +93,7 @@ func (rtc RuntimeConfig) configBlockCommitted(block *cb.Block, bccsp bccsp.BCCSP
 		LastCommittedBlockHash: hex.EncodeToString(protoutil.BlockHeaderHash(block.Header)),
 		Nodes:                  nodeConf.nodeIDs,
 		ID2Identities:          nodeConf.id2Identities,
+		ID2IdentitiesPrev:      rtc.ID2Identities,
 		RemoteNodes:            nodeConf.remoteNodes,
 		LastBlock:              block,
 		LastConfigBlock:        block,

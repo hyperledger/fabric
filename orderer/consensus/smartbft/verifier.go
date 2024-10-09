@@ -8,6 +8,7 @@ package smartbft
 
 import (
 	"bytes"
+	"encoding/asn1"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -209,11 +210,30 @@ func (v *Verifier) verifyRequest(rawRequest []byte, noConfigAllowed bool) (types
 
 // VerifyConsenterSig verifies consenter signature
 func (v *Verifier) VerifyConsenterSig(signature types.Signature, prop types.Proposal) ([]byte, error) {
-	id2Identity := v.RuntimeConfig.Load().(RuntimeConfig).ID2Identities
+	rtc := v.RuntimeConfig.Load().(RuntimeConfig)
 
-	identity, exists := id2Identity[signature.ID]
+	var (
+		identity []byte
+		exists   bool
+	)
+	identity, exists = rtc.ID2Identities[signature.ID]
 	if !exists {
-		return nil, errors.Errorf("node with id of %d doesn't exist", signature.ID)
+		if len(prop.Header) == 0 {
+			return nil, errors.New("proposal header cannot be nil")
+		}
+		hdr := &asn1Header{}
+		if _, err := asn1.Unmarshal(prop.Header, hdr); err != nil {
+			return nil, errors.Wrap(err, "bad header")
+		}
+		numBlockProp := hdr.Number.Uint64()
+		if numBlockProp <= rtc.LastBlock.GetHeader().GetNumber() {
+			identity, exists = rtc.ID2IdentitiesPrev[signature.ID]
+			if !exists {
+				return nil, errors.Errorf("node with id of %d doesn't exist", signature.ID)
+			}
+		} else {
+			return nil, errors.Errorf("node with id of %d doesn't exist", signature.ID)
+		}
 	}
 
 	sig := &Signature{}

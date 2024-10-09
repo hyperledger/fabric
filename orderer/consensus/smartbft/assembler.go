@@ -11,11 +11,14 @@ import (
 	"sync/atomic"
 
 	"github.com/hyperledger-labs/SmartBFT/pkg/types"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 //go:generate mockery -dir . -name Ledger -case underscore -output mocks
@@ -138,28 +141,52 @@ func lastConfigBlockFromLedger(ledger Ledger) (*cb.Block, error) {
 	return lastConfigBlock, nil
 }
 
-func PreviousConfigBlockFromLedgerOrPanic(ledger Ledger, logger Logger) *cb.Block {
-	block, err := previousConfigBlockFromLedger(ledger)
+func NextToLastConfigBlockFromLedgerOrPanic(ledger Ledger, bccsp bccsp.BCCSP, logger Logger) *cb.Block {
+	block, err := nextToLastConfigBlockFromLedger(ledger, bccsp)
 	if err != nil {
 		logger.Panicf("Failed retrieving previous config block: %v", err)
 	}
 	return block
 }
 
-func previousConfigBlockFromLedger(ledger Ledger) (*cb.Block, error) {
-	previousBlockSeq := ledger.Height() - 2
-	if ledger.Height() == 1 {
-		previousBlockSeq = 0
+func nextToLastConfigBlockFromLedger(ledger Ledger, bccsp bccsp.BCCSP) (*cb.Block, error) {
+	block, err := lastConfigBlockFromLedger(ledger)
+	if err != nil {
+		return nil, err
 	}
+	if block.Header.Number == 0 {
+		return nil, nil
+	}
+
+	previousBlockSeq := block.Header.Number - 1
 	previousBlock := ledger.Block(previousBlockSeq)
 	if previousBlock == nil {
 		return nil, errors.Errorf("unable to retrieve block [%d]", previousBlockSeq)
 	}
-	previousConfigBlock, err := cluster.LastConfigBlock(previousBlock, ledger)
+	previousLastConfigBlock, err := cluster.LastConfigBlock(previousBlock, ledger)
 	if err != nil {
 		return nil, err
 	}
-	return previousConfigBlock, nil
+
+	env := &cb.Envelope{}
+	if err = proto.Unmarshal(previousLastConfigBlock.Data.Data[0], env); err != nil {
+		return nil, errors.Wrap(err, "failed unmarshaling envelope of config block")
+	}
+	bundle, err := channelconfig.NewBundleFromEnvelope(env, bccsp)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed getting a new bundle from envelope of config block")
+	}
+
+	oc, ok := bundle.OrdererConfig()
+	if !ok {
+		return nil, errors.New("no orderer config in config block")
+	}
+
+	if oc.ConsensusType() != "BFT" {
+		return nil, nil
+	}
+
+	return previousLastConfigBlock, nil
 }
 
 // LastBlockFromLedgerOrPanic returns the last block from the ledger
