@@ -14,6 +14,7 @@ import (
 	"os"
 	"reflect"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/gorilla/handlers"
 	"github.com/hyperledger/fabric-config/protolator"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
@@ -29,7 +30,6 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 // command line flags

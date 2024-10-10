@@ -26,8 +26,9 @@ usage: configtxlator start [<flags>]
 
 Start the configtxlator REST server
 
+
 Flags:
-  --help                Show context-sensitive help (also try --help-long and
+  --[no-]help           Show context-sensitive help (also try --help-long and
                         --help-man).
   --hostname="0.0.0.0"  The hostname or IP on which the REST server will listen
   --port=7059           The port on which the REST server will listen
@@ -42,8 +43,9 @@ usage: configtxlator proto_encode --type=TYPE [<flags>]
 
 Converts a JSON document to protobuf.
 
+
 Flags:
-  --help                Show context-sensitive help (also try --help-long and
+  --[no-]help           Show context-sensitive help (also try --help-long and
                         --help-man).
   --type=TYPE           The type of protobuf structure to encode to. For
                         example, 'common.Config'.
@@ -58,8 +60,9 @@ usage: configtxlator proto_decode --type=TYPE [<flags>]
 
 Converts a proto message to JSON.
 
+
 Flags:
-  --help                Show context-sensitive help (also try --help-long and
+  --[no-]help           Show context-sensitive help (also try --help-long and
                         --help-man).
   --type=TYPE           The type of protobuf structure to decode from. For
                         example, 'common.Config'.
@@ -75,8 +78,9 @@ usage: configtxlator compute_update --channel_id=CHANNEL_ID [<flags>]
 Takes two marshaled common.Config messages and computes the config update which
 transitions between the two.
 
+
 Flags:
-  --help                   Show context-sensitive help (also try --help-long and
+  --[no-]help              Show context-sensitive help (also try --help-long and
                            --help-man).
   --original=ORIGINAL      The original config message.
   --updated=UPDATED        The updated config message.
@@ -91,8 +95,10 @@ usage: configtxlator version
 
 Show version information
 
+
 Flags:
-  --help  Show context-sensitive help (also try --help-long and --help-man).
+  --[no-]help  Show context-sensitive help (also try --help-long and
+               --help-man).
 ```
 
 ## Examples

@@ -25,8 +25,9 @@ usage: osnadmin channel <command> [<args> ...]
 
 Channel actions
 
+
 Flags:
-      --help                     Show context-sensitive help (also try
+      --[no-]help                Show context-sensitive help (also try
                                  --help-long and --help-man).
   -o, --orderer-address=ORDERER-ADDRESS
                                  Admin endpoint of the OSN
@@ -38,20 +39,20 @@ Flags:
       --client-key=CLIENT-KEY    Path to file containing PEM-encoded private key
                                  to use for mutual TLS communication with the
                                  OSN
-      --no-status                Remove the HTTP status message from the command
+      --[no-]no-status           Remove the HTTP status message from the command
                                  output
 
 Subcommands:
-  channel join --channelID=CHANNELID --config-block=CONFIG-BLOCK
+channel join --channelID=CHANNELID --config-block=CONFIG-BLOCK
     Join an Ordering Service Node (OSN) to a channel. If the channel does not
     yet exist, it will be created.
 
-  channel list [<flags>]
+channel list [<flags>]
     List channel information for an Ordering Service Node (OSN). If the
     channelID flag is set, more detailed information will be provided for that
     channel.
 
-  channel remove --channelID=CHANNELID
+channel remove --channelID=CHANNELID
     Remove a channel from an Ordering Service Node (OSN).
 ```
 
@@ -63,8 +64,9 @@ usage: osnadmin channel join --channelID=CHANNELID --config-block=CONFIG-BLOCK
 Join an Ordering Service Node (OSN) to a channel. If the channel does not yet
 exist, it will be created.
 
+
 Flags:
-      --help                     Show context-sensitive help (also try
+      --[no-]help                Show context-sensitive help (also try
                                  --help-long and --help-man).
   -o, --orderer-address=ORDERER-ADDRESS
                                  Admin endpoint of the OSN
@@ -76,7 +78,7 @@ Flags:
       --client-key=CLIENT-KEY    Path to file containing PEM-encoded private key
                                  to use for mutual TLS communication with the
                                  OSN
-      --no-status                Remove the HTTP status message from the command
+      --[no-]no-status           Remove the HTTP status message from the command
                                  output
   -c, --channelID=CHANNELID      Channel ID
   -b, --config-block=CONFIG-BLOCK
@@ -92,8 +94,9 @@ usage: osnadmin channel list [<flags>]
 List channel information for an Ordering Service Node (OSN). If the channelID
 flag is set, more detailed information will be provided for that channel.
 
+
 Flags:
-      --help                     Show context-sensitive help (also try
+      --[no-]help                Show context-sensitive help (also try
                                  --help-long and --help-man).
   -o, --orderer-address=ORDERER-ADDRESS
                                  Admin endpoint of the OSN
@@ -105,7 +108,7 @@ Flags:
       --client-key=CLIENT-KEY    Path to file containing PEM-encoded private key
                                  to use for mutual TLS communication with the
                                  OSN
-      --no-status                Remove the HTTP status message from the command
+      --[no-]no-status           Remove the HTTP status message from the command
                                  output
   -c, --channelID=CHANNELID      Channel ID
 ```
@@ -117,8 +120,9 @@ usage: osnadmin channel remove --channelID=CHANNELID
 
 Remove a channel from an Ordering Service Node (OSN).
 
+
 Flags:
-      --help                     Show context-sensitive help (also try
+      --[no-]help                Show context-sensitive help (also try
                                  --help-long and --help-man).
   -o, --orderer-address=ORDERER-ADDRESS
                                  Admin endpoint of the OSN
@@ -130,7 +134,7 @@ Flags:
       --client-key=CLIENT-KEY    Path to file containing PEM-encoded private key
                                  to use for mutual TLS communication with the
                                  OSN
-      --no-status                Remove the HTTP status message from the command
+      --[no-]no-status           Remove the HTTP status message from the command
                                  output
   -c, --channelID=CHANNELID      Channel ID
 ```
