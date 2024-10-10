@@ -16,11 +16,11 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/internal/osnadmin"
 	"github.com/hyperledger/fabric/protoutil"
 	"google.golang.org/protobuf/proto"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 func main() {

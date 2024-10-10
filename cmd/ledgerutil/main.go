@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/hyperledger/fabric/internal/ledgerutil/compare"
 	"github.com/hyperledger/fabric/internal/ledgerutil/identifytxs"
 	"github.com/hyperledger/fabric/internal/ledgerutil/verify"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 const (

@@ -21,27 +21,29 @@ The ``cryptogen`` command has five subcommands, as follows:
 
 ## cryptogen help
 ```
-usage: cryptogen [<flags>] <command> [<args> ...]
+usage: cryptogen <command> [<args> ...]
 
 Utility for generating Hyperledger Fabric key material
 
+
 Flags:
-  --help  Show context-sensitive help (also try --help-long and --help-man).
+  --[no-]help  Show context-sensitive help (also try --help-long and
+               --help-man).
 
 Commands:
-  help [<command>...]
+help [<command>...]
     Show help.
 
-  generate [<flags>]
+generate [<flags>]
     Generate key material
 
-  showtemplate
+showtemplate
     Show the default configuration template
 
-  version
+version
     Show version information
 
-  extend [<flags>]
+extend [<flags>]
     Extend existing network
 ```
 
@@ -52,8 +54,9 @@ usage: cryptogen generate [<flags>]
 
 Generate key material
 
+
 Flags:
-  --help                    Show context-sensitive help (also try --help-long
+  --[no-]help               Show context-sensitive help (also try --help-long
                             and --help-man).
   --output="crypto-config"  The output directory in which to place artifacts
   --config=CONFIG           The configuration template to use
@@ -66,8 +69,10 @@ usage: cryptogen showtemplate
 
 Show the default configuration template
 
+
 Flags:
-  --help  Show context-sensitive help (also try --help-long and --help-man).
+  --[no-]help  Show context-sensitive help (also try --help-long and
+               --help-man).
 ```
 
 
@@ -77,8 +82,9 @@ usage: cryptogen extend [<flags>]
 
 Extend existing network
 
+
 Flags:
-  --help                   Show context-sensitive help (also try --help-long and
+  --[no-]help              Show context-sensitive help (also try --help-long and
                            --help-man).
   --input="crypto-config"  The input directory in which existing network place
   --config=CONFIG          The configuration template to use
@@ -91,8 +97,10 @@ usage: cryptogen version
 
 Show version information
 
+
 Flags:
-  --help  Show context-sensitive help (also try --help-long and --help-man).
+  --[no-]help  Show context-sensitive help (also try --help-long and
+               --help-man).
 ```
 
 ## Usage

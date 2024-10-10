@@ -3,10 +3,8 @@
 package mocks
 
 import (
+	kingpin "github.com/alecthomas/kingpin/v2"
 	common "github.com/hyperledger/fabric/cmd/common"
-
-	kingpin "gopkg.in/alecthomas/kingpin.v2"
-
 	mock "github.com/stretchr/testify/mock"
 )
 

@@ -161,8 +161,9 @@ usage: ledgerutil compare [<flags>] <snapshotPath1> <snapshotPath2>
 
 Compare channel snapshots from two different peers.
 
+
 Flags:
-      --help                 Show context-sensitive help (also try --help-long
+      --[no-]help            Show context-sensitive help (also try --help-long
                              and --help-man).
   -o, --outputDir=OUTPUTDIR  Snapshot comparison json results output directory.
                              Default is the current directory.
@@ -184,8 +185,9 @@ usage: ledgerutil identifytxs [<flags>] <snapshotDiffsPath> [<blockStorePath>]
 
 Identify potentially divergent transactions.
 
+
 Flags:
-      --help                 Show context-sensitive help (also try --help-long
+      --[no-]help            Show context-sensitive help (also try --help-long
                              and --help-man).
   -o, --outputDir=OUTPUTDIR  Location for identified transactions json results
                              output directory. Default is the current directory.
@@ -207,8 +209,9 @@ usage: ledgerutil verify [<flags>] [<blockStorePath>]
 
 Verify the integrity of a ledger
 
+
 Flags:
-      --help                 Show context-sensitive help (also try --help-long
+      --[no-]help            Show context-sensitive help (also try --help-long
                              and --help-man).
   -o, --outputDir=OUTPUTDIR  Location for verification result output directory.
                              Default is the current directory.
