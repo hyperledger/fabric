@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // OrganizationalUnitIdentifiersConfiguration is used to represent an OU
