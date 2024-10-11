@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package viperutil
 
 import (
+	"bytes"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -22,7 +23,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 var logger = flogging.MustGetLogger("viperutil")
@@ -422,6 +423,10 @@ func YamlStringToStructHook(m interface{}) func(rf reflect.Kind, rt reflect.Kind
 			return m, nil
 		}
 
-		return m, yaml.UnmarshalStrict([]byte(raw), &m)
+		dec := yaml.NewDecoder(bytes.NewBuffer([]byte(raw)))
+		dec.KnownFields(true)
+		err := dec.Decode(&m)
+
+		return m, err
 	}
 }

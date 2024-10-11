@@ -18,7 +18,7 @@ import (
 	"github.com/hyperledger/fabric/internal/cryptogen/csp"
 	fabricmsp "github.com/hyperledger/fabric/msp"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 const (
