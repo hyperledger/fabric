@@ -197,7 +197,7 @@ github.com/gorilla/handlers
 # github.com/gorilla/mux v1.8.1
 ## explicit; go 1.20
 github.com/gorilla/mux
-# github.com/hyperledger-labs/SmartBFT v0.0.0-20240916013553-852e5be5889b
+# github.com/hyperledger-labs/SmartBFT v0.0.0-20241013183757-134292d4208a
 ## explicit; go 1.22
 github.com/hyperledger-labs/SmartBFT/internal/bft
 github.com/hyperledger-labs/SmartBFT/pkg/api
