@@ -949,7 +949,10 @@ func (v *View) metadataWithUpdatedBlacklist(metadata *protos.ViewMetadata, verif
 
 // Propose broadcasts a prePrepare message with the given proposal
 func (v *View) Propose(proposal types.Proposal) {
-	_, prevSigs := v.RetrieveCheckpoint()
+	var prevSigs []*protos.Signature
+	if v.DecisionsPerLeader > 0 {
+		_, prevSigs = v.RetrieveCheckpoint()
+	}
 
 	seq := v.ProposalSequence
 	msg := &protos.Message{
