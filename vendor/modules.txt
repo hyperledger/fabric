@@ -1,4 +1,4 @@
-# code.cloudfoundry.org/clock v1.14.0
+# code.cloudfoundry.org/clock v1.15.0
 ## explicit; go 1.22.0
 code.cloudfoundry.org/clock
 code.cloudfoundry.org/clock/fakeclock
@@ -188,7 +188,7 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/pprof v0.0.0-20240929191954-255acd752d31
+# github.com/google/pprof v0.0.0-20241001023024-f4c0cfd0cf1d
 ## explicit; go 1.22
 github.com/google/pprof/profile
 # github.com/gorilla/handlers v1.5.2
@@ -544,12 +544,12 @@ go.uber.org/zap/internal/stacktrace
 go.uber.org/zap/zapcore
 go.uber.org/zap/zapgrpc
 go.uber.org/zap/zaptest/observer
-# golang.org/x/crypto v0.27.0
+# golang.org/x/crypto v0.28.0
 ## explicit; go 1.20
 golang.org/x/crypto/blake2b
 golang.org/x/crypto/hkdf
 golang.org/x/crypto/sha3
-# golang.org/x/net v0.29.0
+# golang.org/x/net v0.30.0
 ## explicit; go 1.18
 golang.org/x/net/context
 golang.org/x/net/html
@@ -564,12 +564,12 @@ golang.org/x/net/trace
 # golang.org/x/sync v0.8.0
 ## explicit; go 1.18
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.25.0
+# golang.org/x/sys v0.26.0
 ## explicit; go 1.18
 golang.org/x/sys/cpu
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/text v0.18.0
+# golang.org/x/text v0.19.0
 ## explicit; go 1.18
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
@@ -591,7 +591,7 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# golang.org/x/tools v0.25.0
+# golang.org/x/tools v0.26.0
 ## explicit; go 1.22.0
 golang.org/x/tools/cover
 golang.org/x/tools/go/ast/inspector

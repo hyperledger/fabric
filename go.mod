@@ -3,7 +3,7 @@ module github.com/hyperledger/fabric
 go 1.23.2
 
 require (
-	code.cloudfoundry.org/clock v1.14.0
+	code.cloudfoundry.org/clock v1.15.0
 	github.com/IBM/idemix v0.0.2-0.20240913182345-72941a5f41cd
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/VictoriaMetrics/fastcache v1.12.2
@@ -73,7 +73,7 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
-	github.com/google/pprof v0.0.0-20240929191954-255acd752d31 // indirect
+	github.com/google/pprof v0.0.0-20241001023024-f4c0cfd0cf1d // indirect
 	github.com/hyperledger/aries-bbs-go v0.0.0-20240528084656-761671ea73bc // indirect
 	github.com/hyperledger/fabric-amcl v0.0.0-20230602173724-9e02669dceb2 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -112,12 +112,12 @@ require (
 	github.com/sykesm/zap-logfmt v0.0.4 // indirect
 	go.etcd.io/etcd/pkg/v3 v3.5.16 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.27.0 // indirect
-	golang.org/x/net v0.29.0 // indirect
+	golang.org/x/crypto v0.28.0 // indirect
+	golang.org/x/net v0.30.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
-	golang.org/x/sys v0.25.0 // indirect
-	golang.org/x/text v0.18.0 // indirect
-	golang.org/x/tools v0.25.0 // indirect
+	golang.org/x/sys v0.26.0 // indirect
+	golang.org/x/text v0.19.0 // indirect
+	golang.org/x/tools v0.26.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240814211410-ddb44dafa142 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
