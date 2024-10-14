@@ -370,14 +370,21 @@ var _ = Describe("PrivateData", func() {
 			}
 
 			By("verifying peer1.org2 got the private data that was created historically")
-			sess, err = network.PeerUserSession(org2Peer1, "Admin2", commands.ChaincodeQuery{
-				ChannelID: channelID,
-				Name:      "marblesp",
-				Ctor:      `{"Args":["readMarble","marble1"]}`,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-			Expect(sess).To(gbytes.Say(`{"docType":"marble","name":"marble1","color":"blue","size":35,"owner":"tom"}`))
+			Eventually(func() bool {
+				sess, err = network.PeerUserSession(org2Peer1, "Admin2", commands.ChaincodeQuery{
+					ChannelID: channelID,
+					Name:      "marblesp",
+					Ctor:      `{"Args":["readMarble","marble1"]}`,
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
+				if sess.ExitCode() != 0 {
+					return false
+				}
+				Expect(sess).To(gbytes.Say(`{"docType":"marble","name":"marble1","color":"blue","size":35,"owner":"tom"}`))
+
+				return true
+			}, network.EventuallyTimeout).Should(BeTrue())
 
 			sess, err = network.PeerUserSession(org2Peer1, "Admin2", commands.ChaincodeQuery{
 				ChannelID: channelID,
