@@ -487,19 +487,19 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 		// load crypto material from files
 		serverCertificate, err := os.ReadFile(conf.General.TLS.Certificate)
 		if err != nil {
-			logger.Fatalf("Failed to load server Certificate file '%s' (%s)",
+			logger.Fatalf("Failed to load server TLS Certificate file '%s' (%s)",
 				conf.General.TLS.Certificate, err)
 		}
 		serverKey, err := os.ReadFile(conf.General.TLS.PrivateKey)
 		if err != nil {
-			logger.Fatalf("Failed to load PrivateKey file '%s' (%s)",
+			logger.Fatalf("Failed to load TLS PrivateKey file '%s' (%s)",
 				conf.General.TLS.PrivateKey, err)
 		}
 		var serverRootCAs, clientRootCAs [][]byte
 		for _, serverRoot := range conf.General.TLS.RootCAs {
 			root, err := os.ReadFile(serverRoot)
 			if err != nil {
-				logger.Fatalf("Failed to load ServerRootCAs file '%s' (%s)",
+				logger.Fatalf("Failed to load TLS ServerRootCAs file '%s' (%s)",
 					err, serverRoot)
 			}
 			serverRootCAs = append(serverRootCAs, root)
@@ -508,7 +508,7 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 			for _, clientRoot := range conf.General.TLS.ClientRootCAs {
 				root, err := os.ReadFile(clientRoot)
 				if err != nil {
-					logger.Fatalf("Failed to load ClientRootCAs file '%s' (%s)",
+					logger.Fatalf("Failed to load TLS ClientRootCAs file '%s' (%s)",
 						err, clientRoot)
 				}
 				clientRootCAs = append(clientRootCAs, root)
