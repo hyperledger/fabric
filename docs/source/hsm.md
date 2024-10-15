@@ -9,6 +9,8 @@ multiple certified HSMs from which to choose.
 
 Fabric currently leverages the PKCS11 standard to communicate with an HSM.
 
+**Note:** Fabric can use a HSM for peer and orderer node MSP identities as documented in this topic,
+however for TLS you must use file-based keys as documented in the [TLS topic](./enable_tls.html).
 
 ## Configuring an HSM
 
