@@ -15,7 +15,6 @@ env:
   GO_VER: 1.23.2
   UBUNTU_VER: 22.04
   FABRIC_VER: ${{ github.ref_name }}
-  DOCKER_REGISTRY: ${{ github.repository_owner == 'hyperledger' && 'docker.io' || 'ghcr.io' }}
 
 permissions:
   contents: read
@@ -26,22 +25,22 @@ jobs:
     strategy:
       matrix:
         include:
-        - image: fabric-ubuntu-22.04
-          target: linux
-          arch: amd64
-        - image: fabric-ubuntu-22.04
-          target: linux
-          arch: arm64
-        - image: macos-11
-          target: darwin
-          arch: amd64
-        - image: macos-11
-          target: darwin
-          arch: arm64
-        - image: fabric-windows-latest
-          target: windows
-          arch: amd64
-    runs-on: fabric-ubuntu-22.04
+          - image: fabric-ubuntu-22.04
+            target: linux
+            arch: amd64
+          - image: fabric-ubuntu-22.04
+            target: linux
+            arch: arm64
+          - image: macos-11
+            target: darwin
+            arch: amd64
+          - image: macos-11
+            target: darwin
+            arch: arm64
+          - image: fabric-windows-latest
+            target: windows
+            arch: amd64
+    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-22.04' || 'ubuntu-22.04' }}
     steps:
       - name: Checkout Fabric Code
         uses: actions/checkout@v4
@@ -65,25 +64,33 @@ jobs:
 
   build-and-push-docker-images:
     name: Build and Push
-    runs-on: fabric-ubuntu-22.04
+    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-22.04' || 'ubuntu-22.04' }}
 
     permissions:
       contents: read
       packages: write
 
     strategy:
+      fail-fast: false
       matrix:
-        include:
-          - COMPONENT: baseos
-            CONTEXT: images/baseos
-          - COMPONENT: ccenv
-            CONTEXT: images/ccenv
-          - COMPONENT: peer
-            CONTEXT: .
-          - COMPONENT: orderer
-            CONTEXT: .
+        registry:
+          - docker.io
+          - ghcr.io
+        component:
+          - name: baseos
+            context: images/baseos
+          - name: ccenv
+            context: images/ccenv
+          - name: peer
+            context: .
+          - name: orderer
+            context: .
 
     steps:
+      - name: Skip Docker Hub publish for forks
+        if: ${{ github.repository_owner != 'hyperledger' && matrix.registry == 'docker.io' }}
+        run: exit 1
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -91,36 +98,36 @@ jobs:
         uses: docker/setup-buildx-action@v3
         with:
           buildkitd-flags: --debug
-          config-inline: |
+          buildkitd-config-inline: |
             [worker.oci]
               max-parallelism = 1
 
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Login to the ${{ env.DOCKER_REGISTRY }} Container Registry
+      - name: Login to the ${{ matrix.registry }} Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.DOCKER_REGISTRY }}
-          username: ${{ env.DOCKER_REGISTRY == 'docker.io' && secrets.DOCKERHUB_USERNAME || github.actor }}
-          password: ${{ env.DOCKER_REGISTRY == 'docker.io' && secrets.DOCKERHUB_TOKEN    || secrets.GITHUB_TOKEN }}
+          registry: ${{ matrix.registry }}
+          username: ${{ matrix.registry == 'docker.io' && secrets.DOCKERHUB_USERNAME || github.actor }}
+          password: ${{ matrix.registry == 'docker.io' && secrets.DOCKERHUB_TOKEN    || secrets.GITHUB_TOKEN }}
 
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/fabric-${{ matrix.COMPONENT }}
+          images: ${{ matrix.registry }}/${{ github.repository_owner }}/fabric-${{ matrix.component.name }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}.{{minor}}.{{patch}}
 
-      - name: Build and push ${{ matrix.COMPONENT }} Image
+      - name: Build and push ${{ matrix.component.name }} Image
         id: push
         uses: docker/build-push-action@v5
         with:
-          context: ${{ matrix.CONTEXT }}
-          file: images/${{ matrix.COMPONENT }}/Dockerfile
+          context: ${{ matrix.component.context }}
+          file: images/${{ matrix.component.name }}/Dockerfile
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           push: ${{ github.event_name != 'pull_request' }}
@@ -136,7 +143,7 @@ jobs:
     needs:
       - build-binaries
       - build-and-push-docker-images
-    runs-on: fabric-ubuntu-22.04
+    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-22.04' || 'ubuntu-22.04' }}
     permissions:
       contents: write
     steps:
