@@ -21,7 +21,7 @@
 ###############################################################################
 
 ARG UBUNTU_VER
-FROM ubuntu:${UBUNTU_VER} as builder
+FROM ubuntu:${UBUNTU_VER:-22.04} AS builder
 
 ARG TARGETARCH
 ARG TARGETOS
@@ -49,7 +49,7 @@ RUN make ccaasbuilder
 ###############################################################################
 
 ARG UBUNTU_VER
-FROM ubuntu:${UBUNTU_VER}
+FROM ubuntu:${UBUNTU_VER:-22.04}
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -60,8 +60,8 @@ ARG FABRIC_VER
 # - docker run --rm debian:stretch grep '^hosts:' /etc/nsswitch.conf
 RUN echo 'hosts: files dns' > /etc/nsswitch.conf
 
-ENV     FABRIC_CFG_PATH /etc/hyperledger/fabric
-ENV     FABRIC_VER      ${FABRIC_VER}
+ENV FABRIC_CFG_PATH=/etc/hyperledger/fabric
+ENV FABRIC_VER=${FABRIC_VER}
 
 COPY    --from=builder  build/bin/peer          /usr/local/bin
 COPY    --from=builder  sampleconfig/msp        ${FABRIC_CFG_PATH}/msp
