@@ -11,8 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !windows && !js && !wasip1
-// +build !windows,!js,!wasip1
+// +build !windows
 
 package prometheus
 
@@ -60,20 +59,6 @@ func (c *processCollector) processCollect(ch chan<- Metric) {
 	if limits, err := p.Limits(); err == nil {
 		ch <- MustNewConstMetric(c.maxFDs, GaugeValue, float64(limits.OpenFiles))
 		ch <- MustNewConstMetric(c.maxVsize, GaugeValue, float64(limits.AddressSpace))
-	} else {
-		c.reportError(ch, nil, err)
-	}
-
-	if netstat, err := p.Netstat(); err == nil {
-		var inOctets, outOctets float64
-		if netstat.IpExt.InOctets != nil {
-			inOctets = *netstat.IpExt.InOctets
-		}
-		if netstat.IpExt.OutOctets != nil {
-			outOctets = *netstat.IpExt.OutOctets
-		}
-		ch <- MustNewConstMetric(c.inBytes, CounterValue, inOctets)
-		ch <- MustNewConstMetric(c.outBytes, CounterValue, outOctets)
 	} else {
 		c.reportError(ch, nil, err)
 	}
