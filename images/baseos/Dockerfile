@@ -19,7 +19,7 @@
 ARG GO_VER
 ARG UBUNTU_VER
 
-FROM ubuntu:${UBUNTU_VER} as base
+FROM ubuntu:${UBUNTU_VER:-22.04} AS base
 
 RUN apt update && apt install -y \
     tzdata
