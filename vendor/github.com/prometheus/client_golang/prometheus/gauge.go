@@ -55,18 +55,6 @@ type Gauge interface {
 // GaugeOpts is an alias for Opts. See there for doc comments.
 type GaugeOpts Opts
 
-// GaugeVecOpts bundles the options to create a GaugeVec metric.
-// It is mandatory to set GaugeOpts, see there for mandatory fields. VariableLabels
-// is optional and can safely be left to its default value.
-type GaugeVecOpts struct {
-	GaugeOpts
-
-	// VariableLabels are used to partition the metric vector by the given set
-	// of labels. Each label value will be constrained with the optional Constraint
-	// function, if provided.
-	VariableLabels ConstrainableLabels
-}
-
 // NewGauge creates a new Gauge based on the provided GaugeOpts.
 //
 // The returned implementation is optimized for a fast Set method. If you have a
@@ -135,7 +123,7 @@ func (g *gauge) Sub(val float64) {
 
 func (g *gauge) Write(out *dto.Metric) error {
 	val := math.Float64frombits(atomic.LoadUint64(&g.valBits))
-	return populateMetric(GaugeValue, val, g.labelPairs, nil, out, nil)
+	return populateMetric(GaugeValue, val, g.labelPairs, nil, out)
 }
 
 // GaugeVec is a Collector that bundles a set of Gauges that all share the same
@@ -150,24 +138,16 @@ type GaugeVec struct {
 // NewGaugeVec creates a new GaugeVec based on the provided GaugeOpts and
 // partitioned by the given label names.
 func NewGaugeVec(opts GaugeOpts, labelNames []string) *GaugeVec {
-	return V2.NewGaugeVec(GaugeVecOpts{
-		GaugeOpts:      opts,
-		VariableLabels: UnconstrainedLabels(labelNames),
-	})
-}
-
-// NewGaugeVec creates a new GaugeVec based on the provided GaugeVecOpts.
-func (v2) NewGaugeVec(opts GaugeVecOpts) *GaugeVec {
-	desc := V2.NewDesc(
+	desc := NewDesc(
 		BuildFQName(opts.Namespace, opts.Subsystem, opts.Name),
 		opts.Help,
-		opts.VariableLabels,
+		labelNames,
 		opts.ConstLabels,
 	)
 	return &GaugeVec{
 		MetricVec: NewMetricVec(desc, func(lvs ...string) Metric {
-			if len(lvs) != len(desc.variableLabels.names) {
-				panic(makeInconsistentCardinalityError(desc.fqName, desc.variableLabels.names, lvs))
+			if len(lvs) != len(desc.variableLabels) {
+				panic(makeInconsistentCardinalityError(desc.fqName, desc.variableLabels, lvs))
 			}
 			result := &gauge{desc: desc, labelPairs: MakeLabelPairs(desc, lvs)}
 			result.init(result) // Init self-collection.
@@ -230,8 +210,7 @@ func (v *GaugeVec) GetMetricWith(labels Labels) (Gauge, error) {
 // WithLabelValues works as GetMetricWithLabelValues, but panics where
 // GetMetricWithLabelValues would have returned an error. Not returning an
 // error allows shortcuts like
-//
-//	myVec.WithLabelValues("404", "GET").Add(42)
+//     myVec.WithLabelValues("404", "GET").Add(42)
 func (v *GaugeVec) WithLabelValues(lvs ...string) Gauge {
 	g, err := v.GetMetricWithLabelValues(lvs...)
 	if err != nil {
@@ -242,8 +221,7 @@ func (v *GaugeVec) WithLabelValues(lvs ...string) Gauge {
 
 // With works as GetMetricWith, but panics where GetMetricWithLabels would have
 // returned an error. Not returning an error allows shortcuts like
-//
-//	myVec.With(prometheus.Labels{"code": "404", "method": "GET"}).Add(42)
+//     myVec.With(prometheus.Labels{"code": "404", "method": "GET"}).Add(42)
 func (v *GaugeVec) With(labels Labels) Gauge {
 	g, err := v.GetMetricWith(labels)
 	if err != nil {
