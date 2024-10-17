@@ -345,8 +345,13 @@ spaces:
 	@scripts/check_file_name_spaces.sh
 
 .PHONY: docs
+<<<<<<< HEAD
 docs:
 	@docker run --rm -v $$(pwd):/docs n42org/tox:3.4.0 sh -c 'cd /docs && tox -e docs'
+=======
+docs: # Builds the documentation in html format
+	@docker run --rm -v $$(pwd):/docs python:3.12-slim sh -c 'pip install --no-input tox && cd /docs && tox -e docs'
+>>>>>>> a1b3773a2 (Update app dev tutorial to include Go and Java)
 
 .PHONY: ccaasbuilder-clean
 ccaasbuilder-clean/%:
