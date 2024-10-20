@@ -21,7 +21,7 @@ go mod tidy -modfile="${dep_tempdir}/go.mod"
 
 for f in go.mod go.sum; do
     if ! diff -q "${fabric_dir}/$f" "${dep_tempdir}/$f"; then
-        echo "It appears $f is stale. Please run 'go mod tidy' and 'go mod vendor'."
+        echo "It appears $f is stale. Please run 'go mod tidy'."
         diff -u "${fabric_dir}/$f" "${dep_tempdir}/$f"
         exit 1
     fi
