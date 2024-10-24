@@ -38,6 +38,7 @@ func SanitizeIdentity(identity []byte) ([]byte, error) {
 	return proto.Marshal(sID)
 }
 
+// SanitizeX509Cert sanitizes an X.509 certificate to ensure that the ECDSA signature uses a "low-S" value.
 func SanitizeX509Cert(initialPEM []byte) ([]byte, error) {
 	der, _ := pem.Decode(initialPEM)
 	if der == nil {
