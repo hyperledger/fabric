@@ -673,6 +673,25 @@ If you have any problems with the tutorial, review the following:
    :set ff=unix
    ```
 
+- If you are running on a Linux distribution with SELinux enabled like Fedora or RHEL and your test-network peer and orderer containers keep crashing with the following errors:
+  ```bash
+  # peer 1 & 2
+  ERRO [main] InitCmd -> Fatal error when initializing core config : error when reading core config file: Config File "core" Not Found in "[/etc/hyperledger/peercfg]"
+
+  # orderer
+  PANI [orderer.common.server] loadLocalMSP -> Failed to get local msp config: could not initialize BCCSP Factories: Failed initializing BCCSP: Could not initialize BCCSP SW [Failed to initialize software key store: open /var/hyperledger/orderer/msp/keystore: permission denied]
+  ```
+  Read the *"Distros with SELinux enabled"* section in the [Prerequisites](prereqs.html).
+
+- If you are running on a Linux distribution with SELinux enabled like Fedora or RHEL and you can not install a chaincode on your test-network with the following error:
+  ```bash
+  Error: chaincode install failed with status: 500 - failed to invoke backing implementation of 'InstallChaincode': could not build chaincode: docker build failed: docker image inspection failed: Get "http://unix.sock/images/dev-peer0.org1.example.com-basic_1.0-c6a45e2d5563c883869149c3dbd941c22fbe27daa21f0552834f5a53fbb8058a-fe69b7bdc0bbe5769bbff0572aa6986343c77b61c84077999a9b65f29c5c0025/json": dial unix /host/var/run/docker.sock: connect: permission denied
+  Chaincode installation on peer0.org1 has failed
+  Deploying chaincode failed
+  ```
+
+  Read the *"Distros with SELinux enabled"* section in the [Prerequisites](prereqs.html).
+
 If you continue to see errors, share your logs on one of the Fabric [Discord channels](https://discord.com/invite/hyperledger) or on
 [StackOverflow](https://stackoverflow.com/questions/tagged/hyperledger-fabric).
 

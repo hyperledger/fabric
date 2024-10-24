@@ -86,7 +86,7 @@ brew install jq
 jq --version # => jq-1.6
 ```
 
-## **Linux (Ubuntu/Debian based distro)**
+## **Linux (Ubuntu/Debian based distro, Distros with SELinux enabled)**
 
 Prerequisites: [git](https://git-scm.com/downloads), [cURL](https://curl.haxx.se/download.html), [Docker](https://docs.docker.com/get-docker/)
 
@@ -114,6 +114,57 @@ Optional: Install the latest version of [Go](https://golang.org/doc/install) (on
 ### JQ
 
 Optional: Install the latest version of [jq](https://stedolan.github.io/jq/download/) (only required for the tutorials related to channel configuration transactions).
+
+### Distros with SELinux enabled
+
+To use the test-network on Linux distributions where SELinux is enabled like Fedora or RHEL you need to modify the Docker/Podman compose files or you will run into permission issues with volumes and access to the Docker socket when building the Chaincode container.
+
+Resolve the volume permission issues by adding a `:z` to the end of the line in the volume entries shown in:
+- `test-network/compose/compose-test-net.yaml`,
+- `test-network/compose/docker/docker-compose-test-net.yaml` in case you use Docker
+- OR `test-network/compose/podman/podman-compose-test-net.yaml` in case you use Podman.
+
+```yaml
+# test-network/compose/compose-test-net.yaml
+# Orderer container
+    volumes:
+        - ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/orderer/msp:z
+        - ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/:/var/hyperledger/orderer/tls:z
+
+# PeerOrg1 container
+    volumes:
+        - ../organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com:/etc/hyperledger/fabric:z
+
+# PeerOrg2 container
+     volumes:
+        - ../organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com:/etc/hyperledger/fabric:z
+
+# test-network/compose/docker/docker-compose-test-net.yaml
+# PeerOrg1 container
+    volumes:
+        - ./docker/peercfg:/etc/hyperledger/peercfg:z
+
+# PeerOrg2 container
+    volumes:
+        - ./docker/peercfg:/etc/hyperledger/peercfg:z
+```
+
+Resolve the issue with forbidden access to the Docker socket by either using Chaincode-as-a-Service or opting out of SELinux enforcement for the peer containers. You can do the latter by adding `:z` to Docker socket volume entries and disabling the security options in `test-network/compose/docker/docker-compose-test-net.yaml`:
+
+```yaml
+# test-network/compose/docker/docker-compose-test-net.yaml
+# PeerOrg1 container
+    volumes:
+        - ${DOCKER_SOCK}:/host/var/run/docker.sock:z
+    security_opt:
+        - label:disable
+
+# PeerOrg2 container
+    volumes:
+        - ${DOCKER_SOCK}:/host/var/run/docker.sock:z
+    security_opt:
+        - label:disable
+```
 
 ## **Windows**
 
