@@ -19,6 +19,9 @@ const (
 	BlockValidationPolicyKey = "BlockValidation"
 )
 
+// EncodeBFTBlockVerificationPolicy creates a block verification policy based on Byzantine Fault Tolerance (BFT).
+// It takes a list of consenters (orderer nodes), constructs a BFT policy using their identities, and updates
+// the orderer's configuration group with this new policy.
 func EncodeBFTBlockVerificationPolicy(consenterProtos []*cb.Consenter, ordererGroup *cb.ConfigGroup) {
 	n := len(consenterProtos)
 	f := (n - 1) / 3
