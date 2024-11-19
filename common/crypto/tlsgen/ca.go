@@ -75,14 +75,14 @@ func (c *ca) CertBytes() []byte {
 	return c.caCert.Cert
 }
 
-// newClientCertKeyPair returns a certificate and private key pair and nil,
+// NewClientCertKeyPair returns a certificate and private key pair and nil,
 // or nil, error in case of failure
 // The certificate is signed by the CA and is used as a client TLS certificate
 func (c *ca) NewClientCertKeyPair() (*CertKeyPair, error) {
 	return newCertKeyPair(false, false, c.caCert.Signer, c.caCert.TLSCert)
 }
 
-// newServerCertKeyPair returns a certificate and private key pair and nil,
+// NewServerCertKeyPair returns a certificate and private key pair and nil,
 // or nil, error in case of failure
 // The certificate is signed by the CA and is used as a server TLS certificate
 func (c *ca) NewServerCertKeyPair(hosts ...string) (*CertKeyPair, error) {

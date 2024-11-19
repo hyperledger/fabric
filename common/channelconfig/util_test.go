@@ -167,7 +167,7 @@ func createCfgBlockWithSupportedCapabilities(t *testing.T) *cb.Block {
 	return configBlock
 }
 
-// createCfgBlockWithUnSupportedCapabilities will create a config block that contains mismatched capabilities and should be rejected by the peer
+// createCfgBlockWithUnsupportedCapabilities will create a config block that contains mismatched capabilities and should be rejected by the peer
 func createCfgBlockWithUnsupportedCapabilities(t *testing.T) *cb.Block {
 	// Create a config
 	config := &cb.Config{
