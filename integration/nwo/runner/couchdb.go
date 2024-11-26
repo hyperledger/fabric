@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	CouchDBDefaultImage = "couchdb:3.3.3"
+	CouchDBDefaultImage = "couchdb:3.4.2"
 	CouchDBUsername     = "admin"
 	CouchDBPassword     = "adminpw"
 )
