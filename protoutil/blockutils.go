@@ -89,24 +89,43 @@ func GetChannelIDFromBlockBytes(bytes []byte) (string, error) {
 	return GetChannelIDFromBlock(block)
 }
 
-// GetChannelIDFromBlock returns channel ID in the block
+
+// GetChannelIDFromBlock extracts the channel ID from the provided block.
+// It parses the block data to retrieve the envelope, payload, and channel header,
+// and finally retrieves the channel ID from the channel header.
+//
+// Parameters:
+// - block: A pointer to a cb.Block object containing the blockchain block data.
+//
+// Returns:
+// - (string): The channel ID extracted from the block.
+// - (error): An error if the channel ID cannot be retrieved or the block is malformed.
 func GetChannelIDFromBlock(block *cb.Block) (string, error) {
+
+	// Check if the block or its data is nil, or if it contains no data.
 	if block == nil || block.Data == nil || block.Data.Data == nil || len(block.Data.Data) == 0 {
 		return "", errors.New("failed to retrieve channel id - block is empty")
 	}
 	var err error
+
+	// Retrieve the first envelope from the block.
 	envelope, err := GetEnvelopeFromBlock(block.Data.Data[0])
 	if err != nil {
 		return "", err
 	}
+
+	// Unmarshal the payload from the envelope.
 	payload, err := UnmarshalPayload(envelope.Payload)
 	if err != nil {
 		return "", err
 	}
 
+	// Verify that the payload header is not nil.
 	if payload.Header == nil {
 		return "", errors.New("failed to retrieve channel id - payload header is empty")
 	}
+
+	// Unmarshal the channel header from the payload header.
 	chdr, err := UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		return "", err
@@ -242,18 +261,31 @@ type policy interface { // copied from common.policies to avoid circular import.
 	EvaluateSignedData(signatureSet []*SignedData) error
 }
 
+
+// BlockSignatureVerifier returns a BlockVerifierFunc that validates the signatures of a block based on the provided policy and consenter set.
+// It checks the metadata of the block to retrieve and verify the signatures against the given policy.
+//
+// Parameters:
+// - bftEnabled: A boolean flag indicating if BFT (Byzantine Fault Tolerant) consensus is enabled.
+// - consenters: A list of consenter objects that may be used to look up consenter identities if required.
+// - policy: A policy object that will be used to evaluate the validity of the signatures.
+//
+// Returns:
+// - BlockVerifierFunc: A function that takes a block header and metadata, and returns an error if the signatures are invalid.
 func BlockSignatureVerifier(bftEnabled bool, consenters []*cb.Consenter, policy policy) BlockVerifierFunc {
 	return func(header *cb.BlockHeader, metadata *cb.BlockMetadata) error {
 		if len(metadata.GetMetadata()) < int(cb.BlockMetadataIndex_SIGNATURES)+1 {
 			return errors.Errorf("no signatures in block metadata")
 		}
 
+		// Unmarshal the signatures metadata from the block metadata.
 		md := &cb.Metadata{}
 		if err := proto.Unmarshal(metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES], md); err != nil {
 			return errors.Wrapf(err, "error unmarshalling signatures from metadata: %v", err)
 		}
 
 		var signatureSet []*SignedData
+		// Loop through each signature in the metadata.
 		for _, metadataSignature := range md.Signatures {
 			var signerIdentity []byte
 			var signedPayload []byte
@@ -269,6 +301,8 @@ func BlockSignatureVerifier(bftEnabled bool, consenters []*cb.Consenter, policy 
 					// The identifier is not within the consenter set
 					continue
 				}
+
+				// Concatenate the necessary data for signature verification in BFT mode.
 				signedPayload = util.ConcatenateBytes(md.Value, metadataSignature.IdentifierHeader, BlockHeaderBytes(header))
 			} else {
 				signatureHeader, err := UnmarshalSignatureHeader(metadataSignature.GetSignatureHeader())
@@ -278,6 +312,7 @@ func BlockSignatureVerifier(bftEnabled bool, consenters []*cb.Consenter, policy 
 
 				signedPayload = util.ConcatenateBytes(md.Value, metadataSignature.SignatureHeader, BlockHeaderBytes(header))
 
+				// Use the creator (identity) from the signature header.
 				signerIdentity = signatureHeader.Creator
 			}
 

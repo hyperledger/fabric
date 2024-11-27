@@ -23,20 +23,37 @@ type Policy struct {
 	invocationsMutex sync.RWMutex
 }
 
+
+// EvaluateSignedData is a method of the fake Policy struct that evaluates signed data.
+// It supports recording method invocations and managing predefined return values for testing purposes.
 func (fake *Policy) EvaluateSignedData(arg1 []*protoutil.SignedData) error {
 	var arg1Copy []*protoutil.SignedData
+
+	// If the input argument is not nil, create a copy of the slice.
 	if arg1 != nil {
 		arg1Copy = make([]*protoutil.SignedData, len(arg1))
 		copy(arg1Copy, arg1)
 	}
+
+	// Acquire a mutex lock to ensure thread safety when accessing shared data.
 	fake.evaluateSignedDataMutex.Lock()
+
+	// Retrieve specific return values for the current call based on the call count.
 	ret, specificReturn := fake.evaluateSignedDataReturnsOnCall[len(fake.evaluateSignedDataArgsForCall)]
+
+	// Append the arguments of the current call to a slice for tracking invocation history.
 	fake.evaluateSignedDataArgsForCall = append(fake.evaluateSignedDataArgsForCall, struct {
 		arg1 []*protoutil.SignedData
 	}{arg1Copy})
+
+	// Retrieve the default return values.
 	stub := fake.EvaluateSignedDataStub
 	fakeReturns := fake.evaluateSignedDataReturns
+
+	// Record the invocation of this method with its arguments.
 	fake.recordInvocation("EvaluateSignedData", []interface{}{arg1Copy})
+
+	// Release the mutex lock after shared data manipulation is complete.
 	fake.evaluateSignedDataMutex.Unlock()
 	if stub != nil {
 		return stub(arg1)

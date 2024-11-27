@@ -83,7 +83,10 @@ func AddOrdererPolicies(cg *cb.ConfigGroup, policyMap map[string]*genesisconfig.
 	return AddPolicies(cg, policyMap, modPolicy)
 }
 
+// AddPolicies adds a set of policies to a ConfigGroup, validating required policies and 
+// handling different policy types (ImplicitMeta or Signature).
 func AddPolicies(cg *cb.ConfigGroup, policyMap map[string]*genesisconfig.Policy, modPolicy string) error {
+	// Validate that all necessary policies are present in the policyMap.
 	switch {
 	case policyMap == nil:
 		return errors.Errorf("no policies defined")
@@ -95,13 +98,19 @@ func AddPolicies(cg *cb.ConfigGroup, policyMap map[string]*genesisconfig.Policy,
 		return errors.Errorf("no Writers policy defined")
 	}
 
+	// Iterate over all policies in the map and add them to the ConfigGroup.
 	for policyName, policy := range policyMap {
 		switch policy.Type {
 		case ImplicitMetaPolicyType:
+
+			// Handle ImplicitMetaPolicy type.
+			// Parse the rule string into an ImplicitMetaPolicy object.
 			imp, err := policies.ImplicitMetaFromString(policy.Rule)
 			if err != nil {
 				return errors.Wrapf(err, "invalid implicit meta policy rule '%s'", policy.Rule)
 			}
+
+			// Add the parsed policy to the ConfigGroup.
 			cg.Policies[policyName] = &cb.ConfigPolicy{
 				ModPolicy: modPolicy,
 				Policy: &cb.Policy{
@@ -110,10 +119,15 @@ func AddPolicies(cg *cb.ConfigGroup, policyMap map[string]*genesisconfig.Policy,
 				},
 			}
 		case SignaturePolicyType:
+
+			// Handle SignaturePolicy type.
+			// Parse the rule string into a SignaturePolicy object.
 			sp, err := policydsl.FromString(policy.Rule)
 			if err != nil {
 				return errors.Wrapf(err, "invalid signature policy rule '%s'", policy.Rule)
 			}
+
+			// Add the parsed policy to the ConfigGroup.
 			cg.Policies[policyName] = &cb.ConfigPolicy{
 				ModPolicy: modPolicy,
 				Policy: &cb.Policy{
@@ -183,6 +197,7 @@ func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
 // about how large blocks should be, how frequently they should be emitted, etc. as well as the organizations of the ordering network.
 // It sets the mod_policy of all elements to "Admins".  This group is always present in any channel configuration.
 func NewOrdererGroup(conf *genesisconfig.Orderer, channelCapabilities map[string]bool) (*cb.ConfigGroup, error) {
+	// Validate compatibility of orderer type and channel capabilities.
 	if conf.OrdererType == "BFT" && !channelCapabilities["V3_0"] {
 		return nil, errors.Errorf("orderer type BFT must be used with V3_0 channel capability: %v", channelCapabilities)
 	}
@@ -190,10 +205,15 @@ func NewOrdererGroup(conf *genesisconfig.Orderer, channelCapabilities map[string
 		return nil, errors.Errorf("global orderer endpoints exist, but can not be used with V3_0 capability: %v", conf.Addresses)
 	}
 
+	// Create a new ConfigGroup for the orderer.
 	ordererGroup := protoutil.NewConfigGroup()
+
+	// Add policies to the orderer group.
 	if err := AddOrdererPolicies(ordererGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
 		return nil, errors.Wrapf(err, "error adding policies to orderer group")
 	}
+
+	// Add configuration values for batch size, batch timeout, and channel restrictions.
 	addValue(ordererGroup, channelconfig.BatchSizeValue(
 		conf.BatchSize.MaxMessageCount,
 		conf.BatchSize.AbsoluteMaxBytes,
@@ -202,10 +222,12 @@ func NewOrdererGroup(conf *genesisconfig.Orderer, channelCapabilities map[string
 	addValue(ordererGroup, channelconfig.BatchTimeoutValue(conf.BatchTimeout.String()), channelconfig.AdminsPolicyKey)
 	addValue(ordererGroup, channelconfig.ChannelRestrictionsValue(conf.MaxChannels), channelconfig.AdminsPolicyKey)
 
+	// Add capabilities if they exist in the configuration.
 	if len(conf.Capabilities) > 0 {
 		addValue(ordererGroup, channelconfig.CapabilitiesValue(conf.Capabilities), channelconfig.AdminsPolicyKey)
 	}
 
+	// Initialize consensus metadata and configure based on the orderer type.
 	var consensusMetadata []byte
 	var err error
 
@@ -232,8 +254,10 @@ func NewOrdererGroup(conf *genesisconfig.Orderer, channelCapabilities map[string
 		return nil, errors.Errorf("unknown orderer type: %s", conf.OrdererType)
 	}
 
+	// Add the consensus type and metadata configuration to the orderer group.
 	addValue(ordererGroup, channelconfig.ConsensusTypeValue(conf.OrdererType, consensusMetadata), channelconfig.AdminsPolicyKey)
 
+	// Configure organizations for the orderer.
 	for _, org := range conf.Organizations {
 		var err error
 		ordererGroup.Groups[org.Name], err = NewOrdererOrgGroup(org, channelCapabilities)
