@@ -51,7 +51,7 @@ FABRIC_VER ?= 2.5.10
 
 # 3rd party image version
 # These versions are also set in the runners in ./integration/runners/
-COUCHDB_VER ?= 3.3.3
+COUCHDB_VER ?= 3.4.2
 KAFKA_VER ?= 5.3.1
 ZOOKEEPER_VER ?= 5.3.1
 
