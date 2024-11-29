@@ -474,7 +474,7 @@ func (h *Handler) notifyRegistry(err error) {
 	h.Registry.Ready(h.chaincodeID)
 }
 
-// handleRegister is invoked when chaincode tries to register.
+// HandleRegister is invoked when chaincode tries to register.
 func (h *Handler) HandleRegister(msg *pb.ChaincodeMessage) {
 	h.stateLock.RLock()
 	state := h.state

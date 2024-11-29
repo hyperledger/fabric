@@ -90,7 +90,7 @@ func isPrintable(name string) bool {
 	return strings.IndexFunc(name, notASCII) == -1
 }
 
-// GetChaincodePackage returns the chaincode package from the file system
+// GetChaincodePackageFromPath returns the chaincode package from the file system
 func GetChaincodePackageFromPath(ccNameVersion string, ccInstallPath string) ([]byte, error) {
 	path := fmt.Sprintf("%s/%s", ccInstallPath, strings.ReplaceAll(ccNameVersion, ":", "."))
 	var ccbytes []byte
