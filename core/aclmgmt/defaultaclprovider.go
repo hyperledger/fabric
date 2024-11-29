@@ -155,7 +155,7 @@ func (d *defaultACLProviderImpl) CheckACL(resName string, channelID string, idin
 	}
 }
 
-// CheckACL provides default behavior by mapping channelless resources to their ACL.
+// CheckACLNoChannel provides default behavior by mapping channelless resources to their ACL.
 func (d *defaultACLProviderImpl) CheckACLNoChannel(resName string, idinfo interface{}) error {
 	policy := d.pResourcePolicyMap[resName]
 	if policy == "" {

@@ -137,7 +137,7 @@ func ConstructTransaction(
 	)
 }
 
-// ConstructTransaction constructs a transaction for testing with header type
+// ConstructTransactionWithHeaderType constructs a transaction for testing with header type
 func ConstructTransactionWithHeaderType(
 	t *testing.T,
 	simulationResults []byte,
