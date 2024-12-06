@@ -13,7 +13,7 @@ Discord: ahmedalsalih#6158
 
 * Bi-weekly lab meeting.
 ```
-Next meeting: (October-25 skiped) See you Thursday, November-15, 2024
+Next meeting: (October-25 skiped) See you Thursday, Dec-20, 2024
 9:30am to 10:00am Eastern Time (EST)
 Repeats:
 Every 2 weeks on Thursday
