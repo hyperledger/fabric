@@ -96,7 +96,7 @@ func TestQueryGetChainInfo(t *testing.T) {
 
 	mockStub, lq, _, cleanup, err := setupTestLedger(t, chainid, path)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 	defer cleanup()
 
@@ -128,7 +128,7 @@ func TestQueryGetTransactionByID(t *testing.T) {
 
 	mockStub, lq, _, cleanup, err := setupTestLedger(t, chainid, path)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 	defer cleanup()
 
@@ -164,7 +164,7 @@ func TestQueryGetBlockByNumber(t *testing.T) {
 
 	mockStub, lq, _, cleanup, err := setupTestLedger(t, chainid, path)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 	defer cleanup()
 
@@ -201,7 +201,7 @@ func TestQueryGetBlockByHash(t *testing.T) {
 
 	mockStub, lq, _, cleanup, err := setupTestLedger(t, chainid, path)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 	defer cleanup()
 
@@ -228,7 +228,7 @@ func TestQueryGetBlockByTxID(t *testing.T) {
 
 	mockStub, lq, _, cleanup, err := setupTestLedger(t, chainid, path)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 	defer cleanup()
 
@@ -290,7 +290,7 @@ func TestFailingAccessControl(t *testing.T) {
 
 	mockStub, lq, _, cleanup, err := setupTestLedger(t, chainid, path)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 	defer cleanup()
 
@@ -415,7 +415,7 @@ func TestQueryNonexistentFunction(t *testing.T) {
 
 	mockStub, lq, _, cleanup, err := setupTestLedger(t, chainid, path)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 	defer cleanup()
 
@@ -436,7 +436,7 @@ func TestQueryGeneratedBlock(t *testing.T) {
 
 	mockStub, lq, p, cleanup, err := setupTestLedger(t, chainid, path)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 	defer cleanup()
 
@@ -471,7 +471,7 @@ func TestQueryGeneratedBlock(t *testing.T) {
 				}
 				chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 				if err != nil {
-					t.Fatalf(err.Error())
+					t.Fatal(err.Error())
 				}
 				if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
 					args = [][]byte{[]byte(GetBlockByTxID), []byte(chainid), []byte(chdr.TxId)}

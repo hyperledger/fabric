@@ -152,7 +152,7 @@ func (cbv *ConfigBlockValidator) checkConsentersMatchPolicy(conf *cb.Config) err
 		Value: protoutil.MarshalOrPanic(sp),
 	}
 
-	if conf.ChannelGroup.Groups["Orderer"].Policies == nil || len(conf.ChannelGroup.Groups["Orderer"].Policies) == 0 {
+	if len(conf.ChannelGroup.Groups["Orderer"].Policies) == 0 {
 		return fmt.Errorf("empty policies in 'Orderer' group")
 	}
 
