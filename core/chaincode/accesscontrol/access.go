@@ -87,7 +87,7 @@ func (ac *Authenticator) authenticate(msg *pb.ChaincodeMessage, stream grpc.Serv
 	if registeredName != ccName {
 		errMsg := fmt.Sprintf("Chaincode %s with given certificate hash %v belongs to a different chaincode", ccName, hash)
 		logger.Warning(errMsg)
-		return fmt.Errorf(errMsg)
+		return errors.New(errMsg)
 	}
 
 	logger.Debug("Chaincode", ccName, "'s authentication is authorized")

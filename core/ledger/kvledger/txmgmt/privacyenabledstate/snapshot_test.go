@@ -23,7 +23,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
-	protoV2 "google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/protoadapt"
 )
 
@@ -567,7 +566,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			srTmp := protoadapt.MessageV2Of(sr)
 			var buf []byte
 			buf = protowire.AppendVarint(buf, uint64(proto.Size(sr)))
-			nbuf, err := protoV2.MarshalOptions{
+			nbuf, err := proto.MarshalOptions{
 				Deterministic: false,
 				AllowPartial:  true,
 			}.MarshalAppend(buf, srTmp)

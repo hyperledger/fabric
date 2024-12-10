@@ -391,7 +391,7 @@ func getMockDeliverClientRespondAfterDelay(delayChan chan struct{}, txStatus pb.
 func getMockDeliverClientWithErr(errMsg string) *mock.PeerDeliverClient {
 	mockDC := &mock.PeerDeliverClient{}
 	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (pb.Deliver_DeliverFilteredClient, error) {
-		return nil, fmt.Errorf(errMsg)
+		return nil, errors.New(errMsg)
 	}
 	return mockDC
 }

@@ -220,9 +220,6 @@ func computeUpdt(original, updated, output *os.File, channelID string) error {
 
 	cu.ChannelId = channelID
 
-	if cu == nil {
-		return errors.New("error marshaling computed config update: proto: Marshal called with nil")
-	}
 	outBytes, err := proto.Marshal(cu)
 	if err != nil {
 		return errors.Wrapf(err, "error marshaling computed config update")
