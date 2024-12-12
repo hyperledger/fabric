@@ -53,13 +53,13 @@ func ValidateCip(baseCip, otherCip *peer.SignedChaincodeDeploymentSpec) error {
 	}
 
 	if (baseCip.OwnerEndorsements == nil && otherCip.OwnerEndorsements != nil) || (baseCip.OwnerEndorsements != nil && otherCip.OwnerEndorsements == nil) {
-		return fmt.Errorf("endorsements should either be both nil or not nil")
+		return errors.New("endorsements should either be both nil or not nil")
 	}
 
 	bN := len(baseCip.OwnerEndorsements)
 	oN := len(otherCip.OwnerEndorsements)
 	if bN > 1 || oN > 1 {
-		return fmt.Errorf("expect utmost 1 endorsement from a owner")
+		return errors.New("expect utmost 1 endorsement from a owner")
 	}
 
 	if bN != oN {
@@ -79,11 +79,11 @@ func ValidateCip(baseCip, otherCip *peer.SignedChaincodeDeploymentSpec) error {
 
 func createSignedCCDepSpec(cdsbytes []byte, instpolicybytes []byte, endorsements []*peer.Endorsement) (*common.Envelope, error) {
 	if cdsbytes == nil {
-		return nil, fmt.Errorf("nil chaincode deployment spec")
+		return nil, errors.New("nil chaincode deployment spec")
 	}
 
 	if instpolicybytes == nil {
-		return nil, fmt.Errorf("nil instantiation policy")
+		return nil, errors.New("nil instantiation policy")
 	}
 
 	// create SignedChaincodeDeploymentSpec...
@@ -160,11 +160,11 @@ func CreateSignedCCDepSpecForInstall(pack []*common.Envelope) (*common.Envelope,
 // optionally endorses it
 func OwnerCreateSignedCCDepSpec(cds *peer.ChaincodeDeploymentSpec, instPolicy *common.SignaturePolicyEnvelope, owner identity.SignerSerializer) (*common.Envelope, error) {
 	if cds == nil {
-		return nil, fmt.Errorf("invalid chaincode deployment spec")
+		return nil, errors.New("invalid chaincode deployment spec")
 	}
 
 	if instPolicy == nil {
-		return nil, fmt.Errorf("must provide an instantiation policy")
+		return nil, errors.New("must provide an instantiation policy")
 	}
 
 	cdsbytes := protoutil.MarshalOrPanic(cds)
@@ -202,7 +202,7 @@ func OwnerCreateSignedCCDepSpec(cds *peer.ChaincodeDeploymentSpec, instPolicy *c
 // SignExistingPackage adds a signature to a signed package.
 func SignExistingPackage(env *common.Envelope, owner identity.SignerSerializer) (*common.Envelope, error) {
 	if owner == nil {
-		return nil, fmt.Errorf("owner not provided")
+		return nil, errors.New("owner not provided")
 	}
 
 	ch, sdepspec, err := ExtractSignedCCDepSpec(env)
@@ -211,11 +211,11 @@ func SignExistingPackage(env *common.Envelope, owner identity.SignerSerializer) 
 	}
 
 	if ch == nil {
-		return nil, fmt.Errorf("channel header not found in the envelope")
+		return nil, errors.New("channel header not found in the envelope")
 	}
 
 	if sdepspec == nil || sdepspec.ChaincodeDeploymentSpec == nil || sdepspec.InstantiationPolicy == nil || sdepspec.OwnerEndorsements == nil {
-		return nil, fmt.Errorf("invalid signed deployment spec")
+		return nil, errors.New("invalid signed deployment spec")
 	}
 
 	// serialize the signing identity
