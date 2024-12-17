@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package util
 
 import (
+	crand "crypto/rand"
 	"fmt"
 	"math/rand/v2"
 	"reflect"
