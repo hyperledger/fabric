@@ -18,10 +18,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-var (
-	r      *rand.Rand
-	rMutex sync.Mutex
-)
+var r *rand.Rand
 
 func init() { // do we really need this?
 	var seed [32]byte
@@ -190,8 +187,6 @@ func RandomInt(n int) int {
 // If we want a rand that's non-global and specific to gossip, we can
 // establish one. Otherwise this uses the process-global locking RNG.
 func RandomUInt64() uint64 {
-	rMutex.Lock()
-	defer rMutex.Unlock()
 	return r.Uint64()
 }
 
