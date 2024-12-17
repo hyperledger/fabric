@@ -180,7 +180,7 @@ func (vdb *versionedDB) GetStateRangeScanIteratorWithPagination(namespace string
 	}()
 
 	if err != nil {
-		return nil, errors.WithMessage(err, "error getting iterator from db")
+		return nil, err
 	}
 
 	if dbItr == nil {
