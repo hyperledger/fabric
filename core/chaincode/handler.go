@@ -733,6 +733,17 @@ func (h *Handler) HandleGetStateMetadata(msg *pb.ChaincodeMessage, txContext *Tr
 
 // Handles query to ledger to rage query state
 func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
+	// Defer panic recovery
+	defer func() {
+		if r := recover(); r != nil {
+			chaincodeLogger.Errorf("Panic in HandleGetStateByRange: %v", r)
+			// Clean up any query context that may have been created
+			if txContext != nil {
+				txContext.CleanupQueryContext("")
+			}
+		}
+	}()
+
 	getStateByRange := &pb.GetStateByRange{}
 	err := proto.Unmarshal(msg.Payload, getStateByRange)
 	if err != nil {
@@ -746,54 +757,76 @@ func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *Tra
 
 	totalReturnLimit := h.calculateTotalReturnLimit(metadata)
 	iterID := h.UUIDGenerator.New()
-
 	var rangeIter commonledger.ResultsIterator
 	isPaginated := false
 	namespaceID := txContext.NamespaceID
 	collection := getStateByRange.Collection
 
-	// Wrap the iterator creation in a recover block
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				err = fmt.Errorf("panic in range scan: %v", r)
-			}
-		}()
+	// Validate start and end keys
+	if getStateByRange.StartKey == "" && getStateByRange.EndKey == "" {
+		return nil, errors.New("start key and end key must not both be empty")
+	}
 
-		if isCollectionSet(collection) {
-			if txContext.IsInitTransaction {
-				err = errors.New("private data APIs are not allowed in chaincode Init()")
-				return
-			}
-			if err = errorIfCreatorHasNoReadPermission(namespaceID, collection, txContext); err != nil {
-				return
-			}
-			rangeIter, err = txContext.TXSimulator.GetPrivateDataRangeScanIterator(namespaceID, collection,
-				getStateByRange.StartKey, getStateByRange.EndKey)
-		} else if isMetadataSetForPagination(metadata) {
-			isPaginated = true
-			startKey := getStateByRange.StartKey
+	if isCollectionSet(collection) {
+		if txContext.IsInitTransaction {
+			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
+		}
+		if err := errorIfCreatorHasNoReadPermission(namespaceID, collection, txContext); err != nil {
+			return nil, err
+		}
+		rangeIter, err = txContext.TXSimulator.GetPrivateDataRangeScanIterator(namespaceID, collection,
+			getStateByRange.StartKey, getStateByRange.EndKey)
+	} else if isMetadataSetForPagination(metadata) {
+		isPaginated = true
+		startKey := getStateByRange.StartKey
+		if isMetadataSetForPagination(metadata) {
 			if metadata.Bookmark != "" {
 				startKey = metadata.Bookmark
 			}
-			rangeIter, err = txContext.TXSimulator.GetStateRangeScanIteratorWithPagination(namespaceID,
-				startKey, getStateByRange.EndKey, metadata.PageSize)
-		} else {
-			rangeIter, err = txContext.TXSimulator.GetStateRangeScanIterator(namespaceID, getStateByRange.StartKey, getStateByRange.EndKey)
 		}
-	}()
+
+		// Validate page size
+		if metadata.PageSize < 1 {
+			return nil, errors.New("page size must be greater than zero")
+		}
+
+		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIteratorWithPagination(namespaceID,
+			startKey, getStateByRange.EndKey, metadata.PageSize)
+	} else {
+		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIterator(namespaceID, getStateByRange.StartKey, getStateByRange.EndKey)
+	}
 
 	if err != nil {
-		return nil, errors.WithMessage(err, "error getting range scan iterator")
+		// Clean up any resources if error occurs
+		txContext.CleanupQueryContext(iterID)
+		return nil, errors.WithStack(err)
 	}
 
 	if rangeIter == nil {
-		return nil, errors.New("nil iterator returned")
+		txContext.CleanupQueryContext(iterID)
+		return nil, errors.New("range query iterator is nil")
 	}
 
 	txContext.InitializeQueryContext(iterID, rangeIter)
 
-	return createResponse(txContext, rangeIter, isPaginated, totalReturnLimit)
+	payload, err := h.QueryResponseBuilder.BuildQueryResponse(txContext, rangeIter, iterID, isPaginated, totalReturnLimit)
+	if err != nil {
+		txContext.CleanupQueryContext(iterID)
+		return nil, errors.WithStack(err)
+	}
+	if payload == nil {
+		txContext.CleanupQueryContext(iterID)
+		return nil, errors.New("marshal failed: proto: Marshal called with nil")
+	}
+
+	payloadBytes, err := proto.Marshal(payload)
+	if err != nil {
+		txContext.CleanupQueryContext(iterID)
+		return nil, errors.Wrap(err, "marshal failed")
+	}
+
+	chaincodeLogger.Debugf("Got keys and values. Sending %s", pb.ChaincodeMessage_RESPONSE)
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payloadBytes, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
 }
 
 // Handles query to ledger for query state next
@@ -1319,34 +1352,4 @@ func (s State) String() string {
 	default:
 		return "UNKNOWN"
 	}
-}
-
-// createResponse builds a QueryResponse for range queries. If the query is paginated,
-// it will include bookmark information in the response.
-func createResponse(txContext *TransactionContext, iter commonledger.ResultsIterator, isPaginated bool, totalReturnLimit int32) (*pb.ChaincodeMessage, error) {
-	// Use the QueryResponseBuilder to construct the response
-	payload, err := txContext.Handler.QueryResponseBuilder.BuildQueryResponse(txContext, iter, txContext.QueryIterator.GetID(), isPaginated, totalReturnLimit)
-	if err != nil {
-		txContext.CleanupQueryContext(txContext.QueryIterator.GetID())
-		return nil, errors.WithStack(err)
-	}
-	if payload == nil {
-		txContext.CleanupQueryContext(txContext.QueryIterator.GetID())
-		return nil, errors.New("marshal failed: proto: Marshal called with nil")
-	}
-
-	// Marshal the payload into bytes
-	payloadBytes, err := proto.Marshal(payload)
-	if err != nil {
-		txContext.CleanupQueryContext(txContext.QueryIterator.GetID())
-		return nil, errors.Wrap(err, "marshal failed")
-	}
-
-	// Create and return the chaincode message response
-	return &pb.ChaincodeMessage{
-		Type:      pb.ChaincodeMessage_RESPONSE,
-		Payload:   payloadBytes,
-		Txid:      txContext.TxID,
-		ChannelId: txContext.ChannelID,
-	}, nil
 }
