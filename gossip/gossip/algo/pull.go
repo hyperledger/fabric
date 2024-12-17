@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package algo
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -322,7 +324,7 @@ func (engine *PullEngine) newNONCE() uint64 {
 	engine.lock.Lock()
 	defer engine.lock.Unlock()
 
-	maxAttempts := 100
+	maxAttempts := 1000000
 	for i := 0; i < maxAttempts; i++ {
 		n := util.RandomUInt64()
 		if n != 0 && !engine.outgoingNONCES.Exists(n) {
@@ -330,7 +332,18 @@ func (engine *PullEngine) newNONCE() uint64 {
 		}
 	}
 
-	// If we couldn't generate a unique NONCE after max attempts,
-	// use time-based fallback
-	return uint64(time.Now().UnixNano())
+	// If we still couldn't generate a unique NONCE after max attempts,
+	// keep trying with crypto/rand until we find one
+	var n uint64
+	for {
+		bytes := make([]byte, 8)
+		if _, err := rand.Read(bytes); err != nil {
+			// Fallback to time-based if crypto/rand fails
+			return uint64(time.Now().UnixNano())
+		}
+		n = binary.BigEndian.Uint64(bytes)
+		if n != 0 && !engine.outgoingNONCES.Exists(n) {
+			return n
+		}
+	}
 }

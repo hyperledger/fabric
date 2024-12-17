@@ -23,7 +23,9 @@ var (
 )
 
 func init() { // do we really need this?
-	r = rand.New(rand.NewSource(time.Now().UnixNano()))
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
+	r = rand.New(rand.NewChaCha8(seed))
 }
 
 // Equals returns whether a and b are the same
