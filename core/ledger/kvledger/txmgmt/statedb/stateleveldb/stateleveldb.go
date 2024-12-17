@@ -8,6 +8,7 @@ package stateleveldb
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
@@ -164,10 +165,28 @@ func (vdb *versionedDB) GetStateRangeScanIteratorWithPagination(namespace string
 	if endKey == "" {
 		dataEndKey[len(dataEndKey)-1] = lastKeyIndicator
 	}
-	dbItr, err := vdb.db.GetIterator(dataStartKey, dataEndKey)
+
+	// Wrap the iterator creation in a recover block
+	var dbItr iterator.Iterator
+	var err error
+
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				err = fmt.Errorf("panic while creating iterator: %v", r)
+			}
+		}()
+		dbItr, err = vdb.db.GetIterator(dataStartKey, dataEndKey)
+	}()
+
 	if err != nil {
-		return nil, err
+		return nil, errors.WithMessage(err, "error getting iterator from db")
 	}
+
+	if dbItr == nil {
+		return nil, errors.New("nil iterator returned from db")
+	}
+
 	return newKVScanner(namespace, dbItr, pageSize), nil
 }
 

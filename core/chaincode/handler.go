@@ -474,7 +474,7 @@ func (h *Handler) notifyRegistry(err error) {
 	h.Registry.Ready(h.chaincodeID)
 }
 
-// HandleRegister is invoked when chaincode tries to register.
+// handleRegister is invoked when chaincode tries to register.
 func (h *Handler) HandleRegister(msg *pb.ChaincodeMessage) {
 	h.stateLock.RLock()
 	state := h.state
@@ -746,55 +746,54 @@ func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *Tra
 
 	totalReturnLimit := h.calculateTotalReturnLimit(metadata)
 	iterID := h.UUIDGenerator.New()
+
 	var rangeIter commonledger.ResultsIterator
 	isPaginated := false
 	namespaceID := txContext.NamespaceID
 	collection := getStateByRange.Collection
-	if isCollectionSet(collection) {
-		if txContext.IsInitTransaction {
-			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
-		}
-		if err := errorIfCreatorHasNoReadPermission(namespaceID, collection, txContext); err != nil {
-			return nil, err
-		}
-		rangeIter, err = txContext.TXSimulator.GetPrivateDataRangeScanIterator(namespaceID, collection,
-			getStateByRange.StartKey, getStateByRange.EndKey)
-	} else if isMetadataSetForPagination(metadata) {
-		isPaginated = true
-		startKey := getStateByRange.StartKey
-		if isMetadataSetForPagination(metadata) {
+
+	// Wrap the iterator creation in a recover block
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				err = fmt.Errorf("panic in range scan: %v", r)
+			}
+		}()
+
+		if isCollectionSet(collection) {
+			if txContext.IsInitTransaction {
+				err = errors.New("private data APIs are not allowed in chaincode Init()")
+				return
+			}
+			if err = errorIfCreatorHasNoReadPermission(namespaceID, collection, txContext); err != nil {
+				return
+			}
+			rangeIter, err = txContext.TXSimulator.GetPrivateDataRangeScanIterator(namespaceID, collection,
+				getStateByRange.StartKey, getStateByRange.EndKey)
+		} else if isMetadataSetForPagination(metadata) {
+			isPaginated = true
+			startKey := getStateByRange.StartKey
 			if metadata.Bookmark != "" {
 				startKey = metadata.Bookmark
 			}
+			rangeIter, err = txContext.TXSimulator.GetStateRangeScanIteratorWithPagination(namespaceID,
+				startKey, getStateByRange.EndKey, metadata.PageSize)
+		} else {
+			rangeIter, err = txContext.TXSimulator.GetStateRangeScanIterator(namespaceID, getStateByRange.StartKey, getStateByRange.EndKey)
 		}
-		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIteratorWithPagination(namespaceID,
-			startKey, getStateByRange.EndKey, metadata.PageSize)
-	} else {
-		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIterator(namespaceID, getStateByRange.StartKey, getStateByRange.EndKey)
-	}
+	}()
+
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.WithMessage(err, "error getting range scan iterator")
 	}
+
+	if rangeIter == nil {
+		return nil, errors.New("nil iterator returned")
+	}
+
 	txContext.InitializeQueryContext(iterID, rangeIter)
 
-	payload, err := h.QueryResponseBuilder.BuildQueryResponse(txContext, rangeIter, iterID, isPaginated, totalReturnLimit)
-	if err != nil {
-		txContext.CleanupQueryContext(iterID)
-		return nil, errors.WithStack(err)
-	}
-	if payload == nil {
-		txContext.CleanupQueryContext(iterID)
-		return nil, errors.New("marshal failed: proto: Marshal called with nil")
-	}
-
-	payloadBytes, err := proto.Marshal(payload)
-	if err != nil {
-		txContext.CleanupQueryContext(iterID)
-		return nil, errors.Wrap(err, "marshal failed")
-	}
-
-	chaincodeLogger.Debugf("Got keys and values. Sending %s", pb.ChaincodeMessage_RESPONSE)
-	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payloadBytes, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+	return createResponse(txContext, rangeIter, isPaginated, totalReturnLimit)
 }
 
 // Handles query to ledger for query state next

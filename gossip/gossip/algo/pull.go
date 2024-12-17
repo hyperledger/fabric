@@ -319,11 +319,18 @@ func (engine *PullEngine) OnRes(items []string, nonce uint64) {
 }
 
 func (engine *PullEngine) newNONCE() uint64 {
-	n := uint64(0)
-	for {
-		n = util.RandomUInt64()
-		if !engine.outgoingNONCES.Exists(n) {
+	engine.lock.Lock()
+	defer engine.lock.Unlock()
+
+	maxAttempts := 100
+	for i := 0; i < maxAttempts; i++ {
+		n := util.RandomUInt64()
+		if n != 0 && !engine.outgoingNONCES.Exists(n) {
 			return n
 		}
 	}
+
+	// If we couldn't generate a unique NONCE after max attempts,
+	// use time-based fallback
+	return uint64(time.Now().UnixNano())
 }
