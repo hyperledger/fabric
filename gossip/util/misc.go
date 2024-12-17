@@ -182,7 +182,7 @@ func SetVal(key string, val interface{}) {
 // RandomInt returns, as an int, a non-negative pseudo-random integer in [0,n)
 // It panics if n <= 0
 func RandomInt(n int) int {
-	return r.Intn(n)
+	return r.IntN(n)
 }
 
 // RandomUInt64 returns a random uint64
