@@ -1320,3 +1320,33 @@ func (s State) String() string {
 		return "UNKNOWN"
 	}
 }
+
+// createResponse builds a QueryResponse for range queries. If the query is paginated,
+// it will include bookmark information in the response.
+func createResponse(txContext *TransactionContext, iter commonledger.ResultsIterator, isPaginated bool, totalReturnLimit int32) (*pb.ChaincodeMessage, error) {
+	// Use the QueryResponseBuilder to construct the response
+	payload, err := txContext.Handler.QueryResponseBuilder.BuildQueryResponse(txContext, iter, txContext.QueryIterator.GetID(), isPaginated, totalReturnLimit)
+	if err != nil {
+		txContext.CleanupQueryContext(txContext.QueryIterator.GetID())
+		return nil, errors.WithStack(err)
+	}
+	if payload == nil {
+		txContext.CleanupQueryContext(txContext.QueryIterator.GetID())
+		return nil, errors.New("marshal failed: proto: Marshal called with nil")
+	}
+
+	// Marshal the payload into bytes
+	payloadBytes, err := proto.Marshal(payload)
+	if err != nil {
+		txContext.CleanupQueryContext(txContext.QueryIterator.GetID())
+		return nil, errors.Wrap(err, "marshal failed")
+	}
+
+	// Create and return the chaincode message response
+	return &pb.ChaincodeMessage{
+		Type:      pb.ChaincodeMessage_RESPONSE,
+		Payload:   payloadBytes,
+		Txid:      txContext.TxID,
+		ChannelId: txContext.ChannelID,
+	}, nil
+}
