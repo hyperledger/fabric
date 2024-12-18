@@ -49,7 +49,7 @@ require (
 
 require (
 	github.com/hyperledger/fabric-chaincode-go v0.0.0-20220920210243-7bc6fa0dd58b
-	google.golang.org/protobuf v1.34.2
+	google.golang.org/protobuf v1.36.0
 )
 
 require (
