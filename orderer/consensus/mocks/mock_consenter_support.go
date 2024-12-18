@@ -201,6 +201,12 @@ type FakeConsenterSupport struct {
 		arg1 *common.Block
 		arg2 []byte
 	}
+	WriteBlockSyncStub        func(*common.Block, []byte)
+	writeBlockSyncMutex       sync.RWMutex
+	writeBlockSyncArgsForCall []struct {
+		arg1 *common.Block
+		arg2 []byte
+	}
 	WriteConfigBlockStub        func(*common.Block, []byte)
 	writeConfigBlockMutex       sync.RWMutex
 	writeConfigBlockArgsForCall []struct {
@@ -1192,6 +1198,44 @@ func (fake *FakeConsenterSupport) WriteBlockArgsForCall(i int) (*common.Block, [
 	return argsForCall.arg1, argsForCall.arg2
 }
 
+func (fake *FakeConsenterSupport) WriteBlockSync(arg1 *common.Block, arg2 []byte) {
+	var arg2Copy []byte
+	if arg2 != nil {
+		arg2Copy = make([]byte, len(arg2))
+		copy(arg2Copy, arg2)
+	}
+	fake.writeBlockSyncMutex.Lock()
+	fake.writeBlockSyncArgsForCall = append(fake.writeBlockSyncArgsForCall, struct {
+		arg1 *common.Block
+		arg2 []byte
+	}{arg1, arg2Copy})
+	stub := fake.WriteBlockSyncStub
+	fake.recordInvocation("WriteBlockSync", []interface{}{arg1, arg2Copy})
+	fake.writeBlockSyncMutex.Unlock()
+	if stub != nil {
+		fake.WriteBlockSyncStub(arg1, arg2)
+	}
+}
+
+func (fake *FakeConsenterSupport) WriteBlockSyncCallCount() int {
+	fake.writeBlockSyncMutex.RLock()
+	defer fake.writeBlockSyncMutex.RUnlock()
+	return len(fake.writeBlockSyncArgsForCall)
+}
+
+func (fake *FakeConsenterSupport) WriteBlockSyncCalls(stub func(*common.Block, []byte)) {
+	fake.writeBlockSyncMutex.Lock()
+	defer fake.writeBlockSyncMutex.Unlock()
+	fake.WriteBlockSyncStub = stub
+}
+
+func (fake *FakeConsenterSupport) WriteBlockSyncArgsForCall(i int) (*common.Block, []byte) {
+	fake.writeBlockSyncMutex.RLock()
+	defer fake.writeBlockSyncMutex.RUnlock()
+	argsForCall := fake.writeBlockSyncArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
 func (fake *FakeConsenterSupport) WriteConfigBlock(arg1 *common.Block, arg2 []byte) {
 	var arg2Copy []byte
 	if arg2 != nil {
@@ -1267,6 +1311,8 @@ func (fake *FakeConsenterSupport) Invocations() map[string][][]interface{} {
 	defer fake.signatureVerifierMutex.RUnlock()
 	fake.writeBlockMutex.RLock()
 	defer fake.writeBlockMutex.RUnlock()
+	fake.writeBlockSyncMutex.RLock()
+	defer fake.writeBlockSyncMutex.RUnlock()
 	fake.writeConfigBlockMutex.RLock()
 	defer fake.writeConfigBlockMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

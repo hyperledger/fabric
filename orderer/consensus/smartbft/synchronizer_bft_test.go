@@ -306,7 +306,7 @@ func TestBFTSynchronizer(t *testing.T) {
 		fakeCS.WriteConfigBlockCalls(func(b *cb.Block, m []byte) {
 			ledger = append(ledger, b)
 		})
-		fakeCS.WriteBlockCalls(func(b *cb.Block, m []byte) {
+		fakeCS.WriteBlockSyncCalls(func(b *cb.Block, m []byte) {
 			ledger = append(ledger, b)
 		})
 
@@ -395,7 +395,7 @@ func TestBFTSynchronizer(t *testing.T) {
 		require.NotNil(t, resp)
 		require.Equal(t, *decision, resp)
 		require.Equal(t, 102, len(ledger))
-		require.Equal(t, 1, fakeCS.WriteBlockCallCount())
+		require.Equal(t, 1, fakeCS.WriteBlockSyncCallCount())
 		require.Equal(t, 1, fakeCS.WriteConfigBlockCallCount())
 		wg.Wait()
 	})
@@ -436,7 +436,7 @@ func TestBFTSynchronizer(t *testing.T) {
 		fakeCS.WriteConfigBlockCalls(func(b *cb.Block, m []byte) {
 			ledger = append(ledger, b)
 		})
-		fakeCS.WriteBlockCalls(func(b *cb.Block, m []byte) {
+		fakeCS.WriteBlockSyncCalls(func(b *cb.Block, m []byte) {
 			ledger = append(ledger, b)
 		})
 
@@ -533,7 +533,7 @@ func TestBFTSynchronizer(t *testing.T) {
 		require.NotNil(t, resp)
 		require.Equal(t, *decision, resp)
 		require.Equal(t, 103, len(ledger))
-		require.Equal(t, 2, fakeCS.WriteBlockCallCount())
+		require.Equal(t, 2, fakeCS.WriteBlockSyncCallCount())
 		require.Equal(t, 1, fakeCS.WriteConfigBlockCallCount())
 		wg.Wait()
 	})
