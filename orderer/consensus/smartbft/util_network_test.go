@@ -515,6 +515,11 @@ func createBFTChainUsingMocks(t *testing.T, node *Node, configInfo *ConfigInfo) 
 			node.State.AddBlock(block)
 			node.Logger.Infof("Node %d appended block number %v to ledger", node.NodeId, block.Header.Number)
 		}).Maybe()
+	supportMock.EXPECT().WriteBlockSync(mock.Anything, mock.Anything).Run(
+		func(block *cb.Block, encodedMetadataValue []byte) {
+			node.State.AddBlock(block)
+			node.Logger.Infof("Node %d appended block number %v to ledger", node.NodeId, block.Header.Number)
+		}).Maybe()
 
 	supportMock.EXPECT().WriteConfigBlock(mock.Anything, mock.Anything).Run(
 		func(block *cb.Block, encodedMetadataValue []byte) {

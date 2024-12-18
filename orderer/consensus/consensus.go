@@ -120,6 +120,9 @@ type ConsenterSupport interface {
 	// WriteBlock commits a block to the ledger.
 	WriteBlock(block *cb.Block, encodedMetadataValue []byte)
 
+	// WriteBlockSync commits a block to the ledger.
+	WriteBlockSync(block *cb.Block, encodedMetadataValue []byte)
+
 	// WriteConfigBlock commits a block to the ledger, and applies the config update inside.
 	WriteConfigBlock(block *cb.Block, encodedMetadataValue []byte)
 

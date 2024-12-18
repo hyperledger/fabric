@@ -258,7 +258,7 @@ func (s *BFTSynchronizer) getBlocksFromSyncBuffer(startHeight, targetHeight uint
 			s.Support.WriteConfigBlock(block, nil)
 			s.Logger.Debugf("Fetched and committed config block [%d] from cluster", seq)
 		} else {
-			s.Support.WriteBlock(block, nil)
+			s.Support.WriteBlockSync(block, nil)
 			s.Logger.Debugf("Fetched and committed block [%d] from cluster", seq)
 		}
 		lastPulledBlock = block
@@ -277,9 +277,8 @@ func (s *BFTSynchronizer) getBlocksFromSyncBuffer(startHeight, targetHeight uint
 		return nil, errors.Errorf("failed pulling block %d", seq)
 	}
 
-	startSeq := startHeight
 	s.Logger.Infof("Finished synchronizing with cluster, fetched %d blocks, starting from block [%d], up until and including block [%d]",
-		blocksFetched, startSeq, lastPulledBlock.Header.Number)
+		blocksFetched, startHeight, lastPulledBlock.Header.Number)
 
 	return lastPulledBlock, nil
 }
