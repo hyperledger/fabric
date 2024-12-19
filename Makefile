@@ -257,6 +257,8 @@ $(BUILD_DIR)/images/%/$(DUMMY):
 		--build-arg TARGETARCH=$(ARCH) \
 		--build-arg TARGETOS=linux \
 		$(BUILD_ARGS) \
+		--cache-to type=inline,mode=max \
+		--cache-from type=registry,ref=$(DOCKER_NS)/fabric-$*:$(FABRIC_VER) \
 		-t $(DOCKER_NS)/fabric-$* \
 		-t $(DOCKER_NS)/fabric-$*:$(FABRIC_VER) \
 		-t $(DOCKER_NS)/fabric-$*:$(TWO_DIGIT_VERSION) \
