@@ -237,7 +237,7 @@ To install the smart contract dependencies, run the following command from the `
 npm install
 ```
 
-If the command is successful, the JavaScript packages will be installed inside a `node_modules` folder.
+If the command is successful, the JavaScript packages will be installed inside a `node_modules` folder. Note that the `peer lifecycle chaincode package` command does not package your `node_modules` folder in the chaincode package. If you wish to bundle `node modules` in your chaincode package, you can do so manually. However, this will require you to use the [External Chaincode Launcher](https://hyperledger-fabric.readthedocs.io/en/release-2.2/cc_launcher.html) or [Chaincode as a Service](https://hyperledger-fabric.readthedocs.io/en/release-2.2/cc_service.html) functionality.
 
 Now that we that have our dependencies, we can create the chaincode package. Navigate back to our working directory in the `test-network` folder so that we can package the chaincode together with our other network artifacts.
 
