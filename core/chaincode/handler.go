@@ -733,6 +733,17 @@ func (h *Handler) HandleGetStateMetadata(msg *pb.ChaincodeMessage, txContext *Tr
 
 // Handles query to ledger to rage query state
 func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
+	// Defer panic recovery
+	defer func() {
+		if r := recover(); r != nil {
+			chaincodeLogger.Errorf("Panic in HandleGetStateByRange: %v", r)
+			// Clean up any query context that may have been created
+			if txContext != nil {
+				txContext.CleanupQueryContext("")
+			}
+		}
+	}()
+
 	getStateByRange := &pb.GetStateByRange{}
 	err := proto.Unmarshal(msg.Payload, getStateByRange)
 	if err != nil {
@@ -750,6 +761,12 @@ func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *Tra
 	isPaginated := false
 	namespaceID := txContext.NamespaceID
 	collection := getStateByRange.Collection
+
+	// Validate start and end keys
+	if getStateByRange.StartKey == "" && getStateByRange.EndKey == "" {
+		return nil, errors.New("start key and end key must not both be empty")
+	}
+
 	if isCollectionSet(collection) {
 		if txContext.IsInitTransaction {
 			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
@@ -767,14 +784,29 @@ func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *Tra
 				startKey = metadata.Bookmark
 			}
 		}
+
+		// Validate page size
+		if metadata.PageSize < 1 {
+			return nil, errors.New("page size must be greater than zero")
+		}
+
 		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIteratorWithPagination(namespaceID,
 			startKey, getStateByRange.EndKey, metadata.PageSize)
 	} else {
 		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIterator(namespaceID, getStateByRange.StartKey, getStateByRange.EndKey)
 	}
+
 	if err != nil {
+		// Clean up any resources if error occurs
+		txContext.CleanupQueryContext(iterID)
 		return nil, errors.WithStack(err)
 	}
+
+	if rangeIter == nil {
+		txContext.CleanupQueryContext(iterID)
+		return nil, errors.New("range query iterator is nil")
+	}
+
 	txContext.InitializeQueryContext(iterID, rangeIter)
 
 	payload, err := h.QueryResponseBuilder.BuildQueryResponse(txContext, rangeIter, iterID, isPaginated, totalReturnLimit)
