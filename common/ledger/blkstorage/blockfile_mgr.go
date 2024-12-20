@@ -426,6 +426,7 @@ func (mgr *blockfileMgr) syncIndex() error {
 	if stream, err = newBlockStream(mgr.rootDir, startFileNum, int64(startOffset), endFileNum); err != nil {
 		return err
 	}
+	defer stream.close()
 	var blockBytes []byte
 	var blockPlacementInfo *blockPlacementInfo
 
