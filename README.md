@@ -10,6 +10,7 @@
 [![Security vulnerability scan](https://github.com/hyperledger/fabric/actions/workflows/vulnerability-scan.yml/badge.svg?branch=main)](https://github.com/hyperledger/fabric/actions/workflows/vulnerability-scan.yml)
 [![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/hyperledger/fabric)](https://github.com/hyperledger/fabric/blob/main/go.mod)
 [![GitHub Release](https://img.shields.io/github/v/release/hyperledger/fabric)](https://github.com/hyperledger/fabric/releases)
+[![Gurubase](https://img.shields.io/badge/Gurubase-Ask%20Hyperledger%20Fabric%20Guru-006BFF)](https://gurubase.io/g/hyperledger-fabric)
 
 ## Overview
 
