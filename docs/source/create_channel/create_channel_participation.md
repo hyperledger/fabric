@@ -107,7 +107,7 @@ Because this tutorial demonstrates the process for creating a channel with **thr
 
 #### Configure the `orderer.yaml` file for each orderer
 
-Follow the instructions in the [ordering service deployment guide](../deployorderer/ordererdeploy.html) to build an ordering service with three ordering nodes. Note that when you configure the `orderer.yaml` file for each orderer, you will need to make modifications to the [`ChannelParticipation`](../deployorderer/ordererchecklist.html#channelparticipation) and [`General.BoostrapMethod`](../deployorderer/ordererchecklist.html#general-bootstrapmethod) parameters to leverage this feature.
+Follow the instructions in the [ordering service deployment guide](../deployorderer/ordererdeploy.html) to build an ordering service with three ordering nodes. Note that when you configure the `orderer.yaml` file for each orderer, you will need to make modifications to the [`ChannelParticipation`](../deployorderer/ordererchecklist.html#channelparticipation) and [`General.BootstrapMethod`](../deployorderer/ordererchecklist.html#general-bootstrapmethod) parameters to leverage this feature.
 
 - `General.BootstrapMethod` - Set this value to `none`. Because the system channel is no longer supported, the `orderer.yaml` file on each orderer needs to be configured with `BootstrapMethod: none` which means that no bootstrap block is required or used to start up the orderer.
 - `Admin.ListenAddress` - The orderer admin server address (host and port) that can be used by the `osnadmin` command to configure channels on the ordering service. This value should be a unique `host:port` combination to avoid conflicts.
