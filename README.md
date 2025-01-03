@@ -13,7 +13,7 @@ Discord: ahmedalsalih#6158
 
 * Bi-weekly lab meeting.
 ```
-Next meeting: See you Thursday, Jan-02, 2025
+Next meeting: See you Thursday, Jan-16, 2025
 9:30am to 10:00am Eastern Time (EST)
 Repeats:
 Every 2 weeks on Thursday
