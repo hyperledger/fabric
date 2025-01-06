@@ -5,7 +5,7 @@ We welcome contributions to Hyperledger in many forms, and there's always plenty
 to do!
 
 First things first, please review the Hyperledger `Code of
-Conduct <https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct>`__
+Conduct <https://lf-hyperledger.atlassian.net/wiki/spaces/HYP/pages/19595281/Hyperledger+Code+of+Conduct>`__
 before participating. It is important that we keep things civil.
 
 .. note:: If you want to contribute to this documentation, please check out the :doc:`style_guide`.
@@ -107,7 +107,7 @@ and the individual is added to the maintainers group.
 Maintainers may be removed by explicit resignation, for prolonged
 inactivity (e.g. 3 or more months with no review comments),
 or for some infraction of the `code of conduct
-<https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct>`__
+<https://lf-hyperledger.atlassian.net/wiki/spaces/HYP/pages/19595281/Hyperledger+Code+of+Conduct>`__
 or by consistently demonstrating poor judgement. A proposed removal
 also requires a majority approval. A maintainer removed for
 inactivity should be restored following a sustained resumption of contributions
@@ -144,7 +144,7 @@ releases and contributions, and to discuss the technical and operational directi
 and sub-projects.
 
 Please see the
-`wiki <https://wiki.hyperledger.org/display/fabric/Contributor+Meetings>`__
+`wiki <https://lf-hyperledger.atlassian.net/wiki/spaces/fabric/pages/22840714/Contributor+Meetings>`__
 for maintainer meeting details.
 
 New feature/enhancement proposals as described above should be presented to a
@@ -166,11 +166,11 @@ If you'd like contribution help or suggestions reach out on the #fabric-code-con
 
 Our development planning and prioritization is done using a
 `GitHub Issues ZenHub board <https://app.zenhub.com/workspaces/fabric-57c43689b6f3d8060d082cf1/board>`__, and we take longer running
-discussions/decisions to the `Fabric contributor meeting <https://wiki.hyperledger.org/display/fabric/Contributor+Meetings>`__.
+discussions/decisions to the `Fabric contributor meeting <https://lf-hyperledger.atlassian.net/wiki/spaces/fabric/pages/22840714/Contributor+Meetings>`__.
 
 The mailing list, Discord, and GitHub each require their own login which you can request upon your first interaction.
 
-The Hyperledger Fabric `wiki <https://wiki.hyperledger.org/display/fabric>`__
+The Hyperledger Fabric `wiki <https://lf-hyperledger.atlassian.net/wiki/spaces/fabric>`__
 requires a `Linux Foundation ID <https://identity.linuxfoundation.org/>`__,
 but these resources are primarily for read-only reference and you will likely not need an ID.
 
@@ -196,7 +196,7 @@ reported, then you might add a comment that you also are interested in seeing
 the defect fixed.
 
 .. note:: If the defect is security-related, please follow the Hyperledger
-          `security bug reporting process <https://wiki.hyperledger.org/display/SEC/Defect+Response>`__.
+          `security bug reporting process <https://lf-hyperledger.atlassian.net/wiki/spaces/SEC/pages/20283657/Defect.Response>`__.
 
 If it has not been previously reported, you may either submit a PR with a
 well documented commit message describing the defect and the fix, or you

@@ -302,7 +302,7 @@ See the [Performance considerations topic](./performance.html) to learn more abo
 
 ## Fabric Ecosystem
 
-There is a large [ecosystem](https://wiki.hyperledger.org/display/fabric/Ecosystem)
+There is a large [ecosystem](https://lf-hyperledger.atlassian.net/wiki/spaces/fabric/pages/22839837/Ecosystem)
 of open source projects to help you build Fabric applications,
 as well as test, deploy, and manage production networks.
 
