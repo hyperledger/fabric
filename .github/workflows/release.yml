@@ -48,7 +48,7 @@ jobs:
         with:
           go-version: ${{ env.GO_VER }}
       - name: Checkout Fabric Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Compile Binary and Create Tarball
         run: ./ci/scripts/create_binary_package.sh
         env:
@@ -56,7 +56,7 @@ jobs:
           RELEASE: ${{ env.FABRIC_VER }}
 
       - name: Publish Release Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           # <name> of the artifact must not collide between platform/arch builds
           name: release-${{ matrix.target }}-${{ matrix.arch }}
@@ -98,7 +98,7 @@ jobs:
               max-parallelism = 1
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Login to the ${{ env.DOCKER_REGISTRY }} Container Registry
         uses: docker/login-action@v2
@@ -143,10 +143,10 @@ jobs:
       contents: write
     steps:
       - name: Checkout Fabric Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Download Artifacts
         id: download
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
       - name: Release Fabric Version
         uses: ncipollo/release-action@v1
         with:
