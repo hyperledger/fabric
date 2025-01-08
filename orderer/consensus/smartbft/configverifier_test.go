@@ -27,7 +27,7 @@ import (
 )
 
 func TestValidateConfig(t *testing.T) {
-	configBlockEnvelope := makeConfigTx("mychannel", 1)
+	configBlockEnvelope := makeConfigTx("mychannel")
 	configBlockEnvelopePayload := protoutil.UnmarshalPayloadOrPanic(configBlockEnvelope.Payload)
 	configEnvelope := &cb.ConfigEnvelope{}
 	err := proto.Unmarshal(configBlockEnvelopePayload.Data, configEnvelope)
@@ -268,7 +268,7 @@ func TestValidateConfig(t *testing.T) {
 	}
 }
 
-func makeConfigTx(chainID string, i int) *cb.Envelope {
+func makeConfigTx(chainID string) *cb.Envelope {
 	gConf := genesisconfig.Load(genesisconfig.SampleAppChannelSmartBftProfile, configtest.GetDevConfigDir())
 	gConf.Orderer.Capabilities = map[string]bool{
 		capabilities.OrdererV2_0: true,

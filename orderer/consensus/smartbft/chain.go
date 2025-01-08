@@ -305,7 +305,7 @@ func (c *BFTChain) pruneBadRequests() {
 	})
 }
 
-func (c *BFTChain) submit(env *cb.Envelope, configSeq uint64) error {
+func (c *BFTChain) submit(env *cb.Envelope) error {
 	if env == nil {
 		return errors.New("failed to marshal request envelope: proto: Marshal called with nil")
 	}
@@ -334,7 +334,7 @@ func (c *BFTChain) Order(env *cb.Envelope, configSeq uint64) error {
 		}
 	}
 
-	return c.submit(env, configSeq)
+	return c.submit(env)
 }
 
 // Configure accepts a message which reconfigures the channel and will
@@ -353,10 +353,10 @@ func (c *BFTChain) Configure(config *cb.Envelope, configSeq uint64) error {
 		if configEnv, _, err := c.support.ProcessConfigMsg(config); err != nil {
 			return errors.Errorf("bad normal message: %s", err)
 		} else {
-			return c.submit(configEnv, configSeq)
+			return c.submit(configEnv)
 		}
 	}
-	return c.submit(config, configSeq)
+	return c.submit(config)
 }
 
 // Deliver delivers proposal, writes block with transactions and metadata
