@@ -140,7 +140,7 @@ type ConsenterSupport interface {
 	Append(block *cb.Block) error
 }
 
-// NoOpMetadataValidator implements a MetadataValidator that always returns nil error irrespecttive of the inputs.
+// NoOpMetadataValidator implements a MetadataValidator that always returns nil error irrespective of the inputs.
 type NoOpMetadataValidator struct{}
 
 // ValidateConsensusMetadata determines the validity of a ConsensusMetadata update during config updates
