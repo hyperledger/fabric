@@ -28,7 +28,7 @@ var ErrChainStopped = errors.New("chain stopped")
 
 //go:generate counterfeiter -o mocks/ledger_resources.go -fake-name LedgerResources . LedgerResources
 
-// LedgerResources defines some of the interfaces of ledger & config resources needed by the follower.Chain.
+// LedgerResources defines some interfaces of ledger & config resources needed by the follower.Chain.
 type LedgerResources interface {
 	// ChannelID The channel ID.
 	ChannelID() string
@@ -49,7 +49,7 @@ type TimeAfter func(d time.Duration) <-chan time.Time
 
 //go:generate counterfeiter -o mocks/block_puller_factory.go -fake-name BlockPullerFactory . BlockPullerFactory
 
-// BlockPullerFactory creates a ChannelPuller on demand, and exposes a method to update the a block signature verifier
+// BlockPullerFactory creates a ChannelPuller on demand, and exposes a method to update the block signature verifier
 // linked to that ChannelPuller.
 type BlockPullerFactory interface {
 	BlockPuller(configBlock *common.Block, stopChannel chan struct{}) (ChannelPuller, error)
@@ -468,7 +468,7 @@ func (c *Chain) pullAfterJoin() error {
 			}
 		}
 
-		// Pull to latest height or chain stop signal
+		// Pull to the latest height or chain stop signal
 		err = c.pullUntilLatestWithRetry(latestNetworkHeight, true)
 		if err != nil {
 			return err
@@ -477,7 +477,7 @@ func (c *Chain) pullAfterJoin() error {
 }
 
 // pullUntilLatestWithRetry is given a target-height and exits without an error when it reaches that target.
-// It return with an error only if the chain is stopped.
+// It returns with an error only if the chain is stopped.
 // On internal pull errors it employs exponential back-off and retries.
 // When parameter updateEndpoints is true, the block-puller's endpoints are updated with every incoming config.
 func (c *Chain) pullUntilLatestWithRetry(latestNetworkHeight uint64, updateEndpoints bool) error {
