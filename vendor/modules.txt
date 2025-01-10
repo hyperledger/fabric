@@ -256,7 +256,7 @@ github.com/hyperledger/fabric-lib-go/common/metrics/prometheus
 github.com/hyperledger/fabric-lib-go/common/metrics/statsd
 github.com/hyperledger/fabric-lib-go/common/metrics/statsd/goruntime
 github.com/hyperledger/fabric-lib-go/healthz
-# github.com/hyperledger/fabric-protos-go-apiv2 v0.3.4
+# github.com/hyperledger/fabric-protos-go-apiv2 v0.3.5
 ## explicit; go 1.21.0
 github.com/hyperledger/fabric-protos-go-apiv2/common
 github.com/hyperledger/fabric-protos-go-apiv2/discovery
