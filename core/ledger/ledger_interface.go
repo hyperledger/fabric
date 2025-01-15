@@ -287,7 +287,7 @@ type QueryExecutor interface {
 	// can be supplied as empty strings. However, a full scan should be used judiciously for performance reasons.
 	// The returned ResultsIterator contains results of type *KV which is defined in fabric-protos/ledger/queryresult.
 	GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (commonledger.ResultsIterator, error)
-	// ExecuteQuery executes the given query and returns an iterator that contains results of type specific to the underlying data store.
+	// ExecuteQueryOnPrivateData executes the given query and returns an iterator that contains results of type specific to the underlying data store.
 	// Only used for state databases that support query
 	// For a chaincode, the namespace corresponds to the chaincodeId
 	// The returned ResultsIterator contains results of type *KV which is defined in fabric-protos/ledger/queryresult.

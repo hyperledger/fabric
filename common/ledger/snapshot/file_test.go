@@ -165,7 +165,7 @@ func TestFileCreatorErrorPropagation(t *testing.T) {
 func TestFileReaderErrorPropagation(t *testing.T) {
 	testPath := t.TempDir()
 
-	// non-existent-file cuases an error
+	// non-existent-file causes an error
 	nonExistentFile := path.Join(testPath, "non-existent-file")
 	_, err := OpenFile(nonExistentFile, byte(1))
 	require.Contains(t, err.Error(), "error while opening the snapshot file: "+nonExistentFile)
