@@ -85,7 +85,7 @@ func (m *chainsMgr) createOrOpenChains() []*Chain {
 		}
 
 	default:
-		panic(fmt.Errorf("unknown chain init opeartion"))
+		panic(fmt.Errorf("unknown chain init operation"))
 	}
 	return m.chains()
 }

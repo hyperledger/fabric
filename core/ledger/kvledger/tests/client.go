@@ -76,7 +76,7 @@ func (c *client) addPostOrderTx(txid string, customTxType common.HeaderType) *tx
 	return txAndPvtdata
 }
 
-// simulateDeployTx mimics a transction that deploys a chaincode. This in turn calls the function 'simulateDataTx'
+// simulateDeployTx mimics a transaction that deploys a chaincode. This in turn calls the function 'simulateDataTx'
 // with supplying the simulation logic that mimics the invoke function of 'lscc' for the ledger tests
 func (c *client) simulateDeployTx(ccName string, collConfs []*collConf) *txAndPvtdata {
 	ccData := &ccprovider.ChaincodeData{Name: ccName}

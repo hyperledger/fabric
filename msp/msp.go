@@ -99,7 +99,7 @@ type OUIdentifier struct {
 	// CertifiersIdentifier is the hash of certificates chain of trust
 	// related to this organizational unit
 	CertifiersIdentifier []byte
-	// OrganizationUnitIdentifier defines the organizational unit under the
+	// OrganizationalUnitIdentifier defines the organizational unit under the
 	// MSP identified with MSPIdentifier
 	OrganizationalUnitIdentifier string
 }
