@@ -9,13 +9,12 @@ import (
 
 	"github.com/hyperledger/fabric-chaincode-go/v2/shim/internal"
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
-
 	"google.golang.org/grpc/keepalive"
 )
 
 // TLSProperties passed to ChaincodeServer
 type TLSProperties struct {
-	//Disabled forces default to be TLS enabled
+	// Disabled forces default to be TLS enabled
 	Disabled bool
 	Key      []byte
 	Cert     []byte

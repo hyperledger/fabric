@@ -47,6 +47,16 @@ type ChaincodeStub struct {
 	delStateReturnsOnCall map[int]struct {
 		result1 error
 	}
+	FinishWriteBatchStub        func() error
+	finishWriteBatchMutex       sync.RWMutex
+	finishWriteBatchArgsForCall []struct {
+	}
+	finishWriteBatchReturns struct {
+		result1 error
+	}
+	finishWriteBatchReturnsOnCall map[int]struct {
+		result1 error
+	}
 	GetArgsStub        func() [][]byte
 	getArgsMutex       sync.RWMutex
 	getArgsArgsForCall []struct {
@@ -502,6 +512,10 @@ type ChaincodeStub struct {
 		result2 []string
 		result3 error
 	}
+	StartWriteBatchStub        func()
+	startWriteBatchMutex       sync.RWMutex
+	startWriteBatchArgsForCall []struct {
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -695,6 +709,59 @@ func (fake *ChaincodeStub) DelStateReturnsOnCall(i int, result1 error) {
 		})
 	}
 	fake.delStateReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *ChaincodeStub) FinishWriteBatch() error {
+	fake.finishWriteBatchMutex.Lock()
+	ret, specificReturn := fake.finishWriteBatchReturnsOnCall[len(fake.finishWriteBatchArgsForCall)]
+	fake.finishWriteBatchArgsForCall = append(fake.finishWriteBatchArgsForCall, struct {
+	}{})
+	stub := fake.FinishWriteBatchStub
+	fakeReturns := fake.finishWriteBatchReturns
+	fake.recordInvocation("FinishWriteBatch", []interface{}{})
+	fake.finishWriteBatchMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *ChaincodeStub) FinishWriteBatchCallCount() int {
+	fake.finishWriteBatchMutex.RLock()
+	defer fake.finishWriteBatchMutex.RUnlock()
+	return len(fake.finishWriteBatchArgsForCall)
+}
+
+func (fake *ChaincodeStub) FinishWriteBatchCalls(stub func() error) {
+	fake.finishWriteBatchMutex.Lock()
+	defer fake.finishWriteBatchMutex.Unlock()
+	fake.FinishWriteBatchStub = stub
+}
+
+func (fake *ChaincodeStub) FinishWriteBatchReturns(result1 error) {
+	fake.finishWriteBatchMutex.Lock()
+	defer fake.finishWriteBatchMutex.Unlock()
+	fake.FinishWriteBatchStub = nil
+	fake.finishWriteBatchReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *ChaincodeStub) FinishWriteBatchReturnsOnCall(i int, result1 error) {
+	fake.finishWriteBatchMutex.Lock()
+	defer fake.finishWriteBatchMutex.Unlock()
+	fake.FinishWriteBatchStub = nil
+	if fake.finishWriteBatchReturnsOnCall == nil {
+		fake.finishWriteBatchReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.finishWriteBatchReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
@@ -2892,6 +2959,30 @@ func (fake *ChaincodeStub) SplitCompositeKeyReturnsOnCall(i int, result1 string,
 	}{result1, result2, result3}
 }
 
+func (fake *ChaincodeStub) StartWriteBatch() {
+	fake.startWriteBatchMutex.Lock()
+	fake.startWriteBatchArgsForCall = append(fake.startWriteBatchArgsForCall, struct {
+	}{})
+	stub := fake.StartWriteBatchStub
+	fake.recordInvocation("StartWriteBatch", []interface{}{})
+	fake.startWriteBatchMutex.Unlock()
+	if stub != nil {
+		fake.StartWriteBatchStub()
+	}
+}
+
+func (fake *ChaincodeStub) StartWriteBatchCallCount() int {
+	fake.startWriteBatchMutex.RLock()
+	defer fake.startWriteBatchMutex.RUnlock()
+	return len(fake.startWriteBatchArgsForCall)
+}
+
+func (fake *ChaincodeStub) StartWriteBatchCalls(stub func()) {
+	fake.startWriteBatchMutex.Lock()
+	defer fake.startWriteBatchMutex.Unlock()
+	fake.StartWriteBatchStub = stub
+}
+
 func (fake *ChaincodeStub) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -2901,6 +2992,8 @@ func (fake *ChaincodeStub) Invocations() map[string][][]interface{} {
 	defer fake.delPrivateDataMutex.RUnlock()
 	fake.delStateMutex.RLock()
 	defer fake.delStateMutex.RUnlock()
+	fake.finishWriteBatchMutex.RLock()
+	defer fake.finishWriteBatchMutex.RUnlock()
 	fake.getArgsMutex.RLock()
 	defer fake.getArgsMutex.RUnlock()
 	fake.getArgsSliceMutex.RLock()
@@ -2971,6 +3064,8 @@ func (fake *ChaincodeStub) Invocations() map[string][][]interface{} {
 	defer fake.setStateValidationParameterMutex.RUnlock()
 	fake.splitCompositeKeyMutex.RLock()
 	defer fake.splitCompositeKeyMutex.RUnlock()
+	fake.startWriteBatchMutex.RLock()
+	defer fake.startWriteBatchMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
