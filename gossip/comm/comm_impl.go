@@ -359,7 +359,7 @@ func (c *commImpl) PresumedDead() <-chan common.PKIidType {
 	return c.deadEndpoints
 }
 
-func (c *commImpl) IdentitySwitch() <-chan common.PKIidType {
+func (c *commImpl) IdentitySwitch() chan common.PKIidType {
 	return c.identityChanges
 }
 
