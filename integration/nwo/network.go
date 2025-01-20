@@ -1211,6 +1211,7 @@ func (n *Network) ConfigTxGen(command Command) (*gexec.Session, error) {
 func (n *Network) Discover(command Command) (*gexec.Session, error) {
 	cmd := NewCommand(n.Components.Discover(), command)
 	cmd.Args = append(cmd.Args, "--peerTLSCA", n.CACertsBundlePath())
+	cmd.Env = []string{"FABRIC_LOGGING_SPEC=info:grpc=warn"} // suppress chatty grpc info messages
 	return n.StartSession(cmd, command.SessionName())
 }
 
