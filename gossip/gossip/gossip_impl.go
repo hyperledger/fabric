@@ -96,8 +96,24 @@ func New(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 	g.stateInfoMsgStore = g.newStateInfoMsgStore()
 
 	g.idMapper = identity.NewIdentityMapper(mcs, selfIdentity, func(pkiID common.PKIidType, identity api.PeerIdentityType) {
-		g.comm.CloseConn(&comm.RemotePeer{PKIID: pkiID})
+		// Identities which are purged from the membership store
+		// should not be communicated with anymore, as the purge is done
+		// because the identity of the corresponding PKI-ID not being
+		// valid anymore, such as it being expired.
+
+		// Remove the identity from the identity replication
+		// for it to not be replicated any further.
 		g.certPuller.Remove(string(pkiID))
+
+		// Notify the identity switch channel of the communication layer,
+		// which in turn is used to notify the discovery layer
+		// about the PKI-ID not being relevant anymore, which causes
+		// the discovery layer to purge it from memory.
+		// Afterwards, gossip never communicates with this PKI-ID.
+		g.comm.IdentitySwitch() <- pkiID
+
+		// Cease communication with the node, if connected to it.
+		g.comm.CloseConn(&comm.RemotePeer{PKIID: pkiID})
 	}, sa)
 
 	commConfig := comm.CommConfig{

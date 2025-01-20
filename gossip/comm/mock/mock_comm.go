@@ -134,7 +134,7 @@ func (mock *commMock) start() {
 	}
 }
 
-func (mock *commMock) IdentitySwitch() <-chan common.PKIidType {
+func (mock *commMock) IdentitySwitch() chan common.PKIidType {
 	panic("implement me")
 }
 
