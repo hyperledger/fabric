@@ -216,8 +216,8 @@ github.com/hyperledger/fabric-amcl/amcl
 github.com/hyperledger/fabric-amcl/amcl/FP256BN
 github.com/hyperledger/fabric-amcl/core
 github.com/hyperledger/fabric-amcl/core/FP256BN
-# github.com/hyperledger/fabric-chaincode-go/v2 v2.0.0
-## explicit; go 1.21.0
+# github.com/hyperledger/fabric-chaincode-go/v2 v2.1.0
+## explicit; go 1.22.0
 github.com/hyperledger/fabric-chaincode-go/v2/pkg/statebased
 github.com/hyperledger/fabric-chaincode-go/v2/shim
 github.com/hyperledger/fabric-chaincode-go/v2/shim/internal
@@ -477,9 +477,10 @@ github.com/spf13/viper/internal/features
 # github.com/stretchr/objx v0.5.2
 ## explicit; go 1.20
 github.com/stretchr/objx
-# github.com/stretchr/testify v1.9.0
+# github.com/stretchr/testify v1.10.0
 ## explicit; go 1.17
 github.com/stretchr/testify/assert
+github.com/stretchr/testify/assert/yaml
 github.com/stretchr/testify/mock
 github.com/stretchr/testify/require
 # github.com/subosito/gotenv v1.6.0

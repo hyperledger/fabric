@@ -16,7 +16,7 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/hyperledger-labs/SmartBFT v0.0.0-20241013183757-134292d4208a
-	github.com/hyperledger/fabric-chaincode-go/v2 v2.0.0
+	github.com/hyperledger/fabric-chaincode-go/v2 v2.1.0
 	github.com/hyperledger/fabric-config v0.3.0
 	github.com/hyperledger/fabric-lib-go v1.1.3-0.20240523144151-25edd1eaf5f5
 	github.com/hyperledger/fabric-protos-go-apiv2 v0.3.5
@@ -29,7 +29,7 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.20.0-alpha.6
-	github.com/stretchr/testify v1.9.0 // includes ErrorContains
+	github.com/stretchr/testify v1.10.0 // includes ErrorContains
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d
 	github.com/tedsuo/ifrit v0.0.0-20230516164442-7862c310ad26
 	go.etcd.io/etcd/client/pkg/v3 v3.5.16

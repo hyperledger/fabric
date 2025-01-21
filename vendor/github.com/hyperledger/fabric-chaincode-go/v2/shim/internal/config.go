@@ -128,7 +128,7 @@ func LoadTLSConfig(isserver bool, key, cert, root []byte) (*tls.Config, error) {
 		Certificates: []tls.Certificate{cccert},
 	}
 
-	//follow Peer's server default config properties
+	// follow Peer's server default config properties
 	if isserver {
 		tlscfg.ClientCAs = rootCertPool
 		tlscfg.SessionTicketsDisabled = true

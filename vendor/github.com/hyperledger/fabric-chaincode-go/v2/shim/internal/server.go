@@ -58,13 +58,13 @@ func NewServer(
 		return nil, errors.New("server listen address not provided")
 	}
 
-	//create our listener
+	// create our listener
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return nil, err
 	}
 
-	//set up server options for keepalive and TLS
+	// set up server options for keepalive and TLS
 	var serverOpts []grpc.ServerOption
 
 	if srvKaOpts != nil {
@@ -89,7 +89,7 @@ func NewServer(
 	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(maxSendMessageSize))
 	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(maxRecvMessageSize))
 
-	//set enforcement policy
+	// set enforcement policy
 	kep := keepalive.EnforcementPolicy{
 		MinTime: serverMinInterval,
 		// allow keepalive w/o rpc
@@ -97,7 +97,7 @@ func NewServer(
 	}
 	serverOpts = append(serverOpts, grpc.KeepaliveEnforcementPolicy(kep))
 
-	//set default connection timeout
+	// set default connection timeout
 	serverOpts = append(serverOpts, grpc.ConnectionTimeout(connectionTimeout))
 
 	server := grpc.NewServer(serverOpts...)

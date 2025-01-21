@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	minUnicodeRuneValue   = 0            //U+0000
-	maxUnicodeRuneValue   = utf8.MaxRune //U+10FFFF - maximum (and unallocated) code point
+	minUnicodeRuneValue   = 0            // U+0000
+	maxUnicodeRuneValue   = utf8.MaxRune // U+10FFFF - maximum (and unallocated) code point
 	compositeKeyNamespace = "\x00"
 	emptyKeySubstitute    = "\x01"
 )
@@ -62,7 +62,7 @@ func Start(cc Chaincode) error {
 		return errors.New("'CORE_CHAINCODE_ID_NAME' must be set")
 	}
 
-	//mock stream not set up ... get real stream
+	// mock stream not set up ... get real stream
 	if streamGetter == nil {
 		streamGetter = userChaincodeStreamGetter
 	}
@@ -85,7 +85,7 @@ func StartInProc(chaincodename string, stream ClientStream, cc Chaincode) error 
 
 // this is the chat stream resulting from the chaincode-as-client model where the chaincode initiates connection
 func chaincodeAsClientChat(chaincodename string, stream ClientStream, cc Chaincode) error {
-	defer stream.CloseSend() //nolint:Errcheck
+	defer stream.CloseSend() //nolint:errcheck
 	return chatWithPeer(chaincodename, stream, cc)
 }
 
