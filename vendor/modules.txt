@@ -216,7 +216,7 @@ github.com/hyperledger/fabric-amcl/amcl
 github.com/hyperledger/fabric-amcl/amcl/FP256BN
 github.com/hyperledger/fabric-amcl/core
 github.com/hyperledger/fabric-amcl/core/FP256BN
-# github.com/hyperledger/fabric-chaincode-go/v2 v2.0.1-0.20250121175327-41f06f2fb25a
+# github.com/hyperledger/fabric-chaincode-go/v2 v2.1.0
 ## explicit; go 1.22.0
 github.com/hyperledger/fabric-chaincode-go/v2/pkg/statebased
 github.com/hyperledger/fabric-chaincode-go/v2/shim
