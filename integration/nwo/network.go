@@ -161,6 +161,7 @@ type Network struct {
 	OrdererReplicationPolicy string
 	PeerDeliveryClientPolicy string
 	UseWriteBatch            bool
+	UseGetMultipleKeys       bool
 
 	PortsByOrdererID map[string]Ports
 	PortsByPeerID    map[string]Ports
@@ -194,6 +195,7 @@ func New(c *Config, rootDir string, dockerClient *docker.Client, startPort int, 
 		PortsByPeerID:            map[string]Ports{},
 		PeerDeliveryClientPolicy: "",
 		UseWriteBatch:            true,
+		UseGetMultipleKeys:       true,
 
 		Organizations:  c.Organizations,
 		Consensus:      c.Consensus,

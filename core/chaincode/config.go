@@ -16,24 +16,27 @@ import (
 )
 
 const (
-	defaultExecutionTimeout  = 30 * time.Second
-	minimumStartupTimeout    = 5 * time.Second
-	defaultMaxSizeWriteBatch = 1000
+	defaultExecutionTimeout       = 30 * time.Second
+	minimumStartupTimeout         = 5 * time.Second
+	defaultMaxSizeWriteBatch      = 1000
+	defaultMaxSizeGetMultipleKeys = 1000
 )
 
 type Config struct {
-	TotalQueryLimit   int
-	TLSEnabled        bool
-	Keepalive         time.Duration
-	ExecuteTimeout    time.Duration
-	InstallTimeout    time.Duration
-	StartupTimeout    time.Duration
-	LogFormat         string
-	LogLevel          string
-	ShimLogLevel      string
-	SCCAllowlist      map[string]bool
-	UseWriteBatch     bool
-	MaxSizeWriteBatch uint32
+	TotalQueryLimit        int
+	TLSEnabled             bool
+	Keepalive              time.Duration
+	ExecuteTimeout         time.Duration
+	InstallTimeout         time.Duration
+	StartupTimeout         time.Duration
+	LogFormat              string
+	LogLevel               string
+	ShimLogLevel           string
+	SCCAllowlist           map[string]bool
+	UseWriteBatch          bool
+	MaxSizeWriteBatch      uint32
+	UseGetMultipleKeys     bool
+	MaxSizeGetMultipleKeys uint32
 }
 
 func GlobalConfig() *Config {
@@ -80,6 +83,13 @@ func (c *Config) load() {
 	c.MaxSizeWriteBatch = viper.GetUint32("chaincode.runtimeParams.maxSizeWriteBatch")
 	if c.MaxSizeWriteBatch <= 0 {
 		c.MaxSizeWriteBatch = defaultMaxSizeWriteBatch
+	}
+	if viper.IsSet("chaincode.runtimeParams.useGetMultipleKeys") {
+		c.UseGetMultipleKeys = viper.GetBool("chaincode.runtimeParams.useGetMultipleKeys")
+	}
+	c.MaxSizeGetMultipleKeys = viper.GetUint32("chaincode.runtimeParams.maxSizeGetMultipleKeys")
+	if c.MaxSizeGetMultipleKeys <= 0 {
+		c.MaxSizeGetMultipleKeys = defaultMaxSizeGetMultipleKeys
 	}
 }
 

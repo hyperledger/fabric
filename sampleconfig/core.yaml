@@ -661,11 +661,15 @@ chaincode:
 
     # RuntimeParams section for parameters that are passed to chaincode
     # to specify additional operation modes in which the peer operates.
-    runtimeParams:
-      # UseWriteBatch an indication that the peer can accept changes from chaincode in batches
-      useWriteBatch: true
-      # MaxSizeWriteBatch maximum batch size for the change segment
-      maxSizeWriteBatch: 1000
+  runtimeParams:
+    # UseWriteBatch an indication that the peer can accept changes from chaincode in batches
+    useWriteBatch: true
+    # MaxSizeWriteBatch maximum batch size for the change segment
+    maxSizeWriteBatch: 1000
+    # UseGetMultipleKeys an indication that the peer can handle get multiple keys
+    useGetMultipleKeys: true
+    # MaxSizeGetMultipleKeys maximum size of batches with get multiple keys
+    maxSizeGetMultipleKeys: 1000
 
 ###############################################################################
 #

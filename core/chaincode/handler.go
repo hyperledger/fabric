@@ -134,6 +134,10 @@ type Handler struct {
 	UseWriteBatch bool
 	// MaxSizeWriteBatch maximum batch size for the change segment
 	MaxSizeWriteBatch uint32
+	// UseGetMultipleKeys an indication that the peer can handle get multiple keys
+	UseGetMultipleKeys bool
+	// MaxSizeGetMultipleKeys maximum size of batches with get multiple keys
+	MaxSizeGetMultipleKeys uint32
 
 	// stateLock is used to read and set State.
 	stateLock sync.RWMutex
@@ -221,6 +225,8 @@ func (h *Handler) handleMessageReadyState(msg *pb.ChaincodeMessage) error {
 		go h.HandleTransaction(msg, h.HandlePurgePrivateData)
 	case pb.ChaincodeMessage_WRITE_BATCH_STATE:
 		go h.HandleTransaction(msg, h.HandleWriteBatch)
+	case pb.ChaincodeMessage_GET_STATE_MULTIPLE:
+		go h.HandleTransaction(msg, h.HandleGetStateMultipleKeys)
 	default:
 		return fmt.Errorf("[%s] Fabric side handler cannot handle message (%s) while in ready state", msg.Txid, msg.Type)
 	}
@@ -449,8 +455,10 @@ func (h *Handler) sendReady() error {
 	chaincodeLogger.Debugf("sending READY for chaincode %s", h.chaincodeID)
 
 	chaincodeAdditionalParams := &pb.ChaincodeAdditionalParams{
-		UseWriteBatch:     h.UseWriteBatch,
-		MaxSizeWriteBatch: h.MaxSizeWriteBatch,
+		UseWriteBatch:          h.UseWriteBatch,
+		MaxSizeWriteBatch:      h.MaxSizeWriteBatch,
+		UseGetMultipleKeys:     h.UseGetMultipleKeys,
+		MaxSizeGetMultipleKeys: h.MaxSizeGetMultipleKeys,
 	}
 	payloadBytes, err := proto.Marshal(chaincodeAdditionalParams)
 	if err != nil {
@@ -676,6 +684,46 @@ func (h *Handler) HandleGetState(msg *pb.ChaincodeMessage, txContext *Transactio
 
 	// Send response msg back to chaincode. GetState will not trigger event
 	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+}
+
+// HandleGetStateMultipleKeys query to ledger to get state
+func (h *Handler) HandleGetStateMultipleKeys(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
+	getState := &pb.GetStateMultiple{}
+	err := proto.Unmarshal(msg.Payload, getState)
+	if err != nil {
+		return nil, errors.Wrap(err, "unmarshal failed")
+	}
+
+	var res [][]byte
+	namespaceID := txContext.NamespaceID
+	collection := getState.GetCollection()
+	chaincodeLogger.Debugf("[%s] getting state for chaincode %s, keys %v, channel %s", shorttxid(msg.Txid), namespaceID, getState.GetKeys(), txContext.ChannelID)
+
+	if isCollectionSet(collection) {
+		if txContext.IsInitTransaction {
+			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
+		}
+		if err = errorIfCreatorHasNoReadPermission(namespaceID, collection, txContext); err != nil {
+			return nil, err
+		}
+		res, err = txContext.TXSimulator.GetPrivateDataMultipleKeys(namespaceID, collection, getState.GetKeys())
+	} else {
+		res, err = txContext.TXSimulator.GetStateMultipleKeys(namespaceID, getState.GetKeys())
+	}
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	if len(res) == 0 {
+		chaincodeLogger.Debugf("[%s] No state associated with keys: %v. Sending %s with an empty payload", shorttxid(msg.Txid), getState.GetKeys(), pb.ChaincodeMessage_RESPONSE)
+	}
+
+	payloadBytes, err := proto.Marshal(&pb.GetStateMultipleResult{Values: res})
+	if err != nil {
+		return nil, errors.Wrap(err, "marshal failed")
+	}
+
+	// Send response msg back to chaincode. GetState will not trigger event
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payloadBytes, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
 }
 
 func (h *Handler) HandleGetPrivateDataHash(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {

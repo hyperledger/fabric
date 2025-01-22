@@ -37,6 +37,10 @@ var _ = Describe("Config", func() {
 			viper.Set("chaincode.logging.level", "warning")
 			viper.Set("chaincode.logging.shim", "warning")
 			viper.Set("chaincode.system.somecc", true)
+			viper.Set("chaincode.runtimeParams.useWriteBatch", true)
+			viper.Set("chaincode.runtimeParams.maxSizeWriteBatch", 1001)
+			viper.Set("chaincode.runtimeParams.useGetMultipleKeys", true)
+			viper.Set("chaincode.runtimeParams.maxSizeGetMultipleKeys", 1001)
 
 			config := chaincode.GlobalConfig()
 			Expect(config.TLSEnabled).To(BeTrue())
@@ -48,6 +52,10 @@ var _ = Describe("Config", func() {
 			Expect(config.LogLevel).To(Equal("warn"))
 			Expect(config.ShimLogLevel).To(Equal("warn"))
 			Expect(config.SCCAllowlist).To(Equal(map[string]bool{"somecc": true}))
+			Expect(config.UseWriteBatch).To(BeTrue())
+			Expect(config.MaxSizeWriteBatch).To(Equal(uint32(1001)))
+			Expect(config.UseGetMultipleKeys).To(BeTrue())
+			Expect(config.MaxSizeGetMultipleKeys).To(Equal(uint32(1001)))
 		})
 
 		Context("when an invalid keepalive is configured", func() {
@@ -93,6 +101,40 @@ var _ = Describe("Config", func() {
 				config := chaincode.GlobalConfig()
 				Expect(config.LogLevel).To(Equal("info"))
 				Expect(config.ShimLogLevel).To(Equal("info"))
+			})
+		})
+
+		Context("when an runtime params is false and zero", func() {
+			BeforeEach(func() {
+				viper.Set("chaincode.runtimeParams.useWriteBatch", false)
+				viper.Set("chaincode.runtimeParams.maxSizeWriteBatch", 0)
+				viper.Set("chaincode.runtimeParams.useGetMultipleKeys", false)
+				viper.Set("chaincode.runtimeParams.maxSizeGetMultipleKeys", 0)
+			})
+
+			It("check runtime params", func() {
+				config := chaincode.GlobalConfig()
+				Expect(config.UseWriteBatch).To(BeFalse())
+				Expect(config.MaxSizeWriteBatch).To(Equal(uint32(1000)))
+				Expect(config.UseGetMultipleKeys).To(BeFalse())
+				Expect(config.MaxSizeGetMultipleKeys).To(Equal(uint32(1000)))
+			})
+		})
+
+		Context("when an invalid runtime params", func() {
+			BeforeEach(func() {
+				viper.Set("chaincode.runtimeParams.useWriteBatch", "abc")
+				viper.Set("chaincode.runtimeParams.maxSizeWriteBatch", "abc")
+				viper.Set("chaincode.runtimeParams.useGetMultipleKeys", "abc")
+				viper.Set("chaincode.runtimeParams.maxSizeGetMultipleKeys", "abc")
+			})
+
+			It("check runtime params", func() {
+				config := chaincode.GlobalConfig()
+				Expect(config.UseWriteBatch).To(BeFalse())
+				Expect(config.MaxSizeWriteBatch).To(Equal(uint32(1000)))
+				Expect(config.UseGetMultipleKeys).To(BeFalse())
+				Expect(config.MaxSizeGetMultipleKeys).To(Equal(uint32(1000)))
 			})
 		})
 	})

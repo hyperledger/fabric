@@ -75,6 +75,8 @@ type ChaincodeSupport struct {
 	UserRunsCC             bool
 	UseWriteBatch          bool
 	MaxSizeWriteBatch      uint32
+	UseGetMultipleKeys     bool
+	MaxSizeGetMultipleKeys uint32
 }
 
 // Launch starts executing chaincode if it is not already running. This method
@@ -130,6 +132,8 @@ func (cs *ChaincodeSupport) HandleChaincodeStream(stream ccintf.ChaincodeStream)
 		TotalQueryLimit:        cs.TotalQueryLimit,
 		UseWriteBatch:          cs.UseWriteBatch,
 		MaxSizeWriteBatch:      cs.MaxSizeWriteBatch,
+		UseGetMultipleKeys:     cs.UseGetMultipleKeys,
+		MaxSizeGetMultipleKeys: cs.MaxSizeGetMultipleKeys,
 	}
 
 	return handler.ProcessStream(stream)

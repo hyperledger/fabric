@@ -695,6 +695,8 @@ func serve(args []string) error {
 		UserRunsCC:             userRunsCC,
 		UseWriteBatch:          chaincodeConfig.UseWriteBatch,
 		MaxSizeWriteBatch:      chaincodeConfig.MaxSizeWriteBatch,
+		UseGetMultipleKeys:     chaincodeConfig.UseGetMultipleKeys,
+		MaxSizeGetMultipleKeys: chaincodeConfig.MaxSizeGetMultipleKeys,
 	}
 
 	custodianLauncher := custodianLauncherAdapter{

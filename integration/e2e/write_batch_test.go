@@ -201,6 +201,85 @@ var _ = Describe("Network", func() {
 			RunInvoke(network, orderer, peer, "put-private-key", true, 3, 1, []string{"collection testchannel/mycc/col", "could not be found"})
 		})
 	})
+
+	DescribeTableSubtree("benchmark get multiple keys", func(desc string, useGetMultipleKeys bool) {
+		var network *nwo.Network
+		var ordererRunner *ginkgomon.Runner
+		var ordererProcess, peerProcess ifrit.Process
+
+		BeforeEach(func() {
+			network = nwo.New(nwo.BasicEtcdRaft(), tempDir, client, StartPort(), components)
+			network.UseGetMultipleKeys = useGetMultipleKeys
+
+			// Generate config and bootstrap the network
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			// Start all the fabric processes
+			ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
+		})
+
+		AfterEach(func() {
+			if ordererProcess != nil {
+				ordererProcess.Signal(syscall.SIGTERM)
+				Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+			}
+
+			if peerProcess != nil {
+				peerProcess.Signal(syscall.SIGTERM)
+				Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+			}
+
+			network.Cleanup()
+		})
+
+		It("deploys and executes experiment bench", func() {
+			orderer := network.Orderer("orderer")
+			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+			peer := network.Peer("Org1", "peer0")
+
+			chaincode := nwo.Chaincode{
+				Name:            "mycc",
+				Version:         "0.0",
+				Path:            "github.com/hyperledger/fabric/integration/chaincode/multi/cmd",
+				Lang:            "golang",
+				PackageFile:     filepath.Join(tempDir, "multi.tar.gz"),
+				Ctor:            `{"Args":["init"]}`,
+				SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
+				Sequence:        "1",
+				InitRequired:    true,
+				Label:           "my_multi_operations_chaincode",
+			}
+
+			network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
+
+			nwo.EnableCapabilities(
+				network,
+				"testchannel",
+				"Application", "V2_0",
+				orderer,
+				network.PeersWithChannel("testchannel")...,
+			)
+			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+
+			RunInvoke(network, orderer, peer, "invoke", true, 10000, 0, nil)
+
+			By("run query get state multiple keys")
+			experiment := gmeasure.NewExperiment("Get state multiple keys " + desc)
+			AddReportEntry(experiment.Name, experiment)
+
+			experiment.SampleDuration("invoke N-10 cycle-1000", func(idx int) {
+				RunGetStateMultipleKeys(network, peer, 1000)
+			}, gmeasure.SamplingConfig{N: 10})
+
+			experiment.SampleDuration("invoke N-10 cycle-10000", func(idx int) {
+				RunGetStateMultipleKeys(network, peer, 10000)
+			}, gmeasure.SamplingConfig{N: 10})
+		})
+	},
+		Entry("without peer support", "without peer support", false),
+		Entry("with peer support", "with peer support", true),
+	)
 })
 
 func RunInvoke(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, fn string, startWriteBatch bool, numberCallsPut int, exitCode int, expectedError []string) {
@@ -236,4 +315,14 @@ func RunGetState(n *nwo.Network, peer *nwo.Peer, keyUniq string) {
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess).To(gbytes.Say("key" + keyUniq))
+}
+
+func RunGetStateMultipleKeys(n *nwo.Network, peer *nwo.Peer, countKeys int) {
+	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+		ChannelID: "testchannel",
+		Name:      "mycc",
+		Ctor:      `{"Args":["get-multiple-keys","` + fmt.Sprint(countKeys) + `"]}`,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 }

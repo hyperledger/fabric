@@ -190,6 +190,8 @@ chaincode:
   runtimeParams:
     useWriteBatch: {{ .UseWriteBatch }}
     maxSizeWriteBatch: 1000
+    useGetMultipleKeys: {{ .UseGetMultipleKeys }}
+    maxSizeGetMultipleKeys: 1000
   logging:
     level:  info
     shim:   warning
