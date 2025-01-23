@@ -18,6 +18,10 @@ serial_packages=(
     "github.com/hyperledger/fabric/gossip/..."
 )
 
+no_coverage_packages=(
+    "github.com/hyperledger/fabric/core/handlers/library"
+)
+
 # packages which need to be tested with build tag pkcs11
 pkcs11_packages=(
     "github.com/hyperledger/fabric/bccsp/factory"
@@ -132,10 +136,18 @@ serial_test_packages() {
     fi
 }
 
+no_coverage_test_packages() {
+    local filter
+    filter=$(package_filter "${no_coverage_packages[@]}")
+    if [ -n "$filter" ]; then
+        join_by $'\n' "$@" | grep -E "$filter" || true
+    fi
+}
+
 # "go test" the provided packages. Packages that are not present in the serial package list
 # will be tested in parallel
 run_tests() {
-    local -a flags=("-cover")
+    local -a flags
     if [ -n "${VERBOSE}" ]; then
         flags+=("-v")
     fi
@@ -153,13 +165,25 @@ run_tests() {
         local -a serial
         while IFS= read -r pkg; do serial+=("$pkg"); done < <(serial_test_packages "$@")
         if [ "${#serial[@]}" -ne 0 ]; then
-            go test "${flags[@]}" -failfast -tags "$GO_TAGS" "${serial[@]}" -short -p 1 -timeout=20m
+            go test -cover "${flags[@]}" -failfast -tags "$GO_TAGS" "${serial[@]}" -short -p 1 -timeout=20m
         fi
 
         local -a parallel
         while IFS= read -r pkg; do parallel+=("$pkg"); done < <(parallel_test_packages "$@")
         if [ "${#parallel[@]}" -ne 0 ]; then
-            go test "${flags[@]}" "${race_flags[@]}" -tags "$GO_TAGS" "${parallel[@]}" -short -timeout=20m
+            go test -cover "${flags[@]}" "${race_flags[@]}" -tags "$GO_TAGS" "${parallel[@]}" -short -timeout=20m -skip=NoCover
+        fi
+
+        # The -cover flag changes the import table of the test and the plugin
+        # so that they cannot interact with each other.
+        # In the name of tests that work with plugins we added the suffix NoCover
+        # and do not run these tests with the -cover flag.
+        # We run such tests separately, without the -cover flag.
+        local -a no_coverage
+        while IFS= read -r pkg; do no_coverage+=("$pkg"); done < <(no_coverage_test_packages "$@")
+        if [ "${#no_coverage[@]}" -ne 0 ]; then
+            echo "test with no coverage"
+            go test "${flags[@]}" "${race_flags[@]}" -tags "$GO_TAGS" "${no_coverage[@]}" -short -timeout=20m -run=NoCover
         fi
     }
 }
@@ -167,7 +191,7 @@ run_tests() {
 # "go test" the provided packages and generate code coverage reports.
 run_tests_with_coverage() {
     # run the tests serially
-    time go test -p 1 -cover -coverprofile=profile_tmp.cov -tags "$GO_TAGS" "$@" -timeout=20m
+    time go test -p 1 -cover -coverprofile=profile_tmp.cov -tags "$GO_TAGS" "$@" -timeout=20m -skip=NoCover
     tail -n +2 profile_tmp.cov >> profile.cov && rm profile_tmp.cov
 }
 
