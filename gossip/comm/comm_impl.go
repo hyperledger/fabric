@@ -162,6 +162,14 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 		return nil, errors.WithStack(err)
 	}
 
+	if len(expectedPKIID) > 0 {
+		identity, _ := c.idMapper.Get(expectedPKIID)
+		if len(identity) == 0 {
+			c.logger.Warningf("Identity of %x is no longer found in the identity store, aborting connection", expectedPKIID)
+			return nil, errors.New("identity no longer recognized")
+		}
+	}
+
 	ctx, cancel = context.WithCancel(context.Background())
 	if stream, err = cl.GossipStream(ctx); err == nil {
 		connInfo, err = c.authenticateRemotePeer(stream, true, false)

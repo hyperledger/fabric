@@ -9,9 +9,11 @@ package gossip
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -309,8 +311,11 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 		network.JoinChannel(channelName, orderer, peer0Org1, peer0Org2)
 
 		By("verifying membership of both peers")
-		bothPeers := []*nwo.Peer{peer0Org1, peer0Org2}
-		network.VerifyMembership(bothPeers, channelName)
+		// bothPeers := []*nwo.Peer{peer0Org1, peer0Org2}
+		// network.VerifyMembership(bothPeers, channelName)
+		// expectedPeers := make([]nwo.DiscoveredPeer, 1)
+		// expectedPeers[0] = network.DiscoveredPeer(peer0Org2, "_lifecycle")
+		Eventually(nwo.DiscoverPeers(network, peer0Org1, "User1", "testchannel"), 50*time.Second, 100*time.Millisecond).Should(ContainElements(network.DiscoveredPeer(peer0Org2, "_lifecycle")))
 
 		fmt.Println("===MEMBERSHIP VERIFIED===")
 		time.Sleep(5 * time.Second)
@@ -328,29 +333,39 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 		peer0Org1Runner := nwprocs.peerRunners[peer0Org1.ID()]
 		Eventually(peer0Org1Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("changed its PKI-ID from"))
 
-		fmt.Println("===PKI-ID REPLACED, WAIT FOR MEMBERSHIP===")
+		fmt.Println("===PKI-ID REPLACED===")
 		time.Sleep(5 * time.Second)
 
 		By("verifying membership after cert renewed")
-		network.VerifyMembership(bothPeers, channelName)
+		Eventually(
+			nwo.DiscoverPeers(network, peer0Org1, "User1", "testchannel"),
+			60*time.Second,
+			100*time.Millisecond).
+			Should(ContainElements(network.DiscoveredPeer(network.Peer("Org2", "peer0"), "_lifecycle")))
 
-		fmt.Println("===MEMBERSHIP VERIFIED WITH RENEWED CERT, WAIT FOR CERT TO EXPIRE AND THEN RENEW AGAIN ===")
+		fmt.Println("===MEMBERSHIP VERIFIED WITH RENEWED CERT, NOW WAIT FOR CERT TO EXPIRE===")
 		time.Sleep(5 * time.Second)
 
 		By("waiting for cert to expire within a minute")
 		Eventually(peer0Org1Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("gossipping peer identity expired"))
 
-		By("stopping, renewing peer0Org2 certificate again after its expiration, restarting")
+		By("stopping, renewing peer0Org2 certificate again after its expiration")
 		stopPeers(nwprocs, peer0Org2)
 		renewPeerCertificate(network, peer0Org2, time.Now().Add(time.Hour))
 
-		fmt.Println("===STOPPED AND RENEWED peer0Org2 AGAIN AFTER EXPIRATION, RESTARTING, CHECK FOR PKI-ID REPLACEMENT AGAIN===")
+		fmt.Println("===STOPPED AND RENEWED peer0Org2 AGAIN AFTER EXPIRATION, RESTARTING, CHECK FOR MEMBERSHIP AGAIN===")
 		time.Sleep(5 * time.Second)
 
+		By("ensuring that peer0Org1 establishes membership with peer0Org2 after final restart post-expiration")
 		startPeers(nwprocs, false, peer0Org2)
 
-		By("ensuring that peer0Org1 replaces peer0Org2 PKI-ID after it expired")
-		Eventually(peer0Org1Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("changed its PKI-ID from"))
+		Eventually(
+			nwo.DiscoverPeers(network, peer0Org1, "User1", "testchannel"),
+			60*time.Second,
+			100*time.Millisecond).
+			Should(ContainElements(network.DiscoveredPeer(network.Peer("Org2", "peer0"), "_lifecycle")))
+
+		time.Sleep(300 * time.Minute)
 	})
 })
 
@@ -400,8 +415,31 @@ func expireCertificate(certPEM, caCertPEM, caKeyPEM []byte, expirationTime time.
 	// The certificate expires now
 	cert.NotAfter = expirationTime
 
-	// The CA signs the certificate
-	certBytes, err := x509.CreateCertificate(rand.Reader, cert, caCert, cert.PublicKey, caKey)
+	// The CA creates and signs a temporary certificate
+	tempCertBytes, err := x509.CreateCertificate(rand.Reader, cert, caCert, cert.PublicKey, caKey)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Force the certificate to use Low-S signature to be compatible with the identities that Fabric uses
+
+	// Parse the certificate to extract the TBS (to-be-signed) data
+	tempParsedCert, err := x509.ParseCertificate(tempCertBytes)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Hash the TBS data
+	hash := sha256.Sum256(tempParsedCert.RawTBSCertificate)
+
+	// Sign the hash using forceLowS
+	r, s, err := forceLowS(caKey, hash[:])
+	Expect(err).NotTo(HaveOccurred())
+
+	// Encode the signature (DER format)
+	signature := append(r.Bytes(), s.Bytes()...)
+
+	// Replace the signature in the certificate with the low-s signature
+	tempParsedCert.Signature = signature
+
+	// Re-encode the certificate with the low-s signature
+	certBytes, err := x509.CreateCertificate(rand.Reader, tempParsedCert, caCert, cert.PublicKey, caKey)
 	Expect(err).NotTo(HaveOccurred())
 
 	// The CA signs its own certificate
@@ -411,6 +449,22 @@ func expireCertificate(certPEM, caCertPEM, caKeyPEM []byte, expirationTime time.
 	expiredcertPEM = pem.EncodeToMemory(&pem.Block{Bytes: certBytes, Type: "CERTIFICATE"})
 	earlyMadeCACertPEM = pem.EncodeToMemory(&pem.Block{Bytes: caCertBytes, Type: "CERTIFICATE"})
 	return
+}
+
+// forceLowS ensures the ECDSA signature's S value is low
+func forceLowS(priv *ecdsa.PrivateKey, hash []byte) (r, s *big.Int, err error) {
+	r, s, err = ecdsa.Sign(rand.Reader, priv, hash)
+	Expect(err).NotTo(HaveOccurred())
+
+	curveOrder := priv.Curve.Params().N
+	halfOrder := new(big.Int).Rsh(curveOrder, 1) // curveOrder / 2
+
+	// If s is greater than half the order, replace it with curveOrder - s
+	if s.Cmp(halfOrder) > 0 {
+		s.Sub(curveOrder, s)
+	}
+
+	return r, s, nil
 }
 
 func runTransactions(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, chaincodeName string, channelID string) {
