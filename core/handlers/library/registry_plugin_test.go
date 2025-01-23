@@ -47,7 +47,7 @@ func buildPlugin(t *testing.T, dest, pkg string) {
 	require.NoError(t, err, "Could not build plugin: "+string(output))
 }
 
-func TestLoadAuthPlugin(t *testing.T) {
+func TestLoadAuthPluginNoCover(t *testing.T) {
 	if noplugin {
 		t.Skip("plugins disabled")
 	}
@@ -69,7 +69,7 @@ func TestLoadAuthPlugin(t *testing.T) {
 	require.True(t, endorser.invoked, "Expected filter to invoke endorser on invoke")
 }
 
-func TestLoadDecoratorPlugin(t *testing.T) {
+func TestLoadDecoratorPluginNoCover(t *testing.T) {
 	if noplugin {
 		t.Skip("plugins disabled")
 	}
@@ -92,7 +92,7 @@ func TestLoadDecoratorPlugin(t *testing.T) {
 	require.True(t, proto.Equal(decoratedInput, testInput), "Expected chaincode input to remain unchanged")
 }
 
-func TestEndorsementPlugin(t *testing.T) {
+func TestEndorsementPluginNoCover(t *testing.T) {
 	if noplugin {
 		t.Skip("plugins disabled")
 	}
@@ -117,7 +117,7 @@ func TestEndorsementPlugin(t *testing.T) {
 	require.Equal(t, []byte{1, 2, 3}, output)
 }
 
-func TestValidationPlugin(t *testing.T) {
+func TestValidationPluginNoCover(t *testing.T) {
 	if noplugin {
 		t.Skip("plugins disabled")
 	}
