@@ -37,8 +37,6 @@ jobs:
     name: Unit Tests
     needs: basic-checks
     runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-22.04' || 'ubuntu-22.04' }}
-    env:
-      GOEXPERIMENT: nocoverageredesign
     steps:
       - uses: actions/checkout@v4
         with:
