@@ -13,14 +13,14 @@ Discord: ahmedalsalih#6158
 
 * Bi-weekly lab meeting.
 ```
-Next meeting: See you Thursday, Jan-16, 2025
+Next meeting: See you Thursday, Jan-30, 2025
 9:30am to 10:00am Eastern Time (EST)
 Repeats:
 Every 2 weeks on Thursday
 Location:
-https://zoom.us/my/hyperledger.community.3?pwd=UE90WHhEaHRqOGEyMkV3cldKa2d2dz09
 ```
-
+> [!NOTE]
+*** The Old Zoom meeting is migrated to new system. The information will be provided once recived. ***
 
 
 You can also talk with the developers of the lab in the **`#bdls`** channel on the Hyperledger Discord server at:
