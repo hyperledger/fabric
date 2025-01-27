@@ -32,6 +32,7 @@ printHelp() {
     echo
     echo "e.g. bootstrap.sh 2.5.10 1.5.13 -s"
     echo "will download docker images and binaries for Fabric v2.5.10 and Fabric CA v1.5.13"
+    echo "version greater than 2.5.10"
 }
 
 # dockerPull() pulls docker images from fabric and chaincode repositories
