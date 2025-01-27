@@ -187,6 +187,9 @@ chaincode:
     cscc:       enable
     lscc:       enable
     qscc:       enable
+  runtimeParams:
+    useWriteBatch: {{ .UseWriteBatch }}
+    maxSizeWriteBatch: 1000
   logging:
     level:  info
     shim:   warning
