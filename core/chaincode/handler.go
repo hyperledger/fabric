@@ -733,6 +733,16 @@ func (h *Handler) HandleGetStateMetadata(msg *pb.ChaincodeMessage, txContext *Tr
 
 // Handles query to ledger to rage query state
 func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
+	iterID := h.UUIDGenerator.New()
+	defer func() {
+		if r := recover(); r != nil {
+			chaincodeLogger.Errorf("Panic error in HandleGetStateByRange: %v", r)
+			// Clean up any query context that may have been created
+			if txContext != nil {
+				txContext.CleanupQueryContext(iterID)
+			}
+		}
+	}()
 	getStateByRange := &pb.GetStateByRange{}
 	err := proto.Unmarshal(msg.Payload, getStateByRange)
 	if err != nil {
@@ -745,7 +755,6 @@ func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *Tra
 	}
 
 	totalReturnLimit := h.calculateTotalReturnLimit(metadata)
-	iterID := h.UUIDGenerator.New()
 	var rangeIter commonledger.ResultsIterator
 	isPaginated := false
 	namespaceID := txContext.NamespaceID

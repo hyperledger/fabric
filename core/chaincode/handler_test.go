@@ -12,6 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric-lib-go/common/metrics/metricsfakes"
 	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/util"
 	ar "github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -1597,6 +1598,54 @@ var _ = Describe("Handler", func() {
 				Expect(pqr).To(BeNil())
 				iter := txContext.GetQueryIterator("generated-query-id")
 				Expect(iter).To(BeNil())
+				retCount := txContext.GetTotalReturnCount("generated-query-id")
+				Expect(retCount).To(BeNil())
+			})
+		})
+
+		Context("when a panic occurs during handling", func() {
+			var (
+				fakeIterator    *mock.QueryResultsIterator
+				request         *pb.GetStateByRange
+				incomingMessage *pb.ChaincodeMessage
+			)
+
+			BeforeEach(func() {
+				request = &pb.GetStateByRange{
+					StartKey: "start-key",
+					EndKey:   "end-key",
+				}
+				payload, err := proto.Marshal(request)
+				Expect(err).NotTo(HaveOccurred())
+
+				incomingMessage = &pb.ChaincodeMessage{
+					Type:      pb.ChaincodeMessage_GET_STATE_BY_RANGE,
+					Payload:   payload,
+					Txid:      "tx-id",
+					ChannelId: "channel-id",
+				}
+
+				fakeIterator = &mock.QueryResultsIterator{}
+				fakeTxSimulator.GetStateRangeScanIteratorReturns(fakeIterator, nil)
+
+				// Set up QueryResponseBuilder to panic
+				fakeQueryResponseBuilder.BuildQueryResponseStub = func(*chaincode.TransactionContext, commonledger.ResultsIterator, string, bool, int32) (*pb.QueryResponse, error) {
+					panic("boom!")
+				}
+			})
+
+			It("recovers from the panic and cleans up the query context", func() {
+				handler.HandleGetStateByRange(incomingMessage, txContext)
+
+				// Verify the query iterator was cleaned up
+				iterator := txContext.GetQueryIterator("generated-query-id")
+				Expect(iterator).To(BeNil())
+
+				// Verify the pending query result was cleaned up
+				pqr := txContext.GetPendingQueryResult("generated-query-id")
+				Expect(pqr).To(BeNil())
+
+				// Verify the total return count was cleaned up
 				retCount := txContext.GetTotalReturnCount("generated-query-id")
 				Expect(retCount).To(BeNil())
 			})
