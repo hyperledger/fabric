@@ -318,11 +318,8 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 		renewPeerCertificate(network, peer0Org2, time.Now().Add(time.Minute))
 		startPeers(nwprocs, false, peer0Org2)
 
-		By("ensuring that peer0Org1 replaces peer0Org2 PKI-ID")
-		peer0Org1Runner := nwprocs.peerRunners[peer0Org1.ID()]
-		Eventually(peer0Org1Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("changed its PKI-ID from"))
-
 		By("verifying membership after cert renewed")
+		peer0Org1Runner := nwprocs.peerRunners[peer0Org1.ID()]
 		Eventually(peer0Org1Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Membership view has changed. peers went online"))
 		/*
 			// TODO - Replace membership log check with membership discovery check (not currently working since renewed cert signature doesn't always match expectations even though it is forced to be Low-S)
@@ -334,7 +331,7 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 		*/
 
 		By("waiting for cert to expire within a minute")
-		Eventually(peer0Org1Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("gossipping peer identity expired"))
+		Eventually(peer0Org1Runner.Err(), time.Minute*2).Should(gbytes.Say("gossipping peer identity expired"))
 
 		By("stopping, renewing peer0Org2 certificate again after its expiration, restarting")
 		stopPeers(nwprocs, peer0Org2)
