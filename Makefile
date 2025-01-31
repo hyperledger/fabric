@@ -46,7 +46,7 @@
 #   - unit-test - runs the go-test based unit tests
 #   - verify - runs unit tests for only the changed package tree
 
-UBUNTU_VER ?= 20.04
+UBUNTU_VER ?= 22.04
 FABRIC_VER ?= 2.5.11
 
 # 3rd party image version
