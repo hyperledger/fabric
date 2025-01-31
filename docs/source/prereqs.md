@@ -171,7 +171,7 @@ path is to use WSL2 (Windows Subsystem for Linux version 2) to provide a native 
 
 WSL2 may not be installed by default; you can check and install WSL2 by going into "Programs and Features", clicking on "Turn Windows features on or off" and ensuring that both "Windows Subsystem For Linux" and "Virtual Machine Platform" are selected.
 
-Next you will need to install a Linux distribution such as Ubuntu-20.04 and make sure it's set to using version 2 of WSL. Refer to [Install WSL](https://docs.microsoft.com/en-us/windows/wsl/install) for more information.
+Next you will need to install a Linux distribution such as Ubuntu-22.04 and make sure it's set to using version 2 of WSL. Refer to [Install WSL](https://docs.microsoft.com/en-us/windows/wsl/install) for more information.
 
 Finally, you need to ensure Docker Desktop has integration enabled for your distribution so it can interact with Docker elements, such as a bash command window. To do this, open the Docker Desktop gui and go into settings, select `Resources` and them `WSL Integration` and ensure the checkbox for enable integration is checked. You should then see your WSL2 linux distribution listed (if you don't then it is probably because it is still a WSL1 distribution and needs to be converted to WSL2) and you can then toggle the switch to enable integration for that distro. Refer to [Docker Desktop WSL2 backend](https://docs.docker.com/desktop/windows/wsl/) for more information
 
