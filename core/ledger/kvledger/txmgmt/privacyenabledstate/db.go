@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-lib-go/common/metrics"
 	"github.com/hyperledger/fabric-lib-go/healthz"
+	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
@@ -46,9 +47,10 @@ type StateDBConfig struct {
 // DBProvider encapsulates other providers such as VersionedDBProvider and
 // BookeepingProvider which are required to create DB for a channel
 type DBProvider struct {
-	VersionedDBProvider statedb.VersionedDBProvider
-	HealthCheckRegistry ledger.HealthCheckRegistry
-	bookkeepingProvider *bookkeeping.Provider
+	VersionedDBProvider  statedb.VersionedDBProvider
+	HealthCheckRegistry  ledger.HealthCheckRegistry
+	bookkeepingProvider  *bookkeeping.Provider
+	myImplicitCollection string
 }
 
 // NewDBProvider constructs an instance of DBProvider
@@ -58,6 +60,7 @@ func NewDBProvider(
 	healthCheckRegistry ledger.HealthCheckRegistry,
 	stateDBConf *StateDBConfig,
 	sysNamespaces []string,
+	myImplicitCollection string,
 ) (*DBProvider, error) {
 	var vdbProvider statedb.VersionedDBProvider
 	var err error
@@ -73,9 +76,10 @@ func NewDBProvider(
 	}
 
 	dbProvider := &DBProvider{
-		VersionedDBProvider: vdbProvider,
-		HealthCheckRegistry: healthCheckRegistry,
-		bookkeepingProvider: bookkeeperProvider,
+		VersionedDBProvider:  vdbProvider,
+		HealthCheckRegistry:  healthCheckRegistry,
+		bookkeepingProvider:  bookkeeperProvider,
+		myImplicitCollection: myImplicitCollection,
 	}
 
 	err = dbProvider.RegisterHealthChecker()
@@ -107,7 +111,7 @@ func (p *DBProvider) GetDBHandle(id string, chInfoProvider channelInfoProvider) 
 	if err != nil {
 		return nil, err
 	}
-	return NewDB(vdb, id, metadataHint)
+	return NewDB(vdb, id, metadataHint, p.myImplicitCollection)
 }
 
 // Close closes all the VersionedDB instances and releases any resources held by VersionedDBProvider
@@ -123,13 +127,14 @@ func (p *DBProvider) Drop(ledgerid string) error {
 // DB uses a single database to maintain both the public and private data
 type DB struct {
 	statedb.VersionedDB
-	metadataHint *metadataHint
+	metadataHint         *metadataHint
+	myImplicitCollection string
 }
 
 // NewDB wraps a VersionedDB instance. The public data is managed directly by the wrapped versionedDB.
 // For managing the hashed data and private data, this implementation creates separate namespaces in the wrapped db
-func NewDB(vdb statedb.VersionedDB, ledgerid string, metadataHint *metadataHint) (*DB, error) {
-	return &DB{vdb, metadataHint}, nil
+func NewDB(vdb statedb.VersionedDB, ledgerid string, metadataHint *metadataHint, myImplicitCollection string) (*DB, error) {
+	return &DB{vdb, metadataHint, myImplicitCollection}, nil
 }
 
 // IsBulkOptimizable checks whether the underlying statedb implements statedb.BulkOptimizable
@@ -330,9 +335,11 @@ func (s *DB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt.ChaincodeDef
 		case indexInfo.hasIndexForCollection:
 			_, ok := collectionConfigMap[indexInfo.collectionName]
 			if !ok {
-				logger.Errorf("Error processing index for chaincode [%s]: cannot create an index for an undefined collection=[%s]",
-					chaincodeDefinition.Name, indexInfo.collectionName)
-				continue
+				if !implicitcollection.IsAllOrgNotation(indexInfo.collectionName) && indexInfo.collectionName != s.myImplicitCollection {
+					logger.Debugf("Skipped processing index of other org implicit collection=[%s] for chaincode [%s] ",
+						indexInfo.collectionName, chaincodeDefinition.Name)
+					continue
+				}
 			}
 			err := indexCapable.ProcessIndexesForChaincodeDeploy(derivePvtDataNs(chaincodeDefinition.Name, indexInfo.collectionName), indexFilesData)
 			if err != nil {
