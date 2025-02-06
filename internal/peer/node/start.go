@@ -693,6 +693,8 @@ func serve(args []string) error {
 		BuiltinSCCs:            builtinSCCs,
 		TotalQueryLimit:        chaincodeConfig.TotalQueryLimit,
 		UserRunsCC:             userRunsCC,
+		UseWriteBatch:          chaincodeConfig.UseWriteBatch,
+		MaxSizeWriteBatch:      chaincodeConfig.MaxSizeWriteBatch,
 	}
 
 	custodianLauncher := custodianLauncherAdapter{

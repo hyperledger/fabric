@@ -130,6 +130,10 @@ type Handler struct {
 	AppConfig ApplicationConfigRetriever
 	// Metrics holds chaincode handler metrics
 	Metrics *HandlerMetrics
+	// UseWriteBatch an indication that the peer can accept changes from chaincode in batches
+	UseWriteBatch bool
+	// MaxSizeWriteBatch maximum batch size for the change segment
+	MaxSizeWriteBatch uint32
 
 	// stateLock is used to read and set State.
 	stateLock sync.RWMutex
@@ -215,6 +219,8 @@ func (h *Handler) handleMessageReadyState(msg *pb.ChaincodeMessage) error {
 		go h.HandleTransaction(msg, h.HandlePutStateMetadata)
 	case pb.ChaincodeMessage_PURGE_PRIVATE_DATA:
 		go h.HandleTransaction(msg, h.HandlePurgePrivateData)
+	case pb.ChaincodeMessage_WRITE_BATCH_STATE:
+		go h.HandleTransaction(msg, h.HandleWriteBatch)
 	default:
 		return fmt.Errorf("[%s] Fabric side handler cannot handle message (%s) while in ready state", msg.Txid, msg.Type)
 	}
@@ -441,10 +447,22 @@ func (h *Handler) ProcessStream(stream ccintf.ChaincodeStream) error {
 // sendReady sends READY to chaincode serially (just like REGISTER)
 func (h *Handler) sendReady() error {
 	chaincodeLogger.Debugf("sending READY for chaincode %s", h.chaincodeID)
-	ccMsg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_READY}
+
+	chaincodeAdditionalParams := &pb.ChaincodeAdditionalParams{
+		UseWriteBatch:     h.UseWriteBatch,
+		MaxSizeWriteBatch: h.MaxSizeWriteBatch,
+	}
+	payloadBytes, err := proto.Marshal(chaincodeAdditionalParams)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	ccMsg := &pb.ChaincodeMessage{
+		Type:    pb.ChaincodeMessage_READY,
+		Payload: payloadBytes,
+	}
 
 	// if error in sending tear down the h
-	if err := h.serialSend(ccMsg); err != nil {
+	if err = h.serialSend(ccMsg); err != nil {
 		chaincodeLogger.Errorf("error sending READY (%s) for chaincode %s", err, h.chaincodeID)
 		return err
 	}
@@ -504,7 +522,7 @@ func (h *Handler) HandleRegister(msg *pb.ChaincodeMessage) {
 	}
 
 	chaincodeLogger.Debugf("Got %s for chaincodeID = %s, sending back %s", pb.ChaincodeMessage_REGISTER, h.chaincodeID, pb.ChaincodeMessage_REGISTERED)
-	if err := h.serialSend(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}); err != nil {
+	if err = h.serialSend(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}); err != nil {
 		chaincodeLogger.Errorf("error sending %s: %s", pb.ChaincodeMessage_REGISTERED, err)
 		h.notifyRegistry(err)
 		return
@@ -555,10 +573,10 @@ func (h *Handler) registerTxid(msg *pb.ChaincodeMessage) bool {
 	return false
 }
 
-func (h *Handler) checkMetadataCap(msg *pb.ChaincodeMessage) error {
-	ac, exists := h.AppConfig.GetApplicationConfig(msg.ChannelId)
+func (h *Handler) checkMetadataCap(channelId string) error {
+	ac, exists := h.AppConfig.GetApplicationConfig(channelId)
 	if !exists {
-		return errors.Errorf("application config does not exist for %s", msg.ChannelId)
+		return errors.Errorf("application config does not exist for %s", channelId)
 	}
 
 	if !ac.Capabilities().KeyLevelEndorsement() {
@@ -567,10 +585,10 @@ func (h *Handler) checkMetadataCap(msg *pb.ChaincodeMessage) error {
 	return nil
 }
 
-func (h *Handler) checkPurgePrivateDataCap(msg *pb.ChaincodeMessage) error {
-	ac, exists := h.AppConfig.GetApplicationConfig(msg.ChannelId)
+func (h *Handler) checkPurgePrivateDataCap(channelId string) error {
+	ac, exists := h.AppConfig.GetApplicationConfig(channelId)
 	if !exists {
-		return errors.Errorf("application config does not exist for %s", msg.ChannelId)
+		return errors.Errorf("application config does not exist for %s", channelId)
 	}
 
 	if !ac.Capabilities().PurgePvtData() {
@@ -642,7 +660,7 @@ func (h *Handler) HandleGetState(msg *pb.ChaincodeMessage, txContext *Transactio
 		if txContext.IsInitTransaction {
 			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
 		}
-		if err := errorIfCreatorHasNoReadPermission(namespaceID, collection, txContext); err != nil {
+		if err = errorIfCreatorHasNoReadPermission(namespaceID, collection, txContext); err != nil {
 			return nil, err
 		}
 		res, err = txContext.TXSimulator.GetPrivateData(namespaceID, collection, getState.Key)
@@ -687,7 +705,7 @@ func (h *Handler) HandleGetPrivateDataHash(msg *pb.ChaincodeMessage, txContext *
 
 // Handles query to ledger to get state metadata
 func (h *Handler) HandleGetStateMetadata(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
-	err := h.checkMetadataCap(msg)
+	err := h.checkMetadataCap(msg.ChannelId)
 	if err != nil {
 		return nil, err
 	}
@@ -707,7 +725,7 @@ func (h *Handler) HandleGetStateMetadata(msg *pb.ChaincodeMessage, txContext *Tr
 		if txContext.IsInitTransaction {
 			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
 		}
-		if err := errorIfCreatorHasNoReadPermission(namespaceID, collection, txContext); err != nil {
+		if err = errorIfCreatorHasNoReadPermission(namespaceID, collection, txContext); err != nil {
 			return nil, err
 		}
 		metadata, err = txContext.TXSimulator.GetPrivateDataMetadata(namespaceID, collection, getStateMetadata.Key)
@@ -754,7 +772,7 @@ func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *Tra
 		if txContext.IsInitTransaction {
 			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
 		}
-		if err := errorIfCreatorHasNoReadPermission(namespaceID, collection, txContext); err != nil {
+		if err = errorIfCreatorHasNoReadPermission(namespaceID, collection, txContext); err != nil {
 			return nil, err
 		}
 		rangeIter, err = txContext.TXSimulator.GetPrivateDataRangeScanIterator(namespaceID, collection,
@@ -877,7 +895,7 @@ func (h *Handler) HandleGetQueryResult(msg *pb.ChaincodeMessage, txContext *Tran
 		if txContext.IsInitTransaction {
 			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
 		}
-		if err := errorIfCreatorHasNoReadPermission(namespaceID, collection, txContext); err != nil {
+		if err = errorIfCreatorHasNoReadPermission(namespaceID, collection, txContext); err != nil {
 			return nil, err
 		}
 		executeIter, err = txContext.TXSimulator.ExecuteQueryOnPrivateData(namespaceID, collection, getQueryResult.Query)
@@ -1033,123 +1051,215 @@ func (h *Handler) getTxContextForInvoke(channelID string, txid string, payload [
 
 func (h *Handler) HandlePutState(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
 	putState := &pb.PutState{}
-	err := proto.Unmarshal(msg.Payload, putState)
-	if err != nil {
+	if err := proto.Unmarshal(msg.Payload, putState); err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
-	namespaceID := txContext.NamespaceID
-	collection := putState.Collection
-	if isCollectionSet(collection) {
-		if txContext.IsInitTransaction {
-			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
-		}
-		if err := errorIfCreatorHasNoWritePermission(namespaceID, collection, txContext); err != nil {
-			return nil, err
-		}
-		err = txContext.TXSimulator.SetPrivateData(namespaceID, collection, putState.Key, putState.Value)
-	} else {
-		err = txContext.TXSimulator.SetState(namespaceID, putState.Key, putState.Value)
-	}
-	if err != nil {
+	if err := h.putState(putState, txContext); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+}
+
+func (h *Handler) putState(msg *pb.PutState, txContext *TransactionContext) error {
+	var err error
+
+	namespaceID := txContext.NamespaceID
+	collection := msg.Collection
+	if isCollectionSet(collection) {
+		if txContext.IsInitTransaction {
+			return errors.New("private data APIs are not allowed in chaincode Init()")
+		}
+		if err = errorIfCreatorHasNoWritePermission(namespaceID, collection, txContext); err != nil {
+			return err
+		}
+		err = txContext.TXSimulator.SetPrivateData(namespaceID, collection, msg.Key, msg.Value)
+	} else {
+		err = txContext.TXSimulator.SetState(namespaceID, msg.Key, msg.Value)
+	}
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
 }
 
 func (h *Handler) HandlePutStateMetadata(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
-	err := h.checkMetadataCap(msg)
-	if err != nil {
-		return nil, err
+	putStateMetadata := &pb.PutStateMetadata{}
+	if err := proto.Unmarshal(msg.Payload, putStateMetadata); err != nil {
+		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
-	putStateMetadata := &pb.PutStateMetadata{}
-	err = proto.Unmarshal(msg.Payload, putStateMetadata)
+	if err := h.putStateMetadata(putStateMetadata, txContext, msg.ChannelId); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+}
+
+func (h *Handler) putStateMetadata(msg *pb.PutStateMetadata, txContext *TransactionContext, channelId string) error {
+	err := h.checkMetadataCap(channelId)
 	if err != nil {
-		return nil, errors.Wrap(err, "unmarshal failed")
+		return err
 	}
 
 	metadata := make(map[string][]byte)
-	metadata[putStateMetadata.Metadata.Metakey] = putStateMetadata.Metadata.Value
+	metadata[msg.Metadata.Metakey] = msg.Metadata.Value
 
 	namespaceID := txContext.NamespaceID
-	collection := putStateMetadata.Collection
+	collection := msg.Collection
 	if isCollectionSet(collection) {
 		if txContext.IsInitTransaction {
-			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
+			return errors.New("private data APIs are not allowed in chaincode Init()")
 		}
-		if err := errorIfCreatorHasNoWritePermission(namespaceID, collection, txContext); err != nil {
-			return nil, err
+		if err = errorIfCreatorHasNoWritePermission(namespaceID, collection, txContext); err != nil {
+			return err
 		}
-		err = txContext.TXSimulator.SetPrivateDataMetadata(namespaceID, collection, putStateMetadata.Key, metadata)
+		err = txContext.TXSimulator.SetPrivateDataMetadata(namespaceID, collection, msg.Key, metadata)
 	} else {
-		err = txContext.TXSimulator.SetStateMetadata(namespaceID, putStateMetadata.Key, metadata)
+		err = txContext.TXSimulator.SetStateMetadata(namespaceID, msg.Key, metadata)
 	}
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return errors.WithStack(err)
 	}
 
-	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+	return nil
 }
 
 func (h *Handler) HandleDelState(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
-	delState := &pb.DelState{}
-	err := proto.Unmarshal(msg.Payload, delState)
-	if err != nil {
-		return nil, errors.Wrap(err, "unmarshal failed")
-	}
-
-	namespaceID := txContext.NamespaceID
-	collection := delState.Collection
-	if isCollectionSet(collection) {
-		if txContext.IsInitTransaction {
-			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
-		}
-		if err := errorIfCreatorHasNoWritePermission(namespaceID, collection, txContext); err != nil {
-			return nil, err
-		}
-		err = txContext.TXSimulator.DeletePrivateData(namespaceID, collection, delState.Key)
-	} else {
-		err = txContext.TXSimulator.DeleteState(namespaceID, delState.Key)
-	}
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	// Send response msg back to chaincode.
-	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
-}
-
-func (h *Handler) HandlePurgePrivateData(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
-	err := h.checkPurgePrivateDataCap(msg)
-	if err != nil {
-		return nil, err
-	}
 	delState := &pb.DelState{}
 	if err := proto.Unmarshal(msg.Payload, delState); err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
-	namespaceID := txContext.NamespaceID
-	collection := delState.Collection
-	if collection == "" {
-		return nil, errors.New("only applicable for private data")
-	}
-
-	if txContext.IsInitTransaction {
-		return nil, errors.New("private data APIs are not allowed in chaincode Init()")
-	}
-
-	if err := errorIfCreatorHasNoWritePermission(namespaceID, collection, txContext); err != nil {
-		return nil, err
-	}
-
-	if err := txContext.TXSimulator.PurgePrivateData(namespaceID, collection, delState.Key); err != nil {
+	if err := h.delState(delState, txContext); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	// Send response msg back to chaincode.
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+}
+
+func (h *Handler) delState(msg *pb.DelState, txContext *TransactionContext) error {
+	var err error
+
+	namespaceID := txContext.NamespaceID
+	collection := msg.Collection
+	if isCollectionSet(collection) {
+		if txContext.IsInitTransaction {
+			return errors.New("private data APIs are not allowed in chaincode Init()")
+		}
+		if err = errorIfCreatorHasNoWritePermission(namespaceID, collection, txContext); err != nil {
+			return err
+		}
+		err = txContext.TXSimulator.DeletePrivateData(namespaceID, collection, msg.Key)
+	} else {
+		err = txContext.TXSimulator.DeleteState(namespaceID, msg.Key)
+	}
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func (h *Handler) HandlePurgePrivateData(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
+	delState := &pb.DelState{}
+	if err := proto.Unmarshal(msg.Payload, delState); err != nil {
+		return nil, errors.Wrap(err, "unmarshal failed")
+	}
+
+	if err := h.purgePrivateData(delState, txContext, msg.ChannelId); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	// Send response msg back to chaincode.
+	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
+}
+
+func (h *Handler) purgePrivateData(msg *pb.DelState, txContext *TransactionContext, channelId string) error {
+	err := h.checkPurgePrivateDataCap(channelId)
+	if err != nil {
+		return err
+	}
+
+	namespaceID := txContext.NamespaceID
+	collection := msg.Collection
+	if collection == "" {
+		return errors.New("only applicable for private data")
+	}
+
+	if txContext.IsInitTransaction {
+		return errors.New("private data APIs are not allowed in chaincode Init()")
+	}
+
+	if err = errorIfCreatorHasNoWritePermission(namespaceID, collection, txContext); err != nil {
+		return err
+	}
+
+	if err = txContext.TXSimulator.PurgePrivateData(namespaceID, collection, msg.Key); err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func (h *Handler) HandleWriteBatch(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
+	batch := &pb.WriteBatchState{}
+	err := proto.Unmarshal(msg.Payload, batch)
+	if err != nil {
+		return nil, errors.Wrap(err, "unmarshal failed")
+	}
+
+	for _, kv := range batch.GetRec() {
+		switch kv.GetType() {
+		case pb.WriteRecord_PUT_STATE:
+			putState := &pb.PutState{
+				Key:        kv.GetKey(),
+				Value:      kv.GetValue(),
+				Collection: kv.GetCollection(),
+			}
+			if err = h.putState(putState, txContext); err != nil {
+				return nil, errors.WithStack(err)
+			}
+
+		case pb.WriteRecord_DEL_STATE:
+			delState := &pb.DelState{
+				Key:        kv.GetKey(),
+				Collection: kv.GetCollection(),
+			}
+			if err = h.delState(delState, txContext); err != nil {
+				return nil, errors.WithStack(err)
+			}
+
+		case pb.WriteRecord_PURGE_PRIVATE_DATA:
+			delState := &pb.DelState{
+				Key:        kv.GetKey(),
+				Collection: kv.GetCollection(),
+			}
+			if err = h.purgePrivateData(delState, txContext, msg.ChannelId); err != nil {
+				return nil, err
+			}
+
+		case pb.WriteRecord_PUT_STATE_METADATA:
+			putStateMetadata := &pb.PutStateMetadata{
+				Key:        kv.GetKey(),
+				Collection: kv.GetCollection(),
+				Metadata: &pb.StateMetadata{
+					Metakey: kv.GetMetadata().GetMetakey(),
+					Value:   kv.GetMetadata().GetValue(),
+				},
+			}
+			if err = h.putStateMetadata(putStateMetadata, txContext, msg.ChannelId); err != nil {
+				return nil, err
+			}
+
+		default:
+			return nil, errors.New("unknown operation type")
+		}
+	}
+
 	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
 }
 
@@ -1252,7 +1362,7 @@ func (h *Handler) Execute(txParams *ccprovider.TransactionParams, namespace stri
 	}
 	defer h.TXContexts.Delete(msg.ChannelId, msg.Txid)
 
-	if err := h.setChaincodeProposal(txParams.SignedProp, txParams.Proposal, msg); err != nil {
+	if err = h.setChaincodeProposal(txParams.SignedProp, txParams.Proposal, msg); err != nil {
 		return nil, err
 	}
 
