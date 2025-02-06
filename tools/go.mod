@@ -1,6 +1,6 @@
 module tools
 
-go 1.23.5
+go 1.23.6
 
 require (
 	github.com/AlekSi/gocov-xml v0.0.0-20190121064608-3a14fb1c4737
