@@ -97,10 +97,9 @@ func (ps *PubSub) Subscribe(topic string, ttl time.Duration) Subscription {
 		s = NewSet()
 		ps.subscriptions[topic] = s
 	}
-	ps.Unlock()
-
 	// Add the subscription
 	s.Add(sub)
+	ps.Unlock()
 
 	// When the timeout expires, remove the subscription
 	time.AfterFunc(ttl, func() {
