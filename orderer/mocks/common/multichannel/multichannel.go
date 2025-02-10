@@ -110,7 +110,7 @@ func (mcs *ConsenterSupport) WriteBlock(block *cb.Block, encodedMetadataValue []
 	mcs.Append(block)
 }
 
-// WriteBlock writes data to the Blocks channel
+// WriteBlockSync writes data to the Blocks channel
 func (mcs *ConsenterSupport) WriteBlockSync(block *cb.Block, encodedMetadataValue []byte) {
 	mcs.WriteBlock(block, encodedMetadataValue)
 }

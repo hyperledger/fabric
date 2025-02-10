@@ -13,7 +13,7 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt"
 )
 
-// LoadTestMSPSetup sets up the local MSP
+// LoadMSPSetupForTesting sets up the local MSP
 // and a chain MSP for the default chain
 func LoadMSPSetupForTesting() error {
 	dir := configtest.GetDevMspDir()
