@@ -19,7 +19,8 @@ const (
 	established state = "established" // connection established
 	ready       state = "ready"       // ready for requests
 
-	defaultMaxSizeWriteBatch = 100
+	defaultMaxSizeWriteBatch      = 100
+	defaultMaxSizeGetMultipleKeys = 100
 )
 
 // PeerChaincodeStream is the common stream interface for Peer - chaincode communication.
@@ -51,6 +52,9 @@ type Handler struct {
 	// if you can send the changes in batches.
 	usePeerWriteBatch bool
 	maxSizeWriteBatch uint32
+	// if you can get the multiple keys in batches.
+	usePeerGetMultipleKeys bool
+	maxSizeGetMultipleKeys uint32
 
 	// Multiple queries (and one transaction) with different txids can be executing in parallel for this chaincode
 	// responseChannels is the channel on which responses are communicated by the shim to the chaincodeStub.
@@ -257,6 +261,80 @@ func (h *Handler) handleGetState(collection string, key string, channelID string
 	if responseMsg.Type == peer.ChaincodeMessage_RESPONSE {
 		// Success response
 		return responseMsg.Payload, nil
+	}
+	if responseMsg.Type == peer.ChaincodeMessage_ERROR {
+		// Error response
+		return nil, fmt.Errorf("%s", responseMsg.Payload[:])
+	}
+
+	// Incorrect chaincode message received
+	return nil, fmt.Errorf("[%s] incorrect chaincode message %s received. Expecting %s or %s", shorttxid(responseMsg.Txid), responseMsg.Type, peer.ChaincodeMessage_RESPONSE, peer.ChaincodeMessage_ERROR)
+}
+
+// handleGetMultipleStates communicates with the peer to fetch the requested state information from the ledger.
+func (h *Handler) handleGetMultipleStates(collection string, keys []string, channelID string, txID string) ([][]byte, error) {
+	if len(keys) == 0 {
+		return nil, nil
+	}
+
+	responses := make([][]byte, 0, len(keys))
+
+	if !h.usePeerGetMultipleKeys {
+		for _, key := range keys {
+			resp, err := h.handleGetState(collection, key, channelID, txID)
+			if err != nil {
+				return nil, err
+			}
+			responses = append(responses, resp)
+		}
+		return responses, nil
+	}
+
+	for ; len(keys) > int(h.maxSizeGetMultipleKeys); keys = keys[h.maxSizeGetMultipleKeys:] {
+		resp, err := h.handleOneSendGetMultipleStates(collection, keys[:h.maxSizeGetMultipleKeys], channelID, txID)
+		if err != nil {
+			return nil, err
+		}
+		responses = append(responses, resp...)
+	}
+
+	if len(keys) > 0 {
+		resp, err := h.handleOneSendGetMultipleStates(collection, keys, channelID, txID)
+		if err != nil {
+			return nil, err
+		}
+		responses = append(responses, resp...)
+	}
+
+	for i := range responses {
+		if len(responses[i]) == 0 {
+			responses[i] = nil
+		}
+	}
+
+	return responses, nil
+}
+
+// handleOneSendGetMultipleStates communicates with the peer to fetch one batch of keys from the ledger.
+func (h *Handler) handleOneSendGetMultipleStates(collection string, keys []string, channelID string, txID string) ([][]byte, error) {
+	// Construct payload for GET_STATE_MULTIPLE
+	payloadBytes := marshalOrPanic(&peer.GetStateMultiple{Keys: keys, Collection: collection})
+
+	msg := &peer.ChaincodeMessage{Type: peer.ChaincodeMessage_GET_STATE_MULTIPLE, Payload: payloadBytes, Txid: txID, ChannelId: channelID}
+	responseMsg, err := h.callPeerWithChaincodeMsg(msg, channelID, txID)
+	if err != nil {
+		return nil, fmt.Errorf("[%s] error sending %s: %s", shorttxid(txID), peer.ChaincodeMessage_GET_STATE_MULTIPLE, err)
+	}
+
+	if responseMsg.Type == peer.ChaincodeMessage_RESPONSE {
+		// Success response
+		var gmkResult peer.GetStateMultipleResult
+		err = proto.Unmarshal(responseMsg.Payload, &gmkResult)
+		if err != nil {
+			return nil, errors.New("could not unmarshal get state multiple keys response")
+		}
+
+		return gmkResult.GetValues(), nil
 	}
 	if responseMsg.Type == peer.ChaincodeMessage_ERROR {
 		// Error response
@@ -731,6 +809,13 @@ func (h *Handler) handleEstablished(msg *peer.ChaincodeMessage) error {
 
 	if h.usePeerWriteBatch && h.maxSizeWriteBatch < defaultMaxSizeWriteBatch {
 		h.maxSizeWriteBatch = defaultMaxSizeWriteBatch
+	}
+
+	h.usePeerGetMultipleKeys = ccAdditionalParams.UseGetMultipleKeys
+	h.maxSizeGetMultipleKeys = ccAdditionalParams.MaxSizeGetMultipleKeys
+
+	if h.usePeerGetMultipleKeys && h.maxSizeGetMultipleKeys < defaultMaxSizeGetMultipleKeys {
+		h.maxSizeGetMultipleKeys = defaultMaxSizeGetMultipleKeys
 	}
 
 	return nil

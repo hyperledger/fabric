@@ -148,6 +148,33 @@ type ChaincodeStub struct {
 		result1 shim.HistoryQueryIteratorInterface
 		result2 error
 	}
+	GetMultiplePrivateDataStub        func(string, ...string) ([][]byte, error)
+	getMultiplePrivateDataMutex       sync.RWMutex
+	getMultiplePrivateDataArgsForCall []struct {
+		arg1 string
+		arg2 []string
+	}
+	getMultiplePrivateDataReturns struct {
+		result1 [][]byte
+		result2 error
+	}
+	getMultiplePrivateDataReturnsOnCall map[int]struct {
+		result1 [][]byte
+		result2 error
+	}
+	GetMultipleStatesStub        func(...string) ([][]byte, error)
+	getMultipleStatesMutex       sync.RWMutex
+	getMultipleStatesArgsForCall []struct {
+		arg1 []string
+	}
+	getMultipleStatesReturns struct {
+		result1 [][]byte
+		result2 error
+	}
+	getMultipleStatesReturnsOnCall map[int]struct {
+		result1 [][]byte
+		result2 error
+	}
 	GetPrivateDataStub        func(string, string) ([]byte, error)
 	getPrivateDataMutex       sync.RWMutex
 	getPrivateDataArgsForCall []struct {
@@ -1209,6 +1236,135 @@ func (fake *ChaincodeStub) GetHistoryForKeyReturnsOnCall(i int, result1 shim.His
 	}
 	fake.getHistoryForKeyReturnsOnCall[i] = struct {
 		result1 shim.HistoryQueryIteratorInterface
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ChaincodeStub) GetMultiplePrivateData(arg1 string, arg2 ...string) ([][]byte, error) {
+	fake.getMultiplePrivateDataMutex.Lock()
+	ret, specificReturn := fake.getMultiplePrivateDataReturnsOnCall[len(fake.getMultiplePrivateDataArgsForCall)]
+	fake.getMultiplePrivateDataArgsForCall = append(fake.getMultiplePrivateDataArgsForCall, struct {
+		arg1 string
+		arg2 []string
+	}{arg1, arg2})
+	stub := fake.GetMultiplePrivateDataStub
+	fakeReturns := fake.getMultiplePrivateDataReturns
+	fake.recordInvocation("GetMultiplePrivateData", []interface{}{arg1, arg2})
+	fake.getMultiplePrivateDataMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *ChaincodeStub) GetMultiplePrivateDataCallCount() int {
+	fake.getMultiplePrivateDataMutex.RLock()
+	defer fake.getMultiplePrivateDataMutex.RUnlock()
+	return len(fake.getMultiplePrivateDataArgsForCall)
+}
+
+func (fake *ChaincodeStub) GetMultiplePrivateDataCalls(stub func(string, ...string) ([][]byte, error)) {
+	fake.getMultiplePrivateDataMutex.Lock()
+	defer fake.getMultiplePrivateDataMutex.Unlock()
+	fake.GetMultiplePrivateDataStub = stub
+}
+
+func (fake *ChaincodeStub) GetMultiplePrivateDataArgsForCall(i int) (string, []string) {
+	fake.getMultiplePrivateDataMutex.RLock()
+	defer fake.getMultiplePrivateDataMutex.RUnlock()
+	argsForCall := fake.getMultiplePrivateDataArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *ChaincodeStub) GetMultiplePrivateDataReturns(result1 [][]byte, result2 error) {
+	fake.getMultiplePrivateDataMutex.Lock()
+	defer fake.getMultiplePrivateDataMutex.Unlock()
+	fake.GetMultiplePrivateDataStub = nil
+	fake.getMultiplePrivateDataReturns = struct {
+		result1 [][]byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ChaincodeStub) GetMultiplePrivateDataReturnsOnCall(i int, result1 [][]byte, result2 error) {
+	fake.getMultiplePrivateDataMutex.Lock()
+	defer fake.getMultiplePrivateDataMutex.Unlock()
+	fake.GetMultiplePrivateDataStub = nil
+	if fake.getMultiplePrivateDataReturnsOnCall == nil {
+		fake.getMultiplePrivateDataReturnsOnCall = make(map[int]struct {
+			result1 [][]byte
+			result2 error
+		})
+	}
+	fake.getMultiplePrivateDataReturnsOnCall[i] = struct {
+		result1 [][]byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ChaincodeStub) GetMultipleStates(arg1 ...string) ([][]byte, error) {
+	fake.getMultipleStatesMutex.Lock()
+	ret, specificReturn := fake.getMultipleStatesReturnsOnCall[len(fake.getMultipleStatesArgsForCall)]
+	fake.getMultipleStatesArgsForCall = append(fake.getMultipleStatesArgsForCall, struct {
+		arg1 []string
+	}{arg1})
+	stub := fake.GetMultipleStatesStub
+	fakeReturns := fake.getMultipleStatesReturns
+	fake.recordInvocation("GetMultipleStates", []interface{}{arg1})
+	fake.getMultipleStatesMutex.Unlock()
+	if stub != nil {
+		return stub(arg1...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *ChaincodeStub) GetMultipleStatesCallCount() int {
+	fake.getMultipleStatesMutex.RLock()
+	defer fake.getMultipleStatesMutex.RUnlock()
+	return len(fake.getMultipleStatesArgsForCall)
+}
+
+func (fake *ChaincodeStub) GetMultipleStatesCalls(stub func(...string) ([][]byte, error)) {
+	fake.getMultipleStatesMutex.Lock()
+	defer fake.getMultipleStatesMutex.Unlock()
+	fake.GetMultipleStatesStub = stub
+}
+
+func (fake *ChaincodeStub) GetMultipleStatesArgsForCall(i int) []string {
+	fake.getMultipleStatesMutex.RLock()
+	defer fake.getMultipleStatesMutex.RUnlock()
+	argsForCall := fake.getMultipleStatesArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *ChaincodeStub) GetMultipleStatesReturns(result1 [][]byte, result2 error) {
+	fake.getMultipleStatesMutex.Lock()
+	defer fake.getMultipleStatesMutex.Unlock()
+	fake.GetMultipleStatesStub = nil
+	fake.getMultipleStatesReturns = struct {
+		result1 [][]byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ChaincodeStub) GetMultipleStatesReturnsOnCall(i int, result1 [][]byte, result2 error) {
+	fake.getMultipleStatesMutex.Lock()
+	defer fake.getMultipleStatesMutex.Unlock()
+	fake.GetMultipleStatesStub = nil
+	if fake.getMultipleStatesReturnsOnCall == nil {
+		fake.getMultipleStatesReturnsOnCall = make(map[int]struct {
+			result1 [][]byte
+			result2 error
+		})
+	}
+	fake.getMultipleStatesReturnsOnCall[i] = struct {
+		result1 [][]byte
 		result2 error
 	}{result1, result2}
 }
@@ -3010,6 +3166,10 @@ func (fake *ChaincodeStub) Invocations() map[string][][]interface{} {
 	defer fake.getFunctionAndParametersMutex.RUnlock()
 	fake.getHistoryForKeyMutex.RLock()
 	defer fake.getHistoryForKeyMutex.RUnlock()
+	fake.getMultiplePrivateDataMutex.RLock()
+	defer fake.getMultiplePrivateDataMutex.RUnlock()
+	fake.getMultipleStatesMutex.RLock()
+	defer fake.getMultipleStatesMutex.RUnlock()
 	fake.getPrivateDataMutex.RLock()
 	defer fake.getPrivateDataMutex.RUnlock()
 	fake.getPrivateDataByPartialCompositeKeyMutex.RLock()

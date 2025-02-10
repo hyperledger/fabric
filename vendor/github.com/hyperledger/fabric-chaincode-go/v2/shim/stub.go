@@ -166,6 +166,13 @@ func (s *ChaincodeStub) GetState(key string) ([]byte, error) {
 	return s.handler.handleGetState(collection, key, s.ChannelID, s.TxID)
 }
 
+// GetMultipleStates documentation can be found in interfaces.go
+func (s *ChaincodeStub) GetMultipleStates(keys ...string) ([][]byte, error) {
+	// Access public data by setting the collection to empty string
+	collection := ""
+	return s.handler.handleGetMultipleStates(collection, keys, s.ChannelID, s.TxID)
+}
+
 // SetStateValidationParameter documentation can be found in interfaces.go
 func (s *ChaincodeStub) SetStateValidationParameter(key string, ep []byte) error {
 	return s.putStateMetadataEntry("", key, s.validationParameterMetakey, ep)
@@ -260,6 +267,14 @@ func (s *ChaincodeStub) GetPrivateData(collection string, key string) ([]byte, e
 		return nil, fmt.Errorf("collection must not be an empty string")
 	}
 	return s.handler.handleGetState(collection, key, s.ChannelID, s.TxID)
+}
+
+// GetMultiplePrivateData documentation can be found in interfaces.go
+func (s *ChaincodeStub) GetMultiplePrivateData(collection string, keys ...string) ([][]byte, error) {
+	if collection == "" {
+		return nil, fmt.Errorf("collection must not be an empty string")
+	}
+	return s.handler.handleGetMultipleStates(collection, keys, s.ChannelID, s.TxID)
 }
 
 // GetPrivateDataHash documentation can be found in interfaces.go
