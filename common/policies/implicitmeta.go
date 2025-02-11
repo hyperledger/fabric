@@ -83,7 +83,7 @@ func (imp *ImplicitMetaPolicy) EvaluateSignedData(signatureSet []*protoutil.Sign
 					b.WriteString(" ")
 				}
 				b.WriteString("]")
-				logger.Debugf(b.String())
+				logger.Debug(b.String())
 			}
 		}
 	}()
@@ -126,7 +126,7 @@ func (imp *ImplicitMetaPolicy) EvaluateIdentities(identities []msp.Identity) err
 			b.WriteString(" ")
 		}
 		b.WriteString("]")
-		logger.Debugf(b.String())
+		logger.Debug(b.String())
 	}()
 
 	for _, policy := range imp.SubPolicies {

@@ -52,7 +52,7 @@ func (p *baseEvaluator) checkSBAndCCEP(cc, coll, key string, blockNum, txNum uin
 		//    logged and ignored. The ledger will take the most appropriate action
 		//    when performing its side of the validation.
 		case *ledger.CollConfigNotDefinedError, *ledger.InvalidCollNameError:
-			logger.Warningf(errors.WithMessage(err, "skipping key-level validation").Error())
+			logger.Warning(errors.WithMessage(err, "skipping key-level validation").Error())
 		// 3) any other type of error should return an execution failure which will
 		//    lead to halting the processing on this channel. Note that any non-categorized
 		//    deterministic error would be caught by the default and would lead to

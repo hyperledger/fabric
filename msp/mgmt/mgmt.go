@@ -98,7 +98,7 @@ func loadLocalMSP(bccsp bccsp.BCCSP) msp.MSP {
 
 	newOpts, found := msp.Options[mspType]
 	if !found {
-		mspLogger.Panicf("msp type " + mspType + " unknown")
+		mspLogger.Panicf("msp type %s unknown", mspType)
 	}
 
 	mspInst, err := msp.New(newOpts, bccsp)

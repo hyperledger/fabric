@@ -645,7 +645,7 @@ func createAttachmentPart(couchDoc *couchDoc) (bytes.Buffer, string, error) {
 		return *writeBuffer, "", errors.Wrap(err, "error marshalling json data")
 	}
 
-	couchdbLogger.Debugf(string(filesForUpload))
+	couchdbLogger.Debug(string(filesForUpload))
 
 	// create the header for the JSON
 	header := make(textproto.MIMEHeader)
