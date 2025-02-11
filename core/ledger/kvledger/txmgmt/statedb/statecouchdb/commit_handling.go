@@ -224,7 +224,7 @@ func (c *committer) commitUpdates() error {
 			errorString := fmt.Sprintf("error saving document ID: %v. Error: %s,  Reason: %s",
 				resp.ID, resp.Error, resp.Reason)
 
-			logger.Errorf(errorString)
+			logger.Error(errorString)
 			return errors.WithMessage(err, errorString)
 		}
 	}

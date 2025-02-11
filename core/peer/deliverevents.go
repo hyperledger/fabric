@@ -336,7 +336,7 @@ func toFilteredBlock(block *common.Block) (*peer.FilteredBlock, error) {
 
 			filteredTransaction.Data, err = transactionActions(tx.Actions).toFilteredActions()
 			if err != nil {
-				logger.Errorf(err.Error())
+				logger.Error(err.Error())
 				return nil, err
 			}
 		}

@@ -267,8 +267,7 @@ func (v *dispatcherImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID str
 	// obtain name of the validation plugin and the policy
 	plugin, args, err := v.getCDataForCC(chdr.ChannelId, ccID)
 	if err != nil {
-		msg := fmt.Sprintf("Unable to get chaincode data from ledger for txid %s, due to %s", chdr.TxId, err)
-		logger.Errorf(msg)
+		logger.Errorf("Unable to get chaincode data from ledger for txid %s, due to %s", chdr.TxId, err)
 		return "", nil, err
 	}
 	return plugin, args, nil

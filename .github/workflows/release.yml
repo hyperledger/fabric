@@ -12,7 +12,7 @@ on:
       - v3.*
 
 env:
-  GO_VER: 1.23.6
+  GO_VER: 1.24.0
   UBUNTU_VER: 22.04
   FABRIC_VER: ${{ github.ref_name }}
 
