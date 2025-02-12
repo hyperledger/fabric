@@ -821,7 +821,7 @@ func (h *Handler) handleEstablished(msg *peer.ChaincodeMessage) error {
 	return nil
 }
 
-// hanndleCreated handles messages received from the peer when the handler is in the "created" state.
+// handleCreated handles messages received from the peer when the handler is in the "created" state.
 func (h *Handler) handleCreated(msg *peer.ChaincodeMessage) error {
 	if msg.Type != peer.ChaincodeMessage_REGISTERED {
 		return fmt.Errorf("[%s] Chaincode h cannot handle message (%s) while in state: %s", msg.Txid, msg.Type, h.state)

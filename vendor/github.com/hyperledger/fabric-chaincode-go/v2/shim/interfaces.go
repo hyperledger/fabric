@@ -184,6 +184,13 @@ type ChaincodeStubInterface interface {
 	GetStateByPartialCompositeKeyWithPagination(objectType string, keys []string,
 		pageSize int32, bookmark string) (StateQueryIteratorInterface, *peer.QueryResponseMetadata, error)
 
+	// GetAllStatesCompositeKeyWithPagination returns a range iterator over all set of
+	// keys with composite keys in the ledger.
+	// The bookmark works the same way as when GetStateByPartialCompositeKeyWithPagination is called.
+	// This call is only supported in a read only transaction.
+	GetAllStatesCompositeKeyWithPagination(pageSize int32,
+		bookmark string) (StateQueryIteratorInterface, *peer.QueryResponseMetadata, error)
+
 	// CreateCompositeKey combines the given `attributes` to form a composite
 	// key. The objectType and attributes are expected to have only valid utf8
 	// strings and should not contain U+0000 (nil byte) and U+10FFFF

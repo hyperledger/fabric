@@ -887,8 +887,8 @@ github.com/hyperledger/aries-bbs-go v0.0.0-20240528084656-761671ea73bc h1:3Ykk6M
 github.com/hyperledger/aries-bbs-go v0.0.0-20240528084656-761671ea73bc/go.mod h1:Kofn6A6WWea1ZM8Rys5aBW9dszwJ7Ywa0kyyYL0TPYw=
 github.com/hyperledger/fabric-amcl v0.0.0-20230602173724-9e02669dceb2 h1:B1Nt8hKb//KvgGRprk0h1t4lCnwhE9/ryb1WqfZbV+M=
 github.com/hyperledger/fabric-amcl v0.0.0-20230602173724-9e02669dceb2/go.mod h1:X+DIyUsaTmalOpmpQfIvFZjKHQedrURQ5t4YqquX7lE=
-github.com/hyperledger/fabric-chaincode-go/v2 v2.2.0 h1:n7rgo7iYD4cCC2+NlyI2DwtP+hYLwUl5UKPcJi4IrM8=
-github.com/hyperledger/fabric-chaincode-go/v2 v2.2.0/go.mod h1:c3zA3gOL/V53a0v1TGgHe8nifeH6daG/UrmJs79I9pI=
+github.com/hyperledger/fabric-chaincode-go/v2 v2.3.0 h1:NB/QO2t4R5f6Nz/oREqZeaE4splHI2U9gqndfEQZreo=
+github.com/hyperledger/fabric-chaincode-go/v2 v2.3.0/go.mod h1:c3zA3gOL/V53a0v1TGgHe8nifeH6daG/UrmJs79I9pI=
 github.com/hyperledger/fabric-config v0.3.0 h1:FS5/dc9GAniljP6RYxQRG92AaiBVoN2vTvtOvnWqeQs=
 github.com/hyperledger/fabric-config v0.3.0/go.mod h1:kSevTn78K83Suc++JsEo7Nt1tYIPqDajW+ORz3OhWlg=
 github.com/hyperledger/fabric-lib-go v1.1.3-0.20240523144151-25edd1eaf5f5 h1:RPWTL5wxAb+xDOrsCU3QYZP65305F8v3PaOyzdbPVMU=

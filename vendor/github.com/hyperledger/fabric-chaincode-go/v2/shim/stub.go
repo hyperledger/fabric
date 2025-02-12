@@ -634,6 +634,19 @@ func (s *ChaincodeStub) GetQueryResultWithPagination(query string, pageSize int3
 	return s.handleGetQueryResult(collection, query, metadata)
 }
 
+// GetAllStatesCompositeKeyWithPagination ...
+func (s *ChaincodeStub) GetAllStatesCompositeKeyWithPagination(pageSize int32,
+	bookmark string) (StateQueryIteratorInterface, *peer.QueryResponseMetadata, error) {
+	collection := ""
+	metadata, err := createQueryMetadata(pageSize, bookmark)
+	if err != nil {
+		return nil, nil, err
+	}
+	startKey := compositeKeyNamespace
+	endKey := compositeKeyNamespace + string(maxUnicodeRuneValue)
+	return s.handleGetStateByRange(collection, startKey, endKey, metadata)
+}
+
 // --------- Batch State functions ----------
 
 // StartWriteBatch documentation can be found in interfaces.go
@@ -676,7 +689,7 @@ func (iter *CommonIterator) HasNext() bool {
 	return false
 }
 
-// getResultsFromBytes deserializes QueryResult and return either a KV struct
+// getResultFromBytes deserializes QueryResult and return either a KV struct
 // or KeyModification depending on the result type (i.e., state (range/execute)
 // query, history query). Note that queryResult is an empty golang
 // interface that can hold values of any type.
