@@ -16,7 +16,6 @@ go.fqp.gocov-xml          := github.com/AlekSi/gocov-xml
 go.fqp.gofumpt            := mvdan.cc/gofumpt
 go.fqp.goimports          := golang.org/x/tools/cmd/goimports
 go.fqp.golint             := golang.org/x/lint/golint
-go.fqp.govulncheck        := golang.org/x/vuln/cmd/govulncheck@latest
 go.fqp.misspell           := github.com/client9/misspell/cmd/misspell
 go.fqp.mockery            := github.com/vektra/mockery/v2
 go.fqp.protoc-gen-go      := google.golang.org/protobuf/cmd/protoc-gen-go
