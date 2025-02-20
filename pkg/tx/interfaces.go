@@ -228,7 +228,7 @@ type Envelope struct {
 	Data []byte
 	// ChannelHeaderBytes contains the marshalled ChannelHeader of the common.Header
 	ChannelHeaderBytes []byte
-	// ChannelHeaderBytes contains the marshalled SignatureHeader of the common.Header
+	// SignatureHeaderBytes contains the marshalled SignatureHeader of the common.Header
 	SignatureHeaderBytes []byte
 	// ChannelHeader contains the ChannelHeader of this envelope
 	ChannelHeader *common.ChannelHeader
