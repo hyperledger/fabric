@@ -178,6 +178,9 @@ dockerComponentRegistry() {
     local component="$1"
     local image_version="$2"
 
+    # Remove trailing pre-release or metadata identifiers
+    image_version="${image_version%%[-+]*}"
+
     case "${component}" in
         ca)
             echo -n "$(dockerCARegistry "${image_version}")/${HYPERLEDGER_NAMESPACE}"
