@@ -77,7 +77,10 @@ METADATA_VAR += CommitSHA=$(EXTRA_VERSION)
 METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 METADATA_VAR += DockerNamespace=$(DOCKER_NS)
 
-GO_VER = 1.24.0
+# Get the required Go version from the go directive in go.mod
+# 'go list -m' is not used since this fails if the local Go version is older than go.mod
+GO_VER := $(shell grep '^go[ \t]' < go.mod)
+GO_VER := $(strip $(GO_VER:go=))
 GO_TAGS ?=
 
 RELEASE_EXES = orderer $(TOOLS_EXES)
