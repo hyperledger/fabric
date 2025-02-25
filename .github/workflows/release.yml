@@ -6,10 +6,9 @@ name: Release
 
 on:
   push:
-    tags: [ v2.* ]
+    tags: [v2.*]
 
 env:
-  GO_VER: 1.23.5
   UBUNTU_VER: 22.04
   FABRIC_VER: ${{ github.ref_name }}
 
@@ -40,11 +39,11 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout Fabric Code
-        uses: actions/checkout@v4      
+        uses: actions/checkout@v4
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ env.GO_VER }}
+          go-version-file: go.mod
       - name: Compile Binary and Create Tarball
         run: ./ci/scripts/create_binary_package.sh
         env:
@@ -71,15 +70,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-
         runner:
-          - ubuntu-22.04      # creates linux-amd64 images
-          - ubuntu-22.04-arm  # creates linux-arm64 images 
+          - ubuntu-22.04 # creates linux-amd64 images
+          - ubuntu-22.04-arm # creates linux-arm64 images
 
         # Dynamic matrix
         # If owner is 'hyperledger' run job for Docker Hub and ghcr, otherwise for personal forks just run job for ghcr
         registry: ${{ fromJSON(github.repository_owner == 'hyperledger' && '["docker.io", "ghcr.io"]' || '["ghcr.io"]') }}
-        
+
         component:
           - name: baseos
             context: images/baseos
@@ -93,9 +91,12 @@ jobs:
             context: .
 
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set GO_VER environment variable from go.mod
+        run: |
+          awk '/^go[ /t]/ { gsub(/^go[ \t]+|[ \t]+^/, ""); print "GO_VER="$0; exit }' < go.mod >> "${GITHUB_ENV}"
 
       - name: Login to the ${{ matrix.registry }} Container Registry
         uses: docker/login-action@v3
@@ -105,7 +106,7 @@ jobs:
           password: ${{ matrix.registry == 'docker.io' && secrets.DOCKERHUB_TOKEN    || secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3       
+        uses: docker/setup-buildx-action@v3
 
       - name: Docker meta
         id: meta
@@ -156,7 +157,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-
         # Dynamic matrix
         # If owner is 'hyperledger' run job for Docker Hub and ghcr, otherwise for personal forks just run job for ghcr
         registry: ${{ fromJSON(github.repository_owner == 'hyperledger' && '["docker.io", "ghcr.io"]' || '["ghcr.io"]') }}
@@ -172,9 +172,8 @@ jobs:
             context: .
           - name: tools
             context: .
-            
-    steps:
 
+    steps:
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
@@ -201,13 +200,13 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}.{{minor}}.{{patch}}
-      
+
       - name: Create manifest list and push # combines the downloaded amd64 and arm64 digests and pushes multi-architecture manifest with the tags specified above
         working-directory: ${{ runner.temp }}/digests/${{ matrix.registry }}/${{ matrix.component.name }}
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ matrix.registry }}/${{ github.repository_owner }}/fabric-${{ matrix.component.name }}@sha256:%s ' *)
-        
+
       - name: Inspect image
         run: |
           docker buildx imagetools inspect ${{ matrix.registry }}/${{ github.repository_owner }}/fabric-${{ matrix.component.name }}:${{ steps.meta.outputs.version }}
