@@ -12,9 +12,6 @@ on:
     paths:
       - .github/workflows/broken-link-checker.yml
 
-env:
-  GO_VER: 1.24.0
-
 permissions:
   contents: read
 
@@ -30,7 +27,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ env.GO_VER }}
+          go-version-file: go.mod
       - name: Install Muffet
         run: go install github.com/raviqqe/muffet/v2@latest
       - name: Check Broken Links with Muffet

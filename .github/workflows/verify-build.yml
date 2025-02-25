@@ -13,7 +13,6 @@ on:
 env:
   GOPATH: /opt/go
   PATH: /opt/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
-  GO_VER: 1.24.0
 
 permissions:
   contents: read # to fetch code (actions/checkout)
@@ -30,10 +29,7 @@ jobs:
       - uses: actions/setup-go@v5
         name: Install Go
         with:
-          go-version: ${{ env.GO_VER }}
-      - name: Check Go module version
-        run: |
-          [[ "$(go list -m -f '{{.Version}}' go)" == "${GO_VER}" ]]
+          go-version-file: go.mod
       - run: make basic-checks
         name: Run Basic Checks
   unit-tests:
@@ -48,7 +44,7 @@ jobs:
       - uses: actions/setup-go@v5
         name: Install Go
         with:
-          go-version: ${{ env.GO_VER }}
+          go-version-file: go.mod
       - run: ci/scripts/setup_hsm.sh
         name: Install SoftHSM
       - run: make unit-test
@@ -76,7 +72,7 @@ jobs:
       - uses: actions/setup-go@v5
         name: Install Go
         with:
-          go-version: ${{ env.GO_VER }}
+          go-version-file: go.mod
       - run: ci/scripts/setup_hsm.sh
         name: Install SoftHSM
       - run: make integration-test INTEGRATION_TEST_SUITE="${{matrix.INTEGRATION_TEST_SUITE}}"
