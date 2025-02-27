@@ -530,8 +530,8 @@ go.uber.org/zap/internal/stacktrace
 go.uber.org/zap/zapcore
 go.uber.org/zap/zapgrpc
 go.uber.org/zap/zaptest/observer
-# golang.org/x/crypto v0.33.0
-## explicit; go 1.20
+# golang.org/x/crypto v0.35.0
+## explicit; go 1.23.0
 golang.org/x/crypto/blake2b
 golang.org/x/crypto/hkdf
 golang.org/x/crypto/sha3
