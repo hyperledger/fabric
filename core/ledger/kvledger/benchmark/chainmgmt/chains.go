@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package chainmgmt
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -85,7 +86,7 @@ func (m *chainsMgr) createOrOpenChains() []*Chain {
 		}
 
 	default:
-		panic(fmt.Errorf("unknown chain init operation"))
+		panic(errors.New("unknown chain init operation"))
 	}
 	return m.chains()
 }
@@ -147,7 +148,7 @@ func (c *Chain) Done() {
 // Commit overrides the Commit function in ledger.PeerLedger because,
 // experiments are not expected to call Commit directly to the ledger
 func (c *Chain) Commit(block *common.Block) {
-	panic(fmt.Errorf("Commit should not be invoked directly"))
+	panic(errors.New("Commit should not be invoked directly"))
 }
 
 func (c *Chain) close() {

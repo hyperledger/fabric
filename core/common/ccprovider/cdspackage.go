@@ -17,6 +17,7 @@ limitations under the License.
 package ccprovider
 
 import (
+	"errors"
 	"fmt"
 	"hash"
 	"os"
@@ -141,11 +142,11 @@ func (ccpack *CDSPackage) getCDSData(cds *pb.ChaincodeDeploymentSpec) ([]byte, [
 // ChaincodeDeploymentSpec
 func (ccpack *CDSPackage) ValidateCC(ccdata *ChaincodeData) error {
 	if ccpack.depSpec == nil {
-		return fmt.Errorf("uninitialized package")
+		return errors.New("uninitialized package")
 	}
 
 	if ccpack.data == nil {
-		return fmt.Errorf("nil data")
+		return errors.New("nil data")
 	}
 
 	// This is a hack. LSCC expects a specific LSCC error when names are invalid so it
@@ -169,7 +170,7 @@ func (ccpack *CDSPackage) ValidateCC(ccdata *ChaincodeData) error {
 	}
 
 	if !proto.Equal(ccpack.data, otherdata) {
-		return fmt.Errorf("data mismatch")
+		return errors.New("data mismatch")
 	}
 
 	return nil
@@ -180,7 +181,7 @@ func (ccpack *CDSPackage) InitFromBuffer(buf []byte) (*ChaincodeData, error) {
 	depSpec := &pb.ChaincodeDeploymentSpec{}
 	err := proto.Unmarshal(buf, depSpec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal deployment spec from bytes")
+		return nil, errors.New("failed to unmarshal deployment spec from bytes")
 	}
 
 	databytes, id, data, err := ccpack.getCDSData(depSpec)
@@ -224,23 +225,23 @@ func (ccpack *CDSPackage) InitFromFS(ccNameVersion string) ([]byte, *pb.Chaincod
 // PutChaincodeToFS - serializes chaincode to a package on the file system
 func (ccpack *CDSPackage) PutChaincodeToFS() error {
 	if ccpack.buf == nil {
-		return fmt.Errorf("uninitialized package")
+		return errors.New("uninitialized package")
 	}
 
 	if ccpack.id == nil {
-		return fmt.Errorf("id cannot be nil if buf is not nil")
+		return errors.New("id cannot be nil if buf is not nil")
 	}
 
 	if ccpack.depSpec == nil {
-		return fmt.Errorf("depspec cannot be nil if buf is not nil")
+		return errors.New("depspec cannot be nil if buf is not nil")
 	}
 
 	if ccpack.data == nil {
-		return fmt.Errorf("nil data")
+		return errors.New("nil data")
 	}
 
 	if ccpack.datab == nil {
-		return fmt.Errorf("nil data bytes")
+		return errors.New("nil data bytes")
 	}
 
 	ccname := ccpack.depSpec.ChaincodeSpec.ChaincodeId.Name

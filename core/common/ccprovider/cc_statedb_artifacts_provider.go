@@ -9,7 +9,7 @@ package ccprovider
 import (
 	"archive/tar"
 	"bytes"
-	"fmt"
+	"errors"
 	"io"
 	"path/filepath"
 	"strings"
@@ -47,7 +47,7 @@ func ExtractStatedbArtifactsFromCCPackage(ccpackage CCPackage) (statedbArtifacts
 	metaprov, err := MetadataAsTarEntries(cds.CodePackage)
 	if err != nil {
 		ccproviderLogger.Infof("invalid deployment spec: %s", err)
-		return nil, fmt.Errorf("invalid deployment spec")
+		return nil, errors.New("invalid deployment spec")
 	}
 	return metaprov, nil
 }

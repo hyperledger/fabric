@@ -11,6 +11,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -80,7 +81,7 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 			return "", 1, fmt.Errorf("reading orderer CA certificate: %s", err)
 		}
 		if !caCertPool.AppendCertsFromPEM(caFilePEM) {
-			return "", 1, fmt.Errorf("failed to add ca-file PEM to cert pool")
+			return "", 1, errors.New("failed to add ca-file PEM to cert pool")
 		}
 
 		tlsClientCert, err = tls.LoadX509KeyPair(*clientCert, *clientKey)

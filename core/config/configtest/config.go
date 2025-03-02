@@ -67,7 +67,7 @@ func gopathDevConfigDir() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("unable to find sampleconfig directory on GOPATH")
+	return "", errors.New("unable to find sampleconfig directory on GOPATH")
 }
 
 func gomodDevConfigDir() (string, error) {

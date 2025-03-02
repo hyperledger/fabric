@@ -309,7 +309,7 @@ func searchConsenterIdentityByID(consenters []*cb.Consenter, identifier uint32) 
 
 func VerifyTransactionsAreWellFormed(bd *cb.BlockData) error {
 	if bd == nil || bd.Data == nil || len(bd.Data) == 0 {
-		return fmt.Errorf("empty block")
+		return errors.New("empty block")
 	}
 
 	// If we have a single transaction, and the block is a config block, then no need to check
