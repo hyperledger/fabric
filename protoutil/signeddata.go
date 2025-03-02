@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -33,7 +34,7 @@ type SignedData struct {
 // possible.
 func ConfigUpdateEnvelopeAsSignedData(ce *common.ConfigUpdateEnvelope) ([]*SignedData, error) {
 	if ce == nil {
-		return nil, fmt.Errorf("No signatures for nil SignedConfigItem")
+		return nil, errors.New("No signatures for nil SignedConfigItem")
 	}
 
 	result := make([]*SignedData, len(ce.Signatures))
@@ -59,7 +60,7 @@ func ConfigUpdateEnvelopeAsSignedData(ce *common.ConfigUpdateEnvelope) ([]*Signe
 // slice of length 1 or an error indicating why this was not possible.
 func EnvelopeAsSignedData(env *common.Envelope) ([]*SignedData, error) {
 	if env == nil {
-		return nil, fmt.Errorf("No signatures for nil Envelope")
+		return nil, errors.New("No signatures for nil Envelope")
 	}
 
 	payload := &common.Payload{}
@@ -69,7 +70,7 @@ func EnvelopeAsSignedData(env *common.Envelope) ([]*SignedData, error) {
 	}
 
 	if payload.Header == nil /* || payload.Header.SignatureHeader == nil */ {
-		return nil, fmt.Errorf("Missing Header")
+		return nil, errors.New("Missing Header")
 	}
 
 	shdr := &common.SignatureHeader{}
