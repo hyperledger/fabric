@@ -10,12 +10,13 @@ import (
 	"bytes"
 	"context"
 	"crypto/hmac"
+	crand "crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
+	"math/rand/v2"
 	"net"
 	"strconv"
 	"sync"
@@ -43,9 +44,13 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+var r *rand.Rand
+
 func init() {
 	util.SetupTestLogging()
-	rand.Seed(time.Now().UnixNano())
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
+	r = rand.New(rand.NewChaCha8(seed))
 	factory.InitFactories(nil)
 	naiveSec.On("OrgByPeerIdentity", mock.Anything).Return(api.OrgIdentityType{})
 }
@@ -236,7 +241,7 @@ func handshaker(port int, endpoint string, comm Comm, t *testing.T, connMutator 
 	require.Equal(t, []byte(target), msg.GetConn().PkiId)
 	require.Equal(t, extractCertificateHashFromContext(stream.Context()), msg.GetConn().TlsCertHash)
 	msg2Send := createGossipMsg()
-	nonce := uint64(rand.Int())
+	nonce := uint64(r.Int())
 	msg2Send.Nonce = nonce
 	go stream.Send(msg2Send.Envelope)
 	return acceptChan
@@ -1035,7 +1040,7 @@ func establishSession(t *testing.T, port int) (proto.Gossip_GossipStreamClient, 
 func createGossipMsg() *protoext.SignedGossipMessage {
 	msg, _ := protoext.NoopSign(&proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
-		Nonce: uint64(rand.Int()),
+		Nonce: uint64(r.Int()),
 		Content: &proto.GossipMessage_DataMsg{
 			DataMsg: &proto.DataMessage{},
 		},

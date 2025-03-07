@@ -7,7 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package msgstore
 
 import (
-	"math/rand"
+	crand "crypto/rand"
+	"math/rand/v2"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -18,9 +19,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var r *rand.Rand
+
 func init() {
 	util.SetupTestLogging()
-	rand.Seed(time.Now().UnixNano())
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
+	r = rand.New(rand.NewChaCha8(seed))
 }
 
 func alwaysNoAction(_ interface{}, _ interface{}) common.InvalidationResult {
@@ -85,7 +90,7 @@ func TestMessagesGet(t *testing.T) {
 	msgStore := NewMessageStore(alwaysNoAction, Noop)
 	expected := []int{}
 	for i := 0; i < 2; i++ {
-		n := rand.Int()
+		n := r.Int()
 		expected = append(expected, n)
 		msgStore.Add(n)
 	}
@@ -120,7 +125,7 @@ func TestConcurrency(t *testing.T) {
 	}
 
 	addProcess := looper(func() {
-		msgStore.Add(rand.Int())
+		msgStore.Add(r.Int())
 	})
 
 	getProcess := looper(func() {

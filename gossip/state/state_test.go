@@ -8,9 +8,10 @@ package state
 
 import (
 	"bytes"
+	crand "crypto/rand"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -760,9 +761,11 @@ func TestBlockingEnqueue(t *testing.T) {
 
 	// Get a block from gossip every 1ms too
 	go func() {
-		rand.Seed(time.Now().UnixNano())
+		var seed [32]byte
+		_, _ = crand.Read(seed[:])
+		r := rand.New(rand.NewChaCha8(seed))
 		for i := 1; i <= numBlocksReceived/2; i++ {
-			blockSeq := rand.Intn(numBlocksReceived)
+			blockSeq := r.IntN(numBlocksReceived)
 			rawblock := protoutil.NewBlock(uint64(blockSeq), []byte{})
 			b, _ := pb.Marshal(rawblock)
 			block := &proto.Payload{

@@ -7,8 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package util
 
 import (
+	crand "crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"reflect"
 	"runtime"
 	"sync"
@@ -17,8 +18,12 @@ import (
 	"github.com/spf13/viper"
 )
 
+var r *rand.Rand
+
 func init() { // do we really need this?
-	rand.Seed(time.Now().UnixNano())
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
+	r = rand.New(rand.NewChaCha8(seed))
 }
 
 // Equals returns whether a and b are the same
@@ -55,7 +60,7 @@ func GetRandomIndices(indiceCount, highestIndex int) []int {
 		return nil
 	}
 
-	return rand.Perm(highestIndex + 1)[:indiceCount]
+	return r.Perm(highestIndex + 1)[:indiceCount]
 }
 
 // Set is a generic and thread-safe
@@ -174,7 +179,7 @@ func SetVal(key string, val interface{}) {
 // RandomInt returns, as an int, a non-negative pseudo-random integer in [0,n)
 // It panics if n <= 0
 func RandomInt(n int) int {
-	return rand.Intn(n)
+	return r.IntN(n)
 }
 
 // RandomUInt64 returns a random uint64
@@ -182,7 +187,7 @@ func RandomInt(n int) int {
 // If we want a rand that's non-global and specific to gossip, we can
 // establish one. Otherwise this uses the process-global locking RNG.
 func RandomUInt64() uint64 {
-	return rand.Uint64()
+	return r.Uint64()
 }
 
 func BytesToStrings(bytes [][]byte) []string {

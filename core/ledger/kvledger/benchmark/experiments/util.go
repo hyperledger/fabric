@@ -8,9 +8,10 @@ package experiments
 
 import (
 	"bytes"
+	crand "crypto/rand"
 	"encoding/json"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"strconv"
 )
 
@@ -63,10 +64,13 @@ func constructValue(keyNumber int, kvSize int) []byte {
 func constructJSONValue(keyNumber int, kvSize int) []byte {
 	prefix := constructValuePrefix(keyNumber)
 
-	rand.Seed(int64(keyNumber))
-	color := colors[rand.Intn(len(colors))]
-	size := rand.Intn(len(colors))*10 + 10
-	owner := owners[rand.Intn(len(owners))]
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
+	r := rand.New(rand.NewChaCha8(seed))
+
+	color := colors[r.IntN(len(colors))]
+	size := r.IntN(len(colors))*10 + 10
+	owner := owners[r.IntN(len(owners))]
 	assetName := "marble" + strconv.Itoa(keyNumber)
 
 	testRecord := marbleRecord{Prefix: string(prefix), AssetType: "marble", AssetName: assetName, Color: color, Size: size, Owner: owner}
@@ -126,7 +130,7 @@ func calculateShare(total int, numParts int, partNum int) int {
 
 func constructRandomBytes(length int) []byte {
 	b := make([]byte, length)
-	rand.Read(b)
+	crand.Read(b)
 	return b
 }
 

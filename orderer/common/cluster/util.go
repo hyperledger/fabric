@@ -8,12 +8,13 @@ package cluster
 
 import (
 	"bytes"
+	crand "crypto/rand"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -795,6 +796,8 @@ func (cm *ComparisonMemoizer) shrink() {
 func (cm *ComparisonMemoizer) setup() {
 	cm.lock.Lock()
 	defer cm.lock.Unlock()
-	cm.rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
+	cm.rand = rand.New(rand.NewChaCha8(seed))
 	cm.cache = make(map[arguments]bool)
 }

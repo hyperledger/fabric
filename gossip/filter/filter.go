@@ -7,15 +7,19 @@ SPDX-License-Identifier: Apache-2.0
 package filter
 
 import (
-	"math/rand"
+	crand "crypto/rand"
+	"math/rand/v2"
 
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/gossip/util"
 )
 
+var r *rand.Rand
+
 func init() { // do we really need this?
-	rand.Seed(int64(util.RandomUInt64()))
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
+	r = rand.New(rand.NewChaCha8(seed))
 }
 
 // RoutingFilter defines a predicate on a NetworkMember
@@ -49,7 +53,7 @@ func CombineRoutingFilters(filters ...RoutingFilter) RoutingFilter {
 func SelectPeers(k int, peerPool []discovery.NetworkMember, filter RoutingFilter) []*comm.RemotePeer {
 	var res []*comm.RemotePeer
 	// Iterate over the possible candidates in random order
-	for _, index := range rand.Perm(len(peerPool)) {
+	for _, index := range r.Perm(len(peerPool)) {
 		// If we collected K peers, we can stop the iteration.
 		if len(res) == k {
 			break

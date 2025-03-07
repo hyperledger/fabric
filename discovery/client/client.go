@@ -8,10 +8,10 @@ package discovery
 
 import (
 	"context"
+	crand "crypto/rand"
 	"encoding/json"
 	"fmt"
-	"math/rand"
-	"time"
+	"math/rand/v2"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
 
@@ -267,9 +267,11 @@ func (cr *channelResponse) Endorsers(invocationChain InvocationChain, f Filter) 
 	}
 
 	desc := res.(*endorsementDescriptor)
-	rand.Seed(time.Now().Unix())
+	var seed [32]byte
+	_, _ = crand.Read(seed[:])
+	r := rand.New(rand.NewChaCha8(seed))
 	// We iterate over all layouts to find one that we have enough peers to select
-	for _, index := range rand.Perm(len(desc.layouts)) {
+	for _, index := range r.Perm(len(desc.layouts)) {
 		layout := desc.layouts[index]
 		endorsers, canLayoutBeSatisfied := selectPeersForLayout(desc.endorsersByGroups, layout, f)
 		if canLayoutBeSatisfied {
