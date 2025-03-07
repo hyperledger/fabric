@@ -43,9 +43,11 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+var r *rand.Rand
+
 func init() {
 	util.SetupTestLogging()
-	rand.Seed(time.Now().UnixNano())
+	r = rand.New(rand.NewSource(time.Now().UnixNano()))
 	factory.InitFactories(nil)
 	naiveSec.On("OrgByPeerIdentity", mock.Anything).Return(api.OrgIdentityType{})
 }
@@ -236,7 +238,7 @@ func handshaker(port int, endpoint string, comm Comm, t *testing.T, connMutator 
 	require.Equal(t, []byte(target), msg.GetConn().PkiId)
 	require.Equal(t, extractCertificateHashFromContext(stream.Context()), msg.GetConn().TlsCertHash)
 	msg2Send := createGossipMsg()
-	nonce := uint64(rand.Int())
+	nonce := uint64(r.Int())
 	msg2Send.Nonce = nonce
 	go stream.Send(msg2Send.Envelope)
 	return acceptChan
@@ -1035,7 +1037,7 @@ func establishSession(t *testing.T, port int) (proto.Gossip_GossipStreamClient, 
 func createGossipMsg() *protoext.SignedGossipMessage {
 	msg, _ := protoext.NoopSign(&proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
-		Nonce: uint64(rand.Int()),
+		Nonce: uint64(r.Int()),
 		Content: &proto.GossipMessage_DataMsg{
 			DataMsg: &proto.DataMessage{},
 		},

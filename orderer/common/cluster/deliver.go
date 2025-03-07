@@ -380,8 +380,8 @@ func randomEndpoint(endpointsToHeight map[string]*endpointInfo) string {
 		candidates = append(candidates, endpoint)
 	}
 
-	rand.Seed(time.Now().UnixNano())
-	return candidates[rand.Intn(len(candidates))]
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	return candidates[r.Intn(len(candidates))]
 }
 
 // fetchLastBlockSeq returns the last block sequence of an endpoint with the given gRPC connection.

@@ -11,8 +11,10 @@ import (
 	"time"
 )
 
+var r *rand.Rand
+
 func init() {
-	rand.Seed(time.Now().UnixNano())
+	r = rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
 // treePermutations represents possible permutations
@@ -110,7 +112,7 @@ func (tp *treePermutations) computeDescendantPermutations() {
 		// Ensure we don't have too much combinations of descendants
 		for CombinationsExceed(len(v.Descendants), v.Threshold, tp.combinationUpperBound) {
 			// Randomly pick a descendant, and remove it
-			victim := rand.Intn(len(v.Descendants))
+			victim := r.Intn(len(v.Descendants))
 			v.Descendants = append(v.Descendants[:victim], v.Descendants[victim+1:]...)
 		}
 
