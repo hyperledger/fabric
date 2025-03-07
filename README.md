@@ -16,7 +16,7 @@ Weekly meeting on Thursday every 2 week(s)
 * Bi-weekly lab meeting.
 [ZOOM](https://zoom-lfx.platform.linuxfoundation.org/meeting/98760223865?password=e6523117-140a-48e8-992b-c1c6545489f6)
 ```
-Next meeting: See you Thursday, Feb-13, 2025
+Next meeting: See you Thursday, Mar-14, 2025
 9:30am to 10:00am Eastern Time (EST)
 Repeats:
 Every 2 weeks on Thursday
