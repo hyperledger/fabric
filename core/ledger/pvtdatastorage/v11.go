@@ -19,7 +19,7 @@ func v11Format(datakeyBytes []byte) (bool, error) {
 		return false, err
 	}
 	remainingBytes := datakeyBytes[n+1:]
-	return len(remainingBytes) == 0, err
+	return len(remainingBytes) == 0, nil
 }
 
 // v11DecodePK returns block number, tx number, and error.

@@ -140,7 +140,7 @@ func (ris *ResultsIteratorShim) Next() (*queryresult.KV, error) {
 	if res == nil {
 		return nil, nil
 	}
-	return res.(*queryresult.KV), err
+	return res.(*queryresult.KV), nil
 }
 
 func (ris *ResultsIteratorShim) Close() error {
