@@ -23,10 +23,6 @@ Every 2 weeks on Thursday
 Location:
 ```
 
-> [!NOTE]
-*** The Old Zoom meeting is migrated to new system. The new Zoom link provided ubove. ***
-
-
 You can also talk with the developers of the lab in the **`#bdls`** channel on the Hyperledger Discord server at:
 
 https://chat.hyperledger.org/
