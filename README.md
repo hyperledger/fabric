@@ -10,17 +10,21 @@ Discord: ahmedalsalih#6158
 ```
 
 
-
+BDLS Consensus Community Call
+Feb 13, 2025, 9:30: 10:00 AM
+Weekly meeting on Thursday every 2 week(s)
 * Bi-weekly lab meeting.
+[ZOOM](https://zoom-lfx.platform.linuxfoundation.org/meeting/98760223865?password=e6523117-140a-48e8-992b-c1c6545489f6)
 ```
-Next meeting: See you Thursday, Jan-30, 2025
+Next meeting: See you Thursday, Mar-14, 2025
 9:30am to 10:00am Eastern Time (EST)
 Repeats:
 Every 2 weeks on Thursday
 Location:
 ```
+
 > [!NOTE]
-*** The Old Zoom meeting is migrated to new system. The information will be provided once recived. ***
+*** The Old Zoom meeting is migrated to new system. The new Zoom link provided ubove. ***
 
 
 You can also talk with the developers of the lab in the **`#bdls`** channel on the Hyperledger Discord server at:
