@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
@@ -438,6 +439,9 @@ func createCollectionConfig(collectionName string) *peer.CollectionConfig {
 func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 	env.Init(t)
 	defer env.Cleanup()
+	// Set local MSP ID for DB to use
+	err := os.Setenv("CORE_PEER_LOCALMSPID", "testOrgMsp1")
+	require.NoError(t, err)
 	db := env.GetDBHandle(generateLedgerID(t))
 
 	coll1 := createCollectionConfig("collectionMarbles")
@@ -451,6 +455,9 @@ func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 			{Name: "META-INF/statedb/couchdb/indexes/indexSizeSortName.json", Body: `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`},
 			{Name: "META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexCollMarbles.json", Body: `{"index":{"fields":["docType","owner"]},"ddoc":"indexCollectionMarbles", "name":"indexCollectionMarbles","type":"json"}`},
 			{Name: "META-INF/statedb/couchdb/collections/collectionMarblesPrivateDetails/indexes/indexCollPrivDetails.json", Body: `{"index":{"fields":["docType","price"]},"ddoc":"indexPrivateDetails", "name":"indexPrivateDetails","type":"json"}`},
+			{Name: "META-INF/statedb/couchdb/collections/_implicit_org_testOrgMsp1/indexes/indexCreateDate.json", Body: `{"index":{"fields":["create_date"]},"ddoc":"indexCreateDateDoc", "name":"indexCreateDate","type":"json"}`},
+			{Name: "META-INF/statedb/couchdb/collections/_implicit_org_testOrgMsp2/indexes/indexUpdateDate.json", Body: `{"index":{"fields":["update_date"]},"ddoc":"indexUpdateDateDoc", "name":"indexUpdateDate","type":"json"}`},
+			{Name: "META-INF/statedb/couchdb/collections/_implicit_org_*/indexes/indexDeleteDate.json", Body: `{"index":{"fields":["delete_date"]},"ddoc":"indexDeleteDateDoc", "name":"indexDeleteDate","type":"json"}`},
 		},
 	)
 
@@ -458,14 +465,23 @@ func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 	fileEntries, err := ccprovider.ExtractFileEntries(dbArtifactsTarBytes, "couchdb")
 	require.NoError(t, err)
 
-	// There should be 3 entries
-	require.Len(t, fileEntries, 3)
+	// There should be 6 entries
+	require.Len(t, fileEntries, 6)
 
 	// There should be 2 entries for main
 	require.Len(t, fileEntries["META-INF/statedb/couchdb/indexes"], 2)
 
 	// There should be 1 entry for collectionMarbles
 	require.Len(t, fileEntries["META-INF/statedb/couchdb/collections/collectionMarbles/indexes"], 1)
+
+	// There should be 1 entry for _implicit_org_testOrgMsp1
+	require.Len(t, fileEntries["META-INF/statedb/couchdb/collections/_implicit_org_testOrgMsp1/indexes"], 1)
+
+	// There should be 1 entry for _implicit_org_testOrgMsp2
+	require.Len(t, fileEntries["META-INF/statedb/couchdb/collections/_implicit_org_testOrgMsp2/indexes"], 1)
+
+	// There should be 1 entry for _implicit_org_*
+	require.Len(t, fileEntries["META-INF/statedb/couchdb/collections/_implicit_org_*/indexes"], 1)
 
 	// Verify the content of the array item
 	expectedJSON := []byte(`{"index":{"fields":["docType","owner"]},"ddoc":"indexCollectionMarbles", "name":"indexCollectionMarbles","type":"json"}`)
@@ -474,6 +490,11 @@ func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 
 	// The collection config is added to the chaincodeDef but missing collectionMarblesPrivateDetails.
 	// Hence, the index on collectionMarblesPrivateDetails cannot be created
+	//
+	// Index on _implicit_org_testOrgMsp1 will be created as it is implicit collection of this org,
+	// but _implicit_org_testOrgMsp2 will not be created as it belongs to a different org
+	//
+	// Index on _implicit_org_* will be created as it applies to all orgs' implicit collections
 	err = db.HandleChaincodeDeploy(chaincodeDef, dbArtifactsTarBytes)
 	require.NoError(t, err)
 
