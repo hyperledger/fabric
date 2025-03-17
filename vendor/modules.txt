@@ -2,6 +2,8 @@
 ## explicit
 code.cloudfoundry.org/clock
 code.cloudfoundry.org/clock/fakeclock
+# github.com/AdaLogics/go-fuzz-headers v0.0.0-20210715213245-6c3934b029d8
+## explicit; go 1.13
 # github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1
 ## explicit; go 1.16
 github.com/Azure/go-ansiterm
@@ -48,8 +50,6 @@ github.com/Microsoft/go-winio/internal/fs
 github.com/Microsoft/go-winio/internal/socket
 github.com/Microsoft/go-winio/internal/stringbuffer
 github.com/Microsoft/go-winio/pkg/guid
-# github.com/Microsoft/hcsshim v0.11.4
-## explicit; go 1.18
 # github.com/Shopify/sarama v1.20.1
 ## explicit
 github.com/Shopify/sarama
@@ -103,16 +103,13 @@ github.com/consensys/gnark-crypto/field/hash
 github.com/consensys/gnark-crypto/field/pool
 github.com/consensys/gnark-crypto/internal/generator/config
 github.com/consensys/gnark-crypto/internal/parallel
-# github.com/containerd/containerd v1.6.26
-## explicit; go 1.19
-github.com/containerd/containerd/pkg/userns
 # github.com/containerd/log v0.1.0
 ## explicit; go 1.20
 github.com/containerd/log
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/docker/docker v26.1.4+incompatible
+# github.com/docker/docker v27.1.2+incompatible
 ## explicit
 github.com/docker/docker/api/types/blkiodev
 github.com/docker/docker/api/types/container
@@ -130,7 +127,6 @@ github.com/docker/docker/pkg/homedir
 github.com/docker/docker/pkg/idtools
 github.com/docker/docker/pkg/ioutils
 github.com/docker/docker/pkg/jsonmessage
-github.com/docker/docker/pkg/longpath
 github.com/docker/docker/pkg/pools
 github.com/docker/docker/pkg/stdcopy
 github.com/docker/docker/pkg/system
@@ -345,6 +341,9 @@ github.com/moby/sys/sequential
 # github.com/moby/sys/user v0.1.0
 ## explicit; go 1.17
 github.com/moby/sys/user
+# github.com/moby/sys/userns v0.1.0
+## explicit; go 1.21
+github.com/moby/sys/userns
 # github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6
 ## explicit; go 1.13
 github.com/moby/term
@@ -719,6 +718,8 @@ gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
+# gotest.tools/v3 v3.5.0
+## explicit; go 1.17
 # rsc.io/tmplfunc v0.0.3
 ## explicit; go 1.17
 rsc.io/tmplfunc
