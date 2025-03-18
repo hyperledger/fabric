@@ -215,7 +215,7 @@ To learn how to upgrade your Fabric CA server, click over to the [CA documentati
 
 ## Upgrade SDK clients
 
-SDK applications can be upgraded separate from a general upgrade of your Fabric network. The `Fabric Gateway client API <https://github.com/hyperledger/fabric-gateway>`_ has been tested with Fabric v2.5 and v3.0. If you have not yet migrated to the Fabric Gateway client API, you can `migrate <https://hyperledger.github.io/fabric-gateway/migration/>`_ while using a Fabric v2.5 network, or after you have upgraded to a Fabric v3.0 network. The legacy SDKs are no longer maintained and are not compatible with new v3.0 Fabric features such as SmartBFT consensus.
+SDK applications can be upgraded separate from a general upgrade of your Fabric network. The [Fabric Gateway client API](https://github.com/hyperledger/fabric-gateway) has been tested with Fabric v2.5 and v3. If you have not yet migrated to the Fabric Gateway client API, you can [migrate](https://hyperledger.github.io/fabric-gateway/migration) while using a Fabric v2.5 network, or after you have upgraded to a Fabric v3 network. The legacy SDKs are no longer maintained and are not compatible with new v3 Fabric features such as SmartBFT consensus.
 
 ## Upgrading CouchDB
 

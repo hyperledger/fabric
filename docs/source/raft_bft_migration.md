@@ -2,7 +2,7 @@
 
 Nodes at v3.0.0 or higher allow for users who want to transition channels from using Raft-based ordering services to BFT-based ordering services.
 This can be accomplished through a series of configuration update transactions on each channel in the network.
-To migrate, upgrade from version 2.x to version 3.0.0.
+To migrate, upgrade from version 2.x to version 3.x.
 
 This tutorial will describe the migration process at a high level, calling out specific details where necessary.
 
