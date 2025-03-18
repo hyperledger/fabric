@@ -1,6 +1,49 @@
 What's new in Hyperledger Fabric
 ================================
 
+What's New in Hyperledger Fabric v3.1
+-------------------------------------
+
+Performance optimization - Batching of chaincode writes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Chaincodes that write large numbers of keys were inefficient since each key write required communication between the chaincode and the peer.
+The new feature enables a chaincode developer to batch multiple writes into a single communication between the chaincode and the peer.
+A batch can be started by calling ``StartWriteBatch()``. The chaincode can then perform key writes as usual.
+Then when ``FinishWriteBatch()`` is called or the transaction execution ends the writes will be sent to the peer.
+Batches over a configured size will be split into multiple batch segments.
+The batching approach significantly improves performance for chaincodes that write to many keys.
+Note that the batching only impacts the endorsement phase. The transaction itself, as well as the validation and commit phases, remains the same as previous versions.
+
+The batch writes are configured with the following peer core.yaml chaincode properties:
+ * ``chaincode.runtimeParams.useWriteBatch`` - boolean that indicates whether write batching is enabled on peer
+ * ``chaincode.runtimeParams.maxSizeWriteBatch`` - integer that indicates the maximum number of keys written per batch segment.
+
+The new feature requires chaincode to utilize fabric-chaincode-go v2.1.0 or higher.
+
+Performance optimization - Batching of chaincode reads
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Chaincodes that read large numbers of keys were inefficient since each key read required communication between the chaincode and the peer.
+The new feature enables a chaincode developer to batch multiple reads into a single communication between the chaincode and the peer.
+Utilize the new ``GetMultipleStates()`` and ``GetMultiplePrivateData()`` chaincode functions to perform the batch reads.
+Batches over a configured size will be split into multiple batch segments.
+
+The batch reads are configured with the following peer core.yaml chaincode properties:
+ * ``chaincode.runtimeParams.useGetMultipleKeys`` - boolean that indicates whether read batching is enabled on peer
+ * ``chaincode.runtimeParams.maxSizeGetMultipleKeys`` - integer that indicates the maximum number of keys read per batch segment
+
+The new feature requires chaincode to utilize fabric-chaincode-go v2.2.0 or higher.
+
+Query all composite keys in a chaincode
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A new chaincode function ``GetAllStatesCompositeKeyWithPagination()`` is available so that all composite keys within a chaincode can be retrieved.
+This function is useful when performing bulk operations on all composite keys in a chaincode.
+
+The new feature requires chaincode to utilize fabric-chaincode-go v2.3.0 or higher.
+
+
 What's New in Hyperledger Fabric v3.0
 -------------------------------------
 
@@ -56,6 +99,7 @@ The release notes provide more details about each release.
 Additionally, take a look at the announcements about changes and deprecations that are copied into each of the latest release notes.
 
 * `Fabric v3.0.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v3.0.0>`_.
+* `Fabric v3.1.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v3.1.0>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
