@@ -30,7 +30,7 @@ placeholder_replacements = {
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "Hyperledger Fabric Docs"
-copyright = "2017-2024, Hyperledger Foundation"
+copyright = "2017-2025, Hyperledger Foundation"
 author = "Hyperledger Foundation"
 release = "main"
 version = "main"
