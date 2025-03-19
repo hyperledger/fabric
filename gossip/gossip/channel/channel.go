@@ -860,7 +860,7 @@ func (gc *gossipChannel) createStateInfoSnapshot(requestersOrg api.OrgIdentityTy
 
 func (gc *gossipChannel) verifyMsg(msg protoext.ReceivedMessage) bool {
 	if msg == nil {
-		gc.logger.Warning("Messsage is nil")
+		gc.logger.Warning("Message is nil")
 		return false
 	}
 	m := msg.GetGossipMessage()
