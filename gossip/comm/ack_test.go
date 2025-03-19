@@ -36,7 +36,7 @@ func TestInterceptAcks(t *testing.T) {
 	}
 	sub := pubsub.Subscribe(topicForAck(1, pkiID), time.Second)
 	wrappedHandler(ack)
-	// Ensure ack was consumed and not passed onwards to the wrapped hander
+	// Ensure ack was consumed and not passed onwards to the wrapped handler
 	require.Len(t, msgs, 0)
 	_, err := sub.Listen()
 	// Ensure ack was published

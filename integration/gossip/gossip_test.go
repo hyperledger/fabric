@@ -526,7 +526,7 @@ func assertPeersLedgerHeight(n *nwo.Network, peersToSyncUp []*nwo.Peer, expected
 	}
 }
 
-// send transactions, stop orderering server, then start peers to ensure they received blcoks via state transfer
+// send transactions, stop orderering server, then start peers to ensure they received blocks via state transfer
 func sendTransactionsAndSyncUpPeers(n *networkProcesses, orderer *nwo.Orderer, basePeer *nwo.Peer, channelName string, peersToSyncUp ...*nwo.Peer) {
 	By("creating transactions")
 	runTransactions(n.network, orderer, basePeer, "mycc", channelName)

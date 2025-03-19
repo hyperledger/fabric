@@ -267,7 +267,7 @@ func RunSBE(n *nwo.Network, orderer *nwo.Orderer, mode string) {
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(1))
 	Expect(sess.Err).To(gbytes.Say(`\Qcommitted with status (ENDORSEMENT_POLICY_FAILURE)\E`))
 
-	By("org2 checks that seting the value was not successful by reading it")
+	By("org2 checks that setting the value was not successful by reading it")
 	sess, err = n.PeerUserSession(peerOrg2, "User1", commands.ChaincodeQuery{
 		ChannelID: "testchannel",
 		Name:      "mycc",

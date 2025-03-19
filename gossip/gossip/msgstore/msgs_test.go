@@ -193,7 +193,7 @@ func TestExpiration(t *testing.T) {
 		require.False(t, msgStore.CheckValid(i))
 	}
 
-	require.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - after second batch expiration and first banch re-added")
+	require.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - after second batch expiration and first batch re-added")
 }
 
 func TestExpirationConcurrency(t *testing.T) {

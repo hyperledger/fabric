@@ -677,7 +677,7 @@ var _ = Describe("EndToEnd", func() {
 			nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, peers...)
 			nwo.CheckCommitReadinessUntilReady(network, "testchannel", chaincode, network.PeerOrgs(), peers...)
 
-			// finall commit the chaincode
+			// finally commit the chaincode
 			By("committing chaincode's definition")
 			nwo.CommitChaincode(network, "testchannel", orderer, chaincode, peers[0], peers...)
 
