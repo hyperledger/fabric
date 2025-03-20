@@ -379,4 +379,4 @@ scan: scan-osv-scanner ## Run all vulnerability scans
 
 .PHONY: scan-osv-scanner ## Run OSV-Scanner vulnerability scan
 scan-osv-scanner:
-	go run github.com/google/osv-scanner/cmd/osv-scanner@b37c83e19af3b2555864457cbd0b08ef0e1f9d7d scan --lockfile=go.mod || [ \( $$? -gt 1 \) -a \( $$? -lt 127 \) ]
+	go run github.com/google/osv-scanner/v2/cmd/osv-scanner@latest scan --lockfile=go.mod || [ \( $$? -gt 1 \) -a \( $$? -lt 127 \) ]
