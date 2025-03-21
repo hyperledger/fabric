@@ -66,16 +66,6 @@ However and wherever you choose to deploy your components, you will need to make
 
 By deploying a proof of concept network and testing it under load, you will have a better sense of the resources you will require.
 
-Managing your infrastructure
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The exact methods and tools you use to manage your backend will depend on the backend you choose. However, here are some considerations worth noting.
-
-* Using secret objects to securely store important configuration files in your cluster. For information about Kubernetes secrets, check out `Kubernetes secrets <https://kubernetes.io/docs/concepts/configuration/secret/>`_. You also have the option to use Hardware Security Modules (HSMs) or encrypted Persistent Volumes (PVs). Along similar lines, after deploying Fabric components, you will likely want to connect to a container on your own backend, for example using a private repo in a service like Docker Hub. In that case, you will need to code the login information in the form of a Kubernetes secret and include it in the YAML file when deploying components.
-* Cluster considerations and node sizing. In step 2 above, we discussed a general outline for how to think about the sizings of nodes. Your use case, as well as a robust period of development, is the only way you will truly know how large your peers, ordering nodes, and CAs will need to be.
-* How you choose to mount your volumes. It is a best practice to mount the volumes relevant to your nodes external to the place where your nodes are deployed. This will allow you to reference these volumes later on (for example, restarting a node or a container that has crashed) without having to redeploy or regenerate your crypto material.
-* How you will monitor your resources. It is critical that you establish a strategy and method for monitoring the resources used by your individual nodes and the resources deployed to your cluster generally. As you join your peers to more channels, you will need likely need to increase its CPU and memory allocation. Similarly, you will need to make sure you have enough storage space for your state database and blockchain.
-
 .. _dg-step-three-set-up-your-cas:
 
 Step three: Set up your CAs
@@ -198,6 +188,58 @@ For more information about ``orderer.yaml`` and its specific parameters, check o
    deployorderer/ordererplan
    deployorderer/ordererchecklist
    deployorderer/ordererdeploy
+
+
+.. _dg-kubernetes-deployment-considerations:
+
+Kubernetes Considerations
+-------------------------
+
+Kubernetes provides a robust orchestration platform for the deployment, management, and operations of Hyperledger Fabric networks.  While Fabric is generally agnostic about the environment in which it has been deployed, employing Kubernetes as a container orchestration engine generally brings advancements to the stability, reliability, and portability of Fabric networks.
+
+While the cloud vendor, distribution, methods, and tools you utilize to manage a Fabric network may vary, here are some common considerations and techniques worth noting when planning a deployment to Kubernetes:
+
+Secret Management
+~~~~~~~~~~~~~~~~~
+
+For the management of secret, sensitive, or private Fabric configuration files, `Kubernetes Secrets <https://kubernetes.io/docs/concepts/configuration/secret/>`_ may be utilized to restrict access to restricted service accounts.  In addition, Fabric configuration may be stored using Hardware Security Modules (HSMs) or encrypted Persistent Volumes (PVs) for an additional layer of security.
+
+While Fabric images are available at the public Docker Hub image registry, in air-gapped or private environments with a private image registry, a Kubernetes secret must be created and referenced either by the service account or within the pod's deployment descriptor.  For additional information on the use of private container registries, see the `Kubernetes guide <https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/>`_.
+
+Cluster Sizing
+~~~~~~~~~~~~~~
+
+In step 2 above, we discussed a general outline for how to think about the sizings of nodes.  Your use case, as well as a robust period of development, is the only way you will truly know how large your peers, ordering nodes, and CAs will need to be.
+
+
+Persistent Volumes and Volume Claims
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It is a best practice to mount the volumes relevant to your nodes external to the place where your nodes are deployed. This will allow you to reference these volumes later on (for example, restarting a node or a container that has crashed) without having to redeploy or regenerate your crypto material.
+
+
+Resource Utilization and Service Monitoring
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It is critical that you establish a strategy and method for monitoring the resources used by your individual nodes and the resources deployed to your cluster generally. As you join your peers to more channels, you will need likely need to increase its CPU and memory allocation. Similarly, you will need to make sure you have enough storage space for your state database and blockchain.
+
+
+Gateway Service Routing, Discovery, and Failover
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In common Fabric deployments on Kubernetes, Fabric nodes (peers, orderers, CAs, chaincode, etc.) are exposed via a single Kubernetes `Service` instance and resolved using a Kube DNS.  When provisioning TLS certificates with the CA, ensure that the Subject Alternate Name (SAN) specified in the CA signing request includes the host name as it will be referenced within the cluster.  For Fabric networks spanning multiple Kubernetes namespaces, make sure that the SANs reference the fully qualified domain name within Kube DNS.
+
+While this technique is sufficient to establish direct communication links between Fabric nodes, application clients connecting to peers via the Gateway SDK may utilize a "virtual" service spanning a set of peers to achieve a level of High-Availability and Failover.  Using the HA service endpoint, gateway clients may reference a set of peer nodes using a single, common DNS alias.
+
+While `Kubernetes Service routing <https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies>`_ does not provide request-level load balancing at the gRPC message layer, it still can be utilized to provide a basic level of HA, failover, and client connection load balancing.  In the event of an outage in a backing peer/pod, Kubernetes will assign an active peer at the next connection attempt from the gateway client.
+
+By default Kubernetes will use `iptables` to bind client connections to a peer pod using random assignment.  Pods backing the service may additionally define Readiness Probes to ensure that Gateway client connections are distributed across healthy peer nodes.  In addition to random assignment, the Kube cluster may be configured with the `IPVS proxy mode <https://kubernetes.io/docs/concepts/services-networking/service/#proxy-mode-ipvs>`_ for balancing traffic across backend Pods.  For additional information on IPVS routing, refer to the Kubernetes `IPVS-based Load Balancing Deep Dive <https://kubernetes.io/blog/2018/07/09/ipvs-based-in-cluster-load-balancing-deep-dive/>`_ blog.
+
+An example load-balanced gateway service is available in the `Kubernetes Test Network <https://github.com/hyperledger/fabric-samples/blob/main/test-network-k8s/docs/HIGH_AVAILABILITY.md>`_.  In this example:
+
+* Each organization defines an `orgN-peer-gateway` `Service`, bound to a set of peer `Deployments`.
+* The TLS enrollments / certificates for each peer include SAN entries for both the peer service name (`orgN-peerM`) and virtual Gateway peer address (`orgN-peer-gateway`).
+* Client applications reference the Fabric Gateway using the virtual `orgN-peer-gateway` service alias.
 
 Next steps
 ----------
