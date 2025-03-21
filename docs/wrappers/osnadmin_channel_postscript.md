@@ -4,7 +4,7 @@
 
 Here's an example of the `osnadmin channel join` command.
 
-* Create and join a sample channel `mychannel` defined by the application channel genesis
+- Create and join a sample channel `mychannel` defined by the application channel genesis
   block contained in file `mychannel-genesis-block.pb`. Use the orderer admin endpoint
   at `orderer.example.com:9443`.
 
@@ -30,8 +30,8 @@ Here's an example of the `osnadmin channel join` command.
 
 Here are some examples of the `osnadmin channel list` command.
 
-* Listing all the channels that the orderer has joined. 
-Note that the system channel will always be NULL because it is no longer supported from release v3.0 onwards.
+- Listing all the channels that the orderer has joined.
+  Note that the system channel will always be NULL because it is no longer supported from release v3.0 onwards.
 
   ```
   osnadmin channel list -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY
@@ -51,10 +51,32 @@ Note that the system channel will always be NULL because it is no longer support
 
   Status 200 and the list of channels are returned.
 
-* Using the `--channelID` flag to list more details for `mychannel`.
+- Using the `--channelID` flag to list more details for `mychannel`.
 
   ```
   osnadmin channel list -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY --channelID mychannel
+
+  Status: 200
+  {
+  "name": "mychannel",
+  "url": "/participation/v1/channels/mychannel",
+  "consensusRelation": "consenter",
+  "status": "active",
+  "height": 3
+  }
+
+  ```
+
+  Status 200 and the details of the channels are returned.
+
+### osnadmin channel info example
+
+Here are some examples of the `osnadmin channel info` command.
+
+- Using the `--channel-id` flag to get detailed information for mychannel from the orderer at `orderer.example.com:9443`.
+
+  ```
+  osnadmin channel info -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY --channelID mychannel
 
   Status: 200
   {
@@ -73,7 +95,7 @@ Note that the system channel will always be NULL because it is no longer support
 
 Here's an example of the `osnadmin channel remove` command.
 
-* Removing channel `mychannel` from the orderer at `orderer.example.com:9443`.
+- Removing channel `mychannel` from the orderer at `orderer.example.com:9443`.
 
   ```
   osnadmin channel remove -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY --channelID mychannel
