@@ -1462,7 +1462,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 
 	// Checking is new Alive was processed
 	for i := 0; i < peersNum; i++ {
-		checkAliveMsgExist(instances, newAliveMsgs, i, "[Step 2 - proccesing aliveMsg]")
+		checkAliveMsgExist(instances, newAliveMsgs, i, "[Step 2 - processing aliveMsg]")
 	}
 
 	checkAliveMsgNotExist := func(instances []*gossipInstance, msgs []*protoext.SignedGossipMessage, index int, step string) {
@@ -1762,7 +1762,7 @@ func TestMembershipAfterExpiration(t *testing.T) {
 		}
 
 		return flogging.NewFabricLogger(l, zap.Hooks(func(entry zapcore.Entry) error {
-			// do nothing if we already found all the expectedMsgs
+			// do nothing if we have already found all the expectedMsgs
 			lock.RLock()
 			expectedMsgSize := len(expectedMsgs)
 			lock.RUnlock()

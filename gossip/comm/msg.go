@@ -42,7 +42,7 @@ func (m *ReceivedMessageImpl) GetGossipMessage() *protoext.SignedGossipMessage {
 }
 
 // GetConnectionInfo returns information about the remote peer
-// that send the message
+// that sends the message
 func (m *ReceivedMessageImpl) GetConnectionInfo() *protoext.ConnectionInfo {
 	return m.connInfo
 }

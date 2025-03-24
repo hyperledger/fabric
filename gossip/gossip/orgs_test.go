@@ -245,7 +245,7 @@ func TestMultipleOrgEndpointLeakage(t *testing.T) {
 			peersKnown := p.Peers()
 			peersToKnow := expectedMembershipSize[string(pkiID)]
 			if peersToKnow != len(peersKnown) {
-				t.Logf("peer %#v doesn't know the needed amount of peers, extected %#v, actual %#v", peerNetMember.Endpoint, peersToKnow, len(peersKnown))
+				t.Logf("peer %#v doesn't know the needed amount of peers, expected %#v, actual %#v", peerNetMember.Endpoint, peersToKnow, len(peersKnown))
 				return false
 			}
 			for _, knownPeer := range peersKnown {
