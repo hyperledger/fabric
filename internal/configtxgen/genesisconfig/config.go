@@ -474,7 +474,7 @@ var cache = &configCache{
 }
 
 // load loads the TopLevel config structure from configCache.
-// if not successful, it unmarshal a config file, and populate configCache
+// if not successful, it unmarshals a config file, and populate configCache
 // with marshaled TopLevel struct.
 func (c *configCache) load(config *viperutil.ConfigParser, configPath string) (*TopLevel, error) {
 	c.mutex.Lock()
