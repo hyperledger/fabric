@@ -57,7 +57,7 @@ func retrieveNsMetadata(db *couchDatabase, keys []string) ([]*docMetadata, error
 	batches := []batch{}
 	remainingKeys := keys
 	for {
-		numKeys := minimum(maxBatchSize, len(remainingKeys))
+		numKeys := min(maxBatchSize, len(remainingKeys))
 		if numKeys == 0 {
 			break
 		}
@@ -98,11 +98,4 @@ func (b *subNsMetadataRetriever) execute() error {
 
 func (b *subNsMetadataRetriever) String() string {
 	return fmt.Sprintf("subNsMetadataRetriever:ns=%s, num keys=%d", b.ns, len(b.keys))
-}
-
-func minimum(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
