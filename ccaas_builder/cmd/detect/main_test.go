@@ -34,6 +34,10 @@ func TestArugments(t *testing.T) {
 			exitCode: 0,
 			args:     []string{"na", "testdata/validtype"},
 		},
+		"validremote": {
+			exitCode: 0,
+			args:     []string{"na", "testdata/validremote"},
+		},
 		"wrongtype": {
 			exitCode: 1,
 			args:     []string{"na", "testdata/wrongtype"},
