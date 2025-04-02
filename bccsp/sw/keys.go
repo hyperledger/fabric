@@ -16,7 +16,7 @@ import (
 	"errors"
 	"fmt"
 
-	oqs "github.com/open-quantum-safe/liboqs-go/oqs"
+	oqs "github.com/hyperledger/fabric/pq-crypto"
 )
 
 type pkcs8Info struct {

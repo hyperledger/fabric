@@ -84,3 +84,16 @@ func TestAESKeyGeneratorInvalidInputs(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Len must be larger than 0")
 }
+
+func TestOQSKeyGenerator(t *testing.T) {
+	t.Parallel()
+
+	kg := &oqsKeyGenerator{}
+	k, err := kg.KeyGen(nil)
+	require.NoError(t, err)
+
+	oqsK, ok := k.(*oqsPrivateKey)
+	require.True(t, ok)
+	require.NotNil(t, oqsK.privKey)
+	require.NotNil(t, oqsK.privKey.Pk)
+}
