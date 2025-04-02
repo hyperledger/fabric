@@ -196,6 +196,29 @@ func TestGetRangeScanError(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestGetStateRangeScanIteratorNil(t *testing.T) {
+	itr1 := &statedbmock.ResultsIterator{}
+	itr1.NextReturns(
+		&statedb.VersionedKV{
+			CompositeKey:   &statedb.CompositeKey{Namespace: "ns", Key: "dummyKey"},
+			VersionedValue: &statedb.VersionedValue{Value: []byte("dummyVal")},
+		},
+		nil,
+	)
+
+	qe1 := &mock.QueryExecuter{}
+	qe1.GetStateRangeScanIteratorReturns(itr1, nil)
+	qe2 := &mock.QueryExecuter{}
+	qe2.GetStateRangeScanIteratorReturns(nil, nil)
+	combiner := &queryutil.QECombiner{
+		QueryExecuters: []queryutil.QueryExecuter{
+			qe1, qe2,
+		},
+	}
+	_, err := combiner.GetStateRangeScanIterator("ns", "startKey", "endKey")
+	require.EqualError(t, err, "received nil iterator from QueryExecuter")
+}
+
 func TestGetRangeScanUnderlyingIteratorReturnsError(t *testing.T) {
 	itr1 := &statedbmock.ResultsIterator{}
 	itr1.NextReturns(
