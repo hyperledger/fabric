@@ -75,7 +75,7 @@ func TestParseFormat(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		t.Run(fmt.Sprintf(tc.desc), func(t *testing.T) {
+		t.Run(tc.desc, func(t *testing.T) {
 			formatters, err := fabenc.ParseFormat(tc.spec)
 			require.NoError(t, err)
 			require.Equal(t, tc.formatters, formatters)

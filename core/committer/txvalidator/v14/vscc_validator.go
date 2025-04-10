@@ -345,8 +345,7 @@ func (v *VsccValidatorImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID 
 		// obtain name of the VSCC and the policy
 		cd, err := v.getCDataForCC(chdr.ChannelId, ccID)
 		if err != nil {
-			msg := fmt.Sprintf("Unable to get chaincode data from ledger for txid %s, due to %s", chdr.TxId, err)
-			logger.Errorf(msg)
+			logger.Errorf("Unable to get chaincode data from ledger for txid %s, due to %s", chdr.TxId, err)
 			return nil, nil, nil, err
 		}
 		cc.ChaincodeName = cd.Name

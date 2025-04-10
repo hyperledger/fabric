@@ -306,7 +306,7 @@ func (m *KeyLevelValidationParameterManagerImpl) GetValidationParameterForKey(cc
 	// bail, if the validation parameter has been updated in the meantime
 	err := vCtx.waitForValidationResults(newLedgerKeyID(cc, coll, key), blockNum, txNum)
 	if err != nil {
-		logger.Errorf(err.Error())
+		logger.Error(err.Error())
 		return nil, err
 	}
 
@@ -316,7 +316,7 @@ func (m *KeyLevelValidationParameterManagerImpl) GetValidationParameterForKey(cc
 	state, err := m.StateFetcher.FetchState()
 	if err != nil {
 		err = errors.WithMessage(err, "could not retrieve ledger")
-		logger.Errorf(err.Error())
+		logger.Error(err.Error())
 		return nil, err
 	}
 	defer state.Done()
@@ -326,14 +326,14 @@ func (m *KeyLevelValidationParameterManagerImpl) GetValidationParameterForKey(cc
 		mdMap, err = state.GetStateMetadata(cc, key)
 		if err != nil {
 			err = errors.WithMessagef(err, "could not retrieve metadata for %s:%s", cc, key)
-			logger.Errorf(err.Error())
+			logger.Error(err.Error())
 			return nil, err
 		}
 	} else {
 		mdMap, err = state.GetPrivateDataMetadataByHash(cc, coll, []byte(key))
 		if err != nil {
 			err = errors.WithMessagef(err, "could not retrieve metadata for %s:%s:%x", cc, coll, []byte(key))
-			logger.Errorf(err.Error())
+			logger.Error(err.Error())
 			return nil, err
 		}
 	}

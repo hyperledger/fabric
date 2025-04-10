@@ -10,7 +10,6 @@
 package library
 
 import (
-	"fmt"
 	"os"
 	"plugin"
 
@@ -23,11 +22,11 @@ import (
 // loadPlugin loads a pluggable handler
 func (r *registry) loadPlugin(pluginPath string, handlerType HandlerType, extraArgs ...string) {
 	if _, err := os.Stat(pluginPath); err != nil {
-		logger.Panicf(fmt.Sprintf("Could not find plugin at path %s: %s", pluginPath, err))
+		logger.Panicf("Could not find plugin at path %s: %s", pluginPath, err)
 	}
 	p, err := plugin.Open(pluginPath)
 	if err != nil {
-		logger.Panicf(fmt.Sprintf("Error opening plugin at path %s: %s", pluginPath, err))
+		logger.Panicf("Error opening plugin at path %s: %s", pluginPath, err)
 	}
 
 	if handlerType == Auth {

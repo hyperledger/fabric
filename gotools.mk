@@ -17,9 +17,10 @@ go.fqp.goimports     := golang.org/x/tools/cmd/goimports
 go.fqp.golint        := golang.org/x/lint/golint
 go.fqp.govulncheck   := golang.org/x/vuln/cmd/govulncheck@latest
 go.fqp.misspell      := github.com/client9/misspell/cmd/misspell
-go.fqp.mockery       := github.com/vektra/mockery/cmd/mockery
+go.fqp.mockery       := github.com/vektra/mockery/v2
 go.fqp.protoc-gen-go := github.com/golang/protobuf/protoc-gen-go
-go.fqp.staticcheck   := honnef.co/go/tools/cmd/staticcheck@2023.1.7
+go.fqp.protoc-gen-go-grpc := google.golang.org/grpc/cmd/protoc-gen-go-grpc
+go.fqp.staticcheck   := honnef.co/go/tools/cmd/staticcheck@2025.1
 go.fqp.swagger       := github.com/go-swagger/go-swagger/cmd/swagger
 
 .PHONY: gotools-install
