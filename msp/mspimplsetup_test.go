@@ -162,7 +162,7 @@ func TestMalformedCertsChainSetup(t *testing.T) {
 	gt.Expect(err).NotTo(gomega.HaveOccurred())
 
 	// Extract identity from the leaf certificate
-	_, _, err = mspImpl.getIdentityFromConf(inter.CertBytes())
+	_, _, _, err = mspImpl.getIdentityFromConf(inter.CertBytes())
 	gt.Expect(err).To(gomega.HaveOccurred())
 	gt.Expect(err.Error()).To(gomega.ContainSubstring("failed to traverse certificate verification chain"))
 }

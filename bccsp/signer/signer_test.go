@@ -23,29 +23,49 @@ import (
 	"errors"
 	"testing"
 
+	oqs "github.com/hyperledger/fabric/pq-crypto"
+
 	"github.com/hyperledger/fabric/bccsp/mocks"
 	"github.com/stretchr/testify/require"
 )
 
 func TestInitFailures(t *testing.T) {
-	_, err := New(nil, &mocks.MockKey{})
+	_, err := New(nil, &mocks.MockKey{}, &mocks.MockKey{})
 	require.Error(t, err)
 
-	_, err = New(&mocks.MockBCCSP{}, nil)
+	_, err = New(&mocks.MockBCCSP{}, nil, nil)
 	require.Error(t, err)
 
-	_, err = New(&mocks.MockBCCSP{}, &mocks.MockKey{Symm: true})
+	_, err = New(&mocks.MockBCCSP{}, &mocks.MockKey{Symm: true}, &mocks.MockKey{Symm: true})
 	require.Error(t, err)
 
-	_, err = New(&mocks.MockBCCSP{}, &mocks.MockKey{PKErr: errors.New("No PK")})
+	_, err = New(&mocks.MockBCCSP{}, &mocks.MockKey{PKErr: errors.New("No PK")}, nil)
 	require.Error(t, err)
-	require.Equal(t, "failed getting public key: No PK", err.Error())
+	require.Equal(t, "failed getting classical public key: No PK", err.Error())
 
-	_, err = New(&mocks.MockBCCSP{}, &mocks.MockKey{PK: &mocks.MockKey{BytesErr: errors.New("No bytes")}})
+	_, err = New(&mocks.MockBCCSP{}, &mocks.MockKey{PK: &mocks.MockKey{BytesErr: errors.New("No bytes")}}, nil)
 	require.Error(t, err)
 	require.Equal(t, "failed marshalling public key: No bytes", err.Error())
 
-	_, err = New(&mocks.MockBCCSP{}, &mocks.MockKey{PK: &mocks.MockKey{BytesValue: []byte{0, 1, 2, 3}}})
+	_, err = New(&mocks.MockBCCSP{}, &mocks.MockKey{PK: &mocks.MockKey{BytesValue: []byte{0, 1, 2, 3}}}, nil)
+	require.Error(t, err)
+
+	// Create a valid classical key to test error checking for the quantum key
+	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	pkRaw, err := x509.MarshalPKIXPublicKey(&k.PublicKey)
+	require.NoError(t, err)
+	cKey := &mocks.MockKey{PK: &mocks.MockKey{BytesValue: pkRaw}}
+
+	_, err = New(&mocks.MockBCCSP{}, cKey, &mocks.MockKey{PKErr: errors.New("No PK")})
+	require.Error(t, err)
+	require.Equal(t, "failed getting quantum public key: No PK", err.Error())
+
+	_, err = New(&mocks.MockBCCSP{}, cKey, &mocks.MockKey{PK: &mocks.MockKey{BytesErr: errors.New("No bytes")}})
+	require.Error(t, err)
+	require.Equal(t, "failed marshalling public key: No bytes", err.Error())
+
+	_, err = New(&mocks.MockBCCSP{}, cKey, &mocks.MockKey{PK: &mocks.MockKey{BytesValue: []byte{0, 1, 2, 3}}})
 	require.Error(t, err)
 }
 
@@ -55,7 +75,7 @@ func TestInit(t *testing.T) {
 	pkRaw, err := x509.MarshalPKIXPublicKey(&k.PublicKey)
 	require.NoError(t, err)
 
-	signer, err := New(&mocks.MockBCCSP{}, &mocks.MockKey{PK: &mocks.MockKey{BytesValue: pkRaw}})
+	signer, err := New(&mocks.MockBCCSP{}, &mocks.MockKey{PK: &mocks.MockKey{BytesValue: pkRaw}}, nil)
 	require.NoError(t, err)
 	require.NotNil(t, signer)
 
@@ -66,9 +86,25 @@ func TestInit(t *testing.T) {
 	require.True(t, ecdsa.Verify(signer.Public().(*ecdsa.PublicKey), []byte{0, 1, 2, 3}, R, S))
 }
 
+func TestInitHybrid(t *testing.T) {
+	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	pkRaw, err := x509.MarshalPKIXPublicKey(&k.PublicKey)
+	require.NoError(t, err)
+	cKey := &mocks.MockKey{PK: &mocks.MockKey{BytesValue: pkRaw}}
+
+	qK, _, err := oqs.KeyPair("DEFAULT")
+	require.NoError(t, err)
+	qPkRaw, err := oqs.MarshalPKIXPublicKey(&qK)
+	qKey := &mocks.MockKey{PK: &mocks.MockKey{BytesValue: qPkRaw}}
+	signer, err := New(&mocks.MockBCCSP{}, cKey, qKey)
+	require.NoError(t, err)
+	require.NotNil(t, signer)
+}
+
 func TestPublic(t *testing.T) {
 	pk := &mocks.MockKey{}
-	signer := &bccspCryptoSigner{pk: pk}
+	signer := &bccspCryptoSigner{classicalPk: pk}
 
 	pk2 := signer.Public()
 	require.NotNil(t, pk, pk2)
@@ -81,7 +117,7 @@ func TestSign(t *testing.T) {
 	expectedOpts := &mocks.SignerOpts{}
 
 	signer := &bccspCryptoSigner{
-		key: expectedKey,
+		classicalKey: expectedKey,
 		csp: &mocks.MockBCCSP{
 			SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts,
 			SignValue: expectedSig,
@@ -92,7 +128,7 @@ func TestSign(t *testing.T) {
 	require.Equal(t, expectedSig, signature)
 
 	signer = &bccspCryptoSigner{
-		key: expectedKey,
+		classicalKey: expectedKey,
 		csp: &mocks.MockBCCSP{
 			SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts,
 			SignErr: errors.New("no signature"),
@@ -103,24 +139,24 @@ func TestSign(t *testing.T) {
 	require.Equal(t, err.Error(), "no signature")
 
 	signer = &bccspCryptoSigner{
-		key: nil,
-		csp: &mocks.MockBCCSP{SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts},
+		classicalKey: nil,
+		csp:          &mocks.MockBCCSP{SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts},
 	}
 	_, err = signer.Sign(nil, expectedDigest, expectedOpts)
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "invalid key")
 
 	signer = &bccspCryptoSigner{
-		key: expectedKey,
-		csp: &mocks.MockBCCSP{SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts},
+		classicalKey: expectedKey,
+		csp:          &mocks.MockBCCSP{SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts},
 	}
 	_, err = signer.Sign(nil, nil, expectedOpts)
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "invalid digest")
 
 	signer = &bccspCryptoSigner{
-		key: expectedKey,
-		csp: &mocks.MockBCCSP{SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts},
+		classicalKey: expectedKey,
+		csp:          &mocks.MockBCCSP{SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts},
 	}
 	_, err = signer.Sign(nil, expectedDigest, nil)
 	require.Error(t, err)

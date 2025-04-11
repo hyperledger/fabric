@@ -393,9 +393,6 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/open-quantum-safe/liboqs-go v0.0.0-20250119172907-28b5301df438
-## explicit; go 1.21
-github.com/open-quantum-safe/liboqs-go/oqs
 # github.com/opencontainers/go-digest v1.0.0
 ## explicit; go 1.13
 github.com/opencontainers/go-digest
