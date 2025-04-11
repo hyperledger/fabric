@@ -593,7 +593,7 @@ func (c *Chain) forwardToLeader(lead uint64, req *orderer.SubmitRequest) error {
 	}
 
 	if atomicErr.Load() != nil {
-		return errors.Errorf(atomicErr.Load().(string))
+		return errors.New(atomicErr.Load().(string))
 	}
 	return nil
 }

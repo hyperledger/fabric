@@ -312,7 +312,7 @@ func (p *Provider) deleteUnderConstructionLedger(ledger ledger.PeerLedger, ledge
 	if cleanupErr == nil {
 		return creationErr
 	}
-	return errors.WithMessagef(cleanupErr, creationErr.Error())
+	return errors.WithMessage(cleanupErr, creationErr.Error())
 }
 
 // Open implements the corresponding method from interface ledger.PeerLedgerProvider

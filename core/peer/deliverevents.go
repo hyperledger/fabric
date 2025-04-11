@@ -341,7 +341,7 @@ func (block *blockEvent) toFilteredBlock() (*peer.FilteredBlock, error) {
 
 			filteredTransaction.Data, err = transactionActions(tx.Actions).toFilteredActions()
 			if err != nil {
-				logger.Errorf(err.Error())
+				logger.Error(err.Error())
 				return nil, err
 			}
 		}

@@ -71,12 +71,12 @@ func validateSignatureHeader(sHdr *common.SignatureHeader) error {
 	}
 
 	// ensure that there is a nonce
-	if sHdr.Nonce == nil || len(sHdr.Nonce) == 0 {
+	if len(sHdr.Nonce) == 0 {
 		return errors.New("invalid nonce specified in the header")
 	}
 
 	// ensure that there is a creator
-	if sHdr.Creator == nil || len(sHdr.Creator) == 0 {
+	if len(sHdr.Creator) == 0 {
 		return errors.New("invalid creator specified in the header")
 	}
 

@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package library
 
 import (
-	"fmt"
 	"reflect"
 	"sync"
 
@@ -104,7 +103,7 @@ func (r *registry) loadCompiled(handlerFactory string, handlerType HandlerType, 
 
 	o := registryMD.MethodByName(handlerFactory)
 	if !o.IsValid() {
-		logger.Panicf(fmt.Sprintf("Method %s isn't a method of HandlerLibrary", handlerFactory))
+		logger.Panicf("Method %s isn't a method of HandlerLibrary", handlerFactory)
 	}
 
 	inst := o.Call(nil)[0].Interface()
