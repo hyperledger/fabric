@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	prefix = "_implicit_org_"
+	prefix         = "_implicit_org_"
+	allOrgNotation = "_implicit_all_orgs"
 )
 
 // NameForOrg constructs the name of the implicit collection for the specified org
@@ -30,4 +31,8 @@ func MspIDIfImplicitCollection(collectionName string) (isImplicitCollection bool
 
 func IsImplicitCollection(collectionName string) bool {
 	return strings.HasPrefix(collectionName, prefix)
+}
+
+func IsAllOrgNotation(collectionName string) bool {
+	return collectionName == allOrgNotation
 }
