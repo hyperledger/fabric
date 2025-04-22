@@ -55,3 +55,21 @@ type QueryResult interface{}
 
 // PrunePolicy - a general interface for supporting different pruning policies
 type PrunePolicy interface{}
+
+const (
+	PrivateEventsPrefixAndSeparator = "__hlf_privateEvent__"
+	PrivateEventsTopLevelName       = "__hlf__privateEvents"
+)
+
+// PrivateEventPayload is the payload that the chaincode must create for a private event
+type PrivateEventPayload struct {
+	// {mspid1: [id1, id2, ...], ...}
+	VisibleTo map[string][]string `json:"visibleTo,omitempty"`
+	Payload   interface{}         `json:"payload"`
+}
+
+// TxnPrivateChaincodeEvents: keys are the event names; values are the event payloads
+type TxnPrivateChaincodeEvents map[string][]byte
+
+// BlockPrivateChaincodeEvents: map of TxnPrivateChaincodeEvents - key is the txn index inside the block
+type BlockPrivateChaincodeEvents map[int]*TxnPrivateChaincodeEvents
