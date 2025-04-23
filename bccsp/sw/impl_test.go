@@ -862,7 +862,7 @@ func TestKeyImportFromX509ECDSAPublicKey(t *testing.T) {
 		},
 	}
 
-	cryptoSigner, err := signer.New(provider, k)
+	cryptoSigner, err := signer.New(provider, k, nil)
 	if err != nil {
 		t.Fatalf("Failed initializing CyrptoSigner [%s]", err)
 	}
@@ -1501,13 +1501,13 @@ func TestKeyImportFromX509ECDSAHybridOQSPublicKey(t *testing.T) {
 	// Generate an ECDSA key and signer
 	k, err := provider.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	require.NoError(t, err)
-	classicalSigner, err := signer.New(provider, k)
+	classicalSigner, err := signer.New(provider, k, nil)
 	require.NoError(t, err)
 
 	// Generate an OQS key and signer
 	qK, err := provider.KeyGen(&bccsp.OQSKeyGenOpts{Temporary: false})
 	require.NoError(t, err)
-	qSigner, err := signer.New(provider, qK)
+	qSigner, err := signer.New(provider, qK, nil)
 
 	// Cheat to get access to the underlying raw key,
 	// because we need it to create the X509 certificate extension
@@ -1705,7 +1705,7 @@ func TestKeyImportFromX509ECDSAHybridOQSPublicKeyBackwardsCompatible(t *testing.
 		},
 	}
 
-	classicalSigner, err := signer.New(provider, k)
+	classicalSigner, err := signer.New(provider, k, nil)
 	require.NoError(t, err)
 
 	// Export the public key

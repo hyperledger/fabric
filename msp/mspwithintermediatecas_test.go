@@ -114,7 +114,7 @@ func TestMSPWithIntermediateCAs2(t *testing.T) {
 	// user2-cert has been signed by the root CA, validation must fail
 	pem, err := readPemFile(filepath.Join("testdata", "intermediate2", "users", "user2-cert.pem"))
 	require.NoError(t, err)
-	id2, _, err := thisMSP.(*bccspmsp).getIdentityFromConf(pem)
+	id2, _, _, err := thisMSP.(*bccspmsp).getIdentityFromConf(pem)
 	require.NoError(t, err)
 	err = thisMSP.Validate(id2)
 	require.Error(t, err)

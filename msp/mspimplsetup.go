@@ -132,7 +132,7 @@ func (msp *bccspmsp) setupCAs(conf *m.FabricMSPConfig) error {
 	// Recall that when an identity is created, its certificate gets sanitized
 	msp.rootCerts = make([]Identity, len(conf.RootCerts))
 	for i, trustedCert := range conf.RootCerts {
-		id, _, err := msp.getIdentityFromConf(trustedCert)
+		id, _, _, err := msp.getIdentityFromConf(trustedCert)
 		if err != nil {
 			return err
 		}
@@ -143,7 +143,7 @@ func (msp *bccspmsp) setupCAs(conf *m.FabricMSPConfig) error {
 	// make and fill the set of intermediate certs (if present)
 	msp.intermediateCerts = make([]Identity, len(conf.IntermediateCerts))
 	for i, trustedCert := range conf.IntermediateCerts {
-		id, _, err := msp.getIdentityFromConf(trustedCert)
+		id, _, _, err := msp.getIdentityFromConf(trustedCert)
 		if err != nil {
 			return err
 		}
@@ -171,7 +171,7 @@ func (msp *bccspmsp) setupAdminsPreV142(conf *m.FabricMSPConfig) error {
 	// make and fill the set of admin certs (if present)
 	msp.admins = make([]Identity, len(conf.Admins))
 	for i, admCert := range conf.Admins {
-		id, _, err := msp.getIdentityFromConf(admCert)
+		id, _, _, err := msp.getIdentityFromConf(admCert)
 		if err != nil {
 			return err
 		}
