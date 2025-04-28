@@ -309,10 +309,7 @@ func (c *Chain) increaseRetryInterval(retryInterval *time.Duration, upperLimit t
 		return
 	}
 	// assuming this will never overflow int64, as upperLimit cannot be over MaxInt64/2
-	*retryInterval = time.Duration(1.5 * float64(*retryInterval))
-	if *retryInterval > upperLimit {
-		*retryInterval = upperLimit
-	}
+	*retryInterval = min(time.Duration(1.5*float64(*retryInterval)), upperLimit)
 	c.logger.Debugf("retry interval increased to: %v", *retryInterval)
 }
 
@@ -329,10 +326,7 @@ func (c *Chain) decreaseRetryInterval(retryInterval *time.Duration, lowerLimit t
 		return
 	}
 
-	*retryInterval = *retryInterval - lowerLimit
-	if *retryInterval < lowerLimit {
-		*retryInterval = lowerLimit
-	}
+	*retryInterval = max(*retryInterval-lowerLimit, lowerLimit)
 	c.logger.Debugf("retry interval decreased to: %v", *retryInterval)
 }
 

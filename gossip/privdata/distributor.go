@@ -313,10 +313,7 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 	}
 
 	// PHASE 2 - Select additional peers to satisfy colAP.MaximumPeerCount() if there are still peers in the remainingPeersAcrossOrgs pool
-	numRemainingPeersToSelect := maximumPeerRemainingCount
-	if len(remainingPeersAcrossOrgs) < maximumPeerRemainingCount {
-		numRemainingPeersToSelect = len(remainingPeersAcrossOrgs)
-	}
+	numRemainingPeersToSelect := min(len(remainingPeersAcrossOrgs), maximumPeerRemainingCount)
 	if numRemainingPeersToSelect > 0 {
 		d.logger.Debugf("MaximumPeerCount not yet satisfied after picking one peer per org, selecting %d more peer(s) for dissemination", numRemainingPeersToSelect)
 	}
