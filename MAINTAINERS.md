@@ -5,31 +5,27 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 
 **Active Maintainers**
 
-| Name                    | GitHub | Chat | email
-|-------------------------|--------|------|----------------------
-| Alessandro Sorniotti    | [ale-linux][ale-linux] | aso | <ale.linux@sopit.net>
-| Andrew Coleman          | [andrew-coleman][andrew-coleman] | andrew-coleman | <andrew_coleman@uk.ibm.com>
-| Artem Barger            | [c0rwin][c0rwin] | c0rwin | <artem@bargr.net>
-| Dave Enyeart            | [denyeart][denyeart] | dave.enyeart | <enyeart@us.ibm.com>
-| Fedor Partanskiy        | [pfi79][pfi79] | pfi79 | <fedor.partanskiy@atme.com> 
-| Manish Sethi            | [manish-sethi][manish-sethi] | manish-sethi | <manish.sethi@gmail.com>
-| Tatsuya Sato            | [satota2][satota2] | satota2 | <tatsuya.sato.so@hitachi.com>
-| Yacov Manevich          | [yacovm][yacovm] | yacovm | <yacov.manevich@gmail.com>
-| Yoav Tock               | [tock-ibm][tock-ibm] | tock-ibm | <tock@il.ibm.com>
+| Name                  | GitHub                                  | Chat           | Email                              |
+|-----------------------|-----------------------------------------|----------------|------------------------------------|
+| Alessandro Sorniotti  | [ale-linux][ale-linux]                  | aso            | <ale.linux@sopit.net>              |
+| Andrew Coleman        | [andrew-coleman][andrew-coleman]        | andrew-coleman | <andrew_coleman@uk.ibm.com>        |
+| Artem Barger          | [c0rwin][c0rwin]                        | c0rwin         | <artem@bargr.net>                  |
+| Dave Enyeart          | [denyeart][denyeart]                    | dave.enyeart   | <enyeart@us.ibm.com>               |
+| Fedor Partanskiy      | [pfi79][pfi79]                          | pfi79          | <fedor.partanskiy@atme.com>        |
+| Manish Sethi          | [manish-sethi][manish-sethi]            | manish-sethi   | <manish.sethi@gmail.com>           |
+| Tatsuya Sato          | [satota2][satota2]                      | satota2        | <tatsuya.sato.so@hitachi.com>      |
+| Yacov Manevich        | [yacovm][yacovm]                        | yacovm         | <yacov.manevich@gmail.com>         |
+| Yoav Tock             | [tock-ibm][tock-ibm]                    | tock-ibm       | <tock@il.ibm.com>                  |
 
-
-**Documentation Maintainers**
-
-| Name | GitHub | Chat | email
-|------|--------|------|----------------------
-| Chris Gabriel  | [denali49][denali49] | cmgabriel | <alaskadd@gmail.com>
-| Nikhil Gupta | [nikhil550][nikhil550] | nikhilgupta | <nikhilg550@gmail.com>
 
 **Release Managers**
 
-| Name | GitHub | Chat | email
-|------|--------|------|----------------------
-| Dave Enyeart | [denyeart][denyeart] | dave.enyeart | <enyeart@us.ibm.com>
+| Name             | GitHub               | Chat          | Email                           |
+|------------------|----------------------|---------------|---------------------------------|
+| Artem Barger     | [c0rwin][c0rwin]     | c0rwin        | <artem@bargr.net>               |
+| Dave Enyeart     | [denyeart][denyeart] | dave.enyeart  | <enyeart@us.ibm.com>            |
+| Yacov Manevich   | [yacovm][yacovm]     | yacovm        | <yacov.manevich@gmail.com>      |
+
 
 **Retired Maintainers**
 
