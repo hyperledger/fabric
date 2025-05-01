@@ -1129,10 +1129,7 @@ func measureTPS(txNum int, network *nwo.Network, orderer *nwo.Orderer, envs chan
 	cond.Broadcast()
 	bcastWG.Wait()
 
-	elapsed := time.Since(start)
-	if elapsed < time.Second {
-		elapsed = time.Second
-	}
+	elapsed := max(time.Since(start), time.Second)
 
 	return txNum / int(elapsed.Seconds())
 }

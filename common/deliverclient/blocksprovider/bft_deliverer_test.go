@@ -1132,10 +1132,7 @@ func TestBFTDeliverer_CensorshipMonitorEvents(t *testing.T) {
 		minDur := 100 * time.Millisecond
 		for i := 0; i < 40; i++ {
 			round := (i + 1) / 4
-			dur := time.Duration(minDur.Nanoseconds() * int64(math.Pow(2.0, float64(round))))
-			if dur > 10*time.Second {
-				dur = 10 * time.Second
-			}
+			dur := min(time.Duration(minDur.Nanoseconds()*int64(math.Pow(2.0, float64(round)))), 10*time.Second)
 			assert.Equal(t, dur, setup.fakeSleeper.SleepArgsForCall(i), fmt.Sprintf("i=%d", i))
 		}
 

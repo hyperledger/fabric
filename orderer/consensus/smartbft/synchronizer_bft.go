@@ -98,10 +98,7 @@ func (s *BFTSynchronizer) synchronize() (*types.Decision, error) {
 	}
 
 	// === Create a buffer to accept the blocks delivered from the BFTDeliverer.
-	capacityBlocks := uint(s.LocalConfigCluster.ReplicationBufferSize) / uint(s.Support.SharedConfig().BatchSize().AbsoluteMaxBytes)
-	if capacityBlocks < 100 {
-		capacityBlocks = 100
-	}
+	capacityBlocks := max(uint(s.LocalConfigCluster.ReplicationBufferSize)/uint(s.Support.SharedConfig().BatchSize().AbsoluteMaxBytes), 100)
 	s.mutex.Lock()
 	s.syncBuff = NewSyncBuffer(capacityBlocks)
 	s.mutex.Unlock()

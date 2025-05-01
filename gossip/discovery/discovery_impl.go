@@ -235,10 +235,7 @@ func (d *gossipDiscoveryImpl) InitiateSync(peerNum int) {
 	d.lock.RLock()
 
 	n := d.aliveMembership.Size()
-	k := peerNum
-	if k > n {
-		k = n
-	}
+	k := min(peerNum, n)
 
 	aliveMembersAsSlice := d.aliveMembership.ToSlice()
 	for _, i := range util.GetRandomIndices(k, n-1) {

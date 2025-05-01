@@ -59,10 +59,7 @@ func (c *Config) load() {
 		c.ExecuteTimeout = defaultExecutionTimeout
 	}
 	c.InstallTimeout = viper.GetDuration("chaincode.installTimeout")
-	c.StartupTimeout = viper.GetDuration("chaincode.startuptimeout")
-	if c.StartupTimeout < minimumStartupTimeout {
-		c.StartupTimeout = minimumStartupTimeout
-	}
+	c.StartupTimeout = max(viper.GetDuration("chaincode.startuptimeout"), minimumStartupTimeout)
 
 	c.SCCAllowlist = map[string]bool{}
 	for k, v := range viper.GetStringMapString("chaincode.system") {
