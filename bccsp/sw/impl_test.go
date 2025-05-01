@@ -1334,6 +1334,7 @@ func TestSHA(t *testing.T) {
 		}
 	}
 }
+
 func TestOQSKeyGenEphemeral(t *testing.T) {
 	t.Parallel()
 	provider, _, cleanup := currentTestConfig.Provider(t)
@@ -1634,7 +1635,6 @@ func TestKeyImportFromX509ECDSAHybridOQSPublicKey(t *testing.T) {
 	if !valid {
 		t.Fatal("Failed verifying OQS signature. Signature not valid.")
 	}
-
 }
 
 // KeyImport from an ordinary X509 certificate (aka, with no alternate key specified) should also succeed.
@@ -1754,7 +1754,6 @@ func TestKeyImportFromX509ECDSAHybridOQSPublicKeyBackwardsCompatible(t *testing.
 	if !valid {
 		t.Fatal("Failed verifying ECDSA signature. Signature not valid.")
 	}
-
 }
 
 func TestAddWrapper(t *testing.T) {

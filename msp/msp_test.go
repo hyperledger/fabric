@@ -813,6 +813,7 @@ func TestSignAndVerifyHybrid(t *testing.T) {
 	err = id.Verify(msg, sig[1:])
 	require.Error(t, err)
 }
+
 func TestGetOU(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	if err != nil {

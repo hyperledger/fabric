@@ -1,3 +1,6 @@
+/*
+SPDX-License-Identifier: Apache-2.0
+*/
 package sw
 
 import (
@@ -31,15 +34,11 @@ func TestOqsSigner_Sign(t *testing.T) {
 }
 
 func TestOqsKeySigner_SignError(t *testing.T) {
-
 	// mock low-level verification error
 	// assert false and error returned
-
 }
 
 func TestOqsKeyVerifier_VerifyError(t *testing.T) {
-
 	// mock low-level verification error
 	// assert false and error returned
-
 }

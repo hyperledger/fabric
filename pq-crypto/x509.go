@@ -1,6 +1,11 @@
+/*
+SPDX-License-Identifier: Apache-2.0
+*/
+
 package oqs
 
 import "C"
+
 import (
 	"crypto"
 	"crypto/rand"
@@ -121,7 +126,6 @@ func MarshalPKIXPrivateKey(pub interface{}) ([]byte, error) {
 	}
 	ret, _ := asn1.Marshal(pkix)
 	return ret, nil
-
 }
 
 func ParsePKIXPrivateKey(derBytes []byte) (interface{}, error) {
@@ -177,8 +181,8 @@ func buildSubjectAltPublicKeyInfoExt(qk *PublicKey) (pkix.Extension, error) {
 	pki := pkixPublicKey{
 		Algorithm: oid,
 		PublicKey: asn1.BitString{
-			qk.Pk,
-			8 * len(qk.Pk),
+			Bytes:     qk.Pk,
+			BitLength: 8 * len(qk.Pk),
 		},
 	}
 	val, _ := asn1.Marshal(pki)
@@ -212,12 +216,12 @@ func buildSubjectAltPublicKeyInfoExt(qk *PublicKey) (pkix.Extension, error) {
 func buildKmMessage(qkb []byte, ckb []byte) []byte {
 	km := KeyMaterial{
 		ClassicalBytes: asn1.BitString{
-			ckb,
-			8 * len(ckb),
+			Bytes:     ckb,
+			BitLength: 8 * len(ckb),
 		},
 		QuantumBytes: asn1.BitString{
-			qkb,
-			8 * len(qkb),
+			Bytes:     qkb,
+			BitLength: 8 * len(qkb),
 		},
 	}
 	kmBytes, _ := asn1.Marshal(km)
@@ -225,7 +229,6 @@ func buildKmMessage(qkb []byte, ckb []byte) []byte {
 }
 
 func buildAltSignatureValueExt(qkb []byte, ckb []byte, qSigner crypto.Signer) (pkix.Extension, error) {
-
 	kmBytes := buildKmMessage(qkb, ckb)
 
 	signature, err := qSigner.Sign(rand.Reader, kmBytes, nil)
@@ -240,7 +243,6 @@ func buildAltSignatureValueExt(qkb []byte, ckb []byte, qSigner crypto.Signer) (p
 }
 
 func BuildAltPublicKeyExtensions(quantumKey interface{}, classicalKey interface{}, qSigner crypto.Signer) ([]pkix.Extension, error) {
-
 	var extensions []pkix.Extension
 	var qKBytes []byte
 	qK, ok := quantumKey.(*PublicKey)
