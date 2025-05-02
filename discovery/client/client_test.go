@@ -854,7 +854,7 @@ func (ip *inquireablePolicy) SatisfiedBy() []policies.PrincipalSet {
 }
 
 func peerIdentity(mspID string, i int) api.PeerIdentityInfo {
-	p := []byte(fmt.Sprintf("p%d", i))
+	p := fmt.Appendf(nil, "p%d", i)
 	sID := &msp.SerializedIdentity{
 		Mspid:   mspID,
 		IdBytes: p,

@@ -88,7 +88,7 @@ func TestExpiryKeeper(t *testing.T) {
 func buildPvtdataKeysForTest(startingEntry int, numEntries int) *PvtdataKeys {
 	pvtdataKeys := newPvtdataKeys()
 	for i := startingEntry; i <= startingEntry+numEntries; i++ {
-		pvtdataKeys.add(fmt.Sprintf("ns-%d", i), fmt.Sprintf("coll-%d", i), fmt.Sprintf("key-%d", i), []byte(fmt.Sprintf("key-%d-hash", i)))
+		pvtdataKeys.add(fmt.Sprintf("ns-%d", i), fmt.Sprintf("coll-%d", i), fmt.Sprintf("key-%d", i), fmt.Appendf(nil, "key-%d-hash", i))
 	}
 	return pvtdataKeys
 }

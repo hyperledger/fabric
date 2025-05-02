@@ -202,7 +202,7 @@ func TestPrincipalUniqueSet(t *testing.T) {
 	addPrincipal := func(i int) {
 		principalSet = append(principalSet, &msp.MSPPrincipal{
 			PrincipalClassification: msp.MSPPrincipal_Classification(i),
-			Principal:               []byte(fmt.Sprintf("%d", i)),
+			Principal:               fmt.Appendf(nil, "%d", i),
 		})
 	}
 
@@ -234,7 +234,7 @@ func TestPrincipalSetContainingOnly(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			principalSet = append(principalSet, &msp.MSPPrincipal{
 				PrincipalClassification: msp.MSPPrincipal_IDENTITY,
-				Principal:               []byte(fmt.Sprintf("%d", j*10+i)),
+				Principal:               fmt.Appendf(nil, "%d", j*10+i),
 			})
 		}
 		principalSets = append(principalSets, principalSet)

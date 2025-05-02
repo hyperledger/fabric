@@ -1040,7 +1040,7 @@ func TestDataExportImport(
 					},
 					VersionedValue: &statedb.VersionedValue{
 						Version:  version.NewHeight(1, 1),
-						Metadata: []byte(fmt.Sprintf("metadata-for-key-%d-for-%s", i, ns)),
+						Metadata: fmt.Appendf(nil, "metadata-for-key-%d-for-%s", i, ns),
 					},
 				}
 				switch {
@@ -1145,7 +1145,7 @@ func CreateTestData(t *testing.T, db statedb.VersionedDB, ns string, numKeys int
 	expectedKeys := make([]string, numKeys)
 	for i := 0; i < numKeys; i++ {
 		expectedKeys[i] = fmt.Sprintf("key%d", i)
-		vv := statedb.VersionedValue{Value: []byte(fmt.Sprintf("value%d", i)), Version: version.NewHeight(1, uint64(i+1))}
+		vv := statedb.VersionedValue{Value: fmt.Appendf(nil, "value%d", i), Version: version.NewHeight(1, uint64(i+1))}
 		batch.Put(ns, expectedKeys[i], vv.Value, vv.Version)
 	}
 	savePoint := version.NewHeight(1, uint64(numKeys))

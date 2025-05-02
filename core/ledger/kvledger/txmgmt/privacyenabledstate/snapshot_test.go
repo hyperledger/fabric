@@ -50,9 +50,9 @@ func testSnapshot(t *testing.T, env TestEnv) {
 						Key:       fmt.Sprintf("key-%d", i),
 					},
 					VersionedValue: &statedb.VersionedValue{
-						Value:    []byte(fmt.Sprintf("value-for-key-%d-for-%s", i, ns)),
+						Value:    fmt.Appendf(nil, "value-for-key-%d-for-%s", i, ns),
 						Version:  version.NewHeight(1, 1),
-						Metadata: []byte(fmt.Sprintf("metadata-for-key-%d-for-%s", i, ns)),
+						Metadata: fmt.Appendf(nil, "metadata-for-key-%d-for-%s", i, ns),
 					},
 				}
 				sampleData = append(sampleData, sampleKV)

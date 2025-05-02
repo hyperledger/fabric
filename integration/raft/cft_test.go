@@ -163,7 +163,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			// Create 5000 envelopes to send to the orderer at the same time
 			for i := 0; i < 5000; i++ {
-				envs <- ordererclient.CreateBroadcastEnvelope(network, orderer, "testchannel", []byte(fmt.Sprintf("%d", i)))
+				envs <- ordererclient.CreateBroadcastEnvelope(network, orderer, "testchannel", fmt.Appendf(nil, "%d", i))
 			}
 
 			close(envs)
@@ -186,7 +186,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			// Create 5000 envelopes to send to the orderer at the same time
 			for i := 0; i < 5000; i++ {
-				envs <- ordererclient.CreateBroadcastEnvelope(network, orderer, "testchannel", []byte(fmt.Sprintf("%d", i)))
+				envs <- ordererclient.CreateBroadcastEnvelope(network, orderer, "testchannel", fmt.Appendf(nil, "%d", i))
 			}
 
 			close(envs)

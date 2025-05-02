@@ -1426,7 +1426,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	for i := 0; i < peersNum; i++ {
 		peerToResponse := &NetworkMember{
 			Metadata:         []byte{},
-			PKIid:            []byte(fmt.Sprintf("localhost:%d", 22610+i)),
+			PKIid:            fmt.Appendf(nil, "localhost:%d", 22610+i),
 			Endpoint:         fmt.Sprintf("localhost:%d", 22610+i),
 			InternalEndpoint: fmt.Sprintf("localhost:%d", 22610+i),
 		}

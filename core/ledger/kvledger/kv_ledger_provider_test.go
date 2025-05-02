@@ -386,7 +386,7 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 		ledgers[i] = l
 		txid := util.GenerateUUID()
 		s, _ := l.NewTxSimulator(txid)
-		err = s.SetState("ns", "testKey", []byte(fmt.Sprintf("testValue_%d", i)))
+		err = s.SetState("ns", "testKey", fmt.Appendf(nil, "testValue_%d", i))
 		s.Done()
 		require.NoError(t, err)
 		res, err := s.GetTxSimulationResults()
@@ -414,7 +414,7 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 		val, err := q.GetState("ns", "testKey")
 		q.Done()
 		require.NoError(t, err)
-		require.Equal(t, []byte(fmt.Sprintf("testValue_%d", i)), val)
+		require.Equal(t, fmt.Appendf(nil, "testValue_%d", i), val)
 		l.Close()
 	}
 }

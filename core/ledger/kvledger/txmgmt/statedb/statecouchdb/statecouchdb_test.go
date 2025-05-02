@@ -1565,9 +1565,9 @@ func TestRangeQueryWithInternalLimitAndPageSize(t *testing.T) {
 					Key:       fmt.Sprintf("key-%d", i),
 				},
 				VersionedValue: &statedb.VersionedValue{
-					Value:    []byte(fmt.Sprintf("value-for-key-%d-for-ns1", i)),
+					Value:    fmt.Appendf(nil, "value-for-key-%d-for-ns1", i),
 					Version:  ver,
-					Metadata: []byte(fmt.Sprintf("metadata-for-key-%d-for-ns1", i)),
+					Metadata: fmt.Appendf(nil, "metadata-for-key-%d-for-ns1", i),
 				},
 			}
 			sampleData = append(sampleData, sampleKV)
@@ -1885,13 +1885,13 @@ func TestFullScanIteratorDeterministicJSONOutput(t *testing.T) {
 				},
 				VersionedValue: &statedb.VersionedValue{
 					Version:  ver,
-					Metadata: []byte(fmt.Sprintf("metadata-for-key-%d-for-ns1", i)),
+					Metadata: fmt.Appendf(nil, "metadata-for-key-%d-for-ns1", i),
 				},
 			}
 			if sortedJSON {
-				sampleKV.Value = []byte(fmt.Sprintf(`{"a":0,"b":0,"c":%d}`, i))
+				sampleKV.Value = fmt.Appendf(nil, `{"a":0,"b":0,"c":%d}`, i)
 			} else {
-				sampleKV.Value = []byte(fmt.Sprintf(`{"c":%d,"b":0,"a":0}`, i))
+				sampleKV.Value = fmt.Appendf(nil, `{"c":%d,"b":0,"a":0}`, i)
 			}
 			sampleData = append(sampleData, sampleKV)
 		}
@@ -1950,9 +1950,9 @@ func TestFullScanIteratorSkipInternalKeys(t *testing.T) {
 					Key:       keys[i],
 				},
 				VersionedValue: &statedb.VersionedValue{
-					Value:    []byte(fmt.Sprintf("value-for-%s-for-ns1", keys[i])),
+					Value:    fmt.Appendf(nil, "value-for-%s-for-ns1", keys[i]),
 					Version:  ver,
-					Metadata: []byte(fmt.Sprintf("metadata-for-%s-for-ns1", keys[i])),
+					Metadata: fmt.Appendf(nil, "metadata-for-%s-for-ns1", keys[i]),
 				},
 			}
 			sampleData = append(sampleData, sampleKV)

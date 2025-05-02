@@ -53,7 +53,7 @@ func TestReadWriteCustomTxProcessor(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, []byte("value1"), valKey1)
 			valueCounter++
-			return s.SetState("ns", "key1", []byte(fmt.Sprintf("value1_%d", valueCounter)))
+			return s.SetState("ns", "key1", fmt.Appendf(nil, "value1_%d", valueCounter))
 		}
 
 	// block-2 with two post order transactions

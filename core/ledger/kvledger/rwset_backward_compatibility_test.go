@@ -62,7 +62,7 @@ func testGenerateSampleRWSet(t *testing.T) []byte {
 	simulator, err := ledger.NewTxSimulator(txid)
 	require.NoError(t, err)
 	for i := 0; i < 10011; i++ {
-		require.NoError(t, simulator.SetState("ns1", fmt.Sprintf("key-%000d", i), []byte(fmt.Sprintf("value-%000d", i))))
+		require.NoError(t, simulator.SetState("ns1", fmt.Sprintf("key-%000d", i), fmt.Appendf(nil, "value-%000d", i)))
 	}
 	simulator.Done()
 	simRes, err := simulator.GetTxSimulationResults()
@@ -76,7 +76,7 @@ func testGenerateSampleRWSet(t *testing.T) []byte {
 	require.NoError(t, err)
 	_, err = simulator.GetState("ns1", fmt.Sprintf("key-%000d", 5))
 	require.NoError(t, err)
-	require.NoError(t, simulator.SetState("ns1", fmt.Sprintf("key-%000d", 6), []byte(fmt.Sprintf("value-%000d-new", 6))))
+	require.NoError(t, simulator.SetState("ns1", fmt.Sprintf("key-%000d", 6), fmt.Appendf(nil, "value-%000d-new", 6)))
 	itr, err := simulator.GetStateRangeScanIterator("ns1", "", "")
 	require.NoError(t, err)
 	numKVs := 0

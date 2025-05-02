@@ -99,7 +99,7 @@ func (fc *fetchCall) expectingEndorsers(orgs ...string) *fetchCall {
 		fc.fetcher.expectedEndorsers = make(map[string]struct{})
 	}
 	for _, org := range orgs {
-		sID := &mspproto.SerializedIdentity{Mspid: org, IdBytes: []byte(fmt.Sprintf("p0%s", org))}
+		sID := &mspproto.SerializedIdentity{Mspid: org, IdBytes: fmt.Appendf(nil, "p0%s", org)}
 		b, _ := pb.Marshal(sID)
 		fc.fetcher.expectedEndorsers[string(b)] = struct{}{}
 	}
