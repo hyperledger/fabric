@@ -80,7 +80,7 @@ func (bf *blockFactory) AddTxnWithEndorsement(txID string, nsName string, hash [
 	}
 
 	if org != "" {
-		sID := &msp.SerializedIdentity{Mspid: org, IdBytes: []byte(fmt.Sprintf("p0%s", org))}
+		sID := &msp.SerializedIdentity{Mspid: org, IdBytes: fmt.Appendf(nil, "p0%s", org)}
 		b, _ := proto.Marshal(sID)
 		ccPayload.Action.Endorsements = []*peer.Endorsement{
 			{

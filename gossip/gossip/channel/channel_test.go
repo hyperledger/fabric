@@ -638,7 +638,7 @@ func TestChannelMsgStoreEviction(t *testing.T) {
 	// Since we checked the length, it proves that the old blocks were discarded, since we had much more
 	// total blocks overall than our capacity
 	for seq := range lastPullPhase {
-		require.Contains(t, msg.GetDataDig().Digests, []byte(fmt.Sprintf("%d", seq)))
+		require.Contains(t, msg.GetDataDig().Digests, fmt.Appendf(nil, "%d", seq))
 	}
 }
 

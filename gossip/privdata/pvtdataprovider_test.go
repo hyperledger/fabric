@@ -73,7 +73,7 @@ func TestRetrievePvtdata(t *testing.T) {
 	}
 	endorser := protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
 		Mspid:   identity.GetMSPIdentifier(),
-		IdBytes: []byte(fmt.Sprintf("p0%s", identity.GetMSPIdentifier())),
+		IdBytes: fmt.Appendf(nil, "p0%s", identity.GetMSPIdentifier()),
 	})
 
 	ts := testSupport{
@@ -846,7 +846,7 @@ func TestRetrievePvtdataFailure(t *testing.T) {
 	}
 	endorser := protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
 		Mspid:   identity.GetMSPIdentifier(),
-		IdBytes: []byte(fmt.Sprintf("p0%s", identity.GetMSPIdentifier())),
+		IdBytes: fmt.Appendf(nil, "p0%s", identity.GetMSPIdentifier()),
 	})
 
 	ts := testSupport{
@@ -906,7 +906,7 @@ func TestRetryFetchFromPeer(t *testing.T) {
 	}
 	endorser := protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
 		Mspid:   identity.GetMSPIdentifier(),
-		IdBytes: []byte(fmt.Sprintf("p0%s", identity.GetMSPIdentifier())),
+		IdBytes: fmt.Appendf(nil, "p0%s", identity.GetMSPIdentifier()),
 	})
 
 	ts := testSupport{
@@ -999,7 +999,7 @@ func TestSkipPullingAllInvalidTransactions(t *testing.T) {
 	}
 	endorser := protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
 		Mspid:   identity.GetMSPIdentifier(),
-		IdBytes: []byte(fmt.Sprintf("p0%s", identity.GetMSPIdentifier())),
+		IdBytes: fmt.Appendf(nil, "p0%s", identity.GetMSPIdentifier()),
 	})
 
 	ts := testSupport{
@@ -1099,7 +1099,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 	}
 	endorser := protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
 		Mspid:   identity.GetMSPIdentifier(),
-		IdBytes: []byte(fmt.Sprintf("p0%s", identity.GetMSPIdentifier())),
+		IdBytes: fmt.Appendf(nil, "p0%s", identity.GetMSPIdentifier()),
 	})
 
 	ts := testSupport{

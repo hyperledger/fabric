@@ -726,7 +726,7 @@ func produceSamplePvtdataOrPanic(txNum uint64, nsColls []string) *ledger.TxPvtDa
 		nsCollSplit := strings.Split(nsColl, ":")
 		ns := nsCollSplit[0]
 		coll := nsCollSplit[1]
-		builder.AddToPvtAndHashedWriteSet(ns, coll, fmt.Sprintf("key-%s-%s", ns, coll), []byte(fmt.Sprintf("value-%s-%s", ns, coll)))
+		builder.AddToPvtAndHashedWriteSet(ns, coll, fmt.Sprintf("key-%s-%s", ns, coll), fmt.Appendf(nil, "value-%s-%s", ns, coll))
 	}
 	simRes, err := builder.GetTxSimulationResults()
 	if err != nil {

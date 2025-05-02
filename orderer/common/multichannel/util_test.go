@@ -110,7 +110,7 @@ func makeConfigTx(chainID string, i int) *cb.Envelope {
 	group := protoutil.NewConfigGroup()
 	group.Groups[channelconfig.OrdererGroupKey] = protoutil.NewConfigGroup()
 	group.Groups[channelconfig.OrdererGroupKey].Values[fmt.Sprintf("%d", i)] = &cb.ConfigValue{
-		Value: []byte(fmt.Sprintf("%d", i)),
+		Value: fmt.Appendf(nil, "%d", i),
 	}
 	return makeConfigTxFromConfigUpdateEnvelope(chainID, &cb.ConfigUpdateEnvelope{
 		ConfigUpdate: protoutil.MarshalOrPanic(&cb.ConfigUpdate{
@@ -182,7 +182,7 @@ func makeNormalTx(chainID string, i int) *cb.Envelope {
 			}),
 			SignatureHeader: protoutil.MarshalOrPanic(&cb.SignatureHeader{}),
 		},
-		Data: []byte(fmt.Sprintf("%d", i)),
+		Data: fmt.Appendf(nil, "%d", i),
 	}
 	return &cb.Envelope{
 		Payload: protoutil.MarshalOrPanic(payload),
