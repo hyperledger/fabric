@@ -1750,7 +1750,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			// If the backoff is made controllable, as here in the test, the maximum time between attempts will be 3 seconds.
 			for i := 0; i < 7; i++ {
 				// look for grpc Info message
-				Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Received SubConn state update.*IDLE ConnectionError"))
+				Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Subchannel Connectivity change to IDLE, last error: connection error"))
 			}
 
 			// After starting orderer 3, orderer 0 (leader) will have 10-11 seconds to establish a connection and throw a heartbeat message.
