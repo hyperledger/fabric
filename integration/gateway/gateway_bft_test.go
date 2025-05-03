@@ -177,7 +177,7 @@ var _ = Describe("GatewayService with BFT ordering service", func() {
 		ordererProcesses["orderer2"] = ifrit.Invoke(runner)
 		Eventually(ordererProcesses["orderer2"].Ready(), network.EventuallyTimeout).Should(BeClosed())
 		// wait for peer to connect to orderer2
-		Eventually(peerGinkgoRunner[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("ConnectivityState:READY ConnectionError:<nil> connectedAddress:\\{Addr:127.0.0.1:22005"))
+		Eventually(peerGinkgoRunner[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("picks a new address \"127.0.0.1:22005\" to connect\n.*Subchannel Connectivity change to READY"))
 		Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Starting view with number 0"))
 		// awaiting the selection of a new leader
 		Eventually(ordererRunners[1].Err(), network.EventuallyTimeout*2, time.Second).Should(gbytes.Say("Starting view with number"))
