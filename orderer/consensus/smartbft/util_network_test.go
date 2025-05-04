@@ -119,7 +119,17 @@ func (ns *NetworkSetupInfo) AddNewNode() (map[uint64]*Node, *Node) {
 
 	ledgerToSyncWith := findLargestDifferentLedger(ns.nodeIdToNode, newNodeId)
 
+	clusterService := &cluster.ClusterService{
+		StreamCountReporter:              &cluster.StreamCountReporter{},
+		Logger:                           flogging.MustGetLogger("orderer.common.cluster"),
+		StepLogger:                       flogging.MustGetLogger("orderer.common.cluster.step"),
+		MinimumExpirationWarningInterval: cluster.MinimumExpirationWarningInterval,
+		MembershipByChannel:              make(map[string]*cluster.ChannelMembersConfig),
+		RequestHandler:                   &smartbft.Ingress{},
+	}
+
 	ns.nodeIdToNode[newNodeId] = NewNode(ns.t, newNodeId, ns.dir, ns.channelId, ns.genesisBlock, ns.configInfo, ledgerToSyncWith)
+	ns.nodeIdToNode[newNodeId].Chain.ClusterService = clusterService
 
 	// update all nodes about the nodes map
 	for nodeId := uint64(1); nodeId <= numberOfNodes; nodeId++ {

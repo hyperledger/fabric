@@ -72,6 +72,7 @@ type Proposer interface {
 	Start()
 	Abort()
 	Stopped() bool
+	AbortChan() <-chan struct{}
 	GetLeaderID() uint64
 	GetMetadata() []byte
 	HandleMessage(sender uint64, m *protos.Message)
@@ -169,6 +170,14 @@ func (c *Controller) currentViewStopped() bool {
 	c.currViewLock.RUnlock()
 
 	return view.Stopped()
+}
+
+func (c *Controller) currentViewAbortChan() <-chan struct{} {
+	c.currViewLock.RLock()
+	view := c.currView
+	c.currViewLock.RUnlock()
+
+	return view.AbortChan()
 }
 
 func (c *Controller) currentViewLeader() uint64 {
@@ -785,7 +794,7 @@ func (c *Controller) Start(startViewNumber uint64, startProposalSequence uint64,
 	c.syncChan = make(chan struct{}, 1)
 	c.stopChan = make(chan struct{})
 	c.leaderToken = make(chan struct{}, 1)
-	c.decisionChan = make(chan decision)
+	c.decisionChan = make(chan decision, 1)
 	c.deliverChan = make(chan struct{})
 	c.viewChange = make(chan viewInfo, 1)
 	c.abortViewChan = make(chan uint64, 1)
@@ -886,6 +895,7 @@ func (c *Controller) Decide(proposal types.Proposal, signatures []types.Signatur
 	select {
 	case <-c.deliverChan: // wait for the delivery of the decision to the application
 	case <-c.stopChan: // If we stopped the controller, abort delivery
+	case <-c.currentViewAbortChan(): // If we stopped the view, abort delivery
 	}
 }
 

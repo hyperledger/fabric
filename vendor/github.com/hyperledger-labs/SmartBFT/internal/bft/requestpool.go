@@ -304,7 +304,7 @@ func (rp *Pool) NextRequests(maxCount int, maxSizeBytes uint64, check bool) (bat
 		}
 	}
 
-	count := minInt(rp.fifo.Len(), maxCount)
+	count := min(rp.fifo.Len(), maxCount)
 	var totalSize uint64
 	batch = make([][]byte, 0, count)
 	element := rp.fifo.Front()

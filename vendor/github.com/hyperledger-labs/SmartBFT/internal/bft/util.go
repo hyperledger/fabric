@@ -60,13 +60,6 @@ func proposalSequence(m *protos.Message) uint64 {
 	return math.MaxUint64
 }
 
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // MarshalOrPanic marshals or panics when an error occurs
 func MarshalOrPanic(msg proto.Message) []byte {
 	b, err := proto.Marshal(msg)
