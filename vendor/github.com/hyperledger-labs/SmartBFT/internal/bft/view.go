@@ -1015,6 +1015,10 @@ func (v *View) Stopped() bool {
 	}
 }
 
+func (v *View) AbortChan() <-chan struct{} {
+	return v.abortChan
+}
+
 func (v *View) GetLeaderID() uint64 {
 	return v.LeaderID
 }

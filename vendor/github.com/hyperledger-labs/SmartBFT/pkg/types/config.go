@@ -161,6 +161,9 @@ func (c Configuration) Validate() error {
 	if c.RequestBatchMaxCount > c.RequestBatchMaxBytes {
 		return errors.New("RequestBatchMaxCount is bigger than RequestBatchMaxBytes")
 	}
+	if c.RequestMaxBytes > c.RequestBatchMaxBytes {
+		return errors.New("RequestMaxBytes is bigger than RequestBatchMaxBytes")
+	}
 	if c.RequestForwardTimeout > c.RequestComplainTimeout {
 		return errors.New("RequestForwardTimeout is bigger than RequestComplainTimeout")
 	}
