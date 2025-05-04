@@ -32,6 +32,7 @@ type BFTHeaderReceiver struct {
 	errorStopTime          time.Time
 	endpoint               string
 	client                 orderer.AtomicBroadcast_DeliverClient
+	clientCloserFunc       func()
 	updatableBlockVerifier UpdatableBlockVerifier
 
 	// A block with Header & Metadata, without Data (i.e. lastHeader.Data==nil); except from config blocks, which are full.
@@ -50,6 +51,7 @@ func NewBFTHeaderReceiver(
 	chainID string,
 	endpoint string,
 	client orderer.AtomicBroadcast_DeliverClient,
+	clientCloser func(),
 	updatableBlockVerifier UpdatableBlockVerifier,
 	previousReceiver *BFTHeaderReceiver,
 	logger *flogging.FabricLogger,
@@ -59,6 +61,7 @@ func NewBFTHeaderReceiver(
 		stopChan:               make(chan struct{}, 1),
 		endpoint:               endpoint,
 		client:                 client,
+		clientCloserFunc:       clientCloser,
 		updatableBlockVerifier: updatableBlockVerifier.Clone(),
 		logger:                 logger,
 	}
@@ -186,8 +189,7 @@ func (hr *BFTHeaderReceiver) Stop() error {
 
 	hr.logger.Infof("[%s][%s] Stopping", hr.chainID, hr.endpoint)
 	hr.stop = true
-	_ = hr.client.CloseSend()
-	// TODO close the underlying connection as well
+	hr.clientCloserFunc()
 	close(hr.stopChan)
 
 	return nil
