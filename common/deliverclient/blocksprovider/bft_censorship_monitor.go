@@ -356,7 +356,7 @@ func (m *BFTCensorshipMonitor) launchHeaderReceivers() error {
 		hrRcvMon := m.hdrRcvTrackers[ep.Address]
 		// This may fail if the orderer is down or faulty. If it fails, we back off and retry.
 		// We count connection failure attempts (here) and stop failures separately.
-		headerClient, _, err := m.newHeaderClient(ep, hrRcvMon.headerReceiver) // TODO use the clientCloser function
+		headerClient, clientCloser, err := m.newHeaderClient(ep, hrRcvMon.headerReceiver)
 		if err != nil {
 			dur := backOffDuration(2.0, hrRcvMon.connectFailureCounter, m.timeoutConfig.MinRetryInterval, m.timeoutConfig.MaxRetryInterval)
 			hrRcvMon.retryDeadline = time.Now().Add(dur)
@@ -365,7 +365,7 @@ func (m *BFTCensorshipMonitor) launchHeaderReceivers() error {
 			continue
 		}
 
-		hrRcvMon.headerReceiver = NewBFTHeaderReceiver(m.chainID, ep.Address, headerClient, m.updatableHeaderVerifier, hrRcvMon.headerReceiver, flogging.MustGetLogger("BFTHeaderReceiver"))
+		hrRcvMon.headerReceiver = NewBFTHeaderReceiver(m.chainID, ep.Address, headerClient, clientCloser, m.updatableHeaderVerifier, hrRcvMon.headerReceiver, flogging.MustGetLogger("BFTHeaderReceiver"))
 		hrRcvMon.connectFailureCounter = 0
 		hrRcvMon.retryDeadline = time.Time{}
 
