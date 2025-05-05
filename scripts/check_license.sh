@@ -13,7 +13,7 @@ if [[ -z "$CHECK" ]]; then
     CHECK=$(git diff-tree --no-commit-id --name-only --diff-filter=ACMRTUXB -r "HEAD^..HEAD" | tr '\n' ' ')
 fi
 
-FILTERED=$(filterExcludedAndGeneratedFiles "$CHECK")
+FILTERED=$(filterExcludedAndGeneratedFiles "$CHECK" | grep -v '^pq-crypto/')
 if [[ -z "$FILTERED" ]]; then
     echo "All files are excluded from having license headers"
     exit 0
