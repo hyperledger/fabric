@@ -20,7 +20,7 @@ permissions:
 jobs:
   basic-checks:
     name: Basic Checks
-    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-22.04' || 'ubuntu-22.04' }}
+    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-24.04' || 'ubuntu-24.04' }}
     steps:
       - uses: actions/checkout@v4
         name: Checkout Fabric Code
@@ -35,7 +35,7 @@ jobs:
   unit-tests:
     name: Unit Tests
     needs: basic-checks
-    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-22.04' || 'ubuntu-22.04' }}
+    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-24.04' || 'ubuntu-24.04' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -65,7 +65,7 @@ jobs:
           - discovery gossip devmode pluggable
           - gateway idemix pkcs11 configtx configtxlator
           - sbe nwo msp
-    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-22.04' || 'ubuntu-22.04' }}
+    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-24.04' || 'ubuntu-24.04' }}
     steps:
       - uses: actions/checkout@v4
         name: Checkout Fabric Code

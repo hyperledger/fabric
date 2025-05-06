@@ -12,7 +12,7 @@ on:
       - v3.*
 
 env:
-  UBUNTU_VER: 22.04
+  UBUNTU_VER: 24.04
   FABRIC_VER: ${{ github.ref_name }}
 
 permissions:
@@ -24,10 +24,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - image: ubuntu-22.04
+          - image: ubuntu-24.04
             target: linux
             arch: amd64
-          - image: ubuntu-22.04
+          - image: ubuntu-24.04
             target: linux
             arch: arm64
           - image: macos-11
@@ -39,7 +39,7 @@ jobs:
           - image: fabric-windows-latest
             target: windows
             arch: amd64
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout Fabric Code
         uses: actions/checkout@v4
@@ -61,7 +61,7 @@ jobs:
           # <path> of the artifact may include multiple files.
           path: release/${{ matrix.target }}-${{ matrix.arch }}/*.tar.gz
 
-  # build native images using a different runner for each architecture (faster and more reliable than using qemu to build multi-architecture images on ubuntu-22.04)
+  # build native images using a different runner for each architecture (faster and more reliable than using qemu to build multi-architecture images on ubuntu-24.04)
   build-and-push-native-docker-images:
     name: Build and Push native images
     runs-on: ${{ matrix.runner }}
@@ -74,8 +74,8 @@ jobs:
       fail-fast: false
       matrix:
         runner:
-          - ubuntu-22.04 # creates linux-amd64 images
-          - ubuntu-22.04-arm # creates linux-arm64 images
+          - ubuntu-24.04 # creates linux-amd64 images
+          - ubuntu-24.04-arm # creates linux-arm64 images
 
         # Dynamic matrix
         # If owner is 'hyperledger' run job for Docker Hub and ghcr, otherwise for personal forks just run job for ghcr
@@ -147,7 +147,7 @@ jobs:
   # and creates a multi-architecture image manifest with user-friendly tags
   merge-and-push-multi-arch-image:
     name: Merge and Push multi-arch image
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs:
       - build-and-push-native-docker-images
 
@@ -215,7 +215,7 @@ jobs:
     needs:
       - build-binaries
       - merge-and-push-multi-arch-image
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
