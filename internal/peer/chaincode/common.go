@@ -173,7 +173,7 @@ func GetCollectionConfigFromFile(ccFile string) (*pb.CollectionConfigPackage, []
 	return getCollectionConfigFromBytes(fileBytes)
 }
 
-// getCollectionConfig retrieves the collection configuration
+// getCollectionConfigFromBytes retrieves the collection configuration
 // from the supplied byte array; the byte array must contain a
 // json-formatted array of collectionConfigJson elements
 func getCollectionConfigFromBytes(cconfBytes []byte) (*pb.CollectionConfigPackage, []byte, error) {
