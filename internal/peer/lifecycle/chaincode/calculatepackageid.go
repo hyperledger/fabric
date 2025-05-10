@@ -79,7 +79,7 @@ func CalculatePackageIDCmd(p *PackageIDCalculator) *cobra.Command {
 	return calculatePackageIDCmd
 }
 
-// PackageIDCalculator calculates the package ID for a packaged chaincode.
+// CalculatePackageID calculates the package ID for a packaged chaincode.
 func (p *PackageIDCalculator) CalculatePackageID(args []string) error {
 	if p.Command != nil {
 		// Parsing of the command line is done so silence cmd usage

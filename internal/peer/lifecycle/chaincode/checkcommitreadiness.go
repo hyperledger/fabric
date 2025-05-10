@@ -261,7 +261,7 @@ func (c *CommitReadinessChecker) printResponse(proposalResponse *pb.ProposalResp
 	return nil
 }
 
-// setInput creates the input struct based on the CLI flags
+// createInput creates the input struct based on the CLI flags
 func (c *CommitReadinessChecker) createInput() (*CommitReadinessCheckInput, error) {
 	policyBytes, err := createPolicyBytes(signaturePolicy, channelConfigPolicy)
 	if err != nil {
