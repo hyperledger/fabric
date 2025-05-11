@@ -530,7 +530,6 @@ func (c *Chain) propose(ch chan<- *common.Block, bc *blockCreator, batches ...[]
 }
 
 func (c *Chain) writeBlock(block *common.Block, index uint64) {
-	c.Logger.Infof("WWWWWWWWWWWWWWWWWWWWWWWWWWW writeBlock WWWWWWWWWWWWWWWWWWWWWWWWWWWW")
 	if block.Header.Number > c.lastBlock.Header.Number+1 {
 		c.Logger.Panicf("Got block [%d], expect block [%d]", block.Header.Number, c.lastBlock.Header.Number+1)
 	} else if block.Header.Number < c.lastBlock.Header.Number+1 {
@@ -547,7 +546,13 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 
 	if protoutil.IsConfigBlock(block) {
 		c.configInflight = false
-		//c.writeConfigBlock(block, index)
+
+		// Handle config update to add/remove nodes
+		if err := c.configUpdate(block); err != nil {
+			c.Logger.Errorf("Failed to process config update: %s", err)
+			return
+		}
+
 		c.support.WriteConfigBlock(block, nil)
 		return
 	}
@@ -939,4 +944,147 @@ func (c *Chain) Ready() <-chan Ready {
 
 type Ready struct {
 	state bdls.State
+}
+
+func (c *Chain) configUpdate(block *common.Block) error {
+	// Extracting config update from block
+	env, err := protoutil.ExtractEnvelope(block, 0)
+	if err != nil {
+		return errors.Wrap(err, "failed extracting config update")
+	}
+
+	// Getting updated orderer nodes
+	bundle, err := channelconfig.NewBundleFromEnvelope(env, c.bccsp)
+	if err != nil {
+		return errors.Wrap(err, "failed getting bundle from config update")
+	}
+
+	oc, ok := bundle.OrdererConfig()
+	if !ok {
+		return errors.New("no orderer config in config block")
+	}
+
+	newConsenters := oc.Consenters()
+	if len(newConsenters) == 0 {
+		return errors.New("empty consenter set")
+	}
+
+	oldConsenters := c.opts.Consenters
+
+	// Compare old and new consenters to find added/removed nodes
+	added, removed := compareConsenters(oldConsenters, newConsenters)
+
+	c.Logger.Infof("Config update: adding %d and removing %d consenters", len(added), len(removed))
+
+	// Adding new nodes
+	for _, consenter := range added {
+		addr := fmt.Sprintf("%s:%d", consenter.Host, consenter.Port)
+		c.Logger.Infof("Adding new consenter %s to BDLS network", addr)
+
+		// First validate the new consenter's certificates
+		if err := validateConsenterCerts(consenter); err != nil {
+			return errors.Wrapf(err, "invalid certificates for new consenter %s", addr)
+		}
+
+		// Converting consenter to peer for BDLS
+		peer := agent.NewTCPPeer(nil, c.transportLayer)
+
+		// Try to connect with backoff
+		for retries := 0; retries < 3; retries++ {
+			if err := peer.Connect(addr); err != nil {
+				if retries == 2 {
+					c.Logger.Errorf("Failed connecting to new consenter %s after retries: %s", addr, err)
+					return errors.Wrapf(err, "failed connecting to new consenter %s", addr)
+				}
+				time.Sleep(time.Second * time.Duration(retries+1))
+				continue
+			}
+			break
+		}
+
+		c.transportLayer.AddPeer(peer)
+		c.Logger.Infof("Successfully added new consenter %s to BDLS network", addr)
+	}
+
+	// Removing nodes
+	for _, consenter := range removed {
+		addr := fmt.Sprintf("%s:%d", consenter.Host, consenter.Port)
+		c.Logger.Infof("Removing consenter %s from BDLS network", addr)
+
+		tcpAddr := &net.TCPAddr{
+			IP:   net.ParseIP(consenter.Host),
+			Port: int(consenter.Port),
+		}
+
+		if !c.transportLayer.Leave(tcpAddr) {
+			c.Logger.Warningf("Failed to remove consenter %s from BDLS network", addr)
+			// Don't fail the config update if removal fails - the node may already be gone
+		}
+
+		c.Logger.Infof("Successfully removed consenter %s from BDLS network", addr)
+	}
+
+	// Update consenters in chain options
+	c.opts.Consenters = newConsenters
+
+	// Reconfigure communication
+	if err := c.configureComm(); err != nil {
+		return errors.Wrap(err, "failed to reconfigure communication")
+	}
+
+	c.Logger.Info("Successfully completed network membership update")
+	return nil
+}
+
+func validateConsenterCerts(consenter *common.Consenter) error {
+	if len(consenter.ServerTlsCert) == 0 {
+		return errors.New("empty server TLS cert")
+	}
+	if len(consenter.ClientTlsCert) == 0 {
+		return errors.New("empty client TLS cert")
+	}
+
+	serverCert, err := pemToDER(consenter.ServerTlsCert, 0, "server", flogging.MustGetLogger("orderer.consensus.bdls"))
+	if err != nil {
+		return errors.Wrap(err, "invalid server TLS cert")
+	}
+
+	clientCert, err := pemToDER(consenter.ClientTlsCert, 0, "client", flogging.MustGetLogger("orderer.consensus.bdls"))
+	if err != nil {
+		return errors.Wrap(err, "invalid client TLS cert")
+	}
+
+	// Validate the certificates can be parsed
+	if _, err := x509.ParseCertificate(serverCert); err != nil {
+		return errors.Wrap(err, "invalid server certificate")
+	}
+	if _, err := x509.ParseCertificate(clientCert); err != nil {
+		return errors.Wrap(err, "invalid client certificate")
+	}
+
+	return nil
+}
+
+func compareConsenters(old []*common.Consenter, new []*common.Consenter) (added []*common.Consenter, removed []*common.Consenter) {
+	oldMap := make(map[string]*common.Consenter)
+	for _, c := range old {
+		oldMap[fmt.Sprintf("%s:%d", c.Host, c.Port)] = c
+	}
+
+	newMap := make(map[string]*common.Consenter)
+	for _, c := range new {
+		addr := fmt.Sprintf("%s:%d", c.Host, c.Port)
+		newMap[addr] = c
+		if _, exists := oldMap[addr]; !exists {
+			added = append(added, c)
+		}
+	}
+
+	for addr, c := range oldMap {
+		if _, exists := newMap[addr]; !exists {
+			removed = append(removed, c)
+		}
+	}
+
+	return added, removed
 }
