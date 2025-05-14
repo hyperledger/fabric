@@ -1,11 +1,14 @@
+/*
+SPDX-License-Identifier: Apache-2.0
+*/
 package oqs
 
-//NOTE: THE COMMENTS BELOW ARE CODE WHICH GETS COMPILED (THEY ARE CALLED PREAMBLE).IT'S A UNIQUE/WEIRD FEATURE IN CGO.
+// NOTE: THE COMMENTS BELOW ARE CODE WHICH GETS COMPILED (THEY ARE CALLED PREAMBLE).IT'S A UNIQUE/WEIRD FEATURE IN CGO.
 // ALSO NOTE: THERE MUST BE NO NEWLINE BETWEEN THE END OF THE COMMENT AND THE IMPORT "C" LINE
 
 /*
    #cgo CFLAGS: -Iinclude
-   #cgo LDFLAGS: -ldl -loqs -lm
+   #cgo LDFLAGS: -L${SRCDIR} -Wl,-rpath,${SRCDIR} -ldl -loqs -lm
 
    #include <stdio.h>
    #include <stdlib.h>
@@ -112,10 +115,12 @@ package oqs
 
 */
 import "C"
+
 import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"fmt"
+	"runtime"
 	"sync"
 	"unsafe"
 
@@ -123,22 +128,26 @@ import (
 )
 
 const (
-	AlgNistKat     AlgType = "NIST-KAT"
-	defaultLibPath string  = "liboqs.so"
+	AlgNistKat          AlgType = "NIST-KAT"
+	defaultLinuxLibPath string  = "liboqs.so"
+	defaultMacLibPath   string  = "liboqs.dylib"
 )
 
 // Global package lib singleton
 // Only initialized once, protected by mutex
 // Should not be accessed outside of GetLib
-var packageLib *OQSLib
-var libmux sync.Mutex
+var (
+	packageLib *OQSLib
+	libmux     sync.Mutex
+)
 
-var errAlreadyClosed = errors.New("already closed")
-var errAlgDisabledOrUnknown = errors.New("Signature algorithm is unknown or disabled")
-var operationFailed C.libResult = C.ERR_OPERATION_FAILED
+var (
+	errAlreadyClosed                    = errors.New("already closed")
+	errAlgDisabledOrUnknown             = errors.New("Signature algorithm is unknown or disabled")
+	operationFailed         C.libResult = C.ERR_OPERATION_FAILED
+)
 
 func libError(result C.libResult, msg string, a ...interface{}) error {
-
 	if result == C.ERR_OPERATION_FAILED {
 		return errors.Errorf(msg, a...)
 	}
@@ -147,8 +156,10 @@ func libError(result C.libResult, msg string, a ...interface{}) error {
 	return errors.Errorf("%s: %s", fmt.Sprintf(msg, a...), str)
 }
 
-type SigType string
-type AlgType string
+type (
+	SigType string
+	AlgType string
+)
 
 type SecretKey struct {
 	Sk []byte
@@ -219,7 +230,6 @@ func (l *OQSLib) initSigMap() (err error) {
 		l.sigMap[sigType] = s
 	}
 	return nil
-
 }
 
 func (l *OQSLib) generateOids() {
@@ -229,7 +239,15 @@ func (l *OQSLib) generateOids() {
 }
 
 func newLib() (*OQSLib, error) {
-	ctx, err := loadCctx(defaultLibPath)
+	var libName string
+	if runtime.GOOS == "linux" {
+		libName = defaultLinuxLibPath
+	} else if runtime.GOOS == "darwin" {
+		libName = defaultMacLibPath
+	} else {
+		return nil, errors.New("Unsupported OS")
+	}
+	ctx, err := loadCctx(libName)
 	if err != nil {
 		return nil, err
 	}
@@ -281,7 +299,6 @@ func (l *OQSLib) EnabledSigs() []SigType {
 }
 
 func (l *OQSLib) GetSig(sigType SigType) (*OQSSig, error) {
-
 	sig, ok := l.sigMap[sigType]
 	if !ok {
 		return nil, errors.New(fmt.Sprintf("Signature algorithm [%s] not found", string(sigType)))
@@ -301,7 +318,6 @@ func GetLib() (*OQSLib, error) {
 	}
 	packageLib = lib
 	return packageLib, nil
-
 }
 
 func loadCctx(path string) (*C.ctx, error) {

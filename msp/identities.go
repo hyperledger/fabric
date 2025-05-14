@@ -281,7 +281,6 @@ func (id *identity) getSigningHashOpt() (bccsp.HashOpts, error) {
 
 	// TODO: Using id.pk, determine an appropriate hashing algorithm
 	return bccsp.GetHashOpt(bccsp.SHA256)
-
 }
 
 func (id *identity) getHashOpt(hashFamily string) (bccsp.HashOpts, error) {

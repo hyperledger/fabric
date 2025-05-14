@@ -1,11 +1,15 @@
+/*
+SPDX-License-Identifier: Apache-2.0
+*/
+
 package oqs
 
-//NOTE: THE COMMENTS BELOW ARE CODE WHICH GETS COMPILED (THEY ARE CALLED PREAMBLE).IT'S A UNIQUE/WEIRD FEATURE IN CGO.
+// NOTE: THE COMMENTS BELOW ARE CODE WHICH GETS COMPILED (THEY ARE CALLED PREAMBLE).IT'S A UNIQUE/WEIRD FEATURE IN CGO.
 // ALSO NOTE: THERE MUST BE NO NEWLINE BETWEEN THE END OF THE COMMENT AND THE IMPORT "C" LINE
 
 /*
    #cgo CFLAGS: -Iinclude
-   #cgo LDFLAGS: -ldl -loqs -lm
+   #cgo LDFLAGS: -L${SRCDIR} -Wl,-rpath,${SRCDIR} -ldl -loqs -lm
 
    #include <stdio.h>
    #include <stdlib.h>
@@ -57,6 +61,7 @@ package oqs
    }
 */
 import "C"
+
 import (
 	"unsafe"
 )
