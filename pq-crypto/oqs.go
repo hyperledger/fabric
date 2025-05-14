@@ -70,6 +70,9 @@ func getSig(sigType SigType) (*OQSSig, error) {
 }
 
 func KeyPair(algName SigType) (publicKey PublicKey, secretKey SecretKey, err error) {
+	if algName == "DEFAULT" {
+		algName = "Dilithium2"
+	}
 	s, err := getSig(algName)
 	if err != nil {
 		return PublicKey{}, SecretKey{}, err
