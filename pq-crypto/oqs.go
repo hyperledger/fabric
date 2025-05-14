@@ -33,7 +33,7 @@ package oqs
      void *handle;
    } ctx;
 
-   libResult KeyPair(const OQS_SIG *sig, uint8_t *public_key, uint8_t *secret_key) {
+   libResult OQS_KeyPair(const OQS_SIG *sig, uint8_t *public_key, uint8_t *secret_key) {
 
    	OQS_STATUS status = OQS_SIG_keypair(sig,public_key, secret_key);
    	if (status != OQS_SUCCESS) {
@@ -42,7 +42,7 @@ package oqs
    	return ERR_OK;
    }
 
-   libResult Sign(const OQS_SIG *sig, uint8_t *signature, size_t *signature_len, const uint8_t *message, size_t message_len, const uint8_t *secret_key) {
+   libResult OQS_Sign(const OQS_SIG *sig, uint8_t *signature, size_t *signature_len, const uint8_t *message, size_t message_len, const uint8_t *secret_key) {
 
    	OQS_STATUS status = OQS_SIG_sign(sig,signature, signature_len, message, message_len, secret_key);
    	if (status != OQS_SUCCESS) {
@@ -51,7 +51,7 @@ package oqs
    	return ERR_OK;
    }
 
-   libResult Verify(const OQS_SIG *sig, const uint8_t *message, size_t message_len, const uint8_t *signature, size_t signature_len, const uint8_t *public_key) {
+   libResult OQS_Verify(const OQS_SIG *sig, const uint8_t *message, size_t message_len, const uint8_t *signature, size_t signature_len, const uint8_t *public_key) {
 
    	OQS_STATUS status =OQS_SIG_verify(sig,message, message_len, signature, signature_len, public_key);
    	if (status != OQS_SUCCESS) {
@@ -91,7 +91,7 @@ func KeyPair(algName SigType) (publicKey PublicKey, secretKey SecretKey, err err
 	sk := C.malloc(C.ulong(secKeyLen))
 	defer C.free(unsafe.Pointer(sk))
 
-	res := C.KeyPair(s.sig, (*C.uchar)(pk), (*C.uchar)(sk))
+	res := C.OQS_KeyPair(s.sig, (*C.uchar)(pk), (*C.uchar)(sk))
 	if res != C.ERR_OK {
 		return PublicKey{}, SecretKey{}, libError(res, "key pair generation failed")
 	}
@@ -124,7 +124,7 @@ func Sign(secretKey SecretKey, message []byte) (signature []byte, err error) {
 	sk := C.CBytes(secretKey.Sk)
 	defer C.free(sk)
 
-	res := C.Sign(s.sig, (*C.uchar)(sig), &signatureLen, (*C.uchar)(msg), mes_len, (*C.uchar)(sk))
+	res := C.OQS_Sign(s.sig, (*C.uchar)(sig), &signatureLen, (*C.uchar)(msg), mes_len, (*C.uchar)(sk))
 	if res != C.ERR_OK {
 		return nil, libError(res, "signing failed")
 	}
@@ -148,7 +148,7 @@ func Verify(publicKey PublicKey, signature []byte, message []byte) (assert bool,
 	pk := C.CBytes(publicKey.Pk)
 	defer C.free(pk)
 
-	res := C.Verify(s.sig, (*C.uchar)(msg), mes_len, (*C.uchar)(sgn), sign_len, (*C.uchar)(pk))
+	res := C.OQS_Verify(s.sig, (*C.uchar)(msg), mes_len, (*C.uchar)(sgn), sign_len, (*C.uchar)(pk))
 	if res != C.ERR_OK {
 		return false, libError(res, "verification failed")
 	}
