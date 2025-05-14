@@ -26,6 +26,7 @@ import (
 	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
@@ -1234,6 +1235,128 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Ensuring the re-added orderer joins the Raft cluster")
 			findLeader([]*ginkgomon.Runner{ordererRunner})
+		})
+	})
+
+	Describe("an all orderer nodes are evicted", func() {
+		BeforeEach(func() {
+			ordererRunners = nil
+			ordererProcesses = nil
+
+			network = nwo.New(nwo.MultiNodeEtcdRaftNoSysChan(), testDir, client, StartPort(), components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
+			orderers := []*nwo.Orderer{o1, o2, o3}
+			peer = network.Peer("Org1", "peer0")
+
+			By("Launching the orderers")
+			for _, o := range orderers {
+				runner := network.OrdererRunner(o, "FABRIC_LOGGING_SPEC=orderer.consensus.etcdraft=debug:info")
+				ordererRunners = append(ordererRunners, runner)
+				process := ifrit.Invoke(runner)
+				ordererProcesses = append(ordererProcesses, process)
+			}
+
+			for _, ordererProc := range ordererProcesses {
+				Eventually(ordererProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
+		})
+
+		AfterEach(func() {
+			for _, ordererInstance := range ordererProcesses {
+				ordererInstance.Signal(syscall.SIGTERM)
+				Eventually(ordererInstance.Wait(), network.EventuallyTimeout).Should(Receive())
+			}
+		})
+
+		It("remove channel from all orderers and add channel back", func() {
+			o1 := network.Orderer("orderer1")
+			o2 := network.Orderer("orderer2")
+			o3 := network.Orderer("orderer3")
+
+			By("Waiting for them to elect a leader")
+			findLeader(ordererRunners)
+
+			assertBlockReception(map[string]int{
+				"testchannel": 0,
+			}, network.Orderers, peer, network)
+
+			By("Removing channel from all orderers")
+			// TODO the channelparticipation.Remove does not clean up the etcdraft folder. This may prevent the
+			// correct re-creation of the channel on this orderer.
+			// See: https://github.com/hyperledger/fabric/issues/3992
+			for _, o := range network.Orderers {
+				ready := make(chan struct{})
+				go func() {
+					defer GinkgoRecover()
+					channelparticipation.Remove(network, o, "testchannel")
+					close(ready)
+				}()
+				Eventually(ready, network.EventuallyTimeout).Should(BeClosed())
+
+				Eventually(func() int { // Removal is async
+					channelList := channelparticipation.List(network, o)
+					return len(channelList.Channels)
+				}()).Should(BeZero())
+			}
+
+			// TODO It is recommended to remove the etcdraft folder for the WAL to be re-created correctly
+			// See: https://github.com/hyperledger/fabric/issues/3992
+			for _, o := range network.Orderers {
+				err := os.RemoveAll(path.Join(network.OrdererDir(o), "etcdraft", "wal", "testchannel"))
+				Expect(err).NotTo(HaveOccurred())
+				err = os.RemoveAll(path.Join(network.OrdererDir(o), "etcdraft", "snapshot", "testchannel"))
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			By("Re-create the genesis block")
+			for _, c := range network.Channels {
+				sess, err := network.ConfigTxGen(commands.OutputBlock{
+					ChannelID:   c.Name,
+					Profile:     c.Profile,
+					ConfigPath:  network.RootDir,
+					OutputBlock: network.OutputBlockPath(c.Name),
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+			}
+
+			By("Re-adding the channel to the orderers")
+			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
+
+			findLeader(ordererRunners)
+
+			assertBlockReception(map[string]int{
+				"testchannel": 0,
+			}, network.Orderers, peer, network)
+
+			expectedInfo := channelparticipation.ListOne(network, o1, "testchannel")
+
+			By("Submitting tx")
+			env := CreateBroadcastEnvelope(network, o2, "testchannel", []byte("foo"))
+			resp, err := ordererclient.Broadcast(network, o2, env)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+
+			By("Waiting for the channel to stabilize")
+			expectedInfo.Height++
+			assertCatchup := func(expected channelparticipation.ChannelInfo) bool {
+				current := channelparticipation.ListOne(network, o1, "testchannel")
+				ok := current == expected
+				if !ok {
+					fmt.Fprintf(GinkgoWriter, "Current ChannelInfo: %+v", current)
+				}
+				return ok
+			}
+
+			Eventually(assertCatchup(expectedInfo), network.EventuallyTimeout, 100*time.Millisecond).Should(BeTrue())
+
+			assertBlockReception(map[string]int{
+				"testchannel": 1,
+			}, []*nwo.Orderer{o1, o2, o3}, peer, network)
 		})
 	})
 
