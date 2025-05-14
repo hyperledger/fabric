@@ -8,9 +8,10 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"github.com/stretchr/testify/require"
 	"io"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 // implements crypto.Signer
@@ -22,7 +23,7 @@ func (ms *mockSigner) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts
 	return Sign(ms.sk, digest)
 }
 
-func (ms *mockSigner) Public() (crypto.PublicKey) {
+func (ms *mockSigner) Public() crypto.PublicKey {
 	return ms.sk.Pk
 }
 
@@ -54,7 +55,7 @@ func TestMarshalPKIXPublicKeyError(t *testing.T) {
 func TestParsePKIXPublicKeySuccess(t *testing.T) {
 	l, err := GetLib()
 	require.NoError(t, err)
-	for _, sigAlg := range(l.EnabledSigs()) {
+	for _, sigAlg := range l.EnabledSigs() {
 		t.Run(string(sigAlg), func(t *testing.T) {
 			if string(sigAlg) == "DEFAULT" {
 				return
@@ -86,6 +87,7 @@ FF53oIpvxe/SCOymfWq/LW849Ytv3Xwod0+wzAP8STXG4HSELS4UedPYeHJJJYcZ
 +QIDAQAB
 -----END PUBLIC KEY-----
 `
+
 func TestParsePKIXPublicKeyError(t *testing.T) {
 	block, _ := pem.Decode([]byte(pemRSAPublicKey))
 	_, err := x509.ParsePKIXPublicKey(block.Bytes)
@@ -125,7 +127,7 @@ func TestMarshalPKIXSecretKeyError(t *testing.T) {
 func TestParsePKIXPrivateKeySuccess(t *testing.T) {
 	l, err := GetLib()
 	require.NoError(t, err)
-	for _, sigAlg := range(l.EnabledSigs()) {
+	for _, sigAlg := range l.EnabledSigs() {
 		t.Run(string(sigAlg), func(t *testing.T) {
 			if string(sigAlg) == "DEFAULT" {
 				return
@@ -162,7 +164,6 @@ func TestBuildAltPublicKeyInfoExtensionsSuccess(t *testing.T) {
 	_, err = BuildAltPublicKeyExtensions(&pk, ck.Public(), &ms)
 	require.NoError(t, err)
 
-
 	// It's okay to supply no postquantum key for this cert,
 	// as long as there is a pq signing key from the issuer
 	var empty *PublicKey = nil
@@ -196,9 +197,8 @@ func TestBuildAltPublicKeyInfoExtensionsError(t *testing.T) {
 func TestParseSubjectAltPublicKeyInfoExtension(t *testing.T) {
 	l, err := GetLib()
 	require.NoError(t, err)
-	for _, sigAlg := range(l.EnabledSigs()) {
+	for _, sigAlg := range l.EnabledSigs() {
 		t.Run(string(sigAlg), func(t *testing.T) {
-
 			// generate some nice key material
 			pk1, _, err := KeyPair(sigAlg)
 			require.NoError(t, err)

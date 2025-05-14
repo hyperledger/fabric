@@ -13,7 +13,6 @@ import (
 var libPath = "liboqs.so"
 
 func TestRoundTrip(t *testing.T) {
-
 	l, err := GetLib()
 	require.NoError(t, err)
 	// Make random number generation deterministic in order to test against
