@@ -13,6 +13,7 @@ import (
 	"io"
 
 	"github.com/hyperledger/fabric/bccsp"
+	oqs "github.com/hyperledger/fabric/pq-crypto"
 	"github.com/pkg/errors"
 )
 
@@ -71,7 +72,7 @@ func New(csp bccsp.BCCSP, classicalKey bccsp.Key, quantumKey bccsp.Key) (crypto.
 		if err != nil {
 			return nil, errors.Wrap(err, "failed marshalling public key")
 		}
-		quantumPk, err := x509.ParsePKIXPublicKey(quantumRaw)
+		quantumPk, err := oqs.ParsePKIXPublicKey(quantumRaw)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed marshalling der to public key")
 		}

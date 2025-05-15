@@ -50,7 +50,7 @@ package oqs
    	}
    }
 
-   libResult New(const char *path, ctx **c) {
+   libResult OQS_New(const char *path, ctx **c) {
    	*c = malloc(sizeof(ctx));
    	if (!(*c)) {
    		return ERR_MEM;
@@ -325,7 +325,7 @@ func loadCctx(path string) (*C.ctx, error) {
 	defer C.free(unsafe.Pointer(p))
 
 	var ctx *C.ctx
-	res := C.New(p, &ctx)
+	res := C.OQS_New(p, &ctx)
 	if res != C.ERR_OK {
 		return nil, libError(res, "failed to load module at %q", path)
 	}
