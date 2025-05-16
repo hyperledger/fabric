@@ -50,7 +50,7 @@ func (kg *oqsKeyGenerator) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
 	if opts == nil {
 		alg = "DEFAULT"
 	} else {
-		alg := opts.Algorithm()
+		alg = opts.Algorithm()
 		if alg == "" {
 			alg = "DEFAULT"
 		}

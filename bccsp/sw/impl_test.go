@@ -1508,7 +1508,7 @@ func TestKeyImportFromX509ECDSAHybridOQSPublicKey(t *testing.T) {
 	// Generate an OQS key and signer
 	qK, err := provider.KeyGen(&bccsp.OQSKeyGenOpts{Temporary: false})
 	require.NoError(t, err)
-	qSigner, err := signer.New(provider, qK, nil)
+	qSigner, err := signer.New(provider, k, qK)
 
 	// Cheat to get access to the underlying raw key,
 	// because we need it to create the X509 certificate extension

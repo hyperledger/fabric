@@ -22,9 +22,8 @@ type bccspCryptoSigner struct {
 	csp          bccsp.BCCSP
 	classicalKey bccsp.Key
 	quantumKey   bccsp.Key
-	// TODO(amelia): Should this be an interface?
-	classicalPk interface{}
-	quantumPk   interface{}
+	classicalPk  interface{}
+	quantumPk    interface{}
 }
 
 type hybridSignature struct {
@@ -39,29 +38,36 @@ func New(csp bccsp.BCCSP, classicalKey bccsp.Key, quantumKey bccsp.Key) (crypto.
 	if csp == nil {
 		return nil, errors.New("bccsp instance must be different from nil.")
 	}
-	if classicalKey == nil {
+	if classicalKey == nil && quantumKey == nil {
 		return nil, errors.New("classical key must be different from nil.")
 	}
-	if classicalKey.Symmetric() || (quantumKey != nil && quantumKey.Symmetric()) {
-		return nil, errors.New("key must be asymmetric.")
+
+	var classicalPk any
+
+	if classicalKey != nil {
+		if classicalKey.Symmetric() {
+			return nil, errors.New("key must be asymmetric.")
+		}
+
+		// Marshall the classical public key as a crypto.PublicKey
+		classicalPub, err := classicalKey.PublicKey()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed getting classical public key")
+		}
+
+		classicalRaw, err := classicalPub.Bytes()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed marshalling public key")
+		}
+
+		classicalPk1, err := x509.ParsePKIXPublicKey(classicalRaw)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed marshalling der to public key")
+		}
+		classicalPk = classicalPk1
 	}
 
-	// Marshall the classical public key as a crypto.PublicKey
-	classicalPub, err := classicalKey.PublicKey()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed getting classical public key")
-	}
-
-	classicalRaw, err := classicalPub.Bytes()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed marshalling public key")
-	}
-
-	classicalPk, err := x509.ParsePKIXPublicKey(classicalRaw)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed marshalling der to public key")
-	}
-
+	var quantumPk interface{}
 	// Marshall the quantum public key as a crypto.PublicKey
 	if quantumKey != nil {
 		quantumPub, err := quantumKey.PublicKey()
@@ -72,24 +78,18 @@ func New(csp bccsp.BCCSP, classicalKey bccsp.Key, quantumKey bccsp.Key) (crypto.
 		if err != nil {
 			return nil, errors.Wrap(err, "failed marshalling public key")
 		}
-		quantumPk, err := oqs.ParsePKIXPublicKey(quantumRaw)
+		quantumPk1, err := oqs.ParsePKIXPublicKey(quantumRaw)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed marshalling der to public key")
 		}
-		return &bccspCryptoSigner{
-			csp,
-			classicalKey,
-			quantumKey,
-			classicalPk,
-			quantumPk,
-		}, nil
+		quantumPk = quantumPk1
 	}
 	return &bccspCryptoSigner{
 		csp,
 		classicalKey,
-		nil,
+		quantumKey,
 		classicalPk,
-		nil,
+		quantumPk,
 	}, nil
 }
 
