@@ -194,6 +194,11 @@ func TestBuildAltPublicKeyInfoExtensionsError(t *testing.T) {
 	require.Contains(t, err.Error(), "unknown OQS algorithm name")
 }
 
+// TestParseSubjectAltPublicKeyInfoExtension tests the parsing of the Subject Alternative Public Key Info
+// extension from a set of X.509 certificate extensions. It verifies that:
+//   - The correct quantum public key can be extracted for the certificate subject.
+//   - The signature associated with the alternate public key is valid.
+//   - The parser returns nil without error when the alternate public key extension is absent.
 func TestParseSubjectAltPublicKeyInfoExtension(t *testing.T) {
 	l, err := GetLib()
 	require.NoError(t, err)

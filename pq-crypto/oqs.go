@@ -74,9 +74,20 @@ func getSig(sigType SigType) (*OQSSig, error) {
 	return lib.GetSig(sigType)
 }
 
+// KeyPair generates a new public and secret key pair for the specified signature algorithm.
+// If the provided algName is "DEFAULT", it defaults to using "Dilithium3".
+// It returns the generated PublicKey, SecretKey, and an error if key generation fails.
+//
+// Parameters:
+//   - algName: The signature algorithm to use for key generation.
+//
+// Returns:
+//   - publicKey: The generated public key.
+//   - secretKey: The generated secret key.
+//   - err: An error if key generation fails, otherwise nil.
 func KeyPair(algName SigType) (publicKey PublicKey, secretKey SecretKey, err error) {
 	if algName == "DEFAULT" {
-		algName = "Dilithium2"
+		algName = "Dilithium3"
 	}
 	s, err := getSig(algName)
 	if err != nil {
@@ -132,6 +143,17 @@ func Sign(secretKey SecretKey, message []byte) (signature []byte, err error) {
 	return C.GoBytes(sig, C.int(signatureLen)), nil
 }
 
+// Verify checks the validity of a digital signature for a given message using the provided public key.
+// It returns true if the signature is valid, or false along with an error if verification fails.
+//
+// Parameters:
+//   - publicKey: The PublicKey used to verify the signature.
+//   - signature: The signature bytes to be verified.
+//   - message: The original message bytes that were signed.
+//
+// Returns:
+//   - assert: A boolean indicating whether the signature is valid.
+//   - err: An error if verification fails or an internal error occurs.
 func Verify(publicKey PublicKey, signature []byte, message []byte) (assert bool, err error) {
 	s, err := getSig(publicKey.Sig.Algorithm)
 	if err != nil {

@@ -929,10 +929,17 @@ func (msp *bccspmsp) getCertificationChainIdentifierFromChain(chain []*x509.Cert
 // do have signatures in Low-S. If this is not the case, the certificate
 // is regenerated to have a Low-S signature.
 func (msp *bccspmsp) sanitizeCert(cert *x509.Certificate) (*x509.Certificate, error) {
-	var err error
 	if isECDSASignedCert(cert) {
 		isRootCACert := false
 		validityOpts := msp.getValidityOptsForCert(cert)
+		// Lookup for a parent certificate to perform the sanitization
+		// run cert validation at any rate, if this is a root CA
+		// we will validate already sanitized cert
+		chain, err := msp.getUniqueValidationChain(cert, validityOpts)
+		if err != nil {
+			return nil, err
+		}
+
 		if cert.IsCA && cert.CheckSignatureFrom(cert) == nil {
 			// this is a root CA we can already sanitize it
 			cert, err = sanitizeECDSASignedCert(cert, cert)
@@ -942,13 +949,6 @@ func (msp *bccspmsp) sanitizeCert(cert *x509.Certificate) (*x509.Certificate, er
 			isRootCACert = true
 			validityOpts.Roots = x509.NewCertPool()
 			validityOpts.Roots.AddCert(cert)
-		}
-		// Lookup for a parent certificate to perform the sanitization
-		// run cert validation at any rate, if this is a root CA
-		// we will validate already sanitized cert
-		chain, err := msp.getUniqueValidationChain(cert, validityOpts)
-		if err != nil {
-			return nil, err
 		}
 
 		// once we finish validation and this is already
