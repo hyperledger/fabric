@@ -13,6 +13,7 @@ import (
 	"io"
 	"math/rand/v2"
 	"net"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -88,7 +89,7 @@ type mockAnchorPeerTracker struct {
 }
 
 func (m *mockAnchorPeerTracker) IsAnchorPeer(endpoint string) bool {
-	return util.Contains(endpoint, m.apEndpoints)
+	return slices.Contains(m.apEndpoints, endpoint)
 }
 
 type dummyCommModule struct {

@@ -9,6 +9,7 @@ package msgstore
 import (
 	crand "crypto/rand"
 	"math/rand/v2"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -76,19 +77,9 @@ func TestNewMessagesInvalidates(t *testing.T) {
 		require.Equal(t, i, msgStore.Get()[0].(int))
 	}
 }
-
 func TestMessagesGet(t *testing.T) {
-	contains := func(a []interface{}, e interface{}) bool {
-		for _, v := range a {
-			if v == e {
-				return true
-			}
-		}
-		return false
-	}
-
 	msgStore := NewMessageStore(alwaysNoAction, Noop)
-	expected := []int{}
+	expected := make([]interface{}, 0)
 	for i := 0; i < 2; i++ {
 		n := r.Int()
 		expected = append(expected, n)
@@ -96,7 +87,7 @@ func TestMessagesGet(t *testing.T) {
 	}
 
 	for _, num2Search := range expected {
-		require.True(t, contains(msgStore.Get(), num2Search), "Value %v not found in array", num2Search)
+		require.True(t, slices.Contains(msgStore.Get(), num2Search), "Value %v not found in array", num2Search)
 	}
 }
 
