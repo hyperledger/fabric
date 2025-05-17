@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package msgstore
 
 import (
+	"slices"
 	"sync"
 	"time"
 
@@ -226,12 +227,7 @@ func (s *messageStoreImpl) expireMessages() {
 func (s *messageStoreImpl) isPurgeNeeded(shouldBePurged func(*msg) bool) bool {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	for _, m := range s.messages {
-		if shouldBePurged(m) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(s.messages, shouldBePurged)
 }
 
 func (s *messageStoreImpl) expirationRoutine() {
