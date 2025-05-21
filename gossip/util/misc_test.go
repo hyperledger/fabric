@@ -9,6 +9,7 @@ package util
 import (
 	"crypto/rand"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -27,8 +28,8 @@ func testHappyPath(t *testing.T) {
 }
 
 func TestContains(t *testing.T) {
-	require.True(t, Contains("foo", []string{"bar", "foo", "baz"}))
-	require.False(t, Contains("foo", []string{"bar", "baz"}))
+	require.True(t, slices.Contains([]string{"bar", "foo", "baz"}, "foo"))
+	require.False(t, slices.Contains([]string{"bar", "baz"}, "foo"))
 }
 
 func TestGetRandomInt(t *testing.T) {

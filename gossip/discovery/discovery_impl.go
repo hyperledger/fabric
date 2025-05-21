@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -140,11 +141,9 @@ func (d *gossipDiscoveryImpl) Lookup(PKIID common.PKIidType) *NetworkMember {
 }
 
 func (d *gossipDiscoveryImpl) Connect(member NetworkMember, id identifier) {
-	for _, endpoint := range []string{member.InternalEndpoint, member.Endpoint} {
-		if d.isMyOwnEndpoint(endpoint) {
-			d.logger.Debug("Skipping connecting to myself")
-			return
-		}
+	if slices.ContainsFunc([]string{member.InternalEndpoint, member.Endpoint}, d.isMyOwnEndpoint) {
+		d.logger.Debug("Skipping connecting to myself")
+		return
 	}
 
 	d.logger.Debug("Entering", member)
@@ -1056,7 +1055,7 @@ func newAliveMsgStore(d *gossipDiscoveryImpl) *aliveMsgStore {
 		id := membership.PkiId
 		endpoint := membership.Endpoint
 		internalEndpoint := protoext.InternalEndpoint(msg.SecretEnvelope)
-		if util.Contains(endpoint, d.bootstrapPeers) || util.Contains(internalEndpoint, d.bootstrapPeers) ||
+		if slices.Contains(d.bootstrapPeers, endpoint) || slices.Contains(d.bootstrapPeers, internalEndpoint) ||
 			d.anchorPeerTracker.IsAnchorPeer(endpoint) || d.anchorPeerTracker.IsAnchorPeer(internalEndpoint) {
 			// Never remove a bootstrap peer or an anchor peer
 			d.logger.Debugf("Do not remove bootstrap or anchor peer endpoint %s from membership", endpoint)

@@ -9,6 +9,7 @@ package msgstore
 import (
 	crand "crypto/rand"
 	"math/rand/v2"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -79,12 +80,7 @@ func TestNewMessagesInvalidates(t *testing.T) {
 
 func TestMessagesGet(t *testing.T) {
 	contains := func(a []interface{}, e interface{}) bool {
-		for _, v := range a {
-			if v == e {
-				return true
-			}
-		}
-		return false
+		return slices.Contains(a, e)
 	}
 
 	msgStore := NewMessageStore(alwaysNoAction, Noop)

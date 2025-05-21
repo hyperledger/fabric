@@ -8,6 +8,7 @@ package service
 
 import (
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp"
@@ -516,12 +517,7 @@ func (g *GossipService) newLeaderElectionComponent(channelID string, callback fu
 }
 
 func (g *GossipService) amIinChannel(myOrg string, configUpdate ConfigUpdate) bool {
-	for _, orgName := range orgListFromConfigUpdate(configUpdate) {
-		if orgName == myOrg {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(orgListFromConfigUpdate(configUpdate), myOrg)
 }
 
 func (g *GossipService) onStatusChangeFactory(channelID string, committer blocksprovider.LedgerInfo) func(bool) {

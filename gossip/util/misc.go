@@ -31,16 +31,6 @@ type Equals func(a interface{}, b interface{}) bool
 
 var viperLock sync.RWMutex
 
-// Contains returns whether a given slice a contains a string s
-func Contains(s string, a []string) bool {
-	for _, e := range a {
-		if e == s {
-			return true
-		}
-	}
-	return false
-}
-
 // IndexInSlice returns the index of given object o in array, and -1 if it is not in array.
 func IndexInSlice(array interface{}, o interface{}, equals Equals) int {
 	arr := reflect.ValueOf(array)
