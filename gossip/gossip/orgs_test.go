@@ -9,6 +9,7 @@ package gossip
 import (
 	"bytes"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -623,13 +624,7 @@ type msg struct {
 
 func isSubset(a []string, b []string) bool {
 	for _, s1 := range a {
-		found := false
-		for _, s2 := range b {
-			if s1 == s2 {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(b, s1)
 		if !found {
 			return false
 		}
