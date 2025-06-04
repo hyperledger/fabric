@@ -167,7 +167,7 @@ func requiresPvtdataValidation(tx *ledger.TxPvtData) bool {
 	return true
 }
 
-// validPvtdata returns true if hashes of all the collections writeset present in the pvt data
+// validatePvtdata returns true if hashes of all the collections writeset present in the pvt data
 // match with the corresponding hashes present in the public read-write set
 func validatePvtdata(tx *transaction, pvtdata *ledger.TxPvtData) error {
 	if pvtdata.WriteSet == nil {

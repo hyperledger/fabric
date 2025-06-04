@@ -134,7 +134,7 @@ func prepareExpiryEntries(committingBlk uint64, dataEntries []*dataEntry, elgMis
 	return expiryEntries, nil
 }
 
-// prepareExpiryDataForPresentData creates expiryData for non-missing pvt data
+// prepareExpiryEntriesForPresentData creates expiryData for non-missing pvt data
 func prepareExpiryEntriesForPresentData(mapByExpiringBlk map[uint64]*ExpiryData, dataKey *dataKey, btlPolicy pvtdatapolicy.BTLPolicy) error {
 	expiringBlk, err := btlPolicy.GetExpiringBlock(dataKey.ns, dataKey.coll, dataKey.blkNum)
 	if err != nil {
@@ -150,7 +150,7 @@ func prepareExpiryEntriesForPresentData(mapByExpiringBlk map[uint64]*ExpiryData,
 	return nil
 }
 
-// prepareExpiryDataForMissingData creates expiryData for missing pvt data
+// prepareExpiryEntriesForMissingData creates expiryData for missing pvt data
 func prepareExpiryEntriesForMissingData(mapByExpiringBlk map[uint64]*ExpiryData, missingKey *missingDataKey, btlPolicy pvtdatapolicy.BTLPolicy) error {
 	expiringBlk, err := btlPolicy.GetExpiringBlock(missingKey.ns, missingKey.coll, missingKey.blkNum)
 	if err != nil {
