@@ -1,6 +1,6 @@
 module tools
 
-go 1.24.2
+go 1.24.4
 
 tool (
 	github.com/AlekSi/gocov-xml
