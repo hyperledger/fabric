@@ -20,7 +20,7 @@ pytz==2024.2
 PyYAML==6.0.2
 readthedocs-sphinx-ext==2.2.5
 recommonmark==0.7.1
-requests==2.32.3
+requests==2.32.4
 six==1.16.0
 snowballstemmer==2.2.0
 Sphinx==8.1.3
