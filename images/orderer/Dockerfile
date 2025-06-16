@@ -61,7 +61,6 @@ ENV FABRIC_CFG_PATH=/etc/hyperledger/fabric
 ENV FABRIC_VER=${FABRIC_VER}
 
 COPY    --from=builder  build/bin/orderer           /usr/local/bin
-COPY    --from=builder  sampleconfig/msp            ${FABRIC_CFG_PATH}/msp
 COPY    --from=builder  sampleconfig/orderer.yaml   ${FABRIC_CFG_PATH}
 COPY    --from=builder  sampleconfig/configtx.yaml  ${FABRIC_CFG_PATH}
 
