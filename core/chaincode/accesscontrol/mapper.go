@@ -67,7 +67,7 @@ func (r *certMapper) genCert(name string) (*tlsgen.CertKeyPair, error) {
 	return keyPair, nil
 }
 
-// ExtractCertificateHash extracts the hash of the certificate from the stream
+// extractCertificateHashFromContext extracts the hash of the certificate from the stream
 func extractCertificateHashFromContext(ctx context.Context) []byte {
 	pr, extracted := peer.FromContext(ctx)
 	if !extracted {
