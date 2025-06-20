@@ -2170,6 +2170,147 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			invokeQuery(network, peer, network.Orderers[0], channel, 80)
 			assertBlockReception(map[string]int{channel: 6}, network.Orderers, peer, network)
 		})
+
+		It("remove channel from all orderers and add channel back", func() {
+			cn := "testchannel1"
+			networkConfig := nwo.MultiNodeSmartBFT()
+			networkConfig.Channels = nil
+
+			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			network.EventuallyTimeout *= 2
+
+			var ordererRunners []*ginkgomon.Runner
+			for _, orderer := range network.Orderers {
+				runner := network.OrdererRunner(orderer)
+				runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.common.cluster=debug:orderer.consensus.smartbft=debug:policies.ImplicitOrderer=debug")
+				ordererRunners = append(ordererRunners, runner)
+				proc := ifrit.Invoke(runner)
+				ordererProcesses = append(ordererProcesses, proc)
+				Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			peer := network.Peer("Org1", "peer0")
+
+			sess, err := network.ConfigTxGen(commands.OutputBlock{
+				ChannelID:   cn,
+				Profile:     network.Profiles[0].Name,
+				ConfigPath:  network.RootDir,
+				OutputBlock: network.OutputBlockPath(cn),
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+
+			genesisBlockBytes, err := os.ReadFile(network.OutputBlockPath(cn))
+			Expect(err).NotTo(HaveOccurred())
+
+			genesisBlock := &common.Block{}
+			err = proto.Unmarshal(genesisBlockBytes, genesisBlock)
+			Expect(err).NotTo(HaveOccurred())
+
+			expectedChannelInfoPT := channelparticipation.ChannelInfo{
+				Name:              cn,
+				URL:               "/participation/v1/channels/" + cn,
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            1,
+			}
+
+			for _, o := range network.Orderers {
+				By("joining " + o.Name + " to channel as a consenter")
+				channelparticipation.Join(network, o, cn, genesisBlock, expectedChannelInfoPT)
+				channelInfo := channelparticipation.ListOne(network, o, cn)
+				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
+			}
+
+			By("Waiting for followers to see the leader")
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[2].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+
+			assertBlockReception(map[string]int{cn: 0}, network.Orderers, peer, network)
+
+			By("Removing channel from all orderers")
+			for _, o := range network.Orderers {
+				ready := make(chan struct{})
+				go func() {
+					defer GinkgoRecover()
+					channelparticipation.Remove(network, o, cn)
+					close(ready)
+				}()
+				Eventually(ready, network.EventuallyTimeout).Should(BeClosed())
+
+				Eventually(func() int { // Removal is async
+					channelList := channelparticipation.List(network, o)
+					return len(channelList.Channels)
+				}()).Should(BeZero())
+			}
+
+			By("Re-create the genesis block")
+			sess, err = network.ConfigTxGen(commands.OutputBlock{
+				ChannelID:   cn,
+				Profile:     network.Profiles[0].Name,
+				ConfigPath:  network.RootDir,
+				OutputBlock: network.OutputBlockPath(cn),
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+
+			genesisBlockBytes, err = os.ReadFile(network.OutputBlockPath(cn))
+			Expect(err).NotTo(HaveOccurred())
+
+			genesisBlock = &common.Block{}
+			err = proto.Unmarshal(genesisBlockBytes, genesisBlock)
+			Expect(err).NotTo(HaveOccurred())
+
+			expectedChannelInfoPT = channelparticipation.ChannelInfo{
+				Name:              cn,
+				URL:               "/participation/v1/channels/" + cn,
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            1,
+			}
+
+			for _, o := range network.Orderers {
+				By("joining " + o.Name + " to channel as a consenter again")
+				channelparticipation.Join(network, o, cn, genesisBlock, expectedChannelInfoPT)
+				channelInfo := channelparticipation.ListOne(network, o, cn)
+				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
+			}
+
+			By("Waiting for followers to see the leader again")
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[2].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+
+			assertBlockReception(map[string]int{
+				cn: 0,
+			}, network.Orderers, peer, network)
+
+			By("Submitting tx")
+			env := ordererclient.CreateBroadcastEnvelope(network, network.Orderers[0], cn, []byte("foo"), common.HeaderType_ENDORSER_TRANSACTION)
+
+			By("Begin broadcast")
+			var wg sync.WaitGroup
+			for i := range network.Orderers {
+				wg.Add(1)
+				go func() {
+					defer GinkgoRecover()
+					defer wg.Done()
+					resp, err := ordererclient.Broadcast(network, network.Orderers[i], env)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+				}()
+			}
+			wg.Wait()
+			By("End broadcast")
+
+			assertBlockReception(map[string]int{
+				cn: 1,
+			}, network.Orderers, peer, network)
+		})
 	})
 })
 

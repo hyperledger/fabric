@@ -14,8 +14,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hyperledger/fabric/integration/nwo/commands"
-
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
@@ -23,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
 	"github.com/hyperledger/fabric/integration/nwo"
+	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	. "github.com/onsi/ginkgo/v2"
