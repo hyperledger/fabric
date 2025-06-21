@@ -1,6 +1,6 @@
 ## Example Usage
 
-### peer channel create examples
+### peer channel create examples (deprecated)
 
 Here's an example that uses the `--orderer` global flag on the `peer channel
 create` command.

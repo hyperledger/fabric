@@ -102,6 +102,7 @@ func (n NodeUnjoin) Args() []string {
 	}
 }
 
+// deprecated
 type ChannelCreate struct {
 	ChannelID   string
 	Orderer     string
@@ -110,10 +111,12 @@ type ChannelCreate struct {
 	ClientAuth  bool
 }
 
+// deprecated
 func (c ChannelCreate) SessionName() string {
 	return "peer-channel-create"
 }
 
+// deprecated
 func (c ChannelCreate) Args() []string {
 	args := []string{
 		"channel", "create",
