@@ -64,7 +64,6 @@ ENV FABRIC_CFG_PATH=/etc/hyperledger/fabric
 ENV FABRIC_VER=${FABRIC_VER}
 
 COPY    --from=builder  build/bin/peer          /usr/local/bin
-COPY    --from=builder  sampleconfig/msp        ${FABRIC_CFG_PATH}/msp
 COPY    --from=builder  sampleconfig/core.yaml  ${FABRIC_CFG_PATH}/core.yaml
 
 COPY    --from=builder  release/${TARGETOS}-${TARGETARCH}/builders/ccaas/bin /opt/hyperledger/ccaas_builder/bin
