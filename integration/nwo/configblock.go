@@ -7,19 +7,19 @@ SPDX-License-Identifier: Apache-2.0
 package nwo
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
-
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/policies"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	protosorderer "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/internal/configtxlator/update"
 	"github.com/hyperledger/fabric/protoutil"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
@@ -126,6 +126,13 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	}
 
+	sess, err := n.PeerAdminSession(submitter, commands.SignConfigTx{
+		File:       updateFile,
+		ClientAuth: n.ClientAuthRequired,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+
 	var currentBlockNumber uint64
 	// get current configuration block number
 	if getConfigBlockFromOrderer {
@@ -134,15 +141,20 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 		currentBlockNumber = CurrentConfigBlockNumber(n, submitter, nil, channel)
 	}
 
-	sess, err := n.PeerAdminSession(submitter, commands.ChannelUpdate{
-		ChannelID:  channel,
-		Orderer:    n.OrdererAddress(orderer, ListenPort),
-		File:       updateFile,
-		ClientAuth: n.ClientAuthRequired,
-	})
+	updateEnvelopeBytes, err := os.ReadFile(updateFile)
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess.Err).To(gbytes.Say("Successfully submitted channel update"))
+
+	updateEnvelope := &common.Envelope{}
+	err = proto.Unmarshal(updateEnvelopeBytes, updateEnvelope)
+	Expect(err).NotTo(HaveOccurred())
+
+	ready := make(chan struct{})
+	go func() {
+		defer GinkgoRecover()
+		Update(n, orderer, channel, updateEnvelope)
+		close(ready)
+	}()
+	Eventually(ready, n.EventuallyTimeout).Should(BeClosed())
 
 	if getConfigBlockFromOrderer {
 		ccb := func() uint64 { return CurrentConfigBlockNumber(n, submitter, orderer, channel) }
@@ -209,47 +221,57 @@ func UpdateOrdererConfig(n *Network, orderer *Orderer, channel string, current, 
 	currentBlockNumber := CurrentConfigBlockNumber(n, submitter, orderer, channel)
 	ComputeUpdateOrdererConfig(updateFile, n, channel, current, updated, submitter, additionalSigners...)
 
-	Eventually(func() bool {
-		sess, err := n.OrdererAdminSession(orderer, submitter, commands.ChannelUpdate{
-			ChannelID:  channel,
-			Orderer:    n.OrdererAddress(orderer, ListenPort),
-			File:       updateFile,
-			ClientAuth: n.ClientAuthRequired,
-		})
-		Expect(err).NotTo(HaveOccurred())
+	updateEnvelopeBytes, err := os.ReadFile(updateFile)
+	Expect(err).NotTo(HaveOccurred())
 
-		sess.Wait(n.EventuallyTimeout)
-		if sess.ExitCode() != 0 {
-			return false
-		}
+	updateEnvelope := &common.Envelope{}
+	err = proto.Unmarshal(updateEnvelopeBytes, updateEnvelope)
+	Expect(err).NotTo(HaveOccurred())
 
-		return strings.Contains(string(sess.Err.Contents()), "Successfully submitted channel update")
-	}, n.EventuallyTimeout).Should(BeTrue())
+	ready := make(chan struct{})
+	go func() {
+		defer GinkgoRecover()
+		Update(n, orderer, channel, updateEnvelope)
+		close(ready)
+	}()
+	Eventually(ready, n.EventuallyTimeout).Should(BeClosed())
 
 	// wait for the block to be committed
 	ccb := func() uint64 { return CurrentConfigBlockNumber(n, submitter, orderer, channel) }
 	Eventually(ccb, n.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))
 }
 
-// UpdateOrdererConfigSession computes, signs, and submits a configuration
+// UpdateOrdererConfigFails computes, signs, and submits a configuration
 // update which requires orderer signatures. The caller should wait on the
 // returned seession retrieve the exit code.
-func UpdateOrdererConfigSession(n *Network, orderer *Orderer, channel string, current, updated *common.Config, submitter *Peer, additionalSigners ...*Orderer) *gexec.Session {
+func UpdateOrdererConfigFails(n *Network, orderer *Orderer, channel string, current, updated *common.Config, errStr string, submitter *Peer, additionalSigners ...*Orderer) {
 	tempDir, err := os.MkdirTemp(n.RootDir, "updateConfig")
 	Expect(err).NotTo(HaveOccurred())
 	updateFile := filepath.Join(tempDir, "update.pb")
 
 	ComputeUpdateOrdererConfig(updateFile, n, channel, current, updated, submitter, additionalSigners...)
 
-	// session should not return with a zero exit code nor with a success response
-	sess, err := n.OrdererAdminSession(orderer, submitter, commands.ChannelUpdate{
-		ChannelID:  channel,
-		Orderer:    n.OrdererAddress(orderer, ListenPort),
+	sess, err := n.OrdererAdminSession(orderer, submitter, commands.SignConfigTx{
 		File:       updateFile,
 		ClientAuth: n.ClientAuthRequired,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	return sess
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+
+	updateEnvelopeBytes, err := os.ReadFile(updateFile)
+	Expect(err).NotTo(HaveOccurred())
+
+	updateEnvelope := &common.Envelope{}
+	err = proto.Unmarshal(updateEnvelopeBytes, updateEnvelope)
+	Expect(err).NotTo(HaveOccurred())
+
+	ready := make(chan struct{})
+	go func() {
+		defer GinkgoRecover()
+		UpdateWithStatus(n, orderer, channel, updateEnvelope, http.StatusBadRequest, errStr)
+		close(ready)
+	}()
+	Eventually(ready, n.EventuallyTimeout).Should(BeClosed())
 }
 
 func ComputeUpdateOrdererConfig(updateFile string, n *Network, channel string, current, updated *common.Config, submitter *Peer, additionalSigners ...*Orderer) {
