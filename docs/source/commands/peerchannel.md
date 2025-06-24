@@ -31,7 +31,7 @@ Usage:
   peer channel [command]
 
 Available Commands:
-  create               Create a channel
+  create               [DEPRECATED] Create a channel
   fetch                Fetch a block
   getinfo              get blockchain information of a specified channel.
   join                 Joins the peer to a channel.
@@ -59,7 +59,7 @@ Use "peer channel [command] --help" for more information about a command.
 
 ## peer channel create
 ```
-Create a channel and write the genesis block to a file.
+[DEPRECATED] Create a channel and write the genesis block to a file. Instead of this command, use Orderer Service Node (OSN).
 
 Usage:
   peer channel create [flags]
@@ -277,7 +277,7 @@ Global Flags:
 
 ## Example Usage
 
-### peer channel create examples
+### peer channel create examples (deprecated)
 
 Here's an example that uses the `--orderer` global flag on the `peer channel
 create` command.

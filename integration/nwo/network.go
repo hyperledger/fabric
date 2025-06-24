@@ -1089,6 +1089,7 @@ func (n *Network) CreateChannel(channelName string, o *Orderer, p *Peer, additio
 	Eventually(createChannel, n.EventuallyTimeout).Should(Equal(0))
 }
 
+// deprecated
 // CreateChannelExitCode will submit an existing create channel transaction to
 // the specified orderer, wait for the operation to complete, and return the
 // exit status of the "peer channel create" command.

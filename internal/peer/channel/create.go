@@ -38,11 +38,12 @@ func (e InvalidCreateTx) Error() string {
 	return fmt.Sprintf("Invalid channel create transaction : %s", string(e))
 }
 
+// deprecated
 func createCmd(cf *ChannelCmdFactory) *cobra.Command {
 	createCmd := &cobra.Command{
 		Use:   "create",
-		Short: "Create a channel",
-		Long:  "Create a channel and write the genesis block to a file.",
+		Short: "[DEPRECATED] Create a channel",
+		Long:  "[DEPRECATED] Create a channel and write the genesis block to a file. Instead of this command, use Orderer Service Node (OSN).",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return create(cmd, args, cf)
 		},
@@ -58,6 +59,7 @@ func createCmd(cf *ChannelCmdFactory) *cobra.Command {
 	return createCmd
 }
 
+// deprecated
 func createChannelFromDefaults(cf *ChannelCmdFactory) (*cb.Envelope, error) {
 	chCrtEnv, err := encoder.MakeChannelCreationTransaction(
 		channelID,
@@ -71,6 +73,7 @@ func createChannelFromDefaults(cf *ChannelCmdFactory) (*cb.Envelope, error) {
 	return chCrtEnv, nil
 }
 
+// deprecated
 func createChannelFromConfigTx(configTxFileName string) (*cb.Envelope, error) {
 	cftx, err := os.ReadFile(configTxFileName)
 	if err != nil {
@@ -80,6 +83,7 @@ func createChannelFromConfigTx(configTxFileName string) (*cb.Envelope, error) {
 	return protoutil.UnmarshalEnvelope(cftx)
 }
 
+// deprecated
 func sanityCheckAndSignConfigTx(envConfigUpdate *cb.Envelope, signer identity.SignerSerializer) (*cb.Envelope, error) {
 	payload, err := protoutil.UnmarshalPayload(envConfigUpdate.Payload)
 	if err != nil {
@@ -137,6 +141,7 @@ func sanityCheckAndSignConfigTx(envConfigUpdate *cb.Envelope, signer identity.Si
 	return protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, signer, configUpdateEnv, 0, 0)
 }
 
+// deprecated
 func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
 	var err error
 	var chCrtEnv *cb.Envelope
@@ -167,6 +172,7 @@ func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
 	return err
 }
 
+// deprecated
 func executeCreate(cf *ChannelCmdFactory) error {
 	err := sendCreateChainTransaction(cf)
 	if err != nil {
@@ -195,6 +201,7 @@ func executeCreate(cf *ChannelCmdFactory) error {
 	return nil
 }
 
+// deprecated
 func getGenesisBlock(cf *ChannelCmdFactory) (*cb.Block, error) {
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
@@ -220,6 +227,7 @@ func getGenesisBlock(cf *ChannelCmdFactory) (*cb.Block, error) {
 	}
 }
 
+// deprecated
 func create(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 	// the global chainID filled by the "-c" command
 	if channelID == common.UndefinedParamValue {
