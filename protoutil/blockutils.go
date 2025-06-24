@@ -99,7 +99,13 @@ func GetChannelIDFromBlock(block *cb.Block) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	payload, err := UnmarshalPayload(envelope.Payload)
+
+	return GetChannelIDFromEnvelope(envelope)
+}
+
+// GetChannelIDFromEnvelope returns channel ID in the envelope
+func GetChannelIDFromEnvelope(envelope *cb.Envelope) (string, error) {
+	payload, err := UnmarshalPayload(envelope.GetPayload())
 	if err != nil {
 		return "", err
 	}
@@ -107,7 +113,7 @@ func GetChannelIDFromBlock(block *cb.Block) (string, error) {
 	if payload.Header == nil {
 		return "", errors.New("failed to retrieve channel id - payload header is empty")
 	}
-	chdr, err := UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return "", err
 	}

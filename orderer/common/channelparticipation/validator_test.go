@@ -122,6 +122,42 @@ func TestValidateJoinBlock(t *testing.T) {
 	}
 }
 
+func TestValidateUpdateEnvelope(t *testing.T) {
+	validUpdateEnvelope := configUpdateEnvelopeWithGroups("my-channel")
+
+	tests := []struct {
+		testName            string
+		updateEnvelopeBlock *cb.Envelope
+		expectedChannelID   string
+		expectedErr         error
+	}{
+		{
+			testName:            "Valid application channel update envelope",
+			updateEnvelopeBlock: validUpdateEnvelope,
+			expectedChannelID:   "my-channel",
+			expectedErr:         nil,
+		},
+		{
+			testName:            "Update envelope not a config",
+			updateEnvelopeBlock: nonConfigEnvelope(),
+			expectedChannelID:   "",
+			expectedErr:         errors.New("bad type"),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.testName, func(t *testing.T) {
+			channelID, err := channelparticipation.ValidateUpdateConfigEnvelope(test.updateEnvelopeBlock)
+			require.Equal(t, test.expectedChannelID, channelID)
+			if test.expectedErr != nil {
+				require.EqualError(t, err, test.expectedErr.Error())
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func blockWithGroups(groups map[string]*cb.ConfigGroup, channelID string) *cb.Block {
 	block := protoutil.NewBlock(0, []byte{})
 	block.Data = &cb.BlockData{
@@ -187,4 +223,18 @@ func nonConfigBlock() *cb.Block {
 	protoutil.InitBlockMetadata(block)
 
 	return block
+}
+
+func nonConfigEnvelope() *cb.Envelope {
+	data := &cb.Envelope{
+		Payload: protoutil.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
+					Type: int32(cb.HeaderType_ENDORSER_TRANSACTION),
+				}),
+			},
+		}),
+	}
+
+	return data
 }

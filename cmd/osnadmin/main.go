@@ -58,6 +58,11 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 	remove := channel.Command("remove", "Remove a channel from an Ordering Service Node (OSN).")
 	removeChannelID := remove.Flag("channelID", "Channel ID").Short('c').Required().String()
 
+	update := channel.Command("update", "Update an Ordering Service Node (OSN) to a channel.")
+	updateChannelID := update.Flag("channelID", "Channel ID").Short('c').Required().String()
+	configUpdateEnvelopePath := update.Flag("config-update-envelope", "Path to the file containing an up-to-date config update envelope for the channel").Short('e').Required().String()
+	tlsHandshakeTimeShift := update.Flag("tlsHandshakeTimeShift", "The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint").Short('t').Default("0").Duration()
+
 	command, err := app.Parse(args)
 	if err != nil {
 		return "", 1, err
@@ -105,6 +110,19 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 		}
 	}
 
+	var marshaledConfigEnvelope []byte
+	if *configUpdateEnvelopePath != "" {
+		marshaledConfigEnvelope, err = os.ReadFile(*configUpdateEnvelopePath)
+		if err != nil {
+			return "", 1, fmt.Errorf("reading config updte envelope: %s", err)
+		}
+
+		err = validateEnvelopeChannelID(marshaledConfigEnvelope, *updateChannelID)
+		if err != nil {
+			return "", 1, err
+		}
+	}
+
 	//
 	// call the underlying implementations
 	//
@@ -121,6 +139,8 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 		resp, err = osnadmin.ListAllChannels(osnURL, caCertPool, tlsClientCert)
 	case remove.FullCommand():
 		resp, err = osnadmin.Remove(osnURL, *removeChannelID, caCertPool, tlsClientCert)
+	case update.FullCommand():
+		resp, err = osnadmin.Update(osnURL, marshaledConfigEnvelope, caCertPool, tlsClientCert, *tlsHandshakeTimeShift)
 	}
 	if err != nil {
 		return errorOutput(err), 1, nil
@@ -182,6 +202,27 @@ func validateBlockChannelID(blockBytes []byte, channelID string) error {
 	// the channel they think they're joining.
 	if channelID != blockChannelID {
 		return fmt.Errorf("specified --channelID %s does not match channel ID %s in config block", channelID, blockChannelID)
+	}
+
+	return nil
+}
+
+func validateEnvelopeChannelID(envelopeBytes []byte, channelID string) error {
+	envelope := &common.Envelope{}
+	err := proto.Unmarshal(envelopeBytes, envelope)
+	if err != nil {
+		return fmt.Errorf("unmarshalling envelope: %s", err)
+	}
+
+	envelopeChannelID, err := protoutil.GetChannelIDFromEnvelope(envelope)
+	if err != nil {
+		return err
+	}
+
+	// quick sanity check that the orderer admin is joining
+	// the channel they think they're joining.
+	if channelID != envelopeChannelID {
+		return fmt.Errorf("specified --channelID %s does not match channel ID %s in config update envelope", channelID, envelopeChannelID)
 	}
 
 	return nil

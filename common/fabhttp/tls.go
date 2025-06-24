@@ -10,6 +10,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"os"
+	"time"
 
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 )
@@ -20,6 +21,7 @@ type TLS struct {
 	KeyFile            string
 	ClientCertRequired bool
 	ClientCACertFiles  []string
+	TimeShift          time.Duration
 }
 
 func (t TLS) Config() (*tls.Config, error) {
@@ -44,6 +46,12 @@ func (t TLS) Config() (*tls.Config, error) {
 			CipherSuites: comm.DefaultTLSCipherSuites,
 			ClientCAs:    caCertPool,
 		}
+		if t.TimeShift > 0 {
+			tlsConfig.Time = func() time.Time {
+				return time.Now().Add((-1) * t.TimeShift)
+			}
+		}
+
 		if t.ClientCertRequired {
 			tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 		} else {

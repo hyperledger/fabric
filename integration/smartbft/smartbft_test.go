@@ -553,41 +553,17 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Update the new orderer using config update without updating the policy")
-			config := nwo.GetConfig(network, peer, orderer, channel)
-			updatedConfig := proto.Clone(config).(*common.Config)
-			rawOrderers := updatedConfig.ChannelGroup.Groups["Orderer"].Values["Orderers"]
-			orderersVal := &common.Orderers{}
-			Expect(proto.Unmarshal(rawOrderers.Value, orderersVal)).To(Succeed())
-			orderersVal.ConsenterMapping = append(orderersVal.ConsenterMapping, &common.Consenter{
-				MspId:         "OrdererMSP",
-				Id:            5,
-				Identity:      ordererIdentity,
-				ServerTlsCert: ordererCertificate,
-				ClientTlsCert: ordererCertificate,
-				Host:          "127.0.0.1",
-				Port:          uint32(network.OrdererPort(orderer5, nwo.ClusterPort)),
+			nwo.UpdateConsenters(network, peer, orderer, channel, func(orderers *common.Orderers) {
+				orderers.ConsenterMapping = append(orderers.ConsenterMapping, &common.Consenter{
+					MspId:         "OrdererMSP",
+					Id:            5,
+					Identity:      ordererIdentity,
+					ServerTlsCert: ordererCertificate,
+					ClientTlsCert: ordererCertificate,
+					Host:          "127.0.0.1",
+					Port:          uint32(network.OrdererPort(orderer5, nwo.ClusterPort)),
+				})
 			})
-			rawOrderers.Value, err = proto.Marshal(orderersVal)
-			Expect(err).NotTo(HaveOccurred())
-			updatedConfig.ChannelGroup.Groups["Orderer"].Values["Orderers"].Value = protoutil.MarshalOrPanic(orderersVal)
-
-			tempDir, err := os.MkdirTemp(network.RootDir, "updateConfig")
-			Expect(err).NotTo(HaveOccurred())
-			updateFile := filepath.Join(tempDir, "update.pb")
-			defer os.RemoveAll(tempDir)
-
-			nwo.ComputeUpdateOrdererConfig(updateFile, network, channel, config, updatedConfig, peer, orderer)
-
-			sess, err = network.OrdererAdminSession(orderer, peer, commands.ChannelUpdate{
-				ChannelID:  channel,
-				Orderer:    network.OrdererAddress(orderer, nwo.ListenPort),
-				File:       updateFile,
-				ClientAuth: network.ClientAuthRequired,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			sess.Wait(network.EventuallyTimeout)
-			Expect(sess.ExitCode()).ToNot(Equal(0))
-			Expect(sess.Err).To(gbytes.Say("block validation policy should be a signature policy"))
 		})
 
 		It("smartbft assisted synchronization no rotation", func() {
