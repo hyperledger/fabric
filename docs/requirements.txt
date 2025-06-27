@@ -35,5 +35,5 @@ sphinxcontrib-qthelp==2.0.0
 sphinxcontrib-serializinghtml==2.0.0
 sphinxcontrib-websupport==2.0.0
 typing_extensions==4.12.2
-urllib3==2.2.3
+urllib3==2.5.0
 zipp==3.20.2
