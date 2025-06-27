@@ -12,7 +12,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fsouza/go-dockerclient v1.12.0
 	github.com/go-kit/kit v0.13.0
-	github.com/go-viper/mapstructure/v2 v2.2.1
+	github.com/go-viper/mapstructure/v2 v2.3.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/hyperledger-labs/SmartBFT v0.0.0-20250503203013-eb005eef8866
