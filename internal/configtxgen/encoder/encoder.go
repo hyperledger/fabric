@@ -286,7 +286,7 @@ func consenterProtosFromConfig(consenterMapping []*genesisconfig.Consenter) ([]*
 	return consenterProtos, nil
 }
 
-// NewConsortiumsGroup returns an org component of the channel configuration.  It defines the crypto material for the
+// NewConsortiumOrgGroup returns an org component of the channel configuration.  It defines the crypto material for the
 // organization (its MSP).  It sets the mod_policy of all elements to "Admins".
 func NewConsortiumOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, error) {
 	consortiumsOrgGroup := protoutil.NewConfigGroup()

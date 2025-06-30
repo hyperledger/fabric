@@ -991,7 +991,7 @@ func updateOrdererOrgEndpointsConfigSucceeds(n *nwo.Network, orderer *nwo.Ordere
 	Expect(sess.Err).To(gbytes.Say("Successfully submitted channel update"))
 }
 
-// UpdateOrdererConfig computes, signs, and submits a configuration update
+// UpdateOrdererConfigFails computes, signs, and submits a configuration update
 // which requires orderers signature. the update should fail.
 func UpdateOrdererConfigFails(n *nwo.Network, orderer *nwo.Orderer, channel string, current, updated *common.Config, submitter *nwo.Peer, additionalSigners ...*nwo.Orderer) {
 	tempDir, err := os.MkdirTemp(n.RootDir, "updateConfig")
