@@ -855,7 +855,7 @@ func CreateBroadcastEnvelope(n *nwo.Network, entity interface{}, channel string,
 	return env
 }
 
-// assertBlockReception asserts that the given orderers have the expected
+// assertBlockReceptionInAllOrderers asserts that the given orderers have the expected
 // newest block number for the specified channels
 func assertBlockReceptionInAllOrderers(orderers []*nwo.Orderer, peer *nwo.Peer, network *nwo.Network, channelId string, currentBlockNumber uint64) {
 	for _, orderer := range orderers {
@@ -889,7 +889,7 @@ func prepareBftMetadata() *smartbft.Options {
 	return bftMetadata
 }
 
-// prepareBftMetadata prepare the bft consensusType.Metadata
+// prepareInvalidBftMetadata prepare the bft consensusType.Metadata
 func prepareInvalidBftMetadata() *smartbft.Options {
 	bftMetadata := &smartbft.Options{
 		RequestBatchMaxCount:      0,
