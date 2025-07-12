@@ -15,7 +15,6 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/ginkgo/v2"
@@ -95,7 +94,7 @@ var _ = Describe("SBE_E2E", func() {
 			orderer := network.Orderer("orderer")
 
 			By("setting up the channel")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 			network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
 
 			By("enabling 2.0 application capabilities")

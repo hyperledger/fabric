@@ -13,7 +13,6 @@ import (
 	"syscall"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
@@ -101,7 +100,7 @@ var _ = Describe("CouchDB indexes", func() {
 
 		By("setting up the channel")
 		orderer = network.Orderer("orderer")
-		channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+		nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 		network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
 
 		chaincode = nwo.Chaincode{

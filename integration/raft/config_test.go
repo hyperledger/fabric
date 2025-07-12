@@ -25,7 +25,6 @@ import (
 	protosorderer "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
@@ -125,7 +124,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}
 
 			By("Creating a new channel, joining all orderers")
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", network.Orderers...)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel", network.Orderers...)
 			FindLeader(ordererRunners)
 
 			// the above can work even if the orderer nodes are not in the same Raft
@@ -217,7 +216,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Joining the orderer to a channel")
 			orderer := network.Orderer("orderer")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, odererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, odererRunner)
 
 			By("Submitting channel config update with illegal value")
 			org1Peer0 := network.Peer("Org1", "peer0")
@@ -271,7 +270,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			launch(orderer)
 
 			By("Joining the orderer to a channel")
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", orderer)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel", orderer)
 
 			By("Checking that it elected itself as a leader")
 			FindLeader(ordererRunners)
@@ -313,14 +312,14 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			launch(orderer2)
 
 			By("Joining the second orderer to the channel, as consenter")
-			expectedChannelInfo := channelparticipation.ChannelInfo{
+			expectedChannelInfo := nwo.ChannelInfo{
 				Name:              "testchannel",
 				URL:               "/participation/v1/channels/testchannel",
 				Status:            "onboarding",
 				ConsensusRelation: "consenter",
 				Height:            0,
 			}
-			channelparticipation.Join(network, orderer2, "testchannel", configBlock, expectedChannelInfo)
+			nwo.Join(network, orderer2, "testchannel", configBlock, expectedChannelInfo)
 
 			By("Waiting for a leader to be re-elected")
 			FindLeader(ordererRunners)
@@ -392,14 +391,14 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			configBlock = nwo.GetConfigBlock(network, peer, orderer, "testchannel")
 
 			By("Joining the third orderer to the channel, as follower")
-			expectedChannelInfo = channelparticipation.ChannelInfo{
+			expectedChannelInfo = nwo.ChannelInfo{
 				Name:              "testchannel",
 				URL:               "/participation/v1/channels/testchannel",
 				Status:            "onboarding",
 				ConsensusRelation: "follower",
 				Height:            0,
 			}
-			channelparticipation.Join(network, orderer3, "testchannel", configBlock, expectedChannelInfo)
+			nwo.Join(network, orderer3, "testchannel", configBlock, expectedChannelInfo)
 
 			By("Expanding the TLS root CA certificates and adding orderer3 to the channel")
 			updateOrdererMSPAndConsensusMetadata(network, peer, orderer, "testchannel", "OrdererOrg",
@@ -421,8 +420,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Waiting for orderer3 to see the leader")
 			FindLeader([]*ginkgomon.Runner{ordererRunners[2]})
 
-			Expect(channelparticipation.ListOne(network, orderer3, "testchannel")).To(Equal(
-				channelparticipation.ChannelInfo{
+			Expect(nwo.ListOne(network, orderer3, "testchannel")).To(Equal(
+				nwo.ChannelInfo{
 					Name:              "testchannel",
 					URL:               "/participation/v1/channels/testchannel",
 					Status:            "active",
@@ -482,7 +481,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			ordererProcesses = append(ordererProcesses, process)
 
 			By("Joining the orderer to a channel")
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", orderer)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel", orderer)
 
 			Eventually(runner.Err()).Should(gbytes.Say("TickIntervalOverride is set, overriding channel configuration tick interval to 642ms"))
 		})
@@ -512,7 +511,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}
 
 			By("Creating a new channel, joining all orderers")
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", network.Orderers...)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel", network.Orderers...)
 
 			By("Finding leader")
 			leader := FindLeader(ordererRunners)
@@ -680,7 +679,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}
 
 			By("Creating a channel, joining all orderers")
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", network.Orderers...)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel", network.Orderers...)
 
 			By("Finding leader")
 			_ = FindLeader(ordererRunners)
@@ -770,10 +769,10 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Creating a testchannel2, joining all orderers")
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel2", network.Orderers...)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel2", network.Orderers...)
 
 			By("Creating a testchannel3, joining all orderers")
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel3", network.Orderers...)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel3", network.Orderers...)
 
 			assertBlockReception(map[string]int{
 				"testchannel2": 0,
@@ -837,14 +836,14 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			configBlock := nwo.GetConfigBlock(network, peer, o1, "testchannel")
 
 			By("Joining the fourth orderer to the channel, as consenter")
-			expectedChannelInfo := channelparticipation.ChannelInfo{
+			expectedChannelInfo := nwo.ChannelInfo{
 				Name:              "testchannel",
 				URL:               "/participation/v1/channels/testchannel",
 				Status:            "onboarding",
 				ConsensusRelation: "consenter",
 				Height:            0,
 			}
-			channelparticipation.Join(network, o4, "testchannel", configBlock, expectedChannelInfo)
+			nwo.Join(network, o4, "testchannel", configBlock, expectedChannelInfo)
 
 			By("And waiting for it to sync with the rest of the orderers")
 			assertBlockReception(map[string]int{
@@ -874,14 +873,14 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			// Get the last config block of the testchannel
 			configBlock = nwo.GetConfigBlock(network, peer, o1, "testchannel2")
-			expectedChannelInfo = channelparticipation.ChannelInfo{
+			expectedChannelInfo = nwo.ChannelInfo{
 				Name:              "testchannel2",
 				URL:               "/participation/v1/channels/testchannel2",
 				Status:            "onboarding",
 				ConsensusRelation: "consenter",
 				Height:            0,
 			}
-			channelparticipation.Join(network, o4, "testchannel2", configBlock, expectedChannelInfo)
+			nwo.Join(network, o4, "testchannel2", configBlock, expectedChannelInfo)
 
 			By("Waiting for orderer4 and to replicate testchannel2")
 			assertBlockReception(map[string]int{
@@ -912,14 +911,14 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			// Get the last config block of the testchannel3
 			configBlock = nwo.GetConfigBlock(network, peer, o1, "testchannel3")
-			expectedChannelInfo = channelparticipation.ChannelInfo{
+			expectedChannelInfo = nwo.ChannelInfo{
 				Name:              "testchannel3",
 				URL:               "/participation/v1/channels/testchannel3",
 				Status:            "onboarding",
 				ConsensusRelation: "consenter",
 				Height:            0,
 			}
-			channelparticipation.Join(network, o4, "testchannel3", configBlock, expectedChannelInfo)
+			nwo.Join(network, o4, "testchannel3", configBlock, expectedChannelInfo)
 
 			By("checking the logs that indicate that channel3 cannot be pulled using the delivery service, as the read policy is corrupt")
 			Eventually(orderer4Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Received status:FORBIDDEN from 127\\.0\\.0\\.1:[0-9]+: forbidden pulling the channel channel=testchannel3"))
@@ -960,13 +959,13 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}
 
 			By("Creating testchannel, joining all orderers")
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", network.Orderers...)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel", network.Orderers...)
 
 			By("Finding leader testchannel")
 			_ = FindLeader(ordererRunners)
 
 			By("Creating mychannel with a subset of orderers")
-			channelparticipation.JoinOrderersAppChannelCluster(network, "mychannel", o1)
+			nwo.JoinOrderersAppChannelCluster(network, "mychannel", o1)
 
 			By("Finding leader mychannel")
 			_ = FindLeader(ordererRunners[:1])
@@ -1004,14 +1003,14 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			configBlock := nwo.GetConfigBlock(network, peer, o1, "mychannel")
 			By("Joining orderer2 to mychannel, as consenter")
-			expectedChannelInfo := channelparticipation.ChannelInfo{
+			expectedChannelInfo := nwo.ChannelInfo{
 				Name:              "mychannel",
 				URL:               "/participation/v1/channels/mychannel",
 				Status:            "onboarding",
 				ConsensusRelation: "consenter",
 				Height:            0,
 			}
-			channelparticipation.Join(network, o2, "mychannel", configBlock, expectedChannelInfo)
+			nwo.Join(network, o2, "mychannel", configBlock, expectedChannelInfo)
 
 			By("Waiting for orderer2 to join the channel")
 			assertBlockReception(map[string]int{
@@ -1031,14 +1030,14 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			configBlock = nwo.GetConfigBlock(network, peer, o1, "mychannel")
 			By("Joining orderer3 to mychannel, as consenter")
-			expectedChannelInfo = channelparticipation.ChannelInfo{
+			expectedChannelInfo = nwo.ChannelInfo{
 				Name:              "mychannel",
 				URL:               "/participation/v1/channels/mychannel",
 				Status:            "onboarding",
 				ConsensusRelation: "consenter",
 				Height:            0,
 			}
-			channelparticipation.Join(network, o3, "mychannel", configBlock, expectedChannelInfo)
+			nwo.Join(network, o3, "mychannel", configBlock, expectedChannelInfo)
 
 			By("Waiting for orderer3 to join the channel")
 			assertBlockReception(map[string]int{
@@ -1069,7 +1068,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Eventually(ordererProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			}
 
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2)
 		})
 
 		AfterEach(func() {
@@ -1139,7 +1138,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Eventually(ordererProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			}
 
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
 		})
 
 		AfterEach(func() {
@@ -1191,8 +1190,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Ensuring the evicted orderer now doesn't serve clients")
 			ensureNotFound(orderers[firstEvictedNode], peer, network, "testchannel")
 
-			assertFollower := func(expected channelparticipation.ChannelInfo, o *nwo.Orderer) bool {
-				current := channelparticipation.ListOne(network, o, "testchannel")
+			assertFollower := func(expected nwo.ChannelInfo, o *nwo.Orderer) bool {
+				current := nwo.ListOne(network, o, "testchannel")
 				ok := current == expected
 				if !ok {
 					fmt.Fprintf(GinkgoWriter, ">>> Current ChannelInfo: %+v \n", current)
@@ -1200,7 +1199,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				return ok
 			}
 
-			expectedInfo := channelparticipation.ChannelInfo{
+			expectedInfo := nwo.ChannelInfo{
 				Name:              "testchannel",
 				URL:               "/participation/v1/channels/testchannel",
 				Status:            "active",
@@ -1222,7 +1221,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Ensuring the evicted orderer now doesn't serve clients")
 			ensureNotFound(orderers[secondEvictedNode], peer, network, "testchannel")
 
-			expectedInfo = channelparticipation.ChannelInfo{
+			expectedInfo = nwo.ChannelInfo{
 				Name:              "testchannel",
 				URL:               "/participation/v1/channels/testchannel",
 				Status:            "active",
@@ -1325,19 +1324,19 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				}
 
 				By("Removing channel from the first orderer")
-				// TODO the channelparticipation.Remove does not clean up the etcdraft folder. This may prevent the
+				// TODO the nwo.Remove does not clean up the etcdraft folder. This may prevent the
 				// correct re-creation of the channel on this orderer.
 				// See: https://github.com/hyperledger/fabric/issues/3992
 				ready := make(chan struct{})
 				go func() {
 					defer GinkgoRecover()
-					channelparticipation.Remove(network, o1, "testchannel")
+					nwo.Remove(network, o1, "testchannel")
 					close(ready)
 				}()
 				Eventually(ready, network.EventuallyTimeout).Should(BeClosed())
 
 				Eventually(func() int { // Removal is async
-					channelList := channelparticipation.List(network, o1)
+					channelList := nwo.List(network, o1)
 					return len(channelList.Channels)
 				}()).Should(BeZero())
 
@@ -1350,14 +1349,14 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 				By("Re-adding the channel to the first orderer")
 				configBlock := nwo.GetConfigBlock(network, peer, o2, "testchannel")
-				expectedInfo := channelparticipation.ChannelInfo{
+				expectedInfo := nwo.ChannelInfo{
 					Name:              "testchannel",
 					URL:               "/participation/v1/channels/testchannel",
 					Status:            "onboarding",
 					ConsensusRelation: "consenter",
 					Height:            0,
 				}
-				channelparticipation.Join(network, o1, "testchannel", configBlock, expectedInfo)
+				nwo.Join(network, o1, "testchannel", configBlock, expectedInfo)
 
 				By("Submitting tx")
 				env := ordererclient.CreateBroadcastEnvelope(network, o2, "testchannel", []byte("foo"))
@@ -1366,15 +1365,15 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
 				By("Waiting for the channel to stabilize")
-				expectedInfo = channelparticipation.ChannelInfo{
+				expectedInfo = nwo.ChannelInfo{
 					Name:              "testchannel",
 					URL:               "/participation/v1/channels/testchannel",
 					Status:            "active",
 					ConsensusRelation: "consenter",
 					Height:            6,
 				}
-				assertCatchup := func(expected channelparticipation.ChannelInfo) bool {
-					current := channelparticipation.ListOne(network, o1, "testchannel")
+				assertCatchup := func(expected nwo.ChannelInfo) bool {
+					current := nwo.ListOne(network, o1, "testchannel")
 					ok := current == expected
 					if !ok {
 						fmt.Fprintf(GinkgoWriter, "Current ChannelInfo: %+v", current)
@@ -1402,20 +1401,20 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				}, network.Orderers, peer, network)
 
 				By("Removing channel from all orderers")
-				// TODO the channelparticipation.Remove does not clean up the etcdraft folder. This may prevent the
+				// TODO the nwo.Remove does not clean up the etcdraft folder. This may prevent the
 				// correct re-creation of the channel on this orderer.
 				// See: https://github.com/hyperledger/fabric/issues/3992
 				for _, o := range network.Orderers {
 					ready := make(chan struct{})
 					go func() {
 						defer GinkgoRecover()
-						channelparticipation.Remove(network, o, "testchannel")
+						nwo.Remove(network, o, "testchannel")
 						close(ready)
 					}()
 					Eventually(ready, network.EventuallyTimeout).Should(BeClosed())
 
 					Eventually(func() int { // Removal is async
-						channelList := channelparticipation.List(network, o)
+						channelList := nwo.List(network, o)
 						return len(channelList.Channels)
 					}()).Should(BeZero())
 				}
@@ -1442,7 +1441,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				}
 
 				By("Re-adding the channel to the orderers")
-				channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
+				nwo.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
 
 				FindLeader(ordererRunners)
 
@@ -1450,7 +1449,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 					"testchannel": 0,
 				}, network.Orderers, peer, network)
 
-				expectedInfo := channelparticipation.ListOne(network, o1, "testchannel")
+				expectedInfo := nwo.ListOne(network, o1, "testchannel")
 
 				By("Submitting tx")
 				env := ordererclient.CreateBroadcastEnvelope(network, o2, "testchannel", []byte("foo"))
@@ -1460,8 +1459,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 				By("Waiting for the channel to stabilize")
 				expectedInfo.Height++
-				assertCatchup := func(expected channelparticipation.ChannelInfo) bool {
-					current := channelparticipation.ListOne(network, o1, "testchannel")
+				assertCatchup := func(expected nwo.ChannelInfo) bool {
+					current := nwo.ListOne(network, o1, "testchannel")
 					ok := current == expected
 					if !ok {
 						fmt.Fprintf(GinkgoWriter, "Current ChannelInfo: %+v", current)
@@ -1535,15 +1534,15 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Eventually(ordererProcesses[0].Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			By("Ensuring the evicted orderer starts up with the channel as a follower")
-			expectedChannelInfo := channelparticipation.ChannelInfo{
+			expectedChannelInfo := nwo.ChannelInfo{
 				Name:              "testchannel",
 				URL:               "/participation/v1/channels/testchannel",
 				Status:            "active",
 				ConsensusRelation: "follower",
 				Height:            2,
 			}
-			Eventually(func() channelparticipation.ChannelInfo {
-				return channelparticipation.ListOne(network, o1, "testchannel")
+			Eventually(func() nwo.ChannelInfo {
+				return nwo.ListOne(network, o1, "testchannel")
 			}, network.EventuallyTimeout).Should(Equal(expectedChannelInfo))
 
 			By("Adding the evicted orderer back to the application channel")
@@ -1611,7 +1610,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			for i := range orderers[:3] {
 				launch(i)
 			}
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", orderers[:3]...)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel", orderers[:3]...)
 
 			leader := FindLeader(ordererRunners[:3])
 
@@ -1655,14 +1654,14 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				By(fmt.Sprintf("Launching orderer%d", i+1))
 				launch(i)
 
-				expectedInfo := channelparticipation.ChannelInfo{
+				expectedInfo := nwo.ChannelInfo{
 					Name:              "testchannel",
 					URL:               "/participation/v1/channels/testchannel",
 					Status:            "onboarding",
 					ConsensusRelation: "consenter",
 					Height:            0,
 				}
-				channelparticipation.Join(network, orderers[i], "testchannel", configBlock, expectedInfo)
+				nwo.Join(network, orderers[i], "testchannel", configBlock, expectedInfo)
 
 				By(fmt.Sprintf("Checking that orderer%d has onboarded the network", i+1))
 				assertBlockReception(map[string]int{
@@ -1707,7 +1706,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Launching the orderer that was never started from the genesis block")
 			launch(3)
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", orderers[3])
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel", orderers[3])
 
 			By("Launching orderer1")
 			launch(0)
@@ -1767,15 +1766,15 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Eventually(ordererProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 		}
 
-		channelparticipation.JoinOrderersAppChannelCluster(network, "three-orderer-channel", o1, o2, o3)
+		nwo.JoinOrderersAppChannelCluster(network, "three-orderer-channel", o1, o2, o3)
 		FindLeader(ordererRunners)
-		channelparticipation.JoinOrderersAppChannelCluster(network, "single-orderer-channel", o1)
+		nwo.JoinOrderersAppChannelCluster(network, "single-orderer-channel", o1)
 		FindLeader([]*ginkgomon.Runner{ordererRunners[0]})
 
-		channelparticipation.ChannelListMatcher(channelparticipation.List(network, o1),
+		nwo.ChannelListMatcher(nwo.List(network, o1),
 			[]string{"single-orderer-channel", "three-orderer-channel"})
 		for _, o := range orderers[1:] {
-			channelparticipation.ChannelListMatcher(channelparticipation.List(network, o),
+			nwo.ChannelListMatcher(nwo.List(network, o),
 				[]string{"three-orderer-channel"})
 		}
 	})
@@ -1801,7 +1800,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		}
 
 		By("Creating the testchannel")
-		channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
+		nwo.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
 
 		By("Waiting for the testchannel to be ready")
 		FindLeader(ordererRunners)

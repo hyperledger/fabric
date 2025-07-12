@@ -25,7 +25,6 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	fabricmsp "github.com/hyperledger/fabric/msp"
@@ -112,7 +111,7 @@ var _ = Describe("MSPs with RSA Certificate Authorities", func() {
 			Label:           "my_prebuilt_chaincode",
 		}
 
-		channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+		nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 		nwo.EnableCapabilities(
 			network,

@@ -10,14 +10,14 @@ import "github.com/hyperledger/fabric/orderer/common/types"
 
 // StatusReporter is implemented by cluster-type Chain implementations.
 // It allows the node to report its cluster relation and its status within that relation.
-// This information is used to generate the channelparticipation.ChannelInfo in response
+// This information is used to generate the nwo.ChannelInfo in response
 // to a "List" request on a particular channel.
 //
 // Not all chains must implement this, in particular non-cluster-type (e.g. inactive) are
 // assigned a StaticStatusReporter at construction time.
 type StatusReporter interface {
 	// StatusReport provides the cluster relation and status.
-	// See:  channelparticipation.ChannelInfo for more details.
+	// See:  nwo.ChannelInfo for more details.
 	StatusReport() (types.ConsensusRelation, types.Status)
 }
 

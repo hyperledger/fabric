@@ -18,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/gateway"
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/ginkgo/v2"
@@ -374,7 +373,7 @@ func joinChannel(network *nwo.Network, channel string) {
 	err = proto.Unmarshal(genesisBlockBytes, genesisBlock)
 	Expect(err).NotTo(HaveOccurred())
 
-	expectedChannelInfoPT := channelparticipation.ChannelInfo{
+	expectedChannelInfoPT := nwo.ChannelInfo{
 		Name:              channel,
 		URL:               "/participation/v1/channels/" + channel,
 		Status:            "active",
@@ -384,8 +383,8 @@ func joinChannel(network *nwo.Network, channel string) {
 
 	for _, o := range network.Orderers {
 		By("joining " + o.Name + " to channel as a consenter")
-		channelparticipation.Join(network, o, channel, genesisBlock, expectedChannelInfoPT)
-		channelInfo := channelparticipation.ListOne(network, o, channel)
+		nwo.Join(network, o, channel, genesisBlock, expectedChannelInfoPT)
+		channelInfo := nwo.ListOne(network, o, channel)
 		Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 	}
 }

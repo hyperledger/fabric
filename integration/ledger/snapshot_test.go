@@ -25,7 +25,6 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/integration/chaincode/kvexecutor"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/runner"
@@ -638,7 +637,7 @@ func initAndStartFourOrgsNetwork() *setup {
 	setup.startPeers()
 
 	By("creating and joining testchannel")
-	channelparticipation.JoinOrdererJoinPeersAppChannel(setup.network, "testchannel", setup.orderer, setup.ordererRunner)
+	nwo.JoinOrdererJoinPeersAppChannel(setup.network, "testchannel", setup.orderer, setup.ordererRunner)
 
 	By("verifying membership for testchannel")
 	n.VerifyMembership(n.PeersWithChannel(testchannelID), testchannelID)

@@ -23,7 +23,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 
 	bpkcs11 "github.com/hyperledger/fabric-lib-go/bccsp/pkcs11"
@@ -93,7 +92,7 @@ var _ = Describe("PKCS11 enabled network", func() {
 
 		It("executes transactions against a basic etcdraft network", func() {
 			orderer := network.Orderer("orderer")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.PeersWithChannel("testchannel")...)
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
@@ -112,7 +111,7 @@ var _ = Describe("PKCS11 enabled network", func() {
 
 		It("executes transactions against a basic etcdraft network", func() {
 			orderer := network.Orderer("orderer")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.PeersWithChannel("testchannel")...)
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)

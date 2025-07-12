@@ -15,7 +15,6 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/ginkgo/v2"
@@ -100,7 +99,7 @@ var _ = Describe("Devmode", func() {
 		orderer := network.Orderer("orderer")
 
 		By("setting up the channel")
-		channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+		nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 		By("enabling V2_0 application capabilities")
 		nwo.EnableCapabilities(network, channelName, "Application", "V2_0", orderer, org1peer0)

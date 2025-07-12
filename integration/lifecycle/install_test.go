@@ -12,7 +12,6 @@ import (
 	"syscall"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
@@ -87,7 +86,7 @@ var _ = Describe("chaincode install", func() {
 			orderer = network.Orderer("orderer")
 			org1Peer = network.Peer("Org1", "peer0")
 			org2Peer = network.Peer("Org2", "peer0")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 			chaincode = nwo.Chaincode{
 				Name:            "failure-external",

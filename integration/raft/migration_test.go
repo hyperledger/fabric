@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
@@ -117,7 +116,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 
 			runOrderers()
 
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3, o4)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3, o4)
 			FindLeader([]*ginkgomon.Runner{o1Runner, o2Runner, o3Runner, o4Runner})
 
 			// === Step 2: Create a transaction with orderer1 ===
@@ -265,7 +264,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 
 			runOrderers()
 
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3, o4)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3, o4)
 			FindLeader([]*ginkgomon.Runner{o1Runner, o2Runner, o3Runner, o4Runner})
 
 			peer = network.Peer("Org1", "peer0")
