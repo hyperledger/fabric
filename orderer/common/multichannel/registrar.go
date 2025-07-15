@@ -697,6 +697,54 @@ func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block) (info t
 	return info, err
 }
 
+// UpdateChannel instructs the orderer to update a channel with the provided config envelope.
+// The URL field is empty, and is to be completed by the caller.
+func (r *Registrar) UpdateChannel(channelID string, envelope *cb.Envelope) (info types.ChannelInfo, err error) {
+	r.lock.Lock()
+	if status, ok := r.pendingRemoval[channelID]; ok {
+		if status.Status == types.StatusFailed {
+			return types.ChannelInfo{}, types.ErrChannelRemovalFailure
+		}
+		return types.ChannelInfo{}, types.ErrChannelPendingRemoval
+	}
+
+	if _, ok := r.followers[channelID]; ok {
+		return types.ChannelInfo{}, types.ErrChannelNotReady
+	}
+
+	cs, ok := r.chains[channelID]
+	if !ok {
+		return types.ChannelInfo{}, types.ErrChannelNotExist
+	}
+	r.lock.Unlock()
+
+	config, configSeq, err := cs.ProcessConfigUpdateMsg(envelope)
+	if err != nil {
+		return types.ChannelInfo{}, errors.WithMessagef(err, "failed update config of channel %s", channelID)
+	}
+
+	if err = cs.WaitReady(); err != nil {
+		return types.ChannelInfo{}, errors.WithMessagef(err, "failed update config of channel %s with SERVICE_UNAVAILABLE: rejected by Consenter", channelID)
+	}
+
+	err = cs.Configure(config, configSeq)
+	if err != nil {
+		return types.ChannelInfo{}, errors.WithMessagef(err, "failed update config of channel %s with SERVICE_UNAVAILABLE: rejected by Configure", channelID)
+	}
+
+	rel, status := cs.StatusReport()
+
+	info = types.ChannelInfo{
+		Name:              channelID,
+		ConsensusRelation: rel,
+		Status:            status,
+		Height:            cs.ledgerResources.Height(),
+	}
+
+	logger.Infof("Updating channel: %v", info)
+	return info, err
+}
+
 func (r *Registrar) createAsMember(ledgerRes *ledgerResources, configBlock *cb.Block, channelID string) (*ChainSupport, types.ChannelInfo, error) {
 	if ledgerRes.Height() == 0 {
 		if err := ledgerRes.Append(configBlock); err != nil {
