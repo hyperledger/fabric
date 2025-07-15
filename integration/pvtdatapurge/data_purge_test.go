@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
 	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/pvtdata/marblechaincodeutil"
@@ -91,7 +90,7 @@ var _ = Describe("Pvtdata purge", func() {
 			startPeer(network, processes, peerRunners, peer)
 		}
 
-		channelparticipation.JoinOrdererJoinPeersAppChannel(network, channelID, orderer, ordererRunner)
+		nwo.JoinOrdererJoinPeersAppChannel(network, channelID, orderer, ordererRunner)
 
 		network.VerifyMembership(
 			network.PeersWithChannel(channelID),

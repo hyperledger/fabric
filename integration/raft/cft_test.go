@@ -29,7 +29,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
@@ -98,7 +97,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
 			FindLeader([]*ginkgomon.Runner{o1Runner, o2Runner, o3Runner})
 
 			By("performing operation with orderer1")
@@ -157,7 +156,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			ordererProc = ifrit.Invoke(oRunner)
 			Eventually(ordererProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", orderer)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel", orderer)
 
 			envs := make(chan *common.Envelope, 5000)
 
@@ -223,7 +222,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			By("Creating and joining the channel")
 			channelID := "testchannel"
-			channelparticipation.JoinOrderersAppChannelCluster(network, channelID, o2, o3)
+			nwo.JoinOrderersAppChannelCluster(network, channelID, o2, o3)
 			FindLeader([]*ginkgomon.Runner{o2Runner, o3Runner})
 
 			By("Submitting several transactions to trigger snapshot")
@@ -260,7 +259,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			o2Proc = ifrit.Invoke(o2Runner)
 			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
-			channelparticipation.JoinOrderersAppChannelCluster(network, channelID, o1)
+			nwo.JoinOrderersAppChannelCluster(network, channelID, o1)
 
 			o1SnapDir := path.Join(network.RootDir, "orderers", o1.ID(), "etcdraft", "snapshot")
 
@@ -326,7 +325,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			ordererGroup := grouper.NewParallel(syscall.SIGTERM, orderersMembers)
 			ordererProc = ifrit.Invoke(ordererGroup)
 			Eventually(ordererProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", orderers...)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel", orderers...)
 
 			By("Setting up new OSN to be added to the cluster")
 			o4 := &nwo.Orderer{
@@ -365,14 +364,14 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			// Get the last config block of the channel
 			By("Starting joining new ordering service node to the channel")
 			configBlock := nwo.GetConfigBlock(network, peer, orderers[0], "testchannel")
-			expectedChannelInfo := channelparticipation.ChannelInfo{
+			expectedChannelInfo := nwo.ChannelInfo{
 				Name:              "testchannel",
 				URL:               "/participation/v1/channels/testchannel",
 				Status:            "onboarding",
 				ConsensusRelation: "consenter",
 				Height:            0,
 			}
-			channelparticipation.Join(network, o4, "testchannel", configBlock, expectedChannelInfo)
+			nwo.Join(network, o4, "testchannel", configBlock, expectedChannelInfo)
 
 			By("Pick ordering service node to be evicted")
 			victimIdx := FindLeader(ordererRunners) - 1
@@ -528,7 +527,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
 
 			By("Waiting for them to elect a leader")
 			ordererProcesses := []ifrit.Process{o1Proc, o2Proc, o3Proc}
@@ -573,7 +572,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
 
 			By("Waiting for them to elect a leader")
 			ordererProcesses := []ifrit.Process{o1Proc, o2Proc, o3Proc}
@@ -715,7 +714,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			By("Joining orderers to channel with Admin TLS disabled")
 			// TODO add a test case that ensures the admin client can connect with a time-shift as well
 			network.TLSEnabled = false
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
 			network.TLSEnabled = true
 
 			By("Waiting for TLS handshakes to fail")
@@ -903,12 +902,12 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
-			channelparticipation.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
+			nwo.JoinOrderersAppChannelCluster(network, "testchannel", o1, o2, o3)
 			By("Waiting for them to elect a leader")
 			FindLeader(ordererRunners)
 
 			By("Creating a channel")
-			channelparticipation.JoinOrderersAppChannelCluster(network, "foo", o1, o2, o3)
+			nwo.JoinOrderersAppChannelCluster(network, "foo", o1, o2, o3)
 
 			assertBlockReception(map[string]int{
 				"foo":         0,
@@ -940,7 +939,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			FindLeader(ordererRunners)
 
 			By("Creating a channel again")
-			channelparticipation.JoinOrderersAppChannelCluster(network, "bar", o1, o2, o3)
+			nwo.JoinOrderersAppChannelCluster(network, "bar", o1, o2, o3)
 
 			assertBlockReception(map[string]int{
 				"foo":         0,
@@ -1005,7 +1004,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			ordererProc = ifrit.Invoke(runner)
 
 			By("Joining a channel and waiting for orderer to elect a leader")
-			channelparticipation.JoinOrdererAppChannel(network, "testchannel", orderer, runner)
+			nwo.JoinOrdererAppChannel(network, "testchannel", orderer, runner)
 
 			By("Creating config update that adds another orderer admin")
 			bootBlockPath := filepath.Join(network.RootDir, fmt.Sprintf("%s_block.pb", "testchannel"))

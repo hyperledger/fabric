@@ -4,7 +4,7 @@ Copyright IBM Corp All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package channelparticipation
+package nwo
 
 import (
 	"bytes"
@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
-	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -26,7 +25,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func Join(n *nwo.Network, o *nwo.Orderer, channel string, block *common.Block, expectedChannelInfo ChannelInfo) {
+func Join(n *Network, o *Orderer, channel string, block *common.Block, expectedChannelInfo ChannelInfo) {
 	blockBytes, err := proto.Marshal(block)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -34,9 +33,9 @@ func Join(n *nwo.Network, o *nwo.Orderer, channel string, block *common.Block, e
 	if n.TLSEnabled {
 		protocol = "https"
 	}
-	url := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels", protocol, n.OrdererPort(o, nwo.AdminPort))
+	url := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels", protocol, n.OrdererPort(o, AdminPort))
 	req := GenerateJoinRequest(url, channel, blockBytes)
-	authClient, unauthClient := nwo.OrdererOperationalClients(n, o)
+	authClient, unauthClient := OrdererOperationalClients(n, o)
 
 	client := unauthClient
 	if n.TLSEnabled {
@@ -87,14 +86,14 @@ type ChannelInfoShort struct {
 	URL  string `json:"url"`
 }
 
-func List(n *nwo.Network, o *nwo.Orderer) ChannelList {
-	authClient, _ := nwo.OrdererOperationalClients(n, o)
+func List(n *Network, o *Orderer) ChannelList {
+	authClient, _ := OrdererOperationalClients(n, o)
 
 	protocol := "http"
 	if n.TLSEnabled {
 		protocol = "https"
 	}
-	listChannelsURL := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels", protocol, n.OrdererPort(o, nwo.AdminPort))
+	listChannelsURL := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels", protocol, n.OrdererPort(o, AdminPort))
 
 	body := getBody(authClient, listChannelsURL)()
 	list := &ChannelList{}
@@ -123,14 +122,14 @@ type ChannelInfo struct {
 	Height            uint64 `json:"height"`
 }
 
-func ListOne(n *nwo.Network, o *nwo.Orderer, channel string) ChannelInfo {
-	authClient, _ := nwo.OrdererOperationalClients(n, o)
+func ListOne(n *Network, o *Orderer, channel string) ChannelInfo {
+	authClient, _ := OrdererOperationalClients(n, o)
 
 	protocol := "http"
 	if n.TLSEnabled {
 		protocol = "https"
 	}
-	listChannelURL := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels/%s", protocol, n.OrdererPort(o, nwo.AdminPort), channel)
+	listChannelURL := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels/%s", protocol, n.OrdererPort(o, AdminPort), channel)
 
 	body := getBody(authClient, listChannelURL)()
 	c := &ChannelInfo{}
@@ -139,14 +138,14 @@ func ListOne(n *nwo.Network, o *nwo.Orderer, channel string) ChannelInfo {
 	return *c
 }
 
-func Remove(n *nwo.Network, o *nwo.Orderer, channel string) {
-	authClient, _ := nwo.OrdererOperationalClients(n, o)
+func Remove(n *Network, o *Orderer, channel string) {
+	authClient, _ := OrdererOperationalClients(n, o)
 
 	protocol := "http"
 	if n.TLSEnabled {
 		protocol = "https"
 	}
-	url := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels/%s", protocol, n.OrdererPort(o, nwo.AdminPort), channel)
+	url := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels/%s", protocol, n.OrdererPort(o, AdminPort), channel)
 
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	Expect(err).NotTo(HaveOccurred())
@@ -184,7 +183,7 @@ func channelInfoShortMatcher(channel string) types.GomegaMatcher {
 // JoinOrdererJoinPeersAppChannel Joins an orderer to a channel for which the genesis block was created by the network
 // bootstrap. It assumes a channel with one orderer. It waits for a leader (single orderer, always node=1), and then
 // joins all the peers to the channel.
-func JoinOrdererJoinPeersAppChannel(network *nwo.Network, channelID string, orderer *nwo.Orderer, ordererRunner *ginkgomon.Runner) {
+func JoinOrdererJoinPeersAppChannel(network *Network, channelID string, orderer *Orderer, ordererRunner *ginkgomon.Runner) {
 	appGenesisBlock := network.LoadAppChannelGenesisBlock(channelID)
 	expectedChannelInfo := ChannelInfo{
 		Name:              channelID,
@@ -206,7 +205,7 @@ func JoinOrdererJoinPeersAppChannel(network *nwo.Network, channelID string, orde
 
 // JoinOrdererAppChannel Joins an orderer to a channel for which the genesis block was created by the network
 // bootstrap. It assumes a channel with one orderer. It waits for a leader (single orderer, always node=1).
-func JoinOrdererAppChannel(network *nwo.Network, channelID string, orderer *nwo.Orderer, ordererRunner *ginkgomon.Runner) {
+func JoinOrdererAppChannel(network *Network, channelID string, orderer *Orderer, ordererRunner *ginkgomon.Runner) {
 	appGenesisBlock := network.LoadAppChannelGenesisBlock(channelID)
 	expectedChannelInfo := ChannelInfo{
 		Name:              channelID,
@@ -224,7 +223,7 @@ func JoinOrdererAppChannel(network *nwo.Network, channelID string, orderer *nwo.
 
 // JoinOrderersAppChannelCluster Joins a set of orderers to a channel for which the genesis block was created by the network
 // bootstrap. It assumes a channel with one or more orderers (a cluster).
-func JoinOrderersAppChannelCluster(network *nwo.Network, channelID string, orderers ...*nwo.Orderer) {
+func JoinOrderersAppChannelCluster(network *Network, channelID string, orderers ...*Orderer) {
 	appGenesisBlock := network.LoadAppChannelGenesisBlock(channelID)
 	for _, orderer := range orderers {
 		expectedChannelInfo := ChannelInfo{

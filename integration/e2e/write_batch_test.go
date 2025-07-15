@@ -13,7 +13,6 @@ import (
 	"syscall"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/ginkgo/v2"
@@ -77,7 +76,7 @@ var _ = Describe("Network", func() {
 
 		It("deploys and executes experiment bench", func() {
 			orderer := network.Orderer("orderer")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 			peer := network.Peer("Org1", "peer0")
 
 			chaincode := nwo.Chaincode{
@@ -160,7 +159,7 @@ var _ = Describe("Network", func() {
 
 		It("put private data for error", func() {
 			orderer := network.Orderer("orderer")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 			peer := network.Peer("Org1", "peer0")
 
 			chaincode := nwo.Chaincode{
@@ -235,7 +234,7 @@ var _ = Describe("Network", func() {
 
 		It("deploys and executes experiment bench", func() {
 			orderer := network.Orderer("orderer")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 			peer := network.Peer("Org1", "peer0")
 
 			chaincode := nwo.Chaincode{

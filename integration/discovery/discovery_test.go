@@ -19,7 +19,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go-apiv2/discovery"
 	pm "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/common/policydsl"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/hyperledger/fabric/internal/test"
@@ -100,7 +99,7 @@ var _ = Describe("DiscoveryService", func() {
 			peerProcesses = append(peerProcesses, peerProcess)
 
 			orderer = network.Orderer("orderer")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 			org1Peer0 = network.Peer("Org1", "peer0")
 			org2Peer0 = network.Peer("Org2", "peer0")
@@ -226,7 +225,7 @@ var _ = Describe("DiscoveryService", func() {
 			peerProcesses = append(peerProcesses, peerProcess)
 
 			orderer = network.Orderer("orderer")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 			org1Peer0 = network.Peer("Org1", "peer0")
 			org2Peer0 = network.Peer("Org2", "peer0")

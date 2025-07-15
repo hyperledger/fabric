@@ -15,7 +15,6 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/protoutil"
@@ -97,7 +96,7 @@ var _ = Describe("Release interoperability", func() {
 		}
 
 		By("joining the channel")
-		channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+		nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 		By("enabling V2_0 application capabilities")
 		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, endorsers...)
@@ -187,7 +186,7 @@ var _ = Describe("Release interoperability", func() {
 
 		It("deploys a chaincode with the new lifecycle, invokes it and the tx is committed only after the chaincode is upgraded via _lifecycle", func() {
 			By("enabling V2_0 application capabilities")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 			By("deploying the chaincode definition using _lifecycle")
@@ -267,7 +266,7 @@ var _ = Describe("Release interoperability", func() {
 					Ctor:            `{"Args":[""]}`,
 				}
 				By("Creating and joining the channel")
-				channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+				nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 			})
 
 			It("Deploys two chaincodes with the new lifecycle and performs a successful cc2cc invocation", func() {
@@ -321,7 +320,7 @@ var _ = Describe("Release interoperability", func() {
 				Expect(sess).To(gbytes.Say("callee:bar"))
 
 				By("enabling the 2.0 capability on channel2")
-				channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel2", orderer, ordererRunner)
+				nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel2", orderer, ordererRunner)
 				nwo.EnableCapabilities(network, "testchannel2", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 				By("deploying the callee chaincode using _lifecycle on channel2")

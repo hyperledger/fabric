@@ -27,7 +27,6 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/pvtdata/marblechaincodeutil"
@@ -202,7 +201,7 @@ var _ = Describe("PrivateData", func() {
 				Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			}
 
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, channelID, orderer, ordererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, channelID, orderer, ordererRunner)
 
 			By("verifying membership")
 			network.VerifyMembership(network.Peers, channelID)
@@ -921,7 +920,7 @@ func startNetwork(n *nwo.Network) (ifrit.Process, ifrit.Process, *nwo.Orderer) {
 	ordererRunner, ordererProcess, peerProcess := n.StartSingleOrdererNetwork("orderer")
 
 	orderer := n.Orderer("orderer")
-	channelparticipation.JoinOrdererJoinPeersAppChannel(n, channelID, orderer, ordererRunner)
+	nwo.JoinOrdererJoinPeersAppChannel(n, channelID, orderer, ordererRunner)
 
 	By("verifying membership")
 	n.VerifyMembership(n.Peers, channelID)

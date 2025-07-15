@@ -29,7 +29,6 @@ import (
 	"github.com/hyperledger/fabric-config/configtx/orderer"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	ordererProtos "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	conftx "github.com/hyperledger/fabric/integration/configtx"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
@@ -209,7 +208,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			err = proto.Unmarshal(genesisBlockBytes, genesisBlock)
 			Expect(err).NotTo(HaveOccurred())
 
-			expectedChannelInfoPT := channelparticipation.ChannelInfo{
+			expectedChannelInfoPT := nwo.ChannelInfo{
 				Name:              "testchannel1",
 				URL:               "/participation/v1/channels/testchannel1",
 				Status:            "active",
@@ -219,8 +218,8 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			for _, o := range network.Orderers {
 				By("joining " + o.Name + " to channel as a consenter")
-				channelparticipation.Join(network, o, "testchannel1", genesisBlock, expectedChannelInfoPT)
-				channelInfo := channelparticipation.ListOne(network, o, "testchannel1")
+				nwo.Join(network, o, "testchannel1", genesisBlock, expectedChannelInfoPT)
+				channelInfo := nwo.ListOne(network, o, "testchannel1")
 				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 			}
 
@@ -316,24 +315,24 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			Expect(configBlock).NotTo(Equal(nil))
 
 			By("Joining " + orderer5.Name + " to channel as a consenter")
-			expectedChannelInfoPT = channelparticipation.ChannelInfo{
+			expectedChannelInfoPT = nwo.ChannelInfo{
 				Name:              "testchannel1",
 				URL:               "/participation/v1/channels/testchannel1",
 				Status:            "onboarding",
 				ConsensusRelation: "consenter",
 				Height:            0,
 			}
-			channelparticipation.Join(network, orderer5, "testchannel1", configBlock, expectedChannelInfoPT)
+			nwo.Join(network, orderer5, "testchannel1", configBlock, expectedChannelInfoPT)
 
-			expectedChannelInfoPT = channelparticipation.ChannelInfo{
+			expectedChannelInfoPT = nwo.ChannelInfo{
 				Name:              "testchannel1",
 				URL:               "/participation/v1/channels/testchannel1",
 				Status:            "active",
 				ConsensusRelation: "consenter",
 				Height:            8,
 			}
-			Eventually(func() channelparticipation.ChannelInfo {
-				return channelparticipation.ListOne(network, orderer5, "testchannel1")
+			Eventually(func() nwo.ChannelInfo {
+				return nwo.ListOne(network, orderer5, "testchannel1")
 			}, network.EventuallyTimeout).Should(Equal(expectedChannelInfoPT))
 
 			By("Waiting for the added orderer to see the leader")
@@ -497,7 +496,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			err = proto.Unmarshal(genesisBlockBytes, genesisBlock)
 			Expect(err).NotTo(HaveOccurred())
 
-			expectedChannelInfoPT := channelparticipation.ChannelInfo{
+			expectedChannelInfoPT := nwo.ChannelInfo{
 				Name:              "testchannel1",
 				URL:               "/participation/v1/channels/testchannel1",
 				Status:            "active",
@@ -507,8 +506,8 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			for _, o := range network.Orderers {
 				By("joining " + o.Name + " to channel as a consenter")
-				channelparticipation.Join(network, o, "testchannel1", genesisBlock, expectedChannelInfoPT)
-				channelInfo := channelparticipation.ListOne(network, o, "testchannel1")
+				nwo.Join(network, o, "testchannel1", genesisBlock, expectedChannelInfoPT)
+				channelInfo := nwo.ListOne(network, o, "testchannel1")
 				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 			}
 
@@ -1004,7 +1003,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			err = proto.Unmarshal(genesisBlockBytes, genesisBlock)
 			Expect(err).NotTo(HaveOccurred())
 
-			expectedChannelInfoPT := channelparticipation.ChannelInfo{
+			expectedChannelInfoPT := nwo.ChannelInfo{
 				Name:              "testchannel1",
 				URL:               "/participation/v1/channels/testchannel1",
 				Status:            "active",
@@ -1014,8 +1013,8 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			for _, o := range network.Orderers {
 				By("joining " + o.Name + " to channel as a consenter")
-				channelparticipation.Join(network, o, "testchannel1", genesisBlock, expectedChannelInfoPT)
-				channelInfo := channelparticipation.ListOne(network, o, "testchannel1")
+				nwo.Join(network, o, "testchannel1", genesisBlock, expectedChannelInfoPT)
+				channelInfo := nwo.ListOne(network, o, "testchannel1")
 				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 			}
 
@@ -1091,24 +1090,24 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 				By(">>>> joining " + newOrderer.Name + " to channel as a consenter")
-				expectedChannelInfoPT = channelparticipation.ChannelInfo{
+				expectedChannelInfoPT = nwo.ChannelInfo{
 					Name:              "testchannel1",
 					URL:               "/participation/v1/channels/testchannel1",
 					Status:            "onboarding",
 					ConsensusRelation: "consenter",
 					Height:            0,
 				}
-				channelparticipation.Join(network, newOrderer, "testchannel1", configBlock, expectedChannelInfoPT)
+				nwo.Join(network, newOrderer, "testchannel1", configBlock, expectedChannelInfoPT)
 
-				expectedChannelInfoPT = channelparticipation.ChannelInfo{
+				expectedChannelInfoPT = nwo.ChannelInfo{
 					Name:              "testchannel1",
 					URL:               "/participation/v1/channels/testchannel1",
 					Status:            "active",
 					ConsensusRelation: "consenter",
 					Height:            uint64(2 + i),
 				}
-				Eventually(func() channelparticipation.ChannelInfo {
-					return channelparticipation.ListOne(network, newOrderer, "testchannel1")
+				Eventually(func() nwo.ChannelInfo {
+					return nwo.ListOne(network, newOrderer, "testchannel1")
 				}, network.EventuallyTimeout).Should(Equal(expectedChannelInfoPT))
 
 				By("Waiting for the added orderer to see the leader")
@@ -1367,24 +1366,24 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			By("joining " + orderer5.Name + " to channel as a consenter")
-			expectedChannelInfo := channelparticipation.ChannelInfo{
+			expectedChannelInfo := nwo.ChannelInfo{
 				Name:              "testchannel1",
 				URL:               "/participation/v1/channels/testchannel1",
 				Status:            "onboarding",
 				ConsensusRelation: "consenter",
 				Height:            0,
 			}
-			channelparticipation.Join(network, orderer5, "testchannel1", configBlock, expectedChannelInfo)
+			nwo.Join(network, orderer5, "testchannel1", configBlock, expectedChannelInfo)
 
-			expectedChannelInfo = channelparticipation.ChannelInfo{
+			expectedChannelInfo = nwo.ChannelInfo{
 				Name:              "testchannel1",
 				URL:               "/participation/v1/channels/testchannel1",
 				Status:            "active",
 				ConsensusRelation: "consenter",
 				Height:            8,
 			}
-			Eventually(func() channelparticipation.ChannelInfo {
-				return channelparticipation.ListOne(network, orderer5, "testchannel1")
+			Eventually(func() nwo.ChannelInfo {
+				return nwo.ListOne(network, orderer5, "testchannel1")
 			}, network.EventuallyTimeout).Should(Equal(expectedChannelInfo))
 
 			By("Waiting for the added orderer to see the leader")
@@ -2210,7 +2209,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			err = proto.Unmarshal(genesisBlockBytes, genesisBlock)
 			Expect(err).NotTo(HaveOccurred())
 
-			expectedChannelInfoPT := channelparticipation.ChannelInfo{
+			expectedChannelInfoPT := nwo.ChannelInfo{
 				Name:              cn,
 				URL:               "/participation/v1/channels/" + cn,
 				Status:            "active",
@@ -2220,8 +2219,8 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			for _, o := range network.Orderers {
 				By("joining " + o.Name + " to channel as a consenter")
-				channelparticipation.Join(network, o, cn, genesisBlock, expectedChannelInfoPT)
-				channelInfo := channelparticipation.ListOne(network, o, cn)
+				nwo.Join(network, o, cn, genesisBlock, expectedChannelInfoPT)
+				channelInfo := nwo.ListOne(network, o, cn)
 				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 			}
 
@@ -2237,13 +2236,13 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				ready := make(chan struct{})
 				go func() {
 					defer GinkgoRecover()
-					channelparticipation.Remove(network, o, cn)
+					nwo.Remove(network, o, cn)
 					close(ready)
 				}()
 				Eventually(ready, network.EventuallyTimeout).Should(BeClosed())
 
 				Eventually(func() int { // Removal is async
-					channelList := channelparticipation.List(network, o)
+					channelList := nwo.List(network, o)
 					return len(channelList.Channels)
 				}()).Should(BeZero())
 			}
@@ -2265,7 +2264,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			err = proto.Unmarshal(genesisBlockBytes, genesisBlock)
 			Expect(err).NotTo(HaveOccurred())
 
-			expectedChannelInfoPT = channelparticipation.ChannelInfo{
+			expectedChannelInfoPT = nwo.ChannelInfo{
 				Name:              cn,
 				URL:               "/participation/v1/channels/" + cn,
 				Status:            "active",
@@ -2275,8 +2274,8 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			for _, o := range network.Orderers {
 				By("joining " + o.Name + " to channel as a consenter again")
-				channelparticipation.Join(network, o, cn, genesisBlock, expectedChannelInfoPT)
-				channelInfo := channelparticipation.ListOne(network, o, cn)
+				nwo.Join(network, o, cn, genesisBlock, expectedChannelInfoPT)
+				channelInfo := nwo.ListOne(network, o, cn)
 				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 			}
 
@@ -2660,7 +2659,7 @@ func joinChannel(network *nwo.Network, channel string, onlyNodes ...int) {
 	err = proto.Unmarshal(genesisBlockBytes, genesisBlock)
 	Expect(err).NotTo(HaveOccurred())
 
-	expectedChannelInfoPT := channelparticipation.ChannelInfo{
+	expectedChannelInfoPT := nwo.ChannelInfo{
 		Name:              channel,
 		URL:               "/participation/v1/channels/" + channel,
 		Status:            "active",
@@ -2672,8 +2671,8 @@ func joinChannel(network *nwo.Network, channel string, onlyNodes ...int) {
 		for _, i := range onlyNodes {
 			o := network.Orderers[i]
 			By("joining " + o.Name + " to channel as a consenter")
-			channelparticipation.Join(network, o, channel, genesisBlock, expectedChannelInfoPT)
-			channelInfo := channelparticipation.ListOne(network, o, channel)
+			nwo.Join(network, o, channel, genesisBlock, expectedChannelInfoPT)
+			channelInfo := nwo.ListOne(network, o, channel)
 			Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 		}
 
@@ -2682,8 +2681,8 @@ func joinChannel(network *nwo.Network, channel string, onlyNodes ...int) {
 
 	for _, o := range network.Orderers {
 		By("joining " + o.Name + " to channel as a consenter")
-		channelparticipation.Join(network, o, channel, genesisBlock, expectedChannelInfoPT)
-		channelInfo := channelparticipation.ListOne(network, o, channel)
+		nwo.Join(network, o, channel, genesisBlock, expectedChannelInfoPT)
+		channelInfo := nwo.ListOne(network, o, channel)
 		Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 	}
 }

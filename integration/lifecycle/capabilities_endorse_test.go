@@ -18,7 +18,6 @@ import (
 	"syscall"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/raft"
 	. "github.com/onsi/ginkgo/v2"
@@ -120,7 +119,7 @@ var _ = Describe("Lifecycle with Channel v3_0 capabilities and ed25519 identitie
 		Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 		By("joining ECDSA orderers to testchannel")
-		channelparticipation.JoinOrderersAppChannelCluster(network, channelID, orderer1, orderer2, orderer3)
+		nwo.JoinOrderersAppChannelCluster(network, channelID, orderer1, orderer2, orderer3)
 
 		By("waiting for raft leader on testchannel")
 		raft.FindLeader(ordererRunners)
@@ -232,7 +231,7 @@ var _ = Describe("Lifecycle with Channel v3_0 capabilities and ed25519 identitie
 		ordererProcs = []ifrit.Process{ordererProc}
 
 		By("joining orderer to testchannel")
-		channelparticipation.JoinOrdererJoinPeersAppChannel(network, channelID, orderer, ordererRunner)
+		nwo.JoinOrdererJoinPeersAppChannel(network, channelID, orderer, ordererRunner)
 		network.VerifyMembership(network.PeersWithChannel(channelID), channelID)
 
 		By("setting up the channel with v3_0 capabilities and without the ed25519 peer")

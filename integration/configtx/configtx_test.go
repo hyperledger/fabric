@@ -17,7 +17,6 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-config/configtx"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/ordererclient"
 	. "github.com/hyperledger/fabric/internal/test"
@@ -83,7 +82,7 @@ var _ = Describe("ConfigTx", func() {
 		orderer := network.Orderer("orderer")
 
 		By("joining all peers to the channel")
-		channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+		nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 		By("getting the current channel config")
 		org2peer0 := network.Peer("Org2", "peer0")

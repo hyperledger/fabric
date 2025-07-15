@@ -20,7 +20,6 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/ginkgo/v2"
@@ -127,7 +126,7 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 		By("bringing up all four peers")
 		startPeers(nwprocs, false, peer0Org1, peer1Org1, peer0Org2, peer1Org2)
 
-		channelparticipation.JoinOrdererAppChannel(network, "testchannel", orderer, nwprocs.ordererRunner)
+		nwo.JoinOrdererAppChannel(network, "testchannel", orderer, nwprocs.ordererRunner)
 
 		By("joining all peers to channel")
 		network.JoinChannel(channelName, orderer, peer0Org1, peer1Org1, peer0Org2, peer1Org2)
@@ -239,7 +238,7 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 			startPeers(nwprocs, false, peer0Org1, peer1Org1)
 
 			By("creating and joining a channel")
-			channelparticipation.JoinOrdererAppChannel(network, "testchannel", orderer, nwprocs.ordererRunner)
+			nwo.JoinOrdererAppChannel(network, "testchannel", orderer, nwprocs.ordererRunner)
 
 			network.JoinChannel(channelName, orderer, peer0Org1, peer1Org1)
 
@@ -272,7 +271,7 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 			startPeers(nwprocs, false, peer0Org1, peer1Org1, peer0Org2, peer1Org2)
 
 			By("creating and joining a channel")
-			channelparticipation.JoinOrdererAppChannel(network, "testchannel", orderer, nwprocs.ordererRunner)
+			nwo.JoinOrdererAppChannel(network, "testchannel", orderer, nwprocs.ordererRunner)
 			network.JoinChannel(channelName, orderer, peer0Org1, peer1Org1, peer0Org2, peer1Org2)
 
 			By("verifying membership on peer1Org1")
@@ -305,7 +304,7 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 		By("bringing up a peer in each organization")
 		startPeers(nwprocs, false, peer0Org1, peer0Org2)
 
-		channelparticipation.JoinOrdererAppChannel(network, "testchannel", orderer, nwprocs.ordererRunner)
+		nwo.JoinOrdererAppChannel(network, "testchannel", orderer, nwprocs.ordererRunner)
 
 		By("joining peers to channel")
 		network.JoinChannel(channelName, orderer, peer0Org1, peer0Org2)

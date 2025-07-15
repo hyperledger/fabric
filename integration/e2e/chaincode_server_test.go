@@ -17,7 +17,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/core/container/externalbuilder"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -68,7 +67,7 @@ var _ = Describe("ChaincodeAsExternalServer", func() {
 		// Setup the network
 		ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 
-		channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", network.Orderer("orderer"), ordererRunner)
+		nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", network.Orderer("orderer"), ordererRunner)
 
 		nwo.EnableCapabilities(
 			network,

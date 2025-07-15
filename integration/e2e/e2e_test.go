@@ -26,7 +26,6 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
-	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
@@ -168,13 +167,13 @@ var _ = Describe("EndToEnd", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess).Should(gexec.Exit(0))
-			var channelList channelparticipation.ChannelList
+			var channelList nwo.ChannelList
 			err = json.Unmarshal(sess.Out.Contents(), &channelList)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(channelList).To(Equal(channelparticipation.ChannelList{}))
+			Expect(channelList).To(Equal(nwo.ChannelList{}))
 
 			By("setting up the channel")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 			By("listing channels with osnadmin")
 			sess, err = network.Osnadmin(commands.ChannelList{
@@ -187,8 +186,8 @@ var _ = Describe("EndToEnd", func() {
 			Eventually(sess).Should(gexec.Exit(0))
 			err = json.Unmarshal(sess.Out.Contents(), &channelList)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(channelList).To(Equal(channelparticipation.ChannelList{
-				Channels: []channelparticipation.ChannelInfoShort{{
+			Expect(channelList).To(Equal(nwo.ChannelList{
+				Channels: []nwo.ChannelInfoShort{{
 					Name: "testchannel",
 					URL:  "/participation/v1/channels/testchannel",
 				}},
@@ -242,7 +241,7 @@ var _ = Describe("EndToEnd", func() {
 			CheckOrdererStatsdMetrics("ordererorg_orderer", metricsReader, 2*metricsWriteInterval)
 
 			By("setting up another channel from a the same profile")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "another-testchannel", orderer, ordererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "another-testchannel", orderer, ordererRunner)
 
 			By("listing channels with osnadmin")
 			sess, err = network.Osnadmin(commands.ChannelList{
@@ -258,8 +257,8 @@ var _ = Describe("EndToEnd", func() {
 			sort.Slice(channelList.Channels, func(i, j int) bool {
 				return channelList.Channels[i].Name < channelList.Channels[j].Name
 			})
-			Expect(channelList).To(Equal(channelparticipation.ChannelList{
-				Channels: []channelparticipation.ChannelInfoShort{
+			Expect(channelList).To(Equal(nwo.ChannelList{
+				Channels: []nwo.ChannelInfoShort{
 					{
 						Name: "another-testchannel",
 						URL:  "/participation/v1/channels/another-testchannel",
@@ -319,10 +318,10 @@ var _ = Describe("EndToEnd", func() {
 			orderer := network.Orderer("orderer")
 
 			By("setting up the channel")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
-			cl := channelparticipation.List(network, orderer)
-			channelparticipation.ChannelListMatcher(cl, []string{"testchannel"})
+			cl := nwo.List(network, orderer)
+			nwo.ChannelListMatcher(cl, []string{"testchannel"})
 
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_5", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
@@ -446,7 +445,7 @@ var _ = Describe("EndToEnd", func() {
 			orderer := network.Orderer("orderer")
 
 			By("Create first channel and deploy the chaincode")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_5", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
@@ -454,10 +453,10 @@ var _ = Describe("EndToEnd", func() {
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
 
 			By("Create second channel and deploy chaincode")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel2", orderer, ordererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel2", orderer, ordererRunner)
 
-			cl := channelparticipation.List(network, orderer)
-			channelparticipation.ChannelListMatcher(cl, []string{"testchannel", "testchannel2"})
+			cl := nwo.List(network, orderer)
+			nwo.ChannelListMatcher(cl, []string{"testchannel", "testchannel2"})
 
 			nwo.EnableCapabilities(network, "testchannel2", "Application", "V2_5", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 			peers := network.PeersWithChannel("testchannel2")
@@ -532,7 +531,7 @@ var _ = Describe("EndToEnd", func() {
 
 		It("creates and updates channel", func() {
 			orderer := network.Orderer("orderer")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 			// The below call waits for the config update to commit on the peer, so
 			// it will fail if the orderer addresses are wrong.
@@ -568,7 +567,7 @@ var _ = Describe("EndToEnd", func() {
 			orderer := network.Orderer("orderer")
 
 			By("creating and joining channels")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 			By("enabling new lifecycle capabilities")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_5", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
@@ -658,7 +657,7 @@ var _ = Describe("EndToEnd", func() {
 			orderer := network.Orderer("orderer")
 
 			By("creating and joining channels")
-			channelparticipation.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 			By("enabling new lifecycle capabilities")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_5", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
