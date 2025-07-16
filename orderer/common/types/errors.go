@@ -32,3 +32,6 @@ var ErrChannelPendingRemoval = errors.New("channel pending removal")
 
 // ErrChannelRemovalFailure is returned when a removal attempt failure has been recorded.
 var ErrChannelRemovalFailure = errors.New("channel removal failure")
+
+// ErrChannelNotReady is returned when trying to update a channel that is a follower
+var ErrChannelNotReady = errors.New("channel is not ready, he is a follower")
