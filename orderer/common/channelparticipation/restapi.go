@@ -26,9 +26,10 @@ import (
 )
 
 const (
-	URLBaseV1              = "/participation/v1/"
-	URLBaseV1Channels      = URLBaseV1 + "channels"
-	FormDataConfigBlockKey = "config-block"
+	URLBaseV1                       = "/participation/v1/"
+	URLBaseV1Channels               = URLBaseV1 + "channels"
+	FormDataConfigBlockKey          = "config-block"
+	FormDataConfigUpdateEnvelopeKey = "config-update-envelope"
 
 	channelIDKey        = "channelID"
 	urlWithChannelIDKey = URLBaseV1Channels + "/{" + channelIDKey + "}"
@@ -49,6 +50,10 @@ type ChannelManagement interface {
 	// JoinChannel instructs the orderer to create a channel and join it with the provided config block.
 	// The URL field is empty, and is to be completed by the caller.
 	JoinChannel(channelID string, configBlock *cb.Block) (types.ChannelInfo, error)
+
+	// UpdateChannel instructs the orderer to update a channel with the provided config envelope.
+	// The URL field is empty, and is to be completed by the caller.
+	UpdateChannel(channelID string, configUpdateEnvelope *cb.Envelope) (types.ChannelInfo, error)
 
 	// RemoveChannel instructs the orderer to remove a channel.
 	RemoveChannel(channelID string) error
@@ -170,6 +175,43 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 		"Content-Type", "multipart/form-data*")
 	handler.router.HandleFunc(URLBaseV1Channels, handler.serveBadContentType).Methods(http.MethodPost)
 
+	// swagger:operation PUT /v1/participation/channels channels updateChannel
+	// ---
+	// summary: Update config block of the Order Service Node (OSN) to the channel.
+	// parameters:
+	// - name: configUpdateEnvelope
+	//   in: formData
+	//   type: string
+	//   required: true
+	// responses:
+	//    '201':
+	//      description: Сhannel update successfully.
+	//      schema:
+	//        "$ref": "#/definitions/channelInfo"
+	//      headers:
+	//       Content-Type:
+	//         description: The media type of the resource
+	//         type: string
+	//       Location:
+	//        description: The URL to redirect a page to
+	//        type: string
+	//    '400':
+	//      description: Cannot update channel.
+	//    '403':
+	//      description: The client is trying to update an app-channel that is a follower.
+	//    '405':
+	//      description: The client is trying to update an app-channel that not exists.
+	//    '409':
+	//      description: The client is trying to update a channel that is currently being removed.
+	//    '500':
+	//      description: Removal of channel failed.
+	// consumes:
+	//   - multipart/form-data
+
+	handler.router.HandleFunc(URLBaseV1Channels, handler.serveUpdate).Methods(http.MethodPut).HeadersRegexp(
+		"Content-Type", "multipart/form-data*")
+	handler.router.HandleFunc(URLBaseV1Channels, handler.serveBadContentType).Methods(http.MethodPut)
+
 	handler.router.HandleFunc(URLBaseV1Channels, handler.serveNotAllowed)
 
 	handler.router.HandleFunc(URLBaseV1, handler.redirectBaseV1).Methods(http.MethodGet)
@@ -270,6 +312,43 @@ func (h *HTTPHandler) serveJoin(resp http.ResponseWriter, req *http.Request) {
 	h.sendResponseCreated(resp, info.URL, info)
 }
 
+// Update a channel.
+// Expect multipart/form-data.
+func (h *HTTPHandler) serveUpdate(resp http.ResponseWriter, req *http.Request) {
+	_, err := negotiateContentType(req) // Only application/json responses for now
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusNotAcceptable, err)
+		return
+	}
+
+	_, params, err := mime.ParseMediaType(req.Header.Get("Content-Type"))
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot parse Mime media type"))
+		return
+	}
+
+	envelope := h.multipartFormDataBodyToEnvelope(params, req, resp)
+	if envelope == nil {
+		return
+	}
+
+	channelID, err := ValidateUpdateConfigEnvelope(envelope)
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.WithMessage(err, "invalid config update envelope"))
+		return
+	}
+
+	info, err := h.registrar.UpdateChannel(channelID, envelope)
+	if err != nil {
+		h.sendUpdateError(err, resp)
+		return
+	}
+	info.URL = path.Join(URLBaseV1Channels, info.Name)
+
+	h.logger.Debugf("Successfully update config channel: %s", info.URL)
+	h.sendResponseCreated(resp, info.URL, info)
+}
+
 // Expect a multipart/form-data with a single part, of type file, with key FormDataConfigBlockKey.
 func (h *HTTPHandler) multipartFormDataBodyToBlock(params map[string]string, req *http.Request, resp http.ResponseWriter) *cb.Block {
 	boundary := params["boundary"]
@@ -317,6 +396,53 @@ func (h *HTTPHandler) multipartFormDataBodyToBlock(params map[string]string, req
 	return block
 }
 
+// Expect a multipart/form-data with a single part, of type file, with key FormDataConfigUpdateEnvelopeKey.
+func (h *HTTPHandler) multipartFormDataBodyToEnvelope(params map[string]string, req *http.Request, resp http.ResponseWriter) *cb.Envelope {
+	boundary := params["boundary"]
+	reader := multipart.NewReader(
+		http.MaxBytesReader(resp, req.Body, int64(h.config.MaxRequestBodySize)),
+		boundary,
+	)
+	form, err := reader.ReadForm(2 * int64(h.config.MaxRequestBodySize))
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot read form from request body"))
+		return nil
+	}
+
+	if _, exist := form.File[FormDataConfigUpdateEnvelopeKey]; !exist {
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Errorf("form does not contains part key: %s", FormDataConfigUpdateEnvelopeKey))
+		return nil
+	}
+
+	if len(form.File) != 1 || len(form.Value) != 0 {
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.New("form contains too many parts"))
+		return nil
+	}
+
+	fileHeader := form.File[FormDataConfigUpdateEnvelopeKey][0]
+	file, err := fileHeader.Open()
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrapf(err, "cannot open file part %s from request body", FormDataConfigUpdateEnvelopeKey))
+		return nil
+	}
+
+	envelopeBytes, err := io.ReadAll(file)
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrapf(err, "cannot read file part %s from request body", FormDataConfigUpdateEnvelopeKey))
+		return nil
+	}
+
+	envelope := &cb.Envelope{}
+	err = proto.Unmarshal(envelopeBytes, envelope)
+	if err != nil {
+		h.logger.Debugf("Failed to unmarshal envelopeBytes: %s", err)
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrapf(err, "cannot unmarshal file part %s into an envelope", FormDataConfigUpdateEnvelopeKey))
+		return nil
+	}
+
+	return envelope
+}
+
 func (h *HTTPHandler) extractChannelID(req *http.Request, resp http.ResponseWriter) (string, error) {
 	channelID, ok := mux.Vars(req)[channelIDKey]
 	if !ok {
@@ -353,6 +479,26 @@ func (h *HTTPHandler) sendJoinError(err error, resp http.ResponseWriter) {
 		h.sendResponseJsonError(resp, http.StatusInternalServerError, errors.WithMessage(err, "cannot join"))
 	default:
 		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.WithMessage(err, "cannot join"))
+	}
+}
+
+func (h *HTTPHandler) sendUpdateError(err error, resp http.ResponseWriter) {
+	h.logger.Debugf("Failed to UpdateChannel: %s", err)
+	switch err {
+	case types.ErrSystemChannelExists:
+		// The client is trying to update an app-channel, but the system channel exists: only GET is allowed on app channels.
+		h.sendResponseNotAllowed(resp, errors.WithMessage(err, "cannot update"), http.MethodGet)
+	case types.ErrChannelPendingRemoval:
+		// The client is trying to update a channel that is currently being removed.
+		h.sendResponseJsonError(resp, http.StatusConflict, errors.WithMessage(err, "cannot update"))
+	case types.ErrChannelRemovalFailure:
+		h.sendResponseJsonError(resp, http.StatusInternalServerError, errors.WithMessage(err, "cannot update"))
+	case types.ErrChannelNotExist:
+		h.sendResponseJsonError(resp, http.StatusMethodNotAllowed, errors.WithMessage(err, "cannot update"))
+	case types.ErrChannelNotReady:
+		h.sendResponseJsonError(resp, http.StatusForbidden, errors.WithMessage(err, "cannot update"))
+	default:
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.WithMessage(err, "cannot update"))
 	}
 }
 
@@ -403,7 +549,7 @@ func (h *HTTPHandler) serveNotAllowed(resp http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	h.sendResponseNotAllowed(resp, err, http.MethodGet, http.MethodPost)
+	h.sendResponseNotAllowed(resp, err, http.MethodGet, http.MethodPost, http.MethodPut)
 }
 
 func negotiateContentType(req *http.Request) (string, error) {
