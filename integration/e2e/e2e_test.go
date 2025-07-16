@@ -18,7 +18,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -158,40 +157,15 @@ var _ = Describe("EndToEnd", func() {
 			orderer := network.Orderer("orderer")
 
 			By("listing channels with osnadmin, no channels yet")
-			tlsdir := network.OrdererLocalTLSDir(orderer)
-			sess, err := network.Osnadmin(commands.ChannelList{
-				OrdererAddress: network.OrdererAddress(orderer, nwo.AdminPort),
-				CAFile:         filepath.Join(tlsdir, "ca.crt"),
-				ClientCert:     filepath.Join(tlsdir, "server.crt"),
-				ClientKey:      filepath.Join(tlsdir, "server.key"),
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(gexec.Exit(0))
-			var channelList nwo.ChannelList
-			err = json.Unmarshal(sess.Out.Contents(), &channelList)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(channelList).To(Equal(nwo.ChannelList{}))
+			cl := nwo.List(network, orderer)
+			Expect(cl).To(Equal(nwo.ChannelList{}))
 
 			By("setting up the channel")
 			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 			By("listing channels with osnadmin")
-			sess, err = network.Osnadmin(commands.ChannelList{
-				OrdererAddress: network.OrdererAddress(orderer, nwo.AdminPort),
-				CAFile:         filepath.Join(tlsdir, "ca.crt"),
-				ClientCert:     filepath.Join(tlsdir, "server.crt"),
-				ClientKey:      filepath.Join(tlsdir, "server.key"),
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(gexec.Exit(0))
-			err = json.Unmarshal(sess.Out.Contents(), &channelList)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(channelList).To(Equal(nwo.ChannelList{
-				Channels: []nwo.ChannelInfoShort{{
-					Name: "testchannel",
-					URL:  "/participation/v1/channels/testchannel",
-				}},
-			}))
+			cl = nwo.List(network, orderer)
+			nwo.ChannelListMatcher(cl, []string{"testchannel"})
 
 			By("enabling capabilities V2_5")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_5", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
@@ -203,7 +177,7 @@ var _ = Describe("EndToEnd", func() {
 			badCC.PackageFile = filepath.Join(testDir, "unsupported-type.tar.gz")
 			nwo.PackageChaincodeBinary(badCC)
 			badCC.SetPackageIDFromPackageFile()
-			sess, err = network.PeerAdminSession(
+			sess, err := network.PeerAdminSession(
 				network.Peer("Org1", "peer0"),
 				commands.ChaincodeInstall{
 					PackageFile: badCC.PackageFile,
@@ -244,31 +218,8 @@ var _ = Describe("EndToEnd", func() {
 			nwo.JoinOrdererJoinPeersAppChannel(network, "another-testchannel", orderer, ordererRunner)
 
 			By("listing channels with osnadmin")
-			sess, err = network.Osnadmin(commands.ChannelList{
-				OrdererAddress: network.OrdererAddress(orderer, nwo.AdminPort),
-				CAFile:         filepath.Join(tlsdir, "ca.crt"),
-				ClientCert:     filepath.Join(tlsdir, "server.crt"),
-				ClientKey:      filepath.Join(tlsdir, "server.key"),
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess).Should(gexec.Exit(0))
-			err = json.Unmarshal(sess.Out.Contents(), &channelList)
-			Expect(err).NotTo(HaveOccurred())
-			sort.Slice(channelList.Channels, func(i, j int) bool {
-				return channelList.Channels[i].Name < channelList.Channels[j].Name
-			})
-			Expect(channelList).To(Equal(nwo.ChannelList{
-				Channels: []nwo.ChannelInfoShort{
-					{
-						Name: "another-testchannel",
-						URL:  "/participation/v1/channels/another-testchannel",
-					},
-					{
-						Name: "testchannel",
-						URL:  "/participation/v1/channels/testchannel",
-					},
-				},
-			}))
+			cl = nwo.List(network, orderer)
+			nwo.ChannelListMatcher(cl, []string{"testchannel", "another-testchannel"})
 		})
 	})
 
