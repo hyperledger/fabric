@@ -19,7 +19,7 @@ Specifically, the value corresponding to the `ConsensusType` key of the `Values`
 
 For details on the configuration structure of channels, refer to the [Channel Configuration](../docs/source/configtx.rst) guide.
 
-`configtxgen` is a tool that allows for the creation of a genesis block using profiles, or grouped configuration parameters — refer to the [Configuring using the connfigtxgen tool](../docs/source/configtxgen.rst) guide for more.
+`configtxgen` is a tool that allows for the creation of a genesis block using profiles, or grouped configuration parameters — refer to the [Configuring using the configtxgen tool](../docs/source/commands/configtxgen.md) guide for more.
 
 The location of this block can be set using the `ORDERER_GENERAL_BOOTSTRAPFILE` environment variable. As is the case with all the configuration paths for Fabric binaries, this location is relative to the path set via the `FABRIC_CFG_PATH` environment variable.
 
