@@ -675,6 +675,7 @@ func newAdminServer(admin localconfig.Admin) *fabhttp.Server {
 			KeyFile:            admin.TLS.PrivateKey,
 			ClientCertRequired: admin.TLS.ClientAuthRequired,
 			ClientCACertFiles:  admin.TLS.ClientRootCAs,
+			TimeShift:          admin.TLS.TLSHandshakeTimeShift,
 		},
 	})
 }

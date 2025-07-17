@@ -41,7 +41,7 @@ func Join(n *Network, o *Orderer, channel string, block *common.Block, expectedC
 	if n.TLSEnabled {
 		client = authClient
 	}
-	body := doBody(client, req)
+	body := doBody(client, req, http.StatusCreated)
 	c := &ChannelInfo{}
 	err = json.Unmarshal(body, c)
 	Expect(err).NotTo(HaveOccurred())
@@ -64,13 +64,70 @@ func GenerateJoinRequest(url, channel string, blockBytes []byte) *http.Request {
 	return req
 }
 
-func doBody(client *http.Client, req *http.Request) []byte {
+func Update(n *Network, o *Orderer, channel string, envelope *common.Envelope) {
+	UpdateTimeShift(n, o, channel, envelope, 0)
+}
+
+func UpdateTimeShift(n *Network, o *Orderer, channel string, envelope *common.Envelope, timeShift time.Duration) {
+	UpdateFull(n, o, channel, envelope, timeShift, http.StatusCreated, "")
+}
+
+func UpdateWithStatus(n *Network, o *Orderer, channel string, envelope *common.Envelope, expectedStatus int, errStr string) {
+	UpdateFull(n, o, channel, envelope, 0, expectedStatus, errStr)
+}
+
+func UpdateFull(n *Network, o *Orderer, channel string, envelope *common.Envelope, timeShift time.Duration, expectedStatus int, errStr string) {
+	envelopeBytes, err := proto.Marshal(envelope)
+	Expect(err).NotTo(HaveOccurred())
+
+	protocol := "http"
+	if n.TLSEnabled {
+		protocol = "https"
+	}
+	url := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels", protocol, n.OrdererPort(o, AdminPort))
+	req := GenerateUpdateRequest(url, channel, envelopeBytes)
+	authClient, unauthClient := OrdererOperationalClientsTimeShift(n, o, timeShift)
+
+	client := unauthClient
+	if n.TLSEnabled {
+		client = authClient
+	}
+	body := doBody(client, req, expectedStatus)
+	if errStr != "" {
+		Expect(string(body)).To(ContainSubstring(errStr))
+
+		return
+	}
+	c := &ChannelInfo{}
+	err = json.Unmarshal(body, c)
+	Expect(err).NotTo(HaveOccurred())
+}
+
+func GenerateUpdateRequest(url, channel string, envelopeBytes []byte) *http.Request {
+	updateBody := new(bytes.Buffer)
+	writer := multipart.NewWriter(updateBody)
+	part, err := writer.CreateFormFile("config-update-envelope", fmt.Sprintf("%s-update.envelope", channel))
+	Expect(err).NotTo(HaveOccurred())
+	part.Write(envelopeBytes)
+	err = writer.Close()
+	Expect(err).NotTo(HaveOccurred())
+
+	req, err := http.NewRequest(http.MethodPut, url, updateBody)
+	Expect(err).NotTo(HaveOccurred())
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	return req
+}
+
+func doBody(client *http.Client, req *http.Request, expectedStatus int) []byte {
 	resp, err := client.Do(req)
 	Expect(err).NotTo(HaveOccurred())
-	Expect(resp.StatusCode).To(Equal(http.StatusCreated))
+
 	bodyBytes, err := io.ReadAll(resp.Body)
 	Expect(err).NotTo(HaveOccurred())
 	resp.Body.Close()
+
+	Expect(resp.StatusCode).To(Equal(expectedStatus), string(bodyBytes))
 
 	return bodyBytes
 }

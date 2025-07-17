@@ -10,25 +10,38 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"net/http"
+	"time"
 )
 
-func httpClient(caCertPool *x509.CertPool, tlsClientCert tls.Certificate) *http.Client {
+func httpClient(caCertPool *x509.CertPool, tlsClientCert tls.Certificate, timeShift time.Duration) *http.Client {
+	tlsConfig := &tls.Config{
+		RootCAs:      caCertPool,
+		Certificates: []tls.Certificate{tlsClientCert},
+	}
+
+	if timeShift > 0 {
+		tlsConfig.Time = func() time.Time {
+			return time.Now().Add((-1) * timeShift)
+		}
+	}
+
 	return &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs:      caCertPool,
-				Certificates: []tls.Certificate{tlsClientCert},
-			},
+			TLSClientConfig: tlsConfig,
 		},
 	}
 }
 
 func httpDo(req *http.Request, caCertPool *x509.CertPool, tlsClientCert tls.Certificate) (*http.Response, error) {
-	client := httpClient(caCertPool, tlsClientCert)
+	return httpDoTimeShift(req, caCertPool, tlsClientCert, 0)
+}
+
+func httpDoTimeShift(req *http.Request, caCertPool *x509.CertPool, tlsClientCert tls.Certificate, timeShift time.Duration) (*http.Response, error) {
+	client := httpClient(caCertPool, tlsClientCert, timeShift)
 	return client.Do(req)
 }
 
 func httpGet(url string, caCertPool *x509.CertPool, tlsClientCert tls.Certificate) (*http.Response, error) {
-	client := httpClient(caCertPool, tlsClientCert)
+	client := httpClient(caCertPool, tlsClientCert, 0)
 	return client.Get(url)
 }

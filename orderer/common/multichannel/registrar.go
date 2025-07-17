@@ -738,7 +738,7 @@ func (r *Registrar) UpdateChannel(channelID string, envelope *cb.Envelope) (info
 		Name:              channelID,
 		ConsensusRelation: rel,
 		Status:            status,
-		Height:            cs.ledgerResources.Height(),
+		Height:            cs.Height(),
 	}
 
 	logger.Infof("Updating channel: %v", info)
