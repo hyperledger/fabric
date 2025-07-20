@@ -1892,8 +1892,8 @@ func assertMembership(t *testing.T, instances []*gossipInstance, expectedNum int
 	wg := sync.WaitGroup{}
 	wg.Add(len(instances))
 
-	ctx, cancelation := context.WithTimeout(context.Background(), timeout)
-	defer cancelation()
+	ctx, cancellation := context.WithTimeout(context.Background(), timeout)
+	defer cancellation()
 
 	for _, inst := range instances {
 		go func(ctx context.Context, i *gossipInstance) {
