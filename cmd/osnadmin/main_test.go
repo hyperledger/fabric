@@ -532,6 +532,187 @@ var _ = Describe("osnadmin", func() {
 		})
 	})
 
+	Describe("Update", func() {
+		var envelopePath string
+
+		BeforeEach(func() {
+			configEnvelope := envelopeUpdateConfigWithGroups("testing123")
+			envelopePath = createEnvelopeFile(tempDir, configEnvelope)
+
+			mockChannelManagement.UpdateChannelReturns(types.ChannelInfo{
+				Name:   "apple",
+				Height: 123,
+			}, nil)
+		})
+
+		It("uses the channel participation API to update a channel", func() {
+			args := []string{
+				"channel",
+				"update",
+				"--orderer-address", ordererURL,
+				"--channelID", channelID,
+				"--config-update-envelope", envelopePath,
+				"--ca-file", ordererCACert,
+				"--client-cert", clientCert,
+				"--client-key", clientKey,
+			}
+			output, exit, err := executeForArgs(args)
+			expectedOutput := types.ChannelInfo{
+				Name:   "apple",
+				URL:    "/participation/v1/channels/apple",
+				Height: 123,
+			}
+			checkStatusOutput(output, exit, err, 201, expectedOutput)
+		})
+
+		Context("when the envelope is empty", func() {
+			BeforeEach(func() {
+				envelopePath = createEnvelopeFile(tempDir, &cb.Envelope{})
+			})
+
+			It("returns with exit code 1 and prints the error", func() {
+				args := []string{
+					"channel",
+					"update",
+					"--orderer-address", ordererURL,
+					"--channelID", channelID,
+					"--config-update-envelope", envelopePath,
+					"--ca-file", ordererCACert,
+					"--client-cert", clientCert,
+					"--client-key", clientKey,
+				}
+				output, exit, err := executeForArgs(args)
+
+				checkFlagError(output, exit, err, "failed to retrieve channel id - payload header is empty")
+			})
+		})
+
+		Context("when the --channelID does not match the channel ID in the envelope", func() {
+			BeforeEach(func() {
+				channelID = "not-the-channel-youre-looking-for"
+			})
+
+			It("returns with exit code 1 and prints the error", func() {
+				args := []string{
+					"channel",
+					"update",
+					"--orderer-address", ordererURL,
+					"--channelID", channelID,
+					"--config-update-envelope", envelopePath,
+					"--ca-file", ordererCACert,
+					"--client-cert", clientCert,
+					"--client-key", clientKey,
+				}
+				output, exit, err := executeForArgs(args)
+
+				checkFlagError(output, exit, err, "specified --channelID not-the-channel-youre-looking-for does not match channel ID testing123 in config update envelope")
+			})
+		})
+
+		Context("when the envelope isn't a valid config update", func() {
+			BeforeEach(func() {
+				envelope := &cb.Envelope{
+					Payload: protoutil.MarshalOrPanic(&cb.Payload{
+						Header: &cb.Header{
+							ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
+								Type:      int32(cb.HeaderType_ENDORSER_TRANSACTION),
+								ChannelId: channelID,
+							}),
+						},
+					}),
+				}
+				envelopePath = createEnvelopeFile(tempDir, envelope)
+			})
+
+			It("returns 405 bad request", func() {
+				args := []string{
+					"channel",
+					"update",
+					"--orderer-address", ordererURL,
+					"--channelID", channelID,
+					"--config-update-envelope", envelopePath,
+					"--ca-file", ordererCACert,
+					"--client-cert", clientCert,
+					"--client-key", clientKey,
+				}
+				output, exit, err := executeForArgs(args)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(exit).To(Equal(0))
+
+				expectedOutput := types.ErrorResponse{
+					Error: "invalid config update envelope: bad type",
+				}
+				checkStatusOutput(output, exit, err, 400, expectedOutput)
+			})
+		})
+
+		Context("when updating the channel fails", func() {
+			BeforeEach(func() {
+				mockChannelManagement.UpdateChannelReturns(types.ChannelInfo{}, types.ErrChannelNotExist)
+			})
+
+			It("returns 405 not allowed", func() {
+				args := []string{
+					"channel",
+					"update",
+					"--orderer-address", ordererURL,
+					"--channelID", channelID,
+					"--config-update-envelope", envelopePath,
+					"--ca-file", ordererCACert,
+					"--client-cert", clientCert,
+					"--client-key", clientKey,
+				}
+				output, exit, err := executeForArgs(args)
+				expectedOutput := types.ErrorResponse{
+					Error: "cannot update: channel does not exist",
+				}
+				checkStatusOutput(output, exit, err, 405, expectedOutput)
+			})
+
+			It("returns 405 not allowed (without status)", func() {
+				args := []string{
+					"channel",
+					"update",
+					"--orderer-address", ordererURL,
+					"--channelID", channelID,
+					"--config-update-envelope", envelopePath,
+					"--ca-file", ordererCACert,
+					"--client-cert", clientCert,
+					"--client-key", clientKey,
+					"--no-status",
+				}
+				output, exit, err := executeForArgs(args)
+				expectedOutput := types.ErrorResponse{
+					Error: "cannot update: channel does not exist",
+				}
+				checkOutput(output, exit, err, expectedOutput)
+			})
+		})
+
+		Context("when TLS is disabled", func() {
+			BeforeEach(func() {
+				tlsConfig = nil
+			})
+
+			It("uses the channel participation API to join a channel", func() {
+				args := []string{
+					"channel",
+					"update",
+					"--orderer-address", ordererURL,
+					"--channelID", channelID,
+					"--config-update-envelope", envelopePath,
+				}
+				output, exit, err := executeForArgs(args)
+				expectedOutput := types.ChannelInfo{
+					Name:   "apple",
+					URL:    "/participation/v1/channels/apple",
+					Height: 123,
+				}
+				checkStatusOutput(output, exit, err, 201, expectedOutput)
+			})
+		})
+	})
+
 	Describe("Flags", func() {
 		It("accepts short versions of the --orderer-address, --channelID, and --config-block flags", func() {
 			configBlock := blockWithGroups(
@@ -833,4 +1014,35 @@ func createBlockFile(tempDir string, configBlock *cb.Block) string {
 	err = os.WriteFile(blockPath, blockBytes, 0o644)
 	Expect(err).NotTo(HaveOccurred())
 	return blockPath
+}
+
+func envelopeUpdateConfigWithGroups(channelID string) *cb.Envelope {
+	data := &cb.Envelope{
+		Payload: protoutil.MarshalOrPanic(&cb.Payload{
+			Data: protoutil.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+				ConfigUpdate: protoutil.MarshalOrPanic(&cb.ConfigUpdate{
+					ChannelId: channelID,
+					ReadSet:   &cb.ConfigGroup{},
+					WriteSet:  &cb.ConfigGroup{},
+				}),
+			}),
+			Header: &cb.Header{
+				ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
+					Type:      int32(cb.HeaderType_CONFIG_UPDATE),
+					ChannelId: channelID,
+				}),
+			},
+		}),
+	}
+
+	return data
+}
+
+func createEnvelopeFile(tempDir string, configEnvelope *cb.Envelope) string {
+	envelopeBytes, err := proto.Marshal(configEnvelope)
+	Expect(err).NotTo(HaveOccurred())
+	envelopePath := filepath.Join(tempDir, "envelope.pb")
+	err = os.WriteFile(envelopePath, envelopeBytes, 0o644)
+	Expect(err).NotTo(HaveOccurred())
+	return envelopePath
 }
