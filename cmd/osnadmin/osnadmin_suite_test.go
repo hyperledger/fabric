@@ -21,6 +21,7 @@ type channelManagement interface {
 	ChannelList() types.ChannelList
 	ChannelInfo(channelID string) (types.ChannelInfo, error)
 	JoinChannel(channelID string, configBlock *cb.Block) (types.ChannelInfo, error)
+	UpdateChannel(channelID string, configUpdateEnvelope *cb.Envelope) (types.ChannelInfo, error)
 	RemoveChannel(channelID string) error
 }
 

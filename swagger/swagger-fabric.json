@@ -116,6 +116,57 @@
           }
         }
       },
+      "put": {
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "tags": [
+          "channels"
+        ],
+        "summary": "Update config block of the Order Service Node (OSN) to the channel.",
+        "operationId": "updateChannel",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "configUpdateEnvelope",
+            "in": "formData",
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Сhannel update successfully.",
+            "schema": {
+              "$ref": "#/definitions/channelInfo"
+            },
+            "headers": {
+              "Content-Type": {
+                "type": "string",
+                "description": "The media type of the resource"
+              },
+              "Location": {
+                "type": "string",
+                "description": "The URL to redirect a page to"
+              }
+            }
+          },
+          "400": {
+            "description": "Cannot update channel."
+          },
+          "403": {
+            "description": "The client is trying to update an app-channel that is a follower."
+          },
+          "405": {
+            "description": "The client is trying to update an app-channel that not exists."
+          },
+          "409": {
+            "description": "The client is trying to update a channel that is currently being removed."
+          },
+          "500": {
+            "description": "Removal of channel failed."
+          }
+        }
+      },
       "post": {
         "description": "If a channel does not yet exist, it will be created.",
         "consumes": [
