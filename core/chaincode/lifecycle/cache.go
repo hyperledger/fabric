@@ -41,6 +41,7 @@ type CachedChaincodeDefinition struct {
 	Definition  *ChaincodeDefinition
 	Approved    bool
 	InstallInfo *ChaincodeInstallInfo
+	PackageID   string // Store the actual PackageID for lazy loading
 
 	// Hashes is the list of hashed keys in the implicit collection referring to this definition.
 	// These hashes are determined by the current sequence number of chaincode definition.  When dirty,
@@ -410,37 +411,37 @@ func (c *Cache) ChaincodeInfo(channelID, name string) (*LocalChaincodeInfo, erro
 
 		// Re-check the condition after acquiring write lock
 		if cachedChaincode.InstallInfo == nil {
-			// Try to find the chaincode in the installed chaincodes list
-			installedChaincodes, err := c.Resources.ChaincodeStore.ListInstalledChaincodes()
-			if err != nil {
-				logger.Debugf("Could not list installed chaincodes for lazy loading: %v", err)
-			} else {
-				// Look for a chaincode that matches this definition
-				for _, installedCC := range installedChaincodes {
-					// Check if this installed chaincode matches the current definition
-					// by checking if it's referenced in the local chaincodes map
-					encodedCCHash := protoutil.MarshalOrPanic(&lb.StateData{
-						Type: &lb.StateData_String_{String_: installedCC.PackageID},
-					})
-					hashOfCCHash := string(util.ComputeSHA256(encodedCCHash))
+			// Find the localChaincode entry that references this chaincode definition
+			// The localChaincodes map uses hash keys that represent PackageIDs
+			for _, localChaincode := range c.localChaincodes {
+				// Check if this local chaincode is referenced by the current chaincode definition
+				if _, ok := localChaincode.References[channelID][name]; ok {
+					// This local chaincode is referenced by our chaincode definition
+					// Now we need to find the actual PackageID from the hash
 
-					localChaincode, exists := c.localChaincodes[hashOfCCHash]
-					if exists && localChaincode.Info != nil {
-						// Check if this local chaincode is referenced by the current chaincode definition
-						if _, ok := localChaincode.References[channelID][name]; ok {
-							// Found a match! Load the chaincode info on-demand
-							installInfo, err := c.loadChaincodeInfoOnDemand(installedCC.PackageID)
-							if err != nil {
-								logger.Debugf("Could not load chaincode info for package ID '%s': %v", installedCC.PackageID, err)
-							} else if installInfo != nil {
-								// Update the cache with the loaded install info
-								cachedChaincode.InstallInfo = installInfo
-								localChaincode.Info = installInfo
+					// Try to find a PackageID that matches this hash
+					// We can do this by checking if any installed chaincode's hash matches
+					// But since we want to avoid ListInstalledChaincodes, we'll try a different approach
 
-								logger.Debugf("Lazy loaded chaincode info for '%s' on channel '%s' with package ID '%s'", name, channelID, installedCC.PackageID)
-								break
-							}
+					// If the localChaincode already has Info, use it
+					if localChaincode.Info != nil {
+						// Load the chaincode info on-demand
+						installInfo, err := c.loadChaincodeInfoOnDemand(localChaincode.Info.PackageID)
+						if err != nil {
+							logger.Debugf("Could not load chaincode info for package ID '%s': %v", localChaincode.Info.PackageID, err)
+						} else if installInfo != nil {
+							// Update the cache with the loaded install info
+							cachedChaincode.InstallInfo = installInfo
+							localChaincode.Info = installInfo
+
+							logger.Debugf("Lazy loaded chaincode info for '%s' on channel '%s' with package ID '%s'", name, channelID, installInfo.PackageID)
+							break
 						}
+					} else {
+						// The localChaincode doesn't have Info yet, which means the chaincode
+						// is not installed. This is a valid case for lazy loading.
+						logger.Debugf("Chaincode '%s' on channel '%s' is not installed (no Info in localChaincode)", name, channelID)
+						break
 					}
 				}
 			}
