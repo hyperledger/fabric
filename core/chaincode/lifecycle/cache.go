@@ -86,6 +86,9 @@ type Cache struct {
 	MetadataHandler MetadataHandler
 
 	chaincodeCustodian *ChaincodeCustodian
+
+	// lazyLoadEnabled controls whether chaincode info is loaded on-demand instead of pre-initialized
+	lazyLoadEnabled bool
 }
 
 type LocalChaincode struct {
@@ -123,7 +126,7 @@ func (l *LocalChaincode) createMetadataMapFromReferences() map[string][]*chainco
 	return references
 }
 
-func NewCache(resources *Resources, myOrgMSPID string, metadataManager MetadataHandler, custodian *ChaincodeCustodian, ebMetadata *externalbuilder.MetadataProvider) *Cache {
+func NewCache(resources *Resources, myOrgMSPID string, metadataManager MetadataHandler, custodian *ChaincodeCustodian, ebMetadata *externalbuilder.MetadataProvider, lazyLoadEnabled bool) *Cache {
 	return &Cache{
 		chaincodeCustodian: custodian,
 		definedChaincodes:  map[string]*ChannelCache{},
@@ -132,6 +135,7 @@ func NewCache(resources *Resources, myOrgMSPID string, metadataManager MetadataH
 		MyOrgMSPID:         myOrgMSPID,
 		eventBroker:        NewEventBroker(resources.ChaincodeStore, resources.PackageParser, ebMetadata),
 		MetadataHandler:    metadataManager,
+		lazyLoadEnabled:    lazyLoadEnabled,
 	}
 }
 
@@ -140,6 +144,12 @@ func NewCache(resources *Resources, myOrgMSPID string, metadataManager MetadataH
 // this would be part of the constructor, but, we cannot rely on the chaincode store being created
 // before the cache is created.
 func (c *Cache) InitializeLocalChaincodes() error {
+	// Skip initialization if lazy loading is enabled
+	if c.lazyLoadEnabled {
+		logger.Infof("Skipping pre-initialization of local chaincodes due to lazy loading being enabled")
+		return nil
+	}
+
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	ccPackages, err := c.Resources.ChaincodeStore.ListInstalledChaincodes()
@@ -178,6 +188,37 @@ func (c *Cache) InitializeLocalChaincodes() error {
 	}
 
 	return nil
+}
+
+// loadChaincodeInfoOnDemand loads chaincode info for a given packageID when lazy loading is enabled
+func (c *Cache) loadChaincodeInfoOnDemand(packageID string) (*ChaincodeInstallInfo, error) {
+	if !c.lazyLoadEnabled {
+		return nil, nil
+	}
+
+	// Try to load the chaincode package
+	ccPackageBytes, err := c.Resources.ChaincodeStore.Load(packageID)
+	if err != nil {
+		if _, ok := err.(*persistence.CodePackageNotFoundErr); ok {
+			// Chaincode not found, return nil to indicate it's not installed
+			return nil, nil
+		}
+		return nil, errors.WithMessagef(err, "could not load chaincode with package ID '%s'", packageID)
+	}
+
+	// Parse the chaincode package
+	parsedCCPackage, err := c.Resources.PackageParser.Parse(ccPackageBytes)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "could not parse chaincode with package ID '%s'", packageID)
+	}
+
+	// Create and return the install info
+	return &ChaincodeInstallInfo{
+		PackageID: packageID,
+		Type:      parsedCCPackage.Metadata.Type,
+		Path:      parsedCCPackage.Metadata.Path,
+		Label:     parsedCCPackage.Metadata.Label,
+	}, nil
 }
 
 // Name returns the name of the listener

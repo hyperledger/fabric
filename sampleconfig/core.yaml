@@ -487,6 +487,15 @@ peer:
     # When this is false, it means that only peer admins can perform non channel scoped queries.
     orgMembersAllowedAccess: false
 
+  # Lifecycle service configuration
+  # The lifecycle service manages chaincode lifecycle operations.
+  lifecycle:
+    # Whether to enable lazy loading of chaincode packages instead of pre-initializing
+    # all installed chaincodes at startup. This can improve startup time when there
+    # are many installed chaincodes, but may cause slight delays when chaincodes
+    # are first accessed.
+    lazyLoadEnabled: false
+
   # Limits is used to configure some internal resource limits.
   limits:
     # Concurrency limits the number of concurrently running requests to a service on each peer.

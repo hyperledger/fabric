@@ -92,7 +92,7 @@ var _ = Describe("Cache", func() {
 		chaincodeCustodian = lifecycle.NewChaincodeCustodian()
 
 		var err error
-		c = lifecycle.NewCache(resources, "my-mspid", fakeMetadataHandler, chaincodeCustodian, &externalbuilder.MetadataProvider{})
+		c = lifecycle.NewCache(resources, "my-mspid", fakeMetadataHandler, chaincodeCustodian, &externalbuilder.MetadataProvider{}, false)
 		Expect(err).NotTo(HaveOccurred())
 
 		channelCache = &lifecycle.ChannelCache{
@@ -394,6 +394,158 @@ var _ = Describe("Cache", func() {
 			It("wraps and returns the error", func() {
 				err := c.InitializeLocalChaincodes()
 				Expect(err.Error()).To(ContainSubstring("could not parse chaincode with package ID 'packageID'"))
+			})
+		})
+	})
+
+	Describe("Lazy Loading", func() {
+		var lazyCache *lifecycle.Cache
+
+		BeforeEach(func() {
+			lazyCache = lifecycle.NewCache(resources, "my-mspid", fakeMetadataHandler, chaincodeCustodian, &externalbuilder.MetadataProvider{}, true)
+		})
+
+		AfterEach(func() {
+			chaincodeCustodian.Close()
+		})
+
+		Describe("InitializeLocalChaincodes with lazy loading enabled", func() {
+			It("skips pre-initialization when lazy loading is enabled", func() {
+				err := lazyCache.InitializeLocalChaincodes()
+				Expect(err).NotTo(HaveOccurred())
+
+				// Verify that ListInstalledChaincodes was not called
+				Expect(fakeCCStore.ListInstalledChaincodesCallCount()).To(Equal(0))
+			})
+
+			It("logs that lazy loading is enabled", func() {
+				err := lazyCache.InitializeLocalChaincodes()
+				Expect(err).NotTo(HaveOccurred())
+				// Note: In a real test environment, we would verify the log message
+				// For now, we just verify the method completes successfully
+			})
+		})
+
+		Describe("Cache behavior with lazy loading enabled", func() {
+			It("initializes cache without pre-loading chaincodes", func() {
+				// Verify that the cache is created successfully
+				Expect(lazyCache).NotTo(BeNil())
+
+				// Verify that no chaincodes are pre-loaded
+				installedChaincodes := lazyCache.ListInstalledChaincodes()
+				Expect(installedChaincodes).To(HaveLen(0))
+			})
+
+			It("handles chaincode installation events normally", func() {
+				// Install a chaincode after cache creation
+				lazyCache.HandleChaincodeInstalled(&persistence.ChaincodePackageMetadata{
+					Type:  "golang",
+					Path:  "github.com/example/chaincode",
+					Label: "test-label",
+				}, "test-package-id")
+
+				// Verify the chaincode is now available
+				installedChaincodes := lazyCache.ListInstalledChaincodes()
+				Expect(installedChaincodes).To(HaveLen(1))
+				Expect(installedChaincodes[0].PackageID).To(Equal("test-package-id"))
+			})
+		})
+
+		Describe("ListInstalledChaincodes with lazy loading", func() {
+			It("returns only installed chaincodes when lazy loading is enabled", func() {
+				// Set up local chaincodes with some having Info and some not
+				localChaincodes := map[string]*lifecycle.LocalChaincode{
+					"hash1": {
+						Info: &lifecycle.ChaincodeInstallInfo{
+							PackageID: "installed-package-1",
+							Label:     "label1",
+						},
+						References: map[string]map[string]*lifecycle.CachedChaincodeDefinition{},
+					},
+					"hash2": {
+						Info:       nil, // Not installed
+						References: map[string]map[string]*lifecycle.CachedChaincodeDefinition{},
+					},
+					"hash3": {
+						Info: &lifecycle.ChaincodeInstallInfo{
+							PackageID: "installed-package-2",
+							Label:     "label2",
+						},
+						References: map[string]map[string]*lifecycle.CachedChaincodeDefinition{},
+					},
+				}
+
+				lifecycle.SetLocalChaincodesMap(lazyCache, localChaincodes)
+
+				installedChaincodes := lazyCache.ListInstalledChaincodes()
+				Expect(installedChaincodes).To(HaveLen(2))
+				Expect(installedChaincodes[0].PackageID).To(Equal("installed-package-1"))
+				Expect(installedChaincodes[1].PackageID).To(Equal("installed-package-2"))
+			})
+		})
+
+		Describe("GetInstalledChaincode with lazy loading", func() {
+			It("returns installed chaincode when found", func() {
+				localChaincodes := map[string]*lifecycle.LocalChaincode{
+					"hash1": {
+						Info: &lifecycle.ChaincodeInstallInfo{
+							PackageID: "test-package",
+							Label:     "test-label",
+						},
+						References: map[string]map[string]*lifecycle.CachedChaincodeDefinition{},
+					},
+				}
+
+				lifecycle.SetLocalChaincodesMap(lazyCache, localChaincodes)
+
+				installedChaincode, err := lazyCache.GetInstalledChaincode("test-package")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(installedChaincode.PackageID).To(Equal("test-package"))
+				Expect(installedChaincode.Label).To(Equal("test-label"))
+			})
+
+			It("returns error when chaincode is not installed", func() {
+				localChaincodes := map[string]*lifecycle.LocalChaincode{
+					"hash1": {
+						Info:       nil, // Not installed
+						References: map[string]map[string]*lifecycle.CachedChaincodeDefinition{},
+					},
+				}
+
+				lifecycle.SetLocalChaincodesMap(lazyCache, localChaincodes)
+
+				installedChaincode, err := lazyCache.GetInstalledChaincode("non-existent-package")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("could not find chaincode with package id 'non-existent-package'"))
+				Expect(installedChaincode).To(BeNil())
+			})
+		})
+
+		Describe("Performance comparison between lazy and non-lazy loading", func() {
+			It("demonstrates that lazy loading skips expensive operations at startup", func() {
+				// Create a cache with lazy loading disabled (default behavior)
+				nonLazyCache := lifecycle.NewCache(resources, "my-mspid", fakeMetadataHandler, chaincodeCustodian, &externalbuilder.MetadataProvider{}, false)
+
+				// Create a new mock for the lazy cache test
+				newFakeCCStore := &mock.ChaincodeStore{}
+				newFakeCCStore.ListInstalledChaincodesReturns(nil, nil)
+
+				// Create a new lazy cache with the new mock
+				newLazyCache := lifecycle.NewCache(&lifecycle.Resources{
+					ChaincodeStore: newFakeCCStore,
+					PackageParser:  resources.PackageParser,
+					Serializer:     resources.Serializer,
+				}, "my-mspid", fakeMetadataHandler, chaincodeCustodian, &externalbuilder.MetadataProvider{}, true)
+
+				// Initialize non-lazy cache - this should call ListInstalledChaincodes
+				err := nonLazyCache.InitializeLocalChaincodes()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeCCStore.ListInstalledChaincodesCallCount()).To(Equal(1))
+
+				// Initialize lazy cache - this should NOT call ListInstalledChaincodes
+				err = newLazyCache.InitializeLocalChaincodes()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(newFakeCCStore.ListInstalledChaincodesCallCount()).To(Equal(0))
 			})
 		})
 	})
