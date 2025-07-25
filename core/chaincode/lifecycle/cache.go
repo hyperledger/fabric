@@ -388,15 +388,65 @@ func (c *Cache) ChaincodeInfo(channelID, name string) (*LocalChaincodeInfo, erro
 	}
 
 	c.mutex.RLock()
-	defer c.mutex.RUnlock()
 	channelChaincodes, ok := c.definedChaincodes[channelID]
 	if !ok {
+		c.mutex.RUnlock()
 		return nil, errors.Errorf("unknown channel '%s'", channelID)
 	}
 
 	cachedChaincode, ok := channelChaincodes.Chaincodes[name]
 	if !ok {
+		c.mutex.RUnlock()
 		return nil, errors.Errorf("unknown chaincode '%s' for channel '%s'", name, channelID)
+	}
+
+	// If InstallInfo is nil and lazy loading is enabled, try to load it on-demand
+	if cachedChaincode.InstallInfo == nil && c.lazyLoadEnabled {
+		c.mutex.RUnlock()
+
+		// We need to acquire a write lock to update the cache
+		c.mutex.Lock()
+		defer c.mutex.Unlock()
+
+		// Re-check the condition after acquiring write lock
+		if cachedChaincode.InstallInfo == nil {
+			// Try to find the chaincode in the installed chaincodes list
+			installedChaincodes, err := c.Resources.ChaincodeStore.ListInstalledChaincodes()
+			if err != nil {
+				logger.Debugf("Could not list installed chaincodes for lazy loading: %v", err)
+			} else {
+				// Look for a chaincode that matches this definition
+				for _, installedCC := range installedChaincodes {
+					// Check if this installed chaincode matches the current definition
+					// by checking if it's referenced in the local chaincodes map
+					encodedCCHash := protoutil.MarshalOrPanic(&lb.StateData{
+						Type: &lb.StateData_String_{String_: installedCC.PackageID},
+					})
+					hashOfCCHash := string(util.ComputeSHA256(encodedCCHash))
+
+					localChaincode, exists := c.localChaincodes[hashOfCCHash]
+					if exists && localChaincode.Info != nil {
+						// Check if this local chaincode is referenced by the current chaincode definition
+						if _, ok := localChaincode.References[channelID][name]; ok {
+							// Found a match! Load the chaincode info on-demand
+							installInfo, err := c.loadChaincodeInfoOnDemand(installedCC.PackageID)
+							if err != nil {
+								logger.Debugf("Could not load chaincode info for package ID '%s': %v", installedCC.PackageID, err)
+							} else if installInfo != nil {
+								// Update the cache with the loaded install info
+								cachedChaincode.InstallInfo = installInfo
+								localChaincode.Info = installInfo
+
+								logger.Debugf("Lazy loaded chaincode info for '%s' on channel '%s' with package ID '%s'", name, channelID, installedCC.PackageID)
+								break
+							}
+						}
+					}
+				}
+			}
+		}
+	} else {
+		c.mutex.RUnlock()
 	}
 
 	return &LocalChaincodeInfo{

@@ -6,13 +6,27 @@ The peer lifecycle cache can be configured to use lazy loading instead of pre-in
 
 ## Configuration
 
-To enable lazy loading, add the following configuration to your `core.yaml` file:
+To enable lazy loading, you can configure it in one of the following ways:
+
+### Using core.yaml file
+
+Add the following configuration to your `core.yaml` file:
 
 ```yaml
 peer:
   lifecycle:
     lazyLoadEnabled: true
 ```
+
+### Using environment variable
+
+Set the following environment variable:
+
+```bash
+export CORE_PEER_LIFECYCLE_LAZYLOADENABLED=true
+```
+
+The environment variable takes precedence over the configuration file setting.
 
 ## How it works
 

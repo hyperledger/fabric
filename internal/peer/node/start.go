@@ -431,7 +431,7 @@ func serve(args []string) error {
 	}
 
 	// Check if lazy loading is enabled via configuration
-	lazyLoadEnabled := viper.GetBool("peer.lifecycle.lazyLoadEnabled")
+	lazyLoadEnabled := coreConfig.LifecycleLazyLoadEnabled
 
 	lifecycleCache := lifecycle.NewCache(
 		lifecycleResources,
