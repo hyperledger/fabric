@@ -41,7 +41,7 @@ type CachedChaincodeDefinition struct {
 	Definition  *ChaincodeDefinition
 	Approved    bool
 	InstallInfo *ChaincodeInstallInfo
-	PackageID   string // Store the actual PackageID for lazy loading
+	PackageID   string // <-- Add this field
 
 	// Hashes is the list of hashed keys in the implicit collection referring to this definition.
 	// These hashes are determined by the current sequence number of chaincode definition.  When dirty,
@@ -635,6 +635,13 @@ func (c *Cache) update(initializing bool, channelID string, dirtyChaincodes map[
 			logger.Debugf("Channel %s for chaincode definition %s:%s does not have a chaincode source defined", channelID, name, chaincodeDefinition.EndorsementInfo.Version)
 			continue
 		}
+
+		// After confirming isLocalPackage, extract the actual PackageID from the private state and store it in the cache
+		packageID, err := c.Resources.Serializer.DeserializeFieldAsString(ChaincodeSourcesName, privateName, "PackageID", publicState)
+		if err != nil {
+			return errors.WithMessagef(err, "could not deserialize PackageID for '%s' on channel '%s'", name, channelID)
+		}
+		cachedChaincode.PackageID = packageID
 
 		cachedChaincode.InstallInfo = localChaincode.Info
 		if localChaincode.Info != nil {
