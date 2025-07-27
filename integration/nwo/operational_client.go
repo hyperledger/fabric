@@ -18,14 +18,18 @@ import (
 )
 
 func OrdererOperationalClients(n *Network, o *Orderer) (authClient, unauthClient *http.Client) {
-	return operationalClients(n, n.OrdererLocalTLSDir(o))
+	return OrdererOperationalClientsTimeShift(n, o, 0)
+}
+
+func OrdererOperationalClientsTimeShift(n *Network, o *Orderer, timeShift time.Duration) (authClient, unauthClient *http.Client) {
+	return operationalClients(n, n.OrdererLocalTLSDir(o), timeShift)
 }
 
 func PeerOperationalClients(n *Network, p *Peer) (authClient, unauthClient *http.Client) {
-	return operationalClients(n, n.PeerLocalTLSDir(p))
+	return operationalClients(n, n.PeerLocalTLSDir(p), 0)
 }
 
-func operationalClients(n *Network, tlsDir string) (authClient, unauthClient *http.Client) {
+func operationalClients(n *Network, tlsDir string, timeShift time.Duration) (authClient, unauthClient *http.Client) {
 	fingerprint := "http::" + tlsDir
 	if d := n.throttleDuration(fingerprint); d > 0 {
 		time.Sleep(d)
@@ -42,19 +46,30 @@ func operationalClients(n *Network, tlsDir string) (authClient, unauthClient *ht
 	Expect(err).NotTo(HaveOccurred())
 	clientCertPool.AppendCertsFromPEM(caCert)
 
+	authenticatedTlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{clientCert},
+		RootCAs:      clientCertPool,
+	}
+	unauthenticatedTlsConfig := &tls.Config{RootCAs: clientCertPool}
+	if timeShift > 0 {
+		authenticatedTlsConfig.Time = func() time.Time {
+			return time.Now().Add((-1) * timeShift)
+		}
+		unauthenticatedTlsConfig.Time = func() time.Time {
+			return time.Now().Add((-1) * timeShift)
+		}
+	}
+
 	authenticatedClient := &http.Client{
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: -1,
-			TLSClientConfig: &tls.Config{
-				Certificates: []tls.Certificate{clientCert},
-				RootCAs:      clientCertPool,
-			},
+			TLSClientConfig:     authenticatedTlsConfig,
 		},
 	}
 	unauthenticatedClient := &http.Client{
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: -1,
-			TLSClientConfig:     &tls.Config{RootCAs: clientCertPool},
+			TLSClientConfig:     unauthenticatedTlsConfig,
 		},
 	}
 
