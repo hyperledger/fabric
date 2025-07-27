@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -306,6 +307,7 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("metrics.statsd.prefix", "testPrefix")
 
 	viper.Set("chaincode.pull", false)
+	viper.Set("peer.lifecycle.lazyLoadEnabled", true)
 	viper.Set("chaincode.externalBuilders", &[]ExternalBuilder{
 		{
 			Path: "relative/plugin_dir",
@@ -348,7 +350,8 @@ func TestGlobalConfig(t *testing.T) {
 		VMDockerAttachStdout: false,
 		VMNetworkMode:        "TestingHost",
 
-		ChaincodePull: false,
+		ChaincodePull:            false,
+		LifecycleLazyLoadEnabled: true,
 		ExternalBuilders: []ExternalBuilder{
 			{
 				Path: "relative/plugin_dir",
@@ -388,6 +391,32 @@ func TestGlobalConfig(t *testing.T) {
 	}
 
 	require.Equal(t, coreConfig, expectedConfig)
+}
+
+func TestLifecycleLazyLoadEnabledEnvVar(t *testing.T) {
+	defer viper.Reset()
+
+	// Test with environment variable
+	os.Setenv("CORE_PEER_LIFECYCLE_LAZYLOADENABLED", "true")
+	defer os.Unsetenv("CORE_PEER_LIFECYCLE_LAZYLOADENABLED")
+
+	viper.SetEnvPrefix("CORE")
+	viper.AutomaticEnv()
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
+
+	viper.Set("peer.address", "localhost:8080")
+
+	coreConfig, err := GlobalConfig()
+	require.NoError(t, err)
+	require.True(t, coreConfig.LifecycleLazyLoadEnabled)
+
+	// Test with environment variable set to false
+	os.Setenv("CORE_PEER_LIFECYCLE_LAZYLOADENABLED", "false")
+
+	coreConfig, err = GlobalConfig()
+	require.NoError(t, err)
+	require.False(t, coreConfig.LifecycleLazyLoadEnabled)
 }
 
 func TestGlobalConfigDefault(t *testing.T) {

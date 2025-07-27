@@ -219,6 +219,14 @@ type Config struct {
 	// interact with fabric networks
 
 	GatewayOptions gatewayconfig.Options
+
+	// ----- Lifecycle config -----
+
+	// LifecycleLazyLoadEnabled enables lazy loading of chaincode packages instead of
+	// pre-initializing all installed chaincodes at startup. This can improve startup
+	// time when there are many installed chaincodes, but may cause slight delays
+	// when chaincodes are first accessed.
+	LifecycleLazyLoadEnabled bool
 }
 
 // GlobalConfig obtains a set of configuration from viper, build and returns
@@ -326,6 +334,8 @@ func (c *Config) load() error {
 	c.StatsdAaddress = viper.GetString("metrics.statsd.address")
 	c.StatsdWriteInterval = viper.GetDuration("metrics.statsd.writeInterval")
 	c.StatsdPrefix = viper.GetString("metrics.statsd.prefix")
+
+	c.LifecycleLazyLoadEnabled = viper.GetBool("peer.lifecycle.lazyLoadEnabled")
 
 	c.DockerCert = config.GetPath("vm.docker.tls.cert.file")
 	c.DockerKey = config.GetPath("vm.docker.tls.key.file")

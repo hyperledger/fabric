@@ -430,12 +430,16 @@ func serve(args []string) error {
 		DurablePath: externalBuilderOutput,
 	}
 
+	// Check if lazy loading is enabled via configuration
+	lazyLoadEnabled := coreConfig.LifecycleLazyLoadEnabled
+
 	lifecycleCache := lifecycle.NewCache(
 		lifecycleResources,
 		mspID,
 		metadataManager,
 		chaincodeCustodian,
 		ebMetadataProvider,
+		lazyLoadEnabled,
 	)
 
 	txProcessors := map[cb.HeaderType]ledger.CustomTxProcessor{
