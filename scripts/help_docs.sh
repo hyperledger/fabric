@@ -134,7 +134,7 @@ generateOrCheck \
         docs/wrappers/configtxlator_postscript.md \
         "${commands[@]}"
 
-commands=("osnadmin channel" "osnadmin channel join" "osnadmin channel list" "osnadmin channel remove")
+commands=("osnadmin channel" "osnadmin channel join" "osnadmin channel list" "osnadmin channel remove" "osnadmin channel update")
 generateOrCheck \
         docs/source/commands/osnadminchannel.md \
         docs/wrappers/osnadmin_channel_preamble.md \

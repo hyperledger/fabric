@@ -83,4 +83,30 @@ Here's an example of the `osnadmin channel remove` command.
 
   Status 204 is returned upon successful removal of a channel.
 
+### osnadmin channel update examples
+
+Here's an example of the `osnadmin channel update` command.
+
+* Update the example of the `my channel` channel defined by the modified config
+  contained in the `my channel-config-envelope.pb` file.
+  Use the endpoint of the order administrator
+  at `order.example.com:9443`.
+
+  ```
+  osnadmin channel update -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY --channelID mychannel --config-update-envelope mychannel-genesis-block.pb
+
+  Status: 201
+  {
+    "name": "mychannel",
+    "url": "/participation/v1/channels/mychannel",
+    "consensusRelation": "consenter",
+    "status": "active",
+    "height": 1
+  }
+
+  ```
+
+  Status 201 and the channel details are returned indicating that the channel has been
+  successfully updated.
+
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.

@@ -99,7 +99,13 @@ func GetChannelIDFromBlock(block *cb.Block) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	payload, err := UnmarshalPayload(envelope.Payload)
+
+	return GetChannelIDFromEnvelope(envelope)
+}
+
+// GetChannelIDFromEnvelope returns channel ID in the envelope
+func GetChannelIDFromEnvelope(envelope *cb.Envelope) (string, error) {
+	payload, err := UnmarshalPayload(envelope.GetPayload())
 	if err != nil {
 		return "", err
 	}
