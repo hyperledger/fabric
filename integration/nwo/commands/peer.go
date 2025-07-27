@@ -646,32 +646,6 @@ func (s SignConfigTx) Args() []string {
 	return args
 }
 
-type ChannelUpdate struct {
-	ChannelID             string
-	Orderer               string
-	File                  string
-	ClientAuth            bool
-	TLSHandshakeTimeShift time.Duration
-}
-
-func (c ChannelUpdate) SessionName() string {
-	return "peer-channel-update"
-}
-
-func (c ChannelUpdate) Args() []string {
-	args := []string{
-		"channel", "update",
-		"--channelID", c.ChannelID,
-		"--orderer", c.Orderer,
-		"--file", c.File,
-		"--tlsHandshakeTimeShift", c.TLSHandshakeTimeShift.String(),
-	}
-	if c.ClientAuth {
-		args = append(args, "--clientauth")
-	}
-	return args
-}
-
 type ChannelInfo struct {
 	ChannelID  string
 	ClientAuth bool
