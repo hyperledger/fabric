@@ -40,7 +40,7 @@ func (sig *Signature) Marshal() []byte {
 }
 
 // AsBytes returns the message to sign
-func (sig Signature) AsBytes() []byte {
+func (sig *Signature) AsBytes() []byte {
 	msg2Sign := util.ConcatenateBytes(sig.OrdererBlockMetadata, sig.IdentifierHeader, sig.BlockHeader)
 	return msg2Sign
 }

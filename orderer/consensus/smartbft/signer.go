@@ -47,7 +47,7 @@ func (s *Signer) SignProposal(proposal types.Proposal, _ []byte) *types.Signatur
 
 	nonce := randomNonceOrPanic()
 
-	sig := Signature{
+	sig := &Signature{
 		BlockHeader:      protoutil.BlockHeaderBytes(block.Header),
 		IdentifierHeader: protoutil.MarshalOrPanic(s.newIdentifierHeaderOrPanic(nonce)),
 		OrdererBlockMetadata: protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
