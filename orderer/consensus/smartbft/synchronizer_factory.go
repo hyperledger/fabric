@@ -17,11 +17,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus"
 )
 
-//go:generate mockery --dir . --name synchronizer --case underscore --with-expecter=true --exported --output mocks
-type synchronizer interface {
-	api.Synchronizer
-}
-
 //go:generate mockery --dir . --name SynchronizerFactory --case underscore --with-expecter=true --output mocks
 type SynchronizerFactory interface {
 	// CreateSynchronizer creates a new Synchronizer.
