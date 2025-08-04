@@ -71,7 +71,7 @@ func (e *Egress) SendTransaction(targetID uint64, request []byte) {
 	env := &cb.Envelope{}
 	err := proto.Unmarshal(request, env)
 	if err != nil {
-		e.Logger.Panicf("Failed unmarshaling request %v to envelope: %v", request, err)
+		e.Logger.Panicf("Failed unmarshalling request %v to envelope: %v", request, err)
 	}
 	msg := &ab.SubmitRequest{
 		Payload: env,
