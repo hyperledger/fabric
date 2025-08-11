@@ -77,7 +77,7 @@ This Charter sets forth the responsibilities and procedures for technical contri
 
     2. Quorum for EC and TSC meetings requires at least fifty percent of all voting members of the EC or a TSC, as applicable, to be present. The EC or a TSC, as applicable, may continue to meet if quorum is not met but will be prevented from making any decisions at the meeting.
 
-    3. Except as provided in Section 8.c. and 9.a, decisions by vote at a meeting require a majority vote of those in attendance, provided quorum is met. Decisions made by electronic vote without a meeting require a majority vote of all voting members of the TSC.
+    3. Except as provided in Section 8.iii and 9.i, decisions by vote at a meeting require a majority vote of those in attendance, provided quorum is met. Decisions made by electronic vote without a meeting require a majority vote of all voting members of the TSC.
 
     4. In the event a TSC vote cannot be resolved by the TSC, any voting member of such TSC may refer the matter to EC for assistance in reaching a resolution. In the event that an EC vote cannot be resolved by the EC, the EC may refer the matter to the Series Manager for assistance in reaching a resolution.
 
@@ -113,7 +113,7 @@ This Charter sets forth the responsibilities and procedures for technical contri
 
     1. Collaborators acknowledge that the copyright in all new contributions will be retained by the copyright holder as independent works of authorship and that no contributor or copyright holder will be required to assign copyrights to the Project. 
 
-    2. Except as described in Section 8.c., all contributions to the Project are subject to the following: 
+    2. Except as described in Section 8.iii, all contributions to the Project are subject to the following: 
 
         1. All new inbound code contributions to the Project must be made using Apache License, Version 2.0 available at http://www.apache.org/licenses/LICENSE-2.0  (the “Project License”). 
 
