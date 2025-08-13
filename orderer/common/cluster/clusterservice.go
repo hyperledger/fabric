@@ -13,7 +13,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"log"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -213,7 +212,6 @@ func compareCertPublicKeys(cert1, cert2 []byte) (bool, error) {
 
 	publicKey1, err := extractPublicKeyFromCert(bl.Bytes)
 	if err != nil {
-		log.Printf("Failed to extract public key from own certificate: %v", err)
 		return false, err
 	}
 
@@ -318,17 +316,6 @@ func (c *ClusterService) ConfigureNodeCerts(channel string, newNodes []*common.C
 		if err != nil {
 			return err
 		}
-
-		// // Extract public key using the same approach as IsConsenterOfChannel
-		// bl, _ := pem.Decode(sanitizedID)
-		// if bl == nil {
-		// 	return errors.Errorf("node identity certificate %s is not a valid PEM", string(sanitizedID))
-		// }
-
-		// publicKey, err := extractPublicKeyFromCert(bl.Bytes)
-		// if err != nil {
-		// 	return err
-		// }
 
 		channelMembership.MemberMapping[uint64(nodeIdentity.Id)] = sanitizedID
 	}

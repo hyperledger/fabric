@@ -372,10 +372,9 @@ func (c *Consenter) detectSelfID(consenters []*cb.Consenter) (uint64, error) {
 		}
 
 		if crypto.CertificatesWithSamePublicKey(thisNodeCertAsDER, certAsDER) == nil {
-			c.Logger.Infof("Found node %d in channel consenters set", cst.Id)
+			c.Logger.Debugf("Found node %d in channel consenters set", cst.Id)
 			return uint64(cst.Id), nil
 		}
-		c.Logger.Infof("Node %d certificate: %s", cst.Id, string(cst.Identity))
 	}
 
 	c.Logger.Warning("Could not find", string(c.Comm.NodeIdentity), "among", serverCertificates)

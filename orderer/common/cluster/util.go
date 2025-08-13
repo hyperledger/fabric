@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"log"
 	"math/rand/v2"
 	"strconv"
 	"sync"
@@ -121,7 +120,6 @@ func (mp MemberMapping) LookupByIdentity(identity []byte) *Stub {
 	for _, stub := range mp.id2stub {
 		equal, err := compareCertPublicKeys(identity, stub.Identity)
 		if err != nil {
-			log.Printf("Failed to compare cert public keys: %v", err)
 			continue
 		}
 		if equal {

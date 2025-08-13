@@ -64,7 +64,7 @@ func newBlockPuller(
 		vb := cluster.BlockVerifierBuilder(bccsp)
 		return cluster.VerifyBlocksBFT(blocks, support.SignatureVerifier(), vb)
 	}
-	// Dialer without predicate
+
 	stdDialer := &cluster.StandardDialer{
 		Config: baseDialer.Config.Clone(),
 	}
