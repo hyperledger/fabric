@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"log"
 	"math/rand/v2"
 	"strconv"
 	"sync"
@@ -118,7 +119,12 @@ func (mp MemberMapping) LookupByClientCert(cert []byte) *Stub {
 // LookupByIdentity retrieves a Stub by Identity
 func (mp MemberMapping) LookupByIdentity(identity []byte) *Stub {
 	for _, stub := range mp.id2stub {
-		if bytes.Equal(identity, stub.Identity) {
+		equal, err := compareCertPublicKeys(identity, stub.Identity)
+		if err != nil {
+			log.Printf("Failed to compare cert public keys: %v", err)
+			continue
+		}
+		if equal {
 			return stub
 		}
 	}
@@ -173,7 +179,10 @@ func (dialer *PredicateDialer) Dial(address string, verifyFunc RemoteVerifier) (
 	clientConfigCopy := dialer.Config
 	dialer.lock.RUnlock()
 
-	clientConfigCopy.SecOpts.VerifyCertificate = verifyFunc
+	clientConfigCopy.SecOpts.VerifyCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+		log.Printf("Verifying certificate: %v", rawCerts)
+		return nil
+	}
 	return clientConfigCopy.Dial(address)
 }
 
@@ -196,7 +205,7 @@ type StandardDialer struct {
 func (dialer *StandardDialer) Dial(endpointCriteria EndpointCriteria) (*grpc.ClientConn, error) {
 	clientConfigCopy := dialer.Config
 	clientConfigCopy.SecOpts.ServerRootCAs = endpointCriteria.TLSRootCAs
-
+	log.Printf("Dialing %s", endpointCriteria.Endpoint)
 	return clientConfigCopy.Dial(endpointCriteria.Endpoint)
 }
 

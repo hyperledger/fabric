@@ -8,9 +8,12 @@ package cluster
 
 import (
 	"bytes"
+	"crypto/x509"
 	"encoding/asn1"
+	"encoding/pem"
 	"fmt"
 	"io"
+	"log"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -42,6 +45,25 @@ type ChannelMembersConfig struct {
 	MemberMapping     map[uint64][]byte
 	AuthorizedStreams sync.Map // Stream ID --> node identifier
 	nextStreamID      uint64
+}
+
+// extractPublicKeyFromCert extracts the public key from an X.509 certificate
+func extractPublicKeyFromCert(certBytes []byte) ([]byte, error) {
+	// First decode PEM if it's PEM encoded
+	block, _ := pem.Decode(certBytes)
+	var der []byte
+	if block != nil {
+		der = block.Bytes
+	} else {
+		der = certBytes
+	}
+
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse certificate")
+	}
+
+	return x509.MarshalPKIXPublicKey(cert.PublicKey)
 }
 
 // ClusterService implements the server API for ClusterNodeService service
@@ -163,7 +185,14 @@ func (s *ClusterService) VerifyAuthRequest(stream orderer.ClusterNodeService_Ste
 		return nil, errors.Errorf("node %d is not member of channel %s", authReq.ToId, authReq.Channel)
 	}
 
-	if !bytes.Equal(toIdentity, s.NodeIdentity) {
+	equal, err := compareCertPublicKeys(toIdentity, s.NodeIdentity)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to compare cert public keys")
+	}
+	if !equal {
+		s.Logger.Infof("node id mismatch: %d", authReq.FromId)
+		s.Logger.Infof("toIdentity: %s", string(toIdentity))
+		s.Logger.Infof("s.NodeIdentity: %s", string(s.NodeIdentity))
 		return nil, errors.Errorf("node id mismatch")
 	}
 
@@ -173,6 +202,32 @@ func (s *ClusterService) VerifyAuthRequest(stream orderer.ClusterNodeService_Ste
 	}
 
 	return authReq, nil
+}
+
+func compareCertPublicKeys(cert1, cert2 []byte) (bool, error) {
+	// Extract public key using the same approach as IsConsenterOfChannel
+	bl, _ := pem.Decode(cert1)
+	if bl == nil {
+		return false, errors.Errorf("node identity certificate %s is not a valid PEM", string(cert1))
+	}
+
+	publicKey1, err := extractPublicKeyFromCert(bl.Bytes)
+	if err != nil {
+		log.Printf("Failed to extract public key from own certificate: %v", err)
+		return false, err
+	}
+
+	bl, _ = pem.Decode(cert2)
+	if bl == nil {
+		return false, errors.Errorf("node identity certificate %s is not a valid PEM", string(cert2))
+	}
+
+	publicKey2, err := extractPublicKeyFromCert(bl.Bytes)
+	if err != nil {
+		return false, err
+	}
+
+	return bytes.Equal(publicKey1, publicKey2), nil
 }
 
 func (s *ClusterService) handleMessage(stream ClusterStepStream, addr string, exp *certificateExpirationCheck, channel string, sender uint64, streamID uint64) error {
@@ -263,6 +318,18 @@ func (c *ClusterService) ConfigureNodeCerts(channel string, newNodes []*common.C
 		if err != nil {
 			return err
 		}
+
+		// // Extract public key using the same approach as IsConsenterOfChannel
+		// bl, _ := pem.Decode(sanitizedID)
+		// if bl == nil {
+		// 	return errors.Errorf("node identity certificate %s is not a valid PEM", string(sanitizedID))
+		// }
+
+		// publicKey, err := extractPublicKeyFromCert(bl.Bytes)
+		// if err != nil {
+		// 	return err
+		// }
+
 		channelMembership.MemberMapping[uint64(nodeIdentity.Id)] = sanitizedID
 	}
 

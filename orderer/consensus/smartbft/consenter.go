@@ -11,6 +11,7 @@ package smartbft
 
 import (
 	"bytes"
+	"crypto/x509"
 	"encoding/pem"
 	"path"
 	"reflect"
@@ -261,18 +262,74 @@ func (c *Consenter) IsChannelMember(joinBlock *cb.Block) (bool, error) {
 		return false, errors.New("no orderer config in bundle")
 	}
 	member := false
+
+	santizedCert, err := crypto.SanitizeX509Cert(c.Identity)
+	if err != nil {
+		return false, err
+	}
+
+	// Extract public key using the same approach as IsConsenterOfChannel
+	bl, _ := pem.Decode(santizedCert)
+	if bl == nil {
+		return false, errors.Errorf("node identity certificate %s is not a valid PEM", string(santizedCert))
+	}
+
+	myPublicKey, err := extractPublicKeyFromCert(bl.Bytes)
+	if err != nil {
+		c.Logger.Debugf("Failed to extract public key from own certificate: %v", err)
+		return false, err
+	} else {
+		c.Logger.Debugf("Extracted own public key: %x", myPublicKey)
+	}
+
 	for _, consenter := range oc.Consenters() {
+		c.Logger.Infof("Consenter %d: %s", consenter.Id, string(consenter.Identity))
 		santizedCert, err := crypto.SanitizeX509Cert(consenter.Identity)
 		if err != nil {
+			c.Logger.Debugf("Failed to sanitize consenter %d identity: %v", consenter.Id, err)
 			return false, err
 		}
-		if bytes.Equal(c.Identity, santizedCert) {
+
+		// Extract public key using the same approach as IsConsenterOfChannel
+		bl, _ := pem.Decode(santizedCert)
+		if bl == nil {
+			c.Logger.Debugf("Consenter %d: failed to decode PEM for identity", consenter.Id)
+			continue
+		}
+
+		publicKey, err := extractPublicKeyFromCert(bl.Bytes)
+		if err != nil {
+			c.Logger.Debugf("Consenter %d: failed to extract public key from cert: %v", consenter.Id, err)
+			continue
+		}
+		c.Logger.Debugf("Consenter %d: extracted public key: %x", consenter.Id, publicKey)
+		if bytes.Equal(myPublicKey, publicKey) {
+			c.Logger.Debugf("Found matching public key for consenter %d", consenter.Id)
 			member = true
 			break
 		}
 	}
 
 	return member, nil
+}
+
+// extractPublicKeyFromCert extracts the public key from an X.509 certificate
+func extractPublicKeyFromCert(certBytes []byte) ([]byte, error) {
+	// First decode PEM if it's PEM encoded
+	block, _ := pem.Decode(certBytes)
+	var der []byte
+	if block != nil {
+		der = block.Bytes
+	} else {
+		der = certBytes
+	}
+
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse certificate")
+	}
+
+	return x509.MarshalPKIXPublicKey(cert.PublicKey)
 }
 
 // TargetChannel extracts the channel from the given proto.Message.
@@ -297,16 +354,30 @@ func pemToDER(pemBytes []byte, id uint64, certType string, logger *flogging.Fabr
 	return bl.Bytes, nil
 }
 
-func (c *Consenter) detectSelfID(consenters []*cb.Consenter) (uint32, error) {
+func (c *Consenter) detectSelfID(consenters []*cb.Consenter) (uint64, error) {
+	thisNodeCertAsDER, err := pemToDER(c.Comm.NodeIdentity, 0, "server", c.Logger)
+	if err != nil {
+		c.Logger.Errorf("Failed to convert node identity certificate to DER: %s", err)
+		return 0, err
+	}
+
+	var serverCertificates []string
 	for _, cst := range consenters {
-		santizedCert, err := crypto.SanitizeX509Cert(cst.Identity)
+		serverCertificates = append(serverCertificates, string(cst.Identity))
+
+		certAsDER, err := pemToDER(cst.Identity, uint64(cst.Id), "server", c.Logger)
 		if err != nil {
+			c.Logger.Errorf("Failed to convert node identity certificate to DER: %s", err)
 			return 0, err
 		}
-		if bytes.Equal(c.Comm.NodeIdentity, santizedCert) {
-			return cst.Id, nil
+
+		if crypto.CertificatesWithSamePublicKey(thisNodeCertAsDER, certAsDER) == nil {
+			c.Logger.Infof("Found node %d in channel consenters set", cst.Id)
+			return uint64(cst.Id), nil
 		}
+		c.Logger.Infof("Node %d certificate: %s", cst.Id, string(cst.Identity))
 	}
-	c.Logger.Warning("Could not find the node in channel consenters set")
+
+	c.Logger.Warning("Could not find", string(c.Comm.NodeIdentity), "among", serverCertificates)
 	return 0, cluster.ErrNotInChannel
 }

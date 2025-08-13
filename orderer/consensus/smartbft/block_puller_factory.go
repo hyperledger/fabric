@@ -9,6 +9,7 @@ package smartbft
 import (
 	"crypto/x509"
 	"encoding/pem"
+	"log"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
@@ -64,12 +65,15 @@ func newBlockPuller(
 		vb := cluster.BlockVerifierBuilder(bccsp)
 		return cluster.VerifyBlocksBFT(blocks, support.SignatureVerifier(), vb)
 	}
-
+	// Dialer without predicate
 	stdDialer := &cluster.StandardDialer{
 		Config: baseDialer.Config.Clone(),
 	}
 	stdDialer.Config.AsyncConnect = false
-	stdDialer.Config.SecOpts.VerifyCertificate = nil
+	stdDialer.Config.SecOpts.VerifyCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+		log.Printf("Verifying certificate: %v", rawCerts)
+		return nil
+	}
 
 	// Extract the TLS CA certs and endpoints from the configuration,
 	endpoints, err := etcdraft.EndpointconfigFromSupport(support, bccsp)
