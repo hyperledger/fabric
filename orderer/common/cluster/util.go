@@ -179,10 +179,7 @@ func (dialer *PredicateDialer) Dial(address string, verifyFunc RemoteVerifier) (
 	clientConfigCopy := dialer.Config
 	dialer.lock.RUnlock()
 
-	clientConfigCopy.SecOpts.VerifyCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-		log.Printf("Verifying certificate: %v", rawCerts)
-		return nil
-	}
+	clientConfigCopy.SecOpts.VerifyCertificate = verifyFunc
 	return clientConfigCopy.Dial(address)
 }
 
@@ -205,7 +202,7 @@ type StandardDialer struct {
 func (dialer *StandardDialer) Dial(endpointCriteria EndpointCriteria) (*grpc.ClientConn, error) {
 	clientConfigCopy := dialer.Config
 	clientConfigCopy.SecOpts.ServerRootCAs = endpointCriteria.TLSRootCAs
-	log.Printf("Dialing %s", endpointCriteria.Endpoint)
+
 	return clientConfigCopy.Dial(endpointCriteria.Endpoint)
 }
 
