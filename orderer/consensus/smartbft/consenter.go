@@ -283,7 +283,6 @@ func (c *Consenter) IsChannelMember(joinBlock *cb.Block) (bool, error) {
 	}
 
 	for _, consenter := range oc.Consenters() {
-		c.Logger.Infof("Consenter %d: %s", consenter.Id, string(consenter.Identity))
 		santizedCert, err := crypto.SanitizeX509Cert(consenter.Identity)
 		if err != nil {
 			c.Logger.Debugf("Failed to sanitize consenter %d identity: %v", consenter.Id, err)
