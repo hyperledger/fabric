@@ -189,9 +189,7 @@ func (s *ClusterService) VerifyAuthRequest(stream orderer.ClusterNodeService_Ste
 		return nil, errors.Wrap(err, "failed to compare cert public keys")
 	}
 	if !equal {
-		s.Logger.Infof("node id mismatch: %d", authReq.FromId)
-		s.Logger.Infof("toIdentity: %s", string(toIdentity))
-		s.Logger.Infof("s.NodeIdentity: %s", string(s.NodeIdentity))
+		s.Logger.Debugf("node id mismatch for node %d, toIdentity: %s, s.NodeIdentity: %s", authReq.FromId, string(toIdentity), string(s.NodeIdentity))
 		return nil, errors.Errorf("node id mismatch")
 	}
 
