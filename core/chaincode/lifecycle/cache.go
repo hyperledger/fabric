@@ -41,6 +41,7 @@ type CachedChaincodeDefinition struct {
 	Definition  *ChaincodeDefinition
 	Approved    bool
 	InstallInfo *ChaincodeInstallInfo
+	PackageID   string // <-- Add this field
 
 	// Hashes is the list of hashed keys in the implicit collection referring to this definition.
 	// These hashes are determined by the current sequence number of chaincode definition.  When dirty,
@@ -86,6 +87,9 @@ type Cache struct {
 	MetadataHandler MetadataHandler
 
 	chaincodeCustodian *ChaincodeCustodian
+
+	// lazyLoadEnabled controls whether chaincode info is loaded on-demand instead of pre-initialized
+	lazyLoadEnabled bool
 }
 
 type LocalChaincode struct {
@@ -123,7 +127,7 @@ func (l *LocalChaincode) createMetadataMapFromReferences() map[string][]*chainco
 	return references
 }
 
-func NewCache(resources *Resources, myOrgMSPID string, metadataManager MetadataHandler, custodian *ChaincodeCustodian, ebMetadata *externalbuilder.MetadataProvider) *Cache {
+func NewCache(resources *Resources, myOrgMSPID string, metadataManager MetadataHandler, custodian *ChaincodeCustodian, ebMetadata *externalbuilder.MetadataProvider, lazyLoadEnabled bool) *Cache {
 	return &Cache{
 		chaincodeCustodian: custodian,
 		definedChaincodes:  map[string]*ChannelCache{},
@@ -132,6 +136,7 @@ func NewCache(resources *Resources, myOrgMSPID string, metadataManager MetadataH
 		MyOrgMSPID:         myOrgMSPID,
 		eventBroker:        NewEventBroker(resources.ChaincodeStore, resources.PackageParser, ebMetadata),
 		MetadataHandler:    metadataManager,
+		lazyLoadEnabled:    lazyLoadEnabled,
 	}
 }
 
@@ -140,6 +145,12 @@ func NewCache(resources *Resources, myOrgMSPID string, metadataManager MetadataH
 // this would be part of the constructor, but, we cannot rely on the chaincode store being created
 // before the cache is created.
 func (c *Cache) InitializeLocalChaincodes() error {
+	// Skip initialization if lazy loading is enabled
+	if c.lazyLoadEnabled {
+		logger.Infof("Skipping pre-initialization of local chaincodes due to lazy loading being enabled")
+		return nil
+	}
+
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	ccPackages, err := c.Resources.ChaincodeStore.ListInstalledChaincodes()
@@ -178,6 +189,37 @@ func (c *Cache) InitializeLocalChaincodes() error {
 	}
 
 	return nil
+}
+
+// loadChaincodeInfoOnDemand loads chaincode info for a given packageID when lazy loading is enabled
+func (c *Cache) loadChaincodeInfoOnDemand(packageID string) (*ChaincodeInstallInfo, error) {
+	if !c.lazyLoadEnabled {
+		return nil, nil
+	}
+
+	// Try to load the chaincode package
+	ccPackageBytes, err := c.Resources.ChaincodeStore.Load(packageID)
+	if err != nil {
+		if _, ok := err.(*persistence.CodePackageNotFoundErr); ok {
+			// Chaincode not found, return nil to indicate it's not installed
+			return nil, nil
+		}
+		return nil, errors.WithMessagef(err, "could not load chaincode with package ID '%s'", packageID)
+	}
+
+	// Parse the chaincode package
+	parsedCCPackage, err := c.Resources.PackageParser.Parse(ccPackageBytes)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "could not parse chaincode with package ID '%s'", packageID)
+	}
+
+	// Create and return the install info
+	return &ChaincodeInstallInfo{
+		PackageID: packageID,
+		Type:      parsedCCPackage.Metadata.Type,
+		Path:      parsedCCPackage.Metadata.Path,
+		Label:     parsedCCPackage.Metadata.Label,
+	}, nil
 }
 
 // Name returns the name of the listener
@@ -347,15 +389,54 @@ func (c *Cache) ChaincodeInfo(channelID, name string) (*LocalChaincodeInfo, erro
 	}
 
 	c.mutex.RLock()
-	defer c.mutex.RUnlock()
 	channelChaincodes, ok := c.definedChaincodes[channelID]
 	if !ok {
+		c.mutex.RUnlock()
 		return nil, errors.Errorf("unknown channel '%s'", channelID)
 	}
 
 	cachedChaincode, ok := channelChaincodes.Chaincodes[name]
 	if !ok {
+		c.mutex.RUnlock()
 		return nil, errors.Errorf("unknown chaincode '%s' for channel '%s'", name, channelID)
+	}
+
+	// If InstallInfo is nil and lazy loading is enabled, try to load it on-demand
+	if cachedChaincode.InstallInfo == nil && c.lazyLoadEnabled {
+		if cachedChaincode.PackageID == "" {
+			logger.Warnf("[ChaincodeInfo] PackageID is empty for chaincode '%s' on channel '%s' (lazy loading enabled)", name, channelID)
+		} else {
+			logger.Warnf("[ChaincodeInfo] Attempting lazy load for chaincode '%s' on channel '%s' with PackageID '%s'", name, channelID, cachedChaincode.PackageID)
+		}
+	}
+
+	c.mutex.RUnlock()
+
+	// We need to acquire a write lock to update the cache
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	// Re-check the condition after acquiring write lock
+	if cachedChaincode.InstallInfo == nil && cachedChaincode.PackageID != "" {
+		// Load the chaincode info on-demand using the stored PackageID
+		installInfo, err := c.loadChaincodeInfoOnDemand(cachedChaincode.PackageID)
+		if err != nil {
+			logger.Debugf("Could not load chaincode info for package ID '%s': %v", cachedChaincode.PackageID, err)
+		} else if installInfo != nil {
+			// Update the cache with the loaded install info
+			cachedChaincode.InstallInfo = installInfo
+
+			// Also update the localChaincode entry if it exists
+			encodedCCHash := protoutil.MarshalOrPanic(&lb.StateData{
+				Type: &lb.StateData_String_{String_: cachedChaincode.PackageID},
+			})
+			hashOfCCHash := string(util.ComputeSHA256(encodedCCHash))
+			if localChaincode, exists := c.localChaincodes[hashOfCCHash]; exists {
+				localChaincode.Info = installInfo
+			}
+
+			logger.Warnf("Lazy loaded chaincode info for '%s' on channel '%s' with package ID '%s'", name, channelID, installInfo.PackageID)
+		}
 	}
 
 	return &LocalChaincodeInfo{
@@ -557,6 +638,19 @@ func (c *Cache) update(initializing bool, channelID string, dirtyChaincodes map[
 		if !isLocalPackage {
 			logger.Debugf("Channel %s for chaincode definition %s:%s does not have a chaincode source defined", channelID, name, chaincodeDefinition.EndorsementInfo.Version)
 			continue
+		}
+
+		// After confirming isLocalPackage, extract the actual PackageID from the private state and store it in the cache
+		packageID, err := c.Resources.Serializer.DeserializeFieldAsString(ChaincodeSourcesName, privateName, "PackageID", publicState)
+		if err != nil {
+			return errors.WithMessagef(err, "could not deserialize PackageID for '%s' on channel '%s'", name, channelID)
+		}
+		cachedChaincode.PackageID = packageID
+
+		if packageID == "" {
+			logger.Warnf("[update] Extracted PackageID is empty for chaincode '%s' on channel '%s' (privateName: %s)", name, channelID, privateName)
+		} else {
+			logger.Warnf("[update] Extracted PackageID '%s' for chaincode '%s' on channel '%s' (privateName: %s)", packageID, name, channelID, privateName)
 		}
 
 		cachedChaincode.InstallInfo = localChaincode.Info
