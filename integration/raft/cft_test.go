@@ -16,7 +16,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -347,6 +346,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Adding new ordering service node")
+			Consistently(ordererRunners[0].Err(), 5*time.Second, time.Second).ShouldNot(gbytes.Say("active nodes store"))
 			addConsenter(network, peer, orderers[0], "testchannel", &etcdraft.Consenter{
 				ServerTlsCert: ordererCert,
 				ClientTlsCert: ordererCert,
@@ -738,6 +738,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			for _, orderer := range orderers {
 				ordererConfig := network.ReadOrdererConfig(orderer)
 				ordererConfig.General.Cluster.TLSHandshakeTimeShift = 5 * time.Minute
+				ordererConfig.Admin.TLS.TLSHandshakeTimeShift = 5 * time.Minute
 				network.WriteOrdererConfig(orderer, ordererConfig)
 			}
 
@@ -809,6 +810,8 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			for _, orderer := range orderers {
 				ordererConfig := network.ReadOrdererConfig(orderer)
 				ordererConfig.General.TLS.TLSHandshakeTimeShift = 5 * time.Minute
+				ordererConfig.Admin.TLS.TLSHandshakeTimeShift = 5 * time.Minute
+				ordererConfig.Admin.TLS.Enabled = true
 				network.WriteOrdererConfig(orderer, ordererConfig)
 			}
 
@@ -825,7 +828,8 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			By("submitting config updates to orderers with expired TLS certs to replace the expired certs")
 			timeShift := 5 * time.Minute
-			for _, o := range orderers {
+			ordererRunners := []*ginkgomon.Runner{o1Runner, o2Runner, o3Runner}
+			for i, o := range orderers {
 				channelConfig := fetchConfig(network, peer, o, nwo.ClusterPort, "testchannel", timeShift)
 				c := conftx.New(channelConfig)
 				err = c.Orderer().RemoveConsenter(consenterChannelConfig(network, o))
@@ -837,7 +841,8 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				By("updating the config for " + o.Name)
-				updateOrdererConfig(network, o, nwo.ClusterPort, "testchannel", timeShift, c.OriginalConfig(), c.UpdatedConfig(), peer)
+				Consistently(ordererRunners[i].Err(), 5*time.Second, time.Second).ShouldNot(gbytes.Say("active nodes store"))
+				updateOrdererConfig(network, o, nwo.ClusterPort, "testchannel", timeShift, c.OriginalConfig(), c.UpdatedConfig(), peer, o)
 			}
 
 			By("Killing orderers #5")
@@ -856,6 +861,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			for _, o := range orderers {
 				ordererConfig := network.ReadOrdererConfig(o)
 				ordererConfig.General.TLS.TLSHandshakeTimeShift = 0
+				ordererConfig.Admin.TLS.TLSHandshakeTimeShift = 0
 				network.WriteOrdererConfig(o, ordererConfig)
 			}
 
@@ -1324,23 +1330,20 @@ func updateOrdererConfig(n *nwo.Network, orderer *nwo.Orderer, port nwo.PortName
 	currentBlockNumber := currentConfigBlockNumber(n, submitter, orderer, port, channel, tlsHandshakeTimeShift)
 	nwo.ComputeUpdateOrdererConfig(updateFile, n, channel, current, updated, submitter, additionalSigners...)
 
-	Eventually(func() bool {
-		sess, err := n.OrdererAdminSession(orderer, submitter, commands.ChannelUpdate{
-			ChannelID:             channel,
-			Orderer:               n.OrdererAddress(orderer, port),
-			File:                  updateFile,
-			ClientAuth:            n.ClientAuthRequired,
-			TLSHandshakeTimeShift: tlsHandshakeTimeShift,
-		})
-		Expect(err).NotTo(HaveOccurred())
+	updateEnvelopeBytes, err := os.ReadFile(updateFile)
+	Expect(err).NotTo(HaveOccurred())
 
-		sess.Wait(n.EventuallyTimeout)
-		if sess.ExitCode() != 0 {
-			return false
-		}
+	updateEnvelope := &common.Envelope{}
+	err = proto.Unmarshal(updateEnvelopeBytes, updateEnvelope)
+	Expect(err).NotTo(HaveOccurred())
 
-		return strings.Contains(string(sess.Err.Contents()), "Successfully submitted channel update")
-	}, n.EventuallyTimeout).Should(BeTrue())
+	ready := make(chan struct{})
+	go func() {
+		defer GinkgoRecover()
+		nwo.UpdateTimeShift(n, orderer, channel, updateEnvelope, tlsHandshakeTimeShift)
+		close(ready)
+	}()
+	Eventually(ready, n.EventuallyTimeout).Should(BeClosed())
 
 	ccb := func() uint64 {
 		return currentConfigBlockNumber(n, submitter, orderer, port, channel, tlsHandshakeTimeShift)

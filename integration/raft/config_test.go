@@ -242,9 +242,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Value:     protoutil.MarshalOrPanic(consensusTypeValue),
 			}
 
-			sess := nwo.UpdateOrdererConfigSession(network, orderer, "testchannel", config, updatedConfig, org1Peer0, orderer)
-			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-			Expect(sess.Err).To(gbytes.Say(`invalid new config metadata: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
+			nwo.UpdateOrdererConfigFails(network, orderer, "testchannel", config, updatedConfig, "invalid new config metadata: ElectionTick (10) must be greater than HeartbeatTick (10)", org1Peer0, orderer)
 		})
 	})
 
@@ -455,9 +453,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 					Port:          newConsenterPort,
 				},
 			)
-			sess = nwo.UpdateOrdererConfigSession(network, orderer, "testchannel", current, updated, peer, orderer)
-			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-			Expect(sess.Err).To(gbytes.Say(fmt.Sprintf("BAD_REQUEST -- error applying config update to existing channel 'testchannel': consensus metadata update for channel config update is invalid: invalid new config metadata: consenter %s:%d has invalid certificate: verifying tls client cert with serial number %d: x509: certificate signed by unknown authority", newConsenterHost, newConsenterPort, newConsenterCert.SerialNumber)))
+			nwo.UpdateOrdererConfigFails(network, orderer, "testchannel", current, updated, fmt.Sprintf("error applying config update to existing channel 'testchannel': consensus metadata update for channel config update is invalid: invalid new config metadata: consenter %s:%d has invalid certificate: verifying tls client cert with serial number %d: x509: certificate signed by unknown authority", newConsenterHost, newConsenterPort, newConsenterCert.SerialNumber), peer, orderer)
 		})
 	})
 
@@ -617,11 +613,13 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}
 
 			By(fmt.Sprintf("Rotating cert on leader %d", leader))
+			Consistently(ordererRunners[leaderIndex].Err(), 5*time.Second, time.Second).ShouldNot(gbytes.Say("active nodes store"))
 			rotate(leaderIndex)
 
 			By("Rotating certificates of other orderer nodes")
 			for i := range certificateRotations {
 				if i != leaderIndex {
+					Consistently(ordererRunners[i].Err(), 5*time.Second, time.Second).ShouldNot(gbytes.Say("active nodes store"))
 					rotate(i)
 				}
 			}
@@ -707,6 +705,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				port := network.OrdererPort(o, nwo.ClusterPort)
 
 				By(fmt.Sprintf("Adding the future certificate of orderer node %d", i))
+				Consistently(ordererRunners[i].Err(), 5*time.Second, time.Second).ShouldNot(gbytes.Say("active nodes store"))
 				for _, channelName := range []string{"testchannel"} {
 					addConsenter(network, peer, o, channelName, &etcdraft.Consenter{
 						ServerTlsCert: rotation.newCert,
@@ -733,6 +732,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				assertBlockReception(expectedBlockNumPerChannel[i*2], orderers, peer, network)
 
 				By("Removing the previous certificate of the old orderer")
+				Consistently(ordererRunner.Err(), 5*time.Second, time.Second).ShouldNot(gbytes.Say("active nodes store"))
 				for _, channelName := range []string{"testchannel"} {
 					removeConsenter(network, peer, network.Orderers[(i+1)%len(network.Orderers)], channelName, rotation.oldCert)
 				}
@@ -1088,11 +1088,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Removing alive node from 2/3 cluster")
 			peer := network.Peer("Org1", "peer0")
 			current, updated := consenterRemover(network, peer, o2, "testchannel", certificatesOfOrderers[1].oldCert)
-			Eventually(func() []byte {
-				sess := nwo.UpdateOrdererConfigSession(network, o2, "testchannel", current, updated, peer, o2)
-				Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-				return sess.Err.Contents()
-			}, network.EventuallyTimeout).Should(ContainSubstring("2 out of 3 nodes are alive, configuration will result in quorum loss"))
+			nwo.UpdateOrdererConfigFails(network, o2, "testchannel", current, updated, "2 out of 3 nodes are alive, configuration will result in quorum loss", peer, o2)
 
 			By("Adding node to 2/3 cluster")
 			current, updated = consenterAdder(
@@ -1107,9 +1103,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 					Port:          uint32(network.OrdererPort(o1, nwo.ListenPort)),
 				},
 			)
-			sess := nwo.UpdateOrdererConfigSession(network, o2, "testchannel", current, updated, peer, o2)
-			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-			Expect(string(sess.Err.Contents())).To(ContainSubstring("2 out of 3 nodes are alive, configuration will result in quorum loss"))
+			nwo.UpdateOrdererConfigFails(network, o2, "testchannel", current, updated, "2 out of 3 nodes are alive, configuration will result in quorum loss", peer, o2)
 		})
 	})
 
@@ -1160,6 +1154,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Expect(err).To(Not(HaveOccurred()))
 
 			ordererEvicted1st := network.Orderers[(firstEvictedNode+1)%3]
+			Consistently(ordererRunners[(firstEvictedNode+1)%3].Err(), 5*time.Second, time.Second).ShouldNot(gbytes.Say("active nodes store"))
 			removeConsenter(network, peer, ordererEvicted1st, "testchannel", server1CertBytes)
 
 			var survivedOrdererRunners []*ginkgomon.Runner
