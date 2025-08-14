@@ -1,15 +1,18 @@
-package system // import "github.com/docker/docker/pkg/system"
+package archive
 
 import (
+	"os"
 	"time"
 
 	"golang.org/x/sys/windows"
 )
 
-// setCTime will set the create time on a file. On Windows, this requires
-// calling SetFileTime and explicitly including the create time.
-func setCTime(path string, ctime time.Time) error {
-	pathp, err := windows.UTF16PtrFromString(path)
+func chtimes(name string, atime time.Time, mtime time.Time) error {
+	if err := os.Chtimes(name, atime, mtime); err != nil {
+		return err
+	}
+
+	pathp, err := windows.UTF16PtrFromString(name)
 	if err != nil {
 		return err
 	}
@@ -20,6 +23,10 @@ func setCTime(path string, ctime time.Time) error {
 		return err
 	}
 	defer windows.Close(h)
-	c := windows.NsecToFiletime(ctime.UnixNano())
+	c := windows.NsecToFiletime(mtime.UnixNano())
 	return windows.SetFileTime(h, &c, nil, nil)
+}
+
+func lchtimes(name string, atime time.Time, mtime time.Time) error {
+	return nil
 }
