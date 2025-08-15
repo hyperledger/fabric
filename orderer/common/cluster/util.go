@@ -118,7 +118,11 @@ func (mp MemberMapping) LookupByClientCert(cert []byte) *Stub {
 // LookupByIdentity retrieves a Stub by Identity
 func (mp MemberMapping) LookupByIdentity(identity []byte) *Stub {
 	for _, stub := range mp.id2stub {
-		if bytes.Equal(identity, stub.Identity) {
+		equal, err := compareCertPublicKeys(identity, stub.Identity)
+		if err != nil {
+			continue
+		}
+		if equal {
 			return stub
 		}
 	}
