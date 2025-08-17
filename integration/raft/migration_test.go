@@ -298,7 +298,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 
 			// In maintenance mode deliver requests are open to those entities that satisfy the /Channel/Orderer/Readers policy
 			By("1) Verify: delivery request from peer is blocked")
-			err := checkPeerDeliverRequest(o1, peer, network, "testchannel")
+			err := checkDeliverRequest(o1, peer, network, "testchannel")
 			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
 
 			// === Step 2: config update on standard channel, State=NORMAL, abort ===
@@ -313,7 +313,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			Expect(std1BlockNum).To(Equal(std1EntryBlockNum + 1))
 
 			By("2) Verify: standard channel delivery requests from peer unblocked")
-			err = checkPeerDeliverRequest(o1, peer, network, "testchannel")
+			err = checkDeliverRequest(o1, peer, network, "testchannel")
 			Expect(err).NotTo(HaveOccurred())
 
 			By("2) Verify: Normal TX's on standard channel are permitted again")
@@ -337,7 +337,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
 			By("3) Verify: delivery request from peer is blocked")
-			err = checkPeerDeliverRequest(o1, peer, network, "testchannel")
+			err = checkDeliverRequest(o1, peer, network, "testchannel")
 			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
 
 			By("3) Verify: Normal TX's on standard channel are blocked")
@@ -499,7 +499,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 
 			// In maintenance mode deliver requests are open to those entities that satisfy the /Channel/Orderer/Readers policy
 			By("1) Verify: delivery request from peer is blocked")
-			err := checkPeerDeliverRequest(o1, peer, network, "testchannel")
+			err := checkDeliverRequest(o1, peer, network, "testchannel")
 			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
 
 			// === Step 2: config update on standard channel, State=MAINTENANCE, type=etcdraft ===
@@ -529,14 +529,7 @@ var _ = Describe("ConsensusTypeMigration", func() {
 
 			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
-			assertBlockReception(
-				map[string]int{
-					"testchannel": int(chan1BlockNum),
-				},
-				[]*nwo.Orderer{o1},
-				peer,
-				network,
-			)
+			assertBlockReception(map[string]int{"testchannel": int(chan1BlockNum)}, []*nwo.Orderer{o1}, network)
 
 			Eventually(o1Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
 			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
@@ -605,27 +598,41 @@ func updateConfigWithBatchTimeout(updatedConfig *common.Config) {
 	}
 }
 
-func checkPeerDeliverRequest(o *nwo.Orderer, submitter *nwo.Peer, network *nwo.Network, channelName string) error {
-	c := commands.ChannelFetch{
-		ChannelID:  channelName,
-		Block:      "newest",
-		OutputFile: "/dev/null",
-		Orderer:    network.OrdererAddress(o, nwo.ListenPort),
-	}
+func checkDeliverRequest(orderer *nwo.Orderer, submitter *nwo.Peer, network *nwo.Network, channelName string) error {
+	signer := network.PeerUserSigner(submitter, "User1")
 
-	sess, err := network.PeerUserSession(submitter, "User1", c)
+	denv, err := protoutil.CreateSignedEnvelope(
+		common.HeaderType_DELIVER_SEEK_INFO,
+		channelName,
+		signer,
+		&protosorderer.SeekInfo{
+			Behavior: protosorderer.SeekInfo_BLOCK_UNTIL_READY,
+			Start: &protosorderer.SeekPosition{
+				Type: &protosorderer.SeekPosition_Newest{
+					Newest: &protosorderer.SeekNewest{},
+				},
+			},
+			Stop: &protosorderer.SeekPosition{
+				Type: &protosorderer.SeekPosition_Newest{
+					Newest: &protosorderer.SeekNewest{},
+				},
+			},
+		},
+		0,
+		0,
+	)
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
-	sessErr := string(sess.Err.Contents())
-	sessExitCode := sess.ExitCode()
-	if sessExitCode != 0 && strings.Contains(sessErr, "FORBIDDEN") {
-		return errors.New("FORBIDDEN")
-	}
-	if sessExitCode == 0 && strings.Contains(sessErr, "Received block: ") {
-		return nil
+
+	_, err = ordererclient.Deliver(network, orderer, denv)
+	if err != nil {
+		if strings.Contains(err.Error(), "FORBIDDEN") {
+			return errors.New("FORBIDDEN")
+		} else {
+			return fmt.Errorf("Unexpected result: Err=%v", err)
+		}
 	}
 
-	return fmt.Errorf("Unexpected result: ExitCode=%d, Err=%s", sessExitCode, sessErr)
+	return nil
 }
 
 func updateOrdererEndpointsConfigFails(n *nwo.Network, orderer *nwo.Orderer, channel string, current, updated *common.Config, peer *nwo.Peer, additionalSigners ...*nwo.Peer) {
