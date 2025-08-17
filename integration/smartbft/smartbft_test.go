@@ -13,7 +13,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
-	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -2908,52 +2907,72 @@ func renewOrdererTLSCertificates(network *nwo.Network, orderers ...*nwo.Orderer)
 	}
 
 	for filePath, certPEM := range serverTLSCerts {
-		renewedCert, _ := expireCertificate(certPEM, ordererTLSCACert, ordererTLSCAKey, time.Now().Add(time.Hour))
+		renewedCert := renewCertificate(certPEM, ordererTLSCACert, ordererTLSCAKey, time.Now().Add(time.Hour))
 		err = os.WriteFile(filePath, renewedCert, 0o600)
 		log.Printf("Previous cert %s and next cert %s for orderer", string(certPEM), string(renewedCert))
 		Expect(err).NotTo(HaveOccurred())
 	}
 }
 
-func expireCertificate(certPEM, caCertPEM, caKeyPEM []byte, expirationTime time.Time) (expiredcertPEM []byte, earlyMadeCACertPEM []byte) {
+// renewCertificate generates a new certificate with the same public key and subject as the original,
+// but with a new NotAfter (expiration time). Only the expiration is changed.
+func renewCertificate(certPEM, caCertPEM, caKeyPEM []byte, notAfter time.Time) (renewedCertPEM []byte) {
+	// Parse CA private key
 	keyAsDER, _ := pem.Decode(caKeyPEM)
 	caKeyWithoutType, err := x509.ParsePKCS8PrivateKey(keyAsDER.Bytes)
 	Expect(err).NotTo(HaveOccurred())
 	caKey := caKeyWithoutType.(*ecdsa.PrivateKey)
 
+	// Parse CA certificate
 	caCertAsDER, _ := pem.Decode(caCertPEM)
 	caCert, err := x509.ParseCertificate(caCertAsDER.Bytes)
 	Expect(err).NotTo(HaveOccurred())
 
+	// Parse the original certificate
 	certAsDER, _ := pem.Decode(certPEM)
 	cert, err := x509.ParseCertificate(certAsDER.Bytes)
 	Expect(err).NotTo(HaveOccurred())
 
-	cert.Raw = nil
-	caCert.Raw = nil
-	// The certificate was made 1 hour ago
-	cert.NotBefore = time.Now().Add((-1) * time.Hour)
-	// As well as the CA certificate
-	caCert.NotBefore = time.Now().Add((-1) * time.Hour)
-	// The certificate expires now
-	cert.NotAfter = expirationTime
+	// Create a new certificate template with the same fields as the original,
+	// but with a new NotAfter (expiration time)
+	newCert := &x509.Certificate{
+		SerialNumber:          cert.SerialNumber,
+		Subject:               cert.Subject,
+		NotBefore:             cert.NotBefore,
+		NotAfter:              notAfter,
+		KeyUsage:              cert.KeyUsage,
+		ExtKeyUsage:           cert.ExtKeyUsage,
+		UnknownExtKeyUsage:    cert.UnknownExtKeyUsage,
+		BasicConstraintsValid: cert.BasicConstraintsValid,
+		IsCA:                  cert.IsCA,
+		DNSNames:              cert.DNSNames,
+		EmailAddresses:        cert.EmailAddresses,
+		IPAddresses:           cert.IPAddresses,
+		URIs:                  cert.URIs,
+		SubjectKeyId:          cert.SubjectKeyId,
+		AuthorityKeyId:        cert.AuthorityKeyId,
+		SignatureAlgorithm:    cert.SignatureAlgorithm,
+		PublicKeyAlgorithm:    cert.PublicKeyAlgorithm,
+		PublicKey:             cert.PublicKey,
+		PolicyIdentifiers:     cert.PolicyIdentifiers,
+		CRLDistributionPoints: cert.CRLDistributionPoints,
+		OCSPServer:            cert.OCSPServer,
+		IssuingCertificateURL: cert.IssuingCertificateURL,
+		ExtraExtensions:       cert.ExtraExtensions,
+		Extensions:            cert.Extensions,
+	}
 
-	// The CA signs the certificate
-	certBytes, err := x509.CreateCertificate(rand.Reader, cert, caCert, cert.PublicKey, caKey)
+	// The CA signs the new certificate
+	certBytes, err := x509.CreateCertificate(rand.Reader, newCert, caCert, cert.PublicKey, caKey)
 	Expect(err).NotTo(HaveOccurred())
 
-	// The CA signs its own certificate
-	caCertBytes, err := x509.CreateCertificate(rand.Reader, caCert, caCert, caCert.PublicKey, caKey)
-	Expect(err).NotTo(HaveOccurred())
-
-	expiredcertPEM = pem.EncodeToMemory(&pem.Block{Bytes: certBytes, Type: "CERTIFICATE"})
-	earlyMadeCACertPEM = pem.EncodeToMemory(&pem.Block{Bytes: caCertBytes, Type: "CERTIFICATE"})
+	renewedCertPEM = pem.EncodeToMemory(&pem.Block{Bytes: certBytes, Type: "CERTIFICATE"})
 	return
 }
 
 // renewOrdererEnrollmentCertificates renews the signcert for each orderer with a given expirationTime
 // and re-writes it to the orderer's signcerts directory, matching the actual crypto structure.
-func renewOrdererEnrollmentCertificates(network *nwo.Network, expirationTime time.Time, orderers ...*nwo.Orderer) {
+func renewOrdererEnrollmentCertificates(network *nwo.Network, notAfter time.Time, orderers ...*nwo.Orderer) {
 	if len(orderers) == 0 {
 		return
 	}
@@ -2985,69 +3004,63 @@ func renewOrdererEnrollmentCertificates(network *nwo.Network, expirationTime tim
 		ordererSignCert, err := os.ReadFile(ordererSignCertPath)
 		Expect(err).NotTo(HaveOccurred())
 
-		renewedCert, _ := expireOrdererSignCertificate(ordererSignCert, ordererCACert, ordererCAKey, expirationTime)
+		renewedCert := renewCertificate(ordererSignCert, ordererCACert, ordererCAKey, notAfter)
 		err = os.WriteFile(ordererSignCertPath, renewedCert, 0o600)
 		Expect(err).NotTo(HaveOccurred())
 	}
 }
 
-// expireCertificate re-creates and re-signs a certificate with a new expirationTime
-func expireOrdererSignCertificate(certPEM, caCertPEM, caKeyPEM []byte, expirationTime time.Time) (expiredcertPEM []byte, earlyMadeCACertPEM []byte) {
+// renewOrdererSignCertificate generates a new certificate with the same public key and subject as the original,
+// but with a new expirationTime. The only field that is changed is NotAfter (the expiration time).
+func renewOrdererSignCertificate(certPEM, caCertPEM, caKeyPEM []byte, notAfter time.Time) (renewedCertPEM []byte) {
+	// Parse CA private key
 	keyAsDER, _ := pem.Decode(caKeyPEM)
 	caKeyWithoutType, err := x509.ParsePKCS8PrivateKey(keyAsDER.Bytes)
 	Expect(err).NotTo(HaveOccurred())
 	caKey := caKeyWithoutType.(*ecdsa.PrivateKey)
 
+	// Parse CA certificate
 	caCertAsDER, _ := pem.Decode(caCertPEM)
 	caCert, err := x509.ParseCertificate(caCertAsDER.Bytes)
 	Expect(err).NotTo(HaveOccurred())
 
+	// Parse original certificate
 	certAsDER, _ := pem.Decode(certPEM)
 	cert, err := x509.ParseCertificate(certAsDER.Bytes)
 	Expect(err).NotTo(HaveOccurred())
 
-	cert.Raw = nil
-	caCert.Raw = nil
-	// The certificate was made 1 minute ago (1 hour doesn't work since cert will be before original CA cert NotBefore time)
-	cert.NotBefore = time.Now().Add((-1) * time.Minute)
-	// As well as the CA certificate
-	caCert.NotBefore = time.Now().Add((-1) * time.Minute)
-	// The certificate expires now
-	cert.NotAfter = expirationTime
+	// Create a new certificate template with the same fields as the original,
+	// but with a new NotAfter (expiration) time. NotBefore is kept the same as the original.
+	newCert := &x509.Certificate{
+		SerialNumber:          cert.SerialNumber,
+		Subject:               cert.Subject,
+		NotBefore:             cert.NotBefore,
+		NotAfter:              notAfter,
+		KeyUsage:              cert.KeyUsage,
+		ExtKeyUsage:           cert.ExtKeyUsage,
+		UnknownExtKeyUsage:    cert.UnknownExtKeyUsage,
+		BasicConstraintsValid: cert.BasicConstraintsValid,
+		IsCA:                  cert.IsCA,
+		DNSNames:              cert.DNSNames,
+		EmailAddresses:        cert.EmailAddresses,
+		IPAddresses:           cert.IPAddresses,
+		URIs:                  cert.URIs,
+		SubjectKeyId:          cert.SubjectKeyId,
+		AuthorityKeyId:        cert.AuthorityKeyId,
+		SignatureAlgorithm:    cert.SignatureAlgorithm,
+		PublicKeyAlgorithm:    cert.PublicKeyAlgorithm,
+		PublicKey:             cert.PublicKey,
+		CRLDistributionPoints: cert.CRLDistributionPoints,
+		PolicyIdentifiers:     cert.PolicyIdentifiers,
+		ExtraExtensions:       cert.ExtraExtensions,
+		Extensions:            cert.Extensions,
+	}
 
-	// The CA creates and signs a temporary certificate
-	tempCertBytes, err := x509.CreateCertificate(rand.Reader, cert, caCert, cert.PublicKey, caKey)
+	// Sign the new certificate with the CA
+	certBytes, err := x509.CreateCertificate(rand.Reader, newCert, caCert, cert.PublicKey, caKey)
 	Expect(err).NotTo(HaveOccurred())
 
-	// Force the certificate to use Low-S signature to be compatible with the identities that Fabric uses
-
-	// Parse the certificate to extract the TBS (to-be-signed) data
-	tempParsedCert, err := x509.ParseCertificate(tempCertBytes)
-	Expect(err).NotTo(HaveOccurred())
-
-	// Hash the TBS data
-	hash := sha256.Sum256(tempParsedCert.RawTBSCertificate)
-
-	// Sign the hash using forceLowS
-	r, s, err := forceLowS(caKey, hash[:])
-	Expect(err).NotTo(HaveOccurred())
-
-	// Encode the signature (DER format)
-	signature := append(r.Bytes(), s.Bytes()...)
-
-	// Replace the signature in the certificate with the low-s signature
-	tempParsedCert.Signature = signature
-
-	// Re-encode the certificate with the low-s signature
-	certBytes, err := x509.CreateCertificate(rand.Reader, tempParsedCert, caCert, cert.PublicKey, caKey)
-	Expect(err).NotTo(HaveOccurred())
-
-	// The CA signs its own certificate
-	caCertBytes, err := x509.CreateCertificate(rand.Reader, caCert, caCert, caCert.PublicKey, caKey)
-	Expect(err).NotTo(HaveOccurred())
-
-	expiredcertPEM = pem.EncodeToMemory(&pem.Block{Bytes: certBytes, Type: "CERTIFICATE"})
-	earlyMadeCACertPEM = pem.EncodeToMemory(&pem.Block{Bytes: caCertBytes, Type: "CERTIFICATE"})
+	renewedCertPEM = pem.EncodeToMemory(&pem.Block{Bytes: certBytes, Type: "CERTIFICATE"})
 	return
 }
 
