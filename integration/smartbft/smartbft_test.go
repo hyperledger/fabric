@@ -181,7 +181,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			var ordererRunners []*ginkgomon.Runner
 			for _, orderer := range network.Orderers {
 				runner := network.OrdererRunner(orderer)
-				runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.common.cluster=debug:orderer.consensus.smartbft=debug:policies.ImplicitOrderer=debug")
+				runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug")
 				ordererRunners = append(ordererRunners, runner)
 				proc := ifrit.Invoke(runner)
 				ordererProcesses = append(ordererProcesses, proc)
