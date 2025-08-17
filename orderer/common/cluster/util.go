@@ -118,7 +118,7 @@ func (mp MemberMapping) LookupByClientCert(cert []byte) *Stub {
 // LookupByIdentity retrieves a Stub by Identity
 func (mp MemberMapping) LookupByIdentity(identity []byte) *Stub {
 	for _, stub := range mp.id2stub {
-		equal, err := compareCertPublicKeys(identity, stub.Identity)
+		equal, err := CompareCertPublicKeys(identity, stub.Identity)
 		if err != nil {
 			continue
 		}
@@ -838,7 +838,7 @@ func ExtractPublicKeyFromCert(der []byte) ([]byte, error) {
 	return x509.MarshalPKIXPublicKey(cert.PublicKey)
 }
 
-func compareCertPublicKeys(cert1, cert2 []byte) (bool, error) {
+func CompareCertPublicKeys(cert1, cert2 []byte) (bool, error) {
 	// Extract public key using the same approach as IsConsenterOfChannel
 	bl, _ := pem.Decode(cert1)
 	if bl == nil {

@@ -7,11 +7,17 @@ SPDX-License-Identifier: Apache-2.0
 package cluster_test
 
 import (
+	"bytes"
 	"context"
+	x509crypto "crypto"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/pem"
 	"io"
+	"math/big"
 	"strconv"
 	"strings"
 	"testing"
@@ -22,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/util"
 	comm_utils "github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
@@ -616,6 +623,147 @@ func TestClusterServiceVerifyAuthRequest(t *testing.T) {
 		_, err = svc.VerifyAuthRequest(stream, stepRequest)
 		require.EqualError(t, err, "signature mismatch: signature invalid")
 	})
+
+	// Note: The scenario where certificates have same public keys but different bytes
+	// is thoroughly tested in the unit tests (TestCompareCertPublicKeysWithSameKeyDifferentBytes).
+	// Integration testing of this scenario is complex due to signature verification requirements,
+	// but the unit tests demonstrate that the compareCertPublicKeys function correctly handles
+	// the case where bytes.Equal fails but public keys match.
+
+	t.Run("Verify auth request fails when certificates have different public keys", func(t *testing.T) {
+		t.Parallel()
+		authRequest := proto.Clone(nodeAuthRequest).(*orderer.NodeAuthRequest)
+
+		handler := &mocks.Handler{}
+		var err error
+
+		// Generate the server certificate that will be used as NodeIdentity
+		serverKeyPair, _ := ca.NewServerCertKeyPair()
+		serverKeyPair.Cert, err = crypto.SanitizeX509Cert(serverKeyPair.Cert)
+		require.NoError(t, err)
+
+		// Generate a completely different certificate with different public key
+		differentKeyPair, _ := ca.NewClientCertKeyPair()
+		differentCert, err := crypto.SanitizeX509Cert(differentKeyPair.Cert)
+		require.NoError(t, err)
+
+		// Verify that the certificates have different bytes AND different public keys
+		require.False(t, bytes.Equal(differentCert, serverKeyPair.Cert), "Certificates should have different bytes")
+
+		svc := &cluster.ClusterService{
+			StreamCountReporter: &cluster.StreamCountReporter{
+				Metrics: cluster.NewMetrics(&disabled.Provider{}),
+			},
+			Logger:              flogging.MustGetLogger("TestClusterServiceVerifyAuthRequest9"),
+			MembershipByChannel: make(map[string]*cluster.ChannelMembersConfig),
+			RequestHandler:      handler,
+			NodeIdentity:        serverKeyPair.Cert,
+		}
+
+		stream := &mocks.ClusterStepStream{}
+
+		stream.On("Context").Return(stepStream.Context())
+		bindingHash := cluster.GetSessionBindingHash(authRequest)
+		authRequest.SessionBinding, _ = cluster.GetTLSSessionBinding(stepStream.Context(), bindingHash)
+
+		asnSignFields, _ := asn1.Marshal(cluster.AuthRequestSignature{
+			Version:        int64(authRequest.Version),
+			Timestamp:      cluster.EncodeTimestamp(authRequest.Timestamp),
+			FromId:         strconv.FormatUint(authRequest.FromId, 10),
+			ToId:           strconv.FormatUint(authRequest.ToId, 10),
+			SessionBinding: authRequest.SessionBinding,
+			Channel:        authRequest.Channel,
+		})
+
+		clientKeyPair, _ := ca.NewClientCertKeyPair()
+		clientKeyPair.Cert, err = crypto.SanitizeX509Cert(clientKeyPair.Cert)
+		require.NoError(t, err)
+
+		signer := signingIdentity{clientKeyPair.Signer}
+		sig, err := signer.Sign(cluster.SHA256Digest(asnSignFields))
+		require.NoError(t, err)
+
+		authRequest.Signature = sig
+		stepRequest := &orderer.ClusterNodeServiceStepRequest{
+			Payload: &orderer.ClusterNodeServiceStepRequest_NodeAuthrequest{
+				NodeAuthrequest: authRequest,
+			},
+		}
+
+		// Configure the service with a certificate that has different public key than NodeIdentity
+		// The key test is that toIdentity (differentCert) has different public key from NodeIdentity (serverKeyPair.Cert)
+		// Both bytes.Equal and compareCertPublicKeys should fail
+		svc.ConfigureNodeCerts(authRequest.Channel, []*common.Consenter{
+			{Id: uint32(authRequest.FromId), Identity: clientKeyPair.Cert},
+			{Id: uint32(authRequest.ToId), Identity: differentCert}, // Different bytes, different public key
+		})
+
+		// This should fail because compareCertPublicKeys will return false for different public keys
+		_, err = svc.VerifyAuthRequest(stream, stepRequest)
+		require.EqualError(t, err, "node id mismatch", "Auth request should fail when certificates have different public keys")
+	})
+
+	t.Run("Verify auth request handles certificate parsing errors gracefully", func(t *testing.T) {
+		t.Parallel()
+		authRequest := proto.Clone(nodeAuthRequest).(*orderer.NodeAuthRequest)
+
+		handler := &mocks.Handler{}
+		var err error
+
+		// Create an invalid certificate (malformed PEM)
+		invalidCert := []byte("-----BEGIN CERTIFICATE-----\ninvalid_certificate_data\n-----END CERTIFICATE-----")
+
+		svc := &cluster.ClusterService{
+			StreamCountReporter: &cluster.StreamCountReporter{
+				Metrics: cluster.NewMetrics(&disabled.Provider{}),
+			},
+			Logger:              flogging.MustGetLogger("TestClusterServiceVerifyAuthRequest10"),
+			MembershipByChannel: make(map[string]*cluster.ChannelMembersConfig),
+			RequestHandler:      handler,
+			NodeIdentity:        invalidCert, // Use invalid cert as NodeIdentity to trigger parsing error
+		}
+
+		stream := &mocks.ClusterStepStream{}
+
+		stream.On("Context").Return(stepStream.Context())
+		bindingHash := cluster.GetSessionBindingHash(authRequest)
+		authRequest.SessionBinding, _ = cluster.GetTLSSessionBinding(stepStream.Context(), bindingHash)
+
+		asnSignFields, _ := asn1.Marshal(cluster.AuthRequestSignature{
+			Version:        int64(authRequest.Version),
+			Timestamp:      cluster.EncodeTimestamp(authRequest.Timestamp),
+			FromId:         strconv.FormatUint(authRequest.FromId, 10),
+			ToId:           strconv.FormatUint(authRequest.ToId, 10),
+			SessionBinding: authRequest.SessionBinding,
+			Channel:        authRequest.Channel,
+		})
+
+		clientKeyPair, _ := ca.NewClientCertKeyPair()
+		clientKeyPair.Cert, err = crypto.SanitizeX509Cert(clientKeyPair.Cert)
+		require.NoError(t, err)
+
+		signer := signingIdentity{clientKeyPair.Signer}
+		sig, err := signer.Sign(cluster.SHA256Digest(asnSignFields))
+		require.NoError(t, err)
+
+		authRequest.Signature = sig
+		stepRequest := &orderer.ClusterNodeServiceStepRequest{
+			Payload: &orderer.ClusterNodeServiceStepRequest_NodeAuthrequest{
+				NodeAuthrequest: authRequest,
+			},
+		}
+
+		// Configure the service with valid certificate for toIdentity
+		svc.ConfigureNodeCerts(authRequest.Channel, []*common.Consenter{
+			{Id: uint32(authRequest.FromId), Identity: clientKeyPair.Cert},
+			{Id: uint32(authRequest.ToId), Identity: clientKeyPair.Cert}, // Valid certificate
+		})
+
+		// This should fail due to certificate parsing error when comparing with NodeIdentity (invalid cert)
+		_, err = svc.VerifyAuthRequest(stream, stepRequest)
+		require.Error(t, err, "Auth request should fail when certificate cannot be parsed")
+		require.Contains(t, err.Error(), "failed to compare cert public keys", "Error should indicate certificate comparison failure")
+	})
 }
 
 func TestConfigureNodeCerts(t *testing.T) {
@@ -784,4 +932,61 @@ func TestClusterRequestAsString(t *testing.T) {
 			require.Contains(t, retVal, tc.exp)
 		})
 	}
+}
+
+// generateCertWithSameKey creates a new certificate using the provided signer (private key)
+// but signed by a different CA, resulting in different certificate bytes but same public key
+func generateCertWithSameKey(signer x509crypto.Signer, signingCA tlsgen.CA) ([]byte, error) {
+	// Create a new certificate template
+	template, err := newCertTemplate()
+	if err != nil {
+		return nil, err
+	}
+
+	// Set up the template for a client certificate
+	template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
+
+	// Get the public key from the signer
+	publicKey := signer.Public()
+
+	// Get the signing CA's certificate
+	caCertPEM := signingCA.CertBytes()
+	block, _ := pem.Decode(caCertPEM)
+	if block == nil {
+		return nil, errors.New("failed to decode CA certificate")
+	}
+	caCert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the certificate using the existing private key but signed by different CA
+	rawBytes, err := x509.CreateCertificate(rand.Reader, &template, caCert, publicKey, signingCA.Signer())
+	if err != nil {
+		return nil, err
+	}
+
+	// Encode as PEM
+	certPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: rawBytes,
+	})
+
+	// Sanitize the certificate
+	return crypto.SanitizeX509Cert(certPEM)
+}
+
+// Helper function to create certificate template (copied from tlsgen package for testing)
+func newCertTemplate() (x509.Certificate, error) {
+	sn, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		return x509.Certificate{}, err
+	}
+	return x509.Certificate{
+		Subject:      pkix.Name{SerialNumber: sn.String()},
+		NotBefore:    time.Now().Add(time.Hour * (-24)),
+		NotAfter:     time.Now().Add(time.Hour * 24),
+		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		SerialNumber: sn,
+	}, nil
 }

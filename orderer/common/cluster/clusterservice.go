@@ -163,7 +163,7 @@ func (s *ClusterService) VerifyAuthRequest(stream orderer.ClusterNodeService_Ste
 		return nil, errors.Errorf("node %d is not member of channel %s", authReq.ToId, authReq.Channel)
 	}
 
-	equal, err := compareCertPublicKeys(toIdentity, s.NodeIdentity)
+	equal, err := CompareCertPublicKeys(toIdentity, s.NodeIdentity)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to compare cert public keys")
 	}
