@@ -13,11 +13,13 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"io"
 	"log"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -176,8 +178,6 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
-			network.EventuallyTimeout *= 1
-
 			var ordererRunners []*ginkgomon.Runner
 			for _, orderer := range network.Orderers {
 				runner := network.OrdererRunner(orderer)
@@ -193,7 +193,6 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			peer := network.Peer("Org1", "peer0")
-			_ = peer
 
 			sess, err := network.ConfigTxGen(commands.OutputBlock{
 				ChannelID:   "testchannel1",
@@ -242,8 +241,11 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				Eventually(ordererProcesses[i].Wait(), network.EventuallyTimeout).Should(Receive())
 			}
 
-			By("Renewing the certificates of the orderers")
-			renewOrdererCertificates(network, network.Orderers...)
+			By("Renewing the TLS certificates of the orderers")
+			renewOrdererTLSCertificates(network, network.Orderers...)
+
+			By("Renewing the enrollment certificates of the orderers")
+			renewOrdererEnrollmentCertificates(network, time.Now().Add(time.Hour), network.Orderers...)
 
 			By("Starting the orderers again")
 			for i := range network.Orderers {
@@ -2882,7 +2884,7 @@ func createPrePrepareRequest(
 	return req, block
 }
 
-func renewOrdererCertificates(network *nwo.Network, orderers ...*nwo.Orderer) {
+func renewOrdererTLSCertificates(network *nwo.Network, orderers ...*nwo.Orderer) {
 	if len(orderers) == 0 {
 		return
 	}
@@ -2947,4 +2949,120 @@ func expireCertificate(certPEM, caCertPEM, caKeyPEM []byte, expirationTime time.
 	expiredcertPEM = pem.EncodeToMemory(&pem.Block{Bytes: certBytes, Type: "CERTIFICATE"})
 	earlyMadeCACertPEM = pem.EncodeToMemory(&pem.Block{Bytes: caCertBytes, Type: "CERTIFICATE"})
 	return
+}
+
+// renewOrdererEnrollmentCertificates renews the signcert for each orderer with a given expirationTime
+// and re-writes it to the orderer's signcerts directory, matching the actual crypto structure.
+func renewOrdererEnrollmentCertificates(network *nwo.Network, expirationTime time.Time, orderers ...*nwo.Orderer) {
+	if len(orderers) == 0 {
+		return
+	}
+
+	for _, orderer := range orderers {
+		ordererDomain := network.Organization(orderer.Organization).Domain
+		// Use the orderer name as it appears in the file system, not the nwo.Orderer.ID()
+		// The directory is .../orderers/<ordererName>.<domain>/msp/signcerts/<ordererName>.<domain>-cert.pem
+		ordererName := orderer.Name
+		ordererFQDN := fmt.Sprintf("%s.%s", ordererName, ordererDomain)
+
+		// CA key and cert for the org
+		ordererCAKeyPath := filepath.Join(
+			network.RootDir, "crypto", "ordererOrganizations", ordererDomain, "ca", "priv_sk",
+		)
+		ordererCAKey, err := os.ReadFile(ordererCAKeyPath)
+		Expect(err).NotTo(HaveOccurred())
+
+		ordererCACertPath := filepath.Join(
+			network.RootDir, "crypto", "ordererOrganizations", ordererDomain, "ca", fmt.Sprintf("ca.%s-cert.pem", ordererDomain),
+		)
+		ordererCACert, err := os.ReadFile(ordererCACertPath)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Path to the orderer's signcert
+		ordererSignCertPath := filepath.Join(
+			network.RootDir, "crypto", "ordererOrganizations", ordererDomain, "orderers", ordererFQDN, "msp", "signcerts", fmt.Sprintf("%s-cert.pem", ordererFQDN),
+		)
+		ordererSignCert, err := os.ReadFile(ordererSignCertPath)
+		Expect(err).NotTo(HaveOccurred())
+
+		renewedCert, _ := expireOrdererSignCertificate(ordererSignCert, ordererCACert, ordererCAKey, expirationTime)
+		err = os.WriteFile(ordererSignCertPath, renewedCert, 0o600)
+		Expect(err).NotTo(HaveOccurred())
+	}
+}
+
+// expireCertificate re-creates and re-signs a certificate with a new expirationTime
+func expireOrdererSignCertificate(certPEM, caCertPEM, caKeyPEM []byte, expirationTime time.Time) (expiredcertPEM []byte, earlyMadeCACertPEM []byte) {
+	keyAsDER, _ := pem.Decode(caKeyPEM)
+	caKeyWithoutType, err := x509.ParsePKCS8PrivateKey(keyAsDER.Bytes)
+	Expect(err).NotTo(HaveOccurred())
+	caKey := caKeyWithoutType.(*ecdsa.PrivateKey)
+
+	caCertAsDER, _ := pem.Decode(caCertPEM)
+	caCert, err := x509.ParseCertificate(caCertAsDER.Bytes)
+	Expect(err).NotTo(HaveOccurred())
+
+	certAsDER, _ := pem.Decode(certPEM)
+	cert, err := x509.ParseCertificate(certAsDER.Bytes)
+	Expect(err).NotTo(HaveOccurred())
+
+	cert.Raw = nil
+	caCert.Raw = nil
+	// The certificate was made 1 minute ago (1 hour doesn't work since cert will be before original CA cert NotBefore time)
+	cert.NotBefore = time.Now().Add((-1) * time.Minute)
+	// As well as the CA certificate
+	caCert.NotBefore = time.Now().Add((-1) * time.Minute)
+	// The certificate expires now
+	cert.NotAfter = expirationTime
+
+	// The CA creates and signs a temporary certificate
+	tempCertBytes, err := x509.CreateCertificate(rand.Reader, cert, caCert, cert.PublicKey, caKey)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Force the certificate to use Low-S signature to be compatible with the identities that Fabric uses
+
+	// Parse the certificate to extract the TBS (to-be-signed) data
+	tempParsedCert, err := x509.ParseCertificate(tempCertBytes)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Hash the TBS data
+	hash := sha256.Sum256(tempParsedCert.RawTBSCertificate)
+
+	// Sign the hash using forceLowS
+	r, s, err := forceLowS(caKey, hash[:])
+	Expect(err).NotTo(HaveOccurred())
+
+	// Encode the signature (DER format)
+	signature := append(r.Bytes(), s.Bytes()...)
+
+	// Replace the signature in the certificate with the low-s signature
+	tempParsedCert.Signature = signature
+
+	// Re-encode the certificate with the low-s signature
+	certBytes, err := x509.CreateCertificate(rand.Reader, tempParsedCert, caCert, cert.PublicKey, caKey)
+	Expect(err).NotTo(HaveOccurred())
+
+	// The CA signs its own certificate
+	caCertBytes, err := x509.CreateCertificate(rand.Reader, caCert, caCert, caCert.PublicKey, caKey)
+	Expect(err).NotTo(HaveOccurred())
+
+	expiredcertPEM = pem.EncodeToMemory(&pem.Block{Bytes: certBytes, Type: "CERTIFICATE"})
+	earlyMadeCACertPEM = pem.EncodeToMemory(&pem.Block{Bytes: caCertBytes, Type: "CERTIFICATE"})
+	return
+}
+
+// forceLowS ensures the ECDSA signature's S value is low
+func forceLowS(priv *ecdsa.PrivateKey, hash []byte) (r, s *big.Int, err error) {
+	r, s, err = ecdsa.Sign(rand.Reader, priv, hash)
+	Expect(err).NotTo(HaveOccurred())
+
+	curveOrder := priv.Curve.Params().N
+	halfOrder := new(big.Int).Rsh(curveOrder, 1) // curveOrder / 2
+
+	// If s is greater than half the order, replace it with curveOrder - s
+	if s.Cmp(halfOrder) > 0 {
+		s.Sub(curveOrder, s)
+	}
+
+	return r, s, nil
 }

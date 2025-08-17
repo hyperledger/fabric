@@ -827,3 +827,38 @@ func EncodeTimestamp(t *timestamppb.Timestamp) []byte {
 	binary.LittleEndian.PutUint64(b, uint64(t.Seconds))
 	return b
 }
+
+// ExtractPublicKeyFromCert extracts the public key from an X.509 certificate
+func ExtractPublicKeyFromCert(der []byte) ([]byte, error) {
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse certificate")
+	}
+
+	return x509.MarshalPKIXPublicKey(cert.PublicKey)
+}
+
+func compareCertPublicKeys(cert1, cert2 []byte) (bool, error) {
+	// Extract public key using the same approach as IsConsenterOfChannel
+	bl, _ := pem.Decode(cert1)
+	if bl == nil {
+		return false, errors.Errorf("node identity certificate %s is not a valid PEM", string(cert1))
+	}
+
+	publicKey1, err := ExtractPublicKeyFromCert(bl.Bytes)
+	if err != nil {
+		return false, err
+	}
+
+	bl, _ = pem.Decode(cert2)
+	if bl == nil {
+		return false, errors.Errorf("node identity certificate %s is not a valid PEM", string(cert2))
+	}
+
+	publicKey2, err := ExtractPublicKeyFromCert(bl.Bytes)
+	if err != nil {
+		return false, err
+	}
+
+	return bytes.Equal(publicKey1, publicKey2), nil
+}

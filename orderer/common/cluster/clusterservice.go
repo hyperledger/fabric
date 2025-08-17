@@ -8,9 +8,7 @@ package cluster
 
 import (
 	"bytes"
-	"crypto/x509"
 	"encoding/asn1"
-	"encoding/pem"
 	"fmt"
 	"io"
 	"strconv"
@@ -44,25 +42,6 @@ type ChannelMembersConfig struct {
 	MemberMapping     map[uint64][]byte
 	AuthorizedStreams sync.Map // Stream ID --> node identifier
 	nextStreamID      uint64
-}
-
-// extractPublicKeyFromCert extracts the public key from an X.509 certificate
-func extractPublicKeyFromCert(certBytes []byte) ([]byte, error) {
-	// First decode PEM if it's PEM encoded
-	block, _ := pem.Decode(certBytes)
-	var der []byte
-	if block != nil {
-		der = block.Bytes
-	} else {
-		der = certBytes
-	}
-
-	cert, err := x509.ParseCertificate(der)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse certificate")
-	}
-
-	return x509.MarshalPKIXPublicKey(cert.PublicKey)
 }
 
 // ClusterService implements the server API for ClusterNodeService service
@@ -199,31 +178,6 @@ func (s *ClusterService) VerifyAuthRequest(stream orderer.ClusterNodeService_Ste
 	}
 
 	return authReq, nil
-}
-
-func compareCertPublicKeys(cert1, cert2 []byte) (bool, error) {
-	// Extract public key using the same approach as IsConsenterOfChannel
-	bl, _ := pem.Decode(cert1)
-	if bl == nil {
-		return false, errors.Errorf("node identity certificate %s is not a valid PEM", string(cert1))
-	}
-
-	publicKey1, err := extractPublicKeyFromCert(bl.Bytes)
-	if err != nil {
-		return false, err
-	}
-
-	bl, _ = pem.Decode(cert2)
-	if bl == nil {
-		return false, errors.Errorf("node identity certificate %s is not a valid PEM", string(cert2))
-	}
-
-	publicKey2, err := extractPublicKeyFromCert(bl.Bytes)
-	if err != nil {
-		return false, err
-	}
-
-	return bytes.Equal(publicKey1, publicKey2), nil
 }
 
 func (s *ClusterService) handleMessage(stream ClusterStepStream, addr string, exp *certificateExpirationCheck, channel string, sender uint64, streamID uint64) error {
