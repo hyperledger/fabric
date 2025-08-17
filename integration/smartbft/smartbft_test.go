@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math/big"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -265,6 +264,22 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			})
 
 			assertBlockReception(map[string]int{"testchannel1": 2}, network.Orderers, peer, network)
+
+			By("Try deploying chaincode")
+			peers := network.PeersWithChannel(channel)
+			Expect(len(peers)).ToNot(Equal(0))
+
+			// deploy the chaincode
+			deployChaincode(network, channel, testDir)
+
+			assertBlockReception(map[string]int{"testchannel1": 6}, network.Orderers, peer, network)
+
+			// test the chaincodes
+			invokeQuery(network, peer, orderer, channel, 90)
+			invokeQuery(network, peer, orderer, channel, 80)
+			invokeQuery(network, peer, orderer, channel, 70)
+			invokeQuery(network, peer, orderer, channel, 60)
+
 		})
 		It("smartbft node addition and removal", func() {
 			networkConfig := nwo.MultiNodeSmartBFT()
@@ -3008,74 +3023,4 @@ func renewOrdererEnrollmentCertificates(network *nwo.Network, notAfter time.Time
 		err = os.WriteFile(ordererSignCertPath, renewedCert, 0o600)
 		Expect(err).NotTo(HaveOccurred())
 	}
-}
-
-// renewOrdererSignCertificate generates a new certificate with the same public key and subject as the original,
-// but with a new expirationTime. The only field that is changed is NotAfter (the expiration time).
-func renewOrdererSignCertificate(certPEM, caCertPEM, caKeyPEM []byte, notAfter time.Time) (renewedCertPEM []byte) {
-	// Parse CA private key
-	keyAsDER, _ := pem.Decode(caKeyPEM)
-	caKeyWithoutType, err := x509.ParsePKCS8PrivateKey(keyAsDER.Bytes)
-	Expect(err).NotTo(HaveOccurred())
-	caKey := caKeyWithoutType.(*ecdsa.PrivateKey)
-
-	// Parse CA certificate
-	caCertAsDER, _ := pem.Decode(caCertPEM)
-	caCert, err := x509.ParseCertificate(caCertAsDER.Bytes)
-	Expect(err).NotTo(HaveOccurred())
-
-	// Parse original certificate
-	certAsDER, _ := pem.Decode(certPEM)
-	cert, err := x509.ParseCertificate(certAsDER.Bytes)
-	Expect(err).NotTo(HaveOccurred())
-
-	// Create a new certificate template with the same fields as the original,
-	// but with a new NotAfter (expiration) time. NotBefore is kept the same as the original.
-	newCert := &x509.Certificate{
-		SerialNumber:          cert.SerialNumber,
-		Subject:               cert.Subject,
-		NotBefore:             cert.NotBefore,
-		NotAfter:              notAfter,
-		KeyUsage:              cert.KeyUsage,
-		ExtKeyUsage:           cert.ExtKeyUsage,
-		UnknownExtKeyUsage:    cert.UnknownExtKeyUsage,
-		BasicConstraintsValid: cert.BasicConstraintsValid,
-		IsCA:                  cert.IsCA,
-		DNSNames:              cert.DNSNames,
-		EmailAddresses:        cert.EmailAddresses,
-		IPAddresses:           cert.IPAddresses,
-		URIs:                  cert.URIs,
-		SubjectKeyId:          cert.SubjectKeyId,
-		AuthorityKeyId:        cert.AuthorityKeyId,
-		SignatureAlgorithm:    cert.SignatureAlgorithm,
-		PublicKeyAlgorithm:    cert.PublicKeyAlgorithm,
-		PublicKey:             cert.PublicKey,
-		CRLDistributionPoints: cert.CRLDistributionPoints,
-		PolicyIdentifiers:     cert.PolicyIdentifiers,
-		ExtraExtensions:       cert.ExtraExtensions,
-		Extensions:            cert.Extensions,
-	}
-
-	// Sign the new certificate with the CA
-	certBytes, err := x509.CreateCertificate(rand.Reader, newCert, caCert, cert.PublicKey, caKey)
-	Expect(err).NotTo(HaveOccurred())
-
-	renewedCertPEM = pem.EncodeToMemory(&pem.Block{Bytes: certBytes, Type: "CERTIFICATE"})
-	return
-}
-
-// forceLowS ensures the ECDSA signature's S value is low
-func forceLowS(priv *ecdsa.PrivateKey, hash []byte) (r, s *big.Int, err error) {
-	r, s, err = ecdsa.Sign(rand.Reader, priv, hash)
-	Expect(err).NotTo(HaveOccurred())
-
-	curveOrder := priv.Curve.Params().N
-	halfOrder := new(big.Int).Rsh(curveOrder, 1) // curveOrder / 2
-
-	// If s is greater than half the order, replace it with curveOrder - s
-	if s.Cmp(halfOrder) > 0 {
-		s.Sub(curveOrder, s)
-	}
-
-	return r, s, nil
 }
