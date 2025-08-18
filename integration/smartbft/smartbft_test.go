@@ -17,7 +17,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -2923,7 +2922,6 @@ func renewOrdererTLSCertificates(network *nwo.Network, orderers ...*nwo.Orderer)
 	for filePath, certPEM := range serverTLSCerts {
 		renewedCert := renewCertificate(certPEM, ordererTLSCACert, ordererTLSCAKey, time.Now().Add(time.Hour))
 		err = os.WriteFile(filePath, renewedCert, 0o600)
-		log.Printf("Previous cert %s and next cert %s for orderer", string(certPEM), string(renewedCert))
 		Expect(err).NotTo(HaveOccurred())
 	}
 }
