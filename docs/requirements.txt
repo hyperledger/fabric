@@ -7,7 +7,7 @@ docutils==0.21.2
 idna==3.10
 imagesize==1.4.1
 importlib-metadata==8.5.0
-Jinja2==3.1.5
+Jinja2==3.1.6
 markdown-it-py==3.0.0
 MarkupSafe==3.0.1
 mdit-py-plugins==0.4.2
