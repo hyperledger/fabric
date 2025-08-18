@@ -279,7 +279,6 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			invokeQuery(network, peer, orderer, channel, 80)
 			invokeQuery(network, peer, orderer, channel, 70)
 			invokeQuery(network, peer, orderer, channel, 60)
-
 		})
 		It("smartbft node addition and removal", func() {
 			networkConfig := nwo.MultiNodeSmartBFT()
