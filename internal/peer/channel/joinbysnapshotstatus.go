@@ -9,6 +9,7 @@ package channel
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	common2 "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
@@ -88,7 +89,7 @@ func (cc *endorserClient) joinBySnapshotStatus() (*pb.JoinBySnapshotStatus, erro
 		return nil, fmt.Errorf("failed sending proposal, due to %s", err)
 	}
 
-	if proposalResp.Response == nil || proposalResp.Response.Status != 200 {
+	if proposalResp.Response == nil || proposalResp.Response.Status != http.StatusOK {
 		return nil, fmt.Errorf("received bad response, status %d: %s", proposalResp.Response.Status, proposalResp.Response.Message)
 	}
 

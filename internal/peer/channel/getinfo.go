@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
@@ -67,7 +68,7 @@ func (cc *endorserClient) getBlockChainInfo() (*cb.BlockchainInfo, error) {
 		return nil, errors.WithMessage(err, "failed sending proposal")
 	}
 
-	if proposalResp.Response == nil || proposalResp.Response.Status != 200 {
+	if proposalResp.Response == nil || proposalResp.Response.Status != http.StatusOK {
 		return nil, errors.Errorf("received bad response, status %d: %s", proposalResp.Response.Status, proposalResp.Response.Message)
 	}
 
