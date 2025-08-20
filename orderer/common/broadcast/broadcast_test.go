@@ -224,7 +224,7 @@ var _ = Describe("Broadcast", func() {
 
 		Context("when the message processor returns an error", func() {
 			BeforeEach(func() {
-				fakeSupport.ProcessNormalMsgReturns(0, fmt.Errorf("normal-messsage-processing-error"))
+				fakeSupport.ProcessNormalMsgReturns(0, fmt.Errorf("normal-message-processing-error"))
 			})
 
 			It("returns the error and an error status", func() {
@@ -233,7 +233,7 @@ var _ = Describe("Broadcast", func() {
 
 				Expect(fakeABServer.SendCallCount()).To(Equal(1))
 				Expect(fakeABServer.SendArgsForCall(0)).To(ProtoEqual(
-					&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST, Info: "normal-messsage-processing-error"},
+					&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST, Info: "normal-message-processing-error"},
 				))
 			})
 

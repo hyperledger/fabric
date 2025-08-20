@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 
 	pcommon "github.com/hyperledger/fabric-protos-go-apiv2/common"
@@ -106,7 +107,7 @@ func executeJoin(cf *ChannelCmdFactory, spec *pb.ChaincodeSpec) (err error) {
 		return ProposalFailedErr("nil proposal response")
 	}
 
-	if proposalResp.Response.Status != 0 && proposalResp.Response.Status != 200 {
+	if proposalResp.Response.Status != 0 && proposalResp.Response.Status != http.StatusOK {
 		return ProposalFailedErr(fmt.Sprintf("bad proposal response %d: %s", proposalResp.Response.Status, proposalResp.Response.Message))
 	}
 	logger.Info("Successfully submitted proposal to join channel")

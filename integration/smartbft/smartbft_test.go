@@ -1152,13 +1152,13 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			leader := network.Orderers[0]
 
 			By("Sending valid TX")
-			env := ordererclient.CreateBroadcastEnvelope(network, leader, channel, []byte("MESSSAGE"))
+			env := ordererclient.CreateBroadcastEnvelope(network, leader, channel, []byte("MESSAGE"))
 			resp, err := ordererclient.Broadcast(network, leader, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
 			By("Sending TX with corrupted signature")
-			env = ordererclient.CreateBroadcastEnvelope(network, leader, channel, []byte("MESSSAGE_2"))
+			env = ordererclient.CreateBroadcastEnvelope(network, leader, channel, []byte("MESSAGE_2"))
 			env.Signature = []byte{1, 2, 3}
 			resp, err = ordererclient.Broadcast(network, leader, env)
 			Expect(err).NotTo(HaveOccurred())

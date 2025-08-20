@@ -10,6 +10,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -265,7 +266,7 @@ func GetOrdererEndpointOfChain(chainID string, signer Signer, endorserClient pb.
 		return nil, errors.New("received nil proposal response")
 	}
 
-	if proposalResp.Response.Status != 0 && proposalResp.Response.Status != 200 {
+	if proposalResp.Response.Status != 0 && proposalResp.Response.Status != http.StatusOK {
 		return nil, errors.Errorf("error bad proposal response %d: %s", proposalResp.Response.Status, proposalResp.Response.Message)
 	}
 
