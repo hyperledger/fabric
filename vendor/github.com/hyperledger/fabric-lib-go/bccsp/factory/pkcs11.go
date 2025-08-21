@@ -10,6 +10,7 @@ SPDX-License-Identifier: Apache-2.0
 package factory
 
 import (
+	"os"
 	"reflect"
 	"strings"
 
@@ -54,6 +55,36 @@ func initFactories(config *FactoryOpts) error {
 		config.SW = GetDefaultOpts().SW
 	}
 
+	// PKCS11-Based BCCSP
+	if config.Default == "PKCS11" {
+		if config.PKCS11 == nil {
+			// Auto-populate PKCS11 configuration from environment variables
+			config.PKCS11 = &pkcs11.PKCS11Opts{
+				Library:        os.Getenv("CORE_PEER_BCCSP_PKCS11_LIBRARY"),
+				Label:          os.Getenv("CORE_PEER_BCCSP_PKCS11_LABEL"),
+				Pin:            os.Getenv("CORE_PEER_BCCSP_PKCS11_PIN"),
+				Hash:           os.Getenv("CORE_PEER_BCCSP_PKCS11_HASH"),
+				Security:       256,  // Default security level
+				SoftwareVerify: true, // Default to software verification
+			}
+
+			// Set default values if not provided
+			if config.PKCS11.Label == "" {
+				config.PKCS11.Label = "ForFabric"
+			}
+			if config.PKCS11.Hash == "" {
+				config.PKCS11.Hash = "SHA2"
+			}
+		}
+
+		f := &PKCS11Factory{}
+		var err error
+		defaultBCCSP, err = initBCCSP(f, config)
+		if err != nil {
+			return errors.Wrapf(err, "Failed initializing PKCS11.BCCSP")
+		}
+	}
+
 	// Software-Based BCCSP
 	if config.Default == "SW" && config.SW != nil {
 		f := &SWFactory{}
@@ -61,16 +92,6 @@ func initFactories(config *FactoryOpts) error {
 		defaultBCCSP, err = initBCCSP(f, config)
 		if err != nil {
 			return errors.Wrap(err, "Failed initializing SW.BCCSP")
-		}
-	}
-
-	// PKCS11-Based BCCSP
-	if config.Default == "PKCS11" && config.PKCS11 != nil {
-		f := &PKCS11Factory{}
-		var err error
-		defaultBCCSP, err = initBCCSP(f, config)
-		if err != nil {
-			return errors.Wrapf(err, "Failed initializing PKCS11.BCCSP")
 		}
 	}
 
