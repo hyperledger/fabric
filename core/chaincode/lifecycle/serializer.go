@@ -58,7 +58,7 @@ func (m Marshaler) Marshal(msg proto.Message) ([]byte, error) {
 	return proto.Marshal(msg)
 }
 
-var ProtoMessageType = reflect.TypeOf((*proto.Message)(nil)).Elem()
+var ProtoMessageType = reflect.TypeFor[proto.Message]()
 
 // Serializer is used to write structures into the db and to read them back out.
 // Although it's unfortunate to write a custom serializer, rather than to use something

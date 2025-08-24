@@ -44,11 +44,11 @@ func (d *Dispatcher) Dispatch(inputBytes []byte, methodName string, receiver int
 		return nil, errors.Errorf("receiver %T.%s returns %d values but expected 2", receiver, methodName, method.Type().NumOut())
 	}
 
-	if !method.Type().Out(0).Implements(reflect.TypeOf((*proto.Message)(nil)).Elem()) {
+	if !method.Type().Out(0).Implements(reflect.TypeFor[proto.Message]()) {
 		return nil, errors.Errorf("receiver %T.%s does not return a an implementor of proto.Message as its first return value", receiver, methodName)
 	}
 
-	if !method.Type().Out(1).Implements(reflect.TypeOf((*error)(nil)).Elem()) {
+	if !method.Type().Out(1).Implements(reflect.TypeFor[error]()) {
 		return nil, errors.Errorf("receiver %T.%s does not return an error as its second return value", receiver, methodName)
 	}
 
