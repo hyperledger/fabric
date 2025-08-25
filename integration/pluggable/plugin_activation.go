@@ -33,7 +33,7 @@ func SetEndorsementPluginActivationFolder(path string) {
 	os.Setenv(EndorsementPluginEnvVar, path)
 }
 
-// ValidationPluginActivationFilePath returns the name of the folder that if
+// ValidationPluginActivationFolder returns the name of the folder that if
 // the file of the peer's id in it exists - it indicates that the validation plugin was activated
 // for that peer
 func ValidationPluginActivationFolder() string {
