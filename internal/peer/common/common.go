@@ -155,14 +155,10 @@ func InitBCCSPConfig(bccspConfig *factory.FactoryOpts) error {
 	if subv == nil {
 		return fmt.Errorf("could not get peer BCCSP configuration")
 	}
-	subv.SetEnvPrefix(CmdRootPeerBCCSP)
-	subv.AutomaticEnv()
-	subv.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	subv.SetTypeByDefaultValue(true)
 
 	opts := viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
 		mapstructure.StringToTimeDurationHookFunc(),
-		mapstructure.StringToSliceHookFunc(","),
+		mapstructure.StringToWeakSliceHookFunc(","),
 		factory.StringToKeyIds(),
 	))
 
