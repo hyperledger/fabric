@@ -1331,6 +1331,215 @@ func TestRegistrar_UpdateChannel(t *testing.T) {
 	})
 }
 
+func TestRegistrar_FetchBlock(t *testing.T) {
+	var (
+		tmpdir              string
+		tlsCA               tlsgen.CA
+		confAppRaft         *genesisconfig.Profile
+		genesisBlockAppRaft *cb.Block
+		cryptoProvider      bccsp.BCCSP
+		config              localconfig.TopLevel
+		ledgerFactory       blockledger.Factory
+		consenter           *mocks.Consenter
+		mockConsenters      map[string]consensus.Consenter
+		signer              msp.SigningIdentity
+	)
+
+	setup := func(t *testing.T) {
+		var err error
+		tmpdir = t.TempDir()
+
+		tlsCA, err = tlsgen.NewCA()
+		require.NoError(t, err)
+
+		confAppRaft = genesisconfig.Load(genesisconfig.SampleDevModeEtcdRaftProfile, configtest.GetDevConfigDir())
+		confAppRaft.Consortiums = nil
+		confAppRaft.Consortium = ""
+		generateCertificates(t, confAppRaft, tlsCA, tmpdir)
+		bootstrapper, err := encoder.NewBootstrapper(confAppRaft)
+		require.NoError(t, err, "cannot create bootstrapper")
+		genesisBlockAppRaft = bootstrapper.GenesisBlockForChannel("my-raft-channel")
+		require.NotNil(t, genesisBlockAppRaft)
+
+		cryptoProvider, err = sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		require.NoError(t, err)
+
+		config = localconfig.TopLevel{
+			General: localconfig.General{
+				BootstrapMethod: "none",
+				Cluster: localconfig.Cluster{
+					ReplicationBufferSize:   1,
+					ReplicationPullTimeout:  time.Microsecond,
+					ReplicationRetryTimeout: time.Microsecond,
+					ReplicationMaxRetries:   2,
+				},
+			},
+			ChannelParticipation: localconfig.ChannelParticipation{
+				Enabled: true,
+			},
+			FileLedger: localconfig.FileLedger{
+				Location: tmpdir,
+			},
+		}
+
+		ledgerFactory = newFactory(tmpdir)
+		consenter = &mocks.Consenter{}
+		consenter.HandleChainCalls(handleChainCluster)
+		mockConsenters = map[string]consensus.Consenter{confAppRaft.Orderer.OrdererType: consenter}
+
+		mspDir := configtest.GetDevMspDir()
+		mspConfig, err := msp.GetLocalMspConfig(mspDir, nil, "SampleOrg")
+		require.NoError(t, err)
+		err = mspmgmt.GetLocalMSP(factory.GetDefault()).Setup(mspConfig)
+		require.NoError(t, err)
+		signer, err = mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
+		require.NoError(t, err)
+	}
+
+	cleanup := func() {
+		ledgerFactory.Close()
+	}
+
+	t.Run("Reject fetch block when removal is occurring", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
+		registrar.Initialize(mockConsenters)
+
+		registrar.pendingRemoval["some-app-channel"] = consensus.StaticStatusReporter{ConsensusRelation: types.ConsensusRelationFollower, Status: types.StatusInactive}
+
+		block, err := registrar.FetchBlock("some-app-channel", "oldest")
+		require.Equal(t, err, types.ErrChannelPendingRemoval)
+		require.Nil(t, block)
+	})
+
+	t.Run("Reject fetch block when removal previously failed", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
+		registrar.Initialize(mockConsenters)
+
+		registrar.pendingRemoval["some-app-channel"] = consensus.StaticStatusReporter{ConsensusRelation: types.ConsensusRelationFollower, Status: types.StatusFailed}
+
+		block, err := registrar.FetchBlock("some-app-channel", "oldest")
+		require.Equal(t, types.ErrChannelRemovalFailure, err)
+		require.Nil(t, block)
+	})
+
+	t.Run("Reject fetch block when channel is follower", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
+		registrar.Initialize(mockConsenters)
+
+		registrar.followers["some-app-channel"] = &follower.Chain{}
+
+		block, err := registrar.FetchBlock("some-app-channel", "oldest")
+		require.Equal(t, types.ErrChannelNotReady, err)
+		require.Nil(t, block)
+	})
+
+	t.Run("Reject fetch block when channel is not exist", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
+		registrar.Initialize(mockConsenters)
+
+		block, err := registrar.FetchBlock("some-app-channel", "oldest")
+		require.Equal(t, types.ErrChannelNotExist, err)
+		require.Nil(t, block)
+	})
+
+	t.Run("Reject fetch block when RetrieveBlockByNumber return error", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
+		registrar.Initialize(mockConsenters)
+
+		ledger := &mocks.ReadWriter{}
+		ledger.RetrieveBlockByNumberReturns(nil, errors.New("some error"))
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		require.NoError(t, err)
+		cs := &ChainSupport{
+			ledgerResources: &ledgerResources{ReadWriter: ledger},
+			BCCSP:           cryptoProvider,
+		}
+		registrar.chains["some-app-channel"] = cs
+
+		block, err := registrar.FetchBlock("some-app-channel", "oldest")
+		require.EqualError(t, err, "some error")
+		require.Nil(t, block)
+	})
+
+	t.Run("Reject fetch block when blockId is failed", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
+		registrar.Initialize(mockConsenters)
+
+		ledger := &mocks.ReadWriter{}
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		require.NoError(t, err)
+		cs := &ChainSupport{
+			ledgerResources: &ledgerResources{ReadWriter: ledger},
+			BCCSP:           cryptoProvider,
+		}
+		registrar.chains["some-app-channel"] = cs
+
+		block, err := registrar.FetchBlock("some-app-channel", "blabla")
+		require.EqualError(t, err, "strconv.Atoi: parsing \"blabla\": invalid syntax")
+		require.Nil(t, block)
+
+		block, err = registrar.FetchBlock("some-app-channel", "1q1")
+		require.EqualError(t, err, "strconv.Atoi: parsing \"1q1\": invalid syntax")
+		require.Nil(t, block)
+	})
+
+	t.Run("Fetch block - OK", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		serNode := mockCrypto()
+		serNode.SerializeCalls(signer.Serialize)
+		serNode.SignCalls(signer.Sign)
+
+		consenter.IsChannelMemberReturns(true, nil)
+		registrar := NewRegistrar(config, ledgerFactory, serNode, &disabled.Provider{}, cryptoProvider, nil)
+		fakeFields := newFakeMetricsFields()
+		registrar.channelParticipationMetrics = newFakeMetrics(fakeFields)
+
+		registrar.Initialize(mockConsenters)
+		_, err := registrar.JoinChannel("my-raft-channel", genesisBlockAppRaft)
+		require.NoError(t, err)
+
+		cs := registrar.GetChain("my-raft-channel")
+		fakeCS := &mocks.ChannelSupport{}
+		cs.Chain = fakeCS
+
+		b, err := registrar.FetchBlock("my-raft-channel", "oldest")
+		require.NoError(t, err)
+		require.NotNil(t, b)
+
+		b, err = registrar.FetchBlock("my-raft-channel", "newest")
+		require.NoError(t, err)
+		require.NotNil(t, b)
+
+		b, err = registrar.FetchBlock("my-raft-channel", "config")
+		require.NoError(t, err)
+		require.NotNil(t, b)
+
+		b, err = registrar.FetchBlock("my-raft-channel", "0")
+		require.NoError(t, err)
+		require.NotNil(t, b)
+	})
+}
+
 func checkMetrics(t *testing.T, fakeFields *fakeMetricsFields, expectedLabels []string, expectedRelation, expectedStatus, expectedCallCount int) {
 	require.Equal(t, expectedCallCount, fakeFields.fakeConsensusRelation.SetCallCount())
 	require.Equal(t, float64(expectedRelation), fakeFields.fakeConsensusRelation.SetArgsForCall(expectedCallCount-1))
