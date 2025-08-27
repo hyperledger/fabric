@@ -163,7 +163,12 @@ func (s *ClusterService) VerifyAuthRequest(stream orderer.ClusterNodeService_Ste
 		return nil, errors.Errorf("node %d is not member of channel %s", authReq.ToId, authReq.Channel)
 	}
 
-	if !bytes.Equal(toIdentity, s.NodeIdentity) {
+	equal, err := CompareCertPublicKeys(toIdentity, s.NodeIdentity)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to compare cert public keys")
+	}
+	if !equal {
+		s.Logger.Debugf("node id mismatch for node %d, toIdentity: %s, s.NodeIdentity: %s", authReq.FromId, string(toIdentity), string(s.NodeIdentity))
 		return nil, errors.Errorf("node id mismatch")
 	}
 
@@ -263,6 +268,7 @@ func (c *ClusterService) ConfigureNodeCerts(channel string, newNodes []*common.C
 		if err != nil {
 			return err
 		}
+
 		channelMembership.MemberMapping[uint64(nodeIdentity.Id)] = sanitizedID
 	}
 
