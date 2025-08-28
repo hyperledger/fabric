@@ -391,6 +391,19 @@ func (c *Bls12_381) HashToG1(data []byte) driver.G1 {
 	}
 }
 
+func (c *Bls12_381) HashToG2(data []byte) driver.G2 {
+	g2 := bls12381.NewG2()
+	p, err := g2.HashToCurve(data, []byte{})
+	if err != nil {
+		panic(fmt.Sprintf("HashToCurve failed [%s]", err.Error()))
+	}
+
+	return &bls12_381G2{
+		PointG2: *p,
+		G2:      *g2,
+	}
+}
+
 func (c *Bls12_381) HashToG1WithDomain(data, domain []byte) driver.G1 {
 	g1 := bls12381.NewG1()
 	p, err := g1.HashToCurve(data, domain)
@@ -401,6 +414,19 @@ func (c *Bls12_381) HashToG1WithDomain(data, domain []byte) driver.G1 {
 	return &bls12_381G1{
 		PointG1: *p,
 		G1:      *g1,
+	}
+}
+
+func (c *Bls12_381) HashToG2WithDomain(data, domain []byte) driver.G2 {
+	g2 := bls12381.NewG2()
+	p, err := g2.HashToCurve(data, domain)
+	if err != nil {
+		panic(fmt.Sprintf("HashToCurve failed [%s]", err.Error()))
+	}
+
+	return &bls12_381G2{
+		PointG2: *p,
+		G2:      *g2,
 	}
 }
 
@@ -416,6 +442,19 @@ func (c *Bls12_381BBS) HashToG1(data []byte) driver.G1 {
 	}
 }
 
+func (c *Bls12_381BBS) HashToG2(data []byte) driver.G2 {
+	g2 := bls12381.NewG2()
+	p, err := g2.HashToCurve(data, []byte{})
+	if err != nil {
+		panic(fmt.Sprintf("HashToCurve failed [%s]", err.Error()))
+	}
+
+	return &bls12_381G2{
+		PointG2: *p,
+		G2:      *g2,
+	}
+}
+
 func (c *Bls12_381BBS) HashToG1WithDomain(data, domain []byte) driver.G1 {
 	p, err := HashToG1GenericBESwu(data, domain)
 	if err != nil {
@@ -425,5 +464,18 @@ func (c *Bls12_381BBS) HashToG1WithDomain(data, domain []byte) driver.G1 {
 	return &bls12_381G1{
 		PointG1: *p,
 		G1:      *bls12381.NewG1(),
+	}
+}
+
+func (c *Bls12_381BBS) HashToG2WithDomain(data, domain []byte) driver.G2 {
+	g2 := bls12381.NewG2()
+	p, err := g2.HashToCurve(data, domain)
+	if err != nil {
+		panic(fmt.Sprintf("HashToCurve failed [%s]", err.Error()))
+	}
+
+	return &bls12_381G2{
+		PointG2: *p,
+		G2:      *g2,
 	}
 }

@@ -177,6 +177,10 @@ type Zr struct {
 	curveID CurveID
 }
 
+func (z *Zr) CurveID() CurveID {
+	return z.curveID
+}
+
 func (z *Zr) Plus(a *Zr) *Zr {
 	return &Zr{zr: z.zr.Plus(a.zr), curveID: z.curveID}
 }
@@ -228,6 +232,15 @@ func (z *Zr) Neg() {
 var zerobytes = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 var onebytes = []byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255}
 
+func (z *Zr) Uint() (uint64, error) {
+	b := z.Bytes()
+	if !bytes.Equal(zerobytes, b[:32-8]) && !bytes.Equal(onebytes, b[:32-8]) {
+		return 0, fmt.Errorf("out of range")
+	}
+
+	return uint64(binary.BigEndian.Uint64(b[32-8:])), nil
+}
+
 func (z *Zr) Int() (int64, error) {
 	b := z.Bytes()
 	if !bytes.Equal(zerobytes, b[:32-8]) && !bytes.Equal(onebytes, b[:32-8]) {
@@ -242,6 +255,10 @@ func (z *Zr) Int() (int64, error) {
 type G1 struct {
 	g1      driver.G1
 	curveID CurveID
+}
+
+func (g *G1) CurveID() CurveID {
+	return g.curveID
 }
 
 func (g *G1) Clone(a *G1) {
@@ -299,6 +316,10 @@ type G2 struct {
 	curveID CurveID
 }
 
+func (g *G2) CurveID() CurveID {
+	return g.curveID
+}
+
 func (g *G2) Clone(a *G2) {
 	g.g2.Clone(a.g2)
 }
@@ -344,6 +365,10 @@ func (g *G2) Equals(a *G2) bool {
 type Gt struct {
 	gt      driver.Gt
 	curveID CurveID
+}
+
+func (g *Gt) CurveID() CurveID {
+	return g.curveID
 }
 
 func (g *Gt) Equals(a *Gt) bool {
@@ -464,7 +489,11 @@ func (c *Curve) NewGtFromBytes(b []byte) (p *Gt, err error) {
 }
 
 func (c *Curve) NewZrFromInt(i int64) *Zr {
-	return &Zr{zr: c.c.NewZrFromInt(i), curveID: c.curveID}
+	return &Zr{zr: c.c.NewZrFromInt64(i), curveID: c.curveID}
+}
+
+func (c *Curve) NewZrFromUint64(i uint64) *Zr {
+	return &Zr{zr: c.c.NewZrFromUint64(i), curveID: c.curveID}
 }
 
 func (c *Curve) NewG2() *G2 {
@@ -497,6 +526,14 @@ func (c *Curve) HashToG1(data []byte) *G1 {
 
 func (c *Curve) HashToG1WithDomain(data, domain []byte) *G1 {
 	return &G1{g1: c.c.HashToG1WithDomain(data, domain), curveID: c.curveID}
+}
+
+func (c *Curve) HashToG2(data []byte) *G2 {
+	return &G2{g2: c.c.HashToG2(data), curveID: c.curveID}
+}
+
+func (c *Curve) HashToG2WithDomain(data, domain []byte) *G2 {
+	return &G2{g2: c.c.HashToG2WithDomain(data, domain), curveID: c.curveID}
 }
 
 func (c *Curve) ModSub(a, b, m *Zr) *Zr {

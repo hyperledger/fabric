@@ -166,6 +166,14 @@ func (p *Fp256bn) HashToG1WithDomain(data, domain []byte) driver.G1 {
 	return &fp256bnG1{*FP256BN.Bls_hash(string(mac.Sum(nil)))}
 }
 
+func (p *Fp256bn) HashToG2(data []byte) driver.G2 {
+	panic("HashToG2 is not available for this curve")
+}
+
+func (p *Fp256bn) HashToG2WithDomain(data, domain []byte) driver.G2 {
+	panic("HashToG2WithDomain is not available for this curve")
+}
+
 /*********************************************************************/
 
 type fp256bnG1 struct {
@@ -227,7 +235,7 @@ func (b *fp256bnG1) String() string {
 }
 
 func (e *fp256bnG1) Neg() {
-	res := e.Mul(NewFp256bn().NewZrFromInt(-1))
+	res := e.Mul(NewFp256bn().NewZrFromInt64(-1))
 	e.ECP = res.(*fp256bnG1).ECP
 }
 
