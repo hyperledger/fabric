@@ -30,6 +30,17 @@ jobs:
         name: Install Go
         with:
           go-version-file: go.mod
+
+      - name: check go.mod
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod
+
+      - name: check vendor
+        run: |
+          go mod vendor
+          git diff --exit-code
+
       - run: make basic-checks
         name: Run Basic Checks
   unit-tests:
