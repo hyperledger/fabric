@@ -1185,7 +1185,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 
 	fmt.Println("Scenario V")
 	// Scenario V: Block we got has private data alongside it but coordinator cannot retrieve collection access
-	// policy of collections due to databse unavailability error.
+	// policy of collections due to database unavailability error.
 	// we verify that the error propagates properly.
 	mockCs := &privdatamocks.CollectionStore{}
 	mockCs.On("RetrieveCollectionConfig", mock.Anything).Return(nil, errors.New("test error"))
