@@ -1,104 +1,107 @@
-// Copyright 2020 ConsenSys Software Inc.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2020-2025 Consensys Software Inc.
+// Licensed under the Apache License, Version 2.0. See the LICENSE file for details.
 
 #include "textflag.h"
 #include "funcdata.h"
+#include "go_asm.h"
 
-// modulus q
-DATA q<>+0(SB)/8, $0x8508c00000000001
-DATA q<>+8(SB)/8, $0x170b5d4430000000
-DATA q<>+16(SB)/8, $0x1ef3622fba094800
-DATA q<>+24(SB)/8, $0x1a22d9f300f5138f
-DATA q<>+32(SB)/8, $0xc63b05c06ca1493b
-DATA q<>+40(SB)/8, $0x01ae3a4617c510ea
-GLOBL q<>(SB), (RODATA+NOPTR), $48
+#define REDUCE(ra0, ra1, ra2, ra3, ra4, ra5, rb0, rb1, rb2, rb3, rb4, rb5, q0, q1, q2, q3, q4, q5) \
+	MOVQ    ra0, rb0; \
+	SUBQ    q0, ra0;  \
+	MOVQ    ra1, rb1; \
+	SBBQ    q1, ra1;  \
+	MOVQ    ra2, rb2; \
+	SBBQ    q2, ra2;  \
+	MOVQ    ra3, rb3; \
+	SBBQ    q3, ra3;  \
+	MOVQ    ra4, rb4; \
+	SBBQ    q4, ra4;  \
+	MOVQ    ra5, rb5; \
+	SBBQ    q5, ra5;  \
+	CMOVQCS rb0, ra0; \
+	CMOVQCS rb1, ra1; \
+	CMOVQCS rb2, ra2; \
+	CMOVQCS rb3, ra3; \
+	CMOVQCS rb4, ra4; \
+	CMOVQCS rb5, ra5; \
 
-// qInv0 q'[0]
-DATA qInv0<>(SB)/8, $0x8508bfffffffffff
-GLOBL qInv0<>(SB), (RODATA+NOPTR), $8
+#define REDUCE_NOGLOBAL(ra0, ra1, ra2, ra3, ra4, ra5, rb0, rb1, rb2, rb3, rb4, rb5, scratch0) \
+	MOVQ    ra0, rb0;            \
+	MOVQ    $const_q0, scratch0; \
+	SUBQ    scratch0, ra0;       \
+	MOVQ    ra1, rb1;            \
+	MOVQ    $const_q1, scratch0; \
+	SBBQ    scratch0, ra1;       \
+	MOVQ    ra2, rb2;            \
+	MOVQ    $const_q2, scratch0; \
+	SBBQ    scratch0, ra2;       \
+	MOVQ    ra3, rb3;            \
+	MOVQ    $const_q3, scratch0; \
+	SBBQ    scratch0, ra3;       \
+	MOVQ    ra4, rb4;            \
+	MOVQ    $const_q4, scratch0; \
+	SBBQ    scratch0, ra4;       \
+	MOVQ    ra5, rb5;            \
+	MOVQ    $const_q5, scratch0; \
+	SBBQ    scratch0, ra5;       \
+	CMOVQCS rb0, ra0;            \
+	CMOVQCS rb1, ra1;            \
+	CMOVQCS rb2, ra2;            \
+	CMOVQCS rb3, ra3;            \
+	CMOVQCS rb4, ra4;            \
+	CMOVQCS rb5, ra5;            \
 
-#define REDUCE(ra0, ra1, ra2, ra3, ra4, ra5, rb0, rb1, rb2, rb3, rb4, rb5) \
-	MOVQ    ra0, rb0;        \
-	SUBQ    q<>(SB), ra0;    \
-	MOVQ    ra1, rb1;        \
-	SBBQ    q<>+8(SB), ra1;  \
-	MOVQ    ra2, rb2;        \
-	SBBQ    q<>+16(SB), ra2; \
-	MOVQ    ra3, rb3;        \
-	SBBQ    q<>+24(SB), ra3; \
-	MOVQ    ra4, rb4;        \
-	SBBQ    q<>+32(SB), ra4; \
-	MOVQ    ra5, rb5;        \
-	SBBQ    q<>+40(SB), ra5; \
-	CMOVQCS rb0, ra0;        \
-	CMOVQCS rb1, ra1;        \
-	CMOVQCS rb2, ra2;        \
-	CMOVQCS rb3, ra3;        \
-	CMOVQCS rb4, ra4;        \
-	CMOVQCS rb5, ra5;        \
-
-TEXT ·addE2(SB), NOSPLIT, $0-24
+TEXT ·addE2(SB), $8-24
 	MOVQ x+8(FP), AX
-	MOVQ 0(AX), BX
-	MOVQ 8(AX), SI
-	MOVQ 16(AX), DI
-	MOVQ 24(AX), R8
-	MOVQ 32(AX), R9
-	MOVQ 40(AX), R10
+	MOVQ 0(AX), CX
+	MOVQ 8(AX), BX
+	MOVQ 16(AX), SI
+	MOVQ 24(AX), DI
+	MOVQ 32(AX), R8
+	MOVQ 40(AX), R9
 	MOVQ y+16(FP), DX
-	ADDQ 0(DX), BX
-	ADCQ 8(DX), SI
-	ADCQ 16(DX), DI
-	ADCQ 24(DX), R8
-	ADCQ 32(DX), R9
-	ADCQ 40(DX), R10
+	ADDQ 0(DX), CX
+	ADCQ 8(DX), BX
+	ADCQ 16(DX), SI
+	ADCQ 24(DX), DI
+	ADCQ 32(DX), R8
+	ADCQ 40(DX), R9
 
-	// reduce element(BX,SI,DI,R8,R9,R10) using temp registers (R11,R12,R13,R14,R15,s0-8(SP))
-	REDUCE(BX,SI,DI,R8,R9,R10,R11,R12,R13,R14,R15,s0-8(SP))
+	// reduce element(CX,BX,SI,DI,R8,R9,) using temp registers (R11,R12,R13,R14,R15,s0-8(SP),R10)
+	REDUCE_NOGLOBAL(CX,BX,SI,DI,R8,R9,R11,R12,R13,R14,R15,s0-8(SP),R10)
 
-	MOVQ res+0(FP), CX
-	MOVQ BX, 0(CX)
-	MOVQ SI, 8(CX)
-	MOVQ DI, 16(CX)
-	MOVQ R8, 24(CX)
-	MOVQ R9, 32(CX)
-	MOVQ R10, 40(CX)
-	MOVQ 48(AX), BX
-	MOVQ 56(AX), SI
-	MOVQ 64(AX), DI
-	MOVQ 72(AX), R8
-	MOVQ 80(AX), R9
-	MOVQ 88(AX), R10
-	ADDQ 48(DX), BX
-	ADCQ 56(DX), SI
-	ADCQ 64(DX), DI
-	ADCQ 72(DX), R8
-	ADCQ 80(DX), R9
-	ADCQ 88(DX), R10
+	MOVQ res+0(FP), R11
+	MOVQ CX, 0(R11)
+	MOVQ BX, 8(R11)
+	MOVQ SI, 16(R11)
+	MOVQ DI, 24(R11)
+	MOVQ R8, 32(R11)
+	MOVQ R9, 40(R11)
+	MOVQ 48(AX), CX
+	MOVQ 56(AX), BX
+	MOVQ 64(AX), SI
+	MOVQ 72(AX), DI
+	MOVQ 80(AX), R8
+	MOVQ 88(AX), R9
+	ADDQ 48(DX), CX
+	ADCQ 56(DX), BX
+	ADCQ 64(DX), SI
+	ADCQ 72(DX), DI
+	ADCQ 80(DX), R8
+	ADCQ 88(DX), R9
 
-	// reduce element(BX,SI,DI,R8,R9,R10) using temp registers (R11,R12,R13,R14,R15,s0-8(SP))
-	REDUCE(BX,SI,DI,R8,R9,R10,R11,R12,R13,R14,R15,s0-8(SP))
+	// reduce element(CX,BX,SI,DI,R8,R9,) using temp registers (R13,R14,R15,R10,AX,DX,R12)
+	REDUCE_NOGLOBAL(CX,BX,SI,DI,R8,R9,R13,R14,R15,R10,AX,DX,R12)
 
-	MOVQ BX, 48(CX)
-	MOVQ SI, 56(CX)
-	MOVQ DI, 64(CX)
-	MOVQ R8, 72(CX)
-	MOVQ R9, 80(CX)
-	MOVQ R10, 88(CX)
+	MOVQ CX, 48(R11)
+	MOVQ BX, 56(R11)
+	MOVQ SI, 64(R11)
+	MOVQ DI, 72(R11)
+	MOVQ R8, 80(R11)
+	MOVQ R9, 88(R11)
 	RET
 
-TEXT ·doubleE2(SB), NOSPLIT, $0-16
+TEXT ·doubleE2(SB), $8-16
 	MOVQ res+0(FP), DX
 	MOVQ x+8(FP), AX
 	MOVQ 0(AX), CX
@@ -114,8 +117,8 @@ TEXT ·doubleE2(SB), NOSPLIT, $0-16
 	ADCQ R8, R8
 	ADCQ R9, R9
 
-	// reduce element(CX,BX,SI,DI,R8,R9) using temp registers (R10,R11,R12,R13,R14,R15)
-	REDUCE(CX,BX,SI,DI,R8,R9,R10,R11,R12,R13,R14,R15)
+	// reduce element(CX,BX,SI,DI,R8,R9,) using temp registers (R11,R12,R13,R14,R15,s0-8(SP),R10)
+	REDUCE_NOGLOBAL(CX,BX,SI,DI,R8,R9,R11,R12,R13,R14,R15,s0-8(SP),R10)
 
 	MOVQ CX, 0(DX)
 	MOVQ BX, 8(DX)
@@ -136,8 +139,8 @@ TEXT ·doubleE2(SB), NOSPLIT, $0-16
 	ADCQ R8, R8
 	ADCQ R9, R9
 
-	// reduce element(CX,BX,SI,DI,R8,R9) using temp registers (R10,R11,R12,R13,R14,R15)
-	REDUCE(CX,BX,SI,DI,R8,R9,R10,R11,R12,R13,R14,R15)
+	// reduce element(CX,BX,SI,DI,R8,R9,) using temp registers (R12,R13,R14,R15,R10,s0-8(SP),R11)
+	REDUCE_NOGLOBAL(CX,BX,SI,DI,R8,R9,R12,R13,R14,R15,R10,s0-8(SP),R11)
 
 	MOVQ CX, 48(DX)
 	MOVQ BX, 56(DX)
@@ -148,7 +151,7 @@ TEXT ·doubleE2(SB), NOSPLIT, $0-16
 	RET
 
 TEXT ·subE2(SB), NOSPLIT, $0-24
-	XORQ    R9, R9
+	XORQ    R15, R15
 	MOVQ    x+8(FP), R8
 	MOVQ    0(R8), AX
 	MOVQ    8(R8), DX
@@ -164,31 +167,31 @@ TEXT ·subE2(SB), NOSPLIT, $0-24
 	SBBQ    32(R8), SI
 	SBBQ    40(R8), DI
 	MOVQ    x+8(FP), R8
-	MOVQ    $0x8508c00000000001, R10
-	MOVQ    $0x170b5d4430000000, R11
-	MOVQ    $0x1ef3622fba094800, R12
-	MOVQ    $0x1a22d9f300f5138f, R13
-	MOVQ    $0xc63b05c06ca1493b, R14
-	MOVQ    $0x01ae3a4617c510ea, R15
-	CMOVQCC R9, R10
-	CMOVQCC R9, R11
-	CMOVQCC R9, R12
-	CMOVQCC R9, R13
-	CMOVQCC R9, R14
-	CMOVQCC R9, R15
-	ADDQ    R10, AX
-	ADCQ    R11, DX
-	ADCQ    R12, CX
-	ADCQ    R13, BX
-	ADCQ    R14, SI
-	ADCQ    R15, DI
-	MOVQ    res+0(FP), R10
-	MOVQ    AX, 0(R10)
-	MOVQ    DX, 8(R10)
-	MOVQ    CX, 16(R10)
-	MOVQ    BX, 24(R10)
-	MOVQ    SI, 32(R10)
-	MOVQ    DI, 40(R10)
+	MOVQ    $0x8508c00000000001, R9
+	MOVQ    $0x170b5d4430000000, R10
+	MOVQ    $0x1ef3622fba094800, R11
+	MOVQ    $0x1a22d9f300f5138f, R12
+	MOVQ    $0xc63b05c06ca1493b, R13
+	MOVQ    $0x01ae3a4617c510ea, R14
+	CMOVQCC R15, R9
+	CMOVQCC R15, R10
+	CMOVQCC R15, R11
+	CMOVQCC R15, R12
+	CMOVQCC R15, R13
+	CMOVQCC R15, R14
+	ADDQ    R9, AX
+	ADCQ    R10, DX
+	ADCQ    R11, CX
+	ADCQ    R12, BX
+	ADCQ    R13, SI
+	ADCQ    R14, DI
+	MOVQ    res+0(FP), R9
+	MOVQ    AX, 0(R9)
+	MOVQ    DX, 8(R9)
+	MOVQ    CX, 16(R9)
+	MOVQ    BX, 24(R9)
+	MOVQ    SI, 32(R9)
+	MOVQ    DI, 40(R9)
 	MOVQ    48(R8), AX
 	MOVQ    56(R8), DX
 	MOVQ    64(R8), CX
@@ -202,24 +205,24 @@ TEXT ·subE2(SB), NOSPLIT, $0-24
 	SBBQ    72(R8), BX
 	SBBQ    80(R8), SI
 	SBBQ    88(R8), DI
-	MOVQ    $0x8508c00000000001, R11
-	MOVQ    $0x170b5d4430000000, R12
-	MOVQ    $0x1ef3622fba094800, R13
-	MOVQ    $0x1a22d9f300f5138f, R14
-	MOVQ    $0xc63b05c06ca1493b, R15
-	MOVQ    $0x01ae3a4617c510ea, R10
-	CMOVQCC R9, R11
-	CMOVQCC R9, R12
-	CMOVQCC R9, R13
-	CMOVQCC R9, R14
-	CMOVQCC R9, R15
-	CMOVQCC R9, R10
-	ADDQ    R11, AX
-	ADCQ    R12, DX
-	ADCQ    R13, CX
-	ADCQ    R14, BX
-	ADCQ    R15, SI
-	ADCQ    R10, DI
+	MOVQ    $0x8508c00000000001, R10
+	MOVQ    $0x170b5d4430000000, R11
+	MOVQ    $0x1ef3622fba094800, R12
+	MOVQ    $0x1a22d9f300f5138f, R13
+	MOVQ    $0xc63b05c06ca1493b, R14
+	MOVQ    $0x01ae3a4617c510ea, R9
+	CMOVQCC R15, R10
+	CMOVQCC R15, R11
+	CMOVQCC R15, R12
+	CMOVQCC R15, R13
+	CMOVQCC R15, R14
+	CMOVQCC R15, R9
+	ADDQ    R10, AX
+	ADCQ    R11, DX
+	ADCQ    R12, CX
+	ADCQ    R13, BX
+	ADCQ    R14, SI
+	ADCQ    R9, DI
 	MOVQ    res+0(FP), R8
 	MOVQ    AX, 48(R8)
 	MOVQ    DX, 56(R8)

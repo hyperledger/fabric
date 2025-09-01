@@ -15,6 +15,7 @@ import (
 	"github.com/IBM/mathlib/driver/kilic"
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fp"
+	"github.com/consensys/gnark-crypto/ecc/bls12-381/hash_to_curve"
 	"github.com/consensys/gnark-crypto/field/pool"
 )
 
@@ -25,9 +26,6 @@ type Element [6]uint64
 type G1Affine struct {
 	X, Y fp.Element
 }
-
-//go:linkname g1Isogeny github.com/consensys/gnark-crypto/ecc/bls12-381.g1Isogeny
-func g1Isogeny(p *G1Affine)
 
 func toKilicElement(p *fp.Element) *kilic.Fe {
 	return (*kilic.Fe)(unsafe.Pointer(p))
@@ -175,9 +173,9 @@ func HashToG1GenericBESwu(msg, dst []byte, hashFunc func() hash.Hash) (bls12381.
 	Q0 := G1Affine{*_xq0, *_yq0}
 	Q1 := G1Affine{*_xq1, *_yq1}
 
-	//TODO (perf): Add in E' first, then apply isogeny
-	g1Isogeny(&Q0)
-	g1Isogeny(&Q1)
+	// TODO (perf): Add in E' first, then apply isogeny
+	hash_to_curve.G1Isogeny(&Q0.X, &Q0.Y)
+	hash_to_curve.G1Isogeny(&Q1.X, &Q1.Y)
 
 	var _Q0, _Q1 bls12381.G1Jac
 	_Q0.FromAffine(toGurvyAffine(&Q0))

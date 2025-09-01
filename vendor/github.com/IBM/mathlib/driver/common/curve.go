@@ -61,8 +61,12 @@ func (c *CurveBase) NewZrFromBytes(b []byte) driver.Zr {
 	return res
 }
 
-func (c *CurveBase) NewZrFromInt(i int64) driver.Zr {
+func (c *CurveBase) NewZrFromInt64(i int64) driver.Zr {
 	return &BaseZr{Int: *big.NewInt(i), Modulus: c.Modulus}
+}
+
+func (c *CurveBase) NewZrFromUint64(i uint64) driver.Zr {
+	return &BaseZr{Int: *new(big.Int).SetUint64(i), Modulus: c.Modulus}
 }
 
 func (c *CurveBase) NewRandomZr(rng io.Reader) driver.Zr {
