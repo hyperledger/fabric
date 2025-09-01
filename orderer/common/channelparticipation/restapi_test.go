@@ -525,7 +525,7 @@ func TestHTTPHandler_ServeHTTP_Update(t *testing.T) {
 		checkErrorResponse(t, http.StatusMethodNotAllowed, "cannot update: channel does not exist", resp)
 	})
 
-	t.Run("Error: Channels is folower", func(t *testing.T) {
+	t.Run("Error: Channels is follower", func(t *testing.T) {
 		fakeManager, h := setup(config, t)
 		fakeManager.UpdateChannelReturns(types.ChannelInfo{}, types.ErrChannelNotReady)
 		resp := httptest.NewRecorder()

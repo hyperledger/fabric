@@ -1677,7 +1677,7 @@ func TestRegistrar_ConfigBlockOrPanic(t *testing.T) {
 		})
 	})
 
-	t.Run("Panics when block referenes invalid config block", func(t *testing.T) {
+	t.Run("Panics when block references invalid config block", func(t *testing.T) {
 		block := protoutil.NewBlock(0, nil)
 		block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&cb.Metadata{
 			Value: protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
