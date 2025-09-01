@@ -69,6 +69,10 @@ ENV PATH="/usr/local/go/bin:$PATH"
 # - docker run --rm debian:stretch grep '^hosts:' /etc/nsswitch.conf
 RUN echo 'hosts: files dns' > /etc/nsswitch.conf
 
+# Create a non-root user for running the tools
+RUN groupadd --gid 500 fabric && \
+    useradd -c "Hyperledger Fabric Tools User" -u 500 -g 500 -d /home/fabric -m fabric
+
 ENV     FABRIC_CFG_PATH /etc/hyperledger/fabric
 ENV     FABRIC_VER      ${FABRIC_VER}
 
@@ -77,3 +81,6 @@ COPY    --from=builder  build/bin       /usr/local/bin
 
 VOLUME  /etc/hyperledger/fabric
 VOLUME  /var/hyperledger
+
+# Switch to non-root user
+USER    fabric

@@ -60,6 +60,10 @@ ARG FABRIC_VER
 # - docker run --rm debian:stretch grep '^hosts:' /etc/nsswitch.conf
 RUN echo 'hosts: files dns' > /etc/nsswitch.conf
 
+# Create a non-root user for running the peer
+RUN groupadd --gid 500 fabric && \
+    useradd -c "Hyperledger Fabric Peer User" -u 500 -g 500 -d /home/fabric -m fabric
+
 ENV FABRIC_CFG_PATH=/etc/hyperledger/fabric
 ENV FABRIC_VER=${FABRIC_VER}
 
@@ -72,5 +76,8 @@ VOLUME  /etc/hyperledger/fabric
 VOLUME  /var/hyperledger
 
 EXPOSE  7051
+
+# Switch to non-root user
+USER    fabric
 
 CMD     [ "peer", "node", "start" ]
