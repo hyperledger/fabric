@@ -171,7 +171,7 @@ func (s *BFTSynchronizer) computeTargetHeight(heights []uint64) uint64 {
 	s.Logger.Debugf("Cluster size: %d, F: %d, Heights: %v", clusterSize, f, heights)
 
 	if lenH < f+1 {
-		s.Logger.Debugf("Returning %d", heights[0])
+		s.Logger.Debugf("Returning %d", heights[int(lenH)-1])
 		return heights[int(lenH)-1]
 	}
 	s.Logger.Debugf("Returning %d", heights[f])
