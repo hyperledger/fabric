@@ -158,6 +158,66 @@ func TestValidateUpdateEnvelope(t *testing.T) {
 	}
 }
 
+func TestValidateFetchBlockID(t *testing.T) {
+	tests := []struct {
+		testName    string
+		blockID     string
+		expectedErr error
+	}{
+		{
+			testName:    "block ID is empty",
+			blockID:     "",
+			expectedErr: errors.New("block ID illegal, cannot be empty"),
+		},
+		{
+			testName:    "block ID is oldest",
+			blockID:     "oldest",
+			expectedErr: nil,
+		},
+		{
+			testName:    "block ID is newest",
+			blockID:     "newest",
+			expectedErr: nil,
+		},
+		{
+			testName:    "block ID is config",
+			blockID:     "config",
+			expectedErr: nil,
+		},
+		{
+			testName:    "block ID is 0",
+			blockID:     "0",
+			expectedErr: nil,
+		},
+		{
+			testName:    "block ID is 99",
+			blockID:     "99",
+			expectedErr: nil,
+		},
+		{
+			testName:    "block ID is blabla",
+			blockID:     "blabla",
+			expectedErr: errors.New("'blabla' not equal <newest|oldest|config|(number)>"),
+		},
+		{
+			testName:    "block ID is 1n0",
+			blockID:     "1n0",
+			expectedErr: errors.New("'1n0' not equal <newest|oldest|config|(number)>"),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.testName, func(t *testing.T) {
+			err := channelparticipation.ValidateFetchBlockID(test.blockID)
+			if test.expectedErr != nil {
+				require.EqualError(t, err, test.expectedErr.Error())
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func blockWithGroups(groups map[string]*cb.ConfigGroup, channelID string) *cb.Block {
 	block := protoutil.NewBlock(0, []byte{})
 	block.Data = &cb.BlockData{

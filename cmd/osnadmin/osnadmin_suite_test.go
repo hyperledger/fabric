@@ -23,6 +23,7 @@ type channelManagement interface {
 	JoinChannel(channelID string, configBlock *cb.Block) (types.ChannelInfo, error)
 	UpdateChannel(channelID string, configUpdateEnvelope *cb.Envelope) (types.ChannelInfo, error)
 	RemoveChannel(channelID string) error
+	FetchBlock(channelID string, blockID string) (*cb.Block, error)
 }
 
 func TestOsnadmin(t *testing.T) {

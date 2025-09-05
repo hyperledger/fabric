@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestNewHTTPHandler(t *testing.T) {
@@ -49,6 +50,17 @@ func TestHTTPHandler_ServeHTTP_InvalidMethods(t *testing.T) {
 	config := localconfig.ChannelParticipation{Enabled: true}
 	_, h := setup(config, t)
 	invalidMethods := []string{http.MethodConnect, http.MethodHead, http.MethodOptions, http.MethodPatch, http.MethodTrace}
+
+	t.Run("on /channels/ch-id/blocks/b-id", func(t *testing.T) {
+		invalidMethodsExt := append(invalidMethods, http.MethodPost, http.MethodDelete, http.MethodPut)
+		for _, method := range invalidMethodsExt {
+			resp := httptest.NewRecorder()
+			req := httptest.NewRequest(method, path.Join(channelparticipation.URLBaseV1Channels, "ch-id", "blocks", "b-id"), nil)
+			h.ServeHTTP(resp, req)
+			checkErrorResponse(t, http.StatusMethodNotAllowed, fmt.Sprintf("invalid request method: %s", method), resp)
+			require.Equal(t, "GET", resp.Result().Header.Get("Allow"), "%s", method)
+		}
+	})
 
 	t.Run("on /channels/ch-id", func(t *testing.T) {
 		invalidMethodsExt := append(invalidMethods, http.MethodPost)
@@ -108,6 +120,49 @@ func TestHTTPHandler_ServeHTTP_ListErrors(t *testing.T) {
 	t.Run("bad Accept header", func(t *testing.T) {
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/ok", nil)
+		req.Header.Set("Accept", "text/html")
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusNotAcceptable, "response Content-Type is application/json only", resp)
+	})
+
+	t.Run("bad resource", func(t *testing.T) {
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/ch-id/oops", nil)
+		h.ServeHTTP(resp, req)
+		require.Equal(t, http.StatusNotFound, resp.Result().StatusCode)
+	})
+
+	t.Run("bad resource", func(t *testing.T) {
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/ch-id/blocks", nil)
+		h.ServeHTTP(resp, req)
+		require.Equal(t, http.StatusNotFound, resp.Result().StatusCode)
+	})
+
+	t.Run("bad resource", func(t *testing.T) {
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/ch-id/blocks/", nil)
+		h.ServeHTTP(resp, req)
+		require.Equal(t, http.StatusNotFound, resp.Result().StatusCode)
+	})
+
+	t.Run("bad channel ID", func(t *testing.T) {
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/ch-id/blocks/no/slash", nil)
+		h.ServeHTTP(resp, req)
+		require.Equal(t, http.StatusNotFound, resp.Result().StatusCode)
+	})
+
+	t.Run("illegal character in channel ID", func(t *testing.T) {
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/ch-id/blocks/blabla", nil)
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusBadRequest, "invalid block ID: 'blabla' not equal <newest|oldest|config|(number)>", resp)
+	})
+
+	t.Run("bad Accept header", func(t *testing.T) {
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/ch-id/blocks/0", nil)
 		req.Header.Set("Accept", "text/html")
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusNotAcceptable, "response Content-Type is application/json only", resp)
@@ -638,6 +693,70 @@ func TestHTTPHandler_ServeHTTP_Update(t *testing.T) {
 		req := genJoinRequestFormData(t, []byte{1, 2, 3, 4})
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusBadRequest, "cannot read form from request body: multipart: NextPart: http: request body too large", resp)
+	})
+}
+
+func TestHTTPHandler_ServeHTTP_Fetch(t *testing.T) {
+	config := localconfig.ChannelParticipation{
+		Enabled:            true,
+		MaxRequestBodySize: 1024 * 1024,
+	}
+
+	t.Run("fetch ok", func(t *testing.T) {
+		block := blockWithGroups(map[string]*common.ConfigGroup{
+			"Application": {},
+		}, "ch-id")
+		fakeManager, h := setup(config, t)
+		fakeManager.FetchBlockReturns(block, nil)
+
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/app-channel/blocks/oldest", nil)
+
+		h.ServeHTTP(resp, req)
+		require.Equal(t, http.StatusOK, resp.Result().StatusCode)
+		require.Equal(t, "application/octet-stream", resp.Result().Header.Get("Content-Type"))
+		require.Equal(t, "no-store", resp.Result().Header.Get("Cache-Control"))
+
+		b := &common.Block{}
+		err := proto.Unmarshal(resp.Body.Bytes(), b)
+		require.NoError(t, err, "cannot be unmarshaled")
+		require.True(t, proto.Equal(block, b))
+	})
+
+	t.Run("Error: Channel not exists", func(t *testing.T) {
+		fakeManager, h := setup(config, t)
+		fakeManager.FetchBlockReturns(nil, types.ErrChannelNotExist)
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/app-channel/blocks/oldest", nil)
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusNotFound, "channel does not exist", resp)
+	})
+
+	t.Run("Error: Channels is folower", func(t *testing.T) {
+		fakeManager, h := setup(config, t)
+		fakeManager.FetchBlockReturns(nil, types.ErrChannelNotReady)
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/app-channel/blocks/oldest", nil)
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusNotFound, "channel is not ready, he is a follower", resp)
+	})
+
+	t.Run("Error: Channel Pending Removal", func(t *testing.T) {
+		fakeManager, h := setup(config, t)
+		fakeManager.FetchBlockReturns(nil, types.ErrChannelPendingRemoval)
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/app-channel/blocks/oldest", nil)
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusNotFound, "channel pending removal", resp)
+	})
+
+	t.Run("Error: block ID is bad", func(t *testing.T) {
+		fakeManager, h := setup(config, t)
+		fakeManager.FetchBlockReturns(nil, types.ErrChannelPendingRemoval)
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/app-channel/blocks/blabla", nil)
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusBadRequest, "invalid block ID: 'blabla' not equal <newest|oldest|config|(number)>", resp)
 	})
 }
 
