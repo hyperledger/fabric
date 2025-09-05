@@ -9,11 +9,14 @@ package cluster_test
 import (
 	"bytes"
 	"context"
+	"crypto"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,6 +36,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/configtx/test"
+	fabriccrypto "github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/config/configtest"
@@ -1111,4 +1115,281 @@ func TestChainParticipant(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCompareCertPublicKeysWithSameKeyDifferentBytes(t *testing.T) {
+	t.Parallel()
+
+	// Create a CA for generating certificates
+	ca, err := tlsgen.NewCA()
+	require.NoError(t, err)
+
+	// Generate first certificate
+	firstKeyPair, err := ca.NewClientCertKeyPair()
+	require.NoError(t, err)
+	firstCert, err := fabriccrypto.SanitizeX509Cert(firstKeyPair.Cert)
+	require.NoError(t, err)
+
+	// Generate second certificate using the same private key (same public key)
+	// but different certificate attributes (different serial number, timestamps, etc.)
+	secondCert, err := generateCertWithSameKeyForTesting(firstKeyPair.Signer, ca)
+	require.NoError(t, err)
+
+	// Verify that bytes.Equal fails - certificates should have different bytes
+	require.False(t, bytes.Equal(firstCert, secondCert),
+		"Certificates should have different bytes due to different serial numbers/timestamps")
+
+	// Test the actual CompareCertPublicKeys function from cluster package
+	equal, err := cluster.CompareCertPublicKeys(firstCert, secondCert)
+	require.NoError(t, err, "CompareCertPublicKeys should not return an error for valid certificates")
+	require.True(t, equal, "CompareCertPublicKeys should return true for certificates with same public key")
+
+	// Also verify manually that public keys are the same (for additional validation)
+	block1, _ := pem.Decode(firstCert)
+	require.NotNil(t, block1, "First certificate should be valid PEM")
+	cert1, err := x509.ParseCertificate(block1.Bytes)
+	require.NoError(t, err)
+
+	block2, _ := pem.Decode(secondCert)
+	require.NotNil(t, block2, "Second certificate should be valid PEM")
+	cert2, err := x509.ParseCertificate(block2.Bytes)
+	require.NoError(t, err)
+
+	// Extract public keys
+	pubKey1, err := x509.MarshalPKIXPublicKey(cert1.PublicKey)
+	require.NoError(t, err)
+	pubKey2, err := x509.MarshalPKIXPublicKey(cert2.PublicKey)
+	require.NoError(t, err)
+
+	// Verify that public keys are the same even though certificate bytes differ
+	require.True(t, bytes.Equal(pubKey1, pubKey2),
+		"Public keys should be identical even though certificate bytes differ")
+
+	// This test demonstrates the scenario described in the PR comment:
+	// - bytes.Equal(firstCert, secondCert) returns false (different certificate bytes)
+	// - But the public keys are the same, so compareCertPublicKeys would return true
+	// - This ensures that certificate renewal/reissuance with same key pair works correctly
+}
+
+func TestCompareCertPublicKeysWithDifferentKeys(t *testing.T) {
+	t.Parallel()
+
+	// Create a CA for generating certificates
+	ca, err := tlsgen.NewCA()
+	require.NoError(t, err)
+
+	// Generate first certificate with first key pair
+	firstKeyPair, err := ca.NewClientCertKeyPair()
+	require.NoError(t, err)
+	firstCert, err := fabriccrypto.SanitizeX509Cert(firstKeyPair.Cert)
+	require.NoError(t, err)
+
+	// Generate second certificate with different key pair
+	secondKeyPair, err := ca.NewClientCertKeyPair()
+	require.NoError(t, err)
+	secondCert, err := fabriccrypto.SanitizeX509Cert(secondKeyPair.Cert)
+	require.NoError(t, err)
+
+	// Verify that both bytes.Equal and public key comparison fail
+	require.False(t, bytes.Equal(firstCert, secondCert),
+		"Certificates should have different bytes")
+
+	// Test the actual CompareCertPublicKeys function from cluster package
+	equal, err := cluster.CompareCertPublicKeys(firstCert, secondCert)
+	require.NoError(t, err, "CompareCertPublicKeys should not return an error for valid certificates")
+	require.False(t, equal, "CompareCertPublicKeys should return false for certificates with different public keys")
+
+	// Also verify manually that public keys are different (for additional validation)
+	block1, _ := pem.Decode(firstCert)
+	require.NotNil(t, block1, "First certificate should be valid PEM")
+	cert1, err := x509.ParseCertificate(block1.Bytes)
+	require.NoError(t, err)
+
+	block2, _ := pem.Decode(secondCert)
+	require.NotNil(t, block2, "Second certificate should be valid PEM")
+	cert2, err := x509.ParseCertificate(block2.Bytes)
+	require.NoError(t, err)
+
+	// Extract public keys
+	pubKey1, err := x509.MarshalPKIXPublicKey(cert1.PublicKey)
+	require.NoError(t, err)
+	pubKey2, err := x509.MarshalPKIXPublicKey(cert2.PublicKey)
+	require.NoError(t, err)
+
+	// Verify that public keys are different
+	require.False(t, bytes.Equal(pubKey1, pubKey2),
+		"Public keys should be different for different key pairs")
+
+	// This test demonstrates the complementary scenario:
+	// - bytes.Equal(firstCert, secondCert) returns false (different certificate bytes)
+	// - Public keys are also different, so compareCertPublicKeys would return false
+	// - This ensures that different key pairs are properly rejected
+}
+
+func TestCompareCertPublicKeysErrorHandling(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name        string
+		cert1       []byte
+		cert2       []byte
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "Invalid PEM in first certificate",
+			cert1:       []byte("invalid pem data"),
+			cert2:       []byte("-----BEGIN CERTIFICATE-----\nvalid\n-----END CERTIFICATE-----"),
+			expectError: true,
+			errorMsg:    "not a valid PEM",
+		},
+		{
+			name:        "Invalid PEM in second certificate",
+			cert1:       []byte("-----BEGIN CERTIFICATE-----\nvalid\n-----END CERTIFICATE-----"),
+			cert2:       []byte("invalid pem data"),
+			expectError: true,
+			errorMsg:    "not a valid PEM",
+		},
+		{
+			name:        "Empty first certificate",
+			cert1:       []byte(""),
+			cert2:       []byte("-----BEGIN CERTIFICATE-----\nvalid\n-----END CERTIFICATE-----"),
+			expectError: true,
+			errorMsg:    "not a valid PEM",
+		},
+		{
+			name:        "Empty second certificate",
+			cert1:       []byte("-----BEGIN CERTIFICATE-----\nvalid\n-----END CERTIFICATE-----"),
+			cert2:       []byte(""),
+			expectError: true,
+			errorMsg:    "not a valid PEM",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Test the actual CompareCertPublicKeys function with invalid inputs
+			equal, err := cluster.CompareCertPublicKeys(tc.cert1, tc.cert2)
+
+			if tc.expectError {
+				require.Error(t, err, "CompareCertPublicKeys should return an error for invalid certificates")
+				require.False(t, equal, "CompareCertPublicKeys should return false when there's an error")
+				require.Contains(t, err.Error(), "not a valid PEM", "Error should indicate PEM parsing failure")
+			} else {
+				require.NoError(t, err, "CompareCertPublicKeys should not return an error for valid certificates")
+			}
+		})
+	}
+}
+
+func TestCompareCertPublicKeysWithMalformedCertificates(t *testing.T) {
+	t.Parallel()
+
+	// Create a CA for generating valid certificates
+	ca, err := tlsgen.NewCA()
+	require.NoError(t, err)
+
+	// Generate a valid certificate for comparison
+	validKeyPair, err := ca.NewClientCertKeyPair()
+	require.NoError(t, err)
+	validCert, err := fabriccrypto.SanitizeX509Cert(validKeyPair.Cert)
+	require.NoError(t, err)
+
+	testCases := []struct {
+		name     string
+		cert1    []byte
+		cert2    []byte
+		scenario string
+	}{
+		{
+			name:     "Malformed PEM structure in cert1",
+			cert1:    []byte("-----BEGIN CERTIFICATE-----\nmalformed_base64_data_here\n-----END CERTIFICATE-----"),
+			cert2:    validCert,
+			scenario: "First certificate has malformed PEM structure",
+		},
+		{
+			name:     "Malformed PEM structure in cert2",
+			cert1:    validCert,
+			cert2:    []byte("-----BEGIN CERTIFICATE-----\nmalformed_base64_data_here\n-----END CERTIFICATE-----"),
+			scenario: "Second certificate has malformed PEM structure",
+		},
+		{
+			name:     "Valid PEM but invalid certificate data",
+			cert1:    []byte("-----BEGIN CERTIFICATE-----\nTUlJQjRqQ0NBWWlnQXdJQkFnSVJBT2w0dDZWNGFJUlpuWGtGQ1BwcTNMMHdDZ1lJXG5Lb1pJemowRUF3SXdNakV3TUM0R0ExVUVCUk1uTWprM05qQTRPRFF3TURJMk1EQTRNekF6TURNMVxuTkRRek1URTBNVE0yTkRreE5UYzVPRGN5TUJ0WERUSTFNREk0TWpBek5Ea3dNRnBZRFRJMU1EQTRcbk1qQXpOREV3TUZvd01qRXdNQzRHQTFVRUJSTW5NekV3TXpNMk9USXpORE14TnpjNE5ERTFNamd3TlRrNFxuTXpnM01Ua3pNamcxTVRFM05EY3hOekF3V1RBVEJnY3Foa2pPUFFJQkJnZ3Foa2pPUFFNQkJ3TkNBQVNcbmJlNXVTQTNSYVAvWGxROWJnZlBMYzZZMWszQmFMODlQWG5hWTZRcGRxbjJzTEc3bUZ6SDlPL0tQUE1XWlxuZUpYOS9mOTltaTg5U0Z0QW5OVHJ3WXpSbzM4d2ZUQU9CZ05WSFE4QkFmOEVCQU1DQmFBd0V3WURWUjBsXG5CQXd3Q2dZSUt3WUJCUVVIQXdJd0tRWURWUjBPQkNJRUlOWmxsVzhzVCtnN3I4Znp0UWE2eVA3Vnp2dUlcbjhpQ25MaVM0emlYZ2JEQXJCZ05WSFNNRUpEQWlnQ0JPaVcwT2NuYWtZbnYzRlR3dkRzb2JtSDM4OUVBcVxuTlRWaVF3YW1VVGJXKzFBd0NnWUlLb1pJemowRUF3SURTQUFNRVVDSUExTUZkZk1Sc0xXbHJFdFNvMFxuWjJMejBUKzJsYkZGMUwyMXFtSUk0WXFrMWdJaEFOYXdySGV1TWlLK2EvUWxvdFplWjIxcEZQcXY5NVRqXG5ZZ0pGWmZZcWJYc2xcbg==\n-----END CERTIFICATE-----"),
+			cert2:    validCert,
+			scenario: "First certificate has valid PEM but invalid certificate data",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Test the actual CompareCertPublicKeys function with malformed certificates
+			equal, err := cluster.CompareCertPublicKeys(tc.cert1, tc.cert2)
+
+			// The function should handle malformed certificates gracefully
+			// Either return an error (for malformed PEM) or false (for different keys)
+			if err != nil {
+				// If there's an error, it should be a certificate parsing error
+				require.False(t, equal, "CompareCertPublicKeys should return false when there's an error")
+				// The error could be either PEM parsing or certificate parsing
+				require.True(t, strings.Contains(err.Error(), "not a valid PEM") ||
+					strings.Contains(err.Error(), "failed to extract public key") ||
+					strings.Contains(err.Error(), "asn1:") ||
+					strings.Contains(err.Error(), "x509:"),
+					"Error should indicate certificate parsing failure, got: %s", err.Error())
+			} else {
+				// If no error, the comparison should return false (different certificates)
+				require.False(t, equal, "CompareCertPublicKeys should return false for malformed vs valid certificates")
+			}
+		})
+	}
+}
+
+// generateCertWithSameKeyForTesting creates a new certificate using the provided signer (private key)
+// but with different certificate attributes, resulting in different certificate bytes but same public key
+func generateCertWithSameKeyForTesting(signer crypto.Signer, signingCA tlsgen.CA) ([]byte, error) {
+	// Get the public key from the signer
+	publicKey := signer.Public()
+
+	// Get the signing CA's certificate
+	caCertPEM := signingCA.CertBytes()
+	block, _ := pem.Decode(caCertPEM)
+	if block == nil {
+		return nil, errors.New("failed to decode CA certificate")
+	}
+	caCert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a certificate template with different attributes than the original
+	template := x509.Certificate{
+		Subject:      caCert.Subject,                 // Use different subject than original
+		NotBefore:    time.Now().Add(-time.Hour),     // Different validity period
+		NotAfter:     time.Now().Add(time.Hour * 25), // Different validity period
+		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		SerialNumber: big.NewInt(time.Now().UnixNano()), // Different serial number
+	}
+
+	// Create the certificate using the existing private key but with different attributes
+	rawBytes, err := x509.CreateCertificate(rand.Reader, &template, caCert, publicKey, signingCA.Signer())
+	if err != nil {
+		return nil, err
+	}
+
+	// Encode as PEM
+	certPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: rawBytes,
+	})
+
+	// Sanitize the certificate
+	return fabriccrypto.SanitizeX509Cert(certPEM)
 }
