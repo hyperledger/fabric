@@ -210,22 +210,10 @@ func TestSend(t *testing.T) {
 	}
 
 	l := &sync.Mutex{}
-	var tst testCase
 
 	sent := make(chan struct{})
 
 	var sendCalls uint32
-
-	fakeStream1 := &mocks.StepClientStream{}
-	fakeStream1.On("Context", mock.Anything).Return(context.Background())
-	fakeStream1.On("Auth").Return(nil)
-	fakeStream1.On("Send", mock.Anything).Return(func(*orderer.StepRequest) error {
-		l.Lock()
-		defer l.Unlock()
-		atomic.AddUint32(&sendCalls, 1)
-		sent <- struct{}{}
-		return tst.sendReturns
-	})
 
 	for _, tst := range []testCase{
 		{
@@ -272,6 +260,17 @@ func TestSend(t *testing.T) {
 		l.Unlock()
 
 		t.Run(testCase.name, func(t *testing.T) {
+			fakeStream := &mocks.StepClientStream{}
+			fakeStream.On("Context", mock.Anything).Return(context.Background())
+			fakeStream.On("Auth").Return(nil)
+			fakeStream.On("Send", mock.Anything).Return(func(req *orderer.StepRequest) error {
+				l.Lock()
+				defer l.Unlock()
+				atomic.AddUint32(&sendCalls, 1)
+				sent <- struct{}{}
+				return testCase.sendReturns
+			})
+
 			atomic.StoreUint32(&sendCalls, 0)
 			isSend := testCase.receiveReturns == nil
 			comm := &mocks.Communicator{}
@@ -282,7 +281,7 @@ func TestSend(t *testing.T) {
 				Logger:       flogging.MustGetLogger("test"),
 				ProbeConn:    func(_ *grpc.ClientConn) error { return nil },
 				GetStreamFunc: func(ctx context.Context) (cluster.StepClientStream, error) {
-					return fakeStream1, nil
+					return fakeStream, nil
 				},
 				Channel: "mychannel",
 			}
@@ -303,7 +302,7 @@ func TestSend(t *testing.T) {
 			}
 
 			if testCase.remoteError == nil && testCase.expectedErr == "" && isSend {
-				fakeStream1.AssertCalled(t, "Send", testCase.sendCalledWith)
+				fakeStream.AssertCalled(t, "Send", testCase.sendCalledWith)
 				// Ensure that if we succeeded - only 1 stream was created despite 2 calls
 				// to Send() were made
 				err := testCase.method(rpc)
