@@ -261,12 +261,46 @@ func (c *Consenter) IsChannelMember(joinBlock *cb.Block) (bool, error) {
 		return false, errors.New("no orderer config in bundle")
 	}
 	member := false
+
+	santizedCert, err := crypto.SanitizeX509Cert(c.Identity)
+	if err != nil {
+		return false, err
+	}
+
+	// Extract public key using the same approach as IsConsenterOfChannel
+	bl, _ := pem.Decode(santizedCert)
+	if bl == nil {
+		return false, errors.Errorf("node identity certificate %s is not a valid PEM", string(santizedCert))
+	}
+
+	myPublicKey, err := cluster.ExtractPublicKeyFromCert(bl.Bytes)
+	if err != nil {
+		c.Logger.Warningf("Failed to extract public key from own certificate: %v", err)
+		return false, err
+	}
+
 	for _, consenter := range oc.Consenters() {
 		santizedCert, err := crypto.SanitizeX509Cert(consenter.Identity)
 		if err != nil {
+			c.Logger.Warnf("Failed to sanitize consenter %d identity: %v", consenter.Id, err)
 			return false, err
 		}
-		if bytes.Equal(c.Identity, santizedCert) {
+
+		// Extract public key using the same approach as IsConsenterOfChannel
+		bl, _ := pem.Decode(santizedCert)
+		if bl == nil {
+			c.Logger.Warnf("Consenter %d: failed to decode PEM for identity", consenter.Id)
+			continue
+		}
+
+		publicKey, err := cluster.ExtractPublicKeyFromCert(bl.Bytes)
+		if err != nil {
+			c.Logger.Warnf("Consenter %d: failed to extract public key from cert: %v", consenter.Id, err)
+			continue
+		}
+		c.Logger.Debugf("Consenter %d: extracted public key: %x", consenter.Id, publicKey)
+		if bytes.Equal(myPublicKey, publicKey) {
+			c.Logger.Debugf("Found matching public key for consenter %d", consenter.Id)
 			member = true
 			break
 		}
@@ -297,16 +331,29 @@ func pemToDER(pemBytes []byte, id uint64, certType string, logger *flogging.Fabr
 	return bl.Bytes, nil
 }
 
-func (c *Consenter) detectSelfID(consenters []*cb.Consenter) (uint32, error) {
+func (c *Consenter) detectSelfID(consenters []*cb.Consenter) (uint64, error) {
+	thisNodeCertAsDER, err := pemToDER(c.Comm.NodeIdentity, 0, "server", c.Logger)
+	if err != nil {
+		c.Logger.Errorf("Failed to convert node identity certificate to DER: %s", err)
+		return 0, err
+	}
+
+	var serverCertificates []string
 	for _, cst := range consenters {
-		santizedCert, err := crypto.SanitizeX509Cert(cst.Identity)
+		serverCertificates = append(serverCertificates, string(cst.Identity))
+
+		certAsDER, err := pemToDER(cst.Identity, uint64(cst.Id), "server", c.Logger)
 		if err != nil {
+			c.Logger.Errorf("Failed to convert node identity certificate to DER: %s", err)
 			return 0, err
 		}
-		if bytes.Equal(c.Comm.NodeIdentity, santizedCert) {
-			return cst.Id, nil
+
+		if crypto.CertificatesWithSamePublicKey(thisNodeCertAsDER, certAsDER) == nil {
+			c.Logger.Debugf("Found node %d in channel consenters set", cst.Id)
+			return uint64(cst.Id), nil
 		}
 	}
-	c.Logger.Warning("Could not find the node in channel consenters set")
+
+	c.Logger.Warning("Could not find", string(c.Comm.NodeIdentity), "among", serverCertificates)
 	return 0, cluster.ErrNotInChannel
 }

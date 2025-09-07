@@ -118,7 +118,11 @@ func (mp MemberMapping) LookupByClientCert(cert []byte) *Stub {
 // LookupByIdentity retrieves a Stub by Identity
 func (mp MemberMapping) LookupByIdentity(identity []byte) *Stub {
 	for _, stub := range mp.id2stub {
-		if bytes.Equal(identity, stub.Identity) {
+		equal, err := CompareCertPublicKeys(identity, stub.Identity)
+		if err != nil {
+			continue
+		}
+		if equal {
 			return stub
 		}
 	}
@@ -822,4 +826,39 @@ func EncodeTimestamp(t *timestamppb.Timestamp) []byte {
 	b := make([]byte, 8)
 	binary.LittleEndian.PutUint64(b, uint64(t.Seconds))
 	return b
+}
+
+// ExtractPublicKeyFromCert extracts the public key from an X.509 certificate
+func ExtractPublicKeyFromCert(der []byte) ([]byte, error) {
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse certificate")
+	}
+
+	return x509.MarshalPKIXPublicKey(cert.PublicKey)
+}
+
+func CompareCertPublicKeys(cert1, cert2 []byte) (bool, error) {
+	// Extract public key using the same approach as IsConsenterOfChannel
+	bl, _ := pem.Decode(cert1)
+	if bl == nil {
+		return false, errors.Errorf("node identity certificate %s is not a valid PEM", string(cert1))
+	}
+
+	publicKey1, err := ExtractPublicKeyFromCert(bl.Bytes)
+	if err != nil {
+		return false, err
+	}
+
+	bl, _ = pem.Decode(cert2)
+	if bl == nil {
+		return false, errors.Errorf("node identity certificate %s is not a valid PEM", string(cert2))
+	}
+
+	publicKey2, err := ExtractPublicKeyFromCert(bl.Bytes)
+	if err != nil {
+		return false, err
+	}
+
+	return bytes.Equal(publicKey1, publicKey2), nil
 }

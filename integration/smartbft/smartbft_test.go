@@ -11,6 +11,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/ecdsa"
+	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -165,7 +167,118 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			By("invoking the chaincode, again")
 			invokeQuery(network, peer, network.Orderers[2], channel, 80)
 		})
+		It("disregards certificate renewal if only the validity period changed", func() {
+			networkConfig := nwo.MultiNodeSmartBFT()
+			networkConfig.Channels = nil
 
+			network = nwo.New(networkConfig, testDir, client, StartPort(), components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			var ordererRunners []*ginkgomon.Runner
+			for _, orderer := range network.Orderers {
+				runner := network.OrdererRunner(orderer)
+				runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug")
+				ordererRunners = append(ordererRunners, runner)
+				proc := ifrit.Invoke(runner)
+				ordererProcesses = append(ordererProcesses, proc)
+				Eventually(proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			peerRunner := network.PeerGroupRunner()
+			peerProcesses = ifrit.Invoke(peerRunner)
+
+			Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			peer := network.Peer("Org1", "peer0")
+
+			sess, err := network.ConfigTxGen(commands.OutputBlock{
+				ChannelID:   "testchannel1",
+				Profile:     network.Profiles[0].Name,
+				ConfigPath:  network.RootDir,
+				OutputBlock: network.OutputBlockPath("testchannel1"),
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+
+			genesisBlockBytes, err := os.ReadFile(network.OutputBlockPath("testchannel1"))
+			Expect(err).NotTo(HaveOccurred())
+
+			genesisBlock := &common.Block{}
+			err = proto.Unmarshal(genesisBlockBytes, genesisBlock)
+			Expect(err).NotTo(HaveOccurred())
+
+			expectedChannelInfoPT := nwo.ChannelInfo{
+				Name:              "testchannel1",
+				URL:               "/participation/v1/channels/testchannel1",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            1,
+			}
+
+			for _, o := range network.Orderers {
+				By("joining " + o.Name + " to channel as a consenter")
+				nwo.Join(network, o, "testchannel1", genesisBlock, expectedChannelInfoPT)
+				channelInfo := nwo.ListOne(network, o, "testchannel1")
+				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
+			}
+
+			By("Waiting for followers to see the leader")
+			Eventually(ordererRunners[1].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[2].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+			Eventually(ordererRunners[3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
+
+			channel := "testchannel1"
+			By(fmt.Sprintf("Peers with Channel %s are %+v\n", channel, network.PeersWithChannel(channel)))
+			orderer := network.Orderers[0]
+			network.JoinChannel(channel, orderer, network.PeersWithChannel(channel)...)
+
+			By("Killing all orderers")
+			for i := range network.Orderers {
+				ordererProcesses[i].Signal(syscall.SIGTERM)
+				Eventually(ordererProcesses[i].Wait(), network.EventuallyTimeout).Should(Receive())
+			}
+
+			By("Renewing the TLS certificates of the orderers")
+			renewOrdererTLSCertificates(network, network.Orderers...)
+
+			By("Renewing the enrollment certificates of the orderers")
+			renewOrdererEnrollmentCertificates(network, time.Now().Add(time.Hour), network.Orderers...)
+
+			By("Starting the orderers again")
+			for i := range network.Orderers {
+				ordererRunner := network.OrdererRunner(network.Orderers[i])
+				ordererRunners[i] = ordererRunner
+				ordererProcesses[i] = ifrit.Invoke(ordererRunner)
+				Eventually(ordererProcesses[i].Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+			updateBatchSize(network, peer, orderer, channel, func(batchSize *ordererProtos.BatchSize) {
+				batchSize.AbsoluteMaxBytes = 1000000
+				batchSize.MaxMessageCount = 300
+			})
+			assertBlockReception(map[string]int{"testchannel1": 1}, network.Orderers, peer, network)
+
+			updateBatchSize(network, peer, orderer, channel, func(batchSize *ordererProtos.BatchSize) {
+				batchSize.AbsoluteMaxBytes = 1000000
+				batchSize.MaxMessageCount = 400
+			})
+
+			assertBlockReception(map[string]int{"testchannel1": 2}, network.Orderers, peer, network)
+
+			By("Try deploying chaincode")
+			peers := network.PeersWithChannel(channel)
+			Expect(len(peers)).ToNot(Equal(0))
+
+			// deploy the chaincode
+			deployChaincode(network, channel, testDir)
+
+			assertBlockReception(map[string]int{"testchannel1": 6}, network.Orderers, peer, network)
+
+			// test the chaincodes
+			invokeQuery(network, peer, orderer, channel, 90)
+			invokeQuery(network, peer, orderer, channel, 80)
+			invokeQuery(network, peer, orderer, channel, 70)
+			invokeQuery(network, peer, orderer, channel, 60)
+		})
 		It("smartbft node addition and removal", func() {
 			networkConfig := nwo.MultiNodeSmartBFT()
 			networkConfig.Channels = nil
@@ -2757,4 +2870,130 @@ func createPrePrepareRequest(
 	}
 
 	return req, block
+}
+
+func renewOrdererTLSCertificates(network *nwo.Network, orderers ...*nwo.Orderer) {
+	if len(orderers) == 0 {
+		return
+	}
+	ordererDomain := network.Organization(orderers[0].Organization).Domain
+	ordererTLSCAKeyPath := filepath.Join(network.RootDir, "crypto", "ordererOrganizations",
+		ordererDomain, "tlsca", "priv_sk")
+
+	ordererTLSCAKey, err := os.ReadFile(ordererTLSCAKeyPath)
+	Expect(err).NotTo(HaveOccurred())
+
+	ordererTLSCACertPath := filepath.Join(network.RootDir, "crypto", "ordererOrganizations",
+		ordererDomain, "tlsca", fmt.Sprintf("tlsca.%s-cert.pem", ordererDomain))
+	ordererTLSCACert, err := os.ReadFile(ordererTLSCACertPath)
+	Expect(err).NotTo(HaveOccurred())
+
+	serverTLSCerts := map[string][]byte{}
+	for _, orderer := range orderers {
+		tlsCertPath := filepath.Join(network.OrdererLocalTLSDir(orderer), "server.crt")
+		serverTLSCerts[tlsCertPath], err = os.ReadFile(tlsCertPath)
+		Expect(err).NotTo(HaveOccurred())
+	}
+
+	for filePath, certPEM := range serverTLSCerts {
+		renewedCert := renewCertificate(certPEM, ordererTLSCACert, ordererTLSCAKey, time.Now().Add(time.Hour))
+		err = os.WriteFile(filePath, renewedCert, 0o600)
+		Expect(err).NotTo(HaveOccurred())
+	}
+}
+
+// renewCertificate generates a new certificate with the same public key and subject as the original,
+// but with a new NotAfter (expiration time). Only the expiration is changed.
+func renewCertificate(certPEM, caCertPEM, caKeyPEM []byte, notAfter time.Time) (renewedCertPEM []byte) {
+	// Parse CA private key
+	keyAsDER, _ := pem.Decode(caKeyPEM)
+	caKeyWithoutType, err := x509.ParsePKCS8PrivateKey(keyAsDER.Bytes)
+	Expect(err).NotTo(HaveOccurred())
+	caKey := caKeyWithoutType.(*ecdsa.PrivateKey)
+
+	// Parse CA certificate
+	caCertAsDER, _ := pem.Decode(caCertPEM)
+	caCert, err := x509.ParseCertificate(caCertAsDER.Bytes)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Parse the original certificate
+	certAsDER, _ := pem.Decode(certPEM)
+	cert, err := x509.ParseCertificate(certAsDER.Bytes)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Create a new certificate template with the same fields as the original,
+	// but with a new NotAfter (expiration time)
+	newCert := &x509.Certificate{
+		SerialNumber:          cert.SerialNumber,
+		Subject:               cert.Subject,
+		NotBefore:             cert.NotBefore,
+		NotAfter:              notAfter,
+		KeyUsage:              cert.KeyUsage,
+		ExtKeyUsage:           cert.ExtKeyUsage,
+		UnknownExtKeyUsage:    cert.UnknownExtKeyUsage,
+		BasicConstraintsValid: cert.BasicConstraintsValid,
+		IsCA:                  cert.IsCA,
+		DNSNames:              cert.DNSNames,
+		EmailAddresses:        cert.EmailAddresses,
+		IPAddresses:           cert.IPAddresses,
+		URIs:                  cert.URIs,
+		SubjectKeyId:          cert.SubjectKeyId,
+		AuthorityKeyId:        cert.AuthorityKeyId,
+		SignatureAlgorithm:    cert.SignatureAlgorithm,
+		PublicKeyAlgorithm:    cert.PublicKeyAlgorithm,
+		PublicKey:             cert.PublicKey,
+		PolicyIdentifiers:     cert.PolicyIdentifiers,
+		CRLDistributionPoints: cert.CRLDistributionPoints,
+		OCSPServer:            cert.OCSPServer,
+		IssuingCertificateURL: cert.IssuingCertificateURL,
+		ExtraExtensions:       cert.ExtraExtensions,
+		Extensions:            cert.Extensions,
+	}
+
+	// The CA signs the new certificate
+	certBytes, err := x509.CreateCertificate(rand.Reader, newCert, caCert, cert.PublicKey, caKey)
+	Expect(err).NotTo(HaveOccurred())
+
+	renewedCertPEM = pem.EncodeToMemory(&pem.Block{Bytes: certBytes, Type: "CERTIFICATE"})
+	return
+}
+
+// renewOrdererEnrollmentCertificates renews the signcert for each orderer with a given expirationTime
+// and re-writes it to the orderer's signcerts directory, matching the actual crypto structure.
+func renewOrdererEnrollmentCertificates(network *nwo.Network, notAfter time.Time, orderers ...*nwo.Orderer) {
+	if len(orderers) == 0 {
+		return
+	}
+
+	for _, orderer := range orderers {
+		ordererDomain := network.Organization(orderer.Organization).Domain
+		// Use the orderer name as it appears in the file system, not the nwo.Orderer.ID()
+		// The directory is .../orderers/<ordererName>.<domain>/msp/signcerts/<ordererName>.<domain>-cert.pem
+		ordererName := orderer.Name
+		ordererFQDN := fmt.Sprintf("%s.%s", ordererName, ordererDomain)
+
+		// CA key and cert for the org
+		ordererCAKeyPath := filepath.Join(
+			network.RootDir, "crypto", "ordererOrganizations", ordererDomain, "ca", "priv_sk",
+		)
+		ordererCAKey, err := os.ReadFile(ordererCAKeyPath)
+		Expect(err).NotTo(HaveOccurred())
+
+		ordererCACertPath := filepath.Join(
+			network.RootDir, "crypto", "ordererOrganizations", ordererDomain, "ca", fmt.Sprintf("ca.%s-cert.pem", ordererDomain),
+		)
+		ordererCACert, err := os.ReadFile(ordererCACertPath)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Path to the orderer's signcert
+		ordererSignCertPath := filepath.Join(
+			network.RootDir, "crypto", "ordererOrganizations", ordererDomain, "orderers", ordererFQDN, "msp", "signcerts", fmt.Sprintf("%s-cert.pem", ordererFQDN),
+		)
+		ordererSignCert, err := os.ReadFile(ordererSignCertPath)
+		Expect(err).NotTo(HaveOccurred())
+
+		renewedCert := renewCertificate(ordererSignCert, ordererCACert, ordererCAKey, notAfter)
+		err = os.WriteFile(ordererSignCertPath, renewedCert, 0o600)
+		Expect(err).NotTo(HaveOccurred())
+	}
 }
