@@ -38,8 +38,8 @@ func TestCollElgNotifier(t *testing.T) {
 		}, nil)
 
 	mockMembershipInfoProvider := &mock.MembershipInfoProvider{}
-	mockMembershipInfoProvider.AmMemberOfStub = func(channel string, p *peer.CollectionPolicyConfig) (bool, error) {
-		return testutilIsEligibleForMockPolicy(p), nil
+	mockMembershipInfoProvider.AmMemberOfStub = func(channel string, p *peer.CollectionPolicyConfig) bool {
+		return testutilIsEligibleForMockPolicy(p)
 	}
 
 	mockCollElgListener := &mockCollElgListener{}

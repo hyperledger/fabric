@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
@@ -115,7 +116,7 @@ func assertLedgerStatus(t *testing.T, provider *Provider, genesisBlocks []*commo
 	require.NoError(t, err)
 	require.Len(t, activeLedgerIDs, numLedgers-len(pausedLedgers))
 	for i := 0; i < numLedgers; i++ {
-		if !contains(pausedLedgers, i) {
+		if !slices.Contains(pausedLedgers, i) {
 			require.Contains(t, activeLedgerIDs, constructTestLedgerID(i))
 		}
 	}
@@ -124,19 +125,10 @@ func assertLedgerStatus(t *testing.T, provider *Provider, genesisBlocks []*commo
 		m, err := s.getLedgerMetadata(constructTestLedgerID(i))
 		require.NoError(t, err)
 		require.NotNil(t, m)
-		if contains(pausedLedgers, i) {
+		if slices.Contains(pausedLedgers, i) {
 			require.Equal(t, msgs.Status_INACTIVE, m.GetStatus())
 		} else {
 			require.Equal(t, msgs.Status_ACTIVE, m.GetStatus())
 		}
 	}
-}
-
-func contains(slice []int, val int) bool {
-	for _, item := range slice {
-		if item == val {
-			return true
-		}
-	}
-	return false
 }

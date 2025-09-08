@@ -185,10 +185,7 @@ func (i *eligibilityAndBTLCache) loadDataFor(namespace string) error {
 
 		for _, collection := range collections {
 			staticCollection := collection.GetStaticCollectionConfig()
-			eligible, err := i.membershipProvider.AmMemberOf(i.ledgerID, staticCollection.MemberOrgsPolicy)
-			if err != nil {
-				return err
-			}
+			eligible := i.membershipProvider.AmMemberOf(i.ledgerID, staticCollection.MemberOrgsPolicy)
 			key := nsColl{
 				ns:   namespace,
 				coll: staticCollection.Name,
