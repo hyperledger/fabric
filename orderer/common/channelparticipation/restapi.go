@@ -31,8 +31,10 @@ const (
 	FormDataConfigBlockKey          = "config-block"
 	FormDataConfigUpdateEnvelopeKey = "config-update-envelope"
 
-	channelIDKey        = "channelID"
-	urlWithChannelIDKey = URLBaseV1Channels + "/{" + channelIDKey + "}"
+	channelIDKey                = "channelID"
+	blockIDKey                  = "blockID"
+	urlWithChannelIDKey         = URLBaseV1Channels + "/{" + channelIDKey + "}"
+	urlWithChannelAndBlockIDKey = urlWithChannelIDKey + "/blocks/{" + blockIDKey + "}"
 )
 
 //go:generate counterfeiter -o mocks/channel_management.go -fake-name ChannelManagement . ChannelManagement
@@ -57,6 +59,9 @@ type ChannelManagement interface {
 
 	// RemoveChannel instructs the orderer to remove a channel.
 	RemoveChannel(channelID string) error
+
+	// FetchBlock instructs the orderer to send a block of channel.
+	FetchBlock(channelID string, blockID string) (*cb.Block, error)
 }
 
 // HTTPHandler handles all the HTTP requests to the channel participation API.
@@ -75,7 +80,7 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 		router:    mux.NewRouter(),
 	}
 
-	// swagger:operation GET /v1/participation/channels/{channelID} channels listChannel
+	// swagger:operation GET /participation/v1/channels/{channelID} channels listChannel
 	// ---
 	// summary: Returns detailed channel information for a specific channel Ordering Service Node (OSN) has joined.
 	// parameters:
@@ -99,7 +104,7 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 
 	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveListOne).Methods(http.MethodGet)
 
-	// swagger:operation DELETE /v1/participation/channels/{channelID} channels removeChannel
+	// swagger:operation DELETE /participation/v1/channels/{channelID} channels removeChannel
 	// ---
 	// summary: Removes an Ordering Service Node (OSN) from a channel.
 	// parameters:
@@ -119,9 +124,8 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 	//      description: The channel is pending removal.
 
 	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveRemove).Methods(http.MethodDelete)
-	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveNotAllowed)
 
-	// swagger:operation GET /v1/participation/channels channels listChannels
+	// swagger:operation GET /participation/v1/channels channels listChannels
 	// ---
 	// summary: Returns the complete list of channels an Ordering Service Node (OSN) has joined.
 	// responses:
@@ -139,7 +143,7 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 
 	handler.router.HandleFunc(URLBaseV1Channels, handler.serveListAll).Methods(http.MethodGet)
 
-	// swagger:operation POST /v1/participation/channels channels joinChannel
+	// swagger:operation POST /participation/v1/channels channels joinChannel
 	// ---
 	// summary: Joins an Ordering Service Node (OSN) to a channel.
 	// description: If a channel does not yet exist, it will be created.
@@ -175,7 +179,7 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 		"Content-Type", "multipart/form-data*")
 	handler.router.HandleFunc(URLBaseV1Channels, handler.serveBadContentType).Methods(http.MethodPost)
 
-	// swagger:operation PUT /v1/participation/channels channels updateChannel
+	// swagger:operation PUT /participation/v1/channels channels updateChannel
 	// ---
 	// summary: Update config block of the Order Service Node (OSN) to the channel.
 	// parameters:
@@ -212,6 +216,36 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 		"Content-Type", "multipart/form-data*")
 	handler.router.HandleFunc(URLBaseV1Channels, handler.serveBadContentType).Methods(http.MethodPut)
 
+	// swagger:operation GET /participation/v1/channels/{channelID}/blocks/{blockID} channels fetchBlock
+	// ---
+	// summary: Returns a specific channel block for a specific Channel Ordering Service (OSN) node.
+	// parameters:
+	// - name: channelID
+	//   in: path
+	//   description: Channel ID
+	//   required: true
+	//   type: string
+	// - name: blockID
+	//   in: path
+	//   description: Block ID
+	//   required: true
+	//   type: string
+	// produces:
+	//    - application/octet-stream
+	// responses:
+	//    '200':
+	//       description: Successful block download.
+	//       schema:
+	//         type: file
+	//    '400':
+	//      description: Bad request.
+	//    '404':
+	//      description: The channel or block does not exist.
+
+	handler.router.HandleFunc(urlWithChannelAndBlockIDKey, handler.serveFetchBlock).Methods(http.MethodGet)
+
+	handler.router.HandleFunc(urlWithChannelAndBlockIDKey, handler.serveNotAllowed)
+	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveNotAllowed)
 	handler.router.HandleFunc(URLBaseV1Channels, handler.serveNotAllowed)
 
 	handler.router.HandleFunc(URLBaseV1, handler.redirectBaseV1).Methods(http.MethodGet)
@@ -273,6 +307,41 @@ func (h *HTTPHandler) serveListOne(resp http.ResponseWriter, req *http.Request) 
 
 func (h *HTTPHandler) redirectBaseV1(resp http.ResponseWriter, req *http.Request) {
 	http.Redirect(resp, req, URLBaseV1Channels, http.StatusFound)
+}
+
+func (h *HTTPHandler) serveFetchBlock(resp http.ResponseWriter, req *http.Request) {
+	_, err := negotiateContentType(req) // Only application/json responses for now
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusNotAcceptable, err)
+		return
+	}
+
+	channelID, err := h.extractChannelID(req, resp)
+	if err != nil {
+		return
+	}
+
+	blockID, err := h.extractBlockID(req, resp)
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusBadRequest, err)
+		return
+	}
+
+	block, err := h.registrar.FetchBlock(channelID, blockID)
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusNotFound, err)
+		return
+	}
+
+	blockBytes, err := proto.Marshal(block)
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusInternalServerError, err)
+		return
+	}
+
+	resp.Header().Set("Cache-Control", "no-store")
+	resp.Header().Set("Content-Type", "application/octet-stream")
+	h.sendResponseBlock(resp, blockBytes)
 }
 
 // Join a channel.
@@ -459,6 +528,22 @@ func (h *HTTPHandler) extractChannelID(req *http.Request, resp http.ResponseWrit
 	return channelID, nil
 }
 
+func (h *HTTPHandler) extractBlockID(req *http.Request, resp http.ResponseWriter) (string, error) {
+	blockID, ok := mux.Vars(req)[blockIDKey]
+	if !ok {
+		err := errors.New("missing block ID")
+		h.sendResponseJsonError(resp, http.StatusInternalServerError, err)
+		return "", err
+	}
+
+	if err := ValidateFetchBlockID(blockID); err != nil {
+		err = errors.WithMessage(err, "invalid block ID")
+		h.sendResponseJsonError(resp, http.StatusBadRequest, err)
+		return "", err
+	}
+	return blockID, nil
+}
+
 func (h *HTTPHandler) sendJoinError(err error, resp http.ResponseWriter) {
 	h.logger.Debugf("Failed to JoinChannel: %s", err)
 	switch err {
@@ -544,6 +629,11 @@ func (h *HTTPHandler) serveBadContentType(resp http.ResponseWriter, req *http.Re
 func (h *HTTPHandler) serveNotAllowed(resp http.ResponseWriter, req *http.Request) {
 	err := errors.Errorf("invalid request method: %s", req.Method)
 
+	if _, ok := mux.Vars(req)[blockIDKey]; ok {
+		h.sendResponseNotAllowed(resp, err, http.MethodGet)
+		return
+	}
+
 	if _, ok := mux.Vars(req)[channelIDKey]; ok {
 		h.sendResponseNotAllowed(resp, err, http.MethodGet, http.MethodDelete)
 		return
@@ -585,6 +675,15 @@ func (h *HTTPHandler) sendResponseOK(resp http.ResponseWriter, content interface
 	resp.WriteHeader(http.StatusOK)
 	if err := encoder.Encode(content); err != nil {
 		h.logger.Errorf("failed to encode content, err: %s", err)
+	}
+}
+
+func (h *HTTPHandler) sendResponseBlock(resp http.ResponseWriter, block []byte) {
+	// resp.Header().Set("Content-Type", "application/json")
+	resp.WriteHeader(http.StatusOK)
+
+	if _, err := resp.Write(block); err != nil {
+		h.logger.Errorf("failed to write block, err: %s", err)
 	}
 }
 

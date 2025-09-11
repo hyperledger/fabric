@@ -535,6 +535,7 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 
 	c.Metrics.ActiveNodes.Set(float64(len(clusterMetadata.ActiveNodes)))
 	c.ActiveNodes.Store(clusterMetadata.ActiveNodes)
+	c.logger.Infof("Store ActiveNodes %+v", clusterMetadata.ActiveNodes)
 
 	return nil
 }
@@ -1543,6 +1544,7 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 
 	active := c.ActiveNodes.Load().([]uint64)
 	if changes.UnacceptableQuorumLoss(active) {
+		c.logger.Debugf("%d out of %d nodes are alive - %+v", len(active), len(dummyOldConsentersMap), active)
 		return errors.Errorf("%d out of %d nodes are alive, configuration will result in quorum loss", len(active), len(dummyOldConsentersMap))
 	}
 
