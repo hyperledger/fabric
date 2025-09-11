@@ -32,25 +32,21 @@ func TestMembershipInfoProvider(t *testing.T) {
 
 	// verify membership provider pass simple check returns true
 	membershipProvider := NewMembershipInfoProvider(mspID, emptyPeerSelfSignedData, identityDeserializer)
-	res, err := membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer0", "peer1"}))
+	res := membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer0", "peer1"}))
 	require.True(t, res)
-	require.Nil(t, err)
 
 	// verify membership provider fall back to default access policy evaluation returns false
 	membershipProvider = NewMembershipInfoProvider(mspID, peerSelfSignedData, identityDeserializer)
-	res, err = membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer2", "peer3"}))
+	res = membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer2", "peer3"}))
 	require.False(t, res)
-	require.Nil(t, err)
 
-	// verify membership provider returns false and nil when collection policy config is nil
-	res, err = membershipProvider.AmMemberOf("test1", nil)
+	// verify membership provider returns false when collection policy config is nil
+	res = membershipProvider.AmMemberOf("test1", nil)
 	require.False(t, res)
-	require.Nil(t, err)
 
-	// verify membership provider returns false and nil when collection policy config is invalid
-	res, err = membershipProvider.AmMemberOf("test1", getBadAccessPolicy([]string{"signer0"}, 1))
+	// verify membership provider returns false when collection policy config is invalid
+	res = membershipProvider.AmMemberOf("test1", getBadAccessPolicy([]string{"signer0"}, 1))
 	require.False(t, res)
-	require.Nil(t, err)
 }
 
 func TestMyImplicitCollectionName(t *testing.T) {
