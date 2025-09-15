@@ -13,3 +13,5 @@ The `osnadmin channel` command has the following subcommands:
   * join
   * list
   * remove
+  * update
+  * fetch
