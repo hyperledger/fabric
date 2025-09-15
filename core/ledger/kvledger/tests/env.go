@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -315,15 +316,10 @@ type membershipInfoProvider struct {
 	myOrgMSPID string
 }
 
-func (p *membershipInfoProvider) AmMemberOf(channelName string, collectionPolicyConfig *peer.CollectionPolicyConfig) (bool, error) {
+func (p *membershipInfoProvider) AmMemberOf(channelName string, collectionPolicyConfig *peer.CollectionPolicyConfig) bool {
 	members := convertFromMemberOrgsPolicy(collectionPolicyConfig)
 	fmt.Printf("members = %s\n", members)
-	for _, m := range members {
-		if m == p.myOrgMSPID {
-			return true, nil
-		}
-	}
-	return false, nil
+	return slices.Contains(members, p.myOrgMSPID)
 }
 
 func (p *membershipInfoProvider) MyImplicitCollectionName() string {
