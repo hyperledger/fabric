@@ -90,7 +90,7 @@
         }
       }
     },
-    "/v1/participation/channels": {
+    "/participation/v1/channels": {
       "get": {
         "tags": [
           "channels"
@@ -217,7 +217,7 @@
         }
       }
     },
-    "/v1/participation/channels/{channelID}": {
+    "/participation/v1/channels/{channelID}": {
       "get": {
         "tags": [
           "channels"
@@ -279,6 +279,48 @@
           },
           "409": {
             "description": "The channel is pending removal."
+          }
+        }
+      }
+    },
+    "/participation/v1/channels/{channelID}/blocks/{blockID}": {
+      "get": {
+        "produces": [
+          "application/octet-stream"
+        ],
+        "tags": [
+          "channels"
+        ],
+        "summary": "Returns a specific channel block for a specific Channel Ordering Service (OSN) node.",
+        "operationId": "fetchBlock",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Channel ID",
+            "name": "channelID",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Block ID",
+            "name": "blockID",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful block download.",
+            "schema": {
+              "type": "file"
+            }
+          },
+          "400": {
+            "description": "Bad request."
+          },
+          "404": {
+            "description": "The channel or block does not exist."
           }
         }
       }

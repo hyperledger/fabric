@@ -8,6 +8,7 @@ package channelparticipation
 
 import (
 	"bytes"
+	"strconv"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
@@ -103,4 +104,23 @@ func ValidateUpdateConfigEnvelope(env *cb.Envelope) (channelID string, err error
 	}
 
 	return configUpdate.ChannelId, nil
+}
+
+// ValidateFetchBlockID checks the block id. He can be: newest|oldest|config|(number)
+func ValidateFetchBlockID(blockID string) error {
+	// Length
+	if len(blockID) <= 0 {
+		return errors.Errorf("block ID illegal, cannot be empty")
+	}
+
+	if blockID == "newest" || blockID == "oldest" || blockID == "config" {
+		return nil
+	}
+
+	_, err := strconv.Atoi(blockID)
+	if err == nil {
+		return nil
+	}
+
+	return errors.Errorf("'%s' not equal <newest|oldest|config|(number)>", blockID)
 }
