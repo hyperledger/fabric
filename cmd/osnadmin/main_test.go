@@ -22,6 +22,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/cmd/osnadmin/mocks"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	. "github.com/hyperledger/fabric/internal/test"
 	"github.com/hyperledger/fabric/orderer/common/channelparticipation"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/types"
@@ -694,7 +695,7 @@ var _ = Describe("osnadmin", func() {
 				tlsConfig = nil
 			})
 
-			It("uses the channel participation API to join a channel", func() {
+			It("uses the channel participation API to update a channel", func() {
 				args := []string{
 					"channel",
 					"update",
@@ -709,6 +710,137 @@ var _ = Describe("osnadmin", func() {
 					Height: 123,
 				}
 				checkStatusOutput(output, exit, err, 201, expectedOutput)
+			})
+		})
+	})
+
+	Describe("Fetch", func() {
+		var (
+			blockPath string
+			block     *cb.Block
+		)
+
+		BeforeEach(func() {
+			blockPath = filepath.Join(tempDir, "block.pb")
+			block = blockWithGroups(
+				map[string]*cb.ConfigGroup{
+					"Application": {},
+				},
+				"testing123",
+			)
+			mockChannelManagement.FetchBlockReturns(block, nil)
+		})
+
+		AfterEach(func() {
+			_ = os.Remove(blockPath)
+		})
+
+		It("uses the channel participation API to fetch a block", func() {
+			args := []string{
+				"channel",
+				"fetch",
+				"--outputfile", blockPath,
+				"--channelID", channelID,
+				"--blockID", "100",
+				"--orderer-address", ordererURL,
+				"--ca-file", ordererCACert,
+				"--client-cert", clientCert,
+				"--client-key", clientKey,
+			}
+			output, exit, err := executeForArgs(args)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(exit).To(Equal(0))
+			Expect(output).To(Equal(fmt.Sprintf("Status: %d\n", 200)))
+
+			blockBytes, err := os.ReadFile(blockPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			b := &cb.Block{}
+			err = proto.Unmarshal(blockBytes, b)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(b).To(ProtoEqual(block))
+		})
+
+		Context("when the block is empty", func() {
+			BeforeEach(func() {
+				block = &cb.Block{}
+				mockChannelManagement.FetchBlockReturns(block, nil)
+			})
+
+			It("returns with exit code 1 and prints the error", func() {
+				args := []string{
+					"channel",
+					"fetch",
+					"--outputfile", blockPath,
+					"--channelID", channelID,
+					"--blockID", "100",
+					"--orderer-address", ordererURL,
+					"--ca-file", ordererCACert,
+					"--client-cert", clientCert,
+					"--client-key", clientKey,
+				}
+				output, exit, err := executeForArgs(args)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(exit).To(Equal(0))
+				Expect(output).To(Equal(fmt.Sprintf("Status: %d\n", 200)))
+
+				blockBytes, err := os.ReadFile(blockPath)
+				Expect(err).To(HaveOccurred())
+				Expect(blockBytes).To(BeNil())
+			})
+		})
+
+		Context("when fetch the channel fails", func() {
+			BeforeEach(func() {
+				mockChannelManagement.FetchBlockReturns(nil, types.ErrChannelNotExist)
+			})
+
+			It("returns 404 does not exist", func() {
+				args := []string{
+					"channel",
+					"fetch",
+					"--outputfile", blockPath,
+					"--channelID", channelID,
+					"--blockID", "100",
+					"--orderer-address", ordererURL,
+					"--ca-file", ordererCACert,
+					"--client-cert", clientCert,
+					"--client-key", clientKey,
+				}
+				output, exit, err := executeForArgs(args)
+				expectedOutput := types.ErrorResponse{
+					Error: "channel does not exist",
+				}
+				checkStatusOutput(output, exit, err, 404, expectedOutput)
+			})
+		})
+
+		Context("when TLS is disabled", func() {
+			BeforeEach(func() {
+				tlsConfig = nil
+			})
+
+			It("uses the channel participation API to fetch a block", func() {
+				args := []string{
+					"channel",
+					"fetch",
+					"--outputfile", blockPath,
+					"--channelID", channelID,
+					"--blockID", "100",
+					"--orderer-address", ordererURL,
+				}
+				output, exit, err := executeForArgs(args)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(exit).To(Equal(0))
+				Expect(output).To(Equal(fmt.Sprintf("Status: %d\n", 200)))
+
+				blockBytes, err := os.ReadFile(blockPath)
+				Expect(err).NotTo(HaveOccurred())
+
+				b := &cb.Block{}
+				err = proto.Unmarshal(blockBytes, b)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(b).To(ProtoEqual(block))
 			})
 		})
 	})
@@ -748,6 +880,41 @@ var _ = Describe("osnadmin", func() {
 				Height:            123,
 			}
 			checkStatusOutput(output, exit, err, 201, expectedOutput)
+		})
+
+		It("accepts short versions of the --channelID, --blockID, and --outputfile flags", func() {
+			blockPath := filepath.Join(tempDir, "block.pb")
+			block := blockWithGroups(
+				map[string]*cb.ConfigGroup{
+					"Application": {},
+				},
+				"testing123",
+			)
+			mockChannelManagement.FetchBlockReturns(block, nil)
+
+			args := []string{
+				"channel",
+				"fetch",
+				"-f", blockPath,
+				"-c", channelID,
+				"-b", "oldest",
+				"-o", ordererURL,
+				"--ca-file", ordererCACert,
+				"--client-cert", clientCert,
+				"--client-key", clientKey,
+			}
+			output, exit, err := executeForArgs(args)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(exit).To(Equal(0))
+			Expect(output).To(Equal(fmt.Sprintf("Status: %d\n", 200)))
+
+			blockBytes, err := os.ReadFile(blockPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			b := &cb.Block{}
+			err = proto.Unmarshal(blockBytes, b)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(b).To(ProtoEqual(block))
 		})
 
 		Context("when an unknown flag is used", func() {
