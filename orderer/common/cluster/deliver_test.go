@@ -1020,7 +1020,6 @@ func TestBlockPullerFailures(t *testing.T) {
 			failFunc: malformBlockSignatureAndRecreateOSNBuffer,
 		},
 	} {
-		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 			testLogger.Infof("Starting test case: %s", testCase.name)
 			osn := newClusterNode(t)
@@ -1130,7 +1129,6 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 	}
 
 	for _, testCase := range testcases {
-		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 			osn := newClusterNode(t)
 			defer osn.stop()

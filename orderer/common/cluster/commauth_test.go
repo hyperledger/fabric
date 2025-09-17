@@ -457,7 +457,6 @@ func TestBuildStepRespone(t *testing.T) {
 		},
 	}
 	for _, tc := range tcs {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			res, err := cluster.BuildStepRespone(tc.input)
