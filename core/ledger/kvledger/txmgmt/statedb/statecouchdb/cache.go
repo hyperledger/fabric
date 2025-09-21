@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package statecouchdb
 
 import (
+	"maps"
+
 	"github.com/VictoriaMetrics/fastcache"
 	"google.golang.org/protobuf/proto"
 )
@@ -110,9 +112,7 @@ func (u cacheUpdates) add(namespace string, ckvs cacheKVs) {
 		u[namespace] = nsu
 	}
 
-	for k, v := range ckvs {
-		nsu[k] = v
-	}
+	maps.Copy(nsu, ckvs)
 }
 
 // UpdateStates updates only the existing entries in the cache associated with
