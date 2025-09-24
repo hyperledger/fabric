@@ -1,6 +1,6 @@
 module github.com/hyperledger/fabric
 
-go 1.25.0
+go 1.25.1
 
 require (
 	code.cloudfoundry.org/clock v1.0.0
