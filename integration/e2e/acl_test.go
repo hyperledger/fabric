@@ -469,7 +469,7 @@ func SetACLPolicy(network *nwo.Network, channel, policyName, policy string, orde
 	nwo.UpdateConfig(network, orderer, channel, config, updatedConfig, true, submitter, nil, signer)
 }
 
-// GetTxIDFromBlock gets a transaction id from a block that has been
+// GetTxIDFromBlockFile gets a transaction id from a block that has been
 // marshaled and stored on the filesystem
 func GetTxIDFromBlockFile(blockFile string) string {
 	block := nwo.UnmarshalBlockFromFile(blockFile)
