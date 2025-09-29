@@ -18,6 +18,8 @@ The `osnadmin channel` command has the following subcommands:
   * join
   * list
   * remove
+  * update
+  * fetch
 
 ## osnadmin channel
 ```
@@ -56,6 +58,9 @@ Subcommands:
 
   channel update --channelID=CHANNELID --config-update-envelope=CONFIG-UPDATE-ENVELOPE [<flags>]
     Update an Ordering Service Node (OSN) to a channel.
+
+  channel fetch --channelID=CHANNELID --blockID=BLOCKID --outputfile=OUTPUTFILE [<flags>]
+    Fetch a specified block, writing it to a file.
 ```
 
 
@@ -164,6 +169,36 @@ Flags:
   -e, --config-update-envelope=CONFIG-UPDATE-ENVELOPE
                                  Path to the file containing an up-to-date
                                  config update envelope for the channel
+  -t, --tlsHandshakeTimeShift=0  The amount of time to shift backwards for
+                                 certificate expiration checks during TLS
+                                 handshakes with the orderer endpoint
+```
+
+
+## osnadmin channel fetch
+```
+usage: osnadmin channel fetch --channelID=CHANNELID --blockID=BLOCKID --outputfile=OUTPUTFILE [<flags>]
+
+Fetch a specified block, writing it to a file.
+
+Flags:
+      --help                     Show context-sensitive help (also try
+                                 --help-long and --help-man).
+  -o, --orderer-address=ORDERER-ADDRESS
+                                 Admin endpoint of the OSN
+      --ca-file=CA-FILE          Path to file containing PEM-encoded TLS CA
+                                 certificate(s) for the OSN
+      --client-cert=CLIENT-CERT  Path to file containing PEM-encoded X509 public
+                                 key to use for mutual TLS communication with
+                                 the OSN
+      --client-key=CLIENT-KEY    Path to file containing PEM-encoded private key
+                                 to use for mutual TLS communication with the
+                                 OSN
+      --no-status                Remove the HTTP status message from the command
+                                 output
+  -c, --channelID=CHANNELID      Channel ID
+  -b, --blockID=BLOCKID          Block ID - <newest|oldest|config|(number)>
+  -f, --outputfile=OUTPUTFILE    Puth to a file.
   -t, --tlsHandshakeTimeShift=0  The amount of time to shift backwards for
                                  certificate expiration checks during TLS
                                  handshakes with the orderer endpoint
