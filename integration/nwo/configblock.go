@@ -33,32 +33,28 @@ func GetConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string) *c
 	defer os.RemoveAll(tempDir)
 
 	// fetch the config block
-	output := filepath.Join(tempDir, "config_block.pb")
-	FetchConfigBlock(n, peer, orderer, channel, output)
+	configBlock := FetchConfigBlock(n, orderer, channel)
 
-	// unmarshal the config block bytes
-	configBlock := UnmarshalBlockFromFile(output)
 	return configBlock
 }
 
 // FetchConfigBlock fetches latest config block.
-func FetchConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string, output string) {
+func FetchConfigBlock(n *Network, orderer *Orderer, channel string) *common.Block {
+	var (
+		err error
+		b   *common.Block
+	)
 	fetch := func() int {
-		sess, err := n.OrdererAdminSession(orderer, peer, commands.ChannelFetch{
-			ChannelID:  channel,
-			Block:      "config",
-			Orderer:    n.OrdererAddress(orderer, ListenPort),
-			OutputFile: output,
-			ClientAuth: n.ClientAuthRequired,
-		})
-		Expect(err).NotTo(HaveOccurred())
-		code := sess.Wait(n.EventuallyTimeout).ExitCode()
-		if code == 0 {
-			Expect(sess.Err).To(gbytes.Say("Received block: "))
+		b, err = Fetch(n, orderer, channel, "config")
+		if err != nil || b == nil {
+			return 1
 		}
-		return code
+
+		return 0
 	}
 	Eventually(fetch, n.EventuallyTimeout).Should(Equal(0))
+
+	return b
 }
 
 // GetConfig retrieves the last config of the given channel.
@@ -179,15 +175,12 @@ func CurrentConfigBlockNumber(n *Network, peer *Peer, orderer *Orderer, channel 
 	defer os.RemoveAll(tempDir)
 
 	// fetch the config block
-	output := filepath.Join(tempDir, "config_block.pb")
 	if orderer == nil {
+		output := filepath.Join(tempDir, "config_block.pb")
 		return CurrentConfigBlockNumberFromPeer(n, peer, channel, output)
 	}
 
-	FetchConfigBlock(n, peer, orderer, channel, output)
-
-	// unmarshal the config block bytes
-	configBlock := UnmarshalBlockFromFile(output)
+	configBlock := FetchConfigBlock(n, orderer, channel)
 
 	return configBlock.Header.Number
 }

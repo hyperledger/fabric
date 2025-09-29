@@ -24,10 +24,14 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-lib-go/healthz"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
+	"github.com/hyperledger/fabric/integration/ordererclient"
+	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -162,6 +166,9 @@ var _ = Describe("EndToEnd", func() {
 
 			By("setting up the channel")
 			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+
+			// A special method call for testing metrics
+			deliveryBlock(network, network.PeersWithChannel("testchannel")[0], orderer, "testchannel")
 
 			By("listing channels with osnadmin")
 			cl = nwo.List(network, orderer)
@@ -932,4 +939,36 @@ func hashFile(file string) string {
 
 func chaincodeContainerNameFilter(n *nwo.Network, chaincode nwo.Chaincode) string {
 	return fmt.Sprintf("^/%s-.*-%s-%s$", n.NetworkID, chaincode.Label, hashFile(chaincode.PackageFile))
+}
+
+func deliveryBlock(network *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channelID string) {
+	By("getting the signer for admin on orderer " + orderer.Name)
+	signer := network.OrdererUserSigner(orderer, "Admin")
+
+	By("starting delivery on orderer " + orderer.ID())
+	deliverEnvelope, err := protoutil.CreateSignedEnvelope(
+		cb.HeaderType_DELIVER_SEEK_INFO,
+		channelID,
+		signer,
+		&ab.SeekInfo{
+			Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
+			Start: &ab.SeekPosition{
+				Type: &ab.SeekPosition_Specified{
+					Specified: &ab.SeekSpecified{Number: 0},
+				},
+			},
+			Stop: &ab.SeekPosition{
+				Type: &ab.SeekPosition_Specified{
+					Specified: &ab.SeekSpecified{Number: 0},
+				},
+			},
+		},
+		0,
+		0,
+	)
+	Expect(err).NotTo(HaveOccurred())
+
+	blk, err := ordererclient.Deliver(network, orderer, deliverEnvelope)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(blk).ToNot(BeNil())
 }

@@ -42,8 +42,7 @@ func httpDoTimeShift(req *http.Request, caCertPool *x509.CertPool, tlsClientCert
 }
 
 func httpGet(url string, caCertPool *x509.CertPool, tlsClientCert tls.Certificate) (*http.Response, error) {
-	client := httpClient(caCertPool, tlsClientCert, 0)
-	return client.Get(url)
+	return httpGetTimeShift(url, caCertPool, tlsClientCert, 0)
 }
 
 func httpGetTimeShift(url string, caCertPool *x509.CertPool, tlsClientCert tls.Certificate, timeShift time.Duration) (*http.Response, error) {

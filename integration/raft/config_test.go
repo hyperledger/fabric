@@ -515,9 +515,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			blockSeq := 0
 
 			By("Checking that all orderers are online")
-			assertBlockReception(map[string]int{
-				"testchannel": blockSeq,
-			}, orderers, peer, network)
+			assertBlockReception(map[string]int{"testchannel": blockSeq}, orderers, network)
 
 			By("Preparing new certificates for the orderer nodes")
 			extendNetwork(network)
@@ -561,7 +559,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				submitterOrderer := network.Orderers[submitter]
 				port := network.OrdererPort(targetOrderer, nwo.ClusterPort)
 
-				fmt.Fprintf(GinkgoWriter, "Rotating certificate of orderer node %d\n", target+1)
+				By("Rotating certificate of orderer node - " + targetOrderer.Name + ". Submit to " + submitterOrderer.Name)
 				swap(submitterOrderer, rotation.oldCert, &etcdraft.Consenter{
 					ServerTlsCert: rotation.newCert,
 					ClientTlsCert: rotation.newCert,
@@ -570,30 +568,18 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				})
 
 				By("Waiting for all orderers to sync")
-				assertBlockReception(map[string]int{
-					"testchannel": blockSeq,
-				}, remainder, peer, network)
+				assertBlockReception(map[string]int{"testchannel": blockSeq}, remainder, network)
 
 				By("Waiting for rotated node to be unavailable")
-				c := commands.ChannelFetch{
-					ChannelID:  "testchannel",
-					Block:      "newest",
-					OutputFile: "/dev/null",
-					Orderer:    network.OrdererAddress(targetOrderer, nwo.ClusterPort),
-				}
 				Eventually(func() string {
-					sess, err := network.OrdererAdminSession(targetOrderer, peer, c)
-					Expect(err).NotTo(HaveOccurred())
-					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
-					if sess.ExitCode() != 0 {
-						return fmt.Sprintf("exit code is %d: %s", sess.ExitCode(), string(sess.Err.Contents()))
+					b, err := nwo.Fetch(network, targetOrderer, "testchannel", "newest")
+					if err != nil {
+						return fmt.Sprintf("error is %s", err.Error())
 					}
-					sessErr := string(sess.Err.Contents())
-					expected := fmt.Sprintf("Received block: %d", blockSeq)
-					if strings.Contains(sessErr, expected) {
+					if b.GetHeader().GetNumber() == uint64(blockSeq) {
 						return ""
 					}
-					return sessErr
+					return "wrong block"
 				}, network.EventuallyTimeout, time.Second).ShouldNot(BeEmpty())
 
 				By("Killing the orderer")
@@ -602,24 +588,23 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 				By("Starting the orderer again")
 				ordererRunner := network.OrdererRunner(targetOrderer)
-				ordererRunners = append(ordererRunners, ordererRunner)
+				ordererRunners[target] = ordererRunner
 				ordererProcesses[target] = ifrit.Invoke(ordererRunner)
 				Eventually(ordererProcesses[target].Ready(), network.EventuallyTimeout).Should(BeClosed())
 
-				By("And waiting for it to stabilize")
-				assertBlockReception(map[string]int{
-					"testchannel": blockSeq,
-				}, orderers, peer, network)
+				By("And waiting for it to stabilize 1")
+				assertBlockReception(map[string]int{"testchannel": blockSeq}, orderers, network)
+
+				Eventually(ordererRunner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
+				Eventually(ordererRunner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Store ActiveNodes"))
 			}
 
 			By(fmt.Sprintf("Rotating cert on leader %d", leader))
-			Consistently(ordererRunners[leaderIndex].Err(), 5*time.Second, time.Second).ShouldNot(gbytes.Say("active nodes store"))
 			rotate(leaderIndex)
 
 			By("Rotating certificates of other orderer nodes")
 			for i := range certificateRotations {
 				if i != leaderIndex {
-					Consistently(ordererRunners[i].Err(), 5*time.Second, time.Second).ShouldNot(gbytes.Say("active nodes store"))
 					rotate(i)
 				}
 			}
@@ -682,41 +667,30 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Finding leader")
 			_ = FindLeader(ordererRunners)
 
+			blockSeq := 0
+
 			By("Checking that all orderers are online")
-			assertBlockReception(map[string]int{
-				"testchannel": 0,
-			}, orderers, peer, network)
+			assertBlockReception(map[string]int{"testchannel": blockSeq}, orderers, network)
 
 			By("Preparing new certificates for the orderer nodes")
 			extendNetwork(network)
 			certificateRotations := refreshOrdererPEMs(network)
-
-			expectedBlockNumPerChannel := []map[string]int{
-				{"testchannel": 1},
-				{"testchannel": 2},
-				{"testchannel": 3},
-				{"testchannel": 4},
-				{"testchannel": 5},
-				{"testchannel": 6},
-			}
 
 			for i, rotation := range certificateRotations {
 				o := network.Orderers[i]
 				port := network.OrdererPort(o, nwo.ClusterPort)
 
 				By(fmt.Sprintf("Adding the future certificate of orderer node %d", i))
-				Consistently(ordererRunners[i].Err(), 5*time.Second, time.Second).ShouldNot(gbytes.Say("active nodes store"))
-				for _, channelName := range []string{"testchannel"} {
-					addConsenter(network, peer, o, channelName, &etcdraft.Consenter{
-						ServerTlsCert: rotation.newCert,
-						ClientTlsCert: rotation.newCert,
-						Host:          "127.0.0.1",
-						Port:          uint32(port),
-					})
-				}
+				addConsenter(network, peer, o, "testchannel", &etcdraft.Consenter{
+					ServerTlsCert: rotation.newCert,
+					ClientTlsCert: rotation.newCert,
+					Host:          "127.0.0.1",
+					Port:          uint32(port),
+				})
+				blockSeq++
 
 				By("Waiting for all orderers to sync")
-				assertBlockReception(expectedBlockNumPerChannel[i*2], orderers, peer, network)
+				assertBlockReception(map[string]int{"testchannel": blockSeq}, orderers, network)
 
 				By("Killing the orderer")
 				ordererProcesses[i].Signal(syscall.SIGTERM)
@@ -729,16 +703,16 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Eventually(ordererProcesses[i].Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 				By("And waiting for it to stabilize")
-				assertBlockReception(expectedBlockNumPerChannel[i*2], orderers, peer, network)
+				assertBlockReception(map[string]int{"testchannel": blockSeq}, orderers, network)
+
+				Eventually(ordererRunner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
 
 				By("Removing the previous certificate of the old orderer")
-				Consistently(ordererRunner.Err(), 5*time.Second, time.Second).ShouldNot(gbytes.Say("active nodes store"))
-				for _, channelName := range []string{"testchannel"} {
-					removeConsenter(network, peer, network.Orderers[(i+1)%len(network.Orderers)], channelName, rotation.oldCert)
-				}
+				removeConsenter(network, peer, network.Orderers[(i+1)%len(network.Orderers)], "testchannel", rotation.oldCert)
+				blockSeq++
 
 				By("Waiting for all orderers to sync")
-				assertBlockReception(expectedBlockNumPerChannel[i*2+1], orderers, peer, network)
+				assertBlockReception(map[string]int{"testchannel": blockSeq}, orderers, network)
 			}
 
 			By("Getting the last config block from testchannel and using it as a template for testchannel2 and testchannel3 genesis block")
@@ -777,7 +751,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			assertBlockReception(map[string]int{
 				"testchannel2": 0,
 				"testchannel3": 0,
-			}, orderers, peer, network)
+			}, orderers, network)
 
 			o4 := &nwo.Orderer{
 				Name:         "orderer4",
@@ -805,21 +779,19 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Host:          "127.0.0.1",
 				Port:          uint32(network.OrdererPort(o4, nwo.ClusterPort)),
 			})
+			blockSeq++
 
 			By("Ensuring all orderers know about orderer4's addition")
-			assertBlockReception(map[string]int{
-				"testchannel": 7,
-			}, orderers, peer, network)
+			assertBlockReception(map[string]int{"testchannel": blockSeq}, orderers, network)
 
 			By("Broadcasting envelope to testchannel")
 			env := ordererclient.CreateBroadcastEnvelope(network, peer, "testchannel", []byte("hello"))
 			resp, err := ordererclient.Broadcast(network, o1, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+			blockSeq++
 
-			assertBlockReception(map[string]int{
-				"testchannel": 8,
-			}, orderers, peer, network)
+			assertBlockReception(map[string]int{"testchannel": blockSeq}, orderers, network)
 
 			By("Corrupting the readers policy of testchannel3")
 			revokeReaderAccess(network, "testchannel3", o3, peer)
@@ -846,9 +818,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			nwo.Join(network, o4, "testchannel", configBlock, expectedChannelInfo)
 
 			By("And waiting for it to sync with the rest of the orderers")
-			assertBlockReception(map[string]int{
-				"testchannel": 8,
-			}, orderers, peer, network)
+			assertBlockReception(map[string]int{"testchannel": blockSeq}, orderers, network)
 
 			By("Ensuring orderer4 doesn't serve testchannel2 and testchannel3")
 			env = ordererclient.CreateBroadcastEnvelope(network, peer, "testchannel2", []byte("hello"))
@@ -883,9 +853,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			nwo.Join(network, o4, "testchannel2", configBlock, expectedChannelInfo)
 
 			By("Waiting for orderer4 and to replicate testchannel2")
-			assertBlockReception(map[string]int{
-				"testchannel2": 1,
-			}, []*nwo.Orderer{o4}, peer, network)
+			assertBlockReception(map[string]int{"testchannel2": 1}, []*nwo.Orderer{o4}, network)
 
 			By("Ensuring orderer4 doesn't have any errors in the logs")
 			Consistently(orderer4Runner.Err()).ShouldNot(gbytes.Say("ERRO"))
@@ -897,9 +865,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
 			By("And ensuring it is propagated amongst all orderers")
-			assertBlockReception(map[string]int{
-				"testchannel2": 2,
-			}, orderers, peer, network)
+			assertBlockReception(map[string]int{"testchannel2": 2}, orderers, network)
 
 			By("Adding orderer4 to testchannel3")
 			addConsenter(network, peer, o1, "testchannel3", &etcdraft.Consenter{
@@ -971,9 +937,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			_ = FindLeader(ordererRunners[:1])
 
 			By("Waiting for the channel to be available")
-			assertBlockReception(map[string]int{
-				"mychannel": 0,
-			}, []*nwo.Orderer{o1}, peer, network)
+			assertBlockReception(map[string]int{"mychannel": 0}, []*nwo.Orderer{o1}, network)
 
 			By("Ensuring only orderer1 services the channel")
 			env := ordererclient.CreateBroadcastEnvelope(network, peer, "mychannel", []byte("hello"))
@@ -1013,9 +977,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			nwo.Join(network, o2, "mychannel", configBlock, expectedChannelInfo)
 
 			By("Waiting for orderer2 to join the channel")
-			assertBlockReception(map[string]int{
-				"mychannel": 1,
-			}, []*nwo.Orderer{o1, o2}, peer, network)
+			assertBlockReception(map[string]int{"mychannel": 1}, []*nwo.Orderer{o1, o2}, network)
 
 			By("Adding orderer3 to the channel")
 			ordererCertificatePath = filepath.Join(network.OrdererLocalTLSDir(o3), "server.crt")
@@ -1040,9 +1002,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			nwo.Join(network, o3, "mychannel", configBlock, expectedChannelInfo)
 
 			By("Waiting for orderer3 to join the channel")
-			assertBlockReception(map[string]int{
-				"mychannel": 2,
-			}, orderers, peer, network)
+			assertBlockReception(map[string]int{"mychannel": 2}, orderers, network)
 		})
 	})
 
@@ -1122,7 +1082,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Launching the orderers")
 			for _, o := range orderers {
-				runner := network.OrdererRunner(o, "FABRIC_LOGGING_SPEC=orderer.consensus.etcdraft=debug:info")
+				runner := network.OrdererRunner(o)
+				runner.Command.Env = append(runner.Command.Env, "FABRIC_LOGGING_SPEC=orderer.consensus.etcdraft=debug:info")
 				ordererRunners = append(ordererRunners, runner)
 				process := ifrit.Invoke(runner)
 				ordererProcesses = append(ordererProcesses, process)
@@ -1154,7 +1115,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Expect(err).To(Not(HaveOccurred()))
 
 			ordererEvicted1st := network.Orderers[(firstEvictedNode+1)%3]
-			Consistently(ordererRunners[(firstEvictedNode+1)%3].Err(), 5*time.Second, time.Second).ShouldNot(gbytes.Say("active nodes store"))
+			Eventually(ordererRunners[(firstEvictedNode+1)%3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Store ActiveNodes"))
 			removeConsenter(network, peer, ordererEvicted1st, "testchannel", server1CertBytes)
 
 			var survivedOrdererRunners []*ginkgomon.Runner
@@ -1236,7 +1197,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Ensuring re-added orderer starts serving testchannel")
 			assertBlockReception(map[string]int{
 				"testchannel": 3,
-			}, []*nwo.Orderer{orderers[firstEvictedNode]}, peer, network)
+			}, []*nwo.Orderer{orderers[firstEvictedNode]}, network)
 
 			By("Submitting tx")
 			env := ordererclient.CreateBroadcastEnvelope(network, orderers[survivor], "testchannel", []byte("foo"))
@@ -1247,7 +1208,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Ensuring re-added orderer starts serving testchannel")
 			assertBlockReception(map[string]int{
 				"testchannel": 4,
-			}, []*nwo.Orderer{orderers[firstEvictedNode], orderers[survivor]}, peer, network)
+			}, []*nwo.Orderer{orderers[firstEvictedNode], orderers[survivor]}, network)
 		})
 
 		When("an evicted node is added back while it's offline", func() {
@@ -1259,9 +1220,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				By("Waiting for them to elect a leader")
 				FindLeader(ordererRunners)
 
-				assertBlockReception(map[string]int{
-					"testchannel": 0,
-				}, []*nwo.Orderer{o1, o2, o3}, peer, network)
+				assertBlockReception(map[string]int{"testchannel": 0}, []*nwo.Orderer{o1, o2, o3}, network)
 
 				By("Killing the first orderer")
 				ordererProcesses[0].Signal(syscall.SIGTERM)
@@ -1269,9 +1228,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 				// We need to wait for stabilization, as we might have killed the leader OSN.
 				By("Waiting for the channel to stabilize after killing the orderer")
-				assertBlockReception(map[string]int{
-					"testchannel": 0,
-				}, []*nwo.Orderer{o2, o3}, peer, network)
+				assertBlockReception(map[string]int{"testchannel": 0}, []*nwo.Orderer{o2, o3}, network)
 
 				By("observing active nodes to shrink")
 				o2Runner := ordererRunners[1]
@@ -1378,9 +1335,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 				Eventually(assertCatchup(expectedInfo), network.EventuallyTimeout, 100*time.Millisecond).Should(BeTrue())
 
-				assertBlockReception(map[string]int{
-					"testchannel": 5,
-				}, []*nwo.Orderer{o1, o2, o3}, peer, network)
+				assertBlockReception(map[string]int{"testchannel": 5}, []*nwo.Orderer{o1, o2, o3}, network)
 			})
 
 			It("remove channel from all orderers and add channel back", func() {
@@ -1391,9 +1346,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				By("Waiting for them to elect a leader")
 				FindLeader(ordererRunners)
 
-				assertBlockReception(map[string]int{
-					"testchannel": 0,
-				}, network.Orderers, peer, network)
+				assertBlockReception(map[string]int{"testchannel": 0}, network.Orderers, network)
 
 				By("Removing channel from all orderers")
 				// TODO the nwo.Remove does not clean up the etcdraft folder. This may prevent the
@@ -1440,9 +1393,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 				FindLeader(ordererRunners)
 
-				assertBlockReception(map[string]int{
-					"testchannel": 0,
-				}, network.Orderers, peer, network)
+				assertBlockReception(map[string]int{"testchannel": 0}, network.Orderers, network)
 
 				expectedInfo := nwo.ListOne(network, o1, "testchannel")
 
@@ -1465,9 +1416,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 				Eventually(assertCatchup(expectedInfo), network.EventuallyTimeout, 100*time.Millisecond).Should(BeTrue())
 
-				assertBlockReception(map[string]int{
-					"testchannel": 1,
-				}, []*nwo.Orderer{o1, o2, o3}, peer, network)
+				assertBlockReception(map[string]int{"testchannel": 1}, []*nwo.Orderer{o1, o2, o3}, network)
 			})
 		})
 
@@ -1481,9 +1430,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Waiting for them to elect a leader")
 			FindLeader(ordererRunners)
 
-			assertBlockReception(map[string]int{
-				"testchannel": 0,
-			}, []*nwo.Orderer{o1, o2, o3}, peer, network)
+			assertBlockReception(map[string]int{"testchannel": 0}, []*nwo.Orderer{o1, o2, o3}, network)
 
 			By("Killing the orderer")
 			ordererProcesses[0].Signal(syscall.SIGTERM)
@@ -1491,9 +1438,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			// We need to wait for stabilization, as we might have killed the leader OSN.
 			By("Waiting for the channel to stabilize after killing the orderer")
-			assertBlockReception(map[string]int{
-				"testchannel": 0,
-			}, []*nwo.Orderer{o2, o3}, peer, network)
+			assertBlockReception(map[string]int{"testchannel": 0}, []*nwo.Orderer{o2, o3}, network)
 
 			By("Removing the first orderer from an application channel")
 			o1cert, err := os.ReadFile(path.Join(network.OrdererLocalTLSDir(o1), "server.crt"))
@@ -1610,9 +1555,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			leader := FindLeader(ordererRunners[:3])
 
 			By("Checking that all orderers are online")
-			assertBlockReception(map[string]int{
-				"testchannel": 0,
-			}, orderers[:3], peer, network)
+			assertBlockReception(map[string]int{"testchannel": 0}, orderers[:3], network)
 
 			By("Configuring orderer[5, 6, 7] in the network")
 			extendNetwork(network)
@@ -1659,9 +1602,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				nwo.Join(network, orderers[i], "testchannel", configBlock, expectedInfo)
 
 				By(fmt.Sprintf("Checking that orderer%d has onboarded the network", i+1))
-				assertBlockReception(map[string]int{
-					"testchannel": blockNum,
-				}, []*nwo.Orderer{orderers[i]}, peer, network)
+				assertBlockReception(map[string]int{"testchannel": blockNum}, []*nwo.Orderer{orderers[i]}, network)
 			}
 
 			Expect(FindLeader(ordererRunners[4:])).To(Equal(leader))
@@ -1691,7 +1632,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			assertBlockReception(map[string]int{
 				"testchannel": blockNum,
-			}, []*nwo.Orderer{orderers[1], orderers[2], orderers[4], orderers[5], orderers[6]}, peer, network) // alive orderers: 2, 3, 5, 6, 7
+			}, []*nwo.Orderer{orderers[1], orderers[2], orderers[4], orderers[5], orderers[6]}, network) // alive orderers: 2, 3, 5, 6, 7
 
 			By("Killing orderer[2,3]")
 			for _, i := range []int{1, 2} {
@@ -1712,7 +1653,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Making sure 4/7 orderers form quorum and serve request")
 			assertBlockReception(map[string]int{
 				"testchannel": blockNum,
-			}, []*nwo.Orderer{orderers[0], orderers[3], orderers[4], orderers[5], orderers[6]}, peer, network) // alive orderers: 1, 4, 5, 6, 7
+			}, []*nwo.Orderer{orderers[0], orderers[3], orderers[4], orderers[5], orderers[6]}, network) // alive orderers: 1, 4, 5, 6, 7
 		})
 	})
 
@@ -1836,18 +1777,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 // With channel participation API, an orderer returns NOT_FOUND for channels it does not serve.
 // The old implementation with the system channel and inactive chain used to return SERVICE_UNAVAILABLE.
 func ensureNotFound(evictedOrderer *nwo.Orderer, submitter *nwo.Peer, network *nwo.Network, channel string) {
-	c := commands.ChannelFetch{
-		ChannelID:  channel,
-		Block:      "newest",
-		OutputFile: "/dev/null",
-		Orderer:    network.OrdererAddress(evictedOrderer, nwo.ListenPort),
-	}
-
-	sess, err := network.OrdererAdminSession(evictedOrderer, submitter, c)
-	Expect(err).NotTo(HaveOccurred())
-
-	Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
-	Expect(sess.Err).To(gbytes.Say("NOT_FOUND"))
+	_, err := nwo.Fetch(network, evictedOrderer, channel, "newest")
+	Expect(err).To(HaveOccurred())
 }
 
 var extendedCryptoConfig = `---
@@ -1987,34 +1918,25 @@ func refreshOrdererPEMs(n *nwo.Network) []*certificateChange {
 
 // assertBlockReception asserts that the given orderers have the expected
 // newest block number for the specified channels
-func assertBlockReception(expectedBlockNumPerChannel map[string]int, orderers []*nwo.Orderer, p *nwo.Peer, n *nwo.Network) {
+func assertBlockReception(expectedBlockNumPerChannel map[string]int, orderers []*nwo.Orderer, n *nwo.Network) {
 	for channelName, blockNum := range expectedBlockNumPerChannel {
 		for _, orderer := range orderers {
-			waitForBlockReception(orderer, p, n, channelName, blockNum)
+			waitForBlockReception(orderer, n, channelName, blockNum)
 		}
 	}
 }
 
-func waitForBlockReception(o *nwo.Orderer, submitter *nwo.Peer, network *nwo.Network, channelName string, blockNum int) {
-	c := commands.ChannelFetch{
-		ChannelID:  channelName,
-		Block:      "newest",
-		OutputFile: "/dev/null",
-		Orderer:    network.OrdererAddress(o, nwo.ListenPort),
-	}
+func waitForBlockReception(o *nwo.Orderer, network *nwo.Network, channelName string, blockNum int) {
 	Eventually(func() string {
-		sess, err := network.OrdererAdminSession(o, submitter, c)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
-		if sess.ExitCode() != 0 {
-			return fmt.Sprintf("exit code is %d: %s", sess.ExitCode(), string(sess.Err.Contents()))
+		b, err := nwo.Fetch(network, o, channelName, "newest")
+		if err != nil {
+			return fmt.Sprintf("error is %s", err.Error())
 		}
-		sessErr := string(sess.Err.Contents())
-		expected := fmt.Sprintf("Received block: %d", blockNum)
-		if strings.Contains(sessErr, expected) {
+
+		if b.GetHeader().GetNumber() == uint64(blockNum) {
 			return ""
 		}
-		return sessErr
+		return "wrong block"
 	}, network.EventuallyTimeout, time.Second).Should(BeEmpty())
 }
 

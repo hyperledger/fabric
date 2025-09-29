@@ -269,21 +269,22 @@ var _ = Describe("PrivateData", func() {
 			Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			By("joining peer1.org2 to the channel with its Admin2 user")
+			block, err := nwo.Fetch(network, orderer, channelID, "0")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(block).NotTo(BeNil())
+
 			tempFile, err := os.CreateTemp("", "genesis-block")
 			Expect(err).NotTo(HaveOccurred())
 			tempFile.Close()
 			defer os.Remove(tempFile.Name())
 
-			sess, err := network.PeerUserSession(org2Peer1, "Admin2", commands.ChannelFetch{
-				Block:      "0",
-				ChannelID:  channelID,
-				Orderer:    network.OrdererAddress(orderer, nwo.ListenPort),
-				OutputFile: tempFile.Name(),
-			})
+			b, err := proto.Marshal(block)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 
-			sess, err = network.PeerUserSession(org2Peer1, "Admin2", commands.ChannelJoin{
+			err = os.WriteFile(tempFile.Name(), b, 0o644)
+			Expect(err).NotTo(HaveOccurred())
+
+			sess, err := network.PeerUserSession(org2Peer1, "Admin2", commands.ChannelJoin{
 				BlockPath: tempFile.Name(),
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -950,18 +951,11 @@ func addPeer(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer) ifrit.Process
 
 	n.JoinChannel(channelID, orderer, peer)
 	ledgerHeight := nwo.GetLedgerHeight(n, n.Peers[0], channelID)
-	sess, err := n.PeerAdminSession(
-		peer,
-		commands.ChannelFetch{
-			Block:      "newest",
-			ChannelID:  channelID,
-			Orderer:    n.OrdererAddress(orderer, nwo.ListenPort),
-			OutputFile: filepath.Join(n.RootDir, "newest_block.pb"),
-		},
-	)
+
+	b, err := nwo.Fetch(n, orderer, channelID, "newest")
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess.Err).To(gbytes.Say(fmt.Sprintf("Received block: %d", ledgerHeight-1)))
+	Expect(b).NotTo(BeNil())
+	Expect(b.GetHeader().GetNumber()).To(Equal(uint64(ledgerHeight) - 1))
 
 	n.Peers = append(n.Peers, peer)
 	nwo.WaitUntilEqualLedgerHeight(n, channelID, nwo.GetLedgerHeight(n, n.Peers[0], channelID), n.Peers...)

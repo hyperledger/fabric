@@ -67,7 +67,6 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		ordererRunners   []*ginkgomon.Runner
 		allStreams       []ordererProtos.AtomicBroadcast_BroadcastClient
 		channel          string
-		peer             *nwo.Peer
 	)
 
 	BeforeEach(func() {
@@ -75,7 +74,6 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		peerProcesses = nil
 		mocksArray = nil
 		ledgerArray = nil
-		peer = nil
 		ordererRunners = nil
 		allStreams = nil
 		var err error
@@ -115,8 +113,6 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		Eventually(ordererRunners[2].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
 		Eventually(ordererRunners[3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Message from 1"))
 
-		peer = network.Peers[0]
-
 		/* Create a stream with client for each orderer*/
 		for _, o := range network.Orderers {
 			conn := network.OrdererClientConn(o)
@@ -140,7 +136,7 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 		}
-		assertBlockReception(map[string]int{channel: 10}, network.Orderers, peer, network)
+		assertBlockReception(map[string]int{channel: 10}, network.Orderers, network)
 	})
 
 	AfterEach(func() {
@@ -314,7 +310,7 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 		}
-		assertBlockReception(map[string]int{channel: 20}, network.Orderers[:3], peer, network)
+		assertBlockReception(map[string]int{channel: 20}, network.Orderers[:3], network)
 
 		By("Stop the rest of the orderers")
 		for i, proc := range ordererProcesses {
@@ -386,7 +382,7 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		Eventually(o4Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Block censorship detected"))
 
 		By("Assert all block are received")
-		assertBlockReception(map[string]int{channel: 20}, []*nwo.Orderer{network.Orderers[3]}, peer, network)
+		assertBlockReception(map[string]int{channel: 20}, []*nwo.Orderer{network.Orderers[3]}, network)
 
 		close(censoringOrderer.StopDeliveryChannel)
 	})
