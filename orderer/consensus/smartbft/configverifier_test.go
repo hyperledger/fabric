@@ -237,7 +237,6 @@ func TestValidateConfig(t *testing.T) {
 			expectedError:         "error proposing config update",
 		},
 	} {
-		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 			cup := &mocks.ConfigUpdateProposer{}
 			f := &mocks.Filters{}

@@ -293,7 +293,6 @@ func TestVerifyBlockHash(t *testing.T) {
 			},
 		},
 	} {
-		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 			blockchain := createBlockChain(start, end)
 			blockchain = testCase.mutateBlockSequence(blockchain)
@@ -693,7 +692,6 @@ func TestLastConfigBlock(t *testing.T) {
 			blockRetriever: blockRetriever,
 		},
 	} {
-		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 			block, err := cluster.LastConfigBlock(testCase.block, testCase.blockRetriever)
 			if testCase.expectedError == "" {
@@ -1267,7 +1265,6 @@ func TestCompareCertPublicKeysErrorHandling(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1325,7 +1322,6 @@ func TestCompareCertPublicKeysWithMalformedCertificates(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
