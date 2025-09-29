@@ -8,6 +8,7 @@ package commontests
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -1072,7 +1073,7 @@ func TestDataExportImport(
 	verifyExportImport := func(destDBName string, skipNamespaces stringset) {
 		fullScanItr, err := sourceDB.GetFullScanIterator(
 			func(ns string) bool {
-				return skipNamespaces.contains(ns)
+				return slices.Contains(skipNamespaces, ns)
 			},
 		)
 		require.NoError(t, err)
@@ -1162,19 +1163,10 @@ func CreateTestData(t *testing.T, db statedb.VersionedDB, ns string, numKeys int
 
 type stringset []string
 
-func (s stringset) contains(str string) bool {
-	for _, element := range s {
-		if element == str {
-			return true
-		}
-	}
-	return false
-}
-
 func (s stringset) minus(toMinus stringset) stringset {
 	var final stringset
 	for _, element := range s {
-		if toMinus.contains(element) {
+		if slices.Contains(toMinus, element) {
 			continue
 		}
 		final = append(final, element)

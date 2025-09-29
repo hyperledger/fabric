@@ -732,7 +732,7 @@ type ChaincodeLifecycleDetails struct {
 // a member of a collection. Gossip module is expected to provide the dependency to ledger
 type MembershipInfoProvider interface {
 	// AmMemberOf checks whether the current peer is a member of the given collection
-	AmMemberOf(channelName string, collectionPolicyConfig *peer.CollectionPolicyConfig) (bool, error)
+	AmMemberOf(channelName string, collectionPolicyConfig *peer.CollectionPolicyConfig) bool
 	// MyImplicitCollectionName returns the name of the implicit collection for the current peer
 	MyImplicitCollectionName() string
 }

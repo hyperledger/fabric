@@ -485,32 +485,7 @@ func TestSnapshotImporterErrorPropagation(t *testing.T) {
 		require.EqualError(t, err, "unexpected error - no collection config found below block number [10] for <namespace=ns, collection=coll>")
 	})
 
-	t.Run("error-when-membershipProvider-returns-error", func(t *testing.T) {
-		snapshotDataImporter, configHistoryMgr := setup()
-		err := configHistoryMgr.Setup(
-			ledgerID, "ns",
-			map[uint64][]*peer.StaticCollectionConfig{
-				15: {
-					{
-						Name:             "coll",
-						MemberOrgsPolicy: iamIn.toMemberOrgPolicy(),
-						BlockToLive:      30,
-					},
-				},
-			},
-		)
-		require.NoError(t, err)
 
-		snapshotDataImporter.eligibilityAndBTLCache.membershipProvider.(*mock.MembershipInfoProvider).AmMemberOfReturns(false, fmt.Errorf("membership-error"))
-		err = snapshotDataImporter.ConsumeSnapshotData("ns", "coll",
-			[]byte("key-hash"), []byte("value-hash"),
-			version.NewHeight(20, 300),
-		)
-		require.NoError(t, err)
-
-		err = snapshotDataImporter.Done()
-		require.EqualError(t, err, "membership-error")
-	})
 
 	t.Run("error-when-writing-pending-data-during-done", func(t *testing.T) {
 		snapshotDataImporter, configHistoryMgr := setup()
@@ -775,8 +750,8 @@ func TestEligibilityAndBTLCacheDataExpiry(t *testing.T) {
 func newMockMembershipProvider(myMspID string) *mock.MembershipInfoProvider {
 	p := &mock.MembershipInfoProvider{}
 	p.MyImplicitCollectionNameReturns(implicitcollection.NameForOrg("myOrg"))
-	p.AmMemberOfStub = func(namespace string, config *peer.CollectionPolicyConfig) (bool, error) {
-		return iamIn.sameAs(config), nil
+	p.AmMemberOfStub = func(namespace string, config *peer.CollectionPolicyConfig) bool {
+		return iamIn.sameAs(config)
 	}
 	return p
 }

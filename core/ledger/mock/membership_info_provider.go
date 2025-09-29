@@ -9,7 +9,7 @@ import (
 )
 
 type MembershipInfoProvider struct {
-	AmMemberOfStub        func(string, *peer.CollectionPolicyConfig) (bool, error)
+	AmMemberOfStub        func(string, *peer.CollectionPolicyConfig) bool
 	amMemberOfMutex       sync.RWMutex
 	amMemberOfArgsForCall []struct {
 		arg1 string
@@ -17,11 +17,9 @@ type MembershipInfoProvider struct {
 	}
 	amMemberOfReturns struct {
 		result1 bool
-		result2 error
 	}
 	amMemberOfReturnsOnCall map[int]struct {
 		result1 bool
-		result2 error
 	}
 	MyImplicitCollectionNameStub        func() string
 	myImplicitCollectionNameMutex       sync.RWMutex
@@ -37,23 +35,24 @@ type MembershipInfoProvider struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *MembershipInfoProvider) AmMemberOf(arg1 string, arg2 *peer.CollectionPolicyConfig) (bool, error) {
+func (fake *MembershipInfoProvider) AmMemberOf(arg1 string, arg2 *peer.CollectionPolicyConfig) bool {
 	fake.amMemberOfMutex.Lock()
 	ret, specificReturn := fake.amMemberOfReturnsOnCall[len(fake.amMemberOfArgsForCall)]
 	fake.amMemberOfArgsForCall = append(fake.amMemberOfArgsForCall, struct {
 		arg1 string
 		arg2 *peer.CollectionPolicyConfig
 	}{arg1, arg2})
+	stub := fake.AmMemberOfStub
+	fakeReturns := fake.amMemberOfReturns
 	fake.recordInvocation("AmMemberOf", []interface{}{arg1, arg2})
 	fake.amMemberOfMutex.Unlock()
-	if fake.AmMemberOfStub != nil {
-		return fake.AmMemberOfStub(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
-		return ret.result1, ret.result2
+		return ret.result1
 	}
-	fakeReturns := fake.amMemberOfReturns
-	return fakeReturns.result1, fakeReturns.result2
+	return fakeReturns.result1
 }
 
 func (fake *MembershipInfoProvider) AmMemberOfCallCount() int {
@@ -62,7 +61,7 @@ func (fake *MembershipInfoProvider) AmMemberOfCallCount() int {
 	return len(fake.amMemberOfArgsForCall)
 }
 
-func (fake *MembershipInfoProvider) AmMemberOfCalls(stub func(string, *peer.CollectionPolicyConfig) (bool, error)) {
+func (fake *MembershipInfoProvider) AmMemberOfCalls(stub func(string, *peer.CollectionPolicyConfig) bool) {
 	fake.amMemberOfMutex.Lock()
 	defer fake.amMemberOfMutex.Unlock()
 	fake.AmMemberOfStub = stub
@@ -75,30 +74,27 @@ func (fake *MembershipInfoProvider) AmMemberOfArgsForCall(i int) (string, *peer.
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *MembershipInfoProvider) AmMemberOfReturns(result1 bool, result2 error) {
+func (fake *MembershipInfoProvider) AmMemberOfReturns(result1 bool) {
 	fake.amMemberOfMutex.Lock()
 	defer fake.amMemberOfMutex.Unlock()
 	fake.AmMemberOfStub = nil
 	fake.amMemberOfReturns = struct {
 		result1 bool
-		result2 error
-	}{result1, result2}
+	}{result1}
 }
 
-func (fake *MembershipInfoProvider) AmMemberOfReturnsOnCall(i int, result1 bool, result2 error) {
+func (fake *MembershipInfoProvider) AmMemberOfReturnsOnCall(i int, result1 bool) {
 	fake.amMemberOfMutex.Lock()
 	defer fake.amMemberOfMutex.Unlock()
 	fake.AmMemberOfStub = nil
 	if fake.amMemberOfReturnsOnCall == nil {
 		fake.amMemberOfReturnsOnCall = make(map[int]struct {
 			result1 bool
-			result2 error
 		})
 	}
 	fake.amMemberOfReturnsOnCall[i] = struct {
 		result1 bool
-		result2 error
-	}{result1, result2}
+	}{result1}
 }
 
 func (fake *MembershipInfoProvider) MyImplicitCollectionName() string {
@@ -106,15 +102,16 @@ func (fake *MembershipInfoProvider) MyImplicitCollectionName() string {
 	ret, specificReturn := fake.myImplicitCollectionNameReturnsOnCall[len(fake.myImplicitCollectionNameArgsForCall)]
 	fake.myImplicitCollectionNameArgsForCall = append(fake.myImplicitCollectionNameArgsForCall, struct {
 	}{})
+	stub := fake.MyImplicitCollectionNameStub
+	fakeReturns := fake.myImplicitCollectionNameReturns
 	fake.recordInvocation("MyImplicitCollectionName", []interface{}{})
 	fake.myImplicitCollectionNameMutex.Unlock()
-	if fake.MyImplicitCollectionNameStub != nil {
-		return fake.MyImplicitCollectionNameStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.myImplicitCollectionNameReturns
 	return fakeReturns.result1
 }
 
@@ -156,10 +153,6 @@ func (fake *MembershipInfoProvider) MyImplicitCollectionNameReturnsOnCall(i int,
 func (fake *MembershipInfoProvider) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.amMemberOfMutex.RLock()
-	defer fake.amMemberOfMutex.RUnlock()
-	fake.myImplicitCollectionNameMutex.RLock()
-	defer fake.myImplicitCollectionNameMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
