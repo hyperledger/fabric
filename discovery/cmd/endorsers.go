@@ -132,7 +132,7 @@ func (parser *EndorserResponseParser) ParseResponse(channel string, res ServiceR
 
 	ccQueryRes := rawResponse.Results[0].GetCcQueryRes()
 	if ccQueryRes == nil {
-		return errors.Errorf("server returned response of unexpected type: %v", reflect.TypeOf(rawResponse.Results[0]))
+		return errors.Errorf("server returned response of unexpected type: %v", reflect.TypeFor[*discovery.QueryResult]())
 	}
 
 	jsonBytes, _ := json.MarshalIndent(parseEndorsementDescriptors(ccQueryRes.Content), "", "\t")

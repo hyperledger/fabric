@@ -358,7 +358,7 @@ func pemBlocksFromFileDecodeHook(f reflect.Kind, t reflect.Kind, data interface{
 }
 
 func bccspHook(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
-	if t != reflect.TypeOf(&factory.FactoryOpts{}) {
+	if t != reflect.TypeFor[*factory.FactoryOpts]() {
 		return data, nil
 	}
 
