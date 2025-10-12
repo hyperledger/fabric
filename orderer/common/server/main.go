@@ -101,6 +101,7 @@ func Main() {
 	flogging.SetObserver(logObserver)
 
 	serverConfig := initializeServerConfig(conf, metricsProvider)
+	serverConfig.HealthCheckEnabled = true
 	grpcServer := initializeGrpcServer(conf, serverConfig)
 	caMgr := &caManager{
 		appRootCAsByChain:     make(map[string][][]byte),
