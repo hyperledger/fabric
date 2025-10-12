@@ -1150,15 +1150,27 @@ func (n *Network) JoinChannel(name string, o *Orderer, peers ...*Peer) {
 	tempFile.Close()
 	defer os.Remove(tempFile.Name())
 
-	sess, err := n.PeerAdminSession(peers[0], commands.ChannelFetch{
-		Block:      "0",
-		ChannelID:  name,
-		Orderer:    n.OrdererAddress(o, ListenPort),
-		OutputFile: tempFile.Name(),
-		ClientAuth: n.ClientAuthRequired,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	Eventually(func() string {
+		block, err := Fetch(n, o, name, "0")
+		if err != nil {
+			return fmt.Sprintf("error is %s", err.Error())
+		}
+
+		if block == nil {
+			return "proto: Marshal called with nil"
+		}
+
+		b, err := proto.Marshal(block)
+		if err != nil {
+			return err.Error()
+		}
+
+		if err = os.WriteFile(tempFile.Name(), b, 0o644); err != nil {
+			return err.Error()
+		}
+
+		return ""
+	}, n.EventuallyTimeout, time.Second).Should(BeEmpty())
 
 	for _, p := range peers {
 		sess, err := n.PeerAdminSession(p, commands.ChannelJoin{

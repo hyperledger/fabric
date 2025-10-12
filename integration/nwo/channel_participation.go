@@ -21,6 +21,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
+	"github.com/pkg/errors"
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"google.golang.org/protobuf/proto"
 )
@@ -127,7 +128,7 @@ func doBody(client *http.Client, req *http.Request, expectedStatus int) []byte {
 	Expect(err).NotTo(HaveOccurred())
 	resp.Body.Close()
 
-	Expect(resp.StatusCode).To(Equal(expectedStatus), string(bodyBytes))
+	Expect(expectedStatus).To(Equal(resp.StatusCode), string(bodyBytes))
 
 	return bodyBytes
 }
@@ -171,6 +172,20 @@ func getBody(client *http.Client, url string) func() string {
 	}
 }
 
+func getBodyBinary(client *http.Client, url string) func() ([]byte, error) {
+	return func() ([]byte, error) {
+		resp, err := client.Get(url)
+		Expect(err).NotTo(HaveOccurred())
+		bodyBytes, err := io.ReadAll(resp.Body)
+		Expect(err).NotTo(HaveOccurred())
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return nil, errors.New(string(bodyBytes))
+		}
+		return bodyBytes, nil
+	}
+}
+
 type ChannelInfo struct {
 	Name              string `json:"name"`
 	URL               string `json:"url"`
@@ -193,6 +208,30 @@ func ListOne(n *Network, o *Orderer, channel string) ChannelInfo {
 	err := json.Unmarshal([]byte(body), c)
 	Expect(err).NotTo(HaveOccurred())
 	return *c
+}
+
+func Fetch(n *Network, o *Orderer, channel string, blockID string) (*common.Block, error) {
+	return FetchTimeShift(n, o, channel, blockID, 0)
+}
+
+func FetchTimeShift(n *Network, o *Orderer, channel string, blockID string, timeShift time.Duration) (*common.Block, error) {
+	authClient, _ := OrdererOperationalClientsTimeShift(n, o, timeShift)
+
+	protocol := "http"
+	if n.TLSEnabled {
+		protocol = "https"
+	}
+	fetchURL := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels/%s/blocks/%s", protocol, n.OrdererPort(o, AdminPort), channel, blockID)
+
+	body, err := getBodyBinary(authClient, fetchURL)()
+	if err != nil {
+		return nil, err
+	}
+
+	b := &common.Block{}
+	err = proto.Unmarshal(body, b)
+
+	return b, err
 }
 
 func Remove(n *Network, o *Orderer, channel string) {
