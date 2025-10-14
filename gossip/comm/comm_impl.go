@@ -541,7 +541,7 @@ func (c *commImpl) SendWithAck(msg *protoext.SignedGossipMessage, timeout time.D
 				return err
 			}
 			if msg, isAck := msg.(*proto.Acknowledgement); !isAck {
-				return errors.Errorf("received a message of type %s, expected *proto.Acknowledgement", reflect.TypeOf(msg))
+				return errors.Errorf("received a message of type %s, expected *proto.Acknowledgement", reflect.TypeFor[*proto.Acknowledgement]())
 			} else {
 				if msg.Error != "" {
 					return errors.New(msg.Error)
