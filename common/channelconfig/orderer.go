@@ -275,7 +275,7 @@ func brokerEntrySeemsValid(broker string) bool {
 
 	// Valid hostnames may contain only the ASCII letters 'a' through 'z' (in a
 	// case-insensitive manner), the digits '0' through '9', and the hyphen. IP
-	// v4 addresses are  represented in dot-decimal notation, which consists of
+	// v4 addresses are represented in dot-decimal notation, which consists of
 	// four decimal numbers, each ranging from 0 to 255, separated by dots,
 	// e.g., 172.16.254.1
 	// The following regular expression:
