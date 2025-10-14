@@ -155,7 +155,7 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 
 	if !hasOrgEndpoints && !anyChange && len(globalAddrs) == len(cs.allEndpoints) {
 		// There are no org endpoints, there were no org endpoints, and the number
-		// of the update's  global endpoints is the same as the number of existing endpoints.
+		// of the update's global endpoints is the same as the number of existing endpoints.
 		// So, we check if any of the endpoints addresses differ.
 
 		newAddresses := map[string]struct{}{}
@@ -179,7 +179,7 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 		cs.logger.Debugf("No orderer endpoint addresses or TLS certs were changed")
 		// No TLS certs changed, no org specified endpoints changed,
 		// and if we are using global endpoints, they are the same
-		// as our last set.  No need to update anything.
+		// as our last set. No need to update anything.
 		return
 	}
 
@@ -187,7 +187,7 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 		// Alert any existing consumers that have a reference to the old endpoints
 		// that their reference is now stale and they should get a new one.
 		// This is done even for endpoints which have the same TLS certs and address
-		// but this is desirable to help load balance.  For instance if only
+		// but this is desirable to help load balance. For instance if only
 		// one orderer were defined, and the config is updated to include 4 more, we
 		// want the peers to disconnect from that original orderer and reconnect
 		// evenly across the now five.

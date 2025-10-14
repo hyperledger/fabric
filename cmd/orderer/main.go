@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 */
 
 // Package main is the entrypoint for the orderer binary
-// and calls only into the server.Main() function.  No other
+// and calls only into the server.Main() function. No other
 // function should be included in this package.
 package main
 

@@ -13,7 +13,7 @@ import "github.com/pkg/errors"
 // Deprecated: system channel no longer supported
 var ErrSystemChannelExists = errors.New("system channel exists")
 
-// ErrSystemChannelNotSupported  is returned when trying to join with a system channel config block.
+// ErrSystemChannelNotSupported is returned when trying to join with a system channel config block.
 var ErrSystemChannelNotSupported = errors.New("system channel not supported")
 
 // ErrChannelAlreadyExists is returned when trying to join a app channel that already exists (when the system channel does not
