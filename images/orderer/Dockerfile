@@ -61,8 +61,8 @@ ENV FABRIC_CFG_PATH=/etc/hyperledger/fabric
 ENV FABRIC_VER=${FABRIC_VER}
 
 COPY    --from=builder  build/bin/orderer           /usr/local/bin
-COPY    --from=builder  sampleconfig/orderer.yaml   ${FABRIC_CFG_PATH}
-COPY    --from=builder  sampleconfig/configtx.yaml  ${FABRIC_CFG_PATH}
+COPY    --from=builder  sampleconfig/orderer.yaml   ${FABRIC_CFG_PATH}/orderer.yaml
+COPY    --from=builder  sampleconfig/configtx.yaml  ${FABRIC_CFG_PATH}/configtx.yaml
 
 VOLUME  /etc/hyperledger/fabric
 VOLUME  /var/hyperledger
