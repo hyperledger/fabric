@@ -22,11 +22,11 @@ jobs:
     name: Basic Checks
     runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-24.04' || 'ubuntu-24.04' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         name: Checkout Fabric Code
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         name: Install Go
         with:
           go-version-file: go.mod
@@ -48,11 +48,11 @@ jobs:
     needs: basic-checks
     runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-24.04' || 'ubuntu-24.04' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
         name: Checkout Fabric Code
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         name: Install Go
         with:
           go-version-file: go.mod
@@ -78,9 +78,9 @@ jobs:
           - sbe nwo msp
     runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-24.04' || 'ubuntu-24.04' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         name: Checkout Fabric Code
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         name: Install Go
         with:
           go-version-file: go.mod
