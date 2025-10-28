@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"maps"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -634,9 +635,7 @@ func createAttachmentPart(couchDoc *couchDoc) (bytes.Buffer, string, error) {
 		}
 
 		// add all key/values to the attachmentJSONMap
-		for jsonKey, jsonValue := range genericMap {
-			attachmentJSONMap[jsonKey] = jsonValue
-		}
+		maps.Copy(attachmentJSONMap, genericMap)
 
 	}
 
