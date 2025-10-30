@@ -8,9 +8,12 @@ package fp
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
+	"math/bits"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -67,12 +70,30 @@ func (vector *Vector) WriteTo(w io.Writer) (int64, error) {
 	return n, nil
 }
 
-// AsyncReadFrom reads a vector of big endian encoded Element.
-// Length of the vector must be encoded as a uint32 on the first 4 bytes.
-// It consumes the needed bytes from the reader and returns the number of bytes read and an error if any.
-// It also returns a channel that will be closed when the validation is done.
-// The validation consist of checking that the elements are smaller than the modulus, and
-// converting them to montgomery form.
+// AsyncReadFrom implements an asynchronous version of [Vector.ReadFrom]. It
+// reads the reader r in full and then performs the validation and conversion to
+// Montgomery form separately in a goroutine. Any error encountered during
+// reading is returned directly, while errors encountered during
+// validation/conversion are sent on the returned channel. Thus the caller must
+// wait on the channel to ensure the vector is ready to use. The method
+// additionally returns the number of bytes read from r.
+//
+// The errors during reading can be:
+//   - an error while reading from r;
+//   - not enough bytes in r to read the full vector indicated by header.
+//
+// The reader can contain more bytes than needed to decode the vector, in which
+// case the extra bytes are ignored. In that case the reader is not seeked nor
+// read further.
+//
+// The method allocates sufficiently large slice to store the vector. If the
+// current slice fits the vector, it is reused, otherwise the slice is grown to
+// fit the vector.
+//
+// The serialized encoding is as follows:
+//   - first 4 bytes: length of the vector as a big-endian uint32
+//   - for each element of the vector, [Bytes] bytes representing the element in
+//     big-endian encoding.
 func (vector *Vector) AsyncReadFrom(r io.Reader) (int64, error, chan error) { // nolint ST1008
 	chErr := make(chan error, 1)
 	var buf [Bytes]byte
@@ -80,27 +101,53 @@ func (vector *Vector) AsyncReadFrom(r io.Reader) (int64, error, chan error) { //
 		close(chErr)
 		return int64(read), err, chErr
 	}
-	sliceLen := binary.BigEndian.Uint32(buf[:4])
+	headerSliceLen := uint64(binary.BigEndian.Uint32(buf[:4]))
 
-	n := int64(4)
-	(*vector) = make(Vector, sliceLen)
-	if sliceLen == 0 {
+	// to avoid allocating too large slice when the header is tampered, we limit
+	// the maximum allocation. We set the target to 4GB. This incurs a performance
+	// hit when reading very large slices, but protects against OOM.
+	targetSize := uint64(1 << 32) // 4GB
+	if bits.UintSize == 32 {
+		// reduce target size to 1GB on 32 bits architectures
+		targetSize = uint64(1 << 30) // 1GB
+	}
+	maxAllocateSliceLength := targetSize / uint64(Bytes)
+
+	totalRead := int64(4)
+	*vector = (*vector)[:0]
+	if headerSliceLen == 0 {
+		// if the vector was nil previously even by reslicing we have a nil vector.
+		// but we want to have an empty slice to indicate that the vector has zero length.
+		if *vector == nil {
+			*vector = []Element{}
+		}
+		// we return already here to avoid launching a goroutine doing nothing below
 		close(chErr)
-		return n, nil, chErr
+		return totalRead, nil, chErr
 	}
 
-	bSlice := unsafe.Slice((*byte)(unsafe.Pointer(&(*vector)[0])), sliceLen*Bytes)
-	read, err := io.ReadFull(r, bSlice)
-	n += int64(read)
-	if err != nil {
-		close(chErr)
-		return n, err, chErr
+	for i := uint64(0); i < headerSliceLen; i += maxAllocateSliceLength {
+		if len(*vector) <= int(i) {
+			(*vector) = append(*vector, make([]Element, int(min(headerSliceLen-i, maxAllocateSliceLength)))...)
+		}
+		bSlice := unsafe.Slice((*byte)(unsafe.Pointer(&(*vector)[i])), int(min(headerSliceLen-i, maxAllocateSliceLength))*Bytes)
+		read, err := io.ReadFull(r, bSlice)
+		totalRead += int64(read)
+		if errors.Is(err, io.ErrUnexpectedEOF) {
+			close(chErr)
+			return totalRead, fmt.Errorf("less data than expected: read %d elements, expected %d", i+uint64(read)/Bytes, headerSliceLen), chErr
+		}
+		if err != nil {
+			close(chErr)
+			return totalRead, err, chErr
+		}
 	}
 
+	bSlice := unsafe.Slice((*byte)(unsafe.Pointer(&(*vector)[0])), int(headerSliceLen)*Bytes)
 	go func() {
 		var cptErrors uint64
 		// process the elements in parallel
-		execute(int(sliceLen), func(start, end int) {
+		execute(int(headerSliceLen), func(start, end int) {
 
 			var z Element
 			for i := start; i < end; i++ {
@@ -127,35 +174,72 @@ func (vector *Vector) AsyncReadFrom(r io.Reader) (int64, error, chan error) { //
 		}
 		close(chErr)
 	}()
-	return n, nil, chErr
+	return totalRead, nil, chErr
 }
 
-// ReadFrom implements io.ReaderFrom and reads a vector of big endian encoded Element.
-// Length of the vector must be encoded as a uint32 on the first 4 bytes.
+// ReadFrom reads the vector from the reader r. It returns the number of bytes
+// read and an error, if any. The errors can be:
+//   - an error while reading from r;
+//   - not enough bytes in r to read the full vector indicated by header;
+//   - when decoding the bytes into elements.
+//
+// The reader can contain more bytes than needed to decode the vector, in which case
+// the extra bytes are ignored. In that case the reader is not seeked nor read further.
+//
+// The method allocates sufficiently large slice to store the vector. If the current slice fits
+// the vector, it is reused, otherwise the slice is grown to fit the vector.
+//
+// The serialized encoding is as follows:
+//   - first 4 bytes: length of the vector as a big-endian uint32
+//   - for each element of the vector, [Bytes] bytes representing the element in big-endian encoding.
+//
+// The method implements [io.ReaderFrom] interface.
 func (vector *Vector) ReadFrom(r io.Reader) (int64, error) {
-
 	var buf [Bytes]byte
 	if read, err := io.ReadFull(r, buf[:4]); err != nil {
 		return int64(read), err
 	}
-	sliceLen := binary.BigEndian.Uint32(buf[:4])
+	headerSliceLen := uint64(binary.BigEndian.Uint32(buf[:4]))
 
-	n := int64(4)
-	(*vector) = make(Vector, sliceLen)
+	// to avoid allocating too large slice when the header is tampered, we limit
+	// the maximum allocation. We set the target to 4GB. This incurs a performance
+	// hit when reading very large slices, but protects against OOM.
+	targetSize := uint64(1 << 32) // 4GB
+	if bits.UintSize == 32 {
+		// reduce target size to 1GB on 32 bits architectures
+		targetSize = uint64(1 << 30) // 1GB
+	}
+	maxAllocateSliceLength := targetSize / uint64(Bytes)
 
-	for i := 0; i < int(sliceLen); i++ {
-		read, err := io.ReadFull(r, buf[:])
-		n += int64(read)
-		if err != nil {
-			return n, err
-		}
-		(*vector)[i], err = BigEndian.Element(&buf)
-		if err != nil {
-			return n, err
-		}
+	totalRead := int64(4) // include already the header length
+	*vector = (*vector)[:0]
+	// if the vector was nil previously even by reslicing we have a nil vector. But we want
+	// to have an empty slice to indicate that the vector has zero length. When headerSliceLen == 0
+	// we handle this edge case after reading the header as the loop body below is skipped.
+	if headerSliceLen == 0 && *vector == nil {
+		*vector = []Element{}
 	}
 
-	return n, nil
+	for i := uint64(0); i < headerSliceLen; i++ {
+		read, err := io.ReadFull(r, buf[:])
+		totalRead += int64(read)
+		if errors.Is(err, io.ErrUnexpectedEOF) {
+			return totalRead, fmt.Errorf("less data than expected: read %d elements, expected %d", i, headerSliceLen)
+		}
+		if err != nil {
+			return totalRead, fmt.Errorf("error reading element %d: %w", i, err)
+		}
+		if uint64(cap(*vector)) <= i {
+			(*vector) = slices.Grow(*vector, int(min(headerSliceLen-i, maxAllocateSliceLength)))
+		}
+		el, err := BigEndian.Element(&buf)
+		if err != nil {
+			return totalRead, fmt.Errorf("error decoding element %d: %w", i, err)
+		}
+		*vector = append(*vector, el)
+	}
+
+	return totalRead, nil
 }
 
 // String implements fmt.Stringer interface
@@ -210,6 +294,11 @@ func (vector Vector) MustSetRandom() {
 			panic(err)
 		}
 	}
+}
+
+// Equal returns true if vector and other have the same length and same elements.
+func (vector Vector) Equal(other Vector) bool {
+	return slices.Equal(vector, other)
 }
 
 func addVecGeneric(res, a, b Vector) {
