@@ -39,9 +39,9 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout Fabric Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
       - name: Compile Binary and Create Tarball
@@ -92,7 +92,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set GO_VER environment variable from go.mod
         run: |
@@ -175,7 +175,7 @@ jobs:
 
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: ${{ runner.temp }}/digests/${{ matrix.registry }}/${{ matrix.component.name }}
           pattern: digests-${{ matrix.registry }}-${{ matrix.component.name }}-*
@@ -221,11 +221,11 @@ jobs:
       contents: write
     steps:
       - name: Checkout Fabric Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download Artifacts
         id: download
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: "release-*"
 
