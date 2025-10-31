@@ -168,6 +168,14 @@ func (p *Fp256Miraclbn) HashToG1WithDomain(data, domain []byte) driver.G1 {
 	return &fp256bnMiraclG1{*bls_hash_to_point_miracl(data, domain)}
 }
 
+func (p *Fp256Miraclbn) HashToG2(data []byte) driver.G2 {
+	panic("HashToG2 is not available for this curve")
+}
+
+func (p *Fp256Miraclbn) HashToG2WithDomain(data, domain []byte) driver.G2 {
+	panic("HashToG2WithDomain is not available for this curve")
+}
+
 /*********************************************************************/
 
 type fp256bnMiraclG1 struct {

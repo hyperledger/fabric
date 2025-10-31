@@ -358,6 +358,15 @@ func (c *Bls12_377) HashToG1(data []byte) driver.G1 {
 	return &bls12377G1{g1}
 }
 
+func (c *Bls12_377) HashToG2(data []byte) driver.G2 {
+	g2, err := bls12377.HashToG2(data, []byte{})
+	if err != nil {
+		panic(fmt.Sprintf("HashToG2 failed [%s]", err.Error()))
+	}
+
+	return &bls12377G2{g2}
+}
+
 func (p *Bls12_377) HashToG1WithDomain(data, domain []byte) driver.G1 {
 	g1, err := bls12377.HashToG1(data, domain)
 	if err != nil {
@@ -365,4 +374,13 @@ func (p *Bls12_377) HashToG1WithDomain(data, domain []byte) driver.G1 {
 	}
 
 	return &bls12377G1{g1}
+}
+
+func (p *Bls12_377) HashToG2WithDomain(data, domain []byte) driver.G2 {
+	g2, err := bls12377.HashToG2(data, domain)
+	if err != nil {
+		panic(fmt.Sprintf("HashToG2 failed [%s]", err.Error()))
+	}
+
+	return &bls12377G2{g2}
 }
