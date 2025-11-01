@@ -24,12 +24,16 @@ jobs:
     steps:
       - name: Checkout Fabric Code
         uses: actions/checkout@v4
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-      - name: Install Muffet
-        run: go install github.com/raviqqe/muffet/v2@latest
       - name: Check Broken Links with Muffet
         # Exclude any links that direct to the documentation or release notes of the non-latest version to limit the scanning to target to that of the latest version.
-        run: muffet --max-response-body-size=100000000 --rate-limit=10 --timeout=20 --buffer-size=2147483647 --color=always --exclude="^(https:\/\/hyperledger-fabric.readthedocs.io\/[A-z_]+\/(v[\d]+.[\d]+.[\d]+|release)).*$" https://hyperledger-fabric.readthedocs.io/en/latest/
+        run: |
+          docker run raviqqe/muffet:2.11.0 \
+          --max-response-body-size=100000000 \
+          --header="User-Agent: Go-http-client/2.0" \
+          --rate-limit=1 \
+          --max-connections-per-host=10 \
+          --timeout=20 \
+          --buffer-size=2147483647 \
+          --color=always \
+          --exclude="^(https:\/\/hyperledger-fabric.readthedocs.io\/([A-z_]+\/(v[\d]+.[\d]+.[\d]+|release)|(es|fa|fr|it|ja|ko|ml|pt|ru|vi|zh-cn|zh_CN)\/latest)).*$" \
+          https://hyperledger-fabric.readthedocs.io/en/latest/
