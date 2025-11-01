@@ -29,7 +29,8 @@ type Curve interface {
 	NewG1() G1
 	NewG2() G2
 	NewZrFromBytes(b []byte) Zr
-	NewZrFromInt(i int64) Zr
+	NewZrFromInt64(i int64) Zr
+	NewZrFromUint64(i uint64) Zr
 	NewG1FromBytes(b []byte) G1
 	NewG1FromCompressed(b []byte) G1
 	NewG2FromBytes(b []byte) G2
@@ -40,6 +41,8 @@ type Curve interface {
 	HashToZr(data []byte) Zr
 	HashToG1(data []byte) G1
 	HashToG1WithDomain(data, domain []byte) G1
+	HashToG2(data []byte) G2
+	HashToG2WithDomain(data, domain []byte) G2
 	NewRandomZr(rng io.Reader) Zr
 	Rand() (io.Reader, error)
 }
