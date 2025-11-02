@@ -355,7 +355,7 @@ For information on how to deploy and manage the BFT orderer, be sure to check ou
 
 The protocol used by Fabric's BFT orderer implementation is the [SmartBFT](https://arxiv.org/abs/2107.0692) protocol
 heavily inspired by the [BFT-SMART](https://www.di.fc.ul.pt/~bessani/publications/dsn14-bftsmart.pdf) protocol,
-which itself can be thought of as a non-pipelined(*) version of the seminal [PBFT](https://pmg.csail.mit.edu/papers/osdi99.pdf) protocol.
+which itself can be thought of as a non-pipelined(*) version of the seminal [PBFT](http://pmg.csail.mit.edu/papers/osdi99.pdf) protocol.
 As in Raft, the protocol designates a single leader which batches transactions into a block and sends them to the rest of the nodes, termed followers.
 However, unlike Raft, the leader is not dynamically selected but is rotated in a round-robin fashion every time the previous leader is suspected of being faulty
 by the follower nodes.
