@@ -217,12 +217,6 @@ order of translation in your workgroup.
   Fabric.
 
 
-* [Developing applications](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/developapps/developing_applications.html)
-
-  This topic helps developers write smart contracts and applications; these
-  are the core elements of any solution that uses Fabric.
-
-
 * [Tutorials](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/tutorials.html)
 
   A set of hands-on tutorials to help developers and administrators try out
