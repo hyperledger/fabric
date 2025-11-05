@@ -51,7 +51,7 @@ func makeManagers(count, passing int) map[string]*ManagerImpl {
 	return result
 }
 
-// makePolicyTest creates an implicitMetaPolicy with a set of
+// runPolicyTest runs a policy test with the given rule, manager count, and passing count
 func runPolicyTest(t *testing.T, rule cb.ImplicitMetaPolicy_Rule, managerCount int, passingCount int) error {
 	imp, err := NewImplicitMetaPolicy(protoutil.MarshalOrPanic(&cb.ImplicitMetaPolicy{
 		Rule:      rule,
