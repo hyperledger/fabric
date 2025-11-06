@@ -2,7 +2,7 @@ Running a Fabric Application
 ############################
 .. note:: If you're not yet familiar with the fundamental architecture of a Fabric blockchain network, you may want to
           visit the :doc:`key_concepts` section prior to continuing.
-          
+
           You should also be familiar with the Fabric Gateway service and how it relates to the application transaction
           flow, documented in the :doc:`gateway` section.
 
@@ -305,14 +305,14 @@ override gRPC option is specified to force this endpoint address to be interpret
             'grpc.ssl_target_name_override': peerHostOverride,
         });
     }
-  
+
   .. code-tab:: go Go
 
     const (
         peerEndpoint = "dns:///localhost:7051"
         peerHostOverride = "peer0.org1.example.com"
     )
-    
+
     func newGrpcConnection() *grpc.ClientConn {
         certificatePEM, err := os.ReadFile(tlsCertPath)
         if err != nil {
@@ -390,7 +390,7 @@ based on that user's private key.
         const privateKey = crypto.createPrivateKey(privateKeyPem);
         return signers.newPrivateKeySigner(privateKey);
     }
-  
+
   .. code-tab:: go Go
 
     clientConnection := newGrpcConnection()
@@ -440,7 +440,7 @@ based on that user's private key.
 
         return sign
     }
-  
+
   .. code-tab:: java Java
 
     var channel = newGrpcConnection();
@@ -677,14 +677,14 @@ Sample application ``CreateAsset`` call:
 .. note:: In the application snippets above, it is important to note that the ``CreateAsset`` transaction is submitted
           with the same type and number of arguments the chaincode is expecting, and in the correct sequence. In this
           case the correctly sequenced arguments are:
-          
+
           .. code-block:: text
-          
+
             assetId, "yellow", "5", "Tom", "1300"
-          
+
           The corresponding smart contract's ``CreateAsset`` transaction function is expecting the following sequence
           of arguments that define the asset object:
-          
+
           .. code-block:: text
 
             ID, Color, Size, Owner, AppraisedValue
@@ -852,39 +852,21 @@ Sample application failing ``UpdateAsset`` call:
 
     fmt.Println("*** Successfully caught the error:")
 
-    var endorseErr *client.EndorseError
-    var submitErr *client.SubmitError
     var commitStatusErr *client.CommitStatusError
-    var commitErr *client.CommitError
+    var transactionErr *client.TransactionError
 
-    if errors.As(err, &endorseErr) {
-        fmt.Printf("Endorse error for transaction %s with gRPC status %v: %s\n", endorseErr.TransactionID, status.Code(endorseErr), endorseErr)
-    } else if errors.As(err, &submitErr) {
-        fmt.Printf("Submit error for transaction %s with gRPC status %v: %s\n", submitErr.TransactionID, status.Code(submitErr), submitErr)
-    } else if errors.As(err, &commitStatusErr) {
-        if errors.Is(err, context.DeadlineExceeded) {
-            fmt.Printf("Timeout waiting for transaction %s commit status: %s", commitStatusErr.TransactionID, commitStatusErr)
-        } else {
-            fmt.Printf("Error obtaining commit status for transaction %s with gRPC status %v: %s\n", commitStatusErr.TransactionID, status.Code(commitStatusErr), commitStatusErr)
-        }
-    } else if errors.As(err, &commitErr) {
-        fmt.Printf("Transaction %s failed to commit with status %d: %s\n", commitErr.TransactionID, int32(commitErr.Code), err)
+    if errors.As(err, &commitStatusErr) {
+      if errors.Is(err, context.DeadlineExceeded) {
+        fmt.Printf("Timeout waiting for transaction %s commit status: %s\n", commitStatusErr.TransactionID, commitStatusErr)
+      } else {
+        fmt.Printf("Error obtaining commit status for transaction %s with gRPC status %v: %s\n", commitStatusErr.TransactionID, status.Code(commitStatusErr), commitStatusErr)
+      }
+    } else if errors.As(err, &transactionErr) {
+      // The error could be an EndorseError, SubmitError or CommitError.
+      fmt.Println(err)
+      fmt.Printf("TransactionID: %s\n", transactionErr.TransactionID)
     } else {
-        panic(fmt.Errorf("unexpected error type %T: %w", err, err))
-    }
-
-    statusErr := status.Convert(err)
-
-    details := statusErr.Details()
-    if len(details) > 0 {
-        fmt.Println("Error Details:")
-
-        for _, detail := range details {
-            switch detail := detail.(type) {
-            case *gateway.ErrorDetail:
-                fmt.Printf("- address: %s; mspId: %s; message: %s\n", detail.Address, detail.MspId, detail.Message)
-            }
-        }
+      panic(fmt.Errorf("unexpected error type %T: %w", err, err))
     }
 
   .. code-tab:: java Java
@@ -909,7 +891,7 @@ Terminal Output (with stack traces removed for clarity):
 
   .. code-tab:: text TypeScript
 
-    *** Successfully caught the error: 
+    *** Successfully caught the error:
     EndorseError: 10 ABORTED: failed to endorse transaction, see attached details for more info
         at ... {
       code: 10,
@@ -932,9 +914,12 @@ Terminal Output (with stack traces removed for clarity):
   .. code-tab:: text Go
 
     *** Successfully caught the error:
-    Endorse error for transaction 0a0bf1af9c53e0621d6dc98217fb882e0c6d5e174dc1a45f5cb4e07580528347 with gRPC status Aborted: rpc error: code = Aborted desc = failed to endorse transaction, see attached details for more info
-    Error Details:
-    - address: peer0.org1.example.com:7051; mspId: Org1MSP; message: chaincode response 500, the asset asset70 does not exist
+    endorse error: rpc error: code = Aborted desc = failed to endorse transaction, see attached details for more info
+    Details:
+      - Address: peer0.org1.example.com:7051
+        MspId: Org1MSP
+        Message: chaincode response 500, the asset asset70 does not exist
+    TransactionID: 1cdfe852b0f32b30049f45d7f83d17761b329f6ceba87be0fc9a7dd5966fbf17
 
   .. code-tab:: text Java
 
@@ -944,8 +929,10 @@ Terminal Output (with stack traces removed for clarity):
     Caused by: io.grpc.StatusRuntimeException: ABORTED: failed to endorse transaction, see attached details for more info
             at ...
     Error details:
-        address: peer0.org1.example.com:7051; mspId: Org1MSP; message: chaincode response 500, the asset asset70 does not exist
-    Transaction ID: 5dcc3576cbb851bfbd998f2413da7707761ad15911b7c7fba853e72ac1b3b002
+      - address: peer0.org1.example.com:7051
+        mspId: Org1MSP
+        message: chaincode response 500, the asset asset70 does not exist
+    Transaction ID: bb7e55f0790cd518d894c84d4f5b6757d247f99281a6fdb197fd8c65154c009b
 
 The ``Endorse`` error type indicates that failure occurred during endorsement, and the
 `gRPC status code <https://grpc.github.io/grpc/core/md_doc_statuscodes.html>`_ of ``ABORTED`` indicates that the
