@@ -226,7 +226,7 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 
 	block := &common.Block{
 		Data: &common.BlockData{
-			// Enconde transactions
+			// Encode transactions
 			Data: [][]byte{envelopeBytes},
 		},
 	}

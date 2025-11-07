@@ -234,7 +234,7 @@ var _ = Describe("Server", func() {
 				Expect(err).To(HaveOccurred())
 			})
 
-			It("logs the corect code", func() {
+			It("logs the correct code", func() {
 				entries := observed.FilterMessage("unary call completed").FilterField(zap.Stringer("grpc.code", codes.Aborted)).AllUntimed()
 				Expect(entries).To(HaveLen(1))
 			})
@@ -542,7 +542,7 @@ var _ = Describe("Server", func() {
 				Expect(err).To(HaveOccurred())
 			})
 
-			It("logs the corect code", func() {
+			It("logs the correct code", func() {
 				entries := observed.FilterMessage("streaming call completed").FilterField(zap.Stringer("grpc.code", codes.Aborted)).AllUntimed()
 				Expect(entries).To(HaveLen(1))
 			})

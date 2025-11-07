@@ -121,7 +121,7 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 	if *configUpdateEnvelopePath != "" {
 		marshaledConfigEnvelope, err = os.ReadFile(*configUpdateEnvelopePath)
 		if err != nil {
-			return "", 1, fmt.Errorf("reading config updte envelope: %s", err)
+			return "", 1, fmt.Errorf("reading config update envelope: %s", err)
 		}
 
 		err = validateEnvelopeChannelID(marshaledConfigEnvelope, *updateChannelID)

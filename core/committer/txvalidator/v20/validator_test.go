@@ -1001,7 +1001,7 @@ func TestLedgerIsNotAvailable(t *testing.T) {
 	assertion := require.New(t)
 	// We suppose to get the error which indicates we cannot commit the block
 	assertion.Error(err)
-	// The error exptected to be of type VSCCInfoLookupFailureError
+	// The error expected to be of type VSCCInfoLookupFailureError
 	assertion.NotNil(err.(*commonerrors.VSCCInfoLookupFailureError))
 }
 
