@@ -139,9 +139,7 @@ might govern financial prices or delivery conditions, and express it as
 a smart contract in a programming language such as JavaScript, Go, or Java.
 The legal and technical skills required to convert centuries of legal language
 into programming language is increasingly practiced by **smart contract
-auditors**. You can learn about how to design and develop a smart contract in
-the [Developing applications
-topic](../developapps/developing_applications.html).
+auditors**.
 
 
 ## Endorsement
@@ -227,10 +225,6 @@ updated to `ORG2`. However, `t4` (not shown) is an invalid transaction, so while
 it was recorded in the ledger, the world state was not updated, and `CAR2`
 remains owned by `ORG2`.
 
-Finally, to understand how to use a smart contract or chaincode with world
-state, read the [chaincode namespace
-topic](../developapps/chaincodenamespace.html).
-
 ## Channels
 
 Hyperledger Fabric allows an organization to simultaneously participate in
@@ -286,8 +280,7 @@ channel and across different channels. It this way, they can read and write
 world state data to which they would not otherwise have access due to smart
 contract namespaces.
 
-There are limitations to this inter-contract communication, which are described
-fully in the [chaincode namespace](../developapps/chaincodenamespace.html#cross-chaincode-access) topic.
+There are limitations to this inter-contract communication.
 
 ## System chaincode
 
@@ -311,9 +304,7 @@ abbreviations:
   [topic](../configtx.html#configuration-updates).
 
 * **Query system chaincode (QSCC)** runs in all peers to provide ledger APIs which
-  include block query, transaction query etc. You can read more about these
-  ledger APIs in the transaction context
-  [topic](../developapps/transactioncontext.html).
+  include block query, transaction query etc.
 
 * **Endorsement system chaincode (ESCC)** runs in endorsing peers to
   cryptographically sign a transaction response. You can read more about how

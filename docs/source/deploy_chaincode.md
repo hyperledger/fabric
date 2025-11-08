@@ -229,7 +229,7 @@ async CreateAsset(ctx, id, color, size, owner, appraisedValue) {
     }
 ```
 
-You can learn more about the JavaScript contract API by visiting the [API documentation](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/) and the [smart contract processing topic](developapps/smartcontract.html).
+You can learn more about the JavaScript contract API by visiting the [API documentation](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/).
 
 To install the smart contract dependencies, run the following command from the `asset-transfer-basic/chaincode-javascript` directory.
 

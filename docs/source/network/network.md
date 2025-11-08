@@ -94,8 +94,6 @@ We can see that our peer organizations, R1 and R2, are fully participating in th
 
 Note: Fabric v2.3 SDKs embed the logic of the v2.4 Fabric Gateway service in the client application --- refer to the [v2.3 Applications and Peers](https://hyperledger-fabric.readthedocs.io/en/release-2.3/peers/peers.html#applications-and-peers) topic for details.
 
-For more information about how to develop an application, check out [Developing applications](../developapps/developing_applications.html).
-
 ## Joining components to multiple channels
 
 Now that we have shown the process for how a channel is created, as well as the nature of the high level interactions between organizations, nodes, policies, chaincodes, and applications, let's expand our view by adding a new organization and a new channel to our scenario. To show how Fabric components can be joined to multiple channels, we'll join R2 and its peer, P2, to the new channel, while R1 and P1 will not be joined.
