@@ -103,7 +103,7 @@ func (v *Verifier) VerifyProposal(proposal types.Proposal) ([]types.RequestInfo,
 	}
 
 	rtc := v.RuntimeConfig.Load().(RuntimeConfig)
-	if err := verifyHashChain(block, rtc.LastCommittedBlockHash); err != nil {
+	if err := verifyHashChainAndDataHash(block, rtc.LastCommittedBlockHash); err != nil {
 		return nil, err
 	}
 
@@ -243,7 +243,7 @@ func (v *Verifier) VerificationSequence() uint64 {
 	return v.VerificationSequencer.Sequence()
 }
 
-func verifyHashChain(block *cb.Block, prevHeaderHash string) error {
+func verifyHashChainAndDataHash(block *cb.Block, prevHeaderHash string) error {
 	thisHdrHashOfPrevHdr := hex.EncodeToString(block.Header.PreviousHash)
 	if prevHeaderHash != thisHdrHashOfPrevHdr {
 		return errors.Errorf("previous header hash is %s but expected %s", thisHdrHashOfPrevHdr, prevHeaderHash)
