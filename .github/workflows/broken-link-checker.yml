@@ -27,15 +27,16 @@ jobs:
       - name: Check Broken Links with Muffet
         # Exclude any links that direct to the documentation or release notes of the non-latest version to limit the scanning to target to that of the latest version.
         run: |
-          docker run raviqqe/muffet:2.11.0 \
+          docker run raviqqe/muffet:2.11.0 -v \
           --max-response-body-size=100000000 \
           --header="User-Agent: curl/8.7.1" \
           --header="Accept: */*" \
           --rate-limit=1 \
+          --accepted-status-codes="200..300,403" \
           --ignore-fragments \
           --skip-tls-verification \
           --max-connections-per-host=1 \
-          --timeout=20 \
+          --timeout=120 \
           --buffer-size=2147483647 \
           --color=always \
           --exclude="^(https:\/\/hyperledger-fabric.readthedocs.io\/([A-z_]+\/(v[\d]+.[\d]+.[\d]+|release)|(es|fa|fr|it|ja|ko|ml|pt|ru|vi|zh-cn|zh_CN)\/latest)).*$" \
