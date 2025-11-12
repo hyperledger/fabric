@@ -60,7 +60,6 @@ func TestConfigSequence(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			chConfig := &mocks.ChannelConfigGetter{}
 			r := &mocks.Resources{}
@@ -161,7 +160,6 @@ func TestSatisfiesPrincipal(t *testing.T) {
 
 	sup := acl.NewDiscoverySupport(&mocks.Verifier{}, &mocks.Evaluator{}, chConfig)
 	for _, test := range tests {
-		test := test
 		t.Run(test.testDescription, func(t *testing.T) {
 			test.before()
 			err := sup.SatisfiesPrincipal("mychannel", nil, nil)
