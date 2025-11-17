@@ -23,7 +23,7 @@ jobs:
     runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-22.04' || 'ubuntu-22.04' }}
     steps:
       - name: Checkout Fabric Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Check Broken Links with Muffet
         # Exclude any links that direct to the documentation or release notes of the non-latest version to limit the scanning to target to that of the latest version.
         run: |
