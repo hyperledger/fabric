@@ -51,7 +51,7 @@ func GetManagerForChain(chainID string) msp.MSPManager {
 	return mspMgr
 }
 
-// GetManagers returns all the managers registered
+// GetDeserializers returns all the deserializers registered
 func GetDeserializers() map[string]msp.IdentityDeserializer {
 	m.Lock()
 	defer m.Unlock()
