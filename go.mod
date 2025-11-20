@@ -110,7 +110,7 @@ require (
 	github.com/sykesm/zap-logfmt v0.0.4 // indirect
 	go.etcd.io/etcd/pkg/v3 v3.5.16 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.44.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/sync v0.18.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
