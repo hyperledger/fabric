@@ -16,11 +16,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// deprecated
 func updateCmd(cf *ChannelCmdFactory) *cobra.Command {
 	updateCmd := &cobra.Command{
 		Use:   "update",
-		Short: "Send a configtx update.",
-		Long:  "Signs and sends the supplied configtx update file to the channel. Requires '-f', '-o', '-c'.",
+		Short: "[DEPRECATED] Send a configtx update (use the \"osnadmin update\").",
+		Long:  "[DEPRECATED] Signs and sends the supplied configtx update file to the channel. Requires '-f', '-o', '-c'. . Instead of this command, use Orderer Service Node (OSN).",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return update(cmd, args, cf)
 		},
@@ -34,6 +35,7 @@ func updateCmd(cf *ChannelCmdFactory) *cobra.Command {
 	return updateCmd
 }
 
+// deprecated
 func update(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 	// the global chainID filled by the "-c" command
 	if channelID == common.UndefinedParamValue {

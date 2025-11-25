@@ -42,7 +42,7 @@ func (e InvalidCreateTx) Error() string {
 func createCmd(cf *ChannelCmdFactory) *cobra.Command {
 	createCmd := &cobra.Command{
 		Use:   "create",
-		Short: "[DEPRECATED] Create a channel",
+		Short: "[DEPRECATED] Create a channel (use the \"osnadmin join\").",
 		Long:  "[DEPRECATED] Create a channel and write the genesis block to a file. Instead of this command, use Orderer Service Node (OSN).",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return create(cmd, args, cf)

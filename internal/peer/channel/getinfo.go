@@ -22,7 +22,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func getinfoCmd(cf *ChannelCmdFactory) *cobra.Command {
+func getinfoCmd(cf *ChannelCmdFactory, isNew bool) *cobra.Command {
 	getinfoCmd := &cobra.Command{
 		Use:   "getinfo",
 		Short: "get blockchain information of a specified channel.",
@@ -30,6 +30,10 @@ func getinfoCmd(cf *ChannelCmdFactory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return getinfo(cmd, cf)
 		},
+	}
+	if !isNew {
+		getinfoCmd.Short = "[DEPRECATED] get blockchain information of a specified channel (use the \"peercli channel getinfo\")."
+		getinfoCmd.Long = "[DEPRECATED] get blockchain information of a specified channel. Requires '-c'. Instead of this command, use \"peercli channel getinfo\"."
 	}
 	flagList := []string{
 		"channelID",
