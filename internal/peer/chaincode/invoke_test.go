@@ -40,15 +40,15 @@ func TestInvokeCmd(t *testing.T) {
 	require.NoError(t, err)
 
 	// Error case 0: no channelID specified
-	cmd := invokeCmd(mockCF, cryptoProvider)
+	cmd := invokeCmd(mockCF, cryptoProvider, true)
 	addFlags(cmd)
 	args := []string{"-n", "example02", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
-	require.Error(t, err, "'peer chaincode invoke' command should have returned error when called without -C flag")
+	require.Error(t, err, "'peercli chaincode invoke' command should have returned error when called without -C flag")
 
 	// Success case
-	cmd = invokeCmd(mockCF, cryptoProvider)
+	cmd = invokeCmd(mockCF, cryptoProvider, true)
 	addFlags(cmd)
 	args = []string{"-n", "example02", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}", "-C", "mychannel"}
 	cmd.SetArgs(args)
@@ -80,7 +80,7 @@ func TestInvokeCmd(t *testing.T) {
 	common.GetOrdererEndpointOfChainFnc = func(chainID string, signer common.Signer, endorserClient pb.EndorserClient, cryptoProvider bccsp.BCCSP) ([]string, error) {
 		return []string{}, nil
 	}
-	cmd = invokeCmd(nil, cryptoProvider)
+	cmd = invokeCmd(nil, cryptoProvider, true)
 	addFlags(cmd)
 	args = []string{"-n", "example02", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}", "-C", "mychannel"}
 	cmd.SetArgs(args)
@@ -181,7 +181,7 @@ func TestInvokeCmdSimulateESCCPluginResponse(t *testing.T) {
 	l, recorder := floggingtest.NewTestLogger(t)
 	logger = l
 
-	cmd := invokeCmd(mockCF, cryptoProvider)
+	cmd := invokeCmd(mockCF, cryptoProvider, true)
 	addFlags(cmd)
 	args := []string{"-n", "example02", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}", "-C", "mychannel"}
 	cmd.SetArgs(args)
@@ -200,7 +200,7 @@ func TestInvokeCmdEndorsementError(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 
-	cmd := invokeCmd(mockCF, cryptoProvider)
+	cmd := invokeCmd(mockCF, cryptoProvider, true)
 	addFlags(cmd)
 	args := []string{"-n", "example02", "-C", "mychannel", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}"}
 	cmd.SetArgs(args)
@@ -219,7 +219,7 @@ func TestInvokeCmdEndorsementFailure(t *testing.T) {
 		mockCF, err := getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus[i], ccRespPayload[i])
 		require.NoError(t, err, "Error getting mock chaincode command factory")
 
-		cmd := invokeCmd(mockCF, cryptoProvider)
+		cmd := invokeCmd(mockCF, cryptoProvider, true)
 		addFlags(cmd)
 		args := []string{"-C", "mychannel", "-n", "example02", "-c", "{\"Args\": [\"invokeinvalid\",\"a\",\"b\",\"10\"]}"}
 		cmd.SetArgs(args)

@@ -50,7 +50,7 @@ func (i *GetInstalledPackageInput) Validate() error {
 
 // GetInstalledPackageCmd returns the cobra command for getting an
 // installed chaincode package from a peer.
-func GetInstalledPackageCmd(i *InstalledPackageGetter, cryptoProvider bccsp.BCCSP) *cobra.Command {
+func GetInstalledPackageCmd(i *InstalledPackageGetter, cryptoProvider bccsp.BCCSP, isNew bool) *cobra.Command {
 	chaincodeGetInstalledPackageCmd := &cobra.Command{
 		Use:   "getinstalledpackage [outputfile]",
 		Short: "Get an installed chaincode package from a peer.",
@@ -90,6 +90,11 @@ func GetInstalledPackageCmd(i *InstalledPackageGetter, cryptoProvider bccsp.BCCS
 			}
 			return i.Get()
 		},
+	}
+
+	if !isNew {
+		chaincodeGetInstalledPackageCmd.Short = "[DEPRECATED] Get an installed chaincode package from a peer (use the \"peercli lifecycle chaincode getinstalledpackage\")."
+		chaincodeGetInstalledPackageCmd.Long = "[DEPRECATED] Get an installed chaincode package from a peer. Instead of this command, use \"peercli lifecycle chaincode getinstalledpackage\"."
 	}
 
 	flagList := []string{
