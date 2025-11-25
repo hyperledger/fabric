@@ -264,8 +264,8 @@ used by tutorials to highlight Fabric features.
 
 ## Interacting with the network
 
-After you bring up the test network, you can use the `peer` CLI to interact
-with your network. The `peer` CLI allows you to invoke deployed smart contracts,
+After you bring up the test network, you can use the CLI to interact
+with your network. The CLI allows you to invoke deployed smart contracts,
 update channels, or install and deploy new smart contracts from the CLI.
 
 Make sure that you are operating from the `test-network` directory. If you
@@ -299,7 +299,7 @@ If you used `./network.sh deployCC -ccl go` to install and start the asset-trans
 
 Run the following command to initialize the ledger with assets. (Note the CLI does not access the Fabric Gateway peer, so each endorsing peer must be specified.)
 ```
-peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n basic --peerAddresses localhost:7051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" --peerAddresses localhost:9051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" -c '{"function":"InitLedger","Args":[]}'
+cli chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n basic --peerAddresses localhost:7051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" --peerAddresses localhost:9051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" -c '{"function":"InitLedger","Args":[]}'
 ```
 If successful, you should see output similar to the following example:
 ```
@@ -307,7 +307,7 @@ If successful, you should see output similar to the following example:
 ```
 You can now query the ledger from your CLI. Run the following command to get the list of assets that were added to your channel ledger:
 ```
-peer chaincode query -C mychannel -n basic -c '{"Args":["GetAllAssets"]}'
+cli chaincode query -C mychannel -n basic -c '{"Args":["GetAllAssets"]}'
 ```
 If successful, you should see the following output:
 ```
@@ -322,7 +322,7 @@ If successful, you should see the following output:
 ```
 Chaincodes are invoked when a network member wants to transfer or change an asset on the ledger. Use the following command to change the owner of an asset on the ledger by invoking the asset-transfer (basic) chaincode:
 ```
-peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n basic --peerAddresses localhost:7051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" --peerAddresses localhost:9051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" -c '{"function":"TransferAsset","Args":["asset6","Christopher"]}'
+cli chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n basic --peerAddresses localhost:7051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" --peerAddresses localhost:9051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" -c '{"function":"TransferAsset","Args":["asset6","Christopher"]}'
 ```
 
 If the command is successful, you should see the following response:
@@ -351,7 +351,7 @@ export CORE_PEER_ADDRESS=localhost:9051
 
 You can now query the asset-transfer (basic) chaincode running on `peer0.org2.example.com`:
 ```
-peer chaincode query -C mychannel -n basic -c '{"Args":["ReadAsset","asset6"]}'
+cli chaincode query -C mychannel -n basic -c '{"Args":["ReadAsset","asset6"]}'
 ```
 
 The result will show that `"asset6"` was transferred to Christopher:
@@ -531,12 +531,12 @@ below provide a guided tour of what happens when you issue the command of
 - If you use the `createChannel` subcommand, `./network.sh` runs the
   `createChannel.sh` script in the `scripts` folder to create a channel
   using the supplied channel name. The script uses the `configtxgen` tool to create the channel genesis block
-  based on the `ChannelUsingRaft` channel profile in the `configtx/configtx.yaml` file. After creating the channel, the script uses the peer cli to join ``peer0.org1.example.com`` and ``peer0.org2.example.com`` to the channel, and make both of the peers anchor peers.
+  based on the `ChannelUsingRaft` channel profile in the `configtx/configtx.yaml` file. After creating the channel, the script uses the cli to join ``peer0.org1.example.com`` and ``peer0.org2.example.com`` to the channel, and make both of the peers anchor peers.
 
 - If you issue the `deployCC` command, `./network.sh` runs the ``deployCC.sh``
   script to install the **asset-transfer (basic)** chaincode on both peers and then define then
   chaincode on the channel. Once the chaincode definition is committed to the
-  channel, the peer cli initializes the chaincode using the `Init` and invokes
+  channel, the cli initializes the chaincode using the `Init` and invokes
   the chaincode to put initial data on the ledger.
 
 ## Bring up the network using BFT ordering service

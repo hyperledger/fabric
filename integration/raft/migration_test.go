@@ -661,7 +661,7 @@ func updateOrdererEndpointsConfigFails(n *nwo.Network, orderer *nwo.Orderer, cha
 	Expect(err).NotTo(HaveOccurred())
 
 	for _, signer := range additionalSigners {
-		sess, err := n.PeerAdminSession(signer, commands.SignConfigTx{
+		sess, err := n.CliAdminSession(signer, commands.SignConfigTx{
 			File:       updateFile,
 			ClientAuth: n.ClientAuthRequired,
 		})
@@ -979,7 +979,7 @@ func updateOrdererOrgEndpointsConfigSucceeds(n *nwo.Network, orderer *nwo.Ordere
 	Expect(err).NotTo(HaveOccurred())
 
 	for _, signer := range additionalSigners {
-		sess, err := n.PeerAdminSession(signer, commands.SignConfigTx{
+		sess, err := n.CliAdminSession(signer, commands.SignConfigTx{
 			File:       updateFile,
 			ClientAuth: n.ClientAuthRequired,
 		})

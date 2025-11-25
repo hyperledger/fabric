@@ -118,7 +118,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				if targetOrderer != nil {
 					c.Orderer = network.OrdererAddress(targetOrderer, nwo.ListenPort)
 				}
-				sess, err := network.PeerAdminSession(peer, c)
+				sess, err := network.CliAdminSession(peer, c)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 			}
@@ -723,7 +723,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				OutputFile: blockFile,
 			}
 			c.Orderer = network.OrdererAddress(o1, nwo.ListenPort)
-			sess, err := network.PeerAdminSession(peer, c)
+			sess, err := network.CliAdminSession(peer, c)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 			lastConfigBlock := nwo.UnmarshalBlockFromFile(blockFile)

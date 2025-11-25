@@ -3,13 +3,13 @@
  Please make changes to preamble and postscript wrappers as appropriate.
  --->
 
-# peer chaincode
+# cli chaincode
 
-The `peer chaincode` command allows users to invoke and query chaincode.
+The `cli chaincode` command allows users to invoke and query chaincode.
 
 ## Syntax
 
-The `peer chaincode` command has the following subcommands:
+The `cli chaincode` command has the following subcommands:
 
   * invoke
   * query
@@ -26,14 +26,14 @@ Args is an array of arguments of the function. For instance,
 `{"Args":["GetAllAssets"]}` is equivalent to
 `{"Function":"GetAllAssets", "Args":[]}`.
 
-Each peer chaincode subcommand is described together with its options in its own
+Each cli chaincode subcommand is described together with its options in its own
 section in this topic.
 
 ## Flags
 
-Each `peer chaincode` subcommand has both a set of flags specific to an
+Each `cli chaincode` subcommand has both a set of flags specific to an
 individual subcommand, as well as a set of global flags that relate to all
-`peer chaincode` subcommands. Not all subcommands would use these flags.
+`cli chaincode` subcommands. Not all subcommands would use these flags.
 For instance, the `query` subcommand does not need the `--orderer` flag.
 
 The individual flags are described with the relevant subcommand. The global
@@ -75,12 +75,12 @@ values. For example, you will use `--peerAddresses localhost:9051
 --peerAddresses localhost:7051` rather than `--peerAddresses "localhost:9051
 localhost:7051"`.
 
-## peer chaincode invoke
+## cli chaincode invoke
 ```
 Invoke the specified chaincode. It will try to commit the endorsed transaction to the network.
 
 Usage:
-  peer chaincode invoke [flags]
+  cli chaincode invoke [flags]
 
 Flags:
   -C, --channelID string               The channel on which this command should be executed
@@ -108,12 +108,12 @@ Global Flags:
 ```
 
 
-## peer chaincode query
+## cli chaincode query
 ```
 Get endorsed result of chaincode function call and print it. It won't generate transaction.
 
 Usage:
-  peer chaincode query [flags]
+  cli chaincode query [flags]
 
 Flags:
   -C, --channelID string               The channel on which this command should be executed
@@ -141,9 +141,9 @@ Global Flags:
 
 ## Example Usage
 
-### peer chaincode invoke example
+### cli chaincode invoke example
 
-Here is an example of the `peer chaincode invoke` command:
+Here is an example of the `cli chaincode invoke` command:
 
   * Invoke the chaincode named `mycc` at version `1.0` on channel `mychannel`
     on `peer0.org1.example.com:7051` and `peer0.org2.example.com:9051` (the
@@ -151,7 +151,7 @@ Here is an example of the `peer chaincode invoke` command:
     variable `a` to variable `b`:
 
     ```
-    peer chaincode invoke -o orderer.example.com:7050 -C mychannel -n mycc --peerAddresses peer0.org1.example.com:7051 --peerAddresses peer0.org2.example.com:9051 -c '{"Args":["invoke","a","b","10"]}'
+    cli chaincode invoke -o orderer.example.com:7050 -C mychannel -n mycc --peerAddresses peer0.org1.example.com:7051 --peerAddresses peer0.org2.example.com:9051 -c '{"Args":["invoke","a","b","10"]}'
 
     2018-02-22 16:34:27.069 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 001 Using default escc
     2018-02-22 16:34:27.069 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 002 Using default vscc
@@ -176,20 +176,20 @@ Here is an example of the `peer chaincode invoke` command:
     successfully. The transaction will then be added to a block and, finally, validated
     or invalidated by each peer on the channel.
 
-Here is an example of how to format the `peer chaincode invoke` command when the chaincode package includes multiple smart contracts.
+Here is an example of how to format the `cli chaincode invoke` command when the chaincode package includes multiple smart contracts.
 
   * If you are using the [contract-api](https://www.npmjs.com/package/fabric-contract-api), the name you pass to `super("MyContract")` can be used as a prefix.
 
     ```
-    peer chaincode invoke -C $CHANNEL_NAME -n $CHAINCODE_NAME -c '{ "Args": ["MyContract:methodName", "{}"] }'
+    cli chaincode invoke -C $CHANNEL_NAME -n $CHAINCODE_NAME -c '{ "Args": ["MyContract:methodName", "{}"] }'
 
-    peer chaincode invoke -C $CHANNEL_NAME -n $CHAINCODE_NAME -c '{ "Args": ["MyOtherContract:methodName", "{}"] }'
+    cli chaincode invoke -C $CHANNEL_NAME -n $CHAINCODE_NAME -c '{ "Args": ["MyOtherContract:methodName", "{}"] }'
 
     ```
 
-### peer chaincode query example
+### cli chaincode query example
 
-Here is an example of the `peer chaincode query` command, which queries the
+Here is an example of the `cli chaincode query` command, which queries the
 peer ledger for the chaincode named `mycc` at version `1.0` for the value of
 variable `a`:
 
@@ -197,7 +197,7 @@ variable `a`:
     the query.
 
     ```
-    peer chaincode query -C mychannel -n mycc -c '{"Args":["query","a"]}'
+    cli chaincode query -C mychannel -n mycc -c '{"Args":["query","a"]}'
 
     2018-02-22 16:34:30.816 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 001 Using default escc
     2018-02-22 16:34:30.816 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 002 Using default vscc

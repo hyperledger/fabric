@@ -280,7 +280,7 @@ func (th *marblesTestHelper) assertMarbleExists(chaincodeName string, peer *nwo.
 		Name:      chaincodeName,
 		Ctor:      fmt.Sprintf(`{"Args":["readMarble","%s"]}`, marbleName),
 	}
-	sess, err := th.PeerUserSession(peer, "User1", command)
+	sess, err := th.CliUserSession(peer, "User1", command)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, th.EventuallyTimeout).Should(gexec.Exit(0))
 	result := &marble{}
@@ -307,7 +307,7 @@ func (th *marblesTestHelper) assertQueryMarbles(chaincodeName string, peer *nwo.
 		Name:      chaincodeName,
 		Ctor:      prepareChaincodeInvokeArgs(funcAndArgs...),
 	}
-	sess, err := th.PeerUserSession(peer, "User1", command)
+	sess, err := th.CliUserSession(peer, "User1", command)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, th.EventuallyTimeout).Should(gexec.Exit(0))
 	results := make([]*marbleQueryResult, 0)
@@ -324,7 +324,7 @@ func (th *marblesTestHelper) assertQueryMarblesWithPagination(chaincodeName stri
 		Name:      chaincodeName,
 		Ctor:      prepareChaincodeInvokeArgs(funcAndArgs...),
 	}
-	sess, err := th.PeerUserSession(peer, "User1", command)
+	sess, err := th.CliUserSession(peer, "User1", command)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, th.EventuallyTimeout).Should(gexec.Exit(0))
 
@@ -354,7 +354,7 @@ func (th *marblesTestHelper) assertGetHistoryForMarble(chaincodeName string, pee
 		Name:      chaincodeName,
 		Ctor:      fmt.Sprintf(`{"Args":["getHistoryForMarble","%s"]}`, marbleName),
 	}
-	sess, err := th.PeerUserSession(peer, "User1", command)
+	sess, err := th.CliUserSession(peer, "User1", command)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, th.EventuallyTimeout).Should(gexec.Exit(0))
 

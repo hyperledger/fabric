@@ -148,7 +148,7 @@ func CheckPresentInCollectionM(n *nwo.Network, channelID, chaincodeName, marbleN
 	}
 	present := 0
 	for _, peer := range peerList {
-		sess, err := n.PeerUserSession(peer, "User1", command)
+		sess, err := n.CliUserSession(peer, "User1", command)
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit())
 		if bytes.Contains(sess.Buffer().Contents(), []byte(expectedMsg)) {
@@ -170,7 +170,7 @@ func CheckPresentInCollectionMPD(n *nwo.Network, channelID, chaincodeName, marbl
 	}
 	present := 0
 	for _, peer := range peerList {
-		sess, err := n.PeerUserSession(peer, "User1", command)
+		sess, err := n.CliUserSession(peer, "User1", command)
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit())
 		if bytes.Contains(sess.Buffer().Contents(), []byte(expectedMsg)) {
@@ -253,21 +253,21 @@ func AssertMarblesPrivateDetailsHashMPD(n *nwo.Network, channelID, chaincodeName
 
 // AssertInvokeChaincodeFails asserts that a chaincode invoke fails with a specified error message
 func AssertInvokeChaincodeFails(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeInvoke, expectedMessage string) {
-	sess, err := n.PeerUserSession(peer, "User1", command)
+	sess, err := n.CliUserSession(peer, "User1", command)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit())
 	Expect(sess.Err).To(gbytes.Say(expectedMessage))
 }
 
 func invokeChaincode(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeInvoke) {
-	sess, err := n.PeerUserSession(peer, "User1", command)
+	sess, err := n.CliUserSession(peer, "User1", command)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful."))
 }
 
 func queryChaincode(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeQuery, expectedMessage string, expectSuccess bool) {
-	sess, err := n.PeerUserSession(peer, "User1", command)
+	sess, err := n.CliUserSession(peer, "User1", command)
 	Expect(err).NotTo(HaveOccurred())
 	if expectSuccess {
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
@@ -288,7 +288,7 @@ func verifyPvtdataHash(n *nwo.Network, query, channelID, chaincodeName string, p
 	}
 
 	for _, peer := range peers {
-		sess, err := n.PeerUserSession(peer, "User1", command)
+		sess, err := n.CliUserSession(peer, "User1", command)
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 		actual := sess.Buffer().Contents()
