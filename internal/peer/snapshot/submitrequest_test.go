@@ -25,7 +25,7 @@ func TestSubmitRequestCmd(t *testing.T) {
 	mockClient := &client{mockSnapshotClient, mockSigner, buffer}
 
 	resetFlags()
-	cmd := submitRequestCmd(mockClient, nil)
+	cmd := submitRequestCmd(mockClient, nil, true)
 	cmd.SetArgs([]string{"-c", "mychannel"})
 	require.NoError(t, cmd.Execute())
 	require.Equal(t, []byte("Snapshot request submitted successfully\n"), buffer.Contents())
@@ -34,7 +34,7 @@ func TestSubmitRequestCmd(t *testing.T) {
 	buffer2 := gbytes.NewBuffer()
 	mockClient.writer = buffer2
 	resetFlags()
-	cmd = submitRequestCmd(mockClient, nil)
+	cmd = submitRequestCmd(mockClient, nil, true)
 	cmd.SetArgs([]string{"-c", "mychannel", "-b", "100"})
 	require.NoError(t, cmd.Execute())
 	require.Equal(t, []byte("Snapshot request submitted successfully\n"), buffer2.Contents())
