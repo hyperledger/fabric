@@ -41,19 +41,19 @@ func TestValidatePeerConnectionParameters(t *testing.T) {
 	// test error propagation
 	args := []string{"-c", "mychannel"}
 	resetFlags()
-	cmd := listPendingCmd(nil, nil)
+	cmd := listPendingCmd(nil, nil, true)
 	cmd.SetArgs(args)
 	err := cmd.Execute()
 	require.EqualError(t, err, expectedErrMsg)
 
 	resetFlags()
-	cmd = submitRequestCmd(nil, nil)
+	cmd = submitRequestCmd(nil, nil, true)
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	require.EqualError(t, err, expectedErrMsg)
 
 	resetFlags()
-	cmd = cancelRequestCmd(nil, nil)
+	cmd = cancelRequestCmd(nil, nil, true)
 	// append required block number parameter for cancel request
 	args = append(args, []string{"-b", "10"}...)
 	cmd.SetArgs(args)

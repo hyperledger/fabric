@@ -25,21 +25,21 @@ The `peer channel` command has the following subcommands:
 
 ## peer channel
 ```
-Operate a channel: create|fetch|join|joinbysnapshot|joinbysnapshotstatus|list|update|signconfigtx|getinfo.
+[DEPRECATED] Operate a channel: create|fetch|join|joinbysnapshot|joinbysnapshotstatus|list|update|signconfigtx|getinfo. Instead of this command, use "peercli channel".
 
 Usage:
   peer channel [command]
 
 Available Commands:
-  create               [DEPRECATED] Create a channel
-  fetch                Fetch a block
-  getinfo              get blockchain information of a specified channel.
-  join                 Joins the peer to a channel.
-  joinbysnapshot       Joins the peer to a channel by the specified snapshot
-  joinbysnapshotstatus Query if joinbysnapshot is running for any channel
-  list                 List of channels peer has joined.
-  signconfigtx         Signs a configtx update.
-  update               Send a configtx update.
+  create               [DEPRECATED] Create a channel (use the "osnadmin join").
+  fetch                [DEPRECATED] Fetch a block (use the "peercli channel fetch" or "osnadmin fetch").
+  getinfo              [DEPRECATED] get blockchain information of a specified channel (use the "peercli channel getinfo").
+  join                 [DEPRECATED] Joins the peer to a channel (use the "peercli channel join").
+  joinbysnapshot       [DEPRECATED] Joins the peer to a channel by the specified snapshot (use the "peercli channel joinbysnapshot").
+  joinbysnapshotstatus [DEPRECATED] Query if joinbysnapshot is running for any channel (use the "peercli channel joinbysnapshotstatus").
+  list                 [DEPRECATED] List of channels peer has joined (use the "peercli channel list").
+  signconfigtx         [DEPRECATED] Signs a configtx update (use the "peercli channel signconfigtx").
+  update               [DEPRECATED] Send a configtx update (use the "osnadmin update").
 
 Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
@@ -86,7 +86,7 @@ Global Flags:
 
 ## peer channel fetch
 ```
-Fetch a specified block, writing it to a file.
+[DEPRECATED] Fetch a specified block from peer or orderer, writing it to a file. Instead of this command, use "peercli channel fetch" or "osnadmin fetch".
 
 Usage:
   peer channel fetch <newest|oldest|config|(number)> [outputfile] [flags]
@@ -111,7 +111,7 @@ Global Flags:
 
 ## peer channel getinfo
 ```
-get blockchain information of a specified channel. Requires '-c'.
+[DEPRECATED] get blockchain information of a specified channel. Requires '-c'. Instead of this command, use "peercli channel getinfo".
 
 Usage:
   peer channel getinfo [flags]
@@ -135,7 +135,7 @@ Global Flags:
 
 ## peer channel join
 ```
-Joins the peer to a channel.
+[DEPRECATED] Joins the peer to a channel. Instead of this command, use "peercli channel join".
 
 Usage:
   peer channel join [flags]
@@ -159,7 +159,7 @@ Global Flags:
 
 ## peer channel joinbysnapshot
 ```
-Joins the peer to a channel by the specified snapshot
+[DEPRECATED] Joins the peer to a channel by the specified snapshot. Instead of this command, use "peercli channel joinbysnapshot".
 
 Usage:
   peer channel joinbysnapshot [flags]
@@ -183,7 +183,7 @@ Global Flags:
 
 ## peer channel joinbysnapshotstatus
 ```
-Query if joinbysnapshot is running for any channel
+[DEPRECATED] Query if joinbysnapshot is running for any channel. Instead of this command, use "peercli channel joinbysnapshotstatus".
 
 Usage:
   peer channel joinbysnapshotstatus [flags]
@@ -206,7 +206,7 @@ Global Flags:
 
 ## peer channel list
 ```
-List of channels peer has joined.
+[DEPRECATED] List of channels peer has joined. Instead of this command, use "peercli channel list".
 
 Usage:
   peer channel list [flags]
@@ -229,7 +229,7 @@ Global Flags:
 
 ## peer channel signconfigtx
 ```
-Signs the supplied configtx update file in place on the filesystem. Requires '-f'.
+[DEPRECATED] Signs the supplied configtx update file in place on the filesystem. Requires '-f'. Instead of this command, use "peercli channel signconfigtx".
 
 Usage:
   peer channel signconfigtx [flags]
@@ -253,7 +253,7 @@ Global Flags:
 
 ## peer channel update
 ```
-Signs and sends the supplied configtx update file to the channel. Requires '-f', '-o', '-c'.
+[DEPRECATED] Signs and sends the supplied configtx update file to the channel. Requires '-f', '-o', '-c'. . Instead of this command, use Orderer Service Node (OSN).
 
 Usage:
   peer channel update [flags]
