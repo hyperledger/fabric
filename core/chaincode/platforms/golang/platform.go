@@ -39,7 +39,7 @@ func (p *Platform) Name() string {
 // ValidatePath is used to ensure that path provided points to something that
 // looks like go chainccode.
 //
-// NOTE: this is only used at the _client_ side by the peer CLI.
+// NOTE: this is only used at the _client_ side by the CLI.
 func (p *Platform) ValidatePath(rawPath string) error {
 	_, err := DescribeCode(rawPath)
 	if err != nil {
@@ -52,7 +52,7 @@ func (p *Platform) ValidatePath(rawPath string) error {
 // NormalizePath is used to extract a relative module path from a module root.
 // This should not impact legacy GOPATH chaincode.
 //
-// NOTE: this is only used at the _client_ side by the peer CLI.
+// NOTE: this is only used at the _client_ side by the CLI.
 func (p *Platform) NormalizePath(rawPath string) (string, error) {
 	modInfo, err := moduleInfo(rawPath)
 	if err != nil {
@@ -113,7 +113,7 @@ var gzipCompressionLevel = gzip.DefaultCompression
 // GetDeploymentPayload creates a gzip compressed tape archive that contains the
 // required assets to build and run go chaincode.
 //
-// NOTE: this is only used at the _client_ side by the peer CLI.
+// NOTE: this is only used at the _client_ side by the CLI.
 func (p *Platform) GetDeploymentPayload(codepath string) ([]byte, error) {
 	codeDescriptor, err := DescribeCode(codepath)
 	if err != nil {

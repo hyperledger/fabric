@@ -30,7 +30,7 @@ func TestQueryCmd(t *testing.T) {
 	args := []string{"-n", "example02", "-c", "{\"Args\": [\"query\",\"a\"]}"}
 	cmd := newQueryCmdForTest(mockCF, args, cryptoProvider)
 	err = cmd.Execute()
-	require.Error(t, err, "'peer chaincode query' command should have failed without -C flag")
+	require.Error(t, err, "'cli chaincode query' command should have failed without -C flag")
 
 	// Success case: run query command without -r or -x option
 	args = []string{"-C", "mychannel", "-n", "example02", "-c", "{\"Args\": [\"query\",\"a\"]}"}

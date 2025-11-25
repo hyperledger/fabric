@@ -116,7 +116,7 @@ func PackageAndInstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer)
 }
 
 func PackageChaincode(n *Network, chaincode Chaincode, peer *Peer) {
-	sess, err := n.PeerAdminSession(peer, commands.ChaincodePackage{
+	sess, err := n.CliAdminSession(peer, commands.ChaincodePackage{
 		Path:       chaincode.Path,
 		Lang:       chaincode.Lang,
 		Label:      chaincode.Label,
@@ -128,7 +128,7 @@ func PackageChaincode(n *Network, chaincode Chaincode, peer *Peer) {
 }
 
 func CheckPackageID(n *Network, packageFile string, packageID string, peer *Peer) {
-	sess, err := n.PeerAdminSession(peer, commands.ChaincodeCalculatePackageID{
+	sess, err := n.CliAdminSession(peer, commands.ChaincodeCalculatePackageID{
 		PackageFile: packageFile,
 		ClientAuth:  n.ClientAuthRequired,
 	})
@@ -147,7 +147,7 @@ func InstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer) {
 	}
 
 	for _, p := range peers {
-		sess, err := n.PeerAdminSession(p, commands.ChaincodeInstall{
+		sess, err := n.CliAdminSession(p, commands.ChaincodeInstall{
 			PackageFile: chaincode.PackageFile,
 			ClientAuth:  n.ClientAuthRequired,
 		})
@@ -168,7 +168,7 @@ func ApproveChaincodeForMyOrg(n *Network, channel string, orderer *Orderer, chai
 	approvedOrgs := map[string]bool{}
 	for _, p := range peers {
 		if _, ok := approvedOrgs[p.Organization]; !ok {
-			sess, err := n.PeerAdminSession(p, commands.ChaincodeApproveForMyOrg{
+			sess, err := n.CliAdminSession(p, commands.ChaincodeApproveForMyOrg{
 				ChannelID:           channel,
 				Orderer:             n.OrdererAddress(orderer, ListenPort),
 				Name:                chaincode.Name,
@@ -225,7 +225,7 @@ func CommitChaincode(n *Network, channel string, orderer *Orderer, chaincode Cha
 		}
 	}
 
-	sess, err := n.PeerAdminSession(peer, commands.ChaincodeCommit{
+	sess, err := n.CliAdminSession(peer, commands.ChaincodeCommit{
 		ChannelID:           channel,
 		Orderer:             n.OrdererAddress(orderer, ListenPort),
 		Name:                chaincode.Name,
@@ -284,7 +284,7 @@ func InitChaincode(n *Network, channel string, orderer *Orderer, chaincode Chain
 		}
 	}
 
-	sess, err := n.PeerUserSession(peers[0], "User1", commands.ChaincodeInvoke{
+	sess, err := n.CliUserSession(peers[0], "User1", commands.ChaincodeInvoke{
 		ChannelID:     channel,
 		Orderer:       n.OrdererAddress(orderer, ListenPort),
 		Name:          chaincode.Name,
@@ -345,7 +345,7 @@ type queryInstalledOutput struct {
 
 func QueryInstalled(n *Network, peer *Peer) func() []lifecycle.QueryInstalledChaincodesResult_InstalledChaincode {
 	return func() []lifecycle.QueryInstalledChaincodesResult_InstalledChaincode {
-		sess, err := n.PeerAdminSession(peer, commands.ChaincodeQueryInstalled{
+		sess, err := n.CliAdminSession(peer, commands.ChaincodeQueryInstalled{
 			ClientAuth: n.ClientAuthRequired,
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -363,7 +363,7 @@ type checkCommitReadinessOutput struct {
 
 func checkCommitReadiness(n *Network, peer *Peer, channel string, chaincode Chaincode) func() map[string]bool {
 	return func() map[string]bool {
-		sess, err := n.PeerAdminSession(peer, commands.ChaincodeCheckCommitReadiness{
+		sess, err := n.CliAdminSession(peer, commands.ChaincodeCheckCommitReadiness{
 			ChannelID:           channel,
 			Name:                chaincode.Name,
 			Version:             chaincode.Version,
@@ -389,7 +389,7 @@ func checkCommitReadiness(n *Network, peer *Peer, channel string, chaincode Chai
 // command with inspection enabled. This is to verify that the network can detect differences in chaincode definitions,
 // particularly when comparing with mismatched parameters from the approved definitions by each organizations.
 func InspectChaincodeDiscrepancies(n *Network, channel string, chaincode Chaincode, checkOrgs []*Organization, peers ...*Peer) {
-	sess, err := n.PeerAdminSession(peers[0], commands.ChaincodeCheckCommitReadiness{
+	sess, err := n.CliAdminSession(peers[0], commands.ChaincodeCheckCommitReadiness{
 		ChannelID:           channel,
 		Name:                chaincode.Name,
 		Version:             "mismatched-version", // Intentionally set mismatched version
@@ -427,7 +427,7 @@ type queryApprovedOutput struct {
 // If the command fails for any reason, it will return an empty output object.
 func queryApproved(n *Network, peer *Peer, channel, name, sequence string) func() queryApprovedOutput {
 	return func() queryApprovedOutput {
-		sess, err := n.PeerAdminSession(peer, commands.ChaincodeQueryApproved{
+		sess, err := n.CliAdminSession(peer, commands.ChaincodeQueryApproved{
 			ChannelID:     channel,
 			Name:          name,
 			Sequence:      sequence,
@@ -458,7 +458,7 @@ type queryCommittedOutput struct {
 // or a database access issue), it will return an empty output object.
 func listCommitted(n *Network, peer *Peer, channel, name string) func() queryCommittedOutput {
 	return func() queryCommittedOutput {
-		sess, err := n.PeerAdminSession(peer, commands.ChaincodeListCommitted{
+		sess, err := n.CliAdminSession(peer, commands.ChaincodeListCommitted{
 			ChannelID:  channel,
 			Name:       name,
 			ClientAuth: n.ClientAuthRequired,
@@ -537,7 +537,7 @@ func WaitUntilEqualLedgerHeight(n *Network, channel string, height int, peers ..
 // GetLedgerHeight returns the current ledger height for a peer on
 // a channel
 func GetLedgerHeight(n *Network, peer *Peer, channel string) int {
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChannelInfo{
+	sess, err := n.CliUserSession(peer, "User1", commands.ChannelInfo{
 		ChannelID:  channel,
 		ClientAuth: n.ClientAuthRequired,
 	})
