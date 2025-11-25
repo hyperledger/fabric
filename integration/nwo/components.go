@@ -50,6 +50,10 @@ func (c *Components) Peer() string {
 	return c.Build("github.com/hyperledger/fabric/cmd/peer")
 }
 
+func (c *Components) Cli() string {
+	return c.Build("github.com/hyperledger/fabric/cmd/cli")
+}
+
 func (c *Components) Cleanup() {}
 
 func (c *Components) Build(path string) string {
