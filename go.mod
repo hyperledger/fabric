@@ -10,7 +10,7 @@ require (
 	github.com/bits-and-blooms/bitset v1.20.0
 	github.com/cheggaaa/pb/v3 v3.1.5
 	github.com/davecgh/go-spew v1.1.1
-	github.com/fsouza/go-dockerclient v1.12.0
+	github.com/fsouza/go-dockerclient v1.12.3
 	github.com/go-kit/kit v0.13.0
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/gorilla/handlers v1.5.2
@@ -43,7 +43,6 @@ require (
 )
 
 require (
-	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-20240913182345-72941a5f41cd // indirect
 	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20240913182345-72941a5f41cd // indirect
@@ -57,7 +56,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/consensys/gnark-crypto v0.19.2 // indirect
 	github.com/containerd/log v0.1.0 // indirect
-	github.com/docker/docker v28.0.0+incompatible // indirect
+	github.com/docker/docker v28.5.2+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
@@ -77,16 +76,17 @@ require (
 	github.com/hyperledger/fabric-amcl v0.0.0-20230602173724-9e02669dceb2 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kilic/bls12-381 v0.1.0 // indirect
-	github.com/klauspost/compress v1.17.9 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
+	github.com/moby/go-archive v0.1.0 // indirect
 	github.com/moby/patternmatcher v0.6.0 // indirect
-	github.com/moby/sys/sequential v0.5.0 // indirect
-	github.com/moby/sys/user v0.1.0 // indirect
+	github.com/moby/sys/sequential v0.6.0 // indirect
+	github.com/moby/sys/user v0.4.0 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
