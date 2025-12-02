@@ -14,13 +14,13 @@ import (
 	"io"
 	"strings"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
+	dcli "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 )
 
@@ -49,7 +49,7 @@ func (pw PackageWriterWrapper) Write(name string, payload []byte, tw *tar.Writer
 	return pw(name, payload, tw)
 }
 
-type BuildFunc func(util.DockerBuildOptions, *docker.Client) error
+type BuildFunc func(util.DockerBuildOptions, dcli.APIClient) error
 
 type Registry struct {
 	Platforms     map[string]Platform
@@ -107,7 +107,7 @@ func (r *Registry) GenerateDockerfile(ccType string) (string, error) {
 	return contents, nil
 }
 
-func (r *Registry) StreamDockerBuild(ccType, path string, codePackage io.Reader, inputFiles map[string][]byte, tw *tar.Writer, client *docker.Client) error {
+func (r *Registry) StreamDockerBuild(ccType, path string, codePackage io.Reader, inputFiles map[string][]byte, tw *tar.Writer, client dcli.APIClient) error {
 	var err error
 
 	// ----------------------------------------------------------------------------------------------------
@@ -163,7 +163,7 @@ func writeBytesToPackage(name string, payload []byte, tw *tar.Writer) error {
 	return nil
 }
 
-func (r *Registry) GenerateDockerBuild(ccType, path string, codePackage io.Reader, client *docker.Client) (io.Reader, error) {
+func (r *Registry) GenerateDockerBuild(ccType, path string, codePackage io.Reader, client dcli.APIClient) (io.Reader, error) {
 	inputFiles := make(map[string][]byte)
 
 	// ----------------------------------------------------------------------------------------------------

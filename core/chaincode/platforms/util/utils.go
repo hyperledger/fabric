@@ -7,15 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package util
 
 import (
-	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"runtime"
 	"strings"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric/common/metadata"
+	dcontainer "github.com/moby/moby/api/types/container"
+	dcli "github.com/moby/moby/client"
 	"github.com/spf13/viper"
 )
 
@@ -57,7 +58,7 @@ func (dbo DockerBuildOptions) String() string {
 //     after successful execution of Cmd.
 //
 // -------------------------------------------------------------------------------------------
-func DockerBuild(opts DockerBuildOptions, client *docker.Client) error {
+func DockerBuild(opts DockerBuildOptions, client dcli.APIClient) error {
 	if opts.Image == "" {
 		opts.Image = GetDockerImageFromConfig("chaincode.builder")
 		if opts.Image == "" {
@@ -67,105 +68,102 @@ func DockerBuild(opts DockerBuildOptions, client *docker.Client) error {
 
 	logger.Debugf("Attempting build with options: %s", opts)
 
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	// Ensure the image exists locally, or pull it from a registry if it doesn't
-	//-----------------------------------------------------------------------------------
-	_, err := client.InspectImage(opts.Image)
+	// -----------------------------------------------------------------------------------
+	_, err := client.ImageInspect(context.Background(), opts.Image)
 	if err != nil {
 		logger.Debugf("Image %s does not exist locally, attempt pull", opts.Image)
 
-		err = client.PullImage(docker.PullImageOptions{Repository: opts.Image}, docker.AuthConfiguration{})
+		_, err = client.ImagePull(context.Background(), opts.Image, dcli.ImagePullOptions{})
 		if err != nil {
 			return fmt.Errorf("Failed to pull %s: %s", opts.Image, err)
 		}
 	}
 
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	// Create an ephemeral container, armed with our Image/Cmd
-	//-----------------------------------------------------------------------------------
-	container, err := client.CreateContainer(docker.CreateContainerOptions{
-		Config: &docker.Config{
-			Image:        opts.Image,
-			Cmd:          []string{"/bin/sh", "-c", opts.Cmd},
-			Env:          opts.Env,
+	// -----------------------------------------------------------------------------------
+	container, err := client.ContainerCreate(context.Background(), dcli.ContainerCreateOptions{
+		Config: &dcontainer.Config{
 			AttachStdout: true,
 			AttachStderr: true,
+			Env:          opts.Env,
+			Cmd:          []string{"/bin/sh", "-c", opts.Cmd},
+			Image:        opts.Image,
 		},
 	})
 	if err != nil {
 		return fmt.Errorf("Error creating container: %s", err)
 	}
-	defer client.RemoveContainer(docker.RemoveContainerOptions{ID: container.ID})
+	defer client.ContainerRemove(context.Background(), container.ID, dcli.ContainerRemoveOptions{})
 
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	// Upload our input stream
-	//-----------------------------------------------------------------------------------
-	err = client.UploadToContainer(container.ID, docker.UploadToContainerOptions{
-		Path:        "/chaincode/input",
-		InputStream: opts.InputStream,
+	// -----------------------------------------------------------------------------------
+	_, err = client.CopyToContainer(context.Background(), container.ID, dcli.CopyToContainerOptions{
+		DestinationPath:           "/chaincode/input",
+		Content:                   opts.InputStream,
+		AllowOverwriteDirWithFile: true,
 	})
 	if err != nil {
 		return fmt.Errorf("Error uploading input to container: %s", err)
 	}
 
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	// Attach stdout buffer to capture possible compilation errors
-	//-----------------------------------------------------------------------------------
-	stdout := bytes.NewBuffer(nil)
-	cw, err := client.AttachToContainerNonBlocking(docker.AttachToContainerOptions{
-		Container:    container.ID,
-		OutputStream: stdout,
-		ErrorStream:  stdout,
-		Logs:         true,
-		Stdout:       true,
-		Stderr:       true,
-		Stream:       true,
+	// -----------------------------------------------------------------------------------
+	cw, err := client.ContainerAttach(context.Background(), container.ID, dcli.ContainerAttachOptions{
+		Stream: true,
+		Stdout: true,
+		Stderr: true,
+		Logs:   true,
 	})
 	if err != nil {
 		return fmt.Errorf("Error attaching to container: %s", err)
 	}
 
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	// Launch the actual build, realizing the Env/Cmd specified at container creation
-	//-----------------------------------------------------------------------------------
-	err = client.StartContainer(container.ID, nil)
+	// -----------------------------------------------------------------------------------
+	_, err = client.ContainerStart(context.Background(), container.ID, dcli.ContainerStartOptions{})
 	if err != nil {
+		buff, _ := io.ReadAll(cw.Reader)
 		cw.Close()
-		return fmt.Errorf("Error executing build: %s \"%s\"", err, stdout.String())
+		return fmt.Errorf("Error executing build: %s \"%s\"", err, string(buff))
 	}
 
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	// Wait for the build to complete and gather the return value
-	//-----------------------------------------------------------------------------------
-	retval, err := client.WaitContainer(container.ID)
-	if err != nil {
+	// -----------------------------------------------------------------------------------
+	resWait := client.ContainerWait(context.Background(), container.ID, dcli.ContainerWaitOptions{})
+	var res dcontainer.WaitResponse
+	select {
+	case res = <-resWait.Result:
+	case err = <-resWait.Error:
 		cw.Close()
 		return fmt.Errorf("Error waiting for container to complete: %s", err)
 	}
 
 	// Wait for stream copying to complete before accessing stdout.
-	cw.Close()
-	if err := cw.Wait(); err != nil {
-		logger.Errorf("attach wait failed: %s", err)
-	}
-
-	if retval > 0 {
+	defer cw.Close()
+	buff, _ := io.ReadAll(cw.Reader)
+	if res.StatusCode > 0 {
 		logger.Errorf("Docker build failed using options: %s", opts)
-		return fmt.Errorf("Error returned from build: %d \"%s\"", retval, stdout.String())
+		return fmt.Errorf("Error returned from build: %d \"%s\"", res.StatusCode, string(buff))
 	}
 
-	logger.Debugf("Build output is %s", stdout.String())
+	logger.Debugf("Build output is %s", string(buff))
 
-	//-----------------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------------
 	// Finally, download the result
-	//-----------------------------------------------------------------------------------
-	err = client.DownloadFromContainer(container.ID, docker.DownloadFromContainerOptions{
-		Path:         "/chaincode/output/.",
-		OutputStream: opts.OutputStream,
-	})
+	// -----------------------------------------------------------------------------------
+	resCont, err := client.CopyFromContainer(context.Background(), container.ID, dcli.CopyFromContainerOptions{SourcePath: "/chaincode/output/."})
 	if err != nil {
 		return fmt.Errorf("Error downloading output: %s", err)
 	}
+	defer resCont.Content.Close()
+	io.Copy(opts.OutputStream, resCont.Content)
 
 	return nil
 }

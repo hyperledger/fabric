@@ -20,7 +20,6 @@ import (
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-config/configtx"
 	"github.com/hyperledger/fabric-config/configtx/orderer"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
@@ -31,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/ordererclient"
 	"github.com/hyperledger/fabric/protoutil"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -42,7 +42,7 @@ import (
 var _ = Describe("ChannelParticipation", func() {
 	var (
 		testDir          string
-		client           *docker.Client
+		client           dcli.APIClient
 		network          *nwo.Network
 		ordererProcesses []ifrit.Process
 		ordererRunners   []*ginkgomon.Runner
@@ -53,7 +53,7 @@ var _ = Describe("ChannelParticipation", func() {
 		testDir, err = os.MkdirTemp("", "channel-participation")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
 		ordererProcesses = []ifrit.Process{}

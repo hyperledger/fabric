@@ -9,7 +9,7 @@ package fabricconfig
 import (
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
+	dcontainer "github.com/moby/moby/api/types/container"
 )
 
 type Core struct {
@@ -247,9 +247,9 @@ type VM struct {
 }
 
 type Docker struct {
-	TLS          *TLS               `yaml:"tls,omitempty"`
-	AttachStdout bool               `yaml:"attachStdout"`
-	HostConfig   *docker.HostConfig `yaml:"hostConfig,omitempty"`
+	TLS          *TLS                   `yaml:"tls,omitempty"`
+	AttachStdout bool                   `yaml:"attachStdout"`
+	HostConfig   *dcontainer.HostConfig `yaml:"hostConfig,omitempty"`
 }
 
 type Chaincode struct {

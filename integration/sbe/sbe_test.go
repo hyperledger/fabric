@@ -13,10 +13,10 @@ import (
 	"strings"
 	"syscall"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -28,7 +28,7 @@ import (
 var _ = Describe("SBE_E2E", func() {
 	var (
 		testDir                     string
-		client                      *docker.Client
+		client                      dcli.APIClient
 		network                     *nwo.Network
 		chaincode                   nwo.Chaincode
 		ordererRunner               *ginkgomon.Runner
@@ -41,7 +41,7 @@ var _ = Describe("SBE_E2E", func() {
 		testDir, err = os.MkdirTemp("", "e2e_sbe")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
 		tempDir, err = os.MkdirTemp("", "sbe")

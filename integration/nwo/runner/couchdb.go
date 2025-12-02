@@ -7,18 +7,22 @@ SPDX-License-Identifier: Apache-2.0
 package runner
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"runtime/debug"
 	"strconv"
 	"sync"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
+	dcontainer "github.com/moby/moby/api/types/container"
+	dnetwork "github.com/moby/moby/api/types/network"
+	dcli "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/tedsuo/ifrit"
 )
@@ -32,16 +36,15 @@ const (
 // CouchDB manages the execution of an instance of a dockerized CounchDB
 // for tests.
 type CouchDB struct {
-	Client        *docker.Client
+	Client        dcli.APIClient
 	Image         string
 	HostIP        string
 	HostPort      int
-	ContainerPort docker.Port
+	ContainerPort dnetwork.Port
 	Name          string
 	StartTimeout  time.Duration
 	Binds         []string
 
-	ErrorStream  io.Writer
 	OutputStream io.Writer
 
 	creator          string
@@ -68,8 +71,8 @@ func (c *CouchDB) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 		c.HostIP = "127.0.0.1"
 	}
 
-	if c.ContainerPort == ("") {
-		c.ContainerPort = "5984/tcp"
+	if c.ContainerPort.IsZero() || c.ContainerPort.Num() == 0 {
+		c.ContainerPort = dnetwork.MustParsePort("5984/tcp")
 	}
 
 	if c.StartTimeout == 0 {
@@ -77,60 +80,58 @@ func (c *CouchDB) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 	}
 
 	if c.Client == nil {
-		client, err := docker.NewClientFromEnv()
+		client, err := dcli.New(dcli.FromEnv)
 		if err != nil {
 			return err
 		}
 		c.Client = client
 	}
 
-	hostConfig := &docker.HostConfig{
-		AutoRemove: true,
-		PortBindings: map[docker.Port][]docker.PortBinding{
+	hostConfig := &dcontainer.HostConfig{
+		Binds: c.Binds,
+		PortBindings: map[dnetwork.Port][]dnetwork.PortBinding{
 			c.ContainerPort: {{
-				HostIP:   c.HostIP,
+				HostIP:   netip.MustParseAddr(c.HostIP),
 				HostPort: strconv.Itoa(c.HostPort),
 			}},
 		},
-		Binds: c.Binds,
+		AutoRemove: true,
 	}
 
-	container, err := c.Client.CreateContainer(
-		docker.CreateContainerOptions{
-			Name: c.Name,
-			Config: &docker.Config{
-				Image: c.Image,
-				Env: []string{
-					fmt.Sprintf("_creator=%s", c.creator),
-					fmt.Sprintf("COUCHDB_USER=%s", CouchDBUsername),
-					fmt.Sprintf("COUCHDB_PASSWORD=%s", CouchDBPassword),
-				},
+	container, err := c.Client.ContainerCreate(context.Background(), dcli.ContainerCreateOptions{
+		Config: &dcontainer.Config{
+			Env: []string{
+				fmt.Sprintf("_creator=%s", c.creator),
+				fmt.Sprintf("COUCHDB_USER=%s", CouchDBUsername),
+				fmt.Sprintf("COUCHDB_PASSWORD=%s", CouchDBPassword),
 			},
-			HostConfig: hostConfig,
+			Image: c.Image,
 		},
-	)
+		HostConfig: hostConfig,
+		Name:       c.Name,
+	})
 	if err != nil {
 		return err
 	}
 	c.containerID = container.ID
 
-	err = c.Client.StartContainer(container.ID, nil)
+	_, err = c.Client.ContainerStart(context.Background(), container.ID, dcli.ContainerStartOptions{})
 	if err != nil {
 		return err
 	}
 	defer c.Stop()
 
-	container, err = c.Client.InspectContainerWithOptions(docker.InspectContainerOptions{ID: container.ID})
+	res, err := c.Client.ContainerInspect(context.Background(), container.ID, dcli.ContainerInspectOptions{})
 	if err != nil {
 		return err
 	}
 	c.hostAddress = net.JoinHostPort(
-		container.NetworkSettings.Ports[c.ContainerPort][0].HostIP,
-		container.NetworkSettings.Ports[c.ContainerPort][0].HostPort,
+		res.Container.NetworkSettings.Ports[c.ContainerPort][0].HostIP.String(),
+		res.Container.NetworkSettings.Ports[c.ContainerPort][0].HostPort,
 	)
 	c.containerAddress = net.JoinHostPort(
-		container.NetworkSettings.IPAddress,
-		c.ContainerPort.Port(),
+		res.Container.NetworkSettings.Networks[res.Container.HostConfig.NetworkMode.NetworkName()].IPAddress.String(),
+		strconv.Itoa(int(c.ContainerPort.Num())),
 	)
 
 	streamCtx, streamCancel := context.WithCancel(context.Background())
@@ -205,35 +206,61 @@ func (c *CouchDB) ready(ctx context.Context, addr string) <-chan struct{} {
 func (c *CouchDB) wait() <-chan error {
 	exitCh := make(chan error)
 	go func() {
-		exitCode, err := c.Client.WaitContainer(c.containerID)
-		if err == nil {
-			err = fmt.Errorf("couchdb: process exited with %d", exitCode)
+		resWait := c.Client.ContainerWait(context.Background(), c.containerID, dcli.ContainerWaitOptions{})
+		select {
+		case res := <-resWait.Result:
+			err := fmt.Errorf("couchdb: process exited with %d", res.StatusCode)
+			exitCh <- err
+		case err := <-resWait.Error:
+			exitCh <- err
 		}
-		exitCh <- err
 	}()
 
 	return exitCh
 }
 
 func (c *CouchDB) streamLogs(ctx context.Context) {
-	if c.ErrorStream == nil && c.OutputStream == nil {
+	if c.OutputStream == nil {
 		return
 	}
 
-	logOptions := docker.LogsOptions{
-		Context:      ctx,
-		Container:    c.containerID,
-		Follow:       true,
-		ErrorStream:  c.ErrorStream,
-		OutputStream: c.OutputStream,
-		Stderr:       c.ErrorStream != nil,
-		Stdout:       c.OutputStream != nil,
-	}
+	go func() {
+		res, err := c.Client.ContainerLogs(ctx, c.containerID, dcli.ContainerLogsOptions{
+			ShowStdout: true,
+			ShowStderr: true,
+			Follow:     true,
+		})
+		if err != nil {
+			fmt.Fprintf(c.OutputStream, "log stream ended with error: %s", err)
+		}
+		defer res.Close()
 
-	err := c.Client.Logs(logOptions)
-	if err != nil {
-		fmt.Fprintf(c.ErrorStream, "log stream ended with error: %s", err)
-	}
+		reader := bufio.NewReader(res)
+
+		for {
+			select {
+			case <-ctx.Done():
+				fmt.Fprint(c.OutputStream, "log stream ended with cancel context")
+				return
+			default:
+				// Loop forever dumping lines of text into the containerLogger
+				// until the pipe is closed
+				line, err := reader.ReadString('\n')
+				if len(line) > 0 {
+					c.OutputStream.Write([]byte(line))
+				}
+				switch err {
+				case nil:
+				case io.EOF:
+					fmt.Fprintf(c.OutputStream, "Container %s has closed its IO channel", c.containerID)
+					return
+				default:
+					fmt.Fprintf(c.OutputStream, "Error reading container output: %s", err)
+					return
+				}
+			}
+		}
+	}()
 }
 
 // Address returns the address successfully used by the readiness check.
@@ -280,7 +307,10 @@ func (c *CouchDB) Stop() error {
 	c.stopped = true
 	c.mutex.Unlock()
 
-	err := c.Client.StopContainer(c.containerID, 0)
+	t := 0
+	_, err := c.Client.ContainerStop(context.Background(), c.containerID, dcli.ContainerStopOptions{
+		Timeout: &t,
+	})
 	if err != nil {
 		return err
 	}

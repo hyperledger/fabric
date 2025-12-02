@@ -11,10 +11,10 @@ import (
 	"path/filepath"
 	"syscall"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -25,7 +25,7 @@ import (
 
 var _ = Describe("chaincode install", func() {
 	var (
-		client  *docker.Client
+		client  dcli.APIClient
 		testDir string
 
 		network                     *nwo.Network
@@ -38,7 +38,7 @@ var _ = Describe("chaincode install", func() {
 		testDir, err = os.MkdirTemp("", "lifecycle")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
 		cwd, err := os.Getwd()

@@ -12,9 +12,9 @@ import (
 	"path/filepath"
 	"syscall"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -26,7 +26,7 @@ import (
 
 var _ = Describe("Network", func() {
 	var (
-		client  *docker.Client
+		client  dcli.APIClient
 		tempDir string
 	)
 
@@ -35,7 +35,7 @@ var _ = Describe("Network", func() {
 		tempDir, err = os.MkdirTemp("", "nwo")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 	})
 

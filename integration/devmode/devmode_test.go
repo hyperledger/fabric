@@ -14,9 +14,9 @@ import (
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -28,7 +28,7 @@ import (
 var _ = Describe("Devmode", func() {
 	var (
 		testDir                     string
-		client                      *docker.Client
+		client                      dcli.APIClient
 		network                     *nwo.Network
 		ordererRunner               *ginkgomon.Runner
 		ordererProcess, peerProcess ifrit.Process
@@ -44,7 +44,7 @@ var _ = Describe("Devmode", func() {
 		testDir, err = os.MkdirTemp("", "devmode")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
 		network = nwo.New(devModeEtcdraft, testDir, client, StartPort(), components)

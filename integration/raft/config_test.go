@@ -19,7 +19,6 @@ import (
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	protosorderer "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
@@ -29,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
 	"github.com/hyperledger/fabric/protoutil"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -41,7 +41,7 @@ import (
 var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 	var (
 		testDir string
-		client  *docker.Client
+		client  dcli.APIClient
 		network *nwo.Network
 		peer    *nwo.Peer
 
@@ -58,7 +58,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		testDir, err = os.MkdirTemp("", "e2e-etcdraft_reconfig")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
