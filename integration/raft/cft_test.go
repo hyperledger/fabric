@@ -23,8 +23,8 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/integration/channelparticipation"
+	dcli "github.com/moby/moby/client"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	conftx "github.com/hyperledger/fabric-config/configtx"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -48,7 +48,7 @@ import (
 var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 	var (
 		testDir string
-		client  *docker.Client
+		client  dcli.APIClient
 		network *nwo.Network
 		peer    *nwo.Peer
 
@@ -60,7 +60,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 		testDir, err = ioutil.TempDir("", "e2e")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 	})
 

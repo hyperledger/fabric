@@ -7,16 +7,20 @@ SPDX-License-Identifier: Apache-2.0
 package runner
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"net"
+	"net/netip"
 	"os"
 	"strconv"
 	"sync"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
+	dcontainer "github.com/moby/moby/api/types/container"
+	dnetwork "github.com/moby/moby/api/types/network"
+	dcli "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/tedsuo/ifrit"
 )
@@ -26,11 +30,11 @@ const KafkaDefaultImage = "confluentinc/cp-kafka:5.3.1"
 // Kafka manages the execution of an instance of a dockerized CouchDB
 // for tests.
 type Kafka struct {
-	Client        *docker.Client
+	Client        dcli.APIClient
 	Image         string
 	HostIP        string
 	HostPort      int
-	ContainerPort docker.Port
+	ContainerPort dnetwork.Port
 	Name          string
 	NetworkName   string
 	StartTimeout  time.Duration
@@ -45,7 +49,6 @@ type Kafka struct {
 	ReplicaFetchResponseMaxBytes int
 	AdvertisedListeners          string
 
-	ErrorStream  io.Writer
 	OutputStream io.Writer
 
 	ContainerID      string
@@ -71,8 +74,8 @@ func (k *Kafka) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 		k.HostIP = "127.0.0.1"
 	}
 
-	if k.ContainerPort == docker.Port("") {
-		k.ContainerPort = docker.Port("9092/tcp")
+	if k.ContainerPort.IsZero() || k.ContainerPort.Num() == 0 {
+		k.ContainerPort = dnetwork.MustParsePort("9092/tcp")
 	}
 
 	if k.StartTimeout == 0 {
@@ -80,7 +83,7 @@ func (k *Kafka) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 	}
 
 	if k.Client == nil {
-		client, err := docker.NewClientFromEnv()
+		client, err := dcli.New(dcli.FromEnv)
 		if err != nil {
 			return err
 		}
@@ -111,17 +114,17 @@ func (k *Kafka) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 		k.ReplicaFetchResponseMaxBytes = 10485760
 	}
 
-	containerOptions := docker.CreateContainerOptions{
+	containerOptions := dcli.ContainerCreateOptions{
 		Name: k.Name,
-		Config: &docker.Config{
+		Config: &dcontainer.Config{
 			Image: k.Image,
 			Env:   k.buildEnv(),
 		},
-		HostConfig: &docker.HostConfig{
+		HostConfig: &dcontainer.HostConfig{
 			AutoRemove: true,
-			PortBindings: map[docker.Port][]docker.PortBinding{
+			PortBindings: map[dnetwork.Port][]dnetwork.PortBinding{
 				k.ContainerPort: {{
-					HostIP:   k.HostIP,
+					HostIP:   netip.MustParseAddr(k.HostIP),
 					HostPort: strconv.Itoa(k.HostPort),
 				}},
 			},
@@ -129,44 +132,44 @@ func (k *Kafka) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 	}
 
 	if k.NetworkName != "" {
-		nw, err := k.Client.NetworkInfo(k.NetworkName)
+		nw, err := k.Client.NetworkInspect(context.Background(), k.NetworkName, dcli.NetworkInspectOptions{})
 		if err != nil {
 			return err
 		}
 
-		containerOptions.NetworkingConfig = &docker.NetworkingConfig{
-			EndpointsConfig: map[string]*docker.EndpointConfig{
+		containerOptions.NetworkingConfig = &dnetwork.NetworkingConfig{
+			EndpointsConfig: map[string]*dnetwork.EndpointSettings{
 				k.NetworkName: {
-					NetworkID: nw.ID,
+					NetworkID: nw.Network.ID,
 				},
 			},
 		}
 	}
 
-	container, err := k.Client.CreateContainer(containerOptions)
+	container, err := k.Client.ContainerCreate(context.Background(), containerOptions)
 	if err != nil {
 		return err
 	}
 	k.ContainerID = container.ID
 
-	err = k.Client.StartContainer(container.ID, nil)
+	_, err = k.Client.ContainerStart(context.Background(), container.ID, dcli.ContainerStartOptions{})
 	if err != nil {
 		return err
 	}
 	defer k.Stop()
 
-	container, err = k.Client.InspectContainer(container.ID)
+	res, err := k.Client.ContainerInspect(context.Background(), container.ID, dcli.ContainerInspectOptions{})
 	if err != nil {
 		return err
 	}
 
 	k.HostAddress = net.JoinHostPort(
-		container.NetworkSettings.Ports[k.ContainerPort][0].HostIP,
-		container.NetworkSettings.Ports[k.ContainerPort][0].HostPort,
+		res.Container.NetworkSettings.Ports[k.ContainerPort][0].HostIP.String(),
+		res.Container.NetworkSettings.Ports[k.ContainerPort][0].HostPort,
 	)
 	k.ContainerAddress = net.JoinHostPort(
-		container.NetworkSettings.Networks[k.NetworkName].IPAddress,
-		k.ContainerPort.Port(),
+		res.Container.NetworkSettings.Networks[res.Container.HostConfig.NetworkMode.NetworkName()].IPAddress.String(),
+		strconv.Itoa(int(k.ContainerPort.Num())),
 	)
 
 	logContext, cancelLogs := context.WithCancel(context.Background())
@@ -206,10 +209,10 @@ func (k *Kafka) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 func (k *Kafka) buildEnv() []string {
 	env := []string{
 		"KAFKA_LOG_RETENTION_MS=-1",
-		//"KAFKA_AUTO_CREATE_TOPICS_ENABLE=false",
+		// "KAFKA_AUTO_CREATE_TOPICS_ENABLE=false",
 		fmt.Sprintf("KAFKA_MESSAGE_MAX_BYTES=%d", k.MessageMaxBytes),
 		fmt.Sprintf("KAFKA_REPLICA_FETCH_MAX_BYTES=%d", k.ReplicaFetchMaxBytes),
-		fmt.Sprintf("KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=%s", strconv.FormatBool(k.UncleanLeaderElectionEnable)),
+		fmt.Sprintf("KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=%t", k.UncleanLeaderElectionEnable),
 		fmt.Sprintf("KAFKA_DEFAULT_REPLICATION_FACTOR=%d", k.DefaultReplicationFactor),
 		fmt.Sprintf("KAFKA_MIN_INSYNC_REPLICAS=%d", k.MinInsyncReplicas),
 		fmt.Sprintf("KAFKA_BROKER_ID=%d", k.BrokerID),
@@ -251,31 +254,59 @@ func (k *Kafka) ready(ctx context.Context, addr string) <-chan struct{} {
 func (k *Kafka) wait() <-chan error {
 	exitCh := make(chan error)
 	go func() {
-		exitCode, err := k.Client.WaitContainer(k.ContainerID)
-		if err == nil {
-			err = fmt.Errorf("kafka: process exited with %d", exitCode)
+		resWait := k.Client.ContainerWait(context.Background(), k.ContainerID, dcli.ContainerWaitOptions{})
+		select {
+		case res := <-resWait.Result:
+			err := fmt.Errorf("kafka: process exited with %d", res.StatusCode)
+			exitCh <- err
+		case err := <-resWait.Error:
+			exitCh <- err
 		}
-		exitCh <- err
 	}()
 
 	return exitCh
 }
 
-func (k *Kafka) streamLogs(ctx context.Context) error {
-	if k.ErrorStream == nil && k.OutputStream == nil {
-		return nil
+func (k *Kafka) streamLogs(ctx context.Context) {
+	if k.OutputStream == nil {
+		return
 	}
 
-	logOptions := docker.LogsOptions{
-		Context:      ctx,
-		Container:    k.ContainerID,
-		ErrorStream:  k.ErrorStream,
-		OutputStream: k.OutputStream,
-		Stderr:       k.ErrorStream != nil,
-		Stdout:       k.OutputStream != nil,
-		Follow:       true,
+	res, err := k.Client.ContainerLogs(ctx, k.ContainerID, dcli.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     true,
+	})
+	if err != nil {
+		fmt.Fprintf(k.OutputStream, "log stream ended with error: %s", err)
 	}
-	return k.Client.Logs(logOptions)
+	defer res.Close()
+
+	reader := bufio.NewReader(res)
+
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Fprint(k.OutputStream, "log stream ended with cancel context")
+			return
+		default:
+			// Loop forever dumping lines of text into the containerLogger
+			// until the pipe is closed
+			line, err := reader.ReadString('\n')
+			if len(line) > 0 {
+				k.OutputStream.Write([]byte(line))
+			}
+			switch err {
+			case nil:
+			case io.EOF:
+				fmt.Fprintf(k.OutputStream, "Container %s has closed its IO channel", k.ContainerID)
+				return
+			default:
+				fmt.Fprintf(k.OutputStream, "Error reading container output: %s", err)
+				return
+			}
+		}
+	}
 }
 
 // Start starts the Kafka container using an ifrit runner
@@ -300,5 +331,13 @@ func (k *Kafka) Stop() error {
 	k.stopped = true
 	k.mutex.Unlock()
 
-	return k.Client.StopContainer(k.ContainerID, 0)
+	t := 0
+	_, err := k.Client.ContainerStop(context.Background(), k.ContainerID, dcli.ContainerStopOptions{
+		Timeout: &t,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

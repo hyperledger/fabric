@@ -15,13 +15,13 @@ import (
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/configtx"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
+	dcli "github.com/moby/moby/client"
 	"github.com/tedsuo/ifrit"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -30,7 +30,7 @@ import (
 
 var _ = Describe("ConfigTx", func() {
 	var (
-		client  *docker.Client
+		client  dcli.APIClient
 		testDir string
 		network *nwo.Network
 		process ifrit.Process
@@ -41,7 +41,7 @@ var _ = Describe("ConfigTx", func() {
 		testDir, err = ioutil.TempDir("", "configtx")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
 		network = nwo.New(nwo.BasicSolo(), testDir, client, StartPort(), components)

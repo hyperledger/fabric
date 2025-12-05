@@ -14,9 +14,9 @@ import (
 	"os"
 	"syscall"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric/integration/nwo"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
@@ -25,7 +25,7 @@ import (
 var _ = Describe("Kafka Health", func() {
 	var (
 		testDir string
-		client  *docker.Client
+		client  dcli.APIClient
 		network *nwo.Network
 		process ifrit.Process
 	)
@@ -35,7 +35,7 @@ var _ = Describe("Kafka Health", func() {
 		testDir, err = ioutil.TempDir("", "kafka-health")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
 		config := nwo.BasicKafka()

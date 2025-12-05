@@ -20,9 +20,9 @@ import (
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -45,7 +45,7 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 		testDir, err = ioutil.TempDir("", "gossip-statexfer")
 		Expect(err).NotTo(HaveOccurred())
 
-		dockerClient, err := docker.NewClientFromEnv()
+		dockerClient, err := dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
 		channelName = "testchannel"

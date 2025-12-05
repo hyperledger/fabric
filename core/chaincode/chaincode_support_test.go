@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -59,6 +58,7 @@ import (
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
+	dcli "github.com/moby/moby/client"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
@@ -192,7 +192,7 @@ func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), 
 
 	buildRegistry := &container.BuildRegistry{}
 
-	client, err := docker.NewClientFromEnv()
+	client, err := dcli.New(dcli.FromEnv)
 	if err != nil {
 		panic(err)
 	}
@@ -523,8 +523,8 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mock.MockCCComm,
 	// be triggered by the chaincode stream.  We just expect an error from fabric. Hence pass nil for done
 	execCC(t, txParams, ccSide, "badccname", false, true, nil, cis, respSet, chaincodeSupport)
 
-	//---------try a successful init at last-------
-	//everything lined up
+	// ---------try a successful init at last-------
+	// everything lined up
 	//    correct registered chaincode version
 	//    matching txid
 	//    txsim context
