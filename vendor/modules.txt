@@ -2,8 +2,6 @@
 ## explicit; go 1.22.0
 code.cloudfoundry.org/clock
 code.cloudfoundry.org/clock/fakeclock
-# github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24
-## explicit; go 1.20
 # github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1
 ## explicit; go 1.16
 github.com/Azure/go-ansiterm
@@ -103,7 +101,7 @@ github.com/containerd/log
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/docker/docker v28.0.0+incompatible
+# github.com/docker/docker v28.5.2+incompatible
 ## explicit
 github.com/docker/docker/api/types/blkiodev
 github.com/docker/docker/api/types/common
@@ -117,7 +115,6 @@ github.com/docker/docker/api/types/strslice
 github.com/docker/docker/api/types/swarm
 github.com/docker/docker/api/types/swarm/runtime
 github.com/docker/docker/api/types/versions
-github.com/docker/docker/internal/multierror
 github.com/docker/docker/pkg/archive
 github.com/docker/docker/pkg/homedir
 github.com/docker/docker/pkg/idtools
@@ -278,12 +275,13 @@ github.com/inconshreveable/mousetrap
 # github.com/kilic/bls12-381 v0.1.0
 ## explicit; go 1.13
 github.com/kilic/bls12-381
-# github.com/klauspost/compress v1.17.9
-## explicit; go 1.20
+# github.com/klauspost/compress v1.18.0
+## explicit; go 1.22
 github.com/klauspost/compress
 github.com/klauspost/compress/fse
 github.com/klauspost/compress/huff0
 github.com/klauspost/compress/internal/cpuinfo
+github.com/klauspost/compress/internal/le
 github.com/klauspost/compress/internal/snapref
 github.com/klauspost/compress/zstd
 github.com/klauspost/compress/zstd/internal/xxhash
@@ -311,13 +309,18 @@ github.com/mitchellh/mapstructure
 # github.com/moby/docker-image-spec v1.3.1
 ## explicit; go 1.18
 github.com/moby/docker-image-spec/specs-go/v1
+# github.com/moby/go-archive v0.1.0
+## explicit; go 1.23.0
+github.com/moby/go-archive
+github.com/moby/go-archive/compression
+github.com/moby/go-archive/tarheader
 # github.com/moby/patternmatcher v0.6.0
 ## explicit; go 1.19
 github.com/moby/patternmatcher
-# github.com/moby/sys/sequential v0.5.0
+# github.com/moby/sys/sequential v0.6.0
 ## explicit; go 1.17
 github.com/moby/sys/sequential
-# github.com/moby/sys/user v0.1.0
+# github.com/moby/sys/user v0.4.0
 ## explicit; go 1.17
 github.com/moby/sys/user
 # github.com/moby/sys/userns v0.1.0
