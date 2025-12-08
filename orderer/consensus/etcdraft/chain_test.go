@@ -991,8 +991,8 @@ var _ = Describe("Chain", func() {
 							}()
 
 							Consistently(done).ShouldNot(Receive())
-							close(signal)                         // unblock block puller
-							Eventually(done).Should(Receive(nil)) // WaitReady should be unblocked
+							close(signal)                             // unblock block puller
+							Eventually(done).Should(Receive(BeNil())) // WaitReady should be unblocked
 							Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
 						})
 
