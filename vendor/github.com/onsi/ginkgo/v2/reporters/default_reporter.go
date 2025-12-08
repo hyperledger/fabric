@@ -72,6 +72,9 @@ func (r *DefaultReporter) SuiteWillBegin(report types.Report) {
 		if len(report.SuiteLabels) > 0 {
 			r.emit(r.f("{{coral}}[%s]{{/}} ", strings.Join(report.SuiteLabels, ", ")))
 		}
+		if len(report.SuiteSemVerConstraints) > 0 {
+			r.emit(r.f("{{coral}}[%s]{{/}} ", strings.Join(report.SuiteSemVerConstraints, ", ")))
+		}
 		r.emit(r.f("- %d/%d specs ", report.PreRunStats.SpecsThatWillRun, report.PreRunStats.TotalSpecs))
 		if report.SuiteConfig.ParallelTotal > 1 {
 			r.emit(r.f("- %d procs ", report.SuiteConfig.ParallelTotal))
@@ -85,6 +88,13 @@ func (r *DefaultReporter) SuiteWillBegin(report types.Report) {
 			r.emitBlock(r.f("{{coral}}[%s]{{/}} ", labels))
 			if len(labels)+2 > bannerWidth {
 				bannerWidth = len(labels) + 2
+			}
+		}
+		if len(report.SuiteSemVerConstraints) > 0 {
+			semVerConstraints := strings.Join(report.SuiteSemVerConstraints, ", ")
+			r.emitBlock(r.f("{{coral}}[%s]{{/}} ", semVerConstraints))
+			if len(semVerConstraints)+2 > bannerWidth {
+				bannerWidth = len(semVerConstraints) + 2
 			}
 		}
 		r.emitBlock(strings.Repeat("=", bannerWidth))
@@ -182,9 +192,30 @@ func (r *DefaultReporter) WillRun(report types.SpecReport) {
 	r.emitBlock(r.f(r.codeLocationBlock(report, "{{/}}", v.Is(types.VerbosityLevelVeryVerbose), false)))
 }
 
+func (r *DefaultReporter) wrapTextBlock(sectionName string, fn func()) {
+	r.emitBlock("\n")
+	if r.conf.GithubOutput {
+		r.emitBlock(r.fi(1, "::group::%s", sectionName))
+	} else {
+		r.emitBlock(r.fi(1, "{{gray}}%s >>{{/}}", sectionName))
+	}
+	fn()
+	if r.conf.GithubOutput {
+		r.emitBlock(r.fi(1, "::endgroup::"))
+	} else {
+		r.emitBlock(r.fi(1, "{{gray}}<< %s{{/}}", sectionName))
+	}
+
+}
+
 func (r *DefaultReporter) DidRun(report types.SpecReport) {
 	v := r.conf.Verbosity()
 	inParallel := report.RunningInParallel
+
+	//should we completely omit this spec?
+	if report.State.Is(types.SpecStateSkipped) && r.conf.SilenceSkips {
+		return
+	}
 
 	header := r.specDenoter
 	if report.LeafNodeType.Is(types.NodeTypesForSuiteLevelNodes) {
@@ -262,9 +293,12 @@ func (r *DefaultReporter) DidRun(report types.SpecReport) {
 		}
 	}
 
-	// If we have no content to show, jsut emit the header and return
+	// If we have no content to show, just emit the header and return
 	if !reportHasContent {
 		r.emit(r.f(highlightColor + header + "{{/}}"))
+		if r.conf.ForceNewlines {
+			r.emit("\n")
+		}
 		return
 	}
 
@@ -283,26 +317,23 @@ func (r *DefaultReporter) DidRun(report types.SpecReport) {
 
 	//Emit Stdout/Stderr Output
 	if showSeparateStdSection {
-		r.emitBlock("\n")
-		r.emitBlock(r.fi(1, "{{gray}}Captured StdOut/StdErr Output >>{{/}}"))
-		r.emitBlock(r.fi(1, "%s", report.CapturedStdOutErr))
-		r.emitBlock(r.fi(1, "{{gray}}<< Captured StdOut/StdErr Output{{/}}"))
+		r.wrapTextBlock("Captured StdOut/StdErr Output", func() {
+			r.emitBlock(r.fi(1, "%s", report.CapturedStdOutErr))
+		})
 	}
 
 	if showSeparateVisibilityAlwaysReportsSection {
-		r.emitBlock("\n")
-		r.emitBlock(r.fi(1, "{{gray}}Report Entries >>{{/}}"))
-		for _, entry := range report.ReportEntries.WithVisibility(types.ReportEntryVisibilityAlways) {
-			r.emitReportEntry(1, entry)
-		}
-		r.emitBlock(r.fi(1, "{{gray}}<< Report Entries{{/}}"))
+		r.wrapTextBlock("Report Entries", func() {
+			for _, entry := range report.ReportEntries.WithVisibility(types.ReportEntryVisibilityAlways) {
+				r.emitReportEntry(1, entry)
+			}
+		})
 	}
 
 	if showTimeline {
-		r.emitBlock("\n")
-		r.emitBlock(r.fi(1, "{{gray}}Timeline >>{{/}}"))
-		r.emitTimeline(1, report, timeline)
-		r.emitBlock(r.fi(1, "{{gray}}<< Timeline{{/}}"))
+		r.wrapTextBlock("Timeline", func() {
+			r.emitTimeline(1, report, timeline)
+		})
 	}
 
 	// Emit Failure Message
@@ -350,13 +381,22 @@ func (r *DefaultReporter) emitTimeline(indent uint, report types.SpecReport, tim
 	cursor := 0
 	for _, entry := range timeline {
 		tl := entry.GetTimelineLocation()
-		if tl.Offset < len(gw) {
-			r.emit(r.fi(indent, "%s", gw[cursor:tl.Offset]))
-			cursor = tl.Offset
-		} else if cursor < len(gw) {
+
+		end := tl.Offset
+		if end > len(gw) {
+			end = len(gw)
+		}
+		if end < cursor {
+			end = cursor
+		}
+		if cursor < end && cursor <= len(gw) && end <= len(gw) {
+			r.emit(r.fi(indent, "%s", gw[cursor:end]))
+			cursor = end
+		} else if cursor < len(gw) && end == len(gw) {
 			r.emit(r.fi(indent, "%s", gw[cursor:]))
 			cursor = len(gw)
 		}
+
 		switch x := entry.(type) {
 		case types.Failure:
 			if isVeryVerbose {
@@ -373,7 +413,7 @@ func (r *DefaultReporter) emitTimeline(indent uint, report types.SpecReport, tim
 		case types.ReportEntry:
 			r.emitReportEntry(indent, x)
 		case types.ProgressReport:
-			r.emitProgressReport(indent, false, x)
+			r.emitProgressReport(indent, false, isVeryVerbose, x)
 		case types.SpecEvent:
 			if isVeryVerbose || !x.IsOnlyVisibleAtVeryVerbose() || r.conf.ShowNodeEvents {
 				r.emitSpecEvent(indent, x, isVeryVerbose)
@@ -405,7 +445,15 @@ func (r *DefaultReporter) emitShortFailure(indent uint, state types.SpecState, f
 func (r *DefaultReporter) emitFailure(indent uint, state types.SpecState, failure types.Failure, includeAdditionalFailure bool) {
 	highlightColor := r.highlightColorForState(state)
 	r.emitBlock(r.fi(indent, highlightColor+"[%s] %s{{/}}", r.humanReadableState(state), failure.Message))
-	r.emitBlock(r.fi(indent, highlightColor+"In {{bold}}[%s]{{/}}"+highlightColor+" at: {{bold}}%s{{/}} {{gray}}@ %s{{/}}\n", failure.FailureNodeType, failure.Location, failure.TimelineLocation.Time.Format(types.GINKGO_TIME_FORMAT)))
+	if r.conf.GithubOutput {
+		level := "error"
+		if state.Is(types.SpecStateSkipped) {
+			level = "notice"
+		}
+		r.emitBlock(r.fi(indent, "::%s file=%s,line=%d::%s %s", level, failure.Location.FileName, failure.Location.LineNumber, failure.FailureNodeType, failure.TimelineLocation.Time.Format(types.GINKGO_TIME_FORMAT)))
+	} else {
+		r.emitBlock(r.fi(indent, highlightColor+"In {{bold}}[%s]{{/}}"+highlightColor+" at: {{bold}}%s{{/}} {{gray}}@ %s{{/}}\n", failure.FailureNodeType, failure.Location, failure.TimelineLocation.Time.Format(types.GINKGO_TIME_FORMAT)))
+	}
 	if failure.ForwardedPanic != "" {
 		r.emitBlock("\n")
 		r.emitBlock(r.fi(indent, highlightColor+"%s{{/}}", failure.ForwardedPanic))
@@ -419,7 +467,7 @@ func (r *DefaultReporter) emitFailure(indent uint, state types.SpecState, failur
 
 	if !failure.ProgressReport.IsZero() {
 		r.emitBlock("\n")
-		r.emitProgressReport(indent, false, failure.ProgressReport)
+		r.emitProgressReport(indent, false, false, failure.ProgressReport)
 	}
 
 	if failure.AdditionalFailure != nil && includeAdditionalFailure {
@@ -435,11 +483,11 @@ func (r *DefaultReporter) EmitProgressReport(report types.ProgressReport) {
 		r.emit(r.fi(1, "{{coral}}Progress Report for Ginkgo Process #{{bold}}%d{{/}}\n", report.ParallelProcess))
 	}
 	shouldEmitGW := report.RunningInParallel || r.conf.Verbosity().LT(types.VerbosityLevelVerbose)
-	r.emitProgressReport(1, shouldEmitGW, report)
+	r.emitProgressReport(1, shouldEmitGW, true, report)
 	r.emitDelimiter(1)
 }
 
-func (r *DefaultReporter) emitProgressReport(indent uint, emitGinkgoWriterOutput bool, report types.ProgressReport) {
+func (r *DefaultReporter) emitProgressReport(indent uint, emitGinkgoWriterOutput, emitGroup bool, report types.ProgressReport) {
 	if report.Message != "" {
 		r.emitBlock(r.fi(indent, report.Message+"\n"))
 		indent += 1
@@ -473,6 +521,10 @@ func (r *DefaultReporter) emitProgressReport(indent uint, emitGinkgoWriterOutput
 
 	if indent > 0 {
 		indent -= 1
+	}
+
+	if r.conf.GithubOutput && emitGroup {
+		r.emitBlock(r.fi(indent, "::group::Progress Report"))
 	}
 
 	if emitGinkgoWriterOutput && report.CapturedGinkgoWriterOutput != "" {
@@ -520,6 +572,10 @@ func (r *DefaultReporter) emitProgressReport(indent uint, emitGinkgoWriterOutput
 		r.emit("\n")
 		r.emit(r.fi(indent, "{{gray}}{{bold}}{{underline}}Other Goroutines{{/}}\n"))
 		r.emitGoroutines(indent, otherGoroutines...)
+	}
+
+	if r.conf.GithubOutput && emitGroup {
+		r.emitBlock(r.fi(indent, "::endgroup::"))
 	}
 }
 
@@ -656,11 +712,11 @@ func (r *DefaultReporter) _emit(s string, block bool, isDelimiter bool) {
 }
 
 /* Rendering text */
-func (r *DefaultReporter) f(format string, args ...interface{}) string {
+func (r *DefaultReporter) f(format string, args ...any) string {
 	return r.formatter.F(format, args...)
 }
 
-func (r *DefaultReporter) fi(indentation uint, format string, args ...interface{}) string {
+func (r *DefaultReporter) fi(indentation uint, format string, args ...any) string {
 	return r.formatter.Fi(indentation, format, args...)
 }
 
@@ -669,8 +725,8 @@ func (r *DefaultReporter) cycleJoin(elements []string, joiner string) string {
 }
 
 func (r *DefaultReporter) codeLocationBlock(report types.SpecReport, highlightColor string, veryVerbose bool, usePreciseFailureLocation bool) string {
-	texts, locations, labels := []string{}, []types.CodeLocation{}, [][]string{}
-	texts, locations, labels = append(texts, report.ContainerHierarchyTexts...), append(locations, report.ContainerHierarchyLocations...), append(labels, report.ContainerHierarchyLabels...)
+	texts, locations, labels, semVerConstraints := []string{}, []types.CodeLocation{}, [][]string{}, [][]string{}
+	texts, locations, labels, semVerConstraints = append(texts, report.ContainerHierarchyTexts...), append(locations, report.ContainerHierarchyLocations...), append(labels, report.ContainerHierarchyLabels...), append(semVerConstraints, report.ContainerHierarchySemVerConstraints...)
 
 	if report.LeafNodeType.Is(types.NodeTypesForSuiteLevelNodes) {
 		texts = append(texts, r.f("[%s] %s", report.LeafNodeType, report.LeafNodeText))
@@ -678,6 +734,7 @@ func (r *DefaultReporter) codeLocationBlock(report types.SpecReport, highlightCo
 		texts = append(texts, r.f(report.LeafNodeText))
 	}
 	labels = append(labels, report.LeafNodeLabels)
+	semVerConstraints = append(semVerConstraints, report.LeafNodeSemVerConstraints)
 	locations = append(locations, report.LeafNodeLocation)
 
 	failureLocation := report.Failure.FailureNodeLocation
@@ -691,6 +748,7 @@ func (r *DefaultReporter) codeLocationBlock(report types.SpecReport, highlightCo
 		texts = append([]string{fmt.Sprintf("TOP-LEVEL [%s]", report.Failure.FailureNodeType)}, texts...)
 		locations = append([]types.CodeLocation{failureLocation}, locations...)
 		labels = append([][]string{{}}, labels...)
+		semVerConstraints = append([][]string{{}}, semVerConstraints...)
 		highlightIndex = 0
 	case types.FailureNodeInContainer:
 		i := report.Failure.FailureNodeContainerIndex
@@ -718,6 +776,9 @@ func (r *DefaultReporter) codeLocationBlock(report types.SpecReport, highlightCo
 			if len(labels[i]) > 0 {
 				out += r.f(" {{coral}}[%s]{{/}}", strings.Join(labels[i], ", "))
 			}
+			if len(semVerConstraints[i]) > 0 {
+				out += r.f(" {{coral}}[%s]{{/}}", strings.Join(semVerConstraints[i], ", "))
+			}
 			out += "\n"
 			out += r.fi(uint(i), "{{gray}}%s{{/}}\n", locations[i])
 		}
@@ -740,6 +801,10 @@ func (r *DefaultReporter) codeLocationBlock(report types.SpecReport, highlightCo
 		flattenedLabels := report.Labels()
 		if len(flattenedLabels) > 0 {
 			out += r.f(" {{coral}}[%s]{{/}}", strings.Join(flattenedLabels, ", "))
+		}
+		flattenedSemVerConstraints := report.SemVerConstraints()
+		if len(flattenedSemVerConstraints) > 0 {
+			out += r.f(" {{coral}}[%s]{{/}}", strings.Join(flattenedSemVerConstraints, ", "))
 		}
 		out += "\n"
 		if usePreciseFailureLocation {
