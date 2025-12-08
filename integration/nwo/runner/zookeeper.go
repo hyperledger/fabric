@@ -7,15 +7,19 @@ SPDX-License-Identifier: Apache-2.0
 package runner
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
+	dcontainer "github.com/moby/moby/api/types/container"
+	dnetwork "github.com/moby/moby/api/types/network"
+	dcli "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/tedsuo/ifrit"
 )
@@ -23,22 +27,21 @@ import (
 const ZooKeeperDefaultImage = "confluentinc/cp-zookeeper:5.3.1"
 
 type ZooKeeper struct {
-	Client         *docker.Client
+	Client         dcli.APIClient
 	Image          string
 	HostIP         string
 	HostPort       []int
-	ContainerPorts []docker.Port
+	ContainerPorts []dnetwork.Port
 	Name           string
 	StartTimeout   time.Duration
 
 	NetworkName string
-	ClientPort  docker.Port
-	LeaderPort  docker.Port
-	PeerPort    docker.Port
+	ClientPort  dnetwork.Port
+	LeaderPort  dnetwork.Port
+	PeerPort    dnetwork.Port
 	ZooMyID     int
 	ZooServers  string
 
-	ErrorStream  io.Writer
 	OutputStream io.Writer
 
 	containerID      string
@@ -63,17 +66,17 @@ func (z *ZooKeeper) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 	}
 
 	if z.ContainerPorts == nil {
-		if z.ClientPort == docker.Port("") {
-			z.ClientPort = docker.Port("2181/tcp")
+		if z.ClientPort.IsZero() || z.ClientPort.Num() == 0 {
+			z.ClientPort = dnetwork.MustParsePort("2181/tcp")
 		}
-		if z.LeaderPort == docker.Port("") {
-			z.LeaderPort = docker.Port("3888/tcp")
+		if z.LeaderPort.IsZero() || z.LeaderPort.Num() == 0 {
+			z.LeaderPort = dnetwork.MustParsePort("3888/tcp")
 		}
-		if z.PeerPort == docker.Port("") {
-			z.PeerPort = docker.Port("2888/tcp")
+		if z.PeerPort.IsZero() || z.PeerPort.Num() == 0 {
+			z.PeerPort = dnetwork.MustParsePort("2888/tcp")
 		}
 
-		z.ContainerPorts = []docker.Port{
+		z.ContainerPorts = []dnetwork.Port{
 			z.ClientPort,
 			z.LeaderPort,
 			z.PeerPort,
@@ -89,63 +92,63 @@ func (z *ZooKeeper) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 	}
 
 	if z.Client == nil {
-		client, err := docker.NewClientFromEnv()
+		client, err := dcli.New(dcli.FromEnv)
 		if err != nil {
 			return err
 		}
 		z.Client = client
 	}
 
-	containerOptions := docker.CreateContainerOptions{
+	containerOptions := dcli.ContainerCreateOptions{
 		Name: z.Name,
-		HostConfig: &docker.HostConfig{
+		HostConfig: &dcontainer.HostConfig{
 			AutoRemove: true,
 		},
-		Config: &docker.Config{
+		Config: &dcontainer.Config{
 			Image: z.Image,
 			Env: []string{
 				fmt.Sprintf("ZOOKEEPER_MY_ID=%d", z.ZooMyID),
 				fmt.Sprintf("ZOOKEEPER_SERVERS=%s", z.ZooServers),
-				fmt.Sprintf("ZOOKEEPER_CLIENT_PORT=%s", z.ClientPort.Port()),
+				fmt.Sprintf("ZOOKEEPER_CLIENT_PORT=%d", z.ClientPort.Num()),
 			},
 		},
 	}
 
 	if z.NetworkName != "" {
-		nw, err := z.Client.NetworkInfo(z.NetworkName)
+		nw, err := z.Client.NetworkInspect(context.Background(), z.NetworkName, dcli.NetworkInspectOptions{})
 		if err != nil {
 			return err
 		}
 
-		containerOptions.NetworkingConfig = &docker.NetworkingConfig{
-			EndpointsConfig: map[string]*docker.EndpointConfig{
+		containerOptions.NetworkingConfig = &dnetwork.NetworkingConfig{
+			EndpointsConfig: map[string]*dnetwork.EndpointSettings{
 				z.NetworkName: {
-					NetworkID: nw.ID,
+					NetworkID: nw.Network.ID,
 				},
 			},
 		}
 	}
 
-	container, err := z.Client.CreateContainer(containerOptions)
+	container, err := z.Client.ContainerCreate(context.Background(), containerOptions)
 	if err != nil {
 		return err
 	}
 	z.containerID = container.ID
 
-	err = z.Client.StartContainer(container.ID, nil)
+	_, err = z.Client.ContainerStart(context.Background(), container.ID, dcli.ContainerStartOptions{})
 	if err != nil {
 		return err
 	}
 	defer z.Stop()
 
-	container, err = z.Client.InspectContainer(container.ID)
+	res, err := z.Client.ContainerInspect(context.Background(), container.ID, dcli.ContainerInspectOptions{})
 	if err != nil {
 		return err
 	}
 
 	z.containerAddress = net.JoinHostPort(
-		container.NetworkSettings.IPAddress,
-		z.ContainerPorts[0].Port(),
+		res.Container.NetworkSettings.Networks[res.Container.HostConfig.NetworkMode.NetworkName()].IPAddress.String(),
+		strconv.Itoa(int(z.ContainerPorts[0].Num())),
 	)
 
 	streamCtx, streamCancel := context.WithCancel(context.Background())
@@ -169,10 +172,10 @@ func (z *ZooKeeper) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 
 	for {
 		select {
-		case err := <-containerExit:
+		case err = <-containerExit:
 			return err
 		case <-sigCh:
-			if err := z.Stop(); err != nil {
+			if err = z.Stop(); err != nil {
 				return err
 			}
 		}
@@ -182,31 +185,59 @@ func (z *ZooKeeper) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 func (z *ZooKeeper) wait() <-chan error {
 	exitCh := make(chan error)
 	go func() {
-		exitCode, err := z.Client.WaitContainer(z.containerID)
-		if err == nil {
-			err = fmt.Errorf("zookeeper: process exited with %d", exitCode)
+		resWait := z.Client.ContainerWait(context.Background(), z.containerID, dcli.ContainerWaitOptions{})
+		select {
+		case res := <-resWait.Result:
+			err := fmt.Errorf("zookeeper: process exited with %d", res.StatusCode)
+			exitCh <- err
+		case err := <-resWait.Error:
+			exitCh <- err
 		}
-		exitCh <- err
 	}()
 
 	return exitCh
 }
 
-func (z *ZooKeeper) streamLogs(ctx context.Context) error {
-	if z.ErrorStream == nil && z.OutputStream == nil {
-		return nil
+func (z *ZooKeeper) streamLogs(ctx context.Context) {
+	if z.OutputStream == nil {
+		return
 	}
 
-	logOptions := docker.LogsOptions{
-		Context:      ctx,
-		Container:    z.ContainerID(),
-		ErrorStream:  z.ErrorStream,
-		OutputStream: z.OutputStream,
-		Stderr:       z.ErrorStream != nil,
-		Stdout:       z.OutputStream != nil,
-		Follow:       true,
+	res, err := z.Client.ContainerLogs(ctx, z.containerID, dcli.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     true,
+	})
+	if err != nil {
+		fmt.Fprintf(z.OutputStream, "log stream ended with error: %s", err)
 	}
-	return z.Client.Logs(logOptions)
+	defer res.Close()
+
+	reader := bufio.NewReader(res)
+
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Fprint(z.OutputStream, "log stream ended with cancel context")
+			return
+		default:
+			// Loop forever dumping lines of text into the containerLogger
+			// until the pipe is closed
+			line, err := reader.ReadString('\n')
+			if len(line) > 0 {
+				z.OutputStream.Write([]byte(line))
+			}
+			switch err {
+			case nil:
+			case io.EOF:
+				fmt.Fprintf(z.OutputStream, "Container %s has closed its IO channel", z.containerID)
+				return
+			default:
+				fmt.Fprintf(z.OutputStream, "Error reading container output: %s", err)
+				return
+			}
+		}
+	}
 }
 
 func (z *ZooKeeper) ContainerID() string {
@@ -237,11 +268,18 @@ func (z *ZooKeeper) Stop() error {
 	z.stopped = true
 	z.mutex.Unlock()
 
-	err := z.Client.StopContainer(z.containerID, 0)
+	t := 0
+	_, err := z.Client.ContainerStop(context.Background(), z.containerID, dcli.ContainerStopOptions{
+		Timeout: &t,
+	})
 	if err != nil {
 		return err
 	}
 
-	_, err = z.Client.PruneVolumes(docker.PruneVolumesOptions{})
+	_, err = z.Client.VolumePrune(context.Background(), dcli.VolumePruneOptions{
+		All:     false,
+		Filters: nil,
+	})
+
 	return err
 }

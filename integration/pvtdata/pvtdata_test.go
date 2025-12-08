@@ -22,12 +22,12 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
-	docker "github.com/fsouza/go-dockerclient"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
@@ -943,7 +943,7 @@ func initThreeOrgsSetup(removePeer1 bool) *nwo.Network {
 	testDir, err := ioutil.TempDir("", "e2e-pvtdata")
 	Expect(err).NotTo(HaveOccurred())
 
-	client, err := docker.NewClientFromEnv()
+	client, err := dcli.New(dcli.FromEnv)
 	Expect(err).NotTo(HaveOccurred())
 
 	config := nwo.FullSolo()

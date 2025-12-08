@@ -8,6 +8,7 @@ package dockercontroller
 
 import (
 	"archive/tar"
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -19,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
@@ -28,6 +28,8 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller/mock"
+	dcontainer "github.com/moby/moby/api/types/container"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/stretchr/testify/require"
@@ -35,7 +37,7 @@ import (
 
 // This test used to be part of an integration style test in core/container, moved to here
 func TestIntegrationPath(t *testing.T) {
-	client, err := docker.NewClientFromEnv()
+	client, err := dcli.New(dcli.FromEnv)
 	require.NoError(t, err)
 
 	fakePlatformBuilder := &mock.PlatformBuilder{}
@@ -157,49 +159,43 @@ func Test_Start(t *testing.T) {
 
 	// case 1: dockerClient.CreateContainer returns error
 	testError1 := errors.New("junk1")
-	dockerClient.CreateContainerReturns(nil, testError1)
+	dockerClient.ContainerCreateReturns(dcli.ContainerCreateResult{}, testError1)
 	err := dvm.Start(ccid, "GOLANG", peerConnection)
 	gt.Expect(err).To(MatchError(testError1))
-	dockerClient.CreateContainerReturns(&docker.Container{}, nil)
+	dockerClient.ContainerCreateReturns(dcli.ContainerCreateResult{}, nil)
 
 	// case 2: dockerClient.UploadToContainer returns error
 	testError2 := errors.New("junk2")
-	dockerClient.UploadToContainerReturns(testError2)
+	dockerClient.CopyToContainerReturns(dcli.CopyToContainerResult{}, testError2)
 	err = dvm.Start(ccid, "GOLANG", peerConnection)
 	gt.Expect(err.Error()).To(ContainSubstring("junk2"))
-	dockerClient.UploadToContainerReturns(nil)
+	dockerClient.CopyToContainerReturns(dcli.CopyToContainerResult{}, nil)
 
 	// case 3: start called and dockerClient.CreateContainer returns
-	// docker.noSuchImgErr and dockerClient.Start returns error
+	// errors.New("No such image") and dockerClient.Start returns error
 	testError3 := errors.New("junk3")
 	dvm.AttachStdOut = true
-	dockerClient.CreateContainerReturns(nil, testError3)
+	dockerClient.ContainerCreateReturns(dcli.ContainerCreateResult{}, testError3)
 	err = dvm.Start(ccid, "GOLANG", peerConnection)
 	gt.Expect(err).To(MatchError(testError3))
-	dockerClient.CreateContainerReturns(&docker.Container{}, nil)
+	dockerClient.ContainerCreateReturns(dcli.ContainerCreateResult{}, nil)
 
 	// case 4: GetArgs returns error
 	err = dvm.Start(ccid, "FAKE_TYPE", peerConnection)
 	gt.Expect(err).To(MatchError("could not get args: unknown chaincodeType: FAKE_TYPE"))
 
 	// Success cases
+	conner := &mock.Conner{}
+	conner.ReadReturns(0, io.EOF)
+	dockerClient.ContainerAttachReturns(dcli.ContainerAttachResult{
+		HijackedResponse: dcli.HijackedResponse{
+			Reader: bufio.NewReader(conner),
+			Conn:   conner,
+		},
+	}, nil)
 	err = dvm.Start(ccid, "GOLANG", peerConnection)
 	gt.Expect(err).NotTo(HaveOccurred())
-
-	// dockerClient.StopContainer returns error
-	err = dvm.Start(ccid, "GOLANG", peerConnection)
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	// dockerClient.KillContainer returns error
-	err = dvm.Start(ccid, "GOLANG", peerConnection)
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	// dockerClient.RemoveContainer returns error
-	err = dvm.Start(ccid, "GOLANG", peerConnection)
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	err = dvm.Start(ccid, "GOLANG", peerConnection)
-	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Eventually(conner.ReadCallCount()).Should(Equal(1))
 }
 
 func Test_streamOutput(t *testing.T) {
@@ -209,27 +205,22 @@ func Test_streamOutput(t *testing.T) {
 	containerLogger, containerRecorder := floggingtest.NewTestLogger(t)
 
 	client := &mock.DockerClient{}
-	errCh := make(chan error, 1)
-	optsCh := make(chan docker.AttachToContainerOptions, 1)
-	client.AttachToContainerStub = func(opts docker.AttachToContainerOptions) error {
-		optsCh <- opts
-		return <-errCh
+	conner := &mock.Conner{}
+	conner.ReadStub = func(b []byte) (int, error) {
+		s := "message-one\nmessage-two\n"
+		copy(b, s)
+		return len(s), io.EOF
 	}
+	client.ContainerAttachReturns(dcli.ContainerAttachResult{
+		HijackedResponse: dcli.HijackedResponse{
+			Reader: bufio.NewReader(conner),
+			Conn:   conner,
+		},
+	}, nil)
 
 	streamOutput(logger, client, "container-name", containerLogger)
 
-	var opts docker.AttachToContainerOptions
-	gt.Eventually(optsCh).Should(Receive(&opts))
-	gt.Eventually(opts.Success).Should(BeSent(struct{}{}))
-	gt.Eventually(opts.Success).Should(BeClosed())
-
-	fmt.Fprintf(opts.OutputStream, "message-one\n")
-	fmt.Fprintf(opts.OutputStream, "message-two") // does not get written until after stream closed
 	gt.Eventually(containerRecorder).Should(gbytes.Say("message-one"))
-	gt.Consistently(containerRecorder.Entries).Should(HaveLen(1))
-
-	close(errCh)
-
 	gt.Eventually(recorder).Should(gbytes.Say("Container container-name has closed its IO channel"))
 	gt.Consistently(recorder.Entries).Should(HaveLen(1))
 	gt.Eventually(containerRecorder).Should(gbytes.Say("message-two"))
@@ -261,7 +252,11 @@ func Test_BuildMetric(t *testing.T) {
 			}
 
 			if tt.buildErr {
-				client.BuildImageReturns(errors.New("Error building image"))
+				client.ImageBuildReturns(dcli.ImageBuildResult{}, errors.New("Error building image"))
+			} else {
+				rc := &mock.ReadCloser{}
+				rc.ReadReturns(0, io.EOF)
+				client.ImageBuildReturns(dcli.ImageBuildResult{Body: rc}, nil)
 			}
 			dvm.buildImage(ccid, &bytes.Buffer{})
 
@@ -289,14 +284,29 @@ func Test_Wait(t *testing.T) {
 	client := &mock.DockerClient{}
 	dvm.Client = client
 
-	client.WaitContainerReturns(99, nil)
+	resCh := make(chan dcontainer.WaitResponse, 1)
+	resEtl := dcli.ContainerWaitResult{
+		Result: resCh,
+		Error:  make(chan error),
+	}
+	resCh <- dcontainer.WaitResponse{
+		StatusCode: 99,
+	}
+	client.ContainerWaitReturns(resEtl)
 	exitCode, err := dvm.Wait("the-name:the-version")
 	require.NoError(t, err)
 	require.Equal(t, 99, exitCode)
-	require.Equal(t, "the-name-the-version", client.WaitContainerArgsForCall(0))
+	_, cn, _ := client.ContainerWaitArgsForCall(0)
+	require.Equal(t, "the-name-the-version", cn)
 
 	// wait fails
-	client.WaitContainerReturns(99, errors.New("no-wait-for-you"))
+	resErr := make(chan error, 1)
+	resEtl = dcli.ContainerWaitResult{
+		Result: make(<-chan dcontainer.WaitResponse),
+		Error:  resErr,
+	}
+	resErr <- errors.New("no-wait-for-you")
+	client.ContainerWaitReturns(resEtl)
 	_, err = dvm.Wait("")
 	require.EqualError(t, err, "no-wait-for-you")
 }
@@ -308,7 +318,7 @@ func TestHealthCheck(t *testing.T) {
 	err := vm.HealthCheck(context.Background())
 	require.NoError(t, err)
 
-	client.PingWithContextReturns(errors.New("Error pinging daemon"))
+	client.PingReturns(dcli.PingResult{}, errors.New("Error pinging daemon"))
 	err = vm.HealthCheck(context.Background())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Error pinging daemon")
@@ -385,7 +395,10 @@ func TestGetVMName(t *testing.T) {
 }
 
 func Test_buildImage(t *testing.T) {
+	rc := &mock.ReadCloser{}
+	rc.ReadReturns(0, io.EOF)
 	client := &mock.DockerClient{}
+	client.ImageBuildReturns(dcli.ImageBuildResult{Body: rc}, nil)
 	dvm := DockerVM{
 		BuildMetrics: NewBuildMetrics(&disabled.Provider{}),
 		Client:       client,
@@ -394,19 +407,18 @@ func Test_buildImage(t *testing.T) {
 
 	err := dvm.buildImage("simple", &bytes.Buffer{})
 	require.NoError(t, err)
-	require.Equal(t, 1, client.BuildImageCallCount())
+	require.Equal(t, 1, client.ImageBuildCallCount())
 
-	opts := client.BuildImageArgsForCall(0)
-	require.Equal(t, "simple-a7a39b72f29718e653e73503210fbb597057b7a1c77d1fe321a1afcff041d4e1", opts.Name)
-	require.False(t, opts.Pull)
+	_, in, opts := client.ImageBuildArgsForCall(0)
+	require.Equal(t, "simple-a7a39b72f29718e653e73503210fbb597057b7a1c77d1fe321a1afcff041d4e1", opts.Tags[0])
+	require.True(t, opts.PullParent)
 	require.Equal(t, "network-mode", opts.NetworkMode)
-	require.Equal(t, &bytes.Buffer{}, opts.InputStream)
-	require.NotNil(t, opts.OutputStream)
+	require.Equal(t, &bytes.Buffer{}, in)
 }
 
 func Test_buildImageFailure(t *testing.T) {
 	client := &mock.DockerClient{}
-	client.BuildImageReturns(errors.New("oh-bother-we-failed-badly"))
+	client.ImageBuildReturns(dcli.ImageBuildResult{}, errors.New("oh-bother-we-failed-badly"))
 	dvm := DockerVM{
 		BuildMetrics: NewBuildMetrics(&disabled.Provider{}),
 		Client:       client,
@@ -425,8 +437,11 @@ func TestBuild(t *testing.T) {
 	}
 
 	t.Run("when the image does not exist", func(t *testing.T) {
+		rc := &mock.ReadCloser{}
+		rc.ReadReturns(0, io.EOF)
 		client := &mock.DockerClient{}
-		client.InspectImageReturns(nil, docker.ErrNoSuchImage)
+		client.ImageInspectReturns(dcli.ImageInspectResult{}, errors.New("No such image"))
+		client.ImageBuildReturns(dcli.ImageBuildResult{Body: rc}, nil)
 
 		fakePlatformBuilder := &mock.PlatformBuilder{}
 		fakePlatformBuilder.GenerateDockerBuildReturns(&bytes.Buffer{}, nil)
@@ -435,7 +450,7 @@ func TestBuild(t *testing.T) {
 		_, err := dvm.Build("chaincode-name:chaincode-version", md, bytes.NewBuffer([]byte("code-package")))
 		require.NoError(t, err, "should have built successfully")
 
-		require.Equal(t, 1, client.BuildImageCallCount())
+		require.Equal(t, 1, client.ImageBuildCallCount())
 
 		require.Equal(t, 1, fakePlatformBuilder.GenerateDockerBuildCallCount())
 		ccType, path, codePackageStream := fakePlatformBuilder.GenerateDockerBuildArgsForCall(0)
@@ -448,13 +463,13 @@ func TestBuild(t *testing.T) {
 
 	t.Run("when inspecting the image fails", func(t *testing.T) {
 		client := &mock.DockerClient{}
-		client.InspectImageReturns(nil, errors.New("inspecting-image-fails"))
+		client.ImageInspectReturns(dcli.ImageInspectResult{}, errors.New("inspecting-image-fails"))
 
 		dvm := &DockerVM{Client: client, BuildMetrics: buildMetrics}
 		_, err := dvm.Build("chaincode-name:chaincode-version", md, bytes.NewBuffer([]byte("code-package")))
 		require.EqualError(t, err, "docker image inspection failed: inspecting-image-fails")
 
-		require.Equal(t, 0, client.BuildImageCallCount())
+		require.Equal(t, 0, client.ImageBuildCallCount())
 	})
 
 	t.Run("when the image exists", func(t *testing.T) {
@@ -464,36 +479,36 @@ func TestBuild(t *testing.T) {
 		_, err := dvm.Build("chaincode-name:chaincode-version", md, bytes.NewBuffer([]byte("code-package")))
 		require.NoError(t, err)
 
-		require.Equal(t, 0, client.BuildImageCallCount())
+		require.Equal(t, 0, client.ImageBuildCallCount())
 	})
 
 	t.Run("when the platform builder fails", func(t *testing.T) {
 		client := &mock.DockerClient{}
-		client.InspectImageReturns(nil, docker.ErrNoSuchImage)
-		client.BuildImageReturns(errors.New("no-build-for-you"))
+		client.ImageInspectReturns(dcli.ImageInspectResult{}, errors.New("No such image"))
+		client.ImageBuildReturns(dcli.ImageBuildResult{}, errors.New("no-build-for-you"))
 
 		fakePlatformBuilder := &mock.PlatformBuilder{}
 		fakePlatformBuilder.GenerateDockerBuildReturns(nil, errors.New("fake-builder-error"))
 
 		dvm := &DockerVM{Client: client, BuildMetrics: buildMetrics, PlatformBuilder: fakePlatformBuilder}
 		_, err := dvm.Build("chaincode-name:chaincode-version", md, bytes.NewBuffer([]byte("code-package")))
-		require.Equal(t, 1, client.InspectImageCallCount())
+		require.Equal(t, 1, client.ImageInspectCallCount())
 		require.Equal(t, 1, fakePlatformBuilder.GenerateDockerBuildCallCount())
-		require.Equal(t, 0, client.BuildImageCallCount())
+		require.Equal(t, 0, client.ImageBuildCallCount())
 		require.EqualError(t, err, "platform builder failed: fake-builder-error")
 	})
 
 	t.Run("when building the image fails", func(t *testing.T) {
 		client := &mock.DockerClient{}
-		client.InspectImageReturns(nil, docker.ErrNoSuchImage)
-		client.BuildImageReturns(errors.New("no-build-for-you"))
+		client.ImageInspectReturns(dcli.ImageInspectResult{}, errors.New("No such image"))
+		client.ImageBuildReturns(dcli.ImageBuildResult{}, errors.New("no-build-for-you"))
 
 		fakePlatformBuilder := &mock.PlatformBuilder{}
 
 		dvm := &DockerVM{Client: client, BuildMetrics: buildMetrics, PlatformBuilder: fakePlatformBuilder}
 		_, err := dvm.Build("chaincode-name:chaincode-version", md, bytes.NewBuffer([]byte("code-package")))
-		require.Equal(t, 1, client.InspectImageCallCount())
-		require.Equal(t, 1, client.BuildImageCallCount())
+		require.Equal(t, 1, client.ImageInspectCallCount())
+		require.Equal(t, 1, client.ImageBuildCallCount())
 		require.EqualError(t, err, "docker image build failed: no-build-for-you")
 	})
 }

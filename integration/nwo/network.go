@@ -26,13 +26,12 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/protoutil"
-
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
 	"github.com/hyperledger/fabric/integration/nwo/runner"
-	ginkgo "github.com/onsi/ginkgo/v2"
+	"github.com/hyperledger/fabric/protoutil"
+	dcli "github.com/moby/moby/client"
+	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/gstruct"
@@ -158,7 +157,7 @@ type Network struct {
 	RootDir               string
 	StartPort             uint16
 	Components            *Components
-	DockerClient          *docker.Client
+	DockerClient          dcli.APIClient
 	ExternalBuilders      []fabricconfig.ExternalBuilder
 	NetworkID             string
 	EventuallyTimeout     time.Duration
@@ -190,7 +189,7 @@ type Network struct {
 // New creates a Network from a simple configuration. All generated or managed
 // artifacts for the network will be located under rootDir. Ports will be
 // allocated sequentially from the specified startPort.
-func New(c *Config, rootDir string, dockerClient *docker.Client, startPort int, components *Components) *Network {
+func New(c *Config, rootDir string, dockerClient dcli.APIClient, startPort int, components *Components) *Network {
 	network := &Network{
 		StartPort:    uint16(startPort),
 		RootDir:      rootDir,
@@ -273,14 +272,14 @@ func New(c *Config, rootDir string, dockerClient *docker.Client, startPort int, 
 	return network
 }
 
-func assertImagesExist(dockerClient *docker.Client, images ...string) {
+func assertImagesExist(dockerClient dcli.APIClient, images ...string) {
 	for _, imageName := range images {
-		images, err := dockerClient.ListImages(docker.ListImagesOptions{
-			Filters: map[string][]string{"reference": {imageName}},
+		imgs, err := dockerClient.ImageList(context.Background(), dcli.ImageListOptions{
+			Filters: make(dcli.Filters).Add("reference", imageName),
 		})
 		Expect(err).NotTo(HaveOccurred())
 
-		if len(images) != 1 {
+		if len(imgs.Items) != 1 {
 			ginkgo.Fail(fmt.Sprintf("missing required image: %s", imageName), 1)
 		}
 	}
@@ -842,12 +841,9 @@ func (n *Network) Bootstrap() {
 }
 
 func (n *Network) CreateDockerNetwork() {
-	_, err := n.DockerClient.CreateNetwork(
-		docker.CreateNetworkOptions{
-			Name:   n.NetworkID,
-			Driver: "bridge",
-		},
-	)
+	_, err := n.DockerClient.NetworkCreate(context.Background(), n.NetworkID, dcli.NetworkCreateOptions{
+		Driver: "bridge",
+	})
 	Expect(err).NotTo(HaveOccurred())
 
 	if runtime.GOOS == "darwin" {
@@ -885,14 +881,14 @@ func (n *Network) checkDockerNetworks() {
 }
 
 func (n *Network) dockerIPNets() []*net.IPNet {
-	dockerNetworks, err := n.DockerClient.ListNetworks()
+	dockerNetworks, err := n.DockerClient.NetworkList(context.Background(), dcli.NetworkListOptions{})
 	Expect(err).NotTo(HaveOccurred())
 
 	var nets []*net.IPNet
-	for _, nw := range dockerNetworks {
+	for _, nw := range dockerNetworks.Items {
 		for _, ipconf := range nw.IPAM.Config {
-			if ipconf.Subnet != "" {
-				_, ipn, err := net.ParseCIDR(ipconf.Subnet)
+			if ipconf.Subnet.String() != "" {
+				_, ipn, err := net.ParseCIDR(ipconf.Subnet.String())
 				Expect(err).NotTo(HaveOccurred())
 				nets = append(nets, ipn)
 			}
@@ -992,30 +988,36 @@ func (n *Network) Cleanup() {
 		return
 	}
 
-	nw, err := n.DockerClient.NetworkInfo(n.NetworkID)
+	nw, err := n.DockerClient.NetworkInspect(context.Background(), n.NetworkID, dcli.NetworkInspectOptions{})
 	Expect(err).NotTo(HaveOccurred())
 
-	err = n.DockerClient.RemoveNetwork(nw.ID)
+	_, err = n.DockerClient.NetworkRemove(context.Background(), nw.Network.ID, dcli.NetworkRemoveOptions{})
 	Expect(err).NotTo(HaveOccurred())
 
-	containers, err := n.DockerClient.ListContainers(docker.ListContainersOptions{All: true})
+	containers, err := n.DockerClient.ContainerList(context.Background(), dcli.ContainerListOptions{
+		All: true,
+	})
 	Expect(err).NotTo(HaveOccurred())
-	for _, c := range containers {
+	for _, c := range containers.Items {
 		for _, name := range c.Names {
 			if strings.HasPrefix(name, "/"+n.NetworkID) {
-				err := n.DockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true})
+				_, err = n.DockerClient.ContainerRemove(context.Background(), c.ID, dcli.ContainerRemoveOptions{
+					Force: true,
+				})
 				Expect(err).NotTo(HaveOccurred())
 				break
 			}
 		}
 	}
 
-	images, err := n.DockerClient.ListImages(docker.ListImagesOptions{All: true})
+	images, err := n.DockerClient.ImageList(context.Background(), dcli.ImageListOptions{
+		All: true,
+	})
 	Expect(err).NotTo(HaveOccurred())
-	for _, i := range images {
+	for _, i := range images.Items {
 		for _, tag := range i.RepoTags {
 			if strings.HasPrefix(tag, n.NetworkID) {
-				err := n.DockerClient.RemoveImage(i.ID)
+				_, err = n.DockerClient.ImageRemove(context.Background(), i.ID, dcli.ImageRemoveOptions{})
 				Expect(err).NotTo(HaveOccurred())
 				break
 			}
@@ -1289,10 +1291,6 @@ func (n *Network) ZooKeeperRunner(idx int) *runner.ZooKeeper {
 			fmt.Sprintf("\x1b[32m[o]\x1b[%s[%s]\x1b[0m ", colorCode, name),
 			ginkgo.GinkgoWriter,
 		),
-		ErrorStream: gexec.NewPrefixedWriter(
-			fmt.Sprintf("\x1b[91m[e]\x1b[%s[%s]\x1b[0m ", colorCode, name),
-			ginkgo.GinkgoWriter,
-		),
 	}
 }
 
@@ -1327,10 +1325,6 @@ func (n *Network) BrokerRunner(id int, zookeepers []string) *runner.Kafka {
 		ZooKeeperConnect:         strings.Join(zookeepers, ","),
 		OutputStream: gexec.NewPrefixedWriter(
 			fmt.Sprintf("\x1b[32m[o]\x1b[%s[%s]\x1b[0m ", colorCode, name),
-			ginkgo.GinkgoWriter,
-		),
-		ErrorStream: gexec.NewPrefixedWriter(
-			fmt.Sprintf("\x1b[91m[e]\x1b[%s[%s]\x1b[0m ", colorCode, name),
 			ginkgo.GinkgoWriter,
 		),
 	}

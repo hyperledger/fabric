@@ -16,7 +16,6 @@ import (
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
@@ -25,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
 	"github.com/hyperledger/fabric/protoutil"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -36,7 +36,7 @@ import (
 var _ = Describe("Kafka2RaftMigration", func() {
 	var (
 		testDir string
-		client  *docker.Client
+		client  dcli.APIClient
 		network *nwo.Network
 
 		process                ifrit.Process
@@ -51,7 +51,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 		testDir, err = ioutil.TempDir("", "kafka2raft-migration")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -123,8 +123,8 @@ var _ = Describe("Kafka2RaftMigration", func() {
 		// We also check that after entering maintenance mode, we can exit it without making any
 		// changes - the "abort path".
 		It("executes kafka2raft green path", func() {
-			//=== The abort path ======================================================================================
-			//=== Step 1: Config update on system channel, MAINTENANCE ===
+			// === The abort path ======================================================================================
+			// === Step 1: Config update on system channel, MAINTENANCE ===
 			By("1) Config update on system channel, State=MAINTENANCE, enter maintenance-mode")
 			config, updatedConfig := prepareTransition(network, peer, orderer, syschannel,
 				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
@@ -142,7 +142,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			exitCode := network.CreateChannelExitCode(channel2, orderer, peer)
 			Expect(exitCode).ToNot(Equal(0))
 
-			//=== Step 2: Config update on standard channel, MAINTENANCE ===
+			// === Step 2: Config update on standard channel, MAINTENANCE ===
 			By("2) Config update on standard channel, State=MAINTENANCE, enter maintenance-mode")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
 				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
@@ -164,7 +164,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			err := checkPeerDeliverRequest(orderer, peer, network, channel1)
 			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
 
-			//=== Step 3: config update on system channel, State=NORMAL, abort ===
+			// === Step 3: config update on system channel, State=NORMAL, abort ===
 			By("3) Config update on system channel, State=NORMAL, exit maintenance-mode - abort path")
 			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
 				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
@@ -184,7 +184,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			err = checkPeerDeliverRequest(orderer, peer, network, channel2)
 			Expect(err).NotTo(HaveOccurred())
 
-			//=== Step 4: config update on standard channel, State=NORMAL, abort ===
+			// === Step 4: config update on standard channel, State=NORMAL, abort ===
 			By("4) Config update on standard channel, State=NORMAL, exit maintenance-mode - abort path")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
 				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
@@ -202,8 +202,8 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			By("4) Verify: Normal TX's on standard channel are permitted again")
 			assertBlockCreation(network, orderer, nil, channel1, 3)
 
-			//=== The green path ======================================================================================
-			//=== Step 5: Config update on system channel, MAINTENANCE, again ===
+			// === The green path ======================================================================================
+			// === Step 5: Config update on system channel, MAINTENANCE, again ===
 			By("5) Config update on system channel, State=MAINTENANCE, enter maintenance-mode again")
 			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
 				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
@@ -217,7 +217,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 6: Config update on standard channel1, MAINTENANCE, again ===
+			// === Step 6: Config update on standard channel1, MAINTENANCE, again ===
 			By("6) Config update on standard channel1, State=MAINTENANCE, enter maintenance-mode again")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
 				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
@@ -239,7 +239,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			By("6) Verify: Normal TX's on standard channel are blocked")
 			assertTxFailed(network, orderer, channel1)
 
-			//=== Step 7: Config update on standard channel2, MAINTENANCE ===
+			// === Step 7: Config update on standard channel2, MAINTENANCE ===
 			By("7) Config update on standard channel2, State=MAINTENANCE, enter maintenance-mode again")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel2,
 				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
@@ -261,7 +261,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			By("7) Verify: Normal TX's on standard channel are blocked")
 			assertTxFailed(network, orderer, channel2)
 
-			//=== Step 8: config update on system channel, State=MAINTENANCE, type=etcdraft ===
+			// === Step 8: config update on system channel, State=MAINTENANCE, type=etcdraft ===
 			By("8) Config update on system channel, State=MAINTENANCE, type=etcdraft")
 			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
 				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
@@ -276,7 +276,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			exitCode = network.CreateChannelExitCode(channel3, orderer, peer)
 			Expect(exitCode).ToNot(Equal(0))
 
-			//=== Step 9: config update on standard channel1, State=MAINTENANCE, type=etcdraft ===
+			// === Step 9: config update on standard channel1, State=MAINTENANCE, type=etcdraft ===
 			By("9) Config update on standard channel1, State=MAINTENANCE, type=etcdraft")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
 				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
@@ -294,7 +294,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			By("9) Verify: Normal TX's on standard channel are blocked")
 			assertTxFailed(network, orderer, channel1)
 
-			//=== Step 10: config update on standard channel2, State=MAINTENANCE, type=etcdraft ===
+			// === Step 10: config update on standard channel2, State=MAINTENANCE, type=etcdraft ===
 			By("10) Config update on standard channel2, State=MAINTENANCE, type=etcdraft")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel2,
 				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
@@ -319,19 +319,19 @@ var _ = Describe("Kafka2RaftMigration", func() {
 		// - In maintenance mode one can only change ConsensusType.Type & ConsensusType.Metadata.
 		// - ConsensusType.Type can only change from "kafka" to "etcdraft", and only in maintenance mode.
 		It("executes kafka2raft forbidden transitions", func() {
-			//=== Step 1: ===
+			// === Step 1: ===
 			By("1) Config update on system channel, changing both ConsensusType State & Type is forbidden")
 			assertTransitionFailed(network, peer, orderer, syschannel,
 				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
 				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 2: ===
+			// === Step 2: ===
 			By("2) Config update on standard channel, changing both ConsensusType State & Type is forbidden")
 			assertTransitionFailed(network, peer, orderer, channel1,
 				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
 				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 3: ===
+			// === Step 3: ===
 			By("3) Config update on system channel, changing both ConsensusType State & some other value is forbidden")
 			config, updatedConfig := prepareTransition(network, peer, orderer, syschannel,
 				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
@@ -339,7 +339,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			updateConfigWithBatchTimeout(updatedConfig)
 			updateOrdererConfigFailed(network, orderer, syschannel, config, updatedConfig, peer, orderer)
 
-			//=== Step 4: ===
+			// === Step 4: ===
 			By("4) Config update on standard channel, both ConsensusType State & some other value is forbidden")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
 				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
@@ -347,7 +347,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			updateConfigWithBatchTimeout(updatedConfig)
 			updateOrdererConfigFailed(network, orderer, channel1, config, updatedConfig, peer, orderer)
 
-			//=== Step 5: ===
+			// === Step 5: ===
 			By("5) Config update on system channel, State=MAINTENANCE, enter maintenance-mode")
 			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
 				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
@@ -361,7 +361,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			consensusTypeValue := extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 6: ===
+			// === Step 6: ===
 			By("6) Config update on standard channel, State=MAINTENANCE, enter maintenance-mode")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
 				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
@@ -375,31 +375,31 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 7: ===
+			// === Step 7: ===
 			By("7) Config update on system channel, change ConsensusType.Type to unsupported type, forbidden")
 			assertTransitionFailed(network, peer, orderer, syschannel,
 				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"melville", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 8: ===
+			// === Step 8: ===
 			By("8) Config update on standard channel, change ConsensusType.Type to unsupported type, forbidden")
 			assertTransitionFailed(network, peer, orderer, channel1,
 				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"hesse", nil, protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 9: ===
+			// === Step 9: ===
 			By("9) Config update on system channel, change ConsensusType.Type and State, forbidden")
 			assertTransitionFailed(network, peer, orderer, syschannel,
 				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_NORMAL)
 
-			//=== Step 10: ===
+			// === Step 10: ===
 			By("10) Config update on standard channel, change ConsensusType.Type and State, forbidden")
 			assertTransitionFailed(network, peer, orderer, channel1,
 				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
 				"etcdraft", raftMetadata, protosorderer.ConsensusType_STATE_NORMAL)
 
-			//=== Step 11: ===
+			// === Step 11: ===
 			By("11) Config update on system channel, changing both ConsensusType.Type and other value is permitted")
 			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
 				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
@@ -414,7 +414,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 12: ===
+			// === Step 12: ===
 			By("12) Config update on standard channel, changing both ConsensusType.Type and other value is permitted")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
 				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
@@ -429,7 +429,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 13: ===
+			// === Step 13: ===
 			By("13) Config update on system channel, changing value other than ConsensusType.Type is permitted")
 			config = nwo.GetConfig(network, peer, orderer, syschannel)
 			consensusTypeValue = extractOrdererConsensusType(config)
@@ -442,7 +442,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			sysBlockNum = nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
 			Expect(sysBlockNum).To(Equal(sysStartBlockNum + 2))
 
-			//=== Step 14: ===
+			// === Step 14: ===
 			By("14) Config update on standard channel, changing value other than ConsensusType.Type is permitted")
 			config = nwo.GetConfig(network, peer, orderer, channel1)
 			consensusTypeValue = extractOrdererConsensusType(config)
@@ -455,7 +455,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			std1BlockNum = nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
 			Expect(std1BlockNum).To(Equal(std1StartBlockNum + 2))
 
-			//=== Step 15: ===
+			// === Step 15: ===
 			By("15) Config update on system channel, changing both ConsensusType State & some other value is forbidden")
 			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
 				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
@@ -463,7 +463,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			updateConfigWithBatchTimeout(updatedConfig)
 			updateOrdererConfigFailed(network, orderer, syschannel, config, updatedConfig, peer, orderer)
 
-			//=== Step 16: ===
+			// === Step 16: ===
 			By("16) Config update on standard channel, both ConsensusType State & some other value is forbidden")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
 				"etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE,
@@ -522,7 +522,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 		// It then restarts the orderers onto a Raft-based system, and verifies that the
 		// newly restarted orderers perform as expected.
 		It("executes bootstrap to raft - multi node", func() {
-			//=== Step 1: Config update on system channel, MAINTENANCE ===
+			// === Step 1: Config update on system channel, MAINTENANCE ===
 			By("1) Config update on system channel, State=MAINTENANCE")
 			config, updatedConfig := prepareTransition(network, peer, o1, syschannel,
 				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
@@ -537,7 +537,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			consensusTypeValue := extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 2: Config update on standard channel, MAINTENANCE ===
+			// === Step 2: Config update on standard channel, MAINTENANCE ===
 			By("2) Config update on standard channel, State=MAINTENANCE")
 			config, updatedConfig = prepareTransition(network, peer, o1, channel1,
 				"kafka", protosorderer.ConsensusType_STATE_NORMAL,
@@ -552,7 +552,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 3: config update on system channel, State=MAINTENANCE, type=etcdraft ===
+			// === Step 3: config update on system channel, State=MAINTENANCE, type=etcdraft ===
 			By("3) Config update on system channel, State=MAINTENANCE, type=etcdraft")
 			config, updatedConfig = prepareTransition(network, peer, o1, syschannel,
 				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
@@ -563,7 +563,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			sysBlockNum := nwo.CurrentConfigBlockNumber(network, peer, o1, syschannel)
 			Expect(sysBlockNum).To(Equal(sysStartBlockNum + 1))
 
-			//=== Step 4: config update on standard channel, State=MAINTENANCE, type=etcdraft ===
+			// === Step 4: config update on standard channel, State=MAINTENANCE, type=etcdraft ===
 			By("4) Config update on standard channel, State=MAINTENANCE, type=etcdraft")
 			config, updatedConfig = prepareTransition(network, peer, o1, channel1,
 				"kafka", protosorderer.ConsensusType_STATE_MAINTENANCE,
@@ -574,7 +574,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			chan1BlockNum := nwo.CurrentConfigBlockNumber(network, peer, o1, channel1)
 			Expect(chan1BlockNum).To(Equal(chan1StartBlockNum + 1))
 
-			//=== Step 5: kill ===
+			// === Step 5: kill ===
 			By("5) killing orderer1,2,3")
 			for _, oProc := range []ifrit.Process{o1Proc, o2Proc, o3Proc} {
 				if oProc != nil {
@@ -583,7 +583,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 				}
 			}
 
-			//=== Step 6: restart ===
+			// === Step 6: restart ===
 			By("6) restarting orderer1,2,3")
 			network.Consensus.Type = "etcdraft"
 			o1Runner = network.OrdererRunner(o1)
@@ -762,7 +762,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 		})
 
 		It("executes bootstrap to raft - single node", func() {
-			//=== Step 1: Config update on system channel, MAINTENANCE ===
+			// === Step 1: Config update on system channel, MAINTENANCE ===
 			By("1) Config update on system channel, State=MAINTENANCE")
 			config, updatedConfig := prepareTransition(network, peer, orderer, syschannel,
 				"solo", protosorderer.ConsensusType_STATE_NORMAL,
@@ -777,7 +777,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			consensusTypeValue := extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "solo", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 2: Config update on standard channel, MAINTENANCE ===
+			// === Step 2: Config update on standard channel, MAINTENANCE ===
 			By("2) Config update on standard channel, State=MAINTENANCE")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
 				"solo", protosorderer.ConsensusType_STATE_NORMAL,
@@ -792,7 +792,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "solo", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
-			//=== Step 3: config update on system channel, State=MAINTENANCE, type=etcdraft ===
+			// === Step 3: config update on system channel, State=MAINTENANCE, type=etcdraft ===
 			By("3) Config update on system channel, State=MAINTENANCE, type=etcdraft")
 			config, updatedConfig = prepareTransition(network, peer, orderer, syschannel,
 				"solo", protosorderer.ConsensusType_STATE_MAINTENANCE,
@@ -803,7 +803,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			sysBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
 			Expect(sysBlockNum).To(Equal(sysStartBlockNum + 1))
 
-			//=== Step 4: config update on standard channel, State=MAINTENANCE, type=etcdraft ===
+			// === Step 4: config update on standard channel, State=MAINTENANCE, type=etcdraft ===
 			By("4) Config update on standard channel, State=MAINTENANCE, type=etcdraft")
 			config, updatedConfig = prepareTransition(network, peer, orderer, channel1,
 				"solo", protosorderer.ConsensusType_STATE_MAINTENANCE,
@@ -814,12 +814,12 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			chan1BlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
 			Expect(chan1BlockNum).To(Equal(chan1StartBlockNum + 1))
 
-			//=== Step 5: kill ===
+			// === Step 5: kill ===
 			By("5) killing orderer1")
 			o1Proc.Signal(syscall.SIGKILL)
 			Eventually(o1Proc.Wait(), network.EventuallyTimeout).Should(Receive(MatchError("exit status 137")))
 
-			//=== Step 6: restart ===
+			// === Step 6: restart ===
 			By("6) restarting orderer1")
 			network.Consensus.Type = "etcdraft"
 

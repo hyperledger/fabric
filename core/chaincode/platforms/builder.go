@@ -9,12 +9,12 @@ package platforms
 import (
 	"io"
 
-	docker "github.com/fsouza/go-dockerclient"
+	dcli "github.com/moby/moby/client"
 )
 
 type Builder struct {
 	Registry *Registry
-	Client   *docker.Client
+	Client   dcli.APIClient
 }
 
 func (b *Builder) GenerateDockerBuild(ccType, path string, codePackage io.Reader) (io.Reader, error) {

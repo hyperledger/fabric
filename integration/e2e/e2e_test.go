@@ -23,7 +23,6 @@ import (
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
@@ -31,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -42,7 +42,7 @@ import (
 var _ = Describe("EndToEnd", func() {
 	var (
 		testDir   string
-		client    *docker.Client
+		client    dcli.APIClient
 		network   *nwo.Network
 		chaincode nwo.Chaincode
 		process   ifrit.Process
@@ -53,7 +53,7 @@ var _ = Describe("EndToEnd", func() {
 		testDir, err = ioutil.TempDir("", "e2e")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
 		chaincode = nwo.Chaincode{
@@ -299,16 +299,15 @@ var _ = Describe("EndToEnd", func() {
 			nwo.InitChaincode(network, "testchannel", orderer, chaincode, testPeers...)
 
 			By("listing the containers after committing the chaincode definition")
-			initialContainerFilter := map[string][]string{
-				"name": {
-					chaincodeContainerNameFilter(network, chaincode),
-					chaincodeContainerNameFilter(network, gopathChaincode),
-				},
-			}
-
-			containers, err := client.ListContainers(docker.ListContainersOptions{Filters: initialContainerFilter})
+			initialContainerFilter := make(dcli.Filters).Add("name",
+				chaincodeContainerNameFilter(network, chaincode),
+				chaincodeContainerNameFilter(network, gopathChaincode),
+			)
+			containers, err := client.ContainerList(context.Background(), dcli.ContainerListOptions{
+				Filters: initialContainerFilter,
+			})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(containers).To(HaveLen(2))
+			Expect(containers.Items).To(HaveLen(2))
 
 			RunQueryInvokeQuery(network, orderer, network.Peer("Org1", "peer0"), "testchannel")
 
@@ -336,18 +335,20 @@ var _ = Describe("EndToEnd", func() {
 
 			By("listing the containers after updating the chaincode definition")
 			// expect the containers for the previous package id to be stopped
-			containers, err = client.ListContainers(docker.ListContainersOptions{Filters: initialContainerFilter})
+			containers, err = client.ContainerList(context.Background(), dcli.ContainerListOptions{
+				Filters: initialContainerFilter,
+			})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(containers).To(HaveLen(0))
-			updatedContainerFilter := map[string][]string{
-				"name": {
-					chaincodeContainerNameFilter(network, chaincode),
-					chaincodeContainerNameFilter(network, gopathChaincode),
-				},
-			}
-			containers, err = client.ListContainers(docker.ListContainersOptions{Filters: updatedContainerFilter})
+			Expect(containers.Items).To(HaveLen(0))
+			updatedContainerFilter := make(dcli.Filters).Add("name",
+				chaincodeContainerNameFilter(network, chaincode),
+				chaincodeContainerNameFilter(network, gopathChaincode),
+			)
+			containers, err = client.ContainerList(context.Background(), dcli.ContainerListOptions{
+				Filters: updatedContainerFilter,
+			})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(containers).To(HaveLen(2))
+			Expect(containers.Items).To(HaveLen(2))
 
 			RunQueryInvokeQuery(network, orderer, network.Peer("Org1", "peer0"), "testchannel")
 
@@ -548,24 +549,22 @@ var _ = Describe("EndToEnd", func() {
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
 
 			By("removing chaincode containers from all peers")
-			listChaincodeContainers := docker.ListContainersOptions{
-				Filters: map[string][]string{
-					"name": {chaincodeContainerNameFilter(network, chaincode)},
-				},
-			}
 			ctx := context.Background()
-			containers, err := client.ListContainers(listChaincodeContainers)
+			listChaincodeContainers := make(dcli.Filters).Add("name",
+				chaincodeContainerNameFilter(network, chaincode),
+			)
+			containers, err := client.ContainerList(ctx, dcli.ContainerListOptions{
+				Filters: listChaincodeContainers,
+			})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(containers).NotTo(BeEmpty())
+			Expect(containers.Items).NotTo(BeEmpty())
 
 			var originalContainerIDs []string
-			for _, container := range containers {
+			for _, container := range containers.Items {
 				originalContainerIDs = append(originalContainerIDs, container.ID)
-				err = client.RemoveContainer(docker.RemoveContainerOptions{
-					ID:            container.ID,
+				_, err = client.ContainerRemove(ctx, container.ID, dcli.ContainerRemoveOptions{
 					RemoveVolumes: true,
 					Force:         true,
-					Context:       ctx,
 				})
 				Expect(err).NotTo(HaveOccurred())
 			}
@@ -588,11 +587,13 @@ var _ = Describe("EndToEnd", func() {
 			}
 
 			By("checking successful removals of all old chaincode containers")
-			newContainers, err := client.ListContainers(listChaincodeContainers)
+			newContainers, err := client.ContainerList(context.Background(), dcli.ContainerListOptions{
+				Filters: listChaincodeContainers,
+			})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(newContainers).To(HaveLen(len(containers)))
+			Expect(newContainers.Items).To(HaveLen(len(containers.Items)))
 
-			for _, container := range newContainers {
+			for _, container := range newContainers.Items {
 				Expect(originalContainerIDs).NotTo(ContainElement(container.ID))
 			}
 		})

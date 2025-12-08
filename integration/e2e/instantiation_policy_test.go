@@ -14,7 +14,6 @@ import (
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -25,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
+	dcli "github.com/moby/moby/client"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -36,7 +36,7 @@ import (
 var _ = Describe("InstantiationPolicy", func() {
 	var (
 		testDir string
-		client  *docker.Client
+		client  dcli.APIClient
 		network *nwo.Network
 		process ifrit.Process
 	)
@@ -46,7 +46,7 @@ var _ = Describe("InstantiationPolicy", func() {
 		testDir, err = ioutil.TempDir("", "e2e")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 	})
 

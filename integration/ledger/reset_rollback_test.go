@@ -16,10 +16,10 @@ import (
 	"strings"
 	"syscall"
 
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
@@ -318,7 +318,7 @@ func initThreeOrgsSetup() *setup {
 	testDir, err := ioutil.TempDir("", "reset-rollback")
 	Expect(err).NotTo(HaveOccurred())
 
-	client, err := docker.NewClientFromEnv()
+	client, err := dcli.New(dcli.FromEnv)
 	Expect(err).NotTo(HaveOccurred())
 
 	n := nwo.New(nwo.ThreeOrgSolo(), testDir, client, StartPort(), components)

@@ -13,8 +13,8 @@ import (
 	"runtime"
 	"syscall"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
@@ -22,7 +22,7 @@ import (
 
 var _ = Describe("solo network using ccenv-1.4", func() {
 	var (
-		client  *docker.Client
+		client  dcli.APIClient
 		testDir string
 		network *nwo.Network
 		process ifrit.Process
@@ -36,7 +36,7 @@ var _ = Describe("solo network using ccenv-1.4", func() {
 		testDir, err = ioutil.TempDir("", "lifecycle")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
 		network = nwo.New(nwo.BasicSolo(), testDir, client, StartPort(), components)

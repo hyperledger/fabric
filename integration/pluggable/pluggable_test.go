@@ -15,10 +15,10 @@ import (
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -29,7 +29,7 @@ import (
 var _ = Describe("EndToEnd", func() {
 	var (
 		testDir   string
-		client    *docker.Client
+		client    dcli.APIClient
 		network   *nwo.Network
 		chaincode nwo.Chaincode
 		process   ifrit.Process
@@ -65,7 +65,7 @@ var _ = Describe("EndToEnd", func() {
 		Expect(soloConfig.Peers).To(HaveLen(2))
 
 		// docker client
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
 		network = nwo.New(soloConfig, testDir, client, StartPort(), components)

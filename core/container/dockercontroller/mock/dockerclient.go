@@ -3,814 +3,9024 @@ package mock
 
 import (
 	"context"
+	"io"
+	"net"
 	"sync"
 
-	docker "github.com/fsouza/go-dockerclient"
+	"github.com/moby/moby/client"
 )
 
 type DockerClient struct {
-	AttachToContainerStub        func(docker.AttachToContainerOptions) error
-	attachToContainerMutex       sync.RWMutex
-	attachToContainerArgsForCall []struct {
-		arg1 docker.AttachToContainerOptions
+	BuildCachePruneStub        func(context.Context, client.BuildCachePruneOptions) (client.BuildCachePruneResult, error)
+	buildCachePruneMutex       sync.RWMutex
+	buildCachePruneArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.BuildCachePruneOptions
 	}
-	attachToContainerReturns struct {
-		result1 error
-	}
-	attachToContainerReturnsOnCall map[int]struct {
-		result1 error
-	}
-	BuildImageStub        func(docker.BuildImageOptions) error
-	buildImageMutex       sync.RWMutex
-	buildImageArgsForCall []struct {
-		arg1 docker.BuildImageOptions
-	}
-	buildImageReturns struct {
-		result1 error
-	}
-	buildImageReturnsOnCall map[int]struct {
-		result1 error
-	}
-	CreateContainerStub        func(docker.CreateContainerOptions) (*docker.Container, error)
-	createContainerMutex       sync.RWMutex
-	createContainerArgsForCall []struct {
-		arg1 docker.CreateContainerOptions
-	}
-	createContainerReturns struct {
-		result1 *docker.Container
+	buildCachePruneReturns struct {
+		result1 client.BuildCachePruneResult
 		result2 error
 	}
-	createContainerReturnsOnCall map[int]struct {
-		result1 *docker.Container
+	buildCachePruneReturnsOnCall map[int]struct {
+		result1 client.BuildCachePruneResult
 		result2 error
 	}
-	InspectImageStub        func(string) (*docker.Image, error)
-	inspectImageMutex       sync.RWMutex
-	inspectImageArgsForCall []struct {
-		arg1 string
+	BuildCancelStub        func(context.Context, string, client.BuildCancelOptions) (client.BuildCancelResult, error)
+	buildCancelMutex       sync.RWMutex
+	buildCancelArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.BuildCancelOptions
 	}
-	inspectImageReturns struct {
-		result1 *docker.Image
+	buildCancelReturns struct {
+		result1 client.BuildCancelResult
 		result2 error
 	}
-	inspectImageReturnsOnCall map[int]struct {
-		result1 *docker.Image
+	buildCancelReturnsOnCall map[int]struct {
+		result1 client.BuildCancelResult
 		result2 error
 	}
-	KillContainerStub        func(docker.KillContainerOptions) error
-	killContainerMutex       sync.RWMutex
-	killContainerArgsForCall []struct {
-		arg1 docker.KillContainerOptions
+	CheckpointCreateStub        func(context.Context, string, client.CheckpointCreateOptions) (client.CheckpointCreateResult, error)
+	checkpointCreateMutex       sync.RWMutex
+	checkpointCreateArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.CheckpointCreateOptions
 	}
-	killContainerReturns struct {
+	checkpointCreateReturns struct {
+		result1 client.CheckpointCreateResult
+		result2 error
+	}
+	checkpointCreateReturnsOnCall map[int]struct {
+		result1 client.CheckpointCreateResult
+		result2 error
+	}
+	CheckpointListStub        func(context.Context, string, client.CheckpointListOptions) (client.CheckpointListResult, error)
+	checkpointListMutex       sync.RWMutex
+	checkpointListArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.CheckpointListOptions
+	}
+	checkpointListReturns struct {
+		result1 client.CheckpointListResult
+		result2 error
+	}
+	checkpointListReturnsOnCall map[int]struct {
+		result1 client.CheckpointListResult
+		result2 error
+	}
+	CheckpointRemoveStub        func(context.Context, string, client.CheckpointRemoveOptions) (client.CheckpointRemoveResult, error)
+	checkpointRemoveMutex       sync.RWMutex
+	checkpointRemoveArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.CheckpointRemoveOptions
+	}
+	checkpointRemoveReturns struct {
+		result1 client.CheckpointRemoveResult
+		result2 error
+	}
+	checkpointRemoveReturnsOnCall map[int]struct {
+		result1 client.CheckpointRemoveResult
+		result2 error
+	}
+	ClientVersionStub        func() string
+	clientVersionMutex       sync.RWMutex
+	clientVersionArgsForCall []struct {
+	}
+	clientVersionReturns struct {
+		result1 string
+	}
+	clientVersionReturnsOnCall map[int]struct {
+		result1 string
+	}
+	CloseStub        func() error
+	closeMutex       sync.RWMutex
+	closeArgsForCall []struct {
+	}
+	closeReturns struct {
 		result1 error
 	}
-	killContainerReturnsOnCall map[int]struct {
+	closeReturnsOnCall map[int]struct {
 		result1 error
 	}
-	PingWithContextStub        func(context.Context) error
-	pingWithContextMutex       sync.RWMutex
-	pingWithContextArgsForCall []struct {
+	ConfigCreateStub        func(context.Context, client.ConfigCreateOptions) (client.ConfigCreateResult, error)
+	configCreateMutex       sync.RWMutex
+	configCreateArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.ConfigCreateOptions
+	}
+	configCreateReturns struct {
+		result1 client.ConfigCreateResult
+		result2 error
+	}
+	configCreateReturnsOnCall map[int]struct {
+		result1 client.ConfigCreateResult
+		result2 error
+	}
+	ConfigInspectStub        func(context.Context, string, client.ConfigInspectOptions) (client.ConfigInspectResult, error)
+	configInspectMutex       sync.RWMutex
+	configInspectArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ConfigInspectOptions
+	}
+	configInspectReturns struct {
+		result1 client.ConfigInspectResult
+		result2 error
+	}
+	configInspectReturnsOnCall map[int]struct {
+		result1 client.ConfigInspectResult
+		result2 error
+	}
+	ConfigListStub        func(context.Context, client.ConfigListOptions) (client.ConfigListResult, error)
+	configListMutex       sync.RWMutex
+	configListArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.ConfigListOptions
+	}
+	configListReturns struct {
+		result1 client.ConfigListResult
+		result2 error
+	}
+	configListReturnsOnCall map[int]struct {
+		result1 client.ConfigListResult
+		result2 error
+	}
+	ConfigRemoveStub        func(context.Context, string, client.ConfigRemoveOptions) (client.ConfigRemoveResult, error)
+	configRemoveMutex       sync.RWMutex
+	configRemoveArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ConfigRemoveOptions
+	}
+	configRemoveReturns struct {
+		result1 client.ConfigRemoveResult
+		result2 error
+	}
+	configRemoveReturnsOnCall map[int]struct {
+		result1 client.ConfigRemoveResult
+		result2 error
+	}
+	ConfigUpdateStub        func(context.Context, string, client.ConfigUpdateOptions) (client.ConfigUpdateResult, error)
+	configUpdateMutex       sync.RWMutex
+	configUpdateArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ConfigUpdateOptions
+	}
+	configUpdateReturns struct {
+		result1 client.ConfigUpdateResult
+		result2 error
+	}
+	configUpdateReturnsOnCall map[int]struct {
+		result1 client.ConfigUpdateResult
+		result2 error
+	}
+	ContainerAttachStub        func(context.Context, string, client.ContainerAttachOptions) (client.ContainerAttachResult, error)
+	containerAttachMutex       sync.RWMutex
+	containerAttachArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerAttachOptions
+	}
+	containerAttachReturns struct {
+		result1 client.ContainerAttachResult
+		result2 error
+	}
+	containerAttachReturnsOnCall map[int]struct {
+		result1 client.ContainerAttachResult
+		result2 error
+	}
+	ContainerCommitStub        func(context.Context, string, client.ContainerCommitOptions) (client.ContainerCommitResult, error)
+	containerCommitMutex       sync.RWMutex
+	containerCommitArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerCommitOptions
+	}
+	containerCommitReturns struct {
+		result1 client.ContainerCommitResult
+		result2 error
+	}
+	containerCommitReturnsOnCall map[int]struct {
+		result1 client.ContainerCommitResult
+		result2 error
+	}
+	ContainerCreateStub        func(context.Context, client.ContainerCreateOptions) (client.ContainerCreateResult, error)
+	containerCreateMutex       sync.RWMutex
+	containerCreateArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.ContainerCreateOptions
+	}
+	containerCreateReturns struct {
+		result1 client.ContainerCreateResult
+		result2 error
+	}
+	containerCreateReturnsOnCall map[int]struct {
+		result1 client.ContainerCreateResult
+		result2 error
+	}
+	ContainerDiffStub        func(context.Context, string, client.ContainerDiffOptions) (client.ContainerDiffResult, error)
+	containerDiffMutex       sync.RWMutex
+	containerDiffArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerDiffOptions
+	}
+	containerDiffReturns struct {
+		result1 client.ContainerDiffResult
+		result2 error
+	}
+	containerDiffReturnsOnCall map[int]struct {
+		result1 client.ContainerDiffResult
+		result2 error
+	}
+	ContainerExportStub        func(context.Context, string, client.ContainerExportOptions) (client.ContainerExportResult, error)
+	containerExportMutex       sync.RWMutex
+	containerExportArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerExportOptions
+	}
+	containerExportReturns struct {
+		result1 client.ContainerExportResult
+		result2 error
+	}
+	containerExportReturnsOnCall map[int]struct {
+		result1 client.ContainerExportResult
+		result2 error
+	}
+	ContainerInspectStub        func(context.Context, string, client.ContainerInspectOptions) (client.ContainerInspectResult, error)
+	containerInspectMutex       sync.RWMutex
+	containerInspectArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerInspectOptions
+	}
+	containerInspectReturns struct {
+		result1 client.ContainerInspectResult
+		result2 error
+	}
+	containerInspectReturnsOnCall map[int]struct {
+		result1 client.ContainerInspectResult
+		result2 error
+	}
+	ContainerKillStub        func(context.Context, string, client.ContainerKillOptions) (client.ContainerKillResult, error)
+	containerKillMutex       sync.RWMutex
+	containerKillArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerKillOptions
+	}
+	containerKillReturns struct {
+		result1 client.ContainerKillResult
+		result2 error
+	}
+	containerKillReturnsOnCall map[int]struct {
+		result1 client.ContainerKillResult
+		result2 error
+	}
+	ContainerListStub        func(context.Context, client.ContainerListOptions) (client.ContainerListResult, error)
+	containerListMutex       sync.RWMutex
+	containerListArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.ContainerListOptions
+	}
+	containerListReturns struct {
+		result1 client.ContainerListResult
+		result2 error
+	}
+	containerListReturnsOnCall map[int]struct {
+		result1 client.ContainerListResult
+		result2 error
+	}
+	ContainerLogsStub        func(context.Context, string, client.ContainerLogsOptions) (client.ContainerLogsResult, error)
+	containerLogsMutex       sync.RWMutex
+	containerLogsArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerLogsOptions
+	}
+	containerLogsReturns struct {
+		result1 client.ContainerLogsResult
+		result2 error
+	}
+	containerLogsReturnsOnCall map[int]struct {
+		result1 client.ContainerLogsResult
+		result2 error
+	}
+	ContainerPauseStub        func(context.Context, string, client.ContainerPauseOptions) (client.ContainerPauseResult, error)
+	containerPauseMutex       sync.RWMutex
+	containerPauseArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerPauseOptions
+	}
+	containerPauseReturns struct {
+		result1 client.ContainerPauseResult
+		result2 error
+	}
+	containerPauseReturnsOnCall map[int]struct {
+		result1 client.ContainerPauseResult
+		result2 error
+	}
+	ContainerPruneStub        func(context.Context, client.ContainerPruneOptions) (client.ContainerPruneResult, error)
+	containerPruneMutex       sync.RWMutex
+	containerPruneArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.ContainerPruneOptions
+	}
+	containerPruneReturns struct {
+		result1 client.ContainerPruneResult
+		result2 error
+	}
+	containerPruneReturnsOnCall map[int]struct {
+		result1 client.ContainerPruneResult
+		result2 error
+	}
+	ContainerRemoveStub        func(context.Context, string, client.ContainerRemoveOptions) (client.ContainerRemoveResult, error)
+	containerRemoveMutex       sync.RWMutex
+	containerRemoveArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerRemoveOptions
+	}
+	containerRemoveReturns struct {
+		result1 client.ContainerRemoveResult
+		result2 error
+	}
+	containerRemoveReturnsOnCall map[int]struct {
+		result1 client.ContainerRemoveResult
+		result2 error
+	}
+	ContainerRenameStub        func(context.Context, string, client.ContainerRenameOptions) (client.ContainerRenameResult, error)
+	containerRenameMutex       sync.RWMutex
+	containerRenameArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerRenameOptions
+	}
+	containerRenameReturns struct {
+		result1 client.ContainerRenameResult
+		result2 error
+	}
+	containerRenameReturnsOnCall map[int]struct {
+		result1 client.ContainerRenameResult
+		result2 error
+	}
+	ContainerResizeStub        func(context.Context, string, client.ContainerResizeOptions) (client.ContainerResizeResult, error)
+	containerResizeMutex       sync.RWMutex
+	containerResizeArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerResizeOptions
+	}
+	containerResizeReturns struct {
+		result1 client.ContainerResizeResult
+		result2 error
+	}
+	containerResizeReturnsOnCall map[int]struct {
+		result1 client.ContainerResizeResult
+		result2 error
+	}
+	ContainerRestartStub        func(context.Context, string, client.ContainerRestartOptions) (client.ContainerRestartResult, error)
+	containerRestartMutex       sync.RWMutex
+	containerRestartArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerRestartOptions
+	}
+	containerRestartReturns struct {
+		result1 client.ContainerRestartResult
+		result2 error
+	}
+	containerRestartReturnsOnCall map[int]struct {
+		result1 client.ContainerRestartResult
+		result2 error
+	}
+	ContainerStartStub        func(context.Context, string, client.ContainerStartOptions) (client.ContainerStartResult, error)
+	containerStartMutex       sync.RWMutex
+	containerStartArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerStartOptions
+	}
+	containerStartReturns struct {
+		result1 client.ContainerStartResult
+		result2 error
+	}
+	containerStartReturnsOnCall map[int]struct {
+		result1 client.ContainerStartResult
+		result2 error
+	}
+	ContainerStatPathStub        func(context.Context, string, client.ContainerStatPathOptions) (client.ContainerStatPathResult, error)
+	containerStatPathMutex       sync.RWMutex
+	containerStatPathArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerStatPathOptions
+	}
+	containerStatPathReturns struct {
+		result1 client.ContainerStatPathResult
+		result2 error
+	}
+	containerStatPathReturnsOnCall map[int]struct {
+		result1 client.ContainerStatPathResult
+		result2 error
+	}
+	ContainerStatsStub        func(context.Context, string, client.ContainerStatsOptions) (client.ContainerStatsResult, error)
+	containerStatsMutex       sync.RWMutex
+	containerStatsArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerStatsOptions
+	}
+	containerStatsReturns struct {
+		result1 client.ContainerStatsResult
+		result2 error
+	}
+	containerStatsReturnsOnCall map[int]struct {
+		result1 client.ContainerStatsResult
+		result2 error
+	}
+	ContainerStopStub        func(context.Context, string, client.ContainerStopOptions) (client.ContainerStopResult, error)
+	containerStopMutex       sync.RWMutex
+	containerStopArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerStopOptions
+	}
+	containerStopReturns struct {
+		result1 client.ContainerStopResult
+		result2 error
+	}
+	containerStopReturnsOnCall map[int]struct {
+		result1 client.ContainerStopResult
+		result2 error
+	}
+	ContainerTopStub        func(context.Context, string, client.ContainerTopOptions) (client.ContainerTopResult, error)
+	containerTopMutex       sync.RWMutex
+	containerTopArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerTopOptions
+	}
+	containerTopReturns struct {
+		result1 client.ContainerTopResult
+		result2 error
+	}
+	containerTopReturnsOnCall map[int]struct {
+		result1 client.ContainerTopResult
+		result2 error
+	}
+	ContainerUnpauseStub        func(context.Context, string, client.ContainerUnpauseOptions) (client.ContainerUnpauseResult, error)
+	containerUnpauseMutex       sync.RWMutex
+	containerUnpauseArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerUnpauseOptions
+	}
+	containerUnpauseReturns struct {
+		result1 client.ContainerUnpauseResult
+		result2 error
+	}
+	containerUnpauseReturnsOnCall map[int]struct {
+		result1 client.ContainerUnpauseResult
+		result2 error
+	}
+	ContainerUpdateStub        func(context.Context, string, client.ContainerUpdateOptions) (client.ContainerUpdateResult, error)
+	containerUpdateMutex       sync.RWMutex
+	containerUpdateArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerUpdateOptions
+	}
+	containerUpdateReturns struct {
+		result1 client.ContainerUpdateResult
+		result2 error
+	}
+	containerUpdateReturnsOnCall map[int]struct {
+		result1 client.ContainerUpdateResult
+		result2 error
+	}
+	ContainerWaitStub        func(context.Context, string, client.ContainerWaitOptions) client.ContainerWaitResult
+	containerWaitMutex       sync.RWMutex
+	containerWaitArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerWaitOptions
+	}
+	containerWaitReturns struct {
+		result1 client.ContainerWaitResult
+	}
+	containerWaitReturnsOnCall map[int]struct {
+		result1 client.ContainerWaitResult
+	}
+	CopyFromContainerStub        func(context.Context, string, client.CopyFromContainerOptions) (client.CopyFromContainerResult, error)
+	copyFromContainerMutex       sync.RWMutex
+	copyFromContainerArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.CopyFromContainerOptions
+	}
+	copyFromContainerReturns struct {
+		result1 client.CopyFromContainerResult
+		result2 error
+	}
+	copyFromContainerReturnsOnCall map[int]struct {
+		result1 client.CopyFromContainerResult
+		result2 error
+	}
+	CopyToContainerStub        func(context.Context, string, client.CopyToContainerOptions) (client.CopyToContainerResult, error)
+	copyToContainerMutex       sync.RWMutex
+	copyToContainerArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.CopyToContainerOptions
+	}
+	copyToContainerReturns struct {
+		result1 client.CopyToContainerResult
+		result2 error
+	}
+	copyToContainerReturnsOnCall map[int]struct {
+		result1 client.CopyToContainerResult
+		result2 error
+	}
+	DaemonHostStub        func() string
+	daemonHostMutex       sync.RWMutex
+	daemonHostArgsForCall []struct {
+	}
+	daemonHostReturns struct {
+		result1 string
+	}
+	daemonHostReturnsOnCall map[int]struct {
+		result1 string
+	}
+	DialHijackStub        func(context.Context, string, string, map[string][]string) (net.Conn, error)
+	dialHijackMutex       sync.RWMutex
+	dialHijackArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+		arg4 map[string][]string
+	}
+	dialHijackReturns struct {
+		result1 net.Conn
+		result2 error
+	}
+	dialHijackReturnsOnCall map[int]struct {
+		result1 net.Conn
+		result2 error
+	}
+	DialerStub        func() func(context.Context) (net.Conn, error)
+	dialerMutex       sync.RWMutex
+	dialerArgsForCall []struct {
+	}
+	dialerReturns struct {
+		result1 func(context.Context) (net.Conn, error)
+	}
+	dialerReturnsOnCall map[int]struct {
+		result1 func(context.Context) (net.Conn, error)
+	}
+	DiskUsageStub        func(context.Context, client.DiskUsageOptions) (client.DiskUsageResult, error)
+	diskUsageMutex       sync.RWMutex
+	diskUsageArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.DiskUsageOptions
+	}
+	diskUsageReturns struct {
+		result1 client.DiskUsageResult
+		result2 error
+	}
+	diskUsageReturnsOnCall map[int]struct {
+		result1 client.DiskUsageResult
+		result2 error
+	}
+	DistributionInspectStub        func(context.Context, string, client.DistributionInspectOptions) (client.DistributionInspectResult, error)
+	distributionInspectMutex       sync.RWMutex
+	distributionInspectArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.DistributionInspectOptions
+	}
+	distributionInspectReturns struct {
+		result1 client.DistributionInspectResult
+		result2 error
+	}
+	distributionInspectReturnsOnCall map[int]struct {
+		result1 client.DistributionInspectResult
+		result2 error
+	}
+	EventsStub        func(context.Context, client.EventsListOptions) client.EventsResult
+	eventsMutex       sync.RWMutex
+	eventsArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.EventsListOptions
+	}
+	eventsReturns struct {
+		result1 client.EventsResult
+	}
+	eventsReturnsOnCall map[int]struct {
+		result1 client.EventsResult
+	}
+	ExecAttachStub        func(context.Context, string, client.ExecAttachOptions) (client.ExecAttachResult, error)
+	execAttachMutex       sync.RWMutex
+	execAttachArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ExecAttachOptions
+	}
+	execAttachReturns struct {
+		result1 client.ExecAttachResult
+		result2 error
+	}
+	execAttachReturnsOnCall map[int]struct {
+		result1 client.ExecAttachResult
+		result2 error
+	}
+	ExecCreateStub        func(context.Context, string, client.ExecCreateOptions) (client.ExecCreateResult, error)
+	execCreateMutex       sync.RWMutex
+	execCreateArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ExecCreateOptions
+	}
+	execCreateReturns struct {
+		result1 client.ExecCreateResult
+		result2 error
+	}
+	execCreateReturnsOnCall map[int]struct {
+		result1 client.ExecCreateResult
+		result2 error
+	}
+	ExecInspectStub        func(context.Context, string, client.ExecInspectOptions) (client.ExecInspectResult, error)
+	execInspectMutex       sync.RWMutex
+	execInspectArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ExecInspectOptions
+	}
+	execInspectReturns struct {
+		result1 client.ExecInspectResult
+		result2 error
+	}
+	execInspectReturnsOnCall map[int]struct {
+		result1 client.ExecInspectResult
+		result2 error
+	}
+	ExecResizeStub        func(context.Context, string, client.ExecResizeOptions) (client.ExecResizeResult, error)
+	execResizeMutex       sync.RWMutex
+	execResizeArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ExecResizeOptions
+	}
+	execResizeReturns struct {
+		result1 client.ExecResizeResult
+		result2 error
+	}
+	execResizeReturnsOnCall map[int]struct {
+		result1 client.ExecResizeResult
+		result2 error
+	}
+	ExecStartStub        func(context.Context, string, client.ExecStartOptions) (client.ExecStartResult, error)
+	execStartMutex       sync.RWMutex
+	execStartArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ExecStartOptions
+	}
+	execStartReturns struct {
+		result1 client.ExecStartResult
+		result2 error
+	}
+	execStartReturnsOnCall map[int]struct {
+		result1 client.ExecStartResult
+		result2 error
+	}
+	ImageBuildStub        func(context.Context, io.Reader, client.ImageBuildOptions) (client.ImageBuildResult, error)
+	imageBuildMutex       sync.RWMutex
+	imageBuildArgsForCall []struct {
+		arg1 context.Context
+		arg2 io.Reader
+		arg3 client.ImageBuildOptions
+	}
+	imageBuildReturns struct {
+		result1 client.ImageBuildResult
+		result2 error
+	}
+	imageBuildReturnsOnCall map[int]struct {
+		result1 client.ImageBuildResult
+		result2 error
+	}
+	ImageHistoryStub        func(context.Context, string, ...client.ImageHistoryOption) (client.ImageHistoryResult, error)
+	imageHistoryMutex       sync.RWMutex
+	imageHistoryArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 []client.ImageHistoryOption
+	}
+	imageHistoryReturns struct {
+		result1 client.ImageHistoryResult
+		result2 error
+	}
+	imageHistoryReturnsOnCall map[int]struct {
+		result1 client.ImageHistoryResult
+		result2 error
+	}
+	ImageImportStub        func(context.Context, client.ImageImportSource, string, client.ImageImportOptions) (client.ImageImportResult, error)
+	imageImportMutex       sync.RWMutex
+	imageImportArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.ImageImportSource
+		arg3 string
+		arg4 client.ImageImportOptions
+	}
+	imageImportReturns struct {
+		result1 client.ImageImportResult
+		result2 error
+	}
+	imageImportReturnsOnCall map[int]struct {
+		result1 client.ImageImportResult
+		result2 error
+	}
+	ImageInspectStub        func(context.Context, string, ...client.ImageInspectOption) (client.ImageInspectResult, error)
+	imageInspectMutex       sync.RWMutex
+	imageInspectArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 []client.ImageInspectOption
+	}
+	imageInspectReturns struct {
+		result1 client.ImageInspectResult
+		result2 error
+	}
+	imageInspectReturnsOnCall map[int]struct {
+		result1 client.ImageInspectResult
+		result2 error
+	}
+	ImageListStub        func(context.Context, client.ImageListOptions) (client.ImageListResult, error)
+	imageListMutex       sync.RWMutex
+	imageListArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.ImageListOptions
+	}
+	imageListReturns struct {
+		result1 client.ImageListResult
+		result2 error
+	}
+	imageListReturnsOnCall map[int]struct {
+		result1 client.ImageListResult
+		result2 error
+	}
+	ImageLoadStub        func(context.Context, io.Reader, ...client.ImageLoadOption) (client.ImageLoadResult, error)
+	imageLoadMutex       sync.RWMutex
+	imageLoadArgsForCall []struct {
+		arg1 context.Context
+		arg2 io.Reader
+		arg3 []client.ImageLoadOption
+	}
+	imageLoadReturns struct {
+		result1 client.ImageLoadResult
+		result2 error
+	}
+	imageLoadReturnsOnCall map[int]struct {
+		result1 client.ImageLoadResult
+		result2 error
+	}
+	ImagePruneStub        func(context.Context, client.ImagePruneOptions) (client.ImagePruneResult, error)
+	imagePruneMutex       sync.RWMutex
+	imagePruneArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.ImagePruneOptions
+	}
+	imagePruneReturns struct {
+		result1 client.ImagePruneResult
+		result2 error
+	}
+	imagePruneReturnsOnCall map[int]struct {
+		result1 client.ImagePruneResult
+		result2 error
+	}
+	ImagePullStub        func(context.Context, string, client.ImagePullOptions) (client.ImagePullResponse, error)
+	imagePullMutex       sync.RWMutex
+	imagePullArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ImagePullOptions
+	}
+	imagePullReturns struct {
+		result1 client.ImagePullResponse
+		result2 error
+	}
+	imagePullReturnsOnCall map[int]struct {
+		result1 client.ImagePullResponse
+		result2 error
+	}
+	ImagePushStub        func(context.Context, string, client.ImagePushOptions) (client.ImagePushResponse, error)
+	imagePushMutex       sync.RWMutex
+	imagePushArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ImagePushOptions
+	}
+	imagePushReturns struct {
+		result1 client.ImagePushResponse
+		result2 error
+	}
+	imagePushReturnsOnCall map[int]struct {
+		result1 client.ImagePushResponse
+		result2 error
+	}
+	ImageRemoveStub        func(context.Context, string, client.ImageRemoveOptions) (client.ImageRemoveResult, error)
+	imageRemoveMutex       sync.RWMutex
+	imageRemoveArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ImageRemoveOptions
+	}
+	imageRemoveReturns struct {
+		result1 client.ImageRemoveResult
+		result2 error
+	}
+	imageRemoveReturnsOnCall map[int]struct {
+		result1 client.ImageRemoveResult
+		result2 error
+	}
+	ImageSaveStub        func(context.Context, []string, ...client.ImageSaveOption) (client.ImageSaveResult, error)
+	imageSaveMutex       sync.RWMutex
+	imageSaveArgsForCall []struct {
+		arg1 context.Context
+		arg2 []string
+		arg3 []client.ImageSaveOption
+	}
+	imageSaveReturns struct {
+		result1 client.ImageSaveResult
+		result2 error
+	}
+	imageSaveReturnsOnCall map[int]struct {
+		result1 client.ImageSaveResult
+		result2 error
+	}
+	ImageSearchStub        func(context.Context, string, client.ImageSearchOptions) (client.ImageSearchResult, error)
+	imageSearchMutex       sync.RWMutex
+	imageSearchArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ImageSearchOptions
+	}
+	imageSearchReturns struct {
+		result1 client.ImageSearchResult
+		result2 error
+	}
+	imageSearchReturnsOnCall map[int]struct {
+		result1 client.ImageSearchResult
+		result2 error
+	}
+	ImageTagStub        func(context.Context, client.ImageTagOptions) (client.ImageTagResult, error)
+	imageTagMutex       sync.RWMutex
+	imageTagArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.ImageTagOptions
+	}
+	imageTagReturns struct {
+		result1 client.ImageTagResult
+		result2 error
+	}
+	imageTagReturnsOnCall map[int]struct {
+		result1 client.ImageTagResult
+		result2 error
+	}
+	InfoStub        func(context.Context, client.InfoOptions) (client.SystemInfoResult, error)
+	infoMutex       sync.RWMutex
+	infoArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.InfoOptions
+	}
+	infoReturns struct {
+		result1 client.SystemInfoResult
+		result2 error
+	}
+	infoReturnsOnCall map[int]struct {
+		result1 client.SystemInfoResult
+		result2 error
+	}
+	NetworkConnectStub        func(context.Context, string, client.NetworkConnectOptions) (client.NetworkConnectResult, error)
+	networkConnectMutex       sync.RWMutex
+	networkConnectArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.NetworkConnectOptions
+	}
+	networkConnectReturns struct {
+		result1 client.NetworkConnectResult
+		result2 error
+	}
+	networkConnectReturnsOnCall map[int]struct {
+		result1 client.NetworkConnectResult
+		result2 error
+	}
+	NetworkCreateStub        func(context.Context, string, client.NetworkCreateOptions) (client.NetworkCreateResult, error)
+	networkCreateMutex       sync.RWMutex
+	networkCreateArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.NetworkCreateOptions
+	}
+	networkCreateReturns struct {
+		result1 client.NetworkCreateResult
+		result2 error
+	}
+	networkCreateReturnsOnCall map[int]struct {
+		result1 client.NetworkCreateResult
+		result2 error
+	}
+	NetworkDisconnectStub        func(context.Context, string, client.NetworkDisconnectOptions) (client.NetworkDisconnectResult, error)
+	networkDisconnectMutex       sync.RWMutex
+	networkDisconnectArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.NetworkDisconnectOptions
+	}
+	networkDisconnectReturns struct {
+		result1 client.NetworkDisconnectResult
+		result2 error
+	}
+	networkDisconnectReturnsOnCall map[int]struct {
+		result1 client.NetworkDisconnectResult
+		result2 error
+	}
+	NetworkInspectStub        func(context.Context, string, client.NetworkInspectOptions) (client.NetworkInspectResult, error)
+	networkInspectMutex       sync.RWMutex
+	networkInspectArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.NetworkInspectOptions
+	}
+	networkInspectReturns struct {
+		result1 client.NetworkInspectResult
+		result2 error
+	}
+	networkInspectReturnsOnCall map[int]struct {
+		result1 client.NetworkInspectResult
+		result2 error
+	}
+	NetworkListStub        func(context.Context, client.NetworkListOptions) (client.NetworkListResult, error)
+	networkListMutex       sync.RWMutex
+	networkListArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.NetworkListOptions
+	}
+	networkListReturns struct {
+		result1 client.NetworkListResult
+		result2 error
+	}
+	networkListReturnsOnCall map[int]struct {
+		result1 client.NetworkListResult
+		result2 error
+	}
+	NetworkPruneStub        func(context.Context, client.NetworkPruneOptions) (client.NetworkPruneResult, error)
+	networkPruneMutex       sync.RWMutex
+	networkPruneArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.NetworkPruneOptions
+	}
+	networkPruneReturns struct {
+		result1 client.NetworkPruneResult
+		result2 error
+	}
+	networkPruneReturnsOnCall map[int]struct {
+		result1 client.NetworkPruneResult
+		result2 error
+	}
+	NetworkRemoveStub        func(context.Context, string, client.NetworkRemoveOptions) (client.NetworkRemoveResult, error)
+	networkRemoveMutex       sync.RWMutex
+	networkRemoveArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.NetworkRemoveOptions
+	}
+	networkRemoveReturns struct {
+		result1 client.NetworkRemoveResult
+		result2 error
+	}
+	networkRemoveReturnsOnCall map[int]struct {
+		result1 client.NetworkRemoveResult
+		result2 error
+	}
+	NodeInspectStub        func(context.Context, string, client.NodeInspectOptions) (client.NodeInspectResult, error)
+	nodeInspectMutex       sync.RWMutex
+	nodeInspectArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.NodeInspectOptions
+	}
+	nodeInspectReturns struct {
+		result1 client.NodeInspectResult
+		result2 error
+	}
+	nodeInspectReturnsOnCall map[int]struct {
+		result1 client.NodeInspectResult
+		result2 error
+	}
+	NodeListStub        func(context.Context, client.NodeListOptions) (client.NodeListResult, error)
+	nodeListMutex       sync.RWMutex
+	nodeListArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.NodeListOptions
+	}
+	nodeListReturns struct {
+		result1 client.NodeListResult
+		result2 error
+	}
+	nodeListReturnsOnCall map[int]struct {
+		result1 client.NodeListResult
+		result2 error
+	}
+	NodeRemoveStub        func(context.Context, string, client.NodeRemoveOptions) (client.NodeRemoveResult, error)
+	nodeRemoveMutex       sync.RWMutex
+	nodeRemoveArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.NodeRemoveOptions
+	}
+	nodeRemoveReturns struct {
+		result1 client.NodeRemoveResult
+		result2 error
+	}
+	nodeRemoveReturnsOnCall map[int]struct {
+		result1 client.NodeRemoveResult
+		result2 error
+	}
+	NodeUpdateStub        func(context.Context, string, client.NodeUpdateOptions) (client.NodeUpdateResult, error)
+	nodeUpdateMutex       sync.RWMutex
+	nodeUpdateArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.NodeUpdateOptions
+	}
+	nodeUpdateReturns struct {
+		result1 client.NodeUpdateResult
+		result2 error
+	}
+	nodeUpdateReturnsOnCall map[int]struct {
+		result1 client.NodeUpdateResult
+		result2 error
+	}
+	PingStub        func(context.Context, client.PingOptions) (client.PingResult, error)
+	pingMutex       sync.RWMutex
+	pingArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.PingOptions
+	}
+	pingReturns struct {
+		result1 client.PingResult
+		result2 error
+	}
+	pingReturnsOnCall map[int]struct {
+		result1 client.PingResult
+		result2 error
+	}
+	PluginCreateStub        func(context.Context, io.Reader, client.PluginCreateOptions) (client.PluginCreateResult, error)
+	pluginCreateMutex       sync.RWMutex
+	pluginCreateArgsForCall []struct {
+		arg1 context.Context
+		arg2 io.Reader
+		arg3 client.PluginCreateOptions
+	}
+	pluginCreateReturns struct {
+		result1 client.PluginCreateResult
+		result2 error
+	}
+	pluginCreateReturnsOnCall map[int]struct {
+		result1 client.PluginCreateResult
+		result2 error
+	}
+	PluginDisableStub        func(context.Context, string, client.PluginDisableOptions) (client.PluginDisableResult, error)
+	pluginDisableMutex       sync.RWMutex
+	pluginDisableArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.PluginDisableOptions
+	}
+	pluginDisableReturns struct {
+		result1 client.PluginDisableResult
+		result2 error
+	}
+	pluginDisableReturnsOnCall map[int]struct {
+		result1 client.PluginDisableResult
+		result2 error
+	}
+	PluginEnableStub        func(context.Context, string, client.PluginEnableOptions) (client.PluginEnableResult, error)
+	pluginEnableMutex       sync.RWMutex
+	pluginEnableArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.PluginEnableOptions
+	}
+	pluginEnableReturns struct {
+		result1 client.PluginEnableResult
+		result2 error
+	}
+	pluginEnableReturnsOnCall map[int]struct {
+		result1 client.PluginEnableResult
+		result2 error
+	}
+	PluginInspectStub        func(context.Context, string, client.PluginInspectOptions) (client.PluginInspectResult, error)
+	pluginInspectMutex       sync.RWMutex
+	pluginInspectArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.PluginInspectOptions
+	}
+	pluginInspectReturns struct {
+		result1 client.PluginInspectResult
+		result2 error
+	}
+	pluginInspectReturnsOnCall map[int]struct {
+		result1 client.PluginInspectResult
+		result2 error
+	}
+	PluginInstallStub        func(context.Context, string, client.PluginInstallOptions) (client.PluginInstallResult, error)
+	pluginInstallMutex       sync.RWMutex
+	pluginInstallArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.PluginInstallOptions
+	}
+	pluginInstallReturns struct {
+		result1 client.PluginInstallResult
+		result2 error
+	}
+	pluginInstallReturnsOnCall map[int]struct {
+		result1 client.PluginInstallResult
+		result2 error
+	}
+	PluginListStub        func(context.Context, client.PluginListOptions) (client.PluginListResult, error)
+	pluginListMutex       sync.RWMutex
+	pluginListArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.PluginListOptions
+	}
+	pluginListReturns struct {
+		result1 client.PluginListResult
+		result2 error
+	}
+	pluginListReturnsOnCall map[int]struct {
+		result1 client.PluginListResult
+		result2 error
+	}
+	PluginPushStub        func(context.Context, string, client.PluginPushOptions) (client.PluginPushResult, error)
+	pluginPushMutex       sync.RWMutex
+	pluginPushArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.PluginPushOptions
+	}
+	pluginPushReturns struct {
+		result1 client.PluginPushResult
+		result2 error
+	}
+	pluginPushReturnsOnCall map[int]struct {
+		result1 client.PluginPushResult
+		result2 error
+	}
+	PluginRemoveStub        func(context.Context, string, client.PluginRemoveOptions) (client.PluginRemoveResult, error)
+	pluginRemoveMutex       sync.RWMutex
+	pluginRemoveArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.PluginRemoveOptions
+	}
+	pluginRemoveReturns struct {
+		result1 client.PluginRemoveResult
+		result2 error
+	}
+	pluginRemoveReturnsOnCall map[int]struct {
+		result1 client.PluginRemoveResult
+		result2 error
+	}
+	PluginSetStub        func(context.Context, string, client.PluginSetOptions) (client.PluginSetResult, error)
+	pluginSetMutex       sync.RWMutex
+	pluginSetArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.PluginSetOptions
+	}
+	pluginSetReturns struct {
+		result1 client.PluginSetResult
+		result2 error
+	}
+	pluginSetReturnsOnCall map[int]struct {
+		result1 client.PluginSetResult
+		result2 error
+	}
+	PluginUpgradeStub        func(context.Context, string, client.PluginUpgradeOptions) (client.PluginUpgradeResult, error)
+	pluginUpgradeMutex       sync.RWMutex
+	pluginUpgradeArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.PluginUpgradeOptions
+	}
+	pluginUpgradeReturns struct {
+		result1 client.PluginUpgradeResult
+		result2 error
+	}
+	pluginUpgradeReturnsOnCall map[int]struct {
+		result1 client.PluginUpgradeResult
+		result2 error
+	}
+	RegistryLoginStub        func(context.Context, client.RegistryLoginOptions) (client.RegistryLoginResult, error)
+	registryLoginMutex       sync.RWMutex
+	registryLoginArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.RegistryLoginOptions
+	}
+	registryLoginReturns struct {
+		result1 client.RegistryLoginResult
+		result2 error
+	}
+	registryLoginReturnsOnCall map[int]struct {
+		result1 client.RegistryLoginResult
+		result2 error
+	}
+	SecretCreateStub        func(context.Context, client.SecretCreateOptions) (client.SecretCreateResult, error)
+	secretCreateMutex       sync.RWMutex
+	secretCreateArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.SecretCreateOptions
+	}
+	secretCreateReturns struct {
+		result1 client.SecretCreateResult
+		result2 error
+	}
+	secretCreateReturnsOnCall map[int]struct {
+		result1 client.SecretCreateResult
+		result2 error
+	}
+	SecretInspectStub        func(context.Context, string, client.SecretInspectOptions) (client.SecretInspectResult, error)
+	secretInspectMutex       sync.RWMutex
+	secretInspectArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.SecretInspectOptions
+	}
+	secretInspectReturns struct {
+		result1 client.SecretInspectResult
+		result2 error
+	}
+	secretInspectReturnsOnCall map[int]struct {
+		result1 client.SecretInspectResult
+		result2 error
+	}
+	SecretListStub        func(context.Context, client.SecretListOptions) (client.SecretListResult, error)
+	secretListMutex       sync.RWMutex
+	secretListArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.SecretListOptions
+	}
+	secretListReturns struct {
+		result1 client.SecretListResult
+		result2 error
+	}
+	secretListReturnsOnCall map[int]struct {
+		result1 client.SecretListResult
+		result2 error
+	}
+	SecretRemoveStub        func(context.Context, string, client.SecretRemoveOptions) (client.SecretRemoveResult, error)
+	secretRemoveMutex       sync.RWMutex
+	secretRemoveArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.SecretRemoveOptions
+	}
+	secretRemoveReturns struct {
+		result1 client.SecretRemoveResult
+		result2 error
+	}
+	secretRemoveReturnsOnCall map[int]struct {
+		result1 client.SecretRemoveResult
+		result2 error
+	}
+	SecretUpdateStub        func(context.Context, string, client.SecretUpdateOptions) (client.SecretUpdateResult, error)
+	secretUpdateMutex       sync.RWMutex
+	secretUpdateArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.SecretUpdateOptions
+	}
+	secretUpdateReturns struct {
+		result1 client.SecretUpdateResult
+		result2 error
+	}
+	secretUpdateReturnsOnCall map[int]struct {
+		result1 client.SecretUpdateResult
+		result2 error
+	}
+	ServerVersionStub        func(context.Context, client.ServerVersionOptions) (client.ServerVersionResult, error)
+	serverVersionMutex       sync.RWMutex
+	serverVersionArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.ServerVersionOptions
+	}
+	serverVersionReturns struct {
+		result1 client.ServerVersionResult
+		result2 error
+	}
+	serverVersionReturnsOnCall map[int]struct {
+		result1 client.ServerVersionResult
+		result2 error
+	}
+	ServiceCreateStub        func(context.Context, client.ServiceCreateOptions) (client.ServiceCreateResult, error)
+	serviceCreateMutex       sync.RWMutex
+	serviceCreateArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.ServiceCreateOptions
+	}
+	serviceCreateReturns struct {
+		result1 client.ServiceCreateResult
+		result2 error
+	}
+	serviceCreateReturnsOnCall map[int]struct {
+		result1 client.ServiceCreateResult
+		result2 error
+	}
+	ServiceInspectStub        func(context.Context, string, client.ServiceInspectOptions) (client.ServiceInspectResult, error)
+	serviceInspectMutex       sync.RWMutex
+	serviceInspectArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ServiceInspectOptions
+	}
+	serviceInspectReturns struct {
+		result1 client.ServiceInspectResult
+		result2 error
+	}
+	serviceInspectReturnsOnCall map[int]struct {
+		result1 client.ServiceInspectResult
+		result2 error
+	}
+	ServiceListStub        func(context.Context, client.ServiceListOptions) (client.ServiceListResult, error)
+	serviceListMutex       sync.RWMutex
+	serviceListArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.ServiceListOptions
+	}
+	serviceListReturns struct {
+		result1 client.ServiceListResult
+		result2 error
+	}
+	serviceListReturnsOnCall map[int]struct {
+		result1 client.ServiceListResult
+		result2 error
+	}
+	ServiceLogsStub        func(context.Context, string, client.ServiceLogsOptions) (client.ServiceLogsResult, error)
+	serviceLogsMutex       sync.RWMutex
+	serviceLogsArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ServiceLogsOptions
+	}
+	serviceLogsReturns struct {
+		result1 client.ServiceLogsResult
+		result2 error
+	}
+	serviceLogsReturnsOnCall map[int]struct {
+		result1 client.ServiceLogsResult
+		result2 error
+	}
+	ServiceRemoveStub        func(context.Context, string, client.ServiceRemoveOptions) (client.ServiceRemoveResult, error)
+	serviceRemoveMutex       sync.RWMutex
+	serviceRemoveArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ServiceRemoveOptions
+	}
+	serviceRemoveReturns struct {
+		result1 client.ServiceRemoveResult
+		result2 error
+	}
+	serviceRemoveReturnsOnCall map[int]struct {
+		result1 client.ServiceRemoveResult
+		result2 error
+	}
+	ServiceUpdateStub        func(context.Context, string, client.ServiceUpdateOptions) (client.ServiceUpdateResult, error)
+	serviceUpdateMutex       sync.RWMutex
+	serviceUpdateArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ServiceUpdateOptions
+	}
+	serviceUpdateReturns struct {
+		result1 client.ServiceUpdateResult
+		result2 error
+	}
+	serviceUpdateReturnsOnCall map[int]struct {
+		result1 client.ServiceUpdateResult
+		result2 error
+	}
+	SwarmGetUnlockKeyStub        func(context.Context) (client.SwarmGetUnlockKeyResult, error)
+	swarmGetUnlockKeyMutex       sync.RWMutex
+	swarmGetUnlockKeyArgsForCall []struct {
 		arg1 context.Context
 	}
-	pingWithContextReturns struct {
-		result1 error
-	}
-	pingWithContextReturnsOnCall map[int]struct {
-		result1 error
-	}
-	RemoveContainerStub        func(docker.RemoveContainerOptions) error
-	removeContainerMutex       sync.RWMutex
-	removeContainerArgsForCall []struct {
-		arg1 docker.RemoveContainerOptions
-	}
-	removeContainerReturns struct {
-		result1 error
-	}
-	removeContainerReturnsOnCall map[int]struct {
-		result1 error
-	}
-	StartContainerStub        func(string, *docker.HostConfig) error
-	startContainerMutex       sync.RWMutex
-	startContainerArgsForCall []struct {
-		arg1 string
-		arg2 *docker.HostConfig
-	}
-	startContainerReturns struct {
-		result1 error
-	}
-	startContainerReturnsOnCall map[int]struct {
-		result1 error
-	}
-	StopContainerStub        func(string, uint) error
-	stopContainerMutex       sync.RWMutex
-	stopContainerArgsForCall []struct {
-		arg1 string
-		arg2 uint
-	}
-	stopContainerReturns struct {
-		result1 error
-	}
-	stopContainerReturnsOnCall map[int]struct {
-		result1 error
-	}
-	UploadToContainerStub        func(string, docker.UploadToContainerOptions) error
-	uploadToContainerMutex       sync.RWMutex
-	uploadToContainerArgsForCall []struct {
-		arg1 string
-		arg2 docker.UploadToContainerOptions
-	}
-	uploadToContainerReturns struct {
-		result1 error
-	}
-	uploadToContainerReturnsOnCall map[int]struct {
-		result1 error
-	}
-	WaitContainerStub        func(string) (int, error)
-	waitContainerMutex       sync.RWMutex
-	waitContainerArgsForCall []struct {
-		arg1 string
-	}
-	waitContainerReturns struct {
-		result1 int
+	swarmGetUnlockKeyReturns struct {
+		result1 client.SwarmGetUnlockKeyResult
 		result2 error
 	}
-	waitContainerReturnsOnCall map[int]struct {
-		result1 int
+	swarmGetUnlockKeyReturnsOnCall map[int]struct {
+		result1 client.SwarmGetUnlockKeyResult
+		result2 error
+	}
+	SwarmInitStub        func(context.Context, client.SwarmInitOptions) (client.SwarmInitResult, error)
+	swarmInitMutex       sync.RWMutex
+	swarmInitArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.SwarmInitOptions
+	}
+	swarmInitReturns struct {
+		result1 client.SwarmInitResult
+		result2 error
+	}
+	swarmInitReturnsOnCall map[int]struct {
+		result1 client.SwarmInitResult
+		result2 error
+	}
+	SwarmInspectStub        func(context.Context, client.SwarmInspectOptions) (client.SwarmInspectResult, error)
+	swarmInspectMutex       sync.RWMutex
+	swarmInspectArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.SwarmInspectOptions
+	}
+	swarmInspectReturns struct {
+		result1 client.SwarmInspectResult
+		result2 error
+	}
+	swarmInspectReturnsOnCall map[int]struct {
+		result1 client.SwarmInspectResult
+		result2 error
+	}
+	SwarmJoinStub        func(context.Context, client.SwarmJoinOptions) (client.SwarmJoinResult, error)
+	swarmJoinMutex       sync.RWMutex
+	swarmJoinArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.SwarmJoinOptions
+	}
+	swarmJoinReturns struct {
+		result1 client.SwarmJoinResult
+		result2 error
+	}
+	swarmJoinReturnsOnCall map[int]struct {
+		result1 client.SwarmJoinResult
+		result2 error
+	}
+	SwarmLeaveStub        func(context.Context, client.SwarmLeaveOptions) (client.SwarmLeaveResult, error)
+	swarmLeaveMutex       sync.RWMutex
+	swarmLeaveArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.SwarmLeaveOptions
+	}
+	swarmLeaveReturns struct {
+		result1 client.SwarmLeaveResult
+		result2 error
+	}
+	swarmLeaveReturnsOnCall map[int]struct {
+		result1 client.SwarmLeaveResult
+		result2 error
+	}
+	SwarmUnlockStub        func(context.Context, client.SwarmUnlockOptions) (client.SwarmUnlockResult, error)
+	swarmUnlockMutex       sync.RWMutex
+	swarmUnlockArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.SwarmUnlockOptions
+	}
+	swarmUnlockReturns struct {
+		result1 client.SwarmUnlockResult
+		result2 error
+	}
+	swarmUnlockReturnsOnCall map[int]struct {
+		result1 client.SwarmUnlockResult
+		result2 error
+	}
+	SwarmUpdateStub        func(context.Context, client.SwarmUpdateOptions) (client.SwarmUpdateResult, error)
+	swarmUpdateMutex       sync.RWMutex
+	swarmUpdateArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.SwarmUpdateOptions
+	}
+	swarmUpdateReturns struct {
+		result1 client.SwarmUpdateResult
+		result2 error
+	}
+	swarmUpdateReturnsOnCall map[int]struct {
+		result1 client.SwarmUpdateResult
+		result2 error
+	}
+	TaskInspectStub        func(context.Context, string, client.TaskInspectOptions) (client.TaskInspectResult, error)
+	taskInspectMutex       sync.RWMutex
+	taskInspectArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.TaskInspectOptions
+	}
+	taskInspectReturns struct {
+		result1 client.TaskInspectResult
+		result2 error
+	}
+	taskInspectReturnsOnCall map[int]struct {
+		result1 client.TaskInspectResult
+		result2 error
+	}
+	TaskListStub        func(context.Context, client.TaskListOptions) (client.TaskListResult, error)
+	taskListMutex       sync.RWMutex
+	taskListArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.TaskListOptions
+	}
+	taskListReturns struct {
+		result1 client.TaskListResult
+		result2 error
+	}
+	taskListReturnsOnCall map[int]struct {
+		result1 client.TaskListResult
+		result2 error
+	}
+	TaskLogsStub        func(context.Context, string, client.TaskLogsOptions) (client.TaskLogsResult, error)
+	taskLogsMutex       sync.RWMutex
+	taskLogsArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.TaskLogsOptions
+	}
+	taskLogsReturns struct {
+		result1 client.TaskLogsResult
+		result2 error
+	}
+	taskLogsReturnsOnCall map[int]struct {
+		result1 client.TaskLogsResult
+		result2 error
+	}
+	VolumeCreateStub        func(context.Context, client.VolumeCreateOptions) (client.VolumeCreateResult, error)
+	volumeCreateMutex       sync.RWMutex
+	volumeCreateArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.VolumeCreateOptions
+	}
+	volumeCreateReturns struct {
+		result1 client.VolumeCreateResult
+		result2 error
+	}
+	volumeCreateReturnsOnCall map[int]struct {
+		result1 client.VolumeCreateResult
+		result2 error
+	}
+	VolumeInspectStub        func(context.Context, string, client.VolumeInspectOptions) (client.VolumeInspectResult, error)
+	volumeInspectMutex       sync.RWMutex
+	volumeInspectArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.VolumeInspectOptions
+	}
+	volumeInspectReturns struct {
+		result1 client.VolumeInspectResult
+		result2 error
+	}
+	volumeInspectReturnsOnCall map[int]struct {
+		result1 client.VolumeInspectResult
+		result2 error
+	}
+	VolumeListStub        func(context.Context, client.VolumeListOptions) (client.VolumeListResult, error)
+	volumeListMutex       sync.RWMutex
+	volumeListArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.VolumeListOptions
+	}
+	volumeListReturns struct {
+		result1 client.VolumeListResult
+		result2 error
+	}
+	volumeListReturnsOnCall map[int]struct {
+		result1 client.VolumeListResult
+		result2 error
+	}
+	VolumePruneStub        func(context.Context, client.VolumePruneOptions) (client.VolumePruneResult, error)
+	volumePruneMutex       sync.RWMutex
+	volumePruneArgsForCall []struct {
+		arg1 context.Context
+		arg2 client.VolumePruneOptions
+	}
+	volumePruneReturns struct {
+		result1 client.VolumePruneResult
+		result2 error
+	}
+	volumePruneReturnsOnCall map[int]struct {
+		result1 client.VolumePruneResult
+		result2 error
+	}
+	VolumeRemoveStub        func(context.Context, string, client.VolumeRemoveOptions) (client.VolumeRemoveResult, error)
+	volumeRemoveMutex       sync.RWMutex
+	volumeRemoveArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.VolumeRemoveOptions
+	}
+	volumeRemoveReturns struct {
+		result1 client.VolumeRemoveResult
+		result2 error
+	}
+	volumeRemoveReturnsOnCall map[int]struct {
+		result1 client.VolumeRemoveResult
+		result2 error
+	}
+	VolumeUpdateStub        func(context.Context, string, client.VolumeUpdateOptions) (client.VolumeUpdateResult, error)
+	volumeUpdateMutex       sync.RWMutex
+	volumeUpdateArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.VolumeUpdateOptions
+	}
+	volumeUpdateReturns struct {
+		result1 client.VolumeUpdateResult
+		result2 error
+	}
+	volumeUpdateReturnsOnCall map[int]struct {
+		result1 client.VolumeUpdateResult
 		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *DockerClient) AttachToContainer(arg1 docker.AttachToContainerOptions) error {
-	fake.attachToContainerMutex.Lock()
-	ret, specificReturn := fake.attachToContainerReturnsOnCall[len(fake.attachToContainerArgsForCall)]
-	fake.attachToContainerArgsForCall = append(fake.attachToContainerArgsForCall, struct {
-		arg1 docker.AttachToContainerOptions
-	}{arg1})
-	fake.recordInvocation("AttachToContainer", []interface{}{arg1})
-	fake.attachToContainerMutex.Unlock()
-	if fake.AttachToContainerStub != nil {
-		return fake.AttachToContainerStub(arg1)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.attachToContainerReturns
-	return fakeReturns.result1
-}
-
-func (fake *DockerClient) AttachToContainerCallCount() int {
-	fake.attachToContainerMutex.RLock()
-	defer fake.attachToContainerMutex.RUnlock()
-	return len(fake.attachToContainerArgsForCall)
-}
-
-func (fake *DockerClient) AttachToContainerCalls(stub func(docker.AttachToContainerOptions) error) {
-	fake.attachToContainerMutex.Lock()
-	defer fake.attachToContainerMutex.Unlock()
-	fake.AttachToContainerStub = stub
-}
-
-func (fake *DockerClient) AttachToContainerArgsForCall(i int) docker.AttachToContainerOptions {
-	fake.attachToContainerMutex.RLock()
-	defer fake.attachToContainerMutex.RUnlock()
-	argsForCall := fake.attachToContainerArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *DockerClient) AttachToContainerReturns(result1 error) {
-	fake.attachToContainerMutex.Lock()
-	defer fake.attachToContainerMutex.Unlock()
-	fake.AttachToContainerStub = nil
-	fake.attachToContainerReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *DockerClient) AttachToContainerReturnsOnCall(i int, result1 error) {
-	fake.attachToContainerMutex.Lock()
-	defer fake.attachToContainerMutex.Unlock()
-	fake.AttachToContainerStub = nil
-	if fake.attachToContainerReturnsOnCall == nil {
-		fake.attachToContainerReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.attachToContainerReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *DockerClient) BuildImage(arg1 docker.BuildImageOptions) error {
-	fake.buildImageMutex.Lock()
-	ret, specificReturn := fake.buildImageReturnsOnCall[len(fake.buildImageArgsForCall)]
-	fake.buildImageArgsForCall = append(fake.buildImageArgsForCall, struct {
-		arg1 docker.BuildImageOptions
-	}{arg1})
-	fake.recordInvocation("BuildImage", []interface{}{arg1})
-	fake.buildImageMutex.Unlock()
-	if fake.BuildImageStub != nil {
-		return fake.BuildImageStub(arg1)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.buildImageReturns
-	return fakeReturns.result1
-}
-
-func (fake *DockerClient) BuildImageCallCount() int {
-	fake.buildImageMutex.RLock()
-	defer fake.buildImageMutex.RUnlock()
-	return len(fake.buildImageArgsForCall)
-}
-
-func (fake *DockerClient) BuildImageCalls(stub func(docker.BuildImageOptions) error) {
-	fake.buildImageMutex.Lock()
-	defer fake.buildImageMutex.Unlock()
-	fake.BuildImageStub = stub
-}
-
-func (fake *DockerClient) BuildImageArgsForCall(i int) docker.BuildImageOptions {
-	fake.buildImageMutex.RLock()
-	defer fake.buildImageMutex.RUnlock()
-	argsForCall := fake.buildImageArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *DockerClient) BuildImageReturns(result1 error) {
-	fake.buildImageMutex.Lock()
-	defer fake.buildImageMutex.Unlock()
-	fake.BuildImageStub = nil
-	fake.buildImageReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *DockerClient) BuildImageReturnsOnCall(i int, result1 error) {
-	fake.buildImageMutex.Lock()
-	defer fake.buildImageMutex.Unlock()
-	fake.BuildImageStub = nil
-	if fake.buildImageReturnsOnCall == nil {
-		fake.buildImageReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.buildImageReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *DockerClient) CreateContainer(arg1 docker.CreateContainerOptions) (*docker.Container, error) {
-	fake.createContainerMutex.Lock()
-	ret, specificReturn := fake.createContainerReturnsOnCall[len(fake.createContainerArgsForCall)]
-	fake.createContainerArgsForCall = append(fake.createContainerArgsForCall, struct {
-		arg1 docker.CreateContainerOptions
-	}{arg1})
-	fake.recordInvocation("CreateContainer", []interface{}{arg1})
-	fake.createContainerMutex.Unlock()
-	if fake.CreateContainerStub != nil {
-		return fake.CreateContainerStub(arg1)
+func (fake *DockerClient) BuildCachePrune(arg1 context.Context, arg2 client.BuildCachePruneOptions) (client.BuildCachePruneResult, error) {
+	fake.buildCachePruneMutex.Lock()
+	ret, specificReturn := fake.buildCachePruneReturnsOnCall[len(fake.buildCachePruneArgsForCall)]
+	fake.buildCachePruneArgsForCall = append(fake.buildCachePruneArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.BuildCachePruneOptions
+	}{arg1, arg2})
+	stub := fake.BuildCachePruneStub
+	fakeReturns := fake.buildCachePruneReturns
+	fake.recordInvocation("BuildCachePrune", []interface{}{arg1, arg2})
+	fake.buildCachePruneMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.createContainerReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *DockerClient) CreateContainerCallCount() int {
-	fake.createContainerMutex.RLock()
-	defer fake.createContainerMutex.RUnlock()
-	return len(fake.createContainerArgsForCall)
+func (fake *DockerClient) BuildCachePruneCallCount() int {
+	fake.buildCachePruneMutex.RLock()
+	defer fake.buildCachePruneMutex.RUnlock()
+	return len(fake.buildCachePruneArgsForCall)
 }
 
-func (fake *DockerClient) CreateContainerCalls(stub func(docker.CreateContainerOptions) (*docker.Container, error)) {
-	fake.createContainerMutex.Lock()
-	defer fake.createContainerMutex.Unlock()
-	fake.CreateContainerStub = stub
+func (fake *DockerClient) BuildCachePruneCalls(stub func(context.Context, client.BuildCachePruneOptions) (client.BuildCachePruneResult, error)) {
+	fake.buildCachePruneMutex.Lock()
+	defer fake.buildCachePruneMutex.Unlock()
+	fake.BuildCachePruneStub = stub
 }
 
-func (fake *DockerClient) CreateContainerArgsForCall(i int) docker.CreateContainerOptions {
-	fake.createContainerMutex.RLock()
-	defer fake.createContainerMutex.RUnlock()
-	argsForCall := fake.createContainerArgsForCall[i]
-	return argsForCall.arg1
+func (fake *DockerClient) BuildCachePruneArgsForCall(i int) (context.Context, client.BuildCachePruneOptions) {
+	fake.buildCachePruneMutex.RLock()
+	defer fake.buildCachePruneMutex.RUnlock()
+	argsForCall := fake.buildCachePruneArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *DockerClient) CreateContainerReturns(result1 *docker.Container, result2 error) {
-	fake.createContainerMutex.Lock()
-	defer fake.createContainerMutex.Unlock()
-	fake.CreateContainerStub = nil
-	fake.createContainerReturns = struct {
-		result1 *docker.Container
+func (fake *DockerClient) BuildCachePruneReturns(result1 client.BuildCachePruneResult, result2 error) {
+	fake.buildCachePruneMutex.Lock()
+	defer fake.buildCachePruneMutex.Unlock()
+	fake.BuildCachePruneStub = nil
+	fake.buildCachePruneReturns = struct {
+		result1 client.BuildCachePruneResult
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *DockerClient) CreateContainerReturnsOnCall(i int, result1 *docker.Container, result2 error) {
-	fake.createContainerMutex.Lock()
-	defer fake.createContainerMutex.Unlock()
-	fake.CreateContainerStub = nil
-	if fake.createContainerReturnsOnCall == nil {
-		fake.createContainerReturnsOnCall = make(map[int]struct {
-			result1 *docker.Container
+func (fake *DockerClient) BuildCachePruneReturnsOnCall(i int, result1 client.BuildCachePruneResult, result2 error) {
+	fake.buildCachePruneMutex.Lock()
+	defer fake.buildCachePruneMutex.Unlock()
+	fake.BuildCachePruneStub = nil
+	if fake.buildCachePruneReturnsOnCall == nil {
+		fake.buildCachePruneReturnsOnCall = make(map[int]struct {
+			result1 client.BuildCachePruneResult
 			result2 error
 		})
 	}
-	fake.createContainerReturnsOnCall[i] = struct {
-		result1 *docker.Container
+	fake.buildCachePruneReturnsOnCall[i] = struct {
+		result1 client.BuildCachePruneResult
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *DockerClient) InspectImage(arg1 string) (*docker.Image, error) {
-	fake.inspectImageMutex.Lock()
-	ret, specificReturn := fake.inspectImageReturnsOnCall[len(fake.inspectImageArgsForCall)]
-	fake.inspectImageArgsForCall = append(fake.inspectImageArgsForCall, struct {
-		arg1 string
-	}{arg1})
-	fake.recordInvocation("InspectImage", []interface{}{arg1})
-	fake.inspectImageMutex.Unlock()
-	if fake.InspectImageStub != nil {
-		return fake.InspectImageStub(arg1)
+func (fake *DockerClient) BuildCancel(arg1 context.Context, arg2 string, arg3 client.BuildCancelOptions) (client.BuildCancelResult, error) {
+	fake.buildCancelMutex.Lock()
+	ret, specificReturn := fake.buildCancelReturnsOnCall[len(fake.buildCancelArgsForCall)]
+	fake.buildCancelArgsForCall = append(fake.buildCancelArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.BuildCancelOptions
+	}{arg1, arg2, arg3})
+	stub := fake.BuildCancelStub
+	fakeReturns := fake.buildCancelReturns
+	fake.recordInvocation("BuildCancel", []interface{}{arg1, arg2, arg3})
+	fake.buildCancelMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.inspectImageReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *DockerClient) InspectImageCallCount() int {
-	fake.inspectImageMutex.RLock()
-	defer fake.inspectImageMutex.RUnlock()
-	return len(fake.inspectImageArgsForCall)
+func (fake *DockerClient) BuildCancelCallCount() int {
+	fake.buildCancelMutex.RLock()
+	defer fake.buildCancelMutex.RUnlock()
+	return len(fake.buildCancelArgsForCall)
 }
 
-func (fake *DockerClient) InspectImageCalls(stub func(string) (*docker.Image, error)) {
-	fake.inspectImageMutex.Lock()
-	defer fake.inspectImageMutex.Unlock()
-	fake.InspectImageStub = stub
+func (fake *DockerClient) BuildCancelCalls(stub func(context.Context, string, client.BuildCancelOptions) (client.BuildCancelResult, error)) {
+	fake.buildCancelMutex.Lock()
+	defer fake.buildCancelMutex.Unlock()
+	fake.BuildCancelStub = stub
 }
 
-func (fake *DockerClient) InspectImageArgsForCall(i int) string {
-	fake.inspectImageMutex.RLock()
-	defer fake.inspectImageMutex.RUnlock()
-	argsForCall := fake.inspectImageArgsForCall[i]
-	return argsForCall.arg1
+func (fake *DockerClient) BuildCancelArgsForCall(i int) (context.Context, string, client.BuildCancelOptions) {
+	fake.buildCancelMutex.RLock()
+	defer fake.buildCancelMutex.RUnlock()
+	argsForCall := fake.buildCancelArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *DockerClient) InspectImageReturns(result1 *docker.Image, result2 error) {
-	fake.inspectImageMutex.Lock()
-	defer fake.inspectImageMutex.Unlock()
-	fake.InspectImageStub = nil
-	fake.inspectImageReturns = struct {
-		result1 *docker.Image
+func (fake *DockerClient) BuildCancelReturns(result1 client.BuildCancelResult, result2 error) {
+	fake.buildCancelMutex.Lock()
+	defer fake.buildCancelMutex.Unlock()
+	fake.BuildCancelStub = nil
+	fake.buildCancelReturns = struct {
+		result1 client.BuildCancelResult
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *DockerClient) InspectImageReturnsOnCall(i int, result1 *docker.Image, result2 error) {
-	fake.inspectImageMutex.Lock()
-	defer fake.inspectImageMutex.Unlock()
-	fake.InspectImageStub = nil
-	if fake.inspectImageReturnsOnCall == nil {
-		fake.inspectImageReturnsOnCall = make(map[int]struct {
-			result1 *docker.Image
+func (fake *DockerClient) BuildCancelReturnsOnCall(i int, result1 client.BuildCancelResult, result2 error) {
+	fake.buildCancelMutex.Lock()
+	defer fake.buildCancelMutex.Unlock()
+	fake.BuildCancelStub = nil
+	if fake.buildCancelReturnsOnCall == nil {
+		fake.buildCancelReturnsOnCall = make(map[int]struct {
+			result1 client.BuildCancelResult
 			result2 error
 		})
 	}
-	fake.inspectImageReturnsOnCall[i] = struct {
-		result1 *docker.Image
+	fake.buildCancelReturnsOnCall[i] = struct {
+		result1 client.BuildCancelResult
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *DockerClient) KillContainer(arg1 docker.KillContainerOptions) error {
-	fake.killContainerMutex.Lock()
-	ret, specificReturn := fake.killContainerReturnsOnCall[len(fake.killContainerArgsForCall)]
-	fake.killContainerArgsForCall = append(fake.killContainerArgsForCall, struct {
-		arg1 docker.KillContainerOptions
-	}{arg1})
-	fake.recordInvocation("KillContainer", []interface{}{arg1})
-	fake.killContainerMutex.Unlock()
-	if fake.KillContainerStub != nil {
-		return fake.KillContainerStub(arg1)
+func (fake *DockerClient) CheckpointCreate(arg1 context.Context, arg2 string, arg3 client.CheckpointCreateOptions) (client.CheckpointCreateResult, error) {
+	fake.checkpointCreateMutex.Lock()
+	ret, specificReturn := fake.checkpointCreateReturnsOnCall[len(fake.checkpointCreateArgsForCall)]
+	fake.checkpointCreateArgsForCall = append(fake.checkpointCreateArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.CheckpointCreateOptions
+	}{arg1, arg2, arg3})
+	stub := fake.CheckpointCreateStub
+	fakeReturns := fake.checkpointCreateReturns
+	fake.recordInvocation("CheckpointCreate", []interface{}{arg1, arg2, arg3})
+	fake.checkpointCreateMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) CheckpointCreateCallCount() int {
+	fake.checkpointCreateMutex.RLock()
+	defer fake.checkpointCreateMutex.RUnlock()
+	return len(fake.checkpointCreateArgsForCall)
+}
+
+func (fake *DockerClient) CheckpointCreateCalls(stub func(context.Context, string, client.CheckpointCreateOptions) (client.CheckpointCreateResult, error)) {
+	fake.checkpointCreateMutex.Lock()
+	defer fake.checkpointCreateMutex.Unlock()
+	fake.CheckpointCreateStub = stub
+}
+
+func (fake *DockerClient) CheckpointCreateArgsForCall(i int) (context.Context, string, client.CheckpointCreateOptions) {
+	fake.checkpointCreateMutex.RLock()
+	defer fake.checkpointCreateMutex.RUnlock()
+	argsForCall := fake.checkpointCreateArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) CheckpointCreateReturns(result1 client.CheckpointCreateResult, result2 error) {
+	fake.checkpointCreateMutex.Lock()
+	defer fake.checkpointCreateMutex.Unlock()
+	fake.CheckpointCreateStub = nil
+	fake.checkpointCreateReturns = struct {
+		result1 client.CheckpointCreateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) CheckpointCreateReturnsOnCall(i int, result1 client.CheckpointCreateResult, result2 error) {
+	fake.checkpointCreateMutex.Lock()
+	defer fake.checkpointCreateMutex.Unlock()
+	fake.CheckpointCreateStub = nil
+	if fake.checkpointCreateReturnsOnCall == nil {
+		fake.checkpointCreateReturnsOnCall = make(map[int]struct {
+			result1 client.CheckpointCreateResult
+			result2 error
+		})
+	}
+	fake.checkpointCreateReturnsOnCall[i] = struct {
+		result1 client.CheckpointCreateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) CheckpointList(arg1 context.Context, arg2 string, arg3 client.CheckpointListOptions) (client.CheckpointListResult, error) {
+	fake.checkpointListMutex.Lock()
+	ret, specificReturn := fake.checkpointListReturnsOnCall[len(fake.checkpointListArgsForCall)]
+	fake.checkpointListArgsForCall = append(fake.checkpointListArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.CheckpointListOptions
+	}{arg1, arg2, arg3})
+	stub := fake.CheckpointListStub
+	fakeReturns := fake.checkpointListReturns
+	fake.recordInvocation("CheckpointList", []interface{}{arg1, arg2, arg3})
+	fake.checkpointListMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) CheckpointListCallCount() int {
+	fake.checkpointListMutex.RLock()
+	defer fake.checkpointListMutex.RUnlock()
+	return len(fake.checkpointListArgsForCall)
+}
+
+func (fake *DockerClient) CheckpointListCalls(stub func(context.Context, string, client.CheckpointListOptions) (client.CheckpointListResult, error)) {
+	fake.checkpointListMutex.Lock()
+	defer fake.checkpointListMutex.Unlock()
+	fake.CheckpointListStub = stub
+}
+
+func (fake *DockerClient) CheckpointListArgsForCall(i int) (context.Context, string, client.CheckpointListOptions) {
+	fake.checkpointListMutex.RLock()
+	defer fake.checkpointListMutex.RUnlock()
+	argsForCall := fake.checkpointListArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) CheckpointListReturns(result1 client.CheckpointListResult, result2 error) {
+	fake.checkpointListMutex.Lock()
+	defer fake.checkpointListMutex.Unlock()
+	fake.CheckpointListStub = nil
+	fake.checkpointListReturns = struct {
+		result1 client.CheckpointListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) CheckpointListReturnsOnCall(i int, result1 client.CheckpointListResult, result2 error) {
+	fake.checkpointListMutex.Lock()
+	defer fake.checkpointListMutex.Unlock()
+	fake.CheckpointListStub = nil
+	if fake.checkpointListReturnsOnCall == nil {
+		fake.checkpointListReturnsOnCall = make(map[int]struct {
+			result1 client.CheckpointListResult
+			result2 error
+		})
+	}
+	fake.checkpointListReturnsOnCall[i] = struct {
+		result1 client.CheckpointListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) CheckpointRemove(arg1 context.Context, arg2 string, arg3 client.CheckpointRemoveOptions) (client.CheckpointRemoveResult, error) {
+	fake.checkpointRemoveMutex.Lock()
+	ret, specificReturn := fake.checkpointRemoveReturnsOnCall[len(fake.checkpointRemoveArgsForCall)]
+	fake.checkpointRemoveArgsForCall = append(fake.checkpointRemoveArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.CheckpointRemoveOptions
+	}{arg1, arg2, arg3})
+	stub := fake.CheckpointRemoveStub
+	fakeReturns := fake.checkpointRemoveReturns
+	fake.recordInvocation("CheckpointRemove", []interface{}{arg1, arg2, arg3})
+	fake.checkpointRemoveMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) CheckpointRemoveCallCount() int {
+	fake.checkpointRemoveMutex.RLock()
+	defer fake.checkpointRemoveMutex.RUnlock()
+	return len(fake.checkpointRemoveArgsForCall)
+}
+
+func (fake *DockerClient) CheckpointRemoveCalls(stub func(context.Context, string, client.CheckpointRemoveOptions) (client.CheckpointRemoveResult, error)) {
+	fake.checkpointRemoveMutex.Lock()
+	defer fake.checkpointRemoveMutex.Unlock()
+	fake.CheckpointRemoveStub = stub
+}
+
+func (fake *DockerClient) CheckpointRemoveArgsForCall(i int) (context.Context, string, client.CheckpointRemoveOptions) {
+	fake.checkpointRemoveMutex.RLock()
+	defer fake.checkpointRemoveMutex.RUnlock()
+	argsForCall := fake.checkpointRemoveArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) CheckpointRemoveReturns(result1 client.CheckpointRemoveResult, result2 error) {
+	fake.checkpointRemoveMutex.Lock()
+	defer fake.checkpointRemoveMutex.Unlock()
+	fake.CheckpointRemoveStub = nil
+	fake.checkpointRemoveReturns = struct {
+		result1 client.CheckpointRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) CheckpointRemoveReturnsOnCall(i int, result1 client.CheckpointRemoveResult, result2 error) {
+	fake.checkpointRemoveMutex.Lock()
+	defer fake.checkpointRemoveMutex.Unlock()
+	fake.CheckpointRemoveStub = nil
+	if fake.checkpointRemoveReturnsOnCall == nil {
+		fake.checkpointRemoveReturnsOnCall = make(map[int]struct {
+			result1 client.CheckpointRemoveResult
+			result2 error
+		})
+	}
+	fake.checkpointRemoveReturnsOnCall[i] = struct {
+		result1 client.CheckpointRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ClientVersion() string {
+	fake.clientVersionMutex.Lock()
+	ret, specificReturn := fake.clientVersionReturnsOnCall[len(fake.clientVersionArgsForCall)]
+	fake.clientVersionArgsForCall = append(fake.clientVersionArgsForCall, struct {
+	}{})
+	stub := fake.ClientVersionStub
+	fakeReturns := fake.clientVersionReturns
+	fake.recordInvocation("ClientVersion", []interface{}{})
+	fake.clientVersionMutex.Unlock()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.killContainerReturns
 	return fakeReturns.result1
 }
 
-func (fake *DockerClient) KillContainerCallCount() int {
-	fake.killContainerMutex.RLock()
-	defer fake.killContainerMutex.RUnlock()
-	return len(fake.killContainerArgsForCall)
+func (fake *DockerClient) ClientVersionCallCount() int {
+	fake.clientVersionMutex.RLock()
+	defer fake.clientVersionMutex.RUnlock()
+	return len(fake.clientVersionArgsForCall)
 }
 
-func (fake *DockerClient) KillContainerCalls(stub func(docker.KillContainerOptions) error) {
-	fake.killContainerMutex.Lock()
-	defer fake.killContainerMutex.Unlock()
-	fake.KillContainerStub = stub
+func (fake *DockerClient) ClientVersionCalls(stub func() string) {
+	fake.clientVersionMutex.Lock()
+	defer fake.clientVersionMutex.Unlock()
+	fake.ClientVersionStub = stub
 }
 
-func (fake *DockerClient) KillContainerArgsForCall(i int) docker.KillContainerOptions {
-	fake.killContainerMutex.RLock()
-	defer fake.killContainerMutex.RUnlock()
-	argsForCall := fake.killContainerArgsForCall[i]
-	return argsForCall.arg1
+func (fake *DockerClient) ClientVersionReturns(result1 string) {
+	fake.clientVersionMutex.Lock()
+	defer fake.clientVersionMutex.Unlock()
+	fake.ClientVersionStub = nil
+	fake.clientVersionReturns = struct {
+		result1 string
+	}{result1}
 }
 
-func (fake *DockerClient) KillContainerReturns(result1 error) {
-	fake.killContainerMutex.Lock()
-	defer fake.killContainerMutex.Unlock()
-	fake.KillContainerStub = nil
-	fake.killContainerReturns = struct {
+func (fake *DockerClient) ClientVersionReturnsOnCall(i int, result1 string) {
+	fake.clientVersionMutex.Lock()
+	defer fake.clientVersionMutex.Unlock()
+	fake.ClientVersionStub = nil
+	if fake.clientVersionReturnsOnCall == nil {
+		fake.clientVersionReturnsOnCall = make(map[int]struct {
+			result1 string
+		})
+	}
+	fake.clientVersionReturnsOnCall[i] = struct {
+		result1 string
+	}{result1}
+}
+
+func (fake *DockerClient) Close() error {
+	fake.closeMutex.Lock()
+	ret, specificReturn := fake.closeReturnsOnCall[len(fake.closeArgsForCall)]
+	fake.closeArgsForCall = append(fake.closeArgsForCall, struct {
+	}{})
+	stub := fake.CloseStub
+	fakeReturns := fake.closeReturns
+	fake.recordInvocation("Close", []interface{}{})
+	fake.closeMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *DockerClient) CloseCallCount() int {
+	fake.closeMutex.RLock()
+	defer fake.closeMutex.RUnlock()
+	return len(fake.closeArgsForCall)
+}
+
+func (fake *DockerClient) CloseCalls(stub func() error) {
+	fake.closeMutex.Lock()
+	defer fake.closeMutex.Unlock()
+	fake.CloseStub = stub
+}
+
+func (fake *DockerClient) CloseReturns(result1 error) {
+	fake.closeMutex.Lock()
+	defer fake.closeMutex.Unlock()
+	fake.CloseStub = nil
+	fake.closeReturns = struct {
 		result1 error
 	}{result1}
 }
 
-func (fake *DockerClient) KillContainerReturnsOnCall(i int, result1 error) {
-	fake.killContainerMutex.Lock()
-	defer fake.killContainerMutex.Unlock()
-	fake.KillContainerStub = nil
-	if fake.killContainerReturnsOnCall == nil {
-		fake.killContainerReturnsOnCall = make(map[int]struct {
+func (fake *DockerClient) CloseReturnsOnCall(i int, result1 error) {
+	fake.closeMutex.Lock()
+	defer fake.closeMutex.Unlock()
+	fake.CloseStub = nil
+	if fake.closeReturnsOnCall == nil {
+		fake.closeReturnsOnCall = make(map[int]struct {
 			result1 error
 		})
 	}
-	fake.killContainerReturnsOnCall[i] = struct {
+	fake.closeReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
 
-func (fake *DockerClient) PingWithContext(arg1 context.Context) error {
-	fake.pingWithContextMutex.Lock()
-	ret, specificReturn := fake.pingWithContextReturnsOnCall[len(fake.pingWithContextArgsForCall)]
-	fake.pingWithContextArgsForCall = append(fake.pingWithContextArgsForCall, struct {
+func (fake *DockerClient) ConfigCreate(arg1 context.Context, arg2 client.ConfigCreateOptions) (client.ConfigCreateResult, error) {
+	fake.configCreateMutex.Lock()
+	ret, specificReturn := fake.configCreateReturnsOnCall[len(fake.configCreateArgsForCall)]
+	fake.configCreateArgsForCall = append(fake.configCreateArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.ConfigCreateOptions
+	}{arg1, arg2})
+	stub := fake.ConfigCreateStub
+	fakeReturns := fake.configCreateReturns
+	fake.recordInvocation("ConfigCreate", []interface{}{arg1, arg2})
+	fake.configCreateMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ConfigCreateCallCount() int {
+	fake.configCreateMutex.RLock()
+	defer fake.configCreateMutex.RUnlock()
+	return len(fake.configCreateArgsForCall)
+}
+
+func (fake *DockerClient) ConfigCreateCalls(stub func(context.Context, client.ConfigCreateOptions) (client.ConfigCreateResult, error)) {
+	fake.configCreateMutex.Lock()
+	defer fake.configCreateMutex.Unlock()
+	fake.ConfigCreateStub = stub
+}
+
+func (fake *DockerClient) ConfigCreateArgsForCall(i int) (context.Context, client.ConfigCreateOptions) {
+	fake.configCreateMutex.RLock()
+	defer fake.configCreateMutex.RUnlock()
+	argsForCall := fake.configCreateArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) ConfigCreateReturns(result1 client.ConfigCreateResult, result2 error) {
+	fake.configCreateMutex.Lock()
+	defer fake.configCreateMutex.Unlock()
+	fake.ConfigCreateStub = nil
+	fake.configCreateReturns = struct {
+		result1 client.ConfigCreateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ConfigCreateReturnsOnCall(i int, result1 client.ConfigCreateResult, result2 error) {
+	fake.configCreateMutex.Lock()
+	defer fake.configCreateMutex.Unlock()
+	fake.ConfigCreateStub = nil
+	if fake.configCreateReturnsOnCall == nil {
+		fake.configCreateReturnsOnCall = make(map[int]struct {
+			result1 client.ConfigCreateResult
+			result2 error
+		})
+	}
+	fake.configCreateReturnsOnCall[i] = struct {
+		result1 client.ConfigCreateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ConfigInspect(arg1 context.Context, arg2 string, arg3 client.ConfigInspectOptions) (client.ConfigInspectResult, error) {
+	fake.configInspectMutex.Lock()
+	ret, specificReturn := fake.configInspectReturnsOnCall[len(fake.configInspectArgsForCall)]
+	fake.configInspectArgsForCall = append(fake.configInspectArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ConfigInspectOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ConfigInspectStub
+	fakeReturns := fake.configInspectReturns
+	fake.recordInvocation("ConfigInspect", []interface{}{arg1, arg2, arg3})
+	fake.configInspectMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ConfigInspectCallCount() int {
+	fake.configInspectMutex.RLock()
+	defer fake.configInspectMutex.RUnlock()
+	return len(fake.configInspectArgsForCall)
+}
+
+func (fake *DockerClient) ConfigInspectCalls(stub func(context.Context, string, client.ConfigInspectOptions) (client.ConfigInspectResult, error)) {
+	fake.configInspectMutex.Lock()
+	defer fake.configInspectMutex.Unlock()
+	fake.ConfigInspectStub = stub
+}
+
+func (fake *DockerClient) ConfigInspectArgsForCall(i int) (context.Context, string, client.ConfigInspectOptions) {
+	fake.configInspectMutex.RLock()
+	defer fake.configInspectMutex.RUnlock()
+	argsForCall := fake.configInspectArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ConfigInspectReturns(result1 client.ConfigInspectResult, result2 error) {
+	fake.configInspectMutex.Lock()
+	defer fake.configInspectMutex.Unlock()
+	fake.ConfigInspectStub = nil
+	fake.configInspectReturns = struct {
+		result1 client.ConfigInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ConfigInspectReturnsOnCall(i int, result1 client.ConfigInspectResult, result2 error) {
+	fake.configInspectMutex.Lock()
+	defer fake.configInspectMutex.Unlock()
+	fake.ConfigInspectStub = nil
+	if fake.configInspectReturnsOnCall == nil {
+		fake.configInspectReturnsOnCall = make(map[int]struct {
+			result1 client.ConfigInspectResult
+			result2 error
+		})
+	}
+	fake.configInspectReturnsOnCall[i] = struct {
+		result1 client.ConfigInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ConfigList(arg1 context.Context, arg2 client.ConfigListOptions) (client.ConfigListResult, error) {
+	fake.configListMutex.Lock()
+	ret, specificReturn := fake.configListReturnsOnCall[len(fake.configListArgsForCall)]
+	fake.configListArgsForCall = append(fake.configListArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.ConfigListOptions
+	}{arg1, arg2})
+	stub := fake.ConfigListStub
+	fakeReturns := fake.configListReturns
+	fake.recordInvocation("ConfigList", []interface{}{arg1, arg2})
+	fake.configListMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ConfigListCallCount() int {
+	fake.configListMutex.RLock()
+	defer fake.configListMutex.RUnlock()
+	return len(fake.configListArgsForCall)
+}
+
+func (fake *DockerClient) ConfigListCalls(stub func(context.Context, client.ConfigListOptions) (client.ConfigListResult, error)) {
+	fake.configListMutex.Lock()
+	defer fake.configListMutex.Unlock()
+	fake.ConfigListStub = stub
+}
+
+func (fake *DockerClient) ConfigListArgsForCall(i int) (context.Context, client.ConfigListOptions) {
+	fake.configListMutex.RLock()
+	defer fake.configListMutex.RUnlock()
+	argsForCall := fake.configListArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) ConfigListReturns(result1 client.ConfigListResult, result2 error) {
+	fake.configListMutex.Lock()
+	defer fake.configListMutex.Unlock()
+	fake.ConfigListStub = nil
+	fake.configListReturns = struct {
+		result1 client.ConfigListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ConfigListReturnsOnCall(i int, result1 client.ConfigListResult, result2 error) {
+	fake.configListMutex.Lock()
+	defer fake.configListMutex.Unlock()
+	fake.ConfigListStub = nil
+	if fake.configListReturnsOnCall == nil {
+		fake.configListReturnsOnCall = make(map[int]struct {
+			result1 client.ConfigListResult
+			result2 error
+		})
+	}
+	fake.configListReturnsOnCall[i] = struct {
+		result1 client.ConfigListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ConfigRemove(arg1 context.Context, arg2 string, arg3 client.ConfigRemoveOptions) (client.ConfigRemoveResult, error) {
+	fake.configRemoveMutex.Lock()
+	ret, specificReturn := fake.configRemoveReturnsOnCall[len(fake.configRemoveArgsForCall)]
+	fake.configRemoveArgsForCall = append(fake.configRemoveArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ConfigRemoveOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ConfigRemoveStub
+	fakeReturns := fake.configRemoveReturns
+	fake.recordInvocation("ConfigRemove", []interface{}{arg1, arg2, arg3})
+	fake.configRemoveMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ConfigRemoveCallCount() int {
+	fake.configRemoveMutex.RLock()
+	defer fake.configRemoveMutex.RUnlock()
+	return len(fake.configRemoveArgsForCall)
+}
+
+func (fake *DockerClient) ConfigRemoveCalls(stub func(context.Context, string, client.ConfigRemoveOptions) (client.ConfigRemoveResult, error)) {
+	fake.configRemoveMutex.Lock()
+	defer fake.configRemoveMutex.Unlock()
+	fake.ConfigRemoveStub = stub
+}
+
+func (fake *DockerClient) ConfigRemoveArgsForCall(i int) (context.Context, string, client.ConfigRemoveOptions) {
+	fake.configRemoveMutex.RLock()
+	defer fake.configRemoveMutex.RUnlock()
+	argsForCall := fake.configRemoveArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ConfigRemoveReturns(result1 client.ConfigRemoveResult, result2 error) {
+	fake.configRemoveMutex.Lock()
+	defer fake.configRemoveMutex.Unlock()
+	fake.ConfigRemoveStub = nil
+	fake.configRemoveReturns = struct {
+		result1 client.ConfigRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ConfigRemoveReturnsOnCall(i int, result1 client.ConfigRemoveResult, result2 error) {
+	fake.configRemoveMutex.Lock()
+	defer fake.configRemoveMutex.Unlock()
+	fake.ConfigRemoveStub = nil
+	if fake.configRemoveReturnsOnCall == nil {
+		fake.configRemoveReturnsOnCall = make(map[int]struct {
+			result1 client.ConfigRemoveResult
+			result2 error
+		})
+	}
+	fake.configRemoveReturnsOnCall[i] = struct {
+		result1 client.ConfigRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ConfigUpdate(arg1 context.Context, arg2 string, arg3 client.ConfigUpdateOptions) (client.ConfigUpdateResult, error) {
+	fake.configUpdateMutex.Lock()
+	ret, specificReturn := fake.configUpdateReturnsOnCall[len(fake.configUpdateArgsForCall)]
+	fake.configUpdateArgsForCall = append(fake.configUpdateArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ConfigUpdateOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ConfigUpdateStub
+	fakeReturns := fake.configUpdateReturns
+	fake.recordInvocation("ConfigUpdate", []interface{}{arg1, arg2, arg3})
+	fake.configUpdateMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ConfigUpdateCallCount() int {
+	fake.configUpdateMutex.RLock()
+	defer fake.configUpdateMutex.RUnlock()
+	return len(fake.configUpdateArgsForCall)
+}
+
+func (fake *DockerClient) ConfigUpdateCalls(stub func(context.Context, string, client.ConfigUpdateOptions) (client.ConfigUpdateResult, error)) {
+	fake.configUpdateMutex.Lock()
+	defer fake.configUpdateMutex.Unlock()
+	fake.ConfigUpdateStub = stub
+}
+
+func (fake *DockerClient) ConfigUpdateArgsForCall(i int) (context.Context, string, client.ConfigUpdateOptions) {
+	fake.configUpdateMutex.RLock()
+	defer fake.configUpdateMutex.RUnlock()
+	argsForCall := fake.configUpdateArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ConfigUpdateReturns(result1 client.ConfigUpdateResult, result2 error) {
+	fake.configUpdateMutex.Lock()
+	defer fake.configUpdateMutex.Unlock()
+	fake.ConfigUpdateStub = nil
+	fake.configUpdateReturns = struct {
+		result1 client.ConfigUpdateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ConfigUpdateReturnsOnCall(i int, result1 client.ConfigUpdateResult, result2 error) {
+	fake.configUpdateMutex.Lock()
+	defer fake.configUpdateMutex.Unlock()
+	fake.ConfigUpdateStub = nil
+	if fake.configUpdateReturnsOnCall == nil {
+		fake.configUpdateReturnsOnCall = make(map[int]struct {
+			result1 client.ConfigUpdateResult
+			result2 error
+		})
+	}
+	fake.configUpdateReturnsOnCall[i] = struct {
+		result1 client.ConfigUpdateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerAttach(arg1 context.Context, arg2 string, arg3 client.ContainerAttachOptions) (client.ContainerAttachResult, error) {
+	fake.containerAttachMutex.Lock()
+	ret, specificReturn := fake.containerAttachReturnsOnCall[len(fake.containerAttachArgsForCall)]
+	fake.containerAttachArgsForCall = append(fake.containerAttachArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerAttachOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerAttachStub
+	fakeReturns := fake.containerAttachReturns
+	fake.recordInvocation("ContainerAttach", []interface{}{arg1, arg2, arg3})
+	fake.containerAttachMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerAttachCallCount() int {
+	fake.containerAttachMutex.RLock()
+	defer fake.containerAttachMutex.RUnlock()
+	return len(fake.containerAttachArgsForCall)
+}
+
+func (fake *DockerClient) ContainerAttachCalls(stub func(context.Context, string, client.ContainerAttachOptions) (client.ContainerAttachResult, error)) {
+	fake.containerAttachMutex.Lock()
+	defer fake.containerAttachMutex.Unlock()
+	fake.ContainerAttachStub = stub
+}
+
+func (fake *DockerClient) ContainerAttachArgsForCall(i int) (context.Context, string, client.ContainerAttachOptions) {
+	fake.containerAttachMutex.RLock()
+	defer fake.containerAttachMutex.RUnlock()
+	argsForCall := fake.containerAttachArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerAttachReturns(result1 client.ContainerAttachResult, result2 error) {
+	fake.containerAttachMutex.Lock()
+	defer fake.containerAttachMutex.Unlock()
+	fake.ContainerAttachStub = nil
+	fake.containerAttachReturns = struct {
+		result1 client.ContainerAttachResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerAttachReturnsOnCall(i int, result1 client.ContainerAttachResult, result2 error) {
+	fake.containerAttachMutex.Lock()
+	defer fake.containerAttachMutex.Unlock()
+	fake.ContainerAttachStub = nil
+	if fake.containerAttachReturnsOnCall == nil {
+		fake.containerAttachReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerAttachResult
+			result2 error
+		})
+	}
+	fake.containerAttachReturnsOnCall[i] = struct {
+		result1 client.ContainerAttachResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerCommit(arg1 context.Context, arg2 string, arg3 client.ContainerCommitOptions) (client.ContainerCommitResult, error) {
+	fake.containerCommitMutex.Lock()
+	ret, specificReturn := fake.containerCommitReturnsOnCall[len(fake.containerCommitArgsForCall)]
+	fake.containerCommitArgsForCall = append(fake.containerCommitArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerCommitOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerCommitStub
+	fakeReturns := fake.containerCommitReturns
+	fake.recordInvocation("ContainerCommit", []interface{}{arg1, arg2, arg3})
+	fake.containerCommitMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerCommitCallCount() int {
+	fake.containerCommitMutex.RLock()
+	defer fake.containerCommitMutex.RUnlock()
+	return len(fake.containerCommitArgsForCall)
+}
+
+func (fake *DockerClient) ContainerCommitCalls(stub func(context.Context, string, client.ContainerCommitOptions) (client.ContainerCommitResult, error)) {
+	fake.containerCommitMutex.Lock()
+	defer fake.containerCommitMutex.Unlock()
+	fake.ContainerCommitStub = stub
+}
+
+func (fake *DockerClient) ContainerCommitArgsForCall(i int) (context.Context, string, client.ContainerCommitOptions) {
+	fake.containerCommitMutex.RLock()
+	defer fake.containerCommitMutex.RUnlock()
+	argsForCall := fake.containerCommitArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerCommitReturns(result1 client.ContainerCommitResult, result2 error) {
+	fake.containerCommitMutex.Lock()
+	defer fake.containerCommitMutex.Unlock()
+	fake.ContainerCommitStub = nil
+	fake.containerCommitReturns = struct {
+		result1 client.ContainerCommitResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerCommitReturnsOnCall(i int, result1 client.ContainerCommitResult, result2 error) {
+	fake.containerCommitMutex.Lock()
+	defer fake.containerCommitMutex.Unlock()
+	fake.ContainerCommitStub = nil
+	if fake.containerCommitReturnsOnCall == nil {
+		fake.containerCommitReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerCommitResult
+			result2 error
+		})
+	}
+	fake.containerCommitReturnsOnCall[i] = struct {
+		result1 client.ContainerCommitResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerCreate(arg1 context.Context, arg2 client.ContainerCreateOptions) (client.ContainerCreateResult, error) {
+	fake.containerCreateMutex.Lock()
+	ret, specificReturn := fake.containerCreateReturnsOnCall[len(fake.containerCreateArgsForCall)]
+	fake.containerCreateArgsForCall = append(fake.containerCreateArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.ContainerCreateOptions
+	}{arg1, arg2})
+	stub := fake.ContainerCreateStub
+	fakeReturns := fake.containerCreateReturns
+	fake.recordInvocation("ContainerCreate", []interface{}{arg1, arg2})
+	fake.containerCreateMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerCreateCallCount() int {
+	fake.containerCreateMutex.RLock()
+	defer fake.containerCreateMutex.RUnlock()
+	return len(fake.containerCreateArgsForCall)
+}
+
+func (fake *DockerClient) ContainerCreateCalls(stub func(context.Context, client.ContainerCreateOptions) (client.ContainerCreateResult, error)) {
+	fake.containerCreateMutex.Lock()
+	defer fake.containerCreateMutex.Unlock()
+	fake.ContainerCreateStub = stub
+}
+
+func (fake *DockerClient) ContainerCreateArgsForCall(i int) (context.Context, client.ContainerCreateOptions) {
+	fake.containerCreateMutex.RLock()
+	defer fake.containerCreateMutex.RUnlock()
+	argsForCall := fake.containerCreateArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) ContainerCreateReturns(result1 client.ContainerCreateResult, result2 error) {
+	fake.containerCreateMutex.Lock()
+	defer fake.containerCreateMutex.Unlock()
+	fake.ContainerCreateStub = nil
+	fake.containerCreateReturns = struct {
+		result1 client.ContainerCreateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerCreateReturnsOnCall(i int, result1 client.ContainerCreateResult, result2 error) {
+	fake.containerCreateMutex.Lock()
+	defer fake.containerCreateMutex.Unlock()
+	fake.ContainerCreateStub = nil
+	if fake.containerCreateReturnsOnCall == nil {
+		fake.containerCreateReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerCreateResult
+			result2 error
+		})
+	}
+	fake.containerCreateReturnsOnCall[i] = struct {
+		result1 client.ContainerCreateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerDiff(arg1 context.Context, arg2 string, arg3 client.ContainerDiffOptions) (client.ContainerDiffResult, error) {
+	fake.containerDiffMutex.Lock()
+	ret, specificReturn := fake.containerDiffReturnsOnCall[len(fake.containerDiffArgsForCall)]
+	fake.containerDiffArgsForCall = append(fake.containerDiffArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerDiffOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerDiffStub
+	fakeReturns := fake.containerDiffReturns
+	fake.recordInvocation("ContainerDiff", []interface{}{arg1, arg2, arg3})
+	fake.containerDiffMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerDiffCallCount() int {
+	fake.containerDiffMutex.RLock()
+	defer fake.containerDiffMutex.RUnlock()
+	return len(fake.containerDiffArgsForCall)
+}
+
+func (fake *DockerClient) ContainerDiffCalls(stub func(context.Context, string, client.ContainerDiffOptions) (client.ContainerDiffResult, error)) {
+	fake.containerDiffMutex.Lock()
+	defer fake.containerDiffMutex.Unlock()
+	fake.ContainerDiffStub = stub
+}
+
+func (fake *DockerClient) ContainerDiffArgsForCall(i int) (context.Context, string, client.ContainerDiffOptions) {
+	fake.containerDiffMutex.RLock()
+	defer fake.containerDiffMutex.RUnlock()
+	argsForCall := fake.containerDiffArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerDiffReturns(result1 client.ContainerDiffResult, result2 error) {
+	fake.containerDiffMutex.Lock()
+	defer fake.containerDiffMutex.Unlock()
+	fake.ContainerDiffStub = nil
+	fake.containerDiffReturns = struct {
+		result1 client.ContainerDiffResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerDiffReturnsOnCall(i int, result1 client.ContainerDiffResult, result2 error) {
+	fake.containerDiffMutex.Lock()
+	defer fake.containerDiffMutex.Unlock()
+	fake.ContainerDiffStub = nil
+	if fake.containerDiffReturnsOnCall == nil {
+		fake.containerDiffReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerDiffResult
+			result2 error
+		})
+	}
+	fake.containerDiffReturnsOnCall[i] = struct {
+		result1 client.ContainerDiffResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerExport(arg1 context.Context, arg2 string, arg3 client.ContainerExportOptions) (client.ContainerExportResult, error) {
+	fake.containerExportMutex.Lock()
+	ret, specificReturn := fake.containerExportReturnsOnCall[len(fake.containerExportArgsForCall)]
+	fake.containerExportArgsForCall = append(fake.containerExportArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerExportOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerExportStub
+	fakeReturns := fake.containerExportReturns
+	fake.recordInvocation("ContainerExport", []interface{}{arg1, arg2, arg3})
+	fake.containerExportMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerExportCallCount() int {
+	fake.containerExportMutex.RLock()
+	defer fake.containerExportMutex.RUnlock()
+	return len(fake.containerExportArgsForCall)
+}
+
+func (fake *DockerClient) ContainerExportCalls(stub func(context.Context, string, client.ContainerExportOptions) (client.ContainerExportResult, error)) {
+	fake.containerExportMutex.Lock()
+	defer fake.containerExportMutex.Unlock()
+	fake.ContainerExportStub = stub
+}
+
+func (fake *DockerClient) ContainerExportArgsForCall(i int) (context.Context, string, client.ContainerExportOptions) {
+	fake.containerExportMutex.RLock()
+	defer fake.containerExportMutex.RUnlock()
+	argsForCall := fake.containerExportArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerExportReturns(result1 client.ContainerExportResult, result2 error) {
+	fake.containerExportMutex.Lock()
+	defer fake.containerExportMutex.Unlock()
+	fake.ContainerExportStub = nil
+	fake.containerExportReturns = struct {
+		result1 client.ContainerExportResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerExportReturnsOnCall(i int, result1 client.ContainerExportResult, result2 error) {
+	fake.containerExportMutex.Lock()
+	defer fake.containerExportMutex.Unlock()
+	fake.ContainerExportStub = nil
+	if fake.containerExportReturnsOnCall == nil {
+		fake.containerExportReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerExportResult
+			result2 error
+		})
+	}
+	fake.containerExportReturnsOnCall[i] = struct {
+		result1 client.ContainerExportResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerInspect(arg1 context.Context, arg2 string, arg3 client.ContainerInspectOptions) (client.ContainerInspectResult, error) {
+	fake.containerInspectMutex.Lock()
+	ret, specificReturn := fake.containerInspectReturnsOnCall[len(fake.containerInspectArgsForCall)]
+	fake.containerInspectArgsForCall = append(fake.containerInspectArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerInspectOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerInspectStub
+	fakeReturns := fake.containerInspectReturns
+	fake.recordInvocation("ContainerInspect", []interface{}{arg1, arg2, arg3})
+	fake.containerInspectMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerInspectCallCount() int {
+	fake.containerInspectMutex.RLock()
+	defer fake.containerInspectMutex.RUnlock()
+	return len(fake.containerInspectArgsForCall)
+}
+
+func (fake *DockerClient) ContainerInspectCalls(stub func(context.Context, string, client.ContainerInspectOptions) (client.ContainerInspectResult, error)) {
+	fake.containerInspectMutex.Lock()
+	defer fake.containerInspectMutex.Unlock()
+	fake.ContainerInspectStub = stub
+}
+
+func (fake *DockerClient) ContainerInspectArgsForCall(i int) (context.Context, string, client.ContainerInspectOptions) {
+	fake.containerInspectMutex.RLock()
+	defer fake.containerInspectMutex.RUnlock()
+	argsForCall := fake.containerInspectArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerInspectReturns(result1 client.ContainerInspectResult, result2 error) {
+	fake.containerInspectMutex.Lock()
+	defer fake.containerInspectMutex.Unlock()
+	fake.ContainerInspectStub = nil
+	fake.containerInspectReturns = struct {
+		result1 client.ContainerInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerInspectReturnsOnCall(i int, result1 client.ContainerInspectResult, result2 error) {
+	fake.containerInspectMutex.Lock()
+	defer fake.containerInspectMutex.Unlock()
+	fake.ContainerInspectStub = nil
+	if fake.containerInspectReturnsOnCall == nil {
+		fake.containerInspectReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerInspectResult
+			result2 error
+		})
+	}
+	fake.containerInspectReturnsOnCall[i] = struct {
+		result1 client.ContainerInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerKill(arg1 context.Context, arg2 string, arg3 client.ContainerKillOptions) (client.ContainerKillResult, error) {
+	fake.containerKillMutex.Lock()
+	ret, specificReturn := fake.containerKillReturnsOnCall[len(fake.containerKillArgsForCall)]
+	fake.containerKillArgsForCall = append(fake.containerKillArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerKillOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerKillStub
+	fakeReturns := fake.containerKillReturns
+	fake.recordInvocation("ContainerKill", []interface{}{arg1, arg2, arg3})
+	fake.containerKillMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerKillCallCount() int {
+	fake.containerKillMutex.RLock()
+	defer fake.containerKillMutex.RUnlock()
+	return len(fake.containerKillArgsForCall)
+}
+
+func (fake *DockerClient) ContainerKillCalls(stub func(context.Context, string, client.ContainerKillOptions) (client.ContainerKillResult, error)) {
+	fake.containerKillMutex.Lock()
+	defer fake.containerKillMutex.Unlock()
+	fake.ContainerKillStub = stub
+}
+
+func (fake *DockerClient) ContainerKillArgsForCall(i int) (context.Context, string, client.ContainerKillOptions) {
+	fake.containerKillMutex.RLock()
+	defer fake.containerKillMutex.RUnlock()
+	argsForCall := fake.containerKillArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerKillReturns(result1 client.ContainerKillResult, result2 error) {
+	fake.containerKillMutex.Lock()
+	defer fake.containerKillMutex.Unlock()
+	fake.ContainerKillStub = nil
+	fake.containerKillReturns = struct {
+		result1 client.ContainerKillResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerKillReturnsOnCall(i int, result1 client.ContainerKillResult, result2 error) {
+	fake.containerKillMutex.Lock()
+	defer fake.containerKillMutex.Unlock()
+	fake.ContainerKillStub = nil
+	if fake.containerKillReturnsOnCall == nil {
+		fake.containerKillReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerKillResult
+			result2 error
+		})
+	}
+	fake.containerKillReturnsOnCall[i] = struct {
+		result1 client.ContainerKillResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerList(arg1 context.Context, arg2 client.ContainerListOptions) (client.ContainerListResult, error) {
+	fake.containerListMutex.Lock()
+	ret, specificReturn := fake.containerListReturnsOnCall[len(fake.containerListArgsForCall)]
+	fake.containerListArgsForCall = append(fake.containerListArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.ContainerListOptions
+	}{arg1, arg2})
+	stub := fake.ContainerListStub
+	fakeReturns := fake.containerListReturns
+	fake.recordInvocation("ContainerList", []interface{}{arg1, arg2})
+	fake.containerListMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerListCallCount() int {
+	fake.containerListMutex.RLock()
+	defer fake.containerListMutex.RUnlock()
+	return len(fake.containerListArgsForCall)
+}
+
+func (fake *DockerClient) ContainerListCalls(stub func(context.Context, client.ContainerListOptions) (client.ContainerListResult, error)) {
+	fake.containerListMutex.Lock()
+	defer fake.containerListMutex.Unlock()
+	fake.ContainerListStub = stub
+}
+
+func (fake *DockerClient) ContainerListArgsForCall(i int) (context.Context, client.ContainerListOptions) {
+	fake.containerListMutex.RLock()
+	defer fake.containerListMutex.RUnlock()
+	argsForCall := fake.containerListArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) ContainerListReturns(result1 client.ContainerListResult, result2 error) {
+	fake.containerListMutex.Lock()
+	defer fake.containerListMutex.Unlock()
+	fake.ContainerListStub = nil
+	fake.containerListReturns = struct {
+		result1 client.ContainerListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerListReturnsOnCall(i int, result1 client.ContainerListResult, result2 error) {
+	fake.containerListMutex.Lock()
+	defer fake.containerListMutex.Unlock()
+	fake.ContainerListStub = nil
+	if fake.containerListReturnsOnCall == nil {
+		fake.containerListReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerListResult
+			result2 error
+		})
+	}
+	fake.containerListReturnsOnCall[i] = struct {
+		result1 client.ContainerListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerLogs(arg1 context.Context, arg2 string, arg3 client.ContainerLogsOptions) (client.ContainerLogsResult, error) {
+	fake.containerLogsMutex.Lock()
+	ret, specificReturn := fake.containerLogsReturnsOnCall[len(fake.containerLogsArgsForCall)]
+	fake.containerLogsArgsForCall = append(fake.containerLogsArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerLogsOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerLogsStub
+	fakeReturns := fake.containerLogsReturns
+	fake.recordInvocation("ContainerLogs", []interface{}{arg1, arg2, arg3})
+	fake.containerLogsMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerLogsCallCount() int {
+	fake.containerLogsMutex.RLock()
+	defer fake.containerLogsMutex.RUnlock()
+	return len(fake.containerLogsArgsForCall)
+}
+
+func (fake *DockerClient) ContainerLogsCalls(stub func(context.Context, string, client.ContainerLogsOptions) (client.ContainerLogsResult, error)) {
+	fake.containerLogsMutex.Lock()
+	defer fake.containerLogsMutex.Unlock()
+	fake.ContainerLogsStub = stub
+}
+
+func (fake *DockerClient) ContainerLogsArgsForCall(i int) (context.Context, string, client.ContainerLogsOptions) {
+	fake.containerLogsMutex.RLock()
+	defer fake.containerLogsMutex.RUnlock()
+	argsForCall := fake.containerLogsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerLogsReturns(result1 client.ContainerLogsResult, result2 error) {
+	fake.containerLogsMutex.Lock()
+	defer fake.containerLogsMutex.Unlock()
+	fake.ContainerLogsStub = nil
+	fake.containerLogsReturns = struct {
+		result1 client.ContainerLogsResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerLogsReturnsOnCall(i int, result1 client.ContainerLogsResult, result2 error) {
+	fake.containerLogsMutex.Lock()
+	defer fake.containerLogsMutex.Unlock()
+	fake.ContainerLogsStub = nil
+	if fake.containerLogsReturnsOnCall == nil {
+		fake.containerLogsReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerLogsResult
+			result2 error
+		})
+	}
+	fake.containerLogsReturnsOnCall[i] = struct {
+		result1 client.ContainerLogsResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerPause(arg1 context.Context, arg2 string, arg3 client.ContainerPauseOptions) (client.ContainerPauseResult, error) {
+	fake.containerPauseMutex.Lock()
+	ret, specificReturn := fake.containerPauseReturnsOnCall[len(fake.containerPauseArgsForCall)]
+	fake.containerPauseArgsForCall = append(fake.containerPauseArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerPauseOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerPauseStub
+	fakeReturns := fake.containerPauseReturns
+	fake.recordInvocation("ContainerPause", []interface{}{arg1, arg2, arg3})
+	fake.containerPauseMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerPauseCallCount() int {
+	fake.containerPauseMutex.RLock()
+	defer fake.containerPauseMutex.RUnlock()
+	return len(fake.containerPauseArgsForCall)
+}
+
+func (fake *DockerClient) ContainerPauseCalls(stub func(context.Context, string, client.ContainerPauseOptions) (client.ContainerPauseResult, error)) {
+	fake.containerPauseMutex.Lock()
+	defer fake.containerPauseMutex.Unlock()
+	fake.ContainerPauseStub = stub
+}
+
+func (fake *DockerClient) ContainerPauseArgsForCall(i int) (context.Context, string, client.ContainerPauseOptions) {
+	fake.containerPauseMutex.RLock()
+	defer fake.containerPauseMutex.RUnlock()
+	argsForCall := fake.containerPauseArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerPauseReturns(result1 client.ContainerPauseResult, result2 error) {
+	fake.containerPauseMutex.Lock()
+	defer fake.containerPauseMutex.Unlock()
+	fake.ContainerPauseStub = nil
+	fake.containerPauseReturns = struct {
+		result1 client.ContainerPauseResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerPauseReturnsOnCall(i int, result1 client.ContainerPauseResult, result2 error) {
+	fake.containerPauseMutex.Lock()
+	defer fake.containerPauseMutex.Unlock()
+	fake.ContainerPauseStub = nil
+	if fake.containerPauseReturnsOnCall == nil {
+		fake.containerPauseReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerPauseResult
+			result2 error
+		})
+	}
+	fake.containerPauseReturnsOnCall[i] = struct {
+		result1 client.ContainerPauseResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerPrune(arg1 context.Context, arg2 client.ContainerPruneOptions) (client.ContainerPruneResult, error) {
+	fake.containerPruneMutex.Lock()
+	ret, specificReturn := fake.containerPruneReturnsOnCall[len(fake.containerPruneArgsForCall)]
+	fake.containerPruneArgsForCall = append(fake.containerPruneArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.ContainerPruneOptions
+	}{arg1, arg2})
+	stub := fake.ContainerPruneStub
+	fakeReturns := fake.containerPruneReturns
+	fake.recordInvocation("ContainerPrune", []interface{}{arg1, arg2})
+	fake.containerPruneMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerPruneCallCount() int {
+	fake.containerPruneMutex.RLock()
+	defer fake.containerPruneMutex.RUnlock()
+	return len(fake.containerPruneArgsForCall)
+}
+
+func (fake *DockerClient) ContainerPruneCalls(stub func(context.Context, client.ContainerPruneOptions) (client.ContainerPruneResult, error)) {
+	fake.containerPruneMutex.Lock()
+	defer fake.containerPruneMutex.Unlock()
+	fake.ContainerPruneStub = stub
+}
+
+func (fake *DockerClient) ContainerPruneArgsForCall(i int) (context.Context, client.ContainerPruneOptions) {
+	fake.containerPruneMutex.RLock()
+	defer fake.containerPruneMutex.RUnlock()
+	argsForCall := fake.containerPruneArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) ContainerPruneReturns(result1 client.ContainerPruneResult, result2 error) {
+	fake.containerPruneMutex.Lock()
+	defer fake.containerPruneMutex.Unlock()
+	fake.ContainerPruneStub = nil
+	fake.containerPruneReturns = struct {
+		result1 client.ContainerPruneResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerPruneReturnsOnCall(i int, result1 client.ContainerPruneResult, result2 error) {
+	fake.containerPruneMutex.Lock()
+	defer fake.containerPruneMutex.Unlock()
+	fake.ContainerPruneStub = nil
+	if fake.containerPruneReturnsOnCall == nil {
+		fake.containerPruneReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerPruneResult
+			result2 error
+		})
+	}
+	fake.containerPruneReturnsOnCall[i] = struct {
+		result1 client.ContainerPruneResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerRemove(arg1 context.Context, arg2 string, arg3 client.ContainerRemoveOptions) (client.ContainerRemoveResult, error) {
+	fake.containerRemoveMutex.Lock()
+	ret, specificReturn := fake.containerRemoveReturnsOnCall[len(fake.containerRemoveArgsForCall)]
+	fake.containerRemoveArgsForCall = append(fake.containerRemoveArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerRemoveOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerRemoveStub
+	fakeReturns := fake.containerRemoveReturns
+	fake.recordInvocation("ContainerRemove", []interface{}{arg1, arg2, arg3})
+	fake.containerRemoveMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerRemoveCallCount() int {
+	fake.containerRemoveMutex.RLock()
+	defer fake.containerRemoveMutex.RUnlock()
+	return len(fake.containerRemoveArgsForCall)
+}
+
+func (fake *DockerClient) ContainerRemoveCalls(stub func(context.Context, string, client.ContainerRemoveOptions) (client.ContainerRemoveResult, error)) {
+	fake.containerRemoveMutex.Lock()
+	defer fake.containerRemoveMutex.Unlock()
+	fake.ContainerRemoveStub = stub
+}
+
+func (fake *DockerClient) ContainerRemoveArgsForCall(i int) (context.Context, string, client.ContainerRemoveOptions) {
+	fake.containerRemoveMutex.RLock()
+	defer fake.containerRemoveMutex.RUnlock()
+	argsForCall := fake.containerRemoveArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerRemoveReturns(result1 client.ContainerRemoveResult, result2 error) {
+	fake.containerRemoveMutex.Lock()
+	defer fake.containerRemoveMutex.Unlock()
+	fake.ContainerRemoveStub = nil
+	fake.containerRemoveReturns = struct {
+		result1 client.ContainerRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerRemoveReturnsOnCall(i int, result1 client.ContainerRemoveResult, result2 error) {
+	fake.containerRemoveMutex.Lock()
+	defer fake.containerRemoveMutex.Unlock()
+	fake.ContainerRemoveStub = nil
+	if fake.containerRemoveReturnsOnCall == nil {
+		fake.containerRemoveReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerRemoveResult
+			result2 error
+		})
+	}
+	fake.containerRemoveReturnsOnCall[i] = struct {
+		result1 client.ContainerRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerRename(arg1 context.Context, arg2 string, arg3 client.ContainerRenameOptions) (client.ContainerRenameResult, error) {
+	fake.containerRenameMutex.Lock()
+	ret, specificReturn := fake.containerRenameReturnsOnCall[len(fake.containerRenameArgsForCall)]
+	fake.containerRenameArgsForCall = append(fake.containerRenameArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerRenameOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerRenameStub
+	fakeReturns := fake.containerRenameReturns
+	fake.recordInvocation("ContainerRename", []interface{}{arg1, arg2, arg3})
+	fake.containerRenameMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerRenameCallCount() int {
+	fake.containerRenameMutex.RLock()
+	defer fake.containerRenameMutex.RUnlock()
+	return len(fake.containerRenameArgsForCall)
+}
+
+func (fake *DockerClient) ContainerRenameCalls(stub func(context.Context, string, client.ContainerRenameOptions) (client.ContainerRenameResult, error)) {
+	fake.containerRenameMutex.Lock()
+	defer fake.containerRenameMutex.Unlock()
+	fake.ContainerRenameStub = stub
+}
+
+func (fake *DockerClient) ContainerRenameArgsForCall(i int) (context.Context, string, client.ContainerRenameOptions) {
+	fake.containerRenameMutex.RLock()
+	defer fake.containerRenameMutex.RUnlock()
+	argsForCall := fake.containerRenameArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerRenameReturns(result1 client.ContainerRenameResult, result2 error) {
+	fake.containerRenameMutex.Lock()
+	defer fake.containerRenameMutex.Unlock()
+	fake.ContainerRenameStub = nil
+	fake.containerRenameReturns = struct {
+		result1 client.ContainerRenameResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerRenameReturnsOnCall(i int, result1 client.ContainerRenameResult, result2 error) {
+	fake.containerRenameMutex.Lock()
+	defer fake.containerRenameMutex.Unlock()
+	fake.ContainerRenameStub = nil
+	if fake.containerRenameReturnsOnCall == nil {
+		fake.containerRenameReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerRenameResult
+			result2 error
+		})
+	}
+	fake.containerRenameReturnsOnCall[i] = struct {
+		result1 client.ContainerRenameResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerResize(arg1 context.Context, arg2 string, arg3 client.ContainerResizeOptions) (client.ContainerResizeResult, error) {
+	fake.containerResizeMutex.Lock()
+	ret, specificReturn := fake.containerResizeReturnsOnCall[len(fake.containerResizeArgsForCall)]
+	fake.containerResizeArgsForCall = append(fake.containerResizeArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerResizeOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerResizeStub
+	fakeReturns := fake.containerResizeReturns
+	fake.recordInvocation("ContainerResize", []interface{}{arg1, arg2, arg3})
+	fake.containerResizeMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerResizeCallCount() int {
+	fake.containerResizeMutex.RLock()
+	defer fake.containerResizeMutex.RUnlock()
+	return len(fake.containerResizeArgsForCall)
+}
+
+func (fake *DockerClient) ContainerResizeCalls(stub func(context.Context, string, client.ContainerResizeOptions) (client.ContainerResizeResult, error)) {
+	fake.containerResizeMutex.Lock()
+	defer fake.containerResizeMutex.Unlock()
+	fake.ContainerResizeStub = stub
+}
+
+func (fake *DockerClient) ContainerResizeArgsForCall(i int) (context.Context, string, client.ContainerResizeOptions) {
+	fake.containerResizeMutex.RLock()
+	defer fake.containerResizeMutex.RUnlock()
+	argsForCall := fake.containerResizeArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerResizeReturns(result1 client.ContainerResizeResult, result2 error) {
+	fake.containerResizeMutex.Lock()
+	defer fake.containerResizeMutex.Unlock()
+	fake.ContainerResizeStub = nil
+	fake.containerResizeReturns = struct {
+		result1 client.ContainerResizeResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerResizeReturnsOnCall(i int, result1 client.ContainerResizeResult, result2 error) {
+	fake.containerResizeMutex.Lock()
+	defer fake.containerResizeMutex.Unlock()
+	fake.ContainerResizeStub = nil
+	if fake.containerResizeReturnsOnCall == nil {
+		fake.containerResizeReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerResizeResult
+			result2 error
+		})
+	}
+	fake.containerResizeReturnsOnCall[i] = struct {
+		result1 client.ContainerResizeResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerRestart(arg1 context.Context, arg2 string, arg3 client.ContainerRestartOptions) (client.ContainerRestartResult, error) {
+	fake.containerRestartMutex.Lock()
+	ret, specificReturn := fake.containerRestartReturnsOnCall[len(fake.containerRestartArgsForCall)]
+	fake.containerRestartArgsForCall = append(fake.containerRestartArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerRestartOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerRestartStub
+	fakeReturns := fake.containerRestartReturns
+	fake.recordInvocation("ContainerRestart", []interface{}{arg1, arg2, arg3})
+	fake.containerRestartMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerRestartCallCount() int {
+	fake.containerRestartMutex.RLock()
+	defer fake.containerRestartMutex.RUnlock()
+	return len(fake.containerRestartArgsForCall)
+}
+
+func (fake *DockerClient) ContainerRestartCalls(stub func(context.Context, string, client.ContainerRestartOptions) (client.ContainerRestartResult, error)) {
+	fake.containerRestartMutex.Lock()
+	defer fake.containerRestartMutex.Unlock()
+	fake.ContainerRestartStub = stub
+}
+
+func (fake *DockerClient) ContainerRestartArgsForCall(i int) (context.Context, string, client.ContainerRestartOptions) {
+	fake.containerRestartMutex.RLock()
+	defer fake.containerRestartMutex.RUnlock()
+	argsForCall := fake.containerRestartArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerRestartReturns(result1 client.ContainerRestartResult, result2 error) {
+	fake.containerRestartMutex.Lock()
+	defer fake.containerRestartMutex.Unlock()
+	fake.ContainerRestartStub = nil
+	fake.containerRestartReturns = struct {
+		result1 client.ContainerRestartResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerRestartReturnsOnCall(i int, result1 client.ContainerRestartResult, result2 error) {
+	fake.containerRestartMutex.Lock()
+	defer fake.containerRestartMutex.Unlock()
+	fake.ContainerRestartStub = nil
+	if fake.containerRestartReturnsOnCall == nil {
+		fake.containerRestartReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerRestartResult
+			result2 error
+		})
+	}
+	fake.containerRestartReturnsOnCall[i] = struct {
+		result1 client.ContainerRestartResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerStart(arg1 context.Context, arg2 string, arg3 client.ContainerStartOptions) (client.ContainerStartResult, error) {
+	fake.containerStartMutex.Lock()
+	ret, specificReturn := fake.containerStartReturnsOnCall[len(fake.containerStartArgsForCall)]
+	fake.containerStartArgsForCall = append(fake.containerStartArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerStartOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerStartStub
+	fakeReturns := fake.containerStartReturns
+	fake.recordInvocation("ContainerStart", []interface{}{arg1, arg2, arg3})
+	fake.containerStartMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerStartCallCount() int {
+	fake.containerStartMutex.RLock()
+	defer fake.containerStartMutex.RUnlock()
+	return len(fake.containerStartArgsForCall)
+}
+
+func (fake *DockerClient) ContainerStartCalls(stub func(context.Context, string, client.ContainerStartOptions) (client.ContainerStartResult, error)) {
+	fake.containerStartMutex.Lock()
+	defer fake.containerStartMutex.Unlock()
+	fake.ContainerStartStub = stub
+}
+
+func (fake *DockerClient) ContainerStartArgsForCall(i int) (context.Context, string, client.ContainerStartOptions) {
+	fake.containerStartMutex.RLock()
+	defer fake.containerStartMutex.RUnlock()
+	argsForCall := fake.containerStartArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerStartReturns(result1 client.ContainerStartResult, result2 error) {
+	fake.containerStartMutex.Lock()
+	defer fake.containerStartMutex.Unlock()
+	fake.ContainerStartStub = nil
+	fake.containerStartReturns = struct {
+		result1 client.ContainerStartResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerStartReturnsOnCall(i int, result1 client.ContainerStartResult, result2 error) {
+	fake.containerStartMutex.Lock()
+	defer fake.containerStartMutex.Unlock()
+	fake.ContainerStartStub = nil
+	if fake.containerStartReturnsOnCall == nil {
+		fake.containerStartReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerStartResult
+			result2 error
+		})
+	}
+	fake.containerStartReturnsOnCall[i] = struct {
+		result1 client.ContainerStartResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerStatPath(arg1 context.Context, arg2 string, arg3 client.ContainerStatPathOptions) (client.ContainerStatPathResult, error) {
+	fake.containerStatPathMutex.Lock()
+	ret, specificReturn := fake.containerStatPathReturnsOnCall[len(fake.containerStatPathArgsForCall)]
+	fake.containerStatPathArgsForCall = append(fake.containerStatPathArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerStatPathOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerStatPathStub
+	fakeReturns := fake.containerStatPathReturns
+	fake.recordInvocation("ContainerStatPath", []interface{}{arg1, arg2, arg3})
+	fake.containerStatPathMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerStatPathCallCount() int {
+	fake.containerStatPathMutex.RLock()
+	defer fake.containerStatPathMutex.RUnlock()
+	return len(fake.containerStatPathArgsForCall)
+}
+
+func (fake *DockerClient) ContainerStatPathCalls(stub func(context.Context, string, client.ContainerStatPathOptions) (client.ContainerStatPathResult, error)) {
+	fake.containerStatPathMutex.Lock()
+	defer fake.containerStatPathMutex.Unlock()
+	fake.ContainerStatPathStub = stub
+}
+
+func (fake *DockerClient) ContainerStatPathArgsForCall(i int) (context.Context, string, client.ContainerStatPathOptions) {
+	fake.containerStatPathMutex.RLock()
+	defer fake.containerStatPathMutex.RUnlock()
+	argsForCall := fake.containerStatPathArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerStatPathReturns(result1 client.ContainerStatPathResult, result2 error) {
+	fake.containerStatPathMutex.Lock()
+	defer fake.containerStatPathMutex.Unlock()
+	fake.ContainerStatPathStub = nil
+	fake.containerStatPathReturns = struct {
+		result1 client.ContainerStatPathResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerStatPathReturnsOnCall(i int, result1 client.ContainerStatPathResult, result2 error) {
+	fake.containerStatPathMutex.Lock()
+	defer fake.containerStatPathMutex.Unlock()
+	fake.ContainerStatPathStub = nil
+	if fake.containerStatPathReturnsOnCall == nil {
+		fake.containerStatPathReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerStatPathResult
+			result2 error
+		})
+	}
+	fake.containerStatPathReturnsOnCall[i] = struct {
+		result1 client.ContainerStatPathResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerStats(arg1 context.Context, arg2 string, arg3 client.ContainerStatsOptions) (client.ContainerStatsResult, error) {
+	fake.containerStatsMutex.Lock()
+	ret, specificReturn := fake.containerStatsReturnsOnCall[len(fake.containerStatsArgsForCall)]
+	fake.containerStatsArgsForCall = append(fake.containerStatsArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerStatsOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerStatsStub
+	fakeReturns := fake.containerStatsReturns
+	fake.recordInvocation("ContainerStats", []interface{}{arg1, arg2, arg3})
+	fake.containerStatsMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerStatsCallCount() int {
+	fake.containerStatsMutex.RLock()
+	defer fake.containerStatsMutex.RUnlock()
+	return len(fake.containerStatsArgsForCall)
+}
+
+func (fake *DockerClient) ContainerStatsCalls(stub func(context.Context, string, client.ContainerStatsOptions) (client.ContainerStatsResult, error)) {
+	fake.containerStatsMutex.Lock()
+	defer fake.containerStatsMutex.Unlock()
+	fake.ContainerStatsStub = stub
+}
+
+func (fake *DockerClient) ContainerStatsArgsForCall(i int) (context.Context, string, client.ContainerStatsOptions) {
+	fake.containerStatsMutex.RLock()
+	defer fake.containerStatsMutex.RUnlock()
+	argsForCall := fake.containerStatsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerStatsReturns(result1 client.ContainerStatsResult, result2 error) {
+	fake.containerStatsMutex.Lock()
+	defer fake.containerStatsMutex.Unlock()
+	fake.ContainerStatsStub = nil
+	fake.containerStatsReturns = struct {
+		result1 client.ContainerStatsResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerStatsReturnsOnCall(i int, result1 client.ContainerStatsResult, result2 error) {
+	fake.containerStatsMutex.Lock()
+	defer fake.containerStatsMutex.Unlock()
+	fake.ContainerStatsStub = nil
+	if fake.containerStatsReturnsOnCall == nil {
+		fake.containerStatsReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerStatsResult
+			result2 error
+		})
+	}
+	fake.containerStatsReturnsOnCall[i] = struct {
+		result1 client.ContainerStatsResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerStop(arg1 context.Context, arg2 string, arg3 client.ContainerStopOptions) (client.ContainerStopResult, error) {
+	fake.containerStopMutex.Lock()
+	ret, specificReturn := fake.containerStopReturnsOnCall[len(fake.containerStopArgsForCall)]
+	fake.containerStopArgsForCall = append(fake.containerStopArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerStopOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerStopStub
+	fakeReturns := fake.containerStopReturns
+	fake.recordInvocation("ContainerStop", []interface{}{arg1, arg2, arg3})
+	fake.containerStopMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerStopCallCount() int {
+	fake.containerStopMutex.RLock()
+	defer fake.containerStopMutex.RUnlock()
+	return len(fake.containerStopArgsForCall)
+}
+
+func (fake *DockerClient) ContainerStopCalls(stub func(context.Context, string, client.ContainerStopOptions) (client.ContainerStopResult, error)) {
+	fake.containerStopMutex.Lock()
+	defer fake.containerStopMutex.Unlock()
+	fake.ContainerStopStub = stub
+}
+
+func (fake *DockerClient) ContainerStopArgsForCall(i int) (context.Context, string, client.ContainerStopOptions) {
+	fake.containerStopMutex.RLock()
+	defer fake.containerStopMutex.RUnlock()
+	argsForCall := fake.containerStopArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerStopReturns(result1 client.ContainerStopResult, result2 error) {
+	fake.containerStopMutex.Lock()
+	defer fake.containerStopMutex.Unlock()
+	fake.ContainerStopStub = nil
+	fake.containerStopReturns = struct {
+		result1 client.ContainerStopResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerStopReturnsOnCall(i int, result1 client.ContainerStopResult, result2 error) {
+	fake.containerStopMutex.Lock()
+	defer fake.containerStopMutex.Unlock()
+	fake.ContainerStopStub = nil
+	if fake.containerStopReturnsOnCall == nil {
+		fake.containerStopReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerStopResult
+			result2 error
+		})
+	}
+	fake.containerStopReturnsOnCall[i] = struct {
+		result1 client.ContainerStopResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerTop(arg1 context.Context, arg2 string, arg3 client.ContainerTopOptions) (client.ContainerTopResult, error) {
+	fake.containerTopMutex.Lock()
+	ret, specificReturn := fake.containerTopReturnsOnCall[len(fake.containerTopArgsForCall)]
+	fake.containerTopArgsForCall = append(fake.containerTopArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerTopOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerTopStub
+	fakeReturns := fake.containerTopReturns
+	fake.recordInvocation("ContainerTop", []interface{}{arg1, arg2, arg3})
+	fake.containerTopMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerTopCallCount() int {
+	fake.containerTopMutex.RLock()
+	defer fake.containerTopMutex.RUnlock()
+	return len(fake.containerTopArgsForCall)
+}
+
+func (fake *DockerClient) ContainerTopCalls(stub func(context.Context, string, client.ContainerTopOptions) (client.ContainerTopResult, error)) {
+	fake.containerTopMutex.Lock()
+	defer fake.containerTopMutex.Unlock()
+	fake.ContainerTopStub = stub
+}
+
+func (fake *DockerClient) ContainerTopArgsForCall(i int) (context.Context, string, client.ContainerTopOptions) {
+	fake.containerTopMutex.RLock()
+	defer fake.containerTopMutex.RUnlock()
+	argsForCall := fake.containerTopArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerTopReturns(result1 client.ContainerTopResult, result2 error) {
+	fake.containerTopMutex.Lock()
+	defer fake.containerTopMutex.Unlock()
+	fake.ContainerTopStub = nil
+	fake.containerTopReturns = struct {
+		result1 client.ContainerTopResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerTopReturnsOnCall(i int, result1 client.ContainerTopResult, result2 error) {
+	fake.containerTopMutex.Lock()
+	defer fake.containerTopMutex.Unlock()
+	fake.ContainerTopStub = nil
+	if fake.containerTopReturnsOnCall == nil {
+		fake.containerTopReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerTopResult
+			result2 error
+		})
+	}
+	fake.containerTopReturnsOnCall[i] = struct {
+		result1 client.ContainerTopResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerUnpause(arg1 context.Context, arg2 string, arg3 client.ContainerUnpauseOptions) (client.ContainerUnpauseResult, error) {
+	fake.containerUnpauseMutex.Lock()
+	ret, specificReturn := fake.containerUnpauseReturnsOnCall[len(fake.containerUnpauseArgsForCall)]
+	fake.containerUnpauseArgsForCall = append(fake.containerUnpauseArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerUnpauseOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerUnpauseStub
+	fakeReturns := fake.containerUnpauseReturns
+	fake.recordInvocation("ContainerUnpause", []interface{}{arg1, arg2, arg3})
+	fake.containerUnpauseMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerUnpauseCallCount() int {
+	fake.containerUnpauseMutex.RLock()
+	defer fake.containerUnpauseMutex.RUnlock()
+	return len(fake.containerUnpauseArgsForCall)
+}
+
+func (fake *DockerClient) ContainerUnpauseCalls(stub func(context.Context, string, client.ContainerUnpauseOptions) (client.ContainerUnpauseResult, error)) {
+	fake.containerUnpauseMutex.Lock()
+	defer fake.containerUnpauseMutex.Unlock()
+	fake.ContainerUnpauseStub = stub
+}
+
+func (fake *DockerClient) ContainerUnpauseArgsForCall(i int) (context.Context, string, client.ContainerUnpauseOptions) {
+	fake.containerUnpauseMutex.RLock()
+	defer fake.containerUnpauseMutex.RUnlock()
+	argsForCall := fake.containerUnpauseArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerUnpauseReturns(result1 client.ContainerUnpauseResult, result2 error) {
+	fake.containerUnpauseMutex.Lock()
+	defer fake.containerUnpauseMutex.Unlock()
+	fake.ContainerUnpauseStub = nil
+	fake.containerUnpauseReturns = struct {
+		result1 client.ContainerUnpauseResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerUnpauseReturnsOnCall(i int, result1 client.ContainerUnpauseResult, result2 error) {
+	fake.containerUnpauseMutex.Lock()
+	defer fake.containerUnpauseMutex.Unlock()
+	fake.ContainerUnpauseStub = nil
+	if fake.containerUnpauseReturnsOnCall == nil {
+		fake.containerUnpauseReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerUnpauseResult
+			result2 error
+		})
+	}
+	fake.containerUnpauseReturnsOnCall[i] = struct {
+		result1 client.ContainerUnpauseResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerUpdate(arg1 context.Context, arg2 string, arg3 client.ContainerUpdateOptions) (client.ContainerUpdateResult, error) {
+	fake.containerUpdateMutex.Lock()
+	ret, specificReturn := fake.containerUpdateReturnsOnCall[len(fake.containerUpdateArgsForCall)]
+	fake.containerUpdateArgsForCall = append(fake.containerUpdateArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerUpdateOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerUpdateStub
+	fakeReturns := fake.containerUpdateReturns
+	fake.recordInvocation("ContainerUpdate", []interface{}{arg1, arg2, arg3})
+	fake.containerUpdateMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ContainerUpdateCallCount() int {
+	fake.containerUpdateMutex.RLock()
+	defer fake.containerUpdateMutex.RUnlock()
+	return len(fake.containerUpdateArgsForCall)
+}
+
+func (fake *DockerClient) ContainerUpdateCalls(stub func(context.Context, string, client.ContainerUpdateOptions) (client.ContainerUpdateResult, error)) {
+	fake.containerUpdateMutex.Lock()
+	defer fake.containerUpdateMutex.Unlock()
+	fake.ContainerUpdateStub = stub
+}
+
+func (fake *DockerClient) ContainerUpdateArgsForCall(i int) (context.Context, string, client.ContainerUpdateOptions) {
+	fake.containerUpdateMutex.RLock()
+	defer fake.containerUpdateMutex.RUnlock()
+	argsForCall := fake.containerUpdateArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerUpdateReturns(result1 client.ContainerUpdateResult, result2 error) {
+	fake.containerUpdateMutex.Lock()
+	defer fake.containerUpdateMutex.Unlock()
+	fake.ContainerUpdateStub = nil
+	fake.containerUpdateReturns = struct {
+		result1 client.ContainerUpdateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerUpdateReturnsOnCall(i int, result1 client.ContainerUpdateResult, result2 error) {
+	fake.containerUpdateMutex.Lock()
+	defer fake.containerUpdateMutex.Unlock()
+	fake.ContainerUpdateStub = nil
+	if fake.containerUpdateReturnsOnCall == nil {
+		fake.containerUpdateReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerUpdateResult
+			result2 error
+		})
+	}
+	fake.containerUpdateReturnsOnCall[i] = struct {
+		result1 client.ContainerUpdateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ContainerWait(arg1 context.Context, arg2 string, arg3 client.ContainerWaitOptions) client.ContainerWaitResult {
+	fake.containerWaitMutex.Lock()
+	ret, specificReturn := fake.containerWaitReturnsOnCall[len(fake.containerWaitArgsForCall)]
+	fake.containerWaitArgsForCall = append(fake.containerWaitArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ContainerWaitOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ContainerWaitStub
+	fakeReturns := fake.containerWaitReturns
+	fake.recordInvocation("ContainerWait", []interface{}{arg1, arg2, arg3})
+	fake.containerWaitMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *DockerClient) ContainerWaitCallCount() int {
+	fake.containerWaitMutex.RLock()
+	defer fake.containerWaitMutex.RUnlock()
+	return len(fake.containerWaitArgsForCall)
+}
+
+func (fake *DockerClient) ContainerWaitCalls(stub func(context.Context, string, client.ContainerWaitOptions) client.ContainerWaitResult) {
+	fake.containerWaitMutex.Lock()
+	defer fake.containerWaitMutex.Unlock()
+	fake.ContainerWaitStub = stub
+}
+
+func (fake *DockerClient) ContainerWaitArgsForCall(i int) (context.Context, string, client.ContainerWaitOptions) {
+	fake.containerWaitMutex.RLock()
+	defer fake.containerWaitMutex.RUnlock()
+	argsForCall := fake.containerWaitArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ContainerWaitReturns(result1 client.ContainerWaitResult) {
+	fake.containerWaitMutex.Lock()
+	defer fake.containerWaitMutex.Unlock()
+	fake.ContainerWaitStub = nil
+	fake.containerWaitReturns = struct {
+		result1 client.ContainerWaitResult
+	}{result1}
+}
+
+func (fake *DockerClient) ContainerWaitReturnsOnCall(i int, result1 client.ContainerWaitResult) {
+	fake.containerWaitMutex.Lock()
+	defer fake.containerWaitMutex.Unlock()
+	fake.ContainerWaitStub = nil
+	if fake.containerWaitReturnsOnCall == nil {
+		fake.containerWaitReturnsOnCall = make(map[int]struct {
+			result1 client.ContainerWaitResult
+		})
+	}
+	fake.containerWaitReturnsOnCall[i] = struct {
+		result1 client.ContainerWaitResult
+	}{result1}
+}
+
+func (fake *DockerClient) CopyFromContainer(arg1 context.Context, arg2 string, arg3 client.CopyFromContainerOptions) (client.CopyFromContainerResult, error) {
+	fake.copyFromContainerMutex.Lock()
+	ret, specificReturn := fake.copyFromContainerReturnsOnCall[len(fake.copyFromContainerArgsForCall)]
+	fake.copyFromContainerArgsForCall = append(fake.copyFromContainerArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.CopyFromContainerOptions
+	}{arg1, arg2, arg3})
+	stub := fake.CopyFromContainerStub
+	fakeReturns := fake.copyFromContainerReturns
+	fake.recordInvocation("CopyFromContainer", []interface{}{arg1, arg2, arg3})
+	fake.copyFromContainerMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) CopyFromContainerCallCount() int {
+	fake.copyFromContainerMutex.RLock()
+	defer fake.copyFromContainerMutex.RUnlock()
+	return len(fake.copyFromContainerArgsForCall)
+}
+
+func (fake *DockerClient) CopyFromContainerCalls(stub func(context.Context, string, client.CopyFromContainerOptions) (client.CopyFromContainerResult, error)) {
+	fake.copyFromContainerMutex.Lock()
+	defer fake.copyFromContainerMutex.Unlock()
+	fake.CopyFromContainerStub = stub
+}
+
+func (fake *DockerClient) CopyFromContainerArgsForCall(i int) (context.Context, string, client.CopyFromContainerOptions) {
+	fake.copyFromContainerMutex.RLock()
+	defer fake.copyFromContainerMutex.RUnlock()
+	argsForCall := fake.copyFromContainerArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) CopyFromContainerReturns(result1 client.CopyFromContainerResult, result2 error) {
+	fake.copyFromContainerMutex.Lock()
+	defer fake.copyFromContainerMutex.Unlock()
+	fake.CopyFromContainerStub = nil
+	fake.copyFromContainerReturns = struct {
+		result1 client.CopyFromContainerResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) CopyFromContainerReturnsOnCall(i int, result1 client.CopyFromContainerResult, result2 error) {
+	fake.copyFromContainerMutex.Lock()
+	defer fake.copyFromContainerMutex.Unlock()
+	fake.CopyFromContainerStub = nil
+	if fake.copyFromContainerReturnsOnCall == nil {
+		fake.copyFromContainerReturnsOnCall = make(map[int]struct {
+			result1 client.CopyFromContainerResult
+			result2 error
+		})
+	}
+	fake.copyFromContainerReturnsOnCall[i] = struct {
+		result1 client.CopyFromContainerResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) CopyToContainer(arg1 context.Context, arg2 string, arg3 client.CopyToContainerOptions) (client.CopyToContainerResult, error) {
+	fake.copyToContainerMutex.Lock()
+	ret, specificReturn := fake.copyToContainerReturnsOnCall[len(fake.copyToContainerArgsForCall)]
+	fake.copyToContainerArgsForCall = append(fake.copyToContainerArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.CopyToContainerOptions
+	}{arg1, arg2, arg3})
+	stub := fake.CopyToContainerStub
+	fakeReturns := fake.copyToContainerReturns
+	fake.recordInvocation("CopyToContainer", []interface{}{arg1, arg2, arg3})
+	fake.copyToContainerMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) CopyToContainerCallCount() int {
+	fake.copyToContainerMutex.RLock()
+	defer fake.copyToContainerMutex.RUnlock()
+	return len(fake.copyToContainerArgsForCall)
+}
+
+func (fake *DockerClient) CopyToContainerCalls(stub func(context.Context, string, client.CopyToContainerOptions) (client.CopyToContainerResult, error)) {
+	fake.copyToContainerMutex.Lock()
+	defer fake.copyToContainerMutex.Unlock()
+	fake.CopyToContainerStub = stub
+}
+
+func (fake *DockerClient) CopyToContainerArgsForCall(i int) (context.Context, string, client.CopyToContainerOptions) {
+	fake.copyToContainerMutex.RLock()
+	defer fake.copyToContainerMutex.RUnlock()
+	argsForCall := fake.copyToContainerArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) CopyToContainerReturns(result1 client.CopyToContainerResult, result2 error) {
+	fake.copyToContainerMutex.Lock()
+	defer fake.copyToContainerMutex.Unlock()
+	fake.CopyToContainerStub = nil
+	fake.copyToContainerReturns = struct {
+		result1 client.CopyToContainerResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) CopyToContainerReturnsOnCall(i int, result1 client.CopyToContainerResult, result2 error) {
+	fake.copyToContainerMutex.Lock()
+	defer fake.copyToContainerMutex.Unlock()
+	fake.CopyToContainerStub = nil
+	if fake.copyToContainerReturnsOnCall == nil {
+		fake.copyToContainerReturnsOnCall = make(map[int]struct {
+			result1 client.CopyToContainerResult
+			result2 error
+		})
+	}
+	fake.copyToContainerReturnsOnCall[i] = struct {
+		result1 client.CopyToContainerResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) DaemonHost() string {
+	fake.daemonHostMutex.Lock()
+	ret, specificReturn := fake.daemonHostReturnsOnCall[len(fake.daemonHostArgsForCall)]
+	fake.daemonHostArgsForCall = append(fake.daemonHostArgsForCall, struct {
+	}{})
+	stub := fake.DaemonHostStub
+	fakeReturns := fake.daemonHostReturns
+	fake.recordInvocation("DaemonHost", []interface{}{})
+	fake.daemonHostMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *DockerClient) DaemonHostCallCount() int {
+	fake.daemonHostMutex.RLock()
+	defer fake.daemonHostMutex.RUnlock()
+	return len(fake.daemonHostArgsForCall)
+}
+
+func (fake *DockerClient) DaemonHostCalls(stub func() string) {
+	fake.daemonHostMutex.Lock()
+	defer fake.daemonHostMutex.Unlock()
+	fake.DaemonHostStub = stub
+}
+
+func (fake *DockerClient) DaemonHostReturns(result1 string) {
+	fake.daemonHostMutex.Lock()
+	defer fake.daemonHostMutex.Unlock()
+	fake.DaemonHostStub = nil
+	fake.daemonHostReturns = struct {
+		result1 string
+	}{result1}
+}
+
+func (fake *DockerClient) DaemonHostReturnsOnCall(i int, result1 string) {
+	fake.daemonHostMutex.Lock()
+	defer fake.daemonHostMutex.Unlock()
+	fake.DaemonHostStub = nil
+	if fake.daemonHostReturnsOnCall == nil {
+		fake.daemonHostReturnsOnCall = make(map[int]struct {
+			result1 string
+		})
+	}
+	fake.daemonHostReturnsOnCall[i] = struct {
+		result1 string
+	}{result1}
+}
+
+func (fake *DockerClient) DialHijack(arg1 context.Context, arg2 string, arg3 string, arg4 map[string][]string) (net.Conn, error) {
+	fake.dialHijackMutex.Lock()
+	ret, specificReturn := fake.dialHijackReturnsOnCall[len(fake.dialHijackArgsForCall)]
+	fake.dialHijackArgsForCall = append(fake.dialHijackArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+		arg4 map[string][]string
+	}{arg1, arg2, arg3, arg4})
+	stub := fake.DialHijackStub
+	fakeReturns := fake.dialHijackReturns
+	fake.recordInvocation("DialHijack", []interface{}{arg1, arg2, arg3, arg4})
+	fake.dialHijackMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3, arg4)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) DialHijackCallCount() int {
+	fake.dialHijackMutex.RLock()
+	defer fake.dialHijackMutex.RUnlock()
+	return len(fake.dialHijackArgsForCall)
+}
+
+func (fake *DockerClient) DialHijackCalls(stub func(context.Context, string, string, map[string][]string) (net.Conn, error)) {
+	fake.dialHijackMutex.Lock()
+	defer fake.dialHijackMutex.Unlock()
+	fake.DialHijackStub = stub
+}
+
+func (fake *DockerClient) DialHijackArgsForCall(i int) (context.Context, string, string, map[string][]string) {
+	fake.dialHijackMutex.RLock()
+	defer fake.dialHijackMutex.RUnlock()
+	argsForCall := fake.dialHijackArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
+}
+
+func (fake *DockerClient) DialHijackReturns(result1 net.Conn, result2 error) {
+	fake.dialHijackMutex.Lock()
+	defer fake.dialHijackMutex.Unlock()
+	fake.DialHijackStub = nil
+	fake.dialHijackReturns = struct {
+		result1 net.Conn
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) DialHijackReturnsOnCall(i int, result1 net.Conn, result2 error) {
+	fake.dialHijackMutex.Lock()
+	defer fake.dialHijackMutex.Unlock()
+	fake.DialHijackStub = nil
+	if fake.dialHijackReturnsOnCall == nil {
+		fake.dialHijackReturnsOnCall = make(map[int]struct {
+			result1 net.Conn
+			result2 error
+		})
+	}
+	fake.dialHijackReturnsOnCall[i] = struct {
+		result1 net.Conn
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) Dialer() func(context.Context) (net.Conn, error) {
+	fake.dialerMutex.Lock()
+	ret, specificReturn := fake.dialerReturnsOnCall[len(fake.dialerArgsForCall)]
+	fake.dialerArgsForCall = append(fake.dialerArgsForCall, struct {
+	}{})
+	stub := fake.DialerStub
+	fakeReturns := fake.dialerReturns
+	fake.recordInvocation("Dialer", []interface{}{})
+	fake.dialerMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *DockerClient) DialerCallCount() int {
+	fake.dialerMutex.RLock()
+	defer fake.dialerMutex.RUnlock()
+	return len(fake.dialerArgsForCall)
+}
+
+func (fake *DockerClient) DialerCalls(stub func() func(context.Context) (net.Conn, error)) {
+	fake.dialerMutex.Lock()
+	defer fake.dialerMutex.Unlock()
+	fake.DialerStub = stub
+}
+
+func (fake *DockerClient) DialerReturns(result1 func(context.Context) (net.Conn, error)) {
+	fake.dialerMutex.Lock()
+	defer fake.dialerMutex.Unlock()
+	fake.DialerStub = nil
+	fake.dialerReturns = struct {
+		result1 func(context.Context) (net.Conn, error)
+	}{result1}
+}
+
+func (fake *DockerClient) DialerReturnsOnCall(i int, result1 func(context.Context) (net.Conn, error)) {
+	fake.dialerMutex.Lock()
+	defer fake.dialerMutex.Unlock()
+	fake.DialerStub = nil
+	if fake.dialerReturnsOnCall == nil {
+		fake.dialerReturnsOnCall = make(map[int]struct {
+			result1 func(context.Context) (net.Conn, error)
+		})
+	}
+	fake.dialerReturnsOnCall[i] = struct {
+		result1 func(context.Context) (net.Conn, error)
+	}{result1}
+}
+
+func (fake *DockerClient) DiskUsage(arg1 context.Context, arg2 client.DiskUsageOptions) (client.DiskUsageResult, error) {
+	fake.diskUsageMutex.Lock()
+	ret, specificReturn := fake.diskUsageReturnsOnCall[len(fake.diskUsageArgsForCall)]
+	fake.diskUsageArgsForCall = append(fake.diskUsageArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.DiskUsageOptions
+	}{arg1, arg2})
+	stub := fake.DiskUsageStub
+	fakeReturns := fake.diskUsageReturns
+	fake.recordInvocation("DiskUsage", []interface{}{arg1, arg2})
+	fake.diskUsageMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) DiskUsageCallCount() int {
+	fake.diskUsageMutex.RLock()
+	defer fake.diskUsageMutex.RUnlock()
+	return len(fake.diskUsageArgsForCall)
+}
+
+func (fake *DockerClient) DiskUsageCalls(stub func(context.Context, client.DiskUsageOptions) (client.DiskUsageResult, error)) {
+	fake.diskUsageMutex.Lock()
+	defer fake.diskUsageMutex.Unlock()
+	fake.DiskUsageStub = stub
+}
+
+func (fake *DockerClient) DiskUsageArgsForCall(i int) (context.Context, client.DiskUsageOptions) {
+	fake.diskUsageMutex.RLock()
+	defer fake.diskUsageMutex.RUnlock()
+	argsForCall := fake.diskUsageArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) DiskUsageReturns(result1 client.DiskUsageResult, result2 error) {
+	fake.diskUsageMutex.Lock()
+	defer fake.diskUsageMutex.Unlock()
+	fake.DiskUsageStub = nil
+	fake.diskUsageReturns = struct {
+		result1 client.DiskUsageResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) DiskUsageReturnsOnCall(i int, result1 client.DiskUsageResult, result2 error) {
+	fake.diskUsageMutex.Lock()
+	defer fake.diskUsageMutex.Unlock()
+	fake.DiskUsageStub = nil
+	if fake.diskUsageReturnsOnCall == nil {
+		fake.diskUsageReturnsOnCall = make(map[int]struct {
+			result1 client.DiskUsageResult
+			result2 error
+		})
+	}
+	fake.diskUsageReturnsOnCall[i] = struct {
+		result1 client.DiskUsageResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) DistributionInspect(arg1 context.Context, arg2 string, arg3 client.DistributionInspectOptions) (client.DistributionInspectResult, error) {
+	fake.distributionInspectMutex.Lock()
+	ret, specificReturn := fake.distributionInspectReturnsOnCall[len(fake.distributionInspectArgsForCall)]
+	fake.distributionInspectArgsForCall = append(fake.distributionInspectArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.DistributionInspectOptions
+	}{arg1, arg2, arg3})
+	stub := fake.DistributionInspectStub
+	fakeReturns := fake.distributionInspectReturns
+	fake.recordInvocation("DistributionInspect", []interface{}{arg1, arg2, arg3})
+	fake.distributionInspectMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) DistributionInspectCallCount() int {
+	fake.distributionInspectMutex.RLock()
+	defer fake.distributionInspectMutex.RUnlock()
+	return len(fake.distributionInspectArgsForCall)
+}
+
+func (fake *DockerClient) DistributionInspectCalls(stub func(context.Context, string, client.DistributionInspectOptions) (client.DistributionInspectResult, error)) {
+	fake.distributionInspectMutex.Lock()
+	defer fake.distributionInspectMutex.Unlock()
+	fake.DistributionInspectStub = stub
+}
+
+func (fake *DockerClient) DistributionInspectArgsForCall(i int) (context.Context, string, client.DistributionInspectOptions) {
+	fake.distributionInspectMutex.RLock()
+	defer fake.distributionInspectMutex.RUnlock()
+	argsForCall := fake.distributionInspectArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) DistributionInspectReturns(result1 client.DistributionInspectResult, result2 error) {
+	fake.distributionInspectMutex.Lock()
+	defer fake.distributionInspectMutex.Unlock()
+	fake.DistributionInspectStub = nil
+	fake.distributionInspectReturns = struct {
+		result1 client.DistributionInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) DistributionInspectReturnsOnCall(i int, result1 client.DistributionInspectResult, result2 error) {
+	fake.distributionInspectMutex.Lock()
+	defer fake.distributionInspectMutex.Unlock()
+	fake.DistributionInspectStub = nil
+	if fake.distributionInspectReturnsOnCall == nil {
+		fake.distributionInspectReturnsOnCall = make(map[int]struct {
+			result1 client.DistributionInspectResult
+			result2 error
+		})
+	}
+	fake.distributionInspectReturnsOnCall[i] = struct {
+		result1 client.DistributionInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) Events(arg1 context.Context, arg2 client.EventsListOptions) client.EventsResult {
+	fake.eventsMutex.Lock()
+	ret, specificReturn := fake.eventsReturnsOnCall[len(fake.eventsArgsForCall)]
+	fake.eventsArgsForCall = append(fake.eventsArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.EventsListOptions
+	}{arg1, arg2})
+	stub := fake.EventsStub
+	fakeReturns := fake.eventsReturns
+	fake.recordInvocation("Events", []interface{}{arg1, arg2})
+	fake.eventsMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *DockerClient) EventsCallCount() int {
+	fake.eventsMutex.RLock()
+	defer fake.eventsMutex.RUnlock()
+	return len(fake.eventsArgsForCall)
+}
+
+func (fake *DockerClient) EventsCalls(stub func(context.Context, client.EventsListOptions) client.EventsResult) {
+	fake.eventsMutex.Lock()
+	defer fake.eventsMutex.Unlock()
+	fake.EventsStub = stub
+}
+
+func (fake *DockerClient) EventsArgsForCall(i int) (context.Context, client.EventsListOptions) {
+	fake.eventsMutex.RLock()
+	defer fake.eventsMutex.RUnlock()
+	argsForCall := fake.eventsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) EventsReturns(result1 client.EventsResult) {
+	fake.eventsMutex.Lock()
+	defer fake.eventsMutex.Unlock()
+	fake.EventsStub = nil
+	fake.eventsReturns = struct {
+		result1 client.EventsResult
+	}{result1}
+}
+
+func (fake *DockerClient) EventsReturnsOnCall(i int, result1 client.EventsResult) {
+	fake.eventsMutex.Lock()
+	defer fake.eventsMutex.Unlock()
+	fake.EventsStub = nil
+	if fake.eventsReturnsOnCall == nil {
+		fake.eventsReturnsOnCall = make(map[int]struct {
+			result1 client.EventsResult
+		})
+	}
+	fake.eventsReturnsOnCall[i] = struct {
+		result1 client.EventsResult
+	}{result1}
+}
+
+func (fake *DockerClient) ExecAttach(arg1 context.Context, arg2 string, arg3 client.ExecAttachOptions) (client.ExecAttachResult, error) {
+	fake.execAttachMutex.Lock()
+	ret, specificReturn := fake.execAttachReturnsOnCall[len(fake.execAttachArgsForCall)]
+	fake.execAttachArgsForCall = append(fake.execAttachArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ExecAttachOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ExecAttachStub
+	fakeReturns := fake.execAttachReturns
+	fake.recordInvocation("ExecAttach", []interface{}{arg1, arg2, arg3})
+	fake.execAttachMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ExecAttachCallCount() int {
+	fake.execAttachMutex.RLock()
+	defer fake.execAttachMutex.RUnlock()
+	return len(fake.execAttachArgsForCall)
+}
+
+func (fake *DockerClient) ExecAttachCalls(stub func(context.Context, string, client.ExecAttachOptions) (client.ExecAttachResult, error)) {
+	fake.execAttachMutex.Lock()
+	defer fake.execAttachMutex.Unlock()
+	fake.ExecAttachStub = stub
+}
+
+func (fake *DockerClient) ExecAttachArgsForCall(i int) (context.Context, string, client.ExecAttachOptions) {
+	fake.execAttachMutex.RLock()
+	defer fake.execAttachMutex.RUnlock()
+	argsForCall := fake.execAttachArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ExecAttachReturns(result1 client.ExecAttachResult, result2 error) {
+	fake.execAttachMutex.Lock()
+	defer fake.execAttachMutex.Unlock()
+	fake.ExecAttachStub = nil
+	fake.execAttachReturns = struct {
+		result1 client.ExecAttachResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ExecAttachReturnsOnCall(i int, result1 client.ExecAttachResult, result2 error) {
+	fake.execAttachMutex.Lock()
+	defer fake.execAttachMutex.Unlock()
+	fake.ExecAttachStub = nil
+	if fake.execAttachReturnsOnCall == nil {
+		fake.execAttachReturnsOnCall = make(map[int]struct {
+			result1 client.ExecAttachResult
+			result2 error
+		})
+	}
+	fake.execAttachReturnsOnCall[i] = struct {
+		result1 client.ExecAttachResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ExecCreate(arg1 context.Context, arg2 string, arg3 client.ExecCreateOptions) (client.ExecCreateResult, error) {
+	fake.execCreateMutex.Lock()
+	ret, specificReturn := fake.execCreateReturnsOnCall[len(fake.execCreateArgsForCall)]
+	fake.execCreateArgsForCall = append(fake.execCreateArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ExecCreateOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ExecCreateStub
+	fakeReturns := fake.execCreateReturns
+	fake.recordInvocation("ExecCreate", []interface{}{arg1, arg2, arg3})
+	fake.execCreateMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ExecCreateCallCount() int {
+	fake.execCreateMutex.RLock()
+	defer fake.execCreateMutex.RUnlock()
+	return len(fake.execCreateArgsForCall)
+}
+
+func (fake *DockerClient) ExecCreateCalls(stub func(context.Context, string, client.ExecCreateOptions) (client.ExecCreateResult, error)) {
+	fake.execCreateMutex.Lock()
+	defer fake.execCreateMutex.Unlock()
+	fake.ExecCreateStub = stub
+}
+
+func (fake *DockerClient) ExecCreateArgsForCall(i int) (context.Context, string, client.ExecCreateOptions) {
+	fake.execCreateMutex.RLock()
+	defer fake.execCreateMutex.RUnlock()
+	argsForCall := fake.execCreateArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ExecCreateReturns(result1 client.ExecCreateResult, result2 error) {
+	fake.execCreateMutex.Lock()
+	defer fake.execCreateMutex.Unlock()
+	fake.ExecCreateStub = nil
+	fake.execCreateReturns = struct {
+		result1 client.ExecCreateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ExecCreateReturnsOnCall(i int, result1 client.ExecCreateResult, result2 error) {
+	fake.execCreateMutex.Lock()
+	defer fake.execCreateMutex.Unlock()
+	fake.ExecCreateStub = nil
+	if fake.execCreateReturnsOnCall == nil {
+		fake.execCreateReturnsOnCall = make(map[int]struct {
+			result1 client.ExecCreateResult
+			result2 error
+		})
+	}
+	fake.execCreateReturnsOnCall[i] = struct {
+		result1 client.ExecCreateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ExecInspect(arg1 context.Context, arg2 string, arg3 client.ExecInspectOptions) (client.ExecInspectResult, error) {
+	fake.execInspectMutex.Lock()
+	ret, specificReturn := fake.execInspectReturnsOnCall[len(fake.execInspectArgsForCall)]
+	fake.execInspectArgsForCall = append(fake.execInspectArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ExecInspectOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ExecInspectStub
+	fakeReturns := fake.execInspectReturns
+	fake.recordInvocation("ExecInspect", []interface{}{arg1, arg2, arg3})
+	fake.execInspectMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ExecInspectCallCount() int {
+	fake.execInspectMutex.RLock()
+	defer fake.execInspectMutex.RUnlock()
+	return len(fake.execInspectArgsForCall)
+}
+
+func (fake *DockerClient) ExecInspectCalls(stub func(context.Context, string, client.ExecInspectOptions) (client.ExecInspectResult, error)) {
+	fake.execInspectMutex.Lock()
+	defer fake.execInspectMutex.Unlock()
+	fake.ExecInspectStub = stub
+}
+
+func (fake *DockerClient) ExecInspectArgsForCall(i int) (context.Context, string, client.ExecInspectOptions) {
+	fake.execInspectMutex.RLock()
+	defer fake.execInspectMutex.RUnlock()
+	argsForCall := fake.execInspectArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ExecInspectReturns(result1 client.ExecInspectResult, result2 error) {
+	fake.execInspectMutex.Lock()
+	defer fake.execInspectMutex.Unlock()
+	fake.ExecInspectStub = nil
+	fake.execInspectReturns = struct {
+		result1 client.ExecInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ExecInspectReturnsOnCall(i int, result1 client.ExecInspectResult, result2 error) {
+	fake.execInspectMutex.Lock()
+	defer fake.execInspectMutex.Unlock()
+	fake.ExecInspectStub = nil
+	if fake.execInspectReturnsOnCall == nil {
+		fake.execInspectReturnsOnCall = make(map[int]struct {
+			result1 client.ExecInspectResult
+			result2 error
+		})
+	}
+	fake.execInspectReturnsOnCall[i] = struct {
+		result1 client.ExecInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ExecResize(arg1 context.Context, arg2 string, arg3 client.ExecResizeOptions) (client.ExecResizeResult, error) {
+	fake.execResizeMutex.Lock()
+	ret, specificReturn := fake.execResizeReturnsOnCall[len(fake.execResizeArgsForCall)]
+	fake.execResizeArgsForCall = append(fake.execResizeArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ExecResizeOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ExecResizeStub
+	fakeReturns := fake.execResizeReturns
+	fake.recordInvocation("ExecResize", []interface{}{arg1, arg2, arg3})
+	fake.execResizeMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ExecResizeCallCount() int {
+	fake.execResizeMutex.RLock()
+	defer fake.execResizeMutex.RUnlock()
+	return len(fake.execResizeArgsForCall)
+}
+
+func (fake *DockerClient) ExecResizeCalls(stub func(context.Context, string, client.ExecResizeOptions) (client.ExecResizeResult, error)) {
+	fake.execResizeMutex.Lock()
+	defer fake.execResizeMutex.Unlock()
+	fake.ExecResizeStub = stub
+}
+
+func (fake *DockerClient) ExecResizeArgsForCall(i int) (context.Context, string, client.ExecResizeOptions) {
+	fake.execResizeMutex.RLock()
+	defer fake.execResizeMutex.RUnlock()
+	argsForCall := fake.execResizeArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ExecResizeReturns(result1 client.ExecResizeResult, result2 error) {
+	fake.execResizeMutex.Lock()
+	defer fake.execResizeMutex.Unlock()
+	fake.ExecResizeStub = nil
+	fake.execResizeReturns = struct {
+		result1 client.ExecResizeResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ExecResizeReturnsOnCall(i int, result1 client.ExecResizeResult, result2 error) {
+	fake.execResizeMutex.Lock()
+	defer fake.execResizeMutex.Unlock()
+	fake.ExecResizeStub = nil
+	if fake.execResizeReturnsOnCall == nil {
+		fake.execResizeReturnsOnCall = make(map[int]struct {
+			result1 client.ExecResizeResult
+			result2 error
+		})
+	}
+	fake.execResizeReturnsOnCall[i] = struct {
+		result1 client.ExecResizeResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ExecStart(arg1 context.Context, arg2 string, arg3 client.ExecStartOptions) (client.ExecStartResult, error) {
+	fake.execStartMutex.Lock()
+	ret, specificReturn := fake.execStartReturnsOnCall[len(fake.execStartArgsForCall)]
+	fake.execStartArgsForCall = append(fake.execStartArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ExecStartOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ExecStartStub
+	fakeReturns := fake.execStartReturns
+	fake.recordInvocation("ExecStart", []interface{}{arg1, arg2, arg3})
+	fake.execStartMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ExecStartCallCount() int {
+	fake.execStartMutex.RLock()
+	defer fake.execStartMutex.RUnlock()
+	return len(fake.execStartArgsForCall)
+}
+
+func (fake *DockerClient) ExecStartCalls(stub func(context.Context, string, client.ExecStartOptions) (client.ExecStartResult, error)) {
+	fake.execStartMutex.Lock()
+	defer fake.execStartMutex.Unlock()
+	fake.ExecStartStub = stub
+}
+
+func (fake *DockerClient) ExecStartArgsForCall(i int) (context.Context, string, client.ExecStartOptions) {
+	fake.execStartMutex.RLock()
+	defer fake.execStartMutex.RUnlock()
+	argsForCall := fake.execStartArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ExecStartReturns(result1 client.ExecStartResult, result2 error) {
+	fake.execStartMutex.Lock()
+	defer fake.execStartMutex.Unlock()
+	fake.ExecStartStub = nil
+	fake.execStartReturns = struct {
+		result1 client.ExecStartResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ExecStartReturnsOnCall(i int, result1 client.ExecStartResult, result2 error) {
+	fake.execStartMutex.Lock()
+	defer fake.execStartMutex.Unlock()
+	fake.ExecStartStub = nil
+	if fake.execStartReturnsOnCall == nil {
+		fake.execStartReturnsOnCall = make(map[int]struct {
+			result1 client.ExecStartResult
+			result2 error
+		})
+	}
+	fake.execStartReturnsOnCall[i] = struct {
+		result1 client.ExecStartResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageBuild(arg1 context.Context, arg2 io.Reader, arg3 client.ImageBuildOptions) (client.ImageBuildResult, error) {
+	fake.imageBuildMutex.Lock()
+	ret, specificReturn := fake.imageBuildReturnsOnCall[len(fake.imageBuildArgsForCall)]
+	fake.imageBuildArgsForCall = append(fake.imageBuildArgsForCall, struct {
+		arg1 context.Context
+		arg2 io.Reader
+		arg3 client.ImageBuildOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ImageBuildStub
+	fakeReturns := fake.imageBuildReturns
+	fake.recordInvocation("ImageBuild", []interface{}{arg1, arg2, arg3})
+	fake.imageBuildMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ImageBuildCallCount() int {
+	fake.imageBuildMutex.RLock()
+	defer fake.imageBuildMutex.RUnlock()
+	return len(fake.imageBuildArgsForCall)
+}
+
+func (fake *DockerClient) ImageBuildCalls(stub func(context.Context, io.Reader, client.ImageBuildOptions) (client.ImageBuildResult, error)) {
+	fake.imageBuildMutex.Lock()
+	defer fake.imageBuildMutex.Unlock()
+	fake.ImageBuildStub = stub
+}
+
+func (fake *DockerClient) ImageBuildArgsForCall(i int) (context.Context, io.Reader, client.ImageBuildOptions) {
+	fake.imageBuildMutex.RLock()
+	defer fake.imageBuildMutex.RUnlock()
+	argsForCall := fake.imageBuildArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ImageBuildReturns(result1 client.ImageBuildResult, result2 error) {
+	fake.imageBuildMutex.Lock()
+	defer fake.imageBuildMutex.Unlock()
+	fake.ImageBuildStub = nil
+	fake.imageBuildReturns = struct {
+		result1 client.ImageBuildResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageBuildReturnsOnCall(i int, result1 client.ImageBuildResult, result2 error) {
+	fake.imageBuildMutex.Lock()
+	defer fake.imageBuildMutex.Unlock()
+	fake.ImageBuildStub = nil
+	if fake.imageBuildReturnsOnCall == nil {
+		fake.imageBuildReturnsOnCall = make(map[int]struct {
+			result1 client.ImageBuildResult
+			result2 error
+		})
+	}
+	fake.imageBuildReturnsOnCall[i] = struct {
+		result1 client.ImageBuildResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageHistory(arg1 context.Context, arg2 string, arg3 ...client.ImageHistoryOption) (client.ImageHistoryResult, error) {
+	fake.imageHistoryMutex.Lock()
+	ret, specificReturn := fake.imageHistoryReturnsOnCall[len(fake.imageHistoryArgsForCall)]
+	fake.imageHistoryArgsForCall = append(fake.imageHistoryArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 []client.ImageHistoryOption
+	}{arg1, arg2, arg3})
+	stub := fake.ImageHistoryStub
+	fakeReturns := fake.imageHistoryReturns
+	fake.recordInvocation("ImageHistory", []interface{}{arg1, arg2, arg3})
+	fake.imageHistoryMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ImageHistoryCallCount() int {
+	fake.imageHistoryMutex.RLock()
+	defer fake.imageHistoryMutex.RUnlock()
+	return len(fake.imageHistoryArgsForCall)
+}
+
+func (fake *DockerClient) ImageHistoryCalls(stub func(context.Context, string, ...client.ImageHistoryOption) (client.ImageHistoryResult, error)) {
+	fake.imageHistoryMutex.Lock()
+	defer fake.imageHistoryMutex.Unlock()
+	fake.ImageHistoryStub = stub
+}
+
+func (fake *DockerClient) ImageHistoryArgsForCall(i int) (context.Context, string, []client.ImageHistoryOption) {
+	fake.imageHistoryMutex.RLock()
+	defer fake.imageHistoryMutex.RUnlock()
+	argsForCall := fake.imageHistoryArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ImageHistoryReturns(result1 client.ImageHistoryResult, result2 error) {
+	fake.imageHistoryMutex.Lock()
+	defer fake.imageHistoryMutex.Unlock()
+	fake.ImageHistoryStub = nil
+	fake.imageHistoryReturns = struct {
+		result1 client.ImageHistoryResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageHistoryReturnsOnCall(i int, result1 client.ImageHistoryResult, result2 error) {
+	fake.imageHistoryMutex.Lock()
+	defer fake.imageHistoryMutex.Unlock()
+	fake.ImageHistoryStub = nil
+	if fake.imageHistoryReturnsOnCall == nil {
+		fake.imageHistoryReturnsOnCall = make(map[int]struct {
+			result1 client.ImageHistoryResult
+			result2 error
+		})
+	}
+	fake.imageHistoryReturnsOnCall[i] = struct {
+		result1 client.ImageHistoryResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageImport(arg1 context.Context, arg2 client.ImageImportSource, arg3 string, arg4 client.ImageImportOptions) (client.ImageImportResult, error) {
+	fake.imageImportMutex.Lock()
+	ret, specificReturn := fake.imageImportReturnsOnCall[len(fake.imageImportArgsForCall)]
+	fake.imageImportArgsForCall = append(fake.imageImportArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.ImageImportSource
+		arg3 string
+		arg4 client.ImageImportOptions
+	}{arg1, arg2, arg3, arg4})
+	stub := fake.ImageImportStub
+	fakeReturns := fake.imageImportReturns
+	fake.recordInvocation("ImageImport", []interface{}{arg1, arg2, arg3, arg4})
+	fake.imageImportMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3, arg4)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ImageImportCallCount() int {
+	fake.imageImportMutex.RLock()
+	defer fake.imageImportMutex.RUnlock()
+	return len(fake.imageImportArgsForCall)
+}
+
+func (fake *DockerClient) ImageImportCalls(stub func(context.Context, client.ImageImportSource, string, client.ImageImportOptions) (client.ImageImportResult, error)) {
+	fake.imageImportMutex.Lock()
+	defer fake.imageImportMutex.Unlock()
+	fake.ImageImportStub = stub
+}
+
+func (fake *DockerClient) ImageImportArgsForCall(i int) (context.Context, client.ImageImportSource, string, client.ImageImportOptions) {
+	fake.imageImportMutex.RLock()
+	defer fake.imageImportMutex.RUnlock()
+	argsForCall := fake.imageImportArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
+}
+
+func (fake *DockerClient) ImageImportReturns(result1 client.ImageImportResult, result2 error) {
+	fake.imageImportMutex.Lock()
+	defer fake.imageImportMutex.Unlock()
+	fake.ImageImportStub = nil
+	fake.imageImportReturns = struct {
+		result1 client.ImageImportResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageImportReturnsOnCall(i int, result1 client.ImageImportResult, result2 error) {
+	fake.imageImportMutex.Lock()
+	defer fake.imageImportMutex.Unlock()
+	fake.ImageImportStub = nil
+	if fake.imageImportReturnsOnCall == nil {
+		fake.imageImportReturnsOnCall = make(map[int]struct {
+			result1 client.ImageImportResult
+			result2 error
+		})
+	}
+	fake.imageImportReturnsOnCall[i] = struct {
+		result1 client.ImageImportResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageInspect(arg1 context.Context, arg2 string, arg3 ...client.ImageInspectOption) (client.ImageInspectResult, error) {
+	fake.imageInspectMutex.Lock()
+	ret, specificReturn := fake.imageInspectReturnsOnCall[len(fake.imageInspectArgsForCall)]
+	fake.imageInspectArgsForCall = append(fake.imageInspectArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 []client.ImageInspectOption
+	}{arg1, arg2, arg3})
+	stub := fake.ImageInspectStub
+	fakeReturns := fake.imageInspectReturns
+	fake.recordInvocation("ImageInspect", []interface{}{arg1, arg2, arg3})
+	fake.imageInspectMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ImageInspectCallCount() int {
+	fake.imageInspectMutex.RLock()
+	defer fake.imageInspectMutex.RUnlock()
+	return len(fake.imageInspectArgsForCall)
+}
+
+func (fake *DockerClient) ImageInspectCalls(stub func(context.Context, string, ...client.ImageInspectOption) (client.ImageInspectResult, error)) {
+	fake.imageInspectMutex.Lock()
+	defer fake.imageInspectMutex.Unlock()
+	fake.ImageInspectStub = stub
+}
+
+func (fake *DockerClient) ImageInspectArgsForCall(i int) (context.Context, string, []client.ImageInspectOption) {
+	fake.imageInspectMutex.RLock()
+	defer fake.imageInspectMutex.RUnlock()
+	argsForCall := fake.imageInspectArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ImageInspectReturns(result1 client.ImageInspectResult, result2 error) {
+	fake.imageInspectMutex.Lock()
+	defer fake.imageInspectMutex.Unlock()
+	fake.ImageInspectStub = nil
+	fake.imageInspectReturns = struct {
+		result1 client.ImageInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageInspectReturnsOnCall(i int, result1 client.ImageInspectResult, result2 error) {
+	fake.imageInspectMutex.Lock()
+	defer fake.imageInspectMutex.Unlock()
+	fake.ImageInspectStub = nil
+	if fake.imageInspectReturnsOnCall == nil {
+		fake.imageInspectReturnsOnCall = make(map[int]struct {
+			result1 client.ImageInspectResult
+			result2 error
+		})
+	}
+	fake.imageInspectReturnsOnCall[i] = struct {
+		result1 client.ImageInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageList(arg1 context.Context, arg2 client.ImageListOptions) (client.ImageListResult, error) {
+	fake.imageListMutex.Lock()
+	ret, specificReturn := fake.imageListReturnsOnCall[len(fake.imageListArgsForCall)]
+	fake.imageListArgsForCall = append(fake.imageListArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.ImageListOptions
+	}{arg1, arg2})
+	stub := fake.ImageListStub
+	fakeReturns := fake.imageListReturns
+	fake.recordInvocation("ImageList", []interface{}{arg1, arg2})
+	fake.imageListMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ImageListCallCount() int {
+	fake.imageListMutex.RLock()
+	defer fake.imageListMutex.RUnlock()
+	return len(fake.imageListArgsForCall)
+}
+
+func (fake *DockerClient) ImageListCalls(stub func(context.Context, client.ImageListOptions) (client.ImageListResult, error)) {
+	fake.imageListMutex.Lock()
+	defer fake.imageListMutex.Unlock()
+	fake.ImageListStub = stub
+}
+
+func (fake *DockerClient) ImageListArgsForCall(i int) (context.Context, client.ImageListOptions) {
+	fake.imageListMutex.RLock()
+	defer fake.imageListMutex.RUnlock()
+	argsForCall := fake.imageListArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) ImageListReturns(result1 client.ImageListResult, result2 error) {
+	fake.imageListMutex.Lock()
+	defer fake.imageListMutex.Unlock()
+	fake.ImageListStub = nil
+	fake.imageListReturns = struct {
+		result1 client.ImageListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageListReturnsOnCall(i int, result1 client.ImageListResult, result2 error) {
+	fake.imageListMutex.Lock()
+	defer fake.imageListMutex.Unlock()
+	fake.ImageListStub = nil
+	if fake.imageListReturnsOnCall == nil {
+		fake.imageListReturnsOnCall = make(map[int]struct {
+			result1 client.ImageListResult
+			result2 error
+		})
+	}
+	fake.imageListReturnsOnCall[i] = struct {
+		result1 client.ImageListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageLoad(arg1 context.Context, arg2 io.Reader, arg3 ...client.ImageLoadOption) (client.ImageLoadResult, error) {
+	fake.imageLoadMutex.Lock()
+	ret, specificReturn := fake.imageLoadReturnsOnCall[len(fake.imageLoadArgsForCall)]
+	fake.imageLoadArgsForCall = append(fake.imageLoadArgsForCall, struct {
+		arg1 context.Context
+		arg2 io.Reader
+		arg3 []client.ImageLoadOption
+	}{arg1, arg2, arg3})
+	stub := fake.ImageLoadStub
+	fakeReturns := fake.imageLoadReturns
+	fake.recordInvocation("ImageLoad", []interface{}{arg1, arg2, arg3})
+	fake.imageLoadMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ImageLoadCallCount() int {
+	fake.imageLoadMutex.RLock()
+	defer fake.imageLoadMutex.RUnlock()
+	return len(fake.imageLoadArgsForCall)
+}
+
+func (fake *DockerClient) ImageLoadCalls(stub func(context.Context, io.Reader, ...client.ImageLoadOption) (client.ImageLoadResult, error)) {
+	fake.imageLoadMutex.Lock()
+	defer fake.imageLoadMutex.Unlock()
+	fake.ImageLoadStub = stub
+}
+
+func (fake *DockerClient) ImageLoadArgsForCall(i int) (context.Context, io.Reader, []client.ImageLoadOption) {
+	fake.imageLoadMutex.RLock()
+	defer fake.imageLoadMutex.RUnlock()
+	argsForCall := fake.imageLoadArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ImageLoadReturns(result1 client.ImageLoadResult, result2 error) {
+	fake.imageLoadMutex.Lock()
+	defer fake.imageLoadMutex.Unlock()
+	fake.ImageLoadStub = nil
+	fake.imageLoadReturns = struct {
+		result1 client.ImageLoadResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageLoadReturnsOnCall(i int, result1 client.ImageLoadResult, result2 error) {
+	fake.imageLoadMutex.Lock()
+	defer fake.imageLoadMutex.Unlock()
+	fake.ImageLoadStub = nil
+	if fake.imageLoadReturnsOnCall == nil {
+		fake.imageLoadReturnsOnCall = make(map[int]struct {
+			result1 client.ImageLoadResult
+			result2 error
+		})
+	}
+	fake.imageLoadReturnsOnCall[i] = struct {
+		result1 client.ImageLoadResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImagePrune(arg1 context.Context, arg2 client.ImagePruneOptions) (client.ImagePruneResult, error) {
+	fake.imagePruneMutex.Lock()
+	ret, specificReturn := fake.imagePruneReturnsOnCall[len(fake.imagePruneArgsForCall)]
+	fake.imagePruneArgsForCall = append(fake.imagePruneArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.ImagePruneOptions
+	}{arg1, arg2})
+	stub := fake.ImagePruneStub
+	fakeReturns := fake.imagePruneReturns
+	fake.recordInvocation("ImagePrune", []interface{}{arg1, arg2})
+	fake.imagePruneMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ImagePruneCallCount() int {
+	fake.imagePruneMutex.RLock()
+	defer fake.imagePruneMutex.RUnlock()
+	return len(fake.imagePruneArgsForCall)
+}
+
+func (fake *DockerClient) ImagePruneCalls(stub func(context.Context, client.ImagePruneOptions) (client.ImagePruneResult, error)) {
+	fake.imagePruneMutex.Lock()
+	defer fake.imagePruneMutex.Unlock()
+	fake.ImagePruneStub = stub
+}
+
+func (fake *DockerClient) ImagePruneArgsForCall(i int) (context.Context, client.ImagePruneOptions) {
+	fake.imagePruneMutex.RLock()
+	defer fake.imagePruneMutex.RUnlock()
+	argsForCall := fake.imagePruneArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) ImagePruneReturns(result1 client.ImagePruneResult, result2 error) {
+	fake.imagePruneMutex.Lock()
+	defer fake.imagePruneMutex.Unlock()
+	fake.ImagePruneStub = nil
+	fake.imagePruneReturns = struct {
+		result1 client.ImagePruneResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImagePruneReturnsOnCall(i int, result1 client.ImagePruneResult, result2 error) {
+	fake.imagePruneMutex.Lock()
+	defer fake.imagePruneMutex.Unlock()
+	fake.ImagePruneStub = nil
+	if fake.imagePruneReturnsOnCall == nil {
+		fake.imagePruneReturnsOnCall = make(map[int]struct {
+			result1 client.ImagePruneResult
+			result2 error
+		})
+	}
+	fake.imagePruneReturnsOnCall[i] = struct {
+		result1 client.ImagePruneResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImagePull(arg1 context.Context, arg2 string, arg3 client.ImagePullOptions) (client.ImagePullResponse, error) {
+	fake.imagePullMutex.Lock()
+	ret, specificReturn := fake.imagePullReturnsOnCall[len(fake.imagePullArgsForCall)]
+	fake.imagePullArgsForCall = append(fake.imagePullArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ImagePullOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ImagePullStub
+	fakeReturns := fake.imagePullReturns
+	fake.recordInvocation("ImagePull", []interface{}{arg1, arg2, arg3})
+	fake.imagePullMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ImagePullCallCount() int {
+	fake.imagePullMutex.RLock()
+	defer fake.imagePullMutex.RUnlock()
+	return len(fake.imagePullArgsForCall)
+}
+
+func (fake *DockerClient) ImagePullCalls(stub func(context.Context, string, client.ImagePullOptions) (client.ImagePullResponse, error)) {
+	fake.imagePullMutex.Lock()
+	defer fake.imagePullMutex.Unlock()
+	fake.ImagePullStub = stub
+}
+
+func (fake *DockerClient) ImagePullArgsForCall(i int) (context.Context, string, client.ImagePullOptions) {
+	fake.imagePullMutex.RLock()
+	defer fake.imagePullMutex.RUnlock()
+	argsForCall := fake.imagePullArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ImagePullReturns(result1 client.ImagePullResponse, result2 error) {
+	fake.imagePullMutex.Lock()
+	defer fake.imagePullMutex.Unlock()
+	fake.ImagePullStub = nil
+	fake.imagePullReturns = struct {
+		result1 client.ImagePullResponse
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImagePullReturnsOnCall(i int, result1 client.ImagePullResponse, result2 error) {
+	fake.imagePullMutex.Lock()
+	defer fake.imagePullMutex.Unlock()
+	fake.ImagePullStub = nil
+	if fake.imagePullReturnsOnCall == nil {
+		fake.imagePullReturnsOnCall = make(map[int]struct {
+			result1 client.ImagePullResponse
+			result2 error
+		})
+	}
+	fake.imagePullReturnsOnCall[i] = struct {
+		result1 client.ImagePullResponse
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImagePush(arg1 context.Context, arg2 string, arg3 client.ImagePushOptions) (client.ImagePushResponse, error) {
+	fake.imagePushMutex.Lock()
+	ret, specificReturn := fake.imagePushReturnsOnCall[len(fake.imagePushArgsForCall)]
+	fake.imagePushArgsForCall = append(fake.imagePushArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ImagePushOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ImagePushStub
+	fakeReturns := fake.imagePushReturns
+	fake.recordInvocation("ImagePush", []interface{}{arg1, arg2, arg3})
+	fake.imagePushMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ImagePushCallCount() int {
+	fake.imagePushMutex.RLock()
+	defer fake.imagePushMutex.RUnlock()
+	return len(fake.imagePushArgsForCall)
+}
+
+func (fake *DockerClient) ImagePushCalls(stub func(context.Context, string, client.ImagePushOptions) (client.ImagePushResponse, error)) {
+	fake.imagePushMutex.Lock()
+	defer fake.imagePushMutex.Unlock()
+	fake.ImagePushStub = stub
+}
+
+func (fake *DockerClient) ImagePushArgsForCall(i int) (context.Context, string, client.ImagePushOptions) {
+	fake.imagePushMutex.RLock()
+	defer fake.imagePushMutex.RUnlock()
+	argsForCall := fake.imagePushArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ImagePushReturns(result1 client.ImagePushResponse, result2 error) {
+	fake.imagePushMutex.Lock()
+	defer fake.imagePushMutex.Unlock()
+	fake.ImagePushStub = nil
+	fake.imagePushReturns = struct {
+		result1 client.ImagePushResponse
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImagePushReturnsOnCall(i int, result1 client.ImagePushResponse, result2 error) {
+	fake.imagePushMutex.Lock()
+	defer fake.imagePushMutex.Unlock()
+	fake.ImagePushStub = nil
+	if fake.imagePushReturnsOnCall == nil {
+		fake.imagePushReturnsOnCall = make(map[int]struct {
+			result1 client.ImagePushResponse
+			result2 error
+		})
+	}
+	fake.imagePushReturnsOnCall[i] = struct {
+		result1 client.ImagePushResponse
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageRemove(arg1 context.Context, arg2 string, arg3 client.ImageRemoveOptions) (client.ImageRemoveResult, error) {
+	fake.imageRemoveMutex.Lock()
+	ret, specificReturn := fake.imageRemoveReturnsOnCall[len(fake.imageRemoveArgsForCall)]
+	fake.imageRemoveArgsForCall = append(fake.imageRemoveArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ImageRemoveOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ImageRemoveStub
+	fakeReturns := fake.imageRemoveReturns
+	fake.recordInvocation("ImageRemove", []interface{}{arg1, arg2, arg3})
+	fake.imageRemoveMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ImageRemoveCallCount() int {
+	fake.imageRemoveMutex.RLock()
+	defer fake.imageRemoveMutex.RUnlock()
+	return len(fake.imageRemoveArgsForCall)
+}
+
+func (fake *DockerClient) ImageRemoveCalls(stub func(context.Context, string, client.ImageRemoveOptions) (client.ImageRemoveResult, error)) {
+	fake.imageRemoveMutex.Lock()
+	defer fake.imageRemoveMutex.Unlock()
+	fake.ImageRemoveStub = stub
+}
+
+func (fake *DockerClient) ImageRemoveArgsForCall(i int) (context.Context, string, client.ImageRemoveOptions) {
+	fake.imageRemoveMutex.RLock()
+	defer fake.imageRemoveMutex.RUnlock()
+	argsForCall := fake.imageRemoveArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ImageRemoveReturns(result1 client.ImageRemoveResult, result2 error) {
+	fake.imageRemoveMutex.Lock()
+	defer fake.imageRemoveMutex.Unlock()
+	fake.ImageRemoveStub = nil
+	fake.imageRemoveReturns = struct {
+		result1 client.ImageRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageRemoveReturnsOnCall(i int, result1 client.ImageRemoveResult, result2 error) {
+	fake.imageRemoveMutex.Lock()
+	defer fake.imageRemoveMutex.Unlock()
+	fake.ImageRemoveStub = nil
+	if fake.imageRemoveReturnsOnCall == nil {
+		fake.imageRemoveReturnsOnCall = make(map[int]struct {
+			result1 client.ImageRemoveResult
+			result2 error
+		})
+	}
+	fake.imageRemoveReturnsOnCall[i] = struct {
+		result1 client.ImageRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageSave(arg1 context.Context, arg2 []string, arg3 ...client.ImageSaveOption) (client.ImageSaveResult, error) {
+	var arg2Copy []string
+	if arg2 != nil {
+		arg2Copy = make([]string, len(arg2))
+		copy(arg2Copy, arg2)
+	}
+	fake.imageSaveMutex.Lock()
+	ret, specificReturn := fake.imageSaveReturnsOnCall[len(fake.imageSaveArgsForCall)]
+	fake.imageSaveArgsForCall = append(fake.imageSaveArgsForCall, struct {
+		arg1 context.Context
+		arg2 []string
+		arg3 []client.ImageSaveOption
+	}{arg1, arg2Copy, arg3})
+	stub := fake.ImageSaveStub
+	fakeReturns := fake.imageSaveReturns
+	fake.recordInvocation("ImageSave", []interface{}{arg1, arg2Copy, arg3})
+	fake.imageSaveMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ImageSaveCallCount() int {
+	fake.imageSaveMutex.RLock()
+	defer fake.imageSaveMutex.RUnlock()
+	return len(fake.imageSaveArgsForCall)
+}
+
+func (fake *DockerClient) ImageSaveCalls(stub func(context.Context, []string, ...client.ImageSaveOption) (client.ImageSaveResult, error)) {
+	fake.imageSaveMutex.Lock()
+	defer fake.imageSaveMutex.Unlock()
+	fake.ImageSaveStub = stub
+}
+
+func (fake *DockerClient) ImageSaveArgsForCall(i int) (context.Context, []string, []client.ImageSaveOption) {
+	fake.imageSaveMutex.RLock()
+	defer fake.imageSaveMutex.RUnlock()
+	argsForCall := fake.imageSaveArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ImageSaveReturns(result1 client.ImageSaveResult, result2 error) {
+	fake.imageSaveMutex.Lock()
+	defer fake.imageSaveMutex.Unlock()
+	fake.ImageSaveStub = nil
+	fake.imageSaveReturns = struct {
+		result1 client.ImageSaveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageSaveReturnsOnCall(i int, result1 client.ImageSaveResult, result2 error) {
+	fake.imageSaveMutex.Lock()
+	defer fake.imageSaveMutex.Unlock()
+	fake.ImageSaveStub = nil
+	if fake.imageSaveReturnsOnCall == nil {
+		fake.imageSaveReturnsOnCall = make(map[int]struct {
+			result1 client.ImageSaveResult
+			result2 error
+		})
+	}
+	fake.imageSaveReturnsOnCall[i] = struct {
+		result1 client.ImageSaveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageSearch(arg1 context.Context, arg2 string, arg3 client.ImageSearchOptions) (client.ImageSearchResult, error) {
+	fake.imageSearchMutex.Lock()
+	ret, specificReturn := fake.imageSearchReturnsOnCall[len(fake.imageSearchArgsForCall)]
+	fake.imageSearchArgsForCall = append(fake.imageSearchArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ImageSearchOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ImageSearchStub
+	fakeReturns := fake.imageSearchReturns
+	fake.recordInvocation("ImageSearch", []interface{}{arg1, arg2, arg3})
+	fake.imageSearchMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ImageSearchCallCount() int {
+	fake.imageSearchMutex.RLock()
+	defer fake.imageSearchMutex.RUnlock()
+	return len(fake.imageSearchArgsForCall)
+}
+
+func (fake *DockerClient) ImageSearchCalls(stub func(context.Context, string, client.ImageSearchOptions) (client.ImageSearchResult, error)) {
+	fake.imageSearchMutex.Lock()
+	defer fake.imageSearchMutex.Unlock()
+	fake.ImageSearchStub = stub
+}
+
+func (fake *DockerClient) ImageSearchArgsForCall(i int) (context.Context, string, client.ImageSearchOptions) {
+	fake.imageSearchMutex.RLock()
+	defer fake.imageSearchMutex.RUnlock()
+	argsForCall := fake.imageSearchArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ImageSearchReturns(result1 client.ImageSearchResult, result2 error) {
+	fake.imageSearchMutex.Lock()
+	defer fake.imageSearchMutex.Unlock()
+	fake.ImageSearchStub = nil
+	fake.imageSearchReturns = struct {
+		result1 client.ImageSearchResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageSearchReturnsOnCall(i int, result1 client.ImageSearchResult, result2 error) {
+	fake.imageSearchMutex.Lock()
+	defer fake.imageSearchMutex.Unlock()
+	fake.ImageSearchStub = nil
+	if fake.imageSearchReturnsOnCall == nil {
+		fake.imageSearchReturnsOnCall = make(map[int]struct {
+			result1 client.ImageSearchResult
+			result2 error
+		})
+	}
+	fake.imageSearchReturnsOnCall[i] = struct {
+		result1 client.ImageSearchResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageTag(arg1 context.Context, arg2 client.ImageTagOptions) (client.ImageTagResult, error) {
+	fake.imageTagMutex.Lock()
+	ret, specificReturn := fake.imageTagReturnsOnCall[len(fake.imageTagArgsForCall)]
+	fake.imageTagArgsForCall = append(fake.imageTagArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.ImageTagOptions
+	}{arg1, arg2})
+	stub := fake.ImageTagStub
+	fakeReturns := fake.imageTagReturns
+	fake.recordInvocation("ImageTag", []interface{}{arg1, arg2})
+	fake.imageTagMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ImageTagCallCount() int {
+	fake.imageTagMutex.RLock()
+	defer fake.imageTagMutex.RUnlock()
+	return len(fake.imageTagArgsForCall)
+}
+
+func (fake *DockerClient) ImageTagCalls(stub func(context.Context, client.ImageTagOptions) (client.ImageTagResult, error)) {
+	fake.imageTagMutex.Lock()
+	defer fake.imageTagMutex.Unlock()
+	fake.ImageTagStub = stub
+}
+
+func (fake *DockerClient) ImageTagArgsForCall(i int) (context.Context, client.ImageTagOptions) {
+	fake.imageTagMutex.RLock()
+	defer fake.imageTagMutex.RUnlock()
+	argsForCall := fake.imageTagArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) ImageTagReturns(result1 client.ImageTagResult, result2 error) {
+	fake.imageTagMutex.Lock()
+	defer fake.imageTagMutex.Unlock()
+	fake.ImageTagStub = nil
+	fake.imageTagReturns = struct {
+		result1 client.ImageTagResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageTagReturnsOnCall(i int, result1 client.ImageTagResult, result2 error) {
+	fake.imageTagMutex.Lock()
+	defer fake.imageTagMutex.Unlock()
+	fake.ImageTagStub = nil
+	if fake.imageTagReturnsOnCall == nil {
+		fake.imageTagReturnsOnCall = make(map[int]struct {
+			result1 client.ImageTagResult
+			result2 error
+		})
+	}
+	fake.imageTagReturnsOnCall[i] = struct {
+		result1 client.ImageTagResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) Info(arg1 context.Context, arg2 client.InfoOptions) (client.SystemInfoResult, error) {
+	fake.infoMutex.Lock()
+	ret, specificReturn := fake.infoReturnsOnCall[len(fake.infoArgsForCall)]
+	fake.infoArgsForCall = append(fake.infoArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.InfoOptions
+	}{arg1, arg2})
+	stub := fake.InfoStub
+	fakeReturns := fake.infoReturns
+	fake.recordInvocation("Info", []interface{}{arg1, arg2})
+	fake.infoMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) InfoCallCount() int {
+	fake.infoMutex.RLock()
+	defer fake.infoMutex.RUnlock()
+	return len(fake.infoArgsForCall)
+}
+
+func (fake *DockerClient) InfoCalls(stub func(context.Context, client.InfoOptions) (client.SystemInfoResult, error)) {
+	fake.infoMutex.Lock()
+	defer fake.infoMutex.Unlock()
+	fake.InfoStub = stub
+}
+
+func (fake *DockerClient) InfoArgsForCall(i int) (context.Context, client.InfoOptions) {
+	fake.infoMutex.RLock()
+	defer fake.infoMutex.RUnlock()
+	argsForCall := fake.infoArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) InfoReturns(result1 client.SystemInfoResult, result2 error) {
+	fake.infoMutex.Lock()
+	defer fake.infoMutex.Unlock()
+	fake.InfoStub = nil
+	fake.infoReturns = struct {
+		result1 client.SystemInfoResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) InfoReturnsOnCall(i int, result1 client.SystemInfoResult, result2 error) {
+	fake.infoMutex.Lock()
+	defer fake.infoMutex.Unlock()
+	fake.InfoStub = nil
+	if fake.infoReturnsOnCall == nil {
+		fake.infoReturnsOnCall = make(map[int]struct {
+			result1 client.SystemInfoResult
+			result2 error
+		})
+	}
+	fake.infoReturnsOnCall[i] = struct {
+		result1 client.SystemInfoResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NetworkConnect(arg1 context.Context, arg2 string, arg3 client.NetworkConnectOptions) (client.NetworkConnectResult, error) {
+	fake.networkConnectMutex.Lock()
+	ret, specificReturn := fake.networkConnectReturnsOnCall[len(fake.networkConnectArgsForCall)]
+	fake.networkConnectArgsForCall = append(fake.networkConnectArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.NetworkConnectOptions
+	}{arg1, arg2, arg3})
+	stub := fake.NetworkConnectStub
+	fakeReturns := fake.networkConnectReturns
+	fake.recordInvocation("NetworkConnect", []interface{}{arg1, arg2, arg3})
+	fake.networkConnectMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) NetworkConnectCallCount() int {
+	fake.networkConnectMutex.RLock()
+	defer fake.networkConnectMutex.RUnlock()
+	return len(fake.networkConnectArgsForCall)
+}
+
+func (fake *DockerClient) NetworkConnectCalls(stub func(context.Context, string, client.NetworkConnectOptions) (client.NetworkConnectResult, error)) {
+	fake.networkConnectMutex.Lock()
+	defer fake.networkConnectMutex.Unlock()
+	fake.NetworkConnectStub = stub
+}
+
+func (fake *DockerClient) NetworkConnectArgsForCall(i int) (context.Context, string, client.NetworkConnectOptions) {
+	fake.networkConnectMutex.RLock()
+	defer fake.networkConnectMutex.RUnlock()
+	argsForCall := fake.networkConnectArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) NetworkConnectReturns(result1 client.NetworkConnectResult, result2 error) {
+	fake.networkConnectMutex.Lock()
+	defer fake.networkConnectMutex.Unlock()
+	fake.NetworkConnectStub = nil
+	fake.networkConnectReturns = struct {
+		result1 client.NetworkConnectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NetworkConnectReturnsOnCall(i int, result1 client.NetworkConnectResult, result2 error) {
+	fake.networkConnectMutex.Lock()
+	defer fake.networkConnectMutex.Unlock()
+	fake.NetworkConnectStub = nil
+	if fake.networkConnectReturnsOnCall == nil {
+		fake.networkConnectReturnsOnCall = make(map[int]struct {
+			result1 client.NetworkConnectResult
+			result2 error
+		})
+	}
+	fake.networkConnectReturnsOnCall[i] = struct {
+		result1 client.NetworkConnectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NetworkCreate(arg1 context.Context, arg2 string, arg3 client.NetworkCreateOptions) (client.NetworkCreateResult, error) {
+	fake.networkCreateMutex.Lock()
+	ret, specificReturn := fake.networkCreateReturnsOnCall[len(fake.networkCreateArgsForCall)]
+	fake.networkCreateArgsForCall = append(fake.networkCreateArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.NetworkCreateOptions
+	}{arg1, arg2, arg3})
+	stub := fake.NetworkCreateStub
+	fakeReturns := fake.networkCreateReturns
+	fake.recordInvocation("NetworkCreate", []interface{}{arg1, arg2, arg3})
+	fake.networkCreateMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) NetworkCreateCallCount() int {
+	fake.networkCreateMutex.RLock()
+	defer fake.networkCreateMutex.RUnlock()
+	return len(fake.networkCreateArgsForCall)
+}
+
+func (fake *DockerClient) NetworkCreateCalls(stub func(context.Context, string, client.NetworkCreateOptions) (client.NetworkCreateResult, error)) {
+	fake.networkCreateMutex.Lock()
+	defer fake.networkCreateMutex.Unlock()
+	fake.NetworkCreateStub = stub
+}
+
+func (fake *DockerClient) NetworkCreateArgsForCall(i int) (context.Context, string, client.NetworkCreateOptions) {
+	fake.networkCreateMutex.RLock()
+	defer fake.networkCreateMutex.RUnlock()
+	argsForCall := fake.networkCreateArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) NetworkCreateReturns(result1 client.NetworkCreateResult, result2 error) {
+	fake.networkCreateMutex.Lock()
+	defer fake.networkCreateMutex.Unlock()
+	fake.NetworkCreateStub = nil
+	fake.networkCreateReturns = struct {
+		result1 client.NetworkCreateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NetworkCreateReturnsOnCall(i int, result1 client.NetworkCreateResult, result2 error) {
+	fake.networkCreateMutex.Lock()
+	defer fake.networkCreateMutex.Unlock()
+	fake.NetworkCreateStub = nil
+	if fake.networkCreateReturnsOnCall == nil {
+		fake.networkCreateReturnsOnCall = make(map[int]struct {
+			result1 client.NetworkCreateResult
+			result2 error
+		})
+	}
+	fake.networkCreateReturnsOnCall[i] = struct {
+		result1 client.NetworkCreateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NetworkDisconnect(arg1 context.Context, arg2 string, arg3 client.NetworkDisconnectOptions) (client.NetworkDisconnectResult, error) {
+	fake.networkDisconnectMutex.Lock()
+	ret, specificReturn := fake.networkDisconnectReturnsOnCall[len(fake.networkDisconnectArgsForCall)]
+	fake.networkDisconnectArgsForCall = append(fake.networkDisconnectArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.NetworkDisconnectOptions
+	}{arg1, arg2, arg3})
+	stub := fake.NetworkDisconnectStub
+	fakeReturns := fake.networkDisconnectReturns
+	fake.recordInvocation("NetworkDisconnect", []interface{}{arg1, arg2, arg3})
+	fake.networkDisconnectMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) NetworkDisconnectCallCount() int {
+	fake.networkDisconnectMutex.RLock()
+	defer fake.networkDisconnectMutex.RUnlock()
+	return len(fake.networkDisconnectArgsForCall)
+}
+
+func (fake *DockerClient) NetworkDisconnectCalls(stub func(context.Context, string, client.NetworkDisconnectOptions) (client.NetworkDisconnectResult, error)) {
+	fake.networkDisconnectMutex.Lock()
+	defer fake.networkDisconnectMutex.Unlock()
+	fake.NetworkDisconnectStub = stub
+}
+
+func (fake *DockerClient) NetworkDisconnectArgsForCall(i int) (context.Context, string, client.NetworkDisconnectOptions) {
+	fake.networkDisconnectMutex.RLock()
+	defer fake.networkDisconnectMutex.RUnlock()
+	argsForCall := fake.networkDisconnectArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) NetworkDisconnectReturns(result1 client.NetworkDisconnectResult, result2 error) {
+	fake.networkDisconnectMutex.Lock()
+	defer fake.networkDisconnectMutex.Unlock()
+	fake.NetworkDisconnectStub = nil
+	fake.networkDisconnectReturns = struct {
+		result1 client.NetworkDisconnectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NetworkDisconnectReturnsOnCall(i int, result1 client.NetworkDisconnectResult, result2 error) {
+	fake.networkDisconnectMutex.Lock()
+	defer fake.networkDisconnectMutex.Unlock()
+	fake.NetworkDisconnectStub = nil
+	if fake.networkDisconnectReturnsOnCall == nil {
+		fake.networkDisconnectReturnsOnCall = make(map[int]struct {
+			result1 client.NetworkDisconnectResult
+			result2 error
+		})
+	}
+	fake.networkDisconnectReturnsOnCall[i] = struct {
+		result1 client.NetworkDisconnectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NetworkInspect(arg1 context.Context, arg2 string, arg3 client.NetworkInspectOptions) (client.NetworkInspectResult, error) {
+	fake.networkInspectMutex.Lock()
+	ret, specificReturn := fake.networkInspectReturnsOnCall[len(fake.networkInspectArgsForCall)]
+	fake.networkInspectArgsForCall = append(fake.networkInspectArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.NetworkInspectOptions
+	}{arg1, arg2, arg3})
+	stub := fake.NetworkInspectStub
+	fakeReturns := fake.networkInspectReturns
+	fake.recordInvocation("NetworkInspect", []interface{}{arg1, arg2, arg3})
+	fake.networkInspectMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) NetworkInspectCallCount() int {
+	fake.networkInspectMutex.RLock()
+	defer fake.networkInspectMutex.RUnlock()
+	return len(fake.networkInspectArgsForCall)
+}
+
+func (fake *DockerClient) NetworkInspectCalls(stub func(context.Context, string, client.NetworkInspectOptions) (client.NetworkInspectResult, error)) {
+	fake.networkInspectMutex.Lock()
+	defer fake.networkInspectMutex.Unlock()
+	fake.NetworkInspectStub = stub
+}
+
+func (fake *DockerClient) NetworkInspectArgsForCall(i int) (context.Context, string, client.NetworkInspectOptions) {
+	fake.networkInspectMutex.RLock()
+	defer fake.networkInspectMutex.RUnlock()
+	argsForCall := fake.networkInspectArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) NetworkInspectReturns(result1 client.NetworkInspectResult, result2 error) {
+	fake.networkInspectMutex.Lock()
+	defer fake.networkInspectMutex.Unlock()
+	fake.NetworkInspectStub = nil
+	fake.networkInspectReturns = struct {
+		result1 client.NetworkInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NetworkInspectReturnsOnCall(i int, result1 client.NetworkInspectResult, result2 error) {
+	fake.networkInspectMutex.Lock()
+	defer fake.networkInspectMutex.Unlock()
+	fake.NetworkInspectStub = nil
+	if fake.networkInspectReturnsOnCall == nil {
+		fake.networkInspectReturnsOnCall = make(map[int]struct {
+			result1 client.NetworkInspectResult
+			result2 error
+		})
+	}
+	fake.networkInspectReturnsOnCall[i] = struct {
+		result1 client.NetworkInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NetworkList(arg1 context.Context, arg2 client.NetworkListOptions) (client.NetworkListResult, error) {
+	fake.networkListMutex.Lock()
+	ret, specificReturn := fake.networkListReturnsOnCall[len(fake.networkListArgsForCall)]
+	fake.networkListArgsForCall = append(fake.networkListArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.NetworkListOptions
+	}{arg1, arg2})
+	stub := fake.NetworkListStub
+	fakeReturns := fake.networkListReturns
+	fake.recordInvocation("NetworkList", []interface{}{arg1, arg2})
+	fake.networkListMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) NetworkListCallCount() int {
+	fake.networkListMutex.RLock()
+	defer fake.networkListMutex.RUnlock()
+	return len(fake.networkListArgsForCall)
+}
+
+func (fake *DockerClient) NetworkListCalls(stub func(context.Context, client.NetworkListOptions) (client.NetworkListResult, error)) {
+	fake.networkListMutex.Lock()
+	defer fake.networkListMutex.Unlock()
+	fake.NetworkListStub = stub
+}
+
+func (fake *DockerClient) NetworkListArgsForCall(i int) (context.Context, client.NetworkListOptions) {
+	fake.networkListMutex.RLock()
+	defer fake.networkListMutex.RUnlock()
+	argsForCall := fake.networkListArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) NetworkListReturns(result1 client.NetworkListResult, result2 error) {
+	fake.networkListMutex.Lock()
+	defer fake.networkListMutex.Unlock()
+	fake.NetworkListStub = nil
+	fake.networkListReturns = struct {
+		result1 client.NetworkListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NetworkListReturnsOnCall(i int, result1 client.NetworkListResult, result2 error) {
+	fake.networkListMutex.Lock()
+	defer fake.networkListMutex.Unlock()
+	fake.NetworkListStub = nil
+	if fake.networkListReturnsOnCall == nil {
+		fake.networkListReturnsOnCall = make(map[int]struct {
+			result1 client.NetworkListResult
+			result2 error
+		})
+	}
+	fake.networkListReturnsOnCall[i] = struct {
+		result1 client.NetworkListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NetworkPrune(arg1 context.Context, arg2 client.NetworkPruneOptions) (client.NetworkPruneResult, error) {
+	fake.networkPruneMutex.Lock()
+	ret, specificReturn := fake.networkPruneReturnsOnCall[len(fake.networkPruneArgsForCall)]
+	fake.networkPruneArgsForCall = append(fake.networkPruneArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.NetworkPruneOptions
+	}{arg1, arg2})
+	stub := fake.NetworkPruneStub
+	fakeReturns := fake.networkPruneReturns
+	fake.recordInvocation("NetworkPrune", []interface{}{arg1, arg2})
+	fake.networkPruneMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) NetworkPruneCallCount() int {
+	fake.networkPruneMutex.RLock()
+	defer fake.networkPruneMutex.RUnlock()
+	return len(fake.networkPruneArgsForCall)
+}
+
+func (fake *DockerClient) NetworkPruneCalls(stub func(context.Context, client.NetworkPruneOptions) (client.NetworkPruneResult, error)) {
+	fake.networkPruneMutex.Lock()
+	defer fake.networkPruneMutex.Unlock()
+	fake.NetworkPruneStub = stub
+}
+
+func (fake *DockerClient) NetworkPruneArgsForCall(i int) (context.Context, client.NetworkPruneOptions) {
+	fake.networkPruneMutex.RLock()
+	defer fake.networkPruneMutex.RUnlock()
+	argsForCall := fake.networkPruneArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) NetworkPruneReturns(result1 client.NetworkPruneResult, result2 error) {
+	fake.networkPruneMutex.Lock()
+	defer fake.networkPruneMutex.Unlock()
+	fake.NetworkPruneStub = nil
+	fake.networkPruneReturns = struct {
+		result1 client.NetworkPruneResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NetworkPruneReturnsOnCall(i int, result1 client.NetworkPruneResult, result2 error) {
+	fake.networkPruneMutex.Lock()
+	defer fake.networkPruneMutex.Unlock()
+	fake.NetworkPruneStub = nil
+	if fake.networkPruneReturnsOnCall == nil {
+		fake.networkPruneReturnsOnCall = make(map[int]struct {
+			result1 client.NetworkPruneResult
+			result2 error
+		})
+	}
+	fake.networkPruneReturnsOnCall[i] = struct {
+		result1 client.NetworkPruneResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NetworkRemove(arg1 context.Context, arg2 string, arg3 client.NetworkRemoveOptions) (client.NetworkRemoveResult, error) {
+	fake.networkRemoveMutex.Lock()
+	ret, specificReturn := fake.networkRemoveReturnsOnCall[len(fake.networkRemoveArgsForCall)]
+	fake.networkRemoveArgsForCall = append(fake.networkRemoveArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.NetworkRemoveOptions
+	}{arg1, arg2, arg3})
+	stub := fake.NetworkRemoveStub
+	fakeReturns := fake.networkRemoveReturns
+	fake.recordInvocation("NetworkRemove", []interface{}{arg1, arg2, arg3})
+	fake.networkRemoveMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) NetworkRemoveCallCount() int {
+	fake.networkRemoveMutex.RLock()
+	defer fake.networkRemoveMutex.RUnlock()
+	return len(fake.networkRemoveArgsForCall)
+}
+
+func (fake *DockerClient) NetworkRemoveCalls(stub func(context.Context, string, client.NetworkRemoveOptions) (client.NetworkRemoveResult, error)) {
+	fake.networkRemoveMutex.Lock()
+	defer fake.networkRemoveMutex.Unlock()
+	fake.NetworkRemoveStub = stub
+}
+
+func (fake *DockerClient) NetworkRemoveArgsForCall(i int) (context.Context, string, client.NetworkRemoveOptions) {
+	fake.networkRemoveMutex.RLock()
+	defer fake.networkRemoveMutex.RUnlock()
+	argsForCall := fake.networkRemoveArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) NetworkRemoveReturns(result1 client.NetworkRemoveResult, result2 error) {
+	fake.networkRemoveMutex.Lock()
+	defer fake.networkRemoveMutex.Unlock()
+	fake.NetworkRemoveStub = nil
+	fake.networkRemoveReturns = struct {
+		result1 client.NetworkRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NetworkRemoveReturnsOnCall(i int, result1 client.NetworkRemoveResult, result2 error) {
+	fake.networkRemoveMutex.Lock()
+	defer fake.networkRemoveMutex.Unlock()
+	fake.NetworkRemoveStub = nil
+	if fake.networkRemoveReturnsOnCall == nil {
+		fake.networkRemoveReturnsOnCall = make(map[int]struct {
+			result1 client.NetworkRemoveResult
+			result2 error
+		})
+	}
+	fake.networkRemoveReturnsOnCall[i] = struct {
+		result1 client.NetworkRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NodeInspect(arg1 context.Context, arg2 string, arg3 client.NodeInspectOptions) (client.NodeInspectResult, error) {
+	fake.nodeInspectMutex.Lock()
+	ret, specificReturn := fake.nodeInspectReturnsOnCall[len(fake.nodeInspectArgsForCall)]
+	fake.nodeInspectArgsForCall = append(fake.nodeInspectArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.NodeInspectOptions
+	}{arg1, arg2, arg3})
+	stub := fake.NodeInspectStub
+	fakeReturns := fake.nodeInspectReturns
+	fake.recordInvocation("NodeInspect", []interface{}{arg1, arg2, arg3})
+	fake.nodeInspectMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) NodeInspectCallCount() int {
+	fake.nodeInspectMutex.RLock()
+	defer fake.nodeInspectMutex.RUnlock()
+	return len(fake.nodeInspectArgsForCall)
+}
+
+func (fake *DockerClient) NodeInspectCalls(stub func(context.Context, string, client.NodeInspectOptions) (client.NodeInspectResult, error)) {
+	fake.nodeInspectMutex.Lock()
+	defer fake.nodeInspectMutex.Unlock()
+	fake.NodeInspectStub = stub
+}
+
+func (fake *DockerClient) NodeInspectArgsForCall(i int) (context.Context, string, client.NodeInspectOptions) {
+	fake.nodeInspectMutex.RLock()
+	defer fake.nodeInspectMutex.RUnlock()
+	argsForCall := fake.nodeInspectArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) NodeInspectReturns(result1 client.NodeInspectResult, result2 error) {
+	fake.nodeInspectMutex.Lock()
+	defer fake.nodeInspectMutex.Unlock()
+	fake.NodeInspectStub = nil
+	fake.nodeInspectReturns = struct {
+		result1 client.NodeInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NodeInspectReturnsOnCall(i int, result1 client.NodeInspectResult, result2 error) {
+	fake.nodeInspectMutex.Lock()
+	defer fake.nodeInspectMutex.Unlock()
+	fake.NodeInspectStub = nil
+	if fake.nodeInspectReturnsOnCall == nil {
+		fake.nodeInspectReturnsOnCall = make(map[int]struct {
+			result1 client.NodeInspectResult
+			result2 error
+		})
+	}
+	fake.nodeInspectReturnsOnCall[i] = struct {
+		result1 client.NodeInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NodeList(arg1 context.Context, arg2 client.NodeListOptions) (client.NodeListResult, error) {
+	fake.nodeListMutex.Lock()
+	ret, specificReturn := fake.nodeListReturnsOnCall[len(fake.nodeListArgsForCall)]
+	fake.nodeListArgsForCall = append(fake.nodeListArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.NodeListOptions
+	}{arg1, arg2})
+	stub := fake.NodeListStub
+	fakeReturns := fake.nodeListReturns
+	fake.recordInvocation("NodeList", []interface{}{arg1, arg2})
+	fake.nodeListMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) NodeListCallCount() int {
+	fake.nodeListMutex.RLock()
+	defer fake.nodeListMutex.RUnlock()
+	return len(fake.nodeListArgsForCall)
+}
+
+func (fake *DockerClient) NodeListCalls(stub func(context.Context, client.NodeListOptions) (client.NodeListResult, error)) {
+	fake.nodeListMutex.Lock()
+	defer fake.nodeListMutex.Unlock()
+	fake.NodeListStub = stub
+}
+
+func (fake *DockerClient) NodeListArgsForCall(i int) (context.Context, client.NodeListOptions) {
+	fake.nodeListMutex.RLock()
+	defer fake.nodeListMutex.RUnlock()
+	argsForCall := fake.nodeListArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) NodeListReturns(result1 client.NodeListResult, result2 error) {
+	fake.nodeListMutex.Lock()
+	defer fake.nodeListMutex.Unlock()
+	fake.NodeListStub = nil
+	fake.nodeListReturns = struct {
+		result1 client.NodeListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NodeListReturnsOnCall(i int, result1 client.NodeListResult, result2 error) {
+	fake.nodeListMutex.Lock()
+	defer fake.nodeListMutex.Unlock()
+	fake.NodeListStub = nil
+	if fake.nodeListReturnsOnCall == nil {
+		fake.nodeListReturnsOnCall = make(map[int]struct {
+			result1 client.NodeListResult
+			result2 error
+		})
+	}
+	fake.nodeListReturnsOnCall[i] = struct {
+		result1 client.NodeListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NodeRemove(arg1 context.Context, arg2 string, arg3 client.NodeRemoveOptions) (client.NodeRemoveResult, error) {
+	fake.nodeRemoveMutex.Lock()
+	ret, specificReturn := fake.nodeRemoveReturnsOnCall[len(fake.nodeRemoveArgsForCall)]
+	fake.nodeRemoveArgsForCall = append(fake.nodeRemoveArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.NodeRemoveOptions
+	}{arg1, arg2, arg3})
+	stub := fake.NodeRemoveStub
+	fakeReturns := fake.nodeRemoveReturns
+	fake.recordInvocation("NodeRemove", []interface{}{arg1, arg2, arg3})
+	fake.nodeRemoveMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) NodeRemoveCallCount() int {
+	fake.nodeRemoveMutex.RLock()
+	defer fake.nodeRemoveMutex.RUnlock()
+	return len(fake.nodeRemoveArgsForCall)
+}
+
+func (fake *DockerClient) NodeRemoveCalls(stub func(context.Context, string, client.NodeRemoveOptions) (client.NodeRemoveResult, error)) {
+	fake.nodeRemoveMutex.Lock()
+	defer fake.nodeRemoveMutex.Unlock()
+	fake.NodeRemoveStub = stub
+}
+
+func (fake *DockerClient) NodeRemoveArgsForCall(i int) (context.Context, string, client.NodeRemoveOptions) {
+	fake.nodeRemoveMutex.RLock()
+	defer fake.nodeRemoveMutex.RUnlock()
+	argsForCall := fake.nodeRemoveArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) NodeRemoveReturns(result1 client.NodeRemoveResult, result2 error) {
+	fake.nodeRemoveMutex.Lock()
+	defer fake.nodeRemoveMutex.Unlock()
+	fake.NodeRemoveStub = nil
+	fake.nodeRemoveReturns = struct {
+		result1 client.NodeRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NodeRemoveReturnsOnCall(i int, result1 client.NodeRemoveResult, result2 error) {
+	fake.nodeRemoveMutex.Lock()
+	defer fake.nodeRemoveMutex.Unlock()
+	fake.NodeRemoveStub = nil
+	if fake.nodeRemoveReturnsOnCall == nil {
+		fake.nodeRemoveReturnsOnCall = make(map[int]struct {
+			result1 client.NodeRemoveResult
+			result2 error
+		})
+	}
+	fake.nodeRemoveReturnsOnCall[i] = struct {
+		result1 client.NodeRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NodeUpdate(arg1 context.Context, arg2 string, arg3 client.NodeUpdateOptions) (client.NodeUpdateResult, error) {
+	fake.nodeUpdateMutex.Lock()
+	ret, specificReturn := fake.nodeUpdateReturnsOnCall[len(fake.nodeUpdateArgsForCall)]
+	fake.nodeUpdateArgsForCall = append(fake.nodeUpdateArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.NodeUpdateOptions
+	}{arg1, arg2, arg3})
+	stub := fake.NodeUpdateStub
+	fakeReturns := fake.nodeUpdateReturns
+	fake.recordInvocation("NodeUpdate", []interface{}{arg1, arg2, arg3})
+	fake.nodeUpdateMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) NodeUpdateCallCount() int {
+	fake.nodeUpdateMutex.RLock()
+	defer fake.nodeUpdateMutex.RUnlock()
+	return len(fake.nodeUpdateArgsForCall)
+}
+
+func (fake *DockerClient) NodeUpdateCalls(stub func(context.Context, string, client.NodeUpdateOptions) (client.NodeUpdateResult, error)) {
+	fake.nodeUpdateMutex.Lock()
+	defer fake.nodeUpdateMutex.Unlock()
+	fake.NodeUpdateStub = stub
+}
+
+func (fake *DockerClient) NodeUpdateArgsForCall(i int) (context.Context, string, client.NodeUpdateOptions) {
+	fake.nodeUpdateMutex.RLock()
+	defer fake.nodeUpdateMutex.RUnlock()
+	argsForCall := fake.nodeUpdateArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) NodeUpdateReturns(result1 client.NodeUpdateResult, result2 error) {
+	fake.nodeUpdateMutex.Lock()
+	defer fake.nodeUpdateMutex.Unlock()
+	fake.NodeUpdateStub = nil
+	fake.nodeUpdateReturns = struct {
+		result1 client.NodeUpdateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) NodeUpdateReturnsOnCall(i int, result1 client.NodeUpdateResult, result2 error) {
+	fake.nodeUpdateMutex.Lock()
+	defer fake.nodeUpdateMutex.Unlock()
+	fake.NodeUpdateStub = nil
+	if fake.nodeUpdateReturnsOnCall == nil {
+		fake.nodeUpdateReturnsOnCall = make(map[int]struct {
+			result1 client.NodeUpdateResult
+			result2 error
+		})
+	}
+	fake.nodeUpdateReturnsOnCall[i] = struct {
+		result1 client.NodeUpdateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) Ping(arg1 context.Context, arg2 client.PingOptions) (client.PingResult, error) {
+	fake.pingMutex.Lock()
+	ret, specificReturn := fake.pingReturnsOnCall[len(fake.pingArgsForCall)]
+	fake.pingArgsForCall = append(fake.pingArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.PingOptions
+	}{arg1, arg2})
+	stub := fake.PingStub
+	fakeReturns := fake.pingReturns
+	fake.recordInvocation("Ping", []interface{}{arg1, arg2})
+	fake.pingMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) PingCallCount() int {
+	fake.pingMutex.RLock()
+	defer fake.pingMutex.RUnlock()
+	return len(fake.pingArgsForCall)
+}
+
+func (fake *DockerClient) PingCalls(stub func(context.Context, client.PingOptions) (client.PingResult, error)) {
+	fake.pingMutex.Lock()
+	defer fake.pingMutex.Unlock()
+	fake.PingStub = stub
+}
+
+func (fake *DockerClient) PingArgsForCall(i int) (context.Context, client.PingOptions) {
+	fake.pingMutex.RLock()
+	defer fake.pingMutex.RUnlock()
+	argsForCall := fake.pingArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) PingReturns(result1 client.PingResult, result2 error) {
+	fake.pingMutex.Lock()
+	defer fake.pingMutex.Unlock()
+	fake.PingStub = nil
+	fake.pingReturns = struct {
+		result1 client.PingResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PingReturnsOnCall(i int, result1 client.PingResult, result2 error) {
+	fake.pingMutex.Lock()
+	defer fake.pingMutex.Unlock()
+	fake.PingStub = nil
+	if fake.pingReturnsOnCall == nil {
+		fake.pingReturnsOnCall = make(map[int]struct {
+			result1 client.PingResult
+			result2 error
+		})
+	}
+	fake.pingReturnsOnCall[i] = struct {
+		result1 client.PingResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginCreate(arg1 context.Context, arg2 io.Reader, arg3 client.PluginCreateOptions) (client.PluginCreateResult, error) {
+	fake.pluginCreateMutex.Lock()
+	ret, specificReturn := fake.pluginCreateReturnsOnCall[len(fake.pluginCreateArgsForCall)]
+	fake.pluginCreateArgsForCall = append(fake.pluginCreateArgsForCall, struct {
+		arg1 context.Context
+		arg2 io.Reader
+		arg3 client.PluginCreateOptions
+	}{arg1, arg2, arg3})
+	stub := fake.PluginCreateStub
+	fakeReturns := fake.pluginCreateReturns
+	fake.recordInvocation("PluginCreate", []interface{}{arg1, arg2, arg3})
+	fake.pluginCreateMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) PluginCreateCallCount() int {
+	fake.pluginCreateMutex.RLock()
+	defer fake.pluginCreateMutex.RUnlock()
+	return len(fake.pluginCreateArgsForCall)
+}
+
+func (fake *DockerClient) PluginCreateCalls(stub func(context.Context, io.Reader, client.PluginCreateOptions) (client.PluginCreateResult, error)) {
+	fake.pluginCreateMutex.Lock()
+	defer fake.pluginCreateMutex.Unlock()
+	fake.PluginCreateStub = stub
+}
+
+func (fake *DockerClient) PluginCreateArgsForCall(i int) (context.Context, io.Reader, client.PluginCreateOptions) {
+	fake.pluginCreateMutex.RLock()
+	defer fake.pluginCreateMutex.RUnlock()
+	argsForCall := fake.pluginCreateArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) PluginCreateReturns(result1 client.PluginCreateResult, result2 error) {
+	fake.pluginCreateMutex.Lock()
+	defer fake.pluginCreateMutex.Unlock()
+	fake.PluginCreateStub = nil
+	fake.pluginCreateReturns = struct {
+		result1 client.PluginCreateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginCreateReturnsOnCall(i int, result1 client.PluginCreateResult, result2 error) {
+	fake.pluginCreateMutex.Lock()
+	defer fake.pluginCreateMutex.Unlock()
+	fake.PluginCreateStub = nil
+	if fake.pluginCreateReturnsOnCall == nil {
+		fake.pluginCreateReturnsOnCall = make(map[int]struct {
+			result1 client.PluginCreateResult
+			result2 error
+		})
+	}
+	fake.pluginCreateReturnsOnCall[i] = struct {
+		result1 client.PluginCreateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginDisable(arg1 context.Context, arg2 string, arg3 client.PluginDisableOptions) (client.PluginDisableResult, error) {
+	fake.pluginDisableMutex.Lock()
+	ret, specificReturn := fake.pluginDisableReturnsOnCall[len(fake.pluginDisableArgsForCall)]
+	fake.pluginDisableArgsForCall = append(fake.pluginDisableArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.PluginDisableOptions
+	}{arg1, arg2, arg3})
+	stub := fake.PluginDisableStub
+	fakeReturns := fake.pluginDisableReturns
+	fake.recordInvocation("PluginDisable", []interface{}{arg1, arg2, arg3})
+	fake.pluginDisableMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) PluginDisableCallCount() int {
+	fake.pluginDisableMutex.RLock()
+	defer fake.pluginDisableMutex.RUnlock()
+	return len(fake.pluginDisableArgsForCall)
+}
+
+func (fake *DockerClient) PluginDisableCalls(stub func(context.Context, string, client.PluginDisableOptions) (client.PluginDisableResult, error)) {
+	fake.pluginDisableMutex.Lock()
+	defer fake.pluginDisableMutex.Unlock()
+	fake.PluginDisableStub = stub
+}
+
+func (fake *DockerClient) PluginDisableArgsForCall(i int) (context.Context, string, client.PluginDisableOptions) {
+	fake.pluginDisableMutex.RLock()
+	defer fake.pluginDisableMutex.RUnlock()
+	argsForCall := fake.pluginDisableArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) PluginDisableReturns(result1 client.PluginDisableResult, result2 error) {
+	fake.pluginDisableMutex.Lock()
+	defer fake.pluginDisableMutex.Unlock()
+	fake.PluginDisableStub = nil
+	fake.pluginDisableReturns = struct {
+		result1 client.PluginDisableResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginDisableReturnsOnCall(i int, result1 client.PluginDisableResult, result2 error) {
+	fake.pluginDisableMutex.Lock()
+	defer fake.pluginDisableMutex.Unlock()
+	fake.PluginDisableStub = nil
+	if fake.pluginDisableReturnsOnCall == nil {
+		fake.pluginDisableReturnsOnCall = make(map[int]struct {
+			result1 client.PluginDisableResult
+			result2 error
+		})
+	}
+	fake.pluginDisableReturnsOnCall[i] = struct {
+		result1 client.PluginDisableResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginEnable(arg1 context.Context, arg2 string, arg3 client.PluginEnableOptions) (client.PluginEnableResult, error) {
+	fake.pluginEnableMutex.Lock()
+	ret, specificReturn := fake.pluginEnableReturnsOnCall[len(fake.pluginEnableArgsForCall)]
+	fake.pluginEnableArgsForCall = append(fake.pluginEnableArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.PluginEnableOptions
+	}{arg1, arg2, arg3})
+	stub := fake.PluginEnableStub
+	fakeReturns := fake.pluginEnableReturns
+	fake.recordInvocation("PluginEnable", []interface{}{arg1, arg2, arg3})
+	fake.pluginEnableMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) PluginEnableCallCount() int {
+	fake.pluginEnableMutex.RLock()
+	defer fake.pluginEnableMutex.RUnlock()
+	return len(fake.pluginEnableArgsForCall)
+}
+
+func (fake *DockerClient) PluginEnableCalls(stub func(context.Context, string, client.PluginEnableOptions) (client.PluginEnableResult, error)) {
+	fake.pluginEnableMutex.Lock()
+	defer fake.pluginEnableMutex.Unlock()
+	fake.PluginEnableStub = stub
+}
+
+func (fake *DockerClient) PluginEnableArgsForCall(i int) (context.Context, string, client.PluginEnableOptions) {
+	fake.pluginEnableMutex.RLock()
+	defer fake.pluginEnableMutex.RUnlock()
+	argsForCall := fake.pluginEnableArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) PluginEnableReturns(result1 client.PluginEnableResult, result2 error) {
+	fake.pluginEnableMutex.Lock()
+	defer fake.pluginEnableMutex.Unlock()
+	fake.PluginEnableStub = nil
+	fake.pluginEnableReturns = struct {
+		result1 client.PluginEnableResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginEnableReturnsOnCall(i int, result1 client.PluginEnableResult, result2 error) {
+	fake.pluginEnableMutex.Lock()
+	defer fake.pluginEnableMutex.Unlock()
+	fake.PluginEnableStub = nil
+	if fake.pluginEnableReturnsOnCall == nil {
+		fake.pluginEnableReturnsOnCall = make(map[int]struct {
+			result1 client.PluginEnableResult
+			result2 error
+		})
+	}
+	fake.pluginEnableReturnsOnCall[i] = struct {
+		result1 client.PluginEnableResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginInspect(arg1 context.Context, arg2 string, arg3 client.PluginInspectOptions) (client.PluginInspectResult, error) {
+	fake.pluginInspectMutex.Lock()
+	ret, specificReturn := fake.pluginInspectReturnsOnCall[len(fake.pluginInspectArgsForCall)]
+	fake.pluginInspectArgsForCall = append(fake.pluginInspectArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.PluginInspectOptions
+	}{arg1, arg2, arg3})
+	stub := fake.PluginInspectStub
+	fakeReturns := fake.pluginInspectReturns
+	fake.recordInvocation("PluginInspect", []interface{}{arg1, arg2, arg3})
+	fake.pluginInspectMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) PluginInspectCallCount() int {
+	fake.pluginInspectMutex.RLock()
+	defer fake.pluginInspectMutex.RUnlock()
+	return len(fake.pluginInspectArgsForCall)
+}
+
+func (fake *DockerClient) PluginInspectCalls(stub func(context.Context, string, client.PluginInspectOptions) (client.PluginInspectResult, error)) {
+	fake.pluginInspectMutex.Lock()
+	defer fake.pluginInspectMutex.Unlock()
+	fake.PluginInspectStub = stub
+}
+
+func (fake *DockerClient) PluginInspectArgsForCall(i int) (context.Context, string, client.PluginInspectOptions) {
+	fake.pluginInspectMutex.RLock()
+	defer fake.pluginInspectMutex.RUnlock()
+	argsForCall := fake.pluginInspectArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) PluginInspectReturns(result1 client.PluginInspectResult, result2 error) {
+	fake.pluginInspectMutex.Lock()
+	defer fake.pluginInspectMutex.Unlock()
+	fake.PluginInspectStub = nil
+	fake.pluginInspectReturns = struct {
+		result1 client.PluginInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginInspectReturnsOnCall(i int, result1 client.PluginInspectResult, result2 error) {
+	fake.pluginInspectMutex.Lock()
+	defer fake.pluginInspectMutex.Unlock()
+	fake.PluginInspectStub = nil
+	if fake.pluginInspectReturnsOnCall == nil {
+		fake.pluginInspectReturnsOnCall = make(map[int]struct {
+			result1 client.PluginInspectResult
+			result2 error
+		})
+	}
+	fake.pluginInspectReturnsOnCall[i] = struct {
+		result1 client.PluginInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginInstall(arg1 context.Context, arg2 string, arg3 client.PluginInstallOptions) (client.PluginInstallResult, error) {
+	fake.pluginInstallMutex.Lock()
+	ret, specificReturn := fake.pluginInstallReturnsOnCall[len(fake.pluginInstallArgsForCall)]
+	fake.pluginInstallArgsForCall = append(fake.pluginInstallArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.PluginInstallOptions
+	}{arg1, arg2, arg3})
+	stub := fake.PluginInstallStub
+	fakeReturns := fake.pluginInstallReturns
+	fake.recordInvocation("PluginInstall", []interface{}{arg1, arg2, arg3})
+	fake.pluginInstallMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) PluginInstallCallCount() int {
+	fake.pluginInstallMutex.RLock()
+	defer fake.pluginInstallMutex.RUnlock()
+	return len(fake.pluginInstallArgsForCall)
+}
+
+func (fake *DockerClient) PluginInstallCalls(stub func(context.Context, string, client.PluginInstallOptions) (client.PluginInstallResult, error)) {
+	fake.pluginInstallMutex.Lock()
+	defer fake.pluginInstallMutex.Unlock()
+	fake.PluginInstallStub = stub
+}
+
+func (fake *DockerClient) PluginInstallArgsForCall(i int) (context.Context, string, client.PluginInstallOptions) {
+	fake.pluginInstallMutex.RLock()
+	defer fake.pluginInstallMutex.RUnlock()
+	argsForCall := fake.pluginInstallArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) PluginInstallReturns(result1 client.PluginInstallResult, result2 error) {
+	fake.pluginInstallMutex.Lock()
+	defer fake.pluginInstallMutex.Unlock()
+	fake.PluginInstallStub = nil
+	fake.pluginInstallReturns = struct {
+		result1 client.PluginInstallResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginInstallReturnsOnCall(i int, result1 client.PluginInstallResult, result2 error) {
+	fake.pluginInstallMutex.Lock()
+	defer fake.pluginInstallMutex.Unlock()
+	fake.PluginInstallStub = nil
+	if fake.pluginInstallReturnsOnCall == nil {
+		fake.pluginInstallReturnsOnCall = make(map[int]struct {
+			result1 client.PluginInstallResult
+			result2 error
+		})
+	}
+	fake.pluginInstallReturnsOnCall[i] = struct {
+		result1 client.PluginInstallResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginList(arg1 context.Context, arg2 client.PluginListOptions) (client.PluginListResult, error) {
+	fake.pluginListMutex.Lock()
+	ret, specificReturn := fake.pluginListReturnsOnCall[len(fake.pluginListArgsForCall)]
+	fake.pluginListArgsForCall = append(fake.pluginListArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.PluginListOptions
+	}{arg1, arg2})
+	stub := fake.PluginListStub
+	fakeReturns := fake.pluginListReturns
+	fake.recordInvocation("PluginList", []interface{}{arg1, arg2})
+	fake.pluginListMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) PluginListCallCount() int {
+	fake.pluginListMutex.RLock()
+	defer fake.pluginListMutex.RUnlock()
+	return len(fake.pluginListArgsForCall)
+}
+
+func (fake *DockerClient) PluginListCalls(stub func(context.Context, client.PluginListOptions) (client.PluginListResult, error)) {
+	fake.pluginListMutex.Lock()
+	defer fake.pluginListMutex.Unlock()
+	fake.PluginListStub = stub
+}
+
+func (fake *DockerClient) PluginListArgsForCall(i int) (context.Context, client.PluginListOptions) {
+	fake.pluginListMutex.RLock()
+	defer fake.pluginListMutex.RUnlock()
+	argsForCall := fake.pluginListArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) PluginListReturns(result1 client.PluginListResult, result2 error) {
+	fake.pluginListMutex.Lock()
+	defer fake.pluginListMutex.Unlock()
+	fake.PluginListStub = nil
+	fake.pluginListReturns = struct {
+		result1 client.PluginListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginListReturnsOnCall(i int, result1 client.PluginListResult, result2 error) {
+	fake.pluginListMutex.Lock()
+	defer fake.pluginListMutex.Unlock()
+	fake.PluginListStub = nil
+	if fake.pluginListReturnsOnCall == nil {
+		fake.pluginListReturnsOnCall = make(map[int]struct {
+			result1 client.PluginListResult
+			result2 error
+		})
+	}
+	fake.pluginListReturnsOnCall[i] = struct {
+		result1 client.PluginListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginPush(arg1 context.Context, arg2 string, arg3 client.PluginPushOptions) (client.PluginPushResult, error) {
+	fake.pluginPushMutex.Lock()
+	ret, specificReturn := fake.pluginPushReturnsOnCall[len(fake.pluginPushArgsForCall)]
+	fake.pluginPushArgsForCall = append(fake.pluginPushArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.PluginPushOptions
+	}{arg1, arg2, arg3})
+	stub := fake.PluginPushStub
+	fakeReturns := fake.pluginPushReturns
+	fake.recordInvocation("PluginPush", []interface{}{arg1, arg2, arg3})
+	fake.pluginPushMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) PluginPushCallCount() int {
+	fake.pluginPushMutex.RLock()
+	defer fake.pluginPushMutex.RUnlock()
+	return len(fake.pluginPushArgsForCall)
+}
+
+func (fake *DockerClient) PluginPushCalls(stub func(context.Context, string, client.PluginPushOptions) (client.PluginPushResult, error)) {
+	fake.pluginPushMutex.Lock()
+	defer fake.pluginPushMutex.Unlock()
+	fake.PluginPushStub = stub
+}
+
+func (fake *DockerClient) PluginPushArgsForCall(i int) (context.Context, string, client.PluginPushOptions) {
+	fake.pluginPushMutex.RLock()
+	defer fake.pluginPushMutex.RUnlock()
+	argsForCall := fake.pluginPushArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) PluginPushReturns(result1 client.PluginPushResult, result2 error) {
+	fake.pluginPushMutex.Lock()
+	defer fake.pluginPushMutex.Unlock()
+	fake.PluginPushStub = nil
+	fake.pluginPushReturns = struct {
+		result1 client.PluginPushResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginPushReturnsOnCall(i int, result1 client.PluginPushResult, result2 error) {
+	fake.pluginPushMutex.Lock()
+	defer fake.pluginPushMutex.Unlock()
+	fake.PluginPushStub = nil
+	if fake.pluginPushReturnsOnCall == nil {
+		fake.pluginPushReturnsOnCall = make(map[int]struct {
+			result1 client.PluginPushResult
+			result2 error
+		})
+	}
+	fake.pluginPushReturnsOnCall[i] = struct {
+		result1 client.PluginPushResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginRemove(arg1 context.Context, arg2 string, arg3 client.PluginRemoveOptions) (client.PluginRemoveResult, error) {
+	fake.pluginRemoveMutex.Lock()
+	ret, specificReturn := fake.pluginRemoveReturnsOnCall[len(fake.pluginRemoveArgsForCall)]
+	fake.pluginRemoveArgsForCall = append(fake.pluginRemoveArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.PluginRemoveOptions
+	}{arg1, arg2, arg3})
+	stub := fake.PluginRemoveStub
+	fakeReturns := fake.pluginRemoveReturns
+	fake.recordInvocation("PluginRemove", []interface{}{arg1, arg2, arg3})
+	fake.pluginRemoveMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) PluginRemoveCallCount() int {
+	fake.pluginRemoveMutex.RLock()
+	defer fake.pluginRemoveMutex.RUnlock()
+	return len(fake.pluginRemoveArgsForCall)
+}
+
+func (fake *DockerClient) PluginRemoveCalls(stub func(context.Context, string, client.PluginRemoveOptions) (client.PluginRemoveResult, error)) {
+	fake.pluginRemoveMutex.Lock()
+	defer fake.pluginRemoveMutex.Unlock()
+	fake.PluginRemoveStub = stub
+}
+
+func (fake *DockerClient) PluginRemoveArgsForCall(i int) (context.Context, string, client.PluginRemoveOptions) {
+	fake.pluginRemoveMutex.RLock()
+	defer fake.pluginRemoveMutex.RUnlock()
+	argsForCall := fake.pluginRemoveArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) PluginRemoveReturns(result1 client.PluginRemoveResult, result2 error) {
+	fake.pluginRemoveMutex.Lock()
+	defer fake.pluginRemoveMutex.Unlock()
+	fake.PluginRemoveStub = nil
+	fake.pluginRemoveReturns = struct {
+		result1 client.PluginRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginRemoveReturnsOnCall(i int, result1 client.PluginRemoveResult, result2 error) {
+	fake.pluginRemoveMutex.Lock()
+	defer fake.pluginRemoveMutex.Unlock()
+	fake.PluginRemoveStub = nil
+	if fake.pluginRemoveReturnsOnCall == nil {
+		fake.pluginRemoveReturnsOnCall = make(map[int]struct {
+			result1 client.PluginRemoveResult
+			result2 error
+		})
+	}
+	fake.pluginRemoveReturnsOnCall[i] = struct {
+		result1 client.PluginRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginSet(arg1 context.Context, arg2 string, arg3 client.PluginSetOptions) (client.PluginSetResult, error) {
+	fake.pluginSetMutex.Lock()
+	ret, specificReturn := fake.pluginSetReturnsOnCall[len(fake.pluginSetArgsForCall)]
+	fake.pluginSetArgsForCall = append(fake.pluginSetArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.PluginSetOptions
+	}{arg1, arg2, arg3})
+	stub := fake.PluginSetStub
+	fakeReturns := fake.pluginSetReturns
+	fake.recordInvocation("PluginSet", []interface{}{arg1, arg2, arg3})
+	fake.pluginSetMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) PluginSetCallCount() int {
+	fake.pluginSetMutex.RLock()
+	defer fake.pluginSetMutex.RUnlock()
+	return len(fake.pluginSetArgsForCall)
+}
+
+func (fake *DockerClient) PluginSetCalls(stub func(context.Context, string, client.PluginSetOptions) (client.PluginSetResult, error)) {
+	fake.pluginSetMutex.Lock()
+	defer fake.pluginSetMutex.Unlock()
+	fake.PluginSetStub = stub
+}
+
+func (fake *DockerClient) PluginSetArgsForCall(i int) (context.Context, string, client.PluginSetOptions) {
+	fake.pluginSetMutex.RLock()
+	defer fake.pluginSetMutex.RUnlock()
+	argsForCall := fake.pluginSetArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) PluginSetReturns(result1 client.PluginSetResult, result2 error) {
+	fake.pluginSetMutex.Lock()
+	defer fake.pluginSetMutex.Unlock()
+	fake.PluginSetStub = nil
+	fake.pluginSetReturns = struct {
+		result1 client.PluginSetResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginSetReturnsOnCall(i int, result1 client.PluginSetResult, result2 error) {
+	fake.pluginSetMutex.Lock()
+	defer fake.pluginSetMutex.Unlock()
+	fake.PluginSetStub = nil
+	if fake.pluginSetReturnsOnCall == nil {
+		fake.pluginSetReturnsOnCall = make(map[int]struct {
+			result1 client.PluginSetResult
+			result2 error
+		})
+	}
+	fake.pluginSetReturnsOnCall[i] = struct {
+		result1 client.PluginSetResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginUpgrade(arg1 context.Context, arg2 string, arg3 client.PluginUpgradeOptions) (client.PluginUpgradeResult, error) {
+	fake.pluginUpgradeMutex.Lock()
+	ret, specificReturn := fake.pluginUpgradeReturnsOnCall[len(fake.pluginUpgradeArgsForCall)]
+	fake.pluginUpgradeArgsForCall = append(fake.pluginUpgradeArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.PluginUpgradeOptions
+	}{arg1, arg2, arg3})
+	stub := fake.PluginUpgradeStub
+	fakeReturns := fake.pluginUpgradeReturns
+	fake.recordInvocation("PluginUpgrade", []interface{}{arg1, arg2, arg3})
+	fake.pluginUpgradeMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) PluginUpgradeCallCount() int {
+	fake.pluginUpgradeMutex.RLock()
+	defer fake.pluginUpgradeMutex.RUnlock()
+	return len(fake.pluginUpgradeArgsForCall)
+}
+
+func (fake *DockerClient) PluginUpgradeCalls(stub func(context.Context, string, client.PluginUpgradeOptions) (client.PluginUpgradeResult, error)) {
+	fake.pluginUpgradeMutex.Lock()
+	defer fake.pluginUpgradeMutex.Unlock()
+	fake.PluginUpgradeStub = stub
+}
+
+func (fake *DockerClient) PluginUpgradeArgsForCall(i int) (context.Context, string, client.PluginUpgradeOptions) {
+	fake.pluginUpgradeMutex.RLock()
+	defer fake.pluginUpgradeMutex.RUnlock()
+	argsForCall := fake.pluginUpgradeArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) PluginUpgradeReturns(result1 client.PluginUpgradeResult, result2 error) {
+	fake.pluginUpgradeMutex.Lock()
+	defer fake.pluginUpgradeMutex.Unlock()
+	fake.PluginUpgradeStub = nil
+	fake.pluginUpgradeReturns = struct {
+		result1 client.PluginUpgradeResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) PluginUpgradeReturnsOnCall(i int, result1 client.PluginUpgradeResult, result2 error) {
+	fake.pluginUpgradeMutex.Lock()
+	defer fake.pluginUpgradeMutex.Unlock()
+	fake.PluginUpgradeStub = nil
+	if fake.pluginUpgradeReturnsOnCall == nil {
+		fake.pluginUpgradeReturnsOnCall = make(map[int]struct {
+			result1 client.PluginUpgradeResult
+			result2 error
+		})
+	}
+	fake.pluginUpgradeReturnsOnCall[i] = struct {
+		result1 client.PluginUpgradeResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) RegistryLogin(arg1 context.Context, arg2 client.RegistryLoginOptions) (client.RegistryLoginResult, error) {
+	fake.registryLoginMutex.Lock()
+	ret, specificReturn := fake.registryLoginReturnsOnCall[len(fake.registryLoginArgsForCall)]
+	fake.registryLoginArgsForCall = append(fake.registryLoginArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.RegistryLoginOptions
+	}{arg1, arg2})
+	stub := fake.RegistryLoginStub
+	fakeReturns := fake.registryLoginReturns
+	fake.recordInvocation("RegistryLogin", []interface{}{arg1, arg2})
+	fake.registryLoginMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) RegistryLoginCallCount() int {
+	fake.registryLoginMutex.RLock()
+	defer fake.registryLoginMutex.RUnlock()
+	return len(fake.registryLoginArgsForCall)
+}
+
+func (fake *DockerClient) RegistryLoginCalls(stub func(context.Context, client.RegistryLoginOptions) (client.RegistryLoginResult, error)) {
+	fake.registryLoginMutex.Lock()
+	defer fake.registryLoginMutex.Unlock()
+	fake.RegistryLoginStub = stub
+}
+
+func (fake *DockerClient) RegistryLoginArgsForCall(i int) (context.Context, client.RegistryLoginOptions) {
+	fake.registryLoginMutex.RLock()
+	defer fake.registryLoginMutex.RUnlock()
+	argsForCall := fake.registryLoginArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) RegistryLoginReturns(result1 client.RegistryLoginResult, result2 error) {
+	fake.registryLoginMutex.Lock()
+	defer fake.registryLoginMutex.Unlock()
+	fake.RegistryLoginStub = nil
+	fake.registryLoginReturns = struct {
+		result1 client.RegistryLoginResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) RegistryLoginReturnsOnCall(i int, result1 client.RegistryLoginResult, result2 error) {
+	fake.registryLoginMutex.Lock()
+	defer fake.registryLoginMutex.Unlock()
+	fake.RegistryLoginStub = nil
+	if fake.registryLoginReturnsOnCall == nil {
+		fake.registryLoginReturnsOnCall = make(map[int]struct {
+			result1 client.RegistryLoginResult
+			result2 error
+		})
+	}
+	fake.registryLoginReturnsOnCall[i] = struct {
+		result1 client.RegistryLoginResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SecretCreate(arg1 context.Context, arg2 client.SecretCreateOptions) (client.SecretCreateResult, error) {
+	fake.secretCreateMutex.Lock()
+	ret, specificReturn := fake.secretCreateReturnsOnCall[len(fake.secretCreateArgsForCall)]
+	fake.secretCreateArgsForCall = append(fake.secretCreateArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.SecretCreateOptions
+	}{arg1, arg2})
+	stub := fake.SecretCreateStub
+	fakeReturns := fake.secretCreateReturns
+	fake.recordInvocation("SecretCreate", []interface{}{arg1, arg2})
+	fake.secretCreateMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) SecretCreateCallCount() int {
+	fake.secretCreateMutex.RLock()
+	defer fake.secretCreateMutex.RUnlock()
+	return len(fake.secretCreateArgsForCall)
+}
+
+func (fake *DockerClient) SecretCreateCalls(stub func(context.Context, client.SecretCreateOptions) (client.SecretCreateResult, error)) {
+	fake.secretCreateMutex.Lock()
+	defer fake.secretCreateMutex.Unlock()
+	fake.SecretCreateStub = stub
+}
+
+func (fake *DockerClient) SecretCreateArgsForCall(i int) (context.Context, client.SecretCreateOptions) {
+	fake.secretCreateMutex.RLock()
+	defer fake.secretCreateMutex.RUnlock()
+	argsForCall := fake.secretCreateArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) SecretCreateReturns(result1 client.SecretCreateResult, result2 error) {
+	fake.secretCreateMutex.Lock()
+	defer fake.secretCreateMutex.Unlock()
+	fake.SecretCreateStub = nil
+	fake.secretCreateReturns = struct {
+		result1 client.SecretCreateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SecretCreateReturnsOnCall(i int, result1 client.SecretCreateResult, result2 error) {
+	fake.secretCreateMutex.Lock()
+	defer fake.secretCreateMutex.Unlock()
+	fake.SecretCreateStub = nil
+	if fake.secretCreateReturnsOnCall == nil {
+		fake.secretCreateReturnsOnCall = make(map[int]struct {
+			result1 client.SecretCreateResult
+			result2 error
+		})
+	}
+	fake.secretCreateReturnsOnCall[i] = struct {
+		result1 client.SecretCreateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SecretInspect(arg1 context.Context, arg2 string, arg3 client.SecretInspectOptions) (client.SecretInspectResult, error) {
+	fake.secretInspectMutex.Lock()
+	ret, specificReturn := fake.secretInspectReturnsOnCall[len(fake.secretInspectArgsForCall)]
+	fake.secretInspectArgsForCall = append(fake.secretInspectArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.SecretInspectOptions
+	}{arg1, arg2, arg3})
+	stub := fake.SecretInspectStub
+	fakeReturns := fake.secretInspectReturns
+	fake.recordInvocation("SecretInspect", []interface{}{arg1, arg2, arg3})
+	fake.secretInspectMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) SecretInspectCallCount() int {
+	fake.secretInspectMutex.RLock()
+	defer fake.secretInspectMutex.RUnlock()
+	return len(fake.secretInspectArgsForCall)
+}
+
+func (fake *DockerClient) SecretInspectCalls(stub func(context.Context, string, client.SecretInspectOptions) (client.SecretInspectResult, error)) {
+	fake.secretInspectMutex.Lock()
+	defer fake.secretInspectMutex.Unlock()
+	fake.SecretInspectStub = stub
+}
+
+func (fake *DockerClient) SecretInspectArgsForCall(i int) (context.Context, string, client.SecretInspectOptions) {
+	fake.secretInspectMutex.RLock()
+	defer fake.secretInspectMutex.RUnlock()
+	argsForCall := fake.secretInspectArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) SecretInspectReturns(result1 client.SecretInspectResult, result2 error) {
+	fake.secretInspectMutex.Lock()
+	defer fake.secretInspectMutex.Unlock()
+	fake.SecretInspectStub = nil
+	fake.secretInspectReturns = struct {
+		result1 client.SecretInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SecretInspectReturnsOnCall(i int, result1 client.SecretInspectResult, result2 error) {
+	fake.secretInspectMutex.Lock()
+	defer fake.secretInspectMutex.Unlock()
+	fake.SecretInspectStub = nil
+	if fake.secretInspectReturnsOnCall == nil {
+		fake.secretInspectReturnsOnCall = make(map[int]struct {
+			result1 client.SecretInspectResult
+			result2 error
+		})
+	}
+	fake.secretInspectReturnsOnCall[i] = struct {
+		result1 client.SecretInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SecretList(arg1 context.Context, arg2 client.SecretListOptions) (client.SecretListResult, error) {
+	fake.secretListMutex.Lock()
+	ret, specificReturn := fake.secretListReturnsOnCall[len(fake.secretListArgsForCall)]
+	fake.secretListArgsForCall = append(fake.secretListArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.SecretListOptions
+	}{arg1, arg2})
+	stub := fake.SecretListStub
+	fakeReturns := fake.secretListReturns
+	fake.recordInvocation("SecretList", []interface{}{arg1, arg2})
+	fake.secretListMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) SecretListCallCount() int {
+	fake.secretListMutex.RLock()
+	defer fake.secretListMutex.RUnlock()
+	return len(fake.secretListArgsForCall)
+}
+
+func (fake *DockerClient) SecretListCalls(stub func(context.Context, client.SecretListOptions) (client.SecretListResult, error)) {
+	fake.secretListMutex.Lock()
+	defer fake.secretListMutex.Unlock()
+	fake.SecretListStub = stub
+}
+
+func (fake *DockerClient) SecretListArgsForCall(i int) (context.Context, client.SecretListOptions) {
+	fake.secretListMutex.RLock()
+	defer fake.secretListMutex.RUnlock()
+	argsForCall := fake.secretListArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) SecretListReturns(result1 client.SecretListResult, result2 error) {
+	fake.secretListMutex.Lock()
+	defer fake.secretListMutex.Unlock()
+	fake.SecretListStub = nil
+	fake.secretListReturns = struct {
+		result1 client.SecretListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SecretListReturnsOnCall(i int, result1 client.SecretListResult, result2 error) {
+	fake.secretListMutex.Lock()
+	defer fake.secretListMutex.Unlock()
+	fake.SecretListStub = nil
+	if fake.secretListReturnsOnCall == nil {
+		fake.secretListReturnsOnCall = make(map[int]struct {
+			result1 client.SecretListResult
+			result2 error
+		})
+	}
+	fake.secretListReturnsOnCall[i] = struct {
+		result1 client.SecretListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SecretRemove(arg1 context.Context, arg2 string, arg3 client.SecretRemoveOptions) (client.SecretRemoveResult, error) {
+	fake.secretRemoveMutex.Lock()
+	ret, specificReturn := fake.secretRemoveReturnsOnCall[len(fake.secretRemoveArgsForCall)]
+	fake.secretRemoveArgsForCall = append(fake.secretRemoveArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.SecretRemoveOptions
+	}{arg1, arg2, arg3})
+	stub := fake.SecretRemoveStub
+	fakeReturns := fake.secretRemoveReturns
+	fake.recordInvocation("SecretRemove", []interface{}{arg1, arg2, arg3})
+	fake.secretRemoveMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) SecretRemoveCallCount() int {
+	fake.secretRemoveMutex.RLock()
+	defer fake.secretRemoveMutex.RUnlock()
+	return len(fake.secretRemoveArgsForCall)
+}
+
+func (fake *DockerClient) SecretRemoveCalls(stub func(context.Context, string, client.SecretRemoveOptions) (client.SecretRemoveResult, error)) {
+	fake.secretRemoveMutex.Lock()
+	defer fake.secretRemoveMutex.Unlock()
+	fake.SecretRemoveStub = stub
+}
+
+func (fake *DockerClient) SecretRemoveArgsForCall(i int) (context.Context, string, client.SecretRemoveOptions) {
+	fake.secretRemoveMutex.RLock()
+	defer fake.secretRemoveMutex.RUnlock()
+	argsForCall := fake.secretRemoveArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) SecretRemoveReturns(result1 client.SecretRemoveResult, result2 error) {
+	fake.secretRemoveMutex.Lock()
+	defer fake.secretRemoveMutex.Unlock()
+	fake.SecretRemoveStub = nil
+	fake.secretRemoveReturns = struct {
+		result1 client.SecretRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SecretRemoveReturnsOnCall(i int, result1 client.SecretRemoveResult, result2 error) {
+	fake.secretRemoveMutex.Lock()
+	defer fake.secretRemoveMutex.Unlock()
+	fake.SecretRemoveStub = nil
+	if fake.secretRemoveReturnsOnCall == nil {
+		fake.secretRemoveReturnsOnCall = make(map[int]struct {
+			result1 client.SecretRemoveResult
+			result2 error
+		})
+	}
+	fake.secretRemoveReturnsOnCall[i] = struct {
+		result1 client.SecretRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SecretUpdate(arg1 context.Context, arg2 string, arg3 client.SecretUpdateOptions) (client.SecretUpdateResult, error) {
+	fake.secretUpdateMutex.Lock()
+	ret, specificReturn := fake.secretUpdateReturnsOnCall[len(fake.secretUpdateArgsForCall)]
+	fake.secretUpdateArgsForCall = append(fake.secretUpdateArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.SecretUpdateOptions
+	}{arg1, arg2, arg3})
+	stub := fake.SecretUpdateStub
+	fakeReturns := fake.secretUpdateReturns
+	fake.recordInvocation("SecretUpdate", []interface{}{arg1, arg2, arg3})
+	fake.secretUpdateMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) SecretUpdateCallCount() int {
+	fake.secretUpdateMutex.RLock()
+	defer fake.secretUpdateMutex.RUnlock()
+	return len(fake.secretUpdateArgsForCall)
+}
+
+func (fake *DockerClient) SecretUpdateCalls(stub func(context.Context, string, client.SecretUpdateOptions) (client.SecretUpdateResult, error)) {
+	fake.secretUpdateMutex.Lock()
+	defer fake.secretUpdateMutex.Unlock()
+	fake.SecretUpdateStub = stub
+}
+
+func (fake *DockerClient) SecretUpdateArgsForCall(i int) (context.Context, string, client.SecretUpdateOptions) {
+	fake.secretUpdateMutex.RLock()
+	defer fake.secretUpdateMutex.RUnlock()
+	argsForCall := fake.secretUpdateArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) SecretUpdateReturns(result1 client.SecretUpdateResult, result2 error) {
+	fake.secretUpdateMutex.Lock()
+	defer fake.secretUpdateMutex.Unlock()
+	fake.SecretUpdateStub = nil
+	fake.secretUpdateReturns = struct {
+		result1 client.SecretUpdateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SecretUpdateReturnsOnCall(i int, result1 client.SecretUpdateResult, result2 error) {
+	fake.secretUpdateMutex.Lock()
+	defer fake.secretUpdateMutex.Unlock()
+	fake.SecretUpdateStub = nil
+	if fake.secretUpdateReturnsOnCall == nil {
+		fake.secretUpdateReturnsOnCall = make(map[int]struct {
+			result1 client.SecretUpdateResult
+			result2 error
+		})
+	}
+	fake.secretUpdateReturnsOnCall[i] = struct {
+		result1 client.SecretUpdateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ServerVersion(arg1 context.Context, arg2 client.ServerVersionOptions) (client.ServerVersionResult, error) {
+	fake.serverVersionMutex.Lock()
+	ret, specificReturn := fake.serverVersionReturnsOnCall[len(fake.serverVersionArgsForCall)]
+	fake.serverVersionArgsForCall = append(fake.serverVersionArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.ServerVersionOptions
+	}{arg1, arg2})
+	stub := fake.ServerVersionStub
+	fakeReturns := fake.serverVersionReturns
+	fake.recordInvocation("ServerVersion", []interface{}{arg1, arg2})
+	fake.serverVersionMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ServerVersionCallCount() int {
+	fake.serverVersionMutex.RLock()
+	defer fake.serverVersionMutex.RUnlock()
+	return len(fake.serverVersionArgsForCall)
+}
+
+func (fake *DockerClient) ServerVersionCalls(stub func(context.Context, client.ServerVersionOptions) (client.ServerVersionResult, error)) {
+	fake.serverVersionMutex.Lock()
+	defer fake.serverVersionMutex.Unlock()
+	fake.ServerVersionStub = stub
+}
+
+func (fake *DockerClient) ServerVersionArgsForCall(i int) (context.Context, client.ServerVersionOptions) {
+	fake.serverVersionMutex.RLock()
+	defer fake.serverVersionMutex.RUnlock()
+	argsForCall := fake.serverVersionArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) ServerVersionReturns(result1 client.ServerVersionResult, result2 error) {
+	fake.serverVersionMutex.Lock()
+	defer fake.serverVersionMutex.Unlock()
+	fake.ServerVersionStub = nil
+	fake.serverVersionReturns = struct {
+		result1 client.ServerVersionResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ServerVersionReturnsOnCall(i int, result1 client.ServerVersionResult, result2 error) {
+	fake.serverVersionMutex.Lock()
+	defer fake.serverVersionMutex.Unlock()
+	fake.ServerVersionStub = nil
+	if fake.serverVersionReturnsOnCall == nil {
+		fake.serverVersionReturnsOnCall = make(map[int]struct {
+			result1 client.ServerVersionResult
+			result2 error
+		})
+	}
+	fake.serverVersionReturnsOnCall[i] = struct {
+		result1 client.ServerVersionResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ServiceCreate(arg1 context.Context, arg2 client.ServiceCreateOptions) (client.ServiceCreateResult, error) {
+	fake.serviceCreateMutex.Lock()
+	ret, specificReturn := fake.serviceCreateReturnsOnCall[len(fake.serviceCreateArgsForCall)]
+	fake.serviceCreateArgsForCall = append(fake.serviceCreateArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.ServiceCreateOptions
+	}{arg1, arg2})
+	stub := fake.ServiceCreateStub
+	fakeReturns := fake.serviceCreateReturns
+	fake.recordInvocation("ServiceCreate", []interface{}{arg1, arg2})
+	fake.serviceCreateMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ServiceCreateCallCount() int {
+	fake.serviceCreateMutex.RLock()
+	defer fake.serviceCreateMutex.RUnlock()
+	return len(fake.serviceCreateArgsForCall)
+}
+
+func (fake *DockerClient) ServiceCreateCalls(stub func(context.Context, client.ServiceCreateOptions) (client.ServiceCreateResult, error)) {
+	fake.serviceCreateMutex.Lock()
+	defer fake.serviceCreateMutex.Unlock()
+	fake.ServiceCreateStub = stub
+}
+
+func (fake *DockerClient) ServiceCreateArgsForCall(i int) (context.Context, client.ServiceCreateOptions) {
+	fake.serviceCreateMutex.RLock()
+	defer fake.serviceCreateMutex.RUnlock()
+	argsForCall := fake.serviceCreateArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) ServiceCreateReturns(result1 client.ServiceCreateResult, result2 error) {
+	fake.serviceCreateMutex.Lock()
+	defer fake.serviceCreateMutex.Unlock()
+	fake.ServiceCreateStub = nil
+	fake.serviceCreateReturns = struct {
+		result1 client.ServiceCreateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ServiceCreateReturnsOnCall(i int, result1 client.ServiceCreateResult, result2 error) {
+	fake.serviceCreateMutex.Lock()
+	defer fake.serviceCreateMutex.Unlock()
+	fake.ServiceCreateStub = nil
+	if fake.serviceCreateReturnsOnCall == nil {
+		fake.serviceCreateReturnsOnCall = make(map[int]struct {
+			result1 client.ServiceCreateResult
+			result2 error
+		})
+	}
+	fake.serviceCreateReturnsOnCall[i] = struct {
+		result1 client.ServiceCreateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ServiceInspect(arg1 context.Context, arg2 string, arg3 client.ServiceInspectOptions) (client.ServiceInspectResult, error) {
+	fake.serviceInspectMutex.Lock()
+	ret, specificReturn := fake.serviceInspectReturnsOnCall[len(fake.serviceInspectArgsForCall)]
+	fake.serviceInspectArgsForCall = append(fake.serviceInspectArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ServiceInspectOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ServiceInspectStub
+	fakeReturns := fake.serviceInspectReturns
+	fake.recordInvocation("ServiceInspect", []interface{}{arg1, arg2, arg3})
+	fake.serviceInspectMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ServiceInspectCallCount() int {
+	fake.serviceInspectMutex.RLock()
+	defer fake.serviceInspectMutex.RUnlock()
+	return len(fake.serviceInspectArgsForCall)
+}
+
+func (fake *DockerClient) ServiceInspectCalls(stub func(context.Context, string, client.ServiceInspectOptions) (client.ServiceInspectResult, error)) {
+	fake.serviceInspectMutex.Lock()
+	defer fake.serviceInspectMutex.Unlock()
+	fake.ServiceInspectStub = stub
+}
+
+func (fake *DockerClient) ServiceInspectArgsForCall(i int) (context.Context, string, client.ServiceInspectOptions) {
+	fake.serviceInspectMutex.RLock()
+	defer fake.serviceInspectMutex.RUnlock()
+	argsForCall := fake.serviceInspectArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ServiceInspectReturns(result1 client.ServiceInspectResult, result2 error) {
+	fake.serviceInspectMutex.Lock()
+	defer fake.serviceInspectMutex.Unlock()
+	fake.ServiceInspectStub = nil
+	fake.serviceInspectReturns = struct {
+		result1 client.ServiceInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ServiceInspectReturnsOnCall(i int, result1 client.ServiceInspectResult, result2 error) {
+	fake.serviceInspectMutex.Lock()
+	defer fake.serviceInspectMutex.Unlock()
+	fake.ServiceInspectStub = nil
+	if fake.serviceInspectReturnsOnCall == nil {
+		fake.serviceInspectReturnsOnCall = make(map[int]struct {
+			result1 client.ServiceInspectResult
+			result2 error
+		})
+	}
+	fake.serviceInspectReturnsOnCall[i] = struct {
+		result1 client.ServiceInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ServiceList(arg1 context.Context, arg2 client.ServiceListOptions) (client.ServiceListResult, error) {
+	fake.serviceListMutex.Lock()
+	ret, specificReturn := fake.serviceListReturnsOnCall[len(fake.serviceListArgsForCall)]
+	fake.serviceListArgsForCall = append(fake.serviceListArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.ServiceListOptions
+	}{arg1, arg2})
+	stub := fake.ServiceListStub
+	fakeReturns := fake.serviceListReturns
+	fake.recordInvocation("ServiceList", []interface{}{arg1, arg2})
+	fake.serviceListMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ServiceListCallCount() int {
+	fake.serviceListMutex.RLock()
+	defer fake.serviceListMutex.RUnlock()
+	return len(fake.serviceListArgsForCall)
+}
+
+func (fake *DockerClient) ServiceListCalls(stub func(context.Context, client.ServiceListOptions) (client.ServiceListResult, error)) {
+	fake.serviceListMutex.Lock()
+	defer fake.serviceListMutex.Unlock()
+	fake.ServiceListStub = stub
+}
+
+func (fake *DockerClient) ServiceListArgsForCall(i int) (context.Context, client.ServiceListOptions) {
+	fake.serviceListMutex.RLock()
+	defer fake.serviceListMutex.RUnlock()
+	argsForCall := fake.serviceListArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) ServiceListReturns(result1 client.ServiceListResult, result2 error) {
+	fake.serviceListMutex.Lock()
+	defer fake.serviceListMutex.Unlock()
+	fake.ServiceListStub = nil
+	fake.serviceListReturns = struct {
+		result1 client.ServiceListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ServiceListReturnsOnCall(i int, result1 client.ServiceListResult, result2 error) {
+	fake.serviceListMutex.Lock()
+	defer fake.serviceListMutex.Unlock()
+	fake.ServiceListStub = nil
+	if fake.serviceListReturnsOnCall == nil {
+		fake.serviceListReturnsOnCall = make(map[int]struct {
+			result1 client.ServiceListResult
+			result2 error
+		})
+	}
+	fake.serviceListReturnsOnCall[i] = struct {
+		result1 client.ServiceListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ServiceLogs(arg1 context.Context, arg2 string, arg3 client.ServiceLogsOptions) (client.ServiceLogsResult, error) {
+	fake.serviceLogsMutex.Lock()
+	ret, specificReturn := fake.serviceLogsReturnsOnCall[len(fake.serviceLogsArgsForCall)]
+	fake.serviceLogsArgsForCall = append(fake.serviceLogsArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ServiceLogsOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ServiceLogsStub
+	fakeReturns := fake.serviceLogsReturns
+	fake.recordInvocation("ServiceLogs", []interface{}{arg1, arg2, arg3})
+	fake.serviceLogsMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ServiceLogsCallCount() int {
+	fake.serviceLogsMutex.RLock()
+	defer fake.serviceLogsMutex.RUnlock()
+	return len(fake.serviceLogsArgsForCall)
+}
+
+func (fake *DockerClient) ServiceLogsCalls(stub func(context.Context, string, client.ServiceLogsOptions) (client.ServiceLogsResult, error)) {
+	fake.serviceLogsMutex.Lock()
+	defer fake.serviceLogsMutex.Unlock()
+	fake.ServiceLogsStub = stub
+}
+
+func (fake *DockerClient) ServiceLogsArgsForCall(i int) (context.Context, string, client.ServiceLogsOptions) {
+	fake.serviceLogsMutex.RLock()
+	defer fake.serviceLogsMutex.RUnlock()
+	argsForCall := fake.serviceLogsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ServiceLogsReturns(result1 client.ServiceLogsResult, result2 error) {
+	fake.serviceLogsMutex.Lock()
+	defer fake.serviceLogsMutex.Unlock()
+	fake.ServiceLogsStub = nil
+	fake.serviceLogsReturns = struct {
+		result1 client.ServiceLogsResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ServiceLogsReturnsOnCall(i int, result1 client.ServiceLogsResult, result2 error) {
+	fake.serviceLogsMutex.Lock()
+	defer fake.serviceLogsMutex.Unlock()
+	fake.ServiceLogsStub = nil
+	if fake.serviceLogsReturnsOnCall == nil {
+		fake.serviceLogsReturnsOnCall = make(map[int]struct {
+			result1 client.ServiceLogsResult
+			result2 error
+		})
+	}
+	fake.serviceLogsReturnsOnCall[i] = struct {
+		result1 client.ServiceLogsResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ServiceRemove(arg1 context.Context, arg2 string, arg3 client.ServiceRemoveOptions) (client.ServiceRemoveResult, error) {
+	fake.serviceRemoveMutex.Lock()
+	ret, specificReturn := fake.serviceRemoveReturnsOnCall[len(fake.serviceRemoveArgsForCall)]
+	fake.serviceRemoveArgsForCall = append(fake.serviceRemoveArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ServiceRemoveOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ServiceRemoveStub
+	fakeReturns := fake.serviceRemoveReturns
+	fake.recordInvocation("ServiceRemove", []interface{}{arg1, arg2, arg3})
+	fake.serviceRemoveMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ServiceRemoveCallCount() int {
+	fake.serviceRemoveMutex.RLock()
+	defer fake.serviceRemoveMutex.RUnlock()
+	return len(fake.serviceRemoveArgsForCall)
+}
+
+func (fake *DockerClient) ServiceRemoveCalls(stub func(context.Context, string, client.ServiceRemoveOptions) (client.ServiceRemoveResult, error)) {
+	fake.serviceRemoveMutex.Lock()
+	defer fake.serviceRemoveMutex.Unlock()
+	fake.ServiceRemoveStub = stub
+}
+
+func (fake *DockerClient) ServiceRemoveArgsForCall(i int) (context.Context, string, client.ServiceRemoveOptions) {
+	fake.serviceRemoveMutex.RLock()
+	defer fake.serviceRemoveMutex.RUnlock()
+	argsForCall := fake.serviceRemoveArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ServiceRemoveReturns(result1 client.ServiceRemoveResult, result2 error) {
+	fake.serviceRemoveMutex.Lock()
+	defer fake.serviceRemoveMutex.Unlock()
+	fake.ServiceRemoveStub = nil
+	fake.serviceRemoveReturns = struct {
+		result1 client.ServiceRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ServiceRemoveReturnsOnCall(i int, result1 client.ServiceRemoveResult, result2 error) {
+	fake.serviceRemoveMutex.Lock()
+	defer fake.serviceRemoveMutex.Unlock()
+	fake.ServiceRemoveStub = nil
+	if fake.serviceRemoveReturnsOnCall == nil {
+		fake.serviceRemoveReturnsOnCall = make(map[int]struct {
+			result1 client.ServiceRemoveResult
+			result2 error
+		})
+	}
+	fake.serviceRemoveReturnsOnCall[i] = struct {
+		result1 client.ServiceRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ServiceUpdate(arg1 context.Context, arg2 string, arg3 client.ServiceUpdateOptions) (client.ServiceUpdateResult, error) {
+	fake.serviceUpdateMutex.Lock()
+	ret, specificReturn := fake.serviceUpdateReturnsOnCall[len(fake.serviceUpdateArgsForCall)]
+	fake.serviceUpdateArgsForCall = append(fake.serviceUpdateArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.ServiceUpdateOptions
+	}{arg1, arg2, arg3})
+	stub := fake.ServiceUpdateStub
+	fakeReturns := fake.serviceUpdateReturns
+	fake.recordInvocation("ServiceUpdate", []interface{}{arg1, arg2, arg3})
+	fake.serviceUpdateMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ServiceUpdateCallCount() int {
+	fake.serviceUpdateMutex.RLock()
+	defer fake.serviceUpdateMutex.RUnlock()
+	return len(fake.serviceUpdateArgsForCall)
+}
+
+func (fake *DockerClient) ServiceUpdateCalls(stub func(context.Context, string, client.ServiceUpdateOptions) (client.ServiceUpdateResult, error)) {
+	fake.serviceUpdateMutex.Lock()
+	defer fake.serviceUpdateMutex.Unlock()
+	fake.ServiceUpdateStub = stub
+}
+
+func (fake *DockerClient) ServiceUpdateArgsForCall(i int) (context.Context, string, client.ServiceUpdateOptions) {
+	fake.serviceUpdateMutex.RLock()
+	defer fake.serviceUpdateMutex.RUnlock()
+	argsForCall := fake.serviceUpdateArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ServiceUpdateReturns(result1 client.ServiceUpdateResult, result2 error) {
+	fake.serviceUpdateMutex.Lock()
+	defer fake.serviceUpdateMutex.Unlock()
+	fake.ServiceUpdateStub = nil
+	fake.serviceUpdateReturns = struct {
+		result1 client.ServiceUpdateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ServiceUpdateReturnsOnCall(i int, result1 client.ServiceUpdateResult, result2 error) {
+	fake.serviceUpdateMutex.Lock()
+	defer fake.serviceUpdateMutex.Unlock()
+	fake.ServiceUpdateStub = nil
+	if fake.serviceUpdateReturnsOnCall == nil {
+		fake.serviceUpdateReturnsOnCall = make(map[int]struct {
+			result1 client.ServiceUpdateResult
+			result2 error
+		})
+	}
+	fake.serviceUpdateReturnsOnCall[i] = struct {
+		result1 client.ServiceUpdateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SwarmGetUnlockKey(arg1 context.Context) (client.SwarmGetUnlockKeyResult, error) {
+	fake.swarmGetUnlockKeyMutex.Lock()
+	ret, specificReturn := fake.swarmGetUnlockKeyReturnsOnCall[len(fake.swarmGetUnlockKeyArgsForCall)]
+	fake.swarmGetUnlockKeyArgsForCall = append(fake.swarmGetUnlockKeyArgsForCall, struct {
 		arg1 context.Context
 	}{arg1})
-	fake.recordInvocation("PingWithContext", []interface{}{arg1})
-	fake.pingWithContextMutex.Unlock()
-	if fake.PingWithContextStub != nil {
-		return fake.PingWithContextStub(arg1)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.pingWithContextReturns
-	return fakeReturns.result1
-}
-
-func (fake *DockerClient) PingWithContextCallCount() int {
-	fake.pingWithContextMutex.RLock()
-	defer fake.pingWithContextMutex.RUnlock()
-	return len(fake.pingWithContextArgsForCall)
-}
-
-func (fake *DockerClient) PingWithContextCalls(stub func(context.Context) error) {
-	fake.pingWithContextMutex.Lock()
-	defer fake.pingWithContextMutex.Unlock()
-	fake.PingWithContextStub = stub
-}
-
-func (fake *DockerClient) PingWithContextArgsForCall(i int) context.Context {
-	fake.pingWithContextMutex.RLock()
-	defer fake.pingWithContextMutex.RUnlock()
-	argsForCall := fake.pingWithContextArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *DockerClient) PingWithContextReturns(result1 error) {
-	fake.pingWithContextMutex.Lock()
-	defer fake.pingWithContextMutex.Unlock()
-	fake.PingWithContextStub = nil
-	fake.pingWithContextReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *DockerClient) PingWithContextReturnsOnCall(i int, result1 error) {
-	fake.pingWithContextMutex.Lock()
-	defer fake.pingWithContextMutex.Unlock()
-	fake.PingWithContextStub = nil
-	if fake.pingWithContextReturnsOnCall == nil {
-		fake.pingWithContextReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.pingWithContextReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *DockerClient) RemoveContainer(arg1 docker.RemoveContainerOptions) error {
-	fake.removeContainerMutex.Lock()
-	ret, specificReturn := fake.removeContainerReturnsOnCall[len(fake.removeContainerArgsForCall)]
-	fake.removeContainerArgsForCall = append(fake.removeContainerArgsForCall, struct {
-		arg1 docker.RemoveContainerOptions
-	}{arg1})
-	fake.recordInvocation("RemoveContainer", []interface{}{arg1})
-	fake.removeContainerMutex.Unlock()
-	if fake.RemoveContainerStub != nil {
-		return fake.RemoveContainerStub(arg1)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.removeContainerReturns
-	return fakeReturns.result1
-}
-
-func (fake *DockerClient) RemoveContainerCallCount() int {
-	fake.removeContainerMutex.RLock()
-	defer fake.removeContainerMutex.RUnlock()
-	return len(fake.removeContainerArgsForCall)
-}
-
-func (fake *DockerClient) RemoveContainerCalls(stub func(docker.RemoveContainerOptions) error) {
-	fake.removeContainerMutex.Lock()
-	defer fake.removeContainerMutex.Unlock()
-	fake.RemoveContainerStub = stub
-}
-
-func (fake *DockerClient) RemoveContainerArgsForCall(i int) docker.RemoveContainerOptions {
-	fake.removeContainerMutex.RLock()
-	defer fake.removeContainerMutex.RUnlock()
-	argsForCall := fake.removeContainerArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *DockerClient) RemoveContainerReturns(result1 error) {
-	fake.removeContainerMutex.Lock()
-	defer fake.removeContainerMutex.Unlock()
-	fake.RemoveContainerStub = nil
-	fake.removeContainerReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *DockerClient) RemoveContainerReturnsOnCall(i int, result1 error) {
-	fake.removeContainerMutex.Lock()
-	defer fake.removeContainerMutex.Unlock()
-	fake.RemoveContainerStub = nil
-	if fake.removeContainerReturnsOnCall == nil {
-		fake.removeContainerReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.removeContainerReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *DockerClient) StartContainer(arg1 string, arg2 *docker.HostConfig) error {
-	fake.startContainerMutex.Lock()
-	ret, specificReturn := fake.startContainerReturnsOnCall[len(fake.startContainerArgsForCall)]
-	fake.startContainerArgsForCall = append(fake.startContainerArgsForCall, struct {
-		arg1 string
-		arg2 *docker.HostConfig
-	}{arg1, arg2})
-	fake.recordInvocation("StartContainer", []interface{}{arg1, arg2})
-	fake.startContainerMutex.Unlock()
-	if fake.StartContainerStub != nil {
-		return fake.StartContainerStub(arg1, arg2)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.startContainerReturns
-	return fakeReturns.result1
-}
-
-func (fake *DockerClient) StartContainerCallCount() int {
-	fake.startContainerMutex.RLock()
-	defer fake.startContainerMutex.RUnlock()
-	return len(fake.startContainerArgsForCall)
-}
-
-func (fake *DockerClient) StartContainerCalls(stub func(string, *docker.HostConfig) error) {
-	fake.startContainerMutex.Lock()
-	defer fake.startContainerMutex.Unlock()
-	fake.StartContainerStub = stub
-}
-
-func (fake *DockerClient) StartContainerArgsForCall(i int) (string, *docker.HostConfig) {
-	fake.startContainerMutex.RLock()
-	defer fake.startContainerMutex.RUnlock()
-	argsForCall := fake.startContainerArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
-}
-
-func (fake *DockerClient) StartContainerReturns(result1 error) {
-	fake.startContainerMutex.Lock()
-	defer fake.startContainerMutex.Unlock()
-	fake.StartContainerStub = nil
-	fake.startContainerReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *DockerClient) StartContainerReturnsOnCall(i int, result1 error) {
-	fake.startContainerMutex.Lock()
-	defer fake.startContainerMutex.Unlock()
-	fake.StartContainerStub = nil
-	if fake.startContainerReturnsOnCall == nil {
-		fake.startContainerReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.startContainerReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *DockerClient) StopContainer(arg1 string, arg2 uint) error {
-	fake.stopContainerMutex.Lock()
-	ret, specificReturn := fake.stopContainerReturnsOnCall[len(fake.stopContainerArgsForCall)]
-	fake.stopContainerArgsForCall = append(fake.stopContainerArgsForCall, struct {
-		arg1 string
-		arg2 uint
-	}{arg1, arg2})
-	fake.recordInvocation("StopContainer", []interface{}{arg1, arg2})
-	fake.stopContainerMutex.Unlock()
-	if fake.StopContainerStub != nil {
-		return fake.StopContainerStub(arg1, arg2)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.stopContainerReturns
-	return fakeReturns.result1
-}
-
-func (fake *DockerClient) StopContainerCallCount() int {
-	fake.stopContainerMutex.RLock()
-	defer fake.stopContainerMutex.RUnlock()
-	return len(fake.stopContainerArgsForCall)
-}
-
-func (fake *DockerClient) StopContainerCalls(stub func(string, uint) error) {
-	fake.stopContainerMutex.Lock()
-	defer fake.stopContainerMutex.Unlock()
-	fake.StopContainerStub = stub
-}
-
-func (fake *DockerClient) StopContainerArgsForCall(i int) (string, uint) {
-	fake.stopContainerMutex.RLock()
-	defer fake.stopContainerMutex.RUnlock()
-	argsForCall := fake.stopContainerArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
-}
-
-func (fake *DockerClient) StopContainerReturns(result1 error) {
-	fake.stopContainerMutex.Lock()
-	defer fake.stopContainerMutex.Unlock()
-	fake.StopContainerStub = nil
-	fake.stopContainerReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *DockerClient) StopContainerReturnsOnCall(i int, result1 error) {
-	fake.stopContainerMutex.Lock()
-	defer fake.stopContainerMutex.Unlock()
-	fake.StopContainerStub = nil
-	if fake.stopContainerReturnsOnCall == nil {
-		fake.stopContainerReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.stopContainerReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *DockerClient) UploadToContainer(arg1 string, arg2 docker.UploadToContainerOptions) error {
-	fake.uploadToContainerMutex.Lock()
-	ret, specificReturn := fake.uploadToContainerReturnsOnCall[len(fake.uploadToContainerArgsForCall)]
-	fake.uploadToContainerArgsForCall = append(fake.uploadToContainerArgsForCall, struct {
-		arg1 string
-		arg2 docker.UploadToContainerOptions
-	}{arg1, arg2})
-	fake.recordInvocation("UploadToContainer", []interface{}{arg1, arg2})
-	fake.uploadToContainerMutex.Unlock()
-	if fake.UploadToContainerStub != nil {
-		return fake.UploadToContainerStub(arg1, arg2)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.uploadToContainerReturns
-	return fakeReturns.result1
-}
-
-func (fake *DockerClient) UploadToContainerCallCount() int {
-	fake.uploadToContainerMutex.RLock()
-	defer fake.uploadToContainerMutex.RUnlock()
-	return len(fake.uploadToContainerArgsForCall)
-}
-
-func (fake *DockerClient) UploadToContainerCalls(stub func(string, docker.UploadToContainerOptions) error) {
-	fake.uploadToContainerMutex.Lock()
-	defer fake.uploadToContainerMutex.Unlock()
-	fake.UploadToContainerStub = stub
-}
-
-func (fake *DockerClient) UploadToContainerArgsForCall(i int) (string, docker.UploadToContainerOptions) {
-	fake.uploadToContainerMutex.RLock()
-	defer fake.uploadToContainerMutex.RUnlock()
-	argsForCall := fake.uploadToContainerArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
-}
-
-func (fake *DockerClient) UploadToContainerReturns(result1 error) {
-	fake.uploadToContainerMutex.Lock()
-	defer fake.uploadToContainerMutex.Unlock()
-	fake.UploadToContainerStub = nil
-	fake.uploadToContainerReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *DockerClient) UploadToContainerReturnsOnCall(i int, result1 error) {
-	fake.uploadToContainerMutex.Lock()
-	defer fake.uploadToContainerMutex.Unlock()
-	fake.UploadToContainerStub = nil
-	if fake.uploadToContainerReturnsOnCall == nil {
-		fake.uploadToContainerReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.uploadToContainerReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *DockerClient) WaitContainer(arg1 string) (int, error) {
-	fake.waitContainerMutex.Lock()
-	ret, specificReturn := fake.waitContainerReturnsOnCall[len(fake.waitContainerArgsForCall)]
-	fake.waitContainerArgsForCall = append(fake.waitContainerArgsForCall, struct {
-		arg1 string
-	}{arg1})
-	fake.recordInvocation("WaitContainer", []interface{}{arg1})
-	fake.waitContainerMutex.Unlock()
-	if fake.WaitContainerStub != nil {
-		return fake.WaitContainerStub(arg1)
+	stub := fake.SwarmGetUnlockKeyStub
+	fakeReturns := fake.swarmGetUnlockKeyReturns
+	fake.recordInvocation("SwarmGetUnlockKey", []interface{}{arg1})
+	fake.swarmGetUnlockKeyMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.waitContainerReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *DockerClient) WaitContainerCallCount() int {
-	fake.waitContainerMutex.RLock()
-	defer fake.waitContainerMutex.RUnlock()
-	return len(fake.waitContainerArgsForCall)
+func (fake *DockerClient) SwarmGetUnlockKeyCallCount() int {
+	fake.swarmGetUnlockKeyMutex.RLock()
+	defer fake.swarmGetUnlockKeyMutex.RUnlock()
+	return len(fake.swarmGetUnlockKeyArgsForCall)
 }
 
-func (fake *DockerClient) WaitContainerCalls(stub func(string) (int, error)) {
-	fake.waitContainerMutex.Lock()
-	defer fake.waitContainerMutex.Unlock()
-	fake.WaitContainerStub = stub
+func (fake *DockerClient) SwarmGetUnlockKeyCalls(stub func(context.Context) (client.SwarmGetUnlockKeyResult, error)) {
+	fake.swarmGetUnlockKeyMutex.Lock()
+	defer fake.swarmGetUnlockKeyMutex.Unlock()
+	fake.SwarmGetUnlockKeyStub = stub
 }
 
-func (fake *DockerClient) WaitContainerArgsForCall(i int) string {
-	fake.waitContainerMutex.RLock()
-	defer fake.waitContainerMutex.RUnlock()
-	argsForCall := fake.waitContainerArgsForCall[i]
+func (fake *DockerClient) SwarmGetUnlockKeyArgsForCall(i int) context.Context {
+	fake.swarmGetUnlockKeyMutex.RLock()
+	defer fake.swarmGetUnlockKeyMutex.RUnlock()
+	argsForCall := fake.swarmGetUnlockKeyArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *DockerClient) WaitContainerReturns(result1 int, result2 error) {
-	fake.waitContainerMutex.Lock()
-	defer fake.waitContainerMutex.Unlock()
-	fake.WaitContainerStub = nil
-	fake.waitContainerReturns = struct {
-		result1 int
+func (fake *DockerClient) SwarmGetUnlockKeyReturns(result1 client.SwarmGetUnlockKeyResult, result2 error) {
+	fake.swarmGetUnlockKeyMutex.Lock()
+	defer fake.swarmGetUnlockKeyMutex.Unlock()
+	fake.SwarmGetUnlockKeyStub = nil
+	fake.swarmGetUnlockKeyReturns = struct {
+		result1 client.SwarmGetUnlockKeyResult
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *DockerClient) WaitContainerReturnsOnCall(i int, result1 int, result2 error) {
-	fake.waitContainerMutex.Lock()
-	defer fake.waitContainerMutex.Unlock()
-	fake.WaitContainerStub = nil
-	if fake.waitContainerReturnsOnCall == nil {
-		fake.waitContainerReturnsOnCall = make(map[int]struct {
-			result1 int
+func (fake *DockerClient) SwarmGetUnlockKeyReturnsOnCall(i int, result1 client.SwarmGetUnlockKeyResult, result2 error) {
+	fake.swarmGetUnlockKeyMutex.Lock()
+	defer fake.swarmGetUnlockKeyMutex.Unlock()
+	fake.SwarmGetUnlockKeyStub = nil
+	if fake.swarmGetUnlockKeyReturnsOnCall == nil {
+		fake.swarmGetUnlockKeyReturnsOnCall = make(map[int]struct {
+			result1 client.SwarmGetUnlockKeyResult
 			result2 error
 		})
 	}
-	fake.waitContainerReturnsOnCall[i] = struct {
-		result1 int
+	fake.swarmGetUnlockKeyReturnsOnCall[i] = struct {
+		result1 client.SwarmGetUnlockKeyResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SwarmInit(arg1 context.Context, arg2 client.SwarmInitOptions) (client.SwarmInitResult, error) {
+	fake.swarmInitMutex.Lock()
+	ret, specificReturn := fake.swarmInitReturnsOnCall[len(fake.swarmInitArgsForCall)]
+	fake.swarmInitArgsForCall = append(fake.swarmInitArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.SwarmInitOptions
+	}{arg1, arg2})
+	stub := fake.SwarmInitStub
+	fakeReturns := fake.swarmInitReturns
+	fake.recordInvocation("SwarmInit", []interface{}{arg1, arg2})
+	fake.swarmInitMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) SwarmInitCallCount() int {
+	fake.swarmInitMutex.RLock()
+	defer fake.swarmInitMutex.RUnlock()
+	return len(fake.swarmInitArgsForCall)
+}
+
+func (fake *DockerClient) SwarmInitCalls(stub func(context.Context, client.SwarmInitOptions) (client.SwarmInitResult, error)) {
+	fake.swarmInitMutex.Lock()
+	defer fake.swarmInitMutex.Unlock()
+	fake.SwarmInitStub = stub
+}
+
+func (fake *DockerClient) SwarmInitArgsForCall(i int) (context.Context, client.SwarmInitOptions) {
+	fake.swarmInitMutex.RLock()
+	defer fake.swarmInitMutex.RUnlock()
+	argsForCall := fake.swarmInitArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) SwarmInitReturns(result1 client.SwarmInitResult, result2 error) {
+	fake.swarmInitMutex.Lock()
+	defer fake.swarmInitMutex.Unlock()
+	fake.SwarmInitStub = nil
+	fake.swarmInitReturns = struct {
+		result1 client.SwarmInitResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SwarmInitReturnsOnCall(i int, result1 client.SwarmInitResult, result2 error) {
+	fake.swarmInitMutex.Lock()
+	defer fake.swarmInitMutex.Unlock()
+	fake.SwarmInitStub = nil
+	if fake.swarmInitReturnsOnCall == nil {
+		fake.swarmInitReturnsOnCall = make(map[int]struct {
+			result1 client.SwarmInitResult
+			result2 error
+		})
+	}
+	fake.swarmInitReturnsOnCall[i] = struct {
+		result1 client.SwarmInitResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SwarmInspect(arg1 context.Context, arg2 client.SwarmInspectOptions) (client.SwarmInspectResult, error) {
+	fake.swarmInspectMutex.Lock()
+	ret, specificReturn := fake.swarmInspectReturnsOnCall[len(fake.swarmInspectArgsForCall)]
+	fake.swarmInspectArgsForCall = append(fake.swarmInspectArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.SwarmInspectOptions
+	}{arg1, arg2})
+	stub := fake.SwarmInspectStub
+	fakeReturns := fake.swarmInspectReturns
+	fake.recordInvocation("SwarmInspect", []interface{}{arg1, arg2})
+	fake.swarmInspectMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) SwarmInspectCallCount() int {
+	fake.swarmInspectMutex.RLock()
+	defer fake.swarmInspectMutex.RUnlock()
+	return len(fake.swarmInspectArgsForCall)
+}
+
+func (fake *DockerClient) SwarmInspectCalls(stub func(context.Context, client.SwarmInspectOptions) (client.SwarmInspectResult, error)) {
+	fake.swarmInspectMutex.Lock()
+	defer fake.swarmInspectMutex.Unlock()
+	fake.SwarmInspectStub = stub
+}
+
+func (fake *DockerClient) SwarmInspectArgsForCall(i int) (context.Context, client.SwarmInspectOptions) {
+	fake.swarmInspectMutex.RLock()
+	defer fake.swarmInspectMutex.RUnlock()
+	argsForCall := fake.swarmInspectArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) SwarmInspectReturns(result1 client.SwarmInspectResult, result2 error) {
+	fake.swarmInspectMutex.Lock()
+	defer fake.swarmInspectMutex.Unlock()
+	fake.SwarmInspectStub = nil
+	fake.swarmInspectReturns = struct {
+		result1 client.SwarmInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SwarmInspectReturnsOnCall(i int, result1 client.SwarmInspectResult, result2 error) {
+	fake.swarmInspectMutex.Lock()
+	defer fake.swarmInspectMutex.Unlock()
+	fake.SwarmInspectStub = nil
+	if fake.swarmInspectReturnsOnCall == nil {
+		fake.swarmInspectReturnsOnCall = make(map[int]struct {
+			result1 client.SwarmInspectResult
+			result2 error
+		})
+	}
+	fake.swarmInspectReturnsOnCall[i] = struct {
+		result1 client.SwarmInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SwarmJoin(arg1 context.Context, arg2 client.SwarmJoinOptions) (client.SwarmJoinResult, error) {
+	fake.swarmJoinMutex.Lock()
+	ret, specificReturn := fake.swarmJoinReturnsOnCall[len(fake.swarmJoinArgsForCall)]
+	fake.swarmJoinArgsForCall = append(fake.swarmJoinArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.SwarmJoinOptions
+	}{arg1, arg2})
+	stub := fake.SwarmJoinStub
+	fakeReturns := fake.swarmJoinReturns
+	fake.recordInvocation("SwarmJoin", []interface{}{arg1, arg2})
+	fake.swarmJoinMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) SwarmJoinCallCount() int {
+	fake.swarmJoinMutex.RLock()
+	defer fake.swarmJoinMutex.RUnlock()
+	return len(fake.swarmJoinArgsForCall)
+}
+
+func (fake *DockerClient) SwarmJoinCalls(stub func(context.Context, client.SwarmJoinOptions) (client.SwarmJoinResult, error)) {
+	fake.swarmJoinMutex.Lock()
+	defer fake.swarmJoinMutex.Unlock()
+	fake.SwarmJoinStub = stub
+}
+
+func (fake *DockerClient) SwarmJoinArgsForCall(i int) (context.Context, client.SwarmJoinOptions) {
+	fake.swarmJoinMutex.RLock()
+	defer fake.swarmJoinMutex.RUnlock()
+	argsForCall := fake.swarmJoinArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) SwarmJoinReturns(result1 client.SwarmJoinResult, result2 error) {
+	fake.swarmJoinMutex.Lock()
+	defer fake.swarmJoinMutex.Unlock()
+	fake.SwarmJoinStub = nil
+	fake.swarmJoinReturns = struct {
+		result1 client.SwarmJoinResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SwarmJoinReturnsOnCall(i int, result1 client.SwarmJoinResult, result2 error) {
+	fake.swarmJoinMutex.Lock()
+	defer fake.swarmJoinMutex.Unlock()
+	fake.SwarmJoinStub = nil
+	if fake.swarmJoinReturnsOnCall == nil {
+		fake.swarmJoinReturnsOnCall = make(map[int]struct {
+			result1 client.SwarmJoinResult
+			result2 error
+		})
+	}
+	fake.swarmJoinReturnsOnCall[i] = struct {
+		result1 client.SwarmJoinResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SwarmLeave(arg1 context.Context, arg2 client.SwarmLeaveOptions) (client.SwarmLeaveResult, error) {
+	fake.swarmLeaveMutex.Lock()
+	ret, specificReturn := fake.swarmLeaveReturnsOnCall[len(fake.swarmLeaveArgsForCall)]
+	fake.swarmLeaveArgsForCall = append(fake.swarmLeaveArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.SwarmLeaveOptions
+	}{arg1, arg2})
+	stub := fake.SwarmLeaveStub
+	fakeReturns := fake.swarmLeaveReturns
+	fake.recordInvocation("SwarmLeave", []interface{}{arg1, arg2})
+	fake.swarmLeaveMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) SwarmLeaveCallCount() int {
+	fake.swarmLeaveMutex.RLock()
+	defer fake.swarmLeaveMutex.RUnlock()
+	return len(fake.swarmLeaveArgsForCall)
+}
+
+func (fake *DockerClient) SwarmLeaveCalls(stub func(context.Context, client.SwarmLeaveOptions) (client.SwarmLeaveResult, error)) {
+	fake.swarmLeaveMutex.Lock()
+	defer fake.swarmLeaveMutex.Unlock()
+	fake.SwarmLeaveStub = stub
+}
+
+func (fake *DockerClient) SwarmLeaveArgsForCall(i int) (context.Context, client.SwarmLeaveOptions) {
+	fake.swarmLeaveMutex.RLock()
+	defer fake.swarmLeaveMutex.RUnlock()
+	argsForCall := fake.swarmLeaveArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) SwarmLeaveReturns(result1 client.SwarmLeaveResult, result2 error) {
+	fake.swarmLeaveMutex.Lock()
+	defer fake.swarmLeaveMutex.Unlock()
+	fake.SwarmLeaveStub = nil
+	fake.swarmLeaveReturns = struct {
+		result1 client.SwarmLeaveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SwarmLeaveReturnsOnCall(i int, result1 client.SwarmLeaveResult, result2 error) {
+	fake.swarmLeaveMutex.Lock()
+	defer fake.swarmLeaveMutex.Unlock()
+	fake.SwarmLeaveStub = nil
+	if fake.swarmLeaveReturnsOnCall == nil {
+		fake.swarmLeaveReturnsOnCall = make(map[int]struct {
+			result1 client.SwarmLeaveResult
+			result2 error
+		})
+	}
+	fake.swarmLeaveReturnsOnCall[i] = struct {
+		result1 client.SwarmLeaveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SwarmUnlock(arg1 context.Context, arg2 client.SwarmUnlockOptions) (client.SwarmUnlockResult, error) {
+	fake.swarmUnlockMutex.Lock()
+	ret, specificReturn := fake.swarmUnlockReturnsOnCall[len(fake.swarmUnlockArgsForCall)]
+	fake.swarmUnlockArgsForCall = append(fake.swarmUnlockArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.SwarmUnlockOptions
+	}{arg1, arg2})
+	stub := fake.SwarmUnlockStub
+	fakeReturns := fake.swarmUnlockReturns
+	fake.recordInvocation("SwarmUnlock", []interface{}{arg1, arg2})
+	fake.swarmUnlockMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) SwarmUnlockCallCount() int {
+	fake.swarmUnlockMutex.RLock()
+	defer fake.swarmUnlockMutex.RUnlock()
+	return len(fake.swarmUnlockArgsForCall)
+}
+
+func (fake *DockerClient) SwarmUnlockCalls(stub func(context.Context, client.SwarmUnlockOptions) (client.SwarmUnlockResult, error)) {
+	fake.swarmUnlockMutex.Lock()
+	defer fake.swarmUnlockMutex.Unlock()
+	fake.SwarmUnlockStub = stub
+}
+
+func (fake *DockerClient) SwarmUnlockArgsForCall(i int) (context.Context, client.SwarmUnlockOptions) {
+	fake.swarmUnlockMutex.RLock()
+	defer fake.swarmUnlockMutex.RUnlock()
+	argsForCall := fake.swarmUnlockArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) SwarmUnlockReturns(result1 client.SwarmUnlockResult, result2 error) {
+	fake.swarmUnlockMutex.Lock()
+	defer fake.swarmUnlockMutex.Unlock()
+	fake.SwarmUnlockStub = nil
+	fake.swarmUnlockReturns = struct {
+		result1 client.SwarmUnlockResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SwarmUnlockReturnsOnCall(i int, result1 client.SwarmUnlockResult, result2 error) {
+	fake.swarmUnlockMutex.Lock()
+	defer fake.swarmUnlockMutex.Unlock()
+	fake.SwarmUnlockStub = nil
+	if fake.swarmUnlockReturnsOnCall == nil {
+		fake.swarmUnlockReturnsOnCall = make(map[int]struct {
+			result1 client.SwarmUnlockResult
+			result2 error
+		})
+	}
+	fake.swarmUnlockReturnsOnCall[i] = struct {
+		result1 client.SwarmUnlockResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SwarmUpdate(arg1 context.Context, arg2 client.SwarmUpdateOptions) (client.SwarmUpdateResult, error) {
+	fake.swarmUpdateMutex.Lock()
+	ret, specificReturn := fake.swarmUpdateReturnsOnCall[len(fake.swarmUpdateArgsForCall)]
+	fake.swarmUpdateArgsForCall = append(fake.swarmUpdateArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.SwarmUpdateOptions
+	}{arg1, arg2})
+	stub := fake.SwarmUpdateStub
+	fakeReturns := fake.swarmUpdateReturns
+	fake.recordInvocation("SwarmUpdate", []interface{}{arg1, arg2})
+	fake.swarmUpdateMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) SwarmUpdateCallCount() int {
+	fake.swarmUpdateMutex.RLock()
+	defer fake.swarmUpdateMutex.RUnlock()
+	return len(fake.swarmUpdateArgsForCall)
+}
+
+func (fake *DockerClient) SwarmUpdateCalls(stub func(context.Context, client.SwarmUpdateOptions) (client.SwarmUpdateResult, error)) {
+	fake.swarmUpdateMutex.Lock()
+	defer fake.swarmUpdateMutex.Unlock()
+	fake.SwarmUpdateStub = stub
+}
+
+func (fake *DockerClient) SwarmUpdateArgsForCall(i int) (context.Context, client.SwarmUpdateOptions) {
+	fake.swarmUpdateMutex.RLock()
+	defer fake.swarmUpdateMutex.RUnlock()
+	argsForCall := fake.swarmUpdateArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) SwarmUpdateReturns(result1 client.SwarmUpdateResult, result2 error) {
+	fake.swarmUpdateMutex.Lock()
+	defer fake.swarmUpdateMutex.Unlock()
+	fake.SwarmUpdateStub = nil
+	fake.swarmUpdateReturns = struct {
+		result1 client.SwarmUpdateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) SwarmUpdateReturnsOnCall(i int, result1 client.SwarmUpdateResult, result2 error) {
+	fake.swarmUpdateMutex.Lock()
+	defer fake.swarmUpdateMutex.Unlock()
+	fake.SwarmUpdateStub = nil
+	if fake.swarmUpdateReturnsOnCall == nil {
+		fake.swarmUpdateReturnsOnCall = make(map[int]struct {
+			result1 client.SwarmUpdateResult
+			result2 error
+		})
+	}
+	fake.swarmUpdateReturnsOnCall[i] = struct {
+		result1 client.SwarmUpdateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) TaskInspect(arg1 context.Context, arg2 string, arg3 client.TaskInspectOptions) (client.TaskInspectResult, error) {
+	fake.taskInspectMutex.Lock()
+	ret, specificReturn := fake.taskInspectReturnsOnCall[len(fake.taskInspectArgsForCall)]
+	fake.taskInspectArgsForCall = append(fake.taskInspectArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.TaskInspectOptions
+	}{arg1, arg2, arg3})
+	stub := fake.TaskInspectStub
+	fakeReturns := fake.taskInspectReturns
+	fake.recordInvocation("TaskInspect", []interface{}{arg1, arg2, arg3})
+	fake.taskInspectMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) TaskInspectCallCount() int {
+	fake.taskInspectMutex.RLock()
+	defer fake.taskInspectMutex.RUnlock()
+	return len(fake.taskInspectArgsForCall)
+}
+
+func (fake *DockerClient) TaskInspectCalls(stub func(context.Context, string, client.TaskInspectOptions) (client.TaskInspectResult, error)) {
+	fake.taskInspectMutex.Lock()
+	defer fake.taskInspectMutex.Unlock()
+	fake.TaskInspectStub = stub
+}
+
+func (fake *DockerClient) TaskInspectArgsForCall(i int) (context.Context, string, client.TaskInspectOptions) {
+	fake.taskInspectMutex.RLock()
+	defer fake.taskInspectMutex.RUnlock()
+	argsForCall := fake.taskInspectArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) TaskInspectReturns(result1 client.TaskInspectResult, result2 error) {
+	fake.taskInspectMutex.Lock()
+	defer fake.taskInspectMutex.Unlock()
+	fake.TaskInspectStub = nil
+	fake.taskInspectReturns = struct {
+		result1 client.TaskInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) TaskInspectReturnsOnCall(i int, result1 client.TaskInspectResult, result2 error) {
+	fake.taskInspectMutex.Lock()
+	defer fake.taskInspectMutex.Unlock()
+	fake.TaskInspectStub = nil
+	if fake.taskInspectReturnsOnCall == nil {
+		fake.taskInspectReturnsOnCall = make(map[int]struct {
+			result1 client.TaskInspectResult
+			result2 error
+		})
+	}
+	fake.taskInspectReturnsOnCall[i] = struct {
+		result1 client.TaskInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) TaskList(arg1 context.Context, arg2 client.TaskListOptions) (client.TaskListResult, error) {
+	fake.taskListMutex.Lock()
+	ret, specificReturn := fake.taskListReturnsOnCall[len(fake.taskListArgsForCall)]
+	fake.taskListArgsForCall = append(fake.taskListArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.TaskListOptions
+	}{arg1, arg2})
+	stub := fake.TaskListStub
+	fakeReturns := fake.taskListReturns
+	fake.recordInvocation("TaskList", []interface{}{arg1, arg2})
+	fake.taskListMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) TaskListCallCount() int {
+	fake.taskListMutex.RLock()
+	defer fake.taskListMutex.RUnlock()
+	return len(fake.taskListArgsForCall)
+}
+
+func (fake *DockerClient) TaskListCalls(stub func(context.Context, client.TaskListOptions) (client.TaskListResult, error)) {
+	fake.taskListMutex.Lock()
+	defer fake.taskListMutex.Unlock()
+	fake.TaskListStub = stub
+}
+
+func (fake *DockerClient) TaskListArgsForCall(i int) (context.Context, client.TaskListOptions) {
+	fake.taskListMutex.RLock()
+	defer fake.taskListMutex.RUnlock()
+	argsForCall := fake.taskListArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) TaskListReturns(result1 client.TaskListResult, result2 error) {
+	fake.taskListMutex.Lock()
+	defer fake.taskListMutex.Unlock()
+	fake.TaskListStub = nil
+	fake.taskListReturns = struct {
+		result1 client.TaskListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) TaskListReturnsOnCall(i int, result1 client.TaskListResult, result2 error) {
+	fake.taskListMutex.Lock()
+	defer fake.taskListMutex.Unlock()
+	fake.TaskListStub = nil
+	if fake.taskListReturnsOnCall == nil {
+		fake.taskListReturnsOnCall = make(map[int]struct {
+			result1 client.TaskListResult
+			result2 error
+		})
+	}
+	fake.taskListReturnsOnCall[i] = struct {
+		result1 client.TaskListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) TaskLogs(arg1 context.Context, arg2 string, arg3 client.TaskLogsOptions) (client.TaskLogsResult, error) {
+	fake.taskLogsMutex.Lock()
+	ret, specificReturn := fake.taskLogsReturnsOnCall[len(fake.taskLogsArgsForCall)]
+	fake.taskLogsArgsForCall = append(fake.taskLogsArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.TaskLogsOptions
+	}{arg1, arg2, arg3})
+	stub := fake.TaskLogsStub
+	fakeReturns := fake.taskLogsReturns
+	fake.recordInvocation("TaskLogs", []interface{}{arg1, arg2, arg3})
+	fake.taskLogsMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) TaskLogsCallCount() int {
+	fake.taskLogsMutex.RLock()
+	defer fake.taskLogsMutex.RUnlock()
+	return len(fake.taskLogsArgsForCall)
+}
+
+func (fake *DockerClient) TaskLogsCalls(stub func(context.Context, string, client.TaskLogsOptions) (client.TaskLogsResult, error)) {
+	fake.taskLogsMutex.Lock()
+	defer fake.taskLogsMutex.Unlock()
+	fake.TaskLogsStub = stub
+}
+
+func (fake *DockerClient) TaskLogsArgsForCall(i int) (context.Context, string, client.TaskLogsOptions) {
+	fake.taskLogsMutex.RLock()
+	defer fake.taskLogsMutex.RUnlock()
+	argsForCall := fake.taskLogsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) TaskLogsReturns(result1 client.TaskLogsResult, result2 error) {
+	fake.taskLogsMutex.Lock()
+	defer fake.taskLogsMutex.Unlock()
+	fake.TaskLogsStub = nil
+	fake.taskLogsReturns = struct {
+		result1 client.TaskLogsResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) TaskLogsReturnsOnCall(i int, result1 client.TaskLogsResult, result2 error) {
+	fake.taskLogsMutex.Lock()
+	defer fake.taskLogsMutex.Unlock()
+	fake.TaskLogsStub = nil
+	if fake.taskLogsReturnsOnCall == nil {
+		fake.taskLogsReturnsOnCall = make(map[int]struct {
+			result1 client.TaskLogsResult
+			result2 error
+		})
+	}
+	fake.taskLogsReturnsOnCall[i] = struct {
+		result1 client.TaskLogsResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) VolumeCreate(arg1 context.Context, arg2 client.VolumeCreateOptions) (client.VolumeCreateResult, error) {
+	fake.volumeCreateMutex.Lock()
+	ret, specificReturn := fake.volumeCreateReturnsOnCall[len(fake.volumeCreateArgsForCall)]
+	fake.volumeCreateArgsForCall = append(fake.volumeCreateArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.VolumeCreateOptions
+	}{arg1, arg2})
+	stub := fake.VolumeCreateStub
+	fakeReturns := fake.volumeCreateReturns
+	fake.recordInvocation("VolumeCreate", []interface{}{arg1, arg2})
+	fake.volumeCreateMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) VolumeCreateCallCount() int {
+	fake.volumeCreateMutex.RLock()
+	defer fake.volumeCreateMutex.RUnlock()
+	return len(fake.volumeCreateArgsForCall)
+}
+
+func (fake *DockerClient) VolumeCreateCalls(stub func(context.Context, client.VolumeCreateOptions) (client.VolumeCreateResult, error)) {
+	fake.volumeCreateMutex.Lock()
+	defer fake.volumeCreateMutex.Unlock()
+	fake.VolumeCreateStub = stub
+}
+
+func (fake *DockerClient) VolumeCreateArgsForCall(i int) (context.Context, client.VolumeCreateOptions) {
+	fake.volumeCreateMutex.RLock()
+	defer fake.volumeCreateMutex.RUnlock()
+	argsForCall := fake.volumeCreateArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) VolumeCreateReturns(result1 client.VolumeCreateResult, result2 error) {
+	fake.volumeCreateMutex.Lock()
+	defer fake.volumeCreateMutex.Unlock()
+	fake.VolumeCreateStub = nil
+	fake.volumeCreateReturns = struct {
+		result1 client.VolumeCreateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) VolumeCreateReturnsOnCall(i int, result1 client.VolumeCreateResult, result2 error) {
+	fake.volumeCreateMutex.Lock()
+	defer fake.volumeCreateMutex.Unlock()
+	fake.VolumeCreateStub = nil
+	if fake.volumeCreateReturnsOnCall == nil {
+		fake.volumeCreateReturnsOnCall = make(map[int]struct {
+			result1 client.VolumeCreateResult
+			result2 error
+		})
+	}
+	fake.volumeCreateReturnsOnCall[i] = struct {
+		result1 client.VolumeCreateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) VolumeInspect(arg1 context.Context, arg2 string, arg3 client.VolumeInspectOptions) (client.VolumeInspectResult, error) {
+	fake.volumeInspectMutex.Lock()
+	ret, specificReturn := fake.volumeInspectReturnsOnCall[len(fake.volumeInspectArgsForCall)]
+	fake.volumeInspectArgsForCall = append(fake.volumeInspectArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.VolumeInspectOptions
+	}{arg1, arg2, arg3})
+	stub := fake.VolumeInspectStub
+	fakeReturns := fake.volumeInspectReturns
+	fake.recordInvocation("VolumeInspect", []interface{}{arg1, arg2, arg3})
+	fake.volumeInspectMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) VolumeInspectCallCount() int {
+	fake.volumeInspectMutex.RLock()
+	defer fake.volumeInspectMutex.RUnlock()
+	return len(fake.volumeInspectArgsForCall)
+}
+
+func (fake *DockerClient) VolumeInspectCalls(stub func(context.Context, string, client.VolumeInspectOptions) (client.VolumeInspectResult, error)) {
+	fake.volumeInspectMutex.Lock()
+	defer fake.volumeInspectMutex.Unlock()
+	fake.VolumeInspectStub = stub
+}
+
+func (fake *DockerClient) VolumeInspectArgsForCall(i int) (context.Context, string, client.VolumeInspectOptions) {
+	fake.volumeInspectMutex.RLock()
+	defer fake.volumeInspectMutex.RUnlock()
+	argsForCall := fake.volumeInspectArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) VolumeInspectReturns(result1 client.VolumeInspectResult, result2 error) {
+	fake.volumeInspectMutex.Lock()
+	defer fake.volumeInspectMutex.Unlock()
+	fake.VolumeInspectStub = nil
+	fake.volumeInspectReturns = struct {
+		result1 client.VolumeInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) VolumeInspectReturnsOnCall(i int, result1 client.VolumeInspectResult, result2 error) {
+	fake.volumeInspectMutex.Lock()
+	defer fake.volumeInspectMutex.Unlock()
+	fake.VolumeInspectStub = nil
+	if fake.volumeInspectReturnsOnCall == nil {
+		fake.volumeInspectReturnsOnCall = make(map[int]struct {
+			result1 client.VolumeInspectResult
+			result2 error
+		})
+	}
+	fake.volumeInspectReturnsOnCall[i] = struct {
+		result1 client.VolumeInspectResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) VolumeList(arg1 context.Context, arg2 client.VolumeListOptions) (client.VolumeListResult, error) {
+	fake.volumeListMutex.Lock()
+	ret, specificReturn := fake.volumeListReturnsOnCall[len(fake.volumeListArgsForCall)]
+	fake.volumeListArgsForCall = append(fake.volumeListArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.VolumeListOptions
+	}{arg1, arg2})
+	stub := fake.VolumeListStub
+	fakeReturns := fake.volumeListReturns
+	fake.recordInvocation("VolumeList", []interface{}{arg1, arg2})
+	fake.volumeListMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) VolumeListCallCount() int {
+	fake.volumeListMutex.RLock()
+	defer fake.volumeListMutex.RUnlock()
+	return len(fake.volumeListArgsForCall)
+}
+
+func (fake *DockerClient) VolumeListCalls(stub func(context.Context, client.VolumeListOptions) (client.VolumeListResult, error)) {
+	fake.volumeListMutex.Lock()
+	defer fake.volumeListMutex.Unlock()
+	fake.VolumeListStub = stub
+}
+
+func (fake *DockerClient) VolumeListArgsForCall(i int) (context.Context, client.VolumeListOptions) {
+	fake.volumeListMutex.RLock()
+	defer fake.volumeListMutex.RUnlock()
+	argsForCall := fake.volumeListArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) VolumeListReturns(result1 client.VolumeListResult, result2 error) {
+	fake.volumeListMutex.Lock()
+	defer fake.volumeListMutex.Unlock()
+	fake.VolumeListStub = nil
+	fake.volumeListReturns = struct {
+		result1 client.VolumeListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) VolumeListReturnsOnCall(i int, result1 client.VolumeListResult, result2 error) {
+	fake.volumeListMutex.Lock()
+	defer fake.volumeListMutex.Unlock()
+	fake.VolumeListStub = nil
+	if fake.volumeListReturnsOnCall == nil {
+		fake.volumeListReturnsOnCall = make(map[int]struct {
+			result1 client.VolumeListResult
+			result2 error
+		})
+	}
+	fake.volumeListReturnsOnCall[i] = struct {
+		result1 client.VolumeListResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) VolumePrune(arg1 context.Context, arg2 client.VolumePruneOptions) (client.VolumePruneResult, error) {
+	fake.volumePruneMutex.Lock()
+	ret, specificReturn := fake.volumePruneReturnsOnCall[len(fake.volumePruneArgsForCall)]
+	fake.volumePruneArgsForCall = append(fake.volumePruneArgsForCall, struct {
+		arg1 context.Context
+		arg2 client.VolumePruneOptions
+	}{arg1, arg2})
+	stub := fake.VolumePruneStub
+	fakeReturns := fake.volumePruneReturns
+	fake.recordInvocation("VolumePrune", []interface{}{arg1, arg2})
+	fake.volumePruneMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) VolumePruneCallCount() int {
+	fake.volumePruneMutex.RLock()
+	defer fake.volumePruneMutex.RUnlock()
+	return len(fake.volumePruneArgsForCall)
+}
+
+func (fake *DockerClient) VolumePruneCalls(stub func(context.Context, client.VolumePruneOptions) (client.VolumePruneResult, error)) {
+	fake.volumePruneMutex.Lock()
+	defer fake.volumePruneMutex.Unlock()
+	fake.VolumePruneStub = stub
+}
+
+func (fake *DockerClient) VolumePruneArgsForCall(i int) (context.Context, client.VolumePruneOptions) {
+	fake.volumePruneMutex.RLock()
+	defer fake.volumePruneMutex.RUnlock()
+	argsForCall := fake.volumePruneArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DockerClient) VolumePruneReturns(result1 client.VolumePruneResult, result2 error) {
+	fake.volumePruneMutex.Lock()
+	defer fake.volumePruneMutex.Unlock()
+	fake.VolumePruneStub = nil
+	fake.volumePruneReturns = struct {
+		result1 client.VolumePruneResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) VolumePruneReturnsOnCall(i int, result1 client.VolumePruneResult, result2 error) {
+	fake.volumePruneMutex.Lock()
+	defer fake.volumePruneMutex.Unlock()
+	fake.VolumePruneStub = nil
+	if fake.volumePruneReturnsOnCall == nil {
+		fake.volumePruneReturnsOnCall = make(map[int]struct {
+			result1 client.VolumePruneResult
+			result2 error
+		})
+	}
+	fake.volumePruneReturnsOnCall[i] = struct {
+		result1 client.VolumePruneResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) VolumeRemove(arg1 context.Context, arg2 string, arg3 client.VolumeRemoveOptions) (client.VolumeRemoveResult, error) {
+	fake.volumeRemoveMutex.Lock()
+	ret, specificReturn := fake.volumeRemoveReturnsOnCall[len(fake.volumeRemoveArgsForCall)]
+	fake.volumeRemoveArgsForCall = append(fake.volumeRemoveArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.VolumeRemoveOptions
+	}{arg1, arg2, arg3})
+	stub := fake.VolumeRemoveStub
+	fakeReturns := fake.volumeRemoveReturns
+	fake.recordInvocation("VolumeRemove", []interface{}{arg1, arg2, arg3})
+	fake.volumeRemoveMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) VolumeRemoveCallCount() int {
+	fake.volumeRemoveMutex.RLock()
+	defer fake.volumeRemoveMutex.RUnlock()
+	return len(fake.volumeRemoveArgsForCall)
+}
+
+func (fake *DockerClient) VolumeRemoveCalls(stub func(context.Context, string, client.VolumeRemoveOptions) (client.VolumeRemoveResult, error)) {
+	fake.volumeRemoveMutex.Lock()
+	defer fake.volumeRemoveMutex.Unlock()
+	fake.VolumeRemoveStub = stub
+}
+
+func (fake *DockerClient) VolumeRemoveArgsForCall(i int) (context.Context, string, client.VolumeRemoveOptions) {
+	fake.volumeRemoveMutex.RLock()
+	defer fake.volumeRemoveMutex.RUnlock()
+	argsForCall := fake.volumeRemoveArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) VolumeRemoveReturns(result1 client.VolumeRemoveResult, result2 error) {
+	fake.volumeRemoveMutex.Lock()
+	defer fake.volumeRemoveMutex.Unlock()
+	fake.VolumeRemoveStub = nil
+	fake.volumeRemoveReturns = struct {
+		result1 client.VolumeRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) VolumeRemoveReturnsOnCall(i int, result1 client.VolumeRemoveResult, result2 error) {
+	fake.volumeRemoveMutex.Lock()
+	defer fake.volumeRemoveMutex.Unlock()
+	fake.VolumeRemoveStub = nil
+	if fake.volumeRemoveReturnsOnCall == nil {
+		fake.volumeRemoveReturnsOnCall = make(map[int]struct {
+			result1 client.VolumeRemoveResult
+			result2 error
+		})
+	}
+	fake.volumeRemoveReturnsOnCall[i] = struct {
+		result1 client.VolumeRemoveResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) VolumeUpdate(arg1 context.Context, arg2 string, arg3 client.VolumeUpdateOptions) (client.VolumeUpdateResult, error) {
+	fake.volumeUpdateMutex.Lock()
+	ret, specificReturn := fake.volumeUpdateReturnsOnCall[len(fake.volumeUpdateArgsForCall)]
+	fake.volumeUpdateArgsForCall = append(fake.volumeUpdateArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 client.VolumeUpdateOptions
+	}{arg1, arg2, arg3})
+	stub := fake.VolumeUpdateStub
+	fakeReturns := fake.volumeUpdateReturns
+	fake.recordInvocation("VolumeUpdate", []interface{}{arg1, arg2, arg3})
+	fake.volumeUpdateMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) VolumeUpdateCallCount() int {
+	fake.volumeUpdateMutex.RLock()
+	defer fake.volumeUpdateMutex.RUnlock()
+	return len(fake.volumeUpdateArgsForCall)
+}
+
+func (fake *DockerClient) VolumeUpdateCalls(stub func(context.Context, string, client.VolumeUpdateOptions) (client.VolumeUpdateResult, error)) {
+	fake.volumeUpdateMutex.Lock()
+	defer fake.volumeUpdateMutex.Unlock()
+	fake.VolumeUpdateStub = stub
+}
+
+func (fake *DockerClient) VolumeUpdateArgsForCall(i int) (context.Context, string, client.VolumeUpdateOptions) {
+	fake.volumeUpdateMutex.RLock()
+	defer fake.volumeUpdateMutex.RUnlock()
+	argsForCall := fake.volumeUpdateArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) VolumeUpdateReturns(result1 client.VolumeUpdateResult, result2 error) {
+	fake.volumeUpdateMutex.Lock()
+	defer fake.volumeUpdateMutex.Unlock()
+	fake.VolumeUpdateStub = nil
+	fake.volumeUpdateReturns = struct {
+		result1 client.VolumeUpdateResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) VolumeUpdateReturnsOnCall(i int, result1 client.VolumeUpdateResult, result2 error) {
+	fake.volumeUpdateMutex.Lock()
+	defer fake.volumeUpdateMutex.Unlock()
+	fake.VolumeUpdateStub = nil
+	if fake.volumeUpdateReturnsOnCall == nil {
+		fake.volumeUpdateReturnsOnCall = make(map[int]struct {
+			result1 client.VolumeUpdateResult
+			result2 error
+		})
+	}
+	fake.volumeUpdateReturnsOnCall[i] = struct {
+		result1 client.VolumeUpdateResult
 		result2 error
 	}{result1, result2}
 }
@@ -818,28 +9028,6 @@ func (fake *DockerClient) WaitContainerReturnsOnCall(i int, result1 int, result2
 func (fake *DockerClient) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.attachToContainerMutex.RLock()
-	defer fake.attachToContainerMutex.RUnlock()
-	fake.buildImageMutex.RLock()
-	defer fake.buildImageMutex.RUnlock()
-	fake.createContainerMutex.RLock()
-	defer fake.createContainerMutex.RUnlock()
-	fake.inspectImageMutex.RLock()
-	defer fake.inspectImageMutex.RUnlock()
-	fake.killContainerMutex.RLock()
-	defer fake.killContainerMutex.RUnlock()
-	fake.pingWithContextMutex.RLock()
-	defer fake.pingWithContextMutex.RUnlock()
-	fake.removeContainerMutex.RLock()
-	defer fake.removeContainerMutex.RUnlock()
-	fake.startContainerMutex.RLock()
-	defer fake.startContainerMutex.RUnlock()
-	fake.stopContainerMutex.RLock()
-	defer fake.stopContainerMutex.RUnlock()
-	fake.uploadToContainerMutex.RLock()
-	defer fake.uploadToContainerMutex.RUnlock()
-	fake.waitContainerMutex.RLock()
-	defer fake.waitContainerMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
