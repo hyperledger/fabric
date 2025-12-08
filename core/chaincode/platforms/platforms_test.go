@@ -13,11 +13,11 @@ import (
 	"fmt"
 	"io"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/mock"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -71,7 +71,7 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 			buf    *bytes.Buffer
 			tw     *tar.Writer
 			pw     *mock.PackageWriter
-			client *docker.Client
+			client dcli.APIClient
 		)
 
 		BeforeEach(func() {
@@ -79,8 +79,8 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 			tw = tar.NewWriter(buf)
 			pw = &mock.PackageWriter{}
 			registry.PackageWriter = pw
-			registry.DockerBuild = func(util.DockerBuildOptions, *docker.Client) error { return nil }
-			dockerClient, err := docker.NewClientFromEnv()
+			registry.DockerBuild = func(util.DockerBuildOptions, dcli.APIClient) error { return nil }
+			dockerClient, err := dcli.New(dcli.FromEnv)
 			Expect(err).NotTo(HaveOccurred())
 			client = dockerClient
 		})
@@ -134,7 +134,7 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 
 			Context("when the docker build fails", func() {
 				It("returns an error", func() {
-					registry.DockerBuild = func(util.DockerBuildOptions, *docker.Client) error { return errors.New("kaboom") }
+					registry.DockerBuild = func(util.DockerBuildOptions, dcli.APIClient) error { return errors.New("kaboom") }
 					err := registry.StreamDockerBuild("fakeType", "", nil, nil, tw, client)
 					Expect(err).To(MatchError("docker build failed: kaboom"))
 				})

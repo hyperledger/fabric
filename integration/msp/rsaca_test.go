@@ -24,10 +24,10 @@ import (
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	fabricmsp "github.com/hyperledger/fabric/msp"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -38,7 +38,7 @@ import (
 
 var _ = Describe("MSPs with RSA Certificate Authorities", func() {
 	var (
-		client  *docker.Client
+		client  dcli.APIClient
 		testDir string
 		network *nwo.Network
 
@@ -51,7 +51,7 @@ var _ = Describe("MSPs with RSA Certificate Authorities", func() {
 		testDir, err = os.MkdirTemp("", "msp")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
 		network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)

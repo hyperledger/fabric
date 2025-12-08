@@ -12,6 +12,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -19,7 +20,6 @@ import (
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	floggingmetrics "github.com/hyperledger/fabric-lib-go/common/flogging/metrics"
@@ -94,6 +94,8 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
+	dcontainer "github.com/moby/moby/api/types/container"
+	dcli "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -1159,11 +1161,11 @@ func computeChaincodeEndpoint(chaincodeAddress string, chaincodeListenAddress st
 	return ccEndpoint, nil
 }
 
-func createDockerClient(coreConfig *peer.Config) (*docker.Client, error) {
+func createDockerClient(coreConfig *peer.Config) (dcli.APIClient, error) {
 	if coreConfig.VMDockerTLSEnabled {
-		return docker.NewTLSClient(coreConfig.VMEndpoint, coreConfig.DockerCert, coreConfig.DockerKey, coreConfig.DockerCA)
+		return dcli.New(dcli.WithHost(coreConfig.VMEndpoint), dcli.WithTLSClientConfig(coreConfig.DockerCA, coreConfig.DockerCert, coreConfig.DockerKey))
 	}
-	return docker.NewClient(coreConfig.VMEndpoint)
+	return dcli.New(dcli.WithHost(coreConfig.VMEndpoint))
 }
 
 // secureDialOpts is the callback function for secure dial options for gossip service
@@ -1293,11 +1295,11 @@ func newOperationsSystem(coreConfig *peer.Config) *operations.System {
 	})
 }
 
-func getDockerHostConfig() *docker.HostConfig {
+func getDockerHostConfig() *dcontainer.HostConfig {
 	dockerKey := func(key string) string { return "vm.docker.hostConfig." + key }
 	getInt64 := func(key string) int64 { return int64(viper.GetInt(dockerKey(key))) }
 
-	var logConfig docker.LogConfig
+	var logConfig dcontainer.LogConfig
 	err := viper.UnmarshalKey(dockerKey("LogConfig"), &logConfig)
 	if err != nil {
 		logger.Panicf("unable to parse Docker LogConfig: %s", err)
@@ -1311,33 +1313,38 @@ func getDockerHostConfig() *docker.HostConfig {
 	memorySwappiness := getInt64("MemorySwappiness")
 	oomKillDisable := viper.GetBool(dockerKey("OomKillDisable"))
 
-	return &docker.HostConfig{
-		CapAdd:  viper.GetStringSlice(dockerKey("CapAdd")),
-		CapDrop: viper.GetStringSlice(dockerKey("CapDrop")),
+	strDNS := viper.GetStringSlice(dockerKey("Dns"))
+	dns := make([]netip.Addr, 0, len(strDNS))
+	for _, s := range strDNS {
+		dns = append(dns, netip.MustParseAddr(s))
+	}
 
-		DNS:         viper.GetStringSlice(dockerKey("Dns")),
-		DNSSearch:   viper.GetStringSlice(dockerKey("DnsSearch")),
-		ExtraHosts:  viper.GetStringSlice(dockerKey("ExtraHosts")),
-		NetworkMode: networkMode,
-		IpcMode:     viper.GetString(dockerKey("IpcMode")),
-		PidMode:     viper.GetString(dockerKey("PidMode")),
-		UTSMode:     viper.GetString(dockerKey("UTSMode")),
-		LogConfig:   logConfig,
-
-		ReadonlyRootfs:   viper.GetBool(dockerKey("ReadonlyRootfs")),
-		SecurityOpt:      viper.GetStringSlice(dockerKey("SecurityOpt")),
-		CgroupParent:     viper.GetString(dockerKey("CgroupParent")),
-		Memory:           getInt64("Memory"),
-		MemorySwap:       getInt64("MemorySwap"),
-		MemorySwappiness: &memorySwappiness,
-		OOMKillDisable:   &oomKillDisable,
-		CPUShares:        getInt64("CpuShares"),
-		CPUSet:           viper.GetString(dockerKey("Cpuset")),
-		CPUSetCPUs:       viper.GetString(dockerKey("CpusetCPUs")),
-		CPUSetMEMs:       viper.GetString(dockerKey("CpusetMEMs")),
-		CPUQuota:         getInt64("CpuQuota"),
-		CPUPeriod:        getInt64("CpuPeriod"),
-		BlkioWeight:      getInt64("BlkioWeight"),
+	return &dcontainer.HostConfig{
+		LogConfig:      logConfig,
+		NetworkMode:    dcontainer.NetworkMode(networkMode),
+		CapAdd:         viper.GetStringSlice(dockerKey("CapAdd")),
+		CapDrop:        viper.GetStringSlice(dockerKey("CapDrop")),
+		DNS:            dns,
+		DNSSearch:      viper.GetStringSlice(dockerKey("DnsSearch")),
+		ExtraHosts:     viper.GetStringSlice(dockerKey("ExtraHosts")),
+		IpcMode:        dcontainer.IpcMode(viper.GetString(dockerKey("IpcMode"))),
+		PidMode:        dcontainer.PidMode(viper.GetString(dockerKey("PidMode"))),
+		ReadonlyRootfs: viper.GetBool(dockerKey("ReadonlyRootfs")),
+		SecurityOpt:    viper.GetStringSlice(dockerKey("SecurityOpt")),
+		UTSMode:        dcontainer.UTSMode(viper.GetString(dockerKey("UTSMode"))),
+		Resources: dcontainer.Resources{
+			CPUShares:        getInt64("CpuShares"),
+			Memory:           getInt64("Memory"),
+			CgroupParent:     viper.GetString(dockerKey("CgroupParent")),
+			BlkioWeight:      viper.GetUint16("BlkioWeight"),
+			CPUPeriod:        getInt64("CpuPeriod"),
+			CPUQuota:         getInt64("CpuQuota"),
+			CpusetCpus:       viper.GetString(dockerKey("CpusetCPUs")),
+			CpusetMems:       viper.GetString(dockerKey("CpusetMEMs")),
+			MemorySwap:       getInt64("MemorySwap"),
+			MemorySwappiness: &memorySwappiness,
+			OomKillDisable:   &oomKillDisable,
+		},
 	}
 }
 

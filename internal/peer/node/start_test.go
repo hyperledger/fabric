@@ -155,7 +155,7 @@ func TestGetDockerHostConfig(t *testing.T) {
 	testutil.SetupTestConfig(t)
 	hostConfig := getDockerHostConfig()
 	require.NotNil(t, hostConfig)
-	require.Equal(t, "host", hostConfig.NetworkMode)
+	require.Equal(t, "host", hostConfig.NetworkMode.NetworkName())
 	require.Equal(t, "json-file", hostConfig.LogConfig.Type)
 	require.Equal(t, "50m", hostConfig.LogConfig.Config["max-size"])
 	require.Equal(t, "5", hostConfig.LogConfig.Config["max-file"])

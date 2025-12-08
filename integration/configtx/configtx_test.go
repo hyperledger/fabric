@@ -14,12 +14,12 @@ import (
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-config/configtx"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/ordererclient"
 	. "github.com/hyperledger/fabric/internal/test"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
@@ -28,7 +28,7 @@ import (
 
 var _ = Describe("ConfigTx", func() {
 	var (
-		client                      *docker.Client
+		client                      dcli.APIClient
 		testDir                     string
 		network                     *nwo.Network
 		ordererRunner               *ginkgomon.Runner
@@ -40,7 +40,7 @@ var _ = Describe("ConfigTx", func() {
 		testDir, err = os.MkdirTemp("", "configtx")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
 		config := nwo.BasicEtcdRaft()
