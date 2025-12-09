@@ -9,9 +9,10 @@ import (
 )
 
 type BeTrueMatcher struct {
+	Reason string
 }
 
-func (matcher *BeTrueMatcher) Match(actual interface{}) (success bool, err error) {
+func (matcher *BeTrueMatcher) Match(actual any) (success bool, err error) {
 	if !isBool(actual) {
 		return false, fmt.Errorf("Expected a boolean.  Got:\n%s", format.Object(actual, 1))
 	}
@@ -19,10 +20,18 @@ func (matcher *BeTrueMatcher) Match(actual interface{}) (success bool, err error
 	return actual.(bool), nil
 }
 
-func (matcher *BeTrueMatcher) FailureMessage(actual interface{}) (message string) {
-	return format.Message(actual, "to be true")
+func (matcher *BeTrueMatcher) FailureMessage(actual any) (message string) {
+	if matcher.Reason == "" {
+		return format.Message(actual, "to be true")
+	} else {
+		return matcher.Reason
+	}
 }
 
-func (matcher *BeTrueMatcher) NegatedFailureMessage(actual interface{}) (message string) {
-	return format.Message(actual, "not to be true")
+func (matcher *BeTrueMatcher) NegatedFailureMessage(actual any) (message string) {
+	if matcher.Reason == "" {
+		return format.Message(actual, "not to be true")
+	} else {
+		return fmt.Sprintf(`Expected not true but got true\nNegation of "%s" failed`, matcher.Reason)
+	}
 }

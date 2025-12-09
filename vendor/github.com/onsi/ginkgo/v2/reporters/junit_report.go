@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 
 	"github.com/onsi/ginkgo/v2/config"
@@ -34,6 +35,9 @@ type JunitReportConfig struct {
 
 	// Enable OmitSpecLabels to prevent labels from appearing in the spec name
 	OmitSpecLabels bool
+
+	// Enable OmitSpecSemVerConstraints to prevent semantic version constraints from appearing in the spec name
+	OmitSpecSemVerConstraints bool
 
 	// Enable OmitLeafNodeType to prevent the spec leaf node type from appearing in the spec name
 	OmitLeafNodeType bool
@@ -104,6 +108,8 @@ type JUnitProperty struct {
 	Value string `xml:"value,attr"`
 }
 
+var ownerRE = regexp.MustCompile(`(?i)^owner:(.*)$`)
+
 type JUnitTestCase struct {
 	// Name maps onto the full text of the spec - equivalent to "[SpecReport.LeafNodeType] SpecReport.FullText()"
 	Name string `xml:"name,attr"`
@@ -113,6 +119,8 @@ type JUnitTestCase struct {
 	Status string `xml:"status,attr"`
 	// Time is the time in seconds to execute the spec - maps onto SpecReport.RunTime
 	Time float64 `xml:"time,attr"`
+	// Owner is the owner the spec - is set if a label matching Label("owner:X") is provided.  The last matching label is used as the owner, thereby allowing specs to override owners specified in container nodes.
+	Owner string `xml:"owner,attr,omitempty"`
 	//Skipped is populated with a message if the test was skipped or pending
 	Skipped *JUnitSkipped `xml:"skipped,omitempty"`
 	//Error is populated if the test panicked or was interrupted
@@ -164,14 +172,17 @@ func GenerateJUnitReportWithConfig(report types.Report, dst string, config Junit
 				{"SuiteHasProgrammaticFocus", fmt.Sprintf("%t", report.SuiteHasProgrammaticFocus)},
 				{"SpecialSuiteFailureReason", strings.Join(report.SpecialSuiteFailureReasons, ",")},
 				{"SuiteLabels", fmt.Sprintf("[%s]", strings.Join(report.SuiteLabels, ","))},
+				{"SuiteSemVerConstraints", fmt.Sprintf("[%s]", strings.Join(report.SuiteSemVerConstraints, ","))},
 				{"RandomSeed", fmt.Sprintf("%d", report.SuiteConfig.RandomSeed)},
 				{"RandomizeAllSpecs", fmt.Sprintf("%t", report.SuiteConfig.RandomizeAllSpecs)},
 				{"LabelFilter", report.SuiteConfig.LabelFilter},
+				{"SemVerFilter", report.SuiteConfig.SemVerFilter},
 				{"FocusStrings", strings.Join(report.SuiteConfig.FocusStrings, ",")},
 				{"SkipStrings", strings.Join(report.SuiteConfig.SkipStrings, ",")},
 				{"FocusFiles", strings.Join(report.SuiteConfig.FocusFiles, ";")},
 				{"SkipFiles", strings.Join(report.SuiteConfig.SkipFiles, ";")},
 				{"FailOnPending", fmt.Sprintf("%t", report.SuiteConfig.FailOnPending)},
+				{"FailOnEmpty", fmt.Sprintf("%t", report.SuiteConfig.FailOnEmpty)},
 				{"FailFast", fmt.Sprintf("%t", report.SuiteConfig.FailFast)},
 				{"FlakeAttempts", fmt.Sprintf("%d", report.SuiteConfig.FlakeAttempts)},
 				{"DryRun", fmt.Sprintf("%t", report.SuiteConfig.DryRun)},
@@ -195,6 +206,16 @@ func GenerateJUnitReportWithConfig(report types.Report, dst string, config Junit
 		if len(labels) > 0 && !config.OmitSpecLabels {
 			name = name + " [" + strings.Join(labels, ", ") + "]"
 		}
+		owner := ""
+		for _, label := range labels {
+			if matches := ownerRE.FindStringSubmatch(label); len(matches) == 2 {
+				owner = matches[1]
+			}
+		}
+		semVerConstraints := spec.SemVerConstraints()
+		if len(semVerConstraints) > 0 && !config.OmitSpecSemVerConstraints {
+			name = name + " [" + strings.Join(semVerConstraints, ", ") + "]"
+		}
 		name = strings.TrimSpace(name)
 
 		test := JUnitTestCase{
@@ -202,6 +223,7 @@ func GenerateJUnitReportWithConfig(report types.Report, dst string, config Junit
 			Classname: report.SuiteDescription,
 			Status:    spec.State.String(),
 			Time:      spec.RunTime.Seconds(),
+			Owner:     owner,
 		}
 		if !spec.State.Is(config.OmitTimelinesForSpecState) {
 			test.SystemErr = systemErrForUnstructuredReporters(spec)
@@ -312,6 +334,7 @@ func MergeAndCleanupJUnitReports(sources []string, dst string) ([]string, error)
 			continue
 		}
 		err = xml.NewDecoder(f).Decode(&report)
+		_ = f.Close()
 		if err != nil {
 			messages = append(messages, fmt.Sprintf("Could not decode %s:\n%s", source, err.Error()))
 			continue
