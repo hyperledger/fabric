@@ -491,6 +491,7 @@ func (s *Store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFil
 	var currentTxNum uint64
 	var currentTxWsetAssember *txPvtdataAssembler
 	firstItr := true
+	purgeMarkerCache := make(map[string]*version.Height)
 
 	for itr.Next() {
 		dataKeyBytes := itr.Key()
@@ -524,7 +525,21 @@ func (s *Store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFil
 			return nil, err
 		}
 
-		if err := s.removePurgedDataFromCollPvtRWset(dataKey, dataValue); err != nil {
+
+		// Check the cache for purge marker height
+		cacheKey := dataKey.ns + "~" + dataKey.coll
+		var purgeMarkerHt *version.Height
+		var exists bool
+		if purgeMarkerHt, exists = purgeMarkerCache[cacheKey]; !exists {
+			var err error
+			purgeMarkerHt, err = s.retrieveLatestPurgeKeyCollMarkerHt(dataKey.ns, dataKey.coll)
+			if err != nil {
+				return nil, err
+			}
+			purgeMarkerCache[cacheKey] = purgeMarkerHt
+		}
+
+		if err := s.removePurgedDataFromCollPvtRWset(dataKey, dataValue, purgeMarkerHt); err != nil {
 			return nil, err
 		}
 
@@ -558,19 +573,7 @@ func (s *Store) retrieveLatestPurgeKeyCollMarkerHt(ns, coll string) (*version.He
 // or the height of `purgeMarkerCollKey` is lower than the <ns, coll> in the data key (which means that the last purge of any key from the collection
 // was prior to the given key commit). The main purpose of this function is to optimize while filtering the purge data by avoiding computing hashes
 // of individual keys, all the time
-func (s *Store) keyPotentiallyPurged(k *dataKey) (bool, error) {
-	purgeKeyCollMarkerHt, err := s.retrieveLatestPurgeKeyCollMarkerHt(k.ns, k.coll)
-	if purgeKeyCollMarkerHt == nil || err != nil {
-		return false, err
-	}
 
-	keyHt := &version.Height{
-		BlockNum: k.blkNum,
-		TxNum:    k.txNum,
-	}
-
-	return keyHt.Compare(purgeKeyCollMarkerHt) <= 0, nil
-}
 
 func (s *Store) RemoveAppInitiatedPurgesUsingReconMarker(
 	kvHashes map[string][]byte, ns, coll string, blkNum, txNum uint64,
@@ -611,10 +614,18 @@ func (s *Store) RemoveAppInitiatedPurgesUsingReconMarker(
 	return trimmedKVHashes, nil
 }
 
-func (s *Store) removePurgedDataFromCollPvtRWset(k *dataKey, v *rwset.CollectionPvtReadWriteSet) error {
-	purgePossible, err := s.keyPotentiallyPurged(k)
-	if !purgePossible || err != nil {
-		return err
+func (s *Store) removePurgedDataFromCollPvtRWset(k *dataKey, v *rwset.CollectionPvtReadWriteSet, purgeMarkerHt *version.Height) error {
+	var purgePossible bool
+	if purgeMarkerHt != nil {
+		keyHt := &version.Height{
+			BlockNum: k.blkNum,
+			TxNum:    k.txNum,
+		}
+		purgePossible = keyHt.Compare(purgeMarkerHt) <= 0
+	}
+
+	if !purgePossible {
+		return nil
 	}
 
 	collRWSet, err := rwsetutil.CollPvtRwSetFromProtoMsg(v)
