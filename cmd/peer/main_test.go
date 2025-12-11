@@ -57,7 +57,6 @@ func TestPluginLoadingFailure(t *testing.T) {
 		"ENDORSERS_ESCC",
 		"VALIDATORS_VSCC",
 	} {
-		plugin := plugin
 		t.Run(plugin, func(t *testing.T) {
 			cmd := exec.Command(peer, "node", "start")
 			cmd.Env = []string{
