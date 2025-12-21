@@ -295,6 +295,7 @@ func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.M
 		getPeersToTrack: gc.GetPeers,
 		report:          gc.reportMembershipChanges,
 		stopChan:        make(chan struct{}, 1),
+		ticker:          ticker,
 		tickerChannel:   ticker.C,
 		metrics:         metrics,
 		chainID:         channelID,
@@ -314,6 +315,9 @@ func (gc *gossipChannel) reportMembershipChanges(input ...interface{}) {
 func (gc *gossipChannel) Stop() {
 	close(gc.stopChan)
 	close(gc.membershipTracker.stopChan)
+	if gc.membershipTracker.ticker != nil {
+		gc.membershipTracker.ticker.Stop()
+	}
 	gc.blocksPuller.Stop()
 	gc.stateInfoPublishScheduler.Stop()
 	gc.stateInfoRequestScheduler.Stop()
@@ -1082,6 +1086,7 @@ type membershipTracker struct {
 	getPeersToTrack func() []discovery.NetworkMember
 	report          func(...interface{})
 	stopChan        chan struct{}
+	ticker          *time.Ticker
 	tickerChannel   <-chan time.Time
 	metrics         *metrics.MembershipMetrics
 	chainID         common.ChannelID
