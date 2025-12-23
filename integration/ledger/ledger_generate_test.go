@@ -1,5 +1,4 @@
 //go:build generate
-// +build generate
 
 /*
 Copyright IBM Corp All Rights Reserved.

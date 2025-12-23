@@ -1,5 +1,4 @@
 //go:build !noplugin && cgo
-// +build !noplugin,cgo
 
 /*
  Copyright IBM Corp, SecureKey Technologies Inc. All Rights Reserved.

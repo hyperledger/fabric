@@ -1,5 +1,4 @@
 //go:build race
-// +build race
 
 /*
 Copyright IBM Corp. All Rights Reserved.
