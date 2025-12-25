@@ -8,6 +8,7 @@ package operations
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strings"
 	"time"
@@ -20,9 +21,10 @@ import (
 	"github.com/hyperledger/fabric-lib-go/common/metrics/prometheus"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/statsd"
 	"github.com/hyperledger/fabric-lib-go/common/metrics/statsd/goruntime"
-	"github.com/hyperledger/fabric-lib-go/healthz"
+	libhealthz "github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric/common/fabhttp"
 	"github.com/hyperledger/fabric/common/metadata"
+	"github.com/hyperledger/fabric/core/operations/healthz"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -55,13 +57,14 @@ type System struct {
 	*fabhttp.Server
 	metrics.Provider
 
-	logger          Logger
-	healthHandler   *healthz.HealthHandler
-	options         Options
-	statsd          *kitstatsd.Statsd
-	collectorTicker *time.Ticker
-	sendTicker      *time.Ticker
-	versionGauge    metrics.Gauge
+	logger           Logger
+	healthHandler    *libhealthz.HealthHandler
+	readinessHandler *healthz.ReadinessHandler
+	options          Options
+	statsd           *kitstatsd.Statsd
+	collectorTicker  *time.Ticker
+	sendTicker       *time.Ticker
+	versionGauge     metrics.Gauge
 }
 
 func NewSystem(o Options) *System {
@@ -109,8 +112,19 @@ func (s *System) Stop() error {
 	return s.Server.Stop()
 }
 
-func (s *System) RegisterChecker(component string, checker healthz.HealthChecker) error {
+func (s *System) RegisterChecker(component string, checker libhealthz.HealthChecker) error {
 	return s.healthHandler.RegisterChecker(component, checker)
+}
+
+// RegisterReadinessChecker registers a ReadinessChecker for a named component.
+// Readiness checkers verify that dependencies are available and the service
+// is ready to accept traffic. These checks are separate from liveness checks
+// and are used by Kubernetes readiness probes.
+func (s *System) RegisterReadinessChecker(component string, checker healthz.ReadinessChecker) error {
+	if s.readinessHandler == nil {
+		return fmt.Errorf("readiness handler not initialized")
+	}
+	return s.readinessHandler.RegisterChecker(component, checker)
 }
 
 func (s *System) initializeMetricsProvider() error {
@@ -180,7 +194,7 @@ func (s *System) initializeLoggingHandler() {
 }
 
 func (s *System) initializeHealthCheckHandler() {
-	s.healthHandler = healthz.NewHealthHandler()
+	s.healthHandler = libhealthz.NewHealthHandler()
 	// swagger:operation GET /healthz operations healthz
 	// ---
 	// summary: Retrieves all registered health checkers for the process.
@@ -190,6 +204,40 @@ func (s *System) initializeHealthCheckHandler() {
 	//     '503':
 	//        description: Service unavailable.
 	s.RegisterHandler("/healthz", s.healthHandler, false)
+
+	// Initialize readiness handler for Kubernetes readiness probes
+	s.readinessHandler = healthz.NewReadinessHandler()
+	// swagger:operation GET /readyz operations readyz
+	// ---
+	// summary: Retrieves readiness status for the process. Used by Kubernetes readiness probes.
+	// responses:
+	//     '200':
+	//        description: Ready.
+	//     '503':
+	//        description: Not ready.
+	s.RegisterHandler("/readyz", s.readinessHandler, false)
+}
+
+// SetDetailedHealthEnabled enables or disables the detailed health endpoint.
+func (s *System) SetDetailedHealthEnabled(enabled bool) {
+	if enabled && s.readinessHandler != nil {
+		s.logger.Warn("Detailed health endpoint enabled; exposes internal component status. Ensure access is restricted via TLS and client authentication.")
+		
+		detailedHandler := NewDetailedHealthHandler(
+			s.readinessHandler,
+			&healthHandlerAdapter{handler: s.healthHandler},
+			30*time.Second,
+		)
+		s.RegisterHandler("/healthz/detailed", detailedHandler, s.options.TLS.Enabled)
+	}
+}
+
+type healthHandlerAdapter struct {
+	handler *libhealthz.HealthHandler
+}
+
+func (a *healthHandlerAdapter) RunChecks(ctx context.Context) []libhealthz.FailedCheck {
+	return a.handler.RunChecks(ctx)
 }
 
 func (s *System) initializeVersionInfoHandler() {

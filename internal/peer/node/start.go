@@ -68,6 +68,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/snapshotgrpc"
 	"github.com/hyperledger/fabric/core/operations"
+	"github.com/hyperledger/fabric/core/operations/healthcheckers"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/scc"
@@ -483,6 +484,47 @@ func serve(args []string) error {
 	defer gossipService.Stop()
 
 	peerInstance.GossipService = gossipService
+
+	// Register readiness health checkers
+	if coreConfig.OperationsHealthCheck.Gossip.Enabled {
+		gossipChecker := healthcheckers.NewGossipChecker(
+			gossipService,
+			coreConfig.OperationsHealthCheck.Gossip.MinPeers,
+			coreConfig.OperationsHealthCheck.Gossip.Timeout,
+		)
+		if err := opsSystem.RegisterReadinessChecker("gossip", gossipChecker); err != nil {
+			logger.Warnf("Failed to register gossip readiness check: %s", err)
+		}
+	}
+
+	if coreConfig.OperationsHealthCheck.Ledger.Enabled {
+		ledgerChecker := healthcheckers.NewLedgerChecker(
+			peerInstance,
+			gossipService,
+			coreConfig.OperationsHealthCheck.Ledger.MaxLag,
+			coreConfig.OperationsHealthCheck.Ledger.FailOnLag,
+			coreConfig.OperationsHealthCheck.Ledger.Timeout,
+		)
+		if err := opsSystem.RegisterReadinessChecker("ledger", ledgerChecker); err != nil {
+			logger.Warnf("Failed to register ledger readiness check: %s", err)
+		}
+	}
+
+	if coreConfig.OperationsHealthCheck.Orderer.Enabled {
+		ordererChecker := healthcheckers.NewOrdererChecker(
+			peerInstance,
+			gossipService,
+			coreConfig.OperationsHealthCheck.Orderer.Timeout,
+		)
+		if err := opsSystem.RegisterReadinessChecker("orderer", ordererChecker); err != nil {
+			logger.Warnf("Failed to register orderer readiness check: %s", err)
+		}
+	}
+
+	// Enable detailed health endpoint if configured
+	if coreConfig.OperationsDetailedHealthEnabled {
+		opsSystem.SetDetailedHealthEnabled(true)
+	}
 
 	if err := lifecycleCache.InitializeLocalChaincodes(); err != nil {
 		return errors.WithMessage(err, "could not initialize local chaincodes")

@@ -48,6 +48,35 @@ type ExternalBuilder struct {
 	Path                 string   `yaml:"path"`
 }
 
+// HealthCheckConfig represents the configuration for readiness health checks
+type HealthCheckConfig struct {
+	ReadinessTimeout time.Duration
+	Gossip           GossipHealthCheckConfig
+	Ledger           LedgerHealthCheckConfig
+	Orderer          OrdererHealthCheckConfig
+}
+
+// GossipHealthCheckConfig represents configuration for gossip readiness checks
+type GossipHealthCheckConfig struct {
+	Enabled  bool
+	MinPeers int
+	Timeout  time.Duration
+}
+
+// LedgerHealthCheckConfig represents configuration for ledger readiness checks
+type LedgerHealthCheckConfig struct {
+	Enabled   bool
+	Timeout   time.Duration
+	FailOnLag bool
+	MaxLag    uint64
+}
+
+// OrdererHealthCheckConfig represents configuration for orderer connectivity checks
+type OrdererHealthCheckConfig struct {
+	Enabled bool
+	Timeout time.Duration
+}
+
 // Config is the struct that defines the Peer configurations.
 type Config struct {
 	// LocalMSPID is the identifier of the local MSP.
@@ -187,6 +216,12 @@ type Config struct {
 	// trust for client authentication.
 	OperationsTLSClientRootCAs []string
 
+	// OperationsHealthCheck provides configuration for readiness health checks
+	OperationsHealthCheck HealthCheckConfig
+	
+	// OperationsDetailedHealth enables the detailed health endpoint
+	OperationsDetailedHealthEnabled bool
+
 	// ----- Metrics config -----
 	// TODO: create separate sub-struct for Metrics config.
 
@@ -320,6 +355,44 @@ func (c *Config) load() error {
 	for _, rca := range viper.GetStringSlice("operations.tls.clientRootCAs.files") {
 		c.OperationsTLSClientRootCAs = append(c.OperationsTLSClientRootCAs, config.TranslatePath(configDir, rca))
 	}
+
+	// Load health check configuration
+	c.OperationsHealthCheck.ReadinessTimeout = viper.GetDuration("operations.healthCheck.readinessTimeout")
+	if c.OperationsHealthCheck.ReadinessTimeout == 0 {
+		c.OperationsHealthCheck.ReadinessTimeout = 10 * time.Second
+	}
+
+	c.OperationsHealthCheck.Gossip.Enabled = viper.GetBool("operations.healthCheck.gossip.enabled")
+	c.OperationsHealthCheck.Gossip.MinPeers = viper.GetInt("operations.healthCheck.gossip.minPeers")
+	// Default minPeers to 0 to avoid false negatives in dev and single-node setups.
+	// minPeers = 0 means "gossip initialized but no connectivity requirement".
+	// Only enforce peer count when minPeers > 0.
+	if !viper.IsSet("operations.healthCheck.gossip.minPeers") {
+		c.OperationsHealthCheck.Gossip.MinPeers = 0
+	}
+	c.OperationsHealthCheck.Gossip.Timeout = viper.GetDuration("operations.healthCheck.gossip.timeout")
+	if c.OperationsHealthCheck.Gossip.Timeout == 0 {
+		c.OperationsHealthCheck.Gossip.Timeout = 5 * time.Second
+	}
+
+	c.OperationsHealthCheck.Ledger.Enabled = viper.GetBool("operations.healthCheck.ledger.enabled")
+	c.OperationsHealthCheck.Ledger.Timeout = viper.GetDuration("operations.healthCheck.ledger.timeout")
+	if c.OperationsHealthCheck.Ledger.Timeout == 0 {
+		c.OperationsHealthCheck.Ledger.Timeout = 5 * time.Second
+	}
+	c.OperationsHealthCheck.Ledger.FailOnLag = viper.GetBool("operations.healthCheck.ledger.failOnLag")
+	c.OperationsHealthCheck.Ledger.MaxLag = viper.GetUint64("operations.healthCheck.ledger.maxLag")
+	if c.OperationsHealthCheck.Ledger.MaxLag == 0 {
+		c.OperationsHealthCheck.Ledger.MaxLag = 10 // Default max lag
+	}
+
+	c.OperationsHealthCheck.Orderer.Enabled = viper.GetBool("operations.healthCheck.orderer.enabled")
+	c.OperationsHealthCheck.Orderer.Timeout = viper.GetDuration("operations.healthCheck.orderer.timeout")
+	if c.OperationsHealthCheck.Orderer.Timeout == 0 {
+		c.OperationsHealthCheck.Orderer.Timeout = 5 * time.Second
+	}
+
+	c.OperationsDetailedHealthEnabled = viper.GetBool("operations.healthCheck.detailedHealth.enabled")
 
 	c.MetricsProvider = viper.GetString("metrics.provider")
 	c.StatsdNetwork = viper.GetString("metrics.statsd.network")

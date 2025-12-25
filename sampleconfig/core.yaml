@@ -793,6 +793,51 @@ operations:
     clientRootCAs:
       files: []
 
+  # Health check configuration for readiness probes
+  healthCheck:
+    # Timeout for readiness checks
+    readinessTimeout: 10s
+
+    # Gossip readiness check configuration
+    gossip:
+      # Enable gossip readiness check
+      enabled: true
+      # Minimum number of peers that must be connected for readiness
+      # Set to 0 to only check that gossip service is initialized
+      minPeers: 0
+      # Timeout for gossip check
+      timeout: 5s
+
+    # Ledger readiness check configuration
+    ledger:
+      # Enable ledger readiness check
+      enabled: true
+      # Timeout for ledger check
+      timeout: 5s
+      # Fail readiness if ledger is lagging behind gossip-advertised height
+      # WARNING: Setting this to true may cause false negatives during normal
+      # network operations. Only enable if you understand the implications.
+      failOnLag: false
+      # Maximum allowed lag (in blocks) when failOnLag is enabled
+      maxLag: 10
+
+    # Orderer connectivity check configuration
+    orderer:
+      # Enable orderer connectivity readiness check
+      # WARNING: Disabled by default. Enabling this may cause false negatives
+      # as orderer connectivity issues may not prevent read-only operations.
+      # Only enable if you need to ensure write-readiness.
+      enabled: false
+      # Timeout for orderer check
+      timeout: 5s
+
+    # Detailed health endpoint configuration
+    detailedHealth:
+      # Enable the /healthz/detailed endpoint
+      # This endpoint exposes detailed component status and should be protected
+      # via TLS and client authentication. Disabled by default.
+      enabled: false
+
 ###############################################################################
 #
 #    Metrics section
