@@ -24,7 +24,6 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 |------------------|----------------------|---------------|---------------------------------|
 | Artem Barger     | [c0rwin][c0rwin]     | c0rwin        | <artem@bargr.net>               |
 | Dave Enyeart     | [denyeart][denyeart] | dave.enyeart  | <enyeart@us.ibm.com>            |
-| Yacov Manevich   | [yacovm][yacovm]     | yacovm        | <yacov.manevich@gmail.com>      |
 
 
 **Retired Maintainers**
