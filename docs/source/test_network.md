@@ -644,13 +644,13 @@ Resolve the issue with forbidden access to the Docker socket by either using Cha
         - label:disable
 ```
 
-### BTF ordering service on SELinux
+### BFT ordering service on SELinux
 
-If you want to start the test-network with the BTF ordering service on a Linux distribution with SELinux enabled you have to perform the changes listed above in the compose files with `*-btf-test-net.yaml` in their names instead of `*-test-net.yaml`:
+If you want to start the test-network with the BFT ordering service on a Linux distribution with SELinux enabled you have to perform the changes listed above in the compose files with `*-bft-test-net.yaml` in their names instead of `*-test-net.yaml`:
 - `test-network/compose/compose-ca.yaml`,
-- `test-network/compose/compose-btf-test-net.yaml`,
-- `test-network/compose/docker/docker-compose-btf-test-net.yaml` in case you use Docker
-- OR `test-network/compose/podman/podman-compose-btf-test-net.yaml` in case you use Podman.
+- `test-network/compose/compose-bft-test-net.yaml`,
+- `test-network/compose/docker/docker-compose-bft-test-net.yaml` in case you use Docker
+- OR `test-network/compose/podman/podman-compose-bft-test-net.yaml` in case you use Podman.
 
 ## Troubleshooting
 
