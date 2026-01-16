@@ -117,7 +117,8 @@ func (qe *UpdateBatchBackedQueryExecuter) GetState(ns, key string) (*statedb.Ver
 
 // GetStateRangeScanIterator returns an iterator to scan over the range of the keys present in the UpdateBatch
 func (qe *UpdateBatchBackedQueryExecuter) GetStateRangeScanIterator(namespace, startKey, endKey string) (statedb.ResultsIterator, error) {
-	return qe.UpdateBatch.GetRangeScanIterator(namespace, startKey, endKey), nil
+	// false - endKey is exclusive
+	return qe.UpdateBatch.GetRangeScanIterator(namespace, startKey, endKey, false), nil
 }
 
 // GetPrivateDataHash returns the hashed value assosicited with a private data key from the UpdateBatch
