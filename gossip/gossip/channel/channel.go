@@ -1068,7 +1068,12 @@ func (cache *stateInfoCache) delete(msg *protoext.SignedGossipMessage) {
 }
 
 func (cache *stateInfoCache) Stop() {
-	cache.stopChan <- struct{}{}
+	select {
+	case <-cache.stopChan:
+		return
+	default:
+		close(cache.stopChan)
+	}
 }
 
 // GenerateMAC returns a byte slice that is derived from the peer's PKI-ID
