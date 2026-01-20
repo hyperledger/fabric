@@ -132,3 +132,46 @@ func TestReadFileUtils(t *testing.T) {
 	_, err = readPemFile("/dev/null")
 	require.Error(t, err)
 }
+
+func TestGetPemMaterialEmptyDir(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// test reading pem material from an empty dir success, but returns empty slice
+	pemdata, err := getPemMaterialFromDir(tempDir)
+	require.NoError(t, err)
+	require.Empty(t, pemdata)
+}
+
+func TestGetMspConfigEmptyDir(t *testing.T) {
+	tempDir := t.TempDir()
+	// try to read certificates from a directoriy that do not exist
+	mspConf, err := getMspConfig(tempDir, "SampleOrg", nil)
+	require.ErrorContains(t, err, "could not load a valid ca certificate from directory")
+	require.Nil(t, mspConf)
+
+	// create a cacerts dir in tempDir
+	err = os.MkdirAll(filepath.Join(tempDir, cacerts), 0o755)
+	require.NoError(t, err)
+
+	// try to read certificates from an empty cacerts dir
+	mspConf, err = getMspConfig(tempDir, "SampleOrg", nil)
+	require.ErrorContains(t, err, "no ca certificate found in directory")
+	require.Nil(t, mspConf)
+}
+
+func TestGetLocalMspConfigEmptyDir(t *testing.T) {
+	tempDir := t.TempDir()
+	// try to read signing certificate from a directoriy that do not exist
+	mspConf, err := GetLocalMspConfig(tempDir, nil, "SampleOrg")
+	require.ErrorContains(t, err, "could not load signing certificate from directory")
+	require.Nil(t, mspConf)
+
+	// create a signcerts dir in tempDir
+	err = os.MkdirAll(filepath.Join(tempDir, signcerts), 0o755)
+	require.NoError(t, err)
+
+	// try to read certificates from an empty signcerts dir
+	mspConf, err = GetLocalMspConfig(tempDir, nil, "SampleOrg")
+	require.ErrorContains(t, err, "no signing certificate found in directory")
+	require.Nil(t, mspConf)
+}
