@@ -177,8 +177,10 @@ func GetLocalMspConfig(dir string, bccspConfig *factory.FactoryOpts, ID string) 
 	}
 
 	signcert, err := getPemMaterialFromDir(signcertDir)
-	if err != nil || len(signcert) == 0 {
-		return nil, errors.Wrapf(err, "could not load a valid signer certificate from directory %s", signcertDir)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not load signing certificate from directory %s", signcertDir)
+	} else if len(signcert) == 0 {
+		return nil, errors.Errorf("no signing certificate found in directory %s", signcertDir)
 	}
 
 	/* FIXME: for now we're making the following assumptions
@@ -214,8 +216,10 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 	tlsintermediatecertsDir := filepath.Join(dir, tlsintermediatecerts)
 
 	cacerts, err := getPemMaterialFromDir(cacertDir)
-	if err != nil || len(cacerts) == 0 {
+	if err != nil {
 		return nil, errors.WithMessagef(err, "could not load a valid ca certificate from directory %s", cacertDir)
+	} else if len(cacerts) == 0 {
+		return nil, errors.Errorf("no ca certificate found in directory %s", cacertDir)
 	}
 
 	admincert, err := getPemMaterialFromDir(admincertDir)
