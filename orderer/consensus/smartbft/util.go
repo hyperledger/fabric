@@ -13,7 +13,7 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
-	"sort"
+	"slices"
 	"time"
 
 	"github.com/hyperledger-labs/SmartBFT/pkg/types"
@@ -367,9 +367,7 @@ func remoteNodesFromConfigBlock(block *cb.Block, logger *flogging.FabricLogger, 
 		})
 	}
 
-	sort.Slice(nodeIDs, func(i, j int) bool {
-		return nodeIDs[i] < nodeIDs[j]
-	})
+	slices.Sort(nodeIDs)
 
 	return &nodeConfig{
 		consenters:    oc.Consenters(),

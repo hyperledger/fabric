@@ -14,7 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"sort"
+	"slices"
 	"testing"
 	"time"
 
@@ -808,7 +808,7 @@ func TestProcessProposals(t *testing.T) {
 		for _, response := range responses {
 			statuses = append(statuses, response.Response.Status)
 		}
-		sort.Slice(statuses, func(i, j int) bool { return statuses[i] < statuses[j] })
+		slices.Sort(statuses)
 		require.EqualValues(t, []int32{200, 300, 400, 500}, statuses)
 	})
 	t.Run("should return an error from processing a proposal for a single peer", func(t *testing.T) {
