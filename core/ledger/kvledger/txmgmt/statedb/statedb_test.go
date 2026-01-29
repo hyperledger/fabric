@@ -134,14 +134,93 @@ func TestUpdateBatchIterator(t *testing.T) {
 	checkItrResults(t, batch.GetRangeScanIterator("non-existing-ns", "", "", false), nil)
 }
 
+func TestUpdateBatchIteratorWithIncludeEndKey(t *testing.T) {
+	batch := NewUpdateBatch()
+	batch.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
+	batch.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 2))
+	batch.Put("ns1", "key3", []byte("value3"), version.NewHeight(1, 3))
+	batch.Put("ns1", "key4", []byte("value4"), version.NewHeight(1, 4))
+
+	// Scenario 1: Range [key2, key3], includeEndKey=true
+	// Should return key2 and key3.
+	checkItrResults(t, batch.GetRangeScanIterator("ns1", "key2", "key3", true), []*VersionedKV{
+		{
+			&CompositeKey{"ns1", "key2"},
+			&VersionedValue{[]byte("value2"), nil, version.NewHeight(1, 2)},
+		},
+		{
+			&CompositeKey{"ns1", "key3"},
+			&VersionedValue{[]byte("value3"), nil, version.NewHeight(1, 3)},
+		},
+	})
+
+	// Scenario 2: Range [key2, key3], includeEndKey=false
+	// Should return only key2.
+	checkItrResults(t, batch.GetRangeScanIterator("ns1", "key2", "key3", false), []*VersionedKV{
+		{
+			&CompositeKey{"ns1", "key2"},
+			&VersionedValue{[]byte("value2"), nil, version.NewHeight(1, 2)},
+		},
+	})
+
+	// Scenario 3: Range [key2, key2], includeEndKey=true
+	// Should return key2.
+	checkItrResults(t, batch.GetRangeScanIterator("ns1", "key2", "key2", true), []*VersionedKV{
+		{
+			&CompositeKey{"ns1", "key2"},
+			&VersionedValue{[]byte("value2"), nil, version.NewHeight(1, 2)},
+		},
+	})
+
+	// Scenario 4: Range [key2, key2], includeEndKey=false
+	// Should return nothing.
+	checkItrResults(t, batch.GetRangeScanIterator("ns1", "key2", "key2", false), nil)
+
+	// Scenario 5: Boundary [key1, key4], includeEndKey=true -> All keys
+	checkItrResults(t, batch.GetRangeScanIterator("ns1", "key1", "key4", true), []*VersionedKV{
+		{
+			&CompositeKey{"ns1", "key1"},
+			&VersionedValue{[]byte("value1"), nil, version.NewHeight(1, 1)},
+		},
+		{
+			&CompositeKey{"ns1", "key2"},
+			&VersionedValue{[]byte("value2"), nil, version.NewHeight(1, 2)},
+		},
+		{
+			&CompositeKey{"ns1", "key3"},
+			&VersionedValue{[]byte("value3"), nil, version.NewHeight(1, 3)},
+		},
+		{
+			&CompositeKey{"ns1", "key4"},
+			&VersionedValue{[]byte("value4"), nil, version.NewHeight(1, 4)},
+		},
+	})
+
+	// Scenario 6: Start key doesn't exist, End key exists. [key1.5, key2], includeEndKey=true
+	checkItrResults(t, batch.GetRangeScanIterator("ns1", "key1.5", "key2", true), []*VersionedKV{
+		{
+			&CompositeKey{"ns1", "key2"},
+			&VersionedValue{[]byte("value2"), nil, version.NewHeight(1, 2)},
+		},
+	})
+
+	// Scenario 7: End key doesn't exist. [key2, key2.5], includeEndKey=true.
+	checkItrResults(t, batch.GetRangeScanIterator("ns1", "key2", "key2.5", true), []*VersionedKV{
+		{
+			&CompositeKey{"ns1", "key2"},
+			&VersionedValue{[]byte("value2"), nil, version.NewHeight(1, 2)},
+		},
+	})
+}
+
 func checkItrResults(t *testing.T, itr QueryResultsIterator, expectedResults []*VersionedKV) {
 	for i := 0; i < len(expectedResults); i++ {
 		res, _ := itr.Next()
-		require.Equal(t, expectedResults[i], res)
+		require.Equal(t, expectedResults[i], res, "Mismatch at index %d", i)
 	}
 	lastRes, err := itr.Next()
 	require.NoError(t, err)
-	require.Nil(t, lastRes)
+	require.Nil(t, lastRes, "Expected end of iterator")
 	itr.Close()
 }
 
