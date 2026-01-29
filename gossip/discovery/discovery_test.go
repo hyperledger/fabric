@@ -1928,3 +1928,51 @@ func portOfEndpoint(endpoint string) int {
 	port, _ := strconv.ParseInt(strings.Split(endpoint, ":")[1], 10, 64)
 	return int(port)
 }
+
+func TestHandleAliveMessage_RelearnsMemberAfterConcurrentPurge(t *testing.T) {
+	inst := createDiscoveryInstanceWithNoGossip(33700, "d0", []string{})
+	defer inst.Stop()
+
+	impl := inst.discoveryImpl()
+
+	memberPKIid := []byte("purged-member")
+	memberEndpoint := "localhost:9999"
+
+	impl.lock.Lock()
+	impl.id2Member[string(memberPKIid)] = &NetworkMember{
+		Endpoint: memberEndpoint,
+		PKIid:    memberPKIid,
+	}
+	impl.lock.Unlock()
+
+	aliveMsg := &proto.GossipMessage{
+		Tag: proto.GossipMessage_EMPTY,
+		Content: &proto.GossipMessage_AliveMsg{
+			AliveMsg: &proto.AliveMessage{
+				Membership: &proto.Member{
+					Endpoint: memberEndpoint,
+					PkiId:    memberPKIid,
+				},
+				Timestamp: &proto.PeerTime{
+					IncNum: uint64(time.Now().UnixNano()),
+					SeqNum: 1,
+				},
+			},
+		},
+	}
+
+	signedMsg, err := protoext.NoopSign(aliveMsg)
+	require.NoError(t, err)
+
+	require.NotPanics(t, func() {
+		impl.handleAliveMessage(signedMsg)
+	})
+
+	impl.lock.RLock()
+	_, inID2Member := impl.id2Member[string(memberPKIid)]
+	_, inAliveLastTS := impl.aliveLastTS[string(memberPKIid)]
+	impl.lock.RUnlock()
+
+	require.True(t, inID2Member, "member should be present in id2Member after re-learning")
+	require.True(t, inAliveLastTS, "member should be present in aliveLastTS after re-learning")
+}
