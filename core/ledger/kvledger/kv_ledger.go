@@ -293,6 +293,7 @@ func (l *kvLedger) initSnapshotMgr(initializer *lgrInitializer) error {
 		events:                    make(chan *event),
 		commitProceed:             make(chan struct{}),
 		requestResponses:          make(chan *requestResponse),
+		stopCh:                    make(chan struct{}),
 	}
 
 	bcInfo, err := l.blockStore.GetBlockchainInfo()
