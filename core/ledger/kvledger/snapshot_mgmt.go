@@ -43,6 +43,8 @@ type snapshotMgr struct {
 	requestResponses          chan *requestResponse
 	stopped                   bool
 	shutdownLock              sync.Mutex
+	stopCh                    chan struct{}
+	wg                        sync.WaitGroup
 }
 
 type event struct {
@@ -134,14 +136,19 @@ func (l *kvLedger) processSnapshotMgmtEvents(lastCommittedBlockNumber uint64) {
 				continue
 			}
 			snapshotInProgress = true
+			l.snapshotMgr.wg.Add(1)
 			go func() {
+				defer l.snapshotMgr.wg.Done()
 				logger.Infow("Generating snapshot", "channelID", l.ledgerID, "lastCommittedBlockNumber", lastCommittedBlockNumber)
 				if err := l.generateSnapshot(); err != nil {
 					logger.Errorw("Failed to generate snapshot", "channelID", l.ledgerID, "lastCommittedBlockNumber", lastCommittedBlockNumber, "error", err)
 				} else {
 					logger.Infow("Generated snapshot", "channelID", l.ledgerID, "lastCommittedBlockNumber", lastCommittedBlockNumber)
 				}
-				events <- &event{snapshotDone, lastCommittedBlockNumber}
+				select {
+				case events <- &event{snapshotDone, lastCommittedBlockNumber}:
+				case <-l.snapshotMgr.stopCh:
+				}
 			}()
 
 		case snapshotDone:
@@ -194,14 +201,19 @@ func (l *kvLedger) processSnapshotMgmtEvents(lastCommittedBlockNumber uint64) {
 
 			if committerStatus == idle && requestedBlockNum == lastCommittedBlockNumber {
 				snapshotInProgress = true
+				l.snapshotMgr.wg.Add(1)
 				go func() {
+					defer l.snapshotMgr.wg.Done()
 					logger.Infow("Generating snapshot", "channelID", l.ledgerID, "lastCommittedBlockNumber", lastCommittedBlockNumber)
 					if err := l.generateSnapshot(); err != nil {
 						logger.Errorw("Failed to generate snapshot", "channelID", l.ledgerID, "lastCommittedBlockNumber", lastCommittedBlockNumber, "error", err)
 					} else {
 						logger.Infow("Generated snapshot", "channelID", l.ledgerID, "lastCommittedBlockNumber", lastCommittedBlockNumber)
 					}
-					events <- &event{snapshotDone, requestedBlockNum}
+					select {
+					case events <- &event{snapshotDone, requestedBlockNum}:
+					case <-l.snapshotMgr.stopCh:
+					}
 				}()
 			}
 			requestResponses <- &requestResponse{}
@@ -248,10 +260,6 @@ func (l *kvLedger) snapshotExists(blockNum uint64) (bool, error) {
 	return stat != nil, nil
 }
 
-// shutdown sends a snapshotMgrShutdown event and close all the channels, which is called
-// when the ledger is closed. For simplicity, this function does not consider in-progress commit
-// or snapshot generation. The caller should make sure there is no in-progress commit or
-// snapshot generation. Otherwise, it may cause panic because the channels have been closed.
 func (m *snapshotMgr) shutdown() {
 	m.shutdownLock.Lock()
 	defer m.shutdownLock.Unlock()
@@ -261,6 +269,8 @@ func (m *snapshotMgr) shutdown() {
 	}
 
 	m.stopped = true
+	close(m.stopCh)
+	m.wg.Wait()
 	m.events <- &event{typ: snapshotMgrShutdown}
 	close(m.events)
 	close(m.commitProceed)
