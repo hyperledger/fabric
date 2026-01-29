@@ -48,7 +48,7 @@ func newCombinedIterator(db statedb.VersionedDB, updates *statedb.UpdateBatch,
 	if dbItr, err = db.GetStateRangeScanIterator(ns, startKey, endKey); err != nil {
 		return nil, err
 	}
-	updatesItr = updates.GetRangeScanIterator(ns, startKey, endKey)
+	updatesItr = updates.GetRangeScanIterator(ns, startKey, endKey, includeEndKey)
 	var dbItem, updatesItem *statedb.VersionedKV
 	if dbItem, err = dbItr.Next(); err != nil {
 		return nil, err
