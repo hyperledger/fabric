@@ -62,7 +62,6 @@ func TestRollbackKVLedger(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, bcInfo, actualBcInfo)
 	dataHelper.verifyLedgerContent(l)
-	// TODO: extend integration test with BTL support for pvtData. FAB-15704
 }
 
 func TestRollbackKVLedgerWithBTL(t *testing.T) {
