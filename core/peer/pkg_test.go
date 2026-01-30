@@ -257,7 +257,6 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			server, err := comm.NewGRPCServer("localhost:0", test.serverConfig)
 			require.NoError(t, err, "failed to create gRPC server")
