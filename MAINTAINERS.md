@@ -11,7 +11,7 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 | Andrew Coleman        | [andrew-coleman][andrew-coleman]        | andrew-coleman | <andrew_coleman@uk.ibm.com>        |
 | Artem Barger          | [c0rwin][c0rwin]                        | c0rwin         | <artem@bargr.net>                  |
 | Dave Enyeart          | [denyeart][denyeart]                    | dave.enyeart   | <enyeart@us.ibm.com>               |
-| Fedor Partanskiy      | [pfi79][pfi79]                          | pfi79          | <fedor.partanskiy@atme.com>        |
+| Fedor Partanskiy      | [pfi79][pfi79]                          | pfi79          | <fredprtnsk@gmail.com>        |
 | Manish Sethi          | [manish-sethi][manish-sethi]            | manish-sethi   | <manish.sethi@gmail.com>           |
 | Tatsuya Sato          | [satota2][satota2]                      | satota2        | <tatsuya.sato.so@hitachi.com>      |
 | Yacov Manevich        | [yacovm][yacovm]                        | yacovm         | <yacov.manevich@gmail.com>         |
