@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
-	"sort"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -562,9 +561,7 @@ func createBFTChainUsingMocks(t *testing.T, node *Node, configInfo *ConfigInfo) 
 				nodeIds = append(nodeIds, nodeId)
 			}
 
-			sort.Slice(nodeIds, func(i, j int) bool {
-				return nodeIds[i] < nodeIds[j]
-			})
+			slices.Sort(nodeIds)
 
 			return nodeIds
 		}).Maybe()
