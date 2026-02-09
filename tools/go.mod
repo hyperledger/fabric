@@ -80,13 +80,14 @@ require (
 	go.mongodb.org/mongo-driver v1.5.1 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20231108232855-2478ac86f678 // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
-	golang.org/x/mod v0.27.0 // indirect
-	golang.org/x/net v0.43.0 // indirect
-	golang.org/x/sync v0.16.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/term v0.34.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
-	golang.org/x/tools v0.36.0 // indirect
+	golang.org/x/mod v0.31.0 // indirect
+	golang.org/x/net v0.49.0 // indirect
+	golang.org/x/sync v0.19.0 // indirect
+	golang.org/x/sys v0.40.0 // indirect
+	golang.org/x/telemetry v0.0.0-20251203150158-8fff8a5912fc // indirect
+	golang.org/x/term v0.39.0 // indirect
+	golang.org/x/text v0.33.0 // indirect
+	golang.org/x/tools v0.40.0 // indirect
 	golang.org/x/tools/go/expect v0.1.1-deprecated // indirect
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.5.1 // indirect
 	google.golang.org/protobuf v1.36.7 // indirect
