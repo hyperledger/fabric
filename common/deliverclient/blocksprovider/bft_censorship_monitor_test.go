@@ -43,12 +43,10 @@ func TestBFTCensorshipMonitor_Stop(t *testing.T) {
 	require.NotNil(t, mon)
 
 	var wg sync.WaitGroup
-	wg.Add(1)
 
-	go func() {
+	wg.Go(func() {
 		mon.Monitor()
-		wg.Done()
-	}()
+	})
 
 	mon.Stop()
 	wg.Wait()

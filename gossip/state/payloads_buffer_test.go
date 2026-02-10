@@ -121,13 +121,11 @@ func TestPayloadsBufferImpl_ConcurrentPush(t *testing.T) {
 
 	ready := int32(0)
 	readyWG := sync.WaitGroup{}
-	readyWG.Add(1)
-	go func() {
+	readyWG.Go(func() {
 		// Wait for next expected block to arrive
 		<-buffer.Ready()
 		atomic.AddInt32(&ready, 1)
-		readyWG.Done()
-	}()
+	})
 
 	for i := 0; i < concurrency; i++ {
 		go func() {

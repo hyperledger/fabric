@@ -27,12 +27,10 @@ func TestSyncBuffer_PullBlock(t *testing.T) {
 		require.NotNil(t, buff)
 
 		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
+		wg.Go(func() {
 			block := buff.PullBlock(1)
 			require.Nil(t, block)
-			wg.Done()
-		}()
+		})
 
 		buff.Stop()
 		wg.Wait()
@@ -47,13 +45,11 @@ func TestSyncBuffer_PullBlock(t *testing.T) {
 		}
 
 		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
+		wg.Go(func() {
 			blockOut := buff.PullBlock(2)
 			require.NotNil(t, blockOut)
 			require.True(t, proto.Equal(blockIn, blockOut))
-			wg.Done()
-		}()
+		})
 
 		err := buff.HandleBlock("mychannel", blockIn)
 		require.NoError(t, err)
@@ -69,12 +65,10 @@ func TestSyncBuffer_PullBlock(t *testing.T) {
 		}
 
 		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
+		wg.Go(func() {
 			blockOut := buff.PullBlock(1)
 			require.Nil(t, blockOut)
-			wg.Done()
-		}()
+		})
 
 		err := buff.HandleBlock("mychannel", blockIn)
 		require.NoError(t, err)
@@ -93,13 +87,11 @@ func TestSyncBuffer_PullBlock(t *testing.T) {
 		}
 
 		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
+		wg.Go(func() {
 			blockOut := buff.PullBlock(3)
 			require.NotNil(t, blockOut)
 			require.True(t, proto.Equal(blockIn3, blockOut))
-			wg.Done()
-		}()
+		})
 
 		err := buff.HandleBlock("mychannel", blockIn2)
 		require.NoError(t, err)
@@ -161,8 +153,7 @@ func TestSyncBuffer_HandleBlock(t *testing.T) {
 		require.NotNil(t, buff)
 
 		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
+		wg.Go(func() {
 			var number uint64 = 1
 			var err error
 			for {
@@ -177,8 +168,7 @@ func TestSyncBuffer_HandleBlock(t *testing.T) {
 			}
 
 			require.EqualError(t, err, "SyncBuffer stopping, channel: mychannel")
-			wg.Done()
-		}()
+		})
 
 		buff.Stop()
 		wg.Wait()
