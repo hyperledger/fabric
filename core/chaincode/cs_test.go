@@ -113,9 +113,7 @@ func TestLaunchTestAndExecInit(t *testing.T) {
 	wg := &sync.WaitGroup{}
 
 	// 2. launch chaincode
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		input := &pb.ChaincodeInput{
 			Args: [][]byte{[]byte("launch")},
 		}
@@ -127,12 +125,10 @@ func TestLaunchTestAndExecInit(t *testing.T) {
 
 		_, err = cs.Launch(ccid)
 		assert.NoError(t, err)
-	}()
+	})
 
 	// 3. init chaincode
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		<-startInitChaincode
 
 		input := &pb.ChaincodeInput{
@@ -148,7 +144,7 @@ func TestLaunchTestAndExecInit(t *testing.T) {
 		assert.NoError(t, err)
 
 		result <- "init"
-	}()
+	})
 
 	// 7. check result
 	res := <-result

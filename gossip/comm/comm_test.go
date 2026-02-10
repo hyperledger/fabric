@@ -946,11 +946,9 @@ func TestReadFromStream(t *testing.T) {
 	errChan := make(chan error, 2)
 	msgChan := make(chan *protoext.SignedGossipMessage, 1)
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		conn.readFromStream(errChan, msgChan)
-	}()
+	})
 
 	select {
 	case <-msgChan:

@@ -2268,11 +2268,9 @@ func TestChangesInPeers(t *testing.T) {
 			}
 
 			wgMT := sync.WaitGroup{}
-			wgMT.Add(1)
-			go func() {
+			wgMT.Go(func() {
 				mt.trackMembershipChanges()
-				wgMT.Done()
-			}()
+			})
 
 			tickChan <- time.Time{}
 
