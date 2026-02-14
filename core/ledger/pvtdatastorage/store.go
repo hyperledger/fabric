@@ -1054,6 +1054,13 @@ func (s *Store) processCollElgEvents() error {
 						s.purgerLock.Unlock()
 						time.Sleep(sleepTime * time.Millisecond)
 						s.purgerLock.Lock()
+						// Re-create the iterator so it reflects any deletes
+						// made by the purger while the lock was released.
+						collItr.Release()
+						collItr, err = s.db.GetIterator(startKey, endKey)
+						if err != nil {
+							return err
+						}
 					}
 				} // entry loop
 
