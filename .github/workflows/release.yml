@@ -33,7 +33,7 @@ jobs:
           - image: macos-15-intel
             target: darwin
             arch: amd64
-          - image: macos-latest
+          - image: macos-15
             target: darwin
             arch: arm64
           - image: fabric-windows-latest
