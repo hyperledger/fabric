@@ -30,10 +30,10 @@ jobs:
           - image: ubuntu-24.04
             target: linux
             arch: arm64
-          - image: macos-11
+          - image: macos-15-intel
             target: darwin
             arch: amd64
-          - image: macos-11
+          - image: macos-15
             target: darwin
             arch: arm64
           - image: fabric-windows-latest
