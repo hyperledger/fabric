@@ -127,7 +127,7 @@ func TestPayloadsBufferImpl_ConcurrentPush(t *testing.T) {
 		atomic.AddInt32(&ready, 1)
 	})
 
-	for i := 0; i < concurrency; i++ {
+	for range concurrency {
 		go func() {
 			buffer.Push(payload)
 			startWG.Wait()

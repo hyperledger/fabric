@@ -38,8 +38,8 @@ type RPC interface {
 
 // Logger specifies the logger
 type Logger interface {
-	Warnf(template string, args ...interface{})
-	Panicf(template string, args ...interface{})
+	Warnf(template string, args ...any)
+	Panicf(template string, args ...any)
 }
 
 // Egress implementation

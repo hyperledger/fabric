@@ -34,7 +34,7 @@ var chaincodeLogger = flogging.MustGetLogger("chaincode")
 // An ACLProvider performs access control checks when invoking
 // chaincode.
 type ACLProvider interface {
-	CheckACL(resName string, channelID string, idinfo interface{}) error
+	CheckACL(resName string, channelID string, idinfo any) error
 }
 
 // A Registry is responsible for tracking handlers.
@@ -559,7 +559,7 @@ func (h *Handler) Notify(msg *pb.ChaincodeMessage) {
 }
 
 // is this a txid for which there is a valid txsim
-func (h *Handler) isValidTxSim(channelID string, txid string, fmtStr string, args ...interface{}) (*TransactionContext, error) {
+func (h *Handler) isValidTxSim(channelID string, txid string, fmtStr string, args ...any) (*TransactionContext, error) {
 	txContext := h.TXContexts.Get(channelID, txid)
 	if txContext == nil || txContext.TXSimulator == nil {
 		err := errors.Errorf(fmtStr, args...)
@@ -1062,7 +1062,7 @@ func (h *Handler) calculateTotalReturnLimit(metadata *pb.QueryMetadata) int32 {
 	return totalReturnLimit
 }
 
-func (h *Handler) getTxContextForInvoke(channelID string, txid string, payload []byte, format string, args ...interface{}) (*TransactionContext, error) {
+func (h *Handler) getTxContextForInvoke(channelID string, txid string, payload []byte, format string, args ...any) (*TransactionContext, error) {
 	// if we have a channelID, just get the txsim from isValidTxSim
 	if channelID != "" {
 		return h.isValidTxSim(channelID, txid, "could not get valid transaction")

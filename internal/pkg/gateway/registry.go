@@ -481,7 +481,7 @@ func (reg *registry) closeStaleOrdererConnections(channel string, channelOrderer
 	oldList, loaded := reg.channelOrderers.LoadAndDelete(channel)
 	if loaded {
 		currentEndpoints := map[string]struct{}{}
-		reg.channelOrderers.Range(func(key, value interface{}) bool {
+		reg.channelOrderers.Range(func(key, value any) bool {
 			for _, ep := range value.([]*endpointConfig) {
 				currentEndpoints[ep.address] = struct{}{}
 			}

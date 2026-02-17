@@ -14,14 +14,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-type emitBatchCallback func([]interface{})
+type emitBatchCallback func([]any)
 
 // batchingEmitter is used for the gossip push/forwarding phase.
 // Messages are added into the batchingEmitter, and they are forwarded periodically T times in batches and then discarded.
 // If the batchingEmitter's stored message count reaches a certain capacity, that also triggers a message dispatch
 type batchingEmitter interface {
 	// Add adds a message to be batched
-	Add(interface{})
+	Add(any)
 
 	// Stop stops the component
 	Stop()
@@ -73,7 +73,7 @@ func (p *batchingEmitterImpl) emit() {
 	if len(p.buff) == 0 {
 		return
 	}
-	msgs2beEmitted := make([]interface{}, len(p.buff))
+	msgs2beEmitted := make([]any, len(p.buff))
 	for i, v := range p.buff {
 		msgs2beEmitted[i] = v.data
 	}
@@ -110,7 +110,7 @@ type batchingEmitterImpl struct {
 }
 
 type batchedMessage struct {
-	data           interface{}
+	data           any
 	iterationsLeft int
 }
 
@@ -124,7 +124,7 @@ func (p *batchingEmitterImpl) Size() int {
 	return len(p.buff)
 }
 
-func (p *batchingEmitterImpl) Add(message interface{}) {
+func (p *batchingEmitterImpl) Add(message any) {
 	if p.iterations == 0 {
 		return
 	}

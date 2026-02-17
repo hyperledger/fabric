@@ -24,7 +24,7 @@ import (
 )
 
 // GetSortedKeys returns the keys of the map in a sorted order. This function assumes that the keys are string
-func GetSortedKeys(m interface{}) []string {
+func GetSortedKeys(m any) []string {
 	mapVal := reflect.ValueOf(m)
 	keyVals := mapVal.MapKeys()
 	keys := []string{}
@@ -38,7 +38,7 @@ func GetSortedKeys(m interface{}) []string {
 // GetValuesBySortedKeys returns the values of the map (mapPtr) in the list (listPtr) in the sorted order of key of the map
 // This function assumes that the mapPtr is a pointer to a map and listPtr is a pointer to a list. Further type of keys of the
 // map are assumed to be string and the types of the values of the maps and the list are same
-func GetValuesBySortedKeys(mapPtr interface{}, listPtr interface{}) {
+func GetValuesBySortedKeys(mapPtr any, listPtr any) {
 	mapVal := reflect.ValueOf(mapPtr).Elem()
 	keyVals := mapVal.MapKeys()
 	if len(keyVals) == 0 {

@@ -484,7 +484,7 @@ func readMetadata(metadataFile *snapshot.FileReader) ([]*metadataRow, error) {
 		return nil, errors.WithMessage(err, "error while reading num-rows in metadata")
 	}
 	metadata := make([]*metadataRow, numMetadata)
-	for i := uint64(0); i < numMetadata; i++ {
+	for i := range numMetadata {
 		ns, err := metadataFile.DecodeString()
 		if err != nil {
 			return nil, errors.WithMessage(err, "error while reading namespace name")

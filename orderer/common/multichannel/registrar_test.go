@@ -132,7 +132,7 @@ func newLedger(rlf blockledger.Factory, chainID string, genesisBlockSys *cb.Bloc
 
 func testMessageOrderAndRetrieval(maxMessageCount uint32, chainID string, chainSupport *ChainSupport, lr blockledger.ReadWriter, t *testing.T) {
 	messages := make([]*cb.Envelope, maxMessageCount)
-	for i := uint32(0); i < maxMessageCount; i++ {
+	for i := range maxMessageCount {
 		messages[i] = makeNormalTx(chainID, int(i))
 	}
 	for _, message := range messages {
@@ -142,7 +142,7 @@ func testMessageOrderAndRetrieval(maxMessageCount uint32, chainID string, chainS
 	defer it.Close()
 	block, status := it.Next()
 	require.Equal(t, cb.Status_SUCCESS, status, "Could not retrieve block")
-	for i := uint32(0); i < maxMessageCount; i++ {
+	for i := range maxMessageCount {
 		require.True(t, proto.Equal(messages[i], protoutil.ExtractEnvelopeOrPanic(block, int(i))), "Block contents wrong at index %d", i)
 	}
 }
@@ -158,7 +158,7 @@ func TestConfigTx(t *testing.T) {
 		tmpdir := t.TempDir()
 
 		_, rl := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx("testchannelid", i)}))
 		}
 		rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{makeConfigTx("testchannelid", 5)}))

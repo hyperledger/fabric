@@ -143,7 +143,7 @@ func TestCacheUsage(t *testing.T) {
 func TestCacheMarshalFailure(t *testing.T) {
 	as := &mockAcSupport{}
 	cache := newAuthCache(as, defaultConfig())
-	asBytes = func(_ interface{}) ([]byte, error) {
+	asBytes = func(_ any) ([]byte, error) {
 		return nil, errors.New("failed marshaling ASN1")
 	}
 	defer func() {

@@ -35,7 +35,7 @@ func TestConcurrentConnections(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, conn2 == conn)
 	}
-	for i := 0; i < n; i++ {
+	for range n {
 		go connect()
 	}
 	wg.Wait()
@@ -81,7 +81,7 @@ func TestConcurrentLookupMiss(t *testing.T) {
 	var goroutinesExited sync.WaitGroup
 	goroutinesExited.Add(2)
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		go func() {
 			defer goroutinesExited.Done()
 			conn2, err := connStore.Connection("", nil)

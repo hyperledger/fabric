@@ -44,12 +44,12 @@ func TestPeerAddress(t *testing.T) {
 
 	tests := []struct {
 		name                string
-		settings            map[string]interface{}
+		settings            map[string]any
 		expectedPeerAddress string
 	}{
 		{
 			name: "test1",
-			settings: map[string]interface{}{
+			settings: map[string]any{
 				"peer.addressAutoDetect": false,
 				"peer.address":           "testing.com:7051",
 			},
@@ -57,7 +57,7 @@ func TestPeerAddress(t *testing.T) {
 		},
 		{
 			name: "test2",
-			settings: map[string]interface{}{
+			settings: map[string]any{
 				"peer.addressAutoDetect": true,
 				"peer.address":           "testing.com:7051",
 			},
@@ -65,7 +65,7 @@ func TestPeerAddress(t *testing.T) {
 		},
 		{
 			name: "test3",
-			settings: map[string]interface{}{
+			settings: map[string]any{
 				"peer.addressAutoDetect": false,
 				"peer.address":           "0.0.0.0:7051",
 			},
@@ -73,7 +73,7 @@ func TestPeerAddress(t *testing.T) {
 		},
 		{
 			name: "test4",
-			settings: map[string]interface{}{
+			settings: map[string]any{
 				"peer.addressAutoDetect": true,
 				"peer.address":           "127.0.0.1:7051",
 			},
@@ -82,7 +82,6 @@ func TestPeerAddress(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			for k, v := range test.settings {
 				viper.Set(k, v)

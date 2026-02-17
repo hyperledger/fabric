@@ -955,7 +955,7 @@ func genesisConfig(t *testing.T, genesisFile string) *localconfig.TopLevel {
 }
 
 func panicMsg(f func()) string {
-	var message interface{}
+	var message any
 	func() {
 		defer func() {
 			message = recover()

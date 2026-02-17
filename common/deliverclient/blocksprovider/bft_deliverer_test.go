@@ -420,7 +420,7 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 		setup.initialize(t)
 
 		// 6 rounds
-		for i := 0; i < 24; i++ {
+		for i := range 24 {
 			setup.fakeDialer.DialReturnsOnCall(i, nil, fmt.Errorf("fake-dial-error"))
 		}
 
@@ -436,7 +436,7 @@ func TestBFTDeliverer_DialRetries(t *testing.T) {
 
 		t.Log("Exponential backoff after every round")
 		minDur := 100 * time.Millisecond
-		for i := 0; i < 24; i++ {
+		for i := range 24 {
 			round := (i + 1) / 4
 			fDur := math.Min(float64(minDur.Nanoseconds())*math.Pow(2.0, float64(round)), float64(10*time.Second))
 			dur := time.Duration(fDur)
@@ -585,7 +585,7 @@ func TestBFTDeliverer_DeliverRetries(t *testing.T) {
 		setup.initialize(t)
 
 		// 6 rounds
-		for i := 0; i < 24; i++ {
+		for i := range 24 {
 			setup.fakeDeliverStreamer.DeliverReturnsOnCall(i, nil, fmt.Errorf("deliver-error"))
 		}
 		setup.fakeDeliverStreamer.DeliverReturnsOnCall(24, setup.fakeDeliverClient, nil)
@@ -598,7 +598,7 @@ func TestBFTDeliverer_DeliverRetries(t *testing.T) {
 
 		t.Log("Exponential backoff after every round")
 		minDur := 100 * time.Millisecond
-		for i := 0; i < 24; i++ {
+		for i := range 24 {
 			round := (i + 1) / 4
 			fDur := math.Min(float64(minDur.Nanoseconds())*math.Pow(2.0, float64(round)), float64(10*time.Second))
 			dur := time.Duration(fDur)
@@ -816,7 +816,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		setup.initialize(t)
 
 		// 6 failed rounds, creates exponential backoff
-		for i := 0; i < 24; i++ {
+		for i := range 24 {
 			setup.fakeDialer.DialReturnsOnCall(i, nil, fmt.Errorf("fake-dial-error"))
 		}
 		// success
@@ -884,7 +884,7 @@ func TestBFTDeliverer_BlockReception(t *testing.T) {
 		setup.fakeDurationExceededHandler.DurationExceededHandlerReturns(true)
 
 		// 20 failed rounds, no enough to exceed MaxRetryDuration (it takes 81 calls to go over 10m)
-		for i := 0; i < 80; i++ {
+		for i := range 80 {
 			setup.fakeDialer.DialReturnsOnCall(i, nil, fmt.Errorf("fake-dial-error"))
 		}
 
@@ -1130,7 +1130,7 @@ func TestBFTDeliverer_CensorshipMonitorEvents(t *testing.T) {
 
 		t.Log("Exponential backoff after every round, with saturation")
 		minDur := 100 * time.Millisecond
-		for i := 0; i < 40; i++ {
+		for i := range 40 {
 			round := (i + 1) / 4
 			dur := min(time.Duration(minDur.Nanoseconds()*int64(math.Pow(2.0, float64(round)))), 10*time.Second)
 			assert.Equal(t, dur, setup.fakeSleeper.SleepArgsForCall(i), fmt.Sprintf("i=%d", i))

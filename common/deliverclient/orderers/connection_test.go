@@ -139,7 +139,7 @@ var _ = Describe("Connection", func() {
 
 	It("returns shuffled endpoints", func() { // there is a chance of failure here, but it is very small.
 		combinationSet := make(map[string]bool)
-		for i := 0; i < 10000; i++ {
+		for range 10000 {
 			shuffledEndpoints := cs.ShuffledEndpoints()
 			Expect(stripEndpoints(shuffledEndpoints)).To(ConsistOf(
 				stripEndpoints(endpoints),
@@ -157,7 +157,7 @@ var _ = Describe("Connection", func() {
 
 	It("returns random endpoint", func() { // there is a chance of failure here, but it is very small.
 		combinationMap := make(map[string]*orderers.Endpoint)
-		for i := 0; i < 10000; i++ {
+		for range 10000 {
 			r, _ := cs.RandomEndpoint()
 			combinationMap[r.Address] = r
 		}
@@ -629,7 +629,7 @@ var _ = Describe("Connection", func() {
 
 		It("does not include the self endpoint in random endpoint", func() { // there is a chance of failure here, but it is very small.
 			combinationMap := make(map[string]*orderers.Endpoint)
-			for i := 0; i < 10000; i++ {
+			for range 10000 {
 				r, _ := cs.RandomEndpoint()
 				combinationMap[r.Address] = r
 			}

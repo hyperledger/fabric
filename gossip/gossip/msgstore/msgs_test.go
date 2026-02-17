@@ -29,11 +29,11 @@ func init() {
 	r = rand.New(rand.NewChaCha8(seed))
 }
 
-func alwaysNoAction(_ interface{}, _ interface{}) common.InvalidationResult {
+func alwaysNoAction(_ any, _ any) common.InvalidationResult {
 	return common.MessageNoAction
 }
 
-func compareInts(this interface{}, that interface{}) common.InvalidationResult {
+func compareInts(this any, that any) common.InvalidationResult {
 	a := this.(int)
 	b := that.(int)
 	if a == b {
@@ -46,7 +46,7 @@ func compareInts(this interface{}, that interface{}) common.InvalidationResult {
 	return common.MessageInvalidated
 }
 
-func nonReplaceInts(this interface{}, that interface{}) common.InvalidationResult {
+func nonReplaceInts(this any, that any) common.InvalidationResult {
 	a := this.(int)
 	b := that.(int)
 	if a == b {
@@ -66,7 +66,7 @@ func TestSize(t *testing.T) {
 
 func TestNewMessagesInvalidates(t *testing.T) {
 	invalidated := make([]int, 0, 9)
-	msgStore := NewMessageStore(compareInts, func(m interface{}) {
+	msgStore := NewMessageStore(compareInts, func(m any) {
 		invalidated = append(invalidated, m.(int))
 	})
 	require.True(t, msgStore.Add(0))
@@ -80,8 +80,8 @@ func TestNewMessagesInvalidates(t *testing.T) {
 
 func TestMessagesGet(t *testing.T) {
 	msgStore := NewMessageStore(alwaysNoAction, Noop)
-	expected := make([]interface{}, 0)
-	for i := 0; i < 2; i++ {
+	expected := make([]any, 0)
+	for range 2 {
 		n := r.Int()
 		expected = append(expected, n)
 		msgStore.Add(n)
@@ -141,11 +141,11 @@ func TestExpiration(t *testing.T) {
 	expired := make(chan int, 50)
 	msgTTL := time.Second * 3
 
-	msgStore := NewMessageStoreExpirable(nonReplaceInts, Noop, msgTTL, nil, nil, func(m interface{}) {
+	msgStore := NewMessageStoreExpirable(nonReplaceInts, Noop, msgTTL, nil, nil, func(m any) {
 		expired <- m.(int)
 	})
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.True(t, msgStore.Add(i), "Adding", i)
 	}
 
@@ -153,7 +153,7 @@ func TestExpiration(t *testing.T) {
 
 	time.Sleep(time.Second * 2)
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.False(t, msgStore.CheckValid(i))
 		require.False(t, msgStore.Add(i))
 	}
@@ -167,7 +167,7 @@ func TestExpiration(t *testing.T) {
 
 	time.Sleep(time.Second * 2)
 
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		require.False(t, msgStore.Add(i))
 	}
 
@@ -179,7 +179,7 @@ func TestExpiration(t *testing.T) {
 	require.Equal(t, 0, msgStore.Size(), "Wrong number of items in store - after second batch expiration")
 	require.Equal(t, 20, len(expired), "Wrong number of expired msgs - after second batch expiration")
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.True(t, msgStore.CheckValid(i))
 		require.True(t, msgStore.Add(i))
 		require.False(t, msgStore.CheckValid(i))
@@ -200,12 +200,12 @@ func TestExpirationConcurrency(t *testing.T) {
 		func() {
 			lock.Unlock()
 		},
-		func(m interface{}) {
+		func(m any) {
 			expired = append(expired, m.(int))
 		})
 
 	lock.Lock()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.True(t, msgStore.Add(i), "Adding", i)
 	}
 	require.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - first batch")
@@ -216,7 +216,7 @@ func TestExpirationConcurrency(t *testing.T) {
 	lock.Lock()
 	time.Sleep(time.Second * 2)
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.False(t, msgStore.Add(i))
 	}
 
@@ -227,7 +227,7 @@ func TestExpirationConcurrency(t *testing.T) {
 	time.Sleep(time.Second * 1)
 
 	lock.Lock()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.False(t, msgStore.Add(i))
 	}
 
@@ -241,11 +241,11 @@ func TestStop(t *testing.T) {
 	expired := make([]int, 0)
 	msgTTL := time.Second * 3
 
-	msgStore := NewMessageStoreExpirable(nonReplaceInts, Noop, msgTTL, nil, nil, func(m interface{}) {
+	msgStore := NewMessageStoreExpirable(nonReplaceInts, Noop, msgTTL, nil, nil, func(m any) {
 		expired = append(expired, m.(int))
 	})
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.True(t, msgStore.Add(i), "Adding", i)
 	}
 
@@ -263,19 +263,19 @@ func TestStop(t *testing.T) {
 
 func TestPurge(t *testing.T) {
 	purged := make(chan int, 5)
-	msgStore := NewMessageStore(alwaysNoAction, func(o interface{}) {
+	msgStore := NewMessageStore(alwaysNoAction, func(o any) {
 		purged <- o.(int)
 	})
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.True(t, msgStore.Add(i))
 	}
 	// Purge all numbers greater than 9 - shouldn't do anything
-	msgStore.Purge(func(o interface{}) bool {
+	msgStore.Purge(func(o any) bool {
 		return o.(int) > 9
 	})
 	require.Len(t, msgStore.Get(), 10)
 	// Purge all even numbers
-	msgStore.Purge(func(o interface{}) bool {
+	msgStore.Purge(func(o any) bool {
 		return o.(int)%2 == 0
 	})
 	// Ensure only odd numbers are left

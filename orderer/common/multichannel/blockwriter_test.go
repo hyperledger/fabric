@@ -524,7 +524,7 @@ func testLastConfigBlockNumber(t *testing.T, block *cb.Block, expectedBlockNumbe
 	require.Equal(t, expectedBlockNumber, lastConfig.Index, "LAST_CONFIG value should point to last config block")
 }
 
-func testPanic(f func()) (didPanic bool, message interface{}) {
+func testPanic(f func()) (didPanic bool, message any) {
 	didPanic = true
 
 	defer func() {

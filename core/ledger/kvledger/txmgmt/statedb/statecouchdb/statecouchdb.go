@@ -959,7 +959,7 @@ func applyAdditionalQueryOptions(queryString string, queryLimit int32, queryBook
 	const jsonQueryLimit = "limit"
 	const jsonQueryBookmark = "bookmark"
 	// create a generic map for the query json
-	jsonQueryMap := make(map[string]interface{})
+	jsonQueryMap := make(map[string]any)
 	// unmarshal the selector json into the generic map
 	decoder := json.NewDecoder(bytes.NewBuffer([]byte(queryString)))
 	decoder.UseNumber()
@@ -969,7 +969,7 @@ func applyAdditionalQueryOptions(queryString string, queryLimit int32, queryBook
 	}
 	if fieldsJSONArray, ok := jsonQueryMap[jsonQueryFields]; ok {
 		switch fieldsJSONArray := fieldsJSONArray.(type) {
-		case []interface{}:
+		case []any:
 			// Add the "_id", and "version" fields,  these are needed by default
 			jsonQueryMap[jsonQueryFields] = append(fieldsJSONArray, idField, versionField)
 		default:

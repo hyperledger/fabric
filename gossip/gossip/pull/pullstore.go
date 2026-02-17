@@ -68,7 +68,7 @@ type EgressDigestFilter func(helloMsg protoext.ReceivedMessage) func(digestItem 
 
 // byContext converts this EgressDigFilter to an algo.DigestFilter
 func (df EgressDigestFilter) byContext() algo.DigestFilter {
-	return func(context interface{}) func(digestItem string) bool {
+	return func(context any) func(digestItem string) bool {
 		return func(digestItem string) bool {
 			return df(context.(protoext.ReceivedMessage))(digestItem)
 		}
@@ -283,7 +283,7 @@ func (p *pullMediatorImpl) Hello(dest string, nonce uint64) {
 
 // SendDigest sends a digest to a remote PullEngine.
 // The context parameter specifies the remote engine to send to.
-func (p *pullMediatorImpl) SendDigest(digest []string, nonce uint64, context interface{}) {
+func (p *pullMediatorImpl) SendDigest(digest []string, nonce uint64, context any) {
 	digMsg := &gossip.GossipMessage{
 		Channel: p.config.Channel,
 		Tag:     p.config.Tag,
@@ -363,7 +363,7 @@ func digestsToHex(digests [][]byte) []string {
 }
 
 // SendRes sends an array of items to a remote PullEngine identified by a context.
-func (p *pullMediatorImpl) SendRes(items []string, context interface{}, nonce uint64) {
+func (p *pullMediatorImpl) SendRes(items []string, context any, nonce uint64) {
 	items2return := []*gossip.Envelope{}
 	p.RLock()
 	defer p.RUnlock()

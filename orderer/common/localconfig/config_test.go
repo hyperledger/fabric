@@ -191,7 +191,7 @@ Consensus:
 	require.NotNil(t, conf, "Could not load config")
 
 	consensus := conf.Consensus
-	require.IsType(t, map[string]interface{}{}, consensus, "Expected Consensus to be of type map[string]interface{}")
+	require.IsType(t, map[string]any{}, consensus, "Expected Consensus to be of type map[string]interface{}")
 
 	foo := &struct {
 		Foo   string

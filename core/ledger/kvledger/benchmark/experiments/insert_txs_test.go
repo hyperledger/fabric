@@ -42,7 +42,7 @@ func runInsertClientsForChain(chain *chainmgmt.Chain) {
 	wg := &sync.WaitGroup{}
 	wg.Add(numClients)
 	startKey := 0
-	for i := 0; i < numClients; i++ {
+	for i := range numClients {
 		numKVsForClient := calculateShare(numKVsForChain, numClients, i)
 		endKey := startKey + numKVsForClient - 1
 		go runInsertClient(chain, startKey, endKey, wg)
@@ -61,7 +61,7 @@ func runInsertClient(chain *chainmgmt.Chain, startKey, endKey int, wg *sync.Wait
 	for currentKey <= endKey {
 		simulator, err := chain.NewTxSimulator(util.GenerateUUID())
 		panicOnError(err)
-		for i := 0; i < numWritesPerTx; i++ {
+		for range numWritesPerTx {
 			if useJSON {
 				panicOnError(simulator.SetState(
 					chaincodeName, constructKey(currentKey), constructJSONValue(currentKey, kvSize)))

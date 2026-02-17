@@ -214,7 +214,7 @@ var _ = Describe("Server", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(fakeLogger.WarnCallCount()).To(Equal(1))
-		Expect(fakeLogger.WarnArgsForCall(0)).To(Equal([]interface{}{"key", "value"}))
+		Expect(fakeLogger.WarnArgsForCall(0)).To(Equal([]any{"key", "value"}))
 	})
 
 	Context("when a logger is not provided", func() {

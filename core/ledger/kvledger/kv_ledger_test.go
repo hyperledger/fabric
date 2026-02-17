@@ -1365,7 +1365,7 @@ func testutilCollConfigPkg(colls []*peer.StaticCollectionConfig) *peer.Collectio
 func sampleDataWithPvtdataForSelectiveTx(t *testing.T, bg *testutil.BlockGenerator) []*ledger.BlockAndPvtData {
 	var blockAndpvtdata []*ledger.BlockAndPvtData
 	blocks := bg.NextTestBlocks(10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		blockAndpvtdata = append(blockAndpvtdata, &ledger.BlockAndPvtData{Block: blocks[i]})
 	}
 
@@ -1399,7 +1399,7 @@ func sampleDataWithPvtdataForSelectiveTx(t *testing.T, bg *testutil.BlockGenerat
 func sampleDataWithPvtdataForAllTxs(t *testing.T, bg *testutil.BlockGenerator) []*ledger.BlockAndPvtData {
 	var blockAndpvtdata []*ledger.BlockAndPvtData
 	blocks := bg.NextTestBlocks(10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		blockAndpvtdata = append(blockAndpvtdata,
 			&ledger.BlockAndPvtData{
 				Block:   blocks[i],
