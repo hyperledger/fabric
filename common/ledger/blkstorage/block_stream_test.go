@@ -75,7 +75,7 @@ func testBlockFileStreamUnexpectedEOF(t *testing.T, numBlocks int, partialBlockB
 	defer s.close()
 	require.NoError(t, err, "Error in constructing blockfile stream")
 
-	for i := 0; i < numBlocks; i++ {
+	for range numBlocks {
 		blockBytes, err := s.nextBlockBytes()
 		require.NotNil(t, blockBytes)
 		require.NoError(t, err, "Error in getting next block")
@@ -102,7 +102,7 @@ func testBlockStream(t *testing.T, numFiles int) {
 	numBlocksInEachFile := 10
 	bg, gb := testutil.NewBlockGenerator(t, ledgerID, false)
 	w.addBlocks([]*common.Block{gb})
-	for i := 0; i < numFiles; i++ {
+	for i := range numFiles {
 		numBlocks := numBlocksInEachFile
 		if i == 0 {
 			// genesis block already added so adding one less block

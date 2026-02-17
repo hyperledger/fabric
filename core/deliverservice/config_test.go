@@ -8,7 +8,6 @@ package deliverservice_test
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -27,10 +26,10 @@ func TestSecureOptsConfig(t *testing.T) {
 	certPath := filepath.Join(cwd, "testdata", "cert.pem")
 	keyPath := filepath.Join(cwd, "testdata", "key.pem")
 
-	certBytes, err := ioutil.ReadFile(filepath.Join("testdata", "cert.pem"))
+	certBytes, err := os.ReadFile(filepath.Join("testdata", "cert.pem"))
 	require.NoError(t, err)
 
-	keyBytes, err := ioutil.ReadFile(filepath.Join("testdata", "key.pem"))
+	keyBytes, err := os.ReadFile(filepath.Join("testdata", "key.pem"))
 	require.NoError(t, err)
 
 	t.Run("client specific cert", func(t *testing.T) {

@@ -106,7 +106,7 @@ func (ar AggregatedSendResult) String() string {
 	}
 
 	ackCount := ar.AckCount()
-	output := map[string]interface{}{}
+	output := map[string]any{}
 	if ackCount > 0 {
 		output["successes"] = ackCount
 	}

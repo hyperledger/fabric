@@ -8,7 +8,6 @@ package node
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"testing"
@@ -30,7 +29,7 @@ func TestStartCmd(t *testing.T) {
 	defer viper.Reset()
 	g := NewGomegaWithT(t)
 
-	tempDir, err := ioutil.TempDir("", "startcmd")
+	tempDir, err := os.MkdirTemp("", "startcmd")
 	g.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 

@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package devmode
 
 import (
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -42,7 +41,7 @@ var _ = Describe("Devmode", func() {
 	BeforeEach(func() {
 		var err error
 		channelName = "testchannel"
-		testDir, err = ioutil.TempDir("", "devmode")
+		testDir, err = os.MkdirTemp("", "devmode")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = dcli.New(dcli.FromEnv)

@@ -55,35 +55,35 @@ func NewFabricLogger(l *zap.Logger, options ...zap.Option) *FabricLogger {
 // change, arguments are not separated by spaces.
 type FabricLogger struct{ s *zap.SugaredLogger }
 
-func (f *FabricLogger) DPanic(args ...interface{})                    { f.s.DPanicf(formatArgs(args)) }
-func (f *FabricLogger) DPanicf(template string, args ...interface{})  { f.s.DPanicf(template, args...) }
-func (f *FabricLogger) DPanicw(msg string, kvPairs ...interface{})    { f.s.DPanicw(msg, kvPairs...) }
-func (f *FabricLogger) Debug(args ...interface{})                     { f.s.Debug(formatArgs(args)) }
-func (f *FabricLogger) Debugf(template string, args ...interface{})   { f.s.Debugf(template, args...) }
-func (f *FabricLogger) Debugw(msg string, kvPairs ...interface{})     { f.s.Debugw(msg, kvPairs...) }
-func (f *FabricLogger) Error(args ...interface{})                     { f.s.Error(formatArgs(args)) }
-func (f *FabricLogger) Errorf(template string, args ...interface{})   { f.s.Errorf(template, args...) }
-func (f *FabricLogger) Errorw(msg string, kvPairs ...interface{})     { f.s.Errorw(msg, kvPairs...) }
-func (f *FabricLogger) Fatal(args ...interface{})                     { f.s.Fatal(formatArgs(args)) }
-func (f *FabricLogger) Fatalf(template string, args ...interface{})   { f.s.Fatalf(template, args...) }
-func (f *FabricLogger) Fatalw(msg string, kvPairs ...interface{})     { f.s.Fatalw(msg, kvPairs...) }
-func (f *FabricLogger) Info(args ...interface{})                      { f.s.Info(formatArgs(args)) }
-func (f *FabricLogger) Infof(template string, args ...interface{})    { f.s.Infof(template, args...) }
-func (f *FabricLogger) Infow(msg string, kvPairs ...interface{})      { f.s.Infow(msg, kvPairs...) }
-func (f *FabricLogger) Panic(args ...interface{})                     { f.s.Panic(formatArgs(args)) }
-func (f *FabricLogger) Panicf(template string, args ...interface{})   { f.s.Panicf(template, args...) }
-func (f *FabricLogger) Panicw(msg string, kvPairs ...interface{})     { f.s.Panicw(msg, kvPairs...) }
-func (f *FabricLogger) Warn(args ...interface{})                      { f.s.Warnf(formatArgs(args)) }
-func (f *FabricLogger) Warnf(template string, args ...interface{})    { f.s.Warnf(template, args...) }
-func (f *FabricLogger) Warnw(msg string, kvPairs ...interface{})      { f.s.Warnw(msg, kvPairs...) }
-func (f *FabricLogger) Warning(args ...interface{})                   { f.s.Warnf(formatArgs(args)) }
-func (f *FabricLogger) Warningf(template string, args ...interface{}) { f.s.Warnf(template, args...) }
+func (f *FabricLogger) DPanic(args ...any)                    { f.s.DPanicf(formatArgs(args)) }
+func (f *FabricLogger) DPanicf(template string, args ...any)  { f.s.DPanicf(template, args...) }
+func (f *FabricLogger) DPanicw(msg string, kvPairs ...any)    { f.s.DPanicw(msg, kvPairs...) }
+func (f *FabricLogger) Debug(args ...any)                     { f.s.Debug(formatArgs(args)) }
+func (f *FabricLogger) Debugf(template string, args ...any)   { f.s.Debugf(template, args...) }
+func (f *FabricLogger) Debugw(msg string, kvPairs ...any)     { f.s.Debugw(msg, kvPairs...) }
+func (f *FabricLogger) Error(args ...any)                     { f.s.Error(formatArgs(args)) }
+func (f *FabricLogger) Errorf(template string, args ...any)   { f.s.Errorf(template, args...) }
+func (f *FabricLogger) Errorw(msg string, kvPairs ...any)     { f.s.Errorw(msg, kvPairs...) }
+func (f *FabricLogger) Fatal(args ...any)                     { f.s.Fatal(formatArgs(args)) }
+func (f *FabricLogger) Fatalf(template string, args ...any)   { f.s.Fatalf(template, args...) }
+func (f *FabricLogger) Fatalw(msg string, kvPairs ...any)     { f.s.Fatalw(msg, kvPairs...) }
+func (f *FabricLogger) Info(args ...any)                      { f.s.Info(formatArgs(args)) }
+func (f *FabricLogger) Infof(template string, args ...any)    { f.s.Infof(template, args...) }
+func (f *FabricLogger) Infow(msg string, kvPairs ...any)      { f.s.Infow(msg, kvPairs...) }
+func (f *FabricLogger) Panic(args ...any)                     { f.s.Panic(formatArgs(args)) }
+func (f *FabricLogger) Panicf(template string, args ...any)   { f.s.Panicf(template, args...) }
+func (f *FabricLogger) Panicw(msg string, kvPairs ...any)     { f.s.Panicw(msg, kvPairs...) }
+func (f *FabricLogger) Warn(args ...any)                      { f.s.Warnf(formatArgs(args)) }
+func (f *FabricLogger) Warnf(template string, args ...any)    { f.s.Warnf(template, args...) }
+func (f *FabricLogger) Warnw(msg string, kvPairs ...any)      { f.s.Warnw(msg, kvPairs...) }
+func (f *FabricLogger) Warning(args ...any)                   { f.s.Warnf(formatArgs(args)) }
+func (f *FabricLogger) Warningf(template string, args ...any) { f.s.Warnf(template, args...) }
 
 // for backwards compatibility
-func (f *FabricLogger) Critical(args ...interface{})                   { f.s.Error(formatArgs(args)) }
-func (f *FabricLogger) Criticalf(template string, args ...interface{}) { f.s.Errorf(template, args...) }
-func (f *FabricLogger) Notice(args ...interface{})                     { f.s.Info(formatArgs(args)) }
-func (f *FabricLogger) Noticef(template string, args ...interface{})   { f.s.Infof(template, args...) }
+func (f *FabricLogger) Critical(args ...any)                   { f.s.Error(formatArgs(args)) }
+func (f *FabricLogger) Criticalf(template string, args ...any) { f.s.Errorf(template, args...) }
+func (f *FabricLogger) Notice(args ...any)                     { f.s.Info(formatArgs(args)) }
+func (f *FabricLogger) Noticef(template string, args ...any)   { f.s.Infof(template, args...) }
 
 func (f *FabricLogger) Named(name string) *FabricLogger { return &FabricLogger{s: f.s.Named(name)} }
 func (f *FabricLogger) Sync() error                     { return f.s.Sync() }
@@ -93,7 +93,7 @@ func (f *FabricLogger) IsEnabledFor(level zapcore.Level) bool {
 	return f.s.Desugar().Core().Enabled(level)
 }
 
-func (f *FabricLogger) With(args ...interface{}) *FabricLogger {
+func (f *FabricLogger) With(args ...any) *FabricLogger {
 	return &FabricLogger{s: f.s.With(args...)}
 }
 
@@ -102,4 +102,4 @@ func (f *FabricLogger) WithOptions(opts ...zap.Option) *FabricLogger {
 	return &FabricLogger{s: l.Sugar()}
 }
 
-func formatArgs(args []interface{}) string { return strings.TrimSuffix(fmt.Sprintln(args...), "\n") }
+func formatArgs(args []any) string { return strings.TrimSuffix(fmt.Sprintln(args...), "\n") }

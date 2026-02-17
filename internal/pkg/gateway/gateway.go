@@ -46,7 +46,7 @@ type CommitFinder interface {
 }
 
 type ACLChecker interface {
-	CheckACL(policyName string, channelName string, data interface{}) error
+	CheckACL(policyName string, channelName string, data any) error
 }
 
 // CreateServer creates an embedded instance of the Gateway.

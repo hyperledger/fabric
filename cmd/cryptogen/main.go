@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"text/template"
@@ -241,14 +240,14 @@ func getConfig() (*Config, error) {
 	var configData string
 
 	if *genConfigFile != nil {
-		data, err := ioutil.ReadAll(*genConfigFile)
+		data, err := io.ReadAll(*genConfigFile)
 		if err != nil {
 			return nil, fmt.Errorf("Error reading configuration: %s", err)
 		}
 
 		configData = string(data)
 	} else if *extConfigFile != nil {
-		data, err := ioutil.ReadAll(*extConfigFile)
+		data, err := io.ReadAll(*extConfigFile)
 		if err != nil {
 			return nil, fmt.Errorf("Error reading configuration: %s", err)
 		}
@@ -405,7 +404,7 @@ func generate() {
 	}
 }
 
-func parseTemplate(input string, data interface{}) (string, error) {
+func parseTemplate(input string, data any) (string, error) {
 	t, err := template.New("parse").Parse(input)
 	if err != nil {
 		return "", fmt.Errorf("Error parsing template: %s", err)
@@ -420,7 +419,7 @@ func parseTemplate(input string, data interface{}) (string, error) {
 	return output.String(), nil
 }
 
-func parseTemplateWithDefault(input, defaultInput string, data interface{}) (string, error) {
+func parseTemplateWithDefault(input, defaultInput string, data any) (string, error) {
 	// Use the default if the input is an empty string
 	if len(input) == 0 {
 		input = defaultInput

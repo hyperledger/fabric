@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -98,10 +97,7 @@ func (l *kvLedger) generateSnapshot() error {
 		return err
 	}
 	lastBlockNum := bcInfo.Height - 1
-	snapshotTempDir, err := ioutil.TempDir(
-		SnapshotsTempDirPath(snapshotsRootDir),
-		fmt.Sprintf("%s-%d-", l.ledgerID, lastBlockNum),
-	)
+	snapshotTempDir, err := os.MkdirTemp(SnapshotsTempDirPath(snapshotsRootDir), fmt.Sprintf("%s-%d-", l.ledgerID, lastBlockNum))
 	if err != nil {
 		return errors.Wrapf(err, "error while creating temp dir [%s]", snapshotTempDir)
 	}
@@ -351,12 +347,12 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, st
 
 func loadSnapshotMetadataJSONs(snapshotDir string) (*SnapshotMetadataJSONs, error) {
 	signableMetadataFilePath := filepath.Join(snapshotDir, SnapshotSignableMetadataFileName)
-	signableMetadataBytes, err := ioutil.ReadFile(signableMetadataFilePath)
+	signableMetadataBytes, err := os.ReadFile(signableMetadataFilePath)
 	if err != nil {
 		return nil, err
 	}
 	additionalMetadataFilePath := filepath.Join(snapshotDir, snapshotAdditionalMetadataFileName)
-	additionalMetadataBytes, err := ioutil.ReadFile(additionalMetadataFilePath)
+	additionalMetadataBytes, err := os.ReadFile(additionalMetadataFilePath)
 	if err != nil {
 		return nil, err
 	}

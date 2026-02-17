@@ -125,7 +125,7 @@ func main() {
 			s := newBroadcastClient(client, channelID, signer)
 			done := make(chan (struct{}))
 			go func() {
-				for i := uint64(0); i < msgsPerGo; i++ {
+				for range msgsPerGo {
 					err = s.getAck()
 					if err == nil && bar != nil {
 						bar.Increment()
@@ -136,7 +136,7 @@ func main() {
 				}
 				close(done)
 			}()
-			for i := uint64(0); i < msgsPerGo; i++ {
+			for range msgsPerGo {
 				if err := s.broadcast(msgData); err != nil {
 					panic(err)
 				}

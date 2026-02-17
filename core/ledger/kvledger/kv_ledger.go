@@ -1162,7 +1162,7 @@ func constructPvtDataAndMissingData(blockAndPvtData *ledger.BlockAndPvtData) ([]
 
 	numTxs := uint64(len(blockAndPvtData.Block.Data.Data))
 
-	for txNum := uint64(0); txNum < numTxs; txNum++ {
+	for txNum := range numTxs {
 		if pvtdata, ok := blockAndPvtData.PvtData[txNum]; ok {
 			pvtData = append(pvtData, pvtdata)
 		}

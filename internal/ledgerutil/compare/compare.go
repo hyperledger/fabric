@@ -13,7 +13,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -311,7 +310,7 @@ func (s *firstRecords) addRecord(r *diffRecord) {
 func (s *firstRecords) getAllRecords() []*diffRecord {
 	n := len(*s.records)
 	t := make([]*diffRecord, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		r := heap.Pop(s.records)
 		t[n-i-1] = r.(*diffRecord)
 	}
@@ -333,11 +332,11 @@ func (s diffRecordHeap) Less(i, j int) bool {
 	return !(s[i]).earlierThan(s[j])
 }
 
-func (s *diffRecordHeap) Push(x interface{}) {
+func (s *diffRecordHeap) Push(x any) {
 	*s = append(*s, x.(*diffRecord))
 }
 
-func (s *diffRecordHeap) Pop() interface{} {
+func (s *diffRecordHeap) Pop() any {
 	popped := (*s)[len(*s)-1]
 	*s = (*s)[0 : len(*s)-1]
 	return popped
@@ -493,7 +492,7 @@ func readMetadata(fpath string) (*kvledger.SnapshotSignableMetadata, error) {
 	var mdata kvledger.SnapshotSignableMetadata
 
 	// Open file
-	f, err := ioutil.ReadFile(fpath)
+	f, err := os.ReadFile(fpath)
 	if err != nil {
 		return nil, err
 	}
@@ -590,7 +589,7 @@ func newJSONFileWriter(filePath string, ledgerid string) (*jsonArrayFileWriter, 
 	}, nil
 }
 
-func (w *jsonArrayFileWriter) addRecord(r interface{}) error {
+func (w *jsonArrayFileWriter) addRecord(r any) error {
 	// Add commas for records after the first in the list
 	if w.firstRecordWritten {
 		_, err := w.buffer.Write([]byte(",\n"))

@@ -8,6 +8,7 @@ package blkstorage
 
 import (
 	"os"
+	"slices"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
@@ -44,12 +45,7 @@ type SnapshotInfo struct {
 
 // Contains returns true iff the supplied parameter is present in the IndexConfig.AttrsToIndex
 func (c *IndexConfig) Contains(indexableAttr IndexableAttr) bool {
-	for _, a := range c.AttrsToIndex {
-		if a == indexableAttr {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(c.AttrsToIndex, indexableAttr)
 }
 
 // BlockStoreProvider provides handle to block storage - this is not thread-safe

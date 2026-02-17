@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package jsonrw
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -35,7 +34,7 @@ func TestOutputFileToString(t *testing.T) {
 	for testName, testCase := range testCases {
 		t.Run(testName, func(t *testing.T) {
 			// Temporary directory
-			outputDir, err := ioutil.TempDir("", "result")
+			outputDir, err := os.MkdirTemp("", "result")
 			require.NoError(t, err)
 			defer os.RemoveAll(outputDir)
 

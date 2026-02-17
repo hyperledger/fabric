@@ -96,7 +96,7 @@ func (parser *PeerResponseParser) ParseResponse(channel string, res ServiceRespo
 	return nil
 }
 
-func assemblePeers(peers []*discovery.Peer, withChannelState bool) interface{} {
+func assemblePeers(peers []*discovery.Peer, withChannelState bool) any {
 	if withChannelState {
 		var peerSlices []channelPeer
 		for _, p := range peers {

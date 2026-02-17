@@ -9,7 +9,7 @@ package kafka
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"syscall"
@@ -32,7 +32,7 @@ var _ = Describe("Kafka Health", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "kafka-health")
+		testDir, err = os.MkdirTemp("", "kafka-health")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = dcli.New(dcli.FromEnv)
@@ -156,7 +156,7 @@ func doHealthCheck(client *http.Client, url string) (int, *healthz.HealthStatus)
 	resp, err := client.Get(url)
 	Expect(err).NotTo(HaveOccurred())
 
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(resp.Body)
 	Expect(err).NotTo(HaveOccurred())
 	resp.Body.Close()
 

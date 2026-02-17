@@ -64,7 +64,7 @@ func (m *chainsMgr) createOrOpenChains() []*Chain {
 	numChains := m.mgrConf.NumChains
 	switch m.initOp {
 	case ChainInitOpCreate:
-		for i := 0; i < numChains; i++ {
+		for i := range numChains {
 			chainID := ChainID(i)
 			ledgerID := chainID.String()
 			gb, err := test.MakeGenesisBlock(ledgerID)
@@ -76,7 +76,7 @@ func (m *chainsMgr) createOrOpenChains() []*Chain {
 		}
 
 	case ChainInitOpOpen:
-		for i := 0; i < numChains; i++ {
+		for i := range numChains {
 			chainID := ChainID(i)
 			peerLedger, err := m.ledgerMgr.OpenLedger(chainID.String())
 			panicOnError(err)

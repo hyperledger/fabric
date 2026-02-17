@@ -8,7 +8,7 @@ package kvledger
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -23,7 +23,7 @@ import (
 // TestBackwardCompatibilityRWSetV21 is added to protect against any changes in the hash function
 // that is used in preparing the rwset that includes a merkle tree for the range query
 func TestBackwardCompatibilityRWSetV21(t *testing.T) {
-	rwsetBytes, err := ioutil.ReadFile("testdata/rwsetbytes_v21")
+	rwsetBytes, err := os.ReadFile("testdata/rwsetbytes_v21")
 	require.NoError(t, err)
 	b := testGenerateSampleRWSet(t)
 	require.Equal(t, rwsetBytes, b)
@@ -35,7 +35,7 @@ func TestBackwardCompatibilityRWSetV21(t *testing.T) {
 // and uncomment and run the following test
 // func TestGenerateSampleRWSet(t *testing.T) {
 // 	b := testGenerateSampleRWSet(t)
-// 	require.NoError(t, ioutil.WriteFile("testdata/rwsetbytes_v21", b, 0644))
+// 	require.NoError(t, os.WriteFile("testdata/rwsetbytes_v21", b, 0644))
 // }
 
 func testGenerateSampleRWSet(t *testing.T) []byte {
@@ -62,8 +62,8 @@ func testGenerateSampleRWSet(t *testing.T) []byte {
 	// each level contains max 50 nodes per the current configuration
 	simulator, err := ledger.NewTxSimulator(txid)
 	require.NoError(t, err)
-	for i := 0; i < 10011; i++ {
-		require.NoError(t, simulator.SetState("ns1", fmt.Sprintf("key-%000d", i), []byte(fmt.Sprintf("value-%000d", i))))
+	for i := range 10011 {
+		require.NoError(t, simulator.SetState("ns1", fmt.Sprintf("key-%000d", i), fmt.Appendf(nil, "value-%000d", i)))
 	}
 	simulator.Done()
 	simRes, err := simulator.GetTxSimulationResults()
@@ -77,7 +77,7 @@ func testGenerateSampleRWSet(t *testing.T) []byte {
 	require.NoError(t, err)
 	_, err = simulator.GetState("ns1", fmt.Sprintf("key-%000d", 5))
 	require.NoError(t, err)
-	require.NoError(t, simulator.SetState("ns1", fmt.Sprintf("key-%000d", 6), []byte(fmt.Sprintf("value-%000d-new", 6))))
+	require.NoError(t, simulator.SetState("ns1", fmt.Sprintf("key-%000d", 6), fmt.Appendf(nil, "value-%000d-new", 6)))
 	itr, err := simulator.GetStateRangeScanIterator("ns1", "", "")
 	require.NoError(t, err)
 	numKVs := 0

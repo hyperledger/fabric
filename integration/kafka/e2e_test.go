@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package kafka
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -32,7 +31,7 @@ var _ = Describe("basic kafka network with 2 orgs", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "kafka-e2e")
+		testDir, err = os.MkdirTemp("", "kafka-e2e")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = dcli.New(dcli.FromEnv)

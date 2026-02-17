@@ -8,7 +8,6 @@ package chaincode_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -45,7 +44,7 @@ var _ = Describe("GetInstalledPackage", func() {
 			mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
 
 			var err error
-			testDir, err = ioutil.TempDir("", "getinstalledpackage-test")
+			testDir, err = os.MkdirTemp("", "getinstalledpackage-test")
 			Expect(err).NotTo(HaveOccurred())
 			input = &chaincode.GetInstalledPackageInput{
 				PackageID:       "pkgFile",

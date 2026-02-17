@@ -35,7 +35,7 @@ var _ = Describe("This is the thing", func() {
 
 	Context("when the wrong labels are provided", func() {
 		It("panics", func() {
-			recovered := func() (recovered interface{}) {
+			recovered := func() (recovered any) {
 				defer func() { recovered = recover() }()
 				n.Format("charlie", "c", "delta", "d")
 				return
@@ -50,7 +50,7 @@ var _ = Describe("This is the thing", func() {
 		})
 
 		It("panics", func() {
-			recovered := func() (recovered interface{}) {
+			recovered := func() (recovered any) {
 				defer func() { recovered = recover() }()
 				n.Format("alpha", "a", "bravo", "b")
 				return

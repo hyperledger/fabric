@@ -24,7 +24,7 @@ var logger = flogging.MustGetLogger("core.handlers")
 type Registry interface {
 	// Lookup returns a handler with a given
 	// registered name, or nil if does not exist
-	Lookup(HandlerType) interface{}
+	Lookup(HandlerType) any
 }
 
 // HandlerType defines custom handlers that can filter and mutate
@@ -127,7 +127,7 @@ func (r *registry) loadCompiled(handlerFactory string, handlerType HandlerType, 
 
 // Lookup returns a list of handlers with the given
 // type, or nil if none exist
-func (r *registry) Lookup(handlerType HandlerType) interface{} {
+func (r *registry) Lookup(handlerType HandlerType) any {
 	if handlerType == Auth {
 		return r.filters
 	} else if handlerType == Decoration {

@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package rwsetutil
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
@@ -22,7 +22,7 @@ const kvrwsetV1ProtoBytesFile = "testdata/kvrwsetV1ProtoBytes"
 // is able to unmarshal the protobytes that are produced by the 'KVRWSet' proto message declared in
 // v1.0. This is to make sure that any incompatible changes does not go uncaught.
 func TestKVRWSetV1BackwardCompatible(t *testing.T) {
-	protoBytes, err := ioutil.ReadFile(kvrwsetV1ProtoBytesFile)
+	protoBytes, err := os.ReadFile(kvrwsetV1ProtoBytesFile)
 	require.NoError(t, err)
 	kvrwset1 := &kvrwset.KVRWSet{}
 	require.NoError(t, proto.Unmarshal(protoBytes, kvrwset1))
@@ -38,7 +38,7 @@ func TestKVRWSetV1BackwardCompatible(t *testing.T) {
 func PrepareBinaryFileSampleKVRWSetV1(t *testing.T) {
 	b, err := proto.Marshal(constructSampleKVRWSet())
 	require.NoError(t, err)
-	require.NoError(t, ioutil.WriteFile(kvrwsetV1ProtoBytesFile, b, 0o644))
+	require.NoError(t, os.WriteFile(kvrwsetV1ProtoBytesFile, b, 0o644))
 }
 
 func constructSampleKVRWSet() *kvrwset.KVRWSet {

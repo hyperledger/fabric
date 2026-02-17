@@ -8,7 +8,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
@@ -30,7 +29,7 @@ func TestPluginLoadingFailure(t *testing.T) {
 	parentDir, err := filepath.Abs("../..")
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	tempDir, err := ioutil.TempDir("", "plugin-failure")
+	tempDir, err := os.MkdirTemp("", "plugin-failure")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
@@ -57,7 +56,6 @@ func TestPluginLoadingFailure(t *testing.T) {
 		"ENDORSERS_ESCC",
 		"VALIDATORS_VSCC",
 	} {
-		plugin := plugin
 		t.Run(plugin, func(t *testing.T) {
 			cmd := exec.Command(peer, "node", "start")
 			cmd.Env = []string{

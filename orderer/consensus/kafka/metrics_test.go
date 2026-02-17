@@ -114,7 +114,7 @@ var _ = Describe("Metrics", func() {
 			fakeCompressionRatioHistogram.SnapshotReturns(fakeCompressionRatioHistogram)
 			fakeCompressionRatioHistogram.MeanReturns(11)
 
-			fakeMetricsRegistry.EachStub = func(receiver func(name string, value interface{})) {
+			fakeMetricsRegistry.EachStub = func(receiver func(name string, value any)) {
 				receiver("incoming-byte-rate-for-broker-0", fakeIncomingByteRateMeter)
 				receiver("incoming-byte-rate-for-broker-1", fakeIncomingByteRateMeter)
 				receiver("outgoing-byte-rate-for-broker-0", fakeOutgoingByteRateMeter)
@@ -246,7 +246,7 @@ var _ = Describe("Metrics", func() {
 
 			BeforeEach(func() {
 				fakeMeter = &mock.MetricsMeter{}
-				fakeMetricsRegistry.EachStub = func(receiver func(name string, value interface{})) {
+				fakeMetricsRegistry.EachStub = func(receiver func(name string, value any)) {
 					receiver("unknown-metric-name", fakeMeter)
 					receiver("another-unknown-metric", fakeMeter)
 				}
@@ -275,7 +275,7 @@ var _ = Describe("Metrics", func() {
 
 			BeforeEach(func() {
 				fakeMeter = &mock.MetricsMeter{}
-				fakeMetricsRegistry.EachStub = func(receiver func(name string, value interface{})) {
+				fakeMetricsRegistry.EachStub = func(receiver func(name string, value any)) {
 					receiver("request-size-for-broker-0", fakeMeter)
 				}
 			})
@@ -292,7 +292,7 @@ var _ = Describe("Metrics", func() {
 
 			BeforeEach(func() {
 				fakeHistogram = &mock.MetricsHistogram{}
-				fakeMetricsRegistry.EachStub = func(receiver func(name string, value interface{})) {
+				fakeMetricsRegistry.EachStub = func(receiver func(name string, value any)) {
 					receiver("incoming-byte-rate-for-broker-0", fakeHistogram)
 				}
 			})
@@ -313,7 +313,7 @@ var _ = Describe("Metrics", func() {
 		)
 
 		BeforeEach(func() {
-			fakeMetricsRegistry.EachStub = func(func(string, interface{})) {
+			fakeMetricsRegistry.EachStub = func(func(string, any)) {
 				iterations++
 				if iterations > 5 {
 					close(stopChannel)

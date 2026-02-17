@@ -5,7 +5,6 @@ package localconfig
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -83,7 +82,7 @@ func TestLoadMissingConfigFile(t *testing.T) {
 }
 
 func TestLoadMalformedConfigFile(t *testing.T) {
-	name, err := ioutil.TempDir("", "hyperledger_fabric")
+	name, err := os.MkdirTemp("", "hyperledger_fabric")
 	require.Nil(t, err, "Error creating temp dir: %s", err)
 	defer func() {
 		err = os.RemoveAll(name)
@@ -235,7 +234,7 @@ func TestClusterDefaults(t *testing.T) {
 }
 
 func TestConsensusConfig(t *testing.T) {
-	name, err := ioutil.TempDir("", "hyperledger_fabric")
+	name, err := os.MkdirTemp("", "hyperledger_fabric")
 	require.Nil(t, err, "Error creating temp dir: %s", err)
 	defer func() {
 		err = os.RemoveAll(name)
@@ -265,7 +264,7 @@ Consensus:
 	require.NotNil(t, conf, "Could not load config")
 
 	consensus := conf.Consensus
-	require.IsType(t, map[string]interface{}{}, consensus, "Expected Consensus to be of type map[string]interface{}")
+	require.IsType(t, map[string]any{}, consensus, "Expected Consensus to be of type map[string]interface{}")
 
 	foo := &struct {
 		Foo   string

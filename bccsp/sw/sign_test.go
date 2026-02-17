@@ -36,7 +36,7 @@ func TestSign(t *testing.T) {
 	expectedErr := errors.New("Expected Error")
 
 	signers := make(map[reflect.Type]Signer)
-	signers[reflect.TypeOf(&mocks2.MockKey{})] = &mocks.Signer{
+	signers[reflect.TypeFor[*mocks2.MockKey]()] = &mocks.Signer{
 		KeyArg:    expectedKey,
 		DigestArg: expectetDigest,
 		OptsArg:   expectedOpts,
@@ -49,7 +49,7 @@ func TestSign(t *testing.T) {
 	require.Nil(t, err)
 
 	signers = make(map[reflect.Type]Signer)
-	signers[reflect.TypeOf(&mocks2.MockKey{})] = &mocks.Signer{
+	signers[reflect.TypeFor[*mocks2.MockKey]()] = &mocks.Signer{
 		KeyArg:    expectedKey,
 		DigestArg: expectetDigest,
 		OptsArg:   expectedOpts,

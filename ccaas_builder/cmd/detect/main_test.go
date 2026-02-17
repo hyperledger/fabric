@@ -7,19 +7,17 @@ SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
-	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
-	"github.com/onsi/gomega/gexec"
-
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"testing"
 	"time"
+
+	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/gexec"
 )
 
 func TestArugments(t *testing.T) {
-
 	testCases := map[string]struct {
 		exitCode int
 		args     []string
@@ -61,7 +59,7 @@ func TestArugments(t *testing.T) {
 func TestMissingFile(t *testing.T) {
 	gt := NewWithT(t)
 
-	testPath, err := ioutil.TempDir("", "empty-test-dir")
+	testPath, err := os.MkdirTemp("", "empty-test-dir")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(testPath)
 

@@ -8,7 +8,6 @@ package ledger
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -60,7 +59,7 @@ var _ = Describe("CouchDB indexes", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "ledger")
+		testDir, err = os.MkdirTemp("", "ledger")
 		Expect(err).NotTo(HaveOccurred())
 		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())

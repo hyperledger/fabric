@@ -8,7 +8,6 @@ package fileutil
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -118,7 +117,7 @@ func DirExists(path string) (bool, error) {
 // ListSubdirs returns the subdirectories
 func ListSubdirs(dirPath string) ([]string, error) {
 	subdirs := []string{}
-	files, err := ioutil.ReadDir(dirPath)
+	files, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading dir %s", dirPath)
 	}
@@ -133,7 +132,7 @@ func ListSubdirs(dirPath string) ([]string, error) {
 // RemoveContents removes all the files and subdirs under the specified directory.
 // It returns nil if the specified directory does not exist.
 func RemoveContents(dir string) error {
-	contents, err := ioutil.ReadDir(dir)
+	contents, err := os.ReadDir(dir)
 	if os.IsNotExist(err) {
 		return nil
 	}

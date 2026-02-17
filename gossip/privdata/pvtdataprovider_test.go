@@ -8,7 +8,6 @@ package privdata
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sort"
 	"testing"
@@ -75,7 +74,7 @@ func TestRetrievePvtdata(t *testing.T) {
 	}
 	endorser := protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
 		Mspid:   identity.GetMSPIdentifier(),
-		IdBytes: []byte(fmt.Sprintf("p0%s", identity.GetMSPIdentifier())),
+		IdBytes: fmt.Appendf(nil, "p0%s", identity.GetMSPIdentifier()),
 	})
 
 	ts := testSupport{
@@ -848,7 +847,7 @@ func TestRetrievePvtdataFailure(t *testing.T) {
 	}
 	endorser := protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
 		Mspid:   identity.GetMSPIdentifier(),
-		IdBytes: []byte(fmt.Sprintf("p0%s", identity.GetMSPIdentifier())),
+		IdBytes: fmt.Appendf(nil, "p0%s", identity.GetMSPIdentifier()),
 	})
 
 	ts := testSupport{
@@ -908,7 +907,7 @@ func TestRetryFetchFromPeer(t *testing.T) {
 	}
 	endorser := protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
 		Mspid:   identity.GetMSPIdentifier(),
-		IdBytes: []byte(fmt.Sprintf("p0%s", identity.GetMSPIdentifier())),
+		IdBytes: fmt.Appendf(nil, "p0%s", identity.GetMSPIdentifier()),
 	})
 
 	ts := testSupport{
@@ -923,7 +922,7 @@ func TestRetryFetchFromPeer(t *testing.T) {
 	ns1c1 := collectionPvtdataInfoFromTemplate("ns1", "c1", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
 	ns1c2 := collectionPvtdataInfoFromTemplate("ns1", "c2", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
 
-	tempdir, err := ioutil.TempDir("", "ts")
+	tempdir, err := os.MkdirTemp("", "ts")
 	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
 	storeProvider, err := transientstore.NewStoreProvider(tempdir)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
@@ -1003,7 +1002,7 @@ func TestSkipPullingAllInvalidTransactions(t *testing.T) {
 	}
 	endorser := protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
 		Mspid:   identity.GetMSPIdentifier(),
-		IdBytes: []byte(fmt.Sprintf("p0%s", identity.GetMSPIdentifier())),
+		IdBytes: fmt.Appendf(nil, "p0%s", identity.GetMSPIdentifier()),
 	})
 
 	ts := testSupport{
@@ -1018,7 +1017,7 @@ func TestSkipPullingAllInvalidTransactions(t *testing.T) {
 	ns1c1 := collectionPvtdataInfoFromTemplate("ns1", "c1", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
 	ns1c2 := collectionPvtdataInfoFromTemplate("ns1", "c2", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
 
-	tempdir, err := ioutil.TempDir("", "ts")
+	tempdir, err := os.MkdirTemp("", "ts")
 	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
 	storeProvider, err := transientstore.NewStoreProvider(tempdir)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
@@ -1105,7 +1104,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 	}
 	endorser := protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
 		Mspid:   identity.GetMSPIdentifier(),
-		IdBytes: []byte(fmt.Sprintf("p0%s", identity.GetMSPIdentifier())),
+		IdBytes: fmt.Appendf(nil, "p0%s", identity.GetMSPIdentifier()),
 	})
 
 	ts := testSupport{
@@ -1119,7 +1118,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 
 	ns1c1 := collectionPvtdataInfoFromTemplate("ns1", "c1", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
 
-	tempdir, err := ioutil.TempDir("", "ts")
+	tempdir, err := os.MkdirTemp("", "ts")
 	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
 	storeProvider, err := transientstore.NewStoreProvider(tempdir)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
@@ -1130,7 +1129,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 
 	// set up store with 9 existing private data write sets
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		txID := fmt.Sprintf("tx%d", i+1)
 		store.Persist(txID, uint64(i), &tspb.TxPvtReadWriteSetWithConfigInfo{
 			PvtRwset: &rwset.TxPvtReadWriteSet{
@@ -1260,7 +1259,7 @@ func testRetrievePvtdataSuccess(t *testing.T,
 	expectedBlockPvtdata *ledger.BlockPvtdata) {
 	fmt.Println("\n" + scenario)
 
-	tempdir, err := ioutil.TempDir("", "ts")
+	tempdir, err := os.MkdirTemp("", "ts")
 	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
 	storeProvider, err := transientstore.NewStoreProvider(tempdir)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
@@ -1298,7 +1297,7 @@ func testRetrievePvtdataFailure(t *testing.T,
 	expectedErr string) {
 	fmt.Println("\n" + scenario)
 
-	tempdir, err := ioutil.TempDir("", "ts")
+	tempdir, err := os.MkdirTemp("", "ts")
 	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
 	storeProvider, err := transientstore.NewStoreProvider(tempdir)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))

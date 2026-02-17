@@ -9,7 +9,6 @@ package kafka
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,7 +47,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "kafka2raft-migration")
+		testDir, err = os.MkdirTemp("", "kafka2raft-migration")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = dcli.New(dcli.FromEnv)
@@ -670,7 +669,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			extendNetwork(network)
 
 			fourthOrdererCertificatePath := filepath.Join(network.OrdererLocalTLSDir(o4), "server.crt")
-			fourthOrdererCertificate, err := ioutil.ReadFile(fourthOrdererCertificatePath)
+			fourthOrdererCertificate, err := os.ReadFile(fourthOrdererCertificatePath)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Adding the fourth orderer to the system channel")
@@ -685,7 +684,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			// Get the last config block of the system channel
 			configBlock := nwo.GetConfigBlock(network, peer, o1, "systemchannel")
 			// Plant it in the file system of orderer4, the new node to be onboarded.
-			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0o644)
+			err = os.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Launching the fourth orderer")
@@ -897,7 +896,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			extendNetwork(network)
 
 			secondOrdererCertificatePath := filepath.Join(network.OrdererLocalTLSDir(orderer2), "server.crt")
-			secondOrdererCertificate, err := ioutil.ReadFile(secondOrdererCertificatePath)
+			secondOrdererCertificate, err := os.ReadFile(secondOrdererCertificatePath)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("14) Adding the second orderer to system channel")
@@ -910,7 +909,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			By("15) Obtaining the last config block from the orderer")
 			configBlock := nwo.GetConfigBlock(network, peer, orderer, syschannel)
-			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0o644)
+			err = os.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("16) Waiting for the existing orderer to relinquish its leadership")
@@ -1058,7 +1057,7 @@ func prepareRaftMetadata(network *nwo.Network) []byte {
 	var consenters []*protosraft.Consenter
 	for _, o := range network.Orderers {
 		fullTlsPath := network.OrdererLocalTLSDir(o)
-		certBytes, err := ioutil.ReadFile(filepath.Join(fullTlsPath, "server.crt"))
+		certBytes, err := os.ReadFile(filepath.Join(fullTlsPath, "server.crt"))
 		Expect(err).NotTo(HaveOccurred())
 		port := network.OrdererPort(o, nwo.ClusterPort)
 
@@ -1301,11 +1300,11 @@ OrdererOrgs:
 // extendNetwork rotates adds an additional orderer
 func extendNetwork(n *nwo.Network) {
 	// Overwrite the current crypto-config with additional orderers
-	cryptoConfigYAML, err := ioutil.TempFile("", "crypto-config.yaml")
+	cryptoConfigYAML, err := os.CreateTemp("", "crypto-config.yaml")
 	Expect(err).NotTo(HaveOccurred())
 	defer os.Remove(cryptoConfigYAML.Name())
 
-	err = ioutil.WriteFile(cryptoConfigYAML.Name(), []byte(extendedCryptoConfig), 0o644)
+	err = os.WriteFile(cryptoConfigYAML.Name(), []byte(extendedCryptoConfig), 0o644)
 	Expect(err).NotTo(HaveOccurred())
 
 	// Invoke cryptogen extend to add new orderers

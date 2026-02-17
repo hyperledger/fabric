@@ -90,7 +90,7 @@ func constructJSONValue(keyNumber int, kvSize int) []byte {
 }
 
 func constructValuePrefix(keyNumber int) []byte {
-	return []byte(fmt.Sprintf("%s%09d", "value_", keyNumber))
+	return fmt.Appendf(nil, "%s%09d", "value_", keyNumber)
 }
 
 func verifyValue(keyNumber int, value []byte) bool {

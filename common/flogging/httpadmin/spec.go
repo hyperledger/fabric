@@ -68,7 +68,7 @@ func (h *SpecHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *SpecHandler) sendResponse(resp http.ResponseWriter, code int, payload interface{}) {
+func (h *SpecHandler) sendResponse(resp http.ResponseWriter, code int, payload any) {
 	encoder := json.NewEncoder(resp)
 	if err, ok := payload.(error); ok {
 		payload = &ErrorResponse{Error: err.Error()}

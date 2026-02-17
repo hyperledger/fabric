@@ -702,7 +702,7 @@ func TestPrefixScan(t *testing.T) {
 	require.Equal(t, database, dbResp.DbName)
 
 	// Save documents
-	for i := rune(0); i < 20; i++ {
+	for i := range rune(20) {
 		id1 := string([]rune{0, i, 0})
 		id2 := string([]rune{0, i, 1})
 		id3 := string([]rune{0, i, utf8.MaxRune - 1})
@@ -1533,7 +1533,7 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 // addRevisionAndDeleteStatus adds keys for version and chaincodeID to the JSON value
 func addRevisionAndDeleteStatus(t *testing.T, revision string, value []byte, deleted bool) []byte {
 	// create a version mapping
-	jsonMap := make(map[string]interface{})
+	jsonMap := make(map[string]any)
 
 	require.NoError(t, json.Unmarshal(value, &jsonMap))
 

@@ -12,7 +12,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -50,7 +50,7 @@ var _ = Describe("ChannelParticipation", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "channel-participation")
+		testDir, err = os.MkdirTemp("", "channel-participation")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = dcli.New(dcli.FromEnv)
@@ -355,7 +355,7 @@ var _ = Describe("ChannelParticipation", func() {
 			channelparticipationJoinFailure(network, orderer3, "participation-trophy", genesisBlock, http.StatusMethodNotAllowed, "cannot join: channel already exists")
 
 			By("attempting to join system channel when app channels already exist")
-			systemChannelBlockBytes, err := ioutil.ReadFile(network.OutputBlockPath(network.SystemChannel.Name))
+			systemChannelBlockBytes, err := os.ReadFile(network.OutputBlockPath(network.SystemChannel.Name))
 			Expect(err).NotTo(HaveOccurred())
 			systemChannelBlock := &common.Block{}
 			err = proto.Unmarshal(systemChannelBlockBytes, systemChannelBlock)
@@ -589,7 +589,7 @@ var _ = Describe("ChannelParticipation", func() {
 				blockPath := filepath.Join(joinBlockFileRepoPath, "participation-trophy.join")
 				configBlockBytes, err := proto.Marshal(configBlock)
 				Expect(err).NotTo(HaveOccurred())
-				err = ioutil.WriteFile(blockPath, configBlockBytes, 0o600)
+				err = os.WriteFile(blockPath, configBlockBytes, 0o600)
 				Expect(err).NotTo(HaveOccurred())
 
 				By("starting third orderer")
@@ -616,7 +616,7 @@ var _ = Describe("ChannelParticipation", func() {
 				blockPath := filepath.Join(joinBlockFileRepoPath, "participation-trophy.join")
 				configBlockBytes, err := proto.Marshal(configBlock)
 				Expect(err).NotTo(HaveOccurred())
-				err = ioutil.WriteFile(blockPath, configBlockBytes, 0o600)
+				err = os.WriteFile(blockPath, configBlockBytes, 0o600)
 				Expect(err).NotTo(HaveOccurred())
 
 				// create the ledger directory
@@ -648,7 +648,7 @@ var _ = Describe("ChannelParticipation", func() {
 				blockPath := filepath.Join(joinBlockFileRepoPath, "participation-trophy.join")
 				configBlockBytes, err := proto.Marshal(configBlock)
 				Expect(err).NotTo(HaveOccurred())
-				err = ioutil.WriteFile(blockPath, configBlockBytes, 0o600)
+				err = os.WriteFile(blockPath, configBlockBytes, 0o600)
 				Expect(err).NotTo(HaveOccurred())
 
 				// create the ledger and add the genesis block
@@ -1479,7 +1479,7 @@ func systemChannelGenesisBlock(n *nwo.Network, orderers []*nwo.Orderer, peers []
 // parseCertificate loads the PEM-encoded x509 certificate at the specified
 // path.
 func parseCertificate(path string) *x509.Certificate {
-	certBytes, err := ioutil.ReadFile(path)
+	certBytes, err := os.ReadFile(path)
 	Expect(err).NotTo(HaveOccurred())
 	pemBlock, _ := pem.Decode(certBytes)
 	cert, err := x509.ParseCertificate(pemBlock.Bytes)
@@ -1489,7 +1489,7 @@ func parseCertificate(path string) *x509.Certificate {
 
 // parsePrivateKey loads the PEM-encoded private key at the specified path.
 func parsePrivateKey(path string) crypto.PrivateKey {
-	pkBytes, err := ioutil.ReadFile(path)
+	pkBytes, err := os.ReadFile(path)
 	Expect(err).NotTo(HaveOccurred())
 	pemBlock, _ := pem.Decode(pkBytes)
 	privateKey, err := x509.ParsePKCS8PrivateKey(pemBlock.Bytes)
@@ -1636,7 +1636,7 @@ func doBodyFailure(client *http.Client, req *http.Request, expectedStatus int, e
 	resp, err := client.Do(req)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.StatusCode).To(Equal(expectedStatus))
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	Expect(err).NotTo(HaveOccurred())
 	resp.Body.Close()
 

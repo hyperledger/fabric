@@ -9,7 +9,7 @@ package channelconfig
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -300,7 +300,7 @@ func TestValidateCapabilities(t *testing.T) {
 func TestExtractMSPIDsForApplicationOrgs(t *testing.T) {
 	// load test_configblock.json that contains the application group
 	// and other properties needed to build channel config and extract MSPIDs
-	blockData, err := ioutil.ReadFile("testdata/test_configblock.json")
+	blockData, err := os.ReadFile("testdata/test_configblock.json")
 	require.NoError(t, err)
 	block := &cb.Block{}
 	protolator.DeepUnmarshalJSON(bytes.NewBuffer(blockData), block)
@@ -349,11 +349,11 @@ func TestMarshalEtcdRaftMetadata(t *testing.T) {
 	var outputCerts, inputCerts [3][]byte
 	for i := range unpacked.GetConsenters() {
 		outputCerts[i] = []byte(unpacked.GetConsenters()[i].GetClientTlsCert())
-		inputCerts[i], _ = ioutil.ReadFile(fmt.Sprintf("testdata/tls-client-%d.pem", i+1))
+		inputCerts[i], _ = os.ReadFile(fmt.Sprintf("testdata/tls-client-%d.pem", i+1))
 
 	}
 
-	for i := 0; i < len(inputCerts)-1; i++ {
+	for i := range len(inputCerts) - 1 {
 		require.NotEqual(t, outputCerts[i+1], outputCerts[i], "expected extracted certs to differ from each other")
 	}
 }

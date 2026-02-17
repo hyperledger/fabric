@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package blkstorage
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -135,7 +134,7 @@ func retrieveFirstBlockNumFromFile(rootDir string, fileNum int) (uint64, error) 
 func retrieveLastFileSuffix(rootDir string) (int, error) {
 	logger.Debugf("retrieveLastFileSuffix()")
 	biggestFileNum := -1
-	filesInfo, err := ioutil.ReadDir(rootDir)
+	filesInfo, err := os.ReadDir(rootDir)
 	if err != nil {
 		return -1, errors.Wrapf(err, "error reading dir %s", rootDir)
 	}
@@ -172,7 +171,7 @@ func getFileInfoOrPanic(rootDir string, fileNum int) os.FileInfo {
 }
 
 func loadBootstrappingSnapshotInfo(rootDir string) (*BootstrappingSnapshotInfo, error) {
-	bsiBytes, err := ioutil.ReadFile(filepath.Join(rootDir, bootstrappingSnapshotInfoFile))
+	bsiBytes, err := os.ReadFile(filepath.Join(rootDir, bootstrappingSnapshotInfoFile))
 	if os.IsNotExist(err) {
 		return nil, nil
 	}

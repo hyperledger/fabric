@@ -213,7 +213,6 @@ func TestEvictionSuspector(t *testing.T) {
 			},
 		},
 	} {
-		testCase := testCase
 		t.Run(testCase.description, func(t *testing.T) {
 			committedBlocks := make(chan *common.Block, 2)
 

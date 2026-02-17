@@ -9,7 +9,6 @@ package fileledger
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -40,7 +39,7 @@ type testEnv struct {
 }
 
 func initialize(t *testing.T) (*testEnv, *FileLedger) {
-	name, err := ioutil.TempDir("", "hyperledger_fabric")
+	name, err := os.MkdirTemp("", "hyperledger_fabric")
 	require.NoError(t, err, "Error creating temp dir: %s", err)
 
 	p, err := New(name, &disabled.Provider{})

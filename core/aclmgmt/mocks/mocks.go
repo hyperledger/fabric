@@ -25,12 +25,12 @@ func (m *MockACLProvider) Reset() {
 	m.mock = &mock.Mock{}
 }
 
-func (m *MockACLProvider) CheckACL(resName string, channelID string, idinfo interface{}) error {
+func (m *MockACLProvider) CheckACL(resName string, channelID string, idinfo any) error {
 	args := m.mock.Called(resName, channelID, idinfo)
 	return args.Error(0)
 }
 
-func (m *MockACLProvider) CheckACLNoChannel(resName string, idinfo interface{}) error {
+func (m *MockACLProvider) CheckACLNoChannel(resName string, idinfo any) error {
 	args := m.mock.Called(resName, idinfo)
 	return args.Error(0)
 }
@@ -40,7 +40,7 @@ func (m *MockACLProvider) GenerateSimulationResults(txEnvelop *common.Envelope, 
 }
 
 // On overrider the mock method for convenience
-func (m *MockACLProvider) On(methodName string, arguments ...interface{}) *mock.Call {
+func (m *MockACLProvider) On(methodName string, arguments ...any) *mock.Call {
 	return m.mock.On(methodName, arguments...)
 }
 

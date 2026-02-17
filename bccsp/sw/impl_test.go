@@ -19,7 +19,6 @@ import (
 	"encoding/asn1"
 	"fmt"
 	"hash"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"os"
@@ -45,7 +44,7 @@ type testConfig struct {
 }
 
 func (tc testConfig) Provider(t *testing.T) (bccsp.BCCSP, bccsp.KeyStore, func()) {
-	td, err := ioutil.TempDir(tempDir, "test")
+	td, err := os.MkdirTemp(tempDir, "test")
 	require.NoError(t, err)
 	ks, err := NewFileBasedKeyStore(nil, td, false)
 	require.NoError(t, err)
@@ -67,7 +66,7 @@ func TestMain(m *testing.M) {
 	}
 
 	var err error
-	tempDir, err = ioutil.TempDir("", "bccsp-sw")
+	tempDir, err = os.MkdirTemp("", "bccsp-sw")
 	if err != nil {
 		fmt.Printf("Failed to create temporary directory: %s\n\n", err)
 		return
@@ -1290,7 +1289,7 @@ func TestSHA(t *testing.T) {
 	provider, _, cleanup := currentTestConfig.Provider(t)
 	defer cleanup()
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		b, err := GetRandomBytes(i)
 		if err != nil {
 			t.Fatalf("Failed getting random bytes [%s]", err)
@@ -1341,7 +1340,7 @@ func TestAddWrapper(t *testing.T) {
 	sw, ok := p.(*CSP)
 	require.True(t, ok)
 
-	tester := func(o interface{}, getter func(t reflect.Type) (interface{}, bool)) {
+	tester := func(o any, getter func(t reflect.Type) (any, bool)) {
 		tt := reflect.TypeOf(o)
 		err := sw.AddWrapper(tt, o)
 		require.NoError(t, err)
@@ -1350,17 +1349,17 @@ func TestAddWrapper(t *testing.T) {
 		require.Equal(t, o, o2)
 	}
 
-	tester(&mocks.KeyGenerator{}, func(t reflect.Type) (interface{}, bool) { o, ok := sw.KeyGenerators[t]; return o, ok })
-	tester(&mocks.KeyDeriver{}, func(t reflect.Type) (interface{}, bool) { o, ok := sw.KeyDerivers[t]; return o, ok })
-	tester(&mocks.KeyImporter{}, func(t reflect.Type) (interface{}, bool) { o, ok := sw.KeyImporters[t]; return o, ok })
-	tester(&mocks.Encryptor{}, func(t reflect.Type) (interface{}, bool) { o, ok := sw.Encryptors[t]; return o, ok })
-	tester(&mocks.Decryptor{}, func(t reflect.Type) (interface{}, bool) { o, ok := sw.Decryptors[t]; return o, ok })
-	tester(&mocks.Signer{}, func(t reflect.Type) (interface{}, bool) { o, ok := sw.Signers[t]; return o, ok })
-	tester(&mocks.Verifier{}, func(t reflect.Type) (interface{}, bool) { o, ok := sw.Verifiers[t]; return o, ok })
-	tester(&mocks.Hasher{}, func(t reflect.Type) (interface{}, bool) { o, ok := sw.Hashers[t]; return o, ok })
+	tester(&mocks.KeyGenerator{}, func(t reflect.Type) (any, bool) { o, ok := sw.KeyGenerators[t]; return o, ok })
+	tester(&mocks.KeyDeriver{}, func(t reflect.Type) (any, bool) { o, ok := sw.KeyDerivers[t]; return o, ok })
+	tester(&mocks.KeyImporter{}, func(t reflect.Type) (any, bool) { o, ok := sw.KeyImporters[t]; return o, ok })
+	tester(&mocks.Encryptor{}, func(t reflect.Type) (any, bool) { o, ok := sw.Encryptors[t]; return o, ok })
+	tester(&mocks.Decryptor{}, func(t reflect.Type) (any, bool) { o, ok := sw.Decryptors[t]; return o, ok })
+	tester(&mocks.Signer{}, func(t reflect.Type) (any, bool) { o, ok := sw.Signers[t]; return o, ok })
+	tester(&mocks.Verifier{}, func(t reflect.Type) (any, bool) { o, ok := sw.Verifiers[t]; return o, ok })
+	tester(&mocks.Hasher{}, func(t reflect.Type) (any, bool) { o, ok := sw.Hashers[t]; return o, ok })
 
 	// Add invalid wrapper
-	err := sw.AddWrapper(reflect.TypeOf(cleanup), cleanup)
+	err := sw.AddWrapper(reflect.TypeFor[func()](), cleanup)
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "wrapper type not valid, must be on of: KeyGenerator, KeyDeriver, KeyImporter, Encryptor, Decryptor, Signer, Verifier, Hasher")
 }

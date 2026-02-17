@@ -8,6 +8,7 @@ package transientstore
 
 import (
 	"path/filepath"
+	"slices"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
@@ -156,11 +157,9 @@ func (provider *storeProvider) markStorageForDelete(ledgerID string) error {
 	}
 
 	// don't update if the storage is already marked for deletion.
-	for _, l := range marked.List {
-		if ledgerID == l {
-			logger.Infow("Transient storage was already marked for delete", "ledgerID", ledgerID)
-			return nil
-		}
+	if slices.Contains(marked.List, ledgerID) {
+		logger.Infow("Transient storage was already marked for delete", "ledgerID", ledgerID)
+		return nil
 	}
 
 	marked.List = append(marked.List, ledgerID)

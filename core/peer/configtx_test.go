@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package peer
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -29,7 +28,7 @@ import (
 func TestConfigTxCreateLedger(t *testing.T) {
 	helper := newTestHelper(t)
 	channelID := "testchain1"
-	tempdir, err := ioutil.TempDir("", "peer-test")
+	tempdir, err := os.MkdirTemp("", "peer-test")
 	require.NoError(t, err, "failed to create temporary directory")
 
 	ledgerMgr, err := constructLedgerMgrWithTestDefaults(tempdir)
@@ -72,7 +71,7 @@ func TestConfigTxErrorScenarios(t *testing.T) {
 func TestConfigTxUpdateChanConfig(t *testing.T) {
 	helper := newTestHelper(t)
 	channelID := "testchain1"
-	tempdir, err := ioutil.TempDir("", "peer-test")
+	tempdir, err := os.MkdirTemp("", "peer-test")
 	require.NoError(t, err, "failed to create temporary directory")
 
 	ledgerMgr, err := constructLedgerMgrWithTestDefaults(tempdir)
@@ -115,7 +114,7 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 func TestGenesisBlockCreateLedger(t *testing.T) {
 	b, err := configtxtest.MakeGenesisBlock("testchain")
 	require.NoError(t, err)
-	tempdir, err := ioutil.TempDir("", "peer-test")
+	tempdir, err := os.MkdirTemp("", "peer-test")
 	require.NoError(t, err, "failed to create temporary directory")
 
 	ledgerMgr, err := constructLedgerMgrWithTestDefaults(tempdir)

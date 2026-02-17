@@ -8,7 +8,7 @@ package prometheus_test
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 
@@ -72,7 +72,7 @@ var _ = Describe("Provider", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer resp.Body.Close()
 
-			bytes, err := ioutil.ReadAll(resp.Body)
+			bytes, err := io.ReadAll(resp.Body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(bytes)).To(ContainSubstring(`# HELP peer_playground_counter_name This is some help text for the counter`))
 			Expect(string(bytes)).To(ContainSubstring(`# TYPE peer_playground_counter_name counter`))
@@ -93,7 +93,7 @@ var _ = Describe("Provider", func() {
 				Expect(err).NotTo(HaveOccurred())
 				defer resp.Body.Close()
 
-				bytes, err := ioutil.ReadAll(resp.Body)
+				bytes, err := io.ReadAll(resp.Body)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(string(bytes)).To(ContainSubstring(`peer_playground_counter_name 1`))
 			})
@@ -124,7 +124,7 @@ var _ = Describe("Provider", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer resp.Body.Close()
 
-			bytes, err := ioutil.ReadAll(resp.Body)
+			bytes, err := io.ReadAll(resp.Body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(bytes)).To(ContainSubstring(`# HELP peer_playground_gauge_name This is some help text for the gauge`))
 			Expect(string(bytes)).To(ContainSubstring(`# TYPE peer_playground_gauge_name gauge`))
@@ -158,7 +158,7 @@ var _ = Describe("Provider", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer resp.Body.Close()
 
-			bytes, err := ioutil.ReadAll(resp.Body)
+			bytes, err := io.ReadAll(resp.Body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(bytes)).To(ContainSubstring(`# HELP peer_playground_histogram_name This is some help text for the gauge`))
 			Expect(string(bytes)).To(ContainSubstring(`# TYPE peer_playground_histogram_name histogram`))
@@ -189,7 +189,7 @@ var _ = Describe("Provider", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer resp.Body.Close()
 
-			bytes, err := ioutil.ReadAll(resp.Body)
+			bytes, err := io.ReadAll(resp.Body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(bytes)).To(ContainSubstring(`# HELP peer_playground_histogram_name This is some help text for the gauge`))
 			Expect(string(bytes)).To(ContainSubstring(`# TYPE peer_playground_histogram_name histogram`))
@@ -223,7 +223,7 @@ var _ = Describe("Provider", func() {
 				Expect(err).NotTo(HaveOccurred())
 				defer resp.Body.Close()
 
-				bytes, err := ioutil.ReadAll(resp.Body)
+				bytes, err := io.ReadAll(resp.Body)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(string(bytes)).To(ContainSubstring(`# HELP peer_playground_counter_name This is some help text for the counter`))
 				Expect(string(bytes)).To(ContainSubstring(`# TYPE peer_playground_counter_name counter`))
@@ -234,7 +234,7 @@ var _ = Describe("Provider", func() {
 		Context("when With is called with an extra label", func() {
 			It("panics", func() {
 				counter := p.NewCounter(counterOpts)
-				panicMessage := func() (panicMessage interface{}) {
+				panicMessage := func() (panicMessage any) {
 					defer func() { panicMessage = recover() }()
 					counter.With("alpha", "a", "beta", "b", "charlie", "c").Add(1)
 					return
@@ -246,7 +246,7 @@ var _ = Describe("Provider", func() {
 		Context("when label values are not provided", func() {
 			It("it panics with a cardinaility message", func() {
 				counter := p.NewCounter(counterOpts)
-				panicMessage := func() (panicMessage interface{}) {
+				panicMessage := func() (panicMessage any) {
 					defer func() { panicMessage = recover() }()
 					counter.Add(1)
 					return

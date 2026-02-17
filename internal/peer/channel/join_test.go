@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package channel
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -38,10 +37,10 @@ func TestJoin(t *testing.T) {
 	InitMSP()
 	resetFlags()
 
-	dir, err := ioutil.TempDir("/tmp", "jointest")
+	dir, err := os.MkdirTemp("/tmp", "jointest")
 	require.NoError(t, err, "Could not create the directory %s", dir)
 	mockblockfile := filepath.Join(dir, "mockjointest.block")
-	err = ioutil.WriteFile(mockblockfile, []byte(""), 0o644)
+	err = os.WriteFile(mockblockfile, []byte(""), 0o644)
 	require.NoError(t, err, "Could not write to the file %s", mockblockfile)
 	defer os.RemoveAll(dir)
 	signer, err := common.GetDefaultSigner()
@@ -112,7 +111,7 @@ func TestBadProposalResponse(t *testing.T) {
 	resetFlags()
 
 	mockblockfile := "/tmp/mockjointest.block"
-	ioutil.WriteFile(mockblockfile, []byte(""), 0o644)
+	os.WriteFile(mockblockfile, []byte(""), 0o644)
 	defer os.Remove(mockblockfile)
 	signer, err := common.GetDefaultSigner()
 	require.NoError(t, err, "Get default signer error: %v", err)
@@ -149,7 +148,7 @@ func TestJoinNilCF(t *testing.T) {
 	InitMSP()
 	resetFlags()
 
-	dir, err := ioutil.TempDir("/tmp", "jointest")
+	dir, err := os.MkdirTemp("/tmp", "jointest")
 	require.NoError(t, err, "Could not create the directory %s", dir)
 	mockblockfile := filepath.Join(dir, "mockjointest.block")
 	defer os.RemoveAll(dir)

@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package externalbuilder
 
 import (
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -29,14 +28,14 @@ var _ = Describe("copy", func() {
 
 	BeforeEach(func() {
 		var err error
-		tempDir, err = ioutil.TempDir("", "copy-test-")
+		tempDir, err = os.MkdirTemp("", "copy-test-")
 		Expect(err).NotTo(HaveOccurred())
 
 		srcRootDir = filepath.Join(tempDir, "src")
 		err = os.Mkdir(srcRootDir, 0o755)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = ioutil.WriteFile(filepath.Join(srcRootDir, "file-in-root.txt"), []byte("root file contents"), 0o644)
+		err = os.WriteFile(filepath.Join(srcRootDir, "file-in-root.txt"), []byte("root file contents"), 0o644)
 		Expect(err).NotTo(HaveOccurred())
 
 		err = os.Symlink("file-in-root.txt", filepath.Join(srcRootDir, "symlink-in-root.txt"))
@@ -46,7 +45,7 @@ var _ = Describe("copy", func() {
 		err = os.Mkdir(srcSubDir, 0o755)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = ioutil.WriteFile(filepath.Join(srcSubDir, "file-in-subdir.txt"), []byte("subdir file contents"), 0o644)
+		err = os.WriteFile(filepath.Join(srcSubDir, "file-in-subdir.txt"), []byte("subdir file contents"), 0o644)
 		Expect(err).NotTo(HaveOccurred())
 
 		err = os.Symlink("file-in-subdir.txt", filepath.Join(srcSubDir, "symlink-in-subdir.txt"))
@@ -71,7 +70,7 @@ var _ = Describe("copy", func() {
 		Expect(destRootDir).To(BeADirectory())
 
 		Expect(filepath.Join(destRootDir, "file-in-root.txt")).To(BeARegularFile())
-		contents, err := ioutil.ReadFile(filepath.Join(destRootDir, "file-in-root.txt"))
+		contents, err := os.ReadFile(filepath.Join(destRootDir, "file-in-root.txt"))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(contents).To(Equal([]byte("root file contents")))
 
@@ -82,7 +81,7 @@ var _ = Describe("copy", func() {
 		Expect(destSubDir).To(BeADirectory())
 
 		Expect(filepath.Join(destSubDir, "file-in-subdir.txt")).To(BeARegularFile())
-		contents, err = ioutil.ReadFile(filepath.Join(destSubDir, "file-in-subdir.txt"))
+		contents, err = os.ReadFile(filepath.Join(destSubDir, "file-in-subdir.txt"))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(contents).To(Equal([]byte("subdir file contents")))
 

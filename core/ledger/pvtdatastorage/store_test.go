@@ -8,7 +8,6 @@ package pvtdatastorage
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"strings"
@@ -192,7 +191,7 @@ func TestStoreIteratorError(t *testing.T) {
 	})
 
 	t.Run("processCollElgEvents", func(t *testing.T) {
-		storeDir, err := ioutil.TempDir("", "pdstore")
+		storeDir, err := os.MkdirTemp("", "pdstore")
 		require.NoError(t, err)
 		s := &Store{}
 		dbProvider, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: storeDir})
@@ -259,7 +258,7 @@ func TestGetMissingDataInfo(t *testing.T) {
 			},
 		}
 
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			assertMissingDataInfo(t, store, expectedDeprioMissingDataInfo, 2)
 		}
 	})
@@ -291,7 +290,7 @@ func TestGetMissingDataInfo(t *testing.T) {
 			},
 		}
 
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			assertMissingDataInfo(t, store, expectedPrioMissingDataInfo, 2)
 		}
 
@@ -302,7 +301,7 @@ func TestGetMissingDataInfo(t *testing.T) {
 
 		require.True(t, store.accessDeprioMissingDataAfter.After(lesserThanNextAccessTime))
 		require.False(t, store.accessDeprioMissingDataAfter.After(greaterThanNextAccessTime))
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			assertMissingDataInfo(t, store, expectedPrioMissingDataInfo, 2)
 		}
 	})
@@ -1542,7 +1541,7 @@ func TestRemoveAppInitiatedPurgesUsingReconMarker(t *testing.T) {
 	s := env.TestStore
 
 	// commit 5 blocks
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		require.NoError(t, s.Commit(uint64(i), nil, nil, nil))
 	}
 
@@ -1762,7 +1761,7 @@ func produceSamplePvtdata(t *testing.T, txNum uint64, nsColls []string) *ledger.
 		nsCollSplit := strings.Split(nsColl, ":")
 		ns := nsCollSplit[0]
 		coll := nsCollSplit[1]
-		builder.AddToPvtAndHashedWriteSet(ns, coll, fmt.Sprintf("key-%s-%s", ns, coll), []byte(fmt.Sprintf("value-%s-%s", ns, coll)))
+		builder.AddToPvtAndHashedWriteSet(ns, coll, fmt.Sprintf("key-%s-%s", ns, coll), fmt.Appendf(nil, "value-%s-%s", ns, coll))
 	}
 	simRes, err := builder.GetTxSimulationResults()
 	require.NoError(t, err)

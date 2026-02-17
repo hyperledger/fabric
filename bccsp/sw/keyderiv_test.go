@@ -35,7 +35,7 @@ func TestKeyDeriv(t *testing.T) {
 	expectedErr := errors.New("Expected Error")
 
 	keyDerivers := make(map[reflect.Type]KeyDeriver)
-	keyDerivers[reflect.TypeOf(&mocks2.MockKey{})] = &mocks.KeyDeriver{
+	keyDerivers[reflect.TypeFor[*mocks2.MockKey]()] = &mocks.KeyDeriver{
 		KeyArg:  expectedKey,
 		OptsArg: expectedOpts,
 		Value:   expectetValue,
@@ -47,7 +47,7 @@ func TestKeyDeriv(t *testing.T) {
 	require.Contains(t, err.Error(), expectedErr.Error())
 
 	keyDerivers = make(map[reflect.Type]KeyDeriver)
-	keyDerivers[reflect.TypeOf(&mocks2.MockKey{})] = &mocks.KeyDeriver{
+	keyDerivers[reflect.TypeFor[*mocks2.MockKey]()] = &mocks.KeyDeriver{
 		KeyArg:  expectedKey,
 		OptsArg: expectedOpts,
 		Value:   expectetValue,

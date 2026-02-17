@@ -62,7 +62,7 @@ func TestKeyDerivInvalidInputs(t *testing.T) {
 	require.Contains(t, err.Error(), "Unsupported 'Key' provided [")
 
 	keyDerivers := make(map[reflect.Type]KeyDeriver)
-	keyDerivers[reflect.TypeOf(&mocks.MockKey{})] = &mocks2.KeyDeriver{
+	keyDerivers[reflect.TypeFor[*mocks.MockKey]()] = &mocks2.KeyDeriver{
 		KeyArg:  &mocks.MockKey{},
 		OptsArg: &mocks.KeyDerivOpts{EphemeralValue: false},
 		Value:   nil,

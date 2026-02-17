@@ -14,7 +14,6 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"io"
-	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -33,7 +32,7 @@ func LoadPrivateKey(keystorePath string) (*ecdsa.PrivateKey, error) {
 			return nil
 		}
 
-		rawKey, err := ioutil.ReadFile(path)
+		rawKey, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
@@ -88,7 +87,7 @@ func GeneratePrivateKey(keystorePath string) (*ecdsa.PrivateKey, error) {
 	pemEncoded := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: pkcs8Encoded})
 
 	keyFile := filepath.Join(keystorePath, "priv_sk")
-	err = ioutil.WriteFile(keyFile, pemEncoded, 0o600)
+	err = os.WriteFile(keyFile, pemEncoded, 0o600)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "failed to save private key to file %s", keyFile)
 	}

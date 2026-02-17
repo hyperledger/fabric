@@ -219,7 +219,7 @@ func NewMetrics(p metrics.Provider, registry gometrics.Registry) *Metrics {
 // PollGoMetrics takes the current metric values from go-metrics and publishes them to
 // the gauges exposed through go-kit's metrics.
 func (m *Metrics) PollGoMetrics() {
-	m.GoMetricsRegistry.Each(func(name string, value interface{}) {
+	m.GoMetricsRegistry.Each(func(name string, value any) {
 		recordMeter := func(prefix, label string, gauge metrics.Gauge) bool {
 			if !strings.HasPrefix(name, prefix) {
 				return false

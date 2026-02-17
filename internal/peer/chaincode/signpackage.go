@@ -8,7 +8,7 @@ package chaincode
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
@@ -46,7 +46,7 @@ func signpackage(cmd *cobra.Command, ipackageFile string, opackageFile string, c
 		}
 	}
 
-	b, err := ioutil.ReadFile(ipackageFile)
+	b, err := os.ReadFile(ipackageFile)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func signpackage(cmd *cobra.Command, ipackageFile string, opackageFile string, c
 	}
 
 	b = protoutil.MarshalOrPanic(env)
-	err = ioutil.WriteFile(opackageFile, b, 0o700)
+	err = os.WriteFile(opackageFile, b, 0o700)
 	if err != nil {
 		return err
 	}

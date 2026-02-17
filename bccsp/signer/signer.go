@@ -19,7 +19,7 @@ import (
 type bccspCryptoSigner struct {
 	csp bccsp.BCCSP
 	key bccsp.Key
-	pk  interface{}
+	pk  any
 }
 
 // New returns a new BCCSP-based crypto.Signer

@@ -27,7 +27,7 @@ func (m *MockTxSim) GetStateRangeScanIterator(namespace string, startKey string,
 	return nil, nil
 }
 
-func (m *MockTxSim) GetStateRangeScanIteratorWithMetadata(namespace string, startKey, endKey string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
+func (m *MockTxSim) GetStateRangeScanIteratorWithMetadata(namespace string, startKey, endKey string, metadata map[string]any) (ledger.QueryResultsIterator, error) {
 	return nil, nil
 }
 
@@ -35,7 +35,7 @@ func (m *MockTxSim) ExecuteQuery(namespace, query string) (commonledger.ResultsI
 	return nil, nil
 }
 
-func (m *MockTxSim) ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
+func (m *MockTxSim) ExecuteQueryWithMetadata(namespace, query string, metadata map[string]any) (ledger.QueryResultsIterator, error) {
 	return nil, nil
 }
 

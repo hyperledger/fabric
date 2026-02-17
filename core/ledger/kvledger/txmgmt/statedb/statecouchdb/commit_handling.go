@@ -90,7 +90,7 @@ func (vdb *VersionedDB) buildCommitters(updates *statedb.UpdateBatch) ([]*commit
 	case err := <-errsChan:
 		return nil, errors.WithStack(err)
 	default:
-		for i := 0; i < len(namespaces); i++ {
+		for range namespaces {
 			allCommitters = append(allCommitters, <-nsCommittersChan...)
 		}
 	}

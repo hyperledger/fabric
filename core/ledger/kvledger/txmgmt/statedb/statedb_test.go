@@ -135,7 +135,7 @@ func TestUpdateBatchIterator(t *testing.T) {
 }
 
 func checkItrResults(t *testing.T, itr QueryResultsIterator, expectedResults []*VersionedKV) {
-	for i := 0; i < len(expectedResults); i++ {
+	for i := range expectedResults {
 		res, _ := itr.Next()
 		require.Equal(t, expectedResults[i], res)
 	}

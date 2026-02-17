@@ -23,12 +23,12 @@ type msgComparator struct {
 }
 
 func (mc *msgComparator) getMsgReplacingPolicy() common.MessageReplacingPolicy {
-	return func(this interface{}, that interface{}) common.InvalidationResult {
+	return func(this any, that any) common.InvalidationResult {
 		return mc.invalidationPolicy(this, that)
 	}
 }
 
-func (mc *msgComparator) invalidationPolicy(this interface{}, that interface{}) common.InvalidationResult {
+func (mc *msgComparator) invalidationPolicy(this any, that any) common.InvalidationResult {
 	thisMsg := this.(*SignedGossipMessage)
 	thatMsg := that.(*SignedGossipMessage)
 

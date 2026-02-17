@@ -57,7 +57,7 @@ func (*MockBCCSP) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (bccsp.Key, err
 	panic("Not yet implemented")
 }
 
-func (m *MockBCCSP) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (bccsp.Key, error) {
+func (m *MockBCCSP) KeyImport(raw any, opts bccsp.KeyImportOpts) (bccsp.Key, error) {
 	return m.KeyImportValue, m.KeyImportErr
 }
 

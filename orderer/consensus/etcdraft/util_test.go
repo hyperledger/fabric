@@ -12,7 +12,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -52,7 +52,7 @@ func TestIsConsenterOfChannel(t *testing.T) {
 	require.NoError(t, err)
 
 	validBlock := func() *common.Block {
-		b, err := ioutil.ReadFile(filepath.Join("testdata", "etcdraftgenesis.block"))
+		b, err := os.ReadFile(filepath.Join("testdata", "etcdraftgenesis.block"))
 		require.NoError(t, err)
 		block := &common.Block{}
 		err = proto.Unmarshal(b, block)

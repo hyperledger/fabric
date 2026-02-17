@@ -9,12 +9,12 @@ package graph
 // Vertex defines a vertex of a graph
 type Vertex struct {
 	Id        string
-	Data      interface{}
+	Data      any
 	neighbors map[string]*Vertex
 }
 
 // NewVertex creates a new vertex with given id and data
-func NewVertex(id string, data interface{}) *Vertex {
+func NewVertex(id string, data any) *Vertex {
 	return &Vertex{
 		Id:        id,
 		Data:      data,

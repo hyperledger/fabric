@@ -68,7 +68,7 @@ func testValidationWithNTXes(t *testing.T, nBlocks int) {
 	}
 
 	sr := [][]byte{}
-	for i := 0; i < nBlocks; i++ {
+	for range nBlocks {
 		sr = append(sr, pubSimulationResBytes)
 	}
 	block := testutil.ConstructBlock(t, 1, []byte("we stuck nor breath nor motion"), sr, true)
@@ -77,7 +77,7 @@ func testValidationWithNTXes(t *testing.T, nBlocks int) {
 
 	txsfltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
-	for i := 0; i < nBlocks; i++ {
+	for i := range nBlocks {
 		require.True(t, txsfltr.IsSetTo(i, peer.TxValidationCode_VALID))
 	}
 }

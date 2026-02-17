@@ -17,7 +17,7 @@ limitations under the License.
 package rwsetutil
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
@@ -32,7 +32,7 @@ const rwsetV1ProtoBytesFile = "testdata/rwsetV1ProtoBytes"
 // is able to unmarshal the protobytes that are produced by the 'RWSet' proto message declared in
 // v1.0. This is to make sure that any incompatible changes does not go uncaught.
 func TestRWSetV1BackwardCompatible(t *testing.T) {
-	protoBytes, err := ioutil.ReadFile(rwsetV1ProtoBytesFile)
+	protoBytes, err := os.ReadFile(rwsetV1ProtoBytesFile)
 	require.NoError(t, err)
 	rwset1 := &rwset.TxReadWriteSet{}
 	require.NoError(t, proto.Unmarshal(protoBytes, rwset1))
@@ -48,7 +48,7 @@ func TestRWSetV1BackwardCompatible(t *testing.T) {
 func PrepareBinaryFileSampleRWSetV1(t *testing.T) {
 	b, err := proto.Marshal(constructSampleRWSet())
 	require.NoError(t, err)
-	require.NoError(t, ioutil.WriteFile(rwsetV1ProtoBytesFile, b, 0o644))
+	require.NoError(t, os.WriteFile(rwsetV1ProtoBytesFile, b, 0o644))
 }
 
 func constructSampleRWSet() *rwset.TxReadWriteSet {

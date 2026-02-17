@@ -11,7 +11,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -25,7 +25,7 @@ import (
 )
 
 func TestX509CertExpiresAt(t *testing.T) {
-	certBytes, err := ioutil.ReadFile(filepath.Join("testdata", "cert.pem"))
+	certBytes, err := os.ReadFile(filepath.Join("testdata", "cert.pem"))
 	require.NoError(t, err)
 	sId := &msp.SerializedIdentity{
 		IdBytes: certBytes,
@@ -37,7 +37,7 @@ func TestX509CertExpiresAt(t *testing.T) {
 }
 
 func TestX509InvalidCertExpiresAt(t *testing.T) {
-	certBytes, err := ioutil.ReadFile(filepath.Join("testdata", "badCert.pem"))
+	certBytes, err := os.ReadFile(filepath.Join("testdata", "badCert.pem"))
 	require.NoError(t, err)
 	sId := &msp.SerializedIdentity{
 		IdBytes: certBytes,
@@ -91,17 +91,17 @@ func TestTrackExpiration(t *testing.T) {
 		IdBytes: tlsCert.Cert,
 	})
 
-	warnShouldNotBeInvoked := func(format string, args ...interface{}) {
+	warnShouldNotBeInvoked := func(format string, args ...any) {
 		t.Fatalf(format, args...)
 	}
 
 	var formattedWarning string
-	warnShouldBeInvoked := func(format string, args ...interface{}) {
+	warnShouldBeInvoked := func(format string, args ...any) {
 		formattedWarning = fmt.Sprintf(format, args...)
 	}
 
 	var formattedInfo string
-	infoShouldBeInvoked := func(format string, args ...interface{}) {
+	infoShouldBeInvoked := func(format string, args ...any) {
 		formattedInfo = fmt.Sprintf(format, args...)
 	}
 
@@ -225,7 +225,7 @@ func TestLogNonPubKeyMismatchErr(t *testing.T) {
 		string(bobKeyPair.Cert)))
 
 	b := &bytes.Buffer{}
-	f := func(template string, args ...interface{}) {
+	f := func(template string, args ...any) {
 		fmt.Fprintf(b, template, args...)
 	}
 

@@ -8,7 +8,6 @@ package comm
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -99,7 +98,7 @@ func TestClientBadConfig(t *testing.T) {
 }
 
 func loadFileOrDie(path string) []byte {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		fmt.Println("Failed opening file", path, ":", err)
 		os.Exit(1)

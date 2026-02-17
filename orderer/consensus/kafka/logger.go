@@ -57,7 +57,7 @@ type eventLogger interface {
 }
 
 type debugger interface {
-	Debug(...interface{})
+	Debug(...any)
 }
 
 type saramaLoggerImpl struct {
@@ -65,15 +65,15 @@ type saramaLoggerImpl struct {
 	eventListenerSupport *eventListenerSupport
 }
 
-func (l saramaLoggerImpl) Print(args ...interface{}) {
+func (l saramaLoggerImpl) Print(args ...any) {
 	l.print(fmt.Sprint(args...))
 }
 
-func (l saramaLoggerImpl) Printf(format string, args ...interface{}) {
+func (l saramaLoggerImpl) Printf(format string, args ...any) {
 	l.print(fmt.Sprintf(format, args...))
 }
 
-func (l saramaLoggerImpl) Println(args ...interface{}) {
+func (l saramaLoggerImpl) Println(args ...any) {
 	l.print(fmt.Sprintln(args...))
 }
 

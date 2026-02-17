@@ -37,7 +37,7 @@ func TestImplicitMarshalError(t *testing.T) {
 func makeManagers(count, passing int) map[string]*ManagerImpl {
 	result := make(map[string]*ManagerImpl)
 	remaining := passing
-	for i := 0; i < count; i++ {
+	for i := range count {
 		policyMap := make(map[string]Policy)
 		if remaining > 0 {
 			policyMap[TestPolicyName] = acceptPolicy{}

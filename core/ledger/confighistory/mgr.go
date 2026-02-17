@@ -150,7 +150,7 @@ func (m *Mgr) ImportFromSnapshot(ledgerID string, dir string) error {
 
 	batch := db.NewUpdateBatch()
 	currentBatchSize := 0
-	for i := uint64(0); i < numCollectionConfigs; i++ {
+	for range numCollectionConfigs {
 		key, err := collectionConfigData.DecodeBytes()
 		if err != nil {
 			return err

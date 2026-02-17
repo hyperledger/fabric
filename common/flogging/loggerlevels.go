@@ -46,7 +46,7 @@ func (l *LoggerLevels) ActivateSpec(spec string) error {
 
 	defaultLevel := zapcore.InfoLevel
 	specs := map[string]zapcore.Level{}
-	for _, field := range strings.Split(spec, ":") {
+	for field := range strings.SplitSeq(spec, ":") {
 		split := strings.Split(field, "=")
 		switch len(split) {
 		case 1: // level

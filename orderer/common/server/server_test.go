@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package server
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -78,7 +77,7 @@ func (mds *mockDeliverSrv) Send(br *ab.DeliverResponse) error {
 }
 
 func testMsgTrace(handler func(dir string, msg *cb.Envelope) recvr, t *testing.T) {
-	dir, err := ioutil.TempDir("", "TestMsgTrace")
+	dir, err := os.MkdirTemp("", "TestMsgTrace")
 	if err != nil {
 		t.Fatalf("Could not create temp dir")
 	}
@@ -93,7 +92,7 @@ func testMsgTrace(handler func(dir string, msg *cb.Envelope) recvr, t *testing.T
 	require.Nil(t, err)
 
 	var fileData []byte
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		// Writing the trace file is deliberately non-blocking, wait up to a second, checking every 10 ms to see if the file now exists.
 		time.Sleep(10 * time.Millisecond)
 		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -102,7 +101,7 @@ func testMsgTrace(handler func(dir string, msg *cb.Envelope) recvr, t *testing.T
 				return nil
 			}
 			require.Nil(t, fileData, "Should only be one file")
-			fileData, err = ioutil.ReadFile(path)
+			fileData, err = os.ReadFile(path)
 			require.Nil(t, err)
 			return nil
 		})

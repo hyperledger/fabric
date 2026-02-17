@@ -9,7 +9,6 @@ package multichannel
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -123,7 +122,7 @@ func newLedger(rlf blockledger.Factory, chainID string, genesisBlockSys *cb.Bloc
 
 func testMessageOrderAndRetrieval(maxMessageCount uint32, chainID string, chainSupport *ChainSupport, lr blockledger.ReadWriter, t *testing.T) {
 	messages := make([]*cb.Envelope, maxMessageCount)
-	for i := uint32(0); i < maxMessageCount; i++ {
+	for i := range maxMessageCount {
 		messages[i] = makeNormalTx(chainID, int(i))
 	}
 	for _, message := range messages {
@@ -133,7 +132,7 @@ func testMessageOrderAndRetrieval(maxMessageCount uint32, chainID string, chainS
 	defer it.Close()
 	block, status := it.Next()
 	require.Equal(t, cb.Status_SUCCESS, status, "Could not retrieve block")
-	for i := uint32(0); i < maxMessageCount; i++ {
+	for i := range maxMessageCount {
 		require.True(t, proto.Equal(messages[i], protoutil.ExtractEnvelopeOrPanic(block, int(i))), "Block contents wrong at index %d", i)
 	}
 }
@@ -146,12 +145,12 @@ func TestConfigTx(t *testing.T) {
 	// Tests for a normal channel which contains 3 config transactions and other
 	// normal transactions to make sure the right one returned
 	t.Run("GetConfigTx - ok", func(t *testing.T) {
-		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		tmpdir, err := os.MkdirTemp("", "registrar_test-")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 
 		_, rl := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx("testchannelid", i)}))
 		}
 		rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{makeConfigTx("testchannelid", 5)}))
@@ -181,7 +180,7 @@ func TestNewRegistrar(t *testing.T) {
 
 	// This test checks to make sure the orderer can come up if it cannot find any chains
 	t.Run("No chains", func(t *testing.T) {
-		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		tmpdir, err := os.MkdirTemp("", "registrar_test-")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 
@@ -205,7 +204,7 @@ func TestNewRegistrar(t *testing.T) {
 
 	// This test checks to make sure that the orderer refuses to come up if there are multiple system channels
 	t.Run("Multiple system chains - failure", func(t *testing.T) {
-		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		tmpdir, err := os.MkdirTemp("", "registrar_test-")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 
@@ -231,7 +230,7 @@ func TestNewRegistrar(t *testing.T) {
 
 	// This test essentially brings the entire system up and is ultimately what main.go will replicate
 	t.Run("Correct flow with system channel", func(t *testing.T) {
-		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		tmpdir, err := os.MkdirTemp("", "registrar_test-")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 
@@ -307,7 +306,7 @@ func TestRegistrar_Initialize(t *testing.T) {
 	confAppRaft := genesisconfig.Load(genesisconfig.SampleDevModeEtcdRaftProfile, configtest.GetDevConfigDir())
 	confAppRaft.Consortiums = nil
 	confAppRaft.Consortium = ""
-	certDir, err := ioutil.TempDir("", "registrar_test-")
+	certDir, err := os.MkdirTemp("", "registrar_test-")
 	require.NoError(t, err)
 	defer os.RemoveAll(certDir)
 	generateCertificates(t, confAppRaft, tlsCA, certDir)
@@ -329,7 +328,7 @@ func TestRegistrar_Initialize(t *testing.T) {
 
 	// This test essentially brings the entire system up and is ultimately what main.go will replicate
 	t.Run("Correct flow with system channel - etcdraft.Chain", func(t *testing.T) {
-		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		tmpdir, err := os.MkdirTemp("", "registrar_test-")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 
@@ -365,7 +364,7 @@ func TestRegistrar_Initialize(t *testing.T) {
 
 	t.Run("Correct flow without system channel - etcdraft.Chain", func(t *testing.T) {
 		// TODO
-		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		tmpdir, err := os.MkdirTemp("", "registrar_test-")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 
@@ -404,7 +403,7 @@ func TestRegistrar_Initialize(t *testing.T) {
 
 	t.Run("Correct flow without system channel - follower.Chain", func(t *testing.T) {
 		// TODO
-		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		tmpdir, err := os.MkdirTemp("", "registrar_test-")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 
@@ -444,7 +443,7 @@ func TestRegistrar_Initialize(t *testing.T) {
 
 	t.Run("Correct flow without system channel - follower.Chain with join block", func(t *testing.T) {
 		// TODO
-		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		tmpdir, err := os.MkdirTemp("", "registrar_test-")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 
@@ -500,7 +499,7 @@ func TestNewRegistrarWithFileRepo(t *testing.T) {
 	consenters := map[string]consensus.Consenter{"etcdraft": consenter}
 
 	t.Run("Correct flow with valid file repo dir, one existing channel, two joinblocks", func(t *testing.T) {
-		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		tmpdir, err := os.MkdirTemp("", "registrar_test-")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 
@@ -584,7 +583,7 @@ func createJoinBlockFileRepoDirWithBlocks(t *testing.T, tmpdir string, joinBlock
 	for _, jb := range joinBlocks {
 		blockBytes, err := proto.Marshal(jb.block)
 		require.NoError(t, err)
-		err = ioutil.WriteFile(filepath.Join(joinBlockRepoPath, fmt.Sprintf("%s.join", jb.channel)), blockBytes, 0o600)
+		err = os.WriteFile(filepath.Join(joinBlockRepoPath, fmt.Sprintf("%s.join", jb.channel)), blockBytes, 0o600)
 		require.NoError(t, err)
 	}
 }
@@ -598,7 +597,7 @@ func TestCreateChain(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Create chain", func(t *testing.T) {
-		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		tmpdir, err := os.MkdirTemp("", "registrar_test-")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 
@@ -663,7 +662,7 @@ func TestCreateChain(t *testing.T) {
 	})
 
 	t.Run("chain of type etcdraft.Chain is already created", func(t *testing.T) {
-		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		tmpdir, err := os.MkdirTemp("", "registrar_test-")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 
@@ -696,7 +695,7 @@ func TestCreateChain(t *testing.T) {
 		expectedLastConfigSeq := uint64(1)
 		newChainID := "test-new-chain"
 
-		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		tmpdir, err := os.MkdirTemp("", "registrar_test-")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 
@@ -853,7 +852,7 @@ func TestBroadcastChannelSupport(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Rejection", func(t *testing.T) {
-		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		tmpdir, err := os.MkdirTemp("", "registrar_test-")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 
@@ -870,7 +869,7 @@ func TestBroadcastChannelSupport(t *testing.T) {
 	})
 
 	t.Run("No system channel", func(t *testing.T) {
-		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		tmpdir, err := os.MkdirTemp("", "registrar_test-")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 
@@ -910,7 +909,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 
 	setup := func(t *testing.T) {
 		var err error
-		tmpdir, err = ioutil.TempDir("", "registrar_test-")
+		tmpdir, err = os.MkdirTemp("", "registrar_test-")
 		require.NoError(t, err)
 
 		tlsCA, err = tlsgen.NewCA()
@@ -1443,7 +1442,7 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 
 	setup := func(t *testing.T) {
 		var err error
-		tmpdir, err = ioutil.TempDir("", "remove-channel")
+		tmpdir, err = os.MkdirTemp("", "remove-channel")
 		require.NoError(t, err)
 
 		tlsCA, err = tlsgen.NewCA()
@@ -1796,13 +1795,13 @@ func generateCertificates(t *testing.T, confAppRaft *genesisconfig.Profile, tlsC
 		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)
 		require.NoError(t, err)
 		srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", i))
-		err = ioutil.WriteFile(srvP, srvC.Cert, 0o644)
+		err = os.WriteFile(srvP, srvC.Cert, 0o644)
 		require.NoError(t, err)
 
 		clnC, err := tlsCA.NewClientCertKeyPair()
 		require.NoError(t, err)
 		clnP := path.Join(certDir, fmt.Sprintf("client%d.crt", i))
-		err = ioutil.WriteFile(clnP, clnC.Cert, 0o644)
+		err = os.WriteFile(clnP, clnC.Cert, 0o644)
 		require.NoError(t, err)
 
 		c.ServerTlsCert = []byte(srvP)
@@ -1823,7 +1822,7 @@ func createLedgerAndChain(t *testing.T, r *Registrar, lf blockledger.Factory, b 
 
 func TestRegistrar_ConfigBlockOrPanic(t *testing.T) {
 	t.Run("Panics when ledger is empty", func(t *testing.T) {
-		tmpdir, err := ioutil.TempDir("", "file-ledger")
+		tmpdir, err := os.MkdirTemp("", "file-ledger")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 
@@ -1838,7 +1837,7 @@ func TestRegistrar_ConfigBlockOrPanic(t *testing.T) {
 		block := protoutil.NewBlock(0, nil)
 		block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = []byte("bad metadata")
 
-		tmpdir, err := ioutil.TempDir("", "file-ledger")
+		tmpdir, err := os.MkdirTemp("", "file-ledger")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 
@@ -1857,7 +1856,7 @@ func TestRegistrar_ConfigBlockOrPanic(t *testing.T) {
 			}),
 		})
 
-		tmpdir, err := ioutil.TempDir("", "file-ledger")
+		tmpdir, err := os.MkdirTemp("", "file-ledger")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 
@@ -1872,7 +1871,7 @@ func TestRegistrar_ConfigBlockOrPanic(t *testing.T) {
 		confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 		genesisBlockSys := encoder.New(confSys).GenesisBlock()
 
-		tmpdir, err := ioutil.TempDir("", "file-ledger")
+		tmpdir, err := os.MkdirTemp("", "file-ledger")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 

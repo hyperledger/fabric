@@ -8,7 +8,6 @@ package persistence_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -32,7 +31,7 @@ var _ = Describe("Persistence", func() {
 			filesystemIO = &persistence.FilesystemIO{}
 
 			var err error
-			testDir, err = ioutil.TempDir("", "persistence-test")
+			testDir, err = os.MkdirTemp("", "persistence-test")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -58,7 +57,7 @@ var _ = Describe("Persistence", func() {
 
 		It("stats a file", func() {
 			path := filepath.Join(testDir, "stat")
-			err := ioutil.WriteFile(path, []byte("test"), 0o600)
+			err := os.WriteFile(path, []byte("test"), 0o600)
 			Expect(err).NotTo(HaveOccurred())
 
 			exists, err := filesystemIO.Exists(path)
@@ -74,7 +73,7 @@ var _ = Describe("Persistence", func() {
 
 		It("removes a file", func() {
 			path := filepath.Join(testDir, "remove")
-			err := ioutil.WriteFile(path, []byte("test"), 0o600)
+			err := os.WriteFile(path, []byte("test"), 0o600)
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = os.Stat(path)
@@ -89,7 +88,7 @@ var _ = Describe("Persistence", func() {
 
 		It("reads a file", func() {
 			path := filepath.Join(testDir, "readfile")
-			err := ioutil.WriteFile(path, []byte("test"), 0o600)
+			err := os.WriteFile(path, []byte("test"), 0o600)
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = os.Stat(path)
@@ -102,7 +101,7 @@ var _ = Describe("Persistence", func() {
 
 		It("reads a directory", func() {
 			path := filepath.Join(testDir, "readdir")
-			err := ioutil.WriteFile(path, []byte("test"), 0o600)
+			err := os.WriteFile(path, []byte("test"), 0o600)
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = os.Stat(path)
@@ -131,7 +130,7 @@ var _ = Describe("Persistence", func() {
 		)
 
 		BeforeEach(func() {
-			tempDir, err = ioutil.TempDir("", "NewStore")
+			tempDir, err = os.MkdirTemp("", "NewStore")
 			Expect(err).NotTo(HaveOccurred())
 		})
 

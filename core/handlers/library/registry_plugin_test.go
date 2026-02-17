@@ -8,7 +8,6 @@ package library
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -52,7 +51,7 @@ func TestLoadAuthPluginNoCover(t *testing.T) {
 		t.Skip("plugins disabled")
 	}
 
-	testDir, err := ioutil.TempDir("", "")
+	testDir, err := os.MkdirTemp("", "")
 	require.NoError(t, err, "Could not create temp directory for plugins")
 	defer os.Remove(testDir)
 
@@ -77,7 +76,7 @@ func TestLoadDecoratorPluginNoCover(t *testing.T) {
 	testProposal := &peer.Proposal{Payload: []byte("test")}
 	testInput := &peer.ChaincodeInput{Args: [][]byte{[]byte("test")}}
 
-	testDir, err := ioutil.TempDir("", "")
+	testDir, err := os.MkdirTemp("", "")
 	require.NoError(t, err, "Could not create temp directory for plugins")
 	defer os.Remove(testDir)
 
@@ -97,7 +96,7 @@ func TestEndorsementPluginNoCover(t *testing.T) {
 		t.Skip("plugins disabled")
 	}
 
-	testDir, err := ioutil.TempDir("", "")
+	testDir, err := os.MkdirTemp("", "")
 	require.NoError(t, err, "Could not create temp directory for plugins")
 	defer os.Remove(testDir)
 
@@ -122,7 +121,7 @@ func TestValidationPluginNoCover(t *testing.T) {
 		t.Skip("plugins disabled")
 	}
 
-	testDir, err := ioutil.TempDir("", "")
+	testDir, err := os.MkdirTemp("", "")
 	require.NoError(t, err, "Could not create temp directory for plugins")
 	defer os.Remove(testDir)
 

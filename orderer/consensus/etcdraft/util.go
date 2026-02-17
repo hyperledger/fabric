@@ -9,6 +9,7 @@ package etcdraft
 import (
 	"crypto/x509"
 	"encoding/pem"
+	"slices"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -420,12 +421,7 @@ func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *common.Blo
 // NodeExists returns trues if node id exists in the slice
 // and false otherwise
 func NodeExists(id uint64, nodes []uint64) bool {
-	for _, nodeID := range nodes {
-		if nodeID == id {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(nodes, id)
 }
 
 // ConfChange computes Raft configuration changes based on current Raft

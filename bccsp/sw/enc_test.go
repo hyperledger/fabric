@@ -36,7 +36,7 @@ func TestEncrypt(t *testing.T) {
 	expectedErr := errors.New("no error")
 
 	encryptors := make(map[reflect.Type]Encryptor)
-	encryptors[reflect.TypeOf(&mocks2.MockKey{})] = &mocks.Encryptor{
+	encryptors[reflect.TypeFor[*mocks2.MockKey]()] = &mocks.Encryptor{
 		KeyArg:       expectedKey,
 		PlaintextArg: expectedPlaintext,
 		OptsArg:      expectedOpts,

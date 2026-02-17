@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package txvalidator
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -68,7 +67,7 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 	}, bcInfo)
 
 	sr := [][]byte{}
-	for i := 0; i < nBlocks; i++ {
+	for range nBlocks {
 		sr = append(sr, pubSimulationResBytes)
 	}
 	block := testutil.ConstructBlock(t, 1, gbHash, sr, true)
@@ -77,7 +76,7 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 
 	txsfltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
-	for i := 0; i < nBlocks; i++ {
+	for i := range nBlocks {
 		require.True(t, txsfltr.IsSetTo(i, peer.TxValidationCode_VALID))
 	}
 }
@@ -424,7 +423,7 @@ func TestInvalidTXsForUpgradeCC(t *testing.T) {
 }
 
 func constructLedgerMgrWithTestDefaults(t *testing.T, testDir string) (*ledgermgmt.LedgerMgr, func()) {
-	testDir, err := ioutil.TempDir("", testDir)
+	testDir, err := os.MkdirTemp("", testDir)
 	if err != nil {
 		t.Fatalf("Failed to create ledger directory: %s", err)
 	}

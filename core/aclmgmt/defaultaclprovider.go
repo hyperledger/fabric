@@ -121,7 +121,7 @@ func (d *defaultACLProviderImpl) IsPtypePolicy(resName string) bool {
 }
 
 // CheckACL provides default (v 1.0) behavior by mapping resources to their ACL for a channel.
-func (d *defaultACLProviderImpl) CheckACL(resName string, channelID string, idinfo interface{}) error {
+func (d *defaultACLProviderImpl) CheckACL(resName string, channelID string, idinfo any) error {
 	// the default behavior is to use p type if defined and use channeless policy checks
 	policy := d.pResourcePolicyMap[resName]
 	if policy != "" {
@@ -155,7 +155,7 @@ func (d *defaultACLProviderImpl) CheckACL(resName string, channelID string, idin
 }
 
 // CheckACL provides default behavior by mapping channelless resources to their ACL.
-func (d *defaultACLProviderImpl) CheckACLNoChannel(resName string, idinfo interface{}) error {
+func (d *defaultACLProviderImpl) CheckACLNoChannel(resName string, idinfo any) error {
 	policy := d.pResourcePolicyMap[resName]
 	if policy == "" {
 		aclLogger.Errorf("Unmapped channelless policy for %s", resName)

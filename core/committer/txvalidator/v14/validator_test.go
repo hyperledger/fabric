@@ -9,7 +9,6 @@ package txvalidator_test
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"testing"
@@ -653,7 +652,7 @@ func TestParallelValidation(t *testing.T) {
 		SerializedID: []byte("signer1"),
 		MspID:        "Org2",
 	}
-	for txNum := 0; txNum < txCnt; txNum++ {
+	for txNum := range txCnt {
 		var sig msp.SigningIdentity
 		// create rwset for the tx - KVS key depends on the txnum
 		key := strconv.Itoa(txNum % 10)
@@ -1950,7 +1949,7 @@ func TestMain(m *testing.M) {
 }
 
 func constructLedgerMgrWithTestDefaults(t *testing.T, testDir string) (*ledgermgmt.LedgerMgr, func()) {
-	testDir, err := ioutil.TempDir("", testDir)
+	testDir, err := os.MkdirTemp("", testDir)
 	if err != nil {
 		t.Fatalf("Failed to create ledger directory: %s", err)
 	}

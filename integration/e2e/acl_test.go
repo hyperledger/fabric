@@ -9,7 +9,6 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -44,7 +43,7 @@ var _ = Describe("EndToEndACL", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "acl-e2e")
+		testDir, err = os.MkdirTemp("", "acl-e2e")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = dcli.New(dcli.FromEnv)

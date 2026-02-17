@@ -120,7 +120,7 @@ func TestDeserializeIdentity(t *testing.T) {
 	// do not result in a failure
 	var wg sync.WaitGroup
 	wg.Add(100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		go func(m msp.MSP, i int) {
 			sIdentity := serializedIdentity
 			expectedIdentity := mockIdentity

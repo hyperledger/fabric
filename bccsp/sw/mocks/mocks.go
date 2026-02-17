@@ -173,7 +173,7 @@ type KeyImporter struct {
 	Err   error
 }
 
-func (ki *KeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+func (ki *KeyImporter) KeyImport(raw any, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
 	if !reflect.DeepEqual(ki.RawArg, raw) {
 		return nil, errors.New("invalid raw")
 	}

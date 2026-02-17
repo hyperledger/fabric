@@ -14,8 +14,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
+	"maps"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -229,7 +229,7 @@ func (d *couchDoc) len() int {
 // connection pool
 func closeResponseBody(resp *http.Response) {
 	if resp != nil {
-		io.Copy(ioutil.Discard, resp.Body) // discard whatever is remaining of body
+		io.Copy(io.Discard, resp.Body) // discard whatever is remaining of body
 		resp.Body.Close()
 	}
 }
@@ -616,7 +616,7 @@ func createAttachmentPart(couchDoc *couchDoc) (bytes.Buffer, string, error) {
 		fileAttachments[attachment.Name] = fileDetails{true, attachment.ContentType, len(attachment.AttachmentBytes)}
 	}
 
-	attachmentJSONMap := map[string]interface{}{
+	attachmentJSONMap := map[string]any{
 		"_attachments": fileAttachments,
 	}
 
@@ -624,7 +624,7 @@ func createAttachmentPart(couchDoc *couchDoc) (bytes.Buffer, string, error) {
 	if couchDoc.jsonValue != nil {
 
 		// create a generic map
-		genericMap := make(map[string]interface{})
+		genericMap := make(map[string]any)
 
 		// unmarshal the data into the generic map
 		decoder := json.NewDecoder(bytes.NewBuffer(couchDoc.jsonValue))
@@ -635,9 +635,7 @@ func createAttachmentPart(couchDoc *couchDoc) (bytes.Buffer, string, error) {
 		}
 
 		// add all key/values to the attachmentJSONMap
-		for jsonKey, jsonValue := range genericMap {
-			attachmentJSONMap[jsonKey] = jsonValue
-		}
+		maps.Copy(attachmentJSONMap, genericMap)
 
 	}
 
@@ -747,7 +745,7 @@ func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 
 	// Handle as JSON if multipart is NOT detected
 	if !strings.HasPrefix(mediaType, "multipart/") {
-		couchDoc.jsonValue, err = ioutil.ReadAll(resp.Body)
+		couchDoc.jsonValue, err = io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, "", errors.Wrap(err, "error reading response body")
 		}
@@ -772,7 +770,7 @@ func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 		couchdbLogger.Debugf("[%s] part header=%s", dbclient.dbName, p.Header)
 
 		if p.Header.Get("Content-Type") == "application/json" {
-			partdata, err := ioutil.ReadAll(p)
+			partdata, err := io.ReadAll(p)
 			if err != nil {
 				return nil, "", errors.Wrap(err, "error reading multipart data")
 			}
@@ -798,7 +796,7 @@ func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 			if err != nil {
 				return nil, "", errors.Wrap(err, "error creating gzip reader")
 			}
-			respBody, err = ioutil.ReadAll(gr)
+			respBody, err = io.ReadAll(gr)
 			if err != nil {
 				return nil, "", errors.Wrap(err, "error reading gzip data")
 			}
@@ -812,7 +810,7 @@ func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 		default:
 
 			// retrieve the data,  this is not gzip
-			partdata, err := ioutil.ReadAll(p)
+			partdata, err := io.ReadAll(p)
 			if err != nil {
 				return nil, "", errors.Wrap(err, "error reading multipart data")
 			}
@@ -887,7 +885,7 @@ func (dbclient *couchDatabase) readDocRange(startKey, endKey string, limit int32
 	}
 
 	// handle as JSON document
-	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	jsonResponseRaw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, "", errors.Wrap(err, "error reading response body")
 	}
@@ -1021,7 +1019,7 @@ func (dbclient *couchDatabase) queryDocuments(query string) ([]*queryResult, str
 	}
 
 	// handle as JSON document
-	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	jsonResponseRaw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, "", errors.Wrap(err, "error reading response body")
 	}
@@ -1107,7 +1105,7 @@ func (dbclient *couchDatabase) listIndex() ([]*indexResult, error) {
 	defer closeResponseBody(resp)
 
 	// handle as JSON document
-	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	jsonResponseRaw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading response body")
 	}
@@ -1173,7 +1171,7 @@ func (dbclient *couchDatabase) createIndex(indexdefinition string) (*createIndex
 	}
 
 	// Read the response body
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading response body")
 	}
@@ -1247,7 +1245,7 @@ func (dbclient *couchDatabase) getDatabaseSecurity() (*databaseSecurity, error) 
 	defer closeResponseBody(resp)
 
 	// handle as JSON document
-	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	jsonResponseRaw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading response body")
 	}
@@ -1332,7 +1330,7 @@ func (dbclient *couchDatabase) batchRetrieveDocumentMetadata(keys []string) ([]*
 	// we could set include_docs to false to optimize the response.
 	queryParms.Add("include_docs", "true")
 
-	keymap := make(map[string]interface{})
+	keymap := make(map[string]any)
 
 	keymap["keys"] = keys
 
@@ -1357,7 +1355,7 @@ func (dbclient *couchDatabase) batchRetrieveDocumentMetadata(keys []string) ([]*
 	}
 
 	// handle as JSON document
-	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	jsonResponseRaw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading response body")
 	}
@@ -1417,14 +1415,14 @@ func (dbclient *couchDatabase) batchUpdateDocuments(documents []*couchDoc) ([]*b
 		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.couchInstance.url())
 	}
 
-	documentMap := make(map[string]interface{})
+	documentMap := make(map[string]any)
 
-	var jsonDocumentMap []interface{}
+	var jsonDocumentMap []any
 
 	for _, jsonDocument := range documents {
 
 		// create a document map
-		document := make(map[string]interface{})
+		document := make(map[string]any)
 
 		// unmarshal the JSON component of the couchDoc into the document
 		err = json.Unmarshal(jsonDocument.jsonValue, &document)
@@ -1436,7 +1434,7 @@ func (dbclient *couchDatabase) batchUpdateDocuments(documents []*couchDoc) ([]*b
 		if len(jsonDocument.attachments) > 0 {
 
 			// create a file attachment map
-			fileAttachment := make(map[string]interface{})
+			fileAttachment := make(map[string]any)
 
 			// for each attachment, create a base64Attachment, name the attachment,
 			// add the content type and base64 encode the attachment
@@ -1481,7 +1479,7 @@ func (dbclient *couchDatabase) batchUpdateDocuments(documents []*couchDoc) ([]*b
 	}
 
 	// handle as JSON document
-	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	jsonResponseRaw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading response body")
 	}
@@ -1502,7 +1500,8 @@ func (dbclient *couchDatabase) batchUpdateDocuments(documents []*couchDoc) ([]*b
 // which may be detected during saves or deletes that timed out from client http perspective,
 // but which eventually succeeded in couchdb
 func (dbclient *couchDatabase) handleRequestWithRevisionRetry(id, method, dbName, functionName string, connectURL *url.URL, data []byte, rev string,
-	multipartBoundary string, maxRetries int, keepConnectionOpen bool, queryParms *url.Values) (*http.Response, *dbReturn, error) {
+	multipartBoundary string, maxRetries int, keepConnectionOpen bool, queryParms *url.Values,
+) (*http.Response, *dbReturn, error) {
 	// Initialize a flag for the revision conflict
 	revisionConflictDetected := false
 	var resp *http.Response
@@ -1539,7 +1538,8 @@ func (dbclient *couchDatabase) handleRequestWithRevisionRetry(id, method, dbName
 }
 
 func (dbclient *couchDatabase) handleRequest(method, functionName string, connectURL *url.URL, data []byte, rev, multipartBoundary string,
-	maxRetries int, keepConnectionOpen bool, queryParms *url.Values, pathElements ...string) (*http.Response, *dbReturn, error) {
+	maxRetries int, keepConnectionOpen bool, queryParms *url.Values, pathElements ...string,
+) (*http.Response, *dbReturn, error) {
 	return dbclient.couchInstance.handleRequest(context.Background(),
 		method, dbclient.dbName, functionName, connectURL, data, rev, multipartBoundary,
 		maxRetries, keepConnectionOpen, queryParms, pathElements...,
@@ -1551,7 +1551,8 @@ func (dbclient *couchDatabase) handleRequest(method, functionName string, connec
 // callee's responsibility to close response correctly.
 // Any http error or CouchDB error (4XX or 500) will result in a golang error getting returned
 func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, dbName, functionName string, connectURL *url.URL, data []byte, rev string,
-	multipartBoundary string, maxRetries int, keepConnectionOpen bool, queryParms *url.Values, pathElements ...string) (*http.Response, *dbReturn, error) {
+	multipartBoundary string, maxRetries int, keepConnectionOpen bool, queryParms *url.Values, pathElements ...string,
+) (*http.Response, *dbReturn, error) {
 	couchdbLogger.Debugf("Entering handleRequest()  method=%s  url=%v  dbName=%s", method, connectURL, dbName)
 
 	// create the return objects for couchDB
@@ -1646,7 +1647,7 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 			// if this is an error, then populate the couchDBReturn
 			if resp.StatusCode >= 400 {
 				// Read the response body and close it for next attempt
-				jsonError, err := ioutil.ReadAll(resp.Body)
+				jsonError, err := io.ReadAll(resp.Body)
 				if err != nil {
 					return nil, nil, errors.Wrap(err, "error reading response body")
 				}
@@ -1679,7 +1680,7 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 				// otherwise this is an unexpected 500 error from CouchDB. Log the error and retry.
 			} else {
 				// Read the response body and close it for next attempt
-				jsonError, err := ioutil.ReadAll(resp.Body)
+				jsonError, err := io.ReadAll(resp.Body)
 				defer closeResponseBody(resp)
 				if err != nil {
 					return nil, nil, errors.Wrap(err, "error reading response body")
@@ -1759,7 +1760,7 @@ func invalidCouchDBReturn(resp *http.Response, errResp error) bool {
 
 // isJSON tests a string to determine if a valid JSON
 func isJSON(s string) bool {
-	var js map[string]interface{}
+	var js map[string]any
 	return json.Unmarshal([]byte(s), &js) == nil
 }
 

@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -117,12 +118,7 @@ func buildMetadataFileErrorMessage(filePathName string) string {
 }
 
 func contains(validStrings []string, target string) bool {
-	for _, str := range validStrings {
-		if str == target {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validStrings, target)
 }
 
 func selectFileValidator(filePathName string) fileValidator {
@@ -153,12 +149,12 @@ func couchdbIndexFileValidator(fileName string, fileBytes []byte) error {
 }
 
 // isJSON tests a string to determine if it can be parsed as valid JSON
-func isJSON(s []byte) (bool, map[string]interface{}) {
-	var js map[string]interface{}
+func isJSON(s []byte) (bool, map[string]any) {
+	var js map[string]any
 	return json.Unmarshal([]byte(s), &js) == nil, js
 }
 
-func validateIndexJSON(indexDefinition map[string]interface{}) error {
+func validateIndexJSON(indexDefinition map[string]any) error {
 	// flag to track if the "index" key is included
 	indexIncluded := false
 
@@ -173,7 +169,7 @@ func validateIndexJSON(indexDefinition map[string]interface{}) error {
 				return fmt.Errorf("Invalid entry, \"index\" must be a JSON")
 			}
 
-			err := processIndexMap(jsonValue.(map[string]interface{}))
+			err := processIndexMap(jsonValue.(map[string]any))
 			if err != nil {
 				return err
 			}
@@ -222,7 +218,7 @@ func validateIndexJSON(indexDefinition map[string]interface{}) error {
 
 // processIndexMap processes an interface map and wraps field names or traverses
 // the next level of the json query
-func processIndexMap(jsonFragment map[string]interface{}) error {
+func processIndexMap(jsonFragment map[string]any) error {
 	// iterate the item in the map
 	for jsonKey, jsonValue := range jsonFragment {
 		switch jsonKey {
@@ -231,7 +227,7 @@ func processIndexMap(jsonFragment map[string]interface{}) error {
 
 			switch jsonValueType := jsonValue.(type) {
 
-			case []interface{}:
+			case []any:
 
 				// iterate the index field objects
 				for _, itemValue := range jsonValueType {
@@ -243,7 +239,7 @@ func processIndexMap(jsonFragment map[string]interface{}) error {
 
 					case reflect.Map:
 						// Handle the case where a sort is included  ex: {"size":"asc"}, {"color":"desc"}
-						err := validateFieldMap(itemValue.(map[string]interface{}))
+						err := validateFieldMap(itemValue.(map[string]any))
 						if err != nil {
 							return err
 						}
@@ -273,7 +269,7 @@ func processIndexMap(jsonFragment map[string]interface{}) error {
 }
 
 // validateFieldMap validates the list of field objects
-func validateFieldMap(jsonFragment map[string]interface{}) error {
+func validateFieldMap(jsonFragment map[string]any) error {
 	// iterate the fields to validate the sort criteria
 	for jsonKey, jsonValue := range jsonFragment {
 		switch jsonValue := jsonValue.(type) {

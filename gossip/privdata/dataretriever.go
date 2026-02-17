@@ -119,7 +119,6 @@ func (dr *dataRetriever) fromLedger(digests []*protosgossip.PvtDataDigest, block
 
 	results := make(Dig2PvtRWSetWithConfig)
 	for _, dig := range digests {
-		dig := dig
 		pvtRWSetWithConfig := &util.PrivateRWSetWithConfig{}
 		for _, data := range pvtData {
 			if data.WriteSet == nil {

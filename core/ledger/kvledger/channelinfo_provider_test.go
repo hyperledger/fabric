@@ -9,7 +9,6 @@ package kvledger
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -30,7 +29,7 @@ import (
 
 func TestNamespacesAndCollections(t *testing.T) {
 	channelName := "testnamespacesandcollections"
-	basePath, err := ioutil.TempDir("", "testchannelinfoprovider")
+	basePath, err := os.MkdirTemp("", "testchannelinfoprovider")
 	require.NoError(t, err)
 	defer os.RemoveAll(basePath)
 	blkStoreProvider, blkStore := openBlockStorage(t, channelName, basePath)
@@ -92,7 +91,7 @@ func TestNamespacesAndCollections(t *testing.T) {
 // TestGetAllMSPIDs verifies getAllMSPIDs by adding and removing organizations to the channel config.
 func TestGetAllMSPIDs(t *testing.T) {
 	channelName := "testgetallmspids"
-	basePath, err := ioutil.TempDir("", "testchannelinfoprovider")
+	basePath, err := os.MkdirTemp("", "testchannelinfoprovider")
 	require.NoError(t, err)
 	defer os.RemoveAll(basePath)
 
@@ -117,7 +116,7 @@ func TestGetAllMSPIDs(t *testing.T) {
 
 	// add some blocks and verify GetAllMSPIDs
 	block = configBlock
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		lastBlockNum++
 		block = newBlock([]*cb.Envelope{}, lastBlockNum, lastConfigBlockNum, protoutil.BlockHeaderHash(block.Header))
 		require.NoError(t, blkStore.AddBlock(block))
@@ -152,7 +151,7 @@ func TestGetAllMSPIDs(t *testing.T) {
 
 	// add some blocks and verify GetAllMSPIDs
 	block = configBlock
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		lastBlockNum++
 		block = newBlock([]*cb.Envelope{}, lastBlockNum, lastConfigBlockNum, protoutil.BlockHeaderHash(block.Header))
 		require.NoError(t, blkStore.AddBlock(block))
@@ -170,7 +169,7 @@ func TestGetAllMSPIDs(t *testing.T) {
 
 func TestGetAllMSPIDs_NegativeTests(t *testing.T) {
 	channelName := "testgetallmspidsnegativetests"
-	basePath, err := ioutil.TempDir("", "testchannelinfoprovider_negativetests")
+	basePath, err := os.MkdirTemp("", "testchannelinfoprovider_negativetests")
 	require.NoError(t, err)
 	defer os.RemoveAll(basePath)
 
@@ -287,7 +286,7 @@ func getEnvelopeFromConfig(channelName string, config *cb.Config) *cb.Envelope {
 // createTestOrgGroups returns application org ConfigGroups based on test_configblock.json.
 // The config block contains the following organizations(MSPIDs): org1(Org1MSP) and org2(Org2MSP)
 func createTestOrgGroups(t *testing.T) map[string]*cb.ConfigGroup {
-	blockData, err := ioutil.ReadFile("testdata/test_configblock.json")
+	blockData, err := os.ReadFile("testdata/test_configblock.json")
 	require.NoError(t, err)
 	block := &cb.Block{}
 	require.NoError(t, protolator.DeepUnmarshalJSON(bytes.NewBuffer(blockData), block))

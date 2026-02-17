@@ -21,8 +21,8 @@ import (
 // Options scans the provided list of packages for options structs used when
 // creating metrics and returns instances that are recreated from the source
 // tree.
-func Options(pkgs []*packages.Package) ([]interface{}, error) {
-	var options []interface{}
+func Options(pkgs []*packages.Package) ([]any, error) {
+	var options []any
 	for _, p := range pkgs {
 		for _, f := range p.Syntax {
 			opts, err := FileOptions(f)
@@ -37,9 +37,9 @@ func Options(pkgs []*packages.Package) ([]interface{}, error) {
 
 // FileOptions walks the specified ast.File for options structs used when
 // creating metrics and returns instances that are recreated from the source.
-func FileOptions(f *ast.File) ([]interface{}, error) {
+func FileOptions(f *ast.File) ([]any, error) {
 	imports := walkImports(f)
-	var options []interface{}
+	var options []any
 	var errors []error
 
 	// If the file contains a gendoc:ignore directive, ignore the file
@@ -125,7 +125,7 @@ func walkImports(f *ast.File) map[string]string {
 	return imports
 }
 
-func createOption(lit *ast.SelectorExpr) (interface{}, error) {
+func createOption(lit *ast.SelectorExpr) (any, error) {
 	optionName := lit.Sel.Name
 	switch optionName {
 	case "CounterOpts":
@@ -139,7 +139,7 @@ func createOption(lit *ast.SelectorExpr) (interface{}, error) {
 	}
 }
 
-func populateOption(lit *ast.CompositeLit, target interface{}) (interface{}, error) {
+func populateOption(lit *ast.CompositeLit, target any) (any, error) {
 	val := reflect.ValueOf(target).Elem()
 	for _, elem := range lit.Elts {
 		if kv, ok := elem.(*ast.KeyValueExpr); ok {

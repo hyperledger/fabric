@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -213,7 +212,7 @@ func TestCreateChainWithOutputBlock(t *testing.T) {
 	cmd := createCmd(mockCF)
 	AddFlags(cmd)
 
-	tempDir, err := ioutil.TempDir("", "create-output")
+	tempDir, err := os.MkdirTemp("", "create-output")
 	if err != nil {
 		t.Fatalf("failed to create temporary directory")
 	}
@@ -443,7 +442,7 @@ func createTxFile(filename string, typ cb.HeaderType, channelID string) (*cb.Env
 		return nil, err
 	}
 
-	if err = ioutil.WriteFile(filename, data, 0o644); err != nil {
+	if err = os.WriteFile(filename, data, 0o644); err != nil {
 		return nil, err
 	}
 
@@ -457,7 +456,7 @@ func TestCreateChainFromTx(t *testing.T) {
 	defer cleanup()
 
 	mockchannel := "mockchannel"
-	dir, err := ioutil.TempDir("", "createtestfromtx-")
+	dir, err := os.MkdirTemp("", "createtestfromtx-")
 	if err != nil {
 		t.Fatalf("couldn't create temp dir")
 	}
@@ -520,7 +519,7 @@ func TestCreateChainInvalidTx(t *testing.T) {
 
 	mockchannel := "mockchannel"
 
-	dir, err := ioutil.TempDir("", "createinvaltest-")
+	dir, err := os.MkdirTemp("", "createinvaltest-")
 	if err != nil {
 		t.Fatalf("couldn't create temp dir")
 	}
@@ -595,7 +594,7 @@ func TestCreateChainNilCF(t *testing.T) {
 	defer cleanup()
 
 	mockchannel := "mockchannel"
-	dir, err := ioutil.TempDir("", "createinvaltest-")
+	dir, err := os.MkdirTemp("", "createinvaltest-")
 	require.NoError(t, err, "Couldn't create temp dir")
 	defer os.RemoveAll(dir) // clean up
 

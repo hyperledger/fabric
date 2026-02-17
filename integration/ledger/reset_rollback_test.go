@@ -10,7 +10,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -315,7 +314,7 @@ type setup struct {
 
 func initThreeOrgsSetup() *setup {
 	var err error
-	testDir, err := ioutil.TempDir("", "reset-rollback")
+	testDir, err := os.MkdirTemp("", "reset-rollback")
 	Expect(err).NotTo(HaveOccurred())
 
 	client, err := dcli.New(dcli.FromEnv)

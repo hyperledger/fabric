@@ -7,7 +7,6 @@
 package etcdraft_test
 
 import (
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -53,7 +52,7 @@ var _ = Describe("Metadata Validation", func() {
 		cryptoProvider, err = sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		Expect(err).NotTo(HaveOccurred())
 
-		dataDir, err = ioutil.TempDir("", "wal-")
+		dataDir, err = os.MkdirTemp("", "wal-")
 		Expect(err).NotTo(HaveOccurred())
 
 		tlsCA, err = tlsgen.NewCA()

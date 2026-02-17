@@ -8,7 +8,6 @@ package chaincode
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -56,7 +55,7 @@ func cleanupInstallTest(fsPath string) {
 }
 
 func TestInstallBadVersion(t *testing.T) {
-	fsPath, err := ioutil.TempDir("", "installbadversion")
+	fsPath, err := os.MkdirTemp("", "installbadversion")
 	require.NoError(t, err)
 
 	cmd, _ := initInstallTest(t, fsPath, nil, nil)
@@ -71,7 +70,7 @@ func TestInstallBadVersion(t *testing.T) {
 }
 
 func TestInstallNonExistentCC(t *testing.T) {
-	fsPath, err := ioutil.TempDir("", "install-nonexistentcc")
+	fsPath, err := os.MkdirTemp("", "install-nonexistentcc")
 	require.NoError(t, err)
 
 	cmd, _ := initInstallTest(t, fsPath, nil, nil)
@@ -124,7 +123,7 @@ func TestInstallFromBadPackage(t *testing.T) {
 	defer os.RemoveAll(pdir)
 
 	ccpackfile := pdir + "/ccpack.file"
-	err := ioutil.WriteFile(ccpackfile, []byte("really bad CC package"), 0o700)
+	err := os.WriteFile(ccpackfile, []byte("really bad CC package"), 0o700)
 	if err != nil {
 		t.Fatalf("could not create package :%v", err)
 	}
@@ -145,7 +144,7 @@ func TestInstallFromBadPackage(t *testing.T) {
 func installCC(t *testing.T) error {
 	defer viper.Reset()
 
-	fsPath, err := ioutil.TempDir("", "installLegacyEx02")
+	fsPath, err := os.MkdirTemp("", "installLegacyEx02")
 	require.NoError(t, err)
 	cmd, _ := initInstallTest(t, fsPath, nil, nil)
 	defer cleanupInstallTest(fsPath)

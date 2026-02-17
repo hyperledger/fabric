@@ -62,7 +62,7 @@ func pkcs7UnPadding(src []byte) ([]byte, error) {
 	}
 
 	pad := src[len(src)-unpadding:]
-	for i := 0; i < unpadding; i++ {
+	for i := range unpadding {
 		if pad[i] != byte(unpadding) {
 			return nil, errors.New("Invalid pkcs7 padding (pad[i] != unpadding)")
 		}

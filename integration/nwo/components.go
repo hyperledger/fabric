@@ -8,7 +8,7 @@ package nwo
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/hyperledger/fabric/integration/nwo/runner"
@@ -58,7 +58,7 @@ func (c *Components) Build(path string) string {
 	resp, err := http.Get(fmt.Sprintf("http://%s/%s", c.ServerAddress, path))
 	Expect(err).NotTo(HaveOccurred())
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	Expect(err).NotTo(HaveOccurred())
 
 	if resp.StatusCode != http.StatusOK {

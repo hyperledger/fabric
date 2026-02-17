@@ -1030,7 +1030,7 @@ func TestAccessControl(t *testing.T) {
 	var listeners []net.Listener
 	var endpoints []string
 
-	for i := 0; i < authorizedPeersSize; i++ {
+	for range authorizedPeersSize {
 		ll, err := net.Listen("tcp", "127.0.0.1:0")
 		require.NoError(t, err)
 		listeners = append(listeners, ll)
@@ -1060,7 +1060,7 @@ func TestAccessControl(t *testing.T) {
 
 	var bootPorts []int
 
-	for i := 0; i < bootstrapSetSize; i++ {
+	for i := range bootstrapSetSize {
 		commit := newCommitter()
 		bootPeer, bootPort := newBootNode(i, commit, blockPullPolicy)
 		bootstrapSet = append(bootstrapSet, bootPeer)
@@ -1091,7 +1091,7 @@ func TestAccessControl(t *testing.T) {
 	standardPeerSetSize := 10
 	peersSet := make([]*peerNode, 0)
 
-	for i := 0; i < standardPeerSetSize; i++ {
+	for i := range standardPeerSetSize {
 		commit := newCommitter()
 		peersSet = append(peersSet, newPeerNode(bootstrapSetSize+i, commit, blockPullPolicy, bootPorts...))
 	}
@@ -1140,7 +1140,7 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 
 	var bootPorts []int
 
-	for i := 0; i < bootstrapSetSize; i++ {
+	for i := range bootstrapSetSize {
 		commit := newCommitter()
 		bootPeer, bootPort := newBootNode(i, commit, noopPeerIdentityAcceptor)
 		bootstrapSet = append(bootstrapSet, bootPeer)
@@ -1171,7 +1171,7 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 	standartPeersSize := 10
 	peersSet := make([]*peerNode, 0)
 
-	for i := 0; i < standartPeersSize; i++ {
+	for i := range standartPeersSize {
 		commit := newCommitter()
 		peersSet = append(peersSet, newPeerNode(bootstrapSetSize+i, commit, noopPeerIdentityAcceptor, bootPorts...))
 	}
@@ -1234,7 +1234,7 @@ func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
 	peer := newPeerNode(1, newCommitter(), noopPeerIdentityAcceptor, bootPort)
 	defer peer.shutdown()
 
-	naiveStateMsgPredicate := func(message interface{}) bool {
+	naiveStateMsgPredicate := func(message any) bool {
 		return protoext.IsRemoteStateMessage(message.(protoext.ReceivedMessage).GetGossipMessage().GossipMessage)
 	}
 	_, peerCh := peer.g.Accept(naiveStateMsgPredicate, true)
@@ -1247,7 +1247,7 @@ func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
 	// makes sure it receives expected amount of messages and sends signal of success
 	// to continue the test
 	go func() {
-		for count := 0; count < expectedMessagesCnt; count++ {
+		for range expectedMessagesCnt {
 			<-peerCh
 			wg.Done()
 		}

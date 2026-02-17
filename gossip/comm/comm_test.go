@@ -62,7 +62,7 @@ var testCommConfig = CommConfig{
 	SendBuffSize: DefSendBuffSize,
 }
 
-func acceptAll(msg interface{}) bool {
+func acceptAll(msg any) bool {
 	return true
 }
 
@@ -258,7 +258,7 @@ func TestMutualParallelSendWithAck(t *testing.T) {
 	defer comm1.Stop()
 	defer comm2.Stop()
 
-	acceptData := func(o interface{}) bool {
+	acceptData := func(o any) bool {
 		m := o.(protoext.ReceivedMessage).GetGossipMessage()
 		return protoext.IsDataMsg(m.GossipMessage)
 	}
@@ -271,21 +271,21 @@ func TestMutualParallelSendWithAck(t *testing.T) {
 	// Wait for the message to be received in comm2
 	<-inc2
 
-	for i := 0; i < msgNum; i++ {
+	for range msgNum {
 		go comm1.SendWithAck(createGossipMsg(), time.Second*5, 1, remotePeer(port2))
 	}
 
-	for i := 0; i < msgNum; i++ {
+	for range msgNum {
 		go comm2.SendWithAck(createGossipMsg(), time.Second*5, 1, remotePeer(port1))
 	}
 
 	go func() {
-		for i := 0; i < msgNum; i++ {
+		for range msgNum {
 			<-inc1
 		}
 	}()
 
-	for i := 0; i < msgNum; i++ {
+	for range msgNum {
 		<-inc2
 	}
 }
@@ -572,7 +572,7 @@ func TestCloseConn(t *testing.T) {
 		Data: make([]byte, 1024*1024),
 	}
 	protoext.NoopSign(msg2Send.GossipMessage)
-	for i := 0; i < DefRecvBuffSize; i++ {
+	for range DefRecvBuffSize {
 		err := stream.Send(msg2Send.Envelope)
 		if err != nil {
 			gotErr = true
@@ -739,11 +739,11 @@ func TestAccept(t *testing.T) {
 	comm1, port1 := newCommInstance(t, naiveSec)
 	comm2, _ := newCommInstance(t, naiveSec)
 
-	evenNONCESelector := func(m interface{}) bool {
+	evenNONCESelector := func(m any) bool {
 		return m.(protoext.ReceivedMessage).GetGossipMessage().Nonce%2 == 0
 	}
 
-	oddNONCESelector := func(m interface{}) bool {
+	oddNONCESelector := func(m any) bool {
 		return m.(protoext.ReceivedMessage).GetGossipMessage().Nonce%2 != 0
 	}
 
@@ -910,7 +910,7 @@ func TestPresumedDead(t *testing.T) {
 
 	comm2.Stop()
 	go func() {
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			comm1.Send(createGossipMsg(), remotePeer(port2))
 			time.Sleep(time.Millisecond * 200)
 		}
@@ -939,11 +939,9 @@ func TestReadFromStream(t *testing.T) {
 	errChan := make(chan error, 2)
 	msgChan := make(chan *protoext.SignedGossipMessage, 1)
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		conn.readFromStream(errChan, msgChan)
-	}()
+	})
 
 	select {
 	case <-msgChan:

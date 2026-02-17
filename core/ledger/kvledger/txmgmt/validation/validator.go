@@ -34,8 +34,8 @@ func (v *validator) preLoadCommittedVersionOfRSet(blk *block) error {
 	// read sets and pass as an argument in LoadCommittedVersionOfPubAndHashedKeys(),
 	// array is used for better code readability. On the negative side, this approach
 	// might use some extra memory.
-	pubKeysMap := make(map[statedb.CompositeKey]interface{})
-	hashedKeysMap := make(map[privacyenabledstate.HashedCompositeKey]interface{})
+	pubKeysMap := make(map[statedb.CompositeKey]any)
+	hashedKeysMap := make(map[privacyenabledstate.HashedCompositeKey]any)
 
 	for _, tx := range blk.txs {
 		for _, nsRWSet := range tx.rwset.NsRwSets {

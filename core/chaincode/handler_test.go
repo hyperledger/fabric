@@ -2940,7 +2940,7 @@ var _ = Describe("Handler", func() {
 				recvChan <- nil
 				Eventually(errChan).Should(Receive())
 
-				for i := 0; i < 5; i++ {
+				for i := range 5 {
 					m := fakeChatStream.SendArgsForCall(i)
 					Expect(m.Type).To(Equal(pb.ChaincodeMessage_KEEPALIVE))
 				}

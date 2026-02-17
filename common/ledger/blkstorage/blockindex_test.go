@@ -10,9 +10,9 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"hash"
-	"io/ioutil"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -58,7 +58,7 @@ func testBlockIndexSync(t *testing.T, numBlocks int, numBlocksToIndex int, syncB
 		// Plug-in back the original index store
 		blkfileMgr.index.db = originalIndexStore
 		// Verify that the first set of blocks are indexed in the original index
-		for i := 0; i < numBlocksToIndex; i++ {
+		for i := range numBlocksToIndex {
 			block, err := blkfileMgr.retrieveBlockByNumber(uint64(i))
 			require.NoError(t, err, "block [%d] should have been present in the index", i)
 			require.Equal(t, blocks[i], block)
@@ -205,12 +205,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 }
 
 func containsAttr(indexItems []IndexableAttr, attr IndexableAttr) bool {
-	for _, element := range indexItems {
-		if element == attr {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(indexItems, attr)
 }
 
 func TestTxIDKeyEncodingDecoding(t *testing.T) {
@@ -283,7 +278,7 @@ func TestExportUniqueTxIDs(t *testing.T) {
 	fileHashes, err := blkfileMgr.index.exportUniqueTxIDs(testSnapshotDir, testNewHashFunc)
 	require.NoError(t, err)
 	require.Empty(t, fileHashes)
-	files, err := ioutil.ReadDir(testSnapshotDir)
+	files, err := os.ReadDir(testSnapshotDir)
 	require.NoError(t, err)
 	require.Len(t, files, 0)
 
@@ -312,7 +307,7 @@ func TestExportUniqueTxIDs(t *testing.T) {
 	require.NoError(t, err)
 	fileHashes, err = blkfileMgr.index.exportUniqueTxIDs(testSnapshotDir, testNewHashFunc)
 	require.NoError(t, err)
-	verifyExportedTxIDs(t, testSnapshotDir, fileHashes, "txid-1", "txid-2", "txid-3", configTxID) //"txid-1" appears once, Txids appear in radix sort order
+	verifyExportedTxIDs(t, testSnapshotDir, fileHashes, "txid-1", "txid-2", "txid-3", configTxID) // "txid-1" appears once, Txids appear in radix sort order
 	os.Remove(filepath.Join(testSnapshotDir, snapshotDataFileName))
 	os.Remove(filepath.Join(testSnapshotDir, snapshotMetadataFileName))
 
@@ -402,13 +397,13 @@ func verifyExportedTxIDs(t *testing.T, dir string, fileHashes map[string][]byte,
 	require.Contains(t, fileHashes, snapshotMetadataFileName)
 
 	dataFile := filepath.Join(dir, snapshotDataFileName)
-	dataFileContent, err := ioutil.ReadFile(dataFile)
+	dataFileContent, err := os.ReadFile(dataFile)
 	require.NoError(t, err)
 	dataFileHash := sha256.Sum256(dataFileContent)
 	require.Equal(t, dataFileHash[:], fileHashes[snapshotDataFileName])
 
 	metadataFile := filepath.Join(dir, snapshotMetadataFileName)
-	metadataFileContent, err := ioutil.ReadFile(metadataFile)
+	metadataFileContent, err := os.ReadFile(metadataFile)
 	require.NoError(t, err)
 	metadataFileHash := sha256.Sum256(metadataFileContent)
 	require.Equal(t, metadataFileHash[:], fileHashes[snapshotMetadataFileName])
@@ -424,7 +419,7 @@ func verifyExportedTxIDs(t *testing.T, dir string, fileHashes map[string][]byte,
 	numTxIDs, err := metadataReader.DecodeUVarInt()
 	require.NoError(t, err)
 	retrievedTxIDs := []string{}
-	for i := uint64(0); i < numTxIDs; i++ {
+	for range numTxIDs {
 		txID, err := dataReader.DecodeString()
 		require.NoError(t, err)
 		retrievedTxIDs = append(retrievedTxIDs, txID)

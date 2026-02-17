@@ -157,7 +157,7 @@ func (m *mockDeliverServer) Send(response *peer.DeliverResponse) error {
 	return args.Error(0)
 }
 
-func (*mockDeliverServer) RecvMsg(m interface{}) error {
+func (*mockDeliverServer) RecvMsg(m any) error {
 	panic("implement me")
 }
 
@@ -165,7 +165,7 @@ func (*mockDeliverServer) SendHeader(metadata.MD) error {
 	panic("implement me")
 }
 
-func (*mockDeliverServer) SendMsg(m interface{}) error {
+func (*mockDeliverServer) SendMsg(m any) error {
 	panic("implement me")
 }
 
@@ -192,7 +192,7 @@ type testCase struct {
 }
 
 func TestFilteredBlockResponseSenderIsFiltered(t *testing.T) {
-	var fbrs interface{} = &filteredBlockResponseSender{}
+	var fbrs any = &filteredBlockResponseSender{}
 	filtered, ok := fbrs.(deliver.Filtered)
 	require.True(t, ok, "should be filtered")
 	require.True(t, filtered.IsFiltered(), "should return true from IsFiltered")
@@ -726,7 +726,7 @@ func produceSamplePvtdataOrPanic(txNum uint64, nsColls []string) *ledger.TxPvtDa
 		nsCollSplit := strings.Split(nsColl, ":")
 		ns := nsCollSplit[0]
 		coll := nsCollSplit[1]
-		builder.AddToPvtAndHashedWriteSet(ns, coll, fmt.Sprintf("key-%s-%s", ns, coll), []byte(fmt.Sprintf("value-%s-%s", ns, coll)))
+		builder.AddToPvtAndHashedWriteSet(ns, coll, fmt.Sprintf("key-%s-%s", ns, coll), fmt.Appendf(nil, "value-%s-%s", ns, coll))
 	}
 	simRes, err := builder.GetTxSimulationResults()
 	if err != nil {

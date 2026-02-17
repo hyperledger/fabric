@@ -11,7 +11,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"hash"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -597,13 +597,13 @@ func TestCompare(t *testing.T) {
 	for testName, testCase := range testCases {
 		t.Run(testName, func(t *testing.T) {
 			// Create temporary directories for the sample snapshots and comparison results
-			snapshotDir1, err := ioutil.TempDir("", "sample-snapshot-dir1")
+			snapshotDir1, err := os.MkdirTemp("", "sample-snapshot-dir1")
 			require.NoError(t, err)
 			defer os.RemoveAll(snapshotDir1)
-			snapshotDir2, err := ioutil.TempDir("", "sample-snapshot-dir2")
+			snapshotDir2, err := os.MkdirTemp("", "sample-snapshot-dir2")
 			require.NoError(t, err)
 			defer os.RemoveAll(snapshotDir2)
-			resultsDir, err := ioutil.TempDir("", "results")
+			resultsDir, err := os.MkdirTemp("", "results")
 			require.NoError(t, err)
 			defer os.RemoveAll(resultsDir)
 
@@ -834,7 +834,7 @@ func TestJSONArrayFileWriter(t *testing.T) {
 	}`
 
 	// Create temporary directory for output
-	resultDir, err := ioutil.TempDir("", "result")
+	resultDir, err := os.MkdirTemp("", "result")
 	require.NoError(t, err)
 	defer os.RemoveAll(resultDir)
 	// Create the output file
@@ -849,9 +849,9 @@ func TestJSONArrayFileWriter(t *testing.T) {
 	require.NoError(t, err)
 
 	// Read results of output and compare
-	resBytes, err := ioutil.ReadFile(filepath.Join(resultDir, "result.json"))
+	resBytes, err := os.ReadFile(filepath.Join(resultDir, "result.json"))
 	require.NoError(t, err)
-	res, err := ioutil.ReadAll(bytes.NewReader(resBytes))
+	res, err := io.ReadAll(bytes.NewReader(resBytes))
 	require.NoError(t, err)
 
 	require.JSONEq(t, expectedResult, string(res))

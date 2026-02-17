@@ -10,7 +10,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"hash"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -35,7 +34,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestWithNoCollectionConfig(t *testing.T) {
-	dbPath, err := ioutil.TempDir("", "confighistory")
+	dbPath, err := os.MkdirTemp("", "confighistory")
 	if err != nil {
 		t.Fatalf("Failed to create config history directory: %s", err)
 	}
@@ -57,7 +56,7 @@ func TestWithNoCollectionConfig(t *testing.T) {
 }
 
 func TestWithEmptyCollectionConfig(t *testing.T) {
-	dbPath, err := ioutil.TempDir("", "confighistory")
+	dbPath, err := os.MkdirTemp("", "confighistory")
 	if err != nil {
 		t.Fatalf("Failed to create config history directory: %s", err)
 	}
@@ -83,7 +82,7 @@ func TestWithEmptyCollectionConfig(t *testing.T) {
 }
 
 func TestMgrQueries(t *testing.T) {
-	dbPath, err := ioutil.TempDir("", "confighistory")
+	dbPath, err := os.MkdirTemp("", "confighistory")
 	if err != nil {
 		t.Fatalf("Failed to create config history directory: %s", err)
 	}
@@ -133,7 +132,7 @@ func TestMgrQueries(t *testing.T) {
 }
 
 func TestDrop(t *testing.T) {
-	dbPath, err := ioutil.TempDir("", "confighistory")
+	dbPath, err := os.MkdirTemp("", "confighistory")
 	require.NoError(t, err)
 	defer os.RemoveAll(dbPath)
 	mockCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
@@ -183,7 +182,7 @@ func TestDrop(t *testing.T) {
 }
 
 func TestWithImplicitColls(t *testing.T) {
-	dbPath, err := ioutil.TempDir("", "confighistory")
+	dbPath, err := os.MkdirTemp("", "confighistory")
 	if err != nil {
 		t.Fatalf("Failed to create config history directory: %s", err)
 	}
@@ -256,7 +255,7 @@ type testEnvForSnapshot struct {
 }
 
 func newTestEnvForSnapshot(t *testing.T) *testEnvForSnapshot {
-	dbPath, err := ioutil.TempDir("", "confighistory")
+	dbPath, err := os.MkdirTemp("", "confighistory")
 	require.NoError(t, err)
 	mgr, err := NewMgr(dbPath, &mock.DeployedChaincodeInfoProvider{})
 	if err != nil {
@@ -264,7 +263,7 @@ func newTestEnvForSnapshot(t *testing.T) *testEnvForSnapshot {
 		t.Fatalf("Failed to create new config history manager: %s", err)
 	}
 
-	testSnapshotDir, err := ioutil.TempDir("", "confighistorysnapshot")
+	testSnapshotDir, err := os.MkdirTemp("", "confighistorysnapshot")
 	if err != nil {
 		os.RemoveAll(dbPath)
 		t.Fatalf("Failed to create config history snapshot directory: %s", err)
@@ -379,7 +378,7 @@ func TestExportAndImportConfigHistory(t *testing.T) {
 		fileHashes, err := retriever.ExportConfigHistory(env.testSnapshotDir, testNewHashFunc)
 		require.NoError(t, err)
 		require.Empty(t, fileHashes)
-		files, err := ioutil.ReadDir(env.testSnapshotDir)
+		files, err := os.ReadDir(env.testSnapshotDir)
 		require.NoError(t, err)
 		require.Len(t, files, 0)
 	})
@@ -495,13 +494,13 @@ func verifyExportedConfigHistory(t *testing.T, dir string, fileHashes map[string
 	require.Contains(t, fileHashes, snapshotMetadataFileName)
 
 	dataFile := filepath.Join(dir, snapshotDataFileName)
-	dataFileContent, err := ioutil.ReadFile(dataFile)
+	dataFileContent, err := os.ReadFile(dataFile)
 	require.NoError(t, err)
 	dataFileHash := sha256.Sum256(dataFileContent)
 	require.Equal(t, dataFileHash[:], fileHashes[snapshotDataFileName])
 
 	metadataFile := filepath.Join(dir, snapshotMetadataFileName)
-	metadataFileContent, err := ioutil.ReadFile(metadataFile)
+	metadataFileContent, err := os.ReadFile(metadataFile)
 	require.NoError(t, err)
 	metadataFileHash := sha256.Sum256(metadataFileContent)
 	require.Equal(t, metadataFileHash[:], fileHashes[snapshotMetadataFileName])
@@ -518,7 +517,7 @@ func verifyExportedConfigHistory(t *testing.T, dir string, fileHashes map[string
 	require.NoError(t, err)
 
 	var retrievedCollectionConfigs []*compositeKV
-	for i := uint64(0); i < numCollectionConfigs; i++ {
+	for range numCollectionConfigs {
 		key, err := dataReader.DecodeBytes()
 		require.NoError(t, err)
 		val, err := dataReader.DecodeBytes()
@@ -593,7 +592,8 @@ func sampleCollectionConfigPackage(collNamePart1 string, collNamePart2 uint64) *
 func testutilEquipMockCCInfoProviderToReturnDesiredCollConfig(
 	mockCCInfoProvider *mock.DeployedChaincodeInfoProvider,
 	chaincodeName string,
-	collConfigPackage *peer.CollectionConfigPackage) {
+	collConfigPackage *peer.CollectionConfigPackage,
+) {
 	mockCCInfoProvider.UpdatedChaincodesReturns(
 		[]*ledger.ChaincodeLifecycleInfo{
 			{Name: chaincodeName},

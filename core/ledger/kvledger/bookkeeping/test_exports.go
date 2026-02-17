@@ -17,7 +17,6 @@ limitations under the License.
 package bookkeeping
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -33,7 +32,7 @@ type TestEnv struct {
 
 // NewTestEnv construct a TestEnv for testing
 func NewTestEnv(t testing.TB) *TestEnv {
-	dbPath, err := ioutil.TempDir("", "bookkeep")
+	dbPath, err := os.MkdirTemp("", "bookkeep")
 	require.NoError(t, err)
 	provider, err := NewProvider(dbPath)
 	require.NoError(t, err)

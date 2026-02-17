@@ -36,7 +36,7 @@ type MockResponseSet struct {
 // and response to send (optional)
 type MockResponse struct {
 	RecvMsg *pb.ChaincodeMessage
-	RespMsg interface{}
+	RespMsg any
 }
 
 // MockCCComm implements the mock communication between chaincode and peer

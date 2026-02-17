@@ -9,7 +9,7 @@ package fabhttp_test
 import (
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -39,7 +39,7 @@ var _ = Describe("Server", func() {
 
 	BeforeEach(func() {
 		var err error
-		tempDir, err = ioutil.TempDir("", "fabhttp-test")
+		tempDir, err = os.MkdirTemp("", "fabhttp-test")
 		Expect(err).NotTo(HaveOccurred())
 
 		generateCertificates(tempDir)
@@ -115,7 +115,7 @@ var _ = Describe("Server", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.StatusCode).To(Equal(http.StatusOK))
 		Expect(resp.Header.Get("Content-Type")).To(Equal("text/plain; charset=utf-8"))
-		buff, err := ioutil.ReadAll(resp.Body)
+		buff, err := io.ReadAll(resp.Body)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(string(buff)).To(Equal("secure"))
 		resp.Body.Close()
@@ -152,7 +152,7 @@ var _ = Describe("Server", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.StatusCode).To(Equal(http.StatusOK))
 			Expect(resp.Header.Get("Content-Type")).To(Equal("text/plain; charset=utf-8"))
-			buff, err := ioutil.ReadAll(resp.Body)
+			buff, err := io.ReadAll(resp.Body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(buff)).To(Equal("insecure"))
 			resp.Body.Close()
@@ -214,7 +214,7 @@ var _ = Describe("Server", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(fakeLogger.WarnCallCount()).To(Equal(1))
-		Expect(fakeLogger.WarnArgsForCall(0)).To(Equal([]interface{}{"key", "value"}))
+		Expect(fakeLogger.WarnArgsForCall(0)).To(Equal([]any{"key", "value"}))
 	})
 
 	Context("when a logger is not provided", func() {
