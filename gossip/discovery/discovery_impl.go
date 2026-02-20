@@ -505,6 +505,8 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *protoext.SignedGossipMessage
 
 	d.lock.RLock()
 	_, known := d.id2Member[string(pkiID)]
+	_, isAlive := d.aliveLastTS[string(pkiID)]
+	lastDeadTS, isDead := d.deadLastTS[string(pkiID)]
 	d.lock.RUnlock()
 
 	if !known {
@@ -512,13 +514,9 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *protoext.SignedGossipMessage
 		return
 	}
 
-	d.lock.RLock()
-	_, isAlive := d.aliveLastTS[string(pkiID)]
-	lastDeadTS, isDead := d.deadLastTS[string(pkiID)]
-	d.lock.RUnlock()
-
 	if !isAlive && !isDead {
-		d.logger.Panicf("Member %s is known but not found neither in alive nor in dead lastTS maps, isAlive=%v, isDead=%v", m.GetAliveMsg().Membership.Endpoint, isAlive, isDead)
+		// Member was concurrently purged between checks, re-learn it
+		d.learnNewMembers([]*protoext.SignedGossipMessage{m}, []*protoext.SignedGossipMessage{})
 		return
 	}
 
