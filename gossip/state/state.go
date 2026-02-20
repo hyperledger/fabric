@@ -149,6 +149,8 @@ type GossipStateProviderImpl struct {
 
 	stopCh chan struct{}
 
+	done sync.WaitGroup
+
 	once sync.Once
 
 	stateTransferActive int32
@@ -264,7 +266,8 @@ func NewGossipStateProvider(
 	go s.receiveAndQueueGossipMessages(gossipChan)
 	go s.receiveAndDispatchDirectMessages(commChan)
 	// Deliver in order messages into the incoming channel
-	go s.deliverPayloads()
+	s.done.Add(1)
+	go func() { defer s.done.Done(); s.deliverPayloads() }()
 	if s.config.StateEnabled {
 		// Execute anti entropy to fill missing gaps
 		go s.antiEntropy()
@@ -531,6 +534,9 @@ func (s *GossipStateProviderImpl) Stop() {
 	// and stop channel won't be used again
 	s.once.Do(func() {
 		close(s.stopCh)
+		// Wait for all goroutines to finish before closing resources,
+		// so that in-flight commits complete and don't send on closed channels.
+		s.done.Wait()
 		// Close all resources
 		s.ledger.Close()
 		close(s.stateRequestCh)
@@ -546,6 +552,11 @@ func (s *GossipStateProviderImpl) deliverPayloads() {
 			s.logger.Debugf("[%s] Ready to transfer payloads (blocks) to the ledger, next block number is = [%d]", s.chainID, s.payloads.Next())
 			// Collect all subsequent payloads
 			for payload := s.payloads.Pop(); payload != nil; payload = s.payloads.Pop() {
+				select {
+				case <-s.stopCh:
+					return
+				default:
+				}
 				rawBlock := &common.Block{}
 				if err := pb.Unmarshal(payload.Data, rawBlock); err != nil {
 					s.logger.Errorf("Error getting block with seqNum = %d due to (%+v)...dropping block", payload.SeqNum, errors.WithStack(err))
