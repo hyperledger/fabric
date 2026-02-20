@@ -11,10 +11,10 @@ import (
 	"io/ioutil"
 	"time"
 
+	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
@@ -63,7 +63,7 @@ func GlobalConfig() *DeliverServiceConfig {
 
 func LoadOverridesMap() (map[string]*orderers.Endpoint, error) {
 	var overrides []AddressOverride
-	err := viper.UnmarshalKey("peer.deliveryclient.addressOverrides", &overrides)
+	err := viper.UnmarshalKey("peer.deliveryclient.addressOverrides", &overrides, viper.DecodeHook(viperutil.YamlStringToStructHook(overrides)))
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not unmarshal peer.deliveryclient.addressOverrides")
 	}
