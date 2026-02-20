@@ -1,6 +1,12 @@
 What's new in Hyperledger Fabric
 ================================
 
+.. note::
+
+   Hyperledger Fabric requires a minimum Go version as specified in ``go.mod``.
+   Using an older Go version may result in build or linter failures when running Fabric
+   ``make`` targets.
+
 What's New in Hyperledger Fabric v3.1
 -------------------------------------
 
