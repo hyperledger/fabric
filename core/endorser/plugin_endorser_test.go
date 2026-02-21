@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package endorser_test
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -44,7 +43,7 @@ type testTransientStore struct {
 func newTransientStore(t *testing.T) *testTransientStore {
 	s := &testTransientStore{}
 	var err error
-	s.tempdir, err = ioutil.TempDir("", "ts")
+	s.tempdir, err = os.MkdirTemp("", "ts")
 	if err != nil {
 		t.Fatalf("Failed to create test directory, got err %s", err)
 		return s

@@ -8,7 +8,6 @@ package server
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"runtime/debug"
 	"time"
@@ -122,7 +121,7 @@ func (mt *msgTracer) trace(traceDir string, msg *cb.Envelope, err error) {
 			logger.Debugf("Error marshaling trace msg for %s: %s", path, err)
 			return
 		}
-		err = ioutil.WriteFile(path, pb, 0o660)
+		err = os.WriteFile(path, pb, 0o660)
 		if err != nil {
 			logger.Debugf("Error writing trace msg for %s: %s", path, err)
 		}

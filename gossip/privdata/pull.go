@@ -98,7 +98,7 @@ func NewPuller(metrics *metrics.PrivdataMetrics, cs privdata.CollectionStore, g 
 		PrivateDataRetriever:    dataRetriever,
 		CollectionAccessFactory: factory,
 	}
-	_, p.msgChan = p.Accept(func(o interface{}) bool {
+	_, p.msgChan = p.Accept(func(o any) bool {
 		msg := o.(protoext.ReceivedMessage).GetGossipMessage()
 		if !bytes.Equal(msg.Channel, []byte(p.channel)) {
 			return false
@@ -696,7 +696,6 @@ func digestsAsPointerSlice(digests []protosgossip.PvtDataDigest) []*protosgossip
 	for i, dig := range digests {
 		// re-introduce dig variable to allocate
 		// new address for each iteration
-		dig := dig
 		res[i] = &dig
 	}
 	return res

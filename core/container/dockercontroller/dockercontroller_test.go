@@ -16,7 +16,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"testing"
 	"time"
 
@@ -456,7 +455,7 @@ func TestBuild(t *testing.T) {
 		ccType, path, codePackageStream := fakePlatformBuilder.GenerateDockerBuildArgsForCall(0)
 		require.Equal(t, "TYPE", ccType)
 		require.Equal(t, "path", path)
-		codePackage, err := ioutil.ReadAll(codePackageStream)
+		codePackage, err := io.ReadAll(codePackageStream)
 		require.NoError(t, err)
 		require.Equal(t, []byte("code-package"), codePackage)
 	})

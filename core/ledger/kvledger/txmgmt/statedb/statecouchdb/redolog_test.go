@@ -8,7 +8,6 @@ package statecouchdb
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -34,7 +33,7 @@ func TestRedoLogger(t *testing.T) {
 	}
 
 	// write log records for multiple channels
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		logger := provider.newRedoLogger(fmt.Sprintf("channel-%d", i))
 		rec, err := logger.load()
 		require.NoError(t, err)
@@ -151,7 +150,7 @@ func TestCouchdbRedoLogger(t *testing.T) {
 }
 
 func redologTestSetup(t *testing.T) (p *redoLoggerProvider, cleanup func()) {
-	dbPath, err := ioutil.TempDir("", "redolog")
+	dbPath, err := os.MkdirTemp("", "redolog")
 	if err != nil {
 		t.Fatalf("Failed to create redo log directory: %s", err)
 	}
@@ -165,7 +164,7 @@ func redologTestSetup(t *testing.T) (p *redoLoggerProvider, cleanup func()) {
 }
 
 func TestReadExistingRedoRecord(t *testing.T) {
-	b, err := ioutil.ReadFile("testdata/persisted_redo_record")
+	b, err := os.ReadFile("testdata/persisted_redo_record")
 	require.NoError(t, err)
 	rec, err := decodeRedologVal(b)
 	require.NoError(t, err)

@@ -8,7 +8,6 @@ package confighistorytest
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"testing"
@@ -19,7 +18,7 @@ import (
 )
 
 func TestConfigHistory(t *testing.T) {
-	testDir, err := ioutil.TempDir("", "confighitory-")
+	testDir, err := os.MkdirTemp("", "confighitory-")
 	require.NoError(t, err)
 	defer os.RemoveAll(testDir)
 

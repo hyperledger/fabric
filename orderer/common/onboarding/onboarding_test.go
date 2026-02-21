@@ -8,7 +8,6 @@ package onboarding
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -66,7 +65,7 @@ func TestMain(m *testing.M) {
 	}
 	defer gexec.CleanupBuildArtifacts()
 
-	tempDir, err = ioutil.TempDir("", "onboarding-test")
+	tempDir, err = os.MkdirTemp("", "onboarding-test")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to create temporary directory: %v", err)
 		os.Exit(-1)
@@ -95,11 +94,11 @@ type factory interface {
 
 func copyYamlFiles(src, dst string) {
 	for _, file := range []string{"configtx.yaml", "examplecom-config.yaml"} {
-		fileBytes, err := ioutil.ReadFile(filepath.Join(src, file))
+		fileBytes, err := os.ReadFile(filepath.Join(src, file))
 		if err != nil {
 			os.Exit(-1)
 		}
-		err = ioutil.WriteFile(filepath.Join(dst, file), fileBytes, 0o644)
+		err = os.WriteFile(filepath.Join(dst, file), fileBytes, 0o644)
 		if err != nil {
 			os.Exit(-1)
 		}
@@ -188,7 +187,7 @@ func (ds *deliverServer) deliverBlocks(stream orderer.AtomicBroadcast_DeliverSer
 
 func loadPEM(cryptoPath, suffix string, t *testing.T) []byte {
 	ordererTLSPath := filepath.Join(cryptoPath, "ordererOrganizations", "example.com", "orderers", "127.0.0.1.example.com", "tls")
-	b, err := ioutil.ReadFile(filepath.Join(ordererTLSPath, suffix))
+	b, err := os.ReadFile(filepath.Join(ordererTLSPath, suffix))
 	require.NoError(t, err)
 	return b
 }
@@ -249,11 +248,11 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 	defer deliverServer.srv.Stop()
 
 	systemChannelBlockPath := generateBootstrapBlock(t, tempDir, configtxgen, "system", "SampleSoloSystemChannel")
-	systemChannelBlockBytes, err := ioutil.ReadFile(systemChannelBlockPath)
+	systemChannelBlockBytes, err := os.ReadFile(systemChannelBlockPath)
 	require.NoError(t, err)
 
 	applicationChannelBlockPath := generateBootstrapBlock(t, tempDir, configtxgen, "testchannel", "SampleOrgChannel")
-	applicationChannelBlockBytes, err := ioutil.ReadFile(applicationChannelBlockPath)
+	applicationChannelBlockBytes, err := os.ReadFile(applicationChannelBlockPath)
 	require.NoError(t, err)
 
 	testchannelGB := &common.Block{}
@@ -512,7 +511,7 @@ func TestReplicate(t *testing.T) {
 	defer os.RemoveAll(cryptoPath)
 
 	applicationChannelBlockPath := generateBootstrapBlock(t, tempDir, configtxgen, "testchannel", "SampleOrgChannel")
-	applicationChannelBlockBytes, err := ioutil.ReadFile(applicationChannelBlockPath)
+	applicationChannelBlockBytes, err := os.ReadFile(applicationChannelBlockPath)
 	require.NoError(t, err)
 
 	caCert := loadPEM(cryptoPath, "ca.crt", t)
@@ -734,7 +733,6 @@ func TestReplicate(t *testing.T) {
 			},
 		},
 	} {
-		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 			deliverServer := prepareTestCase()
 			defer deliverServer.srv.Stop()
@@ -865,7 +863,6 @@ func TestInactiveChainReplicator(t *testing.T) {
 			trackedChains := make(chan string, 10)
 			// Simulate starting of a chain by simply adding it to a channel
 			for _, trackedChain := range testCase.chainsTracked {
-				trackedChain := trackedChain
 				icr.TrackChain(trackedChain, testCase.genesisBlock, func() {
 					trackedChains <- trackedChain
 				})
@@ -885,15 +882,13 @@ func TestInactiveChainReplicator(t *testing.T) {
 			replicator.On("ReplicateChains", mock.Anything, input).Return(output).Once()
 
 			var replicatorStopped sync.WaitGroup
-			replicatorStopped.Add(1)
-			go func() {
-				defer replicatorStopped.Done()
+			replicatorStopped.Go(func() {
 				// trigger to replicate the first time
 				scheduler <- time.Time{}
 				// trigger to replicate a second time
 				scheduler <- time.Time{}
 				icr.Stop()
-			}()
+			})
 			icr.Run()
 			replicatorStopped.Wait()
 			close(trackedChains)
@@ -972,7 +967,7 @@ func TestVerifierLoader(t *testing.T) {
 	defer os.RemoveAll(cryptoPath)
 
 	systemChannelBlockPath := generateBootstrapBlock(t, tempDir, configtxgen, "system", "SampleSoloSystemChannel")
-	systemChannelBlockBytes, err := ioutil.ReadFile(systemChannelBlockPath)
+	systemChannelBlockBytes, err := os.ReadFile(systemChannelBlockPath)
 	require.NoError(t, err)
 
 	configBlock := &common.Block{}
@@ -1118,11 +1113,11 @@ func TestValidateBootstrapBlock(t *testing.T) {
 	defer os.RemoveAll(cryptoPath)
 
 	systemChannelBlockPath := generateBootstrapBlock(t, tempDir, configtxgen, "system", "SampleSoloSystemChannel")
-	systemChannelBlockBytes, err := ioutil.ReadFile(systemChannelBlockPath)
+	systemChannelBlockBytes, err := os.ReadFile(systemChannelBlockPath)
 	require.NoError(t, err)
 
 	applicationChannelBlockPath := generateBootstrapBlock(t, tempDir, configtxgen, "mychannel", "SampleOrgChannel")
-	applicationChannelBlockBytes, err := ioutil.ReadFile(applicationChannelBlockPath)
+	applicationChannelBlockBytes, err := os.ReadFile(applicationChannelBlockPath)
 	require.NoError(t, err)
 
 	appBlock := &common.Block{}

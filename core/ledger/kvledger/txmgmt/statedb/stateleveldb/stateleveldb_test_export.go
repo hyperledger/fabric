@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package stateleveldb
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -24,7 +23,7 @@ type TestVDBEnv struct {
 // NewTestVDBEnv instantiates and new level db backed TestVDB
 func NewTestVDBEnv(t testing.TB) *TestVDBEnv {
 	t.Logf("Creating new TestVDBEnv")
-	dbPath, err := ioutil.TempDir("", "statelvldb")
+	dbPath, err := os.MkdirTemp("", "statelvldb")
 	if err != nil {
 		t.Fatalf("Failed to create leveldb directory: %s", err)
 	}

@@ -8,7 +8,6 @@ package pluggable
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -81,7 +80,7 @@ func CountValidationPluginActivations() int {
 }
 
 func listDir(d string) int {
-	dir, err := ioutil.ReadDir(d)
+	dir, err := os.ReadDir(d)
 	if err != nil {
 		panic(fmt.Sprintf("failed listing directory %s: %v", d, err))
 	}

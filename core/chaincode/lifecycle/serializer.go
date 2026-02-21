@@ -51,7 +51,7 @@ func (m Marshaler) Marshal(msg proto.Message) ([]byte, error) {
 	return proto.Marshal(msg)
 }
 
-var ProtoMessageType = reflect.TypeOf((*proto.Message)(nil)).Elem()
+var ProtoMessageType = reflect.TypeFor[proto.Message]()
 
 // Serializer is used to write structures into the db and to read them back out.
 // Although it's unfortunate to write a custom serializer, rather than to use something
@@ -67,9 +67,9 @@ type Serializer struct {
 // SerializableChecks performs some boilerplate checks to make sure the given structure
 // is serializable.  It returns the reflected version of the value and a slice of all
 // field names, or an error.
-func (s *Serializer) SerializableChecks(structure interface{}) (reflect.Value, []string, error) {
+func (s *Serializer) SerializableChecks(structure any) (reflect.Value, []string, error) {
 	value := reflect.ValueOf(structure)
-	if value.Kind() != reflect.Ptr {
+	if value.Kind() != reflect.Pointer {
 		return reflect.Value{}, nil, errors.Errorf("must be pointer to struct, but got non-pointer %v", value.Kind())
 	}
 
@@ -90,7 +90,7 @@ func (s *Serializer) SerializableChecks(structure interface{}) (reflect.Value, [
 			if fieldValue.Type().Elem().Kind() != reflect.Uint8 {
 				return reflect.Value{}, nil, errors.Errorf("unsupported slice type %v for field %s", fieldValue.Type().Elem().Kind(), fieldName)
 			}
-		case reflect.Ptr:
+		case reflect.Pointer:
 			if !fieldValue.Type().Implements(ProtoMessageType) {
 				return reflect.Value{}, nil, errors.Errorf("unsupported pointer type %v for field %s (must be proto)", fieldValue.Type().Elem(), fieldName)
 			}
@@ -106,7 +106,7 @@ func (s *Serializer) SerializableChecks(structure interface{}) (reflect.Value, [
 // and,  deletes any keys in the namespace which are not found in the struct.
 // Note: If a key already exists for the field, and the value is unchanged, then
 // the key is _not_ written to.
-func (s *Serializer) Serialize(namespace, name string, structure interface{}, state ReadWritableState) error {
+func (s *Serializer) Serialize(namespace, name string, structure any, state ReadWritableState) error {
 	value, allFields, err := s.SerializableChecks(structure)
 	if err != nil {
 		return errors.WithMessagef(err, "structure for namespace %s/%s is not serializable", namespace, name)
@@ -144,7 +144,7 @@ func (s *Serializer) Serialize(namespace, name string, structure interface{}, st
 			stateData.Type = &lb.StateData_Int64{Int64: fieldValue.Int()}
 		case reflect.Slice:
 			stateData.Type = &lb.StateData_Bytes{Bytes: fieldValue.Bytes()}
-		case reflect.Ptr:
+		case reflect.Pointer:
 			var bin []byte
 			if !fieldValue.IsNil() {
 				bin, err = s.Marshaler.Marshal(fieldValue.Interface().(proto.Message))
@@ -194,7 +194,7 @@ func (s *Serializer) Serialize(namespace, name string, structure interface{}, st
 	return nil
 }
 
-func (s *Serializer) IsMetadataSerialized(namespace, name string, structure interface{}, state OpaqueState) (bool, error) {
+func (s *Serializer) IsMetadataSerialized(namespace, name string, structure any, state OpaqueState) (bool, error) {
 	value, allFields, err := s.SerializableChecks(structure)
 	if err != nil {
 		return false, errors.WithMessagef(err, "structure for namespace %s/%s is not serializable", namespace, name)
@@ -221,7 +221,7 @@ func (s *Serializer) IsMetadataSerialized(namespace, name string, structure inte
 
 // IsSerialized essentially checks if the hashes of a serialized version of a structure matches the hashes
 // of the pre-image of some struct serialized into the database.
-func (s *Serializer) IsSerialized(namespace, name string, structure interface{}, state OpaqueState) (bool, error) {
+func (s *Serializer) IsSerialized(namespace, name string, structure any, state OpaqueState) (bool, error) {
 	value, allFields, err := s.SerializableChecks(structure)
 	if err != nil {
 		return false, errors.WithMessagef(err, "structure for namespace %s/%s is not serializable", namespace, name)
@@ -270,7 +270,7 @@ func (s *Serializer) IsSerialized(namespace, name string, structure interface{},
 			stateData.Type = &lb.StateData_Int64{Int64: fieldValue.Int()}
 		case reflect.Slice:
 			stateData.Type = &lb.StateData_Bytes{Bytes: fieldValue.Bytes()}
-		case reflect.Ptr:
+		case reflect.Pointer:
 			var bin []byte
 			if !fieldValue.IsNil() {
 				bin, err = s.Marshaler.Marshal(fieldValue.Interface().(proto.Message))
@@ -299,7 +299,7 @@ func (s *Serializer) IsSerialized(namespace, name string, structure interface{},
 // Note: The struct names for the serialization and deserialization must match exactly.  Unencoded fields are not
 // populated, and the extraneous keys are ignored.  The metadata provided should have been returned by a DeserializeMetadata
 // call for the same namespace and name.
-func (s *Serializer) Deserialize(namespace, name string, metadata *lb.StateMetadata, structure interface{}, state ReadableState) error {
+func (s *Serializer) Deserialize(namespace, name string, metadata *lb.StateMetadata, structure any, state ReadableState) error {
 	value, _, err := s.SerializableChecks(structure)
 	if err != nil {
 		return errors.WithMessagef(err, "could not deserialize namespace %s/%s to unserializable type %T", namespace, name, structure)
@@ -334,7 +334,7 @@ func (s *Serializer) Deserialize(namespace, name string, metadata *lb.StateMetad
 			if oneOf != nil {
 				fieldValue.SetBytes(oneOf)
 			}
-		case reflect.Ptr:
+		case reflect.Pointer:
 			// Note, even non-existent keys will decode to an empty proto
 			msg := reflect.New(fieldValue.Type().Elem())
 			err := s.DeserializeFieldAsProto(namespace, name, fieldName, state, msg.Interface().(proto.Message))

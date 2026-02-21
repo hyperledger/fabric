@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -70,7 +69,7 @@ func TestCreateBlock(t *testing.T) {
 }
 
 func TestBlockSignature(t *testing.T) {
-	dir, err := ioutil.TempDir("", "file-ledger")
+	dir, err := os.MkdirTemp("", "file-ledger")
 	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 
@@ -209,7 +208,7 @@ func TestGoodWriteConfig(t *testing.T) {
 	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 
-	tmpdir, err := ioutil.TempDir("", "file-ledger")
+	tmpdir, err := os.MkdirTemp("", "file-ledger")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
 
@@ -256,7 +255,7 @@ func TestWriteConfigSynchronously(t *testing.T) {
 	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 
-	tmpdir, err := ioutil.TempDir("", "file-ledger")
+	tmpdir, err := os.MkdirTemp("", "file-ledger")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
 
@@ -300,7 +299,7 @@ func TestMigrationWriteConfig(t *testing.T) {
 	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 
-	tmpdir, err := ioutil.TempDir("", "file-ledger")
+	tmpdir, err := os.MkdirTemp("", "file-ledger")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
 
@@ -348,7 +347,7 @@ func TestRaceWriteConfig(t *testing.T) {
 	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 
-	tmpdir, err := ioutil.TempDir("", "file-ledger")
+	tmpdir, err := os.MkdirTemp("", "file-ledger")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
 
@@ -411,7 +410,7 @@ func TestRaceWriteBlocks(t *testing.T) {
 	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 
-	tmpdir, err := ioutil.TempDir("", "file-ledger")
+	tmpdir, err := os.MkdirTemp("", "file-ledger")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
 

@@ -54,46 +54,46 @@ func NewWithParams(securityLevel int, hashFamily string, keyStore bccsp.KeyStore
 	// of the following call fails.
 
 	// Set the Encryptors
-	swbccsp.AddWrapper(reflect.TypeOf(&aesPrivateKey{}), &aescbcpkcs7Encryptor{})
+	swbccsp.AddWrapper(reflect.TypeFor[*aesPrivateKey](), &aescbcpkcs7Encryptor{})
 
 	// Set the Decryptors
-	swbccsp.AddWrapper(reflect.TypeOf(&aesPrivateKey{}), &aescbcpkcs7Decryptor{})
+	swbccsp.AddWrapper(reflect.TypeFor[*aesPrivateKey](), &aescbcpkcs7Decryptor{})
 
 	// Set the Signers
-	swbccsp.AddWrapper(reflect.TypeOf(&ecdsaPrivateKey{}), &ecdsaSigner{})
+	swbccsp.AddWrapper(reflect.TypeFor[*ecdsaPrivateKey](), &ecdsaSigner{})
 
 	// Set the Verifiers
-	swbccsp.AddWrapper(reflect.TypeOf(&ecdsaPrivateKey{}), &ecdsaPrivateKeyVerifier{})
-	swbccsp.AddWrapper(reflect.TypeOf(&ecdsaPublicKey{}), &ecdsaPublicKeyKeyVerifier{})
+	swbccsp.AddWrapper(reflect.TypeFor[*ecdsaPrivateKey](), &ecdsaPrivateKeyVerifier{})
+	swbccsp.AddWrapper(reflect.TypeFor[*ecdsaPublicKey](), &ecdsaPublicKeyKeyVerifier{})
 
 	// Set the Hashers
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.SHAOpts{}), &hasher{hash: conf.hashFunction})
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.SHA256Opts{}), &hasher{hash: sha256.New})
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.SHA384Opts{}), &hasher{hash: sha512.New384})
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.SHA3_256Opts{}), &hasher{hash: func() hash.Hash { return sha3.New256() }})
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.SHA3_384Opts{}), &hasher{hash: func() hash.Hash { return sha3.New384() }})
+	swbccsp.AddWrapper(reflect.TypeFor[*bccsp.SHAOpts](), &hasher{hash: conf.hashFunction})
+	swbccsp.AddWrapper(reflect.TypeFor[*bccsp.SHA256Opts](), &hasher{hash: sha256.New})
+	swbccsp.AddWrapper(reflect.TypeFor[*bccsp.SHA384Opts](), &hasher{hash: sha512.New384})
+	swbccsp.AddWrapper(reflect.TypeFor[*bccsp.SHA3_256Opts](), &hasher{hash: func() hash.Hash { return sha3.New256() }})
+	swbccsp.AddWrapper(reflect.TypeFor[*bccsp.SHA3_384Opts](), &hasher{hash: func() hash.Hash { return sha3.New384() }})
 
 	// Set the key generators
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.ECDSAKeyGenOpts{}), &ecdsaKeyGenerator{curve: conf.ellipticCurve})
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.ECDSAP256KeyGenOpts{}), &ecdsaKeyGenerator{curve: elliptic.P256()})
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.ECDSAP384KeyGenOpts{}), &ecdsaKeyGenerator{curve: elliptic.P384()})
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.AESKeyGenOpts{}), &aesKeyGenerator{length: conf.aesBitLength})
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.AES256KeyGenOpts{}), &aesKeyGenerator{length: 32})
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.AES192KeyGenOpts{}), &aesKeyGenerator{length: 24})
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.AES128KeyGenOpts{}), &aesKeyGenerator{length: 16})
+	swbccsp.AddWrapper(reflect.TypeFor[*bccsp.ECDSAKeyGenOpts](), &ecdsaKeyGenerator{curve: conf.ellipticCurve})
+	swbccsp.AddWrapper(reflect.TypeFor[*bccsp.ECDSAP256KeyGenOpts](), &ecdsaKeyGenerator{curve: elliptic.P256()})
+	swbccsp.AddWrapper(reflect.TypeFor[*bccsp.ECDSAP384KeyGenOpts](), &ecdsaKeyGenerator{curve: elliptic.P384()})
+	swbccsp.AddWrapper(reflect.TypeFor[*bccsp.AESKeyGenOpts](), &aesKeyGenerator{length: conf.aesBitLength})
+	swbccsp.AddWrapper(reflect.TypeFor[*bccsp.AES256KeyGenOpts](), &aesKeyGenerator{length: 32})
+	swbccsp.AddWrapper(reflect.TypeFor[*bccsp.AES192KeyGenOpts](), &aesKeyGenerator{length: 24})
+	swbccsp.AddWrapper(reflect.TypeFor[*bccsp.AES128KeyGenOpts](), &aesKeyGenerator{length: 16})
 
 	// Set the key deriver
-	swbccsp.AddWrapper(reflect.TypeOf(&ecdsaPrivateKey{}), &ecdsaPrivateKeyKeyDeriver{})
-	swbccsp.AddWrapper(reflect.TypeOf(&ecdsaPublicKey{}), &ecdsaPublicKeyKeyDeriver{})
-	swbccsp.AddWrapper(reflect.TypeOf(&aesPrivateKey{}), &aesPrivateKeyKeyDeriver{conf: conf})
+	swbccsp.AddWrapper(reflect.TypeFor[*ecdsaPrivateKey](), &ecdsaPrivateKeyKeyDeriver{})
+	swbccsp.AddWrapper(reflect.TypeFor[*ecdsaPublicKey](), &ecdsaPublicKeyKeyDeriver{})
+	swbccsp.AddWrapper(reflect.TypeFor[*aesPrivateKey](), &aesPrivateKeyKeyDeriver{conf: conf})
 
 	// Set the key importers
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.AES256ImportKeyOpts{}), &aes256ImportKeyOptsKeyImporter{})
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.HMACImportKeyOpts{}), &hmacImportKeyOptsKeyImporter{})
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.ECDSAPKIXPublicKeyImportOpts{}), &ecdsaPKIXPublicKeyImportOptsKeyImporter{})
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.ECDSAPrivateKeyImportOpts{}), &ecdsaPrivateKeyImportOptsKeyImporter{})
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.ECDSAGoPublicKeyImportOpts{}), &ecdsaGoPublicKeyImportOptsKeyImporter{})
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.X509PublicKeyImportOpts{}), &x509PublicKeyImportOptsKeyImporter{bccsp: swbccsp})
+	swbccsp.AddWrapper(reflect.TypeFor[*bccsp.AES256ImportKeyOpts](), &aes256ImportKeyOptsKeyImporter{})
+	swbccsp.AddWrapper(reflect.TypeFor[*bccsp.HMACImportKeyOpts](), &hmacImportKeyOptsKeyImporter{})
+	swbccsp.AddWrapper(reflect.TypeFor[*bccsp.ECDSAPKIXPublicKeyImportOpts](), &ecdsaPKIXPublicKeyImportOptsKeyImporter{})
+	swbccsp.AddWrapper(reflect.TypeFor[*bccsp.ECDSAPrivateKeyImportOpts](), &ecdsaPrivateKeyImportOptsKeyImporter{})
+	swbccsp.AddWrapper(reflect.TypeFor[*bccsp.ECDSAGoPublicKeyImportOpts](), &ecdsaGoPublicKeyImportOptsKeyImporter{})
+	swbccsp.AddWrapper(reflect.TypeFor[*bccsp.X509PublicKeyImportOpts](), &x509PublicKeyImportOptsKeyImporter{bccsp: swbccsp})
 
 	return swbccsp, nil
 }

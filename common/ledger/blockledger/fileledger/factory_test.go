@@ -9,7 +9,6 @@ package fileledger
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -58,7 +57,7 @@ func TestBlockStoreProviderErrors(t *testing.T) {
 	})
 
 	t.Run("remove", func(t *testing.T) {
-		dir, err := ioutil.TempDir("", "fileledger")
+		dir, err := os.MkdirTemp("", "fileledger")
 		require.NoError(t, err, "Error creating temp dir: %s", err)
 		defer os.RemoveAll(dir)
 		fileRepo, err := filerepo.New(filepath.Join(dir, "pendingops"), "remove")
@@ -92,7 +91,7 @@ func TestBlockStoreProviderErrors(t *testing.T) {
 func TestMultiReinitialization(t *testing.T) {
 	metricsProvider := &disabled.Provider{}
 
-	dir, err := ioutil.TempDir("", "fileledger")
+	dir, err := os.MkdirTemp("", "fileledger")
 	require.NoError(t, err, "Error creating temp dir: %s", err)
 	defer os.RemoveAll(dir)
 
@@ -149,7 +148,7 @@ func TestNewErrors(t *testing.T) {
 	metricsProvider := &disabled.Provider{}
 
 	t.Run("creation of filerepo fails", func(t *testing.T) {
-		dir, err := ioutil.TempDir("", "fileledger")
+		dir, err := os.MkdirTemp("", "fileledger")
 		require.NoError(t, err, "Error creating temp dir: %s", err)
 		defer os.RemoveAll(dir)
 
@@ -169,7 +168,7 @@ func TestNewErrors(t *testing.T) {
 	})
 
 	t.Run("removal fails", func(t *testing.T) {
-		dir, err := ioutil.TempDir("", "fileledger")
+		dir, err := os.MkdirTemp("", "fileledger")
 		require.NoError(t, err, "Error creating temp dir: %s", err)
 		defer os.RemoveAll(dir)
 
@@ -191,7 +190,7 @@ func TestNewErrors(t *testing.T) {
 
 func TestRemove(t *testing.T) {
 	mockBlockStore := &mock.BlockStoreProvider{}
-	dir, err := ioutil.TempDir("", "fileledger")
+	dir, err := os.MkdirTemp("", "fileledger")
 	require.NoError(t, err, "Error creating temp dir: %s", err)
 	defer os.RemoveAll(dir)
 

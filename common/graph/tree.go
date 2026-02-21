@@ -17,13 +17,13 @@ type Iterator interface {
 // TreeVertex defines a vertex of a tree
 type TreeVertex struct {
 	Id          string        // id identifies uniquely the TreeVertex in the Tree
-	Data        interface{}   // data holds arbitrary data, to be used by the user of the package
+	Data        any           // data holds arbitrary data, to be used by the user of the package
 	Descendants []*TreeVertex // descendants are the vertices that this TreeVertex is their parent in the tree
 	Threshold   int           // threshold symbols the count of sub-trees / leaves to pick when creating tree permutations
 }
 
 // NewTreeVertex creates a new vertex with a given unique id and a given arbitrary data
-func NewTreeVertex(id string, data interface{}, descendants ...*TreeVertex) *TreeVertex {
+func NewTreeVertex(id string, data any, descendants ...*TreeVertex) *TreeVertex {
 	return &TreeVertex{
 		Id:          id,
 		Data:        data,

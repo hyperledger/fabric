@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package channel
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,7 +22,7 @@ func TestUpdateChannel(t *testing.T) {
 	InitMSP()
 	resetFlags()
 
-	dir, err := ioutil.TempDir("/tmp", "createinvaltest-")
+	dir, err := os.MkdirTemp("/tmp", "createinvaltest-")
 	if err != nil {
 		t.Fatalf("couldn't create temp dir")
 	}
@@ -109,7 +108,7 @@ func TestUpdateChannelMissingChannelID(t *testing.T) {
 	InitMSP()
 	resetFlags()
 
-	dir, err := ioutil.TempDir("/tmp", "createinvaltest-")
+	dir, err := os.MkdirTemp("/tmp", "createinvaltest-")
 	if err != nil {
 		t.Fatalf("couldn't create temp dir")
 	}

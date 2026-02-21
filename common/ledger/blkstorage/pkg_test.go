@@ -8,7 +8,6 @@ package blkstorage
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"testing"
@@ -29,7 +28,7 @@ func TestMain(m *testing.M) {
 }
 
 func testPath() string {
-	if path, err := ioutil.TempDir("", "blkstorage-"); err != nil {
+	if path, err := os.MkdirTemp("", "blkstorage-"); err != nil {
 		panic(err)
 	} else {
 		return path
@@ -101,7 +100,7 @@ func (w *testBlockfileMgrWrapper) testGetBlockByHash(blocks []*common.Block) {
 }
 
 func (w *testBlockfileMgrWrapper) testGetBlockByNumber(blocks []*common.Block) {
-	for i := 0; i < len(blocks); i++ {
+	for i := range blocks {
 		b, err := w.blockfileMgr.retrieveBlockByNumber(blocks[0].Header.Number + uint64(i))
 		require.NoError(w.t, err, "Error while retrieving [%d]th block from blockfileMgr", i)
 		require.Equal(w.t, blocks[i], b)

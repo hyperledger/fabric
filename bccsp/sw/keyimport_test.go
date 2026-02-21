@@ -38,7 +38,7 @@ func TestKeyImport(t *testing.T) {
 	expectedErr := errors.New("Expected Error")
 
 	keyImporters := make(map[reflect.Type]KeyImporter)
-	keyImporters[reflect.TypeOf(&mocks2.KeyDerivOpts{})] = &mocks.KeyImporter{
+	keyImporters[reflect.TypeFor[*mocks2.KeyDerivOpts]()] = &mocks.KeyImporter{
 		RawArg:  expectedRaw,
 		OptsArg: expectedOpts,
 		Value:   expectetValue,
@@ -50,7 +50,7 @@ func TestKeyImport(t *testing.T) {
 	require.Contains(t, err.Error(), expectedErr.Error())
 
 	keyImporters = make(map[reflect.Type]KeyImporter)
-	keyImporters[reflect.TypeOf(&mocks2.KeyDerivOpts{})] = &mocks.KeyImporter{
+	keyImporters[reflect.TypeFor[*mocks2.KeyDerivOpts]()] = &mocks.KeyImporter{
 		RawArg:  expectedRaw,
 		OptsArg: expectedOpts,
 		Value:   expectetValue,

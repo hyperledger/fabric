@@ -124,7 +124,7 @@ func TestEventListener(t *testing.T) {
 	}
 	defer partitionConsumer.Close()
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		select {
 		case <-partitionConsumer.Messages():
 		case <-time.After(shortTimeout):

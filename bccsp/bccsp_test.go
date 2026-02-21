@@ -116,9 +116,9 @@ func TestHMAC(t *testing.T) {
 
 func TestKeyGenOpts(t *testing.T) {
 	expectedAlgorithms := map[reflect.Type]string{
-		reflect.TypeOf(&HMACImportKeyOpts{}):       "HMAC",
-		reflect.TypeOf(&X509PublicKeyImportOpts{}): "X509Certificate",
-		reflect.TypeOf(&AES256ImportKeyOpts{}):     "AES",
+		reflect.TypeFor[*HMACImportKeyOpts]():       "HMAC",
+		reflect.TypeFor[*X509PublicKeyImportOpts](): "X509Certificate",
+		reflect.TypeFor[*AES256ImportKeyOpts]():     "AES",
 	}
 	test := func(ephemeral bool) {
 		for _, opts := range []KeyGenOpts{

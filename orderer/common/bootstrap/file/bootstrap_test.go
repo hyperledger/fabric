@@ -4,7 +4,6 @@
 package file_test
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -22,7 +21,7 @@ const (
 )
 
 func TestGenesisBlock(t *testing.T) {
-	testDir, err := ioutil.TempDir("", "unittest")
+	testDir, err := os.MkdirTemp("", "unittest")
 	require.NoErrorf(t, err, "generate temporary test dir")
 	defer os.RemoveAll(testDir)
 
@@ -38,7 +37,7 @@ func TestGenesisBlock(t *testing.T) {
 	})
 
 	t.Run("Bad - Malformed Block", func(t *testing.T) {
-		err := ioutil.WriteFile(testFile, []byte("abc"), 0o644)
+		err := os.WriteFile(testFile, []byte("abc"), 0o644)
 		require.NoErrorf(t, err, "generate temporary test file: %s", file)
 
 		require.Panics(t, func() {
@@ -72,7 +71,7 @@ func TestGenesisBlock(t *testing.T) {
 			Metadata: metadata,
 		}
 		marshalledBlock, _ := proto.Marshal(block)
-		err := ioutil.WriteFile(testFile, marshalledBlock, 0o644)
+		err := os.WriteFile(testFile, marshalledBlock, 0o644)
 		require.NoErrorf(t, err, "generate temporary test file: %s", file)
 		defer os.Remove(testFile)
 
@@ -117,12 +116,12 @@ func TestReplaceGenesisBlockFile(t *testing.T) {
 	}
 	marshalledBlock, _ := proto.Marshal(block)
 
-	testDir, err := ioutil.TempDir("", "unittest")
+	testDir, err := os.MkdirTemp("", "unittest")
 	require.NoErrorf(t, err, "generate temporary test dir")
 	defer os.RemoveAll(testDir)
 
 	testFile := path.Join(testDir, file)
-	err = ioutil.WriteFile(testFile, marshalledBlock, 0o644)
+	err = os.WriteFile(testFile, marshalledBlock, 0o644)
 	require.NoErrorf(t, err, "generate temporary test file: %s", file)
 
 	testFileBak := path.Join(testDir, fileBak)

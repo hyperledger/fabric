@@ -11,7 +11,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -250,7 +249,7 @@ var _ bool = Describe("PrivateData", func() {
 		It("verifies private data is pulled when joining a new peer with new certs", func() {
 			By("generating new certs for org2Peer1")
 			org2Peer1 := network.Peer("Org2", "peer1")
-			tempCryptoDir, err := ioutil.TempDir("", "crypto")
+			tempCryptoDir, err := os.MkdirTemp("", "crypto")
 			Expect(err).NotTo(HaveOccurred())
 			defer os.RemoveAll(tempCryptoDir)
 			generateNewCertsForPeer(network, tempCryptoDir, org2Peer1)
@@ -265,7 +264,7 @@ var _ bool = Describe("PrivateData", func() {
 			Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			By("joining peer1.org2 to the channel with its Admin2 user")
-			tempFile, err := ioutil.TempFile("", "genesis-block")
+			tempFile, err := os.CreateTemp("", "genesis-block")
 			Expect(err).NotTo(HaveOccurred())
 			tempFile.Close()
 			defer os.Remove(tempFile.Name())
@@ -544,7 +543,7 @@ var _ bool = Describe("PrivateData", func() {
 				eligiblePeer := network.Peer("Org2", "peer0")
 				ccName := testChaincode.Name
 				By("adding three blocks")
-				for i := 0; i < 3; i++ {
+				for i := range 3 {
 					marblechaincodeutil.AddMarble(network, orderer, channelID, ccName, fmt.Sprintf(`{"name":"test-marble-%d", "color":"blue", "size":35, "owner":"tom", "price":99}`, i), eligiblePeer)
 				}
 
@@ -800,7 +799,7 @@ var _ bool = Describe("PrivateData", func() {
 			// Verifies marble private chaincode APIs: getMarblesByRange, transferMarble, delete
 
 			By("adding five marbles")
-			for i := 0; i < 5; i++ {
+			for i := range 5 {
 				marblechaincodeutil.AddMarble(network, orderer, channelID, ccName, fmt.Sprintf(`{"name":"test-marble-%d", "color":"blue", "size":35, "owner":"tom", "price":99}`, i), eligiblePeer)
 			}
 
@@ -940,7 +939,7 @@ var _ bool = Describe("PrivateData", func() {
 
 func initThreeOrgsSetup(removePeer1 bool) *nwo.Network {
 	var err error
-	testDir, err := ioutil.TempDir("", "e2e-pvtdata")
+	testDir, err := os.MkdirTemp("", "e2e-pvtdata")
 	Expect(err).NotTo(HaveOccurred())
 
 	client, err := dcli.New(dcli.FromEnv)

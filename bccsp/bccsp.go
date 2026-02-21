@@ -80,10 +80,10 @@ type SignerOpts interface {
 }
 
 // EncrypterOpts contains options for encrypting with a CSP.
-type EncrypterOpts interface{}
+type EncrypterOpts any
 
 // DecrypterOpts contains options for decrypting with a CSP.
-type DecrypterOpts interface{}
+type DecrypterOpts any
 
 // BCCSP is the blockchain cryptographic service provider that offers
 // the implementation of cryptographic standards and algorithms.
@@ -98,7 +98,7 @@ type BCCSP interface {
 
 	// KeyImport imports a key from its raw representation using opts.
 	// The opts argument should be appropriate for the primitive used.
-	KeyImport(raw interface{}, opts KeyImportOpts) (k Key, err error)
+	KeyImport(raw any, opts KeyImportOpts) (k Key, err error)
 
 	// GetKey returns the key this CSP associates to
 	// the Subject Key Identifier ski.

@@ -77,8 +77,8 @@ func TestPKIidOfCert(t *testing.T) {
 	// Ensure that additional fields haven't been introduced in the code
 	v := reflect.Indirect(reflect.ValueOf(id)).Type()
 	fieldsThatStartWithXXX := 0
-	for i := 0; i < v.NumField(); i++ {
-		if strings.Index(v.Field(i).Name, "XXX_") == 0 {
+	for field := range v.Fields() {
+		if strings.Index(field.Name, "XXX_") == 0 {
 			fieldsThatStartWithXXX++
 		}
 	}

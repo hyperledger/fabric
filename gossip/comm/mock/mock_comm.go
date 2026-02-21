@@ -23,7 +23,7 @@ type socketMock struct {
 	endpoint string
 
 	// To simulate simple tcp socket
-	socket chan interface{}
+	socket chan any
 }
 
 // Mock of primitive tcp packet structure
@@ -34,7 +34,7 @@ type packetMock struct {
 	// Destination channel sent to
 	dst *socketMock
 
-	msg interface{}
+	msg any
 }
 
 type channelMock struct {

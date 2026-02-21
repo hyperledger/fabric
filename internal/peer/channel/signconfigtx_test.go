@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package channel
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,7 +20,7 @@ func TestSignConfigtx(t *testing.T) {
 	InitMSP()
 	resetFlags()
 
-	dir, err := ioutil.TempDir("/tmp", "signconfigtxtest-")
+	dir, err := os.MkdirTemp("/tmp", "signconfigtxtest-")
 	if err != nil {
 		t.Fatalf("couldn't create temp dir")
 	}

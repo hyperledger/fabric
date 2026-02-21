@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package privacyenabledstate
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -48,7 +47,7 @@ type LevelDBTestEnv struct {
 
 // Init implements corresponding function from interface TestEnv
 func (env *LevelDBTestEnv) Init(t testing.TB) {
-	dbPath, err := ioutil.TempDir("", "cstestenv")
+	dbPath, err := os.MkdirTemp("", "cstestenv")
 	if err != nil {
 		t.Fatalf("Failed to create level db storage directory: %s", err)
 	}
@@ -133,7 +132,7 @@ func (env *CouchDBTestEnv) StopExternalResource() {
 
 // Init implements corresponding function from interface TestEnv
 func (env *CouchDBTestEnv) Init(t testing.TB) {
-	redoPath, err := ioutil.TempDir("", "pestate")
+	redoPath, err := os.MkdirTemp("", "pestate")
 	if err != nil {
 		t.Fatalf("Failed to create redo log directory: %s", err)
 	}

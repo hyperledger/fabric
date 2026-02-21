@@ -133,7 +133,7 @@ func (pit PeerIdentityType) String() string {
 	if cert == nil {
 		return fmt.Sprintf("non x509 identity: %s", base64Representation)
 	}
-	m := make(map[string]interface{})
+	m := make(map[string]any)
 	m["MSP"] = sID.Mspid
 	s := cert.Subject
 	m["CN"] = s.CommonName

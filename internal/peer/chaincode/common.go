@@ -11,8 +11,8 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math"
+	"os"
 	"strings"
 	"sync"
 
@@ -201,7 +201,7 @@ type collectionConfigJson struct {
 // from the supplied file; the supplied file must contain a
 // json-formatted array of collectionConfigJson elements
 func GetCollectionConfigFromFile(ccFile string) (*pb.CollectionConfigPackage, []byte, error) {
-	fileBytes, err := ioutil.ReadFile(ccFile)
+	fileBytes, err := os.ReadFile(ccFile)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "could not read file '%s'", ccFile)
 	}
@@ -360,13 +360,13 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 	// on here with JSON parsing see http://blog.golang.org/json-and-go -
 	// Generic JSON with interface{}
 	if chaincodeCtorJSON != "{}" {
-		var f interface{}
+		var f any
 		err := json.Unmarshal([]byte(chaincodeCtorJSON), &f)
 		if err != nil {
 			return errors.Wrap(err, "chaincode argument error")
 		}
-		m := f.(map[string]interface{})
-		sm := make(map[string]interface{})
+		m := f.(map[string]any)
+		sm := make(map[string]any)
 		for k := range m {
 			sm[strings.ToLower(k)] = m[k]
 		}

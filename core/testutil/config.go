@@ -9,7 +9,7 @@ package testutil
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
@@ -42,7 +42,7 @@ func SetupTestConfig() {
 		bccspConfig = nil
 	}
 
-	tmpKeyStore, err := ioutil.TempDir("/tmp", "msp-keystore")
+	tmpKeyStore, err := os.MkdirTemp("/tmp", "msp-keystore")
 	if err != nil {
 		panic(fmt.Errorf("Could not create temporary directory: %s\n", tmpKeyStore))
 	}

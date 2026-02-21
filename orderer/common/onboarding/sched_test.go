@@ -19,14 +19,14 @@ func TestExponentialDuration(t *testing.T) {
 	t.Parallel()
 	exp := exponentialDurationSeries(time.Millisecond*100, time.Second)
 	prev := exp()
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		n := exp()
 		require.Equal(t, prev*2, n)
 		prev = n
 		require.True(t, n < time.Second)
 	}
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		require.Equal(t, time.Second, exp())
 	}
 }
@@ -39,7 +39,7 @@ func TestTicker(t *testing.T) {
 
 	t.Run("Stop ticker serially", func(t *testing.T) {
 		ticker := newTicker(everyMillis)
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			<-ticker.C
 		}
 
@@ -58,14 +58,12 @@ func TestTicker(t *testing.T) {
 		})
 
 		var tickerStopped sync.WaitGroup
-		tickerStopped.Add(1)
 
-		go func() {
-			defer tickerStopped.Done()
+		tickerStopped.Go(func() {
 			time.Sleep(time.Millisecond * 50)
 			ticker.stop()
 			<-ticker.C
-		}()
+		})
 
 		tickerStopped.Wait()
 		_, ok := <-ticker.C

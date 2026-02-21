@@ -8,7 +8,6 @@ package chaincode
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -57,7 +56,7 @@ func TestSignExistingPackage(t *testing.T) {
 		t.Fatalf("error creating signed :%v", err)
 	}
 
-	b, err := ioutil.ReadFile(ccpackfile)
+	b, err := os.ReadFile(ccpackfile)
 	if err != nil {
 		t.Fatalf("package file %s not created", ccpackfile)
 	}
@@ -74,7 +73,7 @@ func TestSignExistingPackage(t *testing.T) {
 		t.Fatalf("could not sign envelope")
 	}
 
-	b, err = ioutil.ReadFile(signedfile)
+	b, err = os.ReadFile(signedfile)
 	if err != nil {
 		t.Fatalf("signed package file %s not created", signedfile)
 	}
@@ -115,7 +114,7 @@ func TestFailSignUnsignedPackage(t *testing.T) {
 		t.Fatalf("error creating signed :%v", err)
 	}
 
-	b, err := ioutil.ReadFile(ccpackfile)
+	b, err := os.ReadFile(ccpackfile)
 	if err != nil {
 		t.Fatalf("package file %s not created", ccpackfile)
 	}

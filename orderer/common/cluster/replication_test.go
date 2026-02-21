@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package cluster_test
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -464,7 +464,7 @@ func TestReplicateChainsGreenPath(t *testing.T) {
 	blocksCommittedToSystemLedger := make(chan *common.Block, 22)
 	// Put 10 blocks in the ledger of channel A, to simulate
 	// that the ledger had blocks when the node started.
-	for seq := 0; seq < 10; seq++ {
+	for seq := range 10 {
 		blocksCommittedToLedgerA <- &common.Block{
 			Header: &common.BlockHeader{Number: uint64(seq)},
 		}
@@ -578,7 +578,6 @@ func TestReplicateChainsGreenPath(t *testing.T) {
 	}
 
 	for _, channel := range []string{"A", "B"} {
-		channel := channel
 		// First, the orderer needs to figure out whether it is in the channel,
 		// so it reaches to find the latest block from all orderers to get
 		// the latest config block and see whether it is among the consenters.
@@ -840,7 +839,7 @@ func TestParticipant(t *testing.T) {
 }
 
 func TestBlockPullerFromConfigBlockFailures(t *testing.T) {
-	blockBytes, err := ioutil.ReadFile("testdata/mychannel.block")
+	blockBytes, err := os.ReadFile("testdata/mychannel.block")
 	require.NoError(t, err)
 
 	validBlock := &common.Block{}
@@ -901,13 +900,13 @@ func testBlockPullerFromConfig(t *testing.T, blockVerifiers []cluster.BlockVerif
 		verifierRetriever.On("RetrieveVerifier", mock.Anything).Return(blockVerifier).Once()
 	}
 
-	caCert, err := ioutil.ReadFile(filepath.Join("testdata", "ca.crt"))
+	caCert, err := os.ReadFile(filepath.Join("testdata", "ca.crt"))
 	require.NoError(t, err)
 
-	tlsCert, err := ioutil.ReadFile(filepath.Join("testdata", "server.crt"))
+	tlsCert, err := os.ReadFile(filepath.Join("testdata", "server.crt"))
 	require.NoError(t, err)
 
-	tlsKey, err := ioutil.ReadFile(filepath.Join("testdata", "server.key"))
+	tlsKey, err := os.ReadFile(filepath.Join("testdata", "server.key"))
 	require.NoError(t, err)
 
 	osn := newClusterNode(t)
@@ -929,7 +928,7 @@ func testBlockPullerFromConfig(t *testing.T, blockVerifiers []cluster.BlockVerif
 	defer osn.stop()
 
 	// Start from a valid configuration block
-	blockBytes, err := ioutil.ReadFile(filepath.Join("testdata", "mychannel.block"))
+	blockBytes, err := os.ReadFile(filepath.Join("testdata", "mychannel.block"))
 	require.NoError(t, err)
 
 	validBlock := &common.Block{}
@@ -940,7 +939,7 @@ func testBlockPullerFromConfig(t *testing.T, blockVerifiers []cluster.BlockVerif
 	injectGlobalOrdererEndpoint(t, validBlock, osn.srv.Address())
 	validBlock.Header.DataHash = protoutil.BlockDataHash(validBlock.Data)
 
-	for attempt := 0; attempt < iterations; attempt++ {
+	for range iterations {
 		blockMsg := &orderer.DeliverResponse_Block{
 			Block: validBlock,
 		}
@@ -1440,7 +1439,7 @@ func TestChannels(t *testing.T) {
 		{
 			name: "happy path - one block is not artificial but real",
 			prepareSystemChain: func(systemChain []*common.Block) {
-				blockbytes, err := ioutil.ReadFile(filepath.Join("testdata", "block3.pb"))
+				blockbytes, err := os.ReadFile(filepath.Join("testdata", "block3.pb"))
 				require.NoError(t, err)
 				block := &common.Block{}
 				err = proto.Unmarshal(blockbytes, block)
@@ -1520,7 +1519,7 @@ func TestChannels(t *testing.T) {
 				makeBlock("systemChannel", "systemChannel"),
 			}
 
-			for i := 0; i < len(systemChain); i++ {
+			for i := range systemChain {
 				systemChain[i].Header.DataHash = protoutil.BlockDataHash(systemChain[i].Data)
 				systemChain[i].Header.Number = uint64(i)
 			}

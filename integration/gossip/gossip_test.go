@@ -13,7 +13,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -42,7 +41,7 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "gossip-statexfer")
+		testDir, err = os.MkdirTemp("", "gossip-statexfer")
 		Expect(err).NotTo(HaveOccurred())
 
 		dockerClient, err := dcli.New(dcli.FromEnv)
@@ -431,7 +430,7 @@ func forceLowS(priv *ecdsa.PrivateKey, hash []byte) (r, s *big.Int, err error) {
 }
 
 func runTransactions(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, chaincodeName string, channelID string) {
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
 			ChannelID: channelID,
 			Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),

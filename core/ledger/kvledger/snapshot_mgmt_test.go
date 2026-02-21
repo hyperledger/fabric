@@ -372,7 +372,7 @@ func testutilCommitBlocks(t *testing.T, l ledger.PeerLedger, bg *testutil.BlockG
 		txid := util.GenerateUUID()
 		simulator, err := l.NewTxSimulator(txid)
 		require.NoError(t, err)
-		require.NoError(t, simulator.SetState("ns1", fmt.Sprintf("key%d", i), []byte(fmt.Sprintf("value%d", i))))
+		require.NoError(t, simulator.SetState("ns1", fmt.Sprintf("key%d", i), fmt.Appendf(nil, "value%d", i)))
 		simulator.Done()
 		require.NoError(t, err)
 		simRes, err := simulator.GetTxSimulationResults()

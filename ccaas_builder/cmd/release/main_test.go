@@ -7,19 +7,18 @@ SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
-	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
-	"github.com/onsi/gomega/gexec"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"testing"
 	"time"
+
+	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/gexec"
 )
 
 func TestArugments(t *testing.T) {
-
 	testCases := map[string]struct {
 		exitCode int
 		args     []string
@@ -57,14 +56,14 @@ func TestGoodPath(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 
-	testPath, err := ioutil.TempDir("", "test-ccaas-release-")
+	testPath, err := os.MkdirTemp("", "test-ccaas-release-")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(testPath)
 
-	os.MkdirAll(path.Join(testPath, "in-builder-dir"), 0755)
+	os.MkdirAll(path.Join(testPath, "in-builder-dir"), 0o755)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	os.MkdirAll(path.Join(testPath, "out-release-dir"), 0755)
+	os.MkdirAll(path.Join(testPath, "out-release-dir"), 0o755)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	connectionJson := path.Join(testPath, "in-builder-dir", "connection.json")
@@ -86,7 +85,6 @@ func TestGoodPath(t *testing.T) {
 	destConnectionJson := path.Join(testPath, "out-release-dir", "chaincode", "server", "connection.json")
 	_, err = os.Stat(destConnectionJson)
 	gt.Expect(err).NotTo(HaveOccurred())
-
 }
 
 func TestMissingConnection(t *testing.T) {
@@ -96,14 +94,14 @@ func TestMissingConnection(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 
-	testPath, err := ioutil.TempDir("", "test-ccaas-release-")
+	testPath, err := os.MkdirTemp("", "test-ccaas-release-")
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(testPath)
 
-	os.MkdirAll(path.Join(testPath, "in-builder-dir"), 0755)
+	os.MkdirAll(path.Join(testPath, "in-builder-dir"), 0o755)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	os.MkdirAll(path.Join(testPath, "out-release-dir"), 0755)
+	os.MkdirAll(path.Join(testPath, "out-release-dir"), 0o755)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	args := []string{path.Join(testPath, "in-builder-dir"), path.Join(testPath, "out-release-dir")}

@@ -646,7 +646,6 @@ func TestSetupTopicForChannel(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			test.brokerConfig.Version = test.version
 			err := setupTopicForChannel(
@@ -3468,7 +3467,7 @@ func TestDeliverSession(t *testing.T) {
 
 		// send a few messages from broker1
 		fetchResponse1 := sarama.NewMockFetchResponse(t, 1)
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			fetchResponse1.SetMessage(env.topic, env.partition, env.nextOffset, env.testMsg)
 			env.nextOffset++
 		}
@@ -3477,7 +3476,7 @@ func TestDeliverSession(t *testing.T) {
 		})
 
 		logger.Debug("Waiting for messages from broker1")
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			select {
 			case <-blocks:
 			case <-time.After(shortTimeout):
@@ -3487,7 +3486,7 @@ func TestDeliverSession(t *testing.T) {
 
 		// prepare broker2 to send a few messages
 		fetchResponse2 := sarama.NewMockFetchResponse(t, 1)
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			fetchResponse2.SetMessage(env.topic, env.partition, env.nextOffset, env.testMsg)
 			env.nextOffset++
 		}
@@ -3508,7 +3507,7 @@ func TestDeliverSession(t *testing.T) {
 		})
 
 		logger.Debug("Waiting for messages from broker2")
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			select {
 			case <-blocks:
 			case <-time.After(shortTimeout):

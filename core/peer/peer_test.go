@@ -8,7 +8,6 @@ package peer
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
@@ -51,7 +50,7 @@ func TestMain(m *testing.M) {
 }
 
 func NewTestPeer(t *testing.T) (*Peer, func()) {
-	tempdir, err := ioutil.TempDir("", "peer-test")
+	tempdir, err := os.MkdirTemp("", "peer-test")
 	require.NoError(t, err, "failed to create temporary directory")
 
 	// Initialize gossip service
@@ -235,7 +234,7 @@ func TestCreateChannelBySnapshot(t *testing.T) {
 	testChannelID := "createchannelbysnapshot"
 
 	// create a temp dir to store snapshot
-	tempdir, err := ioutil.TempDir("", testChannelID)
+	tempdir, err := os.MkdirTemp("", testChannelID)
 	require.NoError(t, err)
 	defer os.Remove(tempdir)
 

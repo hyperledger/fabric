@@ -212,7 +212,7 @@ func TestRegisterMsgHook(t *testing.T) {
 func TestFilter(t *testing.T) {
 	peer2pullInst := make(map[string]*pullInstance)
 
-	eq := func(a interface{}, b interface{}) bool {
+	eq := func(a any, b any) bool {
 		return a == b
 	}
 	df := func(msg protoext.ReceivedMessage) func(string) bool {
@@ -257,7 +257,7 @@ func TestAddAndRemove(t *testing.T) {
 	msgCount := 3
 
 	go func() {
-		for i := 0; i < msgCount; i++ {
+		for i := range msgCount {
 			time.Sleep(pullInterval)
 			inst1.mediator.Add(dataMsg(i))
 		}

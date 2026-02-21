@@ -7,6 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package statecouchdb
 
 import (
+	"maps"
+	"slices"
+
 	"github.com/VictoriaMetrics/fastcache"
 	"github.com/golang/protobuf/proto"
 )
@@ -45,10 +48,8 @@ func newCache(usrCacheSizeMBs int, sysNamespaces []string) *cache {
 // Namespace can be of two types: system namespace (such as lscc) and user
 // namespace (all user's chaincode states).
 func (c *cache) enabled(namespace string) bool {
-	for _, ns := range c.sysNamespaces {
-		if namespace == ns {
-			return true
-		}
+	if slices.Contains(c.sysNamespaces, namespace) {
+		return true
 	}
 	return c.usrCache != nil
 }
@@ -110,9 +111,7 @@ func (u cacheUpdates) add(namespace string, ckvs cacheKVs) {
 		u[namespace] = nsu
 	}
 
-	for k, v := range ckvs {
-		nsu[k] = v
-	}
+	maps.Copy(nsu, ckvs)
 }
 
 // UpdateStates updates only the existing entries in the cache associated with
@@ -152,10 +151,8 @@ func (c *cache) Reset() {
 }
 
 func (c *cache) getCache(namespace string) *fastcache.Cache {
-	for _, ns := range c.sysNamespaces {
-		if namespace == ns {
-			return c.sysCache
-		}
+	if slices.Contains(c.sysNamespaces, namespace) {
+		return c.sysCache
 	}
 	return c.usrCache
 }

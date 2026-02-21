@@ -81,7 +81,7 @@ var _ = Describe("Provider", func() {
 
 			It("creates counters that do not require calls to With", func() {
 				counter := provider.NewCounter(counterOpts)
-				for i := 0; i < 10; i++ {
+				for i := range 10 {
 					counter.Add(float64(i))
 
 					buf := &bytes.Buffer{}
@@ -94,7 +94,7 @@ var _ = Describe("Provider", func() {
 		Context("when labels are specified and with is not called", func() {
 			It("panics with an appropriate message when Add is called", func() {
 				counter := provider.NewCounter(counterOpts)
-				panicMessage := func() (panicMessage interface{}) {
+				panicMessage := func() (panicMessage any) {
 					defer func() { panicMessage = recover() }()
 					counter.Add(1)
 					return
@@ -136,7 +136,7 @@ var _ = Describe("Provider", func() {
 				gauge.With("alpha", alpha, "beta", "b").Set(float64(1.0))
 			}
 			for _, alpha := range []string{"x", "y", "z"} {
-				for i := 0; i < 5; i++ {
+				for range 5 {
 					gauge.With("alpha", alpha, "beta", "b").Add(float64(1.0))
 				}
 			}
@@ -174,7 +174,7 @@ var _ = Describe("Provider", func() {
 
 			It("creates gauges that do not require calls to With", func() {
 				gauge := provider.NewGauge(gaugeOpts)
-				for i := 0; i < 10; i++ {
+				for i := range 10 {
 					gauge.Add(float64(i))
 
 					buf := &bytes.Buffer{}
@@ -187,7 +187,7 @@ var _ = Describe("Provider", func() {
 		Context("when labels are specified and with is not called", func() {
 			It("panics with an appropriate message when Add is called", func() {
 				gauge := provider.NewGauge(gaugeOpts)
-				panicMessage := func() (panicMessage interface{}) {
+				panicMessage := func() (panicMessage any) {
 					defer func() { panicMessage = recover() }()
 					gauge.Add(float64(1))
 					return
@@ -197,7 +197,7 @@ var _ = Describe("Provider", func() {
 
 			It("panics with an appropriate message when Set is called", func() {
 				gauge := provider.NewGauge(gaugeOpts)
-				panicMessage := func() (panicMessage interface{}) {
+				panicMessage := func() (panicMessage any) {
 					defer func() { panicMessage = recover() }()
 					gauge.Set(float64(1))
 					return
@@ -256,7 +256,7 @@ var _ = Describe("Provider", func() {
 
 			It("creates histograms that do not require calls to With", func() {
 				histogram := provider.NewHistogram(histogramOpts)
-				for i := 0; i < 10; i++ {
+				for i := range 10 {
 					histogram.Observe(float64(i))
 
 					buf := &bytes.Buffer{}
@@ -269,7 +269,7 @@ var _ = Describe("Provider", func() {
 		Context("when labels are specified and with is not called", func() {
 			It("panics with an appropriate message when Observe is called", func() {
 				histogram := provider.NewHistogram(histogramOpts)
-				panicMessage := func() (panicMessage interface{}) {
+				panicMessage := func() (panicMessage any) {
 					defer func() { panicMessage = recover() }()
 					histogram.Observe(float64(1))
 					return

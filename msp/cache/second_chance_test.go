@@ -59,13 +59,13 @@ func TestSecondChanceCacheConcurrent(t *testing.T) {
 	key1 := "key1"
 	val1 := key1
 
-	for i := 0; i < workers; i++ {
+	for i := range workers {
 		id := i
 		key2 := fmt.Sprintf("key2-%d", i)
 		val2 := key2
 
 		go func() {
-			for j := 0; j < 10000; j++ {
+			for j := range 10000 {
 				key3 := fmt.Sprintf("key3-%d-%d", id, j)
 				val3 := key3
 				cache.add(key3, val3)

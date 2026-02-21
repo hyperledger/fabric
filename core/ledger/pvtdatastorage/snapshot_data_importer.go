@@ -8,7 +8,6 @@ package pvtdatastorage
 
 import (
 	"bytes"
-	"io/ioutil"
 	"math"
 	"os"
 
@@ -395,7 +394,7 @@ type snapshotRowsSorter struct {
 }
 
 func newSnapshotRowsSorter(tempDirRoot string) (*snapshotRowsSorter, error) {
-	tempDir, err := ioutil.TempDir(tempDirRoot, "pvtdatastore-snapshotdatainporter-")
+	tempDir, err := os.MkdirTemp(tempDirRoot, "pvtdatastore-snapshotdatainporter-")
 	if err != nil {
 		return nil, errors.Wrap(err, "error while creating temp dir for sorting rows")
 	}

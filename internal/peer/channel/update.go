@@ -9,7 +9,7 @@ package channel
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/protoutil"
@@ -54,7 +54,7 @@ func update(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 		}
 	}
 
-	fileData, err := ioutil.ReadFile(channelTxFile)
+	fileData, err := os.ReadFile(channelTxFile)
 	if err != nil {
 		return ConfigTxFileNotFound(err.Error())
 	}

@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -33,7 +32,7 @@ var _ = Describe("solo network using ccenv-1.4", func() {
 			Skip("ccenv-1.4 image may not be available for this platform")
 		}
 		var err error
-		testDir, err = ioutil.TempDir("", "lifecycle")
+		testDir, err = os.MkdirTemp("", "lifecycle")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = dcli.New(dcli.FromEnv)

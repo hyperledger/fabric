@@ -8,7 +8,6 @@ package ccprovider_test
 
 import (
 	"crypto/sha256"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -43,7 +42,7 @@ func TestInstalledCCs(t *testing.T) {
 	}{
 		{
 			name:              "Non-empty directory",
-			ls:                ioutil.ReadDir,
+			ls:                os.ReadDir,
 			extractCCFromPath: ccprovider.LoadPackage,
 			expected: []chaincode.InstalledChaincode{
 				{
@@ -61,21 +60,21 @@ func TestInstalledCCs(t *testing.T) {
 		},
 		{
 			name:              "Nonexistent directory",
-			ls:                ioutil.ReadDir,
+			ls:                os.ReadDir,
 			extractCCFromPath: ccprovider.LoadPackage,
 			expected:          nil,
 			directory:         "nonexistent",
 		},
 		{
 			name:              "Empty directory",
-			ls:                ioutil.ReadDir,
+			ls:                os.ReadDir,
 			extractCCFromPath: ccprovider.LoadPackage,
 			expected:          nil,
 			directory:         "empty",
 		},
 		{
 			name: "No permission to open directory",
-			ls: func(_ string) ([]os.FileInfo, error) {
+			ls: func(_ string) ([]os.DirEntry, error) {
 				return nil, errors.New("orange")
 			},
 			extractCCFromPath: ccprovider.LoadPackage,
@@ -85,7 +84,7 @@ func TestInstalledCCs(t *testing.T) {
 		},
 		{
 			name: "No permission on chaincode files",
-			ls:   ioutil.ReadDir,
+			ls:   os.ReadDir,
 			extractCCFromPath: func(_ string, _ string, _ ccprovider.GetHasher) (ccprovider.CCPackage, error) {
 				return nil, errors.New("banana")
 			},
@@ -97,7 +96,6 @@ func TestInstalledCCs(t *testing.T) {
 	_ = testCases
 
 	for _, test := range testCases {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			c := &ccprovider.CCInfoFSImpl{GetHasher: cryptoProvider}
 			res, err := c.ListInstalledChaincodes(path.Join(tmpDir, test.directory), test.ls, test.extractCCFromPath)
@@ -112,7 +110,7 @@ func TestInstalledCCs(t *testing.T) {
 }
 
 func TestSetGetChaincodeInstallPath(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "ccprovider")
+	tempDir, err := os.MkdirTemp("", "ccprovider")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
@@ -136,7 +134,7 @@ func setupDirectoryStructure(t *testing.T) (string, map[string][]byte) {
 		"example04.1",   // Version doesn't contain the '.' delimiter
 	}
 	hashes := map[string][]byte{}
-	tmp, err := ioutil.TempDir("", "test-installed-cc")
+	tmp, err := os.MkdirTemp("", "test-installed-cc")
 	require.NoError(t, err)
 	dir := path.Join(tmp, "empty")
 	require.NoError(t, os.Mkdir(dir, 0o755))

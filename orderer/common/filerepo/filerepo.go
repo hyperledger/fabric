@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package filerepo
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,7 +48,7 @@ func New(repoParentDir, fileSuffix string) (*Repo, error) {
 		return nil, err
 	}
 
-	files, err := ioutil.ReadDir(fileRepoDir)
+	files, err := os.ReadDir(fileRepoDir)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +120,7 @@ func (r *Repo) Read(baseName string) ([]byte, error) {
 	defer r.mu.Unlock()
 
 	filePath := r.baseToFilePath(baseName)
-	return ioutil.ReadFile(filePath)
+	return os.ReadFile(filePath)
 }
 
 // List parses the directory and produce a list of file names, filtered by suffix.
@@ -131,7 +130,7 @@ func (r *Repo) List() ([]string, error) {
 
 	var repoFiles []string
 
-	files, err := ioutil.ReadDir(r.fileRepoDir)
+	files, err := os.ReadDir(r.fileRepoDir)
 	if err != nil {
 		return nil, err
 	}

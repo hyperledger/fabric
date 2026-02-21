@@ -26,7 +26,7 @@ type TopLevel struct {
 	FileLedger           FileLedger
 	Kafka                Kafka
 	Debug                Debug
-	Consensus            interface{}
+	Consensus            any
 	Operations           Operations
 	Metrics              Metrics
 	ChannelParticipation ChannelParticipation

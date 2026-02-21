@@ -49,7 +49,7 @@ func TestBrokerConfig(t *testing.T) {
 		producer, _ := sarama.NewSyncProducer([]string{mockBroker.Addr()}, mockBrokerConfig2)
 		defer func() { producer.Close() }()
 
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			assignedPartition, _, err := producer.SendMessage(&sarama.ProducerMessage{Topic: mockChannel2.topic()})
 			require.NoError(t, err, "Failed to send message:", err)
 			require.Equal(t, differentPartition, assignedPartition, "Message wasn't posted to the right partition - expected %d, got %v", differentPartition, assignedPartition)

@@ -721,7 +721,7 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 		expiresAt:                        rc.expiresAt,
 		endpoint:                         s.Endpoint,
 		nodeName:                         s.NodeName,
-		alert: func(template string, args ...interface{}) {
+		alert: func(template string, args ...any) {
 			s.Logger.Warningf(template, args...)
 		},
 	}
@@ -744,7 +744,7 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 // Abort aborts the contexts the RemoteContext uses, thus effectively
 // causes all operations that use this RemoteContext to terminate.
 func (rc *RemoteContext) Abort() {
-	rc.streamsByID.Range(func(_, value interface{}) bool {
+	rc.streamsByID.Range(func(_, value any) bool {
 		value.(*Stream).Cancel(errAborted)
 		return false
 	})
@@ -763,12 +763,12 @@ type streamsMapperReporter struct {
 	sync.Map
 }
 
-func (smr *streamsMapperReporter) Delete(key interface{}) {
+func (smr *streamsMapperReporter) Delete(key any) {
 	smr.Map.Delete(key)
 	atomic.AddUint32(&smr.size, ^uint32(0))
 }
 
-func (smr *streamsMapperReporter) Store(key, value interface{}) {
+func (smr *streamsMapperReporter) Store(key, value any) {
 	smr.Map.Store(key, value)
 	atomic.AddUint32(&smr.size, 1)
 }

@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package transientstore
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,7 +26,7 @@ func TestUnderDeletionValue(t *testing.T) {
 }
 
 func TestNewStoreProvider(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "ts")
+	tempdir, err := os.MkdirTemp("", "ts")
 	require.NoErrorf(t, err, "failed to create test directory [%s]", tempdir)
 	defer os.RemoveAll(tempdir)
 
@@ -455,7 +454,7 @@ func populateTestStore(t *testing.T, store *Store) {
 	samplePvtSimResWithConfig := samplePvtDataWithConfigInfo(t)
 	testTxid := "testTxid"
 	numEntries := 5
-	for i := 0; i < numEntries; i++ {
+	for i := range numEntries {
 		require.NoError(t, store.Persist(testTxid, uint64(i), samplePvtSimResWithConfig))
 	}
 }

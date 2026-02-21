@@ -5,7 +5,6 @@ package server
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -69,7 +68,7 @@ func TestMain(m *testing.M) {
 	}
 	defer gexec.CleanupBuildArtifacts()
 
-	tempDir, err = ioutil.TempDir("", "main-test")
+	tempDir, err = os.MkdirTemp("", "main-test")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to create temporary directory: %v", err)
 		os.Exit(-1)
@@ -83,11 +82,11 @@ func TestMain(m *testing.M) {
 
 func copyYamlFiles(src, dst string) {
 	for _, file := range []string{"configtx.yaml", "examplecom-config.yaml", "orderer.yaml"} {
-		fileBytes, err := ioutil.ReadFile(filepath.Join(src, file))
+		fileBytes, err := os.ReadFile(filepath.Join(src, file))
 		if err != nil {
 			os.Exit(-1)
 		}
-		err = ioutil.WriteFile(filepath.Join(dst, file), fileBytes, 0o644)
+		err = os.WriteFile(filepath.Join(dst, file), fileBytes, 0o644)
 		if err != nil {
 			os.Exit(-1)
 		}
@@ -148,7 +147,7 @@ func TestInitializeServerConfig(t *testing.T) {
 		},
 	}
 	sc := initializeServerConfig(conf, nil)
-	expectedContent, _ := ioutil.ReadFile("main.go")
+	expectedContent, _ := os.ReadFile("main.go")
 	require.Equal(t, expectedContent, sc.SecOpts.Certificate)
 	require.Equal(t, expectedContent, sc.SecOpts.Key)
 	require.Equal(t, [][]byte{expectedContent}, sc.SecOpts.ServerRootCAs)
@@ -342,7 +341,7 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 	genesisFile := produceGenesisFile(t, genesisconfig.SampleSingleMSPSoloProfile, "testchannelid")
 	defer os.Remove(genesisFile)
 
-	fileLedgerLocation, _ := ioutil.TempDir("", "main_test-")
+	fileLedgerLocation, _ := os.MkdirTemp("", "main_test-")
 	defer os.RemoveAll(fileLedgerLocation)
 
 	ledgerFactory, err := createLedgerFactory(
@@ -414,7 +413,7 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 	)
 
 	setup := func() func() {
-		fileLedgerLocation, err := ioutil.TempDir("", "main_test-")
+		fileLedgerLocation, err := os.MkdirTemp("", "main_test-")
 		require.NoError(t, err)
 
 		config = &localconfig.TopLevel{
@@ -437,7 +436,7 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, fileRepo)
 
-		genesisBytes, err = ioutil.ReadFile(genesisFile)
+		genesisBytes, err = os.ReadFile(genesisFile)
 		require.NoError(t, err)
 		require.NotNil(t, genesisBytes)
 
@@ -496,7 +495,7 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 func TestExtractSystemChannel(t *testing.T) {
 	cryptoProvider, _ := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 
-	tmpdir, err := ioutil.TempDir("", "main_test-")
+	tmpdir, err := os.MkdirTemp("", "main_test-")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
 
@@ -746,7 +745,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		return l.Addr().String()
 	}()
 	port, _ := strconv.ParseUint(strings.Split(listenAddr, ":")[1], 10, 16)
-	tempDir, err := ioutil.TempDir("", "ledger-dir")
+	tempDir, err := os.MkdirTemp("", "ledger-dir")
 	require.NoError(t, err)
 	conf := &localconfig.TopLevel{
 		General: localconfig.General{
@@ -1110,7 +1109,7 @@ func TestReuseListener(t *testing.T) {
 func TestInitializeEtcdraftConsenter(t *testing.T) {
 	consenters := make(map[string]consensus.Consenter)
 
-	tmpdir, err := ioutil.TempDir("", "main_test-")
+	tmpdir, err := os.MkdirTemp("", "main_test-")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
 	rlf, err := fileledger.New(tmpdir, &disabled.Provider{})
@@ -1153,7 +1152,7 @@ func TestInitializeEtcdraftConsenter(t *testing.T) {
 func genesisConfig(t *testing.T, genesisFile string) (*localconfig.TopLevel, string) {
 	t.Helper()
 	localMSPDir := configtest.GetDevMspDir()
-	ledgerDir, err := ioutil.TempDir("", "genesis-config")
+	ledgerDir, err := os.MkdirTemp("", "genesis-config")
 	require.NoError(t, err)
 
 	return &localconfig.TopLevel{
@@ -1177,7 +1176,7 @@ func genesisConfig(t *testing.T, genesisFile string) (*localconfig.TopLevel, str
 }
 
 func panicMsg(f func()) string {
-	var message interface{}
+	var message any
 	func() {
 		defer func() {
 			message = recover()
@@ -1191,7 +1190,7 @@ func panicMsg(f func()) string {
 
 func produceGenesisFile(t *testing.T, profile, channelID string) string {
 	conf := genesisconfig.Load(profile, configtest.GetDevConfigDir())
-	f, err := ioutil.TempFile("", fmt.Sprintf("%s-genesis_block-", t.Name()))
+	f, err := os.CreateTemp("", fmt.Sprintf("%s-genesis_block-", t.Name()))
 	require.NoError(t, err)
 	_, err = f.Write(protoutil.MarshalOrPanic(encoder.New(conf).GenesisBlockForChannel(channelID)))
 	require.NoError(t, err)

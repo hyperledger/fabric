@@ -542,7 +542,7 @@ func TestConnect(t *testing.T) {
 	nodeNum := 10
 	instances := []*gossipInstance{}
 	firstSentMemReqMsgs := make(chan *protoext.SignedGossipMessage, nodeNum)
-	for i := 0; i < nodeNum; i++ {
+	for i := range nodeNum {
 		inst := createDiscoveryInstance(7611+i, fmt.Sprintf("d%d", i), []string{})
 
 		inst.comm.lock.Lock()
@@ -710,7 +710,7 @@ func TestValidation(t *testing.T) {
 
 		// Simulate the messages received by p4 into the message store
 		policy := protoext.NewGossipMessageComparator(0)
-		msgStore := msgstore.NewMessageStore(policy, func(_ interface{}) {})
+		msgStore := msgstore.NewMessageStore(policy, func(_ any) {})
 		close(tmpMsgs)
 		for msg := range tmpMsgs {
 			if msgStore.Add(msg) {
@@ -750,7 +750,6 @@ func TestValidation(t *testing.T) {
 			port:                  4680,
 		},
 	} {
-		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 			p := createDiscoveryInstance(testCase.port, "p", nil)
 			defer p.Stop()
@@ -1103,8 +1102,8 @@ func TestDisclosurePolicyWithPull(t *testing.T) {
 func createDisjointPeerGroupsWithNoGossip(bootPeerMap map[int]int) ([]*gossipInstance, []*gossipInstance) {
 	instances1 := []*gossipInstance{}
 	instances2 := []*gossipInstance{}
-	for group := 0; group < 2; group++ {
-		for i := 0; i < 5; i++ {
+	for group := range 2 {
+		for i := range 5 {
 			group := group
 			id := fmt.Sprintf("id%d", group*5+i)
 			port := 8610 + group*5 + i
@@ -1352,7 +1351,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	memReqMsgs := []*protoext.SignedGossipMessage{}
 	memRespMsgs := make(map[int][]*proto.MembershipResponse)
 
-	for i := 0; i < peersNum; i++ {
+	for i := range peersNum {
 		id := fmt.Sprintf("d%d", i)
 		inst := createDiscoveryInstanceWithNoGossip(22610+i, id, bootPeers)
 		inst.comm.disableComm = true
@@ -1360,19 +1359,19 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	}
 
 	// Creating MembershipRequest messages
-	for i := 0; i < peersNum; i++ {
+	for i := range peersNum {
 		memReqMsg, _ := instances[i].discoveryImpl().createMembershipRequest(true)
 		sMsg, _ := protoext.NoopSign(memReqMsg)
 		memReqMsgs = append(memReqMsgs, sMsg)
 	}
 	// Creating Alive messages
-	for i := 0; i < peersNum; i++ {
+	for i := range peersNum {
 		aliveMsg, _ := instances[i].discoveryImpl().createSignedAliveMessage(true)
 		aliveMsgs = append(aliveMsgs, aliveMsg)
 	}
 
 	repeatForFiltered := func(n int, filter func(i int) bool, action func(i int)) {
-		for i := 0; i < n; i++ {
+		for i := range n {
 			if filter(i) {
 				continue
 			}
@@ -1381,8 +1380,8 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	}
 
 	// Handling Alive
-	for i := 0; i < peersNum; i++ {
-		for k := 0; k < peersNum; k++ {
+	for i := range peersNum {
+		for k := range peersNum {
 			instances[i].discoveryImpl().handleMsgFromComm(&dummyReceivedMessage{
 				msg: aliveMsgs[k],
 				info: &protoext.ConnectionInfo{
@@ -1417,15 +1416,15 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	}
 
 	// Checking is Alive was processed
-	for i := 0; i < peersNum; i++ {
+	for i := range peersNum {
 		checkAliveMsgExist(instances, aliveMsgs, i, "[Step 1 - processing aliveMsg]")
 	}
 
 	// Creating MembershipResponse while all instances have full membership
-	for i := 0; i < peersNum; i++ {
+	for i := range peersNum {
 		peerToResponse := &NetworkMember{
 			Metadata:         []byte{},
-			PKIid:            []byte(fmt.Sprintf("localhost:%d", 22610+i)),
+			PKIid:            fmt.Appendf(nil, "localhost:%d", 22610+i),
 			Endpoint:         fmt.Sprintf("localhost:%d", 22610+i),
 			InternalEndpoint: fmt.Sprintf("localhost:%d", 22610+i),
 		}
@@ -1442,14 +1441,14 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	}
 
 	// Re-creating Alive msgs with highest seq_num, to make sure Alive msgs in memReq and memResp are older
-	for i := 0; i < peersNum; i++ {
+	for i := range peersNum {
 		aliveMsg, _ := instances[i].discoveryImpl().createSignedAliveMessage(true)
 		newAliveMsgs = append(newAliveMsgs, aliveMsg)
 	}
 
 	// Handling new Alive set
-	for i := 0; i < peersNum; i++ {
-		for k := 0; k < peersNum; k++ {
+	for i := range peersNum {
+		for k := range peersNum {
 			instances[i].discoveryImpl().handleMsgFromComm(&dummyReceivedMessage{
 				msg: newAliveMsgs[k],
 				info: &protoext.ConnectionInfo{
@@ -1460,7 +1459,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	}
 
 	// Checking is new Alive was processed
-	for i := 0; i < peersNum; i++ {
+	for i := range peersNum {
 		checkAliveMsgExist(instances, newAliveMsgs, i, "[Step 2 - proccesing aliveMsg]")
 	}
 
@@ -1479,12 +1478,12 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	time.Sleep(defaultTestConfig.AliveExpirationTimeout * (DefMsgExpirationFactor + 5))
 
 	// Checking Alive expired
-	for i := 0; i < peersNum; i++ {
+	for i := range peersNum {
 		checkAliveMsgNotExist(instances, newAliveMsgs, i, "[Step 3 - expiration in msg store]")
 	}
 
 	// Processing old MembershipRequest
-	for i := 0; i < peersNum; i++ {
+	for i := range peersNum {
 		repeatForFiltered(peersNum,
 			func(k int) bool {
 				return k == i
@@ -1500,13 +1499,13 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	}
 
 	// MembershipRequest processing didn't change anything
-	for i := 0; i < peersNum; i++ {
+	for i := range peersNum {
 		checkAliveMsgNotExist(instances, aliveMsgs, i, "[Step 4 - memReq processing after expiration]")
 	}
 
 	// Processing old (later) Alive messages
-	for i := 0; i < peersNum; i++ {
-		for k := 0; k < peersNum; k++ {
+	for i := range peersNum {
+		for k := range peersNum {
 			instances[i].discoveryImpl().handleMsgFromComm(&dummyReceivedMessage{
 				msg: aliveMsgs[k],
 				info: &protoext.ConnectionInfo{
@@ -1517,13 +1516,13 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	}
 
 	// Alive msg processing didn't change anything
-	for i := 0; i < peersNum; i++ {
+	for i := range peersNum {
 		checkAliveMsgNotExist(instances, aliveMsgs, i, "[Step 5.1 - after lost old aliveMsg process]")
 		checkAliveMsgNotExist(instances, newAliveMsgs, i, "[Step 5.2 - after lost new aliveMsg process]")
 	}
 
 	// Handling old MembershipResponse messages
-	for i := 0; i < peersNum; i++ {
+	for i := range peersNum {
 		respForPeer := memRespMsgs[i]
 		for _, msg := range respForPeer {
 			sMsg, _ := protoext.NoopSign(&proto.GossipMessage{
@@ -1543,11 +1542,11 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	}
 
 	// MembershipResponse msg processing didn't change anything
-	for i := 0; i < peersNum; i++ {
+	for i := range peersNum {
 		checkAliveMsgNotExist(instances, aliveMsgs, i, "[Step 6 - after lost MembershipResp process]")
 	}
 
-	for i := 0; i < peersNum; i++ {
+	for i := range peersNum {
 		instances[i].Stop()
 	}
 }
@@ -1559,20 +1558,20 @@ func TestAliveMsgStore(t *testing.T) {
 	aliveMsgs := []*protoext.SignedGossipMessage{}
 	memReqMsgs := []*protoext.SignedGossipMessage{}
 
-	for i := 0; i < peersNum; i++ {
+	for i := range peersNum {
 		id := fmt.Sprintf("d%d", i)
 		inst := createDiscoveryInstanceWithNoGossip(32610+i, id, bootPeers)
 		instances = append(instances, inst)
 	}
 
 	// Creating MembershipRequest messages
-	for i := 0; i < peersNum; i++ {
+	for i := range peersNum {
 		memReqMsg, _ := instances[i].discoveryImpl().createMembershipRequest(true)
 		sMsg, _ := protoext.NoopSign(memReqMsg)
 		memReqMsgs = append(memReqMsgs, sMsg)
 	}
 	// Creating Alive messages
-	for i := 0; i < peersNum; i++ {
+	for i := range peersNum {
 		aliveMsg, _ := instances[i].discoveryImpl().createSignedAliveMessage(true)
 		aliveMsgs = append(aliveMsgs, aliveMsg)
 	}
@@ -1704,7 +1703,7 @@ func TestPeerIsolation(t *testing.T) {
 	var inst *gossipInstance
 
 	// Start all peers and wait for full membership
-	for i := 0; i < peersNum; i++ {
+	for i := range peersNum {
 		id := fmt.Sprintf("d%d", i)
 		inst = createDiscoveryInstanceCustomConfig(7120+i, id, bootPeers, config)
 		instances = append(instances, inst)
@@ -1784,7 +1783,7 @@ func TestMembershipAfterExpiration(t *testing.T) {
 	}
 
 	// Start all peers, connect to the anchor peer and verify full membership
-	for i := 0; i < peersNum; i++ {
+	for i := range peersNum {
 		id := fmt.Sprintf("d%d", i)
 		logger := loggerThatTracksCustomMessage()
 		inst = createDiscoveryInstanceWithAnchorPeerTracker(ports[i], id, bootPeers, true, noopPolicy, func(_ *protoext.SignedGossipMessage) {}, config, mockTracker, logger)

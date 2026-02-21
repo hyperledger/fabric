@@ -9,7 +9,6 @@ package msp
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -34,7 +33,7 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 
 	BeforeEach(func() {
 		var err error
-		tempDir, err = ioutil.TempDir("", "msp")
+		tempDir, err = os.MkdirTemp("", "msp")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = dcli.New(dcli.FromEnv)

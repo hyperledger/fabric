@@ -45,7 +45,7 @@ func (v *rangeQueryResultsValidator) validate() (bool, error) {
 	if len(rqResults) == 0 {
 		return result == nil, nil
 	}
-	for i := 0; i < len(rqResults); i++ {
+	for i := range rqResults {
 		kvRead := rqResults[i]
 		logger.Debugf("comparing kvRead=[%#v] to queryResponse=[%#v]", kvRead, result)
 		if result == nil {

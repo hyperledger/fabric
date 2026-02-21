@@ -8,7 +8,6 @@ package follower_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"sync/atomic"
@@ -181,7 +180,7 @@ func TestBlockPullerFactory_VerifyBlockSequence(t *testing.T) {
 }
 
 func generateJoinBlock(t *testing.T, tlsCA tlsgen.CA, channelID string, number uint64) *cb.Block {
-	tmpdir, err := ioutil.TempDir("", "block-puller-test-")
+	tmpdir, err := os.MkdirTemp("", "block-puller-test-")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
 
@@ -202,13 +201,13 @@ func generateCertificates(t *testing.T, confAppRaft *genesisconfig.Profile, tlsC
 		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)
 		require.NoError(t, err)
 		srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", i))
-		err = ioutil.WriteFile(srvP, srvC.Cert, 0o644)
+		err = os.WriteFile(srvP, srvC.Cert, 0o644)
 		require.NoError(t, err)
 
 		clnC, err := tlsCA.NewClientCertKeyPair()
 		require.NoError(t, err)
 		clnP := path.Join(certDir, fmt.Sprintf("client%d.crt", i))
-		err = ioutil.WriteFile(clnP, clnC.Cert, 0o644)
+		err = os.WriteFile(clnP, clnC.Cert, 0o644)
 		require.NoError(t, err)
 
 		c.ServerTlsCert = []byte(srvP)

@@ -96,7 +96,7 @@ func TestCombinedIterator(t *testing.T) {
 
 func checkItrResults(t *testing.T, testName string, itr statedb.ResultsIterator, expectedResults []*statedb.VersionedKV) {
 	t.Run(testName, func(t *testing.T) {
-		for i := 0; i < len(expectedResults); i++ {
+		for i := range expectedResults {
 			res, _ := itr.Next()
 			require.Equal(t, expectedResults[i], res)
 		}

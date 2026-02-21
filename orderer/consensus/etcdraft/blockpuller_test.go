@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft_test
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -26,7 +26,7 @@ import (
 )
 
 func TestEndpointconfigFromFromSupport(t *testing.T) {
-	blockBytes, err := ioutil.ReadFile("testdata/mychannel.block")
+	blockBytes, err := os.ReadFile("testdata/mychannel.block")
 	require.NoError(t, err)
 
 	goodConfigBlock := &common.Block{}
@@ -115,7 +115,7 @@ func TestNewBlockPuller(t *testing.T) {
 	ca, err := tlsgen.NewCA()
 	require.NoError(t, err)
 
-	blockBytes, err := ioutil.ReadFile("testdata/mychannel.block")
+	blockBytes, err := os.ReadFile("testdata/mychannel.block")
 	require.NoError(t, err)
 
 	goodConfigBlock := &common.Block{}

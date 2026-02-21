@@ -8,7 +8,6 @@ package transientstore
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -27,7 +26,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	tempdir, err := ioutil.TempDir("", "ts")
+	tempdir, err := os.MkdirTemp("", "ts")
 	if err != nil {
 		panic(err)
 	}
@@ -47,7 +46,7 @@ type testEnv struct {
 }
 
 func initTestEnv(t *testing.T) *testEnv {
-	tempdir, err := ioutil.TempDir("", "ts")
+	tempdir, err := os.MkdirTemp("", "ts")
 	require.NoErrorf(t, err, "failed to create test directory [%s]", tempdir)
 
 	storedir := filepath.Join(tempdir, "transientstore")
@@ -437,7 +436,7 @@ func TestTransientStorePurgeBelowHeight(t *testing.T) {
 
 	// Persist simulation results into  store
 	var err error
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		err = testStore.Persist(txid, endorsersResults[i].ReceivedAtBlockHeight,
 			endorsersResults[i].PvtSimulationResultsWithConfig)
 		require.NoError(err)
@@ -513,7 +512,7 @@ func TestTransientStoreRetrievalWithFilter(t *testing.T) {
 
 	testTxid := "testTxid"
 	numEntries := 5
-	for i := 0; i < numEntries; i++ {
+	for i := range numEntries {
 		testStore.Persist(testTxid, uint64(i), samplePvtSimResWithConfig)
 	}
 
@@ -550,7 +549,7 @@ func TestTransientStoreRetrievalWithFilter(t *testing.T) {
 	}
 
 	var expectedRes []*EndorserPvtSimulationResults
-	for i := 0; i < numEntries; i++ {
+	for i := range numEntries {
 		expectedRes = append(expectedRes, &EndorserPvtSimulationResults{uint64(i), expectedSimulationRes})
 	}
 
@@ -746,7 +745,7 @@ func TestDeleteTransientStore(t *testing.T) {
 	samplePvtSimResWithConfig := samplePvtDataWithConfigInfo(t)
 	testTxid := "testTxid"
 	numEntries := 5
-	for i := 0; i < numEntries; i++ {
+	for i := range numEntries {
 		store.Persist(testTxid, uint64(i), samplePvtSimResWithConfig)
 	}
 

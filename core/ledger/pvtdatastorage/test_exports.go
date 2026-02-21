@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package pvtdatastorage
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -45,7 +44,7 @@ func NewTestStoreEnv(
 	ledgerid string,
 	btlPolicy pvtdatapolicy.BTLPolicy,
 	conf *PrivateDataConfig) *StoreEnv {
-	storeDir, err := ioutil.TempDir("", "pdstore")
+	storeDir, err := os.MkdirTemp("", "pdstore")
 	if err != nil {
 		t.Fatalf("Failed to create private data storage directory: %s", err)
 	}

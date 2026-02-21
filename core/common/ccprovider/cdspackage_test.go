@@ -8,7 +8,6 @@ package ccprovider
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -19,7 +18,7 @@ import (
 )
 
 func setupccdir() string {
-	tempDir, err := ioutil.TempDir("/tmp", "ccprovidertest")
+	tempDir, err := os.MkdirTemp("/tmp", "ccprovidertest")
 	if err != nil {
 		panic(err)
 	}

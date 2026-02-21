@@ -198,7 +198,7 @@ func queryChaincode(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeQu
 func discoverAllPeers(n *nwo.Network, peer *nwo.Peer, channelID string, retries int, retryInterval time.Duration) {
 	var discoveredPeers []nwo.DiscoveredPeer
 	numPeers := len(n.Peers)
-	for i := 0; i < retries; i++ {
+	for i := range retries {
 		discoveredPeers = nwo.DiscoverPeers(n, peer, "User1", channelID)()
 		if len(discoveredPeers) == numPeers || i == retries-1 {
 			break

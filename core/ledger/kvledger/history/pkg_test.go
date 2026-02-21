@@ -8,7 +8,6 @@ package history
 
 import (
 	"crypto/sha256"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -50,7 +49,7 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 	testDB := testDBEnv.GetDBHandle(testLedgerID)
 	testBookkeepingEnv := bookkeeping.NewTestEnv(t)
 
-	testHistoryDBPath, err := ioutil.TempDir("", "historyldb")
+	testHistoryDBPath, err := os.MkdirTemp("", "historyldb")
 	if err != nil {
 		t.Fatalf("Failed to create history database directory: %s", err)
 	}
@@ -103,7 +102,7 @@ type testBlockStoreEnv struct {
 }
 
 func newBlockStorageTestEnv(t testing.TB) *testBlockStoreEnv {
-	testPath, err := ioutil.TempDir("", "historyleveldb-")
+	testPath, err := os.MkdirTemp("", "historyleveldb-")
 	if err != nil {
 		panic(err)
 	}

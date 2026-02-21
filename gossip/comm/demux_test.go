@@ -15,26 +15,26 @@ import (
 	"github.com/hyperledger/fabric/gossip/comm"
 )
 
-var matchAnything = func(_ interface{}) bool { return true }
+var matchAnything = func(_ any) bool { return true }
 
 // fill two channels.
 func TestChannelDeMultiplexer_EvenOddChannels(t *testing.T) {
 	demux := comm.NewChannelDemultiplexer()
-	evens := demux.AddChannel(func(number interface{}) bool {
+	evens := demux.AddChannel(func(number any) bool {
 		if i, ok := number.(int); ok {
 			return i%2 == 0
 		}
 		return false
 	})
 
-	odds := demux.AddChannel(func(number interface{}) bool {
+	odds := demux.AddChannel(func(number any) bool {
 		if i, ok := number.(int); ok {
 			return i%2 == 1
 		}
 		return false
 	})
 	demux.DeMultiplex("msg") // neither even, nor odd
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		demux.DeMultiplex(i)
 	}
 	if len(evens) != 10 || len(odds) != 10 {
@@ -66,7 +66,7 @@ func TestChannelDeMultiplexer_OperationsAfterClose(t *testing.T) {
 	demux := comm.NewChannelDemultiplexer()
 	demux.Close()
 	ch := make(chan struct{})
-	matcher := func(_ interface{}) bool { ch <- struct{}{}; return true }
+	matcher := func(_ any) bool { ch <- struct{}{}; return true }
 	things := demux.AddChannel(matcher)
 	// We should get a closed channel
 	ensureClosedEmptyChannelWithNilReturn(t, things)
@@ -83,7 +83,7 @@ func TestChannelDeMultiplexer_OperationsAfterClose(t *testing.T) {
 func TestChannelDeMultiplexer_ShouldCloseWithFullChannel(t *testing.T) {
 	demux := comm.NewChannelDemultiplexer()
 	demux.AddChannel(matchAnything)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		demux.DeMultiplex(i)
 	}
 
@@ -135,7 +135,7 @@ func TestChannelDeMultiplexer_InterleaveOperations(t *testing.T) {
 	}
 }
 
-func ensureClosedEmptyChannelWithNilReturn(t *testing.T, things <-chan interface{}) {
+func ensureClosedEmptyChannelWithNilReturn(t *testing.T, things <-chan any) {
 	if thing, openChannel := <-things; openChannel || thing != nil {
 		t.Fatalf("channel should be closed and should not get non-nil from closed empty channel")
 	}

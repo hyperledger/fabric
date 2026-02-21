@@ -8,7 +8,6 @@ package qscc
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -35,7 +34,7 @@ func setupTestLedger(chainid string, path string) (*shimtest.MockStub, *peer.Pee
 	mockAclProvider.Reset()
 
 	viper.Set("peer.fileSystemPath", path)
-	testDir, err := ioutil.TempDir("", "qscc_test")
+	testDir, err := os.MkdirTemp("", "qscc_test")
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -90,7 +89,7 @@ func resetProvider(res, chainid string, prop *peer2.SignedProposal, retErr error
 }
 
 func tempDir(t *testing.T, stem string) string {
-	path, err := ioutil.TempDir("", "qscc-"+stem)
+	path, err := os.MkdirTemp("", "qscc-"+stem)
 	require.NoError(t, err)
 	return path
 }

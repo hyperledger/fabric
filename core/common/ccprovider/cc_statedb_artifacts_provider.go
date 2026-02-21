@@ -11,7 +11,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"path/filepath"
 	"strings"
 )
@@ -81,7 +80,7 @@ func ExtractFileEntries(tarBytes []byte, databaseType string) (map[string][]*Tar
 		dir, _ := filepath.Split(hdr.Name)
 		// remove the ending slash
 		if strings.HasPrefix(hdr.Name, "META-INF/statedb/"+databaseType) {
-			fileContent, err := ioutil.ReadAll(tarReader)
+			fileContent, err := io.ReadAll(tarReader)
 			if err != nil {
 				return nil, err
 			}

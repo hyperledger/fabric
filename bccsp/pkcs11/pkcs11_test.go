@@ -13,7 +13,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/asn1"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -41,7 +40,7 @@ func defaultOptions() PKCS11Opts {
 }
 
 func newKeyStore(t *testing.T) (bccsp.KeyStore, func()) {
-	tempDir, err := ioutil.TempDir("", "pkcs11_ks")
+	tempDir, err := os.MkdirTemp("", "pkcs11_ks")
 	require.NoError(t, err)
 	ks, err := sw.NewFileBasedKeyStore(nil, tempDir, false)
 	require.NoError(t, err)

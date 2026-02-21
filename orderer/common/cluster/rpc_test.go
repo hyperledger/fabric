@@ -198,8 +198,8 @@ func TestSend(t *testing.T) {
 		method         func(rpc *cluster.RPC) error
 		sendReturns    error
 		sendCalledWith *orderer.StepRequest
-		receiveReturns []interface{}
-		stepReturns    []interface{}
+		receiveReturns []any
+		stepReturns    []any
 		remoteError    error
 		expectedErr    string
 	}
@@ -226,22 +226,22 @@ func TestSend(t *testing.T) {
 			name:           "Send and Receive submit succeed",
 			method:         submit,
 			sendReturns:    nil,
-			stepReturns:    []interface{}{stream, nil},
-			receiveReturns: []interface{}{submitResponse, nil},
+			stepReturns:    []any{stream, nil},
+			receiveReturns: []any{submitResponse, nil},
 			sendCalledWith: submitReq,
 		},
 		{
 			name:           "Send step succeed",
 			method:         step,
 			sendReturns:    nil,
-			stepReturns:    []interface{}{stream, nil},
+			stepReturns:    []any{stream, nil},
 			sendCalledWith: consensusReq,
 		},
 		{
 			name:           "Send submit fails",
 			method:         submit,
 			sendReturns:    errors.New("oops"),
-			stepReturns:    []interface{}{stream, nil},
+			stepReturns:    []any{stream, nil},
 			sendCalledWith: submitReq,
 			expectedErr:    "stream is aborted",
 		},
@@ -249,7 +249,7 @@ func TestSend(t *testing.T) {
 			name:           "Send step fails",
 			method:         step,
 			sendReturns:    errors.New("oops"),
-			stepReturns:    []interface{}{stream, nil},
+			stepReturns:    []any{stream, nil},
 			sendCalledWith: consensusReq,
 			expectedErr:    "stream is aborted",
 		},
@@ -257,13 +257,13 @@ func TestSend(t *testing.T) {
 			name:        "Remote() fails",
 			method:      submit,
 			remoteError: errors.New("timed out"),
-			stepReturns: []interface{}{stream, nil},
+			stepReturns: []any{stream, nil},
 			expectedErr: "timed out",
 		},
 		{
 			name:        "Submit fails with Send",
 			method:      submit,
-			stepReturns: []interface{}{nil, errors.New("deadline exceeded")},
+			stepReturns: []any{nil, errors.New("deadline exceeded")},
 			expectedErr: "deadline exceeded",
 		},
 	} {

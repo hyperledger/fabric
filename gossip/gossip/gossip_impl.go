@@ -311,7 +311,7 @@ func (g *Node) start() {
 	go g.syncDiscovery()
 	go g.handlePresumedDead()
 
-	msgSelector := func(msg interface{}) bool {
+	msgSelector := func(msg any) bool {
 		gMsg, isGossipMsg := msg.(protoext.ReceivedMessage)
 		if !isGossipMsg {
 			return false
@@ -437,7 +437,7 @@ func (g *Node) validateMsg(msg protoext.ReceivedMessage) bool {
 	return true
 }
 
-func (g *Node) sendGossipBatch(a []interface{}) {
+func (g *Node) sendGossipBatch(a []any) {
 	msgs2Gossip := make([]*emittedGossipMessage, len(a))
 	for i, e := range a {
 		msgs2Gossip[i] = e.(*emittedGossipMessage)
@@ -468,13 +468,13 @@ func (g *Node) gossipBatch(msgs []*emittedGossipMessage) {
 	var orgMsgs []*emittedGossipMessage
 	var leadershipMsgs []*emittedGossipMessage
 
-	isABlock := func(o interface{}) bool {
+	isABlock := func(o any) bool {
 		return protoext.IsDataMsg(o.(*emittedGossipMessage).GossipMessage)
 	}
-	isAStateInfoMsg := func(o interface{}) bool {
+	isAStateInfoMsg := func(o any) bool {
 		return protoext.IsStateInfoMsg(o.(*emittedGossipMessage).GossipMessage)
 	}
-	aliveMsgsWithNoEndpointAndInOurOrg := func(o interface{}) bool {
+	aliveMsgsWithNoEndpointAndInOurOrg := func(o any) bool {
 		msg := o.(*emittedGossipMessage)
 		if !protoext.IsAliveMsg(msg.GossipMessage) {
 			return false
@@ -482,10 +482,10 @@ func (g *Node) gossipBatch(msgs []*emittedGossipMessage) {
 		member := msg.GetAliveMsg().Membership
 		return member.Endpoint == "" && g.IsInMyOrg(discovery.NetworkMember{PKIid: member.PkiId})
 	}
-	isOrgRestricted := func(o interface{}) bool {
+	isOrgRestricted := func(o any) bool {
 		return aliveMsgsWithNoEndpointAndInOurOrg(o) || protoext.IsOrgRestricted(o.(*emittedGossipMessage).GossipMessage)
 	}
-	isLeadershipMsg := func(o interface{}) bool {
+	isLeadershipMsg := func(o any) bool {
 		return protoext.IsLeadershipMsg(o.(*emittedGossipMessage).GossipMessage)
 	}
 
@@ -575,7 +575,7 @@ func (g *Node) gossipInChan(messages []*emittedGossipMessage, chanRoutingFactory
 		// Take first channel
 		channel, totalChannels = totalChannels[0], totalChannels[1:]
 		// Extract all messages of that channel
-		grabMsgs := func(o interface{}) bool {
+		grabMsgs := func(o any) bool {
 			return bytes.Equal(o.(*emittedGossipMessage).Channel, channel)
 		}
 		messagesOfChannel, messages = partitionMessages(grabMsgs, messages)
@@ -818,7 +818,7 @@ func (g *Node) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan
 	if passThrough {
 		return nil, g.comm.Accept(acceptor)
 	}
-	acceptByType := func(o interface{}) bool {
+	acceptByType := func(o any) bool {
 		if o, isGossipMsg := o.(*pg.GossipMessage); isGossipMsg {
 			return acceptor(o)
 		}
@@ -852,7 +852,7 @@ func (g *Node) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan
 	return outCh, nil
 }
 
-func selectOnlyDiscoveryMessages(m interface{}) bool {
+func selectOnlyDiscoveryMessages(m any) bool {
 	msg, isGossipMsg := m.(protoext.ReceivedMessage)
 	if !isGossipMsg {
 		return false
@@ -1173,7 +1173,6 @@ func (g *Node) sameOrgOrOurOrgPullFilter(msg protoext.ReceivedMessage) func(stri
 
 func (g *Node) connect2BootstrapPeers() {
 	for _, endpoint := range g.conf.BootstrapPeers {
-		endpoint := endpoint
 		identifier := func() (*discovery.PeerIdentification, error) {
 			remotePeerIdentity, err := g.comm.Handshake(&comm.RemotePeer{Endpoint: endpoint})
 			if err != nil {
@@ -1348,7 +1347,7 @@ func extractChannels(a []*emittedGossipMessage) []common.ChannelID {
 		if len(m.Channel) == 0 {
 			continue
 		}
-		sameChan := func(a interface{}, b interface{}) bool {
+		sameChan := func(a any, b any) bool {
 			return bytes.Equal(a.(common.ChannelID), b.(common.ChannelID))
 		}
 		if util.IndexInSlice(channels, common.ChannelID(m.Channel), sameChan) == -1 {

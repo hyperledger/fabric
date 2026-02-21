@@ -16,7 +16,7 @@ type Orderer struct {
 	ChannelParticipation *ChannelParticipation `yaml:"ChannelParticipation,omitempty"`
 	Consensus            map[string]string     `yaml:"Consensus,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type General struct {
@@ -35,7 +35,7 @@ type General struct {
 	Authentication  *OrdererAuthentication `yaml:"Authentication,omitempty"`
 	Cluster         *Cluster               `yaml:"Cluster,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type Cluster struct {

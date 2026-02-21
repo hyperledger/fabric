@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package comm
 
 import (
-	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
@@ -64,7 +64,7 @@ func (conf Config) ToSecureOptions(newSelfSignedTLSCert genTLSCertFunc) (comm.Se
 }
 
 func loadFile(path string) ([]byte, error) {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, errors.Errorf("Failed opening file %s: %v", path, err)
 	}

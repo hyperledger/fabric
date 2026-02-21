@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -140,11 +141,9 @@ func (d *gossipDiscoveryImpl) Lookup(PKIID common.PKIidType) *NetworkMember {
 }
 
 func (d *gossipDiscoveryImpl) Connect(member NetworkMember, id identifier) {
-	for _, endpoint := range []string{member.InternalEndpoint, member.Endpoint} {
-		if d.isMyOwnEndpoint(endpoint) {
-			d.logger.Debug("Skipping connecting to myself")
-			return
-		}
+	if slices.ContainsFunc([]string{member.InternalEndpoint, member.Endpoint}, d.isMyOwnEndpoint) {
+		d.logger.Debug("Skipping connecting to myself")
+		return
 	}
 
 	d.logger.Debug("Entering", member)
@@ -235,10 +234,7 @@ func (d *gossipDiscoveryImpl) InitiateSync(peerNum int) {
 	d.lock.RLock()
 
 	n := d.aliveMembership.Size()
-	k := peerNum
-	if k > n {
-		k = n
-	}
+	k := min(peerNum, n)
 
 	aliveMembersAsSlice := d.aliveMembership.ToSlice()
 	for _, i := range util.GetRandomIndices(k, n-1) {
@@ -1046,11 +1042,11 @@ type aliveMsgStore struct {
 
 func newAliveMsgStore(d *gossipDiscoveryImpl) *aliveMsgStore {
 	policy := protoext.NewGossipMessageComparator(0)
-	trigger := func(m interface{}) {}
+	trigger := func(m any) {}
 	aliveMsgTTL := d.aliveExpirationTimeout * time.Duration(d.msgExpirationFactor)
 	externalLock := func() { d.lock.Lock() }
 	externalUnlock := func() { d.lock.Unlock() }
-	callback := func(m interface{}) {
+	callback := func(m any) {
 		msg := m.(*protoext.SignedGossipMessage)
 		if !protoext.IsAliveMsg(msg.GossipMessage) {
 			return
@@ -1079,7 +1075,7 @@ func newAliveMsgStore(d *gossipDiscoveryImpl) *aliveMsgStore {
 	return s
 }
 
-func (s *aliveMsgStore) Add(msg interface{}) bool {
+func (s *aliveMsgStore) Add(msg any) bool {
 	m := msg.(*protoext.SignedGossipMessage)
 	if !protoext.IsAliveMsg(m.GossipMessage) {
 		panic(fmt.Sprint("Msg ", msg, " is not AliveMsg"))
@@ -1087,7 +1083,7 @@ func (s *aliveMsgStore) Add(msg interface{}) bool {
 	return s.MessageStore.Add(msg)
 }
 
-func (s *aliveMsgStore) CheckValid(msg interface{}) bool {
+func (s *aliveMsgStore) CheckValid(msg any) bool {
 	m := msg.(*protoext.SignedGossipMessage)
 	if !protoext.IsAliveMsg(m.GossipMessage) {
 		panic(fmt.Sprint("Msg ", msg, " is not AliveMsg"))

@@ -806,7 +806,6 @@ func TestAbortRPC(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 			testAbort(t, testCase.abortFunc, testCase.rpcTimeout, testCase.expectedErr)
 		})
@@ -1370,7 +1369,6 @@ func TestMetrics(t *testing.T) {
 			},
 		},
 	} {
-		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 			fakeProvider := &mocks.MetricsProvider{}
 			testCase.testMetrics = &testMetrics{

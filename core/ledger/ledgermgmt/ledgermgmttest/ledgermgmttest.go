@@ -8,7 +8,6 @@ package ledgermgmttest
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -63,7 +62,7 @@ func NewInitializer(testLedgerDir string) *ledgermgmt.Initializer {
 // the snapshot directory. It is intended to be used for creating a ledger by snapshot for testing purpose.
 func CreateSnapshotWithGenesisBlock(t *testing.T, testDir string, ledgerID string, configTxProcessor ledger.CustomTxProcessor) string {
 	// use a tmpdir to create the ledger for ledgerID so that we can create the snapshot
-	tmpDir, err := ioutil.TempDir("", "createsnapshotwithgenesisblock")
+	tmpDir, err := os.MkdirTemp("", "createsnapshotwithgenesisblock")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 

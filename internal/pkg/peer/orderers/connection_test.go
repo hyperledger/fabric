@@ -8,7 +8,7 @@ package orderers_test
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"sort"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -59,13 +59,13 @@ var _ = Describe("Connection", func() {
 
 	BeforeEach(func() {
 		var err error
-		cert1, err = ioutil.ReadFile("testdata/tlsca.example.com-cert.pem")
+		cert1, err = os.ReadFile("testdata/tlsca.example.com-cert.pem")
 		Expect(err).NotTo(HaveOccurred())
 
-		cert2, err = ioutil.ReadFile("testdata/tlsca.org1.example.com-cert.pem")
+		cert2, err = os.ReadFile("testdata/tlsca.org1.example.com-cert.pem")
 		Expect(err).NotTo(HaveOccurred())
 
-		cert3, err = ioutil.ReadFile("testdata/tlsca.org2.example.com-cert.pem")
+		cert3, err = os.ReadFile("testdata/tlsca.org2.example.com-cert.pem")
 		Expect(err).NotTo(HaveOccurred())
 
 		org1 = orderers.OrdererOrg{

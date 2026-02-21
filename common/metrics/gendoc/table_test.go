@@ -20,7 +20,7 @@ import (
 
 var _ = Describe("Table", func() {
 	It("generates a markdown document the prometheus metrics", func() {
-		var options []interface{}
+		var options []any
 
 		filepath.Walk("testdata", func(path string, info os.FileInfo, err error) error {
 			defer GinkgoRecover()
@@ -45,7 +45,7 @@ var _ = Describe("Table", func() {
 	})
 
 	It("generates a markdown document the statsd metrics", func() {
-		var options []interface{}
+		var options []any
 
 		filepath.Walk("testdata", func(path string, info os.FileInfo, err error) error {
 			defer GinkgoRecover()

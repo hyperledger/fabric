@@ -248,10 +248,7 @@ type Invocation struct {
 // to the underlying lifecycle implementation.
 func (i *Invocation) InstallChaincode(input *lb.InstallChaincodeArgs) (proto.Message, error) {
 	if logger.IsEnabledFor(zapcore.DebugLevel) {
-		end := 35
-		if len(input.ChaincodeInstallPackage) < end {
-			end = len(input.ChaincodeInstallPackage)
-		}
+		end := min(len(input.ChaincodeInstallPackage), 35)
 
 		// the first tens of bytes contain the (compressed) portion
 		// of the package metadata and so they'll be different across

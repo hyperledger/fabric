@@ -8,7 +8,7 @@ package channelparticipation
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -307,7 +307,7 @@ func (h *HTTPHandler) multipartFormDataBodyToBlock(params map[string]string, req
 		return nil
 	}
 
-	blockBytes, err := ioutil.ReadAll(file)
+	blockBytes, err := io.ReadAll(file)
 	if err != nil {
 		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrapf(err, "cannot read file part %s from request body", FormDataConfigBlockKey))
 		return nil
@@ -419,8 +419,8 @@ func negotiateContentType(req *http.Request) (string, error) {
 		return "application/json", nil
 	}
 
-	options := strings.Split(acceptReq, ",")
-	for _, opt := range options {
+	options := strings.SplitSeq(acceptReq, ",")
+	for opt := range options {
 		if strings.Contains(opt, "application/json") ||
 			strings.Contains(opt, "application/*") ||
 			strings.Contains(opt, "*/*") {
@@ -440,7 +440,7 @@ func (h *HTTPHandler) sendResponseJsonError(resp http.ResponseWriter, code int, 
 	}
 }
 
-func (h *HTTPHandler) sendResponseOK(resp http.ResponseWriter, content interface{}) {
+func (h *HTTPHandler) sendResponseOK(resp http.ResponseWriter, content any) {
 	encoder := json.NewEncoder(resp)
 	resp.Header().Set("Content-Type", "application/json")
 	resp.WriteHeader(http.StatusOK)
@@ -449,7 +449,7 @@ func (h *HTTPHandler) sendResponseOK(resp http.ResponseWriter, content interface
 	}
 }
 
-func (h *HTTPHandler) sendResponseCreated(resp http.ResponseWriter, location string, content interface{}) {
+func (h *HTTPHandler) sendResponseCreated(resp http.ResponseWriter, location string, content any) {
 	encoder := json.NewEncoder(resp)
 	resp.Header().Set("Location", location)
 	resp.Header().Set("Content-Type", "application/json")

@@ -37,7 +37,7 @@ func TestVerify(t *testing.T) {
 	expectedErr := errors.New("Expected Error")
 
 	verifiers := make(map[reflect.Type]Verifier)
-	verifiers[reflect.TypeOf(&mocks2.MockKey{})] = &mocks.Verifier{
+	verifiers[reflect.TypeFor[*mocks2.MockKey]()] = &mocks.Verifier{
 		KeyArg:       expectedKey,
 		SignatureArg: expectetSignature,
 		DigestArg:    expectetDigest,
@@ -51,7 +51,7 @@ func TestVerify(t *testing.T) {
 	require.Nil(t, err)
 
 	verifiers = make(map[reflect.Type]Verifier)
-	verifiers[reflect.TypeOf(&mocks2.MockKey{})] = &mocks.Verifier{
+	verifiers[reflect.TypeFor[*mocks2.MockKey]()] = &mocks.Verifier{
 		KeyArg:       expectedKey,
 		SignatureArg: expectetSignature,
 		DigestArg:    expectetDigest,

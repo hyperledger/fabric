@@ -13,7 +13,6 @@ import (
 	"encoding/base32"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"runtime"
 	"strings"
@@ -79,7 +78,7 @@ func TestDockerBuild(t *testing.T) {
 			Image:        imageName,
 			Cmd:          "/bin/true",
 			InputStream:  codepackage,
-			OutputStream: ioutil.Discard,
+			OutputStream: io.Discard,
 		},
 		client,
 	)

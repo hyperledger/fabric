@@ -8,7 +8,6 @@ package common_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -84,7 +83,7 @@ func TestInitCryptoMissingDir(t *testing.T) {
 
 func TestInitCryptoFileNotDir(t *testing.T) {
 	file := path.Join(os.TempDir(), util.GenerateUUID())
-	err := ioutil.WriteFile(file, []byte{}, 0o644)
+	err := os.WriteFile(file, []byte{}, 0o644)
 	require.Nil(t, err, "Failed to create test file")
 	defer os.Remove(file)
 	err = common.InitCrypto(file, "SampleOrg", msp.ProviderTypeToString(msp.FABRIC))
@@ -355,7 +354,7 @@ func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
 }
 
 func TestConfigFromEnv(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "peer-clientcert")
+	tempdir, err := os.MkdirTemp("", "peer-clientcert")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -393,13 +392,13 @@ func TestConfigFromEnv(t *testing.T) {
 
 	org1CA, err := tlsgen.NewCA()
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tempdir, "org1-ca-cert.pem"), org1CA.CertBytes(), 0o644)
+	err = os.WriteFile(filepath.Join(tempdir, "org1-ca-cert.pem"), org1CA.CertBytes(), 0o644)
 	require.NoError(t, err)
 	org1ServerKP, err := org1CA.NewServerCertKeyPair("localhost")
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tempdir, "org1-peer1-cert.pem"), org1ServerKP.Cert, 0o644)
+	err = os.WriteFile(filepath.Join(tempdir, "org1-peer1-cert.pem"), org1ServerKP.Cert, 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tempdir, "org1-peer1-key.pem"), org1ServerKP.Key, 0o600)
+	err = os.WriteFile(filepath.Join(tempdir, "org1-peer1-key.pem"), org1ServerKP.Key, 0o600)
 	require.NoError(t, err)
 
 	viper.Set("peer.tls.enabled", true)

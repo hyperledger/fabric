@@ -669,7 +669,7 @@ func createTestKey(i int) string {
 }
 
 func createTestValue(i int) []byte {
-	return []byte(fmt.Sprintf("value_%03d", i))
+	return fmt.Appendf(nil, "value_%03d", i)
 }
 
 // TestExecuteQuery is only tested on the CouchDB testEnv

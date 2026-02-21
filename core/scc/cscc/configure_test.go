@@ -8,7 +8,6 @@ package cscc
 
 import (
 	"errors"
-	"io/ioutil"
 	"net"
 	"os"
 	"testing"
@@ -236,7 +235,7 @@ func TestConfigerInvokeJoinChainWrongParams(t *testing.T) {
 }
 
 func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
-	testDir, err := ioutil.TempDir("", "cscc_test")
+	testDir, err := os.MkdirTemp("", "cscc_test")
 	require.NoError(t, err, "error in creating test dir")
 	defer os.RemoveAll(testDir)
 
@@ -351,7 +350,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 }
 
 func TestConfigerInvokeJoinChainBySnapshot(t *testing.T) {
-	testDir, err := ioutil.TempDir("", "cscc_test_bysnapshot")
+	testDir, err := os.MkdirTemp("", "cscc_test_bysnapshot")
 	require.NoError(t, err, "error in creating test dir")
 	defer os.RemoveAll(testDir)
 
@@ -437,7 +436,7 @@ func TestConfigerInvokeJoinChainBySnapshot(t *testing.T) {
 }
 
 func TestConfigerInvokeGetChannelConfig(t *testing.T) {
-	testDir, err := ioutil.TempDir("", "cscc_test_GetChannelConfig")
+	testDir, err := os.MkdirTemp("", "cscc_test_GetChannelConfig")
 	require.NoError(t, err)
 	defer os.RemoveAll(testDir)
 

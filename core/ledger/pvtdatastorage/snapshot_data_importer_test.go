@@ -8,7 +8,6 @@ package pvtdatastorage
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"path"
@@ -977,7 +976,7 @@ func (v *dbEntriesVerifier) verifyNoExpiryEntries() {
 }
 
 func testDir(t *testing.T) string {
-	dir, err := ioutil.TempDir("", "snapshot-data-importer-")
+	dir, err := os.MkdirTemp("", "snapshot-data-importer-")
 	require.NoError(t, err)
 	return dir
 }
@@ -1095,7 +1094,7 @@ func TestSnapshotRowsSorter(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("testcase-%d", i), func(t *testing.T) {
-			dir, err := ioutil.TempDir("", "snapshot-row-sorter-")
+			dir, err := os.MkdirTemp("", "snapshot-row-sorter-")
 			require.NoError(t, err)
 			defer os.RemoveAll(dir)
 
@@ -1134,7 +1133,7 @@ func TestSnapshotRowsSorter(t *testing.T) {
 }
 
 func TestSnapshotRowsSorterCleanup(t *testing.T) {
-	dir, err := ioutil.TempDir("", "snapshot-row-sorter-")
+	dir, err := os.MkdirTemp("", "snapshot-row-sorter-")
 	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 

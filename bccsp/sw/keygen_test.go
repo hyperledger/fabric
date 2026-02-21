@@ -25,7 +25,7 @@ func TestKeyGen(t *testing.T) {
 	expectedErr := errors.New("Expected Error")
 
 	keyGenerators := make(map[reflect.Type]KeyGenerator)
-	keyGenerators[reflect.TypeOf(&mocks2.KeyGenOpts{})] = &mocks.KeyGenerator{
+	keyGenerators[reflect.TypeFor[*mocks2.KeyGenOpts]()] = &mocks.KeyGenerator{
 		OptsArg: expectedOpts,
 		Value:   expectetValue,
 		Err:     expectedErr,
@@ -36,7 +36,7 @@ func TestKeyGen(t *testing.T) {
 	require.Contains(t, err.Error(), expectedErr.Error())
 
 	keyGenerators = make(map[reflect.Type]KeyGenerator)
-	keyGenerators[reflect.TypeOf(&mocks2.KeyGenOpts{})] = &mocks.KeyGenerator{
+	keyGenerators[reflect.TypeFor[*mocks2.KeyGenOpts]()] = &mocks.KeyGenerator{
 		OptsArg: expectedOpts,
 		Value:   expectetValue,
 		Err:     nil,

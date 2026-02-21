@@ -189,7 +189,7 @@ func (c *Client) Send(ctx context.Context, req *Request, auth *discovery.AuthInf
 	return req.computeResponse(resp)
 }
 
-type resultOrError interface{}
+type resultOrError any
 
 type response map[key]resultOrError
 

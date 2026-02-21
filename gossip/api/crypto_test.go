@@ -8,7 +8,7 @@ package api
 
 import (
 	"encoding/pem"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -18,7 +18,7 @@ import (
 )
 
 func TestPeerIdentityTypeString(t *testing.T) {
-	certBytes, err := ioutil.ReadFile(filepath.Join("testdata", "peer.pem"))
+	certBytes, err := os.ReadFile(filepath.Join("testdata", "peer.pem"))
 	require.NoError(t, err)
 
 	for _, testCase := range []struct {

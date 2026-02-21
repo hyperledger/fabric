@@ -491,7 +491,6 @@ func TestVerifyTransactionsAreWellFormed(t *testing.T) {
 			},
 		},
 	} {
-		tst := tst
 		t.Run(tst.name, func(t *testing.T) {
 			err := protoutil.VerifyTransactionsAreWellFormed(tst.block)
 			if tst.expectedError == "" {

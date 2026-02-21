@@ -13,7 +13,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -76,7 +75,7 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 		osnURL = fmt.Sprintf("https://%s", *orderer)
 		var err error
 		caCertPool = x509.NewCertPool()
-		caFilePEM, err := ioutil.ReadFile(*caFile)
+		caFilePEM, err := os.ReadFile(*caFile)
 		if err != nil {
 			return "", 1, fmt.Errorf("reading orderer CA certificate: %s", err)
 		}
@@ -94,7 +93,7 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 
 	var marshaledConfigBlock []byte
 	if *configBlockPath != "" {
-		marshaledConfigBlock, err = ioutil.ReadFile(*configBlockPath)
+		marshaledConfigBlock, err = os.ReadFile(*configBlockPath)
 		if err != nil {
 			return "", 1, fmt.Errorf("reading config block: %s", err)
 		}
@@ -153,7 +152,7 @@ func responseOutput(showStatus bool, statusCode int, responseBody []byte) (strin
 }
 
 func readBodyBytes(body io.ReadCloser) ([]byte, error) {
-	bodyBytes, err := ioutil.ReadAll(body)
+	bodyBytes, err := io.ReadAll(body)
 	if err != nil {
 		return nil, fmt.Errorf("reading http response body: %s", err)
 	}

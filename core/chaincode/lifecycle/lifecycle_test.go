@@ -991,7 +991,6 @@ var _ = Describe("ExternalFunctions", func() {
 				fakeOrg1State,
 			}
 			for i, kvs := range []MapLedgerShim{org0KVS, org1KVS} {
-				kvs := kvs
 				fakeOrgStates[i].GetStateStub = kvs.GetState
 				fakeOrgStates[i].GetStateHashStub = kvs.GetStateHash
 				fakeOrgStates[i].PutStateStub = kvs.PutState
@@ -1154,7 +1153,6 @@ var _ = Describe("ExternalFunctions", func() {
 				fakeOrg1State,
 			}
 			for i, kvs := range []MapLedgerShim{org0KVS, org1KVS} {
-				kvs := kvs
 				fakeOrgStates[i].GetStateStub = kvs.GetState
 				fakeOrgStates[i].GetStateHashStub = kvs.GetStateHash
 				fakeOrgStates[i].PutStateStub = kvs.PutState
@@ -1450,7 +1448,6 @@ var _ = Describe("ExternalFunctions", func() {
 				fakeOrg1State,
 			}
 			for i, kvs := range []MapLedgerShim{org0KVS, org1KVS} {
-				kvs := kvs
 				fakeOrgStates[i].GetStateStub = kvs.GetState
 				fakeOrgStates[i].GetStateHashStub = kvs.GetStateHash
 				fakeOrgStates[i].PutStateStub = kvs.PutState
@@ -1639,7 +1636,6 @@ var _ = Describe("ExternalFunctions", func() {
 				fakeOrg1State,
 			}
 			for i, kvs := range []MapLedgerShim{org0KVS, org1KVS} {
-				kvs := kvs
 				fakeOrgStates[i].GetStateStub = kvs.GetState
 				fakeOrgStates[i].GetStateHashStub = kvs.GetStateHash
 				fakeOrgStates[i].PutStateStub = kvs.PutState
@@ -1736,7 +1732,6 @@ var _ = Describe("ExternalFunctions", func() {
 				fakeOrg1State,
 			}
 			for i, kvs := range []MapLedgerShim{org0KVS, org1KVS} {
-				kvs := kvs
 				fakeOrgStates[i].GetStateStub = kvs.GetState
 				fakeOrgStates[i].GetStateHashStub = kvs.GetStateHash
 				fakeOrgStates[i].PutStateStub = kvs.PutState

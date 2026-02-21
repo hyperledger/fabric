@@ -50,11 +50,11 @@ func (_m *Plugin) Endorse(payload []byte, sp *peer.SignedProposal) (*peer.Endors
 
 // Init provides a mock function with given fields: dependencies
 func (_m *Plugin) Init(dependencies ...endorsement.Dependency) error {
-	_va := make([]interface{}, len(dependencies))
+	_va := make([]any, len(dependencies))
 	for _i := range dependencies {
 		_va[_i] = dependencies[_i]
 	}
-	var _ca []interface{}
+	var _ca []any
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 

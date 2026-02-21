@@ -36,7 +36,7 @@ func TestHash(t *testing.T) {
 	expectedErr := errors.New("Expected Error")
 
 	hashers := make(map[reflect.Type]Hasher)
-	hashers[reflect.TypeOf(&mocks2.HashOpts{})] = &mocks.Hasher{
+	hashers[reflect.TypeFor[*mocks2.HashOpts]()] = &mocks.Hasher{
 		MsgArg:  expectetMsg,
 		OptsArg: expectedOpts,
 		Value:   expectetValue,
@@ -48,7 +48,7 @@ func TestHash(t *testing.T) {
 	require.Nil(t, err)
 
 	hashers = make(map[reflect.Type]Hasher)
-	hashers[reflect.TypeOf(&mocks2.HashOpts{})] = &mocks.Hasher{
+	hashers[reflect.TypeFor[*mocks2.HashOpts]()] = &mocks.Hasher{
 		MsgArg:  expectetMsg,
 		OptsArg: expectedOpts,
 		Value:   nil,
@@ -68,7 +68,7 @@ func TestGetHash(t *testing.T) {
 	expectedErr := errors.New("Expected Error")
 
 	hashers := make(map[reflect.Type]Hasher)
-	hashers[reflect.TypeOf(&mocks2.HashOpts{})] = &mocks.Hasher{
+	hashers[reflect.TypeFor[*mocks2.HashOpts]()] = &mocks.Hasher{
 		OptsArg:   expectedOpts,
 		ValueHash: expectetValue,
 		Err:       nil,
@@ -79,7 +79,7 @@ func TestGetHash(t *testing.T) {
 	require.Nil(t, err)
 
 	hashers = make(map[reflect.Type]Hasher)
-	hashers[reflect.TypeOf(&mocks2.HashOpts{})] = &mocks.Hasher{
+	hashers[reflect.TypeFor[*mocks2.HashOpts]()] = &mocks.Hasher{
 		OptsArg:   expectedOpts,
 		ValueHash: expectetValue,
 		Err:       expectedErr,

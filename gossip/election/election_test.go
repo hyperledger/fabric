@@ -62,7 +62,7 @@ type peer struct {
 	LeaderElectionService
 }
 
-func (p *peer) On(methodName string, arguments ...interface{}) *mock.Call {
+func (p *peer) On(methodName string, arguments ...any) *mock.Call {
 	p.sharedLock.Lock()
 	defer p.sharedLock.Unlock()
 	p.mockedMethods[methodName] = struct{}{}
@@ -471,7 +471,7 @@ func Test_peerIDString(t *testing.T) {
 	}
 }
 
-func waitForBoolFunc(t *testing.T, f func() bool, expectedValue bool, msgAndArgs ...interface{}) {
+func waitForBoolFunc(t *testing.T, f func() bool, expectedValue bool, msgAndArgs ...any) {
 	end := time.Now().Add(testTimeout)
 	for time.Now().Before(end) {
 		if f() == expectedValue {

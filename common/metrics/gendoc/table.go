@@ -106,14 +106,14 @@ func (t Table) separator(delim string, firstLine bool) string {
 }
 
 func (t Table) header() string {
-	var h string
-	h += t.separator("-", true)
+	var h strings.Builder
+	h.WriteString(t.separator("-", true))
 	for _, c := range t.Columns {
-		h += "| " + printWidth(c.Name, c.Width-2, 0) + " "
+		h.WriteString("| " + printWidth(c.Name, c.Width-2, 0) + " ")
 	}
-	h += "|\n"
-	h += t.headerSeparator()
-	return h
+	h.WriteString("|\n")
+	h.WriteString(t.headerSeparator())
+	return h.String()
 }
 
 func (t Table) formatCell(cell Cell) string {
@@ -142,7 +142,7 @@ func (t Table) formatCell(cell Cell) string {
 		contents[col.Field] = padLines(lines, col.Width-2, lineCount, col.Split-1)
 	}
 
-	var c string
+	var c strings.Builder
 	for i := 0; i < lineCount; i++ {
 		endSplit := "|"
 		endPadding := " "
@@ -153,12 +153,12 @@ func (t Table) formatCell(cell Cell) string {
 				endSplit = ""
 				endPadding = ""
 			}
-			c += frontSplit + contents[col.Field][i] + endPadding
+			c.WriteString(frontSplit + contents[col.Field][i] + endPadding)
 		}
-		c += endSplit + "\n"
+		c.WriteString(endSplit + "\n")
 	}
 
-	return c
+	return c.String()
 }
 
 func formSubtableCell(keys []string, m map[string]string, leftWidth, cellWidth int) []string {
@@ -178,7 +178,7 @@ func formSubtableCell(keys []string, m map[string]string, leftWidth, cellWidth i
 		// populate subtable
 		rightLines := wrapWidths(m[key], cellWidth-leftWidth-1)
 		leftLines := padLines([]string{key}, leftWidth-2, max(1, len(rightLines)), 0)
-		for i := 0; i < len(leftLines); i++ {
+		for i := range leftLines {
 			text := fmt.Sprintf("%s | %s", leftLines[i], rightLines[i])
 			result = append(result, text)
 		}
@@ -188,7 +188,7 @@ func formSubtableCell(keys []string, m map[string]string, leftWidth, cellWidth i
 
 func wrapWidths(s string, width int) []string {
 	var result []string
-	for _, s := range strings.Split(s, "\n") {
+	for s := range strings.SplitSeq(s, "\n") {
 		result = append(result, wrapWidth(s, width)...)
 	}
 	return result
@@ -200,19 +200,20 @@ func wrapWidth(s string, width int) []string {
 		return []string{s}
 	}
 
-	result := words[0]
+	var result strings.Builder
+	result.WriteString(words[0])
 	remaining := width - len(words[0])
 	for _, w := range words[1:] {
 		if len(w)+1 > remaining {
-			result += "\n" + w
+			result.WriteString("\n" + w)
 			remaining = width - len(w) - 1
 		} else {
-			result += " " + w
+			result.WriteString(" " + w)
 			remaining -= len(w) + 1
 		}
 	}
 
-	return strings.Split(result, "\n")
+	return strings.Split(result.String(), "\n")
 }
 
 func padLines(lines []string, w, h, split int) []string {
@@ -240,13 +241,6 @@ func printWidth(s string, w, split int) string {
 		s = buf.String()
 	}
 	return s
-}
-
-func max(x, y int) int {
-	if x > y {
-		return x
-	}
-	return y
 }
 
 type Cell struct {
@@ -314,7 +308,7 @@ func (c Cells) MaxLen(f Field) int {
 
 // NewCells transforms metrics options to cells that can be used for doc
 // generation.
-func NewCells(options []interface{}) (Cells, error) {
+func NewCells(options []any) (Cells, error) {
 	var cells Cells
 	for _, o := range options {
 		switch m := o.(type) {
