@@ -480,7 +480,7 @@ func TestTxStatsInfo(t *testing.T) {
 	}
 	t.Logf("txStatsInfo=%s\n", spew.Sdump(txStatsInfo))
 	require.Equal(t, len(expectedTxStatInfo), len(txStatsInfo))
-	for i := 0; i < len(expectedTxStatInfo); i++ {
+	for i := range expectedTxStatInfo {
 		require.Equal(t, expectedTxStatInfo[i].TxIDFromChannelHeader, txStatsInfo[i].TxIDFromChannelHeader)
 		require.Equal(t, expectedTxStatInfo[i].ValidationCode, txStatsInfo[i].ValidationCode)
 		require.Equal(t, expectedTxStatInfo[i].TxType, txStatsInfo[i].TxType)

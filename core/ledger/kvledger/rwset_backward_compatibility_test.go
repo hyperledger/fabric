@@ -61,7 +61,7 @@ func testGenerateSampleRWSet(t *testing.T) []byte {
 	// each level contains max 50 nodes per the current configuration
 	simulator, err := ledger.NewTxSimulator(txid)
 	require.NoError(t, err)
-	for i := 0; i < 10011; i++ {
+	for i := range 10011 {
 		require.NoError(t, simulator.SetState("ns1", fmt.Sprintf("key-%000d", i), fmt.Appendf(nil, "value-%000d", i)))
 	}
 	simulator.Done()

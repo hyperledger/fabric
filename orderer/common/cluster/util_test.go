@@ -76,7 +76,7 @@ func TestParallelStubActivation(t *testing.T) {
 		return instance, nil
 	}
 
-	for i := 0; i < n; i++ {
+	for range n {
 		go func() {
 			defer wg.Done()
 			stub.Activate(maybeCreateInstance)
@@ -141,7 +141,7 @@ func TestPredicateDialerUpdateRootCAs(t *testing.T) {
 	}()
 
 	// Eventually we should succeed connecting.
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		conn, err := dialer.Dial(node1.srv.Address(), nil)
 		if err == nil {
 			conn.Close()
@@ -230,7 +230,7 @@ func TestVerifyBlockHash(t *testing.T) {
 	var end uint64 = 23
 
 	verify := func(blockchain []*common.Block) error {
-		for i := 0; i < len(blockchain); i++ {
+		for i := range blockchain {
 			err := cluster.VerifyBlockHash(i, blockchain)
 			if err != nil {
 				return err
@@ -804,14 +804,14 @@ func TestComparisonMemoizer(t *testing.T) {
 	}
 
 	// Warm-up cache
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		notSame := m.Compare([]byte{byte(i)}, []byte{1, 2, 3})
 		require.False(t, notSame)
 		require.Equal(t, i+1, invocations)
 	}
 
 	// Ensure lookups are cached
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		notSame := m.Compare([]byte{byte(i)}, []byte{1, 2, 3})
 		require.False(t, notSame)
 		require.Equal(t, 5, invocations)
@@ -823,7 +823,7 @@ func TestComparisonMemoizer(t *testing.T) {
 	require.Equal(t, 6, invocations)
 
 	// Keep adding more and more elements to the cache and ensure it stays smaller than its size
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		odd := m.Compare([]byte{byte(1)}, []byte{byte(i % 2)})
 		require.Equal(t, i%2 != 0, odd)
 		require.LessOrEqual(t, m.Size(), int(m.MaxEntries))

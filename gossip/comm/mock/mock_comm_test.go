@@ -17,8 +17,8 @@ import (
 )
 
 func TestMockComm(t *testing.T) {
-	first := &socketMock{"first", make(chan interface{})}
-	second := &socketMock{"second", make(chan interface{})}
+	first := &socketMock{"first", make(chan any)}
+	second := &socketMock{"second", make(chan any)}
 	members := make(map[string]*socketMock)
 
 	members[first.endpoint] = first
@@ -27,7 +27,7 @@ func TestMockComm(t *testing.T) {
 	comm1 := NewCommMock(first.endpoint, members)
 	defer comm1.Stop()
 
-	msgCh := comm1.Accept(func(message interface{}) bool {
+	msgCh := comm1.Accept(func(message any) bool {
 		return message.(protoext.ReceivedMessage).GetGossipMessage().GetStateRequest() != nil ||
 			message.(protoext.ReceivedMessage).GetGossipMessage().GetStateResponse() != nil
 	})
@@ -52,13 +52,13 @@ func TestMockComm(t *testing.T) {
 func TestMockComm_PingPong(t *testing.T) {
 	members := make(map[string]*socketMock)
 
-	members["peerA"] = &socketMock{"peerA", make(chan interface{})}
-	members["peerB"] = &socketMock{"peerB", make(chan interface{})}
+	members["peerA"] = &socketMock{"peerA", make(chan any)}
+	members["peerB"] = &socketMock{"peerB", make(chan any)}
 
 	peerA := NewCommMock("peerA", members)
 	peerB := NewCommMock("peerB", members)
 
-	all := func(interface{}) bool {
+	all := func(any) bool {
 		return true
 	}
 

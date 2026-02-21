@@ -105,7 +105,7 @@ func (w *JSONFileWriter) CloseObject() error {
 }
 
 // Add field to an open json object
-func (w *JSONFileWriter) AddField(k string, v interface{}) error {
+func (w *JSONFileWriter) AddField(k string, v any) error {
 	// Need to open object before adding fields
 	if !w.objectOpened {
 		return errors.Errorf("no object open, cannot add field")
@@ -173,7 +173,7 @@ func (w *JSONFileWriter) CloseList() error {
 }
 
 // Add entries to an open json list
-func (w *JSONFileWriter) AddEntry(r interface{}) error {
+func (w *JSONFileWriter) AddEntry(r any) error {
 	// Need to open list before adding entries
 	if !w.listOpened {
 		return errors.Errorf("no list open, cannot add entries")

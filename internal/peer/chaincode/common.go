@@ -287,13 +287,13 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 	// on here with JSON parsing see http://blog.golang.org/json-and-go -
 	// Generic JSON with interface{}
 	if chaincodeCtorJSON != "{}" {
-		var f interface{}
+		var f any
 		err := json.Unmarshal([]byte(chaincodeCtorJSON), &f)
 		if err != nil {
 			return errors.Wrap(err, "chaincode argument error")
 		}
-		m := f.(map[string]interface{})
-		sm := make(map[string]interface{})
+		m := f.(map[string]any)
+		sm := make(map[string]any)
 		for k := range m {
 			sm[strings.ToLower(k)] = m[k]
 		}

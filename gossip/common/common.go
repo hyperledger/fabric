@@ -32,7 +32,7 @@ func (id PKIidType) IsNotSameFilter(that PKIidType) bool {
 // MessageAcceptor is a predicate that is used to
 // determine in which messages the subscriber that created the
 // instance of the MessageAcceptor is interested in.
-type MessageAcceptor func(interface{}) bool
+type MessageAcceptor func(any) bool
 
 // Payload defines an object that contains a ledger block
 type Payload struct {
@@ -53,7 +53,7 @@ func (c ChannelID) String() string {
 // MESSAGE_INVALIDATES if this message invalidates that
 // MESSAGE_INVALIDATED if this message is invalidated by that
 // MESSAGE_NO_ACTION otherwise
-type MessageReplacingPolicy func(this interface{}, that interface{}) InvalidationResult
+type MessageReplacingPolicy func(this any, that any) InvalidationResult
 
 // InvalidationResult determines how a message affects another message
 // when it is put into gossip message store

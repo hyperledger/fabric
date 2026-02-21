@@ -351,7 +351,7 @@ func TestMarshalEtcdRaftMetadata(t *testing.T) {
 		inputCerts[i], _ = os.ReadFile(fmt.Sprintf("testdata/tls-client-%d.pem", i+1))
 	}
 
-	for i := 0; i < len(inputCerts)-1; i++ {
+	for i := range len(inputCerts) - 1 {
 		require.NotEqual(t, outputCerts[i+1], outputCerts[i], "expected extracted certs to differ from each other")
 	}
 }

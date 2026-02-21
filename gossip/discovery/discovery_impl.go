@@ -1040,11 +1040,11 @@ type aliveMsgStore struct {
 
 func newAliveMsgStore(d *gossipDiscoveryImpl) *aliveMsgStore {
 	policy := protoext.NewGossipMessageComparator(0)
-	trigger := func(m interface{}) {}
+	trigger := func(m any) {}
 	aliveMsgTTL := d.aliveExpirationTimeout * time.Duration(d.msgExpirationFactor)
 	externalLock := func() { d.lock.Lock() }
 	externalUnlock := func() { d.lock.Unlock() }
-	callback := func(m interface{}) {
+	callback := func(m any) {
 		msg := m.(*protoext.SignedGossipMessage)
 		if !protoext.IsAliveMsg(msg.GossipMessage) {
 			return
@@ -1073,7 +1073,7 @@ func newAliveMsgStore(d *gossipDiscoveryImpl) *aliveMsgStore {
 	return s
 }
 
-func (s *aliveMsgStore) Add(msg interface{}) bool {
+func (s *aliveMsgStore) Add(msg any) bool {
 	m := msg.(*protoext.SignedGossipMessage)
 	if !protoext.IsAliveMsg(m.GossipMessage) {
 		panic(fmt.Sprint("Msg ", msg, " is not AliveMsg"))
@@ -1081,7 +1081,7 @@ func (s *aliveMsgStore) Add(msg interface{}) bool {
 	return s.MessageStore.Add(msg)
 }
 
-func (s *aliveMsgStore) CheckValid(msg interface{}) bool {
+func (s *aliveMsgStore) CheckValid(msg any) bool {
 	m := msg.(*protoext.SignedGossipMessage)
 	if !protoext.IsAliveMsg(m.GossipMessage) {
 		panic(fmt.Sprint("Msg ", msg, " is not AliveMsg"))

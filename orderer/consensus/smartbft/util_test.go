@@ -17,7 +17,7 @@ import (
 func TestWorker(t *testing.T) {
 	work := make([][]byte, 13)
 
-	for i := 0; i < 13; i++ {
+	for i := range 13 {
 		work[i] = make([]byte, 2)
 		binary.BigEndian.PutUint16(work[i], uint16(i))
 	}
@@ -27,7 +27,7 @@ func TestWorker(t *testing.T) {
 	var lock sync.Mutex
 
 	var workers []worker
-	for i := 0; i < 7; i++ {
+	for i := range 7 {
 		workers = append(workers, worker{
 			workerNum: 7,
 			work:      work,

@@ -1270,7 +1270,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				// Currnetly, with channel participation, the only way to stop this is by explicitly removing the
 				// orderer from the channel, which causes the ledger to be deleted.
 				// See: https://github.com/hyperledger/fabric/issues/3992
-				for i := 0; i < 5; i++ {
+				for range 5 {
 					Eventually(o1Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Received msg to 5, my ID is probably wrong due to out of date, cowardly halting channel=testchannel node=1"))
 					Eventually(o1Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Created and started a follower.Chain for channel testchannel"))
 				}

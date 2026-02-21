@@ -22,14 +22,14 @@ func init() {
 	util.SetupTestLogging()
 }
 
-type messageHook func(interface{})
+type messageHook func(any)
 
 type pullTestInstance struct {
 	msgHooks          []messageHook
 	peers             map[string]*pullTestInstance
 	name              string
 	nextPeerSelection []string
-	msgQueue          chan interface{}
+	msgQueue          chan any
 	lock              sync.Mutex
 	stopChan          chan struct{}
 	*PullEngine
@@ -61,7 +61,7 @@ func newPushPullTestInstance(name string, peers map[string]*pullTestInstance) *p
 	inst := &pullTestInstance{
 		msgHooks:          make([]messageHook, 0),
 		peers:             peers,
-		msgQueue:          make(chan interface{}, 100),
+		msgQueue:          make(chan any, 100),
 		nextPeerSelection: make([]string, 0),
 		stopChan:          make(chan struct{}, 1),
 		name:              name,
@@ -98,7 +98,7 @@ func (p *pullTestInstance) hook(f messageHook) {
 	p.msgHooks = append(p.msgHooks, f)
 }
 
-func (p *pullTestInstance) handleMessage(m interface{}) {
+func (p *pullTestInstance) handleMessage(m any) {
 	p.lock.Lock()
 	for _, f := range p.msgHooks {
 		f(m)
@@ -146,7 +146,7 @@ func (p *pullTestInstance) Hello(dest string, nonce uint64) {
 	p.peers[dest].msgQueue <- &helloMsg{nonce: nonce, source: p.name}
 }
 
-func (p *pullTestInstance) SendDigest(digest []string, nonce uint64, context interface{}) {
+func (p *pullTestInstance) SendDigest(digest []string, nonce uint64, context any) {
 	p.peers[context.(string)].msgQueue <- &digestMsg{source: p.name, nonce: nonce, digest: digest}
 }
 
@@ -154,7 +154,7 @@ func (p *pullTestInstance) SendReq(dest string, items []string, nonce uint64) {
 	p.peers[dest].msgQueue <- &reqMsg{nonce: nonce, source: p.name, items: items}
 }
 
-func (p *pullTestInstance) SendRes(items []string, context interface{}, nonce uint64) {
+func (p *pullTestInstance) SendRes(items []string, context any, nonce uint64) {
 	p.peers[context.(string)].msgQueue <- &resMsg{items: items, nonce: nonce}
 }
 
@@ -186,7 +186,7 @@ func TestPullEngine_Stop(t *testing.T) {
 	defer inst2.stop()
 	inst2.setNextPeerSelection([]string{"p1"})
 	go func() {
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			inst1.Add(strconv.Itoa(i))
 			time.Sleep(time.Duration(10) * time.Millisecond)
 		}
@@ -208,18 +208,18 @@ func TestPullEngineAll2AllWithIncrementalSpawning(t *testing.T) {
 	instanceCount := 10
 	peers := make(map[string]*pullTestInstance)
 
-	for i := 0; i < instanceCount; i++ {
+	for i := range instanceCount {
 		inst := newPushPullTestInstance(fmt.Sprintf("p%d", i+1), peers)
 		inst.Add(strconv.Itoa(i + 1))
 		time.Sleep(time.Duration(50) * time.Millisecond)
 	}
-	for i := 0; i < instanceCount; i++ {
+	for i := range instanceCount {
 		pID := fmt.Sprintf("p%d", i+1)
 		peers[pID].setNextPeerSelection(keySet(pID, peers))
 	}
 	time.Sleep(time.Duration(4000) * time.Millisecond)
 
-	for i := 0; i < instanceCount; i++ {
+	for i := range instanceCount {
 		pID := fmt.Sprintf("p%d", i+1)
 		require.Equal(t, instanceCount, len(peers[pID].state.ToArray()))
 	}
@@ -239,7 +239,7 @@ func TestPullEngineSelectiveUpdates(t *testing.T) {
 	inst2.Add("0", "1", "2", "3")
 
 	// Ensure inst2 sent a proper digest to inst1
-	inst1.hook(func(m interface{}) {
+	inst1.hook(func(m any) {
 		if dig, isDig := m.(*digestMsg); isDig {
 			require.True(t, util.IndexInSlice(dig.digest, "0", Strcmp) != -1)
 			require.True(t, util.IndexInSlice(dig.digest, "1", Strcmp) != -1)
@@ -249,7 +249,7 @@ func TestPullEngineSelectiveUpdates(t *testing.T) {
 	})
 
 	// Ensure inst1 requested only needed updates from inst2
-	inst2.hook(func(m interface{}) {
+	inst2.hook(func(m any) {
 		if req, isReq := m.(*reqMsg); isReq {
 			require.True(t, util.IndexInSlice(req.items, "1", Strcmp) == -1)
 			require.True(t, util.IndexInSlice(req.items, "3", Strcmp) == -1)
@@ -260,7 +260,7 @@ func TestPullEngineSelectiveUpdates(t *testing.T) {
 	})
 
 	// Ensure inst1 received only needed updates from inst2
-	inst1.hook(func(m interface{}) {
+	inst1.hook(func(m any) {
 		if res, isRes := m.(*resMsg); isRes {
 			require.True(t, util.IndexInSlice(res.items, "1", Strcmp) == -1)
 			require.True(t, util.IndexInSlice(res.items, "3", Strcmp) == -1)
@@ -292,13 +292,13 @@ func TestByzantineResponder(t *testing.T) {
 	inst2.Add("1", "2", "3")
 	inst3.Add("1", "6", "7")
 
-	inst2.hook(func(m interface{}) {
+	inst2.hook(func(m any) {
 		if _, isHello := m.(*helloMsg); isHello {
 			inst3.SendDigest([]string{"5", "6", "7"}, 0, "p1")
 		}
 	})
 
-	inst1.hook(func(m interface{}) {
+	inst1.hook(func(m any) {
 		if dig, isDig := m.(*digestMsg); isDig {
 			if dig.source == "p3" {
 				atomic.StoreInt32(&receivedDigestFromInst3, int32(1))
@@ -373,7 +373,7 @@ func TestLatePeers(t *testing.T) {
 	defer inst3.stop()
 	inst2.Add("1", "2", "3", "4")
 	inst3.Add("5", "6", "7", "8")
-	inst2.hook(func(m interface{}) {
+	inst2.hook(func(m any) {
 		time.Sleep(time.Duration(600) * time.Millisecond)
 	})
 	inst1.setNextPeerSelection([]string{"p2", "p3"})
@@ -443,8 +443,8 @@ func TestSpread(t *testing.T) {
 
 	lock := &sync.Mutex{}
 
-	addToCounters := func(dest string) func(m interface{}) {
-		return func(m interface{}) {
+	addToCounters := func(dest string) func(m any) {
+		return func(m any) {
 			if _, isReq := m.(*reqMsg); isReq {
 				lock.Lock()
 				chooseCounters[dest]++
@@ -458,7 +458,7 @@ func TestSpread(t *testing.T) {
 	inst4.hook(addToCounters("p4"))
 	inst5.hook(addToCounters("p5"))
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		item := fmt.Sprintf("%d", i)
 		inst2.Add(item)
 		inst3.Add(item)
@@ -493,7 +493,7 @@ func TestFilter(t *testing.T) {
 	defer inst2.stop()
 	defer inst3.stop()
 
-	inst1.PullEngine.digFilter = func(context interface{}) func(digestItem string) bool {
+	inst1.PullEngine.digFilter = func(context any) func(digestItem string) bool {
 		return func(digestItem string) bool {
 			n, _ := strconv.ParseInt(digestItem, 10, 64)
 			if context == "p2" {
@@ -524,7 +524,7 @@ func TestFilter(t *testing.T) {
 	require.True(t, util.IndexInSlice(inst3.state.ToArray(), "5", Strcmp) != -1)
 }
 
-func Strcmp(a interface{}, b interface{}) bool {
+func Strcmp(a any, b any) bool {
 	return a.(string) == b.(string)
 }
 

@@ -42,7 +42,7 @@ func certExpirationTime(pemBytes []byte) time.Time {
 }
 
 // MessageFunc notifies a message happened with the given format, and can be replaced with Warnf or Infof of a logger.
-type MessageFunc func(format string, args ...interface{})
+type MessageFunc func(format string, args ...any)
 
 // Scheduler invokes f after d time, and can be replaced with time.AfterFunc.
 type Scheduler func(d time.Duration, f func()) *time.Timer
@@ -104,7 +104,7 @@ func trackCertExpiration(rawCert []byte, certRole string, info MessageFunc, warn
 var ErrPubKeyMismatch = errors.New("public keys do not match")
 
 // LogNonPubKeyMismatchErr logs an error which is not an ErrPubKeyMismatch error
-func LogNonPubKeyMismatchErr(log func(template string, args ...interface{}), err error, cert1DER, cert2DER []byte) {
+func LogNonPubKeyMismatchErr(log func(template string, args ...any), err error, cert1DER, cert2DER []byte) {
 	cert1PEM := &pem.Block{Type: "CERTIFICATE", Bytes: cert1DER}
 	cert2PEM := &pem.Block{Type: "CERTIFICATE", Bytes: cert2DER}
 	log("Failed determining if public key of %s matches public key of %s: %s",

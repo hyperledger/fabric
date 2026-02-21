@@ -24,7 +24,7 @@ type TopLevel struct {
 	General              General
 	FileLedger           FileLedger
 	Debug                Debug
-	Consensus            interface{}
+	Consensus            any
 	Operations           Operations
 	Metrics              Metrics
 	ChannelParticipation ChannelParticipation

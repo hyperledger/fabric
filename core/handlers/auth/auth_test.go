@@ -24,7 +24,7 @@ func TestChainFilters(t *testing.T) {
 
 	firstFilter := ChainFilters(endorser, filters...)
 	firstFilter.ProcessProposal(context.Background(), initialProposal)
-	for i := 0; i < iterations; i++ {
+	for i := range iterations {
 		require.Equal(t, uint32(i), filters[i].(*mockAuthFilter).sequence,
 			"Expected filters to be invoked in the provided sequence")
 	}
@@ -42,7 +42,7 @@ func TestChainFilters(t *testing.T) {
 
 func createNFilters(n int) []Filter {
 	filters := make([]Filter, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		filters[i] = &mockAuthFilter{}
 	}
 	return filters

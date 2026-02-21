@@ -114,7 +114,7 @@ func (s *Service) initializeExpirationCheck(stream orderer.Cluster_StepServer, e
 		expiresAt:                        expiresAt(stream),
 		endpoint:                         endpoint,
 		nodeName:                         nodeName,
-		alert: func(template string, args ...interface{}) {
+		alert: func(template string, args ...any) {
 			s.Logger.Warningf(template, args...)
 		},
 	}

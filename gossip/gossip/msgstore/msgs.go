@@ -17,13 +17,13 @@ import (
 var noopLock = func() {}
 
 // Noop is a function that doesn't do anything
-func Noop(_ interface{}) {
+func Noop(_ any) {
 }
 
 // invalidationTrigger is invoked on each message that was invalidated because of a message addition
 // i.e: if add(0), add(1) was called one after the other, and the store has only {1} after the sequence of invocations
 // then the invalidation trigger on 0 was called when 1 was added.
-type invalidationTrigger func(message interface{})
+type invalidationTrigger func(message any)
 
 // NewMessageStore returns a new MessageStore with the message replacing
 // policy and invalidation trigger passed.
@@ -34,7 +34,7 @@ func NewMessageStore(pol common.MessageReplacingPolicy, trigger invalidationTrig
 // NewMessageStoreExpirable returns a new MessageStore with the message replacing
 // policy and invalidation trigger passed. It supports old message expiration after msgTTL, during expiration first external
 // lock taken, expiration callback invoked and external lock released. Callback and external lock can be nil.
-func NewMessageStoreExpirable(pol common.MessageReplacingPolicy, trigger invalidationTrigger, msgTTL time.Duration, externalLock func(), externalUnlock func(), externalExpire func(interface{})) MessageStore {
+func NewMessageStoreExpirable(pol common.MessageReplacingPolicy, trigger invalidationTrigger, msgTTL time.Duration, externalLock func(), externalUnlock func(), externalExpire func(any)) MessageStore {
 	store := newMsgStore(pol, trigger)
 	store.msgTTL = msgTTL
 
@@ -62,7 +62,7 @@ func newMsgStore(pol common.MessageReplacingPolicy, trigger invalidationTrigger)
 
 		externalLock:      noopLock,
 		externalUnlock:    noopLock,
-		expireMsgCallback: func(m interface{}) {},
+		expireMsgCallback: func(m any) {},
 		expiredCount:      0,
 
 		doneCh: make(chan struct{}),
@@ -79,24 +79,24 @@ func newMsgStore(pol common.MessageReplacingPolicy, trigger invalidationTrigger)
 type MessageStore interface {
 	// add adds a message to the store
 	// returns true or false whether the message was added to the store
-	Add(msg interface{}) bool
+	Add(msg any) bool
 
 	// Checks if message is valid for insertion to store
 	// returns true or false whether the message can be added to the store
-	CheckValid(msg interface{}) bool
+	CheckValid(msg any) bool
 
 	// size returns the amount of messages in the store
 	Size() int
 
 	// get returns all messages in the store
-	Get() []interface{}
+	Get() []any
 
 	// Stop all associated go routines
 	Stop()
 
 	// Purge purges all messages that are accepted by
 	// the given predicate
-	Purge(func(interface{}) bool)
+	Purge(func(any) bool)
 }
 
 type messageStoreImpl struct {
@@ -108,19 +108,19 @@ type messageStoreImpl struct {
 	expiredCount      int
 	externalLock      func()
 	externalUnlock    func()
-	expireMsgCallback func(msg interface{})
+	expireMsgCallback func(msg any)
 	doneCh            chan struct{}
 	stopOnce          sync.Once
 }
 
 type msg struct {
-	data    interface{}
+	data    any
 	created time.Time
 	expired bool
 }
 
 // add adds a message to the store
-func (s *messageStoreImpl) Add(message interface{}) bool {
+func (s *messageStoreImpl) Add(message any) bool {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -142,7 +142,7 @@ func (s *messageStoreImpl) Add(message interface{}) bool {
 	return true
 }
 
-func (s *messageStoreImpl) Purge(shouldBePurged func(interface{}) bool) {
+func (s *messageStoreImpl) Purge(shouldBePurged func(any) bool) {
 	shouldMsgBePurged := func(m *msg) bool {
 		return shouldBePurged(m.data)
 	}
@@ -164,7 +164,7 @@ func (s *messageStoreImpl) Purge(shouldBePurged func(interface{}) bool) {
 }
 
 // Checks if message is valid for insertion to store
-func (s *messageStoreImpl) CheckValid(message interface{}) bool {
+func (s *messageStoreImpl) CheckValid(message any) bool {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -184,8 +184,8 @@ func (s *messageStoreImpl) Size() int {
 }
 
 // get returns all messages in the store
-func (s *messageStoreImpl) Get() []interface{} {
-	res := make([]interface{}, 0)
+func (s *messageStoreImpl) Get() []any {
+	res := make([]any, 0)
 
 	s.lock.RLock()
 	defer s.lock.RUnlock()

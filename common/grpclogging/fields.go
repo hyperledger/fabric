@@ -25,7 +25,7 @@ func (m *protoMarshaler) MarshalJSON() ([]byte, error) {
 	return out, nil
 }
 
-func ProtoMessage(key string, val interface{}) zapcore.Field {
+func ProtoMessage(key string, val any) zapcore.Field {
 	if pm, ok := val.(proto.Message); ok && pm.ProtoReflect().IsValid() {
 		return zap.Reflect(key, &protoMarshaler{message: pm})
 	}

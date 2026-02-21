@@ -71,7 +71,7 @@ func TestOpenWAL(t *testing.T) {
 		setup(t)
 
 		// create 10 new wal files
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			store.Store(
 				[]raftpb.Entry{{Index: uint64(i), Data: make([]byte, 10)}},
 				raftpb.HardState{},
@@ -143,7 +143,7 @@ func TestTakeSnapshot(t *testing.T) {
 			}()
 
 			// create 10 new wal files
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				store.Store(
 					[]raftpb.Entry{{Index: uint64(i), Data: make([]byte, 100)}},
 					raftpb.HardState{},
@@ -204,7 +204,7 @@ func TestTakeSnapshot(t *testing.T) {
 			}()
 
 			// create 10 new wal files
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				store.Store(
 					[]raftpb.Entry{{Index: uint64(i), Data: make([]byte, 100)}},
 					raftpb.HardState{},
@@ -269,7 +269,7 @@ func TestTakeSnapshot(t *testing.T) {
 			}()
 
 			// create 10 new wal files
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				store.Store(
 					[]raftpb.Entry{{Index: uint64(i), Data: make([]byte, 100)}},
 					raftpb.HardState{},
@@ -356,7 +356,7 @@ func TestApplyOutOfDateSnapshot(t *testing.T) {
 		}()
 
 		// create 10 new wal files
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			store.Store(
 				[]raftpb.Entry{{Index: uint64(i), Data: make([]byte, 100)}},
 				raftpb.HardState{},

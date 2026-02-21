@@ -49,7 +49,7 @@ func TestUnaryGrpcLimiterExceedLimit(t *testing.T) {
 	fullMethod := "/protos.Endorser/ProcessProposal"
 	semaphores := initGrpcSemaphores(&peer.Config{LimitsConcurrencyEndorserService: limit})
 	// acquire all permits so that semaphore buffer is full, expect error when calling interceptor
-	for i := 0; i < limit; i++ {
+	for range limit {
 		semaphores["/protos.Endorser"].TryAcquire()
 	}
 	interceptor := unaryGrpcLimiter(semaphores)
@@ -62,7 +62,7 @@ func TestStreamGrpcLimiterExceedLimit(t *testing.T) {
 	fullMethods := []string{"/protos.Deliver/Deliver", "/protos.Deliver/DeliverFiltered", "/protos.Deliver/DeliverWithPrivateData"}
 	semaphores := initGrpcSemaphores(&peer.Config{LimitsConcurrencyDeliverService: limit})
 	// acquire all permits so that semaphore buffer is full, expect error when calling interceptor
-	for i := 0; i < limit; i++ {
+	for range limit {
 		semaphores["/protos.Deliver"].TryAcquire()
 	}
 	interceptor := streamGrpcLimiter(semaphores)

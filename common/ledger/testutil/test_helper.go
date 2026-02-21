@@ -103,7 +103,7 @@ func (bg *BlockGenerator) NextBlockWithTxid(simulationResults [][]byte, txids []
 // NextTestBlock constructs next block in sequence block with 'numTx' number of transactions for testing
 func (bg *BlockGenerator) NextTestBlock(numTx int, txSize int) *common.Block {
 	simulationResults := [][]byte{}
-	for i := 0; i < numTx; i++ {
+	for range numTx {
 		simulationResults = append(simulationResults, ConstructRandomBytes(bg.t, txSize))
 	}
 	return bg.NextBlock(simulationResults)
@@ -113,7 +113,7 @@ func (bg *BlockGenerator) NextTestBlock(numTx int, txSize int) *common.Block {
 func (bg *BlockGenerator) NextTestBlocks(numBlocks int) []*common.Block {
 	blocks := []*common.Block{}
 	numTx := 10
-	for i := 0; i < numBlocks; i++ {
+	for range numBlocks {
 		block := bg.NextTestBlock(numTx, 100)
 		block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txflags.NewWithValues(numTx, pb.TxValidationCode_VALID)
 		blocks = append(blocks, block)
@@ -232,7 +232,7 @@ func ConstructBlockWithTxidHeaderType(
 	headerType common.HeaderType,
 ) *common.Block {
 	envs := []*common.Envelope{}
-	for i := 0; i < len(simulationResults); i++ {
+	for i := range simulationResults {
 		env, _, err := ConstructTransactionWithHeaderType(
 			t,
 			simulationResults[i],
@@ -258,7 +258,7 @@ func ConstructBlock(
 	sign bool,
 ) *common.Block {
 	envs := []*common.Envelope{}
-	for i := 0; i < len(simulationResults); i++ {
+	for i := range simulationResults {
 		env, _, err := ConstructTransaction(t, simulationResults[i], "", sign)
 		if err != nil {
 			t.Fatalf("ConstructTestTransaction failed, err %s", err)
@@ -274,7 +274,7 @@ func ConstructBlock(
 // ConstructTestBlock constructs a single block with random contents
 func ConstructTestBlock(t *testing.T, blockNum uint64, numTx int, txSize int) *common.Block {
 	simulationResults := [][]byte{}
-	for i := 0; i < numTx; i++ {
+	for range numTx {
 		simulationResults = append(simulationResults, ConstructRandomBytes(t, txSize))
 	}
 	return ConstructBlock(t, blockNum, ConstructRandomBytes(t, 32), simulationResults, false)
@@ -303,7 +303,7 @@ func ConstructBytesProposalResponsePayload(version string, simulationResults []b
 
 func NewBlock(env []*common.Envelope, blockNum uint64, previousHash []byte) *common.Block {
 	block := protoutil.NewBlock(blockNum, previousHash)
-	for i := 0; i < len(env); i++ {
+	for i := range env {
 		txEnvBytes, _ := proto.Marshal(env[i])
 		block.Data.Data = append(block.Data.Data, txEnvBytes)
 	}

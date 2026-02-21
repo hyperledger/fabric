@@ -221,7 +221,6 @@ func TestValidateConfig(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			err := config.ValidateConfig(test.config)
 			require.Contains(t, test.containsError, err.Error())

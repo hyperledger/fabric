@@ -719,7 +719,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			assertBlockReception(map[string]int{"testchannel1": 0}, network.Orderers, network)
 
 			By("Restarting all nodes")
-			for i := 0; i < 4; i++ {
+			for i := range 4 {
 				orderer := network.Orderers[i]
 				By(fmt.Sprintf("Killing %s", orderer.Name))
 				ordererProcesses[i].Signal(syscall.SIGTERM)
@@ -823,7 +823,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			assertBlockReception(map[string]int{"testchannel1": 0}, network.Orderers, network)
 
 			By("Restarting all nodes")
-			for i := 0; i < 4; i++ {
+			for i := range 4 {
 				orderer := network.Orderers[i]
 				By(fmt.Sprintf("Killing %s", orderer.Name))
 				ordererProcesses[i].Signal(syscall.SIGTERM)
@@ -1114,7 +1114,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			peer := network.Peer("Org1", "peer0")
 
-			for i := 0; i < 6; i++ {
+			for i := range 6 {
 				fmt.Fprintf(GinkgoWriter, "adding orderer %d", i+5)
 
 				By("Adding a new consenter with Id " + strconv.Itoa(i+5))
@@ -1221,7 +1221,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			nwo.UpdateOrdererEndpoints(network, peer, lastOrderer, channel, lastOrdererEndpoints...)
 
 			By("Shrinking the cluster back")
-			for i := 0; i < 6; i++ {
+			for i := range 6 {
 				By(fmt.Sprintf("Waiting for the added orderer to see the leader %d", i+1))
 				Eventually(lastOrdererRunner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(fmt.Sprintf("Message from %d", 1+i)))
 				By(fmt.Sprintf("Removing the added node from the application channel (block %d)", 8+i))
@@ -1836,7 +1836,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 			// Expect 7 attempts to connect from orderer 0 to orderer 3.
 			// If backoff's default settings are left, it will take 20-25 seconds after the 7th attempt to reach the 8th attempt.
 			// If the backoff is made controllable, as here in the test, the maximum time between attempts will be 3 seconds.
-			for i := 0; i < 7; i++ {
+			for range 7 {
 				// look for grpc Info message
 				Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Subchannel Connectivity change to IDLE, last error: connection error"))
 			}

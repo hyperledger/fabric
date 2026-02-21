@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"time"
 
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
@@ -418,10 +419,5 @@ func appendDefaultPropagateEnvironment(propagateEnvironment []string) []string {
 }
 
 func contains(propagateEnvironment []string, key string) bool {
-	for _, variable := range propagateEnvironment {
-		if key == variable {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(propagateEnvironment, key)
 }

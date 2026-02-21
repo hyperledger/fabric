@@ -287,7 +287,7 @@ func TestBFTSynchronizer(t *testing.T) {
 		)
 
 		var ledger []*cb.Block
-		for i := uint64(0); i < 100; i++ {
+		for i := range uint64(100) {
 			ledger = append(ledger, &cb.Block{Header: &cb.BlockHeader{Number: i}})
 		}
 		ledger[42] = b42
@@ -417,7 +417,7 @@ func TestBFTSynchronizer(t *testing.T) {
 		)
 
 		var ledger []*cb.Block
-		for i := uint64(0); i < 100; i++ {
+		for i := range uint64(100) {
 			ledger = append(ledger, &cb.Block{Header: &cb.BlockHeader{Number: i}})
 		}
 		ledger[42] = b42

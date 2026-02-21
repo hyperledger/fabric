@@ -16,11 +16,11 @@ type Argument interface {
 }
 
 // Dependency marks a dependency passed to the Init() method
-type Dependency interface{}
+type Dependency any
 
 // ContextDatum defines additional data that is passed from the validator
 // into the Validate() invocation
-type ContextDatum interface{}
+type ContextDatum any
 
 // Plugin validates transactions
 type Plugin interface {
