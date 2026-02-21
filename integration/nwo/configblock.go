@@ -105,7 +105,7 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 	Expect(err).NotTo(HaveOccurred())
 
 	for _, signer := range additionalSigners {
-		sess, err := n.PeerAdminSession(signer, commands.SignConfigTx{
+		sess, err := n.CliAdminSession(signer, commands.SignConfigTx{
 			File:       updateFile,
 			ClientAuth: n.ClientAuthRequired,
 		})
@@ -122,7 +122,7 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	}
 
-	sess, err := n.PeerAdminSession(submitter, commands.SignConfigTx{
+	sess, err := n.CliAdminSession(submitter, commands.SignConfigTx{
 		File:       updateFile,
 		ClientAuth: n.ClientAuthRequired,
 	})
@@ -188,7 +188,7 @@ func CurrentConfigBlockNumber(n *Network, peer *Peer, orderer *Orderer, channel 
 // CurrentConfigBlockNumberFromPeer retrieves the block number from the header
 // of the peer's current config block.
 func CurrentConfigBlockNumberFromPeer(n *Network, peer *Peer, channel, output string) uint64 {
-	sess, err := n.PeerAdminSession(peer, commands.ChannelFetch{
+	sess, err := n.CliAdminSession(peer, commands.ChannelFetch{
 		ChannelID:  channel,
 		Block:      "config",
 		OutputFile: output,

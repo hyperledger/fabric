@@ -284,7 +284,7 @@ var _ = Describe("PrivateData", func() {
 			err = os.WriteFile(tempFile.Name(), b, 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
-			sess, err := network.PeerUserSession(org2Peer1, "Admin2", commands.ChannelJoin{
+			sess, err := network.CliUserSession(org2Peer1, "Admin2", commands.ChannelJoin{
 				BlockPath: tempFile.Name(),
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -314,7 +314,7 @@ var _ = Describe("PrivateData", func() {
 				Sequence:          "1",
 			}
 
-			sess, err = network.PeerUserSession(org2Peer1, "Admin2", commands.ChaincodeInstall{
+			sess, err = network.CliUserSession(org2Peer1, "Admin2", commands.ChaincodeInstall{
 				PackageFile: chaincode.PackageFile,
 				ClientAuth:  network.ClientAuthRequired,
 			})
@@ -337,7 +337,7 @@ var _ = Describe("PrivateData", func() {
 					)
 					if peer.ID() == "Org2.peer1" {
 						// use Admin2 user for peer1.org2
-						sess, err = network.PeerUserSession(peer, "Admin2", commands.ChannelInfo{
+						sess, err = network.CliUserSession(peer, "Admin2", commands.ChannelInfo{
 							ChannelID: channelID,
 						})
 						Expect(err).NotTo(HaveOccurred())
@@ -371,7 +371,7 @@ var _ = Describe("PrivateData", func() {
 
 			By("verifying peer1.org2 got the private data that was created historically")
 			Eventually(func() bool {
-				sess, err = network.PeerUserSession(org2Peer1, "Admin2", commands.ChaincodeQuery{
+				sess, err = network.CliUserSession(org2Peer1, "Admin2", commands.ChaincodeQuery{
 					ChannelID: channelID,
 					Name:      "marblesp",
 					Ctor:      `{"Args":["readMarble","marble1"]}`,
@@ -386,7 +386,7 @@ var _ = Describe("PrivateData", func() {
 				return true
 			}, network.EventuallyTimeout).Should(BeTrue())
 
-			sess, err = network.PeerUserSession(org2Peer1, "Admin2", commands.ChaincodeQuery{
+			sess, err = network.CliUserSession(org2Peer1, "Admin2", commands.ChaincodeQuery{
 				ChannelID: channelID,
 				Name:      "marblesp",
 				Ctor:      `{"Args":["readMarblePrivateDetails","marble1"]}`,
@@ -605,7 +605,7 @@ var _ = Describe("PrivateData", func() {
 							WaitForEvent: true,
 						}
 
-						sess, err := network.PeerUserSession(peer, "User1", command)
+						sess, err := network.CliUserSession(peer, "User1", command)
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
 						Expect(sess.Err).To(gbytes.Say("ENDORSEMENT_POLICY_FAILURE"))
@@ -678,7 +678,7 @@ var _ = Describe("PrivateData", func() {
 							WaitForEvent: true,
 						}
 
-						sess, err := network.PeerUserSession(peer, "User1", command)
+						sess, err := network.CliUserSession(peer, "User1", command)
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
 						Expect(sess.Err).To(gbytes.Say("ENDORSEMENT_POLICY_FAILURE"))
@@ -976,7 +976,7 @@ func installChaincode(n *nwo.Network, chaincode nwo.Chaincode, peer *nwo.Peer) {
 }
 
 func invokeChaincodeExpectErr(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeInvoke, expectedErrMsgs []string) {
-	sess, err := n.PeerUserSession(peer, "User1", command)
+	sess, err := n.CliUserSession(peer, "User1", command)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(1))
 	for _, msg := range expectedErrMsgs {
@@ -989,7 +989,7 @@ func approveChaincodeForMyOrgExpectErr(n *nwo.Network, orderer *nwo.Orderer, cha
 	approvedOrgs := map[string]bool{}
 	for _, p := range peers {
 		if _, ok := approvedOrgs[p.Organization]; !ok {
-			sess, err := n.PeerAdminSession(p, commands.ChaincodeApproveForMyOrg{
+			sess, err := n.CliAdminSession(p, commands.ChaincodeApproveForMyOrg{
 				ChannelID:           channelID,
 				Orderer:             n.OrdererAddress(orderer, nwo.ListenPort),
 				Name:                chaincode.Name,
@@ -1275,7 +1275,7 @@ func getValueForCollectionMarblePrivateDetails(marbleName string, price int) []b
 // It skips the orderer and returns the session's Err buffer for parsing.
 func fetchBlocksForPeer(n *nwo.Network, peer *nwo.Peer, user string) func() *gbytes.Buffer {
 	return func() *gbytes.Buffer {
-		sess, err := n.PeerUserSession(peer, user, commands.ChannelFetch{
+		sess, err := n.CliUserSession(peer, user, commands.ChannelFetch{
 			Block:      "newest",
 			ChannelID:  channelID,
 			OutputFile: filepath.Join(n.RootDir, "newest_block.pb"),

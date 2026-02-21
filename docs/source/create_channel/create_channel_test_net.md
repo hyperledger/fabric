@@ -218,7 +218,7 @@ Status: 200
 
 ### Join peers to the channel
 
-The test network includes two peer organizations each with one peer. But before we can use the peer CLI, we need to set some environment variables to specify which user (client MSP) we are acting as and which peer we are targeting. Set the following environment variables to indicate that we are acting as the Org1 admin and targeting the Org1 peer.
+The test network includes two peer organizations each with one peer. But before we can use the CLI, we need to set some environment variables to specify which user (client MSP) we are acting as and which peer we are targeting. Set the following environment variables to indicate that we are acting as the Org1 admin and targeting the Org1 peer.
 
 ```
 export CORE_PEER_TLS_ENABLED=true
@@ -228,13 +228,13 @@ export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.examp
 export CORE_PEER_ADDRESS=localhost:7051
 ```
 
-In order to use the peer CLI, we also need to modify the `FABRIC_CONFIG_PATH`:
+In order to use the CLI, we also need to modify the `FABRIC_CONFIG_PATH`:
 ```
 export FABRIC_CFG_PATH=$PWD/../config/
 ```
 To join the test network peer from `Org1` to the channel `channel1` simply pass the genesis block in a join request:
 ```
-peer channel join -b ./channel-artifacts/channel1.block
+cli channel join -b ./channel-artifacts/channel1.block
 ```
 When successful, the output of this command contains the following:
 ```
@@ -242,7 +242,7 @@ When successful, the output of this command contains the following:
 [channelCmd] executeJoin -> INFO 002 Successfully submitted proposal to join channel
 ```
 
-We repeat these steps for the `Org2` peer. Set the following environment variables to operate the `peer` CLI as the `Org2` admin. The environment variables will also set the `Org2` peer, ``peer0.org2.example.com``, as the target peer.
+We repeat these steps for the `Org2` peer. Set the following environment variables to operate the CLI as the `Org2` admin. The environment variables will also set the `Org2` peer, ``peer0.org2.example.com``, as the target peer.
 ```
 export CORE_PEER_LOCALMSPID=Org2MSP
 export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
@@ -251,7 +251,7 @@ export CORE_PEER_ADDRESS=localhost:9051
 ```
 Now repeat the command to join the peer from `Org2` to `channel1`:
 ```
-peer channel join -b ./channel-artifacts/channel1.block
+cli channel join -b ./channel-artifacts/channel1.block
 ```
 When successful, the output of this command contains the following:
 ```
@@ -267,7 +267,7 @@ The endpoint information of the anchor peers of each organization is included in
 
 **Note:** If [jq](https://stedolan.github.io/jq/) is not already installed on your local machine, you need to install it now to complete these steps.  
 
-We will start by selecting the peer from `Org1` to be an anchor peer. The first step is to pull the most recent channel configuration block using the `peer channel fetch` command. Set the following environment variables to operate the `peer` CLI as the `Org1` admin:
+We will start by selecting the peer from `Org1` to be an anchor peer. The first step is to pull the most recent channel configuration block using the `cli channel fetch` command. Set the following environment variables to operate the CLI as the `Org1` admin:
 ```
 export CORE_PEER_LOCALMSPID=Org1MSP
 export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
@@ -277,7 +277,7 @@ export CORE_PEER_ADDRESS=localhost:7051
 
 You can use the following command to fetch the channel configuration:
 ```
-peer channel fetch config channel-artifacts/config_block.pb -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com -c channel1 --tls --cafile "$ORDERER_CA"
+cli channel fetch config channel-artifacts/config_block.pb -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com -c channel1 --tls --cafile "$ORDERER_CA"
 ```
 Because the most recent channel configuration block is the channel genesis block, the command returns block `0` from the channel.
 ```
@@ -328,9 +328,9 @@ We can now use the final artifact, `config_update_in_envelope.pb`, that can be u
 cd ..
 ```
 
-We can add the anchor peer by providing the new channel configuration to the `peer channel update` command. Because we are updating a section of the channel configuration that only affects `Org1`, other channel members do not need to approve the channel update.
+We can add the anchor peer by providing the new channel configuration to the `cli channel update` command. Because we are updating a section of the channel configuration that only affects `Org1`, other channel members do not need to approve the channel update.
 ```
-peer channel update -f channel-artifacts/config_update_in_envelope.pb -c channel1 -o localhost:7050  --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+cli channel update -f channel-artifacts/config_update_in_envelope.pb -c channel1 -o localhost:7050  --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
 ```
 
 When the channel update is successful, you should see the following response:
@@ -338,7 +338,7 @@ When the channel update is successful, you should see the following response:
 [channelCmd] update -> INFO 002 Successfully submitted channel update
 ```
 
-We can also set the peer from `Org2` to be an anchor peer. Because we are going through the process a second time, we will go through the steps more quickly. Set the environment variables to operate the `peer` CLI as the `Org2` admin:
+We can also set the peer from `Org2` to be an anchor peer. Because we are going through the process a second time, we will go through the steps more quickly. Set the environment variables to operate the CLI as the `Org2` admin:
 ```
 export CORE_PEER_LOCALMSPID=Org2MSP
 export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
@@ -348,7 +348,7 @@ export CORE_PEER_ADDRESS=localhost:9051
 
 Pull the latest channel configuration block, which is now the second block on the channel:
 ```
-peer channel fetch config channel-artifacts/config_block.pb -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com -c channel1 --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+cli channel fetch config channel-artifacts/config_block.pb -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com -c channel1 --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
 ```
 
 Navigate back to the `channel-artifacts` directory:
@@ -389,14 +389,14 @@ cd ..
 
 Update the channel and set the `Org2` anchor peer by issuing the following command:
 ```
-peer channel update -f channel-artifacts/config_update_in_envelope.pb -c channel1 -o localhost:7050  --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+cli channel update -f channel-artifacts/config_update_in_envelope.pb -c channel1 -o localhost:7050  --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
 ```
 
 If you want to learn more about how to submit a channel update request, see [update a channel configuration](../config_update.html).
 
-You can confirm that the channel has been updated successfully by running the `peer channel info` command:
+You can confirm that the channel has been updated successfully by running the `cli channel info` command:
 ```
-peer channel getinfo -c channel1
+cli channel getinfo -c channel1
 ```
 Now that the channel has been updated by adding two channel configuration blocks to the channel genesis block, the height of the channel will have grown to three and the hashes are updated:
 ```
@@ -420,7 +420,7 @@ Chaincode initialization is not required
 ```
 Then run the following command to initialize some assets on the ledger:
 ```
-peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "$ORDERER_CA" -C channel1 -n basic --peerAddresses localhost:7051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" --peerAddresses localhost:9051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" -c '{"function":"InitLedger","Args":[]}'
+cli chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "$ORDERER_CA" -C channel1 -n basic --peerAddresses localhost:7051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" --peerAddresses localhost:9051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" -c '{"function":"InitLedger","Args":[]}'
 ```
 When successful you will see:
 ```
@@ -430,7 +430,7 @@ When successful you will see:
 Confirm the assets were added to the ledger by issuing the following query:
 
 ```
-peer chaincode query -C channel1 -n basic -c '{"Args":["getAllAssets"]}'
+cli chaincode query -C channel1 -n basic -c '{"Args":["getAllAssets"]}'
 ```
 
 You should see output similar to the following:

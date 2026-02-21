@@ -106,7 +106,7 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 		RunQueryInvokeQuery(network, orderer, org1Peer0, 100)
 
 		By("querying the chaincode with org2 peer")
-		sess, err := network.PeerUserSession(org2Peer0, "User1", commands.ChaincodeQuery{
+		sess, err := network.CliUserSession(org2Peer0, "User1", commands.ChaincodeQuery{
 			ChannelID: "testchannel",
 			Name:      "mycc",
 			Ctor:      `{"Args":["query","a"]}`,
@@ -118,7 +118,7 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 		// Testing scenario one: chaincode endorsement policy not satisfied due to peer's MSP does not define
 		// the peer node OU.
 		By("attempting to invoke chaincode on a peer that does not have a valid endorser identity (endorsing peer has member identity)")
-		sess, err = network.PeerUserSession(org2Peer0, "User1", commands.ChaincodeInvoke{
+		sess, err = network.CliUserSession(org2Peer0, "User1", commands.ChaincodeInvoke{
 			ChannelID: "testchannel",
 			Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
 			Name:      "mycc",
@@ -134,7 +134,7 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 		Expect(sess.Err).To(gbytes.Say(`(ENDORSEMENT_POLICY_FAILURE)`))
 
 		By("reverifying the channel was not affected by the unauthorized endorsement")
-		sess, err = network.PeerUserSession(org2Peer0, "User1", commands.ChaincodeQuery{
+		sess, err = network.CliUserSession(org2Peer0, "User1", commands.ChaincodeQuery{
 			ChannelID: "testchannel",
 			Name:      "mycc",
 			Ctor:      `{"Args":["query","a"]}`,
@@ -160,7 +160,7 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 		ordererRunner, ordererProcess, peerProcess = nwo.RestartSingleOrdererNetwork(ordererProcess, peerProcess, network)
 
 		By("attempting to invoke chaincode on a peer that does not have a valid endorser identity (endorsing peer has client identity)")
-		sess, err = network.PeerUserSession(org1Peer0, "User1", commands.ChaincodeInvoke{
+		sess, err = network.CliUserSession(org1Peer0, "User1", commands.ChaincodeInvoke{
 			ChannelID: "testchannel",
 			Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
 			Name:      "mycc",
@@ -176,7 +176,7 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 		Expect(sess.Err).To(gbytes.Say(`(ENDORSEMENT_POLICY_FAILURE)`))
 
 		By("reverifying the channel was not affected by the unauthorized endorsement")
-		sess, err = network.PeerUserSession(org1Peer0, "User1", commands.ChaincodeQuery{
+		sess, err = network.CliUserSession(org1Peer0, "User1", commands.ChaincodeQuery{
 			ChannelID: "testchannel",
 			Name:      "mycc",
 			Ctor:      `{"Args":["query","a"]}`,
@@ -190,7 +190,7 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 })
 
 func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, initialQueryResult int) {
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+	sess, err := n.CliUserSession(peer, "User1", commands.ChaincodeQuery{
 		ChannelID: "testchannel",
 		Name:      "mycc",
 		Ctor:      `{"Args":["query","a"]}`,
@@ -199,7 +199,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, i
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess).To(gbytes.Say(fmt.Sprint(initialQueryResult)))
 
-	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+	sess, err = n.CliUserSession(peer, "User1", commands.ChaincodeInvoke{
 		ChannelID: "testchannel",
 		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:      "mycc",
@@ -215,7 +215,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, i
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
 
-	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+	sess, err = n.CliUserSession(peer, "User1", commands.ChaincodeQuery{
 		ChannelID: "testchannel",
 		Name:      "mycc",
 		Ctor:      `{"Args":["query","a"]}`,
