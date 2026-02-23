@@ -247,8 +247,9 @@ func (batch *UpdateBatch) GetUpdates(ns string) map[string]*VersionedValue {
 // For instance, a validator implementation can used this to verify the validity of a range query of a transaction
 // where the UpdateBatch represents the union of the modifications performed by the preceding valid transactions in the same block
 // (Assuming Group commit approach where we commit all the updates caused by a block together).
-func (batch *UpdateBatch) GetRangeScanIterator(ns string, startKey string, endKey string) QueryResultsIterator {
-	return newNsIterator(ns, startKey, endKey, batch)
+// The includeEndKey parameter controls whether the endKey should be included in the results (true) or excluded (false).
+func (batch *UpdateBatch) GetRangeScanIterator(ns string, startKey string, endKey string, includeEndKey bool) QueryResultsIterator {
+	return newNsIterator(ns, startKey, endKey, includeEndKey, batch)
 }
 
 // Merge merges another updates batch with this updates batch
@@ -278,7 +279,7 @@ type nsIterator struct {
 	lastIndex  int
 }
 
-func newNsIterator(ns string, startKey string, endKey string, batch *UpdateBatch) *nsIterator {
+func newNsIterator(ns string, startKey string, endKey string, includeEndKey bool, batch *UpdateBatch) *nsIterator {
 	nsUpdates, ok := batch.Updates[ns]
 	if !ok {
 		return &nsIterator{}
@@ -295,6 +296,10 @@ func newNsIterator(ns string, startKey string, endKey string, batch *UpdateBatch
 		lastIndex = len(sortedKeys)
 	} else {
 		lastIndex = sort.SearchStrings(sortedKeys, endKey)
+		// If includeEndKey is true and the endKey exists in sortedKeys, include it
+		if includeEndKey && lastIndex < len(sortedKeys) && sortedKeys[lastIndex] == endKey {
+			lastIndex++
+		}
 	}
 	return &nsIterator{ns, nsUpdates, sortedKeys, nextIndex, lastIndex}
 }
