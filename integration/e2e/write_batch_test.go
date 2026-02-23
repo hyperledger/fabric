@@ -282,7 +282,7 @@ var _ = Describe("Network", func() {
 })
 
 func RunInvoke(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, fn string, startWriteBatch bool, numberCallsPut int, exitCode int, expectedError []string) {
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+	sess, err := n.CliUserSession(peer, "User1", commands.ChaincodeInvoke{
 		ChannelID: "testchannel",
 		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:      "mycc",
@@ -306,7 +306,7 @@ func RunInvoke(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, fn string, 
 }
 
 func RunGetState(n *nwo.Network, peer *nwo.Peer, keyUniq string) {
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+	sess, err := n.CliUserSession(peer, "User1", commands.ChaincodeQuery{
 		ChannelID: "testchannel",
 		Name:      "mycc",
 		Ctor:      `{"Args":["get-key","` + keyUniq + `"]}`,
@@ -317,7 +317,7 @@ func RunGetState(n *nwo.Network, peer *nwo.Peer, keyUniq string) {
 }
 
 func RunGetStateMultipleKeys(n *nwo.Network, peer *nwo.Peer, countKeys int) {
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+	sess, err := n.CliUserSession(peer, "User1", commands.ChaincodeQuery{
 		ChannelID: "testchannel",
 		Name:      "mycc",
 		Ctor:      `{"Args":["get-multiple-keys","` + fmt.Sprint(countKeys) + `"]}`,

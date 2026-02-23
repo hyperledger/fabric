@@ -149,7 +149,7 @@ var _ = Describe("Lifecycle", func() {
 		nwo.InstallChaincode(network, chaincode, testPeers...)
 
 		By("verifying the installed chaincode package matches the one that was submitted")
-		sess, err := network.PeerAdminSession(testPeers[0], commands.ChaincodeGetInstalledPackage{
+		sess, err := network.CliAdminSession(testPeers[0], commands.ChaincodeGetInstalledPackage{
 			PackageID:       chaincode.PackageID,
 			OutputDirectory: testDir,
 		})
@@ -183,7 +183,7 @@ var _ = Describe("Lifecycle", func() {
 		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, org1peer0)
 
 		By("querying the chaincode and expecting the invocation to fail")
-		sess, err = network.PeerUserSession(org1peer0, "User1", commands.ChaincodeQuery{
+		sess, err = network.CliUserSession(org1peer0, "User1", commands.ChaincodeQuery{
 			ChannelID: "testchannel",
 			Name:      "My_1st-Chaincode",
 			Ctor:      `{"Args":["query","a"]}`,
@@ -199,7 +199,7 @@ var _ = Describe("Lifecycle", func() {
 		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, org1peer0)
 
 		By("querying the chaincode and expecting the invocation to succeed")
-		sess, err = network.PeerUserSession(org1peer0, "User1", commands.ChaincodeQuery{
+		sess, err = network.CliUserSession(org1peer0, "User1", commands.ChaincodeQuery{
 			ChannelID: "testchannel",
 			Name:      "My_1st-Chaincode",
 			Ctor:      `{"Args":["query","a"]}`,
@@ -323,7 +323,7 @@ var _ = Describe("Lifecycle", func() {
 		nwo.WaitUntilEqualLedgerHeight(network, "testchannel", maxLedgerHeight, testPeers...)
 
 		By("querying definitions by org3 before performing any chaincode actions")
-		sess, err = network.PeerAdminSession(network.Peer("Org2", "peer0"), commands.ChaincodeListCommitted{
+		sess, err = network.CliAdminSession(network.Peer("Org2", "peer0"), commands.ChaincodeListCommitted{
 			ChannelID: "testchannel",
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -338,7 +338,7 @@ var _ = Describe("Lifecycle", func() {
 			network.PeerAddress(org1peer0, nwo.ListenPort),
 		}
 
-		sess, err = network.PeerUserSession(org3peer0, "User1", commands.ChaincodeInvoke{
+		sess, err = network.CliUserSession(org3peer0, "User1", commands.ChaincodeInvoke{
 			ChannelID:     "testchannel",
 			Orderer:       network.OrdererAddress(orderer, nwo.ListenPort),
 			Name:          "My_1st-Chaincode",
@@ -377,7 +377,7 @@ var _ = Describe("Lifecycle", func() {
 		nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
 		By("attempting to invoke the chaincode without a majority")
-		sess, err = network.PeerUserSession(org3peer0, "User1", commands.ChaincodeInvoke{
+		sess, err = network.CliUserSession(org3peer0, "User1", commands.ChaincodeInvoke{
 			ChannelID:    "testchannel",
 			Orderer:      network.OrdererAddress(orderer, nwo.ListenPort),
 			Name:         "defaultpolicycc",
@@ -389,7 +389,7 @@ var _ = Describe("Lifecycle", func() {
 		Expect(sess.Err).To(gbytes.Say(`\QError: transaction invalidated with status (ENDORSEMENT_POLICY_FAILURE)\E`))
 
 		By("attempting to invoke the chaincode with a majority")
-		sess, err = network.PeerUserSession(org3peer0, "User1", commands.ChaincodeInvoke{
+		sess, err = network.CliUserSession(org3peer0, "User1", commands.ChaincodeInvoke{
 			ChannelID:     "testchannel",
 			Orderer:       network.OrdererAddress(orderer, nwo.ListenPort),
 			Name:          "defaultpolicycc",

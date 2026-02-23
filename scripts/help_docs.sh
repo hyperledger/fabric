@@ -78,27 +78,6 @@ generateOrCheck \
         docs/wrappers/license_postscript.md \
         "${commands[@]}"
 
-commands=("peer chaincode invoke" "peer chaincode query")
-generateOrCheck \
-        docs/source/commands/peerchaincode.md \
-        docs/wrappers/peer_chaincode_preamble.md \
-        docs/wrappers/peer_chaincode_postscript.md \
-        "${commands[@]}"
-
-commands=("peer lifecycle" "peer lifecycle chaincode" "peer lifecycle chaincode package" "peer lifecycle chaincode install" "peer lifecycle chaincode queryinstalled" "peer lifecycle chaincode getinstalledpackage" "peer lifecycle chaincode calculatepackageid" "peer lifecycle chaincode approveformyorg" "peer lifecycle chaincode queryapproved" "peer lifecycle chaincode checkcommitreadiness" "peer lifecycle chaincode commit" "peer lifecycle chaincode querycommitted")
-generateOrCheck \
-        docs/source/commands/peerlifecycle.md \
-        docs/wrappers/peer_lifecycle_chaincode_preamble.md \
-        docs/wrappers/peer_lifecycle_chaincode_postscript.md \
-        "${commands[@]}"
-
-commands=("peer channel" "peer channel create" "peer channel fetch" "peer channel getinfo" "peer channel join" "peer channel joinbysnapshot" "peer channel joinbysnapshotstatus" "peer channel list" "peer channel signconfigtx" "peer channel update")
-generateOrCheck \
-        docs/source/commands/peerchannel.md \
-        docs/wrappers/peer_channel_preamble.md \
-        docs/wrappers/peer_channel_postscript.md \
-        "${commands[@]}"
-
 commands=("peer node pause" "peer node rebuild-dbs" "peer node reset" "peer node resume" "peer node rollback" "peer node start" "peer node unjoin" "peer node upgrade-dbs")
 generateOrCheck \
         docs/source/commands/peernode.md \
@@ -106,11 +85,39 @@ generateOrCheck \
         docs/wrappers/peer_node_postscript.md \
         "${commands[@]}"
 
-commands=("peer snapshot cancelrequest" "peer snapshot listpending" "peer snapshot submitrequest")
+commands=("cli version")
 generateOrCheck \
-        docs/source/commands/peersnapshot.md \
-        docs/wrappers/peer_snapshot_preamble.md \
-        docs/wrappers/peer_snapshot_postscript.md \
+        docs/source/commands/cliversion.md \
+        docs/wrappers/cli_version_preamble.md \
+        docs/wrappers/license_postscript.md \
+        "${commands[@]}"
+
+commands=("cli chaincode invoke" "cli chaincode query")
+generateOrCheck \
+        docs/source/commands/clichaincode.md \
+        docs/wrappers/cli_chaincode_preamble.md \
+        docs/wrappers/cli_chaincode_postscript.md \
+        "${commands[@]}"
+
+commands=("cli lifecycle" "cli lifecycle chaincode" "cli lifecycle chaincode package" "cli lifecycle chaincode install" "cli lifecycle chaincode queryinstalled" "cli lifecycle chaincode getinstalledpackage" "cli lifecycle chaincode calculatepackageid" "cli lifecycle chaincode approveformyorg" "cli lifecycle chaincode queryapproved" "cli lifecycle chaincode checkcommitreadiness" "cli lifecycle chaincode commit" "cli lifecycle chaincode querycommitted")
+generateOrCheck \
+        docs/source/commands/clilifecycle.md \
+        docs/wrappers/cli_lifecycle_chaincode_preamble.md \
+        docs/wrappers/cli_lifecycle_chaincode_postscript.md \
+        "${commands[@]}"
+
+commands=("cli channel" "cli channel create" "cli channel fetch" "cli channel getinfo" "cli channel join" "cli channel joinbysnapshot" "cli channel joinbysnapshotstatus" "cli channel list" "cli channel signconfigtx" "cli channel update")
+generateOrCheck \
+        docs/source/commands/clichannel.md \
+        docs/wrappers/cli_channel_preamble.md \
+        docs/wrappers/cli_channel_postscript.md \
+        "${commands[@]}"
+
+commands=("cli snapshot cancelrequest" "cli snapshot listpending" "cli snapshot submitrequest")
+generateOrCheck \
+        docs/source/commands/clisnapshot.md \
+        docs/wrappers/cli_snapshot_preamble.md \
+        docs/wrappers/cli_snapshot_postscript.md \
         "${commands[@]}"
 
 commands=("configtxgen")

@@ -115,7 +115,7 @@ var _ = Describe("Release interoperability", func() {
 		RunQueryInvokeQuery(network, orderer, "mycc", 80, endorsers...)
 
 		By("attempting to invoke the chaincode without sufficient endorsements")
-		sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeInvoke{
+		sess, err := network.CliUserSession(endorsers[0], "User1", commands.ChaincodeInvoke{
 			ChannelID: "testchannel",
 			Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
 			Name:      "mycc",
@@ -300,7 +300,7 @@ var _ = Describe("Release interoperability", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				By("querying the caller chaincode")
-				sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
+				sess, err := network.CliUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 					ChannelID: "testchannel",
 					Name:      "caller",
 					Ctor:      `{"Args":["QUERY"]}`,
@@ -310,7 +310,7 @@ var _ = Describe("Release interoperability", func() {
 				Expect(sess).To(gbytes.Say("caller:bar"))
 
 				By("querying the callee chaincode")
-				sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
+				sess, err = network.CliUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 					ChannelID: "testchannel",
 					Name:      "callee",
 					Ctor:      `{"Args":["QUERY"]}`,
@@ -327,7 +327,7 @@ var _ = Describe("Release interoperability", func() {
 				nwo.DeployChaincode(network, "testchannel2", orderer, calleeDefNew)
 
 				By("invoking the chaincode on callee on channel2")
-				sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeInvoke{
+				sess, err = network.CliUserSession(endorsers[0], "User1", commands.ChaincodeInvoke{
 					ChannelID:    "testchannel2",
 					Orderer:      network.OrdererAddress(orderer, nwo.ListenPort),
 					Name:         "callee",
@@ -339,7 +339,7 @@ var _ = Describe("Release interoperability", func() {
 				Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
 
 				By("querying the callee chaincode on channel2")
-				sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
+				sess, err = network.CliUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 					ChannelID: "testchannel2",
 					Name:      "callee",
 					Ctor:      `{"Args":["QUERY"]}`,
@@ -349,7 +349,7 @@ var _ = Describe("Release interoperability", func() {
 				Expect(sess).To(gbytes.Say("callee:bar"))
 
 				By("querying (QUERYCALLEE) the callee chaincode on channel2 from caller on channel")
-				sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
+				sess, err = network.CliUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 					ChannelID: "testchannel",
 					Name:      "caller",
 					Ctor:      `{"Args":["QUERYCALLEE", "callee", "testchannel2"]}`,
@@ -359,7 +359,7 @@ var _ = Describe("Release interoperability", func() {
 				Expect(sess).To(gbytes.Say("callee:bar"))
 
 				By("querying (QUERYCALLEE) the callee chaincode from caller on non-existing channel and expecting the invocation to fail")
-				sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
+				sess, err = network.CliUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 					ChannelID: "testchannel",
 					Name:      "caller",
 					Ctor:      `{"Args":["QUERYCALLEE", "callee", "nonExistingChannel2"]}`,
@@ -403,7 +403,7 @@ var _ = Describe("Release interoperability", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					By("querying the caller chaincode")
-					sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
+					sess, err := network.CliUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 						ChannelID: "testchannel",
 						Name:      "caller",
 						Ctor:      `{"Args":["QUERY"]}`,
@@ -413,7 +413,7 @@ var _ = Describe("Release interoperability", func() {
 					Expect(sess).To(gbytes.Say("caller:bar"))
 
 					By("querying the callee chaincode")
-					sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
+					sess, err = network.CliUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 						ChannelID: "testchannel",
 						Name:      "callee",
 						Ctor:      `{"Args":["QUERY"]}`,
@@ -450,7 +450,7 @@ var _ = Describe("Release interoperability", func() {
 					Expect(err).To(MatchError(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)")))
 
 					By("querying the caller chaincode")
-					sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
+					sess, err := network.CliUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 						ChannelID: "testchannel",
 						Name:      "caller",
 						Ctor:      `{"Args":["QUERY"]}`,
@@ -460,7 +460,7 @@ var _ = Describe("Release interoperability", func() {
 					Expect(sess).To(gbytes.Say("caller:foo"))
 
 					By("querying the callee chaincode")
-					sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
+					sess, err = network.CliUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 						ChannelID: "testchannel",
 						Name:      "callee",
 						Ctor:      `{"Args":["QUERY"]}`,
@@ -497,7 +497,7 @@ var _ = Describe("Release interoperability", func() {
 					Expect(err).To(MatchError(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)")))
 
 					By("querying the caller chaincode")
-					sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
+					sess, err := network.CliUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 						ChannelID: "testchannel",
 						Name:      "caller",
 						Ctor:      `{"Args":["QUERY"]}`,
@@ -507,7 +507,7 @@ var _ = Describe("Release interoperability", func() {
 					Expect(sess).To(gbytes.Say("caller:foo"))
 
 					By("querying the callee chaincode")
-					sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
+					sess, err = network.CliUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 						ChannelID: "testchannel",
 						Name:      "callee",
 						Ctor:      `{"Args":["QUERY"]}`,

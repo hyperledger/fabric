@@ -910,7 +910,7 @@ func (n *Network) bootstrapIdemix() {
 }
 
 // ConcatenateTLSCACertificates concatenates all TLS CA certificates into a
-// single file to be used by peer CLI.
+// single file to be used by CLI.
 func (n *Network) ConcatenateTLSCACertificates() {
 	bundle := &bytes.Buffer{}
 	for _, tlsCertPath := range n.listTLSCACertificates() {
@@ -1080,7 +1080,7 @@ func (n *Network) CreateChannel(channelName string, o *Orderer, p *Peer, additio
 	n.signConfigTransaction(channelCreateTxPath, p, additionalSigners...)
 
 	createChannel := func() int {
-		sess, err := n.PeerAdminSession(p, commands.ChannelCreate{
+		sess, err := n.CliAdminSession(p, commands.ChannelCreate{
 			ChannelID:   channelName,
 			Orderer:     n.OrdererAddress(o, ListenPort),
 			File:        channelCreateTxPath,
@@ -1096,7 +1096,7 @@ func (n *Network) CreateChannel(channelName string, o *Orderer, p *Peer, additio
 // deprecated
 // CreateChannelExitCode will submit an existing create channel transaction to
 // the specified orderer, wait for the operation to complete, and return the
-// exit status of the "peer channel create" command.
+// exit status of the "cli channel create" command.
 //
 // The channel transaction must exist at the location returned by
 // CreateChannelTxPath and the orderer must be running when this is called.
@@ -1104,7 +1104,7 @@ func (n *Network) CreateChannelExitCode(channelName string, o *Orderer, p *Peer,
 	channelCreateTxPath := n.CreateChannelTxPath(channelName)
 	n.signConfigTransaction(channelCreateTxPath, p, additionalSigners...)
 
-	sess, err := n.PeerAdminSession(p, commands.ChannelCreate{
+	sess, err := n.CliAdminSession(p, commands.ChannelCreate{
 		ChannelID:   channelName,
 		Orderer:     n.OrdererAddress(o, ListenPort),
 		File:        channelCreateTxPath,
@@ -1119,7 +1119,7 @@ func (n *Network) signConfigTransaction(channelTxPath string, submittingPeer *Pe
 	for _, signer := range signers {
 		switch signer := signer.(type) {
 		case *Peer:
-			sess, err := n.PeerAdminSession(signer, commands.SignConfigTx{
+			sess, err := n.CliAdminSession(signer, commands.SignConfigTx{
 				File:       channelTxPath,
 				ClientAuth: n.ClientAuthRequired,
 			})
@@ -1177,7 +1177,7 @@ func (n *Network) JoinChannel(name string, o *Orderer, peers ...*Peer) {
 	}, n.EventuallyTimeout, time.Second).Should(BeEmpty())
 
 	for _, p := range peers {
-		sess, err := n.PeerAdminSession(p, commands.ChannelJoin{
+		sess, err := n.CliAdminSession(p, commands.ChannelJoin{
 			BlockPath:  tempFile.Name(),
 			ClientAuth: n.ClientAuthRequired,
 		})
@@ -1192,7 +1192,7 @@ func (n *Network) JoinChannelBySnapshot(snapshotDir string, peers ...*Peer) {
 	}
 
 	for _, p := range peers {
-		sess, err := n.PeerAdminSession(p, commands.ChannelJoinBySnapshot{
+		sess, err := n.CliAdminSession(p, commands.ChannelJoinBySnapshot{
 			SnapshotPath: snapshotDir,
 			ClientAuth:   n.ClientAuthRequired,
 		})
@@ -1202,7 +1202,7 @@ func (n *Network) JoinChannelBySnapshot(snapshotDir string, peers ...*Peer) {
 }
 
 func (n *Network) JoinBySnapshotStatus(p *Peer) string {
-	sess, err := n.PeerAdminSession(p, commands.ChannelJoinBySnapshotStatus{
+	sess, err := n.CliAdminSession(p, commands.ChannelJoinBySnapshotStatus{
 		ClientAuth: n.ClientAuthRequired,
 	})
 	Expect(err).NotTo(HaveOccurred())
@@ -1331,9 +1331,45 @@ func (n *Network) peerCommand(command Command, tlsDir string, env ...string) *ex
 	}
 
 	// In case we have a peer invoke with multiple certificates, we need to mimic
-	// the correct peer CLI usage, so we count the number of --peerAddresses
+	// the correct CLI usage, so we count the number of --peerAddresses
 	// usages we have, and add the same (concatenated TLS CA certificates file)
-	// the same number of times to bypass the peer CLI sanity checks
+	// the same number of times to bypass the CLI sanity checks
+	requiredPeerAddresses := flagCount("--peerAddresses", cmd.Args)
+	for i := 0; i < requiredPeerAddresses; i++ {
+		cmd.Args = append(cmd.Args, "--tlsRootCertFiles")
+		cmd.Args = append(cmd.Args, n.CACertsBundlePath())
+	}
+
+	// If there is --peerAddress, add --tlsRootCertFile parameter
+	requiredPeerAddress := flagCount("--peerAddress", cmd.Args)
+	if requiredPeerAddress > 0 {
+		cmd.Args = append(cmd.Args, "--tlsRootCertFile")
+		cmd.Args = append(cmd.Args, n.CACertsBundlePath())
+	}
+	return cmd
+}
+
+func (n *Network) cliCommand(command Command, tlsDir string, env ...string) *exec.Cmd {
+	cmd := NewCommand(n.Components.Cli(), command)
+	cmd.Env = append(cmd.Env, env...)
+
+	if connectsToOrderer(command) && n.TLSEnabled {
+		cmd.Args = append(cmd.Args, "--tls")
+		cmd.Args = append(cmd.Args, "--cafile", n.CACertsBundlePath())
+	}
+
+	if clientAuthEnabled(command) {
+		certfilePath := filepath.Join(tlsDir, "client.crt")
+		keyfilePath := filepath.Join(tlsDir, "client.key")
+
+		cmd.Args = append(cmd.Args, "--certfile", certfilePath)
+		cmd.Args = append(cmd.Args, "--keyfile", keyfilePath)
+	}
+
+	// In case we have a peer invoke with multiple certificates, we need to mimic
+	// the correct CLI usage, so we count the number of --peerAddresses
+	// usages we have, and add the same (concatenated TLS CA certificates file)
+	// the same number of times to bypass the CLI sanity checks
 	requiredPeerAddresses := flagCount("--peerAddresses", cmd.Args)
 	for range requiredPeerAddresses {
 		cmd.Args = append(cmd.Args, "--tlsRootCertFiles")
@@ -1367,15 +1403,29 @@ func flagCount(flag string, args []string) int {
 	return c
 }
 
-// PeerAdminSession starts a gexec.Session as a peer admin for the provided
-// peer command. This is intended to be used by short running peer cli commands
+// CliAdminSession starts a gexec.Session as a peer admin for the provided
+// peer command. This is intended to be used by short running cli commands
 // that execute in the context of a peer configuration.
-func (n *Network) PeerAdminSession(p *Peer, command Command) (*gexec.Session, error) {
-	return n.PeerUserSession(p, "Admin", command)
+func (n *Network) CliAdminSession(p *Peer, command Command) (*gexec.Session, error) {
+	return n.CliUserSession(p, "Admin", command)
+}
+
+// CliUserSession starts a gexec.Session as a peer user for the provided peer
+// command. This is intended to be used by short running cli commands that
+// execute in the context of a peer configuration.
+func (n *Network) CliUserSession(p *Peer, user string, command Command) (*gexec.Session, error) {
+	cmd := n.cliCommand(
+		command,
+		n.PeerUserTLSDir(p, user),
+		fmt.Sprintf("FABRIC_CFG_PATH=%s", n.PeerDir(p)),
+		fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=%s", n.PeerUserMSPDir(p, user)),
+		fabricLoggingSpec,
+	)
+	return n.StartSession(cmd, command.SessionName())
 }
 
 // PeerUserSession starts a gexec.Session as a peer user for the provided peer
-// command. This is intended to be used by short running peer cli commands that
+// command. This is intended to be used by short running cli commands that
 // execute in the context of a peer configuration.
 func (n *Network) PeerUserSession(p *Peer, user string, command Command) (*gexec.Session, error) {
 	cmd := n.peerCommand(
@@ -1456,10 +1506,10 @@ func (n *Network) NewClientConn(address, caCertPath string, clientCertPath strin
 }
 
 // IdemixUserSession starts a gexec.Session as a idemix user for the provided peer
-// command. This is intended to be used by short running peer cli commands that
+// command. This is intended to be used by short running cli commands that
 // execute in the context of a peer configuration.
 func (n *Network) IdemixUserSession(p *Peer, idemixOrg *Organization, user string, command Command) (*gexec.Session, error) {
-	cmd := n.peerCommand(
+	cmd := n.cliCommand(
 		command,
 		n.PeerUserTLSDir(p, user),
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", n.PeerDir(p)),
@@ -1474,7 +1524,7 @@ func (n *Network) IdemixUserSession(p *Peer, idemixOrg *Organization, user strin
 // OrdererAdminSession starts a gexec.Session as an orderer admin user. This
 // is used primarily to generate orderer configuration updates.
 func (n *Network) OrdererAdminSession(o *Orderer, p *Peer, command Command) (*gexec.Session, error) {
-	cmd := n.peerCommand(
+	cmd := n.cliCommand(
 		command,
 		n.ordererUserCryptoDir(o, "Admin", "tls"),
 		fmt.Sprintf("CORE_PEER_LOCALMSPID=%s", n.Organization(o.Organization).MSPID),

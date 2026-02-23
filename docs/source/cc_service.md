@@ -234,7 +234,7 @@ func (s *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 //NOTE - parameters such as ccid and endpoint information are hard coded here for illustration. This can be passed in a variety of standard ways
 func main() {
-       //The ccid is assigned to the chaincode on install (using the “peer lifecycle chaincode install <package>” command) for instance
+       //The ccid is assigned to the chaincode on install (using the “cli lifecycle chaincode install <package>” command) for instance
         ccid := "mycc:fcbf8724572d42e859a7dd9a7cd8e2efb84058292017df6e3d89178b64e6c831"
 
         server := &shim.ChaincodeServer{
@@ -253,7 +253,7 @@ func main() {
 ```
 The key to running the chaincode as an external service is the use of `shim.ChaincodeServer`. This uses the new shim API `shim.ChaincodeServer` with the chaincode service properties described below:
 
-* **CCID** (string)- CCID should match chaincode's package name on peer. This is the `CCID` associated with the installed chaincode as returned by the `peer lifecycle chaincode install <package>` CLI command. This can be obtained post-install using the "peer lifecycle chaincode queryinstalled" command.
+* **CCID** (string)- CCID should match chaincode's package name on peer. This is the `CCID` associated with the installed chaincode as returned by the `cli lifecycle chaincode install <package>` CLI command. This can be obtained post-install using the "cli lifecycle chaincode queryinstalled" command.
 * **Address** (string) - Address is the listen address of the chaincode server
 * **CC** (Chaincode) -  CC is the chaincode that handles Init and Invoke
 * **TLSProps** (TLSProperties) - TLSProps is the TLS properties passed to chaincode server
