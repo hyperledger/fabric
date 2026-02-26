@@ -53,3 +53,5 @@ Engage with the Hyperledger community:
 ## License
 
 Hyperledger Fabric source code is available under the **Apache License, Version 2.0 (Apache-2.0)**, and documentation files are under the **Creative Commons Attribution 4.0 International License (CC-BY-4.0)**.
+## Welcome to Modular Architecture
+Hyperledger Fabric's modular design (chains, channels, and chaincode) makes it perfect for enterprise use! New contributors, start with the chaincode tutorial to build your first module. 🚀
