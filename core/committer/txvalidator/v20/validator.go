@@ -302,7 +302,8 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 
 	if d == nil {
 		results <- &blockValidationResult{
-			tIdx: tIdx,
+			tIdx:           tIdx,
+			validationCode: peer.TxValidationCode_NIL_ENVELOPE,
 		}
 		return
 	}
