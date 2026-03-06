@@ -53,21 +53,23 @@ type NodeTemplate struct {
 
 type NodeSpec struct {
 	isAdmin            bool
-	Hostname           string   `yaml:"Hostname"`
-	CommonName         string   `yaml:"CommonName"`
-	Country            string   `yaml:"Country"`
-	Province           string   `yaml:"Province"`
-	Locality           string   `yaml:"Locality"`
-	OrganizationalUnit string   `yaml:"OrganizationalUnit"`
-	StreetAddress      string   `yaml:"StreetAddress"`
-	PostalCode         string   `yaml:"PostalCode"`
-	SANS               []string `yaml:"SANS"`
-	PublicKeyAlgorithm string   `yaml:"PublicKeyAlgorithm"`
+	Hostname           string            `yaml:"Hostname"`
+	CommonName         string            `yaml:"CommonName"`
+	Country            string            `yaml:"Country"`
+	Province           string            `yaml:"Province"`
+	Locality           string            `yaml:"Locality"`
+	OrganizationalUnit string            `yaml:"OrganizationalUnit"`
+	StreetAddress      string            `yaml:"StreetAddress"`
+	PostalCode         string            `yaml:"PostalCode"`
+	SANS               []string          `yaml:"SANS"`
+	PublicKeyAlgorithm string            `yaml:"PublicKeyAlgorithm"`
+	Attrs              map[string]string `yaml:"Attrs"`
 }
 
 type UsersSpec struct {
-	Count              int    `yaml:"Count"`
-	PublicKeyAlgorithm string `yaml:"PublicKeyAlgorithm"`
+	Count              int               `yaml:"Count"`
+	PublicKeyAlgorithm string            `yaml:"PublicKeyAlgorithm"`
+	Attrs              map[string]string `yaml:"Attrs"`
 }
 
 type OrgSpec struct {
@@ -198,6 +200,8 @@ PeerOrgs:
     Users:
       Count: 1
       PublicKeyAlgorithm: "ecdsa"
+      Attrs:
+        abac.creator: "true"
 
   # ---------------------------------------------------------------------------
   # Org2: See "Org1" for full specification
@@ -348,6 +352,7 @@ func extendPeerOrg(orgSpec OrgSpec) {
 		user := NodeSpec{
 			CommonName:         fmt.Sprintf("%s%d@%s", userBaseName, j, orgName),
 			PublicKeyAlgorithm: publicKeyAlg,
+			Attrs:              orgSpec.Users.Attrs,
 		}
 
 		users = append(users, user)
@@ -567,6 +572,7 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 		user := NodeSpec{
 			CommonName:         fmt.Sprintf("%s%d@%s", userBaseName, j, orgName),
 			PublicKeyAlgorithm: publicKeyAlg,
+			Attrs:              orgSpec.Users.Attrs,
 		}
 
 		users = append(users, user)
@@ -638,7 +644,7 @@ func generateNodes(baseDir string, nodes []NodeSpec, signCA *ca.CA, tlsCA *ca.CA
 			if node.isAdmin && nodeOUs {
 				currentNodeType = msp.ADMIN
 			}
-			err := msp.GenerateLocalMSP(nodeDir, node.CommonName, node.SANS, signCA, tlsCA, currentNodeType, nodeOUs, node.PublicKeyAlgorithm)
+			err := msp.GenerateLocalMSP(nodeDir, node.CommonName, node.SANS, signCA, tlsCA, currentNodeType, nodeOUs, node.PublicKeyAlgorithm, node.Attrs)
 			if err != nil {
 				fmt.Printf("Error generating local MSP for %v:\n%v\n", node, err)
 				os.Exit(1)
