@@ -37,3 +37,4 @@ sphinxcontrib-websupport==2.0.0
 typing_extensions==4.12.2
 urllib3==2.6.3
 zipp==3.20.2
+markdown>=3.8.1 # not directly required, pinned by Snyk to avoid a vulnerability
