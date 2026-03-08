@@ -9,52 +9,44 @@ package endorser_test
 import (
 	"context"
 	"fmt"
-	"sort"
+	"slices"
+	"strings"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	mspproto "github.com/hyperledger/fabric-protos-go/msp"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/metricsfakes"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
+	mspproto "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/endorser/fake"
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
+	. "github.com/hyperledger/fabric/internal/test"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
-type CcInterest pb.ChaincodeInterest
-
-func (a CcInterest) Len() int { return len(a.Chaincodes) }
-func (a CcInterest) Swap(i, j int) {
-	a.Chaincodes[i], a.Chaincodes[j] = a.Chaincodes[j], a.Chaincodes[i]
-}
-
-func (a CcInterest) Less(i, j int) bool {
-	ai := a.Chaincodes[i]
-	aj := a.Chaincodes[j]
-
-	if ai.Name != aj.Name {
-		return ai.Name < aj.Name
+func sortChaincodeCall(a, b *pb.ChaincodeCall) int {
+	if a.Name != b.Name {
+		return strings.Compare(a.Name, b.Name)
 	}
 
-	if len(ai.CollectionNames) != len(aj.CollectionNames) {
-		return len(ai.CollectionNames) < len(aj.CollectionNames)
+	if len(a.CollectionNames) != len(b.CollectionNames) {
+		return len(a.CollectionNames) - len(b.CollectionNames)
 	}
 
-	for ii := range ai.CollectionNames {
-		if ai.CollectionNames[ii] != aj.CollectionNames[ii] {
-			return ai.CollectionNames[ii] < aj.CollectionNames[ii]
+	for ii := range a.CollectionNames {
+		if a.CollectionNames[ii] != b.CollectionNames[ii] {
+			return strings.Compare(a.CollectionNames[ii], b.CollectionNames[ii])
 		}
 	}
 
-	return false
+	return 0
 }
 
 var _ = Describe("Endorser", func() {
@@ -243,21 +235,21 @@ var _ = Describe("Endorser", func() {
 	It("successfully endorses the proposal", func() {
 		proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(proposalResponse.Endorsement).To(Equal(&pb.Endorsement{
+		Expect(proposalResponse.Endorsement).To(ProtoEqual(&pb.Endorsement{
 			Endorser:  []byte("endorser-identity"),
 			Signature: []byte("endorser-signature"),
 		}))
 		Expect(proposalResponse.Timestamp).To(BeNil())
 		Expect(proposalResponse.Version).To(Equal(int32(1)))
 		Expect(proposalResponse.Payload).To(Equal([]byte("endorser-modified-payload")))
-		Expect(proto.Equal(proposalResponse.Response, &pb.Response{
+		Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 			Status:  200,
 			Payload: []byte("response-payload"),
-		})).To(BeTrue())
+		}))
 
 		Expect(fakeSupport.EndorseWithPluginCallCount()).To(Equal(1))
 		pluginName, cid, propRespPayloadBytes, sp := fakeSupport.EndorseWithPluginArgsForCall(0)
-		Expect(sp).To(Equal(signedProposal))
+		Expect(sp).To(ProtoEqual(signedProposal))
 		Expect(pluginName).To(Equal("plugin-name"))
 		Expect(cid).To(Equal("channel-id"))
 
@@ -270,10 +262,10 @@ var _ = Describe("Endorser", func() {
 		err = proto.Unmarshal(prp.Extension, ccAct)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(ccAct.Events).To(Equal(protoutil.MarshalOrPanic(chaincodeEvent)))
-		Expect(proto.Equal(ccAct.Response, &pb.Response{
+		Expect(ccAct.Response).To(ProtoEqual(&pb.Response{
 			Status:  200,
 			Payload: []byte("response-payload"),
-		})).To(BeTrue())
+		}))
 		Expect(fakeSupport.GetHistoryQueryExecutorCallCount()).To(Equal(1))
 		ledgerName := fakeSupport.GetHistoryQueryExecutorArgsForCall(0)
 		Expect(ledgerName).To(Equal("channel-id"))
@@ -288,7 +280,7 @@ var _ = Describe("Endorser", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(proposalResponse.Payload).To(BeNil())
-			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+			Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 				Status:  500,
 				Message: "endorsing with plugin failed: fake-endorserment-error",
 			}))
@@ -339,7 +331,7 @@ var _ = Describe("Endorser", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(proposalResponse.Payload).To(BeNil())
-			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+			Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 				Status:  500,
 				Message: "fake-simulator-error",
 			}))
@@ -363,7 +355,7 @@ var _ = Describe("Endorser", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(proposalResponse.Payload).To(BeNil())
-			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+			Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 				Status:  500,
 				Message: "fake-history-error",
 			}))
@@ -387,7 +379,7 @@ var _ = Describe("Endorser", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(proposalResponse.Payload).To(BeNil())
-			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+			Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 				Status:  500,
 				Message: "channel 'channel-id' not found",
 			}))
@@ -414,7 +406,7 @@ var _ = Describe("Endorser", func() {
 		It("wraps and returns an error and responds to the client", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
 			Expect(err).To(MatchError("error validating proposal: access denied: channel [channel-id] creator org unknown, creator is malformed"))
-			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
+			Expect(proposalResponse).To(ProtoEqual(&pb.ProposalResponse{
 				Response: &pb.Response{
 					Status:  500,
 					Message: "error validating proposal: access denied: channel [channel-id] creator org unknown, creator is malformed",
@@ -440,7 +432,7 @@ var _ = Describe("Endorser", func() {
 		It("wraps and returns an error and responds to the client", func() {
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).To(MatchError("fake-acl-error"))
-			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
+			Expect(proposalResponse).To(ProtoEqual(&pb.ProposalResponse{
 				Response: &pb.Response{
 					Status:  500,
 					Message: "fake-acl-error",
@@ -479,7 +471,7 @@ var _ = Describe("Endorser", func() {
 		It("returns an error in the response", func() {
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+			Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 				Status:  500,
 				Message: "make sure the chaincode chaincode-name has been successfully defined on channel channel-id and try again: fake-definition-error",
 			}))
@@ -492,13 +484,13 @@ var _ = Describe("Endorser", func() {
 		Expect(fakeSupport.ExecuteCallCount()).To(Equal(1))
 		txParams, chaincodeName, input := fakeSupport.ExecuteArgsForCall(0)
 		Expect(txParams.ChannelID).To(Equal("channel-id"))
-		Expect(txParams.SignedProp).To(Equal(signedProposal))
+		Expect(txParams.SignedProp).To(ProtoEqual(signedProposal))
 		Expect(txParams.TXSimulator).To(Equal(fakeTxSimulator))
 		Expect(txParams.HistoryQueryExecutor).To(Equal(fakeHistoryQueryExecutor))
 		Expect(chaincodeName).To(Equal("chaincode-name"))
-		Expect(proto.Equal(input, &pb.ChaincodeInput{
+		Expect(input).To(ProtoEqual(&pb.ChaincodeInput{
 			Args: [][]byte{[]byte("arg1"), []byte("arg2"), []byte("arg3")},
-		})).To(BeTrue())
+		}))
 	})
 
 	Context("when calling the chaincode returns an error", func() {
@@ -510,7 +502,7 @@ var _ = Describe("Endorser", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(proposalResponse.Payload).To(BeNil())
-			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+			Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 				Status:  500,
 				Message: "error in simulation: fake-chaincode-execution-error",
 			}))
@@ -543,7 +535,7 @@ var _ = Describe("Endorser", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(proposalResponse.Payload).To(BeNil())
-			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+			Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 				Status:  500,
 				Message: "error in simulation: fake-private-data-error",
 			}))
@@ -566,7 +558,7 @@ var _ = Describe("Endorser", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(proposalResponse.Payload).To(BeNil())
-			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+			Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 				Status:  500,
 				Message: "error in simulation: failed to obtain ledger height for channel 'channel-id': fake-block-height-error",
 			}))
@@ -603,10 +595,10 @@ var _ = Describe("Endorser", func() {
 			Expect(proposalResponse.Timestamp).To(BeNil())
 			Expect(proposalResponse.Version).To(Equal(int32(0)))
 			Expect(proposalResponse.Payload).To(BeNil())
-			Expect(proto.Equal(proposalResponse.Response, &pb.Response{
+			Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 				Status:  200,
 				Payload: []byte("response-payload"),
-			})).To(BeTrue())
+			}))
 		})
 
 		It("does not attempt to get a history query executor", func() {
@@ -647,7 +639,7 @@ var _ = Describe("Endorser", func() {
 			It("wraps and returns an error and responds to the client", func() {
 				proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
 				Expect(err).To(MatchError("error validating proposal: access denied: channel [] creator org unknown, creator is malformed"))
-				Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
+				Expect(proposalResponse).To(ProtoEqual(&pb.ProposalResponse{
 					Response: &pb.Response{
 						Status:  500,
 						Message: "error validating proposal: access denied: channel [] creator org unknown, creator is malformed",
@@ -686,10 +678,10 @@ var _ = Describe("Endorser", func() {
 				Expect(proposalResponse.Endorsement).To(BeNil())
 				Expect(proposalResponse.Timestamp).To(BeNil())
 				Expect(proposalResponse.Version).To(Equal(int32(0)))
-				Expect(proto.Equal(proposalResponse.Response, &pb.Response{
+				Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 					Status:  500,
 					Payload: []byte("response-payload"),
-				})).To(BeTrue())
+				}))
 
 				// This is almost definitely a bug, but, adding a test in case someone is relying on this behavior.
 				// When the response is >= 500, we return a payload, but not on success.  A payload is only meaningful
@@ -702,10 +694,10 @@ var _ = Describe("Endorser", func() {
 				ccAct := &pb.ChaincodeAction{}
 				err = proto.Unmarshal(prp.Extension, ccAct)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(proto.Equal(ccAct.Response, &pb.Response{
+				Expect(ccAct.Response).To(ProtoEqual(&pb.Response{
 					Status:  500,
 					Payload: []byte("response-payload"),
-				})).To(BeTrue())
+				}))
 
 				// This is an especially weird bit of the behavior, the chaincode event is nil-ed before creating
 				// the proposal response. (That probably shouldn't be created)
@@ -724,10 +716,10 @@ var _ = Describe("Endorser", func() {
 				Expect(proposalResponse.Endorsement).To(BeNil())
 				Expect(proposalResponse.Timestamp).To(BeNil())
 				Expect(proposalResponse.Version).To(Equal(int32(0)))
-				Expect(proto.Equal(proposalResponse.Response, &pb.Response{
+				Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 					Status:  499,
 					Payload: []byte("response-payload"),
-				})).To(BeTrue())
+				}))
 				Expect(proposalResponse.Payload).To(BeNil())
 			})
 		})
@@ -760,10 +752,10 @@ var _ = Describe("Endorser", func() {
 			Expect(proposalResponse.Endorsement).To(BeNil())
 			Expect(proposalResponse.Timestamp).To(BeNil())
 			Expect(proposalResponse.Version).To(Equal(int32(0)))
-			Expect(proto.Equal(proposalResponse.Response, &pb.Response{
+			Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 				Status:  500,
 				Payload: []byte("response-payload"),
-			})).To(BeTrue())
+			}))
 			Expect(proposalResponse.Payload).NotTo(BeNil())
 		})
 	})
@@ -803,10 +795,10 @@ var _ = Describe("Endorser", func() {
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(proposalResponse.Payload).To(BeNil())
-			Expect(proto.Equal(proposalResponse.Response, &pb.Response{
+			Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 				Status:  400,
 				Payload: []byte("response-payload"),
-			})).To(BeTrue())
+			}))
 		})
 	})
 
@@ -841,10 +833,10 @@ var _ = Describe("Endorser", func() {
 		It("triggers the legacy init, and returns the response from lscc", func() {
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(proto.Equal(proposalResponse.Response, &pb.Response{
+			Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 				Status:  200,
 				Payload: []byte("response-payload"),
-			})).To(BeTrue())
+			}))
 
 			Expect(fakeSupport.ExecuteLegacyInitCallCount()).To(Equal(1))
 			_, name, version, input := fakeSupport.ExecuteLegacyInitArgsForCall(0)
@@ -876,7 +868,7 @@ var _ = Describe("Endorser", func() {
 			It("returns an error to the client", func() {
 				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 					Status:  500,
 					Message: "error in simulation: lscc upgrade/deploy should not include a code packages",
 				}))
@@ -898,7 +890,7 @@ var _ = Describe("Endorser", func() {
 			It("returns an error to the client", func() {
 				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 					Status:  500,
 					Message: "error in simulation: Private data is forbidden to be used in instantiate",
 				}))
@@ -920,7 +912,7 @@ var _ = Describe("Endorser", func() {
 			It("returns an error to the client", func() {
 				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 					Status:  500,
 					Message: "error in simulation: bad simulation",
 				}))
@@ -939,7 +931,7 @@ var _ = Describe("Endorser", func() {
 			It("returns an error to the client", func() {
 				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 					Status:  500,
 					Message: "error in simulation: proto: Marshal called with nil",
 				}))
@@ -955,7 +947,7 @@ var _ = Describe("Endorser", func() {
 			It("returns an error and increments the metric", func() {
 				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 					Status:  500,
 					Message: "error in simulation: fake-legacy-init-error",
 				}))
@@ -979,7 +971,7 @@ var _ = Describe("Endorser", func() {
 			It("triggers the legacy init, and returns the response from lscc", func() {
 				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 					Status:  500,
 					Message: "error in simulation: attempting to deploy a system chaincode deploy-name/channel-id",
 				}))
@@ -1035,7 +1027,7 @@ var _ = Describe("Endorser", func() {
 		It("returns an error to the client", func() {
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+			Expect(proposalResponse.Response).To(ProtoEqual(&pb.Response{
 				Status:  500,
 				Message: "error in simulation: failed to obtain collections config: no collection config for chaincode \"myCC\"",
 			}))
@@ -1132,8 +1124,8 @@ var _ = Describe("Endorser", func() {
 
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
-			sort.Sort(CcInterest(*proposalResponse.Interest))
-			Expect(proposalResponse.Interest).To(Equal(&pb.ChaincodeInterest{
+			slices.SortFunc(proposalResponse.Interest.Chaincodes, sortChaincodeCall)
+			Expect(proposalResponse.Interest).To(ProtoEqual(&pb.ChaincodeInterest{
 				Chaincodes: []*pb.ChaincodeCall{{
 					Name:            "myCC",
 					CollectionNames: []string{"mycollection-1"},
@@ -1169,8 +1161,8 @@ var _ = Describe("Endorser", func() {
 
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
-			sort.Sort(CcInterest(*proposalResponse.Interest))
-			Expect(proposalResponse.Interest).To(Equal(&pb.ChaincodeInterest{
+			slices.SortFunc(proposalResponse.Interest.Chaincodes, sortChaincodeCall)
+			Expect(proposalResponse.Interest).To(ProtoEqual(&pb.ChaincodeInterest{
 				Chaincodes: []*pb.ChaincodeCall{
 					{
 						Name: "myCC",
@@ -1209,8 +1201,8 @@ var _ = Describe("Endorser", func() {
 
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
-			sort.Sort(CcInterest(*proposalResponse.Interest))
-			Expect(proposalResponse.Interest).To(Equal(&pb.ChaincodeInterest{
+			slices.SortFunc(proposalResponse.Interest.Chaincodes, sortChaincodeCall)
+			Expect(proposalResponse.Interest).To(ProtoEqual(&pb.ChaincodeInterest{
 				Chaincodes: []*pb.ChaincodeCall{{
 					Name:            "myCC",
 					CollectionNames: []string{"mycollection-1"},
@@ -1248,9 +1240,8 @@ var _ = Describe("Endorser", func() {
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
 
-			sort.Sort(CcInterest(*proposalResponse.Interest))
-			Expect(proto.Equal(
-				proposalResponse.Interest,
+			slices.SortFunc(proposalResponse.Interest.Chaincodes, sortChaincodeCall)
+			Expect(proposalResponse.Interest).To(ProtoEqual(
 				&pb.ChaincodeInterest{
 					Chaincodes: []*pb.ChaincodeCall{
 						{
@@ -1265,7 +1256,7 @@ var _ = Describe("Endorser", func() {
 						},
 					},
 				},
-			)).To(BeTrue())
+			))
 		})
 
 		It("SBE only, no chaincode policy updates", func() {
@@ -1293,9 +1284,8 @@ var _ = Describe("Endorser", func() {
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
 
-			sort.Sort(CcInterest(*proposalResponse.Interest))
-			Expect(proto.Equal(
-				proposalResponse.Interest,
+			slices.SortFunc(proposalResponse.Interest.Chaincodes, sortChaincodeCall)
+			Expect(proposalResponse.Interest).To(ProtoEqual(
 				&pb.ChaincodeInterest{
 					Chaincodes: []*pb.ChaincodeCall{{
 						Name:                     "myCC",
@@ -1303,7 +1293,7 @@ var _ = Describe("Endorser", func() {
 						DisregardNamespacePolicy: true,
 					}},
 				},
-			)).To(BeTrue())
+			))
 		})
 
 		It("chaincode to chaincode calls", func() {
@@ -1337,10 +1327,21 @@ var _ = Describe("Endorser", func() {
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(proposalResponse.Interest.Chaincodes).To(ContainElements([]*pb.ChaincodeCall{
-				{Name: "myCC"},
-				{Name: "otherCC"},
-			}))
+			Expect(proto.Equal(proposalResponse.Interest.Chaincodes[0],
+				&pb.ChaincodeCall{
+					Name: "myCC",
+				}) || proto.Equal(proposalResponse.Interest.Chaincodes[0],
+				&pb.ChaincodeCall{
+					Name: "otherCC",
+				})).To(BeTrue())
+
+			Expect(proto.Equal(proposalResponse.Interest.Chaincodes[1],
+				&pb.ChaincodeCall{
+					Name: "myCC",
+				}) || proto.Equal(proposalResponse.Interest.Chaincodes[1],
+				&pb.ChaincodeCall{
+					Name: "otherCC",
+				})).To(BeTrue())
 		})
 
 		It("ignores system chaincodes", func() {
@@ -1404,8 +1405,9 @@ var _ = Describe("Endorser", func() {
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(proposalResponse.Interest.Chaincodes).To(ContainElements([]*pb.ChaincodeCall{
-				{Name: "myCC", CollectionNames: []string{"mycollection-1"}},
+			Expect(proposalResponse.Interest.Chaincodes[0]).To(ProtoEqual(&pb.ChaincodeCall{
+				Name:            "myCC",
+				CollectionNames: []string{"mycollection-1"},
 			}))
 		})
 	})

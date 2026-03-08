@@ -10,13 +10,13 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // PvtDataCollections data type to encapsulate collections
@@ -29,6 +29,10 @@ func (pvt *PvtDataCollections) Marshal() ([][]byte, error) {
 	for index, each := range *pvt {
 		if each == nil {
 			errMsg := fmt.Sprintf("Mallformed private data payload, rwset index %d is nil", index)
+			return nil, errors.New(errMsg)
+		}
+		if each.WriteSet == nil {
+			errMsg := fmt.Sprintf("Could not marshal private rwset index %d, due to proto: Marshal called with nil", index)
 			return nil, errors.New(errMsg)
 		}
 		pvtBytes, err := proto.Marshal(each.WriteSet)
@@ -75,7 +79,7 @@ func (pvt *PvtDataCollections) Unmarshal(data [][]byte) error {
 func PrivateRWSets(rwsets ...PrivateRWSet) [][]byte {
 	var res [][]byte
 	for _, rws := range rwsets {
-		res = append(res, []byte(rws))
+		res = append(res, rws)
 	}
 	return res
 }

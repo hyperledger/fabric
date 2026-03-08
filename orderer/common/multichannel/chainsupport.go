@@ -7,16 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
-	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
-	"github.com/hyperledger/fabric/orderer/consensus/inactive"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -38,7 +36,7 @@ type ChainSupport struct {
 
 	// The registrar is not aware of the exact type that the Chain is, e.g. etcdraft, inactive, or follower.
 	// Therefore, we let each chain report its cluster relation and status through this interface. Non cluster
-	// type chains (solo, kafka) are assigned a static reporter.
+	// type chains (solo) are assigned a static reporter.
 	consensus.StatusReporter
 }
 
@@ -75,7 +73,7 @@ func newChainSupport(
 	cs.Processor = msgprocessor.NewStandardChannel(cs, msgprocessor.CreateStandardChannelFilters(cs, registrar.config), bccsp)
 
 	// Set up the block writer
-	cs.BlockWriter = newBlockWriter(lastBlock, registrar, cs)
+	cs.BlockWriter = newBlockWriter(lastBlock, cs)
 
 	// Set up the consenter
 	consenterType := ledgerResources.SharedConfig().ConsensusType()
@@ -95,7 +93,7 @@ func newChainSupport(
 	}
 
 	cs.StatusReporter, ok = cs.Chain.(consensus.StatusReporter)
-	if !ok { // Non-cluster types: solo, kafka
+	if !ok { // Non-cluster types: solo
 		cs.StatusReporter = consensus.StaticStatusReporter{ConsensusRelation: types.ConsensusRelationOther, Status: types.StatusActive}
 	}
 
@@ -156,15 +154,16 @@ func (cs *ChainSupport) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEn
 		logger.Panic("old config is missing orderer group")
 	}
 
-	// we can remove this check since this is being validated in checkResources earlier
+	// this is being validated in checkResources(bundle) earlier, so here we just panic
 	newOrdererConfig, ok := bundle.OrdererConfig()
 	if !ok {
-		return nil, errors.New("new config is missing orderer group")
+		logger.Panic("new config is missing orderer group")
 	}
 
 	if err = cs.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, false); err != nil {
 		return nil, errors.WithMessage(err, "consensus metadata update for channel config update is invalid")
 	}
+
 	return env, nil
 }
 
@@ -182,19 +181,4 @@ func (cs *ChainSupport) Sequence() uint64 {
 // unlike WriteBlock that also mutates its metadata.
 func (cs *ChainSupport) Append(block *cb.Block) error {
 	return cs.ledgerResources.ReadWriter.Append(block)
-}
-
-func newOnBoardingChainSupport(
-	ledgerResources *ledgerResources,
-	config localconfig.TopLevel,
-	bccsp bccsp.BCCSP,
-) (*ChainSupport, error) {
-	cs := &ChainSupport{ledgerResources: ledgerResources}
-	cs.Processor = msgprocessor.NewStandardChannel(cs, msgprocessor.CreateStandardChannelFilters(cs, config), bccsp)
-	cs.Chain = &inactive.Chain{Err: errors.New("system channel creation pending: server requires restart")}
-	cs.StatusReporter = consensus.StaticStatusReporter{ConsensusRelation: types.ConsensusRelationConsenter, Status: types.StatusInactive}
-
-	logger.Debugf("[channel: %s] Done creating onboarding channel support resources", cs.ChannelID())
-
-	return cs, nil
 }

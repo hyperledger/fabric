@@ -8,7 +8,6 @@ package pluggable
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -34,7 +33,7 @@ func SetEndorsementPluginActivationFolder(path string) {
 	os.Setenv(EndorsementPluginEnvVar, path)
 }
 
-// ValidationPluginActivationFilePath returns the name of the folder that if
+// ValidationPluginActivationFolder returns the name of the folder that if
 // the file of the peer's id in it exists - it indicates that the validation plugin was activated
 // for that peer
 func ValidationPluginActivationFolder() string {
@@ -81,7 +80,7 @@ func CountValidationPluginActivations() int {
 }
 
 func listDir(d string) int {
-	dir, err := ioutil.ReadDir(d)
+	dir, err := os.ReadDir(d)
 	if err != nil {
 		panic(fmt.Sprintf("failed listing directory %s: %v", d, err))
 	}

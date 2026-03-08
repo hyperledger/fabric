@@ -7,15 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package msgprocessor
 
 import (
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
-	"github.com/hyperledger/fabric/protoutil"
-
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -85,8 +84,8 @@ func (s *StandardChannel) ClassifyMsg(chdr *cb.ChannelHeader) Classification {
 	case int32(cb.HeaderType_CONFIG_UPDATE):
 		return ConfigUpdateMsg
 	case int32(cb.HeaderType_ORDERER_TRANSACTION):
-		// In order to maintain backwards compatibility, we must classify these messages
-		return ConfigMsg
+		// Not supported in v3
+		return UnsupportedMsg
 	case int32(cb.HeaderType_CONFIG):
 		// In order to maintain backwards compatibility, we must classify these messages
 		return ConfigMsg

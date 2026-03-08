@@ -10,18 +10,17 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	lb "github.com/hyperledger/fabric-protos-go-apiv2/peer/lifecycle"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode/mock"
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ = Describe("QueryApproved", func() {
@@ -35,18 +34,40 @@ var _ = Describe("QueryApproved", func() {
 		)
 
 		BeforeEach(func() {
-			mockResult := &lb.QueryApprovedChaincodeDefinitionResult{
-				Sequence:            7,
-				Version:             "version_1.0",
-				EndorsementPlugin:   "endorsement-plugin",
-				ValidationPlugin:    "validation-plugin",
-				ValidationParameter: []byte("validation-parameter"),
-				InitRequired:        true,
-				Collections:         &pb.CollectionConfigPackage{},
-				Source: &lb.ChaincodeSource{
-					Type: &lb.ChaincodeSource_LocalPackage{
-						LocalPackage: &lb.ChaincodeSource_Local{
-							PackageId: "hash",
+			mockResult := &lb.QueryApprovedChaincodeDefinitionsResult{
+				ApprovedChaincodeDefinitions: []*lb.QueryApprovedChaincodeDefinitionsResult_ApprovedChaincodeDefinition{
+					{
+						Name:                "cc_name_1",
+						Sequence:            7,
+						Version:             "version_1.0",
+						EndorsementPlugin:   "endorsement-plugin",
+						ValidationPlugin:    "validation-plugin",
+						ValidationParameter: []byte("validation-parameter"),
+						InitRequired:        true,
+						Collections:         &pb.CollectionConfigPackage{},
+						Source: &lb.ChaincodeSource{
+							Type: &lb.ChaincodeSource_LocalPackage{
+								LocalPackage: &lb.ChaincodeSource_Local{
+									PackageId: "hash",
+								},
+							},
+						},
+					},
+					{
+						Name:                "cc_name_2",
+						Sequence:            7,
+						Version:             "version_1.0",
+						EndorsementPlugin:   "endorsement-plugin",
+						ValidationPlugin:    "validation-plugin",
+						ValidationParameter: []byte("validation-parameter"),
+						InitRequired:        true,
+						Collections:         &pb.CollectionConfigPackage{},
+						Source: &lb.ChaincodeSource{
+							Type: &lb.ChaincodeSource_LocalPackage{
+								LocalPackage: &lb.ChaincodeSource_Local{
+									PackageId: "hash",
+								},
+							},
 						},
 					},
 				},
@@ -70,7 +91,6 @@ var _ = Describe("QueryApproved", func() {
 
 			input = &chaincode.ApprovedQueryInput{
 				ChannelID: "test-channel",
-				Name:      "cc_name",
 			}
 
 			approvedQuerier = &chaincode.ApprovedQuerier{
@@ -81,14 +101,67 @@ var _ = Describe("QueryApproved", func() {
 			}
 		})
 
-		It("queries a approved chaincode and writes the output as human readable plain-text", func() {
+		It("queries approved chaincodes and writes the output as human readable plain-text", func() {
 			err := approvedQuerier.Query()
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(approvedQuerier.Writer).Should(gbytes.Say("Approved chaincode definition for chaincode 'cc_name' on channel 'test-channel':\n"))
-			Eventually(approvedQuerier.Writer).Should(gbytes.Say("sequence: 7, version: version_1.0, init-required: true, package-id: hash, endorsement plugin: endorsement-plugin, validation plugin: validation-plugin\n"))
+			Eventually(approvedQuerier.Writer).Should(gbytes.Say("Approved chaincode definitions on channel 'test-channel':\n"))
+			Eventually(approvedQuerier.Writer).Should(gbytes.Say("name: cc_name_1, sequence: 7, version: version_1.0, init-required: true, package-id: hash, endorsement plugin: endorsement-plugin, validation plugin: validation-plugin\n"))
+			Eventually(approvedQuerier.Writer).Should(gbytes.Say("name: cc_name_2, sequence: 7, version: version_1.0, init-required: true, package-id: hash, endorsement plugin: endorsement-plugin, validation plugin: validation-plugin\n"))
 		})
 
-		Context("when the payload contains bytes that aren't a QueryApprovedChaincodeDefinitionResult", func() {
+		Context("when JSON-formatted output is requested", func() {
+			BeforeEach(func() {
+				approvedQuerier.Input.OutputFormat = "json"
+			})
+
+			It("queries the approved chaincodes and writes the output as JSON", func() {
+				err := approvedQuerier.Query()
+				Expect(err).NotTo(HaveOccurred())
+				expectedOutput := &lb.QueryApprovedChaincodeDefinitionsResult{
+					ApprovedChaincodeDefinitions: []*lb.QueryApprovedChaincodeDefinitionsResult_ApprovedChaincodeDefinition{
+						{
+							Name:                "cc_name_1",
+							Sequence:            7,
+							Version:             "version_1.0",
+							EndorsementPlugin:   "endorsement-plugin",
+							ValidationPlugin:    "validation-plugin",
+							ValidationParameter: []byte("validation-parameter"),
+							InitRequired:        true,
+							Collections:         &pb.CollectionConfigPackage{},
+							Source: &lb.ChaincodeSource{
+								Type: &lb.ChaincodeSource_LocalPackage{
+									LocalPackage: &lb.ChaincodeSource_Local{
+										PackageId: "hash",
+									},
+								},
+							},
+						},
+						{
+							Name:                "cc_name_2",
+							Sequence:            7,
+							Version:             "version_1.0",
+							EndorsementPlugin:   "endorsement-plugin",
+							ValidationPlugin:    "validation-plugin",
+							ValidationParameter: []byte("validation-parameter"),
+							InitRequired:        true,
+							Collections:         &pb.CollectionConfigPackage{},
+							Source: &lb.ChaincodeSource{
+								Type: &lb.ChaincodeSource_LocalPackage{
+									LocalPackage: &lb.ChaincodeSource_Local{
+										PackageId: "hash",
+									},
+								},
+							},
+						},
+					},
+				}
+				json, err := json.MarshalIndent(expectedOutput, "", "\t")
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(approvedQuerier.Writer).Should(gbytes.Say(fmt.Sprintf(`\Q%s\E`, string(json))))
+			})
+		})
+
+		Context("when the payload contains bytes that aren't a QueryApprovedChaincodeDefinitionsResult", func() {
 			BeforeEach(func() {
 				mockProposalResponse.Response = &pb.Response{
 					Payload: []byte("badpayloadbadpayload"),
@@ -103,15 +176,11 @@ var _ = Describe("QueryApproved", func() {
 			})
 		})
 
-		Context("when JSON-formatted output is requested", func() {
+		Context("when a single approved chaincode definition is requested", func() {
 			BeforeEach(func() {
-				approvedQuerier.Input.OutputFormat = "json"
-			})
+				input.Name = "cc_name_1"
 
-			It("queries the approved chaincode and writes the output as JSON", func() {
-				err := approvedQuerier.Query()
-				Expect(err).NotTo(HaveOccurred())
-				expectedOutput := &lb.QueryApprovedChaincodeDefinitionResult{
+				mockResult := &lb.QueryApprovedChaincodeDefinitionResult{
 					Sequence:            7,
 					Version:             "version_1.0",
 					EndorsementPlugin:   "endorsement-plugin",
@@ -127,46 +196,107 @@ var _ = Describe("QueryApproved", func() {
 						},
 					},
 				}
-				json, err := json.MarshalIndent(expectedOutput, "", "\t")
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(approvedQuerier.Writer).Should(gbytes.Say(fmt.Sprintf(`\Q%s\E`, string(json))))
-			})
-		})
 
-		Context("when the chaincode source is unavailable", func() {
-			BeforeEach(func() {
-				mockResult := &lb.QueryApprovedChaincodeDefinitionResult{
-					Sequence:            7,
-					Version:             "version_1.0",
-					EndorsementPlugin:   "endorsement-plugin",
-					ValidationPlugin:    "validation-plugin",
-					ValidationParameter: []byte("validation-parameter"),
-					InitRequired:        true,
-					Collections:         &pb.CollectionConfigPackage{},
-					Source: &lb.ChaincodeSource{
-						Type: &lb.ChaincodeSource_Unavailable_{
-							Unavailable: &lb.ChaincodeSource_Unavailable{},
-						},
-					},
-				}
 				mockResultBytes, err := proto.Marshal(mockResult)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(mockResultBytes).NotTo(BeNil())
-
 				mockProposalResponse = &pb.ProposalResponse{
 					Response: &pb.Response{
 						Status:  200,
 						Payload: mockResultBytes,
 					},
 				}
+
 				mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
 			})
 
-			It("queries the approved chaincode and writes the output as human readable plain-text with an empty package-id", func() {
+			It("queries an approved chaincode and writes the output as human readable plain-text", func() {
 				err := approvedQuerier.Query()
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(approvedQuerier.Writer).Should(gbytes.Say("Approved chaincode definition for chaincode 'cc_name' on channel 'test-channel':\n"))
-				Eventually(approvedQuerier.Writer).Should(gbytes.Say("sequence: 7, version: version_1.0, init-required: true, package-id: , endorsement plugin: endorsement-plugin, validation plugin: validation-plugin\n"))
+				Eventually(approvedQuerier.Writer).Should(gbytes.Say("Approved chaincode definition for chaincode 'cc_name_1' on channel 'test-channel':\n"))
+				Eventually(approvedQuerier.Writer).Should(gbytes.Say("sequence: 7, version: version_1.0, init-required: true, package-id: hash, endorsement plugin: endorsement-plugin, validation plugin: validation-plugin\n"))
+			})
+
+			Context("when the payload contains bytes that aren't a QueryApprovedChaincodeDefinitionResult", func() {
+				BeforeEach(func() {
+					mockProposalResponse.Response = &pb.Response{
+						Payload: []byte("badpayloadbadpayload"),
+						Status:  200,
+					}
+					mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
+				})
+
+				It("returns an error", func() {
+					err := approvedQuerier.Query()
+					Expect(err).To(MatchError(ContainSubstring("failed to unmarshal proposal response's response payload")))
+				})
+			})
+
+			Context("when the chaincode source is unavailable", func() {
+				BeforeEach(func() {
+					mockResult := &lb.QueryApprovedChaincodeDefinitionResult{
+						Sequence:            7,
+						Version:             "version_1.0",
+						EndorsementPlugin:   "endorsement-plugin",
+						ValidationPlugin:    "validation-plugin",
+						ValidationParameter: []byte("validation-parameter"),
+						InitRequired:        true,
+						Collections:         &pb.CollectionConfigPackage{},
+						Source: &lb.ChaincodeSource{
+							Type: &lb.ChaincodeSource_Unavailable_{
+								Unavailable: &lb.ChaincodeSource_Unavailable{},
+							},
+						},
+					}
+					mockResultBytes, err := proto.Marshal(mockResult)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(mockResultBytes).NotTo(BeNil())
+
+					mockProposalResponse = &pb.ProposalResponse{
+						Response: &pb.Response{
+							Status:  200,
+							Payload: mockResultBytes,
+						},
+					}
+					mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
+				})
+
+				It("queries the approved chaincode and writes the output as human readable plain-text with an empty package-id", func() {
+					err := approvedQuerier.Query()
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(approvedQuerier.Writer).Should(gbytes.Say("Approved chaincode definition for chaincode 'cc_name_1' on channel 'test-channel':\n"))
+					Eventually(approvedQuerier.Writer).Should(gbytes.Say("sequence: 7, version: version_1.0, init-required: true, package-id: , endorsement plugin: endorsement-plugin, validation plugin: validation-plugin\n"))
+				})
+			})
+
+			Context("when JSON-formatted output is requested", func() {
+				BeforeEach(func() {
+					approvedQuerier.Input.OutputFormat = "json"
+				})
+
+				It("queries the approved chaincode and writes the output as JSON", func() {
+					err := approvedQuerier.Query()
+					Expect(err).NotTo(HaveOccurred())
+					expectedOutput := &lb.QueryApprovedChaincodeDefinitionResult{
+						Sequence:            7,
+						Version:             "version_1.0",
+						EndorsementPlugin:   "endorsement-plugin",
+						ValidationPlugin:    "validation-plugin",
+						ValidationParameter: []byte("validation-parameter"),
+						InitRequired:        true,
+						Collections:         &pb.CollectionConfigPackage{},
+						Source: &lb.ChaincodeSource{
+							Type: &lb.ChaincodeSource_LocalPackage{
+								LocalPackage: &lb.ChaincodeSource_Local{
+									PackageId: "hash",
+								},
+							},
+						},
+					}
+					json, err := json.MarshalIndent(expectedOutput, "", "\t")
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(approvedQuerier.Writer).Should(gbytes.Say(fmt.Sprintf(`\Q%s\E`, string(json))))
+				})
 			})
 		})
 
@@ -181,14 +311,15 @@ var _ = Describe("QueryApproved", func() {
 			})
 		})
 
-		Context("when the chaincode name is not provided", func() {
+		Context("when the sequence is specified without name", func() {
 			BeforeEach(func() {
-				approvedQuerier.Input.Name = ""
+				approvedQuerier.Input.ChannelID = "test-channel"
+				approvedQuerier.Input.Sequence = 7
 			})
 
 			It("returns an error", func() {
 				err := approvedQuerier.Query()
-				Expect(err).To(MatchError("The required parameter 'name' is empty. Rerun the command with -n flag"))
+				Expect(err).To(MatchError("Specifying parameter 'sequence' is invalid without parameter 'name'. Rerun the command with -n flag"))
 			})
 		})
 

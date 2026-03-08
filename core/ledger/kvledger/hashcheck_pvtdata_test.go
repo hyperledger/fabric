@@ -10,18 +10,17 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestExtractValidPvtData(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 
 	nsCollBtlConfs := []*nsCollBtlConfig{
 		{
@@ -92,8 +91,7 @@ func TestExtractValidPvtData(t *testing.T) {
 
 	// generate snapshot at block-2
 	require.NoError(t, kvledger.generateSnapshot())
-	freshConf, cleanup := testConfig(t)
-	defer cleanup()
+	freshConf := testConfig(t)
 
 	freshProvider := testutilNewProviderWithCollectionConfig(
 		t,
@@ -409,7 +407,7 @@ func verifyBlocksPvtdata(t *testing.T, expected, actual map[uint64][]*ledger.TxP
 
 		for _, e := range expectedTx {
 			require.NotNil(t, m[e.SeqInBlock])
-			require.Equal(t, e.WriteSet, m[e.SeqInBlock])
+			require.True(t, proto.Equal(e.WriteSet, m[e.SeqInBlock]))
 		}
 	}
 }

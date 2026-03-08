@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
+	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -114,7 +114,7 @@ func TestCertificateExtraction(t *testing.T) {
 	require.Equal(t, clientCertHash, srv.remoteCertHash, "Server side and client hash aren't equal")
 }
 
-// GenerateCertificatesOrPanic generates a a random pair of public and private keys
+// GenerateCertificatesOrPanic generates a random pair of public and private keys
 // and return TLS certificate.
 func GenerateCertificatesOrPanic() tls.Certificate {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

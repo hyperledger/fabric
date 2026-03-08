@@ -1,6 +1,6 @@
 # Quick reference
 
--	**Hyperledger Fabric project page**: https://www.hyperledger.org/projects/fabric
+-	**Hyperledger Fabric project page**: https://lfdecentralizedtrust.org/projects/fabric
 
 -	**Where to get Docker help**:  
 	[the Docker Community Forums](https://forums.docker.com/),

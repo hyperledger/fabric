@@ -8,13 +8,15 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -30,9 +32,7 @@ func TestPluginLoadingFailure(t *testing.T) {
 	parentDir, err := filepath.Abs("../..")
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	tempDir, err := ioutil.TempDir("", "plugin-failure")
-	gt.Expect(err).NotTo(HaveOccurred())
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	peerListener, err := net.Listen("tcp", "localhost:0")
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -57,7 +57,6 @@ func TestPluginLoadingFailure(t *testing.T) {
 		"ENDORSERS_ESCC",
 		"VALIDATORS_VSCC",
 	} {
-		plugin := plugin
 		t.Run(plugin, func(t *testing.T) {
 			cmd := exec.Command(peer, "node", "start")
 			cmd.Env = []string{
@@ -79,4 +78,20 @@ func TestPluginLoadingFailure(t *testing.T) {
 			gt.Expect(sess.Err).To(gbytes.Say("plugin.Open"))
 		})
 	}
+}
+
+func TestSetEnvConfig(t *testing.T) {
+	vp := viper.New()
+	t.Setenv("CORE_FRUIT", "Apple")
+	t.Setenv("CORE_COLOR", "")
+	err := vp.BindEnv("Fruit")
+	require.NoError(t, err)
+	err = vp.BindEnv("Color")
+	require.NoError(t, err)
+	vp.SetDefault("Color", "Green")
+
+	setEnvConfig(vp)
+
+	assert.Equal(t, "Apple", vp.Get("Fruit"))
+	assert.Equal(t, "", vp.Get("Color"))
 }

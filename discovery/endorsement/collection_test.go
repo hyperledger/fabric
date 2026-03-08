@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/gossip/api"
 	gcommon "github.com/hyperledger/fabric/gossip/common"
@@ -39,8 +39,8 @@ func TestPrincipalsFromCollectionConfig(t *testing.T) {
 		config := buildCollectionConfig(col2principals)
 		res, err := principalsFromCollectionConfig(config)
 		require.NoError(t, err)
-		assertEqualPrincipalSets(t, policies.PrincipalSet(org1AndOrg2), res["foo"])
-		assertEqualPrincipalSets(t, policies.PrincipalSet(org3AndOrg4), res["bar"])
+		assertEqualPrincipalSets(t, org1AndOrg2, res["foo"])
+		assertEqualPrincipalSets(t, org3AndOrg4, res["bar"])
 		require.Empty(t, res["baz"])
 	})
 }

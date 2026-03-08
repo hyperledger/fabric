@@ -21,7 +21,7 @@
 #   - docker-list - generates a list of docker images that 'make docker' produces
 #   - docker-tag-latest - re-tags the images made by 'make docker' with the :latest tag
 #   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
-#   - docker-thirdparty - pulls thirdparty images (kafka,zookeeper,couchdb)
+#   - docker-thirdparty - pulls thirdparty images (couchdb, etc)
 #   - docs - builds the documentation in html format
 #   - gotools - installs go tools like golint
 #   - help-docs - generate the command reference docs
@@ -41,19 +41,16 @@
 #   - publish-images - publishes release docker images to nexus3 or docker hub.
 #   - release-all - builds release packages for all target platforms
 #   - release - builds release packages for the host platform
-#   - tools-docker[-clean] - ensures the tools container is available[/cleaned]
 #   - unit-test-clean - cleans unit test state (particularly from docker)
 #   - unit-test - runs the go-test based unit tests
 #   - verify - runs unit tests for only the changed package tree
 
-UBUNTU_VER ?= 22.04
-FABRIC_VER ?= 2.5.12
+UBUNTU_VER ?= 24.04
+FABRIC_VER ?= 3.1.4
 
 # 3rd party image version
 # These versions are also set in the runners in ./integration/runners/
 COUCHDB_VER ?= 3.4.2
-KAFKA_VER ?= 5.3.1
-ZOOKEEPER_VER ?= 5.3.1
 
 # Disable implicit rules
 .SUFFIXES:
@@ -87,7 +84,7 @@ GO_VER := $(strip $(GO_VER:go=))
 GO_TAGS ?=
 
 RELEASE_EXES = orderer $(TOOLS_EXES)
-RELEASE_IMAGES = baseos ccenv orderer peer tools
+RELEASE_IMAGES = baseos ccenv orderer peer
 RELEASE_PLATFORMS = darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64
 TOOLS_EXES = configtxgen configtxlator cryptogen discover ledgerutil osnadmin peer
 
@@ -105,149 +102,156 @@ pkgmap.peer           := $(PKGNAME)/cmd/peer
 include docker-env.mk
 include gotools.mk
 
+.PHONY: help
+# List all commands with documentation
+help: ## List all commands with documentation
+	@echo "Available commands:"
+	@awk 'BEGIN {FS = ":.*?## "}; /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
 .PHONY: all
-all: check-go-version native docker checks
+all: ## Builds all targets and runs all non-integration tests/checks
+	check-go-version native docker checks
 
 .PHONY: checks
-checks: basic-checks unit-test integration-test
+checks: ## Runs basic checks along with unit and integration tests
+	basic-checks unit-test integration-test
 
 .PHONY: basic-checks
-basic-checks: check-go-version license spelling references trailing-spaces linter check-help-docs check-metrics-doc filename-spaces check-swagger
+basic-checks: check-go-version license spelling references trailing-spaces linter check-help-docs check-metrics-doc filename-spaces check-swagger ## Performs basic checks like license, spelling, trailing spaces and linter
+
 
 .PHONY: desk-checks
-desk-check: checks verify
+desk-check: ## Runs linters and verify to test changed packages
+	checks verify
 
 .PHONY: help-docs
-help-docs: native
+help-docs: native ## Generate the command reference docs
 	@scripts/help_docs.sh
 
 .PHONY: check-help-docs
-check-help-docs: native
+check-help-docs: native ## Check for outdated command reference documentation
 	@scripts/help_docs.sh check
 
 .PHONY: spelling
-spelling: gotool.misspell
+spelling: gotool.misspell ## Check for spelling errors
 	@scripts/check_spelling.sh
 
 .PHONY: references
-references:
+references: ## Check for outdated references
 	@scripts/check_references.sh
 
 .PHONY: license
-license:
+license: ## Check for license headers
 	@scripts/check_license.sh
 
 .PHONY: trailing-spaces
-trailing-spaces:
+trailing-spaces: ## Check for trailing spaces
 	@scripts/check_trailingspaces.sh
 
 .PHONY: gotools
-gotools: gotools-install
+gotools: gotools-install ## Install go tools like golint
 
 .PHONY: check-go-version
-check-go-version:
+check-go-version: ## Check for the correct go version
 	@scripts/check_go_version.sh $(GO_VER)
 
 .PHONY: integration-test
-integration-test: integration-test-prereqs
+integration-test: integration-test-prereqs ## Runs the integration tests
 	./scripts/run-integration-tests.sh $(INTEGRATION_TEST_SUITE)
 
 .PHONY: integration-test-prereqs
-integration-test-prereqs: gotool.ginkgo baseos-docker ccenv-docker docker-thirdparty ccaasbuilder
+integration-test-prereqs: gotool.ginkgo baseos-docker ccenv-docker docker-thirdparty ccaasbuilder ## Setup prerequisites for integration tests
 
 .PHONY: unit-test
-unit-test: unit-test-clean docker-thirdparty-couchdb
+unit-test: unit-test-clean docker-thirdparty-couchdb ## Runs the go-test based unit tests
 	./scripts/run-unit-tests.sh
 
 .PHONY: unit-tests
-unit-tests: unit-test
+unit-tests: unit-test ## Alias for unit-test
 
 # Pull thirdparty docker images based on the latest baseimage release version
 # Also pull ccenv-1.4 for compatibility test to ensure pre-2.0 installed chaincodes
 # can be built by a peer configured to use the ccenv-1.4 as the builder image.
 .PHONY: docker-thirdparty
-docker-thirdparty: docker-thirdparty-couchdb
-	docker pull confluentinc/cp-zookeeper:${ZOOKEEPER_VER}
-	docker pull confluentinc/cp-kafka:${KAFKA_VER}
+docker-thirdparty: docker-thirdparty-couchdb ## Pull thirdparty docker images
 	docker pull hyperledger/fabric-ccenv:1.4
 
 .PHONY: docker-thirdparty-couchdb
-docker-thirdparty-couchdb:
+docker-thirdparty-couchdb: ## Pull couchdb docker image
 	docker pull couchdb:${COUCHDB_VER}
 
 .PHONY: verify
-verify: export JOB_TYPE=VERIFY
-verify: unit-test
+verify: export JOB_TYPE=VERIFY ## Runs unit tests for only the changed package tree
+verify: unit-test # Runs unit tests for only the changed package tree
 
 .PHONY: profile
-profile: export JOB_TYPE=PROFILE
-profile: unit-test
+profile: export JOB_TYPE=PROFILE ## Runs unit tests for all packages in coverprofile mode (slow)
+profile: unit-test # Runs unit tests for all packages in coverprofile mode (slow)
 
 .PHONY: linter
-linter: check-deps gotool.goimports gotool.gofumpt gotool.staticcheck
+linter: check-deps gotool.goimports gotool.gofumpt gotool.staticcheck ## Runs all code checks
 	@echo "LINT: Running code checks.."
 	./scripts/golinter.sh
 
 .PHONY: check-deps
-check-deps:
+check-deps: ## Check for vendored dependencies that are no longer used
 	@echo "DEP: Checking for dependency issues.."
 	./scripts/check_deps.sh
 
 .PHONY: check-metrics-docs
-check-metrics-doc:
+check-metrics-doc: gotool.gendoc ## Check for outdated reference documentation
 	@echo "METRICS: Checking for outdated reference documentation.."
 	./scripts/metrics_doc.sh check
 
 .PHONY: generate-metrics-docs
-generate-metrics-doc:
+generate-metrics-doc: gotool.gendoc ## Generate metrics reference documentation
 	@echo "Generating metrics reference documentation..."
 	./scripts/metrics_doc.sh generate
 
 .PHONY: check-swagger
-check-swagger: gotool.swagger
+check-swagger: gotool.swagger ## Check for outdated swagger
 	@echo "SWAGGER: Checking for outdated swagger..."
 	./scripts/swagger.sh check
 
 .PHONY: generate-swagger
-generate-swagger: gotool.swagger
+generate-swagger: gotool.swagger ## Generate swagger
 	@echo "Generating swagger..."
 	./scripts/swagger.sh generate
 
 .PHONY: protos
-protos: gotool.protoc-gen-go
+protos: gotool.protoc-gen-go ## Generate all protobuf artifacts based on .proto files
 	@echo "Compiling non-API protos..."
 	./scripts/compile_protos.sh
 
 .PHONY: native
-native: $(RELEASE_EXES)
+native: $(RELEASE_EXES) ## Ensures all native binaries are available
 
 .PHONY: tools
-tools: $(TOOLS_EXES)
+tools: $(TOOLS_EXES) ## Builds all tools
 
 .PHONY: $(RELEASE_EXES)
-$(RELEASE_EXES): %: $(BUILD_DIR)/bin/%
+$(RELEASE_EXES): %: $(BUILD_DIR)/bin/% ## Builds a native binary
 
 $(BUILD_DIR)/bin/%: GO_LDFLAGS = $(METADATA_VAR:%=-X $(PKGNAME)/common/metadata.%)
 $(BUILD_DIR)/bin/%:
 	@echo "Building $@"
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) go install -v -x -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" -buildvcs=false $(pkgmap.$(@F))
+	GOBIN=$(abspath $(@D)) go install -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" -buildvcs=false $(pkgmap.$(@F))
 	@touch $@
 
 .PHONY: docker
-docker: $(RELEASE_IMAGES:%=%-docker) ccaasbuilder
+docker: $(RELEASE_IMAGES:%=%-docker) ccaasbuilder ## Builds all docker images
 
 .PHONY: $(RELEASE_IMAGES:%=%-docker)
-$(RELEASE_IMAGES:%=%-docker): %-docker: $(BUILD_DIR)/images/%/$(DUMMY)
+$(RELEASE_IMAGES:%=%-docker): %-docker: $(BUILD_DIR)/images/%/$(DUMMY) ## Builds a docker image
 
 $(BUILD_DIR)/images/baseos/$(DUMMY):  BUILD_CONTEXT=images/baseos
 $(BUILD_DIR)/images/ccenv/$(DUMMY):   BUILD_CONTEXT=images/ccenv
 $(BUILD_DIR)/images/peer/$(DUMMY):    BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
 $(BUILD_DIR)/images/orderer/$(DUMMY): BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
-$(BUILD_DIR)/images/tools/$(DUMMY):   BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
 
 $(BUILD_DIR)/images/%/$(DUMMY):
-	@echo "Building Docker image $(DOCKER_NS)/fabric-$*"
+	@echo "Building Docker image $(DOCKER_NS)/fabric-$* with Ubuntu version $(UBUNTU_VER)"
 	@mkdir -p $(@D)
 	$(DBUILD) -f images/$*/Dockerfile \
 		--build-arg GO_VER=$(GO_VER) \
@@ -256,16 +260,18 @@ $(BUILD_DIR)/images/%/$(DUMMY):
 		--build-arg TARGETARCH=$(ARCH) \
 		--build-arg TARGETOS=linux \
 		$(BUILD_ARGS) \
-		-t $(DOCKER_NS)/fabric-$* ./$(BUILD_CONTEXT)
-	@touch $@
+		-t $(DOCKER_NS)/fabric-$* \
+		-t $(DOCKER_NS)/fabric-$*:$(FABRIC_VER) \
+		-t $(DOCKER_NS)/fabric-$*:$(TWO_DIGIT_VERSION) \
+		./$(BUILD_CONTEXT)
 
 # builds release packages for the host platform
 .PHONY: release
-release: check-go-version $(MARCH:%=release/%)
+release: check-go-version $(MARCH:%=release/%) ## Builds release packages for the host platform
 
 # builds release packages for all target platforms
 .PHONY: release-all
-release-all: check-go-version $(RELEASE_PLATFORMS:%=release/%)
+release-all: check-go-version $(RELEASE_PLATFORMS:%=release/%) ## Builds release packages for all target platforms
 
 .PHONY: $(RELEASE_PLATFORMS:%=release/%)
 $(RELEASE_PLATFORMS:%=release/%): GO_LDFLAGS = $(METADATA_VAR:%=-X $(PKGNAME)/common/metadata.%)
@@ -279,33 +285,33 @@ $(foreach platform, $(RELEASE_PLATFORMS), $(RELEASE_EXES:%=release/$(platform)/b
 	$(eval GOARCH = $(word 2,$(subst -, ,$(platform))))
 	@echo "Building $@ for $(GOOS)-$(GOARCH)"
 	mkdir -p $(@D)
-	GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o -x -v $@ -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" -buildvcs=false $(pkgmap.$(@F))
+	GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $@ -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" -buildvcs=false $(pkgmap.$(@F))
 
 .PHONY: dist
-dist: dist-clean dist/$(MARCH)
+dist: dist-clean dist/$(MARCH) # Builds release packages for the host platform
 
 .PHONY: dist-all
-dist-all: dist-clean $(RELEASE_PLATFORMS:%=dist/%)
+dist-all: dist-clean $(RELEASE_PLATFORMS:%=dist/%) ## Builds release packages for all target platforms
 dist/%: release/% ccaasbuilder
 	mkdir -p release/$(@F)/config
 	cp -r sampleconfig/*.yaml release/$(@F)/config
 	cd release/$(@F) && tar -czvf hyperledger-fabric-$(@F).$(PROJECT_VERSION).tar.gz *
 
 .PHONY: docker-list
-docker-list: $(RELEASE_IMAGES:%=%-docker-list)
+docker-list: $(RELEASE_IMAGES:%=%-docker-list) ## Generates a list of docker images that 'make docker' produces
 %-docker-list:
 	@echo $(DOCKER_NS)/fabric-$*:$(DOCKER_TAG)
 
 .PHONY: docker-clean
-docker-clean: $(RELEASE_IMAGES:%=%-docker-clean)
+docker-clean: $(RELEASE_IMAGES:%=%-docker-clean) ## Ensures all docker images are available
 %-docker-clean:
-	-@for image in "$$(docker images --quiet --filter=reference='$(DOCKER_NS)/fabric-$*:$(DOCKER_TAG)')"; do \
+	-@for image in "$$(docker images --quiet --filter=reference='$(DOCKER_NS)/fabric-$*')"; do \
 		[ -z "$$image" ] || docker rmi -f $$image; \
 	done
 	-@rm -rf $(BUILD_DIR)/images/$* || true
 
 .PHONY: docker-tag-latest
-docker-tag-latest: $(RELEASE_IMAGES:%=%-docker-tag-latest)
+docker-tag-latest: $(RELEASE_IMAGES:%=%-docker-tag-latest) ## Re-tags the images made by 'make docker' with the :latest tag
 %-docker-tag-latest:
 	docker tag $(DOCKER_NS)/fabric-$*:$(DOCKER_TAG) $(DOCKER_NS)/fabric-$*:latest
 
@@ -321,22 +327,22 @@ publish-images: $(RELEASE_IMAGES:%=%-publish-images)
 	@docker push $(DOCKER_NS)/fabric-$*:$(PROJECT_VERSION)
 
 .PHONY: clean
-clean: docker-clean unit-test-clean release-clean
+clean: docker-clean unit-test-clean release-clean ## Cleans the build area
 	-@rm -rf $(BUILD_DIR)
 
 .PHONY: clean-all
-clean-all: clean gotools-clean dist-clean
+clean-all: clean gotools-clean dist-clean ## Cleans the build area and removes persistent state
 	-@rm -rf /var/hyperledger/*
 	-@rm -rf docs/build/
 
 .PHONY: dist-clean
-dist-clean:
+dist-clean: ## Clean release packages for all target platforms
 	-@for platform in $(RELEASE_PLATFORMS) ""; do \
 		[ -z "$$platform" ] || rm -rf release/$${platform}/hyperledger-fabric-$${platform}.$(PROJECT_VERSION).tar.gz; \
 	done
 
 .PHONY: release-clean
-release-clean: $(RELEASE_PLATFORMS:%=%-release-clean)
+release-clean: $(RELEASE_PLATFORMS:%=%-release-clean) ## Clean release packages for all target platforms
 %-release-clean:
 	-@rm -rf release/$*
 
@@ -344,7 +350,7 @@ release-clean: $(RELEASE_PLATFORMS:%=%-release-clean)
 unit-test-clean:
 
 .PHONY: filename-spaces
-spaces:
+spaces: # Check for spaces in file names
 	@scripts/check_file_name_spaces.sh
 
 .PHONY: docs
@@ -369,8 +375,8 @@ ccaasbuilder/%: ccaasbuilder-clean
 ccaasbuilder: ccaasbuilder/$(MARCH)
 
 .PHONY: scan
-scan: scan-govulncheck
+scan: scan-osv-scanner ## Run all vulnerability scans
 
-.PHONY: scan-govulncheck
-scan-govulncheck: gotool.govulncheck
-	govulncheck ./...
+.PHONY: scan-osv-scanner ## Run OSV-Scanner vulnerability scan
+scan-osv-scanner:
+	go run github.com/google/osv-scanner/v2/cmd/osv-scanner@latest scan --lockfile=go.mod || [ \( $$? -gt 1 \) -a \( $$? -lt 127 \) ]

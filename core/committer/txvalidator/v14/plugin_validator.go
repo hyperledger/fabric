@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	ledger2 "github.com/hyperledger/fabric/common/ledger"
 	vp "github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
@@ -134,14 +134,14 @@ func (pv *PluginValidator) getOrCreatePlugin(ctx *Context) (validation.Plugin, e
 func (pv *PluginValidator) getOrCreatePluginChannelMapping(plugin vp.Name, pf validation.PluginFactory) *pluginsByChannel {
 	pv.Lock()
 	defer pv.Unlock()
-	endorserChannelMapping, exists := pv.pluginChannelMapping[vp.Name(plugin)]
+	endorserChannelMapping, exists := pv.pluginChannelMapping[plugin]
 	if !exists {
 		endorserChannelMapping = &pluginsByChannel{
 			pluginFactory:    pf,
 			channels2Plugins: make(map[string]validation.Plugin),
 			pv:               pv,
 		}
-		pv.pluginChannelMapping[vp.Name(plugin)] = endorserChannelMapping
+		pv.pluginChannelMapping[plugin] = endorserChannelMapping
 	}
 	return endorserChannelMapping
 }

@@ -10,11 +10,11 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"go.uber.org/zap/zapcore"
+	"google.golang.org/protobuf/proto"
 )
 
 type ImplicitMetaPolicy struct {
@@ -26,7 +26,7 @@ type ImplicitMetaPolicy struct {
 	SubPolicyName string
 }
 
-// NewPolicy creates a new policy based on the policy bytes
+// NewImplicitMetaPolicy creates a new policy based on the policy bytes
 func NewImplicitMetaPolicy(data []byte, managers map[string]*ManagerImpl) (*ImplicitMetaPolicy, error) {
 	definition := &cb.ImplicitMetaPolicy{}
 	if err := proto.Unmarshal(data, definition); err != nil {
@@ -83,7 +83,7 @@ func (imp *ImplicitMetaPolicy) EvaluateSignedData(signatureSet []*protoutil.Sign
 					b.WriteString(" ")
 				}
 				b.WriteString("]")
-				logger.Debugf(b.String())
+				logger.Debug(b.String())
 			}
 		}
 	}()
@@ -99,7 +99,7 @@ func (imp *ImplicitMetaPolicy) EvaluateSignedData(signatureSet []*protoutil.Sign
 	if remaining == 0 {
 		return nil
 	}
-	return fmt.Errorf("implicit policy evaluation failed - %d sub-policies were satisfied, but this policy requires %d of the '%s' sub-policies to be satisfied", (imp.Threshold - remaining), imp.Threshold, imp.SubPolicyName)
+	return fmt.Errorf("implicit policy evaluation failed - %d sub-policies were satisfied, but this policy requires %d of the '%s' sub-policies to be satisfied", imp.Threshold-remaining, imp.Threshold, imp.SubPolicyName)
 }
 
 // EvaluateIdentities takes an array of identities and evaluates whether
@@ -126,7 +126,7 @@ func (imp *ImplicitMetaPolicy) EvaluateIdentities(identities []msp.Identity) err
 			b.WriteString(" ")
 		}
 		b.WriteString("]")
-		logger.Debugf(b.String())
+		logger.Debug(b.String())
 	}()
 
 	for _, policy := range imp.SubPolicies {
@@ -140,5 +140,5 @@ func (imp *ImplicitMetaPolicy) EvaluateIdentities(identities []msp.Identity) err
 	if remaining == 0 {
 		return nil
 	}
-	return fmt.Errorf("implicit policy evaluation failed - %d sub-policies were satisfied, but this policy requires %d of the '%s' sub-policies to be satisfied", (imp.Threshold - remaining), imp.Threshold, imp.SubPolicyName)
+	return fmt.Errorf("implicit policy evaluation failed - %d sub-policies were satisfied, but this policy requires %d of the '%s' sub-policies to be satisfied", imp.Threshold-remaining, imp.Threshold, imp.SubPolicyName)
 }

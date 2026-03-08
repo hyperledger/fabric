@@ -102,6 +102,7 @@ func (n NodeUnjoin) Args() []string {
 	}
 }
 
+// deprecated
 type ChannelCreate struct {
 	ChannelID   string
 	Orderer     string
@@ -110,10 +111,12 @@ type ChannelCreate struct {
 	ClientAuth  bool
 }
 
+// deprecated
 func (c ChannelCreate) SessionName() string {
 	return "peer-channel-create"
 }
 
+// deprecated
 func (c ChannelCreate) Args() []string {
 	args := []string{
 		"channel", "create",
@@ -243,38 +246,6 @@ func (c ChaincodePackage) Args() []string {
 	return args
 }
 
-type ChaincodePackageLegacy struct {
-	Name       string
-	Version    string
-	Path       string
-	Lang       string
-	OutputFile string
-	ClientAuth bool
-}
-
-func (c ChaincodePackageLegacy) SessionName() string {
-	return "peer-chaincode-package"
-}
-
-func (c ChaincodePackageLegacy) Args() []string {
-	args := []string{
-		"chaincode", "package",
-		"--name", c.Name,
-		"--version", c.Version,
-		"--path", c.Path,
-		c.OutputFile,
-	}
-
-	if c.ClientAuth {
-		args = append(args, "--clientauth")
-	}
-	if c.Lang != "" {
-		args = append(args, "--lang", c.Lang)
-	}
-
-	return args
-}
-
 type ChaincodeCalculatePackageID struct {
 	PackageFile string
 	ClientAuth  bool
@@ -346,46 +317,6 @@ func (c ChaincodeGetInstalledPackage) Args() []string {
 	return args
 }
 
-type ChaincodeInstallLegacy struct {
-	Name        string
-	Version     string
-	Path        string
-	Lang        string
-	PackageFile string
-	ClientAuth  bool
-}
-
-func (c ChaincodeInstallLegacy) SessionName() string {
-	return "peer-chaincode-install"
-}
-
-func (c ChaincodeInstallLegacy) Args() []string {
-	args := []string{
-		"chaincode", "install",
-	}
-
-	if c.PackageFile != "" {
-		args = append(args, c.PackageFile)
-	}
-	if c.Name != "" {
-		args = append(args, "--name", c.Name)
-	}
-	if c.Version != "" {
-		args = append(args, "--version", c.Version)
-	}
-	if c.Path != "" {
-		args = append(args, "--path", c.Path)
-	}
-	if c.Lang != "" {
-		args = append(args, "--lang", c.Lang)
-	}
-
-	if c.ClientAuth {
-		args = append(args, "--clientauth")
-	}
-	return args
-}
-
 type ChaincodeApproveForMyOrg struct {
 	ChannelID           string
 	Orderer             string
@@ -402,6 +333,7 @@ type ChaincodeApproveForMyOrg struct {
 	PeerAddresses       []string
 	WaitForEvent        bool
 	ClientAuth          bool
+	WaitForEventTimeout time.Duration
 }
 
 func (c ChaincodeApproveForMyOrg) SessionName() string {
@@ -437,6 +369,10 @@ func (c ChaincodeApproveForMyOrg) Args() []string {
 
 	for _, p := range c.PeerAddresses {
 		args = append(args, "--peerAddresses", p)
+	}
+
+	if c.WaitForEventTimeout > 30*time.Second {
+		args = append(args, "--waitForEventTimeout", c.WaitForEventTimeout.String())
 	}
 
 	return args
@@ -482,6 +418,7 @@ type ChaincodeCheckCommitReadiness struct {
 	SignaturePolicy     string
 	ChannelConfigPolicy string
 	InitRequired        bool
+	InspectionEnabled   bool
 	CollectionsConfig   string
 	PeerAddresses       []string
 	ClientAuth          bool
@@ -507,6 +444,10 @@ func (c ChaincodeCheckCommitReadiness) Args() []string {
 
 	if c.InitRequired {
 		args = append(args, "--init-required")
+	}
+
+	if c.InspectionEnabled {
+		args = append(args, "--inspect")
 	}
 
 	if c.CollectionsConfig != "" {
@@ -538,6 +479,7 @@ type ChaincodeCommit struct {
 	PeerAddresses       []string
 	WaitForEvent        bool
 	ClientAuth          bool
+	WaitForEventTimeout time.Duration
 }
 
 func (c ChaincodeCommit) SessionName() string {
@@ -569,45 +511,8 @@ func (c ChaincodeCommit) Args() []string {
 	if c.ClientAuth {
 		args = append(args, "--clientauth")
 	}
-	return args
-}
-
-type ChaincodeInstantiateLegacy struct {
-	ChannelID         string
-	Orderer           string
-	Name              string
-	Version           string
-	Ctor              string
-	Policy            string
-	Lang              string
-	CollectionsConfig string
-	ClientAuth        bool
-}
-
-func (c ChaincodeInstantiateLegacy) SessionName() string {
-	return "peer-chaincode-instantiate"
-}
-
-func (c ChaincodeInstantiateLegacy) Args() []string {
-	args := []string{
-		"chaincode", "instantiate",
-		"--channelID", c.ChannelID,
-		"--orderer", c.Orderer,
-		"--name", c.Name,
-		"--version", c.Version,
-		"--ctor", c.Ctor,
-		"--policy", c.Policy,
-	}
-	if c.CollectionsConfig != "" {
-		args = append(args, "--collections-config", c.CollectionsConfig)
-	}
-
-	if c.Lang != "" {
-		args = append(args, "--lang", c.Lang)
-	}
-
-	if c.ClientAuth {
-		args = append(args, "--clientauth")
+	if c.WaitForEventTimeout > 30*time.Second {
+		args = append(args, "--waitForEventTimeout", c.WaitForEventTimeout.String())
 	}
 	return args
 }
@@ -631,24 +536,6 @@ func (c ChaincodeQueryInstalled) Args() []string {
 	return args
 }
 
-type ChaincodeListInstalledLegacy struct {
-	ClientAuth bool
-}
-
-func (c ChaincodeListInstalledLegacy) SessionName() string {
-	return "peer-chaincode-list-installed"
-}
-
-func (c ChaincodeListInstalledLegacy) Args() []string {
-	args := []string{
-		"chaincode", "list", "--installed",
-	}
-	if c.ClientAuth {
-		args = append(args, "--clientauth")
-	}
-	return args
-}
-
 type ChaincodeListCommitted struct {
 	ChannelID  string
 	Name       string
@@ -665,26 +552,6 @@ func (c ChaincodeListCommitted) Args() []string {
 		"--channelID", c.ChannelID,
 		"--name", c.Name,
 		"--output", "json",
-	}
-	if c.ClientAuth {
-		args = append(args, "--clientauth")
-	}
-	return args
-}
-
-type ChaincodeListInstantiatedLegacy struct {
-	ChannelID  string
-	ClientAuth bool
-}
-
-func (c ChaincodeListInstantiatedLegacy) SessionName() string {
-	return "peer-chaincode-list-instantiated"
-}
-
-func (c ChaincodeListInstantiatedLegacy) Args() []string {
-	args := []string{
-		"chaincode", "list", "--instantiated",
-		"--channelID", c.ChannelID,
 	}
 	if c.ClientAuth {
 		args = append(args, "--clientauth")
@@ -759,44 +626,6 @@ func (c ChaincodeInvoke) Args() []string {
 	return args
 }
 
-type ChaincodeUpgradeLegacy struct {
-	Name              string
-	Version           string
-	Path              string // optional
-	ChannelID         string
-	Orderer           string
-	Ctor              string
-	Policy            string
-	CollectionsConfig string // optional
-	ClientAuth        bool
-}
-
-func (c ChaincodeUpgradeLegacy) SessionName() string {
-	return "peer-chaincode-upgrade"
-}
-
-func (c ChaincodeUpgradeLegacy) Args() []string {
-	args := []string{
-		"chaincode", "upgrade",
-		"--name", c.Name,
-		"--version", c.Version,
-		"--channelID", c.ChannelID,
-		"--orderer", c.Orderer,
-		"--ctor", c.Ctor,
-		"--policy", c.Policy,
-	}
-	if c.Path != "" {
-		args = append(args, "--path", c.Path)
-	}
-	if c.CollectionsConfig != "" {
-		args = append(args, "--collections-config", c.CollectionsConfig)
-	}
-	if c.ClientAuth {
-		args = append(args, "--clientauth")
-	}
-	return args
-}
-
 type SignConfigTx struct {
 	File       string
 	ClientAuth bool
@@ -812,32 +641,6 @@ func (s SignConfigTx) Args() []string {
 		"--file", s.File,
 	}
 	if s.ClientAuth {
-		args = append(args, "--clientauth")
-	}
-	return args
-}
-
-type ChannelUpdate struct {
-	ChannelID             string
-	Orderer               string
-	File                  string
-	ClientAuth            bool
-	TLSHandshakeTimeShift time.Duration
-}
-
-func (c ChannelUpdate) SessionName() string {
-	return "peer-channel-update"
-}
-
-func (c ChannelUpdate) Args() []string {
-	args := []string{
-		"channel", "update",
-		"--channelID", c.ChannelID,
-		"--orderer", c.Orderer,
-		"--file", c.File,
-		"--tlsHandshakeTimeShift", c.TLSHandshakeTimeShift.String(),
-	}
-	if c.ClientAuth {
 		args = append(args, "--clientauth")
 	}
 	return args

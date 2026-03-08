@@ -11,10 +11,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 var testHashFunc = func(data []byte) ([]byte, error) {
@@ -199,7 +199,7 @@ func buildTestResults(t *testing.T, enableHashing bool, maxDegree int, kvReads [
 
 func buildTestKVReads(t *testing.T, num int) []*kvrwset.KVRead {
 	kvreads := []*kvrwset.KVRead{}
-	for i := 0; i < num; i++ {
+	for i := range num {
 		kvreads = append(kvreads, NewKVRead(fmt.Sprintf("key_%d", i), version.NewHeight(1, uint64(i))))
 	}
 	return kvreads

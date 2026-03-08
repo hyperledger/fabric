@@ -8,22 +8,21 @@ package pvtdatastorage
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestMain(m *testing.M) {
@@ -192,8 +191,7 @@ func TestStoreIteratorError(t *testing.T) {
 	})
 
 	t.Run("processCollElgEvents", func(t *testing.T) {
-		storeDir, err := ioutil.TempDir("", "pdstore")
-		require.NoError(t, err)
+		storeDir := t.TempDir()
 		s := &Store{}
 		dbProvider, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: storeDir})
 		require.NoError(t, err)
@@ -259,7 +257,7 @@ func TestGetMissingDataInfo(t *testing.T) {
 			},
 		}
 
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			assertMissingDataInfo(t, store, expectedDeprioMissingDataInfo, 2)
 		}
 	})
@@ -291,7 +289,7 @@ func TestGetMissingDataInfo(t *testing.T) {
 			},
 		}
 
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			assertMissingDataInfo(t, store, expectedPrioMissingDataInfo, 2)
 		}
 
@@ -302,7 +300,7 @@ func TestGetMissingDataInfo(t *testing.T) {
 
 		require.True(t, store.accessDeprioMissingDataAfter.After(lesserThanNextAccessTime))
 		require.False(t, store.accessDeprioMissingDataAfter.After(greaterThanNextAccessTime))
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			assertMissingDataInfo(t, store, expectedPrioMissingDataInfo, 2)
 		}
 	})
@@ -386,7 +384,10 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 		produceSamplePvtdata(t, 4, []string{"ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 	}
 	retrievedData, _ = store.GetPvtDataByBlockNum(1, nil)
-	require.Equal(t, expectedPvtdataFromBlock1, retrievedData)
+	require.Equal(t, expectedPvtdataFromBlock1[0].SeqInBlock, retrievedData[0].SeqInBlock)
+	require.Equal(t, expectedPvtdataFromBlock1[1].SeqInBlock, retrievedData[1].SeqInBlock)
+	require.True(t, proto.Equal(expectedPvtdataFromBlock1[0].WriteSet, retrievedData[0].WriteSet))
+	require.True(t, proto.Equal(expectedPvtdataFromBlock1[1].WriteSet, retrievedData[1].WriteSet))
 
 	// After committing block 3, the missing data of "ns1-coll1" in block1-tx1 should have expired
 	expectedMissingPvtDataInfo = make(ledger.MissingPvtDataInfo)
@@ -409,7 +410,10 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 		produceSamplePvtdata(t, 4, []string{"ns-1:coll-2", "ns-2:coll-1"}),
 	}
 	retrievedData, _ = store.GetPvtDataByBlockNum(1, nil)
-	require.Equal(t, expectedPvtdataFromBlock1, retrievedData)
+	require.Equal(t, expectedPvtdataFromBlock1[0].SeqInBlock, retrievedData[0].SeqInBlock)
+	require.Equal(t, expectedPvtdataFromBlock1[1].SeqInBlock, retrievedData[1].SeqInBlock)
+	require.True(t, proto.Equal(expectedPvtdataFromBlock1[0].WriteSet, retrievedData[0].WriteSet))
+	require.True(t, proto.Equal(expectedPvtdataFromBlock1[1].WriteSet, retrievedData[1].WriteSet))
 
 	// Now, for block 2, "ns-1:coll1" should also have expired
 	expectedPvtdataFromBlock2 := []*ledger.TxPvtData{
@@ -417,7 +421,10 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 		produceSamplePvtdata(t, 5, []string{"ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 	}
 	retrievedData, _ = store.GetPvtDataByBlockNum(2, nil)
-	require.Equal(t, expectedPvtdataFromBlock2, retrievedData)
+	require.Equal(t, expectedPvtdataFromBlock2[0].SeqInBlock, retrievedData[0].SeqInBlock)
+	require.Equal(t, expectedPvtdataFromBlock2[1].SeqInBlock, retrievedData[1].SeqInBlock)
+	require.True(t, proto.Equal(expectedPvtdataFromBlock2[0].WriteSet, retrievedData[0].WriteSet))
+	require.True(t, proto.Equal(expectedPvtdataFromBlock2[1].WriteSet, retrievedData[1].WriteSet))
 
 	// After committing block 4, the missing data of "ns1-coll1" in block2-tx1 should have expired
 	expectedMissingPvtDataInfo = make(ledger.MissingPvtDataInfo)
@@ -1296,19 +1303,20 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 	// this should cause purging key-1 from data
 	require.True(t, testDataKeyExists(t, s, dataKeyColl1))
 	require.Equal(t,
-		&rwsetutil.CollPvtRwSet{
-			CollectionName: "coll-1",
-			KvRwSet: &kvrwset.KVRWSet{
-				Writes: []*kvrwset.KVWrite{
-					{
-						Key:   "key-2",
-						Value: []byte("value-2"),
-					},
+		"coll-1",
+		testRetrieveDataValue(t, s, dataKeyColl1).CollectionName,
+	)
+	require.True(t,
+		proto.Equal(&kvrwset.KVRWSet{
+			Writes: []*kvrwset.KVWrite{
+				{
+					Key:   "key-2",
+					Value: []byte("value-2"),
 				},
 			},
 		},
-		testRetrieveDataValue(t, s, dataKeyColl1),
-	)
+			testRetrieveDataValue(t, s, dataKeyColl1).KvRwSet,
+		))
 	require.True(t, testDataKeyExists(t, s, dataKeyColl2))
 	require.False(t, testHashedIndexExists(t, s, hashedIndexKey1))
 	require.False(t, testHashedIndexExists(t, s, hashedIndexDeleteKey1))
@@ -1401,12 +1409,13 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 
 	// this should cause purging key-2 (e.g., all keys) from data
 	require.True(t, testDataKeyExists(t, s, dataKeyColl1))
+	tmp := testRetrieveDataValue(t, s, dataKeyColl1)
 	require.Equal(t,
-		&rwsetutil.CollPvtRwSet{
-			CollectionName: "coll-1",
-			KvRwSet:        &kvrwset.KVRWSet{},
-		},
-		testRetrieveDataValue(t, s, dataKeyColl1),
+		"coll-1",
+		tmp.CollectionName,
+	)
+	require.True(t,
+		proto.Equal(&kvrwset.KVRWSet{}, tmp.KvRwSet),
 	)
 	require.True(t, testDataKeyExists(t, s, dataKeyColl2))
 	require.False(t, testHashedIndexExists(t, s, hashedIndexKey1))
@@ -1542,7 +1551,7 @@ func TestRemoveAppInitiatedPurgesUsingReconMarker(t *testing.T) {
 	s := env.TestStore
 
 	// commit 5 blocks
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		require.NoError(t, s.Commit(uint64(i), nil, nil, nil))
 	}
 
@@ -1762,7 +1771,7 @@ func produceSamplePvtdata(t *testing.T, txNum uint64, nsColls []string) *ledger.
 		nsCollSplit := strings.Split(nsColl, ":")
 		ns := nsCollSplit[0]
 		coll := nsCollSplit[1]
-		builder.AddToPvtAndHashedWriteSet(ns, coll, fmt.Sprintf("key-%s-%s", ns, coll), []byte(fmt.Sprintf("value-%s-%s", ns, coll)))
+		builder.AddToPvtAndHashedWriteSet(ns, coll, fmt.Sprintf("key-%s-%s", ns, coll), fmt.Appendf(nil, "value-%s-%s", ns, coll))
 	}
 	simRes, err := builder.GetTxSimulationResults()
 	require.NoError(t, err)

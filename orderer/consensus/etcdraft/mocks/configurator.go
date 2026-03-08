@@ -30,9 +30,10 @@ func (fake *FakeConfigurator) Configure(arg1 string, arg2 []cluster.RemoteNode) 
 		arg1 string
 		arg2 []cluster.RemoteNode
 	}{arg1, arg2Copy})
+	stub := fake.ConfigureStub
 	fake.recordInvocation("Configure", []interface{}{arg1, arg2Copy})
 	fake.configureMutex.Unlock()
-	if fake.ConfigureStub != nil {
+	if stub != nil {
 		fake.ConfigureStub(arg1, arg2)
 	}
 }

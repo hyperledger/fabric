@@ -7,6 +7,7 @@ package csp_test
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
@@ -14,7 +15,6 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -24,13 +24,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	ECDSA   = "ecdsa"
+	ED25519 = "ed25519"
+)
+
 func TestLoadPrivateKey(t *testing.T) {
-	testDir, err := ioutil.TempDir("", "csp-test")
-	if err != nil {
-		t.Fatalf("Failed to create test directory: %s", err)
-	}
-	defer os.RemoveAll(testDir)
-	priv, err := csp.GeneratePrivateKey(testDir)
+	testDir := t.TempDir()
+	priv, err := csp.GeneratePrivateKey(testDir, ED25519)
 	if err != nil {
 		t.Fatalf("Failed to generate private key: %s", err)
 	}
@@ -44,11 +45,7 @@ func TestLoadPrivateKey(t *testing.T) {
 }
 
 func TestLoadPrivateKey_BadPEM(t *testing.T) {
-	testDir, err := ioutil.TempDir("", "csp-test")
-	if err != nil {
-		t.Fatalf("Failed to create test directory: %s", err)
-	}
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	badPEMFile := filepath.Join(testDir, "badpem_sk")
 
@@ -82,7 +79,7 @@ func TestLoadPrivateKey_BadPEM(t *testing.T) {
 		{
 			name:   "not EC key",
 			data:   pkcs8RSAPem,
-			errMsg: fmt.Sprintf("%s: pem bytes do not contain an EC private key", badPEMFile),
+			errMsg: fmt.Sprintf("%s: pem bytes do not contain an ECDSA nor ed25519 private key", badPEMFile),
 		},
 		{
 			name:   "not PKCS8 encoded",
@@ -91,7 +88,7 @@ func TestLoadPrivateKey_BadPEM(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			err := ioutil.WriteFile(
+			err := os.WriteFile(
 				badPEMFile,
 				test.data,
 				0o755,
@@ -107,20 +104,16 @@ func TestLoadPrivateKey_BadPEM(t *testing.T) {
 }
 
 func TestGeneratePrivateKey(t *testing.T) {
-	testDir, err := ioutil.TempDir("", "csp-test")
-	if err != nil {
-		t.Fatalf("Failed to create test directory: %s", err)
-	}
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	expectedFile := filepath.Join(testDir, "priv_sk")
-	priv, err := csp.GeneratePrivateKey(testDir)
+	priv, err := csp.GeneratePrivateKey(testDir, ECDSA)
 	require.NoError(t, err, "Failed to generate private key")
 	require.NotNil(t, priv, "Should have returned an *ecdsa.Key")
 	require.Equal(t, true, checkForFile(expectedFile),
 		"Expected to find private key file")
 
-	_, err = csp.GeneratePrivateKey("notExist")
+	_, err = csp.GeneratePrivateKey("notExist", ECDSA)
 	require.Contains(t, err.Error(), "no such file or directory")
 }
 
@@ -155,6 +148,27 @@ func TestECDSASigner(t *testing.T) {
 
 	// ensure signature is valid by using standard verify function
 	ok := ecdsa.Verify(&priv.PublicKey, digest, ecdsaSig.R, ecdsaSig.S)
+	require.True(t, ok, "Expected valid signature")
+}
+
+func TestED25519Signer(t *testing.T) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("Failed to generate private key: %s", err)
+	}
+
+	signer := csp.ED25519Signer{
+		PrivateKey: priv,
+	}
+	require.Equal(t, priv.Public(), signer.Public().(ed25519.PublicKey))
+	msg := []byte{1}
+	sig, err := signer.Sign(rand.Reader, msg, nil)
+	if err != nil {
+		t.Fatalf("Failed to create signature: %s", err)
+	}
+
+	// ensure signature is valid by using standard verify function
+	ok := ed25519.Verify(pub, msg, sig)
 	require.True(t, ok, "Expected valid signature")
 }
 

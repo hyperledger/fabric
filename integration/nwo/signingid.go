@@ -8,16 +8,17 @@ package nwo
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"os"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/bccsp/utils"
+	"github.com/hyperledger/fabric-lib-go/bccsp/utils"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"google.golang.org/protobuf/proto"
 )
 
 // A SigningIdentity represents an MSP signing identity.
@@ -29,7 +30,7 @@ type SigningIdentity struct {
 
 // Serialize returns the probobuf encoding of an msp.SerializedIdenity.
 func (s *SigningIdentity) Serialize() ([]byte, error) {
-	cert, err := ioutil.ReadFile(s.CertPath)
+	cert, err := os.ReadFile(s.CertPath)
 	if err != nil {
 		return nil, err
 	}
@@ -39,11 +40,12 @@ func (s *SigningIdentity) Serialize() ([]byte, error) {
 	})
 }
 
-// Sign computes a SHA256 message digest, signs it with the associated private
-// key, and returns the signature after low-S normlization.
+// Sign computes a SHA256 message digest if key is ECDSA,
+// signs it with the associated private key, and returns the
+// signature. Low-S normlization is applied for ECDSA signatures.
 func (s *SigningIdentity) Sign(msg []byte) ([]byte, error) {
 	digest := sha256.Sum256(msg)
-	pemKey, err := ioutil.ReadFile(s.KeyPath)
+	pemKey, err := os.ReadFile(s.KeyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -55,17 +57,20 @@ func (s *SigningIdentity) Sign(msg []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	eckey, ok := key.(*ecdsa.PrivateKey)
-	if !ok {
+	switch k := key.(type) {
+	case *ecdsa.PrivateKey:
+		r, _s, err := ecdsa.Sign(rand.Reader, k, digest[:])
+		if err != nil {
+			return nil, err
+		}
+		sig, err := utils.MarshalECDSASignature(r, _s)
+		if err != nil {
+			return nil, err
+		}
+		return utils.SignatureToLowS(&k.PublicKey, sig)
+	case ed25519.PrivateKey:
+		return ed25519.Sign(k, msg), nil
+	default:
 		return nil, fmt.Errorf("unexpected key type: %T", key)
 	}
-	r, _s, err := ecdsa.Sign(rand.Reader, eckey, digest[:])
-	if err != nil {
-		return nil, err
-	}
-	sig, err := utils.MarshalECDSASignature(r, _s)
-	if err != nil {
-		return nil, err
-	}
-	return utils.SignatureToLowS(&eckey.PublicKey, sig)
 }

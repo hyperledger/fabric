@@ -10,13 +10,13 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"net"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/flogging/floggingtest"
+	"github.com/hyperledger/fabric-lib-go/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +24,7 @@ import (
 func TestCreds(t *testing.T) {
 	t.Parallel()
 
-	caPEM, err := ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-cert.pem"))
+	caPEM, err := os.ReadFile(filepath.Join("testdata", "certs", "Org1-cert.pem"))
 	if err != nil {
 		t.Fatalf("failed to read root certificate: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestConfig(t *testing.T) {
 func TestAddRootCA(t *testing.T) {
 	t.Parallel()
 
-	caPEM, err := ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-cert.pem"))
+	caPEM, err := os.ReadFile(filepath.Join("testdata", "certs", "Org1-cert.pem"))
 	require.NoError(t, err, "failed to read root certificate")
 
 	expectedCertPool := x509.NewCertPool()
@@ -143,7 +143,7 @@ func TestAddRootCA(t *testing.T) {
 
 	// https://go-review.googlesource.com/c/go/+/229917
 	config.AddClientRootCA(cert)
-	require.Equal(t, certPool.Subjects(), expectedCertPool.Subjects(), "subjects in the pool should be equal")
+	require.True(t, certPool.Equal(expectedCertPool), "subjects in the pool should be equal")
 }
 
 func TestSetClientCAs(t *testing.T) {

@@ -8,14 +8,14 @@ fabric_dir="$(cd "$(dirname "$0")/.." && pwd)"
 metrics_doc="${fabric_dir}/docs/source/metrics_reference.rst"
 
 generate_doc() {
-    local gendoc_command="go run github.com/hyperledger/fabric/common/metrics/cmd/gendoc"
+    local gendoc_command="gendoc" # built using "make gotools"
     local orderer_prom
     local orderer_statsd
     local peer_prom
     local peer_statsd
 
     local orderer_deps=()
-    while IFS= read -r pkg; do orderer_deps+=("$pkg"); done < <(go list -deps github.com/hyperledger/fabric/cmd/orderer | sort -u | grep hyperledger)
+    while IFS= read -r pkg; do orderer_deps+=("$pkg"); done < <(go list -deps github.com/hyperledger/fabric/cmd/orderer | sort -u | grep -E "(hyperledger|hyperledger-labs/SmartBFT)")
     orderer_prom="$($gendoc_command -template <(echo '{{PrometheusTable}}') "${orderer_deps[@]}")"
     orderer_statsd="$($gendoc_command -template <(echo '{{StatsdTable}}') "${orderer_deps[@]}")"
 

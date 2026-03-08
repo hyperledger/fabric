@@ -26,15 +26,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/bccsp/utils"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/utils"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 var notACert = `-----BEGIN X509 CRL-----
@@ -286,10 +286,14 @@ func TestSerializeIdentities(t *testing.T) {
 	}
 }
 
-func computeSKI(key *ecdsa.PublicKey) []byte {
-	raw := elliptic.Marshal(key.Curve, key.X, key.Y)
-	hash := sha256.Sum256(raw)
-	return hash[:]
+func computeSKI(key *ecdsa.PublicKey) ([]byte, error) {
+	ecdhPk, err := key.ECDH()
+	if err != nil {
+		return nil, fmt.Errorf("public key transition failed: %w", err)
+	}
+
+	hash := sha256.Sum256(ecdhPk.Bytes())
+	return hash[:], nil
 }
 
 func TestValidHostname(t *testing.T) {
@@ -331,6 +335,8 @@ func TestValidateCANameConstraintsMitigation(t *testing.T) {
 	require.NoError(t, err)
 	leafKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
+	caSki, err := computeSKI(caKey.Public().(*ecdsa.PublicKey))
+	require.NoError(t, err)
 
 	caKeyUsage := x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign | x509.KeyUsageCRLSign
 	caTemplate := x509.Certificate{
@@ -343,11 +349,13 @@ func TestValidateCANameConstraintsMitigation(t *testing.T) {
 		IsCA:                        true,
 		BasicConstraintsValid:       true,
 		KeyUsage:                    caKeyUsage,
-		SubjectKeyId:                computeSKI(caKey.Public().(*ecdsa.PublicKey)),
+		SubjectKeyId:                caSki,
 	}
 	caCertBytes, err := x509.CreateCertificate(rand.Reader, &caTemplate, &caTemplate, caKey.Public(), caKey)
 	require.NoError(t, err)
 	ca, err := x509.ParseCertificate(caCertBytes)
+	require.NoError(t, err)
+	leafSki, err := computeSKI(leafKey.Public().(*ecdsa.PublicKey))
 	require.NoError(t, err)
 
 	leafTemplate := x509.Certificate{
@@ -356,7 +364,7 @@ func TestValidateCANameConstraintsMitigation(t *testing.T) {
 		NotBefore:    time.Now().Add(-1 * time.Hour),
 		NotAfter:     time.Now().Add(2 * time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature,
-		SubjectKeyId: computeSKI(leafKey.Public().(*ecdsa.PublicKey)),
+		SubjectKeyId: leafSki,
 	}
 	leafCertBytes, err := x509.CreateCertificate(rand.Reader, &leafTemplate, ca, leafKey.Public(), caKey)
 	require.NoError(t, err)

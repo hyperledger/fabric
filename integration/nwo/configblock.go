@@ -7,56 +7,54 @@ SPDX-License-Identifier: Apache-2.0
 package nwo
 
 import (
-	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	protosorderer "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/internal/configtxlator/update"
 	"github.com/hyperledger/fabric/protoutil"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
+	"google.golang.org/protobuf/proto"
 )
 
 // GetConfigBlock retrieves the current config block for a channel.
 func GetConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string) *common.Block {
-	tempDir, err := ioutil.TempDir(n.RootDir, "getConfigBlock")
+	tempDir, err := os.MkdirTemp(n.RootDir, "getConfigBlock")
 	Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
 	// fetch the config block
-	output := filepath.Join(tempDir, "config_block.pb")
-	FetchConfigBlock(n, peer, orderer, channel, output)
+	configBlock := FetchConfigBlock(n, orderer, channel)
 
-	// unmarshal the config block bytes
-	configBlock := UnmarshalBlockFromFile(output)
 	return configBlock
 }
 
 // FetchConfigBlock fetches latest config block.
-func FetchConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string, output string) {
+func FetchConfigBlock(n *Network, orderer *Orderer, channel string) *common.Block {
+	var (
+		err error
+		b   *common.Block
+	)
 	fetch := func() int {
-		sess, err := n.OrdererAdminSession(orderer, peer, commands.ChannelFetch{
-			ChannelID:  channel,
-			Block:      "config",
-			Orderer:    n.OrdererAddress(orderer, ListenPort),
-			OutputFile: output,
-			ClientAuth: n.ClientAuthRequired,
-		})
-		Expect(err).NotTo(HaveOccurred())
-		code := sess.Wait(n.EventuallyTimeout).ExitCode()
-		if code == 0 {
-			Expect(sess.Err).To(gbytes.Say("Received block: "))
+		b, err = Fetch(n, orderer, channel, "config")
+		if err != nil || b == nil {
+			return 1
 		}
-		return code
+
+		return 0
 	}
 	Eventually(fetch, n.EventuallyTimeout).Should(Equal(0))
+
+	return b
 }
 
 // GetConfig retrieves the last config of the given channel.
@@ -81,8 +79,8 @@ func GetConfig(n *Network, peer *Peer, orderer *Orderer, channel string) *common
 
 // UpdateConfig computes, signs, and submits a configuration update and waits
 // for the update to complete.
-func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated *common.Config, getConfigBlockFromOrderer bool, submitter *Peer, additionalSigners ...*Peer) {
-	tempDir, err := ioutil.TempDir("", "updateConfig")
+func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated *common.Config, getConfigBlockFromOrderer bool, submitter *Peer, ordererSigners []*Orderer, additionalSigners ...*Peer) {
+	tempDir, err := os.MkdirTemp("", "updateConfig")
 	Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
@@ -103,7 +101,7 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 	Expect(signedEnvelope).NotTo(BeNil())
 
 	updateFile := filepath.Join(tempDir, "update.pb")
-	err = ioutil.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0o600)
+	err = os.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0o600)
 	Expect(err).NotTo(HaveOccurred())
 
 	for _, signer := range additionalSigners {
@@ -115,6 +113,22 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	}
 
+	for _, signer := range ordererSigners {
+		sess, err := n.OrdererAdminSession(signer, submitter, commands.SignConfigTx{
+			File:       updateFile,
+			ClientAuth: n.ClientAuthRequired,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	}
+
+	sess, err := n.PeerAdminSession(submitter, commands.SignConfigTx{
+		File:       updateFile,
+		ClientAuth: n.ClientAuthRequired,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+
 	var currentBlockNumber uint64
 	// get current configuration block number
 	if getConfigBlockFromOrderer {
@@ -123,15 +137,20 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 		currentBlockNumber = CurrentConfigBlockNumber(n, submitter, nil, channel)
 	}
 
-	sess, err := n.PeerAdminSession(submitter, commands.ChannelUpdate{
-		ChannelID:  channel,
-		Orderer:    n.OrdererAddress(orderer, ListenPort),
-		File:       updateFile,
-		ClientAuth: n.ClientAuthRequired,
-	})
+	updateEnvelopeBytes, err := os.ReadFile(updateFile)
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess.Err).To(gbytes.Say("Successfully submitted channel update"))
+
+	updateEnvelope := &common.Envelope{}
+	err = proto.Unmarshal(updateEnvelopeBytes, updateEnvelope)
+	Expect(err).NotTo(HaveOccurred())
+
+	ready := make(chan struct{})
+	go func() {
+		defer GinkgoRecover()
+		Update(n, orderer, channel, updateEnvelope)
+		close(ready)
+	}()
+	Eventually(ready, n.EventuallyTimeout).Should(BeClosed())
 
 	if getConfigBlockFromOrderer {
 		ccb := func() uint64 { return CurrentConfigBlockNumber(n, submitter, orderer, channel) }
@@ -151,20 +170,17 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 // has completed. If an orderer is not provided, the current config block will
 // be fetched from the peer.
 func CurrentConfigBlockNumber(n *Network, peer *Peer, orderer *Orderer, channel string) uint64 {
-	tempDir, err := ioutil.TempDir(n.RootDir, "currentConfigBlock")
+	tempDir, err := os.MkdirTemp(n.RootDir, "currentConfigBlock")
 	Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
 	// fetch the config block
-	output := filepath.Join(tempDir, "config_block.pb")
 	if orderer == nil {
+		output := filepath.Join(tempDir, "config_block.pb")
 		return CurrentConfigBlockNumberFromPeer(n, peer, channel, output)
 	}
 
-	FetchConfigBlock(n, peer, orderer, channel, output)
-
-	// unmarshal the config block bytes
-	configBlock := UnmarshalBlockFromFile(output)
+	configBlock := FetchConfigBlock(n, orderer, channel)
 
 	return configBlock.Header.Number
 }
@@ -190,7 +206,7 @@ func CurrentConfigBlockNumberFromPeer(n *Network, peer *Peer, channel, output st
 // UpdateOrdererConfig computes, signs, and submits a configuration update
 // which requires orderers signature and waits for the update to complete.
 func UpdateOrdererConfig(n *Network, orderer *Orderer, channel string, current, updated *common.Config, submitter *Peer, additionalSigners ...*Orderer) {
-	tempDir, err := ioutil.TempDir(n.RootDir, "updateConfig")
+	tempDir, err := os.MkdirTemp(n.RootDir, "updateConfig")
 	Expect(err).NotTo(HaveOccurred())
 	updateFile := filepath.Join(tempDir, "update.pb")
 	defer os.RemoveAll(tempDir)
@@ -198,47 +214,57 @@ func UpdateOrdererConfig(n *Network, orderer *Orderer, channel string, current, 
 	currentBlockNumber := CurrentConfigBlockNumber(n, submitter, orderer, channel)
 	ComputeUpdateOrdererConfig(updateFile, n, channel, current, updated, submitter, additionalSigners...)
 
-	Eventually(func() bool {
-		sess, err := n.OrdererAdminSession(orderer, submitter, commands.ChannelUpdate{
-			ChannelID:  channel,
-			Orderer:    n.OrdererAddress(orderer, ListenPort),
-			File:       updateFile,
-			ClientAuth: n.ClientAuthRequired,
-		})
-		Expect(err).NotTo(HaveOccurred())
+	updateEnvelopeBytes, err := os.ReadFile(updateFile)
+	Expect(err).NotTo(HaveOccurred())
 
-		sess.Wait(n.EventuallyTimeout)
-		if sess.ExitCode() != 0 {
-			return false
-		}
+	updateEnvelope := &common.Envelope{}
+	err = proto.Unmarshal(updateEnvelopeBytes, updateEnvelope)
+	Expect(err).NotTo(HaveOccurred())
 
-		return strings.Contains(string(sess.Err.Contents()), "Successfully submitted channel update")
-	}, n.EventuallyTimeout).Should(BeTrue())
+	ready := make(chan struct{})
+	go func() {
+		defer GinkgoRecover()
+		Update(n, orderer, channel, updateEnvelope)
+		close(ready)
+	}()
+	Eventually(ready, n.EventuallyTimeout).Should(BeClosed())
 
 	// wait for the block to be committed
 	ccb := func() uint64 { return CurrentConfigBlockNumber(n, submitter, orderer, channel) }
 	Eventually(ccb, n.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))
 }
 
-// UpdateOrdererConfigSession computes, signs, and submits a configuration
+// UpdateOrdererConfigFails computes, signs, and submits a configuration
 // update which requires orderer signatures. The caller should wait on the
 // returned seession retrieve the exit code.
-func UpdateOrdererConfigSession(n *Network, orderer *Orderer, channel string, current, updated *common.Config, submitter *Peer, additionalSigners ...*Orderer) *gexec.Session {
-	tempDir, err := ioutil.TempDir(n.RootDir, "updateConfig")
+func UpdateOrdererConfigFails(n *Network, orderer *Orderer, channel string, current, updated *common.Config, errStr string, submitter *Peer, additionalSigners ...*Orderer) {
+	tempDir, err := os.MkdirTemp(n.RootDir, "updateConfig")
 	Expect(err).NotTo(HaveOccurred())
 	updateFile := filepath.Join(tempDir, "update.pb")
 
 	ComputeUpdateOrdererConfig(updateFile, n, channel, current, updated, submitter, additionalSigners...)
 
-	// session should not return with a zero exit code nor with a success response
-	sess, err := n.OrdererAdminSession(orderer, submitter, commands.ChannelUpdate{
-		ChannelID:  channel,
-		Orderer:    n.OrdererAddress(orderer, ListenPort),
+	sess, err := n.OrdererAdminSession(orderer, submitter, commands.SignConfigTx{
 		File:       updateFile,
 		ClientAuth: n.ClientAuthRequired,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	return sess
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+
+	updateEnvelopeBytes, err := os.ReadFile(updateFile)
+	Expect(err).NotTo(HaveOccurred())
+
+	updateEnvelope := &common.Envelope{}
+	err = proto.Unmarshal(updateEnvelopeBytes, updateEnvelope)
+	Expect(err).NotTo(HaveOccurred())
+
+	ready := make(chan struct{})
+	go func() {
+		defer GinkgoRecover()
+		UpdateWithStatus(n, orderer, channel, updateEnvelope, http.StatusBadRequest, errStr)
+		close(ready)
+	}()
+	Eventually(ready, n.EventuallyTimeout).Should(BeClosed())
 }
 
 func ComputeUpdateOrdererConfig(updateFile string, n *Network, channel string, current, updated *common.Config, submitter *Peer, additionalSigners ...*Orderer) {
@@ -258,7 +284,7 @@ func ComputeUpdateOrdererConfig(updateFile string, n *Network, channel string, c
 	Expect(err).NotTo(HaveOccurred())
 	Expect(signedEnvelope).NotTo(BeNil())
 
-	err = ioutil.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0o600)
+	err = os.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0o600)
 	Expect(err).NotTo(HaveOccurred())
 
 	for _, signer := range additionalSigners {
@@ -270,7 +296,7 @@ func ComputeUpdateOrdererConfig(updateFile string, n *Network, channel string, c
 
 // UnmarshalBlockFromFile unmarshals a proto encoded block from a file.
 func UnmarshalBlockFromFile(blockFile string) *common.Block {
-	blockBytes, err := ioutil.ReadFile(blockFile)
+	blockBytes, err := os.ReadFile(blockFile)
 	Expect(err).NotTo(HaveOccurred())
 
 	block, err := protoutil.UnmarshalBlock(blockBytes)
@@ -283,7 +309,7 @@ func UnmarshalBlockFromFile(blockFile string) *common.Block {
 type ConsensusMetadataMutator func([]byte) []byte
 
 // MSPMutator receives FabricMSPConfig and mutates it.
-type MSPMutator func(config msp.FabricMSPConfig) msp.FabricMSPConfig
+type MSPMutator func(config *msp.FabricMSPConfig) *msp.FabricMSPConfig
 
 // UpdateConsensusMetadata executes a config update that updates the consensus
 // metadata according to the given ConsensusMetadataMutator.
@@ -321,11 +347,54 @@ func UpdateOrdererMSP(network *Network, peer *Peer, orderer *Orderer, channel, o
 	Expect(err).NotTo(HaveOccurred())
 
 	// Mutate it as we are asked
-	*fabricConfig = mutateMSP(*fabricConfig)
+	fabricConfig = mutateMSP(fabricConfig)
 
 	// Wrap it back into the config
 	mspConfig.Config = protoutil.MarshalOrPanic(fabricConfig)
 	rawMSPConfig.Value = protoutil.MarshalOrPanic(mspConfig)
+
+	UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
+}
+
+func UpdateConsenters(network *Network, peer *Peer, orderer *Orderer, channel string, f func(orderers *common.Orderers)) {
+	config := GetConfig(network, peer, orderer, channel)
+
+	updatedConfig := proto.Clone(config).(*common.Config)
+
+	rawOrderers := updatedConfig.ChannelGroup.Groups["Orderer"].Values["Orderers"]
+
+	orderersVal := &common.Orderers{}
+	err := proto.Unmarshal(rawOrderers.Value, orderersVal)
+	Expect(err).NotTo(HaveOccurred())
+
+	f(orderersVal)
+
+	policies.EncodeBFTBlockVerificationPolicy(orderersVal.ConsenterMapping, updatedConfig.ChannelGroup.Groups["Orderer"])
+
+	rawOrderers.Value, err = proto.Marshal(orderersVal)
+	Expect(err).NotTo(HaveOccurred())
+
+	updatedConfig.ChannelGroup.Groups["Orderer"].Values["Orderers"].Value = protoutil.MarshalOrPanic(orderersVal)
+
+	UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
+}
+
+// UpdateOrdererEndpoints executes a config update that updates the orderer metadata according to the given endpoints
+func UpdateOrdererEndpoints(network *Network, peer *Peer, orderer *Orderer, channel string, endpoints ...string) {
+	config := GetConfig(network, peer, orderer, channel)
+	updatedConfig := proto.Clone(config).(*common.Config)
+
+	ordererGrp := updatedConfig.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups
+	// Get the first orderer org config
+	var firstOrdererConfig *common.ConfigGroup
+	for _, grp := range ordererGrp {
+		firstOrdererConfig = grp
+		break
+	}
+
+	firstOrdererConfig.Values["Endpoints"].Value = protoutil.MarshalOrPanic(&common.OrdererAddresses{
+		Addresses: endpoints,
+	})
 
 	UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
 }

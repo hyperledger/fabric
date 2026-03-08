@@ -8,13 +8,13 @@ Peer nodes are a fundamental element of a Fabric network because they host ledge
 
 ## Generate peer identities and Membership Service Providers (MSPs)
 
-Before proceeding with this topic, you should have reviewed the process for a [Deploying a Certificate Authority (CA)](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/ca-deploy-topology.html) for your organization in order to generate the identities and MSPs for the admins and peers in your organization. To learn how to use a CA to create these identities, check out [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html)
+Before proceeding with this topic, you should have reviewed the process for [Deploying a Certificate Authority (CA)](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/ca-deploy-topology.html) for your organization in order to generate the identities and MSPs for the admins and peers in your organization. To learn how to use a CA to create these identities, check out [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html)
 
 **Note that the “cryptogen” tool should never be used to generate any identities in a production scenario**.
 
 ### Folder management
 
-While it is possible to bootstrap a peer using a number of folder structures for your MSPs and certificates, we do recommend a particular [folder structure](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html#folder-structure-for-your-org-and-node-admin-identities) for the sake of consistency and repeatability. These instructions will presume that you have used that folder structure.
+While it is possible to bootstrap a peer using a number of folder structures for your MSPs and certificates, we do recommend a particular [folder structure](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html#folder-structure-for-your-org-and-node-admin-identities) for the sake of consistency and repeatability. These instructions will presume that you have used that folder structure.
 
 ### Certificates from a non-Fabric CA
 
@@ -81,12 +81,14 @@ To reduce network traffic, in Fabric v2.2 the default core.yaml is configured fo
 * `peer.gossip.useLeaderElection = false`
 * `peer.gossip.orgLeader = true`
 * `peer.gossip.state.enabled = false`
+* `peer.deliveryclient.blockGossipEnabled = false`
 
 If all peers have `orgLeader=true` (recommended), then each peer will get blocks from the ordering service.
 
 ### Service Discovery
 
-In any network it is possible that peer nodes can be down for maintenance, unreachable due to network issues, or the peer ledger has fallen behind while being offline. For this reason, Fabric includes a “discovery service” that enables client applications that use the SDK to locate good candidate peers to target with endorsement requests. If service discovery is not enabled, when a client application targets a peer that is offline, the request fails and will need to be resubmitted to another peer. The discovery service runs on peers and uses the network metadata information maintained by the gossip communication layer to find out which peers are online and can be targeted for requests.
+In any network it is possible that peer nodes can be down for maintenance, unreachable due to network issues, or the peer ledger has fallen behind while being offline. For this reason, Fabric includes a “discovery service” that enables the
+peer gateway component to locate good candidate peers to target with endorsement requests. The discovery service runs on peers and uses the network metadata information maintained by the gossip communication layer to find out which peers are online and can be targeted for requests.
 
 Service discovery (and private data) requires that gossip is enabled, therefore you should configure the `peer.gossip.bootstrap`, `peer.gossip.endpoint` , and `peer.gossip.externalEndpoint` parameters, as well as anchor peers on each channel, to take advantage of this feature.
 

@@ -10,16 +10,16 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"hash"
-	"io/ioutil"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/ledger/snapshot"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	commonledgerutil "github.com/hyperledger/fabric/common/ledger/util"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
@@ -39,7 +39,7 @@ func TestBlockIndexSync(t *testing.T) {
 func testBlockIndexSync(t *testing.T, numBlocks int, numBlocksToIndex int, syncByRestart bool) {
 	testName := fmt.Sprintf("%v/%v/%v", numBlocks, numBlocksToIndex, syncByRestart)
 	t.Run(testName, func(t *testing.T) {
-		env := newTestEnv(t, NewConf(testPath(), 0))
+		env := newTestEnv(t, NewConf(t.TempDir(), 0))
 		defer env.Cleanup()
 		ledgerid := "testledger"
 		blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
@@ -58,7 +58,7 @@ func testBlockIndexSync(t *testing.T, numBlocks int, numBlocksToIndex int, syncB
 		// Plug-in back the original index store
 		blkfileMgr.index.db = originalIndexStore
 		// Verify that the first set of blocks are indexed in the original index
-		for i := 0; i < numBlocksToIndex; i++ {
+		for i := range numBlocksToIndex {
 			block, err := blkfileMgr.retrieveBlockByNumber(uint64(i))
 			require.NoError(t, err, "block [%d] should have been present in the index", i)
 			require.Equal(t, blocks[i], block)
@@ -105,7 +105,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 		testName = testName + string(s)
 	}
 	t.Run(testName, func(t *testing.T) {
-		env := newTestEnvSelectiveIndexing(t, NewConf(testPath(), 0), indexItems, &disabled.Provider{})
+		env := newTestEnvSelectiveIndexing(t, NewConf(t.TempDir(), 0), indexItems, &disabled.Provider{})
 		defer env.Cleanup()
 		blkfileMgrWrapper := newTestBlockfileWrapper(env, "testledger")
 		defer blkfileMgrWrapper.close()
@@ -205,12 +205,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 }
 
 func containsAttr(indexItems []IndexableAttr, attr IndexableAttr) bool {
-	for _, element := range indexItems {
-		if element == attr {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(indexItems, attr)
 }
 
 func TestTxIDKeyEncodingDecoding(t *testing.T) {
@@ -269,21 +264,20 @@ func TestTxIDKeyDecodingInvalidInputs(t *testing.T) {
 }
 
 func TestExportUniqueTxIDs(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	ledgerid := "testledger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
 	defer blkfileMgrWrapper.close()
 	blkfileMgr := blkfileMgrWrapper.blockfileMgr
 
-	testSnapshotDir := testPath()
-	defer os.RemoveAll(testSnapshotDir)
+	testSnapshotDir := t.TempDir()
 
 	// empty store generates no output
 	fileHashes, err := blkfileMgr.index.exportUniqueTxIDs(testSnapshotDir, testNewHashFunc)
 	require.NoError(t, err)
 	require.Empty(t, fileHashes)
-	files, err := ioutil.ReadDir(testSnapshotDir)
+	files, err := os.ReadDir(testSnapshotDir)
 	require.NoError(t, err)
 	require.Len(t, files, 0)
 
@@ -312,7 +306,7 @@ func TestExportUniqueTxIDs(t *testing.T) {
 	require.NoError(t, err)
 	fileHashes, err = blkfileMgr.index.exportUniqueTxIDs(testSnapshotDir, testNewHashFunc)
 	require.NoError(t, err)
-	verifyExportedTxIDs(t, testSnapshotDir, fileHashes, "txid-1", "txid-2", "txid-3", configTxID) //"txid-1" appears once, Txids appear in radix sort order
+	verifyExportedTxIDs(t, testSnapshotDir, fileHashes, "txid-1", "txid-2", "txid-3", configTxID) // "txid-1" appears once, Txids appear in radix sort order
 	os.Remove(filepath.Join(testSnapshotDir, snapshotDataFileName))
 	os.Remove(filepath.Join(testSnapshotDir, snapshotMetadataFileName))
 
@@ -334,7 +328,7 @@ func TestExportUniqueTxIDs(t *testing.T) {
 }
 
 func TestExportUniqueTxIDsWhenTxIDsNotIndexed(t *testing.T) {
-	env := newTestEnvSelectiveIndexing(t, NewConf(testPath(), 0), []IndexableAttr{IndexableAttrBlockNum}, &disabled.Provider{})
+	env := newTestEnvSelectiveIndexing(t, NewConf(t.TempDir(), 0), []IndexableAttr{IndexableAttrBlockNum}, &disabled.Provider{})
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testledger")
 	defer blkfileMgrWrapper.close()
@@ -342,14 +336,13 @@ func TestExportUniqueTxIDsWhenTxIDsNotIndexed(t *testing.T) {
 	blocks := testutil.ConstructTestBlocks(t, 5)
 	blkfileMgrWrapper.addBlocks(blocks)
 
-	testSnapshotDir := testPath()
-	defer os.RemoveAll(testSnapshotDir)
+	testSnapshotDir := t.TempDir()
 	_, err := blkfileMgrWrapper.blockfileMgr.index.exportUniqueTxIDs(testSnapshotDir, testNewHashFunc)
 	require.EqualError(t, err, "transaction IDs not maintained in index")
 }
 
 func TestExportUniqueTxIDsErrorCases(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	ledgerid := "testledger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
@@ -360,8 +353,7 @@ func TestExportUniqueTxIDsErrorCases(t *testing.T) {
 	blockfileMgr := blkfileMgrWrapper.blockfileMgr
 	index := blockfileMgr.index
 
-	testSnapshotDir := testPath()
-	defer os.RemoveAll(testSnapshotDir)
+	testSnapshotDir := t.TempDir()
 
 	// error during data file creation
 	dataFilePath := filepath.Join(testSnapshotDir, snapshotDataFileName)
@@ -402,13 +394,13 @@ func verifyExportedTxIDs(t *testing.T, dir string, fileHashes map[string][]byte,
 	require.Contains(t, fileHashes, snapshotMetadataFileName)
 
 	dataFile := filepath.Join(dir, snapshotDataFileName)
-	dataFileContent, err := ioutil.ReadFile(dataFile)
+	dataFileContent, err := os.ReadFile(dataFile)
 	require.NoError(t, err)
 	dataFileHash := sha256.Sum256(dataFileContent)
 	require.Equal(t, dataFileHash[:], fileHashes[snapshotDataFileName])
 
 	metadataFile := filepath.Join(dir, snapshotMetadataFileName)
-	metadataFileContent, err := ioutil.ReadFile(metadataFile)
+	metadataFileContent, err := os.ReadFile(metadataFile)
 	require.NoError(t, err)
 	metadataFileHash := sha256.Sum256(metadataFileContent)
 	require.Equal(t, metadataFileHash[:], fileHashes[snapshotMetadataFileName])
@@ -424,7 +416,7 @@ func verifyExportedTxIDs(t *testing.T, dir string, fileHashes map[string][]byte,
 	numTxIDs, err := metadataReader.DecodeUVarInt()
 	require.NoError(t, err)
 	retrievedTxIDs := []string{}
-	for i := uint64(0); i < numTxIDs; i++ {
+	for range numTxIDs {
 		txID, err := dataReader.DecodeString()
 		require.NoError(t, err)
 		retrievedTxIDs = append(retrievedTxIDs, txID)

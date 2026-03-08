@@ -9,13 +9,12 @@ package protoutil
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // CreateChaincodeProposal creates a proposal from given input.
@@ -81,17 +80,12 @@ func CreateChaincodeProposalWithTxIDNonceAndTransient(txid string, typ common.He
 	// get a more appropriate mechanism to handle it in.
 	var epoch uint64
 
-	timestamp, err := ptypes.TimestampProto(time.Now().UTC())
-	if err != nil {
-		return nil, "", errors.Wrap(err, "error validating Timestamp")
-	}
-
 	hdr := &common.Header{
 		ChannelHeader: MarshalOrPanic(
 			&common.ChannelHeader{
 				Type:      int32(typ),
 				TxId:      txid,
-				Timestamp: timestamp,
+				Timestamp: timestamppb.Now(),
 				ChannelId: channelID,
 				Extension: ccHdrExtBytes,
 				Epoch:     epoch,
@@ -139,18 +133,27 @@ func GetBytesProposalResponsePayload(hash []byte, response *peer.Response, resul
 
 // GetBytesChaincodeProposalPayload gets the chaincode proposal payload
 func GetBytesChaincodeProposalPayload(cpp *peer.ChaincodeProposalPayload) ([]byte, error) {
+	if cpp == nil {
+		return nil, errors.New("error marshaling ChaincodeProposalPayload: proto: Marshal called with nil")
+	}
 	cppBytes, err := proto.Marshal(cpp)
 	return cppBytes, errors.Wrap(err, "error marshaling ChaincodeProposalPayload")
 }
 
 // GetBytesResponse gets the bytes of Response
 func GetBytesResponse(res *peer.Response) ([]byte, error) {
+	if res == nil {
+		return nil, errors.New("error marshaling Response: proto: Marshal called with nil")
+	}
 	resBytes, err := proto.Marshal(res)
 	return resBytes, errors.Wrap(err, "error marshaling Response")
 }
 
 // GetBytesChaincodeEvent gets the bytes of ChaincodeEvent
 func GetBytesChaincodeEvent(event *peer.ChaincodeEvent) ([]byte, error) {
+	if event == nil {
+		return nil, errors.New("error marshaling ChaincodeEvent: proto: Marshal called with nil")
+	}
 	eventBytes, err := proto.Marshal(event)
 	return eventBytes, errors.Wrap(err, "error marshaling ChaincodeEvent")
 }
@@ -158,42 +161,63 @@ func GetBytesChaincodeEvent(event *peer.ChaincodeEvent) ([]byte, error) {
 // GetBytesChaincodeActionPayload get the bytes of ChaincodeActionPayload from
 // the message
 func GetBytesChaincodeActionPayload(cap *peer.ChaincodeActionPayload) ([]byte, error) {
+	if cap == nil {
+		return nil, errors.New("error marshaling ChaincodeActionPayload: proto: Marshal called with nil")
+	}
 	capBytes, err := proto.Marshal(cap)
 	return capBytes, errors.Wrap(err, "error marshaling ChaincodeActionPayload")
 }
 
 // GetBytesProposalResponse gets proposal bytes response
 func GetBytesProposalResponse(pr *peer.ProposalResponse) ([]byte, error) {
+	if pr == nil {
+		return nil, errors.New("error marshaling ProposalResponse: proto: Marshal called with nil")
+	}
 	respBytes, err := proto.Marshal(pr)
 	return respBytes, errors.Wrap(err, "error marshaling ProposalResponse")
 }
 
 // GetBytesHeader get the bytes of Header from the message
 func GetBytesHeader(hdr *common.Header) ([]byte, error) {
+	if hdr == nil {
+		return nil, errors.New("error marshaling Header: proto: Marshal called with nil")
+	}
 	bytes, err := proto.Marshal(hdr)
 	return bytes, errors.Wrap(err, "error marshaling Header")
 }
 
 // GetBytesSignatureHeader get the bytes of SignatureHeader from the message
 func GetBytesSignatureHeader(hdr *common.SignatureHeader) ([]byte, error) {
+	if hdr == nil {
+		return nil, errors.New("error marshaling SignatureHeader: proto: Marshal called with nil")
+	}
 	bytes, err := proto.Marshal(hdr)
 	return bytes, errors.Wrap(err, "error marshaling SignatureHeader")
 }
 
 // GetBytesTransaction get the bytes of Transaction from the message
 func GetBytesTransaction(tx *peer.Transaction) ([]byte, error) {
+	if tx == nil {
+		return nil, errors.New("error marshaling Transaction: proto: Marshal called with nil")
+	}
 	bytes, err := proto.Marshal(tx)
 	return bytes, errors.Wrap(err, "error unmarshalling Transaction")
 }
 
 // GetBytesPayload get the bytes of Payload from the message
 func GetBytesPayload(payl *common.Payload) ([]byte, error) {
+	if payl == nil {
+		return nil, errors.New("error marshaling Payload: proto: Marshal called with nil")
+	}
 	bytes, err := proto.Marshal(payl)
 	return bytes, errors.Wrap(err, "error marshaling Payload")
 }
 
 // GetBytesEnvelope get the bytes of Envelope from the message
 func GetBytesEnvelope(env *common.Envelope) ([]byte, error) {
+	if env == nil {
+		return nil, errors.New("error marshaling Envelope: proto: Marshal called with nil")
+	}
 	bytes, err := proto.Marshal(env)
 	return bytes, errors.Wrap(err, "error marshaling Envelope")
 }
@@ -318,6 +342,9 @@ func createProposalFromCDS(channelID string, msg proto.Message, creator []byte, 
 	var b []byte
 	var err error
 	if msg != nil {
+		if !msg.ProtoReflect().IsValid() {
+			return nil, "", errors.New("proto: Marshal called with nil")
+		}
 		b, err = proto.Marshal(msg)
 		if err != nil {
 			return nil, "", err

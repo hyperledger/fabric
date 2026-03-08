@@ -7,7 +7,7 @@ package msp
 
 import (
 	"github.com/IBM/idemix"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 )
 
 type idemixSigningIdentityWrapper struct {

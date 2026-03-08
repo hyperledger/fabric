@@ -17,7 +17,7 @@ limitations under the License.
 package committer
 
 import (
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/core/ledger"
 )
 
@@ -42,8 +42,11 @@ type Committer interface {
 	// collections and namespaces of private data to retrieve
 	GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error)
 
-	// Get recent block sequence number
+	// LedgerHeight get the number of blocks in the ledger (i.e. the sequence number of the next block).
 	LedgerHeight() (uint64, error)
+
+	// GetCurrentBlockHash get the current block header hash.
+	GetCurrentBlockHash() ([]byte, error)
 
 	// DoesPvtDataInfoExistInLedger returns true if the ledger has pvtdata info
 	// about a given block number.
@@ -58,7 +61,7 @@ type Committer interface {
 	// CommitPvtDataOfOldBlocks commits the private data corresponding to already committed block
 	// If hashes for some of the private data supplied in this function does not match
 	// the corresponding hash present in the block, the unmatched private data is not
-	// committed and instead the mismatch inforation is returned back
+	// committed and instead the mismatch information is returned back
 	CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.ReconciledPvtdata, unreconciled ledger.MissingPvtDataInfo) ([]*ledger.PvtdataHashMismatch, error)
 
 	// GetMissingPvtDataTracker return the MissingPvtDataTracker

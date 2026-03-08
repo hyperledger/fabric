@@ -13,9 +13,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -241,7 +241,7 @@ func TestBadTx(t *testing.T) {
 	paylOrig := tx.Payload
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
-	for i := 0; i < len(paylOrig); i++ {
+	for i := range paylOrig {
 		paylCopy := make([]byte, len(paylOrig))
 		copy(paylCopy, paylOrig)
 		paylCopy[i] = byte(int(paylCopy[i]+1) % 255)

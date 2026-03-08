@@ -1,0 +1,55 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+option go_package = "github.com/hyperledger/fabric/core/common/ccprovider";
+
+package ccprovider;
+
+// -------- ChaincodeData is stored on the LSCC -------
+// ChaincodeData defines the datastructure for chaincodes to be serialized by proto
+// Type provides an additional check by directing to use a specific package after instantiation
+// Data is Type specific (see CDSPackage and SignedCDSPackage)
+message ChaincodeData {
+  // Name of the chaincode
+  string name = 1;
+  // Version of the chaincode
+  string version = 2;
+  // Escc for the chaincode instance
+  string escc = 3;
+  // Vscc for the chaincode instance
+  string vscc = 4;
+  // Policy endorsement policy for the chaincode instance
+  bytes policy = 5;
+  // Data data specific to the package
+  bytes data = 6;
+  // Id of the chaincode that's the unique fingerprint for the CC This is not
+  // currently used anywhere but serves as a good eyecatcher
+  bytes id = 7;
+  // InstantiationPolicy for the chaincode
+  bytes instantiation_policy = 8;
+}
+
+// ----- CDSData ------
+// CDSData is data stored in the LSCC on instantiation of a CC
+// for CDSPackage.  This needs to be serialized for ChaincodeData
+// hence the protobuf format
+message CDSData {
+  // CodeHash hash of CodePackage from ChaincodeDeploymentSpec
+  bytes code_hash = 1;
+  // MetaDataHash hash of Name and Version from ChaincodeDeploymentSpec
+  bytes meta_data_hash = 2;
+}
+
+// ----- SignedCDSData ------
+// SignedCDSData is data stored in the LSCC on instantiation of a CC
+// for SignedCDSPackage. This needs to be serialized for ChaincodeData
+// hence the protobuf format
+message SignedCDSData {
+  bytes code_hash = 1;
+  bytes meta_data_hash = 2;
+  bytes signature_hash = 3;
+}

@@ -18,15 +18,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/metrics"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/metricsfakes"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/metrics"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	comm_utils "github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
@@ -37,6 +36,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -255,10 +255,14 @@ func newTestNodeWithMetrics(t *testing.T, metrics cluster.MetricsProvider, tlsCo
 		bindAddress:  gRPCServer.Address(),
 		handler:      handler,
 		nodeInfo: cluster.RemoteNode{
-			Endpoint:      gRPCServer.Address(),
-			ID:            nextUnusedID(),
-			ServerTLSCert: serverKeyPair.TLSCert.Raw,
-			ClientTLSCert: clientKeyPair.TLSCert.Raw,
+			NodeAddress: cluster.NodeAddress{
+				Endpoint: gRPCServer.Address(),
+				ID:       nextUnusedID(),
+			},
+			NodeCerts: cluster.NodeCerts{
+				ServerTLSCert: serverKeyPair.TLSCert.Raw,
+				ClientTLSCert: clientKeyPair.TLSCert.Raw,
+			},
 		},
 		srv: gRPCServer,
 	}
@@ -424,21 +428,22 @@ func TestBlockingSend(t *testing.T) {
 			config := []cluster.RemoteNode{node1.nodeInfo, node2.nodeInfo}
 			node1.c.Configure(testChannel, config)
 			node2.c.Configure(testChannel, config)
+			node2.handler.On("OnSubmit", testChannel, node1.nodeInfo.ID, mock.Anything).Return(errors.Errorf("whoops")).Once()
 
 			rm, err := node1.c.Remote(testChannel, node2.nodeInfo.ID)
 			require.NoError(t, err)
 
-			client := &mocks.ClusterClient{}
-			fakeStream := &mocks.StepClient{}
+			fakeStream := &mocks.StepClientStream{}
+			rm.GetStreamFunc = func(ctx context.Context) (cluster.StepClientStream, error) {
+				return fakeStream, nil
+			}
 
-			// Replace real client with a mock client
-			rm.Client = client
 			rm.ProbeConn = func(_ *grpc.ClientConn) error {
 				return nil
 			}
-			// Configure client to return the mock stream
+
 			fakeStream.On("Context", mock.Anything).Return(context.Background())
-			client.On("Step", mock.Anything).Return(fakeStream, nil).Once()
+			fakeStream.On("Auth").Return(nil).Once()
 
 			unBlock := make(chan struct{})
 			var sendInvoked sync.WaitGroup
@@ -639,9 +644,11 @@ func TestStreamAbort(t *testing.T) {
 	defer node2.stop()
 
 	invalidNodeInfo := cluster.RemoteNode{
-		ID:            node2.nodeInfo.ID,
-		ServerTLSCert: []byte{1, 2, 3},
-		ClientTLSCert: []byte{1, 2, 3},
+		NodeAddress: cluster.NodeAddress{ID: node2.nodeInfo.ID},
+		NodeCerts: cluster.NodeCerts{
+			ServerTLSCert: []byte{1, 2, 3},
+			ClientTLSCert: []byte{1, 2, 3},
+		},
 	}
 
 	for _, tst := range []struct {
@@ -806,7 +813,6 @@ func TestAbortRPC(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 			testAbort(t, testCase.abortFunc, testCase.rpcTimeout, testCase.expectedErr)
 		})
@@ -1370,7 +1376,6 @@ func TestMetrics(t *testing.T) {
 			},
 		},
 	} {
-		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 			fakeProvider := &mocks.MetricsProvider{}
 			testCase.testMetrics = &testMetrics{
@@ -1426,13 +1431,13 @@ func TestCertExpirationWarningEgress(t *testing.T) {
 	stub, err := node1.c.Remote(testChannel, node2.nodeInfo.ID)
 	require.NoError(t, err)
 
+	node2.handler.On("OnSubmit", testChannel, node1.nodeInfo.ID, mock.Anything).Return(nil)
+
 	mockgRPC := &mocks.StepClient{}
 	mockgRPC.On("Send", mock.Anything).Return(nil)
 	mockgRPC.On("Context").Return(context.Background())
 	mockClient := &mocks.ClusterClient{}
 	mockClient.On("Step", mock.Anything).Return(mockgRPC, nil)
-
-	stub.Client = mockClient
 
 	stream := assertEventualEstablishStream(t, stub)
 
@@ -1518,8 +1523,8 @@ func assertEventualEstablishStream(t *testing.T, rpc *cluster.RemoteContext) *cl
 	return res
 }
 
-func assertEventualSendMessage(t *testing.T, rpc *cluster.RemoteContext, req *orderer.SubmitRequest) orderer.Cluster_StepClient {
-	var res orderer.Cluster_StepClient
+func assertEventualSendMessage(t *testing.T, rpc *cluster.RemoteContext, req *orderer.SubmitRequest) *cluster.Stream {
+	var res *cluster.Stream
 	gt := gomega.NewGomegaWithT(t)
 	gt.Eventually(func() error {
 		stream, err := rpc.NewStream(time.Hour)

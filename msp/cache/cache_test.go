@@ -10,7 +10,7 @@ import (
 	"sync"
 	"testing"
 
-	msp2 "github.com/hyperledger/fabric-protos-go/msp"
+	msp2 "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mocks"
 	"github.com/pkg/errors"
@@ -120,7 +120,7 @@ func TestDeserializeIdentity(t *testing.T) {
 	// do not result in a failure
 	var wg sync.WaitGroup
 	wg.Add(100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		go func(m msp.MSP, i int) {
 			sIdentity := serializedIdentity
 			expectedIdentity := mockIdentity
@@ -175,8 +175,8 @@ func TestValidate(t *testing.T) {
 	mockMSP.AssertExpectations(t)
 	// Check the cache
 	identifier := mockIdentity.GetIdentifier()
-	key := string(identifier.Mspid + ":" + identifier.Id)
-	v, ok := i.(*cachedMSP).validateIdentityCache.get(string(key))
+	key := identifier.Mspid + ":" + identifier.Id
+	v, ok := i.(*cachedMSP).validateIdentityCache.get(key)
 	require.True(t, ok)
 	require.True(t, v.(bool))
 
@@ -194,8 +194,8 @@ func TestValidate(t *testing.T) {
 	mockMSP.AssertExpectations(t)
 	// Check the cache
 	identifier = mockIdentity.GetIdentifier()
-	key = string(identifier.Mspid + ":" + identifier.Id)
-	_, ok = i.(*cachedMSP).validateIdentityCache.get(string(key))
+	key = identifier.Mspid + ":" + identifier.Id
+	_, ok = i.(*cachedMSP).validateIdentityCache.get(key)
 	require.False(t, ok)
 }
 
@@ -276,7 +276,7 @@ func TestSatisfiesPrincipal(t *testing.T) {
 	mockMSP.AssertExpectations(t)
 	// Check the cache
 	identifier := mockIdentity.GetIdentifier()
-	identityKey := string(identifier.Mspid + ":" + identifier.Id)
+	identityKey := identifier.Mspid + ":" + identifier.Id
 	principalKey := string(mockMSPPrincipal.PrincipalClassification) + string(mockMSPPrincipal.Principal)
 	key := identityKey + principalKey
 	v, ok := i.(*cachedMSP).satisfiesPrincipalCache.get(key)
@@ -299,7 +299,7 @@ func TestSatisfiesPrincipal(t *testing.T) {
 	mockMSP.AssertExpectations(t)
 	// Check the cache
 	identifier = mockIdentity.GetIdentifier()
-	identityKey = string(identifier.Mspid + ":" + identifier.Id)
+	identityKey = identifier.Mspid + ":" + identifier.Id
 	principalKey = string(mockMSPPrincipal.PrincipalClassification) + string(mockMSPPrincipal.Principal)
 	key = identityKey + principalKey
 	v, ok = i.(*cachedMSP).satisfiesPrincipalCache.get(key)

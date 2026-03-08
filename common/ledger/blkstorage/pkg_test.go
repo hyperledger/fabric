@@ -8,32 +8,23 @@ package blkstorage
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/metrics"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/metrics"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestMain(m *testing.M) {
 	flogging.ActivateSpec("blkstorage=debug")
 	os.Exit(m.Run())
-}
-
-func testPath() string {
-	if path, err := ioutil.TempDir("", "blkstorage-"); err != nil {
-		panic(err)
-	} else {
-		return path
-	}
 }
 
 type testEnv struct {
@@ -65,12 +56,6 @@ func newTestEnvSelectiveIndexing(t testing.TB, conf *Conf, attrsToIndex []Indexa
 
 func (env *testEnv) Cleanup() {
 	env.provider.Close()
-	env.removeFSPath()
-}
-
-func (env *testEnv) removeFSPath() {
-	fsPath := env.provider.conf.blockStorageDir
-	os.RemoveAll(fsPath)
 }
 
 type testBlockfileMgrWrapper struct {
@@ -101,7 +86,7 @@ func (w *testBlockfileMgrWrapper) testGetBlockByHash(blocks []*common.Block) {
 }
 
 func (w *testBlockfileMgrWrapper) testGetBlockByNumber(blocks []*common.Block) {
-	for i := 0; i < len(blocks); i++ {
+	for i := range blocks {
 		b, err := w.blockfileMgr.retrieveBlockByNumber(blocks[0].Header.Number + uint64(i))
 		require.NoError(w.t, err, "Error while retrieving [%d]th block from blockfileMgr", i)
 		require.Equal(w.t, blocks[i], b)

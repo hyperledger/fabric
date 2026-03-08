@@ -12,9 +12,9 @@ import (
 	"io"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // ComputeSHA256 returns SHA2-256 on data
@@ -59,11 +59,9 @@ func GenerateUUID() string {
 }
 
 // CreateUtcTimestamp returns a google/protobuf/Timestamp in UTC
-func CreateUtcTimestamp() *timestamp.Timestamp {
+func CreateUtcTimestamp() *timestamppb.Timestamp {
 	now := time.Now().UTC()
-	secs := now.Unix()
-	nanos := int32(now.UnixNano() - (secs * 1000000000))
-	return &(timestamp.Timestamp{Seconds: secs, Nanos: nanos})
+	return timestamppb.New(now)
 }
 
 func idBytesToStr(id []byte) string {
@@ -81,6 +79,7 @@ func ToChaincodeArgs(args ...string) [][]byte {
 
 // ConcatenateBytes is useful for combining multiple arrays of bytes, especially for
 // signatures or digests over multiple fields
+// This way is more efficient in speed
 func ConcatenateBytes(data ...[]byte) []byte {
 	finalLength := 0
 	for _, slice := range data {
@@ -89,10 +88,7 @@ func ConcatenateBytes(data ...[]byte) []byte {
 	result := make([]byte, finalLength)
 	last := 0
 	for _, slice := range data {
-		for i := range slice {
-			result[i+last] = slice[i]
-		}
-		last += len(slice)
+		last += copy(result[last:], slice)
 	}
 	return result
 }

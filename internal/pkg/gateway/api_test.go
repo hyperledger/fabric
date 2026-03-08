@@ -11,15 +11,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	cp "github.com/hyperledger/fabric-protos-go/common"
-	dp "github.com/hyperledger/fabric-protos-go/discovery"
-	pb "github.com/hyperledger/fabric-protos-go/gateway"
-	"github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	cp "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	dp "github.com/hyperledger/fabric-protos-go-apiv2/discovery"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/gateway"
+	"github.com/hyperledger/fabric-protos-go-apiv2/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/common/deliverclient/orderers"
 	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -30,7 +31,6 @@ import (
 	ledgermocks "github.com/hyperledger/fabric/internal/pkg/gateway/ledger/mocks"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/mocks"
 	idmocks "github.com/hyperledger/fabric/internal/pkg/identity/mocks"
-	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -38,6 +38,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 // The following private interfaces are here purely to prevent counterfeiter creating an import cycle in the unit test
@@ -67,7 +68,7 @@ type commitFinder interface {
 	CommitFinder
 }
 
-//go:generate counterfeiter -o mocks/chaincodeeventsserver.go --fake-name ChaincodeEventsServer github.com/hyperledger/fabric-protos-go/gateway.Gateway_ChaincodeEventsServer
+//go:generate counterfeiter -o mocks/chaincodeeventsserver.go --fake-name ChaincodeEventsServer github.com/hyperledger/fabric-protos-go-apiv2/gateway.Gateway_ChaincodeEventsServer
 
 //go:generate counterfeiter -o mocks/aclchecker.go --fake-name ACLChecker . aclChecker
 type aclChecker interface {
@@ -77,6 +78,30 @@ type aclChecker interface {
 //go:generate counterfeiter -o mocks/resultsiterator.go --fake-name ResultsIterator . mockResultsIterator
 type mockResultsIterator interface {
 	ledger.ResultsIterator
+}
+
+//go:generate counterfeiter -o mocks/resources.go --fake-name Resources . ccResources
+
+type ccResources interface {
+	channelconfig.Resources
+}
+
+//go:generate counterfeiter -o mocks/orderer.go --fake-name Orderer . ccOrderer
+
+type ccOrderer interface {
+	channelconfig.Orderer
+}
+
+//go:generate counterfeiter -o mocks/channel.go --fake-name Channel . ccChannel
+
+type ccChannel interface {
+	channelconfig.Channel
+}
+
+//go:generate counterfeiter -o mocks/channel_capabilities.go --fake-name ChannelCapabilities . ccChannelCapabilities
+
+type ccChannelCapabilities interface {
+	channelconfig.ChannelCapabilities
 }
 
 type (
@@ -145,6 +170,7 @@ type testDef struct {
 	startPosition            *ab.SeekPosition
 	afterTxID                string
 	ordererEndpointOverrides map[string]*orderers.Endpoint
+	isBFT                    bool
 	localLedgerHeight        uint64
 }
 
@@ -187,10 +213,18 @@ var (
 	orderer1Mock = &orderer{endpointConfig: &endpointConfig{pkiid: []byte("o1"), address: "orderer1:7050", mspid: "msp1"}}
 	orderer2Mock = &orderer{endpointConfig: &endpointConfig{pkiid: []byte("o2"), address: "orderer2:7050", mspid: "msp1"}}
 	orderer3Mock = &orderer{endpointConfig: &endpointConfig{pkiid: []byte("o3"), address: "orderer3:7050", mspid: "msp1"}}
+	orderer4Mock = &orderer{endpointConfig: &endpointConfig{pkiid: []byte("o4"), address: "orderer4:7050", mspid: "msp1"}}
+	orderer5Mock = &orderer{endpointConfig: &endpointConfig{pkiid: []byte("o5"), address: "orderer5:7050", mspid: "msp1"}}
+	orderer6Mock = &orderer{endpointConfig: &endpointConfig{pkiid: []byte("o6"), address: "orderer6:7050", mspid: "msp1"}}
+	orderer7Mock = &orderer{endpointConfig: &endpointConfig{pkiid: []byte("o7"), address: "orderer7:7050", mspid: "msp1"}}
 	ordererMocks = map[string]*orderer{
 		orderer1Mock.address: orderer1Mock,
 		orderer2Mock.address: orderer2Mock,
 		orderer3Mock.address: orderer3Mock,
+		orderer4Mock.address: orderer4Mock,
+		orderer5Mock.address: orderer5Mock,
+		orderer6Mock.address: orderer6Mock,
+		orderer7Mock.address: orderer7Mock,
 	}
 )
 
@@ -224,6 +258,7 @@ func TestNilArgs(t *testing.T) {
 		"msp1",
 		&comm.SecureOptions{},
 		config.GetOptions(viper.New()),
+		nil,
 		nil,
 		nil,
 	)
@@ -456,7 +491,24 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		Endpoint: "localhost:7051",
 	}
 
-	server := newServer(localEndorser, disc, mockFinder, mockPolicy, mockLedgerProvider, member, "msp1", &comm.SecureOptions{}, options, nil, tt.ordererEndpointOverrides)
+	getChannelConfig := func(channel string) channelconfig.Resources {
+		cap := &mocks.ChannelCapabilities{}
+		cap.ConsensusTypeBFTReturns(tt.isBFT)
+		c := &mocks.Channel{}
+		c.CapabilitiesReturns(cap)
+		res := &mocks.Resources{}
+		res.ChannelConfigReturns(c)
+		val := &mocks.Orderer{}
+		if tt.isBFT {
+			val.ConsensusTypeReturns("BFT")
+		} else {
+			val.ConsensusTypeReturns("etcdraft")
+		}
+		res.OrdererConfigReturns(val, true)
+		return res
+	}
+
+	server := newServer(localEndorser, disc, mockFinder, mockPolicy, mockLedgerProvider, member, "msp1", &comm.SecureOptions{}, options, nil, tt.ordererEndpointOverrides, getChannelConfig)
 
 	dialer := &mocks.Dialer{}
 	dialer.Returns(nil, nil)
@@ -511,8 +563,14 @@ func checkError(t *testing.T, tt *testDef, err error) (checked bool) {
 
 	if detailsCheck {
 		require.Len(t, s.Details(), len(tt.errDetails))
+	external:
 		for _, detail := range s.Details() {
-			require.Contains(t, tt.errDetails, proto.MessageV1(detail), "error details, expected: %v", tt.errDetails)
+			for _, errDetail := range tt.errDetails {
+				if proto.Equal(errDetail, detail.(*pb.ErrorDetail)) {
+					continue external
+				}
+			}
+			require.Fail(t, "error match detail", "error details, expected: %v", tt.errDetails)
 		}
 	}
 
@@ -638,13 +696,13 @@ func createEndpointFactory(t *testing.T, definition *endpointDef, dialer dialer,
 	require.NoError(t, err, "failed to create client key pair")
 	return &endpointFactory{
 		timeout: 5 * time.Second,
-		connectEndorser: func(conn *grpc.ClientConn) peer.EndorserClient {
+		connectEndorser: func(conn grpc.ClientConnInterface) peer.EndorserClient {
 			if ep, ok := endorsers[endpoint]; ok && ep.client != nil {
 				return ep.client
 			}
 			return nil
 		},
-		connectOrderer: func(conn *grpc.ClientConn) ab.AtomicBroadcastClient {
+		connectOrderer: func(conn grpc.ClientConnInterface) ab.AtomicBroadcastClient {
 			if ep, ok := ordererMocks[endpoint]; ok && ep.client != nil {
 				return ep.client
 			}

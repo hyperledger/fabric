@@ -90,7 +90,7 @@
         }
       }
     },
-    "/v1/participation/channels": {
+    "/participation/v1/channels": {
       "get": {
         "tags": [
           "channels"
@@ -113,6 +113,57 @@
                 "description": "The media type of the resource"
               }
             }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "tags": [
+          "channels"
+        ],
+        "summary": "Update config block of the Order Service Node (OSN) to the channel.",
+        "operationId": "updateChannel",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "configUpdateEnvelope",
+            "in": "formData",
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Сhannel update successfully.",
+            "schema": {
+              "$ref": "#/definitions/channelInfo"
+            },
+            "headers": {
+              "Content-Type": {
+                "type": "string",
+                "description": "The media type of the resource"
+              },
+              "Location": {
+                "type": "string",
+                "description": "The URL to redirect a page to"
+              }
+            }
+          },
+          "400": {
+            "description": "Cannot update channel."
+          },
+          "403": {
+            "description": "The client is trying to update an app-channel that is a follower."
+          },
+          "405": {
+            "description": "The client is trying to update an app-channel that not exists."
+          },
+          "409": {
+            "description": "The client is trying to update a channel that is currently being removed."
+          },
+          "500": {
+            "description": "Removal of channel failed."
           }
         }
       },
@@ -154,11 +205,8 @@
           "400": {
             "description": "Cannot join channel."
           },
-          "403": {
-            "description": "The client is trying to join the system-channel that does not exist, but application channels exist."
-          },
           "405": {
-            "description": "The client is trying to join an app-channel, but the system channel exists.\nThe client is trying to join an app-channel that exists, but the system channel does not.\nThe client is trying to join the system-channel, and it exists.\n"
+            "description": "The client is trying to join an app-channel that exists."
           },
           "409": {
             "description": "The client is trying to join a channel that is currently being removed."
@@ -169,7 +217,7 @@
         }
       }
     },
-    "/v1/participation/channels/{channelID}": {
+    "/participation/v1/channels/{channelID}": {
       "get": {
         "tags": [
           "channels"
@@ -229,11 +277,50 @@
           "404": {
             "description": "The channel does not exist."
           },
-          "405": {
-            "description": "The system channel exists, removal is not allowed."
-          },
           "409": {
             "description": "The channel is pending removal."
+          }
+        }
+      }
+    },
+    "/participation/v1/channels/{channelID}/blocks/{blockID}": {
+      "get": {
+        "produces": [
+          "application/octet-stream"
+        ],
+        "tags": [
+          "channels"
+        ],
+        "summary": "Returns a specific channel block for a specific Channel Ordering Service (OSN) node.",
+        "operationId": "fetchBlock",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Channel ID",
+            "name": "channelID",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Block ID",
+            "name": "blockID",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful block download.",
+            "schema": {
+              "type": "file"
+            }
+          },
+          "400": {
+            "description": "Bad request."
+          },
+          "404": {
+            "description": "The channel or block does not exist."
           }
         }
       }
@@ -331,17 +418,6 @@
       },
       "x-go-name": "ChannelList",
       "x-go-package": "github.com/hyperledger/fabric/orderer/common/types"
-    },
-    "spec": {
-      "type": "object",
-      "properties": {
-        "spec": {
-          "type": "string",
-          "x-go-name": "Spec"
-        }
-      },
-      "x-go-name": "LogSpec",
-      "x-go-package": "github.com/hyperledger/fabric/common/flogging/httpadmin"
     }
   },
   "tags": [

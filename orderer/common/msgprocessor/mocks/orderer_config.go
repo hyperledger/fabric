@@ -5,7 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 )
 
@@ -70,15 +71,15 @@ type OrdererConfig struct {
 	consensusTypeReturnsOnCall map[int]struct {
 		result1 string
 	}
-	KafkaBrokersStub        func() []string
-	kafkaBrokersMutex       sync.RWMutex
-	kafkaBrokersArgsForCall []struct {
+	ConsentersStub        func() []*common.Consenter
+	consentersMutex       sync.RWMutex
+	consentersArgsForCall []struct {
 	}
-	kafkaBrokersReturns struct {
-		result1 []string
+	consentersReturns struct {
+		result1 []*common.Consenter
 	}
-	kafkaBrokersReturnsOnCall map[int]struct {
-		result1 []string
+	consentersReturnsOnCall map[int]struct {
+		result1 []*common.Consenter
 	}
 	MaxChannelsCountStub        func() uint64
 	maxChannelsCountMutex       sync.RWMutex
@@ -416,55 +417,55 @@ func (fake *OrdererConfig) ConsensusTypeReturnsOnCall(i int, result1 string) {
 	}{result1}
 }
 
-func (fake *OrdererConfig) KafkaBrokers() []string {
-	fake.kafkaBrokersMutex.Lock()
-	ret, specificReturn := fake.kafkaBrokersReturnsOnCall[len(fake.kafkaBrokersArgsForCall)]
-	fake.kafkaBrokersArgsForCall = append(fake.kafkaBrokersArgsForCall, struct {
+func (fake *OrdererConfig) Consenters() []*common.Consenter {
+	fake.consentersMutex.Lock()
+	ret, specificReturn := fake.consentersReturnsOnCall[len(fake.consentersArgsForCall)]
+	fake.consentersArgsForCall = append(fake.consentersArgsForCall, struct {
 	}{})
-	fake.recordInvocation("KafkaBrokers", []interface{}{})
-	fake.kafkaBrokersMutex.Unlock()
-	if fake.KafkaBrokersStub != nil {
-		return fake.KafkaBrokersStub()
+	fake.recordInvocation("Consenters", []interface{}{})
+	fake.consentersMutex.Unlock()
+	if fake.ConsentersStub != nil {
+		return fake.ConsentersStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.kafkaBrokersReturns
+	fakeReturns := fake.consentersReturns
 	return fakeReturns.result1
 }
 
-func (fake *OrdererConfig) KafkaBrokersCallCount() int {
-	fake.kafkaBrokersMutex.RLock()
-	defer fake.kafkaBrokersMutex.RUnlock()
-	return len(fake.kafkaBrokersArgsForCall)
+func (fake *OrdererConfig) ConsentersCallCount() int {
+	fake.consentersMutex.RLock()
+	defer fake.consentersMutex.RUnlock()
+	return len(fake.consentersArgsForCall)
 }
 
-func (fake *OrdererConfig) KafkaBrokersCalls(stub func() []string) {
-	fake.kafkaBrokersMutex.Lock()
-	defer fake.kafkaBrokersMutex.Unlock()
-	fake.KafkaBrokersStub = stub
+func (fake *OrdererConfig) ConsentersCalls(stub func() []*common.Consenter) {
+	fake.consentersMutex.Lock()
+	defer fake.consentersMutex.Unlock()
+	fake.ConsentersStub = stub
 }
 
-func (fake *OrdererConfig) KafkaBrokersReturns(result1 []string) {
-	fake.kafkaBrokersMutex.Lock()
-	defer fake.kafkaBrokersMutex.Unlock()
-	fake.KafkaBrokersStub = nil
-	fake.kafkaBrokersReturns = struct {
-		result1 []string
+func (fake *OrdererConfig) ConsentersReturns(result1 []*common.Consenter) {
+	fake.consentersMutex.Lock()
+	defer fake.consentersMutex.Unlock()
+	fake.ConsentersStub = nil
+	fake.consentersReturns = struct {
+		result1 []*common.Consenter
 	}{result1}
 }
 
-func (fake *OrdererConfig) KafkaBrokersReturnsOnCall(i int, result1 []string) {
-	fake.kafkaBrokersMutex.Lock()
-	defer fake.kafkaBrokersMutex.Unlock()
-	fake.KafkaBrokersStub = nil
-	if fake.kafkaBrokersReturnsOnCall == nil {
-		fake.kafkaBrokersReturnsOnCall = make(map[int]struct {
-			result1 []string
+func (fake *OrdererConfig) ConsentersReturnsOnCall(i int, result1 []*common.Consenter) {
+	fake.consentersMutex.Lock()
+	defer fake.consentersMutex.Unlock()
+	fake.ConsentersStub = nil
+	if fake.consentersReturnsOnCall == nil {
+		fake.consentersReturnsOnCall = make(map[int]struct {
+			result1 []*common.Consenter
 		})
 	}
-	fake.kafkaBrokersReturnsOnCall[i] = struct {
-		result1 []string
+	fake.consentersReturnsOnCall[i] = struct {
+		result1 []*common.Consenter
 	}{result1}
 }
 
@@ -587,8 +588,8 @@ func (fake *OrdererConfig) Invocations() map[string][][]interface{} {
 	defer fake.consensusStateMutex.RUnlock()
 	fake.consensusTypeMutex.RLock()
 	defer fake.consensusTypeMutex.RUnlock()
-	fake.kafkaBrokersMutex.RLock()
-	defer fake.kafkaBrokersMutex.RUnlock()
+	fake.consentersMutex.RLock()
+	defer fake.consentersMutex.RUnlock()
 	fake.maxChannelsCountMutex.RLock()
 	defer fake.maxChannelsCountMutex.RUnlock()
 	fake.organizationsMutex.RLock()

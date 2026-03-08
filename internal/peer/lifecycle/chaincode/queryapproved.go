@@ -13,15 +13,15 @@ import (
 	"os"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
-	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	lb "github.com/hyperledger/fabric-protos-go-apiv2/peer/lifecycle"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"google.golang.org/protobuf/proto"
 )
 
 // ApprovedQuerier holds the dependencies needed to query
@@ -46,8 +46,8 @@ type ApprovedQueryInput struct {
 func QueryApprovedCmd(a *ApprovedQuerier, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	chaincodeQueryApprovedCmd := &cobra.Command{
 		Use:   "queryapproved",
-		Short: "Query an org's approved chaincode definition from its peer.",
-		Long:  "Query an organization's approved chaincode definition from its peer.",
+		Short: "Query org's approved chaincode definitions from its peer.",
+		Long:  "Query organization's approved chaincode definitions from its peer.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if a == nil {
 				ccInput := &ClientConnectionsInput{
@@ -138,41 +138,74 @@ func (a *ApprovedQuerier) Query() error {
 	}
 
 	if strings.ToLower(a.Input.OutputFormat) == "json" {
-		return printResponseAsJSON(proposalResponse, &lb.QueryApprovedChaincodeDefinitionResult{}, a.Writer)
+		return a.printResponseAsJSON(proposalResponse)
 	}
 	return a.printResponse(proposalResponse)
+}
+
+func (a *ApprovedQuerier) printResponseAsJSON(proposalResponse *pb.ProposalResponse) error {
+	if a.Input.Name != "" {
+		return printResponseAsJSON(proposalResponse, &lb.QueryApprovedChaincodeDefinitionResult{}, a.Writer)
+	}
+	return printResponseAsJSON(proposalResponse, &lb.QueryApprovedChaincodeDefinitionsResult{}, a.Writer)
 }
 
 // printResponse prints the information included in the response
 // from the server as human readable plain-text.
 func (a *ApprovedQuerier) printResponse(proposalResponse *pb.ProposalResponse) error {
-	result := &lb.QueryApprovedChaincodeDefinitionResult{}
-	err := proto.Unmarshal(proposalResponse.Response.Payload, result)
-	if err != nil {
+	if a.Input.Name != "" {
+		result := &lb.QueryApprovedChaincodeDefinitionResult{}
+		if err := proto.Unmarshal(proposalResponse.Response.Payload, result); err != nil {
+			return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
+		}
+		fmt.Fprintf(a.Writer, "Approved chaincode definition for chaincode '%s' on channel '%s':\n", a.Input.Name, a.Input.ChannelID)
+		a.printSingleApprovedChaincodeDefinition(result)
+		fmt.Fprintf(a.Writer, "\n")
+		return nil
+	}
+
+	result := &lb.QueryApprovedChaincodeDefinitionsResult{}
+	if err := proto.Unmarshal(proposalResponse.Response.Payload, result); err != nil {
 		return errors.Wrap(err, "failed to unmarshal proposal response's response payload")
 	}
-	fmt.Fprintf(a.Writer, "Approved chaincode definition for chaincode '%s' on channel '%s':\n", a.Input.Name, a.Input.ChannelID)
+	fmt.Fprintf(a.Writer, "Approved chaincode definitions on channel '%s':\n", a.Input.ChannelID)
 
+	for _, acd := range result.ApprovedChaincodeDefinitions {
+		fmt.Fprintf(a.Writer, "name: %s, ", acd.Name)
+		a.printSingleApprovedChaincodeDefinition(acd)
+		fmt.Fprintf(a.Writer, "\n")
+	}
+	return nil
+}
+
+type ApprovedChaincodeDefinition interface {
+	GetVersion() string
+	GetSequence() int64
+	GetEndorsementPlugin() string
+	GetValidationPlugin() string
+	GetInitRequired() bool
+	GetSource() *lb.ChaincodeSource
+}
+
+func (a *ApprovedQuerier) printSingleApprovedChaincodeDefinition(acd ApprovedChaincodeDefinition) {
 	var packageID string
-	if result.Source != nil {
-		switch source := result.Source.Type.(type) {
+	if acd.GetSource() != nil {
+		switch source := acd.GetSource().Type.(type) {
 		case *lb.ChaincodeSource_LocalPackage:
 			packageID = source.LocalPackage.PackageId
 		case *lb.ChaincodeSource_Unavailable_:
 		}
 	}
-	fmt.Fprintf(a.Writer, "sequence: %d, version: %s, init-required: %t, package-id: %s, endorsement plugin: %s, validation plugin: %s\n",
-		result.Sequence, result.Version, result.InitRequired, packageID, result.EndorsementPlugin, result.ValidationPlugin)
-	return nil
+	fmt.Fprintf(a.Writer, "sequence: %d, version: %s, init-required: %t, package-id: %s, endorsement plugin: %s, validation plugin: %s",
+		acd.GetSequence(), acd.GetVersion(), acd.GetInitRequired(), packageID, acd.GetEndorsementPlugin(), acd.GetValidationPlugin())
 }
 
 func (a *ApprovedQuerier) validateInput() error {
 	if a.Input.ChannelID == "" {
 		return errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
 	}
-
-	if a.Input.Name == "" {
-		return errors.New("The required parameter 'name' is empty. Rerun the command with -n flag")
+	if a.Input.Name == "" && a.Input.Sequence != 0 {
+		return errors.New("Specifying parameter 'sequence' is invalid without parameter 'name'. Rerun the command with -n flag")
 	}
 
 	return nil
@@ -182,10 +215,15 @@ func (a *ApprovedQuerier) createProposal() (*pb.Proposal, error) {
 	var function string
 	var args proto.Message
 
-	function = "QueryApprovedChaincodeDefinition"
-	args = &lb.QueryApprovedChaincodeDefinitionArgs{
-		Name:     a.Input.Name,
-		Sequence: a.Input.Sequence,
+	if a.Input.Name != "" {
+		function = "QueryApprovedChaincodeDefinition"
+		args = &lb.QueryApprovedChaincodeDefinitionArgs{
+			Name:     a.Input.Name,
+			Sequence: a.Input.Sequence,
+		}
+	} else {
+		function = "QueryApprovedChaincodeDefinitions"
+		args = &lb.QueryApprovedChaincodeDefinitionsArgs{}
 	}
 
 	argsBytes, err := proto.Marshal(args)

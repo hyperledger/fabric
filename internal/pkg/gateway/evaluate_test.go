@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/hyperledger/fabric-protos-go/gateway"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/gateway"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/gossip/common"
 	gdiscovery "github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/mocks"

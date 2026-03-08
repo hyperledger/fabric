@@ -9,8 +9,8 @@ package operations_test
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -28,30 +28,30 @@ func TestOperations(t *testing.T) {
 func generateCertificates(tempDir string) {
 	serverCA, err := tlsgen.NewCA()
 	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(filepath.Join(tempDir, "server-ca.pem"), serverCA.CertBytes(), 0o640)
+	err = os.WriteFile(filepath.Join(tempDir, "server-ca.pem"), serverCA.CertBytes(), 0o640)
 	Expect(err).NotTo(HaveOccurred())
 	serverKeyPair, err := serverCA.NewServerCertKeyPair("127.0.0.1")
 	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(filepath.Join(tempDir, "server-cert.pem"), serverKeyPair.Cert, 0o640)
+	err = os.WriteFile(filepath.Join(tempDir, "server-cert.pem"), serverKeyPair.Cert, 0o640)
 	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(filepath.Join(tempDir, "server-key.pem"), serverKeyPair.Key, 0o640)
+	err = os.WriteFile(filepath.Join(tempDir, "server-key.pem"), serverKeyPair.Key, 0o640)
 	Expect(err).NotTo(HaveOccurred())
 
 	clientCA, err := tlsgen.NewCA()
 	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(filepath.Join(tempDir, "client-ca.pem"), clientCA.CertBytes(), 0o640)
+	err = os.WriteFile(filepath.Join(tempDir, "client-ca.pem"), clientCA.CertBytes(), 0o640)
 	Expect(err).NotTo(HaveOccurred())
 	clientKeyPair, err := clientCA.NewClientCertKeyPair()
 	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(filepath.Join(tempDir, "client-cert.pem"), clientKeyPair.Cert, 0o640)
+	err = os.WriteFile(filepath.Join(tempDir, "client-cert.pem"), clientKeyPair.Cert, 0o640)
 	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(filepath.Join(tempDir, "client-key.pem"), clientKeyPair.Key, 0o640)
+	err = os.WriteFile(filepath.Join(tempDir, "client-key.pem"), clientKeyPair.Key, 0o640)
 	Expect(err).NotTo(HaveOccurred())
 }
 
 func newHTTPClient(tlsDir string, withClientCert bool) *http.Client {
 	clientCertPool := x509.NewCertPool()
-	caCert, err := ioutil.ReadFile(filepath.Join(tlsDir, "server-ca.pem"))
+	caCert, err := os.ReadFile(filepath.Join(tlsDir, "server-ca.pem"))
 	Expect(err).NotTo(HaveOccurred())
 	clientCertPool.AppendCertsFromPEM(caCert)
 

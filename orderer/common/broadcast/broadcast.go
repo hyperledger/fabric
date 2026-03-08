@@ -10,9 +10,9 @@ import (
 	"io"
 	"time"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/pkg/errors"
@@ -68,7 +68,7 @@ func (bh *Handler) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 	logger.Debugf("Starting new broadcast loop for %s", addr)
 	for {
 		msg, err := srv.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			logger.Debugf("Received EOF from %s, hangup", addr)
 			return nil
 		}

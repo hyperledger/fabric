@@ -41,13 +41,13 @@ tar cfz myccpackage.tgz metadata.json code.tar.gz
 
 ## Configuring a peer to process external chaincode
 
-In this section we go over the configuration needed
+In this section we go over the configuration needed:
 * to detect if the chaincode package identifies an external chaincode service
 * to create the `connection.json` file in the release directory
 
 ### Modify the peer core.yaml to include the externalBuilder
 
-Assume the scripts are on the peer in the `bin` directory as follows
+Assume the scripts are on the peer in the `bin` directory as follows:
 ```
     <fully qualified path on the peer's env>
     └── bin
@@ -140,9 +140,10 @@ exit 0
 
 #### bin/release
 
-For chaincode as an external service, the `bin/release` script is responsible for providing the `connection.json` to the peer by placing it in the `RELEASE_OUTPUT_DIR`.  The `connection.json` file has the following JSON structure
+For chaincode as an external service, the `bin/release` script is responsible for providing the `connection.json` to the peer by placing it in the `RELEASE_OUTPUT_DIR`.  The `connection.json` file has the following JSON structure:
 
 * **address** - chaincode server endpoint accessible from peer. Must be specified in “<host>:<port>” format.
+* **domain** - chaincode service domain name. If the address is not authorized by the TLS certificate of the chaincode service, you can specify an authorized address through domain.
 * **dial_timeout** - interval to wait for connection to complete. Specified as a string qualified with time units (e.g, "10s", "500ms", "1m"). Default is “3s” if not specified.
 * **tls_required** - true or false. If false, "client_auth_required", "client_key", "client_cert", and "root_cert" are not required. Default is “true”.
 * **client_auth_required** - if true, "client_key" and "client_cert" are required. Default is false. It is ignored if tls_required is false.
@@ -155,6 +156,7 @@ For example:
 ```json
 {
   "address": "your.chaincode.host.com:9999",
+  "domain": "your.chaincode.host.com",
   "dial_timeout": "10s",
   "tls_required": "true",
   "client_auth_required": "true",
@@ -230,7 +232,7 @@ func (s *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
         // invoke code
 }
 
-//NOTE - parameters such as ccid and endpoint information are hard coded here for illustration. This can be passed in in a variety of standard ways
+//NOTE - parameters such as ccid and endpoint information are hard coded here for illustration. This can be passed in a variety of standard ways
 func main() {
        //The ccid is assigned to the chaincode on install (using the “peer lifecycle chaincode install <package>” command) for instance
         ccid := "mycc:fcbf8724572d42e859a7dd9a7cd8e2efb84058292017df6e3d89178b64e6c831"

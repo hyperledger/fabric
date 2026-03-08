@@ -201,7 +201,7 @@ func (r *rollbackMgr) rollbackBlockFiles() error {
 
 	filePath := deriveBlockfilePath(r.ledgerDir, targetFileNum)
 	if err := os.Truncate(filePath, endOffset); err != nil {
-		return errors.Wrapf(err, "error trucating the block file [%s]", filePath)
+		return errors.Wrapf(err, "error truncating the block file [%s]", filePath)
 	}
 
 	return nil

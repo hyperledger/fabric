@@ -28,15 +28,16 @@ func (fake *TimeAfter) After(arg1 time.Duration) <-chan time.Time {
 	fake.afterArgsForCall = append(fake.afterArgsForCall, struct {
 		arg1 time.Duration
 	}{arg1})
+	stub := fake.AfterStub
+	fakeReturns := fake.afterReturns
 	fake.recordInvocation("After", []interface{}{arg1})
 	fake.afterMutex.Unlock()
-	if fake.AfterStub != nil {
-		return fake.AfterStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.afterReturns
 	return fakeReturns.result1
 }
 

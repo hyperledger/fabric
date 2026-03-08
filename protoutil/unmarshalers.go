@@ -7,13 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package protoutil
 
 import (
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // the implicit contract of all these unmarshalers is that they
@@ -75,6 +75,13 @@ func UnmarshalSignatureHeader(bytes []byte) (*common.SignatureHeader, error) {
 	return sh, errors.Wrap(err, "error unmarshalling SignatureHeader")
 }
 
+// UnmarshalIdentifierHeader unmarshals bytes to an IdentifierHeader
+func UnmarshalIdentifierHeader(bytes []byte) (*common.IdentifierHeader, error) {
+	ih := &common.IdentifierHeader{}
+	err := proto.Unmarshal(bytes, ih)
+	return ih, errors.Wrap(err, "error unmarshalling IdentifierHeader")
+}
+
 func UnmarshalSerializedIdentity(bytes []byte) (*msp.SerializedIdentity, error) {
 	sid := &msp.SerializedIdentity{}
 	err := proto.Unmarshal(bytes, sid)
@@ -86,6 +93,13 @@ func UnmarshalHeader(bytes []byte) (*common.Header, error) {
 	hdr := &common.Header{}
 	err := proto.Unmarshal(bytes, hdr)
 	return hdr, errors.Wrap(err, "error unmarshalling Header")
+}
+
+// UnmarshalConfigEnvelope unmarshals bytes to a ConfigEnvelope
+func UnmarshalConfigEnvelope(bytes []byte) (*common.ConfigEnvelope, error) {
+	cfg := &common.ConfigEnvelope{}
+	err := proto.Unmarshal(bytes, cfg)
+	return cfg, errors.Wrap(err, "error unmarshalling ConfigEnvelope")
 }
 
 // UnmarshalChaincodeHeaderExtension unmarshals bytes to a ChaincodeHeaderExtension

@@ -10,7 +10,7 @@ import (
 	"bytes"
 	"encoding/hex"
 
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
+	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
@@ -90,14 +90,14 @@ func (cs *certStore) validateIdentityMsg(msg *protoext.SignedGossipMessage) erro
 	}
 	pkiID := idMsg.PkiId
 	cert := idMsg.Cert
-	calculatedPKIID := cs.mcs.GetPKIidOfCert(api.PeerIdentityType(cert))
+	calculatedPKIID := cs.mcs.GetPKIidOfCert(cert)
 	claimedPKIID := common.PKIidType(pkiID)
 	if !bytes.Equal(calculatedPKIID, claimedPKIID) {
 		return errors.Errorf("Calculated pkiID doesn't match identity: calculated: %v, claimedPKI-ID: %v", calculatedPKIID, claimedPKIID)
 	}
 
 	verifier := func(peerIdentity []byte, signature, message []byte) error {
-		return cs.mcs.Verify(api.PeerIdentityType(peerIdentity), signature, message)
+		return cs.mcs.Verify(peerIdentity, signature, message)
 	}
 
 	err := msg.Verify(cert, verifier)
@@ -105,7 +105,7 @@ func (cs *certStore) validateIdentityMsg(msg *protoext.SignedGossipMessage) erro
 		return errors.Wrap(err, "Failed verifying message")
 	}
 
-	return cs.mcs.ValidateIdentity(api.PeerIdentityType(idMsg.Cert))
+	return cs.mcs.ValidateIdentity(idMsg.Cert)
 }
 
 func (cs *certStore) createIdentityMessage() (*protoext.SignedGossipMessage, error) {

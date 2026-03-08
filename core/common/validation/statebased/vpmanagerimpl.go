@@ -9,8 +9,8 @@ package statebased
 import (
 	"sync"
 
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/pkg/errors"
@@ -306,7 +306,7 @@ func (m *KeyLevelValidationParameterManagerImpl) GetValidationParameterForKey(cc
 	// bail, if the validation parameter has been updated in the meantime
 	err := vCtx.waitForValidationResults(newLedgerKeyID(cc, coll, key), blockNum, txNum)
 	if err != nil {
-		logger.Errorf(err.Error())
+		logger.Error(err.Error())
 		return nil, err
 	}
 
@@ -316,7 +316,7 @@ func (m *KeyLevelValidationParameterManagerImpl) GetValidationParameterForKey(cc
 	state, err := m.StateFetcher.FetchState()
 	if err != nil {
 		err = errors.WithMessage(err, "could not retrieve ledger")
-		logger.Errorf(err.Error())
+		logger.Error(err.Error())
 		return nil, err
 	}
 	defer state.Done()
@@ -326,14 +326,14 @@ func (m *KeyLevelValidationParameterManagerImpl) GetValidationParameterForKey(cc
 		mdMap, err = state.GetStateMetadata(cc, key)
 		if err != nil {
 			err = errors.WithMessagef(err, "could not retrieve metadata for %s:%s", cc, key)
-			logger.Errorf(err.Error())
+			logger.Error(err.Error())
 			return nil, err
 		}
 	} else {
 		mdMap, err = state.GetPrivateDataMetadataByHash(cc, coll, []byte(key))
 		if err != nil {
 			err = errors.WithMessagef(err, "could not retrieve metadata for %s:%s:%x", cc, coll, []byte(key))
-			logger.Errorf(err.Error())
+			logger.Error(err.Error())
 			return nil, err
 		}
 	}
@@ -350,7 +350,7 @@ func (m *KeyLevelValidationParameterManagerImpl) GetValidationParameterForKey(cc
 	return policy, nil
 }
 
-// SetTxValidationCode implements the method of the same name of
+// SetTxValidationResult implements the method of the same name of
 // the KeyLevelValidationParameterManager interface. Note that
 // this function receives a namespace argument so that it records
 // the validation result for this transaction and for this chaincode.

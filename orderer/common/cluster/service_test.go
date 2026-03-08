@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
@@ -126,12 +126,12 @@ func TestSubmitSuccess(t *testing.T) {
 }
 
 type tuple struct {
-	msg interface{}
+	msg any
 	err error
 }
 
-func (t tuple) asArray() []interface{} {
-	return []interface{}{t.msg, t.err}
+func (t tuple) asArray() []any {
+	return []any{t.msg, t.err}
 }
 
 func TestSubmitFailure(t *testing.T) {
@@ -160,7 +160,6 @@ func TestSubmitFailure(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 			dispatcher := &mocks.Dispatcher{}
 			stream := &mocks.StepStream{}

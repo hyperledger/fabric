@@ -14,16 +14,16 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
-	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	lb "github.com/hyperledger/fabric-protos-go-apiv2/peer/lifecycle"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"google.golang.org/protobuf/proto"
 )
 
 // CommitReadinessChecker holds the dependencies needed to
@@ -57,6 +57,7 @@ type CommitReadinessCheckInput struct {
 	PeerAddresses            []string
 	TxID                     string
 	OutputFormat             string
+	InspectionEnabled        bool
 }
 
 // Validate the input for a CheckCommitReadiness proposal
@@ -137,6 +138,7 @@ func CheckCommitReadinessCmd(c *CommitReadinessChecker, cryptoProvider bccsp.BCC
 		"tlsRootCertFiles",
 		"connectionProfile",
 		"output",
+		"inspect",
 	}
 	attachFlags(chaincodeCheckCommitReadinessCmd, flagList)
 
@@ -185,9 +187,50 @@ func (c *CommitReadinessChecker) ReadinessCheck() error {
 	}
 
 	if strings.ToLower(c.Input.OutputFormat) == "json" {
+		// Unmarshal the proposal response to add descriptions to mismatch items
+		readinessResult := &lb.CheckCommitReadinessResult{}
+		err := proto.Unmarshal(proposalResponse.Response.Payload, readinessResult)
+		if err != nil {
+			return errors.Wrap(err, "failed to unmarshal readiness result")
+		}
+
+		if c.Input.InspectionEnabled {
+			for org, mismatches := range readinessResult.Mismatches {
+				for i, item := range mismatches.Items {
+					mismatches.Items[i] = c.mismatchItemWithDescription(item)
+				}
+				readinessResult.Mismatches[org] = mismatches
+			}
+		} else {
+			// If InspectionEnabled flag is OFF, clear the Mismatches
+			readinessResult.Mismatches = nil
+		}
+
+		// Marshal back to proposalResponse
+		updatedPayload, err := proto.Marshal(readinessResult)
+		if err != nil {
+			return errors.Wrap(err, "failed to marshal updated readiness result")
+		}
+		proposalResponse.Response.Payload = updatedPayload
+
 		return printResponseAsJSON(proposalResponse, &lb.CheckCommitReadinessResult{}, c.Writer)
 	}
 	return c.printResponse(proposalResponse)
+}
+
+// mismatchItemWithDescription returns the item with its corresponding description
+func (c *CommitReadinessChecker) mismatchItemWithDescription(item string) string {
+	descriptions := map[string]string{
+		"ChaincodeParameters": "ChaincodeParameters (Check the Sequence, ChaincodeName)",
+		"EndorsementInfo":     "EndorsementInfo (Check the Version, InitRequired, EndorsementPlugin)",
+		"ValidationInfo":      "ValidationInfo (Check the ValidationParameter, ValidationPlugin)",
+		"Collections":         "Collections (Check the Collections)",
+	}
+
+	if description, ok := descriptions[item]; ok {
+		return description
+	}
+	return item
 }
 
 // printResponse prints the information included in the response
@@ -207,13 +250,18 @@ func (c *CommitReadinessChecker) printResponse(proposalResponse *pb.ProposalResp
 
 	fmt.Fprintf(c.Writer, "Chaincode definition for chaincode '%s', version '%s', sequence '%d' on channel '%s' approval status by org:\n", c.Input.Name, c.Input.Version, c.Input.Sequence, c.Input.ChannelID)
 	for _, org := range orgs {
-		fmt.Fprintf(c.Writer, "%s: %t\n", org, result.Approvals[org])
+		fmt.Fprintf(c.Writer, "%s: %t", org, result.Approvals[org])
+
+		if mismatch, ok := result.Mismatches[org]; ok && c.Input.InspectionEnabled && len(mismatch.Items) > 0 {
+			fmt.Fprintf(c.Writer, " (mismatch: [%s])", strings.Join(result.Mismatches[org].Items, ", "))
+		}
+		fmt.Fprintln(c.Writer)
 	}
 
 	return nil
 }
 
-// setInput creates the input struct based on the CLI flags
+// createInput creates the input struct based on the CLI flags
 func (c *CommitReadinessChecker) createInput() (*CommitReadinessCheckInput, error) {
 	policyBytes, err := createPolicyBytes(signaturePolicy, channelConfigPolicy)
 	if err != nil {
@@ -238,6 +286,7 @@ func (c *CommitReadinessChecker) createInput() (*CommitReadinessCheckInput, erro
 		CollectionConfigPackage:  ccp,
 		PeerAddresses:            peerAddresses,
 		OutputFormat:             output,
+		InspectionEnabled:        inspectionEnabled,
 	}
 
 	return input, nil

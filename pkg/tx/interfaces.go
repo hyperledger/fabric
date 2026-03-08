@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/pkg/statedata"
 )
 
@@ -45,7 +45,7 @@ type ProcessorCreator interface {
 //
 // The intent is to support different transaction types via interface Processor such as pure endorser transactions,
 // pure post-order transactions, and a mixed transaction - e.g., a transaction that combines an endorser transaction and
-// and a post-order transaction (say, a token transaction).
+// a post-order transaction (say, a token transaction).
 //
 // Below is the detail description of the semantics of the function `Process`
 // In order to process a transaction on a committing peer, we first evaluate the simulated readwrite set of the transaction
@@ -119,7 +119,7 @@ type ReadHinter interface {
 }
 
 // Reprocessor is an optional interface that a `Processor` is encouraged to implement if a
-// a significant large number of transactions of the corresponding type are expected to be present and
+// significant large number of transactions of the corresponding type are expected to be present and
 // validation of the transaction is significantly resource consuming (e.g., signature matching/crypto operations)
 // as compare to manipulating the state.
 // The main context in which the function in this interface is to be invoked is to rebuild the ledger constructs such as
@@ -228,7 +228,7 @@ type Envelope struct {
 	Data []byte
 	// ChannelHeaderBytes contains the marshalled ChannelHeader of the common.Header
 	ChannelHeaderBytes []byte
-	// ChannelHeaderBytes contains the marshalled SignatureHeader of the common.Header
+	// SignatureHeaderBytes contains the marshalled SignatureHeader of the common.Header
 	SignatureHeaderBytes []byte
 	// ChannelHeader contains the ChannelHeader of this envelope
 	ChannelHeader *common.ChannelHeader

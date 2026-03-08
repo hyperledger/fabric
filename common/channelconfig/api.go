@@ -9,9 +9,9 @@ package channelconfig
 import (
 	"time"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -67,7 +67,8 @@ type Channel interface {
 	// Merkle tree to compute the BlockData hash
 	BlockDataHashingStructureWidth() uint32
 
-	// OrdererAddresses returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
+	// OrdererAddresses returns the list of valid global orderer addresses (does not include org-specific orderer endpoints)
+	// Deprecated
 	OrdererAddresses() []string
 
 	// Capabilities defines the capabilities for a channel
@@ -109,10 +110,7 @@ type Orderer interface {
 	// MaxChannelsCount returns the maximum count of channels to allow for an ordering network
 	MaxChannelsCount() uint64
 
-	// KafkaBrokers returns the addresses (IP:port notation) of a set of "bootstrap"
-	// Kafka brokers, i.e. this is not necessarily the entire set of Kafka brokers
-	// used for ordering
-	KafkaBrokers() []string
+	Consenters() []*cb.Consenter
 
 	// Organizations returns the organizations for the ordering service
 	Organizations() map[string]OrdererOrg
@@ -135,6 +133,9 @@ type ChannelCapabilities interface {
 
 	// OrgSpecificOrdererEndpoints return true if the channel config processing allows orderer orgs to specify their own endpoints
 	OrgSpecificOrdererEndpoints() bool
+
+	// ConsensusTypeBFT returns true if the channel must support BFT consensus
+	ConsensusTypeBFT() bool
 }
 
 // ApplicationCapabilities defines the capabilities for the application portion of a channel

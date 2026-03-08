@@ -15,9 +15,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/policydsl"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/protoutil"
@@ -790,7 +790,7 @@ func TestForRaces(t *testing.T) {
 
 	nRoutines := 1000
 	funcArray := make([]func(), nRoutines)
-	for i := 0; i < nRoutines; i++ {
+	for i := range nRoutines {
 		txnum := i
 		funcArray[i] = func() {
 			key := strconv.Itoa(txnum)

@@ -9,13 +9,13 @@ package aclmgmt
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/protoutil"
 )
 
-//--------- errors ---------
+// --------- errors ---------
 
 // PolicyNotFound cache for resource
 type PolicyNotFound string
@@ -31,9 +31,9 @@ func (e InvalidIdInfo) Error() string {
 	return fmt.Sprintf("Invalid id for policy [%s]", string(e))
 }
 
-//---------- policyEvaluator ------
+// ---------- policyEvaluator ------
 
-// policyEvalutor interface provides the interfaces for policy evaluation
+// policyEvaluator interface provides the interfaces for policy evaluation
 type policyEvaluator interface {
 	PolicyRefForAPI(resName string) string
 	Evaluate(polName string, id []*protoutil.SignedData) error
@@ -71,7 +71,7 @@ func (pe *policyEvaluatorImpl) Evaluate(polName string, sd []*protoutil.SignedDa
 	return err
 }
 
-//------ resourcePolicyProvider ----------
+// ------ resourcePolicyProvider ----------
 
 // aclmgmtPolicyProvider is the interface implemented by resource based ACL.
 type aclmgmtPolicyProvider interface {
@@ -79,7 +79,7 @@ type aclmgmtPolicyProvider interface {
 	GetPolicyName(resName string) string
 
 	// CheckACL backs ACLProvider interface
-	CheckACL(polName string, idinfo interface{}) error
+	CheckACL(polName string, idinfo any) error
 }
 
 // aclmgmtPolicyProviderImpl holds the bytes from state of the ledger
@@ -94,7 +94,7 @@ func (rp *aclmgmtPolicyProviderImpl) GetPolicyName(resName string) string {
 
 // CheckACL implements AClProvider's CheckACL interface so it can be registered
 // as a provider with aclmgmt
-func (rp *aclmgmtPolicyProviderImpl) CheckACL(polName string, idinfo interface{}) error {
+func (rp *aclmgmtPolicyProviderImpl) CheckACL(polName string, idinfo any) error {
 	aclLogger.Debugf("acl check(%s)", polName)
 
 	// we will implement other identifiers. In the end we just need a SignedData
@@ -145,7 +145,7 @@ func (rp *aclmgmtPolicyProviderImpl) CheckACL(polName string, idinfo interface{}
 	return nil
 }
 
-//-------- resource provider - entry point API used by aclmgmtimpl for doing resource based ACL ----------
+// -------- resource provider - entry point API used by aclmgmtimpl for doing resource based ACL ----------
 
 // resource getter gets channelconfig.Resources given channel ID
 type ResourceGetter func(channelID string) channelconfig.Resources
@@ -164,14 +164,14 @@ func newResourceProvider(rg ResourceGetter, defprov defaultACLProvider) *resourc
 	return &resourceProvider{rg, defprov}
 }
 
-func (rp *resourceProvider) enforceDefaultBehavior(resName string, channelID string, idinfo interface{}) bool {
+func (rp *resourceProvider) enforceDefaultBehavior(resName string, channelID string, idinfo any) bool {
 	// we currently enforce using p types if defined.  In future we will allow p types
 	// to be overridden through peer configuration
 	return rp.defaultProvider.IsPtypePolicy(resName)
 }
 
 // CheckACL implements the ACL
-func (rp *resourceProvider) CheckACL(resName string, channelID string, idinfo interface{}) error {
+func (rp *resourceProvider) CheckACL(resName string, channelID string, idinfo any) error {
 	if !rp.enforceDefaultBehavior(resName, channelID, idinfo) {
 		resCfg := rp.resGetter(channelID)
 
@@ -190,7 +190,7 @@ func (rp *resourceProvider) CheckACL(resName string, channelID string, idinfo in
 }
 
 // CheckACLNoChannel implements the ACLProvider interface function
-func (rp *resourceProvider) CheckACLNoChannel(resName string, idinfo interface{}) error {
+func (rp *resourceProvider) CheckACLNoChannel(resName string, idinfo any) error {
 	if !rp.enforceDefaultBehavior(resName, "", idinfo) {
 		return fmt.Errorf("cannot override peer type policy for channeless ACL check")
 	}

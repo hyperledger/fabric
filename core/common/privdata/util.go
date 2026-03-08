@@ -7,13 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package privdata
 
 import (
-	"github.com/golang/protobuf/proto"
-	mspp "github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	mspp "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // getPolicy creates a new policy from the policy envelope. It will return an error if the envelope has invalid policy config.

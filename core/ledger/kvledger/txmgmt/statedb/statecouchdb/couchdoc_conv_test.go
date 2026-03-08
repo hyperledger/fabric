@@ -10,7 +10,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
@@ -41,7 +41,7 @@ func TestKVAndDocConversion(t *testing.T) {
 		keyWithBinaryValue,
 		keyWithSortedJSONValue,
 	}
-	for i := 0; i < len(testData); i++ {
+	for i := range testData {
 		t.Run(fmt.Sprintf("testdata-%d", i),
 			func(t *testing.T) {
 				testKVAndDocConversion(t, testData[i])
@@ -69,7 +69,7 @@ func TestSortJSON(t *testing.T) {
 }
 
 func testSortJSON(t *testing.T, filePrefix int) {
-	input, err := ioutil.ReadFile(
+	input, err := os.ReadFile(
 		fmt.Sprintf("testdata/json_documents/%d_unsorted.json",
 			filePrefix,
 		))
@@ -81,9 +81,9 @@ func testSortJSON(t *testing.T, filePrefix int) {
 	require.NoError(t, err)
 
 	var prettyPrintJSON bytes.Buffer
-	err = json.Indent(&prettyPrintJSON, []byte(actualKV.Value), "", "  ")
+	err = json.Indent(&prettyPrintJSON, actualKV.Value, "", "  ")
 	require.NoError(t, err)
-	expected, err := ioutil.ReadFile(
+	expected, err := os.ReadFile(
 		fmt.Sprintf("testdata/json_documents/%d_sorted.json",
 			filePrefix,
 		))

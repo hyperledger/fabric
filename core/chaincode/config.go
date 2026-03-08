@@ -11,26 +11,32 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/spf13/viper"
 )
 
 const (
-	defaultExecutionTimeout = 30 * time.Second
-	minimumStartupTimeout   = 5 * time.Second
+	defaultExecutionTimeout       = 30 * time.Second
+	minimumStartupTimeout         = 5 * time.Second
+	defaultMaxSizeWriteBatch      = 1000
+	defaultMaxSizeGetMultipleKeys = 1000
 )
 
 type Config struct {
-	TotalQueryLimit int
-	TLSEnabled      bool
-	Keepalive       time.Duration
-	ExecuteTimeout  time.Duration
-	InstallTimeout  time.Duration
-	StartupTimeout  time.Duration
-	LogFormat       string
-	LogLevel        string
-	ShimLogLevel    string
-	SCCAllowlist    map[string]bool
+	TotalQueryLimit        int
+	TLSEnabled             bool
+	Keepalive              time.Duration
+	ExecuteTimeout         time.Duration
+	InstallTimeout         time.Duration
+	StartupTimeout         time.Duration
+	LogFormat              string
+	LogLevel               string
+	ShimLogLevel           string
+	SCCAllowlist           map[string]bool
+	UseWriteBatch          bool
+	MaxSizeWriteBatch      uint32
+	UseGetMultipleKeys     bool
+	MaxSizeGetMultipleKeys uint32
 }
 
 func GlobalConfig() *Config {
@@ -53,10 +59,7 @@ func (c *Config) load() {
 		c.ExecuteTimeout = defaultExecutionTimeout
 	}
 	c.InstallTimeout = viper.GetDuration("chaincode.installTimeout")
-	c.StartupTimeout = viper.GetDuration("chaincode.startuptimeout")
-	if c.StartupTimeout < minimumStartupTimeout {
-		c.StartupTimeout = minimumStartupTimeout
-	}
+	c.StartupTimeout = max(viper.GetDuration("chaincode.startuptimeout"), minimumStartupTimeout)
 
 	c.SCCAllowlist = map[string]bool{}
 	for k, v := range viper.GetStringMapString("chaincode.system") {
@@ -70,6 +73,20 @@ func (c *Config) load() {
 	c.TotalQueryLimit = 10000 // need a default just in case it's not set
 	if viper.IsSet("ledger.state.totalQueryLimit") {
 		c.TotalQueryLimit = viper.GetInt("ledger.state.totalQueryLimit")
+	}
+	if viper.IsSet("chaincode.runtimeParams.useWriteBatch") {
+		c.UseWriteBatch = viper.GetBool("chaincode.runtimeParams.useWriteBatch")
+	}
+	c.MaxSizeWriteBatch = viper.GetUint32("chaincode.runtimeParams.maxSizeWriteBatch")
+	if c.MaxSizeWriteBatch <= 0 {
+		c.MaxSizeWriteBatch = defaultMaxSizeWriteBatch
+	}
+	if viper.IsSet("chaincode.runtimeParams.useGetMultipleKeys") {
+		c.UseGetMultipleKeys = viper.GetBool("chaincode.runtimeParams.useGetMultipleKeys")
+	}
+	c.MaxSizeGetMultipleKeys = viper.GetUint32("chaincode.runtimeParams.maxSizeGetMultipleKeys")
+	if c.MaxSizeGetMultipleKeys <= 0 {
+		c.MaxSizeGetMultipleKeys = defaultMaxSizeGetMultipleKeys
 	}
 }
 

@@ -9,7 +9,7 @@ package cluster
 import (
 	"time"
 
-	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric-lib-go/common/metrics"
 )
 
 var (
@@ -107,7 +107,7 @@ type MetricsProvider interface {
 	NewHistogram(opts metrics.HistogramOpts) metrics.Histogram
 }
 
-//go:generate mockery -dir . -name MetricsProvider -case underscore -output ./mocks/
+//go:generate mockery --dir . --name MetricsProvider --case underscore --output ./mocks/
 
 // NewMetrics initializes new metrics for the cluster infrastructure.
 func NewMetrics(provider MetricsProvider) *Metrics {
@@ -137,7 +137,7 @@ func (m *Metrics) reportWorkerCount(channel string, count uint32) {
 }
 
 func (m *Metrics) reportMsgSendTime(host string, channel string, duration time.Duration) {
-	m.MessageSendTime.With("host", host, "channel", channel).Observe(float64(duration.Seconds()))
+	m.MessageSendTime.With("host", host, "channel", channel).Observe(duration.Seconds())
 }
 
 func (m *Metrics) reportEgressStreamCount(channel string, count uint32) {

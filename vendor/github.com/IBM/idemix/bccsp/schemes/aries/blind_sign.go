@@ -11,14 +11,15 @@ import (
 	"errors"
 	"fmt"
 
+	math "github.com/IBM/mathlib"
 	ml "github.com/IBM/mathlib"
-	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
+	"github.com/hyperledger/aries-bbs-go/bbs"
 )
 
 // BlindedMessages represents a set of messages prepared
 // (blinded) to be submitted to a signer for a blind signature.
 type BlindedMessages struct {
-	PK  *bbs12381g2pub.PublicKeyWithGenerators
+	PK  *bbs.PublicKeyWithGenerators
 	S   *ml.Zr
 	C   *ml.G1
 	PoK *POKOfBlindedMessages
@@ -51,7 +52,7 @@ func ParseBlindedMessages(bytes []byte, curve *ml.Curve) (*BlindedMessages, erro
 
 	offset += curve.CompressedG1ByteSize
 
-	proof, err := bbs12381g2pub.ParseProofG1(bytes[offset:])
+	proof, err := bbs.NewBBSLib(curve).ParseProofG1(bytes[offset:])
 	if err != nil {
 		return nil, fmt.Errorf("parse G1 proof: %w", err)
 	}
@@ -70,12 +71,12 @@ func ParseBlindedMessages(bytes []byte, curve *ml.Curve) (*BlindedMessages, erro
 // signature in the form of a Pedersen commitment.
 type POKOfBlindedMessages struct {
 	C      *ml.G1
-	ProofC *bbs12381g2pub.ProofG1
+	ProofC *bbs.ProofG1
 }
 
 // VerifyProof verifies the correctness of the zero knowledge
 // proof against the supplied commitment, challenge and public key.
-func (b *POKOfBlindedMessages) VerifyProof(messages []bool, commitment *ml.G1, challenge *ml.Zr, PK *bbs12381g2pub.PublicKey) error {
+func (b *POKOfBlindedMessages) VerifyProof(messages []bool, commitment *ml.G1, challenge *ml.Zr, PK *bbs.PublicKey) error {
 	pubKeyWithGenerators, err := PK.ToPublicKeyWithGenerators(len(messages))
 	if err != nil {
 		return fmt.Errorf("build generators from public key: %w", err)
@@ -101,18 +102,18 @@ func (b *POKOfBlindedMessages) VerifyProof(messages []bool, commitment *ml.G1, c
 
 // VerifyBlinding verifies that `msgCommit` is a valid
 // commitment of a set of messages against the appropriate bases.
-func VerifyBlinding(messageBitmap []bool, msgCommit *ml.G1, bmProof *POKOfBlindedMessages, PK *bbs12381g2pub.PublicKey, nonce []byte) error {
+func VerifyBlinding(messageBitmap []bool, msgCommit *ml.G1, bmProof *POKOfBlindedMessages, PK *bbs.PublicKey, nonce []byte, curve *math.Curve) error {
 	challengeBytes := msgCommit.Bytes()
 	challengeBytes = append(challengeBytes, bmProof.C.Bytes()...)
 	challengeBytes = append(challengeBytes, nonce...)
 
-	return bmProof.VerifyProof(messageBitmap, msgCommit, bbs12381g2pub.FrFromOKM(challengeBytes), PK)
+	return bmProof.VerifyProof(messageBitmap, msgCommit, bbs.FrFromOKM(challengeBytes, curve), PK)
 }
 
 // BlindMessages constructs a commitment to a set of messages
 // that need to be blinded before signing, and generates the
 // corresponding ZKP.
-func BlindMessages(messages [][]byte, PK *bbs12381g2pub.PublicKey, blindedMsgCount int, nonce []byte, curve *ml.Curve) (*BlindedMessages, error) {
+func BlindMessages(messages [][]byte, PK *bbs.PublicKey, blindedMsgCount int, nonce []byte, curve *ml.Curve) (*BlindedMessages, error) {
 	zrs := make([]*ml.Zr, len(messages))
 
 	for i, msg := range messages {
@@ -120,7 +121,7 @@ func BlindMessages(messages [][]byte, PK *bbs12381g2pub.PublicKey, blindedMsgCou
 			continue
 		}
 
-		zrs[i] = bbs12381g2pub.FrFromOKM(msg)
+		zrs[i] = bbs.FrFromOKM(msg, curve)
 	}
 
 	return BlindMessagesZr(zrs, PK, blindedMsgCount, nonce, curve)
@@ -129,14 +130,14 @@ func BlindMessages(messages [][]byte, PK *bbs12381g2pub.PublicKey, blindedMsgCou
 // BlindMessagesZr constructs a commitment to a set of messages
 // that need to be blinded before signing, and generates the
 // corresponding ZKP.
-func BlindMessagesZr(zrs []*ml.Zr, PK *bbs12381g2pub.PublicKey, blindedMsgCount int, nonce []byte, curve *ml.Curve) (*BlindedMessages, error) {
+func BlindMessagesZr(zrs []*ml.Zr, PK *bbs.PublicKey, blindedMsgCount int, nonce []byte, curve *ml.Curve) (*BlindedMessages, error) {
 	pubKeyWithGenerators, err := PK.ToPublicKeyWithGenerators(len(zrs))
 	if err != nil {
 		return nil, fmt.Errorf("build generators from public key: %w", err)
 	}
 
-	commit := bbs12381g2pub.NewProverCommittingG1()
-	cb := bbs12381g2pub.NewCommitmentBuilder(blindedMsgCount + 1)
+	commit := bbs.NewBBSLib(curve).NewProverCommittingG1()
+	cb := bbs.NewCommitmentBuilder(blindedMsgCount + 1)
 	secrets := make([]*ml.Zr, 0, blindedMsgCount+1)
 
 	s := curve.NewRandomZr(rand.Reader)
@@ -168,30 +169,44 @@ func BlindMessagesZr(zrs []*ml.Zr, PK *bbs12381g2pub.PublicKey, blindedMsgCount 
 		C:  C,
 		PoK: &POKOfBlindedMessages{
 			C:      U.Commitment,
-			ProofC: U.GenerateProof(bbs12381g2pub.FrFromOKM(challengeBytes), secrets),
+			ProofC: U.GenerateProof(bbs.FrFromOKM(challengeBytes, curve), secrets),
 		},
 	}, nil
 }
 
 // BlindSign signs disclosed and blinded messages using private key in compressed form.
-func BlindSign(messages []*bbs12381g2pub.SignatureMessage, msgCount int, commitment *ml.G1, privKeyBytes []byte) ([]byte, error) {
-	privKey, err := bbs12381g2pub.UnmarshalPrivateKey(privKeyBytes)
+func BlindSign(messages []*bbs.SignatureMessage, msgCount int, commitment *ml.G1, privKeyBytes []byte, curve *math.Curve) ([]byte, error) {
+	bl := bbs.NewBBSLib(curve)
+
+	privKey, err := bl.UnmarshalPrivateKey(privKeyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal private key: %w", err)
+	}
+
+	pkwg, err := privKey.PublicKey().ToPublicKeyWithGenerators(msgCount)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal PublicKey: %w", err)
 	}
 
 	if len(messages) == 0 {
 		return nil, errors.New("messages are not defined")
 	}
 
-	bbs := bbs12381g2pub.New()
+	// signer adds its component
+	cb := bbs.NewCommitmentBuilder(len(messages) + 2)
+	for _, msg := range messages {
+		cb.Add(pkwg.H[msg.Idx], msg.FR)
+	}
+	cb.Add(commitment, curve.NewZrFromInt(1))
+	cb.Add(curve.GenG1, curve.NewZrFromInt(1))
+	comm := cb.Build()
 
-	return bbs.SignWithKeyFr(messages, msgCount, commitment, privKey)
+	return bbs.New(curve).SignWithKeyB(comm, msgCount, privKey)
 }
 
 // UnblindSign converts a signature over some blind messages into a standard signature.
 func UnblindSign(sigBytes []byte, S *ml.Zr, curve *ml.Curve) ([]byte, error) {
-	signature, err := bbs12381g2pub.ParseSignature(sigBytes)
+	signature, err := bbs.NewBBSLib(curve).ParseSignature(sigBytes)
 	if err != nil {
 		return nil, fmt.Errorf("parse signature: %w", err)
 	}

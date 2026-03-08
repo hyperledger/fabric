@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"google.golang.org/grpc/credentials"
 )
 
@@ -93,7 +93,7 @@ func (t *TLSConfig) SetClientCAs(certPool *x509.CertPool) {
 	t.config.ClientCAs = certPool
 }
 
-// ClientHandShake is not implemented for `serverCreds`.
+// ClientHandshake is not implemented for `serverCreds`.
 func (sc *serverCreds) ClientHandshake(context.Context, string, net.Conn) (net.Conn, credentials.AuthInfo, error) {
 	return nil, nil, ErrClientHandshakeNotImplemented
 }

@@ -17,13 +17,13 @@ limitations under the License.
 package rwsetutil
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 const rwsetV1ProtoBytesFile = "testdata/rwsetV1ProtoBytes"
@@ -32,7 +32,7 @@ const rwsetV1ProtoBytesFile = "testdata/rwsetV1ProtoBytes"
 // is able to unmarshal the protobytes that are produced by the 'RWSet' proto message declared in
 // v1.0. This is to make sure that any incompatible changes does not go uncaught.
 func TestRWSetV1BackwardCompatible(t *testing.T) {
-	protoBytes, err := ioutil.ReadFile(rwsetV1ProtoBytesFile)
+	protoBytes, err := os.ReadFile(rwsetV1ProtoBytesFile)
 	require.NoError(t, err)
 	rwset1 := &rwset.TxReadWriteSet{}
 	require.NoError(t, proto.Unmarshal(protoBytes, rwset1))
@@ -44,11 +44,11 @@ func TestRWSetV1BackwardCompatible(t *testing.T) {
 // PrepareBinaryFileSampleRWSetV1 constructs a proto message for kvrwset and marshals its bytes to file 'rwsetV1ProtoBytes'.
 // this code should be run on fabric version 1.0 so as to produce a sample file of proto message declared in V1
 // In order to invoke this function on V1 code, copy this over on to V1 code, make the first letter as 'T', and finally invoke this function
-// using golang test framwork
+// using golang test framework
 func PrepareBinaryFileSampleRWSetV1(t *testing.T) {
 	b, err := proto.Marshal(constructSampleRWSet())
 	require.NoError(t, err)
-	require.NoError(t, ioutil.WriteFile(rwsetV1ProtoBytesFile, b, 0o644))
+	require.NoError(t, os.WriteFile(rwsetV1ProtoBytesFile, b, 0o644))
 }
 
 func constructSampleRWSet() *rwset.TxReadWriteSet {

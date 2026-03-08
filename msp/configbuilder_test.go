@@ -7,12 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package msp
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/stretchr/testify/require"
 )
@@ -94,7 +93,7 @@ func TestGetLocalMspConfigFails(t *testing.T) {
 }
 
 func TestGetPemMaterialFromDirWithFile(t *testing.T) {
-	tempFile, err := ioutil.TempFile("", "fabric-msp-test")
+	tempFile, err := os.CreateTemp("", "fabric-msp-test")
 	require.NoError(t, err)
 	err = tempFile.Close()
 	require.NoError(t, err)
@@ -106,12 +105,10 @@ func TestGetPemMaterialFromDirWithFile(t *testing.T) {
 
 func TestGetPemMaterialFromDirWithSymlinks(t *testing.T) {
 	mspDir := configtest.GetDevMspDir()
-	tempDir, err := ioutil.TempDir("", "fabric-msp-test")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	dirSymlinkName := filepath.Join(tempDir, "..data")
-	err = os.Symlink(filepath.Join(mspDir, "signcerts"), dirSymlinkName)
+	err := os.Symlink(filepath.Join(mspDir, "signcerts"), dirSymlinkName)
 	require.NoError(t, err)
 
 	fileSymlinkTarget := filepath.Join("..data", "peer.pem")
@@ -134,4 +131,47 @@ func TestReadFileUtils(t *testing.T) {
 	// test that reading an existing file which is not a PEM file doesn't crash
 	_, err = readPemFile("/dev/null")
 	require.Error(t, err)
+}
+
+func TestGetPemMaterialEmptyDir(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// test reading pem material from an empty dir success, but returns empty slice
+	pemdata, err := getPemMaterialFromDir(tempDir)
+	require.NoError(t, err)
+	require.Empty(t, pemdata)
+}
+
+func TestGetMspConfigEmptyDir(t *testing.T) {
+	tempDir := t.TempDir()
+	// try to read certificates from a directoriy that do not exist
+	mspConf, err := getMspConfig(tempDir, "SampleOrg", nil)
+	require.ErrorContains(t, err, "could not load a valid ca certificate from directory")
+	require.Nil(t, mspConf)
+
+	// create a cacerts dir in tempDir
+	err = os.MkdirAll(filepath.Join(tempDir, cacerts), 0o755)
+	require.NoError(t, err)
+
+	// try to read certificates from an empty cacerts dir
+	mspConf, err = getMspConfig(tempDir, "SampleOrg", nil)
+	require.ErrorContains(t, err, "no ca certificate found in directory")
+	require.Nil(t, mspConf)
+}
+
+func TestGetLocalMspConfigEmptyDir(t *testing.T) {
+	tempDir := t.TempDir()
+	// try to read signing certificate from a directoriy that do not exist
+	mspConf, err := GetLocalMspConfig(tempDir, nil, "SampleOrg")
+	require.ErrorContains(t, err, "could not load signing certificate from directory")
+	require.Nil(t, mspConf)
+
+	// create a signcerts dir in tempDir
+	err = os.MkdirAll(filepath.Join(tempDir, signcerts), 0o755)
+	require.NoError(t, err)
+
+	// try to read certificates from an empty signcerts dir
+	mspConf, err = GetLocalMspConfig(tempDir, nil, "SampleOrg")
+	require.ErrorContains(t, err, "no signing certificate found in directory")
+	require.Nil(t, mspConf)
 }

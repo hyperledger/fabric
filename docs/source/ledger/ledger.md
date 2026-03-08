@@ -124,14 +124,12 @@ complex queries.
 Applications submit transactions which capture changes to the world state, and
 these transactions end up being committed to the ledger blockchain. Applications
 are insulated from the details of this [consensus](../txflow.html) mechanism by
-the Hyperledger Fabric SDK; they merely invoke a smart contract, and are
+the Hyperledger Fabric SDK and peer Gateway; they merely request invocation of a smart contract, and are
 notified when the transaction has been included in the blockchain (whether valid
 or invalid). The key design point is that only transactions that are **signed**
 by the required set of **endorsing organizations** will result in an update to
 the world state. If a transaction is not signed by sufficient endorsers, it will
-not result in a change of world state. You can read more about how applications
-use [smart contracts](../smartcontract/smartcontract.html), and how to [develop
-applications](../developapps/developing_applications.html).
+not result in a change of world state.
 
 You'll also notice that a state has a version number, and in the diagram above,
 states CAR1 and CAR2 are at their starting versions, 0. The version number is for
@@ -153,7 +151,7 @@ transactions are accepted.
 
 Let's now turn our attention from the world state to the blockchain. Whereas the
 world state contains a set of facts relating to the current state of a set of
-business objects, the blockchain is an historical record of the facts about how
+business objects, the blockchain is a historical record of the facts about how
 these objects arrived at their current states. The blockchain has recorded every
 previous version of each ledger state and how it has been changed.
 
@@ -374,8 +372,7 @@ chaincodes. World states are in a namespace so that only smart contracts within
 the same chaincode can access a given namespace.
 
 A blockchain is not namespaced. It contains transactions from many different
-smart contract namespaces. You can read more about chaincode namespaces in this
-[topic](../developapps/chaincodenamespace.html).
+smart contract namespaces.
 
 Let's now look at how the concept of a namespace is applied within a Hyperledger
 Fabric channel.
@@ -387,9 +384,6 @@ separate ledger. This means a completely separate blockchain, and completely
 separate world states, including namespaces. It is possible for applications and
 smart contracts to communicate between channels so that ledger information can
 be accessed between them.
-
-You can read more about how ledgers work with channels in this
-[topic](../developapps/chaincodenamespace.html#channels).
 
 
 ## More information

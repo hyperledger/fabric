@@ -8,7 +8,6 @@ package fileutil
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,8 +24,7 @@ func TestFileExists(t *testing.T) {
 	})
 
 	t.Run("dir-path", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		exists, size, err := FileExists(testPath)
 		require.EqualError(t, err, fmt.Sprintf("the supplied path [%s] is a dir", testPath))
@@ -35,8 +33,7 @@ func TestFileExists(t *testing.T) {
 	})
 
 	t.Run("empty-file", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		file := filepath.Join(testPath, "empty-file")
 		f, err := os.Create(file)
@@ -50,12 +47,11 @@ func TestFileExists(t *testing.T) {
 	})
 
 	t.Run("file-with-content", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		file := filepath.Join(testPath, "empty-file")
 		contents := []byte("some random contents")
-		ioutil.WriteFile(file, []byte(contents), 0o644)
+		require.NoError(t, os.WriteFile(file, contents, 0o644))
 		exists, size, err := FileExists(file)
 		require.NoError(t, err)
 		require.True(t, exists)
@@ -65,8 +61,7 @@ func TestFileExists(t *testing.T) {
 
 func TestDirExists(t *testing.T) {
 	t.Run("non-existent-path", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		exists, err := DirExists(filepath.Join(testPath, "non-existent-path"))
 		require.NoError(t, err)
@@ -74,8 +69,7 @@ func TestDirExists(t *testing.T) {
 	})
 
 	t.Run("dir-exists", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		exists, err := DirExists(testPath)
 		require.NoError(t, err)
@@ -83,8 +77,7 @@ func TestDirExists(t *testing.T) {
 	})
 
 	t.Run("file-exists", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		file := filepath.Join(testPath, "empty-file")
 		f, err := os.Create(file)
@@ -99,8 +92,7 @@ func TestDirExists(t *testing.T) {
 
 func TestDirEmpty(t *testing.T) {
 	t.Run("non-existent-dir", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		dir := filepath.Join(testPath, "non-existent-dir")
 		_, err := DirEmpty(dir)
@@ -108,8 +100,7 @@ func TestDirEmpty(t *testing.T) {
 	})
 
 	t.Run("empty-dir", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		dir := filepath.Join(testPath, "empty-dir")
 		require.NoError(t, os.MkdirAll(dir, 0o755))
@@ -119,21 +110,19 @@ func TestDirEmpty(t *testing.T) {
 	})
 
 	t.Run("dir-has-file", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		dir := filepath.Join(testPath, "non-empty-dir")
 		require.NoError(t, os.MkdirAll(dir, 0o755))
 		file := filepath.Join(testPath, "non-empty-dir", "some-random-file")
-		require.NoError(t, ioutil.WriteFile(file, []byte("some-random-text"), 0o644))
+		require.NoError(t, os.WriteFile(file, []byte("some-random-text"), 0o644))
 		empty, err := DirEmpty(dir)
 		require.NoError(t, err)
 		require.False(t, empty)
 	})
 
 	t.Run("dir-has-subdir", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		dir := filepath.Join(testPath, "non-empty-dir")
 		subdir := filepath.Join(testPath, "non-empty-dir", "some-random-dir")
@@ -146,8 +135,7 @@ func TestDirEmpty(t *testing.T) {
 
 func TestCreateDirIfMissing(t *testing.T) {
 	t.Run("non-existent-dir", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		dir := filepath.Join(testPath, "non-existent-dir")
 		empty, err := CreateDirIfMissing(dir)
@@ -156,8 +144,7 @@ func TestCreateDirIfMissing(t *testing.T) {
 	})
 
 	t.Run("existing-dir", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		dir := filepath.Join(testPath, "empty-dir")
 		require.NoError(t, os.MkdirAll(dir, 0o755))
@@ -166,18 +153,17 @@ func TestCreateDirIfMissing(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, empty)
 
-		require.NoError(t, ioutil.WriteFile(filepath.Join(dir, "some-random-file"), []byte("some-random-text"), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "some-random-file"), []byte("some-random-text"), 0o644))
 		empty, err = CreateDirIfMissing(dir)
 		require.NoError(t, err)
 		require.False(t, empty)
 	})
 
 	t.Run("cannot-create-dir", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		path := filepath.Join(testPath, "some-random-file")
-		require.NoError(t, ioutil.WriteFile(path, []byte("some-random-text"), 0o644))
+		require.NoError(t, os.WriteFile(path, []byte("some-random-text"), 0o644))
 		empty, err := CreateDirIfMissing(path)
 		require.EqualError(t, err, fmt.Sprintf("error while creating dir: %s: mkdir %s: not a directory", path, path))
 		require.False(t, empty)
@@ -186,8 +172,7 @@ func TestCreateDirIfMissing(t *testing.T) {
 
 func TestListSubdirs(t *testing.T) {
 	t.Run("only-subdirs", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		childFolders := []string{".childFolder1", "childFolder2", "childFolder3"}
 		for _, folder := range childFolders {
@@ -199,18 +184,16 @@ func TestListSubdirs(t *testing.T) {
 	})
 
 	t.Run("only-file", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
-		require.NoError(t, ioutil.WriteFile(filepath.Join(testPath, "some-random-file"), []byte("random-text"), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(testPath, "some-random-file"), []byte("random-text"), 0o644))
 		subFolders, err := ListSubdirs(testPath)
 		require.NoError(t, err)
 		require.Len(t, subFolders, 0)
 	})
 
 	t.Run("empty-dir", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		subFolders, err := ListSubdirs(testPath)
 		require.NoError(t, err)
@@ -218,8 +201,7 @@ func TestListSubdirs(t *testing.T) {
 	})
 
 	t.Run("non-existent-dir", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		dir := filepath.Join(testPath, "non-existent-dir")
 		_, err := ListSubdirs(dir)
@@ -229,21 +211,19 @@ func TestListSubdirs(t *testing.T) {
 
 func TestCreateAndSyncFileAtomically(t *testing.T) {
 	t.Run("green-path", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		content := []byte("some random content")
 		err := CreateAndSyncFileAtomically(testPath, "tmpFile", "finalFile", content, 0o644)
 		require.NoError(t, err)
 		require.NoFileExists(t, filepath.Join(testPath, "tmpFile"))
-		contentRetrieved, err := ioutil.ReadFile(filepath.Join(testPath, "finalFile"))
+		contentRetrieved, err := os.ReadFile(filepath.Join(testPath, "finalFile"))
 		require.NoError(t, err)
 		require.Equal(t, content, contentRetrieved)
 	})
 
 	t.Run("dir-doesnot-exist", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		content := []byte("some random content")
 		dir := filepath.Join(testPath, "non-exitent-dir")
@@ -253,35 +233,32 @@ func TestCreateAndSyncFileAtomically(t *testing.T) {
 	})
 
 	t.Run("tmp-file-already-exists", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		content := []byte("some random content")
 		tmpFile := filepath.Join(testPath, "tmpFile")
-		err := ioutil.WriteFile(tmpFile, []byte("existing-contents"), 0o644)
+		err := os.WriteFile(tmpFile, []byte("existing-contents"), 0o644)
 		require.NoError(t, err)
 		err = CreateAndSyncFileAtomically(testPath, "tmpFile", "finalFile", content, 0o644)
 		require.EqualError(t, err, fmt.Sprintf("error while creating file:%s: open %s: file exists", tmpFile, tmpFile))
 	})
 
 	t.Run("final-file-already-exists", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		content := []byte("some random content")
 		finalFile := filepath.Join(testPath, "finalFile")
-		err := ioutil.WriteFile(finalFile, []byte("existing-contents"), 0o644)
+		err := os.WriteFile(finalFile, []byte("existing-contents"), 0o644)
 		require.NoError(t, err)
 		err = CreateAndSyncFileAtomically(testPath, "tmpFile", "finalFile", content, 0o644)
 		require.NoError(t, err)
-		contentRetrieved, err := ioutil.ReadFile(filepath.Join(testPath, "finalFile"))
+		contentRetrieved, err := os.ReadFile(filepath.Join(testPath, "finalFile"))
 		require.NoError(t, err)
 		require.Equal(t, content, contentRetrieved)
 	})
 
 	t.Run("rename-returns-error", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		content := []byte("some random content")
 		tmpFile := filepath.Join(testPath, "tmpFile")
@@ -294,8 +271,7 @@ func TestCreateAndSyncFileAtomically(t *testing.T) {
 
 func TestSyncDir(t *testing.T) {
 	t.Run("green-path", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		require.NoError(t, SyncDir(testPath))
 		require.NoError(t, SyncParentDir(testPath))
@@ -308,14 +284,13 @@ func TestSyncDir(t *testing.T) {
 
 func TestRemoveContents(t *testing.T) {
 	t.Run("non-empty-dir", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		// create files and a non-empty subdir under testPath to test RemoveContents
 		require.NoError(t, CreateAndSyncFile(filepath.Join(testPath, "file1"), []byte("test-removecontents"), 0o644))
 		require.NoError(t, CreateAndSyncFile(filepath.Join(testPath, "file2"), []byte("test-removecontents"), 0o644))
 		require.NoError(t, os.MkdirAll(filepath.Join(testPath, "non-empty-dir", "some-random-dir"), 0o755))
-		require.NoError(t, ioutil.WriteFile(filepath.Join(testPath, "non-empty-dir", "some-random-file"), []byte("test-subdir-removecontents"), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(testPath, "non-empty-dir", "some-random-file"), []byte("test-subdir-removecontents"), 0o644))
 
 		require.NoError(t, RemoveContents(testPath))
 		empty, err := DirEmpty(testPath)
@@ -324,8 +299,7 @@ func TestRemoveContents(t *testing.T) {
 	})
 
 	t.Run("empty-dir", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 
 		require.NoError(t, RemoveContents(testPath))
 		empty, err := DirEmpty(testPath)
@@ -334,14 +308,7 @@ func TestRemoveContents(t *testing.T) {
 	})
 
 	t.Run("non-existent-dir", func(t *testing.T) {
-		testPath := testPath(t)
-		defer os.RemoveAll(testPath)
+		testPath := t.TempDir()
 		require.NoError(t, RemoveContents(filepath.Join(testPath, "non-existent-dir")))
 	})
-}
-
-func testPath(t *testing.T) string {
-	path, err := ioutil.TempDir("", "fileutiltest-")
-	require.NoError(t, err)
-	return path
 }

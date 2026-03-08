@@ -14,9 +14,11 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // NewBlock constructs a block with no data and no metadata.
@@ -64,7 +66,14 @@ func BlockHeaderHash(b *cb.BlockHeader) []byte {
 	return sum[:]
 }
 
-func BlockDataHash(b *cb.BlockData) []byte {
+func BlockDataHash(b *cb.BlockData) ([]byte, error) {
+	if err := VerifyTransactionsAreWellFormed(b); err != nil {
+		return nil, err
+	}
+	return ComputeBlockDataHash(b), nil
+}
+
+func ComputeBlockDataHash(b *cb.BlockData) []byte {
 	sum := sha256.Sum256(bytes.Join(b.Data, nil))
 	return sum[:]
 }
@@ -90,7 +99,13 @@ func GetChannelIDFromBlock(block *cb.Block) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	payload, err := UnmarshalPayload(envelope.Payload)
+
+	return GetChannelIDFromEnvelope(envelope)
+}
+
+// GetChannelIDFromEnvelope returns channel ID in the envelope
+func GetChannelIDFromEnvelope(envelope *cb.Envelope) (string, error) {
+	payload, err := UnmarshalPayload(envelope.GetPayload())
 	if err != nil {
 		return "", err
 	}
@@ -98,7 +113,7 @@ func GetChannelIDFromBlock(block *cb.Block) (string, error) {
 	if payload.Header == nil {
 		return "", errors.New("failed to retrieve channel id - payload header is empty")
 	}
-	chdr, err := UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := UnmarshalChannelHeader(payload.GetHeader().GetChannelHeader())
 	if err != nil {
 		return "", err
 	}
@@ -215,24 +230,101 @@ func InitBlockMetadata(block *cb.Block) {
 	if block.Metadata == nil {
 		block.Metadata = &cb.BlockMetadata{Metadata: [][]byte{{}, {}, {}, {}, {}}}
 	} else if len(block.Metadata.Metadata) < int(cb.BlockMetadataIndex_COMMIT_HASH+1) {
-		for i := int(len(block.Metadata.Metadata)); i <= int(cb.BlockMetadataIndex_COMMIT_HASH); i++ {
+		for i := len(block.Metadata.Metadata); i <= int(cb.BlockMetadataIndex_COMMIT_HASH); i++ {
 			block.Metadata.Metadata = append(block.Metadata.Metadata, []byte{})
 		}
 	}
 }
 
-func VerifyTransactionsAreWellFormed(block *cb.Block) error {
-	if block == nil || block.Data == nil || len(block.Data.Data) == 0 {
-		return fmt.Errorf("empty block")
+type VerifierBuilder func(block *cb.Block) BlockVerifierFunc
+
+type BlockVerifierFunc func(header *cb.BlockHeader, metadata *cb.BlockMetadata) error
+
+//go:generate counterfeiter -o mocks/policy.go --fake-name Policy . policy
+type policy interface { // copied from common.policies to avoid circular import.
+	// EvaluateSignedData takes a set of SignedData and evaluates whether
+	// 1) the signatures are valid over the related message
+	// 2) the signing identities satisfy the policy
+	EvaluateSignedData(signatureSet []*SignedData) error
+}
+
+func BlockSignatureVerifier(bftEnabled bool, consenters []*cb.Consenter, policy policy) BlockVerifierFunc {
+	return func(header *cb.BlockHeader, metadata *cb.BlockMetadata) error {
+		if len(metadata.GetMetadata()) < int(cb.BlockMetadataIndex_SIGNATURES)+1 {
+			return errors.Errorf("no signatures in block metadata")
+		}
+
+		md := &cb.Metadata{}
+		if err := proto.Unmarshal(metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES], md); err != nil {
+			return errors.Wrapf(err, "error unmarshalling signatures from metadata: %v", err)
+		}
+
+		var signatureSet []*SignedData
+		for _, metadataSignature := range md.Signatures {
+			var signerIdentity []byte
+			var signedPayload []byte
+			// if the SignatureHeader is empty and the IdentifierHeader is present, then  the consenter expects us to fetch its identity by its numeric identifier
+			if bftEnabled && len(metadataSignature.GetSignatureHeader()) == 0 && len(metadataSignature.GetIdentifierHeader()) > 0 {
+				identifierHeader, err := UnmarshalIdentifierHeader(metadataSignature.IdentifierHeader)
+				if err != nil {
+					return fmt.Errorf("failed unmarshalling identifier header for block %d: %v", header.GetNumber(), err)
+				}
+				identifier := identifierHeader.GetIdentifier()
+				signerIdentity = searchConsenterIdentityByID(consenters, identifier)
+				if len(signerIdentity) == 0 {
+					// The identifier is not within the consenter set
+					continue
+				}
+				signedPayload = util.ConcatenateBytes(md.Value, metadataSignature.IdentifierHeader, BlockHeaderBytes(header))
+			} else {
+				signatureHeader, err := UnmarshalSignatureHeader(metadataSignature.GetSignatureHeader())
+				if err != nil {
+					return fmt.Errorf("failed unmarshalling signature header for block %d: %v", header.GetNumber(), err)
+				}
+
+				signedPayload = util.ConcatenateBytes(md.Value, metadataSignature.SignatureHeader, BlockHeaderBytes(header))
+
+				signerIdentity = signatureHeader.Creator
+			}
+
+			signatureSet = append(
+				signatureSet,
+				&SignedData{
+					Identity:  signerIdentity,
+					Data:      signedPayload,
+					Signature: metadataSignature.Signature,
+				},
+			)
+		}
+
+		return policy.EvaluateSignedData(signatureSet)
+	}
+}
+
+func searchConsenterIdentityByID(consenters []*cb.Consenter, identifier uint32) []byte {
+	for _, consenter := range consenters {
+		if consenter.Id == identifier {
+			return MarshalOrPanic(&msp.SerializedIdentity{
+				Mspid:   consenter.MspId,
+				IdBytes: consenter.Identity,
+			})
+		}
+	}
+	return nil
+}
+
+func VerifyTransactionsAreWellFormed(bd *cb.BlockData) error {
+	if bd == nil || bd.Data == nil || len(bd.Data) == 0 {
+		return errors.New("empty block")
 	}
 
 	// If we have a single transaction, and the block is a config block, then no need to check
 	// well formed-ness, because there cannot be another transaction in the original block.
-	if IsConfigBlock(block) {
+	if HasConfigTx(bd) {
 		return nil
 	}
 
-	for i, rawTx := range block.Data.Data {
+	for i, rawTx := range bd.Data {
 		env := &cb.Envelope{}
 		if err := proto.Unmarshal(rawTx, env); err != nil {
 			return fmt.Errorf("transaction %d is invalid: %v", i, err)

@@ -9,7 +9,7 @@ package multichannel
 import (
 	"fmt"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -110,7 +110,7 @@ func makeConfigTx(chainID string, i int) *cb.Envelope {
 	group := protoutil.NewConfigGroup()
 	group.Groups[channelconfig.OrdererGroupKey] = protoutil.NewConfigGroup()
 	group.Groups[channelconfig.OrdererGroupKey].Values[fmt.Sprintf("%d", i)] = &cb.ConfigValue{
-		Value: []byte(fmt.Sprintf("%d", i)),
+		Value: fmt.Appendf(nil, "%d", i),
 	}
 	return makeConfigTxFromConfigUpdateEnvelope(chainID, &cb.ConfigUpdateEnvelope{
 		ConfigUpdate: protoutil.MarshalOrPanic(&cb.ConfigUpdate{
@@ -120,10 +120,11 @@ func makeConfigTx(chainID string, i int) *cb.Envelope {
 }
 
 func makeConfigTxFull(chainID string, i int) *cb.Envelope {
-	gConf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+	gConf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
 	gConf.Orderer.Capabilities = map[string]bool{
 		capabilities.OrdererV2_0: true,
 	}
+	gConf.Orderer.Organizations[0].OrdererEndpoints = []string{"127.0.0.1:7050"}
 	gConf.Orderer.MaxChannels = 10
 	channelGroup, err := encoder.NewChannelGroup(gConf)
 	if err != nil {
@@ -138,11 +139,12 @@ func makeConfigTxFull(chainID string, i int) *cb.Envelope {
 }
 
 func makeConfigTxMig(chainID string, i int) *cb.Envelope {
-	gConf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+	gConf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
 	gConf.Orderer.Capabilities = map[string]bool{
 		capabilities.OrdererV2_0: true,
 	}
-	gConf.Orderer.OrdererType = "kafka"
+	gConf.Orderer.Organizations[0].OrdererEndpoints = []string{"127.0.0.1:7050"}
+	gConf.Orderer.OrdererType = "solo"
 	channelGroup, err := encoder.NewChannelGroup(gConf)
 	if err != nil {
 		return nil
@@ -153,14 +155,6 @@ func makeConfigTxMig(chainID string, i int) *cb.Envelope {
 			WriteSet: channelGroup,
 		}),
 	})
-}
-
-func wrapConfigTx(env *cb.Envelope) *cb.Envelope {
-	result, err := protoutil.CreateSignedEnvelope(cb.HeaderType_ORDERER_TRANSACTION, "testchannelid", mockCrypto(), env, msgVersion, epoch)
-	if err != nil {
-		panic(err)
-	}
-	return result
 }
 
 func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.ConfigUpdateEnvelope) *cb.Envelope {
@@ -188,7 +182,7 @@ func makeNormalTx(chainID string, i int) *cb.Envelope {
 			}),
 			SignatureHeader: protoutil.MarshalOrPanic(&cb.SignatureHeader{}),
 		},
-		Data: []byte(fmt.Sprintf("%d", i)),
+		Data: fmt.Appendf(nil, "%d", i),
 	}
 	return &cb.Envelope{
 		Payload: protoutil.MarshalOrPanic(payload),

@@ -8,21 +8,20 @@ package ccprovider
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"unicode"
 
-	"github.com/golang/protobuf/proto"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/chaincode"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 var ccproviderLogger = flogging.MustGetLogger("ccprovider")
@@ -91,12 +90,12 @@ func isPrintable(name string) bool {
 	return strings.IndexFunc(name, notASCII) == -1
 }
 
-// GetChaincodePackage returns the chaincode package from the file system
+// GetChaincodePackageFromPath returns the chaincode package from the file system
 func GetChaincodePackageFromPath(ccNameVersion string, ccInstallPath string) ([]byte, error) {
 	path := fmt.Sprintf("%s/%s", ccInstallPath, strings.ReplaceAll(ccNameVersion, ":", "."))
 	var ccbytes []byte
 	var err error
-	if ccbytes, err = ioutil.ReadFile(path); err != nil {
+	if ccbytes, err = os.ReadFile(path); err != nil {
 		return nil, err
 	}
 	return ccbytes, nil
@@ -124,7 +123,7 @@ type CCInfoFSImpl struct {
 	GetHasher GetHasher
 }
 
-// GetChaincodeFromFS this is a wrapper for hiding package implementation.
+// GetChaincode this is a wrapper for hiding package implementation.
 // It calls GetChaincodeFromPath with the chaincodeInstallPath
 func (cifs *CCInfoFSImpl) GetChaincode(ccNameVersion string) (CCPackage, error) {
 	return cifs.GetChaincodeFromPath(ccNameVersion, chaincodeInstallPath)
@@ -188,7 +187,7 @@ func (cifs *CCInfoFSImpl) PutChaincode(depSpec *pb.ChaincodeDeploymentSpec) (CCP
 }
 
 // DirEnumerator enumerates directories
-type DirEnumerator func(string) ([]os.FileInfo, error)
+type DirEnumerator func(string) ([]os.DirEntry, error)
 
 // ChaincodeExtractor extracts chaincode from a given path
 type ChaincodeExtractor func(ccNameVersion string, path string, getHasher GetHasher) (CCPackage, error)
@@ -302,7 +301,7 @@ func GetCCPackage(buf []byte, bccsp bccsp.BCCSP) (CCPackage, error) {
 // been installed (but not necessarily instantiated) on the peer by searching
 // the chaincode install path
 func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
-	files, err := ioutil.ReadDir(chaincodeInstallPath)
+	files, err := os.ReadDir(chaincodeInstallPath)
 	if err != nil {
 		return nil, err
 	}
@@ -354,53 +353,10 @@ func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
 	return cqr, nil
 }
 
-//-------- ChaincodeData is stored on the LSCC -------
-
-// ChaincodeData defines the datastructure for chaincodes to be serialized by proto
-// Type provides an additional check by directing to use a specific package after instantiation
-// Data is Type specific (see CDSPackage and SignedCDSPackage)
-type ChaincodeData struct {
-	// Name of the chaincode
-	Name string `protobuf:"bytes,1,opt,name=name"`
-
-	// Version of the chaincode
-	Version string `protobuf:"bytes,2,opt,name=version"`
-
-	// Escc for the chaincode instance
-	Escc string `protobuf:"bytes,3,opt,name=escc"`
-
-	// Vscc for the chaincode instance
-	Vscc string `protobuf:"bytes,4,opt,name=vscc"`
-
-	// Policy endorsement policy for the chaincode instance
-	Policy []byte `protobuf:"bytes,5,opt,name=policy,proto3"`
-
-	// Data data specific to the package
-	Data []byte `protobuf:"bytes,6,opt,name=data,proto3"`
-
-	// Id of the chaincode that's the unique fingerprint for the CC This is not
-	// currently used anywhere but serves as a good eyecatcher
-	Id []byte `protobuf:"bytes,7,opt,name=id,proto3"`
-
-	// InstantiationPolicy for the chaincode
-	InstantiationPolicy []byte `protobuf:"bytes,8,opt,name=instantiation_policy,proto3"`
-}
-
 // ChaincodeID is the name by which the chaincode will register itself.
 func (cd *ChaincodeData) ChaincodeID() string {
 	return cd.Name + ":" + cd.Version
 }
-
-// implement functions needed from proto.Message for proto's mar/unmarshal functions
-
-// Reset resets
-func (cd *ChaincodeData) Reset() { *cd = ChaincodeData{} }
-
-// String converts to string
-func (cd *ChaincodeData) String() string { return proto.CompactTextString(cd) }
-
-// ProtoMessage just exists to make proto happy
-func (*ChaincodeData) ProtoMessage() {}
 
 // TransactionParams are parameters which are tied to a particular transaction
 // and which are required for invoking chaincode.

@@ -114,7 +114,7 @@ Below is also shown a good approach to achieve consistency which consists of cre
 .. code:: go
 
   // Asset describes basic details of what makes up a simple asset
-  // Insert struct field in alphabetic order => to achieve determinism accross languages
+  // Insert struct field in alphabetic order => to achieve determinism across languages
   // golang keeps the order when marshal to json but doesn't order automatically
 
   type Asset struct {
@@ -556,20 +556,19 @@ function. Here's the whole chaincode program source.
 Chaincode access control
 ------------------------
 
-Chaincode can utilize the client (submitter) certificate for access
-control decisions with ``ctx.GetStub().GetCreator()``. Additionally
-the Fabric Contract API provides extension APIs that extract client identity
+Chaincode can utilize the client (request submitter) certificate for access
+control decisions. The certificate can be retrieved with the ``ctx.GetStub().GetCreator()`` contract API.
+Additionally the Fabric contract API provides extension APIs that extract client identity
 from the submitter's certificate that can be used for access control decisions,
-whether that is based on client identity itself, or the org identity,
-or on a client identity attribute.
+whether that is based on client identity itself, the org identity,
+or a client identity attribute such as an OU in the certificate or a custom attribute.
 
-For example an asset that is represented as a key/value may include the
-client's identity as part of the value (for example as a JSON attribute
-indicating that asset owner), and only this client may be authorized
-to make updates to the key/value in the future. The client identity
-library extension APIs can be used within chaincode to retrieve this
-submitter information to make such access control decisions.
-
+For example an asset that is represented as a key/value on the ledger may include the
+client's identity as part of the value. The value may be in JSON format where one
+of the JSON attributes is the asset owner. The chaincode logic could then ensure
+that only the asset owner is authorized to make updates to the asset's key/value in the future.
+The `client identity library extension APIs <https://github.com/hyperledger/fabric-chaincode-go/blob/main/pkg/cid/README.md>`_
+can be used within chaincode to retrieve this submitter information to make such access control decisions.
 
 .. _vendoring:
 
@@ -599,7 +598,7 @@ Being able to predictably handle data formats is critical, and also the ability 
 
 Technical Problem
 ^^^^^^^^^^^^^^^^^
-The format of the data that is stored in Fabric is at the discretion of the user. 
+The format of the data that is stored in Fabric is at the discretion of the user.
 The lowest level API accepts a byte array and stores that - what this represents is not a concern to Fabric.
 The important thing is when simulating transactions, given the same inputs chaincode gives the same byte array.
 Otherwise, the endorsements may not all match and the transaction will either not be submitted or will be invalidated.
@@ -626,18 +625,18 @@ Node.js
 ^^^^^^^
 In Javascript, when serialising object into JSON, the function ``JSON.stringify()`` is commonly used.
 However, to achieve consistent results, a deterministic version of JSON.stringify() is needed; in this way it is possible to get a consistent hash from stringified results.
-``json-stringify-deterministic`` is a good library to do so and can be used combined with ``sort-keys-recursive`` to attain alphabetic order too. 
+``json-stringify-deterministic`` is a good library to do so and can be used combined with ``sort-keys-recursive`` to attain alphabetic order too.
 `Here <https://www.npmjs.com/package/json-stringify-deterministic>`_ for a more in-depth tutorial.
 
 Java
 ^^^^
 Java provides several libraries to serialize an object into a JSON string. However not all of them provide consistency and ordering.
 The ``Gson`` library, for example, does not provide any consistency and should therefore be avoided for this application. On the other hand,
-the ``Genson`` library is a good fit for our purpose as it produces consistent JSON in alphabetic oreder.
+the ``Genson`` library is a good fit for our purpose as it produces consistent JSON in alphabetic order.
 
 You can find a good exemplification of this practise on the `asset-transfer-basic <https://github.com/hyperledger/fabric-samples/tree/main/asset-transfer-basic>`_ chaincodes.
 
-.. Note:: 
+.. Note::
         This is only one of the many approaches which we think can be effective.
         When serialising you can utilise various methods to achieve consistency; nevertheless,
         considering the different characteristics of the programming languages used in Fabric,

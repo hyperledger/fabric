@@ -18,14 +18,14 @@ const (
 	ChainInitOpOpen
 )
 
-// TestEnv is a high level struct that the experiments are expeted to use as a starting point.
+// TestEnv is a high level struct that the experiments are expected to use as a starting point.
 // See one of the Benchmark tests for the intended usage
 type TestEnv struct {
 	mgr *chainsMgr
 }
 
-// InitTestEnv initialize TestEnv with given configurations. The initialization cuases
-// creation (or openning of existing) chains and the block creation and commit go routines
+// InitTestEnv initialize TestEnv with given configurations. The initialization causes
+// creation (or opening of existing) chains and the block creation and commit go routines
 // for each of the chains. For configurations options, see comments on specific configuration type
 func InitTestEnv(mgrConf *ChainMgrConf, batchConf *BatchConf, initOperation chainInitOp) *TestEnv {
 	mgr := newChainsMgr(mgrConf, batchConf, initOperation)

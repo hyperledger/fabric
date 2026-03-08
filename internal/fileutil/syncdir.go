@@ -1,5 +1,4 @@
 //go:build !windows
-// +build !windows
 
 /*
 Copyright IBM Corp. All Rights Reserved.
@@ -23,7 +22,7 @@ func SyncDir(dirPath string) error {
 	}
 	if err := dir.Sync(); err != nil {
 		dir.Close()
-		return errors.Wrapf(err, "error while synching dir:%s", dirPath)
+		return errors.Wrapf(err, "error while syncing dir:%s", dirPath)
 	}
 	if err := dir.Close(); err != nil {
 		return errors.Wrapf(err, "error while closing dir:%s", dirPath)

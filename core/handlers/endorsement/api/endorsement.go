@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package endorsement
 
 import (
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 )
 
 // Argument defines the argument for endorsement
@@ -18,7 +18,7 @@ type Argument interface {
 }
 
 // Dependency marks a dependency passed to the Init() method
-type Dependency interface{}
+type Dependency any
 
 // Plugin endorses a proposal response
 type Plugin interface {

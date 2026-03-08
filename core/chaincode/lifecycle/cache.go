@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"sync"
 
-	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
+	lb "github.com/hyperledger/fabric-protos-go-apiv2/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
@@ -136,7 +136,7 @@ func NewCache(resources *Resources, myOrgMSPID string, metadataManager MetadataH
 }
 
 // InitializeLocalChaincodes should be called once after cache creation (timing doesn't matter,
-// though already installed chaincodes will not be invokable until it it completes).  Ideally,
+// though already installed chaincodes will not be invokable until it completes).  Ideally,
 // this would be part of the constructor, but, we cannot rely on the chaincode store being created
 // before the cache is created.
 func (c *Cache) InitializeLocalChaincodes() error {
@@ -537,7 +537,7 @@ func (c *Cache) update(initializing bool, channelID string, dirtyChaincodes map[
 			channelCache.InterestingHashes[hash] = name
 		}
 
-		ok, err = c.Resources.Serializer.IsSerialized(NamespacesName, privateName, chaincodeDefinition.Parameters(), orgState)
+		ok, _, err = c.Resources.Serializer.IsSerialized(NamespacesName, privateName, chaincodeDefinition.Parameters(), orgState)
 
 		if err != nil {
 			return errors.WithMessagef(err, "could not check opaque org state for '%s' on channel '%s'", name, channelID)

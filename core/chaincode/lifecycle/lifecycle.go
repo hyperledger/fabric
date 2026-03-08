@@ -9,22 +9,23 @@ package lifecycle
 import (
 	"bytes"
 	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	lb "github.com/hyperledger/fabric-protos-go-apiv2/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/chaincode"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/protoutil"
-
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 var logger = flogging.MustGetLogger("lifecycle")
@@ -85,7 +86,7 @@ var DefaultEndorsementPolicyBytes = protoutil.MarshalOrPanic(&pb.ApplicationPoli
 // namespaces/fields/mycc/ValidationInfo:      {ValidationPlugin: "builtin", ValidationParameter: <application-policy>}
 // namespaces/fields/mycc/Collections          {<collection info>}
 //
-// Private/Org Scope Implcit Collection layout looks like the following
+// Private/Org Scope Implicit Collection layout looks like the following
 // namespaces/metadata/<namespace>#<sequence_number> -> namespace metadata, including type
 // namespaces/fields/<namespace>#<sequence_number>/<field>  -> field of namespace type
 //
@@ -297,7 +298,7 @@ func (r *Resources) LifecycleEndorsementPolicyAsBytes(channelID string) ([]byte,
 }
 
 // ExternalFunctions is intended primarily to support the SCC functions.
-// In general, its methods signatures produce writes (which must be commmitted
+// In general, its methods signatures produce writes (which must be committed
 // as part of an endorsement flow), or return human readable errors (for
 // instance indicating a chaincode is not found) rather than sentinels.
 // Instead, use the utility functions attached to the lifecycle Resources
@@ -316,28 +317,31 @@ type ExternalFunctions struct {
 // CheckCommitReadiness takes a chaincode definition, checks that
 // its sequence number is the next allowable sequence number and checks which
 // organizations have approved the definition.
-func (ef *ExternalFunctions) CheckCommitReadiness(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) (map[string]bool, error) {
-	currentSequence, err := ef.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, ccname, "Sequence", publicState)
+func (ef *ExternalFunctions) CheckCommitReadiness(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) (approvals map[string]bool, mismatches map[string][]string, err error) {
+	var currentSequence int64
+	currentSequence, err = ef.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, ccname, "Sequence", publicState)
 	if err != nil {
-		return nil, errors.WithMessage(err, "could not get current sequence")
+		err = errors.WithMessage(err, "could not get current sequence")
+		return
 	}
 
 	if cd.Sequence != currentSequence+1 {
-		return nil, errors.Errorf("requested sequence is %d, but new definition must be sequence %d", cd.Sequence, currentSequence+1)
+		err = errors.Errorf("requested sequence is %d, but new definition must be sequence %d", cd.Sequence, currentSequence+1)
+		return
 	}
 
-	if err := ef.SetChaincodeDefinitionDefaults(chname, cd); err != nil {
-		return nil, errors.WithMessagef(err, "could not set defaults for chaincode definition in channel %s", chname)
+	if err = ef.SetChaincodeDefinitionDefaults(chname, cd); err != nil {
+		err = errors.WithMessagef(err, "could not set defaults for chaincode definition in channel %s", chname)
+		return
 	}
 
-	var approvals map[string]bool
-	if approvals, err = ef.QueryOrgApprovals(ccname, cd, orgStates); err != nil {
-		return nil, err
+	if approvals, mismatches, err = ef.QueryOrgApprovals(ccname, cd, orgStates); err != nil {
+		return
 	}
 
 	logger.Infof("Successfully checked commit readiness of chaincode name '%s' on channel '%s' with definition {%s}", ccname, chname, cd)
 
-	return approvals, nil
+	return
 }
 
 // CommitChaincodeDefinition takes a chaincode definition, checks that its
@@ -347,7 +351,7 @@ func (ef *ExternalFunctions) CheckCommitReadiness(chname, ccname string, cd *Cha
 // the approvals to determine if the result is valid (typically, this means
 // checking that the peer's own org has approved the definition).
 func (ef *ExternalFunctions) CommitChaincodeDefinition(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) (map[string]bool, error) {
-	approvals, err := ef.CheckCommitReadiness(chname, ccname, cd, publicState, orgStates)
+	approvals, _, err := ef.CheckCommitReadiness(chname, ccname, cd, publicState, orgStates)
 	if err != nil {
 		return nil, err
 	}
@@ -436,6 +440,8 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 		return errors.WithMessagef(err, "could not set defaults for chaincode definition in channel %s", chname)
 	}
 
+	privateName := fmt.Sprintf("%s#%d", ccname, requestedSequence)
+
 	if requestedSequence == currentSequence {
 		metadata, ok, err := ef.Resources.Serializer.DeserializeMetadata(NamespacesName, ccname, publicState)
 		if err != nil {
@@ -453,44 +459,29 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 		if err := definedChaincode.Parameters().Equal(cd.Parameters()); err != nil {
 			return errors.WithMessagef(err, "attempted to redefine the current committed sequence (%d) for namespace %s with different parameters", currentSequence, ccname)
 		}
+		// it might be the case that some organization just installed
+		// the chaincode and now would like to approve, therefore we
+		// need to check to distinguish the case. hence need to read from
+		// the orgState metadata and see whenever this is the case
+		redefine, err := ef.isAttemptToRedefine(privateName, packageID, requestedSequence, cd, orgState)
+		if err != nil {
+			return err
+		}
+		if redefine {
+			return errors.Errorf("attempted to redefine the current committed sequence (%d) for namespace %s", currentSequence, ccname)
+		}
 	}
-
-	privateName := fmt.Sprintf("%s#%d", ccname, requestedSequence)
 
 	// if requested sequence is not committed, and attempt is made to update its content,
 	// we need to check whether new definition actually contains updated content, to avoid
 	// empty write set.
 	if requestedSequence == currentSequence+1 {
-		uncommittedMetadata, ok, err := ef.Resources.Serializer.DeserializeMetadata(NamespacesName, privateName, orgState)
+		redefine, err := ef.isAttemptToRedefine(privateName, packageID, requestedSequence, cd, orgState)
 		if err != nil {
-			return errors.WithMessage(err, "could not fetch uncommitted definition")
+			return err
 		}
-
-		if ok {
-			logger.Debugf("Attempting to redefine uncommitted definition at sequence %d", requestedSequence)
-
-			uncommittedParameters := &ChaincodeParameters{}
-			if err := ef.Resources.Serializer.Deserialize(NamespacesName, privateName, uncommittedMetadata, uncommittedParameters, orgState); err != nil {
-				return errors.WithMessagef(err, "could not deserialize namespace %s as chaincode", privateName)
-			}
-
-			if err := uncommittedParameters.Equal(cd.Parameters()); err == nil {
-				// also check package ID updates
-				metadata, ok, err := ef.Resources.Serializer.DeserializeMetadata(ChaincodeSourcesName, privateName, orgState)
-				if err != nil {
-					return errors.WithMessagef(err, "could not deserialize chaincode-source metadata for %s", privateName)
-				}
-				if ok {
-					ccLocalPackage := &ChaincodeLocalPackage{}
-					if err := ef.Resources.Serializer.Deserialize(ChaincodeSourcesName, privateName, metadata, ccLocalPackage, orgState); err != nil {
-						return errors.WithMessagef(err, "could not deserialize chaincode package for %s", privateName)
-					}
-
-					if ccLocalPackage.PackageID == packageID {
-						return errors.Errorf("attempted to redefine uncommitted sequence (%d) for namespace %s with unchanged content", requestedSequence, ccname)
-					}
-				}
-			}
+		if redefine {
+			return errors.Errorf("attempted to redefine uncommitted sequence (%d) for namespace %s with unchanged content", requestedSequence, ccname)
 		}
 	}
 
@@ -513,6 +504,42 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 	logger.Infof("Successfully endorsed chaincode approval with name '%s', package ID '%s', on channel '%s' with definition {%s}", ccname, packageID, chname, cd)
 
 	return nil
+}
+
+func (ef *ExternalFunctions) isAttemptToRedefine(privateName, packageID string, requestedSequence int64, cd *ChaincodeDefinition, orgState ReadWritableState) (bool, error) {
+	metadata, ok, err := ef.Resources.Serializer.DeserializeMetadata(NamespacesName, privateName, orgState)
+	if err != nil {
+		return false, errors.WithMessagef(err, "could not fetch chaincode definition, chaincode %s, requested at sequence %d", privateName, requestedSequence)
+	}
+
+	if ok {
+		logger.Debugf("Attempting to redefine chaincode definition, chaincode %s at sequence %d", privateName, requestedSequence)
+
+		chaincodeParameters := &ChaincodeParameters{}
+		if err := ef.Resources.Serializer.Deserialize(NamespacesName, privateName, metadata, chaincodeParameters, orgState); err != nil {
+			return false, errors.WithMessagef(err, "could not deserialize namespace %s as chaincode", privateName)
+		}
+
+		if err := chaincodeParameters.Equal(cd.Parameters()); err == nil {
+			// also check package ID updates
+			metadata, ok, err := ef.Resources.Serializer.DeserializeMetadata(ChaincodeSourcesName, privateName, orgState)
+			if err != nil {
+				return false, errors.WithMessagef(err, "could not deserialize chaincode-source metadata for %s", privateName)
+			}
+			if ok {
+				ccLocalPackage := &ChaincodeLocalPackage{}
+				if err := ef.Resources.Serializer.Deserialize(ChaincodeSourcesName, privateName, metadata, ccLocalPackage, orgState); err != nil {
+					return false, errors.WithMessagef(err, "could not deserialize chaincode package for %s", privateName)
+				}
+
+				if ccLocalPackage.PackageID == packageID {
+					return true, nil
+				}
+			}
+		}
+	}
+
+	return false, nil
 }
 
 // QueryApprovedChaincodeDefinition returns the approved chaincode definition in Org state by using the given parameters.
@@ -549,26 +576,63 @@ func (ef *ExternalFunctions) QueryApprovedChaincodeDefinition(chname, ccname str
 	}
 
 	if !ok {
-		return nil, errors.Errorf("could not fetch approved chaincode definition (name: '%s', sequence: '%d') on channel '%s'", ccname, sequence, chname)
+		return nil, errors.Errorf("could not fetch approved chaincode definition (name: '%s', sequence: '%d') on channel '%s'", ccname, requestedSequence, chname)
 	}
 
+	return ef.fetchApprovedChaincodeDefinition(ccname, requestedSequence, metadata, orgState)
+}
+
+// QueryApprovedChaincodeDefinitions returns all approved chaincode definitions in Org state for the specified channel.
+// The return value is a map where the key is a combination of chaincode namespace and sequence number in the format "<namespace>#<sequence_number>",
+// and the value is the corresponding ApprovedChaincodeDefinition object.
+func (ef *ExternalFunctions) QueryApprovedChaincodeDefinitions(chname string, orgState ReadRangeableState) (map[string]*ApprovedChaincodeDefinition, error) {
+	// Get all metadatas for the channel
+	metadatas, err := ef.Resources.Serializer.DeserializeAllMetadata(NamespacesName, orgState)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not fetch metadatas")
+	}
+
+	// Get all approved chaincode definitions using the metadatas
+	definitions := map[string]*ApprovedChaincodeDefinition{}
+	for privateName, metadata := range metadatas {
+		// Extract chaincode name and sequence number from metadata
+		ccname, sequence, err := extractChaincodeNameAndSequence(privateName)
+		if err != nil {
+			return nil, errors.WithMessagef(err, "could not extract chaincode name and sequence number from metadata: %s", privateName)
+		}
+
+		// Fetch the approved chaincode definition
+		definition, err := ef.fetchApprovedChaincodeDefinition(ccname, sequence, metadata, orgState)
+		if err != nil {
+			return nil, errors.WithMessagef(err, "could not fetch approved chaincode definition (name: '%s', sequence: '%d') on channel '%s'", ccname, sequence, chname)
+		}
+
+		definitions[privateName] = definition
+	}
+
+	return definitions, nil
+}
+
+func (ef *ExternalFunctions) fetchApprovedChaincodeDefinition(ccname string, sequence int64, metadata *lb.StateMetadata, orgState ReadableState) (*ApprovedChaincodeDefinition, error) {
+	privateName := fmt.Sprintf("%s#%d", ccname, sequence)
+	// Verify that metadata type is chaincode parameters type
 	if metadata.Datatype != ChaincodeParametersType {
 		return nil, errors.Errorf("not a chaincode parameters type: %s", metadata.Datatype)
 	}
 
-	// Get chaincode parameters for the request sequence
+	// Get chaincode parameters for the requested sequence
 	ccParameters := &ChaincodeParameters{}
 	if err := ef.Resources.Serializer.Deserialize(NamespacesName, privateName, metadata, ccParameters, orgState); err != nil {
 		return nil, errors.WithMessagef(err, "could not deserialize chaincode parameters for %s", privateName)
 	}
 
 	// Get package ID for the requested sequence
-	metadata, ok, err = ef.Resources.Serializer.DeserializeMetadata(ChaincodeSourcesName, privateName, orgState)
+	metadata, ok, err := ef.Resources.Serializer.DeserializeMetadata(ChaincodeSourcesName, privateName, orgState)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "could not deserialize chaincode-source metadata for %s", privateName)
 	}
 	if !ok {
-		return nil, errors.Errorf("could not fetch approved chaincode definition (name: '%s', sequence: '%d') on channel '%s'", ccname, sequence, chname)
+		return nil, errors.Errorf("could not fetch chaincode-source metadata for %s", privateName)
 	}
 	if metadata.Datatype != ChaincodeLocalPackageType {
 		return nil, errors.Errorf("not a chaincode local package type: %s", metadata.Datatype)
@@ -599,12 +663,33 @@ func (ef *ExternalFunctions) QueryApprovedChaincodeDefinition(chname, ccname str
 	}
 
 	return &ApprovedChaincodeDefinition{
-		Sequence:        requestedSequence,
+		Sequence:        sequence,
 		EndorsementInfo: ccParameters.EndorsementInfo,
 		ValidationInfo:  ccParameters.ValidationInfo,
 		Collections:     ccParameters.Collections,
 		Source:          ccsrc,
 	}, nil
+}
+
+func extractChaincodeNameAndSequence(privateName string) (string, int64, error) {
+	var ccname string
+	var sequence int64
+
+	split := strings.Split(privateName, "#")
+	if len(split) != 2 {
+		return "", 0, errors.Errorf("invalid private name format: %s", privateName)
+	}
+
+	ccname = split[0]
+	sequenceStr := split[1]
+
+	var err error
+	sequence, err = strconv.ParseInt(sequenceStr, 10, 64)
+	if err != nil {
+		return "", 0, errors.WithMessagef(err, "invalid sequence number in private name: %s", privateName)
+	}
+
+	return ccname, sequence, nil
 }
 
 // ErrNamespaceNotDefined is the error returned when a namespace
@@ -642,20 +727,25 @@ func (ef *ExternalFunctions) QueryChaincodeDefinition(name string, publicState R
 // QueryOrgApprovals returns a map containing the orgs whose orgStates were
 // provided and whether or not they have approved a chaincode definition with
 // the specified parameters.
-func (ef *ExternalFunctions) QueryOrgApprovals(name string, cd *ChaincodeDefinition, orgStates []OpaqueState) (map[string]bool, error) {
-	approvals := map[string]bool{}
+func (ef *ExternalFunctions) QueryOrgApprovals(name string, cd *ChaincodeDefinition, orgStates []OpaqueState) (approvals map[string]bool, mismatches map[string][]string, err error) {
+	approvals = map[string]bool{}
+	mismatches = map[string][]string{}
 	privateName := fmt.Sprintf("%s#%d", name, cd.Sequence)
 	for _, orgState := range orgStates {
-		match, err := ef.Resources.Serializer.IsSerialized(NamespacesName, privateName, cd.Parameters(), orgState)
+		match, mismatchItems, err := ef.Resources.Serializer.IsSerialized(NamespacesName, privateName, cd.Parameters(), orgState)
 		if err != nil {
-			return nil, errors.WithMessagef(err, "serialization check failed for key %s", privateName)
+			return nil, nil, errors.WithMessagef(err, "serialization check failed for key %s", privateName)
 		}
 
 		_, org := implicitcollection.MspIDIfImplicitCollection(orgState.CollectionName())
+		logger.Infof("org %s's mismatch items are %v", org, mismatchItems)
 		approvals[org] = match
+		if len(mismatchItems) > 0 {
+			mismatches[org] = mismatchItems
+		}
 	}
 
-	return approvals, nil
+	return
 }
 
 // InstallChaincode installs a given chaincode to the peer's chaincode store.

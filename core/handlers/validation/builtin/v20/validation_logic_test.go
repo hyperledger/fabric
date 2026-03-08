@@ -8,13 +8,12 @@ package v20
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v14"
@@ -246,7 +245,7 @@ var (
 	id        msp.SigningIdentity
 	sid       []byte
 	mspid     string
-	channelID string = "testchannelid"
+	channelID = "testchannelid"
 )
 
 func TestMain(m *testing.M) {
@@ -254,7 +253,7 @@ func TestMain(m *testing.M) {
 	defer func() {
 		os.Exit(code)
 	}()
-	testDir, err := ioutil.TempDir("", "v1.3-validation")
+	testDir, err := os.MkdirTemp("", "v1.3-validation")
 	if err != nil {
 		fmt.Printf("Could not create temp dir: %s", err)
 		return

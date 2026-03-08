@@ -9,17 +9,15 @@ package endorser_test
 import (
 	"fmt"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	mspproto "github.com/hyperledger/fabric-protos-go/msp"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	mspproto "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/endorser/fake"
+	. "github.com/hyperledger/fabric/internal/test"
 	"github.com/hyperledger/fabric/protoutil"
-
-	"github.com/golang/protobuf/proto"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("UnpackProposal", func() {
@@ -156,11 +154,11 @@ var _ = Describe("UnpackProposal", func() {
 		up, err := endorser.UnpackProposal(signedProposal)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(up.ChaincodeName).To(Equal("chaincode-name"))
-		Expect(up.SignedProposal).To(Equal(signedProposal))
-		Expect(proto.Equal(up.Proposal, proposal)).To(BeTrue())
-		Expect(proto.Equal(up.Input, chaincodeInput)).To(BeTrue())
-		Expect(proto.Equal(up.SignatureHeader, signatureHeader)).To(BeTrue())
-		Expect(proto.Equal(up.ChannelHeader, channelHeader)).To(BeTrue())
+		Expect(up.SignedProposal).To(ProtoEqual(signedProposal))
+		Expect(up.Proposal).To(ProtoEqual(proposal))
+		Expect(up.Input).To(ProtoEqual(chaincodeInput))
+		Expect(up.SignatureHeader).To(ProtoEqual(signatureHeader))
+		Expect(up.ChannelHeader).To(ProtoEqual(channelHeader))
 	})
 
 	Context("when the proposal bytes are invalid", func() {

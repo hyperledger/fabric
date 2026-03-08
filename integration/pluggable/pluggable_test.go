@@ -8,31 +8,32 @@ package pluggable
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
 var _ = Describe("EndToEnd", func() {
 	var (
-		testDir   string
-		client    *docker.Client
-		network   *nwo.Network
-		chaincode nwo.Chaincode
-		process   ifrit.Process
+		testDir                     string
+		client                      dcli.APIClient
+		network                     *nwo.Network
+		chaincode                   nwo.Chaincode
+		ordererRunner               *ginkgomon.Runner
+		ordererProcess, peerProcess ifrit.Process
 
 		endorsementPluginPath string
 		validationPluginPath  string
@@ -40,7 +41,7 @@ var _ = Describe("EndToEnd", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "pluggable-suite")
+		testDir, err = os.MkdirTemp("", "pluggable-suite")
 		Expect(err).NotTo(HaveOccurred())
 
 		// Compile plugins
@@ -58,17 +59,14 @@ var _ = Describe("EndToEnd", func() {
 		Expect(err).NotTo(HaveOccurred())
 		SetValidationPluginActivationFolder(dir)
 
-		// Speed up test by reducing the number of peers we bring up
-		soloConfig := nwo.BasicSolo()
-		soloConfig.RemovePeer("Org1", "peer1")
-		soloConfig.RemovePeer("Org2", "peer1")
-		Expect(soloConfig.Peers).To(HaveLen(2))
+		basicEtcdRaftConfig := nwo.BasicEtcdRaft()
+		Expect(basicEtcdRaftConfig.Peers).To(HaveLen(2))
 
 		// docker client
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(soloConfig, testDir, client, StartPort(), components)
+		network = nwo.New(basicEtcdRaftConfig, testDir, client, StartPort(), components)
 		network.GenerateConfigTree()
 
 		// modify config
@@ -76,10 +74,8 @@ var _ = Describe("EndToEnd", func() {
 
 		// generate network config
 		network.Bootstrap()
-
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		// Start all the fabric processes
+		ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 
 		chaincode = nwo.Chaincode{
 			Name:            "mycc",
@@ -94,15 +90,22 @@ var _ = Describe("EndToEnd", func() {
 			Label:           "my_prebuilt_chaincode",
 		}
 		orderer := network.Orderer("orderer")
-		network.CreateAndJoinChannel(orderer, "testchannel")
+		nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 		nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 	})
 
 	AfterEach(func() {
 		// stop the network
-		process.Signal(syscall.SIGTERM)
-		Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+		if ordererProcess != nil {
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
+		if peerProcess != nil {
+			peerProcess.Signal(syscall.SIGTERM)
+			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
 
 		// cleanup the network artifacts
 		network.Cleanup()
@@ -113,7 +116,7 @@ var _ = Describe("EndToEnd", func() {
 		os.Remove(validationPluginPath)
 	})
 
-	It("executes a basic solo network with specified plugins", func() {
+	It("executes a basic etcdraft network with specified plugins", func() {
 		// Make sure plugins activated
 		peerCount := len(network.Peers)
 		activations := CountEndorsementPluginActivations()

@@ -9,22 +9,22 @@ package blkstorage
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 func TestBuffer(t *testing.T) {
-	pb := proto.NewBuffer(nil)
-	pb.EncodeVarint(10)
-	pos1 := len(pb.Bytes())
-	pb.EncodeRawBytes([]byte("JunkText"))
-	pos2 := len(pb.Bytes())
-	pb.EncodeRawBytes([]byte("YetAnotherJunkText"))
-	pos3 := len(pb.Bytes())
-	pb.EncodeVarint(1000000)
-	pos4 := len(pb.Bytes())
+	var pb []byte
+	pb = protowire.AppendVarint(pb, 10)
+	pos1 := len(pb)
+	pb = protowire.AppendBytes(pb, []byte("JunkText"))
+	pos2 := len(pb)
+	pb = protowire.AppendBytes(pb, []byte("YetAnotherJunkText"))
+	pos3 := len(pb)
+	pb = protowire.AppendVarint(pb, 1000000)
+	pos4 := len(pb)
 
-	b := newBuffer(pb.Bytes())
+	b := newBuffer(pb)
 	b.DecodeVarint()
 	require.Equal(t, pos1, b.GetBytesConsumed())
 	b.DecodeRawBytes(false)

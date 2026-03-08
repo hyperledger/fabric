@@ -11,16 +11,17 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/internal/osnadmin"
 	"github.com/hyperledger/fabric/protoutil"
+	"google.golang.org/protobuf/proto"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -58,6 +59,17 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 	remove := channel.Command("remove", "Remove a channel from an Ordering Service Node (OSN).")
 	removeChannelID := remove.Flag("channelID", "Channel ID").Short('c').Required().String()
 
+	update := channel.Command("update", "Update an Ordering Service Node (OSN) to a channel.")
+	updateChannelID := update.Flag("channelID", "Channel ID").Short('c').Required().String()
+	configUpdateEnvelopePath := update.Flag("config-update-envelope", "Path to the file containing an up-to-date config update envelope for the channel").Short('e').Required().String()
+	tlsHandshakeTimeShift := update.Flag("tlsHandshakeTimeShift", "The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint").Short('t').Default("0").Duration()
+
+	fetch := channel.Command("fetch", "Fetch a specified block, writing it to a file.")
+	fetchChannelID := fetch.Flag("channelID", "Channel ID").Short('c').Required().String()
+	fetchBlockID := fetch.Flag("blockID", "Block ID - <newest|oldest|config|(number)>").Short('b').Required().String()
+	fetchOutputFile := fetch.Flag("outputfile", "Puth to a file.").Short('f').Required().String()
+	tlsHandshakeTimeShift1 := fetch.Flag("tlsHandshakeTimeShift", "The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint").Short('t').Default("0").Duration()
+
 	command, err := app.Parse(args)
 	if err != nil {
 		return "", 1, err
@@ -76,12 +88,12 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 		osnURL = fmt.Sprintf("https://%s", *orderer)
 		var err error
 		caCertPool = x509.NewCertPool()
-		caFilePEM, err := ioutil.ReadFile(*caFile)
+		caFilePEM, err := os.ReadFile(*caFile)
 		if err != nil {
 			return "", 1, fmt.Errorf("reading orderer CA certificate: %s", err)
 		}
 		if !caCertPool.AppendCertsFromPEM(caFilePEM) {
-			return "", 1, fmt.Errorf("failed to add ca-file PEM to cert pool")
+			return "", 1, errors.New("failed to add ca-file PEM to cert pool")
 		}
 
 		tlsClientCert, err = tls.LoadX509KeyPair(*clientCert, *clientKey)
@@ -94,12 +106,25 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 
 	var marshaledConfigBlock []byte
 	if *configBlockPath != "" {
-		marshaledConfigBlock, err = ioutil.ReadFile(*configBlockPath)
+		marshaledConfigBlock, err = os.ReadFile(*configBlockPath)
 		if err != nil {
 			return "", 1, fmt.Errorf("reading config block: %s", err)
 		}
 
 		err = validateBlockChannelID(marshaledConfigBlock, *joinChannelID)
+		if err != nil {
+			return "", 1, err
+		}
+	}
+
+	var marshaledConfigEnvelope []byte
+	if *configUpdateEnvelopePath != "" {
+		marshaledConfigEnvelope, err = os.ReadFile(*configUpdateEnvelopePath)
+		if err != nil {
+			return "", 1, fmt.Errorf("reading config updte envelope: %s", err)
+		}
+
+		err = validateEnvelopeChannelID(marshaledConfigEnvelope, *updateChannelID)
 		if err != nil {
 			return "", 1, err
 		}
@@ -121,6 +146,16 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 		resp, err = osnadmin.ListAllChannels(osnURL, caCertPool, tlsClientCert)
 	case remove.FullCommand():
 		resp, err = osnadmin.Remove(osnURL, *removeChannelID, caCertPool, tlsClientCert)
+	case update.FullCommand():
+		resp, err = osnadmin.Update(osnURL, marshaledConfigEnvelope, caCertPool, tlsClientCert, *tlsHandshakeTimeShift)
+	case fetch.FullCommand():
+		if *fetchBlockID != "newest" && *fetchBlockID != "oldest" && *fetchBlockID != "config" {
+			_, err = strconv.Atoi(*fetchBlockID)
+			if err != nil {
+				return "", 1, fmt.Errorf("'%s' not equal <newest|oldest|config|(number)>", *fetchBlockID)
+			}
+		}
+		resp, err = osnadmin.Fetch(osnURL, *fetchChannelID, *fetchBlockID, caCertPool, tlsClientCert, *tlsHandshakeTimeShift1)
 	}
 	if err != nil {
 		return errorOutput(err), 1, nil
@@ -131,7 +166,7 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 		return errorOutput(err), 1, nil
 	}
 
-	output, err = responseOutput(!*noStatus, resp.StatusCode, bodyBytes)
+	output, err = responseOutput(!*noStatus, resp.StatusCode, bodyBytes, *fetchOutputFile)
 	if err != nil {
 		return errorOutput(err), 1, nil
 	}
@@ -139,21 +174,27 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 	return output, 0, nil
 }
 
-func responseOutput(showStatus bool, statusCode int, responseBody []byte) (string, error) {
+func responseOutput(showStatus bool, statusCode int, responseBody []byte, outputFile string) (string, error) {
 	var buffer bytes.Buffer
 	if showStatus {
 		fmt.Fprintf(&buffer, "Status: %d\n", statusCode)
 	}
 	if len(responseBody) != 0 {
-		if err := json.Indent(&buffer, responseBody, "", "\t"); err != nil {
-			return "", err
+		if statusCode == http.StatusOK && outputFile != "" {
+			if err := os.WriteFile(outputFile, responseBody, 0o644); err != nil {
+				return "", err
+			}
+		} else {
+			if err := json.Indent(&buffer, responseBody, "", "\t"); err != nil {
+				return "", err
+			}
 		}
 	}
 	return buffer.String(), nil
 }
 
 func readBodyBytes(body io.ReadCloser) ([]byte, error) {
-	bodyBytes, err := ioutil.ReadAll(body)
+	bodyBytes, err := io.ReadAll(body)
 	if err != nil {
 		return nil, fmt.Errorf("reading http response body: %s", err)
 	}
@@ -182,6 +223,27 @@ func validateBlockChannelID(blockBytes []byte, channelID string) error {
 	// the channel they think they're joining.
 	if channelID != blockChannelID {
 		return fmt.Errorf("specified --channelID %s does not match channel ID %s in config block", channelID, blockChannelID)
+	}
+
+	return nil
+}
+
+func validateEnvelopeChannelID(envelopeBytes []byte, channelID string) error {
+	envelope := &common.Envelope{}
+	err := proto.Unmarshal(envelopeBytes, envelope)
+	if err != nil {
+		return fmt.Errorf("unmarshalling envelope: %s", err)
+	}
+
+	envelopeChannelID, err := protoutil.GetChannelIDFromEnvelope(envelope)
+	if err != nil {
+		return err
+	}
+
+	// quick sanity check that the orderer admin is joining
+	// the channel they think they're joining.
+	if channelID != envelopeChannelID {
+		return fmt.Errorf("specified --channelID %s does not match channel ID %s in config update envelope", channelID, envelopeChannelID)
 	}
 
 	return nil

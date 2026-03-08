@@ -8,7 +8,6 @@ package pvtdatastorage
 
 import (
 	"bytes"
-	"io/ioutil"
 	"math"
 	"os"
 
@@ -255,7 +254,7 @@ func (i *eligibilityAndBTLCache) hasExpiry(namespace, collection string, committ
 		coll: collection,
 	}]
 	if ok {
-		expiringBlk = pvtdatapolicy.ComputeExpiringBlock(namespace, collection, committingBlk, btl)
+		expiringBlk = pvtdatapolicy.ComputeExpiringBlock(collection, committingBlk, btl)
 	}
 	return expiringBlk < math.MaxUint64, expiringBlk
 }
@@ -395,7 +394,7 @@ type snapshotRowsSorter struct {
 }
 
 func newSnapshotRowsSorter(tempDirRoot string) (*snapshotRowsSorter, error) {
-	tempDir, err := ioutil.TempDir(tempDirRoot, "pvtdatastore-snapshotdatainporter-")
+	tempDir, err := os.MkdirTemp(tempDirRoot, "pvtdatastore-snapshotdatainporter-")
 	if err != nil {
 		return nil, errors.Wrap(err, "error while creating temp dir for sorting rows")
 	}

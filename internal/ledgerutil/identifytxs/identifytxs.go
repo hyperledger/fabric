@@ -13,9 +13,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/internal/fileutil"
@@ -231,7 +231,7 @@ func generateRecordsMap(records []*models.DiffRecord, outputDirPath string) (ckm
 		if err != nil {
 			return nil, err
 		}
-		var emptySlice []interface{}
+		var emptySlice []any
 		err = ofw.AddField("txs", emptySlice)
 		if err != nil {
 			return nil, err
@@ -407,7 +407,7 @@ func findAndWriteTxs(blockStore *blkstorage.BlockStore, inputKeyMapWrapper *comp
 						for _, hashedWrite := range hashedWrites {
 							keyHash := hashedWrite.GetKeyHash()
 							// Get hexadecimal encoding of key hash
-							ck := compKey{namespace: namespace, collection: (collection.CollectionName), key: hex.EncodeToString(keyHash)}
+							ck := compKey{namespace: namespace, collection: collection.CollectionName, key: hex.EncodeToString(keyHash)}
 							_, exists := inputKeyMap[ck]
 							if exists {
 								// Get txValidationCode
@@ -449,7 +449,7 @@ func findAndWriteTxs(blockStore *blkstorage.BlockStore, inputKeyMapWrapper *comp
 		blockIndex++
 	}
 	// Close out any remaining open output file writers
-	err = inputKeyMap.closeAll((blockIndex - 1), txIndex, maxAvailable)
+	err = inputKeyMap.closeAll(blockIndex-1, txIndex, maxAvailable)
 	if err != nil {
 		return 0, 0, err
 	}

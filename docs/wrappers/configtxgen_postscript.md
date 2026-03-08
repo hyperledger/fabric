@@ -2,14 +2,15 @@
 
 ### Output a genesis block
 
-Write a genesis block to `genesis_block.pb` for channel `orderer-system-channel`
+Write a genesis block to `genesis_block.pb` for channel `application-channel-1`
 for profile `SampleSingleMSPRaftV1_1`.
 
 ```
-configtxgen -outputBlock genesis_block.pb -profile SampleSingleMSPRaftV1_1 -channelID orderer-system-channel
+configtxgen -outputBlock genesis_block.pb -profile SampleSingleMSPRaftV1_1 -channelID application-channel-1
 ```
 
-### Output a channel creation tx
+### Output a channel creation tx (deprecated)
+**Note:** The channel creation transaction was used in order to create a new application channel using a system channel. Because the system channel is no longer supported since release v3.0, it is now deprecated.
 
 Write a channel creation transaction to `create_chan_tx.pb` for profile
 `SampleSingleMSPChannelV1_1`.
@@ -27,7 +28,8 @@ JSON.
 configtxgen -inspectBlock genesis_block.pb
 ```
 
-### Inspect a channel creation tx
+### Inspect a channel creation tx (deprecated)
+**Note:** The channel creation transaction was used in order to create a new application channel using a system channel. Because the system channel is no longer supported since release v3.0, it is now deprecated.
 
 Print the contents of a channel creation tx named `create_chan_tx.pb` to the
 screen as JSON.
@@ -46,19 +48,6 @@ for channel reconfiguration workflows, such as adding a member).
 configtxgen -printOrg Org1
 ```
 
-### Output anchor peer tx (deprecated)
-
-Output a channel configuration update transaction `anchor_peer_tx.pb`  based on
-the anchor peers defined for Org1 and channel profile SampleSingleMSPChannelV1_1
-in `configtx.yaml`. Transaction will set anchor peers for Org1 if no anchor peers
-have been set on the channel.
-```
-configtxgen -outputAnchorPeersUpdate anchor_peer_tx.pb -profile SampleSingleMSPChannelV1_1 -asOrg Org1
-```
-
-The `-outputAnchorPeersUpdate` output flag has been deprecated. To set anchor
-peers on the channel, use [configtxlator](configtxlator.html) to update the
-channel configuration.
 
 ## Configuration
 

@@ -1,4 +1,8 @@
+<<<<<<<< HEAD:vendor/go.uber.org/zap/zapcore/reflected_encoder.go
+// Copyright (c) 2016 Uber Technologies, Inc.
+========
 // Copyright (c) 2017-2023 Uber Technologies, Inc.
+>>>>>>>> main:vendor/go.uber.org/multierr/error_post_go120.go
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,6 +22,28 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+<<<<<<<< HEAD:vendor/go.uber.org/zap/zapcore/reflected_encoder.go
+package zapcore
+
+import (
+	"encoding/json"
+	"io"
+)
+
+// ReflectedEncoder serializes log fields that can't be serialized with Zap's
+// JSON encoder. These have the ReflectType field type.
+// Use EncoderConfig.NewReflectedEncoder to set this.
+type ReflectedEncoder interface {
+	// Encode encodes and writes to the underlying data stream.
+	Encode(interface{}) error
+}
+
+func defaultReflectedEncoder(w io.Writer) ReflectedEncoder {
+	enc := json.NewEncoder(w)
+	// For consistency with our custom JSON encoder.
+	enc.SetEscapeHTML(false)
+	return enc
+========
 //go:build go1.20
 // +build go1.20
 
@@ -45,4 +71,5 @@ func extractErrors(err error) []error {
 	}
 
 	return append(([]error)(nil), eg.Unwrap()...)
+>>>>>>>> main:vendor/go.uber.org/multierr/error_post_go120.go
 }

@@ -22,8 +22,8 @@ package peer
 import (
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
 	"net"
+	"os"
 	"path/filepath"
 	"runtime"
 	"time"
@@ -301,12 +301,12 @@ func (c *Config) load() error {
 	c.ExternalBuilders = externalBuilders
 	for builderIndex, builder := range c.ExternalBuilders {
 		if builder.Path == "" {
-			return fmt.Errorf("invalid external builder configuration, path attribute missing in one or more builders")
+			return errors.New("invalid external builder configuration, path attribute missing in one or more builders")
 		}
 		if builder.Name == "" {
 			return fmt.Errorf("external builder at path %s has no name attribute", builder.Path)
 		}
-		if builder.Environment != nil && builder.PropagateEnvironment == nil {
+		if builder.Environment != nil && len(builder.PropagateEnvironment) == 0 {
 			c.ExternalBuilders[builderIndex].PropagateEnvironment = builder.Environment
 		}
 	}
@@ -338,7 +338,7 @@ func (c *Config) load() error {
 func getLocalAddress() (string, error) {
 	peerAddress := viper.GetString("peer.address")
 	if peerAddress == "" {
-		return "", fmt.Errorf("peer.address isn't set")
+		return "", errors.New("peer.address isn't set")
 	}
 	host, port, err := net.SplitHostPort(peerAddress)
 	if err != nil {
@@ -394,11 +394,11 @@ func GetServerConfig() (comm.ServerConfig, error) {
 	}
 	if serverConfig.SecOpts.UseTLS {
 		// get the certs from the file system
-		serverKey, err := ioutil.ReadFile(config.GetPath("peer.tls.key.file"))
+		serverKey, err := os.ReadFile(config.GetPath("peer.tls.key.file"))
 		if err != nil {
 			return serverConfig, fmt.Errorf("error loading TLS key (%s)", err)
 		}
-		serverCert, err := ioutil.ReadFile(config.GetPath("peer.tls.cert.file"))
+		serverCert, err := os.ReadFile(config.GetPath("peer.tls.cert.file"))
 		if err != nil {
 			return serverConfig, fmt.Errorf("error loading TLS certificate (%s)", err)
 		}
@@ -408,7 +408,7 @@ func GetServerConfig() (comm.ServerConfig, error) {
 		if serverConfig.SecOpts.RequireClientCert {
 			var clientRoots [][]byte
 			for _, file := range viper.GetStringSlice("peer.tls.clientRootCAs.files") {
-				clientRoot, err := ioutil.ReadFile(
+				clientRoot, err := os.ReadFile(
 					config.TranslatePath(filepath.Dir(viper.ConfigFileUsed()), file))
 				if err != nil {
 					return serverConfig,
@@ -420,7 +420,7 @@ func GetServerConfig() (comm.ServerConfig, error) {
 		}
 		// check for root cert
 		if config.GetPath("peer.tls.rootcert.file") != "" {
-			rootCert, err := ioutil.ReadFile(config.GetPath("peer.tls.rootcert.file"))
+			rootCert, err := os.ReadFile(config.GetPath("peer.tls.rootcert.file"))
 			if err != nil {
 				return serverConfig, fmt.Errorf("error loading TLS root certificate (%s)", err)
 			}
@@ -492,12 +492,12 @@ func GetClientCertificate() (tls.Certificate, error) {
 		}
 	}
 	// get the keypair from the file system
-	clientKey, err := ioutil.ReadFile(keyPath)
+	clientKey, err := os.ReadFile(keyPath)
 	if err != nil {
 		return cert, errors.WithMessage(err,
 			"error loading client TLS key")
 	}
-	clientCert, err := ioutil.ReadFile(certPath)
+	clientCert, err := os.ReadFile(certPath)
 	if err != nil {
 		return cert, errors.WithMessage(err,
 			"error loading client TLS certificate")

@@ -21,12 +21,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 func TestBasicEncodingDecoding(t *testing.T) {
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		value := EncodeOrderPreservingVarUint64(uint64(i))
 		nextValue := EncodeOrderPreservingVarUint64(uint64(i + 1))
 		if !(bytes.Compare(value, nextValue) < 0) {
@@ -43,14 +43,14 @@ func TestBasicEncodingDecoding(t *testing.T) {
 
 func TestDecodingAppendedValues(t *testing.T) {
 	appendedValues := []byte{}
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		appendedValues = append(appendedValues, EncodeOrderPreservingVarUint64(uint64(i))...)
 	}
 
 	len := 0
 	value := uint64(0)
 	var err error
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		appendedValues = appendedValues[len:]
 		value, len, err = DecodeOrderPreservingVarUint64(appendedValues)
 		require.NoError(t, err, "Error via calling DecodeOrderPreservingVarUint64")
@@ -62,7 +62,7 @@ func TestDecodingAppendedValues(t *testing.T) {
 
 func TestDecodingBadInputBytes(t *testing.T) {
 	// error case when num consumed bytes > 1
-	sizeBytes := proto.EncodeVarint(uint64(1000))
+	sizeBytes := protowire.AppendVarint(nil, uint64(1000))
 	_, _, err := DecodeOrderPreservingVarUint64(sizeBytes)
 	require.Equal(t, fmt.Sprintf("number of consumed bytes from DecodeVarint is invalid, expected 1, but got %d", len(sizeBytes)), err.Error())
 
@@ -72,12 +72,12 @@ func TestDecodingBadInputBytes(t *testing.T) {
 	require.Equal(t, "number of consumed bytes from DecodeVarint is invalid, expected 1, but got 0", err.Error())
 
 	// error case when size is more than available bytes
-	inputBytes := proto.EncodeVarint(uint64(8))
+	inputBytes := protowire.AppendVarint(nil, uint64(8))
 	_, _, err = DecodeOrderPreservingVarUint64(inputBytes)
 	require.Equal(t, "decoded size (8) from DecodeVarint is more than available bytes (0)", err.Error())
 
 	// error case when size is greater than 8
-	bigSizeBytes := proto.EncodeVarint(uint64(12))
+	bigSizeBytes := protowire.AppendVarint(nil, uint64(12))
 	_, _, err = DecodeOrderPreservingVarUint64(bigSizeBytes)
 	require.Equal(t, "decoded size from DecodeVarint is invalid, expected <=8, but got 12", err.Error())
 }

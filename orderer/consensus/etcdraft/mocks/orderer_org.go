@@ -57,15 +57,16 @@ func (fake *OrdererOrg) Endpoints() []string {
 	ret, specificReturn := fake.endpointsReturnsOnCall[len(fake.endpointsArgsForCall)]
 	fake.endpointsArgsForCall = append(fake.endpointsArgsForCall, struct {
 	}{})
+	stub := fake.EndpointsStub
+	fakeReturns := fake.endpointsReturns
 	fake.recordInvocation("Endpoints", []interface{}{})
 	fake.endpointsMutex.Unlock()
-	if fake.EndpointsStub != nil {
-		return fake.EndpointsStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.endpointsReturns
 	return fakeReturns.result1
 }
 
@@ -109,15 +110,16 @@ func (fake *OrdererOrg) MSP() msp.MSP {
 	ret, specificReturn := fake.mSPReturnsOnCall[len(fake.mSPArgsForCall)]
 	fake.mSPArgsForCall = append(fake.mSPArgsForCall, struct {
 	}{})
+	stub := fake.MSPStub
+	fakeReturns := fake.mSPReturns
 	fake.recordInvocation("MSP", []interface{}{})
 	fake.mSPMutex.Unlock()
-	if fake.MSPStub != nil {
-		return fake.MSPStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.mSPReturns
 	return fakeReturns.result1
 }
 
@@ -161,15 +163,16 @@ func (fake *OrdererOrg) MSPID() string {
 	ret, specificReturn := fake.mSPIDReturnsOnCall[len(fake.mSPIDArgsForCall)]
 	fake.mSPIDArgsForCall = append(fake.mSPIDArgsForCall, struct {
 	}{})
+	stub := fake.MSPIDStub
+	fakeReturns := fake.mSPIDReturns
 	fake.recordInvocation("MSPID", []interface{}{})
 	fake.mSPIDMutex.Unlock()
-	if fake.MSPIDStub != nil {
-		return fake.MSPIDStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.mSPIDReturns
 	return fakeReturns.result1
 }
 
@@ -213,15 +216,16 @@ func (fake *OrdererOrg) Name() string {
 	ret, specificReturn := fake.nameReturnsOnCall[len(fake.nameArgsForCall)]
 	fake.nameArgsForCall = append(fake.nameArgsForCall, struct {
 	}{})
+	stub := fake.NameStub
+	fakeReturns := fake.nameReturns
 	fake.recordInvocation("Name", []interface{}{})
 	fake.nameMutex.Unlock()
-	if fake.NameStub != nil {
-		return fake.NameStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.nameReturns
 	return fakeReturns.result1
 }
 

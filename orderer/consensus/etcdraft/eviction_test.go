@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/hyperledger/fabric/protoutil"
@@ -134,7 +134,7 @@ func TestEvictionSuspector(t *testing.T) {
 
 	puller := &mocks.ChainPuller{}
 	puller.On("Close")
-	puller.On("HeightsByEndpoints").Return(map[string]uint64{"foo": 10}, nil)
+	puller.On("HeightsByEndpoints").Return(map[string]uint64{"foo": 10}, "", nil)
 	puller.On("PullBlock", uint64(9)).Return(configBlock)
 
 	for _, testCase := range []struct {
@@ -213,7 +213,6 @@ func TestEvictionSuspector(t *testing.T) {
 			},
 		},
 	} {
-		testCase := testCase
 		t.Run(testCase.description, func(t *testing.T) {
 			committedBlocks := make(chan *common.Block, 2)
 

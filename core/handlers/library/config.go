@@ -7,17 +7,20 @@
 package library
 
 import (
-	"github.com/mitchellh/mapstructure"
+	"time"
+
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/viper"
 )
 
 // Config configures the factory methods
 // and plugins for the registry
 type Config struct {
-	AuthFilters []*HandlerConfig `yaml:"authFilters"`
-	Decorators  []*HandlerConfig `yaml:"decorators"`
-	Endorsers   PluginMapping    `yaml:"endorsers"`
-	Validators  PluginMapping    `yaml:"validators"`
+	AuthFilters              []*HandlerConfig `yaml:"authFilters"`
+	Decorators               []*HandlerConfig `yaml:"decorators"`
+	Endorsers                PluginMapping    `yaml:"endorsers"`
+	Validators               PluginMapping    `yaml:"validators"`
+	AuthenticationTimeWindow time.Duration    `yaml:"authenticationTimeWindow"`
 }
 
 // PluginMapping stores a map between chaincode id to plugin config
@@ -54,10 +57,18 @@ func LoadConfig() (Config, error) {
 		validators[k] = &HandlerConfig{Name: name, Library: library}
 	}
 
+	authenticationTimeWindow := viper.GetDuration("peer.authentication.timewindow")
+	if authenticationTimeWindow == 0 {
+		defaultTimeWindow := 15 * time.Minute
+		logger.Warningf("`peer.authentication.timewindow` not set; defaulting to %s", defaultTimeWindow)
+		authenticationTimeWindow = defaultTimeWindow
+	}
+
 	return Config{
-		AuthFilters: authFilters,
-		Decorators:  decorators,
-		Endorsers:   endorsers,
-		Validators:  validators,
+		AuthFilters:              authFilters,
+		Decorators:               decorators,
+		Endorsers:                endorsers,
+		Validators:               validators,
+		AuthenticationTimeWindow: authenticationTimeWindow,
 	}, nil
 }

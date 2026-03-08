@@ -12,8 +12,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/hyperledger/fabric-protos-go/discovery"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/discovery"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/discovery/protoext"
 	common2 "github.com/hyperledger/fabric/gossip/common"
@@ -185,7 +185,7 @@ func (s *Service) channelMembershipResponse(q *discovery.Query) *discovery.Query
 		membersByOrgs[org] = &discovery.Peers{}
 		for id, peer := range ids2Peers {
 			// Check if the peer is in the channel view
-			stateInfoMsg, exists := chanPeerByID[string(id)]
+			stateInfoMsg, exists := chanPeerByID[id]
 			// If the peer isn't in the channel view, skip it and don't include it in the response
 			if !exists {
 				continue

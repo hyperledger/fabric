@@ -17,9 +17,9 @@ the place of new value) for the key if the update performed by the
 transaction is to delete the key.
 
 Further, if the transaction writes a value multiple times for a key,
-only the last written value is retained. Also, if a transaction reads a
+only the last written value is retained. Also, if a particular transaction reads a
 value for a key, the value in the committed state is returned even if
-the transaction has updated the value for the key before issuing the
+the same transaction has updated the value for the key before issuing the
 read. In another words, Read-your-writes semantics are not supported.
 
 As noted earlier, the versions of the keys are recorded only in the read
@@ -88,7 +88,7 @@ during simulation) during validation on the committed-state, it should
 yield the same results that were observed by the transaction at the time
 of simulation. This check ensures that if a transaction observes phantom
 items during commit, the transaction should be marked as invalid. Note
-that the this phantom protection is limited to range queries (i.e.,
+that this phantom protection is limited to range queries (i.e.,
 ``GetStateByRange`` function in the chaincode) and not yet implemented
 for other queries (i.e., ``GetQueryResult`` function in the chaincode).
 Other queries are at risk of phantoms, and should therefore only be used

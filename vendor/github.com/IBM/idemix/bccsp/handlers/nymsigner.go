@@ -6,22 +6,19 @@ SPDX-License-Identifier: Apache-2.0
 package handlers
 
 import (
+	"fmt"
+
 	"github.com/IBM/idemix/bccsp/types"
-	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/pkg/errors"
 )
 
 type NymSigner struct {
-	NymSignatureScheme types.NymSignatureScheme
+	NymSignatureScheme          types.NymSignatureScheme
+	SmartcardNymSignatureScheme types.SmartcardNymSignatureScheme
 }
 
-func (s *NymSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte, error) {
-	userSecretKey, ok := k.(*UserSecretKey)
-	if !ok {
-		return nil, errors.New("invalid key, expected *userSecretKey")
-	}
-
-	signerOpts, ok := opts.(*bccsp.IdemixNymSignerOpts)
+func (s *NymSigner) Sign(k types.Key, digest []byte, opts types.SignerOpts) ([]byte, error) {
+	signerOpts, ok := opts.(*types.IdemixNymSignerOpts)
 	if !ok {
 		return nil, errors.New("invalid options, expected *IdemixNymSignerOpts")
 	}
@@ -33,6 +30,32 @@ func (s *NymSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]b
 	ipk, ok := signerOpts.IssuerPK.(*issuerPublicKey)
 	if !ok {
 		return nil, errors.New("invalid issuer public key, expected *issuerPublicKey")
+	}
+
+	// handle the smartcard case
+	if signerOpts.IsSmartcard {
+		if s.SmartcardNymSignatureScheme == nil {
+			return nil, fmt.Errorf("smartcard mode is unsupported")
+		}
+
+		if signerOpts.Smartcard == nil {
+			return nil, fmt.Errorf("no s/w smartcard supplied in opts")
+		}
+
+		sigma, nym, rNym, err := s.SmartcardNymSignatureScheme.Sign(signerOpts.Smartcard, ipk.pk, digest)
+		if err != nil {
+			return nil, err
+		}
+
+		signerOpts.NymG1 = nym
+		signerOpts.RNym = rNym
+
+		return sigma, nil
+	}
+
+	userSecretKey, ok := k.(*UserSecretKey)
+	if !ok {
+		return nil, errors.New("invalid key, expected *userSecretKey")
 	}
 
 	// Nym
@@ -57,16 +80,17 @@ func (s *NymSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]b
 }
 
 type NymVerifier struct {
-	NymSignatureScheme types.NymSignatureScheme
+	NymSignatureScheme          types.NymSignatureScheme
+	SmartcardNymSignatureScheme types.SmartcardNymSignatureScheme
 }
 
-func (v *NymVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
+func (v *NymVerifier) Verify(k types.Key, signature, digest []byte, opts types.SignerOpts) (bool, error) {
 	nymPublicKey, ok := k.(*nymPublicKey)
 	if !ok {
 		return false, errors.New("invalid key, expected *nymPublicKey")
 	}
 
-	signerOpts, ok := opts.(*bccsp.IdemixNymSignerOpts)
+	signerOpts, ok := opts.(*types.IdemixNymSignerOpts)
 	if !ok {
 		return false, errors.New("invalid options, expected *IdemixNymSignerOpts")
 	}
@@ -83,11 +107,33 @@ func (v *NymVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.S
 		return false, errors.New("invalid signature, it must not be empty")
 	}
 
+	// handle the smartcard case
+	if signerOpts.IsSmartcard {
+		if v.SmartcardNymSignatureScheme == nil {
+			return false, fmt.Errorf("smartcard mode is unsupported")
+		}
+		if signerOpts.NymEid == nil {
+			return false, fmt.Errorf("nym eid missing")
+		}
+
+		err := v.SmartcardNymSignatureScheme.Verify(
+			ipk.pk,
+			signerOpts.NymEid,
+			signature,
+			digest)
+		if err != nil {
+			return false, err
+		}
+
+		return true, nil
+	}
+
 	err := v.NymSignatureScheme.Verify(
 		ipk.pk,
 		nymPublicKey.pk,
 		signature,
-		digest)
+		digest,
+		signerOpts.SKIndex)
 	if err != nil {
 		return false, err
 	}

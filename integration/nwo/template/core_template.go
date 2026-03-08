@@ -60,7 +60,7 @@ peer:
       leaderElectionDuration: 5s
     pvtData:
       pullRetryThreshold: 7s
-      transientstoreMaxBlockRetention: 1000
+      transientstoreMaxBlockRetention: 20000
       pushAckTimeout: 3s
       btlPullMargin: 10
       reconcileBatchSize: 10
@@ -114,6 +114,7 @@ peer:
   localMspId: {{ (.Organization Peer.Organization).MSPID }}
   deliveryclient:
     reconnectTotalTimeThreshold: 3600s
+    policy: {{ .PeerDeliveryClientPolicy }}
   localMspType: bccsp
   profile:
     enabled:     false
@@ -122,6 +123,7 @@ peer:
     authFilters:
     - name: DefaultAuth
     - name: ExpirationCheck
+    - name: TimeWindowCheck
     decorators:
     - name: DefaultDecorator
     endorsers:
@@ -185,6 +187,11 @@ chaincode:
     cscc:       enable
     lscc:       enable
     qscc:       enable
+  runtimeParams:
+    useWriteBatch: {{ .UseWriteBatch }}
+    maxSizeWriteBatch: 1000
+    useGetMultipleKeys: {{ .UseGetMultipleKeys }}
+    maxSizeGetMultipleKeys: 1000
   logging:
     level:  info
     shim:   warning

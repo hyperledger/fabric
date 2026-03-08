@@ -8,26 +8,25 @@ package transientstore
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric-protos-go/transientstore"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/transientstore"
 	"github.com/hyperledger/fabric/common/policydsl"
 	commonutil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestMain(m *testing.M) {
-	tempdir, err := ioutil.TempDir("", "ts")
+	tempdir, err := os.MkdirTemp("", "ts")
 	if err != nil {
 		panic(err)
 	}
@@ -43,12 +42,10 @@ type testEnv struct {
 	store         *Store
 	tempdir       string
 	storedir      string
-	cleanup       func()
 }
 
 func initTestEnv(t *testing.T) *testEnv {
-	tempdir, err := ioutil.TempDir("", "ts")
-	require.NoErrorf(t, err, "failed to create test directory [%s]", tempdir)
+	tempdir := t.TempDir()
 
 	storedir := filepath.Join(tempdir, "transientstore")
 	storeProvider, err := NewStoreProvider(storedir)
@@ -64,9 +61,6 @@ func initTestEnv(t *testing.T) *testEnv {
 		store:         store,
 		tempdir:       tempdir,
 		storedir:      storedir,
-		cleanup: func() {
-			require.NoError(t, os.RemoveAll(tempdir))
-		},
 	}
 }
 
@@ -117,7 +111,6 @@ func TestRWSetKeyCodingEncoding(t *testing.T) {
 
 func TestTransientStorePersistAndRetrieve(t *testing.T) {
 	env := initTestEnv(t)
-	defer env.cleanup()
 	testStore := env.store
 	require := require.New(t)
 	txid := "txid-1"
@@ -169,7 +162,6 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 
 func TestTransientStorePersistAndRetrieveBothOldAndNewProto(t *testing.T) {
 	env := initTestEnv(t)
-	defer env.cleanup()
 	testStore := env.store
 	require := require.New(t)
 	txid := "txid-1"
@@ -226,7 +218,6 @@ func TestTransientStorePersistAndRetrieveBothOldAndNewProto(t *testing.T) {
 
 func TestTransientStorePurgeByTxids(t *testing.T) {
 	env := initTestEnv(t)
-	defer env.cleanup()
 	testStore := env.store
 	require := require.New(t)
 
@@ -390,7 +381,6 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 
 func TestTransientStorePurgeBelowHeight(t *testing.T) {
 	env := initTestEnv(t)
-	defer env.cleanup()
 	testStore := env.store
 	require := require.New(t)
 
@@ -437,7 +427,7 @@ func TestTransientStorePurgeBelowHeight(t *testing.T) {
 
 	// Persist simulation results into  store
 	var err error
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		err = testStore.Persist(txid, endorsersResults[i].ReceivedAtBlockHeight,
 			endorsersResults[i].PvtSimulationResultsWithConfig)
 		require.NoError(err)
@@ -506,14 +496,13 @@ func TestTransientStorePurgeBelowHeight(t *testing.T) {
 
 func TestTransientStoreRetrievalWithFilter(t *testing.T) {
 	env := initTestEnv(t)
-	defer env.cleanup()
 	testStore := env.store
 
 	samplePvtSimResWithConfig := samplePvtDataWithConfigInfo(t)
 
 	testTxid := "testTxid"
 	numEntries := 5
-	for i := 0; i < numEntries; i++ {
+	for i := range numEntries {
 		testStore.Persist(testTxid, uint64(i), samplePvtSimResWithConfig)
 	}
 
@@ -550,7 +539,7 @@ func TestTransientStoreRetrievalWithFilter(t *testing.T) {
 	}
 
 	var expectedRes []*EndorserPvtSimulationResults
-	for i := 0; i < numEntries; i++ {
+	for i := range numEntries {
 		expectedRes = append(expectedRes, &EndorserPvtSimulationResults{uint64(i), expectedSimulationRes})
 	}
 
@@ -716,7 +705,6 @@ func (s *Store) persistOldProto(txid string, blockHeight uint64,
 
 func TestIteratorErrorCases(t *testing.T) {
 	env := initTestEnv(t)
-	defer env.cleanup()
 	testStore := env.store
 	env.storeProvider.Close()
 
@@ -735,7 +723,6 @@ func TestIteratorErrorCases(t *testing.T) {
 
 func TestDeleteTransientStore(t *testing.T) {
 	env := initTestEnv(t)
-	defer env.cleanup()
 
 	ledgerID := "test-deleted-tx-count"
 	store, err := env.storeProvider.OpenStore(ledgerID)
@@ -746,7 +733,7 @@ func TestDeleteTransientStore(t *testing.T) {
 	samplePvtSimResWithConfig := samplePvtDataWithConfigInfo(t)
 	testTxid := "testTxid"
 	numEntries := 5
-	for i := 0; i < numEntries; i++ {
+	for i := range numEntries {
 		store.Persist(testTxid, uint64(i), samplePvtSimResWithConfig)
 	}
 
@@ -776,7 +763,6 @@ func TestDeleteTransientStore(t *testing.T) {
 
 func TestDeleteMissingTransientStoreIsOK(t *testing.T) {
 	env := initTestEnv(t)
-	defer env.cleanup()
 
 	sp := env.storeProvider.(*storeProvider)
 	require.NoError(t, sp.deleteStore("_not_a_valid_store"))

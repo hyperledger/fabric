@@ -14,15 +14,15 @@ import (
 	"os"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func createCIS() *pb.ChaincodeInvocationSpec {
@@ -370,7 +370,7 @@ func TestEnvelope(t *testing.T) {
 	}
 
 	if act2.Response.Status != response.Status {
-		t.Fatalf("response staus don't match")
+		t.Fatalf("response status don't match")
 		return
 	}
 	if !bytes.Equal(act2.Response.Payload, response.Payload) {
@@ -426,7 +426,7 @@ func TestEnvelope(t *testing.T) {
 	}
 
 	if ca.Response.Status != response.Status {
-		t.Fatalf("response staus don't match")
+		t.Fatalf("response status don't match")
 		return
 	}
 	if !bytes.Equal(ca.Response.Payload, response.Payload) {
@@ -464,9 +464,9 @@ func TestComputeProposalTxID(t *testing.T) {
 	hashOut := hf.Sum(nil)
 	txid2 := hex.EncodeToString(hashOut)
 
-	t.Logf("% x\n", hashOut)
-	t.Logf("% s\n", txid)
-	t.Logf("% s\n", txid2)
+	t.Logf("%x\n", hashOut)
+	t.Logf("%s\n", txid)
+	t.Logf("%s\n", txid2)
 
 	require.Equal(t, txid, txid2)
 }
@@ -480,28 +480,24 @@ func TestMain(m *testing.M) {
 	// setup the MSP manager so that we can sign/verify
 	err := msptesttools.LoadMSPSetupForTesting()
 	if err != nil {
-		os.Exit(-1)
 		fmt.Printf("Could not initialize msp")
-		return
+		os.Exit(-1)
 	}
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	if err != nil {
-		os.Exit(-1)
 		fmt.Printf("Could not initialize cryptoProvider")
-		return
+		os.Exit(-1)
 	}
 	signer, err = mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	if err != nil {
-		os.Exit(-1)
 		fmt.Printf("Could not get signer")
-		return
+		os.Exit(-1)
 	}
 
 	signerSerialized, err = signer.Serialize()
 	if err != nil {
-		os.Exit(-1)
 		fmt.Printf("Could not serialize identity")
-		return
+		os.Exit(-1)
 	}
 
 	os.Exit(m.Run())

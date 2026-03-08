@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package filerepo_test
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -94,7 +93,7 @@ func TestFileRepo_Save(t *testing.T) {
 			require.NoError(t, err)
 
 			// Check file bytes
-			bytes, err := ioutil.ReadFile(filePath)
+			bytes, err := os.ReadFile(filePath)
 			require.NoError(t, err)
 			if tt.content != nil {
 				require.Equal(t, tt.content, bytes)

@@ -11,6 +11,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+<<<<<<<< HEAD:vendor/github.com/prometheus/client_golang/prometheus/num_threads.go
+//go:build !js || wasm
+// +build !js wasm
+
+package prometheus
+
+import "runtime"
+
+// getRuntimeNumThreads returns the number of open OS threads.
+func getRuntimeNumThreads() float64 {
+	n, _ := runtime.ThreadCreateProfile(nil)
+	return float64(n)
+========
 //go:build !freebsd && !linux
 // +build !freebsd,!linux
 
@@ -20,4 +33,5 @@ package procfs
 // in their Statfs_t struct
 func isRealProc(mountPoint string) (bool, error) {
 	return true, nil
+>>>>>>>> main:vendor/github.com/prometheus/procfs/fs_statfs_notype.go
 }

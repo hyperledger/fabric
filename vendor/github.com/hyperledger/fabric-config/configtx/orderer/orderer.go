@@ -19,15 +19,18 @@ const (
 	ConsensusStateMaintenance ConsensusState = "STATE_MAINTENANCE"
 
 	// ConsensusTypeSolo identifies the solo consensus implementation.
+	// Deprecated: the solo consensus type is no longer supported
 	ConsensusTypeSolo = "solo"
 
 	// ConsensusTypeKafka identifies the Kafka-based consensus implementation.
+	// Deprecated: the kafka consensus type is no longer supported
 	ConsensusTypeKafka = "kafka"
 
 	// ConsensusTypeEtcdRaft identifies the Raft-based consensus implementation.
 	ConsensusTypeEtcdRaft = "etcdraft"
 
 	// KafkaBrokersKey is the common.ConfigValue type key name for the KafkaBrokers message.
+	// Deprecated: the kafka consensus type is no longer supported
 	KafkaBrokersKey = "KafkaBrokers"
 
 	// ConsensusTypeKey is the common.ConfigValue type key name for the ConsensusType message.
@@ -58,6 +61,7 @@ type BatchSize struct {
 }
 
 // Kafka is a list of Kafka broker endpoints.
+// Deprecated: the kafka consensus type is no longer supported
 type Kafka struct {
 	// Brokers contains the addresses of *at least two* kafka brokers
 	// Must be in `IP:port` notation

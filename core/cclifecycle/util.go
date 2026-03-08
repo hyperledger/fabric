@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package cclifecycle
 
 import (
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // AcceptAll returns a predicate that accepts all Metadata

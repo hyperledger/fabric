@@ -7,10 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package blkstorage
 
 import (
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 type serializedBlockInfo struct {
@@ -25,22 +25,15 @@ type txindexInfo struct {
 	loc  *locPointer
 }
 
-func serializeBlock(block *common.Block) ([]byte, *serializedBlockInfo, error) {
-	buf := proto.NewBuffer(nil)
-	var err error
+func serializeBlock(block *common.Block) ([]byte, *serializedBlockInfo) {
+	var buf []byte
 	info := &serializedBlockInfo{}
 	info.blockHeader = block.Header
 	info.metadata = block.Metadata
-	if err = addHeaderBytes(block.Header, buf); err != nil {
-		return nil, nil, err
-	}
-	if info.txOffsets, err = addDataBytesAndConstructTxIndexInfo(block.Data, buf); err != nil {
-		return nil, nil, err
-	}
-	if err = addMetadataBytes(block.Metadata, buf); err != nil {
-		return nil, nil, err
-	}
-	return buf.Bytes(), info, nil
+	buf = addHeaderBytes(block.Header, buf)
+	info.txOffsets, buf = addDataBytesAndConstructTxIndexInfo(block.Data, buf)
+	buf = addMetadataBytes(block.Metadata, buf)
+	return buf, info
 }
 
 func deserializeBlock(serializedBlockBytes []byte) (*common.Block, error) {
@@ -79,55 +72,44 @@ func extractSerializedBlockInfo(serializedBlockBytes []byte) (*serializedBlockIn
 	return info, nil
 }
 
-func addHeaderBytes(blockHeader *common.BlockHeader, buf *proto.Buffer) error {
-	if err := buf.EncodeVarint(blockHeader.Number); err != nil {
-		return errors.Wrapf(err, "error encoding the block number [%d]", blockHeader.Number)
-	}
-	if err := buf.EncodeRawBytes(blockHeader.DataHash); err != nil {
-		return errors.Wrapf(err, "error encoding the data hash [%v]", blockHeader.DataHash)
-	}
-	if err := buf.EncodeRawBytes(blockHeader.PreviousHash); err != nil {
-		return errors.Wrapf(err, "error encoding the previous hash [%v]", blockHeader.PreviousHash)
-	}
-	return nil
+func addHeaderBytes(blockHeader *common.BlockHeader, buf []byte) []byte {
+	buf = protowire.AppendVarint(buf, blockHeader.Number)
+	buf = protowire.AppendBytes(buf, blockHeader.DataHash)
+	buf = protowire.AppendBytes(buf, blockHeader.PreviousHash)
+	return buf
 }
 
-func addDataBytesAndConstructTxIndexInfo(blockData *common.BlockData, buf *proto.Buffer) ([]*txindexInfo, error) {
+func addDataBytesAndConstructTxIndexInfo(blockData *common.BlockData, buf []byte) ([]*txindexInfo, []byte) {
 	var txOffsets []*txindexInfo
 
-	if err := buf.EncodeVarint(uint64(len(blockData.Data))); err != nil {
-		return nil, errors.Wrap(err, "error encoding the length of block data")
-	}
+	buf = protowire.AppendVarint(buf, uint64(len(blockData.Data)))
 	for _, txEnvelopeBytes := range blockData.Data {
-		offset := len(buf.Bytes())
+		offset := len(buf)
 		txid, err := protoutil.GetOrComputeTxIDFromEnvelope(txEnvelopeBytes)
 		if err != nil {
 			logger.Warningf("error while extracting txid from tx envelope bytes during serialization of block. Ignoring this error as this is caused by a malformed transaction. Error:%s",
 				err)
 		}
-		if err := buf.EncodeRawBytes(txEnvelopeBytes); err != nil {
-			return nil, errors.Wrap(err, "error encoding the transaction envelope")
-		}
-		idxInfo := &txindexInfo{txID: txid, loc: &locPointer{offset, len(buf.Bytes()) - offset}}
+		buf = protowire.AppendBytes(buf, txEnvelopeBytes)
+		idxInfo := &txindexInfo{txID: txid, loc: &locPointer{offset, len(buf) - offset}}
 		txOffsets = append(txOffsets, idxInfo)
 	}
-	return txOffsets, nil
+	return txOffsets, buf
 }
 
-func addMetadataBytes(blockMetadata *common.BlockMetadata, buf *proto.Buffer) error {
+func addMetadataBytes(blockMetadata *common.BlockMetadata, buf []byte) []byte {
 	numItems := uint64(0)
 	if blockMetadata != nil {
 		numItems = uint64(len(blockMetadata.Metadata))
 	}
-	if err := buf.EncodeVarint(numItems); err != nil {
-		return errors.Wrap(err, "error encoding the length of metadata")
+	buf = protowire.AppendVarint(buf, numItems)
+	if blockMetadata == nil {
+		return buf
 	}
 	for _, b := range blockMetadata.Metadata {
-		if err := buf.EncodeRawBytes(b); err != nil {
-			return errors.Wrap(err, "error encoding the block metadata")
-		}
+		buf = protowire.AppendBytes(buf, b)
 	}
-	return nil
+	return buf
 }
 
 func extractHeader(buf *buffer) (*common.BlockHeader, error) {

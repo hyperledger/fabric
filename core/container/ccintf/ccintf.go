@@ -9,7 +9,7 @@ package ccintf
 import (
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 )
 
 // These structures can/should probably be moved out of here.

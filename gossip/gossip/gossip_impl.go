@@ -15,8 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	pg "github.com/hyperledger/fabric-protos-go/gossip"
+	pg "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -32,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -311,7 +311,7 @@ func (g *Node) start() {
 	go g.syncDiscovery()
 	go g.handlePresumedDead()
 
-	msgSelector := func(msg interface{}) bool {
+	msgSelector := func(msg any) bool {
 		gMsg, isGossipMsg := msg.(protoext.ReceivedMessage)
 		if !isGossipMsg {
 			return false
@@ -437,7 +437,7 @@ func (g *Node) validateMsg(msg protoext.ReceivedMessage) bool {
 	return true
 }
 
-func (g *Node) sendGossipBatch(a []interface{}) {
+func (g *Node) sendGossipBatch(a []any) {
 	msgs2Gossip := make([]*emittedGossipMessage, len(a))
 	for i, e := range a {
 		msgs2Gossip[i] = e.(*emittedGossipMessage)
@@ -450,7 +450,7 @@ func (g *Node) sendGossipBatch(a []interface{}) {
 // For efficiency, we first isolate all the messages that have the same routing policy
 // and send them together, and only after that move to the next group of messages.
 // i.e: we send all blocks of channel C to the same group of peers,
-// and send all StateInfo messages to the same group of peers, etc. etc.
+// and send all StateInfo messages to the same group of peers, etc.
 // When we send blocks, we send only to peers that advertised themselves in the channel.
 // When we send StateInfo messages, we send to peers in the channel.
 // When we send messages that are marked to be sent only within the org, we send all of these messages
@@ -468,13 +468,13 @@ func (g *Node) gossipBatch(msgs []*emittedGossipMessage) {
 	var orgMsgs []*emittedGossipMessage
 	var leadershipMsgs []*emittedGossipMessage
 
-	isABlock := func(o interface{}) bool {
+	isABlock := func(o any) bool {
 		return protoext.IsDataMsg(o.(*emittedGossipMessage).GossipMessage)
 	}
-	isAStateInfoMsg := func(o interface{}) bool {
+	isAStateInfoMsg := func(o any) bool {
 		return protoext.IsStateInfoMsg(o.(*emittedGossipMessage).GossipMessage)
 	}
-	aliveMsgsWithNoEndpointAndInOurOrg := func(o interface{}) bool {
+	aliveMsgsWithNoEndpointAndInOurOrg := func(o any) bool {
 		msg := o.(*emittedGossipMessage)
 		if !protoext.IsAliveMsg(msg.GossipMessage) {
 			return false
@@ -482,10 +482,10 @@ func (g *Node) gossipBatch(msgs []*emittedGossipMessage) {
 		member := msg.GetAliveMsg().Membership
 		return member.Endpoint == "" && g.IsInMyOrg(discovery.NetworkMember{PKIid: member.PkiId})
 	}
-	isOrgRestricted := func(o interface{}) bool {
+	isOrgRestricted := func(o any) bool {
 		return aliveMsgsWithNoEndpointAndInOurOrg(o) || protoext.IsOrgRestricted(o.(*emittedGossipMessage).GossipMessage)
 	}
-	isLeadershipMsg := func(o interface{}) bool {
+	isLeadershipMsg := func(o any) bool {
 		return protoext.IsLeadershipMsg(o.(*emittedGossipMessage).GossipMessage)
 	}
 
@@ -575,7 +575,7 @@ func (g *Node) gossipInChan(messages []*emittedGossipMessage, chanRoutingFactory
 		// Take first channel
 		channel, totalChannels = totalChannels[0], totalChannels[1:]
 		// Extract all messages of that channel
-		grabMsgs := func(o interface{}) bool {
+		grabMsgs := func(o any) bool {
 			return bytes.Equal(o.(*emittedGossipMessage).Channel, channel)
 		}
 		messagesOfChannel, messages = partitionMessages(grabMsgs, messages)
@@ -818,7 +818,7 @@ func (g *Node) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan
 	if passThrough {
 		return nil, g.comm.Accept(acceptor)
 	}
-	acceptByType := func(o interface{}) bool {
+	acceptByType := func(o any) bool {
 		if o, isGossipMsg := o.(*pg.GossipMessage); isGossipMsg {
 			return acceptor(o)
 		}
@@ -852,7 +852,7 @@ func (g *Node) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan
 	return outCh, nil
 }
 
-func selectOnlyDiscoveryMessages(m interface{}) bool {
+func selectOnlyDiscoveryMessages(m any) bool {
 	msg, isGossipMsg := m.(protoext.ReceivedMessage)
 	if !isGossipMsg {
 		return false
@@ -1028,7 +1028,7 @@ func (sa *discoverySecurityAdapter) ValidateAliveMsg(m *protoext.SignedGossipMes
 
 	// If identity is included inside AliveMessage
 	if am.Identity != nil {
-		identity = api.PeerIdentityType(am.Identity)
+		identity = am.Identity
 		claimedPKIID := am.Membership.PkiId
 		err := sa.idMapper.Put(claimedPKIID, identity)
 		if err != nil {
@@ -1082,7 +1082,7 @@ func (sa *discoverySecurityAdapter) validateAliveMsgSignature(m *protoext.Signed
 	am := m.GetAliveMsg()
 	// At this point we got the certificate of the peer, proceed to verifying the AliveMessage
 	verifier := func(peerIdentity []byte, signature, message []byte) error {
-		return sa.mcs.Verify(api.PeerIdentityType(peerIdentity), signature, message)
+		return sa.mcs.Verify(peerIdentity, signature, message)
 	}
 
 	// We verify the signature on the message
@@ -1122,7 +1122,7 @@ func (g *Node) createCertStorePuller() pull.Mediator {
 			g.logger.Warning("Invalid PeerIdentity:", idMsg)
 			return
 		}
-		err := g.idMapper.Put(common.PKIidType(idMsg.PkiId), api.PeerIdentityType(idMsg.Cert))
+		err := g.idMapper.Put(idMsg.PkiId, idMsg.Cert)
 		if err != nil {
 			g.logger.Warningf("Failed associating PKI-ID with certificate: %+v", errors.WithStack(err))
 		}
@@ -1173,7 +1173,6 @@ func (g *Node) sameOrgOrOurOrgPullFilter(msg protoext.ReceivedMessage) func(stri
 
 func (g *Node) connect2BootstrapPeers() {
 	for _, endpoint := range g.conf.BootstrapPeers {
-		endpoint := endpoint
 		identifier := func() (*discovery.PeerIdentification, error) {
 			remotePeerIdentity, err := g.comm.Handshake(&comm.RemotePeer{Endpoint: endpoint})
 			if err != nil {
@@ -1239,7 +1238,7 @@ func (g *Node) validateLeadershipMessage(msg *protoext.SignedGossipMessage) erro
 
 func (g *Node) validateStateInfoMsg(msg *protoext.SignedGossipMessage) error {
 	verifier := func(identity []byte, signature, message []byte) error {
-		pkiID := g.idMapper.GetPKIidOfCert(api.PeerIdentityType(identity))
+		pkiID := g.idMapper.GetPKIidOfCert(identity)
 		if pkiID == nil {
 			return errors.New("PKI-ID not found in identity mapper")
 		}
@@ -1348,11 +1347,11 @@ func extractChannels(a []*emittedGossipMessage) []common.ChannelID {
 		if len(m.Channel) == 0 {
 			continue
 		}
-		sameChan := func(a interface{}, b interface{}) bool {
+		sameChan := func(a any, b any) bool {
 			return bytes.Equal(a.(common.ChannelID), b.(common.ChannelID))
 		}
 		if util.IndexInSlice(channels, common.ChannelID(m.Channel), sameChan) == -1 {
-			channels = append(channels, common.ChannelID(m.Channel))
+			channels = append(channels, m.Channel)
 		}
 	}
 	return channels

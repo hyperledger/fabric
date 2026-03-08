@@ -7,10 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package pvtdatastorage
 
 import (
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
+	"google.golang.org/protobuf/proto"
 )
 
 func v11Format(datakeyBytes []byte) (bool, error) {
@@ -19,7 +19,7 @@ func v11Format(datakeyBytes []byte) (bool, error) {
 		return false, err
 	}
 	remainingBytes := datakeyBytes[n+1:]
-	return len(remainingBytes) == 0, err
+	return len(remainingBytes) == 0, nil
 }
 
 // v11DecodePK returns block number, tx number, and error.

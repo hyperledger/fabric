@@ -44,15 +44,16 @@ func (fake *PolicyManager) GetPolicy(arg1 string) (policies.Policy, bool) {
 	fake.getPolicyArgsForCall = append(fake.getPolicyArgsForCall, struct {
 		arg1 string
 	}{arg1})
+	stub := fake.GetPolicyStub
+	fakeReturns := fake.getPolicyReturns
 	fake.recordInvocation("GetPolicy", []interface{}{arg1})
 	fake.getPolicyMutex.Unlock()
-	if fake.GetPolicyStub != nil {
-		return fake.GetPolicyStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.getPolicyReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -112,15 +113,16 @@ func (fake *PolicyManager) Manager(arg1 []string) (policies.Manager, bool) {
 	fake.managerArgsForCall = append(fake.managerArgsForCall, struct {
 		arg1 []string
 	}{arg1Copy})
+	stub := fake.ManagerStub
+	fakeReturns := fake.managerReturns
 	fake.recordInvocation("Manager", []interface{}{arg1Copy})
 	fake.managerMutex.Unlock()
-	if fake.ManagerStub != nil {
-		return fake.ManagerStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.managerReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 

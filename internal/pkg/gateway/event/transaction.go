@@ -6,17 +6,17 @@ SPDX-License-Identifier: Apache-2.0
 package event
 
 import (
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Transaction struct {
 	parent          *Block
 	payload         *common.Payload
 	id              string
-	timestamp       *timestamp.Timestamp
+	timestamp       *timestamppb.Timestamp
 	status          peer.TxValidationCode
 	chaincodeEvents []*ChaincodeEvent
 }
@@ -29,7 +29,7 @@ func (tx *Transaction) ID() string {
 	return tx.id
 }
 
-func (tx *Transaction) Timestamp() *timestamp.Timestamp {
+func (tx *Transaction) Timestamp() *timestamppb.Timestamp {
 	return tx.timestamp
 }
 

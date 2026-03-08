@@ -21,7 +21,7 @@ func certHashFromRawCert(rawCert []byte) []byte {
 	return util.ComputeSHA256(rawCert)
 }
 
-// ExtractCertificateHash extracts the hash of the certificate from the stream
+// extractCertificateHashFromContext extracts the hash of the certificate from the stream
 func extractCertificateHashFromContext(ctx context.Context) []byte {
 	pr, extracted := peer.FromContext(ctx)
 	if !extracted {

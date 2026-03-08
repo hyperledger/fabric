@@ -5,7 +5,7 @@
  The `peer` command has five different subcommands, each of which allows
  administrators to perform a specific set of tasks related to a peer.  For
  example, you can use the `peer channel` subcommand to join a peer to a channel,
- or the `peer  chaincode` command to deploy a smart contract chaincode to a
+ or the `peer chaincode` command to deploy a smart contract chaincode to a
  peer.
 
 ## Syntax

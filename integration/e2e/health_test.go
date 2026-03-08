@@ -9,16 +9,16 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"os"
 	"syscall"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/runner"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
@@ -28,17 +28,17 @@ import (
 var _ = Describe("Health", func() {
 	var (
 		testDir string
-		client  *docker.Client
+		client  dcli.APIClient
 		network *nwo.Network
 		process ifrit.Process
 	)
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "e2e")
+		testDir, err = os.MkdirTemp("", "e2e")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
 		config := nwo.BasicEtcdRaft()
@@ -133,7 +133,7 @@ func doHealthCheck(client *http.Client, url string) (int, *healthz.HealthStatus)
 	resp, err := client.Get(url)
 	Expect(err).NotTo(HaveOccurred())
 
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(resp.Body)
 	Expect(err).NotTo(HaveOccurred())
 	resp.Body.Close()
 

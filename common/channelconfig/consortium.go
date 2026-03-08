@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package channelconfig
 
 import (
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/pkg/errors"
 )
 
@@ -54,7 +54,7 @@ func (cc *ConsortiumConfig) Organizations() map[string]Org {
 	return cc.orgs
 }
 
-// CreationPolicy returns the policy structure used to validate
+// ChannelCreationPolicy returns the policy structure used to validate
 // the channel creation
 func (cc *ConsortiumConfig) ChannelCreationPolicy() *cb.Policy {
 	return cc.protos.ChannelCreationPolicy

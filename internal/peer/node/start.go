@@ -10,9 +10,9 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -20,25 +20,23 @@ import (
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	discprotos "github.com/hyperledger/fabric-protos-go/discovery"
-	gatewayprotos "github.com/hyperledger/fabric-protos-go/gateway"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	floggingmetrics "github.com/hyperledger/fabric-lib-go/common/flogging/metrics"
+	"github.com/hyperledger/fabric-lib-go/common/metrics"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	discprotos "github.com/hyperledger/fabric-protos-go-apiv2/discovery"
+	gatewayprotos "github.com/hyperledger/fabric-protos-go-apiv2/gateway"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	ccdef "github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/fabhttp"
-	"github.com/hyperledger/fabric/common/flogging"
-	floggingmetrics "github.com/hyperledger/fabric/common/flogging/metrics"
 	"github.com/hyperledger/fabric/common/grpclogging"
 	"github.com/hyperledger/fabric/common/grpcmetrics"
 	"github.com/hyperledger/fabric/common/metadata"
-	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/core/aclmgmt"
@@ -96,11 +94,15 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
+	dcontainer "github.com/moby/moby/api/types/container"
+	dcli "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
-	"gopkg.in/yaml.v2"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/proto"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -353,7 +355,7 @@ func serve(args []string) error {
 	// startup aclmgmt with default ACL providers (resource based and default 1.0 policies based).
 	// Users can pass in their own ACLProvider to RegisterACLProvider (currently unit tests do this)
 	aclProvider := aclmgmt.NewACLProvider(
-		aclmgmt.ResourceGetter(peerInstance.GetStableChannelConfig),
+		peerInstance.GetStableChannelConfig,
 		policyChecker,
 	)
 
@@ -391,7 +393,7 @@ func serve(args []string) error {
 	legacyMetadataManager, err := cclifecycle.NewMetadataManager(
 		cclifecycle.EnumerateFunc(
 			func() ([]ccdef.InstalledChaincode, error) {
-				return ccInfoFSImpl.ListInstalledChaincodes(ccInfoFSImpl.GetChaincodeInstallPath(), ioutil.ReadDir, ccprovider.LoadPackage)
+				return ccInfoFSImpl.ListInstalledChaincodes(ccInfoFSImpl.GetChaincodeInstallPath(), os.ReadDir, ccprovider.LoadPackage)
 			},
 		),
 	)
@@ -473,6 +475,7 @@ func serve(args []string) error {
 		coreConfig.PeerAddress,
 		deliverServiceConfig,
 		privdataConfig,
+		peerInstance,
 	)
 	if err != nil {
 		return errors.WithMessage(err, "failed to initialize gossip service")
@@ -692,6 +695,10 @@ func serve(args []string) error {
 		BuiltinSCCs:            builtinSCCs,
 		TotalQueryLimit:        chaincodeConfig.TotalQueryLimit,
 		UserRunsCC:             userRunsCC,
+		UseWriteBatch:          chaincodeConfig.UseWriteBatch,
+		MaxSizeWriteBatch:      chaincodeConfig.MaxSizeWriteBatch,
+		UseGetMultipleKeys:     chaincodeConfig.UseGetMultipleKeys,
+		MaxSizeGetMultipleKeys: chaincodeConfig.MaxSizeGetMultipleKeys,
 	}
 
 	custodianLauncher := custodianLauncherAdapter{
@@ -761,7 +768,7 @@ func serve(args []string) error {
 	}
 
 	// deploy system chaincodes
-	for _, cc := range []scc.SelfDescribingSysCC{lsccInst, csccInst, qsccInst, lifecycleSCC} {
+	for _, cc := range []scc.SelfDescribingSysCC{csccInst, qsccInst, lifecycleSCC} {
 		if enabled, ok := chaincodeConfig.SCCAllowlist[cc.Name()]; !ok || !enabled {
 			logger.Infof("not deploying chaincode %s as it is not enabled", cc.Name())
 			continue
@@ -833,26 +840,6 @@ func serve(args []string) error {
 		discprotos.RegisterDiscoveryServer(peerServer.Server(), discoveryService)
 	}
 
-	if coreConfig.GatewayOptions.Enabled {
-		if coreConfig.DiscoveryEnabled {
-			logger.Info("Starting peer with Gateway enabled")
-
-			gatewayServer := gateway.CreateServer(
-				serverEndorser,
-				discoveryService,
-				peerInstance,
-				&serverConfig.SecOpts,
-				aclProvider,
-				coreConfig.LocalMSPID,
-				coreConfig.GatewayOptions,
-				builtinSCCs,
-			)
-			gatewayprotos.RegisterGatewayServer(peerServer.Server(), gatewayServer)
-		} else {
-			logger.Warning("Discovery service must be enabled for embedded gateway")
-		}
-	}
-
 	logger.Infof("Starting peer with ID=[%s], network ID=[%s], address=[%s]", coreConfig.PeerID, coreConfig.NetworkID, coreConfig.PeerAddress)
 
 	// Get configuration before starting go routines to avoid
@@ -911,6 +898,26 @@ func serve(args []string) error {
 	auth := authHandler.ChainFilters(serverEndorser, authFilters...)
 	// Register the Endorser server
 	pb.RegisterEndorserServer(peerServer.Server(), auth)
+
+	if coreConfig.GatewayOptions.Enabled {
+		if coreConfig.DiscoveryEnabled {
+			logger.Info("Starting peer with Gateway enabled")
+
+			gatewayServer := gateway.CreateServer(
+				auth,
+				discoveryService,
+				peerInstance,
+				&serverConfig.SecOpts,
+				aclProvider,
+				coreConfig.LocalMSPID,
+				coreConfig.GatewayOptions,
+				builtinSCCs,
+			)
+			gatewayprotos.RegisterGatewayServer(peerServer.Server(), gatewayServer)
+		} else {
+			logger.Warning("Discovery service must be enabled for embedded gateway")
+		}
+	}
 
 	// register the snapshot server
 	snapshotSvc := &snapshotgrpc.SnapshotService{LedgerGetter: peerInstance, ACLProvider: aclProvider}
@@ -1154,11 +1161,11 @@ func computeChaincodeEndpoint(chaincodeAddress string, chaincodeListenAddress st
 	return ccEndpoint, nil
 }
 
-func createDockerClient(coreConfig *peer.Config) (*docker.Client, error) {
+func createDockerClient(coreConfig *peer.Config) (dcli.APIClient, error) {
 	if coreConfig.VMDockerTLSEnabled {
-		return docker.NewTLSClient(coreConfig.VMEndpoint, coreConfig.DockerCert, coreConfig.DockerKey, coreConfig.DockerCA)
+		return dcli.New(dcli.WithHost(coreConfig.VMEndpoint), dcli.WithTLSClientConfig(coreConfig.DockerCA, coreConfig.DockerCert, coreConfig.DockerKey))
 	}
-	return docker.NewClient(coreConfig.VMEndpoint)
+	return dcli.New(dcli.WithHost(coreConfig.VMEndpoint))
 }
 
 // secureDialOpts is the callback function for secure dial options for gossip service
@@ -1191,7 +1198,7 @@ func secureDialOpts(credSupport *comm.CredentialSupport) func() []grpc.DialOptio
 		if viper.GetBool("peer.tls.enabled") {
 			dialOpts = append(dialOpts, grpc.WithTransportCredentials(credSupport.GetPeerCredentials()))
 		} else {
-			dialOpts = append(dialOpts, grpc.WithInsecure())
+			dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		}
 		return dialOpts
 	}
@@ -1211,6 +1218,7 @@ func initGossipService(
 	peerAddress string,
 	deliverServiceConfig *deliverservice.DeliverServiceConfig,
 	privdataConfig *gossipprivdata.PrivdataConfig,
+	peerInstance *peer.Peer,
 ) (*gossipservice.GossipService, error) {
 	var certs *gossipcommon.TLSCertificates
 	if peerServer.TLSEnabled() {
@@ -1231,6 +1239,7 @@ func initGossipService(
 		signer,
 		deserManager,
 		factory.GetDefault(),
+		peerInstance.GetChannelConfig,
 	)
 	secAdv := peergossip.NewSecurityAdvisor(deserManager)
 	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
@@ -1286,11 +1295,11 @@ func newOperationsSystem(coreConfig *peer.Config) *operations.System {
 	})
 }
 
-func getDockerHostConfig() *docker.HostConfig {
+func getDockerHostConfig() *dcontainer.HostConfig {
 	dockerKey := func(key string) string { return "vm.docker.hostConfig." + key }
 	getInt64 := func(key string) int64 { return int64(viper.GetInt(dockerKey(key))) }
 
-	var logConfig docker.LogConfig
+	var logConfig dcontainer.LogConfig
 	err := viper.UnmarshalKey(dockerKey("LogConfig"), &logConfig)
 	if err != nil {
 		logger.Panicf("unable to parse Docker LogConfig: %s", err)
@@ -1304,33 +1313,38 @@ func getDockerHostConfig() *docker.HostConfig {
 	memorySwappiness := getInt64("MemorySwappiness")
 	oomKillDisable := viper.GetBool(dockerKey("OomKillDisable"))
 
-	return &docker.HostConfig{
-		CapAdd:  viper.GetStringSlice(dockerKey("CapAdd")),
-		CapDrop: viper.GetStringSlice(dockerKey("CapDrop")),
+	strDNS := viper.GetStringSlice(dockerKey("Dns"))
+	dns := make([]netip.Addr, 0, len(strDNS))
+	for _, s := range strDNS {
+		dns = append(dns, netip.MustParseAddr(s))
+	}
 
-		DNS:         viper.GetStringSlice(dockerKey("Dns")),
-		DNSSearch:   viper.GetStringSlice(dockerKey("DnsSearch")),
-		ExtraHosts:  viper.GetStringSlice(dockerKey("ExtraHosts")),
-		NetworkMode: networkMode,
-		IpcMode:     viper.GetString(dockerKey("IpcMode")),
-		PidMode:     viper.GetString(dockerKey("PidMode")),
-		UTSMode:     viper.GetString(dockerKey("UTSMode")),
-		LogConfig:   logConfig,
-
-		ReadonlyRootfs:   viper.GetBool(dockerKey("ReadonlyRootfs")),
-		SecurityOpt:      viper.GetStringSlice(dockerKey("SecurityOpt")),
-		CgroupParent:     viper.GetString(dockerKey("CgroupParent")),
-		Memory:           getInt64("Memory"),
-		MemorySwap:       getInt64("MemorySwap"),
-		MemorySwappiness: &memorySwappiness,
-		OOMKillDisable:   &oomKillDisable,
-		CPUShares:        getInt64("CpuShares"),
-		CPUSet:           viper.GetString(dockerKey("Cpuset")),
-		CPUSetCPUs:       viper.GetString(dockerKey("CpusetCPUs")),
-		CPUSetMEMs:       viper.GetString(dockerKey("CpusetMEMs")),
-		CPUQuota:         getInt64("CpuQuota"),
-		CPUPeriod:        getInt64("CpuPeriod"),
-		BlkioWeight:      getInt64("BlkioWeight"),
+	return &dcontainer.HostConfig{
+		LogConfig:      logConfig,
+		NetworkMode:    dcontainer.NetworkMode(networkMode),
+		CapAdd:         viper.GetStringSlice(dockerKey("CapAdd")),
+		CapDrop:        viper.GetStringSlice(dockerKey("CapDrop")),
+		DNS:            dns,
+		DNSSearch:      viper.GetStringSlice(dockerKey("DnsSearch")),
+		ExtraHosts:     viper.GetStringSlice(dockerKey("ExtraHosts")),
+		IpcMode:        dcontainer.IpcMode(viper.GetString(dockerKey("IpcMode"))),
+		PidMode:        dcontainer.PidMode(viper.GetString(dockerKey("PidMode"))),
+		ReadonlyRootfs: viper.GetBool(dockerKey("ReadonlyRootfs")),
+		SecurityOpt:    viper.GetStringSlice(dockerKey("SecurityOpt")),
+		UTSMode:        dcontainer.UTSMode(viper.GetString(dockerKey("UTSMode"))),
+		Resources: dcontainer.Resources{
+			CPUShares:        getInt64("CpuShares"),
+			Memory:           getInt64("Memory"),
+			CgroupParent:     viper.GetString(dockerKey("CgroupParent")),
+			BlkioWeight:      viper.GetUint16("BlkioWeight"),
+			CPUPeriod:        getInt64("CpuPeriod"),
+			CPUQuota:         getInt64("CpuQuota"),
+			CpusetCpus:       viper.GetString(dockerKey("CpusetCPUs")),
+			CpusetMems:       viper.GetString(dockerKey("CpusetMEMs")),
+			MemorySwap:       getInt64("MemorySwap"),
+			MemorySwappiness: &memorySwappiness,
+			OomKillDisable:   &oomKillDisable,
+		},
 	}
 }
 

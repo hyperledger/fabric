@@ -14,8 +14,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
+	"maps"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -28,7 +28,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
@@ -229,7 +229,7 @@ func (d *couchDoc) len() int {
 // connection pool
 func closeResponseBody(resp *http.Response) {
 	if resp != nil {
-		io.Copy(ioutil.Discard, resp.Body) // discard whatever is remaining of body
+		io.Copy(io.Discard, resp.Body) // discard whatever is remaining of body
 		resp.Body.Close()
 	}
 }
@@ -240,12 +240,12 @@ func (dbclient *couchDatabase) createDatabaseIfNotExist() error {
 
 	dbInfo, couchDBReturn, err := dbclient.getDatabaseInfo()
 	if err != nil {
-		if couchDBReturn == nil || couchDBReturn.StatusCode != 404 {
+		if couchDBReturn == nil || couchDBReturn.StatusCode != http.StatusNotFound {
 			return err
 		}
 	}
 
-	if dbInfo == nil || couchDBReturn.StatusCode == 404 {
+	if dbInfo == nil || couchDBReturn.StatusCode == http.StatusNotFound {
 		couchdbLogger.Debugf("[%s] Database does not exist.", dbclient.dbName)
 
 		connectURL, err := url.Parse(dbclient.couchInstance.url())
@@ -266,7 +266,7 @@ func (dbclient *couchDatabase) createDatabaseIfNotExist() error {
 			// returned due to a timeout or race condition.
 			// Do a final check to see if the database really got created.
 			dbInfo, couchDBReturn, dbInfoErr := dbclient.getDatabaseInfo()
-			if dbInfoErr != nil || dbInfo == nil || couchDBReturn.StatusCode == 404 {
+			if dbInfoErr != nil || dbInfo == nil || couchDBReturn.StatusCode == http.StatusNotFound {
 				return err
 			}
 		}
@@ -495,7 +495,7 @@ func (dbclient *couchDatabase) dropDatabase() error {
 
 	resp, couchdbReturn, err := dbclient.handleRequest(http.MethodDelete, "DropDatabase", connectURL, nil, "", "", maxRetries, true, nil)
 	defer closeResponseBody(resp)
-	if couchdbReturn != nil && couchdbReturn.StatusCode == 404 {
+	if couchdbReturn != nil && couchdbReturn.StatusCode == http.StatusNotFound {
 		couchdbLogger.Debugf("[%s] Exiting DropDatabase(), database does not exist", dbclient.dbName)
 		return nil
 	}
@@ -616,7 +616,7 @@ func createAttachmentPart(couchDoc *couchDoc) (bytes.Buffer, string, error) {
 		fileAttachments[attachment.Name] = fileDetails{true, attachment.ContentType, len(attachment.AttachmentBytes)}
 	}
 
-	attachmentJSONMap := map[string]interface{}{
+	attachmentJSONMap := map[string]any{
 		"_attachments": fileAttachments,
 	}
 
@@ -624,7 +624,7 @@ func createAttachmentPart(couchDoc *couchDoc) (bytes.Buffer, string, error) {
 	if couchDoc.jsonValue != nil {
 
 		// create a generic map
-		genericMap := make(map[string]interface{})
+		genericMap := make(map[string]any)
 
 		// unmarshal the data into the generic map
 		decoder := json.NewDecoder(bytes.NewBuffer(couchDoc.jsonValue))
@@ -635,9 +635,7 @@ func createAttachmentPart(couchDoc *couchDoc) (bytes.Buffer, string, error) {
 		}
 
 		// add all key/values to the attachmentJSONMap
-		for jsonKey, jsonValue := range genericMap {
-			attachmentJSONMap[jsonKey] = jsonValue
-		}
+		maps.Copy(attachmentJSONMap, genericMap)
 
 	}
 
@@ -646,7 +644,7 @@ func createAttachmentPart(couchDoc *couchDoc) (bytes.Buffer, string, error) {
 		return *writeBuffer, "", errors.Wrap(err, "error marshalling json data")
 	}
 
-	couchdbLogger.Debugf(string(filesForUpload))
+	couchdbLogger.Debug(string(filesForUpload))
 
 	// create the header for the JSON
 	header := make(textproto.MIMEHeader)
@@ -722,7 +720,7 @@ func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 
 	resp, couchDBReturn, err := dbclient.handleRequest(http.MethodGet, "ReadDoc", readURL, nil, "", "", maxRetries, true, &query, id)
 	if err != nil {
-		if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
+		if couchDBReturn != nil && couchDBReturn.StatusCode == http.StatusNotFound {
 			couchdbLogger.Debugf("[%s] Document not found (404), returning nil value instead of 404 error", dbclient.dbName)
 			// non-existent document should return nil value instead of a 404 error
 			// for details see https://github.com/hyperledger-archives/fabric/issues/936
@@ -747,7 +745,7 @@ func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 
 	// Handle as JSON if multipart is NOT detected
 	if !strings.HasPrefix(mediaType, "multipart/") {
-		couchDoc.jsonValue, err = ioutil.ReadAll(resp.Body)
+		couchDoc.jsonValue, err = io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, "", errors.Wrap(err, "error reading response body")
 		}
@@ -772,7 +770,7 @@ func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 		couchdbLogger.Debugf("[%s] part header=%s", dbclient.dbName, p.Header)
 
 		if p.Header.Get("Content-Type") == "application/json" {
-			partdata, err := ioutil.ReadAll(p)
+			partdata, err := io.ReadAll(p)
 			if err != nil {
 				return nil, "", errors.Wrap(err, "error reading multipart data")
 			}
@@ -798,7 +796,7 @@ func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 			if err != nil {
 				return nil, "", errors.Wrap(err, "error creating gzip reader")
 			}
-			respBody, err = ioutil.ReadAll(gr)
+			respBody, err = io.ReadAll(gr)
 			if err != nil {
 				return nil, "", errors.Wrap(err, "error reading gzip data")
 			}
@@ -812,7 +810,7 @@ func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 		default:
 
 			// retrieve the data,  this is not gzip
-			partdata, err := ioutil.ReadAll(p)
+			partdata, err := io.ReadAll(p)
 			if err != nil {
 				return nil, "", errors.Wrap(err, "error reading multipart data")
 			}
@@ -831,7 +829,7 @@ func (dbclient *couchDatabase) readDoc(id string) (*couchDoc, string, error) {
 // readDocRange method provides function to a range of documents based on the start and end keys
 // startKey and endKey can also be empty strings.  If startKey and endKey are empty, all documents are returned
 // This function provides a limit option to specify the max number of entries and is supplied by config.
-// Skip is reserved for possible future future use.
+// Skip is reserved for possible future use.
 func (dbclient *couchDatabase) readDocRange(startKey, endKey string, limit int32) ([]*queryResult, string, error) {
 	dbName := dbclient.dbName
 	couchdbLogger.Debugf("[%s] Entering ReadDocRange()  startKey=%s, endKey=%s", dbName, startKey, endKey)
@@ -887,7 +885,7 @@ func (dbclient *couchDatabase) readDocRange(startKey, endKey string, limit int32
 	}
 
 	// handle as JSON document
-	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	jsonResponseRaw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, "", errors.Wrap(err, "error reading response body")
 	}
@@ -973,7 +971,7 @@ func (dbclient *couchDatabase) deleteDoc(id, rev string) error {
 	resp, couchDBReturn, err := dbclient.handleRequestWithRevisionRetry(id, http.MethodDelete, dbName, "DeleteDoc",
 		deleteURL, nil, "", "", maxRetries, true, nil)
 	if err != nil {
-		if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
+		if couchDBReturn != nil && couchDBReturn.StatusCode == http.StatusNotFound {
 			couchdbLogger.Debugf("[%s] Document not found (404), returning nil value instead of 404 error", dbclient.dbName)
 			// non-existent document should return nil value instead of a 404 error
 			// for details see https://github.com/hyperledger-archives/fabric/issues/936
@@ -1021,7 +1019,7 @@ func (dbclient *couchDatabase) queryDocuments(query string) ([]*queryResult, str
 	}
 
 	// handle as JSON document
-	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	jsonResponseRaw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, "", errors.Wrap(err, "error reading response body")
 	}
@@ -1107,7 +1105,7 @@ func (dbclient *couchDatabase) listIndex() ([]*indexResult, error) {
 	defer closeResponseBody(resp)
 
 	// handle as JSON document
-	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	jsonResponseRaw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading response body")
 	}
@@ -1173,14 +1171,14 @@ func (dbclient *couchDatabase) createIndex(indexdefinition string) (*createIndex
 	}
 
 	// Read the response body
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading response body")
 	}
 
 	couchDBReturn := &createIndexResponse{}
 
-	jsonBytes := []byte(respBody)
+	jsonBytes := respBody
 
 	// unmarshal the response
 	err = json.Unmarshal(jsonBytes, &couchDBReturn)
@@ -1247,7 +1245,7 @@ func (dbclient *couchDatabase) getDatabaseSecurity() (*databaseSecurity, error) 
 	defer closeResponseBody(resp)
 
 	// handle as JSON document
-	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	jsonResponseRaw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading response body")
 	}
@@ -1332,7 +1330,7 @@ func (dbclient *couchDatabase) batchRetrieveDocumentMetadata(keys []string) ([]*
 	// we could set include_docs to false to optimize the response.
 	queryParms.Add("include_docs", "true")
 
-	keymap := make(map[string]interface{})
+	keymap := make(map[string]any)
 
 	keymap["keys"] = keys
 
@@ -1357,7 +1355,7 @@ func (dbclient *couchDatabase) batchRetrieveDocumentMetadata(keys []string) ([]*
 	}
 
 	// handle as JSON document
-	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	jsonResponseRaw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading response body")
 	}
@@ -1417,14 +1415,14 @@ func (dbclient *couchDatabase) batchUpdateDocuments(documents []*couchDoc) ([]*b
 		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.couchInstance.url())
 	}
 
-	documentMap := make(map[string]interface{})
+	documentMap := make(map[string]any)
 
-	var jsonDocumentMap []interface{}
+	var jsonDocumentMap []any
 
 	for _, jsonDocument := range documents {
 
 		// create a document map
-		document := make(map[string]interface{})
+		document := make(map[string]any)
 
 		// unmarshal the JSON component of the couchDoc into the document
 		err = json.Unmarshal(jsonDocument.jsonValue, &document)
@@ -1436,7 +1434,7 @@ func (dbclient *couchDatabase) batchUpdateDocuments(documents []*couchDoc) ([]*b
 		if len(jsonDocument.attachments) > 0 {
 
 			// create a file attachment map
-			fileAttachment := make(map[string]interface{})
+			fileAttachment := make(map[string]any)
 
 			// for each attachment, create a base64Attachment, name the attachment,
 			// add the content type and base64 encode the attachment
@@ -1481,7 +1479,7 @@ func (dbclient *couchDatabase) batchUpdateDocuments(documents []*couchDoc) ([]*b
 	}
 
 	// handle as JSON document
-	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	jsonResponseRaw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading response body")
 	}
@@ -1526,7 +1524,7 @@ func (dbclient *couchDatabase) handleRequestWithRevisionRetry(id, method, dbName
 
 		// If there was a 409 conflict error during the save/delete, log it and retry it.
 		// Otherwise, break out of the retry loop
-		if couchDBReturn != nil && couchDBReturn.StatusCode == 409 {
+		if couchDBReturn != nil && couchDBReturn.StatusCode == http.StatusConflict {
 			couchdbLogger.Warningf("CouchDB document revision conflict detected, retrying. Attempt:%v", attempts+1)
 			revisionConflictDetected = true
 		} else {
@@ -1642,17 +1640,17 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 		}
 
 		// if there is no golang http error and no CouchDB 500 error, then drop out of the retry
-		if errResp == nil && resp != nil && resp.StatusCode < 500 {
+		if errResp == nil && resp != nil && resp.StatusCode < http.StatusInternalServerError {
 			// if this is an error, then populate the couchDBReturn
-			if resp.StatusCode >= 400 {
+			if resp.StatusCode >= http.StatusBadRequest {
 				// Read the response body and close it for next attempt
-				jsonError, err := ioutil.ReadAll(resp.Body)
+				jsonError, err := io.ReadAll(resp.Body)
 				if err != nil {
 					return nil, nil, errors.Wrap(err, "error reading response body")
 				}
 				defer closeResponseBody(resp)
 
-				errorBytes := []byte(jsonError)
+				errorBytes := jsonError
 				// Unmarshal the response
 				err = json.Unmarshal(errorBytes, &couchDBReturn)
 				if err != nil {
@@ -1679,13 +1677,13 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 				// otherwise this is an unexpected 500 error from CouchDB. Log the error and retry.
 			} else {
 				// Read the response body and close it for next attempt
-				jsonError, err := ioutil.ReadAll(resp.Body)
+				jsonError, err := io.ReadAll(resp.Body)
 				defer closeResponseBody(resp)
 				if err != nil {
 					return nil, nil, errors.Wrap(err, "error reading response body")
 				}
 
-				errorBytes := []byte(jsonError)
+				errorBytes := jsonError
 				// Unmarshal the response
 				err = json.Unmarshal(errorBytes, &couchDBReturn)
 				if err != nil {
@@ -1728,7 +1726,7 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 	// check to see if the status code from couchdb is 400 or higher
 	// response codes 4XX and 500 will be treated as errors -
 	// golang error will be created from the couchDBReturn contents and both will be returned
-	if resp.StatusCode >= 400 {
+	if resp.StatusCode >= http.StatusBadRequest {
 
 		// if the status code is 400 or greater, log and return an error
 		couchdbLogger.Debugf("Error handling CouchDB request. Error:%s,  Status Code:%v,  Reason:%s",
@@ -1749,7 +1747,7 @@ func (couchInstance *couchInstance) recordMetric(startTime time.Time, dbName, ap
 	couchInstance.stats.observeProcessingTime(startTime, dbName, api, strconv.Itoa(couchDBReturn.StatusCode))
 }
 
-// invalidCouchDBResponse checks to make sure either a valid response or error is returned
+// invalidCouchDBReturn checks to make sure either a valid response or error is returned
 func invalidCouchDBReturn(resp *http.Response, errResp error) bool {
 	if resp == nil && errResp == nil {
 		return true
@@ -1759,7 +1757,7 @@ func invalidCouchDBReturn(resp *http.Response, errResp error) bool {
 
 // isJSON tests a string to determine if a valid JSON
 func isJSON(s string) bool {
-	var js map[string]interface{}
+	var js map[string]any
 	return json.Unmarshal([]byte(s), &js) == nil
 }
 

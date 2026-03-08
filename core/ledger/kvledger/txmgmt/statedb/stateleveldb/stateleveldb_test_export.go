@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package stateleveldb
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -24,10 +22,7 @@ type TestVDBEnv struct {
 // NewTestVDBEnv instantiates and new level db backed TestVDB
 func NewTestVDBEnv(t testing.TB) *TestVDBEnv {
 	t.Logf("Creating new TestVDBEnv")
-	dbPath, err := ioutil.TempDir("", "statelvldb")
-	if err != nil {
-		t.Fatalf("Failed to create leveldb directory: %s", err)
-	}
+	dbPath := t.TempDir()
 	dbProvider, err := NewVersionedDBProvider(dbPath)
 	require.NoError(t, err)
 	return &TestVDBEnv{t, dbProvider, dbPath}
@@ -37,5 +32,4 @@ func NewTestVDBEnv(t testing.TB) *TestVDBEnv {
 func (env *TestVDBEnv) Cleanup() {
 	env.t.Logf("Cleaningup TestVDBEnv")
 	env.DBProvider.Close()
-	os.RemoveAll(env.dbPath)
 }

@@ -12,8 +12,8 @@ import (
 	"sync"
 	"testing"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/peer/common/mock"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -125,8 +125,7 @@ func TestSeekHelper(t *testing.T) {
 
 func TestNewOrdererDeliverClient(t *testing.T) {
 	defer viper.Reset()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 	InitMSP()
 
 	// failure - rootcert file doesn't exist
@@ -140,8 +139,7 @@ func TestNewOrdererDeliverClient(t *testing.T) {
 
 func TestNewDeliverClientForPeer(t *testing.T) {
 	defer viper.Reset()
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 	InitMSP()
 
 	// failure - rootcert file doesn't exist

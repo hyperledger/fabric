@@ -5,20 +5,18 @@ package localconfig
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLoadGoodConfig(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 	cc := &configCache{}
 	cfg, err := cc.load()
 	require.NoError(t, err)
@@ -28,36 +26,33 @@ func TestLoadGoodConfig(t *testing.T) {
 
 func TestMissingConfigValueOverridden(t *testing.T) {
 	t.Run("when the value is missing and not overridden", func(t *testing.T) {
-		cleanup := configtest.SetDevFabricConfigPath(t)
-		defer cleanup()
+		configtest.SetDevFabricConfigPath(t)
 		cc := &configCache{}
 		cfg, err := cc.load()
 		require.NotNil(t, cfg, "Could not load config")
 		require.NoError(t, err, "Load good config returned unexpected error")
-		require.Nil(t, cfg.Kafka.TLS.ClientRootCAs)
+		require.Nil(t, cfg.General.TLS.ClientRootCAs)
 	})
 
 	t.Run("when the value is missing and is overridden", func(t *testing.T) {
-		os.Setenv("ORDERER_KAFKA_TLS_CLIENTROOTCAS", "msp/tlscacerts/tlsroot.pem")
-		cleanup := configtest.SetDevFabricConfigPath(t)
-		defer cleanup()
+		t.Setenv("ORDERER_GENERAL_TLS_CLIENTROOTCAS", "msp/tlscacerts/tlsroot.pem")
+		configtest.SetDevFabricConfigPath(t)
 		cache := &configCache{}
 		cfg, err := cache.load()
 		require.NotNil(t, cfg, "Could not load config")
 		require.NoError(t, err, "Load good config returned unexpected error")
-		require.NotNil(t, cfg.Kafka.TLS.ClientRootCAs)
+		require.NotNil(t, cfg.Admin.TLS.ClientRootCAs)
 	})
 }
 
 func TestLoadCached(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	// Load the initial config, update the environment, and load again.
 	// With the caching behavior, the update should not be reflected
 	initial, err := Load()
 	require.NoError(t, err)
-	os.Setenv("ORDERER_KAFKA_RETRY_SHORTINTERVAL", "120s")
+	t.Setenv("ORDERER_GENERAL_KEEPALIVE_SERVERTIMEOUT", "120s")
 	updated, err := Load()
 	require.NoError(t, err)
 	require.Equal(t, initial, updated, "expected %#v to equal %#v", updated, initial)
@@ -71,10 +66,7 @@ func TestLoadCached(t *testing.T) {
 }
 
 func TestLoadMissingConfigFile(t *testing.T) {
-	envVar1 := "FABRIC_CFG_PATH"
-	envVal1 := "invalid fabric cfg path"
-	os.Setenv(envVar1, envVal1)
-	defer os.Unsetenv(envVar1)
+	t.Setenv("FABRIC_CFG_PATH", "invalid fabric cfg path")
 
 	cc := &configCache{}
 	cfg, err := cc.load()
@@ -83,12 +75,7 @@ func TestLoadMissingConfigFile(t *testing.T) {
 }
 
 func TestLoadMalformedConfigFile(t *testing.T) {
-	name, err := ioutil.TempDir("", "hyperledger_fabric")
-	require.Nil(t, err, "Error creating temp dir: %s", err)
-	defer func() {
-		err = os.RemoveAll(name)
-		require.Nil(t, os.RemoveAll(name), "Error removing temp dir: %s", err)
-	}()
+	name := t.TempDir()
 
 	// Create a malformed orderer.yaml file in temp dir
 	f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
@@ -96,10 +83,7 @@ func TestLoadMalformedConfigFile(t *testing.T) {
 	f.WriteString("General: 42")
 	require.NoError(t, f.Close(), "Error closing file")
 
-	envVar1 := "FABRIC_CFG_PATH"
-	envVal1 := name
-	os.Setenv(envVar1, envVal1)
-	defer os.Unsetenv(envVar1)
+	t.Setenv("FABRIC_CFG_PATH", name)
 
 	cc := &configCache{}
 	cfg, err := cc.load()
@@ -114,14 +98,11 @@ func TestLoadMalformedConfigFile(t *testing.T) {
 func TestEnvInnerVar(t *testing.T) {
 	envVar1 := "ORDERER_GENERAL_LISTENPORT"
 	envVal1 := uint16(80)
-	envVar2 := "ORDERER_KAFKA_RETRY_SHORTINTERVAL"
+	envVar2 := "ORDERER_GENERAL_KEEPALIVE_SERVERTIMEOUT"
 	envVal2 := "42s"
-	os.Setenv(envVar1, fmt.Sprintf("%d", envVal1))
-	os.Setenv(envVar2, envVal2)
-	defer os.Unsetenv(envVar1)
-	defer os.Unsetenv(envVar2)
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	t.Setenv(envVar1, fmt.Sprintf("%d", envVal1))
+	t.Setenv(envVar2, envVal2)
+	configtest.SetDevFabricConfigPath(t)
 
 	cc := &configCache{}
 	config, err := cc.load()
@@ -131,54 +112,7 @@ func TestEnvInnerVar(t *testing.T) {
 	require.Equal(t, config.General.ListenPort, envVal1, "Environmental override of inner config test 1 did not work")
 
 	v2, _ := time.ParseDuration(envVal2)
-	require.Equal(t, config.Kafka.Retry.ShortInterval, v2, "Environmental override of inner config test 2 did not work")
-}
-
-func TestKafkaTLSConfig(t *testing.T) {
-	testCases := []struct {
-		name        string
-		tls         TLS
-		shouldPanic bool
-	}{
-		{"Disabled", TLS{Enabled: false}, false},
-		{"EnabledNoPrivateKey", TLS{Enabled: true, Certificate: "public.key"}, true},
-		{"EnabledNoPublicKey", TLS{Enabled: true, PrivateKey: "private.key"}, true},
-		{"EnabledNoTrustedRoots", TLS{Enabled: true, PrivateKey: "private.key", Certificate: "public.key"}, true},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			uconf := &TopLevel{Kafka: Kafka{TLS: tc.tls}}
-			if tc.shouldPanic {
-				require.Panics(t, func() { uconf.completeInitialization("/dummy/path") }, "Should panic")
-			} else {
-				require.NotPanics(t, func() { uconf.completeInitialization("/dummy/path") }, "Should not panic")
-			}
-		})
-	}
-}
-
-func TestKafkaSASLPlain(t *testing.T) {
-	testCases := []struct {
-		name        string
-		sasl        SASLPlain
-		shouldPanic bool
-	}{
-		{"Disabled", SASLPlain{Enabled: false}, false},
-		{"EnabledUserPassword", SASLPlain{Enabled: true, User: "user", Password: "pwd"}, false},
-		{"EnabledNoUserPassword", SASLPlain{Enabled: true}, true},
-		{"EnabledNoUser", SASLPlain{Enabled: true, Password: "pwd"}, true},
-		{"EnabledNoPassword", SASLPlain{Enabled: true, User: "user"}, true},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			uconf := &TopLevel{Kafka: Kafka{SASLPlain: tc.sasl}}
-			if tc.shouldPanic {
-				require.Panics(t, func() { uconf.completeInitialization("/dummy/path") }, "Should panic")
-			} else {
-				require.NotPanics(t, func() { uconf.completeInitialization("/dummy/path") }, "Should not panic")
-			}
-		})
-	}
+	require.Equal(t, config.General.Keepalive.ServerTimeout, v2, "Environmental override of inner config test 2 did not work")
 }
 
 func TestAdminTLSConfig(t *testing.T) {
@@ -225,22 +159,17 @@ func TestAdminTLSConfig(t *testing.T) {
 }
 
 func TestClusterDefaults(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	cc := &configCache{}
 	cfg, err := cc.load()
 	require.NoError(t, err)
 	require.Equal(t, cfg.General.Cluster.ReplicationMaxRetries, Defaults.General.Cluster.ReplicationMaxRetries)
+	require.Equal(t, cfg.General.Cluster.ReplicationPolicy, Defaults.General.Cluster.ReplicationPolicy)
 }
 
 func TestConsensusConfig(t *testing.T) {
-	name, err := ioutil.TempDir("", "hyperledger_fabric")
-	require.Nil(t, err, "Error creating temp dir: %s", err)
-	defer func() {
-		err = os.RemoveAll(name)
-		require.Nil(t, os.RemoveAll(name), "Error removing temp dir: %s", err)
-	}()
+	name := t.TempDir()
 
 	content := `---
 Consensus:
@@ -254,10 +183,7 @@ Consensus:
 	f.WriteString(content)
 	require.NoError(t, f.Close(), "Error closing file")
 
-	envVar1 := "FABRIC_CFG_PATH"
-	envVal1 := name
-	os.Setenv(envVar1, envVal1)
-	defer os.Unsetenv(envVar1)
+	t.Setenv("FABRIC_CFG_PATH", name)
 
 	cc := &configCache{}
 	conf, err := cc.load()
@@ -265,7 +191,7 @@ Consensus:
 	require.NotNil(t, conf, "Could not load config")
 
 	consensus := conf.Consensus
-	require.IsType(t, map[string]interface{}{}, consensus, "Expected Consensus to be of type map[string]interface{}")
+	require.IsType(t, map[string]any{}, consensus, "Expected Consensus to be of type map[string]interface{}")
 
 	foo := &struct {
 		Foo   string
@@ -281,8 +207,7 @@ Consensus:
 
 func TestConnectionTimeout(t *testing.T) {
 	t.Run("without connection timeout overridden", func(t *testing.T) {
-		cleanup := configtest.SetDevFabricConfigPath(t)
-		defer cleanup()
+		configtest.SetDevFabricConfigPath(t)
 		cc := &configCache{}
 		cfg, err := cc.load()
 		require.NotNil(t, cfg, "Could not load config")
@@ -291,10 +216,8 @@ func TestConnectionTimeout(t *testing.T) {
 	})
 
 	t.Run("with connection timeout overridden", func(t *testing.T) {
-		os.Setenv("ORDERER_GENERAL_CONNECTIONTIMEOUT", "10s")
-		defer os.Unsetenv("ORDERER_GENERAL_CONNECTIONTIMEOUT")
-		cleanup := configtest.SetDevFabricConfigPath(t)
-		defer cleanup()
+		t.Setenv("ORDERER_GENERAL_CONNECTIONTIMEOUT", "10s")
+		configtest.SetDevFabricConfigPath(t)
 
 		cc := &configCache{}
 		cfg, err := cc.load()
@@ -305,8 +228,7 @@ func TestConnectionTimeout(t *testing.T) {
 }
 
 func TestChannelParticipationDefaults(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	cc := &configCache{}
 	cfg, err := cc.load()

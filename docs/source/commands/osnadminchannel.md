@@ -11,10 +11,6 @@ orderer has joined, and removing a channel. The channel participation API must
 be enabled and the Admin endpoint must be configured in the `orderer.yaml` for
 each orderer.
 
-*Note: For a network using a system channel, `list` (for all channels) and
-`remove` (for the system channel) are the only supported operations. Any other
-attempted operation will return an error.
-
 ## Syntax
 
 The `osnadmin channel` command has the following subcommands:
@@ -22,6 +18,8 @@ The `osnadmin channel` command has the following subcommands:
   * join
   * list
   * remove
+  * update
+  * fetch
 
 ## osnadmin channel
 ```
@@ -57,6 +55,12 @@ Subcommands:
 
   channel remove --channelID=CHANNELID
     Remove a channel from an Ordering Service Node (OSN).
+
+  channel update --channelID=CHANNELID --config-update-envelope=CONFIG-UPDATE-ENVELOPE [<flags>]
+    Update an Ordering Service Node (OSN) to a channel.
+
+  channel fetch --channelID=CHANNELID --blockID=BLOCKID --outputfile=OUTPUTFILE [<flags>]
+    Fetch a specified block, writing it to a file.
 ```
 
 
@@ -139,6 +143,67 @@ Flags:
   -c, --channelID=CHANNELID      Channel ID
 ```
 
+
+## osnadmin channel update
+```
+usage: osnadmin channel update --channelID=CHANNELID --config-update-envelope=CONFIG-UPDATE-ENVELOPE [<flags>]
+
+Update an Ordering Service Node (OSN) to a channel.
+
+Flags:
+      --help                     Show context-sensitive help (also try
+                                 --help-long and --help-man).
+  -o, --orderer-address=ORDERER-ADDRESS
+                                 Admin endpoint of the OSN
+      --ca-file=CA-FILE          Path to file containing PEM-encoded TLS CA
+                                 certificate(s) for the OSN
+      --client-cert=CLIENT-CERT  Path to file containing PEM-encoded X509 public
+                                 key to use for mutual TLS communication with
+                                 the OSN
+      --client-key=CLIENT-KEY    Path to file containing PEM-encoded private key
+                                 to use for mutual TLS communication with the
+                                 OSN
+      --no-status                Remove the HTTP status message from the command
+                                 output
+  -c, --channelID=CHANNELID      Channel ID
+  -e, --config-update-envelope=CONFIG-UPDATE-ENVELOPE
+                                 Path to the file containing an up-to-date
+                                 config update envelope for the channel
+  -t, --tlsHandshakeTimeShift=0  The amount of time to shift backwards for
+                                 certificate expiration checks during TLS
+                                 handshakes with the orderer endpoint
+```
+
+
+## osnadmin channel fetch
+```
+usage: osnadmin channel fetch --channelID=CHANNELID --blockID=BLOCKID --outputfile=OUTPUTFILE [<flags>]
+
+Fetch a specified block, writing it to a file.
+
+Flags:
+      --help                     Show context-sensitive help (also try
+                                 --help-long and --help-man).
+  -o, --orderer-address=ORDERER-ADDRESS
+                                 Admin endpoint of the OSN
+      --ca-file=CA-FILE          Path to file containing PEM-encoded TLS CA
+                                 certificate(s) for the OSN
+      --client-cert=CLIENT-CERT  Path to file containing PEM-encoded X509 public
+                                 key to use for mutual TLS communication with
+                                 the OSN
+      --client-key=CLIENT-KEY    Path to file containing PEM-encoded private key
+                                 to use for mutual TLS communication with the
+                                 OSN
+      --no-status                Remove the HTTP status message from the command
+                                 output
+  -c, --channelID=CHANNELID      Channel ID
+  -b, --blockID=BLOCKID          Block ID - <newest|oldest|config|(number)>
+  -f, --outputfile=OUTPUTFILE    Puth to a file.
+  -t, --tlsHandshakeTimeShift=0  The amount of time to shift backwards for
+                                 certificate expiration checks during TLS
+                                 handshakes with the orderer endpoint
+```
+
 ## Example Usage
 
 ### osnadmin channel join examples
@@ -171,8 +236,8 @@ Here's an example of the `osnadmin channel join` command.
 
 Here are some examples of the `osnadmin channel list` command.
 
-* Listing all the channels that the orderer has joined. This includes the
-  system channel (if one exists) and all of the application channels.
+* Listing all the channels that the orderer has joined. 
+Note that the system channel will always be NULL because it is no longer supported from release v3.0 onwards.
 
   ```
   osnadmin channel list -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY
@@ -223,5 +288,31 @@ Here's an example of the `osnadmin channel remove` command.
   ```
 
   Status 204 is returned upon successful removal of a channel.
+
+### osnadmin channel update examples
+
+Here's an example of the `osnadmin channel update` command.
+
+* Update the example of the `my channel` channel defined by the modified config
+  contained in the `my channel-config-envelope.pb` file.
+  Use the endpoint of the order administrator
+  at `order.example.com:9443`.
+
+  ```
+  osnadmin channel update -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY --channelID mychannel --config-update-envelope mychannel-genesis-block.pb
+
+  Status: 201
+  {
+    "name": "mychannel",
+    "url": "/participation/v1/channels/mychannel",
+    "consensusRelation": "consenter",
+    "status": "active",
+    "height": 1
+  }
+
+  ```
+
+  Status 201 and the channel details are returned indicating that the channel has been
+  successfully updated.
 
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.

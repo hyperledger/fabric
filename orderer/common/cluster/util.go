@@ -8,34 +8,48 @@ package cluster
 
 import (
 	"bytes"
+	"context"
+	"crypto/ecdsa"
 	crand "crypto/rand"
+	"crypto/sha256"
+	"crypto/tls"
 	"crypto/x509"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"math/rand/v2"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/hyperledger/fabric-config/protolator"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/deliverclient"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/peer"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // ConnByCertMap maps certificates represented as strings
 // to gRPC connections
 type ConnByCertMap map[string]*grpc.ClientConn
+
+// Lable used for TLS Export Keying Material call
+const KeyingMaterialLabel = "orderer v3 authentication label"
 
 // Lookup looks up a certificate and returns the connection that was mapped
 // to the certificate, and whether it was found or not
@@ -95,6 +109,20 @@ func (mp MemberMapping) ByID(ID uint64) *Stub {
 func (mp MemberMapping) LookupByClientCert(cert []byte) *Stub {
 	for _, stub := range mp.id2stub {
 		if mp.SamePublicKey(stub.ClientTLSCert, cert) {
+			return stub
+		}
+	}
+	return nil
+}
+
+// LookupByIdentity retrieves a Stub by Identity
+func (mp MemberMapping) LookupByIdentity(identity []byte) *Stub {
+	for _, stub := range mp.id2stub {
+		equal, err := CompareCertPublicKeys(identity, stub.Identity)
+		if err != nil {
+			continue
+		}
+		if equal {
 			return stub
 		}
 	}
@@ -176,19 +204,6 @@ func (dialer *StandardDialer) Dial(endpointCriteria EndpointCriteria) (*grpc.Cli
 	return clientConfigCopy.Dial(endpointCriteria.Endpoint)
 }
 
-//go:generate mockery -dir . -name BlockVerifier -case underscore -output ./mocks/
-
-// BlockVerifier verifies block signatures.
-type BlockVerifier interface {
-	// VerifyBlockSignature verifies a signature of a block.
-	// It has an optional argument of a configuration envelope
-	// which would make the block verification to use validation rules
-	// based on the given configuration in the ConfigEnvelope.
-	// If the config envelope passed is nil, then the validation rules used
-	// are the ones that were applied at commit of previous blocks.
-	VerifyBlockSignature(sd []*protoutil.SignedData, config *common.ConfigEnvelope) error
-}
-
 // BlockSequenceVerifier verifies that the given consecutive sequence
 // of blocks is valid.
 type BlockSequenceVerifier func(blocks []*common.Block, channel string) error
@@ -196,95 +211,6 @@ type BlockSequenceVerifier func(blocks []*common.Block, channel string) error
 // Dialer creates a gRPC connection to a remote address
 type Dialer interface {
 	Dial(endpointCriteria EndpointCriteria) (*grpc.ClientConn, error)
-}
-
-// VerifyBlocks verifies the given consecutive sequence of blocks is valid,
-// and returns nil if it's valid, else an error.
-func VerifyBlocks(blockBuff []*common.Block, signatureVerifier BlockVerifier) error {
-	if len(blockBuff) == 0 {
-		return errors.New("buffer is empty")
-	}
-	// First, we verify that the block hash in every block is:
-	// Equal to the hash in the header
-	// Equal to the previous hash in the succeeding block
-	for i := range blockBuff {
-		if err := VerifyBlockHash(i, blockBuff); err != nil {
-			return err
-		}
-	}
-
-	var config *common.ConfigEnvelope
-	var isLastBlockConfigBlock bool
-	// Verify all configuration blocks that are found inside the block batch,
-	// with the configuration that was committed (nil) or with one that is picked up
-	// during iteration over the block batch.
-	for _, block := range blockBuff {
-		configFromBlock, err := ConfigFromBlock(block)
-		if err == errNotAConfig {
-			isLastBlockConfigBlock = false
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		// The block is a configuration block, so verify it
-		if err := VerifyBlockSignature(block, signatureVerifier, config); err != nil {
-			return err
-		}
-		config = configFromBlock
-		isLastBlockConfigBlock = true
-	}
-
-	// Verify the last block's signature
-	lastBlock := blockBuff[len(blockBuff)-1]
-
-	// If last block is a config block, we verified it using the policy of the previous block, so it's valid.
-	if isLastBlockConfigBlock {
-		return nil
-	}
-
-	return VerifyBlockSignature(lastBlock, signatureVerifier, config)
-}
-
-var errNotAConfig = errors.New("not a config block")
-
-// ConfigFromBlock returns a ConfigEnvelope if exists, or a *NotAConfigBlock error.
-// It may also return some other error in case parsing failed.
-func ConfigFromBlock(block *common.Block) (*common.ConfigEnvelope, error) {
-	if block == nil || block.Data == nil || len(block.Data.Data) == 0 {
-		return nil, errors.New("empty block")
-	}
-	txn := block.Data.Data[0]
-	env, err := protoutil.GetEnvelopeFromBlock(txn)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if block.Header.Number == 0 {
-		configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
-		if err != nil {
-			return nil, errors.Wrap(err, "invalid config envelope")
-		}
-		return configEnvelope, nil
-	}
-	if payload.Header == nil {
-		return nil, errors.New("nil header in payload")
-	}
-	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if common.HeaderType(chdr.Type) != common.HeaderType_CONFIG {
-		return nil, errNotAConfig
-	}
-	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
-	if err != nil {
-		return nil, errors.Wrap(err, "invalid config envelope")
-	}
-	return configEnvelope, nil
 }
 
 // VerifyBlockHash verifies the hash chain of the block with the given index
@@ -297,13 +223,14 @@ func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
 	if block.Header == nil {
 		return errors.New("missing block header")
 	}
-	seq := block.Header.Number
-
-	if err := protoutil.VerifyTransactionsAreWellFormed(block); err != nil && block.Header.Number > 0 {
-		return fmt.Errorf("block has malformed transactions: %v", err)
+	if block.Data == nil {
+		return errors.New("missing block data")
 	}
-
-	dataHash := protoutil.BlockDataHash(block.Data)
+	seq := block.Header.Number
+	dataHash, err := protoutil.BlockDataHash(block.Data)
+	if err != nil {
+		return err
+	}
 	// Verify data hash matches the hash in the header
 	if !bytes.Equal(dataHash, block.Header.DataHash) {
 		computedHash := hex.EncodeToString(dataHash)
@@ -332,42 +259,9 @@ func VerifyBlockHash(indexInBuffer int, blockBuff []*common.Block) error {
 	return nil
 }
 
-// SignatureSetFromBlock creates a signature set out of a block.
-func SignatureSetFromBlock(block *common.Block) ([]*protoutil.SignedData, error) {
-	if block.Metadata == nil || len(block.Metadata.Metadata) <= int(common.BlockMetadataIndex_SIGNATURES) {
-		return nil, errors.New("no metadata in block")
-	}
-	metadata, err := protoutil.GetMetadataFromBlock(block, common.BlockMetadataIndex_SIGNATURES)
-	if err != nil {
-		return nil, errors.Errorf("failed unmarshalling medatata for signatures: %v", err)
-	}
-
-	var signatureSet []*protoutil.SignedData
-	for _, metadataSignature := range metadata.Signatures {
-		sigHdr, err := protoutil.UnmarshalSignatureHeader(metadataSignature.SignatureHeader)
-		if err != nil {
-			return nil, errors.Errorf("failed unmarshalling signature header for block with id %d: %v",
-				block.Header.Number, err)
-		}
-		signatureSet = append(signatureSet,
-			&protoutil.SignedData{
-				Identity: sigHdr.Creator,
-				Data: util.ConcatenateBytes(metadata.Value,
-					metadataSignature.SignatureHeader, protoutil.BlockHeaderBytes(block.Header)),
-				Signature: metadataSignature.Signature,
-			},
-		)
-	}
-	return signatureSet, nil
-}
-
 // VerifyBlockSignature verifies the signature on the block with the given BlockVerifier and the given config.
-func VerifyBlockSignature(block *common.Block, verifier BlockVerifier, config *common.ConfigEnvelope) error {
-	signatureSet, err := SignatureSetFromBlock(block)
-	if err != nil {
-		return err
-	}
-	return verifier.VerifyBlockSignature(signatureSet, config)
+func VerifyBlockSignature(block *common.Block, verifier protoutil.BlockVerifierFunc) error {
+	return verifier(block.Header, block.Metadata)
 }
 
 // EndpointCriteria defines criteria of how to connect to a remote orderer node.
@@ -378,7 +272,7 @@ type EndpointCriteria struct {
 
 // String returns a string representation of this EndpointCriteria
 func (ep EndpointCriteria) String() string {
-	var formattedCAs []interface{}
+	var formattedCAs []any
 	for _, rawCAFile := range ep.TLSRootCAs {
 		var bl *pem.Block
 		pemContent := rawCAFile
@@ -397,7 +291,7 @@ func (ep EndpointCriteria) String() string {
 				issuedBy = "self"
 			}
 
-			info := make(map[string]interface{})
+			info := make(map[string]any)
 			info["Expired"] = time.Now().After(cert.NotAfter)
 			info["Subject"] = cert.Subject.String()
 			info["Issuer"] = issuedBy
@@ -405,7 +299,7 @@ func (ep EndpointCriteria) String() string {
 		}
 	}
 
-	formattedEndpointCriteria := make(map[string]interface{})
+	formattedEndpointCriteria := make(map[string]any)
 	formattedEndpointCriteria["Endpoint"] = ep.Endpoint
 	formattedEndpointCriteria["CAs"] = formattedCAs
 
@@ -493,77 +387,77 @@ func globalEndpointsFromConfig(aggregatedTLSCerts [][]byte, bundle *channelconfi
 	return globalEndpoints
 }
 
-//go:generate mockery -dir . -name VerifierFactory -case underscore -output ./mocks/
+func BlockVerifierBuilder(bccsp bccsp.BCCSP) func(block *common.Block) protoutil.BlockVerifierFunc {
+	return func(block *common.Block) protoutil.BlockVerifierFunc {
+		bundle, failed := bundleFromConfigBlock(block, bccsp)
+		if failed != nil {
+			return failed
+		}
+
+		policy, exists := bundle.PolicyManager().GetPolicy(policies.BlockValidation)
+		if !exists {
+			return createErrorFunc(errors.New("no policies in config block"))
+		}
+
+		bftEnabled := bundle.ChannelConfig().Capabilities().ConsensusTypeBFT()
+
+		var consenters []*common.Consenter
+		if bftEnabled {
+			cfg, ok := bundle.OrdererConfig()
+			if !ok {
+				return createErrorFunc(errors.New("no orderer section in config block"))
+			}
+			consenters = cfg.Consenters()
+		}
+
+		return protoutil.BlockSignatureVerifier(bftEnabled, consenters, policy)
+	}
+}
+
+func bundleFromConfigBlock(block *common.Block, bccsp bccsp.BCCSP) (*channelconfig.Bundle, protoutil.BlockVerifierFunc) {
+	if block.Data == nil || len(block.Data.Data) == 0 {
+		return nil, createErrorFunc(errors.New("block contains no data"))
+	}
+
+	env := &common.Envelope{}
+	if err := proto.Unmarshal(block.Data.Data[0], env); err != nil {
+		return nil, createErrorFunc(err)
+	}
+
+	bundle, err := channelconfig.NewBundleFromEnvelope(env, bccsp)
+	if err != nil {
+		return nil, createErrorFunc(err)
+	}
+
+	return bundle, nil
+}
+
+func createErrorFunc(err error) protoutil.BlockVerifierFunc {
+	return func(_ *common.BlockHeader, _ *common.BlockMetadata) error {
+		return errors.Wrap(err, "initialized with an invalid config block")
+	}
+}
+
+//go:generate mockery --dir . --name VerifierFactory --case underscore --output ./mocks/
 
 // VerifierFactory creates BlockVerifiers.
 type VerifierFactory interface {
 	// VerifierFromConfig creates a BlockVerifier from the given configuration.
-	VerifierFromConfig(configuration *common.ConfigEnvelope, channel string) (BlockVerifier, error)
+	VerifierFromConfig(configuration *common.ConfigEnvelope, channel string) (protoutil.BlockVerifierFunc, error)
 }
 
-// VerificationRegistry registers verifiers and retrieves them.
-type VerificationRegistry struct {
-	LoadVerifier       func(chain string) BlockVerifier
-	Logger             *flogging.FabricLogger
-	VerifierFactory    VerifierFactory
-	VerifiersByChannel map[string]BlockVerifier
-}
+//go:generate mockery --dir . --name ChainPuller --case underscore --output mocks/
 
-// RegisterVerifier adds a verifier into the registry if applicable.
-func (vr *VerificationRegistry) RegisterVerifier(chain string) {
-	if _, exists := vr.VerifiersByChannel[chain]; exists {
-		vr.Logger.Debugf("No need to register verifier for chain %s", chain)
-		return
-	}
+// ChainPuller pulls blocks from a chain
+type ChainPuller interface {
+	// PullBlock pulls the given block from some orderer node
+	PullBlock(seq uint64) *common.Block
 
-	v := vr.LoadVerifier(chain)
-	if v == nil {
-		vr.Logger.Errorf("Failed loading verifier for chain %s", chain)
-		return
-	}
+	// HeightsByEndpoints returns the block heights by endpoints of orderers
+	HeightsByEndpoints() (map[string]uint64, string, error)
 
-	vr.VerifiersByChannel[chain] = v
-	vr.Logger.Infof("Registered verifier for chain %s", chain)
-}
-
-// RetrieveVerifier returns a BlockVerifier for the given channel, or nil if not found.
-func (vr *VerificationRegistry) RetrieveVerifier(channel string) BlockVerifier {
-	verifier, exists := vr.VerifiersByChannel[channel]
-	if exists {
-		return verifier
-	}
-	vr.Logger.Errorf("No verifier for channel %s exists", channel)
-	return nil
-}
-
-// BlockCommitted notifies the VerificationRegistry upon a block commit, which may
-// trigger a registration of a verifier out of the block in case the block is a config block.
-func (vr *VerificationRegistry) BlockCommitted(block *common.Block, channel string) {
-	conf, err := ConfigFromBlock(block)
-	// The block doesn't contain a config block, but is a valid block
-	if err == errNotAConfig {
-		vr.Logger.Debugf("Committed block [%d] for channel %s that is not a config block",
-			block.Header.Number, channel)
-		return
-	}
-	// The block isn't a valid block
-	if err != nil {
-		vr.Logger.Errorf("Failed parsing block of channel %s: %v, content: %s",
-			channel, err, BlockToString(block))
-		return
-	}
-
-	// The block contains a config block
-	verifier, err := vr.VerifierFactory.VerifierFromConfig(conf, channel)
-	if err != nil {
-		vr.Logger.Errorf("Failed creating a verifier from a config block for channel %s: %v, content: %s",
-			channel, err, BlockToString(block))
-		return
-	}
-
-	vr.VerifiersByChannel[channel] = verifier
-
-	vr.Logger.Debugf("Committed config block [%d] for channel %s", block.Header.Number, channel)
+	// Close closes the ChainPuller
+	Close()
 }
 
 // BlockToString returns a string representation of this block.
@@ -575,41 +469,6 @@ func BlockToString(block *common.Block) string {
 
 // BlockCommitFunc signals a block commit.
 type BlockCommitFunc func(block *common.Block, channel string)
-
-// LedgerInterceptor intercepts block commits.
-type LedgerInterceptor struct {
-	Channel              string
-	InterceptBlockCommit BlockCommitFunc
-	LedgerWriter
-}
-
-// Append commits a block into the ledger, and also fires the configured callback.
-func (interceptor *LedgerInterceptor) Append(block *common.Block) error {
-	defer interceptor.InterceptBlockCommit(block, interceptor.Channel)
-	return interceptor.LedgerWriter.Append(block)
-}
-
-// BlockVerifierAssembler creates a BlockVerifier out of a config envelope
-type BlockVerifierAssembler struct {
-	Logger *flogging.FabricLogger
-	BCCSP  bccsp.BCCSP
-}
-
-// VerifierFromConfig creates a BlockVerifier from the given configuration.
-func (bva *BlockVerifierAssembler) VerifierFromConfig(configuration *common.ConfigEnvelope, channel string) (BlockVerifier, error) {
-	bundle, err := channelconfig.NewBundle(channel, configuration.Config, bva.BCCSP)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed extracting bundle from envelope")
-	}
-	policyMgr := bundle.PolicyManager()
-
-	return &BlockValidationPolicyVerifier{
-		Logger:    bva.Logger,
-		PolicyMgr: policyMgr,
-		Channel:   channel,
-		BCCSP:     bva.BCCSP,
-	}, nil
-}
 
 // BlockValidationPolicyVerifier verifies signatures based on the block validation policy.
 type BlockValidationPolicyVerifier struct {
@@ -641,7 +500,7 @@ func (bv *BlockValidationPolicyVerifier) VerifyBlockSignature(sd []*protoutil.Si
 	return policy.EvaluateSignedData(sd)
 }
 
-//go:generate mockery -dir . -name BlockRetriever -case underscore -output ./mocks/
+//go:generate mockery --dir . --name BlockRetriever --case underscore --output ./mocks/
 
 // BlockRetriever retrieves blocks
 type BlockRetriever interface {
@@ -692,12 +551,12 @@ type certificateExpirationCheck struct {
 	lastWarning                      time.Time
 	nodeName                         string
 	endpoint                         string
-	alert                            func(string, ...interface{})
+	alert                            func(string, ...any)
 }
 
 func (exp *certificateExpirationCheck) checkExpiration(currentTime time.Time, channel string) {
 	timeLeft := exp.expiresAt.Sub(currentTime)
-	if timeLeft > exp.expirationWarningThreshold {
+	if exp.expiresAt.IsZero() || timeLeft > exp.expirationWarningThreshold {
 		return
 	}
 
@@ -800,4 +659,206 @@ func (cm *ComparisonMemoizer) setup() {
 	_, _ = crand.Read(seed[:])
 	cm.rand = rand.New(rand.NewChaCha8(seed))
 	cm.cache = make(map[arguments]bool)
+}
+
+func requestAsString(request *orderer.StepRequest) string {
+	switch t := request.GetPayload().(type) {
+	case *orderer.StepRequest_SubmitRequest:
+		if t.SubmitRequest == nil || t.SubmitRequest.Payload == nil {
+			return fmt.Sprintf("Empty SubmitRequest: %v", t.SubmitRequest)
+		}
+		return fmt.Sprintf("SubmitRequest for channel %s with payload of size %d",
+			t.SubmitRequest.Channel, len(t.SubmitRequest.Payload.Payload))
+	case *orderer.StepRequest_ConsensusRequest:
+		return fmt.Sprintf("ConsensusRequest for channel %s with payload of size %d",
+			t.ConsensusRequest.Channel, len(t.ConsensusRequest.Payload))
+	default:
+		return fmt.Sprintf("unknown type: %v", request)
+	}
+}
+
+func exportKM(cs tls.ConnectionState, label string, context []byte) ([]byte, error) {
+	tlsBinding, err := cs.ExportKeyingMaterial(label, context, 32)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed generating TLS Binding material")
+	}
+	return tlsBinding, nil
+}
+
+func GetSessionBindingHash(authReq *orderer.NodeAuthRequest) []byte {
+	return util.ComputeSHA256(util.ConcatenateBytes(
+		[]byte(strconv.FormatUint(uint64(authReq.Version), 10)),
+		EncodeTimestamp(authReq.Timestamp),
+		[]byte(strconv.FormatUint(authReq.FromId, 10)),
+		[]byte(strconv.FormatUint(authReq.ToId, 10)),
+		[]byte(authReq.Channel),
+	))
+}
+
+func GetTLSSessionBinding(ctx context.Context, bindingPayload []byte) ([]byte, error) {
+	peerInfo, ok := peer.FromContext(ctx)
+	if !ok {
+		return nil, errors.New("failed extracting stream context")
+	}
+	connState := peerInfo.AuthInfo.(credentials.TLSInfo).State
+
+	tlsBinding, err := exportKM(connState, KeyingMaterialLabel, bindingPayload)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed exporting keying material")
+	}
+
+	return tlsBinding, nil
+}
+
+func VerifySignature(identity, msgHash, signature []byte) error {
+	block, _ := pem.Decode(identity)
+	if block == nil {
+		return errors.New("pem decoding failed")
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return errors.Wrap(err, "key extraction failed")
+	}
+
+	pubKey, isECDSA := cert.PublicKey.(*ecdsa.PublicKey)
+	if !isECDSA {
+		return errors.New("not valid public key")
+	}
+
+	validSignature := ecdsa.VerifyASN1(pubKey, msgHash, signature)
+
+	if !validSignature {
+		return errors.New("signature invalid")
+	}
+	return nil
+}
+
+func SHA256Digest(data []byte) []byte {
+	hash := sha256.Sum256(data)
+	return hash[:]
+}
+
+// VerifyBlocksBFT verifies the given consecutive sequence of blocks is valid, always verifies signature,
+// and returns nil if it's valid, else an error.
+func VerifyBlocksBFT(blocks []*common.Block, signatureVerifier protoutil.BlockVerifierFunc, vb protoutil.VerifierBuilder) error {
+	return verifyBlockSequence(blocks, signatureVerifier, vb)
+}
+
+func verifyBlockSequence(blockBuff []*common.Block, signatureVerifier protoutil.BlockVerifierFunc, vb protoutil.VerifierBuilder) error {
+	if len(blockBuff) == 0 {
+		return errors.New("buffer is empty")
+	}
+
+	// Verify all configuration blocks that are found inside the block batch,
+	// with the configuration that was committed (nil) or with one that is picked up
+	// during iteration over the block batch.
+	for i, block := range blockBuff {
+		if err := VerifyBlockHash(i, blockBuff); err != nil {
+			return err
+		}
+		configFromBlock, err := deliverclient.ConfigFromBlock(block)
+
+		if err != nil && err != deliverclient.ErrNotAConfig {
+			return err
+		}
+
+		if err := VerifyBlockSignature(block, signatureVerifier); err != nil {
+			// Genesis blocks are not signed, so silently ignore the error
+			if block.Header.Number > 0 {
+				return err
+			}
+		}
+
+		if configFromBlock != nil {
+			signatureVerifier = vb(block)
+		}
+	}
+
+	return nil
+}
+
+// PullLastConfigBlock pulls the last configuration block, or returns an error on failure.
+func PullLastConfigBlock(puller ChainPuller) (*common.Block, error) {
+	endpoint, latestHeight, err := LatestHeightAndEndpoint(puller)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint == "" {
+		return nil, ErrRetryCountExhausted
+	}
+	lastBlock := puller.PullBlock(latestHeight - 1)
+	if lastBlock == nil {
+		return nil, ErrRetryCountExhausted
+	}
+	lastConfNumber, err := protoutil.GetLastConfigIndexFromBlock(lastBlock)
+	if err != nil {
+		return nil, err
+	}
+	// The last config block is smaller than the latest height,
+	// and a block iterator on the server side is a sequenced one.
+	// So we need to reset the puller if we wish to pull an earlier block.
+	puller.Close()
+	lastConfigBlock := puller.PullBlock(lastConfNumber)
+	if lastConfigBlock == nil {
+		return nil, ErrRetryCountExhausted
+	}
+	return lastConfigBlock, nil
+}
+
+func LatestHeightAndEndpoint(puller ChainPuller) (string, uint64, error) {
+	var maxHeight uint64
+	var mostUpToDateEndpoint string
+	heightsByEndpoints, _, err := puller.HeightsByEndpoints()
+	if err != nil {
+		return "", 0, err
+	}
+	for endpoint, height := range heightsByEndpoints {
+		if height >= maxHeight {
+			maxHeight = height
+			mostUpToDateEndpoint = endpoint
+		}
+	}
+	return mostUpToDateEndpoint, maxHeight, nil
+}
+
+func EncodeTimestamp(t *timestamppb.Timestamp) []byte {
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b, uint64(t.Seconds))
+	return b
+}
+
+// ExtractPublicKeyFromCert extracts the public key from an X.509 certificate
+func ExtractPublicKeyFromCert(der []byte) ([]byte, error) {
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse certificate")
+	}
+
+	return x509.MarshalPKIXPublicKey(cert.PublicKey)
+}
+
+func CompareCertPublicKeys(cert1, cert2 []byte) (bool, error) {
+	// Extract public key using the same approach as IsConsenterOfChannel
+	bl, _ := pem.Decode(cert1)
+	if bl == nil {
+		return false, errors.Errorf("node identity certificate %s is not a valid PEM", string(cert1))
+	}
+
+	publicKey1, err := ExtractPublicKeyFromCert(bl.Bytes)
+	if err != nil {
+		return false, err
+	}
+
+	bl, _ = pem.Decode(cert2)
+	if bl == nil {
+		return false, errors.Errorf("node identity certificate %s is not a valid PEM", string(cert2))
+	}
+
+	publicKey2, err := ExtractPublicKeyFromCert(bl.Bytes)
+	if err != nil {
+		return false, err
+	}
+
+	return bytes.Equal(publicKey1, publicKey2), nil
 }

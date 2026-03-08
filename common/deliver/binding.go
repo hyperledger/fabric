@@ -10,9 +10,9 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // BindingInspector receives as parameters a gRPC context and an Envelope,

@@ -9,16 +9,16 @@ package chaincode
 import (
 	"context"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
-	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	lb "github.com/hyperledger/fabric-protos-go-apiv2/peer/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"google.golang.org/protobuf/proto"
 )
 
 // Reader defines the interface needed for reading a file.
@@ -55,7 +55,7 @@ func (i *InstallInput) Validate() error {
 // InstallCmd returns the cobra command for chaincode install.
 func InstallCmd(i *Installer, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	chaincodeInstallCmd := &cobra.Command{
-		Use:       "install",
+		Use:       "install [packageFile]",
 		Short:     "Install a chaincode.",
 		Long:      "Install a chaincode on a peer.",
 		ValidArgs: []string{"1"},

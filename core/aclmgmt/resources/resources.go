@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-// Package roesources contains resource names used in fabric for ACL checks.
+// Package resources contains resource names used in fabric for ACL checks.
 // Note that some of the checks such as Lscc_INSTALL are "peer wide" (current
 // access checks in peer are based on local MSP). These are not currently
 // covered by resource or default ACLProviders
@@ -18,6 +18,7 @@ const (
 	Lifecycle_QueryInstalledChaincodes           = "_lifecycle/QueryInstalledChaincodes"
 	Lifecycle_ApproveChaincodeDefinitionForMyOrg = "_lifecycle/ApproveChaincodeDefinitionForMyOrg"
 	Lifecycle_QueryApprovedChaincodeDefinition   = "_lifecycle/QueryApprovedChaincodeDefinition"
+	Lifecycle_QueryApprovedChaincodeDefinitions  = "_lifecycle/QueryApprovedChaincodeDefinitions"
 	Lifecycle_CommitChaincodeDefinition          = "_lifecycle/CommitChaincodeDefinition"
 	Lifecycle_QueryChaincodeDefinition           = "_lifecycle/QueryChaincodeDefinition"
 	Lifecycle_QueryChaincodeDefinitions          = "_lifecycle/QueryChaincodeDefinitions"

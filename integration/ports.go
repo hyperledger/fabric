@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"os"
 
-	ginkgo "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/ginkgo/v2"
 )
 
 // TestPortRange represents a port range
@@ -41,6 +41,7 @@ const (
 	PrivateDataPurgeBasePort
 	RaftBasePort
 	SBEBasePort
+	SmartBFTBasePort
 )
 
 // On linux, the default ephemeral port range is 32768-60999 and can be

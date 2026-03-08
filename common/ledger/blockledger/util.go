@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package blockledger
 
 import (
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/protoutil"
+	"google.golang.org/protobuf/proto"
 )
 
 var logger = flogging.MustGetLogger("common.ledger.blockledger.util")
@@ -76,7 +76,7 @@ func CreateNextBlock(rl Reader, messages []*cb.Envelope) *cb.Block {
 	}
 
 	block := protoutil.NewBlock(nextBlockNumber, previousBlockHash)
-	block.Header.DataHash = protoutil.BlockDataHash(data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(data)
 	block.Data = data
 
 	return block

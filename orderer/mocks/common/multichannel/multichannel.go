@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
@@ -110,6 +110,11 @@ func (mcs *ConsenterSupport) WriteBlock(block *cb.Block, encodedMetadataValue []
 	mcs.Append(block)
 }
 
+// WriteBlockSync writes data to the Blocks channel
+func (mcs *ConsenterSupport) WriteBlockSync(block *cb.Block, encodedMetadataValue []byte) {
+	mcs.WriteBlock(block, encodedMetadataValue)
+}
+
 // WriteConfigBlock calls WriteBlock
 func (mcs *ConsenterSupport) WriteConfigBlock(block *cb.Block, encodedMetadataValue []byte) {
 	mcs.WriteBlock(block, encodedMetadataValue)
@@ -165,9 +170,10 @@ func (mcs *ConsenterSupport) Sequence() uint64 {
 	return mcs.SequenceVal
 }
 
-// VerifyBlockSignature verifies a signature of a block
-func (mcs *ConsenterSupport) VerifyBlockSignature(_ []*protoutil.SignedData, _ *cb.ConfigEnvelope) error {
-	return mcs.BlockVerificationErr
+func (mcs *ConsenterSupport) SignatureVerifier() protoutil.BlockVerifierFunc {
+	return func(header *cb.BlockHeader, metadata *cb.BlockMetadata) error {
+		return mcs.BlockVerificationErr
+	}
 }
 
 // Append appends a new block to the ledger in its raw form,

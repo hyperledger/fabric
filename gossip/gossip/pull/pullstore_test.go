@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
@@ -39,7 +39,7 @@ type pullMsg struct {
 	msg         *protoext.SignedGossipMessage
 }
 
-// GetSourceMessage Returns the SignedGossipMessage the ReceivedMessage was
+// GetSourceEnvelope Returns the SignedGossipMessage the ReceivedMessage was
 // constructed with
 func (pm *pullMsg) GetSourceEnvelope() *gossip.Envelope {
 	return pm.msg.Envelope
@@ -212,7 +212,7 @@ func TestRegisterMsgHook(t *testing.T) {
 func TestFilter(t *testing.T) {
 	peer2pullInst := make(map[string]*pullInstance)
 
-	eq := func(a interface{}, b interface{}) bool {
+	eq := func(a any, b any) bool {
 		return a == b
 	}
 	df := func(msg protoext.ReceivedMessage) func(string) bool {
@@ -257,7 +257,7 @@ func TestAddAndRemove(t *testing.T) {
 	msgCount := 3
 
 	go func() {
-		for i := 0; i < msgCount; i++ {
+		for i := range msgCount {
 			time.Sleep(pullInterval)
 			inst1.mediator.Add(dataMsg(i))
 		}

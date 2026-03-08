@@ -9,21 +9,19 @@ package etcdraft_test
 import (
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	etcdraftproto "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	etcdraftproto "github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
@@ -31,20 +29,18 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	clustermocks "github.com/hyperledger/fabric/orderer/common/cluster/mocks"
-	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft/mocks"
-	"github.com/hyperledger/fabric/orderer/consensus/inactive"
 	consensusmocks "github.com/hyperledger/fabric/orderer/consensus/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	gtypes "github.com/onsi/gomega/types"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"google.golang.org/protobuf/proto"
 )
 
 var certAsPEM []byte
@@ -80,12 +76,12 @@ var _ = Describe("Consenter", func() {
 		}
 		chainManager = &mocks.ChainManager{}
 		support = &consensusmocks.FakeConsenterSupport{}
-		dataDir, err = ioutil.TempDir("", "consenter-")
+		dataDir, err = os.MkdirTemp("", "consenter-")
 		Expect(err).NotTo(HaveOccurred())
 		walDir = path.Join(dataDir, "wal-")
 		snapDir = path.Join(dataDir, "snap-")
 
-		blockBytes, err := ioutil.ReadFile("testdata/mychannel.block")
+		blockBytes, err := os.ReadFile("testdata/mychannel.block")
 		Expect(err).NotTo(HaveOccurred())
 
 		goodConfigBlock := &common.Block{}
@@ -161,7 +157,7 @@ var _ = Describe("Consenter", func() {
 
 		BeforeEach(func() {
 			var err error
-			mspDir, err = ioutil.TempDir(dataDir, "msp")
+			mspDir, err = os.MkdirTemp(dataDir, "msp")
 			Expect(err).NotTo(HaveOccurred())
 
 			confAppRaft = genesisconfig.Load(genesisconfig.SampleDevModeEtcdRaftProfile, configtest.GetDevConfigDir())
@@ -184,10 +180,10 @@ var _ = Describe("Consenter", func() {
 			// Generate client pair using tlsCA and set it to the consenter
 			memberKeyPair, err = tlsCA.NewServerCertKeyPair("127.0.0.1", "::1", "localhost")
 			Expect(err).NotTo(HaveOccurred())
-			consenterDir, err := ioutil.TempDir(dataDir, "consenter")
+			consenterDir, err := os.MkdirTemp(dataDir, "consenter")
 			Expect(err).NotTo(HaveOccurred())
 			consenterCertPath := filepath.Join(consenterDir, "client.pem")
-			err = ioutil.WriteFile(consenterCertPath, memberKeyPair.Cert, 0o644)
+			err = os.WriteFile(consenterCertPath, memberKeyPair.Cert, 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			confAppRaft.Orderer.EtcdRaft.Consenters[0].ClientTlsCert = []byte(consenterCertPath)
@@ -200,7 +196,7 @@ var _ = Describe("Consenter", func() {
 			confAppRaft.Orderer.Organizations[0].ID = fmt.Sprintf("SampleMSP-%d", time.Now().UnixNano())
 
 			// Write the TLS root cert to the msp folder
-			err = ioutil.WriteFile(filepath.Join(mspDir, "tlscacerts", "cert.pem"), tlsCA.CertBytes(), 0o644)
+			err = os.WriteFile(filepath.Join(mspDir, "tlscacerts", "cert.pem"), tlsCA.CertBytes(), 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			bootstrapper, err := encoder.NewBootstrapper(confAppRaft)
@@ -235,10 +231,10 @@ var _ = Describe("Consenter", func() {
 			foreignKeyPair, err := foreignCA.NewServerCertKeyPair("127.0.0.1", "::1", "localhost")
 			Expect(err).NotTo(HaveOccurred())
 
-			consenterDir, err := ioutil.TempDir(dataDir, "foreign-consenter")
+			consenterDir, err := os.MkdirTemp(dataDir, "foreign-consenter")
 			Expect(err).NotTo(HaveOccurred())
 			foreignConsenterCertPath := filepath.Join(consenterDir, "client.pem")
-			err = ioutil.WriteFile(foreignConsenterCertPath, foreignKeyPair.Cert, 0o644)
+			err = os.WriteFile(foreignConsenterCertPath, foreignKeyPair.Cert, 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			confAppRaft.Orderer.EtcdRaft.Consenters[0].ClientTlsCert = []byte(foreignConsenterCertPath)
@@ -265,8 +261,6 @@ var _ = Describe("Consenter", func() {
 				switch channel {
 				case "mychannel":
 					return chainInstance
-				case "notraftchain":
-					return &inactive.Chain{Err: errors.New("not a raft chain")}
 				default:
 					return nil
 				}
@@ -334,7 +328,7 @@ var _ = Describe("Consenter", func() {
 			if strings.Contains(entry.Message, "EvictionSuspicion not set, defaulting to 10m0s") {
 				defaultSuspicionFallback = true
 			}
-			if strings.Contains(entry.Message, "With system channel: after eviction InactiveChainRegistry.TrackChain will be called") {
+			if strings.Contains(entry.Message, "After eviction from the cluster Registrar.SwitchToFollower will be called, and the orderer will become a follower of the channel.") {
 				trackChainCallback = true
 			}
 			return nil
@@ -377,9 +371,6 @@ var _ = Describe("Consenter", func() {
 		consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 		consenter.EtcdRaftConfig.WALDir = walDir
 		consenter.EtcdRaftConfig.SnapDir = snapDir
-		// without a system channel, the InactiveChainRegistry is nil
-		consenter.InactiveChainRegistry = nil
-		consenter.icr = nil
 
 		// consenter.EtcdRaftConfig.EvictionSuspicion is missing
 		var defaultSuspicionFallback bool
@@ -389,7 +380,7 @@ var _ = Describe("Consenter", func() {
 			if strings.Contains(entry.Message, "EvictionSuspicion not set, defaulting to 10m0s") {
 				defaultSuspicionFallback = true
 			}
-			if strings.Contains(entry.Message, "Without system channel: after eviction Registrar.SwitchToFollower will be called") {
+			if strings.Contains(entry.Message, "After eviction from the cluster Registrar.SwitchToFollower will be called, and the orderer will become a follower of the channel.") {
 				switchToFollowerCallback = true
 			}
 			return nil
@@ -432,15 +423,9 @@ var _ = Describe("Consenter", func() {
 		consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 
 		chain, err := consenter.HandleChain(support, &common.Metadata{})
-		Expect(chain).To(Not(BeNil()))
-		Expect(err).To(Not(HaveOccurred()))
-		Expect(chain.Order(nil, 0).Error()).To(Equal("channel foo is not serviced by me"))
-		Expect(consenter.icr.TrackChainCallCount()).To(Equal(1))
-		Expect(chainManager.ReportConsensusRelationAndStatusMetricsCallCount()).To(Equal(1))
-		channel, relation, status := chainManager.ReportConsensusRelationAndStatusMetricsArgsForCall(0)
-		Expect(channel).To(Equal("foo"))
-		Expect(relation).To(Equal(types.ConsensusRelationConfigTracker))
-		Expect(status).To(Equal(types.StatusInactive))
+		Expect(chain).To(BeNil())
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("without a system channel, a follower should have been created"))
 	})
 
 	It("fails to handle chain if etcdraft options have not been provided", func() {
@@ -554,45 +539,29 @@ var _ = Describe("Consenter", func() {
 		support.ChannelIDReturns("foo")
 
 		consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
-		// without a system channel, the InactiveChainRegistry is nil
-		consenter.RemoveInactiveChainRegistry()
 
 		chain, err := consenter.HandleChain(support, &common.Metadata{})
-		Expect(chain).To((BeNil()))
+		Expect(chain).To(BeNil())
 		Expect(err).To(MatchError("without a system channel, a follower should have been created: not in the channel"))
-	})
-
-	It("removes the inactive chain registry (and doesn't panic upon retries)", func() {
-		consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
-
-		consenter.RemoveInactiveChainRegistry()
-		Expect(consenter.icr.StopCallCount()).To(Equal(1))
-		Expect(consenter.InactiveChainRegistry).To(BeNil())
-
-		consenter.RemoveInactiveChainRegistry()
-		Expect(consenter.icr.StopCallCount()).To(Equal(1))
 	})
 })
 
 type consenter struct {
 	*etcdraft.Consenter
-	icr *mocks.InactiveChainRegistry
 }
 
 func newConsenter(chainManager *mocks.ChainManager, caCert, cert []byte) *consenter {
 	communicator := &clustermocks.Communicator{}
 	communicator.On("Configure", mock.Anything, mock.Anything)
-	icr := &mocks.InactiveChainRegistry{}
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	Expect(err).NotTo(HaveOccurred())
 
 	c := &etcdraft.Consenter{
-		ChainManager:          chainManager,
-		InactiveChainRegistry: icr,
-		Communication:         communicator,
-		Cert:                  cert,
-		Logger:                flogging.MustGetLogger("test"),
+		ChainManager:  chainManager,
+		Communication: communicator,
+		Cert:          cert,
+		Logger:        flogging.MustGetLogger("test"),
 		Dispatcher: &etcdraft.Dispatcher{
 			Logger:        flogging.MustGetLogger("test"),
 			ChainSelector: &mocks.ReceiverGetter{},
@@ -608,6 +577,5 @@ func newConsenter(chainManager *mocks.ChainManager, caCert, cert []byte) *consen
 	}
 	return &consenter{
 		Consenter: c,
-		icr:       icr,
 	}
 }

@@ -361,6 +361,15 @@ func (c *Bn254) HashToG1(data []byte) driver.G1 {
 	return &bn254G1{g1}
 }
 
+func (c *Bn254) HashToG2(data []byte) driver.G2 {
+	g2, err := bn254.HashToG2(data, []byte{})
+	if err != nil {
+		panic(fmt.Sprintf("HashToG2 failed [%s]", err.Error()))
+	}
+
+	return &bn254G2{g2}
+}
+
 func (p *Bn254) HashToG1WithDomain(data, domain []byte) driver.G1 {
 	g1, err := bn254.HashToG1(data, domain)
 	if err != nil {
@@ -368,4 +377,13 @@ func (p *Bn254) HashToG1WithDomain(data, domain []byte) driver.G1 {
 	}
 
 	return &bn254G1{g1}
+}
+
+func (p *Bn254) HashToG2WithDomain(data, domain []byte) driver.G2 {
+	g2, err := bn254.HashToG2(data, domain)
+	if err != nil {
+		panic(fmt.Sprintf("HashToG2 failed [%s]", err.Error()))
+	}
+
+	return &bn254G2{g2}
 }

@@ -5,11 +5,14 @@
 name: Release
 
 on:
+  workflow_dispatch: # workflow_dispatch must be enabled in main branch to support release action on older release branches
   push:
-    tags: [v2.*]
+    tags:
+      - v2.*
+      - v3.*
 
 env:
-  UBUNTU_VER: 22.04
+  UBUNTU_VER: 24.04
   FABRIC_VER: ${{ github.ref_name }}
 
 permissions:
@@ -21,27 +24,27 @@ jobs:
     strategy:
       matrix:
         include:
-          - image: ubuntu-22.04
+          - image: ubuntu-24.04
             target: linux
             arch: amd64
-          - image: ubuntu-22.04
+          - image: ubuntu-24.04
             target: linux
             arch: arm64
-          - image: macos-11
+          - image: macos-15-intel
             target: darwin
             arch: amd64
-          - image: macos-11
+          - image: macos-15
             target: darwin
             arch: arm64
-          - image: windows-2022
+          - image: fabric-windows-latest
             target: windows
             arch: amd64
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout Fabric Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
       - name: Compile Binary and Create Tarball
@@ -58,7 +61,7 @@ jobs:
           # <path> of the artifact may include multiple files.
           path: release/${{ matrix.target }}-${{ matrix.arch }}/*.tar.gz
 
-  # build native images using a different runner for each architecture (faster and more reliable than using qemu to build multi-architecture images on ubuntu-22.04)
+  # build native images using a different runner for each architecture (faster and more reliable than using qemu to build multi-architecture images on ubuntu-24.04)
   build-and-push-native-docker-images:
     name: Build and Push native images
     runs-on: ${{ matrix.runner }}
@@ -71,8 +74,8 @@ jobs:
       fail-fast: false
       matrix:
         runner:
-          - ubuntu-22.04 # creates linux-amd64 images
-          - ubuntu-22.04-arm # creates linux-arm64 images
+          - ubuntu-24.04 # creates linux-amd64 images
+          - ubuntu-24.04-arm # creates linux-arm64 images
 
         # Dynamic matrix
         # If owner is 'hyperledger' run job for Docker Hub and ghcr, otherwise for personal forks just run job for ghcr
@@ -87,12 +90,10 @@ jobs:
             context: .
           - name: orderer
             context: .
-          - name: tools
-            context: .
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set GO_VER environment variable from go.mod
         run: |
@@ -146,7 +147,7 @@ jobs:
   # and creates a multi-architecture image manifest with user-friendly tags
   merge-and-push-multi-arch-image:
     name: Merge and Push multi-arch image
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs:
       - build-and-push-native-docker-images
 
@@ -170,12 +171,10 @@ jobs:
             context: .
           - name: orderer
             context: .
-          - name: tools
-            context: .
 
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: ${{ runner.temp }}/digests/${{ matrix.registry }}/${{ matrix.component.name }}
           pattern: digests-${{ matrix.registry }}-${{ matrix.component.name }}-*
@@ -216,16 +215,16 @@ jobs:
     needs:
       - build-binaries
       - merge-and-push-multi-arch-image
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
       - name: Checkout Fabric Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download Artifacts
         id: download
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: "release-*"
 

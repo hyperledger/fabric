@@ -9,9 +9,9 @@ package channelconfig
 import (
 	"testing"
 
-	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	mspprotos "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/stretchr/testify/require"
@@ -44,7 +44,7 @@ func TestMSPConfigManager(t *testing.T) {
 		}
 
 		for _, mspInst := range msps {
-			require.Equal(t, mspInst.GetVersion(), msp.MSPVersion(ver))
+			require.Equal(t, mspInst.GetVersion(), ver)
 		}
 	}
 }

@@ -10,15 +10,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric-lib-go/common/metrics"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/metricsfakes"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/common/metrics"
-	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	"github.com/stretchr/testify/require"
 )
 
 func TestStatsBlockchainHeight(t *testing.T) {
 	testMetricProvider := testutilConstructMetricProvider()
-	env := newTestEnvWithMetricsProvider(t, NewConf(testPath(), 0), testMetricProvider.fakeProvider)
+	env := newTestEnvWithMetricsProvider(t, NewConf(t.TempDir(), 0), testMetricProvider.fakeProvider)
 	defer env.Cleanup()
 
 	provider := env.provider
@@ -71,7 +71,7 @@ func TestStatsBlockchainHeight(t *testing.T) {
 
 func TestStatsBlockCommit(t *testing.T) {
 	testMetricProvider := testutilConstructMetricProvider()
-	env := newTestEnvWithMetricsProvider(t, NewConf(testPath(), 0), testMetricProvider.fakeProvider)
+	env := newTestEnvWithMetricsProvider(t, NewConf(t.TempDir(), 0), testMetricProvider.fakeProvider)
 	defer env.Cleanup()
 
 	provider := env.provider
@@ -99,7 +99,7 @@ func TestStatsBlockCommit(t *testing.T) {
 	require.Equal(t, expectedCallCount, fakeBlockstorageCommitTimeHist.ObserveCallCount())
 
 	// verify the value of channel in each call (0, 1, 2, 3)
-	for i := 0; i < expectedCallCount; i++ {
+	for i := range expectedCallCount {
 		require.Equal(t, []string{"channel", ledgerid}, fakeBlockstorageCommitTimeHist.WithArgsForCall(i))
 	}
 

@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/common/metrics"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/metricsfakes"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/common/metrics"
-	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	lgr "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validation"
 	"github.com/hyperledger/fabric/core/ledger/mock"
@@ -23,8 +23,7 @@ import (
 )
 
 func TestStatsBlockCommit(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	testMetricProvider := testutilConstructMetricProvider()
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())

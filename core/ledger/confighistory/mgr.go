@@ -10,14 +10,14 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/ledger/snapshot"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -109,7 +109,7 @@ func (m *Mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 	return dbHandle.writeBatch(batch, true)
 }
 
-// ImportConfigHistory imports the collection config history associated with a given
+// ImportFromSnapshot imports the collection config history associated with a given
 // ledgerID from the snapshot files present in the dir
 func (m *Mgr) ImportFromSnapshot(ledgerID string, dir string) error {
 	exist, _, err := fileutil.FileExists(filepath.Join(dir, snapshotDataFileName))
@@ -117,7 +117,7 @@ func (m *Mgr) ImportFromSnapshot(ledgerID string, dir string) error {
 		return err
 	}
 	if !exist {
-		// when the ledger being bootstapped never had a private data collection for
+		// when the ledger being bootstrapped never had a private data collection for
 		// any chaincode, the snapshot files associated with the confighistory store
 		// will not be present in the snapshot directory. Hence, we can return early
 		return nil
@@ -150,7 +150,7 @@ func (m *Mgr) ImportFromSnapshot(ledgerID string, dir string) error {
 
 	batch := db.NewUpdateBatch()
 	currentBatchSize := 0
-	for i := uint64(0); i < numCollectionConfigs; i++ {
+	for range numCollectionConfigs {
 		key, err := collectionConfigData.DecodeBytes()
 		if err != nil {
 			return err

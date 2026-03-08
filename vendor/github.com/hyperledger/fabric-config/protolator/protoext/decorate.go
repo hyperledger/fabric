@@ -7,17 +7,17 @@ SPDX-License-Identifier: Apache-2.0
 package protoext
 
 import (
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/protolator/protoext/commonext"
 	"github.com/hyperledger/fabric-config/protolator/protoext/ledger/rwsetext"
 	"github.com/hyperledger/fabric-config/protolator/protoext/mspext"
 	"github.com/hyperledger/fabric-config/protolator/protoext/ordererext"
 	"github.com/hyperledger/fabric-config/protolator/protoext/peerext"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	"google.golang.org/protobuf/proto"
 )
 
 // Docorate will add additional capabilities to some protobuf messages that

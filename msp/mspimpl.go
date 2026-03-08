@@ -16,16 +16,15 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
-	m "github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/bccsp/signer"
-	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/bccsp/utils"
-	"github.com/pkg/errors"
-
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/bccsp/signer"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/utils"
+	m "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	oqs "github.com/hyperledger/fabric/pq-crypto"
+	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // mspSetupFuncType is the prototype of the setup function
@@ -101,6 +100,9 @@ type bccspmsp struct {
 	// cryptoConfig contains
 	cryptoConfig *m.FabricCryptoConfig
 
+	// supportedPublicKeyAlgorithms supported by this msp
+	supportedPublicKeyAlgorithms map[x509.PublicKeyAlgorithm]bool
+
 	// NodeOUs configuration
 	ouEnforcement bool
 	// These are the OUIdentifiers of the clients, peers, admins and orderers.
@@ -136,6 +138,11 @@ func newBccspMsp(version MSPVersion, defaultBCCSP bccsp.BCCSP) (MSP, error) {
 		theMsp.internalSetupAdmin = theMsp.setupAdminsPreV142
 	case MSPv1_4_3:
 		theMsp.internalSetupFunc = theMsp.setupV142
+		theMsp.internalValidateIdentityOusFunc = theMsp.validateIdentityOUsV142
+		theMsp.internalSatisfiesPrincipalInternalFunc = theMsp.satisfiesPrincipalInternalV142
+		theMsp.internalSetupAdmin = theMsp.setupAdminsV142
+	case MSPv3_0:
+		theMsp.internalSetupFunc = theMsp.setupV3
 		theMsp.internalValidateIdentityOusFunc = theMsp.validateIdentityOUsV142
 		theMsp.internalSatisfiesPrincipalInternalFunc = theMsp.satisfiesPrincipalInternalV142
 		theMsp.internalSetupAdmin = theMsp.setupAdminsV142
@@ -787,7 +794,7 @@ var (
 // verifyLegacyNameConstraints exercises the name constraint validation rules
 // that were part of the certificate verification process in Go 1.14.
 //
-// If a signing certificate contains a name constratint, the leaf certificate
+// If a signing certificate contains a name constraint, the leaf certificate
 // does not include SAN extensions, and the leaf's common name looks like a
 // host name, the validation would fail with an x509.CertificateInvalidError
 // and a rason of x509.NameConstraintsWithoutSANs.
@@ -919,7 +926,7 @@ func (msp *bccspmsp) getCertificationChainIdentifierFromChain(chain []*x509.Cert
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed getting hash function when computing certification chain identifier")
 	}
-	for i := 0; i < len(chain); i++ {
+	for i := range chain {
 		hf.Write(chain[i].Raw)
 	}
 	return hf.Sum(nil), nil
@@ -933,7 +940,6 @@ func (msp *bccspmsp) sanitizeCert(cert *x509.Certificate) (*x509.Certificate, er
 	if isECDSASignedCert(cert) {
 		isRootCACert := false
 		validityOpts := msp.getValidityOptsForCert(cert)
-
 		if cert.IsCA && cert.CheckSignatureFrom(cert) == nil {
 			// this is a root CA we can already sanitize it
 			cert, err = sanitizeECDSASignedCert(cert, cert)
@@ -944,7 +950,6 @@ func (msp *bccspmsp) sanitizeCert(cert *x509.Certificate) (*x509.Certificate, er
 			validityOpts.Roots = x509.NewCertPool()
 			validityOpts.Roots.AddCert(cert)
 		}
-
 		// Lookup for a parent certificate to perform the sanitization
 		// run cert validation at any rate, if this is a root CA
 		// we will validate already sanitized cert

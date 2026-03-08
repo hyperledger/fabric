@@ -238,7 +238,7 @@ Org1 and Org2 to have the private data in a side database, and the collection
 ``Org1MSPPrivateCollection`` allows only peers of Org1 to have their
 private data in a side database and ``Org2MSPPrivateCollection`` allows peers
 of Org2 to have their private data in a side database.
-For implementation details refer to the following two `asset transfer private data functions <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-transfer-private-data/chaincode-go/chaincode/asset_queries.go>`__:
+For implementation details refer to the following two `asset transfer private data functions <https://github.com/hyperledger/fabric-samples/blob/main/asset-transfer-private-data/chaincode-go/chaincode/asset_queries.go>`__:
 
  * **ReadAsset** for querying the values of the ``assetID, color, size and owner`` attributes.
  * **ReadAssetPrivateDetails** for querying the values of the ``appraisedValue`` attribute.
@@ -561,7 +561,7 @@ set of commands into your terminal in the `test-network` directory:
     export PATH=${PWD}/../bin:$PATH
     export FABRIC_CFG_PATH=$PWD/../config/
     export CORE_PEER_TLS_ENABLED=true
-    export CORE_PEER_LOCALMSPID="Org1MSP"
+    export CORE_PEER_LOCALMSPID=Org1MSP
     export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
     export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/owner@org1.example.com/msp
     export CORE_PEER_ADDRESS=localhost:7051
@@ -710,7 +710,7 @@ Run the following commands to operate as an Org2 member and query the Org2 peer.
 
 .. code:: bash
 
-    export CORE_PEER_LOCALMSPID="Org2MSP"
+    export CORE_PEER_LOCALMSPID=Org2MSP
     export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
     export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/buyer@org2.example.com/msp
     export CORE_PEER_ADDRESS=localhost:9051
@@ -816,7 +816,7 @@ so lets go acting as Org1:
 
 .. code:: bash
 
-    export CORE_PEER_LOCALMSPID="Org1MSP"
+    export CORE_PEER_LOCALMSPID=Org1MSP
     export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/owner@org1.example.com/msp
     export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
     export CORE_PEER_ADDRESS=localhost:7051
@@ -903,7 +903,7 @@ of Org2 and target the Org2 peer:
 
 .. code:: bash
 
-    export CORE_PEER_LOCALMSPID="Org2MSP"
+    export CORE_PEER_LOCALMSPID=Org2MSP
     export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
     export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/buyer@org2.example.com/msp
     export CORE_PEER_ADDRESS=localhost:9051
@@ -970,13 +970,13 @@ Using indexes with private data
 
 Indexes can also be applied to private data collections, by packaging indexes in
 the ``META-INF/statedb/couchdb/collections/<collection_name>/indexes`` directory
-alongside the chaincode. An example index is available `here <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}//asset-transfer-private-data/chaincode-go/META-INF/statedb/couchdb/collections/assetCollection/indexes/indexOwner.json>`__ .
+alongside the chaincode. An example index is available `here <https://github.com/hyperledger/fabric-samples/blob/main/asset-transfer-private-data/chaincode-go/META-INF/statedb/couchdb/collections/assetCollection/indexes/indexOwner.json>`__ .
 
 For deployment of chaincode to production environments, it is recommended
 to define any indexes alongside chaincode so that the chaincode and supporting
 indexes are deployed automatically as a unit, once the chaincode has been
-installed on a peer and instantiated on a channel. The associated indexes are
-automatically deployed upon chaincode instantiation on the channel when
+installed on a peer and deployed on a channel. The associated indexes are
+automatically created upon chaincode deployment on the channel when
 the  ``--collections-config`` flag is specified pointing to the location of
 the collection JSON file.
 

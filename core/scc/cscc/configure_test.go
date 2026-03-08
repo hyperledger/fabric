@@ -8,20 +8,18 @@ package cscc
 
 import (
 	"errors"
-	"io/ioutil"
 	"net"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-chaincode-go/shim"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/genesis"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -46,6 +44,8 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/proto"
 )
 
 //go:generate counterfeiter -o mocks/acl_provider.go --fake-name ACLProvider . aclProvider
@@ -132,7 +132,7 @@ func TestConfigerInvokeInvalidParameters(t *testing.T) {
 		t,
 		int32(shim.OK),
 		res.Status,
-		"invoke invoke expected wrong function name provided",
+		"invoke expected wrong function name provided",
 	)
 	require.Equal(t, "Requested function fooFunction not found.", res.Message)
 
@@ -236,9 +236,7 @@ func TestConfigerInvokeJoinChainWrongParams(t *testing.T) {
 }
 
 func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
-	testDir, err := ioutil.TempDir("", "cscc_test")
-	require.NoError(t, err, "error in creating test dir")
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	ledgerInitializer := ledgermgmttest.NewInitializer(testDir)
 	ledgerInitializer.CustomTxProcessors = map[cb.HeaderType]ledger.CustomTxProcessor{
@@ -351,9 +349,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 }
 
 func TestConfigerInvokeJoinChainBySnapshot(t *testing.T) {
-	testDir, err := ioutil.TempDir("", "cscc_test_bysnapshot")
-	require.NoError(t, err, "error in creating test dir")
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	ledgerInitializer := ledgermgmttest.NewInitializer(testDir)
 	ledgerInitializer.CustomTxProcessors = map[cb.HeaderType]ledger.CustomTxProcessor{
@@ -437,9 +433,7 @@ func TestConfigerInvokeJoinChainBySnapshot(t *testing.T) {
 }
 
 func TestConfigerInvokeGetChannelConfig(t *testing.T) {
-	testDir, err := ioutil.TempDir("", "cscc_test_GetChannelConfig")
-	require.NoError(t, err)
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	ledgerInitializer := ledgermgmttest.NewInitializer(testDir)
 	ledgerInitializer.CustomTxProcessors = map[cb.HeaderType]ledger.CustomTxProcessor{
@@ -538,7 +532,7 @@ func TestPeerConfiger_SubmittingOrdererGenesis(t *testing.T) {
 	}
 	mockStub := &mocks.ChaincodeStub{}
 	// Failed path: wrong parameter type
-	args := [][]byte{[]byte("JoinChain"), []byte(blockBytes)}
+	args := [][]byte{[]byte("JoinChain"), blockBytes}
 	mockStub.GetArgsReturns(args)
 	mockStub.GetSignedProposalReturns(validSignedProposal(), nil)
 	res := cscc.Invoke(mockStub)
@@ -571,10 +565,11 @@ func newPeerConfiger(t *testing.T, ledgerMgr *ledgermgmt.LedgerMgr, grpcServer *
 		signer,
 		deserManager,
 		cryptoProvider,
+		nil,
 	)
 	secAdv := peergossip.NewSecurityAdvisor(deserManager)
 	defaultSecureDialOpts := func() []grpc.DialOption {
-		return []grpc.DialOption{grpc.WithInsecure()}
+		return []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	}
 	gossipConfig, err := gossip.GlobalConfig(peerEndpoint, nil)
 	require.NoError(t, err)

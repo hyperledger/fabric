@@ -10,15 +10,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/scc/qscc"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 )
 
 func getinfoCmd(cf *ChannelCmdFactory) *cobra.Command {
@@ -67,7 +68,7 @@ func (cc *endorserClient) getBlockChainInfo() (*cb.BlockchainInfo, error) {
 		return nil, errors.WithMessage(err, "failed sending proposal")
 	}
 
-	if proposalResp.Response == nil || proposalResp.Response.Status != 200 {
+	if proposalResp.Response == nil || proposalResp.Response.Status != http.StatusOK {
 		return nil, errors.Errorf("received bad response, status %d: %s", proposalResp.Response.Status, proposalResp.Response.Message)
 	}
 

@@ -119,7 +119,7 @@ var _ = Describe("TransactionContext", func() {
 	})
 
 	Describe("CleanupQueryContext", func() {
-		It("removes references to the the iterator and results", func() {
+		It("removes references to the iterator and results", func() {
 			transactionContext.InitializeQueryContext("query-id", resultsIterator)
 			transactionContext.CleanupQueryContext("query-id")
 
@@ -153,7 +153,7 @@ var _ = Describe("TransactionContext", func() {
 		var resultsIterators []*mock.QueryResultsIterator
 
 		BeforeEach(func() {
-			for i := 0; i < 5; i++ {
+			for i := range 5 {
 				resultsIterators = append(resultsIterators, &mock.QueryResultsIterator{})
 				transactionContext.InitializeQueryContext(fmt.Sprintf("query-id-%d", i+1), resultsIterators[i])
 			}

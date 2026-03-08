@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	_ "net/http/pprof" // This is essentially the main package for the orderer
@@ -20,37 +19,31 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-lib-go/healthz"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	floggingmetrics "github.com/hyperledger/fabric-lib-go/common/flogging/metrics"
+	"github.com/hyperledger/fabric-lib-go/common/metrics"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/fabhttp"
-	"github.com/hyperledger/fabric/common/flogging"
-	floggingmetrics "github.com/hyperledger/fabric/common/flogging/metrics"
 	"github.com/hyperledger/fabric/common/grpclogging"
 	"github.com/hyperledger/fabric/common/grpcmetrics"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	"github.com/hyperledger/fabric/common/metrics"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/operations"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
 	"github.com/hyperledger/fabric/orderer/common/channelparticipation"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/metadata"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
-	"github.com/hyperledger/fabric/orderer/common/onboarding"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
-	"github.com/hyperledger/fabric/orderer/consensus/kafka"
-	"github.com/hyperledger/fabric/orderer/consensus/solo"
+	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
 	"github.com/hyperledger/fabric/protoutil"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
@@ -66,7 +59,10 @@ var (
 	_       = app.Command("start", "Start the orderer node").Default() // preserved for cli compatibility
 	version = app.Command("version", "Show version information")
 
-	clusterTypes = map[string]struct{}{"etcdraft": {}}
+	clusterTypes = map[string]struct{}{
+		"etcdraft": {},
+		"BFT":      {},
+	}
 )
 
 // Main is the entry point of orderer process
@@ -105,6 +101,7 @@ func Main() {
 	flogging.SetObserver(logObserver)
 
 	serverConfig := initializeServerConfig(conf, metricsProvider)
+	serverConfig.HealthCheckEnabled = true
 	grpcServer := initializeGrpcServer(conf, serverConfig)
 	caMgr := &caManager{
 		appRootCAsByChain:     make(map[string][][]byte),
@@ -117,56 +114,19 @@ func Main() {
 		logger.Panicf("Failed to create ledger factory: %v", err)
 	}
 
-	var bootstrapBlock *cb.Block
 	switch conf.General.BootstrapMethod {
 	case "file":
-		if len(lf.ChannelIDs()) > 0 {
-			logger.Info("Not bootstrapping the system channel because of existing channels")
-			break
-		}
-
-		bootstrapBlock = file.New(conf.General.BootstrapFile).GenesisBlock()
-		if err := onboarding.ValidateBootstrapBlock(bootstrapBlock, cryptoProvider); err != nil {
-			logger.Panicf("Failed validating bootstrap block: %v", err)
-		}
-
-		if bootstrapBlock.Header.Number > 0 {
-			logger.Infof("Not bootstrapping the system channel because the bootstrap block number is %d (>0), replication is needed", bootstrapBlock.Header.Number)
-			break
-		}
-
-		// bootstrapping with a genesis block (i.e. bootstrap block number = 0)
-		// generate the system channel with a genesis block.
-		logger.Info("Bootstrapping the system channel")
-		initializeBootstrapChannel(bootstrapBlock, lf)
+		logger.Panic("Bootstrap method: 'file' is forbidden, since system channel is no longer supported")
 	case "none":
-		bootstrapBlock = initSystemChannelWithJoinBlock(conf, cryptoProvider, lf)
+		verifyNoSystemChannel(lf, cryptoProvider)
+		verifyNoSystemChannelJoinBlock(conf, cryptoProvider)
 	default:
 		logger.Panicf("Unknown bootstrap method: %s", conf.General.BootstrapMethod)
 	}
 
-	// select the highest numbered block among the bootstrap block and the last config block if the system channel.
-	sysChanConfigBlock := extractSystemChannel(lf, cryptoProvider)
-	clusterBootBlock := selectClusterBootBlock(bootstrapBlock, sysChanConfigBlock)
+	logger.Infof("Starting without a system channel")
 
-	// determine whether the orderer is of cluster type
-	var isClusterType bool
-	if clusterBootBlock == nil {
-		logger.Infof("Starting without a system channel")
-		isClusterType = true
-	} else {
-		sysChanID, err := protoutil.GetChannelIDFromBlock(clusterBootBlock)
-		if err != nil {
-			logger.Panicf("Failed getting channel ID from clusterBootBlock: %s", err)
-		}
-
-		consensusTypeName := consensusType(clusterBootBlock, cryptoProvider)
-		logger.Infof("Starting with system channel: %s, consensus type: %s", sysChanID, consensusTypeName)
-		_, isClusterType = clusterTypes[consensusTypeName]
-	}
-
-	// configure following artifacts properly if orderer is of cluster type
-	var repInitiator *onboarding.ReplicationInitiator
+	// configure following artifacts properly, always a cluster (e.g. Raft or BFT)
 	clusterServerConfig := serverConfig
 	clusterGRPCServer := grpcServer // by default, cluster shares the same grpc server
 	var clusterClientConfig comm.ClientConfig
@@ -175,39 +135,19 @@ func Main() {
 	var reuseGrpcListener bool
 	var serversToUpdate []*comm.GRPCServer
 
-	if isClusterType {
-		logger.Infof("Setting up cluster")
-		clusterClientConfig, reuseGrpcListener = initializeClusterClientConfig(conf)
-		clusterDialer = &cluster.PredicateDialer{
-			Config: clusterClientConfig,
-		}
-
-		if !reuseGrpcListener {
-			clusterServerConfig, clusterGRPCServer = configureClusterListener(conf, serverConfig, ioutil.ReadFile)
-		}
-
-		// If we have a separate gRPC server for the cluster,
-		// we need to update its TLS CA certificate pool.
-		serversToUpdate = append(serversToUpdate, clusterGRPCServer)
-
-		// If the orderer has a system channel and is of cluster type, it may have
-		// to replicate first.
-		if clusterBootBlock != nil {
-			// When we are bootstrapping with a clusterBootBlock with number >0,
-			// replication will be performed. Only clusters that are equipped with
-			// a recent config block (number i.e. >0) can replicate. This will
-			// replicate all channels if the clusterBootBlock number > system-channel
-			// height (i.e. there is a gap in the ledger).
-			repInitiator = onboarding.NewReplicationInitiator(lf, clusterBootBlock, conf, clusterClientConfig.SecOpts, signer, cryptoProvider)
-			repInitiator.ReplicateIfNeeded(clusterBootBlock)
-			// With BootstrapMethod == "none", the bootstrapBlock comes from a
-			// join-block. If it exists, we need to remove the system channel
-			// join-block from the filerepo.
-			if conf.General.BootstrapMethod == "none" && bootstrapBlock != nil {
-				discardSystemChannelJoinBlock(conf, bootstrapBlock)
-			}
-		}
+	logger.Infof("Setting up cluster")
+	clusterClientConfig, reuseGrpcListener = initializeClusterClientConfig(conf)
+	clusterDialer = &cluster.PredicateDialer{
+		Config: clusterClientConfig,
 	}
+
+	if !reuseGrpcListener {
+		clusterServerConfig, clusterGRPCServer = configureClusterListener(conf, serverConfig, os.ReadFile)
+	}
+
+	// If we have a separate gRPC server for the cluster,
+	// we need to update its TLS CA certificate pool.
+	serversToUpdate = append(serversToUpdate, clusterGRPCServer)
 
 	identityBytes, err := signer.Serialize()
 	if err != nil {
@@ -234,28 +174,13 @@ func Main() {
 	tlsCallback := func(bundle *channelconfig.Bundle) {
 		logger.Debug("Executing callback to update root CAs")
 		caMgr.updateTrustedRoots(bundle, serversToUpdate...)
-		if isClusterType {
-			caMgr.updateClusterDialer(
-				clusterDialer,
-				clusterClientConfig.SecOpts.ServerRootCAs,
-			)
-		}
+		caMgr.updateClusterDialer(
+			clusterDialer,
+			clusterClientConfig.SecOpts.ServerRootCAs,
+		)
 	}
 
-	manager := initializeMultichannelRegistrar(
-		clusterBootBlock,
-		repInitiator,
-		clusterDialer,
-		clusterServerConfig,
-		clusterGRPCServer,
-		conf,
-		signer,
-		metricsProvider,
-		opsSystem,
-		lf,
-		cryptoProvider,
-		tlsCallback,
-	)
+	manager := initializeMultichannelRegistrar(clusterDialer, clusterServerConfig, clusterGRPCServer, conf, signer, metricsProvider, lf, cryptoProvider, tlsCallback)
 
 	adminServer := newAdminServer(conf.Admin)
 	adminServer.RegisterHandler(
@@ -269,6 +194,7 @@ func Main() {
 	defer adminServer.Stop()
 
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
+
 	server := NewServer(
 		manager,
 		metricsProvider,
@@ -288,7 +214,7 @@ func Main() {
 		},
 	}))
 
-	if !reuseGrpcListener && isClusterType {
+	if !reuseGrpcListener {
 		logger.Info("Starting cluster listener on", clusterGRPCServer.Address())
 		go clusterGRPCServer.Start()
 	}
@@ -296,24 +222,24 @@ func Main() {
 	if conf.General.Profile.Enabled {
 		go initializeProfilingService(conf)
 	}
-	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)
+
+	clientRateLimiter, orgRateLimiter := CreateThrottlers(conf.General.Throttling)
+	throttlingWrapper := &ThrottlingAtomicBroadcast{
+		ThrottlingEnabled:     conf.General.Throttling.Rate > 0,
+		PerOrgRateLimiter:     orgRateLimiter,
+		PerClientRateLimiter:  clientRateLimiter,
+		AtomicBroadcastServer: server,
+	}
+
+	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), throttlingWrapper)
 	logger.Info("Beginning to serve requests")
 	if err := grpcServer.Start(); err != nil {
 		logger.Fatalf("Atomic Broadcast gRPC server has terminated while serving requests due to: %v", err)
 	}
 }
 
-// Searches whether there is a join block for a system channel, and if there is, and it is a genesis block,
-// initializes the ledger with it. Returns the join-block if it finds one.
-func initSystemChannelWithJoinBlock(
-	config *localconfig.TopLevel,
-	cryptoProvider bccsp.BCCSP,
-	lf blockledger.Factory,
-) (bootstrapBlock *cb.Block) {
-	if !config.ChannelParticipation.Enabled {
-		return nil
-	}
-
+// Searches whether there is a join block for a system channel, and if there is, panic.
+func verifyNoSystemChannelJoinBlock(config *localconfig.TopLevel, cryptoProvider bccsp.BCCSP) {
 	joinBlockFileRepo, err := multichannel.InitJoinBlockFileRepo(config)
 	if err != nil {
 		logger.Panicf("Failed initializing join-block file repo: %v", err)
@@ -324,7 +250,6 @@ func initSystemChannelWithJoinBlock(
 		logger.Panicf("Failed listing join-block file repo: %v", err)
 	}
 
-	var systemChannelID string
 	for _, fileName := range joinBlockFiles {
 		channelName := joinBlockFileRepo.FileToBaseName(fileName)
 		blockBytes, err := joinBlockFileRepo.Read(channelName)
@@ -335,42 +260,9 @@ func initSystemChannelWithJoinBlock(
 		if err != nil {
 			logger.Panicf("Failed unmarshalling join-block for channel '%s', error: %v", channelName, err)
 		}
-		if err = onboarding.ValidateBootstrapBlock(block, cryptoProvider); err == nil {
-			bootstrapBlock = block
-			systemChannelID = channelName
-			break
+		if err = validateBootstrapBlock(block, cryptoProvider); err == nil {
+			logger.Panicf("Error: found a system channel join-block, channel: %s, block number: %d, file: %s. This version does not support the system channel. Remove it before upgrading.", channelName, block.Header.Number, fileName)
 		}
-	}
-
-	if bootstrapBlock == nil {
-		logger.Debug("No join-block was found for the system channel")
-		return nil
-	}
-
-	if bootstrapBlock.Header.Number == 0 {
-		initializeBootstrapChannel(bootstrapBlock, lf)
-	}
-
-	logger.Infof("Join-block was found for the system channel: %s, number: %d", systemChannelID, bootstrapBlock.Header.Number)
-	return bootstrapBlock
-}
-
-func discardSystemChannelJoinBlock(config *localconfig.TopLevel, bootstrapBlock *cb.Block) {
-	if !config.ChannelParticipation.Enabled {
-		return
-	}
-
-	systemChannelName, err := protoutil.GetChannelIDFromBlock(bootstrapBlock)
-	if err != nil {
-		logger.Panicf("Failed to extract system channel name from join-block: %s", err)
-	}
-	joinBlockFileRepo, err := multichannel.InitJoinBlockFileRepo(config)
-	if err != nil {
-		logger.Panicf("Failed initializing join-block file repo: %v", err)
-	}
-	err = joinBlockFileRepo.Remove(systemChannelName)
-	if err != nil {
-		logger.Panicf("Failed to remove join-block for system channel: %s", err)
 	}
 }
 
@@ -396,10 +288,9 @@ func reuseListener(conf *localconfig.TopLevel) bool {
 	return false
 }
 
-// extractSystemChannel loops through all channels, and return the last
-// config block for the system channel. Returns nil if no system channel
-// was found.
-func extractSystemChannel(lf blockledger.Factory, bccsp bccsp.BCCSP) *cb.Block {
+// verifyNoSystemChannel loops through all channels, and panics if the last
+// config block for a channel is consistent with a system channel.
+func verifyNoSystemChannel(lf blockledger.Factory, bccsp bccsp.BCCSP) {
 	for _, cID := range lf.ChannelIDs() {
 		channelLedger, err := lf.GetOrCreate(cID)
 		if err != nil {
@@ -411,36 +302,11 @@ func extractSystemChannel(lf blockledger.Factory, bccsp bccsp.BCCSP) *cb.Block {
 
 		channelConfigBlock := multichannel.ConfigBlockOrPanic(channelLedger)
 
-		err = onboarding.ValidateBootstrapBlock(channelConfigBlock, bccsp)
+		err = validateBootstrapBlock(channelConfigBlock, bccsp)
 		if err == nil {
-			logger.Infof("Found system channel config block, number: %d", channelConfigBlock.Header.Number)
-			return channelConfigBlock
+			logger.Panicf("Error: found system channel config block in the ledger, channel: %s, block number: %d. This version does not support the system channel. Remove it before upgrading.", cID, channelConfigBlock.Header.Number)
 		}
 	}
-	return nil
-}
-
-// Select cluster boot block
-func selectClusterBootBlock(bootstrapBlock, sysChanLastConfig *cb.Block) *cb.Block {
-	if sysChanLastConfig == nil {
-		logger.Debug("Selected bootstrap block, because system channel last config block is nil")
-		return bootstrapBlock
-	}
-
-	if bootstrapBlock == nil {
-		logger.Debug("Selected system channel last config block, because bootstrap block is nil")
-		return sysChanLastConfig
-	}
-
-	if sysChanLastConfig.Header.Number > bootstrapBlock.Header.Number {
-		logger.Infof("Cluster boot block is system channel last config block; Blocks Header.Number system-channel=%d, bootstrap=%d",
-			sysChanLastConfig.Header.Number, bootstrapBlock.Header.Number)
-		return sysChanLastConfig
-	}
-
-	logger.Infof("Cluster boot block is bootstrap (genesis) block; Blocks Header.Number system-channel=%d, bootstrap=%d",
-		sysChanLastConfig.Header.Number, bootstrapBlock.Header.Number)
-	return bootstrapBlock
 }
 
 func initializeLogging() {
@@ -535,6 +401,7 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel) (comm.ClientConfi
 	cc := comm.ClientConfig{
 		AsyncConnect:   true,
 		KaOpts:         comm.DefaultKeepaliveOptions,
+		BaOpts:         comm.BackoffOptions{},
 		DialTimeout:    conf.General.Cluster.DialTimeout,
 		SecOpts:        comm.SecureOptions{},
 		MaxRecvMsgSize: int(conf.General.MaxRecvMsgSize),
@@ -553,19 +420,19 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel) (comm.ClientConfi
 		keyFile = conf.General.TLS.PrivateKey
 	}
 
-	certBytes, err := ioutil.ReadFile(certFile)
+	certBytes, err := os.ReadFile(certFile)
 	if err != nil {
 		logger.Fatalf("Failed to load client TLS certificate file '%s' (%s)", certFile, err)
 	}
 
-	keyBytes, err := ioutil.ReadFile(keyFile)
+	keyBytes, err := os.ReadFile(keyFile)
 	if err != nil {
 		logger.Fatalf("Failed to load client TLS key file '%s' (%s)", keyFile, err)
 	}
 
 	var serverRootCAs [][]byte
 	for _, serverRoot := range conf.General.Cluster.RootCAs {
-		rootCACert, err := ioutil.ReadFile(serverRoot)
+		rootCACert, err := os.ReadFile(serverRoot)
 		if err != nil {
 			logger.Fatalf("Failed to load ServerRootCAs file '%s' (%s)", serverRoot, err)
 		}
@@ -587,6 +454,24 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel) (comm.ClientConfi
 		UseTLS:            true,
 	}
 
+	if conf.General.Backoff.BaseDelay > 0 ||
+		conf.General.Backoff.Multiplier > 0 ||
+		conf.General.Backoff.MaxDelay > 0 {
+		cc.BaOpts = comm.DefaultBackoffOptions
+
+		if conf.General.Backoff.BaseDelay > time.Duration(0) {
+			cc.BaOpts.BaseDelay = conf.General.Backoff.BaseDelay
+		}
+
+		if conf.General.Backoff.Multiplier > 0 {
+			cc.BaOpts.Multiplier = conf.General.Backoff.Multiplier
+		}
+
+		if conf.General.Backoff.MaxDelay > time.Duration(0) {
+			cc.BaOpts.MaxDelay = conf.General.Backoff.MaxDelay
+		}
+	}
+
 	return cc, reuseGrpcListener
 }
 
@@ -601,19 +486,19 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 	if secureOpts.UseTLS {
 		msg := "TLS"
 		// load crypto material from files
-		serverCertificate, err := ioutil.ReadFile(conf.General.TLS.Certificate)
+		serverCertificate, err := os.ReadFile(conf.General.TLS.Certificate)
 		if err != nil {
 			logger.Fatalf("Failed to load server TLS Certificate file '%s' (%s)",
 				conf.General.TLS.Certificate, err)
 		}
-		serverKey, err := ioutil.ReadFile(conf.General.TLS.PrivateKey)
+		serverKey, err := os.ReadFile(conf.General.TLS.PrivateKey)
 		if err != nil {
 			logger.Fatalf("Failed to load TLS PrivateKey file '%s' (%s)",
 				conf.General.TLS.PrivateKey, err)
 		}
 		var serverRootCAs, clientRootCAs [][]byte
 		for _, serverRoot := range conf.General.TLS.RootCAs {
-			root, err := ioutil.ReadFile(serverRoot)
+			root, err := os.ReadFile(serverRoot)
 			if err != nil {
 				logger.Fatalf("Failed to load TLS ServerRootCAs file '%s' (%s)",
 					err, serverRoot)
@@ -622,7 +507,7 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 		}
 		if secureOpts.RequireClientCert {
 			for _, clientRoot := range conf.General.TLS.ClientRootCAs {
-				root, err := ioutil.ReadFile(clientRoot)
+				root, err := os.ReadFile(clientRoot)
 				if err != nil {
 					logger.Fatalf("Failed to load TLS ClientRootCAs file '%s' (%s)",
 						err, clientRoot)
@@ -683,63 +568,6 @@ func grpcLeveler(ctx context.Context, fullMethod string) zapcore.Level {
 	}
 }
 
-func extractBootstrapBlock(conf *localconfig.TopLevel) *cb.Block {
-	var bootstrapBlock *cb.Block
-
-	// Select the bootstrapping mechanism
-	switch conf.General.BootstrapMethod {
-	case "file": // For now, "file" is the only supported genesis method
-		bootstrapBlock = file.New(conf.General.BootstrapFile).GenesisBlock()
-	case "none": // simply honor the configuration value
-		return nil
-	default:
-		logger.Panic("Unknown genesis method:", conf.General.BootstrapMethod)
-	}
-
-	return bootstrapBlock
-}
-
-func initializeBootstrapChannel(genesisBlock *cb.Block, lf blockledger.Factory) {
-	channelID, err := protoutil.GetChannelIDFromBlock(genesisBlock)
-	if err != nil {
-		logger.Fatal("Failed to parse channel ID from genesis block:", err)
-	}
-	gl, err := lf.GetOrCreate(channelID)
-	if err != nil {
-		logger.Fatal("Failed to create the system channel:", err)
-	}
-	if gl.Height() == 0 {
-		if err := gl.Append(genesisBlock); err != nil {
-			logger.Fatal("Could not write genesis block to ledger:", err)
-		}
-	}
-	logger.Infof("Initialized the system channel '%s' from bootstrap block", channelID)
-}
-
-func isClusterType(genesisBlock *cb.Block, bccsp bccsp.BCCSP) bool {
-	_, exists := clusterTypes[consensusType(genesisBlock, bccsp)]
-	return exists
-}
-
-func consensusType(genesisBlock *cb.Block, bccsp bccsp.BCCSP) string {
-	if genesisBlock == nil || genesisBlock.Data == nil || len(genesisBlock.Data.Data) == 0 {
-		logger.Fatalf("Empty genesis block")
-	}
-	env := &cb.Envelope{}
-	if err := proto.Unmarshal(genesisBlock.Data.Data[0], env); err != nil {
-		logger.Fatalf("Failed to unmarshal the genesis block's envelope: %v", err)
-	}
-	bundle, err := channelconfig.NewBundleFromEnvelope(env, bccsp)
-	if err != nil {
-		logger.Fatalf("Failed creating bundle from the genesis block: %v", err)
-	}
-	ordConf, exists := bundle.OrdererConfig()
-	if !exists {
-		logger.Fatalf("Orderer config doesn't exist in bundle derived from genesis block")
-	}
-	return ordConf.ConsensusType()
-}
-
 func initializeGrpcServer(conf *localconfig.TopLevel, serverConfig comm.ServerConfig) *comm.GRPCServer {
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort))
 	if err != nil {
@@ -781,91 +609,35 @@ func loadLocalMSP(conf *localconfig.TopLevel) msp.MSP {
 	return localmsp
 }
 
-//go:generate counterfeiter -o mocks/health_checker.go -fake-name HealthChecker . healthChecker
-
-// HealthChecker defines the contract for health checker
-type healthChecker interface {
-	RegisterChecker(component string, checker healthz.HealthChecker) error
-}
-
 func initializeMultichannelRegistrar(
-	bootstrapBlock *cb.Block,
-	repInitiator *onboarding.ReplicationInitiator,
 	clusterDialer *cluster.PredicateDialer,
 	srvConf comm.ServerConfig,
 	srv *comm.GRPCServer,
 	conf *localconfig.TopLevel,
 	signer identity.SignerSerializer,
 	metricsProvider metrics.Provider,
-	healthChecker healthChecker,
 	lf blockledger.Factory,
 	bccsp bccsp.BCCSP,
 	callbacks ...channelconfig.BundleActor,
 ) *multichannel.Registrar {
+	dpmr := &DynamicPolicyManagerRegistry{}
+
+	policyManagerCallback := func(bundle *channelconfig.Bundle) {
+		dpmr.Update(bundle)
+	}
+	callbacks = append(callbacks, policyManagerCallback)
+
 	registrar := multichannel.NewRegistrar(*conf, lf, signer, metricsProvider, bccsp, clusterDialer, callbacks...)
 
 	consenters := map[string]consensus.Consenter{}
 
-	var icr etcdraft.InactiveChainRegistry
-	if conf.General.BootstrapMethod == "file" || conf.General.BootstrapMethod == "none" {
-		if bootstrapBlock != nil && isClusterType(bootstrapBlock, bccsp) {
-			// with a system channel
-			etcdConsenter := initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, repInitiator, srvConf, srv, registrar, metricsProvider, bccsp)
-			icr = etcdConsenter.InactiveChainRegistry
-		} else if bootstrapBlock == nil {
-			// without a system channel: assume cluster type, InactiveChainRegistry == nil, no go-routine.
-			consenters["etcdraft"] = etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, nil, metricsProvider, bccsp)
-		}
-	}
+	// the orderer can start without channels at all and have an initialized cluster type consenter
+	etcdraftConsenter, clusterMetrics := etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, metricsProvider, bccsp)
+	consenters["etcdraft"] = etcdraftConsenter
+	consenters["BFT"] = smartbft.New(dpmr.Registry(), signer, clusterDialer, conf, srvConf, srv, registrar, metricsProvider, clusterMetrics, bccsp)
 
-	consenters["solo"] = solo.New()
-	var kafkaMetrics *kafka.Metrics
-	consenters["kafka"], kafkaMetrics = kafka.New(conf.Kafka, metricsProvider, healthChecker, icr, registrar.CreateChain)
-
-	// Note, we pass a 'nil' channel here, we could pass a channel that
-	// closes if we wished to cleanup this routine on exit.
-	go kafkaMetrics.PollGoMetricsUntilStop(time.Minute, nil)
 	registrar.Initialize(consenters)
 	return registrar
-}
-
-func initializeEtcdraftConsenter(
-	consenters map[string]consensus.Consenter,
-	conf *localconfig.TopLevel,
-	lf blockledger.Factory,
-	clusterDialer *cluster.PredicateDialer,
-	bootstrapBlock *cb.Block,
-	ri *onboarding.ReplicationInitiator,
-	srvConf comm.ServerConfig,
-	srv *comm.GRPCServer,
-	registrar *multichannel.Registrar,
-	metricsProvider metrics.Provider,
-	bccsp bccsp.BCCSP,
-) *etcdraft.Consenter {
-	systemChannelName, err := protoutil.GetChannelIDFromBlock(bootstrapBlock)
-	if err != nil {
-		logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
-	}
-	systemLedger, err := lf.GetOrCreate(systemChannelName)
-	if err != nil {
-		logger.Panicf("Failed obtaining system channel (%s) ledger: %v", systemChannelName, err)
-	}
-	getConfigBlock := func() *cb.Block {
-		return multichannel.ConfigBlockOrPanic(systemLedger)
-	}
-
-	icr := onboarding.NewInactiveChainReplicator(ri, getConfigBlock, ri.RegisterChain, conf.General.Cluster.ReplicationBackgroundRefreshInterval)
-
-	// Use the inactiveChainReplicator as a channel lister, since it has knowledge
-	// of all inactive chains.
-	// This is to prevent us pulling the entire system chain when attempting to enumerate
-	// the channels in the system.
-	ri.ChannelLister = icr
-
-	go icr.Run()
-	raftConsenter := etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, icr, metricsProvider, bccsp)
-	consenters["etcdraft"] = raftConsenter
-	return raftConsenter
 }
 
 func newOperationsSystem(ops localconfig.Operations, metrics localconfig.Metrics) *operations.System {
@@ -904,6 +676,7 @@ func newAdminServer(admin localconfig.Admin) *fabhttp.Server {
 			KeyFile:            admin.TLS.PrivateKey,
 			ClientCertRequired: admin.TLS.ClientAuthRequired,
 			ClientCACertFiles:  admin.TLS.ClientRootCAs,
+			TimeShift:          admin.TLS.TLSHandshakeTimeShift,
 		},
 	})
 }
@@ -1046,7 +819,7 @@ func (mgr *caManager) updateClusterDialer(
 	clusterDialer.UpdateRootCAs(clusterRootCAsBytes)
 }
 
-func prettyPrintStruct(i interface{}) {
+func prettyPrintStruct(i any) {
 	params := localconfig.Flatten(i)
 	var buffer bytes.Buffer
 	for i := range params {

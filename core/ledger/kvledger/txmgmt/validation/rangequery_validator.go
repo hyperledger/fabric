@@ -9,7 +9,7 @@ package validation
 import (
 	"bytes"
 
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -45,8 +45,7 @@ func (v *rangeQueryResultsValidator) validate() (bool, error) {
 	if len(rqResults) == 0 {
 		return result == nil, nil
 	}
-	for i := 0; i < len(rqResults); i++ {
-		kvRead := rqResults[i]
+	for _, kvRead := range rqResults {
 		logger.Debugf("comparing kvRead=[%#v] to queryResponse=[%#v]", kvRead, result)
 		if result == nil {
 			logger.Debugf("Query response nil. Key [%s] got deleted", kvRead.Key)

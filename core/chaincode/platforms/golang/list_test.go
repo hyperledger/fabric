@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package golang
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -109,8 +108,7 @@ func Test_listModuleInfo(t *testing.T) {
 }
 
 func Test_listModuleInfoFailure(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "module")
-	require.NoError(t, err, "failed to create temporary directory")
+	tempDir := t.TempDir()
 
 	cwd, err := os.Getwd()
 	require.NoError(t, err, "failed to get working directory")

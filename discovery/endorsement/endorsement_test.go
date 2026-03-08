@@ -10,17 +10,15 @@ import (
 	"fmt"
 	"testing"
 
-	common2 "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/policydsl"
-
-	"github.com/golang/protobuf/proto"
-	discoveryprotos "github.com/hyperledger/fabric-protos-go/discovery"
-	"github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	common2 "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	discoveryprotos "github.com/hyperledger/fabric-protos-go-apiv2/discovery"
+	"github.com/hyperledger/fabric-protos-go-apiv2/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/policies/inquire"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
@@ -28,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 var pkiID2MSPID = map[string]string{
@@ -453,7 +452,7 @@ func TestPeersForEndorsement(t *testing.T) {
 		// 2 principal combinations: p0 and p6, or p12 alone.
 		// The collection has p0, p6, and p12 in it.
 		// The chaincode EP is (p0 and p6) or p12.
-		// However, the the chaincode has a collection level EP that requires p6 and p12.
+		// However, the chaincode has a collection level EP that requires p6 and p12.
 		// Thus, the only combination that can satisfy would be p6 and p12.
 		collectionOrgs := []*msp.MSPPrincipal{
 			peerRole("p0"),
@@ -1181,7 +1180,7 @@ func identitySet(pkiID2MSPID map[string]string) api.PeerIdentitySet {
 			IdBytes: []byte(pkiID),
 		}
 		res = append(res, api.PeerIdentityInfo{
-			Identity:     api.PeerIdentityType(protoutil.MarshalOrPanic(sID)),
+			Identity:     protoutil.MarshalOrPanic(sID),
 			PKIId:        common.PKIidType(pkiID),
 			Organization: api.OrgIdentityType(mspID),
 		})
@@ -1210,13 +1209,13 @@ func newPeer(i int) *peerInfo {
 	})
 	return &peerInfo{
 		pkiID:    common.PKIidType(p),
-		identity: api.PeerIdentityType(identity),
+		identity: identity,
 		NetworkMember: discovery.NetworkMember{
 			PKIid:            common.PKIidType(p),
 			Endpoint:         p,
 			InternalEndpoint: p,
 			Envelope: &gossip.Envelope{
-				Payload: []byte(identity),
+				Payload: identity,
 			},
 		},
 	}

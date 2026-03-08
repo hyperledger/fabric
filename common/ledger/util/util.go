@@ -20,8 +20,8 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 // EncodeOrderPreservingVarUint64 returns a byte-representation for a uint64 number such that
@@ -41,7 +41,7 @@ func EncodeOrderPreservingVarUint64(number uint64) []byte {
 			break
 		}
 	}
-	sizeBytes := proto.EncodeVarint(uint64(size))
+	sizeBytes := protowire.AppendVarint(nil, uint64(size))
 	if len(sizeBytes) > 1 {
 		panic(fmt.Errorf("[]sizeBytes should not be more than one byte because the max number it needs to hold is 8. size=%d", size))
 	}
@@ -54,7 +54,10 @@ func EncodeOrderPreservingVarUint64(number uint64) []byte {
 // DecodeOrderPreservingVarUint64 decodes the number from the bytes obtained from method 'EncodeOrderPreservingVarUint64'.
 // It returns the decoded number, the number of bytes that are consumed in the process, and an error if the input bytes are invalid.
 func DecodeOrderPreservingVarUint64(bytes []byte) (uint64, int, error) {
-	s, numBytes := proto.DecodeVarint(bytes)
+	s, numBytes := protowire.ConsumeVarint(bytes)
+	if numBytes < 0 {
+		s, numBytes = 0, 0
+	}
 
 	switch {
 	case numBytes != 1:

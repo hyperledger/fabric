@@ -8,17 +8,16 @@ package msp
 
 import (
 	"encoding/pem"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/IBM/idemix"
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	"google.golang.org/protobuf/proto"
+	"gopkg.in/yaml.v3"
 )
 
 // OrganizationalUnitIdentifiersConfiguration is used to represent an OU
@@ -59,7 +58,7 @@ type Configuration struct {
 }
 
 func readFile(file string) ([]byte, error) {
-	fileCont, err := ioutil.ReadFile(file)
+	fileCont, err := os.ReadFile(file)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not read file %s", file)
 	}
@@ -90,7 +89,7 @@ func getPemMaterialFromDir(dir string) ([][]byte, error) {
 	}
 
 	content := make([][]byte, 0)
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not read directory %s", dir)
 	}
@@ -178,8 +177,10 @@ func GetLocalMspConfig(dir string, bccspConfig *factory.FactoryOpts, ID string) 
 	}
 
 	signcert, err := getPemMaterialFromDir(signcertDir)
-	if err != nil || len(signcert) == 0 {
-		return nil, errors.Wrapf(err, "could not load a valid signer certificate from directory %s", signcertDir)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not load signing certificate from directory %s", signcertDir)
+	} else if len(signcert) == 0 {
+		return nil, errors.Errorf("no signing certificate found in directory %s", signcertDir)
 	}
 
 	/* FIXME: for now we're making the following assumptions
@@ -215,8 +216,10 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 	tlsintermediatecertsDir := filepath.Join(dir, tlsintermediatecerts)
 
 	cacerts, err := getPemMaterialFromDir(cacertDir)
-	if err != nil || len(cacerts) == 0 {
+	if err != nil {
 		return nil, errors.WithMessagef(err, "could not load a valid ca certificate from directory %s", cacertDir)
+	} else if len(cacerts) == 0 {
+		return nil, errors.Errorf("no ca certificate found in directory %s", cacertDir)
 	}
 
 	admincert, err := getPemMaterialFromDir(admincertDir)
@@ -264,7 +267,7 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 	if err == nil {
 		// load the file, if there is a failure in loading it then
 		// return an error
-		raw, err := ioutil.ReadFile(configFile)
+		raw, err := os.ReadFile(configFile)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed loading configuration file at [%s]", configFile)
 		}

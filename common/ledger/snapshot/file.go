@@ -14,8 +14,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 type NewHashFunc func() (hash.Hash, error)
@@ -64,8 +64,11 @@ func (c *FileWriter) EncodeString(str string) error {
 	return c.EncodeBytes([]byte(str))
 }
 
-// EncodeString encodes and appends a proto message to the data stream
+// EncodeProtoMessage encodes and appends a proto message to the data stream
 func (c *FileWriter) EncodeProtoMessage(m proto.Message) error {
+	if m == nil || !m.ProtoReflect().IsValid() {
+		return errors.Errorf("error marshalling proto message to write to the snapshot file: %s: proto: Marshal called with nil", c.file.Name())
+	}
 	b, err := proto.Marshal(m)
 	if err != nil {
 		return errors.Wrapf(err, "error marshalling proto message to write to the snapshot file: %s", c.file.Name())

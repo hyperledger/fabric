@@ -9,12 +9,12 @@ package lifecycle_test
 import (
 	"fmt"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/queryresult"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	lb "github.com/hyperledger/fabric-protos-go-apiv2/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/util"
@@ -23,12 +23,11 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/gossip/privdata"
+	. "github.com/hyperledger/fabric/internal/test"
 	"github.com/hyperledger/fabric/protoutil"
-
-	"github.com/golang/protobuf/proto"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ = Describe("ValidatorCommitter", func() {
@@ -85,7 +84,7 @@ var _ = Describe("ValidatorCommitter", func() {
 			LegacyDeployedCCInfoProvider: fakeLegacyProvider,
 		}
 
-		fakePublicState = MapLedgerShim(map[string][]byte{})
+		fakePublicState = map[string][]byte{}
 		fakeQueryExecutor = &mock.SimpleQueryExecutor{}
 		fakeQueryExecutor.GetStateStub = func(namespace, key string) ([]byte, error) {
 			return fakePublicState.GetState(key)
@@ -242,7 +241,7 @@ var _ = Describe("ValidatorCommitter", func() {
 	Describe("AllChaincodesInfo", func() {
 		var fakeStateIteratorKVs MapLedgerShim
 		BeforeEach(func() {
-			fakeStateIteratorKVs = MapLedgerShim(map[string][]byte{})
+			fakeStateIteratorKVs = map[string][]byte{}
 			err := resources.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{}, fakeStateIteratorKVs)
 			Expect(err).NotTo(HaveOccurred())
 			fakeQueryExecutor.GetStateRangeScanIteratorStub = func(namespace, begin, end string) (commonledger.ResultsIterator, error) {
@@ -271,7 +270,7 @@ var _ = Describe("ValidatorCommitter", func() {
 			Expect(ccInfo.Name).To(Equal("cc-name"))
 			Expect(ccInfo.IsLegacy).To(BeFalse())
 			Expect(ccInfo.Version).To(Equal(fakeChaincodeDef.EndorsementInfo.Version))
-			Expect(proto.Equal(ccInfo.ExplicitCollectionConfigPkg, fakeChaincodeDef.Collections)).To(BeTrue())
+			Expect(ccInfo.ExplicitCollectionConfigPkg).To(ProtoEqual(fakeChaincodeDef.Collections))
 		})
 
 		Context("when state range scan returns an error", func() {
@@ -343,7 +342,7 @@ var _ = Describe("ValidatorCommitter", func() {
 				Expect(newlifecycleCCInfo.Name).To(Equal("cc-name"))
 				Expect(newlifecycleCCInfo.IsLegacy).To(BeFalse())
 				Expect(newlifecycleCCInfo.Version).To(Equal(fakeChaincodeDef.EndorsementInfo.Version))
-				Expect(proto.Equal(newlifecycleCCInfo.ExplicitCollectionConfigPkg, fakeChaincodeDef.Collections)).To(BeTrue())
+				Expect(newlifecycleCCInfo.ExplicitCollectionConfigPkg).To(ProtoEqual(fakeChaincodeDef.Collections))
 
 				legacyCCInfo, ok := res["another-cc-name"]
 				Expect(ok).To(BeTrue())
@@ -379,9 +378,9 @@ var _ = Describe("ValidatorCommitter", func() {
 		It("returns the collection info as defined in the new lifecycle", func() {
 			res, err := vc.CollectionInfo("channel-name", "cc-name", "collection-name", fakeQueryExecutor)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(proto.Equal(res, &pb.StaticCollectionConfig{
+			Expect(res).To(ProtoEqual(&pb.StaticCollectionConfig{
 				Name: "collection-name",
-			})).To(BeTrue())
+			}))
 		})
 
 		Context("when no matching collection is found", func() {

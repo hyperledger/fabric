@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package channel
 
 import (
-	"io/ioutil"
+	"os"
 
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/cobra"
@@ -45,7 +45,7 @@ func sign(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 		}
 	}
 
-	fileData, err := ioutil.ReadFile(channelTxFile)
+	fileData, err := os.ReadFile(channelTxFile)
 	if err != nil {
 		return ConfigTxFileNotFound(err.Error())
 	}
@@ -62,5 +62,5 @@ func sign(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 
 	sCtxEnvData := protoutil.MarshalOrPanic(sCtxEnv)
 
-	return ioutil.WriteFile(channelTxFile, sCtxEnvData, 0o660)
+	return os.WriteFile(channelTxFile, sCtxEnvData, 0o660)
 }

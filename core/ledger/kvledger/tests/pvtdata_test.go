@@ -9,7 +9,7 @@ package tests
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/stretchr/testify/require"
 )
@@ -158,7 +158,7 @@ func TestBTL(t *testing.T) {
 	blk2 := l.cutBlockAndCommitLegacy()
 
 	// commit 5 more blocks with some random key/vals
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		l.simulateDataTx("", func(s *simulator) {
 			s.setPvtdata("cc1", "coll1", "someOtherKey", "someOtherVal")
 			s.setPvtdata("cc1", "coll2", "someOtherKey", "someOtherVal")

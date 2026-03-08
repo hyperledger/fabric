@@ -13,9 +13,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/hyperledger/fabric/protoutil/fakes"

@@ -8,17 +8,16 @@ package ledgermgmt
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
@@ -28,12 +27,12 @@ import (
 )
 
 func TestLedgerMgmt(t *testing.T) {
-	initializer, ledgerMgr, cleanup := setup(t, "ledgermgmt")
+	initializer, ledgerMgr, cleanup := setup(t)
 	defer cleanup()
 
 	numLedgers := 10
 	ledgers := make([]ledger.PeerLedger, numLedgers)
-	for i := 0; i < numLedgers; i++ {
+	for i := range numLedgers {
 		cid := constructTestLedgerID(i)
 		gb, _ := test.MakeGenesisBlock(cid)
 		l, err := ledgerMgr.CreateLedger(cid, gb)
@@ -43,7 +42,7 @@ func TestLedgerMgmt(t *testing.T) {
 
 	ids, _ := ledgerMgr.GetLedgerIDs()
 	require.Len(t, ids, numLedgers)
-	for i := 0; i < numLedgers; i++ {
+	for i := range numLedgers {
 		require.Equal(t, constructTestLedgerID(i), ids[i])
 	}
 
@@ -75,14 +74,14 @@ func TestLedgerMgmt(t *testing.T) {
 // TestCreateLedgerFromSnapshot first creates a ledger using a genesis block and generates a snapshot.
 // After it, it tests creating ledger from the snapshot.
 func TestCreateLedgerFromSnapshot(t *testing.T) {
-	initializer, lgrMgr, cleanup := setup(t, "createledgerfromsnapshot")
+	initializer, lgrMgr, cleanup := setup(t)
 	defer cleanup()
 
 	channelID := "testcreatefromsnapshot"
 	snapshotDir, gb := generateSnapshot(t, lgrMgr, initializer, channelID)
 
 	t.Run("create_ledger_from_snapshot_internal", func(t *testing.T) {
-		_, ledgerMgr, cleanup := setup(t, "createledgerfromsnapshot_internal")
+		_, ledgerMgr, cleanup := setup(t)
 		defer cleanup()
 
 		l, _, err := ledgerMgr.createFromSnapshot(snapshotDir)
@@ -99,7 +98,7 @@ func TestCreateLedgerFromSnapshot(t *testing.T) {
 	})
 
 	t.Run("create_ledger_from_snapshot_async", func(t *testing.T) {
-		_, ledgerMgr, cleanup := setup(t, "createledgerfromsnapshot_async")
+		_, ledgerMgr, cleanup := setup(t)
 		defer cleanup()
 
 		callbackCounter := 0
@@ -127,9 +126,7 @@ func TestCreateLedgerFromSnapshot(t *testing.T) {
 	})
 
 	t.Run("create_ledger_from_nonexist_or_empty_dir_returns_error", func(t *testing.T) {
-		testDir, err := ioutil.TempDir("", "invalidsnapshotdir")
-		require.NoError(t, err)
-		defer os.RemoveAll(testDir)
+		testDir := t.TempDir()
 
 		nonExistDir := filepath.Join(testDir, "nonexistdir")
 		require.EqualError(t, lgrMgr.CreateLedgerFromSnapshot(nonExistDir, nil),
@@ -140,7 +137,7 @@ func TestCreateLedgerFromSnapshot(t *testing.T) {
 	})
 
 	t.Run("callback_func_is_not_called_if_create_ledger_from_snapshot_failed", func(t *testing.T) {
-		initializer, ledgerMgr, cleanup := setup(t, "callbackfuncisnotcalled")
+		initializer, ledgerMgr, cleanup := setup(t)
 		defer cleanup()
 
 		// copy snapshotDir to a new dir and remove a metadata file so that kvledger.CreateFromSnapshot will fail
@@ -171,18 +168,18 @@ func TestCreateLedgerFromSnapshot(t *testing.T) {
 }
 
 func TestConcurrentCreateLedgerFromGB(t *testing.T) {
-	_, ledgerMgr, cleanup := setup(t, "concurrentcreateledgerfromgb")
+	_, ledgerMgr, cleanup := setup(t)
 	defer cleanup()
 
 	var err error
 	gbs := make([]*common.Block, 0, 5)
-	for i := 0; i < len(gbs); i++ {
+	for i := range gbs {
 		gbs[i], err = test.MakeGenesisBlock(fmt.Sprintf("l%d", i))
 		require.NoError(t, err)
 	}
 
 	// verify CreateLedger (from genesisblock) can be called concurrently
-	for i := 0; i < len(gbs); i++ {
+	for i := range gbs {
 		gb := gbs[i]
 		ledgerID := fmt.Sprintf("l%d", i)
 		go func() {
@@ -200,7 +197,7 @@ func TestConcurrentCreateLedgerFromGB(t *testing.T) {
 }
 
 func TestConcurrentCreateLedgerFromSnapshot(t *testing.T) {
-	initializer, ledgerMgr, cleanup := setup(t, "concurrentcreateledgerfromsnapshot")
+	initializer, ledgerMgr, cleanup := setup(t)
 	defer cleanup()
 
 	// generate 2 snapshots for 2 channels
@@ -212,7 +209,7 @@ func TestConcurrentCreateLedgerFromSnapshot(t *testing.T) {
 	ledgerMgr.Close()
 
 	// create a new ledger mgr to import snapshot
-	_, ledgerMgr2, cleanup2 := setup(t, "concurrentcreateledgerfromsnapshot2")
+	_, ledgerMgr2, cleanup2 := setup(t)
 	defer cleanup2()
 
 	// use a channel to keep the callback func waiting so that we can test concurrent CreateLedger/CreateLedgerBySnapshot calls
@@ -265,7 +262,7 @@ func TestConcurrentCreateLedgerFromSnapshot(t *testing.T) {
 }
 
 func TestChaincodeInfoProvider(t *testing.T) {
-	_, ledgerMgr, cleanup := setup(t, "chaincodeinfoprovider")
+	_, ledgerMgr, cleanup := setup(t)
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("ledger1")
@@ -298,15 +295,13 @@ func TestChaincodeInfoProvider(t *testing.T) {
 	require.Equal(t, constructTestCCInfo("cc1", "cc1", "cc1"), ccInfo)
 }
 
-func setup(t *testing.T, basename string) (*Initializer, *LedgerMgr, func()) {
-	testDir, err := ioutil.TempDir("", basename)
-	require.NoError(t, err)
+func setup(t *testing.T) (*Initializer, *LedgerMgr, func()) {
+	testDir := t.TempDir()
 	initializer, err := constructDefaultInitializer(testDir)
 	require.NoError(t, err)
 	ledgerMgr := NewLedgerMgr(initializer)
 	cleanup := func() {
 		ledgerMgr.Close()
-		os.Remove(testDir)
 	}
 	return initializer, ledgerMgr, cleanup
 }

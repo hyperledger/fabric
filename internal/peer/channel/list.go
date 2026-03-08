@@ -9,13 +9,14 @@ package channel
 import (
 	"context"
 	"fmt"
+	"net/http"
 
-	"github.com/golang/protobuf/proto"
-	common2 "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	common2 "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 )
 
 type endorserClient struct {
@@ -68,7 +69,7 @@ func (cc *endorserClient) getChannels() ([]*pb.ChannelInfo, error) {
 		return nil, fmt.Errorf("Failed sending proposal, got %s", err)
 	}
 
-	if proposalResp.Response == nil || proposalResp.Response.Status != 200 {
+	if proposalResp.Response == nil || proposalResp.Response.Status != http.StatusOK {
 		return nil, fmt.Errorf("Received bad response, status %d: %s", proposalResp.Response.Status, proposalResp.Response.Message)
 	}
 

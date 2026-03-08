@@ -93,8 +93,8 @@ type comparablePrincipalSetPair struct {
 	containing ComparablePrincipalSet
 }
 
-// EnsurePlurality returns a ComparablePrincipalSet such that plurality requirements over
-// the contained ComparablePrincipalSet in the comparablePrincipalSetPair hold
+// MergeWithPlurality returns a ComparablePrincipalSet that merges the contained and containing
+// ComparablePrincipalSets in the comparablePrincipalSetPair while satisfying plurality requirements
 func (pair comparablePrincipalSetPair) MergeWithPlurality() ComparablePrincipalSet {
 	var principalsToAdd []*ComparablePrincipal
 	used := make(map[int]struct{})
@@ -129,7 +129,7 @@ func (pair comparablePrincipalSetPair) MergeWithPlurality() ComparablePrincipalS
 // comparablePrincipalSetPairs aggregates []comparablePrincipalSetPairs
 type comparablePrincipalSetPairs []comparablePrincipalSetPair
 
-// ToPrincipalSets converts the comparablePrincipalSetPairs to ComparablePrincipalSets
+// ToMergedPrincipalSets converts the comparablePrincipalSetPairs to ComparablePrincipalSets
 // while taking into account plurality of each pair
 func (pairs comparablePrincipalSetPairs) ToMergedPrincipalSets() ComparablePrincipalSets {
 	var res ComparablePrincipalSets

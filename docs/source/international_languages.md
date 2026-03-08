@@ -30,7 +30,7 @@ create a new language workgroup.
 It's much easier to translate, maintain, and manage a language repository if you
 collaborate with other translators. Start this process by adding a new workgroup
 to the [list of international
-workgroups](https://wiki.hyperledger.org/display/I18N/International+groups),
+workgroups](https://lf-hyperledger.atlassian.net/wiki/spaces/I18N),
 using one of the existing workgroup pages as an exemplar.
 
 Document how your workgroup will collaborate; meetings, chat and mailing lists
@@ -215,12 +215,6 @@ order of translation in your workgroup.
   For developers who want to get hands-on with Fabric, this topic provides key
   instructions to help install, build a sample network and get hands-on with
   Fabric.
-
-
-* [Developing applications](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/developapps/developing_applications.html)
-
-  This topic helps developers write smart contracts and applications; these
-  are the core elements of any solution that uses Fabric.
 
 
 * [Tutorials](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/tutorials.html)

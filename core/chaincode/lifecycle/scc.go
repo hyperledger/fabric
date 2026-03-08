@@ -10,11 +10,11 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/hyperledger/fabric-chaincode-go/shim"
-	"github.com/hyperledger/fabric-protos-go/common"
-	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
+	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	mspprotos "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	lb "github.com/hyperledger/fabric-protos-go-apiv2/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -25,9 +25,9 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/msp"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -54,6 +54,10 @@ const (
 	// QueryApprovedChaincodeDefinitionFuncName is the chaincode function name used to
 	// query a approved chaincode definition for the user's own org
 	QueryApprovedChaincodeDefinitionFuncName = "QueryApprovedChaincodeDefinition"
+
+	// QueryApprovedChaincodeDefinitionsFuncName is the chaincode function name used to
+	// query all approved chaincode definitions for the user's own org in a channel
+	QueryApprovedChaincodeDefinitionsFuncName = "QueryApprovedChaincodeDefinitions"
 
 	// CheckCommitReadinessFuncName is the chaincode function name used to check
 	// a specified chaincode definition is ready to be committed. It returns the
@@ -92,13 +96,20 @@ type SCCFunctions interface {
 	// ApproveChaincodeDefinitionForOrg records a chaincode definition into this org's implicit collection.
 	ApproveChaincodeDefinitionForOrg(chname, ccname string, cd *ChaincodeDefinition, packageID string, publicState ReadableState, orgState ReadWritableState) error
 
-	// QueryApprovedChaincodeDefinition returns a approved chaincode definition from this org's implicit collection.
+	// QueryApprovedChaincodeDefinition returns an approved chaincode definition from this org's implicit collection.
 	QueryApprovedChaincodeDefinition(chname, ccname string, sequence int64, publicState ReadableState, orgState ReadableState) (*ApprovedChaincodeDefinition, error)
+
+	// QueryApprovedChaincodeDefinitions returns all approved chaincode definitions from this org's implicit collection for the specified channel.
+	// The return value is a map where the key is a combination of chaincode namespace and sequence number in the format "<namespace>#<sequence_number>",
+	// and the value is the corresponding ApprovedChaincodeDefinition object.
+	QueryApprovedChaincodeDefinitions(chname string, orgState ReadRangeableState) (map[string]*ApprovedChaincodeDefinition, error)
 
 	// CheckCommitReadiness returns a map containing the orgs
 	// whose orgStates were supplied and whether or not they have approved
 	// the specified definition.
-	CheckCommitReadiness(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) (map[string]bool, error)
+	// Additionally, it returns a map of parameter mismatches for each organization
+	// if there are discrepancies between the provided definition and the stored data.
+	CheckCommitReadiness(chname, ccname string, cd *ChaincodeDefinition, publicState ReadWritableState, orgStates []OpaqueState) (approvals map[string]bool, mismatches map[string][]string, err error)
 
 	// CommitChaincodeDefinition records a new chaincode definition into the
 	// public state and returns a map containing the orgs whose orgStates
@@ -111,8 +122,10 @@ type SCCFunctions interface {
 
 	// QueryOrgApprovals returns a map containing the orgs whose orgStates were
 	// supplied and whether or not they have approved a chaincode definition with
-	// the specified parameters.
-	QueryOrgApprovals(name string, cd *ChaincodeDefinition, orgStates []OpaqueState) (map[string]bool, error)
+	// the specified parameters. Additionally, it returns a map of parameter mismatches
+	// for each organization if there are discrepancies between the provided definition
+	// and the stored data.
+	QueryOrgApprovals(name string, cd *ChaincodeDefinition, orgStates []OpaqueState) (approvals map[string]bool, mismatches map[string][]string, err error)
 
 	// QueryNamespaceDefinitions returns all defined namespaces
 	QueryNamespaceDefinitions(publicState RangeableState) (map[string]string, error)
@@ -131,7 +144,7 @@ type ChannelConfigSource interface {
 
 //go:generate counterfeiter -o mock/queryexecutor_provider.go --fake-name QueryExecutorProvider . QueryExecutorProvider
 
-// QueryExecutorProvider provides a way to retrieve the query executor assosciated with an invocation
+// QueryExecutorProvider provides a way to retrieve the query executor associated with an invocation
 type QueryExecutorProvider interface {
 	TxQueryExecutor(channelID, txID string) ledger.SimpleQueryExecutor
 }
@@ -151,7 +164,7 @@ type SCC struct {
 	// Functions provides the backing implementation of lifecycle.
 	Functions SCCFunctions
 
-	// Dispatcher handles the rote protobuf boilerplate for unmarshalling/marshaling
+	// Dispatcher handles the rote protobuf boilerplate for unmarshaling/marshaling
 	// the inputs and outputs of the SCC functions.
 	Dispatcher *dispatcher.Dispatcher
 }
@@ -167,14 +180,14 @@ func (scc *SCC) Chaincode() shim.Chaincode {
 }
 
 // Init is mostly useless for system chaincodes and always returns success
-func (scc *SCC) Init(stub shim.ChaincodeStubInterface) pb.Response {
+func (scc *SCC) Init(stub shim.ChaincodeStubInterface) *pb.Response {
 	return shim.Success(nil)
 }
 
 // Invoke takes chaincode invocation arguments and routes them to the correct
 // underlying lifecycle operation.  All functions take a single argument of
 // type marshaled lb.<FunctionName>Args and return a marshaled lb.<FunctionName>Result
-func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
+func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) *pb.Response {
 	args := stub.GetArgs()
 	if len(args) == 0 {
 		return shim.Error("lifecycle scc must be invoked with arguments")
@@ -225,7 +238,7 @@ func (scc *SCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	if err != nil {
 		switch err.(type) {
 		case ErrNamespaceNotDefined, persistence.CodePackageNotFoundErr:
-			return pb.Response{
+			return &pb.Response{
 				Status:  404,
 				Message: err.Error(),
 			}
@@ -248,10 +261,7 @@ type Invocation struct {
 // to the underlying lifecycle implementation.
 func (i *Invocation) InstallChaincode(input *lb.InstallChaincodeArgs) (proto.Message, error) {
 	if logger.IsEnabledFor(zapcore.DebugLevel) {
-		end := 35
-		if len(input.ChaincodeInstallPackage) < end {
-			end = len(input.ChaincodeInstallPackage)
-		}
+		end := min(len(input.ChaincodeInstallPackage), 35)
 
 		// the first tens of bytes contain the (compressed) portion
 		// of the package metadata and so they'll be different across
@@ -452,6 +462,49 @@ func (i *Invocation) QueryApprovedChaincodeDefinition(input *lb.QueryApprovedCha
 	}, nil
 }
 
+// QueryApprovedChaincodeDefinitions is a SCC function that may be dispatched
+// to which routes to the underlying lifecycle implementation.
+func (i *Invocation) QueryApprovedChaincodeDefinitions(input *lb.QueryApprovedChaincodeDefinitionsArgs) (proto.Message, error) {
+	logger.Debugf("received invocation of QueryApprovedChaincodeDefinitions on channel '%s'",
+		i.Stub.GetChannelID(),
+	)
+	collectionName := implicitcollection.NameForOrg(i.SCC.OrgMSPID)
+
+	cas, err := i.SCC.Functions.QueryApprovedChaincodeDefinitions(
+		i.Stub.GetChannelID(),
+		&ChaincodePrivateLedgerShim{
+			Collection: collectionName,
+			Stub:       i.Stub,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	casProto := []*lb.QueryApprovedChaincodeDefinitionsResult_ApprovedChaincodeDefinition{}
+	for privateName, ca := range cas {
+		name, _, err := extractChaincodeNameAndSequence(privateName)
+		if err != nil {
+			return nil, errors.WithMessagef(err, "could not extract chaincode name and sequence number from private name: %s", privateName)
+		}
+		casProto = append(casProto, &lb.QueryApprovedChaincodeDefinitionsResult_ApprovedChaincodeDefinition{
+			Name:                name,
+			Sequence:            ca.Sequence,
+			Version:             ca.EndorsementInfo.Version,
+			EndorsementPlugin:   ca.EndorsementInfo.EndorsementPlugin,
+			ValidationPlugin:    ca.ValidationInfo.ValidationPlugin,
+			ValidationParameter: ca.ValidationInfo.ValidationParameter,
+			InitRequired:        ca.EndorsementInfo.InitRequired,
+			Collections:         ca.Collections,
+			Source:              ca.Source,
+		})
+	}
+
+	return &lb.QueryApprovedChaincodeDefinitionsResult{
+		ApprovedChaincodeDefinitions: casProto,
+	}, nil
+}
+
 // CheckCommitReadiness is a SCC function that may be dispatched
 // to the underlying lifecycle implementation.
 func (i *Invocation) CheckCommitReadiness(input *lb.CheckCommitReadinessArgs) (proto.Message, error) {
@@ -479,7 +532,7 @@ func (i *Invocation) CheckCommitReadiness(input *lb.CheckCommitReadinessArgs) (p
 		cd,
 	)
 
-	approvals, err := i.SCC.Functions.CheckCommitReadiness(
+	approvals, mismatches, err := i.SCC.Functions.CheckCommitReadiness(
 		i.Stub.GetChannelID(),
 		input.Name,
 		cd,
@@ -490,8 +543,14 @@ func (i *Invocation) CheckCommitReadiness(input *lb.CheckCommitReadinessArgs) (p
 		return nil, err
 	}
 
+	mismatchesProto := make(map[string]*lb.CheckCommitReadinessResult_Mismatches)
+	for org, items := range mismatches {
+		mismatchesProto[org] = &lb.CheckCommitReadinessResult_Mismatches{Items: items}
+	}
+
 	return &lb.CheckCommitReadinessResult{
-		Approvals: approvals,
+		Approvals:  approvals,
+		Mismatches: mismatchesProto,
 	}, nil
 }
 
@@ -581,7 +640,7 @@ func (i *Invocation) QueryChaincodeDefinition(input *lb.QueryChaincodeDefinition
 	}
 
 	var approvals map[string]bool
-	if approvals, err = i.SCC.Functions.QueryOrgApprovals(input.Name, definedChaincode, opaqueStates); err != nil {
+	if approvals, _, err = i.SCC.Functions.QueryOrgApprovals(input.Name, definedChaincode, opaqueStates); err != nil {
 		return nil, err
 	}
 
@@ -759,7 +818,7 @@ func validateCollectionConfigs(collConfigs []*pb.StaticCollectionConfig, mspMgr 
 	return nil
 }
 
-// validateCollectionConfigAgainstMsp checks whether the supplied collection configuration
+// validateCollectionConfigMemberOrgsPolicy checks whether the supplied collection configuration
 // complies to the given msp configuration
 func validateCollectionConfigMemberOrgsPolicy(coll *pb.StaticCollectionConfig, mspMgr msp.MSPManager) error {
 	if coll.MemberOrgsPolicy == nil {

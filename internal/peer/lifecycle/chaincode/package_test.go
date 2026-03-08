@@ -11,17 +11,15 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode/mock"
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
 )
 
 var _ = Describe("Package", func() {
@@ -231,7 +229,7 @@ func readMetadataFromBytes(pkgTarGzBytes []byte) ([]byte, error) {
 			return nil, err
 		}
 		if header.Name == "metadata.json" {
-			return ioutil.ReadAll(tr)
+			return io.ReadAll(tr)
 		}
 	}
 	return nil, errors.New("metadata.json not found")

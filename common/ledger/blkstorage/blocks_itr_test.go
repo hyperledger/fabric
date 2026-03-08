@@ -11,13 +11,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBlocksItrBlockingNext(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
@@ -41,7 +41,7 @@ func TestBlocksItrBlockingNext(t *testing.T) {
 }
 
 func TestBlockItrClose(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
@@ -63,7 +63,7 @@ func TestBlockItrClose(t *testing.T) {
 }
 
 func TestRaceToDeadlock(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
@@ -72,7 +72,7 @@ func TestRaceToDeadlock(t *testing.T) {
 	blocks := testutil.ConstructTestBlocks(t, 5)
 	blkfileMgrWrapper.addBlocks(blocks)
 
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		itr, err := blkfileMgr.retrieveBlocks(5)
 		if err != nil {
 			panic(err)
@@ -83,7 +83,7 @@ func TestRaceToDeadlock(t *testing.T) {
 		itr.Close()
 	}
 
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		itr, err := blkfileMgr.retrieveBlocks(5)
 		if err != nil {
 			panic(err)
@@ -96,7 +96,7 @@ func TestRaceToDeadlock(t *testing.T) {
 }
 
 func TestBlockItrCloseWithoutRetrieve(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
@@ -110,7 +110,7 @@ func TestBlockItrCloseWithoutRetrieve(t *testing.T) {
 }
 
 func TestCloseMultipleItrsWaitForFutureBlock(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()

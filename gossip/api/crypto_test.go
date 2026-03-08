@@ -8,17 +8,17 @@ package api
 
 import (
 	"encoding/pem"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 )
 
 func TestPeerIdentityTypeString(t *testing.T) {
-	certBytes, err := ioutil.ReadFile(filepath.Join("testdata", "peer.pem"))
+	certBytes, err := os.ReadFile(filepath.Join("testdata", "peer.pem"))
 	require.NoError(t, err)
 
 	for _, testCase := range []struct {

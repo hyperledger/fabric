@@ -24,8 +24,6 @@ no_coverage_packages=(
 
 # packages which need to be tested with build tag pkcs11
 pkcs11_packages=(
-    "github.com/hyperledger/fabric/bccsp/factory"
-    "github.com/hyperledger/fabric/bccsp/pkcs11"
     "github.com/hyperledger/fabric/internal/peer/common"
 )
 

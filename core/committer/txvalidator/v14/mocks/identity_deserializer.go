@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	fabric_protos_gomsp "github.com/hyperledger/fabric-protos-go/msp"
+	fabric_protos_gomsp "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	mock "github.com/stretchr/testify/mock"
 
 	msp "github.com/hyperledger/fabric/msp"

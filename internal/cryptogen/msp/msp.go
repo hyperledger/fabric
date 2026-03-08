@@ -6,6 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 package msp
 
 import (
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/x509"
 	"encoding/pem"
 	"os"
@@ -15,7 +18,7 @@ import (
 	"github.com/hyperledger/fabric/internal/cryptogen/csp"
 	fabricmsp "github.com/hyperledger/fabric/msp"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -47,6 +50,7 @@ func GenerateLocalMSP(
 	tlsCA *ca.CA,
 	nodeType int,
 	nodeOUs bool,
+	keyAlg string,
 ) error {
 	// create folder structure
 	mspDir := filepath.Join(baseDir, "msp")
@@ -69,7 +73,7 @@ func GenerateLocalMSP(
 	keystore := filepath.Join(mspDir, "keystore")
 
 	// generate private key
-	priv, err := csp.GeneratePrivateKey(keystore)
+	priv, err := csp.GeneratePrivateKey(keystore, keyAlg)
 	if err != nil {
 		return err
 	}
@@ -84,7 +88,7 @@ func GenerateLocalMSP(
 		name,
 		ous,
 		nil,
-		&priv.PublicKey,
+		getPublicKey(priv),
 		x509.KeyUsageDigitalSignature,
 		[]x509.ExtKeyUsage{},
 	)
@@ -135,7 +139,7 @@ func GenerateLocalMSP(
 	*/
 
 	// generate private key
-	tlsPrivKey, err := csp.GeneratePrivateKey(tlsDir)
+	tlsPrivKey, err := csp.GeneratePrivateKey(tlsDir, keyAlg)
 	if err != nil {
 		return err
 	}
@@ -146,7 +150,7 @@ func GenerateLocalMSP(
 		name,
 		nil,
 		sans,
-		&tlsPrivKey.PublicKey,
+		getPublicKey(tlsPrivKey),
 		x509.KeyUsageDigitalSignature|x509.KeyUsageKeyEncipherment,
 		[]x509.ExtKeyUsage{
 			x509.ExtKeyUsageServerAuth,
@@ -185,6 +189,7 @@ func GenerateVerifyingMSP(
 	signCA,
 	tlsCA *ca.CA,
 	nodeOUs bool,
+	keyAlg string,
 ) error {
 	// create folder structure and write artifacts to proper locations
 	err := createFolderStructure(baseDir, false)
@@ -228,7 +233,7 @@ func GenerateVerifyingMSP(
 	if err != nil {
 		return errors.WithMessage(err, "failed to create keystore directory")
 	}
-	priv, err := csp.GeneratePrivateKey(ksDir)
+	priv, err := csp.GeneratePrivateKey(ksDir, keyAlg)
 	if err != nil {
 		return err
 	}
@@ -237,7 +242,7 @@ func GenerateVerifyingMSP(
 		signCA.Name,
 		nil,
 		nil,
-		&priv.PublicKey,
+		getPublicKey(priv),
 		x509.KeyUsageDigitalSignature,
 		[]x509.ExtKeyUsage{},
 	)
@@ -269,6 +274,17 @@ func createFolderStructure(rootDir string, local bool) error {
 	}
 
 	return nil
+}
+
+func getPublicKey(priv crypto.PrivateKey) crypto.PublicKey {
+	switch kk := priv.(type) {
+	case *ecdsa.PrivateKey:
+		return &(kk.PublicKey)
+	case ed25519.PrivateKey:
+		return kk.Public()
+	default:
+		panic("unsupported key algorithm")
+	}
 }
 
 func x509Filename(name string) string {

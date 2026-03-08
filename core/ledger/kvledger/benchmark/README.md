@@ -23,4 +23,4 @@ In order to run the benchmarks, run the following command from folder fabric/cor
 ./runbenchmarks.sh -f <test_parameter_file>.sh
 ```
 The <test_parameter_file> is expected to contain the parameters for the benchmarks. A sample file (sample_params.sh) is provided.
-For running the bechmarks, it is advised to make a copy of the file sample_params.sh and change the parameters that you want to run the tests with. For more details on the parameters and the experiment results, see comments in the file sample_params.sh
+For running the benchmarks, it is advised to make a copy of the file sample_params.sh and change the parameters that you want to run the tests with. For more details on the parameters and the experiment results, see comments in the file sample_params.sh

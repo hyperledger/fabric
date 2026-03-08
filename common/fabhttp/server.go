@@ -14,7 +14,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/middleware"
 )
@@ -22,8 +22,8 @@ import (
 //go:generate counterfeiter -o fakes/logger.go -fake-name Logger . Logger
 
 type Logger interface {
-	Warn(args ...interface{})
-	Warnf(template string, args ...interface{})
+	Warn(args ...any)
+	Warnf(template string, args ...any)
 }
 
 type Options struct {
@@ -138,7 +138,7 @@ func (s *Server) Addr() string {
 	return s.addr
 }
 
-func (s *Server) Log(keyvals ...interface{}) error {
+func (s *Server) Log(keyvals ...any) error {
 	s.logger.Warn(keyvals...)
 	return nil
 }

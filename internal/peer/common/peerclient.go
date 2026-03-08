@@ -9,10 +9,10 @@ package common
 import (
 	"context"
 	"crypto/tls"
-	"io/ioutil"
+	"os"
 	"time"
 
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -66,7 +66,7 @@ func NewPeerClientForAddress(address, tlsRootCertFile string) (*PeerClient, erro
 		if tlsRootCertFile == "" {
 			return nil, errors.New("tls root cert file must be set")
 		}
-		caPEM, res := ioutil.ReadFile(tlsRootCertFile)
+		caPEM, res := os.ReadFile(tlsRootCertFile)
 		if res != nil {
 			return nil, errors.WithMessagef(res, "unable to load TLS root cert file from %s", tlsRootCertFile)
 		}

@@ -27,7 +27,7 @@ type nsMetadataRetriever struct {
 
 type subNsMetadataRetriever nsMetadataRetriever
 
-// retrievedMetadata retrieves the metadata for a collection of `namespace-keys` combination
+// retrieveMetadata retrieves the metadata for a collection of `namespace-keys` combination
 func (vdb *VersionedDB) retrieveMetadata(nsKeysMap map[string][]string) (map[string][]*docMetadata, error) {
 	// construct one batch per namespace
 	nsMetadataRetrievers := []batch{}
@@ -57,7 +57,7 @@ func retrieveNsMetadata(db *couchDatabase, keys []string) ([]*docMetadata, error
 	batches := []batch{}
 	remainingKeys := keys
 	for {
-		numKeys := minimum(maxBatchSize, len(remainingKeys))
+		numKeys := min(maxBatchSize, len(remainingKeys))
 		if numKeys == 0 {
 			break
 		}
@@ -98,11 +98,4 @@ func (b *subNsMetadataRetriever) execute() error {
 
 func (b *subNsMetadataRetriever) String() string {
 	return fmt.Sprintf("subNsMetadataRetriever:ns=%s, num keys=%d", b.ns, len(b.keys))
-}
-
-func minimum(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

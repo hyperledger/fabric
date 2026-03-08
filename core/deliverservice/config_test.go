@@ -8,17 +8,17 @@ package deliverservice_test
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/hyperledger/fabric/core/deliverservice"
+	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSecureOptsConfig(t *testing.T) {
@@ -27,10 +27,10 @@ func TestSecureOptsConfig(t *testing.T) {
 	certPath := filepath.Join(cwd, "testdata", "cert.pem")
 	keyPath := filepath.Join(cwd, "testdata", "key.pem")
 
-	certBytes, err := ioutil.ReadFile(filepath.Join("testdata", "cert.pem"))
+	certBytes, err := os.ReadFile(filepath.Join("testdata", "cert.pem"))
 	require.NoError(t, err)
 
-	keyBytes, err := ioutil.ReadFile(filepath.Join("testdata", "key.pem"))
+	keyBytes, err := os.ReadFile(filepath.Join("testdata", "key.pem"))
 	require.NoError(t, err)
 
 	t.Run("client specific cert", func(t *testing.T) {
@@ -88,6 +88,9 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.deliveryclient.connTimeout", "10s")
 	viper.Set("peer.keepalive.deliveryClient.interval", "5s")
 	viper.Set("peer.keepalive.deliveryClient.timeout", "2s")
+	viper.Set("peer.deliveryclient.blockCensorshipTimeoutKey", "40s")
+	viper.Set("peer.deliveryclient.minimalReconnectInterval", "110ms")
+	viper.Set("peer.deliveryclient.policy", "simple")
 
 	coreConfig := deliverservice.GlobalConfig()
 
@@ -95,6 +98,8 @@ func TestGlobalConfig(t *testing.T) {
 		BlockGossipEnabled:          true,
 		PeerTLSEnabled:              true,
 		ReConnectBackoffThreshold:   25 * time.Second,
+		BlockCensorshipTimeoutKey:   40 * time.Second,
+		MinimalReconnectInterval:    110 * time.Millisecond,
 		ReconnectTotalTimeThreshold: 20 * time.Second,
 		ConnectionTimeout:           10 * time.Second,
 		KeepaliveOptions: comm.KeepaliveOptions{
@@ -107,6 +112,7 @@ func TestGlobalConfig(t *testing.T) {
 		SecOpts: comm.SecureOptions{
 			UseTLS: true,
 		},
+		Policy: "simple",
 	}
 
 	require.Equal(t, expectedConfig, coreConfig)
@@ -125,6 +131,9 @@ func TestGlobalConfigDefault(t *testing.T) {
 		ReconnectTotalTimeThreshold: deliverservice.DefaultReConnectTotalTimeThreshold,
 		ConnectionTimeout:           deliverservice.DefaultConnectionTimeout,
 		KeepaliveOptions:            comm.DefaultKeepaliveOptions,
+		BlockCensorshipTimeoutKey:   deliverservice.DefaultBlockCensorshipTimeoutKey,
+		MinimalReconnectInterval:    deliverservice.DefaultMinimalReconnectInterval,
+		Policy:                      deliverservice.DefaultPolicy,
 	}
 
 	require.Equal(t, expectedConfig, coreConfig)
@@ -147,6 +156,37 @@ func TestLoadOverridesMap(t *testing.T) {
                 `
 
 		viper.Reset()
+		viper.SetConfigType("yaml")
+		err := viper.ReadConfig(bytes.NewBuffer([]byte(config)))
+		require.NoError(t, err)
+		res, err := deliverservice.LoadOverridesMap()
+		require.NoError(t, err)
+		require.Len(t, res, 2)
+		ep1, ok := res["addressFrom1"]
+		require.True(t, ok)
+		require.Equal(t, "addressTo1", ep1.Address)
+		ep2, ok := res["addressFrom2"]
+		require.True(t, ok)
+		require.Equal(t, "addressTo2", ep2.Address)
+	})
+
+	t.Run("GreenPath With Env", func(t *testing.T) {
+		t.Setenv("CORE_PEER_DELIVERYCLIENT_ADDRESSOVERRIDES", "[{from: addressFrom1, to: addressTo1, caCertsFile: testdata/cert.pem}"+
+			", {from: addressFrom2, to: addressTo2, caCertsFile: testdata/cert.pem}]")
+		config := `
+                  peer:
+                    deliveryclient:
+                      addressOverrides:
+                `
+
+		viper.Reset()
+
+		viper.SetEnvPrefix(common.CmdRoot)
+		viper.AllowEmptyEnv(true)
+		viper.AutomaticEnv()
+		replacer := strings.NewReplacer(".", "_")
+		viper.SetEnvKeyReplacer(replacer)
+
 		viper.SetConfigType("yaml")
 		err := viper.ReadConfig(bytes.NewBuffer([]byte(config)))
 		require.NoError(t, err)
@@ -233,4 +273,35 @@ func TestLoadOverridesMap(t *testing.T) {
 		require.NoError(t, err)
 		require.Nil(t, res)
 	})
+}
+
+func TestGlobalConfigCheckDefaultIsSet(t *testing.T) {
+	defer viper.Reset()
+	cwd, err := os.Getwd()
+	require.NoError(t, err, "failed to get current working directory")
+	viper.SetConfigFile(filepath.Join(cwd, "testdata", "core.yaml"))
+
+	err = viper.ReadInConfig()
+	require.NoError(t, err)
+
+	require.Equal(t, false, viper.IsSet("peer.deliveryclient.blockCensorshipTimeoutKey"))
+	require.Equal(t, false, viper.IsSet("peer.deliveryclient.minimalReconnectInterval"))
+	require.Equal(t, true, viper.IsSet("peer.deliveryclient.blockGossipEnabled"))
+
+	coreConfig := deliverservice.GlobalConfig()
+	require.NoError(t, err)
+
+	expectedConfig := &deliverservice.DeliverServiceConfig{
+		BlockGossipEnabled:          true,
+		PeerTLSEnabled:              false,
+		ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
+		ReconnectTotalTimeThreshold: deliverservice.DefaultReConnectTotalTimeThreshold,
+		ConnectionTimeout:           deliverservice.DefaultConnectionTimeout,
+		KeepaliveOptions:            comm.DefaultKeepaliveOptions,
+		BlockCensorshipTimeoutKey:   deliverservice.DefaultBlockCensorshipTimeoutKey,
+		MinimalReconnectInterval:    deliverservice.DefaultMinimalReconnectInterval,
+		Policy:                      deliverservice.DefaultPolicy,
+	}
+
+	require.Equal(t, coreConfig, expectedConfig)
 }

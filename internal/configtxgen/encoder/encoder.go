@@ -7,11 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package encoder
 
 import (
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"fmt"
+	"os"
+
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/smartbft"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/policydsl"
@@ -22,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -36,10 +40,10 @@ var logger = flogging.MustGetLogger("common.tools.configtxgen.encoder")
 const (
 	// ConsensusTypeSolo identifies the solo consensus implementation.
 	ConsensusTypeSolo = "solo"
-	// ConsensusTypeKafka identifies the Kafka-based consensus implementation.
-	ConsensusTypeKafka = "kafka"
-	// ConsensusTypeKafka identifies the Kafka-based consensus implementation.
+	// ConsensusTypeEtcdRaft identifies the Raft-based consensus implementation.
 	ConsensusTypeEtcdRaft = "etcdraft"
+	// ConsensusTypeBFT identifies the BFT-based consensus implementation.
+	ConsensusTypeBFT = "BFT"
 
 	// BlockValidationPolicyKey TODO
 	BlockValidationPolicyKey = "BlockValidation"
@@ -151,7 +155,7 @@ func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
 
 	var err error
 	if conf.Orderer != nil {
-		channelGroup.Groups[channelconfig.OrdererGroupKey], err = NewOrdererGroup(conf.Orderer)
+		channelGroup.Groups[channelconfig.OrdererGroupKey], err = NewOrdererGroup(conf.Orderer, conf.Capabilities)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create orderer group")
 		}
@@ -178,7 +182,14 @@ func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
 // NewOrdererGroup returns the orderer component of the channel configuration.  It defines parameters of the ordering service
 // about how large blocks should be, how frequently they should be emitted, etc. as well as the organizations of the ordering network.
 // It sets the mod_policy of all elements to "Admins".  This group is always present in any channel configuration.
-func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
+func NewOrdererGroup(conf *genesisconfig.Orderer, channelCapabilities map[string]bool) (*cb.ConfigGroup, error) {
+	if conf.OrdererType == "BFT" && !channelCapabilities["V3_0"] {
+		return nil, errors.Errorf("orderer type BFT must be used with V3_0 channel capability: %v", channelCapabilities)
+	}
+	if len(conf.Addresses) > 0 && channelCapabilities["V3_0"] {
+		return nil, errors.Errorf("global orderer endpoints exist, but can not be used with V3_0 capability: %v", conf.Addresses)
+	}
+
 	ordererGroup := protoutil.NewConfigGroup()
 	if err := AddOrdererPolicies(ordererGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
 		return nil, errors.Wrapf(err, "error adding policies to orderer group")
@@ -200,12 +211,23 @@ func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
 
 	switch conf.OrdererType {
 	case ConsensusTypeSolo:
-	case ConsensusTypeKafka:
-		addValue(ordererGroup, channelconfig.KafkaBrokersValue(conf.Kafka.Brokers), channelconfig.AdminsPolicyKey)
 	case ConsensusTypeEtcdRaft:
 		if consensusMetadata, err = channelconfig.MarshalEtcdRaftMetadata(conf.EtcdRaft); err != nil {
 			return nil, errors.Errorf("cannot marshal metadata for orderer type %s: %s", ConsensusTypeEtcdRaft, err)
 		}
+	case ConsensusTypeBFT:
+		consenterProtos, err := consenterProtosFromConfig(conf.ConsenterMapping)
+		if err != nil {
+			return nil, errors.Errorf("cannot load consenter config for orderer type %s: %s", ConsensusTypeBFT, err)
+		}
+		addValue(ordererGroup, channelconfig.OrderersValue(consenterProtos), channelconfig.AdminsPolicyKey)
+		if consensusMetadata, err = channelconfig.MarshalBFTOptions(conf.SmartBFT); err != nil {
+			return nil, errors.Errorf("consenter options read failed with error %s for orderer type %s", err, ConsensusTypeBFT)
+		}
+		// Force leader rotation to be turned off
+		conf.SmartBFT.LeaderRotation = smartbft.Options_ROTATION_OFF
+		// Overwrite policy manually by computing it from the consenters
+		policies.EncodeBFTBlockVerificationPolicy(consenterProtos, ordererGroup)
 	default:
 		return nil, errors.Errorf("unknown orderer type: %s", conf.OrdererType)
 	}
@@ -214,7 +236,7 @@ func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
 
 	for _, org := range conf.Organizations {
 		var err error
-		ordererGroup.Groups[org.Name], err = NewOrdererOrgGroup(org)
+		ordererGroup.Groups[org.Name], err = NewOrdererOrgGroup(org, channelCapabilities)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create orderer org")
 		}
@@ -224,7 +246,47 @@ func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
 	return ordererGroup, nil
 }
 
-// NewConsortiumsGroup returns an org component of the channel configuration.  It defines the crypto material for the
+func consenterProtosFromConfig(consenterMapping []*genesisconfig.Consenter) ([]*cb.Consenter, error) {
+	var consenterProtos []*cb.Consenter
+	for _, consenter := range consenterMapping {
+		c := &cb.Consenter{
+			Id:    consenter.ID,
+			Host:  consenter.Host,
+			Port:  consenter.Port,
+			MspId: consenter.MSPID,
+		}
+		// Expect the user to set the config value for client/server certs or identity to the
+		// path where they are persisted locally, then load these files to memory.
+		if consenter.ClientTLSCert != "" {
+			clientCert, err := os.ReadFile(consenter.ClientTLSCert)
+			if err != nil {
+				return nil, fmt.Errorf("cannot load client cert for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
+			}
+			c.ClientTlsCert = clientCert
+		}
+
+		if consenter.ServerTLSCert != "" {
+			serverCert, err := os.ReadFile(consenter.ServerTLSCert)
+			if err != nil {
+				return nil, fmt.Errorf("cannot load server cert for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
+			}
+			c.ServerTlsCert = serverCert
+		}
+
+		if consenter.Identity != "" {
+			identity, err := os.ReadFile(consenter.Identity)
+			if err != nil {
+				return nil, fmt.Errorf("cannot load identity for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
+			}
+			c.Identity = identity
+		}
+
+		consenterProtos = append(consenterProtos, c)
+	}
+	return consenterProtos, nil
+}
+
+// NewConsortiumOrgGroup returns an org component of the channel configuration.  It defines the crypto material for the
 // organization (its MSP).  It sets the mod_policy of all elements to "Admins".
 func NewConsortiumOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, error) {
 	consortiumsOrgGroup := protoutil.NewConfigGroup()
@@ -250,7 +312,8 @@ func NewConsortiumOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, e
 
 // NewOrdererOrgGroup returns an orderer org component of the channel configuration.  It defines the crypto material for the
 // organization (its MSP).  It sets the mod_policy of all elements to "Admins".
-func NewOrdererOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, error) {
+// channelCapabilities map[string]bool
+func NewOrdererOrgGroup(conf *genesisconfig.Organization, channelCapabilities map[string]bool) (*cb.ConfigGroup, error) {
 	ordererOrgGroup := protoutil.NewConfigGroup()
 	ordererOrgGroup.ModPolicy = channelconfig.AdminsPolicyKey
 
@@ -271,6 +334,8 @@ func NewOrdererOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, erro
 
 	if len(conf.OrdererEndpoints) > 0 {
 		addValue(ordererOrgGroup, channelconfig.EndpointsValue(conf.OrdererEndpoints), channelconfig.AdminsPolicyKey)
+	} else if channelCapabilities["V3_0"] {
+		return nil, errors.Errorf("orderer endpoints for organization %s are missing and must be configured when capability V3_0 is enabled", conf.Name)
 	}
 
 	return ordererOrgGroup, nil
@@ -482,6 +547,7 @@ func ConfigTemplateFromGroup(conf *genesisconfig.Profile, cg *cb.ConfigGroup) (*
 
 // MakeChannelCreationTransaction is a handy utility function for creating transactions for channel creation.
 // It assumes the invoker has no system channel context so ignores all but the application section.
+// Deprecated
 func MakeChannelCreationTransaction(
 	channelID string,
 	signer identity.SignerSerializer,
@@ -497,6 +563,7 @@ func MakeChannelCreationTransaction(
 // MakeChannelCreationTransactionWithSystemChannelContext is a utility function for creating channel creation txes.
 // It requires a configuration representing the orderer system channel to allow more sophisticated channel creation
 // transactions modifying pieces of the configuration like the orderer set.
+// Deprecated
 func MakeChannelCreationTransactionWithSystemChannelContext(
 	channelID string,
 	signer identity.SignerSerializer,
@@ -620,4 +687,8 @@ func (bs *Bootstrapper) GenesisBlock() *cb.Block {
 // GenesisBlockForChannel produces a genesis block for a given channel ID
 func (bs *Bootstrapper) GenesisBlockForChannel(channelID string) *cb.Block {
 	return genesis.NewFactoryImpl(bs.channelGroup).Block(channelID)
+}
+
+func (bs *Bootstrapper) GenesisChannelGroup() *cb.ConfigGroup {
+	return bs.channelGroup
 }

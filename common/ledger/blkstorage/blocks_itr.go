@@ -68,12 +68,32 @@ func (itr *blocksItr) Next() (ledger.QueryResult, error) {
 	if itr.closeMarker {
 		return nil, nil
 	}
+
+	cachedBlock, existsInCache := itr.mgr.cache.get(itr.blockNumToRetrieve)
+	if existsInCache {
+
+		// Close the stream if applicable, because since we're fetching from
+		// the cache, the file stream is no longer in sync with the block number to retrieve.
+		// Hopefully the next iteration will also be a cache hit.
+		if itr.stream != nil {
+			itr.stream.close()
+			itr.stream = nil
+		}
+
+		logger.Debugf("Retrieved block %d from ledger in-memory cache", itr.blockNumToRetrieve)
+		itr.blockNumToRetrieve++
+		return cachedBlock, nil
+	}
+
 	if itr.stream == nil {
 		logger.Debugf("Initializing block stream for iterator. itr.maxBlockNumAvailable=%d", itr.maxBlockNumAvailable)
 		if err := itr.initStream(); err != nil {
 			return nil, err
 		}
 	}
+
+	defer logger.Debugf("Retrieved block %d from ledger file storage", itr.blockNumToRetrieve)
+
 	nextBlockBytes, err := itr.stream.nextBlockBytes()
 	if err != nil {
 		return nil, err

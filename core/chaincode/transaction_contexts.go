@@ -9,7 +9,7 @@ package chaincode
 import (
 	"sync"
 
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/pkg/errors"

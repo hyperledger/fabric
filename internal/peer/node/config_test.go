@@ -19,12 +19,12 @@ func TestLedgerConfig(t *testing.T) {
 	defer viper.Reset()
 	tests := []struct {
 		name     string
-		config   map[string]interface{}
+		config   map[string]any
 		expected *ledger.Config
 	}{
 		{
 			name: "goleveldb",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"peer.fileSystemPath":        "/peerfs",
 				"ledger.state.stateDatabase": "goleveldb",
 			},
@@ -51,7 +51,7 @@ func TestLedgerConfig(t *testing.T) {
 		},
 		{
 			name: "CouchDB Defaults",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"peer.fileSystemPath":                              "/peerfs",
 				"ledger.state.stateDatabase":                       "CouchDB",
 				"ledger.state.couchDBConfig.couchDBAddress":        "localhost:5984",
@@ -98,7 +98,7 @@ func TestLedgerConfig(t *testing.T) {
 		},
 		{
 			name: "CouchDB Explicit",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"peer.fileSystemPath":                                     "/peerfs",
 				"ledger.state.stateDatabase":                              "CouchDB",
 				"ledger.state.couchDBConfig.couchDBAddress":               "localhost:5984",

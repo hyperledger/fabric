@@ -8,12 +8,10 @@ high level, a four step process.
 1. Backup the ledger and MSPs.
 2. Upgrade the orderer binaries in a rolling fashion to the latest Fabric version.
 3. Upgrade the peer binaries in a rolling fashion to the latest Fabric version.
-4. Update the orderer system channel and any application channels to the latest
+4. Update application channels to the latest
    capability levels, where available. Note that some releases will have
    capabilities in all groups while other releases may have few or even no new
    capabilities at all.
-5. If you want to migrate your network by removing the orderer system channel,
-   check out :doc:`create_channel/create_channel_participation`.
 
 For more information about capabilities, check out :doc:`capabilities_concept`.
 
@@ -21,26 +19,16 @@ For a look at how these upgrade processes are accomplished, please consult these
 tutorials:
 
 1. :doc:`upgrade_to_newest_version`. This topic discusses the important considerations
-   for getting to the latest release from the previous release as well as from
-   the most recent long term support (LTS) release.
+   for getting to the latest release.
 2. :doc:`upgrading_your_components`. Components should be upgraded to the latest
    version before updating any capabilities.
 3. :doc:`updating_capabilities`. Completed after updating the versions of all nodes.
-4. :doc:`enable_cc_lifecycle`. Necessary to add organization specific endorsement
-   policies central to the new chaincode lifecycle for Fabric v2.x.
 
-As the upgrading of nodes and increasing the capability levels of channels is by
-now considered a standard Fabric process, we will not show the specific commands
-for upgrading to the newest release. Similarly, there is no script in the ``fabric-samples``
-repo that will upgrade a sample network from the previous release to this one,
-as there has been for previous releases.
-
-.. note:: It is a best practice to upgrade your SDK to the latest version as a
-          part of a general upgrade of your network. While the SDK will always
-          be compatible with equivalent releases of Fabric and higher, it might
-          be necessary to upgrade to the latest SDK to leverage the latest Fabric
-          features. Consult the documentation of the Fabric SDK you are using
-          for information about how to upgrade.
+.. note:: SDK applications can be upgraded separate from a general upgrade of your Fabric network.
+          The `Fabric Gateway client API <https://github.com/hyperledger/fabric-gateway>`_ has been tested with Fabric v2.5 and v3.0.
+          If you have not yet migrated to the Fabric Gateway client API,
+          you can `migrate <https://hyperledger.github.io/fabric-gateway/migration/>`_ while using a Fabric v2.5 network,
+          or after you have upgraded to a Fabric v3.0 network. The legacy SDKs are no longer maintained and are not compatible with new v3.0 Fabric features such as SmartBFT consensus.
 
 .. toctree::
    :maxdepth: 1

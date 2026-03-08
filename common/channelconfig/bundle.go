@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package channelconfig
 
 import (
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
@@ -90,6 +90,17 @@ func (b *Bundle) ValidateNew(nb Resources) error {
 			if oc.ConsensusType() != noc.ConsensusType() {
 				return errors.Errorf("attempted to change consensus type from %s to %s",
 					oc.ConsensusType(), noc.ConsensusType())
+			}
+		}
+
+		// When we move to capability V3_0 we insist on per Org endpoints for every org
+		isOldV3 := b.ChannelConfig().Capabilities().ConsensusTypeBFT()
+		isNewV3 := nb.ChannelConfig().Capabilities().ConsensusTypeBFT()
+		if !isOldV3 && isNewV3 {
+			for _, org := range noc.Organizations() {
+				if len(org.Endpoints()) == 0 {
+					return errors.Errorf("illegal orderer config update detected: endpoints of org %s are missing", org.Name())
+				}
 			}
 		}
 

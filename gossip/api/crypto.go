@@ -14,11 +14,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/gossip/common"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
 
 // MessageCryptoService is the contract between the gossip component and the
@@ -36,6 +36,11 @@ type MessageCryptoService interface {
 	// sequence number that the block's header contains.
 	// else returns error
 	VerifyBlock(channelID common.ChannelID, seqNum uint64, block *cb.Block) error
+
+	// VerifyBlockAttestation does the same as VerifyBlock, except it assumes block.Data = nil. It therefore does not
+	// compute the block.Data.Hash() and compare it to the block.Header.DataHash. This is used when the orderer
+	// delivers a block with header & metadata only, as an attestation of block existence.
+	VerifyBlockAttestation(channelID string, block *cb.Block) error
 
 	// Sign signs msg with this peer's signing key and outputs
 	// the signature if no error occurred.
@@ -133,7 +138,7 @@ func (pit PeerIdentityType) String() string {
 	if cert == nil {
 		return fmt.Sprintf("non x509 identity: %s", base64Representation)
 	}
-	m := make(map[string]interface{})
+	m := make(map[string]any)
 	m["MSP"] = sID.Mspid
 	s := cert.Subject
 	m["CN"] = s.CommonName

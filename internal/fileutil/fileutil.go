@@ -8,7 +8,6 @@ package fileutil
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -25,10 +24,7 @@ func CreateAndSyncFileAtomically(dir, tmpFile, finalFile string, content []byte,
 	if err := CreateAndSyncFile(tempFilePath, content, perm); err != nil {
 		return err
 	}
-	if err := os.Rename(tempFilePath, finalFilePath); err != nil {
-		return err
-	}
-	return nil
+	return os.Rename(tempFilePath, finalFilePath)
 }
 
 // CreateAndSyncFile creates a file, writes the content and syncs the file
@@ -37,17 +33,13 @@ func CreateAndSyncFile(filePath string, content []byte, perm os.FileMode) error 
 	if err != nil {
 		return errors.Wrapf(err, "error while creating file:%s", filePath)
 	}
-	_, err = file.Write(content)
-	if err != nil {
-		file.Close()
+	defer file.Close()
+
+	if _, err = file.Write(content); err != nil {
 		return errors.Wrapf(err, "error while writing to file:%s", filePath)
 	}
 	if err = file.Sync(); err != nil {
-		file.Close()
-		return errors.Wrapf(err, "error while synching the file:%s", filePath)
-	}
-	if err := file.Close(); err != nil {
-		return errors.Wrapf(err, "error while closing the file:%s", filePath)
+		return errors.Wrapf(err, "error while syncing the file:%s", filePath)
 	}
 	return nil
 }
@@ -118,7 +110,7 @@ func DirExists(path string) (bool, error) {
 // ListSubdirs returns the subdirectories
 func ListSubdirs(dirPath string) ([]string, error) {
 	subdirs := []string{}
-	files, err := ioutil.ReadDir(dirPath)
+	files, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading dir %s", dirPath)
 	}
@@ -133,7 +125,7 @@ func ListSubdirs(dirPath string) ([]string, error) {
 // RemoveContents removes all the files and subdirs under the specified directory.
 // It returns nil if the specified directory does not exist.
 func RemoveContents(dir string) error {
-	contents, err := ioutil.ReadDir(dir)
+	contents, err := os.ReadDir(dir)
 	if os.IsNotExist(err) {
 		return nil
 	}

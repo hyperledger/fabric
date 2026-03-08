@@ -8,11 +8,10 @@ package blkstorage
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
@@ -34,8 +33,7 @@ func TestIndexConfig(t *testing.T) {
 }
 
 func TestMultipleBlockStores(t *testing.T) {
-	tempdir := testPath()
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 
 	env := newTestEnv(t, NewConf(tempdir, 0))
 	provider := env.provider
@@ -101,12 +99,12 @@ func checkBlocks(t *testing.T, expectedBlocks []*common.Block, store *BlockStore
 	require.Equal(t, protoutil.BlockHeaderHash(expectedBlocks[len(expectedBlocks)-1].GetHeader()), bcInfo.CurrentBlockHash)
 
 	itr, _ := store.RetrieveBlocks(0)
-	for i := 0; i < len(expectedBlocks); i++ {
+	for i := range expectedBlocks {
 		block, _ := itr.Next()
 		require.Equal(t, expectedBlocks[i], block)
 	}
 
-	for blockNum := 0; blockNum < len(expectedBlocks); blockNum++ {
+	for blockNum := range expectedBlocks {
 		block := expectedBlocks[blockNum]
 		flags := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 		retrievedBlock, _ := store.RetrieveBlockByNumber(uint64(blockNum))
@@ -162,7 +160,7 @@ func checkWithWrongInputs(t *testing.T, store *BlockStore, numBlocks int) {
 }
 
 func TestBlockStoreProvider(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 
 	provider := env.provider
@@ -172,7 +170,7 @@ func TestBlockStoreProvider(t *testing.T) {
 
 	var stores []*BlockStore
 	numStores := 10
-	for i := 0; i < numStores; i++ {
+	for i := range numStores {
 		store, _ := provider.Open(constructLedgerid(i))
 		defer store.Shutdown()
 		stores = append(stores, store)
@@ -183,7 +181,7 @@ func TestBlockStoreProvider(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, numStores, len(storeNames))
 
-	for i := 0; i < numStores; i++ {
+	for i := range numStores {
 		exists, err := provider.Exists(constructLedgerid(i))
 		require.NoError(t, err)
 		require.Equal(t, true, exists)
@@ -195,7 +193,7 @@ func TestBlockStoreProvider(t *testing.T) {
 }
 
 func TestDrop(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 
 	provider := env.provider

@@ -9,7 +9,7 @@ package chaincode_test
 import (
 	"time"
 
-	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/metricsfakes"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/extcc"
@@ -327,7 +327,7 @@ var _ = Describe("RuntimeLauncher", func() {
 		})
 	})
 
-	Context("when the contaienr terminates before registration", func() {
+	Context("when the container terminates before registration", func() {
 		BeforeEach(func() {
 			fakeRuntime.StartReturns(nil)
 			fakeRuntime.WaitReturns(-99, nil)

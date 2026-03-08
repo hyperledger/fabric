@@ -12,14 +12,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 )
 
-//go:generate mockery -dir . -name StepClient -case underscore -output ./mocks/
+//go:generate mockery --dir . --name StepClient --case underscore --output ./mocks/
 
 // StepClient defines a client that sends and receives Step requests and responses.
 type StepClient interface {
@@ -28,7 +28,7 @@ type StepClient interface {
 	grpc.ClientStream
 }
 
-//go:generate mockery -dir . -name ClusterClient -case underscore -output ./mocks/
+//go:generate mockery --dir . --name ClusterClient --case underscore --output ./mocks/
 
 // ClusterClient creates streams that point to a remote cluster member.
 type ClusterClient interface {
@@ -141,7 +141,7 @@ func (s *RPC) submitSent(start time.Time, to uint64, msg *orderer.SubmitRequest)
 }
 
 func (s *RPC) consensusSent(start time.Time, to uint64, msg *orderer.ConsensusRequest) {
-	s.Logger.Debugf("Sending msg of %d bytes to %d on channel %s took %v", len(msg.Payload), to, s.Channel, time.Since(start))
+	s.Logger.Debugf("Sending msg of %d bytes (with metadata %d bytes) to %d on channel %s took %v", len(msg.Payload), len(msg.Metadata), to, s.Channel, time.Since(start))
 }
 
 // getOrCreateStream obtains a Submit stream for the given destination node

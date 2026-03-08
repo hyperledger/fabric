@@ -172,13 +172,11 @@ If the command is successful, you will see the creation of the Org3 peer:
 
 This Docker Compose file has been configured to bridge across our initial network,
 so that the Org3 peer resolves with the existing peers and ordering
-node of the test network. 
+node of the test network.
 
-.. note:: the `./addOrg3.sh up` command uses a `fabric-tools` CLI container to perform 
-          the channel configuration update process demonstrated below. This is to avoid the 
-          `jq` dependency requirement for first-time users. However, it is recommended to 
-          follow the process below directly on your local machine instead of using the unnecessary
-          CLI container.
+.. note:: the `./addOrg3.sh up` command uses a `jq` CLI to perform
+          the channel configuration update process demonstrated. It is recommended to
+          follow the process below directly on your local machine.
 
 Fetch the Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -211,7 +209,7 @@ Issue the following commands to operate as the Org1 admin.
   export PATH=${PWD}/../bin:$PATH
   export FABRIC_CFG_PATH=${PWD}/../config/
   export CORE_PEER_TLS_ENABLED=true
-  export CORE_PEER_LOCALMSPID="Org1MSP"
+  export CORE_PEER_LOCALMSPID=Org1MSP
   export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
   export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
   export CORE_PEER_ADDRESS=localhost:7051
@@ -292,9 +290,9 @@ We'll use the ``jq`` tool once more to append the Org3 configuration definition
 
   jq -s '.[0] * {"channel_group":{"groups":{"Application":{"groups": {"Org3MSP":.[1]}}}}}' config.json ../organizations/peerOrganizations/org3.example.com/org3.json > modified_config.json
 
-Now we have two JSON files of interest -- ``config.json`` and 
-``modified_config.json``. The initial file contains only Org1 and Org2 
-material, whereas the "modified" file contains all three Orgs. At this 
+Now we have two JSON files of interest -- ``config.json`` and
+``modified_config.json``. The initial file contains only Org1 and Org2
+material, whereas the "modified" file contains all three Orgs. At this
 point it's simply a matter of re-encoding these two JSON files and calculating
 the delta.
 
@@ -384,7 +382,7 @@ Export the Org2 environment variables:
   # you can issue all of these commands at once
 
   export CORE_PEER_TLS_ENABLED=true
-  export CORE_PEER_LOCALMSPID="Org2MSP"
+  export CORE_PEER_LOCALMSPID=Org2MSP
   export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
   export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
   export CORE_PEER_ADDRESS=localhost:9051
@@ -435,7 +433,7 @@ Export the following environment variables to operate as the Org3 Admin:
   # you can issue all of these commands at once
 
   export CORE_PEER_TLS_ENABLED=true
-  export CORE_PEER_LOCALMSPID="Org3MSP"
+  export CORE_PEER_LOCALMSPID=Org3MSP
   export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt
   export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp
   export CORE_PEER_ADDRESS=localhost:11051
@@ -539,14 +537,9 @@ a chaincode on the channel. If the existing channel members have already committ
 a chaincode definition to the channel, a new organization can start using the
 chaincode by approving the chaincode definition.
 
-.. note:: These instructions use the Fabric chaincode lifecycle introduced in
-          the v2.0 release. If you would like to use the previous lifecycle to
-          install and instantiate a chaincode, visit the v1.4 version of the
-          `Adding an org to a channel tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/channel_update_tutorial.html>`__.
-
 Before we install a chaincode as Org3, we can use the ``./network.sh`` script to
 deploy the Basic chaincode on the channel. Open a new terminal and navigate to the ``test-network`` directory. You can then use
-use the ``test-network`` script to deploy the Basic chaincode:
+the ``test-network`` script to deploy the Basic chaincode:
 
 .. code:: bash
 
@@ -561,7 +554,7 @@ on the ledger. The commands below assume that we are still using the channel
 ``channel1``.
 
 After the chaincode has been to deployed we can use the following steps to use
-invoke Basic chaincode as Org3. Copy and paste the following environment 
+invoke Basic chaincode as Org3. Copy and paste the following environment
 variables in your terminal in order to interact with the network as the Org3
 admin:
 
@@ -570,7 +563,7 @@ admin:
     export PATH=${PWD}/../bin:$PATH
     export FABRIC_CFG_PATH=$PWD/../config/
     export CORE_PEER_TLS_ENABLED=true
-    export CORE_PEER_LOCALMSPID="Org3MSP"
+    export CORE_PEER_LOCALMSPID=Org3MSP
     export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt
     export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp
     export CORE_PEER_ADDRESS=localhost:11051
@@ -579,7 +572,7 @@ The first step is to package the Basic chaincode:
 
 .. code:: bash
 
-    peer lifecycle chaincode package basic.tar.gz --path ../asset-transfer-basic/chaincode-go/ --lang golang --label basic_1
+    peer lifecycle chaincode package basic.tar.gz --path ../asset-transfer-basic/chaincode-go/ --lang golang --label basic_1.0
 
 This command will create a chaincode package named ``basic.tar.gz``, which we can
 install on the Org3 peer. Modify the command accordingly if the channel is running a
@@ -606,7 +599,7 @@ You should see output similar to the following:
 .. code:: bash
 
       Get installed chaincodes on peer:
-      Package ID: basic_1:5443b5b557efd3faece8723883d28d6f7026c0bf12245de109b89c5c4fe64887, Label: basic_1
+      Package ID: basic_1.0:c6a45e2d5563c883869149c3dbd941c22fbe27daa21f0552834f5a53fbb8058a, Label: basic_1.0
 
 We are going to need the package ID in a future command, so lets go ahead and
 save it as an environment variable. Paste the package ID returned by the
@@ -616,7 +609,7 @@ using the package ID returned from your console.
 
 .. code:: bash
 
-   export CC_PACKAGE_ID=basic_1:5443b5b557efd3faece8723883d28d6f7026c0bf12245de109b89c5c4fe64887
+   export CC_PACKAGE_ID=basic_1.0:c6a45e2d5563c883869149c3dbd941c22fbe27daa21f0552834f5a53fbb8058a
 
 Use the following command to approve a definition of the basic chaincode
 for Org3:
@@ -635,7 +628,7 @@ channel.
 .. code:: bash
 
     # use the --name flag to select the chaincode whose definition you want to query
-    peer lifecycle chaincode querycommitted --channelID channel1 --name basic --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+    peer lifecycle chaincode querycommitted --channelID channel1 --name basic
 
 A successful command will return information about the committed definition:
 
@@ -789,7 +782,7 @@ commands to make sure that we are operating as the Org3 admin:
 
   # you can issue all of these commands at once
 
-  export CORE_PEER_LOCALMSPID="Org3MSP"
+  export CORE_PEER_LOCALMSPID=Org3MSP
   export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt
   export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp
   export CORE_PEER_ADDRESS=localhost:11051

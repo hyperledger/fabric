@@ -33,8 +33,8 @@ RUN apt update && apt install -y \
 RUN curl -sL https://go.dev/dl/go${GO_VER}.${TARGETOS}-${TARGETARCH}.tar.gz | tar zxvf - -C /usr/local
 ENV PATH="/usr/local/go/bin:$PATH"
 
-RUN addgroup --gid 500 chaincode
-RUN adduser  --disabled-password --gecos "" --uid 500 --gid 500 --home /home/chaincode chaincode
+RUN     groupadd --gid 500 chaincode
+RUN     useradd -c "" -u 500 -g 500 -d /home/chaincode -m chaincode
 
 RUN mkdir    -p /chaincode/output /chaincode/input
 RUN chown    -R chaincode:chaincode /chaincode

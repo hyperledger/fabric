@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	"github.com/hyperledger/fabric/core/config/configtest"
@@ -165,7 +165,7 @@ func TestDockerBuildOptions(t *testing.T) {
 	require.NoError(t, err, "unexpected error from DockerBuildOptions")
 
 	expectedOpts := util.DockerBuildOptions{
-		Image: "hyperledger/fabric-javaenv:latest",
+		Image: "hyperledger/fabric-javaenv:2.5",
 		Cmd:   "./build.sh",
 	}
 	require.Equal(t, expectedOpts, opts)

@@ -105,7 +105,7 @@ In the course of running this sample, you need to interact with the network as b
 export PATH=${PWD}/../bin:${PWD}:$PATH
 export FABRIC_CFG_PATH=$PWD/../config/
 export CORE_PEER_TLS_ENABLED=true
-export CORE_PEER_LOCALMSPID="Org1MSP"
+export CORE_PEER_LOCALMSPID=Org1MSP
 export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
 export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
 export CORE_PEER_ADDRESS=localhost:7051
@@ -121,7 +121,7 @@ Now that we have one terminal that we can operate as Org1, open a new terminal f
 export PATH=${PWD}/../bin:${PWD}:$PATH
 export FABRIC_CFG_PATH=$PWD/../config/
 export CORE_PEER_TLS_ENABLED=true
-export CORE_PEER_LOCALMSPID="Org2MSP"
+export CORE_PEER_LOCALMSPID=Org2MSP
 export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
 export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
 export CORE_PEER_ADDRESS=localhost:9051
@@ -152,7 +152,6 @@ The hash of the asset properties will become the asset ID and is returned by the
 ```
 export ASSET_ID=d9923f21b770adbc79cbcc47a3aeecc81dc7f030bd129155301ce3932be7fbcc
 ```
-
 We can query the Org1 implicit data collection to see the asset that was created, write the following command by substituting assetId with the id returned from the createAsset function.
 
 ```
@@ -174,7 +173,7 @@ peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.exam
 The command will return the record that the asset is owned by Org1:
 
 ```
-{"object_type":"asset","asset_id":"d9923f21b770adbc79cbcc47a3aeecc81dc7f030bd129155301ce3932be7fbcc","owner_org":"Org1MSP","public_description":"A new asset for Org1MSP"}
+{"objectType":"asset","assetID":"d9923f21b770adbc79cbcc47a3aeecc81dc7f030bd129155301ce3932be7fbcc","ownerOrg":"Org1MSP","publicDescription":"A new asset for Org1MSP"}
 ```
 
 Because the market for assets is hot, Org1 wants to flip this asset and put it up for sale. As the asset owner, Org1 can update the public description to advertise that the asset is for sale. Run the following command to change the asset description:
@@ -192,7 +191,7 @@ peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.exam
 We can now see that the asset is for sale:
 
 ```
-{"object_type":"asset","asset_id":"d9923f21b770adbc79cbcc47a3aeecc81dc7f030bd129155301ce3932be7fbcc","owner_org":"Org1MSP","public_description":"This asset is for sale"}
+ {"objectType":"asset","assetID":"d9923f21b770adbc79cbcc47a3aeecc81dc7f030bd129155301ce3932be7fbcc","ownerOrg":"Org1MSP","publicDescription":"This asset is for sale"}
 ```
 
   ![Org1 creates a asset](./transfer_assets_1.png)  
@@ -210,7 +209,7 @@ peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.exam
 From this query, Org2 learns that the asset is for sale:
 
 ```
-{"object_type":"asset","asset_id":"d9923f21b770adbc79cbcc47a3aeecc81dc7f030bd129155301ce3932be7fbcc","owner_org":"Org1MSP","public_description":"This asset is for sale"}
+{"objectType":"asset","assetID":"d9923f21b770adbc79cbcc47a3aeecc81dc7f030bd129155301ce3932be7fbcc","ownerOrg":"Org1MSP","publicDescription":"This asset is for sale"}
 ```
 
 _In a real chaincode you may want to query for all assets for sale, by using a JSON query, or by creating a different sale key and using a key range query to find the assets currently for sale._
@@ -254,7 +253,7 @@ export ASSET_PROPERTIES=$(echo -n "{\"object_type\":\"asset_properties\",\"color
 peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n secured -c "{\"function\":\"VerifyAssetProperties\",\"Args\":[\"$ASSET_ID\"]}" --transient "{\"asset_properties\":\"$ASSET_PROPERTIES\"}"
 ```
 
-Run the following command to agree to buy asset1 for 100 dollars. As of now, Org2 will agree to a different price than Org1. Don't worry, the two organizations will agree to the same price in a future step. However, we we can use this temporary disagreement as a test of what happens if the buyer and the seller agree to a different price. Org2 needs to use the same `trade_id` as Org1.
+Run the following command to agree to buy asset1 for 100 dollars. As of now, Org2 will agree to a different price than Org1. Don't worry, the two organizations will agree to the same price in a future step. However, we can use this temporary disagreement as a test of what happens if the buyer and the seller agree to a different price. Org2 needs to use the same `trade_id` as Org1.
 
 ```
 export ASSET_PRICE=$(echo -n "{\"asset_id\":\"$ASSET_ID\",\"trade_id\":\"109f4b3c50d7b0df729d299bc6f8e9ef9066971f\",\"price\":100}" | base64 | tr -d \\n)
@@ -311,7 +310,7 @@ peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.exam
 The record now lists Org2 as the asset owner:
 
 ```
-{"object_type":"asset","asset_id":"<asset1>","owner_org":"Org2MSP","public_description":"This asset is for sale"}
+{"objectType":"asset","assetID":"d9923f21b770adbc79cbcc47a3aeecc81dc7f030bd129155301ce3932be7fbcc","ownerOrg":"Org2MSP","publicDescription":"This asset is for sale"}
 ```
 
   ![Org1 transfers the asset to Org2](./transfer_assets_3.png)  

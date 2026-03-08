@@ -11,15 +11,16 @@ import (
 	"hash"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/common/metrics"
 	"github.com/hyperledger/fabric-lib-go/healthz"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
-	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -104,7 +105,7 @@ type PrivateDataConfig struct {
 	// BatchesInterval is the minimum duration (milliseconds) between batches
 	// for converting ineligible missing data entries into eligible entries.
 	BatchesInterval int
-	// MatchBatchSize is the maximum size of batches when converting ineligible
+	// MaxBatchSize is the maximum size of batches when converting ineligible
 	// missing data entries into eligible entries.
 	MaxBatchSize int
 	// PurgeInterval is the number of blocks to wait until purging expired
@@ -195,7 +196,7 @@ type PeerLedger interface {
 	// CommitPvtDataOfOldBlocks commits the private data corresponding to already committed block
 	// If hashes for some of the private data supplied in this function does not match
 	// the corresponding hash present in the block, the unmatched private data is not
-	// committed and instead the mismatch inforation is returned back
+	// committed and instead the mismatch information is returned back
 	CommitPvtDataOfOldBlocks(reconciledPvtdata []*ReconciledPvtdata, unreconciled MissingPvtDataInfo) ([]*PvtdataHashMismatch, error)
 	// GetMissingPvtDataTracker return the MissingPvtDataTracker
 	GetMissingPvtDataTracker() (MissingPvtDataTracker, error)
@@ -283,10 +284,10 @@ type QueryExecutor interface {
 	// GetPrivateDataRangeScanIterator returns an iterator that contains all the key-values between given key ranges.
 	// startKey is included in the results and endKey is excluded. An empty startKey refers to the first available key
 	// and an empty endKey refers to the last available key. For scanning all the keys, both the startKey and the endKey
-	// can be supplied as empty strings. However, a full scan shuold be used judiciously for performance reasons.
+	// can be supplied as empty strings. However, a full scan should be used judiciously for performance reasons.
 	// The returned ResultsIterator contains results of type *KV which is defined in fabric-protos/ledger/queryresult.
 	GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (commonledger.ResultsIterator, error)
-	// ExecuteQuery executes the given query and returns an iterator that contains results of type specific to the underlying data store.
+	// ExecuteQueryOnPrivateData executes the given query and returns an iterator that contains results of type specific to the underlying data store.
 	// Only used for state databases that support query
 	// For a chaincode, the namespace corresponds to the chaincodeId
 	// The returned ResultsIterator contains results of type *KV which is defined in fabric-protos/ledger/queryresult.
@@ -310,7 +311,7 @@ type TxSimulator interface {
 	SetState(namespace string, key string, value []byte) error
 	// DeleteState deletes the given namespace and key
 	DeleteState(namespace string, key string) error
-	// SetMultipleKeys sets the values for multiple keys in a single call
+	// SetStateMultipleKeys sets the values for multiple keys in a single call
 	SetStateMultipleKeys(namespace string, kvs map[string][]byte) error
 	// SetStateMetadata sets the metadata associated with an existing key-tuple <namespace, key>
 	SetStateMetadata(namespace, key string, metadata map[string][]byte) error
@@ -546,6 +547,9 @@ type TxSimulationResults struct {
 
 // GetPubSimulationBytes returns the serialized bytes of public readwrite set
 func (txSim *TxSimulationResults) GetPubSimulationBytes() ([]byte, error) {
+	if txSim.PubSimulationResults == nil {
+		return nil, errors.New("proto: Marshal called with nil")
+	}
 	return proto.Marshal(txSim.PubSimulationResults)
 }
 
@@ -553,6 +557,9 @@ func (txSim *TxSimulationResults) GetPubSimulationBytes() ([]byte, error) {
 func (txSim *TxSimulationResults) GetPvtSimulationBytes() ([]byte, error) {
 	if !txSim.ContainsPvtWrites() {
 		return nil, nil
+	}
+	if txSim.PvtSimulationResults == nil {
+		return nil, errors.New("proto: Marshal called with nil")
 	}
 	return proto.Marshal(txSim.PvtSimulationResults)
 }
@@ -569,7 +576,7 @@ func (txSim *TxSimulationResults) ContainsPvtWrites() bool {
 // the `stateUpdates` parameter passed to the function captures the state changes caused by the block
 // for the namespace. The actual data type of stateUpdates depends on the data model enabled.
 // For instance, for KV data model, the actual type would be proto message
-// `github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset.KVWrite`
+// `github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset.KVWrite`
 // Function `HandleStateUpdates` is expected to be invoked before block is committed and if this
 // function returns an error, the ledger implementation is expected to halt block commit operation
 // and result in a panic.
@@ -778,7 +785,7 @@ type ChaincodeLifecycleEventProvider interface {
 // custom representation, an implementation of a `Processor` should be cautious that the custom representation
 // is used for simulation in an deterministic fashion and should take care of compatibility cross fabric versions.
 // 'initializingLedger' true indicates that either the transaction being processed is from the genesis block or the ledger is
-// synching the state (which could happen during peer startup if the statedb is found to be lagging behind the blockchain).
+// syncing the state (which could happen during peer startup if the statedb is found to be lagging behind the blockchain).
 // In the former case, the transactions processed are expected to be valid and in the latter case, only valid transactions
 // are reprocessed and hence any validation can be skipped.
 type CustomTxProcessor interface {
@@ -810,7 +817,7 @@ type CommitNotification struct {
 }
 
 // CommitNotificationTxInfo contains the details of a transaction that is included in the CommitNotification
-// ChaincodeID will be nil if the transaction is not an endorser transaction. This may or may not be nil if the tranasction is invalid.
+// ChaincodeID will be nil if the transaction is not an endorser transaction. This may or may not be nil if the transaction is invalid.
 // Specifically, it will be nil if the transaction is marked invalid by the validator (e.g., bad payload or insufficient endorements) and it will be non-nil if the transaction is marked invalid for concurrency conflicts.
 // However, it is guaranteed be non-nil if the transaction is a valid endorser transaction.
 type CommitNotificationTxInfo struct {

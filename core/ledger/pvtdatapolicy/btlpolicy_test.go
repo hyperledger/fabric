@@ -10,7 +10,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/mock"
 	"github.com/stretchr/testify/require"

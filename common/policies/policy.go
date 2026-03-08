@@ -10,14 +10,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	mspi "github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -168,7 +168,7 @@ type ChannelPolicyManagerGetter interface {
 	Manager(channelID string) Manager
 }
 
-// PolicyManagerGetterFunc is a function adapater for ChannelPolicyManagerGetter.
+// PolicyManagerGetterFunc is a function adapter for ChannelPolicyManagerGetter.
 type PolicyManagerGetterFunc func(channelID string) Manager
 
 func (p PolicyManagerGetterFunc) Manager(channelID string) Manager { return p(channelID) }
@@ -214,7 +214,7 @@ func NewManagerImpl(path string, providers map[int32]Provider, root *cb.ConfigGr
 			}
 			cPolicy = imp
 		} else {
-			provider, ok := providers[int32(policy.Type)]
+			provider, ok := providers[policy.Type]
 			if !ok {
 				return nil, fmt.Errorf("policy %s at path %s has unknown policy type: %v", policyName, path, policy.Type)
 			}

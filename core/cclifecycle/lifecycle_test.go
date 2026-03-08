@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-lib-go/common/flogging/floggingtest"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/chaincode"
-	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/core/cclifecycle"
 	"github.com/hyperledger/fabric/core/cclifecycle/mocks"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -29,6 +29,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestNewQuery(t *testing.T) {
@@ -448,13 +449,17 @@ func TestMetadata(t *testing.T) {
 	query.On("GetState", "lscc", "cc1").Return(cc1Bytes, nil).Once()
 	query.On("GetState", "lscc", privdata.BuildCollectionKVSKey("cc1")).Return(protoutil.MarshalOrPanic(&peer.CollectionConfigPackage{}), nil).Once()
 	md = m.Metadata("mychannel", "cc1", "col1")
-	require.Equal(t, &chaincode.Metadata{
+	etl := &chaincode.Metadata{
 		Name:              "cc1",
 		Version:           "1.0",
 		Id:                []byte{42},
 		Policy:            []byte{1, 2, 3, 4, 5},
 		CollectionsConfig: &peer.CollectionConfigPackage{},
-	}, md)
+	}
+	require.True(t, proto.Equal(md.CollectionsConfig, etl.CollectionsConfig))
+	md.CollectionsConfig = nil
+	etl.CollectionsConfig = nil
+	require.Equal(t, etl, md)
 	assertLogged(t, recorder, "Retrieved collection config for cc1 from cc1~collection")
 
 	// Scenario VIII: A metadata retrieval is made and the chaincode is in the memory,

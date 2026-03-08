@@ -10,22 +10,21 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-
-	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	dcli "github.com/moby/moby/client"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
 var _ = Describe("rollback, reset, pause, resume, and unjoin peer node commands", func() {
@@ -137,7 +136,7 @@ var _ = Describe("rollback, reset, pause, resume, and unjoin peer node commands"
 		helper.assertPausedChannel(org3peer0)
 
 		By("Checking preResetHeightFile exists for a paused channel that is also rolled back or reset")
-		setup.startBrokerAndOrderer()
+		setup.startOrderer()
 		preResetHeightFile := filepath.Join(setup.network.PeerLedgerDir(org3peer0), "chains/chains", helper.channelID, "__preResetHeight")
 		Expect(preResetHeightFile).To(BeARegularFile())
 
@@ -153,7 +152,7 @@ var _ = Describe("rollback, reset, pause, resume, and unjoin peer node commands"
 		}
 
 		By("Bringing the peers to recent height by starting the orderer")
-		setup.startBrokerAndOrderer()
+		setup.startOrderer()
 		for _, peer := range setup.peers {
 			By("Verifying endorsement is enabled and preResetHeightFile is removed on peer " + peer.ID())
 			helper.waitUntilEndorserEnabled(peer)
@@ -310,18 +309,25 @@ type setup struct {
 	peerProcess    []ifrit.Process
 	orderer        *nwo.Orderer
 	ordererProcess ifrit.Process
-	brokerProcess  ifrit.Process
+	ordererRunner  *ginkgomon.Runner
 }
 
 func initThreeOrgsSetup() *setup {
 	var err error
-	testDir, err := ioutil.TempDir("", "reset-rollback")
+	testDir, err := os.MkdirTemp("", "reset-rollback")
 	Expect(err).NotTo(HaveOccurred())
 
-	client, err := docker.NewClientFromEnv()
+	client, err := dcli.New(dcli.FromEnv)
 	Expect(err).NotTo(HaveOccurred())
 
-	n := nwo.New(nwo.ThreeOrgSolo(), testDir, client, StartPort(), components)
+	config := nwo.ThreeOrgEtcdRaft()
+	// disable all anchor peers
+	for _, p := range config.Peers {
+		for _, pc := range p.Channels {
+			pc.Anchor = false
+		}
+	}
+	n := nwo.New(config, testDir, client, StartPort(), components)
 	n.GenerateConfigTree()
 	n.Bootstrap()
 
@@ -336,18 +342,19 @@ func initThreeOrgsSetup() *setup {
 		network:   n,
 		peers:     peers,
 		channelID: "testchannel",
+		orderer:   n.Orderer("orderer"),
 	}
 
-	setup.startBrokerAndOrderer()
+	setup.startOrderer()
 
 	setup.startPeer(peers[0])
 	setup.startPeer(peers[1])
 	setup.startPeer(peers[2])
 
-	orderer := n.Orderer("orderer")
-	n.CreateAndJoinChannel(orderer, "testchannel")
-	n.UpdateChannelAnchors(orderer, "testchannel")
-	setup.orderer = orderer
+	nwo.JoinOrdererJoinPeersAppChannel(n, "testchannel", setup.orderer, setup.ordererRunner)
+	n.UpdateOrgAnchorPeers(setup.orderer, testchannelID, "Org1", n.PeersInOrg("Org1"))
+	n.UpdateOrgAnchorPeers(setup.orderer, testchannelID, "Org2", n.PeersInOrg("Org2"))
+	n.UpdateOrgAnchorPeers(setup.orderer, testchannelID, "Org3", n.PeersInOrg("Org3"))
 
 	By("verifying membership")
 	setup.network.VerifyMembership(setup.peers, setup.channelID)
@@ -365,10 +372,7 @@ func (s *setup) terminateAllProcess() {
 	s.ordererProcess.Signal(syscall.SIGTERM)
 	Eventually(s.ordererProcess.Wait(), s.network.EventuallyTimeout).Should(Receive())
 	s.ordererProcess = nil
-
-	s.brokerProcess.Signal(syscall.SIGTERM)
-	Eventually(s.brokerProcess.Wait(), s.network.EventuallyTimeout).Should(Receive())
-	s.brokerProcess = nil
+	s.ordererRunner = nil
 
 	for _, p := range s.peerProcess {
 		p.Signal(syscall.SIGTERM)
@@ -398,16 +402,10 @@ func (s *setup) startPeer(peer *nwo.Peer) {
 	s.peerProcess = append(s.peerProcess, peerProcess)
 }
 
-func (s *setup) startBrokerAndOrderer() {
-	brokerRunner := s.network.BrokerGroupRunner()
-	brokerProcess := ifrit.Invoke(brokerRunner)
-	Eventually(brokerProcess.Ready(), s.network.EventuallyTimeout).Should(BeClosed())
-	s.brokerProcess = brokerProcess
-
-	ordererRunner := s.network.OrdererGroupRunner()
-	ordererProcess := ifrit.Invoke(ordererRunner)
-	Eventually(ordererProcess.Ready(), s.network.EventuallyTimeout).Should(BeClosed())
-	s.ordererProcess = ordererProcess
+func (s *setup) startOrderer() {
+	s.ordererRunner = s.network.OrdererRunner(s.orderer)
+	s.ordererProcess = ifrit.Invoke(s.ordererRunner)
+	Eventually(s.ordererProcess.Ready(), s.network.EventuallyTimeout).Should(BeClosed())
 }
 
 type networkHelper struct {

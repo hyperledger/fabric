@@ -33,7 +33,7 @@ type testLedger struct {
 	t *testing.T
 }
 
-// createTestLedgerFromGenesisBlk creates a new ledger and retruns a 'testhelper' for the ledger
+// createTestLedgerFromGenesisBlk creates a new ledger and returns a 'testhelper' for the ledger
 func (env *env) createTestLedgerFromGenesisBlk(id string) *testLedger {
 	t := env.t
 	genesisBlk, err := constructTestGenesisBlock(id)
@@ -87,7 +87,7 @@ func (env *env) createTestLedgerFromSnapshot(snapshotDir string) *testLedger {
 	}
 }
 
-// openTestLedger opens an existing ledger and retruns a 'testhelper' for the ledger
+// openTestLedger opens an existing ledger and returns a 'testhelper' for the ledger
 func (env *env) openTestLedger(id string) *testLedger {
 	t := env.t
 	lgr, err := env.ledgerMgr.OpenLedger(id)

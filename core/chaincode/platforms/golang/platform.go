@@ -12,7 +12,6 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -22,7 +21,7 @@ import (
 	"sort"
 	"strings"
 
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	"github.com/hyperledger/fabric/internal/ccmetadata"
 	"github.com/pkg/errors"
@@ -467,7 +466,7 @@ func findSource(cd *CodeDescriptor) (SourceMap, error) {
 }
 
 func validateMetadata(name, path string) error {
-	contents, err := ioutil.ReadFile(path)
+	contents, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
@@ -483,13 +482,13 @@ func validateMetadata(name, path string) error {
 }
 
 // dist holds go "distribution" information. The full list of distributions can
-// be obtained with `go tool dist list.
+// be obtained with `go tool dist list`.
 type dist struct{ goos, goarch string }
 
-// distributions returns the list of OS and ARCH combinations that we calcluate
+// distributions returns the list of OS and ARCH combinations that we calculate
 // deps for.
 func distributions() []dist {
-	// pre-populate linux architecutures
+	// pre-populate linux architectures
 	dists := map[dist]bool{
 		{goos: "linux", goarch: "amd64"}: true,
 	}

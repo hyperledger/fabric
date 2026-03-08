@@ -9,11 +9,11 @@ package blkstorage
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 func TestBlockSerialization(t *testing.T) {
@@ -21,11 +21,13 @@ func TestBlockSerialization(t *testing.T) {
 
 	// malformed Payload
 	block.Data.Data[1] = protoutil.MarshalOrPanic(&common.Envelope{
-		Payload: []byte("Malformed Payload"),
+		Signature: []byte{1, 2, 3},
+		Payload:   []byte("Malformed Payload"),
 	})
 
 	// empty TxID
 	block.Data.Data[2] = protoutil.MarshalOrPanic(&common.Envelope{
+		Signature: []byte{1, 2, 3},
 		Payload: protoutil.MarshalOrPanic(&common.Payload{
 			Header: &common.Header{
 				ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
@@ -35,8 +37,7 @@ func TestBlockSerialization(t *testing.T) {
 		}),
 	})
 
-	bb, _, err := serializeBlock(block)
-	require.NoError(t, err)
+	bb, _ := serializeBlock(block)
 	deserializedBlock, err := deserializeBlock(bb)
 	require.NoError(t, err)
 	require.Equal(t, block, deserializedBlock)
@@ -85,8 +86,7 @@ func TestSerializedBlockInfo(t *testing.T) {
 }
 
 func testSerializedBlockInfo(t *testing.T, block *common.Block, c *testutilTxIDComputator) {
-	bb, info, err := serializeBlock(block)
-	require.NoError(t, err)
+	bb, info := serializeBlock(block)
 	infoFromBB, err := extractSerializedBlockInfo(bb)
 	require.NoError(t, err)
 	require.Equal(t, info, infoFromBB)
@@ -99,7 +99,10 @@ func testSerializedBlockInfo(t *testing.T, block *common.Block, c *testutilTxIDC
 
 		require.Equal(t, indexTxID, txid)
 		b := bb[indexOffset.offset:]
-		length, num := proto.DecodeVarint(b)
+		length, num := protowire.ConsumeVarint(b)
+		if num < 0 {
+			length, num = 0, 0
+		}
 		txEnvBytesFromBB := b[num : num+int(length)]
 		require.Equal(t, txEnvBytes, txEnvBytesFromBB)
 	}

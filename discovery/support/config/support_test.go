@@ -15,10 +15,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/discovery"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/discovery"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/discovery/support/config"
@@ -28,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/onsi/gomega/gexec"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestMSPIDMapping(t *testing.T) {
@@ -65,6 +65,7 @@ func TestMSPIDMapping(t *testing.T) {
 	for _, org := range ordererConfig.Orderer.Organizations {
 		org.MSPDir = filepath.Join(cryptoConfigDir, "ordererOrganizations", "example.com", "msp")
 		org.Name = randString()
+		org.OrdererEndpoints = []string{"foo:7050", "bar:8050"}
 	}
 
 	// Randomize organization names
@@ -220,7 +221,6 @@ func TestValidateConfig(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			err := config.ValidateConfig(test.config)
 			require.Contains(t, test.containsError, err.Error())

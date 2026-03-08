@@ -12,17 +12,17 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-lib-go/common/flogging/floggingtest"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
-	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/common/policies/mocks"
 	mspi "github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
+	"google.golang.org/protobuf/proto"
 )
 
 //go:generate counterfeiter -o mocks/identity_deserializer.go --fake-name IdentityDeserializer . identityDeserializer
@@ -202,7 +202,7 @@ func TestPrincipalUniqueSet(t *testing.T) {
 	addPrincipal := func(i int) {
 		principalSet = append(principalSet, &msp.MSPPrincipal{
 			PrincipalClassification: msp.MSPPrincipal_Classification(i),
-			Principal:               []byte(fmt.Sprintf("%d", i)),
+			Principal:               fmt.Appendf(nil, "%d", i),
 		})
 	}
 
@@ -230,11 +230,11 @@ func TestPrincipalUniqueSet(t *testing.T) {
 func TestPrincipalSetContainingOnly(t *testing.T) {
 	var principalSets PrincipalSets
 	var principalSet PrincipalSet
-	for j := 0; j < 3; j++ {
-		for i := 0; i < 10; i++ {
+	for j := range 3 {
+		for i := range 10 {
 			principalSet = append(principalSet, &msp.MSPPrincipal{
 				PrincipalClassification: msp.MSPPrincipal_IDENTITY,
-				Principal:               []byte(fmt.Sprintf("%d", j*10+i)),
+				Principal:               fmt.Appendf(nil, "%d", j*10+i),
 			})
 		}
 		principalSets = append(principalSets, principalSet)

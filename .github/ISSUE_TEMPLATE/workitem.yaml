@@ -1,0 +1,31 @@
+# Copyright the Hyperledger Fabric contributors. All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# How to modify this file: https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-issue-forms
+
+name: Work Item
+description: "For Core-Contributors: File a Concrete Work-Item"
+labels: ["workitem"]
+body:
+  - type: textarea
+    id: status
+    attributes:
+      label: Current Status
+      description: Describe the current status.
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: Describe what your goal is.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solution
+      description: Describe your Solution (or multiple solution paths )
+    validations:
+      required: true

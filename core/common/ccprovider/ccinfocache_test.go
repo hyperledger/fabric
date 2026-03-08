@@ -20,15 +20,14 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func getDepSpec(name string, path string, version string, initArgs [][]byte) (*peer.ChaincodeDeploymentSpec, error) {
@@ -208,13 +207,11 @@ func TestGetInstalledChaincodesErrorPaths(t *testing.T) {
 	defer SetChaincodesPath(cip)
 
 	// Create a temp dir and remove it at the end
-	dir, err := ioutil.TempDir(os.TempDir(), "chaincodes")
-	require.NoError(t, err)
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	// Set the above created directory as the chaincode install path
 	SetChaincodesPath(dir)
-	err = ioutil.WriteFile(filepath.Join(dir, "idontexist.1.0"), []byte("test"), 0o777)
+	err := os.WriteFile(filepath.Join(dir, "idontexist.1.0"), []byte("test"), 0o777)
 	require.NoError(t, err)
 	resp, err := GetInstalledChaincodes()
 	require.NoError(t, err)
@@ -228,11 +225,7 @@ func TestChaincodePackageExists(t *testing.T) {
 }
 
 func TestSetChaincodesPath(t *testing.T) {
-	dir, err := ioutil.TempDir(os.TempDir(), "setchaincodes")
-	if err != nil {
-		require.Fail(t, err.Error(), "Unable to create temp dir")
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 	t.Logf("created temp dir %s", dir)
 
 	// Get the existing chaincode install path value and set it
@@ -240,7 +233,7 @@ func TestSetChaincodesPath(t *testing.T) {
 	cip := chaincodeInstallPath
 	defer SetChaincodesPath(cip)
 
-	f, err := ioutil.TempFile(dir, "chaincodes")
+	f, err := os.CreateTemp(dir, "chaincodes")
 	require.NoError(t, err)
 	require.Panics(t, func() {
 		SetChaincodesPath(f.Name())

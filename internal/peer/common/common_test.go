@@ -8,7 +8,6 @@ package common_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -16,13 +15,12 @@ import (
 	"testing"
 	"time"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
@@ -39,8 +37,7 @@ import (
 )
 
 func TestInitConfig(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	type args struct {
 		cmdRoot string
@@ -84,7 +81,7 @@ func TestInitCryptoMissingDir(t *testing.T) {
 
 func TestInitCryptoFileNotDir(t *testing.T) {
 	file := path.Join(os.TempDir(), util.GenerateUUID())
-	err := ioutil.WriteFile(file, []byte{}, 0o644)
+	err := os.WriteFile(file, []byte{}, 0o644)
 	require.Nil(t, err, "Failed to create test file")
 	defer os.Remove(file)
 	err = common.InitCrypto(file, "SampleOrg", msp.ProviderTypeToString(msp.FABRIC))
@@ -109,9 +106,8 @@ func TestSetBCCSPKeystorePath(t *testing.T) {
 	require.NoError(t, err)
 
 	keystorePath := "/msp/keystore"
-	defer os.Unsetenv("FABRIC_CFG_PATH")
 
-	os.Setenv("FABRIC_CFG_PATH", cfgPath)
+	t.Setenv("FABRIC_CFG_PATH", cfgPath)
 	viper.Reset()
 	err = common.InitConfig("notset")
 	require.NoError(t, err)
@@ -205,8 +201,7 @@ func TestGetDefaultSigner(t *testing.T) {
 }
 
 func TestInitCmd(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 	defer viper.Reset()
 
 	// test that InitCmd doesn't remove existing loggers from the logger levels map
@@ -219,19 +214,16 @@ func TestInitCmd(t *testing.T) {
 	flogging.ActivateSpec("test.test2=warn")
 	require.Equal(t, "warn", flogging.LoggerLevel("test.test2"))
 
-	origEnvValue := os.Getenv("FABRIC_LOGGING_SPEC")
-	os.Setenv("FABRIC_LOGGING_SPEC", "chaincode=debug:test.test2=fatal:abc=error")
+	t.Setenv("FABRIC_LOGGING_SPEC", "chaincode=debug:test.test2=fatal:abc=error")
 	common.InitCmd(&cobra.Command{}, nil)
 	require.Equal(t, "debug", flogging.LoggerLevel("chaincode"))
 	require.Equal(t, "info", flogging.LoggerLevel("test"))
 	require.Equal(t, "fatal", flogging.LoggerLevel("test.test2"))
 	require.Equal(t, "error", flogging.LoggerLevel("abc"))
-	os.Setenv("FABRIC_LOGGING_SPEC", origEnvValue)
 }
 
 func TestInitCmdWithoutInitCrypto(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 	defer viper.Reset()
 
 	peerCmd := &cobra.Command{
@@ -261,7 +253,7 @@ func TestInitCmdWithoutInitCrypto(t *testing.T) {
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)
 	dir := os.TempDir() + "/" + util.GenerateUUID()
-	os.Setenv("CORE_PEER_MSPCONFIGPATH", dir)
+	t.Setenv("CORE_PEER_MSPCONFIGPATH", dir)
 
 	common.InitCmd(packageCmd, nil)
 }
@@ -274,16 +266,17 @@ func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 
-	t.Run("green-path", func(t *testing.T) {
-		profile := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+	t.Run("green-path V3", func(t *testing.T) {
+		tlsCA, err := tlsgen.NewCA()
+		require.NoError(t, err)
+		certDir := t.TempDir()
+		profile := genesisconfig.Load(genesisconfig.SampleAppChannelEtcdRaftProfile, configtest.GetDevConfigDir())
+		generateCertificates(profile, tlsCA, certDir)
+		t.Logf("%+v", profile.Orderer.Organizations[0])
+
 		channelGroup, err := encoder.NewChannelGroup(profile)
 		require.NoError(t, err)
 		channelConfig := &cb.Config{ChannelGroup: channelGroup}
-
-		ordererAddresses := channelconfig.OrdererAddressesValue([]string{"order-1-endpoint", "order-2-end-point"})
-		channelConfig.ChannelGroup.Values[ordererAddresses.Key()] = &cb.ConfigValue{
-			Value: protoutil.MarshalOrPanic(ordererAddresses.Value()),
-		}
 
 		mockEndorserClient := common.GetMockEndorserClient(
 			&pb.ProposalResponse{
@@ -295,7 +288,65 @@ func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
 
 		ordererEndpoints, err := common.GetOrdererEndpointOfChain("test-channel", signer, mockEndorserClient, cryptoProvider)
 		require.NoError(t, err)
-		require.Equal(t, []string{"order-1-endpoint", "order-2-end-point"}, ordererEndpoints)
+		require.Equal(t, []string{"127.0.0.1:7050", "127.0.0.1:7051", "127.0.0.1:7052"}, ordererEndpoints)
+	})
+
+	t.Run("green-path V2 ignores global addresses", func(t *testing.T) {
+		tlsCA, err := tlsgen.NewCA()
+		require.NoError(t, err)
+		certDir := t.TempDir()
+		profile := genesisconfig.Load(genesisconfig.SampleAppChannelEtcdRaftProfile, configtest.GetDevConfigDir())
+		profile.Capabilities = map[string]bool{"V2_0": true}
+		profile.Orderer.Addresses = []string{"globalAddr:666"} // should be ignored
+		generateCertificates(profile, tlsCA, certDir)
+
+		t.Logf("%+v", profile.Orderer.Addresses)
+		t.Logf("%+v", profile.Orderer.Organizations[0])
+
+		channelGroup, err := encoder.NewChannelGroup(profile)
+		require.NoError(t, err)
+		channelConfig := &cb.Config{ChannelGroup: channelGroup}
+
+		mockEndorserClient := common.GetMockEndorserClient(
+			&pb.ProposalResponse{
+				Response:    &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(channelConfig)},
+				Endorsement: &pb.Endorsement{},
+			},
+			nil,
+		)
+
+		ordererEndpoints, err := common.GetOrdererEndpointOfChain("test-channel", signer, mockEndorserClient, cryptoProvider)
+		require.NoError(t, err)
+		require.Equal(t, []string{"127.0.0.1:7050", "127.0.0.1:7051", "127.0.0.1:7052"}, ordererEndpoints)
+	})
+
+	t.Run("green-path V2 takes global addresses", func(t *testing.T) {
+		tlsCA, err := tlsgen.NewCA()
+		require.NoError(t, err)
+		certDir := t.TempDir()
+		profile := genesisconfig.Load(genesisconfig.SampleAppChannelEtcdRaftProfile, configtest.GetDevConfigDir())
+		profile.Capabilities = map[string]bool{"V2_0": true}
+		profile.Orderer.Addresses = []string{"globalAddr:666"}  // should be taken
+		profile.Orderer.Organizations[0].OrdererEndpoints = nil // because per-org are missing
+		generateCertificates(profile, tlsCA, certDir)
+
+		t.Logf("%+v", profile.Orderer.Organizations[0])
+
+		channelGroup, err := encoder.NewChannelGroup(profile)
+		require.NoError(t, err)
+		channelConfig := &cb.Config{ChannelGroup: channelGroup}
+
+		mockEndorserClient := common.GetMockEndorserClient(
+			&pb.ProposalResponse{
+				Response:    &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(channelConfig)},
+				Endorsement: &pb.Endorsement{},
+			},
+			nil,
+		)
+
+		ordererEndpoints, err := common.GetOrdererEndpointOfChain("test-channel", signer, mockEndorserClient, cryptoProvider)
+		require.NoError(t, err)
+		require.Equal(t, []string{"globalAddr:666"}, ordererEndpoints)
 	})
 
 	t.Run("error-invoking-CSCC", func(t *testing.T) {
@@ -355,9 +406,7 @@ func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
 }
 
 func TestConfigFromEnv(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "peer-clientcert")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 
 	// peer client config
 	address, clientConfig, err := common.ConfigFromEnv("peer")
@@ -393,13 +442,13 @@ func TestConfigFromEnv(t *testing.T) {
 
 	org1CA, err := tlsgen.NewCA()
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tempdir, "org1-ca-cert.pem"), org1CA.CertBytes(), 0o644)
+	err = os.WriteFile(filepath.Join(tempdir, "org1-ca-cert.pem"), org1CA.CertBytes(), 0o644)
 	require.NoError(t, err)
 	org1ServerKP, err := org1CA.NewServerCertKeyPair("localhost")
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tempdir, "org1-peer1-cert.pem"), org1ServerKP.Cert, 0o644)
+	err = os.WriteFile(filepath.Join(tempdir, "org1-peer1-cert.pem"), org1ServerKP.Cert, 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tempdir, "org1-peer1-key.pem"), org1ServerKP.Key, 0o600)
+	err = os.WriteFile(filepath.Join(tempdir, "org1-peer1-key.pem"), org1ServerKP.Key, 0o600)
 	require.NoError(t, err)
 
 	viper.Set("peer.tls.enabled", true)
@@ -412,4 +461,35 @@ func TestConfigFromEnv(t *testing.T) {
 	require.Equal(t, 1, len(clientConfig.SecOpts.ServerRootCAs), "ClientConfig.SecOpts.ServerRootCAs should contain 1 entries")
 	require.Equal(t, org1ServerKP.Key, clientConfig.SecOpts.Key, "Client.SecOpts.Key should be set to configured key")
 	require.Equal(t, org1ServerKP.Cert, clientConfig.SecOpts.Certificate, "Client.SecOpts.Certificate shoulbe bet set to configured certificate")
+}
+
+// TODO this pattern repeats itself in several places. Make it common in the 'genesisconfig' package to easily create
+// Raft genesis blocks
+func generateCertificates(confAppRaft *genesisconfig.Profile, tlsCA tlsgen.CA, certDir string) error {
+	for i, c := range confAppRaft.Orderer.EtcdRaft.Consenters {
+		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)
+		if err != nil {
+			return err
+		}
+		srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", i))
+		err = os.WriteFile(srvP, srvC.Cert, 0o644)
+		if err != nil {
+			return err
+		}
+
+		clnC, err := tlsCA.NewClientCertKeyPair()
+		if err != nil {
+			return err
+		}
+		clnP := path.Join(certDir, fmt.Sprintf("client%d.crt", i))
+		err = os.WriteFile(clnP, clnC.Cert, 0o644)
+		if err != nil {
+			return err
+		}
+
+		c.ServerTlsCert = []byte(srvP)
+		c.ClientTlsCert = []byte(clnP)
+	}
+
+	return nil
 }

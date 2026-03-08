@@ -11,51 +11,70 @@ import (
 	"math"
 	"testing"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/orderer/common/channelparticipation"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestValidateJoinBlock(t *testing.T) {
+	validJoinBlock := blockWithGroups(
+		map[string]*cb.ConfigGroup{
+			"Application": {},
+		},
+		"my-channel",
+	)
+
 	tests := []struct {
-		testName             string
-		joinBlock            *cb.Block
-		expectedChannelID    string
-		expectedIsAppChannel bool
-		expectedErr          error
+		testName          string
+		joinBlock         *cb.Block
+		expectedChannelID string
+		expectedErr       error
 	}{
 		{
-			testName: "Valid system channel join block",
+			testName:          "Valid application channel join block",
+			joinBlock:         validJoinBlock,
+			expectedChannelID: "my-channel",
+			expectedErr:       nil,
+		},
+		{
+			testName: "Invalid block data hash",
+			joinBlock: func() *cb.Block {
+				b := proto.Clone(validJoinBlock).(*cb.Block)
+				b.Header.DataHash = []byte("bogus")
+				return b
+			}(),
+			expectedChannelID: "",
+			expectedErr:       errors.New("invalid block: Header.DataHash is different from Hash(block.Data)"),
+		},
+		{
+			testName: "Invalid block metadata",
+			joinBlock: func() *cb.Block {
+				b := proto.Clone(validJoinBlock).(*cb.Block)
+				b.Metadata = nil
+				return b
+			}(),
+			expectedChannelID: "",
+			expectedErr:       errors.New("invalid block: does not have metadata"),
+		},
+		{
+			testName: "Not supported: system channel join block",
 			joinBlock: blockWithGroups(
 				map[string]*cb.ConfigGroup{
 					"Consortiums": {},
 				},
 				"my-channel",
 			),
-			expectedChannelID:    "my-channel",
-			expectedIsAppChannel: false,
-			expectedErr:          nil,
+			expectedChannelID: "",
+			expectedErr:       errors.New("invalid config: contains consortiums: system channel not supported"),
 		},
 		{
-			testName: "Valid application channel join block",
-			joinBlock: blockWithGroups(
-				map[string]*cb.ConfigGroup{
-					"Application": {},
-				},
-				"my-channel",
-			),
-			expectedChannelID:    "my-channel",
-			expectedIsAppChannel: true,
-			expectedErr:          nil,
-		},
-		{
-			testName:             "Join block not a config block",
-			joinBlock:            nonConfigBlock(),
-			expectedChannelID:    "",
-			expectedIsAppChannel: false,
-			expectedErr:          errors.New("block is not a config block"),
+			testName:          "Join block not a config block",
+			joinBlock:         nonConfigBlock(),
+			expectedChannelID: "",
+			expectedErr:       errors.New("block is not a config block"),
 		},
 		{
 			testName: "block ChannelID not valid",
@@ -65,9 +84,8 @@ func TestValidateJoinBlock(t *testing.T) {
 				},
 				"My-Channel",
 			),
-			expectedChannelID:    "",
-			expectedIsAppChannel: false,
-			expectedErr:          errors.New("initializing configtx manager failed: bad channel ID: 'My-Channel' contains illegal characters"),
+			expectedChannelID: "",
+			expectedErr:       errors.New("initializing configtx manager failed: bad channel ID: 'My-Channel' contains illegal characters"),
 		},
 		{
 			testName: "Invalid bundle",
@@ -77,9 +95,8 @@ func TestValidateJoinBlock(t *testing.T) {
 				},
 				"my-channel",
 			),
-			expectedChannelID:    "",
-			expectedIsAppChannel: false,
-			expectedErr:          errors.New("initializing channelconfig failed: Disallowed channel group: "),
+			expectedChannelID: "",
+			expectedErr:       errors.New("initializing channelconfig failed: Disallowed channel group: "),
 		},
 		{
 			testName: "Join block has no application or consortiums group",
@@ -87,17 +104,111 @@ func TestValidateJoinBlock(t *testing.T) {
 				map[string]*cb.ConfigGroup{},
 				"my-channel",
 			),
-			expectedChannelID:    "",
-			expectedIsAppChannel: false,
-			expectedErr:          errors.New("invalid config: must have at least one of application or consortiums"),
+			expectedChannelID: "",
+			expectedErr:       errors.New("invalid config: must contain application config"),
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
-			channelID, isAppChannel, err := channelparticipation.ValidateJoinBlock(test.joinBlock)
+			channelID, err := channelparticipation.ValidateJoinBlock(test.joinBlock)
 			require.Equal(t, test.expectedChannelID, channelID)
-			require.Equal(t, test.expectedIsAppChannel, isAppChannel)
+			if test.expectedErr != nil {
+				require.EqualError(t, err, test.expectedErr.Error())
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateUpdateEnvelope(t *testing.T) {
+	validUpdateEnvelope := configUpdateEnvelopeWithGroups("my-channel")
+
+	tests := []struct {
+		testName            string
+		updateEnvelopeBlock *cb.Envelope
+		expectedChannelID   string
+		expectedErr         error
+	}{
+		{
+			testName:            "Valid application channel update envelope",
+			updateEnvelopeBlock: validUpdateEnvelope,
+			expectedChannelID:   "my-channel",
+			expectedErr:         nil,
+		},
+		{
+			testName:            "Update envelope not a config",
+			updateEnvelopeBlock: nonConfigEnvelope(),
+			expectedChannelID:   "",
+			expectedErr:         errors.New("bad type"),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.testName, func(t *testing.T) {
+			channelID, err := channelparticipation.ValidateUpdateConfigEnvelope(test.updateEnvelopeBlock)
+			require.Equal(t, test.expectedChannelID, channelID)
+			if test.expectedErr != nil {
+				require.EqualError(t, err, test.expectedErr.Error())
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateFetchBlockID(t *testing.T) {
+	tests := []struct {
+		testName    string
+		blockID     string
+		expectedErr error
+	}{
+		{
+			testName:    "block ID is empty",
+			blockID:     "",
+			expectedErr: errors.New("block ID illegal, cannot be empty"),
+		},
+		{
+			testName:    "block ID is oldest",
+			blockID:     "oldest",
+			expectedErr: nil,
+		},
+		{
+			testName:    "block ID is newest",
+			blockID:     "newest",
+			expectedErr: nil,
+		},
+		{
+			testName:    "block ID is config",
+			blockID:     "config",
+			expectedErr: nil,
+		},
+		{
+			testName:    "block ID is 0",
+			blockID:     "0",
+			expectedErr: nil,
+		},
+		{
+			testName:    "block ID is 99",
+			blockID:     "99",
+			expectedErr: nil,
+		},
+		{
+			testName:    "block ID is blabla",
+			blockID:     "blabla",
+			expectedErr: errors.New("'blabla' not equal <newest|oldest|config|(number)>"),
+		},
+		{
+			testName:    "block ID is 1n0",
+			blockID:     "1n0",
+			expectedErr: errors.New("'1n0' not equal <newest|oldest|config|(number)>"),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.testName, func(t *testing.T) {
+			err := channelparticipation.ValidateFetchBlockID(test.blockID)
 			if test.expectedErr != nil {
 				require.EqualError(t, err, test.expectedErr.Error())
 			} else {
@@ -108,62 +219,82 @@ func TestValidateJoinBlock(t *testing.T) {
 }
 
 func blockWithGroups(groups map[string]*cb.ConfigGroup, channelID string) *cb.Block {
-	return &cb.Block{
-		Data: &cb.BlockData{
-			Data: [][]byte{
-				protoutil.MarshalOrPanic(&cb.Envelope{
-					Payload: protoutil.MarshalOrPanic(&cb.Payload{
-						Data: protoutil.MarshalOrPanic(&cb.ConfigEnvelope{
-							Config: &cb.Config{
-								ChannelGroup: &cb.ConfigGroup{
-									Groups: groups,
-									Values: map[string]*cb.ConfigValue{
-										"HashingAlgorithm": {
-											Value: protoutil.MarshalOrPanic(&cb.HashingAlgorithm{
-												Name: bccsp.SHA256,
-											}),
-										},
-										"BlockDataHashingStructure": {
-											Value: protoutil.MarshalOrPanic(&cb.BlockDataHashingStructure{
-												Width: math.MaxUint32,
-											}),
-										},
-										"OrdererAddresses": {
-											Value: protoutil.MarshalOrPanic(&cb.OrdererAddresses{
-												Addresses: []string{"localhost"},
-											}),
-										},
+	block := protoutil.NewBlock(0, []byte{})
+	block.Data = &cb.BlockData{
+		Data: [][]byte{
+			protoutil.MarshalOrPanic(&cb.Envelope{
+				Payload: protoutil.MarshalOrPanic(&cb.Payload{
+					Data: protoutil.MarshalOrPanic(&cb.ConfigEnvelope{
+						Config: &cb.Config{
+							ChannelGroup: &cb.ConfigGroup{
+								Groups: groups,
+								Values: map[string]*cb.ConfigValue{
+									"HashingAlgorithm": {
+										Value: protoutil.MarshalOrPanic(&cb.HashingAlgorithm{
+											Name: bccsp.SHA256,
+										}),
+									},
+									"BlockDataHashingStructure": {
+										Value: protoutil.MarshalOrPanic(&cb.BlockDataHashingStructure{
+											Width: math.MaxUint32,
+										}),
+									},
+									"OrdererAddresses": {
+										Value: protoutil.MarshalOrPanic(&cb.OrdererAddresses{
+											Addresses: []string{"localhost"},
+										}),
 									},
 								},
 							},
-						}),
-						Header: &cb.Header{
-							ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
-								Type:      int32(cb.HeaderType_CONFIG),
-								ChannelId: channelID,
-							}),
 						},
 					}),
+					Header: &cb.Header{
+						ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
+							Type:      int32(cb.HeaderType_CONFIG),
+							ChannelId: channelID,
+						}),
+					},
 				}),
-			},
+			}),
 		},
 	}
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
+	protoutil.InitBlockMetadata(block)
+
+	return block
 }
 
 func nonConfigBlock() *cb.Block {
-	return &cb.Block{
-		Data: &cb.BlockData{
-			Data: [][]byte{
-				protoutil.MarshalOrPanic(&cb.Envelope{
-					Payload: protoutil.MarshalOrPanic(&cb.Payload{
-						Header: &cb.Header{
-							ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
-								Type: int32(cb.HeaderType_ENDORSER_TRANSACTION),
-							}),
-						},
-					}),
+	block := protoutil.NewBlock(0, []byte{})
+	block.Data = &cb.BlockData{
+		Data: [][]byte{
+			protoutil.MarshalOrPanic(&cb.Envelope{
+				Payload: protoutil.MarshalOrPanic(&cb.Payload{
+					Header: &cb.Header{
+						ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
+							Type: int32(cb.HeaderType_ENDORSER_TRANSACTION),
+						}),
+					},
 				}),
-			},
+			}),
 		},
 	}
+	block.Header.DataHash, _ = protoutil.BlockDataHash(block.Data)
+	protoutil.InitBlockMetadata(block)
+
+	return block
+}
+
+func nonConfigEnvelope() *cb.Envelope {
+	data := &cb.Envelope{
+		Payload: protoutil.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
+					Type: int32(cb.HeaderType_ENDORSER_TRANSACTION),
+				}),
+			},
+		}),
+	}
+
+	return data
 }

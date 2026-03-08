@@ -29,15 +29,6 @@ A network operator would use the Fabric lifecycle to perform the following tasks
 - [Install and define a chaincode](#install-and-define-a-chaincode)
 - [Upgrade a chaincode](#upgrade-a-chaincode)
 - [Deployment Scenarios](#deployment-scenarios)
-- [Migrate to the new Fabric lifecycle](#migrate-to-the-new-fabric-lifecycle)
-
-You can use the Fabric chaincode lifecycle by creating a new channel and setting
-the channel capabilities to V2_0. You will not be able to use the old lifecycle
-to install, instantiate, or update a chaincode on channels with V2_0 capabilities
-enabled. However, you can still invoke chaincode installed using the previous
-lifecycle model after you enable V2_0 capabilities. If you are upgrading from a
-v1.4.x network and need to edit your channel configurations to enable the new
-lifecycle, check out [Enabling the new chaincode lifecycle](./enable_cc_lifecycle.html).
 
 ## Install and define a chaincode
 
@@ -64,20 +55,20 @@ every organization on a channel needs to complete each step.
 
 This topic provides a detailed overview of the operations of the Fabric
 chaincode lifecycle rather than the specific commands. To learn more about how
-to use the Fabric lifecycle using the Peer CLI, see the
+to use the Fabric lifecycle using the peer CLI, see the
 [Deploying a smart contract to a channel tutorial](deploy_chaincode.html)
 or the [peer lifecycle command reference](commands/peerlifecycle.html).
 
 ### Step One: Packaging the smart contract
 
 Chaincode needs to be packaged in a tar file before it can be installed on your
-peers. You can package a chaincode using the Fabric peer binaries, the Node
-Fabric SDK, or a third party tool such as GNU tar. When you create a chaincode
+peers. You can package a chaincode using the Fabric peer binary
+or a third party tool such as GNU tar. When you create a chaincode
 package, you need to provide a chaincode package label to create a succinct and
 human readable description of the package.
 
 If you use a third party tool to package the chaincode, the resulting file needs
-to be in the format below. The Fabric peer binaries and the Fabric SDKs will
+to be in the format below. The Fabric peer binary will
 automatically create a file in this format.
 - The chaincode needs to be packaged in a tar file, ending with a `.tar.gz` file
   extension.
@@ -100,10 +91,21 @@ label.*
 ### Step Two: Install the chaincode on your peers
 
 You need to install the chaincode package on every peer that will execute and
-endorse transactions. Whether using the CLI or an SDK, you need to complete this
-step using your **Peer Administrator**. Your peer will build the chaincode
+endorse transactions. You need to complete this step with the peer CLI using the
+credentials of the **Peer Administrator**. Your peer will build the chaincode
 after the chaincode is installed, and return a build error if there is a problem
-with your chaincode. It is recommended that organizations only package a chaincode
+with your chaincode.
+
+To build chaincode, the peer by default will utilize an internal Docker builder with
+support for Go, Java, and Node.js chaincodes. The docker image that is used for building
+each language is specified in the peer's `core.yaml` configuration in the `chaincode` section.
+The Go docker image version typically aligns with the Fabric version,
+while the Java and Node.js docker image versions are managed by the respective Fabric chaincode projects.
+
+In a production environment, an external chaincode builder is often utilized to provide more control
+of the build process, see the [External Builders and Launchers](cc_launcher.html) topic for more details.
+
+It is recommended that organizations only package a chaincode
 once, and then install the same package on every peer that belongs to their org.
 If a channel wants to ensure that each organization is running the same chaincode,
 one organization can package a chaincode and send it to other channel members
@@ -114,7 +116,7 @@ is the package label combined with a hash of the package. This package
 identifier is used to associate a chaincode package installed on your peers with
 a chaincode definition approved by your organization. **Save the identifier**
 for next step. You can also find the package identifier by querying the packages
-installed on your peer using the Peer CLI.
+installed on your peer using the peer CLI.
 
   ![Installing the chaincode](lifecycle/Lifecycle-install.png)
 
@@ -476,15 +478,9 @@ different chaincode definitions. As a result, both peers have two chaincode
 containers running on their peers. MYCC1 has an endorsement policy of 1 out of 2,
 while MYCC2 has an endorsement policy of 2 out of 2.*
 
-## Migrate to the new Fabric lifecycle
-
-For information about migrating to the new lifecycle, check out [Considerations for getting to v2.0](./upgrade_to_newest_version.html#chaincode-lifecycle).
-
-If you need to update your channel configurations to enable the new lifecycle, check out [Enabling the new chaincode lifecycle](./enable_cc_lifecycle.html).
-
 ## More information
 
-You can watch video below to learn more about the motivation of the new Fabric chaincode lifecycle and how it is implemented.
+You can watch video below to learn more about the motivation of the Fabric chaincode lifecycle and how it is implemented.
 
 <iframe class="embed-responsive-item" id="youtubeplayer2" title="Starter Plan videos" type="text/html" width="560" height="315" src="https://www.youtube.com/embed/XvEMDScFU2M" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen> </iframe>
 

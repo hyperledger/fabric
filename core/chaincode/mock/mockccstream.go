@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 )
 
 // MockResponseSet is used for processing CC to Peer comm
@@ -36,7 +36,7 @@ type MockResponseSet struct {
 // and response to send (optional)
 type MockResponse struct {
 	RecvMsg *pb.ChaincodeMessage
-	RespMsg interface{}
+	RespMsg any
 }
 
 // MockCCComm implements the mock communication between chaincode and peer

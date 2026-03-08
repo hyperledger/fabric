@@ -8,19 +8,19 @@ package chaincode_test
 
 import (
 	"encoding/json"
+	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	lb "github.com/hyperledger/fabric-protos-go-apiv2/peer/lifecycle"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode/mock"
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ = Describe("CheckCommitReadiness", func() {
@@ -40,6 +40,11 @@ var _ = Describe("CheckCommitReadiness", func() {
 					"seemsfinetome":  true,
 					"well...ok":      true,
 					"absolutely-not": false,
+				},
+				Mismatches: map[string]*lb.CheckCommitReadinessResult_Mismatches{
+					"absolutely-not": {
+						Items: []string{"ChaincodeParameters", "EndorsementInfo", "ValidationInfo", "Collections"},
+					},
 				},
 			}
 			mockResultBytes, err := proto.Marshal(mockResult)
@@ -81,6 +86,21 @@ var _ = Describe("CheckCommitReadiness", func() {
 			Eventually(commitReadinessChecker.Writer).Should(gbytes.Say("well...ok: true"))
 		})
 
+		Context("when inspect is enabled", func() {
+			BeforeEach(func() {
+				commitReadinessChecker.Input.InspectionEnabled = true
+			})
+
+			It("checks whether a chaincode definition is ready to commit and writes the output as human readable plain-text with mismatch details", func() {
+				err := commitReadinessChecker.ReadinessCheck()
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(commitReadinessChecker.Writer).Should(gbytes.Say("Chaincode definition for chaincode 'testcc', version '1.0', sequence '1' on channel 'testchannel' approval status by org"))
+				Eventually(commitReadinessChecker.Writer).Should(gbytes.Say("absolutely-not: false \\(mismatch: \\[ChaincodeParameters, EndorsementInfo, ValidationInfo, Collections\\]\\)"))
+				Eventually(commitReadinessChecker.Writer).Should(gbytes.Say("seemsfinetome: true"))
+				Eventually(commitReadinessChecker.Writer).Should(gbytes.Say("well...ok: true"))
+			})
+		})
+
 		Context("when JSON-formatted output is requested", func() {
 			BeforeEach(func() {
 				commitReadinessChecker.Input.OutputFormat = "json"
@@ -99,6 +119,37 @@ var _ = Describe("CheckCommitReadiness", func() {
 				json, err := json.MarshalIndent(expectedOutput, "", "\t")
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(commitReadinessChecker.Writer).Should(gbytes.Say(string(json)))
+			})
+
+			Context("when inspect is enabled", func() {
+				BeforeEach(func() {
+					commitReadinessChecker.Input.InspectionEnabled = true
+				})
+
+				It("checks whether a chaincode definition is ready to commit and writes the output as JSON with mismatch details", func() {
+					err := commitReadinessChecker.ReadinessCheck()
+					Expect(err).NotTo(HaveOccurred())
+					expectedOutput := &lb.CheckCommitReadinessResult{
+						Approvals: map[string]bool{
+							"absolutely-not": false,
+							"well...ok":      true,
+							"seemsfinetome":  true,
+						},
+						Mismatches: map[string]*lb.CheckCommitReadinessResult_Mismatches{
+							"absolutely-not": {
+								Items: []string{
+									"ChaincodeParameters (Check the Sequence, ChaincodeName)",
+									"EndorsementInfo (Check the Version, InitRequired, EndorsementPlugin)",
+									"ValidationInfo (Check the ValidationParameter, ValidationPlugin)",
+									"Collections (Check the Collections)",
+								},
+							},
+						},
+					}
+					json, err := json.MarshalIndent(expectedOutput, "", "\t")
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(commitReadinessChecker.Writer).Should(gbytes.Say(fmt.Sprintf(`\Q%s\E`, string(json))))
+				})
 			})
 		})
 

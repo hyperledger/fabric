@@ -8,31 +8,28 @@ package node
 
 import (
 	"bytes"
-	"io/ioutil"
-	"os"
 	"strconv"
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/go-viper/mapstructure/v2"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/core/handlers/library"
 	"github.com/hyperledger/fabric/core/testutil"
 	"github.com/hyperledger/fabric/internal/peer/node/mock"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
-	"github.com/mitchellh/mapstructure"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func TestStartCmd(t *testing.T) {
 	defer viper.Reset()
 	g := NewGomegaWithT(t)
 
-	tempDir, err := ioutil.TempDir("", "startcmd")
-	g.Expect(err).NotTo(HaveOccurred())
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	viper.Set("peer.address", "localhost:6051")
 	viper.Set("peer.listenAddress", "0.0.0.0:6051")
@@ -50,7 +47,7 @@ func TestStartCmd(t *testing.T) {
 	}()
 
 	grpcProbe := func(addr string) bool {
-		c, err := grpc.Dial(addr, grpc.WithBlock(), grpc.WithInsecure())
+		c, err := grpc.Dial(addr, grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err == nil {
 			c.Close()
 			return true
@@ -155,10 +152,10 @@ func TestComputeChaincodeEndpoint(t *testing.T) {
 }
 
 func TestGetDockerHostConfig(t *testing.T) {
-	testutil.SetupTestConfig()
+	testutil.SetupTestConfig(t)
 	hostConfig := getDockerHostConfig()
 	require.NotNil(t, hostConfig)
-	require.Equal(t, "host", hostConfig.NetworkMode)
+	require.Equal(t, "host", hostConfig.NetworkMode.NetworkName())
 	require.Equal(t, "json-file", hostConfig.LogConfig.Type)
 	require.Equal(t, "50m", hostConfig.LogConfig.Config["max-size"])
 	require.Equal(t, "5", hostConfig.LogConfig.Config["max-file"])

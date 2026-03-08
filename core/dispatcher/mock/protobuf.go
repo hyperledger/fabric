@@ -4,7 +4,7 @@ package mock
 import (
 	"sync"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 type Protobuf struct {

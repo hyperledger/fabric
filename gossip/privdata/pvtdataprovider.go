@@ -11,12 +11,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-lib-go/common/metrics"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	vsccErrors "github.com/hyperledger/fabric/common/errors"
-	"github.com/hyperledger/fabric/common/metrics"
 	commonutil "github.com/hyperledger/fabric/common/util"
 	pvtdatasc "github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -24,6 +23,7 @@ import (
 	pvtdatacommon "github.com/hyperledger/fabric/gossip/privdata/common"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protoutil"
+	"google.golang.org/protobuf/proto"
 )
 
 type sleeper struct {

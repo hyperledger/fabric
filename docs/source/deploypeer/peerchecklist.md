@@ -88,7 +88,7 @@ address: 0.0.0.0:7051
 ```
 mspConfigPath: msp
 ```
-- **`mspConfigPath`**: (Default value should be overridden.) This is the path to the peer's local MSP, which must be created before the peer can be deployed. The path can be absolute or relative to `FABRIC_CFG_PATH` (by default, it is `/etc/hyperledger/fabric` in the peer image). Unless an absolute path is specified to a folder named something other than "msp", the peer defaults to looking for a folder called “msp” at the path (in other words, `FABRIC_CFG_PATH/msp`) and when using the peer image: `/etc/hyperledger/fabric/msp`. If you are using the recommended folder structure described in the [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html) topic, it would be relative to the FABRIC_CFG_PATH as follows:
+- **`mspConfigPath`**: (Default value should be overridden.) This is the path to the peer's local MSP, which must be created before the peer can be deployed. The path can be absolute or relative to `FABRIC_CFG_PATH` (by default, it is `/etc/hyperledger/fabric` in the peer image). Unless an absolute path is specified to a folder named something other than "msp", the peer defaults to looking for a folder called “msp” at the path (in other words, `FABRIC_CFG_PATH/msp`) and when using the peer image: `/etc/hyperledger/fabric/msp`. If you are using the recommended folder structure described in the [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html) topic, it would be relative to the FABRIC_CFG_PATH as follows:
 `config/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp`. **The best practice is to store this data in persistent storage**. This prevents the MSP from being lost if your peer containers are destroyed for some reason.
 
 ## peer.localMspId
@@ -146,10 +146,12 @@ gossip:
     # to pull ledger blocks from ordering service.
     useLeaderElection: false
 
-    # Statically defines peer to be an organization "leader",
-    # where this means that current peer will maintain connection
-    # with ordering service and disseminate block across peers in
-    # its own organization. Multiple peers or all peers in an organization
+    # Statically defines peer to be an organization "leader".
+    # Organization leaders maintain connection with ordering service
+    # and pulls blocks as they are created. Optionally, leader peers
+    # may disseminate pulled blocks to peers in its own organization
+    # based on the peer.deliveryclient.blockGossipEnabled setting.
+    # Multiple peers or all peers in an organization
     # may be configured as org leaders, so that they all pull
     # blocks directly from ordering service.
     orgLeader: true
@@ -187,7 +189,7 @@ Peers leverage the Gossip data dissemination protocol to broadcast ledger and ch
 
   - **`useLeaderElection:`** (Defaults to `false` as of v2.2, which is recommended so that peers get blocks from ordering service.) When `useLeaderElection` is set to false, you must configure at least one peer to be the org leader by setting `peer.gossip.orgLeader` to true. Set `useLeaderElection` to true if you prefer that peers use Gossip for block dissemination among peers in the organization.
 
-  - **`orgLeader:`** (Defaults to `true` as of v2.2, which is recommended so that peers get blocks from ordering service.) Set this value to `false` if you want to use Gossip for block dissemination among peers in the organization.
+  - **`orgLeader:`** (Defaults to `true` as of v2.2, which is recommended so that peers get blocks from ordering service.) Set this value to `true` so that the peer retrieves blocks from the ordering service.
 
   - **`state.enabled:`** (Defaults to `false` as of v2.2 which is recommended so that peers get blocks from ordering service.) Set this value to `true` when you want to use Gossip to sync up missing blocks, which allows a lagging peer to catch up with other peers on the network.
 
@@ -227,15 +229,15 @@ tls:
           - tls/ca.crt
 ```
 
-Configure this section to enable TLS communications for the peer. After TLS is enabled, all nodes that transact with the peer will also need to enable TLS. Review the topic on [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html) for instructions on how to generate the peer TLS certificates.
+Configure this section to enable TLS communications for the peer. After TLS is enabled, all nodes that transact with the peer will also need to enable TLS. Review the topic on [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html) for instructions on how to generate the peer TLS certificates.
 
 - **`enabled`:** (Default value should be overridden.) To ensure your production environment is secure, TLS should be enabled for all communications between nodes by setting `enabled: true` in the `tls` section of the config file. While this field is disabled by default, which may be acceptable for a test network, it should to be enabled when in production. This setting will configure **server-side TLS**, meaning that TLS will guarantee the identity of the _server_ to the client and provides a two-way encrypted channel between them.
 
-- **`cert.file`:** (Default value should be overridden.) Every peer needs to register and enroll with its TLS CA before it can transact securely with other nodes in the organization. Therefore, before you can deploy a peer, you must first register a user for the peer and enroll the peer identity with the TLS CA to generate the peer's TLS signed certificate. If you are using the recommended folder structure from the [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html) topic, this file needs to be copied into `config/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls`
+- **`cert.file`:** (Default value should be overridden.) Every peer needs to register and enroll with its TLS CA before it can transact securely with other nodes in the organization. Therefore, before you can deploy a peer, you must first register a user for the peer and enroll the peer identity with the TLS CA to generate the peer's TLS signed certificate. If you are using the recommended folder structure from the [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html) topic, this file needs to be copied into `config/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls`
 
-- **`key.file`:** (Default value should be overridden.) Similar to the `cert.file`, provide the name and location of the generated TLS private key for this peer, for example, `/msp/keystore/87bf5eff47d33b13d7aee81032b0e8e1e0ffc7a6571400493a7c_sk`. If you are using the recommended folder structure from the [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html) topic, this file needs to be copied into `config/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls`.  If you are using an [HSM](#bccsp) to store the private key for the peer, this field will be blank.
+- **`key.file`:** (Default value should be overridden.) Similar to the `cert.file`, provide the name and location of the generated TLS private key for this peer, for example, `/msp/keystore/87bf5eff47d33b13d7aee81032b0e8e1e0ffc7a6571400493a7c_sk`. If you are using the recommended folder structure from the [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html) topic, this file needs to be copied into `config/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls`.  If you are using an [HSM](#bccsp) to store the private key for the peer, this field will be blank.
 
-- **`rootcert.file`:**  (Default value can be unset.) This value contains the name and location of the root certificate chain used for verifying certificates of other nodes during outbound connections. It is not required to be set, but can be used to augment the set of TLS CA certificates available from the MSPs of each channel’s configuration. If you are using the recommended folder structure from the [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html) topic, this file can be copied into `config/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls`.
+- **`rootcert.file`:**  (Default value can be unset.) This value contains the name and location of the root certificate chain used for verifying certificates of other nodes during outbound connections. It is not required to be set, but can be used to augment the set of TLS CA certificates available from the MSPs of each channel’s configuration. If you are using the recommended folder structure from the [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html) topic, this file can be copied into `config/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls`.
 
 The next two parameters only need to be provided when mutual TLS is required:
 
@@ -275,7 +277,7 @@ BCCSP:
 
 - **`BCCSP.Default:`** If you plan to use a Hardware Security Module (HSM), then this must be set to `PKCS11`.
 
-- **`BCCSP.PKCS11.*:`** Provide this set of parameters according to your HSM configuration. Refer to this [example]((../hsm.html) of an HSM configuration for more information.
+- **`BCCSP.PKCS11.*:`** Provide this set of parameters according to your HSM configuration. Refer to this [example](../hsm.html) of an HSM configuration for more information.
 
 ## chaincode.externalBuilders.*
 

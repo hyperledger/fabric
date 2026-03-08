@@ -13,14 +13,13 @@ import (
 	"fmt"
 	"math/rand/v2"
 
-	"github.com/hyperledger/fabric-protos-go/peer"
-
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/discovery"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/discovery"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/discovery/protoext"
 	gprotoext "github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 var configTypes = []protoext.QueryType{
@@ -130,7 +129,7 @@ func (req *Request) AddPeersQuery(invocationChain ...*peer.ChaincodeCall) *Reque
 	})
 	var ic InvocationChain
 	if len(invocationChain) > 0 {
-		ic = InvocationChain(invocationChain)
+		ic = invocationChain
 	}
 	req.addChaincodeQueryMapping([]InvocationChain{ic})
 	req.addQueryMapping(protoext.PeerMembershipQueryType, channnelAndInvocationChain(ch, ic))
@@ -158,9 +157,9 @@ func (req *Request) addQueryMapping(queryType protoext.QueryType, key string) {
 
 // Send sends the request and returns the response, or error on failure
 func (c *Client) Send(ctx context.Context, req *Request, auth *discovery.AuthInfo) (Response, error) {
-	reqToBeSent := *req.Request
+	reqToBeSent := proto.Clone(req.Request).(*discovery.Request)
 	reqToBeSent.Authentication = auth
-	payload, err := proto.Marshal(&reqToBeSent)
+	payload, err := proto.Marshal(reqToBeSent)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed marshaling Request to bytes")
 	}
@@ -189,7 +188,7 @@ func (c *Client) Send(ctx context.Context, req *Request, auth *discovery.AuthInf
 	return req.computeResponse(resp)
 }
 
-type resultOrError interface{}
+type resultOrError any
 
 type response map[key]resultOrError
 
@@ -306,7 +305,7 @@ var NoFilter = NewFilter(NoPriorities, NoExclusion)
 func selectPeersForLayout(endorsersByGroups map[string][]*Peer, layout map[string]int, f Filter) (Endorsers, bool) {
 	var endorsers []*Peer
 	for grp, count := range layout {
-		endorsersOfGrp := f.Filter(Endorsers(endorsersByGroups[grp]))
+		endorsersOfGrp := f.Filter(endorsersByGroups[grp])
 
 		// We couldn't select enough peers for this layout because the current group
 		// requires more peers than we have available to be selected

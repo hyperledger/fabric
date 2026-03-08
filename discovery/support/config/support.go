@@ -11,14 +11,14 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/discovery"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/discovery"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/flogging"
 	mspconstants "github.com/hyperledger/fabric/msp"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 var logger = flogging.MustGetLogger("discovery.config")
@@ -227,11 +227,11 @@ func appendMSPConfigs(ordererGrp, appGrp map[string]*common.ConfigGroup, output 
 
 func ValidateConfig(c *common.Config) error {
 	if c.ChannelGroup == nil {
-		return fmt.Errorf("field Config.ChannelGroup is nil")
+		return errors.New("field Config.ChannelGroup is nil")
 	}
 	grps := c.ChannelGroup.Groups
 	if grps == nil {
-		return fmt.Errorf("field Config.ChannelGroup.Groups is nil")
+		return errors.New("field Config.ChannelGroup.Groups is nil")
 	}
 	for _, field := range []string{channelconfig.OrdererGroupKey, channelconfig.ApplicationGroupKey} {
 		grp, exists := grps[field]
@@ -243,7 +243,7 @@ func ValidateConfig(c *common.Config) error {
 		}
 	}
 	if c.ChannelGroup.Values == nil {
-		return fmt.Errorf("field Config.ChannelGroup.Values is nil")
+		return errors.New("field Config.ChannelGroup.Values is nil")
 	}
 	return nil
 }

@@ -7,11 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package queryutil
 
 import (
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/pkg/errors"
 )
 
 var logger = flogging.MustGetLogger("util")
@@ -62,12 +63,21 @@ func (c *QECombiner) GetStateRangeScanIterator(namespace string, startKey string
 			for _, itr := range itrs {
 				itr.Close()
 			}
-			return nil, err
+			return nil, errors.Wrap(err, "failed to get iterator from QueryExecuter")
+		}
+		if itr == nil {
+			for _, itr := range itrs {
+				itr.Close()
+			}
+			return nil, errors.New("received nil iterator from QueryExecuter")
 		}
 		itrs = append(itrs, itr)
 	}
 	itrCombiner, err := newItrCombiner(namespace, itrs)
 	if err != nil {
+		for _, itr := range itrs {
+			itr.Close()
+		}
 		return nil, err
 	}
 	return itrCombiner, nil

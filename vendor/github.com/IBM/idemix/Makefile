@@ -9,7 +9,7 @@ checks: check-deps
 
 .PHONY: unit-tests
 unit-tests:
-	@go test -timeout 480s -cover $(shell go list ./...)
+	find . -name go.mod -execdir go test ./... \;
 
 .PHONY: unit-tests-race
 unit-tests-race:

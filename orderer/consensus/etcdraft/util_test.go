@@ -12,21 +12,22 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	etcdraftproto "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	etcdraftproto "github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestIsConsenterOfChannel(t *testing.T) {
@@ -52,7 +53,7 @@ func TestIsConsenterOfChannel(t *testing.T) {
 	require.NoError(t, err)
 
 	validBlock := func() *common.Block {
-		b, err := ioutil.ReadFile(filepath.Join("testdata", "etcdraftgenesis.block"))
+		b, err := os.ReadFile(filepath.Join("testdata", "etcdraftgenesis.block"))
 		require.NoError(t, err)
 		block := &common.Block{}
 		err = proto.Unmarshal(b, block)
@@ -409,4 +410,21 @@ func TestVerifyConfigMetadata(t *testing.T) {
 
 		require.Nil(t, VerifyConfigMetadata(metadataWithExpiredConsenter, goodVerifyingOpts))
 	})
+}
+
+// This test checks that MetadataFromConfigValue, which reads and translates configuration updates from config value,
+// returns an empty raft metadata when the consensus type is BFT.
+func TestMetadataFromConfigValue(t *testing.T) {
+	configValue := &common.ConfigValue{
+		Value: protoutil.MarshalOrPanic(&orderer.ConsensusType{
+			Type:     "BFT",
+			Metadata: []byte{1, 2},
+		}),
+	}
+
+	metadata, consensusType, err := MetadataFromConfigValue(configValue)
+	require.Nil(t, metadata)
+	require.Nil(t, err)
+	require.NotNil(t, consensusType)
+	require.Equal(t, consensusType.Type, "BFT")
 }

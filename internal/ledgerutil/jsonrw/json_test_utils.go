@@ -8,7 +8,7 @@ package jsonrw
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -20,11 +20,11 @@ func OutputFileToString(f string, path string) (string, error) {
 		return "", err
 	}
 	if exists {
-		b, err := ioutil.ReadFile(fpath)
+		b, err := os.ReadFile(fpath)
 		if err != nil {
 			return "", err
 		}
-		out, err := ioutil.ReadAll(bytes.NewReader(b))
+		out, err := io.ReadAll(bytes.NewReader(b))
 		if err != nil {
 			return "", err
 		}

@@ -7,8 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package common
 
 import (
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/pkg/errors"
 )
 
@@ -19,7 +18,7 @@ type BroadcastClient interface {
 }
 
 type BroadcastGRPCClient struct {
-	Client ab.AtomicBroadcast_BroadcastClient
+	Client BroadcastOrdererClient
 }
 
 // GetBroadcastClient creates a simple instance of the BroadcastClient interface

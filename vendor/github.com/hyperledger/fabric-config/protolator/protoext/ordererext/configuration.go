@@ -9,12 +9,13 @@ package ordererext
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/smartbft"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type DynamicOrdererGroup struct {
@@ -80,8 +81,10 @@ func (ct *ConsensusType) VariablyOpaqueFieldProto(name string) (proto.Message, e
 	switch ct.Type {
 	case "etcdraft":
 		return &etcdraft.ConfigMetadata{}, nil
+	case "BFT":
+		return &smartbft.Options{}, nil
 	default:
-		return &empty.Empty{}, nil
+		return &emptypb.Empty{}, nil
 	}
 }
 
@@ -146,6 +149,8 @@ func (docv *DynamicOrdererConfigValue) StaticallyOpaqueFieldProto(name string) (
 		return &orderer.ChannelRestrictions{}, nil
 	case "Capabilities":
 		return &common.Capabilities{}, nil
+	case "Orderers":
+		return &common.Orderers{}, nil
 	default:
 		return nil, fmt.Errorf("unknown Orderer ConfigValue name: %s", docv.name)
 	}

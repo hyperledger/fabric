@@ -10,8 +10,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"google.golang.org/protobuf/proto"
 )
 
 // capabilitiesValue returns the config definition for a set of capabilities.

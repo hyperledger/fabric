@@ -12,10 +12,12 @@ import (
 	"crypto/x509"
 	"time"
 
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/metrics"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/backoff"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 )
 
@@ -35,6 +37,11 @@ var (
 		ServerInterval:    time.Duration(2) * time.Hour,    // 2 hours - gRPC default
 		ServerTimeout:     time.Duration(20) * time.Second, // 20 sec - gRPC default
 		ServerMinInterval: time.Duration(1) * time.Minute,  // match ClientInterval
+	}
+	DefaultBackoffOptions = BackoffOptions{
+		BaseDelay:  time.Second,
+		Multiplier: 1.6,
+		MaxDelay:   time.Minute * 2,
 	}
 	// strong TLS cipher suites
 	DefaultTLSCipherSuites = []uint16{
@@ -82,6 +89,8 @@ type ClientConfig struct {
 	SecOpts SecureOptions
 	// KaOpts defines the keepalive parameters
 	KaOpts KeepaliveOptions
+	// BackoffOpts defines the backoff parameters
+	BaOpts BackoffOptions
 	// DialTimeout controls how long the client can block when attempting to
 	// establish a connection to a server
 	DialTimeout time.Duration
@@ -93,7 +102,7 @@ type ClientConfig struct {
 	MaxSendMsgSize int
 }
 
-// Convert the ClientConfig to the approriate set of grpc.DialOptions.
+// Convert the ClientConfig to the appropriate set of grpc.DialOptions.
 func (cc ClientConfig) DialOptions() ([]grpc.DialOption, error) {
 	var dialOpts []grpc.DialOption
 	dialOpts = append(dialOpts, grpc.WithKeepaliveParams(keepalive.ClientParameters{
@@ -101,6 +110,23 @@ func (cc ClientConfig) DialOptions() ([]grpc.DialOption, error) {
 		Timeout:             cc.KaOpts.ClientTimeout,
 		PermitWithoutStream: true,
 	}))
+
+	if cc.BaOpts.BaseDelay != 0 &&
+		cc.BaOpts.MaxDelay != 0 &&
+		cc.BaOpts.Multiplier != 0 {
+		// backoff options
+		cp := grpc.ConnectParams{
+			Backoff: backoff.Config{
+				BaseDelay:  cc.BaOpts.BaseDelay,
+				Multiplier: cc.BaOpts.Multiplier,
+				Jitter:     0.2,
+				MaxDelay:   cc.BaOpts.MaxDelay,
+			},
+			MinConnectTimeout: 20 * time.Second,
+		}
+		// set backoff
+		dialOpts = append(dialOpts, grpc.WithConnectParams(cp))
+	}
 
 	// Unless asynchronous connect is set, make connection establishment blocking.
 	if !cc.AsyncConnect {
@@ -131,7 +157,7 @@ func (cc ClientConfig) DialOptions() ([]grpc.DialOption, error) {
 		transportCreds := &DynamicClientCredentials{TLSConfig: tlsConfig}
 		dialOpts = append(dialOpts, grpc.WithTransportCredentials(transportCreds))
 	} else {
-		dialOpts = append(dialOpts, grpc.WithInsecure())
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
 	return dialOpts, nil
@@ -151,6 +177,12 @@ func (cc ClientConfig) Dial(address string) (*grpc.ClientConn, error) {
 		return nil, errors.Wrap(err, "failed to create new connection")
 	}
 	return conn, nil
+}
+
+// Clone clones this ClientConfig
+func (cc ClientConfig) Clone() ClientConfig {
+	shallowClone := cc
+	return shallowClone
 }
 
 // SecureOptions defines the TLS security parameters for a GRPCServer or
@@ -252,6 +284,17 @@ type KeepaliveOptions struct {
 	// ServerMinInterval is the minimum permitted time between client pings.
 	// If clients send pings more frequently, the server will disconnect them
 	ServerMinInterval time.Duration
+}
+
+// BackoffOptions defines the configuration options for GRPC client.
+type BackoffOptions struct {
+	// BaseDelay is the amount of time to backoff after the first failure.
+	BaseDelay time.Duration
+	// Multiplier is the factor with which to multiply backoffs after a
+	// failed retry. Should ideally be greater than 1.
+	Multiplier float64
+	// MaxDelay is the upper bound of backoff delay.
+	MaxDelay time.Duration
 }
 
 // ServerKeepaliveOptions returns gRPC keepalive options for a server.

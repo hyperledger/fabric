@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package dispatcher
 
 import (
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // Protobuf defines the subset of protobuf lifecycle needs and allows
@@ -23,6 +23,9 @@ type ProtobufImpl struct{}
 
 // Marshal passes through to proto.Marshal
 func (p ProtobufImpl) Marshal(msg proto.Message) ([]byte, error) {
+	if !msg.ProtoReflect().IsValid() {
+		return nil, errors.New("proto: Marshal called with nil")
+	}
 	res, err := proto.Marshal(msg)
 	return res, errors.WithStack(err)
 }

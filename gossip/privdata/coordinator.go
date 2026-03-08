@@ -9,10 +9,10 @@ package privdata
 import (
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	protostransientstore "github.com/hyperledger/fabric-protos-go/transientstore"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	protostransientstore "github.com/hyperledger/fabric-protos-go-apiv2/transientstore"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
@@ -31,14 +31,14 @@ const pullRetrySleepInterval = time.Second
 
 var logger = util.GetLogger(util.PrivateDataLogger, "")
 
-//go:generate mockery -dir . -name CollectionStore -case underscore -output mocks/
+//go:generate mockery --dir . --name CollectionStore --case underscore --output mocks/
 
 // CollectionStore is the local interface used to generate mocks for foreign interface.
 type CollectionStore interface {
 	privdata.CollectionStore
 }
 
-//go:generate mockery -dir . -name Committer -case underscore -output mocks/
+//go:generate mockery --dir . --name Committer --case underscore --output mocks/
 
 // Committer is the local interface used to generate mocks for foreign interface.
 type Committer interface {
@@ -86,7 +86,7 @@ type Fetcher interface {
 	fetch(dig2src dig2sources) (*privdatacommon.FetchedPvtDataContainer, error)
 }
 
-//go:generate mockery -dir ./ -name CapabilityProvider -case underscore -output mocks/
+//go:generate mockery --dir ./ --name CapabilityProvider --case underscore --output mocks/
 
 // CapabilityProvider contains functions to retrieve capability information for a channel
 type CapabilityProvider interface {

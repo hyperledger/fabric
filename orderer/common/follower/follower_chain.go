@@ -9,16 +9,18 @@ package follower
 import (
 	"bytes"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // ErrChainStopped is returned when the chain is stopped during execution.
@@ -26,7 +28,7 @@ var ErrChainStopped = errors.New("chain stopped")
 
 //go:generate counterfeiter -o mocks/ledger_resources.go -fake-name LedgerResources . LedgerResources
 
-// LedgerResources defines some of the interfaces of ledger & config resources needed by the follower.Chain.
+// LedgerResources defines some interfaces of ledger & config resources needed by the follower.Chain.
 type LedgerResources interface {
 	// ChannelID The channel ID.
 	ChannelID() string
@@ -47,7 +49,7 @@ type TimeAfter func(d time.Duration) <-chan time.Time
 
 //go:generate counterfeiter -o mocks/block_puller_factory.go -fake-name BlockPullerFactory . BlockPullerFactory
 
-// BlockPullerFactory creates a ChannelPuller on demand, and exposes a method to update the a block signature verifier
+// BlockPullerFactory creates a ChannelPuller on demand, and exposes a method to update the block signature verifier
 // linked to that ChannelPuller.
 type BlockPullerFactory interface {
 	BlockPuller(configBlock *common.Block, stopChannel chan struct{}) (ChannelPuller, error)
@@ -59,7 +61,7 @@ type BlockPullerFactory interface {
 // ChainCreator defines a function that creates a new consensus.Chain for this channel, to replace the current
 // follower.Chain. This interface is meant to be implemented by the multichannel.Registrar.
 type ChainCreator interface {
-	SwitchFollowerToChain(chainName string)
+	SwitchFollowerToChain(chainName string) bool
 }
 
 //go:generate counterfeiter -o mocks/channel_participation_metrics_reporter.go -fake-name ChannelParticipationMetricsReporter . ChannelParticipationMetricsReporter
@@ -99,6 +101,7 @@ type Chain struct {
 	doneChan          chan struct{} // The go-routine signals the 'closer' that it is done by closing this channel.
 	consensusRelation types.ConsensusRelation
 	status            types.Status
+	removingExternal  atomic.Int32 // External channel removal once.
 
 	ledgerResources  LedgerResources            // ledger & config resources
 	clusterConsenter consensus.ClusterConsenter // detects whether a block indicates channel membership
@@ -223,6 +226,7 @@ func (c *Chain) Start() {
 
 // Halt signals the Chain to stop and waits for the internal go-routine to exit.
 func (c *Chain) Halt() {
+	c.removingExternal.Store(1)
 	c.halt()
 	<-c.doneChan
 }
@@ -295,7 +299,7 @@ func (c *Chain) run() {
 	}()
 
 	if err := c.pull(); err != nil {
-		c.logger.Warnf("Pull failed, error: %s", err)
+		c.logger.Warnf("Pull failed, follower chain stopped, error: %s", err)
 		// TODO set the status to StatusError (see FAB-18106)
 	}
 }
@@ -305,10 +309,7 @@ func (c *Chain) increaseRetryInterval(retryInterval *time.Duration, upperLimit t
 		return
 	}
 	// assuming this will never overflow int64, as upperLimit cannot be over MaxInt64/2
-	*retryInterval = time.Duration(1.5 * float64(*retryInterval))
-	if *retryInterval > upperLimit {
-		*retryInterval = upperLimit
-	}
+	*retryInterval = min(time.Duration(1.5*float64(*retryInterval)), upperLimit)
 	c.logger.Debugf("retry interval increased to: %v", *retryInterval)
 }
 
@@ -325,10 +326,7 @@ func (c *Chain) decreaseRetryInterval(retryInterval *time.Duration, lowerLimit t
 		return
 	}
 
-	*retryInterval = *retryInterval - lowerLimit
-	if *retryInterval < lowerLimit {
-		*retryInterval = lowerLimit
-	}
+	*retryInterval = max(*retryInterval-lowerLimit, lowerLimit)
 	c.logger.Debugf("retry interval decreased to: %v", *retryInterval)
 }
 
@@ -353,7 +351,22 @@ func (c *Chain) pull() error {
 	// Trigger creation of a new consensus.Chain.
 	c.logger.Info("Block pulling finished successfully, going to switch from follower to a consensus.Chain")
 	c.halt()
-	c.chainCreator.SwitchFollowerToChain(c.ledgerResources.ChannelID())
+
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+
+	// SwitchFollowerToChain is trying to take over the mutex.
+	// If it fails, false is returned.
+	// Perhaps at this moment the command "remove channel" is being executed,
+	// let's check it `c.removingExternal.Load() == 1`. If so, leave the loop.
+	// If SwitchFollowerToChain returns true, we will also leave the loop.
+	// In other cases, we need to repeat the loop.
+	for range ticker.C {
+		if isExec := c.chainCreator.SwitchFollowerToChain(c.ledgerResources.ChannelID()); isExec ||
+			c.removingExternal.Load() == 1 {
+			break
+		}
+	}
 
 	return nil
 }
@@ -392,6 +405,8 @@ func (c *Chain) pullUpToJoin() error {
 // a config block that indicates the orderer is a member of the cluster. It
 // checks whether the chain was stopped between blocks.
 func (c *Chain) pullAfterJoin() error {
+	c.logger.Infof("Pulling after join")
+	defer c.logger.Infof("Pulled after join")
 	c.setStatus(types.StatusActive)
 
 	err := c.loadLastConfig()
@@ -425,7 +440,7 @@ func (c *Chain) pullAfterJoin() error {
 			if errHeight != nil {
 				c.logger.Errorf("Failed to get latest height and endpoint, error: %s", errHeight)
 			} else {
-				c.logger.Debugf("Orderer endpoint %s has the biggest ledger height: %d", endpoint, networkHeight)
+				c.logger.Infof("Orderer endpoint %s has the biggest ledger height: %d", endpoint, networkHeight)
 			}
 
 			if networkHeight > c.ledgerResources.Height() {
@@ -435,7 +450,7 @@ func (c *Chain) pullAfterJoin() error {
 				break heightPollLoop
 			}
 
-			c.logger.Debugf("My height: %d, latest network height: %d; going to wait %v for latest height to grow",
+			c.logger.Infof("My height: %d, latest network height: %d; going to wait %v for latest height to grow",
 				c.ledgerResources.Height(), networkHeight, heightPollInterval)
 			select {
 			case <-c.stopChan:
@@ -447,7 +462,7 @@ func (c *Chain) pullAfterJoin() error {
 			}
 		}
 
-		// Pull to latest height or chain stop signal
+		// Pull to the latest height or chain stop signal
 		err = c.pullUntilLatestWithRetry(latestNetworkHeight, true)
 		if err != nil {
 			return err
@@ -456,7 +471,7 @@ func (c *Chain) pullAfterJoin() error {
 }
 
 // pullUntilLatestWithRetry is given a target-height and exits without an error when it reaches that target.
-// It return with an error only if the chain is stopped.
+// It returns with an error only if the chain is stopped.
 // On internal pull errors it employs exponential back-off and retries.
 // When parameter updateEndpoints is true, the block-puller's endpoints are updated with every incoming config.
 func (c *Chain) pullUntilLatestWithRetry(latestNetworkHeight uint64, updateEndpoints bool) error {
@@ -471,8 +486,9 @@ func (c *Chain) pullUntilLatestWithRetry(latestNetworkHeight uint64, updateEndpo
 			break
 		}
 
-		c.logger.Debugf("Error while trying to pull to latest height: %d; going to try again in %v",
-			latestNetworkHeight, retryInterval)
+		c.logger.Debugf("Error while trying to pull to latest height: %d; going to try again in %v; error: %s",
+			latestNetworkHeight, retryInterval, errPull)
+
 		select {
 		case <-c.stopChan:
 			c.logger.Debug("Received a stop signal")
@@ -519,11 +535,22 @@ func (c *Chain) pullUntilTarget(targetHeight uint64, updateEndpoints bool) (uint
 			if nextBlock == nil {
 				return n, errors.WithMessagef(cluster.ErrRetryCountExhausted, "failed to pull block %d", seq)
 			}
+
 			reportedPrevHash := nextBlock.Header.PreviousHash
 			if (nextBlock.Header.Number > 0) && !bytes.Equal(reportedPrevHash, actualPrevHash) {
-				return n, errors.Errorf("block header mismatch on sequence %d, expected %x, got %x",
+				return n, errors.Errorf("block header previous hash mismatch on sequence %d, expected %x, got %x",
 					nextBlock.Header.Number, actualPrevHash, reportedPrevHash)
 			}
+
+			if c.joinBlock != nil && c.joinBlock.Header.Number == nextBlock.Header.Number {
+				// We don't need to verify the block.Data because we verify the join-block's DataHash against the
+				// hash(join-block.Data) when we verify it during the `Join` REST API call
+				if !proto.Equal(nextBlock.Header, c.joinBlock.Header) {
+					c.logger.Errorf("Block header mismatch between the block we pulled and the block we joined with, sequence %d", c.joinBlock.Header.Number)
+					return n, errors.Errorf("block header mismatch between the block we pulled and the block we joined with, sequence %d", c.joinBlock.Header.Number)
+				}
+			}
+
 			actualPrevHash = protoutil.BlockHeaderHash(nextBlock.Header)
 			if err := c.ledgerResources.Append(nextBlock); err != nil {
 				return n, errors.WithMessagef(err, "failed to append block %d to the ledger", nextBlock.Header.Number)

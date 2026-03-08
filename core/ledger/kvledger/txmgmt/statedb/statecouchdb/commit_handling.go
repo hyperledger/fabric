@@ -90,7 +90,7 @@ func (vdb *VersionedDB) buildCommitters(updates *statedb.UpdateBatch) ([]*commit
 	case err := <-errsChan:
 		return nil, errors.WithStack(err)
 	default:
-		for i := 0; i < len(namespaces); i++ {
+		for range namespaces {
 			allCommitters = append(allCommitters, <-nsCommittersChan...)
 		}
 	}
@@ -224,7 +224,7 @@ func (c *committer) commitUpdates() error {
 			errorString := fmt.Sprintf("error saving document ID: %v. Error: %s,  Reason: %s",
 				resp.ID, resp.Error, resp.Reason)
 
-			logger.Errorf(errorString)
+			logger.Error(errorString)
 			return errors.WithMessage(err, errorString)
 		}
 	}

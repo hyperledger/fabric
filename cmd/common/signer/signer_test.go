@@ -8,19 +8,19 @@ package signer
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/hyperledger/fabric/bccsp/utils"
+	"github.com/hyperledger/fabric-lib-go/bccsp/utils"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/stretchr/testify/require"
 )
 
-func TestSigner(t *testing.T) {
+func TestEcdsaSigner(t *testing.T) {
 	conf := Config{
 		MSPID:        "SampleOrg",
 		IdentityPath: filepath.Join("testdata", "signer", "cert.pem"),
@@ -36,7 +36,27 @@ func TestSigner(t *testing.T) {
 
 	r, s, err := utils.UnmarshalECDSASignature(sig)
 	require.NoError(t, err)
-	ecdsa.Verify(&signer.key.PublicKey, util.ComputeSHA256(msg), r, s)
+	verify := ecdsa.Verify(&signer.key.(*ecdsa.PrivateKey).PublicKey, util.ComputeSHA256(msg), r, s)
+	require.True(t, verify)
+}
+
+func TestEd25519Signer(t *testing.T) {
+	conf := Config{
+		MSPID:        "SampleOrg",
+		IdentityPath: filepath.Join("testdata", "signer", "ed25519.pem"),
+		KeyPath:      filepath.Join("testdata", "signer", "ed25519_sk"),
+	}
+
+	signer, err := NewSigner(conf)
+	require.NoError(t, err)
+
+	msg := []byte("foo")
+	sig, err := signer.Sign(msg)
+	require.NoError(t, err)
+
+	require.NoError(t, err)
+	verify := ed25519.Verify(signer.key.(ed25519.PrivateKey).Public().(ed25519.PublicKey), msg, sig)
+	require.True(t, verify)
 }
 
 func TestSignerDifferentFormats(t *testing.T) {
@@ -72,12 +92,12 @@ ZsQXrlIqlmNalfYPX+NDDELqlpXQBeEqnA==
 		},
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
-			tmpFile, err := ioutil.TempFile("", "key")
+			tmpFile, err := os.CreateTemp("", "key")
 			require.NoError(t, err)
 
 			defer os.Remove(tmpFile.Name())
 
-			err = ioutil.WriteFile(tmpFile.Name(), []byte(testCase.keyBytes), 0o600)
+			err = os.WriteFile(tmpFile.Name(), testCase.keyBytes, 0o600)
 			require.NoError(t, err)
 
 			signer, err := NewSigner(Config{

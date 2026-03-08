@@ -9,16 +9,13 @@ package privdata
 import (
 	"bytes"
 	"crypto/rand"
-	"io/ioutil"
-	"os"
 	"sync"
 	"testing"
 
-	pb "github.com/golang/protobuf/proto"
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/transientstore"
@@ -37,6 +34,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	pb "google.golang.org/protobuf/proto"
 )
 
 func init() {
@@ -308,7 +306,7 @@ func newPRWSet() []util.PrivateRWSet {
 	b2 := make([]byte, 10)
 	rand.Read(b1)
 	rand.Read(b2)
-	return []util.PrivateRWSet{util.PrivateRWSet(b1), util.PrivateRWSet(b2)}
+	return []util.PrivateRWSet{b1, b2}
 }
 
 func TestPullerFromOnly1Peer(t *testing.T) {
@@ -1029,7 +1027,7 @@ func TestPullerAvoidPullingPurgedData(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, 1, len(fetchedMessages.PurgedElements))
-	require.Equal(t, dig1, fetchedMessages.PurgedElements[0])
+	require.True(t, pb.Equal(dig1, fetchedMessages.PurgedElements[0]))
 	p3.PrivateDataRetriever.(*dataRetrieverMock).AssertNumberOfCalls(t, "CollectionRWSet", 1)
 }
 
@@ -1068,11 +1066,7 @@ func TestPullerIntegratedWithDataRetreiver(t *testing.T) {
 	p2 := gn.newPuller("p2", policyStore, factoryMock, membership(peerData{"p1", uint64(1)})...)
 
 	committer := &mocks.Committer{}
-	tempdir, err := ioutil.TempDir("", "ts")
-	if err != nil {
-		t.Fatalf("Failed to create test directory, got err %s", err)
-		return
-	}
+	tempdir := t.TempDir()
 	storeProvider, err := transientstore.NewStoreProvider(tempdir)
 	if err != nil {
 		t.Fatalf("Failed to open store, got err %s", err)
@@ -1084,7 +1078,6 @@ func TestPullerIntegratedWithDataRetreiver(t *testing.T) {
 		return
 	}
 	defer storeProvider.Close()
-	defer os.RemoveAll(tempdir)
 	result := []*ledger.TxPvtData{
 		{
 			WriteSet: &rwset.TxPvtReadWriteSet{

@@ -9,10 +9,11 @@ package inquire
 import (
 	"bytes"
 	"fmt"
+	"slices"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/common/policies"
+	"google.golang.org/protobuf/proto"
 )
 
 // ComparablePrincipal defines an MSPPrincipal that can be compared to other principals
@@ -57,12 +58,7 @@ func NewComparablePrincipal(principal *msp.MSPPrincipal) *ComparablePrincipal {
 // For the ComparablePrincipal x to be found, there needs to be some ComparablePrincipal y in the set
 // such that x.IsA(y) will be true.
 func (cp *ComparablePrincipal) IsFound(set ...*ComparablePrincipal) bool {
-	for _, cp2 := range set {
-		if cp.IsA(cp2) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(set, cp.IsA)
 }
 
 // IsA determines whether all identities that satisfy this ComparablePrincipal

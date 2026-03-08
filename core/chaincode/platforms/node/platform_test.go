@@ -144,7 +144,7 @@ func TestGenerateBuildOptions(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedOpts := util.DockerBuildOptions{
-		Image: "hyperledger/fabric-nodeenv:latest",
+		Image: "hyperledger/fabric-nodeenv:2.5",
 		Cmd:   expectedBuildScript,
 	}
 	require.Equal(t, expectedOpts, opts)

@@ -9,15 +9,15 @@ package statebased
 import (
 	"sync"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 type epEvaluator interface {
@@ -52,7 +52,7 @@ func (p *baseEvaluator) checkSBAndCCEP(cc, coll, key string, blockNum, txNum uin
 		//    logged and ignored. The ledger will take the most appropriate action
 		//    when performing its side of the validation.
 		case *ledger.CollConfigNotDefinedError, *ledger.InvalidCollNameError:
-			logger.Warningf(errors.WithMessage(err, "skipping key-level validation").Error())
+			logger.Warning(errors.WithMessage(err, "skipping key-level validation").Error())
 		// 3) any other type of error should return an execution failure which will
 		//    lead to halting the processing on this channel. Note that any non-categorized
 		//    deterministic error would be caught by the default and would lead to

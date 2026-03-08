@@ -6,8 +6,6 @@ A chaincode is deployed to a channel using a process known as the Fabric chainco
 
 You can use this tutorial to learn how to use the [peer lifecycle chaincode commands](./commands/peerlifecycle.html) to deploy a chaincode to a channel of the Fabric test network. Once you have an understanding of the commands, you can use the steps in this tutorial to deploy your own chaincode to the test network, or to deploy chaincode to a production network. In this tutorial, you will deploy the asset-transfer (basic) chaincode that is used by the [Running a Fabric Application tutorial](./write_first_app.html).
 
-**Note:** These instructions use the Fabric chaincode lifecycle introduced in the v2.0 release. If you would like to use the previous lifecycle to install and instantiate a chaincode, visit the [v1.4 version of the Fabric documentation](https://hyperledger-fabric.readthedocs.io/en/release-1.4).
-
 ## Start the network
 
 We will start by deploying an instance of the Fabric test network. Before you begin, make sure that you have installed the necessary software by following the instructions on [getting_started](getting_started.html). Use the following command to navigate to the test network directory within your local clone of the `fabric-samples` repository:
@@ -142,7 +140,7 @@ func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface,
 
 ```
 
-You can learn more about the Go contract API by visiting the [API documentation](https://github.com/hyperledger/fabric-contract-api-go) and the [smart contract processing topic](developapps/smartcontract.html).
+You can learn more about the Go contract API by visiting the [API documentation](https://github.com/hyperledger/fabric-contract-api-go) and the [smart contract processing topic](smartcontract/smartcontract.html).
 
 To install the smart contract dependencies, run the following command from the `asset-transfer-basic/chaincode-go` directory.
 
@@ -231,7 +229,7 @@ async CreateAsset(ctx, id, color, size, owner, appraisedValue) {
     }
 ```
 
-You can learn more about the JavaScript contract API by visiting the [API documentation](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/) and the [smart contract processing topic](developapps/smartcontract.html).
+You can learn more about the JavaScript contract API by visiting the [API documentation](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/).
 
 To install the smart contract dependencies, run the following command from the `asset-transfer-basic/chaincode-javascript` directory.
 
@@ -321,7 +319,7 @@ The `AssetTransfer` class provides the transaction context for the functions def
 
 ```
 
-You can learn more about the JavaScript contract API by visiting the [API documentation](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/) and the [smart contract processing topic](developapps/smartcontract.html).
+You can learn more about the JavaScript contract API by visiting the [API documentation](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/).
 
 To install the smart contract dependencies, run the following command from the `asset-transfer-basic/chaincode-typescript` directory.
 
@@ -376,7 +374,7 @@ Let's install the chaincode on the Org1 peer first. Set the following environmen
 
 ```
 export CORE_PEER_TLS_ENABLED=true
-export CORE_PEER_LOCALMSPID="Org1MSP"
+export CORE_PEER_LOCALMSPID=Org1MSP
 export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
 export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
 export CORE_PEER_ADDRESS=localhost:7051
@@ -398,7 +396,7 @@ If the command is successful, the peer will generate and return the package iden
 We can now install the chaincode on the Org2 peer. Set the following environment variables to operate as the Org2 admin and target the Org2 peer, `peer0.org2.example.com`.
 
 ```
-export CORE_PEER_LOCALMSPID="Org2MSP"
+export CORE_PEER_LOCALMSPID=Org2MSP
 export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
 export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
 export CORE_PEER_ADDRESS=localhost:9051
@@ -453,7 +451,7 @@ You need to approve a chaincode definition with an identity that has an admin ro
 We still need to approve the chaincode definition as Org1. Set the following environment variables to operate as the Org1 admin:
 
 ```
-export CORE_PEER_LOCALMSPID="Org1MSP"
+export CORE_PEER_LOCALMSPID=Org1MSP
 export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
 export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
 export CORE_PEER_ADDRESS=localhost:7051
@@ -465,7 +463,7 @@ You can now approve the chaincode definition as Org1.
 peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name basic --version 1.0 --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
 ```
 
-We now have the majority we need to deploy the asset-transfer (basic) the chaincode to the channel. While only a majority of organizations need to approve a chaincode definition (with the default policies), all organizations need to approve a chaincode definition to start the chaincode on their peers. If you commit the definition before a channel member has approved the chaincode, the organization will not be able to endorse transactions. As a result, it is recommended that all channel members approve a chaincode before committing the chaincode definition.
+We now have the majority we need to deploy the asset-transfer (basic) chaincode to the channel. While only a majority of organizations need to approve a chaincode definition (with the default policies), all organizations need to approve a chaincode definition to start the chaincode on their peers. If you commit the definition before a channel member has approved the chaincode, the organization will not be able to endorse transactions. As a result, it is recommended that all channel members approve a chaincode before committing the chaincode definition.
 
 ## Committing the chaincode definition to the channel
 
@@ -501,7 +499,7 @@ The chaincode definition endorsements by channel members are submitted to the or
 You can use the [peer lifecycle chaincode querycommitted](commands/peerlifecycle.html#peer-lifecycle-chaincode-querycommitted) command to confirm that the chaincode definition has been committed to the channel.
 
 ```
-peer lifecycle chaincode querycommitted --channelID mychannel --name basic --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+peer lifecycle chaincode querycommitted --channelID mychannel --name basic
 ```
 
 If the chaincode was successful committed to the channel, the `querycommitted` command will return the sequence and version of the chaincode definition:
@@ -573,7 +571,7 @@ Run the following commands to operate the `peer` CLI as the Org1 admin:
 
 ```
 export CORE_PEER_TLS_ENABLED=true
-export CORE_PEER_LOCALMSPID="Org1MSP"
+export CORE_PEER_LOCALMSPID=Org1MSP
 export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
 export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
 export CORE_PEER_ADDRESS=localhost:7051
@@ -617,7 +615,7 @@ The new chaincode definition uses the package ID of the JavaScript chaincode pac
 We now need to install the chaincode package and approve the chaincode definition as Org2 in order to upgrade the chaincode. Run the following commands to operate the `peer` CLI as the Org2 admin:
 
 ```
-export CORE_PEER_LOCALMSPID="Org2MSP"
+export CORE_PEER_LOCALMSPID=Org2MSP
 export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
 export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
 export CORE_PEER_ADDRESS=localhost:9051
@@ -736,6 +734,27 @@ Error: failed to create signed transaction: proposal response was not successful
 }
 ```
 
+The `peer lifecycle chaincode checkcommitreadiness` with `--inspect` flag will output additional information to identify the cause when the approval from each organization is false. It will help root cause analysis.
+
+```
+{
+	"approvals": {
+		"Org1MSP": false,
+		"Org2MSP": true
+	}
+},
+	"mismatches": {
+		"Org2MSP": {
+			"items": [
+				"EndorsementInfo (Check the Version, InitRequired, EndorsementPlugin)",
+				"ValidationInfo (Check the ValidationParameter, ValidationPlugin)",
+				"Collections (Check the Collections)"
+			]
+		}
+	}
+}
+```
+
 ### Invoke failure
 
 **Problem:** The `peer lifecycle chaincode commit` transaction is successful, but when I try to invoke the chaincode for the first time, it fails with the following error:
@@ -756,7 +775,7 @@ CONTAINER ID        IMAGE                               COMMAND             CREA
 
 If you do not see any chaincode containers listed, use the `peer lifecycle chaincode approveformyorg` command approve a chaincode definition with the correct package ID.
 
-## Endorsement policy failure
+### Endorsement policy failure
 
 **Problem:** When I try to commit the chaincode definition to the channel, the transaction fails with the following error:
 
@@ -765,7 +784,7 @@ If you do not see any chaincode containers listed, use the `peer lifecycle chain
 Error: transaction invalidated with status (ENDORSEMENT_POLICY_FAILURE)
 ```
 
-**Solution:** This error is a result of the commit transaction not gathering enough endorsements to meet the Lifecycle endorsement policy. This problem could be a result of your transaction not targeting a sufficient number of peers to meet the policy. This could also be the result of some of the peer organizations not including the `Endorsement:` signature policy referenced by the default `/Channel/Application/Endorsement` policy in their `configtx.yaml` file:
+**Solution:** This error is a result of the commit transaction not gathering enough endorsements to meet the Lifecycle endorsement policy. This problem could be a result of your transaction not targeting a sufficient number of peers to meet the policy. This could also be the result of some of the peer organizations not including the `Endorsement:` signature policy referenced by the default `/Channel/Application/Endorsement` policy in the channel configuration:
 
 ```
 Readers:
@@ -782,7 +801,7 @@ Endorsement:
 		Rule: "OR('Org2MSP.peer')"
 ```
 
-When you [enable the Fabric chaincode lifecycle](enable_cc_lifecycle.html), you also need to use the new Fabric 2.0 channel policies in addition to upgrading your channel to the `V2_0` capability. Your channel needs to include the new `/Channel/Application/LifecycleEndorsement` and `/Channel/Application/Endorsement` policies:
+Finally, ensure your channel defines the `/Channel/Application/LifecycleEndorsement` and `/Channel/Application/Endorsement` policies:
 
 ```
 Policies:
@@ -803,7 +822,7 @@ Policies:
 				Rule: "MAJORITY Endorsement"
 ```
 
-If you do not include the new channel policies in the channel configuration, you will get the following error when you approve a chaincode definition for your organization:
+If you do not include the channel policies in the channel configuration, you will get the following error when you approve a chaincode definition for your organization:
 
 ```
 Error: proposal failed with status: 500 - failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': could not set defaults for chaincode definition in channel mychannel: policy '/Channel/Application/Endorsement' must be defined for channel 'mychannel' before chaincode operations can be attempted

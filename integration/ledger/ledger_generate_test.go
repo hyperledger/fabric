@@ -1,5 +1,4 @@
 //go:build generate
-// +build generate
 
 /*
 Copyright IBM Corp All Rights Reserved.
@@ -13,9 +12,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	. "github.com/onsi/ginkgo/v2"
-
 	"github.com/hyperledger/fabric/integration/nwo"
+	. "github.com/onsi/ginkgo/v2"
 )
 
 // This test generate sample ledger data that can be used to verify rebuild ledger function and upgrade function (in a future release).

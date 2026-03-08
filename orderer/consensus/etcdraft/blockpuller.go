@@ -7,11 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
+	"crypto/x509"
 	"encoding/pem"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/consensus"
@@ -66,7 +67,8 @@ func NewBlockPuller(support consensus.ConsenterSupport,
 	bccsp bccsp.BCCSP,
 ) (BlockPuller, error) {
 	verifyBlockSequence := func(blocks []*common.Block, _ string) error {
-		return cluster.VerifyBlocks(blocks, support)
+		vb := cluster.BlockVerifierBuilder(bccsp)
+		return cluster.VerifyBlocksBFT(blocks, support.SignatureVerifier(), vb)
 	}
 
 	stdDialer := &cluster.StandardDialer{
@@ -87,9 +89,17 @@ func NewBlockPuller(support consensus.ConsenterSupport,
 			string(stdDialer.Config.SecOpts.Certificate))
 	}
 
+	logger := flogging.MustGetLogger("orderer.common.cluster.puller").With("channel", support.ChannelID())
+
+	myCert, err := x509.ParseCertificate(der.Bytes)
+	if err != nil {
+		logger.Warnf("Failed parsing my own TLS certificate: %v, therefore we may connect to our own endpoint when pulling blocks", err)
+	}
+
 	bp := &cluster.BlockPuller{
+		MyOwnTLSCert:        myCert,
 		VerifyBlockSequence: verifyBlockSequence,
-		Logger:              flogging.MustGetLogger("orderer.common.cluster.puller").With("channel", support.ChannelID()),
+		Logger:              logger,
 		RetryTimeout:        clusterConfig.ReplicationRetryTimeout,
 		MaxTotalBufferBytes: clusterConfig.ReplicationBufferSize,
 		FetchTimeout:        clusterConfig.ReplicationPullTimeout,

@@ -10,14 +10,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/common/flogging/floggingtest"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/common/flogging/floggingtest"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/internal/peer/chaincode/mock"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/msp"
@@ -214,7 +215,7 @@ func TestInvokeCmdEndorsementFailure(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		mockCF, err := getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus[i], ccRespPayload[i])
 		require.NoError(t, err, "Error getting mock chaincode command factory")
 
@@ -226,7 +227,9 @@ func TestInvokeCmdEndorsementFailure(t *testing.T) {
 		err = cmd.Execute()
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "endorsement failure during invoke")
-		require.Contains(t, err.Error(), fmt.Sprintf("response: status:%d payload:\"%s\"", ccRespStatus[i], ccRespPayload[i]))
+		tmp1 := strings.ReplaceAll(err.Error(), " ", "")
+		tmp2 := strings.ReplaceAll(fmt.Sprintf("response: status:%d payload:\"%s\"", ccRespStatus[i], ccRespPayload[i]), " ", "")
+		require.Contains(t, tmp1, tmp2)
 	}
 }
 
@@ -388,7 +391,7 @@ func getMockDeliverClientRespondAfterDelay(delayChan chan struct{}, txStatus pb.
 func getMockDeliverClientWithErr(errMsg string) *mock.PeerDeliverClient {
 	mockDC := &mock.PeerDeliverClient{}
 	mockDC.DeliverFilteredStub = func(ctx context.Context, opts ...grpc.CallOption) (pb.Deliver_DeliverFilteredClient, error) {
-		return nil, fmt.Errorf(errMsg)
+		return nil, errors.New(errMsg)
 	}
 	return mockDC
 }

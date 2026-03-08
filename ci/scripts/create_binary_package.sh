@@ -4,6 +4,11 @@
 # SPDX-License-Identifier: Apache-2.0
 set -euo pipefail
 
+# Check TARGET is non-empty
+if [[ -z "$TARGET" ]]; then
+  echo "Error: TARGET is not set."
+  exit 1
+fi
 make "release/${TARGET}"
 mkdir -p "release/${TARGET}/config"
 

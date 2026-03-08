@@ -1,5 +1,4 @@
 //go:build pkcs11
-// +build pkcs11
 
 /*
 Copyright IBM Corp. All Rights Reserved.
@@ -14,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/spf13/viper"

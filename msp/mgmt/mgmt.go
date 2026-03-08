@@ -9,8 +9,8 @@ package mgmt
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/cache"
 	"github.com/spf13/viper"
@@ -51,7 +51,7 @@ func GetManagerForChain(chainID string) msp.MSPManager {
 	return mspMgr
 }
 
-// GetManagers returns all the managers registered
+// GetDeserializers returns all the deserializers registered
 func GetDeserializers() map[string]msp.IdentityDeserializer {
 	m.Lock()
 	defer m.Unlock()
@@ -98,7 +98,7 @@ func loadLocalMSP(bccsp bccsp.BCCSP) msp.MSP {
 
 	newOpts, found := msp.Options[mspType]
 	if !found {
-		mspLogger.Panicf("msp type " + mspType + " unknown")
+		mspLogger.Panicf("msp type %s unknown", mspType)
 	}
 
 	mspInst, err := msp.New(newOpts, bccsp)

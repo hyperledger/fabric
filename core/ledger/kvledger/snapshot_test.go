@@ -10,20 +10,18 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/queryresult"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -37,11 +35,11 @@ import (
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	snapshotRootDir := conf.SnapshotsConfig.RootDir
 	nsCollBtlConfs := []*nsCollBtlConfig{
 		{
@@ -210,9 +208,8 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 }
 
 func TestSnapshotDBTypeCouchDB(t *testing.T) {
-	conf, cleanup := testConfig(t)
+	conf := testConfig(t)
 	fmt.Printf("snapshotRootDir %s\n", conf.SnapshotsConfig.RootDir)
-	defer cleanup()
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
@@ -240,8 +237,7 @@ func TestSnapshotDBTypeCouchDB(t *testing.T) {
 
 func TestSnapshotCouchDBIndexCreation(t *testing.T) {
 	setup := func() (string, *ledger.CouchDBConfig, *Provider) {
-		conf, cleanup := testConfig(t)
-		t.Cleanup(cleanup)
+		conf := testConfig(t)
 
 		snapshotRootDir := conf.SnapshotsConfig.RootDir
 		provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
@@ -280,8 +276,7 @@ func TestSnapshotCouchDBIndexCreation(t *testing.T) {
 			RedoLogPath:         filepath.Join(conf.RootFSPath, "couchdbRedoLogs"),
 		}
 
-		destConf, destCleanup := testConfig(t)
-		t.Cleanup(destCleanup)
+		destConf := testConfig(t)
 		destConf.StateDBConfig = &ledger.StateDBConfig{
 			StateDatabase: ledger.CouchDB,
 			CouchDB:       couchDBConfig,
@@ -455,8 +450,7 @@ func TestSnapshotDirPaths(t *testing.T) {
 }
 
 func TestSnapshotDirPathsCreation(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer func() {
 		provider.Close()
@@ -467,16 +461,16 @@ func TestSnapshotDirPathsCreation(t *testing.T) {
 
 	// verify that upon first time start, kvledgerProvider creates an empty temp dir and an empty final dir for the snapshots
 	for _, dir := range [2]string{inProgressSnapshotsPath, completedSnapshotsPath} {
-		f, err := ioutil.ReadDir(dir)
+		f, err := os.ReadDir(dir)
 		require.NoError(t, err)
 		require.Len(t, f, 0)
 	}
 
 	// add a file in each of the above folders
 	for _, dir := range [2]string{inProgressSnapshotsPath, completedSnapshotsPath} {
-		err := ioutil.WriteFile(filepath.Join(dir, "testFile"), []byte("some junk data"), 0o644)
+		err := os.WriteFile(filepath.Join(dir, "testFile"), []byte("some junk data"), 0o644)
 		require.NoError(t, err)
-		f, err := ioutil.ReadDir(dir)
+		f, err := os.ReadDir(dir)
 		require.NoError(t, err)
 		require.Len(t, f, 1)
 	}
@@ -485,10 +479,10 @@ func TestSnapshotDirPathsCreation(t *testing.T) {
 	// potentially from a previous crash, from the temp dir but it does not remove any files from the final dir
 	provider.Close()
 	provider = testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
-	f, err := ioutil.ReadDir(inProgressSnapshotsPath)
+	f, err := os.ReadDir(inProgressSnapshotsPath)
 	require.NoError(t, err)
 	require.Len(t, f, 0)
-	f, err = ioutil.ReadDir(completedSnapshotsPath)
+	f, err = os.ReadDir(completedSnapshotsPath)
 	require.NoError(t, err)
 	require.Len(t, f, 1)
 }
@@ -509,20 +503,18 @@ func TestSnapshotsDirInitializingErrors(t *testing.T) {
 	}
 
 	t.Run("invalid-path", func(t *testing.T) {
-		conf, cleanup := testConfig(t)
-		defer cleanup()
+		conf := testConfig(t)
 		conf.SnapshotsConfig.RootDir = "./a-relative-path"
 		err := initKVLedgerProvider(conf)
 		require.EqualError(t, err, "invalid path: ./a-relative-path. The path for the snapshot dir is expected to be an absolute path")
 	})
 
 	t.Run("snapshots final dir creation returns error", func(t *testing.T) {
-		conf, cleanup := testConfig(t)
-		defer cleanup()
+		conf := testConfig(t)
 
 		completedSnapshotsPath := CompletedSnapshotsPath(conf.SnapshotsConfig.RootDir)
 		require.NoError(t, os.MkdirAll(filepath.Dir(completedSnapshotsPath), 0o755))
-		require.NoError(t, ioutil.WriteFile(completedSnapshotsPath, []byte("some data"), 0o644))
+		require.NoError(t, os.WriteFile(completedSnapshotsPath, []byte("some data"), 0o644))
 		err := initKVLedgerProvider(conf)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "while creating the dir: "+completedSnapshotsPath)
@@ -530,8 +522,7 @@ func TestSnapshotsDirInitializingErrors(t *testing.T) {
 }
 
 func TestGenerateSnapshotErrors(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer func() {
 		provider.Close()
@@ -596,7 +587,7 @@ func TestGenerateSnapshotErrors(t *testing.T) {
 		snapshotFinalDir := SnapshotDirForLedgerBlockNum(conf.SnapshotsConfig.RootDir, "testLedgerid", 0)
 		require.NoError(t, os.MkdirAll(snapshotFinalDir, 0o744))
 		defer os.RemoveAll(snapshotFinalDir)
-		require.NoError(t, ioutil.WriteFile( // make a non-empty snapshotFinalDir to trigger failure on rename
+		require.NoError(t, os.WriteFile( // make a non-empty snapshotFinalDir to trigger failure on rename
 			filepath.Join(snapshotFinalDir, "dummyFile"),
 			[]byte("dummy file"), 0o444),
 		)
@@ -626,16 +617,16 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 	var additionalMetadataFile string
 
 	init := func(t *testing.T) {
-		conf, cleanupFunc := testConfig(t)
+		conf := testConfig(t)
 		// make a copy of originalSnapshotDir
 		snapshotDirForTest = filepath.Join(conf.RootFSPath, "snapshot")
 		require.NoError(t, os.MkdirAll(snapshotDirForTest, 0o700))
-		files, err := ioutil.ReadDir(originalSnapshotDir)
+		files, err := os.ReadDir(originalSnapshotDir)
 		require.NoError(t, err)
 		for _, f := range files {
-			content, err := ioutil.ReadFile(filepath.Join(originalSnapshotDir, f.Name()))
+			content, err := os.ReadFile(filepath.Join(originalSnapshotDir, f.Name()))
 			require.NoError(t, err)
-			err = ioutil.WriteFile(filepath.Join(snapshotDirForTest, f.Name()), content, 0o600)
+			err = os.WriteFile(filepath.Join(snapshotDirForTest, f.Name()), content, 0o600)
 			require.NoError(t, err)
 		}
 
@@ -650,24 +641,23 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		provider = testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 		cleanup = func() {
 			provider.Close()
-			cleanupFunc()
 		}
 	}
 
 	overwriteModifiedSignableMetadata := func() {
 		signaleMetadataJSON, err := metadata.SnapshotSignableMetadata.ToJSON()
 		require.NoError(t, err)
-		require.NoError(t, ioutil.WriteFile(signableMetadataFile, signaleMetadataJSON, 0o600))
+		require.NoError(t, os.WriteFile(signableMetadataFile, signaleMetadataJSON, 0o600))
 
 		metadata.snapshotAdditionalMetadata.SnapshotHashInHex = computeHashForTest(t, provider, signaleMetadataJSON)
 		additionalMetadataJSON, err := metadata.snapshotAdditionalMetadata.ToJSON()
 		require.NoError(t, err)
-		require.NoError(t, ioutil.WriteFile(additionalMetadataFile, additionalMetadataJSON, 0o600))
+		require.NoError(t, os.WriteFile(additionalMetadataFile, additionalMetadataJSON, 0o600))
 	}
 
 	overwriteDataFile := func(fileName string, content []byte) {
 		filePath := filepath.Join(snapshotDirForTest, fileName)
-		require.NoError(t, ioutil.WriteFile(filePath, content, 0o600))
+		require.NoError(t, os.WriteFile(filePath, content, 0o600))
 		metadata.SnapshotSignableMetadata.FilesAndHashes[fileName] = computeHashForTest(t, provider, content)
 		overwriteModifiedSignableMetadata()
 	}
@@ -705,7 +695,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		init(t)
 		defer cleanup()
 
-		require.NoError(t, ioutil.WriteFile(signableMetadataFile, []byte(""), 0o600))
+		require.NoError(t, os.WriteFile(signableMetadataFile, []byte(""), 0o600))
 		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.EqualError(t,
 			err,
@@ -718,7 +708,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		init(t)
 		defer cleanup()
 
-		require.NoError(t, ioutil.WriteFile(additionalMetadataFile, []byte(""), 0o600))
+		require.NoError(t, os.WriteFile(additionalMetadataFile, []byte(""), 0o600))
 		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.EqualError(t,
 			err,
@@ -731,7 +721,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		init(t)
 		defer cleanup()
 
-		require.NoError(t, ioutil.WriteFile(signableMetadataFile, []byte("{}"), 0o600))
+		require.NoError(t, os.WriteFile(signableMetadataFile, []byte("{}"), 0o600))
 		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.Contains(t,
 			err.Error(),
@@ -761,7 +751,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		init(t)
 		defer cleanup()
 
-		err := ioutil.WriteFile(filepath.Join(snapshotDirForTest, "txids.data"), []byte("random content"), 0o600)
+		err := os.WriteFile(filepath.Join(snapshotDirForTest, "txids.data"), []byte("random content"), 0o600)
 		require.NoError(t, err)
 
 		_, _, err = provider.CreateFromSnapshot(snapshotDirForTest)
@@ -869,25 +859,25 @@ func verifySnapshotOutput(
 	o *expectedSnapshotOutput,
 ) {
 	inProgressSnapshotsPath := SnapshotsTempDirPath(o.snapshotRootDir)
-	f, err := ioutil.ReadDir(inProgressSnapshotsPath)
+	f, err := os.ReadDir(inProgressSnapshotsPath)
 	require.NoError(t, err)
 	require.Len(t, f, 0)
 
 	snapshotDir := SnapshotDirForLedgerBlockNum(o.snapshotRootDir, o.ledgerID, o.lastBlockNumber)
-	files, err := ioutil.ReadDir(snapshotDir)
+	files, err := os.ReadDir(snapshotDir)
 	require.NoError(t, err)
 	require.Len(t, files, len(o.expectedBinaryFiles)+2) // + 2 JSON files
 
 	filesAndHashes := map[string]string{}
 	for _, f := range o.expectedBinaryFiles {
-		c, err := ioutil.ReadFile(filepath.Join(snapshotDir, f))
+		c, err := os.ReadFile(filepath.Join(snapshotDir, f))
 		require.NoError(t, err)
 		filesAndHashes[f] = hex.EncodeToString(util.ComputeSHA256(c))
 	}
 
 	// verify the contents of the file snapshot_metadata.json
 	m := &SnapshotSignableMetadata{}
-	mJSON, err := ioutil.ReadFile(filepath.Join(snapshotDir, SnapshotSignableMetadataFileName))
+	mJSON, err := os.ReadFile(filepath.Join(snapshotDir, SnapshotSignableMetadataFileName))
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(mJSON, m))
 
@@ -909,7 +899,7 @@ func verifySnapshotOutput(
 
 	// verify the contents of the file snapshot_metadata_hash.json
 	mh := &snapshotAdditionalMetadata{}
-	mhJSON, err := ioutil.ReadFile(filepath.Join(snapshotDir, snapshotAdditionalMetadataFileName))
+	mhJSON, err := os.ReadFile(filepath.Join(snapshotDir, snapshotAdditionalMetadataFileName))
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(mhJSON, mh))
 	require.Equal(t,
@@ -922,8 +912,7 @@ func verifySnapshotOutput(
 }
 
 func testCreateLedgerFromSnapshot(t *testing.T, snapshotDir string, expectedChannelID string) *kvLedger {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	p := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	destLedger, channelID, err := p.CreateFromSnapshot(snapshotDir)
 	require.NoError(t, err)
@@ -1008,8 +997,7 @@ func addDummyEntryInCollectionConfigHistory(
 }
 
 func TestMostRecentCollectionConfigFetcher(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 
 	ledgerID := "test-ledger"
 	chaincodeName := "test-chaincode"

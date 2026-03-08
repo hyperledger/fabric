@@ -13,18 +13,19 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/golang/protobuf/proto"
-	dp "github.com/hyperledger/fabric-protos-go/discovery"
-	"github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	dp "github.com/hyperledger/fabric-protos-go-apiv2/discovery"
+	"github.com/hyperledger/fabric-protos-go-apiv2/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/scc"
 	gossipapi "github.com/hyperledger/fabric/gossip/api"
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	gossipdiscovery "github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/ledger"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 )
 
 type Discovery interface {
@@ -58,7 +59,8 @@ type endorserState struct {
 func (reg *registry) endorsementPlan(channel string, interest *peer.ChaincodeInterest, preferredEndorser *endorser) (*plan, error) {
 	descriptor, err := reg.discovery.PeersForEndorsement(gossipcommon.ChannelID(channel), interest)
 	if err != nil {
-		logger.Errorw("PeersForEndorsement failed.", "error", err, "channel", channel, "ChaincodeInterest", proto.MarshalTextString(interest))
+		b, _ := prototext.Marshal(interest)
+		logger.Errorw("PeersForEndorsement failed.", "error", err, "channel", channel, "ChaincodeInterest", b)
 		return nil, errors.Wrap(err, "no combination of peers can be derived which satisfy the endorsement policy")
 	}
 
@@ -287,7 +289,7 @@ func sorter(e []*endorserState, host string) func(i, j int) bool {
 }
 
 // Returns a set of broadcastClients that can order a transaction for the given channel.
-func (reg *registry) orderers(channel string) ([]*orderer, error) {
+func (reg *registry) orderers(channel string) ([]*orderer, int, error) {
 	var orderers []*orderer
 	var ordererEndpoints []*endpointConfig
 	addr, exists := reg.channelOrderers.Load(channel)
@@ -298,7 +300,7 @@ func (reg *registry) orderers(channel string) ([]*orderer, error) {
 		// no entry in the map - get the orderer config from discovery
 		channelOrderers, err := reg.config(channel)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		// A config update may have saved this first, in which case don't overwrite it.
 		addr, _ = reg.channelOrderers.LoadOrStore(channel, channelOrderers)
@@ -330,7 +332,7 @@ func (reg *registry) orderers(channel string) ([]*orderer, error) {
 		orderers = append(orderers, entry.(*orderer))
 	}
 
-	return orderers, nil
+	return orderers, len(ordererEndpoints), nil
 }
 
 func (reg *registry) lookupEndorser(endpoint string, pkiID gossipcommon.PKIidType, channel string) *endorser {
@@ -479,7 +481,7 @@ func (reg *registry) closeStaleOrdererConnections(channel string, channelOrderer
 	oldList, loaded := reg.channelOrderers.LoadAndDelete(channel)
 	if loaded {
 		currentEndpoints := map[string]struct{}{}
-		reg.channelOrderers.Range(func(key, value interface{}) bool {
+		reg.channelOrderers.Range(func(key, value any) bool {
 			for _, ep := range value.([]*endpointConfig) {
 				currentEndpoints[ep.address] = struct{}{}
 			}

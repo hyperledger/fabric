@@ -8,11 +8,10 @@ package channel
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
@@ -22,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 )
 
 // ConfigTxFileNotFound channel create configuration tx file not found
@@ -38,11 +38,12 @@ func (e InvalidCreateTx) Error() string {
 	return fmt.Sprintf("Invalid channel create transaction : %s", string(e))
 }
 
+// deprecated
 func createCmd(cf *ChannelCmdFactory) *cobra.Command {
 	createCmd := &cobra.Command{
 		Use:   "create",
-		Short: "Create a channel",
-		Long:  "Create a channel and write the genesis block to a file.",
+		Short: "[DEPRECATED] Create a channel",
+		Long:  "[DEPRECATED] Create a channel and write the genesis block to a file. Instead of this command, use Orderer Service Node (OSN).",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return create(cmd, args, cf)
 		},
@@ -58,6 +59,7 @@ func createCmd(cf *ChannelCmdFactory) *cobra.Command {
 	return createCmd
 }
 
+// deprecated
 func createChannelFromDefaults(cf *ChannelCmdFactory) (*cb.Envelope, error) {
 	chCrtEnv, err := encoder.MakeChannelCreationTransaction(
 		channelID,
@@ -71,8 +73,9 @@ func createChannelFromDefaults(cf *ChannelCmdFactory) (*cb.Envelope, error) {
 	return chCrtEnv, nil
 }
 
+// deprecated
 func createChannelFromConfigTx(configTxFileName string) (*cb.Envelope, error) {
-	cftx, err := ioutil.ReadFile(configTxFileName)
+	cftx, err := os.ReadFile(configTxFileName)
 	if err != nil {
 		return nil, ConfigTxFileNotFound(err.Error())
 	}
@@ -137,6 +140,7 @@ func sanityCheckAndSignConfigTx(envConfigUpdate *cb.Envelope, signer identity.Si
 	return protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, signer, configUpdateEnv, 0, 0)
 }
 
+// deprecated
 func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
 	var err error
 	var chCrtEnv *cb.Envelope
@@ -167,6 +171,7 @@ func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
 	return err
 }
 
+// deprecated
 func executeCreate(cf *ChannelCmdFactory) error {
 	err := sendCreateChainTransaction(cf)
 	if err != nil {
@@ -187,7 +192,7 @@ func executeCreate(cf *ChannelCmdFactory) error {
 	if outputBlock != common.UndefinedParamValue {
 		file = outputBlock
 	}
-	err = ioutil.WriteFile(file, b, 0o644)
+	err = os.WriteFile(file, b, 0o644)
 	if err != nil {
 		return err
 	}
@@ -195,6 +200,7 @@ func executeCreate(cf *ChannelCmdFactory) error {
 	return nil
 }
 
+// deprecated
 func getGenesisBlock(cf *ChannelCmdFactory) (*cb.Block, error) {
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
@@ -220,6 +226,7 @@ func getGenesisBlock(cf *ChannelCmdFactory) (*cb.Block, error) {
 	}
 }
 
+// deprecated
 func create(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 	// the global chainID filled by the "-c" command
 	if channelID == common.UndefinedParamValue {

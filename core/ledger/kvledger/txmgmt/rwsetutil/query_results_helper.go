@@ -9,9 +9,9 @@ package rwsetutil
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // MerkleTreeLevel used for representing a level of the merkle tree
@@ -141,7 +141,7 @@ func serializeKVReads(kvReads []*kvrwset.KVRead) ([]byte, error) {
 	return proto.Marshal(&kvrwset.QueryReads{KvReads: kvReads})
 }
 
-//////////// Merkle tree building code  ///////
+// ////////// Merkle tree building code  ///////
 
 type merkleTree struct {
 	tree      map[MerkleTreeLevel][]Hash

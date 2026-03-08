@@ -8,7 +8,7 @@ package msp
 
 import (
 	"github.com/IBM/idemix"
-	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/pkg/errors"
 )
 
@@ -19,6 +19,7 @@ const (
 	MSPv1_1
 	MSPv1_3
 	MSPv1_4_3
+	MSPv3_0
 )
 
 // NewOpts represent
@@ -51,22 +52,14 @@ func New(opts NewOpts, cryptoProvider bccsp.BCCSP) (MSP, error) {
 	switch opts.(type) {
 	case *BCCSPNewOpts:
 		switch opts.GetVersion() {
-		case MSPv1_0:
-			return newBccspMsp(MSPv1_0, cryptoProvider)
-		case MSPv1_1:
-			return newBccspMsp(MSPv1_1, cryptoProvider)
-		case MSPv1_3:
-			return newBccspMsp(MSPv1_3, cryptoProvider)
-		case MSPv1_4_3:
-			return newBccspMsp(MSPv1_4_3, cryptoProvider)
+		case MSPv1_0, MSPv1_1, MSPv1_3, MSPv1_4_3, MSPv3_0:
+			return newBccspMsp(opts.GetVersion(), cryptoProvider)
 		default:
 			return nil, errors.Errorf("Invalid *BCCSPNewOpts. Version not recognized [%v]", opts.GetVersion())
 		}
 	case *IdemixNewOpts:
 		switch opts.GetVersion() {
-		case MSPv1_4_3:
-			fallthrough
-		case MSPv1_3:
+		case MSPv1_3, MSPv1_4_3:
 			msp, err := idemix.NewIdemixMsp(MSPv1_3)
 			if err != nil {
 				return nil, err

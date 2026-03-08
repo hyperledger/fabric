@@ -9,12 +9,12 @@ package gateway
 import (
 	"context"
 
-	"github.com/golang/protobuf/proto"
-	gp "github.com/hyperledger/fabric-protos-go/gateway"
+	gp "github.com/hyperledger/fabric-protos-go-apiv2/gateway"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/protoutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 // CommitStatus returns the validation code for a specific transaction on a specific channel. If the transaction is
@@ -31,6 +31,16 @@ func (gs *Server) CommitStatus(ctx context.Context, signedRequest *gp.SignedComm
 	request := &gp.CommitStatusRequest{}
 	if err := proto.Unmarshal(signedRequest.GetRequest(), request); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid status request: %v", err)
+	}
+
+	// Validate the request has valid channel id and transaction id
+	switch {
+	case request.GetIdentity() == nil:
+		return nil, status.Error(codes.InvalidArgument, "no identity provided")
+	case request.GetChannelId() == "":
+		return nil, status.Error(codes.InvalidArgument, "no channel ID provided")
+	case request.GetTransactionId() == "":
+		return nil, status.Error(codes.InvalidArgument, "transaction ID should not be empty")
 	}
 
 	signedData := &protoutil.SignedData{

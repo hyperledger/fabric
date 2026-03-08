@@ -10,9 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Shopify/sarama"
-	bccsp "github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/common/flogging"
+	bccsp "github.com/hyperledger/fabric-lib-go/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric/common/viperutil"
 	coreconfig "github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
@@ -24,9 +23,8 @@ var logger = flogging.MustGetLogger("localconfig")
 type TopLevel struct {
 	General              General
 	FileLedger           FileLedger
-	Kafka                Kafka
 	Debug                Debug
-	Consensus            interface{}
+	Consensus            any
 	Operations           Operations
 	Metrics              Metrics
 	ChannelParticipation ChannelParticipation
@@ -40,11 +38,12 @@ type General struct {
 	TLS               TLS
 	Cluster           Cluster
 	Keepalive         Keepalive
+	Backoff           Backoff
 	ConnectionTimeout time.Duration
-	GenesisMethod     string // For compatibility only, will be replaced by BootstrapMethod
-	GenesisFile       string // For compatibility only, will be replaced by BootstrapFile
-	BootstrapMethod   string
-	BootstrapFile     string
+	GenesisMethod     string // Deprecated: For compatibility only, will be replaced by BootstrapMethod
+	GenesisFile       string // Deprecated: For compatibility only, will be replaced by BootstrapFile
+	BootstrapMethod   string // Deprecated: System channel is no longer supported.
+	BootstrapFile     string // Deprecated: System channel is no longer supported.
 	Profile           Profile
 	LocalMSPDir       string
 	LocalMSPID        string
@@ -52,26 +51,27 @@ type General struct {
 	Authentication    Authentication
 	MaxRecvMsgSize    int32
 	MaxSendMsgSize    int32
+	Throttling        Throttling
 }
 
 type Cluster struct {
-	ListenAddress                        string
-	ListenPort                           uint16
-	ServerCertificate                    string
-	ServerPrivateKey                     string
-	ClientCertificate                    string
-	ClientPrivateKey                     string
-	RootCAs                              []string
-	DialTimeout                          time.Duration
-	RPCTimeout                           time.Duration
-	ReplicationBufferSize                int
-	ReplicationPullTimeout               time.Duration
-	ReplicationRetryTimeout              time.Duration
-	ReplicationBackgroundRefreshInterval time.Duration
-	ReplicationMaxRetries                int
-	SendBufferSize                       int
-	CertExpirationWarningThreshold       time.Duration
-	TLSHandshakeTimeShift                time.Duration
+	ListenAddress                  string
+	ListenPort                     uint16
+	ServerCertificate              string
+	ServerPrivateKey               string
+	ClientCertificate              string
+	ClientPrivateKey               string
+	RootCAs                        []string
+	DialTimeout                    time.Duration
+	RPCTimeout                     time.Duration
+	ReplicationBufferSize          int
+	ReplicationPullTimeout         time.Duration
+	ReplicationRetryTimeout        time.Duration
+	ReplicationMaxRetries          int
+	ReplicationPolicy              string // BFT: "simple" | "consensus" (default); etcdraft: ignored, always "simple"
+	SendBufferSize                 int
+	CertExpirationWarningThreshold time.Duration
+	TLSHandshakeTimeShift          time.Duration
 }
 
 // Keepalive contains configuration for gRPC servers.
@@ -79,6 +79,13 @@ type Keepalive struct {
 	ServerMinInterval time.Duration
 	ServerInterval    time.Duration
 	ServerTimeout     time.Duration
+}
+
+// Backoff defines the configuration options for GRPC client.
+type Backoff struct {
+	BaseDelay  time.Duration
+	Multiplier float64
+	MaxDelay   time.Duration
 }
 
 // TLS contains configuration for TLS connections.
@@ -90,13 +97,6 @@ type TLS struct {
 	ClientAuthRequired    bool
 	ClientRootCAs         []string
 	TLSHandshakeTimeShift time.Duration
-}
-
-// SASLPlain contains configuration for SASL/PLAIN authentication
-type SASLPlain struct {
-	Enabled  bool
-	User     string
-	Password string
 }
 
 // Authentication contains configuration parameters related to authenticating
@@ -116,64 +116,6 @@ type Profile struct {
 type FileLedger struct {
 	Location string
 	Prefix   string // For compatibility only. This setting is no longer supported.
-}
-
-// Kafka contains configuration for the Kafka-based orderer.
-type Kafka struct {
-	Retry     Retry
-	Verbose   bool
-	Version   sarama.KafkaVersion // TODO Move this to global config
-	TLS       TLS
-	SASLPlain SASLPlain
-	Topic     Topic
-}
-
-// Retry contains configuration related to retries and timeouts when the
-// connection to the Kafka cluster cannot be established, or when Metadata
-// requests needs to be repeated (because the cluster is in the middle of a
-// leader election).
-type Retry struct {
-	ShortInterval   time.Duration
-	ShortTotal      time.Duration
-	LongInterval    time.Duration
-	LongTotal       time.Duration
-	NetworkTimeouts NetworkTimeouts
-	Metadata        Metadata
-	Producer        Producer
-	Consumer        Consumer
-}
-
-// NetworkTimeouts contains the socket timeouts for network requests to the
-// Kafka cluster.
-type NetworkTimeouts struct {
-	DialTimeout  time.Duration
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-}
-
-// Metadata contains configuration for the metadata requests to the Kafka
-// cluster.
-type Metadata struct {
-	RetryMax     int
-	RetryBackoff time.Duration
-}
-
-// Producer contains configuration for the producer's retries when failing to
-// post a message to a Kafka partition.
-type Producer struct {
-	RetryMax     int
-	RetryBackoff time.Duration
-}
-
-// Consumer contains configuration for the consumer's retries when failing to
-// read from a Kafa partition.
-type Consumer struct {
-	RetryBackoff time.Duration
-}
-
-// Topic contains the settings to use when creating Kafka topics
-type Topic struct {
-	ReplicationFactor int16
 }
 
 // Debug contains configuration for the orderer's debug parameters.
@@ -208,10 +150,23 @@ type Admin struct {
 	TLS           TLS
 }
 
+// Throttling defines a max rate of transactions per client.
+// The effective rate per client is the rate defined divided equally
+// by all clients, until the clients cease from sending transactions
+// and inactivity timeout expires for them.
+type Throttling struct {
+	// Rate is the maximum rate for all clients combined.
+	Rate int
+	// InactivityTimeout defines the time frame after which
+	// inactive clients are pruned from memory and are not considered
+	// when allocating the budget for throttling per client.
+	InactivityTimeout time.Duration
+}
+
 // ChannelParticipation provides the channel participation API configuration for the orderer.
 // Channel participation uses the same ListenAddress and TLS settings of the Operations service.
 type ChannelParticipation struct {
-	Enabled            bool
+	Enabled            bool // Deprecated: always overridden to 'true'
 	MaxRequestBodySize uint32
 }
 
@@ -220,66 +175,36 @@ var Defaults = TopLevel{
 	General: General{
 		ListenAddress:   "127.0.0.1",
 		ListenPort:      7050,
-		BootstrapMethod: "file",
-		BootstrapFile:   "genesisblock",
+		BootstrapMethod: "none",
 		Profile: Profile{
 			Enabled: false,
 			Address: "0.0.0.0:6060",
 		},
 		Cluster: Cluster{
-			ReplicationMaxRetries:                12,
-			RPCTimeout:                           time.Second * 7,
-			DialTimeout:                          time.Second * 5,
-			ReplicationBufferSize:                20971520,
-			SendBufferSize:                       100,
-			ReplicationBackgroundRefreshInterval: time.Minute * 5,
-			ReplicationRetryTimeout:              time.Second * 5,
-			ReplicationPullTimeout:               time.Second * 5,
-			CertExpirationWarningThreshold:       time.Hour * 24 * 7,
+			ReplicationMaxRetries:          12,
+			RPCTimeout:                     time.Second * 7,
+			DialTimeout:                    time.Second * 5,
+			ReplicationBufferSize:          20971520,
+			SendBufferSize:                 100,
+			ReplicationRetryTimeout:        time.Second * 5,
+			ReplicationPullTimeout:         time.Second * 5,
+			CertExpirationWarningThreshold: time.Hour * 24 * 7,
+			ReplicationPolicy:              "consensus", // BFT default; on etcdraft it is ignored
 		},
 		LocalMSPDir: "msp",
 		LocalMSPID:  "SampleOrg",
 		BCCSP:       bccsp.GetDefaultOpts(),
 		Authentication: Authentication{
-			TimeWindow: time.Duration(15 * time.Minute),
+			TimeWindow: 15 * time.Minute,
 		},
 		MaxRecvMsgSize: comm.DefaultMaxRecvMsgSize,
 		MaxSendMsgSize: comm.DefaultMaxSendMsgSize,
+		Throttling: Throttling{
+			InactivityTimeout: time.Second * 5,
+		},
 	},
 	FileLedger: FileLedger{
 		Location: "/var/hyperledger/production/orderer",
-	},
-	Kafka: Kafka{
-		Retry: Retry{
-			ShortInterval: 1 * time.Minute,
-			ShortTotal:    10 * time.Minute,
-			LongInterval:  10 * time.Minute,
-			LongTotal:     12 * time.Hour,
-			NetworkTimeouts: NetworkTimeouts{
-				DialTimeout:  30 * time.Second,
-				ReadTimeout:  30 * time.Second,
-				WriteTimeout: 30 * time.Second,
-			},
-			Metadata: Metadata{
-				RetryBackoff: 250 * time.Millisecond,
-				RetryMax:     3,
-			},
-			Producer: Producer{
-				RetryBackoff: 100 * time.Millisecond,
-				RetryMax:     3,
-			},
-			Consumer: Consumer{
-				RetryBackoff: 2 * time.Second,
-			},
-		},
-		Verbose: false,
-		Version: sarama.V0_10_2_0,
-		TLS: TLS{
-			Enabled: false,
-		},
-		Topic: Topic{
-			ReplicationFactor: 3,
-		},
 	},
 	Debug: Debug{
 		BroadcastTraceDir: "",
@@ -292,7 +217,7 @@ var Defaults = TopLevel{
 		Provider: "disabled",
 	},
 	ChannelParticipation: ChannelParticipation{
-		Enabled:            false,
+		Enabled:            true,
 		MaxRequestBodySize: 1024 * 1024,
 	},
 	Admin: Admin{
@@ -393,14 +318,6 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			} else {
 				c.General.BootstrapMethod = Defaults.General.BootstrapMethod
 			}
-		case c.General.BootstrapFile == "":
-			if c.General.GenesisFile != "" {
-				// This is to keep the compatibility with old config file that uses genesisfile
-				logger.Warn("General.GenesisFile should be replaced by General.BootstrapFile")
-				c.General.BootstrapFile = c.General.GenesisFile
-			} else {
-				c.General.BootstrapFile = Defaults.General.BootstrapFile
-			}
 		case c.General.Cluster.RPCTimeout == 0:
 			c.General.Cluster.RPCTimeout = Defaults.General.Cluster.RPCTimeout
 		case c.General.Cluster.DialTimeout == 0:
@@ -415,21 +332,11 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			c.General.Cluster.ReplicationPullTimeout = Defaults.General.Cluster.ReplicationPullTimeout
 		case c.General.Cluster.ReplicationRetryTimeout == 0:
 			c.General.Cluster.ReplicationRetryTimeout = Defaults.General.Cluster.ReplicationRetryTimeout
-		case c.General.Cluster.ReplicationBackgroundRefreshInterval == 0:
-			c.General.Cluster.ReplicationBackgroundRefreshInterval = Defaults.General.Cluster.ReplicationBackgroundRefreshInterval
 		case c.General.Cluster.CertExpirationWarningThreshold == 0:
 			c.General.Cluster.CertExpirationWarningThreshold = Defaults.General.Cluster.CertExpirationWarningThreshold
-		case c.Kafka.TLS.Enabled && c.Kafka.TLS.Certificate == "":
-			logger.Panicf("General.Kafka.TLS.Certificate must be set if General.Kafka.TLS.Enabled is set to true.")
-		case c.Kafka.TLS.Enabled && c.Kafka.TLS.PrivateKey == "":
-			logger.Panicf("General.Kafka.TLS.PrivateKey must be set if General.Kafka.TLS.Enabled is set to true.")
-		case c.Kafka.TLS.Enabled && c.Kafka.TLS.RootCAs == nil:
-			logger.Panicf("General.Kafka.TLS.CertificatePool must be set if General.Kafka.TLS.Enabled is set to true.")
-
-		case c.Kafka.SASLPlain.Enabled && c.Kafka.SASLPlain.User == "":
-			logger.Panic("General.Kafka.SASLPlain.User must be set if General.Kafka.SASLPlain.Enabled is set to true.")
-		case c.Kafka.SASLPlain.Enabled && c.Kafka.SASLPlain.Password == "":
-			logger.Panic("General.Kafka.SASLPlain.Password must be set if General.Kafka.SASLPlain.Enabled is set to true.")
+		case (c.General.Cluster.ReplicationPolicy != "simple") && (c.General.Cluster.ReplicationPolicy != "consensus"):
+			logger.Infof("General.Cluster.ReplicationPolicy is `%s`, setting to `%s`", c.General.Cluster.ReplicationPolicy, Defaults.General.Cluster.ReplicationPolicy)
+			c.General.Cluster.ReplicationPolicy = Defaults.General.Cluster.ReplicationPolicy
 
 		case c.General.Profile.Enabled && c.General.Profile.Address == "":
 			logger.Infof("Profiling enabled and General.Profile.Address unset, setting to %s", Defaults.General.Profile.Address)
@@ -446,50 +353,9 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			logger.Infof("General.Authentication.TimeWindow unset, setting to %s", Defaults.General.Authentication.TimeWindow)
 			c.General.Authentication.TimeWindow = Defaults.General.Authentication.TimeWindow
 
-		case c.Kafka.Retry.ShortInterval == 0:
-			logger.Infof("Kafka.Retry.ShortInterval unset, setting to %v", Defaults.Kafka.Retry.ShortInterval)
-			c.Kafka.Retry.ShortInterval = Defaults.Kafka.Retry.ShortInterval
-		case c.Kafka.Retry.ShortTotal == 0:
-			logger.Infof("Kafka.Retry.ShortTotal unset, setting to %v", Defaults.Kafka.Retry.ShortTotal)
-			c.Kafka.Retry.ShortTotal = Defaults.Kafka.Retry.ShortTotal
-		case c.Kafka.Retry.LongInterval == 0:
-			logger.Infof("Kafka.Retry.LongInterval unset, setting to %v", Defaults.Kafka.Retry.LongInterval)
-			c.Kafka.Retry.LongInterval = Defaults.Kafka.Retry.LongInterval
-		case c.Kafka.Retry.LongTotal == 0:
-			logger.Infof("Kafka.Retry.LongTotal unset, setting to %v", Defaults.Kafka.Retry.LongTotal)
-			c.Kafka.Retry.LongTotal = Defaults.Kafka.Retry.LongTotal
-
-		case c.Kafka.Retry.NetworkTimeouts.DialTimeout == 0:
-			logger.Infof("Kafka.Retry.NetworkTimeouts.DialTimeout unset, setting to %v", Defaults.Kafka.Retry.NetworkTimeouts.DialTimeout)
-			c.Kafka.Retry.NetworkTimeouts.DialTimeout = Defaults.Kafka.Retry.NetworkTimeouts.DialTimeout
-		case c.Kafka.Retry.NetworkTimeouts.ReadTimeout == 0:
-			logger.Infof("Kafka.Retry.NetworkTimeouts.ReadTimeout unset, setting to %v", Defaults.Kafka.Retry.NetworkTimeouts.ReadTimeout)
-			c.Kafka.Retry.NetworkTimeouts.ReadTimeout = Defaults.Kafka.Retry.NetworkTimeouts.ReadTimeout
-		case c.Kafka.Retry.NetworkTimeouts.WriteTimeout == 0:
-			logger.Infof("Kafka.Retry.NetworkTimeouts.WriteTimeout unset, setting to %v", Defaults.Kafka.Retry.NetworkTimeouts.WriteTimeout)
-			c.Kafka.Retry.NetworkTimeouts.WriteTimeout = Defaults.Kafka.Retry.NetworkTimeouts.WriteTimeout
-
-		case c.Kafka.Retry.Metadata.RetryBackoff == 0:
-			logger.Infof("Kafka.Retry.Metadata.RetryBackoff unset, setting to %v", Defaults.Kafka.Retry.Metadata.RetryBackoff)
-			c.Kafka.Retry.Metadata.RetryBackoff = Defaults.Kafka.Retry.Metadata.RetryBackoff
-		case c.Kafka.Retry.Metadata.RetryMax == 0:
-			logger.Infof("Kafka.Retry.Metadata.RetryMax unset, setting to %v", Defaults.Kafka.Retry.Metadata.RetryMax)
-			c.Kafka.Retry.Metadata.RetryMax = Defaults.Kafka.Retry.Metadata.RetryMax
-
-		case c.Kafka.Retry.Producer.RetryBackoff == 0:
-			logger.Infof("Kafka.Retry.Producer.RetryBackoff unset, setting to %v", Defaults.Kafka.Retry.Producer.RetryBackoff)
-			c.Kafka.Retry.Producer.RetryBackoff = Defaults.Kafka.Retry.Producer.RetryBackoff
-		case c.Kafka.Retry.Producer.RetryMax == 0:
-			logger.Infof("Kafka.Retry.Producer.RetryMax unset, setting to %v", Defaults.Kafka.Retry.Producer.RetryMax)
-			c.Kafka.Retry.Producer.RetryMax = Defaults.Kafka.Retry.Producer.RetryMax
-
-		case c.Kafka.Retry.Consumer.RetryBackoff == 0:
-			logger.Infof("Kafka.Retry.Consumer.RetryBackoff unset, setting to %v", Defaults.Kafka.Retry.Consumer.RetryBackoff)
-			c.Kafka.Retry.Consumer.RetryBackoff = Defaults.Kafka.Retry.Consumer.RetryBackoff
-
-		case c.Kafka.Version == sarama.KafkaVersion{}:
-			logger.Infof("Kafka.Version unset, setting to %v", Defaults.Kafka.Version)
-			c.Kafka.Version = Defaults.Kafka.Version
+		case !c.ChannelParticipation.Enabled:
+			logger.Info("General.ChannelParticipation.Enabled was set to false, setting to true")
+			c.ChannelParticipation.Enabled = true
 
 		case c.Admin.TLS.Enabled && !c.Admin.TLS.ClientAuthRequired:
 			logger.Panic("Admin.TLS.ClientAuthRequired must be set to true if Admin.TLS.Enabled is set to true")
@@ -500,6 +366,9 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.General.MaxSendMsgSize == 0:
 			logger.Infof("General.MaxSendMsgSize is unset, setting to %v", Defaults.General.MaxSendMsgSize)
 			c.General.MaxSendMsgSize = Defaults.General.MaxSendMsgSize
+		case c.General.Throttling.InactivityTimeout == 0:
+			logger.Infof("General.Throttling.InactivityTimeout is unset, setting to %v", Defaults.General.Throttling.InactivityTimeout)
+			c.General.Throttling.InactivityTimeout = Defaults.General.Throttling.InactivityTimeout
 		default:
 			return
 		}

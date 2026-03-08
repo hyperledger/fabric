@@ -9,7 +9,7 @@ package channelconfig
 import (
 	"testing"
 
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,12 +40,4 @@ func TestBatchTimeout(t *testing.T) {
 
 	oc = &OrdererConfig{protos: &OrdererProtos{BatchTimeout: &ab.BatchTimeout{Timeout: "0s"}}}
 	require.Error(t, oc.validateBatchTimeout(), "Zero batch timeout")
-}
-
-func TestKafkaBrokers(t *testing.T) {
-	oc := &OrdererConfig{protos: &OrdererProtos{KafkaBrokers: &ab.KafkaBrokers{Brokers: []string{"127.0.0.1:9092", "foo.bar:9092"}}}}
-	require.NoError(t, oc.validateKafkaBrokers(), "Valid kafka brokers")
-
-	oc = &OrdererConfig{protos: &OrdererProtos{KafkaBrokers: &ab.KafkaBrokers{Brokers: []string{"127.0.0.1", "foo.bar", "127.0.0.1:-1", "localhost:65536", "foo.bar.:9092", ".127.0.0.1:9092", "-foo.bar:9092"}}}}
-	require.Error(t, oc.validateKafkaBrokers(), "Invalid kafka brokers")
 }

@@ -10,9 +10,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/hyperledger/fabric-chaincode-go/pkg/statebased"
-	"github.com/hyperledger/fabric-chaincode-go/shim"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-chaincode-go/v2/pkg/statebased"
+	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 )
 
 /*
@@ -35,7 +35,7 @@ are provided:
 type EndorsementCC struct{}
 
 // Init callback
-func (cc *EndorsementCC) Init(stub shim.ChaincodeStubInterface) pb.Response {
+func (cc *EndorsementCC) Init(stub shim.ChaincodeStubInterface) *pb.Response {
 	err := stub.PutState("pub", []byte("foo"))
 	if err != nil {
 		return shim.Error(err.Error())
@@ -44,7 +44,7 @@ func (cc *EndorsementCC) Init(stub shim.ChaincodeStubInterface) pb.Response {
 }
 
 // Invoke dispatcher
-func (cc *EndorsementCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
+func (cc *EndorsementCC) Invoke(stub shim.ChaincodeStubInterface) *pb.Response {
 	funcName, _ := stub.GetFunctionAndParameters()
 	if function, ok := functions[funcName]; ok {
 		return function(stub)
@@ -53,7 +53,7 @@ func (cc *EndorsementCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 }
 
 // function dispatch map used by Invoke()
-var functions = map[string]func(stub shim.ChaincodeStubInterface) pb.Response{
+var functions = map[string]func(stub shim.ChaincodeStubInterface) *pb.Response{
 	"addorgs":  addOrgs,
 	"delorgs":  delOrgs,
 	"listorgs": listOrgs,
@@ -65,7 +65,7 @@ var functions = map[string]func(stub shim.ChaincodeStubInterface) pb.Response{
 
 // addOrgs adds the list of MSP IDs from the invocation parameters
 // to the state's endorsement policy
-func addOrgs(stub shim.ChaincodeStubInterface) pb.Response {
+func addOrgs(stub shim.ChaincodeStubInterface) *pb.Response {
 	_, parameters := stub.GetFunctionAndParameters()
 	if len(parameters) < 2 {
 		return shim.Error("No orgs to add specified")
@@ -114,7 +114,7 @@ func addOrgs(stub shim.ChaincodeStubInterface) pb.Response {
 
 // delOrgs removes the list of MSP IDs from the invocation parameters
 // from the state's endorsement policy
-func delOrgs(stub shim.ChaincodeStubInterface) pb.Response {
+func delOrgs(stub shim.ChaincodeStubInterface) *pb.Response {
 	_, parameters := stub.GetFunctionAndParameters()
 	if len(parameters) < 2 {
 		return shim.Error("No orgs to delete specified")
@@ -162,7 +162,7 @@ func delOrgs(stub shim.ChaincodeStubInterface) pb.Response {
 
 // listOrgs returns the list of organizations currently part of
 // the state's endorsement policy
-func listOrgs(stub shim.ChaincodeStubInterface) pb.Response {
+func listOrgs(stub shim.ChaincodeStubInterface) *pb.Response {
 	_, parameters := stub.GetFunctionAndParameters()
 	if len(parameters) < 1 {
 		return shim.Error("No key specified")
@@ -199,7 +199,7 @@ func listOrgs(stub shim.ChaincodeStubInterface) pb.Response {
 }
 
 // delEP deletes the state-based endorsement policy for the key altogether
-func delEP(stub shim.ChaincodeStubInterface) pb.Response {
+func delEP(stub shim.ChaincodeStubInterface) *pb.Response {
 	_, parameters := stub.GetFunctionAndParameters()
 	if len(parameters) < 1 {
 		return shim.Error("No key specified")
@@ -222,7 +222,7 @@ func delEP(stub shim.ChaincodeStubInterface) pb.Response {
 }
 
 // setVal sets the value of the KVS key
-func setVal(stub shim.ChaincodeStubInterface) pb.Response {
+func setVal(stub shim.ChaincodeStubInterface) *pb.Response {
 	args := stub.GetArgs()
 	if len(args) != 3 {
 		return shim.Error("setval expects two arguments")
@@ -248,7 +248,7 @@ func setVal(stub shim.ChaincodeStubInterface) pb.Response {
 }
 
 // getVal retrieves the value of the KVS key
-func getVal(stub shim.ChaincodeStubInterface) pb.Response {
+func getVal(stub shim.ChaincodeStubInterface) *pb.Response {
 	args := stub.GetArgs()
 	if len(args) != 2 {
 		return shim.Error("No key specified")
@@ -270,7 +270,7 @@ func getVal(stub shim.ChaincodeStubInterface) pb.Response {
 }
 
 // invokeCC is used for chaincode to chaincode invocation of a given cc on another channel
-func invokeCC(stub shim.ChaincodeStubInterface) pb.Response {
+func invokeCC(stub shim.ChaincodeStubInterface) *pb.Response {
 	args := stub.GetArgs()
 	if len(args) < 3 {
 		return shim.Error("cc2cc expects at least two arguments (channel and chaincode)")

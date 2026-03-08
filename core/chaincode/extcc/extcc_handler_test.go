@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package extcc_test
 
 import (
+	"errors"
 	"net"
 	"time"
 
@@ -71,6 +72,19 @@ var _ = Describe("Extcc", func() {
 
 				streamArg := shandler.HandleChaincodeStreamArgsForCall(0)
 				Expect(streamArg).To(Not(BeNil()))
+			})
+
+			It("HandleChaincodeStream returns error", func() {
+				ccinfo := &ccintf.ChaincodeServerInfo{
+					Address: cclist.Addr().String(),
+					ClientConfig: comm.ClientConfig{
+						KaOpts:      comm.DefaultKeepaliveOptions,
+						DialTimeout: 10 * time.Second,
+					},
+				}
+				shandler.HandleChaincodeStreamReturns(errors.New("error returned by HandleChaincodeStream"))
+				err := i.Stream("ccid", ccinfo, shandler)
+				Expect(err).To(MatchError(ContainSubstring("error handling chaincode stream for ccid")))
 			})
 		})
 		Context("chaincode info incorrect", func() {

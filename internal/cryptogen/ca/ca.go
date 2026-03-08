@@ -8,13 +8,13 @@ package ca
 import (
 	"crypto"
 	"crypto/ecdsa"
-	"crypto/elliptic"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"io/ioutil"
+	"fmt"
 	"math/big"
 	"net"
 	"os"
@@ -50,6 +50,7 @@ func NewCA(
 	orgUnit,
 	streetAddress,
 	postalCode string,
+	keyAlg string,
 ) (*CA, error) {
 	var ca *CA
 
@@ -58,7 +59,7 @@ func NewCA(
 		return nil, err
 	}
 
-	priv, err := csp.GeneratePrivateKey(baseDir)
+	priv, err := csp.GeneratePrivateKey(baseDir, keyAlg)
 	if err != nil {
 		return nil, err
 	}
@@ -80,24 +81,25 @@ func NewCA(
 	subject.CommonName = name
 
 	template.Subject = subject
-	template.SubjectKeyId = computeSKI(priv)
+	template.SubjectKeyId, err = computeSKI(priv)
+	if err != nil {
+		return nil, err
+	}
 
-	x509Cert, err := genCertificateECDSA(
+	x509Cert, err := genCertificate(
 		baseDir,
 		name,
 		&template,
 		&template,
-		&priv.PublicKey,
+		getPublicKey(priv),
 		priv,
 	)
 	if err != nil {
 		return nil, err
 	}
 	ca = &CA{
-		Name: name,
-		Signer: &csp.ECDSASigner{
-			PrivateKey: priv,
-		},
+		Name:               name,
+		Signer:             GetSignerFromPrivateKey(priv),
 		SignCert:           x509Cert,
 		Country:            country,
 		Province:           province,
@@ -117,7 +119,7 @@ func (ca *CA) SignCertificate(
 	name string,
 	orgUnits,
 	alternateNames []string,
-	pub *ecdsa.PublicKey,
+	pub crypto.PublicKey,
 	ku x509.KeyUsage,
 	eku []x509.ExtKeyUsage,
 ) (*x509.Certificate, error) {
@@ -149,7 +151,7 @@ func (ca *CA) SignCertificate(
 		}
 	}
 
-	cert, err := genCertificateECDSA(
+	cert, err := genCertificate(
 		baseDir,
 		name,
 		&template,
@@ -165,13 +167,25 @@ func (ca *CA) SignCertificate(
 }
 
 // compute Subject Key Identifier using RFC 7093, Section 2, Method 4
-func computeSKI(privKey *ecdsa.PrivateKey) []byte {
+func computeSKI(privKey crypto.PrivateKey) ([]byte, error) {
+	var raw []byte
+
 	// Marshall the public key
-	raw := elliptic.Marshal(privKey.Curve, privKey.PublicKey.X, privKey.PublicKey.Y)
+	switch kk := privKey.(type) {
+	case *ecdsa.PrivateKey:
+		ecdhKey, err := kk.ECDH()
+		if err != nil {
+			return nil, fmt.Errorf("private key transition failed: %w", err)
+		}
+		raw = ecdhKey.Bytes()
+	case ed25519.PrivateKey:
+		raw = kk.Public().(ed25519.PublicKey)
+	default:
+	}
 
 	// Hash it
 	hash := sha256.Sum256(raw)
-	return hash[:]
+	return hash[:], nil
 }
 
 // default template for X509 subject
@@ -237,13 +251,13 @@ func x509Template() x509.Certificate {
 }
 
 // generate a signed X509 certificate using ECDSA
-func genCertificateECDSA(
+func genCertificate(
 	baseDir,
 	name string,
 	template,
 	parent *x509.Certificate,
-	pub *ecdsa.PublicKey,
-	priv interface{},
+	pub crypto.PublicKey,
+	priv any,
 ) (*x509.Certificate, error) {
 	// create the x509 public cert
 	certBytes, err := x509.CreateCertificate(rand.Reader, template, parent, pub, priv)
@@ -271,14 +285,40 @@ func genCertificateECDSA(
 	return x509Cert, nil
 }
 
-// LoadCertificateECDSA load a ecdsa cert from a file in cert path
-func LoadCertificateECDSA(certPath string) (*x509.Certificate, error) {
+func getPublicKey(priv crypto.PrivateKey) crypto.PublicKey {
+	switch kk := priv.(type) {
+	case *ecdsa.PrivateKey:
+		return &(kk.PublicKey)
+	case ed25519.PrivateKey:
+		return kk.Public()
+	default:
+		panic("unsupported key algorithm")
+	}
+}
+
+func GetSignerFromPrivateKey(priv crypto.PrivateKey) crypto.Signer {
+	switch kk := priv.(type) {
+	case *ecdsa.PrivateKey:
+		return &csp.ECDSASigner{
+			PrivateKey: kk,
+		}
+	case ed25519.PrivateKey:
+		return &csp.ED25519Signer{
+			PrivateKey: kk,
+		}
+	default:
+		panic("unsupported key algorithm")
+	}
+}
+
+// LoadCertificate load a ecdsa cert from a file in cert path
+func LoadCertificate(certPath string) (*x509.Certificate, error) {
 	var cert *x509.Certificate
 	var err error
 
 	walkFunc := func(path string, info os.FileInfo, err error) error {
 		if strings.HasSuffix(path, ".pem") {
-			rawCert, err := ioutil.ReadFile(path)
+			rawCert, err := os.ReadFile(path)
 			if err != nil {
 				return err
 			}

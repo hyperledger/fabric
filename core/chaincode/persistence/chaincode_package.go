@@ -12,12 +12,11 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
 
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 
 	"github.com/pkg/errors"
 )
@@ -75,7 +74,7 @@ func (fpl *FallbackPackageLocator) GetChaincodePackage(packageID string) (*Chain
 		return metadata, mdBytes, tarStream, nil
 	}
 
-	cds, err := fpl.LegacyCCPackageLocator.GetChaincodeDepSpec(string(packageID))
+	cds, err := fpl.LegacyCCPackageLocator.GetChaincodeDepSpec(packageID)
 	if err != nil {
 		return nil, nil, nil, errors.WithMessagef(err, "could not get legacy chaincode package '%s'", packageID)
 	}
@@ -93,7 +92,7 @@ func (fpl *FallbackPackageLocator) GetChaincodePackage(packageID string) (*Chain
 
 	return md,
 		mdBytes,
-		ioutil.NopCloser(bytes.NewBuffer(cds.CodePackage)),
+		io.NopCloser(bytes.NewBuffer(cds.CodePackage)),
 		nil
 }
 
@@ -141,7 +140,7 @@ func (cps *ChaincodePackageStreamer) MetadataBytes() ([]byte, error) {
 
 	defer tarFileStream.Close()
 
-	md, err := ioutil.ReadAll(tarFileStream)
+	md, err := io.ReadAll(tarFileStream)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could read metadata file")
 	}
@@ -303,7 +302,7 @@ func ParseChaincodePackage(source []byte) (*ChaincodePackageMetadata, []byte, er
 			return ccPackageMetadata, nil, errors.Errorf("tar entry %s is not a regular file, type %v", header.Name, header.Typeflag)
 		}
 
-		fileBytes, err := ioutil.ReadAll(tarReader)
+		fileBytes, err := io.ReadAll(tarReader)
 		if err != nil {
 			return ccPackageMetadata, nil, errors.Wrapf(err, "could not read %s from tar", header.Name)
 		}

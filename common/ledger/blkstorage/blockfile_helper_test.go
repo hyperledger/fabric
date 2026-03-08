@@ -8,19 +8,18 @@ package blkstorage
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 func TestConstructBlockfilesInfo(t *testing.T) {
 	ledgerid := "testLedger"
-	conf := NewConf(testPath(), 0)
+	conf := NewConf(t.TempDir(), 0)
 	blkStoreDir := conf.getLedgerBlockDir(ledgerid)
 	env := newTestEnv(t, conf)
 	require.NoError(t, os.MkdirAll(blkStoreDir, 0o755))
@@ -63,9 +62,8 @@ func TestConstructBlockfilesInfo(t *testing.T) {
 
 	// Write a partial block (to simulate a crash) and verify that blockfilesInfo derived from filesystem should be same as from the blockfile manager
 	lastTestBlk := bg.NextTestBlocks(1)[0]
-	blockBytes, _, err := serializeBlock(lastTestBlk)
-	require.NoError(t, err)
-	partialByte := append(proto.EncodeVarint(uint64(len(blockBytes))), blockBytes[len(blockBytes)/2:]...)
+	blockBytes, _ := serializeBlock(lastTestBlk)
+	partialByte := append(protowire.AppendVarint(nil, uint64(len(blockBytes))), blockBytes[len(blockBytes)/2:]...)
 	blockfileMgr.currentFileWriter.append(partialByte, true)
 	checkBlockfilesInfoFromFS(t, blkStoreDir, blockfileMgr.blockfilesInfo)
 
@@ -91,7 +89,7 @@ func TestConstructBlockfilesInfo(t *testing.T) {
 }
 
 func TestBinarySearchBlockFileNum(t *testing.T) {
-	blockStoreRootDir := testPath()
+	blockStoreRootDir := t.TempDir()
 	blocks := testutil.ConstructTestBlocks(t, 100)
 	maxFileSie := int(0.1 * float64(testutilEstimateTotalSizeOnDisk(t, blocks)))
 	env := newTestEnv(t, NewConf(blockStoreRootDir, maxFileSie))
@@ -102,11 +100,11 @@ func TestBinarySearchBlockFileNum(t *testing.T) {
 	blkfileMgrWrapper.addBlocks(blocks)
 
 	ledgerDir := (&Conf{blockStorageDir: blockStoreRootDir}).getLedgerBlockDir("testLedger")
-	files, err := ioutil.ReadDir(ledgerDir)
+	files, err := os.ReadDir(ledgerDir)
 	require.NoError(t, err)
 	require.Len(t, files, 11)
 
-	for i := uint64(0); i < 100; i++ {
+	for i := range uint64(100) {
 		fileNum, err := binarySearchFileNumForBlock(ledgerDir, i)
 		require.NoError(t, err)
 		locFromIndex, err := blkfileMgr.index.getBlockLocByBlockNum(i)
@@ -117,9 +115,7 @@ func TestBinarySearchBlockFileNum(t *testing.T) {
 }
 
 func TestIsBootstrappedFromSnapshot(t *testing.T) {
-	testDir, err := ioutil.TempDir("", "isbootstrappedfromsnapshot")
-	require.NoError(t, err)
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	t.Run("no_bootstrapping_snapshot_info_file", func(t *testing.T) {
 		// create chains directory for the ledger without bootstrappingSnapshotInfoFile
@@ -146,12 +142,10 @@ func TestIsBootstrappedFromSnapshot(t *testing.T) {
 
 func TestGetLedgersBootstrappedFromSnapshot(t *testing.T) {
 	t.Run("no_bootstrapping_snapshot_info_file", func(t *testing.T) {
-		testDir, err := ioutil.TempDir("", "getledgersfromsnapshot_nosnapshot_info")
-		require.NoError(t, err)
-		defer os.RemoveAll(testDir)
+		testDir := t.TempDir()
 
 		// create chains directories for ledgers without bootstrappingSnapshotInfoFile
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			require.NoError(t, os.MkdirAll(filepath.Join(testDir, ChainsDir, fmt.Sprintf("ledger_%d", i)), 0o755))
 		}
 
@@ -161,13 +155,11 @@ func TestGetLedgersBootstrappedFromSnapshot(t *testing.T) {
 	})
 
 	t.Run("with_bootstrapping_snapshot_info_file", func(t *testing.T) {
-		testDir, err := ioutil.TempDir("", "getledgersfromsnapshot_snapshot_info")
-		require.NoError(t, err)
-		defer os.RemoveAll(testDir)
+		testDir := t.TempDir()
 
 		// create chains directories for ledgers
 		// also create bootstrappingSnapshotInfoFile for ledger_0 and ledger_1
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			ledgerChainDir := filepath.Join(testDir, ChainsDir, fmt.Sprintf("ledger_%d", i))
 			require.NoError(t, os.MkdirAll(ledgerChainDir, 0o755))
 			if i < 2 {

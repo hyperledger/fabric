@@ -10,12 +10,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"net/http"
 	"sort"
 	"sync"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/metrics"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
-	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -203,7 +204,7 @@ func (provider *VersionedDBProvider) Drop(dbName string) error {
 	metadataDBName := constructMetadataDBName(dbName)
 	couchDBDatabase := couchDatabase{couchInstance: provider.couchInstance, dbName: metadataDBName}
 	_, couchDBReturn, err := couchDBDatabase.getDatabaseInfo()
-	if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
+	if couchDBReturn != nil && couchDBReturn.StatusCode == http.StatusNotFound {
 		// db does not exist
 		return nil
 	}
@@ -231,7 +232,7 @@ func (provider *VersionedDBProvider) Drop(dbName string) error {
 		}
 	}
 	if err := dropDB(provider.couchInstance, metadataDBName); err != nil {
-		logger.Errorw("Error dropping metatdataDB", "channel", dbName, "error", err)
+		logger.Errorw("Error dropping metadataDB", "channel", dbName, "error", err)
 		return err
 	}
 
@@ -958,7 +959,7 @@ func applyAdditionalQueryOptions(queryString string, queryLimit int32, queryBook
 	const jsonQueryLimit = "limit"
 	const jsonQueryBookmark = "bookmark"
 	// create a generic map for the query json
-	jsonQueryMap := make(map[string]interface{})
+	jsonQueryMap := make(map[string]any)
 	// unmarshal the selector json into the generic map
 	decoder := json.NewDecoder(bytes.NewBuffer([]byte(queryString)))
 	decoder.UseNumber()
@@ -968,7 +969,7 @@ func applyAdditionalQueryOptions(queryString string, queryLimit int32, queryBook
 	}
 	if fieldsJSONArray, ok := jsonQueryMap[jsonQueryFields]; ok {
 		switch fieldsJSONArray := fieldsJSONArray.(type) {
-		case []interface{}:
+		case []any:
 			// Add the "_id", and "version" fields,  these are needed by default
 			jsonQueryMap[jsonQueryFields] = append(fieldsJSONArray, idField, versionField)
 		default:

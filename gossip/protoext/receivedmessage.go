@@ -9,7 +9,7 @@ package protoext
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 )
@@ -27,7 +27,7 @@ type ReceivedMessage interface {
 	// GetGossipMessage returns the underlying GossipMessage
 	GetGossipMessage() *SignedGossipMessage
 
-	// GetSourceMessage Returns the Envelope the ReceivedMessage was
+	// GetSourceEnvelope Returns the Envelope the ReceivedMessage was
 	// constructed with
 	GetSourceEnvelope() *gossip.Envelope
 

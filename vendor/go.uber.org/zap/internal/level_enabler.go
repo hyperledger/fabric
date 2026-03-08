@@ -1,4 +1,8 @@
+<<<<<<<< HEAD:vendor/go.uber.org/multierr/error_post_go120.go
+// Copyright (c) 2017-2023 Uber Technologies, Inc.
+========
 // Copyright (c) 2022 Uber Technologies, Inc.
+>>>>>>>> main:vendor/go.uber.org/zap/internal/level_enabler.go
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,6 +22,35 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+<<<<<<<< HEAD:vendor/go.uber.org/multierr/error_post_go120.go
+//go:build go1.20
+// +build go1.20
+
+package multierr
+
+// Unwrap returns a list of errors wrapped by this multierr.
+func (merr *multiError) Unwrap() []error {
+	return merr.Errors()
+}
+
+type multipleErrors interface {
+	Unwrap() []error
+}
+
+func extractErrors(err error) []error {
+	if err == nil {
+		return nil
+	}
+
+	// check if the given err is an Unwrapable error that
+	// implements multipleErrors interface.
+	eg, ok := err.(multipleErrors)
+	if !ok {
+		return []error{err}
+	}
+
+	return append(([]error)(nil), eg.Unwrap()...)
+========
 // Package internal and its subpackages hold types and functionality
 // that are not part of Zap's public API.
 package internal
@@ -34,4 +67,5 @@ type LeveledEnabler interface {
 	zapcore.LevelEnabler
 
 	Level() zapcore.Level
+>>>>>>>> main:vendor/go.uber.org/zap/internal/level_enabler.go
 }

@@ -2,7 +2,7 @@
 
 Before deploying a peer, make sure to digest the material in [Planning for a peer](./peerplan.html) and [Checklist for a production peer](./peerchecklist.html) which discusses all of the relevant decisions you need to make and parameters you need to configure before deploying a peer.
 
-Note: in order for a peer to be a joined to a channel, the organization the peer belongs to must be joined to the channel. This means that you must have [created the MSP of your organization](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html#create-the-org-msp-needed-to-add-an-org-to-a-channel). The MSP ID of this organization must be the same as the ID specified at `peer.localMspId` in `core.yaml`.
+Note: in order for a peer to be a joined to a channel, the organization the peer belongs to must be joined to the channel. This means that you must have [created the MSP of your organization](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html#create-the-org-msp-needed-to-add-an-org-to-a-channel). The MSP ID of this organization must be the same as the ID specified at `peer.localMspId` in `core.yaml`.
 
 ## Download the peer binary and configuration files
 
@@ -16,8 +16,9 @@ The resulting folder structure is similar to:
   │   ├── configtxlator
   │   ├── cryptogen
   │   ├── discover
-  │   ├── idemixgen
+  │   ├── ledgerutil
   │   ├── orderer
+  |   ├── osnadmin
   │   └── peer
   └── config
     ├── configtx.yaml
@@ -43,7 +44,7 @@ Before you can launch a peer node in a production network, you need to make sure
 
 Note: while **cryptogen** is a convenient utility that can be used to generate certificates for a test network, it should **never** be used on a production network. The core requirement for certificates for Fabric nodes is that they are Elliptic Curve (EC) certificates. You can use any tool you prefer to issue these certificates (for example, OpenSSL). However, the Fabric CA streamlines the process because it generates the Membership Service Providers (MSPs) for you.
 
-Before you can deploy the peer, create the recommended folder structure for the peer certificates that is described in the [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html) topic to store the generated certificates and MSPs.
+Before you can deploy the peer, create the recommended folder structure for the peer certificates that is described in the [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html) topic to store the generated certificates and MSPs.
 
 This folder structure isn't mandatory, but these instructions presume you have created it:
 ```
@@ -57,7 +58,7 @@ This folder structure isn't mandatory, but these instructions presume you have c
                   └── tls
 ```
 
-You should have already used your certificate authority of choice to generate the peer enrollment certificate, TLS certificate, private keys, and the MSPs that Fabric must consume. Refer to the [CA deployment](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/cadeploy.html) and [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html) topics for instructions on how to create a Fabric CA and how to generate these certificates. You need to generate the following sets of certificates:
+You should have already used your certificate authority of choice to generate the peer enrollment certificate, TLS certificate, private keys, and the MSPs that Fabric must consume. Refer to the [CA deployment](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/cadeploy.html) and [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html) topics for instructions on how to create a Fabric CA and how to generate these certificates. You need to generate the following sets of certificates:
   - **Peer TLS CA certificates**
   - **Peer local MSP (enrollment certificate and private key of the peer)**
 
@@ -74,7 +75,7 @@ In order for the peer to launch successfully, make sure that the locations of th
 
 #### Peer local MSP (enrollment certificate and private key)
 
-Similarly, you need to point to the [local MSP of your node](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html#create-the-local-msp-of-a-node) by copying it to `organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp`. This path corresponds to the value of the `peer.mspConfigPath` parameter in the `core.yaml` file. Because of the Fabric concept of ["Node Organization Unit (OU)"](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html#nodeous), you do not need to specify an admin of the peer when bootstrapping. Rather, the role of "admin" is conferred onto an identity by setting an OU value of "admin" inside a certificate and enabled by the `config.yaml` file. When Node OUs are enabled, any organization admin will be able to administer the peer.
+Similarly, you need to point to the [local MSP of your node](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html#create-the-local-msp-of-a-node) by copying it to `organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp`. This path corresponds to the value of the `peer.mspConfigPath` parameter in the `core.yaml` file. Because of the Fabric concept of ["Node Organization Unit (OU)"](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html#nodeous), you do not need to specify an admin of the peer when bootstrapping. Rather, the role of "admin" is conferred onto an identity by setting an OU value of "admin" inside a certificate and enabled by the `config.yaml` file. When Node OUs are enabled, any organization admin will be able to administer the peer.
 
 Note that the local MSP contains the signed certificate (public key) and the private key for the peer. The private key is used by the node to sign transactions, and is therefore not shared and must be secured. For maximum security, a Hardware Security Module (HSM) can be configured to generate and store this private key.
 
@@ -114,7 +115,7 @@ When the peer starts successfully, you should see a message similar to:
 
 ## Next steps
 
-In order to be able to transact on a network, the peer must be joined to a channel. The organization the peer belongs to must be a member of a channel before one of its peers can be joined to it. Note that if an organization wants to create a channel, it must be a member of the consortium hosted by the ordering service. If your organization has not specified at least one [anchor peer](../glossary.html#anchor-peer) on the channel, you should do so, as it will enabled communication between organizations. See the [Create a channel tutorial](../create_channel/create_channel_overview.html) to learn more. Once a peer is joined to a channel, the Fabric chaincode lifecycle process can be used to install chaincode packages on the peer. Only peer admin identities can be used to install a package on a peer.
+In order to be able to transact on a network, the peer must be joined to a channel. The organization the peer belongs to must be a member of a channel before one of its peers can be joined to it. If your organization has not specified at least one [anchor peer](../glossary.html#anchor-peer) on the channel, you should do so, as it will enabled communication between organizations. See the [Create a channel tutorial](../create_channel/create_channel_overview.html) to learn more. Once a peer is joined to a channel, the Fabric chaincode lifecycle process can be used to install chaincode packages on the peer. Only peer admin identities can be used to install a package on a peer.
 
 For high availability, you should consider deploying at least one other peer in the organization so that this peer can safely go offline for maintenance while transaction requests can continue to be addressed by the other peer. This redundant peer should be on a separate system or virtual machine in case the location where both peers are deployed goes down.
 

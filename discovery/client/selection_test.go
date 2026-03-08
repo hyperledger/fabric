@@ -9,15 +9,15 @@ package discovery
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestShuffle(t *testing.T) {
 	endorsers := make(Endorsers, 1000)
-	for i := 0; i < len(endorsers); i++ {
+	for i := range endorsers {
 		endorsers[i] = &Peer{
 			StateInfoMessage: stateInfoWithHeight(uint64(i)),
 		}
@@ -133,7 +133,6 @@ func TestPrioritiesByHeight(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			s1 := stateInfoWithHeight(test.leftHeight)
 			s2 := stateInfoWithHeight(test.rightHeight)

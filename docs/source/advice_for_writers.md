@@ -32,13 +32,13 @@ A great place to meet people working on documentation is the monthly Documentati
 call. The agenda is published in advance, and
 there are minutes and recordings of each session. Find out more on the
 [Documentation
-wiki](https://wiki.hyperledger.org/display/fabric/Documentation+Working+Group).
+wiki](https://lf-hyperledger.atlassian.net/wiki/spaces/fabric/pages/22839782/Documentation+Working+Group).
 
 ## Join a language translation workgroup
 
 Each of the international languages has a welcoming workgroup that you are
 encouraged to join. View the [list of international
-workgroups](https://wiki.hyperledger.org/display/I18N/International+groups).
+workgroups](https://lf-hyperledger.atlassian.net/wiki/spaces/I18N).
 See what your favorite workgroup is doing, and get connected with them.
 Each workgroup has a list of members and their contact information.
 

@@ -9,22 +9,19 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/protolator"
 	"github.com/hyperledger/fabric-config/protolator/protoext/ordererext"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-config/protolator/protoext/peerext"
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/internal/configtxgen/metadata"
-	"github.com/hyperledger/fabric/internal/configtxlator/update"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -41,7 +38,7 @@ func doOutputBlock(config *genesisconfig.Profile, channelID string, outputBlock 
 		return errors.New("refusing to generate block which is missing orderer section")
 	}
 	if config.Consortiums != nil {
-		logger.Info("Creating system channel genesis block")
+		logger.Error("Warning: 'Consortiums' should be nil since system channel is no longer supported in Fabric v3.x")
 	} else {
 		if config.Application == nil {
 			return errors.New("refusing to generate application channel block which is missing application section")
@@ -79,61 +76,9 @@ func doOutputChannelCreateTx(conf, baseProfile *genesisconfig.Profile, channelID
 	return nil
 }
 
-func doOutputAnchorPeersUpdate(conf *genesisconfig.Profile, channelID string, outputAnchorPeersUpdate string, asOrg string) error {
-	logger.Info("Generating anchor peer update")
-	if asOrg == "" {
-		return fmt.Errorf("must specify an organization to update the anchor peer for")
-	}
-
-	if conf.Application == nil {
-		return fmt.Errorf("cannot update anchor peers without an application section")
-	}
-
-	original, err := encoder.NewChannelGroup(conf)
-	if err != nil {
-		return errors.WithMessage(err, "error parsing profile as channel group")
-	}
-	original.Groups[channelconfig.ApplicationGroupKey].Version = 1
-
-	updated := proto.Clone(original).(*cb.ConfigGroup)
-
-	originalOrg, ok := original.Groups[channelconfig.ApplicationGroupKey].Groups[asOrg]
-	if !ok {
-		return errors.Errorf("org with name '%s' does not exist in config", asOrg)
-	}
-
-	if _, ok = originalOrg.Values[channelconfig.AnchorPeersKey]; !ok {
-		return errors.Errorf("org '%s' does not have any anchor peers defined", asOrg)
-	}
-
-	delete(originalOrg.Values, channelconfig.AnchorPeersKey)
-
-	updt, err := update.Compute(&cb.Config{ChannelGroup: original}, &cb.Config{ChannelGroup: updated})
-	if err != nil {
-		return errors.WithMessage(err, "could not compute update")
-	}
-	updt.ChannelId = channelID
-
-	newConfigUpdateEnv := &cb.ConfigUpdateEnvelope{
-		ConfigUpdate: protoutil.MarshalOrPanic(updt),
-	}
-
-	updateTx, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, nil, newConfigUpdateEnv, 0, 0)
-	if err != nil {
-		return errors.WithMessage(err, "could not create signed envelope")
-	}
-
-	logger.Info("Writing anchor peer update")
-	err = writeFile(outputAnchorPeersUpdate, protoutil.MarshalOrPanic(updateTx), 0o640)
-	if err != nil {
-		return fmt.Errorf("Error writing channel anchor peer update: %s", err)
-	}
-	return nil
-}
-
 func doInspectBlock(inspectBlock string) error {
 	logger.Info("Inspecting block")
-	data, err := ioutil.ReadFile(inspectBlock)
+	data, err := os.ReadFile(inspectBlock)
 	if err != nil {
 		return fmt.Errorf("could not read block %s", inspectBlock)
 	}
@@ -152,7 +97,7 @@ func doInspectBlock(inspectBlock string) error {
 
 func doInspectChannelCreateTx(inspectChannelCreateTx string) error {
 	logger.Info("Inspecting transaction")
-	data, err := ioutil.ReadFile(inspectChannelCreateTx)
+	data, err := os.ReadFile(inspectChannelCreateTx)
 	if err != nil {
 		return fmt.Errorf("could not read channel create tx: %s", err)
 	}
@@ -174,12 +119,26 @@ func doInspectChannelCreateTx(inspectChannelCreateTx string) error {
 func doPrintOrg(t *genesisconfig.TopLevel, printOrg string) error {
 	for _, org := range t.Organizations {
 		if org.Name == printOrg {
-			og, err := encoder.NewOrdererOrgGroup(org)
+			if len(org.OrdererEndpoints) > 0 {
+				// An Orderer OrgGroup
+				channelCapabilities := t.Capabilities["Channel"]
+				og, err := encoder.NewOrdererOrgGroup(org, channelCapabilities)
+				if err != nil {
+					return errors.Wrapf(err, "bad org definition for org %s", org.Name)
+				}
+
+				if err := protolator.DeepMarshalJSON(os.Stdout, &ordererext.DynamicOrdererOrgGroup{ConfigGroup: og}); err != nil {
+					return errors.Wrapf(err, "malformed org definition for org: %s", org.Name)
+				}
+				return nil
+			}
+
+			// Otherwise assume it is an Application OrgGroup, where the encoder is not strict whether anchor peers exist or not
+			ag, err := encoder.NewApplicationOrgGroup(org)
 			if err != nil {
 				return errors.Wrapf(err, "bad org definition for org %s", org.Name)
 			}
-
-			if err := protolator.DeepMarshalJSON(os.Stdout, &ordererext.DynamicOrdererOrgGroup{ConfigGroup: og}); err != nil {
+			if err := protolator.DeepMarshalJSON(os.Stdout, &peerext.DynamicApplicationOrgGroup{ConfigGroup: ag}); err != nil {
 				return errors.Wrapf(err, "malformed org definition for org: %s", org.Name)
 			}
 			return nil
@@ -200,7 +159,7 @@ func writeFile(filename string, data []byte, perm os.FileMode) error {
 			return err
 		}
 	}
-	return ioutil.WriteFile(filename, data, perm)
+	return os.WriteFile(filename, data, perm)
 }
 
 func dirExists(path string) (bool, error) {
@@ -215,17 +174,16 @@ func dirExists(path string) (bool, error) {
 }
 
 func main() {
-	var outputBlock, outputChannelCreateTx, channelCreateTxBaseProfile, profile, configPath, channelID, inspectBlock, inspectChannelCreateTx, outputAnchorPeersUpdate, asOrg, printOrg string
+	var outputBlock, outputChannelCreateTx, channelCreateTxBaseProfile, profile, configPath, channelID, inspectBlock, inspectChannelCreateTx, asOrg, printOrg string
 
 	flag.StringVar(&outputBlock, "outputBlock", "", "The path to write the genesis block to (if set)")
 	flag.StringVar(&channelID, "channelID", "", "The channel ID to use in the configtx")
-	flag.StringVar(&outputChannelCreateTx, "outputCreateChannelTx", "", "The path to write a channel creation configtx to (if set)")
-	flag.StringVar(&channelCreateTxBaseProfile, "channelCreateTxBaseProfile", "", "Specifies a profile to consider as the orderer system channel current state to allow modification of non-application parameters during channel create tx generation. Only valid in conjunction with 'outputCreateChannelTx'.")
+	flag.StringVar(&outputChannelCreateTx, "outputCreateChannelTx", "", "[DEPRECATED] The path to write a channel creation configtx to (if set)")
+	flag.StringVar(&channelCreateTxBaseProfile, "channelCreateTxBaseProfile", "", "[DEPRECATED] Specifies a profile to consider as the orderer system channel current state to allow modification of non-application parameters during channel create tx generation. Only valid in conjunction with 'outputCreateChannelTx'.")
 	flag.StringVar(&profile, "profile", "", "The profile from configtx.yaml to use for generation.")
 	flag.StringVar(&configPath, "configPath", "", "The path containing the configuration to use (if set)")
 	flag.StringVar(&inspectBlock, "inspectBlock", "", "Prints the configuration contained in the block at the specified path")
-	flag.StringVar(&inspectChannelCreateTx, "inspectChannelCreateTx", "", "Prints the configuration contained in the transaction at the specified path")
-	flag.StringVar(&outputAnchorPeersUpdate, "outputAnchorPeersUpdate", "", "[DEPRECATED] Creates a config update to update an anchor peer (works only with the default channel creation, and only for the first update)")
+	flag.StringVar(&inspectChannelCreateTx, "inspectChannelCreateTx", "", "[DEPRECATED] Prints the configuration contained in the transaction at the specified path")
 	flag.StringVar(&asOrg, "asOrg", "", "Performs the config generation as a particular organization (by name), only including values in the write set that org (likely) has privilege to set")
 	flag.StringVar(&printOrg, "printOrg", "", "Prints the definition of an organization as JSON. (useful for adding an org to a channel manually)")
 
@@ -233,7 +191,7 @@ func main() {
 
 	flag.Parse()
 
-	if channelID == "" && (outputBlock != "" || outputChannelCreateTx != "" || outputAnchorPeersUpdate != "") {
+	if channelID == "" && (outputBlock != "" || outputChannelCreateTx != "") {
 		logger.Fatalf("Missing channelID, please specify it with '-channelID'")
 	}
 
@@ -268,9 +226,9 @@ func main() {
 		logger.Fatalf("Error on initFactories: %s", err)
 	}
 	var profileConfig *genesisconfig.Profile
-	if outputBlock != "" || outputChannelCreateTx != "" || outputAnchorPeersUpdate != "" {
+	if outputBlock != "" || outputChannelCreateTx != "" {
 		if profile == "" {
-			logger.Fatalf("The '-profile' is required when '-outputBlock', '-outputChannelCreateTx', or '-outputAnchorPeersUpdate' is specified")
+			logger.Fatalf("The '-profile' is required when '-outputBlock', '-outputChannelCreateTx' is specified")
 		}
 
 		if configPath != "" {
@@ -312,12 +270,6 @@ func main() {
 
 	if inspectChannelCreateTx != "" {
 		if err := doInspectChannelCreateTx(inspectChannelCreateTx); err != nil {
-			logger.Fatalf("Error on inspectChannelCreateTx: %s", err)
-		}
-	}
-
-	if outputAnchorPeersUpdate != "" {
-		if err := doOutputAnchorPeersUpdate(profileConfig, channelID, outputAnchorPeersUpdate, asOrg); err != nil {
 			logger.Fatalf("Error on inspectChannelCreateTx: %s", err)
 		}
 	}

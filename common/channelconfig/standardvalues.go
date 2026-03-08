@@ -10,12 +10,12 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"google.golang.org/protobuf/proto"
 )
 
-// DeserializeGroup deserializes the value for all values in a config group
-func DeserializeProtoValuesFromGroup(group *cb.ConfigGroup, protosStructs ...interface{}) error {
+// DeserializeProtoValuesFromGroup deserializes the value for all values in a config group
+func DeserializeProtoValuesFromGroup(group *cb.ConfigGroup, protosStructs ...any) error {
 	sv, err := NewStandardValues(protosStructs...)
 	if err != nil {
 		logger.Panicf("This is a compile time bug only, the proto structures are somehow invalid: %s", err)
@@ -38,7 +38,7 @@ type StandardValues struct {
 // the same condition.  NewStandard values will instantiate memory for all the proto
 // messages and build a lookup map from structure field name to proto message instance
 // This is a useful way to easily implement the Values interface
-func NewStandardValues(protosStructs ...interface{}) (*StandardValues, error) {
+func NewStandardValues(protosStructs ...any) (*StandardValues, error) {
 	sv := &StandardValues{
 		lookup: make(map[string]proto.Message),
 	}
@@ -55,7 +55,7 @@ func NewStandardValues(protosStructs ...interface{}) (*StandardValues, error) {
 
 // Deserialize looks up the backing Values proto of the given name, unmarshals the given bytes
 // to populate the backing message structure, and returns a referenced to the retained deserialized
-// message (or an error, either because the key did not exist, or there was an an error unmarshalling
+// message (or an error, either because the key did not exist, or there was an error unmarshalling
 func (sv *StandardValues) Deserialize(key string, value []byte) (proto.Message, error) {
 	msg, ok := sv.lookup[key]
 	if !ok {
@@ -72,7 +72,7 @@ func (sv *StandardValues) Deserialize(key string, value []byte) (proto.Message, 
 
 func (sv *StandardValues) initializeProtosStruct(objValue reflect.Value) error {
 	objType := objValue.Type()
-	if objType.Kind() != reflect.Ptr {
+	if objType.Kind() != reflect.Pointer {
 		return fmt.Errorf("Non pointer type")
 	}
 	if objType.Elem().Kind() != reflect.Struct {
@@ -80,11 +80,11 @@ func (sv *StandardValues) initializeProtosStruct(objValue reflect.Value) error {
 	}
 
 	numFields := objValue.Elem().NumField()
-	for i := 0; i < numFields; i++ {
+	for i := range numFields {
 		structField := objType.Elem().Field(i)
 		logger.Debugf("Processing field: %s\n", structField.Name)
 		switch structField.Type.Kind() {
-		case reflect.Ptr:
+		case reflect.Pointer:
 			fieldPtr := objValue.Elem().Field(i)
 			if !fieldPtr.CanSet() {
 				return fmt.Errorf("Cannot set structure field %s (unexported?)", structField.Name)

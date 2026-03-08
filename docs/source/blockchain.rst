@@ -175,7 +175,7 @@ being used by the blockchain network.
 
 **Smart Contracts**
 
-Hyperledger Fabric smart contracts are written in **chaincode** and are invoked
+Hyperledger Fabric smart contracts are called **chaincode** and are invoked
 by an application external to the blockchain when that application needs to
 interact with the ledger. In most cases, chaincode interacts only with the
 database component of the ledger, the world state (querying it, for example), and

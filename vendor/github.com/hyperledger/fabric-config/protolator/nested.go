@@ -19,8 +19,8 @@ package protolator
 import (
 	"reflect"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/timestamp"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func nestedFrom(value interface{}, destType reflect.Type) (reflect.Value, error) {
@@ -38,7 +38,7 @@ func nestedTo(value reflect.Value) (interface{}, error) {
 	return recursivelyCreateTreeFromMessage(nMsg)
 }
 
-var timestampType = reflect.TypeOf(&timestamp.Timestamp{})
+var timestampType = reflect.TypeOf(&timestamppb.Timestamp{})
 
 type nestedFieldFactory struct{}
 

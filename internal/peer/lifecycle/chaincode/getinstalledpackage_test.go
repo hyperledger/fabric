@@ -8,19 +8,17 @@ package chaincode_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode/mock"
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
 )
 
 var _ = Describe("GetInstalledPackage", func() {
@@ -45,7 +43,7 @@ var _ = Describe("GetInstalledPackage", func() {
 			mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
 
 			var err error
-			testDir, err = ioutil.TempDir("", "getinstalledpackage-test")
+			testDir, err = os.MkdirTemp("", "getinstalledpackage-test")
 			Expect(err).NotTo(HaveOccurred())
 			input = &chaincode.GetInstalledPackageInput{
 				PackageID:       "pkgFile",

@@ -9,11 +9,10 @@ package snapshotgrpc
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
@@ -34,8 +33,7 @@ type aclProvider interface {
 }
 
 func TestSnapshot(t *testing.T) {
-	testDir, err := ioutil.TempDir("", "snapshotgrpc")
-	require.NoError(t, err)
+	testDir := t.TempDir()
 
 	ledgerID := "testsnapshot"
 	ledgermgmtInitializer := ledgermgmttest.NewInitializer(testDir)

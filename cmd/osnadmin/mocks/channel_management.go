@@ -4,7 +4,7 @@ package mocks
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/orderer/common/types"
 )
 
@@ -32,12 +32,25 @@ type ChannelManagement struct {
 	channelListReturnsOnCall map[int]struct {
 		result1 types.ChannelList
 	}
-	JoinChannelStub        func(string, *common.Block, bool) (types.ChannelInfo, error)
+	FetchBlockStub        func(string, string) (*common.Block, error)
+	fetchBlockMutex       sync.RWMutex
+	fetchBlockArgsForCall []struct {
+		arg1 string
+		arg2 string
+	}
+	fetchBlockReturns struct {
+		result1 *common.Block
+		result2 error
+	}
+	fetchBlockReturnsOnCall map[int]struct {
+		result1 *common.Block
+		result2 error
+	}
+	JoinChannelStub        func(string, *common.Block) (types.ChannelInfo, error)
 	joinChannelMutex       sync.RWMutex
 	joinChannelArgsForCall []struct {
 		arg1 string
 		arg2 *common.Block
-		arg3 bool
 	}
 	joinChannelReturns struct {
 		result1 types.ChannelInfo
@@ -58,6 +71,20 @@ type ChannelManagement struct {
 	removeChannelReturnsOnCall map[int]struct {
 		result1 error
 	}
+	UpdateChannelStub        func(string, *common.Envelope) (types.ChannelInfo, error)
+	updateChannelMutex       sync.RWMutex
+	updateChannelArgsForCall []struct {
+		arg1 string
+		arg2 *common.Envelope
+	}
+	updateChannelReturns struct {
+		result1 types.ChannelInfo
+		result2 error
+	}
+	updateChannelReturnsOnCall map[int]struct {
+		result1 types.ChannelInfo
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -68,15 +95,16 @@ func (fake *ChannelManagement) ChannelInfo(arg1 string) (types.ChannelInfo, erro
 	fake.channelInfoArgsForCall = append(fake.channelInfoArgsForCall, struct {
 		arg1 string
 	}{arg1})
+	stub := fake.ChannelInfoStub
+	fakeReturns := fake.channelInfoReturns
 	fake.recordInvocation("ChannelInfo", []interface{}{arg1})
 	fake.channelInfoMutex.Unlock()
-	if fake.ChannelInfoStub != nil {
-		return fake.ChannelInfoStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.channelInfoReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -130,15 +158,16 @@ func (fake *ChannelManagement) ChannelList() types.ChannelList {
 	ret, specificReturn := fake.channelListReturnsOnCall[len(fake.channelListArgsForCall)]
 	fake.channelListArgsForCall = append(fake.channelListArgsForCall, struct {
 	}{})
+	stub := fake.ChannelListStub
+	fakeReturns := fake.channelListReturns
 	fake.recordInvocation("ChannelList", []interface{}{})
 	fake.channelListMutex.Unlock()
-	if fake.ChannelListStub != nil {
-		return fake.ChannelListStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.channelListReturns
 	return fakeReturns.result1
 }
 
@@ -177,23 +206,88 @@ func (fake *ChannelManagement) ChannelListReturnsOnCall(i int, result1 types.Cha
 	}{result1}
 }
 
-func (fake *ChannelManagement) JoinChannel(arg1 string, arg2 *common.Block, arg3 bool) (types.ChannelInfo, error) {
+func (fake *ChannelManagement) FetchBlock(arg1 string, arg2 string) (*common.Block, error) {
+	fake.fetchBlockMutex.Lock()
+	ret, specificReturn := fake.fetchBlockReturnsOnCall[len(fake.fetchBlockArgsForCall)]
+	fake.fetchBlockArgsForCall = append(fake.fetchBlockArgsForCall, struct {
+		arg1 string
+		arg2 string
+	}{arg1, arg2})
+	stub := fake.FetchBlockStub
+	fakeReturns := fake.fetchBlockReturns
+	fake.recordInvocation("FetchBlock", []interface{}{arg1, arg2})
+	fake.fetchBlockMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *ChannelManagement) FetchBlockCallCount() int {
+	fake.fetchBlockMutex.RLock()
+	defer fake.fetchBlockMutex.RUnlock()
+	return len(fake.fetchBlockArgsForCall)
+}
+
+func (fake *ChannelManagement) FetchBlockCalls(stub func(string, string) (*common.Block, error)) {
+	fake.fetchBlockMutex.Lock()
+	defer fake.fetchBlockMutex.Unlock()
+	fake.FetchBlockStub = stub
+}
+
+func (fake *ChannelManagement) FetchBlockArgsForCall(i int) (string, string) {
+	fake.fetchBlockMutex.RLock()
+	defer fake.fetchBlockMutex.RUnlock()
+	argsForCall := fake.fetchBlockArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *ChannelManagement) FetchBlockReturns(result1 *common.Block, result2 error) {
+	fake.fetchBlockMutex.Lock()
+	defer fake.fetchBlockMutex.Unlock()
+	fake.FetchBlockStub = nil
+	fake.fetchBlockReturns = struct {
+		result1 *common.Block
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ChannelManagement) FetchBlockReturnsOnCall(i int, result1 *common.Block, result2 error) {
+	fake.fetchBlockMutex.Lock()
+	defer fake.fetchBlockMutex.Unlock()
+	fake.FetchBlockStub = nil
+	if fake.fetchBlockReturnsOnCall == nil {
+		fake.fetchBlockReturnsOnCall = make(map[int]struct {
+			result1 *common.Block
+			result2 error
+		})
+	}
+	fake.fetchBlockReturnsOnCall[i] = struct {
+		result1 *common.Block
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ChannelManagement) JoinChannel(arg1 string, arg2 *common.Block) (types.ChannelInfo, error) {
 	fake.joinChannelMutex.Lock()
 	ret, specificReturn := fake.joinChannelReturnsOnCall[len(fake.joinChannelArgsForCall)]
 	fake.joinChannelArgsForCall = append(fake.joinChannelArgsForCall, struct {
 		arg1 string
 		arg2 *common.Block
-		arg3 bool
-	}{arg1, arg2, arg3})
-	fake.recordInvocation("JoinChannel", []interface{}{arg1, arg2, arg3})
+	}{arg1, arg2})
+	stub := fake.JoinChannelStub
+	fakeReturns := fake.joinChannelReturns
+	fake.recordInvocation("JoinChannel", []interface{}{arg1, arg2})
 	fake.joinChannelMutex.Unlock()
-	if fake.JoinChannelStub != nil {
-		return fake.JoinChannelStub(arg1, arg2, arg3)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.joinChannelReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -203,17 +297,17 @@ func (fake *ChannelManagement) JoinChannelCallCount() int {
 	return len(fake.joinChannelArgsForCall)
 }
 
-func (fake *ChannelManagement) JoinChannelCalls(stub func(string, *common.Block, bool) (types.ChannelInfo, error)) {
+func (fake *ChannelManagement) JoinChannelCalls(stub func(string, *common.Block) (types.ChannelInfo, error)) {
 	fake.joinChannelMutex.Lock()
 	defer fake.joinChannelMutex.Unlock()
 	fake.JoinChannelStub = stub
 }
 
-func (fake *ChannelManagement) JoinChannelArgsForCall(i int) (string, *common.Block, bool) {
+func (fake *ChannelManagement) JoinChannelArgsForCall(i int) (string, *common.Block) {
 	fake.joinChannelMutex.RLock()
 	defer fake.joinChannelMutex.RUnlock()
 	argsForCall := fake.joinChannelArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *ChannelManagement) JoinChannelReturns(result1 types.ChannelInfo, result2 error) {
@@ -248,15 +342,16 @@ func (fake *ChannelManagement) RemoveChannel(arg1 string) error {
 	fake.removeChannelArgsForCall = append(fake.removeChannelArgsForCall, struct {
 		arg1 string
 	}{arg1})
+	stub := fake.RemoveChannelStub
+	fakeReturns := fake.removeChannelReturns
 	fake.recordInvocation("RemoveChannel", []interface{}{arg1})
 	fake.removeChannelMutex.Unlock()
-	if fake.RemoveChannelStub != nil {
-		return fake.RemoveChannelStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.removeChannelReturns
 	return fakeReturns.result1
 }
 
@@ -302,17 +397,74 @@ func (fake *ChannelManagement) RemoveChannelReturnsOnCall(i int, result1 error) 
 	}{result1}
 }
 
+func (fake *ChannelManagement) UpdateChannel(arg1 string, arg2 *common.Envelope) (types.ChannelInfo, error) {
+	fake.updateChannelMutex.Lock()
+	ret, specificReturn := fake.updateChannelReturnsOnCall[len(fake.updateChannelArgsForCall)]
+	fake.updateChannelArgsForCall = append(fake.updateChannelArgsForCall, struct {
+		arg1 string
+		arg2 *common.Envelope
+	}{arg1, arg2})
+	stub := fake.UpdateChannelStub
+	fakeReturns := fake.updateChannelReturns
+	fake.recordInvocation("UpdateChannel", []interface{}{arg1, arg2})
+	fake.updateChannelMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *ChannelManagement) UpdateChannelCallCount() int {
+	fake.updateChannelMutex.RLock()
+	defer fake.updateChannelMutex.RUnlock()
+	return len(fake.updateChannelArgsForCall)
+}
+
+func (fake *ChannelManagement) UpdateChannelCalls(stub func(string, *common.Envelope) (types.ChannelInfo, error)) {
+	fake.updateChannelMutex.Lock()
+	defer fake.updateChannelMutex.Unlock()
+	fake.UpdateChannelStub = stub
+}
+
+func (fake *ChannelManagement) UpdateChannelArgsForCall(i int) (string, *common.Envelope) {
+	fake.updateChannelMutex.RLock()
+	defer fake.updateChannelMutex.RUnlock()
+	argsForCall := fake.updateChannelArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *ChannelManagement) UpdateChannelReturns(result1 types.ChannelInfo, result2 error) {
+	fake.updateChannelMutex.Lock()
+	defer fake.updateChannelMutex.Unlock()
+	fake.UpdateChannelStub = nil
+	fake.updateChannelReturns = struct {
+		result1 types.ChannelInfo
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ChannelManagement) UpdateChannelReturnsOnCall(i int, result1 types.ChannelInfo, result2 error) {
+	fake.updateChannelMutex.Lock()
+	defer fake.updateChannelMutex.Unlock()
+	fake.UpdateChannelStub = nil
+	if fake.updateChannelReturnsOnCall == nil {
+		fake.updateChannelReturnsOnCall = make(map[int]struct {
+			result1 types.ChannelInfo
+			result2 error
+		})
+	}
+	fake.updateChannelReturnsOnCall[i] = struct {
+		result1 types.ChannelInfo
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *ChannelManagement) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.channelInfoMutex.RLock()
-	defer fake.channelInfoMutex.RUnlock()
-	fake.channelListMutex.RLock()
-	defer fake.channelListMutex.RUnlock()
-	fake.joinChannelMutex.RLock()
-	defer fake.joinChannelMutex.RUnlock()
-	fake.removeChannelMutex.RLock()
-	defer fake.removeChannelMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

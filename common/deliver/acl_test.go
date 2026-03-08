@@ -9,9 +9,10 @@ package deliver_test
 import (
 	"time"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/deliver/mock"
+	. "github.com/hyperledger/fabric/internal/test"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -47,7 +48,7 @@ var _ = Describe("SessionAccessControl", func() {
 
 		Expect(fakePolicyChecker.CheckPolicyCallCount()).To(Equal(1))
 		env, cid := fakePolicyChecker.CheckPolicyArgsForCall(0)
-		Expect(env).To(Equal(envelope))
+		Expect(env).To(ProtoEqual(envelope))
 		Expect(cid).To(Equal("chain-id"))
 	})
 
@@ -69,7 +70,7 @@ var _ = Describe("SessionAccessControl", func() {
 		sac, err := deliver.NewSessionAC(fakeChain, envelope, fakePolicyChecker, "chain-id", expiresAt)
 		Expect(err).NotTo(HaveOccurred())
 
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			err = sac.Evaluate()
 			Expect(err).NotTo(HaveOccurred())
 		}

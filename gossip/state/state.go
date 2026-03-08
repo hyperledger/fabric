@@ -12,12 +12,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	pb "github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric-protos-go/transientstore"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/transientstore"
 	vsccErrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
@@ -28,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	pb "google.golang.org/protobuf/proto"
 )
 
 // GossipStateProvider is the interface to acquire sequences of the ledger blocks
@@ -189,13 +189,13 @@ func NewGossipStateProvider(
 	blockingMode bool,
 	config *StateConfig,
 ) GossipStateProvider {
-	gossipChan, _ := services.Accept(func(message interface{}) bool {
+	gossipChan, _ := services.Accept(func(message any) bool {
 		// Get only data messages
 		return protoext.IsDataMsg(message.(*proto.GossipMessage)) &&
 			bytes.Equal(message.(*proto.GossipMessage).Channel, []byte(chainID))
 	}, false)
 
-	remoteStateMsgFilter := func(message interface{}) bool {
+	remoteStateMsgFilter := func(message any) bool {
 		receivedMsg := message.(protoext.ReceivedMessage)
 		msg := receivedMsg.GetGossipMessage()
 		if !(protoext.IsRemoteStateMessage(msg.GossipMessage) || msg.GetPrivateData() != nil) {
@@ -389,16 +389,17 @@ func (s *GossipStateProviderImpl) directMessage(msg protoext.ReceivedMessage) {
 
 	if incoming.GetStateRequest() != nil {
 		if len(s.stateRequestCh) < s.config.StateChannelSize {
-			// Forward state request to the channel, if there are too
-			// many message of state request ignore to avoid flooding.
-			s.stateRequestCh <- msg
+			select {
+			case s.stateRequestCh <- msg:
+			case <-s.stopCh:
+			}
 		}
 	} else if incoming.GetStateResponse() != nil {
-		// If no state transfer procedure activate there is
-		// no reason to process the message
 		if atomic.LoadInt32(&s.stateTransferActive) == 1 {
-			// Send signal of state response message
-			s.stateResponseCh <- msg
+			select {
+			case s.stateResponseCh <- msg:
+			case <-s.stopCh:
+			}
 		}
 	}
 }
@@ -604,7 +605,7 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 				continue
 			}
 
-			s.requestBlocksInRange(uint64(ourHeight), uint64(maxHeight)-1)
+			s.requestBlocksInRange(ourHeight, uint64(maxHeight)-1)
 		}
 	}
 }

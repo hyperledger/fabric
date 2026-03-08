@@ -294,7 +294,8 @@ chaincode:
         path:
         name:
 
-    # Generic builder environment, suitable for most chaincode types
+    # Generic builder image with Go pre-installed.
+    # TWO_DIGIT_VERSION represents Fabric major.minor version.
     builder: $(DOCKER_NS)/fabric-ccenv:$(TWO_DIGIT_VERSION)
 
     # Enables/disables force pulling of the base docker images (listed below)
@@ -303,22 +304,23 @@ chaincode:
     pull: false
 
     golang:
-        # golang will never need more than baseos
+        # Compiled Go chaincodes will be copied to the fabric-baseos runtime image.
+        # TWO_DIGIT_VERSION represents Fabric major.minor version.
         runtime: $(DOCKER_NS)/fabric-baseos:$(TWO_DIGIT_VERSION)
 
         # whether or not golang chaincode should be linked dynamically
         dynamicLink: false
 
     java:
-        # This is an image based on java:openjdk-8 with addition compiler
+        # This is an image based on eclipse temurin with addition compiler
         # tools added for java shim layer packaging.
         # This image is packed with shim layer libraries that are necessary
         # for Java chaincode runtime.
-        runtime: $(DOCKER_NS)/fabric-javaenv:$(TWO_DIGIT_VERSION)
+        runtime: $(DOCKER_NS)/fabric-javaenv:2.5
 
     node:
         # This is an image based on node:$(NODE_VER)-alpine
-        runtime: $(DOCKER_NS)/fabric-nodeenv:$(TWO_DIGIT_VERSION)
+        runtime: $(DOCKER_NS)/fabric-nodeenv:2.5
 
     # timeout in millisecs for starting up a container and waiting for Register
     # to come through. 1sec should be plenty for chaincode unit tests

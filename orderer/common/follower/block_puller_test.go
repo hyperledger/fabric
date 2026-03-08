@@ -8,15 +8,14 @@ package follower_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"sync/atomic"
 	"testing"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
@@ -116,7 +115,7 @@ func TestBlockPullerFactory_BlockPuller(t *testing.T) {
 func TestBlockPullerFactory_VerifyBlockSequence(t *testing.T) {
 	// replaces cluster.VerifyBlocks, count blocks
 	var numBlocks int32
-	altVerifyBlocks := func(blockBuff []*cb.Block, signatureVerifier cluster.BlockVerifier) error { // replaces cluster.VerifyBlocks, count invocations
+	altVerifyBlocks := func(blockBuff []*cb.Block, signatureVerifier protoutil.BlockVerifierFunc, vb protoutil.VerifierBuilder) error { // replaces cluster.VerifyBlocks, count invocations
 		if len(blockBuff) == 0 {
 			return errors.New("buffer is empty")
 		}
@@ -143,17 +142,25 @@ func TestBlockPullerFactory_VerifyBlockSequence(t *testing.T) {
 	})
 
 	t.Run("skip genesis block as part of a slice", func(t *testing.T) {
+		gb := generateJoinBlock(t, tlsCA, channelID, 0)
 		setupBlockPullerTest(t)
 		atomic.StoreInt32(&numBlocks, 0)
 		creator, err := follower.NewBlockPullerCreator(channelID, testLogger, mockSigner, dialer, localconfig.Cluster{}, cryptoProv)
 		require.NotNil(t, creator)
 		require.NoError(t, err)
+		creator.JoinBlock = gb
 		creator.ClusterVerifyBlocks = altVerifyBlocks
 		blocks := []*cb.Block{
-			generateJoinBlock(t, tlsCA, channelID, 0),
-			protoutil.NewBlock(1, []byte{}),
-			protoutil.NewBlock(2, []byte{}),
+			gb,
+			protoutil.NewBlock(1, nil),
+			protoutil.NewBlock(2, nil),
 		}
+
+		tx, err := protoutil.CreateSignedEnvelopeWithTLSBinding(0, "mychannel", nil, &cb.Payload{}, 0, 0, nil)
+		require.NoError(t, err)
+
+		blocks[1].Data.Data = [][]byte{protoutil.MarshalOrPanic(tx)}
+		blocks[2].Data.Data = [][]byte{protoutil.MarshalOrPanic(tx)}
 
 		err = creator.VerifyBlockSequence(blocks, "")
 		require.NoError(t, err)
@@ -181,9 +188,7 @@ func TestBlockPullerFactory_VerifyBlockSequence(t *testing.T) {
 }
 
 func generateJoinBlock(t *testing.T, tlsCA tlsgen.CA, channelID string, number uint64) *cb.Block {
-	tmpdir, err := ioutil.TempDir("", "block-puller-test-")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpdir)
+	tmpdir := t.TempDir()
 
 	confAppRaft := genesisconfig.Load(genesisconfig.SampleDevModeEtcdRaftProfile, configtest.GetDevConfigDir())
 	confAppRaft.Consortiums = nil
@@ -202,13 +207,13 @@ func generateCertificates(t *testing.T, confAppRaft *genesisconfig.Profile, tlsC
 		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)
 		require.NoError(t, err)
 		srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", i))
-		err = ioutil.WriteFile(srvP, srvC.Cert, 0o644)
+		err = os.WriteFile(srvP, srvC.Cert, 0o644)
 		require.NoError(t, err)
 
 		clnC, err := tlsCA.NewClientCertKeyPair()
 		require.NoError(t, err)
 		clnP := path.Join(certDir, fmt.Sprintf("client%d.crt", i))
-		err = ioutil.WriteFile(clnP, clnC.Cert, 0o644)
+		err = os.WriteFile(clnP, clnC.Cert, 0o644)
 		require.NoError(t, err)
 
 		c.ServerTlsCert = []byte(srvP)

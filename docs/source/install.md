@@ -6,7 +6,7 @@ We think the best way to understand something is to use it yourself.  To help y
 
 We also have precompiled `Fabric CLI tool binaries` and `Fabric Docker Images` which will be downloaded to your environment, to get you going.
 
-The cURL command in the instructions below sets up your environment so that you can run the Fabric test network. Specifically, it performs the following steps:
+The `install-fabric.sh` script introduced in the next section automates the process to set up your environment. Specifically, it performs the following steps:
 
 * Clones the [hyperledger/fabric-samples](https://github.com/hyperledger/fabric-samples) repository.
 * Downloads the latest Hyperledger Fabric Docker images and tags them as `latest`
@@ -15,7 +15,7 @@ The cURL command in the instructions below sets up your environment so that you 
   * `configtxlator`,
   * `cryptogen`,
   * `discover`,
-  * `idemixgen`,
+  * `ledgerutil`,
   * `orderer`,
   * `osnadmin`,
   * `peer`,
@@ -43,8 +43,8 @@ Run the script with the `-h` option to see the options:
 ./install-fabric.sh -h
 Usage: ./install-fabric.sh [-f|--fabric-version <arg>] [-c|--ca-version <arg>] <comp-1> [<comp-2>] ... [<comp-n>] ...
         <comp>: Component to install one or more of  d[ocker]|b[inary]|s[amples]. If none specified, all will be installed
-        -f, --fabric-version: FabricVersion (default: '2.5.12')
-        -c, --ca-version: Fabric CA Version (default: '1.5.15')
+        -f, --fabric-version: FabricVersion (default: '2.5.15')
+        -c, --ca-version: Fabric CA Version (default: '1.5.17')
 ```
 
 ## Choosing which components
@@ -70,17 +70,17 @@ If no arguments are supplied, then the arguments `docker binary samples` are ass
 
 By default the latest version of the components are used; these can be altered by using the options `--fabric-version` and `-ca-version`.  `-f` and `-c` are the respective short forms.
 
-For example, to download the v2.5.12 binaries, run this command
+For example, to download the v2.5.15 binaries, run this command
 
 ```bash
-./install-fabric.sh --fabric-version 2.5.12 binary
+./install-fabric.sh --fabric-version 2.5.15 binary
 ```
 
 You have completed installing Fabric samples, Docker images, and binaries to your system.
 
 * If you are looking to set up your environment to start contributing to Fabric, please refer to the instructions for [Setting up the contributor development environment](https://hyperledger-fabric.readthedocs.io/en/latest/dev-setup/devenv.html).
 
-> Note: this is an updated install script with the same end-result as the existing script, but with an improved syntax. This script adopts the postitive opt-in approach to selecting the components to install.  The original script is still present at the same location `curl -sSL https://raw.githubusercontent.com/hyperledger/fabric/main/scripts/bootstrap.sh| bash -s`
+> Note: this is an updated install script with the same end-result as the existing script, but with an improved syntax. This script adopts the positive opt-in approach to selecting the components to install.  The original script is still present at the same location `curl -sSL https://raw.githubusercontent.com/hyperledger/fabric/main/scripts/bootstrap.sh| bash -s`
 
 * If you need help, post your questions and share your logs on the **fabric-questions** channel on [Hyperledger Discord Chat](https://discord.com/invite/hyperledger) or on [StackOverflow](https://stackoverflow.com/questions/tagged/hyperledger-fabric).
 

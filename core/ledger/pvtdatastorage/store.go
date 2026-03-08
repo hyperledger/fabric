@@ -12,10 +12,9 @@ import (
 	"time"
 
 	"github.com/bits-and-blooms/bitset"
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/confighistory"
@@ -24,6 +23,8 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/proto"
 )
 
 var logger = flogging.MustGetLogger("pvtdatastorage")
@@ -173,8 +174,8 @@ type storeEntries struct {
 // and is stored as the value of lastUpdatedOldBlocksKey (defined in kv_encoding.go)
 type lastUpdatedOldBlocksList []uint64
 
-//////// Provider functions  /////////////
-//////////////////////////////////////////
+// ////// Provider functions  /////////////
+// ////////////////////////////////////////
 
 // NewProvider instantiates a StoreProvider
 func NewProvider(conf *PrivateDataConfig) (*Provider, error) {
@@ -255,8 +256,8 @@ func (p *Provider) Drop(ledgerid string) error {
 	return p.dbProvider.Drop(ledgerid)
 }
 
-//////// store functions  ////////////////
-//////////////////////////////////////////
+// ////// store functions  ////////////////
+// ////////////////////////////////////////
 
 func (s *Store) initState() error {
 	var err error
@@ -397,7 +398,7 @@ func (s *Store) Commit(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtD
 // GetLastUpdatedOldBlocksPvtData returns the pvtdata of blocks listed in `lastUpdatedOldBlocksList`
 // TODO FAB-16293 -- GetLastUpdatedOldBlocksPvtData() can be removed either in v2.0 or in v2.1.
 // If we decide to rebuild stateDB in v2.0, by default, the rebuild logic would take
-// care of synching stateDB with pvtdataStore without calling GetLastUpdatedOldBlocksPvtData().
+// care of syncing stateDB with pvtdataStore without calling GetLastUpdatedOldBlocksPvtData().
 // Hence, it can be safely removed. Suppose if we decide not to rebuild stateDB in v2.0,
 // we can remove this function in v2.1.
 func (s *Store) GetLastUpdatedOldBlocksPvtData() (map[uint64][]*ledger.TxPvtData, error) {
@@ -420,8 +421,11 @@ func (s *Store) GetLastUpdatedOldBlocksPvtData() (map[uint64][]*ledger.TxPvtData
 }
 
 func (s *Store) getLastUpdatedOldBlocksList() ([]uint64, error) {
-	var v []byte
-	var err error
+	var (
+		v        []byte
+		err      error
+		position int
+	)
 	if v, err = s.db.Get(lastUpdatedOldBlocksKey); err != nil {
 		return nil, err
 	}
@@ -430,16 +434,18 @@ func (s *Store) getLastUpdatedOldBlocksList() ([]uint64, error) {
 	}
 
 	var updatedBlksList []uint64
-	buf := proto.NewBuffer(v)
-	numBlks, err := buf.DecodeVarint()
-	if err != nil {
-		return nil, err
+	numBlks, n := protowire.ConsumeVarint(v[position:])
+	if n < 0 {
+		return nil, protowire.ParseError(n)
 	}
+	position += n
+
 	for i := 0; i < int(numBlks); i++ {
-		blkNum, err := buf.DecodeVarint()
-		if err != nil {
-			return nil, err
+		blkNum, n := protowire.ConsumeVarint(v[position:])
+		if n < 0 {
+			return nil, protowire.ParseError(n)
 		}
+		position += n
 		updatedBlksList = append(updatedBlksList, blkNum)
 	}
 	return updatedBlksList, nil

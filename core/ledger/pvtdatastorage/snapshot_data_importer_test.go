@@ -8,16 +8,14 @@ package pvtdatastorage
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math"
-	"os"
 	"path"
 	"testing"
 
 	"github.com/bits-and-blooms/bitset"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/core/ledger/confighistory/confighistorytest"
@@ -25,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestSnapshotImporter(t *testing.T) {
@@ -42,8 +41,7 @@ func TestSnapshotImporter(t *testing.T) {
 	}()
 
 	setup := func() (*SnapshotDataImporter, *confighistorytest.Mgr, *dbEntriesVerifier) {
-		testDir := testDir(t)
-		t.Cleanup(func() { os.RemoveAll(testDir) })
+		testDir := t.TempDir()
 		dbProvider, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: testDir})
 		require.NoError(t, err)
 		t.Cleanup(func() { dbProvider.Close() })
@@ -422,8 +420,7 @@ func TestSnapshotImporterErrorPropagation(t *testing.T) {
 	myMSPID := "myOrg"
 
 	setup := func() (*SnapshotDataImporter, *confighistorytest.Mgr) {
-		testDir := testDir(t)
-		t.Cleanup(func() { os.RemoveAll(testDir) })
+		testDir := t.TempDir()
 		dbProvider, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: testDir})
 		require.NoError(t, err)
 		t.Cleanup(func() { dbProvider.Close() })
@@ -580,8 +577,7 @@ func TestSnapshotImporterErrorPropagation(t *testing.T) {
 }
 
 func TestEligibilityAndBTLCacheLoadData(t *testing.T) {
-	testDir := testDir(t)
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	configHistoryMgr, err := confighistorytest.NewMgr(testDir)
 	require.NoError(t, err)
@@ -812,8 +808,7 @@ func (e eligibilityVal) sameAs(p *peer.CollectionPolicyConfig) bool {
 
 func TestDBUpdates(t *testing.T) {
 	setup := func() *leveldbhelper.Provider {
-		testDir := testDir(t)
-		t.Cleanup(func() { os.RemoveAll(testDir) })
+		testDir := t.TempDir()
 
 		p, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: testDir})
 		require.NoError(t, err)
@@ -956,7 +951,7 @@ func (v *dbEntriesVerifier) verifyBootKVHashesEntry(key *bootKVHashesKey, expect
 	require.NoError(v.t, err)
 	val, err := decodeBootKVHashesVal(encVal)
 	require.NoError(v.t, err)
-	require.Equal(v.t, expectedVal, val)
+	require.True(v.t, proto.Equal(expectedVal, val))
 }
 
 func (v *dbEntriesVerifier) verifyExpiryEntry(key *expiryKey, expectedVal *ExpiryData) {
@@ -964,7 +959,7 @@ func (v *dbEntriesVerifier) verifyExpiryEntry(key *expiryKey, expectedVal *Expir
 	require.NoError(v.t, err)
 	val, err := decodeExpiryValue(encVal)
 	require.NoError(v.t, err)
-	require.Equal(v.t, expectedVal, val)
+	require.True(v.t, proto.Equal(expectedVal, val))
 }
 
 func (v *dbEntriesVerifier) verifyNoExpiryEntries() {
@@ -974,12 +969,6 @@ func (v *dbEntriesVerifier) verifyNoExpiryEntries() {
 	require.NoError(v.t, err)
 	require.False(v.t, iter.Next())
 	require.NoError(v.t, iter.Error())
-}
-
-func testDir(t *testing.T) string {
-	dir, err := ioutil.TempDir("", "snapshot-data-importer-")
-	require.NoError(t, err)
-	return dir
 }
 
 func TestSnapshotRowsSorter(t *testing.T) {
@@ -1095,9 +1084,7 @@ func TestSnapshotRowsSorter(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("testcase-%d", i), func(t *testing.T) {
-			dir, err := ioutil.TempDir("", "snapshot-row-sorter-")
-			require.NoError(t, err)
-			defer os.RemoveAll(dir)
+			dir := t.TempDir()
 
 			sorter, err := newSnapshotRowsSorter(dir)
 			require.NoError(t, err)
@@ -1134,9 +1121,7 @@ func TestSnapshotRowsSorter(t *testing.T) {
 }
 
 func TestSnapshotRowsSorterCleanup(t *testing.T) {
-	dir, err := ioutil.TempDir("", "snapshot-row-sorter-")
-	require.NoError(t, err)
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	sorter, err := newSnapshotRowsSorter(dir)
 	require.NoError(t, err)

@@ -8,23 +8,22 @@ package server
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"runtime/debug"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric-lib-go/common/metrics"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/deliver"
-	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
-	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 type broadcastSupport struct {
@@ -103,6 +102,12 @@ func NewServer(
 	return s
 }
 
+func CreateThrottlers(throttleConfig localconfig.Throttling) (RateLimiter, RateLimiter) {
+	clientRateLimiter := newRateLimiter(throttleConfig.Rate, throttleConfig.InactivityTimeout)
+	orgRateLimiter := newRateLimiter(throttleConfig.Rate, throttleConfig.InactivityTimeout)
+	return clientRateLimiter, orgRateLimiter
+}
+
 type msgTracer struct {
 	function string
 	debug    *localconfig.Debug
@@ -117,12 +122,16 @@ func (mt *msgTracer) trace(traceDir string, msg *cb.Envelope, err error) {
 	path := fmt.Sprintf("%s%c%d_%p.%s", traceDir, os.PathSeparator, now, msg, mt.function)
 	logger.Debugf("Writing %s request trace to %s", mt.function, path)
 	go func() {
+		if msg == nil {
+			logger.Debugf("Error marshaling trace msg for %s: proto: Marshal called with nil", path)
+			return
+		}
 		pb, err := proto.Marshal(msg)
 		if err != nil {
 			logger.Debugf("Error marshaling trace msg for %s: %s", path, err)
 			return
 		}
-		err = ioutil.WriteFile(path, pb, 0o660)
+		err = os.WriteFile(path, pb, 0o660)
 		if err != nil {
 			logger.Debugf("Error writing trace msg for %s: %s", path, err)
 		}

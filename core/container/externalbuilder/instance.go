@@ -8,7 +8,6 @@ package externalbuilder
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -42,7 +41,7 @@ func (d Duration) MarshalJSON() ([]byte, error) {
 }
 
 func (d *Duration) UnmarshalJSON(b []byte) error {
-	var v interface{}
+	var v any
 	if err := json.Unmarshal(b, &v); err != nil {
 		return err
 	}
@@ -66,6 +65,7 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 // ChaincodeServerUserData holds "connection.json" information
 type ChaincodeServerUserData struct {
 	Address            string   `json:"address"`
+	Domain             string   `json:"domain"`
 	DialTimeout        Duration `json:"dial_timeout"`
 	TLSRequired        bool     `json:"tls_required"`
 	ClientAuthRequired bool     `json:"client_auth_required"`
@@ -108,6 +108,7 @@ func (c *ChaincodeServerUserData) ChaincodeServerInfo(cryptoDir string) (*ccintf
 		connInfo.ClientConfig.SecOpts.RequireClientCert = true
 		connInfo.ClientConfig.SecOpts.Certificate = []byte(c.ClientCert)
 		connInfo.ClientConfig.SecOpts.Key = []byte(c.ClientKey)
+		connInfo.ClientConfig.SecOpts.ServerNameOverride = c.Domain
 	}
 
 	connInfo.ClientConfig.SecOpts.ServerRootCAs = [][]byte{[]byte(c.RootCert)}
@@ -131,7 +132,7 @@ func (i *Instance) ChaincodeServerInfo() (*ccintf.ChaincodeServerInfo, error) {
 	if err != nil {
 		return nil, errors.WithMessage(err, "connection information not provided")
 	}
-	b, err := ioutil.ReadFile(ccinfoPath)
+	b, err := os.ReadFile(ccinfoPath)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "could not read '%s' for chaincode info", ccinfoPath)
 	}

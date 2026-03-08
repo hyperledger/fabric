@@ -68,10 +68,16 @@ In addition to verification related parameters, for the MSP to enable
 the node on which it is instantiated to sign or authenticate, one needs to
 specify:
 
-- The signing key used for signing by the node (currently only ECDSA keys are
-  supported), and
+- The signing key used for signing by the node, and
 - The node's X.509 certificate, that is a valid identity under the
   verification parameters of this MSP.
+
+The following cryptographic algorithms are supported for transaction signing and verification:
+
+- ECDSA (P-256, P-384)
+- Ed25519 (as of v3.0 when using V3_0 channel capability)
+
+Please note that Hyperledger Fabric does not support RSA keys except in CA certificates.
 
 It is important to note that MSP identities never expire; they can only be revoked
 by adding them to the appropriate CRLs. Additionally, there is currently no
@@ -81,10 +87,9 @@ How to generate MSP certificates and their signing keys?
 --------------------------------------------------------
 
 `Openssl <https://www.openssl.org/>`_ can be used to generate X.509
-certificates and keys. Please note that Hyperledger Fabric does not support
-RSA key and certificates.
+certificates and keys.
 
-The Hyperledger Fabric CA can also be used to generate the keys and certificates
+The Hyperledger Fabric CA can also be used to generate ECDSA keys and certificates
 needed to configure an MSP. Check out
 `Registering and enrolling identities with a CA <https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html>`_
 for more information about how to generate MSPs for nodes and organizations.
@@ -186,8 +191,7 @@ administrator to their bearer, provided that they possess the client or admin OU
 Adding MSPs to channels
 -----------------------
 
-For information about how to add MSPs to a channel (including the decision of
-whether to bootstrap ordering nodes with a system channel genesis block), check
+For information about how to add MSPs to a channel, check
 out :doc:`create_channel/create_channel_overview`.
 
 Best practices

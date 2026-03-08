@@ -18,16 +18,15 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/golang/protobuf/proto"
-	pcomm "github.com/hyperledger/fabric-protos-go/common"
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	tspb "github.com/hyperledger/fabric-protos-go/transientstore"
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	pcomm "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	tspb "github.com/hyperledger/fabric-protos-go-apiv2/transientstore"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	errors2 "github.com/hyperledger/fabric/common/errors"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -54,6 +53,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	pb "google.golang.org/protobuf/proto"
 )
 
 var (
@@ -119,6 +119,12 @@ func (*cryptoServiceMock) GetPKIidOfCert(peerIdentity api.PeerIdentityType) comm
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
 func (*cryptoServiceMock) VerifyBlock(channelID common.ChannelID, seqNum uint64, signedBlock *pcomm.Block) error {
+	return nil
+}
+
+// VerifyBlockAttestation returns nil if the block attestation is properly signed,
+// else returns error
+func (*cryptoServiceMock) VerifyBlockAttestation(channelID string, signedBlock *pcomm.Block) error {
 	return nil
 }
 
@@ -226,6 +232,10 @@ func (mc *mockCommitter) LedgerHeight() (uint64, error) {
 		return args.Get(0).(uint64), nil
 	}
 	return args.Get(0).(uint64), args.Get(1).(error)
+}
+
+func (mc *mockCommitter) GetCurrentBlockHash() ([]byte, error) {
+	panic("implement me")
 }
 
 func (mc *mockCommitter) DoesPvtDataInfoExistInLedger(blkNum uint64) (bool, error) {
@@ -790,7 +800,7 @@ func TestBlockingEnqueue(t *testing.T) {
 		mc.Mock = m
 		mc.Unlock()
 		require.Equal(t, receivedBlock, uint64(receivedBlockCount))
-		if int(receivedBlockCount) == numBlocksReceived {
+		if receivedBlockCount == numBlocksReceived {
 			break
 		}
 		time.Sleep(time.Millisecond * 10)
@@ -1030,7 +1040,7 @@ func TestAccessControl(t *testing.T) {
 	var listeners []net.Listener
 	var endpoints []string
 
-	for i := 0; i < authorizedPeersSize; i++ {
+	for range authorizedPeersSize {
 		ll, err := net.Listen("tcp", "127.0.0.1:0")
 		require.NoError(t, err)
 		listeners = append(listeners, ll)
@@ -1060,7 +1070,7 @@ func TestAccessControl(t *testing.T) {
 
 	var bootPorts []int
 
-	for i := 0; i < bootstrapSetSize; i++ {
+	for i := range bootstrapSetSize {
 		commit := newCommitter()
 		bootPeer, bootPort := newBootNode(i, commit, blockPullPolicy)
 		bootstrapSet = append(bootstrapSet, bootPeer)
@@ -1091,7 +1101,7 @@ func TestAccessControl(t *testing.T) {
 	standardPeerSetSize := 10
 	peersSet := make([]*peerNode, 0)
 
-	for i := 0; i < standardPeerSetSize; i++ {
+	for i := range standardPeerSetSize {
 		commit := newCommitter()
 		peersSet = append(peersSet, newPeerNode(bootstrapSetSize+i, commit, blockPullPolicy, bootPorts...))
 	}
@@ -1140,7 +1150,7 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 
 	var bootPorts []int
 
-	for i := 0; i < bootstrapSetSize; i++ {
+	for i := range bootstrapSetSize {
 		commit := newCommitter()
 		bootPeer, bootPort := newBootNode(i, commit, noopPeerIdentityAcceptor)
 		bootstrapSet = append(bootstrapSet, bootPeer)
@@ -1171,7 +1181,7 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 	standartPeersSize := 10
 	peersSet := make([]*peerNode, 0)
 
-	for i := 0; i < standartPeersSize; i++ {
+	for i := range standartPeersSize {
 		commit := newCommitter()
 		peersSet = append(peersSet, newPeerNode(bootstrapSetSize+i, commit, noopPeerIdentityAcceptor, bootPorts...))
 	}
@@ -1234,7 +1244,7 @@ func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
 	peer := newPeerNode(1, newCommitter(), noopPeerIdentityAcceptor, bootPort)
 	defer peer.shutdown()
 
-	naiveStateMsgPredicate := func(message interface{}) bool {
+	naiveStateMsgPredicate := func(message any) bool {
 		return protoext.IsRemoteStateMessage(message.(protoext.ReceivedMessage).GetGossipMessage().GossipMessage)
 	}
 	_, peerCh := peer.g.Accept(naiveStateMsgPredicate, true)
@@ -1247,7 +1257,7 @@ func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
 	// makes sure it receives expected amount of messages and sends signal of success
 	// to continue the test
 	go func() {
-		for count := 0; count < expectedMessagesCnt; count++ {
+		for range expectedMessagesCnt {
 			<-peerCh
 			wg.Done()
 		}
@@ -1770,9 +1780,8 @@ func waitUntilTrueOrTimeout(t *testing.T, predicate func() bool, timeout time.Du
 		t.Log("Done.")
 		break
 	case <-time.After(timeout):
-		t.Fatal("Timeout has expired")
 		close(ch)
-		break
+		t.Fatal("Timeout has expired")
 	}
 	t.Log("Stop waiting until timeout or true")
 }

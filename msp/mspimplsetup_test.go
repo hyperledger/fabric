@@ -10,11 +10,10 @@ import (
 	"crypto/x509"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
-
 	"github.com/onsi/gomega"
 )
 
@@ -153,7 +152,7 @@ func TestMalformedCertsChainSetup(t *testing.T) {
 
 	// Add root CA certificate
 	// cert, err := mspImpl.getCertFromPem([]byte(ca.CertBytes()))
-	certInter, err := mspImpl.getCertFromPem([]byte(inter.CertBytes()))
+	certInter, err := mspImpl.getCertFromPem(inter.CertBytes())
 	gt.Expect(err).NotTo(gomega.HaveOccurred())
 	mspImpl.opts.Roots.AddCert(certInter)
 	mspImpl.rootCerts = []Identity{&identity{cert: certInter}}

@@ -8,12 +8,11 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/hyperledger/fabric-chaincode-go/shim"
+	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
 	"github.com/hyperledger/fabric/integration/chaincode/simple"
 )
 
@@ -41,7 +40,7 @@ func handleSigTerm() {
 		return
 	}
 
-	err := ioutil.WriteFile(termFile, []byte("term-file"), 0o644)
+	err := os.WriteFile(termFile, []byte("term-file"), 0o644)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to write term file to %s: %s", termFile, err)
 	}

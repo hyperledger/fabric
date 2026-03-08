@@ -9,8 +9,8 @@ package chaincode
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/policies/inquire"
@@ -82,7 +82,6 @@ func TestSupport(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			sup := NewDiscoverySupport(&mockMetadataRetriever{res: test.input})
 			res := sup.PoliciesByChaincode("", "", test.collNames...)

@@ -24,11 +24,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/timestamp"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	mb "github.com/hyperledger/fabric-protos-go/msp"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	mb "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Channel is a channel configuration.
@@ -535,11 +534,9 @@ func newEnvelope(
 // channelHeader creates a ChannelHeader.
 func channelHeader(headerType cb.HeaderType, version int32, channelID string, epoch uint64) *cb.ChannelHeader {
 	return &cb.ChannelHeader{
-		Type:    int32(headerType),
-		Version: version,
-		Timestamp: &timestamp.Timestamp{
-			Seconds: ptypes.TimestampNow().GetSeconds(),
-		},
+		Type:      int32(headerType),
+		Version:   version,
+		Timestamp: timestamppb.Now(),
 		ChannelId: channelID,
 		Epoch:     epoch,
 	}

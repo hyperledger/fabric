@@ -8,20 +8,16 @@ package confighistorytest
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math"
-	"os"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestConfigHistory(t *testing.T) {
-	testDir, err := ioutil.TempDir("", "confighitory-")
-	require.NoError(t, err)
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	mgr, err := NewMgr(testDir)
 	require.NoError(t, err)

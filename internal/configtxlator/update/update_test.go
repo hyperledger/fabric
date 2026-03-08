@@ -9,7 +9,9 @@ package update
 import (
 	"testing"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	"google.golang.org/protobuf/proto"
+
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/stretchr/testify/require"
 )
 
@@ -143,7 +145,7 @@ func TestGroupPolicyModification(t *testing.T) {
 		Groups: map[string]*cb.ConfigGroup{},
 	}
 
-	require.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
+	require.True(t, proto.Equal(expectedWriteSet, cu.WriteSet), "Mismatched write set")
 }
 
 func TestGroupValueModification(t *testing.T) {

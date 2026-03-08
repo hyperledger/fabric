@@ -9,16 +9,16 @@ package protoutil_test
 import (
 	"bytes"
 	"encoding/pem"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 // More duplicate utility which should go away, but the utils are a bit of a mess right now with import cycles
@@ -161,7 +161,7 @@ func TestLogMessageForSerializedIdentity(t *testing.T) {
 }
 
 func readFile(file string) ([]byte, error) {
-	fileCont, err := ioutil.ReadFile(file)
+	fileCont, err := os.ReadFile(file)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not read file %s", file)
 	}

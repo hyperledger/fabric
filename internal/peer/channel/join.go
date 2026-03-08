@@ -10,10 +10,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"net/http"
+	"os"
 
-	pcommon "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	pcommon "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/protoutil"
@@ -59,7 +60,7 @@ func getJoinCCSpec() (*pb.ChaincodeSpec, error) {
 		return nil, errors.New("Must supply genesis block file")
 	}
 
-	gb, err := ioutil.ReadFile(genesisBlockPath)
+	gb, err := os.ReadFile(genesisBlockPath)
 	if err != nil {
 		return nil, GBFileNotFoundErr(err.Error())
 	}
@@ -106,7 +107,7 @@ func executeJoin(cf *ChannelCmdFactory, spec *pb.ChaincodeSpec) (err error) {
 		return ProposalFailedErr("nil proposal response")
 	}
 
-	if proposalResp.Response.Status != 0 && proposalResp.Response.Status != 200 {
+	if proposalResp.Response.Status != 0 && proposalResp.Response.Status != http.StatusOK {
 		return ProposalFailedErr(fmt.Sprintf("bad proposal response %d: %s", proposalResp.Response.Status, proposalResp.Response.Message))
 	}
 	logger.Info("Successfully submitted proposal to join channel")

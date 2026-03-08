@@ -11,16 +11,16 @@ import (
 	"os"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	mspprotos "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
+	"google.golang.org/protobuf/proto"
 )
 
 func ownerCreateCCDepSpec(codepackage []byte, sigpolicy *common.SignaturePolicyEnvelope, owner msp.SigningIdentity) (*common.Envelope, error) {
@@ -70,7 +70,7 @@ func TestAddSignature(t *testing.T) {
 		t.Fatalf("error signing existing package %s", err)
 		return
 	}
-	//...and sign aother for luck
+	// ...and sign aother for luck
 	env, err = SignExistingPackage(env, signer)
 	if err != nil || env == nil {
 		t.Fatalf("error signing existing package %s", err)
@@ -288,35 +288,30 @@ func TestMain(m *testing.M) {
 	// setup the MSP manager so that we can sign/verify
 	err := msptesttools.LoadMSPSetupForTesting()
 	if err != nil {
-		os.Exit(-1)
 		fmt.Printf("Could not initialize msp")
-		return
+		os.Exit(-1)
 	}
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	if err != nil {
 		fmt.Printf("Initialize cryptoProvider bccsp failed: %s", cryptoProvider)
 		os.Exit(-1)
-		return
 	}
 	localmsp = mspmgmt.GetLocalMSP(cryptoProvider)
 	if localmsp == nil {
-		os.Exit(-1)
 		fmt.Printf("Could not get msp")
-		return
+		os.Exit(-1)
 	}
 	signer, err = localmsp.GetDefaultSigningIdentity()
 	if err != nil {
-		os.Exit(-1)
 		fmt.Printf("Could not get signer")
-		return
+		os.Exit(-1)
 	}
 
 	signerSerialized, err = signer.Serialize()
 	if err != nil {
-		os.Exit(-1)
 		fmt.Printf("Could not serialize identity")
-		return
+		os.Exit(-1)
 	}
 
 	os.Exit(m.Run())

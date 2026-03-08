@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"testing"
 
-	protopeer "github.com/hyperledger/fabric-protos-go/peer"
+	protopeer "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/stretchr/testify/require"
 )
@@ -175,7 +175,7 @@ func (d *sampleDataHelper) verifyBlockAndPvtdataUsingSubmittedData(l *testLedger
 	for _, submittedBlk := range submittedData.Blocks {
 		blkNum := submittedBlk.Block.Header.Number
 		if blkNum != 8 {
-			l.verifyBlockAndPvtDataSameAs(uint64(blkNum), submittedBlk)
+			l.verifyBlockAndPvtDataSameAs(blkNum, submittedBlk)
 		} else {
 			l.verifyBlockAndPvtData(uint64(8), nil, func(r *retrievedBlockAndPvtdata) {
 				r.sameBlockHeaderAndData(submittedBlk.Block)

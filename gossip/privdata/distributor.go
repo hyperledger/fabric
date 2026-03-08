@@ -15,11 +15,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	protosgossip "github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric-protos-go/transientstore"
+	protosgossip "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/transientstore"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
@@ -32,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // gossipAdapter an adapter for API's required from gossip module
@@ -218,7 +218,7 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 		return colFilter(protoutil.SignedData{
 			Data:      signature.Message,
 			Signature: signature.Signature,
-			Identity:  []byte(signature.PeerIdentity),
+			Identity:  signature.PeerIdentity,
 		})
 	})
 	if err != nil {
@@ -313,10 +313,7 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 	}
 
 	// PHASE 2 - Select additional peers to satisfy colAP.MaximumPeerCount() if there are still peers in the remainingPeersAcrossOrgs pool
-	numRemainingPeersToSelect := maximumPeerRemainingCount
-	if len(remainingPeersAcrossOrgs) < maximumPeerRemainingCount {
-		numRemainingPeersToSelect = len(remainingPeersAcrossOrgs)
-	}
+	numRemainingPeersToSelect := min(len(remainingPeersAcrossOrgs), maximumPeerRemainingCount)
 	if numRemainingPeersToSelect > 0 {
 		d.logger.Debugf("MaximumPeerCount not yet satisfied after picking one peer per org, selecting %d more peer(s) for dissemination", numRemainingPeersToSelect)
 	}

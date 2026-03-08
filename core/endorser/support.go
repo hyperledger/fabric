@@ -9,7 +9,7 @@ package endorser
 import (
 	"fmt"
 
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
@@ -110,7 +110,7 @@ func (s *SupportImpl) IsSysCC(name string) bool {
 	return s.BuiltinSCCs.IsSysCC(name)
 }
 
-// ExecuteInit a deployment proposal and return the chaincode response
+// ExecuteLegacyInit a deployment proposal and return the chaincode response
 func (s *SupportImpl) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, name, version string, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
 	return s.ChaincodeSupport.ExecuteLegacyInit(txParams, name, version, input)
 }

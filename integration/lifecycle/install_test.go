@@ -7,44 +7,44 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
+	dcli "github.com/moby/moby/client"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
 var _ = Describe("chaincode install", func() {
 	var (
-		client  *docker.Client
+		client  dcli.APIClient
 		testDir string
 
-		network *nwo.Network
-		process ifrit.Process
+		network                     *nwo.Network
+		ordererRunner               *ginkgomon.Runner
+		ordererProcess, peerProcess ifrit.Process
 	)
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "lifecycle")
+		testDir, err = os.MkdirTemp("", "lifecycle")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
 		cwd, err := os.Getwd()
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.BasicSolo(), testDir, client, StartPort(), components)
+		network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
 		network.ExternalBuilders = append(network.ExternalBuilders, fabricconfig.ExternalBuilder{
 			Path:                 filepath.Join(cwd, "..", "externalbuilders", "golang"),
 			Name:                 "external-golang",
@@ -53,14 +53,20 @@ var _ = Describe("chaincode install", func() {
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		// Start all the fabric processes
+		ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 	})
 
 	AfterEach(func() {
-		process.Signal(syscall.SIGTERM)
-		Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+		if ordererProcess != nil {
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
+		if peerProcess != nil {
+			peerProcess.Signal(syscall.SIGTERM)
+			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
 		network.Cleanup()
 		os.RemoveAll(testDir)
 	})
@@ -74,13 +80,13 @@ var _ = Describe("chaincode install", func() {
 		)
 
 		BeforeEach(func() {
-			packageTempDir, err := ioutil.TempDir(network.RootDir, "chaincode-package")
+			packageTempDir, err := os.MkdirTemp(network.RootDir, "chaincode-package")
 			Expect(err).NotTo(HaveOccurred())
 
 			orderer = network.Orderer("orderer")
 			org1Peer = network.Peer("Org1", "peer0")
 			org2Peer = network.Peer("Org2", "peer0")
-			network.CreateAndJoinChannels(orderer)
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 			chaincode = nwo.Chaincode{
 				Name:            "failure-external",
@@ -95,25 +101,6 @@ var _ = Describe("chaincode install", func() {
 				Label:           "failure-external",
 				PackageFile:     filepath.Join(packageTempDir, "chaincode-package"),
 			}
-		})
-
-		It("legacy does not fallback to internal platforms", func() {
-			By("packaging the chaincode using the legacy lifecycle")
-			nwo.PackageChaincodeLegacy(network, chaincode, org1Peer)
-
-			By("installing the chaincode using the legacy lifecycle")
-			sess, err := network.PeerAdminSession(org1Peer, commands.ChaincodeInstallLegacy{
-				Name:        chaincode.Name,
-				Version:     chaincode.Version,
-				Path:        chaincode.Path,
-				Lang:        chaincode.Lang,
-				PackageFile: chaincode.PackageFile,
-				ClientAuth:  network.ClientAuthRequired,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-
-			Expect(sess.Err).To(gbytes.Say(`\Qexternal builder 'external-golang' failed: exit status 1\E`))
 		})
 
 		It("_lifecycle does not fallback to internal platforms when an external builder fails", func() {

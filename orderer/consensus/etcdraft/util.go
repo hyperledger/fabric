@@ -9,22 +9,23 @@ package etcdraft
 import (
 	"crypto/x509"
 	"encoding/pem"
+	"slices"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/crypto"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	raft "go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
+	"google.golang.org/protobuf/proto"
 )
 
 // RaftPeers maps consenters to slice of raft.Peer
@@ -84,22 +85,27 @@ func MetadataHasDuplication(md *etcdraft.ConfigMetadata) error {
 }
 
 // MetadataFromConfigValue reads and translates configuration updates from config value into raft metadata
-func MetadataFromConfigValue(configValue *common.ConfigValue) (*etcdraft.ConfigMetadata, error) {
+// In case consensus type is changed to BFT the raft metadata will be nil
+func MetadataFromConfigValue(configValue *common.ConfigValue) (*etcdraft.ConfigMetadata, *orderer.ConsensusType, error) {
 	consensusTypeValue := &orderer.ConsensusType{}
 	if err := proto.Unmarshal(configValue.Value, consensusTypeValue); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal consensusType config update")
+		return nil, nil, errors.Wrap(err, "failed to unmarshal consensusType config update")
+	}
+
+	if consensusTypeValue.Type != "etcdraft" {
+		return nil, consensusTypeValue, nil
 	}
 
 	updatedMetadata := &etcdraft.ConfigMetadata{}
 	if err := proto.Unmarshal(consensusTypeValue.Metadata, updatedMetadata); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal updated (new) etcdraft metadata configuration")
+		return nil, nil, errors.Wrap(err, "failed to unmarshal updated (new) etcdraft metadata configuration")
 	}
 
-	return updatedMetadata, nil
+	return updatedMetadata, consensusTypeValue, nil
 }
 
 // MetadataFromConfigUpdate extracts consensus metadata from config update
-func MetadataFromConfigUpdate(update *common.ConfigUpdate) (*etcdraft.ConfigMetadata, error) {
+func MetadataFromConfigUpdate(update *common.ConfigUpdate) (*etcdraft.ConfigMetadata, *orderer.ConsensusType, error) {
 	var baseVersion uint64
 	if update.ReadSet != nil && update.ReadSet.Groups != nil {
 		if ordererConfigGroup, ok := update.ReadSet.Groups["Orderer"]; ok {
@@ -115,13 +121,13 @@ func MetadataFromConfigUpdate(update *common.ConfigUpdate) (*etcdraft.ConfigMeta
 				if baseVersion == val.Version {
 					// Only if the version in the write set differs from the read-set
 					// should we consider this to be an update to the consensus type
-					return nil, nil
+					return nil, nil, nil
 				}
 				return MetadataFromConfigValue(val)
 			}
 		}
 	}
-	return nil, nil
+	return nil, nil, nil
 }
 
 // ConfigChannelHeader expects a config block and returns the header type
@@ -159,16 +165,7 @@ func ConfigEnvelopeFromBlock(block *common.Block) (*common.Envelope, error) {
 
 	switch channelHeader.Type {
 	case int32(common.HeaderType_ORDERER_TRANSACTION):
-		payload, err := protoutil.UnmarshalPayload(envelope.Payload)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to unmarshal envelope to extract config payload for orderer transaction")
-		}
-		configEnvelop, err := protoutil.UnmarshalEnvelope(payload.Data)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to unmarshal config envelope for orderer type transaction")
-		}
-
-		return configEnvelop, nil
+		return nil, errors.Errorf("unsupported legacy system channel header type: %v", channelHeader.Type)
 	case int32(common.HeaderType_CONFIG):
 		return envelope, nil
 	default:
@@ -177,28 +174,28 @@ func ConfigEnvelopeFromBlock(block *common.Block) (*common.Envelope, error) {
 }
 
 // ConsensusMetadataFromConfigBlock reads consensus metadata updates from the configuration block
-func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.ConfigMetadata, error) {
+func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.ConfigMetadata, *orderer.ConsensusType, error) {
 	if block == nil {
-		return nil, errors.New("nil block")
+		return nil, nil, errors.New("nil block")
 	}
 
 	if !protoutil.IsConfigBlock(block) {
-		return nil, errors.New("not a config block")
+		return nil, nil, errors.New("not a config block")
 	}
 
 	configEnvelope, err := ConfigEnvelopeFromBlock(block)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot read config update")
+		return nil, nil, errors.Wrap(err, "cannot read config update")
 	}
 
 	payload, err := protoutil.UnmarshalPayload(configEnvelope.Payload)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to extract payload from config envelope")
+		return nil, nil, errors.Wrap(err, "failed to extract payload from config envelope")
 	}
 	// get config update
 	configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not read config update")
+		return nil, nil, errors.Wrap(err, "could not read config update")
 	}
 
 	return MetadataFromConfigUpdate(configUpdate)
@@ -420,12 +417,7 @@ func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *common.Blo
 // NodeExists returns trues if node id exists in the slice
 // and false otherwise
 func NodeExists(id uint64, nodes []uint64) bool {
-	for _, nodeID := range nodes {
-		if nodeID == id {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(nodes, id)
 }
 
 // ConfChange computes Raft configuration changes based on current Raft
@@ -464,4 +456,37 @@ func CreateConsentersMap(blockMetadata *etcdraft.BlockMetadata, configMetadata *
 		consenters[blockMetadata.ConsenterIds[i]] = consenter
 	}
 	return consenters
+}
+
+func CreateX509VerifyOptions(ordererConfig channelconfig.Orderer) (x509.VerifyOptions, error) {
+	tlsRoots := x509.NewCertPool()
+	tlsIntermediates := x509.NewCertPool()
+
+	for _, org := range ordererConfig.Organizations() {
+		rootCerts, err := parseCertificateListFromBytes(org.MSP().GetTLSRootCerts())
+		if err != nil {
+			return x509.VerifyOptions{}, errors.Wrap(err, "parsing tls root certs")
+		}
+		intermediateCerts, err := parseCertificateListFromBytes(org.MSP().GetTLSIntermediateCerts())
+		if err != nil {
+			return x509.VerifyOptions{}, errors.Wrap(err, "parsing tls intermediate certs")
+		}
+
+		for _, cert := range rootCerts {
+			tlsRoots.AddCert(cert)
+		}
+
+		for _, cert := range intermediateCerts {
+			tlsIntermediates.AddCert(cert)
+		}
+	}
+
+	return x509.VerifyOptions{
+		Roots:         tlsRoots,
+		Intermediates: tlsIntermediates,
+		KeyUsages: []x509.ExtKeyUsage{
+			x509.ExtKeyUsageClientAuth,
+			x509.ExtKeyUsageServerAuth,
+		},
+	}, nil
 }

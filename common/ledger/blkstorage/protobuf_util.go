@@ -7,42 +7,43 @@ SPDX-License-Identifier: Apache-2.0
 package blkstorage
 
 import (
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 // buffer provides a wrapper on top of proto.Buffer.
 // The purpose of this wrapper is to get to know the current position in the []byte
 type buffer struct {
-	buf      *proto.Buffer
+	buf      []byte
 	position int
 }
 
 // newBuffer constructs a new instance of Buffer
 func newBuffer(b []byte) *buffer {
-	return &buffer{proto.NewBuffer(b), 0}
+	return &buffer{b, 0}
 }
 
 // DecodeVarint wraps the actual method and updates the position
 func (b *buffer) DecodeVarint() (uint64, error) {
-	val, err := b.buf.DecodeVarint()
-	if err == nil {
-		b.position += proto.SizeVarint(val)
-	} else {
-		err = errors.Wrap(err, "error decoding varint with proto.Buffer")
+	v, n := protowire.ConsumeVarint(b.buf[b.position:])
+	if n < 0 {
+		return 0, errors.Wrap(protowire.ParseError(n), "error decoding varint with proto.Buffer")
 	}
-	return val, err
+	b.position += n
+	return v, nil
 }
 
 // DecodeRawBytes wraps the actual method and updates the position
 func (b *buffer) DecodeRawBytes(alloc bool) ([]byte, error) {
-	val, err := b.buf.DecodeRawBytes(alloc)
-	if err == nil {
-		b.position += proto.SizeVarint(uint64(len(val))) + len(val)
-	} else {
-		err = errors.Wrap(err, "error decoding raw bytes with proto.Buffer")
+	v, n := protowire.ConsumeBytes(b.buf[b.position:])
+	if n < 0 {
+		return nil, errors.Wrap(protowire.ParseError(n), "error decoding raw bytes with proto.Buffer")
 	}
-	return val, err
+	b.position += n
+	if alloc {
+		v = append([]byte(nil), v...)
+	}
+	return v, nil
 }
 
 // GetBytesConsumed returns the offset of the current position in the underlying []byte

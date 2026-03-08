@@ -10,8 +10,8 @@ import (
 	"crypto/x509"
 	"sync"
 
+	"github.com/hyperledger/fabric-lib-go/common/metrics"
 	"github.com/hyperledger/fabric/common/crypto"
-	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
@@ -19,7 +19,7 @@ import (
 // RemoteVerifier verifies the connection to the remote host
 type RemoteVerifier func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error
 
-//go:generate mockery -dir . -name SecureDialer -case underscore -output ./mocks/
+//go:generate mockery --dir . --name SecureDialer --case underscore --output ./mocks/
 
 // SecureDialer connects to a remote address
 type SecureDialer interface {
@@ -28,9 +28,9 @@ type SecureDialer interface {
 
 // ConnectionMapper maps certificates to connections
 type ConnectionMapper interface {
-	Lookup(cert []byte) (*grpc.ClientConn, bool)
-	Put(cert []byte, conn *grpc.ClientConn)
-	Remove(cert []byte)
+	Lookup(key []byte) (*grpc.ClientConn, bool)
+	Put(key []byte, conn *grpc.ClientConn)
+	Remove(key []byte)
 	Size() int
 }
 

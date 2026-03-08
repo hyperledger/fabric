@@ -182,9 +182,7 @@ Consenter set
 -------------
 
 In a Raft ordering service, these are the ordering nodes actively participating
-in the consensus mechanism on a channel. If other ordering nodes exist on the
-system channel, but are not a part of a channel, they are not part of that
-channel's consenter set.
+in the consensus mechanism on a channel.
 
 .. _Consortium:
 
@@ -289,32 +287,10 @@ issues PKI-based certificates to network member organizations and their users.
 The CA issues one root certificate (rootCert) to each member and one enrollment
 certificate (ECert) to each authorized user.
 
-.. _Init:
-
-Init
-----
-
-A method to initialize a chaincode application. All chaincodes need to have an
-an Init function. By default, this function is never executed. However you can
-use the chaincode definition to request the execution of the Init function in
-order to initialize the chaincode.
-
 Install
 -------
 
 The process of placing a chaincode on a peer's file system.
-
-Instantiate
------------
-
-The process of starting and initializing a chaincode application on a specific
-channel. After instantiation, peers that have the chaincode installed can accept
-chaincode invocations.
-
-**NOTE**: *This method i.e. Instantiate was used in the 1.4.x and older versions of the chaincode
-lifecycle. For the current procedure used to start a chaincode on a channel with
-the new Fabric chaincode lifecycle introduced as part of Fabric v2.0,
-see Chaincode-definition_.*
 
 .. _Invoke:
 
@@ -444,9 +420,8 @@ Ordering Service
 Also known as **orderer**. A defined collective of nodes that orders transactions into a block
 and then distributes blocks to connected peers for validation and commit. The ordering service
 exists independent of the peer processes and orders transactions on a first-come-first-serve basis
-for all channels on the network.  It is designed to support pluggable implementations beyond the
-out-of-the-box Kafka and Raft varieties. It is a common binding for the overall network; it
-contains the cryptographic identity material tied to each Member_.
+for all channels on the network. It is designed to support pluggable implementations
+with crash fault tolerant (CFT) and byzantine fault tolerant (BFT) options.
 
 .. _Organization:
 
@@ -502,7 +477,7 @@ example: ``OR('Org1.peer', 'Org2.peer')``. They are used to restrict access to
 resources on a blockchain network. For instance, they dictate who can read from
 or write to a channel, or who can use a specific chaincode API via an ACL_.
 Policies may be defined in ``configtx.yaml`` prior to bootstrapping an ordering
-service or creating a channel, or they can be specified when instantiating
+service or creating a channel, or they can be specified when deploying
 chaincode on a channel. A default set of policies ship in the sample
 ``configtx.yaml`` which will be appropriate for most networks.
 
@@ -575,10 +550,7 @@ New for v1.4.1, Raft is a crash fault tolerant (CFT) ordering service
 implementation based on the `etcd library <https://coreos.com/etcd/>`_
 of the `Raft protocol <https://raft.github.io/raft.pdf>`_. Raft follows a
 "leader and follower" model, where a leader node is elected (per channel) and
-its decisions are replicated by the followers. Raft ordering services should
-be easier to set up and manage than Kafka-based ordering services, and their
-design allows organizations to contribute nodes to a distributed ordering
-service.
+its decisions are replicated by the followers.
 
 .. _SDK:
 
@@ -590,10 +562,10 @@ for developers to write and test chaincode applications. The SDK is fully
 configurable and extensible through a standard interface. Components, including
 cryptographic algorithms for signatures, logging frameworks and state stores,
 are easily swapped in and out of the SDK. The SDK provides APIs for transaction
-processing, membership services, node traversal and event handling.
+processing and event handling.
 
-Currently, there are three officially supported SDKs -- for Node.js, Java, and Go. While the Python SDK
-is not yet official but can still be downloaded and tested.
+Currently, there are three officially supported SDKs -- for Node.js, Java, and Go.
+See :doc:`Application APIs <sdk_chaincode>` for more details.
 
 .. _Smart-Contract:
 
@@ -613,23 +585,6 @@ State Database
 
 World state data is stored in a state database for efficient reads and queries
 from chaincode. Supported databases include levelDB and couchDB.
-
-.. _System-Chain:
-
-System Chain
-------------
-
-Contains a configuration block defining the network at a system level. The
-system chain lives within the ordering service, and similar to a channel, has
-an initial configuration containing information such as: MSP information, policies,
-and configuration details.  Any change to the overall network (e.g. a new org
-joining or a new ordering node being added) will result in a new configuration block
-being added to the system chain.
-
-The system chain can be thought of as the common binding for a channel or group
-of channels.  For instance, a collection of financial institutions may form a
-consortium (represented through the system chain), and then proceed to create
-channels relative to their aligned and varying business agendas.
 
 .. _Transaction:
 

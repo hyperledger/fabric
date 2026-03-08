@@ -15,11 +15,11 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/configtx/orderer"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	ob "github.com/hyperledger/fabric-protos-go/orderer"
-	eb "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	ob "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	eb "github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -815,11 +815,9 @@ func addOrdererValues(ordererGroup *cb.ConfigGroup, o Orderer) error {
 
 	switch o.OrdererType {
 	case orderer.ConsensusTypeSolo:
+		return fmt.Errorf("the solo consensus type is no longer supported")
 	case orderer.ConsensusTypeKafka:
-		err = setValue(ordererGroup, kafkaBrokersValue(o.Kafka.Brokers), AdminsPolicyKey)
-		if err != nil {
-			return err
-		}
+		return fmt.Errorf("the kafka consensus type is no longer supported")
 	case orderer.ConsensusTypeEtcdRaft:
 		if consensusMetadata, err = marshalEtcdRaftMetadata(o.EtcdRaft); err != nil {
 			return fmt.Errorf("marshaling etcdraft metadata for orderer type '%s': %v", orderer.ConsensusTypeEtcdRaft, err)
@@ -902,6 +900,7 @@ func channelRestrictionsValue(maxChannelCount uint64) *standardConfigValue {
 
 // kafkaBrokersValue returns the config definition for the addresses of the ordering service's Kafka brokers.
 // It is a value for the /Channel/Orderer group.
+// Deprecated: the kafka consensus type is no longer supported
 func kafkaBrokersValue(brokers []string) *standardConfigValue {
 	return &standardConfigValue{
 		key: orderer.KafkaBrokersKey,

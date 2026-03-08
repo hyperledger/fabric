@@ -11,15 +11,15 @@ import (
 	"io"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
-//go:generate mockery -dir . -name Dispatcher -case underscore -output ./mocks/
+//go:generate mockery --dir . --name Dispatcher --case underscore --output ./mocks/
 
 // Dispatcher dispatches requests
 type Dispatcher interface {
@@ -27,7 +27,7 @@ type Dispatcher interface {
 	DispatchConsensus(ctx context.Context, request *orderer.ConsensusRequest) error
 }
 
-//go:generate mockery -dir . -name StepStream -case underscore -output ./mocks/
+//go:generate mockery --dir . --name StepStream --case underscore --output ./mocks/
 
 // StepStream defines the gRPC stream for sending
 // transactions, and receiving corresponding responses
@@ -114,7 +114,7 @@ func (s *Service) initializeExpirationCheck(stream orderer.Cluster_StepServer, e
 		expiresAt:                        expiresAt(stream),
 		endpoint:                         endpoint,
 		nodeName:                         nodeName,
-		alert: func(template string, args ...interface{}) {
+		alert: func(template string, args ...any) {
 			s.Logger.Warningf(template, args...)
 		},
 	}

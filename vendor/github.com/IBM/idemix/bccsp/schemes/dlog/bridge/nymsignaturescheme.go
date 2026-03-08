@@ -53,7 +53,7 @@ func (n *NymSignatureScheme) Sign(sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk 
 
 // Verify checks that the passed signatures is valid with the respect to the passed digest, issuer public key,
 // and pseudonym public key.
-func (n *NymSignatureScheme) Verify(ipk types.IssuerPublicKey, Nym *math.G1, signature, digest []byte) (err error) {
+func (n *NymSignatureScheme) Verify(ipk types.IssuerPublicKey, Nym *math.G1, signature, digest []byte, _ int) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.Errorf("failure [%s]", r)

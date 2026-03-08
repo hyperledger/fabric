@@ -11,32 +11,29 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protoutil"
+	"google.golang.org/protobuf/proto"
 )
 
 // ExtractSignedCCDepSpec extracts the messages from the envelope
 func ExtractSignedCCDepSpec(env *common.Envelope) (*common.ChannelHeader, *peer.SignedChaincodeDeploymentSpec, error) {
 	p := &common.Payload{}
-	err := proto.Unmarshal(env.Payload, p)
-	if err != nil {
+	if err := proto.Unmarshal(env.Payload, p); err != nil {
 		return nil, nil, err
 	}
 	if p.Header == nil {
 		return nil, nil, errors.New("channel header cannot be nil")
 	}
 	ch := &common.ChannelHeader{}
-	err = proto.Unmarshal(p.Header.ChannelHeader, ch)
-	if err != nil {
+	if err := proto.Unmarshal(p.Header.ChannelHeader, ch); err != nil {
 		return nil, nil, err
 	}
 
 	sp := &peer.SignedChaincodeDeploymentSpec{}
-	err = proto.Unmarshal(p.Data, sp)
-	if err != nil {
+	if err := proto.Unmarshal(p.Data, sp); err != nil {
 		return nil, nil, err
 	}
 
@@ -56,13 +53,13 @@ func ValidateCip(baseCip, otherCip *peer.SignedChaincodeDeploymentSpec) error {
 	}
 
 	if (baseCip.OwnerEndorsements == nil && otherCip.OwnerEndorsements != nil) || (baseCip.OwnerEndorsements != nil && otherCip.OwnerEndorsements == nil) {
-		return fmt.Errorf("endorsements should either be both nil or not nil")
+		return errors.New("endorsements should either be both nil or not nil")
 	}
 
 	bN := len(baseCip.OwnerEndorsements)
 	oN := len(otherCip.OwnerEndorsements)
 	if bN > 1 || oN > 1 {
-		return fmt.Errorf("expect utmost 1 endorsement from a owner")
+		return errors.New("expect utmost 1 endorsement from a owner")
 	}
 
 	if bN != oN {
@@ -82,17 +79,17 @@ func ValidateCip(baseCip, otherCip *peer.SignedChaincodeDeploymentSpec) error {
 
 func createSignedCCDepSpec(cdsbytes []byte, instpolicybytes []byte, endorsements []*peer.Endorsement) (*common.Envelope, error) {
 	if cdsbytes == nil {
-		return nil, fmt.Errorf("nil chaincode deployment spec")
+		return nil, errors.New("nil chaincode deployment spec")
 	}
 
 	if instpolicybytes == nil {
-		return nil, fmt.Errorf("nil instantiation policy")
+		return nil, errors.New("nil instantiation policy")
 	}
 
 	// create SignedChaincodeDeploymentSpec...
 	cip := &peer.SignedChaincodeDeploymentSpec{ChaincodeDeploymentSpec: cdsbytes, InstantiationPolicy: instpolicybytes, OwnerEndorsements: endorsements}
 
-	//...and marshal it
+	// ...and marshal it
 	cipbytes := protoutil.MarshalOrPanic(cip)
 
 	// use defaults (this is definitely ok for install package)
@@ -163,11 +160,11 @@ func CreateSignedCCDepSpecForInstall(pack []*common.Envelope) (*common.Envelope,
 // optionally endorses it
 func OwnerCreateSignedCCDepSpec(cds *peer.ChaincodeDeploymentSpec, instPolicy *common.SignaturePolicyEnvelope, owner identity.SignerSerializer) (*common.Envelope, error) {
 	if cds == nil {
-		return nil, fmt.Errorf("invalid chaincode deployment spec")
+		return nil, errors.New("invalid chaincode deployment spec")
 	}
 
 	if instPolicy == nil {
-		return nil, fmt.Errorf("must provide an instantiation policy")
+		return nil, errors.New("must provide an instantiation policy")
 	}
 
 	cdsbytes := protoutil.MarshalOrPanic(cds)
@@ -205,7 +202,7 @@ func OwnerCreateSignedCCDepSpec(cds *peer.ChaincodeDeploymentSpec, instPolicy *c
 // SignExistingPackage adds a signature to a signed package.
 func SignExistingPackage(env *common.Envelope, owner identity.SignerSerializer) (*common.Envelope, error) {
 	if owner == nil {
-		return nil, fmt.Errorf("owner not provided")
+		return nil, errors.New("owner not provided")
 	}
 
 	ch, sdepspec, err := ExtractSignedCCDepSpec(env)
@@ -214,11 +211,11 @@ func SignExistingPackage(env *common.Envelope, owner identity.SignerSerializer) 
 	}
 
 	if ch == nil {
-		return nil, fmt.Errorf("channel header not found in the envelope")
+		return nil, errors.New("channel header not found in the envelope")
 	}
 
 	if sdepspec == nil || sdepspec.ChaincodeDeploymentSpec == nil || sdepspec.InstantiationPolicy == nil || sdepspec.OwnerEndorsements == nil {
-		return nil, fmt.Errorf("invalid signed deployment spec")
+		return nil, errors.New("invalid signed deployment spec")
 	}
 
 	// serialize the signing identity

@@ -27,9 +27,10 @@ func (fake *ChannelParticipationMetricsReporter) ReportConsensusRelationAndStatu
 		arg2 types.ConsensusRelation
 		arg3 types.Status
 	}{arg1, arg2, arg3})
+	stub := fake.ReportConsensusRelationAndStatusMetricsStub
 	fake.recordInvocation("ReportConsensusRelationAndStatusMetrics", []interface{}{arg1, arg2, arg3})
 	fake.reportConsensusRelationAndStatusMetricsMutex.Unlock()
-	if fake.ReportConsensusRelationAndStatusMetricsStub != nil {
+	if stub != nil {
 		fake.ReportConsensusRelationAndStatusMetricsStub(arg1, arg2, arg3)
 	}
 }

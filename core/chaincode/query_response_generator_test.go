@@ -12,7 +12,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/queryresult"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	"github.com/stretchr/testify/require"

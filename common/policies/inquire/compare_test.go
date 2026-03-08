@@ -9,10 +9,11 @@ package inquire
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestToPrincipalSet(t *testing.T) {
@@ -79,7 +80,12 @@ func TestNewComparablePrincipal(t *testing.T) {
 				Principal:               protoutil.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: mspID}),
 			},
 		}
-		require.Equal(t, expectedPrincipal, NewComparablePrincipal(member(mspID)))
+		res := NewComparablePrincipal(member(mspID))
+		require.Equal(t, expectedPrincipal.idBytes, res.idBytes)
+		require.Equal(t, expectedPrincipal.mspID, res.mspID)
+		require.True(t, proto.Equal(expectedPrincipal.principal, res.principal))
+		require.True(t, proto.Equal(expectedPrincipal.ou, res.ou))
+		require.True(t, proto.Equal(expectedPrincipal.role, res.role))
 	})
 
 	t.Run("OU", func(t *testing.T) {
@@ -92,7 +98,12 @@ func TestNewComparablePrincipal(t *testing.T) {
 				Principal:               protoutil.MarshalOrPanic(&msp.OrganizationUnit{OrganizationalUnitIdentifier: "ou", MspIdentifier: mspID}),
 			},
 		}
-		require.Equal(t, expectedPrincipal, NewComparablePrincipal(ou(mspID)))
+		res := NewComparablePrincipal(ou(mspID))
+		require.Equal(t, expectedPrincipal.idBytes, res.idBytes)
+		require.Equal(t, expectedPrincipal.mspID, res.mspID)
+		require.True(t, proto.Equal(expectedPrincipal.principal, res.principal))
+		require.True(t, proto.Equal(expectedPrincipal.ou, res.ou))
+		require.True(t, proto.Equal(expectedPrincipal.role, res.role))
 	})
 }
 
@@ -192,7 +203,7 @@ func TestNewComparablePrincipalSet(t *testing.T) {
 		member1 := NewComparablePrincipal(member("Org1MSP"))
 		peer2 := NewComparablePrincipal(peer("Org2MSP"))
 		principals := []*msp.MSPPrincipal{member("Org1MSP"), peer("Org2MSP")}
-		cps := NewComparablePrincipalSet(policies.PrincipalSet(principals))
+		cps := NewComparablePrincipalSet(principals)
 		expected := ComparablePrincipalSet([]*ComparablePrincipal{member1, peer2})
 		require.Equal(t, expected, cps)
 	})

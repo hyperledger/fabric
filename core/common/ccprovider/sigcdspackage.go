@@ -17,50 +17,19 @@ limitations under the License.
 package ccprovider
 
 import (
-	"bytes"
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
+	"google.golang.org/protobuf/proto"
 )
 
-//----- SignedCDSData ------
-
-// SignedCDSData is data stored in the LSCC on instantiation of a CC
-// for SignedCDSPackage. This needs to be serialized for ChaincodeData
-// hence the protobuf format
-type SignedCDSData struct {
-	CodeHash      []byte `protobuf:"bytes,1,opt,name=hash"`
-	MetaDataHash  []byte `protobuf:"bytes,2,opt,name=metadatahash"`
-	SignatureHash []byte `protobuf:"bytes,3,opt,name=signaturehash"`
-}
-
-//----implement functions needed from proto.Message for proto's mar/unmarshal functions
-
-// Reset resets
-func (data *SignedCDSData) Reset() { *data = SignedCDSData{} }
-
-// String converts to string
-func (data *SignedCDSData) String() string { return proto.CompactTextString(data) }
-
-// ProtoMessage just exists to make proto happy
-func (*SignedCDSData) ProtoMessage() {}
-
-// Equals data equals other
-func (data *SignedCDSData) Equals(other *SignedCDSData) bool {
-	return other != nil &&
-		bytes.Equal(data.CodeHash, other.CodeHash) &&
-		bytes.Equal(data.MetaDataHash, other.MetaDataHash) &&
-		bytes.Equal(data.SignatureHash, other.SignatureHash)
-}
-
-//-------- SignedCDSPackage ---------
+// -------- SignedCDSPackage ---------
 
 // SignedCDSPackage encapsulates SignedChaincodeDeploymentSpec.
 type SignedCDSPackage struct {
@@ -212,15 +181,15 @@ func (ccpack *SignedCDSPackage) getCDSData(scds *pb.SignedChaincodeDeploymentSpe
 // ChaincodeDeploymentSpec
 func (ccpack *SignedCDSPackage) ValidateCC(ccdata *ChaincodeData) error {
 	if ccpack.sDepSpec == nil {
-		return fmt.Errorf("uninitialized package")
+		return errors.New("uninitialized package")
 	}
 
 	if ccpack.sDepSpec.ChaincodeDeploymentSpec == nil {
-		return fmt.Errorf("signed chaincode deployment spec cannot be nil in a package")
+		return errors.New("signed chaincode deployment spec cannot be nil in a package")
 	}
 
 	if ccpack.depSpec == nil {
-		return fmt.Errorf("chaincode deployment spec cannot be nil in a package")
+		return errors.New("chaincode deployment spec cannot be nil in a package")
 	}
 
 	// This is a hack. LSCC expects a specific LSCC error when names are invalid so it
@@ -243,8 +212,8 @@ func (ccpack *SignedCDSPackage) ValidateCC(ccdata *ChaincodeData) error {
 		return err
 	}
 
-	if !ccpack.data.Equals(otherdata) {
-		return fmt.Errorf("data mismatch")
+	if !proto.Equal(ccpack.data, otherdata) {
+		return errors.New("data mismatch")
 	}
 
 	return nil
@@ -255,7 +224,7 @@ func (ccpack *SignedCDSPackage) InitFromBuffer(buf []byte) (*ChaincodeData, erro
 	env := &common.Envelope{}
 	err := proto.Unmarshal(buf, env)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal envelope from bytes")
+		return nil, errors.New("failed to unmarshal envelope from bytes")
 	}
 	cHdr, sDepSpec, err := ccpackage.ExtractSignedCCDepSpec(env)
 	if err != nil {
@@ -263,13 +232,13 @@ func (ccpack *SignedCDSPackage) InitFromBuffer(buf []byte) (*ChaincodeData, erro
 	}
 
 	if cHdr.Type != int32(common.HeaderType_CHAINCODE_PACKAGE) {
-		return nil, fmt.Errorf("invalid type of envelope for chaincode package")
+		return nil, errors.New("invalid type of envelope for chaincode package")
 	}
 
 	depSpec := &pb.ChaincodeDeploymentSpec{}
 	err = proto.Unmarshal(sDepSpec.ChaincodeDeploymentSpec, depSpec)
 	if err != nil {
-		return nil, fmt.Errorf("error getting deployment spec")
+		return nil, errors.New("error getting deployment spec")
 	}
 
 	databytes, id, data, err := ccpack.getCDSData(sDepSpec)
@@ -310,27 +279,27 @@ func (ccpack *SignedCDSPackage) InitFromPath(ccNameVersion string, path string) 
 // PutChaincodeToFS - serializes chaincode to a package on the file system
 func (ccpack *SignedCDSPackage) PutChaincodeToFS() error {
 	if ccpack.buf == nil {
-		return fmt.Errorf("uninitialized package")
+		return errors.New("uninitialized package")
 	}
 
 	if ccpack.id == nil {
-		return fmt.Errorf("id cannot be nil if buf is not nil")
+		return errors.New("id cannot be nil if buf is not nil")
 	}
 
 	if ccpack.sDepSpec == nil || ccpack.depSpec == nil {
-		return fmt.Errorf("depspec cannot be nil if buf is not nil")
+		return errors.New("depspec cannot be nil if buf is not nil")
 	}
 
 	if ccpack.env == nil {
-		return fmt.Errorf("env cannot be nil if buf and depspec are not nil")
+		return errors.New("env cannot be nil if buf and depspec are not nil")
 	}
 
 	if ccpack.data == nil {
-		return fmt.Errorf("nil data")
+		return errors.New("nil data")
 	}
 
 	if ccpack.datab == nil {
-		return fmt.Errorf("nil data bytes")
+		return errors.New("nil data bytes")
 	}
 
 	ccname := ccpack.depSpec.ChaincodeSpec.ChaincodeId.Name
@@ -342,7 +311,7 @@ func (ccpack *SignedCDSPackage) PutChaincodeToFS() error {
 		return fmt.Errorf("chaincode %s exists", path)
 	}
 
-	if err := ioutil.WriteFile(path, ccpack.buf, 0o644); err != nil {
+	if err := os.WriteFile(path, ccpack.buf, 0o644); err != nil {
 		return err
 	}
 

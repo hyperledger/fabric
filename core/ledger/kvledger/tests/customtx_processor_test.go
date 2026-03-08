@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	protopeer "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	protopeer "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/mock"
@@ -53,7 +53,7 @@ func TestReadWriteCustomTxProcessor(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, []byte("value1"), valKey1)
 			valueCounter++
-			return s.SetState("ns", "key1", []byte(fmt.Sprintf("value1_%d", valueCounter)))
+			return s.SetState("ns", "key1", fmt.Appendf(nil, "value1_%d", valueCounter))
 		}
 
 	// block-2 with two post order transactions

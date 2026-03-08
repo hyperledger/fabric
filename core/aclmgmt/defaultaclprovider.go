@@ -9,8 +9,8 @@ package aclmgmt
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/policy"
@@ -46,26 +46,27 @@ func newDefaultACLProvider(policyChecker policy.PolicyChecker) defaultACLProvide
 		cResourcePolicyMap: map[string]string{},
 	}
 
-	//-------------- _lifecycle --------------
+	// -------------- _lifecycle --------------
 	d.pResourcePolicyMap[resources.Lifecycle_InstallChaincode] = policy.Admins
 	d.pResourcePolicyMap[resources.Lifecycle_QueryInstalledChaincode] = policy.Admins
 	d.pResourcePolicyMap[resources.Lifecycle_GetInstalledChaincodePackage] = policy.Admins
 	d.pResourcePolicyMap[resources.Lifecycle_QueryInstalledChaincodes] = policy.Admins
 	d.pResourcePolicyMap[resources.Lifecycle_ApproveChaincodeDefinitionForMyOrg] = policy.Admins
 	d.pResourcePolicyMap[resources.Lifecycle_QueryApprovedChaincodeDefinition] = policy.Admins
+	d.pResourcePolicyMap[resources.Lifecycle_QueryApprovedChaincodeDefinitions] = policy.Admins
 
 	d.cResourcePolicyMap[resources.Lifecycle_CommitChaincodeDefinition] = CHANNELWRITERS
 	d.cResourcePolicyMap[resources.Lifecycle_QueryChaincodeDefinition] = CHANNELWRITERS
 	d.cResourcePolicyMap[resources.Lifecycle_QueryChaincodeDefinitions] = CHANNELWRITERS
 	d.cResourcePolicyMap[resources.Lifecycle_CheckCommitReadiness] = CHANNELWRITERS
 
-	//-------------- snapshot ---------------
+	// -------------- snapshot ---------------
 	d.pResourcePolicyMap[resources.Snapshot_submitrequest] = policy.Admins
 	d.pResourcePolicyMap[resources.Snapshot_cancelrequest] = policy.Admins
 	d.pResourcePolicyMap[resources.Snapshot_listpending] = policy.Admins
 
-	//-------------- LSCC --------------
-	//p resources (implemented by the chaincode currently)
+	// -------------- LSCC --------------
+	// p resources (implemented by the chaincode currently)
 	d.pResourcePolicyMap[resources.Lscc_Install] = policy.Admins
 	d.pResourcePolicyMap[resources.Lscc_GetInstalledChaincodes] = policy.Admins
 
@@ -78,8 +79,8 @@ func newDefaultACLProvider(policyChecker policy.PolicyChecker) defaultACLProvide
 	d.cResourcePolicyMap[resources.Lscc_GetInstantiatedChaincodes] = CHANNELREADERS
 	d.cResourcePolicyMap[resources.Lscc_GetCollectionsConfig] = CHANNELREADERS
 
-	//-------------- QSCC --------------
-	//p resources (none)
+	// -------------- QSCC --------------
+	// p resources (none)
 
 	// c resources
 	d.cResourcePolicyMap[resources.Qscc_GetChainInfo] = CHANNELREADERS
@@ -88,8 +89,8 @@ func newDefaultACLProvider(policyChecker policy.PolicyChecker) defaultACLProvide
 	d.cResourcePolicyMap[resources.Qscc_GetTransactionByID] = CHANNELREADERS
 	d.cResourcePolicyMap[resources.Qscc_GetBlockByTxID] = CHANNELREADERS
 
-	//--------------- CSCC resources -----------
-	//p resources (implemented by the chaincode currently)
+	// --------------- CSCC resources -----------
+	// p resources (implemented by the chaincode currently)
 	d.pResourcePolicyMap[resources.Cscc_JoinChain] = policy.Admins
 	d.pResourcePolicyMap[resources.Cscc_JoinChainBySnapshot] = policy.Admins
 	d.pResourcePolicyMap[resources.Cscc_JoinBySnapshotStatus] = policy.Admins
@@ -99,8 +100,8 @@ func newDefaultACLProvider(policyChecker policy.PolicyChecker) defaultACLProvide
 	d.cResourcePolicyMap[resources.Cscc_GetConfigBlock] = CHANNELREADERS
 	d.cResourcePolicyMap[resources.Cscc_GetChannelConfig] = CHANNELREADERS
 
-	//---------------- non-scc resources ------------
-	//Peer resources
+	// ---------------- non-scc resources ------------
+	// Peer resources
 	d.cResourcePolicyMap[resources.Peer_Propose] = CHANNELWRITERS
 	d.cResourcePolicyMap[resources.Peer_ChaincodeToChaincode] = CHANNELWRITERS
 
@@ -121,7 +122,7 @@ func (d *defaultACLProviderImpl) IsPtypePolicy(resName string) bool {
 }
 
 // CheckACL provides default (v 1.0) behavior by mapping resources to their ACL for a channel.
-func (d *defaultACLProviderImpl) CheckACL(resName string, channelID string, idinfo interface{}) error {
+func (d *defaultACLProviderImpl) CheckACL(resName string, channelID string, idinfo any) error {
 	// the default behavior is to use p type if defined and use channeless policy checks
 	policy := d.pResourcePolicyMap[resName]
 	if policy != "" {
@@ -154,8 +155,8 @@ func (d *defaultACLProviderImpl) CheckACL(resName string, channelID string, idin
 	}
 }
 
-// CheckACL provides default behavior by mapping channelless resources to their ACL.
-func (d *defaultACLProviderImpl) CheckACLNoChannel(resName string, idinfo interface{}) error {
+// CheckACLNoChannel provides default behavior by mapping channelless resources to their ACL.
+func (d *defaultACLProviderImpl) CheckACLNoChannel(resName string, idinfo any) error {
 	policy := d.pResourcePolicyMap[resName]
 	if policy == "" {
 		aclLogger.Errorf("Unmapped channelless policy for %s", resName)

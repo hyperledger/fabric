@@ -15,14 +15,13 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock"
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
@@ -31,6 +30,8 @@ import (
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/wal"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/protoadapt"
 )
 
 const (
@@ -64,6 +65,10 @@ const (
 	// AbdicationMaxAttempts determines how many retries of leadership abdication we do
 	// for a transaction that removes ourselves from reconfiguration.
 	AbdicationMaxAttempts = 5
+
+	// EvictionConfigTxForwardingTimeOut determines how much time do we spend trying to forward the config-Tx that
+	// evicted the current node when it was a leader, after abdication, to the new leader.
+	EvictionConfigTxForwardingTimeOut = time.Second * 5
 )
 
 //go:generate counterfeiter -o mocks/configurator.go . Configurator
@@ -87,7 +92,7 @@ type RPC interface {
 // BlockPuller is used to pull blocks from other OSN
 type BlockPuller interface {
 	PullBlock(seq uint64) *common.Block
-	HeightsByEndpoints() (map[string]uint64, error)
+	HeightsByEndpoints() (map[string]uint64, string, error)
 	Close()
 }
 
@@ -503,10 +508,11 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 		return err
 	}
 
-	stepMsg := &raftpb.Message{}
-	if err := proto.Unmarshal(req.Payload, stepMsg); err != nil {
+	tmp := protoadapt.MessageV2Of(&raftpb.Message{})
+	if err := proto.Unmarshal(req.Payload, tmp); err != nil {
 		return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %s", err)
 	}
+	stepMsg := protoadapt.MessageV1Of(tmp).(*raftpb.Message)
 
 	if stepMsg.To != c.raftID {
 		c.logger.Warnf("Received msg to %d, my ID is probably wrong due to out of date, cowardly halting", stepMsg.To)
@@ -529,6 +535,7 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 
 	c.Metrics.ActiveNodes.Set(float64(len(clusterMetadata.ActiveNodes)))
 	c.ActiveNodes.Store(clusterMetadata.ActiveNodes)
+	c.logger.Infof("Store ActiveNodes %+v", clusterMetadata.ActiveNodes)
 
 	return nil
 }
@@ -593,7 +600,7 @@ func (c *Chain) forwardToLeader(lead uint64, req *orderer.SubmitRequest) error {
 	}
 
 	if atomicErr.Load() != nil {
-		return errors.Errorf(atomicErr.Load().(string))
+		return errors.New(atomicErr.Load().(string))
 	}
 	return nil
 }
@@ -943,31 +950,57 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 			go func() {
 				defer atomic.StoreUint32(&c.leadershipTransferInProgress, 0)
 
+				abdicated := false
 				for attempt := 1; attempt <= AbdicationMaxAttempts; attempt++ {
 					if err := c.Node.abdicateLeadership(); err != nil {
 						// If there is no leader, abort and do not retry.
 						// Return early to prevent re-submission of the transaction
-						if err == ErrNoLeader || err == ErrChainHalting {
+						if errors.Is(err, ErrNoLeader) || errors.Is(err, ErrChainHalting) {
+							c.logger.Warningf("Abdication attempt no.%d failed because there is no leader or chain halting, will not try again, will not submit TX, error: %s", attempt, err)
 							return
 						}
 
 						// If the error isn't any of the below, it's a programming error, so panic.
-						if err != ErrNoAvailableLeaderCandidate && err != ErrTimedOutLeaderTransfer {
-							c.logger.Panicf("Programming error, abdicateLeader() returned with an unexpected error: %v", err)
+						if !errors.Is(err, ErrNoAvailableLeaderCandidate) && !errors.Is(err, ErrTimedOutLeaderTransfer) {
+							c.logger.Panicf("Programming error, abdicateLeader() returned with an unexpected error: %s", err)
 						}
 
 						// Else, it's one of the errors above, so we retry.
+						c.logger.Warningf("Abdication attempt no.%d failed, will try again, error: %s", attempt, err)
 						continue
 					} else {
-						// Else, abdication succeeded, so we submit the transaction (which forwards to the leader)
-						if err := c.Submit(msg, 0); err != nil {
-							c.logger.Warnf("Reconfiguration transaction forwarding failed with error: %v", err)
-						}
-						return
+						abdicated = true
+						break
 					}
 				}
 
-				c.logger.Warnf("Abdication failed too many times consecutively (%d), aborting retries", AbdicationMaxAttempts)
+				if !abdicated {
+					c.logger.Warnf("Abdication failed too many times consecutively (%d), aborting retries", AbdicationMaxAttempts)
+					return
+				}
+
+				// Abdication succeeded, so we submit the transaction (which forwards to the leader).
+				// We do 7 attempts at increasing intervals (1/2/4/8/16/32) or up to EvictionConfigTxForwardingTimeOut.
+				timeout := time.After(EvictionConfigTxForwardingTimeOut)
+				retryInterval := EvictionConfigTxForwardingTimeOut / 64
+				for {
+					err := c.Submit(msg, 0)
+					if err == nil {
+						c.logger.Warnf("Reconfiguration transaction forwarded successfully")
+						break
+					}
+
+					c.logger.Warnf("Reconfiguration transaction forwarding failed, will try again in %s, error: %s", retryInterval, err)
+
+					select {
+					case <-time.After(retryInterval):
+						retryInterval = 2 * retryInterval
+						continue
+					case <-timeout:
+						c.logger.Warnf("Reconfiguration transaction forwarding failed with timeout after %s", EvictionConfigTxForwardingTimeOut)
+						return
+					}
+				}
 			}()
 			return nil, false, nil
 		}
@@ -1085,7 +1118,25 @@ func (c *Chain) commitBlock(block *common.Block) {
 func (c *Chain) detectConfChange(block *common.Block) *MembershipChanges {
 	// If config is targeting THIS channel, inspect consenter set and
 	// propose raft ConfChange if it adds/removes node.
-	configMetadata := c.newConfigMetadata(block)
+	c.logger.Infof("Detected configuration change")
+
+	configMetadata, consensusType := c.newConfigMetadata(block)
+	c.logger.Infof("Detected configuration change: consensusType is: %s, configMetadata is: %v", consensusType, configMetadata)
+
+	if consensusType == nil {
+		c.logger.Infof("ConsensusType is %v", consensusType)
+		return nil
+	}
+
+	if consensusType.Type != "etcdraft" {
+		if consensusType.Type == "BFT" {
+			c.logger.Infof("Detected migration to %s", consensusType.Type)
+			return nil
+		} else {
+			c.logger.Panicf("illegal consensus type detected: %s", consensusType.Type)
+			panic("illegal consensus type detected during conf change")
+		}
+	}
 
 	if configMetadata == nil {
 		return nil
@@ -1196,7 +1247,7 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 		}
 	}
 
-	// at postion==0, ents[position].Type is ambiguous, it can be either of {raftpb.EntryNormal, raftpb.EntryConfChange}
+	// at position==0, ents[position].Type is ambiguous, it can be either of {raftpb.EntryNormal, raftpb.EntryConfChange}
 	// take a snapshot only for ents[position].Type == raftpb.EntryNormal
 	if c.accDataSize >= c.sizeLimit && ents[position].Type == raftpb.EntryNormal && len(ents[position].Data) > 0 {
 		b := protoutil.UnmarshalBlockOrPanic(ents[position].Data)
@@ -1233,7 +1284,7 @@ func (c *Chain) isConfig(env *common.Envelope) (bool, error) {
 		return false, err
 	}
 
-	return h.Type == int32(common.HeaderType_CONFIG) || h.Type == int32(common.HeaderType_ORDERER_TRANSACTION), nil
+	return h.Type == int32(common.HeaderType_CONFIG), nil
 }
 
 func (c *Chain) configureComm() error {
@@ -1270,10 +1321,14 @@ func (c *Chain) remotePeers() ([]cluster.RemoteNode, error) {
 			return nil, errors.WithStack(err)
 		}
 		nodes = append(nodes, cluster.RemoteNode{
-			ID:            raftID,
-			Endpoint:      fmt.Sprintf("%s:%d", consenter.Host, consenter.Port),
-			ServerTLSCert: serverCertAsDER,
-			ClientTLSCert: clientCertAsDER,
+			NodeAddress: cluster.NodeAddress{
+				ID:       raftID,
+				Endpoint: fmt.Sprintf("%s:%d", consenter.Host, consenter.Port),
+			},
+			NodeCerts: cluster.NodeCerts{
+				ServerTLSCert: serverCertAsDER,
+				ClientTLSCert: clientCertAsDER,
+			},
 		})
 	}
 	return nodes, nil
@@ -1352,13 +1407,7 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 		}
 
 	case common.HeaderType_ORDERER_TRANSACTION:
-		// If this config is channel creation, no extra inspection is needed
-		c.raftMetadataLock.Lock()
-		c.opts.BlockMetadata.RaftIndex = index
-		m := protoutil.MarshalOrPanic(c.opts.BlockMetadata)
-		c.raftMetadataLock.Unlock()
-
-		c.support.WriteConfigBlock(block, m)
+		c.logger.Panicf("Programming error: unsupported legacy system channel config type: %s", common.HeaderType(hdr.Type))
 
 	default:
 		c.logger.Panicf("Programming error: unexpected config type: %s", common.HeaderType(hdr.Type))
@@ -1396,13 +1445,14 @@ func (c *Chain) getInFlightConfChange() *raftpb.ConfChange {
 	return ConfChange(c.opts.BlockMetadata, confState)
 }
 
-// newMetadata extract config metadata from the configuration block
-func (c *Chain) newConfigMetadata(block *common.Block) *etcdraft.ConfigMetadata {
-	metadata, err := ConsensusMetadataFromConfigBlock(block)
+// newConfigMetadata extract config metadata from the configuration block
+func (c *Chain) newConfigMetadata(block *common.Block) (*etcdraft.ConfigMetadata, *orderer.ConsensusType) {
+	c.logger.Infof("Extract config metadata from the configuration block")
+	metadata, consensusType, err := ConsensusMetadataFromConfigBlock(block)
 	if err != nil {
 		c.logger.Panicf("error reading consensus metadata: %s", err)
 	}
-	return metadata
+	return metadata, consensusType
 }
 
 // ValidateConsensusMetadata determines the validity of a
@@ -1416,6 +1466,22 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 	// metadata was not updated
 	if newOrdererConfig.ConsensusMetadata() == nil {
 		return nil
+	}
+
+	if newOrdererConfig.ConsensusType() != "etcdraft" {
+		if newOrdererConfig.ConsensusType() == "BFT" {
+			// This is a migration, so we have to validate the config change and make sure that endpoints per org are configured
+			for _, org := range newOrdererConfig.Organizations() {
+				if len(org.Endpoints()) == 0 {
+					return errors.Errorf("illegal orderer config detected during consensus metadata validation: endpoints of org %s are missing", org.Name())
+				}
+			}
+			return nil
+		} else {
+			c.logger.Panicf("illegal consensus type detected during consensus metadata validation: %s", newOrdererConfig.ConsensusType())
+			return errors.Errorf("illegal consensus type detected during consensus metadata validation: %s", newOrdererConfig.ConsensusType())
+
+		}
 	}
 
 	if oldOrdererConfig == nil {
@@ -1478,6 +1544,7 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 
 	active := c.ActiveNodes.Load().([]uint64)
 	if changes.UnacceptableQuorumLoss(active) {
+		c.logger.Debugf("%d out of %d nodes are alive - %+v", len(active), len(dummyOldConsentersMap), active)
 		return errors.Errorf("%d out of %d nodes are alive, configuration will result in quorum loss", len(active), len(dummyOldConsentersMap))
 	}
 
@@ -1544,7 +1611,7 @@ func (c *Chain) checkForEvictionNCertRotation(env *common.Envelope) bool {
 		return false
 	}
 
-	configMeta, err := MetadataFromConfigUpdate(configUpdate)
+	configMeta, _, err := MetadataFromConfigUpdate(configUpdate)
 	if err != nil || configMeta == nil {
 		c.logger.Warnf("could not read config metadata: %s", err)
 		return false

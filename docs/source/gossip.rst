@@ -12,27 +12,22 @@ consistency. To meet these requirements, Fabric implements a
 Gossip protocol
 ---------------
 
-Peers leverage gossip to broadcast ledger and channel data in a scalable fashion.
-Gossip messaging is continuous, and each peer on a channel is
-constantly receiving current and consistent ledger data from multiple
-peers. Each gossiped message is signed, thereby allowing Byzantine participants
+Peers leverage gossip to establish a network of known available peers and
+optionally broadcast ledger and channel data in a scalable fashion.
+Each gossiped message is signed, thereby allowing Byzantine participants
 sending faked messages to be easily identified and the distribution of the
-message(s) to unwanted targets to be prevented. Peers affected by delays, network
-partitions, or other causes resulting in missed blocks will eventually be
-synced up to the current ledger state by contacting peers in possession of these
-missing blocks.
+message(s) to unwanted targets to be prevented.
 
-The gossip-based data dissemination protocol performs three primary functions on
+The gossip-based data dissemination protocol performs several functions on
 a Fabric network:
 
 1. Manages peer discovery and channel membership, by continually
    identifying available member peers, and eventually detecting peers that have
    gone offline.
-2. Disseminates ledger data across all peers on a channel. Any peer with data
-   that is out of sync with the rest of the channel identifies the
-   missing blocks and syncs itself by copying the correct data.
-3. Bring newly connected peers up to speed by allowing peer-to-peer state
-   transfer update of ledger data.
+2. Disseminates private data between authorized peers on a channel.
+3. Optionally disseminates pulled blocks across all peers on a channel, based on peer.deliveryclient.blockGossipEnabled setting
+4. Optionally bring newly connected peers up to current block height by allowing peer-to-peer state
+   transfer of blocks from other peers, based on peer.gossip.state.enabled setting.
 
 Gossip-based broadcasting operates by peers receiving messages from
 other peers on the channel, and then forwarding these messages to a number of
@@ -40,31 +35,27 @@ randomly selected peers on the channel, where this number is a configurable
 constant. Peers can also exercise a pull mechanism rather than waiting for
 delivery of a message. This cycle repeats, with the result of channel
 membership, ledger and state information continually being kept current and in
-sync. For dissemination of new blocks, the **leader** peer on the channel pulls
-the data from the ordering service and initiates gossip dissemination to peers
+sync. For new blocks, all **leader** peers on the channel pull
+blocks from the ordering service and optionally initiate gossip dissemination to peers
 in its own organization.
 
 Leader election
 ---------------
 
-The leader election mechanism is used to **elect** one peer per organization
-which will maintain connection with the ordering service and initiate distribution of
+The leader election mechanism is used to **elect** which peers per organization
+will pull blocks from the ordering service and optionally initiate distribution of
 newly arrived blocks across the peers of its own organization. Leveraging leader election
 provides the system with the ability to efficiently utilize the bandwidth of the ordering
 service. There are two possible modes of operation for a leader election module:
 
-1. **Static** --- a system administrator manually configures a peer in an organization to
-   be the leader.
-2. **Dynamic** --- peers execute a leader election procedure to select one peer in an
-   organization to become leader.
+1. **Static** --- peer is statically configured to be a leader. Since v2.2 every peer is configured to be a static leader by default.
+2. **Dynamic** --- peers execute a leader election procedure to select one peer in an organization to become leader.
 
 Static leader election
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Static leader election allows you to manually define one or more peers within an
-organization as leader peers.  Please note, however, that having too many peers connect
-to the ordering service may result in inefficient use of bandwidth. To enable static
-leader election mode, configure the following parameters within the section of ``core.yaml``:
+Static leader election allows you to manually define one or more peers within an organization as leader peers.
+To enable static leader election mode, configure the following parameters within the section of ``core.yaml``:
 
 ::
 
@@ -214,14 +205,6 @@ this "dead" peer is eventually purged from channel membership. Because "alive"
 messages are cryptographically signed, malicious peers can never impersonate
 other peers, as they lack a signing key authorized by a root certificate
 authority (CA).
-
-In addition to the automatic forwarding of received messages, a state
-reconciliation process synchronizes **world state** across peers on each
-channel. Each peer continually pulls blocks from other peers on the channel,
-in order to repair its own state if discrepancies are identified. Because fixed
-connectivity is not required to maintain gossip-based data dissemination, the
-process reliably provides data consistency and integrity to the shared ledger,
-including tolerance for node crashes.
 
 Because channels are segregated, peers on one channel cannot message or
 share information on any other channel. Though any peer can belong

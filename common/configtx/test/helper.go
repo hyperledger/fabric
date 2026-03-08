@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package test
 
 import (
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	mspproto "github.com/hyperledger/fabric-protos-go/msp"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	mspproto "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
@@ -50,10 +50,10 @@ func MakeChannelConfig(channelID string) (*cb.Config, error) {
 	return &cb.Config{ChannelGroup: channelGroup}, nil
 }
 
-// MakeGenesisBlockWithMSPs creates a genesis block using the MSPs provided for the given channelID
+// MakeGenesisBlockFromMSPs creates a genesis block using the MSPs provided for the given channelID
 func MakeGenesisBlockFromMSPs(channelID string, appMSPConf, ordererMSPConf *mspproto.MSPConfig, appOrgID, ordererOrgID string) (*cb.Block, error) {
 	profile := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
-	profile.Orderer.Organizations = nil
+
 	channelGroup, err := encoder.NewChannelGroup(profile)
 	if err != nil {
 		logger.Panicf("Error creating channel config: %s", err)
@@ -63,6 +63,14 @@ func MakeGenesisBlockFromMSPs(channelID string, appMSPConf, ordererMSPConf *mspp
 	ordererOrg.ModPolicy = channelconfig.AdminsPolicyKey
 	ordererOrg.Values[channelconfig.MSPKey] = &cb.ConfigValue{
 		Value:     protoutil.MarshalOrPanic(channelconfig.MSPValue(ordererMSPConf).Value()),
+		ModPolicy: channelconfig.AdminsPolicyKey,
+	}
+
+	ordererOrgProtos := &cb.OrdererAddresses{
+		Addresses: profile.Orderer.Organizations[0].OrdererEndpoints,
+	}
+	ordererOrg.Values[channelconfig.EndpointsKey] = &cb.ConfigValue{
+		Value:     protoutil.MarshalOrPanic(ordererOrgProtos),
 		ModPolicy: channelconfig.AdminsPolicyKey,
 	}
 

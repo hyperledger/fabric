@@ -144,7 +144,7 @@ Check the client's ``CORE_PEER_TLS_ROOTCERT_FILE`` (for connections to peer node
 or ``--cafile`` (for connections to orderer nodes).
 The corresponding error on the client side in these cases is the handshake error ``x509: certificate signed by unknown authority``
 and ultimately connection failure with ``context deadline exceeded``.
-The problem may also be a Subject Alternative Names issue. In these cases the the handshake error on the client side will be
+The problem may also be a Subject Alternative Names issue. In these cases the handshake error on the client side will be
 ``tls: failed to verify certificate: x509: certificate is valid for <configured_SAN>, not <attempted_address>``.
 
 If you see the error message ``remote error: tls: bad certificate`` on the client side, it

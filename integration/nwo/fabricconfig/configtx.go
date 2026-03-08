@@ -16,7 +16,7 @@ type ConfigTx struct {
 	Channel       *Channel            `yaml:"Channel,omitempty"`
 	Profiles      map[string]*Channel `yaml:"Profiles,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type Organization struct {
@@ -28,14 +28,14 @@ type Organization struct {
 	OrdererEndpoints []string           `yaml:"OrdererEndpoints,omitempty"`
 	AnchorPeers      []*AnchorPeer      `yaml:"AnchorPeers,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type Policy struct {
 	Type string `yaml:"Type,omitempty"`
 	Rule string `yaml:"Rule,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type Capabilities struct {
@@ -43,14 +43,14 @@ type Capabilities struct {
 	Orderer     map[string]bool `yaml:"Orderer,omitempty"`
 	Application map[string]bool `yaml:"Application,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type AnchorPeer struct {
 	Host string `yaml:"Host,omitempty"`
 	Port int    `yaml:"Port,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type Application struct {
@@ -59,20 +59,29 @@ type Application struct {
 	Policies      map[string]*Policy `yaml:"Policies,omitempty"`
 	Capabilities  map[string]bool    `yaml:"Capabilities,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
+}
+
+type ConsenterMapping struct {
+	ID       uint64
+	Host     string
+	Port     int
+	MSPID    string
+	Identity string
 }
 
 type ConfigTxOrderer struct {
-	OrdererType   string             `yaml:"OrdererType,omitempty"`
-	BatchTimeout  time.Duration      `yaml:"BatchTimeout,omitempty"`
-	BatchSize     *BatchSize         `yaml:"BatchSize,omitempty"`
-	Kafka         *ConfigTxKafka     `yaml:"Kafka,omitempty"`
-	EtcdRaft      *ConfigTxEtcdRaft  `yaml:"EtcdRaft,omitempty"`
-	Organizations []*Organization    `yaml:"Organizations,omitempty"`
-	Policies      map[string]*Policy `yaml:"Policies,omitempty"`
-	Capabilities  map[string]bool    `yaml:"Capabilities,omitempty"`
+	OrdererType      string             `yaml:"OrdererType,omitempty"`
+	BatchTimeout     time.Duration      `yaml:"BatchTimeout,omitempty"`
+	BatchSize        *BatchSize         `yaml:"BatchSize,omitempty"`
+	Kafka            *ConfigTxKafka     `yaml:"Kafka,omitempty"`
+	EtcdRaft         *ConfigTxEtcdRaft  `yaml:"EtcdRaft,omitempty"`
+	ConsenterMapping []ConsenterMapping `yaml:"ConsenterMapping,omitempty"`
+	Organizations    []*Organization    `yaml:"Organizations,omitempty"`
+	Policies         map[string]*Policy `yaml:"Policies,omitempty"`
+	Capabilities     map[string]bool    `yaml:"Capabilities,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type BatchSize struct {
@@ -80,20 +89,20 @@ type BatchSize struct {
 	AbsoluteMaxBytes  string `yaml:"AbsoluteMaxBytes,omitempty"`
 	PreferredMaxBytes string `yaml:"PreferredMaxBytes,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type ConfigTxKafka struct {
 	Brokers []string `yaml:"Brokers,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type ConfigTxEtcdRaft struct {
 	Consenters []*Consenter     `yaml:"Consenters,omitempty"`
 	Options    *EtcdRaftOptions `yaml:"EtcdRaftOptions,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type Consenter struct {
@@ -102,7 +111,7 @@ type Consenter struct {
 	ClientTLSCert string `yaml:"ClientTLSCert,omitempty"`
 	ServerTLSCert string `yaml:"ServerTLSCert,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type EtcdRaftOptions struct {
@@ -112,21 +121,14 @@ type EtcdRaftOptions struct {
 	MaxInflightBlocks    string `yaml:"MaxInflightBlocks,omitempty"`
 	SnapshotIntervalSize string `yaml:"SnapshotIntervalSize,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type Channel struct {
-	Orderer      *ConfigTxOrderer       `yaml:"Orderer,omitempty"`
-	Application  *Application           `yaml:"Application,omitempty"`
-	Policies     map[string]*Policy     `yaml:"Policies,omitempty"`
-	Capabilities map[string]bool        `yaml:"Capabilities,omitempty"`
-	Consortiums  map[string]*Consortium `yaml:"Consortiums,omitempty"`
+	Orderer      *ConfigTxOrderer   `yaml:"Orderer,omitempty"`
+	Application  *Application       `yaml:"Application,omitempty"`
+	Policies     map[string]*Policy `yaml:"Policies,omitempty"`
+	Capabilities map[string]bool    `yaml:"Capabilities,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
-}
-
-type Consortium struct {
-	Organizations []*Organization `yaml:"Organizations,omitempty"`
-
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }

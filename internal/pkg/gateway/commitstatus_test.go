@@ -10,14 +10,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	pb "github.com/hyperledger/fabric-protos-go/gateway"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/gateway"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/commit"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestCommitStatus(t *testing.T) {
@@ -74,7 +74,7 @@ func TestCommitStatus(t *testing.T) {
 		{
 			name: "passes channel name to policy checker",
 			postSetup: func(t *testing.T, test *preparedTest) {
-				test.policy.CheckACLCalls(func(policyName string, channelName string, data interface{}) error {
+				test.policy.CheckACLCalls(func(policyName string, channelName string, data any) error {
 					require.Equal(t, testChannel, channelName)
 					return nil
 				})
@@ -88,7 +88,7 @@ func TestCommitStatus(t *testing.T) {
 			name:     "passes identity to policy checker",
 			identity: []byte("IDENTITY"),
 			postSetup: func(t *testing.T, test *preparedTest) {
-				test.policy.CheckACLCalls(func(policyName string, channelName string, data interface{}) error {
+				test.policy.CheckACLCalls(func(policyName string, channelName string, data any) error {
 					require.IsType(t, &protoutil.SignedData{}, data)
 					signedData := data.(*protoutil.SignedData)
 					require.Equal(t, []byte("IDENTITY"), signedData.Identity)
@@ -119,7 +119,7 @@ func TestCommitStatus(t *testing.T) {
 
 			request := &pb.CommitStatusRequest{
 				ChannelId:     testChannel,
-				Identity:      tt.identity,
+				Identity:      []byte("IDENTITY"),
 				TransactionId: "TX_ID",
 			}
 			requestBytes, err := proto.Marshal(request)

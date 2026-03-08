@@ -14,11 +14,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	m "github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/utils"
-	errors "github.com/pkg/errors"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp/utils"
+	m "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 func (msp *bccspmsp) getCertifiersIdentifier(certRaw []byte) ([]byte, error) {
@@ -97,6 +97,9 @@ func (msp *bccspmsp) setupCrypto(conf *m.FabricMSPConfig) error {
 		msp.cryptoConfig.IdentityIdentifierHashFunction = bccsp.SHA256
 		mspLogger.Debugf("CryptoConfig.IdentityIdentifierHashFunction was nil. Move to defaults.")
 	}
+
+	msp.supportedPublicKeyAlgorithms = make(map[x509.PublicKeyAlgorithm]bool)
+	msp.supportedPublicKeyAlgorithms[x509.ECDSA] = true
 
 	return nil
 }
@@ -647,6 +650,22 @@ func (msp *bccspmsp) setupV142(conf *m.FabricMSPConfig) error {
 	if err != nil {
 		return err
 	}
+
+	err = msp.postSetupV142(conf)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (msp *bccspmsp) setupV3(conf *m.FabricMSPConfig) error {
+	err := msp.preSetupV142(conf)
+	if err != nil {
+		return err
+	}
+
+	msp.supportedPublicKeyAlgorithms[x509.Ed25519] = true
 
 	err = msp.postSetupV142(conf)
 	if err != nil {

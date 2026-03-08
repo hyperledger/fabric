@@ -11,12 +11,12 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/protoutil/fakes"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 //go:generate counterfeiter -o fakes/signer_serializer.go --fake-name SignerSerializer . signerSerializer
@@ -413,7 +413,7 @@ func TestIsConfigBlock(t *testing.T) {
 	block = newBlock(env)
 
 	result = IsConfigBlock(block)
-	require.True(t, result, "IsConfigBlock returns true for blocks with ORDERER_TRANSACTION envelope")
+	require.False(t, result, "IsConfigBlock returns false for blocks with ORDERER_TRANSACTION envelope since it is no longer supported")
 
 	// scenario 3: MESSAGE envelope
 	envType = int32(cb.HeaderType_MESSAGE)
@@ -422,6 +422,22 @@ func TestIsConfigBlock(t *testing.T) {
 
 	result = IsConfigBlock(block)
 	require.False(t, result, "IsConfigBlock returns false for blocks with MESSAGE envelope")
+
+	// scenario 4: Data with more than one tx
+	result = IsConfigBlock(&cb.Block{
+		Header:   nil,
+		Data:     &cb.BlockData{Data: [][]byte{{1, 2, 3, 4}, {1, 2, 3, 4}}},
+		Metadata: nil,
+	})
+	require.False(t, result, "IsConfigBlock returns false for blocks with more than one transaction")
+
+	// scenario 5: nil data
+	result = IsConfigBlock(&cb.Block{
+		Header:   nil,
+		Data:     nil,
+		Metadata: nil,
+	})
+	require.False(t, result, "IsConfigBlock returns false for blocks with no data")
 }
 
 func TestEnvelopeToConfigUpdate(t *testing.T) {

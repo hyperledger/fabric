@@ -14,10 +14,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric/common/grpclogging"
 	"github.com/hyperledger/fabric/common/grpclogging/fakes"
 	"github.com/hyperledger/fabric/common/grpclogging/testpb"
+	. "github.com/hyperledger/fabric/internal/test"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
@@ -26,6 +27,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 )
 
@@ -104,7 +106,7 @@ var _ = Describe("Server", func() {
 
 			resp, err := echoServiceClient.Echo(ctx, &testpb.Message{Message: "hi"})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp).To(Equal(&testpb.Message{Message: "hi", Sequence: 1}))
+			Expect(resp).To(ProtoEqual(&testpb.Message{Message: "hi", Sequence: 1}))
 
 			var logMessages []string
 			for _, entry := range observed.AllUntimed() {
@@ -276,7 +278,7 @@ var _ = Describe("Server", func() {
 				serveCompleteCh = make(chan error, 1)
 				go func() { serveCompleteCh <- server.Serve(listener) }()
 
-				clientConn, err = grpc.Dial(listener.Addr().String(), grpc.WithInsecure(), grpc.WithBlock())
+				clientConn, err = grpc.Dial(listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 				Expect(err).NotTo(HaveOccurred())
 				echoServiceClient = testpb.NewEchoServiceClient(clientConn)
 
@@ -331,7 +333,7 @@ var _ = Describe("Server", func() {
 
 			msg, err := streamClient.Recv()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(msg).To(Equal(&testpb.Message{Message: "hello", Sequence: 1}))
+			Expect(msg).To(ProtoEqual(&testpb.Message{Message: "hello", Sequence: 1}))
 
 			err = streamClient.CloseSend()
 			Expect(err).NotTo(HaveOccurred())
@@ -419,7 +421,7 @@ var _ = Describe("Server", func() {
 
 			msg, err := streamClient.Recv()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(msg).To(Equal(&testpb.Message{Message: "hello", Sequence: 1}))
+			Expect(msg).To(ProtoEqual(&testpb.Message{Message: "hello", Sequence: 1}))
 
 			err = streamClient.CloseSend()
 			Expect(err).NotTo(HaveOccurred())
@@ -471,7 +473,7 @@ var _ = Describe("Server", func() {
 
 				msg, err := streamClient.Recv()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(msg).To(Equal(&testpb.Message{Message: "hello", Sequence: 1}))
+				Expect(msg).To(ProtoEqual(&testpb.Message{Message: "hello", Sequence: 1}))
 
 				err = streamClient.CloseSend()
 				Expect(err).NotTo(HaveOccurred())
@@ -584,7 +586,7 @@ var _ = Describe("Server", func() {
 				serveCompleteCh = make(chan error, 1)
 				go func() { serveCompleteCh <- server.Serve(listener) }()
 
-				clientConn, err = grpc.Dial(listener.Addr().String(), grpc.WithInsecure(), grpc.WithBlock())
+				clientConn, err = grpc.Dial(listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 				Expect(err).NotTo(HaveOccurred())
 				echoServiceClient = testpb.NewEchoServiceClient(clientConn)
 
@@ -594,7 +596,7 @@ var _ = Describe("Server", func() {
 				Expect(err).NotTo(HaveOccurred())
 				msg, err := streamClient.Recv()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(msg).To(Equal(&testpb.Message{Message: "hello", Sequence: 1}))
+				Expect(msg).To(ProtoEqual(&testpb.Message{Message: "hello", Sequence: 1}))
 
 				err = streamClient.CloseSend()
 				Expect(err).NotTo(HaveOccurred())

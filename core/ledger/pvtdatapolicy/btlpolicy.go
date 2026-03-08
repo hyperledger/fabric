@@ -10,7 +10,7 @@ import (
 	"math"
 	"sync"
 
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/common/privdata"
 )
 
@@ -64,7 +64,7 @@ func (p *LSCCBasedBTLPolicy) GetBTL(namespace string, collection string) (uint64
 		}
 		btlConfigured := collConfig.BlockToLive
 		if btlConfigured > 0 {
-			btl = uint64(btlConfigured)
+			btl = btlConfigured
 		} else {
 			btl = defaultBTL
 		}
@@ -79,10 +79,10 @@ func (p *LSCCBasedBTLPolicy) GetExpiringBlock(namespace string, collection strin
 	if err != nil {
 		return 0, err
 	}
-	return ComputeExpiringBlock(namespace, collection, committingBlock, btl), nil
+	return ComputeExpiringBlock(collection, committingBlock, btl), nil
 }
 
-func ComputeExpiringBlock(namespace, collection string, committingBlock, btl uint64) uint64 {
+func ComputeExpiringBlock(collection string, committingBlock, btl uint64) uint64 {
 	expiryBlk := committingBlock + btl + uint64(1)
 	if expiryBlk <= committingBlock { // committingBlk + btl overflows uint64-max
 		expiryBlk = math.MaxUint64

@@ -24,11 +24,11 @@ import (
 	"testing"
 	"time"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/api/mocks"
 	gmocks "github.com/hyperledger/fabric/gossip/comm/mocks"
@@ -42,6 +42,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var r *rand.Rand
@@ -62,7 +63,7 @@ var testCommConfig = CommConfig{
 	SendBuffSize: DefSendBuffSize,
 }
 
-func acceptAll(msg interface{}) bool {
+func acceptAll(msg any) bool {
 	return true
 }
 
@@ -99,6 +100,12 @@ func (*naiveSecProvider) GetPKIidOfCert(peerIdentity api.PeerIdentityType) commo
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
 func (*naiveSecProvider) VerifyBlock(channelID common.ChannelID, seqNum uint64, signedBlock *cb.Block) error {
+	return nil
+}
+
+// VerifyBlockAttestation returns nil if the block attestation is properly signed,
+// else returns error
+func (*naiveSecProvider) VerifyBlockAttestation(channelID string, signedBlock *cb.Block) error {
 	return nil
 }
 
@@ -196,7 +203,7 @@ func handshaker(port int, endpoint string, comm Comm, t *testing.T, connMutator 
 	ta := credentials.NewTLS(tlsCfg)
 	secureOpts := grpc.WithTransportCredentials(ta)
 	if connType == none {
-		secureOpts = grpc.WithInsecure()
+		secureOpts = grpc.WithTransportCredentials(insecure.NewCredentials())
 	}
 	acceptChan := comm.Accept(acceptAll)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -258,7 +265,7 @@ func TestMutualParallelSendWithAck(t *testing.T) {
 	defer comm1.Stop()
 	defer comm2.Stop()
 
-	acceptData := func(o interface{}) bool {
+	acceptData := func(o any) bool {
 		m := o.(protoext.ReceivedMessage).GetGossipMessage()
 		return protoext.IsDataMsg(m.GossipMessage)
 	}
@@ -271,21 +278,21 @@ func TestMutualParallelSendWithAck(t *testing.T) {
 	// Wait for the message to be received in comm2
 	<-inc2
 
-	for i := 0; i < msgNum; i++ {
+	for range msgNum {
 		go comm1.SendWithAck(createGossipMsg(), time.Second*5, 1, remotePeer(port2))
 	}
 
-	for i := 0; i < msgNum; i++ {
+	for range msgNum {
 		go comm2.SendWithAck(createGossipMsg(), time.Second*5, 1, remotePeer(port1))
 	}
 
 	go func() {
-		for i := 0; i < msgNum; i++ {
+		for range msgNum {
 			<-inc1
 		}
 	}()
 
-	for i := 0; i < msgNum; i++ {
+	for range msgNum {
 		<-inc2
 	}
 }
@@ -325,7 +332,7 @@ func TestHandshake(t *testing.T) {
 	id := []byte(endpoint)
 	idMapper := identity.NewIdentityMapper(naiveSec, id, noopPurgeIdentity, naiveSec)
 	inst, err := NewCommInstance(s, nil, idMapper, api.PeerIdentityType(endpoint), func() []grpc.DialOption {
-		return []grpc.DialOption{grpc.WithInsecure()}
+		return []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	}, naiveSec, disabledMetrics, testCommConfig)
 	go s.Serve(ll)
 	require.NoError(t, err)
@@ -334,7 +341,7 @@ func TestHandshake(t *testing.T) {
 	_, tempEndpoint, tempL := getAvailablePort(t)
 	acceptChan := handshaker(port, tempEndpoint, inst, t, mutator, none)
 	select {
-	case <-time.After(time.Duration(time.Second * 4)):
+	case <-time.After(time.Second * 4):
 		require.FailNow(t, "Didn't receive a message, seems like handshake failed")
 	case msg = <-acceptChan:
 	}
@@ -572,7 +579,7 @@ func TestCloseConn(t *testing.T) {
 		Data: make([]byte, 1024*1024),
 	}
 	protoext.NoopSign(msg2Send.GossipMessage)
-	for i := 0; i < DefRecvBuffSize; i++ {
+	for range DefRecvBuffSize {
 		err := stream.Send(msg2Send.Envelope)
 		if err != nil {
 			gotErr = true
@@ -715,7 +722,7 @@ func TestResponses(t *testing.T) {
 			m.Respond(reply.GossipMessage)
 		}
 	}()
-	expectedNOnce := uint64(msg.Nonce + 1)
+	expectedNOnce := msg.Nonce + 1
 	responsesFromComm1 := comm2.Accept(acceptAll)
 
 	ticker := time.NewTicker(10 * time.Second)
@@ -739,11 +746,11 @@ func TestAccept(t *testing.T) {
 	comm1, port1 := newCommInstance(t, naiveSec)
 	comm2, _ := newCommInstance(t, naiveSec)
 
-	evenNONCESelector := func(m interface{}) bool {
+	evenNONCESelector := func(m any) bool {
 		return m.(protoext.ReceivedMessage).GetGossipMessage().Nonce%2 == 0
 	}
 
-	oddNONCESelector := func(m interface{}) bool {
+	oddNONCESelector := func(m any) bool {
 		return m.(protoext.ReceivedMessage).GetGossipMessage().Nonce%2 != 0
 	}
 
@@ -910,7 +917,7 @@ func TestPresumedDead(t *testing.T) {
 
 	comm2.Stop()
 	go func() {
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			comm1.Send(createGossipMsg(), remotePeer(port2))
 			time.Sleep(time.Millisecond * 200)
 		}
@@ -939,11 +946,9 @@ func TestReadFromStream(t *testing.T) {
 	errChan := make(chan error, 2)
 	msgChan := make(chan *protoext.SignedGossipMessage, 1)
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		conn.readFromStream(errChan, msgChan)
-	}()
+	})
 
 	select {
 	case <-msgChan:

@@ -8,9 +8,9 @@ package library
 
 import (
 	"bytes"
-	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -25,6 +25,8 @@ peer:
         library: /path/to/default.so
       - name: ExpirationCheck
         library: /path/to/expiration.so
+      - name: TimeWindowCheck
+        library: /path/to/timewindow.so
     decorators:
       - name: DefaultDecorator
         library: /path/to/decorators.so
@@ -50,6 +52,7 @@ peer:
 		AuthFilters: []*HandlerConfig{
 			{Name: "DefaultAuth", Library: "/path/to/default.so"},
 			{Name: "ExpirationCheck", Library: "/path/to/expiration.so"},
+			{Name: "TimeWindowCheck", Library: "/path/to/timewindow.so"},
 		},
 		Decorators: []*HandlerConfig{
 			{Name: "DefaultDecorator", Library: "/path/to/decorators.so"},
@@ -60,6 +63,7 @@ peer:
 		Validators: PluginMapping{
 			"vscc": &HandlerConfig{Name: "DefaultValidation", Library: "/path/to/vscc.so"},
 		},
+		AuthenticationTimeWindow: 900000000000,
 	}
 	require.EqualValues(t, expect, actual)
 }
@@ -80,8 +84,7 @@ peer:
         library:
 `
 
-	os.Setenv("LIBTEST_PEER_HANDLERS_ENDORSERS_ESCC_LIBRARY", "/path/to/foo")
-	defer os.Unsetenv("LIBTEST_PEER_HANDLERS_ENDORSERS_ESCC_LIBRARY")
+	t.Setenv("LIBTEST_PEER_HANDLERS_ENDORSERS_ESCC_LIBRARY", "/path/to/foo")
 
 	defer viper.Reset()
 	viper.SetConfigType("yaml")
@@ -98,10 +101,11 @@ peer:
 	require.NotNil(t, actual)
 
 	expect := Config{
-		AuthFilters: nil,
-		Decorators:  nil,
-		Endorsers:   PluginMapping{"escc": &HandlerConfig{Name: "DefaultEndorsement", Library: "/path/to/foo"}},
-		Validators:  PluginMapping{"vscc": &HandlerConfig{Name: "DefaultValidation"}},
+		AuthFilters:              nil,
+		Decorators:               nil,
+		Endorsers:                PluginMapping{"escc": &HandlerConfig{Name: "DefaultEndorsement", Library: "/path/to/foo"}},
+		Validators:               PluginMapping{"vscc": &HandlerConfig{Name: "DefaultValidation"}},
+		AuthenticationTimeWindow: time.Minute * 15,
 	}
 
 	require.EqualValues(t, expect, actual)

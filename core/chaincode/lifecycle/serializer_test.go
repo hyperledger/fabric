@@ -9,15 +9,15 @@ package lifecycle_test
 import (
 	"fmt"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-
-	"github.com/golang/protobuf/proto"
-	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
+	lb "github.com/hyperledger/fabric-protos-go-apiv2/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
+	. "github.com/hyperledger/fabric/internal/test"
 	"github.com/hyperledger/fabric/protoutil"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ = Describe("Serializer", func() {
@@ -402,7 +402,7 @@ var _ = Describe("Serializer", func() {
 			Expect(target.Int).To(Equal(int64(-3)))
 			Expect(target.Bytes).To(Equal([]byte("bytes")))
 			Expect(target.String).To(Equal("theory"))
-			Expect(proto.Equal(target.Proto, testStruct.Proto)).To(BeTrue())
+			Expect(target.Proto).To(ProtoEqual(testStruct.Proto))
 		})
 
 		Context("when the field encoding is bad", func() {
@@ -550,11 +550,12 @@ var _ = Describe("Serializer", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(testStruct.Int).To(Equal(deserialized.Int))
-			Expect(proto.Equal(testStruct.Proto, deserialized.Proto))
+			Expect(testStruct.Proto).To(ProtoEqual(deserialized.Proto))
 
-			matched, err := s.IsSerialized("namespace", "fake", testStruct, fakeState)
+			matched, mismatches, err := s.IsSerialized("namespace", "fake", testStruct, fakeState)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(matched).To(BeTrue())
+			Expect(mismatches).To(BeEmpty())
 		})
 	})
 
@@ -634,9 +635,10 @@ var _ = Describe("Serializer", func() {
 		})
 
 		It("checks to see if the structure is stored in the opaque state", func() {
-			matched, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+			matched, mismatches, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(matched).To(BeTrue())
+			Expect(mismatches).To(BeEmpty())
 
 			Expect(fakeState.GetStateHashCallCount()).To(Equal(5))
 			Expect(fakeState.GetStateHashArgsForCall(0)).To(Equal("namespaces/metadata/fake"))
@@ -658,9 +660,10 @@ var _ = Describe("Serializer", func() {
 			})
 
 			It("returns a mismatch", func() {
-				matched, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+				matched, mismatches, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(matched).To(BeFalse())
+				Expect(mismatches).To(Equal([]string{"TestStruct"}))
 			})
 		})
 
@@ -672,15 +675,16 @@ var _ = Describe("Serializer", func() {
 			})
 
 			It("returns a mismatch", func() {
-				matched, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+				matched, mismatches, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(matched).To(BeFalse())
+				Expect(mismatches).To(Equal([]string{"Int"}))
 			})
 		})
 
 		Context("when the argument is not a pointer", func() {
 			It("fails", func() {
-				_, err := s.IsSerialized("namespaces", "fake", 8, fakeState)
+				_, _, err := s.IsSerialized("namespaces", "fake", 8, fakeState)
 				Expect(err).To(MatchError("structure for namespace namespaces/fake is not serializable: must be pointer to struct, but got non-pointer int"))
 			})
 		})
@@ -691,9 +695,10 @@ var _ = Describe("Serializer", func() {
 			})
 
 			It("returns a mismatch", func() {
-				matched, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+				matched, mismatches, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(matched).To(BeFalse())
+				Expect(mismatches).To(Equal([]string{"TestStruct"}))
 			})
 		})
 
@@ -703,7 +708,7 @@ var _ = Describe("Serializer", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+				_, _, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
 				Expect(err).To(MatchError("could not get value for key namespaces/metadata/fake: state-error"))
 			})
 		})
@@ -722,7 +727,7 @@ var _ = Describe("Serializer", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+				_, _, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
 				Expect(err).To(MatchError("could not marshal field Proto: marshal-error"))
 			})
 		})
@@ -738,7 +743,7 @@ var _ = Describe("Serializer", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
+				_, _, err := s.IsSerialized("namespaces", "fake", testStruct, fakeState)
 				Expect(err).To(MatchError("could not marshal value for key namespaces/fields/fake/Int: marshal-error"))
 			})
 		})
@@ -752,7 +757,7 @@ var _ = Describe("Serializer", func() {
 
 			It("wraps and returns the error", func() {
 				type Other struct{}
-				_, err := s.IsSerialized("namespaces", "fake", &Other{}, fakeState)
+				_, _, err := s.IsSerialized("namespaces", "fake", &Other{}, fakeState)
 				Expect(err).To(MatchError("could not marshal metadata for namespace namespaces/fake: marshal-error"))
 			})
 		})
@@ -777,9 +782,9 @@ var _ = Describe("Serializer", func() {
 			result, err := s.DeserializeAllMetadata("namespaces", fakeState)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(result)).To(Equal(3))
-			Expect(proto.Equal(result["thing0"], &lb.StateMetadata{Datatype: "TestDatatype0"})).To(BeTrue())
-			Expect(proto.Equal(result["thing1"], &lb.StateMetadata{Datatype: "TestDatatype1"})).To(BeTrue())
-			Expect(proto.Equal(result["thing2"], &lb.StateMetadata{Datatype: "TestDatatype2"})).To(BeTrue())
+			Expect(result["thing0"]).To(ProtoEqual(&lb.StateMetadata{Datatype: "TestDatatype0"}))
+			Expect(result["thing1"]).To(ProtoEqual(&lb.StateMetadata{Datatype: "TestDatatype1"}))
+			Expect(result["thing2"]).To(ProtoEqual(&lb.StateMetadata{Datatype: "TestDatatype2"}))
 
 			Expect(fakeState.GetStateRangeCallCount()).To(Equal(1))
 			Expect(fakeState.GetStateRangeArgsForCall(0)).To(Equal("namespaces/metadata/"))
@@ -831,7 +836,7 @@ var _ = Describe("Serializer", func() {
 			result, ok, err := s.DeserializeMetadata("namespaces", "fake", fakeState)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ok).To(BeTrue())
-			Expect(proto.Equal(result, &lb.StateMetadata{Datatype: "TestDatatype"})).To(BeTrue())
+			Expect(result).To(ProtoEqual(&lb.StateMetadata{Datatype: "TestDatatype"}))
 
 			Expect(fakeState.GetStateCallCount()).To(Equal(1))
 			Expect(fakeState.GetStateArgsForCall(0)).To(Equal("namespaces/metadata/fake"))
@@ -923,7 +928,7 @@ var _ = Describe("Serializer", func() {
 			result := &lb.InstallChaincodeResult{}
 			err := s.DeserializeFieldAsProto("namespaces", "fake", "field", fakeState, result)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(proto.Equal(result, &lb.InstallChaincodeResult{PackageId: "hash"})).To(BeTrue())
+			Expect(result).To(ProtoEqual(&lb.InstallChaincodeResult{PackageId: "hash"}))
 
 			Expect(fakeState.GetStateCallCount()).To(Equal(1))
 			Expect(fakeState.GetStateArgsForCall(0)).To(Equal("namespaces/fields/fake/field"))
@@ -949,7 +954,7 @@ var _ = Describe("Serializer", func() {
 				result := &lb.InstallChaincodeResult{}
 				err := s.DeserializeFieldAsProto("namespaces", "fake", "field", fakeState, result)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(proto.Equal(result, &lb.InstallChaincodeResult{})).To(BeTrue())
+				Expect(result).To(ProtoEqual(&lb.InstallChaincodeResult{}))
 			})
 		})
 

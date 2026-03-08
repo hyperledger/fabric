@@ -11,11 +11,11 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/cmd/common"
 	discovery "github.com/hyperledger/fabric/discovery/client"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // NewPeerCmd creates a new PeerCmd with the given Stub and ResponseParser
@@ -96,7 +96,7 @@ func (parser *PeerResponseParser) ParseResponse(channel string, res ServiceRespo
 	return nil
 }
 
-func assemblePeers(peers []*discovery.Peer, withChannelState bool) interface{} {
+func assemblePeers(peers []*discovery.Peer, withChannelState bool) any {
 	if withChannelState {
 		var peerSlices []channelPeer
 		for _, p := range peers {

@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/pkg/errors"
 )
@@ -37,20 +37,20 @@ const (
 	// ChannelRestrictionsKey is the key name for the ChannelRestrictions message.
 	ChannelRestrictionsKey = "ChannelRestrictions"
 
-	// KafkaBrokersKey is the cb.ConfigItem type key name for the KafkaBrokers message.
-	KafkaBrokersKey = "KafkaBrokers"
-
 	// EndpointsKey is the cb.COnfigValue key name for the Endpoints message in the OrdererOrgGroup.
 	EndpointsKey = "Endpoints"
 )
 
 // OrdererProtos is used as the source of the OrdererConfig.
 type OrdererProtos struct {
-	ConsensusType       *ab.ConsensusType
-	BatchSize           *ab.BatchSize
-	BatchTimeout        *ab.BatchTimeout
+	ConsensusType *ab.ConsensusType
+	BatchSize     *ab.BatchSize
+	BatchTimeout  *ab.BatchTimeout
+	// We have to keep this field in order to be able to load legacy config blocks from a chain that started with kafka
+	// and was later migrated to etcdraft.
 	KafkaBrokers        *ab.KafkaBrokers
 	ChannelRestrictions *ab.ChannelRestrictions
+	Orderers            *cb.Orderers
 	Capabilities        *cb.Capabilities
 }
 
@@ -76,6 +76,10 @@ type OrdererOrgConfig struct {
 
 // Endpoints returns the set of addresses this ordering org exposes as orderers
 func (oc *OrdererOrgConfig) Endpoints() []string {
+	if oc.protos == nil || oc.protos.Endpoints == nil {
+		return nil
+	}
+
 	return oc.protos.Endpoints.Addresses
 }
 
@@ -140,6 +144,13 @@ func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler,
 			return nil, err
 		}
 	}
+
+	if channelCapabilities.ConsensusTypeBFT() {
+		if err := oc.validateAllOrgsHaveEndpoints(); err != nil {
+			return nil, err
+		}
+	}
+
 	return oc, nil
 }
 
@@ -168,13 +179,6 @@ func (oc *OrdererConfig) BatchTimeout() time.Duration {
 	return oc.batchTimeout
 }
 
-// KafkaBrokers returns the addresses (IP:port notation) of a set of "bootstrap"
-// Kafka brokers, i.e. this is not necessarily the entire set of Kafka brokers
-// used for ordering.
-func (oc *OrdererConfig) KafkaBrokers() []string {
-	return oc.protos.KafkaBrokers.Brokers
-}
-
 // MaxChannelsCount returns the maximum count of channels this orderer supports.
 func (oc *OrdererConfig) MaxChannelsCount() uint64 {
 	return oc.protos.ChannelRestrictions.MaxCount
@@ -183,6 +187,10 @@ func (oc *OrdererConfig) MaxChannelsCount() uint64 {
 // Organizations returns a map of the orgs in the channel.
 func (oc *OrdererConfig) Organizations() map[string]OrdererOrg {
 	return oc.orgs
+}
+
+func (oc *OrdererConfig) Consenters() []*cb.Consenter {
+	return oc.protos.Orderers.ConsenterMapping
 }
 
 // Capabilities returns the capabilities the ordering network has for this channel.
@@ -194,7 +202,6 @@ func (oc *OrdererConfig) Validate() error {
 	for _, validator := range []func() error{
 		oc.validateBatchSize,
 		oc.validateBatchTimeout,
-		oc.validateKafkaBrokers,
 	} {
 		if err := validator(); err != nil {
 			return err
@@ -232,12 +239,19 @@ func (oc *OrdererConfig) validateBatchTimeout() error {
 	return nil
 }
 
-func (oc *OrdererConfig) validateKafkaBrokers() error {
-	for _, broker := range oc.protos.KafkaBrokers.Brokers {
-		if !brokerEntrySeemsValid(broker) {
-			return fmt.Errorf("Invalid broker entry: %s", broker)
+func (oc *OrdererConfig) validateAllOrgsHaveEndpoints() error {
+	var orgsMissingEndpoints []string
+
+	for _, org := range oc.Organizations() {
+		if len(org.Endpoints()) == 0 {
+			orgsMissingEndpoints = append(orgsMissingEndpoints, org.Name())
 		}
 	}
+
+	if len(orgsMissingEndpoints) > 0 {
+		return errors.Errorf("some orderer organizations endpoints are empty: %s", orgsMissingEndpoints)
+	}
+
 	return nil
 }
 
@@ -261,7 +275,7 @@ func brokerEntrySeemsValid(broker string) bool {
 
 	// Valid hostnames may contain only the ASCII letters 'a' through 'z' (in a
 	// case-insensitive manner), the digits '0' through '9', and the hyphen. IP
-	// v4 addresses are  represented in dot-decimal notation, which consists of
+	// v4 addresses are represented in dot-decimal notation, which consists of
 	// four decimal numbers, each ranging from 0 to 255, separated by dots,
 	// e.g., 172.16.254.1
 	// The following regular expression:

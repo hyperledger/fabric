@@ -9,20 +9,20 @@ package channelconfig
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/protolator"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	mspprotos "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 // The tests in this file are all relatively pointless, as all of this function is exercised
@@ -46,7 +46,6 @@ func TestUtilsBasic(t *testing.T) {
 	basicTest(t, BatchSizeValue(1, 2, 3))
 	basicTest(t, BatchTimeoutValue("1s"))
 	basicTest(t, ChannelRestrictionsValue(7))
-	basicTest(t, KafkaBrokersValue([]string{"foo:1", "bar:2"}))
 	basicTest(t, MSPValue(&mspprotos.MSPConfig{}))
 	basicTest(t, CapabilitiesValue(map[string]bool{"foo": true, "bar": false}))
 	basicTest(t, AnchorPeersValue([]*pb.AnchorPeer{{}, {}}))
@@ -162,13 +161,13 @@ func createCfgBlockWithSupportedCapabilities(t *testing.T) *cb.Block {
 	}
 	configBlock := &cb.Block{
 		Data: &cb.BlockData{
-			Data: [][]byte{[]byte(protoutil.MarshalOrPanic(env))},
+			Data: [][]byte{protoutil.MarshalOrPanic(env)},
 		},
 	}
 	return configBlock
 }
 
-// createCfgBlockWithUnSupportedCapabilities will create a config block that contains mismatched capabilities and should be rejected by the peer
+// createCfgBlockWithUnsupportedCapabilities will create a config block that contains mismatched capabilities and should be rejected by the peer
 func createCfgBlockWithUnsupportedCapabilities(t *testing.T) *cb.Block {
 	// Create a config
 	config := &cb.Config{
@@ -276,7 +275,7 @@ func createCfgBlockWithUnsupportedCapabilities(t *testing.T) *cb.Block {
 	}
 	configBlock := &cb.Block{
 		Data: &cb.BlockData{
-			Data: [][]byte{[]byte(protoutil.MarshalOrPanic(env))},
+			Data: [][]byte{protoutil.MarshalOrPanic(env)},
 		},
 	}
 	return configBlock
@@ -300,7 +299,7 @@ func TestValidateCapabilities(t *testing.T) {
 func TestExtractMSPIDsForApplicationOrgs(t *testing.T) {
 	// load test_configblock.json that contains the application group
 	// and other properties needed to build channel config and extract MSPIDs
-	blockData, err := ioutil.ReadFile("testdata/test_configblock.json")
+	blockData, err := os.ReadFile("testdata/test_configblock.json")
 	require.NoError(t, err)
 	block := &cb.Block{}
 	protolator.DeepUnmarshalJSON(bytes.NewBuffer(blockData), block)
@@ -348,12 +347,11 @@ func TestMarshalEtcdRaftMetadata(t *testing.T) {
 
 	var outputCerts, inputCerts [3][]byte
 	for i := range unpacked.GetConsenters() {
-		outputCerts[i] = []byte(unpacked.GetConsenters()[i].GetClientTlsCert())
-		inputCerts[i], _ = ioutil.ReadFile(fmt.Sprintf("testdata/tls-client-%d.pem", i+1))
-
+		outputCerts[i] = unpacked.GetConsenters()[i].GetClientTlsCert()
+		inputCerts[i], _ = os.ReadFile(fmt.Sprintf("testdata/tls-client-%d.pem", i+1))
 	}
 
-	for i := 0; i < len(inputCerts)-1; i++ {
+	for i := range len(inputCerts) - 1 {
 		require.NotEqual(t, outputCerts[i+1], outputCerts[i], "expected extracted certs to differ from each other")
 	}
 }

@@ -9,7 +9,9 @@ package cluster_test
 import (
 	"context"
 	"crypto/rand"
+	"crypto/x509"
 	"encoding/hex"
+	"encoding/pem"
 	"fmt"
 	"net"
 	"strconv"
@@ -19,11 +21,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
@@ -37,6 +38,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/balancer"
 	"google.golang.org/grpc/balancer/roundrobin"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/proto"
 )
 
 // protects gRPC balancer registration
@@ -115,7 +118,7 @@ func (d *countingDialer) Dial(address cluster.EndpointCriteria) (*grpc.ClientCon
 	gRPCBalancerLock.Lock()
 	balancer := grpc.WithDefaultServiceConfig(fmt.Sprintf(`{"loadBalancingConfig": [{"%s":{}}]}`, d.name))
 	gRPCBalancerLock.Unlock()
-	return grpc.DialContext(ctx, address.Endpoint, grpc.WithBlock(), grpc.WithInsecure(), balancer)
+	return grpc.DialContext(ctx, address.Endpoint, grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()), balancer)
 }
 
 func noopBlockVerifierf(_ []*common.Block, _ string) error {
@@ -143,9 +146,10 @@ func readSeekEnvelope(stream orderer.AtomicBroadcast_DeliverServer) (*orderer.Se
 }
 
 type deliverServer struct {
-	logger *flogging.FabricLogger
-
-	t *testing.T
+	logger  *flogging.FabricLogger
+	cert    *x509.Certificate
+	rawCert []byte
+	t       *testing.T
 	sync.Mutex
 	err            error
 	srv            *comm.GRPCServer
@@ -329,7 +333,35 @@ func newClusterNode(t *testing.T) *deliverServer {
 	return ds
 }
 
-func newBlockPuller(dialer *countingDialer, orderers ...string) *cluster.BlockPuller {
+func newClusterNodeWithTLS(t *testing.T) *deliverServer {
+	cert, err := ca.NewServerCertKeyPair("127.0.0.1")
+	require.NoError(t, err)
+
+	srv, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{
+		SecOpts: comm.SecureOptions{
+			Key:         cert.Key,
+			Certificate: cert.Cert,
+			UseTLS:      true,
+		},
+	})
+
+	require.NoError(t, err)
+	ds := &deliverServer{
+		rawCert:        cert.Cert,
+		cert:           cert.TLSCert,
+		logger:         flogging.MustGetLogger("test.debug"),
+		t:              t,
+		seekAssertions: make(chan func(*orderer.SeekInfo, string), 100),
+		blockResponses: make(chan *orderer.DeliverResponse, 100),
+		done:           make(chan struct{}),
+		srv:            srv,
+	}
+	orderer.RegisterAtomicBroadcastServer(srv.Server(), ds)
+	go srv.Start()
+	return ds
+}
+
+func newBlockPuller(dialer cluster.Dialer, orderers ...string) *cluster.BlockPuller {
 	return &cluster.BlockPuller{
 		Dialer:              dialer,
 		Channel:             "mychannel",
@@ -454,7 +486,7 @@ func TestBlockPullerHeavyBlocks(t *testing.T) {
 	// Enqueue only the next batch in the orderer node.
 	// This ensures that only 10 blocks are fetched into the buffer
 	// and not more.
-	for i := uint64(0); i < 5; i++ {
+	for i := range uint64(5) {
 		enqueueBlockBatch(i*10+uint64(1), i*10+uint64(10))
 		for seq := i*10 + uint64(1); seq <= i*10+uint64(10); seq++ {
 			require.Equal(t, seq, bp.PullBlock(seq).Header.Number)
@@ -519,6 +551,61 @@ func TestBlockPullerClone(t *testing.T) {
 	dialer.assertAllConnectionsClosed(t)
 }
 
+func TestBlockPullerHeightsByEndpointsDetectSelf(t *testing.T) {
+	// Scenario: We ask for the latest block from two nodes,
+	// one of them is yourself and the other is not.
+
+	osn1 := newClusterNodeWithTLS(t)
+	defer osn1.stop()
+
+	osn2 := newClusterNodeWithTLS(t)
+	defer osn2.stop()
+
+	sd := &cluster.StandardDialer{
+		Config: comm.ClientConfig{
+			DialTimeout: time.Second,
+			SecOpts: comm.SecureOptions{
+				UseTLS:        true,
+				ServerRootCAs: [][]byte{ca.CertBytes()},
+			},
+		},
+	}
+
+	bp := newBlockPuller(sd, osn1.srv.Address(), osn2.srv.Address())
+	// Override endpoints
+	var endpoints []cluster.EndpointCriteria
+	for _, endpoint := range bp.Endpoints {
+		endpoint.TLSRootCAs = [][]byte{ca.CertBytes()}
+		endpoints = append(endpoints, endpoint)
+	}
+
+	bl, _ := pem.Decode(osn1.rawCert)
+	bp.TLSCert = bl.Bytes
+
+	tlsCert, err := x509.ParseCertificate(bl.Bytes)
+	require.NoError(t, err)
+
+	bp.MyOwnTLSCert = tlsCert
+
+	bp.Endpoints = endpoints
+
+	osn1.addExpectProbeAssert()
+	osn2.addExpectProbeAssert()
+
+	osn1.enqueueResponse(5)
+	osn2.enqueueResponse(5)
+
+	res, self, err := bp.HeightsByEndpoints()
+	require.NoError(t, err)
+
+	require.Equal(t, map[string]uint64{
+		osn1.srv.Address(): 6,
+		osn2.srv.Address(): 6,
+	}, res)
+
+	require.Equal(t, osn1.srv.Address(), self)
+}
+
 func TestBlockPullerHeightsByEndpoints(t *testing.T) {
 	// Scenario: We ask for the latest block from all the known ordering nodes.
 	// One ordering node is unavailable (offline).
@@ -549,7 +636,7 @@ func TestBlockPullerHeightsByEndpoints(t *testing.T) {
 	// The third returns the latest block
 	osn3.enqueueResponse(5)
 
-	res, err := bp.HeightsByEndpoints()
+	res, _, err := bp.HeightsByEndpoints()
 	require.NoError(t, err)
 	expected := map[string]uint64{
 		osn3.srv.Address(): 6,
@@ -933,7 +1020,6 @@ func TestBlockPullerFailures(t *testing.T) {
 			failFunc: malformBlockSignatureAndRecreateOSNBuffer,
 		},
 	} {
-		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 			testLogger.Infof("Starting test case: %s", testCase.name)
 			osn := newClusterNode(t)
@@ -1033,7 +1119,7 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 		{
 			name:           "bad type",
 			corruptBlock:   statusType,
-			expectedErrMsg: "faulty node, received: status:INTERNAL_SERVER_ERROR ",
+			expectedErrMsg: "faulty node, received: status:INTERNAL_SERVER_ERROR",
 		},
 		{
 			name:           "wrong number",
@@ -1043,7 +1129,6 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 	}
 
 	for _, testCase := range testcases {
-		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
 			osn := newClusterNode(t)
 			defer osn.stop()
@@ -1112,6 +1197,33 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 	}
 }
 
+func TestImpatientStreamDetectSelf(t *testing.T) {
+	osn := newClusterNodeWithTLS(t)
+	osn.Lock()
+	osn.err = fmt.Errorf("service unavailable")
+	osn.Unlock()
+
+	defer osn.stop()
+	var conn *grpc.ClientConn
+	var err error
+
+	cc := comm.ClientConfig{
+		DialTimeout: time.Second,
+		SecOpts: comm.SecureOptions{
+			UseTLS:        true,
+			ServerRootCAs: [][]byte{ca.CertBytes()},
+		},
+	}
+
+	conn, err = cc.Dial(osn.srv.Address())
+	require.NoError(t, err)
+
+	newStream := cluster.NewImpatientStream(conn, time.Millisecond*100)
+	stream, err := newStream()
+	require.NoError(t, err)
+	require.Equal(t, osn.cert, stream.Certificate)
+}
+
 func TestImpatientStreamFailure(t *testing.T) {
 	osn := newClusterNode(t)
 	dialer := newCountingDialer()
@@ -1134,7 +1246,7 @@ func TestImpatientStreamFailure(t *testing.T) {
 	gt.Eventually(func() (bool, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*10)
 		defer cancel()
-		conn, _ := grpc.DialContext(ctx, osn.srv.Address(), grpc.WithBlock(), grpc.WithInsecure())
+		conn, _ := grpc.DialContext(ctx, osn.srv.Address(), grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if conn != nil {
 			conn.Close()
 			return false, nil
@@ -1176,7 +1288,7 @@ func TestBlockPullerMaxRetriesExhausted(t *testing.T) {
 	// stream that the client should open.
 	osn.blockResponses <- nil
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		// Therefore, the block puller should disconnect and reconnect.
 		osn.addExpectProbeAssert()
 		// We report having up to block 3.
@@ -1323,7 +1435,7 @@ func TestBlockPuller_UpdateEndpoint(t *testing.T) {
 		osn2.enqueueResponse(4)
 		osn3.enqueueResponse(5)
 
-		res, err := bp.HeightsByEndpoints()
+		res, _, err := bp.HeightsByEndpoints()
 		require.NoError(t, err)
 		expected := map[string]uint64{
 			osn1.srv.Address(): 4,
@@ -1345,7 +1457,7 @@ func TestBlockPuller_UpdateEndpoint(t *testing.T) {
 		osn3.enqueueResponse(55)
 		osn4.enqueueResponse(66)
 
-		res, err = bp.HeightsByEndpoints()
+		res, _, err = bp.HeightsByEndpoints()
 		require.NoError(t, err)
 		expected = map[string]uint64{
 			osn2.srv.Address(): 45,

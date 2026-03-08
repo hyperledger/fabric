@@ -9,7 +9,7 @@ package mock
 import (
 	"time"
 
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
+	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -23,7 +23,7 @@ type socketMock struct {
 	endpoint string
 
 	// To simulate simple tcp socket
-	socket chan interface{}
+	socket chan any
 }
 
 // Mock of primitive tcp packet structure
@@ -34,7 +34,7 @@ type packetMock struct {
 	// Destination channel sent to
 	dst *socketMock
 
-	msg interface{}
+	msg any
 }
 
 type channelMock struct {

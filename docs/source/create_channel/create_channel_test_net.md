@@ -1,12 +1,11 @@
 # Create a channel using the test network
 
-Use this tutorial along with the test network to learn how to create a channel genesis block and then create a new application channel that the test network peers can join. Rather than requiring you to set up an orderer, or remove the system channel from an existing orderer, this tutorial leverages the nodes from the Fabric sample test network. Because the test network deploys an ordering service and peers for you, this tutorial focuses solely on the process to create a channel. It is worth noting that the test network includes a `createChannel` subcommand that can be used to create a channel, but this tutorial explains how do it manually, the process that is required when you do not use the test network.
+Use this tutorial along with the test network to learn how to create a channel genesis block and then create a new application channel that the test network peers can join. Rather than requiring you to set up an orderer, this tutorial leverages the nodes from the Fabric sample test network. Because the test network deploys an ordering service and peers for you, this tutorial focuses solely on the process to create a channel. It is worth noting that the test network includes a `createChannel` subcommand that can be used to create a channel, but this tutorial explains how do it manually, the process that is required when you do not use the test network.
 
-Fabric v2.3 introduces the capability to create a channel without requiring a system channel, removing an extra layer of administration from the process. In this tutorial, we use the [configtxgen](../commands/configtxgen.html) tool to create a channel genesis block and then use the [osnadmin channel](../commands/osnadminchannel.html) command to create the channel.
+In this tutorial, we use the [configtxgen](../commands/configtxgen.html) tool to create a channel genesis block and then use the [osnadmin channel](../commands/osnadminchannel.html) command to create the channel.
 
 **Note:**
-- If you are _not_ using the test network, you should follow the instructions for [how to deploy an ordering service without a system channel](create_channel_participation.html#deploy-a-new-set-of-orderers). In the Fabric v2.3 test network sample, the single-node ordering service is deployed without a system channel.
-- If you prefer to learn how to create a channel on an ordering service that includes the system channel, you should refer to the [Create a channel tutorial](https://hyperledger-fabric.readthedocs.io/en/release-2.2/create_channel/create_channel.html) from Fabric v2.2. In the Fabric v2.2 test network sample, the single-node ordering service is deployed with a system channel.
+- If you are _not_ using the test network, you should follow the instructions for [how to deploy an ordering service](create_channel_participation.html#deploy-a-new-set-of-orderers).
 
 To create a channel using the test network, this tutorial takes you through the following steps and concepts:
 - [Prerequisites](#prerequisites)
@@ -47,9 +46,7 @@ Creating volume "net_peer0.org2.example.com" with default driver
 Creating peer0.org2.example.com ... done
 Creating orderer.example.com    ... done
 Creating peer0.org1.example.com ... done
-Creating cli                    ... done
 CONTAINER ID   IMAGE                               COMMAND             CREATED         STATUS                  PORTS                                            NAMES
-1667543b5634   hyperledger/fabric-tools:latest     "/bin/bash"         1 second ago    Up Less than a second                                                    cli
 b6b117c81c7f   hyperledger/fabric-peer:latest      "peer node start"   2 seconds ago   Up 1 second             0.0.0.0:7051->7051/tcp                           peer0.org1.example.com
 703ead770e05   hyperledger/fabric-orderer:latest   "orderer"           2 seconds ago   Up Less than a second   0.0.0.0:7050->7050/tcp, 0.0.0.0:7053->7053/tcp   orderer.example.com
 718d43f5f312   hyperledger/fabric-peer:latest      "peer node start"   2 seconds ago   Up 1 second             7051/tcp, 0.0.0.0:9051->9051/tcp                 peer0.org2.example.com
@@ -96,21 +93,28 @@ This `configtx.yaml` file contains the following information that we will use to
           ServerTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
     ```
 - **Channel policies** Different sections of the file work together to define the policies that will govern how organizations interact with the channel and which organizations need to approve channel updates. For the purposes of this tutorial, we will use the default policies used by Fabric.
-- **Channel profiles** Each channel profile references information from other sections of the `configtx.yaml` file to build a channel configuration. The profiles are used to create the genesis block of application channel. Notice that the `configtx.yaml` file in the test network includes a single profile named `TwoOrgsApplicationGenesis` that we will use to generate the create channel transaction.
+- **Channel profiles** Each channel profile references information from other sections of the `configtx.yaml` file to build a channel configuration. The profiles are used to create the genesis block of application channel. Notice that the `configtx.yaml` file in the test network includes a single profile named `ChannelUsingRaft` that we will use to generate the create channel transaction.
     ```yaml
-    TwoOrgsApplicationGenesis:
+    ChannelUsingRaft:
         <<: *ChannelDefaults
         Orderer:
-            <<: *OrdererDefaults
-            Organizations:
-                - *OrdererOrg
-            Capabilities: *OrdererCapabilities
+        <<: *OrdererDefaults
+        OrdererType: etcdraft
+        EtcdRaft:
+            Consenters:
+            - Host: orderer.example.com
+                Port: 7050
+                ClientTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+                ServerTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+        Organizations:
+            - *OrdererOrg
+        Capabilities: *OrdererCapabilities
         Application:
-            <<: *ApplicationDefaults
-            Organizations:
-                - *Org1
-                - *Org2
-            Capabilities: *ApplicationCapabilities
+        <<: *ApplicationDefaults
+        Organizations:
+            - *Org1
+            - *Org2
+        Capabilities: *ApplicationCapabilities
     ```
 
 The profile includes both peer organizations, `Org1` and `Org2` as well as the ordering organization `OrdererOrg`. Additional ordering nodes and ordering organizations can be added or removed from the consenter set at a later time using a channel update transaction.
@@ -123,10 +127,10 @@ Because we have started the Fabric test network, we are ready to create a new ch
 
 Run the following command to create the channel genesis block for `channel1`:
 ```
-configtxgen -profile TwoOrgsApplicationGenesis -outputBlock ./channel-artifacts/channel1.block -channelID channel1
+configtxgen -profile ChannelUsingRaft -outputBlock ./channel-artifacts/channel1.block -channelID channel1
 ```
 
-- **`-profile`**: The command uses the `-profile` flag to reference the `TwoOrgsApplicationGenesis:` profile from `configtx.yaml` that is used by the test network to create application channels.
+- **`-profile`**: The command uses the `-profile` flag to reference the `ChannelUsingRaft:` profile from `configtx.yaml` that is used by the test network to create application channels.
 - **`-outputBlock`**: The output of this command is the channel genesis block that is written to `-outputBlock ./channel-artifacts/channel1.block`.
 - **`-channelID`**: The `-channelID` parameter will be the name of the future channel. You can specify any name you want for your channel but for illustration purposes in this tutorial we use `channel1`. Channel names must be all lowercase, fewer than 250 characters long and match the regular expression ``[a-z][a-z0-9.-]*``.
 
@@ -218,7 +222,7 @@ The test network includes two peer organizations each with one peer. But before 
 
 ```
 export CORE_PEER_TLS_ENABLED=true
-export CORE_PEER_LOCALMSPID="Org1MSP"
+export CORE_PEER_LOCALMSPID=Org1MSP
 export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
 export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
 export CORE_PEER_ADDRESS=localhost:7051
@@ -240,7 +244,7 @@ When successful, the output of this command contains the following:
 
 We repeat these steps for the `Org2` peer. Set the following environment variables to operate the `peer` CLI as the `Org2` admin. The environment variables will also set the `Org2` peer, ``peer0.org2.example.com``, as the target peer.
 ```
-export CORE_PEER_LOCALMSPID="Org2MSP"
+export CORE_PEER_LOCALMSPID=Org2MSP
 export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
 export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
 export CORE_PEER_ADDRESS=localhost:9051
@@ -265,7 +269,7 @@ The endpoint information of the anchor peers of each organization is included in
 
 We will start by selecting the peer from `Org1` to be an anchor peer. The first step is to pull the most recent channel configuration block using the `peer channel fetch` command. Set the following environment variables to operate the `peer` CLI as the `Org1` admin:
 ```
-export CORE_PEER_LOCALMSPID="Org1MSP"
+export CORE_PEER_LOCALMSPID=Org1MSP
 export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
 export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
 export CORE_PEER_ADDRESS=localhost:7051
@@ -336,7 +340,7 @@ When the channel update is successful, you should see the following response:
 
 We can also set the peer from `Org2` to be an anchor peer. Because we are going through the process a second time, we will go through the steps more quickly. Set the environment variables to operate the `peer` CLI as the `Org2` admin:
 ```
-export CORE_PEER_LOCALMSPID="Org2MSP"
+export CORE_PEER_LOCALMSPID=Org2MSP
 export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
 export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
 export CORE_PEER_ADDRESS=localhost:9051

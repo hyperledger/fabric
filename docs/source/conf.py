@@ -30,8 +30,8 @@ placeholder_replacements = {
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "Hyperledger Fabric Docs"
-copyright = "2017-2024, Hyperledger Foundation"
-author = "Hyperledger Foundation"
+copyright = "2017-2026, Contributors to Hyperledger Fabric"
+author = "Contributors to Hyperledger Fabric"
 release = "main"
 version = "main"
 
@@ -110,8 +110,6 @@ def setup(app):
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "sphinx_rtd_theme"
-
-# html_css_files = ['css/custom.css']
 
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 

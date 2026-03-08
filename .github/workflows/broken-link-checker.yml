@@ -1,0 +1,44 @@
+# Copyright the Hyperledger Fabric contributors. All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: "Broken Link Checker"
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "50 1 * * *"
+  pull_request:
+    paths:
+      - .github/workflows/broken-link-checker.yml
+
+permissions:
+  contents: read
+
+jobs:
+  broken-lint-checker:
+    # Only run the scheduled job in hyperledger/fabric repository, not on personal forks
+    if: github.event_name != 'schedule' || (github.event_name == 'schedule' && github.repository == 'hyperledger/fabric')
+    name: "Check for Broken Links"
+    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-22.04' || 'ubuntu-22.04' }}
+    steps:
+      - name: Checkout Fabric Code
+        uses: actions/checkout@v5
+      - name: Check Broken Links with Muffet
+        # Exclude any links that direct to the documentation or release notes of the non-latest version to limit the scanning to target to that of the latest version.
+        run: |
+          docker run raviqqe/muffet:2.11.0 -v \
+          --max-response-body-size=100000000 \
+          --header="User-Agent: curl/8.7.1" \
+          --header="Accept: */*" \
+          --rate-limit=1 \
+          --accepted-status-codes="200..300,403" \
+          --ignore-fragments \
+          --skip-tls-verification \
+          --max-connections-per-host=1 \
+          --timeout=120 \
+          --buffer-size=2147483647 \
+          --color=always \
+          --exclude="^(https:\/\/hyperledger-fabric.readthedocs.io\/([A-z_]+\/(v[\d]+.[\d]+.[\d]+|release)|(es|fa|fr|it|ja|ko|ml|pt|ru|vi|zh-cn|zh_CN)\/latest)).*$" \
+          --exclude="https://github.com/YOURGITHUBID/fabric-docs-i18n/pull/new/newtranslation" \
+          https://hyperledger-fabric.readthedocs.io/en/latest/

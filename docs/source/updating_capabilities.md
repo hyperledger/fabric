@@ -2,8 +2,6 @@
 
 *Audience: network administrators, node administrators*
 
-Note: this topic describes the process for updating capabilities on a network that has not been bootstrapped with a system channel genesis block. For a version of this topic that includes information about updating system channel capabilities, check out [Updating the capability level of a channel](https://hyperledger-fabric.readthedocs.io/en/release-2.2/updating_capabilities.html).
-
 If you're not familiar with capabilities, check out [Capabilities](./capabilities_concept.html) before proceeding, paying particular attention to the fact that **peers and orderers that belong to the channel must be upgraded before enabling capabilities**.
 
 For information about any new capability levels in the latest release of Fabric, check out [Upgrading your components](./upgrade_to_newest_version.html#capabilities).
@@ -58,7 +56,7 @@ In this example, the ``capabilities.json`` file looks like this (note: if you ar
          "mod_policy": "Admins",
              "value": {
                  "capabilities": {
-                     "V2_0": {}
+                     "V3_0": {}
                  }
              },
          "version": "0"
@@ -76,7 +74,7 @@ In this example, the ``capabilities.json`` file looks like this (note: if you ar
          "mod_policy": "Admins",
              "value": {
                  "capabilities": {
-                     "V2_0": {}
+                     "V2_5": {}
                  }
              },
          "version": "0"
@@ -136,7 +134,7 @@ Note that the `mod_policy` for this capability defaults to requiring signatures 
 
 **As a result, be very careful to not change this capability to a level that does not exist**. Because ordering nodes neither understand nor validate `Application` capabilities, they will approve a configuration to any level and send the new config block to the peers to be committed to their ledgers. However, the peers will be unable to process the capability and will crash. And even it was possible to drive a corrected configuration change to a valid capability level, the previous config block with the faulty capability would still exist on the ledger and cause peers to crash when trying to process it.
 
-This is one reason why a file like `capabilities.json` can be useful. It prevents a simple user error --- for example, setting the `Application` capability to `V20` when the intent was to set it to `V2_0` --- that can cause a channel to be unusable and unrecoverable.
+This is one reason why a file like `capabilities.json` can be useful. It prevents a simple user error --- for example, setting the `Application` capability to `V25` when the intent was to set it to `V2_5` --- that can cause a channel to be unusable and unrecoverable.
 
 ## Verify a transaction after capabilities have been enabled
 

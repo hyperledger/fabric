@@ -1,5 +1,4 @@
 //go:build noplugin
-// +build noplugin
 
 /*
 Copyright IBM Corp. All Rights Reserved.

@@ -8,11 +8,10 @@ package pvtdatastorage
 
 import (
 	"math"
-	"os"
 	"path"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/confighistory/confighistorytest"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
@@ -28,10 +27,9 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 	}
 
 	setup := func(snapshotData []*snapshotData) *Store {
-		testDir := testDir(t)
+		testDir := t.TempDir()
 		conf := pvtDataConf()
 		conf.StorePath = testDir
-		t.Cleanup(func() { os.RemoveAll(testDir) })
 
 		p, err := NewProvider(conf)
 		require.NoError(t, err)
@@ -296,7 +294,7 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 
 		// commit 100 blocks and the bootkvhashes should expire
 		store.purgeInterval = 10
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			require.NoError(t, store.Commit(uint64(26+i), nil, nil, nil))
 		}
 
@@ -311,10 +309,9 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 }
 
 func TestStoreCreationErrorPath(t *testing.T) {
-	testDir := testDir(t)
+	testDir := t.TempDir()
 	conf := pvtDataConf()
 	conf.StorePath = testDir
-	defer os.RemoveAll(testDir)
 
 	p, err := NewProvider(conf)
 	require.NoError(t, err)

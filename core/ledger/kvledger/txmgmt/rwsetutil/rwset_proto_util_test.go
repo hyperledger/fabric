@@ -20,12 +20,12 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/kr/pretty"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestTxRWSetMarshalUnmarshal(t *testing.T) {
@@ -188,9 +188,9 @@ func sampleCollHashedRwSet(collectionName string) *CollHashedRwSet {
 	return collHashedRwSet
 }
 
-///////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
 // tests for private read-write set
-///////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
 
 func TestTxPvtRwSetConversion(t *testing.T) {
 	txPvtRwSet := sampleTxPvtRwSet()

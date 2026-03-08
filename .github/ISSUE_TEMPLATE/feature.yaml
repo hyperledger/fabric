@@ -1,0 +1,42 @@
+# Copyright the Hyperledger Fabric contributors. All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# How to modify this file: https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-issue-forms
+
+name: Feature Request
+description: Submit your requests and suggestions to improve!
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: status
+    attributes:
+      label: Current Status
+      description: Describe the current status.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+      description: Describe what you expect.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solution
+      description: Describe a Solution (or multiple solution paths )
+    validations:
+      required: false
+  - type: dropdown
+    id: help
+    attributes:
+      label: Please let us know if you plan to work on this.
+      multiple: true
+      options:
+        - Yes!
+        - No.
+        - Maybe.
+    validations:
+      required: false

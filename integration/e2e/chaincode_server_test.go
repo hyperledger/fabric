@@ -9,7 +9,6 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,21 +26,22 @@ import (
 
 var _ = Describe("ChaincodeAsExternalServer", func() {
 	var (
-		testDir                string
-		network                *nwo.Network
-		chaincode              nwo.Chaincode
-		chaincodeServerAddress string
-		assetDir               string
-		process                ifrit.Process
-		ccserver               ifrit.Process
+		testDir                     string
+		network                     *nwo.Network
+		chaincode                   nwo.Chaincode
+		chaincodeServerAddress      string
+		assetDir                    string
+		ordererRunner               *ginkgomon.Runner
+		ordererProcess, peerProcess ifrit.Process
+		ccserver                    ifrit.Process
 	)
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "external-chaincode-server")
+		testDir, err = os.MkdirTemp("", "external-chaincode-server")
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.BasicSolo(), testDir, nil, StartPort(), components)
+		network = nwo.New(nwo.BasicEtcdRaft(), testDir, nil, StartPort(), components)
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
@@ -50,26 +50,25 @@ var _ = Describe("ChaincodeAsExternalServer", func() {
 		connData, serverKeyPair := generateChaincodeConfig(chaincodeServerAddress)
 
 		// Create directory for configuration files
-		assetDir, err = ioutil.TempDir(testDir, "assets")
+		assetDir, err = os.MkdirTemp(testDir, "assets")
 		Expect(err).NotTo(HaveOccurred())
 
 		// Write the config files
 		connJSON, err := json.Marshal(connData)
 		Expect(err).NotTo(HaveOccurred())
-		err = ioutil.WriteFile(filepath.Join(assetDir, "connection.json"), connJSON, 0o644)
+		err = os.WriteFile(filepath.Join(assetDir, "connection.json"), connJSON, 0o644)
 		Expect(err).NotTo(HaveOccurred())
 
 		configJSON, err := json.Marshal(serverKeyPair)
 		Expect(err).NotTo(HaveOccurred())
-		err = ioutil.WriteFile(filepath.Join(assetDir, "config.json"), configJSON, 0o644)
+		err = os.WriteFile(filepath.Join(assetDir, "config.json"), configJSON, 0o644)
 		Expect(err).NotTo(HaveOccurred())
 
 		// Setup the network
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 
-		network.CreateAndJoinChannel(network.Orderer("orderer"), "testchannel")
+		nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", network.Orderer("orderer"), ordererRunner)
+
 		nwo.EnableCapabilities(
 			network,
 			"testchannel",
@@ -103,10 +102,13 @@ var _ = Describe("ChaincodeAsExternalServer", func() {
 			ccserver.Signal(syscall.SIGTERM)
 			Eventually(ccserver.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
-
-		if process != nil {
-			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+		if peerProcess != nil {
+			peerProcess.Signal(syscall.SIGTERM)
+			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+		if ordererProcess != nil {
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
 		if network != nil {
 			network.Cleanup()
@@ -114,7 +116,7 @@ var _ = Describe("ChaincodeAsExternalServer", func() {
 		os.RemoveAll(testDir)
 	})
 
-	It("executes a basic solo network with 2 orgs and external chaincode server", func() {
+	It("executes a basic etcdraft network with 2 orgs and external chaincode server", func() {
 		orderer := network.Orderer("orderer")
 		peer := network.Peer("Org1", "peer0")
 		peers := network.PeersWithChannel("testchannel")

@@ -13,42 +13,25 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
+	"os"
+	"slices"
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/peer/chaincode/mock"
 	"github.com/hyperledger/fabric/internal/peer/common"
-	"github.com/hyperledger/fabric/internal/pkg/identity"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
-
-//go:generate counterfeiter -o mock/signer_serializer.go --fake-name SignerSerializer . signerSerializer
-
-type signerSerializer interface {
-	identity.SignerSerializer
-}
-
-//go:generate counterfeiter -o mock/deliver.go --fake-name Deliver . deliver
-
-type deliver interface {
-	pb.Deliver_DeliverClient
-}
-
-//go:generate counterfeiter -o mock/deliver_client.go --fake-name PeerDeliverClient . peerDeliverClient
-
-type peerDeliverClient interface {
-	pb.DeliverClient
-}
 
 func TestCheckChaincodeCmdParamsWithNewCallingSchema(t *testing.T) {
 	chaincodeCtorJSON = `{ "Args":["func", "param"] }`
@@ -344,8 +327,7 @@ func TestValidatePeerConnectionParams(t *testing.T) {
 	defer resetFlags()
 	defer viper.Reset()
 	require := require.New(t)
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
+	configtest.SetDevFabricConfigPath(t)
 
 	// TLS disabled
 	viper.Set("peer.tls.enabled", false)
@@ -826,7 +808,7 @@ func TestProcessProposals(t *testing.T) {
 		for _, response := range responses {
 			statuses = append(statuses, response.Response.Status)
 		}
-		sort.Slice(statuses, func(i, j int) bool { return statuses[i] < statuses[j] })
+		slices.Sort(statuses)
 		require.EqualValues(t, []int32{200, 300, 400, 500}, statuses)
 	})
 	t.Run("should return an error from processing a proposal for a single peer", func(t *testing.T) {
@@ -839,4 +821,13 @@ func TestProcessProposals(t *testing.T) {
 		require.EqualError(t, err, "failed to call endorser")
 		require.Nil(t, responses)
 	})
+}
+
+func TestMain(m *testing.M) {
+	err := msptesttools.LoadMSPSetupForTesting()
+	if err != nil {
+		panic(fmt.Sprintf("Could not initialize msp providers: %s", err))
+	}
+
+	os.Exit(m.Run())
 }

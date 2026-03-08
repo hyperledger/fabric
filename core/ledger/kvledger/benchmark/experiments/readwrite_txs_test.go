@@ -49,7 +49,7 @@ func runReadWriteClientsForChain(chain *chainmgmt.Chain) {
 	numTxForChain := calculateShare(conf.txConf.numTotalTxs, conf.chainMgrConf.NumChains, int(chain.ID))
 	wg := &sync.WaitGroup{}
 	wg.Add(numClients)
-	for i := 0; i < numClients; i++ {
+	for i := range numClients {
 		numTxForClient := calculateShare(numTxForChain, numClients, i)
 		var seed [32]byte
 		_, _ = crand.Read(seed[:])
@@ -96,9 +96,9 @@ func runReadWriteClient(chain *chainmgmt.Chain, rand *rand.Rand, numTx int, wg *
 			keyNumber := keysToOperateOn[i]
 			key := constructKey(keyNumber)
 			if useJSON {
-				value = []byte(constructJSONValue(keyNumber, kvSize))
+				value = constructJSONValue(keyNumber, kvSize)
 			} else {
-				value = []byte(constructValue(keyNumber, kvSize))
+				value = constructValue(keyNumber, kvSize)
 			}
 			panicOnError(simulator.SetState(chaincodeName, key, value))
 		}

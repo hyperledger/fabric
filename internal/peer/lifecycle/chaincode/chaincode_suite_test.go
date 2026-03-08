@@ -11,8 +11,8 @@ import (
 	"os"
 	"testing"
 
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"

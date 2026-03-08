@@ -178,7 +178,8 @@ func getVector(l *Lattice, a, b *big.Int) [2]big.Int {
 	return res
 }
 
-// NextPowerOfTwo returns the next power of 2 of n
+// NextPowerOfTwo(n) = 2^⌈log₂(n)⌉
+// or 2ᵏ where 2ᵏ⁻¹ < n ≤ 2ᵏ
 func NextPowerOfTwo(n uint64) uint64 {
 	c := bits.OnesCount64(n)
 	if c == 0 {

@@ -20,24 +20,39 @@ permissions:
 jobs:
   basic-checks:
     name: Basic Checks
-    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-22.04' || 'ubuntu-22.04' }}
+    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-24.04' || 'ubuntu-24.04' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         name: Checkout Fabric Code
-      - uses: actions/setup-go@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
         name: Install Go
         with:
           go-version-file: go.mod
+
+      - name: check go.mod
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod
+
+      - name: check vendor
+        run: |
+          go mod vendor
+          git diff --exit-code
+
       - run: make basic-checks
         name: Run Basic Checks
   unit-tests:
     name: Unit Tests
     needs: basic-checks
-    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-22.04' || 'ubuntu-22.04' }}
+    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-24.04' || 'ubuntu-24.04' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
         name: Checkout Fabric Code
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         name: Install Go
         with:
           go-version-file: go.mod
@@ -54,18 +69,18 @@ jobs:
         INTEGRATION_TEST_SUITE:
           - raft
           - pvtdata
-          - pvtdatapurge
+          - pvtdatapurge e2e
           - ledger
           - lifecycle
-          - e2e
+          - smartbft
           - discovery gossip devmode pluggable
           - gateway idemix pkcs11 configtx configtxlator
           - sbe nwo msp
-    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-22.04' || 'ubuntu-22.04' }}
+    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-24.04' || 'ubuntu-24.04' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         name: Checkout Fabric Code
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         name: Install Go
         with:
           go-version-file: go.mod

@@ -13,10 +13,11 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
+	"os"
 	"path/filepath"
+	"slices"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -29,6 +30,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 )
 
@@ -275,7 +277,7 @@ func createCertPool(rootCAs [][]byte) (*x509.CertPool, error) {
 func loadOrg(parent int) (testOrg, error) {
 	org := testOrg{}
 	// load the CA
-	caPEM, err := ioutil.ReadFile(fmt.Sprintf(orgCACert, parent))
+	caPEM, err := os.ReadFile(fmt.Sprintf(orgCACert, parent))
 	if err != nil {
 		return org, err
 	}
@@ -283,11 +285,11 @@ func loadOrg(parent int) (testOrg, error) {
 	// loop through and load servers
 	serverCerts := []serverCert{}
 	for i := 1; i <= numServerCerts; i++ {
-		keyPEM, err := ioutil.ReadFile(fmt.Sprintf(orgServerKey, parent, i))
+		keyPEM, err := os.ReadFile(fmt.Sprintf(orgServerKey, parent, i))
 		if err != nil {
 			return org, err
 		}
-		certPEM, err := ioutil.ReadFile(fmt.Sprintf(orgServerCert, parent, i))
+		certPEM, err := os.ReadFile(fmt.Sprintf(orgServerCert, parent, i))
 		if err != nil {
 			return org, err
 		}
@@ -321,7 +323,7 @@ func loadOrg(parent int) (testOrg, error) {
 // utility function to load crypto material for child organizations
 func loadChildOrg(parent, child int) (testOrg, error) {
 	// load the CA
-	caPEM, err := ioutil.ReadFile(fmt.Sprintf(childCACert, parent, child))
+	caPEM, err := os.ReadFile(fmt.Sprintf(childCACert, parent, child))
 	if err != nil {
 		return testOrg{}, err
 	}
@@ -329,11 +331,11 @@ func loadChildOrg(parent, child int) (testOrg, error) {
 	// loop through and load servers
 	serverCerts := []serverCert{}
 	for i := 1; i <= numServerCerts; i++ {
-		keyPEM, err := ioutil.ReadFile(fmt.Sprintf(childServerKey, parent, child, i))
+		keyPEM, err := os.ReadFile(fmt.Sprintf(childServerKey, parent, child, i))
 		if err != nil {
 			return testOrg{}, err
 		}
-		certPEM, err := ioutil.ReadFile(fmt.Sprintf(childServerCert, parent, child, i))
+		certPEM, err := os.ReadFile(fmt.Sprintf(childServerCert, parent, child, i))
 		if err != nil {
 			return testOrg{}, err
 		}
@@ -358,12 +360,12 @@ func loadChildOrg(parent, child int) (testOrg, error) {
 
 // loadTLSKeyPairFromFile creates a tls.Certificate from PEM-encoded key and cert files
 func loadTLSKeyPairFromFile(keyFile, certFile string) (tls.Certificate, error) {
-	certPEMBlock, err := ioutil.ReadFile(certFile)
+	certPEMBlock, err := os.ReadFile(certFile)
 	if err != nil {
 		return tls.Certificate{}, err
 	}
 
-	keyPEMBlock, err := ioutil.ReadFile(keyFile)
+	keyPEMBlock, err := os.ReadFile(keyFile)
 	if err != nil {
 		return tls.Certificate{}, err
 	}
@@ -534,7 +536,7 @@ func TestNewGRPCServer(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// invoke the EmptyCall service
-	_, err = invokeEmptyCall(testAddress, grpc.WithInsecure())
+	_, err = invokeEmptyCall(testAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err, "failed to invoke the EmptyCall service")
 }
 
@@ -568,7 +570,7 @@ func TestNewGRPCServerFromListener(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// invoke the EmptyCall service
-	_, err = invokeEmptyCall(testAddress, grpc.WithInsecure())
+	_, err = invokeEmptyCall(testAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err, "client failed to invoke the EmptyCall service")
 }
 
@@ -629,8 +631,6 @@ func TestNewSecureGRPCServer(t *testing.T) {
 		"TLS13": tls.VersionTLS13,
 	}
 	for name, tlsVersion := range tlsVersions {
-		tlsVersion := tlsVersion
-
 		t.Run(name, func(t *testing.T) {
 			creds := credentials.NewTLS(&tls.Config{RootCAs: certPool, MinVersion: tlsVersion, MaxVersion: tlsVersion})
 			_, err := invokeEmptyCall(testAddress, grpc.WithTransportCredentials(creds), grpc.WithBlock())
@@ -645,7 +645,6 @@ func TestNewSecureGRPCServer(t *testing.T) {
 		"TLS11": tls.VersionTLS11,
 	}
 	for name, tlsVersion := range tlsVersions {
-		tlsVersion := tlsVersion
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -723,20 +722,20 @@ func TestVerifyCertificateCallback(t *testing.T) {
 	})
 }
 
-// prior tests used self-signed certficates loaded by the GRPCServer and the test client
+// prior tests used self-signed certificates loaded by the GRPCServer and the test client
 // here we'll use certificates signed by certificate authorities
 func TestWithSignedRootCertificates(t *testing.T) {
 	t.Parallel()
 
 	// use Org1 testdata
 	fileBase := "Org1"
-	certPEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-server1-cert.pem"))
+	certPEMBlock, err := os.ReadFile(filepath.Join("testdata", "certs", fileBase+"-server1-cert.pem"))
 	require.NoError(t, err, "failed to load test certificates")
 
-	keyPEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-server1-key.pem"))
+	keyPEMBlock, err := os.ReadFile(filepath.Join("testdata", "certs", fileBase+"-server1-key.pem"))
 	require.NoError(t, err, "failed to load test certificates: %v")
 
-	caPEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-cert.pem"))
+	caPEMBlock, err := os.ReadFile(filepath.Join("testdata", "certs", fileBase+"-cert.pem"))
 	require.NoError(t, err, "failed to load test certificates")
 
 	// create our listener
@@ -789,13 +788,13 @@ func TestWithSignedIntermediateCertificates(t *testing.T) {
 
 	// use Org1 testdata
 	fileBase := "Org1"
-	certPEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-child1-server1-cert.pem"))
+	certPEMBlock, err := os.ReadFile(filepath.Join("testdata", "certs", fileBase+"-child1-server1-cert.pem"))
 	require.NoError(t, err)
 
-	keyPEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-child1-server1-key.pem"))
+	keyPEMBlock, err := os.ReadFile(filepath.Join("testdata", "certs", fileBase+"-child1-server1-key.pem"))
 	require.NoError(t, err)
 
-	intermediatePEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-child1-cert.pem"))
+	intermediatePEMBlock, err := os.ReadFile(filepath.Join("testdata", "certs", fileBase+"-child1-cert.pem"))
 	if err != nil {
 		t.Fatalf("Failed to load test certificates: %v", err)
 	}
@@ -858,7 +857,7 @@ func TestWithSignedIntermediateCertificates(t *testing.T) {
 // utility function for testing client / server communication using TLS
 func runMutualAuth(t *testing.T, servers []testServer, trustedClients, unTrustedClients []*tls.Config) error {
 	// loop through all the test servers
-	for i := 0; i < len(servers); i++ {
+	for i := range servers {
 		// create listener
 		lis, err := net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {
@@ -884,7 +883,7 @@ func runMutualAuth(t *testing.T, servers []testServer, trustedClients, unTrusted
 		time.Sleep(10 * time.Millisecond)
 
 		// loop through all the trusted clients
-		for j := 0; j < len(trustedClients); j++ {
+		for j := range trustedClients {
 			// invoke the EmptyCall service
 			_, err = invokeEmptyCall(srvAddr, grpc.WithTransportCredentials(credentials.NewTLS(trustedClients[j])))
 			// we expect success from trusted clients
@@ -896,7 +895,7 @@ func runMutualAuth(t *testing.T, servers []testServer, trustedClients, unTrusted
 		}
 
 		// loop through all the untrusted clients
-		for k := 0; k < len(unTrustedClients); k++ {
+		for k := range unTrustedClients {
 			// invoke the EmptyCall service
 			_, err = invokeEmptyCall(
 				srvAddr,
@@ -961,7 +960,6 @@ func TestMutualAuth(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			t.Logf("Running test %s ...", test.name)
@@ -1048,7 +1046,7 @@ func TestUpdateTLSCert(t *testing.T) {
 
 	readFile := func(path string) []byte {
 		fName := filepath.Join("testdata", "dynamic_cert_update", path)
-		data, err := ioutil.ReadFile(fName)
+		data, err := os.ReadFile(fName)
 		if err != nil {
 			panic(fmt.Errorf("Failed reading %s: %v", fName, err))
 		}
@@ -1124,11 +1122,11 @@ func TestUpdateTLSCert(t *testing.T) {
 func TestCipherSuites(t *testing.T) {
 	t.Parallel()
 
-	certPEM, err := ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-server1-cert.pem"))
+	certPEM, err := os.ReadFile(filepath.Join("testdata", "certs", "Org1-server1-cert.pem"))
 	require.NoError(t, err)
-	keyPEM, err := ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-server1-key.pem"))
+	keyPEM, err := os.ReadFile(filepath.Join("testdata", "certs", "Org1-server1-key.pem"))
 	require.NoError(t, err)
-	caPEM, err := ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-cert.pem"))
+	caPEM, err := os.ReadFile(filepath.Join("testdata", "certs", "Org1-cert.pem"))
 	require.NoError(t, err)
 	certPool, err := createCertPool([][]byte{caPEM})
 	require.NoError(t, err)
@@ -1142,12 +1140,7 @@ func TestCipherSuites(t *testing.T) {
 	}
 
 	fabricDefaultCipherSuite := func(cipher uint16) bool {
-		for _, defaultCipher := range comm.DefaultTLSCipherSuites {
-			if cipher == defaultCipher {
-				return true
-			}
-		}
-		return false
+		return slices.Contains(comm.DefaultTLSCipherSuites, cipher)
 	}
 
 	var otherCipherSuites []uint16
@@ -1195,7 +1188,6 @@ func TestCipherSuites(t *testing.T) {
 	go srv.Start()
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1226,19 +1218,19 @@ func TestServerInterceptors(t *testing.T) {
 	// set up interceptors
 	usiCount := uint32(0)
 	ssiCount := uint32(0)
-	usi1 := func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	usi1 := func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		atomic.AddUint32(&usiCount, 1)
 		return handler(ctx, req)
 	}
-	usi2 := func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	usi2 := func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		atomic.AddUint32(&usiCount, 1)
 		return nil, status.Error(codes.Aborted, msg)
 	}
-	ssi1 := func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	ssi1 := func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		atomic.AddUint32(&ssiCount, 1)
 		return handler(srv, ss)
 	}
-	ssi2 := func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	ssi2 := func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		atomic.AddUint32(&ssiCount, 1)
 		return status.Error(codes.Aborted, msg)
 	}
@@ -1258,7 +1250,7 @@ func TestServerInterceptors(t *testing.T) {
 	_, err = invokeEmptyCall(
 		lis.Addr().String(),
 		grpc.WithBlock(),
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	require.Error(t, err)
 	require.Equal(t, status.Convert(err).Message(), msg, "Expected error from second usi")
@@ -1267,7 +1259,7 @@ func TestServerInterceptors(t *testing.T) {
 	_, err = invokeEmptyStream(
 		lis.Addr().String(),
 		grpc.WithBlock(),
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	require.Error(t, err)
 	require.Equal(t, status.Convert(err).Message(), msg, "Expected error from second ssi")

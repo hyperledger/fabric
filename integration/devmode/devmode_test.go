@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package devmode
 
 import (
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,12 +14,11 @@ import (
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
@@ -29,27 +27,27 @@ import (
 
 var _ = Describe("Devmode", func() {
 	var (
-		testDir          string
-		client           *docker.Client
-		network          *nwo.Network
-		process          ifrit.Process
-		chaincode        nwo.Chaincode
-		legacyChaincode  nwo.Chaincode
-		chaincodeRunner  *ginkgomon.Runner
-		chaincodeProcess ifrit.Process
-		channelName      string
+		testDir                     string
+		client                      dcli.APIClient
+		network                     *nwo.Network
+		ordererRunner               *ginkgomon.Runner
+		ordererProcess, peerProcess ifrit.Process
+		chaincode                   nwo.Chaincode
+		chaincodeRunner             *ginkgomon.Runner
+		chaincodeProcess            ifrit.Process
+		channelName                 string
 	)
 
 	BeforeEach(func() {
 		var err error
 		channelName = "testchannel"
-		testDir, err = ioutil.TempDir("", "devmode")
+		testDir, err = os.MkdirTemp("", "devmode")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(devModeSolo, testDir, client, StartPort(), components)
+		network = nwo.New(devModeEtcdraft, testDir, client, StartPort(), components)
 
 		network.TLSEnabled = false
 		network.Peer("Org1", "peer0").DevMode = true
@@ -57,15 +55,19 @@ var _ = Describe("Devmode", func() {
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		// Start all the fabric processes
+		ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 	})
 
 	AfterEach(func() {
-		if process != nil {
-			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+		if ordererProcess != nil {
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
+		if peerProcess != nil {
+			peerProcess.Signal(syscall.SIGTERM)
+			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
 
 		if chaincodeProcess != nil {
@@ -77,54 +79,6 @@ var _ = Describe("Devmode", func() {
 		}
 
 		os.RemoveAll(testDir)
-	})
-
-	It("executes chaincode in dev mode using legacy lifecycle", func() {
-		legacyChaincode = nwo.Chaincode{
-			Name:    "mycc",
-			Version: "0.0",
-			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-			Ctor:    `{"Args":["init","a","100","b","200"]}`,
-			Policy:  `OR ('Org1MSP.member')`,
-		}
-
-		org1peer0 := network.Peer("Org1", "peer0")
-		orderer := network.Orderer("orderer")
-
-		By("setting up the channel")
-		network.CreateAndJoinChannel(orderer, channelName)
-
-		By("building chaincode")
-		chaincodeExecutePath := components.Build(legacyChaincode.Path)
-
-		By("running the chaincode")
-		legacyChaincodeID := legacyChaincode.Name + ":" + legacyChaincode.Version
-		peerChaincodeAddress := network.PeerAddress(org1peer0, nwo.ChaincodePort)
-		envs := []string{
-			"CORE_PEER_TLS_ENABLED=false",
-			"CORE_CHAINCODE_ID_NAME=" + legacyChaincodeID,
-			"DEVMODE_ENABLED=true",
-		}
-		cmd := exec.Command(chaincodeExecutePath, "-peer.address", peerChaincodeAddress)
-		cmd.Env = append(cmd.Env, envs...)
-		chaincodeRunner = ginkgomon.New(ginkgomon.Config{
-			Name:              "chaincode",
-			Command:           cmd,
-			StartCheckTimeout: 15 * time.Second,
-			StartCheck:        "starting up in devmode...",
-		})
-		chaincodeProcess = ifrit.Invoke(chaincodeRunner)
-		Eventually(chaincodeProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
-
-		By("installing the chaincode")
-		nwo.InstallChaincodeLegacy(network, legacyChaincode, org1peer0)
-
-		By("instantiating the chaincode")
-		nwo.InstantiateChaincodeLegacy(network, channelName, orderer, legacyChaincode, org1peer0, org1peer0)
-
-		By("querying and invoking the chaincode")
-		RunQueryInvokeQuery(network, orderer, org1peer0, channelName, 100)
-		Eventually(chaincodeRunner).Should(gbytes.Say("invoking in devmode"))
 	})
 
 	It("executes chaincode in dev mode", func() {
@@ -145,7 +99,7 @@ var _ = Describe("Devmode", func() {
 		orderer := network.Orderer("orderer")
 
 		By("setting up the channel")
-		network.CreateAndJoinChannel(orderer, channelName)
+		nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 		By("enabling V2_0 application capabilities")
 		nwo.EnableCapabilities(network, channelName, "Application", "V2_0", orderer, org1peer0)
@@ -277,6 +231,7 @@ func ApproveChaincodeForMyOrg(n *nwo.Network, channel string, orderer *nwo.Order
 				InitRequired:        chaincode.InitRequired,
 				CollectionsConfig:   chaincode.CollectionsConfig,
 				ClientAuth:          n.ClientAuthRequired,
+				WaitForEventTimeout: n.EventuallyTimeout,
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
@@ -286,7 +241,7 @@ func ApproveChaincodeForMyOrg(n *nwo.Network, channel string, orderer *nwo.Order
 	}
 }
 
-var devModeSolo = &nwo.Config{
+var devModeEtcdraft = &nwo.Config{
 	Organizations: []*nwo.Organization{{
 		Name:          "OrdererOrg",
 		MSPID:         "OrdererMSP",
@@ -302,25 +257,17 @@ var devModeSolo = &nwo.Config{
 		Users:         2,
 		CA:            &nwo.CA{Hostname: "ca"},
 	}},
-	Consortiums: []*nwo.Consortium{{
-		Name: "SampleConsortium",
-		Organizations: []string{
-			"Org1",
-		},
-	}},
 	Consensus: &nwo.Consensus{
-		Type:            "solo",
-		BootstrapMethod: "file",
-	},
-	SystemChannel: &nwo.SystemChannel{
-		Name:    "systemchannel",
-		Profile: "OneOrgOrdererGenesis",
+		Type: "etcdraft",
 	},
 	Orderers: []*nwo.Orderer{
 		{Name: "orderer", Organization: "OrdererOrg"},
 	},
 	Channels: []*nwo.Channel{
-		{Name: "testchannel", Profile: "OneOrgChannel"},
+		{
+			Name:    "testchannel",
+			Profile: "OneOrgChannel",
+		},
 	},
 	Peers: []*nwo.Peer{{
 		Name:         "peer0",
@@ -330,11 +277,9 @@ var devModeSolo = &nwo.Config{
 		},
 	}},
 	Profiles: []*nwo.Profile{{
-		Name:     "OneOrgOrdererGenesis",
-		Orderers: []string{"orderer"},
-	}, {
 		Name:          "OneOrgChannel",
 		Consortium:    "SampleConsortium",
+		Orderers:      []string{"orderer"},
 		Organizations: []string{"Org1"},
 	}},
 }

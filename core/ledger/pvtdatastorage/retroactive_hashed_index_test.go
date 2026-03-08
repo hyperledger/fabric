@@ -8,17 +8,16 @@ package pvtdatastorage
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 // TestConstructHashedIndexAndUpgradeDataFmtRetroactively test that we create hashed indexes retroactively on the existing
@@ -29,9 +28,7 @@ import (
 // a pvtdata from peer v1.1. Block 11 - 13 has not pvt data. Block 14 has pvt data from peer v1.2
 
 func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
-	testWorkingDir, err := ioutil.TempDir("", "pdstore")
-	require.NoError(t, err)
-	defer os.RemoveAll(testWorkingDir)
+	testWorkingDir := t.TempDir()
 
 	require.NoError(t, testutil.CopyDir("testdata/v11_v12/ledgersData/pvtdataStore", testWorkingDir, false))
 	storePath := filepath.Join(testWorkingDir, "pvtdataStore")
@@ -68,7 +65,7 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 	})
 
 	t.Run("upgraded-v11-data-can-be-retrieved", func(t *testing.T) {
-		for blk := 0; blk < 10; blk++ {
+		for blk := range 10 {
 			checkDataNotExists(t, s, blk)
 		}
 
@@ -79,7 +76,7 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 		pvtWS, err := rwsetutil.TxPvtRwSetFromProtoMsg(pvtdata[0].WriteSet)
 		require.NoError(t, err)
 
-		require.Equal(t, &rwsetutil.TxPvtRwSet{
+		rwset := &rwsetutil.TxPvtRwSet{
 			NsPvtRwSet: []*rwsetutil.NsPvtRwSet{
 				{
 					NameSpace: "marbles_private",
@@ -95,7 +92,6 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 								},
 							},
 						},
-
 						{
 							CollectionName: "collectionMarbles",
 							KvRwSet: &kvrwset.KVRWSet{
@@ -110,9 +106,17 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 					},
 				},
 			},
-		},
-			pvtWS,
-		)
+		}
+
+		require.True(t, proto.Equal(rwset.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet, pvtWS.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet) ||
+			proto.Equal(rwset.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet, pvtWS.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet))
+		require.True(t, proto.Equal(rwset.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet, pvtWS.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet) ||
+			proto.Equal(rwset.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet, pvtWS.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet))
+		rwset.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet = nil
+		rwset.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet = nil
+		pvtWS.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet = nil
+		pvtWS.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet = nil
+		require.Equal(t, rwset, pvtWS)
 
 		for blk := 11; blk < 14; blk++ {
 			checkDataNotExists(t, s, blk)
@@ -125,7 +129,7 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 		pvtWS, err = rwsetutil.TxPvtRwSetFromProtoMsg(pvtdata[0].WriteSet)
 		require.NoError(t, err)
 
-		require.Equal(t, &rwsetutil.TxPvtRwSet{
+		rwset = &rwsetutil.TxPvtRwSet{
 			NsPvtRwSet: []*rwsetutil.NsPvtRwSet{
 				{
 					NameSpace: "marbles_private",
@@ -156,9 +160,17 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 					},
 				},
 			},
-		},
-			pvtWS,
-		)
+		}
+
+		require.True(t, proto.Equal(rwset.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet, pvtWS.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet) ||
+			proto.Equal(rwset.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet, pvtWS.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet))
+		require.True(t, proto.Equal(rwset.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet, pvtWS.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet) ||
+			proto.Equal(rwset.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet, pvtWS.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet))
+		rwset.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet = nil
+		rwset.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet = nil
+		pvtWS.NsPvtRwSet[0].CollPvtRwSets[0].KvRwSet = nil
+		pvtWS.NsPvtRwSet[0].CollPvtRwSets[1].KvRwSet = nil
+		require.Equal(t, rwset, pvtWS)
 
 		_, err = s.GetPvtDataByBlockNum(uint64(15), nil)
 		require.EqualError(t, err, "last committed block number [14] smaller than the requested block number [15]")

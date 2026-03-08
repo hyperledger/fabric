@@ -7,17 +7,17 @@ SPDX-License-Identifier: Apache-2.0
 package msgprocessor
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 //go:generate counterfeiter -o mocks/config_resources.go --fake-name Resources . configResources
@@ -53,7 +53,7 @@ func createEnvelope(t *testing.T, serializedIdentity []byte) *common.Envelope {
 }
 
 func createX509Identity(t *testing.T, certFileName string) []byte {
-	certBytes, err := ioutil.ReadFile(filepath.Join("testdata", certFileName))
+	certBytes, err := os.ReadFile(filepath.Join("testdata", certFileName))
 	require.NoError(t, err)
 	sId := &msp.SerializedIdentity{
 		IdBytes: certBytes,

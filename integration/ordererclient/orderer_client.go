@@ -8,9 +8,10 @@ package ordererclient
 
 import (
 	"context"
+	"reflect"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/pkg/errors"
 )
@@ -25,8 +26,7 @@ func Broadcast(n *nwo.Network, o *nwo.Orderer, env *common.Envelope) (*orderer.B
 		return nil, err
 	}
 
-	err = broadcaster.Send(env)
-	if err != nil {
+	if err = broadcaster.Send(env); err != nil {
 		return nil, err
 	}
 
@@ -48,8 +48,7 @@ func Deliver(n *nwo.Network, o *nwo.Orderer, env *common.Envelope) (*common.Bloc
 		return nil, err
 	}
 
-	err = deliverer.Send(env)
-	if err != nil {
+	if err = deliverer.Send(env); err != nil {
 		return nil, err
 	}
 
@@ -58,10 +57,17 @@ func Deliver(n *nwo.Network, o *nwo.Orderer, env *common.Envelope) (*common.Bloc
 		return nil, err
 	}
 
-	blk := resp.GetBlock()
-	if blk == nil {
-		return nil, errors.Errorf("block not found")
-	}
+	switch t := resp.Type.(type) {
+	case *orderer.DeliverResponse_Block:
+		blk := resp.GetBlock()
+		if blk == nil {
+			return nil, errors.Errorf("block not found")
+		}
 
-	return blk, nil
+		return blk, nil
+	case *orderer.DeliverResponse_Status:
+		return nil, errors.Errorf("faulty node, received status: %s", common.Status_name[int32(t.Status)])
+	default:
+		return nil, errors.Errorf("response is of type %v, but expected a block", reflect.TypeOf(resp.Type))
+	}
 }

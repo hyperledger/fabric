@@ -13,16 +13,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger-labs/SmartBFT/pkg/types"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/smartbft"
 	"github.com/hyperledger/fabric/common/viperutil"
 	cf "github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
 )
 
 const (
-	// The type key for etcd based RAFT consensus.
+	// EtcdRaft The type key for etcd based RAFT consensus.
 	EtcdRaft = "etcdraft"
+	BFT      = "BFT"
 )
 
 var logger = flogging.MustGetLogger("common.tools.configtxgen.localconfig")
@@ -38,16 +41,6 @@ const (
 	// only the sample MSP and uses solo for ordering.
 	SampleSingleMSPSoloProfile = "SampleSingleMSPSolo"
 
-	// SampleInsecureKafkaProfile references the sample profile which does not
-	// include any MSPs and uses Kafka for ordering.
-	SampleInsecureKafkaProfile = "SampleInsecureKafka"
-	// SampleDevModeKafkaProfile references the sample profile which requires only
-	// basic membership for admin privileges and uses Kafka for ordering.
-	SampleDevModeKafkaProfile = "SampleDevModeKafka"
-	// SampleSingleMSPKafkaProfile references the sample profile which includes
-	// only the sample MSP and uses Kafka for ordering.
-	SampleSingleMSPKafkaProfile = "SampleSingleMSPKafka"
-
 	// SampleDevModeEtcdRaftProfile references the sample profile used for testing
 	// the etcd/raft-based ordering service.
 	SampleDevModeEtcdRaftProfile = "SampleDevModeEtcdRaft"
@@ -55,10 +48,16 @@ const (
 	// SampleAppChannelInsecureSoloProfile references the sample profile which
 	// does not include any MSPs and uses solo for ordering.
 	SampleAppChannelInsecureSoloProfile = "SampleAppChannelInsecureSolo"
-	// SampleApppChannelEtcdRaftProfile references the sample profile used for
+
+	// SampleAppChannelEtcdRaftProfile references the sample profile used for
 	// testing the etcd/raft-based ordering service using the channel
 	// participation API.
 	SampleAppChannelEtcdRaftProfile = "SampleAppChannelEtcdRaft"
+
+	// SampleAppChannelSmartBftProfile references the sample profile used for
+	// testing the smartbft-based ordering service using the channel
+	// participation API.
+	SampleAppChannelSmartBftProfile = "SampleAppChannelSmartBft"
 
 	// SampleSingleMSPChannelProfile references the sample profile which
 	// includes only the sample MSP and is used to create a channel
@@ -150,16 +149,17 @@ type AnchorPeer struct {
 
 // Orderer contains configuration associated to a channel.
 type Orderer struct {
-	OrdererType   string                   `yaml:"OrdererType"`
-	Addresses     []string                 `yaml:"Addresses"`
-	BatchTimeout  time.Duration            `yaml:"BatchTimeout"`
-	BatchSize     BatchSize                `yaml:"BatchSize"`
-	Kafka         Kafka                    `yaml:"Kafka"`
-	EtcdRaft      *etcdraft.ConfigMetadata `yaml:"EtcdRaft"`
-	Organizations []*Organization          `yaml:"Organizations"`
-	MaxChannels   uint64                   `yaml:"MaxChannels"`
-	Capabilities  map[string]bool          `yaml:"Capabilities"`
-	Policies      map[string]*Policy       `yaml:"Policies"`
+	OrdererType      string                   `yaml:"OrdererType"`
+	Addresses        []string                 `yaml:"Addresses"`
+	BatchTimeout     time.Duration            `yaml:"BatchTimeout"`
+	BatchSize        BatchSize                `yaml:"BatchSize"`
+	ConsenterMapping []*Consenter             `yaml:"ConsenterMapping"`
+	EtcdRaft         *etcdraft.ConfigMetadata `yaml:"EtcdRaft"`
+	SmartBFT         *smartbft.Options        `yaml:"SmartBFT"`
+	Organizations    []*Organization          `yaml:"Organizations"`
+	MaxChannels      uint64                   `yaml:"MaxChannels"`
+	Capabilities     map[string]bool          `yaml:"Capabilities"`
+	Policies         map[string]*Policy       `yaml:"Policies"`
 }
 
 // BatchSize contains configuration affecting the size of batches.
@@ -169,9 +169,14 @@ type BatchSize struct {
 	PreferredMaxBytes uint32 `yaml:"PreferredMaxBytes"`
 }
 
-// Kafka contains configuration for the Kafka-based orderer.
-type Kafka struct {
-	Brokers []string `yaml:"Brokers"`
+type Consenter struct {
+	ID            uint32 `yaml:"ID"`
+	Host          string `yaml:"Host"`
+	Port          uint32 `yaml:"Port"`
+	MSPID         string `yaml:"MSPID"`
+	Identity      string `yaml:"Identity"`
+	ClientTLSCert string `yaml:"ClientTLSCert"`
+	ServerTLSCert string `yaml:"ServerTLSCert"`
 }
 
 var genesisDefaults = TopLevel{
@@ -183,9 +188,6 @@ var genesisDefaults = TopLevel{
 			AbsoluteMaxBytes:  10 * 1024 * 1024,
 			PreferredMaxBytes: 2 * 1024 * 1024,
 		},
-		Kafka: Kafka{
-			Brokers: []string{"127.0.0.1:9092"},
-		},
 		EtcdRaft: &etcdraft.ConfigMetadata{
 			Options: &etcdraft.Options{
 				TickInterval:         "500ms",
@@ -194,6 +196,23 @@ var genesisDefaults = TopLevel{
 				MaxInflightBlocks:    5,
 				SnapshotIntervalSize: 16 * 1024 * 1024, // 16 MB
 			},
+		},
+		SmartBFT: &smartbft.Options{
+			RequestBatchMaxCount:      types.DefaultConfig.RequestBatchMaxCount,
+			RequestBatchMaxBytes:      types.DefaultConfig.RequestBatchMaxBytes,
+			RequestBatchMaxInterval:   types.DefaultConfig.RequestBatchMaxInterval.String(),
+			IncomingMessageBufferSize: types.DefaultConfig.IncomingMessageBufferSize,
+			RequestPoolSize:           types.DefaultConfig.RequestPoolSize,
+			RequestForwardTimeout:     types.DefaultConfig.RequestForwardTimeout.String(),
+			RequestComplainTimeout:    types.DefaultConfig.RequestComplainTimeout.String(),
+			RequestAutoRemoveTimeout:  types.DefaultConfig.RequestAutoRemoveTimeout.String(),
+			ViewChangeResendInterval:  types.DefaultConfig.ViewChangeResendInterval.String(),
+			ViewChangeTimeout:         types.DefaultConfig.ViewChangeTimeout.String(),
+			LeaderHeartbeatTimeout:    types.DefaultConfig.LeaderHeartbeatTimeout.String(),
+			LeaderHeartbeatCount:      types.DefaultConfig.LeaderHeartbeatCount,
+			CollectTimeout:            types.DefaultConfig.CollectTimeout.String(),
+			SyncOnStart:               types.DefaultConfig.SyncOnStart,
+			SpeedUpViewChange:         types.DefaultConfig.SpeedUpViewChange,
 		},
 	},
 }
@@ -332,11 +351,6 @@ loop:
 	switch ord.OrdererType {
 	case "solo":
 		// nothing to be done here
-	case "kafka":
-		if ord.Kafka.Brokers == nil {
-			logger.Infof("Orderer.Kafka unset, setting to %v", genesisDefaults.Orderer.Kafka.Brokers)
-			ord.Kafka.Brokers = genesisDefaults.Orderer.Kafka.Brokers
-		}
 	case EtcdRaft:
 		if ord.EtcdRaft == nil {
 			logger.Panicf("%s configuration missing", EtcdRaft)
@@ -405,6 +419,40 @@ loop:
 			cf.TranslatePathInPlace(configDir, &serverCertPath)
 			c.ServerTlsCert = []byte(serverCertPath)
 		}
+	case BFT:
+		if ord.SmartBFT == nil {
+			logger.Infof("Orderer.SmartBFT.Options unset, setting to %v", genesisDefaults.Orderer.SmartBFT)
+			ord.SmartBFT = genesisDefaults.Orderer.SmartBFT
+		}
+
+		if len(ord.ConsenterMapping) == 0 {
+			logger.Panicf("%s configuration did not specify any consenter", BFT)
+		}
+
+		for _, c := range ord.ConsenterMapping {
+			if c.Host == "" {
+				logger.Panicf("consenter info in %s configuration did not specify host", BFT)
+			}
+			if c.Port == 0 {
+				logger.Panicf("consenter info in %s configuration did not specify port", BFT)
+			}
+			if c.ClientTLSCert == "" {
+				logger.Panicf("consenter info in %s configuration did not specify client TLS cert", BFT)
+			}
+			if c.ServerTLSCert == "" {
+				logger.Panicf("consenter info in %s configuration did not specify server TLS cert", BFT)
+			}
+			if len(c.MSPID) == 0 {
+				logger.Panicf("consenter info in %s configuration did not specify MSP ID", BFT)
+			}
+			if len(c.Identity) == 0 {
+				logger.Panicf("consenter info in %s configuration did not specify identity certificate", BFT)
+			}
+
+			cf.TranslatePathInPlace(configDir, &c.ClientTLSCert)
+			cf.TranslatePathInPlace(configDir, &c.ServerTLSCert)
+			cf.TranslatePathInPlace(configDir, &c.Identity)
+		}
 	default:
 		logger.Panicf("unknown orderer type: %s", ord.OrdererType)
 	}
@@ -426,7 +474,7 @@ var cache = &configCache{
 }
 
 // load loads the TopLevel config structure from configCache.
-// if not successful, it unmarshal a config file, and populate configCache
+// if not successful, it unmarshals a config file, and populate configCache
 // with marshaled TopLevel struct.
 func (c *configCache) load(config *viperutil.ConfigParser, configPath string) (*TopLevel, error) {
 	c.mutex.Lock()

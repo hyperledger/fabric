@@ -9,11 +9,11 @@ package tests
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 // committer helps in cutting a block and commits the block (with pvt data) to the ledger
@@ -90,7 +90,7 @@ func (g *blkGenerator) nextBlockAndPvtdata(trans []*txAndPvtdata, missingPvtData
 			blockPvtdata[seq] = &ledger.TxPvtData{SeqInBlock: seq, WriteSet: tran.Pvtws}
 		}
 	}
-	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
 	g.lastNum++
 	g.lastHash = protoutil.BlockHeaderHash(block.Header)
 	setBlockFlagsToValid(block)

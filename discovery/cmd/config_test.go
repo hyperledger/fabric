@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"testing"
 
-	. "github.com/hyperledger/fabric-protos-go/discovery"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	discprotos "github.com/hyperledger/fabric-protos-go-apiv2/discovery"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric/cmd/common"
 	discovery "github.com/hyperledger/fabric/discovery/cmd"
 	"github.com/hyperledger/fabric/discovery/cmd/mocks"
@@ -79,13 +79,13 @@ func TestParseConfigResponse(t *testing.T) {
 	})
 
 	t.Run("Success", func(t *testing.T) {
-		chanRes.On("Config").Return(&ConfigResult{
+		chanRes.On("Config").Return(&discprotos.ConfigResult{
 			Msps: map[string]*msp.FabricMSPConfig{
 				"Org1MSP": nil,
 				"Org2MSP": nil,
 			},
-			Orderers: map[string]*Endpoints{
-				"OrdererMSP": {Endpoint: []*Endpoint{
+			Orderers: map[string]*discprotos.Endpoints{
+				"OrdererMSP": {Endpoint: []*discprotos.Endpoint{
 					{Host: "orderer1", Port: 7050},
 				}},
 			},

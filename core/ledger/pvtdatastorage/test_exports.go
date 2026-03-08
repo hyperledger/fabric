@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package pvtdatastorage
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
 	"time"
 
@@ -45,11 +43,7 @@ func NewTestStoreEnv(
 	ledgerid string,
 	btlPolicy pvtdatapolicy.BTLPolicy,
 	conf *PrivateDataConfig) *StoreEnv {
-	storeDir, err := ioutil.TempDir("", "pdstore")
-	if err != nil {
-		t.Fatalf("Failed to create private data storage directory: %s", err)
-	}
-	conf.StorePath = storeDir
+	conf.StorePath = t.TempDir()
 	testStoreProvider, err := NewProvider(conf)
 	require.NoError(t, err)
 	testStore, err := testStoreProvider.OpenStore(ledgerid)
@@ -72,8 +66,4 @@ func (env *StoreEnv) CloseAndReopen() {
 // Cleanup cleansup the  store env after testing
 func (env *StoreEnv) Cleanup() {
 	env.TestStoreProvider.Close()
-	env.TestStore.db.Close()
-	if err := os.RemoveAll(env.conf.StorePath); err != nil {
-		env.t.Errorf("error while removing path %s, %v", env.conf.StorePath, err)
-	}
 }

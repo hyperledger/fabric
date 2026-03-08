@@ -56,10 +56,10 @@ Fabric components correspond to the user, issuer, and verifier in Idemix.
 * The Fabric Java SDK is the API for the **user**. In the future, other Fabric
   SDKs will also support Idemix.
 
-* Fabric provides two possible Idemix **issuers**:
+* There are two possible Idemix **issuers**:
 
    a) Fabric CA for production environments or development, and
-   b) the :doc:`idemixgen <idemixgen>` tool for development environments.
+   b) the `idemixgen <https://github.com/IBM/idemix/blob/main/tools/idemixgen/idemixgen.rst>`_ tool for development environments.
 
 * The **verifier** is an Idemix MSP in Fabric.
 

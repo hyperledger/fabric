@@ -8,5 +8,5 @@ There are two ways to report a security bug. The easiest is to email a descripti
 
 The other way is to file a confidential security bug in the repository's [security advisories page](https://github.com/hyperledger/fabric/security/advisories). Guidance can be found in the GitHub documentation on [privately reporting a security vulnerability](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing/privately-reporting-a-security-vulnerability).
 
-The process by which the Hyperledger Security Team handles security bugs is documented further in our [Defect Response page](https://wiki.hyperledger.org/display/SEC/Defect+Response) on our [wiki](https://wiki.hyperledger.org).
+The process by which the Hyperledger Security Team handles security bugs is documented further in our [Defect Response page](https://lf-hyperledger.atlassian.net/wiki/spaces/SEC/pages/20283618/Defect+Response) on our [wiki](https://lf-hyperledger.atlassian.net/wiki).
 

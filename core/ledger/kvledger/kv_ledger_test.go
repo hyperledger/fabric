@@ -10,13 +10,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/queryresult"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -29,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -63,8 +63,7 @@ func TestKVLedgerNilHistoryDBProvider(t *testing.T) {
 
 func TestKVLedgerBlockStorage(t *testing.T) {
 	t.Run("green-path", func(t *testing.T) {
-		conf, cleanup := testConfig(t)
-		defer cleanup()
+		conf := testConfig(t)
 		provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 		defer provider.Close()
 
@@ -75,9 +74,9 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 		defer lgr.Close()
 
 		bcInfo, _ := lgr.GetBlockchainInfo()
-		require.Equal(t, &common.BlockchainInfo{
+		require.True(t, proto.Equal(&common.BlockchainInfo{
 			Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil,
-		}, bcInfo)
+		}, bcInfo))
 
 		txid := util.GenerateUUID()
 		simulator, _ := lgr.NewTxSimulator(txid)
@@ -92,9 +91,9 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 
 		bcInfo, _ = lgr.GetBlockchainInfo()
 		block1Hash := protoutil.BlockHeaderHash(block1.Header)
-		require.Equal(t, &common.BlockchainInfo{
+		require.True(t, proto.Equal(&common.BlockchainInfo{
 			Height: 2, CurrentBlockHash: block1Hash, PreviousBlockHash: gbHash,
-		}, bcInfo)
+		}, bcInfo))
 
 		txid = util.GenerateUUID()
 		simulator, _ = lgr.NewTxSimulator(txid)
@@ -109,9 +108,9 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 
 		bcInfo, _ = lgr.GetBlockchainInfo()
 		block2Hash := protoutil.BlockHeaderHash(block2.Header)
-		require.Equal(t, &common.BlockchainInfo{
+		require.True(t, proto.Equal(&common.BlockchainInfo{
 			Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash,
-		}, bcInfo)
+		}, bcInfo))
 
 		b0, _ := lgr.GetBlockByHash(gbHash)
 		require.True(t, proto.Equal(b0, gb), "proto messages are not equal")
@@ -123,7 +122,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 		require.True(t, proto.Equal(b0, gb), "proto messages are not equal")
 
 		b1, _ = lgr.GetBlockByNumber(1)
-		require.Equal(t, block1, b1)
+		require.True(t, proto.Equal(block1, b1))
 
 		// get the tran id from the 2nd block, then use it to test GetTransactionByID()
 		txEnvBytes2 := block1.Data.Data[0]
@@ -143,7 +142,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 		require.NoError(t, err, "Error upon GetTransactionByID")
 		// get the tran envelope from the retrieved ProcessedTransaction
 		retrievedTxEnv2 := processedTran2.TransactionEnvelope
-		require.Equal(t, txEnv2, retrievedTxEnv2)
+		require.True(t, proto.Equal(txEnv2, retrievedTxEnv2))
 
 		//  get the tran id from the 2nd block, then use it to test GetBlockByTxID
 		b1, _ = lgr.GetBlockByTxID(txID2)
@@ -161,8 +160,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	})
 
 	t.Run("error-path", func(t *testing.T) {
-		conf, cleanup := testConfig(t)
-		defer cleanup()
+		conf := testConfig(t)
 		provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 		defer provider.Close()
 
@@ -179,8 +177,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 }
 
 func TestAddCommitHash(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
@@ -232,8 +229,7 @@ func TestAddCommitHash(t *testing.T) {
 
 func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 	t.Skip()
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
@@ -298,8 +294,7 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 }
 
 func TestKVLedgerDBRecovery(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	nsCollBtlConfs := []*nsCollBtlConfig{
 		{
 			namespace: "ns",
@@ -341,10 +336,10 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		},
 	)
 
-	//======================================================================================
+	// ======================================================================================
 	// SCENARIO 1: peer writes the second block to the block storage and fails
 	// before committing the block to state DB and history DB
-	//======================================================================================
+	// ======================================================================================
 	blockAndPvtdata2 := prepareNextBlockForTest(t, ledger1, bg, "SimulateForBlk2",
 		map[string]string{"key1": "value1.2", "key2": "value2.2", "key3": "value3.2"},
 		map[string]string{"key1": "pvtValue1.2", "key2": "pvtValue2.2", "key3": "pvtValue3.2"})
@@ -398,10 +393,10 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		},
 	)
 
-	//======================================================================================
+	// ======================================================================================
 	// SCENARIO 2: peer fails after committing the third block to the block storage and state DB
 	// but before committing to history DB
-	//======================================================================================
+	// ======================================================================================
 	blockAndPvtdata3 := prepareNextBlockForTest(t, ledger2, bg, "SimulateForBlk3",
 		map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
 		map[string]string{"key1": "pvtValue1.3", "key2": "pvtValue2.3", "key3": "pvtValue3.3"},
@@ -458,10 +453,10 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	)
 
 	// Rare scenario
-	//======================================================================================
+	// ======================================================================================
 	// SCENARIO 3: peer fails after committing the fourth block to the block storgae
 	// and history DB but before committing to state DB
-	//======================================================================================
+	// ======================================================================================
 	blockAndPvtdata4 := prepareNextBlockForTest(t, ledger3, bg, "SimulateForBlk4",
 		map[string]string{"key1": "value1.4", "key2": "value2.4", "key3": "value3.4"},
 		map[string]string{"key1": "pvtValue1.4", "key2": "pvtValue2.4", "key3": "pvtValue3.4"},
@@ -517,8 +512,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 }
 
 func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
@@ -629,8 +623,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 }
 
 func TestPvtDataAPIs(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
@@ -643,9 +636,9 @@ func TestPvtDataAPIs(t *testing.T) {
 	lgr.(*kvLedger).pvtdataStore.Init(btlPolicyForSampleData())
 
 	bcInfo, _ := lgr.GetBlockchainInfo()
-	require.Equal(t, &common.BlockchainInfo{
+	require.True(t, proto.Equal(&common.BlockchainInfo{
 		Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil,
-	}, bcInfo)
+	}, bcInfo))
 
 	kvlgr := lgr.(*kvLedger)
 
@@ -694,7 +687,7 @@ func TestPvtDataAPIs(t *testing.T) {
 	filter.Add("ns-1", "coll-1")
 	blockAndPvtdata, err = lgr.GetPvtDataAndBlockByNum(4, filter)
 	require.NoError(t, err)
-	require.Equal(t, sampleData[3].Block, blockAndPvtdata.Block)
+	require.True(t, proto.Equal(sampleData[3].Block, blockAndPvtdata.Block))
 	// two transactions should be present
 	require.Equal(t, 2, len(blockAndPvtdata.PvtData))
 	// both tran number 4 and 6 should have only one collection because of filter
@@ -726,8 +719,7 @@ func TestPvtDataAPIs(t *testing.T) {
 }
 
 func TestCrashAfterPvtdataStoreCommit(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	ccInfoProvider := &mock.DeployedChaincodeInfoProvider{}
 	ccInfoProvider.CollectionInfoReturns(&peer.StaticCollectionConfig{BlockToLive: 0}, nil)
 	provider := testutilNewProvider(conf, t, ccInfoProvider)
@@ -827,8 +819,7 @@ func testVerifyPvtData(t *testing.T, lgr ledger.PeerLedger, blockNum uint64, exp
 }
 
 func TestPvtStoreAheadOfBlockStore(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	ccInfoProvider := &mock.DeployedChaincodeInfoProvider{}
 	ccInfoProvider.CollectionInfoReturns(&peer.StaticCollectionConfig{BlockToLive: 0}, nil)
 	provider := testutilNewProvider(conf, t, ccInfoProvider)
@@ -926,8 +917,7 @@ func TestPvtStoreAheadOfBlockStore(t *testing.T) {
 }
 
 func TestCommitToPvtAndBlockstoreError(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	ccInfoProvider := &mock.DeployedChaincodeInfoProvider{}
 	ccInfoProvider.CollectionInfoReturns(&peer.StaticCollectionConfig{BlockToLive: 0}, nil)
 	provider1 := testutilNewProvider(conf, t, ccInfoProvider)
@@ -979,7 +969,7 @@ func TestCollectionConfigHistoryRetriever(t *testing.T) {
 
 	init := func() {
 		var err error
-		conf, cleanupFunc := testConfig(t)
+		conf := testConfig(t)
 		mockDeployedCCInfoProvider = &mock.DeployedChaincodeInfoProvider{}
 		provider = testutilNewProvider(conf, t, mockDeployedCCInfoProvider)
 		ledgerID := "testLedger"
@@ -989,7 +979,6 @@ func TestCollectionConfigHistoryRetriever(t *testing.T) {
 		cleanup = func() {
 			lgr.Close()
 			provider.Close()
-			cleanupFunc()
 		}
 	}
 
@@ -1104,7 +1093,12 @@ func TestCollectionConfigHistoryRetriever(t *testing.T) {
 
 				actualOutput, err := r.MostRecentCollectionConfigBelow(testcase.explicitCollConfigsBlockNum+1, chaincodeName)
 				require.NoError(t, err)
-				require.Equal(t, testcase.expectedOutput, actualOutput)
+				if testcase.expectedOutput != nil && actualOutput != nil {
+					require.Equal(t, testcase.expectedOutput.CommittingBlockNum, actualOutput.CommittingBlockNum)
+					require.True(t, proto.Equal(testcase.expectedOutput.CollectionConfig, actualOutput.CollectionConfig))
+				} else {
+					require.Equal(t, testcase.expectedOutput, actualOutput)
+				}
 			},
 		)
 	}
@@ -1239,8 +1233,7 @@ func TestCommitNotifications(t *testing.T) {
 }
 
 func TestCommitNotificationsOnBlockCommit(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
@@ -1372,7 +1365,7 @@ func testutilCollConfigPkg(colls []*peer.StaticCollectionConfig) *peer.Collectio
 func sampleDataWithPvtdataForSelectiveTx(t *testing.T, bg *testutil.BlockGenerator) []*ledger.BlockAndPvtData {
 	var blockAndpvtdata []*ledger.BlockAndPvtData
 	blocks := bg.NextTestBlocks(10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		blockAndpvtdata = append(blockAndpvtdata, &ledger.BlockAndPvtData{Block: blocks[i]})
 	}
 
@@ -1390,7 +1383,7 @@ func sampleDataWithPvtdataForSelectiveTx(t *testing.T, bg *testutil.BlockGenerat
 	missingData.Add(4, "ns-4", "coll-4", true)
 	missingData.Add(5, "ns-5", "coll-5", true)
 	blockAndpvtdata[5].MissingPvtData = missingData
-	txFilter = txflags.ValidationFlags(blockAndpvtdata[5].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txFilter = blockAndpvtdata[5].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER]
 	txFilter.SetFlag(5, peer.TxValidationCode_INVALID_WRITESET)
 	blockAndpvtdata[5].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txFilter
 
@@ -1406,7 +1399,7 @@ func sampleDataWithPvtdataForSelectiveTx(t *testing.T, bg *testutil.BlockGenerat
 func sampleDataWithPvtdataForAllTxs(t *testing.T, bg *testutil.BlockGenerator) []*ledger.BlockAndPvtData {
 	var blockAndpvtdata []*ledger.BlockAndPvtData
 	blocks := bg.NextTestBlocks(10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		blockAndpvtdata = append(blockAndpvtdata,
 			&ledger.BlockAndPvtData{
 				Block:   blocks[i],

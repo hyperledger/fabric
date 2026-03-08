@@ -19,16 +19,16 @@ package rwsetutil
 import (
 	"bytes"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
+	"google.golang.org/protobuf/proto"
 )
 
-/////////////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////////////
 // Messages related to PUBLIC read-write set
-/////////////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////////////
 
 // TxRwSet acts as a proxy of 'rwset.TxReadWriteSet' proto message and helps constructing Read-write set specifically for KV data model
 type TxRwSet struct {
@@ -75,9 +75,9 @@ func (nsRwSet *NsRwSet) getPvtDataHash(coll string) []byte {
 	return nil
 }
 
-/////////////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////////////
 // Messages related to PRIVATE read-write set
-/////////////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////////////
 
 // TxPvtRwSet represents 'rwset.TxPvtReadWriteSet' proto message
 type TxPvtRwSet struct {
@@ -97,9 +97,9 @@ type CollPvtRwSet struct {
 	KvRwSet        *kvrwset.KVRWSet
 }
 
-/////////////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////////////
 // FUNCTIONS for converting messages to/from proto bytes
-/////////////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////////////
 
 // ToProtoBytes constructs TxReadWriteSet proto message and serializes using protobuf Marshal
 func (txRwSet *TxRwSet) ToProtoBytes() ([]byte, error) {
@@ -249,11 +249,11 @@ func (txRwSet *TxRwSet) NumCollections() int {
 	return numColls
 }
 
-///////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
 // functions for private read-write set
-///////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
 
-// ToToProtoMsg transforms the struct into equivalent proto message
+// ToProtoMsg transforms the struct into equivalent proto message
 func (txPvtRwSet *TxPvtRwSet) ToProtoMsg() (*rwset.TxPvtReadWriteSet, error) {
 	protoMsg := &rwset.TxPvtReadWriteSet{DataModel: rwset.TxReadWriteSet_KV}
 	var nsProtoMsg *rwset.NsPvtReadWriteSet

@@ -57,15 +57,16 @@ func (fake *ChannelConfig) BlockDataHashingStructureWidth() uint32 {
 	ret, specificReturn := fake.blockDataHashingStructureWidthReturnsOnCall[len(fake.blockDataHashingStructureWidthArgsForCall)]
 	fake.blockDataHashingStructureWidthArgsForCall = append(fake.blockDataHashingStructureWidthArgsForCall, struct {
 	}{})
+	stub := fake.BlockDataHashingStructureWidthStub
+	fakeReturns := fake.blockDataHashingStructureWidthReturns
 	fake.recordInvocation("BlockDataHashingStructureWidth", []interface{}{})
 	fake.blockDataHashingStructureWidthMutex.Unlock()
-	if fake.BlockDataHashingStructureWidthStub != nil {
-		return fake.BlockDataHashingStructureWidthStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.blockDataHashingStructureWidthReturns
 	return fakeReturns.result1
 }
 
@@ -109,15 +110,16 @@ func (fake *ChannelConfig) Capabilities() channelconfig.ChannelCapabilities {
 	ret, specificReturn := fake.capabilitiesReturnsOnCall[len(fake.capabilitiesArgsForCall)]
 	fake.capabilitiesArgsForCall = append(fake.capabilitiesArgsForCall, struct {
 	}{})
+	stub := fake.CapabilitiesStub
+	fakeReturns := fake.capabilitiesReturns
 	fake.recordInvocation("Capabilities", []interface{}{})
 	fake.capabilitiesMutex.Unlock()
-	if fake.CapabilitiesStub != nil {
-		return fake.CapabilitiesStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.capabilitiesReturns
 	return fakeReturns.result1
 }
 
@@ -161,15 +163,16 @@ func (fake *ChannelConfig) HashingAlgorithm() func(input []byte) []byte {
 	ret, specificReturn := fake.hashingAlgorithmReturnsOnCall[len(fake.hashingAlgorithmArgsForCall)]
 	fake.hashingAlgorithmArgsForCall = append(fake.hashingAlgorithmArgsForCall, struct {
 	}{})
+	stub := fake.HashingAlgorithmStub
+	fakeReturns := fake.hashingAlgorithmReturns
 	fake.recordInvocation("HashingAlgorithm", []interface{}{})
 	fake.hashingAlgorithmMutex.Unlock()
-	if fake.HashingAlgorithmStub != nil {
-		return fake.HashingAlgorithmStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.hashingAlgorithmReturns
 	return fakeReturns.result1
 }
 
@@ -213,15 +216,16 @@ func (fake *ChannelConfig) OrdererAddresses() []string {
 	ret, specificReturn := fake.ordererAddressesReturnsOnCall[len(fake.ordererAddressesArgsForCall)]
 	fake.ordererAddressesArgsForCall = append(fake.ordererAddressesArgsForCall, struct {
 	}{})
+	stub := fake.OrdererAddressesStub
+	fakeReturns := fake.ordererAddressesReturns
 	fake.recordInvocation("OrdererAddresses", []interface{}{})
 	fake.ordererAddressesMutex.Unlock()
-	if fake.OrdererAddressesStub != nil {
-		return fake.OrdererAddressesStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.ordererAddressesReturns
 	return fakeReturns.result1
 }
 

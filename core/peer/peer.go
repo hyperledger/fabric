@@ -10,12 +10,13 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/deliver"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/deliverclient/orderers"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/semaphore"
@@ -34,7 +35,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipservice "github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
-	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
@@ -92,11 +92,8 @@ func (p *Peer) updateTrustedRoots(cm channelconfig.Resources) {
 
 	p.CredentialSupport.BuildTrustedRootsForChain(cm)
 
-	// now iterate over all roots for all app and orderer channels
-	var trustedRoots [][]byte
-	for _, roots := range p.CredentialSupport.AppRootCAsByChain() {
-		trustedRoots = append(trustedRoots, roots...)
-	}
+	trustedRoots := p.CredentialSupport.AppRootCAsByChain()
+
 	trustedRoots = append(trustedRoots, p.ServerConfig.SecOpts.ClientRootCAs...)
 	trustedRoots = append(trustedRoots, p.ServerConfig.SecOpts.ServerRootCAs...)
 
@@ -256,6 +253,10 @@ func (p *Peer) createChannel(
 
 	channelconfig.LogSanityChecks(bundle)
 
+	if _, ok := bundle.OrdererConfig(); !ok {
+		return errors.Errorf("[channel %s] cannot create channel because ChannelConfig is missing OrdererConfig", bundle.ConfigtxValidator().ChannelID())
+	}
+
 	gossipEventer := p.GossipService.NewConfigEventer()
 
 	gossipCallbackWrapper := func(bundle *channelconfig.Bundle) {
@@ -287,28 +288,6 @@ func (p *Peer) createChannel(
 		mspmgmt.XXXSetMSPManager(cid, bundle.MSPManager())
 	}
 
-	osLogger := flogging.MustGetLogger("peer.orderers")
-	namedOSLogger := osLogger.With("channel", cid)
-	ordererSource := orderers.NewConnectionSource(namedOSLogger, p.OrdererEndpointOverrides)
-
-	ordererSourceCallback := func(bundle *channelconfig.Bundle) {
-		globalAddresses := bundle.ChannelConfig().OrdererAddresses()
-		orgAddresses := map[string]orderers.OrdererOrg{}
-		if ordererConfig, ok := bundle.OrdererConfig(); ok {
-			for orgName, org := range ordererConfig.Organizations() {
-				var certs [][]byte
-				certs = append(certs, org.MSP().GetTLSRootCerts()...)
-				certs = append(certs, org.MSP().GetTLSIntermediateCerts()...)
-
-				orgAddresses[orgName] = orderers.OrdererOrg{
-					Addresses: org.Endpoints(),
-					RootCerts: certs,
-				}
-			}
-		}
-		ordererSource.Update(globalAddresses, orgAddresses)
-	}
-
 	channel := &Channel{
 		ledger:         l,
 		resources:      bundle,
@@ -316,7 +295,6 @@ func (p *Peer) createChannel(
 	}
 
 	callbacks := []channelconfig.BundleActor{
-		ordererSourceCallback,
 		gossipCallbackWrapper,
 		trustedRootsCallbackWrapper,
 		mspCallback,
@@ -369,13 +347,21 @@ func (p *Peer) createChannel(
 		return p.Channel(channelID).MSPManager()
 	}
 	simpleCollectionStore := privdata.NewSimpleCollectionStore(l, deployedCCInfoProvider, idDeserializerFactory)
-	p.GossipService.InitializeChannel(bundle.ConfigtxValidator().ChannelID(), ordererSource, store, gossipservice.Support{
-		Validator:            validator,
-		Committer:            committer,
-		CollectionStore:      simpleCollectionStore,
-		IdDeserializeFactory: idDeserializerFactory,
-		CapabilityProvider:   channel,
-	})
+
+	p.GossipService.InitializeChannel(
+		bundle.ConfigtxValidator().ChannelID(),
+		p.OrdererEndpointOverrides,
+		store,
+		gossipservice.Support{
+			Validator:            validator,
+			Committer:            committer,
+			CollectionStore:      simpleCollectionStore,
+			IdDeserializeFactory: idDeserializerFactory,
+			CapabilityProvider:   channel,
+		},
+		chanConf,
+		p.CryptoProvider,
+	)
 
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -461,8 +447,8 @@ func (p *Peer) GetPolicyManager(cid string) policies.Manager {
 	return nil
 }
 
-// JoinBySnaphotStatus queries ledger mgr to get the status of joinbysnapshot
-func (p *Peer) JoinBySnaphotStatus() *pb.JoinBySnapshotStatus {
+// JoinBySnapshotStatus queries ledger mgr to get the status of joinbysnapshot
+func (p *Peer) JoinBySnapshotStatus() *pb.JoinBySnapshotStatus {
 	return p.LedgerMgr.JoinBySnapshotStatus()
 }
 

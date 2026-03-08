@@ -8,34 +8,33 @@ package nwo_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
-
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
 var _ = Describe("Network", func() {
 	var (
-		client  *docker.Client
+		client  dcli.APIClient
 		tempDir string
 	)
 
 	BeforeEach(func() {
 		var err error
-		tempDir, err = ioutil.TempDir("", "nwo")
+		tempDir, err = os.MkdirTemp("", "nwo")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -43,49 +42,39 @@ var _ = Describe("Network", func() {
 		os.RemoveAll(tempDir)
 	})
 
-	Describe("solo network", func() {
+	Describe("etcdraft network", func() {
 		var network *nwo.Network
-		var process ifrit.Process
+		var ordererRunner *ginkgomon.Runner
+		var ordererProcess, peerProcess ifrit.Process
 
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicSolo(), tempDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicEtcdRaft(), tempDir, client, StartPort(), components)
 
 			// Generate config and bootstrap the network
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
 			// Start all of the fabric processes
-			networkRunner := network.NetworkGroupRunner()
-			process = ifrit.Invoke(networkRunner)
-			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 		})
 
 		AfterEach(func() {
-			// Shutdown processes and cleanup
-			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
-			network.Cleanup()
-		})
-
-		It("deploys and executes chaincode (simple) using the legacy lifecycle", func() {
-			orderer := network.Orderer("orderer")
-			peer := network.Peer("Org1", "peer0")
-
-			legacyChaincode := nwo.Chaincode{
-				Name:    "mycc",
-				Version: "0.0",
-				Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-				Ctor:    `{"Args":["init","a","100","b","200"]}`,
-				Policy:  `AND ('Org1MSP.member','Org2MSP.member')`,
+			if ordererProcess != nil {
+				ordererProcess.Signal(syscall.SIGTERM)
+				Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 			}
 
-			network.CreateAndJoinChannels(orderer)
-			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, legacyChaincode)
-			RunQueryInvokeQuery(network, orderer, peer, 100)
+			if peerProcess != nil {
+				peerProcess.Signal(syscall.SIGTERM)
+				Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+			}
+
+			network.Cleanup()
 		})
 
 		It("deploys and executes chaincode (simple) using _lifecycle", func() {
 			orderer := network.Orderer("orderer")
+			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 			peer := network.Peer("Org1", "peer0")
 
 			chaincode := nwo.Chaincode{
@@ -101,9 +90,6 @@ var _ = Describe("Network", func() {
 				Label:           "my_simple_chaincode",
 			}
 
-			network.CreateAndJoinChannels(orderer)
-
-			network.UpdateChannelAnchors(orderer, "testchannel")
 			network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
 
 			nwo.EnableCapabilities(

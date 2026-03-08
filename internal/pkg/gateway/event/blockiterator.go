@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package event
 
 import (
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/pkg/errors"
 )

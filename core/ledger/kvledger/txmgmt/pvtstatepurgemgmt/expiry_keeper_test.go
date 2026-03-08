@@ -7,13 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package pvtstatepurgemgmt
 
 import (
-	fmt "fmt"
+	"fmt"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestExpiryKVEncoding(t *testing.T) {
@@ -88,7 +88,7 @@ func TestExpiryKeeper(t *testing.T) {
 func buildPvtdataKeysForTest(startingEntry int, numEntries int) *PvtdataKeys {
 	pvtdataKeys := newPvtdataKeys()
 	for i := startingEntry; i <= startingEntry+numEntries; i++ {
-		pvtdataKeys.add(fmt.Sprintf("ns-%d", i), fmt.Sprintf("coll-%d", i), fmt.Sprintf("key-%d", i), []byte(fmt.Sprintf("key-%d-hash", i)))
+		pvtdataKeys.add(fmt.Sprintf("ns-%d", i), fmt.Sprintf("coll-%d", i), fmt.Sprintf("key-%d", i), fmt.Appendf(nil, "key-%d-hash", i))
 	}
 	return pvtdataKeys
 }

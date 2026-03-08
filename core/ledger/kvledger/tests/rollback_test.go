@@ -89,7 +89,7 @@ func TestRollbackKVLedgerWithBTL(t *testing.T) {
 	l.verifyBlockAndPvtDataSameAs(2, blk2)             // key1 and key2 should still exist in the pvtdata storage
 
 	// commit 2 more blocks with some random key/vals
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		l.simulateDataTx("", func(s *simulator) {
 			s.setPvtdata("cc1", "coll1", "someOtherKey", "someOtherVal")
 			s.setPvtdata("cc1", "coll2", "someOtherKey", "someOtherVal")
@@ -143,7 +143,7 @@ func TestRollbackKVLedgerWithBTL(t *testing.T) {
 	l.cutBlockAndCommitLegacy()
 
 	// commit 2 more blocks with some random key/vals
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		l.simulateDataTx("", func(s *simulator) {
 			s.setPvtdata("cc1", "coll1", "someOtherKey", "someOtherVal")
 			s.setPvtdata("cc1", "coll2", "someOtherKey", "someOtherVal")

@@ -11,11 +11,10 @@ import (
 	"encoding/gob"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-chaincode-go/shim"
-	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
+	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
+	mspprotos "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	lb "github.com/hyperledger/fabric-protos-go-apiv2/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/policydsl"
@@ -24,10 +23,12 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/dispatcher"
 	"github.com/hyperledger/fabric/core/ledger"
+	. "github.com/hyperledger/fabric/internal/test"
 	"github.com/hyperledger/fabric/msp"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ = Describe("SCC", func() {
@@ -497,10 +498,7 @@ var _ = Describe("SCC", func() {
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),
 				}))
-				Expect(proto.Equal(
-					cd.Collections,
-					collConfigs.toProtoCollectionConfigPackage(),
-				)).Should(BeTrue())
+				Expect(cd.Collections).To(ProtoEqual(collConfigs.toProtoCollectionConfigPackage()))
 
 				Expect(packageID).To(Equal("hash"))
 				Expect(pubState).To(Equal(fakeStub))
@@ -974,7 +972,7 @@ var _ = Describe("SCC", func() {
 				chname, ccname, cd, pubState, orgStates := fakeSCCFuncs.CommitChaincodeDefinitionArgsForCall(0)
 				Expect(chname).To(Equal("test-channel"))
 				Expect(ccname).To(Equal("cc-name2"))
-				Expect(cd).To(Equal(&lifecycle.ChaincodeDefinition{
+				etl := &lifecycle.ChaincodeDefinition{
 					Sequence: 7,
 					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 						Version:           "version-2+2",
@@ -1001,7 +999,11 @@ var _ = Describe("SCC", func() {
 							},
 						},
 					},
-				}))
+				}
+				Expect(cd.Sequence).To(Equal(etl.Sequence))
+				Expect(cd.EndorsementInfo).To(ProtoEqual(etl.EndorsementInfo))
+				Expect(cd.Collections).To(ProtoEqual(etl.Collections))
+				Expect(cd.ValidationInfo).To(ProtoEqual(etl.ValidationInfo))
 				Expect(pubState).To(Equal(fakeStub))
 				Expect(len(orgStates)).To(Equal(2))
 				Expect(orgStates[0]).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
@@ -1224,7 +1226,7 @@ var _ = Describe("SCC", func() {
 				fakeSCCFuncs.CheckCommitReadinessReturns(map[string]bool{
 					"fake-mspid":  true,
 					"other-mspid": true,
-				}, nil)
+				}, nil, nil)
 			})
 
 			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
@@ -1247,7 +1249,7 @@ var _ = Describe("SCC", func() {
 				Expect(ccname).To(Equal("name"))
 				colls, ok := proto.Clone(arg.Collections).(*pb.CollectionConfigPackage)
 				Expect(ok).To(BeTrue())
-				Expect(cd).To(Equal(&lifecycle.ChaincodeDefinition{
+				etl := &lifecycle.ChaincodeDefinition{
 					Sequence: 7,
 					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 						Version:           "version",
@@ -1259,7 +1261,11 @@ var _ = Describe("SCC", func() {
 						ValidationParameter: []byte("validation-parameter"),
 					},
 					Collections: colls,
-				}))
+				}
+				Expect(cd.Sequence).To(Equal(etl.Sequence))
+				Expect(cd.EndorsementInfo).To(ProtoEqual(etl.EndorsementInfo))
+				Expect(cd.Collections).To(ProtoEqual(etl.Collections))
+				Expect(cd.ValidationInfo).To(ProtoEqual(etl.ValidationInfo))
 				Expect(pubState).To(Equal(fakeStub))
 				Expect(orgStates).To(HaveLen(2))
 				Expect(orgStates[0]).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
@@ -1295,7 +1301,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.CheckCommitReadinessReturns(nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.CheckCommitReadinessReturns(nil, nil, fmt.Errorf("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -1354,7 +1360,7 @@ var _ = Describe("SCC", func() {
 				payload := &lb.QueryApprovedChaincodeDefinitionResult{}
 				err := proto.Unmarshal(res.Payload, payload)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(proto.Equal(payload, &lb.QueryApprovedChaincodeDefinitionResult{
+				Expect(payload).To(ProtoEqual(&lb.QueryApprovedChaincodeDefinitionResult{
 					Sequence:            7,
 					Version:             "version",
 					EndorsementPlugin:   "endorsement-plugin",
@@ -1369,7 +1375,7 @@ var _ = Describe("SCC", func() {
 							},
 						},
 					},
-				})).To(BeTrue())
+				}))
 
 				Expect(fakeSCCFuncs.QueryApprovedChaincodeDefinitionCallCount()).To(Equal(1))
 				chname, ccname, sequence, pubState, privState := fakeSCCFuncs.QueryApprovedChaincodeDefinitionArgsForCall(0)
@@ -1404,6 +1410,223 @@ var _ = Describe("SCC", func() {
 					res := scc.Invoke(fakeStub)
 					Expect(res.Status).To(Equal(int32(500)))
 					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryApprovedChaincodeDefinition': underlying-error"))
+				})
+			})
+		})
+
+		Describe("QueryApprovedChaincodeDefinitions", func() {
+			var (
+				arg          *lb.QueryApprovedChaincodeDefinitionsArgs
+				marshaledArg []byte
+			)
+
+			BeforeEach(func() {
+				arg = &lb.QueryApprovedChaincodeDefinitionsArgs{}
+
+				var err error
+				marshaledArg, err = proto.Marshal(arg)
+				Expect(err).NotTo(HaveOccurred())
+
+				fakeStub.GetArgsReturns([][]byte{[]byte("QueryApprovedChaincodeDefinitions"), marshaledArg})
+				fakeSCCFuncs.QueryApprovedChaincodeDefinitionsReturns(
+
+					map[string]*lifecycle.ApprovedChaincodeDefinition{
+						"cc-name1#6": {
+							Sequence: 6,
+							EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+								Version:           "version",
+								EndorsementPlugin: "endorsement-plugin",
+								InitRequired:      true,
+							},
+							ValidationInfo: &lb.ChaincodeValidationInfo{
+								ValidationPlugin:    "validation-plugin",
+								ValidationParameter: []byte("validation-parameter"),
+							},
+							Collections: &pb.CollectionConfigPackage{},
+							Source: &lb.ChaincodeSource{
+								Type: &lb.ChaincodeSource_LocalPackage{
+									LocalPackage: &lb.ChaincodeSource_Local{
+										PackageId: "hash",
+									},
+								},
+							},
+						},
+						"cc-name1#7": {
+							Sequence: 7,
+							EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+								Version:           "version",
+								EndorsementPlugin: "endorsement-plugin",
+								InitRequired:      true,
+							},
+							ValidationInfo: &lb.ChaincodeValidationInfo{
+								ValidationPlugin:    "validation-plugin",
+								ValidationParameter: []byte("validation-parameter"),
+							},
+							Collections: &pb.CollectionConfigPackage{},
+							Source: &lb.ChaincodeSource{
+								Type: &lb.ChaincodeSource_LocalPackage{
+									LocalPackage: &lb.ChaincodeSource_Local{
+										PackageId: "hash",
+									},
+								},
+							},
+						},
+						"cc-name2#7": {
+							Sequence: 7,
+							EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+								Version:           "version",
+								EndorsementPlugin: "endorsement-plugin",
+								InitRequired:      true,
+							},
+							ValidationInfo: &lb.ChaincodeValidationInfo{
+								ValidationPlugin:    "validation-plugin",
+								ValidationParameter: []byte("validation-parameter"),
+							},
+							Collections: &pb.CollectionConfigPackage{},
+							Source: &lb.ChaincodeSource{
+								Type: &lb.ChaincodeSource_LocalPackage{
+									LocalPackage: &lb.ChaincodeSource_Local{
+										PackageId: "hash",
+									},
+								},
+							},
+						},
+					},
+					nil,
+				)
+			})
+
+			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
+				res := scc.Invoke(fakeStub)
+				Expect(res.Status).To(Equal(int32(200)))
+				payload := &lb.QueryApprovedChaincodeDefinitionsResult{}
+				err := proto.Unmarshal(res.Payload, payload)
+				Expect(err).NotTo(HaveOccurred())
+
+				expectedDefinitions := &lb.QueryApprovedChaincodeDefinitionsResult{
+					ApprovedChaincodeDefinitions: []*lb.QueryApprovedChaincodeDefinitionsResult_ApprovedChaincodeDefinition{
+						{
+							Name:                "cc-name1",
+							Sequence:            6,
+							Version:             "version",
+							EndorsementPlugin:   "endorsement-plugin",
+							ValidationPlugin:    "validation-plugin",
+							ValidationParameter: []byte("validation-parameter"),
+							InitRequired:        true,
+							Collections:         &pb.CollectionConfigPackage{},
+							Source: &lb.ChaincodeSource{
+								Type: &lb.ChaincodeSource_LocalPackage{
+									LocalPackage: &lb.ChaincodeSource_Local{
+										PackageId: "hash",
+									},
+								},
+							},
+						},
+						{
+							Name:                "cc-name1",
+							Sequence:            7,
+							Version:             "version",
+							EndorsementPlugin:   "endorsement-plugin",
+							ValidationPlugin:    "validation-plugin",
+							ValidationParameter: []byte("validation-parameter"),
+							InitRequired:        true,
+							Collections:         &pb.CollectionConfigPackage{},
+							Source: &lb.ChaincodeSource{
+								Type: &lb.ChaincodeSource_LocalPackage{
+									LocalPackage: &lb.ChaincodeSource_Local{
+										PackageId: "hash",
+									},
+								},
+							},
+						},
+						{
+							Name:                "cc-name2",
+							Sequence:            7,
+							Version:             "version",
+							EndorsementPlugin:   "endorsement-plugin",
+							ValidationPlugin:    "validation-plugin",
+							ValidationParameter: []byte("validation-parameter"),
+							InitRequired:        true,
+							Collections:         &pb.CollectionConfigPackage{},
+							Source: &lb.ChaincodeSource{
+								Type: &lb.ChaincodeSource_LocalPackage{
+									LocalPackage: &lb.ChaincodeSource_Local{
+										PackageId: "hash",
+									},
+								},
+							},
+						},
+					},
+				}
+				Expect(payload.ApprovedChaincodeDefinitions).To(ConsistOf(expectedDefinitions.ApprovedChaincodeDefinitions))
+
+				Expect(fakeSCCFuncs.QueryApprovedChaincodeDefinitionsCallCount()).To(Equal(1))
+				chname, privState := fakeSCCFuncs.QueryApprovedChaincodeDefinitionsArgsForCall(0)
+
+				Expect(chname).To(Equal("test-channel"))
+
+				Expect(privState).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
+				Expect(privState.(*lifecycle.ChaincodePrivateLedgerShim).Collection).To(Equal("_implicit_org_fake-mspid"))
+			})
+
+			Context("when the underlying QueryApprovedChaincodeDefinitions function implementation returns a definition map with a bad key", func() {
+				BeforeEach(func() {
+					fakeSCCFuncs.QueryApprovedChaincodeDefinitionsReturns(
+
+						map[string]*lifecycle.ApprovedChaincodeDefinition{
+							"badkey": {
+								Sequence: 6,
+								EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+									Version:           "version",
+									EndorsementPlugin: "endorsement-plugin",
+									InitRequired:      true,
+								},
+								ValidationInfo: &lb.ChaincodeValidationInfo{
+									ValidationPlugin:    "validation-plugin",
+									ValidationParameter: []byte("validation-parameter"),
+								},
+								Collections: &pb.CollectionConfigPackage{},
+								Source: &lb.ChaincodeSource{
+									Type: &lb.ChaincodeSource_LocalPackage{
+										LocalPackage: &lb.ChaincodeSource_Local{
+											PackageId: "hash",
+										},
+									},
+								},
+							},
+						},
+						nil,
+					)
+				})
+
+				It("wraps and returns the error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryApprovedChaincodeDefinitions': could not extract chaincode name and sequence number from private name: badkey: invalid private name format: badkey"))
+				})
+			})
+
+			Context("when the underlying QueryApprovedChaincodeDefinitions function implementation fails", func() {
+				BeforeEach(func() {
+					fakeSCCFuncs.QueryApprovedChaincodeDefinitionsReturns(nil, fmt.Errorf("underlying-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryApprovedChaincodeDefinitions': underlying-error"))
+				})
+			})
+
+			Context("when the underlying QueryApprovedChaincodeDefinitions function implementation fails", func() {
+				BeforeEach(func() {
+					fakeSCCFuncs.QueryApprovedChaincodeDefinitionsReturns(nil, fmt.Errorf("underlying-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryApprovedChaincodeDefinitions': underlying-error"))
 				})
 			})
 		})
@@ -1456,6 +1679,7 @@ var _ = Describe("SCC", func() {
 						"other-mspid": true,
 					},
 					nil,
+					nil,
 				)
 			})
 
@@ -1465,7 +1689,7 @@ var _ = Describe("SCC", func() {
 				payload := &lb.QueryChaincodeDefinitionResult{}
 				err := proto.Unmarshal(res.Payload, payload)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(proto.Equal(payload, &lb.QueryChaincodeDefinitionResult{
+				Expect(payload).To(ProtoEqual(&lb.QueryChaincodeDefinitionResult{
 					Sequence:            2,
 					Version:             "version",
 					EndorsementPlugin:   "endorsement-plugin",
@@ -1476,7 +1700,7 @@ var _ = Describe("SCC", func() {
 						"fake-mspid":  true,
 						"other-mspid": true,
 					},
-				})).To(BeTrue())
+				}))
 
 				Expect(fakeSCCFuncs.QueryChaincodeDefinitionCallCount()).To(Equal(1))
 				name, pubState := fakeSCCFuncs.QueryChaincodeDefinitionArgsForCall(0)
@@ -1506,7 +1730,7 @@ var _ = Describe("SCC", func() {
 
 			Context("when the underlying QueryOrgApprovals function implementation fails", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.QueryOrgApprovalsReturns(nil, fmt.Errorf("underlying-error"))
+					fakeSCCFuncs.QueryOrgApprovalsReturns(nil, nil, fmt.Errorf("underlying-error"))
 				})
 
 				It("wraps and returns the error", func() {

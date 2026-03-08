@@ -9,7 +9,7 @@ package packaging
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
@@ -31,7 +31,7 @@ type Platform interface {
 	GetDeploymentPayload(path string) ([]byte, error)
 }
 
-// NormalizerPather is an optional interface that can be implemented by
+// NormalizePather is an optional interface that can be implemented by
 // platforms to modify the path stored in the chaincode ID.
 type NormalizePather interface {
 	NormalizePath(path string) (string, error)

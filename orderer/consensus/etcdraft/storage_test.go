@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -15,10 +14,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
-	raft "go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/wal"
 	"go.uber.org/zap"
@@ -37,8 +36,7 @@ var (
 func setup(t *testing.T) {
 	logger = flogging.NewFabricLogger(zap.NewExample())
 	ram = raft.NewMemoryStorage()
-	dataDir, err = ioutil.TempDir("", "etcdraft-")
-	require.NoError(t, err)
+	dataDir = t.TempDir()
 	walDir, snapDir = path.Join(dataDir, "wal"), path.Join(dataDir, "snapshot")
 	store, err = CreateStorage(logger, walDir, snapDir, ram)
 	require.NoError(t, err)
@@ -46,8 +44,6 @@ func setup(t *testing.T) {
 
 func clean(t *testing.T) {
 	err = store.Close()
-	require.NoError(t, err)
-	err = os.RemoveAll(dataDir)
 	require.NoError(t, err)
 }
 
@@ -75,7 +71,7 @@ func TestOpenWAL(t *testing.T) {
 		setup(t)
 
 		// create 10 new wal files
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			store.Store(
 				[]raftpb.Entry{{Index: uint64(i), Data: make([]byte, 10)}},
 				raftpb.HardState{},
@@ -147,7 +143,7 @@ func TestTakeSnapshot(t *testing.T) {
 			}()
 
 			// create 10 new wal files
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				store.Store(
 					[]raftpb.Entry{{Index: uint64(i), Data: make([]byte, 100)}},
 					raftpb.HardState{},
@@ -208,7 +204,7 @@ func TestTakeSnapshot(t *testing.T) {
 			}()
 
 			// create 10 new wal files
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				store.Store(
 					[]raftpb.Entry{{Index: uint64(i), Data: make([]byte, 100)}},
 					raftpb.HardState{},
@@ -273,7 +269,7 @@ func TestTakeSnapshot(t *testing.T) {
 			}()
 
 			// create 10 new wal files
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				store.Store(
 					[]raftpb.Entry{{Index: uint64(i), Data: make([]byte, 100)}},
 					raftpb.HardState{},
@@ -360,7 +356,7 @@ func TestApplyOutOfDateSnapshot(t *testing.T) {
 		}()
 
 		// create 10 new wal files
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			store.Store(
 				[]raftpb.Entry{{Index: uint64(i), Data: make([]byte, 100)}},
 				raftpb.HardState{},

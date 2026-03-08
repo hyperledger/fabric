@@ -7,14 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package committer
 
 import (
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/core/ledger"
 )
 
 var logger = flogging.MustGetLogger("committer")
 
-//--------!!!IMPORTANT!!-!!IMPORTANT!!-!!IMPORTANT!!---------
+// --------!!!IMPORTANT!!-!!IMPORTANT!!-!!IMPORTANT!!---------
 // This is used merely to complete the loop for the "skeleton"
 // path so we can reason about and  modify committer component
 // more effectively using code.
@@ -80,6 +80,16 @@ func (lc *LedgerCommitter) LedgerHeight() (uint64, error) {
 	}
 
 	return info.Height, nil
+}
+
+func (lc *LedgerCommitter) GetCurrentBlockHash() ([]byte, error) {
+	info, err := lc.GetBlockchainInfo()
+	if err != nil {
+		logger.Errorf("Cannot get blockchain info, %s", info)
+		return nil, err
+	}
+
+	return info.CurrentBlockHash, nil
 }
 
 // DoesPvtDataInfoExistInLedger returns true if the ledger has pvtdata info

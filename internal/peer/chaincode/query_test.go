@@ -8,10 +8,11 @@ package chaincode
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -72,7 +73,7 @@ func TestQueryCmdEndorsementFailure(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		mockCF, err := getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus[i], ccRespPayload[i])
 		require.NoError(t, err, "Error getting mock chaincode command factory")
 
@@ -80,7 +81,9 @@ func TestQueryCmdEndorsementFailure(t *testing.T) {
 		err = cmd.Execute()
 		require.Error(t, err)
 		require.Regexp(t, "endorsement failure during query", err.Error())
-		require.Regexp(t, fmt.Sprintf("response: status:%d payload:\"%s\"", ccRespStatus[i], ccRespPayload[i]), err.Error())
+		tmp1 := strings.ReplaceAll(err.Error(), " ", "")
+		tmp2 := strings.ReplaceAll(fmt.Sprintf("response: status:%d payload:\"%s\"", ccRespStatus[i], ccRespPayload[i]), " ", "")
+		require.Regexp(t, tmp2, tmp1)
 	}
 
 	// failure - nil proposal response

@@ -27,5 +27,5 @@ func TestMissingArguments(t *testing.T) {
 	process, err := Start(cmd, nil, nil)
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Eventually(process, 5*time.Second).Should(Exit(1))
-	gt.Expect(process.Err).To(gbytes.Say("empty string that is mandatory"))
+	gt.Expect(process.Err).To(gbytes.Say("IdentityPath|KeyPath is mandatory and cannot be empty"))
 }

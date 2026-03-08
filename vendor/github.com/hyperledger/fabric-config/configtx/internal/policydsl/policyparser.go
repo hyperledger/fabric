@@ -14,9 +14,9 @@ import (
 	"strings"
 
 	"github.com/Knetic/govaluate"
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	mb "github.com/hyperledger/fabric-protos-go/msp"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	mb "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"google.golang.org/protobuf/proto"
 )
 
 // Gate values
@@ -264,17 +264,17 @@ func newContext() *context {
 // GATE(P[, P])
 //
 // where:
-//	- GATE is either "and" or "or"
-//	- P is either a principal or another nested call to GATE
+//   - GATE is either "and" or "or"
+//   - P is either a principal or another nested call to GATE
 //
 // A principal is defined as:
 //
-// ORG.ROLE
+// # ORG.ROLE
 //
 // where:
-//	- ORG is a string (representing the MSP identifier)
-//	- ROLE takes the value of any of the RoleXXX constants representing
-//    the required role
+//   - ORG is a string (representing the MSP identifier)
+//   - ROLE takes the value of any of the RoleXXX constants representing
+//     the required role
 func FromString(policy string) (*cb.SignaturePolicyEnvelope, error) {
 	// first we translate the and/or business into outof gates
 	intermediate, err := govaluate.NewEvaluableExpressionWithFunctions(

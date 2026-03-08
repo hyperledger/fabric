@@ -16,15 +16,14 @@ import (
 )
 
 func ExtractRemoteAddress(ctx context.Context) string {
-	var remoteAddress string
 	p, ok := peer.FromContext(ctx)
 	if !ok {
 		return ""
 	}
 	if address := p.Addr; address != nil {
-		remoteAddress = address.String()
+		return address.String()
 	}
-	return remoteAddress
+	return ""
 }
 
 // ExtractCertificateHashFromContext extracts the hash of the certificate from the given context.

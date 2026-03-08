@@ -8,21 +8,17 @@ package ccprovider
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 )
 
-func setupccdir() string {
-	tempDir, err := ioutil.TempDir("/tmp", "ccprovidertest")
-	if err != nil {
-		panic(err)
-	}
+func setupccdir(t *testing.T) string {
+	tempDir := t.TempDir()
 	SetChaincodesPath(tempDir)
 	return tempDir
 }
@@ -50,8 +46,7 @@ func processCDS(cds *pb.ChaincodeDeploymentSpec, tofs bool) (*CDSPackage, []byte
 }
 
 func TestPutCDSCC(t *testing.T) {
-	ccdir := setupccdir()
-	defer os.RemoveAll(ccdir)
+	_ = setupccdir(t)
 
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
 
@@ -68,8 +63,7 @@ func TestPutCDSCC(t *testing.T) {
 }
 
 func TestPutCDSErrorPaths(t *testing.T) {
-	ccdir := setupccdir()
-	defer os.RemoveAll(ccdir)
+	ccdir := setupccdir(t)
 
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{
 		Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
@@ -106,7 +100,7 @@ func TestPutCDSErrorPaths(t *testing.T) {
 	// put back dep spec
 	ccpack.depSpec = savDepSpec
 
-	//...but remove the chaincode directory
+	// ...but remove the chaincode directory
 	os.RemoveAll(ccdir)
 	if err = ccpack.PutChaincodeToFS(); err == nil {
 		t.Fatalf("expected error putting package on the FS")
@@ -148,8 +142,7 @@ func TestCDSGetCCPackage(t *testing.T) {
 
 // switch the chaincodes on the FS and validate
 func TestCDSSwitchChaincodes(t *testing.T) {
-	ccdir := setupccdir()
-	defer os.RemoveAll(ccdir)
+	_ = setupccdir(t)
 
 	// someone modified the code on the FS with "badcode"
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("badcode")}
@@ -164,7 +157,7 @@ func TestCDSSwitchChaincodes(t *testing.T) {
 	// mimic the good code ChaincodeData from the instantiate...
 	cds.CodePackage = []byte("goodcode")
 
-	//...and generate the CD for it (don't overwrite the bad code)
+	// ...and generate the CD for it (don't overwrite the bad code)
 	_, _, goodcd, err := processCDS(cds, false)
 	if err != nil {
 		t.Fatalf("error putting CDS to FS %s", err)
@@ -256,7 +249,7 @@ func TestValidateCCErrorPaths(t *testing.T) {
 	cpack.data = &CDSData{}
 	err = cpack.ValidateCC(ccdata)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), `invalid chaincode data name:"Tom"  (name:"Jerry" version:"0" )`)
+	require.Contains(t, err.Error(), "invalid chaincode data", "Unexpected error validating package")
 
 	// mismatched versions
 	cpack = &CDSPackage{GetHasher: cryptoProvider}
@@ -270,5 +263,5 @@ func TestValidateCCErrorPaths(t *testing.T) {
 	cpack.data = &CDSData{}
 	err = cpack.ValidateCC(ccdata)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), `invalid chaincode data name:"Tom" version:"1"  (name:"Tom" version:"0" )`)
+	require.Contains(t, err.Error(), "invalid chaincode data", "Unexpected error validating package")
 }

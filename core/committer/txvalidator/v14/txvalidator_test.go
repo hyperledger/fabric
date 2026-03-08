@@ -7,14 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package txvalidator
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/semaphore"
@@ -32,6 +29,7 @@ import (
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []byte, nBlocks int) {
@@ -68,7 +66,7 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 	}, bcInfo)
 
 	sr := [][]byte{}
-	for i := 0; i < nBlocks; i++ {
+	for range nBlocks {
 		sr = append(sr, pubSimulationResBytes)
 	}
 	block := testutil.ConstructBlock(t, 1, gbHash, sr, true)
@@ -77,7 +75,7 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 
 	txsfltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
-	for i := 0; i < nBlocks; i++ {
+	for i := range nBlocks {
 		require.True(t, txsfltr.IsSetTo(i, peer.TxValidationCode_VALID))
 	}
 }
@@ -107,7 +105,7 @@ func TestDetectTXIdDuplicates(t *testing.T) {
 }
 
 func TestBlockValidationDuplicateTXId(t *testing.T) {
-	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t, "txvalidator")
+	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t)
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
@@ -164,14 +162,14 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 	acv.On("ForbidDuplicateTXIdInBlock").Return(true)
 	tValidator.Validate(block)
 
-	txsfltr = txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr = block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER]
 
 	require.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_VALID))
 	require.True(t, txsfltr.IsSetTo(1, peer.TxValidationCode_DUPLICATE_TXID))
 }
 
 func TestBlockValidation(t *testing.T) {
-	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t, "txvalidator")
+	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t)
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
@@ -184,7 +182,7 @@ func TestBlockValidation(t *testing.T) {
 }
 
 func TestParallelBlockValidation(t *testing.T) {
-	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t, "txvalidator")
+	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t)
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
@@ -197,7 +195,7 @@ func TestParallelBlockValidation(t *testing.T) {
 }
 
 func TestVeryLargeParallelBlockValidation(t *testing.T) {
-	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t, "txvalidator")
+	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t)
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
@@ -212,7 +210,7 @@ func TestVeryLargeParallelBlockValidation(t *testing.T) {
 }
 
 func TestTxValidationFailure_InvalidTxid(t *testing.T) {
-	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t, "txvalidator")
+	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t)
 	defer cleanup()
 
 	gb, _ := test.MakeGenesisBlock("TestLedger")
@@ -279,9 +277,10 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 		},
 	}
 
+	hash, _ := protoutil.BlockDataHash(block.Data)
 	block.Header = &common.BlockHeader{
 		Number:   0,
-		DataHash: protoutil.BlockDataHash(block.Data),
+		DataHash: hash,
 	}
 
 	// Initialize metadata
@@ -423,16 +422,12 @@ func TestInvalidTXsForUpgradeCC(t *testing.T) {
 	require.EqualValues(t, expectTxsFltr, txsfltr)
 }
 
-func constructLedgerMgrWithTestDefaults(t *testing.T, testDir string) (*ledgermgmt.LedgerMgr, func()) {
-	testDir, err := ioutil.TempDir("", testDir)
-	if err != nil {
-		t.Fatalf("Failed to create ledger directory: %s", err)
-	}
+func constructLedgerMgrWithTestDefaults(t *testing.T) (*ledgermgmt.LedgerMgr, func()) {
+	testDir := t.TempDir()
 	initializer := ledgermgmttest.NewInitializer(testDir)
 	ledgerMgr := ledgermgmt.NewLedgerMgr(initializer)
 	cleanup := func() {
 		ledgerMgr.Close()
-		os.RemoveAll(testDir)
 	}
 	return ledgerMgr, cleanup
 }

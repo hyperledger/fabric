@@ -9,7 +9,6 @@ package fabhttp_test
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -24,7 +23,7 @@ var _ = Describe("TLS", func() {
 
 	BeforeEach(func() {
 		var err error
-		tempDir, err = ioutil.TempDir("", "opstls")
+		tempDir, err = os.MkdirTemp("", "opstls")
 		Expect(err).NotTo(HaveOccurred())
 
 		generateCertificates(tempDir)
@@ -51,7 +50,7 @@ var _ = Describe("TLS", func() {
 		)
 		Expect(err).NotTo(HaveOccurred())
 
-		pemBytes, err := ioutil.ReadFile(filepath.Join(tempDir, "client-ca.pem"))
+		pemBytes, err := os.ReadFile(filepath.Join(tempDir, "client-ca.pem"))
 		Expect(err).NotTo(HaveOccurred())
 
 		clientCAPool := x509.NewCertPool()
@@ -61,7 +60,7 @@ var _ = Describe("TLS", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// https://go-review.googlesource.com/c/go/+/229917
-		Expect(tlsConfig.ClientCAs.Subjects()).To(Equal(clientCAPool.Subjects()))
+		Expect(tlsConfig.ClientCAs.Equal(clientCAPool)).To(BeTrue())
 		tlsConfig.ClientCAs = nil
 
 		Expect(tlsConfig).To(Equal(&tls.Config{
@@ -120,9 +119,10 @@ var _ = Describe("TLS", func() {
 		})
 
 		It("builds a TLS configuration without an empty CA pool", func() {
+			emptyPool := x509.NewCertPool()
 			tlsConfig, err := httpTLS.Config()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(tlsConfig.ClientCAs.Subjects()).To(BeEmpty())
+			Expect(tlsConfig.ClientCAs.Equal(emptyPool)).To(BeTrue())
 		})
 	})
 

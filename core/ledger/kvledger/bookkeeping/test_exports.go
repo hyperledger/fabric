@@ -17,8 +17,6 @@ limitations under the License.
 package bookkeeping
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -33,8 +31,7 @@ type TestEnv struct {
 
 // NewTestEnv construct a TestEnv for testing
 func NewTestEnv(t testing.TB) *TestEnv {
-	dbPath, err := ioutil.TempDir("", "bookkeep")
-	require.NoError(t, err)
+	dbPath := t.TempDir()
 	provider, err := NewProvider(dbPath)
 	require.NoError(t, err)
 	return &TestEnv{t, provider, dbPath}
@@ -43,5 +40,4 @@ func NewTestEnv(t testing.TB) *TestEnv {
 // Cleanup cleansup the  store env after testing
 func (te *TestEnv) Cleanup() {
 	te.TestProvider.Close()
-	os.RemoveAll(te.dbPath)
 }

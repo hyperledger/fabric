@@ -52,12 +52,12 @@
 // to create the indexes in the CouchDB Fauxton interface or a curl command line utility.
 //
 
-//Example hostname:port configurations to access CouchDB.
+// Example hostname:port configurations to access CouchDB.
 //
-//To access CouchDB docker container from within another docker container or from vagrant environments:
+// To access CouchDB docker container from within another docker container or from vagrant environments:
 // http://couchdb:5984/
 //
-//Inside couchdb docker container
+// Inside couchdb docker container
 // http://127.0.0.1:5984/
 
 // Index for docType, owner.
@@ -87,8 +87,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hyperledger/fabric-chaincode-go/shim"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 )
 
 // SimpleChaincode example simple Chaincode implementation
@@ -111,13 +111,13 @@ type marbleHistory struct {
 
 // Init initializes chaincode
 // ===========================
-func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
+func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) *pb.Response {
 	return shim.Success(nil)
 }
 
 // Invoke - Our entry point for Invocations
 // ========================================
-func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
+func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) *pb.Response {
 	function, args := stub.GetFunctionAndParameters()
 	fmt.Println("invoke is running " + function)
 
@@ -153,7 +153,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 // ============================================================
 // initMarble - create a new marble, store into chaincode state
 // ============================================================
-func (t *SimpleChaincode) initMarble(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) initMarble(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	var err error
 
 	//   0       1       2     3
@@ -236,7 +236,7 @@ func (t *SimpleChaincode) initMarble(stub shim.ChaincodeStubInterface, args []st
 // ===============================================
 // readMarble - read a marble from chaincode state
 // ===============================================
-func (t *SimpleChaincode) readMarble(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) readMarble(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	var name, jsonResp string
 	var err error
 
@@ -260,7 +260,7 @@ func (t *SimpleChaincode) readMarble(stub shim.ChaincodeStubInterface, args []st
 // ==================================================
 // delete - remove a marble key/value pair from state
 // ==================================================
-func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	var jsonResp string
 	var marbleJSON marble
 	if len(args) != 1 {
@@ -278,7 +278,7 @@ func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string
 		return shim.Error(jsonResp)
 	}
 
-	err = json.Unmarshal([]byte(valAsbytes), &marbleJSON)
+	err = json.Unmarshal(valAsbytes, &marbleJSON)
 	if err != nil {
 		jsonResp = "{\"Error\":\"Failed to decode JSON of: " + marbleName + "\"}"
 		return shim.Error(jsonResp)
@@ -307,7 +307,7 @@ func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string
 // ===========================================================
 // transfer a marble by setting a new owner name on the marble
 // ===========================================================
-func (t *SimpleChaincode) transferMarble(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) transferMarble(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	//   0       1
 	// "name", "bob"
 	if len(args) < 2 {
@@ -405,7 +405,7 @@ func addPaginationMetadataToQueryResults(buffer *bytes.Buffer, responseMetadata 
 // time and commit time.
 // Therefore, range queries are a safe option for performing update transactions based on query results.
 // ===========================================================================================
-func (t *SimpleChaincode) getMarblesByRange(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) getMarblesByRange(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) < 2 {
 		return shim.Error("Incorrect number of arguments. Expecting 2")
 	}
@@ -437,7 +437,7 @@ func (t *SimpleChaincode) getMarblesByRange(stub shim.ChaincodeStubInterface, ar
 // committing peers if the result set has changed between endorsement time and commit time.
 // Therefore, range queries are a safe option for performing update transactions based on query results.
 // ===========================================================================================
-func (t *SimpleChaincode) transferMarblesBasedOnColor(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) transferMarblesBasedOnColor(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	//   0       1
 	// "color", "bob"
 	if len(args) < 2 {
@@ -507,7 +507,7 @@ func (t *SimpleChaincode) transferMarblesBasedOnColor(stub shim.ChaincodeStubInt
 // and accepting a single query parameter (owner).
 // Only available on state databases that support rich query (e.g. CouchDB)
 // =========================================================================================
-func (t *SimpleChaincode) queryMarblesByOwner(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) queryMarblesByOwner(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	//   0
 	// "bob"
 	if len(args) < 1 {
@@ -532,7 +532,7 @@ func (t *SimpleChaincode) queryMarblesByOwner(stub shim.ChaincodeStubInterface, 
 // If this is not desired, follow the queryMarblesForOwner example for parameterized queries.
 // Only available on state databases that support rich query (e.g. CouchDB)
 // =========================================================================================
-func (t *SimpleChaincode) queryMarbles(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) queryMarbles(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	//   0
 	// "queryString"
 	if len(args) < 1 {
@@ -590,7 +590,7 @@ func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString 
 // The number of fetched records will be equal to or lesser than the page size.
 // Paginated range queries are only valid for read only transactions.
 // ===========================================================================================
-func (t *SimpleChaincode) getMarblesByRangeWithPagination(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) getMarblesByRangeWithPagination(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) < 4 {
 		return shim.Error("Incorrect number of arguments. Expecting 4")
 	}
@@ -631,7 +631,7 @@ func (t *SimpleChaincode) getMarblesByRangeWithPagination(stub shim.ChaincodeStu
 // Only available on state databases that support rich query (e.g. CouchDB)
 // Paginated queries are only valid for read only transactions.
 // =========================================================================================
-func (t *SimpleChaincode) queryMarblesWithPagination(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) queryMarblesWithPagination(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	//   0
 	// "queryString"
 	if len(args) < 3 {
@@ -678,7 +678,7 @@ func getQueryResultForQueryStringWithPagination(stub shim.ChaincodeStubInterface
 	return buffer.Bytes(), nil
 }
 
-func (t *SimpleChaincode) getHistoryForMarble(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) getHistoryForMarble(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) < 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 1")
 	}

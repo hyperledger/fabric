@@ -20,16 +20,15 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
-
 	"github.com/tedsuo/ifrit"
 )
 
-var _ bool = Describe("Pvtdata dissemination for implicit collection", func() {
+var _ = Describe("Pvtdata dissemination for implicit collection", func() {
 	var (
-		network       *nwo.Network
-		process       ifrit.Process
-		orderer       *nwo.Orderer
-		testChaincode chaincode
+		network                     *nwo.Network
+		ordererProcess, peerProcess ifrit.Process
+		orderer                     *nwo.Orderer
+		testChaincode               nwo.Chaincode
 	)
 
 	BeforeEach(func() {
@@ -59,20 +58,17 @@ var _ bool = Describe("Pvtdata dissemination for implicit collection", func() {
 		}
 
 		By("starting the network")
-		process, orderer = startNetwork(network)
+		ordererProcess, peerProcess, orderer = startNetwork(network)
 
 		By("deploying new lifecycle chaincode")
-		testChaincode = chaincode{
-			Chaincode: nwo.Chaincode{
-				Name:        "kvexecutor",
-				Version:     "1.0",
-				Path:        components.Build("github.com/hyperledger/fabric/integration/chaincode/kvexecutor/cmd"),
-				Lang:        "binary",
-				PackageFile: filepath.Join(network.RootDir, "kvexecutor.tar.gz"),
-				Label:       "kvexecutor",
-				Sequence:    "1",
-			},
-			isLegacy: false,
+		testChaincode = nwo.Chaincode{
+			Name:        "kvexecutor",
+			Version:     "1.0",
+			Path:        components.Build("github.com/hyperledger/fabric/integration/chaincode/kvexecutor/cmd"),
+			Lang:        "binary",
+			PackageFile: filepath.Join(network.RootDir, "kvexecutor.tar.gz"),
+			Label:       "kvexecutor",
+			Sequence:    "1",
 		}
 		nwo.EnableCapabilities(network, channelID, "Application", "V2_0", orderer, network.Peers...)
 
@@ -87,7 +83,7 @@ var _ bool = Describe("Pvtdata dissemination for implicit collection", func() {
 	})
 
 	AfterEach(func() {
-		testCleanup(network, process)
+		testCleanup(network, ordererProcess, peerProcess)
 	})
 
 	It("disseminates pvtdata of implicit collection for the peer's own org but not implicit collection for another org", func() {
@@ -198,7 +194,7 @@ func queryChaincode(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeQu
 func discoverAllPeers(n *nwo.Network, peer *nwo.Peer, channelID string, retries int, retryInterval time.Duration) {
 	var discoveredPeers []nwo.DiscoveredPeer
 	numPeers := len(n.Peers)
-	for i := 0; i < retries; i++ {
+	for i := range retries {
 		discoveredPeers = nwo.DiscoverPeers(n, peer, "User1", channelID)()
 		if len(discoveredPeers) == numPeers || i == retries-1 {
 			break

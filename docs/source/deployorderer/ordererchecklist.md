@@ -6,23 +6,21 @@ While in a production environment you could override the environment variables i
 
 This checklist covers key configuration parameters for setting up a production ordering service. Of course, you can always refer to the orderer.yaml file for additional parameters or more information. It also provides guidance on which parameters should be overridden. The list of parameters that you need to understand and that are described in this topic include:
 
-- [Checklist for a production ordering node](#checklist-for-a-production-ordering-node)
-  - [General.ListenAddress](#generallistenaddress)
-  - [General.ListenPort](#generallistenport)
-  - [General.TLS](#generaltls)
-  - [General.KeepAlive](#generalkeepalive)
-  - [General.Cluster](#generalcluster)
-  - [General.BoostrapMethod](#generalboostrapmethod)
-  - [General.BoostrapFile](#generalboostrapfile)
-  - [General.LocalMSPDir](#generallocalmspdir)
-  - [General.LocalMSPID](#generallocalmspid)
-  - [General.BCCSP.\*](#generalbccsp)
-  - [FileLedger.Location](#fileledgerlocation)
-  - [Operations.\*](#operations)
-  - [Metrics.\*](#metrics)
-  - [Admin.\*](#admin)
-  - [ChannelParticipation.\*](#channelparticipation)
-  - [Consensus.\*](#consensus)
+* [General.ListenAddress](#general-listenaddress)
+* [General.ListenPort](#general-listenport)
+* [General.TLS.*](#general-tls)
+* [General.Keepalive.*](#general-keepalive)
+* [General.Cluster.*](#general-cluster)
+* [General.BootstrapMethod](#general-bootstrapmethod)
+* [General.BootstrapFile](#general-bootstrapfile)
+* [General.LocalMSPDir](#general-localmspdir)
+* [General.LocalMSPID](#general-localmspid)
+* [FileLedger.Location](#fileledger-location)
+* [Operations.*](#operations)
+* [Metrics.*](#metrics)
+* [Admin.*](#admin)
+* [ChannelParticipation.*](#channelparticipation)
+* [Consensus.*](#consensus)
 
 ## General.ListenAddress
 
@@ -134,33 +132,6 @@ In general, these four parameters would only need to be configured if you want t
 * **`ServerCertificate`**
 * **`ServerPrivateKey`**
 
-## General.BoostrapMethod
-
-```
-# Bootstrap method: The method by which to obtain the bootstrap block
-# system channel is specified. The option can be one of:
-#   "file" - path to a file containing the genesis block or config block of system channel
-#   "none" - allows an orderer to start without a system channel configuration
-BootstrapMethod: file
-```
-
-* **`BootstrapMethod`**: If you plan to create this node on a network that is not using a system channel, override this value to `none` and then ensure that [`ChannelParticipation.Enabled`](#channelparticipation) is set to `true`, otherwise you will get an error when you attempt to start the node. If you are creating a node to be joined to a system channel, unless you plan to use a file type other than “file”, this value should be left as is.
-
-## General.BoostrapFile
-
-```
-# Bootstrap file: The file containing the bootstrap block to use when
-# initializing the orderer system channel and BootstrapMethod is set to
-# "file".  The bootstrap file can be the genesis block, and it can also be
-# a config block for late bootstrap of some consensus methods like Raft.
-# Generate a genesis block by updating $FABRIC_CFG_PATH/configtx.yaml and
-# using configtxgen command with "-outputBlock" option.
-# Defaults to file "genesisblock" (in $FABRIC_CFG_PATH directory) if not specified.
-BootstrapFile:
-```
-
-* **`BoostrapFile`**: (if you are creating this node to be joined to a system channel, the default value should be overridden) Specify the location and name of the system channel genesis block to use when this node is created. If you are creating this node without using a system channel, this value will not be used, and can therefore be left blank.
-
 ## General.LocalMSPDir
 
 ```
@@ -170,16 +141,14 @@ BootstrapFile:
 LocalMSPDir: msp
 ```
 
-**`LocalMSPDir`**: (default value will often be overridden) This is the path to the ordering node's local MSP, which must be created before it can be deployed. The path can be absolute or relative to `FABRIC_CFG_PATH` (by default, it is `/etc/hyperledger/fabric` in the orderer image). Unless an absolute path is specified to a folder named something other than "msp", the ordering node defaults to looking for a folder called “msp” at the path (in other words, `FABRIC_CFG_PATH/msp`) and when using the orderer image: `/etc/hyperledger/fabric/msp`. If you are using the recommended folder structure described in the [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html) topic, it would be relative to the `FABRIC_CFG_PATH` as follows:
+**`LocalMSPDir`**: (default value will often be overridden) This is the path to the ordering node's local MSP, which must be created before it can be deployed. The path can be absolute or relative to `FABRIC_CFG_PATH` (by default, it is `/etc/hyperledger/fabric` in the orderer image). Unless an absolute path is specified to a folder named something other than "msp", the ordering node defaults to looking for a folder called “msp” at the path (in other words, `FABRIC_CFG_PATH/msp`) and when using the orderer image: `/etc/hyperledger/fabric/msp`. If you are using the recommended folder structure described in the [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html) topic, it would be relative to the `FABRIC_CFG_PATH` as follows:
 `config/organizations/ordererOrganizations/org0.example.com/orderers/orderer0.org0.example.com/msp`. **The best practice is to store this data in persistent storage**. This prevents the MSP from being lost if your orderer containers are destroyed for some reason.
 
 ## General.LocalMSPID
 
 ```
 # LocalMSPID is the identity to register the local MSP material with the MSP
-# manager. IMPORTANT: The local MSP ID of an orderer needs to match the MSP
-# ID of one of the organizations defined in the orderer system channel's
-# /Channel/Orderer configuration. The sample organization defined in the
+# manager. The sample organization defined in the
 # sample configuration provided has an MSP ID of "SampleOrg".
 LocalMSPID: SampleOrg
 ```
@@ -354,13 +323,14 @@ Admin:
 ```
 ChannelParticipation:
     # Channel participation API is enabled.
-    Enabled: false
+    Enabled: true
 
     # The maximum size of the request body when joining a channel.
     MaxRequestBodySize: 1 MB
 ```
 
-* **`Enabled`**: If you are bootstrapping the ordering node with a system channel genesis block, this value can be set to either `true` or `false` (setting the value to `true` allows you to list channels and to migrate away from the system channel in the future). If you are **not** bootstrapping the ordering node with a system channel genesis block, this value must be set to `true` and the [`General.BoostrapMethod`](#general-boostrapmethod) should be set to `none`.
+* **`Enabled`**: Since system channel is no longer supported, this value must be `true` so that you can join ordering service nodes to a channel.
+
 * **`MaxRequestBodySize`**: (default value should not be overridden) This value controls the maximum size a configuration block can be and be accepted by this ordering node. Most configuration blocks are smaller than 1 MB, but if for some reason a configuration block is too large to be accept, bring down the node, increase this value, and restart the node.
 
 ## Consensus.*
@@ -381,7 +351,7 @@ SnapDir: /var/hyperledger/production/orderer/etcdraft/snapshot
 ```
 
 * **`WALDir`**: (default value should be overridden) This is the path to the write ahead logs on the local filesystem of the ordering node. It can be an absolute path or relative to `FABRIC_CFG_PATH`. It defaults to `/var/hyperledger/production/orderer/etcdraft/wal`. Each channel will have its own subdirectory named after the channel ID. The user running the ordering node needs to own and have write access to this directory. **The best practice is to store this data in persistent storage**. This prevents the write ahead log from being lost if your orderer containers are destroyed for some reason.
-* **`SnapDir`**: (default value should be overridden) This is the path to the snapshots on the local filesystem of the ordering node. For more information about how snapshots work in a Raft ordering service, check out [Snapshots](../orderer/ordering_service.html#snapshots)/ It can be an absolute path or relative to `FABRIC_CFG_PATH`. It defaults to `/var/hyperledger/production/orderer/etcdraft/wal`. Each channel will have its own subdirectory named after the channel ID. The user running the ordering node needs to own and have write access to this directory. **The best practice is to store this data in persistent storage**. This prevents snapshots from being lost if your orderer containers are destroyed for some reason.
+* **`SnapDir`**: (default value should be overridden) This is the path to the snapshots on the local filesystem of the ordering node. For more information about how snapshots work in a Raft ordering service, check out [Snapshots](../orderer/ordering_service.html#snapshots)/ It can be an absolute path or relative to `FABRIC_CFG_PATH`. It defaults to `/var/hyperledger/production/orderer/etcdraft/snapshot`. Each channel will have its own subdirectory named after the channel ID. The user running the ordering node needs to own and have write access to this directory. **The best practice is to store this data in persistent storage**. This prevents snapshots from being lost if your orderer containers are destroyed for some reason.
 
 For more information about ordering node configuration, including how to set parameters that are not available in `orderer.yaml`, check out [Configuring and operating a Raft ordering service](../raft_configuration.html).
 

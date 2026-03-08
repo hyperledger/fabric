@@ -10,13 +10,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	gp "github.com/hyperledger/fabric-protos-go/gateway"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	gp "github.com/hyperledger/fabric-protos-go-apiv2/gateway"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 // Endorse will collect endorsements by invoking the transaction function specified in the SignedProposal against
@@ -92,7 +92,7 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 				waitCh <- true
 			}(e)
 		}
-		for i := 0; i < len(endorsers); i++ {
+		for range endorsers {
 			select {
 			case <-waitCh:
 				// Endorser completedLayout normally
@@ -241,8 +241,8 @@ func (gs *Server) planFromFirstEndorser(ctx context.Context, channel string, cha
 	var protectedCollections []string
 	if hasTransientData {
 		for _, call := range interest.GetChaincodes() {
-			ccc := *call // shallow copy
-			originalInterest.Chaincodes = append(originalInterest.Chaincodes, &ccc)
+			ccc := proto.Clone(call).(*peer.ChaincodeCall)
+			originalInterest.Chaincodes = append(originalInterest.Chaincodes, ccc)
 			if call.NoPrivateReads {
 				call.NoPrivateReads = false
 				protectedCollections = append(protectedCollections, call.CollectionNames...)

@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package consensus
 
 import (
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
@@ -33,9 +33,6 @@ type ClusterConsenter interface {
 	// also inspects the consensus type metadata for validity. It returns an error if membership cannot be determined
 	// due to errors processing the block.
 	IsChannelMember(joinBlock *cb.Block) (bool, error)
-	// RemoveInactiveChainRegistry stops and removes the inactive chain registry.
-	// This is used when removing the system channel.
-	RemoveInactiveChainRegistry()
 }
 
 // MetadataValidator performs the validation of updates to ConsensusMetadata during config updates to the channel.
@@ -54,8 +51,9 @@ type MetadataValidator interface {
 // Note, that in order to allow flexibility in the implementation, it is the responsibility of the implementer
 // to take the ordered messages, send them through the blockcutter.Receiver supplied via HandleChain to cut blocks,
 // and ultimately write the ledger also supplied via HandleChain.  This design allows for two primary flows
-// 1. Messages are ordered into a stream, the stream is cut into blocks, the blocks are committed (solo, kafka)
-// 2. Messages are cut into blocks, the blocks are ordered, then the blocks are committed (sbft)
+//  1. Messages are ordered into a stream, the stream is cut into blocks, the blocks are committed (deprecated, orderer
+//     no longer supports solo & kafka)
+//  2. Messages are cut into blocks, the blocks are ordered, then the blocks are committed (etcdraft)
 type Chain interface {
 	// Order accepts a message which has been processed at a given configSeq.
 	// If the configSeq advances, it is the responsibility of the consenter
@@ -99,9 +97,8 @@ type ConsenterSupport interface {
 	identity.SignerSerializer
 	msgprocessor.Processor
 
-	// VerifyBlockSignature verifies a signature of a block with a given optional
-	// configuration (can be nil).
-	VerifyBlockSignature([]*protoutil.SignedData, *cb.ConfigEnvelope) error
+	// SignatureVerifier verifies a signature of a block.
+	SignatureVerifier() protoutil.BlockVerifierFunc
 
 	// BlockCutter returns the block cutting helper for this channel.
 	BlockCutter() blockcutter.Receiver
@@ -123,6 +120,9 @@ type ConsenterSupport interface {
 	// WriteBlock commits a block to the ledger.
 	WriteBlock(block *cb.Block, encodedMetadataValue []byte)
 
+	// WriteBlockSync commits a block to the ledger.
+	WriteBlockSync(block *cb.Block, encodedMetadataValue []byte)
+
 	// WriteConfigBlock commits a block to the ledger, and applies the config update inside.
 	WriteConfigBlock(block *cb.Block, encodedMetadataValue []byte)
 
@@ -140,7 +140,7 @@ type ConsenterSupport interface {
 	Append(block *cb.Block) error
 }
 
-// NoOpMetadataValidator implements a MetadataValidator that always returns nil error irrespecttive of the inputs.
+// NoOpMetadataValidator implements a MetadataValidator that always returns nil error irrespective of the inputs.
 type NoOpMetadataValidator struct{}
 
 // ValidateConsensusMetadata determines the validity of a ConsensusMetadata update during config updates

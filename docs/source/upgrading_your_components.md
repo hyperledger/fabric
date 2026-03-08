@@ -25,6 +25,8 @@ To do this, backup the `orderer.yaml` or `core.yaml` file (for the peer) and rep
 
 This tutorial assumes a Docker deployment where the YAML files will be baked into the images and environment variables will be used to overwrite the defaults in the configuration files.
 
+See the release notes for details about any important changes in the configuration files.
+
 ## Environment variables for the binaries
 
 When you deploy a peer or an ordering node, you had to set a number of environment variables relevant to its configuration. A best practice is to create a file for these environment variables, give it a name relevant to the node being deployed, and save it somewhere on your local file system. That way you can be sure that when upgrading the peer or ordering node you are using the same variables you set when creating it.
@@ -97,7 +99,7 @@ Export the following environment variables before attempting to upgrade your ord
 
 * `ORDERER_CONTAINER`: the name of your ordering node container. Note that you will need to export this variable for each node when upgrading it.
 * `LEDGERS_BACKUP`: the place in your local filesystem where you want to store the ledger being backed up. As you will see below, each node being backed up will have its own subfolder containing its ledger. You will need to create this folder.
-* `IMAGE_TAG`: the Fabric version you are upgrading to. For example, `2.0`.
+* `IMAGE_TAG`: the Fabric version you are upgrading to. For example, `3.0`.
 
 Note that you will have to set an **image tag** to ensure that the node you are starting using the correct images. The process you use to set the tag will depend on your deployment method.
 
@@ -149,7 +151,7 @@ Export the following environment variables before attempting to upgrade your pee
 
 * `PEER_CONTAINER`: the name of your peer container. Note that you will need to set this variable for each node.
 * `LEDGERS_BACKUP`: the place in your local filesystem where you want to store the ledger being backed up. As you will see below, each node being backed up will have its own subfolder containing its ledger. You will need to create this folder.
-* `IMAGE_TAG`: the Fabric version you are upgrading to. For example, `2.0`.
+* `IMAGE_TAG`: the Fabric version you are upgrading to. For example, `3.0`.
 
 Note that you will have to set an **image tag** to ensure that the node you are starting is using the correct images. The process you use to set the tag will depend on your deployment method.
 
@@ -179,7 +181,7 @@ if [ -n "$CC_CONTAINERS" ] ; then docker rm -f $CC_CONTAINERS ; fi
 And the peer chaincode images:
 
 ```
-CC_IMAGES=$(docker images | grep dev-$PEER | awk '{print $1}')
+CC_IMAGES=$(docker images | grep dev-$PEER_CONTAINER | awk '{print $1}')
 if [ -n "$CC_IMAGES" ] ; then docker rmi -f $CC_IMAGES ; fi
 ```
 
@@ -211,19 +213,9 @@ Before you attempt this, you may want to upgrade peers from enough organizations
 
 To learn how to upgrade your Fabric CA server, click over to the [CA documentation](http://hyperledger-fabric-ca.readthedocs.io/en/latest/users-guide.html#upgrading-the-server).
 
-## Upgrade Node SDK clients
+## Upgrade SDK clients
 
-Upgrade Fabric and Fabric CA before upgrading Node SDK clients. Fabric and Fabric CA are tested for backwards compatibility with older SDK clients. While newer SDK clients often work with older Fabric and Fabric CA releases, they may expose features that are not yet available in the older Fabric and Fabric CA releases, and are not tested for full compatibility.
-
-Use NPM to upgrade any `Node.js` client by executing these commands in the root directory of your application:
-
-```
-npm install fabric-client@latest
-
-npm install fabric-ca-client@latest
-```
-
-These commands install the new version of both the Fabric client and Fabric-CA client and write the new versions to `package.json`.
+SDK applications can be upgraded separate from a general upgrade of your Fabric network. The [Fabric Gateway client API](https://github.com/hyperledger/fabric-gateway) has been tested with Fabric v2.5 and v3. If you have not yet migrated to the Fabric Gateway client API, you can [migrate](https://hyperledger.github.io/fabric-gateway/migration) while using a Fabric v2.5 network, or after you have upgraded to a Fabric v3 network. The legacy SDKs are no longer maintained and are not compatible with new v3 Fabric features such as SmartBFT consensus.
 
 ## Upgrading CouchDB
 
@@ -236,21 +228,9 @@ To upgrade CouchDB:
 3. Install the latest CouchDB binaries or update deployment scripts to use a new Docker image.
 4. Restart CouchDB.
 
-## Upgrade Node chaincode shim
+## Upgrading chaincodes
 
-To move to the new version of the Node chaincode shim a developer would need to:
-
-1. Change the level of `fabric-shim` in their chaincode `package.json` from their old level to the new one.
-2. Repackage this new chaincode package and install it on all the endorsing peers in the channel.
-3. Perform an upgrade to this new chaincode. To see how to do this, check out [Peer chaincode commands](./commands/peerchaincode.html).
-
-## Upgrade Chaincodes with vendored shim
-
-For information about upgrading the Go chaincode shim specific to the v2.0 release, check out [Chaincode shim changes](./upgrade_to_newest_version.html#chaincode-shim-changes).
-
-A number of third party tools exist that will allow you to vendor a chaincode shim. If you used one of these tools, use the same one to update your vendored chaincode shim and re-package your chaincode.
-
-If your chaincode vendors the shim, after updating the shim version, you must install it to all peers which already have the chaincode. Install it with the same name, but a newer version. Then you should execute a chaincode upgrade on each channel where this chaincode has been deployed to move to the new version.
+You generally do not need to update chaincodes when updating the Fabric node versions.
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/ -->

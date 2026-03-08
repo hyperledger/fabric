@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package genesis
 
 import (
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/protoutil"
 )
 
@@ -44,7 +44,7 @@ func (f *factory) Block(channelID string) *cb.Block {
 
 	block := protoutil.NewBlock(0, nil)
 	block.Data = &cb.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(envelope)}}
-	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(block.Data)
 	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&cb.Metadata{
 		Value: protoutil.MarshalOrPanic(&cb.LastConfig{Index: 0}),
 	})

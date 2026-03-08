@@ -8,21 +8,20 @@ package blkstorage
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 func TestBlockfileMgrBlockReadWrite(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
@@ -33,7 +32,7 @@ func TestBlockfileMgrBlockReadWrite(t *testing.T) {
 }
 
 func TestAddBlockWithWrongHash(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
@@ -64,7 +63,7 @@ func TestBlockfileMgrCrashDuringWriting(t *testing.T) {
 func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlksBeforeSavingBlkfilesInfo int,
 	numBlksAfterSavingBlkfilesInfo int, numLastBlockBytes int, numPartialBytesToWrite int,
 	deleteBFInfo bool) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	ledgerid := "testLedger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
@@ -102,7 +101,7 @@ func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlksBeforeSavingBlkfile
 
 	// simulate a crash scenario
 	lastBlockBytes := []byte{}
-	encodedLen := proto.EncodeVarint(uint64(numLastBlockBytes))
+	encodedLen := protowire.AppendVarint(nil, uint64(numLastBlockBytes))
 	randomBytes := testutil.ConstructRandomBytes(t, numLastBlockBytes)
 	lastBlockBytes = append(lastBlockBytes, encodedLen...)
 	lastBlockBytes = append(lastBlockBytes, randomBytes...)
@@ -128,7 +127,7 @@ func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlksBeforeSavingBlkfile
 }
 
 func TestBlockfileMgrBlockIterator(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
@@ -156,7 +155,7 @@ func testBlockfileMgrBlockIterator(t *testing.T, blockfileMgr *blockfileMgr,
 }
 
 func TestBlockfileMgrBlockchainInfo(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
@@ -172,7 +171,7 @@ func TestBlockfileMgrBlockchainInfo(t *testing.T) {
 
 func TestTxIDExists(t *testing.T) {
 	t.Run("green-path", func(t *testing.T) {
-		env := newTestEnv(t, NewConf(testPath(), 0))
+		env := newTestEnv(t, NewConf(t.TempDir(), 0))
 		defer env.Cleanup()
 
 		blkStore, err := env.provider.Open("testLedger")
@@ -199,7 +198,7 @@ func TestTxIDExists(t *testing.T) {
 	})
 
 	t.Run("error-path", func(t *testing.T) {
-		env := newTestEnv(t, NewConf(testPath(), 0))
+		env := newTestEnv(t, NewConf(t.TempDir(), 0))
 		defer env.Cleanup()
 
 		blkStore, err := env.provider.Open("testLedger")
@@ -214,7 +213,7 @@ func TestTxIDExists(t *testing.T) {
 }
 
 func TestBlockfileMgrGetTxById(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
@@ -237,7 +236,7 @@ func TestBlockfileMgrGetTxById(t *testing.T) {
 // TestBlockfileMgrGetTxByIdDuplicateTxid tests that a transaction with an existing txid
 // (within same block or a different block) should not over-write the index by-txid (FAB-8557)
 func TestBlockfileMgrGetTxByIdDuplicateTxid(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	blkStore, err := env.provider.Open("testLedger")
 	require.NoError(env.t, err)
@@ -355,7 +354,7 @@ func TestBlockfileMgrGetTxByIdDuplicateTxid(t *testing.T) {
 }
 
 func TestBlockfileMgrGetTxByBlockNumTranNum(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
@@ -374,7 +373,7 @@ func TestBlockfileMgrGetTxByBlockNumTranNum(t *testing.T) {
 }
 
 func TestBlockfileMgrRestart(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	ledgerid := "testLedger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
@@ -395,15 +394,14 @@ func TestBlockfileMgrFileRolling(t *testing.T) {
 	blocks := testutil.ConstructTestBlocks(t, 200)
 	size := 0
 	for _, block := range blocks[:100] {
-		by, _, err := serializeBlock(block)
-		require.NoError(t, err, "Error while serializing block")
+		by, _ := serializeBlock(block)
 		blockBytesSize := len(by)
-		encodedLen := proto.EncodeVarint(uint64(blockBytesSize))
+		encodedLen := protowire.AppendVarint(nil, uint64(blockBytesSize))
 		size += blockBytesSize + len(encodedLen)
 	}
 
 	maxFileSie := int(0.75 * float64(size))
-	env := newTestEnv(t, NewConf(testPath(), maxFileSie))
+	env := newTestEnv(t, NewConf(t.TempDir(), maxFileSie))
 	defer env.Cleanup()
 	ledgerid := "testLedger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
@@ -420,7 +418,7 @@ func TestBlockfileMgrFileRolling(t *testing.T) {
 }
 
 func TestBlockfileMgrGetBlockByTxID(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
@@ -451,13 +449,13 @@ func TestBlockfileMgrSimulateCrashAtFirstBlockInFile(t *testing.T) {
 
 func testBlockfileMgrSimulateCrashAtFirstBlockInFile(t *testing.T, deleteBlkfilesInfo bool) {
 	// open blockfileMgr and add 5 blocks
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	blockfileMgr := blkfileMgrWrapper.blockfileMgr
 	blocks := testutil.ConstructTestBlocks(t, 10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		fmt.Printf("blocks[i].Header.Number = %d\n", blocks[i].Header.Number)
 	}
 	blkfileMgrWrapper.addBlocks(blocks[:5])
@@ -467,7 +465,7 @@ func testBlockfileMgrSimulateCrashAtFirstBlockInFile(t *testing.T, deleteBlkfile
 	// move to next file and simulate crash scenario while writing the first block
 	blockfileMgr.moveToNextFile()
 	partialBytesForNextBlock := append(
-		proto.EncodeVarint(uint64(10000)),
+		protowire.AppendVarint(nil, uint64(10000)),
 		[]byte("partialBytesForNextBlock depicting a crash during first block in file")...,
 	)
 	blockfileMgr.currentFileWriter.append(partialBytesForNextBlock, true)
@@ -479,7 +477,7 @@ func testBlockfileMgrSimulateCrashAtFirstBlockInFile(t *testing.T, deleteBlkfile
 
 	// verify that the block file number 1 has been created with partial bytes as a side-effect of crash
 	lastFilePath := blockfileMgr.currentFileWriter.filePath
-	lastFileContent, err := ioutil.ReadFile(lastFilePath)
+	lastFileContent, err := os.ReadFile(lastFilePath)
 	require.NoError(t, err)
 	require.Equal(t, lastFileContent, partialBytesForNextBlock)
 

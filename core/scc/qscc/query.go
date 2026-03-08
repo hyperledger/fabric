@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/hyperledger/fabric-chaincode-go/shim"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protoutil"
@@ -59,7 +59,7 @@ const (
 // Init is called once per chain when the chain is created.
 // This allows the chaincode to initialize any variables on the ledger prior
 // to any transaction execution on the chain.
-func (e *LedgerQuerier) Init(stub shim.ChaincodeStubInterface) pb.Response {
+func (e *LedgerQuerier) Init(stub shim.ChaincodeStubInterface) *pb.Response {
 	qscclogger.Info("Init QSCC")
 
 	return shim.Success(nil)
@@ -72,7 +72,7 @@ func (e *LedgerQuerier) Init(stub shim.ChaincodeStubInterface) pb.Response {
 // # GetBlockByNumber: Return the block specified by block number in args[2]
 // # GetBlockByHash: Return the block specified by block hash in args[2]
 // # GetTransactionByID: Return the transaction specified by ID in args[2]
-func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
+func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) *pb.Response {
 	args := stub.GetArgs()
 
 	if len(args) < 2 {
@@ -129,7 +129,7 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	return shim.Error(fmt.Sprintf("Requested function %s not found.", fname))
 }
 
-func getTransactionByID(vledger ledger.PeerLedger, tid []byte) pb.Response {
+func getTransactionByID(vledger ledger.PeerLedger, tid []byte) *pb.Response {
 	if tid == nil {
 		return shim.Error("Transaction ID must not be nil.")
 	}
@@ -147,7 +147,7 @@ func getTransactionByID(vledger ledger.PeerLedger, tid []byte) pb.Response {
 	return shim.Success(bytes)
 }
 
-func getBlockByNumber(vledger ledger.PeerLedger, number []byte) pb.Response {
+func getBlockByNumber(vledger ledger.PeerLedger, number []byte) *pb.Response {
 	if number == nil {
 		return shim.Error("Block number must not be nil.")
 	}
@@ -172,7 +172,7 @@ func getBlockByNumber(vledger ledger.PeerLedger, number []byte) pb.Response {
 	return shim.Success(bytes)
 }
 
-func getBlockByHash(vledger ledger.PeerLedger, hash []byte) pb.Response {
+func getBlockByHash(vledger ledger.PeerLedger, hash []byte) *pb.Response {
 	if hash == nil {
 		return shim.Error("Block hash must not be nil.")
 	}
@@ -193,7 +193,7 @@ func getBlockByHash(vledger ledger.PeerLedger, hash []byte) pb.Response {
 	return shim.Success(bytes)
 }
 
-func getChainInfo(vledger ledger.PeerLedger) pb.Response {
+func getChainInfo(vledger ledger.PeerLedger) *pb.Response {
 	binfo, err := vledger.GetBlockchainInfo()
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed to get block info with error %s", err))
@@ -206,7 +206,7 @@ func getChainInfo(vledger ledger.PeerLedger) pb.Response {
 	return shim.Success(bytes)
 }
 
-func getBlockByTxID(vledger ledger.PeerLedger, rawTxID []byte) pb.Response {
+func getBlockByTxID(vledger ledger.PeerLedger, rawTxID []byte) *pb.Response {
 	txID := string(rawTxID)
 	block, err := vledger.GetBlockByTxID(txID)
 	if err != nil {

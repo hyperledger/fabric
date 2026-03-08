@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/hyperledger/fabric/internal/ledgerutil/jsonrw"
@@ -97,7 +97,7 @@ func VerifyLedger(blockStorePath string, outputDir string) (bool, error) {
 			return false, err
 		}
 
-		previousHash := []byte{}
+		var previousHash []byte
 		for i := firstBlockNumber; i < info.GetHeight(); i++ {
 			// Retrieve the next block
 			result, err := iterator.Next()
@@ -229,8 +229,12 @@ func checkBlock(block *common.Block, previousHash []byte) (*blockCheckResult, er
 		Errors:   []string{},
 	}
 
+	hash, err := protoutil.BlockDataHash(block.Data)
+	if err != nil {
+		result.Errors = append(result.Errors, err.Error())
+	}
 	// Check if the hash value of the data matches the hash value field in the header
-	if !bytes.Equal(block.Header.DataHash, protoutil.BlockDataHash(block.Data)) {
+	if !bytes.Equal(block.Header.DataHash, hash) {
 		result.Valid = false
 		result.Errors = append(result.Errors, errorDataHashMismatch)
 	}

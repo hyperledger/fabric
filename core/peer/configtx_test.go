@@ -7,13 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package peer
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
@@ -24,13 +21,13 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestConfigTxCreateLedger(t *testing.T) {
 	helper := newTestHelper(t)
 	channelID := "testchain1"
-	tempdir, err := ioutil.TempDir("", "peer-test")
-	require.NoError(t, err, "failed to create temporary directory")
+	tempdir := t.TempDir()
 
 	ledgerMgr, err := constructLedgerMgrWithTestDefaults(tempdir)
 	if err != nil {
@@ -39,7 +36,6 @@ func TestConfigTxCreateLedger(t *testing.T) {
 
 	defer func() {
 		ledgerMgr.Close()
-		os.RemoveAll(tempdir)
 	}()
 
 	chanConf := helper.sampleChannelConfig(1, true)
@@ -50,7 +46,7 @@ func TestConfigTxCreateLedger(t *testing.T) {
 
 	retrievedchanConf, err := RetrievePersistedChannelConfig(ledger)
 	require.NoError(t, err)
-	require.Equal(t, proto.CompactTextString(chanConf), proto.CompactTextString(retrievedchanConf))
+	require.True(t, proto.Equal(chanConf, retrievedchanConf))
 }
 
 func TestConfigTxErrorScenarios(t *testing.T) {
@@ -72,8 +68,7 @@ func TestConfigTxErrorScenarios(t *testing.T) {
 func TestConfigTxUpdateChanConfig(t *testing.T) {
 	helper := newTestHelper(t)
 	channelID := "testchain1"
-	tempdir, err := ioutil.TempDir("", "peer-test")
-	require.NoError(t, err, "failed to create temporary directory")
+	tempdir := t.TempDir()
 
 	ledgerMgr, err := constructLedgerMgrWithTestDefaults(tempdir)
 	if err != nil {
@@ -82,7 +77,6 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 
 	defer func() {
 		ledgerMgr.Close()
-		os.RemoveAll(tempdir)
 	}()
 
 	chanConf := helper.sampleChannelConfig(1, true)
@@ -93,18 +87,18 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 
 	retrievedchanConf, err := RetrievePersistedChannelConfig(lgr)
 	require.NoError(t, err)
-	require.Equal(t, proto.CompactTextString(chanConf), proto.CompactTextString(retrievedchanConf))
+	require.True(t, proto.Equal(chanConf, retrievedchanConf))
 
 	helper.mockCreateChain(t, channelID, lgr)
 	defer helper.clearMockChains()
 
 	bs := helper.peer.channels[channelID].bundleSource
 	inMemoryChanConf := bs.ConfigtxValidator().ConfigProto()
-	require.Equal(t, proto.CompactTextString(chanConf), proto.CompactTextString(inMemoryChanConf))
+	require.True(t, proto.Equal(chanConf, inMemoryChanConf))
 
 	retrievedchanConf, err = RetrievePersistedChannelConfig(lgr)
 	require.NoError(t, err)
-	require.Equal(t, proto.CompactTextString(bs.ConfigtxValidator().ConfigProto()), proto.CompactTextString(retrievedchanConf))
+	require.True(t, proto.Equal(bs.ConfigtxValidator().ConfigProto(), retrievedchanConf))
 
 	lgr.Close()
 	helper.clearMockChains()
@@ -115,8 +109,7 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 func TestGenesisBlockCreateLedger(t *testing.T) {
 	b, err := configtxtest.MakeGenesisBlock("testchain")
 	require.NoError(t, err)
-	tempdir, err := ioutil.TempDir("", "peer-test")
-	require.NoError(t, err, "failed to create temporary directory")
+	tempdir := t.TempDir()
 
 	ledgerMgr, err := constructLedgerMgrWithTestDefaults(tempdir)
 	if err != nil {
@@ -125,7 +118,6 @@ func TestGenesisBlockCreateLedger(t *testing.T) {
 
 	defer func() {
 		ledgerMgr.Close()
-		os.RemoveAll(tempdir)
 	}()
 
 	lgr, err := ledgerMgr.CreateLedger("testchain", b)

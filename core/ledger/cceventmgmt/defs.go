@@ -9,7 +9,7 @@ package cceventmgmt
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 )
 

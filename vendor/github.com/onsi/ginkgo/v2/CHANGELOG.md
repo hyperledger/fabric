@@ -1,3 +1,383 @@
+## 2.27.3
+
+### Fixes
+report exit result in case of failure [1c9f356]
+fix data race [ece19c8]
+
+## 2.27.2
+
+### Fixes
+- inline automaxprocs to simplify dependencies; this will be removed when Go 1.26 comes out [a69113a]
+
+### Maintenance
+- Fix syntax errors and typo [a99c6e0]
+- Fix paragraph position error [f993df5]
+
+## 2.27.1
+
+### Fixes
+- Fix Ginkgo Reporter slice-bounds panic [606c1cb]
+- Bug Fix: Add GinkoTBWrapper.Attr() and GinkoTBWrapper.Output() [a6463b3]
+
+## 2.27.0
+
+### Features
+
+#### Transforming Nodes during Tree Construction
+
+This release adds support for `NodeArgsTransformer`s that can be registered with `AddTreeConstructionNodeArgsTransformer`.
+
+These are called during the tree construction phase as nodes are constructed and can modify the node strings and decorators.  This enables frameworks built on top of Ginkgo to modify Ginkgo nodes and enforce conventions.
+
+Learn more [here](https://onsi.github.io/ginkgo/#advanced-transforming-node-arguments-during-tree-construction).
+
+#### Spec Prioritization
+
+A new `SpecPriority(int)` decorator has been added.  Ginkgo will honor priority when ordering specs, ensuring that higher priority specs start running before lower priority specs
+
+Learn more [here](https://onsi.github.io/ginkgo/#prioritizing-specs).
+
+### Maintenance
+- Bump rexml from 3.4.0 to 3.4.2 in /docs (#1595) [1333dae]
+- Bump github.com/gkampitakis/go-snaps from 0.5.14 to 0.5.15 (#1600) [17ae63e]
+
+## 2.26.0
+
+### Features
+
+Ginkgo can now generate json-formatted reports that are compatible with the `go test` json format.  Use `ginkgo --gojson-report=report.go.json`.  This is not intended to be a replacement for Ginkgo's native json format which is more information rich and better models Ginkgo's test structure semantics.
+
+## 2.25.3
+
+### Fixes
+
+- emit --github-output group only for progress report itself [f01aed1]
+
+## 2.25.2
+
+### Fixes
+Add github output group for progress report content
+
+### Maintenance
+Bump Gomega
+
+## 2.25.1
+
+### Fixes
+- fix(types): ignore nameless nodes on FullText() [10866d3]
+- chore: fix some CodeQL warnings [2e42cff]
+
+## 2.25.0
+
+### `AroundNode`
+
+This release introduces a new decorator to support more complex spec setup usecases.
+
+`AroundNode` registers a function that runs before each individual node.  This is considered a more advanced decorator.
+
+Please read the [docs](https://onsi.github.io/ginkgo/#advanced-around-node) for more information and some examples.
+
+Allowed signatures:
+
+- `AroundNode(func())` - `func` will be called before the node is run.
+- `AroundNode(func(ctx context.Context) context.Context)` - `func` can wrap the passed in context and return a new one which will be passed on to the node.
+- `AroundNode(func(ctx context.Context, body func(ctx context.Context)))` - `ctx` is the context for the node and `body` is a function that must be called to run the node.  This gives you complete control over what runs before and after the node.
+
+Multiple `AroundNode` decorators can be applied to a single node and they will run in the order they are applied.
+
+Unlike setup nodes like `BeforeEach` and `DeferCleanup`, `AroundNode` is guaranteed to run in the same goroutine as the decorated node.  This is necessary when working with lower-level libraries that must run on a single thread (you can call `runtime.LockOSThread()` in the `AroundNode` to ensure that the node runs on a single thread).
+
+Since `AroundNode` allows you to modify the context you can also use `AroundNode` to implement shared setup that attaches values to the context.
+
+If applied to a container, `AroundNode` will run before every node in the container.  Including setup nodes like `BeforeEach` and `DeferCleanup`.
+
+`AroundNode` can also be applied to `RunSpecs` to run before every node in the suite.  This opens up new mechanisms for instrumenting individual nodes across an entire suite.
+
+## 2.24.0
+
+### Features
+
+Specs can now be decorated with (e.g.) `SemVerConstraint("2.1.0")` and `ginkgo --sem-ver-filter="2.1.1"` will only run constrained specs that match the requested version.  Learn more in the docs [here](https://onsi.github.io/ginkgo/#spec-semantic-version-filtering)!  Thanks to @Icarus9913 for the PR.
+
+### Fixes
+
+- remove -o from run command [3f5d379].  fixes [#1582](https://github.com/onsi/ginkgo/issues/1582)
+
+### Maintenance
+
+Numerous dependency bumps and documentation fixes
+
+## 2.23.4
+
+Prior to this release Ginkgo would compute the incorrect number of available CPUs when running with `-p` in a linux container.  Thanks to @emirot for the fix!
+
+### Features
+- Add automaxprocs for using CPUQuota [2b9c428]
+
+### Fixes
+- clarify gotchas about -vet flag [1f59d07]
+
+### Maintenance
+- bump dependencies [2d134d5]
+
+## 2.23.3
+
+### Fixes
+
+- allow `-` as a standalone argument [cfcc1a5]
+- Bug Fix: Add GinkoTBWrapper.Chdir() and GinkoTBWrapper.Context() [feaf292]
+- ignore exit code for symbol test on linux [88e2282]
+
+## 2.23.2
+
+🎉🎉🎉
+
+At long last, some long-standing performance gaps between `ginkgo` and `go test` have been resolved!
+
+Ginkgo operates by running `go test -c` to generate test binaries, and then running those binaries.  It turns out that the compilation step of `go test -c` is slower than `go test`'s compilation step because `go test` strips out debug symbols (`ldflags=-w`) whereas `go test -c` does not.
+
+Ginkgo now passes the appropriate `ldflags` to `go test -c` when running specs to strip out symbols.  This is only done when it is safe to do so and symbols are preferred when profiling is enabled and when `ginkgo build` is called explicitly.
+
+This, coupled, with the [instructions for disabling XProtect on MacOS](https://onsi.github.io/ginkgo/#if-you-are-running-on-macos) yields a much better performance experience with Ginkgo.
+
+## 2.23.1
+
+## 🚨 For users on MacOS 🚨
+
+A long-standing Ginkgo performance issue on MacOS seems to be due to mac's antimalware XProtect.  You can follow the instructions [here](https://onsi.github.io/ginkgo/#if-you-are-running-on-macos) to disable it in your terminal.  Doing so sped up Ginkgo's own test suite from 1m8s to 47s.
+
+### Fixes
+
+Ginkgo's CLI is now a bit clearer if you pass flags in incorrectly:
+
+- make it clearer that you need to pass a filename to the various profile flags, not an absolute directory [a0e52ff]
+- emit an error and exit if the ginkgo invocation includes flags after positional arguments [b799d8d]
+
+This might cause existing CI builds to fail.  If so then it's likely that your CI build was misconfigured and should be corrected.  Open an issue if you need help.
+
+## 2.23.0
+
+Ginkgo 2.23.0 adds a handful of methods to `GinkgoT()` to make it compatible with the `testing.TB` interface in Go 1.24.  `GinkgoT().Context()`, in particular, is a useful shorthand for generating a new context that will clean itself up in a `DeferCleanup()`.  This has subtle behavior differences from the golang implementation but should make sense in a Ginkgo... um... context.
+
+### Features
+- bump to go 1.24.0 - support new testing.TB methods and add a test to cover testing.TB regressions [37a511b]
+
+### Fixes
+- fix edge case where build -o is pointing at an explicit file, not a directory [7556a86]
+- Fix binary paths when precompiling multiple suites. [4df06c6]
+
+### Maintenance
+- Fix: Correct Markdown list rendering in MIGRATING_TO_V2.md [cbcf39a]
+- docs: fix test workflow badge (#1512) [9b261ff]
+- Bump golang.org/x/net in /integration/_fixtures/version_mismatch_fixture (#1516) [00f19c8]
+- Bump golang.org/x/tools from 0.28.0 to 0.30.0 (#1515) [e98a4df]
+- Bump activesupport from 6.0.6.1 to 6.1.7.5 in /docs (#1504) [60cc4e2]
+- Bump github-pages from 231 to 232 in /docs (#1447) [fea6f2d]
+- Bump rexml from 3.2.8 to 3.3.9 in /docs (#1497) [31d7813]
+- Bump webrick from 1.8.1 to 1.9.1 in /docs (#1501) [fc3bbd6]
+- Code linting (#1500) [aee0d56]
+- change interface{} to any (#1502) [809a710]
+
+## 2.22.2
+
+### Maintenance
+- Bump github.com/onsi/gomega from 1.36.1 to 1.36.2 (#1499) [cc553ce]
+- Bump golang.org/x/crypto (#1498) [2170370]
+- Bump golang.org/x/net from 0.32.0 to 0.33.0 (#1496) [a96c44f]
+
+## 2.22.1
+
+### Fixes
+Fix CSV encoding
+- Update tests [aab3da6]
+- Properly encode CSV rows [c09df39]
+- Add test case for proper csv escaping [96a80fc]
+- Add meta-test [43dad69]
+
+### Maintenance
+- ensure *.test files are gitignored so we don't accidentally commit compiled tests again [c88c634]
+- remove golang.org/x/net/context in favour of stdlib context [4df44bf]
+
+## 2.22.0
+
+### Features
+- Add label to serial nodes [0fcaa08]
+
+This allows serial tests to be filtered using the `label-filter`
+
+### Maintenance
+Various doc fixes
+
+## 2.21.0
+
+
+  ### Features
+  - add support for GINKGO_TIME_FORMAT [a69eb39]
+  - add GINKGO_NO_COLOR to disable colors via environment variables [bcab9c8]
+
+  ### Fixes
+  - increase threshold in timeline matcher [e548367]
+  - Fix the document by replacing `SpecsThatWillBeRun` with `SpecsThatWillRun`
+  [c2c4d3c]
+
+  ### Maintenance
+  - bump various dependencies [7e65a00]
+
+## 2.20.2
+
+Require Go 1.22+
+
+### Maintenance
+- bump go to v1.22 [a671816]
+
+## 2.20.1
+
+### Fixes
+- make BeSpecEvent duration matcher more forgiving [d6f9640]
+
+## 2.20.0
+
+### Features
+- Add buildvcs flag [be5ab95]
+
+### Maintenance
+- Add update-deps to makefile [d303d14]
+- bump all dependencies [7a50221]
+
+## 2.19.1
+
+### Fixes
+- update supported platforms for race conditions [63c8c30]
+- [build] Allow custom name for binaries. [ff41e27]
+
+### Maintenance
+- bump gomega [76f4e0c]
+- Bump rexml from 3.2.6 to 3.2.8 in /docs (#1417) [b69c00d]
+- Bump golang.org/x/sys from 0.20.0 to 0.21.0 (#1425) [f097741]
+
+## 2.19.0
+
+### Features
+
+[Label Sets](https://onsi.github.io/ginkgo/#label-sets) allow for more expressive and flexible label filtering.
+
+## 2.18.0
+
+### Features
+- Add --slience-skips and --force-newlines [f010b65]
+- fail when no tests were run and --fail-on-empty was set [d80eebe]
+
+### Fixes
+- Fix table entry context edge case [42013d6]
+
+### Maintenance
+- Bump golang.org/x/tools from 0.20.0 to 0.21.0 (#1406) [fcf1fd7]
+- Bump github.com/onsi/gomega from 1.33.0 to 1.33.1 (#1399) [8bb14fd]
+- Bump golang.org/x/net from 0.24.0 to 0.25.0 (#1407) [04bfad7]
+
+## 2.17.3
+
+### Fixes
+`ginkgo watch` now ignores hidden files [bde6e00]
+
+## 2.17.2
+
+### Fixes
+- fix: close files [32259c8]
+- fix github output log level for skipped specs [780e7a3]
+
+### Maintenance
+- Bump github.com/google/pprof [d91fe4e]
+- Bump github.com/go-task/slim-sprig to v3 [8cb662e]
+- Bump golang.org/x/net in /integration/_fixtures/version_mismatch_fixture (#1391) [3134422]
+- Bump github-pages from 230 to 231 in /docs (#1384) [eca81b4]
+- Bump golang.org/x/tools from 0.19.0 to 0.20.0 (#1383) [760def8]
+- Bump golang.org/x/net from 0.23.0 to 0.24.0 (#1381) [4ce33f4]
+- Fix test for gomega version bump [f2fcd97]
+- Bump github.com/onsi/gomega from 1.30.0 to 1.33.0 (#1390) [fd622d2]
+- Bump golang.org/x/tools from 0.17.0 to 0.19.0 (#1368) [5474a26]
+- Bump github-pages from 229 to 230 in /docs (#1359) [e6d1170]
+- Bump google.golang.org/protobuf from 1.28.0 to 1.33.0 (#1374) [7f447b2]
+- Bump golang.org/x/net from 0.20.0 to 0.23.0 (#1380) [f15239a]
+
+## 2.17.1
+
+### Fixes
+- If the user sets --seed=0, make sure all parallel nodes get the same seed [af0330d]
+
+## 2.17.0
+
+### Features
+
+- add `--github-output` for nicer output in github actions [e8a2056]
+
+### Maintenance
+
+- fix typo in core_dsl.go [977bc6f]
+- Fix typo in docs [e297e7b]
+
+## 2.16.0
+
+### Features
+- add SpecContext to reporting nodes
+
+### Fixes
+- merge coverages instead of combining them (#1329) (#1340) [23f0cc5]
+- core_dsl: disable Getwd() with environment variable (#1357) [cd418b7]
+
+### Maintenance
+- docs/index.md: Typo [2cebe8d]
+- fix docs [06de431]
+- chore: test with Go 1.22 (#1352) [898cba9]
+- Bump golang.org/x/tools from 0.16.1 to 0.17.0 (#1336) [17ae120]
+- Bump golang.org/x/sys from 0.15.0 to 0.16.0 (#1327) [5a179ed]
+- Bump github.com/go-logr/logr from 1.3.0 to 1.4.1 (#1321) [a1e6b69]
+- Bump github-pages and jekyll-feed in /docs (#1351) [d52951d]
+- Fix docs for handling failures in goroutines (#1339) [4471b2e]
+
+## 2.15.0
+
+### Features
+
+- JUnit reports now interpret Label(owner:X) and set owner to X. [8f3bd70]
+- include cancellation reason when cancelling spec context [96e915c]
+
+### Fixes
+
+- emit output of failed go tool cover invocation so users can try to debug things for themselves [c245d09]
+- fix outline when using nodot in ginkgo v2 [dca77c8]
+- Document areas where GinkgoT() behaves differently from testing.T [dbaf18f]
+- bugfix(docs): use Unsetenv instead of Clearenv (#1337) [6f67a14]
+
+### Maintenance
+
+- Bump to go 1.20 [4fcd0b3]
+
+## 2.14.0
+
+### Features
+You can now use `GinkgoTB()` when you need an instance of `testing.TB` to pass to a library.
+
+Prior to this release table testing only supported generating individual `It`s for each test entry.  `DescribeTableSubtree` extends table testing support to entire testing subtrees - under the hood `DescrieTableSubtree` generates a new container for each entry and invokes your function to fill our the container.  See the [docs](https://onsi.github.io/ginkgo/#generating-subtree-tables) to learn more.
+
+- Introduce DescribeTableSubtree [65ec56d]
+- add GinkgoTB() to docs [4a2c832]
+- Add GinkgoTB() function (#1333) [92b6744]
+
+### Fixes
+- Fix typo in internal/suite.go (#1332) [beb9507]
+- Fix typo in docs/index.md (#1319) [4ac3a13]
+- allow wasm to compile with ginkgo present (#1311) [b2e5bc5]
+
+### Maintenance
+- Bump golang.org/x/tools from 0.16.0 to 0.16.1 (#1316) [465a8ec]
+- Bump actions/setup-go from 4 to 5 (#1313) [eab0e40]
+- Bump github/codeql-action from 2 to 3 (#1317) [fbf9724]
+- Bump golang.org/x/crypto (#1318) [3ee80ee]
+- Bump golang.org/x/tools from 0.14.0 to 0.16.0 (#1306) [123e1d5]
+- Bump github.com/onsi/gomega from 1.29.0 to 1.30.0 (#1297) [558f6e0]
+- Bump golang.org/x/net from 0.17.0 to 0.19.0 (#1307) [84ff7f3]
+
 ## 2.13.2
 
 ### Fixes
@@ -430,7 +810,7 @@ Ginkgo also uses this progress reporting infrastructure under the hood when hand
 ### Features
 - `BeforeSuite`, `AfterSuite`, `SynchronizedBeforeSuite`, `SynchronizedAfterSuite`, and `ReportAfterSuite` now support (the relevant subset of) decorators.  These can be passed in _after_ the callback functions that are usually passed into these nodes.
 
-  As a result the **signature of these methods has changed** and now includes a trailing `args ...interface{}`.  For most users simply using the DSL, this change is transparent.  However if you were assigning one of these functions to a custom variable (or passing it around) then your code may need to change to reflect the new signature.
+  As a result the **signature of these methods has changed** and now includes a trailing `args ...any`.  For most users simply using the DSL, this change is transparent.  However if you were assigning one of these functions to a custom variable (or passing it around) then your code may need to change to reflect the new signature.
 
 ### Maintenance
 - Modernize the invocation of Ginkgo in github actions [0ffde58]
@@ -842,7 +1222,7 @@ New Features:
 - `ginkgo -tags=TAG_LIST` passes a list of tags down to the `go build` command.
 - `ginkgo --failFast` aborts the test suite after the first failure.
 - `ginkgo generate file_1 file_2` can take multiple file arguments.
-- Ginkgo now summarizes any spec failures that occurred at the end of the test run. 
+- Ginkgo now summarizes any spec failures that occurred at the end of the test run.
 - `ginkgo --randomizeSuites` will run tests *suites* in random order using the generated/passed-in seed.
 
 Improvements:
@@ -876,7 +1256,7 @@ Bug Fixes:
 Breaking changes:
 
 - `thirdparty/gomocktestreporter` is gone.  Use `GinkgoT()` instead
-- Modified the Reporter interface 
+- Modified the Reporter interface
 - `watch` is now a subcommand, not a flag.
 
 DSL changes:

@@ -8,26 +8,27 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"os"
 	"reflect"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/gorilla/handlers"
 	"github.com/hyperledger/fabric-config/protolator"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	_ "github.com/hyperledger/fabric-protos-go/msp"
-	_ "github.com/hyperledger/fabric-protos-go/orderer"
-	_ "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	_ "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	_ "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	_ "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	_ "github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
+	_ "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/internal/configtxlator/metadata"
 	"github.com/hyperledger/fabric/internal/configtxlator/rest"
 	"github.com/hyperledger/fabric/internal/configtxlator/update"
-
-	"github.com/gorilla/handlers"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -125,17 +126,26 @@ func printVersion() {
 }
 
 func encodeProto(msgName string, input, output *os.File) error {
-	msgType := proto.MessageType(msgName)
+	mt, err := protoregistry.GlobalTypes.FindMessageByName(protoreflect.FullName(msgName))
+	if err != nil {
+		return errors.Wrapf(err, "error encode input")
+	}
+
+	msgType := reflect.TypeOf(mt.Zero().Interface())
+
 	if msgType == nil {
 		return errors.Errorf("message of type %s unknown", msgType)
 	}
 	msg := reflect.New(msgType.Elem()).Interface().(proto.Message)
 
-	err := protolator.DeepUnmarshalJSON(input, msg)
+	err = protolator.DeepUnmarshalJSON(input, msg)
 	if err != nil {
 		return errors.Wrapf(err, "error decoding input")
 	}
 
+	if msg == nil {
+		return errors.New("error marshaling: proto: Marshal called with nil")
+	}
 	out, err := proto.Marshal(msg)
 	if err != nil {
 		return errors.Wrapf(err, "error marshaling")
@@ -150,13 +160,19 @@ func encodeProto(msgName string, input, output *os.File) error {
 }
 
 func decodeProto(msgName string, input, output *os.File) error {
-	msgType := proto.MessageType(msgName)
+	mt, err := protoregistry.GlobalTypes.FindMessageByName(protoreflect.FullName(msgName))
+	if err != nil {
+		return errors.Wrapf(err, "error encode input")
+	}
+
+	msgType := reflect.TypeOf(mt.Zero().Interface())
+
 	if msgType == nil {
 		return errors.Errorf("message of type %s unknown", msgType)
 	}
 	msg := reflect.New(msgType.Elem()).Interface().(proto.Message)
 
-	in, err := ioutil.ReadAll(input)
+	in, err := io.ReadAll(input)
 	if err != nil {
 		return errors.Wrapf(err, "error reading input")
 	}
@@ -175,7 +191,7 @@ func decodeProto(msgName string, input, output *os.File) error {
 }
 
 func computeUpdt(original, updated, output *os.File, channelID string) error {
-	origIn, err := ioutil.ReadAll(original)
+	origIn, err := io.ReadAll(original)
 	if err != nil {
 		return errors.Wrapf(err, "error reading original config")
 	}
@@ -186,7 +202,7 @@ func computeUpdt(original, updated, output *os.File, channelID string) error {
 		return errors.Wrapf(err, "error unmarshalling original config")
 	}
 
-	updtIn, err := ioutil.ReadAll(updated)
+	updtIn, err := io.ReadAll(updated)
 	if err != nil {
 		return errors.Wrapf(err, "error reading updated config")
 	}

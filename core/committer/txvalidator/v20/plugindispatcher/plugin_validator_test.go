@@ -9,9 +9,8 @@ package plugindispatcher_test
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/policydsl"
 	tmocks "github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
@@ -24,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestValidateWithPlugin(t *testing.T) {

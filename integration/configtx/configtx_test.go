@@ -10,41 +10,47 @@ import (
 	"crypto"
 	"crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
 	"os"
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/configtx"
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
-	"github.com/tedsuo/ifrit"
-
+	. "github.com/hyperledger/fabric/internal/test"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
 var _ = Describe("ConfigTx", func() {
 	var (
-		client  *docker.Client
-		testDir string
-		network *nwo.Network
-		process ifrit.Process
+		client                      dcli.APIClient
+		testDir                     string
+		network                     *nwo.Network
+		ordererRunner               *ginkgomon.Runner
+		ordererProcess, peerProcess ifrit.Process
 	)
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "configtx")
+		testDir, err = os.MkdirTemp("", "configtx")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.BasicSolo(), testDir, client, StartPort(), components)
+		config := nwo.BasicEtcdRaft()
+		// disable all anchor peers
+		for _, p := range config.Peers {
+			for _, pc := range p.Channels {
+				pc.Anchor = false
+			}
+		}
+		network = nwo.New(config, testDir, client, StartPort(), components)
 
 		// Generate config
 		network.GenerateConfigTree()
@@ -52,15 +58,18 @@ var _ = Describe("ConfigTx", func() {
 		// bootstrap the network
 		network.Bootstrap()
 
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		// Start all the fabric processes
+		ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 	})
 
 	AfterEach(func() {
-		if process != nil {
-			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+		if ordererProcess != nil {
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+		if peerProcess != nil {
+			peerProcess.Signal(syscall.SIGTERM)
+			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
 		if network != nil {
 			network.Cleanup()
@@ -71,76 +80,9 @@ var _ = Describe("ConfigTx", func() {
 
 	It("creates channels and updates them using fabric-config/configtx", func() {
 		orderer := network.Orderer("orderer")
-		org1peer0 := network.Peer("Org1", "peer0")
-
-		By("setting up the channel")
-		channel := configtx.Channel{
-			Consortium: "SampleConsortium",
-			Application: configtx.Application{
-				Organizations: []configtx.Organization{
-					{
-						Name: "Org1",
-					},
-					{
-						Name: "Org2",
-					},
-				},
-				Capabilities: []string{"V1_3"},
-				ACLs:         map[string]string{"event/Block": "/Channel/Application/Readers"},
-				Policies: map[string]configtx.Policy{
-					configtx.ReadersPolicyKey: {
-						Type: configtx.ImplicitMetaPolicyType,
-						Rule: "ANY Readers",
-					},
-					configtx.WritersPolicyKey: {
-						Type: configtx.ImplicitMetaPolicyType,
-						Rule: "ANY Writers",
-					},
-					configtx.AdminsPolicyKey: {
-						Type: configtx.ImplicitMetaPolicyType,
-						Rule: "MAJORITY Admins",
-					},
-					configtx.EndorsementPolicyKey: {
-						Type: configtx.ImplicitMetaPolicyType,
-						Rule: "MAJORITY Endorsement",
-					},
-					configtx.LifecycleEndorsementPolicyKey: {
-						Type: configtx.ImplicitMetaPolicyType,
-						Rule: "MAJORITY Endorsement",
-					},
-				},
-			},
-		}
-
-		channelID := "testchannel"
-		createChannelUpdate, err := configtx.NewMarshaledCreateChannelTx(channel, channelID)
-		Expect(err).NotTo(HaveOccurred())
-
-		envelope, err := configtx.NewEnvelope(createChannelUpdate)
-		Expect(err).NotTo(HaveOccurred())
-		envBytes, err := proto.Marshal(envelope)
-		Expect(err).NotTo(HaveOccurred())
-		channelCreateTxPath := network.CreateChannelTxPath("testchannel")
-		err = ioutil.WriteFile(channelCreateTxPath, envBytes, 0o644)
-		Expect(err).NotTo(HaveOccurred())
-
-		By("creating the channel")
-		createChannel := func() int {
-			sess, err := network.PeerAdminSession(org1peer0, commands.ChannelCreate{
-				ChannelID:   "testchannel",
-				Orderer:     network.OrdererAddress(orderer, nwo.ListenPort),
-				File:        channelCreateTxPath,
-				OutputBlock: "/dev/null",
-				ClientAuth:  network.ClientAuthRequired,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			return sess.Wait(network.EventuallyTimeout).ExitCode()
-		}
-		Eventually(createChannel, network.EventuallyTimeout).Should(Equal(0))
 
 		By("joining all peers to the channel")
-		testPeers := network.PeersWithChannel("testchannel")
-		network.JoinChannel("testchannel", orderer, testPeers...)
+		nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
 		By("getting the current channel config")
 		org2peer0 := network.Peer("Org2", "peer0")
@@ -189,7 +131,7 @@ var _ = Describe("ConfigTx", func() {
 
 		By("ensuring the active channel config matches the submitted config")
 		updatedChannelConfig := nwo.GetConfig(network, org2peer0, orderer, "testchannel")
-		Expect(proto.Equal(c.UpdatedConfig(), updatedChannelConfig)).To(BeTrue())
+		Expect(c.UpdatedConfig()).To(ProtoEqual(updatedChannelConfig))
 
 		By("checking the current application capabilities")
 		c = configtx.New(updatedChannelConfig)
@@ -214,6 +156,7 @@ var _ = Describe("ConfigTx", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("creating detached signatures for each peer")
+		testPeers := network.PeersWithChannel("testchannel")
 		signingIdentities := make([]configtx.SigningIdentity, len(testPeers))
 		signatures := make([]*common.ConfigSignature, len(testPeers))
 		for i, p := range testPeers {
@@ -246,10 +189,10 @@ var _ = Describe("ConfigTx", func() {
 
 		By("ensuring the active channel config matches the submitted config")
 		updatedChannelConfig = nwo.GetConfig(network, org2peer0, orderer, "testchannel")
-		Expect(proto.Equal(c.UpdatedConfig(), updatedChannelConfig)).To(BeTrue())
+		Expect(c.UpdatedConfig()).To(ProtoEqual(updatedChannelConfig))
 
 		By("adding the anchor peer for each org")
-		for _, peer := range network.AnchorsForChannel("testchannel") {
+		for _, peer := range testPeers {
 			By("getting the current channel config")
 			channelConfig = nwo.GetConfig(network, peer, orderer, "testchannel")
 			c = configtx.New(channelConfig)
@@ -291,14 +234,14 @@ var _ = Describe("ConfigTx", func() {
 
 			By("ensuring the active channel config matches the submitted config")
 			updatedChannelConfig = nwo.GetConfig(network, peer, orderer, "testchannel")
-			Expect(proto.Equal(c.UpdatedConfig(), updatedChannelConfig)).To(BeTrue())
+			Expect(c.UpdatedConfig()).To(ProtoEqual(updatedChannelConfig))
 		}
 	})
 })
 
 // parsePrivateKey loads the PEM-encoded private key at the specified path.
 func parsePrivateKey(path string) crypto.PrivateKey {
-	pkBytes, err := ioutil.ReadFile(path)
+	pkBytes, err := os.ReadFile(path)
 	Expect(err).NotTo(HaveOccurred())
 	pemBlock, _ := pem.Decode(pkBytes)
 	privateKey, err := x509.ParsePKCS8PrivateKey(pemBlock.Bytes)
@@ -309,7 +252,7 @@ func parsePrivateKey(path string) crypto.PrivateKey {
 // parseCertificate loads the PEM-encoded x509 certificate at the specified
 // path.
 func parseCertificate(path string) *x509.Certificate {
-	certBytes, err := ioutil.ReadFile(path)
+	certBytes, err := os.ReadFile(path)
 	Expect(err).NotTo(HaveOccurred())
 	pemBlock, _ := pem.Decode(certBytes)
 	cert, err := x509.ParseCertificate(pemBlock.Bytes)

@@ -9,19 +9,17 @@ package fileledger
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"testing"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	cl "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/blkstoragetest"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -40,8 +38,7 @@ type testEnv struct {
 }
 
 func initialize(t *testing.T) (*testEnv, *FileLedger) {
-	name, err := ioutil.TempDir("", "hyperledger_fabric")
-	require.NoError(t, err, "Error creating temp dir: %s", err)
+	name := t.TempDir()
 
 	p, err := New(name, &disabled.Provider{})
 	require.NoError(t, err)
@@ -54,10 +51,6 @@ func initialize(t *testing.T) (*testEnv, *FileLedger) {
 
 func (tev *testEnv) tearDown() {
 	tev.shutDown()
-	err := os.RemoveAll(tev.location)
-	if err != nil {
-		tev.t.Fatalf("Error tearing down env: %s", err)
-	}
 }
 
 func (tev *testEnv) shutDown() {
@@ -152,8 +145,8 @@ func TestReinitialization(t *testing.T) {
 	fl, err := tev.flf.GetOrCreate("testchannelid")
 	ledger1, ok := fl.(*FileLedger)
 	require.NoError(t, err, "Expected to successfully get test channel")
-	require.Equal(t, 1, len(tev.flf.ChannelIDs()), "Exptected not new channel to be created")
-	require.True(t, ok, "Exptected type assertion to succeed")
+	require.Equal(t, 1, len(tev.flf.ChannelIDs()), "Expected not new channel to be created")
+	require.True(t, ok, "Expected type assertion to succeed")
 	require.Equal(t, uint64(2), ledger1.Height(), "Block height should be 2. Got %v", ledger1.Height())
 
 	// shut down the ledger provider

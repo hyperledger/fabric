@@ -10,12 +10,13 @@ import (
 	"bytes"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"google.golang.org/protobuf/proto"
 )
 
 // SignedData is used to represent the general triplet required to verify a signature
@@ -33,7 +34,7 @@ type SignedData struct {
 // possible.
 func ConfigUpdateEnvelopeAsSignedData(ce *common.ConfigUpdateEnvelope) ([]*SignedData, error) {
 	if ce == nil {
-		return nil, fmt.Errorf("No signatures for nil SignedConfigItem")
+		return nil, errors.New("No signatures for nil SignedConfigItem")
 	}
 
 	result := make([]*SignedData, len(ce.Signatures))
@@ -59,7 +60,7 @@ func ConfigUpdateEnvelopeAsSignedData(ce *common.ConfigUpdateEnvelope) ([]*Signe
 // slice of length 1 or an error indicating why this was not possible.
 func EnvelopeAsSignedData(env *common.Envelope) ([]*SignedData, error) {
 	if env == nil {
-		return nil, fmt.Errorf("No signatures for nil Envelope")
+		return nil, errors.New("No signatures for nil Envelope")
 	}
 
 	payload := &common.Payload{}
@@ -69,7 +70,7 @@ func EnvelopeAsSignedData(env *common.Envelope) ([]*SignedData, error) {
 	}
 
 	if payload.Header == nil /* || payload.Header.SignatureHeader == nil */ {
-		return nil, fmt.Errorf("Missing Header")
+		return nil, errors.New("Missing Header")
 	}
 
 	shdr := &common.SignatureHeader{}
@@ -85,9 +86,9 @@ func EnvelopeAsSignedData(env *common.Envelope) ([]*SignedData, error) {
 	}}, nil
 }
 
-// LogMessageForSerializedIdentity returns a string with seriealized identity information,
+// LogMessageForSerializedIdentity returns a string with serialized identity information,
 // or a string indicating why the serialized identity information cannot be returned.
-// Any errors are intentially returned in the return strings so that the function can be used in single-line log messages with minimal clutter.
+// Any errors are intentionally returned in the return strings so that the function can be used in single-line log messages with minimal clutter.
 func LogMessageForSerializedIdentity(serializedIdentity []byte) string {
 	id := &msp.SerializedIdentity{}
 	err := proto.Unmarshal(serializedIdentity, id)

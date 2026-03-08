@@ -60,7 +60,7 @@ As a test, run the 'Contract Metadata' function as shown below. (For details on 
 # Environment variables for Org1
 
 export CORE_PEER_TLS_ENABLED=true
-export CORE_PEER_LOCALMSPID="Org1MSP"
+export CORE_PEER_LOCALMSPID=Org1MSP
 export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/tlsca/tlsca.org1.example.com-cert.pem
 export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
 export CORE_PEER_ADDRESS=localhost:7051
@@ -95,7 +95,7 @@ Each language can function in the '-as-a-service' mode. The following approaches
 
 With the Fabric v2.4.1 Java chaincode libraries, there are no code changes or build changes to implement. The '-as-a-service' mode will be used if the environment variable `CHAINCODE_SERVER_ADDRESS` is set.
 
-The following sample Docker run command shows the two required variables, `CHAINCODE_SERVER_ADDRESS` and `CORE_CHAICODE_ID_NAME`:
+The following sample Docker run command shows the two required variables, `CHAINCODE_SERVER_ADDRESS` and `CORE_CHAINCODE_ID_NAME`:
 
 ```bash
     docker run --rm -d --name peer0org1_assettx_ccaas  \

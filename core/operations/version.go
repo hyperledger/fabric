@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 )
 
 type VersionInfoHandler struct {
@@ -33,7 +33,7 @@ type errorResponse struct {
 	Error string `json:"Error"`
 }
 
-func (m *VersionInfoHandler) sendResponse(resp http.ResponseWriter, code int, payload interface{}) {
+func (m *VersionInfoHandler) sendResponse(resp http.ResponseWriter, code int, payload any) {
 	if err, ok := payload.(error); ok {
 		payload = &errorResponse{Error: err.Error()}
 	}

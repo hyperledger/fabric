@@ -14,7 +14,7 @@ import (
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
+	"github.com/hyperledger/aries-bbs-go/bbs"
 	"github.com/pkg/errors"
 )
 
@@ -194,7 +194,9 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerKeyGenOpts{}),
 		&handlers.IssuerKeyGen{
 			Exportable: exportable,
-			Issuer:     &aries.Issuer{},
+			Issuer: &aries.Issuer{
+				Curve: curve,
+			},
 		})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixUserSecretKeyGenOpts{}),
 		&handlers.UserKeyGen{
@@ -233,6 +235,9 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 					Rng:   rng,
 				}},
 			nymSigner: &handlers.NymSigner{
+				SmartcardNymSignatureScheme: &aries.SmartcardIdemixBackend{
+					Curve: curve,
+				},
 				NymSignatureScheme: &aries.NymSigner{
 					Curve: curve,
 					Rng:   rng,
@@ -247,7 +252,7 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 		&handlers.CredentialSigner{
 			Credential: &aries.Cred{
 				Curve: curve,
-				Bls:   bbs12381g2pub.New(),
+				BBS:   bbs.New(curve),
 			},
 		})
 	base.AddWrapper(reflect.TypeOf(handlers.NewRevocationSecretKey(nil, true)),
@@ -274,6 +279,9 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 		})
 	base.AddWrapper(reflect.TypeOf(handlers.NewNymPublicKey(nil, _translator)),
 		&handlers.NymVerifier{
+			SmartcardNymSignatureScheme: &aries.SmartcardIdemixBackend{
+				Curve: curve,
+			},
 			NymSignatureScheme: &aries.NymSigner{
 				Curve: curve,
 				Rng:   rng,
@@ -283,7 +291,7 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 		&handlers.CredentialVerifier{
 			Credential: &aries.Cred{
 				Curve: curve,
-				Bls:   bbs12381g2pub.New(),
+				BBS:   bbs.New(curve),
 			},
 		})
 	base.AddWrapper(reflect.TypeOf(handlers.NewRevocationPublicKey(nil)),
@@ -305,12 +313,16 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 		})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerPublicKeyImportOpts{}),
 		&handlers.IssuerPublicKeyImporter{
-			Issuer: &aries.Issuer{},
+			Issuer: &aries.Issuer{
+				Curve: curve,
+			},
 		})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerKeyImportOpts{}),
 		&handlers.IssuerKeyImporter{
 			Exportable: exportable,
-			Issuer:     &aries.Issuer{},
+			Issuer: &aries.Issuer{
+				Curve: curve,
+			},
 		})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixNymPublicKeyImportOpts{}),
 		&handlers.NymPublicKeyImporter{

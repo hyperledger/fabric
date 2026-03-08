@@ -15,13 +15,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -32,6 +31,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/metadata"
 	peer2 "google.golang.org/grpc/peer"
+	"google.golang.org/protobuf/proto"
 )
 
 // defaultPolicyCheckerProvider policy checker provider used by default,
@@ -157,7 +157,7 @@ func (m *mockDeliverServer) Send(response *peer.DeliverResponse) error {
 	return args.Error(0)
 }
 
-func (*mockDeliverServer) RecvMsg(m interface{}) error {
+func (*mockDeliverServer) RecvMsg(m any) error {
 	panic("implement me")
 }
 
@@ -165,7 +165,7 @@ func (*mockDeliverServer) SendHeader(metadata.MD) error {
 	panic("implement me")
 }
 
-func (*mockDeliverServer) SendMsg(m interface{}) error {
+func (*mockDeliverServer) SendMsg(m any) error {
 	panic("implement me")
 }
 
@@ -192,7 +192,7 @@ type testCase struct {
 }
 
 func TestFilteredBlockResponseSenderIsFiltered(t *testing.T) {
-	var fbrs interface{} = &filteredBlockResponseSender{}
+	var fbrs any = &filteredBlockResponseSender{}
 	filtered, ok := fbrs.(deliver.Filtered)
 	require.True(t, ok, "should be filtered")
 	require.True(t, filtered.IsFiltered(), "should return true from IsFiltered")
@@ -726,7 +726,7 @@ func produceSamplePvtdataOrPanic(txNum uint64, nsColls []string) *ledger.TxPvtDa
 		nsCollSplit := strings.Split(nsColl, ":")
 		ns := nsCollSplit[0]
 		coll := nsCollSplit[1]
-		builder.AddToPvtAndHashedWriteSet(ns, coll, fmt.Sprintf("key-%s-%s", ns, coll), []byte(fmt.Sprintf("value-%s-%s", ns, coll)))
+		builder.AddToPvtAndHashedWriteSet(ns, coll, fmt.Sprintf("key-%s-%s", ns, coll), fmt.Appendf(nil, "value-%s-%s", ns, coll))
 	}
 	simRes, err := builder.GetTxSimulationResults()
 	if err != nil {

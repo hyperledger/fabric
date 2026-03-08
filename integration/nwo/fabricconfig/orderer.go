@@ -15,8 +15,14 @@ type Orderer struct {
 	Operations           *OrdererOperations    `yaml:"Operations,omitempty"`
 	ChannelParticipation *ChannelParticipation `yaml:"ChannelParticipation,omitempty"`
 	Consensus            map[string]string     `yaml:"Consensus,omitempty"`
+	Admin                *Admin                `yaml:"Admin,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
+}
+
+type Admin struct {
+	TLS           *OrdererTLS `yaml:"TLS,omitempty"`
+	ListenAddress string      `yaml:"ListenAddress,omitempty"`
 }
 
 type General struct {
@@ -25,9 +31,6 @@ type General struct {
 	TLS             *OrdererTLS            `yaml:"TLS,omitempty"`
 	Keepalive       *OrdererKeepalive      `yaml:"Keepalive,omitempty"`
 	BootstrapMethod string                 `yaml:"BootstrapMethod,omitempty"`
-	GenesisProfile  string                 `yaml:"GenesisProfile,omitempty"`
-	GenesisFile     string                 `yaml:"GenesisFile,omitempty"` // will be replaced by the BootstrapFile
-	BootstrapFile   string                 `yaml:"BootstrapFile,omitempty"`
 	LocalMSPDir     string                 `yaml:"LocalMSPDir,omitempty"`
 	LocalMSPID      string                 `yaml:"LocalMSPID,omitempty"`
 	Profile         *OrdererProfile        `yaml:"Profile,omitempty"`
@@ -35,7 +38,7 @@ type General struct {
 	Authentication  *OrdererAuthentication `yaml:"Authentication,omitempty"`
 	Cluster         *Cluster               `yaml:"Cluster,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type Cluster struct {

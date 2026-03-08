@@ -1,33 +1,19 @@
 # peer chaincode
 
-The `peer chaincode` command allows administrators to perform chaincode
-related operations on a peer, such as installing, instantiating, invoking,
-packaging, querying, and upgrading chaincode.
+The `peer chaincode` command allows users to invoke and query chaincode.
 
 ## Syntax
 
 The `peer chaincode` command has the following subcommands:
 
-  * install
-  * instantiate
   * invoke
-  * list
-  * package
   * query
-  * signpackage
-  * upgrade
 
-The different subcommand options (install, instantiate...) relate to the
-different chaincode operations that are relevant to a peer. For example, use the
-`peer chaincode install` subcommand option to install a chaincode on a peer, or
-the `peer chaincode query` subcommand option to query a chaincode for the
-current value on a peer's ledger.
+The subcommands take a constructor flag (`-c` or `--ctor`) to pass arguments to a chaincode.
+The value must be a JSON string that has either key 'Args' or 'Function' and 'Args'.
+These keys are case-insensitive.
 
-Some subcommands take flag `--ctor`, of which the value must be a JSON string 
-that has either key 'Args' or 'Function' and 'Args'. These keys are 
-case-insensitive.
-
-If the JSON string only has the Args key, the key value is an array, where the
+If the constructor JSON string only has the Args key, the key value is an array, where the
 first array element is the target function to call, and the subsequent elements
 are arguments of the function. If the JSON string has both 'Function' and
 'Args', the value of Function is the target function to call, and the value of

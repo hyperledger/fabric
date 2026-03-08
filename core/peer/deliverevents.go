@@ -9,11 +9,11 @@ package peer
 import (
 	"runtime/debug"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/deliver"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -114,8 +114,7 @@ func (fbrs *filteredBlockResponseSender) SendBlockResponse(
 	signedData *protoutil.SignedData,
 ) error {
 	// Generates filtered block response
-	b := blockEvent(*block)
-	filteredBlock, err := b.toFilteredBlock()
+	filteredBlock, err := toFilteredBlock(block)
 	if err != nil {
 		logger.Warningf("Failed to generate filtered block due to: %s", err)
 		return fbrs.SendStatusResponse(common.Status_BAD_REQUEST)
@@ -130,7 +129,7 @@ func (fbrs *filteredBlockResponseSender) DataType() string {
 	return "filtered_block"
 }
 
-// blockResponseSender structure used to send block responses
+// blockAndPrivateDataResponseSender structure used to send block responses
 type blockAndPrivateDataResponseSender struct {
 	peer.Deliver_DeliverWithPrivateDataServer
 	CollectionPolicyChecker
@@ -231,10 +230,6 @@ func (bprs *blockAndPrivateDataResponseSender) getPrivateData(
 // transactionActions aliasing for peer.TransactionAction pointers slice
 type transactionActions []*peer.TransactionAction
 
-// blockEvent an alias for common.Block structure, used to
-// extend with auxiliary functionality
-type blockEvent common.Block
-
 // DeliverFiltered sends a stream of blocks to a client after commitment
 func (s *DeliverServer) DeliverFiltered(srv peer.Deliver_DeliverFilteredServer) error {
 	logger.Debugf("Starting new DeliverFiltered handler")
@@ -289,7 +284,7 @@ func (s *DeliverServer) DeliverWithPrivateData(srv peer.Deliver_DeliverWithPriva
 	return err
 }
 
-func (block *blockEvent) toFilteredBlock() (*peer.FilteredBlock, error) {
+func toFilteredBlock(block *common.Block) (*peer.FilteredBlock, error) {
 	filteredBlock := &peer.FilteredBlock{
 		Number: block.Header.Number,
 	}
@@ -341,7 +336,7 @@ func (block *blockEvent) toFilteredBlock() (*peer.FilteredBlock, error) {
 
 			filteredTransaction.Data, err = transactionActions(tx.Actions).toFilteredActions()
 			if err != nil {
-				logger.Errorf(err.Error())
+				logger.Error(err.Error())
 				return nil, err
 			}
 		}

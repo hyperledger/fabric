@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
+	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
@@ -36,7 +36,7 @@ func TestInterceptAcks(t *testing.T) {
 	}
 	sub := pubsub.Subscribe(topicForAck(1, pkiID), time.Second)
 	wrappedHandler(ack)
-	// Ensure ack was consumed and not passed onwards to the wrapped hander
+	// Ensure ack was consumed and not passed onwards to the wrapped handler
 	require.Len(t, msgs, 0)
 	_, err := sub.Listen()
 	// Ensure ack was published
@@ -69,7 +69,7 @@ func TestAck(t *testing.T) {
 	comm4, port4 := newCommInstance(t, naiveSec)
 	defer comm4.Stop()
 
-	acceptData := func(o interface{}) bool {
+	acceptData := func(o any) bool {
 		m := o.(protoext.ReceivedMessage).GetGossipMessage()
 		return protoext.IsDataMsg(m.GossipMessage)
 	}

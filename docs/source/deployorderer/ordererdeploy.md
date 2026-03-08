@@ -2,9 +2,7 @@
 
 Before deploying an ordering service, review the material in [Planning for an ordering service](./ordererplan.html) and [Checklist for a production ordering service](./ordererchecklist.html), which discusses all of the relevant decisions you need to make and parameters you need to configure before deploying an ordering service.
 
-This tutorial is based on the Raft consensus protocol and can be used to build an ordering service, which is comprised of ordering nodes, or "orderers". It describes the process to create a three-node Raft ordering service where all of the ordering nodes belong to the same organization. This tutorial assumes that a system channel genesis block will not be used when bootstrapping the orderer. Instead, these nodes (or a subset of them), will be joined to a channel using the process to [Create a channel](../create_channel/create_channel_participation.html).
-
-For information on how to create an orderer that will be bootstrapped with a system channel genesis block, check out [Deploy the ordering service](https://hyperledger-fabric.readthedocs.io/en/release-2.2/deployorderer/ordererdeploy.html) from the Fabric v2.2 documentation.
+This tutorial is based on the Raft consensus protocol and can be used to build an ordering service, which is comprised of ordering nodes, or "orderers". It describes the process to create a three-node Raft ordering service where all of the ordering nodes belong to the same organization. For more info, refer to [create a channel](../create_channel/create_channel_participation.html).
 
 ## Download the ordering service binary and configuration files
 
@@ -18,7 +16,7 @@ The resulting folder structure is similar to:
   │   ├── configtxlator
   │   ├── cryptogen
   │   ├── discover
-  │   ├── idemixgen
+  │   ├── ledgerutil
   │   ├── orderer
   │   └── osnadmin
   └── config
@@ -45,7 +43,7 @@ Before you can launch an orderer in a production network, you need to make sure 
 
 While **cryptogen** is a convenient utility that can be used to generate certificates for a test environment, it should **never** be used on a production network. The core requirement for certificates for Fabric nodes is that they are Elliptic Curve (EC) certificates. You can use any tool you prefer to issue these certificates (for example, OpenSSL). However, the Fabric CA streamlines the process because it generates the Membership Service Providers (MSPs) for you.
 
-Before you can deploy the orderer, create the recommended folder structure for the orderer or orderer certificates that is described in the [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html) topic to store the generated certificates and MSPs.
+Before you can deploy the orderer, create the recommended folder structure for the orderer or orderer certificates that is described in the [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html) topic to store the generated certificates and MSPs.
 
 This folder structure isn't mandatory, but these instructions presume you have created it:
 
@@ -62,7 +60,7 @@ This folder structure isn't mandatory, but these instructions presume you have c
                   └── tls
 ```
 
-You should have already used your certificate authority of choice to generate the orderer enrollment certificate, TLS certificate, private keys, and the MSPs that Fabric must consume. Refer to the [CA deployment guide](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/cadeploy.html) and [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html) topics for instructions on how to create a Fabric CA and how to generate these certificates. You need to generate the following sets of certificates:
+You should have already used your certificate authority of choice to generate the orderer enrollment certificate, TLS certificate, private keys, and the MSPs that Fabric must consume. Refer to the [CA deployment guide](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/cadeploy.html) and [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html) topics for instructions on how to create a Fabric CA and how to generate these certificates. You need to generate the following sets of certificates:
   - **Orderer organization MSP**
   - **Orderer TLS CA certificates**
   - **Orderer local MSP (enrollment certificate and private key of the orderer)**
@@ -80,13 +78,13 @@ For the ordering node to launch successfully, the locations of the TLS certifica
 - When you enroll the orderer identity with the TLS CA, the public key is generated in the `signcerts` folder, and the private key is located in the `keystore` directory. Rename the private key in the `keystore` folder to `orderer0-tls-key.pem` so that it can be easily recognized later as the TLS private key for this node.
 - Copy the orderer TLS certificate and private key files to `organizations/ordererOrganizations/ordererOrg1.example.com/orderers/orderer0.ordererOrg1.example.com/tls`. The path and name of the certificate and private key files correspond to the values of the `General.TLS.Certificate` and `General.TLS.PrivateKey` parameters in the `orderer.yaml`.
 
-**Note:** Don't forget to create the `config.yaml` file and add it to the organization MSP and local MSP folder for each ordering node. This file enables Node OU support for the MSP, an important feature that allows the MSP's admin to be identified based on an "admin" OU in an identity's certificate. Learn more in the [Fabric CA](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html#nodeous) documentation.
+**Note:** Don't forget to create the `config.yaml` file and add it to the organization MSP and local MSP folder for each ordering node. This file enables Node OU support for the MSP, an important feature that allows the MSP's admin to be identified based on an "admin" OU in an identity's certificate. Learn more in the [Fabric CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html#nodeous) documentation.
 
 If you are using a containerized solution for running your network (which for obvious reasons is a popular choice), **it is a best practice to mount volumes for the certificate directories external to the container where the node itself is running. This will allow the certificates to be used by an ordering node container, regardless whether the ordering node container goes down, becomes corrupted, or is restarted.**
 
 #### Orderer local MSP (enrollment certificate and private key)
 
-Similarly, you need to point to the [local MSP of your orderer](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html#create-the-local-msp-of-a-node) by copying the MSP folder to `organizations/ordererOrganizations/ordererOrg1.example.com/orderers/orderer0.ordererOrg1.example.com/msp`. This path corresponds to the value of the `General.LocalMSPDir` parameter in the `orderer.yaml` file. Because of the Fabric concept of ["Node Organization Unit (OU)"](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html#nodeous), you do not need to specify an admin of the orderer when bootstrapping. Rather, the role of "admin" is conferred onto an identity by setting an OU value of "admin" inside a certificate and enabled by the `config.yaml` file. When Node OUs are enabled, any admin identity from this organization will be able to administer the orderer.
+Similarly, you need to point to the [local MSP of your orderer](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html#create-the-local-msp-of-a-node) by copying the MSP folder to `organizations/ordererOrganizations/ordererOrg1.example.com/orderers/orderer0.ordererOrg1.example.com/msp`. This path corresponds to the value of the `General.LocalMSPDir` parameter in the `orderer.yaml` file. Because of the Fabric concept of ["Node Organization Unit (OU)"](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html#nodeous), you do not need to specify an admin of the orderer when bootstrapping. Rather, the role of "admin" is conferred onto an identity by setting an OU value of "admin" inside a certificate and enabled by the `config.yaml` file. When Node OUs are enabled, any admin identity from this organization will be able to administer the orderer.
 
 Note that the local MSP contains the signed certificate (public key) and the private key for the orderer. The private key is used by the node to sign transactions, and is therefore not shared and must be secured. For maximum security, a Hardware Security Module (HSM) can be configured to generate and store this private key.
 
@@ -105,13 +103,10 @@ At a minimum, you need to configure the following parameters:
 - `General.TLS.PrivateKey ` - Ordering node private key from TLS CA.
 - `General.TLS.Certificate ` - Ordering node signed certificate (public key) from the TLS CA.
 - `General.TLS.RootCAS` - This value should be unset.
-- `General.BoostrapMethod:none` - This allows the orderer to start without needing a system channel configuration block.
 - `General.LocalMSPDir` - Path to the ordering node MSP folder.
 - `General.LocalMSPID` - MSP ID of the ordering organization as specified in the channel configuration.
 - `FileLedger.Location` - Location on the file system to the ledgers of the channels this orderer will be servicing.
-- `ChannelParticipation.Enabled` - Set to `true`. This allows the orderer to be joined to an application channel without joining a system channel first.
-
-Because this tutorial assumes that a system channel genesis block will not be used when bootstrapping the orderer, the following additional parameters are required if you want to create an application channel with the `osnadmin` command.
+- `ChannelParticipation.Enabled` - Set to `true`. This allows the orderer to be joined to an application channel (note that the system channel is no longer supported since Fabric v3.0).
 
 - `Admin.ListenAddress` - The orderer admin server address (host and port) that can be used by the `osnadmin` command to configure channels on the ordering service. This value should be a unique `host:port` combination to avoid conflicts.
 - `Admin.TLS.Enabled:` - Technically this can be set to `false`, but this is not recommended. In general, you should always set this value to `true`.
@@ -171,7 +166,7 @@ PANI 003 Failed to setup local msp with config: administrators must be declared 
 
 **Solution:**   
 
-Your local MSP definition is missing the `config.yaml` file. Create the file and copy it into the local MSP `/msp` folder of orderer. See the [Fabric CA](https://hyperledger-fabric-ca.readthedocs.io/en/release-1.4/deployguide/use_CA.html#nodeous) documentation for more instructions.
+Your local MSP definition is missing the `config.yaml` file. Create the file and copy it into the local MSP `/msp` folder of orderer. See the [Fabric CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html#nodeous) documentation for more instructions.
 
 ### When you start the orderer, it fails with the following error:
 ```

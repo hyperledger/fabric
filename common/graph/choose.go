@@ -9,10 +9,10 @@ package graph
 import "math/big"
 
 type orderedSet struct {
-	elements []interface{}
+	elements []any
 }
 
-func (s *orderedSet) add(o interface{}) {
+func (s *orderedSet) add(o any) {
 	s.elements = append(s.elements, o)
 }
 

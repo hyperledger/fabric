@@ -7,9 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
-	"github.com/golang/protobuf/proto"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"google.golang.org/protobuf/proto"
 )
 
 type QueryResponseGenerator struct {
@@ -82,8 +82,8 @@ func createQueryResponse(txContext *TransactionContext, iterID string, isPaginat
 }
 
 func createResponseMetadata(returnCount int32, bookmark string) *pb.QueryResponseMetadata {
-	responseMetadata := &pb.QueryResponseMetadata{}
-	responseMetadata.Bookmark = bookmark
-	responseMetadata.FetchedRecordsCount = int32(returnCount)
-	return responseMetadata
+	return &pb.QueryResponseMetadata{
+		Bookmark:            bookmark,
+		FetchedRecordsCount: returnCount,
+	}
 }

@@ -10,11 +10,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
-	"github.com/hyperledger/fabric/common/flogging"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
 
 var logger = flogging.MustGetLogger("chaincode.accesscontrol")
@@ -87,7 +87,7 @@ func (ac *Authenticator) authenticate(msg *pb.ChaincodeMessage, stream grpc.Serv
 	if registeredName != ccName {
 		errMsg := fmt.Sprintf("Chaincode %s with given certificate hash %v belongs to a different chaincode", ccName, hash)
 		logger.Warning(errMsg)
-		return fmt.Errorf(errMsg)
+		return errors.New(errMsg)
 	}
 
 	logger.Debug("Chaincode", ccName, "'s authentication is authorized")

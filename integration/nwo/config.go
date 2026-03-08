@@ -10,8 +10,6 @@ package nwo
 // fabric configuration files.
 type Config struct {
 	Organizations []*Organization `yaml:"organizations,omitempty"`
-	Consortiums   []*Consortium   `yaml:"consortiums,omitempty"`
-	SystemChannel *SystemChannel  `yaml:"system_channel,omitempty"`
 	Channels      []*Channel      `yaml:"channels,omitempty"`
 	Consensus     *Consensus      `yaml:"consensus,omitempty"`
 	Orderers      []*Orderer      `yaml:"orderers,omitempty"`

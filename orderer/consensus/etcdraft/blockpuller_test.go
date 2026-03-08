@@ -7,12 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft_test
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
@@ -23,10 +22,11 @@ import (
 	"github.com/hyperledger/fabric/orderer/mocks/common/multichannel"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestEndpointconfigFromFromSupport(t *testing.T) {
-	blockBytes, err := ioutil.ReadFile("testdata/mychannel.block")
+	blockBytes, err := os.ReadFile("testdata/mychannel.block")
 	require.NoError(t, err)
 
 	goodConfigBlock := &common.Block{}
@@ -115,7 +115,7 @@ func TestNewBlockPuller(t *testing.T) {
 	ca, err := tlsgen.NewCA()
 	require.NoError(t, err)
 
-	blockBytes, err := ioutil.ReadFile("testdata/mychannel.block")
+	blockBytes, err := os.ReadFile("testdata/mychannel.block")
 	require.NoError(t, err)
 
 	goodConfigBlock := &common.Block{}

@@ -11,18 +11,19 @@ import (
 	"errors"
 	"fmt"
 	"hash"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/snapshot"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/protoadapt"
 )
 
 var testNewHashFunc = func() (hash.Hash, error) {
@@ -42,16 +43,16 @@ func testSnapshot(t *testing.T, env TestEnv) {
 	generateSampleData := func(namespaces ...string) []*statedb.VersionedKV {
 		sampleData := []*statedb.VersionedKV{}
 		for _, ns := range namespaces {
-			for i := 0; i < 5; i++ {
+			for i := range 5 {
 				sampleKV := &statedb.VersionedKV{
 					CompositeKey: &statedb.CompositeKey{
 						Namespace: ns,
 						Key:       fmt.Sprintf("key-%d", i),
 					},
 					VersionedValue: &statedb.VersionedValue{
-						Value:    []byte(fmt.Sprintf("value-for-key-%d-for-%s", i, ns)),
+						Value:    fmt.Appendf(nil, "value-for-key-%d-for-%s", i, ns),
 						Version:  version.NewHeight(1, 1),
-						Metadata: []byte(fmt.Sprintf("metadata-for-key-%d-for-%s", i, ns)),
+						Metadata: fmt.Appendf(nil, "metadata-for-key-%d-for-%s", i, ns),
 					},
 				}
 				sampleData = append(sampleData, sampleKV)
@@ -162,11 +163,7 @@ func testSnapshotWithSampleData(t *testing.T, env TestEnv,
 	require.NoError(t, err)
 
 	// export snapshot files from statedb
-	snapshotDirSrcDB, err := ioutil.TempDir("", "testsnapshot")
-	require.NoError(t, err)
-	defer func() {
-		os.RemoveAll(snapshotDirSrcDB)
-	}()
+	snapshotDirSrcDB := t.TempDir()
 
 	// verify exported snapshot files
 	filesAndHashesSrcDB, err := sourceDB.ExportPubStateAndPvtStateHashes(snapshotDirSrcDB, testNewHashFunc)
@@ -189,11 +186,7 @@ func testSnapshotWithSampleData(t *testing.T, env TestEnv,
 		publicState, pvtStateHashes, pvtState)
 
 	// export snapshot from the destination db
-	snapshotDirDestDB, err := ioutil.TempDir("", "testsnapshot")
-	require.NoError(t, err)
-	defer func() {
-		os.RemoveAll(snapshotDirDestDB)
-	}()
+	snapshotDirDestDB := t.TempDir()
 	filesAndHashesDestDB, err := destinationDB.ExportPubStateAndPvtStateHashes(snapshotDirDestDB, testNewHashFunc)
 	require.NoError(t, err)
 	require.Equal(t, filesAndHashesSrcDB, filesAndHashesDestDB)
@@ -304,11 +297,7 @@ func TestSnapshotImportMetadtaHintImport(t *testing.T) {
 	require.NoError(t, err)
 
 	// export snapshot files from statedb
-	snapshotDir, err := ioutil.TempDir("", "testsnapshot")
-	require.NoError(t, err)
-	defer func() {
-		os.RemoveAll(snapshotDir)
-	}()
+	snapshotDir := t.TempDir()
 	_, err = sourceDB.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
 	require.NoError(t, err)
 
@@ -326,16 +315,14 @@ func TestSnapshotImportMetadtaHintImport(t *testing.T) {
 }
 
 func sha256ForFileForTest(t *testing.T, file string) []byte {
-	data, err := ioutil.ReadFile(file)
+	data, err := os.ReadFile(file)
 	require.NoError(t, err)
 	sha := sha256.Sum256(data)
 	return sha[:]
 }
 
 func TestSnapshotReaderNextFunction(t *testing.T) {
-	testdir, err := ioutil.TempDir("", "testsnapshot-WriterReader-")
-	require.NoError(t, err)
-	defer os.RemoveAll(testdir)
+	testdir := t.TempDir()
 
 	w, err := NewSnapshotWriter(testdir, "datafile", "metadatafile", testNewHashFunc)
 	require.NoError(t, err)
@@ -390,9 +377,7 @@ func TestMetadataCursor(t *testing.T) {
 }
 
 func TestLoadMetadata(t *testing.T) {
-	testdir, err := ioutil.TempDir("", "testsnapshot-metadata-")
-	require.NoError(t, err)
-	defer os.RemoveAll(testdir)
+	testdir := t.TempDir()
 
 	metadata := []*metadataRow{}
 	for i := 1; i <= 100; i++ {
@@ -433,11 +418,9 @@ func TestSnapshotExportErrorPropagation(t *testing.T) {
 		updateBatch.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
 		updateBatch.HashUpdates.Put("ns1", "coll1", []byte("key1"), []byte("value1"), version.NewHeight(1, 1))
 		require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 1)))
-		snapshotDir, err = ioutil.TempDir("", "testsnapshot")
-		require.NoError(t, err)
+		snapshotDir = t.TempDir()
 		cleanup = func() {
 			dbEnv.Cleanup()
-			os.RemoveAll(snapshotDir)
 		}
 	}
 
@@ -499,7 +482,6 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 	var dbEnv *LevelDBTestEnv
 	var snapshotDir string
 	var cleanup func()
-	var err error
 
 	init := func() {
 		dbEnv = &LevelDBTestEnv{}
@@ -509,13 +491,11 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 		updateBatch.PubUpdates.PutValAndMetadata("ns1", "key1", []byte("value1"), []byte("metadata"), version.NewHeight(1, 1))
 		updateBatch.HashUpdates.Put("ns1", "coll1", []byte("key1"), []byte("value1"), version.NewHeight(1, 1))
 		require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 1)))
-		snapshotDir, err = ioutil.TempDir("", "testsnapshot")
-		require.NoError(t, err)
+		snapshotDir = t.TempDir()
 		_, err := db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
 		require.NoError(t, err)
 		cleanup = func() {
 			dbEnv.Cleanup()
-			os.RemoveAll(snapshotDir)
 		}
 	}
 
@@ -539,7 +519,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 
 			dataFile := filepath.Join(snapshotDir, f)
 			require.NoError(t, os.Remove(dataFile))
-			require.NoError(t, ioutil.WriteFile(dataFile, []byte(""), 0o600))
+			require.NoError(t, os.WriteFile(dataFile, []byte(""), 0o600))
 			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 			require.Contains(t, err.Error(), fmt.Sprintf("error while opening data file: error while reading from the snapshot file: %s", dataFile))
@@ -551,7 +531,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 
 			dataFile := filepath.Join(snapshotDir, f)
 			require.NoError(t, os.Remove(dataFile))
-			require.NoError(t, ioutil.WriteFile(dataFile, []byte{0x00}, 0o600))
+			require.NoError(t, os.WriteFile(dataFile, []byte{0x00}, 0o600))
 			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 			require.EqualError(t, err, "error while opening data file: unexpected data format: 0")
@@ -564,7 +544,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			dataFile := filepath.Join(snapshotDir, f)
 			require.NoError(t, os.Remove(dataFile))
 
-			require.NoError(t, ioutil.WriteFile(dataFile, []byte{snapshotFileFormat}, 0o600))
+			require.NoError(t, os.WriteFile(dataFile, []byte{snapshotFileFormat}, 0o600))
 
 			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
@@ -580,18 +560,24 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			require.NoError(t, os.Remove(dataFile))
 
 			fileContent := []byte{snapshotFileFormat}
-			buf := proto.NewBuffer(nil)
-			require.NoError(t,
-				buf.EncodeMessage(
-					&SnapshotRecord{
-						Version: []byte("bad-version-bytes"),
-					},
-				),
-			)
-			fileContent = append(fileContent, buf.Bytes()...)
-			require.NoError(t, ioutil.WriteFile(dataFile, fileContent, 0o600))
+			sr := &SnapshotRecord{
+				Version: []byte("bad-version-bytes"),
+			}
+			srTmp := protoadapt.MessageV2Of(sr)
+			var buf []byte
+			buf = protowire.AppendVarint(buf, uint64(proto.Size(sr)))
+			nbuf, err := proto.MarshalOptions{
+				Deterministic: false,
+				AllowPartial:  true,
+			}.MarshalAppend(buf, srTmp)
+			require.NoError(t, err)
+			if len(buf) == len(nbuf) {
+				require.True(t, srTmp.ProtoReflect().IsValid())
+			}
+			fileContent = append(fileContent, nbuf...)
+			require.NoError(t, os.WriteFile(dataFile, fileContent, 0o600))
 
-			err := dbEnv.GetProvider().ImportFromSnapshot(
+			err = dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 
 			require.Contains(t, err.Error(), "error while decoding version")
@@ -619,7 +605,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			require.NoError(t, os.Remove(metadataFile))
 
 			fileContentWithMissingNumRows := []byte{snapshotFileFormat}
-			require.NoError(t, ioutil.WriteFile(metadataFile, fileContentWithMissingNumRows, 0o600))
+			require.NoError(t, os.WriteFile(metadataFile, fileContentWithMissingNumRows, 0o600))
 
 			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
@@ -634,10 +620,10 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			require.NoError(t, os.Remove(metadataFile))
 
 			fileContentWithMissingCCName := []byte{snapshotFileFormat}
-			buf := proto.NewBuffer(nil)
-			require.NoError(t, buf.EncodeVarint(5))
-			fileContentWithMissingCCName = append(fileContentWithMissingCCName, buf.Bytes()...)
-			require.NoError(t, ioutil.WriteFile(metadataFile, fileContentWithMissingCCName, 0o600))
+			var buf []byte
+			buf = protowire.AppendVarint(buf, 5)
+			fileContentWithMissingCCName = append(fileContentWithMissingCCName, buf...)
+			require.NoError(t, os.WriteFile(metadataFile, fileContentWithMissingCCName, 0o600))
 
 			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
@@ -652,11 +638,11 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			require.NoError(t, os.Remove(metadataFile))
 
 			fileContentWithMissingCCName := []byte{snapshotFileFormat}
-			buf := proto.NewBuffer(nil)
-			require.NoError(t, buf.EncodeVarint(1))
-			require.NoError(t, buf.EncodeRawBytes([]byte("my-chaincode")))
-			fileContentWithMissingCCName = append(fileContentWithMissingCCName, buf.Bytes()...)
-			require.NoError(t, ioutil.WriteFile(metadataFile, fileContentWithMissingCCName, 0o600))
+			var buf []byte
+			buf = protowire.AppendVarint(buf, 1)
+			buf = protowire.AppendBytes(buf, []byte("my-chaincode"))
+			fileContentWithMissingCCName = append(fileContentWithMissingCCName, buf...)
+			require.NoError(t, os.WriteFile(metadataFile, fileContentWithMissingCCName, 0o600))
 
 			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
@@ -702,24 +688,20 @@ func testSnapshotImportPvtdataHashesConsumer(t *testing.T, dbEnv TestEnv) {
 	var snapshotDir string
 
 	init := func() {
-		var err error
 		dbEnv.Init(t)
-		snapshotDir, err = ioutil.TempDir("", "testsnapshot")
+		snapshotDir = t.TempDir()
 
 		t.Cleanup(func() {
 			dbEnv.Cleanup()
-			os.RemoveAll(snapshotDir)
 		})
 
-		require.NoError(t, err)
 		db := dbEnv.GetDBHandle(generateLedgerID(t))
 		updateBatch := NewUpdateBatch()
 		updateBatch.PubUpdates.Put("ns-1", "key-1", []byte("value-1"), version.NewHeight(1, 1))
 		updateBatch.HashUpdates.Put("ns-1", "coll-1", []byte("key-hash-1"), []byte("value-hash-1"), version.NewHeight(1, 1))
 		require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 1)))
-		snapshotDir, err = ioutil.TempDir("", "testsnapshot")
-		require.NoError(t, err)
-		_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
+		snapshotDir = t.TempDir()
+		_, err := db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
 		require.NoError(t, err)
 	}
 

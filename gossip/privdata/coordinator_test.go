@@ -11,22 +11,19 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"reflect"
 	"testing"
 	"time"
 
-	pb "github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	mspproto "github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	tspb "github.com/hyperledger/fabric-protos-go/transientstore"
-	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
+	mspproto "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	tspb "github.com/hyperledger/fabric-protos-go-apiv2/transientstore"
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -43,6 +40,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	pb "google.golang.org/protobuf/proto"
 )
 
 var testConfig = CoordinatorConfig{
@@ -101,7 +99,7 @@ func (fc *fetchCall) expectingEndorsers(orgs ...string) *fetchCall {
 		fc.fetcher.expectedEndorsers = make(map[string]struct{})
 	}
 	for _, org := range orgs {
-		sID := &mspproto.SerializedIdentity{Mspid: org, IdBytes: []byte(fmt.Sprintf("p0%s", org))}
+		sID := &mspproto.SerializedIdentity{Mspid: org, IdBytes: fmt.Appendf(nil, "p0%s", org)}
 		b, _ := pb.Marshal(sID)
 		fc.fetcher.expectedEndorsers[string(b)] = struct{}{}
 	}
@@ -114,7 +112,7 @@ func (fc *fetchCall) expectingDigests(digests []privdatacommon.DigKey) *fetchCal
 	return fc
 }
 
-func (fc *fetchCall) Return(returnArguments ...interface{}) *mock.Call {
+func (fc *fetchCall) Return(returnArguments ...any) *mock.Call {
 	return fc.Call.Return(returnArguments...)
 }
 
@@ -125,7 +123,7 @@ type fetcherMock struct {
 	expectedEndorsers map[string]struct{}
 }
 
-func (f *fetcherMock) On(methodName string, arguments ...interface{}) *fetchCall {
+func (f *fetcherMock) On(methodName string, arguments ...any) *fetchCall {
 	return &fetchCall{
 		fetcher: f,
 		Call:    f.Mock.On(methodName, arguments...),
@@ -133,7 +131,7 @@ func (f *fetcherMock) On(methodName string, arguments ...interface{}) *fetchCall
 }
 
 func (f *fetcherMock) fetch(dig2src dig2sources) (*privdatacommon.FetchedPvtDataContainer, error) {
-	uniqueEndorsements := make(map[string]interface{})
+	uniqueEndorsements := make(map[string]any)
 	for _, endorsements := range dig2src {
 		for _, endorsement := range endorsements {
 			_, exists := f.expectedEndorsers[string(endorsement.Endorser)]
@@ -143,7 +141,7 @@ func (f *fetcherMock) fetch(dig2src dig2sources) (*privdatacommon.FetchedPvtData
 			uniqueEndorsements[string(endorsement.Endorser)] = struct{}{}
 		}
 	}
-	require.True(f.t, digests(f.expectedDigests).Equal(digests(dig2src.keys())))
+	require.True(f.t, digests(f.expectedDigests).Equal(dig2src.keys()))
 	require.Equal(f.t, len(f.expectedEndorsers), len(uniqueEndorsements))
 	args := f.Called(dig2src)
 	if args.Get(1) == nil {
@@ -161,11 +159,7 @@ type testTransientStore struct {
 func newTransientStore(t *testing.T) *testTransientStore {
 	s := &testTransientStore{}
 	var err error
-	s.tempdir, err = ioutil.TempDir("", "ts")
-	if err != nil {
-		t.Fatalf("Failed to create test directory, got err %s", err)
-		return s
-	}
+	s.tempdir = t.TempDir()
 	s.storeProvider, err = transientstore.NewStoreProvider(s.tempdir)
 	if err != nil {
 		t.Fatalf("Failed to open store, got err %s", err)
@@ -181,7 +175,6 @@ func newTransientStore(t *testing.T) *testTransientStore {
 
 func (s *testTransientStore) tearDown() {
 	s.storeProvider.Close()
-	os.RemoveAll(s.tempdir)
 }
 
 func (s *testTransientStore) Persist(txid string, blockHeight uint64,
@@ -607,14 +600,10 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 			iterator, err := store.GetTxPvtRWSetByTxid(txn, nil)
 			if err != nil {
 				t.Fatalf("Failed iterating, got err %s", err)
-				iterator.Close()
-				return
 			}
 			res, err := iterator.Next()
 			if err != nil {
 				t.Fatalf("Failed iterating, got err %s", err)
-				iterator.Close()
-				return
 			}
 			require.Nil(t, res)
 			iterator.Close()
@@ -928,14 +917,10 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 			iterator, err := store.GetTxPvtRWSetByTxid(txn, nil)
 			if err != nil {
 				t.Fatalf("Failed iterating, got err %s", err)
-				iterator.Close()
-				return
 			}
 			res, err := iterator.Next()
 			if err != nil {
 				t.Fatalf("Failed iterating, got err %s", err)
-				iterator.Close()
-				return
 			}
 			require.Nil(t, res)
 			iterator.Close()
@@ -1200,7 +1185,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 
 	fmt.Println("Scenario V")
 	// Scenario V: Block we got has private data alongside it but coordinator cannot retrieve collection access
-	// policy of collections due to databse unavailability error.
+	// policy of collections due to database unavailability error.
 	// we verify that the error propagates properly.
 	mockCs := &privdatamocks.CollectionStore{}
 	mockCs.On("RetrieveCollectionConfig", mock.Anything).Return(nil, errors.New("test error"))
@@ -1433,14 +1418,10 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 			iterator, err := store.GetTxPvtRWSetByTxid(txn, nil)
 			if err != nil {
 				t.Fatalf("Failed iterating, got err %s", err)
-				iterator.Close()
-				return
 			}
 			res, err := iterator.Next()
 			if err != nil {
 				t.Fatalf("Failed iterating, got err %s", err)
-				iterator.Close()
-				return
 			}
 			require.Nil(t, res)
 			iterator.Close()
@@ -1666,7 +1647,7 @@ func TestPurgeBelowHeight(t *testing.T) {
 	defer store.tearDown()
 
 	// store 9 data sets initially
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		txID := fmt.Sprintf("tx%d", i+1)
 		store.Persist(txID, uint64(i), &tspb.TxPvtReadWriteSetWithConfigInfo{
 			PvtRwset: &rwset.TxPvtReadWriteSet{

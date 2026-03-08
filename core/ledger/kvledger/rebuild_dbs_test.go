@@ -17,12 +17,11 @@ import (
 )
 
 func TestRebuildDBs(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 
 	numLedgers := 3
-	for i := 0; i < numLedgers; i++ {
+	for i := range numLedgers {
 		genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(i))
 		_, err := provider.CreateFromGenesisBlock(genesisBlock)
 		require.NoError(t, err)

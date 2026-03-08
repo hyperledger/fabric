@@ -9,10 +9,10 @@ package validation
 import (
 	"bytes"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -71,12 +71,12 @@ func validateSignatureHeader(sHdr *common.SignatureHeader) error {
 	}
 
 	// ensure that there is a nonce
-	if sHdr.Nonce == nil || len(sHdr.Nonce) == 0 {
+	if len(sHdr.Nonce) == 0 {
 		return errors.New("invalid nonce specified in the header")
 	}
 
 	// ensure that there is a creator
-	if sHdr.Creator == nil || len(sHdr.Creator) == 0 {
+	if len(sHdr.Creator) == 0 {
 		return errors.New("invalid creator specified in the header")
 	}
 

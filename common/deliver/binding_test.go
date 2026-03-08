@@ -16,14 +16,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/comm/testpb"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestBindingInspectorBadInit(t *testing.T) {
@@ -85,7 +85,7 @@ func TestBindingInspector(t *testing.T) {
 	// Scenario IV: Client sends its TLS cert hash as needed, but doesn't use mutual TLS
 	cert, _ := tls.X509KeyPair([]byte(selfSignedCertPEM), []byte(selfSignedKeyPEM))
 	h := sha256.New()
-	h.Write([]byte(cert.Certificate[0]))
+	h.Write(cert.Certificate[0])
 	chanHdr.TlsCertHash = h.Sum(nil)
 	ch, _ = proto.Marshal(chanHdr)
 	err = srv.newInspection(t).inspectBinding(envelopeWithChannelHeader(ch))
@@ -170,10 +170,7 @@ func (ins *inspection) withMutualTLS() *inspection {
 }
 
 func (ins *inspection) inspectBinding(envelope *common.Envelope) error {
-	ctx := context.Background()
-	ctx, c := context.WithTimeout(ctx, time.Second*3)
-	defer c()
-	conn, err := grpc.DialContext(ctx, ins.server.addr, grpc.WithTransportCredentials(ins.creds), grpc.WithBlock())
+	conn, err := grpc.NewClient(ins.server.addr, grpc.WithTransportCredentials(ins.creds))
 	require.NoError(ins.t, err)
 	defer conn.Close()
 	_, err = testpb.NewTestServiceClient(conn).EmptyCall(context.Background(), &testpb.Empty{})

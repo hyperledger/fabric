@@ -14,10 +14,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -41,14 +41,13 @@ var (
 		},
 	}
 
-	testOutput = `{"data":{"data":[{"payload":{"data":null,"header":{"channel_header":{"channel_id":"","epoch":"0","extension":null,"timestamp":null,"tls_cert_hash":null,"tx_id":"","type":1,"version":0},"signature_header":null}},"signature":"YmFy"}]},"header":{"data_hash":null,"number":"0","previous_hash":"Zm9v"},"metadata":null}`
+	testOutput = `{"data":{"data":[{"payload":{"data":null,"header":{"channel_header":{"channel_id":"","epoch":"0","extension":null,"timestamp":null,"tls_cert_hash":"","tx_id":"","type":1,"version":0},"signature_header":null}},"signature":"YmFy"}]},"header":{"data_hash":"","number":"0","previous_hash":"Zm9v"},"metadata":null}`
 )
 
 func TestProtolatorDecode(t *testing.T) {
 	data, err := proto.Marshal(testProto)
 	require.NoError(t, err)
-
-	url := fmt.Sprintf("/protolator/decode/%s", proto.MessageName(testProto))
+	url := fmt.Sprintf("/protolator/decode/%s", testProto.ProtoReflect().Descriptor().FullName())
 
 	req, _ := http.NewRequest("POST", url, bytes.NewReader(data))
 	rec := httptest.NewRecorder()
@@ -64,7 +63,7 @@ func TestProtolatorDecode(t *testing.T) {
 }
 
 func TestProtolatorEncode(t *testing.T) {
-	url := fmt.Sprintf("/protolator/encode/%s", proto.MessageName(testProto))
+	url := fmt.Sprintf("/protolator/encode/%s", testProto.ProtoReflect().Descriptor().FullName())
 
 	req, _ := http.NewRequest("POST", url, bytes.NewReader([]byte(testOutput)))
 	rec := httptest.NewRecorder()
@@ -99,7 +98,7 @@ func TestProtolatorEncodeNonExistantProto(t *testing.T) {
 }
 
 func TestProtolatorDecodeBadData(t *testing.T) {
-	url := fmt.Sprintf("/protolator/decode/%s", proto.MessageName(testProto))
+	url := fmt.Sprintf("/protolator/decode/%s", testProto.ProtoReflect().Descriptor().FullName())
 
 	req, _ := http.NewRequest("POST", url, bytes.NewReader([]byte("Garbage")))
 
@@ -111,7 +110,7 @@ func TestProtolatorDecodeBadData(t *testing.T) {
 }
 
 func TestProtolatorEncodeBadData(t *testing.T) {
-	url := fmt.Sprintf("/protolator/encode/%s", proto.MessageName(testProto))
+	url := fmt.Sprintf("/protolator/encode/%s", testProto.ProtoReflect().Descriptor().FullName())
 
 	req, _ := http.NewRequest("POST", url, bytes.NewReader([]byte("Garbage")))
 

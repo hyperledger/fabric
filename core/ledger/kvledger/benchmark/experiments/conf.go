@@ -47,12 +47,12 @@ type configuration struct {
 
 // emptyConf returns a an empty configuration (with nested structure only)
 func emptyConf() *configuration {
-	conf := &configuration{}
-	conf.chainMgrConf = &chainmgmt.ChainMgrConf{}
-	conf.batchConf = &chainmgmt.BatchConf{}
-	conf.txConf = &txConf{}
-	conf.dataConf = &dataConf{}
-	return conf
+	return &configuration{
+		chainMgrConf: &chainmgmt.ChainMgrConf{},
+		batchConf:    &chainmgmt.BatchConf{},
+		txConf:       &txConf{},
+		dataConf:     &dataConf{},
+	}
 }
 
 // confFromTestParams consumes the parameters passed by an experiment

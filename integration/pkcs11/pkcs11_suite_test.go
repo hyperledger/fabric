@@ -8,9 +8,10 @@ package pkcs11
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
-	bpkcs11 "github.com/hyperledger/fabric/bccsp/pkcs11"
+	bpkcs11 "github.com/hyperledger/fabric-lib-go/bccsp/pkcs11"
 	"github.com/hyperledger/fabric/integration"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
@@ -24,7 +25,8 @@ func TestPKCS11(t *testing.T) {
 	RegisterFailHandler(Fail)
 	lib, pin, label := bpkcs11.FindPKCS11Lib()
 	if lib == "" || pin == "" || label == "" {
-		t.Skip("Skipping PKCS11 Suite: Required ENV variables not set")
+		fmt.Fprintf(GinkgoWriter, "Skipping PKCS11 Suite: Set the PKCS11_LIB environment variable to run the PKCS11 tests\n")
+		t.Skip("Skipping PKCS11 Suite: Set the PKCS11_LIB environment variable to run the PKCS11 tests")
 	}
 	RunSpecs(t, "PKCS11 Suite")
 }

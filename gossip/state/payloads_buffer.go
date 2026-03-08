@@ -10,8 +10,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric-lib-go/common/metrics"
+	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric/gossip/util"
 )
 

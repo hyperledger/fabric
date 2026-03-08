@@ -9,14 +9,14 @@ package multichannel
 import (
 	"sync"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protoutil"
+	"google.golang.org/protobuf/proto"
 )
 
 type blockWriterSupport interface {
@@ -34,19 +34,17 @@ type blockWriterSupport interface {
 // so that these other go routines safely interact with the calling one.
 type BlockWriter struct {
 	support            blockWriterSupport
-	registrar          *Registrar
 	lastConfigBlockNum uint64
 	lastConfigSeq      uint64
 	lastBlock          *cb.Block
 	committingBlock    sync.Mutex
 }
 
-func newBlockWriter(lastBlock *cb.Block, r *Registrar, support blockWriterSupport) *BlockWriter {
+func newBlockWriter(lastBlock *cb.Block, support blockWriterSupport) *BlockWriter {
 	bw := &BlockWriter{
 		support:       support,
 		lastConfigSeq: support.Sequence(),
 		lastBlock:     lastBlock,
-		registrar:     r,
 	}
 
 	// If this is the genesis block, the lastconfig field may be empty, and, the last config block is necessarily block 0
@@ -80,7 +78,7 @@ func (bw *BlockWriter) CreateNextBlock(messages []*cb.Envelope) *cb.Block {
 	}
 
 	block := protoutil.NewBlock(bw.lastBlock.Header.Number+1, previousBlockHash)
-	block.Header.DataHash = protoutil.BlockDataHash(data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(data)
 	block.Data = data
 
 	return block
@@ -111,11 +109,7 @@ func (bw *BlockWriter) WriteConfigBlock(block *cb.Block, encodedMetadataValue []
 
 	switch chdr.Type {
 	case int32(cb.HeaderType_ORDERER_TRANSACTION):
-		newChannelConfig, err := protoutil.UnmarshalEnvelope(payload.Data)
-		if err != nil {
-			logger.Panicf("Told to write a config block with new channel, but did not have config update embedded: %s", err)
-		}
-		bw.registrar.newChain(newChannelConfig)
+		logger.Panicf("[channel: %s] Told to write a config block of type HeaderType_ORDERER_TRANSACTION, but the system channel is no longer supported", bw.support.ChannelID())
 
 	case int32(cb.HeaderType_CONFIG):
 		configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
@@ -197,7 +191,10 @@ func (bw *BlockWriter) WriteBlockSync(block *cb.Block, encodedMetadataValue []by
 // this ensures that the encoded config sequence numbers stay in sync
 func (bw *BlockWriter) commitBlock(encodedMetadataValue []byte) {
 	bw.addLastConfig(bw.lastBlock)
-	bw.addBlockSignature(bw.lastBlock, encodedMetadataValue)
+
+	if len(bw.lastBlock.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES]) == 0 {
+		bw.addBlockSignature(bw.lastBlock, encodedMetadataValue)
+	}
 
 	err := bw.support.Append(bw.lastBlock)
 	if err != nil {

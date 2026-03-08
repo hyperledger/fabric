@@ -12,11 +12,13 @@ import (
 	"math"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/protoutil/mocks"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 var testChannelID = "myuniquetestchainid"
@@ -34,7 +36,9 @@ func TestNewBlock(t *testing.T) {
 	require.Equal(t, []byte("datahash"), block.Header.PreviousHash, "Incorrect previous hash")
 	require.NotNil(t, block.GetData())
 	require.NotNil(t, block.GetMetadata())
-	block.GetHeader().DataHash = protoutil.BlockDataHash(data)
+	block.GetHeader().DataHash = protoutil.ComputeBlockDataHash(data)
+
+	dataHash := protoutil.ComputeBlockDataHash(data)
 
 	asn1Bytes, err := asn1.Marshal(struct {
 		Number       int64
@@ -42,7 +46,7 @@ func TestNewBlock(t *testing.T) {
 		DataHash     []byte
 	}{
 		Number:       0,
-		DataHash:     protoutil.BlockDataHash(data),
+		DataHash:     dataHash,
 		PreviousHash: []byte("datahash"),
 	})
 	headerHash := sha256.Sum256(asn1Bytes)
@@ -375,6 +379,119 @@ func TestGetLastConfigIndexFromBlock(t *testing.T) {
 	})
 }
 
+func TestBlockSignatureVerifierEmptyMetadata(t *testing.T) {
+	policies := mocks.Policy{}
+
+	verify := protoutil.BlockSignatureVerifier(true, nil, &policies)
+
+	header := &cb.BlockHeader{}
+	md := &cb.BlockMetadata{}
+
+	err := verify(header, md)
+	require.ErrorContains(t, err, "no signatures in block metadata")
+}
+
+func TestBlockSignatureVerifierByIdentifier(t *testing.T) {
+	consenters := []*cb.Consenter{
+		{
+			Id:       1,
+			Host:     "host1",
+			Port:     8001,
+			MspId:    "msp1",
+			Identity: []byte("identity1"),
+		},
+		{
+			Id:       2,
+			Host:     "host2",
+			Port:     8002,
+			MspId:    "msp2",
+			Identity: []byte("identity2"),
+		},
+		{
+			Id:       3,
+			Host:     "host3",
+			Port:     8003,
+			MspId:    "msp3",
+			Identity: []byte("identity3"),
+		},
+	}
+
+	policies := mocks.Policy{}
+
+	verify := protoutil.BlockSignatureVerifier(true, consenters, &policies)
+
+	header := &cb.BlockHeader{}
+	md := &cb.BlockMetadata{
+		Metadata: [][]byte{
+			protoutil.MarshalOrPanic(&cb.Metadata{Signatures: []*cb.MetadataSignature{
+				{
+					Signature:        []byte{},
+					IdentifierHeader: protoutil.MarshalOrPanic(&cb.IdentifierHeader{Identifier: 1}),
+				},
+				{
+					Signature:        []byte{},
+					IdentifierHeader: protoutil.MarshalOrPanic(&cb.IdentifierHeader{Identifier: 3}),
+				},
+			}}),
+		},
+	}
+
+	err := verify(header, md)
+	require.NoError(t, err)
+	signatureSet := policies.EvaluateSignedDataArgsForCall(0)
+	require.Len(t, signatureSet, 2)
+	require.Equal(t, protoutil.MarshalOrPanic(&msp.SerializedIdentity{Mspid: "msp1", IdBytes: []byte("identity1")}), signatureSet[0].Identity)
+	require.Equal(t, protoutil.MarshalOrPanic(&msp.SerializedIdentity{Mspid: "msp3", IdBytes: []byte("identity3")}), signatureSet[1].Identity)
+}
+
+func TestBlockSignatureVerifierByCreator(t *testing.T) {
+	consenters := []*cb.Consenter{
+		{
+			Id:       1,
+			Host:     "host1",
+			Port:     8001,
+			MspId:    "msp1",
+			Identity: []byte("identity1"),
+		},
+		{
+			Id:       2,
+			Host:     "host2",
+			Port:     8002,
+			MspId:    "msp2",
+			Identity: []byte("identity2"),
+		},
+		{
+			Id:       3,
+			Host:     "host3",
+			Port:     8003,
+			MspId:    "msp3",
+			Identity: []byte("identity3"),
+		},
+	}
+
+	policies := mocks.Policy{}
+
+	verify := protoutil.BlockSignatureVerifier(true, consenters, &policies)
+
+	header := &cb.BlockHeader{}
+	md := &cb.BlockMetadata{
+		Metadata: [][]byte{
+			protoutil.MarshalOrPanic(&cb.Metadata{Signatures: []*cb.MetadataSignature{
+				{
+					Signature:       []byte{},
+					SignatureHeader: protoutil.MarshalOrPanic(&cb.SignatureHeader{Creator: []byte("creator1")}),
+				},
+			}}),
+		},
+	}
+
+	err := verify(header, md)
+	require.NoError(t, err)
+	signatureSet := policies.EvaluateSignedDataArgsForCall(0)
+	require.Len(t, signatureSet, 1)
+	require.Equal(t, []byte("creator1"), signatureSet[0].Identity)
+}
+
 func TestVerifyTransactionsAreWellFormed(t *testing.T) {
 	originalBlock := &cb.Block{
 		Data: &cb.BlockData{
@@ -420,10 +537,6 @@ func TestVerifyTransactionsAreWellFormed(t *testing.T) {
 			}},
 		},
 		{
-			name:          "empty block",
-			expectedError: "empty block",
-		},
-		{
 			name:          "no block data",
 			block:         &cb.Block{},
 			expectedError: "empty block",
@@ -440,7 +553,6 @@ func TestVerifyTransactionsAreWellFormed(t *testing.T) {
 				Signature: []byte{4, 5, 6},
 			})}}},
 		},
-
 		{
 			name:  "good block",
 			block: originalBlock,
@@ -491,13 +603,17 @@ func TestVerifyTransactionsAreWellFormed(t *testing.T) {
 			},
 		},
 	} {
-		tst := tst
 		t.Run(tst.name, func(t *testing.T) {
-			err := protoutil.VerifyTransactionsAreWellFormed(tst.block)
-			if tst.expectedError == "" {
-				require.NoError(t, err)
+			if tst.block == nil || tst.block.Data == nil {
+				err := protoutil.VerifyTransactionsAreWellFormed(tst.block.Data)
+				require.EqualError(t, err, "empty block")
 			} else {
-				require.Contains(t, err.Error(), tst.expectedError)
+				err := protoutil.VerifyTransactionsAreWellFormed(tst.block.Data)
+				if tst.expectedError == "" {
+					require.NoError(t, err)
+				} else {
+					require.Contains(t, err.Error(), tst.expectedError)
+				}
 			}
 		})
 	}

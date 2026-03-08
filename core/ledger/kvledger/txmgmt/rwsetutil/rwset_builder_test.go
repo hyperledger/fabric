@@ -10,13 +10,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestMain(m *testing.M) {
@@ -105,9 +105,9 @@ func TestTxSimulationResultWithPvtData(t *testing.T) {
 	actualSimRes, err := rwSetBuilder.GetTxSimulationResults()
 	require.NoError(t, err)
 
-	///////////////////////////////////////////////////////
+	// /////////////////////////////////////////////////////
 	// construct the expected pvt rwset and compare with the one present in the txSimulationResults
-	///////////////////////////////////////////////////////
+	// /////////////////////////////////////////////////////
 	pvtNs1Coll2 := &kvrwset.KVRWSet{
 		Writes: []*kvrwset.KVWrite{newKVWrite("key1", []byte("pvt-ns1-coll2-key1-value"))},
 	}
@@ -160,9 +160,9 @@ func TestTxSimulationResultWithPvtData(t *testing.T) {
 	}
 	require.Equal(t, expectedPvtRWSet, actualSimRes.PvtSimulationResults)
 
-	///////////////////////////////////////////////////////
+	// /////////////////////////////////////////////////////
 	// construct the public rwset (which will be part of the block) and compare with the one present in the txSimulationResults
-	///////////////////////////////////////////////////////
+	// /////////////////////////////////////////////////////
 	pubNs1 := &kvrwset.KVRWSet{
 		Reads: []*kvrwset.KVRead{NewKVRead("key1", version.NewHeight(1, 1))},
 	}

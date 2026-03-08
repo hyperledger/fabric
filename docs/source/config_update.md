@@ -2,8 +2,6 @@
 
 *Audience: network administrators, node administrators*
 
-Note: this topic describes the process for updating a channel on a network that does not have a system channel. For a version of this topic that includes information about the system channel, check out [Updating a channel configuration](https://hyperledger-fabric.readthedocs.io/en/release-2.2/config_update.html).
-
 ## What is a channel configuration?
 
 Like many complex systems, Hyperledger Fabric networks are comprised of both **structure** and a number related of **processes**.
@@ -912,11 +910,11 @@ Governs configuration parameters unique to the ordering service and requires a m
 
 * **Block validation**. This policy specifies the signature requirements for a block to be considered valid. By default, it requires a signature from some member of the ordering org.
 
-* **Consensus type**. To enable the migration of Kafka based ordering services to Raft based ordering services, it is possible to change the consensus type of a channel. For more information, check out [Migrating from Kafka to Raft](./kafka_raft_migration.html).
+* **Consensus type**. Kafka is no longer supported in v3.x, therefore migration from Kafka based ordering services to Raft based ordering services is not possible. This process is possible in past versions.
 
 * **Raft ordering service parameters**. For a look at the parameters unique to a Raft ordering service, check out [Raft configuration](./raft_configuration.html).
 
-* **Kafka brokers** (where applicable). When `ConsensusType` is set to `kafka`, the `brokers` list enumerates some subset (or preferably all) of the Kafka brokers for the orderer to initially connect to at startup.
+* **Kafka brokers**. `ConsensusType` can no longer be set to `kafka` since in v3.x Kafka is no longer supported. Therefore, the `brokers` list is no longer supported. 
 
 #### `Channel`
 

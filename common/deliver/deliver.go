@@ -4,6 +4,8 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
+// Package deliver contains an implementation of the server-side handlers of the gRPC delivery service.
+// The delivery service runs in the orderer and is used to deliver blocks to peers, as well as to other orderers.
 package deliver
 
 import (
@@ -13,16 +15,16 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/crypto"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 var logger = flogging.MustGetLogger("common.deliver")
@@ -195,6 +197,8 @@ func isFiltered(srv *Server) bool {
 	return false
 }
 
+// deliverBlocks handles delivering blocks to the client from the blockchain channel.
+// It processes a signed envelope from a client and responds with the requested blocks.
 func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.Envelope) (status cb.Status, err error) {
 	addr := util.ExtractRemoteAddress(ctx)
 	payload, chdr, shdr, err := h.parseEnvelope(ctx, envelope)
@@ -328,8 +332,18 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 
 		logger.Debugf("[channel: %s] Delivering block [%d] for (%p) for %s", chdr.ChannelId, block.Header.Number, seekInfo, addr)
 
+		// Data blocks carry nil data for block attestations.
+		// Never mutate the block received from the iterator as it is from a cache.
+		block2send := block
+		if seekInfo.ContentType == ab.SeekInfo_HEADER_WITH_SIG && !protoutil.IsConfigBlock(block) {
+			block2send = &cb.Block{
+				Header:   block.Header,
+				Metadata: block.Metadata,
+			}
+		}
+
 		signedData := &protoutil.SignedData{Data: envelope.Payload, Identity: shdr.Creator, Signature: envelope.Signature}
-		if err := srv.SendBlockResponse(block, chdr.ChannelId, chain, signedData); err != nil {
+		if err := srv.SendBlockResponse(block2send, chdr.ChannelId, chain, signedData); err != nil {
 			logger.Warningf("[channel: %s] Error sending to %s: %s", chdr.ChannelId, addr, err)
 			return cb.Status_INTERNAL_SERVER_ERROR, err
 		}

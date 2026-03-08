@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Copyright IBM Corp. All Rights Reserved.
 #
@@ -6,7 +6,7 @@
 #
 
 # A modified version of the Fabric bootstrap script
-# Use positional arguments to select componenets to install
+# Use positional arguments to select components to install
 #
 # Has exactly the same functional power of bootstrap.sh
 
@@ -21,12 +21,19 @@ _arg_comp=('' )
 
 # if version not passed in, default to latest released version
 # if ca version not passed in, default to latest released version
-_arg_fabric_version="2.5.12"
-_arg_ca_version="1.5.15"
+_arg_fabric_version="2.5.15"
+_arg_ca_version="1.5.17"
 
-REGISTRY=${FABRIC_DOCKER_REGISTRY:-docker.io/hyperledger}
-ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m |sed 's/x86_64/amd64/g')")
+OS=$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')
+ARCH=$(uname -m | sed 's/x86_64/amd64/g' | sed 's/aarch64/arm64/g')
+PLATFORM=${OS}-${ARCH}
+
+# Fabric < 1.2 uses uname -m for architecture.
 MARCH=$(uname -m)
+
+HYPERLEDGER_NAMESPACE=hyperledger
+DOCKER_NAMESPACE="${FABRIC_DOCKER_REGISTRY:-${HYPERLEDGER_NAMESPACE}}"
+
 
 die()
 {
@@ -45,13 +52,12 @@ begins_with_short_option()
 }
 
 
-
 print_help()
 {
 	printf 'Usage: %s [-f|--fabric-version <arg>] [-c|--ca-version <arg>] <comp-1> [<comp-2>] ... [<comp-n>] ...\n' "$0"
 	printf '\t%s\n' "<comp> Component to install, one or more of  docker | binary | samples | podman  First letter of component also accepted; If none specified docker | binary | samples is assumed"
-	printf '\t%s\n' "-f, --fabric-version: FabricVersion (default: '2.5.12')"
-	printf '\t%s\n' "-c, --ca-version: Fabric CA Version (default: '1.5.15')"
+	printf '\t%s\n' "-f, --fabric-version: FabricVersion (default: '2.5.15')"
+	printf '\t%s\n' "-c, --ca-version: Fabric CA Version (default: '1.5.17')"
 }
 
 
@@ -137,19 +143,78 @@ assign_positional_args()
 
 singleImagePull() {
     #three_digit_image_tag is passed in, e.g. "1.4.7"
-    three_digit_image_tag=$1
+    local three_digit_image_tag=$1
     shift
-    #two_digit_image_tag is derived, e.g. "1.4", especially useful as a local tag for two digit references to most recent baseos, ccenv, javaenv, nodeenv patch releases
+    #two_digit_image_tag is derived, e.g. "1.4", especially useful as a local tag for two digit references
+    local two_digit_image_tag
     two_digit_image_tag=$(echo "$three_digit_image_tag" | cut -d'.' -f1,2)
-    while [[ $# -gt 0 ]]
-    do
-        image_name="$1"
-        echo "====>  ${REGISTRY}/fabric-$image_name:$three_digit_image_tag"
-        ${CONTAINER_CLI} pull "${REGISTRY}/fabric-$image_name:$three_digit_image_tag"
-        ${CONTAINER_CLI} tag "${REGISTRY}/fabric-$image_name:$three_digit_image_tag" "${REGISTRY}/fabric-$image_name"
-        ${CONTAINER_CLI} tag "${REGISTRY}/fabric-$image_name:$three_digit_image_tag" "${REGISTRY}/fabric-$image_name:$two_digit_image_tag"
+
+
+    while [[ $# -gt 0 ]]; do
+        local component_name="$1"
+        local registry
+        registry="$(dockerComponentRegistry "${component_name}" "${three_digit_image_tag}")"
+        local image_name="${registry}/fabric-${component_name}:${three_digit_image_tag}"
+
+        echo "====>  ${image_name}"
+        ${CONTAINER_CLI} pull "${image_name}"
+
+
+        ${CONTAINER_CLI} tag "${image_name}" "${DOCKER_NAMESPACE}/fabric-${component_name}"
+        ${CONTAINER_CLI} tag "${image_name}" "${DOCKER_NAMESPACE}/fabric-${component_name}:${two_digit_image_tag}"
+        # Re-tag 3-digit version to ensure there is a tag without registry prefix
+        ${CONTAINER_CLI} tag "${image_name}" "${DOCKER_NAMESPACE}/fabric-${component_name}:${three_digit_image_tag}"
+
         shift
     done
+}
+
+dockerComponentRegistry() {
+    if [[ -n ${FABRIC_DOCKER_REGISTRY} ]]; then
+        echo -n "${FABRIC_DOCKER_REGISTRY}"
+        return
+    fi
+
+    local component="$1"
+    local image_version="$2"
+
+    # Remove trailing pre-release or metadata identifiers
+    image_version="${image_version%%[-+]*}"
+
+    case "${component}" in
+        ca)
+            echo -n "$(dockerCARegistry "${image_version}")/${HYPERLEDGER_NAMESPACE}"
+            ;;
+        *)
+            echo -n "$(dockerFabricRegistry "${image_version}")/${HYPERLEDGER_NAMESPACE}"
+            ;;
+    esac
+}
+
+dockerCARegistry() {
+    local version="$1"
+
+    case "${version}" in
+        1.[0-4].*|1.5.[0-9]|1.5.1[0-4])
+            echo -n 'docker.io'
+            ;;
+        *)
+            echo -n 'ghcr.io'
+            ;;
+    esac
+}
+
+dockerFabricRegistry() {
+    local version="$1"
+
+    case "${version}" in
+        1.*|2.[0-4].*|2.5.[0-9]|2.5.10|3.0.0)
+            echo -n 'docker.io'
+            ;;
+        *)
+            echo -n 'ghcr.io'
+            ;;
+    esac
 }
 
 cloneSamplesRepo() {
@@ -187,7 +252,7 @@ download() {
        DEST_DIR="fabric-samples"
     fi
     echo "===> Will unpack to: ${DEST_DIR}"
-    curl -L --retry 5 --retry-delay 3 "${URL}" | tar xz -C ${DEST_DIR}|| rc=$?
+    curl -L --retry 5 --retry-delay 3 "${URL}" | tar xz -C "${DEST_DIR}"|| rc=$?
     if [ -n "$rc" ]; then
         echo "==> There was an error downloading the binary file."
         return 22
@@ -220,9 +285,9 @@ pullImages() {
     command -v  ${CONTAINER_CLI}  >& /dev/null
     NODOCKER=$?
     if [ "${NODOCKER}" == 0 ]; then
-        FABRIC_IMAGES=(peer orderer ccenv tools)
+        FABRIC_IMAGES=(peer orderer ccenv)
         case "$VERSION" in
-        2.*)
+        [2-3].*)
             FABRIC_IMAGES+=(baseos)
             shift
             ;;
@@ -263,8 +328,13 @@ else
     : "${FABRIC_TAG:="$VERSION"}"
 fi
 
-BINARY_FILE=hyperledger-fabric-${ARCH}-${VERSION}.tar.gz
-CA_BINARY_FILE=hyperledger-fabric-ca-${ARCH}-${CA_VERSION}.tar.gz
+# Prior to fabric 2.5, use amd64 binaries on darwin-arm64
+if [[ $VERSION =~ ^2\.[0-4]\.* ]]; then
+  PLATFORM=$(echo $PLATFORM | sed 's/darwin-arm64/darwin-amd64/g')
+fi
+
+BINARY_FILE=hyperledger-fabric-${PLATFORM}-${VERSION}.tar.gz
+CA_BINARY_FILE=hyperledger-fabric-ca-${PLATFORM}-${CA_VERSION}.tar.gz
 
 # if nothing has been specified, assume everything
 if [[ ${_arg_comp[@]} =~ ^$ ]]; then

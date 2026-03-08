@@ -8,30 +8,25 @@ package ccprovider_test
 
 import (
 	"crypto/sha256"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestInstalledCCs(t *testing.T) {
 	tmpDir, hashes := setupDirectoryStructure(t)
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
-
-	defer func() {
-		os.RemoveAll(tmpDir)
-	}()
 
 	testCases := []struct {
 		name              string
@@ -43,7 +38,7 @@ func TestInstalledCCs(t *testing.T) {
 	}{
 		{
 			name:              "Non-empty directory",
-			ls:                ioutil.ReadDir,
+			ls:                os.ReadDir,
 			extractCCFromPath: ccprovider.LoadPackage,
 			expected: []chaincode.InstalledChaincode{
 				{
@@ -61,21 +56,21 @@ func TestInstalledCCs(t *testing.T) {
 		},
 		{
 			name:              "Nonexistent directory",
-			ls:                ioutil.ReadDir,
+			ls:                os.ReadDir,
 			extractCCFromPath: ccprovider.LoadPackage,
 			expected:          nil,
 			directory:         "nonexistent",
 		},
 		{
 			name:              "Empty directory",
-			ls:                ioutil.ReadDir,
+			ls:                os.ReadDir,
 			extractCCFromPath: ccprovider.LoadPackage,
 			expected:          nil,
 			directory:         "empty",
 		},
 		{
 			name: "No permission to open directory",
-			ls: func(_ string) ([]os.FileInfo, error) {
+			ls: func(_ string) ([]os.DirEntry, error) {
 				return nil, errors.New("orange")
 			},
 			extractCCFromPath: ccprovider.LoadPackage,
@@ -85,7 +80,7 @@ func TestInstalledCCs(t *testing.T) {
 		},
 		{
 			name: "No permission on chaincode files",
-			ls:   ioutil.ReadDir,
+			ls:   os.ReadDir,
 			extractCCFromPath: func(_ string, _ string, _ ccprovider.GetHasher) (ccprovider.CCPackage, error) {
 				return nil, errors.New("banana")
 			},
@@ -97,7 +92,6 @@ func TestInstalledCCs(t *testing.T) {
 	_ = testCases
 
 	for _, test := range testCases {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			c := &ccprovider.CCInfoFSImpl{GetHasher: cryptoProvider}
 			res, err := c.ListInstalledChaincodes(path.Join(tmpDir, test.directory), test.ls, test.extractCCFromPath)
@@ -112,9 +106,8 @@ func TestInstalledCCs(t *testing.T) {
 }
 
 func TestSetGetChaincodeInstallPath(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "ccprovider")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
+	ccprovider.SetChaincodesPath(tempDir)
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
@@ -136,8 +129,7 @@ func setupDirectoryStructure(t *testing.T) (string, map[string][]byte) {
 		"example04.1",   // Version doesn't contain the '.' delimiter
 	}
 	hashes := map[string][]byte{}
-	tmp, err := ioutil.TempDir("", "test-installed-cc")
-	require.NoError(t, err)
+	tmp := t.TempDir()
 	dir := path.Join(tmp, "empty")
 	require.NoError(t, os.Mkdir(dir, 0o755))
 	dir = path.Join(tmp, "nonempty")
@@ -147,7 +139,7 @@ func setupDirectoryStructure(t *testing.T) (string, map[string][]byte) {
 	dir = path.Join(tmp, "nopermissionforfiles")
 	require.NoError(t, os.Mkdir(dir, 0o755))
 	noPermissionFile := path.Join(tmp, "nopermissionforfiles", "nopermission.1")
-	_, err = os.Create(noPermissionFile)
+	_, err := os.Create(noPermissionFile)
 	require.NoError(t, err)
 	dir = path.Join(tmp, "nonempty")
 	require.NoError(t, os.Mkdir(path.Join(tmp, "nonempty", "directory"), 0o755))

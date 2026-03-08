@@ -9,19 +9,18 @@ package kvledger
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/queryresult"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/stretchr/testify/require"
 )
 
 func TestStateListener(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
+	conf := testConfig(t)
 
 	// create a listener and register it to listen to state change in a namespace
 	channelid := "testLedger"
@@ -63,7 +62,7 @@ func TestStateListener(t *testing.T) {
 	require.NoError(t, sim2.SetState(namespace, "key3", []byte("value3")))
 	sim2.Done()
 
-	// Simulate tx3 - this neighter conflicts with tx1 nor with tx2
+	// Simulate tx3 - this neither conflicts with tx1 nor with tx2
 	sim3, err := lgr.NewTxSimulator("test_tx_3")
 	require.NoError(t, err)
 	require.NoError(t, sim3.SetState(namespace, "key4", []byte("value4")))

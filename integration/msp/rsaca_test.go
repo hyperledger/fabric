@@ -17,7 +17,6 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"os"
@@ -25,31 +24,34 @@ import (
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	fabricmsp "github.com/hyperledger/fabric/msp"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
-	"gopkg.in/yaml.v2"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
+	"gopkg.in/yaml.v3"
 )
 
 var _ = Describe("MSPs with RSA Certificate Authorities", func() {
 	var (
-		client  *docker.Client
+		client  dcli.APIClient
 		testDir string
 		network *nwo.Network
-		process ifrit.Process
+
+		ordererRunner               *ginkgomon.Runner
+		ordererProcess, peerProcess ifrit.Process
 	)
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "msp")
+		testDir, err = os.MkdirTemp("", "msp")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
 		network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
@@ -58,22 +60,13 @@ var _ = Describe("MSPs with RSA Certificate Authorities", func() {
 		By("manually bootstrapping MSPs with RSA CAs")
 		generateRSACACrypto(network)
 		network.CreateDockerNetwork()
-		sess, err := network.ConfigTxGen(commands.OutputBlock{
-			ChannelID:   network.SystemChannel.Name,
-			Profile:     network.SystemChannel.Profile,
-			ConfigPath:  network.RootDir,
-			OutputBlock: network.OutputBlockPath(network.SystemChannel.Name),
-		})
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 
 		for _, c := range network.Channels {
-			sess, err := network.ConfigTxGen(commands.CreateChannelTx{
-				ChannelID:             c.Name,
-				Profile:               c.Profile,
-				BaseProfile:           c.BaseProfile,
-				ConfigPath:            network.RootDir,
-				OutputCreateChannelTx: network.CreateChannelTxPath(c.Name),
+			sess, err := network.ConfigTxGen(commands.OutputBlock{
+				ChannelID:   c.Name,
+				Profile:     c.Profile,
+				ConfigPath:  network.RootDir,
+				OutputBlock: network.OutputBlockPath(c.Name),
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
@@ -81,16 +74,20 @@ var _ = Describe("MSPs with RSA Certificate Authorities", func() {
 		network.ConcatenateTLSCACertificates()
 
 		By("starting all processes for fabric")
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 	})
 
 	AfterEach(func() {
-		if process != nil {
-			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+		if ordererProcess != nil {
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
+
+		if peerProcess != nil {
+			peerProcess.Signal(syscall.SIGTERM)
+			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
 		if network != nil {
 			network.Cleanup()
 		}
@@ -114,7 +111,8 @@ var _ = Describe("MSPs with RSA Certificate Authorities", func() {
 			Label:           "my_prebuilt_chaincode",
 		}
 
-		network.CreateAndJoinChannels(orderer)
+		nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+
 		nwo.EnableCapabilities(
 			network,
 			"testchannel",
@@ -206,13 +204,13 @@ func createMSP(baseDir, domain string, nodeOUs bool) (signCA *CA, tlsCA *CA, adm
 	}
 
 	writeLocalMSP(adminDir, adminUsername, ous, nil, signCA, tlsCA, nil, nodeOUs, true)
-	adminPemCert, err = ioutil.ReadFile(filepath.Join(adminDir, "msp", "signcerts", certFilename(adminUsername)))
+	adminPemCert, err = os.ReadFile(filepath.Join(adminDir, "msp", "signcerts", certFilename(adminUsername)))
 	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(filepath.Join(adminDir, "msp", "admincerts", certFilename(adminUsername)), adminPemCert, 0o644)
+	err = os.WriteFile(filepath.Join(adminDir, "msp", "admincerts", certFilename(adminUsername)), adminPemCert, 0o644)
 	Expect(err).NotTo(HaveOccurred())
 
 	if !nodeOUs {
-		err := ioutil.WriteFile(filepath.Join(mspDir, "admincerts", certFilename(adminUsername)), adminPemCert, 0o644)
+		err := os.WriteFile(filepath.Join(mspDir, "admincerts", certFilename(adminUsername)), adminPemCert, 0o644)
 		Expect(err).NotTo(HaveOccurred())
 	}
 
@@ -276,7 +274,7 @@ func writeLocalMSP(baseDir, name string, signOUs, sans []string, signCA, tlsCA *
 		block, _ := pem.Decode(adminCertPem)
 		adminCert, err := x509.ParseCertificate(block.Bytes)
 		Expect(err).NotTo(HaveOccurred())
-		err = ioutil.WriteFile(filepath.Join(mspDir, "admincerts", certFilename(adminCert.Subject.CommonName)), adminCertPem, 0o644)
+		err = os.WriteFile(filepath.Join(mspDir, "admincerts", certFilename(adminCert.Subject.CommonName)), adminCertPem, 0o644)
 		Expect(err).NotTo(HaveOccurred())
 	}
 
@@ -343,6 +341,7 @@ type CA struct {
 }
 
 func newCA(orgName, caName string) *CA {
+	var err error
 	signer := generateRSAKey()
 
 	template := x509Template()
@@ -359,7 +358,8 @@ func newCA(orgName, caName string) *CA {
 		CommonName:   caName + "." + orgName,
 		Organization: []string{orgName},
 	}
-	template.SubjectKeyId = computeSKI(signer.Public())
+	template.SubjectKeyId, err = computeSKI(signer.Public())
+	Expect(err).NotTo(HaveOccurred())
 
 	certBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, signer.Public(), signer)
 	Expect(err).NotTo(HaveOccurred())
@@ -374,6 +374,8 @@ func newCA(orgName, caName string) *CA {
 }
 
 func (ca *CA) issueSignCertificate(name string, ous []string, pub crypto.PublicKey) ([]byte, *x509.Certificate) {
+	var err error
+
 	template := x509Template()
 	template.KeyUsage = x509.KeyUsageDigitalSignature
 	template.ExtKeyUsage = nil
@@ -382,7 +384,8 @@ func (ca *CA) issueSignCertificate(name string, ous []string, pub crypto.PublicK
 		Organization:       ca.cert.Subject.Organization,
 		OrganizationalUnit: ous,
 	}
-	template.SubjectKeyId = computeSKI(pub)
+	template.SubjectKeyId, err = computeSKI(pub)
+	Expect(err).NotTo(HaveOccurred())
 
 	certBytes, err := x509.CreateCertificate(rand.Reader, &template, ca.cert, pub, ca.signer)
 	Expect(err).NotTo(HaveOccurred())
@@ -392,6 +395,8 @@ func (ca *CA) issueSignCertificate(name string, ous []string, pub crypto.PublicK
 }
 
 func (ca *CA) issueTLSCertificate(name string, sans []string, pub crypto.PublicKey) ([]byte, *x509.Certificate) {
+	var err error
+
 	template := x509Template()
 	template.KeyUsage = x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment
 	template.ExtKeyUsage = []x509.ExtKeyUsage{
@@ -402,7 +407,8 @@ func (ca *CA) issueTLSCertificate(name string, sans []string, pub crypto.PublicK
 		CommonName:   name,
 		Organization: ca.cert.Subject.Organization,
 	}
-	template.SubjectKeyId = computeSKI(pub)
+	template.SubjectKeyId, err = computeSKI(pub)
+	Expect(err).NotTo(HaveOccurred())
 
 	for _, san := range sans {
 		if ip := net.ParseIP(san); ip != nil {
@@ -451,16 +457,21 @@ func x509Template() x509.Certificate {
 	}
 }
 
-func computeSKI(key crypto.PublicKey) []byte {
+func computeSKI(key crypto.PublicKey) ([]byte, error) {
 	var raw []byte
 	switch key := key.(type) {
 	case *rsa.PublicKey:
 		raw = x509.MarshalPKCS1PublicKey(key)
 	case *ecdsa.PublicKey:
-		raw = elliptic.Marshal(key.Curve, key.X, key.Y)
+		ecdhKey, err := key.ECDH()
+		if err != nil {
+			return nil, fmt.Errorf("public key transition failed: %w", err)
+		}
+		raw = ecdhKey.Bytes()
 	default:
-		panic(fmt.Sprintf("unexpected type: %T", key))
+
+		return nil, fmt.Errorf("unexpected type: %T", key)
 	}
 	hash := sha256.Sum256(raw)
-	return hash[:]
+	return hash[:], nil
 }

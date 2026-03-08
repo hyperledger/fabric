@@ -14,13 +14,12 @@ package cscc
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-chaincode-go/shim"
-	"github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
@@ -29,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // New creates a new instance of the CSCC.
@@ -79,7 +79,7 @@ const (
 )
 
 // Init is mostly useless from an SCC perspective
-func (e *PeerConfiger) Init(stub shim.ChaincodeStubInterface) pb.Response {
+func (e *PeerConfiger) Init(stub shim.ChaincodeStubInterface) *pb.Response {
 	cnflogger.Info("Init CSCC")
 	return shim.Success(nil)
 }
@@ -94,7 +94,7 @@ func (e *PeerConfiger) Init(stub shim.ChaincodeStubInterface) pb.Response {
 // # args[1] is a configuration Block if args[0] is JoinChain or
 // UpdateConfigBlock; otherwise it is the chain id
 // TODO: Improve the scc interface to avoid marshal/unmarshal args
-func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
+func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) *pb.Response {
 	args := stub.GetArgs()
 
 	if len(args) < 1 {
@@ -128,7 +128,7 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	return e.InvokeNoShim(args, sp)
 }
 
-func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Response {
+func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) *pb.Response {
 	var err error
 	fname := string(args[0])
 
@@ -260,7 +260,7 @@ func (e *PeerConfiger) joinChain(
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 	lr plugindispatcher.LifecycleResources,
 	nr plugindispatcher.CollectionAndLifecycleResources,
-) pb.Response {
+) *pb.Response {
 	if err := e.peer.CreateChannel(channelID, block, deployedCCInfoProvider, lr, nr); err != nil {
 		return shim.Error(err.Error())
 	}
@@ -274,7 +274,7 @@ func (e *PeerConfiger) JoinChainBySnapshot(
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 	lr plugindispatcher.LifecycleResources,
 	nr plugindispatcher.CollectionAndLifecycleResources,
-) pb.Response {
+) *pb.Response {
 	if err := e.peer.CreateChannelFromSnapshot(snapshotDir, deployedCCInfoProvider, lr, nr); err != nil {
 		return shim.Error(err.Error())
 	}
@@ -284,7 +284,7 @@ func (e *PeerConfiger) JoinChainBySnapshot(
 
 // Return the current configuration block for the specified channelID. If the
 // peer doesn't belong to the channel, return error
-func (e *PeerConfiger) getConfigBlock(channelID []byte) pb.Response {
+func (e *PeerConfiger) getConfigBlock(channelID []byte) *pb.Response {
 	if channelID == nil {
 		return shim.Error("ChannelID must not be nil.")
 	}
@@ -306,7 +306,7 @@ func (e *PeerConfiger) getConfigBlock(channelID []byte) pb.Response {
 	return shim.Success(blockBytes)
 }
 
-func (e *PeerConfiger) getChannelConfig(channelID []byte) pb.Response {
+func (e *PeerConfiger) getChannelConfig(channelID []byte) *pb.Response {
 	channel := e.peer.Channel(string(channelID))
 	if channel == nil {
 		return shim.Error(fmt.Sprintf("unknown channel ID, %s", string(channelID)))
@@ -324,7 +324,7 @@ func (e *PeerConfiger) getChannelConfig(channelID []byte) pb.Response {
 }
 
 // getChannels returns information about all channels for this peer
-func (e *PeerConfiger) getChannels() pb.Response {
+func (e *PeerConfiger) getChannels() *pb.Response {
 	channelInfoArray := e.peer.GetChannelsInfo()
 
 	// add array with info about all channels for this peer
@@ -339,8 +339,8 @@ func (e *PeerConfiger) getChannels() pb.Response {
 }
 
 // joinBySnapshotStatus returns information about joinbysnapshot running status.
-func (e *PeerConfiger) joinBySnapshotStatus() pb.Response {
-	status := e.peer.JoinBySnaphotStatus()
+func (e *PeerConfiger) joinBySnapshotStatus() *pb.Response {
+	status := e.peer.JoinBySnapshotStatus()
 
 	statusBytes, err := proto.Marshal(status)
 	if err != nil {

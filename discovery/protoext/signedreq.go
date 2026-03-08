@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package protoext
 
 import (
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/discovery"
+	"github.com/hyperledger/fabric-protos-go-apiv2/discovery"
+	"google.golang.org/protobuf/proto"
 )
 
 // SignedRequestToRequest deserializes this SignedRequest's payload

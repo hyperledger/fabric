@@ -9,7 +9,7 @@ package fabricconfig
 import (
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
+	dcontainer "github.com/moby/moby/api/types/container"
 )
 
 type Core struct {
@@ -25,7 +25,7 @@ type Core struct {
 type Logging struct {
 	Format string `yaml:"format,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type Peer struct {
@@ -52,7 +52,7 @@ type Peer struct {
 	Discovery              *Discovery      `yaml:"discovery,omitempty"`
 	Limits                 *Limits         `yaml:"limits,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type Keepalive struct {
@@ -247,9 +247,9 @@ type VM struct {
 }
 
 type Docker struct {
-	TLS          *TLS               `yaml:"tls,omitempty"`
-	AttachStdout bool               `yaml:"attachStdout"`
-	HostConfig   *docker.HostConfig `yaml:"hostConfig,omitempty"`
+	TLS          *TLS                   `yaml:"tls,omitempty"`
+	AttachStdout bool                   `yaml:"attachStdout"`
+	HostConfig   *dcontainer.HostConfig `yaml:"hostConfig,omitempty"`
 }
 
 type Chaincode struct {
@@ -267,22 +267,22 @@ type Chaincode struct {
 	Logging          *Logging          `yaml:"logging,omitempty"`
 	ExternalBuilders []ExternalBuilder `yaml:"externalBuilders"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type Golang struct {
 	Runtime     string `yaml:"runtime,omitempty"`
 	DynamicLink bool   `yaml:"dynamicLink"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type Java struct {
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type Node struct {
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type ExternalBuilder struct {

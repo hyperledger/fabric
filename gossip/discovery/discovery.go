@@ -9,10 +9,10 @@ package discovery
 import (
 	"fmt"
 
-	protolib "github.com/golang/protobuf/proto"
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
+	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/protoext"
+	protolib "google.golang.org/protobuf/proto"
 )
 
 // CryptoService is an interface that the discovery expects to be implemented and passed on creation

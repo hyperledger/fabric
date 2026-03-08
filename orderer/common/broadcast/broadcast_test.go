@@ -11,15 +11,14 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/golang/protobuf/proto"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	. "github.com/hyperledger/fabric/internal/test"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	"github.com/hyperledger/fabric/orderer/common/broadcast/mock"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Broadcast", func() {
@@ -125,7 +124,9 @@ var _ = Describe("Broadcast", func() {
 			Expect(fakeProcessedCounter.AddArgsForCall(0)).To(Equal(float64(1)))
 
 			Expect(fakeABServer.SendCallCount()).To(Equal(1))
-			Expect(proto.Equal(fakeABServer.SendArgsForCall(0), &ab.BroadcastResponse{Status: cb.Status_SUCCESS})).To(BeTrue())
+			Expect(fakeABServer.SendArgsForCall(0)).To(ProtoEqual(
+				&ab.BroadcastResponse{Status: cb.Status_SUCCESS},
+			))
 		})
 
 		Context("when the channel support cannot be retrieved", func() {
@@ -141,10 +142,9 @@ var _ = Describe("Broadcast", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(fakeABServer.SendCallCount()).To(Equal(1))
-				Expect(proto.Equal(
-					fakeABServer.SendArgsForCall(0),
-					&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST, Info: "support-error"}),
-				).To(BeTrue())
+				Expect(fakeABServer.SendArgsForCall(0)).To(ProtoEqual(
+					&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST, Info: "support-error"},
+				))
 			})
 
 			Context("when the channel header is not validly decoded", func() {
@@ -189,10 +189,9 @@ var _ = Describe("Broadcast", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(fakeABServer.SendCallCount()).To(Equal(1))
-				Expect(proto.Equal(
-					fakeABServer.SendArgsForCall(0),
-					&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: "not-ready"}),
-				).To(BeTrue())
+				Expect(fakeABServer.SendArgsForCall(0)).To(ProtoEqual(
+					&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: "not-ready"},
+				))
 			})
 		})
 
@@ -217,16 +216,15 @@ var _ = Describe("Broadcast", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(fakeABServer.SendCallCount()).To(Equal(1))
-				Expect(proto.Equal(
-					fakeABServer.SendArgsForCall(0),
-					&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: "consenter-error"}),
-				).To(BeTrue())
+				Expect(fakeABServer.SendArgsForCall(0)).To(ProtoEqual(
+					&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: "consenter-error"},
+				))
 			})
 		})
 
 		Context("when the message processor returns an error", func() {
 			BeforeEach(func() {
-				fakeSupport.ProcessNormalMsgReturns(0, fmt.Errorf("normal-messsage-processing-error"))
+				fakeSupport.ProcessNormalMsgReturns(0, fmt.Errorf("normal-message-processing-error"))
 			})
 
 			It("returns the error and an error status", func() {
@@ -234,10 +232,9 @@ var _ = Describe("Broadcast", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(fakeABServer.SendCallCount()).To(Equal(1))
-				Expect(proto.Equal(
-					fakeABServer.SendArgsForCall(0),
-					&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST, Info: "normal-messsage-processing-error"},
-				)).To(BeTrue())
+				Expect(fakeABServer.SendArgsForCall(0)).To(ProtoEqual(
+					&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST, Info: "normal-message-processing-error"},
+				))
 			})
 
 			Context("when the error cause is msgprocessor.ErrChannelDoesNotExist", func() {
@@ -250,10 +247,9 @@ var _ = Describe("Broadcast", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(fakeABServer.SendCallCount()).To(Equal(1))
-					Expect(proto.Equal(
-						fakeABServer.SendArgsForCall(0),
+					Expect(fakeABServer.SendArgsForCall(0)).To(ProtoEqual(
 						&ab.BroadcastResponse{Status: cb.Status_NOT_FOUND, Info: msgprocessor.ErrChannelDoesNotExist.Error()},
-					)).To(BeTrue())
+					))
 				})
 			})
 
@@ -267,10 +263,9 @@ var _ = Describe("Broadcast", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(fakeABServer.SendCallCount()).To(Equal(1))
-					Expect(proto.Equal(
-						fakeABServer.SendArgsForCall(0),
+					Expect(fakeABServer.SendArgsForCall(0)).To(ProtoEqual(
 						&ab.BroadcastResponse{Status: cb.Status_FORBIDDEN, Info: msgprocessor.ErrPermissionDenied.Error()},
-					)).To(BeTrue())
+					))
 				})
 			})
 		})
@@ -306,7 +301,7 @@ var _ = Describe("Broadcast", func() {
 				Expect(seq).To(Equal(uint64(3)))
 
 				Expect(fakeABServer.SendCallCount()).To(Equal(1))
-				Expect(proto.Equal(fakeABServer.SendArgsForCall(0), &ab.BroadcastResponse{Status: cb.Status_SUCCESS})).To(BeTrue())
+				Expect(fakeABServer.SendArgsForCall(0)).To(ProtoEqual(&ab.BroadcastResponse{Status: cb.Status_SUCCESS}))
 			})
 
 			Context("when the consenter is not ready for the request", func() {
@@ -319,10 +314,9 @@ var _ = Describe("Broadcast", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(fakeABServer.SendCallCount()).To(Equal(1))
-					Expect(proto.Equal(
-						fakeABServer.SendArgsForCall(0),
-						&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: "not-ready"}),
-					).To(BeTrue())
+					Expect(fakeABServer.SendArgsForCall(0)).To(ProtoEqual(
+						&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: "not-ready"},
+					))
 				})
 			})
 
@@ -336,10 +330,9 @@ var _ = Describe("Broadcast", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(fakeABServer.SendCallCount()).To(Equal(1))
-					Expect(proto.Equal(
-						fakeABServer.SendArgsForCall(0),
-						&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: "consenter-error"}),
-					).To(BeTrue())
+					Expect(fakeABServer.SendArgsForCall(0)).To(ProtoEqual(
+						&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: "consenter-error"},
+					))
 				})
 			})
 
@@ -353,10 +346,9 @@ var _ = Describe("Broadcast", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(fakeABServer.SendCallCount()).To(Equal(1))
-					Expect(proto.Equal(
-						fakeABServer.SendArgsForCall(0),
+					Expect(fakeABServer.SendArgsForCall(0)).To(ProtoEqual(
 						&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST, Info: "config-processing-error"},
-					)).To(BeTrue())
+					))
 				})
 
 				Context("when the error cause is msgprocessor.ErrChannelDoesNotExist", func() {
@@ -369,10 +361,9 @@ var _ = Describe("Broadcast", func() {
 						Expect(err).NotTo(HaveOccurred())
 
 						Expect(fakeABServer.SendCallCount()).To(Equal(1))
-						Expect(proto.Equal(
-							fakeABServer.SendArgsForCall(0),
+						Expect(fakeABServer.SendArgsForCall(0)).To(ProtoEqual(
 							&ab.BroadcastResponse{Status: cb.Status_NOT_FOUND, Info: msgprocessor.ErrChannelDoesNotExist.Error()},
-						)).To(BeTrue())
+						))
 					})
 				})
 
@@ -386,10 +377,9 @@ var _ = Describe("Broadcast", func() {
 						Expect(err).NotTo(HaveOccurred())
 
 						Expect(fakeABServer.SendCallCount()).To(Equal(1))
-						Expect(proto.Equal(
-							fakeABServer.SendArgsForCall(0),
+						Expect(fakeABServer.SendArgsForCall(0)).To(ProtoEqual(
 							&ab.BroadcastResponse{Status: cb.Status_FORBIDDEN, Info: msgprocessor.ErrPermissionDenied.Error()},
-						)).To(BeTrue())
+						))
 					})
 				})
 			})

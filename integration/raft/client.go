@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package raft
 
 import (
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/ordererclient"
 	"github.com/hyperledger/fabric/protoutil"
@@ -27,29 +27,6 @@ func FetchBlock(n *nwo.Network, o *nwo.Orderer, seq uint64, channel string) *com
 	}, n.EventuallyTimeout).ShouldNot(HaveOccurred())
 
 	return blk
-}
-
-func CreateBroadcastEnvelope(n *nwo.Network, entity interface{}, channel string, data []byte) *common.Envelope {
-	var signer *nwo.SigningIdentity
-	switch creator := entity.(type) {
-	case *nwo.Peer:
-		signer = n.PeerUserSigner(creator, "Admin")
-	case *nwo.Orderer:
-		signer = n.OrdererUserSigner(creator, "Admin")
-	}
-	Expect(signer).NotTo(BeNil())
-
-	env, err := protoutil.CreateSignedEnvelope(
-		common.HeaderType_MESSAGE,
-		channel,
-		signer,
-		&common.Envelope{Payload: data},
-		0,
-		0,
-	)
-	Expect(err).NotTo(HaveOccurred())
-
-	return env
 }
 
 // CreateDeliverEnvelope creates a deliver env to seek for specified block.

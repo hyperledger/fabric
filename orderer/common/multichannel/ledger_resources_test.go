@@ -9,10 +9,9 @@ package multichannel
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
@@ -21,9 +20,8 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel/mocks"
-	"github.com/hyperledger/fabric/protoutil"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 //go:generate counterfeiter -o mocks/policy.go --fake-name Policy . policy
@@ -73,58 +71,9 @@ func (mrm *mutableResourcesMock) CreateBundle(channelID string, c *common.Config
 	return mockResources, nil
 }
 
-func TestLedgerResources_VerifyBlockSignature(t *testing.T) {
-	mockResources := &mocks.Resources{}
-	mockValidator := &mocks.ConfigTXValidator{}
-	mockValidator.ChannelIDReturns("mychannel")
-	mockResources.ConfigtxValidatorReturns(mockValidator)
-
-	mockPolicy := &mocks.Policy{}
-	mockPolicyManager := &mocks.PolicyManager{}
-	mockResources.PolicyManagerReturns(mockPolicyManager)
-
-	ms := &mutableResourcesMock{
-		Resources: mockResources,
-	}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
-	cs := &ChainSupport{
-		ledgerResources: &ledgerResources{
-			configResources: &configResources{
-				mutableResources: ms,
-				bccsp:            cryptoProvider,
-			},
-		},
-		BCCSP: cryptoProvider,
-	}
-
-	// Scenario I: Policy manager isn't initialized
-	// and thus policy cannot be found
-	mockPolicyManager.GetPolicyReturns(nil, false)
-	err = cs.VerifyBlockSignature([]*protoutil.SignedData{}, nil)
-	require.EqualError(t, err, "policy /Channel/Orderer/BlockValidation wasn't found")
-
-	mockPolicyManager.GetPolicyReturns(mockPolicy, true)
-	// Scenario II: Policy manager finds policy, but it evaluates
-	// to error.
-	mockPolicy.EvaluateSignedDataReturns(errors.New("invalid signature"))
-	err = cs.VerifyBlockSignature([]*protoutil.SignedData{}, nil)
-	require.EqualError(t, err, "block verification failed: invalid signature")
-
-	// Scenario III: Policy manager finds policy, and it evaluates to success
-	mockPolicy.EvaluateSignedDataReturns(nil)
-	require.NoError(t, cs.VerifyBlockSignature([]*protoutil.SignedData{}, nil))
-
-	// Scenario IV: A bad config envelope is passed
-	err = cs.VerifyBlockSignature([]*protoutil.SignedData{}, &common.ConfigEnvelope{})
-	require.EqualError(t, err, "channelconfig Config cannot be nil")
-
-	// Scenario V: A valid config envelope is passed
-	require.NoError(t, cs.VerifyBlockSignature([]*protoutil.SignedData{}, testConfigEnvelope(t)))
-}
-
 func testConfigEnvelope(t *testing.T) *common.ConfigEnvelope {
-	conf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+	conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
+	conf.Orderer.Organizations[0].OrdererEndpoints = []string{"127.0.0.1:7050"}
 	group, err := encoder.NewChannelGroup(conf)
 	require.NoError(t, err)
 	group.Groups["Orderer"].Values["ConsensusType"].Value, err = proto.Marshal(&orderer.ConsensusType{

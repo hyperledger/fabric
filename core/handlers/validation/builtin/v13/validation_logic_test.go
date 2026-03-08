@@ -7,15 +7,13 @@ package v13
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
@@ -35,6 +33,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 //go:generate counterfeiter -o mocks/state.go -fake-name State . vsState
@@ -1404,7 +1403,7 @@ func validateUpgradeWithCollection(t *testing.T, V1_2Validation bool) {
 
 		ccver = "3"
 
-		// Test 4: valid collection config config and peer in V1_2Validation mode --> success
+		// Test 4: valid collection config and peer in V1_2Validation mode --> success
 		ccp = &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1, coll2, coll3}}
 		ccpBytes, err = proto.Marshal(ccp)
 		require.NoError(t, err)
@@ -1637,7 +1636,7 @@ var (
 	id        msp.SigningIdentity
 	sid       []byte
 	mspid     string
-	channelID string = "testchannelid"
+	channelID = "testchannelid"
 )
 
 func createCollectionConfig(collectionName string, signaturePolicyEnvelope *common.SignaturePolicyEnvelope,
@@ -1872,7 +1871,7 @@ func TestMain(m *testing.M) {
 		os.Exit(code)
 	}()
 
-	testDir, err := ioutil.TempDir("", "v1.3-validation")
+	testDir, err := os.MkdirTemp("", "v1.3-validation")
 	if err != nil {
 		fmt.Printf("Could not create temp dir: %s", err)
 		return

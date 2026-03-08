@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"sync"
 
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 )
 
 // SendPanicFailure
@@ -21,7 +21,7 @@ func (e SendPanicFailure) Error() string {
 	return fmt.Sprintf("send failure %s", string(e))
 }
 
-// PeerChaincodeStream interface for stream between Peer and chaincode instance.
+// inProcStream interface for stream between Peer and chaincode instance.
 type inProcStream struct {
 	recv      <-chan *pb.ChaincodeMessage
 	send      chan<- *pb.ChaincodeMessage

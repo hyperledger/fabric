@@ -78,7 +78,7 @@ generateOrCheck \
         docs/wrappers/license_postscript.md \
         "${commands[@]}"
 
-commands=("peer chaincode install" "peer chaincode instantiate" "peer chaincode invoke" "peer chaincode list" "peer chaincode package" "peer chaincode query" "peer chaincode signpackage" "peer chaincode upgrade")
+commands=("peer chaincode invoke" "peer chaincode query")
 generateOrCheck \
         docs/source/commands/peerchaincode.md \
         docs/wrappers/peer_chaincode_preamble.md \
@@ -134,7 +134,7 @@ generateOrCheck \
         docs/wrappers/configtxlator_postscript.md \
         "${commands[@]}"
 
-commands=("osnadmin channel" "osnadmin channel join" "osnadmin channel list" "osnadmin channel remove")
+commands=("osnadmin channel" "osnadmin channel join" "osnadmin channel list" "osnadmin channel remove" "osnadmin channel update" "osnadmin channel fetch")
 generateOrCheck \
         docs/source/commands/osnadminchannel.md \
         docs/wrappers/osnadmin_channel_preamble.md \

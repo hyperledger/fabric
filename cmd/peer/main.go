@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric/internal/peer/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/channel"
 	"github.com/hyperledger/fabric/internal/peer/common"
@@ -28,11 +28,7 @@ import (
 var mainCmd = &cobra.Command{Use: "peer"}
 
 func main() {
-	// For environment variables.
-	viper.SetEnvPrefix(common.CmdRoot)
-	viper.AutomaticEnv()
-	replacer := strings.NewReplacer(".", "_")
-	viper.SetEnvKeyReplacer(replacer)
+	setEnvConfig(viper.GetViper())
 
 	// Define command-line flags that are valid for all peer commands and
 	// subcommands.
@@ -56,4 +52,12 @@ func main() {
 	if mainCmd.Execute() != nil {
 		os.Exit(1)
 	}
+}
+
+func setEnvConfig(v *viper.Viper) {
+	v.SetEnvPrefix(common.CmdRoot)
+	v.AllowEmptyEnv(true)
+	v.AutomaticEnv()
+	replacer := strings.NewReplacer(".", "_")
+	v.SetEnvKeyReplacer(replacer)
 }

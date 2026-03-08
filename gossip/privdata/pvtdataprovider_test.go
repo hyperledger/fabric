@@ -8,20 +8,18 @@ package privdata
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"sort"
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	mspproto "github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	tspb "github.com/hyperledger/fabric-protos-go/transientstore"
-	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
+	"github.com/hyperledger/fabric-lib-go/common/metrics/disabled"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	mspproto "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	tspb "github.com/hyperledger/fabric-protos-go-apiv2/transientstore"
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/transientstore"
@@ -75,7 +73,7 @@ func TestRetrievePvtdata(t *testing.T) {
 	}
 	endorser := protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
 		Mspid:   identity.GetMSPIdentifier(),
-		IdBytes: []byte(fmt.Sprintf("p0%s", identity.GetMSPIdentifier())),
+		IdBytes: fmt.Appendf(nil, "p0%s", identity.GetMSPIdentifier()),
 	})
 
 	ts := testSupport{
@@ -848,7 +846,7 @@ func TestRetrievePvtdataFailure(t *testing.T) {
 	}
 	endorser := protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
 		Mspid:   identity.GetMSPIdentifier(),
-		IdBytes: []byte(fmt.Sprintf("p0%s", identity.GetMSPIdentifier())),
+		IdBytes: fmt.Appendf(nil, "p0%s", identity.GetMSPIdentifier()),
 	})
 
 	ts := testSupport{
@@ -908,7 +906,7 @@ func TestRetryFetchFromPeer(t *testing.T) {
 	}
 	endorser := protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
 		Mspid:   identity.GetMSPIdentifier(),
-		IdBytes: []byte(fmt.Sprintf("p0%s", identity.GetMSPIdentifier())),
+		IdBytes: fmt.Appendf(nil, "p0%s", identity.GetMSPIdentifier()),
 	})
 
 	ts := testSupport{
@@ -923,15 +921,13 @@ func TestRetryFetchFromPeer(t *testing.T) {
 	ns1c1 := collectionPvtdataInfoFromTemplate("ns1", "c1", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
 	ns1c2 := collectionPvtdataInfoFromTemplate("ns1", "c2", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
 
-	tempdir, err := ioutil.TempDir("", "ts")
-	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
+	tempdir := t.TempDir()
 	storeProvider, err := transientstore.NewStoreProvider(tempdir)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
 	store, err := storeProvider.OpenStore(ts.channelID)
 	require.NoError(t, err, fmt.Sprintf("Failed to open store, got err %s", err))
 
 	defer storeProvider.Close()
-	defer os.RemoveAll(tempdir)
 
 	storePvtdataOfInvalidTx := true
 	skipPullingInvalidTransactions := false
@@ -1003,7 +999,7 @@ func TestSkipPullingAllInvalidTransactions(t *testing.T) {
 	}
 	endorser := protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
 		Mspid:   identity.GetMSPIdentifier(),
-		IdBytes: []byte(fmt.Sprintf("p0%s", identity.GetMSPIdentifier())),
+		IdBytes: fmt.Appendf(nil, "p0%s", identity.GetMSPIdentifier()),
 	})
 
 	ts := testSupport{
@@ -1018,15 +1014,13 @@ func TestSkipPullingAllInvalidTransactions(t *testing.T) {
 	ns1c1 := collectionPvtdataInfoFromTemplate("ns1", "c1", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
 	ns1c2 := collectionPvtdataInfoFromTemplate("ns1", "c2", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
 
-	tempdir, err := ioutil.TempDir("", "ts")
-	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
+	tempdir := t.TempDir()
 	storeProvider, err := transientstore.NewStoreProvider(tempdir)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
 	store, err := storeProvider.OpenStore(ts.channelID)
 	require.NoError(t, err, fmt.Sprintf("Failed to open store, got err %s", err))
 
 	defer storeProvider.Close()
-	defer os.RemoveAll(tempdir)
 
 	storePvtdataOfInvalidTx := true
 	skipPullingInvalidTransactions := true
@@ -1105,7 +1099,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 	}
 	endorser := protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
 		Mspid:   identity.GetMSPIdentifier(),
-		IdBytes: []byte(fmt.Sprintf("p0%s", identity.GetMSPIdentifier())),
+		IdBytes: fmt.Appendf(nil, "p0%s", identity.GetMSPIdentifier()),
 	})
 
 	ts := testSupport{
@@ -1119,18 +1113,16 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 
 	ns1c1 := collectionPvtdataInfoFromTemplate("ns1", "c1", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
 
-	tempdir, err := ioutil.TempDir("", "ts")
-	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
+	tempdir := t.TempDir()
 	storeProvider, err := transientstore.NewStoreProvider(tempdir)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
 	store, err := storeProvider.OpenStore(ts.channelID)
 	require.NoError(t, err, fmt.Sprintf("Failed to open store, got err %s", err))
 
 	defer storeProvider.Close()
-	defer os.RemoveAll(tempdir)
 
 	// set up store with 9 existing private data write sets
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		txID := fmt.Sprintf("tx%d", i+1)
 		store.Persist(txID, uint64(i), &tspb.TxPvtReadWriteSetWithConfigInfo{
 			PvtRwset: &rwset.TxPvtReadWriteSet{
@@ -1260,14 +1252,12 @@ func testRetrievePvtdataSuccess(t *testing.T,
 	expectedBlockPvtdata *ledger.BlockPvtdata) {
 	fmt.Println("\n" + scenario)
 
-	tempdir, err := ioutil.TempDir("", "ts")
-	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
+	tempdir := t.TempDir()
 	storeProvider, err := transientstore.NewStoreProvider(tempdir)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
 	store, err := storeProvider.OpenStore(ts.channelID)
 	require.NoError(t, err, fmt.Sprintf("Failed to open store, got err %s", err))
 	defer storeProvider.Close()
-	defer os.RemoveAll(tempdir)
 
 	pdp := setupPrivateDataProvider(t, ts, testConfig,
 		storePvtdataOfInvalidTx, skipPullingInvalidTransactions, store,
@@ -1298,14 +1288,12 @@ func testRetrievePvtdataFailure(t *testing.T,
 	expectedErr string) {
 	fmt.Println("\n" + scenario)
 
-	tempdir, err := ioutil.TempDir("", "ts")
-	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
+	tempdir := t.TempDir()
 	storeProvider, err := transientstore.NewStoreProvider(tempdir)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
 	store, err := storeProvider.OpenStore(ts.channelID)
 	require.NoError(t, err, fmt.Sprintf("Failed to open store, got err %s", err))
 	defer storeProvider.Close()
-	defer os.RemoveAll(tempdir)
 
 	pdp := setupPrivateDataProvider(t, ts, testConfig,
 		storePvtdataOfInvalidTx, skipPullingInvalidTransactions, store,

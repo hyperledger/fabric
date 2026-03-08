@@ -7,13 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package dispatcher_test
 
 import (
+	lc "github.com/hyperledger/fabric-protos-go-apiv2/peer/lifecycle"
+	"github.com/hyperledger/fabric/core/dispatcher"
+	. "github.com/hyperledger/fabric/internal/test"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	lc "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
-	"github.com/hyperledger/fabric/core/dispatcher"
-
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ = Describe("ProtobufImpl", func() {
@@ -37,7 +36,7 @@ var _ = Describe("ProtobufImpl", func() {
 			msg := &lc.InstallChaincodeArgs{}
 			err = proto.Unmarshal(res, msg)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(proto.Equal(msg, sampleMsg)).To(BeTrue())
+			Expect(msg).To(ProtoEqual(sampleMsg))
 		})
 	})
 
@@ -49,7 +48,7 @@ var _ = Describe("ProtobufImpl", func() {
 			msg := &lc.InstallChaincodeArgs{}
 			err = pi.Unmarshal(res, msg)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(proto.Equal(msg, sampleMsg)).To(BeTrue())
+			Expect(msg).To(ProtoEqual(sampleMsg))
 		})
 	})
 })

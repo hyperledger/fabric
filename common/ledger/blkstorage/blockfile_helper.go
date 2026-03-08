@@ -7,17 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package blkstorage
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // constructBlockfilesInfo scans the last blockfile (if any) and construct the blockfilesInfo
@@ -135,7 +134,7 @@ func retrieveFirstBlockNumFromFile(rootDir string, fileNum int) (uint64, error) 
 func retrieveLastFileSuffix(rootDir string) (int, error) {
 	logger.Debugf("retrieveLastFileSuffix()")
 	biggestFileNum := -1
-	filesInfo, err := ioutil.ReadDir(rootDir)
+	filesInfo, err := os.ReadDir(rootDir)
 	if err != nil {
 		return -1, errors.Wrapf(err, "error reading dir %s", rootDir)
 	}
@@ -172,7 +171,7 @@ func getFileInfoOrPanic(rootDir string, fileNum int) os.FileInfo {
 }
 
 func loadBootstrappingSnapshotInfo(rootDir string) (*BootstrappingSnapshotInfo, error) {
-	bsiBytes, err := ioutil.ReadFile(filepath.Join(rootDir, bootstrappingSnapshotInfoFile))
+	bsiBytes, err := os.ReadFile(filepath.Join(rootDir, bootstrappingSnapshotInfoFile))
 	if os.IsNotExist(err) {
 		return nil, nil
 	}

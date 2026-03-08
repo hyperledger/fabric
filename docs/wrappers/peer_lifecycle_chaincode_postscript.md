@@ -176,7 +176,7 @@ channel `mychannel`.
 
 ### peer lifecycle chaincode queryapproved example
 
-You can query an organization's approved chaincode definition by using the `peer lifecycle chaincode queryapproved` command.
+You can query organization's approved chaincode definitions by using the `peer lifecycle chaincode queryapproved` command.
 You can use this command to see the details (including package ID) of approved chaincode definitions.
 
   * Here is an example of the `peer lifecycle chaincode queryapproved` command,
@@ -199,6 +199,16 @@ You can use this command to see the details (including package ID) of approved c
 
     Approved chaincode definition for chaincode 'mycc' on channel 'mychannel':
     sequence: 3, version: 3, init-required: false, package-id: mycc_1:d02f72000e7c0f715840f51cb8d72d70bc1ba230552f8445dded0ec8b6e0b830, endorsement plugin: escc, validation plugin: vscc
+    ```
+  * You can also specify just the channel name in order to query all approved chaincode definitions on that channel.
+
+    ```
+    peer lifecycle chaincode queryapproved -C mychannel
+
+    Approved chaincode definitions on channel 'mychannel':
+    name: basic2, sequence: 2, version: 2.0.1, init-required: false, package-id: basic2_2.0.1:e916ea95517939e1fed9d9bf3b4179b5a301a9fe303d447d9d79220666ff15ff, endorsement plugin: escc, validation plugin: vscc
+    name: basic, sequence: 1, version: 1.0.1, init-required: false, package-id: basic_1.0.1:f4babb5fd92c0ab4bce8c6ac30ca7bbb4a55e6c37774582d11639b6036ae0273, endorsement plugin: escc, validation plugin: vscc
+    name: basic2, sequence: 1, version: 1.0.1, init-required: false, package-id: basic2_1.0.1.1:dae4dca432d56265e87e6416b602b40e94e7f7cdc177031abda1c81d9ed4258a, endorsement plugin: escc, validation plugin: vscc
     ```
 
   * You can also use the `--output` flag to have the CLI format the output as
@@ -255,6 +265,69 @@ You can use this command to see the details (including package ID) of approved c
       }
       ```
 
+    - For querying all approved definitions on that channel
+
+      ```
+      peer lifecycle chaincode queryapproved -C mychannel --output json
+      ```
+
+      If successful, the command will return a JSON that has approved chaincode definitions on channel 'mychannel'.
+
+      ```
+      {
+        "approved_chaincode_definitions": [
+          {
+            "name": "basic2",
+            "sequence": 2,
+            "version": "2.0.1",
+            "endorsement_plugin": "escc",
+            "validation_plugin": "vscc",
+            "validation_parameter": "EiAvQ2hhbm5lbC9BcHBsaWNhdGlvbi9FbmRvcnNlbWVudA==",
+            "collections": {},
+            "source": {
+              "Type": {
+                "LocalPackage": {
+                  "package_id": "basic2_2.0.1:e916ea95517939e1fed9d9bf3b4179b5a301a9fe303d447d9d79220666ff15ff"
+                }
+              }
+            }
+          },
+          {
+            "name": "basic",
+            "sequence": 1,
+            "version": "1.0.1",
+            "endorsement_plugin": "escc",
+            "validation_plugin": "vscc",
+            "validation_parameter": "EiAvQ2hhbm5lbC9BcHBsaWNhdGlvbi9FbmRvcnNlbWVudA==",
+            "collections": {},
+            "source": {
+              "Type": {
+                "LocalPackage": {
+                  "package_id": "basic_1.0.1:f4babb5fd92c0ab4bce8c6ac30ca7bbb4a55e6c37774582d11639b6036ae0273"
+                }
+              }
+            }
+          },
+          {
+            "name": "basic2",
+            "sequence": 1,
+            "version": "1.0.1",
+            "endorsement_plugin": "escc",
+            "validation_plugin": "vscc",
+            "validation_parameter": "EiAvQ2hhbm5lbC9BcHBsaWNhdGlvbi9FbmRvcnNlbWVudA==",
+            "collections": {},
+            "source": {
+              "Type": {
+                "LocalPackage": {
+                  "package_id": "basic2_1.0.1:dae4dca432d56265e87e6416b602b40e94e7f7cdc177031abda1c81d9ed4258a"
+                }
+              }
+            }
+          }
+        ]
+      }
+      ```
+
 ### peer lifecycle chaincode checkcommitreadiness example
 
 You can check whether a chaincode definition is ready to be committed using the
@@ -271,9 +344,7 @@ definition can be committed to a channel.
     which checks a chaincode named `mycc` at version `1.0` on channel `mychannel`.
 
     ```
-    export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-
-    peer lifecycle chaincode checkcommitreadiness -o orderer.example.com:7050 --channelID mychannel --tls --cafile $ORDERER_CA --name mycc --version 1.0 --init-required --sequence 1
+    peer lifecycle chaincode checkcommitreadiness --channelID mychannel --name mycc --version 1.0 --init-required --sequence 1
     ```
 
     If successful, the command will return the organizations that have approved
@@ -290,9 +361,7 @@ definition can be committed to a channel.
     JSON.
 
     ```
-    export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-
-    peer lifecycle chaincode checkcommitreadiness -o orderer.example.com:7050 --channelID mychannel --tls --cafile $ORDERER_CA --name mycc --version 1.0 --init-required --sequence 1 --output json
+    peer lifecycle chaincode checkcommitreadiness --channelID mychannel --name mycc --version 1.0 --init-required --sequence 1 --output json
     ```
 
     If successful, the command will return a JSON map that shows if an organization
@@ -306,6 +375,61 @@ definition can be committed to a channel.
        }
     }
     ```
+
+  * You can also use the `--inspect` flag to output additional information to identify the cause when the approval from each organization is false. This will facilitate root cause analysis and streamline inter-organizational coordination during operations.
+
+    ```
+    peer lifecycle chaincode checkcommitreadiness --channelID mychannel --name basic --version 1.0 --sequence 1 --inspect
+    ```
+
+    If successful, the command will output additional information to identify the cause when the approval from each organization is false.
+    This example outputs that there is a mismatch with respect to the organization Org2MSP and Org3MSP, respectively,
+    compared to the chaincode definition specified in the arguments of checkcommitreadiness.
+
+    ```
+    Chaincode definition for chaincode 'basic', version '1.0', sequence '1' on channel 'mychannel' approval status by org:
+    Org1MSP: true
+    Org2MSP: false (mismatch: [EndorsementInfo, ValidationInfo, Collections])
+    Org3MSP: false (mismatch: [ChaincodeParameters])
+    ```
+
+    You can also use the `--inspect` flag and `--output` flag simultaneously.
+
+    ```
+    peer lifecycle chaincode checkcommitreadiness --channelID mychannel --name basic --version 1.0 --sequence 1 --inspect
+    ```
+
+    If successful, the command will return a JSON format with mismatches.
+
+    ```
+    {
+      "approvals": {
+        "Org1MSP": true,
+        "Org2MSP": false,
+        "Org3MSP": false
+      },
+      "mismatches": {
+        "Org2MSP": {
+          "items": [
+            "EndorsementInfo (Check the Version, InitRequired, EndorsementPlugin)",
+            "ValidationInfo (Check the ValidationParameter, ValidationPlugin)",
+            "Collections (Check the Collections)"
+          ]
+        },
+        "Org3MSP": {
+          "items": [
+            "ChaincodeParameters (Check the Sequence, ChaincodeName)"
+          ]
+        }
+      }
+    }
+    ```
+
+    checkcommitreadiness cannot fully retrieve the approved definition information, it will support root cause analysis by providing mismatch information for the following field definitions:
+    - ChaincodeParameters (Check the Sequence, ChaincodeName)
+    - EndorsementInfo (Check the Version, InitRequired, EndorsementPlugin)
+    - ValidationInfo (Check the ValidationParameter, ValidationPlugin)
+    - Collections (Check the Collections)
 
 ### peer lifecycle chaincode commit example
 
@@ -336,9 +460,7 @@ chaincode.
     specific chaincode definition and the organizations that have approved it.
 
     ```
-    export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-
-    peer lifecycle chaincode querycommitted -o orderer.example.com:7050 --channelID mychannel --name mycc --tls --cafile $ORDERER_CA --peerAddresses peer0.org1.example.com:7051
+    peer lifecycle chaincode querycommitted --channelID mychannel --name mycc --peerAddresses peer0.org1.example.com:7051
 
     Committed chaincode definition for chaincode 'mycc' on channel 'mychannel':
     Version: 1, Sequence: 1, Endorsement Plugin: escc, Validation Plugin: vscc
@@ -349,9 +471,7 @@ chaincode.
   definitions on that channel.
 
     ```
-    export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-
-    peer lifecycle chaincode querycommitted -o orderer.example.com:7050 --channelID mychannel --tls --cafile $ORDERER_CA --peerAddresses peer0.org1.example.com:7051
+    peer lifecycle chaincode querycommitted --channelID mychannel --peerAddresses peer0.org1.example.com:7051
 
     Committed chaincode definitions on channel 'mychannel':
     Name: mycc, Version: 1, Sequence: 1, Endorsement Plugin: escc, Validation Plugin: vscc
@@ -364,9 +484,7 @@ chaincode.
     - For querying a specific chaincode definition
 
       ```
-      export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-
-      peer lifecycle chaincode querycommitted -o orderer.example.com:7050 --channelID mychannel --name mycc --tls --cafile $ORDERER_CA --peerAddresses peer0.org1.example.com:7051 --output json
+      peer lifecycle chaincode querycommitted --channelID mychannel --name mycc --peerAddresses peer0.org1.example.com:7051 --output json
       ```
 
       If successful, the command will return a JSON that has committed chaincode definition for chaincode 'mycc' on channel 'mychannel'.
@@ -398,9 +516,7 @@ chaincode.
     - For querying all chaincode definitions on that channel
 
       ```
-      export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-
-      peer lifecycle chaincode querycommitted -o orderer.example.com:7050 --channelID mychannel --tls --cafile $ORDERER_CA --peerAddresses peer0.org1.example.com:7051 --output json
+      peer lifecycle chaincode querycommitted --channelID mychannel --peerAddresses peer0.org1.example.com:7051 --output json
       ```
 
       If successful, the command will return a JSON that has committed chaincode definitions on channel 'mychannel'.

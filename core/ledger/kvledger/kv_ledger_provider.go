@@ -12,8 +12,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
@@ -28,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -312,7 +312,7 @@ func (p *Provider) deleteUnderConstructionLedger(ledger ledger.PeerLedger, ledge
 	if cleanupErr == nil {
 		return creationErr
 	}
-	return errors.WithMessagef(cleanupErr, creationErr.Error())
+	return errors.WithMessage(cleanupErr, creationErr.Error())
 }
 
 // Open implements the corresponding method from interface ledger.PeerLedgerProvider

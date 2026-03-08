@@ -15,7 +15,7 @@ import (
 )
 
 func TestWrongBlockNumber(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 
 	provider := env.provider
@@ -23,7 +23,7 @@ func TestWrongBlockNumber(t *testing.T) {
 	defer store.Shutdown()
 
 	blocks := testutil.ConstructTestBlocks(t, 5)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		err := store.AddBlock(blocks[i])
 		require.NoError(t, err)
 	}
@@ -32,14 +32,14 @@ func TestWrongBlockNumber(t *testing.T) {
 }
 
 func TestTxIDIndexErrorPropagations(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
+	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 
 	provider := env.provider
 	store, _ := provider.Open("testLedger")
 	defer store.Shutdown()
 	blocks := testutil.ConstructTestBlocks(t, 3)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		err := store.AddBlock(blocks[i])
 		require.NoError(t, err)
 	}

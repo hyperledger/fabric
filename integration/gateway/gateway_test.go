@@ -8,27 +8,28 @@ package gateway
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/gateway"
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric-protos-go/peer/lifecycle"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/gateway"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer/lifecycle"
 	"github.com/hyperledger/fabric/integration/nwo"
+	. "github.com/hyperledger/fabric/internal/test"
 	"github.com/hyperledger/fabric/protoutil"
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 func NewProposedTransaction(signingIdentity *nwo.SigningIdentity, channelName, chaincodeName, transactionName string, transientData map[string][]byte, args ...[]byte) (*peer.SignedProposal, string) {
@@ -72,25 +73,26 @@ func chaincodeArgs(transactionName string, args ...[]byte) [][]byte {
 	return result
 }
 
-var _ = Describe("GatewayService", func() {
+var _ = Describe("GatewayService basic", func() {
 	var (
-		testDir         string
-		network         *nwo.Network
-		org1Peer0       *nwo.Peer
-		process         ifrit.Process
-		conn            *grpc.ClientConn
-		gatewayClient   gateway.GatewayClient
-		ctx             context.Context
-		cancel          context.CancelFunc
-		signingIdentity *nwo.SigningIdentity
+		testDir                     string
+		network                     *nwo.Network
+		org1Peer0                   *nwo.Peer
+		ordererRunner               *ginkgomon.Runner
+		ordererProcess, peerProcess ifrit.Process
+		conn                        *grpc.ClientConn
+		gatewayClient               gateway.GatewayClient
+		ctx                         context.Context
+		cancel                      context.CancelFunc
+		signingIdentity             *nwo.SigningIdentity
 	)
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "gateway")
+		testDir, err = os.MkdirTemp("", "gateway")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err := docker.NewClientFromEnv()
+		client, err := dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
 		config := nwo.BasicEtcdRaft()
@@ -99,13 +101,13 @@ var _ = Describe("GatewayService", func() {
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		// Start all the fabric processes
+		ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 
+		By("setting up the channel")
 		orderer := network.Orderer("orderer")
-		network.CreateAndJoinChannel(orderer, "testchannel")
-		network.UpdateChannelAnchors(orderer, "testchannel")
+		nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+
 		network.VerifyMembership(
 			network.PeersWithChannel("testchannel"),
 			"testchannel",
@@ -146,10 +148,16 @@ var _ = Describe("GatewayService", func() {
 		conn.Close()
 		cancel()
 
-		if process != nil {
-			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+		if ordererProcess != nil {
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
+
+		if peerProcess != nil {
+			peerProcess.Signal(syscall.SIGTERM)
+			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
 		if network != nil {
 			network.Cleanup()
 		}
@@ -265,10 +273,10 @@ var _ = Describe("GatewayService", func() {
 				},
 			}
 			Expect(response.Result.Payload).To(Equal(expectedResponse.Result.Payload))
-			Expect(proto.Equal(response, expectedResponse)).To(BeTrue(), "Expected\n\t%#v\nto proto.Equal\n\t%#v", response, expectedResponse)
+			Expect(response).To(ProtoEqual(expectedResponse))
 		})
 
-		It("should responsd with system chaincode result", func() {
+		It("should respond with system chaincode result", func() {
 			proposedTransaction, transactionID := NewProposedTransaction(signingIdentity, "testchannel", "qscc", "GetChainInfo", nil, []byte("testchannel"))
 
 			request := &gateway.EvaluateRequest{
@@ -297,7 +305,7 @@ var _ = Describe("GatewayService", func() {
 				Payload: []byte("conga payload"),
 			}
 			Expect(result.Payload).To(Equal(expectedResult.Payload))
-			Expect(proto.Equal(result, expectedResult)).To(BeTrue(), "Expected\n\t%#v\nto proto.Equal\n\t%#v", result, expectedResult)
+			Expect(result).To(ProtoEqual(expectedResult))
 		})
 
 		It("should endorse a system chaincode transaction", func() {
@@ -394,7 +402,7 @@ var _ = Describe("GatewayService", func() {
 				EventName:   "EVENT_NAME",
 				Payload:     []byte("EVENT_PAYLOAD"),
 			}
-			Expect(proto.Equal(event.Events[0], expectedEvent)).To(BeTrue(), "Expected\n\t%#v\nto proto.Equal\n\t%#v", event.Events[0], expectedEvent)
+			Expect(event.Events[0]).To(ProtoEqual(expectedEvent))
 		})
 
 		It("should respond with replayed chaincode events", func() {
@@ -427,7 +435,7 @@ var _ = Describe("GatewayService", func() {
 				EventName:   "EVENT_NAME",
 				Payload:     []byte("EVENT_PAYLOAD"),
 			}
-			Expect(proto.Equal(event.Events[0], expectedEvent)).To(BeTrue(), "Expected\n\t%#v\nto proto.Equal\n\t%#v", event.Events[0], expectedEvent)
+			Expect(event.Events[0]).To(ProtoEqual(expectedEvent))
 		})
 
 		It("should respond with replayed chaincode events after specified transaction ID", func() {
@@ -464,7 +472,7 @@ var _ = Describe("GatewayService", func() {
 				EventName:   "CORRECT_EVENT_NAME",
 				Payload:     []byte("CORRECT_EVENT_PAYLOAD"),
 			}
-			Expect(proto.Equal(event.Events[0], expectedEvent)).To(BeTrue(), "Expected\n\t%#v\nto proto.Equal\n\t%#v", event.Events[0], expectedEvent)
+			Expect(event.Events[0]).To(ProtoEqual(expectedEvent))
 		})
 
 		It("should default to next commit if start position not specified", func() {
@@ -488,7 +496,7 @@ var _ = Describe("GatewayService", func() {
 				EventName:   "EVENT_NAME",
 				Payload:     []byte("EVENT_PAYLOAD"),
 			}
-			Expect(proto.Equal(event.Events[0], expectedEvent)).To(BeTrue(), "Expected\n\t%#v\nto proto.Equal\n\t%#v", event.Events[0], expectedEvent)
+			Expect(event.Events[0]).To(ProtoEqual(expectedEvent))
 		})
 
 		It("should fail on unauthorized identity", func() {

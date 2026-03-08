@@ -7,13 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package channel
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -38,12 +37,10 @@ func TestJoin(t *testing.T) {
 	InitMSP()
 	resetFlags()
 
-	dir, err := ioutil.TempDir("/tmp", "jointest")
-	require.NoError(t, err, "Could not create the directory %s", dir)
+	dir := t.TempDir()
 	mockblockfile := filepath.Join(dir, "mockjointest.block")
-	err = ioutil.WriteFile(mockblockfile, []byte(""), 0o644)
+	err := os.WriteFile(mockblockfile, []byte(""), 0o644)
 	require.NoError(t, err, "Could not write to the file %s", mockblockfile)
-	defer os.RemoveAll(dir)
 	signer, err := common.GetDefaultSigner()
 	require.NoError(t, err, "Get default signer error: %v", err)
 
@@ -112,7 +109,7 @@ func TestBadProposalResponse(t *testing.T) {
 	resetFlags()
 
 	mockblockfile := "/tmp/mockjointest.block"
-	ioutil.WriteFile(mockblockfile, []byte(""), 0o644)
+	os.WriteFile(mockblockfile, []byte(""), 0o644)
 	defer os.Remove(mockblockfile)
 	signer, err := common.GetDefaultSigner()
 	require.NoError(t, err, "Get default signer error: %v", err)
@@ -149,17 +146,15 @@ func TestJoinNilCF(t *testing.T) {
 	InitMSP()
 	resetFlags()
 
-	dir, err := ioutil.TempDir("/tmp", "jointest")
-	require.NoError(t, err, "Could not create the directory %s", dir)
+	dir := t.TempDir()
 	mockblockfile := filepath.Join(dir, "mockjointest.block")
-	defer os.RemoveAll(dir)
 	viper.Set("peer.client.connTimeout", 10*time.Millisecond)
 	cmd := joinCmd(nil)
 	AddFlags(cmd)
 	args := []string{"-b", mockblockfile}
 	cmd.SetArgs(args)
 
-	err = cmd.Execute()
+	err := cmd.Execute()
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "endorser client failed to connect to")
 }

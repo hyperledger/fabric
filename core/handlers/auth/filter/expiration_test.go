@@ -8,16 +8,16 @@ package filter
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 type mutator func([]byte) []byte
@@ -32,7 +32,7 @@ func corruptMutator(b []byte) []byte {
 }
 
 func createX509Identity(t *testing.T, certFileName string) []byte {
-	certBytes, err := ioutil.ReadFile(filepath.Join("testdata", certFileName))
+	certBytes, err := os.ReadFile(filepath.Join("testdata", certFileName))
 	require.NoError(t, err)
 	sId := &msp.SerializedIdentity{
 		IdBytes: certBytes,

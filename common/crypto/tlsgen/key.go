@@ -15,6 +15,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
 	"math/big"
 	"net"
 	"time"
@@ -83,7 +84,10 @@ func newCertKeyPair(isCA bool, isServer bool, certSigner crypto.Signer, parent *
 			}
 		}
 	}
-	template.SubjectKeyId = computeSKI(&privateKey.PublicKey)
+	template.SubjectKeyId, err = computeSKI(&privateKey.PublicKey)
+	if err != nil {
+		return nil, err
+	}
 	// If no parent cert, it's a self signed cert
 	if parent == nil || certSigner == nil {
 		parent = &template
@@ -117,8 +121,12 @@ func encodePEM(keyType string, data []byte) []byte {
 }
 
 // RFC 7093, Section 2, Method 4
-func computeSKI(key *ecdsa.PublicKey) []byte {
-	raw := elliptic.Marshal(key.Curve, key.X, key.Y)
-	hash := sha256.Sum256(raw)
-	return hash[:]
+func computeSKI(key *ecdsa.PublicKey) ([]byte, error) {
+	ecdhPk, err := key.ECDH()
+	if err != nil {
+		return nil, fmt.Errorf("public key transition failed: %w", err)
+	}
+
+	hash := sha256.Sum256(ecdhPk.Bytes())
+	return hash[:], nil
 }

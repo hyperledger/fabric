@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package library
 
 import (
-	"fmt"
 	"reflect"
 	"sync"
+	"time"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric/core/handlers/auth"
 	"github.com/hyperledger/fabric/core/handlers/decoration"
 	endorsement2 "github.com/hyperledger/fabric/core/handlers/endorsement/api"
@@ -25,7 +25,7 @@ var logger = flogging.MustGetLogger("core.handlers")
 type Registry interface {
 	// Lookup returns a handler with a given
 	// registered name, or nil if does not exist
-	Lookup(HandlerType) interface{}
+	Lookup(HandlerType) any
 }
 
 // HandlerType defines custom handlers that can filter and mutate
@@ -47,10 +47,11 @@ const (
 )
 
 type registry struct {
-	filters    []auth.Filter
-	decorators []decoration.Decorator
-	endorsers  map[string]endorsement2.PluginFactory
-	validators map[string]validation.PluginFactory
+	filters                  []auth.Filter
+	decorators               []decoration.Decorator
+	endorsers                map[string]endorsement2.PluginFactory
+	validators               map[string]validation.PluginFactory
+	authenticationTimeWindow time.Duration
 }
 
 var (
@@ -63,8 +64,9 @@ var (
 func InitRegistry(c Config) Registry {
 	once.Do(func() {
 		reg = registry{
-			endorsers:  make(map[string]endorsement2.PluginFactory),
-			validators: make(map[string]validation.PluginFactory),
+			endorsers:                make(map[string]endorsement2.PluginFactory),
+			validators:               make(map[string]validation.PluginFactory),
+			authenticationTimeWindow: c.AuthenticationTimeWindow,
 		}
 		reg.loadHandlers(c)
 	})
@@ -100,11 +102,13 @@ func (r *registry) evaluateModeAndLoad(c *HandlerConfig, handlerType HandlerType
 
 // loadCompiled loads a statically compiled handler
 func (r *registry) loadCompiled(handlerFactory string, handlerType HandlerType, extraArgs ...string) {
-	registryMD := reflect.ValueOf(&HandlerLibrary{})
+	registryMD := reflect.ValueOf(&HandlerLibrary{
+		authenticationTimeWindow: r.authenticationTimeWindow,
+	})
 
 	o := registryMD.MethodByName(handlerFactory)
 	if !o.IsValid() {
-		logger.Panicf(fmt.Sprintf("Method %s isn't a method of HandlerLibrary", handlerFactory))
+		logger.Panicf("Method %s isn't a method of HandlerLibrary", handlerFactory)
 	}
 
 	inst := o.Call(nil)[0].Interface()
@@ -128,7 +132,7 @@ func (r *registry) loadCompiled(handlerFactory string, handlerType HandlerType, 
 
 // Lookup returns a list of handlers with the given
 // type, or nil if none exist
-func (r *registry) Lookup(handlerType HandlerType) interface{} {
+func (r *registry) Lookup(handlerType HandlerType) any {
 	if handlerType == Auth {
 		return r.filters
 	} else if handlerType == Decoration {

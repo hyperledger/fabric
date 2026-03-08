@@ -7,10 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/protoutil"
+	"google.golang.org/protobuf/proto"
 )
 
 // blockCreator holds number and hash of latest block
@@ -38,7 +38,7 @@ func (bc *blockCreator) createNextBlock(envs []*cb.Envelope) *cb.Block {
 	bc.number++
 
 	block := protoutil.NewBlock(bc.number, bc.hash)
-	block.Header.DataHash = protoutil.BlockDataHash(data)
+	block.Header.DataHash = protoutil.ComputeBlockDataHash(data)
 	block.Data = data
 
 	bc.hash = protoutil.BlockHeaderHash(block.Header)

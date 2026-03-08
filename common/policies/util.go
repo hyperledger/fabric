@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package policies
 
 import (
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/protoutil"
 )
 
@@ -20,7 +20,7 @@ type ConfigPolicy interface {
 	Value() *cb.Policy
 }
 
-// StandardConfigValue implements the ConfigValue interface.
+// StandardConfigPolicy implements the ConfigValue interface.
 type StandardConfigPolicy struct {
 	key   string
 	value *cb.Policy

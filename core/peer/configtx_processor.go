@@ -7,12 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package peer
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protoutil"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -34,7 +35,7 @@ func (tp *ConfigTxProcessor) GenerateSimulationResults(txEnv *common.Envelope, s
 	case common.HeaderType_CONFIG:
 		peerLogger.Debugf("Processing CONFIG")
 		if payload.Data == nil {
-			return fmt.Errorf("channel config found nil")
+			return errors.New("channel config found nil")
 		}
 		return simulator.SetState(peerNamespace, channelConfigKey, payload.Data)
 	default:

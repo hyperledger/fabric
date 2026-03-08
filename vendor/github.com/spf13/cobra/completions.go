@@ -1,8 +1,24 @@
+// Copyright 2013-2023 The Cobra Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package cobra
 
 import (
 	"fmt"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -62,6 +78,10 @@ const (
 	// which to search.  The BashCompSubdirsInDir annotation can be used to
 	// obtain the same behavior but only for flags.
 	ShellCompDirectiveFilterDirs
+
+	// ShellCompDirectiveKeepOrder indicates that the shell should preserve the order
+	// in which the completions are provided
+	ShellCompDirectiveKeepOrder
 
 	// ===========================================================================
 
@@ -127,6 +147,20 @@ func (c *Command) RegisterFlagCompletionFunc(flagName string, f func(cmd *Comman
 	return nil
 }
 
+// GetFlagCompletionFunc returns the completion function for the given flag of the command, if available.
+func (c *Command) GetFlagCompletionFunc(flagName string) (func(*Command, []string, string) ([]string, ShellCompDirective), bool) {
+	flag := c.Flag(flagName)
+	if flag == nil {
+		return nil, false
+	}
+
+	flagCompletionMutex.RLock()
+	defer flagCompletionMutex.RUnlock()
+
+	completionFunc, exists := flagCompletionFunctions[flag]
+	return completionFunc, exists
+}
+
 // Returns a string listing the different directive enabled in the specified parameter
 func (d ShellCompDirective) string() string {
 	var directives []string
@@ -145,6 +179,9 @@ func (d ShellCompDirective) string() string {
 	if d&ShellCompDirectiveFilterDirs != 0 {
 		directives = append(directives, "ShellCompDirectiveFilterDirs")
 	}
+	if d&ShellCompDirectiveKeepOrder != 0 {
+		directives = append(directives, "ShellCompDirectiveKeepOrder")
+	}
 	if len(directives) == 0 {
 		directives = append(directives, "ShellCompDirectiveDefault")
 	}
@@ -155,7 +192,7 @@ func (d ShellCompDirective) string() string {
 	return strings.Join(directives, ", ")
 }
 
-// Adds a special hidden command that can be used to request custom completions.
+// initCompleteCmd adds a special hidden command that can be used to request custom completions.
 func (c *Command) initCompleteCmd(args []string) {
 	completeCmd := &Command{
 		Use:                   fmt.Sprintf("%s [command-line]", ShellCompRequestCmd),
@@ -176,24 +213,29 @@ func (c *Command) initCompleteCmd(args []string) {
 				// 2- Even without completions, we need to print the directive
 			}
 
-			noDescriptions := (cmd.CalledAs() == ShellCompNoDescRequestCmd)
+			noDescriptions := cmd.CalledAs() == ShellCompNoDescRequestCmd
+			if !noDescriptions {
+				if doDescriptions, err := strconv.ParseBool(getEnvConfig(cmd, configEnvVarSuffixDescriptions)); err == nil {
+					noDescriptions = !doDescriptions
+				}
+			}
+			noActiveHelp := GetActiveHelpConfig(finalCmd) == activeHelpGlobalDisable
+			out := finalCmd.OutOrStdout()
 			for _, comp := range completions {
-				if GetActiveHelpConfig(finalCmd) == activeHelpGlobalDisable {
-					// Remove all activeHelp entries in this case
-					if strings.HasPrefix(comp, activeHelpMarker) {
-						continue
-					}
+				if noActiveHelp && strings.HasPrefix(comp, activeHelpMarker) {
+					// Remove all activeHelp entries if it's disabled.
+					continue
 				}
 				if noDescriptions {
 					// Remove any description that may be included following a tab character.
-					comp = strings.Split(comp, "\t")[0]
+					comp = strings.SplitN(comp, "\t", 2)[0]
 				}
 
 				// Make sure we only write the first line to the output.
 				// This is needed if a description contains a linebreak.
 				// Otherwise the shell scripts will interpret the other lines as new flags
 				// and could therefore provide a wrong completion.
-				comp = strings.Split(comp, "\n")[0]
+				comp = strings.SplitN(comp, "\n", 2)[0]
 
 				// Finally trim the completion.  This is especially important to get rid
 				// of a trailing tab when there are no description following it.
@@ -202,14 +244,14 @@ func (c *Command) initCompleteCmd(args []string) {
 				// although there is no description).
 				comp = strings.TrimSpace(comp)
 
-				// Print each possible completion to stdout for the completion script to consume.
-				fmt.Fprintln(finalCmd.OutOrStdout(), comp)
+				// Print each possible completion to the output for the completion script to consume.
+				fmt.Fprintln(out, comp)
 			}
 
 			// As the last printout, print the completion directive for the completion script to parse.
 			// The directive integer must be that last character following a single colon (:).
 			// The completion script expects :<directive>
-			fmt.Fprintf(finalCmd.OutOrStdout(), ":%d\n", directive)
+			fmt.Fprintf(out, ":%d\n", directive)
 
 			// Print some helpful info to stderr for the user to understand.
 			// Output from stderr must be ignored by the completion script.
@@ -256,9 +298,19 @@ func (c *Command) getCompletions(args []string) (*Command, []string, ShellCompDi
 	}
 	if err != nil {
 		// Unable to find the real command. E.g., <program> someInvalidCmd <TAB>
-		return c, []string{}, ShellCompDirectiveDefault, fmt.Errorf("Unable to find a command for arguments: %v", trimmedArgs)
+		return c, []string{}, ShellCompDirectiveDefault, fmt.Errorf("unable to find a command for arguments: %v", trimmedArgs)
 	}
 	finalCmd.ctx = c.ctx
+
+	// These flags are normally added when `execute()` is called on `finalCmd`,
+	// however, when doing completion, we don't call `finalCmd.execute()`.
+	// Let's add the --help and --version flag ourselves but only if the finalCmd
+	// has not disabled flag parsing; if flag parsing is disabled, it is up to the
+	// finalCmd itself to handle the completion of *all* flags.
+	if !finalCmd.DisableFlagParsing {
+		finalCmd.InitDefaultHelpFlag()
+		finalCmd.InitDefaultVersionFlag()
+	}
 
 	// Check if we are doing flag value completion before parsing the flags.
 	// This is important because if we are completing a flag value, we need to also
@@ -290,6 +342,12 @@ func (c *Command) getCompletions(args []string) (*Command, []string, ShellCompDi
 		if _, ok := flagErr.(*flagCompError); !(ok && !flagCompletion) {
 			return finalCmd, []string{}, ShellCompDirectiveDefault, flagErr
 		}
+	}
+
+	// Look for the --help or --version flags.  If they are present,
+	// there should be no further completions.
+	if helpOrVersionFlagPresent(finalCmd) {
+		return finalCmd, []string{}, ShellCompDirectiveNoFileComp, nil
 	}
 
 	// We only remove the flags from the arguments if DisableFlagParsing is not set.
@@ -356,6 +414,11 @@ func (c *Command) getCompletions(args []string) (*Command, []string, ShellCompDi
 			finalCmd.InheritedFlags().VisitAll(func(flag *pflag.Flag) {
 				doCompleteFlags(flag)
 			})
+			// Try to complete non-inherited flags even if DisableFlagParsing==true.
+			// This allows programs to tell Cobra about flags for completion even
+			// if the actual parsing of flags is not done by Cobra.
+			// For instance, Helm uses this to provide flag name completion for
+			// some of its plugins.
 			finalCmd.NonInheritedFlags().VisitAll(func(flag *pflag.Flag) {
 				doCompleteFlags(flag)
 			})
@@ -461,6 +524,18 @@ func (c *Command) getCompletions(args []string) (*Command, []string, ShellCompDi
 	}
 
 	return finalCmd, completions, directive, nil
+}
+
+func helpOrVersionFlagPresent(cmd *Command) bool {
+	if versionFlag := cmd.Flags().Lookup("version"); versionFlag != nil &&
+		len(versionFlag.Annotations[FlagSetByCobraAnnotation]) > 0 && versionFlag.Changed {
+		return true
+	}
+	if helpFlag := cmd.Flags().Lookup("help"); helpFlag != nil &&
+		len(helpFlag.Annotations[FlagSetByCobraAnnotation]) > 0 && helpFlag.Changed {
+		return true
+	}
+	return false
 }
 
 func getFlagNameCompletions(flag *pflag.Flag, toComplete string) []string {
@@ -607,12 +682,12 @@ func checkIfFlagCompletion(finalCmd *Command, args []string, lastArg string) (*p
 	return flag, trimmedArgs, lastArg, nil
 }
 
-// initDefaultCompletionCmd adds a default 'completion' command to c.
+// InitDefaultCompletionCmd adds a default 'completion' command to c.
 // This function will do nothing if any of the following is true:
 // 1- the feature has been explicitly disabled by the program,
 // 2- c has no subcommands (to avoid creating one),
 // 3- c already has a 'completion' command provided by the program.
-func (c *Command) initDefaultCompletionCmd() {
+func (c *Command) InitDefaultCompletionCmd() {
 	if c.CompletionOptions.DisableDefaultCmd || !c.HasSubCommands() {
 		return
 	}
@@ -635,6 +710,7 @@ See each sub-command's help for details on how to use the generated script.
 		Args:              NoArgs,
 		ValidArgsFunction: NoFileCompletions,
 		Hidden:            c.CompletionOptions.HiddenDefaultCmd,
+		GroupID:           c.completionCommandGroupID,
 	}
 	c.AddCommand(completionCmd)
 
@@ -688,7 +764,7 @@ to enable it.  You can execute the following once:
 
 To load completions in your current shell session:
 
-	source <(%[1]s completion zsh); compdef _%[1]s %[1]s
+	source <(%[1]s completion zsh)
 
 To load completions for every new session, execute once:
 
@@ -829,4 +905,35 @@ func CompError(msg string) {
 // CompErrorln prints the specified completion message to stderr with a newline at the end.
 func CompErrorln(msg string) {
 	CompError(fmt.Sprintf("%s\n", msg))
+}
+
+// These values should not be changed: users will be using them explicitly.
+const (
+	configEnvVarGlobalPrefix       = "COBRA"
+	configEnvVarSuffixDescriptions = "COMPLETION_DESCRIPTIONS"
+)
+
+var configEnvVarPrefixSubstRegexp = regexp.MustCompile(`[^A-Z0-9_]`)
+
+// configEnvVar returns the name of the program-specific configuration environment
+// variable.  It has the format <PROGRAM>_<SUFFIX> where <PROGRAM> is the name of the
+// root command in upper case, with all non-ASCII-alphanumeric characters replaced by `_`.
+func configEnvVar(name, suffix string) string {
+	// This format should not be changed: users will be using it explicitly.
+	v := strings.ToUpper(fmt.Sprintf("%s_%s", name, suffix))
+	v = configEnvVarPrefixSubstRegexp.ReplaceAllString(v, "_")
+	return v
+}
+
+// getEnvConfig returns the value of the configuration environment variable
+// <PROGRAM>_<SUFFIX> where <PROGRAM> is the name of the root command in upper
+// case, with all non-ASCII-alphanumeric characters replaced by `_`.
+// If the value is empty or not set, the value of the environment variable
+// COBRA_<SUFFIX> is returned instead.
+func getEnvConfig(cmd *Command, suffix string) string {
+	v := os.Getenv(configEnvVar(cmd.Root().Name(), suffix))
+	if v == "" {
+		v = os.Getenv(configEnvVar(configEnvVarGlobalPrefix, suffix))
+	}
+	return v
 }

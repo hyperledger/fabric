@@ -11,16 +11,15 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
-	"github.com/hyperledger/fabric/core/ledger/util"
-
-	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/queryresult"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/queryutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/queryutil/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	statedbmock "github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/mock"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -195,6 +194,29 @@ func TestGetRangeScanError(t *testing.T) {
 	}
 	_, err := combiner.GetStateRangeScanIterator("ns", "startKey", "endKey")
 	require.Error(t, err)
+}
+
+func TestGetStateRangeScanIteratorNil(t *testing.T) {
+	itr1 := &statedbmock.ResultsIterator{}
+	itr1.NextReturns(
+		&statedb.VersionedKV{
+			CompositeKey:   &statedb.CompositeKey{Namespace: "ns", Key: "dummyKey"},
+			VersionedValue: &statedb.VersionedValue{Value: []byte("dummyVal")},
+		},
+		nil,
+	)
+
+	qe1 := &mock.QueryExecuter{}
+	qe1.GetStateRangeScanIteratorReturns(itr1, nil)
+	qe2 := &mock.QueryExecuter{}
+	qe2.GetStateRangeScanIteratorReturns(nil, nil)
+	combiner := &queryutil.QECombiner{
+		QueryExecuters: []queryutil.QueryExecuter{
+			qe1, qe2,
+		},
+	}
+	_, err := combiner.GetStateRangeScanIterator("ns", "startKey", "endKey")
+	require.EqualError(t, err, "received nil iterator from QueryExecuter")
 }
 
 func TestGetRangeScanUnderlyingIteratorReturnsError(t *testing.T) {

@@ -38,7 +38,7 @@ When it’s desired to maintain loose coupling, we encourage explicit dependency
 
 When using dependency injection pattern, try to use the following principles 
 - Treat configuration as a data dependency and pass to the constructors
-- When defining interface for dependencies, avoid the `Support` pattern that embeds all, otherwise unrelated, functions behind a single interface. Instead try to name the interfaces that makes it obvious what implementation component will fulfil it - e.g., [gateway.Discovery](https://github.com/hyperledger/fabric/blob/9a922fd9c78c01d185bc2b45fb98012a37f7bfb9/internal/pkg/gateway/registry.go#L26) interface makes it clear that the Discovry component fulfils this dependency for gateway component. Prefer defining interfaces for dependencies for a package in a single sorce file.
+- When defining interface for dependencies, avoid the `Support` pattern that embeds all, otherwise unrelated, functions behind a single interface. Instead try to name the interfaces that makes it obvious what implementation component will fulfil it - e.g., [gateway.Discovery](https://github.com/hyperledger/fabric/blob/9a922fd9c78c01d185bc2b45fb98012a37f7bfb9/internal/pkg/gateway/registry.go#L26) interface makes it clear that the Discovery component fulfils this dependency for gateway component. Prefer defining interfaces for dependencies for a package in a single source file.
 - Be aware that time is a latent dependency. When time is relevant to the behavior of an object, use an explicit clock dependency so it can be controlled in tests.
 
 ### Avoid the factory pattern
@@ -74,7 +74,7 @@ Two test frameworks that we use are
 
 When modifying code, please use the test framework that has already been chosen for the package. Also, when using golang’s built-in test framework, it is encouraged  to organize the tests using the table-driven test strategy for testing a function in different scenarios or with different input, wherever possible.
 
-Any fixtures or data required by tests should be generated or placed under version control. When fixtures are generated, they must be placed in a temporary directory created by `ioutil.TempDir` and cleaned up when the test terminates. When fixtures are placed under version control, they should be created inside a `testdata` folder; documentation that describes how to regenerate the fixtures should be provided in the tests or a `README.txt`. Sharing fixtures across packages is strongly discouraged.
+Any fixtures or data required by tests should be generated or placed under version control. When fixtures are generated, they must be placed in a temporary directory created by `os.MkdirTemp` and cleaned up when the test terminates. When fixtures are placed under version control, they should be created inside a `testdata` folder; documentation that describes how to regenerate the fixtures should be provided in the tests or a `README.txt`. Sharing fixtures across packages is strongly discouraged.
 
 When fakes or mocks are needed, they must be generated. Bespoke, hand-coded mocks are a maintenance burden and tend to include simulations that inevitably diverge from reality. Within Fabric, we use [go generate](https://blog.golang.org/generate) directives to manage the generation with the following tools:
 - [counterfeiter](https://github.com/maxbrunsfeld/counterfeiter)

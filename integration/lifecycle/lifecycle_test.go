@@ -8,47 +8,49 @@ package lifecycle
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
 
-	docker "github.com/fsouza/go-dockerclient"
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/protolator"
-	"github.com/hyperledger/fabric-config/protolator/protoext/ordererext"
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-config/protolator/protoext/peerext"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
 	"github.com/hyperledger/fabric/integration/nwo/runner"
-	"github.com/onsi/gomega/gbytes"
-	"github.com/onsi/gomega/gexec"
-	"github.com/tedsuo/ifrit"
-
+	dcli "github.com/moby/moby/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/gexec"
 	. "github.com/onsi/gomega/gstruct"
+	"github.com/tedsuo/ifrit"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ = Describe("Lifecycle", func() {
 	var (
-		client    *docker.Client
-		testDir   string
-		network   *nwo.Network
-		processes = map[string]ifrit.Process{}
+		client                      dcli.APIClient
+		testDir                     string
+		network                     *nwo.Network
+		processes                   = map[string]ifrit.Process{}
+		ordererRunner               *ginkgomon.Runner
+		ordererProcess, peerProcess ifrit.Process
+
 		termFiles []string
 	)
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "lifecycle")
+		testDir, err = os.MkdirTemp("", "lifecycle")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
+		client, err = dcli.New(dcli.FromEnv)
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(nwo.BasicSolo(), testDir, client, StartPort(), components)
+		network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
 
 		// Generate config
 		network.GenerateConfigTree()
@@ -92,23 +94,21 @@ var _ = Describe("Lifecycle", func() {
 		// bootstrap the network
 		network.Bootstrap()
 
-		for _, o := range network.Orderers {
-			or := network.OrdererRunner(o)
-			p := ifrit.Invoke(or)
-			processes[o.ID()] = p
-			Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
-		}
-
-		for _, peer := range network.Peers {
-			pr := network.PeerRunner(peer)
-			p := ifrit.Invoke(pr)
-			processes[peer.ID()] = p
-			Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
-		}
+		ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 	})
 
 	AfterEach(func() {
 		// Shutdown processes and cleanup
+		if ordererProcess != nil {
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
+		if peerProcess != nil {
+			peerProcess.Signal(syscall.SIGTERM)
+			Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+
 		for _, p := range processes {
 			p.Signal(syscall.SIGTERM)
 			Eventually(p.Wait(), network.EventuallyTimeout).Should(Receive())
@@ -138,8 +138,7 @@ var _ = Describe("Lifecycle", func() {
 		}
 
 		By("setting up the channel")
-		network.CreateAndJoinChannels(orderer)
-		network.UpdateChannelAnchors(orderer, "testchannel")
+		nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 		network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
 		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
@@ -156,9 +155,9 @@ var _ = Describe("Lifecycle", func() {
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-		fileBytes, err := ioutil.ReadFile(chaincode.PackageFile)
+		fileBytes, err := os.ReadFile(chaincode.PackageFile)
 		Expect(err).NotTo(HaveOccurred())
-		fileBytesFromPeer, err := ioutil.ReadFile(filepath.Join(network.RootDir, chaincode.PackageID+".tar.gz"))
+		fileBytesFromPeer, err := os.ReadFile(filepath.Join(network.RootDir, chaincode.PackageID+".tar.gz"))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fileBytesFromPeer).To(Equal(fileBytes))
 
@@ -191,8 +190,8 @@ var _ = Describe("Lifecycle", func() {
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-		Expect(sess.Err).To(gbytes.Say("Error: endorsement failure during query. response: status:500 " +
-			"message:\"make sure the chaincode My_1st-Chaincode has been successfully defined on channel testchannel and try " +
+		Expect(sess.Err).To(gbytes.Say("Error: endorsement failure during query. response: status:500 "))
+		Expect(sess.Err).To(gbytes.Say("message:\"make sure the chaincode My_1st-Chaincode has been successfully defined on channel testchannel and try " +
 			"again: chaincode definition for 'My_1st-Chaincode' exists, but chaincode is not installed\""))
 
 		By("setting the correct package ID to restore the chaincode")
@@ -304,13 +303,13 @@ var _ = Describe("Lifecycle", func() {
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-		org3Group := &ordererext.DynamicOrdererOrgGroup{ConfigGroup: &common.ConfigGroup{}}
+		org3Group := &peerext.DynamicApplicationOrgGroup{ConfigGroup: &common.ConfigGroup{}}
 		err = protolator.DeepUnmarshalJSON(bytes.NewBuffer(sess.Out.Contents()), org3Group)
 		Expect(err).NotTo(HaveOccurred())
 
 		// update the channel config to include org3
 		updatedConfig.ChannelGroup.Groups["Application"].Groups["Org3"] = org3Group.ConfigGroup
-		nwo.UpdateConfig(network, orderer, "testchannel", currentConfig, updatedConfig, true, testPeers[0], testPeers...)
+		nwo.UpdateConfig(network, orderer, "testchannel", currentConfig, updatedConfig, true, testPeers[0], nil, testPeers...)
 
 		By("joining the org3 peers to the channel")
 		network.JoinChannel("testchannel", orderer, org3peer0)

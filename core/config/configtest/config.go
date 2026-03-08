@@ -17,7 +17,6 @@ import (
 	"testing"
 
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/require"
 )
 
 // AddDevConfigPath adds the DevConfigDir to the viper path.
@@ -68,7 +67,7 @@ func gopathDevConfigDir() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("unable to find sampleconfig directory on GOPATH")
+	return "", errors.New("unable to find sampleconfig directory on GOPATH")
 }
 
 func gomodDevConfigDir() (string, error) {
@@ -109,23 +108,7 @@ func GetDevHybridMspDir() string {
 	return filepath.Join(devDir, "hybridmsp")
 }
 
-func SetDevFabricConfigPath(t *testing.T) (cleanup func()) {
+func SetDevFabricConfigPath(t *testing.T) {
 	t.Helper()
-
-	oldFabricCfgPath, resetFabricCfgPath := os.LookupEnv("FABRIC_CFG_PATH")
-	devConfigDir := GetDevConfigDir()
-
-	err := os.Setenv("FABRIC_CFG_PATH", devConfigDir)
-	require.NoError(t, err, "failed to set FABRIC_CFG_PATH")
-	if resetFabricCfgPath {
-		return func() {
-			err := os.Setenv("FABRIC_CFG_PATH", oldFabricCfgPath)
-			require.NoError(t, err)
-		}
-	}
-
-	return func() {
-		err := os.Unsetenv("FABRIC_CFG_PATH")
-		require.NoError(t, err)
-	}
+	t.Setenv("FABRIC_CFG_PATH", GetDevConfigDir())
 }

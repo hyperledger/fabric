@@ -17,12 +17,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
+	"google.golang.org/protobuf/proto"
 )
 
 var mspIdentityLogger = flogging.MustGetLogger("msp.identity")
@@ -183,15 +183,22 @@ func NewSerializedIdentity(mspID string, certPEM []byte) ([]byte, error) {
 func (id *identity) Verify(msg []byte, sig []byte) error {
 	// mspIdentityLogger.Infof("Verifying signature")
 
-	// Compute Hash
-	hashOpt, err := id.getSigningHashOpt()
-	if err != nil {
-		return errors.WithMessage(err, "failed getting hash function options")
-	}
+	digestOrMsg := msg
 
-	digest, err := id.msp.bccsp.Hash(msg, hashOpt)
-	if err != nil {
-		return errors.WithMessage(err, "failed computing digest")
+	// Compute Hash if not Ed25519
+	// Ideally this method should be algorithm agnostic
+	// but golang requires the hash for ecdsa and requires
+	// the full message for ed25519
+	if id.cert.PublicKeyAlgorithm != x509.Ed25519 {
+		hashOpt, err := id.getHashOpt(id.msp.cryptoConfig.SignatureHashFamily)
+		if err != nil {
+			return errors.WithMessage(err, "failed getting hash function options")
+		}
+
+		digestOrMsg, err = id.msp.bccsp.Hash(msg, hashOpt)
+		if err != nil {
+			return errors.WithMessage(err, "failed computing digest")
+		}
 	}
 
 	if mspIdentityLogger.IsEnabledFor(zapcore.DebugLevel) {
@@ -211,7 +218,7 @@ func (id *identity) Verify(msg []byte, sig []byte) error {
 		} else if len(rest) != 0 {
 			return errors.New("invalid signature format for quantum signature")
 		}
-		valid, err := id.msp.bccsp.Verify(id.qPk, hsu.QuantumSign.RightAlign(), digest, nil)
+		valid, err := id.msp.bccsp.Verify(id.qPk, hsu.QuantumSign.RightAlign(), digestOrMsg, nil)
 		if err != nil {
 			return errors.WithMessage(err, "could not determine the validity of the quantum signature")
 		} else if !valid {
@@ -224,13 +231,13 @@ func (id *identity) Verify(msg []byte, sig []byte) error {
 		// The classical part of the hybrid signer will have signed
 		// [digest, quantum_signature]
 		// So we append them here.
-		digest = append(digest, hsu.QuantumSign.RightAlign()...)
+		hybridDigest := append(append([]byte{}, digestOrMsg...), hsu.QuantumSign.RightAlign()...)
 		// Must use SHA384 for post-quantum.
 		hashopt, err := bccsp.GetHashOpt(bccsp.SHA384)
 		if err != nil {
 			return err
 		}
-		digest, err = id.msp.bccsp.Hash(digest, hashopt)
+		digestOrMsg, err = id.msp.bccsp.Hash(hybridDigest, hashopt)
 		if err != nil {
 			return err
 		}
@@ -241,7 +248,7 @@ func (id *identity) Verify(msg []byte, sig []byte) error {
 	// 3. The received identity is hybrid quantum, but the classical part of the signature does not match or
 	//    was not nested/formatted properly.
 
-	valid, err := id.msp.bccsp.Verify(id.pk, sig, digest, nil)
+	valid, err := id.msp.bccsp.Verify(id.pk, sig, digestOrMsg, nil)
 	if err != nil {
 		return errors.WithMessage(err, "could not determine the validity of the signature")
 	} else if !valid {
@@ -322,15 +329,22 @@ func newSigningIdentity(cert *x509.Certificate, pk bccsp.Key, qPk bccsp.Key, sig
 func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
 	// mspIdentityLogger.Infof("Signing message")
 
-	// Compute Hash
-	hashOpt, err := id.getSigningHashOpt()
-	if err != nil {
-		return nil, errors.WithMessage(err, "failed getting hash function options")
-	}
+	digestOrMsg := msg
 
-	digest, err := id.msp.bccsp.Hash(msg, hashOpt)
-	if err != nil {
-		return nil, errors.WithMessage(err, "failed computing digest")
+	// Compute Hash if not Ed25519
+	// Ideally this method should be algorithm agnostic
+	// but golang requires the hash for ecdsa and requires
+	// the full message for ed25519
+	if id.identity.cert.PublicKeyAlgorithm != x509.Ed25519 {
+		hashOpt, err := id.getHashOpt(id.msp.cryptoConfig.SignatureHashFamily)
+		if err != nil {
+			return nil, errors.WithMessage(err, "failed getting hash function options")
+		}
+
+		digestOrMsg, err = id.msp.bccsp.Hash(msg, hashOpt)
+		if err != nil {
+			return nil, errors.WithMessage(err, "failed computing digest")
+		}
 	}
 
 	if len(msg) < 32 {
@@ -338,10 +352,11 @@ func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
 	} else {
 		mspIdentityLogger.Debugf("Sign: plaintext: %X...%X \n", msg[0:16], msg[len(msg)-16:])
 	}
-	mspIdentityLogger.Debugf("Sign: digest: %X \n", digest)
-
-	// Sign
-	return id.signer.Sign(rand.Reader, digest, nil)
+	if id.identity.cert.PublicKeyAlgorithm != x509.Ed25519 {
+		mspIdentityLogger.Debugf("Sign: digest: %X \n", digestOrMsg)
+	}
+	// Sign digest for ECDSA or msg for ED25519
+	return id.signer.Sign(rand.Reader, digestOrMsg, nil)
 }
 
 // GetPublicVersion returns the public version of this identity,

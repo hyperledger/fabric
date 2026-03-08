@@ -7,7 +7,6 @@ package peer
 
 import (
 	"crypto/tls"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -45,12 +44,12 @@ func TestPeerAddress(t *testing.T) {
 
 	tests := []struct {
 		name                string
-		settings            map[string]interface{}
+		settings            map[string]any
 		expectedPeerAddress string
 	}{
 		{
 			name: "test1",
-			settings: map[string]interface{}{
+			settings: map[string]any{
 				"peer.addressAutoDetect": false,
 				"peer.address":           "testing.com:7051",
 			},
@@ -58,7 +57,7 @@ func TestPeerAddress(t *testing.T) {
 		},
 		{
 			name: "test2",
-			settings: map[string]interface{}{
+			settings: map[string]any{
 				"peer.addressAutoDetect": true,
 				"peer.address":           "testing.com:7051",
 			},
@@ -66,7 +65,7 @@ func TestPeerAddress(t *testing.T) {
 		},
 		{
 			name: "test3",
-			settings: map[string]interface{}{
+			settings: map[string]any{
 				"peer.addressAutoDetect": false,
 				"peer.address":           "0.0.0.0:7051",
 			},
@@ -74,7 +73,7 @@ func TestPeerAddress(t *testing.T) {
 		},
 		{
 			name: "test4",
-			settings: map[string]interface{}{
+			settings: map[string]any{
 				"peer.addressAutoDetect": true,
 				"peer.address":           "127.0.0.1:7051",
 			},
@@ -83,7 +82,6 @@ func TestPeerAddress(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			for k, v := range test.settings {
 				viper.Set(k, v)
@@ -96,9 +94,7 @@ func TestPeerAddress(t *testing.T) {
 }
 
 func TestGetServerConfig(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "peer-clientcert")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 
 	// good config without TLS
 	viper.Set("peer.tls.enabled", false)
@@ -123,18 +119,18 @@ func TestGetServerConfig(t *testing.T) {
 	// good config with TLS
 	org1CA, err := tlsgen.NewCA()
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tempdir, "org1-ca-cert.pem"), org1CA.CertBytes(), 0o644)
+	err = os.WriteFile(filepath.Join(tempdir, "org1-ca-cert.pem"), org1CA.CertBytes(), 0o644)
 	require.NoError(t, err)
 	org2CA, err := tlsgen.NewCA()
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tempdir, "org2-ca-cert.pem"), org2CA.CertBytes(), 0o644)
+	err = os.WriteFile(filepath.Join(tempdir, "org2-ca-cert.pem"), org2CA.CertBytes(), 0o644)
 	require.NoError(t, err)
 
 	org1ServerKP, err := org1CA.NewServerCertKeyPair("localhost")
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tempdir, "org1-server1-cert.pem"), org1ServerKP.Cert, 0o644)
+	err = os.WriteFile(filepath.Join(tempdir, "org1-server1-cert.pem"), org1ServerKP.Cert, 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tempdir, "org1-server1-key.pem"), org1ServerKP.Key, 0o600)
+	err = os.WriteFile(filepath.Join(tempdir, "org1-server1-key.pem"), org1ServerKP.Key, 0o600)
 	require.NoError(t, err)
 
 	viper.Set("peer.tls.enabled", true)
@@ -180,17 +176,15 @@ func TestGetServerConfig(t *testing.T) {
 }
 
 func TestGetClientCertificate(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "peer-clientcert")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 
 	ca, err := tlsgen.NewCA()
 	require.NoError(t, err)
 	kp, err := ca.NewServerCertKeyPair("localhost")
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tempdir, "server1-cert.pem"), kp.Cert, 0o644)
+	err = os.WriteFile(filepath.Join(tempdir, "server1-cert.pem"), kp.Cert, 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tempdir, "server1-key.pem"), kp.Key, 0o600)
+	err = os.WriteFile(filepath.Join(tempdir, "server1-key.pem"), kp.Key, 0o600)
 	require.NoError(t, err)
 
 	viper.Set("peer.tls.key.file", "")
@@ -419,9 +413,10 @@ func TestPropagateEnvironment(t *testing.T) {
 	viper.Set("peer.address", "localhost:8080")
 	viper.Set("chaincode.externalBuilders", &[]ExternalBuilder{
 		{
-			Name:        "testName",
-			Environment: []string{"KEY=VALUE"},
-			Path:        "/testPath",
+			Name:                 "testName",
+			Environment:          []string{"KEY=VALUE"},
+			PropagateEnvironment: []string{},
+			Path:                 "/testPath",
 		},
 		{
 			Name:                 "testName",

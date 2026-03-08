@@ -18,9 +18,8 @@ import (
 )
 
 func TestUpgradeWrongFormat(t *testing.T) {
-	conf, cleanup := testConfig(t)
+	conf := testConfig(t)
 	conf.HistoryDBConfig.Enabled = false
-	defer cleanup()
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 
 	// change format to a wrong value to test upgradeFormat error path
@@ -49,9 +48,8 @@ func TestUpgradeWrongFormat(t *testing.T) {
 }
 
 func TestUpgradeAlreadyUptodateFormat(t *testing.T) {
-	conf, cleanup := testConfig(t)
+	conf := testConfig(t)
 	conf.HistoryDBConfig.Enabled = false
-	defer cleanup()
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	provider.Close()
 

@@ -8,7 +8,6 @@ package identifytxs
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -143,20 +142,16 @@ func TestIdentifyTxs(t *testing.T) {
 	for testName, testCase := range testCases {
 		t.Run(testName, func(t *testing.T) {
 			// Temporary directory for identifytxs results
-			outputDir, err := ioutil.TempDir("", "result")
-			require.NoError(t, err)
-			defer os.RemoveAll(outputDir)
+			outputDir := t.TempDir()
 			// Temporary directory for file system
 			var fsDir string
+			var err error
 			if testCase.expectedOutputType == "empty-bs-error" {
-				fsDir, err = ioutil.TempDir("", "sample_prod_empty")
-				require.NoError(t, err)
+				fsDir = t.TempDir()
 				err = os.MkdirAll(filepath.Join(fsDir, "ledgersData", "chains"), 0o700)
 				require.NoError(t, err)
 			} else {
-				fsDir, err = ioutil.TempDir("", "fs-copy")
-				require.NoError(t, err)
-				defer os.RemoveAll(fsDir)
+				fsDir = t.TempDir()
 				err = testutil.CopyDir(testCase.sampleFileSystemPath, fsDir, false)
 				require.NoError(t, err)
 			}

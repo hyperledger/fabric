@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
+	proto "github.com/hyperledger/fabric-protos-go-apiv2/gossip"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/metrics"
@@ -101,7 +101,7 @@ func (ai *adapterImpl) Gossip(msg Msg) {
 }
 
 func (ai *adapterImpl) Accept() <-chan Msg {
-	adapterCh, _ := ai.gossip.Accept(func(message interface{}) bool {
+	adapterCh, _ := ai.gossip.Accept(func(message any) bool {
 		// Get only leadership org and channel messages
 		return message.(*proto.GossipMessage).Tag == proto.GossipMessage_CHAN_AND_ORG &&
 			protoext.IsLeadershipMsg(message.(*proto.GossipMessage)) &&

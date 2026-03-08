@@ -99,8 +99,7 @@ And we'd have to place the ``.so`` plugin files in the peer's local file system.
 The name of the custom plugin needs to be referenced by the chaincode definition
 to be used by the chaincode. If you are using the peer CLI to approve the
 chaincode definition, use the ``--escc`` and ``--vscc`` flag to select the name
-of the custom endorsement or validation library. If you are using the
-Fabric SDK for Node.js, visit `How to install and start your chaincode <https://hyperledger.github.io/fabric-sdk-node/{BRANCH}/tutorial-chaincode-lifecycle.html>`__.
+of the custom endorsement or validation library. 
 For more information, see :doc:`chaincode_lifecycle`.
 
 .. note:: Hereafter, custom endorsement or validation logic implementation is

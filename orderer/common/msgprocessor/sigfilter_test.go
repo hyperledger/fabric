@@ -10,21 +10,15 @@ import (
 	"fmt"
 	"testing"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
-
-//go:generate counterfeiter -o mocks/sig_filter_support.go --fake-name SigFilterSupport . sigFilterSupport
-
-type sigFilterSupport interface {
-	SigFilterSupport
-}
 
 //go:generate counterfeiter -o mocks/policy.go --fake-name Policy . policy
 

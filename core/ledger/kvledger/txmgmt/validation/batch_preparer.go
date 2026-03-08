@@ -9,10 +9,10 @@ package validation
 import (
 	"bytes"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
@@ -167,7 +167,7 @@ func requiresPvtdataValidation(tx *ledger.TxPvtData) bool {
 	return true
 }
 
-// validPvtdata returns true if hashes of all the collections writeset present in the pvt data
+// validatePvtdata returns true if hashes of all the collections writeset present in the pvt data
 // match with the corresponding hashes present in the public read-write set
 func validatePvtdata(tx *transaction, pvtdata *ledger.TxPvtData) error {
 	if pvtdata.WriteSet == nil {
@@ -290,7 +290,7 @@ func processNonEndorserTx(
 	txid string,
 	txType common.HeaderType,
 	postOrderSimulatorProvider PostOrderSimulatorProvider,
-	synchingState bool,
+	syncingState bool,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
 ) (*rwset.TxReadWriteSet, error) {
 	logger.Debugf("Performing custom processing for transaction [txid=%s], [txType=%s]", txid, txType)
@@ -307,7 +307,7 @@ func processNonEndorserTx(
 		return nil, err
 	}
 	defer sim.Done()
-	if err = processor.GenerateSimulationResults(txEnv, sim, synchingState); err != nil {
+	if err = processor.GenerateSimulationResults(txEnv, sim, syncingState); err != nil {
 		return nil, err
 	}
 	if simRes, err = sim.GetTxSimulationResults(); err != nil {

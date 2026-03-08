@@ -8,18 +8,19 @@ package channelconfig
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math"
+	"os"
 
-	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric-lib-go/bccsp"
+	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
+	mspprotos "github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/smartbft"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -153,17 +154,6 @@ func ChannelRestrictionsValue(maxChannelCount uint64) *StandardConfigValue {
 	}
 }
 
-// KafkaBrokersValue returns the config definition for the addresses of the ordering service's Kafka brokers.
-// It is a value for the /Channel/Orderer group.
-func KafkaBrokersValue(brokers []string) *StandardConfigValue {
-	return &StandardConfigValue{
-		key: KafkaBrokersKey,
-		value: &ab.KafkaBrokers{
-			Brokers: brokers,
-		},
-	}
-}
-
 // MSPValue returns the config definition for an MSP.
 // It is a value for the /Channel/Orderer/*, /Channel/Application/*, and /Channel/Consortiums/*/*/* groups.
 func MSPValue(mspDef *mspprotos.MSPConfig) *StandardConfigValue {
@@ -173,7 +163,7 @@ func MSPValue(mspDef *mspprotos.MSPConfig) *StandardConfigValue {
 	}
 }
 
-// CapabilitiesValue returns the config definition for a a set of capabilities.
+// CapabilitiesValue returns the config definition for a set of capabilities.
 // It is a value for the /Channel/Orderer, Channel/Application/, and /Channel groups.
 func CapabilitiesValue(capabilities map[string]bool) *StandardConfigValue {
 	c := &cb.Capabilities{
@@ -190,6 +180,16 @@ func CapabilitiesValue(capabilities map[string]bool) *StandardConfigValue {
 	return &StandardConfigValue{
 		key:   CapabilitiesKey,
 		value: c,
+	}
+}
+
+func OrderersValue(consenters []*cb.Consenter) *StandardConfigValue {
+	o := &cb.Orderers{
+		ConsenterMapping: consenters,
+	}
+	return &StandardConfigValue{
+		key:   OrderersKey,
+		value: o,
 	}
 }
 
@@ -314,17 +314,26 @@ func MarshalEtcdRaftMetadata(md *etcdraft.ConfigMetadata) ([]byte, error) {
 	for _, c := range copyMd.Consenters {
 		// Expect the user to set the config value for client/server certs to the
 		// path where they are persisted locally, then load these files to memory.
-		clientCert, err := ioutil.ReadFile(string(c.GetClientTlsCert()))
+		clientCert, err := os.ReadFile(string(c.GetClientTlsCert()))
 		if err != nil {
 			return nil, fmt.Errorf("cannot load client cert for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
 		}
 		c.ClientTlsCert = clientCert
 
-		serverCert, err := ioutil.ReadFile(string(c.GetServerTlsCert()))
+		serverCert, err := os.ReadFile(string(c.GetServerTlsCert()))
 		if err != nil {
 			return nil, fmt.Errorf("cannot load server cert for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
 		}
 		c.ServerTlsCert = serverCert
 	}
 	return proto.Marshal(copyMd)
+}
+
+// MarshalBFTOptions serializes smartbft options.
+func MarshalBFTOptions(op *smartbft.Options) ([]byte, error) {
+	if copyMd, ok := proto.Clone(op).(*smartbft.Options); ok {
+		return proto.Marshal(copyMd)
+	} else {
+		return nil, errors.New("consenter options type mismatch")
+	}
 }

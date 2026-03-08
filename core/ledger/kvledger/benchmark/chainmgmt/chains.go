@@ -7,12 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package chainmgmt
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -64,7 +65,7 @@ func (m *chainsMgr) createOrOpenChains() []*Chain {
 	numChains := m.mgrConf.NumChains
 	switch m.initOp {
 	case ChainInitOpCreate:
-		for i := 0; i < numChains; i++ {
+		for i := range numChains {
 			chainID := ChainID(i)
 			ledgerID := chainID.String()
 			gb, err := test.MakeGenesisBlock(ledgerID)
@@ -76,7 +77,7 @@ func (m *chainsMgr) createOrOpenChains() []*Chain {
 		}
 
 	case ChainInitOpOpen:
-		for i := 0; i < numChains; i++ {
+		for i := range numChains {
 			chainID := ChainID(i)
 			peerLedger, err := m.ledgerMgr.OpenLedger(chainID.String())
 			panicOnError(err)
@@ -85,7 +86,7 @@ func (m *chainsMgr) createOrOpenChains() []*Chain {
 		}
 
 	default:
-		panic(fmt.Errorf("unknown chain init opeartion"))
+		panic(errors.New("unknown chain init operation"))
 	}
 	return m.chains()
 }
@@ -147,7 +148,7 @@ func (c *Chain) Done() {
 // Commit overrides the Commit function in ledger.PeerLedger because,
 // experiments are not expected to call Commit directly to the ledger
 func (c *Chain) Commit(block *common.Block) {
-	panic(fmt.Errorf("Commit should not be invoked directly"))
+	panic(errors.New("Commit should not be invoked directly"))
 }
 
 func (c *Chain) close() {
