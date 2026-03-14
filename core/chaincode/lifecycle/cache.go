@@ -148,15 +148,17 @@ func (c *Cache) InitializeLocalChaincodes() error {
 	}
 
 	for _, ccPackage := range ccPackages {
-		ccPackageBytes, err := c.Resources.ChaincodeStore.Load(ccPackage.PackageID)
-		if err != nil {
-			return errors.WithMessagef(err, "could not load chaincode with package ID '%s'", ccPackage.PackageID)
+		// Use metadata from the package filename rather than reading and parsing
+		// the full tar.gz archive. The filename encodes the label and content hash
+		// (e.g., "mycc.abc123...tar.gz" → label="mycc", hash=abc123...).
+		// The PackageID, Label, Type, and Path fields in ChaincodeInstallInfo are
+		// populated here; Type and Path have no downstream consumers but are left
+		// empty for clarity. The full package is read lazily when actually needed
+		// (e.g., for chaincode build or DB artifact extraction).
+		md := &persistence.ChaincodePackageMetadata{
+			Label: ccPackage.Label,
 		}
-		parsedCCPackage, err := c.Resources.PackageParser.Parse(ccPackageBytes)
-		if err != nil {
-			return errors.WithMessagef(err, "could not parse chaincode with package ID '%s'", ccPackage.PackageID)
-		}
-		c.handleChaincodeInstalledWhileLocked(true, parsedCCPackage.Metadata, ccPackage.PackageID)
+		c.handleChaincodeInstalledWhileLocked(true, md, ccPackage.PackageID)
 	}
 
 	logger.Infof("Initialized lifecycle cache with %d already installed chaincodes", len(c.localChaincodes))
