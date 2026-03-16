@@ -364,6 +364,7 @@ func (s *GossipStateProviderImpl) privateDataMessage(msg protoext.ReceivedMessag
 	if err := s.ledger.StorePvtData(txID, txPvtRwSetWithConfig, pvtDataMsg.Payload.PrivateSimHeight); err != nil {
 		s.logger.Errorf("Wasn't able to persist private data for collection %s, due to %s", collectionName, err)
 		msg.Ack(err) // Sending NACK to indicate failure of storing collection
+		return
 	}
 
 	msg.Ack(nil)
