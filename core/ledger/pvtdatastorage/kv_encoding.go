@@ -441,7 +441,7 @@ func decodeReverseOrderVarUint64(bytes []byte) (uint64, int) {
 	realBytesNum := 8 - numFFBytes
 	copy(decodedBytes[numFFBytes:], bytes[1:realBytesNum+1])
 	numBytesConsumed := realBytesNum + 1
-	for i := 0; i < numFFBytes; i++ {
+	for i := range numFFBytes {
 		decodedBytes[i] = 0xff
 	}
 	return math.MaxUint64 - binary.BigEndian.Uint64(decodedBytes), numBytesConsumed

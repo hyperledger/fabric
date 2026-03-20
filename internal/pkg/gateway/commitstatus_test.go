@@ -74,7 +74,7 @@ func TestCommitStatus(t *testing.T) {
 		{
 			name: "passes channel name to policy checker",
 			postSetup: func(t *testing.T, test *preparedTest) {
-				test.policy.CheckACLCalls(func(policyName string, channelName string, data interface{}) error {
+				test.policy.CheckACLCalls(func(policyName string, channelName string, data any) error {
 					require.Equal(t, testChannel, channelName)
 					return nil
 				})
@@ -88,7 +88,7 @@ func TestCommitStatus(t *testing.T) {
 			name:     "passes identity to policy checker",
 			identity: []byte("IDENTITY"),
 			postSetup: func(t *testing.T, test *preparedTest) {
-				test.policy.CheckACLCalls(func(policyName string, channelName string, data interface{}) error {
+				test.policy.CheckACLCalls(func(policyName string, channelName string, data any) error {
 					require.IsType(t, &protoutil.SignedData{}, data)
 					signedData := data.(*protoutil.SignedData)
 					require.Equal(t, []byte("IDENTITY"), signedData.Identity)

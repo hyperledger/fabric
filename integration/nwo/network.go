@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -867,7 +868,6 @@ func hostIPv4Addrs() []net.IP {
 		Expect(err).NotTo(HaveOccurred())
 
 		for _, a := range addrs {
-			a := a
 			switch v := a.(type) {
 			case *net.IPAddr:
 				if v.IP.To4() != nil {
@@ -1056,7 +1056,7 @@ func (n *Network) discoveredPeerMatcher(p *Peer, chaincodes ...string) types.Gom
 	peerCert, err := os.ReadFile(n.PeerCert(p))
 	Expect(err).NotTo(HaveOccurred())
 
-	var ccs []interface{}
+	var ccs []any
 	for _, cc := range chaincodes {
 		ccs = append(ccs, cc)
 	}
@@ -1075,7 +1075,7 @@ func (n *Network) discoveredPeerMatcher(p *Peer, chaincodes ...string) types.Gom
 // the channel config for the new channel.
 //
 // The orderer must be running when this is called.
-func (n *Network) CreateChannel(channelName string, o *Orderer, p *Peer, additionalSigners ...interface{}) {
+func (n *Network) CreateChannel(channelName string, o *Orderer, p *Peer, additionalSigners ...any) {
 	channelCreateTxPath := n.CreateChannelTxPath(channelName)
 	n.signConfigTransaction(channelCreateTxPath, p, additionalSigners...)
 
@@ -1100,7 +1100,7 @@ func (n *Network) CreateChannel(channelName string, o *Orderer, p *Peer, additio
 //
 // The channel transaction must exist at the location returned by
 // CreateChannelTxPath and the orderer must be running when this is called.
-func (n *Network) CreateChannelExitCode(channelName string, o *Orderer, p *Peer, additionalSigners ...interface{}) int {
+func (n *Network) CreateChannelExitCode(channelName string, o *Orderer, p *Peer, additionalSigners ...any) int {
 	channelCreateTxPath := n.CreateChannelTxPath(channelName)
 	n.signConfigTransaction(channelCreateTxPath, p, additionalSigners...)
 
@@ -1115,7 +1115,7 @@ func (n *Network) CreateChannelExitCode(channelName string, o *Orderer, p *Peer,
 	return sess.Wait(n.EventuallyTimeout).ExitCode()
 }
 
-func (n *Network) signConfigTransaction(channelTxPath string, submittingPeer *Peer, signers ...interface{}) {
+func (n *Network) signConfigTransaction(channelTxPath string, submittingPeer *Peer, signers ...any) {
 	for _, signer := range signers {
 		switch signer := signer.(type) {
 		case *Peer:
@@ -1335,7 +1335,7 @@ func (n *Network) peerCommand(command Command, tlsDir string, env ...string) *ex
 	// usages we have, and add the same (concatenated TLS CA certificates file)
 	// the same number of times to bypass the peer CLI sanity checks
 	requiredPeerAddresses := flagCount("--peerAddresses", cmd.Args)
-	for i := 0; i < requiredPeerAddresses; i++ {
+	for range requiredPeerAddresses {
 		cmd.Args = append(cmd.Args, "--tlsRootCertFiles")
 		cmd.Args = append(cmd.Args, n.CACertsBundlePath())
 	}
@@ -1350,21 +1350,11 @@ func (n *Network) peerCommand(command Command, tlsDir string, env ...string) *ex
 }
 
 func connectsToOrderer(c Command) bool {
-	for _, arg := range c.Args() {
-		if arg == "--orderer" {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(c.Args(), "--orderer")
 }
 
 func clientAuthEnabled(c Command) bool {
-	for _, arg := range c.Args() {
-		if arg == "--clientauth" {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(c.Args(), "--clientauth")
 }
 
 func flagCount(flag string, args []string) int {

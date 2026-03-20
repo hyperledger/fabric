@@ -40,7 +40,7 @@ const (
 
 // DigestFilter filters digests to be sent to a remote peer that
 // sent a hello or a request, based on its messages's context
-type DigestFilter func(context interface{}) func(digestItem string) bool
+type DigestFilter func(context any) func(digestItem string) bool
 
 // PullAdapter is needed by the PullEngine in order to
 // send messages to the remote PullEngine instances.
@@ -58,14 +58,14 @@ type PullAdapter interface {
 
 	// SendDigest sends a digest to a remote PullEngine.
 	// The context parameter specifies the remote engine to send to.
-	SendDigest(digest []string, nonce uint64, context interface{})
+	SendDigest(digest []string, nonce uint64, context any)
 
 	// SendReq sends an array of items to a certain remote PullEngine identified
 	// by a string
 	SendReq(dest string, items []string, nonce uint64)
 
 	// SendRes sends an array of items to a remote PullEngine identified by a context.
-	SendRes(items []string, context interface{}, nonce uint64)
+	SendRes(items []string, context any, nonce uint64)
 }
 
 // PullEngine is the component that actually invokes the pull algorithm
@@ -133,7 +133,7 @@ func NewPullEngineWithFilter(participant PullAdapter, sleepTime time.Duration, d
 // NewPullEngine creates an instance of a PullEngine with a certain sleep time
 // between pull initiations
 func NewPullEngine(participant PullAdapter, sleepTime time.Duration, config PullEngineConfig) *PullEngine {
-	acceptAllFilter := func(_ interface{}) func(string) bool {
+	acceptAllFilter := func(_ any) func(string) bool {
 		return func(_ string) bool {
 			return true
 		}
@@ -227,7 +227,7 @@ func (engine *PullEngine) endPull() {
 }
 
 // OnDigest notifies the engine that a digest has arrived
-func (engine *PullEngine) OnDigest(digest []string, nonce uint64, context interface{}) {
+func (engine *PullEngine) OnDigest(digest []string, nonce uint64, context any) {
 	if !engine.isAcceptingDigests() || !engine.outgoingNONCES.Exists(nonce) {
 		return
 	}
@@ -263,7 +263,7 @@ func (engine *PullEngine) Remove(seqs ...string) {
 }
 
 // OnHello notifies the engine a hello has arrived
-func (engine *PullEngine) OnHello(nonce uint64, context interface{}) {
+func (engine *PullEngine) OnHello(nonce uint64, context any) {
 	engine.incomingNONCES.Add(nonce)
 
 	time.AfterFunc(engine.requestWaitTime, func() {
@@ -287,7 +287,7 @@ func (engine *PullEngine) OnHello(nonce uint64, context interface{}) {
 }
 
 // OnReq notifies the engine a request has arrived
-func (engine *PullEngine) OnReq(items []string, nonce uint64, context interface{}) {
+func (engine *PullEngine) OnReq(items []string, nonce uint64, context any) {
 	if !engine.incomingNONCES.Exists(nonce) {
 		return
 	}

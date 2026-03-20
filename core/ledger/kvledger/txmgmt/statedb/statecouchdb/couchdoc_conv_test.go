@@ -41,7 +41,7 @@ func TestKVAndDocConversion(t *testing.T) {
 		keyWithBinaryValue,
 		keyWithSortedJSONValue,
 	}
-	for i := 0; i < len(testData); i++ {
+	for i := range testData {
 		t.Run(fmt.Sprintf("testdata-%d", i),
 			func(t *testing.T) {
 				testKVAndDocConversion(t, testData[i])

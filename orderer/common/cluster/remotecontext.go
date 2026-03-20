@@ -104,7 +104,7 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 		expirationWarningThreshold:       rc.certExpWarningThreshold,
 		endpoint:                         s.Endpoint,
 		nodeName:                         s.NodeName,
-		alert: func(template string, args ...interface{}) {
+		alert: func(template string, args ...any) {
 			s.Logger.Warningf(template, args...)
 		},
 	}
@@ -136,7 +136,7 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 // Abort aborts the contexts the RemoteContext uses, thus effectively
 // causes all operations that use this RemoteContext to terminate.
 func (rc *RemoteContext) Abort() {
-	rc.streamsByID.Range(func(_, value interface{}) bool {
+	rc.streamsByID.Range(func(_, value any) bool {
 		value.(*Stream).Cancel(errAborted)
 		return false
 	})

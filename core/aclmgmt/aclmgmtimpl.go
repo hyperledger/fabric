@@ -24,7 +24,7 @@ type aclMgmtImpl struct {
 // CheckACL checks the ACL for the resource for the channel using the
 // idinfo. idinfo is an object such as SignedProposal from which an
 // id can be extracted for testing against a policy
-func (am *aclMgmtImpl) CheckACL(resName string, channelID string, idinfo interface{}) error {
+func (am *aclMgmtImpl) CheckACL(resName string, channelID string, idinfo any) error {
 	// use the resource based config provider (which will in turn default to 1.0 provider)
 	return am.rescfgProvider.CheckACL(resName, channelID, idinfo)
 }
@@ -32,7 +32,7 @@ func (am *aclMgmtImpl) CheckACL(resName string, channelID string, idinfo interfa
 // CheckACLNoChannel checks the ACL for the resource for the local MSP
 // using the idinfo. idinfo is an object such as SignedProposal
 // from which an id can be extracted for testing against a policy.
-func (am *aclMgmtImpl) CheckACLNoChannel(resName string, idinfo interface{}) error {
+func (am *aclMgmtImpl) CheckACLNoChannel(resName string, idinfo any) error {
 	// use the resource based config provider (which will in turn default to 1.0 provider)
 	return am.rescfgProvider.CheckACLNoChannel(resName, idinfo)
 }

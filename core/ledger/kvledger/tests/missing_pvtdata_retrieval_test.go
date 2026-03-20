@@ -141,7 +141,7 @@ func TestGetMissingPvtData(t *testing.T) {
 
 		_, err := l.commitPvtDataOfOldBlocks(nil, expectedMissingPvtDataInfo)
 		require.NoError(t, err)
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			l.verifyMissingPvtDataSameAs(2, ledger.MissingPvtDataInfo{})
 		}
 
@@ -150,7 +150,7 @@ func TestGetMissingPvtData(t *testing.T) {
 		env.initLedgerMgmt()
 
 		l = env.openTestLedger("ledger1")
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			l.verifyMissingPvtDataSameAs(2, expectedMissingPvtDataInfo)
 		}
 
@@ -159,7 +159,7 @@ func TestGetMissingPvtData(t *testing.T) {
 		env.initLedgerMgmt()
 
 		l = env.openTestLedger("ledger1")
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			l.verifyMissingPvtDataSameAs(2, ledger.MissingPvtDataInfo{})
 		}
 	})

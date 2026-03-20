@@ -32,7 +32,7 @@ var hashOfZero = hex.EncodeToString(sha256.New().Sum(nil))
 
 func TestNodeIdentitiesByID(t *testing.T) {
 	m := make(smartbft.NodeIdentitiesByID)
-	for id := uint64(0); id < 4; id++ {
+	for id := range uint64(4) {
 		m[id] = protoutil.MarshalOrPanic(&msp.SerializedIdentity{
 			IdBytes: fmt.Appendf(nil, "%d", id),
 			Mspid:   "OrdererOrg",

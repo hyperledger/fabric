@@ -17,7 +17,7 @@ type Orderer struct {
 	Consensus            map[string]string     `yaml:"Consensus,omitempty"`
 	Admin                *Admin                `yaml:"Admin,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type Admin struct {
@@ -38,7 +38,7 @@ type General struct {
 	Authentication  *OrdererAuthentication `yaml:"Authentication,omitempty"`
 	Cluster         *Cluster               `yaml:"Cluster,omitempty"`
 
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+	ExtraProperties map[string]any `yaml:",inline,omitempty"`
 }
 
 type Cluster struct {

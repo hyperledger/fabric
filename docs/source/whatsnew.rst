@@ -103,6 +103,7 @@ Additionally, take a look at the announcements about changes and deprecations th
 * `Fabric v3.1.1 release notes <https://github.com/hyperledger/fabric/releases/tag/v3.1.1>`_.
 * `Fabric v3.1.2 release notes <https://github.com/hyperledger/fabric/releases/tag/v3.1.2>`_.
 * `Fabric v3.1.3 release notes <https://github.com/hyperledger/fabric/releases/tag/v3.1.3>`_.
+* `Fabric v3.1.4 release notes <https://github.com/hyperledger/fabric/releases/tag/v3.1.4>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

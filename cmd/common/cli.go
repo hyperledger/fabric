@@ -152,6 +152,6 @@ func evaluateFileFlag(f **os.File) string {
 	return path
 }
 
-func out(a ...interface{}) {
+func out(a ...any) {
 	fmt.Fprintln(outWriter, a...)
 }

@@ -357,12 +357,12 @@ type streamsMapperReporter struct {
 	sync.Map
 }
 
-func (smr *streamsMapperReporter) Delete(key interface{}) {
+func (smr *streamsMapperReporter) Delete(key any) {
 	smr.Map.Delete(key)
 	atomic.AddUint32(&smr.size, ^uint32(0))
 }
 
-func (smr *streamsMapperReporter) Store(key, value interface{}) {
+func (smr *streamsMapperReporter) Store(key, value any) {
 	smr.Map.Store(key, value)
 	atomic.AddUint32(&smr.size, 1)
 }

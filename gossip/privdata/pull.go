@@ -99,7 +99,7 @@ func NewPuller(metrics *metrics.PrivdataMetrics, cs privdata.CollectionStore, g 
 		PrivateDataRetriever:    dataRetriever,
 		CollectionAccessFactory: factory,
 	}
-	_, p.msgChan = p.Accept(func(o interface{}) bool {
+	_, p.msgChan = p.Accept(func(o any) bool {
 		msg := o.(protoext.ReceivedMessage).GetGossipMessage()
 		if !bytes.Equal(msg.Channel, []byte(p.channel)) {
 			return false

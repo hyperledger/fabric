@@ -68,7 +68,7 @@ func TestSleeper(t *testing.T) {
 		doneC := make(chan struct{})
 
 		go func() {
-			for i := 0; i < 10; i++ {
+			for range 10 {
 				d.sleeper.Sleep(time.Millisecond, doneC)
 			}
 		}()

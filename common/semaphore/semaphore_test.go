@@ -23,7 +23,7 @@ func TestSemaphoreAcquireBlocking(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
 	sema := semaphore.New(5)
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		err := sema.Acquire(context.Background())
 		gt.Expect(err).NotTo(HaveOccurred())
 	}
@@ -61,7 +61,7 @@ func TestSemaphoreTryAcquireBufferFull(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
 	sema := semaphore.New(5)
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		gt.Expect(t, true, sema.TryAcquire())
 	}
 

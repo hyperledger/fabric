@@ -73,7 +73,7 @@ func TestSerializedBlockInfo(t *testing.T) {
 		testSerializedBlockInfo(t, block, c)
 	})
 
-	t.Run("malformed tx-envelop for one of the transactions", func(t *testing.T) {
+	t.Run("malformed tx-envelope for one of the transactions", func(t *testing.T) {
 		block := testutil.ConstructTestBlock(t, 1, 10, 100)
 		// malformed Payload for
 		block.Data.Data[1] = protoutil.MarshalOrPanic(&common.Envelope{

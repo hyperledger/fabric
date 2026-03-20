@@ -27,7 +27,7 @@ func TestUpdateBatchBytesBuilderOnlyPublicWrites(t *testing.T) {
 	bytes, err := deterministicBytesForPubAndHashUpdates(updateBatch)
 	require.NoError(t, err)
 	require.True(t, len(bytes) > 0)
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		b, _ := deterministicBytesForPubAndHashUpdates(updateBatch)
 		require.Equal(t, bytes, b)
 	}
@@ -87,7 +87,7 @@ func TestUpdateBatchBytesBuilderPublicWritesAndColls(t *testing.T) {
 	bytes, err := deterministicBytesForPubAndHashUpdates(updateBatch)
 	require.NoError(t, err)
 	require.True(t, len(bytes) > 0)
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		b, _ := deterministicBytesForPubAndHashUpdates(updateBatch)
 		require.Equal(t, bytes, b)
 	}

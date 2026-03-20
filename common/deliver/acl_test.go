@@ -70,7 +70,7 @@ var _ = Describe("SessionAccessControl", func() {
 		sac, err := deliver.NewSessionAC(fakeChain, envelope, fakePolicyChecker, "chain-id", expiresAt)
 		Expect(err).NotTo(HaveOccurred())
 
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			err = sac.Evaluate()
 			Expect(err).NotTo(HaveOccurred())
 		}

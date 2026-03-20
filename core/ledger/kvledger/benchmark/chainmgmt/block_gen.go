@@ -47,7 +47,7 @@ func newBlkGenerator(batchConf *BatchConf, startingBlockNum uint64, previousBloc
 }
 
 func (bg *blkGenerator) startTxEnvCreators() {
-	for i := 0; i < numConcurrentTxEnvCreators; i++ {
+	for range numConcurrentTxEnvCreators {
 		go bg.startTxEnvCreator()
 	}
 }

@@ -376,7 +376,7 @@ func importTxIDsFromSnapshot(
 	}
 
 	batch := db.NewUpdateBatch()
-	for i := uint64(0); i < numTxIDs; i++ {
+	for i := range numTxIDs {
 		txID, err := txIDsData.DecodeString()
 		if err != nil {
 			return err

@@ -34,7 +34,7 @@ func NewChannelDemultiplexer() *ChannelDeMultiplexer {
 
 type channel struct {
 	pred common.MessageAcceptor
-	ch   chan<- interface{}
+	ch   chan<- any
 }
 
 // Close closes this channel, which makes all channels registered before
@@ -61,15 +61,15 @@ func (m *ChannelDeMultiplexer) Close() {
 //
 // If the DeMultiplexer is closed, the channel returned will be closed
 // to prevent users of the channel from waiting on the channel.
-func (m *ChannelDeMultiplexer) AddChannel(predicate common.MessageAcceptor) <-chan interface{} {
+func (m *ChannelDeMultiplexer) AddChannel(predicate common.MessageAcceptor) <-chan any {
 	m.lock.Lock()
 	if m.closed { // closed once, can't put anything more in.
 		m.lock.Unlock()
-		ch := make(chan interface{})
+		ch := make(chan any)
 		close(ch)
 		return ch
 	}
-	bidirectionalCh := make(chan interface{}, 10)
+	bidirectionalCh := make(chan any, 10)
 	// Assignment to channel converts bidirectionalCh to send-only.
 	// Return converts bidirectionalCh to a receive-only.
 	ch := &channel{ch: bidirectionalCh, pred: predicate}
@@ -82,7 +82,7 @@ func (m *ChannelDeMultiplexer) AddChannel(predicate common.MessageAcceptor) <-ch
 // by AddChannel calls and that hold the respected predicates.
 //
 // Blocks if any one channel that would receive msg has a full buffer.
-func (m *ChannelDeMultiplexer) DeMultiplex(msg interface{}) {
+func (m *ChannelDeMultiplexer) DeMultiplex(msg any) {
 	m.lock.Lock()
 	if m.closed {
 		m.lock.Unlock()

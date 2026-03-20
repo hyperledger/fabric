@@ -486,7 +486,7 @@ func TestBlockPullerHeavyBlocks(t *testing.T) {
 	// Enqueue only the next batch in the orderer node.
 	// This ensures that only 10 blocks are fetched into the buffer
 	// and not more.
-	for i := uint64(0); i < 5; i++ {
+	for i := range uint64(5) {
 		enqueueBlockBatch(i*10+uint64(1), i*10+uint64(10))
 		for seq := i*10 + uint64(1); seq <= i*10+uint64(10); seq++ {
 			require.Equal(t, seq, bp.PullBlock(seq).Header.Number)
@@ -1288,7 +1288,7 @@ func TestBlockPullerMaxRetriesExhausted(t *testing.T) {
 	// stream that the client should open.
 	osn.blockResponses <- nil
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		// Therefore, the block puller should disconnect and reconnect.
 		osn.addExpectProbeAssert()
 		// We report having up to block 3.

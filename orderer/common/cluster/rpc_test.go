@@ -204,7 +204,7 @@ func TestSend(t *testing.T) {
 		method         func(rpc *cluster.RPC) error
 		sendReturns    error
 		sendCalledWith *orderer.StepRequest
-		receiveReturns []interface{}
+		receiveReturns []any
 		remoteError    error
 		expectedErr    string
 	}
@@ -220,7 +220,7 @@ func TestSend(t *testing.T) {
 			name:           "Send and Receive submit succeed",
 			method:         submit,
 			sendReturns:    nil,
-			receiveReturns: []interface{}{submitResponse, nil},
+			receiveReturns: []any{submitResponse, nil},
 			sendCalledWith: submitReq,
 		},
 		{

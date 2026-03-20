@@ -55,7 +55,7 @@ func TestBuildExpirySchedule(t *testing.T) {
 	}
 
 	require.Len(t, listExpinfo, 3)
-	for i := 0; i < len(expectedListExpInfo); i++ {
+	for i := range expectedListExpInfo {
 		j := 0
 		for ; j < len(listExpinfo); j++ {
 			if reflect.DeepEqual(expectedListExpInfo[i].expiryInfoKey, listExpinfo[j].expiryInfoKey) {
@@ -116,7 +116,7 @@ func TestBuildExpiryScheduleWithMissingPvtdata(t *testing.T) {
 	}
 
 	require.Len(t, listExpinfo, 3)
-	for i := 0; i < len(expectedListExpInfo); i++ {
+	for i := range expectedListExpInfo {
 		j := 0
 		for ; j < len(listExpinfo); j++ {
 			if reflect.DeepEqual(expectedListExpInfo[i].expiryInfoKey, listExpinfo[j].expiryInfoKey) {

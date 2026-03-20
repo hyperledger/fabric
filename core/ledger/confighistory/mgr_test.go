@@ -480,7 +480,7 @@ func verifyExportedConfigHistory(t *testing.T, dir string, fileHashes map[string
 	require.NoError(t, err)
 
 	var retrievedCollectionConfigs []*compositeKV
-	for i := uint64(0); i < numCollectionConfigs; i++ {
+	for range numCollectionConfigs {
 		key, err := dataReader.DecodeBytes()
 		require.NoError(t, err)
 		val, err := dataReader.DecodeBytes()

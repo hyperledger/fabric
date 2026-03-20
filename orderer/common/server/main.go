@@ -819,7 +819,7 @@ func (mgr *caManager) updateClusterDialer(
 	clusterDialer.UpdateRootCAs(clusterRootCAsBytes)
 }
 
-func prettyPrintStruct(i interface{}) {
+func prettyPrintStruct(i any) {
 	params := localconfig.Flatten(i)
 	var buffer bytes.Buffer
 	for i := range params {

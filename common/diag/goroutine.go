@@ -12,8 +12,8 @@ import (
 )
 
 type Logger interface {
-	Infof(template string, args ...interface{})
-	Errorf(template string, args ...interface{})
+	Infof(template string, args ...any)
+	Errorf(template string, args ...any)
 }
 
 func CaptureGoRoutines() (string, error) {

@@ -14,7 +14,7 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo"
 )
 
-func CreateBroadcastEnvelope(n *nwo.Network, entity interface{}, channel string, data []byte, optionalEnvelopeType ...common.HeaderType) *common.Envelope {
+func CreateBroadcastEnvelope(n *nwo.Network, entity any, channel string, data []byte, optionalEnvelopeType ...common.HeaderType) *common.Envelope {
 	var signer *nwo.SigningIdentity
 	switch creator := entity.(type) {
 	case *nwo.Peer:

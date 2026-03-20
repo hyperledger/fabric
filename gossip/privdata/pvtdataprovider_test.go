@@ -1122,7 +1122,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 	defer storeProvider.Close()
 
 	// set up store with 9 existing private data write sets
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		txID := fmt.Sprintf("tx%d", i+1)
 		store.Persist(txID, uint64(i), &tspb.TxPvtReadWriteSetWithConfigInfo{
 			PvtRwset: &rwset.TxPvtReadWriteSet{

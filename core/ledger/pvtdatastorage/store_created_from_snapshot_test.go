@@ -294,7 +294,7 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 
 		// commit 100 blocks and the bootkvhashes should expire
 		store.purgeInterval = 10
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			require.NoError(t, store.Commit(uint64(26+i), nil, nil, nil))
 		}
 

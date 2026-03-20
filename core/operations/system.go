@@ -29,8 +29,8 @@ import (
 //go:generate counterfeiter -o fakes/logger.go -fake-name Logger . Logger
 
 type Logger interface {
-	Warn(args ...interface{})
-	Warnf(template string, args ...interface{})
+	Warn(args ...any)
+	Warnf(template string, args ...any)
 }
 
 type Statsd struct {

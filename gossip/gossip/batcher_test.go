@@ -21,7 +21,7 @@ func init() {
 }
 
 func TestBatchingEmitterAddAndSize(t *testing.T) {
-	emitter := newBatchingEmitter(1, 10, time.Second, func(a []interface{}) {})
+	emitter := newBatchingEmitter(1, 10, time.Second, func(a []any) {})
 	defer emitter.Stop()
 	emitter.Add(1)
 	emitter.Add(2)
@@ -32,7 +32,7 @@ func TestBatchingEmitterAddAndSize(t *testing.T) {
 func TestBatchingEmitterStop(t *testing.T) {
 	// In this test we make sure the emitter doesn't do anything after it's stopped
 	disseminationAttempts := int32(0)
-	cb := func(a []interface{}) {
+	cb := func(a []any) {
 		atomic.AddInt32(&disseminationAttempts, int32(1))
 	}
 
@@ -48,7 +48,7 @@ func TestBatchingEmitterExpiration(t *testing.T) {
 	// In this test we make sure that a message is expired and is discarded after enough time
 	// and that it was forwarded an adequate amount of times
 	disseminationAttempts := int32(0)
-	cb := func(a []interface{}) {
+	cb := func(a []any) {
 		atomic.AddInt32(&disseminationAttempts, int32(1))
 	}
 
@@ -65,7 +65,7 @@ func TestBatchingEmitterCounter(t *testing.T) {
 	// In this test we count the number of times each message is forwarded, with relation to the time passed
 	counters := make(map[int]int)
 	lock := &sync.Mutex{}
-	cb := func(a []interface{}) {
+	cb := func(a []any) {
 		lock.Lock()
 		defer lock.Unlock()
 		for _, e := range a {
@@ -101,13 +101,13 @@ func TestBatchingEmitterCounter(t *testing.T) {
 // TestBatchingEmitterBurstSizeCap tests that the emitter
 func TestBatchingEmitterBurstSizeCap(t *testing.T) {
 	disseminationAttempts := int32(0)
-	cb := func(a []interface{}) {
+	cb := func(a []any) {
 		atomic.AddInt32(&disseminationAttempts, int32(1))
 	}
 	emitter := newBatchingEmitter(1, 10, time.Duration(800)*time.Millisecond, cb)
 	defer emitter.Stop()
 
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		emitter.Add(i)
 	}
 	require.Equal(t, int32(5), atomic.LoadInt32(&disseminationAttempts))

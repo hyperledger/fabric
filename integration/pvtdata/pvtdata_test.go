@@ -523,7 +523,7 @@ var _ = Describe("PrivateData", func() {
 				eligiblePeer := network.Peer("Org2", "peer0")
 				ccName := testChaincode.Name
 				By("adding three blocks")
-				for i := 0; i < 3; i++ {
+				for i := range 3 {
 					marblechaincodeutil.AddMarble(network, orderer, channelID, ccName, fmt.Sprintf(`{"name":"test-marble-%d", "color":"blue", "size":35, "owner":"tom", "price":99}`, i), eligiblePeer)
 				}
 
@@ -730,7 +730,7 @@ var _ = Describe("PrivateData", func() {
 			// Verifies marble private chaincode APIs: getMarblesByRange, transferMarble, delete
 
 			By("adding five marbles")
-			for i := 0; i < 5; i++ {
+			for i := range 5 {
 				marblechaincodeutil.AddMarble(network, orderer, channelID, ccName, fmt.Sprintf(`{"name":"test-marble-%d", "color":"blue", "size":35, "owner":"tom", "price":99}`, i), eligiblePeer)
 			}
 

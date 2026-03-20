@@ -57,11 +57,11 @@ func testGenerateSampleRWSet(t *testing.T) []byte {
 
 	txid := util.GenerateUUID()
 
-	// perform a range query for significant larger scan so that the merkle tree building kicks in
+	// perform a range query for significantly larger scan so that the merkle tree building kicks in
 	// each level contains max 50 nodes per the current configuration
 	simulator, err := ledger.NewTxSimulator(txid)
 	require.NoError(t, err)
-	for i := 0; i < 10011; i++ {
+	for i := range 10011 {
 		require.NoError(t, simulator.SetState("ns1", fmt.Sprintf("key-%000d", i), fmt.Appendf(nil, "value-%000d", i)))
 	}
 	simulator.Done()

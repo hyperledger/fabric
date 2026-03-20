@@ -24,12 +24,12 @@ func ZapFields(ctx context.Context) []zapcore.Field {
 	return nil
 }
 
-func Fields(ctx context.Context) []interface{} {
+func Fields(ctx context.Context) []any {
 	fields, ok := ctx.Value(fieldKey).([]zapcore.Field)
 	if !ok {
 		return nil
 	}
-	genericFields := make([]interface{}, len(fields))
+	genericFields := make([]any, len(fields))
 	for i := range fields {
 		genericFields[i] = fields[i]
 	}

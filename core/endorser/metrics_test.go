@@ -34,12 +34,12 @@ func TestNewMetrics(t *testing.T) {
 	}))
 
 	gt.Expect(provider.NewHistogramCallCount()).To(Equal(1))
-	gt.Expect(provider.Invocations()["NewHistogram"]).To(ConsistOf([][]interface{}{
+	gt.Expect(provider.Invocations()["NewHistogram"]).To(ConsistOf([][]any{
 		{proposalDurationHistogramOpts},
 	}))
 
 	gt.Expect(provider.NewCounterCallCount()).To(Equal(8))
-	gt.Expect(provider.Invocations()["NewCounter"]).To(ConsistOf([][]interface{}{
+	gt.Expect(provider.Invocations()["NewCounter"]).To(ConsistOf([][]any{
 		{receivedProposalsCounterOpts},
 		{successfulProposalsCounterOpts},
 		{proposalValidationFailureCounterOpts},

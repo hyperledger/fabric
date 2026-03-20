@@ -103,8 +103,8 @@ func TestPKIidOfCert(t *testing.T) {
 	// Ensure that additional fields haven't been introduced in the code
 	v := reflect.Indirect(reflect.ValueOf(id)).Type()
 	fieldsNoExported := 0
-	for i := 0; i < v.NumField(); i++ {
-		if !v.Field(i).IsExported() {
+	for field := range v.Fields() {
+		if !field.IsExported() {
 			fieldsNoExported++
 		}
 	}

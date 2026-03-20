@@ -34,7 +34,7 @@ type LedgerGetter interface {
 
 // ACLProvider checks ACL for a channelless resource
 type ACLProvider interface {
-	CheckACLNoChannel(resName string, idinfo interface{}) error
+	CheckACLNoChannel(resName string, idinfo any) error
 }
 
 // Generate generates a snapshot request.

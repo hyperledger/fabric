@@ -32,16 +32,16 @@ type keyValue struct {
 	*statedb.VersionedValue
 }
 
-type jsonValue map[string]interface{}
+type jsonValue map[string]any
 
 func tryCastingToJSON(b []byte) (isJSON bool, val jsonValue) {
-	var jsonVal map[string]interface{}
+	var jsonVal map[string]any
 	err := json.Unmarshal(b, &jsonVal)
 	return err == nil, jsonVal
 }
 
 func castToJSON(b []byte) (jsonValue, error) {
-	var jsonVal map[string]interface{}
+	var jsonVal map[string]any
 	err := json.Unmarshal(b, &jsonVal)
 	err = errors.Wrap(err, "error unmarshalling json data")
 	return jsonVal, err

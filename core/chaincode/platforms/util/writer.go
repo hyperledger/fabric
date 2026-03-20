@@ -14,6 +14,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -37,10 +38,8 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDirs []strin
 		}
 
 		if info.Mode().IsDir() {
-			for _, excluded := range append(excludeDirs, ".git") {
-				if info.Name() == excluded {
-					return filepath.SkipDir
-				}
+			if slices.Contains(append(excludeDirs, ".git"), info.Name()) {
+				return filepath.SkipDir
 			}
 			return nil
 		}

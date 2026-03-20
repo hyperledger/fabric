@@ -51,7 +51,7 @@ type QueryResultsIterator interface {
 }
 
 // QueryResult - a general interface for supporting different types of query results. Actual types differ for different queries
-type QueryResult interface{}
+type QueryResult any
 
 // PrunePolicy - a general interface for supporting different pruning policies
-type PrunePolicy interface{}
+type PrunePolicy any

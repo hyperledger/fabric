@@ -1051,6 +1051,17 @@ func (s *Store) processCollElgEvents() error {
 						sleepTime := time.Duration(s.batchesInterval)
 						logger.Infof("Going to sleep for %d milliseconds between batches. Entries for [ns=%s, coll=%s] converted so far = %d",
 							sleepTime, ns, coll, collEntriesConverted)
+						// Close the snapshot iterator before releasing the lock.
+						// A live LevelDB snapshot held across the lock-release window
+						// lets the purger delete InelgMissingData keys that the
+						// iterator still sees, causing them to be re-written as
+						// ElgPrioMissingData after the lock is re-acquired. Closing
+						// here and re-opening after the sleep gives a view of the DB
+						// that reflects any purges that ran during the sleep window,
+						// so already-purged entries are not re-inserted.
+						nextKey := make([]byte, len(originalKey))
+						copy(nextKey, originalKey)
+						collItr.Release()
 						s.purgerLock.Unlock()
 						time.Sleep(sleepTime * time.Millisecond)
 						s.purgerLock.Lock()

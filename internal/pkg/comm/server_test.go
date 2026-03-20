@@ -17,6 +17,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -630,8 +631,6 @@ func TestNewSecureGRPCServer(t *testing.T) {
 		"TLS13": tls.VersionTLS13,
 	}
 	for name, tlsVersion := range tlsVersions {
-		tlsVersion := tlsVersion
-
 		t.Run(name, func(t *testing.T) {
 			creds := credentials.NewTLS(&tls.Config{RootCAs: certPool, MinVersion: tlsVersion, MaxVersion: tlsVersion})
 			_, err := invokeEmptyCall(testAddress, grpc.WithTransportCredentials(creds), grpc.WithBlock())
@@ -646,7 +645,6 @@ func TestNewSecureGRPCServer(t *testing.T) {
 		"TLS11": tls.VersionTLS11,
 	}
 	for name, tlsVersion := range tlsVersions {
-		tlsVersion := tlsVersion
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -859,7 +857,7 @@ func TestWithSignedIntermediateCertificates(t *testing.T) {
 // utility function for testing client / server communication using TLS
 func runMutualAuth(t *testing.T, servers []testServer, trustedClients, unTrustedClients []*tls.Config) error {
 	// loop through all the test servers
-	for i := 0; i < len(servers); i++ {
+	for i := range servers {
 		// create listener
 		lis, err := net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {
@@ -885,7 +883,7 @@ func runMutualAuth(t *testing.T, servers []testServer, trustedClients, unTrusted
 		time.Sleep(10 * time.Millisecond)
 
 		// loop through all the trusted clients
-		for j := 0; j < len(trustedClients); j++ {
+		for j := range trustedClients {
 			// invoke the EmptyCall service
 			_, err = invokeEmptyCall(srvAddr, grpc.WithTransportCredentials(credentials.NewTLS(trustedClients[j])))
 			// we expect success from trusted clients
@@ -897,7 +895,7 @@ func runMutualAuth(t *testing.T, servers []testServer, trustedClients, unTrusted
 		}
 
 		// loop through all the untrusted clients
-		for k := 0; k < len(unTrustedClients); k++ {
+		for k := range unTrustedClients {
 			// invoke the EmptyCall service
 			_, err = invokeEmptyCall(
 				srvAddr,
@@ -962,7 +960,6 @@ func TestMutualAuth(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			t.Logf("Running test %s ...", test.name)
@@ -1143,12 +1140,7 @@ func TestCipherSuites(t *testing.T) {
 	}
 
 	fabricDefaultCipherSuite := func(cipher uint16) bool {
-		for _, defaultCipher := range comm.DefaultTLSCipherSuites {
-			if cipher == defaultCipher {
-				return true
-			}
-		}
-		return false
+		return slices.Contains(comm.DefaultTLSCipherSuites, cipher)
 	}
 
 	var otherCipherSuites []uint16
@@ -1196,7 +1188,6 @@ func TestCipherSuites(t *testing.T) {
 	go srv.Start()
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1227,19 +1218,19 @@ func TestServerInterceptors(t *testing.T) {
 	// set up interceptors
 	usiCount := uint32(0)
 	ssiCount := uint32(0)
-	usi1 := func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	usi1 := func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		atomic.AddUint32(&usiCount, 1)
 		return handler(ctx, req)
 	}
-	usi2 := func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	usi2 := func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		atomic.AddUint32(&usiCount, 1)
 		return nil, status.Error(codes.Aborted, msg)
 	}
-	ssi1 := func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	ssi1 := func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		atomic.AddUint32(&ssiCount, 1)
 		return handler(srv, ss)
 	}
-	ssi2 := func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	ssi2 := func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		atomic.AddUint32(&ssiCount, 1)
 		return status.Error(codes.Aborted, msg)
 	}

@@ -330,7 +330,7 @@ var _ = Describe("Chain", func() {
 			It("starts proactive campaign", func() {
 				// assert that even tick supplied are less than ELECTION_TIMEOUT,
 				// a leader can still be successfully elected.
-				for i := 0; i < ELECTION_TICK; i++ {
+				for range ELECTION_TICK {
 					clock.Increment(interval)
 					time.Sleep(10 * time.Millisecond)
 				}
@@ -1179,7 +1179,7 @@ var _ = Describe("Chain", func() {
 							raftMetadata.RaftIndex = m.RaftIndex
 							c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters, cryptoProvider, nil, nil)
 							cnt := support.WriteBlockCallCount()
-							for i := 0; i < cnt; i++ {
+							for i := range cnt {
 								c.support.WriteBlock(support.WriteBlockArgsForCall(i))
 							}
 
@@ -1284,7 +1284,7 @@ var _ = Describe("Chain", func() {
 							raftMetadata.RaftIndex = m.RaftIndex
 							c1 := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters, cryptoProvider, nil, nil)
 							cnt := support.WriteBlockCallCount()
-							for i := 0; i < cnt; i++ {
+							for i := range cnt {
 								c1.support.WriteBlock(support.WriteBlockArgsForCall(i))
 							}
 							c1.cutter.SetCutNext(true)
@@ -2123,7 +2123,7 @@ var _ = Describe("Chain", func() {
 
 					By("Sending data blocks to leader")
 					numOfBlocks := 100
-					for i := 0; i < numOfBlocks; i++ {
+					for range numOfBlocks {
 						c1.cutter.SetCutNext(true)
 						err := c1.Order(env, 0)
 						Expect(err).NotTo(HaveOccurred())
@@ -2768,7 +2768,7 @@ var _ = Describe("Chain", func() {
 				network.disconnect(1)
 
 				c1.cutter.SetCutNext(true)
-				for i := 0; i < 3; i++ {
+				for range 3 {
 					Expect(c1.Order(env, 0)).To(Succeed())
 				}
 
@@ -3177,7 +3177,7 @@ var _ = Describe("Chain", func() {
 					network.connect(2)
 
 					// node 2 has not caught up with other nodes
-					for tick := 0; tick < 2*ELECTION_TICK-1; tick++ {
+					for range 2*ELECTION_TICK - 1 {
 						c2.clock.Increment(interval)
 						Consistently(c2.observe).ShouldNot(Receive(Equal(2)))
 					}
@@ -3202,7 +3202,7 @@ var _ = Describe("Chain", func() {
 
 					network.connect(2)
 
-					for tick := 0; tick < 2*ELECTION_TICK-1; tick++ {
+					for range 2*ELECTION_TICK - 1 {
 						c2.clock.Increment(interval)
 						Consistently(c2.observe).ShouldNot(Receive(Equal(2)))
 					}
@@ -3215,7 +3215,7 @@ var _ = Describe("Chain", func() {
 					network.disconnect(2)
 
 					c1.cutter.SetCutNext(true)
-					for i := 0; i < 10; i++ {
+					for range 10 {
 						err := c1.Order(env, 0)
 						Expect(err).NotTo(HaveOccurred())
 					}
@@ -3359,7 +3359,7 @@ func createMetadata(nodeCount int, tlsCA tlsgen.CA) *raftprotos.ConfigMetadata {
 		HeartbeatTick:     HEARTBEAT_TICK,
 		MaxInflightBlocks: 5,
 	}}
-	for i := 0; i < nodeCount; i++ {
+	for range nodeCount {
 		md.Consenters = append(md.Consenters, &raftprotos.Consenter{
 			Host:          "localhost",
 			Port:          7050,
@@ -4037,7 +4037,7 @@ type StateMatcher struct {
 	expect raft.StateType
 }
 
-func (stmatcher *StateMatcher) Match(actual interface{}) (success bool, err error) {
+func (stmatcher *StateMatcher) Match(actual any) (success bool, err error) {
 	state, ok := actual.(raft.SoftState)
 	if !ok {
 		return false, errors.Errorf("StateMatcher expects a raft SoftState")
@@ -4046,7 +4046,7 @@ func (stmatcher *StateMatcher) Match(actual interface{}) (success bool, err erro
 	return state.RaftState == stmatcher.expect, nil
 }
 
-func (stmatcher *StateMatcher) FailureMessage(actual interface{}) (message string) {
+func (stmatcher *StateMatcher) FailureMessage(actual any) (message string) {
 	state, ok := actual.(raft.SoftState)
 	if !ok {
 		return "StateMatcher expects a raft SoftState"
@@ -4055,7 +4055,7 @@ func (stmatcher *StateMatcher) FailureMessage(actual interface{}) (message strin
 	return fmt.Sprintf("Expected %s to be %s", state.RaftState, stmatcher.expect)
 }
 
-func (stmatcher *StateMatcher) NegatedFailureMessage(actual interface{}) (message string) {
+func (stmatcher *StateMatcher) NegatedFailureMessage(actual any) (message string) {
 	state, ok := actual.(raft.SoftState)
 	if !ok {
 		return "StateMatcher expects a raft SoftState"

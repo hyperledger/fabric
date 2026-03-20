@@ -163,7 +163,7 @@ func TestNewErrors(t *testing.T) {
 		})
 
 		_, err = New(dir, metricsProvider)
-		require.EqualError(t, err, fmt.Sprintf("error checking if dir [%s] is empty: lstat %s: permission denied", fileRepoDir, removeFile))
+		require.EqualError(t, err, fmt.Sprintf("error checking if dir [%s] is empty: fstatat %s: permission denied", fileRepoDir, fileRepoDir))
 	})
 
 	t.Run("removal fails", func(t *testing.T) {

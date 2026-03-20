@@ -846,7 +846,7 @@ func computeConsenterMappings(network *nwo.Network) []*common.Consenter {
 	return consenters
 }
 
-func CreateBroadcastEnvelope(n *nwo.Network, entity interface{}, channel string, data []byte) *common.Envelope {
+func CreateBroadcastEnvelope(n *nwo.Network, entity any, channel string, data []byte) *common.Envelope {
 	var signer *nwo.SigningIdentity
 	switch creator := entity.(type) {
 	case *nwo.Peer:

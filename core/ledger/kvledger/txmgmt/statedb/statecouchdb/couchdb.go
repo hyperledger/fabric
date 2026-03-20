@@ -616,7 +616,7 @@ func createAttachmentPart(couchDoc *couchDoc) (bytes.Buffer, string, error) {
 		fileAttachments[attachment.Name] = fileDetails{true, attachment.ContentType, len(attachment.AttachmentBytes)}
 	}
 
-	attachmentJSONMap := map[string]interface{}{
+	attachmentJSONMap := map[string]any{
 		"_attachments": fileAttachments,
 	}
 
@@ -624,7 +624,7 @@ func createAttachmentPart(couchDoc *couchDoc) (bytes.Buffer, string, error) {
 	if couchDoc.jsonValue != nil {
 
 		// create a generic map
-		genericMap := make(map[string]interface{})
+		genericMap := make(map[string]any)
 
 		// unmarshal the data into the generic map
 		decoder := json.NewDecoder(bytes.NewBuffer(couchDoc.jsonValue))
@@ -1330,7 +1330,7 @@ func (dbclient *couchDatabase) batchRetrieveDocumentMetadata(keys []string) ([]*
 	// we could set include_docs to false to optimize the response.
 	queryParms.Add("include_docs", "true")
 
-	keymap := make(map[string]interface{})
+	keymap := make(map[string]any)
 
 	keymap["keys"] = keys
 
@@ -1415,14 +1415,14 @@ func (dbclient *couchDatabase) batchUpdateDocuments(documents []*couchDoc) ([]*b
 		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.couchInstance.url())
 	}
 
-	documentMap := make(map[string]interface{})
+	documentMap := make(map[string]any)
 
-	var jsonDocumentMap []interface{}
+	var jsonDocumentMap []any
 
 	for _, jsonDocument := range documents {
 
 		// create a document map
-		document := make(map[string]interface{})
+		document := make(map[string]any)
 
 		// unmarshal the JSON component of the couchDoc into the document
 		err = json.Unmarshal(jsonDocument.jsonValue, &document)
@@ -1434,7 +1434,7 @@ func (dbclient *couchDatabase) batchUpdateDocuments(documents []*couchDoc) ([]*b
 		if len(jsonDocument.attachments) > 0 {
 
 			// create a file attachment map
-			fileAttachment := make(map[string]interface{})
+			fileAttachment := make(map[string]any)
 
 			// for each attachment, create a base64Attachment, name the attachment,
 			// add the content type and base64 encode the attachment
@@ -1757,7 +1757,7 @@ func invalidCouchDBReturn(resp *http.Response, errResp error) bool {
 
 // isJSON tests a string to determine if a valid JSON
 func isJSON(s string) bool {
-	var js map[string]interface{}
+	var js map[string]any
 	return json.Unmarshal([]byte(s), &js) == nil
 }
 

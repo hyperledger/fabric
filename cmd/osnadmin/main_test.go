@@ -1061,7 +1061,7 @@ var _ = Describe("osnadmin", func() {
 	})
 })
 
-func checkStatusOutput(output string, exit int, err error, expectedStatus int, expectedOutput interface{}) {
+func checkStatusOutput(output string, exit int, err error, expectedStatus int, expectedOutput any) {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(exit).To(Equal(0))
 	json, err := json.MarshalIndent(expectedOutput, "", "\t")
@@ -1069,7 +1069,7 @@ func checkStatusOutput(output string, exit int, err error, expectedStatus int, e
 	Expect(output).To(Equal(fmt.Sprintf("Status: %d\n%s\n", expectedStatus, string(json))))
 }
 
-func checkOutput(output string, exit int, err error, expectedOutput interface{}) {
+func checkOutput(output string, exit int, err error, expectedOutput any) {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(exit).To(Equal(0))
 	json, err := json.MarshalIndent(expectedOutput, "", "\t")

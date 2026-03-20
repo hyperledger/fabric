@@ -28,7 +28,7 @@ func TestDataKeyRange(t *testing.T) {
 	blockNum := uint64(20)
 	startKey, endKey := getDataKeysForRangeScanByBlockNum(blockNum)
 	var txNum uint64
-	for txNum = 0; txNum < 100; txNum++ {
+	for txNum = range uint64(100) {
 		keyOfBlock := encodeDataKey(
 			&dataKey{
 				nsCollBlk: nsCollBlk{ns: "ns", coll: "coll", blkNum: blockNum},
@@ -57,8 +57,7 @@ func TestDataKeyRange(t *testing.T) {
 func TestEligibleMissingDataRange(t *testing.T) {
 	blockNum := uint64(20)
 	startKey, endKey := eligibleMissingdatakeyRange(blockNum)
-	var txNum uint64
-	for txNum = 0; txNum < 100; txNum++ {
+	for range uint64(100) {
 		keyOfBlock := encodeElgPrioMissingDataKey(
 			&missingDataKey{
 				nsCollBlk: nsCollBlk{
@@ -94,7 +93,7 @@ func TestEligibleMissingDataRange(t *testing.T) {
 }
 
 func TestEncodeDecodeMissingdataKey(t *testing.T) {
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		testEncodeDecodeMissingdataKey(t, uint64(i))
 	}
 	testEncodeDecodeMissingdataKey(t, math.MaxUint64) // corner case
@@ -138,7 +137,7 @@ func testEncodeDecodeMissingdataKey(t *testing.T, blkNum uint64) {
 }
 
 func TestBasicEncodingDecoding(t *testing.T) {
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		value := encodeReverseOrderVarUint64(uint64(i))
 		nextValue := encodeReverseOrderVarUint64(uint64(i + 1))
 		if !(bytes.Compare(value, nextValue) > 0) {
@@ -154,13 +153,13 @@ func TestBasicEncodingDecoding(t *testing.T) {
 
 func TestDecodingAppendedValues(t *testing.T) {
 	appendedValues := []byte{}
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		appendedValues = append(appendedValues, encodeReverseOrderVarUint64(uint64(i))...)
 	}
 
 	len := 0
 	value := uint64(0)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		appendedValues = appendedValues[len:]
 		value, len = decodeReverseOrderVarUint64(appendedValues)
 		if value != uint64(i) {
@@ -171,7 +170,7 @@ func TestDecodingAppendedValues(t *testing.T) {
 
 func TestEncodingDecodingLastBlockInSnapshotVal(t *testing.T) {
 	t.Run("basic-coding-encoding", func(t *testing.T) {
-		for i := uint64(0); i < 100; i++ {
+		for i := range uint64(100) {
 			encoded := encodeLastBlockInBootSnapshotVal(i)
 			decoded, err := decodeLastBlockInBootSnapshotVal(encoded)
 			require.NoError(t, err)

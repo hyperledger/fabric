@@ -738,7 +738,7 @@ func newMonitorTestSetup(t *testing.T, numSources int) *monitorTestSetup {
 	}
 	s.fakeUpdatableBlockVerifier.CloneReturns(&fake.UpdatableBlockVerifier{})
 
-	for i := 0; i < numSources; i++ {
+	for i := range numSources {
 		s.sources = append(s.sources, &orderers.Endpoint{
 			Address:   fmt.Sprintf("orderer-address-%d", i),
 			RootCerts: [][]byte{{1, 2, 3, 4}},

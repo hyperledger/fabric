@@ -126,12 +126,12 @@ func TestSubmitSuccess(t *testing.T) {
 }
 
 type tuple struct {
-	msg interface{}
+	msg any
 	err error
 }
 
-func (t tuple) asArray() []interface{} {
-	return []interface{}{t.msg, t.err}
+func (t tuple) asArray() []any {
+	return []any{t.msg, t.err}
 }
 
 func TestSubmitFailure(t *testing.T) {

@@ -159,7 +159,7 @@ func TestJSONFileWriter(t *testing.T) {
 	// New field
 	err = jsonFileWriter.AddField("field1", "value1")
 	require.NoError(t, err)
-	var emptySlice []interface{}
+	var emptySlice []any
 	// New list
 	err = jsonFileWriter.AddField("field2", emptySlice)
 	require.NoError(t, err)

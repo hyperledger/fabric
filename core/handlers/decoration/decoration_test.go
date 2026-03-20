@@ -27,7 +27,7 @@ func TestApplyDecorations(t *testing.T) {
 	initialInput.Decorations[decorationKey] = seq
 
 	finalInput := Apply(nil, initialInput, decorators...)
-	for i := 0; i < iterations; i++ {
+	for i := range iterations {
 		require.Equal(t, uint32(i), decorators[i].(*mockDecorator).sequence,
 			"Expected decorators to be applied in the provided sequence")
 	}
@@ -38,7 +38,7 @@ func TestApplyDecorations(t *testing.T) {
 
 func createNDecorators(n int) []Decorator {
 	decorators := make([]Decorator, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		decorators[i] = &mockDecorator{}
 	}
 	return decorators
