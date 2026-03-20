@@ -36,19 +36,19 @@ func NewMembershipInfoProvider(mspID string, selfSignedData protoutil.SignedData
 
 // AmMemberOf checks whether the current peer is a member of the given collection config.
 // It is used when a chaincode is upgraded to see if the peer's org has become eligible after a collection change.
-func (m *MembershipProvider) AmMemberOf(channelName string, collectionPolicyConfig *peer.CollectionPolicyConfig) (bool, error) {
+func (m *MembershipProvider) AmMemberOf(channelName string, collectionPolicyConfig *peer.CollectionPolicyConfig) bool {
 	deserializer := m.IdentityDeserializerFactory(channelName)
 
 	// Do a simple check to see if the mspid matches any principal identities in the SignaturePolicy - FAB-17059
 	if collectionPolicyConfig.GetSignaturePolicy() == nil {
 		logger.Warningf("collection membership policy is nil")
-		return false, nil
+		return false
 	}
 
 	memberOrgs := getMemberOrgs(collectionPolicyConfig.GetSignaturePolicy().GetIdentities(), deserializer)
 
 	_, ok := memberOrgs[m.mspID]
-	return ok, nil
+	return ok
 }
 
 func (m *MembershipProvider) MyImplicitCollectionName() string {
