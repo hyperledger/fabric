@@ -231,7 +231,7 @@ func generateRecordsMap(records []*models.DiffRecord, outputDirPath string) (ckm
 		if err != nil {
 			return nil, err
 		}
-		var emptySlice []interface{}
+		var emptySlice []any
 		err = ofw.AddField("txs", emptySlice)
 		if err != nil {
 			return nil, err

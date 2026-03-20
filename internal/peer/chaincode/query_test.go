@@ -73,7 +73,7 @@ func TestQueryCmdEndorsementFailure(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		mockCF, err := getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus[i], ccRespPayload[i])
 		require.NoError(t, err, "Error getting mock chaincode command factory")
 

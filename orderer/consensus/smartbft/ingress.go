@@ -31,7 +31,7 @@ type ReceiverGetter interface {
 }
 
 type WarningLogger interface {
-	Warningf(template string, args ...interface{})
+	Warningf(template string, args ...any)
 }
 
 // Ingress dispatches Submit and Step requests to the designated per chain instances

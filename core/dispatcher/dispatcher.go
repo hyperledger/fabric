@@ -24,7 +24,7 @@ type Dispatcher struct {
 // if successful, marshals the output message to bytes and returns it.  On error, it simply returns
 // the error.  The method on the receiver must take a single parameter which is a concrete proto
 // message type and it should return a proto message and error.
-func (d *Dispatcher) Dispatch(inputBytes []byte, methodName string, receiver interface{}) ([]byte, error) {
+func (d *Dispatcher) Dispatch(inputBytes []byte, methodName string, receiver any) ([]byte, error) {
 	method := reflect.ValueOf(receiver).MethodByName(methodName)
 
 	if method == (reflect.Value{}) {
@@ -36,7 +36,7 @@ func (d *Dispatcher) Dispatch(inputBytes []byte, methodName string, receiver int
 	}
 
 	inputType := method.Type().In(0)
-	if inputType.Kind() != reflect.Ptr {
+	if inputType.Kind() != reflect.Pointer {
 		return nil, errors.Errorf("receiver %T.%s does not accept a pointer as its argument", receiver, methodName)
 	}
 

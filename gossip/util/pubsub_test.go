@@ -44,7 +44,7 @@ func TestNewPubsub(t *testing.T) {
 	// Have multiple subscribers subscribe to the same topic
 	subscriptions := []Subscription{}
 	n := 100
-	for i := 0; i < n; i++ {
+	for range n {
 		subscriptions = append(subscriptions, ps.Subscribe("test4", time.Second))
 	}
 	go func() {
@@ -61,7 +61,7 @@ func TestNewPubsub(t *testing.T) {
 		go func(s Subscription) {
 			time.Sleep(time.Second)
 			defer wg.Done()
-			for i := 0; i < subscriptionBuffSize; i++ {
+			for i := range subscriptionBuffSize {
 				item, err := s.Listen()
 				require.NoError(t, err)
 				require.Equal(t, 100+i, item)
@@ -76,7 +76,7 @@ func TestNewPubsub(t *testing.T) {
 	wg.Wait()
 
 	// Ensure subscriptions are cleaned after use
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		time.Sleep(time.Second)
 		ps.Lock()
 		empty := len(ps.subscriptions) == 0

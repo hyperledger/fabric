@@ -112,7 +112,7 @@ func TestGetAllMSPIDs(t *testing.T) {
 
 	// add some blocks and verify GetAllMSPIDs
 	block = configBlock
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		lastBlockNum++
 		block = newBlock([]*cb.Envelope{}, lastBlockNum, lastConfigBlockNum, protoutil.BlockHeaderHash(block.Header))
 		require.NoError(t, blkStore.AddBlock(block))
@@ -147,7 +147,7 @@ func TestGetAllMSPIDs(t *testing.T) {
 
 	// add some blocks and verify GetAllMSPIDs
 	block = configBlock
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		lastBlockNum++
 		block = newBlock([]*cb.Envelope{}, lastBlockNum, lastConfigBlockNum, protoutil.BlockHeaderHash(block.Header))
 		require.NoError(t, blkStore.AddBlock(block))

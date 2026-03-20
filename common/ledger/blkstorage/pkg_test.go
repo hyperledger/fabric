@@ -86,7 +86,7 @@ func (w *testBlockfileMgrWrapper) testGetBlockByHash(blocks []*common.Block) {
 }
 
 func (w *testBlockfileMgrWrapper) testGetBlockByNumber(blocks []*common.Block) {
-	for i := 0; i < len(blocks); i++ {
+	for i := range blocks {
 		b, err := w.blockfileMgr.retrieveBlockByNumber(blocks[0].Header.Number + uint64(i))
 		require.NoError(w.t, err, "Error while retrieving [%d]th block from blockfileMgr", i)
 		require.Equal(w.t, blocks[i], b)

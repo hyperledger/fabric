@@ -43,7 +43,7 @@ func testSnapshot(t *testing.T, env TestEnv) {
 	generateSampleData := func(namespaces ...string) []*statedb.VersionedKV {
 		sampleData := []*statedb.VersionedKV{}
 		for _, ns := range namespaces {
-			for i := 0; i < 5; i++ {
+			for i := range 5 {
 				sampleKV := &statedb.VersionedKV{
 					CompositeKey: &statedb.CompositeKey{
 						Namespace: ns,

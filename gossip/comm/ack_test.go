@@ -69,7 +69,7 @@ func TestAck(t *testing.T) {
 	comm4, port4 := newCommInstance(t, naiveSec)
 	defer comm4.Stop()
 
-	acceptData := func(o interface{}) bool {
+	acceptData := func(o any) bool {
 		m := o.(protoext.ReceivedMessage).GetGossipMessage()
 		return protoext.IsDataMsg(m.GossipMessage)
 	}

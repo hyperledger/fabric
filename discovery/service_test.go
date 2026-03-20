@@ -434,7 +434,7 @@ func TestValidateCCQuery(t *testing.T) {
 	require.Equal(t, "chaincode interest is nil", err.Error())
 }
 
-func wrapResult(responses ...interface{}) *discovery.Response {
+func wrapResult(responses ...any) *discovery.Response {
 	response := &discovery.Response{}
 	for _, res := range responses {
 		response.Results = append(response.Results, wrapQueryResult(res))
@@ -442,7 +442,7 @@ func wrapResult(responses ...interface{}) *discovery.Response {
 	return response
 }
 
-func wrapQueryResult(res interface{}) *discovery.QueryResult {
+func wrapQueryResult(res any) *discovery.QueryResult {
 	if err, isErr := res.(*discovery.Error); isErr {
 		return &discovery.QueryResult{
 			Result: &discovery.QueryResult_Error{

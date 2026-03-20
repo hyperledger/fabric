@@ -88,7 +88,7 @@ func testMsgTrace(handler func(dir string, msg *cb.Envelope) recvr, t *testing.T
 	require.Nil(t, err)
 
 	var fileData []byte
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		// Writing the trace file is deliberately non-blocking, wait up to a second, checking every 10 ms to see if the file now exists.
 		time.Sleep(10 * time.Millisecond)
 		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {

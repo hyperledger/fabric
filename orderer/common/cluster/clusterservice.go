@@ -239,7 +239,7 @@ func (s *ClusterService) initializeExpirationCheck(stream orderer.ClusterNodeSer
 		expiresAt:                        expiresAt,
 		endpoint:                         endpoint,
 		nodeName:                         nodeName,
-		alert: func(template string, args ...interface{}) {
+		alert: func(template string, args ...any) {
 			s.Logger.Warningf(template, args...)
 		},
 	}
@@ -273,7 +273,7 @@ func (c *ClusterService) ConfigureNodeCerts(channel string, newNodes []*common.C
 	}
 
 	// Iterate over existing streams and prune those that should not be there anymore
-	channelMembership.AuthorizedStreams.Range(func(streamID, nodeID interface{}) bool {
+	channelMembership.AuthorizedStreams.Range(func(streamID, nodeID any) bool {
 		if _, exists := channelMembership.MemberMapping[nodeID.(uint64)]; !exists {
 			channelMembership.AuthorizedStreams.Delete(streamID.(uint64))
 		}

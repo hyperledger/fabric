@@ -124,7 +124,7 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		/* Fill the ledger with blocks */
 		By("Filling ledger with blocks")
 
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			buff := make([]byte, 8)
 			binary.BigEndian.PutUint64(buff, uint64(i))
 
@@ -295,7 +295,7 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		Eventually(o4Proc.Wait(), network.EventuallyTimeout).Should(Receive())
 
 		By("Send 10 more blocks in network")
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			buff := make([]byte, 8)
 			binary.BigEndian.PutUint64(buff, uint64(i))
 

@@ -505,7 +505,11 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *protoext.SignedGossipMessage
 
 	d.lock.RLock()
 	_, known := d.id2Member[string(pkiID)]
+<<<<<<< fix-gossip-discovery-toctou-race
 	lastAliveTS, isAlive := d.aliveLastTS[string(pkiID)]
+=======
+	_, isAlive := d.aliveLastTS[string(pkiID)]
+>>>>>>> main
 	lastDeadTS, isDead := d.deadLastTS[string(pkiID)]
 	d.lock.RUnlock()
 
@@ -515,7 +519,8 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *protoext.SignedGossipMessage
 	}
 
 	if !isAlive && !isDead {
-		d.logger.Panicf("Member %s is known but not found neither in alive nor in dead lastTS maps, isAlive=%v, isDead=%v", m.GetAliveMsg().Membership.Endpoint, isAlive, isDead)
+		// Member was concurrently purged between checks, re-learn it
+		d.learnNewMembers([]*protoext.SignedGossipMessage{m}, []*protoext.SignedGossipMessage{})
 		return
 	}
 
@@ -1039,11 +1044,11 @@ type aliveMsgStore struct {
 
 func newAliveMsgStore(d *gossipDiscoveryImpl) *aliveMsgStore {
 	policy := protoext.NewGossipMessageComparator(0)
-	trigger := func(m interface{}) {}
+	trigger := func(m any) {}
 	aliveMsgTTL := d.aliveExpirationTimeout * time.Duration(d.msgExpirationFactor)
 	externalLock := func() { d.lock.Lock() }
 	externalUnlock := func() { d.lock.Unlock() }
-	callback := func(m interface{}) {
+	callback := func(m any) {
 		msg := m.(*protoext.SignedGossipMessage)
 		if !protoext.IsAliveMsg(msg.GossipMessage) {
 			return
@@ -1072,7 +1077,7 @@ func newAliveMsgStore(d *gossipDiscoveryImpl) *aliveMsgStore {
 	return s
 }
 
-func (s *aliveMsgStore) Add(msg interface{}) bool {
+func (s *aliveMsgStore) Add(msg any) bool {
 	m := msg.(*protoext.SignedGossipMessage)
 	if !protoext.IsAliveMsg(m.GossipMessage) {
 		panic(fmt.Sprint("Msg ", msg, " is not AliveMsg"))
@@ -1080,7 +1085,7 @@ func (s *aliveMsgStore) Add(msg interface{}) bool {
 	return s.MessageStore.Add(msg)
 }
 
-func (s *aliveMsgStore) CheckValid(msg interface{}) bool {
+func (s *aliveMsgStore) CheckValid(msg any) bool {
 	m := msg.(*protoext.SignedGossipMessage)
 	if !protoext.IsAliveMsg(m.GossipMessage) {
 		panic(fmt.Sprint("Msg ", msg, " is not AliveMsg"))

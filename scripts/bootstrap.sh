@@ -6,7 +6,7 @@
 #
 
 # if version not passed in, default to latest released version
-VERSION=2.5.14
+VERSION=2.5.15
 # if ca version not passed in, default to latest released version
 CA_VERSION=1.5.17
 
@@ -30,8 +30,8 @@ printHelp() {
     echo "-s : bypass fabric-samples repo clone"
     echo "-b : bypass download of platform-specific binaries"
     echo
-    echo "e.g. bootstrap.sh 2.5.14 1.5.17 -s"
-    echo "will download docker images and binaries for Fabric v2.5.14 and Fabric CA v1.5.17"
+    echo "e.g. bootstrap.sh 2.5.15 1.5.17 -s"
+    echo "will download docker images and binaries for Fabric v2.5.15 and Fabric CA v1.5.17"
 }
 
 # dockerPull() pulls docker images from fabric and chaincode repositories

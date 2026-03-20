@@ -49,7 +49,7 @@ func runReadWriteClientsForChain(chain *chainmgmt.Chain) {
 	numTxForChain := calculateShare(conf.txConf.numTotalTxs, conf.chainMgrConf.NumChains, int(chain.ID))
 	wg := &sync.WaitGroup{}
 	wg.Add(numClients)
-	for i := 0; i < numClients; i++ {
+	for i := range numClients {
 		numTxForClient := calculateShare(numTxForChain, numClients, i)
 		var seed [32]byte
 		_, _ = crand.Read(seed[:])

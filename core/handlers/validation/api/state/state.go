@@ -50,4 +50,4 @@ type ResultsIterator interface {
 }
 
 // QueryResult - a general interface for supporting different types of query results. Actual types differ for different queries
-type QueryResult interface{}
+type QueryResult any

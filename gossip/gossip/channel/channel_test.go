@@ -198,7 +198,7 @@ type gossipAdapterMock struct {
 	sync.RWMutex
 }
 
-func (ga *gossipAdapterMock) On(methodName string, arguments ...interface{}) *mock.Call {
+func (ga *gossipAdapterMock) On(methodName string, arguments ...any) *mock.Call {
 	ga.Lock()
 	defer ga.Unlock()
 	return ga.Mock.On(methodName, arguments...)
@@ -222,7 +222,7 @@ func (ga *gossipAdapterMock) Forward(msg protoext.ReceivedMessage) {
 	ga.Called(msg)
 }
 
-func (ga *gossipAdapterMock) DeMultiplex(msg interface{}) {
+func (ga *gossipAdapterMock) DeMultiplex(msg any) {
 	ga.Called(msg)
 }
 
@@ -1895,7 +1895,7 @@ func TestFilterForeignOrgLeadershipMessages(t *testing.T) {
 	cs := &cryptoService{}
 	adapter := &gossipAdapterMock{}
 
-	relayedLeadershipMsgs := make(chan interface{}, 2)
+	relayedLeadershipMsgs := make(chan any, 2)
 
 	adapter.On("GetOrgOfPeer", p1).Return(org1)
 	adapter.On("GetOrgOfPeer", p2).Return(org2)
@@ -2213,12 +2213,11 @@ func TestChangesInPeers(t *testing.T) {
 	}
 
 	for _, test := range cases {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			// channel for holding the output of report
 			chForString := make(chan string, 1)
 			// this is called as mt.report()
-			funcLogger := func(a ...interface{}) {
+			funcLogger := func(a ...any) {
 				chForString <- fmt.Sprint(a...)
 			}
 

@@ -189,13 +189,13 @@ func NewGossipStateProvider(
 	blockingMode bool,
 	config *StateConfig,
 ) GossipStateProvider {
-	gossipChan, _ := services.Accept(func(message interface{}) bool {
+	gossipChan, _ := services.Accept(func(message any) bool {
 		// Get only data messages
 		return protoext.IsDataMsg(message.(*proto.GossipMessage)) &&
 			bytes.Equal(message.(*proto.GossipMessage).Channel, []byte(chainID))
 	}, false)
 
-	remoteStateMsgFilter := func(message interface{}) bool {
+	remoteStateMsgFilter := func(message any) bool {
 		receivedMsg := message.(protoext.ReceivedMessage)
 		msg := receivedMsg.GetGossipMessage()
 		if !(protoext.IsRemoteStateMessage(msg.GossipMessage) || msg.GetPrivateData() != nil) {
@@ -364,6 +364,7 @@ func (s *GossipStateProviderImpl) privateDataMessage(msg protoext.ReceivedMessag
 	if err := s.ledger.StorePvtData(txID, txPvtRwSetWithConfig, pvtDataMsg.Payload.PrivateSimHeight); err != nil {
 		s.logger.Errorf("Wasn't able to persist private data for collection %s, due to %s", collectionName, err)
 		msg.Ack(err) // Sending NACK to indicate failure of storing collection
+		return
 	}
 
 	msg.Ack(nil)

@@ -49,13 +49,13 @@ type ConfigParser struct {
 	configFile  string
 
 	// parsed config
-	config map[string]interface{}
+	config map[string]any
 }
 
 // New creates a ConfigParser instance
 func New() *ConfigParser {
 	return &ConfigParser{
-		config: map[string]interface{}{},
+		config: map[string]any{},
 	}
 }
 
@@ -149,14 +149,14 @@ func (c *ConfigParser) getFromEnv(key string) string {
 // Prototype declaration for getFromEnv function.
 type envGetter func(key string) string
 
-func getKeysRecursively(base string, getenv envGetter, nodeKeys map[string]interface{}, oType reflect.Type) map[string]interface{} {
+func getKeysRecursively(base string, getenv envGetter, nodeKeys map[string]any, oType reflect.Type) map[string]any {
 	subTypes := map[string]reflect.Type{}
 
 	if oType != nil && oType.Kind() == reflect.Struct {
 	outer:
-		for i := 0; i < oType.NumField(); i++ {
-			fieldName := oType.Field(i).Name
-			fieldType := oType.Field(i).Type
+		for field := range oType.Fields() {
+			fieldName := field.Name
+			fieldType := field.Type
 
 			for key := range nodeKeys {
 				if strings.EqualFold(fieldName, key) {
@@ -170,7 +170,7 @@ func getKeysRecursively(base string, getenv envGetter, nodeKeys map[string]inter
 		}
 	}
 
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 	for key, val := range nodeKeys {
 		fqKey := base + key
 
@@ -180,17 +180,17 @@ func getKeysRecursively(base string, getenv envGetter, nodeKeys map[string]inter
 		}
 
 		switch val := val.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			logger.Debugf("Found map[string]interface{} value for %s", fqKey)
 			result[key] = getKeysRecursively(fqKey+".", getenv, val, subTypes[key])
 
-		case map[interface{}]interface{}:
+		case map[any]any:
 			logger.Debugf("Found map[interface{}]interface{} value for %s", fqKey)
 			result[key] = getKeysRecursively(fqKey+".", getenv, toMapStringInterface(val), subTypes[key])
 
 		case nil:
 			if override := getenv(fqKey + ".File"); override != "" {
-				result[key] = map[string]interface{}{"File": override}
+				result[key] = map[string]any{"File": override}
 			}
 
 		default:
@@ -200,8 +200,8 @@ func getKeysRecursively(base string, getenv envGetter, nodeKeys map[string]inter
 	return result
 }
 
-func toMapStringInterface(m map[interface{}]interface{}) map[string]interface{} {
-	result := map[string]interface{}{}
+func toMapStringInterface(m map[any]any) map[string]any {
+	result := map[string]any{}
 	for k, v := range m {
 		k, ok := k.(string)
 		if !ok {
@@ -214,7 +214,7 @@ func toMapStringInterface(m map[interface{}]interface{}) map[string]interface{} 
 
 // customDecodeHook parses strings of the format "[thing1, thing2, thing3]"
 // into string slices. Note that whitespace around slice elements is removed.
-func customDecodeHook(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+func customDecodeHook(f reflect.Type, t reflect.Type, data any) (any, error) {
 	if f.Kind() != reflect.String {
 		return data, nil
 	}
@@ -232,7 +232,7 @@ func customDecodeHook(f reflect.Type, t reflect.Type, data interface{}) (interfa
 	return data, nil
 }
 
-func byteSizeDecodeHook(f reflect.Kind, t reflect.Kind, data interface{}) (interface{}, error) {
+func byteSizeDecodeHook(f reflect.Kind, t reflect.Kind, data any) (any, error) {
 	if f != reflect.String || t != reflect.Uint32 {
 		return data, nil
 	}
@@ -265,7 +265,7 @@ func byteSizeDecodeHook(f reflect.Kind, t reflect.Kind, data interface{}) (inter
 	return data, nil
 }
 
-func stringFromFileDecodeHook(f reflect.Kind, t reflect.Kind, data interface{}) (interface{}, error) {
+func stringFromFileDecodeHook(f reflect.Kind, t reflect.Kind, data any) (any, error) {
 	// "to" type should be string
 	if t != reflect.String {
 		return data, nil
@@ -279,7 +279,7 @@ func stringFromFileDecodeHook(f reflect.Kind, t reflect.Kind, data interface{}) 
 	case reflect.String:
 		return data, nil
 	case reflect.Map:
-		d := data.(map[string]interface{})
+		d := data.(map[string]any)
 		fileName, ok := d["File"]
 		if !ok {
 			fileName, ok = d["file"]
@@ -299,7 +299,7 @@ func stringFromFileDecodeHook(f reflect.Kind, t reflect.Kind, data interface{}) 
 	return data, nil
 }
 
-func pemBlocksFromFileDecodeHook(f reflect.Kind, t reflect.Kind, data interface{}) (interface{}, error) {
+func pemBlocksFromFileDecodeHook(f reflect.Kind, t reflect.Kind, data any) (any, error) {
 	// "to" type should be string
 	if t != reflect.Slice {
 		return data, nil
@@ -321,8 +321,8 @@ func pemBlocksFromFileDecodeHook(f reflect.Kind, t reflect.Kind, data interface{
 			if !ok {
 				fileName, ok = d["file"]
 			}
-		case map[string]interface{}:
-			var fileI interface{}
+		case map[string]any:
+			var fileI any
 			fileI, ok = d["File"]
 			if !ok {
 				fileI = d["file"]
@@ -357,7 +357,7 @@ func pemBlocksFromFileDecodeHook(f reflect.Kind, t reflect.Kind, data interface{
 	return data, nil
 }
 
-func bccspHook(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+func bccspHook(f reflect.Type, t reflect.Type, data any) (any, error) {
 	if t != reflect.TypeFor[*factory.FactoryOpts]() {
 		return data, nil
 	}
@@ -375,9 +375,9 @@ func bccspHook(f reflect.Type, t reflect.Type, data interface{}) (interface{}, e
 // EnhancedExactUnmarshal is intended to unmarshal a config file into a structure
 // producing error when extraneous variables are introduced and supporting
 // the time.Duration type
-func (c *ConfigParser) EnhancedExactUnmarshal(output interface{}) error {
+func (c *ConfigParser) EnhancedExactUnmarshal(output any) error {
 	oType := reflect.TypeOf(output)
-	if oType.Kind() != reflect.Ptr {
+	if oType.Kind() != reflect.Pointer {
 		return errors.Errorf("supplied output argument must be a pointer to a struct but is not pointer")
 	}
 	eType := oType.Elem()
@@ -412,8 +412,8 @@ func (c *ConfigParser) EnhancedExactUnmarshal(output interface{}) error {
 }
 
 // YamlStringToStructHook is a hook for viper(viper.Unmarshal(*,*, here)), it is able to parse a string of minified yaml into a slice of structs
-func YamlStringToStructHook(m interface{}) func(rf reflect.Kind, rt reflect.Kind, data interface{}) (interface{}, error) {
-	return func(rf reflect.Kind, rt reflect.Kind, data interface{}) (interface{}, error) {
+func YamlStringToStructHook(m any) func(rf reflect.Kind, rt reflect.Kind, data any) (any, error) {
+	return func(rf reflect.Kind, rt reflect.Kind, data any) (any, error) {
 		if rf != reflect.String || rt != reflect.Slice {
 			return data, nil
 		}

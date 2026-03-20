@@ -65,7 +65,7 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 	})
 
 	t.Run("upgraded-v11-data-can-be-retrieved", func(t *testing.T) {
-		for blk := 0; blk < 10; blk++ {
+		for blk := range 10 {
 			checkDataNotExists(t, s, blk)
 		}
 

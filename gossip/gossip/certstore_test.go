@@ -231,7 +231,7 @@ func TestCertExpiration(t *testing.T) {
 	identities2Detect := 3
 	// Make the channel bigger than needed so goroutines won't get stuck
 	identitiesGotViaPull := make(chan struct{}, identities2Detect+100)
-	acceptIdentityPullMsgs := func(o interface{}) bool {
+	acceptIdentityPullMsgs := func(o any) bool {
 		m := o.(protoext.ReceivedMessage).GetGossipMessage()
 		if protoext.IsPullMsg(m.GossipMessage) && protoext.IsDigestMsg(m.GossipMessage) {
 			for _, dig := range m.GetDataDig().Digests {
@@ -243,7 +243,7 @@ func TestCertExpiration(t *testing.T) {
 		return false
 	}
 	g1.Accept(acceptIdentityPullMsgs, true)
-	for i := 0; i < identities2Detect; i++ {
+	for range identities2Detect {
 		select {
 		case <-identitiesGotViaPull:
 		case <-time.After(time.Second * 15):

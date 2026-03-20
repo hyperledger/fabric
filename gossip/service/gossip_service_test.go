@@ -171,7 +171,7 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		peerIndexes[i] = i
 	}
 	addPeersToChannel(channelName, gossips, peerIndexes)
@@ -183,7 +183,7 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 	store := newTransientStore(t)
 	defer store.tearDown()
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		deliverServiceFactory := &mockDeliverServiceFactory{
 			service: &mockDeliverService{},
 		}
@@ -203,7 +203,7 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 	require.True(t, waitForLeaderElection(services, time.Second*30, time.Second*2), "One leader should be selected")
 
 	startsNum := 0
-	for i := 0; i < n; i++ {
+	for i := range n {
 		// Is mockDeliverService.StartDeliverForChannel in current peer for the specific channel was invoked
 		if gossips[i].deliveryService[channelName].(*mockDeliverService).running {
 			startsNum++
@@ -234,7 +234,7 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	gossips := startPeers(serviceConfig, n, 0, 1)
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		peerIndexes[i] = i
 	}
 	addPeersToChannel(channelName, gossips, peerIndexes)
@@ -248,7 +248,7 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 		service: &mockDeliverService{},
 	}
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		gossips[i].deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running = false
 		gossips[i].InitializeChannel(channelName, nil, store.Store, Support{
@@ -256,20 +256,20 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 		}, nil, nil)
 	}
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		require.NotNil(t, gossips[i].deliveryService[channelName], "Delivery service for channel %s not initiated in peer %d", channelName, i)
 		require.True(t, gossips[i].deliveryService[channelName].(*mockDeliverService).running, "Block deliverer not started for peer %d", i)
 	}
 
 	channelName = "chanB"
-	for i := 0; i < n; i++ {
+	for i := range n {
 		deliverServiceFactory.service.running = false
 		gossips[i].InitializeChannel(channelName, nil, store.Store, Support{
 			Committer: &mockLedgerInfo{1},
 		}, nil, nil)
 	}
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		require.NotNil(t, gossips[i].deliveryService[channelName], "Delivery service for channel %s not initiated in peer %d", channelName, i)
 		require.True(t, gossips[i].deliveryService[channelName].(*mockDeliverService).running, "Block deliverer not started for peer %d", i)
 	}
@@ -291,7 +291,7 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		peerIndexes[i] = i
 	}
 	addPeersToChannel(channelName, gossips, peerIndexes)
@@ -305,7 +305,7 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 		service: &mockDeliverService{},
 	}
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		gossips[i].deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running = false
 		gossips[i].InitializeChannel(channelName, nil, store.Store, Support{
@@ -313,7 +313,7 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 		}, nil, nil)
 	}
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		require.NotNil(t, gossips[i].deliveryService[channelName], "Delivery service for channel %s not initiated in peer %d", channelName, i)
 		require.False(t, gossips[i].deliveryService[channelName].(*mockDeliverService).running, "Block deliverer should not be started for peer %d", i)
 	}
@@ -335,7 +335,7 @@ func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		peerIndexes[i] = i
 	}
 
@@ -350,7 +350,7 @@ func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
 		service: &mockDeliverService{},
 	}
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		gossips[i].deliveryFactory = deliverServiceFactory
 		require.Panics(t, func() {
 			gossips[i].InitializeChannel(channelName, nil, store.Store, Support{
@@ -467,7 +467,7 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	// Joining all peers to first channel
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		peerIndexes[i] = i
 	}
 	addPeersToChannel(channelName, gossips, peerIndexes)
@@ -481,7 +481,7 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 
 	electionMetrics := gossipmetrics.NewGossipMetrics(&disabled.Provider{}).ElectionMetrics
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		es := &electionService{nil, false, 0}
 		services[i] = es
 		services[i].LeaderElectionService = gossips[i].newLeaderElectionComponent(channelName, es.callback, electionMetrics)
@@ -492,7 +492,7 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	require.True(t, waitForLeaderElection(services, time.Second*30, time.Second*2), "One leader should be selected")
 
 	startsNum := 0
-	for i := 0; i < n; i++ {
+	for i := range n {
 		// Is callback function was invoked by this leader election service instance
 		if services[i].callbackInvokeRes {
 			startsNum++
@@ -525,7 +525,7 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	require.True(t, waitForLeaderElection(services, time.Second*30, time.Second*2), "One leader should be selected for chanA")
 
 	startsNum = 0
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if services[i].callbackInvokeRes {
 			startsNum++
 		}
@@ -533,7 +533,7 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	require.Equal(t, 1, startsNum, "Only for one peer callback function should be called - chanA")
 
 	startsNum = 0
-	for i := 0; i < len(secondChannelServices); i++ {
+	for i := range secondChannelServices {
 		if secondChannelServices[i].callbackInvokeRes {
 			startsNum++
 		}
@@ -684,7 +684,7 @@ func startPeers(serviceConfig *ServiceConfig, n int, boot ...int) []*gossipGRPC 
 	var certs []*gossipcommon.TLSCertificates
 	var secDialOpts []api.PeerSecureDialOpts
 
-	for i := 0; i < n; i++ {
+	for range n {
 		port, grpc, cert, secDialOpt, _ := util.CreateGRPCLayer()
 		ports = append(ports, port)
 		grpcs = append(grpcs, grpc)
@@ -698,7 +698,7 @@ func startPeers(serviceConfig *ServiceConfig, n int, boot ...int) []*gossipGRPC 
 	}
 
 	peers := make([]*gossipGRPC, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		peers[i] = newGossipInstance(serviceConfig, ports[i], i, grpcs[i], certs[i], secDialOpts[i], 100, bootPorts...)
 	}
 

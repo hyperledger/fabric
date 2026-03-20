@@ -23,7 +23,7 @@ type UnaryMetrics struct {
 }
 
 func UnaryServerInterceptor(um *UnaryMetrics) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		service, method := serviceMethod(info.FullMethod)
 		um.RequestsReceived.With("service", service, "method", method).Add(1)
 
@@ -50,7 +50,7 @@ type StreamMetrics struct {
 }
 
 func StreamServerInterceptor(sm *StreamMetrics) grpc.StreamServerInterceptor {
-	return func(svc interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	return func(svc any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		sm := sm
 		service, method := serviceMethod(info.FullMethod)
 		sm.RequestsReceived.With("service", service, "method", method).Add(1)
@@ -90,12 +90,12 @@ type serverStream struct {
 	messagesReceived metrics.Counter
 }
 
-func (ss *serverStream) SendMsg(msg interface{}) error {
+func (ss *serverStream) SendMsg(msg any) error {
 	ss.messagesSent.Add(1)
 	return ss.ServerStream.SendMsg(msg)
 }
 
-func (ss *serverStream) RecvMsg(msg interface{}) error {
+func (ss *serverStream) RecvMsg(msg any) error {
 	err := ss.ServerStream.RecvMsg(msg)
 	if err == nil {
 		ss.messagesReceived.Add(1)

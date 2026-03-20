@@ -273,7 +273,7 @@ func (c *BFTChain) pruneCommittedRequests(block *cb.Block) {
 
 	var workers []*worker
 
-	for i := 0; i < workerNum; i++ {
+	for i := range workerNum {
 		workers = append(workers, &worker{
 			id:        i,
 			work:      block.Data.Data,

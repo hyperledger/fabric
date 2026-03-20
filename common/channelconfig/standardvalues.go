@@ -15,7 +15,7 @@ import (
 )
 
 // DeserializeProtoValuesFromGroup deserializes the value for all values in a config group
-func DeserializeProtoValuesFromGroup(group *cb.ConfigGroup, protosStructs ...interface{}) error {
+func DeserializeProtoValuesFromGroup(group *cb.ConfigGroup, protosStructs ...any) error {
 	sv, err := NewStandardValues(protosStructs...)
 	if err != nil {
 		logger.Panicf("This is a compile time bug only, the proto structures are somehow invalid: %s", err)
@@ -38,7 +38,7 @@ type StandardValues struct {
 // the same condition.  NewStandard values will instantiate memory for all the proto
 // messages and build a lookup map from structure field name to proto message instance
 // This is a useful way to easily implement the Values interface
-func NewStandardValues(protosStructs ...interface{}) (*StandardValues, error) {
+func NewStandardValues(protosStructs ...any) (*StandardValues, error) {
 	sv := &StandardValues{
 		lookup: make(map[string]proto.Message),
 	}
@@ -72,7 +72,7 @@ func (sv *StandardValues) Deserialize(key string, value []byte) (proto.Message, 
 
 func (sv *StandardValues) initializeProtosStruct(objValue reflect.Value) error {
 	objType := objValue.Type()
-	if objType.Kind() != reflect.Ptr {
+	if objType.Kind() != reflect.Pointer {
 		return fmt.Errorf("Non pointer type")
 	}
 	if objType.Elem().Kind() != reflect.Struct {
@@ -80,11 +80,11 @@ func (sv *StandardValues) initializeProtosStruct(objValue reflect.Value) error {
 	}
 
 	numFields := objValue.Elem().NumField()
-	for i := 0; i < numFields; i++ {
+	for i := range numFields {
 		structField := objType.Elem().Field(i)
 		logger.Debugf("Processing field: %s\n", structField.Name)
 		switch structField.Type.Kind() {
-		case reflect.Ptr:
+		case reflect.Pointer:
 			fieldPtr := objValue.Elem().Field(i)
 			if !fieldPtr.CanSet() {
 				return fmt.Errorf("Cannot set structure field %s (unexported?)", structField.Name)

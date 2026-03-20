@@ -455,7 +455,7 @@ func testBlockfileMgrSimulateCrashAtFirstBlockInFile(t *testing.T, deleteBlkfile
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	blockfileMgr := blkfileMgrWrapper.blockfileMgr
 	blocks := testutil.ConstructTestBlocks(t, 10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		fmt.Printf("blocks[i].Header.Number = %d\n", blocks[i].Header.Number)
 	}
 	blkfileMgrWrapper.addBlocks(blocks[:5])

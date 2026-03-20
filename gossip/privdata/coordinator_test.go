@@ -112,7 +112,7 @@ func (fc *fetchCall) expectingDigests(digests []privdatacommon.DigKey) *fetchCal
 	return fc
 }
 
-func (fc *fetchCall) Return(returnArguments ...interface{}) *mock.Call {
+func (fc *fetchCall) Return(returnArguments ...any) *mock.Call {
 	return fc.Call.Return(returnArguments...)
 }
 
@@ -123,7 +123,7 @@ type fetcherMock struct {
 	expectedEndorsers map[string]struct{}
 }
 
-func (f *fetcherMock) On(methodName string, arguments ...interface{}) *fetchCall {
+func (f *fetcherMock) On(methodName string, arguments ...any) *fetchCall {
 	return &fetchCall{
 		fetcher: f,
 		Call:    f.Mock.On(methodName, arguments...),
@@ -131,7 +131,7 @@ func (f *fetcherMock) On(methodName string, arguments ...interface{}) *fetchCall
 }
 
 func (f *fetcherMock) fetch(dig2src dig2sources) (*privdatacommon.FetchedPvtDataContainer, error) {
-	uniqueEndorsements := make(map[string]interface{})
+	uniqueEndorsements := make(map[string]any)
 	for _, endorsements := range dig2src {
 		for _, endorsement := range endorsements {
 			_, exists := f.expectedEndorsers[string(endorsement.Endorser)]
@@ -1647,7 +1647,7 @@ func TestPurgeBelowHeight(t *testing.T) {
 	defer store.tearDown()
 
 	// store 9 data sets initially
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		txID := fmt.Sprintf("tx%d", i+1)
 		store.Persist(txID, uint64(i), &tspb.TxPvtReadWriteSetWithConfigInfo{
 			PvtRwset: &rwset.TxPvtReadWriteSet{

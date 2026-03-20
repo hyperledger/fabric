@@ -13,7 +13,7 @@ import (
 
 // Flatten performs a depth-first serialization of a struct to a slice of
 // strings. Each string will be formatted at 'path.to.leaf = value'.
-func Flatten(i interface{}) []string {
+func Flatten(i any) []string {
 	var res []string
 	flatten("", &res, reflect.ValueOf(i))
 	return res
@@ -48,7 +48,7 @@ func flatten(k string, m *[]string, v reflect.Value) {
 	}
 
 	switch v.Kind() {
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if v.IsNil() {
 			*m = append(*m, fmt.Sprintf("%s =", k))
 			return

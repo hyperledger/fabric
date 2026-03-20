@@ -532,7 +532,7 @@ func TestClient(t *testing.T) {
 		acceptablePeers := []string{"p1", "p9", "p3", "p5", "p6", "p7", "p10", "p11", "p12", "p14", "p15"}
 		used := make(map[string]struct{})
 
-		for i := 0; i < 90; i++ {
+		for range 90 {
 			endorsers, err := mychannel.Endorsers(ccCall("mycc3"), &ledgerHeightFilter{threshold: threshold})
 			require.NoError(t, err)
 			names := getNames(endorsers)

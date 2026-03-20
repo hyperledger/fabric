@@ -374,7 +374,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 
 		require.Equal(t, 10, ledgerResources.AppendCallCount())
 		require.Equal(t, uint64(10), ledgerResources.Height())
-		for i := uint64(0); i < joinNum; i++ {
+		for i := range joinNum {
 			require.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
 		}
 		require.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
@@ -783,7 +783,7 @@ func TestFollowerPullPastJoin(t *testing.T) {
 	})
 	t.Run("Configs in the middle, latest height increasing", func(t *testing.T) {
 		setup()
-		for i := uint64(0); i < 6; i++ {
+		for i := range uint64(6) {
 			localBlockchain.Append(remoteBlockchain.Block(i))
 		}
 

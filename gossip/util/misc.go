@@ -27,12 +27,12 @@ func init() { // do we really need this?
 }
 
 // Equals returns whether a and b are the same
-type Equals func(a interface{}, b interface{}) bool
+type Equals func(a any, b any) bool
 
 var viperLock sync.RWMutex
 
 // IndexInSlice returns the index of given object o in array, and -1 if it is not in array.
-func IndexInSlice(array interface{}, o interface{}, equals Equals) int {
+func IndexInSlice(array any, o any, equals Equals) int {
 	arr := reflect.ValueOf(array)
 	for i := 0; i < arr.Len(); i++ {
 		if equals(arr.Index(i).Interface(), o) {
@@ -56,24 +56,24 @@ func GetRandomIndices(indiceCount, highestIndex int) []int {
 // Set is a generic and thread-safe
 // set container
 type Set struct {
-	items map[interface{}]struct{}
+	items map[any]struct{}
 	lock  *sync.RWMutex
 }
 
 // NewSet returns a new set
 func NewSet() *Set {
-	return &Set{lock: &sync.RWMutex{}, items: make(map[interface{}]struct{})}
+	return &Set{lock: &sync.RWMutex{}, items: make(map[any]struct{})}
 }
 
 // Add adds given item to the set
-func (s *Set) Add(item interface{}) {
+func (s *Set) Add(item any) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	s.items[item] = struct{}{}
 }
 
 // Exists returns true whether given item is in the set
-func (s *Set) Exists(item interface{}) bool {
+func (s *Set) Exists(item any) bool {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	_, exists := s.items[item]
@@ -89,10 +89,10 @@ func (s *Set) Size() int {
 
 // ToArray returns a slice with items
 // at the point in time the method was invoked
-func (s *Set) ToArray() []interface{} {
+func (s *Set) ToArray() []any {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	a := make([]interface{}, len(s.items))
+	a := make([]any, len(s.items))
 	i := 0
 	for item := range s.items {
 		a[i] = item
@@ -105,11 +105,11 @@ func (s *Set) ToArray() []interface{} {
 func (s *Set) Clear() {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	s.items = make(map[interface{}]struct{})
+	s.items = make(map[any]struct{})
 }
 
 // Remove removes a given item from the set
-func (s *Set) Remove(item interface{}) {
+func (s *Set) Remove(item any) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	delete(s.items, item)
@@ -160,7 +160,7 @@ func GetDurationOrDefault(key string, defVal time.Duration) time.Duration {
 }
 
 // SetVal stores key value to viper
-func SetVal(key string, val interface{}) {
+func SetVal(key string, val any) {
 	viperLock.Lock()
 	defer viperLock.Unlock()
 	viper.Set(key, val)

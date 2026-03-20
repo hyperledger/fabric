@@ -93,27 +93,27 @@ type OrganizationConfig struct {
 // OrdererConfig defines an orderer configuration
 // not currently used by CLI
 type OrdererConfig struct {
-	URL         string                 `yaml:"url"`
-	GrpcOptions map[string]interface{} `yaml:"grpcOptions"`
-	TLSCACerts  TLSConfig              `yaml:"tlsCACerts"`
+	URL         string         `yaml:"url"`
+	GrpcOptions map[string]any `yaml:"grpcOptions"`
+	TLSCACerts  TLSConfig      `yaml:"tlsCACerts"`
 }
 
 // PeerConfig defines a peer configuration
 type PeerConfig struct {
-	URL         string                 `yaml:"url"`
-	EventURL    string                 `yaml:"eventUrl"`
-	GRPCOptions map[string]interface{} `yaml:"grpcOptions"`
-	TLSCACerts  TLSConfig              `yaml:"tlsCACerts"`
+	URL         string         `yaml:"url"`
+	EventURL    string         `yaml:"eventUrl"`
+	GRPCOptions map[string]any `yaml:"grpcOptions"`
+	TLSCACerts  TLSConfig      `yaml:"tlsCACerts"`
 }
 
 // CAConfig defines a CA configuration
 // not currently used by CLI
 type CAConfig struct {
-	URL         string                 `yaml:"url"`
-	HTTPOptions map[string]interface{} `yaml:"httpOptions"`
-	TLSCACerts  MutualTLSConfig        `yaml:"tlsCACerts"`
-	Registrar   EnrollCredentials      `yaml:"registrar"`
-	CaName      string                 `yaml:"caName"`
+	URL         string            `yaml:"url"`
+	HTTPOptions map[string]any    `yaml:"httpOptions"`
+	TLSCACerts  MutualTLSConfig   `yaml:"tlsCACerts"`
+	Registrar   EnrollCredentials `yaml:"registrar"`
+	CaName      string            `yaml:"caName"`
 }
 
 // EnrollCredentials holds credentials used for enrollment

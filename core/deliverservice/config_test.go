@@ -10,10 +10,12 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/hyperledger/fabric/core/deliverservice"
+	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -154,6 +156,37 @@ func TestLoadOverridesMap(t *testing.T) {
                 `
 
 		viper.Reset()
+		viper.SetConfigType("yaml")
+		err := viper.ReadConfig(bytes.NewBuffer([]byte(config)))
+		require.NoError(t, err)
+		res, err := deliverservice.LoadOverridesMap()
+		require.NoError(t, err)
+		require.Len(t, res, 2)
+		ep1, ok := res["addressFrom1"]
+		require.True(t, ok)
+		require.Equal(t, "addressTo1", ep1.Address)
+		ep2, ok := res["addressFrom2"]
+		require.True(t, ok)
+		require.Equal(t, "addressTo2", ep2.Address)
+	})
+
+	t.Run("GreenPath With Env", func(t *testing.T) {
+		t.Setenv("CORE_PEER_DELIVERYCLIENT_ADDRESSOVERRIDES", "[{from: addressFrom1, to: addressTo1, caCertsFile: testdata/cert.pem}"+
+			", {from: addressFrom2, to: addressTo2, caCertsFile: testdata/cert.pem}]")
+		config := `
+                  peer:
+                    deliveryclient:
+                      addressOverrides:
+                `
+
+		viper.Reset()
+
+		viper.SetEnvPrefix(common.CmdRoot)
+		viper.AllowEmptyEnv(true)
+		viper.AutomaticEnv()
+		replacer := strings.NewReplacer(".", "_")
+		viper.SetEnvKeyReplacer(replacer)
+
 		viper.SetConfigType("yaml")
 		err := viper.ReadConfig(bytes.NewBuffer([]byte(config)))
 		require.NoError(t, err)

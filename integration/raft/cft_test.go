@@ -160,7 +160,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			envs := make(chan *common.Envelope, 5000)
 
 			// Create 5000 envelopes to send to the orderer at the same time
-			for i := 0; i < 5000; i++ {
+			for i := range 5000 {
 				envs <- ordererclient.CreateBroadcastEnvelope(network, orderer, "testchannel", fmt.Appendf(nil, "%d", i))
 			}
 
@@ -183,7 +183,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			envs = make(chan *common.Envelope, 5000)
 
 			// Create 5000 envelopes to send to the orderer at the same time
-			for i := 0; i < 5000; i++ {
+			for i := range 5000 {
 				envs <- ordererclient.CreateBroadcastEnvelope(network, orderer, "testchannel", fmt.Appendf(nil, "%d", i))
 			}
 
@@ -1096,7 +1096,7 @@ func measureTPS(txNum int, network *nwo.Network, orderer *nwo.Orderer, envs chan
 	var wg sync.WaitGroup
 	wg.Add(50)
 
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		go func() {
 			defer bcastWG.Done()
 			conn := network.NewClientConn(

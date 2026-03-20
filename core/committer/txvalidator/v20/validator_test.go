@@ -488,7 +488,7 @@ func TestParallelValidation(t *testing.T) {
 		SerializedID: []byte("signer1"),
 		MspID:        "Org2",
 	}
-	for txNum := 0; txNum < txCnt; txNum++ {
+	for txNum := range txCnt {
 		var sig msp.SigningIdentity
 		// create rwset for the tx - KVS key depends on the txnum
 		key := strconv.Itoa(txNum % 10)

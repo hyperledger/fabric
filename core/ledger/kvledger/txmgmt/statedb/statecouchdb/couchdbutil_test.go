@@ -195,7 +195,7 @@ func TestDropApplicationDBs(t *testing.T) {
 	require.NoError(t, err, "Error when trying to create couch instance")
 
 	numCouchdbs := 10
-	for i := 0; i < numCouchdbs; i++ {
+	for i := range numCouchdbs {
 		db, err := createCouchDatabase(couchInstance, fmt.Sprintf("%s_%d", database, i))
 		require.NoErrorf(t, err, "Error when trying to create database %s", db.dbName)
 	}

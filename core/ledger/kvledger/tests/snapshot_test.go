@@ -228,7 +228,7 @@ func TestSnapshotGenerationAndBootstrap(t *testing.T) {
 
 	// commit two random blocks and pvtdata committed in block-3 for collection-2 should expire
 	// this verifyies that the expiry entries were created during bootstrap
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		testLedger.simulateDataTx("", func(s *simulator) {
 			s.setState("myChaincode", "random-key", "random-val")
 		})

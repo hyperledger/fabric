@@ -75,7 +75,7 @@ func applyOptions(opts ...Option) *options {
 func UnaryServerInterceptor(logger *zap.Logger, opts ...Option) grpc.UnaryServerInterceptor {
 	o := applyOptions(opts...)
 
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		logger := logger
 		startTime := time.Now()
 
@@ -111,7 +111,7 @@ func UnaryServerInterceptor(logger *zap.Logger, opts ...Option) grpc.UnaryServer
 func StreamServerInterceptor(logger *zap.Logger, opts ...Option) grpc.StreamServerInterceptor {
 	o := applyOptions(opts...)
 
-	return func(service interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	return func(service any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		logger := logger
 		ctx := stream.Context()
 		startTime := time.Now()
@@ -171,14 +171,14 @@ func (ss *serverStream) Context() context.Context {
 	return ss.context
 }
 
-func (ss *serverStream) SendMsg(msg interface{}) error {
+func (ss *serverStream) SendMsg(msg any) error {
 	if ce := ss.payloadLogger.Check(ss.payloadLevel, "sending stream message"); ce != nil {
 		ce.Write(ProtoMessage("message", msg))
 	}
 	return ss.ServerStream.SendMsg(msg)
 }
 
-func (ss *serverStream) RecvMsg(msg interface{}) error {
+func (ss *serverStream) RecvMsg(msg any) error {
 	err := ss.ServerStream.RecvMsg(msg)
 	if ce := ss.payloadLogger.Check(ss.payloadLevel, "received stream message"); ce != nil {
 		ce.Write(ProtoMessage("message", msg))

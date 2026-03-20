@@ -284,7 +284,7 @@ var _ = Describe("Lifecycle with Channel v3_0 capabilities and ed25519 identitie
 	})
 })
 
-func giveEd25519CertAndKeyForEntity(network *nwo.Network, entitiy interface{}) {
+func giveEd25519CertAndKeyForEntity(network *nwo.Network, entitiy any) {
 	var certPath, keyPath, caCertPath, caKeyPath string
 	if peer, ok := entitiy.(*nwo.Peer); ok {
 		certPath = network.PeerCert(peer)

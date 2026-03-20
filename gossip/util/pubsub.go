@@ -34,19 +34,19 @@ type Subscription interface {
 	// Listen blocks until a publish was made
 	// to the subscription, or an error if the
 	// subscription's TTL passed
-	Listen() (interface{}, error)
+	Listen() (any, error)
 }
 
 type subscription struct {
 	top string
 	ttl time.Duration
-	c   chan interface{}
+	c   chan any
 }
 
 // Listen blocks until a publish was made
 // to the subscription, or an error if the
 // subscription's TTL passed
-func (s *subscription) Listen() (interface{}, error) {
+func (s *subscription) Listen() (any, error) {
 	select {
 	case <-time.After(s.ttl):
 		return nil, errors.New("timed out")
@@ -64,7 +64,7 @@ func NewPubSub() *PubSub {
 }
 
 // Publish publishes an item to all subscribers on the topic
-func (ps *PubSub) Publish(topic string, item interface{}) error {
+func (ps *PubSub) Publish(topic string, item any) error {
 	ps.RLock()
 	defer ps.RUnlock()
 	s, subscribed := ps.subscriptions[topic]
@@ -86,7 +86,7 @@ func (ps *PubSub) Subscribe(topic string, ttl time.Duration) Subscription {
 	sub := &subscription{
 		top: topic,
 		ttl: ttl,
-		c:   make(chan interface{}, subscriptionBuffSize),
+		c:   make(chan any, subscriptionBuffSize),
 	}
 
 	ps.Lock()

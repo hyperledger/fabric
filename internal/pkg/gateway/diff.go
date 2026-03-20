@@ -331,14 +331,14 @@ func eventDiff(ev1, ev2 []byte) (*eventDifference, error) {
 }
 
 // returns key/value pairs for passing to the logger.Debugw function
-func (rd *readDifference) info() []interface{} {
+func (rd *readDifference) info() []any {
 	description := "read value mismatch"
 	if rd.expected == 0 {
 		description = "extraneous read"
 	} else if rd.actual == 0 {
 		description = "missing read"
 	}
-	return []interface{}{
+	return []any{
 		"type", description,
 		"namespace", rd.namespace,
 		"key", rd.key,
@@ -347,14 +347,14 @@ func (rd *readDifference) info() []interface{} {
 	}
 }
 
-func (wd *writeDifference) info() []interface{} {
+func (wd *writeDifference) info() []any {
 	description := "write value mismatch"
 	if wd.expected == nil {
 		description = "extraneous write"
 	} else if wd.actual == nil {
 		description = "missing write"
 	}
-	return []interface{}{
+	return []any{
 		"type", description,
 		"namespace", wd.namespace,
 		"key", wd.key,
@@ -363,8 +363,8 @@ func (wd *writeDifference) info() []interface{} {
 	}
 }
 
-func (wd *pvtHashDifference) info() []interface{} {
-	return []interface{}{
+func (wd *pvtHashDifference) info() []any {
+	return []any{
 		"type", "private collection hash mismatch",
 		"namespace", wd.namespace,
 		"collection", wd.key,
@@ -373,7 +373,7 @@ func (wd *pvtHashDifference) info() []interface{} {
 	}
 }
 
-func (md *metadataDifference) info() []interface{} {
+func (md *metadataDifference) info() []any {
 	description := "write metadata mismatch"
 	if md.expected == nil {
 		description = "extraneous metadata write"
@@ -401,7 +401,7 @@ func (md *metadataDifference) info() []interface{} {
 		expected = string(md.expected)
 		actual = string(md.actual)
 	}
-	return []interface{}{
+	return []any{
 		"type", description,
 		"namespace", md.namespace,
 		"key", md.key,
@@ -411,24 +411,24 @@ func (md *metadataDifference) info() []interface{} {
 	}
 }
 
-func (ev *eventDifference) info() []interface{} {
-	return []interface{}{
+func (ev *eventDifference) info() []any {
+	return []any{
 		"type", "chaincode event mismatch",
 		"initial-endorser-event", fmt.Sprintf("chaincodeId: %s, name: %s, value: %s", ev.expected.chaincodeId, ev.expected.name, ev.expected.payload),
 		"invoked-endorser-event", fmt.Sprintf("chaincodeId: %s, name: %s, value: %s", ev.actual.chaincodeId, ev.actual.name, ev.actual.payload),
 	}
 }
 
-func (resp *responseDifference) info() []interface{} {
-	return []interface{}{
+func (resp *responseDifference) info() []any {
+	return []any{
 		"type", "chaincode response mismatch",
 		"initial-endorser-response", fmt.Sprintf("status: %d, message: %s, payload: %s", resp.expected.status, resp.expected.message, resp.expected.payload),
 		"invoked-endorser-response", fmt.Sprintf("status: %d, message: %s, payload: %s", resp.actual.status, resp.actual.message, resp.actual.payload),
 	}
 }
 
-func (diff *prpDifference) details() [][]interface{} {
-	var details [][]interface{}
+func (diff *prpDifference) details() [][]any {
+	var details [][]any
 	if diff.results != nil {
 		for _, rd := range diff.results.reads {
 			details = append(details, rd.info())

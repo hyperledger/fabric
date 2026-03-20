@@ -92,7 +92,7 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 				waitCh <- true
 			}(e)
 		}
-		for i := 0; i < len(endorsers); i++ {
+		for range endorsers {
 			select {
 			case <-waitCh:
 				// Endorser completedLayout normally

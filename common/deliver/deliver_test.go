@@ -369,7 +369,7 @@ var _ = Describe("Deliver", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(5))
-				for i := 0; i < 5; i++ {
+				for i := range 5 {
 					b, _, _, _ := fakeResponseSender.SendBlockResponseArgsForCall(i)
 					Expect(b).To(Equal(&cb.Block{
 						Header: &cb.BlockHeader{Number: 995 + uint64(i)},
@@ -393,7 +393,7 @@ var _ = Describe("Deliver", func() {
 
 				Expect(fakeBlocksSent.AddCallCount()).To(Equal(5))
 				Expect(fakeBlocksSent.WithCallCount()).To(Equal(5))
-				for i := 0; i < 5; i++ {
+				for i := range 5 {
 					Expect(fakeBlocksSent.AddArgsForCall(i)).To(BeNumerically("~", 1.0))
 					labelValues := fakeBlocksSent.WithArgsForCall(i)
 					Expect(labelValues).To(Equal([]string{

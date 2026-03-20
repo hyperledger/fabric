@@ -25,7 +25,7 @@ func TestGossipMock(t *testing.T) {
 		return c
 	}
 	g.On("Accept", mock.Anything, false).Return(mkChan(), nil)
-	a, b := g.Accept(func(o interface{}) bool {
+	a, b := g.Accept(func(o any) bool {
 		return true
 	}, false)
 	require.Nil(t, b)

@@ -35,7 +35,7 @@ func TestIterator(t *testing.T) {
 	db1 := p.GetDBHandle("db1")
 	db2 := p.GetDBHandle("db2")
 	db3 := p.GetDBHandle("db3")
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		require.NoError(t, db1.Put([]byte(createTestKey(i)), []byte(createTestValue("db1", i)), false))
 		require.NoError(t, db2.Put([]byte(createTestKey(i)), []byte(createTestValue("db2", i)), false))
 		require.NoError(t, db3.Put([]byte(createTestKey(i)), []byte(createTestValue("db3", i)), false))
@@ -212,12 +212,12 @@ func TestDrop(t *testing.T) {
 	require.Contains(t, p.dbHandles, "db2")
 	require.Contains(t, p.dbHandles, "db3")
 
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		require.NoError(t, db1.Put([]byte(createTestKey(i)), []byte(createTestValue("db1", i)), false))
 		require.NoError(t, db2.Put([]byte(createTestKey(i)), []byte(createTestValue("db2", i)), false))
 	}
 	// db3 is used to test remove when multiple batches are needed (each long key has 125 bytes)
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		require.NoError(t, db3.Put([]byte(createTestLongKey(i)), []byte(createTestValue("db3", i)), false))
 	}
 

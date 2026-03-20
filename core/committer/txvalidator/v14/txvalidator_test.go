@@ -66,7 +66,7 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 	}, bcInfo)
 
 	sr := [][]byte{}
-	for i := 0; i < nBlocks; i++ {
+	for range nBlocks {
 		sr = append(sr, pubSimulationResBytes)
 	}
 	block := testutil.ConstructBlock(t, 1, gbHash, sr, true)
@@ -75,7 +75,7 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 
 	txsfltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
-	for i := 0; i < nBlocks; i++ {
+	for i := range nBlocks {
 		require.True(t, txsfltr.IsSetTo(i, peer.TxValidationCode_VALID))
 	}
 }
