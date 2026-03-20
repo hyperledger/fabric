@@ -34,7 +34,7 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.6
 	github.com/spf13/viper v1.7.0
-	github.com/stretchr/testify v1.10.0 // includes ErrorContains
+	github.com/stretchr/testify v1.11.1 // includes ErrorContains
 	github.com/sykesm/zap-logfmt v0.0.4
 	github.com/syndtr/goleveldb v1.0.1-0.20210305035536-64b5b1c73954
 	github.com/tedsuo/ifrit v0.0.0-20220120221754-dd274de71113
@@ -43,8 +43,8 @@ require (
 	go.etcd.io/etcd/server/v3 v3.5.9
 	go.uber.org/zap v1.27.0
 	golang.org/x/tools v0.40.0
-	google.golang.org/grpc v1.70.0
-	google.golang.org/protobuf v1.36.7
+	google.golang.org/grpc v1.79.3
+	google.golang.org/protobuf v1.36.11
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -101,18 +101,18 @@ require (
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
-	github.com/rogpeppe/go-internal v1.13.1 // indirect
+	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/spf13/afero v1.3.1 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
 	go.etcd.io/etcd/pkg/v3 v3.5.14 // indirect
-	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
+	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.60.0 // indirect
-	go.opentelemetry.io/otel v1.35.0 // indirect
-	go.opentelemetry.io/otel/metric v1.35.0 // indirect
-	go.opentelemetry.io/otel/trace v1.35.0 // indirect
+	go.opentelemetry.io/otel v1.39.0 // indirect
+	go.opentelemetry.io/otel/metric v1.39.0 // indirect
+	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.47.0 // indirect
@@ -121,7 +121,7 @@ require (
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250224174004-546df14abb99 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	gopkg.in/ini.v1 v1.51.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

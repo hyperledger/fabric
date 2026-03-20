@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2022 gRPC authors.
+ * Copyright 2025 gRPC authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,13 @@
  *
  */
 
-package grpcsync
+// Package internal contains code internal to the encoding package.
+package internal
 
-import (
-	"sync"
-)
-
-// OnceFunc returns a function wrapping f which ensures f is only executed
-// once even if the returned function is executed multiple times.
-func OnceFunc(f func()) func() {
-	var once sync.Once
-	return func() {
-		once.Do(f)
-	}
-}
+// RegisterCompressorForTesting registers a compressor in the global compressor
+// registry. It returns a cleanup function that should be called at the end
+// of the test to unregister the compressor.
+//
+// This prevents compressors registered in one test from appearing in the
+// encoding headers of subsequent tests.
+var RegisterCompressorForTesting any // func RegisterCompressor(c Compressor) func()
