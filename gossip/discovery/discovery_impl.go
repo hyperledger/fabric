@@ -843,6 +843,10 @@ func (d *gossipDiscoveryImpl) learnExistingMembers(aliveArr []*protoext.SignedGo
 
 		// update member's data
 		member := d.id2Member[string(am.Membership.PkiId)]
+		if member == nil {
+			// skip safely, do not panic
+			continue
+		}
 		member.Endpoint = am.Membership.Endpoint
 		member.Metadata = am.Membership.Metadata
 		member.InternalEndpoint = internalEndpoint
