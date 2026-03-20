@@ -885,6 +885,7 @@ func (s *Store) deleteDataMarkedForPurge() error {
 	if err != nil {
 		return err
 	}
+	defer purgeMarkerIter.Release()
 
 	for purgeMarkerIter.Next() {
 		if err := purgeMarkerIter.Error(); err != nil {
@@ -905,15 +906,18 @@ func (s *Store) deleteDataMarkedForPurge() error {
 		}
 		for hashedIndexIter.Next() {
 			if err := hashedIndexIter.Error(); err != nil {
+				hashedIndexIter.Release()
 				return err
 			}
 
 			// for each hashed index entry, process the purge from private data store and delete the hashed index
 			if err := p.process(hashedIndexIter.Key(), hashedIndexIter.Value()); err != nil {
+				hashedIndexIter.Release()
 				return err
 			}
 			hashedIndexCounter++
 		}
+		hashedIndexIter.Release()
 
 		// also delete the purge marker itself
 		p.addProcessedPurgeMarkerForDeletion(encPurgeMarkerKey)
