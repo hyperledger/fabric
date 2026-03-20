@@ -335,7 +335,7 @@ func constructBytesProposalResponsePayload(channelID string, ccid *pb.ChaincodeI
 	return presp.Payload, nil
 }
 
-// ConstructSignedTxEnvWithDefaultSigner constructs a transaction envelop for tests with a default signer.
+// ConstructSignedTxEnvWithDefaultSigner constructs a transaction envelope for tests with a default signer.
 // This method helps other modules to construct a transaction with supplied parameters
 func ConstructSignedTxEnvWithDefaultSigner(
 	chainID string,
@@ -386,7 +386,7 @@ func ConstructUnsignedTxEnv(
 	)
 }
 
-// ConstructSignedTxEnv constructs a transaction envelop for tests
+// ConstructSignedTxEnv constructs a transaction envelope for tests
 func ConstructSignedTxEnv(
 	channelID string,
 	ccid *pb.ChaincodeID,
