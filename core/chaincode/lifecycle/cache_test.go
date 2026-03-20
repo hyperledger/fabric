@@ -338,15 +338,36 @@ var _ = Describe("Cache", func() {
 	})
 
 	Describe("InitializeLocalChaincodes", func() {
-		It("loads the already installed chaincodes into the cache", func() {
+		It("loads the already installed chaincodes into the cache using filename metadata", func() {
 			Expect(channelCache.Chaincodes["chaincode-name"].InstallInfo).To(BeNil())
 			err := c.InitializeLocalChaincodes()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(channelCache.Chaincodes["chaincode-name"].InstallInfo).To(Equal(&lifecycle.ChaincodeInstallInfo{
-				Type:      "cc-type",
-				Path:      "cc-path",
 				PackageID: "packageID",
 			}))
+		})
+
+		It("does not call Load or Parse during initialization", func() {
+			err := c.InitializeLocalChaincodes()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(fakeCCStore.LoadCallCount()).To(Equal(0))
+			Expect(fakeParser.ParseCallCount()).To(Equal(0))
+		})
+
+		It("uses the label from ListInstalledChaincodes", func() {
+			fakeCCStore.ListInstalledChaincodesReturns([]chaincode.InstalledChaincode{
+				{
+					Hash:      []byte("hash"),
+					PackageID: "packageID",
+					Label:     "my-label",
+				},
+			}, nil)
+			err := c.InitializeLocalChaincodes()
+			Expect(err).NotTo(HaveOccurred())
+
+			installedChaincodes := c.ListInstalledChaincodes()
+			Expect(installedChaincodes).To(HaveLen(1))
+			Expect(installedChaincodes[0].Label).To(Equal("my-label"))
 		})
 
 		Context("when the installed chaincode does not match any current definition", func() {
@@ -375,6 +396,7 @@ var _ = Describe("Cache", func() {
 				Expect(err).To(MatchError("could not list installed chaincodes: list-error"))
 			})
 		})
+<<<<<<< HEAD
 
 		Context("when the chaincodes cannot be loaded", func() {
 			BeforeEach(func() {
@@ -397,6 +419,8 @@ var _ = Describe("Cache", func() {
 				Expect(err.Error()).To(ContainSubstring("could not parse chaincode with package ID 'packageID'"))
 			})
 		})
+=======
+>>>>>>> b589f4f (Optimize peer startup by skipping full chaincode package reads (#5418))
 	})
 
 	Describe("Initialize", func() {
