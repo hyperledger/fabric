@@ -95,8 +95,26 @@ func seekInfoFrom(height uint64, contentType orderer.SeekInfo_SeekContentType) *
 // SeekInfoNewestHeader produces a signed SeekInfo envelope requesting the newest header (block attestation) available
 // to the orderer. Only a single header is expected in response, not a stream.
 func (dr *DeliveryRequester) SeekInfoNewestHeader() (*common.Envelope, error) {
-	// TODO
-	return nil, errors.New("not implemented yet")
+	seekInfo := &orderer.SeekInfo{
+		Start: &orderer.SeekPosition{
+			Type: &orderer.SeekPosition_Newest{Newest: &orderer.SeekNewest{}},
+		},
+		Stop: &orderer.SeekPosition{
+			Type: &orderer.SeekPosition_Newest{Newest: &orderer.SeekNewest{}},
+		},
+		Behavior:    orderer.SeekInfo_BLOCK_UNTIL_READY,
+		ContentType: orderer.SeekInfo_HEADER_WITH_SIG,
+	}
+
+	return protoutil.CreateSignedEnvelopeWithTLSBinding(
+		common.HeaderType_DELIVER_SEEK_INFO,
+		dr.channelID,
+		dr.signer,
+		seekInfo,
+		int32(0),
+		uint64(0),
+		dr.tlsCertHash,
+	)
 }
 
 func (dr *DeliveryRequester) Connect(seekInfoEnv *common.Envelope, endpoint *orderers.Endpoint) (orderer.AtomicBroadcast_DeliverClient, func(), error) {
