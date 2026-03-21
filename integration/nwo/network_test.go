@@ -108,7 +108,7 @@ var _ = Describe("Network", func() {
 
 func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, initialQueryResult int) {
 	By("querying the chaincode")
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+	sess, err := n.CliUserSession(peer, "User1", commands.ChaincodeQuery{
 		ChannelID: "testchannel",
 		Name:      "mycc",
 		Ctor:      `{"Args":["query","a"]}`,
@@ -117,7 +117,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, i
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess).To(gbytes.Say(fmt.Sprint(initialQueryResult)))
 
-	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+	sess, err = n.CliUserSession(peer, "User1", commands.ChaincodeInvoke{
 		ChannelID: "testchannel",
 		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:      "mycc",
@@ -132,7 +132,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, i
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
 
-	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+	sess, err = n.CliUserSession(peer, "User1", commands.ChaincodeQuery{
 		ChannelID: "testchannel",
 		Name:      "mycc",
 		Ctor:      `{"Args":["query","a"]}`,
