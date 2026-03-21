@@ -178,7 +178,8 @@ func (s *testTransientStore) tearDown() {
 }
 
 func (s *testTransientStore) Persist(txid string, blockHeight uint64,
-	privateSimulationResultsWithConfig *tspb.TxPvtReadWriteSetWithConfigInfo) error {
+	privateSimulationResultsWithConfig *tspb.TxPvtReadWriteSetWithConfigInfo,
+) error {
 	return s.store.Persist(txid, blockHeight, privateSimulationResultsWithConfig)
 }
 
@@ -1987,7 +1988,8 @@ func TestCoordinatorMetrics(t *testing.T) {
 	)
 
 	purgeDuration := func() bool {
-		return testMetricProvider.FakePurgeDuration.ObserveArgsForCall(0) > 0
+		return testMetricProvider.FakePurgeDuration.ObserveCallCount() > 0 &&
+			testMetricProvider.FakePurgeDuration.ObserveArgsForCall(0) > 0
 	}
 	require.Eventually(t, purgeDuration, 2*time.Second, 100*time.Millisecond)
 }
