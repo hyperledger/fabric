@@ -116,7 +116,7 @@ func assertLedgerStatus(t *testing.T, provider *Provider, genesisBlocks []*commo
 	require.NoError(t, err)
 	require.Len(t, activeLedgerIDs, numLedgers-len(pausedLedgers))
 	for i := range numLedgers {
-		if !contains(pausedLedgers, i) {
+		if !slices.Contains(pausedLedgers, i) {
 			require.Contains(t, activeLedgerIDs, constructTestLedgerID(i))
 		}
 	}
@@ -125,14 +125,10 @@ func assertLedgerStatus(t *testing.T, provider *Provider, genesisBlocks []*commo
 		m, err := s.getLedgerMetadata(constructTestLedgerID(i))
 		require.NoError(t, err)
 		require.NotNil(t, m)
-		if contains(pausedLedgers, i) {
+		if slices.Contains(pausedLedgers, i) {
 			require.Equal(t, msgs.Status_INACTIVE, m.GetStatus())
 		} else {
 			require.Equal(t, msgs.Status_ACTIVE, m.GetStatus())
 		}
 	}
-}
-
-func contains(slice []int, val int) bool {
-	return slices.Contains(slice, val)
 }
