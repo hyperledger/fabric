@@ -53,3 +53,5 @@ Engage with the Hyperledger community:
 ## License
 
 Hyperledger Fabric source code is available under the **Apache License, Version 2.0 (Apache-2.0)**, and documentation files are under the **Creative Commons Attribution 4.0 International License (CC-BY-4.0)**.
+
+<!-- Reviewed by Future Systems Lab contributor -->
