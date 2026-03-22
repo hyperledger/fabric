@@ -139,6 +139,8 @@ func (m *Mgr) ImportFromSnapshot(ledgerID string, dir string) error {
 	if err != nil {
 		return err
 	}
+	defer configMetadata.Close()
+
 	numCollectionConfigs, err := configMetadata.DecodeUVarInt()
 	if err != nil {
 		return err
@@ -147,6 +149,7 @@ func (m *Mgr) ImportFromSnapshot(ledgerID string, dir string) error {
 	if err != nil {
 		return err
 	}
+	defer collectionConfigData.Close()
 
 	batch := db.NewUpdateBatch()
 	currentBatchSize := 0

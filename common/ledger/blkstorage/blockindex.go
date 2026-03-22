@@ -366,6 +366,8 @@ func importTxIDsFromSnapshot(
 	if err != nil {
 		return err
 	}
+	defer txIDsMetadata.Close()
+
 	numTxIDs, err := txIDsMetadata.DecodeUVarInt()
 	if err != nil {
 		return err
@@ -374,6 +376,7 @@ func importTxIDsFromSnapshot(
 	if err != nil {
 		return err
 	}
+	defer txIDsData.Close()
 
 	batch := db.NewUpdateBatch()
 	for i := range numTxIDs {
