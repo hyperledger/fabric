@@ -10,15 +10,18 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/deliverclient/blocksprovider"
 	"github.com/hyperledger/fabric/common/deliverclient/blocksprovider/fake"
 	"github.com/hyperledger/fabric/common/deliverclient/orderers"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestDeliveryRequester_Connect_Success(t *testing.T) {
@@ -195,4 +198,38 @@ func TestDeliveryRequester_SeekInfoHeadersFrom(t *testing.T) {
 	envelope, err := dr.SeekInfoHeadersFrom(1000)
 	assert.NoError(t, err)
 	assert.NotNil(t, envelope)
+}
+
+func TestDeliveryRequester_SeekInfoNewestHeader(t *testing.T) {
+	fakeSigner := &fake.Signer{}
+	fakeSigner.SignReturns([]byte("good-sig"), nil)
+
+	fakeDialer := &fake.Dialer{}
+	cc := &grpc.ClientConn{}
+	fakeDialer.DialReturns(cc, nil)
+
+	fakeDeliverClient := &fake.DeliverClient{}
+	fakeDeliverClient.SendReturns(nil)
+
+	fakeDeliverStreamer := &fake.DeliverStreamer{}
+	fakeDeliverStreamer.DeliverReturns(fakeDeliverClient, nil)
+
+	dr := blocksprovider.NewDeliveryRequester("channel-id", fakeSigner, []byte("tls-cert-hash"), fakeDialer, fakeDeliverStreamer)
+	assert.NotNil(t, dr)
+
+	envelope, err := dr.SeekInfoNewestHeader()
+	require.NoError(t, err)
+	require.NotNil(t, envelope)
+
+	payload, err := protoutil.UnmarshalPayload(envelope.GetPayload())
+	require.NoError(t, err)
+
+	seekInfo := &orderer.SeekInfo{}
+	err = proto.Unmarshal(payload.Data, seekInfo)
+	require.NoError(t, err)
+
+	require.NotNil(t, seekInfo.GetStart().GetNewest())
+	require.NotNil(t, seekInfo.GetStop().GetNewest())
+	require.Equal(t, orderer.SeekInfo_BLOCK_UNTIL_READY, seekInfo.GetBehavior())
+	require.Equal(t, orderer.SeekInfo_HEADER_WITH_SIG, seekInfo.GetContentType())
 }
