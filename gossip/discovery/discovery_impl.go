@@ -505,7 +505,11 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *protoext.SignedGossipMessage
 
 	d.lock.RLock()
 	_, known := d.id2Member[string(pkiID)]
+<<<<<<< fix-gossip-discovery-toctou-race
+	lastAliveTS, isAlive := d.aliveLastTS[string(pkiID)]
+=======
 	_, isAlive := d.aliveLastTS[string(pkiID)]
+>>>>>>> main
 	lastDeadTS, isDead := d.deadLastTS[string(pkiID)]
 	d.lock.RUnlock()
 
@@ -534,10 +538,6 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *protoext.SignedGossipMessage
 		}
 		return
 	}
-
-	d.lock.RLock()
-	lastAliveTS, isAlive := d.aliveLastTS[string(pkiID)]
-	d.lock.RUnlock()
 
 	if isAlive {
 		if before(lastAliveTS, ts) {
@@ -843,6 +843,10 @@ func (d *gossipDiscoveryImpl) learnExistingMembers(aliveArr []*protoext.SignedGo
 
 		// update member's data
 		member := d.id2Member[string(am.Membership.PkiId)]
+		if member == nil {
+			d.logger.Debugf("Member with PkiId %x was purged during alive message processing, skipping update", am.Membership.PkiId)
+			continue
+		}
 		member.Endpoint = am.Membership.Endpoint
 		member.Metadata = am.Membership.Metadata
 		member.InternalEndpoint = internalEndpoint
