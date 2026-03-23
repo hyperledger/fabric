@@ -138,6 +138,6 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 func (rc *RemoteContext) Abort() {
 	rc.streamsByID.Range(func(_, value any) bool {
 		value.(*Stream).Cancel(errAborted)
-		return false
+		return true
 	})
 }
