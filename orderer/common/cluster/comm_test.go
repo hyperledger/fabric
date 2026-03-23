@@ -866,6 +866,47 @@ func testAbort(t *testing.T, abortFunc func(*cluster.RemoteContext), rpcTimeout 
 	node2.handler.AssertNumberOfCalls(t, "OnSubmit", 1)
 }
 
+func TestAbortCancelsAllStreams(t *testing.T) {
+	// Scenario: node 1 creates multiple streams to node 2 (simulating
+	// concurrent Consensus and Submit operations). When Abort() is called,
+	// ALL streams must be canceled, not just the first one encountered
+	// during sync.Map iteration.
+
+	node1 := newTestNode(t)
+	defer node1.stop()
+
+	node2 := newTestNode(t)
+	defer node2.stop()
+
+	config := []cluster.RemoteNode{node1.nodeInfo, node2.nodeInfo}
+	node1.c.Configure(testChannel, config)
+	node2.c.Configure(testChannel, config)
+
+	node2.handler.On("OnSubmit", testChannel, node1.nodeInfo.ID, mock.Anything).Return(nil)
+	node2.handler.On("OnConsensus", testChannel, node1.nodeInfo.ID, mock.Anything).Return(nil)
+
+	rm, err := node1.c.Remote(testChannel, node2.nodeInfo.ID)
+	require.NoError(t, err)
+
+	// Create multiple streams to the same remote node
+	stream1 := assertEventualEstablishStream(t, rm)
+	stream2 := assertEventualEstablishStream(t, rm)
+	stream3 := assertEventualEstablishStream(t, rm)
+
+	// Verify none are canceled before Abort
+	require.False(t, stream1.Canceled())
+	require.False(t, stream2.Canceled())
+	require.False(t, stream3.Canceled())
+
+	// Abort should cancel ALL streams
+	rm.Abort()
+
+	// Verify every stream was canceled
+	require.True(t, stream1.Canceled(), "stream1 should be canceled after Abort()")
+	require.True(t, stream2.Canceled(), "stream2 should be canceled after Abort()")
+	require.True(t, stream3.Canceled(), "stream3 should be canceled after Abort()")
+}
+
 func TestNoTLSCertificate(t *testing.T) {
 	// Scenario: The node is sent a message by another node that doesn't
 	// connect with mutual TLS, thus doesn't provide a TLS certificate
