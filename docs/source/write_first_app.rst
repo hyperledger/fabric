@@ -56,7 +56,7 @@ for a up to date list of supported programming language runtimes and dependencie
 
 Ensure you have a suitable version of your chosen runtime installed. For installation instructions, see:
 
- - `Node.js <https://nodejs.dev/learn/how-to-install-nodejs>`_.
+ - `Node.js <https://nodejs.org/en/download>`_.
  - `Go <https://go.dev/doc/install>`_.
  - `Java <https://adoptium.net/>`_.
 
