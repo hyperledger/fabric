@@ -22,12 +22,10 @@ jobs:
     name: "Check for Broken Links"
     runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-22.04' || 'ubuntu-22.04' }}
     steps:
-      - name: Checkout Fabric Code
-        uses: actions/checkout@v5
       - name: Check Broken Links with Muffet
         # Exclude any links that direct to the documentation or release notes of the non-latest version to limit the scanning to target to that of the latest version.
         run: |
-          docker run raviqqe/muffet:2.11.0 -v \
+          docker run raviqqe/muffet:2.11.2 -v \
           --max-response-body-size=100000000 \
           --header="User-Agent: curl/8.7.1" \
           --header="Accept: */*" \
