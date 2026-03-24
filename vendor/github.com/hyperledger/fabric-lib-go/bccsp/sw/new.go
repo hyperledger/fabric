@@ -9,12 +9,13 @@ package sw
 import (
 	"crypto/elliptic"
 	"crypto/sha256"
+	"crypto/sha3"
 	"crypto/sha512"
+	"hash"
 	"reflect"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/sha3"
 )
 
 // NewDefaultSecurityLevel returns a new instance of the software-based BCCSP
@@ -75,8 +76,12 @@ func NewWithParams(securityLevel int, hashFamily string, keyStore bccsp.KeyStore
 	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.SHAOpts{}), &hasher{hash: conf.hashFunction})
 	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.SHA256Opts{}), &hasher{hash: sha256.New})
 	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.SHA384Opts{}), &hasher{hash: sha512.New384})
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.SHA3_256Opts{}), &hasher{hash: sha3.New256})
-	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.SHA3_384Opts{}), &hasher{hash: sha3.New384})
+	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.SHA3_256Opts{}), &hasher{hash: func() hash.Hash {
+		return sha3.New256()
+	}})
+	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.SHA3_384Opts{}), &hasher{hash: func() hash.Hash {
+		return sha3.New384()
+	}})
 
 	// Set the key generators
 	swbccsp.AddWrapper(reflect.TypeOf(&bccsp.ECDSAKeyGenOpts{}), &ecdsaKeyGenerator{curve: conf.ellipticCurve})
