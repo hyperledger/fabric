@@ -8,6 +8,7 @@ package factory
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
@@ -15,13 +16,13 @@ import (
 )
 
 var (
-	defaultBCCSP       bccsp.BCCSP // default BCCSP
-	factoriesInitOnce  sync.Once   // factories' Sync on Initialization
-	factoriesInitError error       // Factories' Initialization Error
+	defaultBCCSP       atomic.Pointer[bccsp.BCCSP] // default BCCSP
+	factoriesInitError atomic.Pointer[error]       // Factories' Initialization Error
+	factoriesInitOnce  sync.Once                   // Factories' Sync on Initialization
 
 	// when InitFactories has not been called yet (should only happen
 	// in test cases), use this BCCSP temporarily
-	bootBCCSP         bccsp.BCCSP
+	bootBCCSP         atomic.Pointer[bccsp.BCCSP]
 	bootBCCSPInitOnce sync.Once
 
 	logger = flogging.MustGetLogger("bccsp")
@@ -38,20 +39,49 @@ type BCCSPFactory interface {
 	Get(opts *FactoryOpts) (bccsp.BCCSP, error)
 }
 
+// InitFactories must be called before using factory interfaces
+// It is acceptable to call with config = nil, in which case
+// some defaults will get used.
+// Error is returned only if defaultBCCSP cannot be found.
+func InitFactories(config *FactoryOpts) error {
+	factoriesInitOnce.Do(func() {
+		res, err := initFactories(config)
+		if err != nil {
+			factoriesInitError.Store(&err)
+		}
+		if res != nil {
+			defaultBCCSP.Store(&res)
+		}
+	})
+	errPtr := factoriesInitError.Load()
+	if errPtr != nil {
+		return *errPtr
+	}
+	return nil
+}
+
 // GetDefault returns a non-ephemeral (long-term) BCCSP
 func GetDefault() bccsp.BCCSP {
-	if defaultBCCSP == nil {
-		logger.Debug("Before using BCCSP, please call InitFactories(). Falling back to bootBCCSP.")
-		bootBCCSPInitOnce.Do(func() {
-			var err error
-			bootBCCSP, err = (&SWFactory{}).Get(GetDefaultOpts())
-			if err != nil {
-				panic("BCCSP Internal error, failed initialization with GetDefaultOpts!")
-			}
-		})
-		return bootBCCSP
+	res := defaultBCCSP.Load()
+	if res != nil {
+		return *res
 	}
-	return defaultBCCSP
+
+	bootBCCSPInitOnce.Do(func() {
+		logger.Debug("Before using BCCSP, please call InitFactories(). Falling back to bootBCCSP.")
+		newBootBCCSP, err := (&SWFactory{}).Get(GetDefaultOpts())
+		if err != nil {
+			panic("BCCSP Internal error, failed initialization with GetDefaultOpts!")
+		}
+		bootBCCSP.Store(&newBootBCCSP)
+	})
+
+	res = bootBCCSP.Load()
+	if res != nil {
+		return *res
+	}
+	// This should never happen, but if it does, panic is better than returning nil.
+	panic("BCCSP Internal error, both defaultBCCSP and bootBCCSP are nil")
 }
 
 func initBCCSP(f BCCSPFactory, config *FactoryOpts) (bccsp.BCCSP, error) {

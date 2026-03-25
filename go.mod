@@ -17,7 +17,7 @@ require (
 	github.com/hyperledger-labs/SmartBFT v0.0.0-20250503203013-eb005eef8866
 	github.com/hyperledger/fabric-chaincode-go/v2 v2.3.0
 	github.com/hyperledger/fabric-config v0.3.0
-	github.com/hyperledger/fabric-lib-go v1.1.3-0.20240523144151-25edd1eaf5f5
+	github.com/hyperledger/fabric-lib-go v1.1.3
 	github.com/hyperledger/fabric-protos-go-apiv2 v0.3.7
 	github.com/kr/pretty v0.3.1
 	github.com/miekg/pkcs11 v1.1.1

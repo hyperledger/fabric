@@ -25,19 +25,7 @@ type FactoryOpts struct {
 	SW      *SwOpts `json:"SW,omitempty" yaml:"SW,omitempty"`
 }
 
-// InitFactories must be called before using factory interfaces
-// It is acceptable to call with config = nil, in which case
-// some defaults will get used
-// Error is returned only if defaultBCCSP cannot be found
-func InitFactories(config *FactoryOpts) error {
-	factoriesInitOnce.Do(func() {
-		factoriesInitError = initFactories(config)
-	})
-
-	return factoriesInitError
-}
-
-func initFactories(config *FactoryOpts) error {
+func initFactories(config *FactoryOpts) (res bccsp.BCCSP, err error) {
 	// Take some precautions on default opts
 	if config == nil {
 		config = GetDefaultOpts()
@@ -54,18 +42,17 @@ func initFactories(config *FactoryOpts) error {
 	// Software-Based BCCSP
 	if config.Default == "SW" && config.SW != nil {
 		f := &SWFactory{}
-		var err error
-		defaultBCCSP, err = initBCCSP(f, config)
+		res, err = initBCCSP(f, config)
 		if err != nil {
-			return errors.Wrapf(err, "Failed initializing BCCSP")
+			return nil, errors.Wrapf(err, "Failed initializing BCCSP")
 		}
 	}
 
-	if defaultBCCSP == nil {
-		return errors.Errorf("Could not find default `%s` BCCSP", config.Default)
+	if res == nil {
+		return nil, errors.Errorf("Could not find default `%s` BCCSP", config.Default)
 	}
 
-	return nil
+	return res, nil
 }
 
 // GetBCCSPFromOpts returns a BCCSP created according to the options passed in input.

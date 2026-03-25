@@ -9,11 +9,10 @@ package sw
 import (
 	"crypto/elliptic"
 	"crypto/sha256"
+	"crypto/sha3"
 	"crypto/sha512"
 	"fmt"
 	"hash"
-
-	"golang.org/x/crypto/sha3"
 )
 
 type config struct {
@@ -57,12 +56,16 @@ func (conf *config) setSecurityLevelSHA3(level int) (err error) {
 	switch level {
 	case 256:
 		conf.ellipticCurve = elliptic.P256()
-		conf.hashFunction = sha3.New256
+		conf.hashFunction = func() hash.Hash {
+			return sha3.New256()
+		}
 		conf.rsaBitLength = 2048
 		conf.aesBitLength = 32
 	case 384:
 		conf.ellipticCurve = elliptic.P384()
-		conf.hashFunction = sha3.New384
+		conf.hashFunction = func() hash.Hash {
+			return sha3.New384()
+		}
 		conf.rsaBitLength = 3072
 		conf.aesBitLength = 32
 	default:
