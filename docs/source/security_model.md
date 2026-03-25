@@ -134,7 +134,5 @@ Regardless of application design, the SDKs do not have any privileged access to 
 From a security perspective, the SDKs are merely a set of language specific convenience functions for interacting with the gRPC services exposed by the Fabric peers and orderers.
 All security enforcement is carried out by Fabric nodes as highlighted earlier in this topic, not the client SDK.
 
-For more information see the [Applications topic](./developapps/application.html) and [Offline Signing tutorial](https://hyperledger.github.io/fabric-sdk-node/release-2.2/tutorial-sign-transaction-offline.html).
-
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/ -->

@@ -107,7 +107,7 @@ and the individual is added to the maintainers group.
 Maintainers may be removed by explicit resignation, for prolonged
 inactivity (e.g. 3 or more months with no review comments),
 or for some infraction of the `code of conduct
-<https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct>`__
+<https://lf-hyperledger.atlassian.net/wiki/spaces/HYP/pages/19595281/Hyperledger+Code+of+Conduct>`__
 or by consistently demonstrating poor judgement. A proposed removal
 also requires a majority approval. A maintainer removed for
 inactivity should be restored following a sustained resumption of contributions
