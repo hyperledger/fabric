@@ -5,7 +5,7 @@ We welcome contributions to Hyperledger in many forms, and there's always plenty
 to do!
 
 First things first, please review the Hyperledger `Code of
-Conduct <https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct>`__
+Conduct <https://lf-hyperledger.atlassian.net/wiki/spaces/HYP/pages/19595281/Hyperledger+Code+of+Conduct>`__
 before participating. It is important that we keep things civil.
 
 .. note:: If you want to contribute to this documentation, please check out the :doc:`style_guide`.
