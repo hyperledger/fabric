@@ -91,69 +91,16 @@ func equalConfigPolicies(lhs, rhs *cb.ConfigPolicy) bool {
 		bytes.Equal(lhs.Policy.Value, rhs.Policy.Value)
 }
 
-// The subset functions check if inner is a subset of outer
-// TODO, try to consolidate these three methods into one, as the code
-// contents are the same, but the function signatures need to be different
-func subsetOfGroups(inner, outer map[string]*cb.ConfigGroup) bool {
-	// The empty set is a subset of all sets
-	if len(inner) == 0 {
-		return true
-	}
-
-	// If inner has more elements than outer, it cannot be a subset
+// subsetOf checks if every key in inner is also present in outer.
+func subsetOf[V any](inner, outer map[string]V) bool {
 	if len(inner) > len(outer) {
 		return false
 	}
-
-	// If any element in inner is not in outer, it is not a subset
 	for key := range inner {
 		if _, ok := outer[key]; !ok {
 			return false
 		}
 	}
-
-	return true
-}
-
-func subsetOfPolicies(inner, outer map[string]*cb.ConfigPolicy) bool {
-	// The empty set is a subset of all sets
-	if len(inner) == 0 {
-		return true
-	}
-
-	// If inner has more elements than outer, it cannot be a subset
-	if len(inner) > len(outer) {
-		return false
-	}
-
-	// If any element in inner is not in outer, it is not a subset
-	for key := range inner {
-		if _, ok := outer[key]; !ok {
-			return false
-		}
-	}
-
-	return true
-}
-
-func subsetOfValues(inner, outer map[string]*cb.ConfigValue) bool {
-	// The empty set is a subset of all sets
-	if len(inner) == 0 {
-		return true
-	}
-
-	// If inner has more elements than outer, it cannot be a subset
-	if len(inner) > len(outer) {
-		return false
-	}
-
-	// If any element in inner is not in outer, it is not a subset
-	for key := range inner {
-		if _, ok := outer[key]; !ok {
-			return false
-		}
-	}
-
 	return true
 }
 
@@ -163,12 +110,12 @@ func equalConfigGroup(lhs, rhs *cb.ConfigGroup) bool {
 		return false
 	}
 
-	if !subsetOfGroups(lhs.Groups, rhs.Groups) ||
-		!subsetOfGroups(rhs.Groups, lhs.Groups) ||
-		!subsetOfPolicies(lhs.Policies, rhs.Policies) ||
-		!subsetOfPolicies(rhs.Policies, lhs.Policies) ||
-		!subsetOfValues(lhs.Values, rhs.Values) ||
-		!subsetOfValues(rhs.Values, lhs.Values) {
+	if !subsetOf(lhs.Groups, rhs.Groups) ||
+		!subsetOf(rhs.Groups, lhs.Groups) ||
+		!subsetOf(lhs.Policies, rhs.Policies) ||
+		!subsetOf(rhs.Policies, lhs.Policies) ||
+		!subsetOf(lhs.Values, rhs.Values) ||
+		!subsetOf(rhs.Values, lhs.Values) {
 		return false
 	}
 
