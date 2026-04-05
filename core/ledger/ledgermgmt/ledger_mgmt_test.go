@@ -232,7 +232,7 @@ func TestConcurrentCreateLedgerFromSnapshot(t *testing.T) {
 
 	waitCh <- struct{}{}
 	ledgerCreated := func() bool {
-		status := ledgerMgr.JoinBySnapshotStatus()
+		status := ledgerMgr2.JoinBySnapshotStatus()
 		return !status.InProgress && status.BootstrappingSnapshotDir == ""
 	}
 	require.Eventually(t, ledgerCreated, time.Minute, time.Second)
