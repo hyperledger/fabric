@@ -25,7 +25,7 @@ func TestCancelRequestCmd(t *testing.T) {
 	mockClient := &client{mockSnapshotClient, mockSigner, buffer}
 
 	resetFlags()
-	cmd := cancelRequestCmd(mockClient, nil)
+	cmd := cancelRequestCmd(mockClient, nil, true)
 	cmd.SetArgs([]string{"-c", "mychannel", "-b", "100"})
 	err := cmd.Execute()
 	require.NoError(t, err)

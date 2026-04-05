@@ -19,12 +19,12 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func joinBySnapshotStatusCmd(cf *ChannelCmdFactory) *cobra.Command {
+func joinBySnapshotStatusCmd(cf *ChannelCmdFactory, isNew bool) *cobra.Command {
 	// Set the flags on the channel start command.
-	return &cobra.Command{
+	joinBySnapshotStatusCmd := &cobra.Command{
 		Use:   "joinbysnapshotstatus",
-		Short: "Query if joinbysnapshot is running for any channel",
-		Long:  "Query if joinbysnapshot is running for any channel",
+		Short: "Query if joinbysnapshot is running for any channel.",
+		Long:  "Query if joinbysnapshot is running for any channel.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 0 {
 				return fmt.Errorf("trailing args detected: %s", args)
@@ -34,6 +34,13 @@ func joinBySnapshotStatusCmd(cf *ChannelCmdFactory) *cobra.Command {
 			return joinBySnapshotStatus(cf)
 		},
 	}
+
+	if !isNew {
+		joinBySnapshotStatusCmd.Short = "[DEPRECATED] Query if joinbysnapshot is running for any channel (use the \"peercli channel joinbysnapshotstatus\")."
+		joinBySnapshotStatusCmd.Long = "[DEPRECATED] Query if joinbysnapshot is running for any channel. Instead of this command, use \"peercli channel joinbysnapshotstatus\"."
+	}
+
+	return joinBySnapshotStatusCmd
 }
 
 func joinBySnapshotStatus(cf *ChannelCmdFactory) error {

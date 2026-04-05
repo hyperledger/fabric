@@ -23,7 +23,7 @@ import (
 
 const commandDescription = "Joins the peer to a channel."
 
-func joinCmd(cf *ChannelCmdFactory) *cobra.Command {
+func joinCmd(cf *ChannelCmdFactory, isNew bool) *cobra.Command {
 	// Set the flags on the channel start command.
 	joinCmd := &cobra.Command{
 		Use:   "join",
@@ -32,6 +32,10 @@ func joinCmd(cf *ChannelCmdFactory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return join(cmd, args, cf)
 		},
+	}
+	if !isNew {
+		joinCmd.Short = "[DEPRECATED] Joins the peer to a channel (use the \"peercli channel join\")."
+		joinCmd.Long = "[DEPRECATED] Joins the peer to a channel. Instead of this command, use \"peercli channel join\"."
 	}
 	flagList := []string{
 		"blockpath",
