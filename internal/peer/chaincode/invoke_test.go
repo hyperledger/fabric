@@ -45,7 +45,7 @@ func TestInvokeCmd(t *testing.T) {
 	args := []string{"-n", "example02", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
-	require.Error(t, err, "'peer chaincode invoke' command should have returned error when called without -C flag")
+	require.Error(t, err, "'cli chaincode invoke' command should have returned error when called without -C flag")
 
 	// Success case
 	cmd = invokeCmd(mockCF, cryptoProvider)

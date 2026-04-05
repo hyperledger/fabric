@@ -86,10 +86,10 @@ variables:
    should work seamlessly. However, if needed, you can add additional root CA certificates
    by setting ``General.TLS.RootCAs`` and ``General.TLS.ClientRootCAs``.
 
-Configuring TLS for the peer CLI
+Configuring TLS for the CLI
 --------------------------------
 
-The following environment variables must be set when running peer CLI commands against a
+The following environment variables must be set when running CLI commands against a
 TLS enabled peer node:
 
 * ``CORE_PEER_TLS_ENABLED`` = ``true``
@@ -103,8 +103,8 @@ must to be set in addition to those above:
 * ``CORE_PEER_TLS_CLIENTCERT_FILE`` = fully qualified path of the client certificate
 * ``CORE_PEER_TLS_CLIENTKEY_FILE`` = fully qualified path of the client private key
 
-When running a command that connects to orderer service, like `peer channel <create|update|fetch>`
-or `peer chaincode <invoke>`, following command line arguments must also be specified
+When running a command that connects to orderer service, like `cli channel <create|update|fetch>`
+or `cli chaincode <invoke>`, following command line arguments must also be specified
 if TLS is enabled on the orderer:
 
 * --tls
