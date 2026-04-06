@@ -636,3 +636,49 @@ func removeNodeFromConfig(t *testing.T, lastConfigBlock *cb.Block, nodeId uint32
 		}),
 	}
 }
+
+// TestErrored verifies Errored() returns an open channel before Halt and a closed one after; double-Halt is safe.
+func TestErrored(t *testing.T) {
+	dir := t.TempDir()
+	channelId := "testchannel"
+
+	networkSetupInfo := NewNetworkSetupInfo(t, channelId, dir)
+	nodeMap := networkSetupInfo.CreateNodes(1)
+	node := nodeMap[1]
+
+	chain := node.Chain
+
+	// before Halt: Errored() must return a non-nil, open channel.
+	errC := chain.Errored()
+	require.NotNil(t, errC)
+	select {
+	case <-errC:
+		t.Fatal("Errored channel should not be closed before Halt")
+	default:
+	}
+
+	node.Start()
+	node.State.WaitLedgerHeightToBe(1)
+
+	chain.Halt()
+
+	// after Halt: the channel returned before Halt must now be closed.
+	select {
+	case <-errC:
+		// expected
+	default:
+		t.Fatal("Errored channel should be closed after Halt")
+	}
+
+	// calling Halt a second time must not panic.
+	require.NotPanics(t, chain.Halt)
+
+	// Errored() after Halt must still return a closed channel.
+	require.NotNil(t, chain.Errored())
+	select {
+	case <-chain.Errored():
+		// expected
+	default:
+		t.Fatal("Errored channel should be closed after repeated Halt")
+	}
+}
