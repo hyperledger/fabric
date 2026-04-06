@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package policydsl
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
@@ -405,4 +407,22 @@ func TestSecondPassBoundaryCheck(t *testing.T) {
 	p3, err3 := FromString("OutOf(4, 'A.member', 'B.member')")
 	require.Nil(t, p3)
 	require.EqualError(t, err3, "invalid t-out-of-n predicate, t 4, n 2")
+}
+
+func TestPolicyStringGuardrails(t *testing.T) {
+	t.Run("rejects excessive nesting", func(t *testing.T) {
+		policy := strings.Repeat("OR(", maxPolicyNestingDepth+1) + "'A.member'" + strings.Repeat(")", maxPolicyNestingDepth+1)
+
+		p, err := FromString(policy)
+		require.Nil(t, p)
+		require.EqualError(t, err, fmt.Sprintf("policy string exceeds maximum nesting depth of %d", maxPolicyNestingDepth))
+	})
+
+	t.Run("rejects oversized policy strings", func(t *testing.T) {
+		policy := "OR('A.member', '" + strings.Repeat("B", maxPolicyStringLength) + ".member')"
+
+		p, err := FromString(policy)
+		require.Nil(t, p)
+		require.EqualError(t, err, fmt.Sprintf("policy string exceeds maximum length of %d characters", maxPolicyStringLength))
+	})
 }
