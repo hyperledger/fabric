@@ -1975,3 +1975,55 @@ func TestHandleAliveMessage_RelearnsMemberAfterConcurrentPurge(t *testing.T) {
 	require.True(t, inID2Member, "member should be present in id2Member after re-learning")
 	require.True(t, inAliveLastTS, "member should be present in aliveLastTS after re-learning")
 }
+
+func TestLearnExistingMembers_NilMemberAfterConcurrentPurge(t *testing.T) {
+	inst := createDiscoveryInstanceWithNoGossip(0, "testNilMemberAfterPurgeInst", nil)
+	defer func() {
+		inst.Stop()
+		time.Sleep(50 * time.Millisecond)
+	}()
+
+	d := inst.discoveryImpl()
+
+	pkiID := common.PKIidType("test-pki-id")
+	endpoint := "localhost:1234"
+
+	// This test simulates the post-condition of a real race.
+	// In the real flow, handleAliveMessage reads under RLock and later calls
+	// learnExistingMembers under Lock. A concurrent purge can remove the member
+	// between these two phases, leaving it present in aliveLastTS but missing
+	// from id2Member.
+	//
+	// Calling learnExistingMembers directly avoids timing-dependent races
+	// while deterministically reproducing the inconsistent state.
+	d.lock.Lock()
+	d.aliveLastTS[string(pkiID)] = &timestamp{
+		incTime:  time.Now(),
+		seqNum:   1,
+		lastSeen: time.Now(),
+	}
+	d.lock.Unlock()
+
+	aliveMsg := &proto.GossipMessage{
+		Tag: proto.GossipMessage_EMPTY,
+		Content: &proto.GossipMessage_AliveMsg{
+			AliveMsg: &proto.AliveMessage{
+				Membership: &proto.Member{
+					PkiId:    pkiID,
+					Endpoint: endpoint,
+				},
+				Timestamp: &proto.PeerTime{
+					IncNum: uint64(time.Now().UnixNano()),
+					SeqNum: 2,
+				},
+			},
+		},
+	}
+
+	signedMsg, err := protoext.NoopSign(aliveMsg)
+	require.NoError(t, err)
+
+	require.NotPanics(t, func() {
+		d.learnExistingMembers([]*protoext.SignedGossipMessage{signedMsg})
+	}, "learnExistingMembers should not panic when a member is missing from id2Member")
+}
