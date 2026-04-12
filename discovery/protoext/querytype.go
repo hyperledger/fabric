@@ -19,7 +19,7 @@ const (
 	LocalMembershipQueryType
 )
 
-// GetType returns the type of the request
+// GetQueryType returns the type of the request
 func GetQueryType(q *discovery.Query) QueryType {
 	switch {
 	case q.GetCcQuery() != nil:
