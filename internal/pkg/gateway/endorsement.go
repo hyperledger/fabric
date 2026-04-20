@@ -159,7 +159,7 @@ func (p *plan) processEndorsement(endorser *endorser, response *peer.ProposalRes
 
 // Invoke nextPeerInGroup if an endorsement fails for the given endorser.
 // Returns the next endorser in the same group as given endorser with which to retry the proposal, or nil if there are no more.
-func (p *plan) nextPeerInGroup(endorser *endorser) *endorser {
+func (p *plan) nextPeerInGroup(endorser *endorser) (*endorser, string) {
 	p.planLock.Lock()
 	defer p.planLock.Unlock()
 
@@ -169,15 +169,27 @@ func (p *plan) nextPeerInGroup(endorser *endorser) *endorser {
 	if len(p.groupEndorsers[group]) > 0 {
 		next := p.groupEndorsers[group][0]
 		p.groupEndorsers[group] = p.groupEndorsers[group][1:]
-		return next
+		return next, ""
 	}
 
+	return nil, group
+}
+
+func (p *plan) abandonGroupRemoveLayouts(groups ...string) {
 	// There are no more peers in this group, so will abandon this group entirely and remove all layouts that use it
 	// Clearly the current layout was using it, so remove that
 	// To avoid memory re-allocations, mark them as nil
 	for i := p.nextLayout; i < len(p.layouts); i++ {
-		layout := p.layouts[i]
-		if layout != nil {
+		for _, group := range groups {
+			if group == "" {
+				continue
+			}
+
+			layout := p.layouts[i]
+			if layout == nil {
+				continue
+			}
+
 			if _, exists := layout.required[group]; exists {
 				p.layouts[i] = nil
 			}
@@ -185,8 +197,6 @@ func (p *plan) nextPeerInGroup(endorser *endorser) *endorser {
 	}
 	// continue with the next layout
 	p.nextLayout++
-
-	return nil
 }
 
 func (p *plan) addError(detail proto.Message) {

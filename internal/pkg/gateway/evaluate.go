@@ -78,7 +78,10 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 					gs.registry.removeEndorser(endorser)
 				}
 				if retry {
-					endorser = plan.nextPeerInGroup(endorser)
+					var group string
+					endorser, group = plan.nextPeerInGroup(endorser)
+					plan.abandonGroupRemoveLayouts(group)
+
 				} else {
 					done <- newRpcError(code, "evaluate call to endorser returned error: "+message, errDetails...)
 				}
