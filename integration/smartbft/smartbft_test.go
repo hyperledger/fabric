@@ -2331,7 +2331,7 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 				Eventually(func() int { // Removal is async
 					channelList := nwo.List(network, o)
 					return len(channelList.Channels)
-				}()).Should(BeZero())
+				}).Should(BeZero())
 			}
 
 			By("Re-create the genesis block")

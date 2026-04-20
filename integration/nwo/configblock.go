@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
@@ -221,17 +222,14 @@ func UpdateOrdererConfig(n *Network, orderer *Orderer, channel string, current, 
 	err = proto.Unmarshal(updateEnvelopeBytes, updateEnvelope)
 	Expect(err).NotTo(HaveOccurred())
 
-	ready := make(chan struct{})
-	go func() {
-		defer GinkgoRecover()
-		Update(n, orderer, channel, updateEnvelope)
-		close(ready)
-	}()
-	Eventually(ready, n.EventuallyTimeout).Should(BeClosed())
+	Update(n, orderer, channel, updateEnvelope)
 
 	// wait for the block to be committed
 	ccb := func() uint64 { return CurrentConfigBlockNumber(n, submitter, orderer, channel) }
-	Eventually(ccb, n.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))
+	Eventually(ccb).
+		WithTimeout(n.EventuallyTimeout * 2).
+		WithPolling(100 * time.Millisecond).
+		Should(BeNumerically(">", currentBlockNumber))
 }
 
 // UpdateOrdererConfigFails computes, signs, and submits a configuration
