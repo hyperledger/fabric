@@ -12,6 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	raftprotos "github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
@@ -43,6 +44,7 @@ var _ = Describe("Metadata Validation", func() {
 		err               error
 		cryptoProvider    bccsp.BCCSP
 		meta              *raftprotos.BlockMetadata
+		logger            *flogging.FabricLogger
 	)
 
 	BeforeEach(func() {
@@ -80,7 +82,8 @@ var _ = Describe("Metadata Validation", func() {
 	})
 
 	JustBeforeEach(func() {
-		c := newChain(10*time.Second, channelID, dataDir, 1, meta, consenters, cryptoProvider, support, nil)
+		logger = flogging.MustGetLogger("test")
+		c := newChain(10*time.Second, channelID, dataDir, 1, meta, consenters, cryptoProvider, support, nil, logger)
 		c.init()
 		chain = c.Chain
 		chain.ActiveNodes.Store([]uint64{1, 2, 3})
