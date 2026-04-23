@@ -80,28 +80,33 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 			break
 		}
 		// send to all the endorsers
-		waitCh := make(chan bool, len(endorsers))
+		waitCh := make(chan string, len(endorsers))
 		for _, e := range endorsers {
 			go func(e *endorser) {
+				var g string
 				for e != nil {
 					if gs.processProposal(ctx, plan, e, signedProposal, logger) {
 						break
 					}
-					e = plan.nextPeerInGroup(e)
+					e, g = plan.nextPeerInGroup(e)
 				}
-				waitCh <- true
+				waitCh <- g
 			}(e)
 		}
+
+		groups := make([]string, 0, len(endorsers))
 		for range endorsers {
 			select {
-			case <-waitCh:
+			case group := <-waitCh:
 				// Endorser completedLayout normally
+				groups = append(groups, group)
 			case <-ctx.Done():
 				logger.Warnw("Endorse call timed out while collecting endorsements", "numEndorsers", len(endorsers))
 				return nil, newRpcError(codes.DeadlineExceeded, "endorsement timeout expired while collecting endorsements")
 			}
 		}
 
+		plan.abandonGroupRemoveLayouts(groups...)
 	}
 
 	if plan.completedLayout == nil {
@@ -211,8 +216,10 @@ func (gs *Server) planFromFirstEndorser(ctx context.Context, channel string, cha
 				if remove {
 					gs.registry.removeEndorser(firstEndorser)
 				}
-				firstEndorser = plan.nextPeerInGroup(firstEndorser)
+				var group string
+				firstEndorser, group = plan.nextPeerInGroup(firstEndorser)
 				firstResponse = nil
+				plan.abandonGroupRemoveLayouts(group)
 			}
 		}()
 		select {
