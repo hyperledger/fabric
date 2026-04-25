@@ -30,7 +30,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	"go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/raft/v3"
 )
 
 //go:generate counterfeiter -o mocks/inactive_chain_registry.go --fake-name InactiveChainRegistry . InactiveChainRegistry
