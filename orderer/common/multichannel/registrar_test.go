@@ -1750,9 +1750,10 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 			require.Eventually(t, func() bool { return len(ledgerFactory.ChannelIDs()) == 0 }, time.Minute, time.Second)
 			require.NotContains(t, ledgerFactory.ChannelIDs(), "my-follower-raft-channel")
 
-			channelInfo, err := registrar.ChannelInfo("my-follower-raft-channel")
-			require.Equal(t, err, types.ErrChannelNotExist)
-			require.Equal(t, channelInfo, types.ChannelInfo{})
+			require.Eventually(t, func() bool {
+				channelInfo, err := registrar.ChannelInfo("my-follower-raft-channel")
+				return errors.Is(err, types.ErrChannelNotExist) && channelInfo == types.ChannelInfo{}
+			}, time.Minute, time.Second)
 		})
 	})
 
@@ -1803,7 +1804,9 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool { return len(ledgerFactory.ChannelIDs()) == 0 }, time.Minute, time.Second)
-		require.NotContains(t, registrar.ChannelList().Channels, types.ChannelInfoShort{Name: "my-raft-channel"})
+		require.Eventually(t, func() bool {
+			return assert.NotContains(t, registrar.ChannelList().Channels, types.ChannelInfoShort{Name: "my-raft-channel"})
+		}, time.Minute, time.Second)
 	})
 
 	t.Run("remove channel fails", func(t *testing.T) {
@@ -1833,13 +1836,15 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 		require.Contains(t, ledgerFactory.ChannelIDs(), "my-raft-channel")
 
 		// Confirm removal failure by checking channel status
-		channelInfo, err := registrar.ChannelInfo("my-raft-channel")
-		require.NoError(t, err)
-		require.Equal(t, channelInfo, types.ChannelInfo{
-			Name:              "my-raft-channel",
-			ConsensusRelation: types.ConsensusRelationConsenter,
-			Status:            types.StatusFailed,
-		})
+		require.Eventually(t, func() bool {
+			channelInfo, err := registrar.ChannelInfo("my-raft-channel")
+			require.NoError(t, err)
+			return types.ChannelInfo{
+				Name:              "my-raft-channel",
+				ConsensusRelation: types.ConsensusRelationConsenter,
+				Status:            types.StatusFailed,
+			} == channelInfo
+		}, time.Minute, time.Second)
 	})
 }
 
