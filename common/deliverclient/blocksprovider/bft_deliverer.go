@@ -177,7 +177,7 @@ func (d *BFTDeliverer) DeliverBlocks() {
 		// waiting for it to be consumed. A block receiver is created within.
 		d.fetchErrorsC = make(chan error, 1)
 		source := d.fetchSources[d.fetchSourceIndex]
-		go d.FetchBlocks(source)
+		go d.FetchBlocks(source, d.fetchErrorsC)
 
 		// Create and start a censorship monitor.
 		d.censorshipMonitor = d.CensorshipDetectorFactory.Create(
@@ -326,13 +326,13 @@ func (d *BFTDeliverer) Stop() {
 	d.blockReceiver.Stop()
 }
 
-func (d *BFTDeliverer) FetchBlocks(source *orderers.Endpoint) {
+func (d *BFTDeliverer) FetchBlocks(source *orderers.Endpoint, fetchErrorsC chan<- error) {
 	d.Logger.Debugf("Trying to fetch blocks from orderer: %s", source.Address)
 
 	for {
 		select {
 		case <-d.DoneC:
-			d.fetchErrorsC <- &ErrStopping{Message: "stopping"}
+			fetchErrorsC <- &ErrStopping{Message: "stopping"}
 			return
 		default:
 		}
@@ -340,14 +340,14 @@ func (d *BFTDeliverer) FetchBlocks(source *orderers.Endpoint) {
 		seekInfoEnv, err := d.requester.SeekInfoBlocksFrom(d.getNextBlockNumber())
 		if err != nil {
 			d.Logger.Errorf("Could not create a signed Deliver SeekInfo message, something is critically wrong: %s", err)
-			d.fetchErrorsC <- &ErrFatal{Message: fmt.Sprintf("could not create a signed Deliver SeekInfo message: %s", err)}
+			fetchErrorsC <- &ErrFatal{Message: fmt.Sprintf("could not create a signed Deliver SeekInfo message: %s", err)}
 			return
 		}
 
 		deliverClient, cancel, err := d.requester.Connect(seekInfoEnv, source)
 		if err != nil {
 			d.Logger.Warningf("Could not connect to ordering service: %s", err)
-			d.fetchErrorsC <- errors.Wrapf(err, "could not connect to ordering service, orderer-address: %s", source.Address)
+			fetchErrorsC <- errors.Wrapf(err, "could not connect to ordering service, orderer-address: %s", source.Address)
 			return
 		}
 
@@ -364,6 +364,9 @@ func (d *BFTDeliverer) FetchBlocks(source *orderers.Endpoint) {
 		}
 
 		d.mutex.Lock()
+		if d.blockReceiver != nil {
+			d.blockReceiver.Stop()
+		}
 		d.blockReceiver = blockRcv
 		d.mutex.Unlock()
 
@@ -378,10 +381,10 @@ func (d *BFTDeliverer) FetchBlocks(source *orderers.Endpoint) {
 				d.Logger.Debugf("BlockReceiver stopped while processing incoming blocks: %s", errProc)
 			case *errRefreshEndpoint:
 				d.Logger.Infof("Endpoint refreshed while processing incoming blocks: %s", errProc)
-				d.fetchErrorsC <- errProc
+				fetchErrorsC <- errProc
 			default:
 				d.Logger.Warningf("Failure while processing incoming blocks: %s", errProc)
-				d.fetchErrorsC <- errProc
+				fetchErrorsC <- errProc
 			}
 
 			return
