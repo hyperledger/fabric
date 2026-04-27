@@ -194,7 +194,7 @@ func Test_Start(t *testing.T) {
 	}, nil)
 	err = dvm.Start(ccid, "GOLANG", peerConnection)
 	gt.Expect(err).NotTo(HaveOccurred())
-	gt.Eventually(conner.ReadCallCount()).Should(Equal(1))
+	gt.Eventually(conner.ReadCallCount).Should(Equal(1))
 }
 
 func Test_streamOutput(t *testing.T) {

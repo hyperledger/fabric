@@ -329,9 +329,9 @@ func NewChain(
 		DisableProposalForwarding: true, // This prevents blocks from being accidentally proposed by followers
 	}
 
-	disseminator := &Disseminator{RPC: c.rpc}
-	disseminator.UpdateMetadata(nil) // initialize
 	c.ActiveNodes.Store([]uint64{})
+	disseminator := &Disseminator{RPC: c.rpc, Logger: c.logger, C: c}
+	disseminator.UpdateMetadata(nil) // initialize
 
 	c.Node = &node{
 		chainID:      c.channelID,

@@ -168,7 +168,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			// Broadcast all envelopes in parallel from 50 clients
 			By("Send envs for TPS1")
-			Eventually(oRunner.Err, time.Minute).Should(gbytes.Say("Start accepting requests as Raft leader"))
+			Eventually(oRunner.Err(), time.Minute).Should(gbytes.Say("Start accepting requests as Raft leader"))
 			TPS := measureTPS(5000, network, orderer, envs)
 			Expect(TPS).To(BeNumerically(">", 500))
 
@@ -191,7 +191,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			// Broadcast all envelopes in parallel from 50 clients and ensure it's not as fast as earlier
 			By("Send envs for TPS2")
-			Eventually(oRunner.Err, time.Minute).Should(gbytes.Say("Start accepting requests as Raft leader"))
+			Eventually(oRunner.Err(), time.Minute).Should(gbytes.Say("Start accepting requests as Raft leader"))
 			TPS = measureTPS(5000, network, orderer, envs)
 			Expect(TPS).To(BeNumerically(">", 440))
 			Expect(TPS).To(BeNumerically("<", 560))

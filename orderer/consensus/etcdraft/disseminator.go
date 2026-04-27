@@ -9,12 +9,17 @@ package etcdraft
 import (
 	"sync"
 
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	"github.com/hyperledger/fabric-protos-go-apiv2/orderer"
+	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
+	"google.golang.org/protobuf/proto"
 )
 
 // Disseminator piggybacks cluster metadata, if any, to egress messages.
 type Disseminator struct {
 	RPC
+	Logger *flogging.FabricLogger
+	C      *Chain
 
 	l        sync.Mutex
 	sent     map[uint64]bool
@@ -39,4 +44,9 @@ func (d *Disseminator) UpdateMetadata(m []byte) {
 
 	d.sent = make(map[uint64]bool)
 	d.metadata = m
+
+	clusterMetadata := &etcdraft.ClusterMetadata{}
+	proto.Unmarshal(d.metadata, clusterMetadata)
+
+	d.C.ActiveNodes.Store(clusterMetadata.ActiveNodes)
 }
