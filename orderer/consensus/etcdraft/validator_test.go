@@ -11,17 +11,17 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-
 	raftprotos "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft/mocks"
 	consensusmocks "github.com/hyperledger/fabric/orderer/consensus/mocks"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 func makeOrdererOrg(caCert []byte) *mocks.OrdererOrg {
@@ -44,6 +44,7 @@ var _ = Describe("Metadata Validation", func() {
 		err               error
 		cryptoProvider    bccsp.BCCSP
 		meta              *raftprotos.BlockMetadata
+		logger            *flogging.FabricLogger
 	)
 
 	BeforeEach(func() {
@@ -81,7 +82,8 @@ var _ = Describe("Metadata Validation", func() {
 	})
 
 	JustBeforeEach(func() {
-		c := newChain(10*time.Second, channelID, dataDir, 1, meta, consenters, cryptoProvider, support, nil)
+		logger = flogging.MustGetLogger("test")
+		c := newChain(10*time.Second, channelID, dataDir, 1, meta, consenters, cryptoProvider, support, nil, logger)
 		c.init()
 		chain = c.Chain
 		chain.ActiveNodes.Store([]uint64{1, 2, 3})

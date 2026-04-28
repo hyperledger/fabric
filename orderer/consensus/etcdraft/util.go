@@ -24,8 +24,8 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	raft "go.etcd.io/etcd/raft/v3"
-	"go.etcd.io/etcd/raft/v3/raftpb"
+	raft "go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3/raftpb"
 )
 
 // RaftPeers maps consenters to slice of raft.Peer

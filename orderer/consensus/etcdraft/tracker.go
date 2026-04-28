@@ -13,7 +13,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/protoutil"
-	raft "go.etcd.io/etcd/raft/v3"
+	raft "go.etcd.io/raft/v3"
 )
 
 // Tracker periodically poll Raft Status, and update disseminator
