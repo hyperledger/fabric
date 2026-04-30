@@ -1,9 +1,7 @@
 # Copyright the Hyperledger Fabric contributors. All rights reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 name: "Broken Link Checker"
-
 on:
   workflow_dispatch:
   schedule:
@@ -11,16 +9,15 @@ on:
   pull_request:
     paths:
       - .github/workflows/broken-link-checker.yml
-
 permissions:
   contents: read
-
 jobs:
-  broken-lint-checker:
+  broken-link-checker:
     # Only run the scheduled job in hyperledger/fabric repository, not on personal forks
-    if: github.event_name != 'schedule' || (github.event_name == 'schedule' && github.repository == 'hyperledger/fabric')
+    if: github.event_name != 'schedule' || github.repository == 'hyperledger/fabric'
     name: "main"
     runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-22.04' || 'ubuntu-22.04' }}
+    timeout-minutes: 45
     steps:
       - name: Check Broken Links with Muffet
         # Exclude any links that direct to the documentation or release notes of the non-latest version to limit the scanning to target to that of the latest version.
@@ -35,17 +32,17 @@ jobs:
           --skip-tls-verification \
           --max-connections-per-host=1 \
           --timeout=120 \
-          --buffer-size=2147483647 \
+          --buffer-size=8388608 \
           --color=always \
-          --exclude="^(https:\/\/hyperledger-fabric.readthedocs.io\/([A-z_]+\/(v[\d]+.[\d]+.[\d]+|release)|(es|fa|fr|it|ja|ko|ml|pt|ru|vi|zh-cn|zh_CN)\/latest)).*$" \
-          --exclude="https://github.com/YOURGITHUBID/fabric-docs-i18n/pull/new/newtranslation" \
+          --exclude="^(https:\/\/hyperledger-fabric\.readthedocs\.io\/([A-Za-z_]+\/(v[\d]+\.[\d]+\.[\d]+|release)|(es|fa|fr|it|ja|ko|ml|pt|ru|vi|zh-cn|zh_CN)\/latest)).*$" \
+          --exclude="https://github\.com/YOURGITHUBID/fabric-docs-i18n/pull/new/newtranslation" \
           https://hyperledger-fabric.readthedocs.io/en/latest/
-
-  broken-lint-checker-25:
+  broken-link-checker-25:
     # Only run the scheduled job in hyperledger/fabric repository, not on personal forks
-    if: github.event_name != 'schedule' || (github.event_name == 'schedule' && github.repository == 'hyperledger/fabric')
+    if: github.event_name != 'schedule' || github.repository == 'hyperledger/fabric'
     name: "release-2.5"
     runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-22.04' || 'ubuntu-22.04' }}
+    timeout-minutes: 45
     steps:
       - name: Check Broken Links with Muffet
         # Exclude any links that direct to the documentation or release notes of the non-release-2.5 version to limit the scanning to target to that of the release-2.5 version.
@@ -60,8 +57,8 @@ jobs:
           --skip-tls-verification \
           --max-connections-per-host=1 \
           --timeout=120 \
-          --buffer-size=2147483647 \
+          --buffer-size=8388608 \
           --color=always \
-          --exclude="^(https:\/\/hyperledger-fabric.readthedocs.io\/[A-z_]+\/(v[\d]+.[\d]+.[\d]+|release-1.4|release-2.0|release-2.1|release-2.2|release-2.3|latest)).*$" \
-          --exclude="https://github.com/YOURGITHUBID/fabric-docs-i18n/pull/new/newtranslation" \
+          --exclude="^(https:\/\/hyperledger-fabric\.readthedocs\.io\/[A-Za-z_]+\/(v[\d]+\.[\d]+\.[\d]+|release-1\.4|release-2\.0|release-2\.1|release-2\.2|release-2\.3|latest)).*$" \
+          --exclude="https://github\.com/YOURGITHUBID/fabric-docs-i18n/pull/new/newtranslation" \
           https://hyperledger-fabric.readthedocs.io/en/release-2.5/
