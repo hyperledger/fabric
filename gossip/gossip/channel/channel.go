@@ -160,7 +160,7 @@ type gossipChannel struct {
 	memFilter                 *membershipFilter
 	ledgerHeight              uint64
 	incTime                   uint64
-	leftChannel               int32
+	leftChannel               atomic.Int32
 	membershipTracker         *membershipTracker
 }
 
@@ -349,7 +349,7 @@ func (gc *gossipChannel) LeaveChannel() {
 	gc.Lock()
 	defer gc.Unlock()
 
-	atomic.StoreInt32(&gc.leftChannel, 1)
+	gc.leftChannel.Store(1)
 
 	var chaincodes []*proto.Chaincode
 	var height uint64
@@ -362,7 +362,7 @@ func (gc *gossipChannel) LeaveChannel() {
 }
 
 func (gc *gossipChannel) hasLeftChannel() bool {
-	return atomic.LoadInt32(&gc.leftChannel) == 1
+	return gc.leftChannel.Load() == 1
 }
 
 // GetPeers returns a list of peers with metadata as published by them

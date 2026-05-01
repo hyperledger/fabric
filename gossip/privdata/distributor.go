@@ -386,7 +386,7 @@ func (d *distributorImpl) eligiblePeersOfChannel(routingFilter filter.RoutingFil
 }
 
 func (d *distributorImpl) disseminate(disseminationPlan []*dissemination) error {
-	var failures uint32
+	var failures atomic.Uint32
 	var wg sync.WaitGroup
 	wg.Add(len(disseminationPlan))
 	start := time.Now()
@@ -396,14 +396,14 @@ func (d *distributorImpl) disseminate(disseminationPlan []*dissemination) error 
 			defer d.reportSendDuration(start)
 			err := d.SendByCriteria(dis.msg, dis.criteria)
 			if err != nil {
-				atomic.AddUint32(&failures, 1)
+				failures.Add(1)
 				m := dis.msg.GetPrivateData().Payload
 				d.logger.Error("Failed disseminating private RWSet for TxID", m.TxId, ", namespace", m.Namespace, "collection", m.CollectionName, ":", err)
 			}
 		}(dis)
 	}
 	wg.Wait()
-	failureCount := atomic.LoadUint32(&failures)
+	failureCount := failures.Load()
 	if failureCount != 0 {
 		return errors.Errorf("Failed disseminating %d out of %d private dissemination plans", failureCount, len(disseminationPlan))
 	}

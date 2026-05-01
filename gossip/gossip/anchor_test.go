@@ -33,7 +33,7 @@ type peerMock struct {
 	gRGCserv             *grpc.Server
 	finishedSignal       sync.WaitGroup
 	expectedMsgs2Receive uint32
-	msgReceivedCount     uint32
+	msgReceivedCount     atomic.Uint32
 	msgAssertions        []msgInspection
 	t                    *testing.T
 }
@@ -61,8 +61,8 @@ func (p *peerMock) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 		}
 		p.t.Log("sessionCounter:", sessionCounter, string(p.pkiID), "got msg:", gMsg)
 		sessionCounter++
-		atomic.AddUint32(&p.msgReceivedCount, uint32(1))
-		if atomic.LoadUint32(&p.msgReceivedCount) == p.expectedMsgs2Receive {
+		p.msgReceivedCount.Add(uint32(1))
+		if p.msgReceivedCount.Load() == p.expectedMsgs2Receive {
 			p.finishedSignal.Done()
 		}
 	}
