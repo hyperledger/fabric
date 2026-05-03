@@ -84,6 +84,9 @@ type BFTChain struct {
 	statusReportMutex sync.Mutex
 	consensusRelation types2.ConsensusRelation
 	status            types2.Status
+
+	exitCLock sync.RWMutex
+	exitC     chan struct{}
 }
 
 // NewChain creates new BFT Smart chain
@@ -128,6 +131,7 @@ func NewChain(
 		Logger:             logger,
 		consensusRelation:  types2.ConsensusRelationConsenter,
 		status:             types2.StatusActive,
+		exitC:              make(chan struct{}),
 		Metrics: &Metrics{
 			ClusterSize:          metrics.ClusterSize.With("channel", support.ChannelID()),
 			CommittedBlockNumber: metrics.CommittedBlockNumber.With("channel", support.ChannelID()),
@@ -445,8 +449,9 @@ func (c *BFTChain) WaitReady() error {
 // This is especially useful for the Deliver client, who must terminate waiting
 // clients when the consenter is not up to date.
 func (c *BFTChain) Errored() <-chan struct{} {
-	// TODO: Implement Errored
-	return nil
+	c.exitCLock.RLock()
+	defer c.exitCLock.RUnlock()
+	return c.exitC
 }
 
 // Start should allocate whatever resources are needed for staying up to date with the chain.
@@ -462,6 +467,14 @@ func (c *BFTChain) Start() {
 // Halt frees the resources which were allocated for this Chain.
 func (c *BFTChain) Halt() {
 	c.Logger.Infof("Shutting down chain")
+	c.exitCLock.Lock()
+	select {
+	case <-c.exitC:
+		// already closed
+	default:
+		close(c.exitC)
+	}
+	c.exitCLock.Unlock()
 	c.consensus.Stop()
 }
 
