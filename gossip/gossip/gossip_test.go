@@ -1383,19 +1383,19 @@ func TestSendByCriteria(t *testing.T) {
 		}
 		f()
 	}
-	var messagesSent uint32
+	var messagesSent atomic.Uint32
 	go waitForMessage(ackChan2, func() {
-		atomic.AddUint32(&messagesSent, 1)
+		messagesSent.Add(1)
 	})
 	go waitForMessage(ackChan3, func() {
-		atomic.AddUint32(&messagesSent, 1)
+		messagesSent.Add(1)
 	})
 	err = g1.SendByCriteria(msg, criteria)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "timed out")
 	// Check how many messages were sent.
 	// Only 1 should have been sent
-	require.Equal(t, uint32(1), atomic.LoadUint32(&messagesSent))
+	require.Equal(t, uint32(1), messagesSent.Load())
 }
 
 func TestIdentityExpiration(t *testing.T) {

@@ -969,7 +969,7 @@ func TestLedgerHeightFromProperties(t *testing.T) {
 
 	// Returns whether the given networkMember was selected or not
 	wasNetworkMemberSelected := func(t *testing.T, networkMember discovery.NetworkMember) bool {
-		var wasGivenNetworkMemberSelected int32
+		var wasGivenNetworkMemberSelected atomic.Int32
 		finChan := make(chan struct{})
 		g := &mocks.GossipMock{}
 		g.On("Send", mock.Anything, mock.Anything).Run(func(arguments mock.Arguments) {
@@ -977,7 +977,7 @@ func TestLedgerHeightFromProperties(t *testing.T) {
 			require.NotNil(t, msg.GetStateRequest())
 			peer := arguments.Get(1).([]*comm.RemotePeer)[0]
 			if bytes.Equal(networkMember.PKIid, peer.PKIID) {
-				atomic.StoreInt32(&wasGivenNetworkMemberSelected, 1)
+				wasGivenNetworkMemberSelected.Store(1)
 			}
 			finChan <- struct{}{}
 		})
@@ -1003,7 +1003,7 @@ func TestLedgerHeightFromProperties(t *testing.T) {
 			t.Fatal("Didn't send a request within a timely manner")
 		case <-finChan:
 		}
-		return atomic.LoadInt32(&wasGivenNetworkMemberSelected) == 1
+		return wasGivenNetworkMemberSelected.Load() == 1
 	}
 
 	peerWithProperties := discovery.NetworkMember{

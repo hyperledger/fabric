@@ -1077,7 +1077,7 @@ func waitForMessages(t *testing.T, msgChan chan uint64, count int, errMsg string
 }
 
 func TestConcurrentCloseSend(t *testing.T) {
-	var stopping int32
+	var stopping atomic.Int32
 
 	comm1, _ := newCommInstance(t, naiveSec)
 	comm2, port2 := newCommInstance(t, naiveSec)
@@ -1092,12 +1092,12 @@ func TestConcurrentCloseSend(t *testing.T) {
 		comm1.Send(createGossipMsg(), remotePeer(port2))
 		close(ready)
 
-		for atomic.LoadInt32(&stopping) == int32(0) {
+		for stopping.Load() == int32(0) {
 			comm1.Send(createGossipMsg(), remotePeer(port2))
 		}
 	}()
 	<-ready
 	comm2.Stop()
-	atomic.StoreInt32(&stopping, int32(1))
+	stopping.Store(int32(1))
 	<-done
 }
