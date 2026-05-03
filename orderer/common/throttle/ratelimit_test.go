@@ -163,7 +163,7 @@ func TestRateLimitClientNumChange(t *testing.T) {
 	}
 	defer rl.Stop()
 
-	t.Run("", func(t *testing.T) {
+	t.Run("client", func(t *testing.T) {
 		start := time.Now()
 
 		var wg sync.WaitGroup
@@ -199,7 +199,7 @@ func TestRateLimitClientNumChange(t *testing.T) {
 	// should have all the quota available to itself.
 	clock.Sleep(time.Second * 2)
 
-	t.Run("", func(t *testing.T) {
+	t.Run("alice", func(t *testing.T) {
 		transactions := 10000
 
 		start := clock.Now()
