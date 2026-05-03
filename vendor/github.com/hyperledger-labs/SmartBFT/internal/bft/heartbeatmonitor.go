@@ -160,7 +160,7 @@ func (hm *HeartbeatMonitor) InjectArtificialHeartbeat(sender uint64, msg *smartb
 }
 
 func (hm *HeartbeatMonitor) StopLeaderSendMsg() {
-	hm.logger.Infof("Changing role to folower without change current view and current leader")
+	hm.logger.Infof("Changing role to follower without change current view and current leader")
 	select {
 	case hm.commandChan <- roleChange{
 		onlyStopSendHeartbearFromLeader: true,

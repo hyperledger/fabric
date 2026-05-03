@@ -540,20 +540,6 @@ func pruneBlacklist(prevBlacklist []uint64, preparesFrom map[uint64]*protos.Prep
 	return newBlackList
 }
 
-func equalIntLists(a, b []uint64) bool {
-	if len(a) != len(b) {
-		return false
-	}
-
-	for i := range len(a) {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
 func CommitSignaturesDigest(sigs []*protos.Signature) []byte {
 	if len(sigs) == 0 {
 		return nil

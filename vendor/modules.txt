@@ -188,8 +188,8 @@ github.com/gorilla/mux
 # github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3
 ## explicit; go 1.23.0
 github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options
-# github.com/hyperledger-labs/SmartBFT v0.0.0-20250503203013-eb005eef8866
-## explicit; go 1.24.2
+# github.com/hyperledger-labs/SmartBFT v1.0.1
+## explicit; go 1.26.0
 github.com/hyperledger-labs/SmartBFT/internal/bft
 github.com/hyperledger-labs/SmartBFT/pkg/api
 github.com/hyperledger-labs/SmartBFT/pkg/consensus
@@ -555,7 +555,7 @@ go.opentelemetry.io/otel/trace/noop
 # go.uber.org/multierr v1.11.0
 ## explicit; go 1.19
 go.uber.org/multierr
-# go.uber.org/zap v1.27.0
+# go.uber.org/zap v1.27.1
 ## explicit; go 1.19
 go.uber.org/zap
 go.uber.org/zap/buffer
