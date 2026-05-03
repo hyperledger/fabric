@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -222,7 +223,7 @@ func (v *View) processMsg(sender uint64, m *protos.Message) {
 	v.Logger.Debugf("%d got message %s from %d with seq %d", v.SelfID, MsgToString(m), sender, msgProposalSeq)
 	// This message is either for this proposal or the next one (we might be behind the rest)
 	if msgProposalSeq != v.ProposalSequence && msgProposalSeq != v.ProposalSequence+1 {
-		v.Logger.Warnf("%d got message from %d with sequence %d but our sequence is %d", v.SelfID, sender, msgProposalSeq, v.ProposalSequence)
+		v.Logger.Infof("%d got message from %d with sequence %d but our sequence is %d", v.SelfID, sender, msgProposalSeq, v.ProposalSequence)
 		v.discoverIfSyncNeeded(sender, m)
 		return
 	}
@@ -665,7 +666,7 @@ func (v *View) verifyBlacklist(prevCommitSignatures []*protos.Signature, currVer
 	v.Logger.Debugf("Previous proposal verification sequence: %d, current verification sequence: %d", prevPropRaw.VerificationSequence, currVerificationSeq)
 	if prevPropRaw.VerificationSequence != currVerificationSeq {
 		// If there has been a reconfiguration, black list should remain the same
-		if !equalIntLists(prevProposalMetadata.BlackList, pendingBlacklist) {
+		if !slices.Equal(prevProposalMetadata.BlackList, pendingBlacklist) {
 			return fmt.Errorf("blacklist changed (%v --> %v) during reconfiguration", prevProposalMetadata.BlackList, pendingBlacklist)
 		}
 		v.Logger.Infof("Skipping verifying prev commits due to verification sequence advancing from %d to %d",
@@ -675,7 +676,7 @@ func (v *View) verifyBlacklist(prevCommitSignatures []*protos.Signature, currVer
 
 	if v.MembershipNotifier != nil && v.MembershipNotifier.MembershipChange() {
 		// If there has been a membership change, black list should remain the same
-		if !equalIntLists(prevProposalMetadata.BlackList, pendingBlacklist) {
+		if !slices.Equal(prevProposalMetadata.BlackList, pendingBlacklist) {
 			return fmt.Errorf("blacklist changed (%v --> %v) during membership change", prevProposalMetadata.BlackList, pendingBlacklist)
 		}
 		v.Logger.Infof("Skipping verifying prev commits due to membership change")
@@ -708,7 +709,7 @@ func (v *View) verifyBlacklist(prevCommitSignatures []*protos.Signature, currVer
 	}
 
 	expectedBlacklist := blacklist.computeUpdate()
-	if !equalIntLists(pendingBlacklist, expectedBlacklist) {
+	if !slices.Equal(pendingBlacklist, expectedBlacklist) {
 		return fmt.Errorf("proposed blacklist %v differs from expected %v blacklist", pendingBlacklist, expectedBlacklist)
 	}
 

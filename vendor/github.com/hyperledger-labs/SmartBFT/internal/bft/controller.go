@@ -254,7 +254,7 @@ func (c *Controller) HandleRequest(sender uint64, req []byte) {
 	c.addRequest(reqInfo, req)
 }
 
-// SubmitRequest Submits a request to go through consensus.
+// SubmitRequest submits a request to go through consensus.
 func (c *Controller) SubmitRequest(request []byte) error {
 	info := c.RequestInspector.RequestID(request)
 	return c.addRequest(info, request)
@@ -499,7 +499,7 @@ func (c *Controller) run() {
 	// At exit, always make sure to kill current view
 	// and wait for it to finish.
 	defer func() {
-		c.Logger.Infof("Exiting")
+		c.Logger.Infof("Exiting controller run; ID: %d", c.ID)
 		c.currView.Abort()
 	}()
 
@@ -631,6 +631,8 @@ func (c *Controller) sync() (viewNum uint64, seq uint64, decisions uint64) {
 
 	controllerViewNum := c.currViewNumber
 	newViewNum = controllerViewNum
+
+	newDecisionsInView = c.getCurrentDecisionsInView()
 
 	if latestDecisionSeq > controllerSequence {
 		c.Logger.Infof("Synchronizer returned with sequence %d while the controller is at sequence %d", latestDecisionSeq, controllerSequence)

@@ -23,7 +23,7 @@ const (
 	defaultRequestTimeout    = 10 * time.Second // for unit tests only
 	defaultMaxBytes          = 100 * 1024       // default max request size would be of size 100Kb
 	defaultSizeOfDelElements = 1000             // default size slice of delete elements
-	defaultEraseTimeout      = 5 * time.Second  // for cicle erase silice of delete elements
+	defaultEraseTimeout      = 5 * time.Second  // for cycle erase silice of delete elements
 )
 
 var (
@@ -46,9 +46,9 @@ type RequestTimeoutHandler interface {
 	OnAutoRemoveTimeout(requestInfo types.RequestInfo)
 }
 
-// Pool implements requests pool, maintains pool of given size provided during
-// construction. In case there are more incoming request than given size it will
-// block during submit until there will be place to submit new ones.
+// Pool implements a requests pool, maintaining a pool of a given size provided during
+// construction. If there are more incoming requests than the given size, it will
+// block during submission until there is space to submit new ones.
 type Pool struct {
 	logger    api.Logger
 	metrics   *api.MetricsRequestPool
@@ -397,7 +397,7 @@ func (rp *Pool) deleteRequest(element *list.Element, requestInfo types.RequestIn
 	rp.metrics.LatencyOfRequestPool.Observe(time.Since(item.additionTimestamp).Seconds())
 	delete(rp.existMap, requestInfo)
 	rp.moveToDelSlice(requestInfo)
-	rp.logger.Infof("Removed request %s from request pool", requestInfo)
+	rp.logger.Debugf("Removed request %s from request pool", requestInfo)
 	rp.semaphore.Release(1)
 
 	if len(rp.existMap) != rp.fifo.Len() {
