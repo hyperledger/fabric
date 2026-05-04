@@ -37,14 +37,14 @@ func TestJoinBySnapshot(t *testing.T) {
 
 	// successful test
 	resetFlags()
-	cmd := joinBySnapshotCmd(mockCF)
+	cmd := joinBySnapshotCmd(mockCF, true)
 	AddFlags(cmd)
 	cmd.SetArgs([]string{"--snapshotpath", "path_to_snapshot_directory"})
 	require.NoError(t, cmd.Execute())
 
 	// error due to missing snapshotpath
 	resetFlags()
-	cmd = joinBySnapshotCmd(mockCF)
+	cmd = joinBySnapshotCmd(mockCF, true)
 	AddFlags(cmd)
 	cmd.SetArgs([]string{})
 	require.EqualError(t, cmd.Execute(), "the required parameter 'snapshotpath' is empty. Rerun the command with --snapshotpath flag")
@@ -52,7 +52,7 @@ func TestJoinBySnapshot(t *testing.T) {
 	// error due to EndoserClient returning bad response
 	mockResponse.Response = &pb.Response{Status: 500}
 	resetFlags()
-	cmd = joinBySnapshotCmd(mockCF)
+	cmd = joinBySnapshotCmd(mockCF, true)
 	AddFlags(cmd)
 	args := []string{"--snapshotpath", "snapshot_path"}
 	cmd.SetArgs(args)
@@ -63,7 +63,7 @@ func TestJoinBySnapshot(t *testing.T) {
 	// error due to connection failure to endorser client
 	viper.Set("peer.client.connTimeout", 10*time.Millisecond)
 	resetFlags()
-	cmd = joinBySnapshotCmd(nil)
+	cmd = joinBySnapshotCmd(nil, true)
 	AddFlags(cmd)
 	cmd.SetArgs([]string{"--snapshotpath", "snapshot_path"})
 	err = cmd.Execute()

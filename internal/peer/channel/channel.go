@@ -49,19 +49,24 @@ var (
 )
 
 // Cmd returns the cobra command for Node
-func Cmd(cf *ChannelCmdFactory) *cobra.Command {
+func Cmd(cf *ChannelCmdFactory, isNew bool) *cobra.Command {
 	AddFlags(channelCmd)
 
 	// Add subcommands
-	channelCmd.AddCommand(createCmd(cf))
-	channelCmd.AddCommand(fetchCmd(cf))
-	channelCmd.AddCommand(joinCmd(cf))
-	channelCmd.AddCommand(joinBySnapshotCmd(cf))
-	channelCmd.AddCommand(joinBySnapshotStatusCmd(cf))
-	channelCmd.AddCommand(listCmd(cf))
-	channelCmd.AddCommand(updateCmd(cf))
-	channelCmd.AddCommand(signconfigtxCmd(cf))
-	channelCmd.AddCommand(getinfoCmd(cf))
+	channelCmd.AddCommand(fetchCmd(cf, isNew))
+	channelCmd.AddCommand(joinCmd(cf, isNew))
+	channelCmd.AddCommand(joinBySnapshotCmd(cf, isNew))
+	channelCmd.AddCommand(joinBySnapshotStatusCmd(cf, isNew))
+	channelCmd.AddCommand(listCmd(cf, isNew))
+	channelCmd.AddCommand(signconfigtxCmd(cf, isNew))
+	channelCmd.AddCommand(getinfoCmd(cf, isNew))
+
+	if !isNew {
+		channelCmd.AddCommand(createCmd(cf))
+		channelCmd.AddCommand(updateCmd(cf))
+		channelCmd.Short = "[DEPRECATED] Operate a channel: create|fetch|join|joinbysnapshot|joinbysnapshotstatus|list|update|signconfigtx|getinfo (use the \"peercli channel\")."
+		channelCmd.Long = "[DEPRECATED] Operate a channel: create|fetch|join|joinbysnapshot|joinbysnapshotstatus|list|update|signconfigtx|getinfo. Instead of this command, use \"peercli channel\"."
+	}
 
 	return channelCmd
 }
@@ -103,8 +108,8 @@ func attachFlags(cmd *cobra.Command, names []string) {
 
 var channelCmd = &cobra.Command{
 	Use:   "channel",
-	Short: "Operate a channel: create|fetch|join|joinbysnapshot|joinbysnapshotstatus|list|update|signconfigtx|getinfo.",
-	Long:  "Operate a channel: create|fetch|join|joinbysnapshot|joinbysnapshotstatus|list|update|signconfigtx|getinfo.",
+	Short: "Operate a channel: fetch|join|joinbysnapshot|joinbysnapshotstatus|list|signconfigtx|getinfo.",
+	Long:  "Operate a channel: fetch|join|joinbysnapshot|joinbysnapshotstatus|list|signconfigtx|getinfo.",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		common.InitCmd(cmd, args)
 		common.SetOrdererEnv(cmd, args)

@@ -104,23 +104,20 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			orderer1 := network.Orderer("orderer1")
 			orderer2 := network.Orderer("orderer2")
 			orderer3 := network.Orderer("orderer3")
-			peer := network.Peer("Org1", "peer0")
 			blockFile1 := filepath.Join(testDir, "newest_orderer1_block.pb")
 			blockFile2 := filepath.Join(testDir, "newest_orderer2_block.pb")
 			blockFile3 := filepath.Join(testDir, "newest_orderer3_block.pb")
 
 			fetchLatestBlock := func(targetOrderer *nwo.Orderer, blockFile string) {
-				c := commands.ChannelFetch{
-					ChannelID:  "testchannel",
-					Block:      "newest",
-					OutputFile: blockFile,
-				}
-				if targetOrderer != nil {
-					c.Orderer = network.OrdererAddress(targetOrderer, nwo.ListenPort)
-				}
-				sess, err := network.PeerAdminSession(peer, c)
+				block, err := nwo.Fetch(network, targetOrderer, "testchannel", "newest")
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+				Expect(block).NotTo(BeNil())
+
+				b, err := proto.Marshal(block)
+				Expect(err).NotTo(HaveOccurred())
+
+				err = os.WriteFile(blockFile, b, 0o644)
+				Expect(err).NotTo(HaveOccurred())
 			}
 
 			By("Creating a new channel, joining all orderers")
@@ -716,17 +713,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}
 
 			By("Getting the last config block from testchannel and using it as a template for testchannel2 and testchannel3 genesis block")
-			blockFile := filepath.Join(testDir, "testchannel_last_config_block.pb")
-			c := commands.ChannelFetch{
-				ChannelID:  "testchannel",
-				Block:      "newest",
-				OutputFile: blockFile,
-			}
-			c.Orderer = network.OrdererAddress(o1, nwo.ListenPort)
-			sess, err := network.PeerAdminSession(peer, c)
+			lastConfigBlock, err := nwo.Fetch(network, o1, "testchannel", "newest")
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-			lastConfigBlock := nwo.UnmarshalBlockFromFile(blockFile)
+			Expect(lastConfigBlock).NotTo(BeNil())
 
 			genesisBlock2 := configToGenesisBlock(lastConfigBlock, "testchannel2")
 			genesisBytes2, err := protoutil.Marshal(genesisBlock2)

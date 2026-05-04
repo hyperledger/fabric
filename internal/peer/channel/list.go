@@ -23,9 +23,9 @@ type endorserClient struct {
 	cf *ChannelCmdFactory
 }
 
-func listCmd(cf *ChannelCmdFactory) *cobra.Command {
+func listCmd(cf *ChannelCmdFactory, isNew bool) *cobra.Command {
 	// Set the flags on the channel start command.
-	return &cobra.Command{
+	listCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List of channels peer has joined.",
 		Long:  "List of channels peer has joined.",
@@ -38,6 +38,12 @@ func listCmd(cf *ChannelCmdFactory) *cobra.Command {
 			return list(cf)
 		},
 	}
+	if !isNew {
+		listCmd.Short = "[DEPRECATED] List of channels peer has joined (use the \"peercli channel list\")."
+		listCmd.Long = "[DEPRECATED] List of channels peer has joined. Instead of this command, use \"peercli channel list\"."
+	}
+
+	return listCmd
 }
 
 func (cc *endorserClient) getChannels() ([]*pb.ChannelInfo, error) {

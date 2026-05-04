@@ -44,7 +44,7 @@ func TestFetch(t *testing.T) {
 
 	tempDir := t.TempDir()
 
-	cmd := fetchCmd(mockCF)
+	cmd := fetchCmd(mockCF, true)
 	AddFlags(cmd)
 
 	// success cases - block and outputBlockPath
@@ -90,7 +90,7 @@ func TestFetch(t *testing.T) {
 
 func TestFetchArgs(t *testing.T) {
 	// failure - no args
-	cmd := fetchCmd(nil)
+	cmd := fetchCmd(nil, true)
 	AddFlags(cmd)
 	err := cmd.Execute()
 	require.Error(t, err, "fetch command expected to fail")
@@ -114,7 +114,7 @@ func TestFetchNilCF(t *testing.T) {
 
 	mockchain := "mockchain"
 	viper.Set("peer.client.connTimeout", 10*time.Millisecond)
-	cmd := fetchCmd(nil)
+	cmd := fetchCmd(nil, true)
 	AddFlags(cmd)
 	args := []string{"-c", mockchain, "oldest"}
 	cmd.SetArgs(args)

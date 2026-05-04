@@ -21,7 +21,7 @@ The `peer snapshot` command has the following subcommands:
 
 ## peer snapshot cancelrequest
 ```
-Cancel a request for a snapshot at the specified block.
+[DEPRECATED] Cancel a request for a snapshot at the specified block. Instead of this command, use "peercli snapshot cancelrequest".
 
 Usage:
   peer snapshot cancelrequest [flags]
@@ -37,7 +37,7 @@ Flags:
 
 ## peer snapshot listpending
 ```
-List pending requests for snapshots.
+[DEPRECATED] List pending requests for snapshots. Instead of this command, use "peercli snapshot listpending".
 
 Usage:
   peer snapshot listpending [flags]
@@ -52,7 +52,7 @@ Flags:
 
 ## peer snapshot submitrequest
 ```
-Submit a request for a snapshot at the specified block. When the blockNumber parameter is set to 0 or not provided, it will submit a request for the last committed block.
+[DEPRECATED] Submit a request for a snapshot at the specified block. When the blockNumber parameter is set to 0 or not provided, it will submit a request for the last committed block. Instead of this command, use "peercli snapshot submitrequest".
 
 Usage:
   peer snapshot submitrequest [flags]
