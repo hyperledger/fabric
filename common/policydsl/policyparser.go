@@ -26,6 +26,11 @@ const (
 	GateOutOf = "OutOf"
 )
 
+const (
+	maxPolicyStringLength = 100000
+	maxPolicyNestingDepth = 1024
+)
+
 // Role values for principals
 const (
 	RoleAdmin   = "admin"
@@ -233,6 +238,29 @@ func newContext() *context {
 	return &context{IDNum: 0, principals: make([]*mb.MSPPrincipal, 0)}
 }
 
+func validatePolicyString(policy string) error {
+	if len(policy) > maxPolicyStringLength {
+		return fmt.Errorf("policy string exceeds maximum length of %d characters", maxPolicyStringLength)
+	}
+
+	depth := 0
+	for _, r := range policy {
+		switch r {
+		case '(':
+			depth++
+			if depth > maxPolicyNestingDepth {
+				return fmt.Errorf("policy string exceeds maximum nesting depth of %d", maxPolicyNestingDepth)
+			}
+		case ')':
+			if depth > 0 {
+				depth--
+			}
+		}
+	}
+
+	return nil
+}
+
 // FromString takes a string representation of the policy,
 // parses it and returns a SignaturePolicyEnvelope that
 // implements that policy. The supported language is as follows:
@@ -252,6 +280,10 @@ func newContext() *context {
 //   - ROLE takes the value of any of the RoleXXX constants representing
 //     the required role
 func FromString(policy string) (*cb.SignaturePolicyEnvelope, error) {
+	if err := validatePolicyString(policy); err != nil {
+		return nil, err
+	}
+
 	// first we translate the and/or business into outof gates
 	intermediate, err := govaluate.NewEvaluableExpressionWithFunctions(
 		policy, map[string]govaluate.ExpressionFunction{
