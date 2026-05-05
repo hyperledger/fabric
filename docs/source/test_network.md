@@ -676,6 +676,16 @@ If you have any problems with the tutorial, review the following:
    docker rm -f $(docker ps -aq)
    docker rmi -f $(docker images -q)
    ```
+-  If you see the following error during chaincode installation:
+   ```
+   Error: chaincode install failed with status: 500 - failed to invoke backing implementation of 'InstallChaincode': could not build chaincode: docker build failed: docker image build failed: write unix @->/run/docker.sock: write: broken pipe
+   ```
+
+   check the Docker Engine **server** version with `docker version`. This symptom is associated
+   with Docker Engine v29 and older Fabric releases. Upgrade to a Fabric release that includes
+   the Docker Engine v29+ compatibility fix, such as Fabric v3.1.4 or a current v2.5.x patch
+   release.
+
 -  If you are running Docker Desktop on macOS and experience the following error during chaincode installation:
    ```
    Error: chaincode install failed with status: 500 - failed to invoke backing implementation of 'InstallChaincode': could not build chaincode: docker build failed: docker image inspection failed: Get "http://unix.sock/images/dev-peer0.org1.example.com-basic_1.0-4ec191e793b27e953ff2ede5a8bcc63152cecb1e4c3f301a26e22692c61967ad-42f57faac8360472e47cbbbf3940e81bba83439702d085878d148089a1b213ca/json": dial unix /host/var/run/docker.sock: connect: no such file or directory
