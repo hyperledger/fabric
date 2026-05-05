@@ -618,7 +618,7 @@ func discoverConfiguration(n *nwo.Network, peer *nwo.Peer) *discovery.ConfigResu
 }
 
 func submitSnapshotRequest(n *nwo.Network, channel string, blockNum int, peer *nwo.Peer, expectedMsg string) {
-	sess, err := n.PeerAdminSession(peer, commands.SnapshotSubmitRequest{
+	sess, err := n.CliAdminSession(peer, commands.SnapshotSubmitRequest{
 		ChannelID:   channel,
 		BlockNumber: strconv.Itoa(blockNum),
 		ClientAuth:  n.ClientAuthRequired,
@@ -636,7 +636,7 @@ func verifyNoPendingSnapshotRequest(n *nwo.Network, peer *nwo.Peer, channelID st
 		PeerAddress: n.PeerAddress(peer, nwo.ListenPort),
 	}
 	checkPending := func() string {
-		sess, err := n.PeerAdminSession(peer, cmd)
+		sess, err := n.CliAdminSession(peer, cmd)
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 		return string(sess.Buffer().Contents())

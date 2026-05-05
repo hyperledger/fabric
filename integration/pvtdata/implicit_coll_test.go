@@ -173,14 +173,14 @@ func readImplicitCollection(n *nwo.Network, peer *nwo.Peer, chaincodeName string
 }
 
 func invokeChaincode(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeInvoke) {
-	sess, err := n.PeerUserSession(peer, "User1", command)
+	sess, err := n.CliUserSession(peer, "User1", command)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful."))
 }
 
 func queryChaincode(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeQuery, expectedMessage string, expectSuccess bool) {
-	sess, err := n.PeerUserSession(peer, "User1", command)
+	sess, err := n.CliUserSession(peer, "User1", command)
 	Expect(err).NotTo(HaveOccurred())
 	if expectSuccess {
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
