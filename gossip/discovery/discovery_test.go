@@ -1928,6 +1928,31 @@ func portOfEndpoint(endpoint string) int {
 	return int(port)
 }
 
+
+func TestLearnExistingMembers_NilMemberAfterConcurrentPurge(t *testing.T) {
+	inst := createDiscoveryInstanceWithNoGossip(33900, "d0", nil)
+	defer inst.Stop()
+
+	d := inst.discoveryImpl()
+
+	memberPKIid := common.PKIidType("purged-member-pkiid")
+	memberEndpoint := "localhost:9999"
+
+	// Simulate the TOCTOU race fixed in PR #5397:
+	// handleAliveMessage sees isAlive=true under one lock, then a concurrent
+	// purge() removes the member from all maps before learnExistingMembers
+	// acquires the write lock. The result is a member present in aliveLastTS
+	// at decision time but absent from id2Member when learnExistingMembers runs.
+	d.lock.Lock()
+	d.aliveLastTS[string(memberPKIid)] = &timestamp{
+		incTime:  time.Now(),
+		seqNum:   1,
+		lastSeen: time.Now(),
+	}
+	// Intentionally NOT adding to id2Member to reproduce the nil dereference:
+	// before the fix, learnExistingMembers accessed member.Endpoint without
+	// a nil guard, causing a panic.
+	d.lock.Unlock()
 func TestHandleAliveMessage_RelearnsMemberAfterConcurrentPurge(t *testing.T) {
 	inst := createDiscoveryInstanceWithNoGossip(33700, "d0", []string{})
 	defer inst.Stop()
@@ -1954,6 +1979,20 @@ func TestHandleAliveMessage_RelearnsMemberAfterConcurrentPurge(t *testing.T) {
 				},
 				Timestamp: &proto.PeerTime{
 					IncNum: uint64(time.Now().UnixNano()),
+					SeqNum: 2,
+				},
+			},
+		},
+	}
+	signedMsg, err := protoext.NoopSign(aliveMsg)
+	require.NoError(t, err)
+
+	// Before the fix: panics with nil pointer dereference on member.Endpoint
+	// because id2Member[memberPKIid] is nil (member was concurrently purged).
+	// After the fix: nil member detected, update skipped, no panic.
+	require.NotPanics(t, func() {
+		d.learnExistingMembers([]*protoext.SignedGossipMessage{signedMsg})
+	})
 					SeqNum: 1,
 				},
 			},
