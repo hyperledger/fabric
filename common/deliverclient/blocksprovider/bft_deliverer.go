@@ -323,7 +323,9 @@ func (d *BFTDeliverer) Stop() {
 
 	d.stopFlag = true
 	close(d.DoneC)
-	d.blockReceiver.Stop()
+	if d.blockReceiver != nil {
+		d.blockReceiver.Stop()
+	}
 }
 
 func (d *BFTDeliverer) FetchBlocks(source *orderers.Endpoint) {
