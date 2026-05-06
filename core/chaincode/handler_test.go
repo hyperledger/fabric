@@ -495,6 +495,43 @@ var _ = Describe("Handler", func() {
 				}))
 			})
 		})
+
+		// Regression test for https://github.com/hyperledger/fabric/issues/5048
+		// When a transaction times out during a range query, the timeout path closes
+		// the LevelDB iterator while the handler goroutine is still using it, causing
+		// a nil pointer dereference panic. The recover() in HandleTransaction prevents
+		// this from crashing the peer.
+		Context("when the delegate panics", func() {
+			It("recovers and sends an error response", func() {
+				panickingDelegate := func(msg *pb.ChaincodeMessage, txContext *chaincode.TransactionContext) (*pb.ChaincodeMessage, error) {
+					panic("simulated nil pointer dereference from closed iterator")
+				}
+
+				Expect(func() {
+					handler.HandleTransaction(incomingMessage, panickingDelegate)
+				}).NotTo(Panic())
+
+				Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
+				msg := fakeChatStream.SendArgsForCall(0)
+				Expect(msg.Type).To(Equal(pb.ChaincodeMessage_ERROR))
+				Expect(msg.Txid).To(Equal("tx-id"))
+				Expect(msg.ChannelId).To(Equal("channel-id"))
+				Expect(string(msg.Payload)).To(ContainSubstring("panic during execution"))
+			})
+
+			It("deregisters the transaction ID", func() {
+				panickingDelegate := func(msg *pb.ChaincodeMessage, txContext *chaincode.TransactionContext) (*pb.ChaincodeMessage, error) {
+					panic("simulated panic")
+				}
+
+				handler.HandleTransaction(incomingMessage, panickingDelegate)
+
+				Expect(fakeTransactionRegistry.RemoveCallCount()).To(Equal(1))
+				channelID, transactionID := fakeTransactionRegistry.RemoveArgsForCall(0)
+				Expect(channelID).To(Equal("channel-id"))
+				Expect(transactionID).To(Equal("tx-id"))
+			})
+		})
 	})
 
 	Describe("HandlePutState", func() {

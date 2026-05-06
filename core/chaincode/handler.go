@@ -245,12 +245,41 @@ type handleFunc func(*pb.ChaincodeMessage, *TransactionContext) (*pb.ChaincodeMe
 // returned by the delegate are sent to the chat stream. Any errors returned by the
 // delegate are packaged as chaincode error messages.
 func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFunc) {
+	startTime := time.Now()
+	meterLabels := []string{
+		"type", msg.Type.String(),
+		"channel", msg.ChannelId,
+		"chaincode", h.chaincodeID,
+	}
+
+	// Recover from panics that can occur when the transaction context is cleaned up
+	// (e.g., iterators closed) due to execution timeout while this goroutine is still
+	// actively using those resources. This prevents peer crashes from nil pointer
+	// dereferences in the underlying LevelDB iterator.
+	// See https://github.com/hyperledger/fabric/issues/5048
+	defer func() {
+		if r := recover(); r != nil {
+			chaincodeLogger.Errorf("[%s] Recovered from panic handling %s: %v", shorttxid(msg.Txid), msg.Type, r)
+			resp := &pb.ChaincodeMessage{
+				Type:      pb.ChaincodeMessage_ERROR,
+				Payload:   []byte(fmt.Sprintf("%s failed: transaction ID: %s: panic during execution", msg.Type, msg.Txid)),
+				Txid:      msg.Txid,
+				ChannelId: msg.ChannelId,
+			}
+			h.ActiveTransactions.Remove(msg.ChannelId, msg.Txid)
+			h.serialSendAsync(resp)
+
+			meterLabels = append(meterLabels, "success", "false")
+			h.Metrics.ShimRequestDuration.With(meterLabels...).Observe(time.Since(startTime).Seconds())
+			h.Metrics.ShimRequestsCompleted.With(meterLabels...).Add(1)
+		}
+	}()
+
 	chaincodeLogger.Debugf("[%s] handling %s from chaincode", shorttxid(msg.Txid), msg.Type.String())
 	if !h.registerTxid(msg) {
 		return
 	}
 
-	startTime := time.Now()
 	var txContext *TransactionContext
 	var err error
 	if msg.Type == pb.ChaincodeMessage_INVOKE_CHAINCODE {
@@ -259,11 +288,6 @@ func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFun
 		txContext, err = h.isValidTxSim(msg.ChannelId, msg.Txid, "no ledger context")
 	}
 
-	meterLabels := []string{
-		"type", msg.Type.String(),
-		"channel", msg.ChannelId,
-		"chaincode", h.chaincodeID,
-	}
 	h.Metrics.ShimRequestsReceived.With(meterLabels...).Add(1)
 
 	var resp *pb.ChaincodeMessage
