@@ -10,7 +10,7 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // NetworkConfig provides a static definition of a Hyperledger Fabric network
