@@ -59,6 +59,8 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -66,6 +68,7 @@ import (
 
 	cerrdefs "github.com/containerd/errdefs"
 	"github.com/docker/go-connections/sockets"
+	"github.com/moby/moby/client/internal/mod"
 	"github.com/moby/moby/client/pkg/versions"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -106,11 +109,15 @@ const DummyHost = "api.moby.localhost"
 // overriding the version and disable API-version negotiation.
 //
 // This version may be lower than the version of the api library module used.
-const MaxAPIVersion = "1.52"
+const MaxAPIVersion = "1.54"
 
 // MinAPIVersion is the minimum API version supported by the client. API versions
 // below this version are not considered when performing API-version negotiation.
-const MinAPIVersion = "1.44"
+const MinAPIVersion = "1.40"
+
+// defaultUserAgent returns the default User-Agent to use if none is set.
+// It defaults to "moby-client/<module version> os/arch"
+var defaultUserAgent = sync.OnceValue(userAgent)
 
 // Ensure that Client always implements APIClient.
 var _ APIClient = &Client{}
@@ -158,7 +165,9 @@ func CheckRedirect(_ *http.Request, via []*http.Request) error {
 
 // NewClientWithOpts initializes a new API client.
 //
-// Deprecated: use New. This function will be removed in the next release.
+// Deprecated: use [New]. This function will be removed in the next release.
+//
+//go:fix inline
 func NewClientWithOpts(ops ...Opt) (*Client, error) {
 	return New(ops...)
 }
@@ -178,10 +187,7 @@ func NewClientWithOpts(ops ...Opt) (*Client, error) {
 // [WithAPIVersionFromEnv] to configure the client with a fixed API version
 // and disable API version negotiation.
 //
-//	cli, err := client.New(
-//		client.FromEnv,
-//		client.WithAPIVersionNegotiation(),
-//	)
+//	cli, err := client.New(client.FromEnv)
 func New(ops ...Opt) (*Client, error) {
 	hostURL, err := ParseHostURL(DefaultDockerHost)
 	if err != nil {
@@ -209,6 +215,9 @@ func New(ops ...Opt) (*Client, error) {
 	cfg := &c.clientConfig
 
 	for _, op := range ops {
+		if op == nil {
+			continue
+		}
 		if err := op(cfg); err != nil {
 			return nil, err
 		}
@@ -240,6 +249,13 @@ func New(ops ...Opt) (*Client, error) {
 	}
 
 	c.client.Transport = otelhttp.NewTransport(c.client.Transport, c.traceOpts...)
+
+	if len(cfg.responseHooks) > 0 {
+		c.client.Transport = &responseHookTransport{
+			base:  c.client.Transport,
+			hooks: slices.Clone(cfg.responseHooks),
+		}
+	}
 
 	return c, nil
 }
@@ -425,4 +441,15 @@ func (cli *Client) dialer() func(context.Context) (net.Conn, error) {
 			return net.Dial(cli.proto, cli.addr)
 		}
 	}
+}
+
+func userAgent() string {
+	const defaultVersion = "v0.0.0+unknown"
+	const moduleName = "github.com/moby/moby/client"
+
+	version := defaultVersion
+	if v := mod.Version(moduleName); v != "" {
+		version = v
+	}
+	return "moby-client/" + version + " " + runtime.GOOS + "/" + runtime.GOARCH
 }
