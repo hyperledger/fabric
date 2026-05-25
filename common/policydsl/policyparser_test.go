@@ -238,13 +238,13 @@ func TestMSPIDWIthSpecialChars(t *testing.T) {
 
 func TestBadStringsNoPanic(t *testing.T) {
 	_, err := FromString("OR('A.member', Bmember)") // error after 1st Evaluate()
-	require.EqualError(t, err, "unrecognized token 'Bmember' in policy string")
+	require.ErrorContains(t, err, "unknown name Bmember")
 
 	_, err = FromString("OR('A.member', 'Bmember')") // error after 2nd Evalute()
-	require.EqualError(t, err, "unrecognized token 'Bmember' in policy string")
+	require.ErrorContains(t, err, "unknown name Bmember")
 
 	_, err = FromString(`OR('A.member', '\'Bmember\'')`) // error after 3rd Evalute()
-	require.EqualError(t, err, "unrecognized token 'Bmember' in policy string")
+	require.ErrorContains(t, err, "unknown name Bmember")
 }
 
 func TestNodeOUs(t *testing.T) {
@@ -310,39 +310,39 @@ func TestOutOfNumIsString(t *testing.T) {
 func TestOutOfErrorCase(t *testing.T) {
 	p1, err1 := FromString("") // 1st NewEvaluableExpressionWithFunctions() returns an error
 	require.Nil(t, p1)
-	require.EqualError(t, err1, "Unexpected end of expression")
+	require.EqualError(t, err1, "unexpected token EOF")
 
 	p2, err2 := FromString("OutOf(1)") // outof() if len(args)<2
 	require.Nil(t, p2)
-	require.EqualError(t, err2, "expected at least two arguments to NOutOf. Given 1")
+	require.ErrorContains(t, err2, "expected at least two arguments to NOutOf. Given 1")
 
 	p3, err3 := FromString("OutOf(true, 'A.member')") // outof() }else{. 1st arg is non of float, int, string
 	require.Nil(t, p3)
-	require.EqualError(t, err3, "unexpected type bool")
+	require.ErrorContains(t, err3, "unexpected type bool")
 
 	p4, err4 := FromString("OutOf(1, 2)") // oufof() switch default. 2nd arg is not string.
 	require.Nil(t, p4)
-	require.EqualError(t, err4, "unexpected type float64")
+	require.ErrorContains(t, err4, "unexpected type int")
 
 	p5, err5 := FromString("OutOf(1, 'true')") // firstPass() switch default
 	require.Nil(t, p5)
-	require.EqualError(t, err5, "unexpected type bool")
+	require.ErrorContains(t, err5, "unexpected type bool")
 
 	p6, err6 := FromString(`OutOf('\'\\\'A\\\'\'', 'B.member')`) // secondPass() switch args[1].(type) default
 	require.Nil(t, p6)
-	require.EqualError(t, err6, "unrecognized type, expected a number, got string")
+	require.ErrorContains(t, err6, "unrecognized type, expected a number, got string")
 
 	p7, err7 := FromString(`OutOf(1, '\'1\'')`) // secondPass() switch args[1].(type) default
 	require.Nil(t, p7)
-	require.EqualError(t, err7, "unrecognized type, expected a principal or a policy, got float64")
+	require.ErrorContains(t, err7, "unrecognized type, expected a principal or a policy, got int")
 
 	p8, err8 := FromString(`''`) // 2nd NewEvaluateExpressionWithFunction() returns an error
 	require.Nil(t, p8)
-	require.EqualError(t, err8, "Unexpected end of expression")
+	require.EqualError(t, err8, "unexpected token EOF")
 
 	p9, err9 := FromString(`'\'\''`) // 3rd NewEvaluateExpressionWithFunction() returns an error
 	require.Nil(t, p9)
-	require.EqualError(t, err9, "Unexpected end of expression")
+	require.EqualError(t, err9, "unexpected token EOF")
 }
 
 func TestBadStringBeforeFAB11404_ThisCanDeleteAfterFAB11404HasMerged(t *testing.T) {
@@ -367,7 +367,7 @@ func TestSecondPassBoundaryCheck(t *testing.T) {
 	// Prohibit t<0
 	p0, err0 := FromString("OutOf(-1, 'A.member', 'B.member')")
 	require.Nil(t, p0)
-	require.EqualError(t, err0, "invalid t-out-of-n predicate, t -1, n 2")
+	require.ErrorContains(t, err0, "invalid t-out-of-n predicate, t -1, n 2")
 
 	// Permit t==0 : always satisfied policy
 	// There is no clear usecase of t=0, but somebody may already use it, so we don't treat as an error.
@@ -404,5 +404,5 @@ func TestSecondPassBoundaryCheck(t *testing.T) {
 	// Prohibit t>n + 1
 	p3, err3 := FromString("OutOf(4, 'A.member', 'B.member')")
 	require.Nil(t, p3)
-	require.EqualError(t, err3, "invalid t-out-of-n predicate, t 4, n 2")
+	require.ErrorContains(t, err3, "invalid t-out-of-n predicate, t 4, n 2")
 }

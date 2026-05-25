@@ -5,11 +5,11 @@ go 1.26.3
 require (
 	code.cloudfoundry.org/clock v1.15.0
 	github.com/IBM/idemix v0.0.2-0.20240913182345-72941a5f41cd
-	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/VictoriaMetrics/fastcache v1.12.2
 	github.com/bits-and-blooms/bitset v1.20.0
 	github.com/cheggaaa/pb/v3 v3.1.5
 	github.com/davecgh/go-spew v1.1.1
+	github.com/expr-lang/expr v1.17.8
 	github.com/go-kit/kit v0.13.0
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/gorilla/handlers v1.5.2
@@ -48,6 +48,7 @@ require (
 	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20240913182345-72941a5f41cd // indirect
 	github.com/IBM/idemix/bccsp/types v0.0.0-20240913182345-72941a5f41cd // indirect
 	github.com/IBM/mathlib v0.0.3-0.20250709075152-a138079496c3 // indirect
+	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible // indirect
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect

@@ -294,7 +294,7 @@ func TestCollectionParsing(t *testing.T) {
 		{
 			name:             "Invalid member orgs policy",
 			collectionConfig: sampleCollectionConfigBad,
-			expectedErr:      "invalid policy barf: unrecognized token 'barf' in policy string",
+			expectedErr:      "invalid policy barf: unknown name barf (1:1)\n | barf\n | ^",
 		},
 		{
 			name:             "Invalid collection config",
