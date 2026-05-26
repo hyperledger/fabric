@@ -42,11 +42,14 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout Fabric Code
-        uses: actions/checkout@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
       - name: Install Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: go.mod
+          cache: false
       - name: Compile Binary and Create Tarball
         run: ./ci/scripts/create_binary_package.sh
         env:
@@ -54,7 +57,7 @@ jobs:
           RELEASE: ${{ env.FABRIC_VER }}
 
       - name: Publish Release Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           # <name> of the artifact must not collide between platform/arch builds
           name: release-${{ matrix.target }}-${{ matrix.arch }}
@@ -93,31 +96,33 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Set GO_VER environment variable from go.mod
         run: |
           awk '/^go[ /t]/ { gsub(/^go[ \t]+|[ \t]+^/, ""); print "GO_VER="$0; exit }' < go.mod >> "${GITHUB_ENV}"
 
       - name: Login to the ${{ matrix.registry }} Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ${{ matrix.registry }}
           username: ${{ matrix.registry == 'docker.io' && secrets.DOCKERHUB_USERNAME || github.actor }}
           password: ${{ matrix.registry == 'docker.io' && secrets.DOCKERHUB_TOKEN    || secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
         with:
           images: ${{ matrix.registry }}/${{ github.repository_owner }}/fabric-${{ matrix.component.name }}
 
       - name: Build and push ${{ matrix.component.name }} Image
         id: build-and-push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         with:
           context: ${{ matrix.component.context }}
           file: images/${{ matrix.component.name }}/Dockerfile
@@ -136,7 +141,7 @@ jobs:
           touch "${{ runner.temp }}/digests/${{ matrix.registry }}/${{ matrix.component.name }}/${digest#sha256:}"
 
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: digests-${{ matrix.registry }}-${{ matrix.component.name }}-${{ matrix.runner }}
           path: ${{ runner.temp }}/digests/${{ matrix.registry }}/${{ matrix.component.name }}/*
@@ -174,25 +179,25 @@ jobs:
 
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: ${{ runner.temp }}/digests/${{ matrix.registry }}/${{ matrix.component.name }}
           pattern: digests-${{ matrix.registry }}-${{ matrix.component.name }}-*
           merge-multiple: true
 
       - name: Login to the ${{ matrix.registry }} Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ${{ matrix.registry }}
           username: ${{ matrix.registry == 'docker.io' && secrets.DOCKERHUB_USERNAME || github.actor }}
           password: ${{ matrix.registry == 'docker.io' && secrets.DOCKERHUB_TOKEN    || secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
         with:
           images: ${{ matrix.registry }}/${{ github.repository_owner }}/fabric-${{ matrix.component.name }}
           tags: |
@@ -204,11 +209,16 @@ jobs:
         working-directory: ${{ runner.temp }}/digests/${{ matrix.registry }}/${{ matrix.component.name }}
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ matrix.registry }}/${{ github.repository_owner }}/fabric-${{ matrix.component.name }}@sha256:%s ' *)
+            $(printf '${MATRIX_REGISTRY}/${{ github.repository_owner }}/fabric-${{ matrix.component.name }}@sha256:%s ' *)
+        env:
+          MATRIX_REGISTRY: ${{ matrix.registry }}
 
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ matrix.registry }}/${{ github.repository_owner }}/fabric-${{ matrix.component.name }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${MATRIX_REGISTRY}/${{ github.repository_owner }}/fabric-${{ matrix.component.name }}:${STEPS_META_OUTPUTS_VERSION}
+        env:
+          MATRIX_REGISTRY: ${{ matrix.registry }}
+          STEPS_META_OUTPUTS_VERSION: ${{ steps.meta.outputs.version }}
 
   create-release:
     name: Create GitHub Release
@@ -220,16 +230,18 @@ jobs:
       contents: write
     steps:
       - name: Checkout Fabric Code
-        uses: actions/checkout@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Download Artifacts
         id: download
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: "release-*"
 
       - name: Release Fabric Version
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
         with:
           allowUpdates: "true"
           artifacts: "release-*-*/*.tar.gz"
