@@ -188,9 +188,9 @@ func TestDistributor(t *testing.T) {
 	require.Equal(t, 2, expectedMaxCount["ns1~c1"])
 	require.Equal(t, 2, expectedMaxCount["ns2~c2"])
 
-	// and MinAck is minInternalPeers which is 1
-	require.Equal(t, 1, expectedMinAck["ns1~c1"])
-	require.Equal(t, 1, expectedMinAck["ns2~c2"])
+	// All sends use MinAck=1; RequiredPeerCount is verified in aggregate after dissemination.
+	require.Equal(t, 2, expectedMinAck["ns1~c1"])
+	require.Equal(t, 2, expectedMinAck["ns2~c2"])
 
 	// Channel is empty after we read 8 times from it
 	require.Len(t, sendings, 0)
@@ -231,11 +231,84 @@ func TestDistributor(t *testing.T) {
 		},
 	}, 0)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "Failed disseminating 2 out of 2 private dissemination plans")
+	require.Contains(t, err.Error(), "Failed disseminating to required peer count for 2 out of 2 private data dissemination plans")
 
 	require.Equal(t,
 		[]string{"channel", channelID},
 		testMetricProvider.FakeSendDuration.WithArgsForCall(0),
 	)
-	require.True(t, testMetricProvider.FakeSendDuration.ObserveArgsForCall(0) > 0)
+	require.Positive(t, testMetricProvider.FakeSendDuration.ObserveCallCount())
+}
+
+// Test for partial success: RequiredPeerCount=1, MaximumPeerCount=2
+func TestDistributorPartialSuccess(t *testing.T) {
+	channelID := "test"
+
+	g := &gossipMock{
+		Mock: mock.Mock{},
+		PeerSignature: api.PeerSignature{
+			Signature:    []byte{3, 4, 5},
+			Message:      []byte{6, 7, 8},
+			PeerIdentity: []byte{0, 1, 2},
+		},
+	}
+	g.On("PeersOfChannel", gcommon.ChannelID(channelID)).Return([]discovery.NetworkMember{
+		{PKIid: gcommon.PKIidType{1}},
+		{PKIid: gcommon.PKIidType{2}},
+	})
+	g.On("IdentityInfo").Return(api.PeerIdentitySet{
+		{PKIId: gcommon.PKIidType{1}, Organization: api.OrgIdentityType("org1")},
+		{PKIId: gcommon.PKIidType{2}, Organization: api.OrgIdentityType("org2")},
+	})
+
+	// RequiredPeerCount=1, MaximumPeerCount=2: only one of the two peers must acknowledge.
+	colConfig := &peer.CollectionConfig{
+		Payload: &peer.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &peer.StaticCollectionConfig{
+				Name:              "c1",
+				RequiredPeerCount: 1,
+				MaximumPeerCount:  2,
+			},
+		},
+	}
+	policyMock := &mocks2.CollectionAccessPolicy{}
+	Setup(policyMock, 1, 2, func(_ protoutil.SignedData) bool {
+		return true
+	}, map[string]struct{}{"org1": {}, "org2": {}}, false)
+
+	accessFactoryMock := &mocks2.CollectionAccessFactory{}
+	accessFactoryMock.On("AccessPolicy", colConfig, channelID).Return(policyMock, nil)
+
+	testMetricProvider := mocks.TestUtilConstructMetricProvider()
+	m := metrics.NewGossipMetrics(testMetricProvider.FakeProvider).PrivdataMetrics
+	d := NewDistributor(channelID, g, accessFactoryMock, m, 0)
+
+	pvtData := (&pvtDataFactory{}).addRWSet().addNSRWSet("ns1", "c1").create()
+	txData := &transientstore.TxPvtReadWriteSetWithConfigInfo{
+		PvtRwset: pvtData[0].WriteSet,
+		CollectionConfigs: map[string]*peer.CollectionConfigPackage{
+			"ns1": {Config: []*peer.CollectionConfig{colConfig}},
+		},
+	}
+
+	// Case if one of two sends fails, but RequiredPeerCount=1 is still met: no error.
+	g.On("SendByCriteria", mock.Anything, mock.Anything).Return(errors.New("peer unavailable")).Once()
+	g.On("SendByCriteria", mock.Anything, mock.Anything).Return(nil)
+	err := d.Distribute("tx1", txData, 0)
+	require.NoError(t, err, "should succeed when at least RequiredPeerCount peers acknowledged")
+
+	// Case if both sends fail, RequiredPeerCount=1 not met: error.
+	g.Mock = mock.Mock{}
+	g.On("PeersOfChannel", gcommon.ChannelID(channelID)).Return([]discovery.NetworkMember{
+		{PKIid: gcommon.PKIidType{1}},
+		{PKIid: gcommon.PKIidType{2}},
+	})
+	g.On("IdentityInfo").Return(api.PeerIdentitySet{
+		{PKIId: gcommon.PKIidType{1}, Organization: api.OrgIdentityType("org1")},
+		{PKIId: gcommon.PKIidType{2}, Organization: api.OrgIdentityType("org2")},
+	})
+	g.On("SendByCriteria", mock.Anything, mock.Anything).Return(errors.New("peer unavailable"))
+	err = d.Distribute("tx2", txData, 0)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Failed disseminating to required peer count for 1 out of 1")
 }
