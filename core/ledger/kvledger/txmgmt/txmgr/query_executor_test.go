@@ -44,9 +44,10 @@ func TestPvtdataResultsItr(t *testing.T) {
 	defer testEnv.cleanup()
 
 	txMgr := testEnv.getTxMgr()
-	populateCollConfigForTest(t, txMgr, []collConfigkey{
-		{"ns1", "coll1"}, {"ns2", "coll1"}, {"ns3", "coll1"}, {"ns4", "coll1"},
-	},
+	populateCollConfigForTest(
+		t, txMgr, []collConfigkey{
+			{"ns1", "coll1"}, {"ns2", "coll1"}, {"ns3", "coll1"}, {"ns4", "coll1"},
+		},
 		version.NewHeight(1, 0),
 	)
 

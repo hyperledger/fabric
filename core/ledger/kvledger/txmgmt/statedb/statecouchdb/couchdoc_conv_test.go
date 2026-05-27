@@ -70,9 +70,11 @@ func TestSortJSON(t *testing.T) {
 
 func testSortJSON(t *testing.T, filePrefix int) {
 	input, err := os.ReadFile(
-		fmt.Sprintf("testdata/json_documents/%d_unsorted.json",
+		fmt.Sprintf(
+			"testdata/json_documents/%d_unsorted.json",
 			filePrefix,
-		))
+		),
+	)
 	require.NoError(t, err)
 	kv := &keyValue{"", "", &statedb.VersionedValue{Value: input, Version: version.NewHeight(1, 1)}}
 	doc, err := keyValToCouchDoc(kv)
@@ -84,9 +86,11 @@ func testSortJSON(t *testing.T, filePrefix int) {
 	err = json.Indent(&prettyPrintJSON, actualKV.Value, "", "  ")
 	require.NoError(t, err)
 	expected, err := os.ReadFile(
-		fmt.Sprintf("testdata/json_documents/%d_sorted.json",
+		fmt.Sprintf(
+			"testdata/json_documents/%d_sorted.json",
 			filePrefix,
-		))
+		),
+	)
 	require.NoError(t, err)
 	require.Equal(t, string(expected), prettyPrintJSON.String())
 }

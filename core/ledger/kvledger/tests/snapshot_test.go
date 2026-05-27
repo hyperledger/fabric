@@ -19,7 +19,8 @@ import (
 )
 
 func TestSnapshotGenerationAndBootstrap(t *testing.T) {
-	env := newEnvWithInitializer(t,
+	env := newEnvWithInitializer(
+		t,
 		&ledgermgmt.Initializer{
 			MembershipInfoProvider: &membershipInfoProvider{myOrgMSPID: "org-myOrg"},
 		},
@@ -29,7 +30,8 @@ func TestSnapshotGenerationAndBootstrap(t *testing.T) {
 	originalLedger := env.createTestLedgerFromGenesisBlk("ledger1")
 
 	// block-1
-	originalLedger.simulateDeployTx("myChaincode",
+	originalLedger.simulateDeployTx(
+		"myChaincode",
 		[]*collConf{
 			{
 				name:    "collection-1",
@@ -61,7 +63,8 @@ func TestSnapshotGenerationAndBootstrap(t *testing.T) {
 
 	// generate snapshot and bootstrap another ledger
 	snapshotDir := originalLedger.generateSnapshot()
-	anotherEnv := newEnvWithInitializer(t,
+	anotherEnv := newEnvWithInitializer(
+		t,
 		&ledgermgmt.Initializer{
 			MembershipInfoProvider: &membershipInfoProvider{myOrgMSPID: "org-myOrg"},
 		},
@@ -111,7 +114,8 @@ func TestSnapshotGenerationAndBootstrap(t *testing.T) {
 	// Block-4
 	// simulate chaincode upgrade to make this ledger eligible for collection-2
 	// This helps verify (via a follow up query) that the missing data entries for ineligible collections were populated
-	testLedger.simulateUpgradeTx("myChaincode",
+	testLedger.simulateUpgradeTx(
+		"myChaincode",
 		[]*collConf{
 			{
 				name:    "collection-1",
@@ -207,7 +211,8 @@ func TestSnapshotGenerationAndBootstrap(t *testing.T) {
 
 	require.NoError(t, err)
 	testLedger.verifyMissingPvtDataSameAs(10, ledger.MissingPvtDataInfo{})
-	testLedger.verifyInPvtdataStore(2, nil,
+	testLedger.verifyInPvtdataStore(
+		2, nil,
 		[]*ledger.TxPvtData{
 			{
 				SeqInBlock: 0,
@@ -215,7 +220,8 @@ func TestSnapshotGenerationAndBootstrap(t *testing.T) {
 			},
 		},
 	)
-	testLedger.verifyInPvtdataStore(3, nil,
+	testLedger.verifyInPvtdataStore(
+		3, nil,
 		[]*ledger.TxPvtData{
 			{
 				SeqInBlock: 0,

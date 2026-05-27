@@ -598,7 +598,8 @@ func TestStorePurge(t *testing.T) {
 
 	// "ns-2:coll-1" should never have been purged (because, it was no btl was declared for this)
 	require.True(t, testDataKeyExists(t, s, &dataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-2", blkNum: 1}, txNum: 2}))
-	require.True(t, testHashedIndexExists(t, s,
+	require.True(t, testHashedIndexExists(
+		t, s,
 		&hashedIndexKey{
 			ns:         "ns-1",
 			coll:       "coll-2",
@@ -623,7 +624,8 @@ func TestStoreState(t *testing.T) {
 		produceSamplePvtdata(t, 0, []string{"ns-1:coll-1", "ns-1:coll-2"}),
 	}
 
-	require.EqualError(t,
+	require.EqualError(
+		t,
 		store.Commit(1, testData, nil, nil),
 		"expected block number=0, received block number=1",
 	)
@@ -942,8 +944,10 @@ func TestStoreFilterPurgedKeys(t *testing.T) {
 			WriteSet:   txWriteSetProto,
 		},
 	}
-	require.NoError(t,
-		s.Commit(1, testDataForBlk1, nil,
+	require.NoError(
+		t,
+		s.Commit(
+			1, testDataForBlk1, nil,
 			[]*PurgeMarker{
 				{
 					Ns:         "ns-1",
@@ -1054,7 +1058,8 @@ func TestStoreFilterPurgedKeys(t *testing.T) {
 	// Add a purge marker again for key-2 at block-2
 	require.NoError(
 		t,
-		s.Commit(2, nil, nil,
+		s.Commit(
+			2, nil, nil,
 			[]*PurgeMarker{
 				{
 					Ns:         "ns-1",
@@ -1104,7 +1109,8 @@ func TestStoreFilterPurgedKeys(t *testing.T) {
 	// Add a purge marker for key-3 at block-3
 	require.NoError(
 		t,
-		s.Commit(3, nil, nil,
+		s.Commit(
+			3, nil, nil,
 			[]*PurgeMarker{
 				{
 					Ns:         "ns-1",
@@ -1223,7 +1229,8 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 	}
 	require.NoError(
 		t,
-		s.Commit(1, testDataForBlk1, nil,
+		s.Commit(
+			1, testDataForBlk1, nil,
 			[]*PurgeMarker{
 				{
 					Ns:         "ns-1",
@@ -1358,7 +1365,8 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 
 	require.NoError(
 		t,
-		s.Commit(3,
+		s.Commit(
+			3,
 			// Add a delete for the private key to simulate the situation where this key
 			// is added along with the purge marker at the same transaction height
 			[]*ledger.TxPvtData{
@@ -1391,19 +1399,21 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 
 	// this should cause purging key-1 from data
 	require.True(t, testDataKeyExists(t, s, dataKeyColl1))
-	require.Equal(t,
+	require.Equal(
+		t,
 		"coll-1",
 		testRetrieveDataValue(t, s, dataKeyColl1).CollectionName,
 	)
 	require.True(t,
-		proto.Equal(&kvrwset.KVRWSet{
-			Writes: []*kvrwset.KVWrite{
-				{
-					Key:   "key-2",
-					Value: []byte("value-2"),
+		proto.Equal(
+			&kvrwset.KVRWSet{
+				Writes: []*kvrwset.KVWrite{
+					{
+						Key:   "key-2",
+						Value: []byte("value-2"),
+					},
 				},
 			},
-		},
 			testRetrieveDataValue(t, s, dataKeyColl1).KvRwSet,
 		))
 	require.True(t, testDataKeyExists(t, s, dataKeyColl2))
@@ -1476,7 +1486,8 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 	// Add a purge marker for key-2 at block-5
 	require.NoError(
 		t,
-		s.Commit(5, testDataForBlk1, nil,
+		s.Commit(
+			5, testDataForBlk1, nil,
 			[]*PurgeMarker{
 				{
 					Ns:         "ns-1",
@@ -1499,11 +1510,13 @@ func TestStoreProcessPurgeMarker(t *testing.T) {
 	// this should cause purging key-2 (e.g., all keys) from data
 	require.True(t, testDataKeyExists(t, s, dataKeyColl1))
 	tmp := testRetrieveDataValue(t, s, dataKeyColl1)
-	require.Equal(t,
+	require.Equal(
+		t,
 		"coll-1",
 		tmp.CollectionName,
 	)
-	require.True(t,
+	require.True(
+		t,
 		proto.Equal(&kvrwset.KVRWSet{}, tmp.KvRwSet),
 	)
 	require.True(t, testDataKeyExists(t, s, dataKeyColl2))
@@ -1657,7 +1670,8 @@ func TestRemoveAppInitiatedPurgesUsingReconMarker(t *testing.T) {
 	require.Equal(t, kvHahses, returnedKVHahes)
 
 	// add a marker for one key in a collection
-	require.NoError(t,
+	require.NoError(
+		t,
 		s.Commit(5, nil, nil, []*PurgeMarker{
 			{
 				Ns:         "ns-1",
@@ -1677,7 +1691,8 @@ func TestRemoveAppInitiatedPurgesUsingReconMarker(t *testing.T) {
 	// a lower block query should cause trimming
 	returnedKVHahes, err = s.RemoveAppInitiatedPurgesUsingReconMarker(kvHahses, "ns-1", "coll-1", 5, 0)
 	require.NoError(t, err)
-	require.Equal(t,
+	require.Equal(
+		t,
 		map[string][]byte{
 			"key-2-hash": nil,
 			"key-3-hash": nil,
@@ -1755,7 +1770,8 @@ func testCollElgEnabled(t *testing.T, conf *PrivateDataConfig) {
 
 	// Enable eligibility for {ns-2:coll2}
 	require.NoError(t,
-		testStore.ProcessCollsEligibilityEnabled(6,
+		testStore.ProcessCollsEligibilityEnabled(
+			6,
 			map[string][]string{
 				"ns-2": {"coll-2"},
 			},

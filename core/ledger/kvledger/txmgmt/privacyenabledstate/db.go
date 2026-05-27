@@ -140,7 +140,8 @@ func (s *DB) IsBulkOptimizable() bool {
 
 // LoadCommittedVersionsOfPubAndHashedKeys loads committed version of given public and hashed states
 func (s *DB) LoadCommittedVersionsOfPubAndHashedKeys(pubKeys []*statedb.CompositeKey,
-	hashedKeys []*HashedCompositeKey) error {
+	hashedKeys []*HashedCompositeKey,
+) error {
 	bulkOptimizable, ok := s.VersionedDB.(statedb.BulkOptimizable)
 	if !ok {
 		return nil

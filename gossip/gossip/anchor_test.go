@@ -73,7 +73,8 @@ func (p *peerMock) Ping(context.Context, *proto.Empty) (*proto.Empty, error) {
 }
 
 func newPeerMockWithGRPC(port int, gRPCServer *comm.GRPCServer, certs *common.TLSCertificates,
-	expectedMsgs2Receive int, t *testing.T, msgAssertions ...msgInspection) *peerMock {
+	expectedMsgs2Receive int, t *testing.T, msgAssertions ...msgInspection,
+) *peerMock {
 	p := &peerMock{
 		gRGCserv:             gRPCServer.Server(),
 		msgAssertions:        msgAssertions,

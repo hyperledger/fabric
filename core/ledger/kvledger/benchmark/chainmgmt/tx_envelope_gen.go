@@ -38,7 +38,8 @@ func init() {
 	dummyProposal, _, _ = protoutil.CreateChaincodeProposal(
 		common.HeaderType_ENDORSER_TRANSACTION, dummyChainID,
 		&pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: dummyCCID}},
-		serializedSigner)
+		serializedSigner,
+	)
 }
 
 func createTxEnv(simulationResults []byte) (*common.Envelope, error) {
@@ -51,7 +52,8 @@ func createTxEnv(simulationResults []byte) (*common.Envelope, error) {
 			common.HeaderType_ENDORSER_TRANSACTION,
 			dummyChainID,
 			&pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: dummyCCID}},
-			serializedSigner)
+			serializedSigner,
+		)
 		if err != nil {
 			return nil, err
 		}

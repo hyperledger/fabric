@@ -65,7 +65,8 @@ func TestTxSimulatorGetResults(t *testing.T) {
 	testEnv.init(t, "testLedger", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr()
-	populateCollConfigForTest(t, txMgr,
+	populateCollConfigForTest(
+		t, txMgr,
 		[]collConfigkey{
 			{"ns1", "coll1"},
 			{"ns1", "coll3"},
@@ -470,7 +471,8 @@ func testIteratorPagingInit(t *testing.T, env testEnv, numKeys int) {
 }
 
 func testIteratorPaging(t *testing.T, env testEnv, numKeys int, startKey, endKey string,
-	pageSize int32, expectedKeys []string) string {
+	pageSize int32, expectedKeys []string,
+) string {
 	cID := "cid"
 	txMgr := env.getTxMgr()
 
@@ -1091,7 +1093,8 @@ func testValidationAndCommitOfOldPvtData(t *testing.T, env testEnv) {
 	env.init(t, ledgerid, btlPolicy)
 	defer env.cleanup()
 	txMgr := env.getTxMgr()
-	populateCollConfigForTest(t, txMgr,
+	populateCollConfigForTest(
+		t, txMgr,
 		[]collConfigkey{
 			{"ns1", "coll1"},
 			{"ns1", "coll2"},
@@ -1185,7 +1188,8 @@ func TestTxSimulatorMissingPvtdata(t *testing.T) {
 	defer testEnv.cleanup()
 
 	txMgr := testEnv.getTxMgr()
-	populateCollConfigForTest(t, txMgr,
+	populateCollConfigForTest(
+		t, txMgr,
 		[]collConfigkey{
 			{"ns1", "coll1"},
 			{"ns1", "coll2"},
@@ -1228,7 +1232,8 @@ func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
 	defer testEnv.cleanup()
 
 	txMgr := testEnv.getTxMgr()
-	populateCollConfigForTest(t, txMgr,
+	populateCollConfigForTest(
+		t, txMgr,
 		[]collConfigkey{
 			{"ns", "coll"},
 		},
@@ -1530,7 +1535,8 @@ func testTxWithPvtdataMetadata(t *testing.T, env testEnv, ns, coll string) {
 }
 
 func prepareNextBlockForTest(t *testing.T, txMgr *LockBasedTxMgr, bg *testutil.BlockGenerator,
-	txid string, pubKVs map[string]string, pvtKVs map[string]string, isMissing bool) *ledger.BlockAndPvtData {
+	txid string, pubKVs map[string]string, pvtKVs map[string]string, isMissing bool,
+) *ledger.BlockAndPvtData {
 	simulator, _ := txMgr.NewTxSimulator(txid)
 	// simulating transaction
 	for k, v := range pubKVs {
@@ -1558,7 +1564,8 @@ func prepareNextBlockForTestFromSimulator(t *testing.T, bg *testutil.BlockGenera
 }
 
 func prepareNextBlockForTestFromSimulatorWithMissingData(t *testing.T, bg *testutil.BlockGenerator, simulator ledger.TxSimulator,
-	txid string, txNum uint64, ns, coll string, isEligible bool) *ledger.BlockAndPvtData {
+	txid string, txNum uint64, ns, coll string, isEligible bool,
+) *ledger.BlockAndPvtData {
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block := bg.NextBlock([][]byte{pubSimBytes})
@@ -1568,7 +1575,8 @@ func prepareNextBlockForTestFromSimulatorWithMissingData(t *testing.T, bg *testu
 }
 
 func checkTestQueryResults(t *testing.T, qe ledger.QueryExecutor, ns, key string,
-	expectedVal []byte, expectedMetadata map[string][]byte) {
+	expectedVal []byte, expectedMetadata map[string][]byte,
+) {
 	committedVal, err := qe.GetState(ns, key)
 	require.NoError(t, err)
 	require.Equal(t, expectedVal, committedVal)
@@ -1580,7 +1588,8 @@ func checkTestQueryResults(t *testing.T, qe ledger.QueryExecutor, ns, key string
 }
 
 func checkPvtdataTestQueryResults(t *testing.T, qe ledger.QueryExecutor, ns, coll, key string,
-	expectedVal []byte, expectedMetadata map[string][]byte) {
+	expectedVal []byte, expectedMetadata map[string][]byte,
+) {
 	committedVal, err := qe.GetPrivateData(ns, coll, key)
 	require.NoError(t, err)
 	require.Equal(t, expectedVal, committedVal)

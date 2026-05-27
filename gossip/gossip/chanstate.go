@@ -96,7 +96,8 @@ func (cs *channelState) getGossipChannelByChainID(channelID common.ChannelID) ch
 }
 
 func (cs *channelState) joinChannel(joinMsg api.JoinChannelMessage, channelID common.ChannelID,
-	metrics *metrics.MembershipMetrics) {
+	metrics *metrics.MembershipMetrics,
+) {
 	if cs.isStopping() {
 		return
 	}

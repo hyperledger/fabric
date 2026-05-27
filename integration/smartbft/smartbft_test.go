@@ -1784,7 +1784,8 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			var ordererRunners []*ginkgomon.Runner
 			for _, orderer := range network.Orderers {
-				runner := network.OrdererRunner(orderer,
+				runner := network.OrdererRunner(
+					orderer,
 					"FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug",
 					"ORDERER_GENERAL_BACKOFF_MAXDELAY=3s",
 				)
@@ -1843,7 +1844,8 @@ var _ = Describe("EndToEnd Smart BFT configuration test", func() {
 
 			// After starting orderer 3, orderer 0 (leader) will have 10-11 seconds to establish a connection and throw a heartbeat message.
 			By(fmt.Sprintf("Launching %s", orderer.Name))
-			runner := network.OrdererRunner(orderer,
+			runner := network.OrdererRunner(
+				orderer,
 				"FABRIC_LOGGING_SPEC=orderer.consensus.smartbft=debug:grpc=debug",
 				"ORDERER_GENERAL_BACKOFF_MAXDELAY=3s",
 			)

@@ -49,7 +49,7 @@ func TestDifferentMessages(t *testing.T) {
 	ms := NewMemoizeSigner(sign, n)
 	parallelSignRange := func(start, end uint) {
 		var wg sync.WaitGroup
-		wg.Add((int)(end - start))
+		wg.Add(int(end - start))
 		for i := start; i < end; i++ {
 			i := i
 			go func() {

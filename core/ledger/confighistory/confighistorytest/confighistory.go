@@ -74,7 +74,8 @@ func BuildCollConfigPkg(staticCollectionConfigs []*peer.StaticCollectionConfig) 
 		Config: []*peer.CollectionConfig{},
 	}
 	for _, c := range staticCollectionConfigs {
-		pkg.Config = append(pkg.Config,
+		pkg.Config = append(
+			pkg.Config,
 			&peer.CollectionConfig{
 				Payload: &peer.CollectionConfig_StaticCollectionConfig{
 					StaticCollectionConfig: c,

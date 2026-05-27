@@ -188,7 +188,8 @@ var _ = Describe("Resources", func() {
 		Context("when the metadata is not for a chaincode", func() {
 			BeforeEach(func() {
 				type badStruct struct{}
-				err := resources.Serializer.Serialize(lifecycle.NamespacesName,
+				err := resources.Serializer.Serialize(
+					lifecycle.NamespacesName,
 					"cc-name",
 					&badStruct{},
 					fakePublicState,
@@ -710,7 +711,8 @@ var _ = Describe("ExternalFunctions", func() {
 							Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
 								ChannelConfigPolicyReference: "/Channel/Application/Endorsement",
 							},
-						}),
+						},
+					),
 				}))
 				Expect(committedDefinition.Collections).To(ProtoEqual(&pb.CollectionConfigPackage{}))
 			})
@@ -1053,7 +1055,8 @@ var _ = Describe("ExternalFunctions", func() {
 						Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
 							ChannelConfigPolicyReference: "/Channel/Application/Endorsement",
 						},
-					})
+					},
+				)
 
 				resources.Serializer.Serialize("namespaces", "cc-name#5", testDefinition.Parameters(), fakeOrgStates[0])
 
@@ -1640,7 +1643,8 @@ var _ = Describe("ExternalFunctions", func() {
 						Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
 							ChannelConfigPolicyReference: "/Channel/Application/Endorsement",
 						},
-					})
+					},
+				)
 
 				resources.Serializer.Serialize("namespaces", "cc-name#5", testDefinition.Parameters(), fakeOrgStates[0])
 

@@ -636,7 +636,8 @@ func TestCompare(t *testing.T) {
 
 // createSnapshot generates a sample snapshot based on the passed in records and metadata
 func createSnapshot(dir string, pubStateRecords []*testRecord, pvtStateRecords []*testRecord,
-	signableMetadata *kvledger.SnapshotSignableMetadata) error {
+	signableMetadata *kvledger.SnapshotSignableMetadata,
+) error {
 	// Generate public state of sample snapshot
 	pubStateWriter, err := privacyenabledstate.NewSnapshotWriter(
 		dir,

@@ -120,7 +120,8 @@ var _ = Describe("MetadataProvider", func() {
 					Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
 						ChannelConfigPolicyReference: "barf",
 					},
-				})
+				},
+			)
 			fakeChaincodeInfoProvider.ChaincodeInfoReturns(ccInfo, nil)
 
 			fakeConvertedPolicy = &mock.ConvertiblePolicy{}

@@ -38,7 +38,8 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 		configHistoryMgr, err := confighistorytest.NewMgr(path.Join(testDir, "config-history"))
 		require.NoError(t, err)
 
-		require.NoError(t,
+		require.NoError(
+			t,
 			configHistoryMgr.Setup(
 				"test-ledger", "ns",
 				map[uint64][]*peer.StaticCollectionConfig{
@@ -59,13 +60,15 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 			),
 		)
 
-		snapshotDataImporter, err := p.SnapshotDataImporterFor("test-ledger", 25,
+		snapshotDataImporter, err := p.SnapshotDataImporterFor(
+			"test-ledger", 25,
 			newMockMembershipProvider("myOrg"), configHistoryMgr.GetRetriever("test-ledger"), testDir,
 		)
 		require.NoError(t, err)
 
 		for _, d := range snapshotData {
-			require.NoError(t,
+			require.NoError(
+				t,
 				snapshotDataImporter.ConsumeSnapshotData("ns", d.collection, d.keyHash, d.valueHash, d.version),
 			)
 		}
@@ -129,7 +132,8 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 
 		m, err := store.FetchBootKVHashes(20, 200, "ns", "eligible-coll")
 		require.NoError(t, err)
-		require.Equal(t,
+		require.Equal(
+			t,
 			map[string][]byte{
 				"eligible-coll-key-hash-1": []byte("eligible-coll-value-hash-1"),
 				"eligible-coll-key-hash-2": []byte("eligible-coll-value-hash-2"),
@@ -171,7 +175,8 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 
 		m, err := store.FetchBootKVHashes(20, 200, "ns", "eligible-coll")
 		require.NoError(t, err)
-		require.Equal(t,
+		require.Equal(
+			t,
 			map[string][]byte{
 				"eligible-coll-key-hash": []byte("eligible-coll-value-hash"),
 			},
@@ -180,7 +185,8 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 
 		m, err = store.FetchBootKVHashes(25, 250, "ns", "eligible-coll")
 		require.NoError(t, err)
-		require.Equal(t,
+		require.Equal(
+			t,
 			map[string][]byte{
 				"key-hash-at-last-block-in-snapshot": []byte("value-hash-at-last-block-in-snapshot"),
 			},
@@ -189,7 +195,8 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 
 		m, err = store.FetchBootKVHashes(21, 210, "ns", "ineligible-coll")
 		require.NoError(t, err)
-		require.Equal(t,
+		require.Equal(
+			t,
 			map[string][]byte{
 				"ineligible-coll-key-hash": []byte("ineligible-coll-value-hash"),
 			},
@@ -248,7 +255,8 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 
 		m, err = store.FetchBootKVHashes(21, 210, "ns", "ineligible-coll")
 		require.NoError(t, err)
-		require.Equal(t,
+		require.Equal(
+			t,
 			map[string][]byte{
 				"ineligible-coll-key-hash": []byte("ineligible-coll-value-hash"),
 			},
@@ -276,7 +284,8 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 
 		m, err := store.FetchBootKVHashes(20, 200, "ns", "eligible-coll")
 		require.NoError(t, err)
-		require.Equal(t,
+		require.Equal(
+			t,
 			map[string][]byte{
 				"eligible-coll-key-hash": []byte("eligible-coll-value-hash"),
 			},
@@ -285,7 +294,8 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 
 		m, err = store.FetchBootKVHashes(21, 210, "ns", "ineligible-coll")
 		require.NoError(t, err)
-		require.Equal(t,
+		require.Equal(
+			t,
 			map[string][]byte{
 				"ineligible-coll-key-hash": []byte("ineligible-coll-value-hash"),
 			},
@@ -321,7 +331,8 @@ func TestStoreCreationErrorPath(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("error-while-constructing-snapshot-data-importer", func(t *testing.T) {
-		_, err = p.SnapshotDataImporterFor("test-ledger", 25,
+		_, err = p.SnapshotDataImporterFor(
+			"test-ledger", 25,
 			newMockMembershipProvider("myOrg"),
 			configHistoryMgr.GetRetriever("test-ledger"),
 			"non-existing-dir",
@@ -331,7 +342,8 @@ func TestStoreCreationErrorPath(t *testing.T) {
 
 	t.Run("error-while-writing-snapshot-info-into-pvtdata-store", func(t *testing.T) {
 		p.Close()
-		_, err = p.SnapshotDataImporterFor("test-ledger", 25,
+		_, err = p.SnapshotDataImporterFor(
+			"test-ledger", 25,
 			newMockMembershipProvider("myOrg"),
 			configHistoryMgr.GetRetriever("test-ledger"),
 			testDir,

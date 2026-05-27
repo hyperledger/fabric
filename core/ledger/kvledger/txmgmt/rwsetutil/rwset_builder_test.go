@@ -270,7 +270,8 @@ func TestTxSimulationResultWithMetadata(t *testing.T) {
 	rwSetBuilder := NewRWSetBuilder()
 	// public rws ns1
 	rwSetBuilder.AddToReadSet("ns1", "key1", version.NewHeight(1, 1))
-	rwSetBuilder.AddToMetadataWriteSet("ns1", "key1",
+	rwSetBuilder.AddToMetadataWriteSet(
+		"ns1", "key1",
 		map[string][]byte{"metadata2": []byte("ns1-key1-metadata2"), "metadata1": []byte("ns1-key1-metadata1")},
 	)
 	// public rws ns2

@@ -166,7 +166,8 @@ func recordHeightIfGreaterThanPreviousRecording(ledgerDir string) error {
 	currentHt := blkfilesInfo.lastPersistedBlock + 1
 	if currentHt > previuoslyRecordedHt {
 		logger.Infof("Recording current height [%d]", currentHt)
-		return os.WriteFile(preResetHtFile,
+		return os.WriteFile(
+			preResetHtFile,
 			[]byte(strconv.FormatUint(currentHt, 10)),
 			0o640,
 		)

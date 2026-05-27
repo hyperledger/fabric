@@ -285,7 +285,8 @@ type gossipNetwork struct {
 }
 
 func (gn *gossipNetwork) newPullerWithMetrics(metrics *metrics.PrivdataMetrics, id string, ps privdata.CollectionStore,
-	factory CollectionAccessFactory, knownMembers ...discovery.NetworkMember) *puller {
+	factory CollectionAccessFactory, knownMembers ...discovery.NetworkMember,
+) *puller {
 	g := newMockGossip(&comm.RemotePeer{PKIID: common.PKIidType(id), Endpoint: id})
 	g.network = gn
 	g.On("PeersOfChannel", mock.Anything).Return(knownMembers)
@@ -296,7 +297,8 @@ func (gn *gossipNetwork) newPullerWithMetrics(metrics *metrics.PrivdataMetrics, 
 }
 
 func (gn *gossipNetwork) newPuller(id string, ps privdata.CollectionStore, factory CollectionAccessFactory,
-	knownMembers ...discovery.NetworkMember) *puller {
+	knownMembers ...discovery.NetworkMember,
+) *puller {
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
 	return gn.newPullerWithMetrics(metrics, id, ps, factory, knownMembers...)
 }
@@ -1209,12 +1211,14 @@ func TestPullerMetrics(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, p2TransientStore.RWSet, fetched)
 
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]string{"channel", "A"},
 		testMetricProvider.FakePullDuration.WithArgsForCall(0),
 	)
 	require.True(t, testMetricProvider.FakePullDuration.ObserveArgsForCall(0) > 0)
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]string{"channel", "A"},
 		testMetricProvider.FakeRetrieveDuration.WithArgsForCall(0),
 	)

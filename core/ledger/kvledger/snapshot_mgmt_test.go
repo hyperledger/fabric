@@ -248,7 +248,8 @@ func TestSnapshotMgmtConcurrency(t *testing.T) {
 	<-kvledger.snapshotMgr.commitProceed
 
 	require.NoError(t, kvledger.SubmitSnapshotRequest(0))
-	require.Eventually(t,
+	require.Eventually(
+		t,
 		func() bool {
 			r, err := kvledger.snapshotMgr.snapshotRequestBookkeeper.smallestRequest()
 			require.NoError(t, err)

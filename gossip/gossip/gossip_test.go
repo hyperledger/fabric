@@ -227,7 +227,8 @@ func bootPeersWithPorts(ports ...int) []string {
 
 func newGossipInstanceWithGrpcMcsMetrics(id int, port int, gRPCServer *corecomm.GRPCServer, certs *common.TLSCertificates,
 	secureDialOpts api.PeerSecureDialOpts, maxMsgCount int, mcs api.MessageCryptoService,
-	metrics *metrics.GossipMetrics, bootPorts ...int) *gossipGRPC {
+	metrics *metrics.GossipMetrics, bootPorts ...int,
+) *gossipGRPC {
 	conf := &Config{
 		BootstrapPeers:               bootPeersWithPorts(bootPorts...),
 		ID:                           fmt.Sprintf("p%d", id),
@@ -270,14 +271,16 @@ func newGossipInstanceWithGrpcMcsMetrics(id int, port int, gRPCServer *corecomm.
 }
 
 func newGossipInstanceWithGRPC(id int, port int, gRPCServer *corecomm.GRPCServer, certs *common.TLSCertificates,
-	secureDialOpts api.PeerSecureDialOpts, maxMsgCount int, bootPorts ...int) *gossipGRPC {
+	secureDialOpts api.PeerSecureDialOpts, maxMsgCount int, bootPorts ...int,
+) *gossipGRPC {
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{})
 	mcs := &naiveCryptoService{}
 	return newGossipInstanceWithGrpcMcsMetrics(id, port, gRPCServer, certs, secureDialOpts, maxMsgCount, mcs, metrics, bootPorts...)
 }
 
 func newGossipInstanceWithExpiration(expirations map[string]time.Time, lock *sync.RWMutex, id int, port int, gRPCServer *corecomm.GRPCServer, certs *common.TLSCertificates,
-	secureDialOpts api.PeerSecureDialOpts, maxMsgCount int, bootPorts ...int) *gossipGRPC {
+	secureDialOpts api.PeerSecureDialOpts, maxMsgCount int, bootPorts ...int,
+) *gossipGRPC {
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{})
 	mcs := &naiveCryptoService{expirationTimesLock: lock, expirationTimes: expirations}
 	return newGossipInstanceWithGrpcMcsMetrics(id, port, gRPCServer, certs, secureDialOpts, maxMsgCount, mcs, metrics, bootPorts...)
@@ -285,7 +288,8 @@ func newGossipInstanceWithExpiration(expirations map[string]time.Time, lock *syn
 
 func newGossipInstanceWithGRPCWithOnlyPull(id int, port int, gRPCServer *corecomm.GRPCServer, certs *common.TLSCertificates,
 	secureDialOpts api.PeerSecureDialOpts, maxMsgCount int, mcs api.MessageCryptoService,
-	metrics *metrics.GossipMetrics, bootPorts ...int) *gossipGRPC {
+	metrics *metrics.GossipMetrics, bootPorts ...int,
+) *gossipGRPC {
 	shortenedWaitTime := time.Duration(200) * time.Millisecond
 	conf := &Config{
 		BootstrapPeers:               bootPeersWithPorts(bootPorts...),
@@ -329,7 +333,8 @@ func newGossipInstanceWithGRPCWithOnlyPull(id int, port int, gRPCServer *corecom
 }
 
 func newGossipInstanceCreateGRPCWithMCSWithMetrics(id int, maxMsgCount int, mcs api.MessageCryptoService,
-	metrics *metrics.GossipMetrics, bootPorts ...int) *gossipGRPC {
+	metrics *metrics.GossipMetrics, bootPorts ...int,
+) *gossipGRPC {
 	p, g, c, s, _ := util.CreateGRPCLayer()
 	return newGossipInstanceWithGrpcMcsMetrics(id, p, g, c, s, maxMsgCount, mcs, metrics, bootPorts...)
 }
@@ -341,7 +346,8 @@ func newGossipInstanceCreateGRPC(id int, maxMsgCount int, bootPorts ...int) *gos
 }
 
 func newGossipInstanceCreateGRPCWithOnlyPull(id int, maxMsgCount int, mcs api.MessageCryptoService,
-	metrics *metrics.GossipMetrics, bootPorts ...int) *gossipGRPC {
+	metrics *metrics.GossipMetrics, bootPorts ...int,
+) *gossipGRPC {
 	p, g, c, s, _ := util.CreateGRPCLayer()
 	return newGossipInstanceWithGRPCWithOnlyPull(id, p, g, c, s, maxMsgCount, mcs, metrics, bootPorts...)
 }
@@ -1636,11 +1642,13 @@ func TestMembershipMetrics(t *testing.T) {
 
 	// assert channel membership metrics reported with 0 as value
 	wg0.Wait()
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]string{"channel", "A"},
 		testMetricProvider.FakeTotalGauge.WithArgsForCall(0),
 	)
-	require.EqualValues(t, 0,
+	require.EqualValues(
+		t, 0,
 		testMetricProvider.FakeTotalGauge.SetArgsForCall(0),
 	)
 

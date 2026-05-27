@@ -419,7 +419,8 @@ func TestInternalEndpoint(t *testing.T) {
 				Content: &gossip.Secret_InternalEndpoint{
 					InternalEndpoint: "foo",
 				},
-			}),
+			},
+		),
 	}))
 }
 

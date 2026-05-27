@@ -315,7 +315,8 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	defer ledger1.Close()
 
 	gbHash := protoutil.BlockHeaderHash(gb.Header)
-	checkBCSummaryForTest(t, ledger1,
+	checkBCSummaryForTest(
+		t, ledger1,
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil},
 		},
@@ -326,7 +327,8 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		map[string]string{"key1": "value1.1", "key2": "value2.1", "key3": "value3.1"},
 		map[string]string{"key1": "pvtValue1.1", "key2": "pvtValue2.1", "key3": "pvtValue3.1"})
 	require.NoError(t, ledger1.CommitLegacy(blockAndPvtdata1, &ledger.CommitOptions{}))
-	checkBCSummaryForTest(t, ledger1,
+	checkBCSummaryForTest(
+		t, ledger1,
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{
 				Height:            2,
@@ -349,7 +351,8 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	require.NoError(t, ledger1.(*kvLedger).commitToPvtAndBlockStore(blockAndPvtdata2, nil))
 
 	// block storage should be as of block-2 but the state and history db should be as of block-1
-	checkBCSummaryForTest(t, ledger1,
+	checkBCSummaryForTest(
+		t, ledger1,
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{
 				Height:            3,
@@ -381,7 +384,8 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	ledger2, err := provider2.Open(testLedgerid)
 	require.NoError(t, err)
 	defer ledger2.Close()
-	checkBCSummaryForTest(t, ledger2,
+	checkBCSummaryForTest(
+		t, ledger2,
 		&bcSummary{
 			stateDBSavePoint: uint64(2),
 			stateDBKVs:       map[string]string{"key1": "value1.2", "key2": "value2.2", "key3": "value3.2"},
@@ -397,7 +401,8 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	// SCENARIO 2: peer fails after committing the third block to the block storage and state DB
 	// but before committing to history DB
 	// ======================================================================================
-	blockAndPvtdata3 := prepareNextBlockForTest(t, ledger2, bg, "SimulateForBlk3",
+	blockAndPvtdata3 := prepareNextBlockForTest(
+		t, ledger2, bg, "SimulateForBlk3",
 		map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
 		map[string]string{"key1": "pvtValue1.3", "key2": "pvtValue2.3", "key3": "pvtValue3.3"},
 	)
@@ -408,7 +413,8 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	require.NoError(t, ledger2.(*kvLedger).txmgr.Commit())
 
 	// assume that peer fails here after committing the transaction to state DB but before history DB
-	checkBCSummaryForTest(t, ledger2,
+	checkBCSummaryForTest(
+		t, ledger2,
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{
 				Height:            4,
@@ -440,7 +446,8 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	require.NoError(t, err)
 	defer ledger3.Close()
 
-	checkBCSummaryForTest(t, ledger3,
+	checkBCSummaryForTest(
+		t, ledger3,
 		&bcSummary{
 			stateDBSavePoint: uint64(3),
 			stateDBKVs:       map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
@@ -457,7 +464,8 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	// SCENARIO 3: peer fails after committing the fourth block to the block storgae
 	// and history DB but before committing to state DB
 	// ======================================================================================
-	blockAndPvtdata4 := prepareNextBlockForTest(t, ledger3, bg, "SimulateForBlk4",
+	blockAndPvtdata4 := prepareNextBlockForTest(
+		t, ledger3, bg, "SimulateForBlk4",
 		map[string]string{"key1": "value1.4", "key2": "value2.4", "key3": "value3.4"},
 		map[string]string{"key1": "pvtValue1.4", "key2": "pvtValue2.4", "key3": "pvtValue3.4"},
 	)
@@ -467,7 +475,8 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	require.NoError(t, ledger3.(*kvLedger).commitToPvtAndBlockStore(blockAndPvtdata4, nil))
 	require.NoError(t, ledger3.(*kvLedger).historyDB.Commit(blockAndPvtdata4.Block))
 
-	checkBCSummaryForTest(t, ledger3,
+	checkBCSummaryForTest(
+		t, ledger3,
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{
 				Height:            5,
@@ -498,7 +507,8 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	ledger4, err := provider4.Open(testLedgerid)
 	require.NoError(t, err)
 	defer ledger4.Close()
-	checkBCSummaryForTest(t, ledger4,
+	checkBCSummaryForTest(
+		t, ledger4,
 		&bcSummary{
 			stateDBSavePoint: uint64(4),
 			stateDBKVs:       map[string]string{"key1": "value1.4", "key2": "value2.4", "key3": "value3.4"},
@@ -1165,7 +1175,8 @@ func TestCommitNotifications(t *testing.T) {
 		})
 
 		commitNotification := <-dataChannel
-		require.Equal(t,
+		require.Equal(
+			t,
 			&ledger.CommitNotification{
 				BlockNumber: 1,
 				TxsInfo: []*ledger.CommitNotificationTxInfo{
@@ -1203,7 +1214,8 @@ func TestCommitNotifications(t *testing.T) {
 		})
 
 		commitNotification := <-dataChannel
-		require.Equal(t,
+		require.Equal(
+			t,
 			&ledger.CommitNotification{
 				BlockNumber: 1,
 				TxsInfo:     []*ledger.CommitNotificationTxInfo{},
@@ -1286,7 +1298,8 @@ func TestCommitNotificationsOnBlockCommit(t *testing.T) {
 
 	require.NoError(t, lgr.CommitLegacy(&ledger.BlockAndPvtData{Block: block}, &ledger.CommitOptions{}))
 	commitNotification := <-dataChannel
-	require.Equal(t,
+	require.Equal(
+		t,
 		&ledger.CommitNotification{
 			BlockNumber: 1,
 			TxsInfo: []*ledger.CommitNotificationTxInfo{
@@ -1351,7 +1364,8 @@ func testutilCollConfigPkg(colls []*peer.StaticCollectionConfig) *peer.Collectio
 		Config: []*peer.CollectionConfig{},
 	}
 	for _, coll := range colls {
-		pkg.Config = append(pkg.Config,
+		pkg.Config = append(
+			pkg.Config,
 			&peer.CollectionConfig{
 				Payload: &peer.CollectionConfig_StaticCollectionConfig{
 					StaticCollectionConfig: coll,
@@ -1400,7 +1414,8 @@ func sampleDataWithPvtdataForAllTxs(t *testing.T, bg *testutil.BlockGenerator) [
 	var blockAndpvtdata []*ledger.BlockAndPvtData
 	blocks := bg.NextTestBlocks(10)
 	for i := range 10 {
-		blockAndpvtdata = append(blockAndpvtdata,
+		blockAndpvtdata = append(
+			blockAndpvtdata,
 			&ledger.BlockAndPvtData{
 				Block:   blocks[i],
 				PvtData: samplePvtData(t, []uint64{uint64(i), uint64(i + 1)}),
@@ -1463,7 +1478,8 @@ func btlPolicyForSampleData() pvtdatapolicy.BTLPolicy {
 }
 
 func prepareNextBlockForTest(t *testing.T, l ledger.PeerLedger, bg *testutil.BlockGenerator,
-	txid string, pubKVs map[string]string, pvtKVs map[string]string) *ledger.BlockAndPvtData {
+	txid string, pubKVs map[string]string, pvtKVs map[string]string,
+) *ledger.BlockAndPvtData {
 	simulator, _ := l.NewTxSimulator(txid)
 	// simulating transaction
 	for k, v := range pubKVs {

@@ -409,7 +409,8 @@ func GetServerConfig() (comm.ServerConfig, error) {
 			var clientRoots [][]byte
 			for _, file := range viper.GetStringSlice("peer.tls.clientRootCAs.files") {
 				clientRoot, err := os.ReadFile(
-					config.TranslatePath(filepath.Dir(viper.ConfigFileUsed()), file))
+					config.TranslatePath(filepath.Dir(viper.ConfigFileUsed()), file),
+				)
 				if err != nil {
 					return serverConfig,
 						fmt.Errorf("error loading client root CAs (%s)", err)

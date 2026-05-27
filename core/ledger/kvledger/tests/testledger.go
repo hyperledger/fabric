@@ -130,7 +130,8 @@ func (l *testLedger) generateSnapshot() string {
 	require.NoError(l.t, err)
 	blockNum := bcInfo.Height - 1
 	require.NoError(l.t, l.lgr.SubmitSnapshotRequest(blockNum))
-	require.Eventually(l.t,
+	require.Eventually(
+		l.t,
 		func() bool {
 			requests, err := l.lgr.PendingSnapshotRequests()
 			require.NoError(l.t, err)

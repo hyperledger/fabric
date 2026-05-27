@@ -341,7 +341,8 @@ func TestFormatCheck(t *testing.T) {
 			fmt.Sprintf("testCase %d", i),
 			func(t *testing.T) {
 				testFormatCheck(t, testCase.dataFormat, testCase.expectedFormat, testCase.dataExists, testCase.expectedErr)
-			})
+			},
+		)
 	}
 }
 
@@ -461,7 +462,8 @@ func TestRetrieveDataFormatInfo(t *testing.T) {
 		provider.Close()
 		info, err := RetrieveDataFormatInfo(testDBPath)
 		require.NoError(t, err)
-		require.Equal(t,
+		require.Equal(
+			t,
 			&DataFormatInfo{
 				FormatVerison: "",
 				IsDBEmpty:     true,
@@ -480,7 +482,8 @@ func TestRetrieveDataFormatInfo(t *testing.T) {
 
 		info, err := RetrieveDataFormatInfo(testDBPath)
 		require.NoError(t, err)
-		require.Equal(t,
+		require.Equal(
+			t,
 			&DataFormatInfo{
 				FormatVerison: "",
 				IsDBEmpty:     false,
@@ -499,7 +502,8 @@ func TestRetrieveDataFormatInfo(t *testing.T) {
 		env.provider.Close()
 		info, err := RetrieveDataFormatInfo(testDBPath)
 		require.NoError(t, err)
-		require.Equal(t,
+		require.Equal(
+			t,
 			&DataFormatInfo{
 				FormatVerison: "2.6",
 				IsDBEmpty:     false,

@@ -42,7 +42,8 @@ func NewTestStoreEnv(
 	t *testing.T,
 	ledgerid string,
 	btlPolicy pvtdatapolicy.BTLPolicy,
-	conf *PrivateDataConfig) *StoreEnv {
+	conf *PrivateDataConfig,
+) *StoreEnv {
 	conf.StorePath = t.TempDir()
 	testStoreProvider, err := NewProvider(conf)
 	require.NoError(t, err)

@@ -161,7 +161,8 @@ func (cs *connectionStore) shutdown() {
 // onConnected closes any connection to the remote peer and creates a new connection object to it in order to have only
 // one single bi-directional connection between a pair of peers
 func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamServer,
-	connInfo *protoext.ConnectionInfo, metrics *metrics.CommMetrics) *connection {
+	connInfo *protoext.ConnectionInfo, metrics *metrics.CommMetrics,
+) *connection {
 	cs.Lock()
 	defer cs.Unlock()
 

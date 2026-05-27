@@ -292,7 +292,8 @@ var _ = Describe("Metadata Validation", func() {
 
 			It("fails on addition of more than one consenter", func() {
 				newMetadata := proto.Clone(metadata).(*raftprotos.ConfigMetadata)
-				newMetadata.Consenters = append(newMetadata.Consenters,
+				newMetadata.Consenters = append(
+					newMetadata.Consenters,
 					&raftprotos.Consenter{
 						Host:          "host4",
 						Port:          10004,
@@ -362,7 +363,8 @@ var _ = Describe("Metadata Validation", func() {
 				Expect(err).NotTo(HaveOccurred())
 				newOrdererConfig.ConsensusMetadataReturns(newBytes)
 				Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).To(
-					MatchError("2 out of 3 nodes are alive, configuration will result in quorum loss"))
+					MatchError("2 out of 3 nodes are alive, configuration will result in quorum loss"),
+				)
 			})
 
 			When("node id starts from 2", func() {

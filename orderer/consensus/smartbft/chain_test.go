@@ -528,11 +528,13 @@ func addNodeToConfig(t *testing.T, lastConfigBlock *cb.Block, nodeId uint32, tls
 	signerSerializer.EXPECT().Serialize().RunAndReturn(
 		func() ([]byte, error) {
 			return []byte{1, 2, 3}, nil
-		}).Maybe()
+		},
+	).Maybe()
 	signerSerializer.EXPECT().Sign(mock.Anything).RunAndReturn(
 		func(message []byte) ([]byte, error) {
 			return message, nil
-		}).Maybe()
+		},
+	).Maybe()
 	configUpdateTx, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelId, signerSerializer, configUpdate, 0, 0)
 	require.NoError(t, err)
 
@@ -612,11 +614,13 @@ func removeNodeFromConfig(t *testing.T, lastConfigBlock *cb.Block, nodeId uint32
 	signerSerializer.EXPECT().Serialize().RunAndReturn(
 		func() ([]byte, error) {
 			return []byte{1, 2, 3}, nil
-		}).Maybe()
+		},
+	).Maybe()
 	signerSerializer.EXPECT().Sign(mock.Anything).RunAndReturn(
 		func(message []byte) ([]byte, error) {
 			return message, nil
-		}).Maybe()
+		},
+	).Maybe()
 	configUpdateTx, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelId, signerSerializer, configUpdate, 0, 0)
 	require.NoError(t, err)
 

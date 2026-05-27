@@ -145,8 +145,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	// bad envelope
 	gb = testutil.ConstructTestBlock(t, 11, 1, 1)
 	gb.Data = &common.BlockData{Data: [][]byte{{123}}}
-	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] =
-		txflags.NewWithValues(len(gb.Data.Data), peer.TxValidationCode_VALID)
+	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txflags.NewWithValues(len(gb.Data.Data), peer.TxValidationCode_VALID)
 	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
 	require.Error(t, err)
 	t.Log(err)
@@ -275,17 +274,20 @@ func TestIncrementPvtdataVersionIfNeeded(t *testing.T) {
 	err := incrementPvtdataVersionIfNeeded(metadataUpdates, pvtUpdateBatch, pubAndHashedUpdatesBatch, testDB)
 	require.NoError(t, err)
 
-	require.Equal(t,
+	require.Equal(
+		t,
 		&statedb.VersionedValue{Value: []byte("value1_set_by_tx1"), Version: version.NewHeight(2, 2)}, // key1 value should be same and version should be upgraded to (2,2)
 		pvtUpdateBatch.Get("ns", "coll1", "key1"),
 	)
 
-	require.Equal(t,
+	require.Equal(
+		t,
 		&statedb.VersionedValue{Value: []byte("value2"), Version: version.NewHeight(2, 4)}, // key2 entry should get added with value in the db and version (2,4)
 		pvtUpdateBatch.Get("ns", "coll2", "key2"),
 	)
 
-	require.Equal(t,
+	require.Equal(
+		t,
 		&statedb.VersionedValue{Value: []byte("value3_set_by_tx5"), Version: version.NewHeight(2, 5)}, // key3 should be unaffected because the tx6 was missing from pvt data
 		pvtUpdateBatch.Get("ns", "coll3", "key3"),
 	)
@@ -333,16 +335,16 @@ func TestTXMgrContainsPostOrderWrites(t *testing.T) {
 	blocks := testutil.ConstructTestBlocks(t, 2)
 
 	// block with config tx that produces post order writes
-	fakeTxProcessor.GenerateSimulationResultsStub =
-		func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
-			rwSetBuilder := rwsetutil.NewRWSetBuilder()
-			rwSetBuilder.AddToWriteSet("ns1", "key1", []byte("value1"))
-			_, err := rwSetBuilder.GetTxSimulationResults()
-			require.NoError(t, err)
-			s.(*mocklgr.TxSimulator).GetTxSimulationResultsReturns(
-				rwSetBuilder.GetTxSimulationResults())
-			return nil
-		}
+	fakeTxProcessor.GenerateSimulationResultsStub = func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
+		rwSetBuilder := rwsetutil.NewRWSetBuilder()
+		rwSetBuilder.AddToWriteSet("ns1", "key1", []byte("value1"))
+		_, err := rwSetBuilder.GetTxSimulationResults()
+		require.NoError(t, err)
+		s.(*mocklgr.TxSimulator).GetTxSimulationResultsReturns(
+			rwSetBuilder.GetTxSimulationResults(),
+		)
+		return nil
+	}
 	batch, _, _, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blocks[0]}, true)
 	require.NoError(t, err)
 	require.True(t, batch.PubUpdates.ContainsPostOrderWrites)
@@ -353,11 +355,10 @@ func TestTXMgrContainsPostOrderWrites(t *testing.T) {
 	require.False(t, batch.PubUpdates.ContainsPostOrderWrites)
 
 	// test with block with invalid config tx
-	fakeTxProcessor.GenerateSimulationResultsStub =
-		func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
-			s.(*mocklgr.TxSimulator).GetTxSimulationResultsReturns(nil, nil)
-			return &ledger.InvalidTxError{Msg: "fake-message"}
-		}
+	fakeTxProcessor.GenerateSimulationResultsStub = func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
+		s.(*mocklgr.TxSimulator).GetTxSimulationResultsReturns(nil, nil)
+		return &ledger.InvalidTxError{Msg: "fake-message"}
+	}
 	batch, _, _, err = v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blocks[0]}, true)
 	require.NoError(t, err)
 	require.False(t, batch.PubUpdates.ContainsPostOrderWrites)
@@ -372,28 +373,32 @@ func TestTxStatsInfo(t *testing.T) {
 	v := NewCommitBatchPreparer(nil, testDB, nil, testHashFunc)
 
 	// create a block with 4 endorser transactions
-	tx1SimulationResults, _ := testutilGenerateTxSimulationResultsAsBytes(t,
+	tx1SimulationResults, _ := testutilGenerateTxSimulationResultsAsBytes(
+		t,
 		&testRwset{
 			writes: []*testKeyWrite{
 				{ns: "ns1", key: "key1", val: "val1"},
 			},
 		},
 	)
-	tx2SimulationResults, _ := testutilGenerateTxSimulationResultsAsBytes(t,
+	tx2SimulationResults, _ := testutilGenerateTxSimulationResultsAsBytes(
+		t,
 		&testRwset{
 			reads: []*testKeyRead{
 				{ns: "ns1", key: "key1", version: nil}, // should cause mvcc read-conflict with tx1
 			},
 		},
 	)
-	tx3SimulationResults, _ := testutilGenerateTxSimulationResultsAsBytes(t,
+	tx3SimulationResults, _ := testutilGenerateTxSimulationResultsAsBytes(
+		t,
 		&testRwset{
 			writes: []*testKeyWrite{
 				{ns: "ns1", key: "key2", val: "val2"},
 			},
 		},
 	)
-	tx4SimulationResults, _ := testutilGenerateTxSimulationResultsAsBytes(t,
+	tx4SimulationResults, _ := testutilGenerateTxSimulationResultsAsBytes(
+		t,
 		&testRwset{
 			writes: []*testKeyWrite{
 				{ns: "ns1", coll: "coll1", key: "key1", val: "val1"},

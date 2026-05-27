@@ -168,7 +168,8 @@ func testSnapshotWithSampleData(t *testing.T, env TestEnv,
 	// verify exported snapshot files
 	filesAndHashesSrcDB, err := sourceDB.ExportPubStateAndPvtStateHashes(snapshotDirSrcDB, testNewHashFunc)
 	require.NoError(t, err)
-	verifyExportedSnapshot(t,
+	verifyExportedSnapshot(
+		t,
 		snapshotDirSrcDB,
 		filesAndHashesSrcDB,
 		publicState != nil,
@@ -178,7 +179,8 @@ func testSnapshotWithSampleData(t *testing.T, env TestEnv,
 	// import snapshot in a fresh db and verify the imported state
 	destinationDBName := generateLedgerID(t)
 	err = env.GetProvider().ImportFromSnapshot(
-		destinationDBName, version.NewHeight(10, 10), snapshotDirSrcDB)
+		destinationDBName, version.NewHeight(10, 10), snapshotDirSrcDB,
+	)
 	require.NoError(t, err)
 	destinationDB := env.GetDBHandle(destinationDBName)
 	verifyImportedSnapshot(t, destinationDB,
@@ -304,7 +306,8 @@ func TestSnapshotImportMetadtaHintImport(t *testing.T) {
 	// import snapshot in a fresh db
 	destinationDBName := generateLedgerID(t)
 	err = env.GetProvider().ImportFromSnapshot(
-		destinationDBName, version.NewHeight(10, 10), snapshotDir)
+		destinationDBName, version.NewHeight(10, 10), snapshotDir,
+	)
 	require.NoError(t, err)
 	destinationDB := env.GetDBHandle(destinationDBName)
 	h := destinationDB.metadataHint
@@ -509,7 +512,8 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			require.NoError(t, os.Remove(dataFile))
 			require.NoError(t, os.MkdirAll(dataFile, 0o700))
 			err := dbEnv.GetProvider().ImportFromSnapshot(
-				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
+				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir,
+			)
 			require.Contains(t, err.Error(), fmt.Sprintf("the supplied path [%s] is a dir", dataFile))
 		})
 
@@ -521,7 +525,8 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			require.NoError(t, os.Remove(dataFile))
 			require.NoError(t, os.WriteFile(dataFile, []byte(""), 0o600))
 			err := dbEnv.GetProvider().ImportFromSnapshot(
-				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
+				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir,
+			)
 			require.Contains(t, err.Error(), fmt.Sprintf("error while opening data file: error while reading from the snapshot file: %s", dataFile))
 		})
 
@@ -533,7 +538,8 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			require.NoError(t, os.Remove(dataFile))
 			require.NoError(t, os.WriteFile(dataFile, []byte{0x00}, 0o600))
 			err := dbEnv.GetProvider().ImportFromSnapshot(
-				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
+				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir,
+			)
 			require.EqualError(t, err, "error while opening data file: unexpected data format: 0")
 		})
 
@@ -547,7 +553,8 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			require.NoError(t, os.WriteFile(dataFile, []byte{snapshotFileFormat}, 0o600))
 
 			err := dbEnv.GetProvider().ImportFromSnapshot(
-				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
+				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir,
+			)
 
 			require.Contains(t, err.Error(), "error while retrieving record from snapshot file")
 		})
@@ -578,7 +585,8 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			require.NoError(t, os.WriteFile(dataFile, fileContent, 0o600))
 
 			err = dbEnv.GetProvider().ImportFromSnapshot(
-				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
+				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir,
+			)
 
 			require.Contains(t, err.Error(), "error while decoding version")
 		})
@@ -593,7 +601,8 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			metadataFile := filepath.Join(snapshotDir, f)
 			require.NoError(t, os.Remove(metadataFile))
 			err := dbEnv.GetProvider().ImportFromSnapshot(
-				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
+				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir,
+			)
 			require.Contains(t, err.Error(), "error while opening the snapshot file: "+metadataFile)
 		})
 
@@ -608,7 +617,8 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			require.NoError(t, os.WriteFile(metadataFile, fileContentWithMissingNumRows, 0o600))
 
 			err := dbEnv.GetProvider().ImportFromSnapshot(
-				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
+				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir,
+			)
 			require.Contains(t, err.Error(), "error while reading num-rows in metadata")
 		})
 
@@ -626,7 +636,8 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			require.NoError(t, os.WriteFile(metadataFile, fileContentWithMissingCCName, 0o600))
 
 			err := dbEnv.GetProvider().ImportFromSnapshot(
-				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
+				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir,
+			)
 			require.Contains(t, err.Error(), "error while reading namespace name")
 		})
 
@@ -645,7 +656,8 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			require.NoError(t, os.WriteFile(metadataFile, fileContentWithMissingCCName, 0o600))
 
 			err := dbEnv.GetProvider().ImportFromSnapshot(
-				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
+				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir,
+			)
 			require.Contains(t, err.Error(), fmt.Sprintf("error while reading num entries for the namespace [%s]", "my-chaincode"))
 		})
 	}
@@ -656,7 +668,8 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 
 		dbEnv.provider.Close()
 		err := dbEnv.GetProvider().ImportFromSnapshot(
-			generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
+			generateLedgerID(t), version.NewHeight(10, 10), snapshotDir,
+		)
 
 		require.Contains(t, err.Error(), "error writing batch to leveldb")
 	})
@@ -667,7 +680,8 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 
 		dbEnv.provider.bookkeepingProvider.Close()
 		err := dbEnv.GetProvider().ImportFromSnapshot(
-			generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
+			generateLedgerID(t), version.NewHeight(10, 10), snapshotDir,
+		)
 
 		require.Contains(t, err.Error(), "error while writing to metadata-hint db")
 	})

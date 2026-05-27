@@ -118,7 +118,8 @@ func TestMarkStartingSavepoint(t *testing.T) {
 		p := env.testHistoryDBProvider
 		p.Close()
 		err := p.MarkStartingSavepoint("testLedger", version.NewHeight(25, 30))
-		require.Contains(t,
+		require.Contains(
+			t,
 			err.Error(),
 			"error while writing the starting save point for ledger [testLedger]",
 		)

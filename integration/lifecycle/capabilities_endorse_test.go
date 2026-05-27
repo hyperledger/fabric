@@ -138,7 +138,8 @@ var _ = Describe("Lifecycle with Channel v3_0 capabilities and ed25519 identitie
 		RunQueryInvokeQuery(network, orderer1, "mycc", 100, org1Peer0, org2Peer0)
 
 		By("enabling V3_0 lifecycle capabilities on testchannel, which supports ed25519")
-		nwo.EnableChannelCapabilities(network, channelID, "V3_0", true, orderer1, []*nwo.Orderer{orderer1},
+		nwo.EnableChannelCapabilities(
+			network, channelID, "V3_0", true, orderer1, []*nwo.Orderer{orderer1},
 			org1Peer0,
 			org2Peer0,
 		)
@@ -236,7 +237,8 @@ var _ = Describe("Lifecycle with Channel v3_0 capabilities and ed25519 identitie
 
 		By("setting up the channel with v3_0 capabilities and without the ed25519 peer")
 		nwo.EnableCapabilities(network, channelID, "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
-		nwo.EnableChannelCapabilities(network, channelID, "V3_0", false, orderer, []*nwo.Orderer{orderer},
+		nwo.EnableChannelCapabilities(
+			network, channelID, "V3_0", false, orderer, []*nwo.Orderer{orderer},
 			org1Peer0,
 			org2Peer0,
 		)
@@ -274,7 +276,8 @@ var _ = Describe("Lifecycle with Channel v3_0 capabilities and ed25519 identitie
 		RunQueryInvokeQuery(network, orderer, "mycc", 100, endorsers...)
 
 		By("downgrading the channel capabilities back to v2_0")
-		nwo.EnableChannelCapabilities(network, channelID, "V2_0", false, orderer, []*nwo.Orderer{orderer},
+		nwo.EnableChannelCapabilities(
+			network, channelID, "V2_0", false, orderer, []*nwo.Orderer{orderer},
 			org1Peer0,
 			org2Peer0,
 		)

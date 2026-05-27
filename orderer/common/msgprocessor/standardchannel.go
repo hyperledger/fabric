@@ -104,7 +104,8 @@ func (s *StandardChannel) ProcessNormalMsg(env *cb.Envelope) (configSeq uint64, 
 	if oc.Capabilities().ConsensusTypeMigration() {
 		if oc.ConsensusState() != orderer.ConsensusType_STATE_NORMAL {
 			return 0, errors.WithMessage(
-				ErrMaintenanceMode, "normal transactions are rejected")
+				ErrMaintenanceMode, "normal transactions are rejected",
+			)
 		}
 	}
 

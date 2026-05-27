@@ -295,7 +295,8 @@ var _ = Describe("EndToEnd", func() {
 			nwo.InitChaincode(network, "testchannel", orderer, chaincode, testPeers...)
 
 			By("listing the containers after committing the chaincode definition")
-			initialContainerFilter := make(dcli.Filters).Add("name",
+			initialContainerFilter := make(dcli.Filters).Add(
+				"name",
 				chaincodeContainerNameFilter(network, chaincode),
 				chaincodeContainerNameFilter(network, gopathChaincode),
 			)
@@ -336,7 +337,8 @@ var _ = Describe("EndToEnd", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(containers.Items).To(HaveLen(0))
-			updatedContainerFilter := make(dcli.Filters).Add("name",
+			updatedContainerFilter := make(dcli.Filters).Add(
+				"name",
 				chaincodeContainerNameFilter(network, chaincode),
 				chaincodeContainerNameFilter(network, gopathChaincode),
 			)
@@ -539,7 +541,8 @@ var _ = Describe("EndToEnd", func() {
 
 			By("removing chaincode containers from all peers")
 			ctx := context.Background()
-			listChaincodeContainers := make(dcli.Filters).Add("name",
+			listChaincodeContainers := make(dcli.Filters).Add(
+				"name",
 				chaincodeContainerNameFilter(network, chaincode),
 			)
 			containers, err := client.ContainerList(ctx, dcli.ContainerListOptions{

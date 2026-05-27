@@ -134,7 +134,8 @@ func TestImplicitMetaPolicy_Convert1(t *testing.T) {
 				policydsl.SignedBy(0),
 				policydsl.SignedBy(1),
 			),
-			policydsl.NOutOf(1,
+			policydsl.NOutOf(
+				1,
 				[]*cb.SignaturePolicy{policydsl.SignedBy(1)},
 			),
 		),
@@ -171,15 +172,18 @@ func TestImplicitMetaPolicy_Convert2(t *testing.T) {
 
 	p1, err := pfs.NewPolicy(&cb.SignaturePolicyEnvelope{
 		Version: 0,
-		Rule: policydsl.NOutOf(1,
+		Rule: policydsl.NOutOf(
+			1,
 			[]*cb.SignaturePolicy{
-				policydsl.NOutOf(2,
+				policydsl.NOutOf(
+					2,
 					[]*cb.SignaturePolicy{
 						policydsl.SignedBy(0),
 						policydsl.SignedBy(1),
 					},
 				),
-				policydsl.NOutOf(1,
+				policydsl.NOutOf(
+					1,
 					[]*cb.SignaturePolicy{
 						policydsl.SignedBy(2),
 					},
@@ -221,7 +225,8 @@ func TestImplicitMetaPolicy_Convert2(t *testing.T) {
 
 	p2, err := pfs.NewPolicy(&cb.SignaturePolicyEnvelope{
 		Version: 0,
-		Rule: policydsl.NOutOf(2,
+		Rule: policydsl.NOutOf(
+			2,
 			[]*cb.SignaturePolicy{
 				policydsl.SignedBy(0),
 				policydsl.SignedBy(1),
@@ -263,22 +268,26 @@ func TestImplicitMetaPolicy_Convert2(t *testing.T) {
 	require.Equal(t, &cb.SignaturePolicyEnvelope{
 		Version: 0,
 		Rule: policydsl.And(
-			policydsl.NOutOf(1,
+			policydsl.NOutOf(
+				1,
 				[]*cb.SignaturePolicy{
-					policydsl.NOutOf(2,
+					policydsl.NOutOf(
+						2,
 						[]*cb.SignaturePolicy{
 							policydsl.SignedBy(0),
 							policydsl.SignedBy(1),
 						},
 					),
-					policydsl.NOutOf(1,
+					policydsl.NOutOf(
+						1,
 						[]*cb.SignaturePolicy{
 							policydsl.SignedBy(2),
 						},
 					),
 				},
 			),
-			policydsl.NOutOf(2,
+			policydsl.NOutOf(
+				2,
 				[]*cb.SignaturePolicy{
 					policydsl.SignedBy(3),
 					policydsl.SignedBy(0),
@@ -555,15 +564,18 @@ func TestImplicitMetaPolicy_Convert5(t *testing.T) {
 
 	p1, err := pfs.NewPolicy(&cb.SignaturePolicyEnvelope{
 		Version: 0,
-		Rule: policydsl.NOutOf(1,
+		Rule: policydsl.NOutOf(
+			1,
 			[]*cb.SignaturePolicy{
-				policydsl.NOutOf(2,
+				policydsl.NOutOf(
+					2,
 					[]*cb.SignaturePolicy{
 						policydsl.SignedBy(0),
 						policydsl.SignedBy(1),
 					},
 				),
-				policydsl.NOutOf(1,
+				policydsl.NOutOf(
+					1,
 					[]*cb.SignaturePolicy{
 						policydsl.SignedBy(2),
 					},
@@ -605,7 +617,8 @@ func TestImplicitMetaPolicy_Convert5(t *testing.T) {
 
 	p2, err := pfs.NewPolicy(&cb.SignaturePolicyEnvelope{
 		Version: 0,
-		Rule: policydsl.NOutOf(2,
+		Rule: policydsl.NOutOf(
+			2,
 			[]*cb.SignaturePolicy{
 				policydsl.SignedBy(0),
 				policydsl.SignedBy(1),
@@ -647,22 +660,26 @@ func TestImplicitMetaPolicy_Convert5(t *testing.T) {
 	require.Equal(t, &cb.SignaturePolicyEnvelope{
 		Version: 0,
 		Rule: policydsl.And(
-			policydsl.NOutOf(1,
+			policydsl.NOutOf(
+				1,
 				[]*cb.SignaturePolicy{
-					policydsl.NOutOf(2,
+					policydsl.NOutOf(
+						2,
 						[]*cb.SignaturePolicy{
 							policydsl.SignedBy(0),
 							policydsl.SignedBy(1),
 						},
 					),
-					policydsl.NOutOf(1,
+					policydsl.NOutOf(
+						1,
 						[]*cb.SignaturePolicy{
 							policydsl.SignedBy(0),
 						},
 					),
 				},
 			),
-			policydsl.NOutOf(2,
+			policydsl.NOutOf(
+				2,
 				[]*cb.SignaturePolicy{
 					policydsl.SignedBy(2),
 					policydsl.SignedBy(0),
@@ -712,15 +729,18 @@ func TestImplicitMetaPolicy_Convert6(t *testing.T) {
 
 	p1, err := pfs.NewPolicy(&cb.SignaturePolicyEnvelope{
 		Version: 0,
-		Rule: policydsl.NOutOf(1,
+		Rule: policydsl.NOutOf(
+			1,
 			[]*cb.SignaturePolicy{
-				policydsl.NOutOf(2,
+				policydsl.NOutOf(
+					2,
 					[]*cb.SignaturePolicy{
 						policydsl.SignedBy(0),
 						policydsl.SignedBy(1),
 					},
 				),
-				policydsl.NOutOf(1,
+				policydsl.NOutOf(
+					1,
 					[]*cb.SignaturePolicy{
 						policydsl.SignedBy(2),
 					},
@@ -762,7 +782,8 @@ func TestImplicitMetaPolicy_Convert6(t *testing.T) {
 
 	p2, err := pfs.NewPolicy(&cb.SignaturePolicyEnvelope{
 		Version: 0,
-		Rule: policydsl.NOutOf(2,
+		Rule: policydsl.NOutOf(
+			2,
 			[]*cb.SignaturePolicy{
 				policydsl.SignedBy(0),
 				policydsl.SignedBy(1),
@@ -804,22 +825,26 @@ func TestImplicitMetaPolicy_Convert6(t *testing.T) {
 	require.Equal(t, &cb.SignaturePolicyEnvelope{
 		Version: 0,
 		Rule: policydsl.And(
-			policydsl.NOutOf(1,
+			policydsl.NOutOf(
+				1,
 				[]*cb.SignaturePolicy{
-					policydsl.NOutOf(2,
+					policydsl.NOutOf(
+						2,
 						[]*cb.SignaturePolicy{
 							policydsl.SignedBy(0),
 							policydsl.SignedBy(1),
 						},
 					),
-					policydsl.NOutOf(1,
+					policydsl.NOutOf(
+						1,
 						[]*cb.SignaturePolicy{
 							policydsl.SignedBy(0),
 						},
 					),
 				},
 			),
-			policydsl.NOutOf(2,
+			policydsl.NOutOf(
+				2,
 				[]*cb.SignaturePolicy{
 					policydsl.SignedBy(0),
 					policydsl.SignedBy(0),

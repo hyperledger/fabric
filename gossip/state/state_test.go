@@ -358,7 +358,8 @@ func newCommitter() committer.Committer {
 }
 
 func newPeerNodeWithGossip(id int, committer committer.Committer,
-	acceptor peerIdentityAcceptor, g peerNodeGossipSupport, bootPorts ...int) *peerNode {
+	acceptor peerIdentityAcceptor, g peerNodeGossipSupport, bootPorts ...int,
+) *peerNode {
 	logger := flogging.MustGetLogger(gossiputil.StateLogger)
 	return newPeerNodeWithGossipWithValidator(logger, id, committer, acceptor, g, &validator.MockValidator{}, bootPorts...)
 }
@@ -366,7 +367,8 @@ func newPeerNodeWithGossip(id int, committer committer.Committer,
 // Constructing pseudo peer node, simulating only gossip and state transfer part
 func newPeerNodeWithGossipWithValidatorWithMetrics(logger gossiputil.Logger, id int, committer committer.Committer,
 	acceptor peerIdentityAcceptor, g peerNodeGossipSupport, v txvalidator.Validator,
-	gossipMetrics *metrics.GossipMetrics, bootPorts ...int) (node *peerNode, port int) {
+	gossipMetrics *metrics.GossipMetrics, bootPorts ...int,
+) (node *peerNode, port int) {
 	cs := &cryptoServiceMock{acceptor: acceptor}
 	port, gRPCServer, certs, secureDialOpts, _ := gossiputil.CreateGRPCLayer()
 
@@ -462,7 +464,8 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(logger gossiputil.Logger, id 
 
 // add metrics provider for metrics testing
 func newPeerNodeWithGossipWithMetrics(id int, committer committer.Committer,
-	acceptor peerIdentityAcceptor, g peerNodeGossipSupport, gossipMetrics *metrics.GossipMetrics) *peerNode {
+	acceptor peerIdentityAcceptor, g peerNodeGossipSupport, gossipMetrics *metrics.GossipMetrics,
+) *peerNode {
 	logger := flogging.MustGetLogger(gossiputil.StateLogger)
 	node, _ := newPeerNodeWithGossipWithValidatorWithMetrics(logger, id, committer, acceptor, g,
 		&validator.MockValidator{}, gossipMetrics)
@@ -471,7 +474,8 @@ func newPeerNodeWithGossipWithMetrics(id int, committer committer.Committer,
 
 // Constructing pseudo peer node, simulating only gossip and state transfer part
 func newPeerNodeWithGossipWithValidator(logger gossiputil.Logger, id int, committer committer.Committer,
-	acceptor peerIdentityAcceptor, g peerNodeGossipSupport, v txvalidator.Validator, bootPorts ...int) *peerNode {
+	acceptor peerIdentityAcceptor, g peerNodeGossipSupport, v txvalidator.Validator, bootPorts ...int,
+) *peerNode {
 	gossipMetrics := metrics.NewGossipMetrics(&disabled.Provider{})
 	node, _ := newPeerNodeWithGossipWithValidatorWithMetrics(logger, id, committer, acceptor, g, v, gossipMetrics, bootPorts...)
 	return node

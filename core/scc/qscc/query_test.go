@@ -296,7 +296,8 @@ func TestFailingAccessControl(t *testing.T) {
 
 	// GetChainInfo
 	args := [][]byte{[]byte(GetChainInfo), []byte(chainid)}
-	sProp, _ := protoutil.MockSignedEndorserProposalOrPanic(chainid,
+	sProp, _ := protoutil.MockSignedEndorserProposalOrPanic(
+		chainid,
 		&peer2.ChaincodeSpec{
 			ChaincodeId: &peer2.ChaincodeID{
 				Name: "qscc",

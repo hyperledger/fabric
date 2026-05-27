@@ -33,7 +33,6 @@ type ChannelNotifier interface {
 // of a channel's membership list, and is the message that is gossipped
 // among the peers
 type JoinChannelMessage interface {
-
 	// SequenceNumber returns the sequence number of the configuration block
 	// the JoinChannelMessage originated from
 	SequenceNumber() uint64
