@@ -230,9 +230,10 @@ var _ = Describe("EndToEnd", func() {
 		})
 	})
 
-	Describe("basic etcdraft network with docker chaincode builds", func() {
+	DescribeTableSubtree("basic etcdraft network with docker chaincode builds", func(ccenvVersion string) {
 		BeforeEach(func() {
 			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
+			network.CCEnvVersion = ccenvVersion
 			network.MetricsProvider = "prometheus"
 			network.GenerateConfigTree()
 			network.Bootstrap()
@@ -358,7 +359,10 @@ var _ = Describe("EndToEnd", func() {
 			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 			Expect(sess).To(gbytes.Say("Org2MSP"))
 		})
-	})
+	},
+		Entry("current ccenv", "$(PROJECT_VERSION)"),
+		Entry("old ccenv 3.1.3 with go 1.25.2", "3.1.3"),
+	)
 
 	Describe("basic single node etcdraft network with static leader", func() {
 		var (

@@ -129,7 +129,7 @@ func (p *Platform) GenerateDockerfile() (string, error) {
 	return dockerFileContents, nil
 }
 
-func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, error) {
+func (p *Platform) DockerBuildOptions(string, string, string, string) (util.DockerBuildOptions, error) {
 	return util.DockerBuildOptions{
 		Image: util.GetDockerImageFromConfig("chaincode.java.runtime"),
 		Cmd:   "./build.sh",
