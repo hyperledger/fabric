@@ -175,7 +175,8 @@ func (d *deliverServiceImpl) createBlockDelivererCFT(chainID string, ledgerInfo 
 		return nil, errors.New("cannot create a block deliverer because height=0")
 	}
 	ubv, err := deliverclient.NewBlockVerificationAssistantFromConfig(
-		d.conf.ChannelConfig, height-1, currentBlockHash, chainID, d.conf.CryptoProvider, flogging.MustGetLogger("common.deliverclient.blockverification"))
+		d.conf.ChannelConfig, height-1, currentBlockHash, chainID, d.conf.CryptoProvider, flogging.MustGetLogger("common.deliverclient.blockverification"),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +239,8 @@ func (d *deliverServiceImpl) createBlockDelivererBFT(chainID string, ledgerInfo 
 		return nil, errors.New("cannot create a block deliverer because height=0")
 	}
 	ubv, err := deliverclient.NewBlockVerificationAssistantFromConfig(
-		d.conf.ChannelConfig, height-1, currentBlockHash, chainID, d.conf.CryptoProvider, flogging.MustGetLogger("common.deliverclient.blockverification"))
+		d.conf.ChannelConfig, height-1, currentBlockHash, chainID, d.conf.CryptoProvider, flogging.MustGetLogger("common.deliverclient.blockverification"),
+	)
 	if err != nil {
 		return nil, err
 	}

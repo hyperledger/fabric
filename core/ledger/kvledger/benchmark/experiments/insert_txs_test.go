@@ -64,10 +64,12 @@ func runInsertClient(chain *chainmgmt.Chain, startKey, endKey int, wg *sync.Wait
 		for range numWritesPerTx {
 			if useJSON {
 				panicOnError(simulator.SetState(
-					chaincodeName, constructKey(currentKey), constructJSONValue(currentKey, kvSize)))
+					chaincodeName, constructKey(currentKey), constructJSONValue(currentKey, kvSize),
+				))
 			} else {
 				panicOnError(simulator.SetState(
-					chaincodeName, constructKey(currentKey), constructValue(currentKey, kvSize)))
+					chaincodeName, constructKey(currentKey), constructValue(currentKey, kvSize),
+				))
 			}
 			currentKey++
 			if currentKey > endKey {

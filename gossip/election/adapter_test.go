@@ -333,22 +333,26 @@ func TestReportMetrics(t *testing.T) {
 
 	adapter.ReportMetrics(true)
 
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]string{"channel", "channel0"},
 		testMetricProvider.FakeDeclarationGauge.WithArgsForCall(0),
 	)
-	require.EqualValues(t,
+	require.EqualValues(
+		t,
 		1,
 		testMetricProvider.FakeDeclarationGauge.SetArgsForCall(0),
 	)
 
 	adapter.ReportMetrics(false)
 
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]string{"channel", "channel0"},
 		testMetricProvider.FakeDeclarationGauge.WithArgsForCall(1),
 	)
-	require.EqualValues(t,
+	require.EqualValues(
+		t,
 		0,
 		testMetricProvider.FakeDeclarationGauge.SetArgsForCall(1),
 	)

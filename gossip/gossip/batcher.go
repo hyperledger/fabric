@@ -96,7 +96,7 @@ func (p *batchingEmitterImpl) decrementCounters() {
 }
 
 func (p *batchingEmitterImpl) toDie() bool {
-	return atomic.LoadInt32(&(p.stopFlag)) == int32(1)
+	return atomic.LoadInt32(&p.stopFlag) == int32(1)
 }
 
 type batchingEmitterImpl struct {
@@ -115,7 +115,7 @@ type batchedMessage struct {
 }
 
 func (p *batchingEmitterImpl) Stop() {
-	atomic.StoreInt32(&(p.stopFlag), int32(1))
+	atomic.StoreInt32(&p.stopFlag, int32(1))
 }
 
 func (p *batchingEmitterImpl) Size() int {

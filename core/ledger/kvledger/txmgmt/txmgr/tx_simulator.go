@@ -176,7 +176,8 @@ func (s *txSimulator) ExecuteQueryOnPrivateData(namespace, collection, query str
 
 // GetStateRangeScanIteratorWithPagination implements method in interface `ledger.QueryExecutor`
 func (s *txSimulator) GetStateRangeScanIteratorWithPagination(namespace string, startKey string,
-	endKey string, pageSize int32) (ledger.QueryResultsIterator, error) {
+	endKey string, pageSize int32,
+) (ledger.QueryResultsIterator, error) {
 	if err := s.checkBeforePaginatedQueries(); err != nil {
 		return nil, err
 	}

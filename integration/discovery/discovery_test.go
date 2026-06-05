@@ -193,7 +193,8 @@ var _ = Describe("DiscoveryService", func() {
 				CA:            &nwo.CA{Hostname: "ca"},
 			})
 			config.Profiles[0].Organizations = append(config.Profiles[0].Organizations, "Org3")
-			config.Peers = append(config.Peers,
+			config.Peers = append(
+				config.Peers,
 				&nwo.Peer{
 					Name:         "peer0",
 					Organization: "Org3",
@@ -296,7 +297,8 @@ var _ = Describe("DiscoveryService", func() {
 			for _, orderer := range network.Orderers {
 				ordererMSPID := network.Organization(orderer.Organization).MSPID
 				for _, endpoint := range discoveredConfig.Orderers[ordererMSPID].Endpoint {
-					if proto.Equal(endpoint,
+					if proto.Equal(
+						endpoint,
 						&discovery.Endpoint{Host: "127.0.0.1", Port: uint32(network.OrdererPort(orderer, nwo.ListenPort))},
 					) {
 						continue external

@@ -18,7 +18,8 @@ type QueryResponseGenerator struct {
 
 // BuildQueryResponse takes an iterator and fetch state to construct QueryResponse
 func (q *QueryResponseGenerator) BuildQueryResponse(txContext *TransactionContext, iter commonledger.ResultsIterator,
-	iterID string, isPaginated bool, totalReturnLimit int32) (*pb.QueryResponse, error) {
+	iterID string, isPaginated bool, totalReturnLimit int32,
+) (*pb.QueryResponse, error) {
 	pendingQueryResults := txContext.GetPendingQueryResult(iterID)
 	totalReturnCount := txContext.GetTotalReturnCount(iterID)
 

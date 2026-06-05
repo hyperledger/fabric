@@ -109,7 +109,8 @@ func (*configurableCryptoService) Verify(peerIdentity api.PeerIdentityType, sign
 
 func newGossipInstanceWithGRPCWithExternalEndpoint(id int, port int, gRPCServer *comm.GRPCServer,
 	certs *common.TLSCertificates, secureDialOpts api.PeerSecureDialOpts, mcs *configurableCryptoService,
-	externalEndpoint string, boot ...int) *gossipGRPC {
+	externalEndpoint string, boot ...int,
+) *gossipGRPC {
 	conf := &Config{
 		BootstrapPeers:               bootPeersWithPorts(boot...),
 		ID:                           fmt.Sprintf("p%d", id),

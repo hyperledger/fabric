@@ -203,6 +203,7 @@ func TestProcessConfigMsg(t *testing.T) {
 			t,
 			int32(cb.HeaderType_CONFIG),
 			hdr.Type,
-			"Expect type of returned envelope to be %d, but got %d", cb.HeaderType_CONFIG, hdr.Type)
+			"Expect type of returned envelope to be %d, but got %d", cb.HeaderType_CONFIG, hdr.Type,
+		)
 	})
 }

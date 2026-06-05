@@ -111,7 +111,8 @@ func (l *kvLedger) processSnapshotMgmtEvents(lastCommittedBlockNumber uint64) {
 
 	for {
 		e := <-events
-		logger.Debugw("Event received",
+		logger.Debugw(
+			"Event received",
 			"channelID", l.ledgerID, "event", e, "snapshotInProgress", snapshotInProgress,
 			"lastCommittedBlockNumber", lastCommittedBlockNumber, "committerStatus", committerStatus,
 		)

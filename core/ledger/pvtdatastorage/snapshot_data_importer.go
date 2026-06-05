@@ -191,7 +191,8 @@ func (i *eligibilityAndBTLCache) loadDataFor(namespace string) error {
 				ns:   namespace,
 				coll: staticCollection.Name,
 			}
-			i.eligibilityHistory[key] = append(i.eligibilityHistory[key],
+			i.eligibilityHistory[key] = append(
+				i.eligibilityHistory[key],
 				&eligibility{
 					configBlockNum: committingBlkNum,
 					isEligible:     eligible,
@@ -317,7 +318,8 @@ func (u *dbUpdates) upsertBootKVHashes(ns, coll string, blkNum, txNum uint64, ke
 		bootKVHashes = &BootKVHashes{}
 		u.bootKVHashes[key] = bootKVHashes
 	}
-	bootKVHashes.List = append(bootKVHashes.List,
+	bootKVHashes.List = append(
+		bootKVHashes.List,
 		&BootKVHash{
 			KeyHash:   keyHash,
 			ValueHash: valueHash,

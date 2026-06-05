@@ -310,7 +310,8 @@ func JoinOrdererJoinPeersAppChannel(network *Network, channelID string, orderer 
 
 	ginkgo.By(fmt.Sprintf("waiting for leader on channel %s", channelID))
 	Eventually(ordererRunner.Err(), network.EventuallyTimeout, time.Second).Should(
-		gbytes.Say(fmt.Sprintf("Raft leader changed: 0 -> 1 channel=%s node=1", channelID)))
+		gbytes.Say(fmt.Sprintf("Raft leader changed: 0 -> 1 channel=%s node=1", channelID)),
+	)
 
 	ginkgo.By(fmt.Sprintf("joining peers to the channel %s", channelID))
 	peers := network.PeersWithChannel(channelID)
@@ -332,7 +333,8 @@ func JoinOrdererAppChannel(network *Network, channelID string, orderer *Orderer,
 
 	ginkgo.By(fmt.Sprintf("waiting for leader on channel %s", channelID))
 	Eventually(ordererRunner.Err(), network.EventuallyTimeout, time.Second).Should(
-		gbytes.Say(fmt.Sprintf("Raft leader changed: 0 -> 1 channel=%s node=1", channelID)))
+		gbytes.Say(fmt.Sprintf("Raft leader changed: 0 -> 1 channel=%s node=1", channelID)),
+	)
 }
 
 // JoinOrderersAppChannelCluster Joins a set of orderers to a channel for which the genesis block was created by the network

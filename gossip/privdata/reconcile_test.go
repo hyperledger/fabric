@@ -200,7 +200,8 @@ func TestReconciliationHappyPathWithoutScheduler(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, commitPvtDataOfOldBlocksHappened)
 
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]string{"channel", "mychannel"},
 		testMetricProvider.FakeReconciliationDuration.WithArgsForCall(0),
 	)
@@ -289,7 +290,8 @@ func TestReconciliationHappyPathWithScheduler(t *testing.T) {
 			ReconcileSleepInterval: time.Millisecond * 100,
 			ReconcileBatchSize:     1,
 			ReconciliationEnabled:  true,
-		})
+		},
+	)
 	r.Start()
 	wg.Wait()
 	r.Stop()
@@ -409,7 +411,8 @@ func TestReconciliationPullingMissingPrivateDataAtOnePass(t *testing.T) {
 			ReconcileSleepInterval: time.Millisecond * 100,
 			ReconcileBatchSize:     1,
 			ReconciliationEnabled:  true,
-		})
+		},
+	)
 	r.Start()
 	<-stopC
 	r.Stop()
@@ -516,7 +519,8 @@ func TestFailuresWhileReconcilingMissingPvtData(t *testing.T) {
 			ReconcileSleepInterval: time.Millisecond * 100,
 			ReconcileBatchSize:     1,
 			ReconciliationEnabled:  true,
-		})
+		},
+	)
 	err := r.reconcile()
 	require.Error(t, err)
 	require.Contains(t, "failed to obtain missing pvt data tracker", err.Error())

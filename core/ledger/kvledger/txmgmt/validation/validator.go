@@ -121,7 +121,8 @@ func (v *validator) validateAndPrepareBatch(blk *block, doMVCCValidation bool) (
 func (v *validator) validateEndorserTX(
 	txRWSet *rwsetutil.TxRwSet,
 	doMVCCValidation bool,
-	updates *publicAndHashUpdates) (peer.TxValidationCode, error) {
+	updates *publicAndHashUpdates,
+) (peer.TxValidationCode, error) {
 	validationCode := peer.TxValidationCode_VALID
 	var err error
 	// mvcc validation, may invalidate transaction
@@ -247,7 +248,8 @@ func (v *validator) validateRangeQuery(ns string, rangeQueryInfo *kvrwset.RangeQ
 // ///                 Validation of hashed read-set
 // //////////////////////////////////////////////////////////////////////////////
 func (v *validator) validateNsHashedReadSets(ns string, collHashedRWSets []*rwsetutil.CollHashedRwSet,
-	updates *privacyenabledstate.HashedUpdateBatch) (bool, error) {
+	updates *privacyenabledstate.HashedUpdateBatch,
+) (bool, error) {
 	for _, collHashedRWSet := range collHashedRWSets {
 		if valid, err := v.validateCollHashedReadSet(ns, collHashedRWSet.CollectionName, collHashedRWSet.HashedRwSet.HashedReads, updates); !valid || err != nil {
 			return valid, err
@@ -257,7 +259,8 @@ func (v *validator) validateNsHashedReadSets(ns string, collHashedRWSets []*rwse
 }
 
 func (v *validator) validateCollHashedReadSet(ns, coll string, kvReadHashes []*kvrwset.KVReadHash,
-	updates *privacyenabledstate.HashedUpdateBatch) (bool, error) {
+	updates *privacyenabledstate.HashedUpdateBatch,
+) (bool, error) {
 	for _, kvReadHash := range kvReadHashes {
 		if valid, err := v.validateKVReadHash(ns, coll, kvReadHash, updates); !valid || err != nil {
 			return valid, err

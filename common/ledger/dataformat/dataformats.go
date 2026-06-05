@@ -31,7 +31,8 @@ type ErrFormatMismatch struct {
 }
 
 func (e *ErrFormatMismatch) Error() string {
-	return fmt.Sprintf("unexpected format. db info = [%s], data format = [%s], expected format = [%s]",
+	return fmt.Sprintf(
+		"unexpected format. db info = [%s], data format = [%s], expected format = [%s]",
 		e.DBInfo, e.Format, e.ExpectedFormat,
 	)
 }

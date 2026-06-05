@@ -540,7 +540,6 @@ func (c *Cache) update(initializing bool, channelID string, dirtyChaincodes map[
 		}
 
 		ok, _, err = c.Resources.Serializer.IsSerialized(NamespacesName, privateName, chaincodeDefinition.Parameters(), orgState)
-
 		if err != nil {
 			return errors.WithMessagef(err, "could not check opaque org state for '%s' on channel '%s'", name, channelID)
 		}
@@ -644,7 +643,8 @@ func (c *Cache) retrieveChaincodesMetadataSetWhileLocked(channelID string) (chai
 		// report the sequence as the version to service discovery since
 		// the version is no longer required to change when updating any
 		// part of the chaincode definition
-		metadataSet = append(metadataSet,
+		metadataSet = append(
+			metadataSet,
 			chaincode.Metadata{
 				Name:              name,
 				Version:           strconv.FormatInt(def.Definition.Sequence, 10),
@@ -664,7 +664,8 @@ func (c *Cache) retrieveChaincodesMetadataSetWhileLocked(channelID string) (chai
 
 	// add it to the metadataset so _lifecycle can also be queried
 	// via service discovery
-	metadataSet = append(metadataSet,
+	metadataSet = append(
+		metadataSet,
 		chaincode.Metadata{
 			Name:      LifecycleNamespace,
 			Version:   strconv.FormatInt(lc.Definition.Sequence, 10),

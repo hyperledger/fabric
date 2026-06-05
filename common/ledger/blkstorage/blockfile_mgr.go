@@ -232,7 +232,8 @@ func syncBlockfilesInfoFromFS(rootDir string, blkfilesInfo *blockfilesInfo) {
 	}
 	// Scan the file system to verify that the blockfilesInfo stored in db is correct
 	_, endOffsetLastBlock, numBlocks, err := scanForLastCompleteBlock(
-		rootDir, blkfilesInfo.latestFileNumber, int64(blkfilesInfo.latestFileSize))
+		rootDir, blkfilesInfo.latestFileNumber, int64(blkfilesInfo.latestFileSize),
+	)
 	if err != nil {
 		panic(fmt.Sprintf("Could not open current file for detecting last block in the file: %s", err))
 	}
@@ -266,7 +267,8 @@ func (mgr *blockfileMgr) moveToNextFile() {
 	}
 
 	nextFileWriter, err := newBlockfileWriter(
-		deriveBlockfilePath(mgr.rootDir, blkfilesInfo.latestFileNumber))
+		deriveBlockfilePath(mgr.rootDir, blkfilesInfo.latestFileNumber),
+	)
 	if err != nil {
 		panic(fmt.Sprintf("Could not open writer to next file: %s", err))
 	}
@@ -544,7 +546,8 @@ func (mgr *blockfileMgr) retrieveBlockByTxID(txID string) (*common.Block, error)
 	if err == errNilValue {
 		return nil, errors.Errorf(
 			"details for the TXID [%s] not available. Ledger bootstrapped from a snapshot. First available block = [%d]",
-			txID, mgr.firstPossibleBlockNumberInBlockFiles())
+			txID, mgr.firstPossibleBlockNumberInBlockFiles(),
+		)
 	}
 	if err != nil {
 		return nil, err
@@ -558,7 +561,8 @@ func (mgr *blockfileMgr) retrieveTxValidationCodeByTxID(txID string) (peer.TxVal
 	if err == errNilValue {
 		return peer.TxValidationCode(-1), 0, errors.Errorf(
 			"details for the TXID [%s] not available. Ledger bootstrapped from a snapshot. First available block = [%d]",
-			txID, mgr.firstPossibleBlockNumberInBlockFiles())
+			txID, mgr.firstPossibleBlockNumberInBlockFiles(),
+		)
 	}
 	return validationCode, blkNum, err
 }
@@ -606,7 +610,8 @@ func (mgr *blockfileMgr) retrieveTransactionByID(txID string) (*common.Envelope,
 	if err == errNilValue {
 		return nil, errors.Errorf(
 			"details for the TXID [%s] not available. Ledger bootstrapped from a snapshot. First available block = [%d]",
-			txID, mgr.firstPossibleBlockNumberInBlockFiles())
+			txID, mgr.firstPossibleBlockNumberInBlockFiles(),
+		)
 	}
 	if err != nil {
 		return nil, err

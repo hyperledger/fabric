@@ -236,7 +236,8 @@ func (klv *KeyLevelValidator) PreValidate(txNum uint64, block *common.Block) {
 		klv.blockDep.txDepOnce[i].Do(
 			func() {
 				klv.extractDependenciesForTx(block.Header.Number, txPosition, block.Data.Data[txPosition])
-			})
+			},
+		)
 	}
 }
 

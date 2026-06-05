@@ -601,11 +601,12 @@ var _ = Describe("CFT-Deliverer", func() {
 				Eventually(fakeBlockHandler.HandleBlockCallCount, eventuallyTO).Should(Equal(1))
 				channelID, block := fakeBlockHandler.HandleBlockArgsForCall(0)
 				Expect(channelID).To(Equal("channel-id"))
-				Expect(block).To(Equal(&common.Block{
-					Header: &common.BlockHeader{
-						Number: 8,
+				Expect(block).To(Equal(
+					&common.Block{
+						Header: &common.BlockHeader{
+							Number: 8,
+						},
 					},
-				},
 				))
 			})
 		})
@@ -691,12 +692,13 @@ var _ = Describe("CFT-Deliverer", func() {
 			Eventually(fakeBlockHandler.HandleBlockCallCount, eventuallyTO).Should(Equal(1))
 			channelID, block := fakeBlockHandler.HandleBlockArgsForCall(0)
 			Expect(channelID).To(Equal("channel-id"))
-			Expect(block).To(ProtoEqual(&common.Block{
-				Header: &common.BlockHeader{Number: 8},
-				Data: &common.BlockData{
-					Data: [][]byte{protoutil.MarshalOrPanic(env)},
+			Expect(block).To(ProtoEqual(
+				&common.Block{
+					Header: &common.BlockHeader{Number: 8},
+					Data: &common.BlockData{
+						Data: [][]byte{protoutil.MarshalOrPanic(env)},
+					},
 				},
-			},
 			))
 			Eventually(fakeUpdatableBlockVerifier.VerifyBlockCallCount, eventuallyTO).Should(Equal(1))
 		})

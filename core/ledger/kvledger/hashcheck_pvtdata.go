@@ -31,7 +31,8 @@ func extractValidPvtData(
 	reconciledPvtdata []*ledger.ReconciledPvtdata,
 	blockStore *blkstorage.BlockStore,
 	pvtdataStore *pvtdatastorage.Store,
-	lastBlockInBootSnapshot uint64) (map[uint64][]*ledger.TxPvtData, error) {
+	lastBlockInBootSnapshot uint64,
+) (map[uint64][]*ledger.TxPvtData, error) {
 	validPvtData := map[uint64][]*ledger.TxPvtData{}
 	for _, blkPvtdata := range reconciledPvtdata {
 		validData, err := extractValidPvtDataForBlock(
@@ -52,7 +53,8 @@ func extractValidPvtDataForBlock(
 	blkPvtdata *ledger.ReconciledPvtdata,
 	blockStore *blkstorage.BlockStore,
 	pvtdataStore *pvtdatastorage.Store,
-	lastBlockInBootSnapshot uint64) ([]*ledger.TxPvtData, error) {
+	lastBlockInBootSnapshot uint64,
+) ([]*ledger.TxPvtData, error) {
 	validPvtData := []*ledger.TxPvtData{}
 	blkNum := blkPvtdata.BlockNum
 
@@ -90,7 +92,8 @@ func extractValidPvtDataForBlock(
 				}
 
 				finalCollWs, err := validateAndRemovePurgedKeys(
-					pvtdataStore, collPvtdata, kvHashes, pvtWSHashFromBlock, ns, blkNum, txNum)
+					pvtdataStore, collPvtdata, kvHashes, pvtWSHashFromBlock, ns, blkNum, txNum,
+				)
 				if err != nil {
 					return nil, err
 				}
@@ -101,7 +104,8 @@ func extractValidPvtDataForBlock(
 			if len(finalCollsWrites) == 0 {
 				continue
 			}
-			finalNsWrites = append(finalNsWrites,
+			finalNsWrites = append(
+				finalNsWrites,
 				&rwset.NsPvtReadWriteSet{
 					Namespace:          ns,
 					CollectionPvtRwset: finalCollsWrites,
@@ -111,7 +115,8 @@ func extractValidPvtDataForBlock(
 		if len(finalNsWrites) == 0 {
 			continue
 		}
-		validPvtData = append(validPvtData,
+		validPvtData = append(
+			validPvtData,
 			&ledger.TxPvtData{
 				SeqInBlock: txNum,
 				WriteSet: &rwset.TxPvtReadWriteSet{
@@ -133,10 +138,12 @@ func validateAndRemovePurgedKeys(
 	collPvtProto *rwset.CollectionPvtReadWriteSet,
 	kvHashes map[string][]byte,
 	collWSHashFromBlock []byte,
-	ns string, blkNum, txNum uint64) (*rwset.CollectionPvtReadWriteSet, error) {
+	ns string, blkNum, txNum uint64,
+) (*rwset.CollectionPvtReadWriteSet, error) {
 	coll := collPvtProto.CollectionName
 	trimmedKVHashes, err := pvtdataStore.RemoveAppInitiatedPurgesUsingReconMarker(
-		kvHashes, ns, coll, blkNum, txNum)
+		kvHashes, ns, coll, blkNum, txNum,
+	)
 	if err != nil {
 		return nil, err
 	}

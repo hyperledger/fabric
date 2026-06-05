@@ -43,85 +43,86 @@ var _ = Describe("Network", func() {
 		os.RemoveAll(tempDir)
 	})
 
-	DescribeTableSubtree("benchmark write batch", func(desc string, useWriteBatch bool, startWriteBatch bool) {
-		var network *nwo.Network
-		var ordererRunner *ginkgomon.Runner
-		var ordererProcess, peerProcess ifrit.Process
+	DescribeTableSubtree(
+		"benchmark write batch", func(desc string, useWriteBatch bool, startWriteBatch bool) {
+			var network *nwo.Network
+			var ordererRunner *ginkgomon.Runner
+			var ordererProcess, peerProcess ifrit.Process
 
-		BeforeEach(func() {
-			network = nwo.New(nwo.BasicEtcdRaft(), tempDir, client, StartPort(), components)
-			network.UseWriteBatch = useWriteBatch
+			BeforeEach(func() {
+				network = nwo.New(nwo.BasicEtcdRaft(), tempDir, client, StartPort(), components)
+				network.UseWriteBatch = useWriteBatch
 
-			// Generate config and bootstrap the network
-			network.GenerateConfigTree()
-			network.Bootstrap()
+				// Generate config and bootstrap the network
+				network.GenerateConfigTree()
+				network.Bootstrap()
 
-			// Start all the fabric processes
-			ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
-		})
+				// Start all the fabric processes
+				ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
+			})
 
-		AfterEach(func() {
-			if ordererProcess != nil {
-				ordererProcess.Signal(syscall.SIGTERM)
-				Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
-			}
+			AfterEach(func() {
+				if ordererProcess != nil {
+					ordererProcess.Signal(syscall.SIGTERM)
+					Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+				}
 
-			if peerProcess != nil {
-				peerProcess.Signal(syscall.SIGTERM)
-				Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
-			}
+				if peerProcess != nil {
+					peerProcess.Signal(syscall.SIGTERM)
+					Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+				}
 
-			network.Cleanup()
-		})
+				network.Cleanup()
+			})
 
-		It("deploys and executes experiment bench", func() {
-			orderer := network.Orderer("orderer")
-			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
-			peer := network.Peer("Org1", "peer0")
+			It("deploys and executes experiment bench", func() {
+				orderer := network.Orderer("orderer")
+				nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+				peer := network.Peer("Org1", "peer0")
 
-			chaincode := nwo.Chaincode{
-				Name:            "mycc",
-				Version:         "0.0",
-				Path:            "github.com/hyperledger/fabric/integration/chaincode/multi/cmd",
-				Lang:            "golang",
-				PackageFile:     filepath.Join(tempDir, "multi.tar.gz"),
-				Ctor:            `{"Args":["init"]}`,
-				SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
-				Sequence:        "1",
-				InitRequired:    true,
-				Label:           "my_multi_operations_chaincode",
-			}
+				chaincode := nwo.Chaincode{
+					Name:            "mycc",
+					Version:         "0.0",
+					Path:            "github.com/hyperledger/fabric/integration/chaincode/multi/cmd",
+					Lang:            "golang",
+					PackageFile:     filepath.Join(tempDir, "multi.tar.gz"),
+					Ctor:            `{"Args":["init"]}`,
+					SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
+					Sequence:        "1",
+					InitRequired:    true,
+					Label:           "my_multi_operations_chaincode",
+				}
 
-			network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
+				network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
 
-			nwo.EnableCapabilities(
-				network,
-				"testchannel",
-				"Application", "V2_0",
-				orderer,
-				network.PeersWithChannel("testchannel")...,
-			)
-			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+				nwo.EnableCapabilities(
+					network,
+					"testchannel",
+					"Application", "V2_0",
+					orderer,
+					network.PeersWithChannel("testchannel")...,
+				)
+				nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
-			By("run invoke where only put state")
-			experiment := gmeasure.NewExperiment("Only PUT State " + desc)
-			AddReportEntry(experiment.Name, experiment)
+				By("run invoke where only put state")
+				experiment := gmeasure.NewExperiment("Only PUT State " + desc)
+				AddReportEntry(experiment.Name, experiment)
 
-			experiment.SampleDuration("invoke N-5 cycle-1", func(idx int) {
-				RunInvoke(network, orderer, peer, "invoke", startWriteBatch, 1, 0, nil)
-			}, gmeasure.SamplingConfig{N: 5})
+				experiment.SampleDuration("invoke N-5 cycle-1", func(idx int) {
+					RunInvoke(network, orderer, peer, "invoke", startWriteBatch, 1, 0, nil)
+				}, gmeasure.SamplingConfig{N: 5})
 
-			experiment.SampleDuration("invoke N-10 cycle-1000", func(idx int) {
-				RunInvoke(network, orderer, peer, "invoke", startWriteBatch, 1000, 0, nil)
-			}, gmeasure.SamplingConfig{N: 10})
+				experiment.SampleDuration("invoke N-10 cycle-1000", func(idx int) {
+					RunInvoke(network, orderer, peer, "invoke", startWriteBatch, 1000, 0, nil)
+				}, gmeasure.SamplingConfig{N: 10})
 
-			experiment.SampleDuration("invoke N-10 cycle-10000", func(idx int) {
-				RunInvoke(network, orderer, peer, "invoke", startWriteBatch, 10000, 0, nil)
-			}, gmeasure.SamplingConfig{N: 10})
+				experiment.SampleDuration("invoke N-10 cycle-10000", func(idx int) {
+					RunInvoke(network, orderer, peer, "invoke", startWriteBatch, 10000, 0, nil)
+				}, gmeasure.SamplingConfig{N: 10})
 
-			RunGetState(network, peer, "0")
-		})
-	},
+				RunGetState(network, peer, "0")
+			})
+		},
 		Entry("without write batch1", "useWriteBatch - true, StartWriteBatch - false", true, false),
 		Entry("without write batch2", "useWriteBatch - false, StartWriteBatch - true", false, true),
 		Entry("with write batch", "useWriteBatch - true, StartWriteBatch - true", true, true),
@@ -201,81 +202,82 @@ var _ = Describe("Network", func() {
 		})
 	})
 
-	DescribeTableSubtree("benchmark get multiple keys", func(desc string, useGetMultipleKeys bool) {
-		var network *nwo.Network
-		var ordererRunner *ginkgomon.Runner
-		var ordererProcess, peerProcess ifrit.Process
+	DescribeTableSubtree(
+		"benchmark get multiple keys", func(desc string, useGetMultipleKeys bool) {
+			var network *nwo.Network
+			var ordererRunner *ginkgomon.Runner
+			var ordererProcess, peerProcess ifrit.Process
 
-		BeforeEach(func() {
-			network = nwo.New(nwo.BasicEtcdRaft(), tempDir, client, StartPort(), components)
-			network.UseGetMultipleKeys = useGetMultipleKeys
+			BeforeEach(func() {
+				network = nwo.New(nwo.BasicEtcdRaft(), tempDir, client, StartPort(), components)
+				network.UseGetMultipleKeys = useGetMultipleKeys
 
-			// Generate config and bootstrap the network
-			network.GenerateConfigTree()
-			network.Bootstrap()
+				// Generate config and bootstrap the network
+				network.GenerateConfigTree()
+				network.Bootstrap()
 
-			// Start all the fabric processes
-			ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
-		})
+				// Start all the fabric processes
+				ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
+			})
 
-		AfterEach(func() {
-			if ordererProcess != nil {
-				ordererProcess.Signal(syscall.SIGTERM)
-				Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
-			}
+			AfterEach(func() {
+				if ordererProcess != nil {
+					ordererProcess.Signal(syscall.SIGTERM)
+					Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+				}
 
-			if peerProcess != nil {
-				peerProcess.Signal(syscall.SIGTERM)
-				Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
-			}
+				if peerProcess != nil {
+					peerProcess.Signal(syscall.SIGTERM)
+					Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+				}
 
-			network.Cleanup()
-		})
+				network.Cleanup()
+			})
 
-		It("deploys and executes experiment bench", func() {
-			orderer := network.Orderer("orderer")
-			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
-			peer := network.Peer("Org1", "peer0")
+			It("deploys and executes experiment bench", func() {
+				orderer := network.Orderer("orderer")
+				nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
+				peer := network.Peer("Org1", "peer0")
 
-			chaincode := nwo.Chaincode{
-				Name:            "mycc",
-				Version:         "0.0",
-				Path:            "github.com/hyperledger/fabric/integration/chaincode/multi/cmd",
-				Lang:            "golang",
-				PackageFile:     filepath.Join(tempDir, "multi.tar.gz"),
-				Ctor:            `{"Args":["init"]}`,
-				SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
-				Sequence:        "1",
-				InitRequired:    true,
-				Label:           "my_multi_operations_chaincode",
-			}
+				chaincode := nwo.Chaincode{
+					Name:            "mycc",
+					Version:         "0.0",
+					Path:            "github.com/hyperledger/fabric/integration/chaincode/multi/cmd",
+					Lang:            "golang",
+					PackageFile:     filepath.Join(tempDir, "multi.tar.gz"),
+					Ctor:            `{"Args":["init"]}`,
+					SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
+					Sequence:        "1",
+					InitRequired:    true,
+					Label:           "my_multi_operations_chaincode",
+				}
 
-			network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
+				network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
 
-			nwo.EnableCapabilities(
-				network,
-				"testchannel",
-				"Application", "V2_0",
-				orderer,
-				network.PeersWithChannel("testchannel")...,
-			)
-			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+				nwo.EnableCapabilities(
+					network,
+					"testchannel",
+					"Application", "V2_0",
+					orderer,
+					network.PeersWithChannel("testchannel")...,
+				)
+				nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
-			RunInvoke(network, orderer, peer, "invoke", true, 10000, 0, nil)
+				RunInvoke(network, orderer, peer, "invoke", true, 10000, 0, nil)
 
-			By("run query get state multiple keys")
-			experiment := gmeasure.NewExperiment("Get state multiple keys " + desc)
-			AddReportEntry(experiment.Name, experiment)
+				By("run query get state multiple keys")
+				experiment := gmeasure.NewExperiment("Get state multiple keys " + desc)
+				AddReportEntry(experiment.Name, experiment)
 
-			experiment.SampleDuration("invoke N-10 cycle-1000", func(idx int) {
-				RunGetStateMultipleKeys(network, peer, 1000)
-			}, gmeasure.SamplingConfig{N: 10})
+				experiment.SampleDuration("invoke N-10 cycle-1000", func(idx int) {
+					RunGetStateMultipleKeys(network, peer, 1000)
+				}, gmeasure.SamplingConfig{N: 10})
 
-			experiment.SampleDuration("invoke N-10 cycle-10000", func(idx int) {
-				RunGetStateMultipleKeys(network, peer, 10000)
-			}, gmeasure.SamplingConfig{N: 10})
-		})
-	},
+				experiment.SampleDuration("invoke N-10 cycle-10000", func(idx int) {
+					RunGetStateMultipleKeys(network, peer, 10000)
+				}, gmeasure.SamplingConfig{N: 10})
+			})
+		},
 		Entry("without peer support", "without peer support", false),
 		Entry("with peer support", "with peer support", true),
 	)

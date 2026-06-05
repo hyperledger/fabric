@@ -187,7 +187,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 	}
 	c.Logger.Infof("Local consenter id is %d", selfID)
 
-	config, err := util.ConfigFromMetadataOptions((uint64)(selfID), configOptions)
+	config, err := util.ConfigFromMetadataOptions(uint64(selfID), configOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed parsing smartbft configuration")
 	}
@@ -218,7 +218,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 
 	chain, err := NewChain(
 		configValidator,
-		(uint64)(selfID),
+		uint64(selfID),
 		config,
 		path.Join(c.WALBaseDir, support.ChannelID()),
 		c.ClusterDialer,
@@ -232,7 +232,8 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb
 		c.MetricsWalBFT,
 		c.BCCSP,
 		egressCommFactory,
-		&synchronizerCreator{})
+		&synchronizerCreator{},
+	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed creating a new BFTChain")
 	}

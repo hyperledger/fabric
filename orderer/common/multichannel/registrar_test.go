@@ -249,7 +249,8 @@ func TestNewRegistrar(t *testing.T) {
 
 		info, err := manager.ChannelInfo("my-raft-channel")
 		require.NoError(t, err)
-		require.Equal(t,
+		require.Equal(
+			t,
 			types.ChannelInfo{Name: "my-raft-channel", URL: "", ConsensusRelation: "consenter", Status: "active", Height: 1},
 			info,
 		)
@@ -333,7 +334,8 @@ func TestRegistrar_Initialize(t *testing.T) {
 
 		info, err := manager.ChannelInfo("my-raft-channel")
 		require.NoError(t, err)
-		require.Equal(t,
+		require.Equal(
+			t,
 			types.ChannelInfo{Name: "my-raft-channel", URL: "", ConsensusRelation: "consenter", Status: "active", Height: 1},
 			info,
 		)
@@ -367,7 +369,8 @@ func TestRegistrar_Initialize(t *testing.T) {
 
 		info, err := manager.ChannelInfo("my-raft-channel")
 		require.NoError(t, err)
-		require.Equal(t,
+		require.Equal(
+			t,
 			types.ChannelInfo{Name: "my-raft-channel", URL: "", ConsensusRelation: "follower", Status: "active", Height: 1},
 			info,
 		)
@@ -402,7 +405,8 @@ func TestRegistrar_Initialize(t *testing.T) {
 		list := manager.ChannelList()
 		require.Nil(t, list.SystemChannel)
 
-		require.Equal(t,
+		require.Equal(
+			t,
 			types.ChannelList{
 				SystemChannel: nil,
 				Channels:      []types.ChannelInfoShort{{Name: "my-raft-channel", URL: ""}},
@@ -412,7 +416,8 @@ func TestRegistrar_Initialize(t *testing.T) {
 
 		info, err := manager.ChannelInfo("my-raft-channel")
 		require.NoError(t, err)
-		require.Equal(t,
+		require.Equal(
+			t,
 			types.ChannelInfo{Name: "my-raft-channel", URL: "", ConsensusRelation: "follower", Status: "onboarding", Height: 1},
 			info,
 		)

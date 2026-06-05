@@ -157,7 +157,8 @@ func (l *kvLedger) generateSnapshotMetadataFiles(
 	dir string,
 	txIDsExportSummary,
 	configsHistoryExportSummary,
-	stateDBExportSummary map[string][]byte) error {
+	stateDBExportSummary map[string][]byte,
+) error {
 	// generate metadata file
 	filesAndHashes := map[string]string{}
 	for fileName, hashsum := range txIDsExportSummary {
@@ -402,7 +403,8 @@ func verifyFileHash(dir, file string, expectedHashInHex string, hashProvider led
 	}
 	hashInHex := hex.EncodeToString(hashImpl.Sum(nil))
 	if hashInHex != expectedHashInHex {
-		return errors.Errorf("hash mismatch for file [%s]. Expected hash = [%s], Actual hash = [%s]",
+		return errors.Errorf(
+			"hash mismatch for file [%s]. Expected hash = [%s], Actual hash = [%s]",
 			file, expectedHashInHex, hashInHex,
 		)
 	}

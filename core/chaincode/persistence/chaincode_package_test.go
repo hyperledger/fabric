@@ -80,7 +80,8 @@ var _ = Describe("FallbackPackageLocator", func() {
 						},
 						CodePackage: []byte("legacy-code"),
 					},
-					nil)
+					nil,
+				)
 			})
 
 			It("falls back to the legacy retriever", func() {

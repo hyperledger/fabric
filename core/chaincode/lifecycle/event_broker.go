@@ -38,7 +38,8 @@ func NewEventBroker(chaincodeStore ChaincodeStore, pkgParser PackageParser, ebMe
 func (b *EventBroker) RegisterListener(
 	channelID string,
 	listener ledger.ChaincodeLifecycleEventListener,
-	existingCachedChaincodes map[string]*CachedChaincodeDefinition) {
+	existingCachedChaincodes map[string]*CachedChaincodeDefinition,
+) {
 	// when invoking chaincode event listener with existing invocable chaincodes, we logs
 	// errors instead of returning the error from this function to keep the consustent behavior
 	// similar to the code path when we invoke the listener later on as a response to the chaincode

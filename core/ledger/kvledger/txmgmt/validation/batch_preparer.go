@@ -70,7 +70,8 @@ func NewCommitBatchPreparer(
 
 // ValidateAndPrepareBatch performs validation of transactions in the block and prepares the batch of final writes
 func (p *CommitBatchPreparer) ValidateAndPrepareBatch(blockAndPvtdata *ledger.BlockAndPvtData,
-	doMVCCValidation bool) (*privacyenabledstate.UpdateBatch, []*AppInitiatedPurgeUpdate, []*TxStatInfo, error) {
+	doMVCCValidation bool,
+) (*privacyenabledstate.UpdateBatch, []*AppInitiatedPurgeUpdate, []*TxStatInfo, error) {
 	blk := blockAndPvtdata.Block
 	logger.Debugf("ValidateAndPrepareBatch() for block number = [%d]", blk.Header.Number)
 	var internalBlock *block
@@ -363,7 +364,8 @@ func incrementPvtdataVersionIfNeeded(
 	metadataUpdates metadataUpdates,
 	pvtUpdateBatch *privacyenabledstate.PvtUpdateBatch,
 	pubAndHashUpdates *publicAndHashUpdates,
-	db *privacyenabledstate.DB) error {
+	db *privacyenabledstate.DB,
+) error {
 	for collKey := range metadataUpdates {
 		ns, coll, key := collKey.ns, collKey.coll, collKey.key
 		keyHash := util.ComputeStringHash(key)
@@ -411,7 +413,8 @@ func addEntriesToMetadataUpdates(metadataUpdates metadataUpdates, pvtRWSet *rwse
 }
 
 func retrieveLatestVal(ns, coll, key string, pvtUpdateBatch *privacyenabledstate.PvtUpdateBatch,
-	db *privacyenabledstate.DB) (val *statedb.VersionedValue, err error) {
+	db *privacyenabledstate.DB,
+) (val *statedb.VersionedValue, err error) {
 	val = pvtUpdateBatch.Get(ns, coll, key)
 	if val == nil {
 		val, err = db.GetPrivateData(ns, coll, key)

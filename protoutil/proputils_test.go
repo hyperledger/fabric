@@ -88,7 +88,8 @@ func TestProposal(t *testing.T) {
 		common.HeaderType_ENDORSER_TRANSACTION,
 		testChannelID, createCIS(),
 		[]byte("creator"),
-		map[string][]byte{"certx": []byte("transient")})
+		map[string][]byte{"certx": []byte("transient")},
+	)
 	if err != nil {
 		t.Fatalf("Could not create chaincode proposal, err %s\n", err)
 		return

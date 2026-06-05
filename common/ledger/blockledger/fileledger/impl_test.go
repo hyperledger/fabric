@@ -207,7 +207,8 @@ func TestRetrieval(t *testing.T) {
 		t,
 		uint64(1),
 		block.Header.Number,
-		"Expected to successfully retrieve the second block but got block number %d", block.Header.Number)
+		"Expected to successfully retrieve the second block but got block number %d", block.Header.Number,
+	)
 }
 
 func TestBlockedRetrieval(t *testing.T) {
@@ -230,7 +231,8 @@ func TestBlockedRetrieval(t *testing.T) {
 		t,
 		uint64(1),
 		block.Header.Number,
-		"Expected to successfully retrieve the second block but got block number %d", block.Header.Number)
+		"Expected to successfully retrieve the second block but got block number %d", block.Header.Number,
+	)
 
 	b2 := blockledger.CreateNextBlock(fl, []*cb.Envelope{envelope})
 	fl.Append(b2)
@@ -323,12 +325,14 @@ func TestBlockstoreError(t *testing.T) {
 			func() {
 				fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Newest{}})
 			},
-			"Expected Iterator() to panic if blockstore operation fails")
+			"Expected Iterator() to panic if blockstore operation fails",
+		)
 
 		require.Panics(
 			t,
 			func() { fl.Height() },
-			"Expected Height() to panic if blockstore operation fails ")
+			"Expected Height() to panic if blockstore operation fails ",
+		)
 	}
 
 	{
@@ -346,7 +350,8 @@ func TestBlockstoreError(t *testing.T) {
 			t,
 			&blockledger.NotFoundErrorIterator{},
 			it,
-			"Expected Not Found Error if seek number is greater than ledger height")
+			"Expected Not Found Error if seek number is greater than ledger height",
+		)
 	}
 
 	{

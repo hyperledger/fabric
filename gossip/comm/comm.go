@@ -19,7 +19,6 @@ import (
 // Comm is an object that enables to communicate with other peers
 // that also embed a CommModule.
 type Comm interface {
-
 	// GetPKIid returns this instance's PKI id
 	GetPKIid() common.PKIidType
 

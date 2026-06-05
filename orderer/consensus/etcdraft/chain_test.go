@@ -567,7 +567,8 @@ var _ = Describe("Chain", func() {
 									}),
 								},
 							}
-							configEnv = newConfigEnv(channelID,
+							configEnv = newConfigEnv(
+								channelID,
 								common.HeaderType_CONFIG,
 								newConfigUpdateEnv(channelID, oldValues, newValues),
 							)
@@ -663,7 +664,8 @@ var _ = Describe("Chain", func() {
 						BeforeEach(func() {
 							chainID := "mychannel"
 							values := make(map[string]*common.ConfigValue)
-							configEnv = newConfigEnv(chainID,
+							configEnv = newConfigEnv(
+								chainID,
 								common.HeaderType_CONFIG,
 								newConfigUpdateEnv(chainID, nil, values),
 							)
@@ -1333,7 +1335,8 @@ var _ = Describe("Chain", func() {
 							cryptoProvider,
 							nil,
 							nil,
-							observeC)
+							observeC,
+						)
 						Expect(chain).NotTo(BeNil())
 						Expect(err).NotTo(HaveOccurred())
 
@@ -1367,7 +1370,8 @@ var _ = Describe("Chain", func() {
 							cryptoProvider,
 							noOpBlockPuller,
 							nil,
-							nil)
+							nil,
+						)
 						Expect(chain).NotTo(BeNil())
 						Expect(err).NotTo(HaveOccurred())
 					})
@@ -1397,7 +1401,8 @@ var _ = Describe("Chain", func() {
 							cryptoProvider,
 							noOpBlockPuller,
 							nil,
-							nil)
+							nil,
+						)
 						Expect(chain).To(BeNil())
 						Expect(err).To(MatchError(ContainSubstring("failed to initialize WAL: mkdir")))
 					})
@@ -1864,7 +1869,8 @@ var _ = Describe("Chain", func() {
 				network.exec(
 					func(c *chain) {
 						Eventually(c.support.WriteBlockCallCount, defaultTimeout).Should(Equal(1))
-					})
+					},
+				)
 			})
 
 			AfterEach(func() {
@@ -2174,7 +2180,8 @@ var _ = Describe("Chain", func() {
 					network.exec(
 						func(c *chain) {
 							Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-						})
+						},
+					)
 
 					Eventually(c1.rpc.SendConsensusCallCount, LongEventualTimeout).Should(Equal(count + 6))
 					c1.setStepFunc(step1)
@@ -2258,7 +2265,8 @@ var _ = Describe("Chain", func() {
 					network.exec(
 						func(c *chain) {
 							Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
-						})
+						},
+					)
 
 					// assert conf change proposals have been dropped, before proceed to reconnect network
 					Eventually(c1.rpc.SendConsensusCallCount, LongEventualTimeout).Should(Equal(count + 6))
@@ -2493,7 +2501,8 @@ var _ = Describe("Chain", func() {
 				network.exec(
 					func(c *chain) {
 						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
-					})
+					},
+				)
 
 				By("respect batch timeout")
 				c1.cutter.SetCutNext(false)
@@ -2508,7 +2517,8 @@ var _ = Describe("Chain", func() {
 				network.exec(
 					func(c *chain) {
 						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
-					})
+					},
+				)
 			})
 
 			It("orders envelope on follower", func() {
@@ -2523,7 +2533,8 @@ var _ = Describe("Chain", func() {
 				network.exec(
 					func(c *chain) {
 						Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
-					})
+					},
+				)
 
 				By("respect batch timeout")
 				c1.cutter.SetCutNext(false)
@@ -2539,7 +2550,8 @@ var _ = Describe("Chain", func() {
 				network.exec(
 					func(c *chain) {
 						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
-					})
+					},
+				)
 			})
 
 			When("MaxInflightBlocks is reached", func() {
@@ -2751,7 +2763,8 @@ var _ = Describe("Chain", func() {
 				network.exec(
 					func(c *chain) {
 						Consistently(func() int { return c.support.WriteBlockCallCount() }).Should(Equal(0))
-					})
+					},
+				)
 
 				network.connect(1) // reconnect leader
 
@@ -2759,7 +2772,8 @@ var _ = Describe("Chain", func() {
 				network.exec(
 					func(c *chain) {
 						Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
-					})
+					},
+				)
 			})
 
 			It("allows the leader to create multiple normal blocks without having to wait for them to be written out", func() {
@@ -2886,7 +2900,8 @@ var _ = Describe("Chain", func() {
 							}),
 						},
 					}
-					configEnv = newConfigEnv(channelID,
+					configEnv = newConfigEnv(
+						channelID,
 						common.HeaderType_CONFIG,
 						newConfigUpdateEnv(channelID, nil, values),
 					)
@@ -2926,12 +2941,14 @@ var _ = Describe("Chain", func() {
 					network.exec(
 						func(c *chain) {
 							Eventually(func() int { return c.support.WriteConfigBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
-						})
+						},
+					)
 
 					network.exec(
 						func(c *chain) {
 							Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
-						})
+						},
+					)
 				})
 
 				It("continues creating blocks on leader after a config block has been successfully written out", func() {
@@ -2942,7 +2959,8 @@ var _ = Describe("Chain", func() {
 					network.exec(
 						func(c *chain) {
 							Eventually(func() int { return c.support.WriteConfigBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
-						})
+						},
+					)
 
 					// normal block following config block
 					err = c1.Order(env, 0)
@@ -2950,7 +2968,8 @@ var _ = Describe("Chain", func() {
 					network.exec(
 						func(c *chain) {
 							Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
-						})
+						},
+					)
 				})
 			})
 
@@ -2985,7 +3004,8 @@ var _ = Describe("Chain", func() {
 					network.exec(
 						func(c *chain) {
 							Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
-						})
+						},
+					)
 
 					// order data on all nodes except node 3, empty the raft message directed to node 3
 					// node 1 should take a snapshot but node 3 should not
@@ -3057,7 +3077,8 @@ var _ = Describe("Chain", func() {
 					network.exec(
 						func(c *chain) {
 							Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(1))
-						})
+						},
+					)
 
 					Eventually(c1.opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", i))
 					i, err = c1.opts.MemoryStorage.FirstIndex()
@@ -3069,7 +3090,8 @@ var _ = Describe("Chain", func() {
 					network.exec(
 						func(c *chain) {
 							Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
-						})
+						},
+					)
 
 					Eventually(c1.opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", i))
 					i, err = c1.opts.MemoryStorage.FirstIndex()
@@ -3081,7 +3103,8 @@ var _ = Describe("Chain", func() {
 					network.exec(
 						func(c *chain) {
 							Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(3))
-						})
+						},
+					)
 
 					Eventually(c1.opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(BeNumerically(">", i))
 				})
@@ -3128,7 +3151,8 @@ var _ = Describe("Chain", func() {
 					network.exec(
 						func(c *chain) {
 							Eventually(func() int { return c.support.WriteBlockCallCount() }, LongEventualTimeout).Should(Equal(blockCnt + 1))
-						})
+						},
+					)
 				})
 			})
 
@@ -3300,7 +3324,8 @@ var _ = Describe("Chain", func() {
 					network.exec(
 						func(c *chain) {
 							Consistently(c.support.WriteBlockCallCount).Should(Equal(0))
-						})
+						},
+					)
 				})
 
 				It("aborts waiting for block to be committed upon leadership lost", func() {
@@ -3313,7 +3338,8 @@ var _ = Describe("Chain", func() {
 					network.exec(
 						func(c *chain) {
 							Consistently(c.support.WriteBlockCallCount).Should(Equal(0))
-						})
+						},
+					)
 
 					network.elect(2)
 					network.connect(1)

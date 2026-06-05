@@ -81,7 +81,8 @@ func (*NoOpReconciler) Stop() {
 
 // NewReconciler creates a new instance of reconciler
 func NewReconciler(channel string, metrics *metrics.PrivdataMetrics, c committer.Committer,
-	fetcher ReconciliationFetcher, config *PrivdataConfig) *Reconciler {
+	fetcher ReconciliationFetcher, config *PrivdataConfig,
+) *Reconciler {
 	reconcilerLogger := logger.With("channel", channel)
 	reconcilerLogger.Debug("Private data reconciliation is enabled")
 	return &Reconciler{

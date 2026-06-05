@@ -19,7 +19,8 @@ type mockEndorserServer struct {
 }
 
 func (es *mockEndorserServer) ProcessProposal(context.Context,
-	*peer.SignedProposal) (*peer.ProposalResponse, error) {
+	*peer.SignedProposal,
+) (*peer.ProposalResponse, error) {
 	es.invoked = true
 	return nil, nil
 }

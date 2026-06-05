@@ -42,7 +42,8 @@ func newQueryExecutor(txmgr *LockBasedTxMgr,
 	txid string,
 	rwsetBuilder *rwsetutil.RWSetBuilder,
 	performCollCheck bool,
-	hashFunc rwsetutil.HashFunc) *queryExecutor {
+	hashFunc rwsetutil.HashFunc,
+) *queryExecutor {
 	logger.Debugf("constructing new query executor txid = [%s]", txid)
 	qe := &queryExecutor{}
 	qe.txid = txid
@@ -401,7 +402,8 @@ type resultsItr struct {
 
 func newResultsItr(ns string, startKey string, endKey string, pageSize int32,
 	db statedb.VersionedDB, rwsetBuilder *rwsetutil.RWSetBuilder, enableHashing bool,
-	maxDegree uint32, hashFunc rwsetutil.HashFunc) (*resultsItr, error) {
+	maxDegree uint32, hashFunc rwsetutil.HashFunc,
+) (*resultsItr, error) {
 	var err error
 	var dbItr statedb.ResultsIterator
 	if pageSize == 0 {

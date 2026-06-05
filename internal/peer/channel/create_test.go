@@ -664,7 +664,8 @@ func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
 		nil,
 		&cb.ConfigEnvelope{},
 		0,
-		0)
+		0,
+	)
 	require.NoError(t, err)
 	_, err = sanityCheckAndSignConfigTx(env, signer)
 	require.EqualError(t, err, "bad signer header")
@@ -678,7 +679,8 @@ func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
 		nil,
 		&cb.ConfigEnvelope{},
 		0,
-		0)
+		0,
+	)
 	require.NoError(t, err)
 	_, err = sanityCheckAndSignConfigTx(env, signer)
 	require.EqualError(t, err, "signer failed to sign")

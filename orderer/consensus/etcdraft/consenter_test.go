@@ -128,7 +128,8 @@ var _ = Describe("Consenter", func() {
 		})
 	})
 
-	DescribeTable("identifies a bad block",
+	DescribeTable(
+		"identifies a bad block",
 		func(block *common.Block, errMatcher gtypes.GomegaMatcher) {
 			consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 			isMem, err := consenter.IsChannelMember(block)

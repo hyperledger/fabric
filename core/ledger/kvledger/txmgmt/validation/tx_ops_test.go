@@ -63,7 +63,8 @@ func TestTxOpsPreparationValueUpdate(t *testing.T) {
 		ck2.ns, ck2.key,
 		[]byte("value2"),
 		testutilSerializedMetadata(t, map[string][]byte{"metadata2": []byte("metadata2")}),
-		version.NewHeight(1, 2))
+		version.NewHeight(1, 2),
+	)
 
 	require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2))) // write the above initial state to db
 	precedingUpdates := newPubAndHashUpdates()
@@ -120,7 +121,8 @@ func TestTxOpsPreparationMetadataUpdates(t *testing.T) {
 		ck2.ns, ck2.key,
 		[]byte("value2"),
 		testutilSerializedMetadata(t, map[string][]byte{"metadata2": []byte("metadata2")}),
-		version.NewHeight(1, 2))
+		version.NewHeight(1, 2),
+	)
 
 	require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2))) // write the above initial state to db
 	precedingUpdates := newPubAndHashUpdates()
@@ -172,7 +174,8 @@ func TestTxOpsPreparationMetadataDelete(t *testing.T) {
 		ck2.ns, ck2.key,
 		[]byte("value2"),
 		testutilSerializedMetadata(t, map[string][]byte{"metadata2": []byte("metadata2")}),
-		version.NewHeight(1, 2))
+		version.NewHeight(1, 2),
+	)
 
 	require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2))) // write the above initial state to db
 	precedingUpdates := newPubAndHashUpdates()
@@ -224,12 +227,14 @@ func TestTxOpsPreparationMixedUpdates(t *testing.T) {
 		ck3.ns, ck3.key,
 		[]byte("value3"),
 		testutilSerializedMetadata(t, map[string][]byte{"metadata3": []byte("metadata3")}),
-		version.NewHeight(1, 3))
+		version.NewHeight(1, 3),
+	)
 	updateBatch.PubUpdates.PutValAndMetadata( // write key4 with value and metadata
 		ck4.ns, ck4.key,
 		[]byte("value4"),
 		testutilSerializedMetadata(t, map[string][]byte{"metadata4": []byte("metadata4")}),
-		version.NewHeight(1, 4))
+		version.NewHeight(1, 4),
+	)
 
 	require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2))) // write the above initial state to db
 
@@ -311,13 +316,15 @@ func TestTxOpsPreparationPvtdataHashes(t *testing.T) {
 		ck3.ns, ck3.coll, string(util.ComputeStringHash(ck3.key)),
 		util.ComputeStringHash("value3"),
 		testutilSerializedMetadata(t, map[string][]byte{"metadata3": []byte("metadata3")}),
-		version.NewHeight(1, 3))
+		version.NewHeight(1, 3),
+	)
 
 	updateBatch.HashUpdates.PutValAndMetadata( // write key4 with value and metadata
 		ck4.ns, ck4.coll, string(util.ComputeStringHash(ck4.key)),
 		util.ComputeStringHash("value4"),
 		testutilSerializedMetadata(t, map[string][]byte{"metadata4": []byte("metadata4")}),
-		version.NewHeight(1, 4))
+		version.NewHeight(1, 4),
+	)
 
 	require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2))) // write the above initial state to db
 
@@ -449,7 +456,8 @@ func TestInterpretNilValueKVWritesAsDelete(t *testing.T) {
 			require.NoError(t, err)
 
 			for _, keyToVerify := range tc.compositeKeysToVerify {
-				require.Equal(t,
+				require.Equal(
+					t,
 					&keyOps{flag: keyDelete},
 					txOps[keyToVerify],
 				)
@@ -460,7 +468,8 @@ func TestInterpretNilValueKVWritesAsDelete(t *testing.T) {
 
 func testutilBuildRwset(t *testing.T,
 	kvWrites map[compositeKey][]byte,
-	metadataWrites map[compositeKey]map[string][]byte) *rwsetutil.TxRwSet {
+	metadataWrites map[compositeKey]map[string][]byte,
+) *rwsetutil.TxRwSet {
 	rwsetBuilder := rwsetutil.NewRWSetBuilder()
 	for kvwrite, val := range kvWrites {
 		if kvwrite.coll == "" {

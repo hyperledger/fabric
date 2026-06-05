@@ -137,7 +137,8 @@ func rwsetUpdatingMetadataFor(cc, key string) []byte {
 					}),
 				},
 			},
-		})
+		},
+	)
 }
 
 func pvtRwsetUpdatingMetadataFor(cc, coll, key string) []byte {
@@ -166,7 +167,8 @@ func pvtRwsetUpdatingMetadataFor(cc, coll, key string) []byte {
 					},
 				},
 			},
-		})
+		},
+	)
 }
 
 func runFunctions(t *testing.T, seed [32]byte, funcs ...func()) {

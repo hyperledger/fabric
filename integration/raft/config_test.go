@@ -399,7 +399,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			nwo.Join(network, orderer3, "testchannel", configBlock, expectedChannelInfo)
 
 			By("Expanding the TLS root CA certificates and adding orderer3 to the channel")
-			updateOrdererMSPAndConsensusMetadata(network, peer, orderer, "testchannel", "OrdererOrg",
+			updateOrdererMSPAndConsensusMetadata(
+				network, peer, orderer, "testchannel", "OrdererOrg",
 				func(config *msp.FabricMSPConfig) *msp.FabricMSPConfig { // MSP mutator
 					tmp := proto.Clone(config).(*msp.FabricMSPConfig)
 					tmp.TlsRootCerts = append(tmp.TlsRootCerts, caCert)
@@ -425,7 +426,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 					Status:            "active",
 					ConsensusRelation: "consenter",
 					Height:            3,
-				}))
+				},
+			))
 
 			By("Attemping to add a consenter with invalid certs")
 			// create new certs that are not in the channel config

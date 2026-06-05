@@ -105,11 +105,13 @@ func TestStatsBlockCommit(t *testing.T) {
 
 	// invoke updateBlockStats api explicitly and verify with fake metrics (call number is 4)
 	store.updateBlockStats(4, 10*time.Second)
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]string{"channel", ledgerid},
 		testMetricProvider.fakeBlockstorageCommitTimeHist.WithArgsForCall(4),
 	)
-	require.Equal(t,
+	require.Equal(
+		t,
 		float64(10),
 		testMetricProvider.fakeBlockstorageCommitTimeHist.ObserveArgsForCall(4),
 	)

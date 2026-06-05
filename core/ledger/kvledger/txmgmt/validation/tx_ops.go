@@ -70,7 +70,8 @@ func (txops txOps) applyTxRwset(rwset *rwsetutil.TxRwSet) error {
 		for _, collHashRWset := range nsRWSet.CollHashedRwSets {
 			coll := collHashRWset.CollectionName
 			for _, hashedWrite := range collHashRWset.HashedRwSet.HashedWrites {
-				txops.applyKVWrite(ns, coll,
+				txops.applyKVWrite(
+					ns, coll,
 					&kvrwset.KVWrite{
 						Key:      string(hashedWrite.KeyHash),
 						Value:    hashedWrite.ValueHash,
@@ -80,7 +81,8 @@ func (txops txOps) applyTxRwset(rwset *rwsetutil.TxRwSet) error {
 			}
 
 			for _, metadataWrite := range collHashRWset.HashedRwSet.MetadataWrites {
-				if err := txops.applyMetadata(ns, coll,
+				if err := txops.applyMetadata(
+					ns, coll,
 					&kvrwset.KVMetadataWrite{
 						Key:     string(metadataWrite.KeyHash),
 						Entries: metadataWrite.Entries,
@@ -123,7 +125,8 @@ func (txops txOps) applyMetadata(ns, coll string, metadataWrite *kvrwset.KVMetad
 // Further, all the keys that gets written will be required to pull from statedb by vscc for endorsement policy check (in the case of key level
 // endorsement) and hence, the bulkload should be combined
 func retrieveLatestState(ns, coll, key string,
-	precedingUpdates *publicAndHashUpdates, db *privacyenabledstate.DB) (*statedb.VersionedValue, error) {
+	precedingUpdates *publicAndHashUpdates, db *privacyenabledstate.DB,
+) (*statedb.VersionedValue, error) {
 	var vv *statedb.VersionedValue
 	var err error
 	if coll == "" {
@@ -142,7 +145,8 @@ func retrieveLatestState(ns, coll, key string,
 }
 
 func retrieveLatestMetadata(ns, coll, key string,
-	precedingUpdates *publicAndHashUpdates, db *privacyenabledstate.DB) ([]byte, error) {
+	precedingUpdates *publicAndHashUpdates, db *privacyenabledstate.DB,
+) ([]byte, error) {
 	if coll == "" {
 		vv := precedingUpdates.publicUpdates.Get(ns, key)
 		if vv != nil {
@@ -214,7 +218,7 @@ func (txops txOps) getOrCreateKeyEntry(k compositeKey) *keyOps {
 // //////////////// keyOps functions
 
 func (keyops keyOps) isDelete() bool {
-	return keyops.flag&(keyDelete) == keyDelete
+	return keyops.flag&keyDelete == keyDelete
 }
 
 func (keyops keyOps) isUpsertAndMetadataUpdate() bool {

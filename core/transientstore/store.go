@@ -313,7 +313,8 @@ func Drop(providerPath, ledgerID string) error {
 // Persist stores the private write set of a transaction along with the collection config
 // in the transient store based on txid and the block height the private data was received at
 func (s *Store) Persist(txid string, blockHeight uint64,
-	privateSimulationResultsWithConfig *transientstore.TxPvtReadWriteSetWithConfigInfo) error {
+	privateSimulationResultsWithConfig *transientstore.TxPvtReadWriteSetWithConfigInfo,
+) error {
 	logger.Debugf("Persisting private data to transient store for txid [%s] at block height [%d]", txid, blockHeight)
 
 	dbBatch := s.db.NewUpdateBatch()
