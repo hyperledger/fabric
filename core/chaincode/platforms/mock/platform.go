@@ -8,10 +8,13 @@ import (
 )
 
 type Platform struct {
-	DockerBuildOptionsStub        func(string) (util.DockerBuildOptions, error)
+	DockerBuildOptionsStub        func(string, string, string, string) (util.DockerBuildOptions, error)
 	dockerBuildOptionsMutex       sync.RWMutex
 	dockerBuildOptionsArgsForCall []struct {
 		arg1 string
+		arg2 string
+		arg3 string
+		arg4 string
 	}
 	dockerBuildOptionsReturns struct {
 		result1 util.DockerBuildOptions
@@ -47,21 +50,25 @@ type Platform struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Platform) DockerBuildOptions(arg1 string) (util.DockerBuildOptions, error) {
+func (fake *Platform) DockerBuildOptions(arg1 string, arg2 string, arg3 string, arg4 string) (util.DockerBuildOptions, error) {
 	fake.dockerBuildOptionsMutex.Lock()
 	ret, specificReturn := fake.dockerBuildOptionsReturnsOnCall[len(fake.dockerBuildOptionsArgsForCall)]
 	fake.dockerBuildOptionsArgsForCall = append(fake.dockerBuildOptionsArgsForCall, struct {
 		arg1 string
-	}{arg1})
-	fake.recordInvocation("DockerBuildOptions", []interface{}{arg1})
+		arg2 string
+		arg3 string
+		arg4 string
+	}{arg1, arg2, arg3, arg4})
+	stub := fake.DockerBuildOptionsStub
+	fakeReturns := fake.dockerBuildOptionsReturns
+	fake.recordInvocation("DockerBuildOptions", []interface{}{arg1, arg2, arg3, arg4})
 	fake.dockerBuildOptionsMutex.Unlock()
-	if fake.DockerBuildOptionsStub != nil {
-		return fake.DockerBuildOptionsStub(arg1)
+	if stub != nil {
+		return stub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.dockerBuildOptionsReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -71,17 +78,17 @@ func (fake *Platform) DockerBuildOptionsCallCount() int {
 	return len(fake.dockerBuildOptionsArgsForCall)
 }
 
-func (fake *Platform) DockerBuildOptionsCalls(stub func(string) (util.DockerBuildOptions, error)) {
+func (fake *Platform) DockerBuildOptionsCalls(stub func(string, string, string, string) (util.DockerBuildOptions, error)) {
 	fake.dockerBuildOptionsMutex.Lock()
 	defer fake.dockerBuildOptionsMutex.Unlock()
 	fake.DockerBuildOptionsStub = stub
 }
 
-func (fake *Platform) DockerBuildOptionsArgsForCall(i int) string {
+func (fake *Platform) DockerBuildOptionsArgsForCall(i int) (string, string, string, string) {
 	fake.dockerBuildOptionsMutex.RLock()
 	defer fake.dockerBuildOptionsMutex.RUnlock()
 	argsForCall := fake.dockerBuildOptionsArgsForCall[i]
-	return argsForCall.arg1
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *Platform) DockerBuildOptionsReturns(result1 util.DockerBuildOptions, result2 error) {
@@ -115,15 +122,16 @@ func (fake *Platform) GenerateDockerfile() (string, error) {
 	ret, specificReturn := fake.generateDockerfileReturnsOnCall[len(fake.generateDockerfileArgsForCall)]
 	fake.generateDockerfileArgsForCall = append(fake.generateDockerfileArgsForCall, struct {
 	}{})
+	stub := fake.GenerateDockerfileStub
+	fakeReturns := fake.generateDockerfileReturns
 	fake.recordInvocation("GenerateDockerfile", []interface{}{})
 	fake.generateDockerfileMutex.Unlock()
-	if fake.GenerateDockerfileStub != nil {
-		return fake.GenerateDockerfileStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.generateDockerfileReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -170,15 +178,16 @@ func (fake *Platform) Name() string {
 	ret, specificReturn := fake.nameReturnsOnCall[len(fake.nameArgsForCall)]
 	fake.nameArgsForCall = append(fake.nameArgsForCall, struct {
 	}{})
+	stub := fake.NameStub
+	fakeReturns := fake.nameReturns
 	fake.recordInvocation("Name", []interface{}{})
 	fake.nameMutex.Unlock()
-	if fake.NameStub != nil {
-		return fake.NameStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.nameReturns
 	return fakeReturns.result1
 }
 
