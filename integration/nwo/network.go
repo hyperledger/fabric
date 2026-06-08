@@ -164,6 +164,7 @@ type Network struct {
 	PeerDeliveryClientPolicy string
 	UseWriteBatch            bool
 	UseGetMultipleKeys       bool
+	CCEnvVersion             string
 
 	PortsByOrdererID map[string]Ports
 	PortsByPeerID    map[string]Ports
@@ -198,6 +199,7 @@ func New(c *Config, rootDir string, dockerClient dcli.APIClient, startPort int, 
 		PeerDeliveryClientPolicy: "",
 		UseWriteBatch:            true,
 		UseGetMultipleKeys:       true,
+		CCEnvVersion:             "$(PROJECT_VERSION)",
 
 		Organizations:  c.Organizations,
 		Consensus:      c.Consensus,

@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"regexp"
 	"runtime"
 	"strings"
 
@@ -75,9 +76,13 @@ func DockerBuild(opts DockerBuildOptions, client dcli.APIClient) error {
 	if err != nil {
 		logger.Debugf("Image %s does not exist locally, attempt pull", opts.Image)
 
-		_, err = client.ImagePull(context.Background(), opts.Image, dcli.ImagePullOptions{})
+		ipResp, err := client.ImagePull(context.Background(), opts.Image, dcli.ImagePullOptions{})
 		if err != nil {
 			return fmt.Errorf("Failed to pull %s: %s", opts.Image, err)
+		}
+		err = ipResp.Wait(context.Background())
+		if err != nil {
+			return fmt.Errorf("Failed to wait pull %s: %s", opts.Image, err)
 		}
 	}
 
@@ -166,6 +171,102 @@ func DockerBuild(opts DockerBuildOptions, client dcli.APIClient) error {
 	io.Copy(opts.OutputStream, resCont.Content)
 
 	return nil
+}
+
+// ParamsImage returns the go, os version and architecture of the ccenv image
+func ParamsImage(client dcli.APIClient) (string, string, string, error) {
+	image := GetDockerImageFromConfig("chaincode.builder")
+	if image == "" {
+		return "", "", "", fmt.Errorf("No image provided and \"chaincode.builder\" default does not exist")
+	}
+
+	// -----------------------------------------------------------------------------------
+	// Ensure the image exists locally, or pull it from a registry if it doesn't
+	// -----------------------------------------------------------------------------------
+	_, err := client.ImageInspect(context.Background(), image)
+	if err != nil {
+		logger.Debugf("Image %s does not exist locally, attempt pull", image)
+
+		ipResp, err := client.ImagePull(context.Background(), image, dcli.ImagePullOptions{})
+		if err != nil {
+			return "", "", "", fmt.Errorf("Failed to pull %s: %s", image, err)
+		}
+		err = ipResp.Wait(context.Background())
+		if err != nil {
+			return "", "", "", fmt.Errorf("Failed to wait pull %s: %s", image, err)
+		}
+	}
+
+	// -----------------------------------------------------------------------------------
+	// Create an ephemeral container, armed with our Image/Cmd
+	// -----------------------------------------------------------------------------------
+	container, err := client.ContainerCreate(context.Background(), dcli.ContainerCreateOptions{
+		Config: &dcontainer.Config{
+			AttachStdout: true,
+			AttachStderr: true,
+			Cmd:          []string{"go", "version"},
+			Image:        image,
+		},
+	})
+	if err != nil {
+		return "", "", "", fmt.Errorf("Error creating container: %s", err)
+	}
+	defer client.ContainerRemove(context.Background(), container.ID, dcli.ContainerRemoveOptions{})
+
+	// -----------------------------------------------------------------------------------
+	// Attach stdout buffer to capture possible compilation errors
+	// -----------------------------------------------------------------------------------
+	cw, err := client.ContainerAttach(context.Background(), container.ID, dcli.ContainerAttachOptions{
+		Stream: true,
+		Stdout: true,
+		Stderr: true,
+		Logs:   true,
+	})
+	if err != nil {
+		return "", "", "", fmt.Errorf("Error attaching to container: %s", err)
+	}
+
+	// -----------------------------------------------------------------------------------
+	// Launch the actual build, realizing the Env/Cmd specified at container creation
+	// -----------------------------------------------------------------------------------
+	_, err = client.ContainerStart(context.Background(), container.ID, dcli.ContainerStartOptions{})
+	if err != nil {
+		buff, _ := io.ReadAll(cw.Reader)
+		cw.Close()
+		return "", "", "", fmt.Errorf("Error executing build: %s \"%s\"", err, string(buff))
+	}
+
+	// -----------------------------------------------------------------------------------
+	// Wait for the build to complete and gather the return value
+	// -----------------------------------------------------------------------------------
+	resWait := client.ContainerWait(context.Background(), container.ID, dcli.ContainerWaitOptions{})
+	var res dcontainer.WaitResponse
+	select {
+	case res = <-resWait.Result:
+	case err = <-resWait.Error:
+		cw.Close()
+		return "", "", "", fmt.Errorf("Error waiting for container to complete: %s", err)
+	}
+
+	// Wait for stream copying to complete before accessing stdout.
+	defer cw.Close()
+	buff, _ := io.ReadAll(cw.Reader)
+	if res.StatusCode > 0 {
+		return "", "", "", fmt.Errorf("Error returned from build: %d \"%s\"", res.StatusCode, string(buff))
+	}
+
+	re := regexp.MustCompile(`go\s+version\s+go([\d.]+)\s+(\w+)/(\w+)`)
+
+	matches := re.FindStringSubmatch(string(buff))
+	if len(matches) != 4 {
+		return "", "", "", fmt.Errorf("invalid string format: %s", string(buff))
+	}
+
+	goVersion := "v" + matches[1]
+	os := matches[2]
+	arch := matches[3]
+
+	return goVersion, os, arch, nil
 }
 
 // GetDockerImageFromConfig replaces variables in the config
