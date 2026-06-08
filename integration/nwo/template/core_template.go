@@ -166,7 +166,7 @@ vm:
       Memory: 2147483648
 
 chaincode:
-  builder: $(DOCKER_NS)/fabric-ccenv:$(PROJECT_VERSION)
+  builder: $(DOCKER_NS)/fabric-ccenv:{{ .CCEnvVersion }}
   pull: false
   golang:
     runtime: $(DOCKER_NS)/fabric-baseos:$(PROJECT_VERSION)

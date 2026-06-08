@@ -154,6 +154,7 @@ type Profile struct {
 
 // Network holds information about a fabric network.
 type Network struct {
+<<<<<<< HEAD
 	RootDir               string
 	StartPort             uint16
 	Components            *Components
@@ -167,6 +168,26 @@ type Network struct {
 	ClientAuthRequired    bool
 	TLSEnabled            bool
 	GatewayEnabled        bool
+=======
+	RootDir                  string
+	StartPort                uint16
+	Components               *Components
+	DockerClient             dcli.APIClient
+	ExternalBuilders         []fabricconfig.ExternalBuilder
+	NetworkID                string
+	EventuallyTimeout        time.Duration
+	SessionCreateInterval    time.Duration
+	MetricsProvider          string
+	StatsdEndpoint           string
+	ClientAuthRequired       bool
+	TLSEnabled               bool
+	GatewayEnabled           bool
+	OrdererReplicationPolicy string
+	PeerDeliveryClientPolicy string
+	UseWriteBatch            bool
+	UseGetMultipleKeys       bool
+	CCEnvVersion             string
+>>>>>>> 9c0142121 (Making the go chaincode build independent of the go fabric version (#5488))
 
 	PortsByBrokerID  map[string]Ports
 	PortsByOrdererID map[string]Ports
@@ -196,12 +217,24 @@ func New(c *Config, rootDir string, dockerClient dcli.APIClient, startPort int, 
 		Components:   components,
 		DockerClient: dockerClient,
 
+<<<<<<< HEAD
 		NetworkID:         runner.UniqueName(),
 		EventuallyTimeout: time.Minute,
 		MetricsProvider:   "prometheus",
 		PortsByBrokerID:   map[string]Ports{},
 		PortsByOrdererID:  map[string]Ports{},
 		PortsByPeerID:     map[string]Ports{},
+=======
+		NetworkID:                runner.UniqueName(),
+		EventuallyTimeout:        time.Minute,
+		MetricsProvider:          "prometheus",
+		PortsByOrdererID:         map[string]Ports{},
+		PortsByPeerID:            map[string]Ports{},
+		PeerDeliveryClientPolicy: "",
+		UseWriteBatch:            true,
+		UseGetMultipleKeys:       true,
+		CCEnvVersion:             "$(PROJECT_VERSION)",
+>>>>>>> 9c0142121 (Making the go chaincode build independent of the go fabric version (#5488))
 
 		Organizations:  c.Organizations,
 		Consensus:      c.Consensus,

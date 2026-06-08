@@ -14,7 +14,12 @@ import (
 	"io"
 	"strings"
 
+<<<<<<< HEAD
 	"github.com/hyperledger/fabric/common/flogging"
+=======
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
+>>>>>>> 9c0142121 (Making the go chaincode build independent of the go fabric version (#5488))
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
@@ -36,7 +41,7 @@ var SupportedPlatforms = []Platform{
 type Platform interface {
 	Name() string
 	GenerateDockerfile() (string, error)
-	DockerBuildOptions(path string) (util.DockerBuildOptions, error)
+	DockerBuildOptions(path string, goVersion string, osVersion string, archVersion string) (util.DockerBuildOptions, error)
 }
 
 type PackageWriter interface {
@@ -128,7 +133,19 @@ func (r *Registry) StreamDockerBuild(ccType, path string, codePackage io.Reader,
 		}
 	}
 
-	buildOptions, err := platform.DockerBuildOptions(path)
+	var (
+		goVersion   string
+		osVersion   string
+		archVersion string
+	)
+	if ccType == pb.ChaincodeSpec_GOLANG.String() {
+		goVersion, osVersion, archVersion, err = util.ParamsImage(client)
+		if err != nil {
+			return errors.Wrap(err, "get params docker image failed")
+		}
+	}
+
+	buildOptions, err := platform.DockerBuildOptions(path, goVersion, osVersion, archVersion)
 	if err != nil {
 		return errors.Wrap(err, "platform failed to create docker build options")
 	}

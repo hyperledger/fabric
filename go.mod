@@ -41,9 +41,16 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.6.10
 	go.etcd.io/etcd/server/v3 v3.6.10
 	go.etcd.io/raft/v3 v3.6.0
+<<<<<<< HEAD
 	go.uber.org/zap v1.27.0
 	golang.org/x/tools v0.42.0
 	google.golang.org/grpc v1.79.3
+=======
+	go.uber.org/zap v1.28.0
+	go.yaml.in/yaml/v4 v4.0.0-rc.4
+	golang.org/x/mod v0.36.0
+	google.golang.org/grpc v1.81.0
+>>>>>>> 9c0142121 (Making the go chaincode build independent of the go fabric version (#5488))
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v2 v2.4.0
@@ -119,9 +126,14 @@ require (
 	go.opentelemetry.io/otel/trace v1.40.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
+<<<<<<< HEAD
 	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/mod v0.33.0 // indirect
 	golang.org/x/net v0.51.0 // indirect
+=======
+	golang.org/x/crypto v0.51.0 // indirect
+	golang.org/x/net v0.54.0 // indirect
+>>>>>>> 9c0142121 (Making the go chaincode build independent of the go fabric version (#5488))
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/text v0.35.0 // indirect

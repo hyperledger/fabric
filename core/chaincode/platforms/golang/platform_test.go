@@ -358,12 +358,13 @@ func TestDockerBuildOptions(t *testing.T) {
 	platform := &Platform{}
 
 	t.Run("GOPROXY and GOSUMDB not set", func(t *testing.T) {
-		opts, err := platform.DockerBuildOptions("the-path")
+		opts, err := platform.DockerBuildOptions("the-path", "", "", "")
 		require.NoError(t, err, "unexpected error from DockerBuildOptions")
 
 		expectedOpts := util.DockerBuildOptions{
 			Cmd: `
 set -e
+
 if [ -f "/chaincode/input/src/go.mod" ] && [ -d "/chaincode/input/src/vendor" ]; then
     cd /chaincode/input/src
     GO111MODULE=on go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
@@ -399,12 +400,13 @@ echo Done!
 		}
 		os.Setenv("GOSUMDB", "the-gosumdb")
 
-		opts, err := platform.DockerBuildOptions("the-path")
+		opts, err := platform.DockerBuildOptions("the-path", "", "", "")
 		require.NoError(t, err, "unexpected error from DockerBuildOptions")
 
 		expectedOpts := util.DockerBuildOptions{
 			Cmd: `
 set -e
+
 if [ -f "/chaincode/input/src/go.mod" ] && [ -d "/chaincode/input/src/vendor" ]; then
     cd /chaincode/input/src
     GO111MODULE=on go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
@@ -423,6 +425,42 @@ fi
 echo Done!
 `,
 			Env: []string{"GOPROXY=the-goproxy", "GOSUMDB=the-gosumdb"},
+		}
+		require.Equal(t, expectedOpts, opts)
+	})
+
+	t.Run("Upsate version go", func(t *testing.T) {
+		opts, err := platform.DockerBuildOptions("testdata/src/chaincodes/toolchain", "v1.25.0", "linux", "arm64")
+		require.NoError(t, err, "unexpected error from DockerBuildOptions")
+
+		expectedOpts := util.DockerBuildOptions{
+			Cmd: `
+set -e
+
+curl -sLO https://go.dev/dl/go1.26.3.linux-arm64.tar.gz
+rm -rf /usr/local/go
+tar -C /usr/local -xzfv "go1.26.3.linux-arm64.tar.gz"
+rm "go1.26.3.linux-arm64.tar.gz"
+go version
+
+if [ -f "/chaincode/input/src/go.mod" ] && [ -d "/chaincode/input/src/vendor" ]; then
+    cd /chaincode/input/src
+    GO111MODULE=on go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode testdata/src/chaincodes/toolchain
+elif [ -f "/chaincode/input/src/go.mod" ]; then
+    cd /chaincode/input/src
+    GO111MODULE=on go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode testdata/src/chaincodes/toolchain
+elif [ -f "/chaincode/input/src/testdata/src/chaincodes/toolchain/go.mod" ] && [ -d "/chaincode/input/src/testdata/src/chaincodes/toolchain/vendor" ]; then
+    cd /chaincode/input/src/testdata/src/chaincodes/toolchain
+    GO111MODULE=on go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
+elif [ -f "/chaincode/input/src/testdata/src/chaincodes/toolchain/go.mod" ]; then
+    cd /chaincode/input/src/testdata/src/chaincodes/toolchain
+    GO111MODULE=on go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
+else
+    GO111MODULE=off GOPATH=/chaincode/input:$GOPATH go build -v -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode testdata/src/chaincodes/toolchain
+fi
+echo Done!
+`,
+			Env: []string{"GOPROXY=https://proxy.golang.org"},
 		}
 		require.Equal(t, expectedOpts, opts)
 	})
@@ -486,4 +524,18 @@ func TestMain(m *testing.M) {
 		os.Exit(-1)
 	}
 	os.Exit(m.Run())
+}
+
+func TestNeedVersionGo(t *testing.T) {
+	newGoVer, need := getNeedVersionGo("testdata/src/chaincodes/noop", "v1.26.3")
+	require.Equal(t, newGoVer, "")
+	require.False(t, need)
+
+	newGoVer, need = getNeedVersionGo("testdata/src/chaincodes/noop", "v1.12.0")
+	require.Equal(t, newGoVer, "1.13")
+	require.True(t, need)
+
+	newGoVer, need = getNeedVersionGo("testdata/src/chaincodes/toolchain", "v1.25.0")
+	require.Equal(t, newGoVer, "1.26.3")
+	require.True(t, need)
 }
