@@ -588,8 +588,8 @@ dependencies with ``go mod vendor`` before packaging your chaincode.
 This places the external dependencies for your chaincode into a local ``vendor``
 directory.
 
-Once dependencies are vendored in your chaincode directory, ``peer chaincode package``
-and ``peer chaincode install`` operations will then include code associated with the
+Once dependencies are vendored in your chaincode directory, ``cli chaincode package``
+and ``cli chaincode install`` operations will then include code associated with the
 dependencies into the chaincode package.
 
 JSON determinism

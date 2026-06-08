@@ -41,12 +41,12 @@ export CORE_PEER_ADDRESS=localhost:7051
 We can now issue the command to fetch the latest config block:
 
 ```bash
-peer channel fetch config channel-artifacts/config_block.pb -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com -c channel1 --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+cli channel fetch config channel-artifacts/config_block.pb -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com -c channel1 --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
 ```
 
 This command saves the binary protobuf channel configuration block to `config_block.pb`. Note that the choice of name and file extension is arbitrary. However, following a convention which identifies both the type of object being represented and its encoding (protobuf or JSON) is recommended.
 
-When you issued the `peer channel fetch` command, the following output is displayed in your logs:
+When you issued the `cli channel fetch` command, the following output is displayed in your logs:
 
 ```
 2024-03-18 14:35:27.837 CST 0001 INFO [channelCmd] InitCmdFactory -> Endorser and orderer connections initialized
@@ -147,10 +147,10 @@ export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.examp
 export CORE_PEER_ADDRESS=localhost:7051
 ```
 
-Run the following `peer channel signconfigtx` command to sign the update as Org1:
+Run the following `cli channel signconfigtx` command to sign the update as Org1:
 
 ```bash
-peer channel signconfigtx -f channel-artifacts/config_update_in_envelope.pb
+cli channel signconfigtx -f channel-artifacts/config_update_in_envelope.pb
 ```
 
 Export the Org2 environment variables:
@@ -165,10 +165,10 @@ export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.examp
 export CORE_PEER_ADDRESS=localhost:9051
 ```
 
-Run the following `peer channel signconfigtx` command to sign the update as Org2:
+Run the following `cli channel signconfigtx` command to sign the update as Org2:
 
 ```bash
-peer channel signconfigtx -f channel-artifacts/config_update_in_envelope.pb
+cli channel signconfigtx -f channel-artifacts/config_update_in_envelope.pb
 ```
 
 Export the Org3 environment variables:
@@ -183,16 +183,16 @@ export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org3.examp
 export CORE_PEER_ADDRESS=localhost:11051
 ```
 
-Run the following `peer channel signconfigtx` command to sign the update as Org3:
+Run the following `cli channel signconfigtx` command to sign the update as Org3:
 
 ```bash
-peer channel signconfigtx -f channel-artifacts/config_update_in_envelope.pb
+cli channel signconfigtx -f channel-artifacts/config_update_in_envelope.pb
 ```
 
-We will now finally issue the `peer channel update` command to send the update to channel:
+We will now finally issue the `cli channel update` command to send the update to channel:
 
 ```bash
-peer channel update -f channel-artifacts/config_update_in_envelope.pb -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com -c channel1 --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+cli channel update -f channel-artifacts/config_update_in_envelope.pb -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com -c channel1 --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
 ```
 
 You should see a message similar to the following if your update has been submitted successfully:

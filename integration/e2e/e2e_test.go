@@ -184,7 +184,7 @@ var _ = Describe("EndToEnd", func() {
 			badCC.PackageFile = filepath.Join(testDir, "unsupported-type.tar.gz")
 			nwo.PackageChaincodeBinary(badCC)
 			badCC.SetPackageIDFromPackageFile()
-			sess, err := network.PeerAdminSession(
+			sess, err := network.CliAdminSession(
 				network.Peer("Org1", "peer0"),
 				commands.ChaincodeInstall{
 					PackageFile: badCC.PackageFile,
@@ -352,7 +352,7 @@ var _ = Describe("EndToEnd", func() {
 			RunQueryInvokeQuery(network, orderer, network.Peer("Org1", "peer0"), "testchannel")
 
 			By("retrieving the local mspid of the peer via simple chaincode")
-			sess, err := network.PeerUserSession(network.Peer("Org2", "peer0"), "User1", commands.ChaincodeQuery{
+			sess, err := network.CliUserSession(network.Peer("Org2", "peer0"), "User1", commands.ChaincodeQuery{
 				ChannelID: "testchannel",
 				Name:      "mycc",
 				Ctor:      `{"Args":["mspid"]}`,
@@ -567,7 +567,7 @@ var _ = Describe("EndToEnd", func() {
 
 			By("invoking chaincode against all peers in test channel")
 			for _, peer := range network.Peers {
-				sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+				sess, err := network.CliUserSession(peer, "User1", commands.ChaincodeInvoke{
 					ChannelID: "testchannel",
 					Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
 					Name:      "mycc",
@@ -652,7 +652,7 @@ var _ = Describe("EndToEnd", func() {
 			}
 
 			By("attempting to approve chaincode definition after commit")
-			sess, err := network.PeerAdminSession(peers[0], commands.ChaincodeApproveForMyOrg{
+			sess, err := network.CliAdminSession(peers[0], commands.ChaincodeApproveForMyOrg{
 				ChannelID:           "testchannel",
 				Orderer:             network.OrdererAddress(orderer, nwo.ListenPort),
 				Name:                chaincode.Name,
@@ -676,7 +676,7 @@ var _ = Describe("EndToEnd", func() {
 
 func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string) {
 	By("querying the chaincode")
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+	sess, err := n.CliUserSession(peer, "User1", commands.ChaincodeQuery{
 		ChannelID: channel,
 		Name:      "mycc",
 		Ctor:      `{"Args":["query","a"]}`,
@@ -685,7 +685,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, c
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess).To(gbytes.Say("100"))
 
-	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+	sess, err = n.CliUserSession(peer, "User1", commands.ChaincodeInvoke{
 		ChannelID: channel,
 		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:      "mycc",
@@ -700,7 +700,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, c
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
 
-	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+	sess, err = n.CliUserSession(peer, "User1", commands.ChaincodeQuery{
 		ChannelID: channel,
 		Name:      "mycc",
 		Ctor:      `{"Args":["query","a"]}`,
@@ -712,7 +712,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, c
 
 func RunRespondWith(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string) {
 	By("responding with a 300")
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+	sess, err := n.CliUserSession(peer, "User1", commands.ChaincodeInvoke{
 		ChannelID: channel,
 		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:      "mycc",
@@ -728,7 +728,7 @@ func RunRespondWith(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channe
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:300"))
 
 	By("responding with a 400")
-	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+	sess, err = n.CliUserSession(peer, "User1", commands.ChaincodeInvoke{
 		ChannelID: channel,
 		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:      "mycc",

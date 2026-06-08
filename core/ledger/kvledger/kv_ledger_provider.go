@@ -429,7 +429,7 @@ func (p *Provider) Close() {
 
 // deletePartialLedgers scans for and deletes any ledger with a status of UNDER_CONSTRUCTION or UNDER_DELETION.
 // UNDER_CONSTRUCTION ledgers represent residual structures created as a side effect of a crash during ledger creation.
-// UNDER_DELETION ledgers represent residual structures created as a side effect of a crash during a peer channel unjoin.
+// UNDER_DELETION ledgers represent residual structures created as a side effect of a crash during a cli channel unjoin.
 func (p *Provider) deletePartialLedgers() error {
 	logger.Debug("Removing ledgers in state UNDER_CONSTRUCTION or UNDER_DELETION")
 	itr := p.idStore.db.GetIterator(metadataKeyPrefix, metadataKeyStop)

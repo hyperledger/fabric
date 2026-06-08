@@ -203,7 +203,7 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		peerProcesses = ifrit.Invoke(peerRunner)
 		Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
-		_, err = network.PeerAdminSession(p0, commands.ChannelJoin{
+		_, err = network.CliAdminSession(p0, commands.ChannelJoin{
 			BlockPath:  network.OutputBlockPath(channel),
 			ClientAuth: network.ClientAuthRequired,
 		})
@@ -258,7 +258,7 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		peerProcesses = ifrit.Invoke(peerRunner)
 		Eventually(peerProcesses.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
-		_, err = network.PeerAdminSession(p0, commands.ChannelJoin{
+		_, err = network.CliAdminSession(p0, commands.ChannelJoin{
 			BlockPath:  network.OutputBlockPath(channel),
 			ClientAuth: network.ClientAuthRequired,
 		})

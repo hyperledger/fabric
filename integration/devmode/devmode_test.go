@@ -144,7 +144,7 @@ var _ = Describe("Devmode", func() {
 		Eventually(chaincodeProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 
 		By("invoking chaincode after it has been killed, expecting it to fail")
-		sess, err := network.PeerUserSession(org1peer0, "User1", commands.ChaincodeInvoke{
+		sess, err := network.CliUserSession(org1peer0, "User1", commands.ChaincodeInvoke{
 			ChannelID: channelName,
 			Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
 			Name:      "mycc",
@@ -177,7 +177,7 @@ var _ = Describe("Devmode", func() {
 
 func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string, queryValue int) {
 	By("querying the chaincode")
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+	sess, err := n.CliUserSession(peer, "User1", commands.ChaincodeQuery{
 		ChannelID: channel,
 		Name:      "mycc",
 		Ctor:      `{"Args":["query","a"]}`,
@@ -187,7 +187,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, c
 	Expect(sess).To(gbytes.Say(strconv.Itoa(queryValue)))
 
 	By("invoking the chaincode")
-	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+	sess, err = n.CliUserSession(peer, "User1", commands.ChaincodeInvoke{
 		ChannelID: channel,
 		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:      "mycc",
@@ -202,7 +202,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, c
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
 
 	By("querying the chaincode again")
-	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+	sess, err = n.CliUserSession(peer, "User1", commands.ChaincodeQuery{
 		ChannelID: channel,
 		Name:      "mycc",
 		Ctor:      `{"Args":["query","a"]}`,
@@ -218,7 +218,7 @@ func ApproveChaincodeForMyOrg(n *nwo.Network, channel string, orderer *nwo.Order
 	approvedOrgs := map[string]bool{}
 	for _, p := range peers {
 		if _, ok := approvedOrgs[p.Organization]; !ok {
-			sess, err := n.PeerAdminSession(p, commands.ChaincodeApproveForMyOrg{
+			sess, err := n.CliAdminSession(p, commands.ChaincodeApproveForMyOrg{
 				ChannelID:           channel,
 				Orderer:             n.OrdererAddress(orderer, nwo.ListenPort),
 				Name:                chaincode.Name,

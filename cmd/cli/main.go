@@ -11,8 +11,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
+	"github.com/hyperledger/fabric/internal/peer/chaincode"
+	"github.com/hyperledger/fabric/internal/peer/channel"
 	"github.com/hyperledger/fabric/internal/peer/common"
-	"github.com/hyperledger/fabric/internal/peer/node"
+	"github.com/hyperledger/fabric/internal/peer/lifecycle"
+	"github.com/hyperledger/fabric/internal/peer/snapshot"
 	"github.com/hyperledger/fabric/internal/peer/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -20,12 +24,12 @@ import (
 
 // The main command describes the service and
 // defaults to printing the help message.
-var mainCmd = &cobra.Command{Use: "peer"}
+var mainCmd = &cobra.Command{Use: "cli"}
 
 func main() {
 	setEnvConfig(viper.GetViper())
 
-	// Define command-line flags that are valid for all peer commands and
+	// Define command-line flags that are valid for all cli commands and
 	// subcommands.
 	mainFlags := mainCmd.PersistentFlags()
 
@@ -33,8 +37,13 @@ func main() {
 	viper.BindPFlag("logging_level", mainFlags.Lookup("logging-level"))
 	mainFlags.MarkHidden("logging-level")
 
+	cryptoProvider := factory.GetDefault()
+
 	mainCmd.AddCommand(version.Cmd())
-	mainCmd.AddCommand(node.Cmd())
+	mainCmd.AddCommand(chaincode.Cmd(nil, cryptoProvider))
+	mainCmd.AddCommand(channel.Cmd(nil))
+	mainCmd.AddCommand(lifecycle.Cmd(cryptoProvider))
+	mainCmd.AddCommand(snapshot.Cmd(cryptoProvider))
 
 	// On failure Cobra prints the usage message and error string, so we only
 	// need to exit with a non-0 status

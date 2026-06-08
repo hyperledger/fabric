@@ -55,20 +55,20 @@ every organization on a channel needs to complete each step.
 
 This topic provides a detailed overview of the operations of the Fabric
 chaincode lifecycle rather than the specific commands. To learn more about how
-to use the Fabric lifecycle using the peer CLI, see the
+to use the Fabric lifecycle using the CLI, see the
 [Deploying a smart contract to a channel tutorial](deploy_chaincode.html)
-or the [peer lifecycle command reference](commands/peerlifecycle.html).
+or the [cli lifecycle command reference](commands/clilifecycle.html).
 
 ### Step One: Packaging the smart contract
 
 Chaincode needs to be packaged in a tar file before it can be installed on your
-peers. You can package a chaincode using the Fabric peer binary
+peers. You can package a chaincode using the Fabric cli binary
 or a third party tool such as GNU tar. When you create a chaincode
 package, you need to provide a chaincode package label to create a succinct and
 human readable description of the package.
 
 If you use a third party tool to package the chaincode, the resulting file needs
-to be in the format below. The Fabric peer binary will
+to be in the format below. The Fabric cli binary will
 automatically create a file in this format.
 - The chaincode needs to be packaged in a tar file, ending with a `.tar.gz` file
   extension.
@@ -91,7 +91,7 @@ label.*
 ### Step Two: Install the chaincode on your peers
 
 You need to install the chaincode package on every peer that will execute and
-endorse transactions. You need to complete this step with the peer CLI using the
+endorse transactions. You need to complete this step with the CLI using the
 credentials of the **Peer Administrator**. Your peer will build the chaincode
 after the chaincode is installed, and return a build error if there is a problem
 with your chaincode.
@@ -116,7 +116,7 @@ is the package label combined with a hash of the package. This package
 identifier is used to associate a chaincode package installed on your peers with
 a chaincode definition approved by your organization. **Save the identifier**
 for next step. You can also find the package identifier by querying the packages
-installed on your peer using the peer CLI.
+installed on your peer using the CLI.
 
   ![Installing the chaincode](lifecycle/Lifecycle-install.png)
 
@@ -169,10 +169,10 @@ consistent across organizations:
   time you increment the version of a chaincode, assuming the chaincode definition
   that increments the version indicates that `Init` is required.
 
-  If you are using the Fabric peer CLI, you can use the `--init-required` flag
+  If you are using the Fabric CLI, you can use the `--init-required` flag
   when you approve and commit the chaincode definition to indicate that the `Init`
   function must be called to initialize the new chaincode version. To call `Init`
-   using the Fabric peer CLI, use the `peer chaincode invoke` command and pass the
+   using the Fabric CLI, use the `cli chaincode invoke` command and pass the
   `--isInit` flag.
 
   If you are using the Fabric contract API, you do not need to include an `Init`
@@ -219,7 +219,7 @@ Once a sufficient number of channel members have approved a chaincode definition
 one organization can commit the definition to the channel. You can use the
 ``checkcommitreadiness`` command to check whether committing the chaincode
 definition should be successful based on which channel members have approved a
-definition before committing it to the channel using the peer CLI. The commit
+definition before committing it to the channel using the CLI. The commit
 transaction proposal is first sent to the peers of channel members, who query the
 chaincode definition approved for their organizations and endorse the definition
 if their organization has approved it. The transaction is then submitted to the
