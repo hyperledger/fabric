@@ -230,138 +230,139 @@ var _ = Describe("EndToEnd", func() {
 		})
 	})
 
-	DescribeTableSubtree("basic etcdraft network with docker chaincode builds", func(ccenvVersion string) {
-		BeforeEach(func() {
-			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
-			network.CCEnvVersion = ccenvVersion
-			network.MetricsProvider = "prometheus"
-			network.GenerateConfigTree()
-			network.Bootstrap()
+	DescribeTableSubtree(
+		"basic etcdraft network with docker chaincode builds", func(ccenvVersion string) {
+			BeforeEach(func() {
+				network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
+				network.CCEnvVersion = ccenvVersion
+				network.MetricsProvider = "prometheus"
+				network.GenerateConfigTree()
+				network.Bootstrap()
 
-			// Start all the fabric processes
-			ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
-		})
-
-		It("builds and executes transactions with docker chaincode", func() {
-			chaincodePath, err := filepath.Abs("../chaincode/module")
-			Expect(err).NotTo(HaveOccurred())
-
-			// use these two variants of the same chaincode to ensure we test
-			// the golang docker build for both module and gopath chaincode
-			chaincode := nwo.Chaincode{
-				Name:            "mycc",
-				Version:         "0.0",
-				Path:            chaincodePath,
-				Lang:            "golang",
-				PackageFile:     filepath.Join(testDir, "modulecc.tar.gz"),
-				Ctor:            `{"Args":["init","a","100","b","200"]}`,
-				SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
-				Sequence:        "1",
-				InitRequired:    true,
-				Label:           "my_module_chaincode",
-			}
-
-			gopathChaincode := nwo.Chaincode{
-				Name:            "mycc",
-				Version:         "0.0",
-				Path:            "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-				Lang:            "golang",
-				PackageFile:     filepath.Join(testDir, "simplecc.tar.gz"),
-				Ctor:            `{"Args":["init","a","100","b","200"]}`,
-				SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
-				Sequence:        "1",
-				InitRequired:    true,
-				Label:           "my_simple_chaincode",
-			}
-
-			orderer := network.Orderer("orderer")
-
-			By("setting up the channel")
-			nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
-
-			cl := nwo.List(network, orderer)
-			nwo.ChannelListMatcher(cl, []string{"testchannel"})
-
-			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_5", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
-
-			// package, install, and approve by org1 - module chaincode
-			packageInstallApproveChaincode(network, "testchannel", orderer, chaincode, network.Peer("Org1", "peer0"))
-
-			// package, install, and approve by org2 - gopath chaincode, same logic
-			packageInstallApproveChaincode(network, "testchannel", orderer, gopathChaincode, network.Peer("Org2", "peer0"))
-
-			testPeers := network.PeersWithChannel("testchannel")
-			nwo.CheckCommitReadinessUntilReady(network, "testchannel", chaincode, network.PeerOrgs(), testPeers...)
-			nwo.CommitChaincode(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
-			nwo.InitChaincode(network, "testchannel", orderer, chaincode, testPeers...)
-
-			By("listing the containers after committing the chaincode definition")
-			initialContainerFilter := make(dcli.Filters).Add(
-				"name",
-				chaincodeContainerNameFilter(network, chaincode),
-				chaincodeContainerNameFilter(network, gopathChaincode),
-			)
-			containers, err := client.ContainerList(context.Background(), dcli.ContainerListOptions{
-				Filters: initialContainerFilter,
+				// Start all the fabric processes
+				ordererRunner, ordererProcess, peerProcess = network.StartSingleOrdererNetwork("orderer")
 			})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(containers.Items).To(HaveLen(2))
 
-			RunQueryInvokeQuery(network, orderer, network.Peer("Org1", "peer0"), "testchannel")
+			It("builds and executes transactions with docker chaincode", func() {
+				chaincodePath, err := filepath.Abs("../chaincode/module")
+				Expect(err).NotTo(HaveOccurred())
 
-			By("evaluating the operations endpoint and prometheus metrics")
-			CheckPeerOperationEndpoints(network, network.Peer("Org2", "peer0"))
-			CheckOrdererOperationEndpoints(network, orderer)
+				// use these two variants of the same chaincode to ensure we test
+				// the golang docker build for both module and gopath chaincode
+				chaincode := nwo.Chaincode{
+					Name:            "mycc",
+					Version:         "0.0",
+					Path:            chaincodePath,
+					Lang:            "golang",
+					PackageFile:     filepath.Join(testDir, "modulecc.tar.gz"),
+					Ctor:            `{"Args":["init","a","100","b","200"]}`,
+					SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
+					Sequence:        "1",
+					InitRequired:    true,
+					Label:           "my_module_chaincode",
+				}
 
-			// upgrade chaincode to v2.0 with different label
-			chaincode.Version = "1.0"
-			chaincode.Sequence = "2"
-			chaincode.Label = "my_module_chaincode_updated"
-			gopathChaincode.Version = "1.0"
-			gopathChaincode.Sequence = "2"
-			gopathChaincode.Label = "my_simple_chaincode_updated"
+				gopathChaincode := nwo.Chaincode{
+					Name:            "mycc",
+					Version:         "0.0",
+					Path:            "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+					Lang:            "golang",
+					PackageFile:     filepath.Join(testDir, "simplecc.tar.gz"),
+					Ctor:            `{"Args":["init","a","100","b","200"]}`,
+					SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
+					Sequence:        "1",
+					InitRequired:    true,
+					Label:           "my_simple_chaincode",
+				}
 
-			// package, install, and approve by org1 - module chaincode
-			packageInstallApproveChaincode(network, "testchannel", orderer, chaincode, network.Peer("Org1", "peer0"))
+				orderer := network.Orderer("orderer")
 
-			// package, install, and approve by org2 - gopath chaincode, same logic
-			packageInstallApproveChaincode(network, "testchannel", orderer, gopathChaincode, network.Peer("Org2", "peer0"))
+				By("setting up the channel")
+				nwo.JoinOrdererJoinPeersAppChannel(network, "testchannel", orderer, ordererRunner)
 
-			nwo.CheckCommitReadinessUntilReady(network, "testchannel", chaincode, network.PeerOrgs(), testPeers...)
-			nwo.CommitChaincode(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
-			nwo.InitChaincode(network, "testchannel", orderer, chaincode, testPeers...)
+				cl := nwo.List(network, orderer)
+				nwo.ChannelListMatcher(cl, []string{"testchannel"})
 
-			By("listing the containers after updating the chaincode definition")
-			// expect the containers for the previous package id to be stopped
-			containers, err = client.ContainerList(context.Background(), dcli.ContainerListOptions{
-				Filters: initialContainerFilter,
+				nwo.EnableCapabilities(network, "testchannel", "Application", "V2_5", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+
+				// package, install, and approve by org1 - module chaincode
+				packageInstallApproveChaincode(network, "testchannel", orderer, chaincode, network.Peer("Org1", "peer0"))
+
+				// package, install, and approve by org2 - gopath chaincode, same logic
+				packageInstallApproveChaincode(network, "testchannel", orderer, gopathChaincode, network.Peer("Org2", "peer0"))
+
+				testPeers := network.PeersWithChannel("testchannel")
+				nwo.CheckCommitReadinessUntilReady(network, "testchannel", chaincode, network.PeerOrgs(), testPeers...)
+				nwo.CommitChaincode(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
+				nwo.InitChaincode(network, "testchannel", orderer, chaincode, testPeers...)
+
+				By("listing the containers after committing the chaincode definition")
+				initialContainerFilter := make(dcli.Filters).Add(
+					"name",
+					chaincodeContainerNameFilter(network, chaincode),
+					chaincodeContainerNameFilter(network, gopathChaincode),
+				)
+				containers, err := client.ContainerList(context.Background(), dcli.ContainerListOptions{
+					Filters: initialContainerFilter,
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(containers.Items).To(HaveLen(2))
+
+				RunQueryInvokeQuery(network, orderer, network.Peer("Org1", "peer0"), "testchannel")
+
+				By("evaluating the operations endpoint and prometheus metrics")
+				CheckPeerOperationEndpoints(network, network.Peer("Org2", "peer0"))
+				CheckOrdererOperationEndpoints(network, orderer)
+
+				// upgrade chaincode to v2.0 with different label
+				chaincode.Version = "1.0"
+				chaincode.Sequence = "2"
+				chaincode.Label = "my_module_chaincode_updated"
+				gopathChaincode.Version = "1.0"
+				gopathChaincode.Sequence = "2"
+				gopathChaincode.Label = "my_simple_chaincode_updated"
+
+				// package, install, and approve by org1 - module chaincode
+				packageInstallApproveChaincode(network, "testchannel", orderer, chaincode, network.Peer("Org1", "peer0"))
+
+				// package, install, and approve by org2 - gopath chaincode, same logic
+				packageInstallApproveChaincode(network, "testchannel", orderer, gopathChaincode, network.Peer("Org2", "peer0"))
+
+				nwo.CheckCommitReadinessUntilReady(network, "testchannel", chaincode, network.PeerOrgs(), testPeers...)
+				nwo.CommitChaincode(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
+				nwo.InitChaincode(network, "testchannel", orderer, chaincode, testPeers...)
+
+				By("listing the containers after updating the chaincode definition")
+				// expect the containers for the previous package id to be stopped
+				containers, err = client.ContainerList(context.Background(), dcli.ContainerListOptions{
+					Filters: initialContainerFilter,
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(containers.Items).To(HaveLen(0))
+				updatedContainerFilter := make(dcli.Filters).Add(
+					"name",
+					chaincodeContainerNameFilter(network, chaincode),
+					chaincodeContainerNameFilter(network, gopathChaincode),
+				)
+				containers, err = client.ContainerList(context.Background(), dcli.ContainerListOptions{
+					Filters: updatedContainerFilter,
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(containers.Items).To(HaveLen(2))
+
+				RunQueryInvokeQuery(network, orderer, network.Peer("Org1", "peer0"), "testchannel")
+
+				By("retrieving the local mspid of the peer via simple chaincode")
+				sess, err := network.PeerUserSession(network.Peer("Org2", "peer0"), "User1", commands.ChaincodeQuery{
+					ChannelID: "testchannel",
+					Name:      "mycc",
+					Ctor:      `{"Args":["mspid"]}`,
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+				Expect(sess).To(gbytes.Say("Org2MSP"))
 			})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(containers.Items).To(HaveLen(0))
-			updatedContainerFilter := make(dcli.Filters).Add(
-				"name",
-				chaincodeContainerNameFilter(network, chaincode),
-				chaincodeContainerNameFilter(network, gopathChaincode),
-			)
-			containers, err = client.ContainerList(context.Background(), dcli.ContainerListOptions{
-				Filters: updatedContainerFilter,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(containers.Items).To(HaveLen(2))
-
-			RunQueryInvokeQuery(network, orderer, network.Peer("Org1", "peer0"), "testchannel")
-
-			By("retrieving the local mspid of the peer via simple chaincode")
-			sess, err := network.PeerUserSession(network.Peer("Org2", "peer0"), "User1", commands.ChaincodeQuery{
-				ChannelID: "testchannel",
-				Name:      "mycc",
-				Ctor:      `{"Args":["mspid"]}`,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-			Expect(sess).To(gbytes.Say("Org2MSP"))
-		})
-	},
+		},
 		Entry("current ccenv", "$(PROJECT_VERSION)"),
 		Entry("old ccenv 3.1.3 with go 1.25.2", "3.1.3"),
 	)
