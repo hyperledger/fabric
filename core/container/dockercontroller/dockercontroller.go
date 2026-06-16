@@ -117,7 +117,7 @@ func (vm *DockerVM) buildImage(ccid string, reader io.Reader) error {
 	startTime := time.Now()
 	res, err := vm.Client.ImageBuild(context.Background(), reader, dcli.ImageBuildOptions{
 		Tags:        []string{id},
-		PullParent:  true,
+		PullParent:  vm.ChaincodePull,
 		NetworkMode: vm.NetworkMode,
 	})
 
