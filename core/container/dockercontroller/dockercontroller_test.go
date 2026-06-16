@@ -410,7 +410,7 @@ func Test_buildImage(t *testing.T) {
 
 	_, in, opts := client.ImageBuildArgsForCall(0)
 	require.Equal(t, "simple-a7a39b72f29718e653e73503210fbb597057b7a1c77d1fe321a1afcff041d4e1", opts.Tags[0])
-	require.True(t, opts.PullParent)
+	require.Equal(t, dvm.ChaincodePull, opts.PullParent)
 	require.Equal(t, "network-mode", opts.NetworkMode)
 	require.Equal(t, &bytes.Buffer{}, in)
 }
