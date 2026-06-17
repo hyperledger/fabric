@@ -151,7 +151,7 @@ For example, a simple index named ``foo-index`` for a field named ``foo``.
     }
 
 Optionally the design document  attribute ``ddoc`` can be specified on the index
-definition. A `design document <http://guide.couchdb.org/draft/design.html>`__ is
+definition. A `design document <https://guide.couchdb.org/draft/design.html>`__ is
 a CouchDB construct designed to contain indexes. Indexes can be grouped into
 design documents for efficiency but CouchDB recommends one index per design
 document.
