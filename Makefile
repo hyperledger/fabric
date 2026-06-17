@@ -47,7 +47,7 @@
 #   - verify - runs unit tests for only the changed package tree
 
 UBUNTU_VER ?= 22.04
-FABRIC_VER ?= 2.5.15
+FABRIC_VER ?= 2.5.16
 
 # 3rd party image version
 # These versions are also set in the runners in ./integration/runners/
