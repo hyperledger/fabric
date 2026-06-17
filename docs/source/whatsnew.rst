@@ -349,6 +349,7 @@ Specifically, take a look at the changes and deprecations.
 * `Fabric v2.5.13 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.5.13>`_.
 * `Fabric v2.5.14 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.5.14>`_.
 * `Fabric v2.5.15 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.5.15>`_.
+* `Fabric v2.5.16 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.5.16>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
