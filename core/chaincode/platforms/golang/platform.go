@@ -26,6 +26,8 @@ import (
 	"github.com/hyperledger/fabric/internal/ccmetadata"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
+	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/semver"
 )
 
 // Platform for chaincodes written in Go
@@ -207,6 +209,7 @@ func getLDFlagsOpts() string {
 
 var buildScript = `
 set -e
+%[3]s
 if [ -f "/chaincode/input/src/go.mod" ] && [ -d "/chaincode/input/src/vendor" ]; then
     cd /chaincode/input/src
     GO111MODULE=on go build -v -mod=vendor %[1]s -o /chaincode/output/chaincode %[2]s
@@ -225,7 +228,21 @@ fi
 echo Done!
 `
 
-func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, error) {
+func (p *Platform) DockerBuildOptions(path string, goVer, osVer string, archVer string) (util.DockerBuildOptions, error) {
+	// determine the presence of go.mod and the version of go in go.mod (go, toolchain)
+	var insNewGo string
+	if newGoVer, needGo := getNeedVersionGo(path, goVer); needGo {
+		// preparing the insert for the go update
+		insNewGoScript := `
+curl -sLO https://go.dev/dl/go%[1]s.%[2]s-%[3]s.tar.gz
+rm -rf /usr/local/go
+tar -C /usr/local -xzfv "go%[1]s.%[2]s-%[3]s.tar.gz"
+rm "go%[1]s.%[2]s-%[3]s.tar.gz"
+go version
+`
+		insNewGo = fmt.Sprintf(insNewGoScript, newGoVer, osVer, archVer)
+	}
+
 	env := []string{}
 	for _, key := range []string{"GOPROXY", "GOSUMDB"} {
 		if val, ok := os.LookupEnv(key); ok {
@@ -238,9 +255,52 @@ func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, err
 	}
 	ldFlagOpts := getLDFlagsOpts()
 	return util.DockerBuildOptions{
-		Cmd: fmt.Sprintf(buildScript, ldFlagOpts, path),
+		Cmd: fmt.Sprintf(buildScript, ldFlagOpts, path, insNewGo),
 		Env: env,
 	}, nil
+}
+
+func getNeedVersionGo(path string, goVersion string) (string, bool) {
+	name := filepath.Join(path, "go.mod")
+	_, err := os.Stat(name)
+	if err != nil {
+		return "", false
+	}
+	data, err := os.ReadFile(name)
+	if err != nil {
+		return "", false
+	}
+
+	// get your own version of go
+	var need bool
+
+	// determine the presence of go.mod and the version of go in go.mod (go, toolchain)
+	f, err := modfile.Parse("go.mod", data, nil)
+	if err != nil {
+		return "", false
+	}
+
+	if f.Go != nil {
+		fGoVer := "v" + f.Go.Version
+		if semver.Compare(goVersion, fGoVer) == -1 {
+			goVersion = fGoVer
+			need = true
+		}
+	}
+
+	if f.Toolchain != nil {
+		fToolchaiVer := "v" + strings.TrimPrefix(f.Toolchain.Name, "go")
+		if semver.Compare(goVersion, fToolchaiVer) == -1 {
+			goVersion = fToolchaiVer
+			need = true
+		}
+	}
+
+	if need {
+		return strings.TrimPrefix(goVersion, "v"), true
+	}
+
+	return "", false
 }
 
 // CodeDescriptor describes the code we're packaging.

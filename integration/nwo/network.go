@@ -167,6 +167,7 @@ type Network struct {
 	ClientAuthRequired    bool
 	TLSEnabled            bool
 	GatewayEnabled        bool
+	CCEnvVersion          string
 
 	PortsByBrokerID  map[string]Ports
 	PortsByOrdererID map[string]Ports
@@ -199,6 +200,7 @@ func New(c *Config, rootDir string, dockerClient dcli.APIClient, startPort int, 
 		NetworkID:         runner.UniqueName(),
 		EventuallyTimeout: time.Minute,
 		MetricsProvider:   "prometheus",
+		CCEnvVersion:      "$(PROJECT_VERSION)",
 		PortsByBrokerID:   map[string]Ports{},
 		PortsByOrdererID:  map[string]Ports{},
 		PortsByPeerID:     map[string]Ports{},

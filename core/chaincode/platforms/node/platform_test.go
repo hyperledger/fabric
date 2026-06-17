@@ -140,7 +140,7 @@ fi
 `
 
 func TestGenerateBuildOptions(t *testing.T) {
-	opts, err := platform.DockerBuildOptions("pathname")
+	opts, err := platform.DockerBuildOptions("pathname", "", "", "")
 	require.NoError(t, err)
 
 	expectedOpts := util.DockerBuildOptions{
