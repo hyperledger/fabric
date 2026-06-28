@@ -16,6 +16,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -426,6 +428,61 @@ func Test_buildImageFailure(t *testing.T) {
 
 	err := dvm.buildImage("simple", &bytes.Buffer{})
 	require.EqualError(t, err, "oh-bother-we-failed-badly")
+}
+
+func Test_getAuthConfigFromDockerConfig(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Setenv("HOME", tempDir)
+
+	configFile := []byte(`
+{
+	"auths": {
+		"repo.example.com": {
+			"auth": "exampleAuthString"
+		}
+	}
+}
+	`)
+
+	rc := &mock.ReadCloser{}
+	rc.ReadReturns(0, io.EOF)
+	client := &mock.DockerClient{}
+	client.ImageBuildReturns(dcli.ImageBuildResult{Body: rc}, nil)
+
+	t.Run("when .dockercfg is available with auth config", func(t *testing.T) {
+		configFilePath := filepath.Join(tempDir, ".dockercfg")
+		err := os.WriteFile(configFilePath, configFile, 0o600)
+		require.NoError(t, err)
+
+		dvm := DockerVM{
+			BuildMetrics: NewBuildMetrics(&disabled.Provider{}),
+			Client:       client,
+			NetworkMode:  "network-mode",
+		}
+
+		configs := dvm.getAuthFromDockerConfig()
+		require.Greater(t, len(configs), 0, "len of auth configs must be greater than 0")
+	})
+
+	t.Run("when config.json is available with auth config", func(t *testing.T) {
+		dockerDir := filepath.Join(tempDir, ".docker")
+		if _, err := os.Stat(dockerDir); err != nil {
+			_ = os.Mkdir(dockerDir, 0o700)
+		}
+
+		configFilePath := filepath.Join(dockerDir, "config.json")
+		err := os.WriteFile(configFilePath, configFile, 0o644)
+		require.NoError(t, err)
+
+		dvm := DockerVM{
+			BuildMetrics: NewBuildMetrics(&disabled.Provider{}),
+			Client:       client,
+			NetworkMode:  "network-mode",
+		}
+
+		configs := dvm.getAuthFromDockerConfig()
+		require.Greater(t, len(configs), 0, "len of auth configs should not be 0")
+	})
 }
 
 func TestBuild(t *testing.T) {
