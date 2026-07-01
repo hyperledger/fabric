@@ -8,10 +8,13 @@ package statecouchdb
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/hex"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -42,10 +45,19 @@ var (
 )
 
 func createCouchInstance(config *ledger.CouchDBConfig, metricsProvider metrics.Provider) (*couchInstance, error) {
+	// Determine URL scheme based on TLS configuration
+	scheme := "http"
+	if config.TLSEnabled {
+		scheme = "https"
+		couchdbLogger.Info("TLS is enabled for CouchDB connection")
+	} else {
+		couchdbLogger.Warn("Connecting to CouchDB without TLS (unencrypted connection)")
+	}
+
 	// make sure the address is valid
 	connectURL := &url.URL{
 		Host:   config.Address,
-		Scheme: "http",
+		Scheme: scheme,
 	}
 	_, err := url.Parse(connectURL.String())
 	if err != nil {
@@ -55,6 +67,8 @@ func createCouchInstance(config *ledger.CouchDBConfig, metricsProvider metrics.P
 			config.Address,
 		)
 	}
+
+	couchdbLogger.Infof("Connecting to CouchDB at: %s", connectURL.String())
 
 	// Create the http client once
 	// Clients and Transports are safe for concurrent use by multiple goroutines
@@ -74,6 +88,26 @@ func createCouchInstance(config *ledger.CouchDBConfig, metricsProvider metrics.P
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 		DisableKeepAlives:     disableKeepAlive,
+	}
+
+	couchdbLogger.Debugf("HTTP client configuration - RequestTimeout: %v, MaxIdleConns: %d, MaxIdleConnsPerHost: %d, TLSHandshakeTimeout: %v",
+		config.RequestTimeout, transport.MaxIdleConns, transport.MaxIdleConnsPerHost, transport.TLSHandshakeTimeout)
+
+	// Configure TLS if enabled
+	if config.TLSEnabled {
+		tlsConfig, err := loadTLSConfig(config)
+		if err != nil {
+			return nil, errors.WithMessage(err, "failed to load TLS configuration for CouchDB")
+		}
+		transport.TLSClientConfig = tlsConfig
+
+		// Log TLS configuration details at DEBUG level
+		couchdbLogger.Debugf("TLS configuration applied - MinVersion: TLS 1.2, InsecureSkipVerify: %v", tlsConfig.InsecureSkipVerify)
+		if tlsConfig.RootCAs != nil {
+			couchdbLogger.Debug("TLS: Custom CA certificate pool configured for server verification")
+		} else {
+			couchdbLogger.Debug("TLS: Using system CA certificate pool for server verification")
+		}
 	}
 
 	client.Transport = transport
@@ -101,6 +135,49 @@ func createCouchInstance(config *ledger.CouchDBConfig, metricsProvider metrics.P
 	}
 
 	return couchInstance, nil
+}
+
+// loadTLSConfig loads and configures TLS settings for CouchDB connection
+func loadTLSConfig(config *ledger.CouchDBConfig) (*tls.Config, error) {
+	couchdbLogger.Info("Loading TLS configuration for CouchDB connection")
+
+	tlsConfig := &tls.Config{
+		MinVersion: tls.VersionTLS13, // Enforce minimum TLS 1.3
+	}
+
+	couchdbLogger.Debug("TLS minimum version set to TLS 1.3")
+
+	// Configure server certificate verification
+	if config.TLSSkipVerify {
+		couchdbLogger.Warn("TLS certificate verification is disabled - this is insecure and should only be used for testing")
+		tlsConfig.InsecureSkipVerify = true
+		// When skipping verification, don't load CA certificate as it won't be used
+		couchdbLogger.Info("TLS configuration successfully loaded for CouchDB connection")
+		return tlsConfig, nil
+	}
+
+	couchdbLogger.Debug("TLS server certificate verification is enabled")
+
+	// Load CA certificate for server verification
+	if config.TLSCACertFile != "" {
+		couchdbLogger.Debugf("Reading CA certificate from: %s", config.TLSCACertFile)
+		caCert, err := os.ReadFile(config.TLSCACertFile)
+		if err != nil {
+			return nil, errors.WithMessagef(err, "failed to read CA certificate file: %s", config.TLSCACertFile)
+		}
+
+		caCertPool := x509.NewCertPool()
+		if !caCertPool.AppendCertsFromPEM(caCert) {
+			return nil, errors.Errorf("failed to parse CA certificate from file: %s", config.TLSCACertFile)
+		}
+		tlsConfig.RootCAs = caCertPool
+		couchdbLogger.Infof("Successfully loaded CA certificate for CouchDB server verification from: %s", config.TLSCACertFile)
+	} else {
+		couchdbLogger.Debug("No custom CA certificate specified, will use system CA certificate pool")
+	}
+
+	couchdbLogger.Info("TLS configuration successfully loaded for CouchDB connection")
+	return tlsConfig, nil
 }
 
 func checkCouchDBVersion(version string) error {
