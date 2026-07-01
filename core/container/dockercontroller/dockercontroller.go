@@ -13,8 +13,11 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -27,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	dcontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/registry"
 	dcli "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 )
@@ -114,11 +118,14 @@ func (vm *DockerVM) buildImage(ccid string, reader io.Reader) error {
 		return err
 	}
 
+	authConfigs := vm.getAuthFromDockerConfig()
+
 	startTime := time.Now()
 	res, err := vm.Client.ImageBuild(context.Background(), reader, dcli.ImageBuildOptions{
 		Tags:        []string{id},
 		PullParent:  vm.ChaincodePull,
 		NetworkMode: vm.NetworkMode,
+		AuthConfigs: authConfigs,
 	})
 
 	vm.BuildMetrics.ChaincodeImageBuildDuration.With(
@@ -137,6 +144,50 @@ func (vm *DockerVM) buildImage(ccid string, reader io.Reader) error {
 
 	dockerLogger.Debugf("Created image: %s, output: %s", id, buf.String())
 	return nil
+}
+
+type dockerConfigFile struct {
+	Auths map[string]registry.AuthConfig `json:"auths,omitempty"`
+}
+
+func (vm *DockerVM) getAuthFromDockerConfig() map[string]registry.AuthConfig {
+	emptyConfig := make(map[string]registry.AuthConfig)
+
+	homeEnv := os.Getenv("HOME")
+	if homeEnv == "" {
+		return emptyConfig
+	}
+
+	validPaths := []string{
+		filepath.Join(homeEnv, ".docker", "config.json"),
+		filepath.Join(homeEnv, ".dockercfg"),
+	}
+	for _, p := range validPaths {
+		file, err := os.Open(p)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				dockerLogger.Debugf("Docker config file \"%s\" was not found", p)
+				continue
+			}
+
+			dockerLogger.Debugf("Unhandled error occurred while trying to read Docker config file \"%s\". Returning auth empty config.", p)
+			return emptyConfig
+		}
+		defer file.Close()
+
+		var currConfig dockerConfigFile
+		err = json.NewDecoder(file).Decode(&currConfig)
+		if err != nil {
+			return emptyConfig
+		}
+
+		if len(currConfig.Auths) > 0 {
+			return currConfig.Auths
+		}
+	}
+
+	dockerLogger.Debugf("No Docker config files were found. Returning empty auth config.")
+	return emptyConfig
 }
 
 // Build is responsible for building an image if it does not already exist.
