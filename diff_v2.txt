@@ -1,0 +1,65 @@
+diff --git a/gossip/discovery/discovery_test.go b/gossip/discovery/discovery_test.go
+index 01b80fc4f..34d0f968b 100644
+--- a/gossip/discovery/discovery_test.go
++++ b/gossip/discovery/discovery_test.go
+@@ -1975,3 +1975,60 @@ func TestHandleAliveMessage_RelearnsMemberAfterConcurrentPurge(t *testing.T) {
+ 	require.True(t, inID2Member, "member should be present in id2Member after re-learning")
+ 	require.True(t, inAliveLastTS, "member should be present in aliveLastTS after re-learning")
+ }
++
++func TestLearnExistingMembers_NilMemberAfterConcurrentPurge(t *testing.T) {
++	// 1) Initialize a discovery instance (use existing helpers like createDiscoveryInstanceWithNoGossip).
++	inst := createDiscoveryInstanceWithNoGossip(10000, "testInst", nil)
++	defer inst.Stop()
++
++	// Access the underlying implementation
++	d := inst.discoveryImpl()
++
++	// 2) Prepare a PKIid and endpoint.
++	pkiID := common.PKIidType("test-pki-id")
++	endpoint := "localhost:1234"
++
++	// 3) Under lock, insert an entry into aliveLastTS for that PKIid.
++	// 4) Do NOT insert the corresponding entry into id2Member (simulate it being purged).
++	d.lock.Lock()
++	d.aliveLastTS[string(pkiID)] = &timestamp{
++		incTime:  time.Now(),
++		seqNum:   1,
++		lastSeen: time.Now(),
++	}
++	d.lock.Unlock()
++
++	// 5) Build a valid AliveMessage and wrap it with protoext.NoopSign.
++	aliveMsg := &proto.GossipMessage{
++		Tag: proto.GossipMessage_EMPTY,
++		Content: &proto.GossipMessage_AliveMsg{
++			AliveMsg: &proto.AliveMessage{
++				Membership: &proto.Member{
++					PkiId:    pkiID,
++					Endpoint: endpoint,
++				},
++				Timestamp: &proto.PeerTime{
++					IncNum: uint64(time.Now().UnixNano()),
++					SeqNum: 2,
++				},
++			},
++		},
++	}
++	signedMsg, err := protoext.NoopSign(aliveMsg)
++	require.NoError(t, err)
++
++	// We invoke learnExistingMembers() directly to deterministically reproduce
++	// the inconsistent state where the member is present in aliveLastTS but
++	// missing from id2Member.
++	//
++	// In the real flow, handleAliveMessage first reads state under a read lock,
++	// and then learnExistingMembers acquires a write lock. A concurrent purge
++	// can remove the member between these two steps, leading to a nil access.
++	//
++	// Reproducing this via the full handleAliveMessage path would require a
++	// timing-dependent race, so we simulate the exact post-condition directly
++	// to keep the test deterministic and reliable.
++	require.NotPanics(t, func() {
++		d.learnExistingMembers([]*protoext.SignedGossipMessage{signedMsg})
++	}, "learnExistingMembers should not panic when member is nil in id2Member")
++}

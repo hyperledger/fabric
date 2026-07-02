@@ -244,7 +244,9 @@ func (d *Deliverer) Stop() {
 
 	d.stopFlag = true
 	close(d.DoneC)
-	d.blockReceiver.Stop()
+	if d.blockReceiver != nil {
+		d.blockReceiver.Stop()
+	}
 	d.Logger.Info("Deliverer stopped")
 }
 
