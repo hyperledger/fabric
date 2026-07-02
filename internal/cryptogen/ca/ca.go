@@ -13,6 +13,8 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/asn1"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -25,6 +27,8 @@ import (
 	"github.com/hyperledger/fabric/internal/cryptogen/csp"
 	"github.com/pkg/errors"
 )
+
+var attrOID = asn1.ObjectIdentifier{1, 2, 3, 4, 5, 6, 7, 8, 1}
 
 type CA struct {
 	Name               string
@@ -112,13 +116,37 @@ func NewCA(
 	return ca, err
 }
 
+// attrExtension mirrors the fabric-ca Attributes struct for JSON marshalling.
+type attrExtension struct {
+	Attrs map[string]string `json:"attrs"`
+}
+
+func (ca *CA) addAttributesToCert(attrs map[string]string, cert *x509.Certificate) error {
+	if len(attrs) == 0 {
+		return nil
+	}
+	buf, err := json.Marshal(attrExtension{Attrs: attrs})
+	if err != nil {
+		return errors.Wrap(err, "Failed to marshal attributes")
+	}
+	ext := pkix.Extension{
+		Id:       attrOID,
+		Critical: false,
+		Value:    buf,
+	}
+	cert.ExtraExtensions = append(cert.ExtraExtensions, ext)
+	return nil
+}
+
 // SignCertificate creates a signed certificate based on a built-in template
-// and saves it in baseDir/name
+// and saves it in baseDir/name. attrs, if non-nil, are embedded as a custom
+// X.509 extension (OID 1.2.3.4.5.6.7.8.1) using the same format as fabric-ca.
 func (ca *CA) SignCertificate(
 	baseDir,
 	name string,
 	orgUnits,
 	alternateNames []string,
+	attrs map[string]string,
 	pub crypto.PublicKey,
 	ku x509.KeyUsage,
 	eku []x509.ExtKeyUsage,
@@ -149,6 +177,11 @@ func (ca *CA) SignCertificate(
 		} else {
 			template.DNSNames = append(template.DNSNames, san)
 		}
+	}
+
+	err := ca.addAttributesToCert(attrs, &template)
+	if err != nil {
+		return nil, err
 	}
 
 	cert, err := genCertificate(
