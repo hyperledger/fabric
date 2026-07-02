@@ -17,7 +17,7 @@ import (
 var chaincodeInvokeCmd *cobra.Command
 
 // invokeCmd returns the cobra command for Chaincode Invoke
-func invokeCmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) *cobra.Command {
+func invokeCmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP, isNew bool) *cobra.Command {
 	chaincodeInvokeCmd = &cobra.Command{
 		Use:       "invoke",
 		Short:     fmt.Sprintf("Invoke the specified %s.", chainFuncName),
@@ -26,6 +26,10 @@ func invokeCmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) *cobra.Comma
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return chaincodeInvoke(cmd, cf, cryptoProvider)
 		},
+	}
+	if !isNew {
+		chaincodeInvokeCmd.Short = "[DEPRECATED] Invoke the specified chaincode (use the \"peercli chaincode invoke\")."
+		chaincodeInvokeCmd.Long = "[DEPRECATED] Invoke the specified chaincode. It will try to commit the endorsed transaction to the network. Instead of this command, use \"peercli chaincode invoke\"."
 	}
 	flagList := []string{
 		"name",
