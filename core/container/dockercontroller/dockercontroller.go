@@ -118,14 +118,12 @@ func (vm *DockerVM) buildImage(ccid string, reader io.Reader) error {
 		return err
 	}
 
-	authConfigs := vm.getAuthFromDockerConfig()
-
 	startTime := time.Now()
 	res, err := vm.Client.ImageBuild(context.Background(), reader, dcli.ImageBuildOptions{
 		Tags:        []string{id},
 		PullParent:  vm.ChaincodePull,
 		NetworkMode: vm.NetworkMode,
-		AuthConfigs: authConfigs,
+		AuthConfigs: getAuthFromDockerConfig(),
 	})
 
 	vm.BuildMetrics.ChaincodeImageBuildDuration.With(
@@ -146,48 +144,94 @@ func (vm *DockerVM) buildImage(ccid string, reader io.Reader) error {
 	return nil
 }
 
+// dockerConfigFile is a minimal struct for unmarshalling authentication details
+// from the Docker config file.
 type dockerConfigFile struct {
 	Auths map[string]registry.AuthConfig `json:"auths,omitempty"`
 }
 
-func (vm *DockerVM) getAuthFromDockerConfig() map[string]registry.AuthConfig {
+// getAuthFromDockerConfig gets the authentication configuration that may be
+// provided in the Docker config file.
+func getAuthFromDockerConfig() map[string]registry.AuthConfig {
 	emptyConfig := make(map[string]registry.AuthConfig)
 
-	homeEnv := os.Getenv("HOME")
-	if homeEnv == "" {
+	configFilePath := filepath.Join(getDockerConfigDir(), "config.json")
+
+	file, err := os.Open(configFilePath)
+	if err != nil {
+		dockerLogger.Debugf("Error occurred while trying to read Docker config file from path \"%s\". Returning empty auth config.", configFilePath)
+		return emptyConfig
+	}
+	defer file.Close()
+
+	var currConfig dockerConfigFile
+	err = json.NewDecoder(file).Decode(&currConfig)
+	if err != nil {
 		return emptyConfig
 	}
 
-	validPaths := []string{
-		filepath.Join(homeEnv, ".docker", "config.json"),
-		filepath.Join(homeEnv, ".dockercfg"),
+	mappedAuths, err := mapDockerConfigAuth(currConfig.Auths)
+	if err != nil {
+		dockerLogger.Debugf("Error while decoding Docker auth: %s. Returning empty auth config.", err.Error())
+		return emptyConfig
 	}
-	for _, p := range validPaths {
-		file, err := os.Open(p)
-		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				dockerLogger.Debugf("Docker config file \"%s\" was not found", p)
-				continue
+
+	return mappedAuths
+}
+
+func getDockerConfigDir() string {
+	homeDir, _ := os.UserHomeDir()
+
+	// The value of DOCKER_CONFIG environment variable overrides the default
+	// config directory (~/.docker). This behaviour mimics that of Docker CLI.
+	configDir := os.Getenv("DOCKER_CONFIG")
+	if configDir == "" {
+		configDir = filepath.Join(homeDir, ".docker")
+	}
+
+	return configDir
+}
+
+// mapDockerConfigAuth maps the provided Docker auth configuration to the format
+// expected by the Docker Engine (i.e. Username and Password based auth).
+func mapDockerConfigAuth(auths map[string]registry.AuthConfig) (map[string]registry.AuthConfig, error) {
+	mappedAuth := make(map[string]registry.AuthConfig)
+
+	for reg, auth := range auths {
+		if auth.Auth != "" {
+			username, password, err := decodeAuth(auth.Auth)
+			if err != nil {
+				return mappedAuth, err
 			}
 
-			dockerLogger.Debugf("Unhandled error occurred while trying to read Docker config file \"%s\". Returning auth empty config.", p)
-			return emptyConfig
-		}
-		defer file.Close()
-
-		var currConfig dockerConfigFile
-		err = json.NewDecoder(file).Decode(&currConfig)
-		if err != nil {
-			return emptyConfig
-		}
-
-		if len(currConfig.Auths) > 0 {
-			return currConfig.Auths
+			mappedAuth[reg] = registry.AuthConfig{
+				Username: username,
+				Password: password,
+			}
 		}
 	}
 
-	dockerLogger.Debugf("No Docker config files were found. Returning empty auth config.")
-	return emptyConfig
+	return mappedAuth, nil
+}
+
+// decodeAuth decodes the provided Docker authentication configuration as a
+// Base64 encoded string and returns the username and password from it.
+func decodeAuth(auth string) (string, string, error) {
+	decLen := base64.StdEncoding.DecodedLen(len(auth))
+	decoded := make([]byte, decLen)
+
+	n, err := base64.StdEncoding.Decode(decoded, []byte(auth))
+	if err != nil {
+		return "", "", err
+	}
+	if n > decLen {
+		return "", "", errors.New("something went wrong decoding auth config")
+	}
+	userName, password, ok := strings.Cut(string(decoded), ":")
+	if !ok || userName == "" {
+		return "", "", errors.New("invalid auth configuration file")
+	}
+	return userName, strings.Trim(password, "\x00"), nil
 }
 
 // Build is responsible for building an image if it does not already exist.
