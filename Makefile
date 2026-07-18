@@ -219,7 +219,7 @@ generate-swagger: gotool.swagger ## Generate swagger
 	./scripts/swagger.sh generate
 
 .PHONY: protos
-protos: gotool.protoc-gen-go ## Generate all protobuf artifacts based on .proto files
+protos: gotool.protoc-gen-go gotool.protoc-gen-go-grpc ## Generate all protobuf artifacts based on .proto files
 	@echo "Compiling non-API protos..."
 	./scripts/compile_protos.sh
 
