@@ -151,7 +151,7 @@ run_tests() {
     fi
 
     local -a race_flags=()
-    if [ "$(uname -m)" == "x86_64" ]; then
+    if [ "$(uname -m)" == "x86_64" ] || [ "$(uname -m)" == "arm64" ]; then
         export GORACE=atexit_sleep_ms=0 # reduce overhead of race
         race_flags+=("-race")
     fi
