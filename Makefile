@@ -23,7 +23,7 @@
 #   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
 #   - docker-thirdparty - pulls thirdparty images (couchdb, etc)
 #   - docs - builds the documentation in html format
-#   - gotools - installs go tools like golint
+#   - gotools - installs go tools
 #   - help-docs - generate the command reference docs
 #   - integration-test-prereqs - setup prerequisites for integration tests
 #   - integration-test - runs the integration tests
@@ -149,7 +149,7 @@ trailing-spaces: ## Check for trailing spaces
 	@scripts/check_trailingspaces.sh
 
 .PHONY: gotools
-gotools: gotools-install ## Install go tools like golint
+gotools: gotools-install ## Install go tools
 
 .PHONY: check-go-version
 check-go-version: ## Check for the correct go version
