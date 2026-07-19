@@ -20,7 +20,7 @@ go.fqp.misspell           := github.com/client9/misspell/cmd/misspell
 go.fqp.mockery            := github.com/vektra/mockery/v2
 go.fqp.protoc-gen-go      := google.golang.org/protobuf/cmd/protoc-gen-go
 go.fqp.protoc-gen-go-grpc := google.golang.org/grpc/cmd/protoc-gen-go-grpc
-go.fqp.staticcheck        := honnef.co/go/tools/cmd/staticcheck@2025.1
+go.fqp.staticcheck        := honnef.co/go/tools/cmd/staticcheck
 go.fqp.swagger            := github.com/go-swagger/go-swagger/cmd/swagger
 
 .PHONY: gotools-install
