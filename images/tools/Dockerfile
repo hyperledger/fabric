@@ -65,7 +65,7 @@ RUN curl -sL https://go.dev/dl/go${GO_VER}.${TARGETOS}-${TARGETARCH}.tar.gz | ta
 ENV PATH="/usr/local/go/bin:$PATH"
 
 # set up nsswitch.conf for Go's "netgo" implementation
-# - https://github.com/golang/go/blob/go1.9.1/src/net/conf.go#L194-L275
+# - https://github.com/golang/go/blob/go1.26.4/src/net/conf.go#L351-L478
 # - docker run --rm debian:stretch grep '^hosts:' /etc/nsswitch.conf
 RUN echo 'hosts: files dns' > /etc/nsswitch.conf
 
