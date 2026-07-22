@@ -17,11 +17,50 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
+
+// erroringVersionedDB embeds statedb.VersionedDB so it satisfies the full
+// interface, but only GetState{,Private}MultipleKeys are ever exercised by
+// the tests below - every other method is left as a nil-interface call and
+// would panic if hit, which is the point: it must never be reached.
+type erroringVersionedDB struct {
+	statedb.VersionedDB
+	err error
+}
+
+func (db *erroringVersionedDB) GetStateMultipleKeys(_ string, _ []string) ([]*statedb.VersionedValue, error) {
+	return nil, db.err
+}
+
+func TestGetStateMultipleKeysPropagatesDBError(t *testing.T) {
+	dbErr := errors.New("simulated statedb failure")
+	fakeDB, err := privacyenabledstate.NewDB(&erroringVersionedDB{err: dbErr}, "test-ledger", nil)
+	require.NoError(t, err)
+	txMgr := &LockBasedTxMgr{ledgerid: "test-ledger", db: fakeDB}
+	qe := newQueryExecutor(txMgr, "", nil, false, testHashFunc)
+
+	values, err := qe.GetStateMultipleKeys("ns", []string{"key1", "key2"})
+	require.Error(t, err, "a statedb error must not be swallowed as a silent empty result")
+	require.Nil(t, values)
+}
+
+func TestGetPrivateDataMultipleKeysPropagatesDBError(t *testing.T) {
+	dbErr := errors.New("simulated statedb failure")
+	fakeDB, err := privacyenabledstate.NewDB(&erroringVersionedDB{err: dbErr}, "test-ledger", nil)
+	require.NoError(t, err)
+	txMgr := &LockBasedTxMgr{ledgerid: "test-ledger", db: fakeDB}
+	qe := newQueryExecutor(txMgr, "", nil, false, testHashFunc)
+
+	values, err := qe.GetPrivateDataMultipleKeys("ns", "coll", []string{"key1", "key2"})
+	require.Error(t, err, "a statedb error must not be swallowed as a silent empty result")
+	require.Nil(t, values)
+}
 
 var testHashFunc = func(data []byte) ([]byte, error) {
 	h := sha256.New()
