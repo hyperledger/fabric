@@ -20,14 +20,18 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func fetchCmd(cf *ChannelCmdFactory) *cobra.Command {
+func fetchCmd(cf *ChannelCmdFactory, isNew bool) *cobra.Command {
 	fetchCmd := &cobra.Command{
 		Use:   "fetch <newest|oldest|config|(number)> [outputfile]",
-		Short: "Fetch a block",
-		Long:  "Fetch a specified block, writing it to a file.",
+		Short: "Fetch a block from peer.",
+		Long:  "Fetch a specified block from peer, writing it to a file.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fetch(cmd, args, cf)
+			return fetch(cmd, args, cf, isNew)
 		},
+	}
+	if !isNew {
+		fetchCmd.Short = "[DEPRECATED] Fetch a block (use the \"peercli channel fetch\" or \"osnadmin fetch\")."
+		fetchCmd.Long = "[DEPRECATED] Fetch a specified block from peer or orderer, writing it to a file. Instead of this command, use \"peercli channel fetch\" or \"osnadmin fetch\"."
 	}
 	flagList := []string{
 		"channelID",
@@ -38,7 +42,7 @@ func fetchCmd(cf *ChannelCmdFactory) *cobra.Command {
 	return fetchCmd
 }
 
-func fetch(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
+func fetch(cmd *cobra.Command, args []string, cf *ChannelCmdFactory, isNew bool) error {
 	if len(args) == 0 {
 		return fmt.Errorf("fetch target required, oldest, newest, config, or a number")
 	}
@@ -57,6 +61,9 @@ func fetch(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 		peerDeliverRequired = PeerDeliverRequired
 	}
 	var err error
+	if isNew && ordererRequired {
+		return errors.Errorf("peercli channel fetch only from peer")
+	}
 	if cf == nil {
 		cf, err = InitCmdFactory(EndorserNotRequired, peerDeliverRequired, ordererRequired)
 		if err != nil {

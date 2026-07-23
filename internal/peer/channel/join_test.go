@@ -23,7 +23,7 @@ func TestMissingBlockFile(t *testing.T) {
 
 	resetFlags()
 
-	cmd := joinCmd(nil)
+	cmd := joinCmd(nil, true)
 	AddFlags(cmd)
 	args := []string{}
 	cmd.SetArgs(args)
@@ -57,7 +57,7 @@ func TestJoin(t *testing.T) {
 		Signer:           signer,
 	}
 
-	cmd := joinCmd(mockCF)
+	cmd := joinCmd(mockCF, true)
 	AddFlags(cmd)
 
 	args := []string{"-b", mockblockfile}
@@ -90,7 +90,7 @@ func TestJoinNonExistentBlock(t *testing.T) {
 		Signer:           signer,
 	}
 
-	cmd := joinCmd(mockCF)
+	cmd := joinCmd(mockCF, true)
 
 	AddFlags(cmd)
 
@@ -127,7 +127,7 @@ func TestBadProposalResponse(t *testing.T) {
 		Signer:           signer,
 	}
 
-	cmd := joinCmd(mockCF)
+	cmd := joinCmd(mockCF, true)
 
 	AddFlags(cmd)
 
@@ -149,7 +149,7 @@ func TestJoinNilCF(t *testing.T) {
 	dir := t.TempDir()
 	mockblockfile := filepath.Join(dir, "mockjointest.block")
 	viper.Set("peer.client.connTimeout", 10*time.Millisecond)
-	cmd := joinCmd(nil)
+	cmd := joinCmd(nil, true)
 	AddFlags(cmd)
 	args := []string{"-b", mockblockfile}
 	cmd.SetArgs(args)
