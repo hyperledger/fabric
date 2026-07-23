@@ -22,6 +22,18 @@ The `install-fabric.sh` script introduced in the next section automates the proc
   * `fabric-ca-client`,
   * `fabric-ca-server`
 
+## Which setup path should I use?
+
+For most users who want a working local Fabric environment with a single script, the recommended path is:
+
+1. Install the required software from [Prerequisites](./prereqs.html).
+2. Run `install-fabric.sh` to download the Fabric binaries, Docker images, and optionally `fabric-samples`.
+3. Use the `fabric-samples` test network and tutorials to start a local network and deploy chaincode.
+
+If you want to contribute to Fabric itself, use this install flow first and then continue with the
+[contributor development environment](./dev-setup/devenv.html), which adds the extra tools and steps
+needed to build Fabric and run its test suites.
+
 ## Download Fabric samples, Docker images, and binaries
 
 A working directory is required - for example, Go Developers use the `$HOME/go/src/github.com/<your_github_userid>` directory.  This is a Golang Community recommendation for Go projects.
