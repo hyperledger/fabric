@@ -106,7 +106,7 @@ func (q *queryExecutor) GetStateMultipleKeys(ns string, keys []string) ([][]byte
 	}
 	versionedValues, err := q.txmgr.db.GetStateMultipleKeys(ns, keys)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	values := make([][]byte, len(versionedValues))
 	for i, versionedValue := range versionedValues {
@@ -316,7 +316,7 @@ func (q *queryExecutor) GetPrivateDataMultipleKeys(ns, coll string, keys []strin
 	}
 	versionedValues, err := q.txmgr.db.GetPrivateDataMultipleKeys(ns, coll, keys)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	values := make([][]byte, len(versionedValues))
 	for i, versionedValue := range versionedValues {
