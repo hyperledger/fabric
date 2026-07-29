@@ -265,11 +265,11 @@ func TestStop(t *testing.T) {
 	// and then are stopped. We count the number of Gossip() invocations they invoke
 	// after they stop, and it should not increase after they are stopped
 	peers := createPeers(0, 3, 2, 1, 0)
-	var gossipCounter int32
+	var gossipCounter atomic.Int32
 	for i, p := range peers {
 		p.On("Gossip", mock.Anything).Run(func(args mock.Arguments) {
 			msg := args.Get(0).(Msg)
-			atomic.AddInt32(&gossipCounter, int32(1))
+			gossipCounter.Add(int32(1))
 			for j := range peers {
 				if i == j {
 					continue
@@ -283,9 +283,9 @@ func TestStop(t *testing.T) {
 		p.Stop()
 	}
 	time.Sleep(testLeaderAliveThreshold)
-	gossipCounterAfterStop := atomic.LoadInt32(&gossipCounter)
+	gossipCounterAfterStop := gossipCounter.Load()
 	time.Sleep(testLeaderAliveThreshold * 5)
-	require.Equal(t, gossipCounterAfterStop, atomic.LoadInt32(&gossipCounter))
+	require.Equal(t, gossipCounterAfterStop, gossipCounter.Load())
 }
 
 func TestConvergence(t *testing.T) {

@@ -291,7 +291,7 @@ func TestRevocation(t *testing.T) {
 	res, err := client.Send(context.Background(), req, client.AuthInfo)
 	require.NoError(t, err)
 	// Record number of times we deserialized the identity
-	firstCount := atomic.LoadUint32(&service.sup.deserializeIdentityCount)
+	firstCount := service.sup.deserializeIdentityCount.Load()
 
 	// Do the same query again
 	peers, err := res.ForChannel("mychannel").Peers()
@@ -302,7 +302,7 @@ func TestRevocation(t *testing.T) {
 	require.NoError(t, err)
 	// The amount of times deserializeIdentity was called should not have changed
 	// because requests should have hit the cache
-	secondCount := atomic.LoadUint32(&service.sup.deserializeIdentityCount)
+	secondCount := service.sup.deserializeIdentityCount.Load()
 	require.Equal(t, firstCount, secondCount)
 
 	// Now, increment the config sequence
@@ -312,14 +312,14 @@ func TestRevocation(t *testing.T) {
 	service.sup.sequenceWrapper.instance.Store(v)
 
 	// Revoke all identities inside the MSP manager
-	atomic.AddUint32(&service.sup.mspWrapper.blocks, uint32(1))
+	service.sup.mspWrapper.blocks.Add(uint32(1))
 
 	// Send the query for the third time
 	res, err = client.Send(context.Background(), req, client.AuthInfo)
 	require.NoError(t, err)
 	// The cache should have been purged, thus deserializeIdentity should have been
 	// called an additional time
-	thirdCount := atomic.LoadUint32(&service.sup.deserializeIdentityCount)
+	thirdCount := service.sup.deserializeIdentityCount.Load()
 	require.NotEqual(t, thirdCount, secondCount)
 
 	// We should be denied access
@@ -339,15 +339,15 @@ func (c *client) newConnection() (*grpc.ClientConn, error) {
 }
 
 type mspWrapper struct {
-	deserializeIdentityCount uint32
+	deserializeIdentityCount atomic.Uint32
 	msp.MSPManager
 	mspConfigs map[string]*msprotos.FabricMSPConfig
-	blocks     uint32
+	blocks     atomic.Uint32
 }
 
 func (w *mspWrapper) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
-	atomic.AddUint32(&w.deserializeIdentityCount, 1)
-	if atomic.LoadUint32(&w.blocks) == uint32(1) {
+	w.deserializeIdentityCount.Add(1)
+	if w.blocks.Load() == uint32(1) {
 		return nil, errors.New("failed deserializing identity")
 	}
 	return w.MSPManager.DeserializeIdentity(serializedIdentity)

@@ -98,7 +98,7 @@ loop:
 
 func (gs *Server) broadcastToAll(orderers []*orderer, txn *common.Envelope, waitCh chan<- *gp.ErrorDetail, logger *flogging.FabricLogger) {
 	everyoneSubmitted := make(chan struct{})
-	var numFinishedSend uint32
+	var numFinishedSend atomic.Uint32
 
 	broadcastContext, broadcastCancel := context.WithCancel(context.Background())
 	defer broadcastCancel()
@@ -109,7 +109,7 @@ func (gs *Server) broadcastToAll(orderers []*orderer, txn *common.Envelope, wait
 			defer cancel()
 			response, err := gs.broadcast(ctx, ord, txn)
 			// If I'm the last to submit, notify this
-			if atomic.AddUint32(&numFinishedSend, 1) == uint32(len(orderers)) {
+			if numFinishedSend.Add(1) == uint32(len(orderers)) {
 				close(everyoneSubmitted)
 			}
 			if err != nil {

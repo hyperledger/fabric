@@ -175,9 +175,9 @@ type leaderElectionSvcImpl struct {
 	stopChan      chan struct{}
 	interruptChan chan struct{}
 	stopWG        sync.WaitGroup
-	isLeader      int32
-	leaderExists  int32
-	yield         int32
+	isLeader      atomic.Int32
+	leaderExists  atomic.Int32
+	yield         atomic.Int32
 	sleeping      bool
 	adapter       LeaderElectionAdapter
 	logger        util.Logger
@@ -224,7 +224,7 @@ func (le *leaderElectionSvcImpl) handleMessage(msg Msg) {
 	if msg.IsProposal() {
 		le.proposals.Add(string(msg.SenderID()))
 	} else if msg.IsDeclaration() {
-		atomic.StoreInt32(&le.leaderExists, int32(1))
+		le.leaderExists.Store(int32(1))
 		if le.sleeping && len(le.interruptChan) == 0 {
 			le.interruptChan <- struct{}{}
 		}
@@ -317,7 +317,7 @@ func (le *leaderElectionSvcImpl) leaderElection() {
 	// If we got here, there is no one that proposed being a leader
 	// that's a better candidate than us.
 	le.beLeader()
-	atomic.StoreInt32(&le.leaderExists, int32(1))
+	le.leaderExists.Store(int32(1))
 }
 
 // propose sends a leadership proposal message to remote peers
@@ -333,7 +333,7 @@ func (le *leaderElectionSvcImpl) follower() {
 	defer le.logger.Debug(le.id, ": Exiting")
 
 	le.proposals.Clear()
-	atomic.StoreInt32(&le.leaderExists, int32(0))
+	le.leaderExists.Store(int32(0))
 	le.adapter.ReportMetrics(false)
 	select {
 	case <-time.After(le.config.LeaderAliveThreshold):
@@ -384,25 +384,25 @@ func (le *leaderElectionSvcImpl) isAlive(id peerID) bool {
 }
 
 func (le *leaderElectionSvcImpl) isLeaderExists() bool {
-	return atomic.LoadInt32(&le.leaderExists) == int32(1)
+	return le.leaderExists.Load() == int32(1)
 }
 
 // IsLeader returns whether this peer is a leader
 func (le *leaderElectionSvcImpl) IsLeader() bool {
-	isLeader := atomic.LoadInt32(&le.isLeader) == int32(1)
+	isLeader := le.isLeader.Load() == int32(1)
 	le.logger.Debug(le.id, ": Returning", isLeader)
 	return isLeader
 }
 
 func (le *leaderElectionSvcImpl) beLeader() {
 	le.logger.Info(le.id, ": Becoming a leader")
-	atomic.StoreInt32(&le.isLeader, int32(1))
+	le.isLeader.Store(int32(1))
 	le.callback(true)
 }
 
 func (le *leaderElectionSvcImpl) stopBeingLeader() {
 	le.logger.Info(le.id, "Stopped being a leader")
-	atomic.StoreInt32(&le.isLeader, int32(0))
+	le.isLeader.Store(int32(0))
 	le.callback(false)
 }
 
@@ -416,14 +416,14 @@ func (le *leaderElectionSvcImpl) shouldStop() bool {
 }
 
 func (le *leaderElectionSvcImpl) isYielding() bool {
-	return atomic.LoadInt32(&le.yield) == int32(1)
+	return le.yield.Load() == int32(1)
 }
 
 func (le *leaderElectionSvcImpl) stopYielding() {
 	le.logger.Debug("Stopped yielding")
 	le.Lock()
 	defer le.Unlock()
-	atomic.StoreInt32(&le.yield, int32(0))
+	le.yield.Store(int32(0))
 	le.yieldTimer.Stop()
 }
 
@@ -436,14 +436,14 @@ func (le *leaderElectionSvcImpl) Yield() {
 		return
 	}
 	// Turn on the yield flag
-	atomic.StoreInt32(&le.yield, int32(1))
+	le.yield.Store(int32(1))
 	// Stop being a leader
 	le.stopBeingLeader()
 	// Clear the leader exists flag since it could be that we are the leader
-	atomic.StoreInt32(&le.leaderExists, int32(0))
+	le.leaderExists.Store(int32(0))
 	// Clear the yield flag in any case afterwards
 	le.yieldTimer = time.AfterFunc(le.config.LeaderAliveThreshold*6, func() {
-		atomic.StoreInt32(&le.yield, int32(0))
+		le.yield.Store(int32(0))
 	})
 }
 
