@@ -1,0 +1,34 @@
+=== RUN   TestLearnExistingMembersNilMemberPanic
+    discovery_test.go:2026: 
+        	Error Trace:	/home/aditya/fabric/gossip/discovery/discovery_test.go:2026
+        	Error:      	func (assert.PanicTestFunc)(0xba7a00) should not panic
+        	            		Panic value:	runtime error: invalid memory address or nil pointer dereference
+        	            		Panic stack:	goroutine 40 [running]:
+        	            	runtime/debug.Stack()
+        	            		/home/aditya/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.1.linux-amd64/src/runtime/debug/stack.go:26 +0x5e
+        	            	github.com/stretchr/testify/assert.didPanic.func1()
+        	            		/home/aditya/fabric/vendor/github.com/stretchr/testify/assert/assertions.go:1234 +0x67
+        	            	panic({0xcecc20?, 0x15dddc0?})
+        	            		/home/aditya/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.1.linux-amd64/src/runtime/panic.go:860 +0x13a
+        	            	github.com/hyperledger/fabric/gossip/discovery.(*gossipDiscoveryImpl).learnExistingMembers(0x1066f128c420, {0x1066f1392378, 0x1, 0x1})
+        	            		/home/aditya/fabric/gossip/discovery/discovery_impl.go:846 +0x34c
+        	            	github.com/hyperledger/fabric/gossip/discovery.TestLearnExistingMembersNilMemberPanic.func1()
+        	            		/home/aditya/fabric/gossip/discovery/discovery_test.go:2027 +0x65
+        	            	github.com/stretchr/testify/assert.didPanic(0x15e0ea0?)
+        	            		/home/aditya/fabric/vendor/github.com/stretchr/testify/assert/assertions.go:1239 +0x70
+        	            	github.com/stretchr/testify/assert.NotPanics({0xe52900, 0x1066f157ab48}, 0x1066f12fa360, {0x1066f12f1f48, 0x1, 0x1})
+        	            		/home/aditya/fabric/vendor/github.com/stretchr/testify/assert/assertions.go:1310 +0x7e
+        	            	github.com/stretchr/testify/require.NotPanics({0xe58588, 0x1066f157ab48}, 0x1066f12fa360, {0x1066f12f1f48, 0x1, 0x1})
+        	            		/home/aditya/fabric/vendor/github.com/stretchr/testify/require/require.go:1669 +0xa6
+        	            	github.com/hyperledger/fabric/gossip/discovery.TestLearnExistingMembersNilMemberPanic(0x1066f157ab48)
+        	            		/home/aditya/fabric/gossip/discovery/discovery_test.go:2026 +0x4f3
+        	            	testing.tRunner(0x1066f157ab48, 0xe47c10)
+        	            		/home/aditya/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.1.linux-amd64/src/testing/testing.go:2036 +0xea
+        	            	created by testing.(*T).Run in goroutine 1
+        	            		/home/aditya/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.1.linux-amd64/src/testing/testing.go:2101 +0x4c5
+        	Test:       	TestLearnExistingMembersNilMemberPanic
+        	Messages:   	learnExistingMembers should not panic when member is nil in id2Member
+--- FAIL: TestLearnExistingMembersNilMemberPanic (0.00s)
+FAIL
+FAIL	github.com/hyperledger/fabric/gossip/discovery	0.028s
+FAIL
