@@ -131,6 +131,11 @@ func Initialize(ctx context.Context, cfg Config) (ShutdownFunc, error) {
 		sdktrace.WithSampler(samplerFromEnv()),
 	)
 	otel.SetTracerProvider(provider)
+
+	// Resolved before tracing is switched on, so that the hot paths never see a
+	// state where tracing is live but the switches they consult are unset.
+	resolveChaincodeShimSpans()
+	resolveBlockTxLinks()
 	enabled.Store(true)
 
 	meterProvider, err := initializeMetrics(ctx, res)

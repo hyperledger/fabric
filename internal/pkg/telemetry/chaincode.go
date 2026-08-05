@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"unicode/utf8"
 )
 
@@ -34,21 +35,35 @@ const EnvChaincodeShimSpans = "FABRIC_TRACE_CHAINCODE_SHIM"
 // first argument rather than a function name, and does not belong in a span.
 const maxFunctionNameLength = 128
 
-// ChaincodeShimSpansEnabled reports whether per-callback spans should be emitted.
-func ChaincodeShimSpansEnabled() bool {
-	if !Enabled() {
-		return false
-	}
+// shimSpans caches the resolved value of EnvChaincodeShimSpans.
+//
+// This is read once per callback a chaincode makes into the peer, which for a
+// query-heavy contract is the busiest path in the process. os.Getenv is a linear
+// scan of the environment, so reading it there would make every state access pay
+// for a lookup whose answer cannot change while the node is running.
+var shimSpans atomic.Bool
+
+// resolveChaincodeShimSpans reads the switch from the environment. Called from
+// Initialize, and from tests that need to change it.
+func resolveChaincodeShimSpans() {
 	raw := strings.TrimSpace(os.Getenv(EnvChaincodeShimSpans))
 	if raw == "" {
-		return true
+		shimSpans.Store(true)
+		return
 	}
+
 	enabled, err := strconv.ParseBool(raw)
 	if err != nil {
 		logger.Warnw("Invalid "+EnvChaincodeShimSpans+", defaulting to enabled", "value", raw)
-		return true
+		shimSpans.Store(true)
+		return
 	}
-	return enabled
+	shimSpans.Store(enabled)
+}
+
+// ChaincodeShimSpansEnabled reports whether per-callback spans should be emitted.
+func ChaincodeShimSpansEnabled() bool {
+	return Enabled() && shimSpans.Load()
 }
 
 // ChaincodeFunctionName extracts the invoked function from a chaincode's

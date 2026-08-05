@@ -571,7 +571,7 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 		// Continues the submitting client's trace. Broadcast and Deliver are
 		// long-lived streams and are filtered out of this handler; they are
 		// traced per message instead.
-		StatsHandlers:     []stats.Handler{telemetry.ServerHandler()},
+		StatsHandlers:     tracingStatsHandlers(),
 		ConnectionTimeout: conf.General.ConnectionTimeout,
 		StreamInterceptors: []grpc.StreamServerInterceptor{
 			grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
@@ -587,6 +587,17 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 		MaxRecvMsgSize: int(conf.General.MaxRecvMsgSize),
 		MaxSendMsgSize: int(conf.General.MaxSendMsgSize),
 	}
+}
+
+// tracingStatsHandlers returns the tracing stats handler, or nothing at all when
+// tracing is disabled, so that an orderer without telemetry configured does no
+// per-RPC work for it. This matters more here than it looks: the Raft cluster
+// service shares this server with client traffic and is far busier than it.
+func tracingStatsHandlers() []stats.Handler {
+	if handler := telemetry.ServerHandler(); handler != nil {
+		return []stats.Handler{handler}
+	}
+	return nil
 }
 
 func grpcLeveler(ctx context.Context, fullMethod string) zapcore.Level {

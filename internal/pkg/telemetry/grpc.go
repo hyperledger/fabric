@@ -70,9 +70,17 @@ func isUntracedMethod(fullMethod string) bool {
 // in the context and attach to it. Without it they would each start a
 // disconnected trace.
 //
-// When tracing is disabled the handler is still installed but the global
-// provider is a no-op, so the cost is a filter check and a no-op span per RPC.
+// It returns nil when tracing is disabled, and callers must not install a nil
+// handler. Relying on the no-op TracerProvider instead would not be free: a
+// stats handler is consulted on every RPC, and the peer and orderer multiplex
+// gossip and Raft cluster traffic onto the same gRPC servers as transactions.
+// That is a high, steady request rate whose cost has nothing to do with whether
+// anyone asked for tracing. Since Initialize runs before either server is
+// configured, the handler can simply be left out.
 func ServerHandler(opts ...otelgrpc.Option) stats.Handler {
+	if !Enabled() {
+		return nil
+	}
 	return otelgrpc.NewServerHandler(
 		append([]otelgrpc.Option{otelgrpc.WithFilter(ServerFilter)}, opts...)...,
 	)

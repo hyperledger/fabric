@@ -293,7 +293,9 @@ func serve(args []string) error {
 	// the caller's trace rather than starting a disconnected one. It is a stats
 	// handler rather than an interceptor because it observes the whole RPC
 	// lifecycle, including the time spent in the interceptors below.
-	serverConfig.StatsHandlers = append(serverConfig.StatsHandlers, telemetry.ServerHandler())
+	if tracingHandler := telemetry.ServerHandler(); tracingHandler != nil {
+		serverConfig.StatsHandlers = append(serverConfig.StatsHandlers, tracingHandler)
+	}
 	serverConfig.UnaryInterceptors = append(
 		serverConfig.UnaryInterceptors,
 		grpcmetrics.UnaryServerInterceptor(grpcmetrics.NewUnaryMetrics(metricsProvider)),

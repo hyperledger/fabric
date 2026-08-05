@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric/protoutil"
@@ -38,29 +39,41 @@ const (
 	defaultMaxBlockTxLinks = 128
 )
 
+// Resolved once at startup rather than read per block, for the same reason as
+// the chaincode switch: these answers cannot change while the node runs, and the
+// commit path should not pay to look them up.
+var (
+	blockTxLinks    atomic.Bool
+	blockTxLinksMax atomic.Int64
+)
+
+// resolveBlockTxLinks reads the switches from the environment. Called from
+// Initialize, and from tests that need to change them.
+func resolveBlockTxLinks() {
+	enabled, err := strconv.ParseBool(strings.TrimSpace(os.Getenv(EnvBlockTxLinks)))
+	blockTxLinks.Store(err == nil && enabled)
+
+	blockTxLinksMax.Store(defaultMaxBlockTxLinks)
+	if raw := strings.TrimSpace(os.Getenv(EnvBlockTxLinksMax)); raw != "" {
+		limit, err := strconv.Atoi(raw)
+		if err != nil || limit < 0 {
+			logger.Warnw("Invalid "+EnvBlockTxLinksMax+", using default",
+				"value", raw, "default", defaultMaxBlockTxLinks)
+		} else {
+			blockTxLinksMax.Store(int64(limit))
+		}
+	}
+}
+
 // BlockTxLinksEnabled reports whether commit spans should be linked to the
 // traces of the transactions in the block.
 func BlockTxLinksEnabled() bool {
-	if !Enabled() {
-		return false
-	}
-	enabled, err := strconv.ParseBool(strings.TrimSpace(os.Getenv(EnvBlockTxLinks)))
-	return err == nil && enabled
+	return Enabled() && blockTxLinks.Load()
 }
 
 // maxBlockTxLinks reports how many links a single commit span may carry.
 func maxBlockTxLinks() int {
-	raw := os.Getenv(EnvBlockTxLinksMax)
-	if raw == "" {
-		return defaultMaxBlockTxLinks
-	}
-	max, err := strconv.Atoi(strings.TrimSpace(raw))
-	if err != nil || max < 0 {
-		logger.Warnw("Invalid "+EnvBlockTxLinksMax+", using default",
-			"value", raw, "default", defaultMaxBlockTxLinks)
-		return defaultMaxBlockTxLinks
-	}
-	return max
+	return int(blockTxLinksMax.Load())
 }
 
 // BlockTxLinks returns links from a block commit span to the traces of the

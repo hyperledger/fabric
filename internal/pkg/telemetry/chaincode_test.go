@@ -93,18 +93,46 @@ func TestChaincodeShimSpansOptOut(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = shutdown(t.Context()) })
 
+	// The switch is resolved at startup rather than per callback, so tests have
+	// to re-resolve it the way Initialize would.
+	setShimSpans := func(value string) {
+		t.Setenv(EnvChaincodeShimSpans, value)
+		resolveChaincodeShimSpans()
+	}
+
 	// Enabled by default, because a chaincode's state access is usually what
 	// explains a slow transaction.
-	t.Setenv(EnvChaincodeShimSpans, "")
+	setShimSpans("")
 	require.True(t, ChaincodeShimSpansEnabled())
 
-	t.Setenv(EnvChaincodeShimSpans, "false")
+	setShimSpans("false")
 	require.False(t, ChaincodeShimSpansEnabled())
 
-	t.Setenv(EnvChaincodeShimSpans, "true")
+	setShimSpans("true")
 	require.True(t, ChaincodeShimSpansEnabled())
 
 	// A typo must not silently switch off the spans someone was relying on.
-	t.Setenv(EnvChaincodeShimSpans, "yes-please")
+	setShimSpans("yes-please")
 	require.True(t, ChaincodeShimSpansEnabled())
+}
+
+// The gRPC stats handler is consulted on every inbound RPC, and the peer and
+// orderer multiplex gossip and Raft traffic onto the same servers as
+// transactions. With tracing off it must not be installed at all.
+func TestServerHandlerNotInstalledWhenDisabled(t *testing.T) {
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")
+
+	require.False(t, Enabled())
+	require.Nil(t, ServerHandler())
+}
+
+func TestServerHandlerInstalledWhenEnabled(t *testing.T) {
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:4318")
+
+	shutdown, err := Initialize(t.Context(), Config{ServiceName: "fabric-peer"})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = shutdown(t.Context()) })
+
+	require.NotNil(t, ServerHandler())
 }
