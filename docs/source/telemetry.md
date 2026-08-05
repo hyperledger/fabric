@@ -33,6 +33,7 @@ surrounding services applies unchanged.
 | `OTEL_SERVICE_NAME` | Defaults to `fabric-peer` or `fabric-orderer`. |
 | `OTEL_TRACES_SAMPLER` / `_ARG` | Sampling strategy. Default `parentbased_always_on`. |
 | `FABRIC_TRACE_BLOCK_TX_LINKS` | Links block commit spans to the transactions they carry. Off by default; see below. |
+| `FABRIC_TRACE_CHAINCODE_SHIM` | Emits a span per chaincode callback into the peer. On by default; see below. |
 
 **Set a sampler before running this under real load.** The default records every
 trace, which for a peer under load means a span per gRPC call plus several per
@@ -54,6 +55,7 @@ Endorsement, on the peer:
 | `Endorser.preProcess` | Signature and ACL checks. |
 | `Endorser.GetTxSimulator` | Contention with block commit — the simulator takes a shared lock on the state database. |
 | `Endorser.ExecuteChaincode` | The chaincode itself, including its state access. Usually the answer. |
+| `Chaincode.GET_STATE`, `Chaincode.PUT_STATE`, … | One per callback the chaincode makes back into the peer. |
 | `Endorser.GetTxSimulationResults` | Collecting the read-write set; scales with state touched. |
 | `Endorser.DistributePrivateData` | Pushing private data to collection members over gossip. |
 | `Endorser.EndorseWithPlugin` | Signing; scales with the BCCSP or HSM in use. |
@@ -75,6 +77,39 @@ Commit, on every peer:
 | `Committer.Validate` | VSCC and endorsement policy evaluation for every transaction in the block. |
 | `Committer.RetrievePvtdata` | Pulling private data from other peers. |
 | `Committer.CommitLegacy` | Writing to the state database and block store. |
+
+## Chaincode invocations and state access
+
+The endorsement spans identify *which* chaincode and *which function* was
+invoked — `fabric.chaincode.name` and `fabric.chaincode.function`, the latter
+taken from the first argument by the convention every contract API follows.
+Nothing in the protocol enforces that convention, so the value is validated
+before being recorded and dropped if it does not look like a function name.
+Only the first argument is ever read; the rest are business data and are
+deliberately never recorded.
+
+Underneath, each callback the chaincode makes back into the peer gets its own
+span: `Chaincode.GET_STATE`, `Chaincode.PUT_STATE`, `Chaincode.GET_STATE_BY_RANGE`,
+`Chaincode.INVOKE_CHAINCODE` and the rest. This is what separates "this chaincode
+is slow" from "this chaincode issues four hundred state reads", which look
+identical from the endorsement span alone.
+
+Every callback is handled on its own goroutine, keyed only by transaction id, so
+there is no ambient context to inherit. The invocation's span context is instead
+carried on `TransactionParams` into the transaction context, which is what those
+goroutines read. That also means no shared lock on the callback path. The same
+value is propagated across chaincode-to-chaincode calls, so a callee's state
+access stays in the caller's trace — as siblings of the invocation rather than
+children of it, told apart by their `fabric.chaincode.name`.
+
+These spans are on by default, because chaincode state access is usually the
+answer. **The sampler is the volume control**: shim spans inherit the sampling
+decision of the transaction that caused them, so a ratio-based sampler bounds
+them exactly as it bounds everything else. Set
+`FABRIC_TRACE_CHAINCODE_SHIM=false` for the case where a single sampled
+transaction fans out to thousands of reads and the spans stop being readable.
+The aggregate view survives either way, since Fabric already meters shim requests
+by type, channel and chaincode.
 
 ## How trace context travels, and where it stops
 

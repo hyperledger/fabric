@@ -34,6 +34,22 @@ const (
 	// AttrChaincodeName identifies the invoked chaincode.
 	AttrChaincodeName = attribute.Key("fabric.chaincode.name")
 
+	// AttrChaincodeFunction is the function within the chaincode being invoked,
+	// taken from the first argument by the convention every Fabric contract API
+	// follows. It is what separates "this chaincode is slow" from "this one
+	// function of it is slow".
+	AttrChaincodeFunction = attribute.Key("fabric.chaincode.function")
+
+	// AttrChaincodeArgsCount is how many arguments the invocation carried. The
+	// arguments themselves are never recorded: they are business data, routinely
+	// contain identifiers or personal information, and would end up in a
+	// telemetry backend with weaker access controls than the ledger.
+	AttrChaincodeArgsCount = attribute.Key("fabric.chaincode.args_count")
+
+	// AttrShimRequest is the type of callback a chaincode made back into the
+	// peer, such as GET_STATE or PUT_STATE.
+	AttrShimRequest = attribute.Key("fabric.shim.request")
+
 	// AttrMSPID is the MSP of the submitting or endorsing identity.
 	AttrMSPID = attribute.Key("fabric.msp_id")
 
@@ -69,6 +85,7 @@ const (
 // Tracer names, used to scope spans to the subsystem that produced them.
 const (
 	TracerEndorser  = "github.com/hyperledger/fabric/core/endorser"
+	TracerChaincode = "github.com/hyperledger/fabric/core/chaincode"
 	TracerCommitter = "github.com/hyperledger/fabric/core/committer"
 	TracerBroadcast = "github.com/hyperledger/fabric/orderer/common/broadcast"
 	TracerConsensus = "github.com/hyperledger/fabric/orderer/consensus"

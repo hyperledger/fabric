@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strconv"
@@ -25,7 +26,10 @@ import (
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/scc"
+	"github.com/hyperledger/fabric/internal/pkg/telemetry"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -292,7 +296,35 @@ func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFun
 
 	var resp *pb.ChaincodeMessage
 	if err == nil {
-		resp, err = delegate(msg, txContext)
+		// A chaincode that issues hundreds of state reads is indistinguishable
+		// from slow chaincode when looking at the endorsement span alone. This
+		// span is what tells the two apart.
+		//
+		// The parent comes from the transaction context rather than from the
+		// caller, because this runs on its own goroutine with no ambient
+		// context. It is a remote span context so that the SDK treats it as an
+		// established parent rather than one it created.
+		if sc := txContext.TraceContext; sc.IsValid() && telemetry.ChaincodeShimSpansEnabled() {
+			_, span := telemetry.Tracer(telemetry.TracerChaincode).Start(
+				trace.ContextWithRemoteSpanContext(context.Background(), sc),
+				"Chaincode."+msg.Type.String(),
+				trace.WithAttributes(
+					telemetry.AttrShimRequest.String(msg.Type.String()),
+					telemetry.AttrChannelID.String(msg.ChannelId),
+					telemetry.AttrChaincodeName.String(h.chaincodeID),
+					telemetry.AttrTxID.String(msg.Txid),
+				),
+			)
+
+			resp, err = delegate(msg, txContext)
+			if err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, err.Error())
+			}
+			span.End()
+		} else {
+			resp, err = delegate(msg, txContext)
+		}
 	}
 
 	if err != nil {
@@ -1378,6 +1410,12 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 		Proposal:             txContext.Proposal,
 		TXSimulator:          txContext.TXSimulator,
 		HistoryQueryExecutor: txContext.HistoryQueryExecutor,
+		// Carried across the chaincode-to-chaincode boundary so the callee's
+		// state access stays in the caller's trace. The callee's spans are
+		// siblings of this invocation rather than children of it, since the span
+		// wrapping this call is not visible from here; they are told apart by
+		// their chaincode attribute.
+		TraceContext: txContext.TraceContext,
 	}
 
 	if targetInstance.ChannelID != txContext.ChannelID {

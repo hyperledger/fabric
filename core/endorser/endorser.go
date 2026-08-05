@@ -120,14 +120,28 @@ func (e *Endorser) callChaincode(ctx context.Context, txParams *ccprovider.Trans
 	// trip to the chaincode container, including the container's own state
 	// reads and writes back through the peer.
 	//
-	// The context stops here rather than being carried further: Support.Execute
-	// does not take one, so there is nothing below this to propagate it to.
-	_, span := telemetry.Tracer(telemetry.TracerEndorser).Start(
+	// Support.Execute takes no context, so instead of propagating ctx the span
+	// is handed to the chaincode layer through txParams below, which is what
+	// lets the chaincode's callbacks into the peer nest underneath this span.
+	ctx, span := telemetry.Tracer(telemetry.TracerEndorser).Start(
 		ctx,
 		"Endorser.ExecuteChaincode",
 		trace.WithAttributes(telemetry.AttrChaincodeName.String(chaincodeName)),
 	)
 	defer span.End()
+
+	if span.IsRecording() {
+		if function := telemetry.ChaincodeFunctionName(input.GetArgs()); function != "" {
+			span.SetAttributes(
+				telemetry.AttrChaincodeFunction.String(function),
+				telemetry.AttrChaincodeArgsCount.Int(len(input.GetArgs())),
+			)
+		}
+	}
+
+	// Carried on txParams rather than in a context because each shim callback is
+	// handled on its own goroutine, keyed only by transaction id.
+	txParams.TraceContext = trace.SpanContextFromContext(ctx)
 
 	meterLabels := []string{
 		"channel", txParams.ChannelID,
@@ -370,6 +384,17 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		telemetry.AttrChaincodeName.String(up.ChaincodeName),
 		telemetry.AttrTxID.String(up.ChannelHeader.TxId),
 	)
+	// Repeated on the top-level span, not just on the execution span below, so
+	// that "which function is slow" can be answered without joining spans.
+	//
+	// Guarded on IsRecording because extracting the name copies and validates
+	// the first argument, and this is the endorsement hot path: with tracing
+	// disabled that work would be pure waste on every proposal.
+	if span.IsRecording() {
+		if function := telemetry.ChaincodeFunctionName(up.Input.GetArgs()); function != "" {
+			span.SetAttributes(telemetry.AttrChaincodeFunction.String(function))
+		}
+	}
 
 	// Record the trace before doing the work, so that a transaction which is
 	// endorsed here and committed later can be linked even if the endorsement

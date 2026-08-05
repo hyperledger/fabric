@@ -13,6 +13,7 @@ import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type TransactionContext struct {
@@ -25,6 +26,12 @@ type TransactionContext struct {
 	HistoryQueryExecutor ledger.HistoryQueryExecutor
 	CollectionStore      privdata.CollectionStore
 	IsInitTransaction    bool
+
+	// TraceContext is the span the chaincode invocation runs under, carried here
+	// so that the callbacks the chaincode makes back into the peer can be
+	// attributed to it. Each callback is handled on its own goroutine, so this
+	// is the only thing connecting them to the invocation.
+	TraceContext trace.SpanContext
 
 	// tracks open iterators used for range queries
 	queryMutex          sync.Mutex
