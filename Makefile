@@ -8,7 +8,6 @@
 #
 #   - all (default) - builds all targets and runs all non-integration tests/checks
 #   - basic-checks - performs basic checks like license, spelling, trailing spaces and linter
-#   - check-deps - check for vendored dependencies that are no longer used
 #   - checks - runs all non-integration tests/checks
 #   - clean-all - superset of 'clean' that also removes persistent state
 #   - clean - cleans the build area
@@ -189,14 +188,9 @@ profile: export JOB_TYPE=PROFILE ## Runs unit tests for all packages in coverpro
 profile: unit-test # Runs unit tests for all packages in coverprofile mode (slow)
 
 .PHONY: linter
-linter: check-deps gotool.goimports gotool.gofumpt gotool.staticcheck ## Runs all code checks
+linter: gotool.goimports gotool.gofumpt gotool.staticcheck ## Runs all code checks
 	@echo "LINT: Running code checks.."
 	./scripts/golinter.sh
-
-.PHONY: check-deps
-check-deps: ## Check for vendored dependencies that are no longer used
-	@echo "DEP: Checking for dependency issues.."
-	./scripts/check_deps.sh
 
 .PHONY: check-metrics-docs
 check-metrics-doc: gotool.gendoc ## Check for outdated reference documentation
