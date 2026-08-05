@@ -25,15 +25,6 @@ else
   for arg in "$@"; do test_dirs+=("./integration/$arg"); done
 fi
 
-total_agents=${SYSTEM_TOTALJOBSINPHASE:-1}   # standard VSTS variables available using parallel execution; total number of parallel jobs running
-agent_number=${SYSTEM_JOBPOSITIONINPHASE:-1} # current job position
+printf "\nRunning the following test suites:\n\n%s\n\nStarting tests...\n\n" "$(echo "${test_dirs[@]}" | tr -s ' ' '\n')"
 
-declare -a dirs
-for ((i = "$agent_number"; i <= "${#test_dirs[@]}"; )); do
-  dirs+=("${test_dirs[$i - 1]}")
-  i=$((i + total_agents))
-done
-
-printf "\nRunning the following test suites:\n\n%s\n\nStarting tests...\n\n" "$(echo "${dirs[@]}" | tr -s ' ' '\n')"
-
-ginkgo --keep-going --poll-progress-after 60s --timeout 24h "${dirs[@]}"
+ginkgo --keep-going --poll-progress-after 60s --timeout 24h "${test_dirs[@]}"
