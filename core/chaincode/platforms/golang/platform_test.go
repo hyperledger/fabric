@@ -73,23 +73,29 @@ func TestValidatePath(t *testing.T) {
 	setupGopath(t, "testdata")
 
 	tests := []struct {
-		path string
-		succ bool
+		path        string
+		succ        bool
+		go111module bool
 	}{
-		{path: "http://example.com/", succ: false},
-		{path: "./testdata/missing", succ: false},
-		{path: "chaincodes/noop", succ: true},
-		{path: "testdata/ccmodule", succ: true},
+		{path: "http://example.com/", succ: false, go111module: false},
+		{path: "./testdata/missing", succ: false, go111module: false},
+		{path: "chaincodes/noop", succ: true, go111module: false},
+		{path: "testdata/ccmodule", succ: true, go111module: true},
 	}
 
 	for _, tt := range tests {
-		platform := &Platform{}
-		err := platform.ValidatePath(tt.path)
-		if tt.succ {
-			require.NoError(t, err, "expected %s to be a valid path", tt.path)
-		} else {
-			require.Errorf(t, err, "expected %s to be an invalid path", tt.path)
-		}
+		t.Run(tt.path, func(t *testing.T) {
+			if !tt.go111module {
+				t.Setenv("GO111MODULE", "off")
+			}
+			platform := &Platform{}
+			err := platform.ValidatePath(tt.path)
+			if tt.succ {
+				require.NoError(t, err, "expected %s to be a valid path", tt.path)
+			} else {
+				require.Errorf(t, err, "expected %s to be an invalid path", tt.path)
+			}
+		})
 	}
 }
 
@@ -226,6 +232,7 @@ func TestGopathDeploymentPayload(t *testing.T) {
 	platform := &Platform{}
 
 	t.Run("IncludesMetadata", func(t *testing.T) {
+		t.Setenv("GO111MODULE", "off")
 		payload, err := platform.GetDeploymentPayload("chaincodes/noop")
 		require.NoError(t, err)
 
@@ -234,21 +241,25 @@ func TestGopathDeploymentPayload(t *testing.T) {
 	})
 
 	tests := []struct {
-		path string
-		succ bool
+		path        string
+		succ        bool
+		go111module bool
 	}{
-		{path: "testdata/src/chaincodes/noop", succ: true},
-		{path: "chaincodes/noop", succ: true},
-		{path: "bad/chaincodes/noop", succ: false},
-		{path: "chaincodes/BadImport", succ: false},
-		{path: "chaincodes/BadMetadataInvalidIndex", succ: false},
-		{path: "chaincodes/BadMetadataUnexpectedFolderContent", succ: false},
-		{path: "chaincodes/BadMetadataIgnoreHiddenFile", succ: true},
-		{path: "chaincodes/empty", succ: false},
+		{path: "testdata/src/chaincodes/noop", succ: true, go111module: true},
+		{path: "chaincodes/noop", succ: true, go111module: false},
+		{path: "bad/chaincodes/noop", succ: false, go111module: false},
+		{path: "chaincodes/BadImport", succ: false, go111module: false},
+		{path: "chaincodes/BadMetadataInvalidIndex", succ: false, go111module: false},
+		{path: "chaincodes/BadMetadataUnexpectedFolderContent", succ: false, go111module: false},
+		{path: "chaincodes/BadMetadataIgnoreHiddenFile", succ: true, go111module: false},
+		{path: "chaincodes/empty", succ: false, go111module: false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
+			if !tt.go111module {
+				t.Setenv("GO111MODULE", "off")
+			}
 			_, err := platform.GetDeploymentPayload(tt.path)
 			if tt.succ {
 				require.NoError(t, err, "expected success for path: %s", tt.path)
@@ -301,7 +312,6 @@ func setupGopath(t *testing.T, path string) {
 		absPath, err := filepath.Abs(path)
 		require.NoErrorf(t, err, "expected to calculate absolute path from %s", path)
 		t.Setenv("GOPATH", absPath)
-		t.Setenv("GO111MODULE", "off")
 	}
 }
 
@@ -345,16 +355,16 @@ set -e
 
 if [ -f "/chaincode/input/src/go.mod" ] && [ -d "/chaincode/input/src/vendor" ]; then
     cd /chaincode/input/src
-    GO111MODULE=on go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
+    go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
 elif [ -f "/chaincode/input/src/go.mod" ]; then
     cd /chaincode/input/src
-    GO111MODULE=on go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
+    go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
 elif [ -f "/chaincode/input/src/the-path/go.mod" ] && [ -d "/chaincode/input/src/the-path/vendor" ]; then
     cd /chaincode/input/src/the-path
-    GO111MODULE=on go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
+    go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
 elif [ -f "/chaincode/input/src/the-path/go.mod" ]; then
     cd /chaincode/input/src/the-path
-    GO111MODULE=on go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
+    go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
 else
     GO111MODULE=off GOPATH=/chaincode/input:$GOPATH go build -v -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
 fi
@@ -378,16 +388,16 @@ set -e
 
 if [ -f "/chaincode/input/src/go.mod" ] && [ -d "/chaincode/input/src/vendor" ]; then
     cd /chaincode/input/src
-    GO111MODULE=on go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
+    go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
 elif [ -f "/chaincode/input/src/go.mod" ]; then
     cd /chaincode/input/src
-    GO111MODULE=on go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
+    go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
 elif [ -f "/chaincode/input/src/the-path/go.mod" ] && [ -d "/chaincode/input/src/the-path/vendor" ]; then
     cd /chaincode/input/src/the-path
-    GO111MODULE=on go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
+    go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
 elif [ -f "/chaincode/input/src/the-path/go.mod" ]; then
     cd /chaincode/input/src/the-path
-    GO111MODULE=on go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
+    go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
 else
     GO111MODULE=off GOPATH=/chaincode/input:$GOPATH go build -v -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
 fi
@@ -414,16 +424,16 @@ go version
 
 if [ -f "/chaincode/input/src/go.mod" ] && [ -d "/chaincode/input/src/vendor" ]; then
     cd /chaincode/input/src
-    GO111MODULE=on go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode testdata/src/chaincodes/toolchain
+    go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode testdata/src/chaincodes/toolchain
 elif [ -f "/chaincode/input/src/go.mod" ]; then
     cd /chaincode/input/src
-    GO111MODULE=on go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode testdata/src/chaincodes/toolchain
+    go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode testdata/src/chaincodes/toolchain
 elif [ -f "/chaincode/input/src/testdata/src/chaincodes/toolchain/go.mod" ] && [ -d "/chaincode/input/src/testdata/src/chaincodes/toolchain/vendor" ]; then
     cd /chaincode/input/src/testdata/src/chaincodes/toolchain
-    GO111MODULE=on go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
+    go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
 elif [ -f "/chaincode/input/src/testdata/src/chaincodes/toolchain/go.mod" ]; then
     cd /chaincode/input/src/testdata/src/chaincodes/toolchain
-    GO111MODULE=on go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
+    go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
 else
     GO111MODULE=off GOPATH=/chaincode/input:$GOPATH go build -v -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode testdata/src/chaincodes/toolchain
 fi

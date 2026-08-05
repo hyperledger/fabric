@@ -113,8 +113,7 @@ func listModuleInfo(extraEnv ...string) (*ModuleInfo, error) {
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "go", "list", "-json", ".")
-	cmd.Env = append(os.Environ(), "GO111MODULE=on")
-	cmd.Env = append(cmd.Env, extraEnv...)
+	cmd.Env = append(os.Environ(), extraEnv...)
 
 	output, err := cmd.Output()
 	if err != nil {

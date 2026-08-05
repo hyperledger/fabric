@@ -145,7 +145,7 @@ You can learn more about the Go contract API by visiting the [API documentation]
 To install the smart contract dependencies, run the following command from the `asset-transfer-basic/chaincode-go` directory.
 
 ```
-GO111MODULE=on go mod vendor
+go mod vendor
 ```
 
 If the command is successful, the go packages will be installed inside a `vendor` folder.
