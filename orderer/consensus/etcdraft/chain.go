@@ -252,7 +252,10 @@ func NewChain(
 	var snapBlkNum uint64
 	var cc raftpb.ConfState
 	if s := storage.Snapshot(); !raft.IsEmptySnap(s) {
-		b := protoutil.UnmarshalBlockOrPanic(s.Data)
+		b, err := protoutil.UnmarshalBlock(s.Data)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to unmarshal block from raft snapshot")
+		}
 		snapBlkNum = b.Header.Number
 		cc = s.Metadata.ConfState
 	}
@@ -1189,7 +1192,17 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 				break
 			}
 
-			block := protoutil.UnmarshalBlockOrPanic(ents[i].Data)
+			block, err := protoutil.UnmarshalBlock(ents[i].Data)
+			if err != nil {
+				// A committed Raft entry that does not unmarshal as a Block indicates either
+				// storage corruption or a byzantine proposer. Skipping the entry would advance
+				// appliedIndex past data that other followers may apply successfully, silently
+				// forking this node's state. Halt this chain so an operator can investigate;
+				// other channels' chains in this orderer process continue running.
+				c.logger.Errorf("Failed to unmarshal committed block at raft index %d: %s; halting chain", ents[i].Index, err)
+				go c.halt()
+				return
+			}
 			c.writeBlock(block, ents[i].Index)
 			c.Metrics.CommittedBlockNumber.Set(float64(block.Header.Number))
 
@@ -1250,7 +1263,15 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 	// at position==0, ents[position].Type is ambiguous, it can be either of {raftpb.EntryNormal, raftpb.EntryConfChange}
 	// take a snapshot only for ents[position].Type == raftpb.EntryNormal
 	if c.accDataSize >= c.sizeLimit && ents[position].Type == raftpb.EntryNormal && len(ents[position].Data) > 0 {
-		b := protoutil.UnmarshalBlockOrPanic(ents[position].Data)
+		b, err := protoutil.UnmarshalBlock(ents[position].Data)
+		if err != nil {
+			// We just successfully unmarshalled and applied this same entry above; if we
+			// fail here, memory has been corrupted between then and now. Halt the chain
+			// rather than panic the orderer process.
+			c.logger.Errorf("Failed to unmarshal block at raft index %d while preparing snapshot: %s; halting chain", ents[position].Index, err)
+			go c.halt()
+			return
+		}
 		select {
 		case c.gcC <- &gc{index: c.appliedIndex, state: c.confState, data: ents[position].Data}:
 			c.logger.Infof("Accumulated %d bytes since last snapshot, exceeding size limit (%d bytes), "+
