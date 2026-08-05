@@ -19,6 +19,7 @@ import (
 	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/stats"
 )
 
 // Configuration defaults
@@ -77,6 +78,11 @@ type ServerConfig struct {
 	HealthCheckEnabled bool
 	// ServerStatsHandler should be set if metrics on connections are to be reported.
 	ServerStatsHandler *ServerStatsHandler
+	// StatsHandlers specifies additional stats handlers to install on the
+	// server, such as tracing instrumentation. gRPC invokes every registered
+	// handler, so these compose with ServerStatsHandler rather than replacing
+	// it.
+	StatsHandlers []stats.Handler
 	// Maximum message size the server can receive
 	MaxRecvMsgSize int
 	// Maximum message size the server can send

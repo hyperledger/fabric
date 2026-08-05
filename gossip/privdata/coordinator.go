@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package privdata
 
 import (
+	"context"
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
@@ -23,8 +24,11 @@ import (
 	"github.com/hyperledger/fabric/gossip/metrics"
 	privdatacommon "github.com/hyperledger/fabric/gossip/privdata/common"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/internal/pkg/telemetry"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const pullRetrySleepInterval = time.Second
@@ -160,15 +164,43 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 
 	c.logger.Infof("Received block [%d] from buffer", block.Header.Number)
 
+	// A block is committed asynchronously and carries transactions from many
+	// unrelated clients, so this is a new trace rather than a continuation of
+	// any one of them. The transactions it finalizes are attached as links.
+	tracer := telemetry.Tracer(telemetry.TracerCommitter)
+	spanOpts := []trace.SpanStartOption{
+		trace.WithSpanKind(trace.SpanKindConsumer),
+		trace.WithAttributes(
+			telemetry.AttrChannelID.String(c.ChainID),
+			telemetry.AttrBlockNumber.Int64(int64(block.Header.Number)),
+			telemetry.AttrBlockTxCount.Int(len(block.Data.Data)),
+		),
+	}
+	if telemetry.BlockTxLinksEnabled() {
+		spanOpts = append(spanOpts, trace.WithLinks(telemetry.BlockTxLinks(block)...))
+	}
+	ctx, span := tracer.Start(context.Background(), "Committer.StoreBlock", spanOpts...)
+	defer span.End()
+
 	c.logger.Debugf("Validating block [%d]", block.Header.Number)
 
+	// Validation runs VSCC and the endorsement policy check for every
+	// transaction, so this span and the commit span below are the two halves
+	// that explain a slow block.
+	_, validateSpan := tracer.Start(ctx, "Committer.Validate")
 	validationStart := time.Now()
 	err := c.Validator.Validate(block)
 	c.reportValidationDuration(time.Since(validationStart))
 	if err != nil {
+		validateSpan.RecordError(err)
+		validateSpan.SetStatus(codes.Error, err.Error())
+		validateSpan.End()
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "block validation failed")
 		c.logger.Errorf("Validation failed: %+v", err)
 		return err
 	}
+	validateSpan.End()
 
 	blockAndPvtData := &ledger.BlockAndPvtData{
 		Block:          block,
@@ -214,22 +246,38 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 
 	// Retrieve the private data.
 	// RetrievePvtdata checks this peer's eligibility and then retreives from cache, transient store, or from a remote peer.
+	// This can block on pulling collections from other peers, so it is the span
+	// that distinguishes a slow network from a slow ledger.
+	_, retrieveSpan := tracer.Start(ctx, "Committer.RetrievePvtdata")
 	retrievedPvtdata, err := pdp.RetrievePvtdata(pvtdataToRetrieve)
 	if err != nil {
+		retrieveSpan.RecordError(err)
+		retrieveSpan.SetStatus(codes.Error, err.Error())
+		retrieveSpan.End()
 		c.logger.Warningf("Failed to retrieve pvtdata: %s", err)
 		return err
 	}
+	retrieveSpan.End()
 
 	blockAndPvtData.PvtData = retrievedPvtdata.blockPvtdata.PvtData
 	blockAndPvtData.MissingPvtData = retrievedPvtdata.blockPvtdata.MissingPvtData
 
 	// commit block and private data
+	// This covers the write to the state database and block store, which is
+	// where commit time goes once validation is ruled out.
+	_, commitSpan := tracer.Start(ctx, "Committer.CommitLegacy")
 	commitStart := time.Now()
 	err = c.CommitLegacy(blockAndPvtData, &ledger.CommitOptions{})
 	c.reportCommitDuration(time.Since(commitStart))
 	if err != nil {
+		commitSpan.RecordError(err)
+		commitSpan.SetStatus(codes.Error, err.Error())
+		commitSpan.End()
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "block commit failed")
 		return errors.Wrap(err, "commit failed")
 	}
+	commitSpan.End()
 
 	// Purge transactions
 	go retrievedPvtdata.Purge()

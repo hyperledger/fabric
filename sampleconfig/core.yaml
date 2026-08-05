@@ -799,7 +799,8 @@ operations:
 #
 ###############################################################################
 metrics:
-  # metrics provider is one of statsd, prometheus, or disabled
+  # metrics provider is one of statsd, prometheus, otel, or disabled.
+  # otel exports over OTLP using the OTEL_* environment variables; see docs/source/telemetry.md
   provider: disabled
 
   # statsd configuration
