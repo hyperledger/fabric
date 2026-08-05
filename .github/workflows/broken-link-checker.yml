@@ -16,7 +16,7 @@ jobs:
     # Only run the scheduled job in hyperledger/fabric repository, not on personal forks
     if: github.event_name != 'schedule' || github.repository == 'hyperledger/fabric'
     name: "main"
-    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-22.04' || 'ubuntu-22.04' }}
+    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-24.04' || 'ubuntu-24.04' }}
     timeout-minutes: 45
     steps:
       - name: Check Broken Links with Muffet
@@ -41,7 +41,7 @@ jobs:
     # Only run the scheduled job in hyperledger/fabric repository, not on personal forks
     if: github.event_name != 'schedule' || github.repository == 'hyperledger/fabric'
     name: "release-2.5"
-    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-22.04' || 'ubuntu-22.04' }}
+    runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-24.04' || 'ubuntu-24.04' }}
     timeout-minutes: 45
     steps:
       - name: Check Broken Links with Muffet
