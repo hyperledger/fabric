@@ -123,14 +123,15 @@ func (e *Endorser) callChaincode(ctx context.Context, txParams *ccprovider.Trans
 	// Support.Execute takes no context, so instead of propagating ctx the span
 	// is handed to the chaincode layer through txParams below, which is what
 	// lets the chaincode's callbacks into the peer nest underneath this span.
-	ctx, span := telemetry.Tracer(telemetry.TracerEndorser).Start(
-		ctx,
-		"Endorser.ExecuteChaincode",
-		trace.WithAttributes(telemetry.AttrChaincodeName.String(chaincodeName)),
-	)
+	ctx, span := telemetry.Tracer(telemetry.TracerEndorser).Start(ctx, "Endorser.ExecuteChaincode")
 	defer span.End()
 
+	// Everything descriptive is set after the span exists rather than through
+	// Start's options, which are evaluated before the sampler decides anything.
+	// At a low sampling ratio that would mean building attributes for every
+	// transaction in order to discard almost all of them.
 	if span.IsRecording() {
+		span.SetAttributes(telemetry.AttrChaincodeName.String(chaincodeName))
 		if function := telemetry.ChaincodeFunctionName(input.GetArgs()); function != "" {
 			span.SetAttributes(
 				telemetry.AttrChaincodeFunction.String(function),

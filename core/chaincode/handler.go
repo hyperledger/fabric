@@ -308,13 +308,23 @@ func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFun
 			_, span := telemetry.Tracer(telemetry.TracerChaincode).Start(
 				trace.ContextWithRemoteSpanContext(context.Background(), sc),
 				"Chaincode."+msg.Type.String(),
-				trace.WithAttributes(
+			)
+
+			// Attributes are set after the span exists rather than passed to
+			// Start, because Start's options are built before the sampler runs.
+			// Under a low sampling ratio the overwhelming majority of spans are
+			// dropped, and this is the most frequent span in the peer, so
+			// building four attributes for each one that is about to be thrown
+			// away is the difference between sampling being cheap and only
+			// looking cheap.
+			if span.IsRecording() {
+				span.SetAttributes(
 					telemetry.AttrShimRequest.String(msg.Type.String()),
 					telemetry.AttrChannelID.String(msg.ChannelId),
 					telemetry.AttrChaincodeName.String(h.chaincodeID),
 					telemetry.AttrTxID.String(msg.Txid),
-				),
-			)
+				)
+			}
 
 			resp, err = delegate(msg, txContext)
 			if err != nil {

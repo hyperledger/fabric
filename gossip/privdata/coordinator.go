@@ -168,19 +168,28 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	// unrelated clients, so this is a new trace rather than a continuation of
 	// any one of them. The transactions it finalizes are attached as links.
 	tracer := telemetry.Tracer(telemetry.TracerCommitter)
-	spanOpts := []trace.SpanStartOption{
-		trace.WithSpanKind(trace.SpanKindConsumer),
-		trace.WithAttributes(
+	ctx, span := tracer.Start(context.Background(), "Committer.StoreBlock",
+		trace.WithSpanKind(trace.SpanKindConsumer))
+	defer span.End()
+
+	// Attributes and links are attached only once the span is known to be
+	// recording. This span has no parent, so the sampler decides on trace id
+	// alone and at a low ratio almost every block produces a span that is
+	// discarded. Deferring matters most for the links: building them
+	// unmarshals the header of every transaction in the block, which is far too
+	// much work to do for a span that is about to be thrown away.
+	if span.IsRecording() {
+		span.SetAttributes(
 			telemetry.AttrChannelID.String(c.ChainID),
 			telemetry.AttrBlockNumber.Int64(int64(block.Header.Number)),
 			telemetry.AttrBlockTxCount.Int(len(block.Data.Data)),
-		),
+		)
+		if telemetry.BlockTxLinksEnabled() {
+			for _, link := range telemetry.BlockTxLinks(block) {
+				span.AddLink(link)
+			}
+		}
 	}
-	if telemetry.BlockTxLinksEnabled() {
-		spanOpts = append(spanOpts, trace.WithLinks(telemetry.BlockTxLinks(block)...))
-	}
-	ctx, span := tracer.Start(context.Background(), "Committer.StoreBlock", spanOpts...)
-	defer span.End()
 
 	c.logger.Debugf("Validating block [%d]", block.Header.Number)
 
