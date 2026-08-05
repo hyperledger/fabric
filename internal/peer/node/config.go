@@ -86,6 +86,9 @@ func ledgerConfig() *ledger.Config {
 			CreateGlobalChangesDB: viper.GetBool("ledger.state.couchDBConfig.createGlobalChangesDB"),
 			RedoLogPath:           filepath.Join(ledgersDataRootDir, "couchdbRedoLogs"),
 			UserCacheSizeMBs:      viper.GetInt("ledger.state.couchDBConfig.cacheSize"),
+			TLSEnabled:            viper.GetBool("ledger.state.couchDBConfig.tls.enabled"),
+			TLSCACertFile:         coreconfig.GetPath("ledger.state.couchDBConfig.tls.caCertFile"),
+			TLSSkipVerify:         viper.GetBool("ledger.state.couchDBConfig.tls.skipVerify"),
 		}
 	}
 	return conf

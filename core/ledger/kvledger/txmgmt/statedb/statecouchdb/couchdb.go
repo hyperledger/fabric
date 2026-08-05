@@ -471,9 +471,13 @@ func (couchInstance *couchInstance) maxBatchUpdateSize() int {
 
 // url returns the URL for the CouchDB instance.
 func (couchInstance *couchInstance) url() string {
+	scheme := "http"
+	if couchInstance.conf.TLSEnabled {
+		scheme = "https"
+	}
 	URL := &url.URL{
 		Host:   couchInstance.conf.Address,
-		Scheme: "http",
+		Scheme: scheme,
 	}
 	return URL.String()
 }
