@@ -188,7 +188,7 @@ var _ = Describe("QueryInstalled", func() {
 		BeforeEach(func() {
 			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 			Expect(err).To(BeNil())
-			queryInstalledCmd = chaincode.QueryInstalledCmd(nil, cryptoProvider)
+			queryInstalledCmd = chaincode.QueryInstalledCmd(nil, cryptoProvider, true)
 			queryInstalledCmd.SilenceErrors = true
 			queryInstalledCmd.SilenceUsage = true
 			queryInstalledCmd.SetArgs([]string{

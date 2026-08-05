@@ -41,7 +41,7 @@ func TestOrdererFlags(t *testing.T) {
 		},
 	}
 
-	runCmd := Cmd(nil)
+	runCmd := Cmd(nil, true)
 
 	runCmd.AddCommand(testCmd)
 
