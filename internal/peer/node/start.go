@@ -20,6 +20,8 @@ import (
 	"syscall"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
+
 	"github.com/hyperledger/fabric-lib-go/bccsp/factory"
 	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	floggingmetrics "github.com/hyperledger/fabric-lib-go/common/flogging/metrics"
@@ -91,6 +93,7 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/version"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/gateway"
+	"github.com/hyperledger/fabric/internal/pkg/telemetry"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
@@ -238,6 +241,30 @@ func serve(args []string) error {
 	}
 	defer opsSystem.Stop()
 
+	// Tracing is inert unless an OTLP endpoint is configured in the environment.
+	// It is started after the operations system so that the two observability
+	// subsystems fail in the same place and report through the same logger.
+	tracingShutdown, err := telemetry.Initialize(context.Background(), telemetry.Config{
+		ServiceName: "fabric-peer",
+		Attributes: []attribute.KeyValue{
+			telemetry.AttrPeerID.String(coreConfig.PeerID),
+			telemetry.AttrMSPID.String(coreConfig.LocalMSPID),
+		},
+	})
+	if err != nil {
+		return errors.WithMessage(err, "failed to initialize distributed tracing")
+	}
+	defer func() {
+		// Spans are exported in batches, so the last of them are still buffered
+		// when the peer is asked to stop. Give the exporter a bounded window to
+		// drain instead of losing the traces that cover the shutdown itself.
+		flushCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := tracingShutdown(flushCtx); err != nil {
+			logger.Warnw("Failed to flush pending traces during shutdown", "error", err.Error())
+		}
+	}()
+
 	metricsProvider := opsSystem.Provider
 	logObserver := floggingmetrics.NewObserver(metricsProvider)
 	flogging.SetObserver(logObserver)
@@ -261,6 +288,14 @@ func serve(args []string) error {
 
 	serverConfig.Logger = flogging.MustGetLogger("core.comm").With("server", "PeerServer")
 	serverConfig.ServerStatsHandler = comm.NewServerStatsHandler(metricsProvider)
+	// The tracing handler is what extracts the client's traceparent from gRPC
+	// metadata, so every span created deeper in the endorsement path attaches to
+	// the caller's trace rather than starting a disconnected one. It is a stats
+	// handler rather than an interceptor because it observes the whole RPC
+	// lifecycle, including the time spent in the interceptors below.
+	if tracingHandler := telemetry.ServerHandler(); tracingHandler != nil {
+		serverConfig.StatsHandlers = append(serverConfig.StatsHandlers, tracingHandler)
+	}
 	serverConfig.UnaryInterceptors = append(
 		serverConfig.UnaryInterceptors,
 		grpcmetrics.UnaryServerInterceptor(grpcmetrics.NewUnaryMetrics(metricsProvider)),

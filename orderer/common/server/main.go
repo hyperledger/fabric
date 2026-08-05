@@ -35,6 +35,7 @@ import (
 	"github.com/hyperledger/fabric/core/operations"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
+	"github.com/hyperledger/fabric/internal/pkg/telemetry"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/orderer/common/channelparticipation"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
@@ -45,8 +46,10 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/orderer/consensus/smartbft"
 	"github.com/hyperledger/fabric/protoutil"
+	"go.opentelemetry.io/otel/attribute"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/stats"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -99,6 +102,28 @@ func Main() {
 	metricsProvider := opsSystem.Provider
 	logObserver := floggingmetrics.NewObserver(metricsProvider)
 	flogging.SetObserver(logObserver)
+
+	// Tracing is inert unless an OTLP endpoint is configured in the environment;
+	// see internal/pkg/telemetry.
+	tracingShutdown, tracingErr := telemetry.Initialize(context.Background(), telemetry.Config{
+		ServiceName: "fabric-orderer",
+		Attributes: []attribute.KeyValue{
+			telemetry.AttrOrdererID.String(conf.General.LocalMSPID),
+			telemetry.AttrMSPID.String(conf.General.LocalMSPID),
+		},
+	})
+	if tracingErr != nil {
+		logger.Panicf("failed to initialize distributed tracing: %s", tracingErr)
+	}
+	defer func() {
+		// Spans are exported in batches, so give the exporter a bounded window
+		// to drain rather than dropping whatever covers the shutdown itself.
+		flushCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := tracingShutdown(flushCtx); err != nil {
+			logger.Warnf("Failed to flush pending traces during shutdown: %s", err)
+		}
+	}()
 
 	serverConfig := initializeServerConfig(conf, metricsProvider)
 	serverConfig.HealthCheckEnabled = true
@@ -543,7 +568,11 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 		KaOpts:             kaOpts,
 		Logger:             commLogger,
 		ServerStatsHandler: comm.NewServerStatsHandler(metricsProvider),
-		ConnectionTimeout:  conf.General.ConnectionTimeout,
+		// Continues the submitting client's trace. Broadcast and Deliver are
+		// long-lived streams and are filtered out of this handler; they are
+		// traced per message instead.
+		StatsHandlers:     tracingStatsHandlers(),
+		ConnectionTimeout: conf.General.ConnectionTimeout,
 		StreamInterceptors: []grpc.StreamServerInterceptor{
 			grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
 			grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
@@ -558,6 +587,17 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 		MaxRecvMsgSize: int(conf.General.MaxRecvMsgSize),
 		MaxSendMsgSize: int(conf.General.MaxSendMsgSize),
 	}
+}
+
+// tracingStatsHandlers returns the tracing stats handler, or nothing at all when
+// tracing is disabled, so that an orderer without telemetry configured does no
+// per-RPC work for it. This matters more here than it looks: the Raft cluster
+// service shares this server with client traffic and is far busier than it.
+func tracingStatsHandlers() []stats.Handler {
+	if handler := telemetry.ServerHandler(); handler != nil {
+		return []stats.Handler{handler}
+	}
+	return nil
 }
 
 func grpcLeveler(ctx context.Context, fullMethod string) zapcore.Level {

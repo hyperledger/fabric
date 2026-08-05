@@ -22,9 +22,13 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
+	"github.com/hyperledger/fabric/internal/pkg/telemetry"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
@@ -104,13 +108,47 @@ type Endorser struct {
 }
 
 // call specified chaincode (system or user)
-func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *pb.ChaincodeInput, chaincodeName string) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (e *Endorser) callChaincode(ctx context.Context, txParams *ccprovider.TransactionParams, input *pb.ChaincodeInput, chaincodeName string) (*pb.Response, *pb.ChaincodeEvent, error) {
 	defer func(start time.Time) {
 		logger := endorserLogger.WithOptions(zap.AddCallerSkip(1))
 		logger = decorateLogger(logger, txParams)
 		elapsedMillisec := time.Since(start).Milliseconds()
 		logger.Infof("finished chaincode: %s duration: %dms", chaincodeName, elapsedMillisec)
 	}(time.Now())
+
+	// This is usually the span that answers the question. It covers the round
+	// trip to the chaincode container, including the container's own state
+	// reads and writes back through the peer.
+	//
+	// Support.Execute takes no context, so instead of propagating ctx the span
+	// is handed to the chaincode layer through txParams below, which is what
+	// lets the chaincode's callbacks into the peer nest underneath this span.
+	ctx, span := telemetry.Tracer(telemetry.TracerEndorser).Start(ctx, "Endorser.ExecuteChaincode")
+	defer span.End()
+
+	// Everything descriptive is set after the span exists rather than through
+	// Start's options, which are evaluated before the sampler decides anything.
+	// At a low sampling ratio that would mean building attributes for every
+	// transaction in order to discard almost all of them.
+	if span.IsRecording() {
+		span.SetAttributes(telemetry.AttrChaincodeName.String(chaincodeName))
+		if function := telemetry.ChaincodeFunctionName(input.GetArgs()); function != "" {
+			span.SetAttributes(
+				telemetry.AttrChaincodeFunction.String(function),
+				telemetry.AttrChaincodeArgsCount.Int(len(input.GetArgs())),
+			)
+		}
+
+		// Allocated only while recording, which is what lets the callback path
+		// decide whether to do anything with a single nil check. The totals are
+		// attached below, once the chaincode has finished and they are complete.
+		txParams.ShimStats = telemetry.NewShimStats()
+		defer func() { span.SetAttributes(txParams.ShimStats.Attributes()...) }()
+	}
+
+	// Carried on txParams rather than in a context because each shim callback is
+	// handled on its own goroutine, keyed only by transaction id.
+	txParams.TraceContext = trace.SpanContextFromContext(ctx)
 
 	meterLabels := []string{
 		"channel", txParams.ChannelID,
@@ -119,9 +157,12 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *
 
 	res, ccevent, err := e.Support.Execute(txParams, chaincodeName, input)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		e.Metrics.SimulationFailure.With(meterLabels...).Add(1)
 		return nil, nil, err
 	}
+	span.SetAttributes(telemetry.AttrResponseStatus.Int(int(res.Status)))
 
 	// per doc anything < 400 can be sent as TX.
 	// fabric errors will always be >= 400 (ie, unambiguous errors )
@@ -175,7 +216,8 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *
 }
 
 // SimulateProposal simulates the proposal by calling the chaincode
-func (e *Endorser) simulateProposal(txParams *ccprovider.TransactionParams, chaincodeName string, chaincodeInput *pb.ChaincodeInput) (*pb.Response, []byte, *pb.ChaincodeEvent, *pb.ChaincodeInterest, error) {
+func (e *Endorser) simulateProposal(ctx context.Context, txParams *ccprovider.TransactionParams, chaincodeName string, chaincodeInput *pb.ChaincodeInput) (*pb.Response, []byte, *pb.ChaincodeEvent, *pb.ChaincodeInterest, error) {
+	tracer := telemetry.Tracer(telemetry.TracerEndorser)
 	logger := decorateLogger(endorserLogger, txParams)
 
 	meterLabels := []string{
@@ -184,7 +226,7 @@ func (e *Endorser) simulateProposal(txParams *ccprovider.TransactionParams, chai
 	}
 
 	// ---3. execute the proposal and get simulation results
-	res, ccevent, err := e.callChaincode(txParams, chaincodeInput, chaincodeName)
+	res, ccevent, err := e.callChaincode(ctx, txParams, chaincodeInput, chaincodeName)
 	if err != nil {
 		logger.Errorf("failed to invoke chaincode %s, error: %+v", chaincodeName, err)
 		return nil, nil, nil, nil, err
@@ -199,11 +241,19 @@ func (e *Endorser) simulateProposal(txParams *ccprovider.TransactionParams, chai
 	// this change, so, should be safe.  Long term, let's move the Done up to the create.
 	defer txParams.TXSimulator.Done()
 
+	// Collecting the read-write set is separate from running the chaincode, and
+	// grows with how much state the transaction touched rather than with how
+	// long the chaincode ran.
+	_, rwsetSpan := tracer.Start(ctx, "Endorser.GetTxSimulationResults")
 	simResult, err := txParams.TXSimulator.GetTxSimulationResults()
 	if err != nil {
+		rwsetSpan.RecordError(err)
+		rwsetSpan.SetStatus(codes.Error, err.Error())
+		rwsetSpan.End()
 		e.Metrics.SimulationFailure.With(meterLabels...).Add(1)
 		return nil, nil, nil, nil, err
 	}
+	rwsetSpan.End()
 
 	if simResult.PvtSimulationResults != nil {
 		if chaincodeName == "lscc" {
@@ -231,10 +281,18 @@ func (e *Endorser) simulateProposal(txParams *ccprovider.TransactionParams, chai
 		// manage transient store purge for orphaned private writesets (4th parameter in distributePrivateData), this works for now.
 		// Ideally, ledger should add support in the simulator as a first class function `GetHeight()`.
 		pvtDataWithConfig.EndorsedAt = endorsedAt
+		// Private data is pushed to the other collection members over gossip
+		// before the endorsement returns, so this span is network time that is
+		// otherwise invisible inside "simulation".
+		_, distributeSpan := tracer.Start(ctx, "Endorser.DistributePrivateData")
 		if err := e.PrivateDataDistributor.DistributePrivateData(txParams.ChannelID, txParams.TxID, pvtDataWithConfig, endorsedAt); err != nil {
+			distributeSpan.RecordError(err)
+			distributeSpan.SetStatus(codes.Error, err.Error())
+			distributeSpan.End()
 			e.Metrics.SimulationFailure.With(meterLabels...).Add(1)
 			return nil, nil, nil, nil, err
 		}
+		distributeSpan.End()
 	}
 
 	ccInterest, err := e.buildChaincodeInterest(simResult)
@@ -312,12 +370,43 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	// variables to capture proposal duration metric
 	success := false
 
+	// Continues the client's trace, which the gRPC stats handler has already
+	// extracted into ctx. Attributes are added below, once the proposal has been
+	// unpacked far enough to know what they are.
+	ctx, span := telemetry.Tracer(telemetry.TracerEndorser).Start(ctx, "Endorser.ProcessProposal",
+		trace.WithSpanKind(trace.SpanKindServer))
+	defer span.End()
+
 	up, err := UnpackProposal(signedProp)
 	if err != nil {
 		e.Metrics.ProposalValidationFailed.Add(1)
 		endorserLogger.Warnw("Failed to unpack proposal", "error", err.Error())
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to unpack proposal")
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
+
+	span.SetAttributes(
+		telemetry.AttrChannelID.String(up.ChannelHeader.ChannelId),
+		telemetry.AttrChaincodeName.String(up.ChaincodeName),
+		telemetry.AttrTxID.String(up.ChannelHeader.TxId),
+	)
+	// Repeated on the top-level span, not just on the execution span below, so
+	// that "which function is slow" can be answered without joining spans.
+	//
+	// Guarded on IsRecording because extracting the name copies and validates
+	// the first argument, and this is the endorsement hot path: with tracing
+	// disabled that work would be pure waste on every proposal.
+	if span.IsRecording() {
+		if function := telemetry.ChaincodeFunctionName(up.Input.GetArgs()); function != "" {
+			span.SetAttributes(telemetry.AttrChaincodeFunction.String(function))
+		}
+	}
+
+	// Record the trace before doing the work, so that a transaction which is
+	// endorsed here and committed later can be linked even if the endorsement
+	// itself ends in an error.
+	telemetry.RememberEndorsement(ctx, up.ChannelHeader.TxId)
 
 	var channel *Channel
 	if up.ChannelID() != "" {
@@ -332,11 +421,18 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	}
 
 	// 0 -- check and validate
+	_, preProcessSpan := telemetry.Tracer(telemetry.TracerEndorser).Start(ctx, "Endorser.preProcess")
 	err = e.preProcess(up, channel)
 	if err != nil {
+		preProcessSpan.RecordError(err)
+		preProcessSpan.SetStatus(codes.Error, err.Error())
+		preProcessSpan.End()
 		endorserLogger.Warnw("Failed to preProcess proposal", "error", err.Error())
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "proposal validation failed")
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
+	preProcessSpan.End()
 
 	defer func() {
 		meterLabels := []string{
@@ -347,11 +443,23 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		e.Metrics.ProposalDuration.With(meterLabels...).Observe(time.Since(startTime).Seconds())
 	}()
 
-	pResp, err := e.ProcessProposalSuccessfullyOrError(up)
+	pResp, err := e.ProcessProposalSuccessfullyOrError(ctx, up)
 	if err != nil {
 		endorserLogger.Warnw("Failed to invoke chaincode", "channel", up.ChannelHeader.ChannelId, "chaincode", up.ChaincodeName, "error", err.Error())
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to invoke chaincode")
 		// Return a nil error since clients are expected to look at the ProposalResponse response status code (500) and message.
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
+	}
+
+	if pResp.Response != nil {
+		span.SetAttributes(
+			telemetry.AttrResponseStatus.Int(int(pResp.Response.Status)),
+			// A proposal can be simulated successfully and still be refused by
+			// the chaincode. That is not an endorser error, so the span stays
+			// unset rather than Error, but it is worth being able to filter on.
+			telemetry.AttrEndorsementFailed.Bool(pResp.Endorsement == nil && up.ChannelHeader.ChannelId != ""),
+		)
 	}
 
 	if pResp.Endorsement != nil || up.ChannelHeader.ChannelId == "" {
@@ -366,7 +474,9 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	return pResp, nil
 }
 
-func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb.ProposalResponse, error) {
+func (e *Endorser) ProcessProposalSuccessfullyOrError(ctx context.Context, up *UnpackedProposal) (*pb.ProposalResponse, error) {
+	tracer := telemetry.Tracer(telemetry.TracerEndorser)
+
 	txParams := &ccprovider.TransactionParams{
 		ChannelID:  up.ChannelHeader.ChannelId,
 		TxID:       up.ChannelHeader.TxId,
@@ -377,10 +487,19 @@ func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb
 	logger := decorateLogger(endorserLogger, txParams)
 
 	if acquireTxSimulator(up.ChannelHeader.ChannelId, up.ChaincodeName) {
+		// Worth its own span: the simulator takes a shared lock on the state
+		// database, so this is where endorsement blocks when the peer is busy
+		// committing blocks. A slow span here means contention with commit, not
+		// slow chaincode.
+		_, simulatorSpan := tracer.Start(ctx, "Endorser.GetTxSimulator")
 		txSim, err := e.Support.GetTxSimulator(up.ChannelID(), up.TxID())
 		if err != nil {
+			simulatorSpan.RecordError(err)
+			simulatorSpan.SetStatus(codes.Error, err.Error())
+			simulatorSpan.End()
 			return nil, err
 		}
+		simulatorSpan.End()
 
 		// txsim acquires a shared lock on the stateDB. As this would impact the block commits (i.e., commit
 		// of valid write-sets to the stateDB), we must release the lock as early as possible.
@@ -406,7 +525,7 @@ func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb
 	}
 
 	// 1 -- simulate
-	res, simulationResult, ccevent, ccInterest, err := e.simulateProposal(txParams, up.ChaincodeName, up.Input)
+	res, simulationResult, ccevent, ccInterest, err := e.simulateProposal(ctx, txParams, up.ChaincodeName, up.Input)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error in simulation")
 	}
@@ -459,12 +578,20 @@ func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb
 	logger.Debugf("escc for chaincode %s is %s", up.ChaincodeName, escc)
 
 	// Note, mPrpBytes is the same as prpBytes by default endorsement plugin, but others could change it.
+	// This span isolates the signing cost, which is the part that scales with
+	// the HSM or BCCSP implementation in use rather than with the chaincode.
+	_, endorseSpan := tracer.Start(ctx, "Endorser.EndorseWithPlugin")
+	endorseSpan.SetAttributes(attribute.String("fabric.endorsement.plugin", escc))
 	endorsement, mPrpBytes, err := e.Support.EndorseWithPlugin(escc, up.ChannelID(), prpBytes, up.SignedProposal)
 	if err != nil {
+		endorseSpan.RecordError(err)
+		endorseSpan.SetStatus(codes.Error, err.Error())
+		endorseSpan.End()
 		meterLabels = append(meterLabels, "chaincodeerror", strconv.FormatBool(false))
 		e.Metrics.EndorsementsFailed.With(meterLabels...).Add(1)
 		return nil, errors.WithMessage(err, "endorsing with plugin failed")
 	}
+	endorseSpan.End()
 
 	return &pb.ProposalResponse{
 		Version:     1,
