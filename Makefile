@@ -170,11 +170,11 @@ unit-test: unit-test-clean docker-thirdparty-couchdb ## Runs the go-test based u
 unit-tests: unit-test ## Alias for unit-test
 
 # Pull thirdparty docker images based on the latest baseimage release version
-# Also pull ccenv-1.4 for compatibility test to ensure pre-2.0 installed chaincodes
-# can be built by a peer configured to use the ccenv-1.4 as the builder image.
+# Also pull ccenv-2.5 for compatibility test to ensure pre-2.0 installed chaincodes
+# can be built by a peer configured to use the ccenv-2.5 as the builder image.
 .PHONY: docker-thirdparty
 docker-thirdparty: docker-thirdparty-couchdb ## Pull thirdparty docker images
-	docker pull hyperledger/fabric-ccenv:1.4
+	docker pull hyperledger/fabric-ccenv:2.5
 
 .PHONY: docker-thirdparty-couchdb
 docker-thirdparty-couchdb: ## Pull couchdb docker image
