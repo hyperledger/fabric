@@ -8,62 +8,81 @@ package telemetry
 
 import (
 	"os"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"unicode/utf8"
 )
 
-// EnvChaincodeShimSpans turns off the span emitted for each callback a chaincode
-// makes back into the peer.
+// EnvChaincodeShimSpans selects how much detail is recorded about the callbacks
+// a chaincode makes back into the peer.
 //
-// These are on by default because they are usually the answer to why a
-// transaction is slow: a contract that issues several hundred GetState calls
-// looks, from the endorsement span alone, simply like slow chaincode. The
-// sampler is the volume control — shim spans inherit the sampling decision of
-// the transaction that caused them, so a ratio-based sampler bounds them the
-// same way it bounds everything else.
+//	aggregate  counts and durations per callback type, attached to the
+//	           enclosing execution span (default)
+//	spans      one span per callback
+//	off        nothing
 //
-// The escape hatch exists for the case that a single sampled transaction fans
-// out to thousands of state reads, where the spans stop being readable and start
-// being a bill. The aggregate view survives either way, since Fabric already
-// meters shim requests by type, channel and chaincode.
+// The default is aggregate because it answers the question that actually gets
+// asked — is this contract doing too much I/O, and how much of the transaction
+// did it account for — at one span per transaction rather than one per state
+// access. A contract that reads five hundred keys is the difference between a
+// handful of attributes and five hundred spans to create, batch and export.
+//
+// Detailed spans remain available for when the totals are not enough and the
+// individual timeline is needed, which is a deliberate investigation rather
+// than something worth paying for continuously.
 const EnvChaincodeShimSpans = "FABRIC_TRACE_CHAINCODE_SHIM"
+
+// ShimMode is how much is recorded about chaincode callbacks.
+type ShimMode int
+
+const (
+	// ShimAggregate records per-type counts and durations on the execution span.
+	ShimAggregate ShimMode = iota
+	// ShimSpans additionally emits a span per callback.
+	ShimSpans
+	// ShimOff records nothing.
+	ShimOff
+)
 
 // maxFunctionNameLength bounds what is accepted as a chaincode function name.
 // Real function names are short; anything longer is a caller passing data in the
 // first argument rather than a function name, and does not belong in a span.
 const maxFunctionNameLength = 128
 
-// shimSpans caches the resolved value of EnvChaincodeShimSpans.
+// shimMode caches the resolved value of EnvChaincodeShimSpans.
 //
 // This is read once per callback a chaincode makes into the peer, which for a
 // query-heavy contract is the busiest path in the process. os.Getenv is a linear
 // scan of the environment, so reading it there would make every state access pay
 // for a lookup whose answer cannot change while the node is running.
-var shimSpans atomic.Bool
+var shimMode atomic.Int32
 
 // resolveChaincodeShimSpans reads the switch from the environment. Called from
 // Initialize, and from tests that need to change it.
+//
+// Boolean values are still accepted, since that is what the switch originally
+// took: true selects the detailed spans it used to mean, false selects off.
 func resolveChaincodeShimSpans() {
-	raw := strings.TrimSpace(os.Getenv(EnvChaincodeShimSpans))
-	if raw == "" {
-		shimSpans.Store(true)
-		return
+	switch raw := strings.ToLower(strings.TrimSpace(os.Getenv(EnvChaincodeShimSpans))); raw {
+	case "", "aggregate":
+		shimMode.Store(int32(ShimAggregate))
+	case "spans", "true", "1":
+		shimMode.Store(int32(ShimSpans))
+	case "off", "false", "0":
+		shimMode.Store(int32(ShimOff))
+	default:
+		logger.Warnw("Unrecognized "+EnvChaincodeShimSpans+", defaulting to aggregate", "value", raw)
+		shimMode.Store(int32(ShimAggregate))
 	}
-
-	enabled, err := strconv.ParseBool(raw)
-	if err != nil {
-		logger.Warnw("Invalid "+EnvChaincodeShimSpans+", defaulting to enabled", "value", raw)
-		shimSpans.Store(true)
-		return
-	}
-	shimSpans.Store(enabled)
 }
 
-// ChaincodeShimSpansEnabled reports whether per-callback spans should be emitted.
-func ChaincodeShimSpansEnabled() bool {
-	return Enabled() && shimSpans.Load()
+// ChaincodeShimMode reports how much detail to record about chaincode callbacks.
+// It is ShimOff whenever telemetry is not exporting.
+func ChaincodeShimMode() ShimMode {
+	if !Enabled() {
+		return ShimOff
+	}
+	return ShimMode(shimMode.Load())
 }
 
 // ChaincodeFunctionName extracts the invoked function from a chaincode's

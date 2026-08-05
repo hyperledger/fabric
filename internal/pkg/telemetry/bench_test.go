@@ -9,7 +9,9 @@ package telemetry
 import (
 	"context"
 	"testing"
+	"time"
 
+	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
@@ -98,6 +100,42 @@ func BenchmarkNoTelemetry(b *testing.B) {
 			span.SetAttributes(shimAttributes()...)
 		}
 		span.End()
+	}
+}
+
+// BenchmarkShimAggregate is what a callback costs under the default setting:
+// two atomic adds folded into per-type totals, with no span at all.
+func BenchmarkShimAggregate(b *testing.B) {
+	stats := NewShimStats()
+
+	b.ReportAllocs()
+	for b.Loop() {
+		stats.Record(pb.ChaincodeMessage_GET_STATE, 400*time.Microsecond)
+	}
+}
+
+// BenchmarkShimAggregateNil is the cost on a peer that is not tracing, or on a
+// transaction that was not sampled: the accumulator is nil and the callback
+// path does nothing.
+func BenchmarkShimAggregateNil(b *testing.B) {
+	var stats *ShimStats
+
+	b.ReportAllocs()
+	for b.Loop() {
+		stats.Record(pb.ChaincodeMessage_GET_STATE, 400*time.Microsecond)
+	}
+}
+
+// BenchmarkShimStatsAttributes renders the totals, which happens once per
+// invocation rather than once per callback.
+func BenchmarkShimStatsAttributes(b *testing.B) {
+	stats := NewShimStats()
+	stats.Record(pb.ChaincodeMessage_GET_STATE, time.Millisecond)
+	stats.Record(pb.ChaincodeMessage_PUT_STATE, time.Millisecond)
+
+	b.ReportAllocs()
+	for b.Loop() {
+		_ = stats.Attributes()
 	}
 }
 

@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/internal/pkg/telemetry"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/proto"
@@ -381,4 +382,10 @@ type TransactionParams struct {
 	// span context here is what lets those callbacks be attributed to the
 	// invocation that caused them. It is the zero value when tracing is off.
 	TraceContext trace.SpanContext
+
+	// ShimStats accumulates how many callbacks the chaincode made back into the
+	// peer and how long they took, for attachment to the invocation's span once
+	// it completes. It is nil unless that span is recording, which is what keeps
+	// the whole mechanism to a single nil check on the callback path.
+	ShimStats *telemetry.ShimStats
 }

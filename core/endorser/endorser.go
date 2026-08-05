@@ -138,6 +138,12 @@ func (e *Endorser) callChaincode(ctx context.Context, txParams *ccprovider.Trans
 				telemetry.AttrChaincodeArgsCount.Int(len(input.GetArgs())),
 			)
 		}
+
+		// Allocated only while recording, which is what lets the callback path
+		// decide whether to do anything with a single nil check. The totals are
+		// attached below, once the chaincode has finished and they are complete.
+		txParams.ShimStats = telemetry.NewShimStats()
+		defer func() { span.SetAttributes(txParams.ShimStats.Attributes()...) }()
 	}
 
 	// Carried on txParams rather than in a context because each shim callback is

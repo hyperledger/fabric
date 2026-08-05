@@ -76,17 +76,16 @@ func TestChaincodeFunctionName(t *testing.T) {
 	}
 }
 
-// Shim spans are pointless when nothing is exporting, and the check has to be
-// cheap because it runs on every callback a chaincode makes.
-func TestChaincodeShimSpansDisabledWhenTelemetryIsOff(t *testing.T) {
+// Recording anything about callbacks is pointless when nothing is exporting.
+func TestChaincodeShimModeOffWhenTelemetryIsOff(t *testing.T) {
 	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
-	t.Setenv(EnvChaincodeShimSpans, "true")
+	t.Setenv(EnvChaincodeShimSpans, "spans")
 
 	require.False(t, Enabled())
-	require.False(t, ChaincodeShimSpansEnabled())
+	require.Equal(t, ShimOff, ChaincodeShimMode())
 }
 
-func TestChaincodeShimSpansOptOut(t *testing.T) {
+func TestChaincodeShimMode(t *testing.T) {
 	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:4318")
 
 	shutdown, err := Initialize(t.Context(), Config{ServiceName: "fabric-peer"})
@@ -95,25 +94,34 @@ func TestChaincodeShimSpansOptOut(t *testing.T) {
 
 	// The switch is resolved at startup rather than per callback, so tests have
 	// to re-resolve it the way Initialize would.
-	setShimSpans := func(value string) {
+	setMode := func(value string) {
 		t.Setenv(EnvChaincodeShimSpans, value)
 		resolveChaincodeShimSpans()
 	}
 
-	// Enabled by default, because a chaincode's state access is usually what
-	// explains a slow transaction.
-	setShimSpans("")
-	require.True(t, ChaincodeShimSpansEnabled())
-
-	setShimSpans("false")
-	require.False(t, ChaincodeShimSpansEnabled())
-
-	setShimSpans("true")
-	require.True(t, ChaincodeShimSpansEnabled())
-
-	// A typo must not silently switch off the spans someone was relying on.
-	setShimSpans("yes-please")
-	require.True(t, ChaincodeShimSpansEnabled())
+	for value, expected := range map[string]ShimMode{
+		// Aggregate is the default: it answers the common question at one span
+		// per transaction rather than one per state access.
+		"":          ShimAggregate,
+		"aggregate": ShimAggregate,
+		"spans":     ShimSpans,
+		"off":       ShimOff,
+		// The switch originally took a boolean, and those spellings still mean
+		// what they used to.
+		"true":  ShimSpans,
+		"1":     ShimSpans,
+		"false": ShimOff,
+		"0":     ShimOff,
+		"OFF":   ShimOff,
+		// A typo must not silently turn instrumentation off; it falls back to
+		// the default.
+		"yes-please": ShimAggregate,
+	} {
+		t.Run("value="+value, func(t *testing.T) {
+			setMode(value)
+			require.Equal(t, expected, ChaincodeShimMode())
+		})
+	}
 }
 
 // The gRPC stats handler is consulted on every inbound RPC, and the peer and
