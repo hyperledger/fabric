@@ -52,7 +52,6 @@ func main() {
 	}
 
 	logger.Printf("::Build phase completed")
-
 }
 
 func run() error {
@@ -171,12 +170,10 @@ func run() error {
 	}
 
 	return nil
-
 }
 
 // execTempl is a helper function to process a template against a string, and return a string
 func execTempl(cfg map[string]interface{}, inputStr string) (string, error) {
-
 	t, err := template.New("").Option("missingkey=error").Parse(inputStr)
 	if err != nil {
 		fmt.Printf("Failed to parse the template: %s", err)
