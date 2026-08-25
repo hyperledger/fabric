@@ -1048,7 +1048,6 @@ func setupTopicForChannel(retryOptions localconfig.Retry, haltChan chan struct{}
 			for _, address := range brokers {
 				broker := sarama.NewBroker(address)
 				err = broker.Open(brokerConfig)
-
 				if err != nil {
 					continue
 				}
@@ -1102,7 +1101,6 @@ func setupTopicForChannel(retryOptions localconfig.Retry, haltChan chan struct{}
 			// get the controller
 			controller := clusterMembers[controllerId]
 			err = controller.Open(brokerConfig)
-
 			if err != nil {
 				return err
 			}

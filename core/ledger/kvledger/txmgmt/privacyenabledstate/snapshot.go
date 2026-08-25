@@ -255,7 +255,6 @@ func (p *DBProvider) ImportFromSnapshot(
 	err = metadataHinter.importNamespacesThatUseMetadata(
 		worldStateSnapshotReader.namespacesThatUseMetadata,
 	)
-
 	if err != nil {
 		return errors.WithMessage(err, "error while writing to metadata-hint db")
 	}

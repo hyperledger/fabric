@@ -538,7 +538,6 @@ func (c *Cache) update(initializing bool, channelID string, dirtyChaincodes map[
 		}
 
 		ok, err = c.Resources.Serializer.IsSerialized(NamespacesName, privateName, chaincodeDefinition.Parameters(), orgState)
-
 		if err != nil {
 			return errors.WithMessagef(err, "could not check opaque org state for '%s' on channel '%s'", name, channelID)
 		}

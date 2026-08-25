@@ -53,7 +53,8 @@ func TestRangeQueryBoundaryConditions(t *testing.T) {
 }
 
 func testRangeQuery(t *testing.T, testcase string, stateData *statedb.UpdateBatch, savepoint *version.Height,
-	ns string, rqi *kvrwset.RangeQueryInfo, expectedResult bool) {
+	ns string, rqi *kvrwset.RangeQueryInfo, expectedResult bool,
+) {
 	t.Run(testcase, func(t *testing.T) {
 		testDBEnv := stateleveldb.NewTestVDBEnv(t)
 		defer testDBEnv.Cleanup()

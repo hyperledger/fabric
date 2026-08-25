@@ -206,7 +206,8 @@ func TestStateListenerQueryExecutor(t *testing.T) {
 func checkHandleStateUpdatesCallback(t *testing.T, ml *mock.StateListener, callNumber int,
 	expectedLedgerid string,
 	expectedUpdates ledger.StateUpdates,
-	expectedCommitHt uint64) {
+	expectedCommitHt uint64,
+) {
 	actualTrigger := ml.HandleStateUpdatesArgsForCall(callNumber)
 	require.Equal(t, expectedLedgerid, actualTrigger.LedgerID)
 	checkEqualUpdates(t, expectedUpdates, actualTrigger.StateUpdates)

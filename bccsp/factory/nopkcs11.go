@@ -90,7 +90,8 @@ func StringToKeyIds() mapstructure.DecodeHookFunc {
 	return func(
 		f reflect.Type,
 		t reflect.Type,
-		data any) (any, error) {
+		data any,
+	) (any, error) {
 		return data, nil
 	}
 }

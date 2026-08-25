@@ -225,7 +225,8 @@ func (l *kvLedger) registerStateDBIndexCreatorForChaincodeLifecycleEvents(
 
 func (l *kvLedger) listLegacyChaincodesDefined(
 	deployedChaincodesInfoExtractor ledger.DeployedChaincodeInfoProvider) (
-	[]*cceventmgmt.ChaincodeDefinition, error) {
+	[]*cceventmgmt.ChaincodeDefinition, error,
+) {
 	qe, err := l.txmgr.NewQueryExecutor("")
 	if err != nil {
 		return nil, err
@@ -1156,7 +1157,8 @@ func constructPvtdataMap(pvtdata []*ledger.TxPvtData) ledger.TxPvtDataMap {
 }
 
 func constructPvtDataAndMissingData(blockAndPvtData *ledger.BlockAndPvtData) ([]*ledger.TxPvtData,
-	ledger.TxMissingPvtData) {
+	ledger.TxMissingPvtData,
+) {
 	var pvtData []*ledger.TxPvtData
 	missingPvtData := make(ledger.TxMissingPvtData)
 

@@ -177,7 +177,7 @@ func (b *RWSetBuilder) setPvtCollectionHash(ns string, coll string, pvtDataProto
 // TODO make this function private once txmgr starts using new function `GetTxSimulationResults` introduced here
 func (b *RWSetBuilder) GetTxReadWriteSet() *TxRwSet {
 	sortedNsPubBuilders := []*nsPubRwBuilder{}
-	util.GetValuesBySortedKeys(&(b.pubRwBuilderMap), &sortedNsPubBuilders)
+	util.GetValuesBySortedKeys(&b.pubRwBuilderMap, &sortedNsPubBuilders)
 
 	var nsPubRwSets []*NsRwSet
 	for _, nsPubRwBuilder := range sortedNsPubBuilders {
@@ -189,7 +189,7 @@ func (b *RWSetBuilder) GetTxReadWriteSet() *TxRwSet {
 // getTxPvtReadWriteSet returns the private read-write set
 func (b *RWSetBuilder) getTxPvtReadWriteSet() *TxPvtRwSet {
 	sortedNsPvtBuilders := []*nsPvtRwBuilder{}
-	util.GetValuesBySortedKeys(&(b.pvtRwBuilderMap), &sortedNsPvtBuilders)
+	util.GetValuesBySortedKeys(&b.pvtRwBuilderMap, &sortedNsPvtBuilders)
 
 	var nsPvtRwSets []*NsPvtRwSet
 	for _, nsPvtRwBuilder := range sortedNsPvtBuilders {
@@ -208,17 +208,17 @@ func (b *nsPubRwBuilder) build() *NsRwSet {
 	var rangeQueriesInfo []*kvrwset.RangeQueryInfo
 	var collHashedRwSet []*CollHashedRwSet
 	// add read set
-	util.GetValuesBySortedKeys(&(b.readMap), &readSet)
+	util.GetValuesBySortedKeys(&b.readMap, &readSet)
 	// add write set
-	util.GetValuesBySortedKeys(&(b.writeMap), &writeSet)
-	util.GetValuesBySortedKeys(&(b.metadataWriteMap), &metadataWriteSet)
+	util.GetValuesBySortedKeys(&b.writeMap, &writeSet)
+	util.GetValuesBySortedKeys(&b.metadataWriteMap, &metadataWriteSet)
 	// add range query info
 	for _, key := range b.rangeQueriesKeys {
 		rangeQueriesInfo = append(rangeQueriesInfo, b.rangeQueriesMap[key])
 	}
 	// add hashed rws for private collections
 	sortedCollBuilders := []*collHashRwBuilder{}
-	util.GetValuesBySortedKeys(&(b.collHashRwBuilder), &sortedCollBuilders)
+	util.GetValuesBySortedKeys(&b.collHashRwBuilder, &sortedCollBuilders)
 	for _, collBuilder := range sortedCollBuilders {
 		collHashedRwSet = append(collHashedRwSet, collBuilder.build())
 	}
@@ -236,7 +236,7 @@ func (b *nsPubRwBuilder) build() *NsRwSet {
 
 func (b *nsPvtRwBuilder) build() *NsPvtRwSet {
 	sortedCollBuilders := []*collPvtRwBuilder{}
-	util.GetValuesBySortedKeys(&(b.collPvtRwBuilders), &sortedCollBuilders)
+	util.GetValuesBySortedKeys(&b.collPvtRwBuilders, &sortedCollBuilders)
 
 	var collPvtRwSets []*CollPvtRwSet
 	for _, collBuilder := range sortedCollBuilders {
@@ -250,9 +250,9 @@ func (b *collHashRwBuilder) build() *CollHashedRwSet {
 	var writeSet []*kvrwset.KVWriteHash
 	var metadataWriteSet []*kvrwset.KVMetadataWriteHash
 
-	util.GetValuesBySortedKeys(&(b.readMap), &readSet)
-	util.GetValuesBySortedKeys(&(b.writeMap), &writeSet)
-	util.GetValuesBySortedKeys(&(b.metadataWriteMap), &metadataWriteSet)
+	util.GetValuesBySortedKeys(&b.readMap, &readSet)
+	util.GetValuesBySortedKeys(&b.writeMap, &writeSet)
+	util.GetValuesBySortedKeys(&b.metadataWriteMap, &metadataWriteSet)
 	return &CollHashedRwSet{
 		CollectionName: b.collName,
 		HashedRwSet: &kvrwset.HashedRWSet{
@@ -267,8 +267,8 @@ func (b *collHashRwBuilder) build() *CollHashedRwSet {
 func (b *collPvtRwBuilder) build() *CollPvtRwSet {
 	var writeSet []*kvrwset.KVWrite
 	var metadataWriteSet []*kvrwset.KVMetadataWrite
-	util.GetValuesBySortedKeys(&(b.writeMap), &writeSet)
-	util.GetValuesBySortedKeys(&(b.metadataWriteMap), &metadataWriteSet)
+	util.GetValuesBySortedKeys(&b.writeMap, &writeSet)
+	util.GetValuesBySortedKeys(&b.metadataWriteMap, &metadataWriteSet)
 	return &CollPvtRwSet{
 		CollectionName: b.collectionName,
 		KvRwSet: &kvrwset.KVRWSet{

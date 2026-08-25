@@ -154,7 +154,8 @@ func (l *kvLedger) generateSnapshotMetadataFiles(
 	dir string,
 	txIDsExportSummary,
 	configsHistoryExportSummary,
-	stateDBExportSummary map[string][]byte) error {
+	stateDBExportSummary map[string][]byte,
+) error {
 	// generate metadata file
 	filesAndHashes := map[string]string{}
 	for fileName, hashsum := range txIDsExportSummary {

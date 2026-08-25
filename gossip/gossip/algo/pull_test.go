@@ -312,7 +312,7 @@ func TestByzantineResponder(t *testing.T) {
 			// the response is from p3
 			if util.IndexInSlice(res.items, "6", Strcmp) != -1 {
 				// inst1 is currently accepting responses
-				require.Equal(t, int32(1), atomic.LoadInt32(&(inst1.acceptingResponses)), "inst1 is not accepting digests")
+				require.Equal(t, int32(1), atomic.LoadInt32(&inst1.acceptingResponses), "inst1 is not accepting digests")
 			}
 		}
 	})

@@ -72,7 +72,8 @@ type Node struct {
 func New(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 	mcs api.MessageCryptoService, selfIdentity api.PeerIdentityType,
 	secureDialOpts api.PeerSecureDialOpts, gossipMetrics *metrics.GossipMetrics,
-	anchorPeerTracker discovery.AnchorPeerTracker) *Node {
+	anchorPeerTracker discovery.AnchorPeerTracker,
+) *Node {
 	var err error
 
 	lgr := util.GetLogger(util.GossipLogger, conf.ID)
@@ -124,7 +125,6 @@ func New(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 	}
 	g.comm, err = comm.NewCommInstance(s, conf.TLSCerts, g.idMapper, selfIdentity, secureDialOpts, sa,
 		gossipMetrics.CommMetrics, commConfig)
-
 	if err != nil {
 		lgr.Error("Failed instantiating communication layer:", err)
 		return nil

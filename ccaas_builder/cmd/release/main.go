@@ -43,7 +43,6 @@ func main() {
 		os.Exit(1)
 	}
 	logger.Printf("::Release phase completed")
-
 }
 
 func run() error {
@@ -71,7 +70,7 @@ func run() error {
 		return fmt.Errorf("connection.json not found in source folder: %s", err)
 	}
 
-	err = os.MkdirAll(connectionDir, 0750)
+	err = os.MkdirAll(connectionDir, 0o750)
 	if err != nil {
 		return fmt.Errorf("failed to create target folder for connection.json: %s", err)
 	}
@@ -81,7 +80,6 @@ func run() error {
 	}
 
 	return nil
-
 }
 
 // Copy the src file to dst. Any existing file will be overwritten and will not

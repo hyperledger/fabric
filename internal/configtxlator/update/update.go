@@ -166,23 +166,27 @@ func computeGroupUpdate(original, updated *cb.ConfigGroup) (readSet, writeSet *c
 			len(readSetGroups) == 0 &&
 			len(writeSetGroups) == 0 {
 			return &cb.ConfigGroup{
-				Version: original.Version,
-			}, &cb.ConfigGroup{
-				Version: original.Version,
-			}, false
+					Version: original.Version,
+				},
+				&cb.ConfigGroup{
+					Version: original.Version,
+				},
+				false
 		}
 
 		return &cb.ConfigGroup{
-			Version:  original.Version,
-			Policies: readSetPolicies,
-			Values:   readSetValues,
-			Groups:   readSetGroups,
-		}, &cb.ConfigGroup{
-			Version:  original.Version,
-			Policies: writeSetPolicies,
-			Values:   writeSetValues,
-			Groups:   writeSetGroups,
-		}, true
+				Version:  original.Version,
+				Policies: readSetPolicies,
+				Values:   readSetValues,
+				Groups:   readSetGroups,
+			},
+			&cb.ConfigGroup{
+				Version:  original.Version,
+				Policies: writeSetPolicies,
+				Values:   writeSetValues,
+				Groups:   writeSetGroups,
+			},
+			true
 	}
 
 	for k, samePolicy := range sameSetPolicies {
@@ -201,17 +205,19 @@ func computeGroupUpdate(original, updated *cb.ConfigGroup) (readSet, writeSet *c
 	}
 
 	return &cb.ConfigGroup{
-		Version:  original.Version,
-		Policies: readSetPolicies,
-		Values:   readSetValues,
-		Groups:   readSetGroups,
-	}, &cb.ConfigGroup{
-		Version:   original.Version + 1,
-		Policies:  writeSetPolicies,
-		Values:    writeSetValues,
-		Groups:    writeSetGroups,
-		ModPolicy: updated.ModPolicy,
-	}, true
+			Version:  original.Version,
+			Policies: readSetPolicies,
+			Values:   readSetValues,
+			Groups:   readSetGroups,
+		},
+		&cb.ConfigGroup{
+			Version:   original.Version + 1,
+			Policies:  writeSetPolicies,
+			Values:    writeSetValues,
+			Groups:    writeSetGroups,
+			ModPolicy: updated.ModPolicy,
+		},
+		true
 }
 
 func Compute(original, updated *cb.Config) (*cb.ConfigUpdate, error) {

@@ -50,7 +50,6 @@ type Identity interface {
 // IdentityIdentifier is a holder for the identifier of a specific
 // identity, naturally namespaced, by its provider identifier.
 type IdentityIdentifier struct {
-
 	// The identifier of the associated membership service provider
 	Mspid string
 

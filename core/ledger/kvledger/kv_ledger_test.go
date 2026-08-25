@@ -1470,7 +1470,8 @@ func btlPolicyForSampleData() pvtdatapolicy.BTLPolicy {
 }
 
 func prepareNextBlockForTest(t *testing.T, l ledger.PeerLedger, bg *testutil.BlockGenerator,
-	txid string, pubKVs map[string]string, pvtKVs map[string]string) *ledger.BlockAndPvtData {
+	txid string, pubKVs map[string]string, pvtKVs map[string]string,
+) *ledger.BlockAndPvtData {
 	simulator, _ := l.NewTxSimulator(txid)
 	// simulating transaction
 	for k, v := range pubKVs {

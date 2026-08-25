@@ -162,7 +162,8 @@ type eligibilityAndBTLCache struct {
 func newEligibilityAndBTLCache(
 	ledgerID string,
 	membershipProvider ledger.MembershipInfoProvider,
-	configHistoryRetriever *confighistory.Retriever) *eligibilityAndBTLCache {
+	configHistoryRetriever *confighistory.Retriever,
+) *eligibilityAndBTLCache {
 	return &eligibilityAndBTLCache{
 		ledgerID:               ledgerID,
 		membershipProvider:     membershipProvider,

@@ -460,7 +460,8 @@ func TestInterpretNilValueKVWritesAsDelete(t *testing.T) {
 
 func testutilBuildRwset(t *testing.T,
 	kvWrites map[compositeKey][]byte,
-	metadataWrites map[compositeKey]map[string][]byte) *rwsetutil.TxRwSet {
+	metadataWrites map[compositeKey]map[string][]byte,
+) *rwsetutil.TxRwSet {
 	rwsetBuilder := rwsetutil.NewRWSetBuilder()
 	for kvwrite, val := range kvWrites {
 		if kvwrite.coll == "" {

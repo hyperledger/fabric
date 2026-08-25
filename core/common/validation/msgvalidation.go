@@ -289,7 +289,6 @@ func ValidateTransaction(e *common.Envelope, cryptoProvider bccsp.BCCSP) (*commo
 			chdr.TxId,
 			shdr.Nonce,
 			shdr.Creator)
-
 		if err != nil {
 			putilsLogger.Errorf("CheckTxID returns err %s", err)
 			return nil, pb.TxValidationCode_BAD_PROPOSAL_TXID
@@ -308,7 +307,6 @@ func ValidateTransaction(e *common.Envelope, cryptoProvider bccsp.BCCSP) (*commo
 		// signature on the outermost envelope
 
 		err = validateConfigTransaction(payload.Data, payload.Header)
-
 		if err != nil {
 			putilsLogger.Errorf("validateConfigTransaction returns err %s", err)
 			return payload, pb.TxValidationCode_INVALID_CONFIG_TRANSACTION

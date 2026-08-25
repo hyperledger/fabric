@@ -532,7 +532,7 @@ func TestECDSALowS(t *testing.T) {
 		pk, err := k.PublicKey()
 		require.NoError(t, err)
 
-		valid, err := csp.verifyECDSA(*(pk.(*ecdsaPublicKey)), signature, digest)
+		valid, err := csp.verifyECDSA(*pk.(*ecdsaPublicKey), signature, digest)
 		require.NoError(t, err)
 		require.True(t, valid, "signature should be valid")
 	})

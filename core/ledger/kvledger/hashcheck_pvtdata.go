@@ -31,7 +31,8 @@ func extractValidPvtData(
 	reconciledPvtdata []*ledger.ReconciledPvtdata,
 	blockStore *blkstorage.BlockStore,
 	pvtdataStore *pvtdatastorage.Store,
-	lastBlockInBootSnapshot uint64) (map[uint64][]*ledger.TxPvtData, error) {
+	lastBlockInBootSnapshot uint64,
+) (map[uint64][]*ledger.TxPvtData, error) {
 	validPvtData := map[uint64][]*ledger.TxPvtData{}
 	for _, blkPvtdata := range reconciledPvtdata {
 		validData, err := extractValidPvtDataForBlock(
@@ -52,7 +53,8 @@ func extractValidPvtDataForBlock(
 	blkPvtdata *ledger.ReconciledPvtdata,
 	blockStore *blkstorage.BlockStore,
 	pvtdataStore *pvtdatastorage.Store,
-	lastBlockInBootSnapshot uint64) ([]*ledger.TxPvtData, error) {
+	lastBlockInBootSnapshot uint64,
+) ([]*ledger.TxPvtData, error) {
 	validPvtData := []*ledger.TxPvtData{}
 	blkNum := blkPvtdata.BlockNum
 
@@ -133,7 +135,8 @@ func validateAndRemovePurgedKeys(
 	collPvtProto *rwset.CollectionPvtReadWriteSet,
 	kvHashes map[string][]byte,
 	collWSHashFromBlock []byte,
-	ns string, blkNum, txNum uint64) (*rwset.CollectionPvtReadWriteSet, error) {
+	ns string, blkNum, txNum uint64,
+) (*rwset.CollectionPvtReadWriteSet, error) {
 	coll := collPvtProto.CollectionName
 	trimmedKVHashes, err := pvtdataStore.RemoveAppInitiatedPurgesUsingReconMarker(
 		kvHashes, ns, coll, blkNum, txNum)

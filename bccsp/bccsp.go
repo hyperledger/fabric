@@ -13,7 +13,6 @@ import (
 
 // Key represents a cryptographic key
 type Key interface {
-
 	// Bytes converts this key to its byte representation,
 	// if this operation is allowed.
 	Bytes() ([]byte, error)
@@ -36,7 +35,6 @@ type Key interface {
 
 // KeyGenOpts contains options for key-generation with a CSP.
 type KeyGenOpts interface {
-
 	// Algorithm returns the key generation algorithm identifier (to be used).
 	Algorithm() string
 
@@ -47,7 +45,6 @@ type KeyGenOpts interface {
 
 // KeyDerivOpts contains options for key-derivation with a CSP.
 type KeyDerivOpts interface {
-
 	// Algorithm returns the key derivation algorithm identifier (to be used).
 	Algorithm() string
 
@@ -58,7 +55,6 @@ type KeyDerivOpts interface {
 
 // KeyImportOpts contains options for importing the raw material of a key with a CSP.
 type KeyImportOpts interface {
-
 	// Algorithm returns the key importation algorithm identifier (to be used).
 	Algorithm() string
 
@@ -69,7 +65,6 @@ type KeyImportOpts interface {
 
 // HashOpts contains options for hashing with a CSP.
 type HashOpts interface {
-
 	// Algorithm returns the hash algorithm identifier (to be used).
 	Algorithm() string
 }
@@ -88,7 +83,6 @@ type DecrypterOpts any
 // BCCSP is the blockchain cryptographic service provider that offers
 // the implementation of cryptographic standards and algorithms.
 type BCCSP interface {
-
 	// KeyGen generates a key using opts.
 	KeyGen(opts KeyGenOpts) (k Key, err error)
 

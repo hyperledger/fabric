@@ -30,7 +30,8 @@ import (
 )
 
 func Setup(mock *mocks2.CollectionAccessPolicy, requiredPeerCount int, maxPeerCount int,
-	accessFilter privdata.Filter, orgs map[string]struct{}, memberOnlyRead bool) {
+	accessFilter privdata.Filter, orgs map[string]struct{}, memberOnlyRead bool,
+) {
 	mock.On("AccessFilter").Return(accessFilter)
 	mock.On("RequiredPeerCount").Return(requiredPeerCount)
 	mock.On("MaximumPeerCount").Return(maxPeerCount)

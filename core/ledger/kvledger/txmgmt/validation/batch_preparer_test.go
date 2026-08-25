@@ -145,8 +145,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	// bad envelope
 	gb = testutil.ConstructTestBlock(t, 11, 1, 1)
 	gb.Data = &common.BlockData{Data: [][]byte{{123}}}
-	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] =
-		txflags.NewWithValues(len(gb.Data.Data), peer.TxValidationCode_VALID)
+	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txflags.NewWithValues(len(gb.Data.Data), peer.TxValidationCode_VALID)
 	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
 	require.Error(t, err)
 	t.Log(err)
@@ -333,16 +332,15 @@ func TestTXMgrContainsPostOrderWrites(t *testing.T) {
 	blocks := testutil.ConstructTestBlocks(t, 2)
 
 	// block with config tx that produces post order writes
-	fakeTxProcessor.GenerateSimulationResultsStub =
-		func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
-			rwSetBuilder := rwsetutil.NewRWSetBuilder()
-			rwSetBuilder.AddToWriteSet("ns1", "key1", []byte("value1"))
-			_, err := rwSetBuilder.GetTxSimulationResults()
-			require.NoError(t, err)
-			s.(*mocklgr.TxSimulator).GetTxSimulationResultsReturns(
-				rwSetBuilder.GetTxSimulationResults())
-			return nil
-		}
+	fakeTxProcessor.GenerateSimulationResultsStub = func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
+		rwSetBuilder := rwsetutil.NewRWSetBuilder()
+		rwSetBuilder.AddToWriteSet("ns1", "key1", []byte("value1"))
+		_, err := rwSetBuilder.GetTxSimulationResults()
+		require.NoError(t, err)
+		s.(*mocklgr.TxSimulator).GetTxSimulationResultsReturns(
+			rwSetBuilder.GetTxSimulationResults())
+		return nil
+	}
 	batch, _, _, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blocks[0]}, true)
 	require.NoError(t, err)
 	require.True(t, batch.PubUpdates.ContainsPostOrderWrites)
@@ -353,11 +351,10 @@ func TestTXMgrContainsPostOrderWrites(t *testing.T) {
 	require.False(t, batch.PubUpdates.ContainsPostOrderWrites)
 
 	// test with block with invalid config tx
-	fakeTxProcessor.GenerateSimulationResultsStub =
-		func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
-			s.(*mocklgr.TxSimulator).GetTxSimulationResultsReturns(nil, nil)
-			return &ledger.InvalidTxError{Msg: "fake-message"}
-		}
+	fakeTxProcessor.GenerateSimulationResultsStub = func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
+		s.(*mocklgr.TxSimulator).GetTxSimulationResultsReturns(nil, nil)
+		return &ledger.InvalidTxError{Msg: "fake-message"}
+	}
 	batch, _, _, err = v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blocks[0]}, true)
 	require.NoError(t, err)
 	require.False(t, batch.PubUpdates.ContainsPostOrderWrites)
