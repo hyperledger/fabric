@@ -164,6 +164,12 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 		serverOpts = append(serverOpts, grpc.StatsHandler(serverConfig.ServerStatsHandler))
 	}
 
+	for _, sh := range serverConfig.StatsHandlers {
+		if sh != nil {
+			serverOpts = append(serverOpts, grpc.StatsHandler(sh))
+		}
+	}
+
 	grpcServer.server = grpc.NewServer(serverOpts...)
 
 	if serverConfig.HealthCheckEnabled {

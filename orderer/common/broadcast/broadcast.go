@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package broadcast
 
 import (
+	"context"
 	"io"
 	"time"
 
@@ -14,8 +15,12 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/internal/pkg/telemetry"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var logger = flogging.MustGetLogger("orderer.common.broadcast")
@@ -77,7 +82,7 @@ func (bh *Handler) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 			return err
 		}
 
-		resp := bh.ProcessMessage(msg, addr)
+		resp := bh.ProcessMessage(srv.Context(), msg, addr)
 		err = srv.Send(resp)
 		if resp.Status != cb.Status_SUCCESS {
 			return err
@@ -131,8 +136,46 @@ func (mt *MetricsTracker) BeginEnqueue() {
 	mt.EnqueueStartTime = time.Now()
 }
 
+// envelopeTraceContext recovers the trace context a client wrote into a
+// transaction before signing it.
+//
+// The Broadcast stream is long-lived and often carries transactions from many
+// different traces, so the trace context on the stream itself identifies at best
+// the connection and not the transaction. When the client has embedded its trace
+// context in the envelope, that is the accurate parent for this message.
+//
+// This re-parses the envelope header, which BroadcastChannelSupport will parse
+// again a moment later. That duplicate unmarshal is why the whole thing is
+// skipped unless tracing is actually exporting.
+func envelopeTraceContext(msg *cb.Envelope) trace.SpanContext {
+	if !telemetry.Enabled() {
+		return trace.SpanContext{}
+	}
+
+	payload, err := protoutil.UnmarshalPayload(msg.Payload)
+	if err != nil || payload.Header == nil {
+		return trace.SpanContext{}
+	}
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return trace.SpanContext{}
+	}
+	return telemetry.TraceContextFromHeaderExtension(chdr.Extension)
+}
+
 // ProcessMessage validates and enqueues a single message
-func (bh *Handler) ProcessMessage(msg *cb.Envelope, addr string) (resp *ab.BroadcastResponse) {
+func (bh *Handler) ProcessMessage(ctx context.Context, msg *cb.Envelope, addr string) (resp *ab.BroadcastResponse) {
+	// Prefer the trace context carried inside the signed transaction; fall back
+	// to the stream's, which is correct for clients that open a stream per
+	// transaction.
+	if sc := envelopeTraceContext(msg); sc.IsValid() {
+		ctx = trace.ContextWithRemoteSpanContext(ctx, sc)
+	}
+
+	tracer := telemetry.Tracer(telemetry.TracerBroadcast)
+	ctx, span := tracer.Start(ctx, "Broadcast.ProcessMessage", trace.WithSpanKind(trace.SpanKindServer))
+	defer span.End()
+
 	tracker := &MetricsTracker{
 		ChannelID: "unknown",
 		TxType:    "unknown",
@@ -143,6 +186,12 @@ func (bh *Handler) ProcessMessage(msg *cb.Envelope, addr string) (resp *ab.Broad
 		// a defer, resp gets the (always nil) current state of resp
 		// and not the return value
 		tracker.Record(resp)
+		if resp != nil {
+			span.SetAttributes(telemetry.AttrResponseStatus.String(resp.Status.String()))
+			if resp.Status != cb.Status_SUCCESS {
+				span.SetStatus(codes.Error, resp.Status.String())
+			}
+		}
 	}()
 	tracker.BeginValidate()
 
@@ -150,6 +199,11 @@ func (bh *Handler) ProcessMessage(msg *cb.Envelope, addr string) (resp *ab.Broad
 	if chdr != nil {
 		tracker.ChannelID = chdr.ChannelId
 		tracker.TxType = cb.HeaderType(chdr.Type).String()
+		span.SetAttributes(
+			telemetry.AttrChannelID.String(chdr.ChannelId),
+			telemetry.AttrTxID.String(chdr.TxId),
+			telemetry.AttrTxType.String(cb.HeaderType(chdr.Type).String()),
+		)
 	}
 	if err != nil {
 		logger.Warningf("[channel: %s] Could not get message processor for serving %s: %s", tracker.ChannelID, addr, err)
@@ -159,7 +213,12 @@ func (bh *Handler) ProcessMessage(msg *cb.Envelope, addr string) (resp *ab.Broad
 	if !isConfig {
 		logger.Debugf("[channel: %s] Broadcast is processing normal message from %s with txid '%s' of type %s", chdr.ChannelId, addr, chdr.TxId, cb.HeaderType_name[chdr.Type])
 
-		configSeq, err := processor.ProcessNormalMsg(msg)
+		var configSeq uint64
+		err = inSpan(ctx, tracer, "Broadcast.ProcessNormalMsg", func() error {
+			var err error
+			configSeq, err = processor.ProcessNormalMsg(msg)
+			return err
+		})
 		if err != nil {
 			logger.Warningf("[channel: %s] Rejecting broadcast of normal message from %s because of error: %s", chdr.ChannelId, addr, err)
 			return &ab.BroadcastResponse{Status: ClassifyError(err), Info: err.Error()}
@@ -167,12 +226,20 @@ func (bh *Handler) ProcessMessage(msg *cb.Envelope, addr string) (resp *ab.Broad
 		tracker.EndValidate()
 
 		tracker.BeginEnqueue()
-		if err = processor.WaitReady(); err != nil {
+		// WaitReady blocks while the consenter is applying backpressure, so a
+		// long span here means the ordering service is the bottleneck rather
+		// than validation or the client.
+		if err = inSpan(ctx, tracer, "Broadcast.WaitReady", processor.WaitReady); err != nil {
 			logger.Warningf("[channel: %s] Rejecting broadcast of message from %s with SERVICE_UNAVAILABLE: rejected by Consenter: %s", chdr.ChannelId, addr, err)
 			return &ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: err.Error()}
 		}
 
-		err = processor.Order(msg, configSeq)
+		// Order only enqueues the message for the consenter. The block it ends
+		// up in is cut asynchronously, so this span deliberately does not cover
+		// consensus; that is what the block commit spans on the peers show.
+		err = inSpan(ctx, tracer, "Broadcast.Order", func() error {
+			return processor.Order(msg, configSeq)
+		})
 		if err != nil {
 			logger.Warningf("[channel: %s] Rejecting broadcast of normal message from %s with SERVICE_UNAVAILABLE: rejected by Order: %s", chdr.ChannelId, addr, err)
 			return &ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: err.Error()}
@@ -180,7 +247,13 @@ func (bh *Handler) ProcessMessage(msg *cb.Envelope, addr string) (resp *ab.Broad
 	} else { // isConfig
 		logger.Debugf("[channel: %s] Broadcast is processing config update message from %s", chdr.ChannelId, addr)
 
-		config, configSeq, err := processor.ProcessConfigUpdateMsg(msg)
+		var config *cb.Envelope
+		var configSeq uint64
+		err = inSpan(ctx, tracer, "Broadcast.ProcessConfigUpdateMsg", func() error {
+			var err error
+			config, configSeq, err = processor.ProcessConfigUpdateMsg(msg)
+			return err
+		})
 		if err != nil {
 			logger.Warningf("[channel: %s] Rejecting broadcast of config message from %s because of error: %s", chdr.ChannelId, addr, err)
 			return &ab.BroadcastResponse{Status: ClassifyError(err), Info: err.Error()}
@@ -188,12 +261,14 @@ func (bh *Handler) ProcessMessage(msg *cb.Envelope, addr string) (resp *ab.Broad
 		tracker.EndValidate()
 
 		tracker.BeginEnqueue()
-		if err = processor.WaitReady(); err != nil {
+		if err = inSpan(ctx, tracer, "Broadcast.WaitReady", processor.WaitReady); err != nil {
 			logger.Warningf("[channel: %s] Rejecting broadcast of message from %s with SERVICE_UNAVAILABLE: rejected by Consenter: %s", chdr.ChannelId, addr, err)
 			return &ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: err.Error()}
 		}
 
-		err = processor.Configure(config, configSeq)
+		err = inSpan(ctx, tracer, "Broadcast.Configure", func() error {
+			return processor.Configure(config, configSeq)
+		})
 		if err != nil {
 			logger.Warningf("[channel: %s] Rejecting broadcast of config message from %s with SERVICE_UNAVAILABLE: rejected by Configure: %s", chdr.ChannelId, addr, err)
 			return &ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: err.Error()}
@@ -203,6 +278,22 @@ func (bh *Handler) ProcessMessage(msg *cb.Envelope, addr string) (resp *ab.Broad
 	logger.Debugf("[channel: %s] Broadcast has successfully enqueued message of type %s from %s", chdr.ChannelId, cb.HeaderType_name[chdr.Type], addr)
 
 	return &ab.BroadcastResponse{Status: cb.Status_SUCCESS}
+}
+
+// inSpan runs fn inside a child span, recording any error it returns. The
+// broadcast path is a sequence of discrete steps whose individual durations are
+// the whole point of tracing it, and this keeps that from burying the logic in
+// span bookkeeping.
+func inSpan(ctx context.Context, tracer trace.Tracer, name string, fn func() error) error {
+	_, span := tracer.Start(ctx, name)
+	defer span.End()
+
+	err := fn()
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+	return err
 }
 
 // ClassifyError converts an error type into a status code.

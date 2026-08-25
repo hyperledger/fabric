@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric/common/fabhttp"
 	"github.com/hyperledger/fabric/common/metadata"
+	"github.com/hyperledger/fabric/internal/pkg/telemetry"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -126,6 +127,15 @@ func (s *System) initializeMetricsProvider() error {
 		ks := kitstatsd.New(prefix, s)
 		s.Provider = &statsd.Provider{Statsd: ks}
 		s.statsd = ks
+		s.versionGauge = versionGauge(s.Provider)
+		return nil
+
+	case "otel":
+		// Exports every Fabric metric over OTLP to the same collector as the
+		// traces. Unlike the prometheus case there is no endpoint to register:
+		// the SDK pushes rather than being scraped, and it is configured through
+		// the OTEL_* environment variables alongside tracing.
+		s.Provider = telemetry.NewMetricsProvider()
 		s.versionGauge = versionGauge(s.Provider)
 		return nil
 

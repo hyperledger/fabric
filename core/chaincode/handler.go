@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strconv"
@@ -25,7 +26,10 @@ import (
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/scc"
+	"github.com/hyperledger/fabric/internal/pkg/telemetry"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -292,7 +296,7 @@ func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFun
 
 	var resp *pb.ChaincodeMessage
 	if err == nil {
-		resp, err = delegate(msg, txContext)
+		resp, err = h.invokeDelegate(msg, txContext, delegate)
 	}
 
 	if err != nil {
@@ -308,6 +312,59 @@ func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFun
 	meterLabels = append(meterLabels, "success", strconv.FormatBool(resp.Type != pb.ChaincodeMessage_ERROR))
 	h.Metrics.ShimRequestDuration.With(meterLabels...).Observe(time.Since(startTime).Seconds())
 	h.Metrics.ShimRequestsCompleted.With(meterLabels...).Add(1)
+}
+
+// invokeDelegate runs the handler for a chaincode callback, recording what it
+// cost.
+//
+// ShimStats is non-nil only when the enclosing endorsement span is recording,
+// so the nil check is what keeps an untraced peer — or an unsampled transaction
+// on a traced one — from doing any telemetry work at all on what is the busiest
+// path in the process for a query-heavy contract.
+//
+// By default the cost is folded into per-type totals, which the endorser
+// attaches to the invocation's span when it completes. That keeps a contract
+// reading five hundred keys to a handful of attributes rather than five hundred
+// spans. Detailed spans are emitted instead when explicitly asked for, since
+// they are worth their cost only while someone is investigating a specific
+// transaction.
+func (h *Handler) invokeDelegate(msg *pb.ChaincodeMessage, txContext *TransactionContext, delegate handleFunc) (*pb.ChaincodeMessage, error) {
+	if txContext.ShimStats == nil {
+		return delegate(msg, txContext)
+	}
+
+	var span trace.Span
+	if telemetry.ChaincodeShimMode() == telemetry.ShimSpans {
+		// The parent comes from the transaction context rather than from the
+		// caller, because this runs on its own goroutine with no ambient
+		// context. It is a remote span context so that the SDK treats it as an
+		// established parent rather than one it created.
+		_, span = telemetry.Tracer(telemetry.TracerChaincode).Start(
+			trace.ContextWithRemoteSpanContext(context.Background(), txContext.TraceContext),
+			"Chaincode."+msg.Type.String(),
+		)
+		if span.IsRecording() {
+			span.SetAttributes(
+				telemetry.AttrShimRequest.String(msg.Type.String()),
+				telemetry.AttrChannelID.String(msg.ChannelId),
+				telemetry.AttrChaincodeName.String(h.chaincodeID),
+				telemetry.AttrTxID.String(msg.Txid),
+			)
+		}
+	}
+
+	start := time.Now()
+	resp, err := delegate(msg, txContext)
+	txContext.ShimStats.Record(msg.Type, time.Since(start))
+
+	if span != nil {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+	}
+	return resp, err
 }
 
 func shorttxid(txid string) string {
@@ -1378,6 +1435,15 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 		Proposal:             txContext.Proposal,
 		TXSimulator:          txContext.TXSimulator,
 		HistoryQueryExecutor: txContext.HistoryQueryExecutor,
+		// Carried across the chaincode-to-chaincode boundary so the callee's
+		// state access stays in the caller's trace. The callee's spans are
+		// siblings of this invocation rather than children of it, since the span
+		// wrapping this call is not visible from here; they are told apart by
+		// their chaincode attribute.
+		TraceContext: txContext.TraceContext,
+		// Shared rather than copied, so that state the callee reads is counted
+		// against the transaction that ultimately caused it.
+		ShimStats: txContext.ShimStats,
 	}
 
 	if targetInstance.ChannelID != txContext.ChannelID {
