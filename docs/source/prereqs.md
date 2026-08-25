@@ -79,9 +79,9 @@ Optional: Install the latest Fabric supported version of [Go](https://golang.org
 installed (only required if you will be writing Go chaincode or SDK applications).
 
 ```shell
-$ brew install go@1.26.5
+$ brew install go@1.27.0
 $ go version
-go1.26.5 darwin/amd64
+go1.27.0 darwin/amd64
 ```
 
 ### JQ
