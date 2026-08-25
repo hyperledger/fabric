@@ -487,7 +487,8 @@ func (g *GossipService) Stop() {
 }
 
 func (g *GossipService) newLeaderElectionComponent(channelID string, callback func(bool),
-	electionMetrics *gossipmetrics.ElectionMetrics) election.LeaderElectionService {
+	electionMetrics *gossipmetrics.ElectionMetrics,
+) election.LeaderElectionService {
 	PKIid := g.mcs.GetPKIidOfCert(g.peerIdentity)
 	adapter := election.NewAdapter(g, PKIid, common.ChannelID(channelID), electionMetrics)
 	config := election.ElectionConfig{

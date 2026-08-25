@@ -214,7 +214,8 @@ func trimPvtWSet(pvtWSet *rwset.TxPvtReadWriteSet, filter ledger.PvtNsCollFilter
 }
 
 func trimPvtCollectionConfigs(configs map[string]*peer.CollectionConfigPackage,
-	filter ledger.PvtNsCollFilter) (map[string]*peer.CollectionConfigPackage, error) {
+	filter ledger.PvtNsCollFilter,
+) (map[string]*peer.CollectionConfigPackage, error) {
 	if filter == nil {
 		return configs, nil
 	}

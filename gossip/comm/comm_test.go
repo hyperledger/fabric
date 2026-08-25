@@ -131,7 +131,8 @@ func (*naiveSecProvider) VerifyByChannel(_ common.ChannelID, _ api.PeerIdentityT
 
 func newCommInstanceOnlyWithMetrics(t *testing.T, commMetrics *metrics.CommMetrics, sec *naiveSecProvider,
 	gRPCServer *comm.GRPCServer, certs *common.TLSCertificates,
-	secureDialOpts api.PeerSecureDialOpts, dialOpts ...grpc.DialOption) Comm {
+	secureDialOpts api.PeerSecureDialOpts, dialOpts ...grpc.DialOption,
+) Comm {
 	_, portString, err := net.SplitHostPort(gRPCServer.Address())
 	require.NoError(t, err)
 
@@ -164,7 +165,8 @@ func (c *commGRPC) Stop() {
 
 func newCommInstanceOnly(t *testing.T, sec *naiveSecProvider,
 	gRPCServer *comm.GRPCServer, certs *common.TLSCertificates,
-	secureDialOpts api.PeerSecureDialOpts, dialOpts ...grpc.DialOption) Comm {
+	secureDialOpts api.PeerSecureDialOpts, dialOpts ...grpc.DialOption,
+) Comm {
 	return newCommInstanceOnlyWithMetrics(t, disabledMetrics, sec, gRPCServer, certs, secureDialOpts, dialOpts...)
 }
 

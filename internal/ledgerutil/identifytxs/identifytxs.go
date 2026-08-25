@@ -407,7 +407,7 @@ func findAndWriteTxs(blockStore *blkstorage.BlockStore, inputKeyMapWrapper *comp
 						for _, hashedWrite := range hashedWrites {
 							keyHash := hashedWrite.GetKeyHash()
 							// Get hexadecimal encoding of key hash
-							ck := compKey{namespace: namespace, collection: (collection.CollectionName), key: hex.EncodeToString(keyHash)}
+							ck := compKey{namespace: namespace, collection: collection.CollectionName, key: hex.EncodeToString(keyHash)}
 							_, exists := inputKeyMap[ck]
 							if exists {
 								// Get txValidationCode

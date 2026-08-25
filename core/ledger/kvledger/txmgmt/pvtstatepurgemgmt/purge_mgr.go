@@ -147,7 +147,8 @@ func (p *PurgeMgr) addMissingPvtDataToWorkingSet(pvtKeys privacyenabledstate.Pvt
 // commit
 func (p *PurgeMgr) UpdateExpiryInfo(
 	pvtUpdates *privacyenabledstate.PvtUpdateBatch,
-	hashedUpdates *privacyenabledstate.HashedUpdateBatch) error {
+	hashedUpdates *privacyenabledstate.HashedUpdateBatch,
+) error {
 	expiryInfoUpdates, err := buildExpirySchedule(p.btlPolicy, pvtUpdates, hashedUpdates)
 	if err != nil {
 		return err
@@ -158,7 +159,8 @@ func (p *PurgeMgr) UpdateExpiryInfo(
 // AddExpiredEntriesToUpdateBatch add the expired pvtdata to the updateBatch of next block to be committed
 func (p *PurgeMgr) AddExpiredEntriesToUpdateBatch(
 	pvtUpdates *privacyenabledstate.PvtUpdateBatch,
-	hashedUpdates *privacyenabledstate.HashedUpdateBatch) error {
+	hashedUpdates *privacyenabledstate.HashedUpdateBatch,
+) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	if p.workingset.err != nil {

@@ -35,7 +35,8 @@ var (
 // grpc/credentials.TransportCredentials
 func NewServerTransportCredentials(
 	serverConfig *TLSConfig,
-	logger *flogging.FabricLogger) credentials.TransportCredentials {
+	logger *flogging.FabricLogger,
+) credentials.TransportCredentials {
 	// NOTE: unlike the default grpc/credentials implementation, we do not
 	// clone the tls.Config which allows us to update it dynamically
 	serverConfig.config.NextProtos = alpnProtoStr

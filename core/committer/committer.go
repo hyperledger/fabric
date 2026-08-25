@@ -29,7 +29,6 @@ import (
 // more support (such as Gossip) this interface will
 // change
 type Committer interface {
-
 	// CommitLegacy block and private data into the ledger
 	CommitLegacy(blockAndPvtData *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error
 

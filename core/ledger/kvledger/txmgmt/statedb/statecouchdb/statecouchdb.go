@@ -1020,7 +1020,8 @@ type resultsInfo struct {
 }
 
 func newQueryScanner(namespace string, db *couchDatabase, query string, internalQueryLimit,
-	limit int32, bookmark, startKey, endKey string) (*queryScanner, error) {
+	limit int32, bookmark, startKey, endKey string,
+) (*queryScanner, error) {
 	scanner := &queryScanner{namespace, db, &queryDefinition{startKey, endKey, query, internalQueryLimit}, &paginationInfo{-1, limit, bookmark}, &resultsInfo{0, nil}, false}
 	var err error
 	// query is defined, then execute the query and return the records and bookmark

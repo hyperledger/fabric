@@ -137,7 +137,8 @@ func newMockBrokerConfig(
 	saslPlain localconfig.SASLPlain,
 	retryOptions localconfig.Retry,
 	kafkaVersion sarama.KafkaVersion,
-	chosenStaticPartition int32) *sarama.Config {
+	chosenStaticPartition int32,
+) *sarama.Config {
 	brokerConfig := newBrokerConfig(
 		tlsConfig,
 		saslPlain,
@@ -175,7 +176,8 @@ func newMockLocalConfig(
 	enableTLS bool,
 	saslPlain localconfig.SASLPlain,
 	retryOptions localconfig.Retry,
-	verboseLog bool) *localconfig.TopLevel {
+	verboseLog bool,
+) *localconfig.TopLevel {
 	return &localconfig.TopLevel{
 		General: localconfig.General{
 			TLS: localconfig.TLS{

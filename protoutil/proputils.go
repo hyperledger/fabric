@@ -287,7 +287,8 @@ func CreateDeployProposalFromCDS(
 	policy []byte,
 	escc []byte,
 	vscc []byte,
-	collectionConfig []byte) (*peer.Proposal, string, error) {
+	collectionConfig []byte,
+) (*peer.Proposal, string, error) {
 	if collectionConfig == nil {
 		return createProposalFromCDS(channelID, cds, creator, "deploy", policy, escc, vscc)
 	}
@@ -303,7 +304,8 @@ func CreateUpgradeProposalFromCDS(
 	policy []byte,
 	escc []byte,
 	vscc []byte,
-	collectionConfig []byte) (*peer.Proposal, string, error) {
+	collectionConfig []byte,
+) (*peer.Proposal, string, error) {
 	if collectionConfig == nil {
 		return createProposalFromCDS(channelID, cds, creator, "upgrade", policy, escc, vscc)
 	}

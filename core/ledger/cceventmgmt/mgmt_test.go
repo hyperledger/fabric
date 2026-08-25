@@ -128,13 +128,12 @@ func TestLSCCListener(t *testing.T) {
 	GetMgr().Register(channelName, handler1)
 
 	mockInfoProvider := &mock.DeployedChaincodeInfoProvider{}
-	mockInfoProvider.UpdatedChaincodesStub =
-		func(map[string][]*kvrwset.KVWrite) ([]*ledger.ChaincodeLifecycleInfo, error) {
-			return []*ledger.ChaincodeLifecycleInfo{
-				{Name: cc1Def.Name},
-				{Name: cc2Def.Name},
-			}, nil
-		}
+	mockInfoProvider.UpdatedChaincodesStub = func(map[string][]*kvrwset.KVWrite) ([]*ledger.ChaincodeLifecycleInfo, error) {
+		return []*ledger.ChaincodeLifecycleInfo{
+			{Name: cc1Def.Name},
+			{Name: cc2Def.Name},
+		}, nil
+	}
 	mockInfoProvider.ChaincodeInfoStub = func(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
 		switch chaincodeName {
 		case cc1Def.Name:

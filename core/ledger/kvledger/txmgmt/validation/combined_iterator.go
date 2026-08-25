@@ -41,7 +41,8 @@ type combinedIterator struct {
 }
 
 func newCombinedIterator(db statedb.VersionedDB, updates *statedb.UpdateBatch,
-	ns string, startKey string, endKey string, includeEndKey bool) (*combinedIterator, error) {
+	ns string, startKey string, endKey string, includeEndKey bool,
+) (*combinedIterator, error) {
 	var dbItr statedb.ResultsIterator
 	var updatesItr statedb.ResultsIterator
 	var err error

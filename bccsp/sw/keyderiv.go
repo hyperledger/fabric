@@ -106,11 +106,10 @@ func (kd *ecdsaPrivateKeyKeyDeriver) KeyDeriv(key bccsp.Key, opts bccsp.KeyDeriv
 
 	// Compute temporary public key
 	tempX, tempY := ecdsaK.privKey.PublicKey.ScalarBaseMult(k.Bytes())
-	tempSK.PublicKey.X, tempSK.PublicKey.Y =
-		tempSK.PublicKey.Add(
-			ecdsaK.privKey.PublicKey.X, ecdsaK.privKey.PublicKey.Y,
-			tempX, tempY,
-		)
+	tempSK.PublicKey.X, tempSK.PublicKey.Y = tempSK.PublicKey.Add(
+		ecdsaK.privKey.PublicKey.X, ecdsaK.privKey.PublicKey.Y,
+		tempX, tempY,
+	)
 
 	// Verify temporary public key is a valid point on the reference curve
 	isOn := tempSK.Curve.IsOnCurve(tempSK.PublicKey.X, tempSK.PublicKey.Y)

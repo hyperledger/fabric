@@ -219,6 +219,5 @@ func constructTestGenesisBlock(channelid string) (*common.Block, error) {
 
 func setBlockFlagsToValid(block *common.Block) {
 	protoutil.InitBlockMetadata(block)
-	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] =
-		txflags.NewWithValues(len(block.Data.Data), protopeer.TxValidationCode_VALID)
+	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txflags.NewWithValues(len(block.Data.Data), protopeer.TxValidationCode_VALID)
 }

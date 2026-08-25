@@ -30,7 +30,6 @@ var (
 // BCCSPFactory is used to get instances of the BCCSP interface.
 // A Factory has name used to address it.
 type BCCSPFactory interface {
-
 	// Name returns the name of this factory
 	Name() string
 

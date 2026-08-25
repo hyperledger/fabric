@@ -78,7 +78,8 @@ type adapterImpl struct {
 
 // NewAdapter creates new leader election adapter
 func NewAdapter(gossip gossip, pkiid common.PKIidType, channel common.ChannelID,
-	metrics *metrics.ElectionMetrics) LeaderElectionAdapter {
+	metrics *metrics.ElectionMetrics,
+) LeaderElectionAdapter {
 	return &adapterImpl{
 		gossip:    gossip,
 		selfPKIid: pkiid,

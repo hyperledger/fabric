@@ -121,7 +121,7 @@ func TestExtractValidPvtData(t *testing.T) {
 	pvtdataCopy := func() map[uint64]*ledger.TxPvtData {
 		m := make(map[uint64]*ledger.TxPvtData, len(pvtData))
 		for k, v := range pvtData {
-			wsCopy := (proto.Clone(v.WriteSet)).(*rwset.TxPvtReadWriteSet)
+			wsCopy := proto.Clone(v.WriteSet).(*rwset.TxPvtReadWriteSet)
 			m[k] = &ledger.TxPvtData{
 				SeqInBlock: v.SeqInBlock,
 				WriteSet:   wsCopy,
@@ -277,8 +277,7 @@ func TestExtractValidPvtData(t *testing.T) {
 		require.NoError(t, err)
 
 		expectedOutput := pvtdataCopy()
-		expectedOutput[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset =
-			expectedOutput[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset[1:]
+		expectedOutput[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset = expectedOutput[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset[1:]
 
 		verifyBlocksPvtdata(t,
 			map[uint64][]*ledger.TxPvtData{

@@ -101,7 +101,8 @@ func NewRegistrar(
 	metricsProvider metrics.Provider,
 	bccsp bccsp.BCCSP,
 	clusterDialer *cluster.PredicateDialer,
-	callbacks ...channelconfig.BundleActor) *Registrar {
+	callbacks ...channelconfig.BundleActor,
+) *Registrar {
 	r := &Registrar{
 		config:                      config,
 		chains:                      make(map[string]*ChainSupport),

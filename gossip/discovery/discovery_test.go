@@ -399,7 +399,8 @@ func createDiscoveryInstanceThatGossipsWithInterceptors(port int, id string, boo
 }
 
 func createDiscoveryInstanceWithAnchorPeerTracker(port int, id string, bootstrapPeers []string, shouldGossip bool, pol DisclosurePolicy,
-	f func(*protoext.SignedGossipMessage), config DiscoveryConfig, anchorPeerTracker AnchorPeerTracker, logger util.Logger) *gossipInstance {
+	f func(*protoext.SignedGossipMessage), config DiscoveryConfig, anchorPeerTracker AnchorPeerTracker, logger util.Logger,
+) *gossipInstance {
 	comm := &dummyCommModule{
 		conns:          make(map[string]*grpc.ClientConn),
 		streams:        make(map[string]proto.Gossip_GossipStreamClient),

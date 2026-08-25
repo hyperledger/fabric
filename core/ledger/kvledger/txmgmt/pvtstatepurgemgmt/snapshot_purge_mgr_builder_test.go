@@ -87,7 +87,6 @@ func TestPurgeMgrBuilder(t *testing.T) {
 		expiringBlock  uint64
 		expectedOutput []*expiryInfo
 	}{
-
 		{
 			name:           "nothing-expires-at-block-6",
 			expiringBlock:  6,

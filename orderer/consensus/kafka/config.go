@@ -20,7 +20,8 @@ func newBrokerConfig(
 	saslPlain localconfig.SASLPlain,
 	retryOptions localconfig.Retry,
 	kafkaVersion sarama.KafkaVersion,
-	chosenStaticPartition int32) *sarama.Config {
+	chosenStaticPartition int32,
+) *sarama.Config {
 	// Max. size for request headers, etc. Set in bytes. Too big on purpose.
 	paddingDelta := 1 * 1024 * 1024
 
