@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// sleepTime - еhe time that must be set for the Init transaction to execute.
+// sleepTime - the time that must be set for the Init transaction to execute.
 // If you will be debugging, you should increase it.
 const sleepTime = time.Second
 

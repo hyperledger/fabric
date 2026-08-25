@@ -190,7 +190,7 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 	//   required: true
 	// responses:
 	//    '201':
-	//      description: Сhannel update successfully.
+	//      description: Channel update successfully.
 	//      schema:
 	//        "$ref": "#/definitions/channelInfo"
 	//      headers:
