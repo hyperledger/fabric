@@ -146,6 +146,24 @@ func MatchError(expected any, functionErrorDescription ...any) types.GomegaMatch
 	}
 }
 
+// MatchErrorStrictly succeeds iff actual is a non-nil error that matches the passed in
+// expected error according to errors.Is(actual, expected).
+//
+// This behavior differs from MatchError where
+//
+//	Expect(errors.New("some error")).To(MatchError(errors.New("some error")))
+//
+// succeeds, but errors.Is would return false so:
+//
+//	Expect(errors.New("some error")).To(MatchErrorStrictly(errors.New("some error")))
+//
+// fails.
+func MatchErrorStrictly(expected error) types.GomegaMatcher {
+	return &matchers.MatchErrorStrictlyMatcher{
+		Expected: expected,
+	}
+}
+
 // BeClosed succeeds if actual is a closed channel.
 // It is an error to pass a non-channel to BeClosed, it is also an error to pass nil
 //
@@ -515,8 +533,8 @@ func HaveExistingField(field string) types.GomegaMatcher {
 // and even interface values.
 //
 //	actual := 42
-//	Expect(actual).To(HaveValue(42))
-//	Expect(&actual).To(HaveValue(42))
+//	Expect(actual).To(HaveValue(Equal(42)))
+//	Expect(&actual).To(HaveValue(Equal(42)))
 func HaveValue(matcher types.GomegaMatcher) types.GomegaMatcher {
 	return &matchers.HaveValueMatcher{
 		Matcher: matcher,
@@ -601,6 +619,18 @@ func BeARegularFile() types.GomegaMatcher {
 // Actual must be a string representing the abs path to the file being checked.
 func BeADirectory() types.GomegaMatcher {
 	return &matchers.BeADirectoryMatcher{}
+}
+
+// BeASlice succeeds if actual is a value of slice type.
+// This is useful when actual has type any (interface{}) and you want to assert it is a slice.
+func BeASlice() types.GomegaMatcher {
+	return &matchers.BeASliceMatcher{}
+}
+
+// BeAnArray succeeds if actual is a value of array type.
+// This is useful when actual has type any (interface{}) and you want to assert it is an array.
+func BeAnArray() types.GomegaMatcher {
+	return &matchers.BeAnArrayMatcher{}
 }
 
 // HaveHTTPStatus succeeds if the Status or StatusCode field of an HTTP response matches.

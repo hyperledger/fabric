@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 )
 
@@ -48,7 +47,7 @@ type sourceData struct {
 }
 
 func (s *sourceData) ReadCloser() (io.ReadCloser, error) {
-	return ioutil.NopCloser(bytes.NewReader(s.data)), nil
+	return io.NopCloser(bytes.NewReader(s.data)), nil
 }
 
 // sourceReadCloser represents an input stream with Close method.
@@ -68,6 +67,8 @@ func parseDataSource(source interface{}) (dataSource, error) {
 		return &sourceData{s}, nil
 	case io.ReadCloser:
 		return &sourceReadCloser{s}, nil
+	case io.Reader:
+		return &sourceReadCloser{io.NopCloser(s)}, nil
 	default:
 		return nil, fmt.Errorf("error parsing data source: unknown type %q", s)
 	}

@@ -1,6 +1,7 @@
 # INI
 
-[![Build Status](https://img.shields.io/travis/go-ini/ini/master.svg?style=for-the-badge&logo=travis)](https://travis-ci.org/go-ini/ini) [![Sourcegraph](https://img.shields.io/badge/view%20on-Sourcegraph-brightgreen.svg?style=for-the-badge&logo=sourcegraph)](https://sourcegraph.com/github.com/go-ini/ini)
+[![GitHub Workflow Status](https://img.shields.io/github/checks-status/go-ini/ini/main?logo=github&style=for-the-badge)](https://github.com/go-ini/ini/actions?query=branch%3Amain)
+[![GoDoc](https://img.shields.io/badge/GoDoc-Reference-blue?style=for-the-badge&logo=go)](https://pkg.go.dev/github.com/go-ini/ini?tab=doc)
 
 ![](https://avatars0.githubusercontent.com/u/10216035?v=3&s=200)
 
@@ -8,7 +9,7 @@ Package ini provides INI file read and write functionality in Go.
 
 ## Features
 
-- Load from multiple data sources(`[]byte`, file and `io.ReadCloser`) with overwrites.
+- Load from multiple data sources(file, `[]byte`, `io.Reader` and `io.ReadCloser`) with overwrites.
 - Read with recursion values.
 - Read with parent-child sections.
 - Read with auto-increment key names.
@@ -21,18 +22,23 @@ Package ini provides INI file read and write functionality in Go.
 
 ## Installation
 
-The minimum requirement of Go is **1.6**.
+The minimum requirement of Go is **1.13**.
 
 ```sh
-$ go get gopkg.in/ini.v1
+$ go get gopkg.in/ini.v1@latest
 ```
 
-Please add `-u` flag to update in the future.
+> [!NOTE]
+> If you previously used `github.com/go-ini/ini` as the import path in your project, without updating all of your code, you can use the following command to replace the import path in your `go.mod`:
+> ```zsh
+> go mod edit -replace github.com/go-ini/ini=gopkg.in/ini.v1@latest
+> ```
 
 ## Getting Help
 
 - [Getting Started](https://ini.unknwon.io/docs/intro/getting_started)
 - [API Documentation](https://gowalker.org/gopkg.in/ini.v1)
+- 中国大陆镜像：https://ini.unknwon.cn
 
 ## License
 
