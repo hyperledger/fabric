@@ -76,6 +76,16 @@ func (c *Cache) SaveToFileConcurrent(filePath string, concurrency int) error {
 	return nil
 }
 
+// LoadFromFileMaxBytes loads cache data from the specified filePath,
+// enforcing that the cache capacity matches the provided maxBytes value.
+//
+// Returns an error if the stored cache's capacity differs from maxBytes.
+//
+// See SaveToFile* for functions that persist cache data to a file.
+func LoadFromFileMaxBytes(filePath string, maxBytes int) (*Cache, error) {
+	return load(filePath, maxBytes)
+}
+
 // LoadFromFile loads cache data from the given filePath.
 //
 // See SaveToFile* for saving cache data to file.
@@ -103,7 +113,7 @@ func (c *Cache) save(dir string, workersCount int) error {
 	// Save buckets by workersCount concurrent workers.
 	workCh := make(chan int, workersCount)
 	results := make(chan error)
-	for i := 0; i < workersCount; i++ {
+	for i := range workersCount {
 		go func(workerNum int) {
 			results <- saveBuckets(c.buckets[:], workCh, dir, workerNum)
 		}(i)
@@ -116,7 +126,7 @@ func (c *Cache) save(dir string, workersCount int) error {
 
 	// Read results.
 	var err error
-	for i := 0; i < workersCount; i++ {
+	for range workersCount {
 		result := <-results
 		if result != nil && err == nil {
 			err = result
@@ -134,14 +144,14 @@ func load(filePath string, maxBytes int) (*Cache, error) {
 		maxBucketBytes := uint64((maxBytes + bucketsCount - 1) / bucketsCount)
 		expectedBucketChunks := (maxBucketBytes + chunkSize - 1) / chunkSize
 		if maxBucketChunks != expectedBucketChunks {
-			return nil, fmt.Errorf("cache file %s contains maxBytes=%d; want %d", filePath, maxBytes, expectedBucketChunks*chunkSize*bucketsCount)
+			return nil, fmt.Errorf("cache file %s contains unexpected number of bucket chunks; got %d; want %d", filePath, maxBucketChunks, expectedBucketChunks)
 		}
 	}
 
 	// Read bucket files from filePath dir.
 	d, err := os.Open(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("cannot open %q: %s", filePath, err)
+		return nil, fmt.Errorf("cannot open %q: %w", filePath, err)
 	}
 	defer func() {
 		_ = d.Close()
@@ -164,7 +174,7 @@ func load(filePath string, maxBytes int) (*Cache, error) {
 		}(filePath + "/" + fn)
 	}
 	err = nil
-	for i := 0; i < workersCount; i++ {
+	for range workersCount {
 		result := <-results
 		if result != nil && err == nil {
 			err = result
@@ -206,7 +216,7 @@ func loadMetadata(dir string) (uint64, error) {
 	metadataPath := dir + "/metadata.bin"
 	metadataFile, err := os.Open(metadataPath)
 	if err != nil {
-		return 0, fmt.Errorf("cannot open %q: %s", metadataPath, err)
+		return 0, fmt.Errorf("cannot open %q: %w", metadataPath, err)
 	}
 	defer func() {
 		_ = metadataFile.Close()
@@ -316,7 +326,7 @@ func (b *bucket) Save(w io.Writer) error {
 	if err := writeUint64(w, uint64(chunksLen)); err != nil {
 		return fmt.Errorf("cannot write len(b.chunks): %s", err)
 	}
-	for chunkIdx := 0; chunkIdx < chunksLen; chunkIdx++ {
+	for chunkIdx := range chunksLen {
 		chunk := b.chunks[chunkIdx][:chunkSize]
 		if _, err := w.Write(chunk); err != nil {
 			return fmt.Errorf("cannot write b.chunks[%d]: %s", chunkIdx, err)
@@ -372,7 +382,7 @@ func (b *bucket) Load(r io.Reader, maxChunks uint64) error {
 	if currChunkIdx > 0 && currChunkIdx >= chunksLen {
 		return fmt.Errorf("too big bIdx=%d; should be smaller than %d", bIdx, chunksLen*chunkSize)
 	}
-	for chunkIdx := uint64(0); chunkIdx < chunksLen; chunkIdx++ {
+	for chunkIdx := range chunksLen {
 		chunk := getChunk()
 		chunks[chunkIdx] = chunk
 		if _, err := io.ReadFull(r, chunk); err != nil {

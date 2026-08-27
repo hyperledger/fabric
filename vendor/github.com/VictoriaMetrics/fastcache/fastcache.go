@@ -217,6 +217,10 @@ func (c *Cache) UpdateStats(s *Stats) {
 type bucket struct {
 	mu sync.RWMutex
 
+	getCalls uint64
+	setCalls uint64
+	misses   uint64
+
 	// chunks is a ring buffer with encoded (k, v) pairs.
 	// It consists of 64KB chunks.
 	chunks [][]byte
@@ -224,15 +228,12 @@ type bucket struct {
 	// m maps hash(k) to idx of (k, v) pair in chunks.
 	m map[uint64]uint64
 
-	// idx points to chunks for writing the next (k, v) pair.
-	idx uint64
-
 	// gen is the generation of chunks.
 	gen uint64
 
-	getCalls    uint64
-	setCalls    uint64
-	misses      uint64
+	// idx points to chunks for writing the next (k, v) pair.
+	idx uint64
+
 	collisions  uint64
 	corruptions uint64
 }
@@ -257,10 +258,7 @@ func (b *bucket) Reset() {
 		putChunk(chunks[i])
 		chunks[i] = nil
 	}
-	bm := b.m
-	for k := range bm {
-		delete(bm, k)
-	}
+	b.m = make(map[uint64]uint64)
 	b.idx = 0
 	b.gen = 1
 	atomic.StoreUint64(&b.getCalls, 0)
@@ -275,13 +273,27 @@ func (b *bucket) cleanLocked() {
 	bGen := b.gen & ((1 << genSizeBits) - 1)
 	bIdx := b.idx
 	bm := b.m
-	for k, v := range bm {
+	newItems := 0
+	for _, v := range bm {
 		gen := v >> bucketSizeBits
 		idx := v & ((1 << bucketSizeBits) - 1)
 		if (gen+1 == bGen || gen == maxGen && bGen == 1) && idx >= bIdx || gen == bGen && idx < bIdx {
-			continue
+			newItems++
 		}
-		delete(bm, k)
+	}
+	if newItems < len(bm) {
+		// Re-create b.m with valid items, which weren't expired yet instead of deleting expired items from b.m.
+		// This should reduce memory fragmentation and the number Go objects behind b.m.
+		// See https://github.com/VictoriaMetrics/VictoriaMetrics/issues/5379
+		bmNew := make(map[uint64]uint64, newItems)
+		for k, v := range bm {
+			gen := v >> bucketSizeBits
+			idx := v & ((1 << bucketSizeBits) - 1)
+			if (gen+1 == bGen || gen == maxGen && bGen == 1) && idx >= bIdx || gen == bGen && idx < bIdx {
+				bmNew[k] = v
+			}
+		}
+		b.m = bmNew
 	}
 }
 
@@ -322,9 +334,9 @@ func (b *bucket) Set(k, v []byte, h uint64) {
 		return
 	}
 
+	b.mu.Lock()
 	chunks := b.chunks
 	needClean := false
-	b.mu.Lock()
 	idx := b.idx
 	idxNew := idx + kvLen
 	chunkIdx := idx / chunkSize
@@ -364,10 +376,10 @@ func (b *bucket) Set(k, v []byte, h uint64) {
 }
 
 func (b *bucket) Get(dst, k []byte, h uint64, returnDst bool) ([]byte, bool) {
+	b.mu.RLock()
 	atomic.AddUint64(&b.getCalls, 1)
 	found := false
 	chunks := b.chunks
-	b.mu.RLock()
 	v := b.m[h]
 	bGen := b.gen & ((1 << genSizeBits) - 1)
 	if v > 0 {
