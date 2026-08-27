@@ -52,6 +52,7 @@ func (KafkaMessageRegular_Class) EnumDescriptor() ([]byte, []int) {
 // that the Kafka-based orderer deals with.
 type KafkaMessage struct {
 	// Types that are valid to be assigned to Type:
+	//
 	//	*KafkaMessage_Regular
 	//	*KafkaMessage_TimeToCut
 	//	*KafkaMessage_Connect

@@ -128,7 +128,7 @@ func (cli *Client) sendRequest(ctx context.Context, method, path string, query u
 // when failing to make a connection, On error, any Response can be ignored.
 // A non-2xx status code doesn't cause an error.
 func (cli *Client) doRequest(req *http.Request) (*http.Response, error) {
-	resp, err := cli.client.Do(req)
+	resp, err := cli.client.Do(req) // #nosec G704 -- ignore "SSRF via taint analysis"; API client intentionally sends caller-provided requests/URLs.
 	if err == nil {
 		return resp, nil
 	}
@@ -166,12 +166,12 @@ func (cli *Client) doRequest(req *http.Request) (*http.Response, error) {
 	}
 
 	if errors.Is(err, os.ErrPermission) {
-		// Don't include request errors ("Get "http://%2Fvar%2Frun%2Fdocker.sock/v1.51/version"),
+		// Don't include request errors (Get "http://%2Fvar%2Frun%2Fdocker.sock/v1.51/version"),
 		// which are irrelevant if we weren't able to connect.
 		return nil, errConnectionFailed{fmt.Errorf("permission denied while trying to connect to the docker API at %v", cli.host)}
 	}
 	if errors.Is(err, os.ErrNotExist) {
-		// Unwrap the error to remove request errors ("Get "http://%2Fvar%2Frun%2Fdocker.sock/v1.51/version"),
+		// Unwrap the error to remove request errors (Get "http://%2Fvar%2Frun%2Fdocker.sock/v1.51/version"),
 		// which are irrelevant if we weren't able to connect.
 		err = errors.Unwrap(err)
 		return nil, errConnectionFailed{fmt.Errorf("failed to connect to the docker API at %v; check if the path is correct and if the daemon is running: %w", cli.host, err)}
@@ -195,13 +195,16 @@ func (cli *Client) doRequest(req *http.Request) (*http.Response, error) {
 	// Although there's not a strongly typed error for this in go-winio,
 	// lots of people are using the default configuration for the docker
 	// daemon on Windows where the daemon is listening on a named pipe
-	// `//./pipe/docker_engine, and the client must be running elevated.
-	// Give users a clue rather than the not-overly useful message
-	// such as `error during connect: Get http://%2F%2F.%2Fpipe%2Fdocker_engine/v1.26/info:
-	// open //./pipe/docker_engine: The system cannot find the file specified.`.
+	// ("//./pipe/docker_engine"), and the client must be running elevated.
+	//
+	// Give users a clue rather than the not-overly useful message such as;
+	//
+	// 	open //./pipe/docker_engine: The system cannot find the file specified.
+	//
 	// Note we can't string compare "The system cannot find the file specified" as
-	// this is localised - for example in French the error would be
-	// `open //./pipe/docker_engine: Le fichier spécifié est introuvable.`
+	// this is localized; for example. in French the error would be;
+	//
+	//	open //./pipe/docker_engine: Le fichier spécifié est introuvable.
 	if strings.Contains(err.Error(), `open //./pipe/docker_engine`) {
 		// Checks if client is running with elevated privileges
 		if f, elevatedErr := os.Open(`\\.\PHYSICALDRIVE0`); elevatedErr != nil {
@@ -297,7 +300,7 @@ func checkResponseErr(serverResp *http.Response) (retErr error) {
 	} else {
 		// Fall back to returning the response as-is for situations where a
 		// plain text error is returned. This branch may also catch
-		// situations where a proxy is involved, returning a HTML response.
+		// situations where a proxy is involved, returning an HTML response.
 		daemonErr = errors.New(strings.TrimSpace(string(body)))
 	}
 	return fmt.Errorf("Error response from daemon: %w", daemonErr)
@@ -314,12 +317,17 @@ func (cli *Client) addHeaders(req *http.Request, headers http.Header) *http.Requ
 		req.Header[http.CanonicalHeaderKey(k)] = v
 	}
 
-	if cli.userAgent != nil {
-		if *cli.userAgent == "" {
-			req.Header.Del("User-Agent")
-		} else {
-			req.Header.Set("User-Agent", *cli.userAgent)
+	if cli.userAgent == nil {
+		// No custom User-Agent set: use the default.
+		if req.Header.Get("User-Agent") == "" {
+			req.Header.Set("User-Agent", defaultUserAgent())
 		}
+	} else if *cli.userAgent == "" {
+		// User-Agent set to empty value; remove User-Agent.
+		req.Header.Del("User-Agent")
+	} else {
+		// Custom User-Agent set.
+		req.Header.Set("User-Agent", *cli.userAgent)
 	}
 	return req
 }
@@ -341,7 +349,7 @@ func jsonEncode(data any) (io.Reader, error) {
 	// encoding/json encodes a nil pointer as the JSON document `null`,
 	// irrespective of whether the type implements json.Marshaler or encoding.TextMarshaler.
 	// That is almost certainly not what the caller intended as the request body.
-	if v := reflect.ValueOf(data); v.Kind() == reflect.Ptr && v.IsNil() {
+	if v := reflect.ValueOf(data); v.Kind() == reflect.Pointer && v.IsNil() {
 		return http.NoBody, nil
 	}
 

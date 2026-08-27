@@ -20,8 +20,8 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
-//ChaincodeEvent is used for events and registrations that are specific to chaincode
-//string type - "chaincode"
+// ChaincodeEvent is used for events and registrations that are specific to chaincode
+// string type - "chaincode"
 type ChaincodeEvent struct {
 	ChaincodeId          string   `protobuf:"bytes,1,opt,name=chaincode_id,json=chaincodeId,proto3" json:"chaincode_id,omitempty"`
 	TxId                 string   `protobuf:"bytes,2,opt,name=tx_id,json=txId,proto3" json:"tx_id,omitempty"`

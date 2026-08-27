@@ -566,6 +566,7 @@ type RangeQueryInfo struct {
 	EndKey       string `protobuf:"bytes,2,opt,name=end_key,json=endKey,proto3" json:"end_key,omitempty"`
 	ItrExhausted bool   `protobuf:"varint,3,opt,name=itr_exhausted,json=itrExhausted,proto3" json:"itr_exhausted,omitempty"`
 	// Types that are valid to be assigned to ReadsInfo:
+	//
 	//	*RangeQueryInfo_RawReads
 	//	*RangeQueryInfo_ReadsMerkleHashes
 	ReadsInfo            isRangeQueryInfo_ReadsInfo `protobuf_oneof:"reads_info"`

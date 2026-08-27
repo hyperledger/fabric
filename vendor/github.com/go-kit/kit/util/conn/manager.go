@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 )
 
 // Dialer imitates net.Dial. Dialer is assumed to yield connections that are
@@ -117,6 +117,7 @@ func (m *Manager) loop() {
 		case err := <-m.putc:
 			if err != nil && conn != nil {
 				m.logger.Log("err", err)
+				conn.Close()
 				conn = nil                            // connection is bad
 				reconnectc = m.after(time.Nanosecond) // trigger immediately
 			}

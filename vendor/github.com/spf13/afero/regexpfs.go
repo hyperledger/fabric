@@ -10,7 +10,6 @@ import (
 // The RegexpFs filters files (not directories) by regular expression. Only
 // files matching the given regexp will be allowed, all others get a ENOENT error (
 // "No such file or directory").
-//
 type RegexpFs struct {
 	re     *regexp.Regexp
 	source Fs
@@ -58,6 +57,13 @@ func (r *RegexpFs) Chmod(name string, mode os.FileMode) error {
 		return err
 	}
 	return r.source.Chmod(name, mode)
+}
+
+func (r *RegexpFs) Chown(name string, uid, gid int) error {
+	if err := r.dirOrMatches(name); err != nil {
+		return err
+	}
+	return r.source.Chown(name, uid, gid)
 }
 
 func (r *RegexpFs) Name() string {

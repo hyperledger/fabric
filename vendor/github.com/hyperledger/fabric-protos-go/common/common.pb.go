@@ -336,19 +336,19 @@ type ChannelHeader struct {
 	// Identifier of the channel this message is bound for
 	ChannelId string `protobuf:"bytes,4,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
 	// An unique identifier that is used end-to-end.
-	//  -  set by higher layers such as end user or SDK
-	//  -  passed to the endorser (which will check for uniqueness)
-	//  -  as the header is passed along unchanged, it will be
+	//   - set by higher layers such as end user or SDK
+	//   - passed to the endorser (which will check for uniqueness)
+	//   - as the header is passed along unchanged, it will be
 	//     be retrieved by the committer (uniqueness check here as well)
-	//  -  to be stored in the ledger
+	//   - to be stored in the ledger
 	TxId string `protobuf:"bytes,5,opt,name=tx_id,json=txId,proto3" json:"tx_id,omitempty"`
 	// The epoch in which this header was generated, where epoch is defined based on block height
 	// Epoch in which the response has been generated. This field identifies a
 	// logical window of time. A proposal response is accepted by a peer only if
 	// two conditions hold:
-	// 1. the epoch specified in the message is the current epoch
-	// 2. this message has been only seen once during this epoch (i.e. it hasn't
-	//    been replayed)
+	//  1. the epoch specified in the message is the current epoch
+	//  2. this message has been only seen once during this epoch (i.e. it hasn't
+	//     been replayed)
 	Epoch uint64 `protobuf:"varint,6,opt,name=epoch,proto3" json:"epoch,omitempty"`
 	// Extension that may be attached based on the header type
 	Extension []byte `protobuf:"bytes,7,opt,name=extension,proto3" json:"extension,omitempty"`
