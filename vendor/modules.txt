@@ -51,8 +51,8 @@ github.com/Microsoft/go-winio/pkg/guid
 ## explicit
 github.com/Shopify/sarama
 github.com/Shopify/sarama/mocks
-# github.com/VictoriaMetrics/fastcache v1.9.0
-## explicit; go 1.13
+# github.com/VictoriaMetrics/fastcache v1.13.3
+## explicit; go 1.24.0
 github.com/VictoriaMetrics/fastcache
 # github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230817163708-4b3de6d91874
 ## explicit; go 1.19
@@ -179,7 +179,7 @@ github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/empty
 github.com/golang/protobuf/ptypes/timestamp
-# github.com/golang/snappy v0.0.4
+# github.com/golang/snappy v1.0.0
 ## explicit
 github.com/golang/snappy
 # github.com/google/go-cmp v0.7.0
