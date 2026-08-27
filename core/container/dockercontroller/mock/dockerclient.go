@@ -700,6 +700,21 @@ type DockerClient struct {
 		result1 client.ExecStartResult
 		result2 error
 	}
+	ImageAttestationsStub        func(context.Context, string, ...client.ImageAttestationsOption) (client.ImageAttestationsResult, error)
+	imageAttestationsMutex       sync.RWMutex
+	imageAttestationsArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 []client.ImageAttestationsOption
+	}
+	imageAttestationsReturns struct {
+		result1 client.ImageAttestationsResult
+		result2 error
+	}
+	imageAttestationsReturnsOnCall map[int]struct {
+		result1 client.ImageAttestationsResult
+		result2 error
+	}
 	ImageBuildStub        func(context.Context, io.Reader, client.ImageBuildOptions) (client.ImageBuildResult, error)
 	imageBuildMutex       sync.RWMutex
 	imageBuildArgsForCall []struct {
@@ -4752,6 +4767,72 @@ func (fake *DockerClient) ExecStartReturnsOnCall(i int, result1 client.ExecStart
 	}
 	fake.execStartReturnsOnCall[i] = struct {
 		result1 client.ExecStartResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageAttestations(arg1 context.Context, arg2 string, arg3 ...client.ImageAttestationsOption) (client.ImageAttestationsResult, error) {
+	fake.imageAttestationsMutex.Lock()
+	ret, specificReturn := fake.imageAttestationsReturnsOnCall[len(fake.imageAttestationsArgsForCall)]
+	fake.imageAttestationsArgsForCall = append(fake.imageAttestationsArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 []client.ImageAttestationsOption
+	}{arg1, arg2, arg3})
+	stub := fake.ImageAttestationsStub
+	fakeReturns := fake.imageAttestationsReturns
+	fake.recordInvocation("ImageAttestations", []interface{}{arg1, arg2, arg3})
+	fake.imageAttestationsMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *DockerClient) ImageAttestationsCallCount() int {
+	fake.imageAttestationsMutex.RLock()
+	defer fake.imageAttestationsMutex.RUnlock()
+	return len(fake.imageAttestationsArgsForCall)
+}
+
+func (fake *DockerClient) ImageAttestationsCalls(stub func(context.Context, string, ...client.ImageAttestationsOption) (client.ImageAttestationsResult, error)) {
+	fake.imageAttestationsMutex.Lock()
+	defer fake.imageAttestationsMutex.Unlock()
+	fake.ImageAttestationsStub = stub
+}
+
+func (fake *DockerClient) ImageAttestationsArgsForCall(i int) (context.Context, string, []client.ImageAttestationsOption) {
+	fake.imageAttestationsMutex.RLock()
+	defer fake.imageAttestationsMutex.RUnlock()
+	argsForCall := fake.imageAttestationsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *DockerClient) ImageAttestationsReturns(result1 client.ImageAttestationsResult, result2 error) {
+	fake.imageAttestationsMutex.Lock()
+	defer fake.imageAttestationsMutex.Unlock()
+	fake.ImageAttestationsStub = nil
+	fake.imageAttestationsReturns = struct {
+		result1 client.ImageAttestationsResult
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *DockerClient) ImageAttestationsReturnsOnCall(i int, result1 client.ImageAttestationsResult, result2 error) {
+	fake.imageAttestationsMutex.Lock()
+	defer fake.imageAttestationsMutex.Unlock()
+	fake.ImageAttestationsStub = nil
+	if fake.imageAttestationsReturnsOnCall == nil {
+		fake.imageAttestationsReturnsOnCall = make(map[int]struct {
+			result1 client.ImageAttestationsResult
+			result2 error
+		})
+	}
+	fake.imageAttestationsReturnsOnCall[i] = struct {
+		result1 client.ImageAttestationsResult
 		result2 error
 	}{result1, result2}
 }

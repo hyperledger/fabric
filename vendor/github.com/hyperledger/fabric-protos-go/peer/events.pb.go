@@ -89,6 +89,7 @@ type FilteredTransaction struct {
 	Type             common.HeaderType `protobuf:"varint,2,opt,name=type,proto3,enum=common.HeaderType" json:"type,omitempty"`
 	TxValidationCode TxValidationCode  `protobuf:"varint,3,opt,name=tx_validation_code,json=txValidationCode,proto3,enum=protos.TxValidationCode" json:"tx_validation_code,omitempty"`
 	// Types that are valid to be assigned to Data:
+	//
 	//	*FilteredTransaction_TransactionActions
 	Data                 isFilteredTransaction_Data `protobuf_oneof:"Data"`
 	XXX_NoUnkeyedLiteral struct{}                   `json:"-"`
@@ -307,6 +308,7 @@ func (m *BlockAndPrivateData) GetPrivateDataMap() map[uint64]*rwset.TxPvtReadWri
 // DeliverResponse
 type DeliverResponse struct {
 	// Types that are valid to be assigned to Type:
+	//
 	//	*DeliverResponse_Status
 	//	*DeliverResponse_Block
 	//	*DeliverResponse_FilteredBlock

@@ -718,6 +718,7 @@ func (m *ApproveChaincodeDefinitionForMyOrgArgs) GetSource() *ChaincodeSource {
 
 type ChaincodeSource struct {
 	// Types that are valid to be assigned to Type:
+	//
 	//	*ChaincodeSource_Unavailable_
 	//	*ChaincodeSource_LocalPackage
 	Type                 isChaincodeSource_Type `protobuf_oneof:"Type"`

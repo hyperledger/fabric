@@ -271,6 +271,7 @@ var xxx_messageInfo_SeekNextCommit proto.InternalMessageInfo
 
 type SeekPosition struct {
 	// Types that are valid to be assigned to Type:
+	//
 	//	*SeekPosition_Newest
 	//	*SeekPosition_Oldest
 	//	*SeekPosition_Specified
@@ -448,6 +449,7 @@ func (m *SeekInfo) GetErrorResponse() SeekInfo_SeekErrorResponse {
 
 type DeliverResponse struct {
 	// Types that are valid to be assigned to Type:
+	//
 	//	*DeliverResponse_Status
 	//	*DeliverResponse_Block
 	Type                 isDeliverResponse_Type `protobuf_oneof:"Type"`
