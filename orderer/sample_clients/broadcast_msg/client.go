@@ -10,7 +10,7 @@ import (
 	"os"
 	"sync"
 
-	pb "github.com/cheggaaa/pb"
+	"github.com/cheggaaa/pb"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/bccsp/factory"

@@ -20,7 +20,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
-	raft "go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
 )
 
@@ -37,11 +37,11 @@ var MaxSnapshotFiles = 4
 // them in implementation, e.g. ApplySnapshot.
 type MemoryStorage interface {
 	raft.Storage
-	Append(entries []raftpb.Entry) error
-	SetHardState(st raftpb.HardState) error
-	CreateSnapshot(i uint64, cs *raftpb.ConfState, data []byte) (raftpb.Snapshot, error)
+	Append(entries []*raftpb.Entry) error
+	SetHardState(st *raftpb.HardState) error
+	CreateSnapshot(i uint64, cs *raftpb.ConfState, data []byte) (*raftpb.Snapshot, error)
 	Compact(compactIndex uint64) error
-	ApplySnapshot(snap raftpb.Snapshot) error
+	ApplySnapshot(snap *raftpb.Snapshot) error
 }
 
 // RaftStorage encapsulates storages needed for etcd/raft data, i.e. memory, wal
@@ -84,7 +84,7 @@ func CreateStorage(
 	} else {
 		// snapshot found
 		lg.Debugf("Loaded snapshot at Term %d and Index %d, Nodes: %+v",
-			snapshot.Metadata.Term, snapshot.Metadata.Index, snapshot.Metadata.ConfState.Voters)
+			snapshot.Metadata.Term, snapshot.GetMetadata().GetIndex(), snapshot.Metadata.ConfState.Voters)
 	}
 
 	w, st, ents, err := createOrReadWAL(lg, walDir, snapshot)
@@ -94,12 +94,12 @@ func CreateStorage(
 
 	if snapshot != nil {
 		lg.Debugf("Applying snapshot to raft MemoryStorage")
-		if err := ram.ApplySnapshot(*snapshot); err != nil {
+		if err := ram.ApplySnapshot(snapshot); err != nil {
 			return nil, errors.Errorf("Failed to apply snapshot to memory: %s", err)
 		}
 	}
 
-	lg.Debugf("Setting HardState to {Term: %d, Commit: %d}", st.Term, st.Commit)
+	lg.Debugf("Setting HardState to {Term: %d, Commit: %d}", st.GetTerm(), st.GetCommit())
 	ram.SetHardState(st) // MemoryStorage.SetHardState always returns nil
 
 	lg.Debugf("Appending %d entries to memory storage", len(ents))
@@ -157,7 +157,7 @@ func ListSnapshots(logger *flogging.FabricLogger, snapDir string) []uint64 {
 			continue
 		}
 
-		snapshots = append(snapshots, s.Metadata.Index)
+		snapshots = append(snapshots, s.GetMetadata().GetIndex())
 	}
 
 	return snapshots
@@ -171,7 +171,7 @@ func createSnapshotter(logger *flogging.FabricLogger, snapDir string) (*snap.Sna
 	return snap.New(logger.Zap(), snapDir), nil
 }
 
-func createOrReadWAL(lg *flogging.FabricLogger, walDir string, snapshot *raftpb.Snapshot) (w *wal.WAL, st raftpb.HardState, ents []raftpb.Entry, err error) {
+func createOrReadWAL(lg *flogging.FabricLogger, walDir string, snapshot *raftpb.Snapshot) (w *wal.WAL, st *raftpb.HardState, ents []*raftpb.Entry, err error) {
 	if !wal.Exist(walDir) {
 		lg.Infof("No WAL data found, creating new WAL at path '%s'", walDir)
 		// TODO(jay_guo) add metadata to be persisted with wal once we need it.
@@ -192,9 +192,9 @@ func createOrReadWAL(lg *flogging.FabricLogger, walDir string, snapshot *raftpb.
 		lg.Infof("Found WAL data at path '%s', replaying it", walDir)
 	}
 
-	walsnap := walpb.Snapshot{}
+	walsnap := &walpb.Snapshot{}
 	if snapshot != nil {
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
+		walsnap.Index, walsnap.Term = snapshot.GetMetadata().Index, snapshot.GetMetadata().Term
 	}
 
 	lg.Debugf("Loading WAL at Term %d and Index %d", walsnap.Term, walsnap.Index)
@@ -234,13 +234,13 @@ func createOrReadWAL(lg *flogging.FabricLogger, walDir string, snapshot *raftpb.
 }
 
 // Snapshot returns the latest snapshot stored in memory
-func (rs *RaftStorage) Snapshot() raftpb.Snapshot {
+func (rs *RaftStorage) Snapshot() *raftpb.Snapshot {
 	sn, _ := rs.ram.Snapshot() // Snapshot always returns nil error
 	return sn
 }
 
 // Store persists etcd/raft data
-func (rs *RaftStorage) Store(entries []raftpb.Entry, hardstate raftpb.HardState, snapshot raftpb.Snapshot) error {
+func (rs *RaftStorage) Store(entries []*raftpb.Entry, hardstate *raftpb.HardState, snapshot *raftpb.Snapshot) error {
 	if err := rs.wal.Save(hardstate, entries); err != nil {
 		return err
 	}
@@ -253,7 +253,7 @@ func (rs *RaftStorage) Store(entries []raftpb.Entry, hardstate raftpb.HardState,
 		if err := rs.ram.ApplySnapshot(snapshot); err != nil {
 			if err == raft.ErrSnapOutOfDate {
 				rs.lg.Warnf("Attempted to apply out-of-date snapshot at Term %d and Index %d",
-					snapshot.Metadata.Term, snapshot.Metadata.Index)
+					snapshot.Metadata.Term, snapshot.GetMetadata().GetIndex())
 			} else {
 				rs.lg.Fatalf("Unexpected programming error: %s", err)
 			}
@@ -267,16 +267,16 @@ func (rs *RaftStorage) Store(entries []raftpb.Entry, hardstate raftpb.HardState,
 	return nil
 }
 
-func (rs *RaftStorage) saveSnap(snap raftpb.Snapshot) error {
-	rs.lg.Infof("Persisting snapshot (term: %d, index: %d) to WAL and disk", snap.Metadata.Term, snap.Metadata.Index)
+func (rs *RaftStorage) saveSnap(snap *raftpb.Snapshot) error {
+	rs.lg.Infof("Persisting snapshot (term: %d, index: %d) to WAL and disk", snap.Metadata.Term, snap.GetMetadata().GetIndex())
 
 	// must save the snapshot index to the WAL before saving the
 	// snapshot to maintain the invariant that we only Open the
 	// wal at previously-saved snapshot indexes.
-	walsnap := walpb.Snapshot{
-		Index:     snap.Metadata.Index,
-		Term:      snap.Metadata.Term,
-		ConfState: &snap.Metadata.ConfState,
+	walsnap := &walpb.Snapshot{
+		Index:     snap.GetMetadata().Index,
+		Term:      snap.GetMetadata().Term,
+		ConfState: snap.GetMetadata().GetConfState(),
 	}
 
 	if err := rs.wal.SaveSnapshot(walsnap); err != nil {
@@ -287,8 +287,8 @@ func (rs *RaftStorage) saveSnap(snap raftpb.Snapshot) error {
 		return errors.Errorf("failed to save snapshot to disk: %s", err)
 	}
 
-	rs.lg.Debugf("Releasing lock to wal files prior to %d", snap.Metadata.Index)
-	if err := rs.wal.ReleaseLockTo(snap.Metadata.Index); err != nil {
+	rs.lg.Debugf("Releasing lock to wal files prior to %d", snap.GetMetadata().GetIndex())
+	if err := rs.wal.ReleaseLockTo(snap.GetMetadata().GetIndex()); err != nil {
 		return err
 	}
 
@@ -296,9 +296,9 @@ func (rs *RaftStorage) saveSnap(snap raftpb.Snapshot) error {
 }
 
 // TakeSnapshot takes a snapshot at index i from MemoryStorage, and persists it to wal and disk.
-func (rs *RaftStorage) TakeSnapshot(i uint64, cs raftpb.ConfState, data []byte) error {
+func (rs *RaftStorage) TakeSnapshot(i uint64, cs *raftpb.ConfState, data []byte) error {
 	rs.lg.Debugf("Creating snapshot at index %d from MemoryStorage", i)
-	snap, err := rs.ram.CreateSnapshot(i, &cs, data)
+	snap, err := rs.ram.CreateSnapshot(i, cs, data)
 	if err != nil {
 		return errors.Errorf("failed to create snapshot from MemoryStorage: %s", err)
 	}
@@ -307,7 +307,7 @@ func (rs *RaftStorage) TakeSnapshot(i uint64, cs raftpb.ConfState, data []byte) 
 		return err
 	}
 
-	rs.snapshotIndex = append(rs.snapshotIndex, snap.Metadata.Index)
+	rs.snapshotIndex = append(rs.snapshotIndex, snap.GetMetadata().GetIndex())
 
 	// Keep some entries in memory for slow followers to catchup
 	if i > rs.SnapshotCatchUpEntries {
@@ -428,11 +428,11 @@ func (rs *RaftStorage) purge(files []string) {
 }
 
 // ApplySnapshot applies snapshot to local memory storage
-func (rs *RaftStorage) ApplySnapshot(snap raftpb.Snapshot) {
+func (rs *RaftStorage) ApplySnapshot(snap *raftpb.Snapshot) {
 	if err := rs.ram.ApplySnapshot(snap); err != nil {
 		if err == raft.ErrSnapOutOfDate {
 			rs.lg.Warnf("Attempted to apply out-of-date snapshot at Term %d and Index %d",
-				snap.Metadata.Term, snap.Metadata.Index)
+				snap.Metadata.Term, snap.GetMetadata().GetIndex())
 		} else {
 			rs.lg.Fatalf("Unexpected programming error: %s", err)
 		}

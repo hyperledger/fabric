@@ -38,7 +38,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
 	"github.com/pkg/errors"
-	raft "go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
 	"go.uber.org/zap"
 )
@@ -206,7 +206,7 @@ var _ = Describe("Chain", func() {
 
 		campaign := func(c *etcdraft.Chain, observeC <-chan raft.SoftState) {
 			Eventually(func() <-chan raft.SoftState {
-				c.Consensus(&orderer.ConsensusRequest{Payload: protoutil.MarshalOrPanic(&raftpb.Message{Type: raftpb.MsgTimeoutNow, To: 1})}, 0)
+				c.Consensus(&orderer.ConsensusRequest{Payload: protoutil.MarshalOrPanic(&raftpb.Message{Type: new(raftpb.MsgTimeoutNow), To: new(uint64(1))})}, 0)
 				return observeC
 			}, LongEventualTimeout).Should(Receive(StateEqual(1, raft.StateLeader)))
 		}
@@ -1038,7 +1038,7 @@ var _ = Describe("Chain", func() {
 							Expect(err).NotTo(HaveOccurred())
 
 							// expect storage to preserve SnapshotCatchUpEntries entries before snapshot
-							Expect(i).To(Equal(snapshot.Metadata.Index - opts.SnapshotCatchUpEntries + 1))
+							Expect(i).To(Equal(snapshot.GetMetadata().GetIndex() - opts.SnapshotCatchUpEntries + 1))
 
 							chain.Halt()
 
@@ -1051,8 +1051,8 @@ var _ = Describe("Chain", func() {
 
 							// following arithmetic reflects how etcdraft MemoryStorage is implemented
 							// when no entry is appended after snapshot being loaded.
-							Eventually(c.opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(Equal(snapshot.Metadata.Index + 1))
-							Eventually(c.opts.MemoryStorage.LastIndex, LongEventualTimeout).Should(Equal(snapshot.Metadata.Index))
+							Eventually(c.opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(Equal(snapshot.GetMetadata().GetIndex() + 1))
+							Eventually(c.opts.MemoryStorage.LastIndex, LongEventualTimeout).Should(Equal(snapshot.GetMetadata().GetIndex()))
 
 							// chain keeps functioning
 							Eventually(func() <-chan raft.SoftState {
@@ -1125,7 +1125,7 @@ var _ = Describe("Chain", func() {
 							Expect(err).NotTo(HaveOccurred())
 
 							// expect storage to preserve SnapshotCatchUpEntries entries before snapshot
-							Expect(i).To(Equal(snapshot.Metadata.Index - opts.SnapshotCatchUpEntries + 1))
+							Expect(i).To(Equal(snapshot.GetMetadata().GetIndex() - opts.SnapshotCatchUpEntries + 1))
 
 							By("Ordering another envlope to append new data to memory after snaphost")
 							Expect(chain.Order(env, uint64(0))).To(Succeed())
@@ -1148,7 +1148,7 @@ var _ = Describe("Chain", func() {
 							defer c.Halt()
 
 							By("Checking latest index is larger than index in snapshot")
-							Eventually(c.opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(Equal(snapshot.Metadata.Index + 1))
+							Eventually(c.opts.MemoryStorage.FirstIndex, LongEventualTimeout).Should(Equal(snapshot.GetMetadata().GetIndex() + 1))
 							Eventually(c.opts.MemoryStorage.LastIndex, LongEventualTimeout).Should(Equal(lasti))
 						})
 
@@ -1542,7 +1542,7 @@ var _ = Describe("Chain", func() {
 					return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %s", err)
 				}
 
-				if stepMsg.Type == raftpb.MsgTimeoutNow && atomic.CompareAndSwapUint32(&messageOmission, 0, 1) {
+				if stepMsg.GetType() == raftpb.MsgTimeoutNow && atomic.CompareAndSwapUint32(&messageOmission, 0, 1) {
 					return nil
 				}
 
@@ -2721,9 +2721,9 @@ var _ = Describe("Chain", func() {
 				// would also risk a slow leader stepping down due to excessive ticks.
 				//
 				// Instead, we can simply send artificial MsgHeartbeatResp to leader to resume.
-				m2 := &raftpb.Message{To: c1.id, From: c2.id, Type: raftpb.MsgHeartbeatResp}
+				m2 := &raftpb.Message{To: &c1.id, From: &c2.id, Type: new(raftpb.MsgHeartbeatResp)}
 				c1.Consensus(&orderer.ConsensusRequest{Channel: channelID, Payload: protoutil.MarshalOrPanic(m2)}, c2.id)
-				m3 := &raftpb.Message{To: c1.id, From: c3.id, Type: raftpb.MsgHeartbeatResp}
+				m3 := &raftpb.Message{To: &c1.id, From: &c3.id, Type: new(raftpb.MsgHeartbeatResp)}
 				c1.Consensus(&orderer.ConsensusRequest{Channel: channelID, Payload: protoutil.MarshalOrPanic(m3)}, c3.id)
 
 				network.exec(func(c *chain) {
@@ -2760,7 +2760,7 @@ var _ = Describe("Chain", func() {
 						return nil
 					}
 
-					if stepMsg.Type == raftpb.MsgApp && len(stepMsg.Entries) == 0 {
+					if stepMsg.GetType() == raftpb.MsgApp && len(stepMsg.Entries) == 0 {
 						return nil
 					}
 
@@ -2780,7 +2780,7 @@ var _ = Describe("Chain", func() {
 					stepMsg := &raftpb.Message{}
 					Expect(proto.Unmarshal(msg.Payload, stepMsg)).NotTo(HaveOccurred())
 
-					if stepMsg.Type == raftpb.MsgApp && len(stepMsg.Entries) != 0 && dest == 3 {
+					if stepMsg.GetType() == raftpb.MsgApp && len(stepMsg.Entries) != 0 && dest == 3 {
 						for _, ent := range stepMsg.Entries {
 							if len(ent.Data) != 0 {
 								return nil
@@ -2932,7 +2932,7 @@ var _ = Describe("Chain", func() {
 					c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
 						stepMsg := &raftpb.Message{}
 						Expect(proto.Unmarshal(msg.Payload, stepMsg)).NotTo(HaveOccurred())
-						if dest == 3 && stepMsg.Type == raftpb.MsgApp && len(stepMsg.Entries) > 0 {
+						if dest == 3 && stepMsg.GetType() == raftpb.MsgApp && len(stepMsg.GetEntries()) > 0 {
 							stepMsg.Entries = stepMsg.Entries[0:1]
 							stepMsg.Entries[0].Data = nil
 							msg.Payload = protoutil.MarshalOrPanic(stepMsg)
@@ -2951,12 +2951,12 @@ var _ = Describe("Chain", func() {
 					c1.setStepFunc(func(dest uint64, msg *orderer.ConsensusRequest) error {
 						stepMsg := &raftpb.Message{}
 						Expect(proto.Unmarshal(msg.Payload, stepMsg)).NotTo(HaveOccurred())
-						if dest == 3 && stepMsg.Type == raftpb.MsgApp && len(stepMsg.Entries) > 0 {
+						if dest == 3 && stepMsg.GetType() == raftpb.MsgApp && len(stepMsg.Entries) > 0 {
 							stepMsg.Entries = stepMsg.Entries[0:1]
 							// change message type to raftpb.EntryConfChange
-							stepMsg.Entries[0].Type = raftpb.EntryConfChange
-							cc := &raftpb.ConfChange{NodeID: uint64(3), Type: raftpb.ConfChangeRemoveNode}
-							data, err := cc.Marshal()
+							stepMsg.Entries[0].Type = new(raftpb.EntryConfChange)
+							cc := &raftpb.ConfChange{NodeId: new(uint64(3)), Type: new(raftpb.ConfChangeRemoveNode)}
+							data, err := proto.Marshal(cc)
 							Expect(err).NotTo(HaveOccurred())
 							stepMsg.Entries[0].Data = data
 							msg.Payload = protoutil.MarshalOrPanic(stepMsg)
@@ -3873,7 +3873,7 @@ func (n *network) elect(id uint64) {
 	// Send node an artificial MsgTimeoutNow to emulate leadership transfer.
 	fmt.Fprintf(GinkgoWriter, "Send artificial MsgTimeoutNow to elect node %d\n", id)
 	Eventually(func() <-chan raft.SoftState {
-		candidate.Consensus(&orderer.ConsensusRequest{Payload: protoutil.MarshalOrPanic(&raftpb.Message{Type: raftpb.MsgTimeoutNow, To: id})}, 0)
+		candidate.Consensus(&orderer.ConsensusRequest{Payload: protoutil.MarshalOrPanic(&raftpb.Message{Type: new(raftpb.MsgTimeoutNow), To: &id})}, 0)
 		return candidate.observe
 	}).WithTimeout(LongEventualTimeout).Should(Receive(StateEqual(id, raft.StateLeader)))
 

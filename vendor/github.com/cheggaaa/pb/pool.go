@@ -1,4 +1,4 @@
-// +build linux darwin freebsd netbsd openbsd solaris dragonfly windows plan9
+// +build linux darwin freebsd netbsd openbsd solaris dragonfly windows plan9 aix zos
 
 package pb
 
@@ -64,7 +64,7 @@ func (p *Pool) Start() (err error) {
 func (p *Pool) writer() {
 	var first = true
 	defer func() {
-		if first == false {
+		if !first {
 			p.print(false)
 		} else {
 			p.print(true)
@@ -87,7 +87,7 @@ func (p *Pool) writer() {
 	}
 }
 
-// Restore terminal state and close pool
+// Stop Restore terminal state and close pool
 func (p *Pool) Stop() error {
 	p.finishOnce.Do(func() {
 		if p.shutdownCh != nil {
@@ -96,9 +96,8 @@ func (p *Pool) Stop() error {
 	})
 
 	// Wait for the worker to complete
-	select {
-	case <-p.workerCh:
-	}
+	<-p.workerCh
+
 
 	return unlockEcho()
 }
