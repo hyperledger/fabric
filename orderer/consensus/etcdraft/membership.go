@@ -12,7 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/pkg/errors"
-	raft "go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
 )
 
@@ -84,15 +84,15 @@ func ComputeMembershipChanges(oldMetadata *etcdraft.BlockMetadata, oldConsenters
 		result.NewBlockMetadata.ConsenterIds[addedNodeIndex] = nodeID
 		result.NewBlockMetadata.NextConsenterId++
 		result.ConfChange = &raftpb.ConfChange{
-			NodeID: nodeID,
-			Type:   raftpb.ConfChangeAddNode,
+			NodeId: &nodeID,
+			Type:   new(raftpb.ConfChangeAddNode),
 		}
 	case len(result.AddedNodes) == 0 && len(result.RemovedNodes) == 1:
 		// removed node
 		nodeID := deletedNodeID
 		result.ConfChange = &raftpb.ConfChange{
-			NodeID: nodeID,
-			Type:   raftpb.ConfChangeRemoveNode,
+			NodeId: &nodeID,
+			Type:   new(raftpb.ConfChangeRemoveNode),
 		}
 		delete(result.NewConsenters, nodeID)
 	case len(result.AddedNodes) == 0 && len(result.RemovedNodes) == 0:
@@ -133,15 +133,15 @@ func (mc *MembershipChanges) UnacceptableQuorumLoss(active []uint64) bool {
 	quorum := len(mc.NewConsenters)/2 + 1
 
 	switch {
-	case mc.ConfChange != nil && mc.ConfChange.Type == raftpb.ConfChangeAddNode: // Add
+	case mc.ConfChange != nil && mc.ConfChange.GetType() == raftpb.ConfChangeAddNode: // Add
 		return isCFT && len(active) < quorum
 
 	case mc.RotatedNode != raft.None: // Rotate
 		delete(activeMap, mc.RotatedNode)
 		return isCFT && len(activeMap) < quorum
 
-	case mc.ConfChange != nil && mc.ConfChange.Type == raftpb.ConfChangeRemoveNode: // Remove
-		delete(activeMap, mc.ConfChange.NodeID)
+	case mc.ConfChange != nil && mc.ConfChange.GetType() == raftpb.ConfChangeRemoveNode: // Remove
+		delete(activeMap, mc.ConfChange.GetNodeId())
 		return len(activeMap) < quorum
 
 	default: // No change

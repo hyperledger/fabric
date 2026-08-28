@@ -13,7 +13,7 @@ import (
 )
 
 // Current version
-const Version = "1.0.29"
+const Version = "1.0.30"
 
 const (
 	// Default refresh rate - 200ms
@@ -74,6 +74,7 @@ type ProgressBar struct {
 	ShowPercent, ShowCounters        bool
 	ShowSpeed, ShowTimeLeft, ShowBar bool
 	ShowFinalTime, ShowElapsedTime   bool
+	HideCountersTotal                bool
 	Output                           io.Writer
 	Callback                         Callback
 	NotPrint                         bool
@@ -304,16 +305,24 @@ func (pb *ProgressBar) write(total, current int64) {
 	if pb.ShowCounters {
 		current := Format(current).To(pb.Units).Width(pb.UnitsWidth)
 		if total > 0 {
-			totalS := Format(total).To(pb.Units).Width(pb.UnitsWidth)
-			countersBox = fmt.Sprintf(" %s / %s ", current, totalS)
+			if pb.HideCountersTotal {
+				countersBox = fmt.Sprintf(" %s ", current)
+			} else {
+				totalS := Format(total).To(pb.Units).Width(pb.UnitsWidth)
+				countersBox = fmt.Sprintf(" %s / %s ", current, totalS)
+			}
 		} else {
-			countersBox = fmt.Sprintf(" %s / ? ", current)
+			if pb.HideCountersTotal {
+				countersBox = fmt.Sprintf(" %s ", current)
+			} else {
+				countersBox = fmt.Sprintf(" %s / ? ", current)
+			}
 		}
 	}
 
 	// time left
 	currentFromStart := current - pb.startValue
-	fromStart := time.Now().Sub(pb.startTime)
+	fromStart := time.Since(pb.startTime)
 	lastChangeTime := pb.changeTime
 	fromChange := lastChangeTime.Sub(pb.startTime)
 
@@ -324,8 +333,7 @@ func (pb *ProgressBar) write(total, current int64) {
 	select {
 	case <-pb.finish:
 		if pb.ShowFinalTime {
-			var left time.Duration
-			left = (fromStart / time.Second) * time.Second
+			var left = (fromStart / time.Second) * time.Second
 			timeLeftBox = fmt.Sprintf(" %s", left.String())
 		}
 	default:
@@ -350,7 +358,7 @@ func (pb *ProgressBar) write(total, current int64) {
 
 	// speed
 	if pb.ShowSpeed && currentFromStart > 0 {
-		fromStart := time.Now().Sub(pb.startTime)
+		fromStart := time.Since(pb.startTime)
 		speed := float64(currentFromStart) / (float64(fromStart) / float64(time.Second))
 		speedBox = " " + Format(int64(speed)).To(pb.Units).Width(pb.UnitsWidth).PerSec().String()
 	}
@@ -372,17 +380,21 @@ func (pb *ProgressBar) write(total, current int64) {
 				}
 
 				cursorLen := escapeAwareRuneCountInString(pb.Current)
-				if emptySize <= 0 {
-					barBox += strings.Repeat(pb.Current, curSize/cursorLen)
-				} else if curSize > 0 {
-					cursorEndLen := escapeAwareRuneCountInString(pb.CurrentN)
-					cursorRepetitions := (curSize - cursorEndLen) / cursorLen
-					barBox += strings.Repeat(pb.Current, cursorRepetitions)
-					barBox += pb.CurrentN
+				if cursorLen != 0 {
+					if emptySize <= 0 {
+						barBox += strings.Repeat(pb.Current, curSize/cursorLen)
+					} else if curSize > 0 {
+						cursorEndLen := escapeAwareRuneCountInString(pb.CurrentN)
+						cursorRepetitions := (curSize - cursorEndLen) / cursorLen
+						barBox += strings.Repeat(pb.Current, cursorRepetitions)
+						barBox += pb.CurrentN
+					}
 				}
 
 				emptyLen := escapeAwareRuneCountInString(pb.Empty)
-				barBox += strings.Repeat(pb.Empty, emptySize/emptyLen)
+				if emptyLen != 0 {
+					barBox += strings.Repeat(pb.Empty, emptySize/emptyLen)
+				}
 				barBox += pb.BarEnd
 			} else {
 				pos := size - int(current)%int(size)
@@ -457,7 +469,7 @@ func (pb *ProgressBar) Update() {
 		if c == 0 {
 			pb.startTime = time.Now()
 			pb.startValue = 0
-		} else if c >= t && pb.isFinish != true {
+		} else if c >= t && !pb.isFinish{
 			pb.Finish()
 		}
 	}

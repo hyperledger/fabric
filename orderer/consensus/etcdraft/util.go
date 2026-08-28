@@ -24,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	raft "go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
 )
 
@@ -432,21 +432,21 @@ func ConfChange(blockMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfSta
 	// need to compute conf changes to propose
 	if len(confState.Voters) < len(blockMetadata.ConsenterIds) {
 		// adding new node
-		raftConfChange.Type = raftpb.ConfChangeAddNode
+		raftConfChange.Type = new(raftpb.ConfChangeAddNode)
 		for _, consenterID := range blockMetadata.ConsenterIds {
 			if NodeExists(consenterID, confState.Voters) {
 				continue
 			}
-			raftConfChange.NodeID = consenterID
+			raftConfChange.NodeId = &consenterID
 		}
 	} else {
 		// removing node
-		raftConfChange.Type = raftpb.ConfChangeRemoveNode
+		raftConfChange.Type = new(raftpb.ConfChangeRemoveNode)
 		for _, nodeID := range confState.Voters {
 			if NodeExists(nodeID, blockMetadata.ConsenterIds) {
 				continue
 			}
-			raftConfChange.NodeID = nodeID
+			raftConfChange.NodeId = &nodeID
 		}
 	}
 
