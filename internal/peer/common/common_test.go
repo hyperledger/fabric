@@ -226,8 +226,8 @@ func TestInitCmdWithoutInitCrypto(t *testing.T) {
 	configtest.SetDevFabricConfigPath(t)
 	defer viper.Reset()
 
-	peerCmd := &cobra.Command{
-		Use: "peer",
+	peercliCmd := &cobra.Command{
+		Use: "peercli",
 	}
 	lifecycleCmd := &cobra.Command{
 		Use: "lifecycle",
@@ -238,16 +238,16 @@ func TestInitCmdWithoutInitCrypto(t *testing.T) {
 	packageCmd := &cobra.Command{
 		Use: "package",
 	}
-	// peer lifecycle chaincode package
+	// peercli lifecycle chaincode package
 	chaincodeCmd.AddCommand(packageCmd)
 	lifecycleCmd.AddCommand(chaincodeCmd)
-	peerCmd.AddCommand(lifecycleCmd)
+	peercliCmd.AddCommand(lifecycleCmd)
 
 	// MSPCONFIGPATH is default value
 	common.InitCmd(packageCmd, nil)
 
 	// set MSPCONFIGPATH to be a missing dir, the function InitCrypto will fail
-	// confirm that 'peer lifecycle chaincode package' mandates does not require MSPCONFIG information
+	// confirm that 'peercli lifecycle chaincode package' mandates does not require MSPCONFIG information
 	viper.SetEnvPrefix("core")
 	viper.AutomaticEnv()
 	replacer := strings.NewReplacer(".", "_")

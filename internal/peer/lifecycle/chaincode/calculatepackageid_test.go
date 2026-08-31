@@ -110,7 +110,7 @@ var _ = Describe("CalculatePackageID", func() {
 		var calculatePackageIDCmd *cobra.Command
 
 		BeforeEach(func() {
-			calculatePackageIDCmd = chaincode.CalculatePackageIDCmd(nil)
+			calculatePackageIDCmd = chaincode.CalculatePackageIDCmd(nil, true)
 			calculatePackageIDCmd.SilenceErrors = true
 			calculatePackageIDCmd.SilenceUsage = true
 			calculatePackageIDCmd.SetArgs([]string{
