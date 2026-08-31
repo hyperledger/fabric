@@ -34,6 +34,7 @@ func BigToBytes(bi *big.Int) []byte {
 	twoscomp = twoscomp.Sub(twoscomp, pos)
 	twoscomp = twoscomp.Add(twoscomp, big.NewInt(1))
 	b = twoscomp.Bytes()
+
 	return append(onebytes[:ScalarByteSize-len(b)], b...)
 }
 
@@ -42,15 +43,31 @@ type BaseZr struct {
 	Modulus big.Int
 }
 
+func (b *BaseZr) IsZero() bool {
+	return b.BitLen() == 0
+}
+
+func (b *BaseZr) IsOne() bool {
+	bits := b.Bits()
+
+	return len(bits) == 1 && bits[0] == 1 && b.Sign() > 0
+}
+
+func (b *BaseZr) BigInt() *big.Int {
+	return &b.Int
+}
+
 func (b *BaseZr) Plus(a driver.Zr) driver.Zr {
 	rv := &BaseZr{Modulus: b.Modulus}
 	rv.Add(&b.Int, &a.(*BaseZr).Int)
+
 	return rv
 }
 
 func (b *BaseZr) Minus(a driver.Zr) driver.Zr {
 	rv := &BaseZr{Modulus: b.Modulus}
 	rv.Sub(&b.Int, &a.(*BaseZr).Int)
+
 	return rv
 }
 
@@ -58,12 +75,14 @@ func (b *BaseZr) Mul(a driver.Zr) driver.Zr {
 	rv := &BaseZr{Modulus: b.Modulus}
 	rv.Int.Mul(&b.Int, &a.(*BaseZr).Int)
 	rv.Int.Mod(&rv.Int, &b.Modulus)
+
 	return rv
 }
 
 func (b *BaseZr) PowMod(x driver.Zr) driver.Zr {
 	rv := &BaseZr{Modulus: b.Modulus}
 	rv.Exp(&b.Int, &x.(*BaseZr).Int, &b.Modulus)
+
 	return rv
 }
 
@@ -72,13 +91,17 @@ func (b *BaseZr) Mod(a driver.Zr) {
 }
 
 func (b *BaseZr) InvModP(p driver.Zr) {
-	b.Int.ModInverse(&b.Int, &p.(*BaseZr).Int)
+	b.ModInverse(&b.Int, &p.(*BaseZr).Int)
+}
+
+func (b *BaseZr) InvModOrder() {
+	b.ModInverse(&b.Int, &b.Modulus)
 }
 
 func (b *BaseZr) Bytes() []byte {
 	target := b.Int
 
-	if b.Int.Sign() < 0 || b.Int.Cmp(&b.Modulus) > 0 {
+	if b.Sign() < 0 || b.Cmp(&b.Modulus) > 0 {
 		target = *new(big.Int).Set(&b.Int)
 		target = *target.Mod(&target, &b.Modulus)
 		if target.Sign() < 0 {
@@ -90,22 +113,23 @@ func (b *BaseZr) Bytes() []byte {
 }
 
 func (b *BaseZr) Equals(p driver.Zr) bool {
-	return b.Int.Cmp(&p.(*BaseZr).Int) == 0
+	return b.Cmp(&p.(*BaseZr).Int) == 0
 }
 
 func (b *BaseZr) Copy() driver.Zr {
 	rv := &BaseZr{Modulus: b.Modulus}
 	rv.Set(&b.Int)
+
 	return rv
 }
 
 func (b *BaseZr) Clone(a driver.Zr) {
 	raw := a.(*BaseZr).Int.Bytes()
-	b.Int.SetBytes(raw)
+	b.SetBytes(raw)
 }
 
 func (b *BaseZr) String() string {
-	return b.Int.Text(16)
+	return b.Text(16)
 }
 
 func (b *BaseZr) Neg() {

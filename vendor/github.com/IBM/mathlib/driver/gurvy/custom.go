@@ -10,9 +10,8 @@ package gurvy
 import (
 	"errors"
 	"hash"
-	"unsafe"
+	"math/bits"
 
-	"github.com/IBM/mathlib/driver/kilic"
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fp"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/hash_to_curve"
@@ -21,29 +20,132 @@ import (
 
 const Bits = 381 // number of bits needed to represent a Element
 
-type Element [6]uint64
-
-type G1Affine struct {
-	X, Y fp.Element
+// modulusBits is the base field modulus p in normal (non-Montgomery) form,
+// little-endian limbs. Used by signBE.
+var modulusBits = [6]uint64{
+	0xb9feffffffffaaab, 0x1eabfffeb153ffff, 0x6730d2a0f6b0f624,
+	0x64774b84f38512bf, 0x4b1ba7b6434bacd7, 0x1a0111ea397fe69a,
 }
 
-func toKilicElement(p *fp.Element) *kilic.Fe {
-	return (*kilic.Fe)(unsafe.Pointer(p))
+// SWU map parameters for G1, in Montgomery form. These limbs are identical to
+// the ones used by the original github.com/kilic/bls12-381 implementation and
+// are valid gnark-crypto fp.Element values because both libraries use the same
+// modulus and Montgomery radix (verified: fp.One() == kilic r1).
+var swuParamsForG1 = struct {
+	z, zInv, a, b, minusBOverA fp.Element
+}{
+	a:           fp.Element{0x2f65aa0e9af5aa51, 0x86464c2d1e8416c3, 0xb85ce591b7bd31e2, 0x27e11c91b5f24e7c, 0x28376eda6bfc1835, 0x155455c3e5071d85},
+	b:           fp.Element{0xfb996971fe22a1e0, 0x9aa93eb35b742d6f, 0x8c476013de99c5c4, 0x873e27c3a221e571, 0xca72b5e45a52d888, 0x06824061418a386b},
+	z:           fp.Element{0x886c00000023ffdc, 0x0f70008d3090001d, 0x77672417ed5828c3, 0x9dac23e943dc1740, 0x50553f1b9c131521, 0x078c712fbe0ab6e8},
+	zInv:        fp.Element{0x0e8a2e8ba2e83e10, 0x5b28ba2ca4d745d1, 0x678cd5473847377a, 0x4c506dd8a8076116, 0x9bcb227d79284139, 0x0e8d3154b0ba099a},
+	minusBOverA: fp.Element{0x052583c93555a7fe, 0x3b40d72430f93c82, 0x1b75faa0105ec983, 0x2527e7dc63851767, 0x99fffd1f34fc181d, 0x097cab54770ca0d3},
 }
 
-func toGurvyElement(p *kilic.Fe) *fp.Element {
-	return (*fp.Element)(unsafe.Pointer(p))
+// signBE reports the "big-endian" sign of e, matching the semantics of the
+// original kilic implementation: it compares the field negation of e against e
+// in normal (non-Montgomery) form and returns true iff (p - e) >= e. This is
+// the non-standard sign convention used by the BBS+ hash-to-curve variant.
+func signBE(e *fp.Element) bool {
+	z := e.Bits() // normal form, little-endian limbs
+	negZ := feNeg(z)
+
+	return feCmp(&negZ, &z) > -1
 }
 
-func toGurvyAffine(p *G1Affine) *bls12381.G1Affine {
-	return (*bls12381.G1Affine)(unsafe.Pointer(p))
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
+// feNeg returns p - z (mod p) for the normal-form element z, with 0 mapped to 0,
+// matching kilic's neg on field elements.
+func feNeg(z [6]uint64) [6]uint64 {
+	if z == ([6]uint64{}) {
+		return [6]uint64{}
 	}
-	return b
+	var out [6]uint64
+	var borrow uint64
+	out[0], borrow = bits.Sub64(modulusBits[0], z[0], 0)
+	out[1], borrow = bits.Sub64(modulusBits[1], z[1], borrow)
+	out[2], borrow = bits.Sub64(modulusBits[2], z[2], borrow)
+	out[3], borrow = bits.Sub64(modulusBits[3], z[3], borrow)
+	out[4], borrow = bits.Sub64(modulusBits[4], z[4], borrow)
+	out[5], _ = bits.Sub64(modulusBits[5], z[5], borrow)
+
+	return out
+}
+
+// feCmp compares two normal-form little-endian field elements: 1 if a > b,
+// -1 if a < b, 0 if equal (big-endian magnitude comparison).
+func feCmp(a, b *[6]uint64) int {
+	for i := 5; i >= 0; i-- {
+		if a[i] > b[i] {
+			return 1
+		} else if a[i] < b[i] {
+			return -1
+		}
+	}
+
+	return 0
+}
+
+// swuMapG1Pre is the Simplified Shallue-van de Woestijne-Ulas map (pre sign
+// correction), ported from the kilic implementation onto gnark fp.Element.
+func swuMapG1Pre(u *fp.Element) (x, y fp.Element) {
+	params := swuParamsForG1
+
+	var tv0, tv1 fp.Element
+	tv0.Square(u)
+	tv0.Mul(&tv0, &params.z)
+	tv1.Square(&tv0)
+
+	var x1 fp.Element
+	x1.Add(&tv0, &tv1)
+	e1 := x1.IsZero()
+	x1.Inverse(&x1) // Inverse(0) == 0 in gnark, matching kilic
+	var one fp.Element
+	one.SetOne()
+	x1.Add(&x1, &one)
+	if e1 {
+		x1.Set(&params.zInv)
+	}
+	x1.Mul(&x1, &params.minusBOverA)
+
+	var gx1 fp.Element
+	gx1.Square(&x1)
+	gx1.Add(&gx1, &params.a)
+	gx1.Mul(&gx1, &x1)
+	gx1.Add(&gx1, &params.b)
+
+	var x2 fp.Element
+	x2.Mul(&tv0, &x1)
+	tv1.Mul(&tv0, &tv1)
+	var gx2 fp.Element
+	gx2.Mul(&gx1, &tv1)
+
+	// e2 is true iff gx1 is a (nonzero) quadratic residue.
+	e2 := gx1.Legendre() == 1
+
+	var y2 fp.Element
+	if e2 {
+		x.Set(&x1)
+		y2.Set(&gx1)
+	} else {
+		x.Set(&x2)
+		y2.Set(&gx2)
+	}
+	// y2 is guaranteed to be a square here; Sqrt returns one of its roots.
+	y.Sqrt(&y2)
+
+	return x, y
+}
+
+// SwuMapG1BE is the big-endian-sign variant of the Simplified SWU map, following
+// draft-irtf-cfrg-hash-to-curve-06 section 4.1.1. It reproduces, bit-for-bit,
+// the output of the former kilic implementation.
+func SwuMapG1BE(u *fp.Element) (fp.Element, fp.Element) {
+	x, y := swuMapG1Pre(u)
+
+	if signBE(&y) != signBE(u) {
+		y.Neg(&y)
+	}
+
+	return x, y
 }
 
 // ExpandMsgXmd expands msg to a slice of lenInBytes bytes.
@@ -56,10 +158,11 @@ func ExpandMsgXmd(msg, dst []byte, lenInBytes int, hashFunc func() hash.Hash) ([
 	if ell > 255 {
 		return nil, errors.New("invalid lenInBytes")
 	}
-	if len(dst) > 255 {
+	dstLen := len(dst)
+	if dstLen > 255 {
 		return nil, errors.New("invalid domain size (>255 bytes)")
 	}
-	sizeDomain := uint8(len(dst))
+	sizeDomain := uint8(dstLen)
 
 	// Z_pad = I2OSP(0, r_in_bytes)
 	// l_i_b_str = I2OSP(len_in_bytes, 2)
@@ -72,7 +175,7 @@ func ExpandMsgXmd(msg, dst []byte, lenInBytes int, hashFunc func() hash.Hash) ([
 	if _, err := h.Write(msg); err != nil {
 		return nil, err
 	}
-	if _, err := h.Write([]byte{uint8(lenInBytes >> 8), uint8(lenInBytes), uint8(0)}); err != nil {
+	if _, err := h.Write([]byte{uint8(lenInBytes >> 8), uint8(lenInBytes), uint8(0)}); err != nil { // #nosec G115
 		return nil, err
 	}
 	if _, err := h.Write(dst); err != nil {
@@ -106,7 +209,7 @@ func ExpandMsgXmd(msg, dst []byte, lenInBytes int, hashFunc func() hash.Hash) ([
 		// b_i = H(strxor(b₀, b_(i - 1)) ∥ I2OSP(i, 1) ∥ DST_prime)
 		h.Reset()
 		strxor := make([]byte, h.Size())
-		for j := 0; j < h.Size(); j++ {
+		for j := range h.Size() {
 			strxor[j] = b0[j] ^ b1[j]
 		}
 		if _, err := h.Write(strxor); err != nil {
@@ -124,6 +227,7 @@ func ExpandMsgXmd(msg, dst []byte, lenInBytes int, hashFunc func() hash.Hash) ([
 		b1 = h.Sum(nil)
 		copy(res[h.Size()*(i-1):min(h.Size()*i, len(res))], b1)
 	}
+
 	return res, nil
 }
 
@@ -145,7 +249,7 @@ func Hash(msg, dst []byte, count int, hashFunc func() hash.Hash) ([]fp.Element, 
 	vv := pool.BigInt.Get()
 
 	res := make([]fp.Element, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		vv.SetBytes(pseudoRandomBytes[i*L : (i+1)*L])
 		res[i].SetBigInt(vv)
 	}
@@ -162,28 +266,23 @@ func HashToG1GenericBESwu(msg, dst []byte, hashFunc func() hash.Hash) (bls12381.
 		return bls12381.G1Affine{}, err
 	}
 
-	xQ0, yQ0 := kilic.SwuMapG1BE(toKilicElement(&u[0]))
-	xQ1, yQ1 := kilic.SwuMapG1BE(toKilicElement(&u[1]))
+	xQ0, yQ0 := SwuMapG1BE(&u[0])
+	xQ1, yQ1 := SwuMapG1BE(&u[1])
 
-	_xq0 := toGurvyElement(xQ0)
-	_yq0 := toGurvyElement(yQ0)
-	_xq1 := toGurvyElement(xQ1)
-	_yq1 := toGurvyElement(yQ1)
-
-	Q0 := G1Affine{*_xq0, *_yq0}
-	Q1 := G1Affine{*_xq1, *_yq1}
+	Q0 := bls12381.G1Affine{X: xQ0, Y: yQ0}
+	Q1 := bls12381.G1Affine{X: xQ1, Y: yQ1}
 
 	// TODO (perf): Add in E' first, then apply isogeny
 	hash_to_curve.G1Isogeny(&Q0.X, &Q0.Y)
 	hash_to_curve.G1Isogeny(&Q1.X, &Q1.Y)
 
 	var _Q0, _Q1 bls12381.G1Jac
-	_Q0.FromAffine(toGurvyAffine(&Q0))
-	_Q1.FromAffine(toGurvyAffine(&Q1)).AddAssign(&_Q0)
+	_Q0.FromAffine(&Q0)
+	_Q1.FromAffine(&Q1).AddAssign(&_Q0)
 
 	_Q1.ClearCofactor(&_Q1)
 
-	toGurvyAffine(&Q1).FromJacobian(&_Q1)
-	res := toGurvyAffine(&Q1)
-	return *res, nil
+	Q1.FromJacobian(&_Q1)
+
+	return Q1, nil
 }

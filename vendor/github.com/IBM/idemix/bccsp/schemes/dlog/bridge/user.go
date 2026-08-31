@@ -6,10 +6,11 @@ SPDX-License-Identifier: Apache-2.0
 package bridge
 
 import (
+	"fmt"
+
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/pkg/errors"
 )
 
 // User encapsulates the idemix algorithms to generate user secret keys and pseudonym.
@@ -23,7 +24,7 @@ func (u *User) NewKey() (res *math.Zr, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
@@ -34,7 +35,7 @@ func (u *User) NewKey() (res *math.Zr, err error) {
 
 func (u *User) NewKeyFromBytes(raw []byte) (res *math.Zr, err error) {
 	if len(raw) != u.Idemix.Curve.ScalarByteSize {
-		return nil, errors.Errorf("invalid length, expected [%d], got [%d]", u.Idemix.Curve.ScalarByteSize, len(raw))
+		return nil, fmt.Errorf("invalid length, expected [%d], got [%d]", u.Idemix.Curve.ScalarByteSize, len(raw))
 	}
 
 	res = u.Idemix.Curve.NewZrFromBytes(raw)
@@ -48,13 +49,13 @@ func (u *User) MakeNym(sk *math.Zr, ipk types.IssuerPublicKey) (r1 *math.G1, r2 
 		if r := recover(); r != nil {
 			r1 = nil
 			r2 = nil
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
 	iipk, ok := ipk.(*IssuerPublicKey)
 	if !ok {
-		return nil, nil, errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
+		return nil, nil, fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
 	ecp, big, err := u.Idemix.MakeNym(sk, iipk.PK, newRandOrPanic(u.Idemix.Curve), u.Translator)
@@ -71,7 +72,7 @@ func (u *User) NewNymFromBytes(raw []byte) (r1 *math.G1, r2 *math.Zr, err error)
 		if r := recover(); r != nil {
 			r1 = nil
 			r2 = nil
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
@@ -86,7 +87,7 @@ func (u *User) NewPublicNymFromBytes(raw []byte) (res *math.G1, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 

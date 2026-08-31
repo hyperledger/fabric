@@ -7,12 +7,11 @@ package handlers
 
 import (
 	"crypto/sha256"
+	"errors"
 
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
-	"github.com/IBM/idemix/bccsp/types"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/pkg/errors"
 )
 
 // NymSecretKey contains the nym secret key
@@ -34,12 +33,13 @@ func computeSKI(serialise func() []byte) []byte {
 
 	hash := sha256.New()
 	hash.Write(raw)
-	return hash.Sum(nil)
 
+	return hash.Sum(nil)
 }
 
 func NewNymSecretKey(sk *math.Zr, pk *math.G1, translator idemix.Translator, exportable bool) (*NymSecretKey, error) {
 	ski := computeSKI(sk.Bytes)
+
 	return &NymSecretKey{Ski: ski, Sk: sk, Pk: pk, Exportable: exportable, Translator: translator}, nil
 }
 
@@ -54,6 +54,7 @@ func (k *NymSecretKey) Bytes() ([]byte, error) {
 func (k *NymSecretKey) SKI() []byte {
 	c := make([]byte, len(k.Ski))
 	copy(c, k.Ski)
+
 	return c
 }
 
@@ -67,6 +68,7 @@ func (*NymSecretKey) Private() bool {
 
 func (k *NymSecretKey) PublicKey() (bccsp.Key, error) {
 	ski := computeSKI(k.Pk.Bytes)
+
 	return &nymPublicKey{ski: ski, pk: k.Pk, translator: k.Translator}, nil
 }
 
@@ -85,6 +87,7 @@ func NewNymPublicKey(pk *math.G1, translator idemix.Translator) *nymPublicKey {
 
 func (k *nymPublicKey) Bytes() ([]byte, error) {
 	ecp := k.translator.G1ToProto(k.pk)
+
 	return append(ecp.X, ecp.Y...), nil
 }
 
@@ -110,7 +113,7 @@ type NymKeyDerivation struct {
 	// If a secret key is marked as Exportable, its Bytes method will return the key's byte representation.
 	Exportable bool
 	// User implements the underlying cryptographic algorithms
-	User types.User
+	User bccsp.User
 
 	Translator idemix.Translator
 }
@@ -143,12 +146,12 @@ func (kd *NymKeyDerivation) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk b
 // NymPublicKeyImporter imports nym public keys
 type NymPublicKeyImporter struct {
 	// User implements the underlying cryptographic algorithms
-	User types.User
+	User bccsp.User
 
 	Translator idemix.Translator
 }
 
-func (i *NymPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+func (i *NymPublicKeyImporter) KeyImport(raw any, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
 	bytes, ok := raw.([]byte)
 	if !ok {
 		return nil, errors.New("invalid raw, expected byte array")
@@ -181,12 +184,12 @@ func (i *NymPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOp
 type NymKeyImporter struct {
 	Exportable bool
 	// User implements the underlying cryptographic algorithms
-	User types.User
+	User bccsp.User
 
 	Translator idemix.Translator
 }
 
-func (i *NymKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+func (i *NymKeyImporter) KeyImport(raw any, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
 	bytes, ok := raw.([]byte)
 	if !ok {
 		return nil, errors.New("invalid raw, expected byte array")

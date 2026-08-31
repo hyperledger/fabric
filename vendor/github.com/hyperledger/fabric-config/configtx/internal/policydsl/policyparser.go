@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Knetic/govaluate"
+	"github.com/expr-lang/expr"
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	mb "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"google.golang.org/protobuf/proto"
@@ -138,6 +138,8 @@ func firstPass(args ...interface{}) (interface{}, error) {
 		case float32:
 		case float64:
 			toret += strconv.Itoa(int(t))
+		case int:
+			toret += strconv.Itoa(t)
 		default:
 			return nil, fmt.Errorf("unexpected type %s", reflect.TypeOf(arg))
 		}
@@ -167,6 +169,8 @@ func secondPass(args ...interface{}) (interface{}, error) {
 	switch arg := args[1].(type) {
 	case float64:
 		t = int(arg)
+	case int:
+		t = arg
 	default:
 		return nil, fmt.Errorf("unrecognized type, expected a number, got %s", reflect.TypeOf(args[1]))
 	}
@@ -277,24 +281,23 @@ func newContext() *context {
 //     the required role
 func FromString(policy string) (*cb.SignaturePolicyEnvelope, error) {
 	// first we translate the and/or business into outof gates
-	intermediate, err := govaluate.NewEvaluableExpressionWithFunctions(
-		policy, map[string]govaluate.ExpressionFunction{
-			GateAnd:                    and,
-			strings.ToLower(GateAnd):   and,
-			strings.ToUpper(GateAnd):   and,
-			GateOr:                     or,
-			strings.ToLower(GateOr):    or,
-			strings.ToUpper(GateOr):    or,
-			GateOutOf:                  outof,
-			strings.ToLower(GateOutOf): outof,
-			strings.ToUpper(GateOutOf): outof,
-		},
-	)
+	env := map[string]interface{}{
+		GateAnd:                    and,
+		strings.ToLower(GateAnd):   and,
+		strings.ToUpper(GateAnd):   and,
+		GateOr:                     or,
+		strings.ToLower(GateOr):    or,
+		strings.ToUpper(GateOr):    or,
+		GateOutOf:                  outof,
+		strings.ToLower(GateOutOf): outof,
+		strings.ToUpper(GateOutOf): outof,
+	}
+	intermediate, err := expr.Compile(policy, expr.Env(env))
 	if err != nil {
 		return nil, err
 	}
 
-	intermediateRes, err := intermediate.Evaluate(map[string]interface{}{})
+	intermediateRes, err := expr.Run(intermediate, env)
 	if err != nil {
 		// attempt to produce a meaningful error
 		if regexErr.MatchString(err.Error()) {
@@ -318,15 +321,14 @@ func FromString(policy string) (*cb.SignaturePolicyEnvelope, error) {
 	// to user-implemented functions other than via arguments.
 	// We need this argument because we need a global place where
 	// we put the identities that the policy requires
-	exp, err := govaluate.NewEvaluableExpressionWithFunctions(
-		resStr,
-		map[string]govaluate.ExpressionFunction{"outof": firstPass},
-	)
+	env = map[string]interface{}{
+		"outof": firstPass,
+	}
+	exp, err := expr.Compile(resStr, expr.Env(env))
 	if err != nil {
 		return nil, err
 	}
-
-	res, err := exp.Evaluate(map[string]interface{}{})
+	res, err := expr.Run(exp, env)
 	if err != nil {
 		// attempt to produce a meaningful error
 		if regexErr.MatchString(err.Error()) {
@@ -345,18 +347,16 @@ func FromString(policy string) (*cb.SignaturePolicyEnvelope, error) {
 	}
 
 	ctx := newContext()
-	parameters := make(map[string]interface{}, 1)
-	parameters["ID"] = ctx
-
-	exp, err = govaluate.NewEvaluableExpressionWithFunctions(
-		resStr,
-		map[string]govaluate.ExpressionFunction{"outof": secondPass},
-	)
+	env = map[string]interface{}{
+		"outof": secondPass,
+		"ID":    ctx,
+	}
+	exp, err = expr.Compile(resStr, expr.Env(env))
 	if err != nil {
 		return nil, err
 	}
 
-	res, err = exp.Evaluate(parameters)
+	res, err = expr.Run(exp, env)
 	if err != nil {
 		// attempt to produce a meaningful error
 		if regexErr.MatchString(err.Error()) {

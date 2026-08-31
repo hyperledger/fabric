@@ -15,6 +15,7 @@ import (
 
 func appendBytes(data []byte, index int, bytesToAdd []byte) int {
 	copy(data[index:], bytesToAdd)
+
 	return index + len(bytesToAdd)
 }
 func appendBytesG1(data []byte, index int, E *math.G1) int {
@@ -29,6 +30,7 @@ func appendBytesBig(data []byte, index int, B *math.Zr) int {
 func appendBytesString(data []byte, index int, s string) int {
 	bytes := []byte(s)
 	copy(data[index:], bytes)
+
 	return index + len(bytes)
 }
 
@@ -50,6 +52,7 @@ func makeNym(sk *math.Zr, IPk *IssuerPublicKey, rng io.Reader, curve *math.Curve
 		return nil, nil, err
 	}
 	Nym := HSk.Mul2(sk, HRand, RandNym)
+
 	return Nym, RandNym, nil
 }
 

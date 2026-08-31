@@ -10,9 +10,9 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/hyperledger/aries-bbs-go/bbs"
 )
 
 // TODO:
@@ -56,6 +56,35 @@ func (i *IssuerSecretKey) Public() types.IssuerPublicKey {
 // Issuer is a local interface to decouple from the idemix implementation
 type Issuer struct {
 	Curve *math.Curve
+}
+
+// Bases returns a map of element pairs that are used to generate pedersen commitments
+// for the attribute type in the key. The caller must specify what type of public key
+// it expects, and the indices for the three known commitments.
+func (i *Issuer) Bases(key types.IssuerPublicKey, ipkType types.CommitmentBasesRequest, RhIndex, EidIndex, SKIndex int) (map[types.CommitmentType]any, error) {
+	if ipkType != types.Dlog {
+		return nil, fmt.Errorf("invalid ipk type %d, expected %d", ipkType, types.Dlog)
+	}
+
+	ipk, ok := key.(*IssuerPublicKey)
+	if !ok {
+		return nil, fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
+	}
+
+	if RhIndex == EidIndex ||
+		EidIndex == SKIndex ||
+		RhIndex == SKIndex ||
+		RhIndex >= ipk.N ||
+		EidIndex >= ipk.N ||
+		SKIndex >= ipk.N {
+		return nil, fmt.Errorf("invalid indices %d, %d, %d", RhIndex, EidIndex, SKIndex)
+	}
+
+	return map[types.CommitmentType]any{
+		types.Nym:    []*math.G1{ipk.PKwG.H0, ipk.PKwG.H[SKIndex]},
+		types.NymEid: []*math.G1{ipk.PKwG.H0, ipk.PKwG.H[EidIndex+1]},
+		types.NymRH:  []*math.G1{ipk.PKwG.H0, ipk.PKwG.H[RhIndex+1]},
+	}, nil
 }
 
 // NewKey generates a new idemix issuer key w.r.t the passed attribute names.

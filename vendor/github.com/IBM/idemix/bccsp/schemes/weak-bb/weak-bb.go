@@ -7,10 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package weakbb
 
 import (
+	"errors"
 	"io"
 
 	math "github.com/IBM/mathlib"
-	"github.com/pkg/errors"
 )
 
 // WbbKeyGen creates a fresh weak-Boneh-Boyen signature key pair (http://ia.cr/2004/171)
@@ -19,6 +19,7 @@ func WbbKeyGen(curve *math.Curve, rng io.Reader) (*math.Zr, *math.G2) {
 	sk := curve.NewRandomZr(rng)
 	// set pk = g2^sk
 	pk := curve.GenG2.Mul(sk)
+
 	return sk, pk
 }
 
@@ -35,7 +36,7 @@ func WbbSign(curve *math.Curve, sk *math.Zr, m *math.Zr) *math.G1 {
 // WbbVerify verifies a weak Boneh-Boyen signature sig on message m with public key pk
 func WbbVerify(curve *math.Curve, pk *math.G2, sig *math.G1, m *math.Zr) error {
 	if pk == nil || sig == nil || m == nil {
-		return errors.Errorf("Weak-BB signature invalid: received nil input")
+		return errors.New("weak-BB signature invalid: received nil input")
 	}
 	// Set P = pk * g2^m
 	P := curve.NewG2()
@@ -44,7 +45,8 @@ func WbbVerify(curve *math.Curve, pk *math.G2, sig *math.G1, m *math.Zr) error {
 	P.Affine()
 	// check that e(sig, pk * g2^m) = e(g1, g2)
 	if !curve.FExp(curve.Pairing(P, sig)).Equals(curve.GenGt) {
-		return errors.Errorf("Weak-BB signature is invalid")
+		return errors.New("weak-BB signature is invalid")
 	}
+
 	return nil
 }

@@ -11,9 +11,8 @@ import (
 	"errors"
 	"fmt"
 
-	math "github.com/IBM/mathlib"
+	"github.com/IBM/idemix/bbs"
 	ml "github.com/IBM/mathlib"
-	"github.com/hyperledger/aries-bbs-go/bbs"
 )
 
 // BlindedMessages represents a set of messages prepared
@@ -36,6 +35,10 @@ func (b *BlindedMessages) Bytes() []byte {
 }
 
 func ParseBlindedMessages(bytes []byte, curve *ml.Curve) (*BlindedMessages, error) {
+	if len(bytes) < 2*curve.CompressedG1ByteSize {
+		return nil, fmt.Errorf("invalid blinded messages: input too short (%d bytes, need at least %d)", len(bytes), 2*curve.CompressedG1ByteSize)
+	}
+
 	offset := 0
 
 	C, err := curve.NewG1FromCompressed(bytes[offset : offset+curve.CompressedG1ByteSize])
@@ -102,7 +105,7 @@ func (b *POKOfBlindedMessages) VerifyProof(messages []bool, commitment *ml.G1, c
 
 // VerifyBlinding verifies that `msgCommit` is a valid
 // commitment of a set of messages against the appropriate bases.
-func VerifyBlinding(messageBitmap []bool, msgCommit *ml.G1, bmProof *POKOfBlindedMessages, PK *bbs.PublicKey, nonce []byte, curve *math.Curve) error {
+func VerifyBlinding(messageBitmap []bool, msgCommit *ml.G1, bmProof *POKOfBlindedMessages, PK *bbs.PublicKey, nonce []byte, curve *ml.Curve) error {
 	challengeBytes := msgCommit.Bytes()
 	challengeBytes = append(challengeBytes, bmProof.C.Bytes()...)
 	challengeBytes = append(challengeBytes, nonce...)
@@ -175,7 +178,7 @@ func BlindMessagesZr(zrs []*ml.Zr, PK *bbs.PublicKey, blindedMsgCount int, nonce
 }
 
 // BlindSign signs disclosed and blinded messages using private key in compressed form.
-func BlindSign(messages []*bbs.SignatureMessage, msgCount int, commitment *ml.G1, privKeyBytes []byte, curve *math.Curve) ([]byte, error) {
+func BlindSign(messages []*bbs.SignatureMessage, msgCount int, commitment *ml.G1, privKeyBytes []byte, curve *ml.Curve) ([]byte, error) {
 	bl := bbs.NewBBSLib(curve)
 
 	privKey, err := bl.UnmarshalPrivateKey(privKeyBytes)

@@ -25,13 +25,13 @@ func SetLogger(l Logger) {
 // defined to be compatible with the logger in the standard library log
 // package.
 type Logger interface {
-	Printf(format string, a ...interface{})
+	Printf(format string, a ...any)
 }
 
 // LogFunc is a function adapter for logging.
-type LogFunc func(format string, a ...interface{})
+type LogFunc func(format string, a ...any)
 
 // Printf is used to create a formatted string log record.
-func (l LogFunc) Printf(format string, a ...interface{}) {
+func (l LogFunc) Printf(format string, a ...any) {
 	l(format, a...)
 }

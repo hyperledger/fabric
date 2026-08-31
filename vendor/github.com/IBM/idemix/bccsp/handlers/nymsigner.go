@@ -6,10 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 package handlers
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/IBM/idemix/bccsp/types"
-	"github.com/pkg/errors"
 )
 
 type NymSigner struct {
@@ -35,11 +34,11 @@ func (s *NymSigner) Sign(k types.Key, digest []byte, opts types.SignerOpts) ([]b
 	// handle the smartcard case
 	if signerOpts.IsSmartcard {
 		if s.SmartcardNymSignatureScheme == nil {
-			return nil, fmt.Errorf("smartcard mode is unsupported")
+			return nil, errors.New("smartcard mode is unsupported")
 		}
 
 		if signerOpts.Smartcard == nil {
-			return nil, fmt.Errorf("no s/w smartcard supplied in opts")
+			return nil, errors.New("no s/w smartcard supplied in opts")
 		}
 
 		sigma, nym, rNym, err := s.SmartcardNymSignatureScheme.Sign(signerOpts.Smartcard, ipk.pk, digest)
@@ -110,10 +109,10 @@ func (v *NymVerifier) Verify(k types.Key, signature, digest []byte, opts types.S
 	// handle the smartcard case
 	if signerOpts.IsSmartcard {
 		if v.SmartcardNymSignatureScheme == nil {
-			return false, fmt.Errorf("smartcard mode is unsupported")
+			return false, errors.New("smartcard mode is unsupported")
 		}
 		if signerOpts.NymEid == nil {
-			return false, fmt.Errorf("nym eid missing")
+			return false, errors.New("nym eid missing")
 		}
 
 		err := v.SmartcardNymSignatureScheme.Verify(
