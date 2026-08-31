@@ -1,15 +1,17 @@
 // Copyright 2020-2025 Consensys Software Inc.
 // Licensed under the Apache License, Version 2.0. See the LICENSE file for details.
 
-// Package ecc provides bls12-381, bls12-377, bn254, bw6-761, bls24-315, bls24-317, bw6-633, secp256k1 and stark-curve elliptic curves implementation (+pairing).
+// Package ecc provides bls12-381, bls12-377, bn254, bw6-761, bls24-315, bls24-317, bw6-633, secp256k1, secp256r1, grumpkin and stark-curve elliptic curves implementations.
 //
 // Also
 //
+//   - Bilinear pairing
 //   - Multi exponentiation
 //   - FFT
 //   - Polynomial commitment schemes
-//   - MiMC
+//   - MiMC and Poseidon2 hash functions
 //   - twisted edwards "companion curves"
+//   - ECDSA
 //   - EdDSA (on the "companion" twisted edwards curves)
 package ecc
 
@@ -29,6 +31,7 @@ const (
 	STARK_CURVE
 	SECP256K1
 	GRUMPKIN
+	SECP256R1
 )
 
 // MultiExpConfig enables to set optional configuration attribute to a call to MultiExp

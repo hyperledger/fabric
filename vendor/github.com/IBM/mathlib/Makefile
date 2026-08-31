@@ -23,3 +23,26 @@ perf:
 .PHONY: check-deps
 check-deps:
 	@go install github.com/google/addlicense@latest
+
+.PHONY: lint
+# run various linters
+lint:
+	@echo "Running Go Linters..."
+	golangci-lint run --color=always --timeout=4m
+
+.PHONY: lint-auto-fix
+# run linters with auto-fix
+lint-auto-fix:
+	@echo "Running Go Linters with auto-fix..."
+	golangci-lint run --color=always --timeout=4m --fix
+
+.PHONY: install-linter-tool
+# install golangci-lint
+install-linter-tool:
+	@echo "Installing golangci Linter"
+	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(HOME)/go/bin v2.12.2
+
+.PHONY: fmt
+fmt: ## Run gofmt on the entire project
+	@echo "Running gofmt..."
+	@gofmt -l -s -w .

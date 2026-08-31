@@ -1,0 +1,164 @@
+version: "2"
+linters:
+  enable:
+    - asasalint # Check for pass []any as any in variadic func(...any).
+    - canonicalheader # Canonicalheader checks whether net/http.Header uses canonical header. [auto-fix]
+    - copyloopvar # A linter detects places where loop variables are copied. [fast, auto-fix]
+    - depguard # Go linter that checks if package imports are in a list of acceptable packages. [fast]
+    - dupword # Checks for duplicate words in the source code. [fast, auto-fix]
+    - durationcheck # Check for two durations multiplied together.
+    - errorlint # Find code that can cause problems with the error wrapping scheme introduced in Go 1.13. [auto-fix]
+    - exptostd # Detects functions from golang.org/x/exp/ that can be replaced by std functions. [auto-fix]
+    - ginkgolinter # Enforces standards of using ginkgo and gomega. [auto-fix]
+    - goheader # Check if file header matches to pattern. [fast, auto-fix]
+    - gosec # Inspects source code for security problems.
+    - govet # Vet examines Go source code and reports suspicious constructs. It is roughly the same as 'go vet' and uses its passes. [auto-fix]
+    - importas # Enforces consistent import aliases. [auto-fix]
+    - intrange # Intrange is a linter to find places where for loops could make use of an integer range. [auto-fix]
+    - loggercheck # Checks key value pairs for common logger libraries (kitlog,klog,logr,slog,zap).
+    - mirror # Reports wrong mirror patterns of bytes/strings usage. [auto-fix]
+    - misspell # Finds commonly misspelled English words. [fast, auto-fix]
+    - nakedret # Checks that functions with naked returns are not longer than a maximum size (can be zero). [fast, auto-fix]
+    - nilerr # Find the code that returns nil even if it checks that the error is not nil.
+    - nilnesserr # Reports constructs that checks for err != nil, but returns a different nil value error.
+    - nlreturn # Checks for a new line before return and branch statements to increase code clarity. [fast, auto-fix]
+    - nolintlint # Reports ill-formed or insufficient nolint directives. [fast, auto-fix]
+    - perfsprint # Checks that fmt.Sprintf can be replaced with a faster alternative. [auto-fix]
+    - reassign # Checks that package variables are not reassigned.
+    - sloglint # Ensure consistent code style when using log/slog. [auto-fix]
+    - spancheck # Checks for mistakes with OpenTelemetry/Census spans.
+    - staticcheck # It's the set of rules from staticcheck. [auto-fix]
+    - tagalign # Check that struct tags are well aligned. [fast, auto-fix]
+    - testifylint # Checks usage of github.com/stretchr/testify. [auto-fix]
+    - thelper # Thelper detects tests helpers which do not start with the t.Helper() method.
+    - unconvert # Remove unnecessary type conversions.
+    - usestdlibvars # A linter that detect the possibility to use variables/constants from the Go standard library. [fast, auto-fix]
+    - usetesting # Reports uses of functions with replacement inside the testing package. [auto-fix]
+    - wastedassign # Finds wasted assignment statements.
+    - whitespace # Whitespace is a linter that checks for unnecessary newlines at the start and end of functions, if, for, etc. [fast, auto-fix]
+    - zerologlint # Detects the wrong usage of `zerolog` that a user forgets to dispatch with `Send` or `Msg`.
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: github.com/pkg/errors
+              desc: github.com/pkg/errors is no longer maintained
+    errcheck:
+      # Report about not checking of errors in type assertions: `a := b.(MyStruct)`.
+      check-type-assertions: false
+    errorlint:
+      # Check whether fmt.Errorf uses the %w verb for formatting errors.
+      errorf: true
+      # Check for plain type assertions and type switches.
+      asserts: false
+      # Check for plain error comparisons.
+      comparison: true
+    fatcontext:
+      check-struct-pointers: true
+    gocognit:
+      min-complexity: 15
+    gosec:
+      excludes:
+        - G204
+        - G404
+        - G306
+    govet:
+      disable:
+        - fieldalignment
+      # Enable all analyzers.
+      enable-all: false
+    iface:
+      enable:
+        - identical # Identifies interfaces in the same package that have identical method sets.
+        - unused # Identifies interfaces that are not used anywhere in the same package where the interface is defined.
+        - opaque # Identifies functions that return interfaces, but the actual returned value is always a single concrete implementation.
+    ireturn:
+      # By default, it allows using errors, empty interfaces, anonymous interfaces,
+      # and interfaces provided by the standard library.
+      allow:
+        - error
+        - empty
+        - anon
+        - stdlib
+        - generic
+        - (or|er)$
+        - T
+        - github.com/prometheus/client_golang/prometheus.Counter
+        - github.com/prometheus/client_golang/prometheus.Gauge
+        - github.com/prometheus/client_golang/prometheus.Histogram
+    lll:
+      # Max line length, lines longer will be reported.
+      line-length: 240
+    maintidx:
+      under: 20
+    nolintlint:
+      require-specific: true
+    revive:
+      enable-all-rules: true
+      rules:
+        - name: argument-limit
+          arguments:
+            - 5
+        - name: line-length-limit
+          arguments:
+            - 240
+        - name: file-header
+          disabled: true
+        - name: package-comments
+          disabled: true
+        - name: max-public-structs
+          disabled: true
+        - name: banned-characters
+          disabled: true
+        - name: cognitive-complexity
+          disabled: true
+        - name: cyclomatic
+          disabled: true
+        - name: function-length
+          disabled: true
+        - name: function-result-limit
+          arguments:
+            - 3
+        - name: add-constant
+          disabled: true
+        - name: unhandled-error
+          arguments:
+            - fmt.Printf
+            - fmt.Println
+        - name: confusing-naming
+          disabled: true
+        - name: comment-spacings
+          arguments:
+            - 'nolint:'
+    rowserrcheck:
+      packages:
+        - github.com/jackc/pgx/v5
+        - github.com/jackc/pgx/v4
+    wrapcheck:
+      # An array of strings specifying additional substrings of signatures to ignore.
+      extra-ignore-sigs:
+        - .CustomError(
+        - .SpecificWrap(
+
+      # An array of strings that specify substrings of signatures to ignore.
+      ignore-sigs:
+        - errors.New(
+        - errors.Newf(
+        - errors.Unwrap(
+        - errors.Join(
+        - .Wrap(
+        - .Wrapf(
+        - status.Error(
+        - .Wait() # The error reported by errorgroup.Wait() (external) actually originates from the internal code.
+      # An array of strings that specify regular expressions of signatures to ignore.
+      ignore-sig-regexps:
+        - \.New.*Error\(
+  exclusions:
+    # Mode of the generated files analysis.
+    generated: lax
+    # Log a warning if an exclusion rule is unused.
+    warn-unused: true
+    # Predefined exclusion rules.
+    presets:
+      - common-false-positives

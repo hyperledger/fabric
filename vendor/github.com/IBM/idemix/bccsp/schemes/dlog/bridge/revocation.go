@@ -7,12 +7,12 @@ package bridge
 
 import (
 	"crypto/ecdsa"
+	"fmt"
 
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // Revocation encapsulates the idemix algorithms for revocation
@@ -35,17 +35,17 @@ func (r *Revocation) Sign(key *ecdsa.PrivateKey, unrevokedHandles [][]byte, epoc
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
 	handles := make([]*math.Zr, len(unrevokedHandles))
-	for i := 0; i < len(unrevokedHandles); i++ {
+	for i := range unrevokedHandles {
 		handles[i] = r.Idemix.Curve.NewZrFromBytes(unrevokedHandles[i])
 	}
 	cri, err := r.Idemix.CreateCRI(key, handles, epoch, idemix.RevocationAlgorithm(alg), newRandOrPanic(r.Idemix.Curve), r.Translator)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed creating CRI")
+		return nil, fmt.Errorf("failed creating CRI: %w", err)
 	}
 
 	return proto.Marshal(cri)
@@ -56,7 +56,7 @@ func (r *Revocation) Sign(key *ecdsa.PrivateKey, unrevokedHandles [][]byte, epoc
 func (r *Revocation) Verify(pk *ecdsa.PublicKey, criRaw []byte, epoch int, alg bccsp.RevocationAlgorithm) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 

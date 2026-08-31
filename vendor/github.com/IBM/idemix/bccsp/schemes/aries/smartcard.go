@@ -10,6 +10,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 
@@ -68,7 +69,6 @@ func (sc *Smartcard) NymEid() (*math.Zr, *math.G1) {
 }
 
 func (sc *Smartcard) NymSign(msg []byte) ([]byte, error) {
-
 	// set PRNG_input from random
 	PRNG_input := make([]byte, 16)
 	_, err := rand.Read(PRNG_input)
@@ -122,7 +122,6 @@ func (sc *Smartcard) NymSign(msg []byte) ([]byte, error) {
 }
 
 func (sc *Smartcard) NymVerify(proofBytes []byte, nymEid *math.G1, msg []byte) error {
-
 	offset := 16
 
 	B, err := sc.Curve.NewG1FromBytes(proofBytes[offset : offset+sc.Curve.G1ByteSize])
@@ -141,7 +140,6 @@ func (sc *Smartcard) NymVerify(proofBytes []byte, nymEid *math.G1, msg []byte) e
 	offset += sc.Curve.ScalarByteSize
 
 	r_hat := sc.Curve.NewZrFromBytes(proofBytes[offset : offset+sc.Curve.ScalarByteSize])
-	offset += sc.Curve.ScalarByteSize
 
 	var challengeBytes []byte
 	challengeBytes = append(challengeBytes, sc.H0.Bytes()[1:]...)
@@ -163,7 +161,7 @@ func (sc *Smartcard) NymVerify(proofBytes []byte, nymEid *math.G1, msg []byte) e
 		return nil
 	}
 
-	return fmt.Errorf("invalid proof")
+	return errors.New("invalid proof")
 }
 
 type SmartcardIdemixBackend struct {
@@ -171,7 +169,7 @@ type SmartcardIdemixBackend struct {
 }
 
 // Sign creates a new idemix pseudonym signature
-func (s *SmartcardIdemixBackend) Sign(isc interface{}, ipk types.IssuerPublicKey, digest []byte) ([]byte, *math.G1, *math.Zr, error) {
+func (s *SmartcardIdemixBackend) Sign(isc any, ipk types.IssuerPublicKey, digest []byte) ([]byte, *math.G1, *math.Zr, error) {
 	sc, ok := isc.(*Smartcard)
 	if !ok {
 		return nil, nil, nil, fmt.Errorf("invalid interface conversion for %T to *Smartcard", isc)

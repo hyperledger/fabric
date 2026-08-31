@@ -7,11 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package idemix
 
 import (
+	"errors"
+	"fmt"
 	"io"
 
-	amcl "github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
+	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	math "github.com/IBM/mathlib"
-	"github.com/pkg/errors"
 )
 
 type Translator interface {
@@ -56,7 +57,7 @@ func newCredential(key *IssuerKey, m *CredRequest, attrs []*math.Zr, rng io.Read
 	}
 
 	if len(attrs) != len(key.Ipk.AttributeNames) {
-		return nil, errors.Errorf("incorrect number of attribute values passed")
+		return nil, errors.New("incorrect number of attribute values passed")
 	}
 
 	// Place a BBS+ signature on the user key and the attribute values
@@ -99,7 +100,7 @@ func newCredential(key *IssuerKey, m *CredRequest, attrs []*math.Zr, rng io.Read
 
 	// Append attributes
 	// Use Mul2 instead of Mul as much as possible for efficiency reasones
-	for i := 0; i < len(attrs)/2; i++ {
+	for i := range len(attrs) / 2 {
 		B.Add(
 			// Add two attributes in one shot
 			HAttrs[2*i].Mul2(
@@ -154,9 +155,9 @@ func (cred *Credential) Ver(sk *math.Zr, ipk *IssuerPublicKey, curve *math.Curve
 	S := curve.NewZrFromBytes(cred.GetS())
 
 	// - verify that all attribute values are present
-	for i := 0; i < len(cred.GetAttrs()); i++ {
+	for i := range len(cred.GetAttrs()) {
 		if cred.Attrs[i] == nil {
-			return errors.Errorf("credential has no value for attribute %s", ipk.AttributeNames[i])
+			return fmt.Errorf("credential has no value for attribute %s", ipk.AttributeNames[i])
 		}
 	}
 
@@ -183,7 +184,7 @@ func (cred *Credential) Ver(sk *math.Zr, ipk *IssuerPublicKey, curve *math.Curve
 	BPrime := curve.NewG1()
 	BPrime.Clone(curve.GenG1)
 	BPrime.Add(HSk.Mul2(sk, HRand, S))
-	for i := 0; i < len(cred.Attrs)/2; i++ {
+	for i := range len(cred.Attrs) / 2 {
 		BPrime.Add(
 			HAttrs[2*i].Mul2(
 				curve.NewZrFromBytes(cred.Attrs[2*i]),
@@ -196,7 +197,7 @@ func (cred *Credential) Ver(sk *math.Zr, ipk *IssuerPublicKey, curve *math.Curve
 		BPrime.Add(HAttrs[len(cred.Attrs)-1].Mul(curve.NewZrFromBytes(cred.Attrs[len(cred.Attrs)-1])))
 	}
 	if !B.Equals(BPrime) {
-		return errors.Errorf("b-value from credential does not match the attribute values")
+		return errors.New("b-value from credential does not match the attribute values")
 	}
 
 	W, err := t.G2FromProto(ipk.W)
@@ -213,7 +214,7 @@ func (cred *Credential) Ver(sk *math.Zr, ipk *IssuerPublicKey, curve *math.Curve
 	right := curve.FExp(curve.Pairing(curve.GenG2, B))
 
 	if !left.Equals(right) {
-		return errors.Errorf("credential is not cryptographically valid")
+		return errors.New("credential is not cryptographically valid")
 	}
 
 	return nil

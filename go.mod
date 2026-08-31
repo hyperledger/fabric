@@ -3,10 +3,10 @@ module github.com/hyperledger/fabric
 go 1.27.0
 
 require (
-	code.cloudfoundry.org/clock v1.15.0
-	github.com/IBM/idemix v0.0.2-0.20240913182345-72941a5f41cd
+	code.cloudfoundry.org/clock v1.85.0
+	github.com/IBM/idemix v0.3.0
 	github.com/VictoriaMetrics/fastcache v1.13.3
-	github.com/bits-and-blooms/bitset v1.20.0
+	github.com/bits-and-blooms/bitset v1.25.0
 	github.com/cheggaaa/pb/v3 v3.2.1
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/expr-lang/expr v1.17.8
@@ -16,8 +16,8 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/hyperledger-labs/SmartBFT v1.0.1
 	github.com/hyperledger/fabric-chaincode-go/v2 v2.3.0
-	github.com/hyperledger/fabric-config v0.3.0
-	github.com/hyperledger/fabric-lib-go v1.1.3
+	github.com/hyperledger/fabric-config v0.3.1
+	github.com/hyperledger/fabric-lib-go v1.1.4
 	github.com/hyperledger/fabric-protos-go-apiv2 v0.3.7
 	github.com/kr/pretty v0.3.1
 	github.com/miekg/pkcs11 v1.1.2
@@ -45,20 +45,16 @@ require (
 )
 
 require (
-	github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-20240913182345-72941a5f41cd // indirect
-	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20240913182345-72941a5f41cd // indirect
-	github.com/IBM/idemix/bccsp/types v0.0.0-20240913182345-72941a5f41cd // indirect
-	github.com/IBM/mathlib v0.0.3-0.20250709075152-a138079496c3 // indirect
-	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible // indirect
-	github.com/Masterminds/semver/v3 v3.4.0 // indirect
+	github.com/IBM/mathlib v0.3.1 // indirect
+	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/clipperhouse/uax29/v2 v2.2.0 // indirect
-	github.com/consensys/gnark-crypto v0.19.2 // indirect
+	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
+	github.com/consensys/gnark-crypto v0.21.0 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
@@ -70,19 +66,17 @@ require (
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
-	github.com/go-logfmt/logfmt v0.5.1 // indirect
+	github.com/go-logfmt/logfmt v0.6.1 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/pprof v0.0.0-20260402051712-545e8a4df936 // indirect
+	github.com/google/pprof v0.0.0-20260824235931-c0b50f2f6510 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.30.0 // indirect
-	github.com/hyperledger/aries-bbs-go v0.0.0-20240528084656-761671ea73bc // indirect
 	github.com/hyperledger/fabric-amcl v0.0.0-20230602173724-9e02669dceb2 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/kilic/bls12-381 v0.1.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect

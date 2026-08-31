@@ -11,12 +11,11 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"reflect"
 
-	"github.com/IBM/idemix/bccsp/types"
 	bccsp "github.com/IBM/idemix/bccsp/types"
-	"github.com/pkg/errors"
 )
 
 // revocationSecretKey contains the revocation secret key
@@ -36,7 +35,7 @@ func NewRevocationSecretKey(sk *ecdsa.PrivateKey, exportable bool) *revocationSe
 // if this operation is allowed.
 func (k *revocationSecretKey) Bytes() ([]byte, error) {
 	if k.exportable {
-		return k.privKey.D.Bytes(), nil
+		return k.privKey.D.Bytes(), nil //nolint:staticcheck
 	}
 
 	return nil, errors.New("not exportable")
@@ -45,11 +44,12 @@ func (k *revocationSecretKey) Bytes() ([]byte, error) {
 // SKI returns the subject key identifier of this key.
 func (k *revocationSecretKey) SKI() []byte {
 	// Marshall the public key
-	raw := elliptic.Marshal(k.privKey.Curve, k.privKey.PublicKey.X, k.privKey.PublicKey.Y)
+	raw := elliptic.Marshal(k.privKey.Curve, k.privKey.X, k.privKey.Y) //nolint:staticcheck
 
 	// Hash it
 	hash := sha256.New()
 	hash.Write(raw)
+
 	return hash.Sum(nil)
 }
 
@@ -84,19 +84,21 @@ func NewRevocationPublicKey(pubKey *ecdsa.PublicKey) *revocationPublicKey {
 func (k *revocationPublicKey) Bytes() (raw []byte, err error) {
 	raw, err = x509.MarshalPKIXPublicKey(k.pubKey)
 	if err != nil {
-		return nil, fmt.Errorf("Failed marshalling key [%s]", err)
+		return nil, fmt.Errorf("failed marshalling key [%w]", err)
 	}
+
 	return
 }
 
 // SKI returns the subject key identifier of this key.
 func (k *revocationPublicKey) SKI() []byte {
 	// Marshall the public key
-	raw := elliptic.Marshal(k.pubKey.Curve, k.pubKey.X, k.pubKey.Y)
+	raw := elliptic.Marshal(k.pubKey.Curve, k.pubKey.X, k.pubKey.Y) //nolint:staticcheck
 
 	// Hash it
 	hash := sha256.New()
 	hash.Write(raw)
+
 	return hash.Sum(nil)
 }
 
@@ -124,7 +126,7 @@ type RevocationKeyGen struct {
 	// If a secret key is marked as exportable, its Bytes method will return the key's byte representation.
 	Exportable bool
 	// Revocation implements the underlying cryptographic algorithms
-	Revocation types.Revocation
+	Revocation bccsp.Revocation
 }
 
 func (g *RevocationKeyGen) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
@@ -141,7 +143,7 @@ func (g *RevocationKeyGen) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
 type RevocationPublicKeyImporter struct {
 }
 
-func (i *RevocationPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+func (i *RevocationPublicKeyImporter) KeyImport(raw any, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
 	der, ok := raw.([]byte)
 	if !ok {
 		return nil, errors.New("invalid raw, expected byte array")
@@ -153,15 +155,15 @@ func (i *RevocationPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyI
 
 	blockPub, _ := pem.Decode(raw.([]byte))
 	if blockPub == nil {
-		return nil, errors.New("Failed to decode revocation ECDSA public key")
+		return nil, errors.New("failed to decode revocation ECDSA public key")
 	}
 	revocationPk, err := x509.ParsePKIXPublicKey(blockPub.Bytes)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to parse revocation ECDSA public key bytes")
+		return nil, fmt.Errorf("failed to parse revocation ECDSA public key bytes: %w", err)
 	}
 	ecdsaPublicKey, isECDSA := revocationPk.(*ecdsa.PublicKey)
 	if !isECDSA {
-		return nil, errors.Errorf("key is of type %v, not of type ECDSA", reflect.TypeOf(revocationPk))
+		return nil, fmt.Errorf("key is of type %v, not of type ECDSA", reflect.TypeOf(revocationPk))
 	}
 
 	return &revocationPublicKey{ecdsaPublicKey}, nil
@@ -173,10 +175,10 @@ type RevocationKeyImporter struct {
 	// If a secret key is marked as exportable, its Bytes method will return the key's byte representation.
 	Exportable bool
 	// Revocation implements the underlying cryptographic algorithms
-	Revocation types.Revocation
+	Revocation bccsp.Revocation
 }
 
-func (i *RevocationKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+func (i *RevocationKeyImporter) KeyImport(raw any, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
 	der, ok := raw.([]byte)
 	if !ok {
 		return nil, errors.New("invalid raw, expected byte array")
@@ -198,7 +200,7 @@ func (i *RevocationKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportO
 }
 
 type CriSigner struct {
-	Revocation types.Revocation
+	Revocation bccsp.Revocation
 }
 
 func (s *CriSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte, error) {
@@ -220,7 +222,7 @@ func (s *CriSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]b
 }
 
 type CriVerifier struct {
-	Revocation types.Revocation
+	Revocation bccsp.Revocation
 }
 
 func (v *CriVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {

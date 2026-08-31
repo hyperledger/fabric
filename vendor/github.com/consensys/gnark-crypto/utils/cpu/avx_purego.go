@@ -3,3 +3,4 @@
 package cpu
 
 const SupportAVX512 = false
+const SupportAVX512IFMA = false

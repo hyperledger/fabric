@@ -7,8 +7,15 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fp"
 )
 
-// Mul sets z to the E2-product of x,y, returns z
-func (z *E2) Mul(x, y *E2) *E2 {
+// used with !amd64, make staticcheck happier.
+var (
+	_ = mulGenericE2
+	_ = squareGenericE2
+)
+
+// mulGenericE2 sets z to the E2-product of x,y, returns z
+// note: do not rename, this is referenced in the x86 assembly impl
+func mulGenericE2(z, x, y *E2) {
 	var a, b, c fp.Element
 	a.Add(&x.A0, &x.A1)
 	b.Add(&y.A0, &y.A1)
@@ -18,11 +25,11 @@ func (z *E2) Mul(x, y *E2) *E2 {
 	z.A1.Sub(&a, &b).Sub(&z.A1, &c)
 	fp.MulBy5(&c)
 	z.A0.Sub(&b, &c)
-	return z
 }
 
-// Square sets z to the E2-product of x,x returns z
-func (z *E2) Square(x *E2) *E2 {
+// squareGenericE2 sets z to the E2-product of x,x returns z
+// note: do not rename, this is referenced in the x86 assembly impl
+func squareGenericE2(z, x *E2) *E2 {
 	//algo 22 https://eprint.iacr.org/2010/354.pdf
 	var c0, c2 fp.Element
 	c0.Add(&x.A0, &x.A1)
@@ -36,16 +43,6 @@ func (z *E2) Square(x *E2) *E2 {
 	c2.Double(&c2)
 	z.A0.Add(&c0, &c2)
 
-	return z
-}
-
-// MulByNonResidue multiplies a E2 by (0,1)
-func (z *E2) MulByNonResidue(x *E2) *E2 {
-	a := x.A0
-	b := x.A1 // fetching x.A1 in the function below is slower
-	fp.MulBy5(&b)
-	z.A0.Neg(&b)
-	z.A1 = a
 	return z
 }
 

@@ -6,12 +6,13 @@ SPDX-License-Identifier: Apache-2.0
 package bridge
 
 import (
+	"fmt"
+
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // NymSignatureScheme encapsulates the idemix algorithms to sign and verify using an idemix
@@ -27,13 +28,13 @@ func (n *NymSignatureScheme) Sign(sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk 
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
 	iipk, ok := ipk.(*IssuerPublicKey)
 	if !ok {
-		return nil, errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
+		return nil, fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
 	sig, err := n.Idemix.NewNymSignature(
@@ -45,7 +46,7 @@ func (n *NymSignatureScheme) Sign(sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk 
 		newRandOrPanic(n.Idemix.Curve),
 		n.Translator)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed creating new nym signature")
+		return nil, fmt.Errorf("failed creating new nym signature: %w", err)
 	}
 
 	return proto.Marshal(sig)
@@ -56,19 +57,19 @@ func (n *NymSignatureScheme) Sign(sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk 
 func (n *NymSignatureScheme) Verify(ipk types.IssuerPublicKey, Nym *math.G1, signature, digest []byte, _ int) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
 	iipk, ok := ipk.(*IssuerPublicKey)
 	if !ok {
-		return errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
+		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
 	sig := &idemix.NymSignature{}
 	err = proto.Unmarshal(signature, sig)
 	if err != nil {
-		return errors.Wrap(err, "error unmarshalling signature")
+		return fmt.Errorf("error unmarshalling signature: %w", err)
 	}
 
 	return sig.Ver(Nym, iipk.PK, digest, n.Idemix.Curve, n.Translator)

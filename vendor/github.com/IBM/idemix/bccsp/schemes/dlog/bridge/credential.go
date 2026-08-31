@@ -7,12 +7,13 @@ package bridge
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // Credential encapsulates the idemix algorithms to produce (sign) a credential
@@ -31,23 +32,23 @@ func (c *Credential) Sign(key types.IssuerSecretKey, credentialRequest []byte, a
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
 	iisk, ok := key.(*IssuerSecretKey)
 	if !ok {
-		return nil, errors.Errorf("invalid issuer secret key, expected *Big, got [%T]", key)
+		return nil, fmt.Errorf("invalid issuer secret key, expected *Big, got [%T]", key)
 	}
 
 	cr := &idemix.CredRequest{}
 	err = proto.Unmarshal(credentialRequest, cr)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed unmarshalling credential request")
+		return nil, fmt.Errorf("failed unmarshalling credential request: %w", err)
 	}
 
 	attrValues := make([]*math.Zr, len(attributes))
-	for i := 0; i < len(attributes); i++ {
+	for i := range attributes {
 		switch attributes[i].Type {
 		case types.IdemixBytesAttribute:
 			attrValues[i] = c.Idemix.Curve.HashToZr(attributes[i].Value.([]byte))
@@ -58,17 +59,17 @@ func (c *Credential) Sign(key types.IssuerSecretKey, credentialRequest []byte, a
 			} else if v, ok := attributes[i].Value.(int64); ok {
 				value = v
 			} else {
-				return nil, errors.Errorf("invalid int type for IdemixIntAttribute attribute")
+				return nil, errors.New("invalid int type for IdemixIntAttribute attribute")
 			}
 			attrValues[i] = c.Idemix.Curve.NewZrFromInt(value)
 		default:
-			return nil, errors.Errorf("attribute type not allowed or supported [%v] at position [%d]", attributes[i].Type, i)
+			return nil, fmt.Errorf("attribute type not allowed or supported [%v] at position [%d]", attributes[i].Type, i)
 		}
 	}
 
 	cred, err := c.Idemix.NewCredential(iisk.SK, cr, attrValues, newRandOrPanic(c.Idemix.Curve), c.Translator)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed creating new credential")
+		return nil, fmt.Errorf("failed creating new credential: %w", err)
 	}
 
 	return proto.Marshal(cred)
@@ -81,13 +82,13 @@ func (c *Credential) Sign(key types.IssuerSecretKey, credentialRequest []byte, a
 func (c *Credential) Verify(sk *math.Zr, ipk types.IssuerPublicKey, credential []byte, attributes []types.IdemixAttribute) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
 	iipk, ok := ipk.(*IssuerPublicKey)
 	if !ok {
-		return errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", sk)
+		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", sk)
 	}
 
 	cred := &idemix.Credential{}
@@ -96,13 +97,13 @@ func (c *Credential) Verify(sk *math.Zr, ipk types.IssuerPublicKey, credential [
 		return err
 	}
 
-	for i := 0; i < len(attributes); i++ {
+	for i := range attributes {
 		switch attributes[i].Type {
 		case types.IdemixBytesAttribute:
 			if !bytes.Equal(
 				c.Idemix.Curve.HashToZr(attributes[i].Value.([]byte)).Bytes(),
 				cred.Attrs[i]) {
-				return errors.Errorf("credential does not contain the correct attribute value at position [%d]", i)
+				return fmt.Errorf("credential does not contain the correct attribute value at position [%d]", i)
 			}
 		case types.IdemixIntAttribute:
 			var value int64
@@ -111,18 +112,18 @@ func (c *Credential) Verify(sk *math.Zr, ipk types.IssuerPublicKey, credential [
 			} else if v, ok := attributes[i].Value.(int64); ok {
 				value = v
 			} else {
-				return errors.Errorf("invalid int type for IdemixIntAttribute attribute")
+				return errors.New("invalid int type for IdemixIntAttribute attribute")
 			}
 
 			if !bytes.Equal(
 				c.Idemix.Curve.NewZrFromInt(value).Bytes(),
 				cred.Attrs[i]) {
-				return errors.Errorf("credential does not contain the correct attribute value at position [%d]", i)
+				return fmt.Errorf("credential does not contain the correct attribute value at position [%d]", i)
 			}
 		case types.IdemixHiddenAttribute:
 			continue
 		default:
-			return errors.Errorf("attribute type not allowed or supported [%v] at position [%d]", attributes[i].Type, i)
+			return fmt.Errorf("attribute type not allowed or supported [%v] at position [%d]", attributes[i].Type, i)
 		}
 	}
 

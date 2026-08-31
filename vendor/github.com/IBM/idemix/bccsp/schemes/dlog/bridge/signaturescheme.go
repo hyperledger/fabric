@@ -8,13 +8,13 @@ package bridge
 
 import (
 	"crypto/ecdsa"
+	"errors"
+	"fmt"
 
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
-	"github.com/IBM/idemix/bccsp/types"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // SignatureScheme encapsulates the idemix algorithms to sign and verify using an idemix credential.
@@ -26,34 +26,34 @@ type SignatureScheme struct {
 // Sign produces an idemix-signature with the respect to the passed serialised credential (cred),
 // user secret key (sk), pseudonym public key (Nym) and secret key (RNym), issuer public key (ipk),
 // and attributes to be disclosed.
-func (s *SignatureScheme) Sign(cred []byte, sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk types.IssuerPublicKey, attributes []bccsp.IdemixAttribute,
+func (s *SignatureScheme) Sign(cred []byte, sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk bccsp.IssuerPublicKey, attributes []bccsp.IdemixAttribute,
 	msg []byte, rhIndex, eidIndex int, criRaw []byte, sigType bccsp.SignatureType, metadata *bccsp.IdemixSignerMetadata) (res []byte, meta *bccsp.IdemixSignerMetadata, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
 	iipk, ok := ipk.(*IssuerPublicKey)
 	if !ok {
-		return nil, nil, errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
+		return nil, nil, fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
 	credential := &idemix.Credential{}
 	err = proto.Unmarshal(cred, credential)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed unmarshalling credential")
+		return nil, nil, fmt.Errorf("failed unmarshalling credential: %w", err)
 	}
 
 	cri := &idemix.CredentialRevocationInformation{}
 	err = proto.Unmarshal(criRaw, cri)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed unmarshalling credential revocation information")
+		return nil, nil, fmt.Errorf("failed unmarshalling credential revocation information: %w", err)
 	}
 
 	disclosure := make([]byte, len(attributes))
-	for i := 0; i < len(attributes); i++ {
+	for i := range attributes {
 		if attributes[i].Type == bccsp.IdemixHiddenAttribute {
 			disclosure[i] = 0
 		} else {
@@ -78,12 +78,12 @@ func (s *SignatureScheme) Sign(cred []byte, sk *math.Zr, Nym *math.G1, RNym *mat
 		metadata,
 	)
 	if err != nil {
-		return nil, nil, errors.WithMessage(err, "failed creating new signature")
+		return nil, nil, fmt.Errorf("failed creating new signature: %w", err)
 	}
 
 	sigBytes, err := proto.Marshal(sig)
 	if err != nil {
-		return nil, nil, errors.WithMessage(err, "marshalling error")
+		return nil, nil, fmt.Errorf("marshalling error: %w", err)
 	}
 
 	return sigBytes, meta, nil
@@ -91,7 +91,7 @@ func (s *SignatureScheme) Sign(cred []byte, sk *math.Zr, Nym *math.G1, RNym *mat
 
 // AuditNymEid Audits the pseudonymous enrollment id of a signature
 func (s *SignatureScheme) AuditNymEid(
-	ipk types.IssuerPublicKey,
+	ipk bccsp.IssuerPublicKey,
 	eidIndex, _ int,
 	signature []byte,
 	enrollmentID string,
@@ -100,13 +100,13 @@ func (s *SignatureScheme) AuditNymEid(
 ) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
 	iipk, ok := ipk.(*IssuerPublicKey)
 	if !ok {
-		return errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
+		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
 	eidAttr := s.Idemix.Curve.HashToZr([]byte(enrollmentID))
@@ -118,6 +118,7 @@ func (s *SignatureScheme) AuditNymEid(
 		if err != nil {
 			return err
 		}
+
 		return sig.AuditNymEid(
 			iipk.PK,
 			eidAttr,
@@ -141,13 +142,13 @@ func (s *SignatureScheme) AuditNymEid(
 			s.Translator,
 		)
 	default:
-		return errors.Errorf("invalid audit type [%d]", verType)
+		return fmt.Errorf("invalid audit type [%d]", verType)
 	}
 }
 
 // AuditNymRh Audits the pseudonymous revocation handle of a signature
 func (s *SignatureScheme) AuditNymRh(
-	ipk types.IssuerPublicKey,
+	ipk bccsp.IssuerPublicKey,
 	rhIndex, _ int,
 	signature []byte,
 	revocationHandle string,
@@ -156,13 +157,13 @@ func (s *SignatureScheme) AuditNymRh(
 ) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
 	iipk, ok := ipk.(*IssuerPublicKey)
 	if !ok {
-		return errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
+		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
 	rhAttr := s.Idemix.Curve.HashToZr([]byte(revocationHandle))
@@ -174,6 +175,7 @@ func (s *SignatureScheme) AuditNymRh(
 		if err != nil {
 			return err
 		}
+
 		return sig.AuditNymRh(
 			iipk.PK,
 			rhAttr,
@@ -195,15 +197,16 @@ func (s *SignatureScheme) AuditNymRh(
 			s.Translator,
 		)
 	default:
-		return errors.Errorf("invalid audit type [%d]", verType)
+		return fmt.Errorf("invalid audit type [%d]", verType)
 	}
 }
 
 // Verify checks that an idemix signature is valid with the respect to the passed issuer public key, digest, attributes,
 // revocation index (rhIndex), revocation public key, and epoch.
 func (s *SignatureScheme) Verify(
-	ipk types.IssuerPublicKey,
+	ipk bccsp.IssuerPublicKey,
 	signature, digest []byte,
+	nym *math.G1,
 	attributes []bccsp.IdemixAttribute,
 	rhIndex, eidIndex, _ int,
 	revocationPublicKey *ecdsa.PublicKey,
@@ -213,13 +216,13 @@ func (s *SignatureScheme) Verify(
 ) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
 	iipk, ok := ipk.(*IssuerPublicKey)
 	if !ok {
-		return errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
+		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
 	sig := &idemix.Signature{}
@@ -229,7 +232,7 @@ func (s *SignatureScheme) Verify(
 	}
 	disclosure := make([]byte, len(attributes))
 	attrValues := make([]*math.Zr, len(attributes))
-	for i := 0; i < len(attributes); i++ {
+	for i := range attributes {
 		switch attributes[i].Type {
 		case bccsp.IdemixHiddenAttribute:
 			disclosure[i] = 0
@@ -244,23 +247,24 @@ func (s *SignatureScheme) Verify(
 			} else if v, ok := attributes[i].Value.(int64); ok {
 				value = v
 			} else {
-				return errors.Errorf("invalid int type for IdemixIntAttribute attribute")
+				return errors.New("invalid int type for IdemixIntAttribute attribute")
 			}
 
 			disclosure[i] = 1
 			attrValues[i] = s.Idemix.Curve.NewZrFromInt(value)
 		default:
-			err = errors.Errorf("attribute type not allowed or supported [%v] at position [%d]", attributes[i].Type, i)
+			err = fmt.Errorf("attribute type not allowed or supported [%v] at position [%d]", attributes[i].Type, i)
 		}
 	}
 	if err != nil {
-		return
+		return err
 	}
 
 	return sig.Ver(
 		disclosure,
 		iipk.PK,
 		digest,
+		nym,
 		attrValues,
 		rhIndex,
 		eidIndex,

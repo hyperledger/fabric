@@ -27,5 +27,6 @@ func bls_hash_to_point_miracl(M, DST []byte) *FP256BN.ECP {
 	P.Add(P1)
 	P.Cfp()
 	P.Affine()
+
 	return P
 }

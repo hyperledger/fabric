@@ -12,6 +12,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/asn1"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -19,8 +20,7 @@ import (
 	weakbb "github.com/IBM/idemix/bccsp/schemes/weak-bb"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 type RevocationAuthority struct {
@@ -36,9 +36,9 @@ func (r *RevocationAuthority) NewKey() (*ecdsa.PrivateKey, error) {
 // NewKeyFromBytes generates a long term signing key that will be used for revocation from the passed bytes
 func (r *RevocationAuthority) NewKeyFromBytes(raw []byte) (*ecdsa.PrivateKey, error) {
 	priv := &ecdsa.PrivateKey{}
-	priv.D = new(big.Int).SetBytes(raw)
-	priv.PublicKey.Curve = elliptic.P384()
-	priv.PublicKey.X, priv.PublicKey.Y = elliptic.P384().ScalarBaseMult(priv.D.Bytes())
+	priv.D = new(big.Int).SetBytes(raw) //nolint:staticcheck
+	priv.Curve = elliptic.P384()
+	priv.X, priv.Y = elliptic.P384().ScalarBaseMult(priv.D.Bytes()) //nolint:staticcheck
 
 	return priv, nil
 }
@@ -47,7 +47,7 @@ func (r *RevocationAuthority) NewKeyFromBytes(raw []byte) (*ecdsa.PrivateKey, er
 // Users can use the CRI to prove that they are not revoked.
 func (r *RevocationAuthority) Sign(key *ecdsa.PrivateKey, _ [][]byte, epoch int, alg types.RevocationAlgorithm) ([]byte, error) {
 	if key == nil {
-		return nil, errors.Errorf("CreateCRI received nil input")
+		return nil, errors.New("createCRI received nil input")
 	}
 
 	cri := &CredentialRevocationInformation{}
@@ -66,7 +66,7 @@ func (r *RevocationAuthority) Sign(key *ecdsa.PrivateKey, _ [][]byte, epoch int,
 	// sign epoch + epoch key with long term key
 	bytesToSign, err := proto.Marshal(cri)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal CRI")
+		return nil, fmt.Errorf("failed to marshal CRI: %w", err)
 	}
 
 	digest := sha256.Sum256(bytesToSign)
@@ -79,7 +79,7 @@ func (r *RevocationAuthority) Sign(key *ecdsa.PrivateKey, _ [][]byte, epoch int,
 	if alg == types.AlgNoRevocation {
 		return proto.Marshal(cri)
 	} else {
-		return nil, errors.Errorf("the specified revocation algorithm is not supported.")
+		return nil, errors.New("the specified revocation algorithm is not supported")
 	}
 }
 
@@ -90,7 +90,7 @@ func (r *RevocationAuthority) Sign(key *ecdsa.PrivateKey, _ [][]byte, epoch int,
 // is used in this epoch.
 func (r *RevocationAuthority) Verify(pk *ecdsa.PublicKey, criRaw []byte, epoch int, alg types.RevocationAlgorithm) error {
 	if pk == nil {
-		return fmt.Errorf("CreateCRI received nil input")
+		return errors.New("createCRI received nil input")
 	}
 
 	cri := &CredentialRevocationInformation{}
@@ -113,11 +113,11 @@ func (r *RevocationAuthority) Verify(pk *ecdsa.PublicKey, criRaw []byte, epoch i
 
 	var sig struct{ R, S *big.Int }
 	if _, err := asn1.Unmarshal(epochPkSig, &sig); err != nil {
-		return errors.Wrap(err, "failed unmashalling signature")
+		return fmt.Errorf("failed unmashalling signature: %w", err)
 	}
 
 	if !ecdsa.Verify(pk, digest[:], sig.R, sig.S) {
-		return errors.Errorf("EpochPKSig invalid")
+		return errors.New("epochPKSig invalid")
 	}
 
 	return nil

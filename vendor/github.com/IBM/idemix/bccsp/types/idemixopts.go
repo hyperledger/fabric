@@ -15,11 +15,6 @@ import (
 type RevocationAlgorithm int32
 
 const (
-	// IDEMIX constant to identify Idemix related algorithms
-	IDEMIX = "IDEMIX"
-)
-
-const (
 	// AlgNoRevocation means no revocation support
 	AlgNoRevocation RevocationAlgorithm = iota
 )
@@ -33,27 +28,44 @@ type IdemixIssuerKeyGenOpts struct {
 	AttributeNames []string
 }
 
-// Algorithm returns the key generation algorithm identifier (to be used).
-func (*IdemixIssuerKeyGenOpts) Algorithm() string {
-	return IDEMIX
-}
-
 // Ephemeral returns true if the key to generate has to be ephemeral,
 // false otherwise.
 func (o *IdemixIssuerKeyGenOpts) Ephemeral() bool {
 	return o.Temporary
 }
 
+// CommitmentBasesRequest describes the request for commitment bases
+type CommitmentBasesRequest int
+
+const (
+	None CommitmentBasesRequest = iota
+	Dlog
+)
+
+// CommitmentType describes a commitment performed by the scheme
+type CommitmentType int
+
+const (
+	Nym CommitmentType = iota + 1
+	NymEid
+	NymRH
+)
+
 // IdemixIssuerPublicKeyImportOpts contains the options for importing of an Idemix issuer public key.
 type IdemixIssuerPublicKeyImportOpts struct {
 	Temporary bool
 	// AttributeNames is a list of attributes to ensure the import public key has
 	AttributeNames []string
-}
-
-// Algorithm returns the key generation algorithm identifier (to be used).
-func (*IdemixIssuerPublicKeyImportOpts) Algorithm() string {
-	return IDEMIX
+	// CommitmentBasesRequest describes the request for commitment bases
+	CommitmentBasesRequest CommitmentBasesRequest
+	// RhIndex is the index of attribute containing the revocation handler.
+	RhIndex int
+	// EidIndex contains the index of the EID attribute
+	EidIndex int
+	// SKIndex contains the index of the secret key
+	SKIndex int
+	// CommitmentBases contains the bases used for the various commitments
+	CommitmentBases map[CommitmentType]any
 }
 
 // Ephemeral returns true if the key to generate has to be ephemeral,
@@ -69,11 +81,6 @@ type IdemixIssuerKeyImportOpts struct {
 	AttributeNames []string
 }
 
-// Algorithm returns the key generation algorithm identifier (to be used).
-func (*IdemixIssuerKeyImportOpts) Algorithm() string {
-	return IDEMIX
-}
-
 // Ephemeral returns true if the key to generate has to be ephemeral,
 // false otherwise.
 func (o *IdemixIssuerKeyImportOpts) Ephemeral() bool {
@@ -85,11 +92,6 @@ type IdemixUserSecretKeyGenOpts struct {
 	Temporary bool
 }
 
-// Algorithm returns the key generation algorithm identifier (to be used).
-func (*IdemixUserSecretKeyGenOpts) Algorithm() string {
-	return IDEMIX
-}
-
 // Ephemeral returns true if the key to generate has to be ephemeral,
 // false otherwise.
 func (o *IdemixUserSecretKeyGenOpts) Ephemeral() bool {
@@ -99,11 +101,6 @@ func (o *IdemixUserSecretKeyGenOpts) Ephemeral() bool {
 // IdemixUserSecretKeyImportOpts contains the options for importing of an Idemix credential secret key.
 type IdemixUserSecretKeyImportOpts struct {
 	Temporary bool
-}
-
-// Algorithm returns the key generation algorithm identifier (to be used).
-func (*IdemixUserSecretKeyImportOpts) Algorithm() string {
-	return IDEMIX
 }
 
 // Ephemeral returns true if the key to generate has to be ephemeral,
@@ -119,11 +116,6 @@ type IdemixNymKeyDerivationOpts struct {
 	Temporary bool
 	// IssuerPK is the public-key of the issuer
 	IssuerPK Key
-}
-
-// Algorithm returns the key derivation algorithm identifier (to be used).
-func (*IdemixNymKeyDerivationOpts) Algorithm() string {
-	return IDEMIX
 }
 
 // Ephemeral returns true if the key to derive has to be ephemeral,
@@ -144,11 +136,6 @@ type IdemixNymPublicKeyImportOpts struct {
 	Temporary bool
 }
 
-// Algorithm returns the key derivation algorithm identifier (to be used).
-func (*IdemixNymPublicKeyImportOpts) Algorithm() string {
-	return IDEMIX
-}
-
 // Ephemeral returns true if the key to derive has to be ephemeral,
 // false otherwise.
 func (o *IdemixNymPublicKeyImportOpts) Ephemeral() bool {
@@ -159,11 +146,6 @@ func (o *IdemixNymPublicKeyImportOpts) Ephemeral() bool {
 type IdemixNymKeyImportOpts struct {
 	// Temporary tells if the key is ephemeral
 	Temporary bool
-}
-
-// Algorithm returns the key derivation algorithm identifier (to be used).
-func (*IdemixNymKeyImportOpts) Algorithm() string {
-	return IDEMIX
 }
 
 // Ephemeral returns true if the key to derive has to be ephemeral,
@@ -233,7 +215,7 @@ type IdemixAttribute struct {
 	// Type is the attribute's type
 	Type IdemixAttributeType
 	// Value is the attribute's value
-	Value interface{}
+	Value any
 }
 
 // IdemixCredentialSignerOpts contains the options to produce a credential starting from a credential request
@@ -296,7 +278,7 @@ type IdemixSignerOpts struct {
 	// RhIndex is the index of attribute containing the revocation handler.
 	// Notice that this attributed cannot be disclosed
 	RhIndex int
-	// EidIndex contains the index of the EID attrbiute
+	// EidIndex contains the index of the EID attribute
 	EidIndex int
 	// SKIndex contains the index of the secret key
 	SKIndex int
@@ -361,7 +343,7 @@ type IdemixNymSignerOpts struct {
 	// Smartcard is a software smartcard used to support signing in s/w
 	// this field is only used in testing to emulate a real smartcard
 	// and may never be set in production.
-	Smartcard interface{}
+	Smartcard any
 
 	// NymEid is the nym eid to use in the verification
 	NymEid *math.G1
@@ -386,11 +368,6 @@ type IdemixRevocationKeyGenOpts struct {
 	Temporary bool
 }
 
-// Algorithm returns the key generation algorithm identifier (to be used).
-func (*IdemixRevocationKeyGenOpts) Algorithm() string {
-	return IDEMIX
-}
-
 // Ephemeral returns true if the key to generate has to be ephemeral,
 // false otherwise.
 func (o *IdemixRevocationKeyGenOpts) Ephemeral() bool {
@@ -402,11 +379,6 @@ type IdemixRevocationPublicKeyImportOpts struct {
 	Temporary bool
 }
 
-// Algorithm returns the key generation algorithm identifier (to be used).
-func (*IdemixRevocationPublicKeyImportOpts) Algorithm() string {
-	return IDEMIX
-}
-
 // Ephemeral returns true if the key to generate has to be ephemeral,
 // false otherwise.
 func (o *IdemixRevocationPublicKeyImportOpts) Ephemeral() bool {
@@ -416,11 +388,6 @@ func (o *IdemixRevocationPublicKeyImportOpts) Ephemeral() bool {
 // IdemixRevocationKeyImportOpts contains the options for importing of an Idemix revocation key pair.
 type IdemixRevocationKeyImportOpts struct {
 	Temporary bool
-}
-
-// Algorithm returns the key generation algorithm identifier (to be used).
-func (*IdemixRevocationKeyImportOpts) Algorithm() string {
-	return IDEMIX
 }
 
 // Ephemeral returns true if the key to generate has to be ephemeral,
@@ -456,6 +423,8 @@ const (
 	EidNymRhNym
 	// Smartcard has a separate component do the nym signing
 	Smartcard
+	// SmartcardNoNyms has a separate component do the nym signing and has no extra commitments
+	SmartcardNoNyms
 )
 
 // VerificationType describes the type of verification that is required
@@ -472,8 +441,10 @@ const (
 	ExpectEidNym
 	// ExpectEidNymRhNym expects a SignatureType of EidNymRhNym
 	ExpectEidNymRhNym
-	// Smartcard has a separate component do the nym signing
+	// ExpectSmartcard has a separate component do the nym signing
 	ExpectSmartcard
+	// ExpectSmartcardNoNyms has a separate component do the nym signing and has no extra commitments
+	ExpectSmartcardNoNyms
 )
 
 // AuditVerificationType describes the type of audit verification that is required

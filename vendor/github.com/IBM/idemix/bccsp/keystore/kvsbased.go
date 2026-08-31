@@ -8,18 +8,18 @@ package keystore
 
 import (
 	"encoding/hex"
+	"fmt"
 
 	"github.com/IBM/idemix/bccsp/handlers"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/pkg/errors"
 )
 
 type KVS interface {
-	Put(id string, state interface{}) error
-	Get(id string, state interface{}) error
+	Put(id string, state any) error
+	Get(id string, state any) error
 }
 
 type NymSecretKey struct {
@@ -57,9 +57,9 @@ func (ks *KVSStore) GetKey(ski []byte) (bccsp.Key, error) {
 	id := hex.EncodeToString(ski)
 
 	entry := &entry{}
-	err := ks.KVS.Get(id, entry)
+	err := ks.Get(id, entry)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not get key [%s] from kvs", id)
+		return nil, fmt.Errorf("could not get key [%s] from kvs: %w", id, err)
 	}
 
 	switch {
@@ -82,7 +82,7 @@ func (ks *KVSStore) GetKey(ski []byte) (bccsp.Key, error) {
 			Sk:         ks.Curve.NewZrFromBytes(entry.UserSecretKey.Sk),
 		}, nil
 	default:
-		return nil, errors.Errorf("key not found for [%s]", id)
+		return nil, fmt.Errorf("key not found for [%s]", id)
 	}
 }
 
@@ -103,7 +103,7 @@ func (ks *KVSStore) StoreKey(k bccsp.Key) error {
 
 		pk, err := k.PublicKey()
 		if err != nil {
-			return errors.Errorf("could not get public version for key [%s]", k.SKI())
+			return fmt.Errorf("could not get public version for key [%s]", k.SKI())
 		}
 
 		id = hex.EncodeToString(pk.SKI())
@@ -114,8 +114,8 @@ func (ks *KVSStore) StoreKey(k bccsp.Key) error {
 		}
 		id = hex.EncodeToString(k.SKI())
 	default:
-		return errors.Errorf("unknown type [%T] for the supplied key", key)
+		return fmt.Errorf("unknown type [%T] for the supplied key", key)
 	}
 
-	return ks.KVS.Put(id, entry)
+	return ks.Put(id, entry)
 }

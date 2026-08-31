@@ -10,8 +10,7 @@ import (
 
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 type CredRequest struct {
@@ -24,7 +23,7 @@ type CredRequest struct {
 func (c *CredRequest) Blind(sk *math.Zr, key types.IssuerPublicKey, nonce []byte) ([]byte, []byte, error) {
 	ipk, ok := key.(*IssuerPublicKey)
 	if !ok {
-		return nil, nil, errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
+		return nil, nil, fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
 	zrs := make([]*math.Zr, ipk.N+1)
@@ -42,7 +41,7 @@ func (c *CredRequest) Blind(sk *math.Zr, key types.IssuerPublicKey, nonce []byte
 func (c *CredRequest) BlindVerify(credRequest []byte, key types.IssuerPublicKey, nonce []byte) error {
 	ipk, ok := key.(*IssuerPublicKey)
 	if !ok {
-		return errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
+		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
 	bitmap := make([]bool, ipk.N+1)

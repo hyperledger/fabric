@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package msp
 
 import (
-	"github.com/IBM/idemix"
+	idemix "github.com/IBM/idemix/msp"
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/pkg/errors"
 )
