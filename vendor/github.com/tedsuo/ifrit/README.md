@@ -22,3 +22,15 @@ system grows with grace.
 The full documentation is written in godoc, and can be found at:
 
 http://godoc.org/github.com/tedsuo/ifrit
+
+
+## Contributing
+
+We welcome community contributions! Please follow the steps to contribute:
+- fork the repository
+- implement your changes
+- run linter and unit test
+  - `scripts/subtests/lint` - to run the linter
+  - `scripts/subtests/unit-test` - to run the unit-tests
+  - `scripts/test` - to run both linter and the unit-tests
+- open a pull request

@@ -19,18 +19,18 @@ import (
 func TestCreateNextBlock(t *testing.T) {
 	first := protoutil.NewBlock(0, []byte("firsthash"))
 	bc := &blockCreator{
-		hash:   protoutil.BlockHeaderHash(first.Header),
-		number: first.Header.Number,
+		hash:   protoutil.BlockHeaderHash(first.GetHeader()),
+		number: first.GetHeader().GetNumber(),
 		logger: flogging.NewFabricLogger(zap.NewNop()),
 	}
 
 	second := bc.createNextBlock([]*cb.Envelope{{Payload: []byte("some other bytes")}})
-	require.Equal(t, first.Header.Number+1, second.Header.Number)
-	require.Equal(t, protoutil.ComputeBlockDataHash(second.Data), second.Header.DataHash)
-	require.Equal(t, protoutil.BlockHeaderHash(first.Header), second.Header.PreviousHash)
+	require.Equal(t, first.GetHeader().GetNumber()+1, second.GetHeader().GetNumber())
+	require.Equal(t, protoutil.ComputeBlockDataHash(second.GetData()), second.GetHeader().GetDataHash())
+	require.Equal(t, protoutil.BlockHeaderHash(first.GetHeader()), second.GetHeader().GetPreviousHash())
 
 	third := bc.createNextBlock([]*cb.Envelope{{Payload: []byte("some other bytes")}})
-	require.Equal(t, second.Header.Number+1, third.Header.Number)
-	require.Equal(t, protoutil.ComputeBlockDataHash(third.Data), third.Header.DataHash)
-	require.Equal(t, protoutil.BlockHeaderHash(second.Header), third.Header.PreviousHash)
+	require.Equal(t, second.GetHeader().GetNumber()+1, third.GetHeader().GetNumber())
+	require.Equal(t, protoutil.ComputeBlockDataHash(third.GetData()), third.GetHeader().GetDataHash())
+	require.Equal(t, protoutil.BlockHeaderHash(second.GetHeader()), third.GetHeader().GetPreviousHash())
 }

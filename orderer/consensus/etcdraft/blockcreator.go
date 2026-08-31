@@ -41,6 +41,6 @@ func (bc *blockCreator) createNextBlock(envs []*cb.Envelope) *cb.Block {
 	block.Header.DataHash = protoutil.ComputeBlockDataHash(data)
 	block.Data = data
 
-	bc.hash = protoutil.BlockHeaderHash(block.Header)
+	bc.hash = protoutil.BlockHeaderHash(block.GetHeader())
 	return block
 }

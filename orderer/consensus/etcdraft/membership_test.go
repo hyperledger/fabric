@@ -40,28 +40,28 @@ func TestQuorumCheck(t *testing.T) {
 		{
 			Name:          "[1]->[1,(2)]",
 			NewConsenters: map[uint64]*etcdraftproto.Consenter{1: nil, 2: nil},
-			ConfChange:    &raftpb.ConfChange{NodeID: 2, Type: raftpb.ConfChangeAddNode},
+			ConfChange:    &raftpb.ConfChange{NodeId: new(uint64(2)), Type: new(raftpb.ConfChangeAddNode)},
 			ActiveNodes:   []uint64{1},
 			QuorumLoss:    false,
 		},
 		{
 			Name:          "[1,2]->[1,2,(3)]",
 			NewConsenters: map[uint64]*etcdraftproto.Consenter{1: nil, 2: nil, 3: nil},
-			ConfChange:    &raftpb.ConfChange{NodeID: 3, Type: raftpb.ConfChangeAddNode},
+			ConfChange:    &raftpb.ConfChange{NodeId: new(uint64(3)), Type: new(raftpb.ConfChangeAddNode)},
 			ActiveNodes:   []uint64{1, 2},
 			QuorumLoss:    false,
 		},
 		{
 			Name:          "[1,2,(3)]->[1,2,(3),(4)]",
 			NewConsenters: map[uint64]*etcdraftproto.Consenter{1: nil, 2: nil, 3: nil, 4: nil},
-			ConfChange:    &raftpb.ConfChange{NodeID: 4, Type: raftpb.ConfChangeAddNode},
+			ConfChange:    &raftpb.ConfChange{NodeId: new(uint64(4)), Type: new(raftpb.ConfChangeAddNode)},
 			ActiveNodes:   []uint64{1, 2},
 			QuorumLoss:    true,
 		},
 		{
 			Name:          "[1,2,3,(4)]->[1,2,3,(4),(5)]",
 			NewConsenters: map[uint64]*etcdraftproto.Consenter{1: nil, 2: nil, 3: nil, 4: nil, 5: nil},
-			ConfChange:    &raftpb.ConfChange{NodeID: 5, Type: raftpb.ConfChangeAddNode},
+			ConfChange:    &raftpb.ConfChange{NodeId: new(uint64(5)), Type: new(raftpb.ConfChangeAddNode)},
 			ActiveNodes:   []uint64{1, 2, 3},
 			QuorumLoss:    false,
 		},
@@ -98,21 +98,21 @@ func TestQuorumCheck(t *testing.T) {
 		{
 			Name:          "[1,2,(3)]->[1,2]",
 			NewConsenters: map[uint64]*etcdraftproto.Consenter{1: nil, 2: nil},
-			ConfChange:    &raftpb.ConfChange{NodeID: 3, Type: raftpb.ConfChangeRemoveNode},
+			ConfChange:    &raftpb.ConfChange{NodeId: new(uint64(3)), Type: new(raftpb.ConfChangeRemoveNode)},
 			ActiveNodes:   []uint64{1, 2},
 			QuorumLoss:    false,
 		},
 		{
 			Name:          "[1,2,(3)]->[1,(3)]",
 			NewConsenters: map[uint64]*etcdraftproto.Consenter{1: nil, 3: nil},
-			ConfChange:    &raftpb.ConfChange{NodeID: 2, Type: raftpb.ConfChangeRemoveNode},
+			ConfChange:    &raftpb.ConfChange{NodeId: new(uint64(2)), Type: new(raftpb.ConfChangeRemoveNode)},
 			ActiveNodes:   []uint64{1, 2},
 			QuorumLoss:    true,
 		},
 		{
 			Name:          "[1,2]->[1]",
 			NewConsenters: map[uint64]*etcdraftproto.Consenter{1: nil},
-			ConfChange:    &raftpb.ConfChange{NodeID: 2, Type: raftpb.ConfChangeRemoveNode},
+			ConfChange:    &raftpb.ConfChange{NodeId: new(uint64(2)), Type: new(raftpb.ConfChangeRemoveNode)},
 			ActiveNodes:   []uint64{1, 2},
 			QuorumLoss:    false,
 		},
@@ -222,8 +222,8 @@ func TestMembershipChanges(t *testing.T) {
 				AddedNodes:    []*etcdraftproto.Consenter{c[2]},
 				RemovedNodes:  []*etcdraftproto.Consenter{},
 				ConfChange: &raftpb.ConfChange{
-					NodeID: 3,
-					Type:   raftpb.ConfChangeAddNode,
+					NodeId: new(uint64(3)),
+					Type:   new(raftpb.ConfChangeAddNode),
 				},
 			},
 			Changed:     true,
@@ -248,8 +248,8 @@ func TestMembershipChanges(t *testing.T) {
 				AddedNodes:    []*etcdraftproto.Consenter{},
 				RemovedNodes:  []*etcdraftproto.Consenter{c[0]},
 				ConfChange: &raftpb.ConfChange{
-					NodeID: 1,
-					Type:   raftpb.ConfChangeRemoveNode,
+					NodeId: new(uint64(1)),
+					Type:   new(raftpb.ConfChangeRemoveNode),
 				},
 			},
 			Changed:     true,
@@ -337,10 +337,10 @@ func TestMembershipChanges(t *testing.T) {
 			changes, err := etcdraft.ComputeMembershipChanges(blockMetadata, test.OldConsenters, test.NewConsenters)
 
 			sortSlice := func(e *etcdraftproto.Consenter, e2 *etcdraftproto.Consenter) int {
-				if n := strings.Compare(e.Host, e2.Host); n != 0 {
+				if n := strings.Compare(e.GetHost(), e2.GetHost()); n != 0 {
 					return n
 				}
-				return cmp.Compare(e.Port, e2.Port)
+				return cmp.Compare(e.GetPort(), e2.GetPort())
 			}
 
 			if test.ExpectedErr != "" {

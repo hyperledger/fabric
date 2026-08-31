@@ -48,5 +48,5 @@ func (d *Disseminator) UpdateMetadata(m []byte) {
 	clusterMetadata := &etcdraft.ClusterMetadata{}
 	proto.Unmarshal(d.metadata, clusterMetadata)
 
-	d.C.ActiveNodes.Store(clusterMetadata.ActiveNodes)
+	d.C.ActiveNodes.Store(clusterMetadata.GetActiveNodes())
 }
