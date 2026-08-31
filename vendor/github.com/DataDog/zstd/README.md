@@ -6,8 +6,8 @@
 
 [C Zstd Homepage](https://github.com/facebook/zstd)
 
-The current headers and C files are from *v1.5.6* (Commit
-[794ea1b](https://github.com/facebook/zstd/releases/tag/v1.5.6)).
+The current headers and C files are from *v1.5.7* (Commit
+[f8745da](https://github.com/facebook/zstd/releases/tag/v1.5.7)).
 
 ## Usage
 
@@ -41,7 +41,7 @@ go build -tags external_libzstd
 // Compress compresses the byte array given in src and writes it to dst.
 // If you already have a buffer allocated, you can pass it to prevent allocation
 // If not, you can pass nil as dst.
-// If the buffer is too small, it will be reallocated, resized, and returned bu the function
+// If the buffer is too small, it will be reallocated, resized, and returned by the function
 // If dst is nil, this will allocate the worst case size (CompressBound(src))
 Compress(dst, src []byte) ([]byte, error)
 ```

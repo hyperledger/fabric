@@ -28,11 +28,6 @@
 #ifndef _DIVSUFSORT_H
 #define _DIVSUFSORT_H 1
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
-
-
 /*- Prototypes -*/
 
 /**
@@ -59,11 +54,6 @@ divsufsort(const unsigned char *T, int *SA, int n, int openMP);
  */
 int
 divbwt(const unsigned char *T, unsigned char *U, int *A, int n, unsigned char * num_indexes, int * indexes, int openMP);
-
-
-#ifdef __cplusplus
-} /* extern "C" */
-#endif /* __cplusplus */
 
 #endif /* _DIVSUFSORT_H */
 
