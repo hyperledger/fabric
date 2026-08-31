@@ -80,7 +80,6 @@ type Writer struct {
 
 	ctx              *C.ZSTD_CCtx
 	dict             []byte
-	srcBuffer        []byte
 	dstBuffer        []byte
 	firstError       error
 	underlyingWriter io.Writer
@@ -138,7 +137,6 @@ func NewWriterLevelDict(w io.Writer, level int, dict []byte) *Writer {
 		CompressionLevel: level,
 		ctx:              ctx,
 		dict:             dict,
-		srcBuffer:        make([]byte, 0),
 		dstBuffer:        make([]byte, CompressBound(1024)),
 		firstError:       err,
 		underlyingWriter: w,
@@ -154,65 +152,59 @@ func (w *Writer) Write(p []byte) (int, error) {
 	if len(p) == 0 {
 		return 0, nil
 	}
+	total := len(p)
 	// Check if dstBuffer is enough
 	w.dstBuffer = w.dstBuffer[0:cap(w.dstBuffer)]
 	if len(w.dstBuffer) < CompressBound(len(p)) {
 		w.dstBuffer = make([]byte, CompressBound(len(p)))
 	}
 
-	// Do not do an extra memcopy if zstd ingest all input data
-	srcData := p
-	fastPath := len(w.srcBuffer) == 0
-	if !fastPath {
-		w.srcBuffer = append(w.srcBuffer, p...)
-		srcData = w.srcBuffer
-	}
+	dstoff := 0
+	consumed := 0
+	for len(p) > 0 {
+		C.ZSTD_compressStream2_wrapper(
+			w.resultBuffer,
+			w.ctx,
+			unsafe.Pointer(&w.dstBuffer[dstoff]),
+			C.size_t(len(w.dstBuffer[dstoff:])),
+			unsafe.Pointer(&p[0]),
+			C.size_t(len(p)),
+		)
+		ret := int(w.resultBuffer.return_code)
+		if err := getError(ret); err != nil {
+			// The stream is dead after this.
+			w.firstError = err
+			return 0, err
+		}
+		p = p[w.resultBuffer.bytes_consumed:]
+		dstoff += int(w.resultBuffer.bytes_written)
+		consumed += int(w.resultBuffer.bytes_consumed)
+		if len(p) > 0 && dstoff == len(w.dstBuffer) {
+			// We have bytes remaining to compress and our output buffer
+			// filled up. This shouldn't happen since we calculated it
+			// in advance using CompressBound, but we need to handle it
+			// in case there was some miscalculation, or the internal
+			// stream buffer contained enough data from previous writes
+			// to overflow dstBuffer. (it's not clear from the docs
+			// whether this is possible)
+			//
+			// Allocate space for whatever we haven't compressed yet.
+			newbuf := make([]byte, len(w.dstBuffer)+CompressBound(total-consumed))
+			copy(newbuf, w.dstBuffer)
+			w.dstBuffer = newbuf
 
-	if len(srcData) == 0 {
-		// this is technically unnecessary: srcData is p or w.srcBuffer, and len() > 0 checked above
-		// but this ensures the code can change without dereferencing an srcData[0]
-		return 0, nil
-	}
-	C.ZSTD_compressStream2_wrapper(
-		w.resultBuffer,
-		w.ctx,
-		unsafe.Pointer(&w.dstBuffer[0]),
-		C.size_t(len(w.dstBuffer)),
-		unsafe.Pointer(&srcData[0]),
-		C.size_t(len(srcData)),
-	)
-	ret := int(w.resultBuffer.return_code)
-	if err := getError(ret); err != nil {
-		return 0, err
-	}
-
-	consumed := int(w.resultBuffer.bytes_consumed)
-	if !fastPath {
-		w.srcBuffer = w.srcBuffer[consumed:]
-	} else {
-		remaining := len(p) - consumed
-		if remaining > 0 {
-			// We still have some non-consumed data, copy remaining data to srcBuffer
-			// Try to not reallocate w.srcBuffer if we already have enough space
-			if cap(w.srcBuffer) >= remaining {
-				w.srcBuffer = w.srcBuffer[0:remaining]
-			} else {
-				w.srcBuffer = make([]byte, remaining)
-			}
-			copy(w.srcBuffer, p[consumed:])
 		}
 	}
 
-	written := int(w.resultBuffer.bytes_written)
 	// Write to underlying buffer
-	_, err := w.underlyingWriter.Write(w.dstBuffer[:written])
+	_, err := w.underlyingWriter.Write(w.dstBuffer[:dstoff])
 
 	// Same behaviour as zlib, we can't know how much data we wrote, only
 	// if there was an error
 	if err != nil {
 		return 0, err
 	}
-	return len(p), err
+	return total, err
 }
 
 // Flush writes any unwritten data to the underlying io.Writer.
@@ -223,24 +215,18 @@ func (w *Writer) Flush() error {
 
 	ret := 1 // So we loop at least once
 	for ret > 0 {
-		var srcPtr *byte // Do not point anywhere, if src is empty
-		if len(w.srcBuffer) > 0 {
-			srcPtr = &w.srcBuffer[0]
-		}
-
 		C.ZSTD_compressStream2_flush(
 			w.resultBuffer,
 			w.ctx,
 			unsafe.Pointer(&w.dstBuffer[0]),
 			C.size_t(len(w.dstBuffer)),
-			unsafe.Pointer(srcPtr),
-			C.size_t(len(w.srcBuffer)),
+			unsafe.Pointer(uintptr(0)),
+			C.size_t(0),
 		)
 		ret = int(w.resultBuffer.return_code)
 		if err := getError(ret); err != nil {
 			return err
 		}
-		w.srcBuffer = w.srcBuffer[w.resultBuffer.bytes_consumed:]
 		written := int(w.resultBuffer.bytes_written)
 		_, err := w.underlyingWriter.Write(w.dstBuffer[:written])
 		if err != nil {
@@ -267,24 +253,18 @@ func (w *Writer) Close() error {
 
 	ret := 1 // So we loop at least once
 	for ret > 0 {
-		var srcPtr *byte // Do not point anywhere, if src is empty
-		if len(w.srcBuffer) > 0 {
-			srcPtr = &w.srcBuffer[0]
-		}
-
 		C.ZSTD_compressStream2_finish(
 			w.resultBuffer,
 			w.ctx,
 			unsafe.Pointer(&w.dstBuffer[0]),
 			C.size_t(len(w.dstBuffer)),
-			unsafe.Pointer(srcPtr),
-			C.size_t(len(w.srcBuffer)),
+			unsafe.Pointer(uintptr(0)),
+			C.size_t(0),
 		)
 		ret = int(w.resultBuffer.return_code)
 		if err := getError(ret); err != nil {
 			return err
 		}
-		w.srcBuffer = w.srcBuffer[w.resultBuffer.bytes_consumed:]
 		written := int(w.resultBuffer.bytes_written)
 		_, err := w.underlyingWriter.Write(w.dstBuffer[:written])
 		if err != nil {
@@ -486,7 +466,7 @@ func (r *reader) Read(p []byte) (int, error) {
 				n, err = r.underlyingReader.Read(src[r.compressionLeft:])
 			}
 			if err != nil && err != io.EOF { // Handle underlying reader errors first
-				return 0, fmt.Errorf("failed to read from underlying reader: %s", err)
+				return 0, fmt.Errorf("failed to read from underlying reader: %w", err)
 			}
 			if n == 0 {
 				// Ideally, we'd return with ErrUnexpectedEOF in all cases where the stream was unexpectedly EOF'd
@@ -524,7 +504,7 @@ func (r *reader) Read(p []byte) (int, error) {
 		// Keep src here even though we reuse later, the code might be deleted at some point
 		runtime.KeepAlive(src)
 		if err := getError(retCode); err != nil {
-			return 0, fmt.Errorf("failed to decompress: %s", err)
+			return 0, fmt.Errorf("failed to decompress: %w", err)
 		}
 
 		// Put everything in buffer

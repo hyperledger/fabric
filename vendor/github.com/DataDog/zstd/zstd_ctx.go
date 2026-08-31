@@ -24,6 +24,15 @@ type Ctx interface {
 	// prevent allocation.  If it is too small, or if nil is passed, a new buffer
 	// will be allocated and returned.
 	Decompress(dst, src []byte) ([]byte, error)
+
+	// DecompressInto decompresses src into dst. Unlike Decompress, DecompressInto
+	// requires that dst be sufficiently large to hold the decompressed payload.
+	// DecompressInto may be used when the caller knows the size of the decompressed
+	// payload before attempting decompression.
+	//
+	// It returns the number of bytes copied and an error if any is encountered. If
+	// dst is too small, DecompressInto errors.
+	DecompressInto(dst, src []byte) (int, error)
 }
 
 type ctx struct {
@@ -104,14 +113,7 @@ func (c *ctx) Decompress(dst, src []byte) ([]byte, error) {
 		dst = make([]byte, bound)
 	}
 
-	written := int(C.ZSTD_decompressDCtx(
-		c.dctx,
-		unsafe.Pointer(&dst[0]),
-		C.size_t(len(dst)),
-		unsafe.Pointer(&src[0]),
-		C.size_t(len(src))))
-
-	err := getError(written)
+	written, err := c.DecompressInto(dst, src)
 	if err == nil {
 		return dst[:written], nil
 	}
@@ -123,6 +125,17 @@ func (c *ctx) Decompress(dst, src []byte) ([]byte, error) {
 	r := NewReader(bytes.NewReader(src))
 	defer r.Close()
 	return ioutil.ReadAll(r)
+}
+
+func (c *ctx) DecompressInto(dst, src []byte) (int, error) {
+	written := int(C.ZSTD_decompressDCtx(
+		c.dctx,
+		unsafe.Pointer(&dst[0]),
+		C.size_t(len(dst)),
+		unsafe.Pointer(&src[0]),
+		C.size_t(len(src))))
+	err := getError(written)
+	return written, err
 }
 
 func finalizeCtx(c *ctx) {

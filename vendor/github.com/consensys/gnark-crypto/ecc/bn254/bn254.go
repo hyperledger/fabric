@@ -79,6 +79,7 @@ var lambdaGLV big.Int
 // glvBasis stores R-linearly independent vectors (a,b), (c,d)
 // in ker((u,v) → u+vλ[r]), and their determinant
 var glvBasis ecc.Lattice
+var glsBasis ecc.Lattice4
 
 // g1ScalarMulChoose and g2ScalarmulChoose indicate the bitlength of the scalar
 // in scalar multiplication from which it is more efficient to use the GLV
@@ -109,6 +110,8 @@ type E12 = fptower.E12
 func init() {
 	aCurveCoeff.SetUint64(0)
 	bCurveCoeff.SetUint64(3)
+	thirdRootOneG1.SetString("2203960485148121921418603742825762020974279258880205651966")
+	thirdRootOneG2.Square(&thirdRootOneG1)
 	// D-twist
 	twist.A0.SetUint64(9)
 	twist.A1.SetUint64(1)
@@ -134,8 +137,6 @@ func init() {
 	g2Infinity.X.SetOne()
 	g2Infinity.Y.SetOne()
 
-	thirdRootOneG1.SetString("2203960485148121921418603742825762020974279258880205651966")
-	thirdRootOneG2.Square(&thirdRootOneG1)
 	lambdaGLV.SetString("4407920970296243842393367215006156084916469457145843978461", 10) // (36x₀³+18x₀²+6x₀+1)
 	_r := fr.Modulus()
 	ecc.PrecomputeLattice(_r, &lambdaGLV, &glvBasis)
@@ -153,6 +154,53 @@ func init() {
 
 	xGen.SetString("4965661367192848881", 10)
 
+	initGLSBasis()
+}
+
+func initGLSBasis() {
+	// LLL-reduced basis (rows) from:
+	//
+	// 	 v1 = [r,                   0,          0,          0]
+	// 	 v2 = [-lambdaGLV,   	    1,          0,          0]
+	// 	 v3 = [-lambdaGLS,   	    0,          1,          0]
+	// 	 v4 = [lambdaGLV*lambdaGLS, -lambdaGLS, -lambdaGLV, 1]
+	//
+	// to:
+	//   v1 = [2x₀,    x₀,     x₀+1,   -x₀  ]
+	//   v2 = [-x₀,    x₀,     x₀,     2x₀+1]
+	//   v3 = [-x₀-1,  x₀,     -x₀,    -2x₀ ]
+	//   v4 = [2x₀+1,  x₀+1,   -x₀,    x₀   ]
+	setBasis := func(dst *big.Int, s string) {
+		if _, ok := dst.SetString(s, 10); !ok {
+			panic("invalid GLS basis constant")
+		}
+	}
+
+	// v1 = (2x₀, x₀, x₀+1, -x₀)
+	setBasis(&glsBasis.V[0][0], "9931322734385697762")
+	setBasis(&glsBasis.V[0][1], "4965661367192848881")
+	setBasis(&glsBasis.V[0][2], "4965661367192848882")
+	setBasis(&glsBasis.V[0][3], "-4965661367192848881")
+
+	// v2 = (-x₀, x₀, x₀, 2x₀+1)
+	setBasis(&glsBasis.V[1][0], "-4965661367192848881")
+	setBasis(&glsBasis.V[1][1], "4965661367192848881")
+	setBasis(&glsBasis.V[1][2], "4965661367192848881")
+	setBasis(&glsBasis.V[1][3], "9931322734385697763")
+
+	// v3 = (-x₀-1, x₀, -x₀, -2x₀)
+	setBasis(&glsBasis.V[2][0], "-4965661367192848882")
+	setBasis(&glsBasis.V[2][1], "4965661367192848881")
+	setBasis(&glsBasis.V[2][2], "-4965661367192848881")
+	setBasis(&glsBasis.V[2][3], "-9931322734385697762")
+
+	// v4 = (2x₀+1, x₀+1, -x₀, x₀)
+	setBasis(&glsBasis.V[3][0], "9931322734385697763")
+	setBasis(&glsBasis.V[3][1], "4965661367192848882")
+	setBasis(&glsBasis.V[3][2], "-4965661367192848881")
+	setBasis(&glsBasis.V[3][3], "4965661367192848881")
+
+	ecc.PrecomputeLattice4(&glsBasis)
 }
 
 // Generators return the generators of the r-torsion group, resp. in ker(pi-id), ker(Tr)
