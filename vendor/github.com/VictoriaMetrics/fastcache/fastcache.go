@@ -217,6 +217,10 @@ func (c *Cache) UpdateStats(s *Stats) {
 type bucket struct {
 	mu sync.RWMutex
 
+	getCalls uint64
+	setCalls uint64
+	misses   uint64
+
 	// chunks is a ring buffer with encoded (k, v) pairs.
 	// It consists of 64KB chunks.
 	chunks [][]byte
@@ -224,15 +228,12 @@ type bucket struct {
 	// m maps hash(k) to idx of (k, v) pair in chunks.
 	m map[uint64]uint64
 
-	// idx points to chunks for writing the next (k, v) pair.
-	idx uint64
-
 	// gen is the generation of chunks.
 	gen uint64
 
-	getCalls    uint64
-	setCalls    uint64
-	misses      uint64
+	// idx points to chunks for writing the next (k, v) pair.
+	idx uint64
+
 	collisions  uint64
 	corruptions uint64
 }
@@ -333,9 +334,9 @@ func (b *bucket) Set(k, v []byte, h uint64) {
 		return
 	}
 
+	b.mu.Lock()
 	chunks := b.chunks
 	needClean := false
-	b.mu.Lock()
 	idx := b.idx
 	idxNew := idx + kvLen
 	chunkIdx := idx / chunkSize
@@ -375,10 +376,10 @@ func (b *bucket) Set(k, v []byte, h uint64) {
 }
 
 func (b *bucket) Get(dst, k []byte, h uint64, returnDst bool) ([]byte, bool) {
+	b.mu.RLock()
 	atomic.AddUint64(&b.getCalls, 1)
 	found := false
 	chunks := b.chunks
-	b.mu.RLock()
 	v := b.m[h]
 	bGen := b.gen & ((1 << genSizeBits) - 1)
 	if v > 0 {

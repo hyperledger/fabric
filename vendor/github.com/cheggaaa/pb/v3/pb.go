@@ -21,7 +21,9 @@ import (
 )
 
 // Version of ProgressBar library
-const Version = "3.0.8"
+const Version = "3.2.1"
+
+const unicodeProgressBarEnv = "UNICODE_PROGRESS_BAR"
 
 type key int
 
@@ -217,7 +219,7 @@ func (pb *ProgressBar) write(finish bool) {
 		if finish && ret == "\r" {
 			if pb.GetBool(CleanOnFinish) {
 				// "Wipe out" progress bar by overwriting one line with blanks
-				result = "\r" + color.New(color.Reset).Sprintf(strings.Repeat(" ", width)) + "\r"
+				result = "\r" + color.New(color.Reset).Sprint(strings.Repeat(" ", width)) + "\r"
 			} else {
 				result += "\n"
 			}

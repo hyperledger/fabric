@@ -101,6 +101,9 @@ type SummaryOpts struct {
 	// string.
 	Help string
 
+	// Unit provides the unit of this Summary.
+	Unit string
+
 	// ConstLabels are used to attach fixed labels to this metric. Metrics
 	// with the same fully-qualified name must have the same label names in
 	// their ConstLabels.
@@ -181,11 +184,12 @@ type SummaryVecOpts struct {
 // NewSummary creates a new Summary based on the provided SummaryOpts.
 func NewSummary(opts SummaryOpts) Summary {
 	return newSummary(
-		NewDesc(
+		V2.NewDesc(
 			BuildFQName(opts.Namespace, opts.Subsystem, opts.Name),
 			opts.Help,
-			nil,
+			UnconstrainedLabels(nil),
 			opts.ConstLabels,
+			WithUnit(opts.Unit),
 		),
 		opts,
 	)
@@ -243,6 +247,7 @@ func newSummary(desc *Desc, opts SummaryOpts, labelValues ...string) Summary {
 
 	s := &summary{
 		desc: desc,
+		now:  opts.now,
 
 		objectives:       opts.Objectives,
 		sortedObjectives: make([]float64, 0, len(opts.Objectives)),
@@ -280,6 +285,8 @@ type summary struct {
 
 	desc *Desc
 
+	now func() time.Time
+
 	objectives       map[float64]float64
 	sortedObjectives []float64
 
@@ -307,7 +314,7 @@ func (s *summary) Observe(v float64) {
 	s.bufMtx.Lock()
 	defer s.bufMtx.Unlock()
 
-	now := time.Now()
+	now := s.now()
 	if now.After(s.hotBufExpTime) {
 		s.asyncFlush(now)
 	}
@@ -326,7 +333,7 @@ func (s *summary) Write(out *dto.Metric) error {
 	s.bufMtx.Lock()
 	s.mtx.Lock()
 	// Swap bufs even if hotBuf is empty to set new hotBufExpTime.
-	s.swapBufs(time.Now())
+	s.swapBufs(s.now())
 	s.bufMtx.Unlock()
 
 	s.flushColdBuf()
@@ -575,6 +582,7 @@ func (v2) NewSummaryVec(opts SummaryVecOpts) *SummaryVec {
 		opts.Help,
 		opts.VariableLabels,
 		opts.ConstLabels,
+		WithUnit(opts.Unit),
 	)
 	return &SummaryVec{
 		MetricVec: NewMetricVec(desc, func(lvs ...string) Metric {
