@@ -176,7 +176,8 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 	//   - multipart/form-data
 
 	handler.router.HandleFunc(URLBaseV1Channels, handler.serveJoin).Methods(http.MethodPost).HeadersRegexp(
-		"Content-Type", "multipart/form-data*")
+		"Content-Type", "multipart/form-data*",
+	)
 	handler.router.HandleFunc(URLBaseV1Channels, handler.serveBadContentType).Methods(http.MethodPost)
 
 	// swagger:operation PUT /participation/v1/channels channels updateChannel
@@ -189,7 +190,7 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 	//   required: true
 	// responses:
 	//    '201':
-	//      description: Сhannel update successfully.
+	//      description: Channel update successfully.
 	//      schema:
 	//        "$ref": "#/definitions/channelInfo"
 	//      headers:
@@ -213,7 +214,8 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 	//   - multipart/form-data
 
 	handler.router.HandleFunc(URLBaseV1Channels, handler.serveUpdate).Methods(http.MethodPut).HeadersRegexp(
-		"Content-Type", "multipart/form-data*")
+		"Content-Type", "multipart/form-data*",
+	)
 	handler.router.HandleFunc(URLBaseV1Channels, handler.serveBadContentType).Methods(http.MethodPut)
 
 	// swagger:operation GET /participation/v1/channels/{channelID}/blocks/{blockID} channels fetchBlock

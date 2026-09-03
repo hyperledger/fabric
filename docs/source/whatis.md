@@ -179,7 +179,7 @@ The order-execute architecture can be found in virtually all existing blockchain
 systems, ranging from public/permissionless platforms such as
 [Ethereum](https://ethereum.org/) (with PoS-based consensus) to permissioned
 platforms such as [Tendermint](http://tendermint.com/),
-[Chain](http://chain.com/), and [Quorum](https://docs.goquorum.consensys.io/).
+[Chain](http://chain.com/), and [Quorum](https://goquorum.readthedocs.io/).
 
 Smart contracts executing in a blockchain that operates with the order-execute
 architecture must be deterministic; otherwise, consensus might never be reached.

@@ -50,7 +50,8 @@ func constructHashedIndex(storePath string, ledgerIDs []string) error {
 		&leveldbhelper.Conf{
 			DBPath:         storePath,
 			ExpectedFormat: previousDataVersion,
-		})
+		},
+	)
 	if err != nil {
 		return err
 	}

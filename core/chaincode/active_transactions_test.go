@@ -38,7 +38,8 @@ var _ = Describe("ActiveTransactions", func() {
 		Expect(ok).To(BeTrue(), "using a an id that has been removed should return true")
 	})
 
-	DescribeTable("NewTxKey",
+	DescribeTable(
+		"NewTxKey",
 		func(channelID, txID, expected string) {
 			result := chaincode.NewTxKey(channelID, txID)
 			Expect(result).To(Equal(expected))

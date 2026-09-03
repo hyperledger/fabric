@@ -1003,13 +1003,14 @@ func amIReallyInChannel(configBlock *common.Block) (bool, error) {
 func makeConfigBlock(num uint64, prevHash []byte, isMember uint8) *common.Block {
 	block := protoutil.NewBlock(num, prevHash)
 	env := &common.Envelope{
-		Payload: protoutil.MarshalOrPanic(&common.Payload{
-			Header: protoutil.MakePayloadHeader(
-				protoutil.MakeChannelHeader(common.HeaderType_CONFIG, 0, "my-channel", 0),
-				protoutil.MakeSignatureHeader([]byte{}, []byte{}),
-			),
-			Data: []byte{isMember},
-		},
+		Payload: protoutil.MarshalOrPanic(
+			&common.Payload{
+				Header: protoutil.MakePayloadHeader(
+					protoutil.MakeChannelHeader(common.HeaderType_CONFIG, 0, "my-channel", 0),
+					protoutil.MakeSignatureHeader([]byte{}, []byte{}),
+				),
+				Data: []byte{isMember},
+			},
 		),
 	}
 	block.Data.Data = append(block.Data.Data, protoutil.MarshalOrPanic(env))

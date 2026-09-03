@@ -8,7 +8,7 @@ package consensus
 import (
 	"errors"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -166,7 +166,7 @@ func (c *Consensus) Start() error {
 
 func (c *Consensus) run() {
 	defer func() {
-		c.Logger.Infof("Exiting")
+		c.Logger.Infof("Exiting consensus run; ID: %d", c.Config.SelfID)
 		atomic.StoreUint64(&c.running, 0)
 		c.Stop()
 	}()
@@ -194,11 +194,8 @@ func (c *Consensus) reconfig(reconfig types.Reconfig) {
 	c.collector.Stop()
 
 	var exist bool
-	for _, n := range reconfig.CurrentNodes {
-		if c.Config.SelfID == n {
-			exist = true
-			break
-		}
+	if slices.Contains(reconfig.CurrentNodes, c.Config.SelfID) {
+		exist = true
 	}
 
 	if !exist {
@@ -378,9 +375,7 @@ func (c *Consensus) setNodes(nodes []uint64) {
 func sortNodes(nodes []uint64) []uint64 {
 	sorted := make([]uint64, len(nodes))
 	copy(sorted, nodes)
-	sort.Slice(sorted, func(i, j int) bool {
-		return sorted[i] < sorted[j]
-	})
+	slices.Sort(sorted)
 	return sorted
 }
 

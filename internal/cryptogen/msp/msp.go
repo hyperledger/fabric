@@ -18,7 +18,7 @@ import (
 	"github.com/hyperledger/fabric/internal/cryptogen/csp"
 	fabricmsp "github.com/hyperledger/fabric/msp"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 const (
@@ -279,7 +279,7 @@ func createFolderStructure(rootDir string, local bool) error {
 func getPublicKey(priv crypto.PrivateKey) crypto.PublicKey {
 	switch kk := priv.(type) {
 	case *ecdsa.PrivateKey:
-		return &(kk.PublicKey)
+		return &kk.PublicKey
 	case ed25519.PrivateKey:
 		return kk.Public()
 	default:

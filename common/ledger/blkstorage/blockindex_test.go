@@ -226,7 +226,8 @@ func TestTxIDKeyEncodingDecoding(t *testing.T) {
 				txID, err := retrieveTxID(encodedTxIDKey)
 				require.NoError(t, err)
 				require.Equal(t, testcase.txid, txID)
-				verifyTxIDKeyDecodable(t,
+				verifyTxIDKeyDecodable(
+					t,
 					encodedTxIDKey,
 					testcase.txid, testcase.blkNum, testcase.txNum,
 				)

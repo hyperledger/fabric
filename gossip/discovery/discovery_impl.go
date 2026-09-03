@@ -89,7 +89,8 @@ type DiscoveryConfig struct {
 
 // NewDiscoveryService returns a new discovery service with the comm module passed and the crypto service passed
 func NewDiscoveryService(self NetworkMember, comm CommService, crypt CryptoService, disPol DisclosurePolicy,
-	config DiscoveryConfig, anchorPeerTracker AnchorPeerTracker, logger util.Logger) Discovery {
+	config DiscoveryConfig, anchorPeerTracker AnchorPeerTracker, logger util.Logger,
+) Discovery {
 	d := &gossipDiscoveryImpl{
 		self:             self,
 		incTime:          uint64(time.Now().UnixNano()),
@@ -683,7 +684,7 @@ func (d *gossipDiscoveryImpl) copyLastSeen(lastSeenMap map[string]*timestamp) []
 
 	res := []NetworkMember{}
 	for pkiIDStr := range lastSeenMap {
-		res = append(res, *(d.id2Member[pkiIDStr]))
+		res = append(res, *d.id2Member[pkiIDStr])
 	}
 	return res
 }

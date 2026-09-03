@@ -15,6 +15,7 @@ package model
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -39,7 +40,7 @@ func (v SampleValue) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON implements json.Unmarshaler.
 func (v *SampleValue) UnmarshalJSON(b []byte) error {
 	if len(b) < 2 || b[0] != '"' || b[len(b)-1] != '"' {
-		return fmt.Errorf("sample value must be a quoted string")
+		return errors.New("sample value must be a quoted string")
 	}
 	f, err := strconv.ParseFloat(string(b[1:len(b)-1]), 64)
 	if err != nil {
@@ -78,7 +79,7 @@ func (s SamplePair) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []byte(fmt.Sprintf("[%s,%s]", t, v)), nil
+	return fmt.Appendf(nil, "[%s,%s]", t, v), nil
 }
 
 // UnmarshalJSON implements json.Unmarshaler.

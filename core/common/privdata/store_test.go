@@ -41,7 +41,8 @@ func TestNewSimpleCollectionStore(t *testing.T) {
 	require.Exactly(t, mockQueryExecutorFactory, cs.qeFactory)
 	require.Exactly(t, mockCCInfoProvider, cs.ccInfoProvider)
 	require.Exactly(t, mockIDDeserializerFactory, cs.idDeserializerFactory)
-	require.Equal(t,
+	require.Equal(
+		t,
 		&SimpleCollectionStore{
 			qeFactory:             mockQueryExecutorFactory,
 			ccInfoProvider:        mockCCInfoProvider,

@@ -453,7 +453,8 @@ var _ = Describe("Persistence", func() {
 		})
 	})
 
-	DescribeTable("CCFileName",
+	DescribeTable(
+		"CCFileName",
 		func(packageID, expectedName string) {
 			Expect(persistence.CCFileName(packageID)).To(Equal(expectedName))
 		},

@@ -13,7 +13,8 @@ bitset's current length and number of positive bits.
 
 BitSets are expanded to the size of the largest set bit; the
 memory allocation is approximately Max bits, where Max is
-the largest set bit. BitSets are never shrunk. On creation,
+the largest set bit. BitSets are never shrunk automatically, but
+the Shrink and Compact methods are available. On creation,
 a hint can be given for the number of bits that will be used.
 
 Many of the methods, including Set,Clear, and Flip, return
@@ -21,13 +22,13 @@ a BitSet pointer, which allows for chaining.
 
 Example use:
 
-	import "bitset"
-	var b BitSet
+	import "github.com/bits-and-blooms/bitset"
+	var b bitset.BitSet
 	b.Set(10).Set(11)
 	if b.Test(1000) {
 		b.Clear(1000)
 	}
-	if B.Intersection(bitset.New(100).Set(10)).Count() > 1 {
+	if b.Intersection(bitset.New(100).Set(10)).Count() == 1 {
 		fmt.Println("Intersection works.")
 	}
 
@@ -99,7 +100,7 @@ func (b *BitSet) safeSet() []uint64 {
 	return b.set
 }
 
-// SetBitsetFrom fills the bitset with an array of integers without creating a new BitSet instance
+// SetBitsetFrom fills the bitset with an array of words without creating a new BitSet instance.
 func (b *BitSet) SetBitsetFrom(buf []uint64) {
 	b.length = uint(len(buf)) * 64
 	b.set = buf
@@ -203,7 +204,7 @@ func Cap() uint {
 }
 
 // Len returns the number of bits in the BitSet.
-// Note that it differ from Count function.
+// Note that it differs from the Count function.
 func (b *BitSet) Len() uint {
 	return b.length
 }
@@ -268,7 +269,7 @@ func (b *BitSet) Set(i uint) *BitSet {
 	return b
 }
 
-// Clear bit i to 0. This never cause a memory allocation. It is always safe.
+// Clear bit i to 0. This never causes a memory allocation. It is always safe.
 func (b *BitSet) Clear(i uint) *BitSet {
 	if i >= b.length {
 		return b
@@ -286,6 +287,48 @@ func (b *BitSet) SetTo(i uint, value bool) *BitSet {
 		return b.Set(i)
 	}
 	return b.Clear(i)
+}
+
+// SetRange sets bits in [start, end) to 1, the capacity of the bitset is
+// automatically increased accordingly.
+// Warning: using a very large value for 'end'
+// may lead to a memory shortage and a panic: the caller is responsible
+// for providing sensible parameters in line with their memory capacity.
+func (b *BitSet) SetRange(start, end uint) *BitSet {
+	if start >= end {
+		return b
+	}
+
+	if end-1 >= b.length {
+		b.extendSet(end - 1)
+	}
+
+	startWord := start >> log2WordSize
+	endWord := (end - 1) >> log2WordSize // inclusive, the word holding bit end-1
+
+	// e.g. start = 71 -> wordsIndex(start) = 7
+	//  firstMask = ^uint64(0) << 7 = 0b111111....11110000000
+	// keeps the bits below start untouched
+	firstMask := ^uint64(0) << wordsIndex(start)
+
+	// e.g. end = 135 -> wordsIndex(-end) = 57, see FlipRange for the
+	// modular arithmetic of the unary minus
+	//  lastMask = ^uint64(0) >> 57 = 0b00000....0001111111
+	// keeps the bits from end on untouched
+	lastMask := ^uint64(0) >> wordsIndex(-end)
+
+	if startWord == endWord { // the whole range lives in a single word
+		b.set[startWord] |= firstMask & lastMask
+		return b
+	}
+
+	b.set[startWord] |= firstMask
+	for i := startWord + 1; i < endWord; i++ {
+		b.set[i] = ^uint64(0)
+	}
+	b.set[endWord] |= lastMask
+
+	return b
 }
 
 // Flip bit at i.
@@ -517,6 +560,20 @@ func (b *BitSet) DeleteAt(i uint) *BitSet {
 
 	b.length = b.length - 1
 
+	// the bitset may now use one word less: shrink the slice so that
+	// len(b.set) keeps matching the number of words in use, as the rest
+	// of the package expects. Otherwise, functions that scan the whole
+	// slice (e.g., SetAll, Count) would operate on a word that lies
+	// beyond the length of the bitset.
+	if wordCount := b.wordCount(); wordCount < len(b.set) {
+		// the discarded words must be zeroed: extendSet may later revive
+		// them with a fast resize, and they must not carry stale bits.
+		for i := wordCount; i < len(b.set); i++ {
+			b.set[i] = 0
+		}
+		b.set = b.set[:wordCount]
+	}
+
 	return b
 }
 
@@ -672,6 +729,9 @@ func (b *BitSet) NextSetMany(i uint, buffer []uint) (uint, []uint) {
 // including possibly the current index
 // along with an error code (true = valid, false = no bit found i.e. all bits are set)
 func (b *BitSet) NextClear(i uint) (uint, bool) {
+	if i >= b.length {
+		return 0, false
+	}
 	x := int(i >> log2WordSize)
 	if x >= len(b.set) {
 		return 0, false
@@ -692,7 +752,7 @@ func (b *BitSet) NextClear(i uint) (uint, bool) {
 	x++
 	for idx, word := range b.set[x:] {
 		if word != allBits {
-			index = uint((x+idx)*wordSize + bits.TrailingZeros64(^word))
+			index = uint((x+idx)<<log2WordSize + bits.TrailingZeros64(^word))
 			if index < b.length {
 				return index, true
 			}
@@ -905,7 +965,9 @@ func (b *BitSet) DifferenceCardinality(compare *BitSet) uint {
 		l = b.wordCount()
 	}
 	cnt := uint64(0)
-	cnt += popcntMaskSlice(b.set[:l], compare.set[:l])
+	if l > 0 {
+		cnt += popcntMaskSlice(b.set[:l], compare.set[:l])
+	}
 	cnt += popcntSlice(b.set[l:])
 	return uint(cnt)
 }
@@ -960,6 +1022,9 @@ func (b *BitSet) Intersection(compare *BitSet) (result *BitSet) {
 func (b *BitSet) IntersectionCardinality(compare *BitSet) uint {
 	panicIfNull(b)
 	panicIfNull(compare)
+	if b.length == 0 || compare.length == 0 {
+		return 0
+	}
 	b, compare = sortByLength(b, compare)
 	cnt := popcntAndSlice(b.set, compare.set)
 	return uint(cnt)
@@ -1010,13 +1075,16 @@ func (b *BitSet) Union(compare *BitSet) (result *BitSet) {
 	return
 }
 
-// UnionCardinality computes the cardinality of the uniton of the base set
+// UnionCardinality computes the cardinality of the union of the base set
 // and the compare set.
 func (b *BitSet) UnionCardinality(compare *BitSet) uint {
 	panicIfNull(b)
 	panicIfNull(compare)
 	b, compare = sortByLength(b, compare)
-	cnt := popcntOrSlice(b.set, compare.set)
+	cnt := uint64(0)
+	if len(b.set) > 0 {
+		cnt += popcntOrSlice(b.set, compare.set)
+	}
 	if len(compare.set) > len(b.set) {
 		cnt += popcntSlice(compare.set[len(b.set):])
 	}
@@ -1071,7 +1139,10 @@ func (b *BitSet) SymmetricDifferenceCardinality(compare *BitSet) uint {
 	panicIfNull(b)
 	panicIfNull(compare)
 	b, compare = sortByLength(b, compare)
-	cnt := popcntXorSlice(b.set, compare.set)
+	cnt := uint64(0)
+	if len(b.set) > 0 {
+		cnt += popcntXorSlice(b.set, compare.set)
+	}
 	if len(compare.set) > len(b.set) {
 		cnt += popcntSlice(compare.set[len(b.set):])
 	}
@@ -1385,16 +1456,36 @@ func (b *BitSet) UnmarshalJSON(data []byte) error {
 // Rank returns the number of set bits up to and including the index
 // that are set in the bitset.
 // See https://en.wikipedia.org/wiki/Ranking#Ranking_in_statistics
-func (b *BitSet) Rank(index uint) uint {
-	if index >= b.length {
-		return b.Count()
+func (b *BitSet) Rank(index uint) (rank uint) {
+	index++ // Rank is up to and including
+
+	// needed more than once
+	length := len(b.set)
+
+	// TODO: built-in min requires go1.21 or later
+	// idx := min(int(index>>6), len(b.set))
+	idx := int(index >> 6)
+	if idx > length {
+		idx = length
 	}
-	leftover := (index + 1) & 63
-	answer := uint(popcntSlice(b.set[:(index+1)>>6]))
-	if leftover != 0 {
-		answer += uint(bits.OnesCount64(b.set[(index+1)>>6] << (64 - leftover)))
+
+	// sum up the popcounts until idx ...
+	// TODO: cannot range over idx (...): requires go1.22 or later
+	// for j := range idx {
+	for j := 0; j < idx; j++ {
+		if w := b.set[j]; w != 0 {
+			rank += uint(bits.OnesCount64(w))
+		}
 	}
-	return answer
+
+	// ... plus partial word at idx,
+	// make Rank inlineable and faster in the end
+	// don't test index&63 != 0, just add, less branching
+	if idx < length {
+		rank += uint(bits.OnesCount64(b.set[idx] << (64 - index&63)))
+	}
+
+	return
 }
 
 // Select returns the index of the jth set bit, where j is the argument.
@@ -1418,18 +1509,13 @@ func (b *BitSet) Select(index uint) uint {
 
 // top detects the top bit set
 func (b *BitSet) top() (uint, bool) {
-	panicIfNull(b)
-
-	idx := len(b.set) - 1
-	for ; idx >= 0 && b.set[idx] == 0; idx-- {
+	for idx := len(b.set) - 1; idx >= 0; idx-- {
+		if word := b.set[idx]; word != 0 {
+			return uint(idx<<log2WordSize+bits.Len64(word)) - 1, true
+		}
 	}
 
-	// no set bits
-	if idx < 0 {
-		return 0, false
-	}
-
-	return uint(idx*wordSize+bits.Len64(b.set[idx])) - 1, true
+	return 0, false
 }
 
 // ShiftLeft shifts the bitset like << operation would do.
@@ -1458,7 +1544,7 @@ func (b *BitSet) ShiftLeft(bits uint) {
 	dst := b.set
 
 	// not using extendSet() to avoid unneeded data copying
-	nsize := wordsNeeded(top + bits)
+	nsize := wordsNeeded(top + bits + 1)
 	if len(b.set) < nsize {
 		dst = make([]uint64, nsize)
 	}
@@ -1505,7 +1591,7 @@ func (b *BitSet) ShiftRight(bits uint) {
 		return
 	}
 
-	if bits >= top {
+	if bits > top {
 		b.set = make([]uint64, wordsNeeded(b.length))
 		return
 	}
@@ -1529,7 +1615,7 @@ func (b *BitSet) ShiftRight(bits uint) {
 		}
 	}
 
-	for i := int(idx-pages) + 1; i <= int(idx); i++ {
+	for i := int(idx-pages) + 1; i < len(b.set); i++ {
 		b.set[i] = 0
 	}
 }

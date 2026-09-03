@@ -330,7 +330,8 @@ func TestReconciliationAfterKeyPurge(t *testing.T) {
 	)
 
 	l.verifyMissingPvtDataSameAs(2, ledger.MissingPvtDataInfo{}) // missing data flag should have been cleared
-	l.verifyInPvtdataStore(2, nil,                               // Now the peer should return the pvtdata with no keys (as all keys are purged)
+	l.verifyInPvtdataStore(
+		2, nil, // Now the peer should return the pvtdata with no keys (as all keys are purged)
 		[]*ledger.TxPvtData{
 			pvtdataWithNoKeys,
 		},

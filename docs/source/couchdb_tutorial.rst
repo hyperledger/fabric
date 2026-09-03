@@ -308,7 +308,7 @@ following commands:
 .. code:: bash
 
     cd ../asset-transfer-ledger-queries/chaincode-go
-    GO111MODULE=on go mod vendor
+    go mod vendor
     cd ../../test-network
 
 From the `test-network` directory, deploy the test network with CouchDB with the

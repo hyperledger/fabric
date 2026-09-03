@@ -7,11 +7,10 @@ package handlers
 
 import (
 	"crypto/sha256"
+	"errors"
 
-	"github.com/IBM/idemix/bccsp/types"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/pkg/errors"
 )
 
 // UserSecretKey contains the User secret key
@@ -38,6 +37,7 @@ func (k *UserSecretKey) SKI() []byte {
 	raw := k.Sk.Bytes()
 	hash := sha256.New()
 	hash.Write(raw)
+
 	return hash.Sum(nil)
 }
 
@@ -58,7 +58,7 @@ type UserKeyGen struct {
 	// If a secret key is marked as Exportable, its Bytes method will return the key's byte representation.
 	Exportable bool
 	// User implements the underlying cryptographic algorithms
-	User types.User
+	User bccsp.User
 }
 
 func (g *UserKeyGen) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
@@ -76,10 +76,10 @@ type UserKeyImporter struct {
 	// If a secret key is marked as Exportable, its Bytes method will return the key's byte representation.
 	Exportable bool
 	// User implements the underlying cryptographic algorithms
-	User types.User
+	User bccsp.User
 }
 
-func (i *UserKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+func (i *UserKeyImporter) KeyImport(raw any, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
 	der, ok := raw.([]byte)
 	if !ok {
 		return nil, errors.New("invalid raw, expected byte array")

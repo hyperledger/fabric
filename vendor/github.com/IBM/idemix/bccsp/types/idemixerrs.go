@@ -10,10 +10,10 @@ import (
 	"fmt"
 )
 
-type IdemixIIssuerPublicKeyImporterErrorType int
+type IdemixIssuerPublicKeyImporterErrorType int
 
 const (
-	IdemixIssuerPublicKeyImporterUnmarshallingError IdemixIIssuerPublicKeyImporterErrorType = iota
+	IdemixIssuerPublicKeyImporterUnmarshallingError IdemixIssuerPublicKeyImporterErrorType = iota
 	IdemixIssuerPublicKeyImporterHashError
 	IdemixIssuerPublicKeyImporterValidationError
 	IdemixIssuerPublicKeyImporterNumAttributesError
@@ -21,7 +21,7 @@ const (
 )
 
 type IdemixIssuerPublicKeyImporterError struct {
-	Type     IdemixIIssuerPublicKeyImporterErrorType
+	Type     IdemixIssuerPublicKeyImporterErrorType
 	ErrorMsg string
 	Cause    error
 }

@@ -62,7 +62,8 @@ func TestBlockfileMgrCrashDuringWriting(t *testing.T) {
 
 func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlksBeforeSavingBlkfilesInfo int,
 	numBlksAfterSavingBlkfilesInfo int, numLastBlockBytes int, numPartialBytesToWrite int,
-	deleteBFInfo bool) {
+	deleteBFInfo bool,
+) {
 	env := newTestEnv(t, NewConf(t.TempDir(), 0))
 	defer env.Cleanup()
 	ledgerid := "testLedger"
@@ -137,7 +138,8 @@ func TestBlockfileMgrBlockIterator(t *testing.T) {
 }
 
 func testBlockfileMgrBlockIterator(t *testing.T, blockfileMgr *blockfileMgr,
-	firstBlockNum int, lastBlockNum int, expectedBlocks []*common.Block) {
+	firstBlockNum int, lastBlockNum int, expectedBlocks []*common.Block,
+) {
 	itr, err := blockfileMgr.retrieveBlocks(uint64(firstBlockNum))
 	require.NoError(t, err, "Error while getting blocks iterator")
 	defer itr.Close()
@@ -487,7 +489,8 @@ func testBlockfileMgrSimulateCrashAtFirstBlockInFile(t *testing.T, deleteBlkfile
 
 	// last block file (block file number 1) should have been truncated to zero length and concluded as the next file to append to
 	require.Equal(t, 0, testutilGetFileSize(t, lastFilePath))
-	require.Equal(t,
+	require.Equal(
+		t,
 		&blockfilesInfo{
 			latestFileNumber:   1,
 			latestFileSize:     0,

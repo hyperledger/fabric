@@ -775,7 +775,9 @@ func (s *GossipStateProviderImpl) addPayload(payload *proto.Payload, blockingMod
 		time.Sleep(enqueueRetryInterval)
 	}
 
-	s.payloads.Push(payload)
+	if !s.payloads.Push(payload) {
+		s.logger.Debugf("Payload with sequence number %d was not added to buffer (already processed or outdated)", payload.SeqNum)
+	}
 	s.logger.Debugf("Blocks payloads buffer size for channel [%s] is %d blocks", s.chainID, s.payloads.Size())
 	return nil
 }

@@ -80,7 +80,8 @@ var _ = Describe("FallbackPackageLocator", func() {
 						},
 						CodePackage: []byte("legacy-code"),
 					},
-					nil)
+					nil,
+				)
 			})
 
 			It("falls back to the legacy retriever", func() {
@@ -180,7 +181,7 @@ var _ = Describe("ChaincodePackageParser", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = ccpp.Parse(data)
-				Expect(err).To(MatchError("could not unmarshal metadata.json as json: invalid character '\\n' in string literal"))
+				Expect(err).To(MatchError("could not unmarshal metadata.json as json: invalid character '\\n' in string"))
 			})
 		})
 
@@ -313,7 +314,7 @@ var _ = Describe("ChaincodePackageStreamer", func() {
 
 			It("wraps and returns the error", func() {
 				_, err := streamer.Metadata()
-				Expect(err).To(MatchError("could not parse metadata file: invalid character '\\n' in string literal"))
+				Expect(err).To(MatchError("could not parse metadata file: invalid character '\\n' in string"))
 			})
 		})
 	})

@@ -197,8 +197,7 @@ func TestConcurrentCreateLedgerFromGB(t *testing.T) {
 }
 
 func TestConcurrentCreateLedgerFromSnapshot(t *testing.T) {
-	initializer, ledgerMgr, cleanup := setup(t)
-	defer cleanup()
+	initializer, ledgerMgr, _ := setup(t)
 
 	// generate 2 snapshots for 2 channels
 	channelID1 := "testcreatefromsnapshot1"
@@ -232,7 +231,7 @@ func TestConcurrentCreateLedgerFromSnapshot(t *testing.T) {
 
 	waitCh <- struct{}{}
 	ledgerCreated := func() bool {
-		status := ledgerMgr.JoinBySnapshotStatus()
+		status := ledgerMgr2.JoinBySnapshotStatus()
 		return !status.InProgress && status.BootstrappingSnapshotDir == ""
 	}
 	require.Eventually(t, ledgerCreated, time.Minute, time.Second)

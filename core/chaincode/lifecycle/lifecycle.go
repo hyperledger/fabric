@@ -171,7 +171,8 @@ func (cd *ChaincodeDefinition) Parameters() *ChaincodeParameters {
 func (cd *ChaincodeDefinition) String() string {
 	endorsementInfo := "endorsement info: <EMPTY>"
 	if cd.EndorsementInfo != nil {
-		endorsementInfo = fmt.Sprintf("endorsement info: (version: '%s', plugin: '%s', init required: %t)",
+		endorsementInfo = fmt.Sprintf(
+			"endorsement info: (version: '%s', plugin: '%s', init required: %t)",
 			cd.EndorsementInfo.Version,
 			cd.EndorsementInfo.EndorsementPlugin,
 			cd.EndorsementInfo.InitRequired,
@@ -180,13 +181,15 @@ func (cd *ChaincodeDefinition) String() string {
 
 	validationInfo := "validation info: <EMPTY>"
 	if cd.ValidationInfo != nil {
-		validationInfo = fmt.Sprintf("validation info: (plugin: '%s', policy: '%x')",
+		validationInfo = fmt.Sprintf(
+			"validation info: (plugin: '%s', policy: '%x')",
 			cd.ValidationInfo.ValidationPlugin,
 			cd.ValidationInfo.ValidationParameter,
 		)
 	}
 
-	return fmt.Sprintf("sequence: %d, %s, %s, collections: (%+v)",
+	return fmt.Sprintf(
+		"sequence: %d, %s, %s, collections: (%+v)",
 		cd.Sequence,
 		endorsementInfo,
 		validationInfo,

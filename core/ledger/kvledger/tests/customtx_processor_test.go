@@ -46,15 +46,14 @@ func TestReadWriteCustomTxProcessor(t *testing.T) {
 	l.cutBlockAndCommitLegacy() // commit block-1 to populate initial state
 
 	valueCounter := 0
-	fakeTxProcessor.GenerateSimulationResultsStub =
-		// tx processor reads and modifies key1
-		func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
-			valKey1, err := s.GetState("ns", "key1")
-			require.NoError(t, err)
-			require.Equal(t, []byte("value1"), valKey1)
-			valueCounter++
-			return s.SetState("ns", "key1", fmt.Appendf(nil, "value1_%d", valueCounter))
-		}
+	// tx processor reads and modifies key1
+	fakeTxProcessor.GenerateSimulationResultsStub = func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
+		valKey1, err := s.GetState("ns", "key1")
+		require.NoError(t, err)
+		require.Equal(t, []byte("value1"), valKey1)
+		valueCounter++
+		return s.SetState("ns", "key1", fmt.Appendf(nil, "value1_%d", valueCounter))
+	}
 
 	// block-2 with two post order transactions
 	l.addPostOrderTx("tx1", 100)
@@ -98,41 +97,38 @@ func TestRangeReadAndWriteCustomTxProcessor(t *testing.T) {
 	})
 	l.cutBlockAndCommitLegacy() // commit block-1 to populate initial state
 
-	fakeTxProcessor1.GenerateSimulationResultsStub =
-		// tx processor for txtype 101 sets key1
-		func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
-			return s.SetState("ns", "key1", []byte("value1_new"))
-		}
+	// tx processor for txtype 101 sets key1
+	fakeTxProcessor1.GenerateSimulationResultsStub = func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
+		return s.SetState("ns", "key1", []byte("value1_new"))
+	}
 
-	fakeTxProcessor2.GenerateSimulationResultsStub =
-		// tx processor for txtype 102 reads a range (that covers key1) and sets key2
-		func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
-			itr, err := s.GetStateRangeScanIterator("ns", "key1", "key2")
+	// tx processor for txtype 102 reads a range (that covers key1) and sets key2
+	fakeTxProcessor2.GenerateSimulationResultsStub = func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
+		itr, err := s.GetStateRangeScanIterator("ns", "key1", "key2")
+		require.NoError(t, err)
+		for {
+			res, err := itr.Next()
 			require.NoError(t, err)
-			for {
-				res, err := itr.Next()
-				require.NoError(t, err)
-				if res == nil {
-					break
-				}
+			if res == nil {
+				break
 			}
-			return s.SetState("ns", "key2", []byte("value2_new"))
 		}
+		return s.SetState("ns", "key2", []byte("value2_new"))
+	}
 
-	fakeTxProcessor3.GenerateSimulationResultsStub =
-		// tx processor for txtype 103 reads a range (that does not include key1) and sets key2
-		func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
-			itr, err := s.GetStateRangeScanIterator("ns", "key2", "key3")
+	// tx processor for txtype 103 reads a range (that does not include key1) and sets key2
+	fakeTxProcessor3.GenerateSimulationResultsStub = func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
+		itr, err := s.GetStateRangeScanIterator("ns", "key2", "key3")
+		require.NoError(t, err)
+		for {
+			res, err := itr.Next()
 			require.NoError(t, err)
-			for {
-				res, err := itr.Next()
-				require.NoError(t, err)
-				if res == nil {
-					break
-				}
+			if res == nil {
+				break
 			}
-			return s.SetState("ns", "key3", []byte("value3_new"))
 		}
+		return s.SetState("ns", "key3", []byte("value3_new"))
+	}
 
 	// block-2 with three post order transactions
 	l.addPostOrderTx("tx1", 101)

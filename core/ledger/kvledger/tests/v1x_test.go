@@ -154,7 +154,8 @@ func TestV11CommitHashes(t *testing.T) {
 					testCase.resetFunc,
 					testCase.postResetCommitHashExists,
 				)
-			})
+			},
+		)
 	}
 }
 

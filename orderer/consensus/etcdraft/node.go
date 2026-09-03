@@ -19,10 +19,9 @@ import (
 	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"go.etcd.io/etcd/raft/v3"
-	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3/raftpb"
 	"google.golang.org/protobuf/encoding/protowire"
-	"google.golang.org/protobuf/protoadapt"
 )
 
 var (
@@ -61,7 +60,7 @@ type node struct {
 }
 
 func (n *node) start(fresh, join bool) {
-	raftPeers := RaftPeers(n.metadata.ConsenterIds)
+	raftPeers := RaftPeers(n.metadata.GetConsenterIds())
 	n.logger.Debugf("Starting raft node: #peers: %v", len(raftPeers))
 
 	var campaign bool
@@ -99,7 +98,7 @@ func (n *node) run(campaign bool) {
 	raftTicker := n.clock.NewTicker(n.tickInterval)
 
 	if s := n.storage.Snapshot(); !raft.IsEmptySnap(s) {
-		n.chain.snapC <- &s
+		n.chain.snapC <- s
 	}
 
 	elected := make(chan struct{})
@@ -152,7 +151,7 @@ func (n *node) run(campaign bool) {
 			}
 
 			if !raft.IsEmptySnap(rd.Snapshot) {
-				n.chain.snapC <- &rd.Snapshot
+				n.chain.snapC <- rd.Snapshot
 			}
 
 			// skip empty apply
@@ -187,47 +186,47 @@ func (n *node) run(campaign bool) {
 	}
 }
 
-func (n *node) send(msgs []raftpb.Message) {
+func (n *node) send(msgs []*raftpb.Message) {
 	n.unreachableLock.RLock()
 	defer n.unreachableLock.RUnlock()
 
 	for _, msg := range msgs {
-		if msg.To == 0 {
+		if msg.GetTo() == 0 {
 			continue
 		}
 
 		status := raft.SnapshotFinish
 
 		// Replace node list in snapshot with CURRENT node list in cluster.
-		if msg.Type == raftpb.MsgSnap {
+		if msg.GetType() == raftpb.MsgSnap {
 			state := n.confState.Load()
 			if state != nil {
-				msg.Snapshot.Metadata.ConfState = *state.(*raftpb.ConfState)
+				msg.Snapshot.Metadata.ConfState = state.(*raftpb.ConfState)
 			}
 		}
 
-		msgBytes := protoutil.MarshalOrPanic(protoadapt.MessageV2Of(&msg))
-		err := n.rpc.SendConsensus(msg.To, &orderer.ConsensusRequest{Channel: n.chainID, Payload: msgBytes})
+		msgBytes := protoutil.MarshalOrPanic(msg)
+		err := n.rpc.SendConsensus(msg.GetTo(), &orderer.ConsensusRequest{Channel: n.chainID, Payload: msgBytes})
 		if err != nil {
-			n.ReportUnreachable(msg.To)
-			n.logSendFailure(msg.To, err)
+			n.ReportUnreachable(msg.GetTo())
+			n.logSendFailure(msg.GetTo(), err)
 
 			status = raft.SnapshotFailure
-		} else if _, ok := n.unreachable[msg.To]; ok {
-			n.logger.Infof("Successfully sent StepRequest to %d after failed attempt(s)", msg.To)
-			delete(n.unreachable, msg.To)
+		} else if _, ok := n.unreachable[msg.GetTo()]; ok {
+			n.logger.Infof("Successfully sent StepRequest to %d after failed attempt(s)", msg.GetTo())
+			delete(n.unreachable, msg.GetTo())
 		}
 
-		if msg.Type == raftpb.MsgSnap {
-			n.ReportSnapshot(msg.To, status)
+		if msg.GetType() == raftpb.MsgSnap {
+			n.ReportSnapshot(msg.GetTo(), status)
 		}
 	}
 }
 
-func (n *node) maybeSyncWAL(entries []raftpb.Entry) {
+func (n *node) maybeSyncWAL(entries []*raftpb.Entry) {
 	allNormal := true
 	for _, entry := range entries {
-		if entry.Type == raftpb.EntryNormal {
+		if entry.GetType() == raftpb.EntryNormal {
 			continue
 		}
 		allNormal = false
@@ -345,7 +344,7 @@ func (n *node) logSendFailure(dest uint64, err error) {
 	n.unreachable[dest] = struct{}{}
 }
 
-func (n *node) takeSnapshot(index uint64, cs raftpb.ConfState, data []byte) {
+func (n *node) takeSnapshot(index uint64, cs *raftpb.ConfState, data []byte) {
 	if err := n.storage.TakeSnapshot(index, cs, data); err != nil {
 		n.logger.Errorf("Failed to create snapshot at index %d: %s", index, err)
 	}
@@ -356,7 +355,7 @@ func (n *node) lastIndex() uint64 {
 	return i
 }
 
-func (n *node) ApplyConfChange(cc raftpb.ConfChange) *raftpb.ConfState {
+func (n *node) ApplyConfChange(cc *raftpb.ConfChange) *raftpb.ConfState {
 	state := n.Node.ApplyConfChange(cc)
 	n.confState.Store(state)
 	return state

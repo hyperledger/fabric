@@ -23,8 +23,8 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"go.etcd.io/etcd/raft/v3"
-	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3/raftpb"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -41,7 +41,7 @@ func RaftPeers(consenterIDs []uint64) []raft.Peer {
 type ConsentersMap map[string]struct{}
 
 func (c ConsentersMap) Exists(consenter *etcdraft.Consenter) bool {
-	_, exists := c[string(consenter.ClientTlsCert)]
+	_, exists := c[string(consenter.GetClientTlsCert())]
 	return exists
 }
 
@@ -49,7 +49,7 @@ func (c ConsentersMap) Exists(consenter *etcdraft.Consenter) bool {
 func ConsentersToMap(consenters []*etcdraft.Consenter) ConsentersMap {
 	set := map[string]struct{}{}
 	for _, c := range consenters {
-		set[string(c.ClientTlsCert)] = struct{}{}
+		set[string(c.GetClientTlsCert())] = struct{}{}
 	}
 	return set
 }
@@ -62,16 +62,16 @@ func MetadataHasDuplication(md *etcdraft.ConfigMetadata) error {
 		return errors.New("nil metadata")
 	}
 
-	for _, consenter := range md.Consenters {
+	for _, consenter := range md.GetConsenters() {
 		if consenter == nil {
 			return errors.New("nil consenter in metadata")
 		}
 	}
 
 	seen := make(map[string]struct{})
-	for _, consenter := range md.Consenters {
-		serverKey := string(consenter.ServerTlsCert)
-		clientKey := string(consenter.ClientTlsCert)
+	for _, consenter := range md.GetConsenters() {
+		serverKey := string(consenter.GetServerTlsCert())
+		clientKey := string(consenter.GetClientTlsCert())
 		_, duplicateServerCert := seen[serverKey]
 		_, duplicateClientCert := seen[clientKey]
 		if duplicateServerCert || duplicateClientCert {
@@ -88,16 +88,16 @@ func MetadataHasDuplication(md *etcdraft.ConfigMetadata) error {
 // In case consensus type is changed to BFT the raft metadata will be nil
 func MetadataFromConfigValue(configValue *common.ConfigValue) (*etcdraft.ConfigMetadata, *orderer.ConsensusType, error) {
 	consensusTypeValue := &orderer.ConsensusType{}
-	if err := proto.Unmarshal(configValue.Value, consensusTypeValue); err != nil {
+	if err := proto.Unmarshal(configValue.GetValue(), consensusTypeValue); err != nil {
 		return nil, nil, errors.Wrap(err, "failed to unmarshal consensusType config update")
 	}
 
-	if consensusTypeValue.Type != "etcdraft" {
+	if consensusTypeValue.GetType() != "etcdraft" {
 		return nil, consensusTypeValue, nil
 	}
 
 	updatedMetadata := &etcdraft.ConfigMetadata{}
-	if err := proto.Unmarshal(consensusTypeValue.Metadata, updatedMetadata); err != nil {
+	if err := proto.Unmarshal(consensusTypeValue.GetMetadata(), updatedMetadata); err != nil {
 		return nil, nil, errors.Wrap(err, "failed to unmarshal updated (new) etcdraft metadata configuration")
 	}
 
@@ -107,18 +107,18 @@ func MetadataFromConfigValue(configValue *common.ConfigValue) (*etcdraft.ConfigM
 // MetadataFromConfigUpdate extracts consensus metadata from config update
 func MetadataFromConfigUpdate(update *common.ConfigUpdate) (*etcdraft.ConfigMetadata, *orderer.ConsensusType, error) {
 	var baseVersion uint64
-	if update.ReadSet != nil && update.ReadSet.Groups != nil {
-		if ordererConfigGroup, ok := update.ReadSet.Groups["Orderer"]; ok {
-			if val, ok := ordererConfigGroup.Values["ConsensusType"]; ok {
-				baseVersion = val.Version
+	if update.GetReadSet() != nil && update.ReadSet.Groups != nil {
+		if ordererConfigGroup, ok := update.GetReadSet().GetGroups()["Orderer"]; ok {
+			if val, ok := ordererConfigGroup.GetValues()["ConsensusType"]; ok {
+				baseVersion = val.GetVersion()
 			}
 		}
 	}
 
-	if update.WriteSet != nil && update.WriteSet.Groups != nil {
-		if ordererConfigGroup, ok := update.WriteSet.Groups["Orderer"]; ok {
-			if val, ok := ordererConfigGroup.Values["ConsensusType"]; ok {
-				if baseVersion == val.Version {
+	if update.GetWriteSet() != nil && update.WriteSet.Groups != nil {
+		if ordererConfigGroup, ok := update.GetWriteSet().GetGroups()["Orderer"]; ok {
+			if val, ok := ordererConfigGroup.GetValues()["ConsensusType"]; ok {
+				if baseVersion == val.GetVersion() {
 					// Only if the version in the write set differs from the read-set
 					// should we consider this to be an update to the consensus type
 					return nil, nil, nil
@@ -163,13 +163,13 @@ func ConfigEnvelopeFromBlock(block *common.Block) (*common.Envelope, error) {
 		return nil, errors.Wrap(err, "cannot extract channel header")
 	}
 
-	switch channelHeader.Type {
+	switch channelHeader.GetType() {
 	case int32(common.HeaderType_ORDERER_TRANSACTION):
-		return nil, errors.Errorf("unsupported legacy system channel header type: %v", channelHeader.Type)
+		return nil, errors.Errorf("unsupported legacy system channel header type: %v", channelHeader.GetType())
 	case int32(common.HeaderType_CONFIG):
 		return envelope, nil
 	default:
-		return nil, errors.Errorf("unexpected header type: %v", channelHeader.Type)
+		return nil, errors.Errorf("unexpected header type: %v", channelHeader.GetType())
 	}
 }
 
@@ -188,7 +188,7 @@ func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.ConfigMeta
 		return nil, nil, errors.Wrap(err, "cannot read config update")
 	}
 
-	payload, err := protoutil.UnmarshalPayload(configEnvelope.Payload)
+	payload, err := protoutil.UnmarshalPayload(configEnvelope.GetPayload())
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to extract payload from config envelope")
 	}
@@ -210,41 +210,41 @@ func VerifyConfigMetadata(metadata *etcdraft.ConfigMetadata, verifyOpts x509.Ver
 		return errors.Errorf("nil Raft config metadata")
 	}
 
-	if metadata.Options == nil {
+	if metadata.GetOptions() == nil {
 		return errors.Errorf("nil Raft config metadata options")
 	}
 
-	if metadata.Options.HeartbeatTick == 0 ||
-		metadata.Options.ElectionTick == 0 ||
-		metadata.Options.MaxInflightBlocks == 0 {
+	if metadata.GetOptions().GetHeartbeatTick() == 0 ||
+		metadata.GetOptions().GetElectionTick() == 0 ||
+		metadata.GetOptions().GetMaxInflightBlocks() == 0 {
 		// if SnapshotIntervalSize is zero, DefaultSnapshotIntervalSize is used
 		return errors.Errorf("none of HeartbeatTick (%d), ElectionTick (%d) and MaxInflightBlocks (%d) can be zero",
-			metadata.Options.HeartbeatTick, metadata.Options.ElectionTick, metadata.Options.MaxInflightBlocks)
+			metadata.GetOptions().GetHeartbeatTick(), metadata.GetOptions().GetElectionTick(), metadata.GetOptions().GetMaxInflightBlocks())
 	}
 
 	// check Raft options
-	if metadata.Options.ElectionTick <= metadata.Options.HeartbeatTick {
+	if metadata.GetOptions().GetElectionTick() <= metadata.GetOptions().GetHeartbeatTick() {
 		return errors.Errorf("ElectionTick (%d) must be greater than HeartbeatTick (%d)",
-			metadata.Options.ElectionTick, metadata.Options.HeartbeatTick)
+			metadata.GetOptions().GetElectionTick(), metadata.GetOptions().GetHeartbeatTick())
 	}
 
-	if d, err := time.ParseDuration(metadata.Options.TickInterval); err != nil {
-		return errors.Errorf("failed to parse TickInterval (%s) to time duration: %s", metadata.Options.TickInterval, err)
+	if d, err := time.ParseDuration(metadata.GetOptions().GetTickInterval()); err != nil {
+		return errors.Errorf("failed to parse TickInterval (%s) to time duration: %s", metadata.GetOptions().GetTickInterval(), err)
 	} else if d == 0 {
 		return errors.Errorf("TickInterval cannot be zero")
 	}
 
-	if len(metadata.Consenters) == 0 {
+	if len(metadata.GetConsenters()) == 0 {
 		return errors.Errorf("empty consenter set")
 	}
 
 	// verifying certificates for being signed by CA, expiration is ignored
-	for _, consenter := range metadata.Consenters {
+	for _, consenter := range metadata.GetConsenters() {
 		if consenter == nil {
 			return errors.Errorf("metadata has nil consenter")
 		}
 		if err := validateConsenterTLSCerts(consenter, verifyOpts, true); err != nil {
-			return errors.WithMessagef(err, "consenter %s:%d has invalid certificate", consenter.Host, consenter.Port)
+			return errors.WithMessagef(err, "consenter %s:%d has invalid certificate", consenter.GetHost(), consenter.GetPort())
 		}
 	}
 
@@ -319,14 +319,14 @@ func createX509VerifyOptions(ordererConfig channelconfig.Orderer) (x509.VerifyOp
 
 // validateConsenterTLSCerts decodes PEM cert, parses and validates it.
 func validateConsenterTLSCerts(c *etcdraft.Consenter, opts x509.VerifyOptions, ignoreExpiration bool) error {
-	clientCert, err := parseCertificateFromBytes(c.ClientTlsCert)
+	clientCert, err := parseCertificateFromBytes(c.GetClientTlsCert())
 	if err != nil {
-		return errors.Wrapf(err, "parsing tls client cert of %s:%d", c.Host, c.Port)
+		return errors.Wrapf(err, "parsing tls client cert of %s:%d", c.GetHost(), c.GetPort())
 	}
 
-	serverCert, err := parseCertificateFromBytes(c.ServerTlsCert)
+	serverCert, err := parseCertificateFromBytes(c.GetServerTlsCert())
 	if err != nil {
-		return errors.Wrapf(err, "parsing tls server cert of %s:%d", c.Host, c.Port)
+		return errors.Wrapf(err, "parsing tls server cert of %s:%d", c.GetHost(), c.GetPort())
 	}
 
 	verify := func(certType string, cert *x509.Certificate, opts x509.VerifyOptions) error {
@@ -359,7 +359,7 @@ type ConsenterCertificate struct {
 // by inspecting the given configuration block.
 // It returns nil if true, else returns an error.
 func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *common.Block) error {
-	if configBlock == nil || configBlock.Header == nil {
+	if configBlock == nil || configBlock.GetHeader() == nil {
 		return errors.New("nil block or nil header")
 	}
 	envelopeConfig, err := protoutil.ExtractEnvelope(configBlock, 0)
@@ -387,28 +387,28 @@ func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *common.Blo
 	myCertDER := bl.Bytes
 
 	var failedMatches []string
-	for _, consenter := range m.Consenters {
-		candidateBlock, _ := pem.Decode(consenter.ServerTlsCert)
+	for _, consenter := range m.GetConsenters() {
+		candidateBlock, _ := pem.Decode(consenter.GetServerTlsCert())
 		if candidateBlock == nil {
-			return errors.Errorf("candidate server certificate %s is not a valid PEM", string(consenter.ServerTlsCert))
+			return errors.Errorf("candidate server certificate %s is not a valid PEM", string(consenter.GetServerTlsCert()))
 		}
 		sameServerCertErr := crypto.CertificatesWithSamePublicKey(myCertDER, candidateBlock.Bytes)
 
-		candidateBlock, _ = pem.Decode(consenter.ClientTlsCert)
+		candidateBlock, _ = pem.Decode(consenter.GetClientTlsCert())
 		if candidateBlock == nil {
-			return errors.Errorf("candidate client certificate %s is not a valid PEM", string(consenter.ClientTlsCert))
+			return errors.Errorf("candidate client certificate %s is not a valid PEM", string(consenter.GetClientTlsCert()))
 		}
 		sameClientCertErr := crypto.CertificatesWithSamePublicKey(myCertDER, candidateBlock.Bytes)
 
 		if sameServerCertErr == nil || sameClientCertErr == nil {
 			return nil
 		}
-		conCert.Logger.Debugf("I am not %s:%d because %s, %s", consenter.Host, consenter.Port, sameServerCertErr, sameClientCertErr)
-		failedMatches = append(failedMatches, string(consenter.ClientTlsCert))
+		conCert.Logger.Debugf("I am not %s:%d because %s, %s", consenter.GetHost(), consenter.GetPort(), sameServerCertErr, sameClientCertErr)
+		failedMatches = append(failedMatches, string(consenter.GetClientTlsCert()))
 	}
 	conCert.Logger.Debugf("Failed matching our certificate %s against certificates encoded in config block %d: %v",
 		string(conCert.ConsenterCertificate),
-		configBlock.Header.Number,
+		configBlock.GetHeader().GetNumber(),
 		failedMatches)
 
 	return cluster.ErrNotInChannel
@@ -426,23 +426,23 @@ func ConfChange(blockMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfSta
 	raftConfChange := &raftpb.ConfChange{}
 
 	// need to compute conf changes to propose
-	if len(confState.Voters) < len(blockMetadata.ConsenterIds) {
+	if len(confState.GetVoters()) < len(blockMetadata.GetConsenterIds()) {
 		// adding new node
-		raftConfChange.Type = raftpb.ConfChangeAddNode
-		for _, consenterID := range blockMetadata.ConsenterIds {
-			if NodeExists(consenterID, confState.Voters) {
+		raftConfChange.Type = new(raftpb.ConfChangeAddNode)
+		for _, consenterID := range blockMetadata.GetConsenterIds() {
+			if NodeExists(consenterID, confState.GetVoters()) {
 				continue
 			}
-			raftConfChange.NodeID = consenterID
+			raftConfChange.NodeId = &consenterID
 		}
 	} else {
 		// removing node
-		raftConfChange.Type = raftpb.ConfChangeRemoveNode
-		for _, nodeID := range confState.Voters {
-			if NodeExists(nodeID, blockMetadata.ConsenterIds) {
+		raftConfChange.Type = new(raftpb.ConfChangeRemoveNode)
+		for _, nodeID := range confState.GetVoters() {
+			if NodeExists(nodeID, blockMetadata.GetConsenterIds()) {
 				continue
 			}
-			raftConfChange.NodeID = nodeID
+			raftConfChange.NodeId = &nodeID
 		}
 	}
 
@@ -452,8 +452,8 @@ func ConfChange(blockMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfSta
 // CreateConsentersMap creates a map of Raft Node IDs to Consenter given the block metadata and the config metadata.
 func CreateConsentersMap(blockMetadata *etcdraft.BlockMetadata, configMetadata *etcdraft.ConfigMetadata) map[uint64]*etcdraft.Consenter {
 	consenters := map[uint64]*etcdraft.Consenter{}
-	for i, consenter := range configMetadata.Consenters {
-		consenters[blockMetadata.ConsenterIds[i]] = consenter
+	for i, consenter := range configMetadata.GetConsenters() {
+		consenters[blockMetadata.GetConsenterIds()[i]] = consenter
 	}
 	return consenters
 }

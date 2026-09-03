@@ -28,7 +28,8 @@ func TestConstructBlockfilesInfo(t *testing.T) {
 	// constructBlockfilesInfo on an empty block folder should return blockfileInfo with noBlockFiles: true
 	blkfilesInfo, err := constructBlockfilesInfo(blkStoreDir)
 	require.NoError(t, err)
-	require.Equal(t,
+	require.Equal(
+		t,
 		&blockfilesInfo{
 			noBlockFiles:       true,
 			lastPersistedBlock: 0,

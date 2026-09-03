@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -132,11 +133,7 @@ func checkWalFiles(logger api.Logger, dirName string, walNames []string) ([]uint
 		}
 	}
 
-	sort.Slice(indexes,
-		func(i, j int) bool {
-			return indexes[i] < indexes[j]
-		},
-	)
+	slices.Sort(indexes)
 
 	return indexes, nil
 }

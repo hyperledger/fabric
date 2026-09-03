@@ -44,12 +44,12 @@ func (h backingHeap) Swap(i, j int) {
 	h[i], h[j] = h[j], h[i]
 }
 
-func (h *backingHeap) Push(o interface{}) {
+func (h *backingHeap) Push(o any) {
 	t := o.(*Task)
 	*h = append(*h, t)
 }
 
-func (h *backingHeap) Pop() interface{} {
+func (h *backingHeap) Pop() any {
 	old := *h
 	n := len(old)
 	x := old[n-1]

@@ -99,7 +99,8 @@ type PullEngineConfig struct {
 // NewPullEngineWithFilter creates an instance of a PullEngine with a certain sleep time
 // between pull initiations, and uses the given filters when sending digests and responses
 func NewPullEngineWithFilter(participant PullAdapter, sleepTime time.Duration, df DigestFilter,
-	config PullEngineConfig) *PullEngine {
+	config PullEngineConfig,
+) *PullEngine {
 	engine := &PullEngine{
 		PullAdapter:        participant,
 		stopFlag:           int32(0),
@@ -142,32 +143,32 @@ func NewPullEngine(participant PullAdapter, sleepTime time.Duration, config Pull
 }
 
 func (engine *PullEngine) toDie() bool {
-	return atomic.LoadInt32(&(engine.stopFlag)) == int32(1)
+	return atomic.LoadInt32(&engine.stopFlag) == int32(1)
 }
 
 func (engine *PullEngine) acceptResponses() {
-	atomic.StoreInt32(&(engine.acceptingResponses), int32(1))
+	atomic.StoreInt32(&engine.acceptingResponses, int32(1))
 }
 
 func (engine *PullEngine) isAcceptingResponses() bool {
-	return atomic.LoadInt32(&(engine.acceptingResponses)) == int32(1)
+	return atomic.LoadInt32(&engine.acceptingResponses) == int32(1)
 }
 
 func (engine *PullEngine) acceptDigests() {
-	atomic.StoreInt32(&(engine.acceptingDigests), int32(1))
+	atomic.StoreInt32(&engine.acceptingDigests, int32(1))
 }
 
 func (engine *PullEngine) isAcceptingDigests() bool {
-	return atomic.LoadInt32(&(engine.acceptingDigests)) == int32(1)
+	return atomic.LoadInt32(&engine.acceptingDigests) == int32(1)
 }
 
 func (engine *PullEngine) ignoreDigests() {
-	atomic.StoreInt32(&(engine.acceptingDigests), int32(0))
+	atomic.StoreInt32(&engine.acceptingDigests, int32(0))
 }
 
 // Stop stops the engine
 func (engine *PullEngine) Stop() {
-	atomic.StoreInt32(&(engine.stopFlag), int32(1))
+	atomic.StoreInt32(&engine.stopFlag, int32(1))
 }
 
 func (engine *PullEngine) initiatePull() {
@@ -218,7 +219,7 @@ func (engine *PullEngine) endPull() {
 	engine.lock.Lock()
 	defer engine.lock.Unlock()
 
-	atomic.StoreInt32(&(engine.acceptingResponses), int32(0))
+	atomic.StoreInt32(&engine.acceptingResponses, int32(0))
 	engine.outgoingNONCES.Clear()
 
 	engine.item2owners = make(map[string][]string)

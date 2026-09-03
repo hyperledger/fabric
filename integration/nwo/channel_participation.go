@@ -42,7 +42,9 @@ func Join(n *Network, o *Orderer, channel string, block *common.Block, expectedC
 	if n.TLSEnabled {
 		client = authClient
 	}
-	body := doBody(client, req, http.StatusCreated)
+	body, status, err := doBody(client, req)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(status).To(Equal(http.StatusCreated), string(body))
 	c := &ChannelInfo{}
 	err = json.Unmarshal(body, c)
 	Expect(err).NotTo(HaveOccurred())
@@ -86,14 +88,27 @@ func UpdateFull(n *Network, o *Orderer, channel string, envelope *common.Envelop
 		protocol = "https"
 	}
 	url := fmt.Sprintf("%s://127.0.0.1:%d/participation/v1/channels", protocol, n.OrdererPort(o, AdminPort))
-	req := GenerateUpdateRequest(url, channel, envelopeBytes)
 	authClient, unauthClient := OrdererOperationalClientsTimeShift(n, o, timeShift)
 
 	client := unauthClient
 	if n.TLSEnabled {
 		client = authClient
 	}
-	body := doBody(client, req, expectedStatus)
+	var (
+		body      []byte
+		status    int
+		errString string
+	)
+
+	Eventually(func() bool {
+		req := GenerateUpdateRequest(url, channel, envelopeBytes)
+		body, status, err = doBody(client, req)
+		if err != nil {
+			errString = err.Error()
+		}
+		return status == expectedStatus && err == nil
+	}, n.EventuallyTimeout).Should(BeTrue(), string(body), errString)
+
 	if errStr != "" {
 		Expect(string(body)).To(ContainSubstring(errStr))
 
@@ -120,17 +135,20 @@ func GenerateUpdateRequest(url, channel string, envelopeBytes []byte) *http.Requ
 	return req
 }
 
-func doBody(client *http.Client, req *http.Request, expectedStatus int) []byte {
+func doBody(client *http.Client, req *http.Request) ([]byte, int, error) {
 	resp, err := client.Do(req)
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		return nil, 0, err
+	}
+
+	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
-	Expect(err).NotTo(HaveOccurred())
-	resp.Body.Close()
+	if err != nil {
+		return nil, 0, err
+	}
 
-	Expect(expectedStatus).To(Equal(resp.StatusCode), string(bodyBytes))
-
-	return bodyBytes
+	return bodyBytes, resp.StatusCode, nil
 }
 
 type ChannelList struct {
@@ -292,7 +310,8 @@ func JoinOrdererJoinPeersAppChannel(network *Network, channelID string, orderer 
 
 	ginkgo.By(fmt.Sprintf("waiting for leader on channel %s", channelID))
 	Eventually(ordererRunner.Err(), network.EventuallyTimeout, time.Second).Should(
-		gbytes.Say(fmt.Sprintf("Raft leader changed: 0 -> 1 channel=%s node=1", channelID)))
+		gbytes.Say(fmt.Sprintf("Raft leader changed: 0 -> 1 channel=%s node=1", channelID)),
+	)
 
 	ginkgo.By(fmt.Sprintf("joining peers to the channel %s", channelID))
 	peers := network.PeersWithChannel(channelID)
@@ -314,7 +333,8 @@ func JoinOrdererAppChannel(network *Network, channelID string, orderer *Orderer,
 
 	ginkgo.By(fmt.Sprintf("waiting for leader on channel %s", channelID))
 	Eventually(ordererRunner.Err(), network.EventuallyTimeout, time.Second).Should(
-		gbytes.Say(fmt.Sprintf("Raft leader changed: 0 -> 1 channel=%s node=1", channelID)))
+		gbytes.Say(fmt.Sprintf("Raft leader changed: 0 -> 1 channel=%s node=1", channelID)),
+	)
 }
 
 // JoinOrderersAppChannelCluster Joins a set of orderers to a channel for which the genesis block was created by the network

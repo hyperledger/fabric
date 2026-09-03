@@ -92,7 +92,8 @@ func TestConfigHistory(t *testing.T) {
 			}
 
 			require.Equal(t, c.outputBlkNum, collectionConfigInfo.CommittingBlockNum)
-			require.True(t,
+			require.True(
+				t,
 				proto.Equal(
 					collectionConfigInfo.CollectionConfig,
 					c.outputConfig,

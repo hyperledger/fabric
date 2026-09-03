@@ -294,7 +294,7 @@ func TestCollectionParsing(t *testing.T) {
 		{
 			name:             "Invalid member orgs policy",
 			collectionConfig: sampleCollectionConfigBad,
-			expectedErr:      "invalid policy barf: unrecognized token 'barf' in policy string",
+			expectedErr:      "invalid policy barf: unknown name barf (1:1)\n | barf\n | ^",
 		},
 		{
 			name:             "Invalid collection config",
@@ -641,7 +641,8 @@ func TestDeliverGroupWait(t *testing.T) {
 	err = dg.Wait(context.Background())
 	g.Expect(err.Error()).To(SatisfyAny(
 		ContainSubstring("barbeque"),
-		ContainSubstring("tofu")))
+		ContainSubstring("tofu"),
+	))
 }
 
 func TestChaincodeInvokeOrQuery_waitForEvent(t *testing.T) {

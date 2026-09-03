@@ -448,7 +448,8 @@ func isStateInfoExpected(qt protoext.QueryType) bool {
 func (resp response) mapEndorsers(
 	channel2index map[string]int,
 	r *discovery.Response,
-	chaincodeQueryMapping map[int][]InvocationChain) error {
+	chaincodeQueryMapping map[int][]InvocationChain,
+) error {
 	for ch, index := range channel2index {
 		ccQueryRes, err := protoext.ResponseEndorsersAt(r, index)
 		if ccQueryRes == nil && err == nil {

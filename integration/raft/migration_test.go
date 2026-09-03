@@ -723,7 +723,8 @@ func assertTransitionFailed(
 	current, updated := prepareTransition(
 		network, peer, orderer, channel,
 		fromConsensusType, fromMigState,
-		toConsensusType, toConsensusMetadata, toMigState, toConsenterMapping)
+		toConsensusType, toConsensusMetadata, toMigState, toConsenterMapping,
+	)
 	nwo.UpdateOrdererConfigFails(network, orderer, channel, current, updated, errStr, peer, orderer)
 }
 

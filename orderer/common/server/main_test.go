@@ -309,13 +309,14 @@ func TestInitializeServerConfig(t *testing.T) {
 					},
 				},
 			}
-			require.PanicsWithValue(t, tc.expectedPanic, func() {
-				if !tc.isCluster {
-					initializeServerConfig(conf, nil)
-				} else {
-					initializeClusterClientConfig(conf)
-				}
-			},
+			require.PanicsWithValue(
+				t, tc.expectedPanic, func() {
+					if !tc.isCluster {
+						initializeServerConfig(conf, nil)
+					} else {
+						initializeClusterClientConfig(conf)
+					}
+				},
 			)
 		})
 	}

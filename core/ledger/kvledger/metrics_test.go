@@ -50,19 +50,23 @@ func TestStatsBlockCommit(t *testing.T) {
 	defer ledger.Close()
 
 	// calls during committing genesis block
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]string{"channel", ledgerid},
 		testMetricProvider.fakeBlockProcessingTimeHist.WithArgsForCall(0),
 	)
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]string{"channel", ledgerid},
 		testMetricProvider.fakeBlockstorageCommitWithPvtDataTimeHist.WithArgsForCall(0),
 	)
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]string{"channel", ledgerid},
 		testMetricProvider.fakeStatedbCommitTimeHist.WithArgsForCall(0),
 	)
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]string{
 			"channel", ledgerid,
 			"transaction_type", common.HeaderType_CONFIG.String(),
@@ -88,31 +92,38 @@ func TestStatsBlockCommit(t *testing.T) {
 			},
 		},
 	)
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]string{"channel", ledgerid},
 		testMetricProvider.fakeBlockProcessingTimeHist.WithArgsForCall(1),
 	)
-	require.Equal(t,
+	require.Equal(
+		t,
 		float64(1),
 		testMetricProvider.fakeBlockProcessingTimeHist.ObserveArgsForCall(1),
 	)
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]string{"channel", ledgerid},
 		testMetricProvider.fakeBlockstorageCommitWithPvtDataTimeHist.WithArgsForCall(1),
 	)
-	require.Equal(t,
+	require.Equal(
+		t,
 		float64(2),
 		testMetricProvider.fakeBlockstorageCommitWithPvtDataTimeHist.ObserveArgsForCall(1),
 	)
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]string{"channel", ledgerid},
 		testMetricProvider.fakeStatedbCommitTimeHist.WithArgsForCall(1),
 	)
-	require.Equal(t,
+	require.Equal(
+		t,
 		float64(3),
 		testMetricProvider.fakeStatedbCommitTimeHist.ObserveArgsForCall(1),
 	)
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]string{
 			"channel", ledgerid,
 			"transaction_type", common.HeaderType_ENDORSER_TRANSACTION.String(),
@@ -121,12 +132,14 @@ func TestStatsBlockCommit(t *testing.T) {
 		},
 		testMetricProvider.fakeTransactionsCount.WithArgsForCall(1),
 	)
-	require.Equal(t,
+	require.Equal(
+		t,
 		float64(1),
 		testMetricProvider.fakeTransactionsCount.AddArgsForCall(1),
 	)
 
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]string{
 			"channel", ledgerid,
 			"transaction_type", "unknown",
@@ -135,7 +148,8 @@ func TestStatsBlockCommit(t *testing.T) {
 		},
 		testMetricProvider.fakeTransactionsCount.WithArgsForCall(2),
 	)
-	require.Equal(t,
+	require.Equal(
+		t,
 		float64(1),
 		testMetricProvider.fakeTransactionsCount.AddArgsForCall(2),
 	)

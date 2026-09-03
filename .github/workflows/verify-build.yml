@@ -22,11 +22,12 @@ jobs:
     name: Basic Checks
     runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-24.04' || 'ubuntu-24.04' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         name: Checkout Fabric Code
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v6
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         name: Install Go
         with:
           go-version-file: go.mod
@@ -48,11 +49,12 @@ jobs:
     needs: basic-checks
     runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-24.04' || 'ubuntu-24.04' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
+          persist-credentials: false
         name: Checkout Fabric Code
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         name: Install Go
         with:
           go-version-file: go.mod
@@ -78,9 +80,11 @@ jobs:
           - sbe nwo msp
     runs-on: ${{ github.repository == 'hyperledger/fabric' && 'fabric-ubuntu-24.04' || 'ubuntu-24.04' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         name: Checkout Fabric Code
-      - uses: actions/setup-go@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         name: Install Go
         with:
           go-version-file: go.mod

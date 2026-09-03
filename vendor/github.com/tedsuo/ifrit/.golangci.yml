@@ -1,0 +1,49 @@
+version: "2"
+
+run:
+  # Timeout for analysis, e.g. 30s, 5m.
+  # Default: 1m
+  timeout: 5m
+
+linters:
+  enable:
+    # Checks for non-ASCII identifiers
+    - asciicheck
+    # Computes and checks the cyclomatic complexity of functions.
+    - gocyclo
+    # Inspects source code for security problems.
+    - gosec
+    - staticcheck
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+
+
+  settings:
+    staticcheck:
+      dot-import-whitelist:
+        - github.com/onsi/ginkgo/v2
+        - github.com/onsi/gomega
+
+
+issues:
+  # Disable max issues per linter.
+  max-issues-per-linter: 0
+  # Disable max same issues.
+  max-same-issues: 0
+
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

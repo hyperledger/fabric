@@ -138,13 +138,15 @@ func TestSignatureAlgorithms(t *testing.T) {
 			ed25519Cert,
 			ed25519FabricPubKey,
 			ed25519Signer,
-			mspImpl.(*bccspmsp))
+			mspImpl.(*bccspmsp),
+		)
 
 		ecdsaSigningIdentity, _ := newSigningIdentity(
 			ecdsaCert,
 			ecdsaFabricPubKey,
 			ecdsaSigner,
-			mspImpl.(*bccspmsp))
+			mspImpl.(*bccspmsp),
+		)
 
 		sigEd25519, _ := ed25519SigningIdentity.Sign([]byte("TEST"))
 		sigEcdsa, _ := ecdsaSigningIdentity.Sign([]byte("TEST"))

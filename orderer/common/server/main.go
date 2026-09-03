@@ -163,7 +163,8 @@ func Main() {
 		expirationLogger.Infof,
 		expirationLogger.Warnf, // This can be used to piggyback a metric event in the future
 		time.Now(),
-		time.AfterFunc)
+		time.AfterFunc,
+	)
 
 	// if cluster is reusing client-facing server, then it is already
 	// appended to serversToUpdate at this point.

@@ -582,14 +582,15 @@ func TestNewSecureGRPCServer(t *testing.T) {
 	require.NoError(t, err, "failed to create listener")
 	testAddress := lis.Addr().String()
 
-	srv, err := comm.NewGRPCServerFromListener(lis, comm.ServerConfig{
-		ConnectionTimeout: 250 * time.Millisecond,
-		SecOpts: comm.SecureOptions{
-			UseTLS:      true,
-			Certificate: []byte(selfSignedCertPEM),
-			Key:         []byte(selfSignedKeyPEM),
+	srv, err := comm.NewGRPCServerFromListener(
+		lis, comm.ServerConfig{
+			ConnectionTimeout: 250 * time.Millisecond,
+			SecOpts: comm.SecureOptions{
+				UseTLS:      true,
+				Certificate: []byte(selfSignedCertPEM),
+				Key:         []byte(selfSignedKeyPEM),
+			},
 		},
-	},
 	)
 	require.NoError(t, err, "failed to create new grpc server")
 
@@ -936,7 +937,8 @@ func TestMutualAuth(t *testing.T) {
 		},
 		{
 			name: "ClientAuthRequiredWithMultipleChildClientOrgs",
-			servers: testOrgs[0].testServers(append([][]byte{},
+			servers: testOrgs[0].testServers(append(
+				[][]byte{},
 				testOrgs[0].childOrgs[0].rootCA,
 				testOrgs[0].childOrgs[1].rootCA,
 			)),

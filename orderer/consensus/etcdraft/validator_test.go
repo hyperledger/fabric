@@ -12,6 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric-lib-go/bccsp"
 	"github.com/hyperledger/fabric-lib-go/bccsp/sw"
+	"github.com/hyperledger/fabric-lib-go/common/flogging"
 	raftprotos "github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
@@ -43,6 +44,7 @@ var _ = Describe("Metadata Validation", func() {
 		err               error
 		cryptoProvider    bccsp.BCCSP
 		meta              *raftprotos.BlockMetadata
+		logger            *flogging.FabricLogger
 	)
 
 	BeforeEach(func() {
@@ -64,23 +66,24 @@ var _ = Describe("Metadata Validation", func() {
 		support.SharedConfigReturns(mockOrdererConfig)
 
 		meta = &raftprotos.BlockMetadata{
-			ConsenterIds:    make([]uint64, len(consenterMetadata.Consenters)),
+			ConsenterIds:    make([]uint64, len(consenterMetadata.GetConsenters())),
 			NextConsenterId: 1,
 		}
 
-		for i := range meta.ConsenterIds {
-			meta.ConsenterIds[i] = meta.NextConsenterId
+		for i := range meta.GetConsenterIds() {
+			meta.ConsenterIds[i] = meta.GetNextConsenterId()
 			meta.NextConsenterId++
 		}
 
 		consenters = map[uint64]*raftprotos.Consenter{}
-		for i, c := range consenterMetadata.Consenters {
-			consenters[meta.ConsenterIds[i]] = c
+		for i, c := range consenterMetadata.GetConsenters() {
+			consenters[meta.GetConsenterIds()[i]] = c
 		}
 	})
 
 	JustBeforeEach(func() {
-		c := newChain(10*time.Second, channelID, dataDir, 1, meta, consenters, cryptoProvider, support, nil)
+		logger = flogging.MustGetLogger("test")
+		c := newChain(10*time.Second, channelID, dataDir, 1, meta, consenters, cryptoProvider, support, nil, logger)
 		c.init()
 		chain = c.Chain
 		chain.ActiveNodes.Store([]uint64{1, 2, 3})
@@ -217,7 +220,7 @@ var _ = Describe("Metadata Validation", func() {
 
 			It("succeeds when the new consenters are a subset of the existing consenters", func() {
 				newMetadata := proto.Clone(metadata).(*raftprotos.ConfigMetadata)
-				newMetadata.Consenters = newMetadata.Consenters[:2]
+				newMetadata.Consenters = newMetadata.GetConsenters()[:2]
 				newBytes, err := proto.Marshal(newMetadata)
 				Expect(err).NotTo(HaveOccurred())
 				newOrdererConfig.ConsensusMetadataReturns(newBytes)
@@ -289,7 +292,8 @@ var _ = Describe("Metadata Validation", func() {
 
 			It("fails on addition of more than one consenter", func() {
 				newMetadata := proto.Clone(metadata).(*raftprotos.ConfigMetadata)
-				newMetadata.Consenters = append(newMetadata.Consenters,
+				newMetadata.Consenters = append(
+					newMetadata.Consenters,
 					&raftprotos.Consenter{
 						Host:          "host4",
 						Port:          10004,
@@ -311,7 +315,7 @@ var _ = Describe("Metadata Validation", func() {
 
 			It("succeeds on removal of a single consenter", func() {
 				newMetadata := proto.Clone(metadata).(*raftprotos.ConfigMetadata)
-				newMetadata.Consenters = newMetadata.Consenters[:2]
+				newMetadata.Consenters = newMetadata.GetConsenters()[:2]
 				newBytes, err := proto.Marshal(newMetadata)
 				Expect(err).NotTo(HaveOccurred())
 				newOrdererConfig.ConsensusMetadataReturns(newBytes)
@@ -320,7 +324,7 @@ var _ = Describe("Metadata Validation", func() {
 
 			It("fails on removal of more than one consenter", func() {
 				newMetadata := proto.Clone(metadata).(*raftprotos.ConfigMetadata)
-				newMetadata.Consenters = newMetadata.Consenters[:1]
+				newMetadata.Consenters = newMetadata.GetConsenters()[:1]
 				newBytes, err := proto.Marshal(newMetadata)
 				Expect(err).NotTo(HaveOccurred())
 				newOrdererConfig.ConsensusMetadataReturns(newBytes)
@@ -344,7 +348,7 @@ var _ = Describe("Metadata Validation", func() {
 			It("succeeds on removal of inactive node in 2/3 cluster", func() {
 				chain.ActiveNodes.Store([]uint64{1, 2})
 				newMetadata := proto.Clone(metadata).(*raftprotos.ConfigMetadata)
-				newMetadata.Consenters = newMetadata.Consenters[:2]
+				newMetadata.Consenters = newMetadata.GetConsenters()[:2]
 				newBytes, err := proto.Marshal(newMetadata)
 				Expect(err).NotTo(HaveOccurred())
 				newOrdererConfig.ConsensusMetadataReturns(newBytes)
@@ -354,12 +358,13 @@ var _ = Describe("Metadata Validation", func() {
 			It("fails on removal of active node in 2/3 cluster", func() {
 				chain.ActiveNodes.Store([]uint64{1, 2})
 				newMetadata := proto.Clone(metadata).(*raftprotos.ConfigMetadata)
-				newMetadata.Consenters = newMetadata.Consenters[1:]
+				newMetadata.Consenters = newMetadata.GetConsenters()[1:]
 				newBytes, err := proto.Marshal(newMetadata)
 				Expect(err).NotTo(HaveOccurred())
 				newOrdererConfig.ConsensusMetadataReturns(newBytes)
 				Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).To(
-					MatchError("2 out of 3 nodes are alive, configuration will result in quorum loss"))
+					MatchError("2 out of 3 nodes are alive, configuration will result in quorum loss"),
+				)
 			})
 
 			When("node id starts from 2", func() {
@@ -374,25 +379,25 @@ var _ = Describe("Metadata Validation", func() {
 
 				BeforeEach(func() {
 					meta = &raftprotos.BlockMetadata{
-						ConsenterIds:    make([]uint64, len(consenterMetadata.Consenters)),
+						ConsenterIds:    make([]uint64, len(consenterMetadata.GetConsenters())),
 						NextConsenterId: 2, // id starts from 2
 					}
 
-					for i := range meta.ConsenterIds {
-						meta.ConsenterIds[i] = meta.NextConsenterId
+					for i := range meta.GetConsenterIds() {
+						meta.ConsenterIds[i] = meta.GetNextConsenterId()
 						meta.NextConsenterId++
 					}
 
 					consenters = map[uint64]*raftprotos.Consenter{}
-					for i, c := range consenterMetadata.Consenters {
-						consenters[meta.ConsenterIds[i]] = c
+					for i, c := range consenterMetadata.GetConsenters() {
+						consenters[meta.GetConsenterIds()[i]] = c
 					}
 				})
 
 				It("succeeds on removal of inactive node in 2/3 cluster", func() {
 					chain.ActiveNodes.Store([]uint64{2, 3}) // 4 is inactive
 					newMetadata := proto.Clone(metadata).(*raftprotos.ConfigMetadata)
-					newMetadata.Consenters = newMetadata.Consenters[:2]
+					newMetadata.Consenters = newMetadata.GetConsenters()[:2]
 					newBytes, err := proto.Marshal(newMetadata)
 					Expect(err).NotTo(HaveOccurred())
 					newOrdererConfig.ConsensusMetadataReturns(newBytes)

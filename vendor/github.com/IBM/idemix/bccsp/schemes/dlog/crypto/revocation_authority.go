@@ -12,14 +12,15 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/asn1"
+	"errors"
+	"fmt"
 	"io"
 	"math/big"
 
-	amcl "github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
+	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	weakbb "github.com/IBM/idemix/bccsp/schemes/weak-bb"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 type RevocationAlgorithm int32
@@ -48,9 +49,9 @@ func (i *Idemix) LongTermRevocationKeyFromBytes(raw []byte) (*ecdsa.PrivateKey, 
 
 func longTermRevocationKeyFromBytes(raw []byte) (*ecdsa.PrivateKey, error) {
 	priv := &ecdsa.PrivateKey{}
-	priv.D = new(big.Int).SetBytes(raw)
-	priv.PublicKey.Curve = elliptic.P384()
-	priv.PublicKey.X, priv.PublicKey.Y = elliptic.P384().ScalarBaseMult(priv.D.Bytes())
+	priv.D = new(big.Int).SetBytes(raw) //nolint:staticcheck
+	priv.Curve = elliptic.P384()
+	priv.X, priv.Y = elliptic.P384().ScalarBaseMult(priv.D.Bytes()) //nolint:staticcheck
 
 	return priv, nil
 }
@@ -65,7 +66,7 @@ func (i *Idemix) CreateCRI(key *ecdsa.PrivateKey, unrevokedHandles []*math.Zr, e
 
 func createCRI(key *ecdsa.PrivateKey, unrevokedHandles []*math.Zr, epoch int, alg RevocationAlgorithm, rng io.Reader, curve *math.Curve, t Translator) (*CredentialRevocationInformation, error) {
 	if key == nil || rng == nil {
-		return nil, errors.Errorf("CreateCRI received nil input")
+		return nil, errors.New("createCRI received nil input")
 	}
 	cri := &CredentialRevocationInformation{}
 	cri.RevocationAlg = int32(alg)
@@ -83,7 +84,7 @@ func createCRI(key *ecdsa.PrivateKey, unrevokedHandles []*math.Zr, epoch int, al
 	// sign epoch + epoch key with long term key
 	bytesToSign, err := proto.Marshal(cri)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal CRI")
+		return nil, fmt.Errorf("failed to marshal CRI: %w", err)
 	}
 
 	digest := sha256.Sum256(bytesToSign)
@@ -96,7 +97,7 @@ func createCRI(key *ecdsa.PrivateKey, unrevokedHandles []*math.Zr, epoch int, al
 	if alg == ALG_NO_REVOCATION {
 		return cri, nil
 	} else {
-		return nil, errors.Errorf("the specified revocation algorithm is not supported.")
+		return nil, errors.New("the specified revocation algorithm is not supported")
 	}
 }
 
@@ -111,7 +112,7 @@ func (i *Idemix) VerifyEpochPK(pk *ecdsa.PublicKey, epochPK *amcl.ECP2, epochPkS
 
 func verifyEpochPK(pk *ecdsa.PublicKey, epochPK *amcl.ECP2, epochPkSig []byte, epoch int, alg RevocationAlgorithm) error {
 	if pk == nil || epochPK == nil {
-		return errors.Errorf("EpochPK invalid: received nil input")
+		return errors.New("epochPK invalid: received nil input")
 	}
 	cri := &CredentialRevocationInformation{}
 	cri.RevocationAlg = int32(alg)
@@ -125,11 +126,11 @@ func verifyEpochPK(pk *ecdsa.PublicKey, epochPK *amcl.ECP2, epochPkSig []byte, e
 
 	var sig struct{ R, S *big.Int }
 	if _, err := asn1.Unmarshal(epochPkSig, &sig); err != nil {
-		return errors.Wrap(err, "failed unmashalling signature")
+		return fmt.Errorf("failed unmashalling signature: %w", err)
 	}
 
 	if !ecdsa.Verify(pk, digest[:], sig.R, sig.S) {
-		return errors.Errorf("EpochPKSig invalid")
+		return errors.New("epochPKSig invalid")
 	}
 
 	return nil

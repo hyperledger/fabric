@@ -7,10 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package idemix
 
 import (
+	"errors"
 	"io"
 
 	math "github.com/IBM/mathlib"
-	"github.com/pkg/errors"
 )
 
 // credRequestLabel is the label used in zero-knowledge proof (ZKP) to identify that this ZKP is a credential request
@@ -98,7 +98,7 @@ func (m *CredRequest) Check(ipk *IssuerPublicKey, curve *math.Curve, tr Translat
 	}
 
 	if Nym == nil || IssuerNonce == nil || ProofC == nil || ProofS == nil {
-		return errors.Errorf("one of the proof values is undefined")
+		return errors.New("one of the proof values is undefined")
 	}
 
 	// Verify Proof
@@ -118,7 +118,7 @@ func (m *CredRequest) Check(ipk *IssuerPublicKey, curve *math.Curve, tr Translat
 	copy(proofData[index:], ipk.Hash)
 
 	if !ProofC.Equals(curve.HashToZr(proofData)) {
-		return errors.Errorf("zero knowledge proof is invalid")
+		return errors.New("zero knowledge proof is invalid")
 	}
 
 	return nil

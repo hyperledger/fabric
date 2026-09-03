@@ -54,7 +54,8 @@ func TestCCEventMgmt(t *testing.T) {
 	cc3ExpectedEvent := &mockEvent{cc3Def, cc3DBArtifactsTar}
 
 	// Deploy cc3 on chain1 - handler1 and handler3 should receive event because cc3 is being deployed only on chain1
-	require.NoError(t,
+	require.NoError(
+		t,
 		eventMgr.HandleChaincodeDeploy("channel1", []*ChaincodeDefinition{cc3Def}),
 	)
 	eventMgr.ChaincodeDeployDone("channel1")
@@ -66,7 +67,8 @@ func TestCCEventMgmt(t *testing.T) {
 	require.Equal(t, 1, handler3.doneRecievedCount)
 
 	// Deploy cc3 on chain2 as well and this time handler2 should also receive event
-	require.NoError(t,
+	require.NoError(
+		t,
 		eventMgr.HandleChaincodeDeploy("channel2", []*ChaincodeDefinition{cc3Def}),
 	)
 	eventMgr.ChaincodeDeployDone("channel2")
@@ -76,7 +78,8 @@ func TestCCEventMgmt(t *testing.T) {
 	require.Equal(t, 2, handler3.doneRecievedCount)
 
 	// Install CC2 - handler1 and handler 3 should receive event because cc2 is deployed only on chain1 and not on chain2
-	require.NoError(t,
+	require.NoError(
+		t,
 		eventMgr.HandleChaincodeInstall(cc2Def, cc2DBArtifactsTar),
 	)
 	eventMgr.ChaincodeInstallDone(true)
@@ -90,15 +93,18 @@ func TestCCEventMgmt(t *testing.T) {
 	// setting cc2Def as a new lifecycle definition should cause install not to trigger event
 	mockProvider.setChaincodeDeployed("channel1", cc2Def, false)
 	handler1.eventsRecieved = []*mockEvent{}
-	require.NoError(t,
+	require.NoError(
+		t,
 		eventMgr.HandleChaincodeInstall(cc2Def, cc2DBArtifactsTar),
 	)
 	eventMgr.ChaincodeInstallDone(true)
 	require.NotContains(t, handler1.eventsRecieved, cc2ExpectedEvent)
 
 	mockListener := &mockHandler{}
-	require.NoError(t,
-		mgr.RegisterAndInvokeFor([]*ChaincodeDefinition{cc1Def, cc2Def, cc3Def},
+	require.NoError(
+		t,
+		mgr.RegisterAndInvokeFor(
+			[]*ChaincodeDefinition{cc1Def, cc2Def, cc3Def},
 			"test-ledger", mockListener,
 		),
 	)
@@ -128,13 +134,12 @@ func TestLSCCListener(t *testing.T) {
 	GetMgr().Register(channelName, handler1)
 
 	mockInfoProvider := &mock.DeployedChaincodeInfoProvider{}
-	mockInfoProvider.UpdatedChaincodesStub =
-		func(map[string][]*kvrwset.KVWrite) ([]*ledger.ChaincodeLifecycleInfo, error) {
-			return []*ledger.ChaincodeLifecycleInfo{
-				{Name: cc1Def.Name},
-				{Name: cc2Def.Name},
-			}, nil
-		}
+	mockInfoProvider.UpdatedChaincodesStub = func(map[string][]*kvrwset.KVWrite) ([]*ledger.ChaincodeLifecycleInfo, error) {
+		return []*ledger.ChaincodeLifecycleInfo{
+			{Name: cc1Def.Name},
+			{Name: cc2Def.Name},
+		}, nil
+	}
 	mockInfoProvider.ChaincodeInfoStub = func(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
 		switch chaincodeName {
 		case cc1Def.Name:
@@ -159,7 +164,8 @@ func TestLSCCListener(t *testing.T) {
 
 	// test1 regular deploy lscc event gets sent to handler
 	t.Run("DeployEvent", func(t *testing.T) {
-		require.NoError(t,
+		require.NoError(
+			t,
 			lsccStateListener.HandleStateUpdates(
 				&ledger.StateUpdateTrigger{
 					LedgerID: channelName,

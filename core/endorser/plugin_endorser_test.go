@@ -61,7 +61,8 @@ func (s *testTransientStore) tearDown() {
 }
 
 func (s *testTransientStore) Persist(txid string, blockHeight uint64,
-	privateSimulationResultsWithConfig *tspb.TxPvtReadWriteSetWithConfigInfo) error {
+	privateSimulationResultsWithConfig *tspb.TxPvtReadWriteSetWithConfigInfo,
+) error {
 	return s.store.Persist(txid, blockHeight, privateSimulationResultsWithConfig)
 }
 

@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/aries-bbs-go/bbs"
+	"google.golang.org/protobuf/proto"
 )
 
 const nymSigLabel = "nym-sig"
@@ -85,6 +85,10 @@ func (s *NymSigner) Verify(
 	nymProof, err := bbs.NewBBSLib(s.Curve).ParseProofG1(sig.MainSignature)
 	if err != nil {
 		return fmt.Errorf("parse nym proof: %w", err)
+	}
+
+	if len(nymProof.Responses) < 2 {
+		return fmt.Errorf("invalid nym proof: expected at least 2 responses, got %d", len(nymProof.Responses))
 	}
 
 	challengeBytes := []byte(nymSigLabel)

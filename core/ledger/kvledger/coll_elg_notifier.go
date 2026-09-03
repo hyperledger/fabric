@@ -75,7 +75,8 @@ func (n *collElgNotifier) HandleStateUpdates(trigger *ledger.StateUpdateTrigger)
 		if err != nil {
 			return err
 		}
-		logger.Debugf("[%s] collections of chaincode [%s] for which peer was not eligible before and now the eligiblity is enabled - [%s]",
+		logger.Debugf(
+			"[%s] collections of chaincode [%s] for which peer was not eligible before and now the eligiblity is enabled - [%s]",
 			ledgerid, ccName, elgEnabledCollNames,
 		)
 		if len(elgEnabledCollNames) > 0 {

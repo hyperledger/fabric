@@ -233,7 +233,8 @@ var _ = Describe("Lifecycle", func() {
 
 		By("ensuring the previous chaincode package is no longer referenced by a chaincode definition on the channel")
 		Expect(nwo.QueryInstalled(network, network.Peer("Org2", "peer0"))()).To(
-			ContainElement(MatchFields(IgnoreExtras,
+			ContainElement(MatchFields(
+				IgnoreExtras,
 				Fields{
 					"Label":      Equal(previousLabel),
 					"PackageId":  Equal(previousPackageID),

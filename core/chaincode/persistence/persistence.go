@@ -55,7 +55,8 @@ func (f *FilesystemIO) WriteFile(path, name string, data []byte) error {
 		if err == nil {
 			err = errors.Errorf(
 				"failed to write the entire content of the file, expected %d, wrote %d",
-				len(data), n)
+				len(data), n,
+			)
 		}
 		return errors.Wrapf(err, "error writing to temp file '%s'", tmpFile.Name())
 	}

@@ -7,10 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package idemix
 
 import (
+	"errors"
 	"io"
 
 	math "github.com/IBM/mathlib"
-	"github.com/pkg/errors"
 )
 
 // NewSignature creates a new idemix pseudonym signature
@@ -21,7 +21,7 @@ func (i *Idemix) NewNymSignature(sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk *
 func newNymSignature(sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk *IssuerPublicKey, msg []byte, rng io.Reader, curve *math.Curve, tr Translator) (*NymSignature, error) {
 	// Validate inputs
 	if sk == nil || Nym == nil || RNym == nil || ipk == nil || rng == nil {
-		return nil, errors.Errorf("cannot create NymSignature: received nil input")
+		return nil, errors.New("cannot create NymSignature: received nil input")
 	}
 
 	Nonce := curve.NewRandomZr(rng)
@@ -121,7 +121,7 @@ func (sig *NymSignature) Ver(nym *math.G1, ipk *IssuerPublicKey, msg []byte, cur
 	appendBytesBig(proofData, index, Nonce)
 
 	if !ProofC.Equals(curve.HashToZr(proofData)) {
-		return errors.Errorf("pseudonym signature invalid: zero-knowledge proof is invalid")
+		return errors.New("pseudonym signature invalid: zero-knowledge proof is invalid")
 	}
 
 	return nil

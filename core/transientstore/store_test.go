@@ -661,7 +661,8 @@ func sampleCollectionConfigPackage(colName string) *peer.CollectionConfig {
 // persistOldProto is the code from 1.1 to populate stores with old proto message
 // this is used only for testing
 func (s *Store) persistOldProto(txid string, blockHeight uint64,
-	privateSimulationResults *rwset.TxPvtReadWriteSet) error {
+	privateSimulationResults *rwset.TxPvtReadWriteSet,
+) error {
 	logger.Debugf("Persisting private data to transient store for txid [%s] at block height [%d]", txid, blockHeight)
 
 	dbBatch := s.db.NewUpdateBatch()

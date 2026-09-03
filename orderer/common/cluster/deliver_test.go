@@ -1243,15 +1243,15 @@ func TestImpatientStreamFailure(t *testing.T) {
 	// Shutdown the OSN
 	osn.stop()
 	// Ensure the port isn't open anymore
-	gt.Eventually(func() (bool, error) {
+	gt.Eventually(func() bool {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*10)
 		defer cancel()
 		conn, _ := grpc.DialContext(ctx, osn.srv.Address(), grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if conn != nil {
 			conn.Close()
-			return false, nil
+			return false
 		}
-		return true, nil
+		return true
 	}).Should(gomega.BeTrue())
 	stream, err := newStream()
 	if err != nil {

@@ -515,10 +515,11 @@ var _ = Describe("Connection", func() {
 
 		When("an update to the global addrs references an overridden org endpoint address", func() {
 			BeforeEach(func() {
-				cs.Update([]string{"global-addr1", "override-address"}, map[string]orderers.OrdererOrg{
-					"org1": org1,
-					"org2": org2,
-				},
+				cs.Update(
+					[]string{"global-addr1", "override-address"}, map[string]orderers.OrdererOrg{
+						"org1": org1,
+						"org2": org2,
+					},
 				)
 			})
 
@@ -954,10 +955,11 @@ var _ = Describe("Connection", func() {
 
 			When("an update to the global addrs references an overridden org endpoint address", func() {
 				BeforeEach(func() {
-					cs.Update([]string{"global-addr1", "override-address"}, map[string]orderers.OrdererOrg{
-						"org1": org1,
-						"org2": org2,
-					},
+					cs.Update(
+						[]string{"global-addr1", "override-address"}, map[string]orderers.OrdererOrg{
+							"org1": org1,
+							"org2": org2,
+						},
 					)
 				})
 
@@ -1132,10 +1134,11 @@ var _ = Describe("Connection", func() {
 
 			When("an update to the global addrs references an overridden org endpoint address", func() {
 				BeforeEach(func() {
-					cs.Update([]string{"global-addr1", "override-address"}, map[string]orderers.OrdererOrg{
-						"org1": org1,
-						"org2": org2,
-					},
+					cs.Update(
+						[]string{"global-addr1", "override-address"}, map[string]orderers.OrdererOrg{
+							"org1": org1,
+							"org2": org2,
+						},
 					)
 				})
 

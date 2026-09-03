@@ -1486,7 +1486,8 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, v11capability, expecterr bool
 	// now we upgrade, with v 2 of the same cc, with the crucial difference that it has a reject all IP
 	ccver = ccver + ".2"
 
-	simresres, err := createCCDataRWset(ccname, ccname, ccver,
+	simresres, err := createCCDataRWset(
+		ccname, ccname, ccver,
 		policydsl.MarshaledRejectAllPolicy, // here's where we specify the IP of the upgraded cc
 	)
 	require.NoError(t, err)

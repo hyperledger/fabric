@@ -7,8 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package idemix
 
 import (
+	"errors"
+	fmt "fmt"
+
 	math "github.com/IBM/mathlib"
-	"github.com/pkg/errors"
 )
 
 type NymRH []byte
@@ -23,30 +25,30 @@ func (nym NymRH) AuditNymRh(
 ) error {
 	// Validate inputs
 	if ipk == nil {
-		return errors.Errorf("cannot verify idemix signature: received nil input")
+		return errors.New("cannot verify idemix signature: received nil input")
 	}
 
 	if len(nym) == 0 {
-		return errors.Errorf("no RhNym provided")
+		return errors.New("no RhNym provided")
 	}
 
 	if len(ipk.HAttrs) <= rhIndex {
-		return errors.Errorf("could not access H_a_rh in array")
+		return errors.New("could not access H_a_rh in array")
 	}
 
 	H_a_rh, err := t.G1FromProto(ipk.HAttrs[rhIndex])
 	if err != nil {
-		return errors.Wrap(err, "could not deserialize H_a_rh")
+		return fmt.Errorf("could not deserialize H_a_rh: %w", err)
 	}
 
 	HRand, err := t.G1FromProto(ipk.HRand)
 	if err != nil {
-		return errors.Wrap(err, "could not deserialize HRand")
+		return fmt.Errorf("could not deserialize HRand: %w", err)
 	}
 
 	RhNym, err := curve.NewG1FromBytes(nym)
 	if err != nil {
-		return errors.Wrap(err, "could not deserialize RhNym")
+		return fmt.Errorf("could not deserialize RhNym: %w", err)
 	}
 
 	Nym_rh := H_a_rh.Mul2(rhAttr, HRand, RNymRh)

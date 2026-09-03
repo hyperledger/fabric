@@ -10,10 +10,6 @@ import (
 	"fmt"
 	"time"
 
-	. "github.com/hyperledger/fabric/internal/test"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-
 	cb "github.com/hyperledger/fabric-protos-go-apiv2/common"
 	ab "github.com/hyperledger/fabric-protos-go-apiv2/orderer"
 	"github.com/hyperledger/fabric-protos-go-apiv2/orderer/etcdraft"
@@ -23,7 +19,10 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder/fakes"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
+	. "github.com/hyperledger/fabric/internal/test"
 	"github.com/hyperledger/fabric/protoutil"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -202,7 +201,7 @@ var _ = Describe("Encoder", func() {
 
 			It("wraps and returns the error", func() {
 				err := encoder.AddPolicies(cg, policies, "Readers")
-				Expect(err).To(MatchError("invalid signature policy rule 'garbage': unrecognized token 'garbage' in policy string"))
+				Expect(err).To(MatchError("invalid signature policy rule 'garbage': unknown name garbage (1:1)\n | garbage\n | ^"))
 			})
 		})
 

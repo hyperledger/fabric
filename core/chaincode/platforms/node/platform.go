@@ -182,7 +182,7 @@ else
 fi
 `
 
-func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, error) {
+func (p *Platform) DockerBuildOptions(string, string, string, string) (util.DockerBuildOptions, error) {
 	return util.DockerBuildOptions{
 		Image: util.GetDockerImageFromConfig("chaincode.node.runtime"),
 		Cmd:   buildScript,

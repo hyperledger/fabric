@@ -225,7 +225,8 @@ func TestImportStateErrorPropagation(t *testing.T) {
 		defer cleanup()
 
 		vdbProvider.Close()
-		err := vdbProvider.ImportFromSnapshot("test-db", version.NewHeight(2, 2),
+		err := vdbProvider.ImportFromSnapshot(
+			"test-db", version.NewHeight(2, 2),
 			&dummyFullScanIter{
 				kv: &statedb.VersionedKV{
 					CompositeKey: &statedb.CompositeKey{

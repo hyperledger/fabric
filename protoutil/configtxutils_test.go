@@ -15,7 +15,8 @@ import (
 )
 
 func TestNewConfigGroup(t *testing.T) {
-	require.Equal(t,
+	require.Equal(
+		t,
 		&common.ConfigGroup{
 			Groups:   make(map[string]*common.ConfigGroup),
 			Values:   make(map[string]*common.ConfigValue),

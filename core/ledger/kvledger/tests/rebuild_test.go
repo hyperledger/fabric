@@ -24,7 +24,8 @@ func TestRebuildComponents(t *testing.T) {
 	dataHelper.verifyLedgerContent(l1)
 	dataHelper.verifyLedgerContent(l2)
 
-	t.Run("rebuild only statedb",
+	t.Run(
+		"rebuild only statedb",
 		func(t *testing.T) {
 			env.closeAllLedgersAndRemoveDirContents(rebuildableStatedb)
 			l1, l2 := env.openTestLedger("ledger1"), env.openTestLedger("ledger2")
@@ -33,7 +34,8 @@ func TestRebuildComponents(t *testing.T) {
 		},
 	)
 
-	t.Run("rebuild statedb and config history",
+	t.Run(
+		"rebuild statedb and config history",
 		func(t *testing.T) {
 			env.closeAllLedgersAndRemoveDirContents(rebuildableStatedb | rebuildableConfigHistory)
 			l1, l2 := env.openTestLedger("ledger1"), env.openTestLedger("ledger2")
@@ -42,7 +44,8 @@ func TestRebuildComponents(t *testing.T) {
 		},
 	)
 
-	t.Run("rebuild statedb and block index",
+	t.Run(
+		"rebuild statedb and block index",
 		func(t *testing.T) {
 			env.closeAllLedgersAndRemoveDirContents(rebuildableStatedb | rebuildableBlockIndex)
 			l1, l2 := env.openTestLedger("ledger1"), env.openTestLedger("ledger2")
@@ -51,7 +54,8 @@ func TestRebuildComponents(t *testing.T) {
 		},
 	)
 
-	t.Run("rebuild statedb and historydb",
+	t.Run(
+		"rebuild statedb and historydb",
 		func(t *testing.T) {
 			env.closeAllLedgersAndRemoveDirContents(rebuildableStatedb | rebuildableHistoryDB)
 			l1, l2 := env.openTestLedger("ledger1"), env.openTestLedger("ledger2")

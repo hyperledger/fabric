@@ -147,7 +147,8 @@ func (p *PurgeMgr) addMissingPvtDataToWorkingSet(pvtKeys privacyenabledstate.Pvt
 // commit
 func (p *PurgeMgr) UpdateExpiryInfo(
 	pvtUpdates *privacyenabledstate.PvtUpdateBatch,
-	hashedUpdates *privacyenabledstate.HashedUpdateBatch) error {
+	hashedUpdates *privacyenabledstate.HashedUpdateBatch,
+) error {
 	expiryInfoUpdates, err := buildExpirySchedule(p.btlPolicy, pvtUpdates, hashedUpdates)
 	if err != nil {
 		return err
@@ -158,7 +159,8 @@ func (p *PurgeMgr) UpdateExpiryInfo(
 // AddExpiredEntriesToUpdateBatch add the expired pvtdata to the updateBatch of next block to be committed
 func (p *PurgeMgr) AddExpiredEntriesToUpdateBatch(
 	pvtUpdates *privacyenabledstate.PvtUpdateBatch,
-	hashedUpdates *privacyenabledstate.HashedUpdateBatch) error {
+	hashedUpdates *privacyenabledstate.HashedUpdateBatch,
+) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	if p.workingset.err != nil {
@@ -244,7 +246,8 @@ func (p *PurgeMgr) prepareWorkingsetFor(expiringAtBlk uint64) *workingset {
 		if sameVersion(currentVersion, purgeEntryV.committingBlock) {
 			logger.Debugf(
 				"The version of the hashed key in the committed state and in the expiry entry is same " +
-					"hence, keeping the entry in the purge list")
+					"hence, keeping the entry in the purge list",
+			)
 			continue
 		}
 
@@ -260,7 +263,8 @@ func (p *PurgeMgr) prepareWorkingsetFor(expiringAtBlk uint64) *workingset {
 			if sameVersionFromVal(committedPvtVerVal, purgeEntryV.committingBlock) {
 				logger.Debugf(
 					"The version of the pvt key in the committed state and in the expiry entry is same" +
-						"Including only key in the purge list and not the hashed key")
+						"Including only key in the purge list and not the hashed key",
+				)
 				purgeEntryV.purgeKeyOnly = true
 				continue
 			}

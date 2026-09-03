@@ -130,7 +130,8 @@ func (cc ClientConfig) DialOptions() ([]grpc.DialOption, error) {
 
 	// Unless asynchronous connect is set, make connection establishment blocking.
 	if !cc.AsyncConnect {
-		dialOpts = append(dialOpts,
+		dialOpts = append(
+			dialOpts,
 			grpc.WithBlock(),
 			grpc.FailOnNonTempDialError(true),
 		)

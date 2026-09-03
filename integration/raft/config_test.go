@@ -399,7 +399,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			nwo.Join(network, orderer3, "testchannel", configBlock, expectedChannelInfo)
 
 			By("Expanding the TLS root CA certificates and adding orderer3 to the channel")
-			updateOrdererMSPAndConsensusMetadata(network, peer, orderer, "testchannel", "OrdererOrg",
+			updateOrdererMSPAndConsensusMetadata(
+				network, peer, orderer, "testchannel", "OrdererOrg",
 				func(config *msp.FabricMSPConfig) *msp.FabricMSPConfig { // MSP mutator
 					tmp := proto.Clone(config).(*msp.FabricMSPConfig)
 					tmp.TlsRootCerts = append(tmp.TlsRootCerts, caCert)
@@ -425,7 +426,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 					Status:            "active",
 					ConsensusRelation: "consenter",
 					Height:            3,
-				}))
+				},
+			))
 
 			By("Attemping to add a consenter with invalid certs")
 			// create new certs that are not in the channel config
@@ -1146,15 +1148,6 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Ensuring the evicted orderer now doesn't serve clients")
 			ensureNotFound(orderers[firstEvictedNode], peer, network, "testchannel")
 
-			assertFollower := func(expected nwo.ChannelInfo, o *nwo.Orderer) bool {
-				current := nwo.ListOne(network, o, "testchannel")
-				ok := current == expected
-				if !ok {
-					fmt.Fprintf(GinkgoWriter, ">>> Current ChannelInfo: %+v \n", current)
-				}
-				return ok
-			}
-
 			expectedInfo := nwo.ChannelInfo{
 				Name:              "testchannel",
 				URL:               "/participation/v1/channels/testchannel",
@@ -1162,7 +1155,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				ConsensusRelation: "follower",
 				Height:            2,
 			}
-			Eventually(assertFollower(expectedInfo, orderers[firstEvictedNode]), network.EventuallyTimeout, 100*time.Millisecond).Should(BeTrue())
+			Eventually(func() nwo.ChannelInfo {
+				return nwo.ListOne(network, orderers[firstEvictedNode], "testchannel")
+			}).WithTimeout(network.EventuallyTimeout).WithPolling(100 * time.Millisecond).Should(Equal(expectedInfo))
 
 			By("Removing the leader from 2-node channel")
 			server2CertBytes, err := os.ReadFile(filepath.Join(network.OrdererLocalTLSDir(orderers[secondEvictedNode]), "server.crt"))
@@ -1184,7 +1179,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				ConsensusRelation: "follower",
 				Height:            3,
 			}
-			Eventually(assertFollower(expectedInfo, orderers[secondEvictedNode]), network.EventuallyTimeout, 100*time.Millisecond).Should(BeTrue())
+			Eventually(func() nwo.ChannelInfo {
+				return nwo.ListOne(network, orderers[secondEvictedNode], "testchannel")
+			}).WithTimeout(network.EventuallyTimeout).WithPolling(100 * time.Millisecond).Should(Equal(expectedInfo))
 
 			By("Re-adding first evicted orderer")
 			addConsenter(network, peer, network.Orderers[survivor], "testchannel", &etcdraft.Consenter{
@@ -1290,7 +1287,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Eventually(func() int { // Removal is async
 					channelList := nwo.List(network, o1)
 					return len(channelList.Channels)
-				}()).Should(BeZero())
+				}).Should(BeZero())
 
 				// TODO It is recommended to remove the etcdraft folder for the WAL to be re-created correctly
 				// See: https://github.com/hyperledger/fabric/issues/3992
@@ -1324,16 +1321,10 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 					ConsensusRelation: "consenter",
 					Height:            6,
 				}
-				assertCatchup := func(expected nwo.ChannelInfo) bool {
-					current := nwo.ListOne(network, o1, "testchannel")
-					ok := current == expected
-					if !ok {
-						fmt.Fprintf(GinkgoWriter, "Current ChannelInfo: %+v", current)
-					}
-					return ok
-				}
 
-				Eventually(assertCatchup(expectedInfo), network.EventuallyTimeout, 100*time.Millisecond).Should(BeTrue())
+				Eventually(func() nwo.ChannelInfo {
+					return nwo.ListOne(network, o1, "testchannel")
+				}).WithTimeout(network.EventuallyTimeout).WithPolling(100 * time.Millisecond).Should(Equal(expectedInfo))
 
 				assertBlockReception(map[string]int{"testchannel": 5}, []*nwo.Orderer{o1, o2, o3}, network)
 			})
@@ -1364,7 +1355,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 					Eventually(func() int { // Removal is async
 						channelList := nwo.List(network, o)
 						return len(channelList.Channels)
-					}()).Should(BeZero())
+					}).WithTimeout(network.EventuallyTimeout).Should(BeZero())
 				}
 
 				// TODO It is recommended to remove the etcdraft folder for the WAL to be re-created correctly
@@ -1405,16 +1396,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 				By("Waiting for the channel to stabilize")
 				expectedInfo.Height++
-				assertCatchup := func(expected nwo.ChannelInfo) bool {
-					current := nwo.ListOne(network, o1, "testchannel")
-					ok := current == expected
-					if !ok {
-						fmt.Fprintf(GinkgoWriter, "Current ChannelInfo: %+v", current)
-					}
-					return ok
-				}
-
-				Eventually(assertCatchup(expectedInfo), network.EventuallyTimeout, 100*time.Millisecond).Should(BeTrue())
+				Eventually(func() nwo.ChannelInfo {
+					return nwo.ListOne(network, o1, "testchannel")
+				}).WithTimeout(network.EventuallyTimeout).WithPolling(100 * time.Millisecond).Should(Equal(expectedInfo))
 
 				assertBlockReception(map[string]int{"testchannel": 1}, []*nwo.Orderer{o1, o2, o3}, network)
 			})

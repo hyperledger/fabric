@@ -34,13 +34,15 @@ func TestPurgeMgrBuilder(t *testing.T) {
 
 	purgeMgrBuilder := NewPurgeMgrBuilder(ledgerID, btlPolicy, bookkeepingProvider)
 
-	require.NoError(t,
+	require.NoError(
+		t,
 		purgeMgrBuilder.ConsumeSnapshotData(
 			"ns1",
 			"never-expiring-collection",
 			[]byte("key-hash-3"),
 			[]byte("value-hash-3"),
-			version.NewHeight(5, 1)),
+			version.NewHeight(5, 1),
+		),
 	)
 	expiry, err := purgeMgrBuilder.expKeeper.retrieveByExpiryKey(
 		&expiryInfoKey{
@@ -52,7 +54,8 @@ func TestPurgeMgrBuilder(t *testing.T) {
 	require.Nil(t, expiry.pvtdataKeys.Map)
 
 	// add data that expires at block-7
-	require.NoError(t,
+	require.NoError(
+		t,
 		purgeMgrBuilder.ConsumeSnapshotData(
 			"ns1",
 			"coll1",
@@ -61,7 +64,8 @@ func TestPurgeMgrBuilder(t *testing.T) {
 			version.NewHeight(5, 1),
 		),
 	)
-	require.NoError(t,
+	require.NoError(
+		t,
 		purgeMgrBuilder.ConsumeSnapshotData(
 			"ns1", "coll1",
 			[]byte("key-hash-2"),
@@ -70,7 +74,8 @@ func TestPurgeMgrBuilder(t *testing.T) {
 		),
 	)
 	// add data that expires at block-8
-	require.NoError(t,
+	require.NoError(
+		t,
 		purgeMgrBuilder.ConsumeSnapshotData(
 			"ns2",
 			"coll2",
@@ -88,7 +93,6 @@ func TestPurgeMgrBuilder(t *testing.T) {
 		expiringBlock  uint64
 		expectedOutput []*expiryInfo
 	}{
-
 		{
 			name:           "nothing-expires-at-block-6",
 			expiringBlock:  6,

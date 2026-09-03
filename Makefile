@@ -8,7 +8,6 @@
 #
 #   - all (default) - builds all targets and runs all non-integration tests/checks
 #   - basic-checks - performs basic checks like license, spelling, trailing spaces and linter
-#   - check-deps - check for vendored dependencies that are no longer used
 #   - checks - runs all non-integration tests/checks
 #   - clean-all - superset of 'clean' that also removes persistent state
 #   - clean - cleans the build area
@@ -23,7 +22,7 @@
 #   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
 #   - docker-thirdparty - pulls thirdparty images (couchdb, etc)
 #   - docs - builds the documentation in html format
-#   - gotools - installs go tools like golint
+#   - gotools - installs go tools
 #   - help-docs - generate the command reference docs
 #   - integration-test-prereqs - setup prerequisites for integration tests
 #   - integration-test - runs the integration tests
@@ -46,7 +45,7 @@
 #   - verify - runs unit tests for only the changed package tree
 
 UBUNTU_VER ?= 24.04
-FABRIC_VER ?= 3.1.4
+FABRIC_VER ?= 3.1.5
 
 # 3rd party image version
 # These versions are also set in the runners in ./integration/runners/
@@ -149,7 +148,7 @@ trailing-spaces: ## Check for trailing spaces
 	@scripts/check_trailingspaces.sh
 
 .PHONY: gotools
-gotools: gotools-install ## Install go tools like golint
+gotools: gotools-install ## Install go tools
 
 .PHONY: check-go-version
 check-go-version: ## Check for the correct go version
@@ -170,11 +169,11 @@ unit-test: unit-test-clean docker-thirdparty-couchdb ## Runs the go-test based u
 unit-tests: unit-test ## Alias for unit-test
 
 # Pull thirdparty docker images based on the latest baseimage release version
-# Also pull ccenv-1.4 for compatibility test to ensure pre-2.0 installed chaincodes
-# can be built by a peer configured to use the ccenv-1.4 as the builder image.
+# Also pull ccenv-2.5 for compatibility test to ensure pre-2.0 installed chaincodes
+# can be built by a peer configured to use the ccenv-2.5 as the builder image.
 .PHONY: docker-thirdparty
 docker-thirdparty: docker-thirdparty-couchdb ## Pull thirdparty docker images
-	docker pull hyperledger/fabric-ccenv:1.4
+	docker pull hyperledger/fabric-ccenv:2.5
 
 .PHONY: docker-thirdparty-couchdb
 docker-thirdparty-couchdb: ## Pull couchdb docker image
@@ -189,14 +188,9 @@ profile: export JOB_TYPE=PROFILE ## Runs unit tests for all packages in coverpro
 profile: unit-test # Runs unit tests for all packages in coverprofile mode (slow)
 
 .PHONY: linter
-linter: check-deps gotool.goimports gotool.gofumpt gotool.staticcheck ## Runs all code checks
+linter: gotool.goimports gotool.gofumpt gotool.staticcheck ## Runs all code checks
 	@echo "LINT: Running code checks.."
 	./scripts/golinter.sh
-
-.PHONY: check-deps
-check-deps: ## Check for vendored dependencies that are no longer used
-	@echo "DEP: Checking for dependency issues.."
-	./scripts/check_deps.sh
 
 .PHONY: check-metrics-docs
 check-metrics-doc: gotool.gendoc ## Check for outdated reference documentation
@@ -219,7 +213,7 @@ generate-swagger: gotool.swagger ## Generate swagger
 	./scripts/swagger.sh generate
 
 .PHONY: protos
-protos: gotool.protoc-gen-go ## Generate all protobuf artifacts based on .proto files
+protos: gotool.protoc-gen-go gotool.protoc-gen-go-grpc ## Generate all protobuf artifacts based on .proto files
 	@echo "Compiling non-API protos..."
 	./scripts/compile_protos.sh
 

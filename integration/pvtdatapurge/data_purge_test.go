@@ -428,7 +428,8 @@ func getPrivateDataKeys(client pb.Deliver_DeliverWithPrivateDataClient, ledgerHe
 					for _, col := range nsPvtRwset.CollectionPvtRwset {
 						Expect(col.CollectionName).Should(SatisfyAny(
 							Equal("collectionMarbles"),
-							Equal("collectionMarblePrivateDetails")))
+							Equal("collectionMarblePrivateDetails"),
+						))
 
 						kvRwset := kvrwset.KVRWSet{}
 						err := proto.Unmarshal(col.GetRwset(), &kvRwset)

@@ -99,10 +99,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.yaml.in/yaml/v4"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -746,7 +746,7 @@ func serve(args []string) error {
 	}
 	endorsementPluginsByName := reg.Lookup(library.Endorsement).(map[string]endorsement2.PluginFactory)
 	validationPluginsByName := reg.Lookup(library.Validation).(map[string]validation.PluginFactory)
-	signingIdentityFetcher := (endorsement3.SigningIdentityFetcher)(endorserSupport)
+	signingIdentityFetcher := endorsement3.SigningIdentityFetcher(endorserSupport)
 	channelStateRetriever := endorser.ChannelStateRetriever(endorserSupport)
 	pluginMapper := endorser.MapBasedPluginMapper(endorsementPluginsByName)
 	pluginEndorser := endorser.NewPluginEndorser(&endorser.PluginSupport{

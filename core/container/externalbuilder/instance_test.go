@@ -265,7 +265,8 @@ var _ = Describe("Instance", func() {
 	})
 
 	Describe("Duration", func() {
-		DescribeTable("Unmarshal",
+		DescribeTable(
+			"Unmarshal",
 			func(input string, expected externalbuilder.Duration, errMatcher types.GomegaMatcher) {
 				var d externalbuilder.Duration
 				err := json.Unmarshal([]byte(input), &d)
@@ -277,7 +278,8 @@ var _ = Describe("Instance", func() {
 			Entry("Nonsense", `"nonsense"`, externalbuilder.Duration(time.Second), MatchError(MatchRegexp(`time: invalid duration "?nonsense"?`))),
 		)
 
-		DescribeTable("Round Trip",
+		DescribeTable(
+			"Round Trip",
 			func(d time.Duration) {
 				marshalled, err := json.Marshal(externalbuilder.Duration(d))
 				Expect(err).NotTo(HaveOccurred())

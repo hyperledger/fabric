@@ -104,7 +104,8 @@ func createMSPConfig(mspID string, rootCerts, tlsRootCerts, tlsIntermediateCerts
 }
 
 func createConfigBlock(channelID string, appMSPConf, ordererMSPConf *mspproto.MSPConfig,
-	appOrgID, ordererOrgID string) (*cb.Block, error) {
+	appOrgID, ordererOrgID string,
+) (*cb.Block, error) {
 	block, err := configtxtest.MakeGenesisBlockFromMSPs(channelID, appMSPConf, ordererMSPConf, appOrgID, ordererOrgID)
 	if block == nil || err != nil {
 		return block, err

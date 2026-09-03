@@ -24,6 +24,7 @@ import (
 	dcli "github.com/moby/moby/client"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/mod/semver"
 )
 
 func TestDockerBuild(t *testing.T) {
@@ -154,4 +155,19 @@ func TestDockerBuildOptions(t *testing.T) {
 	actualBuildOptionsString := buildOptions.String()
 	expectedBuildOptionsString := "Image=imageName Env=[ENV_VARIABLE] Cmd=theCommand)"
 	require.Equal(t, expectedBuildOptionsString, actualBuildOptionsString, `Expected "%s", got "%s"`, expectedBuildOptionsString, actualBuildOptionsString)
+}
+
+func TestParamsImage(t *testing.T) {
+	client, err := dcli.New(dcli.FromEnv)
+	require.NoError(t, err, "failed to get docker client")
+
+	goVersion, osVer, arch, err := ParamsImage(client)
+	require.NoError(t, err, "failed to get docker image")
+	require.True(t, semver.IsValid(goVersion))
+	if osVer != "linux" {
+		require.Fail(t, "os is invalid")
+	}
+	if arch != "arm64" && arch != "amd64" {
+		require.Fail(t, "arch is invalid")
+	}
 }

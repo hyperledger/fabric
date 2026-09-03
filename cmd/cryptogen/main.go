@@ -17,9 +17,8 @@ import (
 	"github.com/hyperledger/fabric/internal/cryptogen/csp"
 	"github.com/hyperledger/fabric/internal/cryptogen/metadata"
 	"github.com/hyperledger/fabric/internal/cryptogen/msp"
-
+	"go.yaml.in/yaml/v4"
 	"gopkg.in/alecthomas/kingpin.v2"
-	"gopkg.in/yaml.v3"
 )
 
 const (

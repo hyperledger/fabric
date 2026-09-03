@@ -57,7 +57,8 @@ var _ = Describe("ChaincodeEndorsementInfoSource", func() {
 
 		builtinSCCs = map[string]struct{}{}
 
-		err := resources.Serializer.Serialize(lifecycle.NamespacesName,
+		err := resources.Serializer.Serialize(
+			lifecycle.NamespacesName,
 			"name",
 			&lifecycle.ChaincodeDefinition{
 				Sequence: 7,

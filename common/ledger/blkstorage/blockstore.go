@@ -26,7 +26,8 @@ type BlockStore struct {
 
 // newBlockStore constructs a `BlockStore`
 func newBlockStore(id string, conf *Conf, indexConfig *IndexConfig,
-	dbHandle *leveldbhelper.DBHandle, stats *stats) (*BlockStore, error) {
+	dbHandle *leveldbhelper.DBHandle, stats *stats,
+) (*BlockStore, error) {
 	fileMgr, err := newBlockfileMgr(id, conf, indexConfig, dbHandle)
 	if err != nil {
 		return nil, err

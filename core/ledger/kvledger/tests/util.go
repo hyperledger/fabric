@@ -97,7 +97,8 @@ func convertFromCollConfigProto(collConfPkg *protopeer.CollectionConfigPackage) 
 	protoConfArray := collConfPkg.Config
 	for _, protoConf := range protoConfArray {
 		p := protoConf.GetStaticCollectionConfig()
-		collConfs = append(collConfs,
+		collConfs = append(
+			collConfs,
 			&collConf{
 				name:    p.Name,
 				btl:     p.BlockToLive,
@@ -219,6 +220,5 @@ func constructTestGenesisBlock(channelid string) (*common.Block, error) {
 
 func setBlockFlagsToValid(block *common.Block) {
 	protoutil.InitBlockMetadata(block)
-	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] =
-		txflags.NewWithValues(len(block.Data.Data), protopeer.TxValidationCode_VALID)
+	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txflags.NewWithValues(len(block.Data.Data), protopeer.TxValidationCode_VALID)
 }

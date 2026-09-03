@@ -18,7 +18,8 @@ type Decorator interface {
 
 // Apply decorators in the order provided
 func Apply(proposal *peer.Proposal, input *peer.ChaincodeInput,
-	decorators ...Decorator) *peer.ChaincodeInput {
+	decorators ...Decorator,
+) *peer.ChaincodeInput {
 	for _, decorator := range decorators {
 		input = decorator.Decorate(proposal, input)
 	}

@@ -427,8 +427,8 @@ func NewConsortiumsGroup(conf map[string]*genesisconfig.Consortium) (*cb.ConfigG
 	return consortiumsGroup, nil
 }
 
-// NewConsortiums returns a consortiums component of the channel configuration.  Each consortium defines the organizations which may be involved in channel
-// creation, as well as the channel creation policy the orderer checks at channel creation time to authorize the action.  It sets the mod_policy of all
+// NewConsortiumGroup returns a consortium component of the channel configuration. Each consortium defines the organizations which may be involved in channel
+// creation, as well as the channel creation policy the orderer checks at channel creation time to authorize the action. It sets the mod_policy of all
 // elements to "/Channel/Orderer/Admins".
 func NewConsortiumGroup(conf *genesisconfig.Consortium) (*cb.ConfigGroup, error) {
 	consortiumGroup := protoutil.NewConfigGroup()

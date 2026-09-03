@@ -657,7 +657,8 @@ func createMockPeer(t *testing.T, endorser *endorserState) *dp.Peer {
 					Membership: &gossip.Member{Endpoint: endorser.endorser.address},
 				},
 			},
-		})
+		},
+	)
 
 	require.NoError(t, err)
 
@@ -670,7 +671,8 @@ func createMockPeer(t *testing.T, endorser *endorserState) *dp.Peer {
 					},
 				},
 			},
-		})
+		},
+	)
 
 	require.NoError(t, err)
 

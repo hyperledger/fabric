@@ -187,7 +187,8 @@ func (mf *membershipFilter) GetMembership() []discovery.NetworkMember {
 // NewGossipChannel creates a new GossipChannel
 func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.MessageCryptoService,
 	channelID common.ChannelID, adapter Adapter, joinMsg api.JoinChannelMessage,
-	metrics *metrics.MembershipMetrics, logger util.Logger) GossipChannel {
+	metrics *metrics.MembershipMetrics, logger util.Logger,
+) GossipChannel {
 	gc := &gossipChannel{
 		incTime:                   uint64(time.Now().UnixNano()),
 		selfOrg:                   org,
@@ -591,7 +592,7 @@ func (gc *gossipChannel) ConfigureChannel(joinMsg api.JoinChannelMessage) {
 		gc.joinMsg = joinMsg
 	}
 
-	if gc.joinMsg.SequenceNumber() > (joinMsg.SequenceNumber()) {
+	if gc.joinMsg.SequenceNumber() > joinMsg.SequenceNumber() {
 		gc.logger.Warning("Already have a more updated JoinChannel message(", gc.joinMsg.SequenceNumber(), ") than", joinMsg.SequenceNumber())
 		return
 	}
@@ -1116,7 +1117,8 @@ func endpoints(members discovery.Members) [][]string {
 
 // checkIfPeersChanged checks which peers are offline and which are online for channel
 func (mt *membershipTracker) checkIfPeersChanged(prevPeers discovery.Members, currPeers discovery.Members,
-	prevSetPeers map[string]struct{}, currSetPeers map[string]struct{}) {
+	prevSetPeers map[string]struct{}, currSetPeers map[string]struct{},
+) {
 	var currView [][]string
 
 	wereInPrev := endpoints(prevPeers.Filter(func(member discovery.NetworkMember) bool {

@@ -9,10 +9,8 @@ import (
 	"fmt"
 
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
-	"github.com/IBM/idemix/bccsp/types"
 	bccsp "github.com/IBM/idemix/bccsp/types"
-	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // IssuerPublicKey encapsulate an idemix issuer public key.
@@ -37,7 +35,7 @@ func (o *IssuerSecretKey) Bytes() ([]byte, error) {
 	return proto.Marshal(o.SK)
 }
 
-func (o *IssuerSecretKey) Public() types.IssuerPublicKey {
+func (o *IssuerSecretKey) Public() bccsp.IssuerPublicKey {
 	return &IssuerPublicKey{o.SK.Ipk}
 }
 
@@ -48,11 +46,11 @@ type Issuer struct {
 }
 
 // NewKey generates a new issuer key-pair
-func (i *Issuer) NewKey(attributeNames []string) (res types.IssuerSecretKey, err error) {
+func (i *Issuer) NewKey(attributeNames []string) (res bccsp.IssuerSecretKey, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
@@ -66,11 +64,11 @@ func (i *Issuer) NewKey(attributeNames []string) (res types.IssuerSecretKey, err
 	return
 }
 
-func (i *Issuer) NewKeyFromBytes(raw []byte, attributes []string) (res types.IssuerSecretKey, err error) {
+func (i *Issuer) NewKeyFromBytes(raw []byte, attributes []string) (res bccsp.IssuerSecretKey, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
@@ -84,60 +82,64 @@ func (i *Issuer) NewKeyFromBytes(raw []byte, attributes []string) (res types.Iss
 	return
 }
 
-func (i *Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (res types.IssuerPublicKey, err error) {
+func (i *Issuer) Bases(ipk bccsp.IssuerPublicKey, ipkType bccsp.CommitmentBasesRequest, RhIndex, EidIndex, SKIndex int) (map[bccsp.CommitmentType]any, error) {
+	panic("not implemented")
+}
+
+func (i *Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (res bccsp.IssuerPublicKey, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
 	ipk := new(idemix.IssuerPublicKey)
 	err = proto.Unmarshal(raw, ipk)
 	if err != nil {
-		return nil, errors.WithStack(&bccsp.IdemixIssuerPublicKeyImporterError{
+		return nil, &bccsp.IdemixIssuerPublicKeyImporterError{
 			Type:     bccsp.IdemixIssuerPublicKeyImporterUnmarshallingError,
 			ErrorMsg: "failed to unmarshal issuer public key",
-			Cause:    err})
+			Cause:    err}
 	}
 
 	err = ipk.SetHash(i.Idemix.Curve)
 	if err != nil {
-		return nil, errors.WithStack(&bccsp.IdemixIssuerPublicKeyImporterError{
+		return nil, &bccsp.IdemixIssuerPublicKeyImporterError{
 			Type:     bccsp.IdemixIssuerPublicKeyImporterHashError,
 			ErrorMsg: "setting the hash of the issuer public key failed",
-			Cause:    err})
+			Cause:    err}
 	}
 
 	err = ipk.Check(i.Idemix.Curve, i.Translator)
 	if err != nil {
-		return nil, errors.WithStack(&bccsp.IdemixIssuerPublicKeyImporterError{
+		return nil, &bccsp.IdemixIssuerPublicKeyImporterError{
 			Type:     bccsp.IdemixIssuerPublicKeyImporterValidationError,
 			ErrorMsg: "invalid issuer public key",
-			Cause:    err})
+			Cause:    err}
 	}
 
 	if len(attributes) != 0 {
 		// Check the attributes
 		if len(attributes) != len(ipk.AttributeNames) {
-			return nil, errors.WithStack(&bccsp.IdemixIssuerPublicKeyImporterError{
+			return nil, &bccsp.IdemixIssuerPublicKeyImporterError{
 				Type: bccsp.IdemixIssuerPublicKeyImporterNumAttributesError,
 				ErrorMsg: fmt.Sprintf("invalid number of attributes, expected [%d], got [%d]",
 					len(ipk.AttributeNames), len(attributes)),
-			})
+			}
 		}
 
 		for i, attr := range attributes {
 			if ipk.AttributeNames[i] != attr {
-				return nil, errors.WithStack(&bccsp.IdemixIssuerPublicKeyImporterError{
+				return nil, &bccsp.IdemixIssuerPublicKeyImporterError{
 					Type:     bccsp.IdemixIssuerPublicKeyImporterAttributeNameError,
 					ErrorMsg: fmt.Sprintf("invalid attribute name at position [%d]", i),
-				})
+				}
 			}
 		}
 	}
 
 	res = &IssuerPublicKey{PK: ipk}
 
-	return
+	return res, err
 }

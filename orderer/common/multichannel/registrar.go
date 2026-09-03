@@ -98,7 +98,8 @@ func NewRegistrar(
 	metricsProvider metrics.Provider,
 	bccsp bccsp.BCCSP,
 	clusterDialer *cluster.PredicateDialer,
-	callbacks ...channelconfig.BundleActor) *Registrar {
+	callbacks ...channelconfig.BundleActor,
+) *Registrar {
 	r := &Registrar{
 		config:                      config,
 		chains:                      make(map[string]*ChainSupport),
@@ -832,7 +833,8 @@ func (r *Registrar) createFollower(
 ) (*follower.Chain, types.ChannelInfo, error) {
 	fLog := flogging.MustGetLogger("orderer.common.follower")
 	blockPullerCreator, err := follower.NewBlockPullerCreator(
-		channelID, fLog, r.signer, r.clusterDialer, r.config.General.Cluster, r.bccsp)
+		channelID, fLog, r.signer, r.clusterDialer, r.config.General.Cluster, r.bccsp,
+	)
 	if err != nil {
 		return nil, types.ChannelInfo{}, errors.WithMessagef(err, "failed to create BlockPullerFactory for channel %s", channelID)
 	}

@@ -456,7 +456,8 @@ func makeConfigEnvelope(t *testing.T, current, next consensusTypeInfo) *common.E
 				Type:     current.ordererType,
 				Metadata: current.metadata,
 				State:    current.state,
-			}),
+			},
+		),
 		ModPolicy: channelconfig.AdminsPolicyKey,
 	}
 
@@ -466,7 +467,8 @@ func makeConfigEnvelope(t *testing.T, current, next consensusTypeInfo) *common.E
 				Type:     next.ordererType,
 				Metadata: next.metadata,
 				State:    next.state,
-			}),
+			},
+		),
 		ModPolicy: channelconfig.AdminsPolicyKey,
 	}
 
@@ -485,7 +487,8 @@ func makeConfigEnvelopeWithExtraStuff(t *testing.T, current, next consensusTypeI
 				Type:     current.ordererType,
 				Metadata: current.metadata,
 				State:    current.state,
-			}),
+			},
+		),
 		ModPolicy: channelconfig.AdminsPolicyKey,
 	}
 
@@ -495,7 +498,8 @@ func makeConfigEnvelopeWithExtraStuff(t *testing.T, current, next consensusTypeI
 				Type:     next.ordererType,
 				Metadata: next.metadata,
 				State:    next.state,
-			}),
+			},
+		),
 		ModPolicy: channelconfig.AdminsPolicyKey,
 	}
 
@@ -515,7 +519,8 @@ func makeConfigEnvelopeWithExtraStuff(t *testing.T, current, next consensusTypeI
 					AbsoluteMaxBytes:  10241024,
 					MaxMessageCount:   1024,
 					PreferredMaxBytes: 10241024,
-				}),
+				},
+			),
 			ModPolicy: channelconfig.AdminsPolicyKey,
 		}
 	}
@@ -560,7 +565,8 @@ func makeConfigTx(original, updated *common.Config, t *testing.T) *common.Envelo
 			LastUpdate: configUpdateTx,
 		},
 		0,
-		0)
+		0,
+	)
 	require.NoError(t, err)
 	return configTx
 }

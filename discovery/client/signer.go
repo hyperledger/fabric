@@ -61,7 +61,7 @@ func (ms *MemoizeSigner) memorize(msg, signature []byte) {
 		return
 	}
 	ms.RLock()
-	shouldShrink := len(ms.memory) >= (int)(ms.maxEntries)
+	shouldShrink := len(ms.memory) >= int(ms.maxEntries)
 	ms.RUnlock()
 
 	if shouldShrink {
@@ -77,7 +77,7 @@ func (ms *MemoizeSigner) memorize(msg, signature []byte) {
 func (ms *MemoizeSigner) shrinkMemory() {
 	ms.Lock()
 	defer ms.Unlock()
-	for len(ms.memory) > (int)(ms.maxEntries) {
+	for len(ms.memory) > int(ms.maxEntries) {
 		ms.evictFromMemory()
 	}
 }

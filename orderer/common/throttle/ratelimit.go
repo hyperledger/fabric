@@ -82,7 +82,7 @@ func (srl *SharedRateLimiter) LimitRate(client string) {
 		return
 	}
 	// Mark budget as allocated and exit
-	cs.lastSeen.Store(time.Now())
+	cs.lastSeen.Store(srl.Time.Now())
 	atomic.StoreUint32(&cs.budgetUsed, 0)
 }
 
@@ -114,7 +114,7 @@ func (srl *SharedRateLimiter) getOrCreateState(client string) *clientState {
 		budget: make(chan struct{}, 1),
 	}
 
-	cs.lastSeen.Store(time.Now())
+	cs.lastSeen.Store(srl.Time.Now())
 
 	srl.clients[client] = cs
 

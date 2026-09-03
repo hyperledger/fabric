@@ -547,7 +547,7 @@ Raft
 ----
 
 New for v1.4.1, Raft is a crash fault tolerant (CFT) ordering service
-implementation based on the `etcd library <https://coreos.com/etcd/>`_
+implementation based on the `etcd library <https://etcd.io/>`_
 of the `Raft protocol <https://raft.github.io/raft.pdf>`_. Raft follows a
 "leader and follower" model, where a leader node is elected (per channel) and
 its decisions are replicated by the followers.

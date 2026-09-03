@@ -163,7 +163,8 @@ func NewBccspMspWithKeyStore(version MSPVersion, keyStore bccsp.KeyStore, bccsp 
 	csp, err := sw.NewWithParams(
 		factory.GetDefaultOpts().SW.Security,
 		factory.GetDefaultOpts().SW.Hash,
-		keyStore)
+		keyStore,
+	)
 	if err != nil {
 		return nil, err
 	}

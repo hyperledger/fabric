@@ -226,7 +226,8 @@ func TestOnlyHashUpdateInExpiryBlock(t *testing.T) {
 	noPvtdataUpdates := privacyenabledstate.NewUpdateBatch()
 	helper.commitUpdatesForTesting(2, noPvtdataUpdates)
 	helper.checkPvtdataExists(
-		"ns", "coll", "pvtkey", []byte("pvtvalue-1"))
+		"ns", "coll", "pvtkey", []byte("pvtvalue-1"),
+	)
 	helper.checkExpiryEntryExistsForBlockNum(3, 1)
 
 	// block-3 update: Update hash only

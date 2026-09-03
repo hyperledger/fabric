@@ -1500,7 +1500,8 @@ func (dbclient *couchDatabase) batchUpdateDocuments(documents []*couchDoc) ([]*b
 // which may be detected during saves or deletes that timed out from client http perspective,
 // but which eventually succeeded in couchdb
 func (dbclient *couchDatabase) handleRequestWithRevisionRetry(id, method, dbName, functionName string, connectURL *url.URL, data []byte, rev string,
-	multipartBoundary string, maxRetries int, keepConnectionOpen bool, queryParms *url.Values) (*http.Response, *dbReturn, error) {
+	multipartBoundary string, maxRetries int, keepConnectionOpen bool, queryParms *url.Values,
+) (*http.Response, *dbReturn, error) {
 	// Initialize a flag for the revision conflict
 	revisionConflictDetected := false
 	var resp *http.Response
@@ -1537,8 +1538,10 @@ func (dbclient *couchDatabase) handleRequestWithRevisionRetry(id, method, dbName
 }
 
 func (dbclient *couchDatabase) handleRequest(method, functionName string, connectURL *url.URL, data []byte, rev, multipartBoundary string,
-	maxRetries int, keepConnectionOpen bool, queryParms *url.Values, pathElements ...string) (*http.Response, *dbReturn, error) {
-	return dbclient.couchInstance.handleRequest(context.Background(),
+	maxRetries int, keepConnectionOpen bool, queryParms *url.Values, pathElements ...string,
+) (*http.Response, *dbReturn, error) {
+	return dbclient.couchInstance.handleRequest(
+		context.Background(),
 		method, dbclient.dbName, functionName, connectURL, data, rev, multipartBoundary,
 		maxRetries, keepConnectionOpen, queryParms, pathElements...,
 	)
@@ -1549,7 +1552,8 @@ func (dbclient *couchDatabase) handleRequest(method, functionName string, connec
 // callee's responsibility to close response correctly.
 // Any http error or CouchDB error (4XX or 500) will result in a golang error getting returned
 func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, dbName, functionName string, connectURL *url.URL, data []byte, rev string,
-	multipartBoundary string, maxRetries int, keepConnectionOpen bool, queryParms *url.Values, pathElements ...string) (*http.Response, *dbReturn, error) {
+	multipartBoundary string, maxRetries int, keepConnectionOpen bool, queryParms *url.Values, pathElements ...string,
+) (*http.Response, *dbReturn, error) {
 	couchdbLogger.Debugf("Entering handleRequest()  method=%s  url=%v  dbName=%s", method, connectURL, dbName)
 
 	// create the return objects for couchDB

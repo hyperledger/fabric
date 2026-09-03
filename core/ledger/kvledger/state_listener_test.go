@@ -120,7 +120,8 @@ func TestStateListener(t *testing.T) {
 	require.NoError(t, err)
 	defer lgr.Close()
 	require.NoError(t, err)
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]*queryresult.KV{
 			{
 				Namespace: namespace,
@@ -172,7 +173,8 @@ func (l *mockStateListener) Initialize(ledgerID string, qe ledger.SimpleQueryExe
 			break
 		}
 		kv := res.(*queryresult.KV)
-		l.queryResultsInInitializeFunc = append(l.queryResultsInInitializeFunc,
+		l.queryResultsInInitializeFunc = append(
+			l.queryResultsInInitializeFunc,
 			kv,
 		)
 	}

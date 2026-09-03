@@ -43,11 +43,13 @@ func TestNew(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, i)
 	require.Equal(t, MSPVersion(MSPv1_0), i.(*bccspmsp).version)
-	require.Equal(t,
+	require.Equal(
+		t,
 		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).internalSetupFunc).Pointer()).Name(),
 		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).setupV1).Pointer()).Name(),
 	)
-	require.Equal(t,
+	require.Equal(
+		t,
 		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).internalValidateIdentityOusFunc).Pointer()).Name(),
 		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).validateIdentityOUsV1).Pointer()).Name(),
 	)
@@ -56,11 +58,13 @@ func TestNew(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, i)
 	require.Equal(t, MSPVersion(MSPv1_1), i.(*bccspmsp).version)
-	require.Equal(t,
+	require.Equal(
+		t,
 		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).internalSetupFunc).Pointer()).Name(),
 		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).setupV11).Pointer()).Name(),
 	)
-	require.Equal(t,
+	require.Equal(
+		t,
 		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).internalValidateIdentityOusFunc).Pointer()).Name(),
 		runtime.FuncForPC(reflect.ValueOf(i.(*bccspmsp).validateIdentityOUsV11).Pointer()).Name(),
 	)

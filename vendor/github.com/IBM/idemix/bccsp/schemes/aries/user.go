@@ -7,12 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package aries
 
 import (
+	"fmt"
 	"io"
 
+	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/hyperledger/aries-bbs-go/bbs"
-	"github.com/pkg/errors"
 )
 
 type User struct {
@@ -31,7 +31,7 @@ func (u *User) NewKey() (*math.Zr, error) {
 // NewKeyFromBytes converts the passed bytes to a User secret key
 func (u *User) NewKeyFromBytes(raw []byte) (*math.Zr, error) {
 	if len(raw) != u.Curve.ScalarByteSize {
-		return nil, errors.Errorf("invalid length, expected [%d], got [%d]", u.Curve.ScalarByteSize, len(raw))
+		return nil, fmt.Errorf("invalid length, expected [%d], got [%d]", u.Curve.ScalarByteSize, len(raw))
 	}
 
 	return u.Curve.NewZrFromBytes(raw), nil
@@ -41,7 +41,7 @@ func (u *User) NewKeyFromBytes(raw []byte) (*math.Zr, error) {
 func (u *User) MakeNym(sk *math.Zr, key types.IssuerPublicKey) (*math.G1, *math.Zr, error) {
 	ipk, ok := key.(*IssuerPublicKey)
 	if !ok {
-		return nil, nil, errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
+		return nil, nil, fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
 	// Construct a commitment to the sk
@@ -59,7 +59,7 @@ func (u *User) MakeNym(sk *math.Zr, key types.IssuerPublicKey) (*math.G1, *math.
 
 func (u *User) NewNymFromBytes(raw []byte) (*math.G1, *math.Zr, error) {
 	if len(raw) != u.Curve.ScalarByteSize+u.Curve.G1ByteSize {
-		return nil, nil, errors.Errorf("invalid length, expected [%d], got [%d]", u.Curve.ScalarByteSize+u.Curve.G1ByteSize, len(raw))
+		return nil, nil, fmt.Errorf("invalid length, expected [%d], got [%d]", u.Curve.ScalarByteSize+u.Curve.G1ByteSize, len(raw))
 	}
 
 	rnd := u.Curve.NewZrFromBytes(raw[:u.Curve.ScalarByteSize])
@@ -74,7 +74,7 @@ func (u *User) NewNymFromBytes(raw []byte) (*math.G1, *math.Zr, error) {
 // NewPublicNymFromBytes converts the passed bytes to a public nym
 func (u *User) NewPublicNymFromBytes(raw []byte) (*math.G1, error) {
 	if len(raw) != u.Curve.G1ByteSize {
-		return nil, errors.Errorf("invalid length, expected [%d], got [%d]", u.Curve.G1ByteSize, len(raw))
+		return nil, fmt.Errorf("invalid length, expected [%d], got [%d]", u.Curve.G1ByteSize, len(raw))
 	}
 
 	nym, err := u.Curve.NewG1FromBytes(raw)

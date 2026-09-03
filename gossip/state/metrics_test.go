@@ -66,21 +66,25 @@ func TestMetrics(t *testing.T) {
 	committedDurationWG.Wait()
 
 	// ensure the right height was reported
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakeHeightGauge.WithArgsForCall(0),
 	)
-	require.EqualValues(t,
+	require.EqualValues(
+		t,
 		101,
 		testMetricProvider.FakeHeightGauge.SetArgsForCall(0),
 	)
 
 	// after push or pop payload buffer size should be reported
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakePayloadBufferSizeGauge.WithArgsForCall(0),
 	)
-	require.Equal(t,
+	require.Equal(
+		t,
 		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakePayloadBufferSizeGauge.WithArgsForCall(1),
 	)

@@ -98,7 +98,8 @@ var _ = Describe("PrivateData", func() {
 				Sequence:          "1",
 			}
 			deployChaincode(network, orderer, testChaincode)
-			marblechaincodeutil.AddMarble(network, orderer, channelID, testChaincode.Name,
+			marblechaincodeutil.AddMarble(
+				network, orderer, channelID, testChaincode.Name,
 				`{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`,
 				network.Peer("Org1", "peer0"),
 			)
@@ -162,7 +163,8 @@ var _ = Describe("PrivateData", func() {
 				deployChaincode(network, orderer, testChaincode)
 				peer := network.Peer("Org1", "peer0")
 				By("adding marble1")
-				marblechaincodeutil.AddMarble(network, orderer, channelID, testChaincode.Name,
+				marblechaincodeutil.AddMarble(
+					network, orderer, channelID, testChaincode.Name,
 					`{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`,
 					peer,
 				)
@@ -446,7 +448,8 @@ var _ = Describe("PrivateData", func() {
 				By("deploying chaincode and adding marble1")
 				testChaincode = newLifecycleChaincode
 				deployChaincode(network, orderer, testChaincode)
-				marblechaincodeutil.AddMarble(network, orderer, channelID, testChaincode.Name,
+				marblechaincodeutil.AddMarble(
+					network, orderer, channelID, testChaincode.Name,
 					`{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`,
 					network.Peer("Org1", "peer0"),
 				)
@@ -475,7 +478,8 @@ var _ = Describe("PrivateData", func() {
 						testChaincode.CollectionsConfig = CollectionConfig("collections_config2.json")
 						testChaincode.Sequence = "2"
 						upgradeChaincode(network, orderer, testChaincode)
-						marblechaincodeutil.AddMarble(network, orderer, channelID, testChaincode.Name,
+						marblechaincodeutil.AddMarble(
+							network, orderer, channelID, testChaincode.Name,
 							`{"name":"marble2", "color":"yellow", "size":53, "owner":"jerry", "price":22}`,
 							network.Peer("Org2", "peer0"),
 						)
@@ -813,7 +817,8 @@ var _ = Describe("PrivateData", func() {
 			assertPrivateDataAsExpected(event.BlockAndPvtData.PrivateDataMap, expectedKVWritesMap)
 
 			By("adding a new marble after upgrade")
-			marblechaincodeutil.AddMarble(network, orderer, channelID, testChaincode.Name,
+			marblechaincodeutil.AddMarble(
+				network, orderer, channelID, testChaincode.Name,
 				`{"name":"marble12", "color":"blue", "size":35, "owner":"tom", "price":99}`,
 				network.Peer("Org1", "peer0"),
 			)
@@ -1298,7 +1303,8 @@ func updateConfigWithNewCertsForPeer(network *nwo.Network, tempCryptoDir string,
 	oldConfig := &mspp.MSPConfig{}
 	err := proto.Unmarshal(
 		updatedConfig.ChannelGroup.Groups["Application"].Groups[org.Name].Values["MSP"].Value,
-		oldConfig)
+		oldConfig,
+	)
 	Expect(err).NotTo(HaveOccurred())
 
 	tempOrgMSPPath := filepath.Join(tempCryptoDir, "peerOrganizations", org.Domain, "msp")
@@ -1319,7 +1325,8 @@ func updateConfigWithNewCertsForPeer(network *nwo.Network, tempCryptoDir string,
 		&mspp.MSPConfig{
 			Type:   oldConfig.Type,
 			Config: protoutil.MarshalOrPanic(oldMspConfig),
-		})
+		},
+	)
 	nwo.UpdateConfig(network, orderer, channelID, currentConfig, updatedConfig, false, network.Peer(org.Name, "peer0"), nil)
 }
 

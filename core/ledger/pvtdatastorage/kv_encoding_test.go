@@ -108,7 +108,8 @@ func testEncodeDecodeMissingdataKey(t *testing.T, blkNum uint64) {
 		},
 	}
 
-	t.Run("ineligibileKey",
+	t.Run(
+		"ineligibileKey",
 		func(t *testing.T) {
 			decodedKey := decodeInelgMissingDataKey(
 				encodeInelgMissingDataKey(key),
@@ -117,7 +118,8 @@ func testEncodeDecodeMissingdataKey(t *testing.T, blkNum uint64) {
 		},
 	)
 
-	t.Run("eligiblePrioritizedKey",
+	t.Run(
+		"eligiblePrioritizedKey",
 		func(t *testing.T) {
 			decodedKey := decodeElgMissingDataKey(
 				encodeElgPrioMissingDataKey(key),
@@ -126,7 +128,8 @@ func testEncodeDecodeMissingdataKey(t *testing.T, blkNum uint64) {
 		},
 	)
 
-	t.Run("eligibleDeprioritizedKey",
+	t.Run(
+		"eligibleDeprioritizedKey",
 		func(t *testing.T) {
 			decodedKey := decodeElgMissingDataKey(
 				encodeElgDeprioMissingDataKey(key),
@@ -238,7 +241,8 @@ func TestDeriveDataKeyFromHashedIndexKey(t *testing.T) {
 
 			dk, err := decodeDatakey(datakeyBytes)
 			require.NoError(t, err)
-			require.Equal(t,
+			require.Equal(
+				t,
 				&dataKey{
 					nsCollBlk: nsCollBlk{
 						ns:     testcase.ns,

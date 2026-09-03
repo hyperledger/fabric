@@ -306,7 +306,8 @@ func testDeletionOfUnderConstructionLedgersAtStart(t *testing.T, enableHistoryDB
 
 	switch mimicCrashAfterLedgerCreation {
 	case false:
-		require.NoError(t,
+		require.NoError(
+			t,
 			idStore.createLedgerID(ledgerID, &msgs.LedgerMetadata{
 				Status: msgs.Status_UNDER_CONSTRUCTION,
 			}),
@@ -321,7 +322,8 @@ func testDeletionOfUnderConstructionLedgersAtStart(t *testing.T, enableHistoryDB
 		require.Equal(t, msgs.Status_ACTIVE, m.Status)
 		// mimic a situation that a crash happens after ledger creation but before changing the UNDER_CONSTRUCTION status
 		// to Status_ACTIVE
-		require.NoError(t,
+		require.NoError(
+			t,
 			provider.idStore.updateLedgerStatus(ledgerID, msgs.Status_UNDER_CONSTRUCTION),
 		)
 	}

@@ -91,7 +91,7 @@ var _ = Describe("Consenter", func() {
 			Header: &common.BlockHeader{
 				Number: 1,
 			},
-			Data: goodConfigBlock.Data,
+			Data: goodConfigBlock.GetData(),
 			Metadata: &common.BlockMetadata{
 				Metadata: [][]byte{{}, protoutil.MarshalOrPanic(&common.Metadata{
 					Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: 0}),
@@ -128,7 +128,8 @@ var _ = Describe("Consenter", func() {
 		})
 	})
 
-	DescribeTable("identifies a bad block",
+	DescribeTable(
+		"identifies a bad block",
 		func(block *common.Block, errMatcher gtypes.GomegaMatcher) {
 			consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 			isMem, err := consenter.IsChannelMember(block)
@@ -172,10 +173,10 @@ var _ = Describe("Consenter", func() {
 			// Adding tls ca root cert to an existing ordering org's MSP definition.
 			Expect(confAppRaft.Orderer).NotTo(BeNil())
 			Expect(confAppRaft.Orderer.Organizations).ToNot(HaveLen(0))
-			Expect(confAppRaft.Orderer.EtcdRaft.Consenters).ToNot(HaveLen(0))
+			Expect(confAppRaft.Orderer.EtcdRaft.GetConsenters()).ToNot(HaveLen(0))
 
 			// one consenter is enough for testing
-			confAppRaft.Orderer.EtcdRaft.Consenters = confAppRaft.Orderer.EtcdRaft.Consenters[:1]
+			confAppRaft.Orderer.EtcdRaft.Consenters = confAppRaft.Orderer.EtcdRaft.GetConsenters()[:1]
 
 			// Generate client pair using tlsCA and set it to the consenter
 			memberKeyPair, err = tlsCA.NewServerCertKeyPair("127.0.0.1", "::1", "localhost")

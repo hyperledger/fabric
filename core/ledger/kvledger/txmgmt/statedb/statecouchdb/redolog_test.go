@@ -72,7 +72,8 @@ func TestCouchdbRedoLogger(t *testing.T) {
 		db, err := vdbEnv.DBProvider.GetDBHandle("testcouchdbredologger", nil)
 		require.NoError(t, err)
 		vdb := db.(*VersionedDB)
-		require.NoError(t,
+		require.NoError(
+			t,
 			vdb.redoLogger.persist(
 				&redoRecord{
 					UpdateBatch: batch,

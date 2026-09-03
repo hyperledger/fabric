@@ -29,7 +29,7 @@ type fp256bnMiraclGt struct {
 }
 
 func (a *fp256bnMiraclGt) Exp(x driver.Zr) driver.Gt {
-	return &fp256bnMiraclGt{*a.FP12.Pow(bigToMiraclBIG(&x.(*common.BaseZr).Int))}
+	return &fp256bnMiraclGt{*a.Pow(bigToMiraclBIG(&x.(*common.BaseZr).Int))}
 }
 
 func (a *fp256bnMiraclGt) Equals(b driver.Gt) bool {
@@ -37,7 +37,7 @@ func (a *fp256bnMiraclGt) Equals(b driver.Gt) bool {
 }
 
 func (a *fp256bnMiraclGt) IsUnity() bool {
-	return a.FP12.Isunity()
+	return a.Isunity()
 }
 
 func (a *fp256bnMiraclGt) Inverse() {
@@ -54,7 +54,8 @@ func (b *fp256bnMiraclGt) ToString() string {
 
 func (b *fp256bnMiraclGt) Bytes() []byte {
 	bytes := make([]byte, 12*int(FP256BN.MODBYTES))
-	b.FP12.ToBytes(bytes)
+	b.ToBytes(bytes)
+
 	return bytes
 }
 
@@ -66,6 +67,15 @@ func NewFp256Miraclbn() *Fp256Miraclbn {
 
 type Fp256Miraclbn struct {
 	common.CurveBase
+}
+
+func (p *Fp256Miraclbn) MultiScalarMul(a []driver.G1, b []driver.Zr) driver.G1 {
+	g1 := p.NewG1()
+	for i := range a {
+		g1.Add(a[i].Mul(b[i]))
+	}
+
+	return g1
 }
 
 func (*Fp256Miraclbn) Pairing(a driver.G2, b driver.G1) driver.Gt {
@@ -168,12 +178,16 @@ func (p *Fp256Miraclbn) HashToG1WithDomain(data, domain []byte) driver.G1 {
 	return &fp256bnMiraclG1{*bls_hash_to_point_miracl(data, domain)}
 }
 
+// HashToG2 always panics: FP256BN has no supported hash-to-G2 map. Use a curve
+// with native G2 hashing support (e.g. BLS12-381, BN254) if G2 hashing is required.
 func (p *Fp256Miraclbn) HashToG2(data []byte) driver.G2 {
-	panic("HashToG2 is not available for this curve")
+	panic("driver/amcl: HashToG2 is not implemented for FP256BN — use a curve with native G2 hashing support (e.g. BLS12-381, BN254)")
 }
 
+// HashToG2WithDomain always panics: FP256BN has no supported hash-to-G2 map. Use a curve
+// with native G2 hashing support (e.g. BLS12-381, BN254) if G2 hashing is required.
 func (p *Fp256Miraclbn) HashToG2WithDomain(data, domain []byte) driver.G2 {
-	panic("HashToG2WithDomain is not available for this curve")
+	panic("driver/amcl: HashToG2WithDomain is not implemented for FP256BN — use a curve with native G2 hashing support (e.g. BLS12-381, BN254)")
 }
 
 /*********************************************************************/
@@ -189,6 +203,7 @@ func (e *fp256bnMiraclG1) Clone(a driver.G1) {
 func (e *fp256bnMiraclG1) Copy() driver.G1 {
 	c := FP256BN.NewECP()
 	c.Copy(&e.ECP)
+
 	return &fp256bnMiraclG1{*c}
 }
 
@@ -204,23 +219,29 @@ func (e *fp256bnMiraclG1) Mul2(ee driver.Zr, Q driver.G1, f driver.Zr) driver.G1
 	return &fp256bnMiraclG1{*e.ECP.Mul2(bigToMiraclBIG(&ee.(*common.BaseZr).Int), &Q.(*fp256bnMiraclG1).ECP, bigToMiraclBIG(&f.(*common.BaseZr).Int))}
 }
 
+func (e *fp256bnMiraclG1) Mul2InPlace(ee driver.Zr, Q driver.G1, f driver.Zr) {
+	e.ECP = *e.ECP.Mul2(bigToMiraclBIG(&ee.(*common.BaseZr).Int), &Q.(*fp256bnMiraclG1).ECP, bigToMiraclBIG(&f.(*common.BaseZr).Int))
+}
+
 func (e *fp256bnMiraclG1) Equals(a driver.G1) bool {
 	return e.ECP.Equals(&a.(*fp256bnMiraclG1).ECP)
 }
 
 func (e *fp256bnMiraclG1) IsInfinity() bool {
-	return e.ECP.Is_infinity()
+	return e.Is_infinity()
 }
 
 func (e *fp256bnMiraclG1) Bytes() []byte {
 	b := make([]byte, 2*int(FP256BN.MODBYTES)+1)
-	e.ECP.ToBytes(b, false)
+	e.ToBytes(b, false)
+
 	return b
 }
 
 func (e *fp256bnMiraclG1) Compressed() []byte {
 	b := make([]byte, int(FP256BN.MODBYTES)+1)
-	e.ECP.ToBytes(b, true)
+	e.ToBytes(b, true)
+
 	return b
 }
 
@@ -229,8 +250,9 @@ func (e *fp256bnMiraclG1) Sub(a driver.G1) {
 }
 
 func (b *fp256bnMiraclG1) String() string {
-	rawstr := b.ECP.ToString()
+	rawstr := b.ToString()
 	m := g1StrRegexp.FindAllStringSubmatch(rawstr, -1)
+
 	return "(" + strings.TrimLeft(m[0][1], "0") + "," + strings.TrimLeft(m[0][2], "0") + ")"
 }
 
@@ -255,6 +277,7 @@ func (e *fp256bnMiraclG2) Clone(a driver.G2) {
 func (e *fp256bnMiraclG2) Copy() driver.G2 {
 	c := FP256BN.NewECP2()
 	c.Copy(e.ECP2)
+
 	return &fp256bnMiraclG2{c}
 }
 
@@ -276,16 +299,18 @@ func (e *fp256bnMiraclG2) Affine() {
 
 func (e *fp256bnMiraclG2) Bytes() []byte {
 	b := make([]byte, 4*int(FP256BN.MODBYTES)+1)
-	e.ECP2.ToBytes(b, false)
+	e.ToBytes(b, false)
+
 	return b
 }
 
 func (e *fp256bnMiraclG2) Compressed() []byte {
 	b := make([]byte, 2*int(FP256BN.MODBYTES)+1)
-	e.ECP2.ToBytes(b, true)
+	e.ToBytes(b, true)
+
 	return b
 }
 
 func (b *fp256bnMiraclG2) String() string {
-	return b.ECP2.ToString()
+	return b.ToString()
 }

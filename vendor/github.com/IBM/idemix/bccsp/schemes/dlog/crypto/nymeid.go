@@ -7,8 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package idemix
 
 import (
+	"errors"
+	fmt "fmt"
+
 	math "github.com/IBM/mathlib"
-	"github.com/pkg/errors"
 )
 
 type NymEID []byte
@@ -23,30 +25,30 @@ func (nym NymEID) AuditNymEid(
 ) error {
 	// Validate inputs
 	if ipk == nil {
-		return errors.Errorf("cannot verify idemix signature: received nil input")
+		return errors.New("cannot verify idemix signature: received nil input")
 	}
 
 	if len(nym) == 0 {
-		return errors.Errorf("no EidNym provided")
+		return errors.New("no EidNym provided")
 	}
 
 	if len(ipk.HAttrs) <= eidIndex {
-		return errors.Errorf("could not access H_a_eid in array")
+		return errors.New("could not access H_a_eid in array")
 	}
 
 	H_a_eid, err := t.G1FromProto(ipk.HAttrs[eidIndex])
 	if err != nil {
-		return errors.Wrap(err, "could not deserialize H_a_eid")
+		return fmt.Errorf("could not deserialize H_a_eid: %w", err)
 	}
 
 	HRand, err := t.G1FromProto(ipk.HRand)
 	if err != nil {
-		return errors.Wrap(err, "could not deserialize HRand")
+		return fmt.Errorf("could not deserialize HRand: %w", err)
 	}
 
 	EidNym, err := curve.NewG1FromBytes(nym)
 	if err != nil {
-		return errors.Wrap(err, "could not deserialize EidNym")
+		return fmt.Errorf("could not deserialize EidNym: %w", err)
 	}
 
 	Nym_eid := H_a_eid.Mul2(eidAttr, HRand, RNymEid)

@@ -30,7 +30,8 @@ func TestEncodeDecodeOfVersionAndMetadata(t *testing.T) {
 	}
 
 	for i, testdatum := range testdata {
-		t.Run(fmt.Sprintf("testcase-newfmt-%d", i),
+		t.Run(
+			fmt.Sprintf("testcase-newfmt-%d", i),
 			func(t *testing.T) { testEncodeDecodeOfVersionAndMetadata(t, testdatum) },
 		)
 	}

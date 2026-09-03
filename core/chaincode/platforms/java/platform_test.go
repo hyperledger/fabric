@@ -161,7 +161,7 @@ func TestGenerateDockerfile(t *testing.T) {
 func TestDockerBuildOptions(t *testing.T) {
 	platform := java.Platform{}
 
-	opts, err := platform.DockerBuildOptions("path")
+	opts, err := platform.DockerBuildOptions("path", "", "", "")
 	require.NoError(t, err, "unexpected error from DockerBuildOptions")
 
 	expectedOpts := util.DockerBuildOptions{

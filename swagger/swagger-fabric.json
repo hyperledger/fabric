@@ -135,7 +135,7 @@
         ],
         "responses": {
           "201": {
-            "description": "Сhannel update successfully.",
+            "description": "Channel update successfully.",
             "schema": {
               "$ref": "#/definitions/channelInfo"
             },

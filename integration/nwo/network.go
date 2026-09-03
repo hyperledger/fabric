@@ -42,10 +42,10 @@ import (
 	"github.com/tedsuo/ifrit"
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
+	"go.yaml.in/yaml/v4"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/proto"
-	"gopkg.in/yaml.v3"
 )
 
 // Blocks defines block cutting config.
@@ -164,6 +164,7 @@ type Network struct {
 	PeerDeliveryClientPolicy string
 	UseWriteBatch            bool
 	UseGetMultipleKeys       bool
+	CCEnvVersion             string
 
 	PortsByOrdererID map[string]Ports
 	PortsByPeerID    map[string]Ports
@@ -198,6 +199,7 @@ func New(c *Config, rootDir string, dockerClient dcli.APIClient, startPort int, 
 		PeerDeliveryClientPolicy: "",
 		UseWriteBatch:            true,
 		UseGetMultipleKeys:       true,
+		CCEnvVersion:             "$(PROJECT_VERSION)",
 
 		Organizations:  c.Organizations,
 		Consensus:      c.Consensus,

@@ -163,7 +163,8 @@ func TestImportFromSnapshot(t *testing.T) {
 		setup()
 		defer cleanup()
 
-		require.EqualError(t,
+		require.EqualError(
+			t,
 			bootstrappedBlockStore.AddBlock(blocksAfterSnapshot[1]),
 			"block number should have been 3 but was 4",
 		)
@@ -180,13 +181,15 @@ func TestImportFromSnapshot(t *testing.T) {
 				LastBlockInSnapshot: snapshotInfo.LastBlockNum,
 			},
 		}
-		verifyQueriesOnBlocksPriorToSnapshot(t,
+		verifyQueriesOnBlocksPriorToSnapshot(
+			t,
 			bootstrappedBlockStore,
 			expectedBCInfo,
 			blocksDetailsBeforeSnapshot,
 			blocksBeforeSnapshot,
 		)
-		verifyQueriesOnBlocksAddedAfterBootstrapping(t,
+		verifyQueriesOnBlocksAddedAfterBootstrapping(
+			t,
 			bootstrappedBlockStore,
 			expectedBCInfo,
 			blocksDetailsAfterSnapshot,
@@ -200,7 +203,8 @@ func TestImportFromSnapshot(t *testing.T) {
 
 		closeBlockStore()
 		require.NoError(t, reopenBlockStore())
-		verifyQueriesOnBlocksPriorToSnapshot(t,
+		verifyQueriesOnBlocksPriorToSnapshot(
+			t,
 			bootstrappedBlockStore,
 			&common.BlockchainInfo{
 				Height:            snapshotInfo.LastBlockNum + 1,
@@ -228,7 +232,8 @@ func TestImportFromSnapshot(t *testing.T) {
 				LastBlockInSnapshot: snapshotInfo.LastBlockNum,
 			},
 		}
-		verifyQueriesOnBlocksAddedAfterBootstrapping(t,
+		verifyQueriesOnBlocksAddedAfterBootstrapping(
+			t,
 			bootstrappedBlockStore,
 			expectedBCInfo,
 			blocksDetailsAfterSnapshot,
@@ -315,7 +320,8 @@ func TestImportFromSnapshot(t *testing.T) {
 		closeBlockStore()
 		require.NoError(t, os.RemoveAll(env.provider.conf.getIndexDir()))
 		err := reopenBlockStore()
-		require.EqualError(t, err,
+		require.EqualError(
+			t, err,
 			fmt.Sprintf(
 				"cannot sync index with block files. blockstore is bootstrapped from a snapshot and first available block=[%d]",
 				len(blocksBeforeSnapshot),

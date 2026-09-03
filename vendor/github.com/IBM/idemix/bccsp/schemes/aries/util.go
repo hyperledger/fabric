@@ -7,13 +7,18 @@ SPDX-License-Identifier: Apache-2.0
 package aries
 
 import (
+	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/hyperledger/aries-bbs-go/bbs"
 )
 
 func attributesToSignatureMessage(attributes []types.IdemixAttribute, curve *math.Curve, skPos int) []*bbs.SignatureMessage {
-	attributes = append(append(append([]types.IdemixAttribute{}, attributes[:skPos]...), types.IdemixAttribute{Type: types.IdemixHiddenAttribute}), attributes[skPos:]...)
+	withSk := make([]types.IdemixAttribute, len(attributes)+1)
+	copy(withSk, attributes[:skPos])
+	withSk[skPos] = types.IdemixAttribute{Type: types.IdemixHiddenAttribute}
+	copy(withSk[skPos+1:], attributes[skPos:])
+	attributes = withSk
+
 	var msgsZr = make([]*bbs.SignatureMessage, 0, len(attributes))
 
 	for i, msg := range attributes {
@@ -64,7 +69,7 @@ func (c *Credential) toSignatureMessage(sk *math.Zr, curve *math.Curve) []*bbs.S
 	msgsZr := make([]*bbs.SignatureMessage, 0, len(c.Attrs)+1)
 
 	j := 0
-	for i := 0; i < len(c.Attrs)+1; i++ {
+	for i := range len(c.Attrs) + 1 {
 		msg := &bbs.SignatureMessage{}
 		msgsZr = append(msgsZr, msg)
 

@@ -96,7 +96,8 @@ var _ = Describe("Smart BFT Block Deliverer", func() {
 		network.Bootstrap()
 
 		for _, orderer := range network.Orderers {
-			runner := network.OrdererRunner(orderer,
+			runner := network.OrdererRunner(
+				orderer,
 				"FABRIC_LOGGING_SPEC=debug",
 				"ORDERER_GENERAL_BACKOFF_MAXDELAY=20s",
 			)

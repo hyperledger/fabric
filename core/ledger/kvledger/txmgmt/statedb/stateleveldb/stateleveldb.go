@@ -41,7 +41,8 @@ func NewVersionedDBProvider(dbPath string) (*VersionedDBProvider, error) {
 		&leveldbhelper.Conf{
 			DBPath:         dbPath,
 			ExpectedFormat: dataformat.CurrentFormat,
-		})
+		},
+	)
 	if err != nil {
 		return nil, err
 	}

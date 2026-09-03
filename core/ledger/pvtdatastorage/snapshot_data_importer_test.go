@@ -80,7 +80,8 @@ func TestSnapshotImporter(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		err = snapshotDataImporter.ConsumeSnapshotData("ns", "coll",
+		err = snapshotDataImporter.ConsumeSnapshotData(
+			"ns", "coll",
 			[]byte("key-hash"), []byte("value-hash"),
 			version.NewHeight(20, 300),
 		)
@@ -120,7 +121,8 @@ func TestSnapshotImporter(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		err = snapshotDataImporter.ConsumeSnapshotData("ns", "coll",
+		err = snapshotDataImporter.ConsumeSnapshotData(
+			"ns", "coll",
 			[]byte("key-hash"), []byte("value-hash"),
 			version.NewHeight(20, 300),
 		)
@@ -160,7 +162,8 @@ func TestSnapshotImporter(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		err = snapshotDataImporter.ConsumeSnapshotData("ns", "coll",
+		err = snapshotDataImporter.ConsumeSnapshotData(
+			"ns", "coll",
 			[]byte("key-hash"), []byte("value-hash"),
 			version.NewHeight(20, 300),
 		)
@@ -214,7 +217,8 @@ func TestSnapshotImporter(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		err = snapshotDataImporter.ConsumeSnapshotData("ns", "coll",
+		err = snapshotDataImporter.ConsumeSnapshotData(
+			"ns", "coll",
 			[]byte("key-hash"), []byte("value-hash"),
 			version.NewHeight(20, 300),
 		)
@@ -261,7 +265,8 @@ func TestSnapshotImporter(t *testing.T) {
 		require.NoError(t, err)
 
 		myImplicitColl := implicitcollection.NameForOrg(myMSPID)
-		err = snapshotDataImporter.ConsumeSnapshotData("ns", myImplicitColl,
+		err = snapshotDataImporter.ConsumeSnapshotData(
+			"ns", myImplicitColl,
 			[]byte("key-hash"), []byte("value-hash"),
 			version.NewHeight(20, 300),
 		)
@@ -294,7 +299,8 @@ func TestSnapshotImporter(t *testing.T) {
 		require.NoError(t, err)
 
 		otherOrgImplicitColl := implicitcollection.NameForOrg("SomeOtherOrg")
-		err = snapshotDataImporter.ConsumeSnapshotData("ns", otherOrgImplicitColl,
+		err = snapshotDataImporter.ConsumeSnapshotData(
+			"ns", otherOrgImplicitColl,
 			[]byte("key-hash"), []byte("value-hash"),
 			version.NewHeight(20, 300),
 		)
@@ -334,19 +340,22 @@ func TestSnapshotImporter(t *testing.T) {
 
 		myImplicitColl := implicitcollection.NameForOrg(myMSPID)
 		for i := 10; i < 20; i++ {
-			err = snapshotDataImporter.ConsumeSnapshotData("ns", myImplicitColl,
+			err = snapshotDataImporter.ConsumeSnapshotData(
+				"ns", myImplicitColl,
 				[]byte("key-hash"), []byte("value-hash"),
 				version.NewHeight(uint64(i), 300),
 			)
 			require.NoError(t, err)
 
-			err = snapshotDataImporter.ConsumeSnapshotData("ns", myImplicitColl,
+			err = snapshotDataImporter.ConsumeSnapshotData(
+				"ns", myImplicitColl,
 				[]byte("another-key-hash"), []byte("another-value-hash"),
 				version.NewHeight(uint64(i), 301),
 			)
 			require.NoError(t, err)
 
-			err = snapshotDataImporter.ConsumeSnapshotData("ns", myImplicitColl,
+			err = snapshotDataImporter.ConsumeSnapshotData(
+				"ns", myImplicitColl,
 				[]byte("another-key-hash"), []byte("another-value-hash"),
 				version.NewHeight(uint64(i), 302),
 			)
@@ -404,7 +413,8 @@ func TestSnapshotImporter(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		err = snapshotDataImporter.ConsumeSnapshotData("ns", "coll",
+		err = snapshotDataImporter.ConsumeSnapshotData(
+			"ns", "coll",
 			[]byte("key-hash"), []byte("value-hash"),
 			version.NewHeight(20, 300),
 		)
@@ -450,7 +460,8 @@ func TestSnapshotImporterErrorPropagation(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		err = snapshotDataImporter.ConsumeSnapshotData("ns", "coll",
+		err = snapshotDataImporter.ConsumeSnapshotData(
+			"ns", "coll",
 			[]byte("key-hash"), []byte("value-hash"),
 			version.NewHeight(20, 300),
 		)
@@ -475,7 +486,8 @@ func TestSnapshotImporterErrorPropagation(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		err = snapshotDataImporter.ConsumeSnapshotData("ns", "coll",
+		err = snapshotDataImporter.ConsumeSnapshotData(
+			"ns", "coll",
 			[]byte("key-hash"), []byte("value-hash"),
 			version.NewHeight(10, 300),
 		)
@@ -500,7 +512,8 @@ func TestSnapshotImporterErrorPropagation(t *testing.T) {
 			},
 		)
 		require.NoError(t, err)
-		err = snapshotDataImporter.ConsumeSnapshotData("ns", "coll",
+		err = snapshotDataImporter.ConsumeSnapshotData(
+			"ns", "coll",
 			[]byte("key-hash"), []byte("value-hash"),
 			version.NewHeight(20, 300),
 		)
@@ -537,7 +550,8 @@ func TestSnapshotImporterErrorPropagation(t *testing.T) {
 			maxBatchLenForSnapshotImport = originalBatchLenForSnapshotImport
 		}()
 
-		err = snapshotDataImporter.ConsumeSnapshotData("ns", "coll",
+		err = snapshotDataImporter.ConsumeSnapshotData(
+			"ns", "coll",
 			[]byte("key-hash"), []byte("value-hash"),
 			version.NewHeight(20, 300),
 		)
@@ -557,7 +571,8 @@ func TestEligibilityAndBTLCacheLoadData(t *testing.T) {
 	defer configHistoryMgr.Close()
 
 	// setup a sample config history for namespace1
-	err = configHistoryMgr.Setup("test-ledger", "namespace1",
+	err = configHistoryMgr.Setup(
+		"test-ledger", "namespace1",
 		map[uint64][]*peer.StaticCollectionConfig{
 			15: {
 				{
@@ -599,7 +614,8 @@ func TestEligibilityAndBTLCacheLoadData(t *testing.T) {
 	require.NoError(t, err)
 
 	// setup a sample config history for namespace2
-	err = configHistoryMgr.Setup("test-ledger", "namespace2",
+	err = configHistoryMgr.Setup(
+		"test-ledger", "namespace2",
 		map[uint64][]*peer.StaticCollectionConfig{
 			50: {
 				{

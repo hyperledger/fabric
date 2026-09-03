@@ -7,12 +7,12 @@ package bridge
 
 import (
 	"bytes"
+	"fmt"
 
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // CredRequest encapsulates the idemix algorithms to produce (sign) a credential request
@@ -29,16 +29,16 @@ func (cr *CredRequest) Sign(sk *math.Zr, ipk types.IssuerPublicKey, nonce []byte
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
 	iipk, ok := ipk.(*IssuerPublicKey)
 	if !ok {
-		return nil, errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
+		return nil, fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 	if len(nonce) != cr.Idemix.Curve.ScalarByteSize {
-		return nil, errors.Errorf("invalid issuer nonce, expected length %d, got %d", cr.Idemix.Curve.ScalarByteSize, len(nonce))
+		return nil, fmt.Errorf("invalid issuer nonce, expected length %d, got %d", cr.Idemix.Curve.ScalarByteSize, len(nonce))
 	}
 
 	credRequest, err := cr.Idemix.NewCredRequest(
@@ -60,7 +60,7 @@ func (cr *CredRequest) Sign(sk *math.Zr, ipk types.IssuerPublicKey, nonce []byte
 func (cr *CredRequest) Verify(credentialRequest []byte, ipk types.IssuerPublicKey, nonce []byte) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
@@ -72,7 +72,7 @@ func (cr *CredRequest) Verify(credentialRequest []byte, ipk types.IssuerPublicKe
 
 	iipk, ok := ipk.(*IssuerPublicKey)
 	if !ok {
-		return errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
+		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
 	err = credRequest.Check(iipk.PK, cr.Idemix.Curve, cr.Translator)
@@ -82,10 +82,10 @@ func (cr *CredRequest) Verify(credentialRequest []byte, ipk types.IssuerPublicKe
 
 	// Nonce checks
 	if len(nonce) != cr.Idemix.Curve.ScalarByteSize {
-		return errors.Errorf("invalid issuer nonce, expected length %d, got %d", cr.Idemix.Curve.ScalarByteSize, len(nonce))
+		return fmt.Errorf("invalid issuer nonce, expected length %d, got %d", cr.Idemix.Curve.ScalarByteSize, len(nonce))
 	}
 	if !bytes.Equal(nonce, credRequest.IssuerNonce) {
-		return errors.Errorf("invalid nonce, expected [%v], got [%v]", nonce, credRequest.IssuerNonce)
+		return fmt.Errorf("invalid nonce, expected [%v], got [%v]", nonce, credRequest.IssuerNonce)
 	}
 
 	return nil

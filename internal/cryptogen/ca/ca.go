@@ -288,7 +288,7 @@ func genCertificate(
 func getPublicKey(priv crypto.PrivateKey) crypto.PublicKey {
 	switch kk := priv.(type) {
 	case *ecdsa.PrivateKey:
-		return &(kk.PublicKey)
+		return &kk.PublicKey
 	case ed25519.PrivateKey:
 		return kk.Public()
 	default:

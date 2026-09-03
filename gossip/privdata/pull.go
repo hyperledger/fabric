@@ -86,7 +86,8 @@ type puller struct {
 
 // NewPuller creates new private data puller
 func NewPuller(metrics *metrics.PrivdataMetrics, cs privdata.CollectionStore, g gossip,
-	dataRetriever PrivateDataRetriever, factory CollectionAccessFactory, channel string, btlPullMargin uint64) *puller {
+	dataRetriever PrivateDataRetriever, factory CollectionAccessFactory, channel string, btlPullMargin uint64,
+) *puller {
 	p := &puller{
 		logger:                  logger.With("channel", channel),
 		metrics:                 metrics,
