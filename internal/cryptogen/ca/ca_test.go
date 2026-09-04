@@ -8,6 +8,9 @@ package ca_test
 import (
 	"crypto/ecdsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/asn1"
+	"encoding/json"
 	"net"
 	"os"
 	"path/filepath"
@@ -66,6 +69,7 @@ func TestLoadCertificateECDSA(t *testing.T) {
 	cert, err := rootCA.SignCertificate(
 		certDir,
 		testName3,
+		nil,
 		nil,
 		nil,
 		&priv.(*ecdsa.PrivateKey).PublicKey,
@@ -186,6 +190,7 @@ func TestGenerateSignCertificate(t *testing.T) {
 		testName,
 		nil,
 		nil,
+		nil,
 		&priv.PublicKey,
 		x509.KeyUsageDigitalSignature|x509.KeyUsageKeyEncipherment,
 		[]x509.ExtKeyUsage{x509.ExtKeyUsageAny},
@@ -201,6 +206,7 @@ func TestGenerateSignCertificate(t *testing.T) {
 		testName,
 		nil,
 		nil,
+		nil,
 		&priv.PublicKey,
 		x509.KeyUsageDigitalSignature,
 		[]x509.ExtKeyUsage{},
@@ -210,7 +216,7 @@ func TestGenerateSignCertificate(t *testing.T) {
 
 	// make sure ous are correctly set
 	ous := []string{"TestOU", "PeerOU"}
-	cert, err = rootCA.SignCertificate(certDir, testName, ous, nil, &priv.PublicKey,
+	cert, err = rootCA.SignCertificate(certDir, testName, ous, nil, nil, &priv.PublicKey,
 		x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
 	require.NoError(t, err)
 	require.Contains(t, cert.Subject.OrganizationalUnit, ous[0])
@@ -218,7 +224,7 @@ func TestGenerateSignCertificate(t *testing.T) {
 
 	// make sure sans are correctly set
 	sans := []string{testName2, testName3, testIP}
-	cert, err = rootCA.SignCertificate(certDir, testName, nil, sans, &priv.PublicKey,
+	cert, err = rootCA.SignCertificate(certDir, testName, nil, sans, nil, &priv.PublicKey,
 		x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
 	require.NoError(t, err)
 	require.Contains(t, cert.DNSNames, testName2)
@@ -231,7 +237,7 @@ func TestGenerateSignCertificate(t *testing.T) {
 	require.Equal(t, true, checkForFile(pemFile),
 		"Expected to find file "+pemFile)
 
-	_, err = rootCA.SignCertificate(certDir, "empty/CA", nil, nil, &priv.PublicKey,
+	_, err = rootCA.SignCertificate(certDir, "empty/CA", nil, nil, nil, &priv.PublicKey,
 		x509.KeyUsageKeyEncipherment, []x509.ExtKeyUsage{x509.ExtKeyUsageAny})
 	require.Error(t, err, "Bad name should fail")
 
@@ -240,9 +246,29 @@ func TestGenerateSignCertificate(t *testing.T) {
 		Name:     "badCA",
 		SignCert: &x509.Certificate{},
 	}
-	_, err = badCA.SignCertificate(certDir, testName, nil, nil, &ecdsa.PublicKey{},
+	_, err = badCA.SignCertificate(certDir, testName, nil, nil, nil, &ecdsa.PublicKey{},
 		x509.KeyUsageKeyEncipherment, []x509.ExtKeyUsage{x509.ExtKeyUsageAny})
 	require.Error(t, err, "Empty CA should not be able to sign")
+
+	// verify attributes are embedded as the fabric-ca extension
+	attrs := map[string]string{"abac.creator": "true", "org.role": "member"}
+	cert, err = rootCA.SignCertificate(certDir, testName, nil, nil, attrs, &priv.PublicKey,
+		x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
+	require.NoError(t, err)
+	attrOID := asn1.ObjectIdentifier{1, 2, 3, 4, 5, 6, 7, 8, 1}
+	var attrExt *pkix.Extension
+	for i := range cert.Extensions {
+		if cert.Extensions[i].Id.Equal(attrOID) {
+			attrExt = &cert.Extensions[i]
+			break
+		}
+	}
+	require.NotNil(t, attrExt, "attribute extension should be present")
+	var attrData struct {
+		Attrs map[string]string `json:"attrs"`
+	}
+	require.NoError(t, json.Unmarshal(attrExt.Value, &attrData))
+	require.Equal(t, attrs, attrData.Attrs)
 }
 
 func checkForFile(file string) bool {
