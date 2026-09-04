@@ -16,6 +16,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -426,6 +428,44 @@ func Test_buildImageFailure(t *testing.T) {
 
 	err := dvm.buildImage("simple", &bytes.Buffer{})
 	require.EqualError(t, err, "oh-bother-we-failed-badly")
+}
+
+func Test_getAuthConfigFromDockerConfig(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Setenv("HOME", tempDir)
+
+	configFile := []byte(`
+{
+	"auths": {
+		"repo.example.com": {
+			"auth": "dXNlcm5hbWU6cGFzc3dvcmQK"
+		}
+	}
+}
+	`)
+
+	rc := &mock.ReadCloser{}
+	rc.ReadReturns(0, io.EOF)
+	client := &mock.DockerClient{}
+	client.ImageBuildReturns(dcli.ImageBuildResult{Body: rc}, nil)
+
+	dockerDir := filepath.Join(tempDir, ".docker")
+	if _, err := os.Stat(dockerDir); err != nil {
+		_ = os.Mkdir(dockerDir, 0o700)
+	}
+
+	configFilePath := filepath.Join(dockerDir, "config.json")
+	err := os.WriteFile(configFilePath, configFile, 0o644)
+	require.NoError(t, err)
+
+	configs := getAuthFromDockerConfig()
+	require.Greater(t, len(configs), 0, "len of auth configs should not be 0")
+
+	repoAuth, ok := configs["repo.example.com"]
+	require.True(t, ok, "the key repo.example.com should be set")
+	require.Empty(t, repoAuth.Auth)
+	require.NotEmpty(t, repoAuth.Username)
+	require.NotEmpty(t, repoAuth.Password)
 }
 
 func TestBuild(t *testing.T) {
