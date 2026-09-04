@@ -40,9 +40,9 @@ func TestSameMessage(t *testing.T) {
 
 func TestDifferentMessages(t *testing.T) {
 	var n uint = 50
-	var signedInvokedCount uint32
+	var signedInvokedCount atomic.Uint32
 	sign := func(msg []byte) ([]byte, error) {
-		atomic.AddUint32(&signedInvokedCount, 1)
+		signedInvokedCount.Add(1)
 		return msg, nil
 	}
 
@@ -64,21 +64,21 @@ func TestDifferentMessages(t *testing.T) {
 
 	// Query once
 	parallelSignRange(0, n)
-	require.Equal(t, uint32(n), atomic.LoadUint32(&signedInvokedCount))
+	require.Equal(t, uint32(n), signedInvokedCount.Load())
 
 	// Query twice
 	parallelSignRange(0, n)
-	require.Equal(t, uint32(n), atomic.LoadUint32(&signedInvokedCount))
+	require.Equal(t, uint32(n), signedInvokedCount.Load())
 
 	// Query thrice on a disjoint range
 	for i := n + 1; i < 2*n; i++ {
 		parallelSignRange(i, i+1)
 	}
-	oldSignedInvokedCount := atomic.LoadUint32(&signedInvokedCount)
+	oldSignedInvokedCount := signedInvokedCount.Load()
 
 	// Ensure that some of the early messages 0-n were purged from memory
 	parallelSignRange(0, n)
-	require.True(t, oldSignedInvokedCount < atomic.LoadUint32(&signedInvokedCount))
+	require.True(t, oldSignedInvokedCount < signedInvokedCount.Load())
 }
 
 func TestFailure(t *testing.T) {
