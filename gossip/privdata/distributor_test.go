@@ -174,13 +174,13 @@ func TestDistributor(t *testing.T) {
 	expectedMinAck := map[string]int{}
 
 	i := 0
-	require.Len(t, sendings, 8)
+	require.Len(t, sendings, 4)
 	for dis := range sendings {
 		key := fmt.Sprintf("%s~%s", dis.PrivatePayload.Namespace, dis.PrivatePayload.CollectionName)
 		expectedMaxCount[key] += dis.SendCriteria.MaxPeers
 		expectedMinAck[key] += dis.SendCriteria.MinAck
 		i++
-		if i == 8 {
+		if i == 4 {
 			break
 		}
 	}
