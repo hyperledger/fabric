@@ -196,7 +196,7 @@ func (d *distributorImpl) computeDisseminationPlan(txID string,
 			if err != nil {
 				return nil, errors.WithMessagef(err, "could not build private data dissemination plan for chaincode %s and collection %s", namespace, collectionName)
 			}
-			disseminationPlan = append(disseminationPlan, dPlan...)
+			disseminationPlan = append(disseminationPlan, dPlan)
 		}
 	}
 	return disseminationPlan, nil
@@ -213,9 +213,7 @@ func (d *distributorImpl) getCollectionConfig(config *peer.CollectionConfigPacka
 	return nil, errors.New(fmt.Sprint("no configuration for collection", collection.CollectionName, "found"))
 }
 
-func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAccessPolicy, colFilter privdata.Filter, pvtDataMsg *protoext.SignedGossipMessage) ([]*dissemination, error) {
-	var disseminationPlan []*dissemination
-
+func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAccessPolicy, colFilter privdata.Filter, pvtDataMsg *protoext.SignedGossipMessage) (*dissemination, error) {
 	routingFilter, err := d.gossipAdapter.PeerFilter(gossipCommon.ChannelID(d.chainID), func(signature api.PeerSignature) bool {
 		return colFilter(protoutil.SignedData{
 			Data:      signature.Message,
@@ -251,67 +249,41 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 		peerEndpoints[string(peer.PKIid)] = epToAdd
 	}
 
-	// Initialize maximumPeerRemainingCount and requiredPeerRemainingCount,
-	// these will be decremented until we've selected enough peers for dissemination
+	// Initialize maximumPeerRemainingCount and requiredPeerCount,
+	// maximumPeerRemainingCount will be decremented until we've selected enough peers for dissemination
 	maximumPeerRemainingCount := colAP.MaximumPeerCount()
-	requiredPeerRemainingCount := colAP.RequiredPeerCount()
+	requiredPeerCount := colAP.RequiredPeerCount()
 
 	remainingPeersAcrossOrgs := []api.PeerIdentityInfo{}
 	selectedPeerEndpointsForDebug := []string{}
+	selectedPKIDs := make(map[string]struct{})
 
 	var seed [32]byte
-	_, _ = crand.Read(seed[:])
+	if _, err := crand.Read(seed[:]); err != nil {
+		return nil, errors.Wrap(err, "failed to generate random seed")
+	}
 	r := rand.New(rand.NewChaCha8(seed))
 
 	// PHASE 1 - Select one peer from each eligible org
-	if maximumPeerRemainingCount > 0 {
-		for _, selectionPeersForOrg := range identitySetsByOrg {
+	for _, selectionPeersForOrg := range identitySetsByOrg {
 
-			// Peers are tagged as a required peer (acksRequired=1) for RequiredPeerCount up front before dissemination.
-			// TODO It would be better to attempt dissemination to MaxPeerCount first, and then verify that enough sends were acknowledged to meet RequiredPeerCount.
-			acksRequired := 1
-			if requiredPeerRemainingCount == 0 {
-				acksRequired = 0
-			}
-
-			selectedPeerIndex := r.IntN(len(selectionPeersForOrg))
-			peer2SendPerOrg := selectionPeersForOrg[selectedPeerIndex]
-			selectedPeerEndpointsForDebug = append(selectedPeerEndpointsForDebug, peerEndpoints[string(peer2SendPerOrg.PKIId)])
-			sc := gossipgossip.SendCriteria{
-				Timeout:  d.pushAckTimeout,
-				Channel:  gossipCommon.ChannelID(d.chainID),
-				MaxPeers: 1,
-				MinAck:   acksRequired,
-				IsEligible: func(member discovery.NetworkMember) bool {
-					return bytes.Equal(member.PKIid, peer2SendPerOrg.PKIId)
-				},
-			}
-			disseminationPlan = append(disseminationPlan, &dissemination{
-				criteria: sc,
-				msg: &protoext.SignedGossipMessage{
-					Envelope:      proto.Clone(pvtDataMsg.Envelope).(*protosgossip.Envelope),
-					GossipMessage: proto.Clone(pvtDataMsg.GossipMessage).(*protosgossip.GossipMessage),
-				},
-			})
-
-			// Add unselected peers to remainingPeersAcrossOrgs
-			for i, peer := range selectionPeersForOrg {
-				if i != selectedPeerIndex {
-					remainingPeersAcrossOrgs = append(remainingPeersAcrossOrgs, peer)
-				}
-			}
-
-			if requiredPeerRemainingCount > 0 {
-				requiredPeerRemainingCount--
-			}
-
-			maximumPeerRemainingCount--
-			if maximumPeerRemainingCount == 0 {
-				d.logger.Debug("MaximumPeerCount satisfied")
-				d.logger.Debugf("Disseminating private RWSet for TxID [%s] namespace [%s] collection [%s] to peers: %v", m.TxId, m.Namespace, m.CollectionName, selectedPeerEndpointsForDebug)
-				return disseminationPlan, nil
-			}
+		if maximumPeerRemainingCount == 0 {
+			break
 		}
+
+		if len(selectionPeersForOrg) == 0 {
+			continue
+		}
+
+		selectedPeerIndex := r.IntN(len(selectionPeersForOrg))
+		peer2SendPerOrg := selectionPeersForOrg[selectedPeerIndex]
+		selectedPeerEndpointsForDebug = append(selectedPeerEndpointsForDebug, peerEndpoints[string(peer2SendPerOrg.PKIId)])
+
+		selectedPKIDs[string(peer2SendPerOrg.PKIId)] = struct{}{}
+		// Safe because selectionPeersForOrg is not used after this point.
+		remainingPeersAcrossOrgs = append(remainingPeersAcrossOrgs, append(selectionPeersForOrg[:selectedPeerIndex], selectionPeersForOrg[selectedPeerIndex+1:]...)...)
+
+		maximumPeerRemainingCount--
 	}
 
 	// PHASE 2 - Select additional peers to satisfy colAP.MaximumPeerCount() if there are still peers in the remainingPeersAcrossOrgs pool
@@ -319,42 +291,46 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 	if numRemainingPeersToSelect > 0 {
 		d.logger.Debugf("MaximumPeerCount not yet satisfied after picking one peer per org, selecting %d more peer(s) for dissemination", numRemainingPeersToSelect)
 	}
-	for maximumPeerRemainingCount > 0 && len(remainingPeersAcrossOrgs) > 0 {
-		required := 1
-		if requiredPeerRemainingCount == 0 {
-			required = 0
-		}
-		selectedPeerIndex := r.IntN(len(remainingPeersAcrossOrgs))
-		peer2Send := remainingPeersAcrossOrgs[selectedPeerIndex]
+
+	for i := range numRemainingPeersToSelect {
+
+		// Partial Fisher-Yates shuffle to uniformly sample peers without replacement.
+		j := i + r.IntN(len(remainingPeersAcrossOrgs)-i)
+		remainingPeersAcrossOrgs[i], remainingPeersAcrossOrgs[j] = remainingPeersAcrossOrgs[j], remainingPeersAcrossOrgs[i]
+
+		peer2Send := remainingPeersAcrossOrgs[i]
 		selectedPeerEndpointsForDebug = append(selectedPeerEndpointsForDebug, peerEndpoints[string(peer2Send.PKIId)])
-		sc := gossipgossip.SendCriteria{
-			Timeout:  d.pushAckTimeout,
-			Channel:  gossipCommon.ChannelID(d.chainID),
-			MaxPeers: 1,
-			MinAck:   required,
-			IsEligible: func(member discovery.NetworkMember) bool {
-				return bytes.Equal(member.PKIid, peer2Send.PKIId)
-			},
-		}
-		disseminationPlan = append(disseminationPlan, &dissemination{
-			criteria: sc,
-			msg: &protoext.SignedGossipMessage{
-				Envelope:      proto.Clone(pvtDataMsg.Envelope).(*protosgossip.Envelope),
-				GossipMessage: proto.Clone(pvtDataMsg.GossipMessage).(*protosgossip.GossipMessage),
-			},
-		})
-		if requiredPeerRemainingCount > 0 {
-			requiredPeerRemainingCount--
-		}
+
+		selectedPKIDs[string(peer2Send.PKIId)] = struct{}{}
 
 		maximumPeerRemainingCount--
+	}
 
-		// remove the selected peer from remaining peers
-		remainingPeersAcrossOrgs = append(remainingPeersAcrossOrgs[:selectedPeerIndex], remainingPeersAcrossOrgs[selectedPeerIndex+1:]...)
+	if maximumPeerRemainingCount == 0 {
+		d.logger.Debugf("MaximumPeerCount satisfied")
+	}
+
+	sc := gossipgossip.SendCriteria{
+		Timeout:  d.pushAckTimeout,
+		Channel:  gossipCommon.ChannelID(d.chainID),
+		MaxPeers: len(selectedPKIDs),
+		MinAck:   requiredPeerCount,
+		IsEligible: func(member discovery.NetworkMember) bool {
+			_, exists := selectedPKIDs[string(member.PKIid)]
+			return exists
+		},
+	}
+	dPlan := &dissemination{
+		criteria: sc,
+		msg: &protoext.SignedGossipMessage{
+			Envelope:      proto.Clone(pvtDataMsg.Envelope).(*protosgossip.Envelope),
+			GossipMessage: proto.Clone(pvtDataMsg.GossipMessage).(*protosgossip.GossipMessage),
+		},
 	}
 
 	d.logger.Debugf("Disseminating private RWSet for TxID [%s] namespace [%s] collection [%s] to peers: %v", m.TxId, m.Namespace, m.CollectionName, selectedPeerEndpointsForDebug)
-	return disseminationPlan, nil
+
+	return dPlan, nil
 }
 
 // identitiesOfEligiblePeersByOrg returns the peers eligible for a collection (aka PeerIdentitySet) grouped in a hash map keyed by orgid
