@@ -302,11 +302,7 @@ var _ = Describe("EndToEnd", func() {
 					chaincodeContainerNameFilter(network, chaincode),
 					chaincodeContainerNameFilter(network, gopathChaincode),
 				)
-				containers, err := client.ContainerList(context.Background(), dcli.ContainerListOptions{
-					Filters: initialContainerFilter,
-				})
-				Expect(err).NotTo(HaveOccurred())
-				Expect(containers.Items).To(HaveLen(2))
+				Eventually(chaincodeContainerIDs(client, initialContainerFilter), network.EventuallyTimeout).Should(HaveLen(2))
 
 				RunQueryInvokeQuery(network, orderer, network.Peer("Org1", "peer0"), "testchannel")
 
@@ -334,21 +330,13 @@ var _ = Describe("EndToEnd", func() {
 
 				By("listing the containers after updating the chaincode definition")
 				// expect the containers for the previous package id to be stopped
-				containers, err = client.ContainerList(context.Background(), dcli.ContainerListOptions{
-					Filters: initialContainerFilter,
-				})
-				Expect(err).NotTo(HaveOccurred())
-				Expect(containers.Items).To(HaveLen(0))
+				Eventually(chaincodeContainerIDs(client, initialContainerFilter), network.EventuallyTimeout).Should(BeEmpty())
 				updatedContainerFilter := make(dcli.Filters).Add(
 					"name",
 					chaincodeContainerNameFilter(network, chaincode),
 					chaincodeContainerNameFilter(network, gopathChaincode),
 				)
-				containers, err = client.ContainerList(context.Background(), dcli.ContainerListOptions{
-					Filters: updatedContainerFilter,
-				})
-				Expect(err).NotTo(HaveOccurred())
-				Expect(containers.Items).To(HaveLen(2))
+				Eventually(chaincodeContainerIDs(client, updatedContainerFilter), network.EventuallyTimeout).Should(HaveLen(2))
 
 				RunQueryInvokeQuery(network, orderer, network.Peer("Org1", "peer0"), "testchannel")
 
@@ -584,15 +572,11 @@ var _ = Describe("EndToEnd", func() {
 			}
 
 			By("checking successful removals of all old chaincode containers")
-			newContainers, err := client.ContainerList(context.Background(), dcli.ContainerListOptions{
-				Filters: listChaincodeContainers,
-			})
+			listNewContainerIDs := chaincodeContainerIDs(client, listChaincodeContainers)
+			Eventually(listNewContainerIDs, network.EventuallyTimeout).Should(HaveLen(len(containers.Items)))
 
-			Expect(err).NotTo(HaveOccurred())
-			Expect(newContainers.Items).To(HaveLen(len(containers.Items)))
-
-			for _, container := range newContainers.Items {
-				Expect(originalContainerIDs).NotTo(ContainElement(container.ID))
+			for _, id := range listNewContainerIDs() {
+				Expect(originalContainerIDs).NotTo(ContainElement(id))
 			}
 		})
 	})
@@ -949,6 +933,27 @@ func hashFile(file string) string {
 
 func chaincodeContainerNameFilter(n *nwo.Network, chaincode nwo.Chaincode) string {
 	return fmt.Sprintf("^/%s-.*-%s-%s$", n.NetworkID, chaincode.Label, hashFile(chaincode.PackageFile))
+}
+
+// chaincodeContainerIDs returns a function that lists the IDs of the running
+// containers matching filters, for use with Eventually.  The listing lags the
+// peer in both directions: the peer treats a chaincode as launched as soon as
+// the chaincode registers, which can be before dockerd has finished its start
+// path and added the container to the running list, and a superseded
+// chaincode is stopped by the lifecycle custodian's background worker rather
+// than as part of block commit.  A single read of the listing races both.
+func chaincodeContainerIDs(client dcli.APIClient, filters dcli.Filters) func() []string {
+	return func() []string {
+		containers, err := client.ContainerList(context.Background(), dcli.ContainerListOptions{
+			Filters: filters,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		ids := make([]string, 0, len(containers.Items))
+		for _, container := range containers.Items {
+			ids = append(ids, container.ID)
+		}
+		return ids
+	}
 }
 
 func deliveryBlock(network *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channelID string) {
